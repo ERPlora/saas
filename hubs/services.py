@@ -17,6 +17,7 @@ from collections import Counter
 from contextlib import contextmanager
 from datetime import UTC, date, timedelta
 from functools import partial
+from time import sleep
 from uuid import UUID
 
 from django.conf import settings
@@ -46,11 +47,12 @@ from accounts import queries as account_queries
 from accounts import services as account_services
 from accounts.queries import hub_start_url
 from base.refusals import fields_refused
-from hubs import emails, events, hub_client, queries
+from hubs import domain_checks, domain_names, edge_client, emails, events, hub_client, queries
 from hubs.queries import expired_deletions
 from hubs.hub_client import HubRefused, HubUnavailable
 from hubs.models import (
     BillingProfile,
+    CustomDomain,
     Hub,
     HubMember,
     HubOwnershipTransfer,
@@ -59,8 +61,14 @@ from hubs.models import (
     SessionRevocation,
     Subscription,
     SubscriptionItem,
+    new_certificate_token,
 )
 from hubs.schemas import (
+    CustomDomainOut,
+    CustomDomainRecordIn,
+    CustomDomainRecordOut,
+    CustomDomainRequestIn,
+    CustomDomainStatusOut,
     BillingProfileIn,
     BillingProfileOut,
     BusinessCreateIn,
@@ -2290,6 +2298,483 @@ def push_snapshots(*, behind_only: bool = False) -> Counter:
         counts["pushed" if outcome == DELIVERED else "owed"] += 1
         counts[REFUSED] += outcome == REFUSED
     return counts
+
+
+# --- A business's own domain (HUBS-F17, PLAN-SAAS §37 point 2; ``aws`` README, «Dominio propio de un negocio») -------
+
+#: How often the request looks for ACM's validation record, a second apart. It takes some seconds to exist, and asking
+#: holds the business's row: past them, the answer has none yet and ``hubs.custom_domain.get`` gives it.
+VALIDATION_RECORD_TRIES = 3
+#: Checks in a row that find it not pointing here or not served before it is no longer served (PLAN-SAAS §37).
+CUSTOM_DOMAIN_FAILURES_TO_LAPSE = 3
+#: How long a certificate waits on the shared listener for a CNAME that does not come: its place is another's.
+CUSTOM_DOMAIN_PENDING_LIMIT = timedelta(days=14)
+#: Counts that make ``check_custom_domains`` end with an error, after its whole pass. AWS, the DNS or the Hub being away
+#: are not: they come back, and the next pass tries again.
+CUSTOM_DOMAIN_FAILING_COUNTS = ("crashed", "metric_unpublished")
+
+_NOT_ISSUED_YET = "PENDING_VALIDATION"
+_ISSUED = "ISSUED"
+_TIMED_OUT = "VALIDATION_TIMED_OUT"
+
+
+def _custom_domains_on() -> None:
+    if not settings.CUSTOM_DOMAINS_ENABLED:
+        raise Conflict(_("Own domains are not available yet."), code="hubs.custom_domains_off")
+
+
+#: What ``hubs.domain_names`` and the DNS refuse, with the message of each.
+_DOMAIN_REFUSALS = {
+    domain_names.Refusal.NOT_A_DOMAIN: ("hubs.custom_domain_invalid", gettext_lazy("Write only the domain, like www.yourbusiness.com.")),
+    domain_names.Refusal.OURS: ("hubs.custom_domain_ours", gettext_lazy("That domain belongs to ERPlora. Write your own.")),
+    domain_checks.Zone.APEX: (
+        "hubs.custom_domain_apex",
+        gettext_lazy("A root domain cannot point at ERPlora. Connect www and redirect the root to it at your provider."),
+    ),
+    domain_checks.Zone.UNREGISTERED: ("hubs.custom_domain_unregistered", gettext_lazy("Nobody has registered that domain yet.")),
+}
+
+
+def _domain_refused(why) -> InvalidPayload:
+    code, message = _DOMAIN_REFUSALS[why]
+    return fields_refused({"domain": str(message)}, code=code)
+
+
+def _hostname_of(typed: str) -> str:
+    """The domain in the form everybody is given, or the 422 of what the Hub, ACM or the DNS would not take."""
+    try:
+        hostname = domain_names.normalized(typed)
+    except domain_names.DomainRefused as refused:
+        raise _domain_refused(refused.reason) from None
+    try:
+        zone = domain_checks.zone_of(hostname)
+    except domain_checks.DnsUnavailable as error:
+        # It cannot be told apart now: a root domain has no CNAME to prove itself with, so nothing is promised.
+        logger.warning("hubs.custom_domain.zone_unread domain=%s: %s", hostname, error)
+        return hostname
+    if zone != domain_checks.Zone.SUBDOMAIN:
+        raise _domain_refused(zone)
+    return hostname
+
+
+@operation(
+    "hubs.custom_domain.request",
+    kind="command",
+    permission="hubs.manage",
+    input=CustomDomainRequestIn,
+    output=CustomDomainOut,
+    ai=AI(
+        description=(
+            "Connects a domain of the owner's (www.theirbusiness.com, never a root domain) to the public website of a "
+            "business whose plan includes it, and gives the two DNS records to create. Only its owner."
+        ),
+        asks={
+            "en": ("connect www.barmanolo.com to my website", "I want my own domain on the salon's website"),
+            "es": ("conecta www.barmanolo.com a mi web", "quiero mi propio dominio en la web de la peluquería"),
+        },
+    ),
+)
+def custom_domain_request(ctx: OperationContext, data: CustomDomainRequestIn) -> dict:
+    """Keep the domain and ask ACM for its certificate; the hourly check (``check_custom_domains``) does the rest.
+
+    AWS is called inside the transaction, so a domain and its certificate come together: if it rolls back, the
+    certificate left in ACM is free, tagged and on nothing. Before the business's row is locked, what the Hub would refuse
+    and the DNS: a slow answer holds no other write of the business.
+    """
+    user = queries.account_of(ctx)
+    hub = queries.access(user, data.id, Role.OWNER).hub
+    _custom_domains_on()
+    if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
+        raise business_deleted()
+    plan = queries.effective_plan(hub.id, timezone.now())
+    if plan is None or not plan.includes_custom_domain:
+        raise Conflict(_("The plan of this business does not include an own domain."), code="hubs.custom_domain_not_in_plan")
+    hostname = _hostname_of(data.domain)
+    queries.access(user, data.id, Role.OWNER, lock=True)
+    row = CustomDomain.objects.select_for_update().filter(hub=hub).first()
+    if row is not None and row.hostname == hostname and row.state in (CustomDomain.State.PENDING, CustomDomain.State.ACTIVE):
+        return queries.custom_domain_of(row, ctx.language)
+    if row is not None and (row.state != CustomDomain.State.LAPSED or row.certificate_arn):
+        raise Conflict(_("This business already has a domain. Remove it first."), code="hubs.custom_domain_exists")
+    if CustomDomain.objects.filter(hostname=hostname, proven_at__isnull=False).exclude(hub=hub).exists():
+        raise Conflict(_("Another business is connected to this domain."), code="hubs.custom_domain_taken")
+    if row is None:
+        row = CustomDomain(hub=hub)
+    row.hostname = hostname
+    row.state = CustomDomain.State.PENDING
+    row.reason = CustomDomain.Reason.NONE
+    row.certificate_token = new_certificate_token()
+    row.validation_name = row.validation_value = ""
+    row.save()
+    _ask_for_a_certificate(row)
+    record_event(ctx, events.CUSTOM_DOMAIN_CHANGED, {"business_id": str(hub.id)})
+    return queries.custom_domain_of(row, ctx.language)
+
+
+def _ask_for_a_certificate(row: CustomDomain) -> None:
+    """The certificate of a domain that just came, and its validation record if ACM has it in time. Whatever fails, the
+    hourly check tries again with the same token."""
+    if not queries.listener_has_room():
+        row.reason = CustomDomain.Reason.QUOTA_FULL
+        row.save()
+        return
+    try:
+        row.certificate_arn = edge_client.request_certificate(row.hostname, row.certificate_token)
+        row.reason = CustomDomain.Reason.CERTIFICATE_PENDING
+        row.save()
+        for attempt in range(VALIDATION_RECORD_TRIES):
+            facts = edge_client.describe_certificate(row.certificate_arn)
+            if facts.validation_name:
+                row.validation_name, row.validation_value = facts.validation_name, facts.validation_value
+                row.save()
+                return
+            if attempt + 1 < VALIDATION_RECORD_TRIES:
+                sleep(1)
+    except edge_client.EdgeUnavailable as error:
+        logger.error("hubs.custom_domain.aws domain=%s: %s", row.hostname, error)
+        if not row.certificate_arn:
+            row.reason = CustomDomain.Reason.CERTIFICATE_UNAVAILABLE
+            row.save()
+
+
+@operation(
+    "hubs.custom_domain.remove",
+    kind="command",
+    permission="hubs.manage",
+    input=ByIdIn,
+    output=CustomDomainStatusOut,
+    ai=AI(
+        description=(
+            "Disconnects the own domain of a business: its website stops being served on it and stays at its address on "
+            "erplora.com. Only its owner."
+        ),
+        risk="high",
+        asks={
+            "en": ("disconnect my domain from the website", "remove www.barmanolo.com from the bar"),
+            "es": ("desconecta mi dominio de la web", "quita www.barmanolo.com del bar"),
+        },
+    ),
+)
+def custom_domain_remove(ctx: OperationContext, data: ByIdIn) -> dict:
+    """The snapshot first: the Hub stops serving it, then the certificate goes, and the row last, which frees the name
+    (after the COMMIT, and the hourly check finishes whatever is left)."""
+    hub = queries.access(queries.account_of(ctx), data.id, Role.OWNER, lock=True).hub
+    _custom_domains_on()
+    row = CustomDomain.objects.select_for_update().filter(hub=hub).first()
+    if row is None:
+        raise queries.not_found()
+    if row.state != CustomDomain.State.REMOVING:
+        was_in_snapshot = row.in_snapshot
+        row.state = CustomDomain.State.REMOVING
+        row.save()
+        if was_in_snapshot:
+            bump_state(hub.id)
+        record_event(ctx, events.CUSTOM_DOMAIN_CHANGED, {"business_id": str(hub.id)})
+    transaction.on_commit(partial(_finish_removal_quietly, row.id), robust=True)
+    return queries.custom_domain_status(hub, ctx.language)
+
+
+def _finish_removal_quietly(domain_id: UUID) -> None:
+    try:
+        row = queries.custom_domain_row(domain_id)
+        if row is not None:
+            _finish_removal(row)
+    except Exception:  # noqa: BLE001 - it already answered; the hourly check finishes it
+        logger.exception("hubs.custom_domain.removal_crashed domain=%s", domain_id)
+
+
+@operation(
+    "hubs.custom_domain.record",
+    kind="command",
+    permission="hubs.manage",
+    input=CustomDomainRecordIn,
+    output=CustomDomainRecordOut,
+    ai=INTERNAL,  # the hourly check
+)
+def custom_domain_record(ctx: OperationContext, data: CustomDomainRecordIn) -> dict:
+    """What the hourly check learned, unless the domain left the state it found: the owner removing it wins. A command,
+    so a change has its event on the owner's channel, and one of what the Hub is told owes it a newer snapshot."""
+    if ctx.actor != "system":
+        raise PermissionDenied(_("Only the platform records what its check learned."), code="internal_command")
+    row = CustomDomain.objects.select_for_update().filter(pk=data.id).first()
+    if row is None or row.state != data.expected_state:
+        return {"recorded": False}
+    before = _what_the_owner_sees(row)
+    was_in_snapshot = row.in_snapshot
+    now = timezone.now()
+    if data.forget:
+        row.delete()
+        if was_in_snapshot:
+            bump_state(row.hub_id)
+        record_event(ctx, events.CUSTOM_DOMAIN_CHANGED, {"business_id": str(row.hub_id)})
+        return {"recorded": True}
+    for field in ("reason", "certificate_arn", "validation_name", "validation_value", "failures"):
+        value = getattr(data, field)
+        if value is not None:
+            setattr(row, field, value)
+    if data.state is not None:
+        row.state = data.state
+        if data.state == CustomDomain.State.ACTIVE:
+            row.activated_at = now
+    if data.new_token:
+        row.certificate_token = new_certificate_token()
+    if data.attached is not None:
+        row.attached_at = now if data.attached else None
+    if data.proven is False:
+        row.proven_at = None
+    elif data.proven and row.proven_at is None:
+        row.proven_at = now
+    row.checked_at = now
+    try:
+        with transaction.atomic():
+            row.save()
+    except IntegrityError:
+        # Another business holds the proof of this name: the Hub would serve neither, so this one waits for that one to fall.
+        row.proven_at = None
+        row.reason = CustomDomain.Reason.TAKEN
+        row.save()
+    if was_in_snapshot != row.in_snapshot or data.owe_snapshot:
+        bump_state(row.hub_id)
+    if _what_the_owner_sees(row) != before:
+        record_event(ctx, events.CUSTOM_DOMAIN_CHANGED, {"business_id": str(row.hub_id)})
+    return {"recorded": True}
+
+
+def _what_the_owner_sees(row: CustomDomain) -> tuple:
+    return (row.state, row.reason, row.validation_name, row.failures, row.attached_at is None, row.proven_at is None)
+
+
+class _DomainMovedOn(Exception):
+    """The domain left the state the check found it in: its owner removed it. What the check learned is not written."""
+
+
+def _learned(row: CustomDomain, **facts) -> CustomDomain:
+    """Write what the check learned of ``row``, and read it back."""
+    answer = custom_domain_record(
+        system_ctx_for(row.hub_id), CustomDomainRecordIn(id=row.id, expected_state=row.state, **facts)
+    )
+    if not answer.recorded:
+        raise _DomainMovedOn(str(row.id))
+    return queries.custom_domain_row(row.id) if not facts.get("forget") else row
+
+
+def check_custom_domains() -> Counter:
+    """One pass of ``check_custom_domains``: every domain, each on its own, and at the end the certificates attached."""
+    counts = Counter(checked=0, crashed=0)
+    for domain_id in queries.custom_domain_ids():
+        counts["checked"] += 1
+        try:
+            counts[_check_custom_domain(domain_id)] += 1
+        except Exception:  # noqa: BLE001 - one domain never stops the pass
+            logger.exception("hubs.custom_domain.crashed domain=%s", domain_id)
+            counts["crashed"] += 1
+    try:
+        edge_client.publish_certificates_attached(queries.certificates_attached())
+    except edge_client.EdgeUnavailable as error:
+        logger.error("hubs.custom_domain.metric_unpublished: %s", error)
+        counts["metric_unpublished"] = 1
+    return counts
+
+
+def custom_domains_failed(counts: Counter) -> bool:
+    """Whether a pass of ``check_custom_domains`` has to end with an error."""
+    return any(counts[key] for key in CUSTOM_DOMAIN_FAILING_COUNTS)
+
+
+def _check_custom_domain(domain_id: UUID) -> str:
+    """Move one domain as far as it goes today; the outcome names what happened, for the counts of the pass."""
+    row = queries.custom_domain_row(domain_id)
+    if row is None:
+        return "gone"
+    try:
+        if row.state == CustomDomain.State.REMOVING:
+            return _finish_removal(row)
+        if row.hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
+            return _lapse(row, CustomDomain.Reason.BUSINESS_GONE)
+        plan = queries.effective_plan(row.hub_id, timezone.now())
+        if plan is None or not plan.includes_custom_domain:
+            return _lapse(row, CustomDomain.Reason.NOT_IN_PLAN)
+        if row.state == CustomDomain.State.LAPSED:
+            return _check_lapsed(row)
+        if row.state == CustomDomain.State.PENDING:
+            return _check_pending(row)
+        return _check_active(row)
+    except _DomainMovedOn:
+        return "moved_on"
+    except edge_client.EdgeUnavailable as error:
+        logger.error("hubs.custom_domain.aws domain=%s: %s", row.hostname, error)
+        return "aws_unavailable"
+
+
+def _check_pending(row: CustomDomain) -> str:
+    """The way to active, step by step and as far as it goes: the certificate, on the listener, the customer's CNAME, the
+    snapshot and the probe."""
+    target = domain_checks.target_of(row.hub_id)
+    try:
+        if not row.certificate_arn:
+            if not queries.listener_has_room():
+                _learned(row, reason=CustomDomain.Reason.QUOTA_FULL)
+                return "waiting"
+            row = _learned(row, certificate_arn=edge_client.request_certificate(row.hostname, row.certificate_token))
+        facts = edge_client.describe_certificate(row.certificate_arn)
+        validation = {"validation_name": facts.validation_name, "validation_value": facts.validation_value} if facts.validation_name else {}
+        if facts.status == _NOT_ISSUED_YET:
+            _learned(row, reason=CustomDomain.Reason.CERTIFICATE_PENDING, **validation)
+            return "waiting"
+        if facts.status != _ISSUED:
+            logger.warning("hubs.custom_domain.certificate domain=%s %s %s", row.hostname, facts.status, facts.failure_reason)
+            reason = CustomDomain.Reason.VALIDATION_TIMED_OUT if facts.status == _TIMED_OUT else CustomDomain.Reason.CERTIFICATE_FAILED
+            return _lapse(row, reason)
+        if not row.attached_at:
+            if not queries.listener_has_room():
+                _learned(row, reason=CustomDomain.Reason.QUOTA_FULL, **validation)
+                return "waiting"
+            try:
+                edge_client.attach(row.certificate_arn)
+            except edge_client.TooManyCertificates:
+                logger.error("hubs.custom_domain.listener_full domain=%s", row.hostname)
+                _learned(row, reason=CustomDomain.Reason.QUOTA_FULL, **validation)
+                return "waiting"
+            row = _learned(row, attached=True, **validation)
+    except edge_client.EdgeUnavailable as error:
+        logger.error("hubs.custom_domain.aws domain=%s: %s", row.hostname, error)
+        _learned(row, reason=CustomDomain.Reason.CERTIFICATE_UNAVAILABLE)
+        return "aws_unavailable"
+    try:
+        pointing = domain_checks.points_at(row.hostname, target)
+    except domain_checks.DnsUnavailable as error:
+        logger.warning("hubs.custom_domain.dns domain=%s: %s", row.hostname, error)
+        _learned(row, reason=CustomDomain.Reason.DNS_UNAVAILABLE)
+        return "waiting"
+    if not pointing:
+        if timezone.now() - row.attached_at > CUSTOM_DOMAIN_PENDING_LIMIT:
+            return _lapse(row, CustomDomain.Reason.CNAME_MISSING)
+        was_in_snapshot = row.in_snapshot
+        _learned(row, reason=CustomDomain.Reason.CNAME_MISSING, proven=False)
+        if was_in_snapshot:
+            sync_hub(row.hub_id)
+        return "waiting"
+    if row.proven_at is None:
+        row = _learned(row, proven=True, reason=CustomDomain.Reason.PROBE_FAILED)
+        if row.proven_at is None:
+            return "waiting"
+    if not sync_hub(row.hub_id):
+        return "hub_away"
+    if domain_checks.probe(row.hostname, target, row.hub_id) != domain_checks.Probe.SERVED:
+        _learned(row, reason=CustomDomain.Reason.PROBE_FAILED)
+        return "waiting"
+    _learned(row, state=CustomDomain.State.ACTIVE, reason=CustomDomain.Reason.NONE, failures=0)
+    logger.info("hubs.custom_domain.active domain=%s hub=%s", row.hostname, row.hub_id)
+    return "activated"
+
+
+def _check_active(row: CustomDomain) -> str:
+    """An active domain still has to point here and be served. A question that got no answer says nothing of it."""
+    target = domain_checks.target_of(row.hub_id)
+    try:
+        pointing = domain_checks.points_at(row.hostname, target)
+    except domain_checks.DnsUnavailable as error:
+        logger.warning("hubs.custom_domain.dns domain=%s: %s", row.hostname, error)
+        _learned(row, reason=CustomDomain.Reason.DNS_UNAVAILABLE)
+        return "unknown"
+    if not pointing:
+        return _failed_a_check(row, CustomDomain.Reason.CNAME_MISSING)
+    answer = domain_checks.probe(row.hostname, target, row.hub_id)
+    if answer == domain_checks.Probe.UNREACHABLE:
+        _learned(row, reason=CustomDomain.Reason.PROBE_FAILED)
+        return "unknown"
+    if answer == domain_checks.Probe.NOT_SERVED:
+        return _failed_a_check(row, CustomDomain.Reason.PROBE_FAILED, owe_snapshot=True)
+    _learned(row, reason=CustomDomain.Reason.NONE, failures=0)
+    return "served"
+
+
+def _failed_a_check(row: CustomDomain, reason: str, *, owe_snapshot: bool = False) -> str:
+    """One failure more; the third in a row and the website stops being served there. ``owe_snapshot``: the Hub says it
+    does not know the domain, so it is told again, which is what brings it back if that was all."""
+    failures = row.failures + 1
+    if failures < CUSTOM_DOMAIN_FAILURES_TO_LAPSE:
+        row = _learned(row, reason=reason, failures=failures, owe_snapshot=owe_snapshot)
+        if owe_snapshot:
+            sync_hub(row.hub_id)
+        logger.warning("hubs.custom_domain.failure domain=%s %s of %s", row.hostname, failures, CUSTOM_DOMAIN_FAILURES_TO_LAPSE)
+        return "failing"
+    return _lapse(row, CustomDomain.Reason.CHECKS_FAILED, tell_the_owner=True)
+
+
+def _lapse(row: CustomDomain, reason: str, *, tell_the_owner: bool = False) -> str:
+    """Out of the snapshot now; its certificate goes as soon as the Hub heard, its place on the listener with it. A
+    business that was purged leaves nothing behind."""
+    row = _learned(row, state=CustomDomain.State.LAPSED, reason=reason, proven=False, failures=0)
+    if tell_the_owner:
+        _tell_the_owner_it_lapsed(row)
+    outcome = _drop_certificate(row)
+    if outcome:
+        return outcome
+    if row.hub.status == Hub.Status.DELETED:
+        _learned(row, forget=True)
+        return "gone"
+    return "lapsed"
+
+
+def _tell_the_owner_it_lapsed(row: CustomDomain) -> None:
+    owner = HubMember.objects.filter(hub_id=row.hub_id, role=Role.OWNER).select_related("user").first()
+    if owner is not None:
+        emails.send_custom_domain_lost(row.hub, owner.user, hostname=row.hostname, base_url=emails.base_url(None))
+
+
+def _check_lapsed(row: CustomDomain) -> str:
+    """A certificate still going goes first; then, if the CNAME is back and its reason allows, the way starts again."""
+    outcome = _drop_certificate(row)
+    if outcome:
+        return outcome
+    if row.reason not in CustomDomain.RETURNS_BY_ITSELF:
+        return "lapsed"
+    row = queries.custom_domain_row(row.id)
+    try:
+        back = domain_checks.points_at(row.hostname, domain_checks.target_of(row.hub_id))
+    except domain_checks.DnsUnavailable as error:
+        logger.warning("hubs.custom_domain.dns domain=%s: %s", row.hostname, error)
+        return "lapsed"
+    if not back:
+        return "lapsed"
+    row = _learned(
+        row,
+        state=CustomDomain.State.PENDING,
+        reason=CustomDomain.Reason.CERTIFICATE_PENDING,
+        new_token=True,
+        validation_name="",
+        validation_value="",
+    )
+    return _check_pending(row)
+
+
+def _finish_removal(row: CustomDomain) -> str:
+    """The certificate, and the row last: that is what frees the name."""
+    outcome = _drop_certificate(row)
+    if outcome:
+        return outcome
+    _learned(row, forget=True)
+    return "removed"
+
+
+def _drop_certificate(row: CustomDomain) -> str:
+    """Take the certificate of a domain out of AWS, once the Hub heard it no longer serves it (hub#812: the snapshot, then
+    the certificate). The empty answer: nothing is left. Otherwise why not yet, for the next pass."""
+    if not sync_hub(row.hub_id):
+        return "hub_away"
+    if not row.certificate_arn:
+        return ""
+    if row.attached_at:
+        edge_client.detach(row.certificate_arn)
+        row = _learned(row, attached=False)
+    try:
+        edge_client.delete_certificate(row.certificate_arn)
+    except edge_client.CertificateInUse:
+        logger.info("hubs.custom_domain.certificate_in_use domain=%s", row.hostname)
+        return "certificates_in_use"
+    _learned(row, certificate_arn="")
+    return ""
 
 
 # --- Usage: the nightly collection (lot L4-A, PLAN-SAAS §5) -----------------------------------------

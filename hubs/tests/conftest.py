@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 import pytest
+from botocore.stub import ANY, Stubber
 from django.contrib.auth import get_user_model
 from live.context import OperationContext, Scope
 from live.meta import all_live_app_configs, permissions_for_role
@@ -188,3 +189,157 @@ def member_of(hub, user):
     from hubs.models import HubMember
 
     return HubMember.objects.get(hub=hub, user=user)
+
+
+# --- A business's own domain (HUBS-F17): AWS through botocore's Stubber, and a DNS with no real name in it --------------
+
+
+LISTENER_ARN = "arn:aws:elasticloadbalancing:eu-west-1:123456789012:listener/app/erplora/abc/def"
+DOMAIN = "www.minegocio.es"
+
+
+def certificate_arn(number: int = 1) -> str:
+    return f"arn:aws:acm:eu-west-1:123456789012:certificate/0193a0a0-0000-7000-8000-{number:012d}"
+
+
+class AwsEdge:
+    """ACM, the ALB and CloudWatch, each a real client with a Stubber: a call the test did not expect fails."""
+
+    def __init__(self, acm, alb, cloudwatch):
+        self.acm, self.alb, self.cloudwatch = acm, alb, cloudwatch
+
+    def expect_request(self, domain=DOMAIN, arn=None, token=None):
+        expected = {
+            "DomainName": domain,
+            "ValidationMethod": "DNS",
+            "IdempotencyToken": token if token is not None else ANY,
+            "Tags": [{"Key": "Purpose", "Value": "custom-domain"}],
+        }
+        self.acm.add_response("request_certificate", {"CertificateArn": arn or certificate_arn()}, expected)
+
+    def expect_describe(self, status="PENDING_VALIDATION", arn=None, *, record=True, failure=None, domain=DOMAIN):
+        arn = arn or certificate_arn()
+        answer = {"CertificateArn": arn, "Status": status}
+        if record:
+            answer["DomainValidationOptions"] = [
+                {
+                    "DomainName": domain,
+                    "ResourceRecord": {
+                        "Name": f"_abc.{domain}.",
+                        "Type": "CNAME",
+                        "Value": "_def.acm-validations.aws.",
+                    },
+                }
+            ]
+        if failure:
+            answer["FailureReason"] = failure
+        self.acm.add_response("describe_certificate", {"Certificate": answer}, {"CertificateArn": arn})
+
+    def expect_attach(self, arn=None):
+        self.alb.add_response(
+            "add_listener_certificates",
+            {},
+            {"ListenerArn": LISTENER_ARN, "Certificates": [{"CertificateArn": arn or certificate_arn()}]},
+        )
+
+    def expect_detach(self, arn=None):
+        self.alb.add_response(
+            "remove_listener_certificates",
+            {},
+            {"ListenerArn": LISTENER_ARN, "Certificates": [{"CertificateArn": arn or certificate_arn()}]},
+        )
+
+    def expect_delete(self, arn=None):
+        self.acm.add_response("delete_certificate", {}, {"CertificateArn": arn or certificate_arn()})
+
+    def expect_metric(self, value):
+        self.cloudwatch.add_response(
+            "put_metric_data",
+            {},
+            {
+                "Namespace": "ERPlora/CustomDomains",
+                "MetricData": [
+                    {
+                        "MetricName": "CertificatesAttached",
+                        "Dimensions": [{"Name": "Environment", "Value": "prod"}],
+                        "Value": float(value),
+                        "Unit": "Count",
+                    }
+                ],
+            },
+        )
+
+
+@pytest.fixture
+def aws_edge(monkeypatch):
+    """No test reaches AWS: an unexpected call fails on its Stubber, and an expected one that was not made fails here."""
+    import boto3
+
+    from hubs import edge_client
+
+    def client(service):
+        return boto3.client(service, region_name="eu-west-1", aws_access_key_id="x", aws_secret_access_key="x")
+
+    acm, elbv2, cloudwatch = client("acm"), client("elbv2"), client("cloudwatch")
+    monkeypatch.setattr(edge_client, "_acm", lambda: acm)
+    monkeypatch.setattr(edge_client, "_elbv2", lambda: elbv2)
+    monkeypatch.setattr(edge_client, "_cloudwatch", lambda: cloudwatch)
+    with Stubber(acm) as acm_stub, Stubber(elbv2) as alb_stub, Stubber(cloudwatch) as metric_stub:
+        yield AwsEdge(acm_stub, alb_stub, metric_stub)
+        acm_stub.assert_no_pending_responses()
+        alb_stub.assert_no_pending_responses()
+        metric_stub.assert_no_pending_responses()
+
+
+@pytest.fixture
+def dns_world(monkeypatch):
+    """``{(name, rdtype): [text]}``, the answers of the DNS: a name it does not hold has no record, and an exception is a
+    question that could not be answered. No real name is ever looked up."""
+    from hubs import domain_checks
+
+    world: dict[tuple[str, str], object] = {}
+
+    def lookup(name, rdtype):
+        answer = world.get((name, rdtype), [])
+        if isinstance(answer, Exception):
+            raise domain_checks.DnsUnavailable(str(answer))
+        return answer
+
+    monkeypatch.setattr(domain_checks, "_lookup", lookup)
+    return world
+
+
+@pytest.fixture
+def custom_domains_on(settings, aws_edge, dns_world, monkeypatch):
+    """The deployment as ``aws`` ``custom_domains.tf`` leaves it, with a name that is a subdomain by default."""
+    from hubs import domain_checks
+
+    settings.CUSTOM_DOMAINS_ENABLED = True
+    settings.CUSTOM_DOMAINS_LISTENER_ARN = LISTENER_ARN
+    settings.CUSTOM_DOMAINS_TARGET_TEMPLATE = "hub-{hub_id}.erplora.com"
+    settings.CUSTOM_DOMAINS_MAX_CERTIFICATES = 24
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    monkeypatch.setattr(domain_checks, "zone_of", lambda domain: domain_checks.Zone.SUBDOMAIN)
+    # The wait for ACM's validation record is a test's to time, never a second of the run.
+    monkeypatch.setattr("hubs.services.sleep", lambda seconds: None)
+    return aws_edge
+
+
+@pytest.fixture
+def standard_business(business):
+    """The business on the plan that includes an own domain, with nothing owed to the Hub."""
+    from django.db.models import F
+
+    from hubs.models import Hub, Plan, Subscription
+
+    Subscription.objects.filter(hub=business).update(plan=Plan.objects.get(slug="standard"))
+    Hub.objects.filter(pk=business.pk).update(
+        status=Hub.Status.ACTIVE, pending_hub_call="", pushed_state_version=F("state_version")
+    )
+    business.refresh_from_db()
+    return business
+
+
+def pointing(dns_world, hub, domain=DOMAIN):
+    """The customer's CNAME, onto the name of ``hub``."""
+    dns_world[(domain, "CNAME")] = [f"hub-{hub.id}.erplora.com"]

@@ -78,6 +78,8 @@ def test_the_routes_are_bound_to_their_operations():
     }
     assert routes == {
         "/catalog/sectors": (["GET"], "hubs.sector.list"),
+        "/hubs/businesses/custom-domain": (["GET", "POST"], "hubs.custom_domain.get|hubs.custom_domain.request"),
+        "/hubs/businesses/custom-domain/remove": (["POST"], "hubs.custom_domain.remove"),
         "/catalog/business-types": (["GET"], "hubs.business_type.list"),
         "/plans": (["GET"], "hubs.plan.list"),
         "/hubs/businesses": (["GET", "POST"], "hubs.business.list|hubs.business.create"),

@@ -833,6 +833,21 @@ GOOGLE_PLAY_LISTING_LIVE = config("GOOGLE_PLAY_LISTING_LIVE", default=True, cast
 # task), where `report_seal_expiry` publishes to CloudWatch with the task role (no static keys).
 AWS_REGION = config("AWS_REGION", default="eu-west-1")
 
+# A business's own domain for its public website (HUBS-F17, PLAN-SAAS §37 point 2; `aws` README, «Dominio propio de un
+# negocio»). Off unless it is on, as in pre and in development: nothing asks for a certificate, nothing looks at a
+# domain, and the operations say it is not available. On, the listener that takes the certificates and the name a
+# customer's CNAME points at ({hub_id}: one for each business, for good) are required. The most certificates that
+# listener holds for customers (`hubs.custom_domain.request` and the hourly check stop asking at it).
+CUSTOM_DOMAINS_ENABLED = config("CUSTOM_DOMAINS_ENABLED", default=False, cast=bool)
+CUSTOM_DOMAINS_LISTENER_ARN = config("CUSTOM_DOMAINS_LISTENER_ARN", default="").strip()
+CUSTOM_DOMAINS_TARGET_TEMPLATE = config("CUSTOM_DOMAINS_TARGET_TEMPLATE", default="").strip()
+CUSTOM_DOMAINS_MAX_CERTIFICATES = config("CUSTOM_DOMAINS_MAX_CERTIFICATES", default=24, cast=int)
+if CUSTOM_DOMAINS_ENABLED:
+    if not CUSTOM_DOMAINS_LISTENER_ARN:
+        raise ImproperlyConfigured("CUSTOM_DOMAINS_LISTENER_ARN is required with CUSTOM_DOMAINS_ENABLED=True.")
+    if "{hub_id}" not in CUSTOM_DOMAINS_TARGET_TEMPLATE:
+        raise ImproperlyConfigured("CUSTOM_DOMAINS_TARGET_TEMPLATE needs {hub_id} with CUSTOM_DOMAINS_ENABLED=True.")
+
 # The fiscal seal's two .p12 slots (erplora/prod/fiscal/seal-{current,next}), base64 and password,
 # loaded at startup by `saas` and `saas-cron` (PLAN §16.5); empty = an empty slot (they are born
 # empty and filled by hand; `saas-migrate` gets none). `manage.py report_seal_expiry` publishes the

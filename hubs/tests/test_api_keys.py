@@ -30,6 +30,8 @@ EXPOSED = {
     "hubs.usage.series",
     # The copies of a business's data, listed (PLAN-DB round 2026-10-30, (k)): never their links.
     "hubs.data_copy.list",
+    # A business's own domain, read (HUBS-F17): connecting or removing it is the panel's.
+    "hubs.custom_domain.get",
     "hubs.plan.list",
     "hubs.sector.list",
     "hubs.business_type.list",
