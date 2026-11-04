@@ -330,6 +330,30 @@ class TestARead:
         )
 
 
+class TestTheToolsOfErplora:
+    def test_the_panels_model_is_offered_the_rate_and_hears_it_may_answer_it(self, signed_in, account, answering, fake_provider):
+        """Its instructions turn down anything but ERPlora: the gateway's rules open what its own tools answer."""
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Hi."))
+
+        frames(post_turn(signed_in, {"messages": [ask("How much is a dollar in euros?")]}))
+
+        sent = model_requests(fake_provider)[0].body
+        assert "currency_rate" in [tool["function"]["name"] for tool in sent["tools"]]
+        assert "`currency_rate`" in sent["messages"][0]["content"]
+        assert "erplora.com" in sent["messages"][0]["content"]
+
+    def test_the_panel_shows_where_a_rate_comes_from(self, signed_in, account, answering, fake_provider, settings):
+        settings.ASSISTANT_RATES_URL = f"{fake_provider.url}/v1/latest"
+        fake_provider.reply("GET", "/v1/latest", json={"base": "USD", "date": "2026-11-04", "rates": {"EUR": 0.88755}})
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("currency_rate", '{"from": "USD", "to": "EUR"}'))
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("1 USD is 0.89 EUR."))
+
+        got = frames(post_turn(signed_in, {"messages": [ask("How much is a dollar in euros?")]}))
+
+        said = "".join(frame["text"] for frame in got if frame["type"] == "text")
+        assert said == "1 USD is 0.89 EUR.\n\nhttps://frankfurter.dev"
+
+
 class TestTheTurnWhereNothingIsSold:
     def test_the_model_hears_that_nothing_is_sold_here(self, signed_in, account, answering, fake_provider):
         """The app opens the account with ``?surface=account``, sticky in the session; the turn comes after it."""

@@ -179,7 +179,7 @@ async def chat(call: Call) -> HttpResponse:
     started = await turn.start(call.caller, call.data)
     outcome = turn.Outcome()
     try:
-        async for _frame in turn.run(started.candidates, started.messages, started.tools, outcome):
+        async for _frame in turn.run(started.candidates, started.messages, started.tools, outcome, started.caller):
             pass
     except Exception:
         logger.exception("assistant.turn.failed")

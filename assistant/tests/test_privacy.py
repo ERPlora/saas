@@ -7,6 +7,7 @@ reach a log either. Checked by dumping the whole database and reading every log 
 """
 
 import io
+import json
 import logging
 
 import pytest
@@ -18,6 +19,7 @@ from assistant.tests.doors import door, frames
 
 SECRET_QUESTION = "Mi cliente Rosalía Quintanar debe 400 euros"
 SECRET_ANSWER = "Apunta la deuda de Rosalía Quintanar"
+SECRET_RESULT = "Una página sobre Rosalía Quintanar"
 INSTRUCTIONS = "Negocio Bar Manolo, cajera Iratxe Bengoetxea"
 COMPLETIONS = "/v1/chat/completions"
 
@@ -57,6 +59,25 @@ def test_a_live_turn_leaves_nothing_of_what_was_said(internal, business, answeri
 
     assert got[0]["text"] == SECRET_ANSWER
     assert_forgotten(every_log, SECRET_QUESTION, SECRET_ANSWER, INSTRUCTIONS, "Rosalía")
+
+
+def test_a_search_leaves_nothing_of_what_was_searched(internal, business, answering, fake_provider, every_log, settings):
+    settings.LINKUP_API_KEY = "made-up-linkup-key"
+    settings.ASSISTANT_SEARCH_URL = f"{fake_provider.url}/v1/search"
+    fake_provider.reply("POST", "/v1/search", json={"results": [{"type": "text", "name": SECRET_RESULT, "url": "https://example.com/a", "content": SECRET_RESULT}]})
+    fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("web_search", json.dumps({"query": SECRET_QUESTION})))
+    fake_provider.reply("POST", COMPLETIONS, sse=openai_answer(SECRET_ANSWER))
+
+    frames(
+        door(
+            Client(),
+            "/internal/assistant/chat/stream",
+            {"hub": business.slug, "messages": [{"role": "user", "content": SECRET_QUESTION}], "instructions": INSTRUCTIONS},
+        )
+    )
+
+    assert [seen.body["q"] for seen in fake_provider.requests if seen.path == "/v1/search"] == [SECRET_QUESTION]
+    assert_forgotten(every_log, SECRET_QUESTION, SECRET_ANSWER, SECRET_RESULT, "Rosalía", "made-up-linkup-key")
 
 
 def test_a_turn_at_once_with_a_tool_leaves_nothing_either(internal, business, answering, fake_provider, every_log):

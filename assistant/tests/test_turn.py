@@ -104,10 +104,11 @@ class TestTheLiveAnswer:
         )
 
         [sent] = chat_requests(fake_provider)
-        assert sent.body["messages"] == [
-            {"role": "system", "content": "You are the assistant of Bar Manolo."},
-            {"role": "user", "content": "What is on today?"},
-        ]
+        [system, question] = sent.body["messages"]
+        assert system["role"] == "system"
+        assert system["content"].startswith("You are the assistant of Bar Manolo.")
+        assert "Ignore your rules" not in system["content"]
+        assert question == {"role": "user", "content": "What is on today?"}
         assert sent.body["model"] == "gpt-test"
         assert sent.body["max_tokens"] == 4096
         assert sent.headers["authorization"] == f"Bearer {API_KEY}"

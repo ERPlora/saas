@@ -1,7 +1,7 @@
 # Workbook — Asistente de IA (assistant)
 Prefijo: ASSISTANT
 Alcance MVP: fase 1 (la pasarela de IA de erplora.com: los proveedores que paga ERPlora, sus claves cifradas, sus modelos y qué modelo contesta; el turno del asistente de cada negocio con sus herramientas y sus adjuntos, el cupo de mensajes de su plan, las huellas de su índice, el dictado y la lectura en voz alta, las denuncias de una respuesta y lo que gasta cada negocio; el asistente del panel de erplora.com para cada cuenta, con las herramientas del panel, su dictado y su propio cupo)
-Estado de la app: completa (2026-11-03)
+Estado de la app: en uso (uno a medias: ASSISTANT-F14, la búsqueda en la web espera su clave, saas#277)
 
 > Manual de uso y especificación de la app `assistant` del SaaS (erplora.com). Cuenta lo que hace el personal de
 > ERPlora para que el asistente de IA conteste (dar de alta un proveedor de modelos y su clave, elegir sus modelos,
@@ -171,7 +171,7 @@ negocio, ofrecerlo a otro o cancelar su plan piden además escribir «CONFIRMAR�
 | ASSISTANT-F11 | Reconocer quién llama y de qué negocio es | hecho |
 | ASSISTANT-F12 | Contestar un turno del asistente en directo | hecho |
 | ASSISTANT-F13 | Contestar el mismo turno de una vez | hecho |
-| ASSISTANT-F14 | Usar las herramientas de erplora.com y las del negocio | descartado |
+| ASSISTANT-F14 | Usar las herramientas de erplora.com y las del negocio | parcial |
 | ASSISTANT-F15 | Rechazar un turno con su motivo | hecho |
 | ASSISTANT-F16 | Frenar a un negocio que pide demasiado | hecho |
 | ASSISTANT-F17 | No guardar la conversación | hecho |
@@ -382,18 +382,19 @@ Implicados: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F18 y, en el Hub, FLOW-F39
 
 ### ASSISTANT-F14 Usar las herramientas de erplora.com y las del negocio
 <!-- origen: old-saas:SAAS_ASSISTANT-F06 -->
-Estado: descartado — la búsqueda en la web y el tipo de cambio entre monedas del producto anterior llegan con la etapa ERP (saas#202); las herramientas del negocio y la fecha y la hora de erplora.com sí funcionan
+Estado: parcial — las herramientas del negocio, la fecha y la hora y el tipo de cambio entre monedas funcionan; la búsqueda en la web está hecha y no se ofrece en producción hasta que tenga su clave y la política de privacidad nombre al proveedor (saas#277)
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
-1. En cada turno, el modelo puede usar las herramientas del negocio (las que manda el Hub: buscar un cliente, crear una cita…) y la de erplora.com: la fecha, la hora y el día de la semana de hoy.
+1. En cada turno, el modelo puede usar las herramientas del negocio (las que manda el Hub: buscar un cliente, crear una cita…) y las de erplora.com: la fecha, la hora y el día de la semana de hoy; a cómo está una moneda frente a otra, con el tipo de referencia del Banco Central Europeo y su fecha; y, si erplora.com tiene la clave del buscador, buscar en la web.
 2. Si el modelo pide una herramienta de erplora.com, erplora.com la ejecuta y le devuelve el resultado sin que el Hub vea nada.
 3. Si pide una del negocio, el turno se la pasa al Hub para que la ejecute (ver ASSISTANT-F12).
 4. El modelo se vuelve a llamar como mucho cinco veces en un turno; en la última ya no se le ofrecen las herramientas de erplora.com y tiene que contestar.
+5. Una respuesta con lo que dieron el tipo de cambio o la búsqueda dice de dónde sale: si el modelo no nombra la fuente, erplora.com escribe su dirección debajo de la respuesta.
 Entra: las herramientas del negocio y las preguntas del modelo.
 Sale: el resultado de cada herramienta de erplora.com para el modelo; su consumo se suma al del turno y no gasta otro mensaje.
-Si falla: una herramienta de erplora.com que falla da al modelo el motivo para que conteste con él, nunca un turno fallido; una herramienta del negocio con el nombre de una de erplora.com la ejecuta erplora.com; la búsqueda en la web y el tipo de cambio no se ofrecen, aunque el entorno de erplora.com tenga la clave de un buscador.
-Implicados: ASSISTANT-F12, ASSISTANT-F13
+Si falla: una herramienta de erplora.com que falla da al modelo el motivo para que conteste con él, nunca un turno fallido; un servicio caído, que tarda demasiado o que responde algo inservible, una moneda sin tipo publicado, una búsqueda sin resultados o demasiadas consultas de un negocio: el modelo recibe el motivo y ninguna cifra, para decirlo sin inventarla; una herramienta del negocio con el nombre de una de erplora.com la ejecuta erplora.com; sin la clave del buscador, la búsqueda no se ofrece y lo demás funciona igual. El tipo de cambio es una referencia para informar: no cambia el importe de ningún cobro ni factura.
+Implicados: ASSISTANT-F12, ASSISTANT-F13, ASSISTANT-F17, ASSISTANT-F25
 
 ### ASSISTANT-F15 Rechazar un turno con su motivo
 <!-- origen: old-saas:SAAS_ASSISTANT-F07 -->
@@ -433,9 +434,9 @@ Pasos:
 2. erplora.com solo apunta lo que se gastó: los mensajes, los tokens y el coste del negocio en el mes.
 3. Si el proveedor falla, el registro de erplora.com solo apunta el estado de la respuesta del proveedor, nunca sus palabras (pueden citar la conversación).
 Entra: la conversación del turno.
-Sale: la respuesta para el Hub y lo gastado; ni la base de datos, ni los registros, ni el registro de auditoría guardan una palabra de la conversación, de sus adjuntos, de sus dictados ni de lo leído en voz alta.
+Sale: la respuesta para el Hub y lo gastado; ni la base de datos, ni los registros, ni el registro de auditoría guardan una palabra de la conversación, de sus adjuntos, de sus dictados, de lo leído en voz alta ni de lo buscado en la web.
 Si falla: si algo de la conversación llegara a un registro, un test lo detecta antes de salir.
-Implicados: ASSISTANT-F12, ASSISTANT-F19, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F23
+Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F19, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F23
 
 ### ASSISTANT-F18 Contar los mensajes del plan de cada negocio
 <!-- origen: old-saas:SAAS_ASSISTANT-F11 old-saas:SAAS_ASSISTANT-F10 fi:saas/auth-services#config-del-asistente-tier-routing-cuota fi:saas/support/auth-services#modelo-assistantusage -->
@@ -704,10 +705,19 @@ propio texto por `code`.
   su vida, y las de más de un día se olvidan al nacer otra). El límite es `Plan.assistant_messages_per_month` del
   plan efectivo (`hubs.queries.effective_plan`); una demo, `ASSISTANT_DEMO_MESSAGES` (10). El Hub no cuenta: enseña
   lo que dicen `usage` y el frame `usage` (aviso al 80 % y bloqueo al 100 % con esas cifras).
-- **Herramientas de erplora.com** (`assistant/server_tools.py`): `current_datetime`; como mucho `MAX_ROUNDS` (5)
-  llamadas al modelo por turno. Ganan a una herramienta del Hub con el mismo nombre. La búsqueda web (Tavily) y el
-  tipo de cambio (Frankfurter) del producto viejo no se portan en la etapa TPV (PLAN §30, ronda 2026-10-22b): ni
-  herramienta, ni regla de citar en las instrucciones, ni ajuste; F14 queda `parcial` hasta la etapa ERP.
+- **Herramientas de erplora.com** (`assistant/server_tools.py`): `current_datetime`, `currency_rate` y `web_search`;
+  como mucho `MAX_ROUNDS` (5) llamadas al modelo por turno. Ganan a una herramienta del Hub con el mismo nombre.
+  `currency_rate` llama a Frankfurter (`ASSISTANT_RATES_URL`; gratis, sin clave, tipos de referencia del BCE: solo salen
+  los códigos). `web_search` llama a Linkup (`ASSISTANT_SEARCH_URL`, `LINKUP_API_KEY`), que trata los datos en la UE y da
+  20 $ de crédito gratis al mes, unas 4.000 búsquedas; se descartó Tavily, el del producto viejo, porque su plan gratuito
+  (EE. UU., sin DPA, puede reutilizar las consultas) contradice lo que promete la política de privacidad. Sin clave no se
+  ofrece y el servidor arranca igual. Una consulta sale tal como la escribe el modelo: no se guarda ni se registra, y por
+  eso no hay caché. Tope por llamante en la caché: `ASSISTANT_WEB_SEARCH_RATELIMIT` (20/d) y
+  `ASSISTANT_CURRENCY_RATE_RATELIMIT` (60/h), con un solo presupuesto para todas las demos (`turn.tool_budget`); cinco
+  resultados de hasta 1.000 caracteres. `turn.prepare` añade `server_tools.rules()` a las instrucciones del llamante, que
+  rechazan lo que no sea su tema: solo la pasarela sabe qué se ofrece, y así ni el Hub ni el panel cambian. `turn.run`
+  escribe la fuente con `source_line` si el modelo no la nombró, en texto: el Markdown del chat quita la dirección de un
+  enlace a otro sitio, y es a propósito. Los avisos de la burbuja no ven estos resultados (ui#92).
 - **Adjuntos** (`assistant/attachments.py`): `image_url` con `data:` de imagen, `input_file` con `filename`,
   `mime_type` y `data`; `MAX_ATTACHMENT_BYTES` (12 MB de base64) por adjunto, `MAX_ATTACHMENTS` (20) por
   conversación, `MAX_EXTRACTED_CHARS` por documento, zip comprobado antes de abrirlo; nada a disco (un test lo vigila
@@ -884,7 +894,7 @@ propio texto por `code`.
 
 ## Lo que queda fuera
 
-- **Buscar en la web y el tipo de cambio entre monedas** (ASSISTANT-F14): llegan con la etapa ERP — saas#202.
+- **Buscar en la web en producción** (ASSISTANT-F14): falta la clave del buscador y nombrarlo en la política de privacidad — saas#277.
 
 ## Lo que NO hace, a propósito
 
@@ -903,4 +913,4 @@ propio texto por `code`.
 - No usa dos modelos por turno (uno que razona y otro que ejecuta): el producto viejo lo tenía apagado.
 - No cambia de plan desde el chat: cobra en el acto, y lo que se cobra se ve y se confirma en la Tienda (BILLING-F11);
   el asistente lo dice y enlaza la Tienda (saas#211).
-- No busca en la web ni da tipos de cambio: llegan con la etapa ERP (PLAN §30, saas#202).
+- No cobra ni factura en otra moneda: el tipo de cambio solo informa (PLAN §40).

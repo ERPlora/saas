@@ -3,7 +3,7 @@
 // OpenAI's streamed shape, as the gateway of the panel's Django reads it, and its server on 127.0.0.1.
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { answerTo, DICTATION, type Message, NEW_BUSINESS, startProvider } from './assistant-provider';
+import { answerTo, DICTATION, LONG_ADDRESS, type Message, NEW_BUSINESS, startProvider } from './assistant-provider';
 
 type Chunk = { choices: { delta: { content?: string; tool_calls?: { function: { name?: string; arguments?: string } }[] }; finish_reason: string | null }[] };
 
@@ -60,7 +60,30 @@ describe('answerTo', () => {
     );
   });
 
+  it('asks for the rate when asked what a currency is worth, and gives it naming no source', () => {
+    expect(asked(answerTo([SPANISH, { role: 'user', content: '¿A cómo está el dólar?' }]).frames)).toEqual({
+      name: 'currency_rate',
+      arguments: JSON.stringify({ from: 'USD', to: 'EUR' }),
+    });
+    expect(asked(answerTo([ENGLISH, { role: 'user', content: 'What is the dollar worth?' }]).frames)?.name).toBe('currency_rate');
+    const rate = JSON.stringify({ rate: '0.88755', converted: '0.89' });
+    const es = said(answerTo(answered(SPANISH, '¿A cómo está el dólar?', 'currency_rate', rate)).frames);
+    const en = said(answerTo(answered(ENGLISH, 'What is the dollar worth?', 'currency_rate', rate)).frames);
+    expect(es).toContain('0.89 EUR');
+    expect(en).toContain('0.89 EUR');
+    expect(`${es}${en}`).not.toContain('https://');
+  });
+
+  it('asks the web when asked about a law, and answers naming no source', () => {
+    expect(asked(answerTo([ENGLISH, { role: 'user', content: 'What does the new law say?' }]).frames)?.name).toBe('web_search');
+    const found = JSON.stringify({ results: [{ url: LONG_ADDRESS }] });
+    const answer = said(answerTo(answered(ENGLISH, 'What does the new law say?', 'web_search', found)).frames);
+    expect(answer.length).toBeGreaterThan(0);
+    expect(answer).not.toContain('https://');
+  });
+
   it('asks to create the business it is told to create, by its name', () => {
+
     const answer = answerTo([SPANISH, { role: 'user', content: `Crea un negocio llamado ${NEW_BUSINESS}` }]);
     expect(asked(answer.frames)).toEqual({
       name: 'hubs__business__create',

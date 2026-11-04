@@ -776,6 +776,10 @@ ASSISTANT_DOCS_RATELIMIT = config("ASSISTANT_DOCS_RATELIMIT", default="600/h")
 ASSISTANT_TRANSCRIBE_RATELIMIT = config("ASSISTANT_TRANSCRIBE_RATELIMIT", default="120/h")
 ASSISTANT_SYNTHESIZE_RATELIMIT = config("ASSISTANT_SYNTHESIZE_RATELIMIT", default="120/h")
 ASSISTANT_REPORT_RATELIMIT = config("ASSISTANT_REPORT_RATELIMIT", default="60/h")
+# What a caller may ask of the providers of erplora.com's own tools (ASSISTANT-F14): the search's free credit is shared
+# by every business (about 4,000 searches a month) and the rates are a free public service. Every demo shares one.
+ASSISTANT_WEB_SEARCH_RATELIMIT = config("ASSISTANT_WEB_SEARCH_RATELIMIT", default="20/d")
+ASSISTANT_CURRENCY_RATE_RATELIMIT = config("ASSISTANT_CURRENCY_RATE_RATELIMIT", default="60/h")
 # A demo's messages for its whole life (SAAS_ASSISTANT-F11, saas#2599: each browser gets a new demo).
 ASSISTANT_DEMO_MESSAGES = config("ASSISTANT_DEMO_MESSAGES", default=10, cast=int)
 # An account's messages a month with the assistant of erplora.com's own panel (PLAN-SAAS §23): fixed, whatever the
@@ -912,6 +916,13 @@ ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
 GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
 DEEPSEEK_API_KEY = config("DEEPSEEK_API_KEY", default="")
 AZURE_SPEECH_KEY = config("AZURE_SPEECH_KEY", default="")
+
+# The providers of erplora.com's own tools (assistant/server_tools.py, ASSISTANT-F14). The rates need no key. The search
+# reads its key here, from the environment and not from the database, and without it is not offered: the assistant
+# just does not search and the server starts as usual. Its addresses move only for the e2e's double.
+LINKUP_API_KEY = config("LINKUP_API_KEY", default="")
+ASSISTANT_SEARCH_URL = config("ASSISTANT_SEARCH_URL", default="https://api.linkup.so/v1/search")
+ASSISTANT_RATES_URL = config("ASSISTANT_RATES_URL", default="https://api.frankfurter.dev/v1/latest")
 
 # WhatsApp, erplora.com's side (whatsapp/, PLAN-SAAS §1.1, round 2026-10-15b): Meta's app («ERPlora Inbox»), its
 # Embedded Signup configuration and its webhook. Empty = WhatsApp is off, visibly: the webhook answers 503 and the

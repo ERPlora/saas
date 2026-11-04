@@ -1,44 +1,115 @@
-"""ASSISTANT-F14 (ASSISTANT-G46) · Tell the tools erplora.com runs from the Hub's: ``current_datetime`` is run here
-and its result goes back to the model, which is asked again (at most ``MAX_ROUNDS`` times, the last one without it,
-so it answers); a tool of the Hub ends the turn as a ``function_call`` for the Hub to run. A tool of ours that fails
-gives the model an error to answer with, never a failed turn. They spend no message.
+"""ASSISTANT-F14 (ASSISTANT-G46) · Tell the tools erplora.com runs from the Hub's: ``current_datetime``,
+``currency_rate`` and ``web_search`` are run here and their result goes back to the model, which is asked again (at
+most ``MAX_ROUNDS`` times, the last one without them, so it answers); a tool of the Hub ends the turn as a
+``function_call`` for the Hub to run. A tool of ours that fails gives the model an error to answer with, never a failed
+turn, and never a figure. They spend no message; each provider's calls have a budget per caller, and what is asked of
+the search is bounded.
 
-The old product's web search (Tavily) and exchange rates (Frankfurter) wait for the ERP stage (PLAN §30): not
-offered, whatever the environment holds. Cases of the old product's ``test_server_tools.py``.
+An answer built on them shows where it comes from: when the model names no source, the turn writes it (the panel's
+Markdown drops the address of a link to another site, so only a plain address is seen). The provider of each tool is a
+real HTTP server here (``fake_provider``): our client runs its real network code, and no test reaches a real one.
 """
 
 import json
+import logging
+import socket
 from datetime import UTC, datetime
 
+import httpx
 import pytest
 from asgiref.sync import async_to_sync
 from django.test import Client
 
-from assistant import server_tools
+from assistant import server_tools, turn
+from assistant.schemas import Caller
 from assistant.tests.conftest import openai_answer, openai_tool_call
 from assistant.tests.doors import door, frames
+from assistant.tests.fake_provider import openai_chunk
 
 COMPLETIONS = "/v1/chat/completions"
+RATES = "/v1/latest"
+SEARCH = "/v1/search"
+USD_EUR = {"amount": 1.0, "base": "USD", "date": "2026-11-04", "rates": {"EUR": 0.88755}}
+KEY = "made-up-linkup-key"
+ARTICLE = "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-1"
 
 pytestmark = pytest.mark.django_db
 
 
-def run(name: str, arguments) -> dict:
+@pytest.fixture(autouse=True)
+def no_real_provider(settings):
+    """Whatever the environment holds: no key, and an address nobody answers at, unless a test sets its provider."""
+    settings.LINKUP_API_KEY = ""
+    settings.ASSISTANT_RATES_URL = "http://127.0.0.1:1/rates"
+    settings.ASSISTANT_SEARCH_URL = "http://127.0.0.1:1/search"
+
+
+@pytest.fixture
+def rates(settings, fake_provider):
+    settings.ASSISTANT_RATES_URL = f"{fake_provider.url}{RATES}"
+    return fake_provider
+
+
+@pytest.fixture
+def search(settings, fake_provider):
+    settings.LINKUP_API_KEY = KEY
+    settings.ASSISTANT_SEARCH_URL = f"{fake_provider.url}{SEARCH}"
+    return fake_provider
+
+
+@pytest.fixture
+def stalled(monkeypatch):
+    """A server that takes the call and never answers: the read runs out of time."""
+    monkeypatch.setattr(server_tools, "TIMEOUT", httpx.Timeout(0.2))
+    with socket.create_server(("127.0.0.1", 0)) as listening:
+        yield f"http://127.0.0.1:{listening.getsockname()[1]}"
+
+
+@pytest.fixture
+def down():
+    """An address nothing listens at."""
+    with socket.create_server(("127.0.0.1", 0)) as listening:
+        port = listening.getsockname()[1]
+    return f"http://127.0.0.1:{port}"
+
+
+def run(name: str, arguments, who: str = "hub:one") -> dict:
     raw = arguments if isinstance(arguments, str) else json.dumps(arguments)
-    return json.loads(async_to_sync(server_tools.run)(name, raw))
+    return json.loads(async_to_sync(server_tools.run)(name, raw, who))
+
+
+def calls(fake_provider, path: str) -> list:
+    return [seen for seen in fake_provider.requests if seen.path.split("?")[0] == path]
+
+
+def row(url: str = ARTICLE, name: str = "BOE", content: str = "Ley de ejemplo", kind: str = "text") -> dict:
+    return {"type": kind, "name": name, "url": url, "content": content, "favicon": ""}
 
 
 class TestWhichAreOurs:
-    def test_only_the_date_is_ours_even_with_a_search_key_in_the_environment(self, settings):
-        """The web search and the exchange rate wait for the ERP stage (PLAN §30): a key left in the environment
-        offers nothing."""
-        settings.TAVILY_API_KEY = "tvly-test"
+    def test_without_a_search_key_the_date_and_the_rate_are_offered(self):
+        assert [spec.name for spec in server_tools.specs()] == ["current_datetime", "currency_rate"]
 
-        assert [spec.name for spec in server_tools.specs()] == ["current_datetime"]
-        assert set(server_tools.TOOLS) == {"current_datetime"}
+    def test_with_a_search_key_the_search_is_offered_too(self, settings):
+        settings.LINKUP_API_KEY = KEY
+
+        assert [spec.name for spec in server_tools.specs()] == ["current_datetime", "currency_rate", "web_search"]
+
+    def test_a_blank_key_offers_no_search(self, settings):
+        settings.LINKUP_API_KEY = "   "
+
+        assert "web_search" not in [spec.name for spec in server_tools.specs()]
+
+    def test_a_search_asked_for_without_a_key_says_so_and_reaches_nobody(self, settings, fake_provider):
+        settings.ASSISTANT_SEARCH_URL = f"{fake_provider.url}{SEARCH}"
+
+        assert run("web_search", {"query": "ley"})["code"] == "web_search.not_configured"
+        assert fake_provider.requests == []
 
     def test_a_tool_of_the_hub_is_not_ours(self):
         assert server_tools.is_server_tool("current_datetime") is True
+        assert server_tools.is_server_tool("currency_rate") is True
+        assert server_tools.is_server_tool("web_search") is True
         assert server_tools.is_server_tool("sale_order_list") is False
 
     def test_an_unknown_tool_answers_an_error_never_raises(self):
@@ -56,6 +127,323 @@ class TestTheDate:
 
     def test_it_ignores_whatever_it_is_given(self):
         assert "utc" in run("current_datetime", "not json")
+
+
+class TestTheRate:
+    def test_it_says_the_rate_its_date_and_where_it_comes_from(self, rates):
+        rates.reply("GET", RATES, json=USD_EUR)
+
+        result = run("currency_rate", {"from": "USD", "to": "EUR"})
+
+        assert (result["from"], result["to"], result["rate"], result["date"]) == ("USD", "EUR", "0.88755", "2026-11-04")
+        assert result["sources"] == [server_tools.RATES_SOURCE]
+        [seen] = calls(rates, RATES)
+        assert "base=USD" in seen.path and "symbols=EUR" in seen.path
+
+    def test_it_converts_an_amount_to_the_cent(self, rates):
+        rates.reply("GET", RATES, json=USD_EUR)
+
+        result = run("currency_rate", {"from": "USD", "to": "EUR", "amount": 100})
+
+        assert (result["amount"], result["converted"]) == ("100", "88.76")
+
+    def test_without_an_amount_it_converts_one(self, rates):
+        rates.reply("GET", RATES, json=USD_EUR)
+
+        result = run("currency_rate", {"from": "USD", "to": "EUR"})
+
+        assert (result["amount"], result["converted"]) == ("1", "0.89")
+
+    def test_it_reads_the_codes_in_any_case(self, rates):
+        rates.reply("GET", RATES, json=USD_EUR)
+
+        assert run("currency_rate", {"from": " usd ", "to": "eur"})["rate"] == "0.88755"
+
+    def test_a_currency_against_itself_is_one_and_asks_nobody(self, rates):
+        result = run("currency_rate", {"from": "EUR", "to": "EUR", "amount": 5})
+
+        assert (result["rate"], result["converted"]) == ("1", "5.00")
+        assert "sources" not in result
+        assert rates.requests == []
+
+    @pytest.mark.parametrize("status", [404, 422])
+    def test_a_currency_the_provider_does_not_know_gives_no_figure(self, rates, status):
+        rates.reply("GET", RATES, status=status, json={"message": "not found"})
+
+        result = run("currency_rate", {"from": "USD", "to": "ZZZ"})
+
+        assert result["code"] == "currency_rate.unknown_currency"
+        assert "rate" not in result and "sources" not in result
+
+    @pytest.mark.parametrize("code", ["dollar", "US", "", None, 7, "U$D"])
+    def test_what_is_no_currency_code_asks_nobody(self, rates, code):
+        assert run("currency_rate", {"from": code, "to": "EUR"})["code"] == "currency_rate.unknown_currency"
+        assert run("currency_rate", {"from": "EUR", "to": code})["code"] == "currency_rate.unknown_currency"
+        assert rates.requests == []
+
+    @pytest.mark.parametrize("amount", [0, -5, "abc", True, None, [], "NaN", "Infinity", 10**13])
+    def test_an_amount_that_is_none_asks_nobody(self, rates, amount):
+        assert run("currency_rate", {"from": "USD", "to": "EUR", "amount": amount})["code"] == "currency_rate.bad_amount"
+        assert rates.requests == []
+
+    @pytest.mark.parametrize("status", [500, 503, 301])
+    def test_a_provider_that_fails_gives_no_figure(self, rates, status):
+        rates.reply("GET", RATES, status=status, json={"message": "down"})
+
+        result = run("currency_rate", {"from": "USD", "to": "EUR"})
+
+        assert result["code"] == "currency_rate.unavailable"
+        assert "rate" not in result
+
+    def test_a_provider_that_takes_too_long_gives_no_figure(self, settings, stalled):
+        settings.ASSISTANT_RATES_URL = stalled
+
+        assert run("currency_rate", {"from": "USD", "to": "EUR"})["code"] == "currency_rate.unavailable"
+
+    def test_a_provider_that_is_down_gives_no_figure(self, settings, down):
+        settings.ASSISTANT_RATES_URL = down
+
+        assert run("currency_rate", {"from": "USD", "to": "EUR"})["code"] == "currency_rate.unavailable"
+
+    def test_a_server_without_its_certificates_gives_no_figure(self, rates, unreadable_ca):
+        assert run("currency_rate", {"from": "USD", "to": "EUR"})["code"] == "currency_rate.unavailable"
+
+    @pytest.mark.parametrize(
+        "answer",
+        [
+            {"base": "USD", "date": "2026-11-04", "rates": {"GBP": 0.7}},
+            {"base": "USD", "date": "2026-11-04", "rates": {"EUR": "abc"}},
+            {"base": "USD", "date": "2026-11-04", "rates": {"EUR": 0}},
+            {"base": "USD", "date": "2026-11-04", "rates": {"EUR": -1.2}},
+            {"base": "USD", "date": "2026-11-04", "rates": {"EUR": True}},
+            {"base": "USD", "date": "2026-11-04", "rates": {"EUR": None}},
+            {"base": "USD", "date": "2026-11-04", "rates": []},
+            {"base": "USD", "date": "2026-11-04"},
+            {"base": "USD", "rates": {"EUR": 0.88}},
+            {"base": "USD", "date": "yesterday", "rates": {"EUR": 0.88}},
+            {"base": "GBP", "date": "2026-11-04", "rates": {"EUR": 0.88}},
+            ["not", "an", "object"],
+        ],
+    )
+    def test_an_answer_that_is_no_rate_gives_no_figure(self, rates, answer):
+        rates.reply("GET", RATES, json=answer)
+
+        result = run("currency_rate", {"from": "USD", "to": "EUR"})
+
+        assert result["code"] == "currency_rate.bad_answer"
+        assert "rate" not in result
+
+    @pytest.mark.parametrize("body", [b"<html>not json</html>", b'{"base": "USD", "rates": {"EUR": NaN}, "date": "2026-11-04"}'])
+    def test_a_body_that_cannot_be_read_gives_no_figure(self, rates, body):
+        rates.reply("GET", RATES, body=body)
+
+        result = run("currency_rate", {"from": "USD", "to": "EUR"})
+
+        assert result["code"] == "currency_rate.bad_answer"
+        assert "rate" not in result
+
+    def test_a_caller_over_its_budget_asks_nobody_and_another_is_not_touched(self, rates, settings):
+        settings.ASSISTANT_CURRENCY_RATE_RATELIMIT = "2/h"
+        rates.reply("GET", RATES, always=True, json=USD_EUR)
+
+        answers = [run("currency_rate", {"from": "USD", "to": "EUR"}, who="hub:one") for _ in range(3)]
+
+        assert "rate" in answers[1]
+        assert answers[2]["code"] == "currency_rate.budget_spent"
+        assert len(calls(rates, RATES)) == 2
+        assert "rate" in run("currency_rate", {"from": "USD", "to": "EUR"}, who="hub:two")
+
+
+class TestTheSearch:
+    def test_it_asks_with_the_key_for_a_bounded_list_of_plain_results(self, search):
+        search.reply("POST", SEARCH, json={"results": [row()]})
+
+        run("web_search", {"query": " ley de ejemplo "})
+
+        [seen] = calls(search, SEARCH)
+        assert seen.headers["authorization"] == f"Bearer {KEY}"
+        assert seen.body == {
+            "q": "ley de ejemplo",
+            "depth": "standard",
+            "outputType": "searchResults",
+            "maxResults": server_tools.MAX_RESULTS,
+            "includeImages": False,
+        }
+
+    def test_it_gives_the_title_the_address_and_the_text_of_each_result(self, search):
+        search.reply("POST", SEARCH, json={"results": [row(), row("https://example.com/b", "B", "Otro texto")]})
+
+        result = run("web_search", {"query": "ley"})
+
+        assert result["results"] == [
+            {"title": "BOE", "url": ARTICLE, "content": "Ley de ejemplo"},
+            {"title": "B", "url": "https://example.com/b", "content": "Otro texto"},
+        ]
+        assert result["sources"] == [ARTICLE, "https://example.com/b"]
+
+    def test_it_keeps_the_results_it_asked_for_whatever_comes_back(self, search):
+        rows = [row(f"https://example.com/{n}") for n in range(server_tools.MAX_RESULTS + 3)]
+        search.reply("POST", SEARCH, json={"results": rows})
+
+        assert len(run("web_search", {"query": "ley"})["results"]) == server_tools.MAX_RESULTS
+
+    def test_it_cuts_each_text_and_the_query(self, search):
+        long = "x" * (server_tools.MAX_RESULT_CHARS + 50)
+        search.reply("POST", SEARCH, json={"results": [row(name=long, content=long)]})
+
+        result = run("web_search", {"query": "q" * (server_tools.MAX_QUERY_CHARS + 50)})
+
+        assert len(result["results"][0]["title"]) == server_tools.MAX_TITLE_CHARS
+        assert len(result["results"][0]["content"]) == server_tools.MAX_RESULT_CHARS
+        assert len(calls(search, SEARCH)[0].body["q"]) == server_tools.MAX_QUERY_CHARS
+
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            row("javascript:alert(1)"),
+            row("ftp://example.com/a"),
+            row("https://"),
+            row("https:///no-host"),
+            row("https://example.com/a b"),
+            {"type": "text", "name": "No address", "content": "x"},
+            {"type": "text", "url": 7, "name": "B", "content": "x"},
+            row(kind="image"),
+            "not a row",
+        ],
+    )
+    def test_a_result_without_a_web_address_of_text_is_left_out(self, search, bad):
+        search.reply("POST", SEARCH, json={"results": [bad, row("https://example.com/good")]})
+
+        result = run("web_search", {"query": "ley"})
+
+        assert [item["url"] for item in result["results"]] == ["https://example.com/good"]
+        assert result["sources"] == ["https://example.com/good"]
+
+    @pytest.mark.parametrize("query", ["", "   ", None, 7, ["ley"]])
+    def test_a_search_for_nothing_asks_nobody(self, search, query):
+        assert run("web_search", {"query": query})["code"] == "web_search.empty_query"
+        assert search.requests == []
+
+    def test_nothing_found_is_said_and_gives_no_source(self, search):
+        search.reply("POST", SEARCH, json={"results": []})
+
+        result = run("web_search", {"query": "ley"})
+
+        assert result["code"] == "web_search.no_results"
+        assert "sources" not in result
+
+    @pytest.mark.parametrize("status", [400, 401, 402, 429, 500, 503])
+    def test_a_provider_that_refuses_or_fails_is_said(self, search, status):
+        search.reply("POST", SEARCH, status=status, json={"error": {"code": "X", "message": "words of the provider"}})
+
+        result = run("web_search", {"query": "ley"})
+
+        assert result["code"] == "web_search.unavailable"
+        assert "words of the provider" not in json.dumps(result)
+
+    def test_a_provider_that_takes_too_long_is_said(self, search, settings, stalled):
+        settings.ASSISTANT_SEARCH_URL = stalled
+
+        assert run("web_search", {"query": "ley"})["code"] == "web_search.unavailable"
+
+    def test_a_provider_that_is_down_is_said(self, search, settings, down):
+        settings.ASSISTANT_SEARCH_URL = down
+
+        assert run("web_search", {"query": "ley"})["code"] == "web_search.unavailable"
+
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            {"body": b"<html>not json</html>"},
+            {"json": ["not", "an", "object"]},
+            {"json": {"answer": "no results here"}},
+            {"json": {"results": "not a list"}},
+            {"json": {"results": [row("javascript:alert(1)")]}},
+        ],
+    )
+    def test_an_answer_that_is_no_list_of_results_is_said(self, search, reply):
+        search.reply("POST", SEARCH, **reply)
+
+        result = run("web_search", {"query": "ley"})
+
+        assert result["code"] == "web_search.bad_answer"
+        assert "sources" not in result
+
+    @pytest.mark.parametrize(("status", "level"), [(401, logging.ERROR), (402, logging.ERROR), (429, logging.WARNING), (503, logging.WARNING)])
+    def test_a_key_that_is_refused_is_an_error_in_the_log_and_nothing_of_the_search_is(self, search, caplog, status, level):
+        caplog.set_level(logging.DEBUG)
+        search.reply("POST", SEARCH, status=status, json={"error": {"message": "words of the provider"}})
+
+        run("web_search", {"query": "Rosalía Quintanar"})
+
+        [line] = [record for record in caplog.records if record.name == "assistant.server_tools"]
+        assert line.levelno == level
+        logged = "\n".join(record.getMessage() for record in caplog.records)
+        assert str(status) in line.getMessage()
+        for secret in ("Rosalía", KEY, "words of the provider"):
+            assert secret not in logged
+
+    def test_a_caller_over_its_budget_asks_nobody_and_another_is_not_touched(self, search, settings):
+        settings.ASSISTANT_WEB_SEARCH_RATELIMIT = "1/d"
+        search.reply("POST", SEARCH, always=True, json={"results": [row()]})
+
+        assert "results" in run("web_search", {"query": "ley"}, who="hub:one")
+        assert run("web_search", {"query": "ley"}, who="hub:one")["code"] == "web_search.budget_spent"
+        assert len(calls(search, SEARCH)) == 1
+        assert "results" in run("web_search", {"query": "ley"}, who="hub:two")
+
+    def test_a_tool_that_breaks_gives_an_error_never_raises(self, search, monkeypatch):
+        def broken(*args, **kwargs):
+            raise RuntimeError("the cache is down")
+
+        monkeypatch.setattr(server_tools, "over_budget", broken)
+
+        assert "error" in run("web_search", {"query": "ley"})
+
+
+class TestTheSourceLine:
+    def test_an_answer_that_names_no_source_gets_its_address(self):
+        assert server_tools.source_line("La ley cambió.", [ARTICLE]) == f"\n\n{ARTICLE}"
+
+    def test_an_answer_that_writes_the_address_needs_nothing(self):
+        assert server_tools.source_line(f"La ley cambió ({ARTICLE}).", [ARTICLE]) == ""
+
+    def test_an_answer_that_names_its_site_needs_nothing(self):
+        assert server_tools.source_line("Lo dice boe.es, hoy.", [ARTICLE]) == ""
+
+    def test_it_finds_the_site_in_any_case(self):
+        assert server_tools.source_line("Según BOE.es, hoy.", [ARTICLE]) == ""
+
+    def test_a_link_shows_its_label_alone_so_its_address_does_not_count(self):
+        """The panel's Markdown drops the address of a link to another site (``parseMarkdown``)."""
+        assert server_tools.source_line(f"Lo dice [la ley]({ARTICLE}).", [ARTICLE]) == f"\n\n{ARTICLE}"
+
+    def test_a_link_labelled_with_its_site_counts(self):
+        assert server_tools.source_line(f"Lo dice [boe.es]({ARTICLE}).", [ARTICLE]) == ""
+
+    def test_no_answer_or_no_source_writes_nothing(self):
+        assert server_tools.source_line("", [ARTICLE]) == ""
+        assert server_tools.source_line("   ", [ARTICLE]) == ""
+        assert server_tools.source_line("La ley cambió.", []) == ""
+
+    def test_it_shows_a_few_each_once(self):
+        sources = [f"https://example.com/{n}" for n in range(server_tools.MAX_SOURCES_SHOWN + 2)]
+
+        line = server_tools.source_line("Texto.", [sources[0], *sources])
+
+        assert line.split() == sources[: server_tools.MAX_SOURCES_SHOWN]
+
+
+class TestWhoseBudget:
+    def test_each_business_and_account_has_its_own(self):
+        one, other = "0190a3b4-0000-7000-8000-000000000001", "0190a3b4-0000-7000-8000-000000000002"
+
+        assert turn.tool_budget(Caller(hub_id=one)) != turn.tool_budget(Caller(hub_id=other))
+        assert turn.tool_budget(Caller(user_id=one)) != turn.tool_budget(Caller(user_id=other))
+        assert turn.tool_budget(Caller(hub_id=one)) != turn.tool_budget(Caller(user_id=one))
+
+    def test_every_demo_shares_one_since_anybody_can_open_another(self):
+        assert turn.tool_budget(Caller(demo="demo-a")) == turn.tool_budget(Caller(demo="demo-b"))
 
 
 class TestInTheTurn:
@@ -119,12 +507,135 @@ class TestInTheTurn:
 
         assert len(self.chat_requests(fake_provider)) == 1 + 5
 
-    def test_the_instructions_are_the_hubs_alone_even_with_a_search_key(self, internal, business, answering, fake_provider, settings):
-        settings.TAVILY_API_KEY = "tvly-test"
+    def test_without_a_search_key_the_model_hears_of_the_rate_alone(self, internal, business, answering, fake_provider):
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))
 
         frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
 
         [sent] = self.chat_requests(fake_provider)
-        assert sent.body["messages"][0] == {"role": "system", "content": "Be brief."}
-        assert [tool["function"]["name"] for tool in sent.body["tools"]] == ["current_datetime"]
+        system = sent.body["messages"][0]
+        assert system["role"] == "system"
+        assert system["content"].startswith("Be brief.")
+        assert "`currency_rate`" in system["content"]
+        assert "web_search" not in system["content"]
+        assert [tool["function"]["name"] for tool in sent.body["tools"]] == ["current_datetime", "currency_rate"]
+
+    def test_with_a_search_key_the_model_hears_of_the_search_too(self, internal, business, answering, fake_provider, settings):
+        settings.LINKUP_API_KEY = KEY
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))
+
+        frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
+
+        [sent] = self.chat_requests(fake_provider)
+        assert sent.body["messages"][0]["content"].startswith("Be brief.")
+        assert "`web_search`" in sent.body["messages"][0]["content"]
+        assert [tool["function"]["name"] for tool in sent.body["tools"]] == ["current_datetime", "currency_rate", "web_search"]
+
+    def test_the_rules_of_our_tools_do_not_replace_empty_instructions(self, internal, business, answering, fake_provider):
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))
+
+        frames(door(Client(), "/internal/assistant/chat/stream", {**self.turn(business), "instructions": ""}))
+
+        [sent] = self.chat_requests(fake_provider)
+        assert "`currency_rate`" in sent.body["messages"][0]["content"]
+
+    def rate_turn(self, fake_provider, answer: str, tokens=(80, 6)):
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("currency_rate", '{"from": "USD", "to": "EUR"}', call_id="call_r", tokens=(50, 5)))
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer(answer, tokens=tokens))
+
+    def test_a_rate_goes_to_the_model_the_hub_sees_no_call_and_the_source_is_written(self, internal, business, answering, rates):
+        rates.reply("GET", RATES, json=USD_EUR)
+        self.rate_turn(rates, "1 USD is 0.89 EUR.")
+
+        got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
+
+        assert [frame["type"] for frame in got if isinstance(frame, dict)] == ["text_delta", "text_delta", "response", "usage"]
+        said = [frame["text"] for frame in got if isinstance(frame, dict) and frame["type"] == "text_delta"]
+        assert said == ["1 USD is 0.89 EUR.", f"\n\n{server_tools.RATES_SOURCE}"]
+        assert "0.88755" not in json.dumps([frame for frame in got if isinstance(frame, dict)])
+        _first, second = self.chat_requests(rates)
+        assert json.loads(second.body["messages"][-1]["content"])["rate"] == "0.88755"
+
+    def test_the_turn_at_once_says_the_source_too(self, internal, business, answering, rates):
+        rates.reply("GET", RATES, json=USD_EUR)
+        self.rate_turn(rates, "1 USD is 0.89 EUR.")
+
+        answer = door(Client(), "/internal/assistant/chat", self.turn(business))
+
+        assert answer.status_code == 200
+        assert server_tools.RATES_SOURCE in json.dumps(answer.json()["output"])
+
+    def test_a_rate_the_model_gives_with_its_source_gets_no_second_line(self, internal, business, answering, rates):
+        rates.reply("GET", RATES, json=USD_EUR)
+        self.rate_turn(rates, f"1 USD is 0.89 EUR ({server_tools.RATES_SOURCE}, 2026-11-04).")
+
+        got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
+
+        assert len([frame for frame in got if isinstance(frame, dict) and frame["type"] == "text_delta"]) == 1
+
+    def test_a_provider_that_fails_leaves_the_model_to_say_so_with_no_source_and_the_turn_answers(self, internal, business, answering, rates):
+        rates.reply("GET", RATES, status=503, json={"message": "down"})
+        self.rate_turn(rates, "I cannot get that rate now.")
+
+        got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
+
+        assert [frame["type"] for frame in got if isinstance(frame, dict)] == ["text_delta", "response", "usage"]
+        _first, second = self.chat_requests(rates)
+        told = json.loads(second.body["messages"][-1]["content"])
+        assert told["code"] == "currency_rate.unavailable" and "rate" not in told
+
+    def test_a_search_goes_to_the_model_and_its_source_is_written(self, internal, business, answering, search):
+        search.reply("POST", SEARCH, json={"results": [row()]})
+        search.reply("POST", COMPLETIONS, sse=openai_tool_call("web_search", '{"query": "ley"}', call_id="call_s"))
+        search.reply("POST", COMPLETIONS, sse=openai_answer("La ley cambió."))
+
+        got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
+
+        assert got[1] == {"type": "text_delta", "text": f"\n\n{ARTICLE}"}
+        _first, second = self.chat_requests(search)
+        assert json.loads(second.body["messages"][-1]["content"])["results"][0]["url"] == ARTICLE
+
+    def test_the_sources_of_every_round_count(self, internal, business, answering, search, settings):
+        settings.ASSISTANT_RATES_URL = f"{search.url}{RATES}"
+        search.reply("GET", RATES, json=USD_EUR)
+        search.reply("POST", SEARCH, json={"results": [row()]})
+        search.reply("POST", COMPLETIONS, sse=openai_tool_call("currency_rate", '{"from": "USD", "to": "EUR"}', call_id="call_r"))
+        search.reply("POST", COMPLETIONS, sse=openai_tool_call("web_search", '{"query": "ley"}', call_id="call_s"))
+        search.reply("POST", COMPLETIONS, sse=openai_answer("Listo."))
+
+        got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
+
+        assert got[1]["text"].split() == [server_tools.RATES_SOURCE, ARTICLE]
+
+    def test_an_answer_with_a_tool_of_the_hub_keeps_its_source(self, internal, business, answering, rates):
+        rates.reply("GET", RATES, json=USD_EUR)
+        rates.reply("POST", COMPLETIONS, sse=openai_tool_call("currency_rate", '{"from": "USD", "to": "EUR"}', call_id="call_r"))
+        rates.reply("POST", COMPLETIONS, sse=[openai_chunk("1 USD is 0.89 EUR."), *openai_tool_call("sale_order_list", "{}", call_id="call_h")])
+
+        got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business, [{"name": "sale_order_list"}])))
+
+        types = [frame["type"] for frame in got if isinstance(frame, dict)]
+        assert types[:3] == ["text_delta", "text_delta", "function_call"]
+        assert got[1]["text"] == f"\n\n{server_tools.RATES_SOURCE}"
+
+    def test_a_turn_that_only_calls_a_tool_of_the_hub_writes_no_source(self, internal, business, answering, rates):
+        rates.reply("GET", RATES, json=USD_EUR)
+        rates.reply("POST", COMPLETIONS, sse=openai_tool_call("currency_rate", '{"from": "USD", "to": "EUR"}', call_id="call_r"))
+        rates.reply("POST", COMPLETIONS, sse=openai_tool_call("sale_order_list", "{}", call_id="call_h"))
+
+        got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business, [{"name": "sale_order_list"}])))
+
+        assert "text_delta" not in [frame["type"] for frame in got if isinstance(frame, dict)]
+
+    def test_a_tool_of_ours_spends_the_callers_budget(self, internal, business, answering, rates, settings):
+        settings.ASSISTANT_CURRENCY_RATE_RATELIMIT = "1/h"
+        rates.reply("GET", RATES, always=True, json=USD_EUR)
+        rates.reply("POST", COMPLETIONS, sse=openai_tool_call("currency_rate", '{"from": "USD", "to": "EUR"}', call_id="call_1"))
+        rates.reply("POST", COMPLETIONS, sse=openai_tool_call("currency_rate", '{"from": "USD", "to": "EUR"}', call_id="call_2"))
+        rates.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))
+
+        frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
+
+        last = self.chat_requests(rates)[-1]
+        assert json.loads(last.body["messages"][-1]["content"])["code"] == "currency_rate.budget_spent"
+        assert len(calls(rates, RATES)) == 1

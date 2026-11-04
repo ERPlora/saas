@@ -127,8 +127,9 @@ def sanitized(messages: list[dict]) -> list[dict]:
 def prepare(messages: list[dict], instructions: str) -> list[dict]:
     """The conversation the model sees, or ``TurnRefused``: 422 for a message of an unknown role, 413 for a text
     over ``MAX_TEXT_BYTES`` or an attachment over its limit (``attachments.check``). Its documents are turned into
-    their text (``attachments.expand``): CPU work, which the door runs off its event loop."""
-    from assistant import attachments
+    their text (``attachments.expand``): CPU work, which the door runs off its event loop. The system message is the
+    caller's instructions and what erplora.com's own tools need of the model (``server_tools.rules``)."""
+    from assistant import attachments, server_tools
 
     check_roles(messages)
     attachments.check(messages)
@@ -138,7 +139,8 @@ def prepare(messages: list[dict], instructions: str) -> list[dict]:
     conversation = sanitized(client)[-(MAX_MESSAGES - 1) :]
     while conversation and conversation[0]["role"] == "tool":
         conversation = conversation[1:]
-    return [{"role": "system", "content": instructions or ""}, *attachments.expand(conversation)]
+    system = "\n\n".join(part for part in (instructions, server_tools.rules()) if part)
+    return [{"role": "system", "content": system}, *attachments.expand(conversation)]
 
 
 def hub_tools(tools: Sequence[dict]) -> list[ToolSpec]:
@@ -173,6 +175,12 @@ def caller_key(caller: Caller) -> str:
     if caller.user_id is not None:
         return f"user:{caller.user_id}"
     return f"hub:{caller.hub_id}"
+
+
+def tool_budget(caller: Caller) -> str:
+    """Whose budget a call of erplora.com's tools spends: the caller's, and one for every demo, since anybody can open
+    another."""
+    return "demo" if caller.demo else caller_key(caller)
 
 
 def continuation_token(caller: Caller, call_ids: Sequence[str]) -> str:
@@ -247,15 +255,16 @@ def assistant_message(text: str, calls: list[dict]) -> dict:
 
 
 async def run(
-    candidates: Sequence[RouteCandidate], messages: list[dict], tools: list[ToolSpec], outcome: Outcome
+    candidates: Sequence[RouteCandidate], messages: list[dict], tools: list[ToolSpec], outcome: Outcome, caller: Caller
 ) -> AsyncIterator[dict]:
     """Stream the turn: the frames of the answer as they come; ``outcome`` filled as it goes. The tools erplora.com
-    runs itself (``server_tools``) are run here and the model is asked again, at most ``server_tools.MAX_ROUNDS``
-    times; on the last round they are not offered, so the model answers. A tool of the Hub named as one of ours is
-    ours."""
+    runs itself (``server_tools``) are run here, on ``caller``'s budget, and the model is asked again, at most
+    ``server_tools.MAX_ROUNDS`` times; on the last round they are not offered, so the model answers. A tool of the Hub
+    named as one of ours is ours. An answer that names none of the sources they gave gets them written below it."""
     from assistant import attachments, server_tools
 
     conversation = list(messages)
+    sources: list[str] = []
     theirs_offered = [tool for tool in tools if not server_tools.is_server_tool(tool.name)]
     remaining = list(candidates)
     rounds = 0
@@ -305,10 +314,15 @@ async def run(
         if mine and not theirs and rounds < server_tools.MAX_ROUNDS:
             conversation.append(assistant_message(text, mine))
             for call in mine:
-                result = await server_tools.run(call["name"], call["arguments"])
+                result = await server_tools.run(call["name"], call["arguments"], tool_budget(caller))
+                sources += server_tools.sources_of(result)
                 conversation.append({"role": "tool", "tool_call_id": call["call_id"], "content": result})
             rounds += 1
             continue
+        line = server_tools.source_line(outcome.text, sources)
+        if line:
+            outcome.text += line
+            yield {"type": "text_delta", "text": line}
         for call in theirs:
             outcome.calls.append(call)
             outcome.answered = True
@@ -458,7 +472,7 @@ async def frames(started: Turn) -> AsyncIterator[dict | str]:
     end, a failure, the caller closing the stream) settles the message and what it spent."""
     outcome = Outcome()
     try:
-        async for frame in run(started.candidates, started.messages, started.tools, outcome):
+        async for frame in run(started.candidates, started.messages, started.tools, outcome, started.caller):
             yield frame
         if outcome.error is None:
             yield response_frame(started, outcome)

@@ -181,6 +181,16 @@ function panelDjangoEnv(vitePort: number, stack: Stack, real: boolean): Record<s
       // Each account's messages a month with the panel's assistant (30 in production): assistant-panel.spec.ts asks
       // twice, then sees the month spent (ASSISTANT-F26). The real battery asks as in production.
       ASSISTANT_ACCOUNT_MESSAGES: real ? '30' : '2',
+      // erplora.com's own tools (ASSISTANT-F14) go to the same double, with a made-up key that offers the search
+      // (assistant-web-tools.spec.ts): no spec reaches the real rates or the real search. The real battery leaves them
+      // to `.env`.
+      ...(real
+        ? {}
+        : {
+            LINKUP_API_KEY: 'e2e-made-up-key',
+            ASSISTANT_SEARCH_URL: `http://127.0.0.1:${stack.aiProviderPort}/v1/search`,
+            ASSISTANT_RATES_URL: `http://127.0.0.1:${stack.aiProviderPort}/v1/latest`,
+          }),
     },
     stack,
   );
