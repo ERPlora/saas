@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:9870cc14e8e95f0053057d753d3b1d594a346c20c774f6115125ddefa1c8867d -->
+<!-- generated from WORKBOOK.md sha256:85183e4e74b63941d89c61fb57447dca236c6c8dd7bd5506920ab9bb688648c5 -->
 
 ## What it is for and who it is for
 
@@ -653,15 +653,16 @@ Involved: hubs (the person's businesses and "Open")
 ### ACCOUNTS-F29 Go back to erplora.com from my business
 Status: done
 Actor: any person with an account
-Screen: Entrance, Account, Businesses
+Screen: Entrance, Account, Businesses, Store
 Steps:
-1. Inside their business, the person taps a link to erplora.com: manage their account, their business or their plan.
-2. If that browser has their erplora.com session (the one they used to enter the business), the page opens without asking for anything.
-3. If it does not (another browser, the app's, or the session ended), the **Entrance** asks them to sign in and, once in, takes them to that same page.
-In: the erplora.com page they are going to (only erplora.com pages).
-Out: the page open with their erplora.com session. The business hands no credential to erplora.com: each keeps its own session.
-If it fails: an address that is not erplora.com's is not followed after signing in: it leads to the **Entrance** with their session. Signing out of erplora.com does not sign out of the business (ACCOUNTS-F09).
-Involved: hubs (the business's links to erplora.com)
+1. Inside their business, the person who came in with their account taps "Upgrade plan" or "Manage on erplora.com" (the Hub's BASE-F11). The business signs a pass at that moment and opens it on erplora.com, in a new tab; in the installed app, in the device's browser.
+2. erplora.com checks the pass and that the account still belongs to that business, and opens its session without asking for anything, even if that browser did not have it: it takes them to that business's plan page in the **Store** ("Upgrade plan") or to that business in **Businesses** ("Manage on erplora.com").
+3. If that browser already had their session open, it goes on with it to the same place, even if the pass expired or was already used (on a reload or on going back). If it had another account's session and the pass is good, whoever tapped the button comes in instead.
+4. Links without a pass (manage their account, "Upgrade plan" in the assistant and in the WhatsApp Inbox) and a pass that does not arrive open the usual address: if that browser has their erplora.com session, the page opens without asking for anything; if not, the **Entrance** asks them to sign in and, once in, takes them to that same page.
+In: the business's pass (which account, which business and where it goes: the plan or the business) or, without a pass, the erplora.com page they are going to (only erplora.com pages).
+Out: the page open with their erplora.com session; the business and erplora.com each keep their own. The pass lasts one minute and works only once, and only for that account and that business; it travels in the address, so the answer is neither stored nor told to other sites. The session it opens does not count as a sign-in with a password, code or second factor (whatever requires one asks for it again), accepts the terms for nobody and shows in **Account › Security › Active sessions**, where it can be ended.
+If it fails: a pass the business did not sign, or that does not say what it must, opens nothing: "This link from your business is not valid", with "Sign in" and "Contact Support". An account that is not a member of that business, switched off or of ERPlora's staff does not get in: "You don't have access to this hub", naming only the business's address, with "Home", "Back to the hub" and "Contact Support". A pass past its minute or already used opens nothing: "This link from your business has expired", and "Sign in" goes on to where it was going, with "Contact Support". None of the three touches a session already open in that browser; with one, "Sign in" reads "Home". Without a pass, an address that is not erplora.com's is not followed after signing in: it leads to the **Entrance** with their session. Signing out of erplora.com does not sign out of the business (ACCOUNTS-F09).
+Involved: hubs (the business in the panel), billing (the plan in the **Store**), the hub (signs the pass and draws the buttons, BASE-F11)
 
 ### ACCOUNTS-F30 Open my account on its own from the app
 Status: done
