@@ -139,16 +139,6 @@
     </div>
   </section>
 
-  <section id="get-started" class="ep-section--compact ep-section--center">
-    <div class="ep-container ep-section-content">
-      <header class="ep-section-head">
-        <h2 class="ep-section-title">{% trans "You need a hub before you need the app." %}</h2>
-        <p class="ep-section-sub">{% trans "The app opens your hub, so start there: create it free, then install the app on the device at the counter. No credit card." %}</p>
-      </header>
-      <div class="flex flex-wrap justify-center gap-3">
-        {% button href="/launch" label=_("Create your free hub") end_icon="lucide:arrow-right" icon_size=15 %}
-        {% button href="public:app" label=_("See what the app does") fill="outline" %}
-      </div>
-    </div>
-  </section>
+  {% trans "See what the app does" as see_label %}
+  {% include "public/appdist/_get_started.html" with see_href="public:app" see_label=see_label only %}
 {% endblock %}

@@ -1552,3 +1552,31 @@ def test_the_full_width_buttons_stay_full_width(template, full_width):
     calls = button_calls(PUBLIC_TEMPLATES / "public" / template)
 
     assert sum("block=True" in call for call in calls) == full_width
+
+
+# --- The two download pages close with the same section: one partial, not two copies ---------------
+
+DOWNLOAD_PAGES = ("appdist/index.html", "appdist/android.html")
+
+
+@pytest.mark.parametrize("template", DOWNLOAD_PAGES)
+def test_the_download_pages_share_their_closing_section(template):
+    """«You need a hub before you need the app» (heading, lead and two buttons) was written twice, once per download
+    page, with only the second button differing: `dup-guard.sh` counts it the moment a change touches it (saas#238).
+    One partial, `appdist/_get_started.html`, and each page tells it where its second button goes."""
+    source = without_comments((PUBLIC_TEMPLATES / "public" / template).read_text(encoding="utf-8"))
+
+    assert 'id="get-started"' not in source
+    assert re.search(r'\{% include "public/appdist/_get_started\.html" with [^%]*\bsee_href=[^%]*\bonly %\}', source)
+
+
+def test_the_closing_section_of_the_download_pages_is_written_once():
+    partial = PUBLIC_TEMPLATES / "public" / "appdist" / "_get_started.html"
+
+    assert partial.exists()
+    owners = [
+        template.relative_to(PUBLIC_TEMPLATES)
+        for template in public_templates()
+        if 'id="get-started"' in without_comments(template.read_text(encoding="utf-8"))
+    ]
+    assert owners == [partial.relative_to(PUBLIC_TEMPLATES)]
