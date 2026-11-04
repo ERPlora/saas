@@ -398,7 +398,7 @@ test('PUBLIC-G51 on a slow device, the mobile menu opens and closes even pressed
   const scriptHasNotRun = async (where: string) =>
     expect(await page.evaluate(() => customElements.get('ion-button') === undefined), where).toBe(true);
 
-  // On each policy the web answers with: the public one, the door's own and the 404's.
+  // The home, the door (its own policy, wider only on form-action) and the public 404: each renders the navbar and its nonce.
   for (const path of ['/', '/demo/', '/pricing/no-such-plan/']) {
     await page.goto(path, { waitUntil: 'commit' });
     await menu.burger.click();
