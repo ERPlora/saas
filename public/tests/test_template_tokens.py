@@ -41,12 +41,15 @@ def script_holding(html: str, marker: str) -> tuple[str, str]:
     return script
 
 
+def header_nonce(response) -> str:
+    return HEADER_NONCE.search(response.headers["Content-Security-Policy"]).group(1)
+
+
 def assert_it_may_run(response, marker: str) -> None:
     """The script that holds ``marker`` carries the header's nonce, the only one the CSP lets run."""
-    nonce = HEADER_NONCE.search(response.headers["Content-Security-Policy"]).group(1)
     attributes, _ = script_holding(response.content.decode(), marker)
 
-    assert f'nonce="{nonce}"' in attributes, attributes
+    assert f'nonce="{header_nonce(response)}"' in attributes, attributes
 
 
 def token_of_the_form(html: str, action: str) -> str:
@@ -60,6 +63,13 @@ def assert_the_server_takes_it(browser: Client, door: str, **with_the_token) -> 
     """Without a token the door answers 403, so it does check; with this one the POST gets in."""
     assert browser.post(door).status_code == 403
     assert browser.post(door, **with_the_token).status_code == 302
+
+
+def test_this_file_runs_on_the_real_tokens(client):
+    """Control: under the fixed value, a nonce drawn apart looks like the header's and no test here sees it."""
+    first, second = (header_nonce(client.get(reverse("public:help"))) for _ in range(2))
+
+    assert first != second
 
 
 def test_the_help_search_script_may_run(client):
