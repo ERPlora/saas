@@ -3,14 +3,12 @@
 // the language, kept after a reload; the password, changed with the current one; the sessions (a second browser signed in as the same account, «Close other
 // sessions» ends it here and asks the Hub to end it in the businesses); an API key created after «Confirm it's you»
 // with the password, opening the API once (`X-Api-Key`) and refused after «Revoke»; and the change of the email
-// with the code read from the mail. Each tab at the three viewports, without scrolling sideways, leaves a
-// screenshot in `$SHOTS_DIR` (or `.artifacts/panel/account/`) to compare with the mockup.
+// with the code read from the mail. Each tab at the three viewports: account-tabs.spec.ts.
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { type APIRequestContext, type Page, request as playwrightRequest } from '@playwright/test';
 
-import { overflowingBoxes } from '../horizontal-overflow';
 import {
   djangoPrint,
   expect,
@@ -60,20 +58,6 @@ async function ageSignIn(request: APIRequestContext): Promise<void> {
     ].join('\n'),
   );
   expect(Number(aged), 'sign-in records aged').toBeGreaterThan(0);
-}
-
-/** What scrolls sideways on the page on screen (Ionic pins `body`: the one measure, `overflowingBoxes`, and every DataTable). */
-async function sidewaysScroll(page: Page): Promise<string[]> {
-  const boxes = await overflowingBoxes(page, 1);
-  const tables = await page.evaluate(() => {
-    const shown = [...document.querySelectorAll('ion-router-outlet > .ion-page:not(.ion-page-hidden)')].at(-1) ?? document;
-    const found: string[] = [];
-    for (const table of shown.querySelectorAll<HTMLElement>('.data-table__scroll')) {
-      if (table.scrollWidth > table.clientWidth + 1) found.push(`data-table ${table.scrollWidth} > ${table.clientWidth}`);
-    }
-    return found;
-  });
-  return [...boxes, ...tables];
 }
 
 test('editing the profile keeps the names after a reload', async ({ page }) => {
@@ -404,38 +388,4 @@ test('the email changes with the code mailed to the new address', async ({ page 
   await expect(toast(page, `Your email is now ${next}`)).toBeVisible();
   await expect(page.getByTestId('profile-email')).toContainText(next);
   expect(errors).toEqual([]);
-});
-
-test('each tab at the three viewports, light and dark, without scrolling sideways', async ({ browser }) => {
-  const signing = await browser.newContext({ baseURL: PANEL_URL });
-  await signIn(signing.request, panelAccount('several'));
-  const state = await signing.storageState();
-  await signing.close();
-  const TABS: Array<{ tab: string; ready: (page: Page) => ReturnType<Page['getByTestId']> }> = [
-    { tab: 'profile', ready: (p) => p.getByTestId('profile-card') },
-    { tab: 'security', ready: (p) => p.getByTestId('sign-in-card') },
-    { tab: 'preferences', ready: (p) => p.getByTestId('preferences-appearance') },
-    { tab: 'api-keys', ready: (p) => p.getByTestId('api-keys-empty') },
-  ];
-  for (const theme of ['light', 'dark'] as const) {
-    const context = await browser.newContext({ baseURL: PANEL_URL, storageState: state, colorScheme: theme, locale: 'es-ES' });
-    try {
-      const page = await context.newPage();
-      const errors = watchPageErrors(page);
-      for (const { width, height } of VIEWPORTS) {
-        await page.setViewportSize({ width, height });
-        for (const { tab, ready } of TABS) {
-          await page.goto(`/dashboard/account/${tab}`);
-          await expect(ready(page)).toBeVisible();
-          await page.evaluate(() => document.fonts.ready);
-          await page.waitForTimeout(300);
-          expect(await sidewaysScroll(page), `account-${tab}-${width}-${theme}`).toEqual([]);
-          await page.screenshot({ path: join(SHOTS_DIR, `account-${tab}-${width}-${theme}.png`), fullPage: true });
-        }
-      }
-      expect(errors).toEqual([]);
-    } finally {
-      await context.close();
-    }
-  }
 });
