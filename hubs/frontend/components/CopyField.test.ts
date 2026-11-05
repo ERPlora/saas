@@ -2,15 +2,11 @@
 // text in monospace and a copy button that says what happened in a toast.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@erplora/ui/shell', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
-  toastSuccess: vi.fn(() => Promise.resolve()),
-  toastError: vi.fn(() => Promise.resolve()),
-}));
+vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/module-mocks')).shellWithToastSpies(original));
 
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
-import { accessibleName, flush, mountHubs } from '../__tests__/mount-hubs';
+import { accessibleName, flush, mountHubs, stubClipboard as clipboard } from '../__tests__/mount-hubs';
 import CopyField from './CopyField.vue';
 
 afterEach(() => {
@@ -19,10 +15,6 @@ afterEach(() => {
   vi.mocked(toastError).mockClear();
   document.body.innerHTML = '';
 });
-
-function clipboard(writeText: (text: string) => Promise<void>) {
-  Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
-}
 
 describe('CopyField', () => {
   it('shows the text and copies it, saying so', async () => {
@@ -44,5 +36,23 @@ describe('CopyField', () => {
     await wrapper.get('[data-testid="copy-button"]').trigger('click');
     await flush();
     expect(toastError).toHaveBeenCalledWith('The address could not be copied. Select it and copy it by hand.');
+  });
+
+  it('copies what is not an address (a DNS record) with the words it is given', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    clipboard(writeText);
+    const texts = { copyLabel: 'Copy the value', copiedText: 'Value copied', failedText: 'Copy it by hand.' };
+    const { wrapper } = await mountHubs(CopyField, { props: { value: 'hub-h1.erplora.com', label: 'Value', ...texts } });
+    const button = wrapper.get('[data-testid="copy-button"]');
+    expect(accessibleName(button)).toBe('Copy the value');
+    expect(button.attributes('title')).toBe('Copy the value');
+    await button.trigger('click');
+    await flush();
+    expect(writeText).toHaveBeenCalledWith('hub-h1.erplora.com');
+    expect(toastSuccess).toHaveBeenCalledWith('Value copied');
+    clipboard(() => Promise.reject(new Error('denied')));
+    await button.trigger('click');
+    await flush();
+    expect(toastError).toHaveBeenCalledWith('Copy it by hand.');
   });
 });

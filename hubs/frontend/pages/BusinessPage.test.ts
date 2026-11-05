@@ -24,6 +24,7 @@ import { BYE, describeCall, errorFrame, flush, ionProps, mountHubs, subId } from
 import RepresentationCard from '../../../fiscal/frontend/components/RepresentationCard.vue';
 import BusinessSettings from '../components/BusinessSettings.vue';
 import BusinessSummary from '../components/BusinessSummary.vue';
+import CustomDomainCard from '../components/CustomDomainCard.vue';
 import DangerZone from '../components/DangerZone.vue';
 import MembersTab from '../components/MembersTab.vue';
 import BusinessPage from './BusinessPage.vue';
@@ -250,10 +251,14 @@ describe('BusinessPage: the sections', () => {
     expect(s.testid('business-modules').text()).toContain('To change your plan or add modules, go to erplora.com in your browser.');
   });
 
-  it('Settings: the general settings and the danger zone', async () => {
+  it('Settings: the general settings, the own domain and the danger zone, in that order', async () => {
     const s = await setup('settings');
     expect(s.wrapper.getComponent(BusinessSettings).props('business')).toMatchObject({ id: 'h1' });
+    expect(s.wrapper.getComponent(CustomDomainCard).props()).toMatchObject({ id: 'h1', business: { id: 'h1', role: 'hub_owner' } });
     expect(s.wrapper.getComponent(DangerZone).props('business')).toMatchObject({ id: 'h1' });
+    const order = ['settings-general', 'custom-domain', 'danger-zone'].map((id) => s.wrapper.html().indexOf(`data-testid="${id}"`));
+    expect(order.every((at) => at >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 });
 
@@ -369,38 +374,45 @@ describe('BusinessPage: deleted', () => {
 // its data with the page, so the page's stream opens once; waiting for `hubs.business.get` to mount it made
 // the SDK reopen the stream and the first `GET /api/live` ended aborted.
 describe('BusinessPage: one stream', () => {
-  it('Members asks for its list in the first stream, with the business, and the business’s answer does not reopen it', async () => {
-    const s = await setup('members', null);
+  /** `tab` asks for `op` with the page's own query while the business loads; its answer does not reopen the stream. */
+  async function inTheFirstStream(tab: string, op: string, params: Record<string, unknown>) {
+    const s = await setup(tab, null);
     expect(s.testid('business-loading').exists()).toBe(true);
     expect(s.net.streams).toHaveLength(1);
     expect(s.call.subs.map((sub) => [sub.op, sub.params])).toEqual(
       expect.arrayContaining([
         ['hubs.business.get', { id: 'h1' }],
-        ['hubs.member.list', { hub_id: 'h1', limit: 50, offset: 0 }],
+        [op, params],
       ]),
     );
     await s.result(s.call, 'hubs.business.get', BUSINESS);
     await s.clock.advance(1000);
     expect(s.net.streams).toHaveLength(1);
     expect(s.call.aborted()).toBe(false);
+    return s;
+  }
+
+  it('Members asks for its list in the first stream, with the business, and the business’s answer does not reopen it', async () => {
+    const s = await inTheFirstStream('members', 'hubs.member.list', { hub_id: 'h1', limit: 50, offset: 0 });
     expect(s.wrapper.getComponent(MembersTab).props()).toMatchObject({ id: 'h1', business: { id: 'h1', name: 'Panadería López' } });
   });
 
   it('the Summary asks for the authorisation in the first stream, with the business, and the business’s answer does not reopen it', async () => {
-    const s = await setup('summary', null);
-    expect(s.testid('business-loading').exists()).toBe(true);
-    expect(s.net.streams).toHaveLength(1);
-    expect(s.call.subs.map((sub) => [sub.op, sub.params])).toEqual(
-      expect.arrayContaining([
-        ['hubs.business.get', { id: 'h1' }],
-        ['fiscal.representation.status', { id: 'h1' }],
-      ]),
-    );
-    await s.result(s.call, 'hubs.business.get', BUSINESS);
-    await s.clock.advance(1000);
-    expect(s.net.streams).toHaveLength(1);
-    expect(s.call.aborted()).toBe(false);
+    const s = await inTheFirstStream('summary', 'fiscal.representation.status', { id: 'h1' });
     expect(s.testid('representation').isVisible()).toBe(true);
+  });
+
+  it('Settings asks for the own domain in the first stream, with the business, and the business’s answer does not reopen it', async () => {
+    const s = await inTheFirstStream('settings', 'hubs.custom_domain.get', { id: 'h1' });
+    expect(s.testid('custom-domain').exists()).toBe(true);
+  });
+
+  it('only Settings asks for the own domain', async () => {
+    for (const tab of ['summary', 'members', 'modules']) {
+      const s = await setup(tab, null);
+      expect(s.call.subs.map((sub) => sub.op), tab).not.toContain('hubs.custom_domain.get');
+      s.wrapper.unmount();
+    }
   });
 
   it('a business outside Spain keeps the stream it opened: the authorisation it asked for stays hidden, without a reopen', async () => {

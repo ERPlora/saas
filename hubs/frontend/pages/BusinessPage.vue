@@ -11,6 +11,7 @@
 // RepresentationCard), whose «Manage in your business» opens the business as «Open» does.
 // Modules: turning apps on and off is the Hub's (PLAN §20.4), so the tab says so and the header's «Open»,
 // solid there as on the Summary, is its one action (no second «Open» in the card: Ioan, 2026-10-14).
+// Settings: «General», the own domain of its public website (CustomDomainCard, HUBS-F17) and the danger zone, last.
 // Members fills the page between the topbar and the tabbar (`detail-fill` + `.panel-fill`). Its states are
 // truthful (`useLiveState`, audit 2026-10-14 R-08): no answer in time is an error with «Retry», never a skeleton
 // for ever; an error or a deleted business has no tabbar (W-18, W-B3: its sections would only repeat it), and a
@@ -19,7 +20,8 @@
 // shows once the business is there. Waiting for the business to mount it made the SDK reopen the stream, and the
 // first request ended aborted (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN). The Summary's authorisation card goes the same
 // way: it asks with the page and shows only for a Spanish business that lives (`files`); hidden otherwise, so the
-// business's answer never takes a subscription out of the stream.
+// business's answer never takes a subscription out of the stream. Settings' own domain too: it asks with the page and
+// shows once the business is there.
 import { formatDateTime, InlineFeedback, StatusPill } from '@erplora/ui/components';
 import { AppPage, HubIcon, type ShellTab, toastError, toastSuccess, useSurface, WebOnly } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
@@ -34,6 +36,7 @@ import LoadFailed from '../../../frontend/LoadFailed.vue';
 import { reasonKey, statusPill } from '../business-status';
 import BusinessSettings from '../components/BusinessSettings.vue';
 import BusinessSummary from '../components/BusinessSummary.vue';
+import CustomDomainCard from '../components/CustomDomainCard.vue';
 import DataCopyCard from '../components/DataCopyCard.vue';
 import DangerZone from '../components/DangerZone.vue';
 import HostName from '../components/HostName.vue';
@@ -308,10 +311,10 @@ async function recover(): Promise<void> {
             </div>
           </ion-card-content>
         </ion-card>
-        <template v-else-if="section === 'settings'">
-          <BusinessSettings :business="business" />
-          <DangerZone :business="business" />
-        </template>
+        <BusinessSettings
+          v-else-if="section === 'settings'"
+          :business="business"
+        />
       </template>
 
       <RepresentationCard
@@ -327,6 +330,16 @@ async function recover(): Promise<void> {
         :id="id"
         :business="business"
       />
+      <template v-if="section === 'settings' && !loadFailed">
+        <CustomDomainCard
+          :id="id"
+          :business="business"
+        />
+        <DangerZone
+          v-if="business"
+          :business="business"
+        />
+      </template>
     </div>
   </AppPage>
 </template>

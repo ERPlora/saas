@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // A read-only address with «Copy» (mockups `business.html`: «On your devices» and Settings): the text
-// in monospace and a copy button; the toast says it was copied, or how to copy it by hand.
+// in monospace and a copy button; the toast says it was copied, or how to copy it by hand. What is not an
+// address (a DNS record of the own domain) brings its own words for the button and the toasts.
 import { HubIcon, toastError, toastSuccess } from '@erplora/ui/shell';
 import { IonButton } from '@ionic/vue';
 import { useI18n } from 'vue-i18n';
@@ -10,6 +11,12 @@ const props = defineProps<{
   value: string;
   /** What it is, for a screen reader («Web address of the business»). */
   label: string;
+  /** The button's name («Copy address» by default). */
+  copyLabel?: string;
+  /** The toast once copied («Address copied» by default). */
+  copiedText?: string;
+  /** The toast when the browser refuses («…copy it by hand» of an address by default). */
+  failedText?: string;
 }>();
 
 const { t } = useI18n();
@@ -17,9 +24,9 @@ const { t } = useI18n();
 async function copy(): Promise<void> {
   try {
     await navigator.clipboard.writeText(props.value);
-    void toastSuccess(t('hubs.common.copied'));
+    void toastSuccess(props.copiedText ?? t('hubs.common.copied'));
   } catch {
-    void toastError(t('hubs.common.copyFailed'));
+    void toastError(props.failedText ?? t('hubs.common.copyFailed'));
   }
 }
 </script>
@@ -34,8 +41,8 @@ async function copy(): Promise<void> {
     <ion-button
       data-testid="copy-button"
       fill="clear"
-      :aria-label="$t('hubs.common.copyAddress')"
-      :title="$t('hubs.common.copyAddress')"
+      :aria-label="copyLabel ?? $t('hubs.common.copyAddress')"
+      :title="copyLabel ?? $t('hubs.common.copyAddress')"
       @click="copy"
     >
       <HubIcon

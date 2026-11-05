@@ -68,6 +68,11 @@ export function subId(client: LiveClient, op: OpName): string {
   return sub.id;
 }
 
+/** The browser's clipboard as a test sets it: `writeText` is what copying does (or refuses). */
+export function stubClipboard(writeText: (text: string) => Promise<void>): void {
+  Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+}
+
 /** The error envelope of the API, as ninja answers it. */
 export function apiError(status: number, code: string, message: string, fields?: Record<string, string>): Response {
   return Response.json({ error: { code, message, ...(fields ? { fields } : {}) } }, { status });
