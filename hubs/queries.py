@@ -241,6 +241,7 @@ def _plan(plan: Plan, language: str) -> dict[str, Any]:
         "assistant_messages_per_month": plan.assistant_messages_per_month,
         "whatsapp_messages_per_month": plan.whatsapp_messages_per_month,
         "max_apps": plan.max_apps,
+        "includes_custom_domain": plan.includes_custom_domain,
         "upgrade_only": plan.upgrade_only,
         "internal_only": plan.internal_only,
     }

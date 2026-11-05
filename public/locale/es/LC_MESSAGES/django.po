@@ -3842,6 +3842,40 @@ msgstr "Asistente de IA"
 msgid "Not included"
 msgstr "No incluido"
 
+#: pricing.py
+msgid "Your own domain for your website (www.yourbusiness.com)"
+msgstr "Dominio propio para tu web (www.tunegocio.com)"
+
+#: templates/public/pricing/index.html templates/public/pricing/_plan_compare_cells.html
+msgid "Own domain"
+msgstr "Dominio propio"
+
+#: templates/public/pricing/_plan_compare_cells.html
+msgid "For your website"
+msgstr "Para tu web"
+
+#: legal.py
+msgctxt "the last of a list"
+msgid "and"
+msgstr "y"
+
+#: templates/public/legal/terms.html
+#, python-format
+msgid ""
+"On the %(plans)s plan, the customer's public website can also be served on "
+"their own domain; the application and access to the business stay on erplora."
+"com."
+msgid_plural ""
+"On the %(plans)s plans, the customer's public website can also be served on "
+"their own domain; the application and access to the business stay on erplora."
+"com."
+msgstr[0] ""
+"En el plan %(plans)s, la web pública del cliente también puede servirse en un "
+"dominio propio; la aplicación y la entrada al negocio siguen en erplora.com."
+msgstr[1] ""
+"En los planes %(plans)s, la web pública del cliente también puede servirse en "
+"un dominio propio; la aplicación y la entrada al negocio siguen en erplora.com."
+
 #: templates/public/demo/index.html templates/public/landing/home/_hero.html
 #: templates/public/landing/home/_cta_actions.html templates/public/partials/navbar.html
 msgid "Try the demo"

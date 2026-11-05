@@ -38,7 +38,7 @@ from django.urls import reverse
 from django.utils import translation
 
 from hubs.models import Plan
-from hubs.tests.test_plan_catalogue import CUSTOM_DOMAIN_WORDS
+from hubs.tests.test_plan_catalogue import APP_ON_A_CUSTOM_DOMAIN, CUSTOM_DOMAIN_WORDS
 from public import pricing
 from public.tests.conftest import without_tokens
 from public.tests.test_legal import template_messages
@@ -264,15 +264,107 @@ def test_pricing_page_publishes_no_uptime_sla(client, seeded):
     assert match is None, match and match.group(0)
 
 
+# --- The custom domain of the business's public website (HUBS-F17, saas#301) --------------------------------------
+# saas#233 kept it off the page while no business could connect a domain; since saas#302 they can, on the plans whose
+# ``includes_custom_domain`` is true: their cards and the table say so, read from that row, and only for the public
+# website (the app stays on erplora.com).
+
+CUSTOM_DOMAIN_LINE = {
+    "en": "Your own domain for your website (www.yourbusiness.com)",
+    "es": "Dominio propio para tu web (www.tunegocio.com)",
+}
+CUSTOM_DOMAIN_HEADER = {"en": "Own domain", "es": "Dominio propio"}
+CUSTOM_DOMAIN_CELL = {"en": "For your website", "es": "Para tu web"}
+NOT_INCLUDED = {"en": "Not included", "es": "No incluido"}
+
+
+def custom_domain_cells(table: str, language: str = "en") -> list[str]:
+    """The «Own domain» cell of each plan row, in the table's order."""
+    return column_cells(table, CUSTOM_DOMAIN_HEADER[language])
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_each_card_names_the_custom_domain_only_on_the_plans_that_include_it(client, seeded, language):
+    """Standard and the plans above include it (hubs/0013); Free and Starter do not. The line goes after the messages
+    a month, where the lines worked out of the plan's row are."""
+    html = html_of(client, language=language)
+    line = CUSTOM_DOMAIN_LINE[language]
+    names = {plan.slug: plan.translated("name", language) for plan in Plan.objects.public()}
+
+    for slug in ("free", "starter"):
+        assert line not in card_items(html, names[slug]), slug
+    for slug in ("standard", "pro", "enterprise", "max"):
+        assert card_items(html, names[slug]).count(line) == 1, slug
+    assert card_items(html, names["standard"])[-1] == line
+
+
+def test_the_cards_follow_the_row_when_staff_change_the_custom_domain(client, seeded):
+    Plan.objects.filter(slug="starter").update(includes_custom_domain=True)
+    Plan.objects.filter(slug="standard").update(includes_custom_domain=False)
+    html = html_of(client)
+
+    assert CUSTOM_DOMAIN_LINE["en"] in card_items(html, "Starter")
+    assert CUSTOM_DOMAIN_LINE["en"] not in card_items(html, "Standard")
+
+
+def test_the_custom_domain_line_comes_before_the_trial(no_plans, client):
+    make_plan("starter", trial_days=15, includes_custom_domain=True, whatsapp_messages_per_month=40)
+
+    assert card_items(html_of(client), "Starter") == [
+        "Unlimited users", "All the apps turned on at once", "WhatsApp: 40 messages a month", CUSTOM_DOMAIN_LINE["en"],
+        "15-day free trial",
+    ]  # fmt: skip
+
+
+@pytest.mark.parametrize(("slug", "included"), [("standard", True), ("starter", False)])
+def test_the_detail_names_the_custom_domain_only_if_the_plan_includes_it(client, seeded, slug, included):
+    response = get(client, f"/pricing/{slug}/", "es")
+    included_block = response.content.decode().split('<h2 class="text-2xl font-semibold mb-6">', 1)[1].split("</ion-card>", 1)[0]
+
+    assert (CUSTOM_DOMAIN_LINE["es"] in included_block) is included
+    assert (CUSTOM_DOMAIN_LINE["es"] in response.context["plan"]["own_features"]) is included
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_the_table_compares_the_custom_domain_of_each_plan(client, seeded, language):
+    table = plan_table(html_of(client, language=language))
+    head = table_head(table)
+    yes, no = CUSTOM_DOMAIN_CELL[language], NOT_INCLUDED[language]
+
+    assert CUSTOM_DOMAIN_HEADER[language] in head
+    assert custom_domain_cells(table, language) == [no, no, yes, yes, yes, yes]
+
+
+def test_the_table_reads_the_custom_domain_from_the_rows(client, seeded):
+    Plan.objects.filter(slug="free").update(includes_custom_domain=True)
+    Plan.objects.filter(slug="max").update(includes_custom_domain=False)
+
+    cells = custom_domain_cells(plan_table(html_of(client)))
+
+    assert (cells[0], cells[-1]) == ("For your website", "Not included")
+
+
 @pytest.mark.parametrize("path", [INDEX, "/pricing/standard/"])
 @pytest.mark.parametrize("language", ["en", "es"])
-def test_pricing_sells_no_custom_domain_nobody_can_connect(client, seeded, path, language):
-    """saas#233: Standard's card, its description and the table's intro sold a custom domain no business can connect
-    (HUBS-F17 ``descartado``, saas#195 deferred). The whole page, structured data included, in both languages."""
+def test_without_a_plan_that_includes_it_the_page_names_no_custom_domain(client, seeded, path, language):
+    """saas#233's guard, now tied to the gate: with no plan on sale that includes one, neither the cards, nor the
+    descriptions, nor the table (no column whose every cell says the same) name a custom domain. The whole page,
+    structured data included."""
+    Plan.objects.update(includes_custom_domain=False)
     html = unescape(html_of(client, path, language))
 
     match = CUSTOM_DOMAIN_WORDS.search(html)
     assert match is None, f"{path} ({language}) sells a custom domain: {html[max(0, match.start() - 90) : match.end() + 90]!r}"
+
+
+@pytest.mark.parametrize("path", [INDEX, "/pricing/standard/"])
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_the_pricing_page_never_puts_the_app_on_a_custom_domain(client, seeded, path, language):
+    """Only the public website goes on the business's domain; the app stays on erplora.com (PLAN-SAAS §37 point 2)."""
+    html = unescape(html_of(client, path, language))
+
+    assert CUSTOM_DOMAIN_WORDS.search(html), "control: the page names the custom domain of the plans that include it"
+    assert APP_ON_A_CUSTOM_DOMAIN.search(html) is None
 
 
 # --- test_faq_structured_data.py --------------------------------------------------------------
@@ -390,8 +482,8 @@ TABLE_RE = re.compile(r'<table[^>]*id="plan-compare".*?</table>', re.S)
 
 
 #: The columns of the comparison table: plan, price, devices and users, apps turned on at once (hub#256), database
-#: throughput, AI assistant, WhatsApp, support and access.
-COLUMNS = 9
+#: throughput, AI assistant, WhatsApp, own domain (saas#301: while a plan on sale includes one), support and access.
+COLUMNS = 10
 
 
 def plan_table(html: str) -> str:
@@ -579,14 +671,19 @@ def plan_rows(table: str) -> list[str]:
     return [row for row in table.split("<tr")[1:] if "<strong>" in row]
 
 
-def apps_cells(table: str, language: str = "en") -> list[str]:
-    """The «Apps turned on at once» cell of each plan row, in the table's order."""
+def column_cells(table: str, title: str) -> list[str]:
+    """The cell of the column ``title`` in each plan row, in the table's order."""
     cells = []
     for row in plan_rows(table):
-        match = re.search(rf'<td data-title="{APPS_HEADER[language]}">(.*?)</td>', row, re.S)
+        match = re.search(rf'<td data-title="{title}">(.*?)</td>', row, re.S)
         assert match, row[:200]
         cells.append(" ".join(match.group(1).split()))
     return cells
+
+
+def apps_cells(table: str, language: str = "en") -> list[str]:
+    """The «Apps turned on at once» cell of each plan row, in the table's order."""
+    return column_cells(table, APPS_HEADER[language])
 
 
 @pytest.mark.parametrize("language", ["en", "es"])

@@ -31,7 +31,7 @@ from django.urls import resolve, reverse
 from django.utils.translation.template import templatize
 
 from accounts.models import PRIVACY_VERSION, TERMS_VERSION
-from hubs.tests.test_plan_catalogue import CUSTOM_DOMAIN_WORDS
+from hubs.tests.test_plan_catalogue import APP_ON_A_CUSTOM_DOMAIN, CUSTOM_DOMAIN_WORDS
 from public.sitemaps import StaticPagesSitemap
 from public.tests.conftest import without_tokens
 
@@ -956,11 +956,49 @@ def test_terms_sections_are_numbered_consecutively(client):
     assert numbers == list(range(1, len(numbers) + 1))
 
 
+#: What the terms say of the custom domain (HUBS-F17, saas#301): on the plans that include one, read from their rows,
+#: and only the public website; the app and the way in stay on erplora.com (PLAN-SAAS §37 point 2).
+CUSTOM_DOMAIN_TERMS = {
+    "en": (
+        "On the Standard, Pro, Enterprise and Max plans, the customer's public website can also be served on "
+        "their own domain; the application and access to the business stay on erplora.com."
+    ),
+    "es": (
+        "En los planes Standard, Pro, Enterprise y Max, la web pública del cliente también puede servirse en un "
+        "dominio propio; la aplicación y la entrada al negocio siguen en erplora.com."
+    ),
+}
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize("language", ["en", "es"])
-def test_the_terms_name_no_custom_domain_nobody_can_connect(client, language):
-    """saas#233: §1 said the service runs on «the customer's own domains», which no business can connect (HUBS-F17
-    ``descartado``, saas#195 deferred)."""
+def test_the_terms_name_the_plans_that_include_a_custom_domain(client, language):
+    """§1 named «the customer's own domains» before any could be connected (saas#233 took it out); since saas#302
+    they can, on the plans whose ``includes_custom_domain`` is true, and only for the public website."""
+    html = terms_html(client, language)
+
+    assert CUSTOM_DOMAIN_TERMS[language] in paragraphs_of(html)
+    assert APP_ON_A_CUSTOM_DOMAIN.search(html) is None
+
+
+@pytest.mark.django_db
+def test_the_terms_follow_the_rows_of_the_plans(client):
+    from hubs.models import Plan
+
+    Plan.objects.exclude(slug="standard").update(includes_custom_domain=False)
+
+    assert CUSTOM_DOMAIN_TERMS["en"].replace("Standard, Pro, Enterprise and Max plans", "Standard plan") in paragraphs_of(
+        terms_html(client)
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_without_a_plan_that_includes_it_the_terms_name_no_custom_domain(client, language):
+    """saas#233's guard, now tied to the gate: no plan on sale with one, no custom domain in the terms."""
+    from hubs.models import Plan
+
+    Plan.objects.update(includes_custom_domain=False)
     html = terms_html(client, language)
 
     match = CUSTOM_DOMAIN_WORDS.search(html)
@@ -1307,7 +1345,8 @@ def test_the_uk_clause_is_translated_into_spanish(client):
 def test_the_terms_date_moved_with_the_last_change(client):
     """The page says when its text last changed: the marketplace sentences (L7), then §1 and §3.1,
     every app on every plan and no module sold on its own (ronda 2026-10-24b, PLAN §32), then §1 again,
-    no customer's own domain (saas#233), then §8, the web results of the assistant (saas#277)."""
+    no customer's own domain (saas#233), then §8, the web results of the assistant (saas#277), and the same day the
+    opening clause, the plans that include an own domain (saas#301)."""
     html = terms_html(client)
     spanish = terms_html(client, "es")
 

@@ -11,8 +11,10 @@
   marketplace; every app is ours now (spec §8.3). §1 said that the free apps come with every plan
   and the premium apps with the paid plans (decision 17); every plan includes all the apps now
   (ronda 2026-10-24b, PLAN §32), and §3.1 no longer sells modules on their own, with the date of
-  October 25, 2026. §1 named the customer's own domains, which no business can connect yet (HUBS-F17,
-  saas#195), and stopped on November 3, 2026 (saas#233). Contract: public/tests/test_legal.py.
+  October 25, 2026. §1 named the customer's own domains, which no business could connect yet (HUBS-F17,
+  saas#195), and stopped on November 3, 2026 (saas#233); since November 5, 2026 the opening clause names the
+  plans on sale that include one, read from their rows, and only for the public website (saas#301).
+  Contract: public/tests/test_legal.py.
 {% endcomment %}
 
 {% block title %}{% trans "Terms of Use" %} · ERPlora{% endblock %}
@@ -41,6 +43,17 @@
           and the <em>*.erplora.com</em> hubs.
           {% endblocktrans %}
         </p>
+        {% if custom_domain_plan_count %}
+        <p>
+          {% blocktrans trimmed count count=custom_domain_plan_count with plans=custom_domain_plans %}
+          On the {{ plans }} plan, the customer's public website can also be served on their own domain; the
+          application and access to the business stay on erplora.com.
+          {% plural %}
+          On the {{ plans }} plans, the customer's public website can also be served on their own domain; the
+          application and access to the business stay on erplora.com.
+          {% endblocktrans %}
+        </p>
+        {% endif %}
         <p>{% trans "Use of the service implies full acceptance of these terms." %}</p>
 
         <h2>{% trans "1. Service" %}</h2>

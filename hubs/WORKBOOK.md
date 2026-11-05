@@ -105,7 +105,7 @@ dirección»; «Guardar cambios» se activa al cambiar algo. Debajo, «Dominio p
 propietario escribe «Tu dominio» y pulsa «Conectar dominio»; con un dominio, su estado, por qué está parado, los dos
 registros CNAME («1. Registro de validación» y «2. Registro que apunta a ERPlora», cada uno con «Copiar el nombre» y
 «Copiar el valor»), la revisión de cada hora y «Quitar dominio». Un plan que no lo incluye dice «El plan … no incluye
-dominio propio» con «Ver planes»; un administrador lo ve sin poder cambiarlo. Al final, la «Zona de peligro» con
+dominio propio» y «Lo incluye el plan …» con «Ver planes»; un administrador lo ve sin poder cambiarlo. Al final, la «Zona de peligro» con
 «Eliminar negocio».
 
 ### Cambiar la dirección web
@@ -442,8 +442,8 @@ Pasos:
 5. Para quitarlo pulsa «Quitar dominio» y lo confirma en «Quitar …»: deja de servirse, se borra su certificado y el nombre queda libre.
 Entra: el dominio del propietario y los dos registros de su proveedor.
 Sale: la web pública del negocio en su dominio, con su certificado.
-Si falla: lo que erplora.com no acepta del nombre se dice en el propio campo («Ese dominio es de ERPlora. Escribe el tuyo.»). Un dominio que no apunta a ERPlora se queda sin activar y se dice qué registro falta. Un dominio raíz (minegocio.es) no se ofrece, porque ni admite CNAME ni la entrada tiene IP fija: se conecta www y el raíz se redirige en el proveedor. Un plan que no lo incluye no lo ofrece: dice «El plan … no incluye dominio propio» con «Ver planes», sin formulario; y al bajar a uno así se deja de servir y vuelve al subir. Sin sitio para más certificados, el dominio espera y se reintenta cada hora, y lo ya activo no se entera. Un certificado rechazado o sin validar en 72 horas hay que volver a pedirlo: el dominio sin conectar vuelve al campo para pedirlo otra vez con «Conectar dominio». Si el DNS, AWS o el Hub no responden, no cuenta como fallo y se reintenta. La aplicación y la entrada al negocio siguen en su dirección de erplora.com.
-Implicados: website (la web pública del negocio), el negocio (BASE-F110: sirve la web por su dominio), public (PUBLIC-F07: los planes y la web todavía no lo anuncian, saas#301)
+Si falla: lo que erplora.com no acepta del nombre se dice en el propio campo («Ese dominio es de ERPlora. Escribe el tuyo.»). Un dominio que no apunta a ERPlora se queda sin activar y se dice qué registro falta. Un dominio raíz (minegocio.es) no se ofrece, porque ni admite CNAME ni la entrada tiene IP fija: se conecta www y el raíz se redirige en el proveedor. Un plan que no lo incluye no lo ofrece: dice «El plan … no incluye dominio propio» y «Lo incluye el plan …», el primero a la venta que lo incluye y que no es de mejora (si no se puede saber o no hay ninguno, «Cambia a un plan que lo incluya…»), con «Ver planes», sin formulario; y al bajar a uno así se deja de servir y vuelve al subir. Sin sitio para más certificados, el dominio espera y se reintenta cada hora, y lo ya activo no se entera. Un certificado rechazado o sin validar en 72 horas hay que volver a pedirlo: el dominio sin conectar vuelve al campo para pedirlo otra vez con «Conectar dominio». Si el DNS, AWS o el Hub no responden, no cuenta como fallo y se reintenta. La aplicación y la entrada al negocio siguen en su dirección de erplora.com.
+Implicados: website (la web pública del negocio), el negocio (BASE-F110: sirve la web por su dominio), public (PUBLIC-F02, PUBLIC-F07: Planes y precios y los términos lo anuncian en los planes que lo incluyen), billing (la Tienda lo dice en esos planes)
 
 ### HUBS-F18 Eliminar un negocio
 <!-- origen: fi:saas/hubs#borrado-cancelacion-del-terminal old-saas:SAAS_DASHBOARD-F22 old-saas:SAAS_DASHBOARD-F23 old-saas:SAAS_DASHBOARD-F24 -->

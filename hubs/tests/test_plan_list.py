@@ -81,6 +81,7 @@ def test_the_shape_of_a_plan(seeded):
         "assistant_messages_per_month",
         "whatsapp_messages_per_month",
         "max_apps",
+        "includes_custom_domain",
         "upgrade_only",
         "internal_only",
     }
@@ -110,6 +111,24 @@ def test_the_shape_of_a_plan(seeded):
         "Basic",
         "Email",
     )
+
+
+def test_each_plan_says_whether_it_includes_a_custom_domain(seeded):
+    """saas#301: the gate HUBS-F17 reads (``includes_custom_domain``) travels with the plan, so the cards and the
+    Settings notice name the plans that include one; only for the business's public website."""
+    gates = {plan["slug"]: plan["includes_custom_domain"] for plan in plan_list()["plans"]}
+
+    assert gates == {"free": False, "starter": False, "standard": True, "pro": True, "enterprise": True, "max": True}
+
+
+def test_the_custom_domain_follows_the_row(seeded):
+    """Read from the row staff keep in the admin, never typed by slug."""
+    Plan.objects.filter(slug="starter").update(includes_custom_domain=True)
+    Plan.objects.filter(slug="standard").update(includes_custom_domain=False)
+
+    gates = {plan["slug"]: plan["includes_custom_domain"] for plan in plan_list()["plans"]}
+
+    assert (gates["starter"], gates["standard"]) == (True, False)
 
 
 def test_the_copy_is_in_the_callers_language(seeded):
