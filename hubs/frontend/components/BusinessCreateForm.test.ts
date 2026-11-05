@@ -159,6 +159,20 @@ describe('BusinessCreateForm: the address it proposes', () => {
     expect(s.get('create-address').text()).toBe('Your address will be pasteleria-dulce.localhost:8000');
   });
 
+  // saas#293: on a phone the proposed address broke at the hyphen («pasteleria- / dulce.…»), as if it were two
+  // addresses. Like the launcher's (HostName, audit 2 R-25), it may break only after a dot, and it is one box: when it
+  // does not fit after «Your address will be» it moves whole to the next line instead of leaving its first part behind.
+  it('paints the address whole, breaking only after a dot and never at a hyphen', async () => {
+    const s = await setup();
+    await s.type('create-name', 'Pastelería Dulce');
+    await s.clock.advance(300);
+    await flush();
+    const host = s.get('create-address').get('.host-name');
+    expect(host.findAll('.host-name__part').map((part) => part.text())).toEqual(['pasteleria-dulce.', 'localhost:8000']);
+    expect(host.findAll('wbr')).toHaveLength(1);
+    expect(host.classes()).toEqual(expect.arrayContaining(['mono', 'ion-display-inline-block']));
+  });
+
   it('shows no address without a name, nor when it could not be asked', async () => {
     const s = await setup({ api: (c) => (c.path === '/api/hubs/address' ? apiError(500, 'server_error', 'boom') : undefined) });
     expect(s.wrapper.find('[data-testid="create-address"]').exists()).toBe(false);

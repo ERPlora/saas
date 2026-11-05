@@ -760,6 +760,90 @@ def test_probe_of_a_business_the_saas_does_not_know_is_not_ready(client, erplora
     assert response.json()["ready"] is False
 
 
+
+# A demo (saas#306): no row in the SaaS, always in the AEAT's testing environment
+
+#: A demo hub of the Hub's own (``demo-<8 hex>``): the SaaS keeps no row of it (``public/demo.py``).
+DEMO = "demo-901113f0"
+
+
+@pytest.mark.parametrize("door", ["submit", "query"])
+def test_in_testing_a_demo_presents_through_erplora_without_a_row_in_the_saas(
+    client, respx_mock, erplora_seal, door
+):
+    """FISCAL-F02, VERIFACTU-F15: a demo is pinned to the AEAT's testing environment and shows the whole cycle; the
+    SaaS has no row of it, and in testing none is needed (no authorisation is read there)."""
+    route = respx_mock.post(PRE_SEAL).respond(200, text=ANSWER)
+
+    response = call(client, door, customer(hub=DEMO))
+
+    assert response.status_code == 200
+    assert route.calls.last.request.content == CUSTOMER_SENT.encode("utf-8")
+
+
+def test_in_testing_a_demo_presents_with_its_own_certificate_too(
+    client, respx_mock, own_p12
+):
+    route = respx_mock.post(PRE_HOLDER).respond(200, text=ANSWER)
+
+    response = call(client, "submit", own(own_p12, hub=DEMO))
+
+    assert response.status_code == 200
+    assert route.called
+
+
+@pytest.mark.parametrize("route", ["erplora", "own"])
+def test_a_demo_never_presents_to_production(
+    client, respx_mock, erplora_seal, own_p12, route
+):
+    """Production needs a business the SaaS knows (and, through ERPlora, its approved authorisation): a demo is
+    none, even from the prod deployment."""
+    body = (
+        customer(hub=DEMO, environment="production")
+        if route == "erplora"
+        else own(own_p12, hub=DEMO, environment="production")
+    )
+
+    response = call(client, "submit", body)
+
+    assert error_of(response) == (404, "hub_unknown")
+    assert not respx_mock.calls
+
+
+def test_in_testing_a_demo_never_presents_in_erploras_name(
+    client, respx_mock, erplora_seal
+):
+    response = call(client, "submit", payload(hub=DEMO))
+
+    assert error_of(response) == (409, "nif_mismatch")
+    assert not respx_mock.calls
+
+
+def test_probe_of_a_demo_in_testing_is_ready(client, respx_mock, erplora_seal):
+    response = call(client, "probe", probe_body(customer(hub=DEMO)))
+
+    assert response.json() == {"ready": True, "detail": erplora_seal.describe()}
+    assert not respx_mock.calls
+
+
+def test_probe_of_a_demo_for_production_is_not_ready(client, erplora_seal):
+    response = call(
+        client, "probe", probe_body(customer(hub=DEMO, environment="production"))
+    )
+
+    assert response.json()["ready"] is False
+
+
+def test_a_name_that_only_looks_like_a_demo_is_still_unknown(
+    client, respx_mock, erplora_seal
+):
+    """Only the demos' namespace (``live.slugs.is_demo_slug``: ``demo-…``) is let through without a row."""
+    response = call(client, "submit", customer(hub="demos-901113f0"))
+
+    assert error_of(response) == (404, "hub_unknown")
+    assert not respx_mock.calls
+
+
 # The headers before the body
 
 

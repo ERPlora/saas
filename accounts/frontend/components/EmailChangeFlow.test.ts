@@ -20,6 +20,7 @@ import { toastSuccess } from '@erplora/ui/shell';
 import { fakeAllauth, ok } from '../__tests__/allauth-server';
 import { type ApiCall, apiError, describeCall, flush, ionProps, mountPanel, profile, reauthRequired, typeInto } from '../__tests__/mount-panel';
 import type { ProfileOut } from '../../../frontend/sdk-types';
+import { onSessionChanged } from '../../../frontend/session-changed';
 import EmailChangeFlow from './EmailChangeFlow.vue';
 
 afterEach(() => {
@@ -102,7 +103,24 @@ describe('EmailChangeFlow', () => {
     expect(s.open.value).toBe(false);
   });
 
-  it('says a wrong code and the tries left; with none left, asks for a new code', async () => {
+  it('once the address is switched, says the session changed: the user menu shows the new one (saas#292)', async () => {
+    const heard = vi.fn();
+    const stop = onSessionChanged(heard);
+    const s = await setup((call) => (describeCall(call).path.endsWith('/verify') ? verified('laura@new.example') : Response.json(profile())));
+    await typeInto(s.q('email-change-address'), 'laura@new.example');
+    s.q('email-change-submit')?.click();
+    await flush();
+    expect(heard).not.toHaveBeenCalled();
+    await typeInto(s.q('code'), '123456');
+    s.q('email-change-submit')?.click();
+    await flush();
+    expect(heard).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
+  it('says a wrong code and the tries left; with none left, asks for a new code (the session stays as it was)', async () => {
+    const heard = vi.fn();
+    const stop = onSessionChanged(heard);
     let tries = 2;
     const s = await setup((call) =>
       describeCall(call).path.endsWith('/verify')
@@ -122,6 +140,8 @@ describe('EmailChangeFlow', () => {
     expect(s.q('email-change')?.getAttribute('aria-label')).toBe('Change your email');
     expect(ionProps(s.q('email-change-address'), 'value')).toEqual({ value: 'laura@new.example' });
     expect(s.open.value).toBe(true);
+    expect(heard).not.toHaveBeenCalled();
+    stop();
   });
 
   it('sends a new code on demand', async () => {

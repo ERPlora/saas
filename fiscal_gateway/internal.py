@@ -11,7 +11,7 @@ What each door answers:
 - ``200 {"aeat_status", "aeat_body"}``: the AEAT answered, and this is its answer as it came, whatever
   it says (reading it is the Hub's job);
 - ``404 {"error": {"code": "hub_unknown", "message"}}``: ``hub`` names no business the SaaS knows (or a
-  purged one) and is not the platform's hub through ``erplora``; nothing was sent;
+  purged one) and is not the platform's hub through ``erplora`` nor, in testing, a demo; nothing was sent;
 - ``409 {"error": {"code", "message"}}``: nothing was sent. ``nif_mismatch`` (the envelope names a
   taxpayer other than ``nif``, decided before anything else touches the AEAT; or, through ``erplora``,
   the business's approved authorisation covers another taxpayer in production, a business declares ERPlora's
@@ -42,7 +42,8 @@ In production, ERPlora's seal presents for a business's taxpayer only with the b
 authorisation (the Anexo I the staff reviewed, ``fiscal.RepresentationGrant``) whose taxpayer is ``nif``.
 In the AEAT's testing environment nobody is represented and nothing is filed, so no authorisation is asked
 for there: a business tries VeriFactu before its Anexo I is approved, and going live is where the Hub asks
-for it (PLAN-SAAS round 2026-11-03l; ADR-0360 of the old product). The one exception is the platform's hub
+for it (PLAN-SAAS round 2026-11-03l; ADR-0360 of the old product). So a demo hub (``demo-<8 hex>``), of which
+the SaaS keeps no row, presents there too, by either route, and only there (saas#306). The one exception is the platform's hub
 (``hub`` is ``settings.PLATFORM_HUB_SLUG``, a reserved slug no business bears): ERPlora's own records, in
 its own name, for the seal's holder only and without an authorisation; no business presents in ERPlora's
 name in either environment. What the authorisation says never reaches an answer nor a log. The reads are
@@ -68,6 +69,7 @@ from django.http import HttpRequest, JsonResponse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.debug import sensitive_variables
+from live.slugs import is_demo_slug
 from pydantic import ValidationError
 
 from accounts.signing import live_secrets, may_be_signed, verify_signed
@@ -280,6 +282,13 @@ def _known(hub: str) -> UUID:
     return hub_id
 
 
+def _demo_in_testing(body: ProbeIn) -> bool:
+    """Whether ``body`` comes from a demo hub (``demo-<8 hex>``, a namespace no business bears) for the AEAT's testing
+    environment: the SaaS keeps no row of a demo (``public/demo.py``), and testing reads no authorisation, so it
+    needs none (saas#306). In production a demo is a business the SaaS does not know."""
+    return body.environment == "testing" and is_demo_slug(body.hub)
+
+
 def _platform_files_its_own(body: ProbeIn, holder_tax_id: str) -> None:
     """Refuses the platform's hub a taxpayer other than the seal's holder: it files ERPlora's own records."""
     if normalise_nif(body.nif) != normalise_nif(holder_tax_id):
@@ -328,7 +337,7 @@ def _identity(body: ProbeIn) -> tuple[seal.Identity, ssl.SSLContext]:
     now = dt.datetime.now(dt.UTC)
     # The platform's hub is no business of the SaaS: it is known through ERPlora's seal only.
     platform = body.route == "erplora" and body.hub == settings.PLATFORM_HUB_SLUG
-    hub_id = None if platform else _known(body.hub)
+    hub_id = None if platform or _demo_in_testing(body) else _known(body.hub)
     if body.route == "erplora":
         identity = seal.current(now)
         if identity is None:

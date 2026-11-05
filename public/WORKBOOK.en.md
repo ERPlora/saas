@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:297292e1bf817c82a482e5a952924a5566bd263ac06cdc205d314f9140aa9756 -->
+<!-- generated from WORKBOOK.md sha256:4153358ab74da37f0e32cfb6967bec4c41d78d5f990c37a558f3b7d1a940e07f -->
 
 ## What it is for and who it is for
 
@@ -79,7 +79,7 @@ and "Other plans".
 
 ### Industries
 "ERPlora for your business." with the business types by sector and, on opening one, its page: the question one would
-type into a search engine, the apps it comes with, the frequently asked questions and the links to pricing, apps,
+type into a search engine, the apps made for that business, the frequently asked questions and the links to pricing, apps,
 product and compliance.
 
 ### Features, Security and Updates
@@ -234,7 +234,7 @@ Actor: visitor
 Screen: Industries
 Steps:
 1. The person opens "Industries" and sees "ERPlora for your business." with the business types, which they can filter by sector.
-2. They open one and see the headline with the question they would type into a search engine ("POS and ERP software for your hair salon"), an opening with the entry price and how many apps there are, the apps that business type comes with and its frequently asked questions.
+2. They open one and see the headline with the question they would type into a search engine ("POS and ERP software for your hair salon"), an opening with the entry price and how many apps there are, the apps made for that business type, with how they are turned on (the template the business's Home suggests, or one at a time), and its frequently asked questions. It never says the business comes with them out of the box: every business is born with every app off (PLAN §33).
 3. At the bottom they have the links to pricing, the app store, the product and compliance, and "Get started free" and "Browse apps".
 In: the active sectors and business types and the published apps of their sector.
 Out: nothing saved; the structured data of the application and of the frequently asked questions.

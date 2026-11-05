@@ -14,6 +14,7 @@ from django.core import mail
 from django.core.management import call_command
 from django.test import Client
 
+from assistant import services
 from assistant.tests.doors import door, error_code
 
 REPORT = "/internal/assistant/report"
@@ -209,3 +210,48 @@ def test_the_reports_have_their_own_budget(client, internal, business, settings)
 
     assert error_code(door(client, REPORT, report(business, message_id="msg_02"))) == "rate_limited"
 
+
+
+# --- An answer from the web (saas#287): Brave's terms, §3(b)(i), forbid keeping its results, in whole or in part, and a
+# mailbox keeps; the address and the title are part of them too (PLAN-SAAS §38).
+
+
+def without_the_answer(body: str) -> bool:
+    return ANSWER not in body and "Rosalía" not in body
+
+
+def test_a_report_of_an_answer_from_the_web_mails_everything_but_the_answer(client, internal, business):
+    door(client, REPORT, report(business, web=True, answer=f"{ANSWER}\n\nhttps://example.com/deudas"))
+
+    [sent] = mail.outbox
+    assert without_the_answer(sent.body) and "example.com" not in sent.body
+    assert "No es verdad" in sent.body and "¿Quién me debe dinero?" in sent.body and "msg_01" in sent.body
+    assert services.REPORT_WEB_ANSWER in sent.body
+
+
+def test_a_report_of_an_answer_not_from_the_web_mails_it_while_the_search_is_on(client, internal, business, settings):
+    settings.BRAVE_SEARCH_API_KEY = "made-up-brave-key"
+
+    door(client, REPORT, report(business, web=False))
+
+    assert ANSWER in mail.outbox[0].body
+    assert services.REPORT_WEB_ANSWER not in mail.outbox[0].body
+
+
+def test_while_the_search_is_on_a_report_that_does_not_say_where_its_answer_came_from_mails_no_answer(
+    client, internal, business, settings
+):
+    """A Hub (or a panel) that does not send the mark yet: its answer may be from the web, so it is left out."""
+    settings.BRAVE_SEARCH_API_KEY = "made-up-brave-key"
+
+    door(client, REPORT, report(business))
+
+    assert without_the_answer(mail.outbox[0].body)
+    assert services.REPORT_WEB_ANSWER in mail.outbox[0].body
+
+
+def test_the_mark_of_the_web_is_a_yes_or_a_no(client, internal, business):
+    response = door(client, REPORT, report(business, web="maybe"))
+
+    assert (response.status_code, error_code(response)) == (422, "invalid_payload")
+    assert mail.outbox == []

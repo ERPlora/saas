@@ -331,9 +331,10 @@ def _assistant_message(text: str, calls: list[dict]) -> dict:
 
 async def gateway_frames(request: HttpRequest, caller: Caller, plan: dict) -> AsyncIterator[dict]:
     """A turn through the gateway, as the panel's frames: ``text`` piece by piece, ``usage``, an ``error``, and
-    ``done`` with what the browser keeps (``append``), the tools the model asked for (``pending``) and their
-    ``continuation``. One turn of the account's budget (the Hub's door's, ``ASSISTANT_TURN_RATELIMIT``) and, unless it
-    answers the tools the model asked for, one message of its allowance. A refusal is a lone ``error``."""
+    ``done`` with what the browser keeps (``append``), the tools the model asked for (``pending``), their
+    ``continuation`` and whether the answer brought pages from the web (``web``: the browser sends it back with a report
+    of the answer, whose text is then not mailed). One turn of the account's budget (the Hub's door's,
+    ``ASSISTANT_TURN_RATELIMIT``) and, unless it answers the tools the model asked for, one message of its allowance. A refusal is a lone ``error``."""
     data = SimpleNamespace(
         messages=plan["messages"],
         instructions=plan["instructions"],
@@ -353,7 +354,7 @@ async def gateway_frames(request: HttpRequest, caller: Caller, plan: dict) -> As
     text: list[str] = []
     calls: list[dict] = []
     token: str | None = None
-    finished = failed = False
+    finished = failed = web = False
     async with aclosing(gateway.frames(started)) as framed:
         async for frame in framed:
             if frame == "[DONE]":
@@ -373,6 +374,8 @@ async def gateway_frames(request: HttpRequest, caller: Caller, plan: dict) -> As
                 )
             elif kind == "response":
                 token = frame.get("continuation") or None
+            elif kind == "web":
+                web = True
             elif kind == "usage":
                 yield {"type": "usage", **{key: frame.get(key) for key in ("used", "limit", "resets_at", "demo")}}
             elif kind == "error":
@@ -385,9 +388,10 @@ async def gateway_frames(request: HttpRequest, caller: Caller, plan: dict) -> As
             "append": [_assistant_message(said, [])] if said else [],
             "pending": [],
             "continuation": None,
+            "web": web,
         }
         return
-    yield {"type": "done", "append": [_assistant_message(said, calls)], "pending": calls, "continuation": token}
+    yield {"type": "done", "append": [_assistant_message(said, calls)], "pending": calls, "continuation": token, "web": web}
 
 
 async def turn_frames(request: HttpRequest, caller: Caller, plan: dict) -> AsyncIterator[bytes]:
@@ -399,12 +403,18 @@ async def turn_frames(request: HttpRequest, caller: Caller, plan: dict) -> Async
     if plan["confirm"] is not None:
         yield sse({"type": "confirm", "card": plan["confirm"], "call": plan["pending"][0]})
         yield sse(
-            {"type": "done", "append": plan["append"], "pending": plan["pending"], "continuation": plan["continuation"]}
+            {
+                "type": "done",
+                "append": plan["append"],
+                "pending": plan["pending"],
+                "continuation": plan["continuation"],
+                "web": False,
+            }
         )
         return
     if plan["stop"]:
         yield sse({"type": "error", "code": plan["stop"]})
-        yield sse({"type": "done", "append": plan["append"], "pending": [], "continuation": None})
+        yield sse({"type": "done", "append": plan["append"], "pending": [], "continuation": None, "web": False})
         return
     closed = False
     async with aclosing(gateway_frames(request, caller, plan)) as framed:
@@ -414,7 +424,7 @@ async def turn_frames(request: HttpRequest, caller: Caller, plan: dict) -> Async
                 frame = {**frame, "append": [*plan["append"], *frame["append"]]}
             yield sse(frame)
     if not closed:
-        yield sse({"type": "done", "append": plan["append"], "pending": [], "continuation": None})
+        yield sse({"type": "done", "append": plan["append"], "pending": [], "continuation": None, "web": False})
 
 
 def turn_response(request: HttpRequest, plan: dict) -> StreamingHttpResponse:

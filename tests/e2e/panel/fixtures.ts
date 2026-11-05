@@ -221,6 +221,31 @@ export async function settled(page: Page): Promise<void> {
   await page.evaluate(() => new Promise<void>((painted) => requestAnimationFrame(() => requestAnimationFrame(() => painted()))));
 }
 
+/** The panel's side menu: pinned from `lg` (992 px), its drawer behind the topbar's menu button below. Opens the drawer
+ *  when the menu is not on screen, and waits until it has slid in with its entries inside the screen. */
+export async function openMenu(page: Page): Promise<void> {
+  const entries = page.locator('ion-menu .nav-item');
+  await expect(entries.first()).toBeAttached();
+  await settled(page);
+  if (!(await entries.first().isVisible())) {
+    await page.locator('ion-router-outlet > .ion-page:not(.ion-page-hidden) ion-menu-button').last().click();
+    await expect(entries.first()).toBeVisible();
+    // The drawer slides in: it counts as open once its animation ends and its entries sit inside the screen.
+    await expect
+      .poll(() => page.evaluate(() => (document.querySelector('ion-menu') as (HTMLElement & { isOpen: () => Promise<boolean> }) | null)?.isOpen() ?? false))
+      .toBe(true);
+    await expect.poll(async () => (await entries.first().boundingBox())?.x ?? -1).toBeGreaterThanOrEqual(0);
+  }
+}
+
+/** Closes the drawer `openMenu` opened (nothing to do where the menu is pinned). */
+export async function closeMenu(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const menu = document.querySelector('ion-menu') as (HTMLElement & { close?: () => Promise<boolean> }) | null;
+    await menu?.close?.();
+  });
+}
+
 /** The fewest rows `repeatedTop` counts as a stripe. */
 const STRIPE_MIN_ROWS = 8;
 
