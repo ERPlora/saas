@@ -90,7 +90,12 @@ case "$1 $2" in
     printf '%s\t%s\n' "$primary" "$state"
     ;;
   "ecs list-task-definitions")
-    cat "$FIXTURES/list-$(value --family-prefix)"
+    # FAKE_LIST_FAILURE: the call fails with that error. A prefix without a fixture lists nothing.
+    if [ -n "${FAKE_LIST_FAILURE:-}" ]; then
+      echo "An error occurred ($FAKE_LIST_FAILURE) when calling the ListTaskDefinitions operation" >&2
+      exit 254
+    fi
+    if [ -f "$FIXTURES/list-$(value --family-prefix)" ]; then cat "$FIXTURES/list-$(value --family-prefix)"; fi
     echo
     ;;
   "ecs describe-task-definition")
@@ -215,6 +220,48 @@ check "the worker service is neither queried nor rolled back" '! grep -Eq -- "--
 check "nothing of the hub is touched" \
   '! grep -Eq -- "erplora-prod-hub|/erplora/prod/hub/|--services? hub( |$)" "$CALLS_LOG"'
 check "nothing of pre is touched" '! grep -Eq -- "erplora-pre-|/erplora/pre/|saas-pre" "$CALLS_LOG"'
+
+# --- the saas-worker service (saas#305) ---------------------------------------------------
+# ERPlora/aws creates it (aws#59): until its family exists the rollback goes on without it and says
+# so; from then on it goes back with saas, to a revision of the same tag.
+# with_worker <environment> [<suffix>]: saas-worker<suffix> runs erplora-<environment>-saas-worker:12.
+with_worker() {
+  echo "$td/erplora-$1-saas-worker:12" > "$STATE/primary-saas-worker${2:-}"
+  printf '%s\t' "$td/erplora-$1-saas-worker:12" "$td/erplora-$1-saas-worker:10" > "$FIXTURES/list-erplora-$1-saas-worker"
+}
+setup
+run_rollback && status=0 || status=$?
+check "saas-worker: before it exists, the rollback succeeds without it and says so" \
+  '[ "$status" -eq 0 ] && grep -q "::warning::erplora-prod-saas-worker does not exist yet (aws#59 not applied): skipped" "$work/out.log" &&
+   ! grep -Eq -- "--services? saas-worker" "$CALLS_LOG"'
+setup
+with_worker prod
+run_rollback && status=0 || status=$?
+check "saas-worker: once it exists, it goes back with saas to its previous revision" \
+  '[ "$status" -eq 0 ] && ! grep -q "::warning::erplora-prod-saas-worker" "$work/out.log" &&
+   grep -q "update-service .*--service saas-worker --task-definition $td/erplora-prod-saas-worker:10 " "$CALLS_LOG" &&
+   grep -q "update-service .*--service saas --task-definition $td/erplora-prod-saas:10 " "$CALLS_LOG"'
+check "saas-worker: the rollback waits for both and checks the worker before recording the tag" \
+  'grep -Eq "wait services-stable .*--services saas saas-worker$" "$CALLS_LOG" && [ "$(reads_of saas-worker)" -ge 1 ] &&
+   [ "$(line_of "ssm put-parameter")" -gt "$(last_line_of "describe-services .*--services saas-worker ")" ]'
+setup
+with_worker prod
+echo "$td/erplora-prod-saas-worker:10 reg.example/erplora/saas:tag-other" > "$FIXTURES/images"
+run_rollback && status=0 || status=$?
+check "saas-worker: a previous revision of another tag than saas's changes nothing" \
+  '[ "$status" -ne 0 ] && ! grep -Eq "update-service|put-parameter" "$CALLS_LOG" &&
+   grep -q "::error::the previous revisions run different tags" "$work/out.log"'
+setup
+run_rollback FAKE_LIST_FAILURE=AccessDeniedException && status=0 || status=$?
+check "saas-worker: a failure to look for it is not taken for a missing family: nothing changes" \
+  '[ "$status" -ne 0 ] && ! grep -Eq "update-service|put-parameter" "$CALLS_LOG" && ! grep -q "::warning::erplora-prod-saas-worker" "$work/out.log" &&
+   grep -q "::error::could not look for erplora-prod-saas-worker" "$work/out.log"'
+setup
+with_worker pre -pre
+run_rollback ENVIRONMENT=pre && status=0 || status=$?
+check "pre: saas-worker-pre goes back with saas-pre" \
+  '[ "$status" -eq 0 ] && grep -q "update-service .*--service saas-worker-pre --task-definition $td/erplora-pre-saas-worker:10 " "$CALLS_LOG" &&
+   grep -Eq "wait services-stable .*--services saas-pre saas-worker-pre$" "$CALLS_LOG"'
 
 # --- pre (plan 2026-10-14-entorno-pre) --------------------------------------------------
 setup

@@ -88,12 +88,32 @@ value() {
 case "$1 $2" in
   "ecs describe-task-definition")
     family="$(value --task-definition)"
+    if [ "${FAKE_DESCRIBE_DENIED:-}" = "$family" ]; then
+      echo "An error occurred (AccessDeniedException) when calling the DescribeTaskDefinition operation" >&2
+      exit 254
+    fi
     if [ ! -f "$FIXTURES/$family.json" ]; then
       echo "An error occurred (ClientException): Unable to describe task definition." >&2
       exit 254
     fi
     # Tags only come back when asked for.
     if [ "$(value --include)" = TAGS ]; then cat "$FIXTURES/$family.json"; else jq 'del(.tags)' "$FIXTURES/$family.json"; fi
+    ;;
+  "ecs list-task-definitions")
+    # The ACTIVE revisions of the families that start with the prefix (a longer one first), or
+    # None; FAKE_LIST_FAILURE: the call fails with that error.
+    if [ -n "${FAKE_LIST_FAILURE:-}" ]; then
+      echo "An error occurred ($FAKE_LIST_FAILURE) when calling the ListTaskDefinitions operation" >&2
+      exit 254
+    fi
+    family="$(value --family-prefix)"
+    if [ -f "$FIXTURES/$family.json" ]; then
+      printf '%s\t%s\n' "arn:td/$family-longer:3" "arn:td/$family:1"
+    elif [ -f "$FIXTURES/$family-longer.json" ]; then
+      echo "arn:td/$family-longer:3"
+    else
+      echo None
+    fi
     ;;
   "ecs register-task-definition")
     file="$(value --cli-input-json)"
@@ -236,6 +256,70 @@ check "prod: every cluster-scoped ecs call names prod's cluster erplora-prod" 'c
 check "the worker service is neither queried nor updated" '! grep -Eq -- "--services? worker( |$)" "$CALLS_LOG"'
 check "nothing of the hub is touched" \
   '! grep -Eq -- "erplora-prod-(hub|worker|db-bootstrap)|/erplora/prod/hub/|--services? hub( |$)" "$CALLS_LOG"'
+
+# --- the saas-worker service (saas#305) ----------------------------------------
+# ERPlora/aws creates it once the image with run_worker is out: until its family exists the deploy
+# goes on without it and says so; from then on it is deployed with the saas service.
+setup
+run_deploy && status=0 || status=$?
+check "saas-worker: before it exists, the deploy succeeds without it and says so" \
+  '[ "$status" -eq 0 ] && grep -q "::warning::erplora-prod-saas-worker does not exist yet (aws#59 not applied): skipped" "$work/out.log"'
+check "saas-worker: before it exists, it is only looked for, by its family" \
+  'grep -q "^ecs list-task-definitions --family-prefix erplora-prod-saas-worker --status ACTIVE" "$CALLS_LOG" &&
+   ! grep -Eq -- "--task-definition erplora-prod-saas-worker|--services? saas-worker" "$CALLS_LOG"'
+setup
+task_definition erplora-prod-saas-worker '[{"name": "saas-worker", "image": "reg.example/erplora/saas:bootstrap"}]' \
+  > "$FIXTURES/erplora-prod-saas-worker.json"
+run_deploy && status=0 || status=$?
+check "saas-worker: once it exists, the deploy succeeds without a warning" \
+  '[ "$status" -eq 0 ] && ! grep -q "::warning::" "$work/out.log"'
+check "saas-worker: its new revision runs the new image" \
+  'registered erplora-prod-saas-worker "[.containerDefinitions[].image] == [\"reg.example/erplora/saas:abc123\"]"'
+check "saas-worker: its service moves to it after the migration, as the saas service does" \
+  'grep -q "update-service .*--service saas-worker --task-definition arn:td/erplora-prod-saas-worker:2" "$CALLS_LOG" &&
+   [ "$(count_of "update-service")" -eq 2 ] &&
+   [ "$(last_line_of "describe-tasks")" -lt "$(line_of "update-service .*--service saas-worker")" ]'
+check "saas-worker: the deploy waits for both services and checks the worker's rollout before recording the tag" \
+  'grep -Eq "wait services-stable .*--services saas saas-worker$" "$CALLS_LOG" &&
+   n="$(last_line_of "describe-services .*--services saas-worker .*deployments")" && [ -n "$n" ] &&
+   [ "$n" -lt "$(line_of "ssm put-parameter")" ]'
+check "saas-worker: prod never sets its desired count" '! grep -q -- "--desired-count" "$CALLS_LOG"'
+check "saas-worker: the Hub's worker is still neither queried nor updated" '! grep -Eq -- "--services? worker( |$)" "$CALLS_LOG"'
+setup
+task_definition erplora-prod-saas-worker '[{"name": "saas-worker", "image": "reg.example/erplora/saas:bootstrap"}]' \
+  > "$FIXTURES/erplora-prod-saas-worker.json"
+run_deploy FAKE_PRIMARY_REVISIONS=1 && status=0 || status=$?
+check "saas-worker: a rollout put back on the old revision fails the deploy and records no tag" \
+  '[ "$status" -ne 0 ] && grep -q "::error::saas-worker runs arn:td/erplora-prod-saas-worker:1" "$work/out.log" &&
+   ! grep -q "put-parameter" "$CALLS_LOG"'
+setup
+: > "$FIXTURES/erplora-prod-saas-worker-longer.json"
+run_deploy && status=0 || status=$?
+check "saas-worker: a longer family under the same prefix is not taken for it" \
+  '[ "$status" -eq 0 ] && grep -q "::warning::erplora-prod-saas-worker does not exist yet" "$work/out.log"'
+setup
+run_deploy FAKE_LIST_FAILURE=AccessDeniedException && status=0 || status=$?
+check "saas-worker: a failure to look for it is not taken for a missing family: the deploy fails, nothing registered" \
+  '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && ! grep -q "::warning::" "$work/out.log" &&
+   grep -q "::error::could not look for erplora-prod-saas-worker" "$work/out.log"'
+setup
+task_definition erplora-prod-saas-worker '[{"name": "saas-worker", "image": "reg.example/erplora/saas:bootstrap"}]' \
+  > "$FIXTURES/erplora-prod-saas-worker.json"
+run_deploy FAKE_DESCRIBE_DENIED=erplora-prod-saas-worker && status=0 || status=$?
+check "saas-worker: once it exists, another error reading it fails the deploy before anything is registered" \
+  '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && ! grep -Eq "run-task|update-service|put-parameter" "$CALLS_LOG"'
+setup
+task_definition erplora-pre-saas-worker '[{"name": "saas-worker", "image": "reg.example/erplora/saas-pre:bootstrap"}]' \
+  > "$FIXTURES/erplora-pre-saas-worker.json"
+run_deploy ENVIRONMENT=pre && status=0 || status=$?
+check "pre: saas-worker-pre is deployed on pre's image and woken with saas-pre" \
+  '[ "$status" -eq 0 ] &&
+   registered erplora-pre-saas-worker "[.containerDefinitions[].image] == [\"reg.example/erplora/saas-pre:abc123\"]" &&
+   grep -q "update-service .*--service saas-worker-pre --task-definition arn:td/erplora-pre-saas-worker:2 .*--desired-count 1 " "$CALLS_LOG"'
+setup
+run_deploy ENVIRONMENT=pre && status=0 || status=$?
+check "pre: before saas-worker-pre exists, the deploy succeeds without it and says so" \
+  '[ "$status" -eq 0 ] && grep -q "::warning::erplora-pre-saas-worker does not exist yet (aws#59 not applied): skipped" "$work/out.log"'
 
 # --- polling the migration ----------------------------------------------------
 setup

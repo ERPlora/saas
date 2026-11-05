@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Puts the saas's service of one environment, in that environment's own ECS cluster (prod: cluster
-# erplora-prod, service saas, family erplora-prod-saas; pre: cluster erplora-pre, service saas-pre,
-# family erplora-pre-saas; plan 2026-10-14-entorno-pre) back on the ACTIVE revision right before the
-# one its PRIMARY deployment runs and records that revision's image tag in
-# /erplora/<ENVIRONMENT>/saas/image_tag (aws-next README, "Imagen"):
+# Puts the saas's services of one environment, in that environment's own ECS cluster (prod: cluster
+# erplora-prod, services saas and saas-worker, families erplora-prod-{saas,saas-worker}; pre: cluster
+# erplora-pre, services saas-pre and saas-worker-pre, families erplora-pre-{saas,saas-worker}; plan
+# 2026-10-14-entorno-pre) back on the ACTIVE revision right before the one each PRIMARY deployment
+# runs and records that revision's image tag in /erplora/<ENVIRONMENT>/saas/image_tag (aws-next
+# README, "Imagen"). saas-worker (saas#305) is created by ERPlora/aws (aws#59): while its family does
+# not exist the rollback goes on without it and says so (::warning::); any other error looking for it
+# fails before anything changes:
 #   1. finds the service's previous revision; nothing changes unless every service has one, it is a
 #      revision of this environment (the tag Environment=<ENVIRONMENT> and the roles
 #      erplora-<ENVIRONMENT>-*: another environment's deploy role could have registered it) on this
@@ -18,6 +21,7 @@
 # Migrations are NOT undone: the previous code must work on the current schema (expand/contract).
 # Scheduled saas tasks run the latest ACTIVE saas-cron revision (aws-next scheduler.tf), so they
 # keep the newer image until the next deploy; to go back everywhere, deploy the previous release.
+# The saas-worker service goes back with saas, so its loop runs the same code as the web.
 #
 # Env: CONFIRM (exactly ROLLBACK), AWS_REGION, ENVIRONMENT (prod|pre); optional CLUSTER
 #      (erplora-<ENVIRONMENT>: each environment has its own cluster), POLL_SECONDS (15),
@@ -56,6 +60,27 @@ suffix=""
 if [ "$ENVIRONMENT" = pre ]; then
   suffix=-pre
 fi
+# Services that may not exist yet (saas-worker until aws#59 is applied); a family prefix also lists
+# longer families: only a revision of <name>'s own family counts.
+not_yet=(saas-worker)
+for name in "${not_yet[@]}"; do
+  family="erplora-$ENVIRONMENT-$name"
+  if ! arns="$(aws ecs list-task-definitions --family-prefix "$family" --status ACTIVE \
+    --region "$AWS_REGION" --query taskDefinitionArns --output text)"; then
+    echo "::error::could not look for $family; nothing was changed" >&2
+    exit 1
+  fi
+  read -ra listed <<< "$arns"
+  found=0
+  for arn in "${listed[@]}"; do
+    if [[ "${arn%:*}" == */"$family" ]]; then found=1; fi
+  done
+  if [ "$found" -eq 1 ]; then
+    families+=("$name")
+  else
+    echo "::warning::$family does not exist yet (aws#59 not applied): skipped"
+  fi
+done
 repository="erplora/$PROJECT$suffix"
 services=()
 for name in "${families[@]}"; do
