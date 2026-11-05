@@ -371,7 +371,7 @@ test('an API key asks «Confirm it’s you», opens the API once and is refused 
   expect(errors).toEqual([]);
 });
 
-test('an email the server refuses says why on its field, and on top to look at it', async ({ page }) => {
+test('an email the server refuses says why on its field, and on top to look at it until it is corrected', async ({ page }) => {
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('first'));
   await page.goto('/dashboard/account/profile');
@@ -381,6 +381,8 @@ test('an email the server refuses says why on its field, and on top to look at i
   await expect(page.getByTestId('email-change-error')).toHaveText('Check the highlighted details.');
   await expect(page.getByTestId('email-change-address')).toContainText('That is already your email.');
   await page.screenshot({ path: shot('refused-email-en') });
+  await page.getByTestId('email-change-address').locator('input').fill('e2e-first-other@example.com');
+  await expect(page.getByTestId('email-change-error')).toBeHidden();
   expect(errors).toEqual([]);
 });
 
