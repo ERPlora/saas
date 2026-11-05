@@ -1,9 +1,9 @@
 """The commands of whatsapp (``@operation`` kind="command"): the only writes of the app, each in its transaction.
 
 Only the platform runs them (``platform_context``): the Hub through its signed doors, Meta through its webhook, the
-``saas-worker`` and the commands, and the staff's admin actions. No account role holds ``whatsapp.manage``. A call to Meta or to
-the Hub never happens inside one of these: ``gateway`` calls Meta or the Hub between two commands, so no lock waits
-for a third party.
+``saas-worker`` and the commands, and the staff's admin actions. No account role holds ``whatsapp.manage``. A call to
+Meta or to the Hub never happens inside one of these: ``gateway`` calls Meta or the Hub between two commands, so no
+lock waits for a third party.
 
 - ``whatsapp.webhook.ingest``: what Meta's webhook reported, parked once per message for each active number
   (``Delivery``), the furthest status of each message, and Meta's verdicts on the templates (WHATSAPP-G07);
@@ -437,7 +437,8 @@ def delivery_hold(ctx: OperationContext, data: HoldIn) -> HoldOut:
     claimed = Q(pk__in=[])
     for held in data.deliveries:
         claimed |= Q(pk=held.id, revision=held.revision)
-    count = Delivery.objects.filter(claimed, delivered_at__isnull=True).update(next_attempt_at=data.until or timezone.now())
+    until = data.until or timezone.now()
+    count = Delivery.objects.filter(claimed, delivered_at__isnull=True).update(next_attempt_at=until)
     if count:
         on_commit(wake_the_worker)
     return HoldOut(held=count)

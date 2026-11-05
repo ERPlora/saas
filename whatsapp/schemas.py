@@ -66,7 +66,7 @@ class RecordIn(Schema):
 
 class RecordOut(Schema):
     outcome: str
-    next_attempt_at: datetime | None = Field(None, description="When it is due again; empty when taken, refused or gone.")
+    next_attempt_at: datetime | None = Field(None, description="When it is due again; empty: taken, refused or gone.")
     attempts: int = Field(0, description="The pushes the Hub did not take so far.")
 
 

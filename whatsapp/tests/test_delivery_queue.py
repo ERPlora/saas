@@ -119,7 +119,9 @@ def test_messages_received_at_the_same_instant_go_in_the_order_they_were_parked(
     assert claim() == []
 
 
-@pytest.mark.parametrize(("failed", "claimed"), [(services.IN_ORDER_ATTEMPTS - 1, []), (services.IN_ORDER_ATTEMPTS, ["wamid.2"])])
+@pytest.mark.parametrize(
+    ("failed", "claimed"), [(services.IN_ORDER_ATTEMPTS - 1, []), (services.IN_ORDER_ATTEMPTS, ["wamid.2"])]
+)
 def test_a_message_the_hub_keeps_failing_on_stops_holding_the_newer_ones_back_after_about_an_hour(
     business, failed, claimed
 ):
@@ -143,7 +145,9 @@ def test_a_business_whose_hub_fails_keeps_its_next_messages_and_the_others_go_on
     counts = gateway.deliver()
 
     assert counts == {**NOTHING, "delivered": 2, "retried": 1, "held": 1}
-    assert hub.pushes == [(business.slug, "wamid.a1"), (other_business.slug, "wamid.b1"), (other_business.slug, "wamid.b2")]
+    assert hub.pushes == [
+        (business.slug, "wamid.a1"), (other_business.slug, "wamid.b1"), (other_business.slug, "wamid.b2")
+    ]
     failed, held = row("wamid.a1"), row("wamid.a2")
     assert (failed.attempts, held.attempts) == (1, 0)
     assert held.next_attempt_at == failed.next_attempt_at > timezone.now()
@@ -244,8 +248,12 @@ def test_a_webhook_that_parks_nothing_new_does_not_wake_it(number, django_captur
     assert services.wake_the_worker not in callbacks
 
 
-@pytest.mark.parametrize(("outcome", "wakes"), [("retry", True), ("delivered", False), ("refused", False), ("drop", False)])
-def test_a_record_wakes_the_worker_when_the_row_waits_again(business, django_capture_on_commit_callbacks, outcome, wakes):
+@pytest.mark.parametrize(
+    ("outcome", "wakes"), [("retry", True), ("delivered", False), ("refused", False), ("drop", False)]
+)
+def test_a_record_wakes_the_worker_when_the_row_waits_again(
+    business, django_capture_on_commit_callbacks, outcome, wakes
+):
     park(business, "wamid.1")
     (delivery,) = claim()
 
