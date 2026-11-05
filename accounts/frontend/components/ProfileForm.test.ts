@@ -18,6 +18,7 @@ import { toastError, toastSuccess } from '@erplora/ui/shell';
 
 import { apiError, flush, ionProps, mountPanel, profile, typeInto } from '../__tests__/mount-panel';
 import type { ProfileOut } from '../../../frontend/sdk-types';
+import { onSessionChanged } from '../../../frontend/session-changed';
 import ProfileForm from './ProfileForm.vue';
 
 afterEach(() => {
@@ -163,6 +164,29 @@ describe('ProfileForm', () => {
     await flush();
     expect(ionProps(s.q('profile-first-name'), 'errorText')).toEqual({ errorText: 'Ensure this value has at most 150 characters.' });
     expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it('once the names are saved, says the session changed: the side menu shows the person by them (saas#292)', async () => {
+    const heard = vi.fn();
+    const stop = onSessionChanged(heard);
+    const s = await setup(profile(), () => Response.json(profile({ first_name: 'Laura M.', full_name: 'Laura M. Martín Pérez' })));
+    await typeInto(s.q('profile-first-name'), 'Laura M.');
+    s.q('profile-save')?.click();
+    await flush();
+    expect(heard).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
+  it('names the account refuses leave the session as it was', async () => {
+    const heard = vi.fn();
+    const stop = onSessionChanged(heard);
+    const s = await setup(profile(), () => Promise.reject(new TypeError('Failed to fetch')) as never);
+    await typeInto(s.q('profile-last-name'), 'Martín');
+    s.q('profile-save')?.click();
+    await flush();
+    expect(toastError).toHaveBeenCalled();
+    expect(heard).not.toHaveBeenCalled();
+    stop();
   });
 
   it('says a lost connection in a toast, in the person’s language', async () => {

@@ -44,6 +44,7 @@ import { SAAS_ASSISTANT } from '../assistant/frontend/options';
 import { OPERATION_ROUTES } from './generated/operation-routes';
 import entryEn from './locale/en.json';
 import entryEs from './locale/es.json';
+import { sessionChanged } from './session-changed';
 
 type Main = typeof import('./main');
 
@@ -455,6 +456,78 @@ describe("what the account chose, painted at boot (Account → Preferences; base
     fakeShell();
     await main.boot({});
     expect(shellOptions().session.value?.language).toBe('es');
+  });
+});
+
+describe('the session read again once an Account page changes what it says (saas#292, ACCOUNTS-F22)', () => {
+  /** The panel's menu as the server translates it (`base/navigation.py`): the shell paints these labels as they come. */
+  const menuIn = (language: 'en' | 'es') => [
+    {
+      id: 'base',
+      label: '',
+      items: [{ path: '/dashboard/businesses', label: language === 'es' ? 'Negocios' : 'Businesses', icon: 'lucide:store' }],
+    },
+  ];
+  const IN_ENGLISH = { ...ME, language: 'en', account_language: 'en', menu: menuIn('en') };
+
+  it('asks /api/me again, and the shell paints the menu it answers: in the language just saved', async () => {
+    renderShellHtml(IN_ENGLISH);
+    fakeShell();
+    await main.boot({});
+    const { session } = shellOptions();
+    expect(session.value?.menu).toEqual(menuIn('en'));
+    vi.mocked(sdk.client.api.call).mockResolvedValue({ ...IN_ENGLISH, language: 'es', account_language: 'es', menu: menuIn('es') });
+    sessionChanged();
+    expect(sdk.client.api.call).toHaveBeenCalledWith('base.session.me', {});
+    await vi.waitFor(() => expect(session.value?.menu).toEqual(menuIn('es')));
+    expect(session.value?.language).toBe('es');
+  });
+
+  it("takes the answer as at boot: the account's own language wins over the one the session speaks", async () => {
+    renderShellHtml(IN_ENGLISH);
+    fakeShell();
+    await main.boot({});
+    const { session } = shellOptions();
+    vi.mocked(sdk.client.api.call).mockResolvedValue({ ...IN_ENGLISH, language: 'en', account_language: 'es', menu: menuIn('es') });
+    sessionChanged();
+    await vi.waitFor(() => expect(session.value?.menu).toEqual(menuIn('es')));
+    expect(session.value?.language).toBe('es');
+  });
+
+  it('leaves the theme painted as it is: a save of it may still be on its way, and the answer predate it', async () => {
+    renderShellHtml(IN_ENGLISH);
+    fakeShell();
+    await main.boot({});
+    const { session } = shellOptions();
+    setThemeMode('dark');
+    vi.mocked(sdk.client.api.call).mockResolvedValue({ ...IN_ENGLISH, preferences: { theme_mode: 'light' }, menu: menuIn('es') });
+    sessionChanged();
+    await vi.waitFor(() => expect(session.value?.menu).toEqual(menuIn('es')));
+    expect(themeMode.value).toBe('dark');
+  });
+
+  it('a read that fails keeps the session on screen (the person stays signed in) and says so, in the language of the page', async () => {
+    renderShellHtml(IN_ENGLISH);
+    fakeShell();
+    await main.boot({});
+    const { session, status } = shellOptions();
+    const failure = new ApiError(0, 'network_error', 'Network error');
+    vi.mocked(sdk.client.api.call).mockRejectedValue(failure);
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    document.documentElement.lang = 'es';
+    sessionChanged();
+    await vi.waitFor(() => expect(toastError).toHaveBeenCalledWith(entryEs.saas.session.notRefreshed));
+    expect(session.value).toEqual(IN_ENGLISH);
+    expect(status.value).toBe('live');
+    expect(logged).toHaveBeenCalledWith('saas: base.session.me failed', failure);
+    logged.mockRestore();
+  });
+
+  it("says it in en and es (the entry's own catalogue)", () => {
+    expect([entryEn.saas.session.notRefreshed, entryEs.saas.session.notRefreshed]).toEqual([
+      "Couldn't update the menu with your changes. Reload the page.",
+      'No se ha podido actualizar el menú con tus cambios. Recarga la página.',
+    ]);
   });
 });
 

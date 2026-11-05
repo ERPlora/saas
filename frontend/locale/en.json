@@ -5,6 +5,9 @@
       "reportProblem": "Report a problem",
       "themeNotSaved": "Couldn't save the appearance to your account."
     },
+    "session": {
+      "notRefreshed": "Couldn't update the menu with your changes. Reload the page."
+    },
     "load": {
       "heading": "We couldn't load this page",
       "body": "Check your connection and try again.",

@@ -20,6 +20,7 @@ import { toastSuccess } from '@erplora/ui/shell';
 import { fakeAllauth, ok } from '../__tests__/allauth-server';
 import { type ApiCall, apiError, describeCall, flush, ionProps, mountPanel, profile, reauthRequired, typeInto } from '../__tests__/mount-panel';
 import type { ProfileOut } from '../../../frontend/sdk-types';
+import { onSessionChanged } from '../../../frontend/session-changed';
 import EmailChangeFlow from './EmailChangeFlow.vue';
 
 afterEach(() => {
@@ -100,6 +101,40 @@ describe('EmailChangeFlow', () => {
     expect(s.calls().at(-1)).toMatchObject({ path: '/api/accounts/email/verify', body: { code: '123456' } });
     expect(toastSuccess).toHaveBeenCalledWith('Your email is now laura@new.example');
     expect(s.open.value).toBe(false);
+  });
+
+  it('once the address is switched, says the session changed: the user menu shows the new one (saas#292)', async () => {
+    const heard = vi.fn();
+    const stop = onSessionChanged(heard);
+    const s = await setup((call) => (describeCall(call).path.endsWith('/verify') ? verified('laura@new.example') : Response.json(profile())));
+    await typeInto(s.q('email-change-address'), 'laura@new.example');
+    s.q('email-change-submit')?.click();
+    await flush();
+    expect(heard).not.toHaveBeenCalled();
+    await typeInto(s.q('code'), '123456');
+    s.q('email-change-submit')?.click();
+    await flush();
+    expect(heard).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
+  it('a wrong code leaves the session as it was', async () => {
+    const heard = vi.fn();
+    const stop = onSessionChanged(heard);
+    const s = await setup((call) =>
+      describeCall(call).path.endsWith('/verify')
+        ? Response.json({ verified: false, attempts_left: 1, profile: profile() })
+        : Response.json(profile()),
+    );
+    await typeInto(s.q('email-change-address'), 'laura@new.example');
+    s.q('email-change-submit')?.click();
+    await flush();
+    await typeInto(s.q('code'), '000000');
+    s.q('email-change-submit')?.click();
+    await flush();
+    expect(ionProps(s.q('code'), 'errorText')).toEqual({ errorText: 'That code is not right. Tries left: 1.' });
+    expect(heard).not.toHaveBeenCalled();
+    stop();
   });
 
   it('says a wrong code and the tries left; with none left, asks for a new code', async () => {

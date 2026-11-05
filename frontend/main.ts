@@ -49,6 +49,7 @@ import { OPERATION_ROUTES } from './generated/operation-routes';
 import en from './locale/en.json';
 import es from './locale/es.json';
 import type { SessionMeOut } from './sdk-types';
+import { onSessionChanged } from './session-changed';
 import { installSkipLink } from './skip-link';
 
 /** «Help» of the user menu. */
@@ -121,11 +122,21 @@ export function appMessages(catalogues: Record<string, AppCatalogue>): CreateShe
  */
 function applyAccount(me: SessionMeOut): SessionMeOut {
   if (me.preferences) setThemeMode(me.preferences.theme_mode);
+  return inAccountLanguage(me);
+}
+
+/** The session speaking the account's own language. A session read again keeps the theme painted: it is already the
+ *  account's (painted when chosen), and a save of it may still be on its way. */
+function inAccountLanguage(me: SessionMeOut): SessionMeOut {
   const own = me.account_language;
   return own && shellLocale(own) !== shellLocale(me.language) ? { ...me, language: own } : me;
 }
 
-/** A failed `/api/me` ends in `error`, so the auth gate stops waiting and sends to the login. */
+/**
+ * A failed `/api/me` ends in `error`, so the auth gate stops waiting and sends to the login. `reload` reads it again
+ * when an Account page says it changed (`sessionChanged`: the language, whose menu the server translates, or the name,
+ * saas#292); a failed reload keeps the session on screen and says so, in the language of the page.
+ */
 function loadSession(client: LiveClient, doc: Document) {
   const text = doc.getElementById('session-me')?.textContent;
   const me = ref<SessionMeOut | undefined>(text ? applyAccount(JSON.parse(text) as SessionMeOut) : undefined);
@@ -142,7 +153,18 @@ function loadSession(client: LiveClient, doc: Document) {
       },
     );
   }
-  return { session: me, status };
+  const reload = () =>
+    client.api.call('base.session.me', {}).then(
+      (answer) => {
+        me.value = inAccountLanguage(answer);
+      },
+      (error: unknown) => {
+        console.error('saas: base.session.me failed', error);
+        const texts = { en, es }[shellLocale(doc.documentElement.lang)];
+        void toastError(texts.saas.session.notRefreshed);
+      },
+    );
+  return { session: me, status, reload };
 }
 
 /**
@@ -196,8 +218,9 @@ export async function boot(
   configureAssistant(panelAssistant(doc));
   const client = createLiveClient(config, { routes: OPERATION_ROUTES });
   const auth = createAllauthClient(config);
-  const session = loadSession(client, doc);
+  const { reload, ...session } = loadSession(client, doc);
   keepThemeInAccount(client, session.session, doc);
+  onSessionChanged(() => void reload());
   const { app, router } = await createShell({
     ...session,
     routes: appRoutes(routeFiles),

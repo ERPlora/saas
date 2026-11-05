@@ -12,6 +12,7 @@ import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { ProfileOut } from '../../../frontend/sdk-types';
+import { sessionChanged } from '../../../frontend/session-changed';
 import { useErrorText } from '../error-text';
 import EmailChangeFlow from './EmailChangeFlow.vue';
 import PhotoPicker from './PhotoPicker.vue';
@@ -61,6 +62,8 @@ async function save(): Promise<void> {
     shown = { first: saved.first_name, last: saved.last_name };
     firstName.value = saved.first_name;
     lastName.value = saved.last_name;
+    // The side menu shows the person by these names: the entry reads the session again (saas#292).
+    sessionChanged();
     void toastSuccess(t('accounts.account.profile.saved'));
   } catch {
     if (update.error.value?.status !== 422) void toastError(text(update.error.value));
