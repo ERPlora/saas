@@ -21,9 +21,10 @@ jobs:
     with:
       specs: all
 
+  # Whatever e2e's result, a timeout included; not when someone cancels the run by hand.
   report:
     needs: e2e
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

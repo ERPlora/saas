@@ -167,8 +167,8 @@ check("nightly's e2e runs e2e.yml on every spec",
       njobs.get("e2e", {}).get("uses") == "./.github/workflows/e2e.yml"
       and (njobs.get("e2e", {}).get("with") or {}).get("specs") == "all")
 report = njobs.get("report", {})
-check("report waits for e2e and runs whatever its result",
-      needs(report) == ["e2e"] and str(report.get("if", "")) == "always()")
+check("report waits for e2e and runs whatever its result, unless the run was cancelled by hand",
+      needs(report) == ["e2e"] and str(report.get("if", "")) == "${{ !cancelled() }}")
 check("only report may write issues",
       [name for name, job in njobs.items() if (job.get("permissions") or {}).get("issues") == "write"] == ["report"]
       and report.get("permissions") == {"contents": "read", "issues": "write"})
