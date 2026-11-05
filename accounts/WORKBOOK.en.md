@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:13c89d6ea42027929a6bb1c71f7f1c84b8a706cc02f2ef40b7026f9b5b2ced4b -->
+<!-- generated from WORKBOOK.md sha256:01c9c83ec809038c9e50f17c48e23a6da0e2ba0df5aa41e0dfc80077cd1d0fec -->
 
 ## What it is for and who it is for
 
@@ -274,9 +274,9 @@ Steps:
 1. The person taps "Start free" on the website or opens the **Entrance** and chooses "Create account" (the old sign-up addresses lead to this tab and keep where they were going). They see "Enter your email and choose a password. We'll email you a code to confirm it.".
 2. They type their email and a password (with the eye to check it) and tap "Create account".
 3. erplora.com checks the password: at least 8 characters, not like their email, not a common password and not only numbers. It creates the account and sends them a six-digit code.
-4. The screen moves to **Check your email** (ACCOUNTS-F02); with the right code they are signed in and reach "Create your business".
+4. The screen moves to **Check your email** (ACCOUNTS-F02); with the right code they are signed in and reach "Create your business", in the language they signed up in.
 In: the email (without spaces, in lower case and with full-width letters turned into the usual ones, so that an address that looks like another does not create a second account; the same when inviting it to a business, which invites that account), the password and where they were going (only pages of erplora.com).
-Out: the account, active, with its email not confirmed yet and the terms accepted (ACCOUNTS-F10). No business is created. The application that draws this screen is the same door as any other program: the same rules apply to all.
+Out: the account, active, with its email not confirmed yet, the language of the page they signed up on (the one chosen on the public website or, failing that, the browser's) and the terms accepted (ACCOUNTS-F10). No business is created. The application that draws this screen is the same door as any other program: the same rules apply to all.
 If it fails: a password that does not pass the rules appears under the password and nothing is created; an invalid email (also with full-width letters before the at sign), under the email. An email that already has an account answers just like a new one and its mailbox receives "an account using that email address already exists" with the link to set a password, without a code: this is also how the invited person, whose account has no password yet, sets theirs, and nobody takes over someone else's account. More than 10 sign-ups in an hour from the same network address: "Too many attempts. Please wait a few minutes and try again.".
 Involved: hubs (the **Entrance** and "Create your business")
 
@@ -345,7 +345,7 @@ Steps:
 3. If there is already an erplora.com account with that email, they sign in to it, Google stays linked and its email receives the notice "Google sign-in was added to your account"; if there is none, the account is created with the email already confirmed and without a form.
 4. Once in, they go where they were going or to the **Entrance** with their session; with the authenticator app, they first go through **Two-step verification**.
 In: what Google confirms (email, first and last name) and where they were going.
-Out: the Google account linked and, if new, the account, without a password (set with "Forgot your password?"). Google does not ask for the email's code: it already proves it.
+Out: the Google account linked and, if new, the account, without a password (set with "Forgot your password?") and with the language of the page, as in ACCOUNTS-F01; signing in to an account that already exists does not change its language. Google does not ask for the email's code: it already proves it.
 If it fails: "Cancel" at Google goes back to the **Entrance**; a Google error or an email Google does not confirm leads to the sign-in's error page, without creating or linking anything. Linking Google to an open session without signing in with it is not allowed: it says that Google is only linked by signing in with the Google account of the email.
 Involved: none
 
@@ -564,7 +564,7 @@ Steps:
 3. In "Language" they pick "English" or "Español": the panel changes language at once, and so do the mails we send them.
 4. In another browser or after reloading, the panel opens with the account's appearance and language.
 In: the appearance and the language.
-Out: the account's appearance and language, the same on all its devices; the language is also the one of its mails and the one its businesses get at sign-in. In the panel the account's language rules; the public website follows the one chosen on it or the browser's.
+Out: the account's appearance and language, the same on all its devices; the language is also the one of its mails and the one its businesses get at sign-in. The account is born with the language of the page it signed up on (ACCOUNTS-F01, ACCOUNTS-F06), or with that of the business that invites it; from then on this screen decides it. In the panel the account's language rules; the public website follows the one chosen on it or the browser's.
 If it fails: if it cannot be saved, the control goes back to what it was and a notice says why; if the preferences do not load, "We could not load your preferences" with "Try again". No currency is chosen: ERPlora charges in euros.
 Involved: hubs (the language when entering a business)
 

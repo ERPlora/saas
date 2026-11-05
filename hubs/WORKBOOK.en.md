@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:513f7e3051c66c08ee317c2db18a98361ebda90697bba7226f80461d4c710d62 -->
+<!-- generated from WORKBOOK.md sha256:92f8e27075f6fd61dc7fdbbbad5761af253ae4f1b3f3f5a5a511fc2441bd2072 -->
 
 ## What it is for and who it is for
 
@@ -194,7 +194,7 @@ Steps:
 2. They type the "Business name"; underneath appears "Your address will be …" with the address the name proposes. The "Country" comes suggested by the browser's language and the "Business type (optional)" accepts "I don't know yet"; underneath it says the business's Home will suggest a template and that the type helps choose it.
 3. They press "Create my business": "Business created: …" shows and the card moves to **Preparing** (HUBS-F04).
 In: the name, the country (one of the 27 of the European Union where ERPlora sells) and, if the person knows it, the business type; the account's session.
-Out: the business on the Free plan (without a card and without a trial), with the person as owner, its address taken from the name (if it is taken it is numbered, `bar-manolo-2`; a reserved word is completed by itself) and who pays, with the business's country. The businesses' service receives the sign-up as soon as it is saved and, with the business type, its sector. The business is born with every app off: its Home proposes starting with a template, its sector's first if there is one (BASE-F38), or turning them on one by one. Records `hubs.business.created`.
+Out: the business on the Free plan (without a card and without a trial), in the account's language (ACCOUNTS-F22), with the person as owner, its address taken from the name (if it is taken it is numbered, `bar-manolo-2`; a reserved word is completed by itself) and who pays, with the business's country. The businesses' service receives the sign-up as soon as it is saved and, with the business type, its sector. The business is born with every app off: its Home proposes starting with a template, its sector's first if there is one (BASE-F38), or turning them on one by one. Records `hubs.business.created`.
 If it fails: without a name, "Write the name of your business." and nothing is sent; a country outside the list, the error on the field. If the account already has its free business, it does not create another: the dialog says "You already have a free business" and offers "Change the plan of …"; asked of the panel's assistant, it shows no card and says to change the plan of the business it already has (ASSISTANT-F25). Without the Free plan available, "Businesses cannot be created right now. Try again in a few minutes.". An account of ERPlora's staff does not create businesses. Two presses in a row create a single one.
 Involved: accounts (the account and the Entrance), the business (receives its sign-up; BASE-F38: proposes the template on its Home), the panel's assistant (ASSISTANT-F25)
 
