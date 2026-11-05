@@ -1,10 +1,11 @@
 // The assistant's doors of the Hub (MIGRATION-TASK APP-ASSISTANT-2; assistant/WORKBOOK.md, ASSISTANT-F11 to F24),
 // called by HTTP as the Hub calls them: signed with the shared secret (accounts.signing, v1 and v2), against the
 // panel's own Django and the rows of assistant_seed.py («gateway»). The provider is assistant.tests.fake_provider, a
-// real HTTP server on 127.0.0.1 that speaks OpenAI's API (the turn streamed in three pieces, two fingerprints, a
-// dictation and a reading aloud): no test reaches a real provider and no real key is ever typed. Then «Assistant
-// usage» in erplora.com's admin at the three sizes of the migration (390×844, 834×1112, 1440×900), in English and in
-// Spanish.
+// real HTTP server on 127.0.0.1 that speaks OpenAI's API (the turn streamed in three pieces, two fingerprints and a
+// dictation): no test reaches a real provider and no real key is ever typed. Then «Assistant usage» in erplora.com's
+// admin at the three sizes of the migration (390×844, 834×1112, 1440×900), in English and in Spanish.
+//
+// The one e2e the CI runs (job `e2e-doors` of test.yml): a change to a door touches no screen, so nobody runs it by hand.
 // flow: ASSISTANT-F11 — only a signed call of a working business passes; it names the business it is for.
 // flow: ASSISTANT-F12 — a turn answered live, piece by piece, ending with the allowance left.
 // flow: ASSISTANT-F13 — the same turn answered at once.
@@ -12,7 +13,7 @@
 // flow: ASSISTANT-F18 — each turn spends one message of the plan; a demo has its own few.
 // flow: ASSISTANT-F20 — the fingerprints of the Hub's texts, in their order.
 // flow: ASSISTANT-F21 — a dictation turned into its text.
-// flow: ASSISTANT-F22 — an answer read aloud.
+// flow: ASSISTANT-F22 — asked to read an answer aloud, the door says it cannot, and the caller uses the device's voice.
 // flow: ASSISTANT-F23 — the report of an answer, mailed once.
 // flow: ASSISTANT-F24 — the staff see what each business spent and what it cost, without changing it.
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
@@ -228,14 +229,35 @@ test('ASSISTANT-F21: a dictation is turned into its text', async ({ request }) =
   expect(await response.json()).toEqual({ text: 'How many appointments do I have today?', language: 'en' });
 });
 
-test('ASSISTANT-F22: an answer is read aloud', async ({ request }) => {
+test('ASSISTANT-F22: asked to read an answer aloud, the door says it cannot and spends nothing', async ({ request }) => {
   const made = seed('gateway');
+  const reading = { hub: made.bar, text: 'You have two appointments today.', language: 'en' };
+  const speak = (payload: unknown) => call(request, '/internal/speech/synthesize', payload);
+  const used = async () => (await (await call(request, '/internal/assistant/usage', { hub: made.bar })).json()).used;
+  const before = await used();
 
-  const response = await call(request, '/internal/speech/synthesize', { hub: made.bar, text: 'You have two appointments today.', voice: 'nova' });
+  // What the Hub sends (base/assistant.py, `speak`): the voice only when one was chosen. The 503 is what it reads with the device's voice on.
+  for (const asked of [reading, { ...reading, voice: 'nova' }]) {
+    const response = await speak(asked);
 
-  expect(response.status()).toBe(200);
-  expect(response.headers()['content-type']).toBe('audio/mpeg');
-  expect((await response.body()).subarray(0, 3).toString()).toBe('ID3');
+    expect(response.status()).toBe(503);
+    expect((await response.json()).error).toMatchObject({ code: 'assistant.speech_unavailable', retriable: false });
+  }
+  expect(await used()).toBe(before);
+
+  const { language: _language, ...withoutLanguage } = reading;
+  for (const [refused, field] of [
+    [withoutLanguage, 'language'],
+    [{ ...reading, language: 'fr' }, 'language'],
+    [{ ...reading, text: '   ' }, 'text'],
+  ] as const) {
+    const response = await speak(refused);
+
+    expect(response.status()).toBe(422);
+    const { error } = await response.json();
+    expect(error.code).toBe('invalid_payload');
+    expect(Object.keys(error.fields)).toContain(field);
+  }
 });
 
 test('ASSISTANT-F23: the report of an answer reaches support once', async ({ request }) => {
