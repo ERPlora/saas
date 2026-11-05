@@ -26,7 +26,7 @@ import { ApiError, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, IonIcon, IonInput, IonInputPasswordToggle, IonLabel, IonSegment, IonSegmentButton } from '@ionic/vue';
 import { computed, onMounted, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRoute, useRouter } from 'vue-router';
+import { type RouteLocationNormalizedLoaded, useRoute, useRouter } from 'vue-router';
 
 import { localNext } from '../next';
 import { LAUNCHER } from '../paths';
@@ -92,20 +92,44 @@ const fields = shallowRef<FieldErrors>({});
 const failure = shallowRef('');
 /** The failure is a wrong email or password: «Sign in» then offers «Create account». */
 const mismatch = shallowRef(false);
-const tab = shallowRef<Tab>(tabOf(route.query.tab));
+
+/**
+ * The page of an address: its route, the same at every address the route answers (`/launch`, and `/shell` or
+ * `/shell/` where the installed app opens it: an alias is its route's `aliasOf`).
+ */
+function pageOf(location: RouteLocationNormalizedLoaded) {
+  const record = location.matched.at(-1);
+  return record?.aliasOf ?? record;
+}
+/** The page the form lives on. */
+const home = pageOf(route);
+/**
+ * The query of the form's page: the address's while the address is that page's. Leaving for the code or the 2FA
+ * page, the address is already the next page's while Ionic still animates this one out (and keeps it in its stack):
+ * the form keeps its tab and its notice on the way out (saas#291) and follows the address again when it comes back.
+ */
+const query = shallowRef(route.query);
+watch(
+  () => route.fullPath,
+  () => {
+    if (pageOf(route) === home) query.value = route.query;
+  },
+);
+
+const tab = shallowRef<Tab>(tabOf(query.value.tab));
 const texts = computed(() => TEXTS[tab.value]);
 const other = computed<Tab>(() => (tab.value === SIGN_UP ? SIGN_IN : SIGN_UP));
 
-const next = computed(() => localNext(route.query.next));
+const next = computed(() => localNext(query.value.next));
 const keepNext = computed(() => (next.value ? { next: next.value } : {}));
 const google = computed(() =>
   auth.providerRedirectForm({ provider: GOOGLE, callbackUrl: next.value ?? LAUNCHER, process: 'login' }),
 );
-const notice = computed(() => (typeof route.query.notice === 'string' ? NOTICES[route.query.notice] : undefined));
+const notice = computed(() => (typeof query.value.notice === 'string' ? NOTICES[query.value.notice] : undefined));
 
 // The address leads (a link of the page, the way back): the form follows it.
 watch(
-  () => route.query.tab,
+  () => query.value.tab,
   (value) => {
     tab.value = tabOf(value);
   },

@@ -9,6 +9,9 @@
 import { IonButton, IonIcon, IonInput, IonSegment } from '@ionic/vue';
 import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { RouteRecordRaw } from 'vue-router';
+
+import hubRoutes from '../../../hubs/frontend/routes';
 
 import {
   anonymous,
@@ -27,9 +30,13 @@ import {
 import { mountAccountPage } from '../__tests__/mount-account-page';
 import { forgetRecaptcha, withRecaptcha } from '../__tests__/recaptcha-page';
 import { choose } from '../__tests__/mount-panel';
+import { LAUNCHER } from '../paths';
 import SignInForm from './SignInForm.vue';
 
 type Control = HTMLElement & { errorText?: string; disabled?: boolean };
+
+/** The launcher's route as the app defines it (its path and its other addresses, `/shell`), on a blank page. */
+const LAUNCHER_ROUTE = { ...hubRoutes.find((route) => route.path === LAUNCHER), component: { template: '<div />' } } as RouteRecordRaw;
 
 let assign: ReturnType<typeof vi.fn>;
 
@@ -54,6 +61,7 @@ async function mountForm(options: Options = {}) {
     path: options.path ?? '/launch',
     locale: options.locale,
     config: options.googleEnabled === undefined ? {} : { googleEnabled: options.googleEnabled },
+    routes: [LAUNCHER_ROUTE],
   });
   const { wrapper } = mounted;
   const input = (name: 'email' | 'password') =>
@@ -138,6 +146,16 @@ describe('SignInForm: the form of the template', () => {
     expect(es.wrapper.get('[data-testid="login-notice"]').text()).toBe(
       'Tu código ha caducado o se ha escrito mal demasiadas veces. Vuelve a iniciar sesión y te enviaremos uno nuevo.',
     );
+  });
+
+  // Ionic animates the page out once the address is already the code page's, which has no `?notice=`: the leaving
+  // form keeps its notice, so nothing under it jumps on its way out (saas#291).
+  it('keeps the notice while it leaves for the code', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/login': pendingLoginCode });
+    const { wrapper, signIn, router } = await mountForm({ path: '/launch?notice=code_expired' });
+    await signIn();
+    expect(router.currentRoute.value.path).toBe('/verify-email');
+    expect(wrapper.find('[data-testid="login-notice"]').exists()).toBe(true);
   });
 
   it('shows no notice otherwise, nor for a notice it does not know', async () => {
@@ -451,6 +469,33 @@ describe('SignInForm: the tabs «Sign in» and «Create account» (FIX-LAUNCH-TA
     expect(tab()).toBe('signup');
   });
 
+  it('follows the address on /shell as well, where the installed app opens it', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous });
+    const { router, tab } = await mountForm({ path: '/shell' });
+    await router.replace('/shell?tab=signup');
+    await flushPromises();
+    expect(tab()).toBe('signup');
+  });
+
+  // The installed app opens the launcher at /shell/; the pages that send back write `/launch` (LAUNCHER): one page.
+  it.each(['/shell', '/shell/'])(
+    'opened at %s, follows every address of the launcher when the page comes back (Ionic reuses it)',
+    async (opened) => {
+      fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/signup': pendingEmailVerification });
+      const { wrapper, signIn, router, tab } = await mountForm({ path: `${opened}?tab=signup` });
+      await signIn('new@example.com', 'a long pass phrase');
+      expect(router.currentRoute.value.path).toBe('/verify-email');
+      await router.replace('/launch?notice=code_expired');
+      await flushPromises();
+      expect(tab()).toBe('signin');
+      expect(wrapper.find('[data-testid="login-notice"]').exists()).toBe(true);
+      await router.replace(opened === '/shell' ? '/shell/?tab=signup' : '/shell?tab=signup');
+      await flushPromises();
+      expect(tab()).toBe('signup');
+      expect(wrapper.find('[data-testid="login-notice"]').exists()).toBe(false);
+    },
+  );
+
   it('leaves the errors of one tab behind when the other is chosen', async () => {
     fakeAllauth({
       'GET /auth/session': anonymous,
@@ -579,6 +624,37 @@ describe('SignInForm: «Create account» never signs in', () => {
     const { signIn } = await mountForm({ path: '/launch?tab=signup' });
     await signIn('new@example.com', 'a long pass phrase');
     expect(assign).toHaveBeenCalledExactlyOnceWith('/launch');
+  });
+
+  // Ionic animates the page out (and keeps it in its stack) once the address is already the code's, which has no
+  // `?tab=`: the leaving form must not turn into «Sign in» for an instant on its way out (saas#291).
+  it.each([
+    ['en', 'Create account', "Enter your email and choose a password. We'll email you a code to confirm it."],
+    ['es', 'Crear cuenta', 'Introduce tu email y elige una contraseña. Te enviaremos un código para confirmarlo.'],
+  ] as const)('stays «Create account» while it leaves for the code, in %s (saas#291)', async (locale, label, intro) => {
+    fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/signup': pendingEmailVerification });
+    const { wrapper, signIn, router, tab } = await mountForm({ path: '/launch?tab=signup', locale });
+    await signIn('new@example.com', 'a long pass phrase');
+    expect(router.currentRoute.value.path).toBe('/verify-email');
+    expect(tab()).toBe('signup');
+    expect(wrapper.get('.intro').text()).toBe(intro);
+    expect(wrapper.get('[data-testid="login-submit"]').text()).toBe(label);
+    expect(wrapper.find('[data-testid="login-forgot"]').exists()).toBe(false);
+  });
+
+  it('follows the address again when the page comes back on screen (Ionic reuses it)', async () => {
+    fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/signup': pendingEmailVerification });
+    const { wrapper, signIn, router, tab } = await mountForm({ path: '/launch?tab=signup' });
+    await signIn('new@example.com', 'a long pass phrase');
+    // The code page sends back without a tab when the code is gone: the sign-in starts again, and says why.
+    await router.replace('/launch?notice=code_expired');
+    await flushPromises();
+    expect(tab()).toBe('signin');
+    expect(wrapper.find('[data-testid="login-notice"]').exists()).toBe(true);
+    await router.replace('/launch?tab=signup');
+    await flushPromises();
+    expect(tab()).toBe('signup');
+    expect(wrapper.find('[data-testid="login-notice"]').exists()).toBe(false);
   });
 });
 
