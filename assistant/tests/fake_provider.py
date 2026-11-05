@@ -188,8 +188,8 @@ def serve_e2e(port: int) -> None:
             "[DONE]",
         ],
     )
-    # The services' provider (assistant.media): two fingerprints, given in reverse so the order is the gateway's, a
-    # dictation and a reading aloud.
+    # The services' provider (assistant.media): two fingerprints, given in reverse so the order is the gateway's, and a
+    # dictation.
     fake.reply(
         "POST",
         "/v1/embeddings",
