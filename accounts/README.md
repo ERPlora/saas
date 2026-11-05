@@ -83,6 +83,10 @@ ningún rol tiene su permiso.
   NFKC, sin espacios y en minúsculas; «ana@ｅxample.com» es Ana, nunca otra cuenta, ERPlora/saas#1018) y el alta
   comprueba la contraseña contra su propio correo (headless la validaba sin cuenta y el validador de parecido
   no veía nada; saas#2542).
+- **El idioma de una cuenta nueva** (`AccountAdapter.new_user`, saas#289): el activo en la petición del alta, el que
+  ya resolvió `LocaleMiddleware` (la cookie de la web pública o `Accept-Language`). Google pasa por el mismo sitio:
+  `DefaultSocialAccountAdapter.new_user` llama al adaptador de cuentas, también al entrar con una cuenta que ya existe,
+  pero ese usuario nuevo se descarta sin guardarse. Después manda Preferencias (`AccountLanguageMiddleware`).
 - **La contraseña nueva nunca es la actual** (`AccountAdapter.clean_password`, saas#2612): en «Cambiar
   contraseña» y en el enlace de «¿Has olvidado tu contraseña?», `password_unchanged` debajo del campo. La página
   del enlace enseña la misma pista y fuerza que Cuenta (`frontend/password.ts`, contra el correo que devuelve

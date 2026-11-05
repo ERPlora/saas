@@ -299,9 +299,9 @@ Pasos:
 1. La persona pulsa «Empieza gratis» en la web o abre la **Entrada** y elige «Crear cuenta» (las direcciones antiguas del alta llevan a esta pestaña y conservan adónde iba). Ve «Introduce tu email y elige una contraseña. Te enviaremos un código para confirmarlo.».
 2. Escribe su correo y una contraseña (con el ojo para comprobarla) y pulsa «Crear cuenta».
 3. erplora.com comprueba la contraseña: al menos 8 caracteres, que no se parezca a su correo, que no sea una contraseña común y que no sea solo números. Crea la cuenta y le manda un código de seis cifras.
-4. La pantalla pasa a **Revisa tu correo** (ACCOUNTS-F02); con el código bueno entra sola y llega a «Crea tu negocio».
+4. La pantalla pasa a **Revisa tu correo** (ACCOUNTS-F02); con el código bueno entra sola y llega a «Crea tu negocio», en el idioma en el que se dio de alta.
 Entra: el correo (sin espacios, en minúsculas y con las letras de ancho completo pasadas a las normales, para que una dirección que se parece a otra no cree una segunda cuenta; igual al invitarla a un negocio, que invita a esa cuenta), la contraseña y adónde iba (solo páginas de erplora.com).
-Sale: la cuenta, activa, con su correo aún sin confirmar y los términos aceptados (ACCOUNTS-F10). No se crea ningún negocio. La aplicación que pinta esta pantalla es la misma puerta que cualquier otro programa: las mismas reglas valen para todos.
+Sale: la cuenta, activa, con su correo aún sin confirmar, el idioma de la página en la que se dio de alta (el que eligió en la web pública o, si no eligió, el de su navegador) y los términos aceptados (ACCOUNTS-F10). No se crea ningún negocio. La aplicación que pinta esta pantalla es la misma puerta que cualquier otro programa: las mismas reglas valen para todos.
 Si falla: una contraseña que no pasa las reglas sale debajo de la contraseña y no se crea nada; un correo no válido (también con letras de ancho completo antes de la arroba), debajo del correo. Un correo que ya tiene cuenta responde igual que uno nuevo y a su buzón le llega «ya existe una cuenta con esa dirección de correo electrónico» con el enlace para poner contraseña, sin código: así pone la suya también la persona invitada, cuya cuenta aún no tiene contraseña, y nadie se queda con una cuenta ajena. Más de 10 altas en una hora desde la misma dirección de red: «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.».
 Implicados: hubs (la **Entrada** y «Crea tu negocio»)
 
@@ -375,7 +375,7 @@ Pasos:
 3. Si ya hay una cuenta de erplora.com con ese correo, entra en ella, Google queda enlazado y a su correo le llega el aviso «Se ha añadido el acceso con Google a tu cuenta»; si no la hay, la cuenta se crea con el correo ya confirmado y sin formulario.
 4. Dentro, va adonde iba o a la **Entrada** con su sesión; con la app autenticadora, primero pasa por **Verificación en dos pasos**.
 Entra: lo que Google confirma (correo, nombre y apellidos) y adónde iba.
-Sale: la cuenta de Google enlazada y, si es nueva, la cuenta, sin contraseña (se pone con «¿Olvidaste tu contraseña?»). Google no pide el código del correo: ya lo prueba él.
+Sale: la cuenta de Google enlazada y, si es nueva, la cuenta, sin contraseña (se pone con «¿Olvidaste tu contraseña?») y con el idioma de la página, como en ACCOUNTS-F01; entrar en una cuenta que ya existe no cambia su idioma. Google no pide el código del correo: ya lo prueba él.
 Si falla: «Cancelar» en Google vuelve a la **Entrada**; un error de Google o un correo que Google no confirma lleva a la página de error de la entrada, sin crear ni enlazar nada. Enlazar Google a una sesión abierta sin entrar con él no se permite: dice que Google solo se vincula entrando con la cuenta de Google del correo.
 Implicados: ninguno
 
@@ -610,7 +610,7 @@ Pasos:
 3. En «Idioma» elige «English» o «Español»: el panel cambia de idioma al momento, también los correos que le enviamos.
 4. En otro navegador o tras recargar, el panel abre con la apariencia y el idioma de la cuenta.
 Entra: la apariencia y el idioma.
-Sale: la apariencia y el idioma de la cuenta, iguales en todos sus dispositivos; el idioma es también el de sus correos y el que reciben sus negocios al entrar. En el panel manda el idioma de la cuenta; la web pública sigue el que se elige en ella o el del navegador.
+Sale: la apariencia y el idioma de la cuenta, iguales en todos sus dispositivos; el idioma es también el de sus correos y el que reciben sus negocios al entrar. La cuenta nace con el idioma de la página en la que se dio de alta (ACCOUNTS-F01, ACCOUNTS-F06), o con el del negocio que la invita; desde entonces lo decide esta pantalla. En el panel manda el idioma de la cuenta; la web pública sigue el que se elige en ella o el del navegador.
 Si falla: si no se puede guardar, el control vuelve a lo que había y un aviso dice por qué; si las preferencias no cargan, «No hemos podido cargar tus preferencias» con «Reintentar». La moneda no se elige: ERPlora cobra en euros.
 Implicados: hubs (el idioma al entrar en un negocio)
 
