@@ -92,20 +92,36 @@ const fields = shallowRef<FieldErrors>({});
 const failure = shallowRef('');
 /** The failure is a wrong email or password: «Sign in» then offers «Create account». */
 const mismatch = shallowRef(false);
-const tab = shallowRef<Tab>(tabOf(route.query.tab));
+
+/** The page the form lives on (`/launch`, or `/shell` in the installed app). */
+const home = route.path;
+/**
+ * The query of the form's page: the address's while the address is that page's. Leaving for the code or the 2FA
+ * page, the address is already the next page's while Ionic still animates this one out (and keeps it in its stack):
+ * the form keeps its tab and its notice on the way out (saas#291) and follows the address again when it comes back.
+ */
+const query = shallowRef(route.query);
+watch(
+  () => route.fullPath,
+  () => {
+    if (route.path === home) query.value = route.query;
+  },
+);
+
+const tab = shallowRef<Tab>(tabOf(query.value.tab));
 const texts = computed(() => TEXTS[tab.value]);
 const other = computed<Tab>(() => (tab.value === SIGN_UP ? SIGN_IN : SIGN_UP));
 
-const next = computed(() => localNext(route.query.next));
+const next = computed(() => localNext(query.value.next));
 const keepNext = computed(() => (next.value ? { next: next.value } : {}));
 const google = computed(() =>
   auth.providerRedirectForm({ provider: GOOGLE, callbackUrl: next.value ?? LAUNCHER, process: 'login' }),
 );
-const notice = computed(() => (typeof route.query.notice === 'string' ? NOTICES[route.query.notice] : undefined));
+const notice = computed(() => (typeof query.value.notice === 'string' ? NOTICES[query.value.notice] : undefined));
 
 // The address leads (a link of the page, the way back): the form follows it.
 watch(
-  () => route.query.tab,
+  () => query.value.tab,
   (value) => {
     tab.value = tabOf(value);
   },
