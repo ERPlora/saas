@@ -739,6 +739,12 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 
 - Anatomía, operaciones y decisiones: `hubs/README.md` (negocios, salto al Hub, foto y registro empujados al Hub,
   `reconcile_hub_states`, miembros, uso y demo).
+- HUBS-F08 (`reconcile_hub_states`) corre cada 15 minutos (:00, :15, :30, :45 UTC) dentro del proceso `saas-worker`
+  (`manage.py run_worker`, `base/worker.py`, saas#305), ya no como tarea de `saas-cron`; la pasada es
+  `services.reconcile_exclusively`, la misma del comando, que queda para lanzarla a mano. Lo que deja pendiente, sin
+  conexión o rechazado escribe la línea ERROR `saas.worker.pass_failed task=reconcile_hub_states left work owed: …`,
+  que es lo que avisa la alarma (antes, el código de salida de la tarea). En el worker la pasada tiene 50 s y oye la
+  parada entre dos negocios (`go_on`): lo que no entra queda pendiente para la ronda siguiente (`cut_short=1`).
 - Partes del porte (MIGRATION-TASK APP-HUBS-1…5): este WORKBOOK nace en la parte 1 (F01–F14); la parte 2 añade
   F15–F23 (ajustes, dirección web y dominio propio, eliminar y recuperar, los suspendidos, estado y uso, admin del
   negocio); la parte 3, F24–F30 (las personas de cada negocio); la parte 4, F31–F37 (plan, derechos, contrato con el

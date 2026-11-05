@@ -302,6 +302,45 @@ class TestReconcile:
         assert taken is True
         other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
 
+    def test_the_saas_worker_runs_the_same_pass_under_the_same_lock(self, business, hub_double, other_session):
+        """``services.reconcile_exclusively`` is what the command and the ``saas-worker`` (every 15 minutes, saas#305)
+        both run: the pass's counts, or ``None`` while another run holds the lock."""
+        other_session.execute(f"SELECT pg_advisory_lock({LOCK_KEY})")
+        try:
+            assert services.reconcile_exclusively() is None
+        finally:
+            other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
+        assert hub_double.calls == []
+
+        counts = services.reconcile_exclusively()
+
+        assert counts is not None and not services.run_failed(counts)
+        assert other_session.execute(f"SELECT pg_try_advisory_lock({LOCK_KEY})").fetchone()[0] is True
+        other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
+
+    def test_a_pass_the_worker_cuts_short_stops_after_the_business_in_course_and_leaves_the_rest_for_the_next(
+        self, owner, plans, hub_double, make_user
+    ):
+        """The ``saas-worker`` gives the pass ``go_on`` (saas#305): its stop request and the round's time budget, asked
+        before each business. A ``False`` ends the pass after the business in course: what it did is counted,
+        ``cut_short`` says the rest goes in the next round (not a failure), and the next round does it."""
+        hubs = [create_business(owner)] + [
+            create_business(make_user(f"p{n}@example.com"), name=f"Bar {n}") for n in range(2)
+        ]
+        asked: list[int] = []
+
+        def go_on():
+            asked.append(1)
+            return len(asked) == 1
+
+        counts = services.reconcile_exclusively(go_on=go_on)
+
+        assert (counts["delivered"], counts["owed"], counts["cut_short"]) == (1, 0, 1)
+        assert not services.run_failed(counts)
+        assert sorted(fresh(hub).pending_hub_call for hub in hubs) == ["", "put", "put"]
+        again = services.reconcile_exclusively()
+        assert (again["delivered"], again["cut_short"]) == (2, 0)
+
     def test_the_lock_is_released_when_a_run_fails(
         self, business, offline_hub, other_session
     ):

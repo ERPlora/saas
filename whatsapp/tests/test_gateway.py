@@ -27,7 +27,7 @@ def test_a_due_delivery_reaches_door_1(number, hub_double):
     hub_double.answer("POST", r"^/internal/whatsapp/inbound$", 200, {"created": True})
     ingest(messages(text("wamid.1")))
 
-    assert gateway.deliver() == {"delivered": 1, "retried": 0, "refused": 0, "dropped": 0}
+    assert gateway.deliver() == {"delivered": 1, "retried": 0, "refused": 0, "dropped": 0, "held": 0}
 
     assert Delivery.objects.get().delivered_at is not None
 
@@ -69,7 +69,7 @@ def test_unreadable_trusted_certificates_keep_the_delivery_naming_the_file(numbe
     in view (the setting and its file), so it reaches the Hub once the server is fixed."""
     ingest(messages(text("wamid.1")))
 
-    assert gateway.deliver() == {"delivered": 0, "retried": 1, "refused": 0, "dropped": 0}
+    assert gateway.deliver() == {"delivered": 0, "retried": 1, "refused": 0, "dropped": 0, "held": 0}
 
     row = Delivery.objects.get()
     assert row.delivered_at is None and row.next_attempt_at > timezone.now()
@@ -123,7 +123,7 @@ def test_the_status_of_the_owners_reply_from_the_phone_reaches_the_hub_without_a
 
     ingest(read())
 
-    assert gateway.deliver() == {"delivered": 1, "retried": 0, "refused": 0, "dropped": 0}
+    assert gateway.deliver() == {"delivered": 1, "retried": 0, "refused": 0, "dropped": 0, "held": 0}
     [call] = hub_double.calls_to("POST", "/internal/whatsapp/status")
     assert call.body["wa_message_id"] == "wamid.echo" and call.body["status"] == "read"
     assert "client_message_id" not in call.body
@@ -138,7 +138,7 @@ def test_the_status_of_a_reply_still_waiting_for_the_hub_waits_with_it(number, h
     ingest(read())
     Delivery.objects.update(received_at=timezone.now() - timedelta(minutes=30))
 
-    assert gateway.deliver() == {"delivered": 0, "retried": 2, "refused": 0, "dropped": 0}
+    assert gateway.deliver() == {"delivered": 0, "retried": 2, "refused": 0, "dropped": 0, "held": 0}
     assert hub_double.calls_to("POST", "/internal/whatsapp/status") == []
     assert "reply" in Delivery.objects.get(kind="status").last_error
 
@@ -152,7 +152,7 @@ def test_the_status_of_a_reply_the_hub_refused_has_nowhere_to_go(number, hub_dou
     ingest(read())
     Delivery.objects.filter(kind="status").update(received_at=timezone.now() - timedelta(minutes=11))
 
-    assert gateway.deliver() == {"delivered": 0, "retried": 0, "refused": 0, "dropped": 1}
+    assert gateway.deliver() == {"delivered": 0, "retried": 0, "refused": 0, "dropped": 1, "held": 0}
     assert hub_double.calls_to("POST", "/internal/whatsapp/status") == []
 
 

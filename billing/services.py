@@ -25,6 +25,7 @@ import logging
 import re
 import uuid
 from collections import Counter
+from collections.abc import Callable
 from contextlib import contextmanager
 from functools import partial
 from dataclasses import dataclass
@@ -5020,16 +5021,26 @@ def _email_quietly(invoice_id) -> None:
 #: The counts of a ``reconcile_platform_invoices`` run; the failing ones make it exit with an error.
 PLATFORM_COUNTS = (
     "posted", "accepted", "waiting", "mailed", "unreachable", "refused", "rejected", "stuck", "mail_failed", "errors",
+    "cut_short",
 )
 PLATFORM_FAILING = ("unreachable", "refused", "rejected", "stuck", "mail_failed", "errors")
 
 
-def reconcile_platform_invoices(now: datetime | None = None) -> Counter:
-    """One pass of ``reconcile_platform_invoices`` (``saas-cron``): post again every «issuing» invoice whose
-    wait passed, ask the platform hub about every issued (or rejected) one until the AEAT accepts it, and
-    count the ones «issuing» for longer than ``PLATFORM_STUCK_AFTER``. One invoice never stops the others."""
+def reconcile_platform_invoices(now: datetime | None = None, go_on: Callable[[], bool] | None = None) -> Counter:
+    """One pass of ``reconcile_platform_invoices`` (the ``saas-worker``, every 15 minutes): post again every
+    «issuing» invoice whose wait passed, ask the platform hub about every issued (or rejected) one until the AEAT
+    accepts it, and count the ones «issuing» for longer than ``PLATFORM_STUCK_AFTER``. One invoice never stops the
+    others. ``go_on`` (the worker's stop request and the round's time budget) is asked before each call to the Hub
+    or mail: once it says no, the pass ends after the invoice in course (``cut_short`` 1, the rest in the next pass);
+    the count of the stuck ones is always made."""
     now = now or timezone.now()
     counts = Counter({key: 0 for key in PLATFORM_COUNTS})
+
+    def more() -> bool:
+        if not counts["cut_short"] and go_on is not None and not go_on():
+            counts["cut_short"] = 1
+        return not counts["cut_short"]
+
     paid = Invoice.objects.filter(payment_status=Invoice.PaymentStatus.PAID).exclude(number="")
     due = (
         paid.filter(fiscal_status=Invoice.FiscalStatus.ISSUING)
@@ -5037,7 +5048,9 @@ def reconcile_platform_invoices(now: datetime | None = None) -> Counter:
         .order_by("series", "issued_on", "sequence")
         .values_list("id", flat=True)
     )
-    for invoice_id in list(due):
+    for invoice_id in () if counts["cut_short"] else list(due):
+        if not more():
+            break
         try:
             outcome = post_platform_invoice(invoice_id)
         except Exception:  # noqa: BLE001 - one invoice never stops the pass; it stays owed
@@ -5049,7 +5062,9 @@ def reconcile_platform_invoices(now: datetime | None = None) -> Counter:
     asked = paid.filter(fiscal_status__in=[Invoice.FiscalStatus.ISSUED, Invoice.FiscalStatus.REJECTED]).values_list(
         "id", flat=True
     )
-    for invoice_id in list(asked):
+    for invoice_id in () if counts["cut_short"] else list(asked):
+        if not more():
+            break
         try:
             status = refresh_platform_invoice(invoice_id)
         except Exception:  # noqa: BLE001 - one invoice never stops the pass
@@ -5068,7 +5083,9 @@ def reconcile_platform_invoices(now: datetime | None = None) -> Counter:
         fiscal_status=Invoice.FiscalStatus.ISSUING, fiscal_status_at__lte=now - PLATFORM_STUCK_AFTER
     ).count()
     unmailed = paid.filter(fiscal_status__in=ISSUED_STATUSES, emailed_at__isnull=True).values_list("id", flat=True)
-    for invoice_id in list(unmailed):
+    for invoice_id in () if counts["cut_short"] else list(unmailed):
+        if not more():
+            break
         outcome = send_invoice_mail(invoice_id)
         if outcome == MAIL_FAILED:
             counts["mail_failed"] += 1
@@ -5079,6 +5096,14 @@ def reconcile_platform_invoices(now: datetime | None = None) -> Counter:
 
 def platform_run_failed(counts: Counter) -> bool:
     return any(counts[key] for key in PLATFORM_FAILING)
+
+
+def reconcile_platform_invoices_exclusively(go_on: Callable[[], bool] | None = None) -> Counter | None:
+    """One pass of ``reconcile_platform_invoices`` under its lock: its counts, or ``None`` when another run holds the
+    lock (and this one did nothing). What the command and the ``saas-worker`` (every 15 minutes, ``base.worker``,
+    saas#305; with its ``go_on``) both run."""
+    with hub_services.run_exclusively("reconcile_platform_invoices") as mine:
+        return reconcile_platform_invoices(go_on=go_on) if mine else None
 
 
 # --- «Pay» an invoice not collected -----------------------------------------------------------------

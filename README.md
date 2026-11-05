@@ -283,10 +283,22 @@ El panel de `erplora.com` (Negocios · Tienda · Facturación · Cuenta; plan
   `VAT_CHECK_RATE`, `VAT_CHECK_GLOBAL_RATE`, `PROMO_CHECK_RATE`, `INTERNAL_SHARED_SECRET_PREVIOUS` y el dominio propio de
   un negocio (`CUSTOM_DOMAINS_ENABLED`, `CUSTOM_DOMAINS_LISTENER_ARN`, `CUSTOM_DOMAINS_TARGET_TEMPLATE`,
   `CUSTOM_DOMAINS_MAX_CERTIFICATES`).
-- **Tareas programadas** (`saas-cron`, `aws-next/stacks/prod/scheduler.tf`): `sweep_unpaid` (cada hora),
-  `reconcile_platform_invoices` (cada 15 min) y `collect_hub_usage` (01:15 UTC), además de
-  `reconcile_hub_states`, `push_hub_snapshots`, `report_seal_expiry` y `check_custom_domains` (cada hora; con
-  `CUSTOM_DOMAINS_ENABLED` apagada no hace nada). En `saas-migrate`, tras `migrate`:
+- **Proceso `saas-worker`** (`python manage.py run_worker`, `base/worker.py`; saas#305, servicio de `ERPlora/aws`
+  aws#59, una tarea, sin balanceador): siempre encendido y de un hilo. Entrega al Hub lo de WhatsApp en cuanto vence
+  su espera (lo despierta el `NOTIFY whatsapp_delivery` tras el COMMIT, o la hora del siguiente reintento) y corre
+  `reconcile_hub_states` y `reconcile_platform_invoices` cada 15 minutos (:00, :15, :30, :45 UTC), cada pasada bajo
+  su lock. Entre despertares no consulta la base de datos (Aurora puede bajar a su mínimo). Usa 2 conexiones: la de
+  Django y la de su `LISTEN`. Una pasada que revienta, o una reconciliación que deja algo pendiente, escribe una línea
+  ERROR que empieza por `saas.worker.pass_failed task=<nombre>` (el filtro de métrica de `aws` la busca) y el proceso
+  sigue; `SIGTERM` acaba la llamada en curso y sale con 0. Cada reconciliación tiene 50 s por ronda
+  (`base.worker.ROUND_BUDGET`) y oye la parada entre dos negocios: lo que no entra va en la ronda siguiente (línea INFO
+  `saas.worker.pass_cut`, no un error). Señal de vida: `saas.worker.alive` (INFO) al arrancar y en cada ronda de 15
+  minutos, para la alarma de ausencia de logs de `aws`. Los comandos `whatsapp_deliver`, `reconcile_hub_states` y
+  `reconcile_platform_invoices` siguen para lanzarlos a mano y comparten la pasada con el proceso. En local:
+  `uv run python manage.py run_worker` (Ctrl-C para).
+- **Tareas programadas** (`saas-cron`, `aws-next/stacks/prod/scheduler.tf`): `sweep_unpaid` (cada hora) y
+  `collect_hub_usage` (01:15 UTC), además de `push_hub_snapshots`, `report_seal_expiry` y `check_custom_domains`
+  (cada hora; con `CUSTOM_DOMAINS_ENABLED` apagada no hace nada). En `saas-migrate`, tras `migrate`:
   `seed_taxonomy` (y, hasta que se aplique el Terraform de ERPlora/aws#4, también `sync_hub_plans`, hoy vacío).
   Todas idempotentes y con advisory lock (una segunda ejecución vuelve al momento).
 - **Planes**: viven solo en la base de datos y se mantienen en el admin de Django (`/admin/hubs/plan/`). La
@@ -339,9 +351,11 @@ y en los tests) o `pre`, la preproducción del equipo en `pre.erplora.com`, en s
 1. Se trabaja en una rama propia; cada push corre `test / test` (`ci.yml`, que llama a `test.yml`).
 2. Si `pre` avanzó, se integra `origin/pre` en la rama y se empuja otra vez.
 3. Con el check en verde, `git push origin <rama>:pre` (fast-forward). `deploy.yml` prueba, construye la imagen
-   en `erplora/saas-pre` y despliega `saas-pre` (`ecs-deploy.sh` con `ENVIRONMENT=pre`: cluster `erplora-pre`,
-   familias `erplora-pre-saas` y `erplora-pre-saas-migrate`, sin `saas-cron`; `/erplora/pre/saas/image_tag`). Si pre
-   estaba apagado, lo enciende. Sin release.
+   en `erplora/saas-pre` y despliega `saas-pre` y `saas-worker-pre` (`ecs-deploy.sh` con `ENVIRONMENT=pre`: cluster
+   `erplora-pre`, familias `erplora-pre-saas`, `erplora-pre-saas-migrate` y `erplora-pre-saas-worker`, sin
+   `saas-cron`; `/erplora/pre/saas/image_tag`). Si pre estaba apagado, lo enciende. Sin release. Mientras aws#59 no
+   esté aplicado y no exista la familia `erplora-<entorno>-saas-worker`, el despliegue (y `rollback.yml`) la salta con
+   un `::warning::` y sigue; cualquier otro error al leerla lo para.
 4. Probado, PR `pre` → `main` con «Create a merge commit»: despliega prod como siempre, con su release
    `saas-v…`.
 5. Después, `git push origin main:pre` (fast-forward) para que `pre` no se separe de `main`.

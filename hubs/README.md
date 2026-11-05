@@ -8,8 +8,9 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 - Operaciones en `queries.py` (lecturas) y `services.py` (escrituras), rutas en `api.py` bajo `/api/hubs/`
   (y `/api/plans`, `/api/catalog/*`, públicas); consultas vivas en `live.py`.
 - Hacia el Hub: `hub_client.py` (llamadas firmadas a `/internal/*` de hub-next), empuje tras el COMMIT
-  (`services.sync_hub`) y los comandos de `saas-cron`: `reconcile_hub_states` (cada 15 min) y
-  `push_hub_snapshots` (cada noche, todos los negocios; `--behind-only`, solo los atrasados).
+  (`services.sync_hub`), `reconcile_hub_states` (cada 15 min en el proceso `saas-worker`,
+  `services.reconcile_exclusively`, saas#305; el comando, a mano) y `push_hub_snapshots` (cada noche en `saas-cron`,
+  todos los negocios; `--behind-only`, solo los atrasados).
 - Del Hub: `POST /internal/hubs/{id}/ready` (`internal.py`).
 - «Abrir» (`hubs.business.open`) ya no emite el código: comprueba el miembro y el estado del negocio, sella
   `last_opened_at` y devuelve `{url}`, el inicio del salto en el Hub (`https://<slug>.erplora.com/auth/login?next=/`;

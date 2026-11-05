@@ -1,4 +1,5 @@
-"""``python manage.py reconcile_hub_states [--stuck-minutes N]``: every 15 minutes in ``saas-cron``.
+"""``python manage.py reconcile_hub_states [--stuck-minutes N]``: one pass by hand; the ``saas-worker`` runs the same
+one every 15 minutes (``services.reconcile_exclusively``, ``base.worker``, saas#305).
 
 Keeps the Hub equal to the SaaS (plan 2026-10-13 §3, the push to the Hub): retries what the Hub still owes
 an answer to (registry, deletion, restoration, snapshot), asks the Hub about a sign-up stuck without its
@@ -11,7 +12,7 @@ business once the copy of its data is ready (``GET /internal/hubs/{id}/dumps``: 
 advisory lock ``hashtext('erplora.saas.reconcile_hub_states')`` (``services.run_exclusively``; a second run
 returns at once). A business that fails never stops the pass: it stays owed for the next run, the counts
 go to the log, and the run ends with an error after its pass when anything stayed owed, unreachable or
-crashed (the ``task_failed`` alarm).
+crashed (in the worker, its line ``saas.worker.pass_failed``, which the alarm of the infra reads).
 """
 
 import logging
@@ -39,11 +40,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        with services.run_exclusively("reconcile_hub_states") as mine:
-            if not mine:
-                self.stdout.write("reconcile_hub_states: already running, nothing done.")
-                return
-            counts = services.reconcile(stuck_after=timedelta(minutes=options["stuck_minutes"]))
+        counts = services.reconcile_exclusively(stuck_after=timedelta(minutes=options["stuck_minutes"]))
+        if counts is None:
+            self.stdout.write("reconcile_hub_states: already running, nothing done.")
+            return
         summary = " ".join(f"{key}={value}" for key, value in counts.items())
         logger.info("hubs.reconcile %s", summary)
         self.stdout.write(f"reconcile_hub_states: {summary}")

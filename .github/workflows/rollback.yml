@@ -1,8 +1,9 @@
 name: rollback
 
-# Manual: puts the saas service of the branch's environment (main -> prod: saas; pre -> pre:
-# saas-pre; plan 2026-10-14-entorno-pre) back on the ACTIVE revision right before the one it runs
-# and records its image tag (ecs-rollback.sh). Migrations are not undone. Scheduled saas tasks (prod
+# Manual: puts the saas services of the branch's environment (main -> prod: saas and saas-worker;
+# pre -> pre: saas-pre and saas-worker-pre; plan 2026-10-14-entorno-pre; saas-worker once aws#59 is
+# applied, saas#305) back on the ACTIVE revision right before the one each runs and records their
+# image tag (ecs-rollback.sh). Migrations are not undone. Scheduled saas tasks (prod
 # only) run the latest ACTIVE saas-cron revision, so they keep the newer image: to go back
 # everywhere, run deploy with the previous release instead.
 

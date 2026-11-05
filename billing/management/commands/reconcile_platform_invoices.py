@@ -1,4 +1,6 @@
-"""``python manage.py reconcile_platform_invoices``: what ERPlora's platform hub still owes (``saas-cron``).
+"""``python manage.py reconcile_platform_invoices``: what ERPlora's platform hub still owes, one pass by hand; the
+``saas-worker`` runs the same one every 15 minutes (``services.reconcile_platform_invoices_exclusively``,
+``base.worker``, saas#305).
 
 The legal invoice is issued by ERPlora's platform hub in hub-next (PLAN-SAAS §4; lot L3-C). After the webhook's
 COMMIT the SaaS posts each invoice once (``billing.services.post_platform_invoice``); this is the net, every
@@ -9,8 +11,8 @@ than an hour (``billing.services.reconcile_platform_invoices``).
 Idempotent, under the advisory lock ``hashtext('erplora.saas.reconcile_platform_invoices')``
 (``hubs.services.run_exclusively``, the SaaS's convention: a second run returns at once). One invoice never
 stops the pass; the counts go to the log, and the run ends with an error after its pass when anything stayed
-owed, was refused, rejected, stuck or crashed (the ``task_failed`` alarm). To schedule in
-``aws-next/stacks/prod/scheduler.tf`` next to ``reconcile_hub_states``.
+owed, was refused, rejected, stuck or crashed (in the worker, its line ``saas.worker.pass_failed``, which the alarm
+of the infra reads).
 """
 
 import logging
@@ -18,7 +20,6 @@ import logging
 from django.core.management.base import BaseCommand, CommandError
 
 from billing import services
-from hubs.services import run_exclusively
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +28,10 @@ class Command(BaseCommand):
     help = "Post again the invoices the platform hub has not issued and ask about the issued ones (idempotent)."
 
     def handle(self, *args, **options):
-        with run_exclusively("reconcile_platform_invoices") as mine:
-            if not mine:
-                self.stdout.write(
-                    "reconcile_platform_invoices: already running, nothing done."
-                )
-                return
-            counts = services.reconcile_platform_invoices()
+        counts = services.reconcile_platform_invoices_exclusively()
+        if counts is None:
+            self.stdout.write("reconcile_platform_invoices: already running, nothing done.")
+            return
         summary = " ".join(f"{key}={value}" for key, value in counts.items())
         logger.info("billing.reconcile_platform_invoices %s", summary)
         self.stdout.write(f"reconcile_platform_invoices: {summary}")
