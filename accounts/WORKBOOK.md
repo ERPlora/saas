@@ -1015,6 +1015,21 @@ Sale: la sesión de ese navegador, como en ACCOUNTS-F04 pero sin el código por 
 Si falla: una cuenta sin la marca sigue pidiendo el código en cada entrada con contraseña (ACCOUNTS-F04). La persona no ve ni cambia la marca desde su cuenta, el soporte la ve en el admin sin poder cambiarla, y una cuenta del personal no puede llevarla: «Una cuenta del personal no puede ser cuenta de revisión de tienda.», y no se guarda. La marca no salta nada más: un correo sin confirmar pide su código (ACCOUNTS-F03), la app autenticadora, si la cuenta la tiene, pide el suyo (ACCOUNTS-F05), y una contraseña equivocada, los límites de intentos (ACCOUNTS-F11) y la respuesta igual exista o no la cuenta siguen como en cualquier otra.
 Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de auditoría); la app de ERPlora (repositorio ERPlora/app), cuya comprobación de Google Play entra con esta cuenta antes de cada publicación; saas#132 y app#7
 
+### ACCOUNTS-F50 Esperar a la base de datos cuando se corta un momento
+<!-- origen: nuevo (PLAN-DB, ronda 2026-11-04e, punto 5: un reinicio, un mantenimiento de AWS o el cambio de versión cortan la base unos segundos) gh:saas#284 gh:hub#831 -->
+Estado: hecho
+Actor: cualquier visitante de erplora.com, cualquier persona en el panel y cualquier programa conectado por la API
+Pantalla: cualquiera de erplora.com y del panel, Página de mantenimiento
+Pasos:
+1. La persona abre una página o el panel mientras la base de datos se corta unos segundos: un reinicio, un mantenimiento de AWS o el cambio de versión.
+2. Lo que estaba leyendo espera y se vuelve a pedir solo, hasta 20 segundos en total. Si la base vuelve antes, la página llega como siempre: la persona solo nota que ha tardado.
+3. Lo que estaba guardando espera igual cuando consta que no se aplicó nada: no llegó a empezar, o es un cambio de **Preferencias** o de **Perfil**, que solo tocan la base de datos y todavía no se habían confirmado. Se guarda una sola vez.
+4. Si se acaba el tiempo, quien lee una página ve «Volvemos enseguida» con «ERPlora vuelve en un momento: inténtalo de nuevo en unos segundos.» y «Reintentar». Dentro del panel, lo que no se pudo cargar lo dice en su sitio y ofrece «Reintentar», como en cualquier fallo de conexión.
+Entra: nada: la persona no hace nada distinto.
+Sale: la misma respuesta de siempre, con unos segundos de retraso; o, pasado el tiempo, una respuesta 503 con `Retry-After` y nunca una página de error del servidor. Un programa recibe el código `database_unavailable`. Los buscadores entienden que la web vuelve pronto.
+Si falla: lo que pudo aplicarse no se repite nunca a ciegas. Un corte mientras se confirmaba un guardado deja el resultado sin saberse, y cualquier otro cambio pudo haber hecho algo fuera de la base (un cobro de Stripe, una factura, un correo): la persona lee «Se ha perdido la conexión mientras se guardaba. Comprueba si se ha guardado antes de volver a intentarlo.» y un programa, el código `database_outcome_unknown`. Lo que no es un corte (una consulta que tarda demasiado, un fallo del programa) sigue siendo el error de siempre. Las llamadas de los negocios a `/internal`, los avisos de Stripe y de Meta y `/readyz` reciben su 503 al momento, sin esperar: los dos primeros reintentan por su cuenta, y `/readyz` tiene que decir que la base no está antes de que sus sondas se cansen.
+Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos de Stripe reciben el 503 y reintentan), whatsapp (los avisos de Meta, igual), ACCOUNTS-F43 (la misma página), ACCOUNTS-F21 y ACCOUNTS-F22 (Perfil y Preferencias, que se pueden repetir); saas#284 y su gemela del Hub, hub#831
+
 ## Para quien lo mantiene
 
 - Anatomía, operaciones y decisiones: `accounts/README.md` (allauth headless, puertas cerradas, sesiones,
@@ -1023,7 +1038,7 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
   (segundo factor, navegadores de confianza y sesiones) cierra F05 y añade F14–F20; la parte 3 (perfil,
   preferencias, avisos, menú de usuario, exportar y borrar la cuenta) añade F21–F27 y amplía F13; la parte 4
   (salto al Hub, llaves de API y su documentación, retención GDPR, auditlog y reportar un problema) añade F28–F38
-  y amplía F12 y F25; la parte 5 (plataforma del SaaS) añade F39–F48. El cierre (CLOSE-ACCOUNTS, 2026-11-03) pasa F06
+  y amplía F12 y F25; la parte 5 (plataforma del SaaS) añade F39–F48; saas#284 añade F50. El cierre (CLOSE-ACCOUNTS, 2026-11-03) pasa F06
   y F48 a `hecho` (PLAN-SAAS, ronda de `accounts`).
 - Equivalencia de claves del registro: G83, G124, G22 y G59 = F01; G84 y G21 = F02; G107 = F03; G85 y G17 =
   F04; G125 = F05; G86 = F06; G91, G123, G120, G121 y G122 = F07; G109, G92, G42, G45 y G46 = F08; G93 = F09;

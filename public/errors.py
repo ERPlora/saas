@@ -9,6 +9,10 @@ error layout of the sign-in pages. An API path that reaches the
 500 handler answers the JSON envelope of ``live`` instead (saas#895); its 404 is already enveloped
 by ``live.api_errors.ApiErrorEnvelopeMiddleware``.
 
+A cut of the database is no fault of the server (ACCOUNTS-F50, ``live.database_cut``): the 500 handler answers it with
+503 and ``Retry-After``, which ``live.database_cut.DatabaseCutMiddleware`` reads to wait and repeat the request when it
+may: the envelope for whoever reads JSON, for a person the page of the maintenance mode with the cut's message.
+
 Under ASGI (daphne) Django renders an error page with ``sync_to_async(response_for_exception,
 thread_sensitive=False)``, in a pooled worker thread the request signals never reach. A connection
 opened there (the templates read the signed-in person) was never released: with Django's pool, a
@@ -26,10 +30,13 @@ import time
 from django.conf import settings
 from django.db import connections
 from django.http import HttpRequest, HttpResponse, HttpResponseServerError, JsonResponse
+from django.middleware.csp import get_nonce
 from django.shortcuts import render
+from django.template.loader import render_to_string
 from django.utils.html import format_html
 from django.utils.translation import get_language, gettext
 from django.views import defaults
+from live.database_cut import DatabaseCut, current_cut, marked
 from live.errors import OperationError
 
 from public.csp import is_public
@@ -42,6 +49,8 @@ FALLBACK_500_HTML = (
     '<!DOCTYPE html><html lang="{lang}"><head><meta charset="utf-8"><title>ERPlora</title></head>'
     "<body><h1>{title}</h1><p>{message}</p></body></html>"
 )
+#: Whoever reads JSON: the API, allauth's, the Hub's calls and the webhooks.
+JSON_PREFIXES = ("/api/", "/_allauth/", "/internal/", "/webhooks/")
 
 
 def _is_public_web(request: HttpRequest) -> bool:
@@ -95,8 +104,31 @@ def page_not_found(
     return render(request, "public/404.html", status=404)
 
 
+def _database_cut(request: HttpRequest, cut: DatabaseCut) -> HttpResponse:
+    """503 and ``Retry-After``. The page runs no context processor: they read the signed-in person, and the database is
+    what is gone."""
+    if request.path.startswith(JSON_PREFIXES):
+        return marked(JsonResponse(cut.envelope(), status=cut.status), cut)
+    try:
+        html = render_to_string(
+            "503.html", {"maintenance_message": cut.message, "request": request, "csp_nonce": get_nonce(request)}
+        )
+    except Exception:
+        # The page that says come back failed too: say it anyway, and say why in the log.
+        logger.exception("public.errors: the 503 page failed to render for %s", request.path)
+        html = format_html(
+            FALLBACK_500_HTML,
+            lang=get_language() or settings.LANGUAGE_CODE,
+            title=gettext("We will be back soon"),
+            message=cut.message,
+        )
+    return marked(HttpResponse(html, status=cut.status), cut)
+
+
 @_own_db_connection_lifecycle
 def server_error(request: HttpRequest) -> HttpResponse:
+    if (cut := current_cut(request)) is not None:
+        return _database_cut(request, cut)
     if request.path.startswith("/api/"):
         envelope = OperationError(
             gettext("Internal error"), code="internal_error", status=500
