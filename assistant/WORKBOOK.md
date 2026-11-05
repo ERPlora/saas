@@ -513,7 +513,7 @@ Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
 1. La persona marca una respuesta del asistente como incorrecta, dañina, que no hace lo que se pidió u otra cosa, y añade, si quiere, un comentario.
-2. El Hub manda a erplora.com la denuncia con la pregunta, la respuesta y si su turno trajo páginas de la web (erplora.com lo avisa en el propio turno).
+2. El Hub —o el panel de erplora.com, con su propio asistente (ASSISTANT-F25)— manda a erplora.com la denuncia con la pregunta, la respuesta y si su turno trajo páginas de la web. erplora.com lo avisa al cerrar cada ronda del turno, y el chat lo guarda con la respuesta en la pestaña, también tras recargarla: basta con que una ronda trajera páginas, aunque la continuación tras las herramientas no trajera ninguna. Si el chat no lo sabe (una conversación de antes de la marca, o una ronda que escribía cuando se paró), no lo dice.
 3. erplora.com la manda por correo al buzón de soporte de ERPlora con el negocio, el motivo, el comentario, la pregunta y la respuesta (cada texto, como mucho 4.000 caracteres), y no guarda nada.
 4. Si el turno trajo páginas de la web, o el Hub no dice de dónde vino la respuesta mientras la búsqueda está encendida, el correo lleva todo menos la respuesta: en su lugar dice que se ha dejado fuera porque puede citar la web, y que se repita la pregunta para verla. Los términos de Brave no dejan guardar sus resultados, ni en parte, y un buzón guarda; su dirección y su título también son parte, así que tampoco van las fuentes.
 5. Si la misma respuesta del mismo negocio se denuncia otra vez en 24 horas (un doble toque, un reintento), no se manda otro correo.
@@ -897,7 +897,7 @@ propio texto por `code`.
 ## Lo que queda fuera
 
 - **Buscar en la web en producción** (ASSISTANT-F14): falta que la infraestructura le pase la clave (aws#52, en borrador) y probarla de verdad en `pre` — saas#277.
-- **Que la denuncia diga de dónde vino la respuesta** (ASSISTANT-F23, paso 4): erplora.com ya marca el turno que trajo páginas de la web, pero el chat (ui#103) y el Hub (hub#870) aún no devuelven la marca con la denuncia; mientras, con la búsqueda encendida, toda denuncia llega sin la respuesta.
+- **Que la denuncia del Hub diga de dónde vino la respuesta** (ASSISTANT-F23, paso 4): el chat ya guarda la marca y la manda con la denuncia (ui#103), y el panel de erplora.com la usa, pero el Hub aún no la pasa a erplora.com (hub#870); mientras, con la búsqueda encendida, toda denuncia del Hub llega sin la respuesta.
 
 ## Lo que NO hace, a propósito
 

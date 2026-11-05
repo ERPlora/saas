@@ -12,7 +12,8 @@
 //   asks for the write `billing__plan__cancel` (whose card first says what cancelling will do), and says when the
 //   person said no;
 // - what a currency is worth (`dólar`, `dollar`): asks for erplora.com's `currency_rate`, then gives it naming no source;
-// - a law (`ley`, `law`): asks for erplora.com's `web_search`, then answers naming no source;
+// - a law (`ley`, `law`): asks for erplora.com's `web_search`, then answers naming no source; a law and the businesses,
+//   searches the web and then reads the businesses, so the turn goes on after the web (assistant-report.spec.ts);
 // - anything else: a short greeting.
 // It also plays the providers of those two tools, Frankfurter (`/v1/latest`) and Brave (`/res/v1/web/search`), for a panel whose
 // `ASSISTANT_RATES_URL` and `ASSISTANT_SEARCH_URL` point here (panel/project.ts, `aiProviderPort`).
@@ -133,6 +134,10 @@ const call = (name: string, args: Record<string, unknown>): Answer => ({
   ],
 });
 
+/** A question about the businesses, and one about a law. */
+const BUSINESSES = /negocios|businesses/i;
+const LAW = /\b(?:ley|law)\b/i;
+
 /** The answer to a conversation, as the frames of a stream. */
 export function answerTo(messages: Message[]): Answer {
   const es = spanish(messages);
@@ -142,9 +147,11 @@ export function answerTo(messages: Message[]): Answer {
     const asked = messages
       .flatMap((message) => message.tool_calls ?? [])
       .find((toolCall) => toolCall.id === last.tool_call_id)?.function?.name;
-    const cancelled = cancelOf(textOf([...messages].reverse().find((message) => message.role === 'user')?.content));
+    const question = textOf([...messages].reverse().find((message) => message.role === 'user')?.content);
+    const cancelled = cancelOf(question);
     if (asked === 'currency_rate' || asked === 'web_search') {
       if (refused(result) || /"error"/.test(result)) return text(es ? 'No he podido consultarlo ahora.' : 'I could not look it up now.');
+      if (asked === 'web_search' && BUSINESSES.test(question)) return call('hubs__business__list', {});
       if (asked === 'web_search') return text(es ? 'La ley entra en vigor este mes.' : 'The law takes effect this month.');
       const { converted } = JSON.parse(result) as { converted?: string };
       return text(es ? `Hoy, 1 USD son ${converted} EUR.` : `Today, 1 USD is ${converted} EUR.`);
@@ -179,9 +186,10 @@ export function answerTo(messages: Message[]): Answer {
   const create = /\b(?:crea|create)\b.*?(?:llamado|called)\s+«?([^»?.]+)»?/i.exec(question);
   if (create) return call('hubs__business__create', { name: create[1].trim(), country: 'ES' });
   if (cancelOf(question)) return call('hubs__business__list', {});
-  if (/negocios|businesses/i.test(question)) return call('hubs__business__list', {});
+  // A law first: asked with the businesses too, the businesses come after the search (above).
+  if (LAW.test(question)) return call('web_search', { query: question, language: es ? 'es' : 'en' });
+  if (BUSINESSES.test(question)) return call('hubs__business__list', {});
   if (/d[oó]ll?ar/i.test(question)) return call('currency_rate', { from: 'USD', to: 'EUR' });
-  if (/\b(?:ley|law)\b/i.test(question)) return call('web_search', { query: question, language: es ? 'es' : 'en' });
   return text(es ? 'Hola, soy el asistente de prueba.' : 'Hello, I am the test assistant.');
 }
 

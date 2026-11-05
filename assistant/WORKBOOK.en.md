@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:16aeeace94beecb09591dc328e99ba89d3c6a8f2cc424fc1f4f355e50efb6f1d -->
+<!-- generated from WORKBOOK.md sha256:97a2688f96dbbd2159615f15ed4c87233dcfe2e63718eea616eb7b846c80b46d -->
 
 ## What it is for and who uses it
 
@@ -476,7 +476,7 @@ Actor: the Hub's assistant of a business
 Screen: none
 Steps:
 1. The person marks an answer of the assistant as incorrect, harmful, not doing what was asked or something else, and adds, if they want, a comment.
-2. The Hub sends erplora.com the report with the question, the answer and whether its turn brought pages from the web (erplora.com says so in the turn itself).
+2. The Hub —or erplora.com's panel, with its own assistant (ASSISTANT-F25)— sends erplora.com the report with the question, the answer and whether its turn brought pages from the web. erplora.com says so as it closes each round of the turn, and the chat keeps it with the answer in the tab, also after reloading it: one round that brought pages is enough, even if the continuation after the tools brought none. If the chat does not know (a conversation from before the mark, or a round that was writing when it was stopped), it does not say.
 3. erplora.com mails it to ERPlora's support mailbox with the business, the reason, the comment, the question and the answer (each text, at most 4,000 characters), and keeps nothing.
 4. If the turn brought pages from the web, or the Hub does not say where the answer came from while the search is on, the mail carries everything but the answer: in its place it says it was left out because it may quote the web, and to ask the question again to see it. Brave's terms do not allow keeping its results, not even in part, and a mailbox keeps; their address and title are part of them too, so the sources do not go either.
 5. If the same answer of the same business is reported again within 24 hours (a double tap, a retry), no other mail is sent.
