@@ -7,10 +7,10 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { djangoEnv } from '../django-env';
-import { expect, settled, shot, signIn, test } from './fixtures';
+import { openPanel } from './assistant-chat';
+import { expect, settled, shot, test } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const OWNER = { email: 'e2e-assistant-owner@example.com', password: process.env.QA_PANEL_PASSWORD ?? 'e2e-panel' };
 
 function seed(action: 'clear' | 'panel'): void {
   execFileSync('uv', ['run', 'python', 'tests/e2e/panel/assistant_seed.py', action, 'http://127.0.0.1:9/v1', 'en'], {
@@ -30,11 +30,7 @@ test.afterAll(() => {
 
 test('a microphone the browser refuses says where to allow it, and nothing is recorded', async ({ page }) => {
   seed('panel');
-  await signIn(page.request, OWNER);
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/dashboard/businesses');
-  await page.getByTestId('assistant-button').click();
-  const panel = page.getByTestId('assistant-panel');
+  const panel = await openPanel(page);
   const mic = panel.getByTestId('assistant-mic');
 
   await mic.click();

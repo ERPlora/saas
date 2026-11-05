@@ -115,13 +115,17 @@ def test_what_a_search_returned_goes_to_the_model_and_no_further_in_a_live_turn(
     assert [frame["text"] for frame in got if isinstance(frame, dict) and frame.get("type") == "text_delta"] == [SECRET_ANSWER, f"\n\n{SECRET_ADDRESS}"]
 
 
-def test_what_a_search_returned_goes_to_the_model_and_no_further_in_a_turn_at_once(internal, business, answering, a_search, every_log):
+def test_a_turn_at_once_sends_nothing_to_the_search_so_nothing_of_it_can_be_kept(internal, business, answering, a_search, every_log):
+    """The Hub keeps what this door answers (ASSISTANT-F13), so this door never searches, even if the model asks: the
+    question does not leave for Brave and no page or address of its comes back."""
     response = door(Client(), "/internal/assistant/chat", {"hub": business.slug, "messages": [{"role": "user", "content": SECRET_QUESTION}]})
 
     assert response.status_code == 200
+    assert [seen for seen in a_search.requests if seen.path.startswith(SEARCH)] == []
     said = json.dumps(response.json(), ensure_ascii=False)
     assert SECRET_ANSWER in said
     assert SECRET_RESULT not in said
+    assert SECRET_ADDRESS not in said
     assert_forgotten(every_log, SECRET_QUESTION, SECRET_ANSWER, SECRET_RESULT, SECRET_ADDRESS, "Rosalía", SEARCH_KEY)
 
 

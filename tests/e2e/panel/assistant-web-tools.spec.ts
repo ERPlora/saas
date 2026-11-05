@@ -9,15 +9,9 @@
 import { LONG_ADDRESS } from '../assistant-provider';
 import { STACK } from '../stack';
 
-import { ask, localAssistant } from './assistant-chat';
-import { expect, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
+import { ask, localAssistant, openPanel, SIZES } from './assistant-chat';
+import { expect, settled, shot, sidewaysScroll, test, watchPageErrors } from './fixtures';
 
-const OWNER = { email: 'e2e-assistant-owner@example.com', password: process.env.QA_PANEL_PASSWORD ?? 'e2e-panel' };
-const SIZES = [
-  { name: 'phone', width: 390, height: 844 },
-  { name: 'tablet', width: 834, height: 1112 },
-  { name: 'desktop', width: 1440, height: 900 },
-] as const;
 const RATE_SOURCE = 'https://frankfurter.dev';
 const WORDS = {
   es: { rate: '¿A cómo está el dólar?', rateAnswer: 'Hoy, 1 USD son 0.89 EUR.', law: '¿Qué dice la nueva ley?', lawAnswer: 'La ley entra en vigor este mes.' },
@@ -31,13 +25,8 @@ for (const language of ['es', 'en'] as const) {
 
   test(`the panel's assistant says a rate and searches the web, its source in sight (${language})`, async ({ page }) => {
     seed('panel', language);
-    await signIn(page.request, OWNER);
     const errors = watchPageErrors(page);
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/dashboard/businesses');
-    await page.getByTestId('assistant-button').click();
-    const panel = page.getByTestId('assistant-panel');
-    await expect(panel).toHaveAttribute('data-open', 'true');
+    const panel = await openPanel(page);
 
     await ask(page, words.rate);
     const rate = panel.getByTestId('assistant-bubble-assistant').last();

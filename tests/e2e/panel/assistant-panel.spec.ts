@@ -18,18 +18,11 @@ import type { Locator, Page } from '@playwright/test';
 
 import { NEW_BUSINESS } from '../assistant-provider';
 
-import { ask, localAssistant } from './assistant-chat';
+import { ask, localAssistant, OWNER, SIZES } from './assistant-chat';
 import { expect, settled, shot, sidewaysScroll, signIn, test, waitForMail, watchPageErrors } from './fixtures';
 import { PANEL_MAIL_DIR } from './project';
 
-const PASSWORD = process.env.QA_PANEL_PASSWORD ?? 'e2e-panel';
-const OWNER = { email: 'e2e-assistant-owner@example.com', password: PASSWORD };
 const BUSINESS = 'E2E Asistente Panel';
-const SIZES = [
-  { name: '1440', width: 1440, height: 900 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '390', width: 390, height: 844 },
-] as const;
 
 /** What the person sees, in each language (the package's words and the panel's, frontend/locale). */
 const WORDS = {

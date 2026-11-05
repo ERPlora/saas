@@ -2,8 +2,8 @@
 // assistant-probes.spec.ts): the turns it streams (`/api/assistant/turn`, read back as frames by `summarizeTurns`), a
 // question typed and followed to its end with its cards decided, and what the panel showed for it; and the seed both
 // start from: the real providers, the account «QA Base» and the documentation index (`assistant_seed.py real`). And for
-// the specs on the e2e's own model (assistant-provider.ts): its server and seed for a spec's file (`localAssistant`), and a
-// question typed in the composer (`ask`).
+// the specs on the e2e's own model (assistant-provider.ts): its server and seed for a spec's file (`localAssistant`), the
+// panel open for an account (`openPanel`) and a question typed in the composer (`ask`).
 import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,9 +14,18 @@ import { type Card, summarizeTurns, type Turns } from '../assistant-battery';
 import { redactedError } from '../assistant-probes';
 import { type Provider, startProvider } from '../assistant-provider';
 import { djangoEnv } from '../django-env';
-import { expect, test } from './fixtures';
+import { expect, signIn, test } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+
+/** The account `assistant_seed.py panel` makes, with its one business. */
+export const OWNER = { email: 'e2e-assistant-owner@example.com', password: process.env.QA_PANEL_PASSWORD ?? 'e2e-panel' };
+/** The panel's three sizes, for a spec's screenshots. */
+export const SIZES = [
+  { name: '1440', width: 1440, height: 900 },
+  { name: '834', width: 834, height: 1112 },
+  { name: '390', width: 390, height: 844 },
+] as const;
 
 /** How long one question may take, cards included: the real model, its tools and the documentation search. */
 export const TURN_MS = 240_000;
@@ -83,6 +92,17 @@ export function localAssistant(port = 0): {
     await provider?.close();
   });
   return { provider: () => provider!, seed };
+}
+
+/** `OWNER` signed in on the businesses at 1440, with the assistant's panel open: that panel. */
+export async function openPanel(page: Page): Promise<Locator> {
+  await signIn(page.request, OWNER);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/dashboard/businesses');
+  await page.getByTestId('assistant-button').click();
+  const panel = page.getByTestId('assistant-panel');
+  await expect(panel).toHaveAttribute('data-open', 'true');
+  return panel;
 }
 
 /** Writes `text` in the composer and sends it, once the turn before is over. */

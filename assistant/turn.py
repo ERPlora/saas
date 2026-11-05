@@ -124,7 +124,7 @@ def sanitized(messages: list[dict]) -> list[dict]:
     return cleaned
 
 
-def prepare(messages: list[dict], instructions: str, *, answer_kept: bool) -> list[dict]:
+def prepare(messages: list[dict], instructions: str, *, answer_kept: bool = False) -> list[dict]:
     """The conversation the model sees, or ``TurnRefused``: 422 for a message of an unknown role, 413 for a text
     over ``MAX_TEXT_BYTES`` or an attachment over its limit (``attachments.check``). Its documents are turned into
     their text (``attachments.expand``): CPU work, which the door runs off its event loop. The system message is the
