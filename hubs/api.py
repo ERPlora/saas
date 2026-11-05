@@ -25,6 +25,7 @@ from hubs.schemas import (
     BusinessTypeListIn,
     BusinessUpdateIn,
     ByIdIn,
+    CustomDomainRequestIn,
     DataCopyLinkIn,
     DataCopyListIn,
     InvitationListIn,
@@ -80,6 +81,21 @@ async def business_update(request, data: BusinessUpdateIn):
 @bind(router, "hubs.business.change_address", "/hubs/businesses/address")
 async def business_change_address(request, data: BusinessAddressIn):
     return await run_operation(request, services.business_change_address, data)
+
+
+@bind(router, "hubs.custom_domain.get", "/hubs/businesses/custom-domain")
+async def custom_domain_get(request, params: Query[ByIdIn]):
+    return await run_operation(request, queries.custom_domain_get, params)
+
+
+@bind(router, "hubs.custom_domain.request", "/hubs/businesses/custom-domain")
+async def custom_domain_request(request, data: CustomDomainRequestIn):
+    return await run_operation(request, services.custom_domain_request, data)
+
+
+@bind(router, "hubs.custom_domain.remove", "/hubs/businesses/custom-domain/remove")
+async def custom_domain_remove(request, data: ByIdIn):
+    return await run_operation(request, services.custom_domain_remove, data)
 
 
 @bind(router, "hubs.business.delete", "/hubs/businesses/delete")

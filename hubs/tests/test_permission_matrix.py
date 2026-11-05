@@ -20,6 +20,7 @@ from hubs.schemas import (
     BusinessOpenIn,
     BusinessUpdateIn,
     ByIdIn,
+    CustomDomainRequestIn,
     DataCopyLinkIn,
     DataCopyListIn,
     MemberInviteIn,
@@ -89,6 +90,10 @@ def call(name, hub, team):
         # a 503, never the role's answer.
         "data_copy.list": (queries.data_copy_list, DataCopyListIn(business_id=hub.id)),
         "data_copy.link": (queries.data_copy_link, DataCopyLinkIn(business_id=hub.id, copy_id="any.dump")),
+        # A business's own domain (HUBS-F17): with the variable off, past the role is its 409, never the role's answer.
+        "custom_domain.get": (queries.custom_domain_get, ByIdIn(id=hub.id)),
+        "custom_domain.request": (services.custom_domain_request, CustomDomainRequestIn(id=hub.id, domain="www.minegocio.es")),
+        "custom_domain.remove": (services.custom_domain_remove, ByIdIn(id=hub.id)),
     }[name]
 
 
@@ -128,6 +133,10 @@ MATRIX = {
     # A full copy of the business's data: only its owner, as deleting it.
     "data_copy.list": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
     "data_copy.link": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
+    # Its own domain: who sees the settings reads it, and only its owner connects it, as the address of the business.
+    "custom_domain.get": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
+    "custom_domain.request": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
+    "custom_domain.remove": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
 }
 
 
@@ -170,6 +179,8 @@ def test_every_operation_on_a_business_has_its_row():
         # The platform's (the nightly collection): ``test_collect_hub_usage.py``.
         "hubs.usage.record",
         "hubs.usage.prune",
+        # The platform's (the hourly check): ``test_check_custom_domains.py``.
+        "hubs.custom_domain.record",
         # The platform's (the clock of a suspended business): ``test_suspended_lifecycle.py``.
         "hubs.business.age_suspension",
         "hubs.address.propose",

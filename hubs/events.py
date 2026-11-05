@@ -66,6 +66,10 @@ OWNERSHIP_CHANGED = "hubs.ownership.changed"
 
 PEOPLE = [MEMBER_CHANGED, OWNERSHIP_CHANGED]
 
+#: What a business's own domain is, or what is missing, changed (HUBS-F17): on the owner's channel. Its page reads it
+#: again. Payload ``{"business_id"}``.
+CUSTOM_DOMAIN_CHANGED = "hubs.custom_domain.changed"
+
 ALL = [
     *BUSINESS,
     *MEMBER,
@@ -77,4 +81,5 @@ ALL = [
     # Not in ``BUSINESS``: a night's figures change the page and the usage, never the list of businesses.
     BUSINESS_USAGE_COLLECTED,
     USAGE_PRUNED,
+    CUSTOM_DOMAIN_CHANGED,
 ]

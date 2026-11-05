@@ -6,7 +6,8 @@ Ported from ERPlora/saas ``apps/dashboard/hubs/main/emails.py`` (origin/develop)
 ``send_ownership_accepted``, which say until when a paid plan is paid, HUBS-F28), the deletion with the date
 until which the business can be recovered and the way to the copy of its data (``send_deletion``), that copy ready to
 download (``send_data_copy_ready``), the business ready to open (``send_ready``, once, when the Hub reports it ready)
-and the notices of a business suspended for an unpaid plan (``send_suspension_notice``). Services call them after
+the notices of a business suspended for an unpaid plan (``send_suspension_notice``) and the own domain it stopped
+serving (``send_custom_domain_lost``). Services call them after
 the COMMIT: a mail never announces a write that rolled back, and one that cannot leave is logged, never raised (the
 write is the source of truth).
 """
@@ -196,6 +197,26 @@ def send_ready(hub, owner, *, base_url: str) -> bool:
             "",
             _("Open it: %(url)s") % {"url": hub_start_url(hub.slug)},
             _("Manage it from the panel: %(url)s") % {"url": f"{base_url}{BUSINESSES}/{hub.id}"},
+        ]
+    return _send(subject, lines, owner.email, language)
+
+
+def send_custom_domain_lost(hub, owner, *, hostname: str, base_url: str) -> bool:
+    """Tell the owner that the business's own domain stopped pointing at it and its website is no longer served there
+    (HUBS-F17): a business notice, so not to an owner who turned them off (the panel says it anyway)."""
+    if not receives_business_notices(owner):
+        logger.info("hubs.mail.custom_domain_lost_skipped hub=%s: the owner turned business notices off", hub.pk)
+        return False
+    language = _language_of(owner)
+    with translation.override(language):
+        subject = _("Your domain %(domain)s is no longer connected") % {"domain": hostname}
+        lines = [
+            _("%(domain)s stopped pointing at %(business)s on ERPlora, so its website is no longer served on that domain.")
+            % {"domain": hostname, "business": hub.name},
+            _("Everything else keeps working at its address on erplora.com."),
+            "",
+            _("It comes back by itself within the hour once the record is back. The records are here: %(url)s")
+            % {"url": _page(hub, base_url)},
         ]
     return _send(subject, lines, owner.email, language)
 

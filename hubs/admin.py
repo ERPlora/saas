@@ -40,6 +40,7 @@ from accounts.admin import (
 )
 from hubs import queries, services
 from hubs.models import (
+    CustomDomain,
     BillingProfile,
     BusinessType,
     Hub,
@@ -412,6 +413,17 @@ class SessionRevocationAdmin(PlatformActions):
                 % {"count": counts["pending"]},
                 messages.WARNING,
             )
+
+
+@admin.register(CustomDomain)
+class CustomDomainAdmin(ReadOnly, admin.ModelAdmin):
+    """A business's own domain (HUBS-F17): to read it, as everything of the account plane; its operations and the hourly
+    check write it, because they are what talks to AWS and to the Hub."""
+
+    list_display = ["hostname", "hub", "state", "reason", "failures", "checked_at", "activated_at"]
+    list_filter = ["state", "reason"]
+    list_select_related = ["hub"]
+    search_fields = ["hostname", "hub__slug", "hub__name"]
 
 
 @admin.register(HubUsageDaily)
