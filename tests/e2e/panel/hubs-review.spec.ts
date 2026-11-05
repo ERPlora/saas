@@ -16,6 +16,7 @@ import {
   apiPost,
   djangoPrint,
   expect,
+  readyBusinessOn,
   seedPanel,
   settled,
   shot,
@@ -78,20 +79,9 @@ function account(who: string, first: string, last: string, language: Language): 
   return { email, first, name: `${first} ${last}` };
 }
 
-/** A business of `page`'s account called `name`, ready as the Hub leaves it, on Starter when `paid`. */
-async function businessOf(page: Page, name: string, { paid = false } = {}): Promise<string> {
-  const created = await apiPost(page.request, '/api/hubs/businesses', { name, country: 'ES' });
-  expect(created.status(), await created.text()).toBe(201);
-  const { id } = (await created.json()) as { id: string };
-  djangoPrint(
-    [
-      'from django.utils import timezone',
-      'from hubs.models import Hub, Plan, Subscription',
-      `Hub.objects.filter(pk="${id}").update(status="active", ready_at=timezone.now(), pending_hub_call="")`,
-      paid ? `Subscription.objects.filter(hub_id="${id}").update(plan=Plan.objects.get(slug="starter"))` : '',
-    ].join('\n'),
-  );
-  return id;
+/** A business of `page`'s account called `name`, ready as the Hub leaves it, on Starter when `paid` (on Free, where it is born, otherwise). */
+function businessOf(page: Page, name: string, { paid = false } = {}): Promise<string> {
+  return readyBusinessOn(page.request, name, paid ? 'starter' : 'free');
 }
 
 /** `person` invited to business `id` as an employee by `page`'s account; accepted when `accept`. Their member id. */

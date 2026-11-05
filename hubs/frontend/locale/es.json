@@ -307,6 +307,55 @@
       "countryLocked": "El país no cambia una vez listo el negocio: sus facturas son de un país.",
       "changeAddress": "Cambiar dirección"
     },
+    "domain": {
+      "title": "Dominio propio",
+      "lead": "Muestra tu web pública en un dominio tuyo, como www.tunegocio.com. La aplicación y la entrada al negocio siguen en su dirección de erplora.com.",
+      "loadError": "No hemos podido cargar el dominio de este negocio.",
+      "unavailable": "Los dominios propios todavía no están disponibles.",
+      "notInPlan": {
+        "heading": "Tu plan no incluye dominio propio",
+        "headingNamed": "El plan {plan} no incluye dominio propio",
+        "body": "Cambia a un plan que lo incluya para mostrar tu web en tu propio dominio.",
+        "plans": "Ver planes"
+      },
+      "field": "Tu dominio",
+      "placeholder": "www.tunegocio.com",
+      "fieldHint": "Usa www u otro subdominio. Un dominio raíz como tunegocio.com no puede apuntar a ERPlora: redirígelo a www en tu proveedor de dominio.",
+      "connect": "Conectar dominio",
+      "connected": "Ahora crea los registros de {domain}",
+      "ownerOnly": "Solo el propietario del negocio puede conectar o quitar su dominio.",
+      "active": "Tu web se sirve en {domain}.",
+      "records": {
+        "title": "Registros que crear en tu proveedor de dominio",
+        "lead": "Crea los dos como registros CNAME, en este orden.",
+        "type": "Tipo",
+        "name": "Nombre",
+        "value": "Valor",
+        "copyName": "Copiar el nombre",
+        "copyValue": "Copiar el valor",
+        "copied": "Copiado",
+        "copyFailed": "No se ha podido copiar. Selecciónalo y cópialo a mano."
+      },
+      "validation": {
+        "title": "1. Registro de validación",
+        "hint": "Créalo primero y déjalo para siempre: renueva el certificado.",
+        "coming": "Todavía se está preparando y aparece aquí en unos segundos.",
+        "lookAgain": "Volver a mirar"
+      },
+      "traffic": {
+        "title": "2. Registro que apunta a ERPlora",
+        "hint": "Créalo cuando el certificado esté listo: antes, tu dominio mostraría un aviso de seguridad."
+      },
+      "checks": "Revisamos tu dominio cada hora. Si deja de apuntar a ERPlora tres veces seguidas, dejamos de servir tu web en él y te avisamos por correo; vuelve solo cuando vuelve el registro.",
+      "checkedAt": "Última revisión: {date}.",
+      "activeSince": "Conectado desde {date}.",
+      "failures": "La última revisión encontró un problema: a las tres seguidas dejamos de servir tu web en este dominio. | Las últimas {count} revisiones encontraron un problema: a las tres seguidas dejamos de servir tu web en este dominio.",
+      "removing": "Tu web ya no se sirve en {domain}. Se está borrando su certificado; después el dominio queda libre para volver a conectarlo.",
+      "remove": "Quitar dominio",
+      "removeTitle": "Quitar {domain}",
+      "removeMessage": "Tu web deja de servirse en {domain} y sigue en su dirección de erplora.com. Su certificado se borra y el dominio queda libre para volver a conectarlo.",
+      "removed": "Se está quitando {domain}"
+    },
     "danger": {
       "title": "Zona de peligro",
       "deleteTitle": "Eliminar negocio",

@@ -113,6 +113,9 @@ const NARROWED: Record<string, string> = {
   // `list[Literal[…]]` of the row's actions: named in TypeScript (checked below against the literal).
   'InvoiceRowOut.actions': 'InvoiceAction[]',
   'SubscriptionRowOut.actions': 'SubscriptionAction[]',
+  // `CustomDomain.State` / `CustomDomain.Reason` of hubs/models.py (checked below against the model).
+  'CustomDomainOut.state': 'CustomDomainState',
+  'CustomDomainOut.reason': 'CustomDomainReason',
 };
 
 /** Every schema of hubs the panel reads or sends, by its name on both sides. */
@@ -144,6 +147,10 @@ const SCHEMAS = [
   'MemberRoleIn',
   'OwnershipTransferIn',
   'OwnershipTransferOut',
+  'CustomDomainRequestIn',
+  'DnsRecordOut',
+  'CustomDomainOut',
+  'CustomDomainStatusOut',
 ];
 
 describe('sdk-types.d.ts follows hubs/schemas.py', () => {
@@ -397,5 +404,35 @@ describe("sdk-types.d.ts follows the panel's assistant schemas of base/schemas.p
     expect(TYPES).toContain("'base.assistant.speak': { input: AssistantSpeakIn; output: never };");
     // `base.AssistantSpeakIn` = `assistant.SpeechIn` with the language optional (empty: the account's).
     expect(typeTypes('AssistantSpeakIn')).toEqual({ text: 'string', 'language?': "'' | 'es' | 'en'", 'voice?': 'string' });
+  });
+});
+
+/** The values of a `TextChoices` class of `CustomDomain` (hubs/models.py), as the API sends them. */
+function customDomainChoices(name: 'State' | 'Reason'): string {
+  const models = readFileSync(join(HERE, '..', 'hubs', 'models.py'), 'utf8');
+  const model = models.slice(models.indexOf('class CustomDomain(models.Model):'));
+  const block = new RegExp(`^ {4}class ${name}\\(models\\.TextChoices\\):\\n((?: {8}.*\\n)+)`, 'm').exec(model)?.[1] ?? '';
+  return [...block.matchAll(/^ {8}[A-Z_]+ = "([^"]*)"/gm)].map((m) => `'${m[1]}'`).join(' | ');
+}
+
+describe('sdk-types.d.ts follows the own domain of a business (HUBS-F17)', () => {
+  it('names its states and the reasons it is stuck as hubs/models.py does', () => {
+    expect(customDomainChoices('State')).toBe("'pending' | 'active' | 'lapsed' | 'removing'");
+    expect(/^export type CustomDomainState = (.+);$/m.exec(TYPES)?.[1]).toBe(customDomainChoices('State'));
+    expect(customDomainChoices('Reason').split(' | ')).toHaveLength(13);
+    const reasons = /^export type CustomDomainReason =((?:.|\n)+?);$/m.exec(TYPES)?.[1] ?? '';
+    expect(
+      reasons
+        .split('|')
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join(' | '),
+    ).toBe(customDomainChoices('Reason'));
+  });
+
+  it('types its three operations with their input and output', () => {
+    expect(TYPES).toContain("'hubs.custom_domain.get': { input: ByIdIn; output: CustomDomainStatusOut };");
+    expect(TYPES).toContain("'hubs.custom_domain.request': { input: CustomDomainRequestIn; output: CustomDomainOut };");
+    expect(TYPES).toContain("'hubs.custom_domain.remove': { input: ByIdIn; output: CustomDomainStatusOut };");
   });
 });

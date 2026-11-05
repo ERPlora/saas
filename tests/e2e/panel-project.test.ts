@@ -56,6 +56,26 @@ describe('panelServers', () => {
     });
   });
 
+  it("connects own domains (HUBS-F17) with every call to AWS sent to the Hub double's port and made-up keys, never to AWS", () => {
+    // hubs-domain.spec.ts plays ACM and the listener there, as it plays the Hub; outside it nobody listens and the
+    // calls fail at once, as with AWS away. Keys of the environment come first in boto3: never a session of this box.
+    const double = `http://127.0.0.1:${STACK.hubDoublePort}`;
+    for (const name of ['panel-django', 'panel-mfa-django']) {
+      expect(servers(5225)[name].env, name).toMatchObject({
+        CUSTOM_DOMAINS_ENABLED: 'True',
+        CUSTOM_DOMAINS_LISTENER_ARN: 'arn:aws:elasticloadbalancing:eu-west-1:000000000000:listener/app/e2e/0/0',
+        CUSTOM_DOMAINS_TARGET_TEMPLATE: 'hub-{hub_id}.erplora.com',
+        AWS_ENDPOINT_URL_ACM: double,
+        AWS_ENDPOINT_URL_ELASTIC_LOAD_BALANCING_V2: double,
+        AWS_ENDPOINT_URL_CLOUDWATCH: double,
+        AWS_ACCESS_KEY_ID: 'e2e-made-up',
+        AWS_SECRET_ACCESS_KEY: 'e2e-made-up',
+        AWS_SESSION_TOKEN: '',
+        AWS_EC2_METADATA_DISABLED: 'true',
+      });
+    }
+  });
+
   it("names the e2e's own provider as the assistant's services provider, never a real one of the database", () => {
     expect(servers(5225)['panel-django'].env).toMatchObject({ ASSISTANT_SERVICE_PROVIDER: 'e2e-local' });
   });
