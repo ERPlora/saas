@@ -17,6 +17,7 @@ import { useI18n } from 'vue-i18n';
 
 import { looksLikeEmail } from '../../../frontend/email';
 import type { ProfileOut } from '../../../frontend/sdk-types';
+import { sessionChanged } from '../../../frontend/session-changed';
 import { useErrorText } from '../error-text';
 import { reauthRequestOf, useReauthentication } from '../reauth';
 import CodeField from './CodeField.vue';
@@ -106,6 +107,8 @@ async function confirm(): Promise<void> {
     return; // `verify.error`: the dialog shows it.
   }
   if (answer.verified) {
+    // The user menu shows the account's address: the entry reads the session again (saas#292).
+    sessionChanged();
     const proven = sentTo.value.toLowerCase() === props.profile.email.toLowerCase();
     void toastSuccess(proven ? t('accounts.account.email.verified') : t('accounts.account.email.changed', { email: answer.profile.email }));
     open.value = false;

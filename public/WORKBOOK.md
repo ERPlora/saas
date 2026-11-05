@@ -87,7 +87,7 @@ El nombre, la descripción, el precio mensual por hub con la nota de IVA, «Qué
 
 ### Sectores
 «ERPlora para tu negocio.» con los tipos de negocio por sector y, al abrir uno, su página: la pregunta que
-escribiría en un buscador, las apps con las que viene, las preguntas frecuentes y los enlaces a precios, apps,
+escribiría en un buscador, las apps pensadas para ese negocio, las preguntas frecuentes y los enlaces a precios, apps,
 producto y cumplimiento.
 
 ### Características, Seguridad y Actualizaciones
@@ -249,7 +249,7 @@ Actor: visitante
 Pantalla: Sectores
 Pasos:
 1. La persona abre «Industrias» y ve «ERPlora para tu negocio.» con los tipos de negocio, que puede filtrar por sector.
-2. Abre uno y ve el titular con la pregunta que escribiría en un buscador («Software TPV y ERP para tu peluquería»), un arranque con el precio de entrada y cuántas apps hay, las apps con las que viene ese tipo de negocio y sus preguntas frecuentes.
+2. Abre uno y ve el titular con la pregunta que escribiría en un buscador («Software TPV y ERP para tu peluquería»), un arranque con el precio de entrada y cuántas apps hay, las apps pensadas para ese tipo de negocio, con cómo se activan (la plantilla que propone el Inicio del negocio, o una a una), y sus preguntas frecuentes. Nunca dice que el negocio las trae de serie: todo negocio nace con todas las apps apagadas (PLAN §33).
 3. Abajo tiene los enlaces a precios, a la tienda de apps, al producto y al cumplimiento, y «Empieza gratis» y «Explorar apps».
 Entra: los sectores y tipos de negocio activos y las apps publicadas de su sector.
 Sale: nada guardado; los datos estructurados de la aplicación y de las preguntas frecuentes.

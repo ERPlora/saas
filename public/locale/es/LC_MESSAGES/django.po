@@ -1417,15 +1417,15 @@ msgstr "Activas solo las apps que necesitas, y todas comparten una base de datos
 
 #: industries.py
 #, python-format
-msgid "Yes. A %(business)s comes with %(count)s app of our catalogue out of the box — %(examples)s — and it works on the same data as everything else."
-msgid_plural "Yes. A %(business)s comes with %(count)s apps of our catalogue out of the box — among them %(examples)s — and they all work on the same data."
-msgstr[0] "Sí. Tu %(business)s trae de serie %(count)s app de nuestro catálogo —%(examples)s— y trabaja sobre los mismos datos que todo lo demás."
-msgstr[1] "Sí. Tu %(business)s trae de serie %(count)s apps de nuestro catálogo —entre ellas %(examples)s— y todas trabajan sobre los mismos datos."
+msgid "Yes. Our catalogue has %(count)s app made for a %(business)s — %(examples)s — and it works on the same data as everything else."
+msgid_plural "Yes. Our catalogue has %(count)s apps made for a %(business)s — among them %(examples)s — and they all work on the same data."
+msgstr[0] "Sí. Nuestro catálogo tiene %(count)s app pensada para tu %(business)s —%(examples)s— y trabaja sobre los mismos datos que todo lo demás."
+msgstr[1] "Sí. Nuestro catálogo tiene %(count)s apps pensadas para tu %(business)s —entre ellas %(examples)s— y todas trabajan sobre los mismos datos."
 
 #: industries.py
 #, python-format
-msgid "Yes. A %(business)s runs on the same core as every other business we serve — point of sale, catalogue, customers and invoicing — and you turn on the apps of the catalogue as you need them."
-msgstr "Sí. Tu %(business)s funciona con el mismo núcleo que cualquier otro negocio al que servimos —TPV, catálogo, clientes y facturación— y vas activando las apps del catálogo según las necesitas."
+msgid "Yes. A %(business)s uses the same apps as every other business we serve — point of sale, catalogue, customers and invoicing — and you turn on the ones you need."
+msgstr "Sí. Tu %(business)s usa las mismas apps que cualquier otro negocio al que servimos —TPV, catálogo, clientes y facturación— y activas las que necesitas."
 
 #: industries.py
 #, python-format
@@ -1449,12 +1449,16 @@ msgstr "¿Cuánto cuesta ERPlora para tu %(business)s?"
 
 #: industries.py
 #, python-format
-msgid "Start with the apps a %(business)s comes with — %(examples)s — and turn on more from the catalogue when the business asks for them."
-msgstr "Empieza con las apps que trae de serie tu %(business)s —%(examples)s— y activa más del catálogo cuando el negocio te las pida."
+msgid "Start with the apps made for a %(business)s — %(examples)s — and turn on more from the catalogue when the business asks for them."
+msgstr "Empieza con las apps pensadas para tu %(business)s —%(examples)s— y activa más del catálogo cuando el negocio te las pida."
 
 #: industries.py
-msgid "Start with the core: point of sale, catalogue, customers and invoicing come with every hub. You then turn on apps from the catalogue one at a time, so you never configure something you are not using yet."
-msgstr "Empieza por el núcleo: TPV, catálogo, clientes y facturación vienen con cada hub. A partir de ahí activas apps del catálogo de una en una, así nunca configuras algo que todavía no usas."
+msgid "Turn on what you use every day — point of sale, catalogue, customers and invoicing — and add more apps when you need them, so you never configure something you are not using yet."
+msgstr "Activa lo que usas cada día —TPV, catálogo, clientes y facturación— y añade más apps cuando las necesites, así nunca configuras algo que todavía no usas."
+
+#: industries.py
+msgid "Your business starts with no app turned on: its Home suggests a template that turns on the apps of a business like yours, or you turn them on one at a time."
+msgstr "Tu negocio empieza sin ninguna app activada: su Inicio te propone una plantilla que activa las apps de un negocio como el tuyo, o las activas una a una."
 
 #: industries.py
 msgid "Which apps do I need to start?"
@@ -1481,12 +1485,12 @@ msgid "Business types"
 msgstr "Tipos de negocio"
 
 #: templates/public/industries/list.html
-msgid "Discover how ERPlora adapts to your business, with the apps a restaurant, a salon, a shop or a clinic comes with."
-msgstr "Descubre cómo ERPlora se adapta a tu negocio, con las apps que trae de serie un restaurante, una peluquería, una tienda o una clínica."
+msgid "Discover how ERPlora adapts to your business, with the apps made for a restaurant, a salon, a shop or a clinic."
+msgstr "Descubre cómo ERPlora se adapta a tu negocio, con las apps pensadas para un restaurante, una peluquería, una tienda o una clínica."
 
 #: templates/public/industries/list.html
-msgid "Discover how ERPlora adapts to your business, with the apps every type of business comes with."
-msgstr "Descubre cómo ERPlora se adapta a tu negocio, con las apps que trae de serie cada tipo de negocio."
+msgid "Discover how ERPlora adapts to your business, with the apps made for every type of business."
+msgstr "Descubre cómo ERPlora se adapta a tu negocio, con las apps pensadas para cada tipo de negocio."
 
 #: templates/public/industries/list.html templates/public/partials/footer_links.html
 msgid "Industries"
@@ -1498,10 +1502,10 @@ msgstr "ERPlora para tu negocio."
 
 #: templates/public/industries/list.html
 #, python-format
-msgid "Find your business type and see the apps it comes with: ERPlora is ready for %(total)s type of business."
-msgid_plural "Find your business type and see the apps it comes with: ERPlora is ready for %(total)s types of business."
-msgstr[0] "Encuentra tu tipo de negocio y mira las apps que trae de serie: ERPlora está listo para %(total)s tipo de negocio."
-msgstr[1] "Encuentra tu tipo de negocio y mira las apps que trae de serie: ERPlora está listo para %(total)s tipos de negocio."
+msgid "Find your business type and see the apps made for it: ERPlora is ready for %(total)s type of business."
+msgid_plural "Find your business type and see the apps made for it: ERPlora is ready for %(total)s types of business."
+msgstr[0] "Encuentra tu tipo de negocio y mira las apps pensadas para él: ERPlora está listo para %(total)s tipo de negocio."
+msgstr[1] "Encuentra tu tipo de negocio y mira las apps pensadas para él: ERPlora está listo para %(total)s tipos de negocio."
 
 #: templates/public/industries/list.html
 msgid "Filter by sector"
@@ -1541,13 +1545,9 @@ msgid "Contact us"
 msgstr "Contáctanos"
 
 #: templates/public/industries/detail.html
-msgid "Apps included out of the box"
-msgstr "Apps que trae de serie"
-
-#: templates/public/industries/detail.html
 #, python-format
-msgid "Everything a %(business)s needs, turned on from day one."
-msgstr "Todo lo que necesita tu %(business)s, activado desde el primer día."
+msgid "Apps made for your %(business)s"
+msgstr "Apps pensadas para tu %(business)s"
 
 #: templates/public/industries/detail.html
 msgid "FAQ"

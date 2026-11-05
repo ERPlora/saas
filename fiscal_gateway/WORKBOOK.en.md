@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:46a9e6ad5d4dab30d907a81e146a40321abe6694a8ba19c1ab26abe4dac16b80 -->
+<!-- generated from WORKBOOK.md sha256:e604fd29fa0f1cd8505e11be074fc468cbe5edd6850e57d3ca0b87825ec085d1 -->
 
 ## What it is for and who it is for
 
@@ -105,7 +105,7 @@ Actor: system (the business's Hub)
 Screen: none
 Steps:
 1. The Hub sends the gateway the envelope already signed and validated, with the business, its tax ID, the environment (test or production) and the way: ERPlora's seal or the business's own certificate, which travels in that submission only.
-2. Before touching the AEAT, the gateway checks that the business exists, that the envelope only names that taxpayer, that the production environment is only asked from the production deployment and, through ERPlora, in production, that the business has its approved authorisation and that it is of the same tax ID. In the test environment the authorisation is not asked for (nobody presents on anybody's behalf there): a new business reaches the AEAT's test environment from its first ticket, and no business presents with ERPlora's tax ID.
+2. Before touching the AEAT, the gateway checks that the business exists (a demo, which always presents in the test environment and of which the SaaS keeps no row, counts in the test environment only), that the envelope only names that taxpayer, that the production environment is only asked from the production deployment and, through ERPlora, in production, that the business has its approved authorisation and that it is of the same tax ID. In the test environment the authorisation is not asked for (nobody presents on anybody's behalf there): a new business reaches the AEAT's test environment from its first ticket, and no business presents with ERPlora's tax ID.
 3. It presents the envelope to the AEAT door that applies (the one for entity seals or the holder's) with a secure connection with the certificate, and returns the AEAT's answer as it came.
 4. With the same door, the Hub queries what the AEAT already has, or tests whether it could present now and with which certificate, without sending anything.
 In: the Hub's envelope, the business, the tax ID, the environment, the way and, through its own way, the business's certificate with its password.
