@@ -728,9 +728,43 @@ class TestInTheTurn:
 
         got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
 
-        assert got[1] == {"type": "text_delta", "text": f"\n\n{ARTICLE}"}
+        assert got[0] == {"type": "web"}
+        assert got[2] == {"type": "text_delta", "text": f"\n\n{ARTICLE}"}
         _first, second = self.chat_requests(search)
         assert json.loads(second.body["messages"][-1]["content"])["results"][0]["url"] == ARTICLE
+
+    def test_a_turn_that_brought_pages_from_the_web_says_so_for_its_report(self, internal, business, answering, search):
+        """The caller keeps the mark with the answer and sends it back with a report of it (saas#287)."""
+        search.reply("GET", SEARCH, json=found(row()))
+        search.reply("POST", COMPLETIONS, sse=openai_tool_call("web_search", '{"query": "ley"}', call_id="call_s"))
+        search.reply("POST", COMPLETIONS, sse=openai_answer(f"La ley cambió: {ARTICLE}"))
+
+        got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
+
+        assert [frame["type"] for frame in got if isinstance(frame, dict)] == ["web", "text_delta", "response", "usage"]
+
+    def test_the_mark_comes_as_the_pages_do_so_a_turn_that_fails_later_still_has_it(self, internal, business, answering, search):
+        search.reply("GET", SEARCH, json=found(row()))
+        search.reply("POST", COMPLETIONS, sse=openai_tool_call("web_search", '{"query": "ley"}', call_id="call_s"))
+        search.reply("POST", COMPLETIONS, status=400, json={"error": {"message": "no"}})
+
+        got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
+
+        assert [frame["type"] for frame in got if isinstance(frame, dict)] == ["web", "error", "usage"]
+
+    @pytest.mark.parametrize("brave", [found(), None], ids=["no_pages", "no_search"])
+    def test_a_turn_that_brought_nothing_from_the_web_says_so_too(self, internal, business, answering, search, rates, brave):
+        if brave is None:
+            rates.reply("GET", RATES, json=USD_EUR)
+            self.rate_turn(rates, "1 USD is 0.89 EUR.")
+        else:
+            search.reply("GET", SEARCH, json=brave)
+            search.reply("POST", COMPLETIONS, sse=openai_tool_call("web_search", '{"query": "ley"}', call_id="call_s"))
+            search.reply("POST", COMPLETIONS, sse=openai_answer("No encontré nada."))
+
+        got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
+
+        assert "web" not in [frame["type"] for frame in got if isinstance(frame, dict)]
 
     def test_the_sources_of_every_round_count(self, internal, business, answering, search, settings):
         settings.ASSISTANT_RATES_URL = f"{search.url}{RATES}"
@@ -742,7 +776,7 @@ class TestInTheTurn:
 
         got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
 
-        assert got[1]["text"].split() == [server_tools.RATES_SOURCE, ARTICLE]
+        assert got[2]["text"].split() == [server_tools.RATES_SOURCE, ARTICLE]
 
     def test_an_answer_with_a_tool_of_the_hub_keeps_its_source(self, internal, business, answering, rates):
         rates.reply("GET", RATES, json=USD_EUR)

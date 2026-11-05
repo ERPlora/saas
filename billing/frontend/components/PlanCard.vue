@@ -2,7 +2,8 @@
 // A plan of the Store (mockups `store.html` «Planes»; round 17 §2.11; UX-AUDIT-4 X-03, X-08, X-09, X-14):
 // its name, description, net price (monthly or annual, as the switch above says), features, the apps it turns
 // on at once (`max_apps`, the cap the Hub applies since hub#256; 0 = all), the messages a month it includes
-// (assistant and WhatsApp, PLAN-SAAS §3.6; 0 = none, no line) and its trial, in the order of /pricing/'s cards
+// (assistant and WhatsApp, PLAN-SAAS §3.6; 0 = none, no line), the custom domain of the business's website when the plan
+// includes one (`includes_custom_domain`, HUBS-F17, saas#301; never the app) and its trial, in the order of /pricing/'s cards
 // (public/pricing.py `plan_card`), and the ONE thing the chosen business can do with it now. What each button does is the page's: the card only
 // says which one applies and emits it.
 //   - On Free: «Upgrade to …» (Embedded Checkout), at the billing of the switch; the plan it is trying
@@ -130,7 +131,7 @@ const price = computed(() => {
   return { amount: formatEuros(props.plan.price_monthly, locale.value), suffix: t('billing.plans.perMonth') };
 });
 
-type Line = { kind: 'feature' | 'apps' | 'quota'; text: string };
+type Line = { kind: 'feature' | 'apps' | 'quota' | 'domain'; text: string };
 
 /** The features that say what a plan includes, in the languages its rows are written in (as /pricing/'s
  * `INCLUDES_LINES` and `INCLUDES_PREFIXES`): the apps it turns on at once go right after the first of them. */
@@ -139,8 +140,8 @@ const INCLUDES_PREFIXES = ['Everything in ', 'Todo lo del plan '];
 const saysWhatItIncludes = (feature: string) => INCLUDES_LINES.has(feature) || INCLUDES_PREFIXES.some((prefix) => feature.startsWith(prefix));
 
 /** The lines of the card, as /pricing/ paints them: the plan's own features with the apps it turns on at once
- * right after what it includes (else at their end), the messages a month (a quota of 0 is none: no line) and,
- * last, its trial, the line `hubs.plan.list` ends a signable plan's features with. */
+ * right after what it includes (else at their end), the messages a month (a quota of 0 is none: no line), the custom
+ * domain if the plan includes one and, last, its trial, the line `hubs.plan.list` ends a signable plan's features with. */
 const lines = computed<Line[]>(() => {
   const plan = props.plan;
   const own = [...plan.features];
@@ -153,6 +154,7 @@ const lines = computed<Line[]>(() => {
   const whatsapp = plan.whatsapp_messages_per_month;
   if (assistant > 0) result.push({ kind: 'quota', text: t('billing.plans.assistantMessages', { count: assistant }, assistant) });
   if (whatsapp > 0) result.push({ kind: 'quota', text: t('billing.plans.whatsappMessages', { count: whatsapp }, whatsapp) });
+  if (plan.includes_custom_domain) result.push({ kind: 'domain', text: t('billing.plans.customDomain') });
   return [...result, ...trial.map(feature)];
 });
 

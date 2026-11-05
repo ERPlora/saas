@@ -378,7 +378,7 @@ Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F18 y, en el 
 
 ### ASSISTANT-F14 Usar las herramientas de erplora.com y las del negocio
 <!-- origen: old-saas:SAAS_ASSISTANT-F06 -->
-Estado: parcial — las herramientas del negocio, la fecha y la hora y el tipo de cambio entre monedas funcionan; la búsqueda en la web está hecha y la política de privacidad ya nombra a su proveedor; no se ofrece en producción hasta que la infraestructura le pase su clave, se pruebe de verdad en `pre` y la denuncia de una respuesta no guarde lo que vino de la web (saas#277, saas#287)
+Estado: parcial — las herramientas del negocio, la fecha y la hora y el tipo de cambio entre monedas funcionan; la búsqueda en la web está hecha y la política de privacidad ya nombra a su proveedor; no se ofrece en producción hasta que la infraestructura le pase su clave y se pruebe de verdad en `pre` (saas#277)
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
@@ -513,10 +513,11 @@ Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
 1. La persona marca una respuesta del asistente como incorrecta, dañina, que no hace lo que se pidió u otra cosa, y añade, si quiere, un comentario.
-2. El Hub manda a erplora.com la denuncia con la pregunta y la respuesta.
+2. El Hub manda a erplora.com la denuncia con la pregunta, la respuesta y si su turno trajo páginas de la web (erplora.com lo avisa en el propio turno).
 3. erplora.com la manda por correo al buzón de soporte de ERPlora con el negocio, el motivo, el comentario, la pregunta y la respuesta (cada texto, como mucho 4.000 caracteres), y no guarda nada.
-4. Si la misma respuesta del mismo negocio se denuncia otra vez en 24 horas (un doble toque, un reintento), no se manda otro correo.
-Entra: el negocio, la respuesta denunciada, el motivo, el comentario y la pregunta.
+4. Si el turno trajo páginas de la web, o el Hub no dice de dónde vino la respuesta mientras la búsqueda está encendida, el correo lleva todo menos la respuesta: en su lugar dice que se ha dejado fuera porque puede citar la web, y que se repita la pregunta para verla. Los términos de Brave no dejan guardar sus resultados, ni en parte, y un buzón guarda; su dirección y su título también son parte, así que tampoco van las fuentes.
+5. Si la misma respuesta del mismo negocio se denuncia otra vez en 24 horas (un doble toque, un reintento), no se manda otro correo.
+Entra: el negocio, la respuesta denunciada, si su turno trajo páginas de la web, el motivo, el comentario y la pregunta.
 Sale: el correo en el buzón de soporte, o el aviso de que ya se había mandado (`assistant.report.sent`).
 Si falla: si el correo no puede salir, se dice que no se ha podido enviar y que se vuelva a intentar en un momento, y se puede volver a enviar; un motivo que no es uno de los cuatro se rechaza; un negocio que deja de trabajar (eliminado o suspendido) mientras llega su denuncia no manda nada y recibe la misma respuesta que en cualquier otra llamada (ASSISTANT-F11).
 Implicados: ASSISTANT-F11, ASSISTANT-F14, ASSISTANT-F16, ASSISTANT-F17
@@ -681,11 +682,13 @@ propio texto por `code`.
 | `/internal/assistant/docs/search` | `hub`, `query` (1–500, no en blanco), `language` (`en` \| `es`), `limit` (≥1, recortado a 12; 8 por defecto) | `{results: [{source, path, heading, text, score, lang}]}` (vacío con el índice vacío); 409 `assistant.provider_not_configured`, 503 `assistant.provider_unavailable` | `ASSISTANT_DOCS_RATELIMIT` 600/h |
 | `/internal/speech/transcribe` | `hub`, `audio` (base64, ≤2 MB), `mime_type`, `language` | `{text, language}` | `ASSISTANT_TRANSCRIBE_RATELIMIT` 120/h |
 | `/internal/speech/synthesize` | `hub`, `text`, `language` (`es` \| `en`), `voice` (opcional) | 503 `assistant.speech_unavailable`, sin motor que lea (`media.SPEECH_ENGINE`); con motor, `audio/mpeg` (≤4096 caracteres leídos) y 502 si falla; 422 con un idioma fuera de `es`/`en` o un texto vacío | `ASSISTANT_SYNTHESIZE_RATELIMIT` 120/h |
-| `/internal/assistant/report` | `hub`, `message_id`, `reason` (`incorrect`, `harmful`, `instructions`, `other`), `comment`, `question`, `answer` | 202 `{sent, duplicate}`; 503 `assistant.report_not_sent` | `ASSISTANT_REPORT_RATELIMIT` 60/h |
+| `/internal/assistant/report` | `hub`, `message_id`, `reason` (`incorrect`, `harmful`, `instructions`, `other`), `comment`, `question`, `answer`, `web` (opcional: `true`, `false` o sin él; con `true`, o sin él y la búsqueda encendida, el correo no lleva la respuesta) | 202 `{sent, duplicate}`; 503 `assistant.report_not_sent` | `ASSISTANT_REPORT_RATELIMIT` 60/h |
 
 - **Frames del turno en directo** (`data: <json>`): `text_delta {text}`, `function_call {name, call_id, arguments}`
-  (una herramienta del Hub), `response {output, usage, continuation}` (si no falló), `error {code, message,
-  retriable}` (fallo del proveedor tras empezar), `usage {used, limit, resets_at, demo}` y `[DONE]`. Lo que se
+  (una herramienta del Hub), `web` (una vez, en cuanto una búsqueda trae páginas, aunque el turno falle después: el
+  llamante lo guarda con la respuesta y lo devuelve en su denuncia; el panel lo cierra en `done.web`), `response
+  {output, usage, continuation}` (si no falló), `error {code, message, retriable}` (fallo del proveedor tras
+  empezar), `usage {used, limit, resets_at, demo}` y `[DONE]`. Lo que se
   decide antes del modelo es un estado HTTP sin stream: 413/422, 503 `assistant.no_model` o
   `assistant.provider_not_configured` y 429 `assistant.quota_exceeded` (`upgrade_required`, `used`, `limit`,
   `resets_at`, `demo`).
@@ -893,7 +896,8 @@ propio texto por `code`.
 
 ## Lo que queda fuera
 
-- **Buscar en la web en producción** (ASSISTANT-F14): falta que la infraestructura le pase la clave (aws#52, en borrador), probarla de verdad en `pre` y que la denuncia de una respuesta no guarde lo que vino de la web — saas#277, saas#287.
+- **Buscar en la web en producción** (ASSISTANT-F14): falta que la infraestructura le pase la clave (aws#52, en borrador) y probarla de verdad en `pre` — saas#277.
+- **Que la denuncia diga de dónde vino la respuesta** (ASSISTANT-F23, paso 4): erplora.com ya marca el turno que trajo páginas de la web, pero el chat (ui#103) y el Hub (hub#870) aún no devuelven la marca con la denuncia; mientras, con la búsqueda encendida, toda denuncia llega sin la respuesta.
 
 ## Lo que NO hace, a propósito
 

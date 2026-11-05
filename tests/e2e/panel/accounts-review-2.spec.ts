@@ -9,9 +9,7 @@
 // F37, F39–F41, F45, F46) have their integration tests; F42's pages and F43's maintenance page and F46's mails are
 // painted in both languages by public-errors, accounts-platform and accounts-mails.
 // Accounts of this spec: `e2e-acc7-…@example.com`, removed before and after, with their businesses.
-import { type Page } from '@playwright/test';
-
-import { djangoPrint, expect, settled, signIn, signInThroughPage, test, watchPageErrors } from './fixtures';
+import { djangoPrint, expect, openMenu, signIn, signInThroughPage, test, watchPageErrors } from './fixtures';
 import { closeOverlays, LANGUAGES, type Lang, openUserMenu, reviewOf, t } from './language-review';
 
 const PREFIX = 'e2e-acc7-';
@@ -97,22 +95,6 @@ function ownBusiness(email: string, name: string): void {
 }
 
 // ── The panel's menus ─────────────────────────────────────────────────────────────────────────
-
-/** The panel's menu: the side menu from `lg`, its drawer behind the topbar's menu button below. */
-async function openMenu(page: Page): Promise<void> {
-  const entries = page.locator('ion-menu .nav-item');
-  await expect(entries.first()).toBeAttached();
-  await settled(page);
-  if (!(await entries.first().isVisible())) {
-    await page.locator('ion-router-outlet > .ion-page:not(.ion-page-hidden) ion-menu-button').last().click();
-    await expect(entries.first()).toBeVisible();
-    await expect
-      .poll(() =>
-        page.evaluate(() => (document.querySelector('ion-menu') as (HTMLElement & { isOpen: () => Promise<boolean> }) | null)?.isOpen() ?? false),
-      )
-      .toBe(true);
-  }
-}
 
 test.beforeAll(removeAccounts);
 test.afterAll(removeAccounts);

@@ -33,6 +33,7 @@ import {
   subId,
 } from '../__tests__/mount-panel';
 import type { PreferencesOut } from '../../../frontend/sdk-types';
+import { onSessionChanged } from '../../../frontend/session-changed';
 import PreferencesForm from './PreferencesForm.vue';
 
 afterEach(() => {
@@ -112,6 +113,37 @@ describe('PreferencesForm', () => {
     expect(s.i18n.global.locale.value).toBe('es');
     expect(document.documentElement.lang).toBe('es');
     expect(toastSuccess).toHaveBeenCalledWith('Preferencias guardadas');
+  });
+
+  it('once the language is saved, says the session changed: the entry reads the menu again in it (saas#292)', async () => {
+    const heard = vi.fn(() => document.documentElement.lang);
+    const stop = onSessionChanged(heard);
+    const s = await setup(preferences(), () => Response.json(preferences({ language: 'es' })));
+    await choose(s.q('preferences-language'), { value: 'es' });
+    // After the page speaks the new language: a failed read of the menu is said in it.
+    expect(heard.mock.results.map((r) => r.value)).toEqual(['es']);
+    stop();
+  });
+
+  it('a language the account refuses leaves the session as it was: nothing to read again', async () => {
+    const heard = vi.fn();
+    const stop = onSessionChanged(heard);
+    const s = await setup(preferences(), () => apiError(429, 'rate_limited', 'Too many requests.'));
+    await choose(s.q('preferences-language'), { value: 'es' });
+    expect(toastError).toHaveBeenCalledWith('Too many requests.');
+    expect(heard).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it('neither the theme nor «Business notices» change what the session says of the menu', async () => {
+    const heard = vi.fn();
+    const stop = onSessionChanged(heard);
+    const s = await setup(preferences(), () => Response.json(preferences()));
+    await choose(s.q('preferences-theme'), { value: 'dark' });
+    await choose(s.q('preferences-hub-alerts'), { checked: false });
+    expect(s.calls().map((c) => c.body)).toEqual([{ theme_mode: 'dark' }, { hub_alerts: false }]);
+    expect(heard).not.toHaveBeenCalled();
+    stop();
   });
 
   it('saves «Business notices» on its own', async () => {

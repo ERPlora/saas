@@ -105,7 +105,7 @@ dirección»; «Guardar cambios» se activa al cambiar algo. Debajo, «Dominio p
 propietario escribe «Tu dominio» y pulsa «Conectar dominio»; con un dominio, su estado, por qué está parado, los dos
 registros CNAME («1. Registro de validación» y «2. Registro que apunta a ERPlora», cada uno con «Copiar el nombre» y
 «Copiar el valor»), la revisión de cada hora y «Quitar dominio». Un plan que no lo incluye dice «El plan … no incluye
-dominio propio» con «Ver planes»; un administrador lo ve sin poder cambiarlo. Al final, la «Zona de peligro» con
+dominio propio» y «Lo incluye el plan …» con «Ver planes»; un administrador lo ve sin poder cambiarlo. Al final, la «Zona de peligro» con
 «Eliminar negocio».
 
 ### Cambiar la dirección web
@@ -442,8 +442,8 @@ Pasos:
 5. Para quitarlo pulsa «Quitar dominio» y lo confirma en «Quitar …»: deja de servirse, se borra su certificado y el nombre queda libre.
 Entra: el dominio del propietario y los dos registros de su proveedor.
 Sale: la web pública del negocio en su dominio, con su certificado.
-Si falla: lo que erplora.com no acepta del nombre se dice en el propio campo («Ese dominio es de ERPlora. Escribe el tuyo.»). Un dominio que no apunta a ERPlora se queda sin activar y se dice qué registro falta. Un dominio raíz (minegocio.es) no se ofrece, porque ni admite CNAME ni la entrada tiene IP fija: se conecta www y el raíz se redirige en el proveedor. Un plan que no lo incluye no lo ofrece: dice «El plan … no incluye dominio propio» con «Ver planes», sin formulario; y al bajar a uno así se deja de servir y vuelve al subir. Sin sitio para más certificados, el dominio espera y se reintenta cada hora, y lo ya activo no se entera. Un certificado rechazado o sin validar en 72 horas hay que volver a pedirlo: el dominio sin conectar vuelve al campo para pedirlo otra vez con «Conectar dominio». Si el DNS, AWS o el Hub no responden, no cuenta como fallo y se reintenta. La aplicación y la entrada al negocio siguen en su dirección de erplora.com.
-Implicados: website (la web pública del negocio), el negocio (BASE-F110: sirve la web por su dominio), public (PUBLIC-F07: los planes y la web todavía no lo anuncian, saas#301)
+Si falla: lo que erplora.com no acepta del nombre se dice en el propio campo («Ese dominio es de ERPlora. Escribe el tuyo.»). Un dominio que no apunta a ERPlora se queda sin activar y se dice qué registro falta. Un dominio raíz (minegocio.es) no se ofrece, porque ni admite CNAME ni la entrada tiene IP fija: se conecta www y el raíz se redirige en el proveedor. Un plan que no lo incluye no lo ofrece: dice «El plan … no incluye dominio propio» y «Lo incluye el plan …», el primero a la venta que lo incluye y que no es de mejora (si no se puede saber o no hay ninguno, «Cambia a un plan que lo incluya…»), con «Ver planes», sin formulario; y al bajar a uno así se deja de servir y vuelve al subir. Sin sitio para más certificados, el dominio espera y se reintenta cada hora, y lo ya activo no se entera. Un certificado rechazado o sin validar en 72 horas hay que volver a pedirlo: el dominio sin conectar vuelve al campo para pedirlo otra vez con «Conectar dominio». Si el DNS, AWS o el Hub no responden, no cuenta como fallo y se reintenta. La aplicación y la entrada al negocio siguen en su dirección de erplora.com.
+Implicados: website (la web pública del negocio), el negocio (BASE-F110: sirve la web por su dominio), public (PUBLIC-F02, PUBLIC-F07: Planes y precios y los términos lo anuncian en los planes que lo incluyen), billing (la Tienda lo dice en esos planes)
 
 ### HUBS-F18 Eliminar un negocio
 <!-- origen: fi:saas/hubs#borrado-cancelacion-del-terminal old-saas:SAAS_DASHBOARD-F22 old-saas:SAAS_DASHBOARD-F23 old-saas:SAAS_DASHBOARD-F24 -->
@@ -739,6 +739,12 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 
 - Anatomía, operaciones y decisiones: `hubs/README.md` (negocios, salto al Hub, foto y registro empujados al Hub,
   `reconcile_hub_states`, miembros, uso y demo).
+- HUBS-F08 (`reconcile_hub_states`) corre cada 15 minutos (:00, :15, :30, :45 UTC) dentro del proceso `saas-worker`
+  (`manage.py run_worker`, `base/worker.py`, saas#305), ya no como tarea de `saas-cron`; la pasada es
+  `services.reconcile_exclusively`, la misma del comando, que queda para lanzarla a mano. Lo que deja pendiente, sin
+  conexión o rechazado escribe la línea ERROR `saas.worker.pass_failed task=reconcile_hub_states left work owed: …`,
+  que es lo que avisa la alarma (antes, el código de salida de la tarea). En el worker la pasada tiene 50 s y oye la
+  parada entre dos negocios (`go_on`): lo que no entra queda pendiente para la ronda siguiente (`cut_short=1`).
 - Partes del porte (MIGRATION-TASK APP-HUBS-1…5): este WORKBOOK nace en la parte 1 (F01–F14); la parte 2 añade
   F15–F23 (ajustes, dirección web y dominio propio, eliminar y recuperar, los suspendidos, estado y uso, admin del
   negocio); la parte 3, F24–F30 (las personas de cada negocio); la parte 4, F31–F37 (plan, derechos, contrato con el

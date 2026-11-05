@@ -151,7 +151,7 @@ test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under
   await expect(page.getByText('all your locations', { exact: false })).toHaveCount(0);
   // Every plan includes all the apps (PLAN §32): no tier of apps on the page, no «Apps included» column.
   await expect(page.getByText('Every plan includes all the apps. Paid plans add unlimited devices', { exact: false })).toBeVisible();
-  await expect(table.locator('thead th')).toHaveCount(9);
+  await expect(table.locator('thead th')).toHaveCount(10);
   await expect(table.locator('thead th', { hasText: 'Apps included' })).toHaveCount(0);
   expect(await page.evaluate(() => document.body.innerText)).not.toMatch(/premium/i);
 
@@ -166,6 +166,13 @@ test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under
   await expect(starter.locator('li')).toContainText(['All apps included', 'Up to 40 apps turned on at once']);
   const pro = more.locator('.ep-pricing-card', { has: page.locator('.ep-pricing-card__name', { hasText: 'Pro' }) });
   await expect(pro.locator('li')).toContainText(['Everything in Standard', 'All the apps turned on at once']);
+  // The custom domain of the business's website (HUBS-F17, saas#301), read from each plan's row: a column of the table
+  // and a line of the cards of the plans that include it, never of the others.
+  const domainLine = 'Your own domain for your website (www.yourbusiness.com)';
+  await expect(table.locator('thead th', { hasText: 'Own domain' })).toHaveCount(1);
+  await expect(table.locator('tbody td[data-title="Own domain"]')).toHaveText(['Not included', 'Not included', ...Array(4).fill('For your website')]);
+  await expect(starter.locator('li', { hasText: domainLine })).toHaveCount(0);
+  await expect(pro.locator('li', { hasText: domainLine })).toHaveCount(1);
   await expect(page.getByText('Pay for the year and get 2 months free.')).toBeVisible();
   await page.locator('ion-accordion[value="storage"] ion-item').click();
   const storage = page.locator('ion-accordion[value="storage"] [slot="content"]');

@@ -140,6 +140,8 @@ export interface PlanOut {
   whatsapp_messages_per_month: number;
   /** Apps the business may choose to turn on at once, the ones they require aside (hub#256); 0 = no limit. */
   max_apps: number;
+  /** Whether the business's public website may go on a domain of its own (HUBS-F17); never the app. */
+  includes_custom_domain: boolean;
   upgrade_only: boolean;
   internal_only: boolean;
 }
@@ -1523,6 +1525,8 @@ export interface AssistantReportIn {
   comment?: string;
   question?: string;
   answer: string;
+  /** Whether the answer's turn brought pages from the web (the `web` of its `done` frame): its text is then not mailed. */
+  web?: boolean | null;
 }
 
 /** `base.AssistantReportOut`: mailed, or already reported. */

@@ -15,6 +15,7 @@ import pytest
 from django.core.management import CommandError, call_command
 from django.utils import timezone
 
+from billing import services
 from billing.models import Invoice
 
 pytestmark = pytest.mark.django_db
@@ -214,6 +215,48 @@ class TestTheRun:
 
         assert "already running" in output
         assert hub_double.calls == []
+
+    def test_the_saas_worker_runs_the_same_pass_under_the_same_lock(self, hub_double, other_session):
+        """``services.reconcile_platform_invoices_exclusively`` is what the command and the ``saas-worker`` (every 15
+        minutes, saas#305) both run: the pass's counts, or ``None`` while another run holds the lock."""
+        owed()
+        hub_double.answer("POST", PLATFORM, 200, {"status": "accepted", "qr": QR})
+        other_session.execute(f"SELECT pg_advisory_lock({LOCK_KEY})")
+        try:
+            assert services.reconcile_platform_invoices_exclusively() is None
+        finally:
+            other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
+        assert hub_double.calls == []
+
+        counts = services.reconcile_platform_invoices_exclusively()
+
+        assert counts is not None and not services.platform_run_failed(counts)
+        assert len(posts(hub_double)) == 1
+        assert other_session.execute(f"SELECT pg_try_advisory_lock({LOCK_KEY})").fetchone()[0] is True
+        other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
+
+    def test_a_pass_the_worker_cuts_short_stops_after_the_invoice_in_course_and_leaves_the_rest_for_the_next(
+        self, hub_double
+    ):
+        """The ``saas-worker`` gives the pass ``go_on`` (saas#305), asked before each invoice: a ``False`` ends it after
+        the one in course, ``cut_short`` says the rest goes in the next round (not a failure), and the count of the
+        ones stuck is still made."""
+        for sequence in (1, 2, 3):
+            owed(sequence)
+        hub_double.answer("POST", PLATFORM, 200, {"status": "accepted", "qr": QR})
+        asked: list[int] = []
+
+        def go_on():
+            asked.append(1)
+            return len(asked) == 1
+
+        counts = services.reconcile_platform_invoices_exclusively(go_on=go_on)
+
+        assert (counts["accepted"] + counts["posted"], counts["cut_short"], counts["stuck"]) == (1, 1, 0)
+        assert not services.platform_run_failed(counts)
+        assert len(posts(hub_double)) == 1
+        again = services.reconcile_platform_invoices_exclusively()
+        assert again["cut_short"] == 0 and len(posts(hub_double)) == 3
 
     def test_the_lock_is_released_after_a_run(self, hub_double, other_session):
         run()

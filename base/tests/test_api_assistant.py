@@ -136,6 +136,15 @@ class TestTheReport:
         assert "Account: lena@example.com" in sent.body
         assert "Not true" in sent.body and "How much do I pay?" in sent.body and "You pay 0 euros." in sent.body
 
+    def test_an_answer_from_the_web_reaches_the_mailbox_without_its_text(self, signed_in):
+        """Brave's terms forbid keeping its results, and a mailbox keeps (saas#287)."""
+        response = post(signed_in, "/api/assistant/report", report(web=True))
+
+        assert response.status_code == 200
+        [sent] = mail.outbox
+        assert "You pay 0 euros." not in sent.body
+        assert "Not true" in sent.body and "How much do I pay?" in sent.body and services.REPORT_WEB_ANSWER in sent.body
+
     def test_the_same_answer_reported_twice_mails_once(self, signed_in):
         post(signed_in, "/api/assistant/report", report())
 

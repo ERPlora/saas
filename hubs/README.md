@@ -8,8 +8,9 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 - Operaciones en `queries.py` (lecturas) y `services.py` (escrituras), rutas en `api.py` bajo `/api/hubs/`
   (y `/api/plans`, `/api/catalog/*`, públicas); consultas vivas en `live.py`.
 - Hacia el Hub: `hub_client.py` (llamadas firmadas a `/internal/*` de hub-next), empuje tras el COMMIT
-  (`services.sync_hub`) y los comandos de `saas-cron`: `reconcile_hub_states` (cada 15 min) y
-  `push_hub_snapshots` (cada noche, todos los negocios; `--behind-only`, solo los atrasados).
+  (`services.sync_hub`), `reconcile_hub_states` (cada 15 min en el proceso `saas-worker`,
+  `services.reconcile_exclusively`, saas#305; el comando, a mano) y `push_hub_snapshots` (cada noche en `saas-cron`,
+  todos los negocios; `--behind-only`, solo los atrasados).
 - Del Hub: `POST /internal/hubs/{id}/ready` (`internal.py`).
 - «Abrir» (`hubs.business.open`) ya no emite el código: comprueba el miembro y el estado del negocio, sella
   `last_opened_at` y devuelve `{url}`, el inicio del salto en el Hub (`https://<slug>.erplora.com/auth/login?next=/`;
@@ -279,6 +280,8 @@ Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»)
   enseña cuando llega el negocio; FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN). Lo que responden `.request` y `.remove` se pinta
   al momento y lo sustituye la siguiente respuesta viva. Los textos de estado y de motivo son los del servidor
   (`state_label`, `reason_label`); el resto, `hubs.domain.*` del catálogo del panel.
+- Un plan sin dominio propio nombra el primero a la venta que lo incluye: `hubs.plan.list` lleva `includes_custom_domain`
+  (saas#301) y la tarjeta lo pide solo cuando enseña ese aviso; sin respuesta, dice «un plan que lo incluya».
 - Solo el propietario (`role === 'hub_owner'`) ve el formulario y «Quitar dominio»: no hay un `can.*` propio, y el
   servidor lo vuelve a comprobar. Con `available` en `false`, ni formulario ni botones (las dos escrituras darían 409).
 - **e2e** `tests/e2e/panel/hubs-domain.spec.ts`: el Django del panel conecta dominios y manda ACM, el ALB y CloudWatch al

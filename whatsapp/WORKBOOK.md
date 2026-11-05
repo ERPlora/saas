@@ -213,7 +213,7 @@ Actor: sistema
 Pantalla: Bandeja de WhatsApp (en el Hub)
 Pasos:
 1. Un cliente escribe al número del negocio (o el dueño contesta desde el móvil, o llega el historial al conectar): Meta lo cuenta a erplora.com, que comprueba que el aviso es de Meta y lo guarda para el negocio de ese número.
-2. erplora.com lo entrega al Hub en el momento; si el Hub no está o no tiene la bandeja encendida, lo vuelve a intentar con una espera que crece hasta una hora, cada minuto mientras le quede algo. Si el Hub va lento, cada minuto entrega lo que cabe en ese minuto, sin repetir lo que aún está entregando.
+2. erplora.com lo entrega al Hub en el momento; si el Hub no está o no tiene la bandeja encendida, lo vuelve a intentar con una espera que crece hasta una hora y lo entrega en cuanto vence esa espera. Los mensajes de cada negocio llegan en el orden en que se escribieron: mientras uno espera, los siguientes de ese negocio esperan con él (como mucho una hora de intentos) y los de los demás negocios siguen. Si el Hub va lento, entrega lo que puede sin repetir lo que aún está entregando.
 3. Una foto, una nota de voz o un documento llegan como un enlace de erplora.com que solo abre una persona del negocio con su sesión; el archivo viene de Meta en ese momento y no se guarda.
 4. El estado de un mensaje del negocio («Entregado», «Leído», «No entregado») llega a la bandeja: el de uno enviado desde el Hub, cuando erplora.com sabe cuál es; el de una respuesta del dueño desde el móvil, después de esa respuesta.
 Entra: los avisos de Meta: mensajes, ecos del móvil, historial, estados de entrega y veredictos de plantillas.
@@ -468,10 +468,25 @@ Implicados: ninguno
 - Adjuntos: `GET /whatsapp/media/<id de la entrega>` (WHATSAPP-F07), con la sesión de erplora.com y miembro aceptado
   del negocio; lo que no es imagen, audio o vídeo se descarga con `Content-Disposition: attachment` y CSP `sandbox`.
   El Hub debe permitir el origen de erplora.com en `img-src` y `media-src` (su «Contrato con `base`»).
-- Tareas programadas (ECS, `saas-cron`): `whatsapp_deliver` cada minuto (WHATSAPP-F07), `whatsapp_refresh_tokens`
-  (WHATSAPP-F12) y `whatsapp_purge` (WHATSAPP-F14) una vez al día; las programa el repo de infraestructura
-  (`aws`, `stacks/prod/scheduler.tf`), que también da los secretos `WHATSAPP_*` y `FERNET_KEY` (`secrets.tf` y
-  `apps.tf`; los de `pre`, propios, en `pre_data.tf`).
+- La entrega al Hub (WHATSAPP-F07, saas#305) la hace el proceso `saas-worker` (`manage.py run_worker`,
+  `base/worker.py`), siempre encendido y de un hilo, en lugar de una tarea de `saas-cron` cada minuto: se despierta con
+  el `NOTIFY whatsapp_delivery` que se manda tras el COMMIT de lo que deja una entrega pendiente o mueve su espera
+  (`services.wake_the_worker`: el webhook que aparca algo, un reintento, una entrega retenida, «Entregar al Hub ahora» del admin),
+  a la hora del siguiente reintento (`whatsapp.delivery.next_due`) y cada 15 minutos; entre despertares no consulta la
+  base de datos. Cada pasada es `gateway.deliver_pass` bajo el lock de `whatsapp_deliver`: el comando del mismo nombre
+  sigue para rescate a mano (y `pre`, mientras no tenga su `saas-worker`), ya sin programar. El orden por negocio:
+  `whatsapp.delivery.claim` deja un mensaje detrás de uno más antiguo de su negocio que aún espera
+  (`queries.behind_a_waiting_message`, con `FOR UPDATE SKIP LOCKED` y el arriendo de 5 minutos), y en un lote los
+  siguientes mensajes de un negocio cuyo Hub falló se retienen con su espera (`whatsapp.delivery.hold`, sin contar
+  intento); tras `queries.IN_ORDER_ATTEMPTS` (8, una hora de intentos) un mensaje que el Hub no toma deja de retener a
+  los siguientes (WARNING `saas.worker.order_released`; el admin muestra intentos y próximo intento). Cada reclamación
+  guarda hasta su COMMIT el lock de sus negocios (`services.CLAIM_LOCK`), así el webhook y «Entregar al Hub ahora»,
+  que empujan en la petición, nunca adelantan un mensaje a otro anterior que reclama el worker. Los estados nunca
+  esperan. Una pasada que revienta escribe una línea ERROR
+  `saas.worker.pass_failed task=whatsapp_deliver` (la alarma de `aws` la filtra) y el proceso sigue.
+- Tareas programadas (ECS, `saas-cron`): `whatsapp_refresh_tokens` (WHATSAPP-F12) y `whatsapp_purge` (WHATSAPP-F14)
+  una vez al día; las programa el repo de infraestructura (`aws`, `stacks/prod/scheduler.tf`), que también da los
+  secretos `WHATSAPP_*` y `FERNET_KEY` (`secrets.tf` y `apps.tf`; los de `pre`, propios, en `pre_data.tf`).
 - Los tests de cada flujo citan su clave del registro en el nombre del fichero de test o en su docstring:
   `WHATSAPP-Gnn` los de antes de `promote` y `WHATSAPP-Fnn` los posteriores, con el mismo número.
 - Contradicción resuelta: «WhatsApp sale del SaaS y el Hub llama a Meta» lo derogan las rondas 2026-10-21 de

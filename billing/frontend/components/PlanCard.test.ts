@@ -280,6 +280,44 @@ describe('PlanCard', () => {
     });
   });
 
+  describe('the custom domain of the business’s website (`includes_custom_domain`, HUBS-F17, saas#301)', () => {
+    const lines = (s: Awaited<ReturnType<typeof card>>) =>
+      s.wrapper.findAll('ion-item').map((item) => [item.attributes('data-testid'), (item.element as HTMLElement).innerText.trim()]);
+    const withDomain = (included: boolean, extra: Partial<typeof STARTER> = {}) =>
+      plan('standard', 'Standard', '54.99', '549.90', { includes_custom_domain: included, ...extra });
+
+    it('a plan that includes it says so after the messages, before its trial, as /pricing/', async () => {
+      const s = await card({
+        plan: withDomain(true, {
+          features: ['Everything in Starter', '15-day free trial'],
+          max_apps: 80,
+          whatsapp_messages_per_month: 300,
+          trial_period_days: 15,
+          has_trial: true,
+        }),
+      });
+      expect(lines(s)).toEqual([
+        ['plan-feature', 'Everything in Starter'],
+        ['plan-apps', 'Up to 80 apps turned on at once'],
+        ['plan-quota', 'WhatsApp: 300 messages a month'],
+        ['plan-domain', 'Your own domain for your website (www.yourbusiness.com)'],
+        ['plan-feature', '15-day free trial'],
+      ]);
+    });
+
+    it('a plan that does not include it says nothing of it', async () => {
+      const s = await card({ plan: withDomain(false) });
+      expect(s.wrapper.find('[data-testid="plan-domain"]').exists()).toBe(false);
+    });
+
+    it('in Spanish', async () => {
+      const s = await card({ plan: withDomain(true), locale: 'es' });
+      expect((s.wrapper.find('[data-testid="plan-domain"]').element as HTMLElement).innerText.trim()).toBe(
+        'Dominio propio para tu web (www.tunegocio.com)',
+      );
+    });
+  });
+
   describe('the apps it turns on at once (`max_apps`, the cap the Hub applies since hub#256)', () => {
     /** Every line of the card, in order, with what it is. */
     const lines = (s: Awaited<ReturnType<typeof card>>) =>

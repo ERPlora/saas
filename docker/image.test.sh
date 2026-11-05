@@ -123,6 +123,9 @@ check "no .env file in the project" \
   run "$IMAGE" sh -c '! test -e .env'
 check "manage.py check passes with DEBUG=False and no database" \
   run "${PROD_ENV[@]}" "$IMAGE" python manage.py check
+# The saas-worker task's command (saas#305; ERPlora/aws stacks/prod/apps.tf runs it): present, and it loads.
+check "the saas-worker's command is in the image: manage.py run_worker --help" \
+  run "${PROD_ENV[@]}" "$IMAGE" python manage.py run_worker --help
 # Daphne first, then its flags in any order.
 daphne_cmd() {
   local cmd

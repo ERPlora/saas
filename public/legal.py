@@ -9,6 +9,8 @@ sale, through ``hubs.plan.list`` (``public.pricing``, plan §3.m); no page touch
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
+from django.utils.text import get_text_list
+from django.utils.translation import pgettext
 from django.views.decorators.http import require_safe
 
 from public import pricing
@@ -30,10 +32,14 @@ def terms(request: HttpRequest) -> HttpResponse:
 
     ``HUB_EXIT_PACKAGE_TTL_DAYS`` is what the exit package's link expires on (saas#1261, saas#1262);
     the trial of §4 is the trial of the plans a visitor can buy (saas#2409): an upgrade grants none
-    (#809), and without any trial on sale §4 promises none. A term the customer accepted that the
-    software does not honour is worse than no term at all.
+    (#809), and without any trial on sale §4 promises none; the custom domain of the opening clause is
+    the one of the plans on sale whose ``includes_custom_domain`` is true, by name (saas#301), and
+    without any the clause names none. A term the customer accepted that the software does not honour
+    is worse than no term at all.
     """
-    shortest, longest = pricing.trial_days(pricing.plans_on_sale(request))
+    plans = pricing.plans_on_sale(request)
+    shortest, longest = pricing.trial_days(plans)
+    custom_domain_plans = pricing.custom_domain_plans(plans)
     return render(
         request,
         "public/legal/terms.html",
@@ -42,6 +48,8 @@ def terms(request: HttpRequest) -> HttpResponse:
             "suspended_hub_delete_days": SUSPENDED_HUB_DELETE_DAYS,
             "trial_days_min": shortest,
             "trial_days_max": longest,
+            "custom_domain_plans": get_text_list(custom_domain_plans, pgettext("the last of a list", "and")),
+            "custom_domain_plan_count": len(custom_domain_plans),
         },
     )
 

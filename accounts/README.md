@@ -159,10 +159,11 @@ ningún rol tiene su permiso.
   El cambio espera en `EmailChangeRequest` (uno por cuenta, atado a la sesión, hash del código, 15 min) y la
   cuenta conserva su correo hasta escribir el código, así que «¿Has olvidado tu contraseña?» no llega al nuevo.
   Los intentos se cuentan en la BD con un `UPDATE … attempts = attempts + 1` condicional (3 por código; dos
-  peticiones a la vez no suman más), más 5/min y 20/h por cuenta y 3 códigos/h por dirección (caché). Un código
-  incorrecto responde 200 `verified: false`: un error desharía el intento gastado. Dos cuentas verificando la
-  misma dirección: 409 `accounts.email_taken`, también si lo detecta la BD. Pide contraseña y reautenticación
-  salvo para verificar el propio correo.
+  peticiones a la vez no suman más), más 5/min y 20/h por cuenta y 3 códigos/h por dirección (caché, una vez por
+  petición en `_spent`: el intento que repite un corte de la base no gasta otro; igual las 20 fotos por
+  hora). Un código incorrecto responde 200 `verified: false`: un error desharía el intento gastado. Dos cuentas
+  verificando la misma dirección: 409 `accounts.email_taken`, también si lo detecta la BD. Pide contraseña y
+  reautenticación salvo para verificar el propio correo.
 - **Foto en la BD** (`ProfilePhoto`): el SaaS no tiene almacenamiento de media (`STORAGES["default"]` es el
   disco de la tarea, que se pierde en cada despliegue) y no hay librería de imágenes. `photos.py` reconoce el
   tipo por los bytes, limita a 150 KB y 2048 px por lado, rechaza animaciones y quita EXIF, XMP, IPTC, textos y

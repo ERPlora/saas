@@ -5,7 +5,7 @@ import { LIVE_CLIENT_KEY } from '@erplora/ui/sdk';
 import { flushPromises, mount } from '@vue/test-utils';
 import { vi } from 'vitest';
 import { type Component, createApp, ref } from 'vue';
-import { createMemoryHistory, createRouter } from 'vue-router';
+import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router';
 
 import saasEn from '../../../frontend/locale/en.json';
 import saasEs from '../../../frontend/locale/es.json';
@@ -40,12 +40,14 @@ export interface MountOptions {
   call?: ReturnType<typeof vi.fn>;
   props?: Record<string, unknown>;
   slots?: Record<string, string>;
+  /** Routes of the app the page needs to tell apart (each with a blank page), before the one that takes any path. */
+  routes?: RouteRecordRaw[];
 }
 
 export async function mountAccountPage(component: Component, options: MountOptions = {}) {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: '/:path(.*)*', component: { template: '<div />' } }],
+    routes: [...(options.routes ?? []), { path: '/:path(.*)*', component: { template: '<div />' } }],
   });
   const path = options.path ?? '/';
   // The string as given (a location object would re-encode its query); the object only to carry a state.

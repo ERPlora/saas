@@ -115,12 +115,13 @@
               <th>{% trans "Database throughput" %}</th>
               <th>{% trans "AI assistant" %}</th>
               <th>WhatsApp</th>
+              {% if custom_domain_column %}<th>{% trans "Own domain" %}</th>{% endif %}
               <th>{% trans "Support" %}</th>
               <th>{% trans "Access" %}</th>
             </tr>
           </thead>
           <tbody>
-            <tr class="cat ep-table-group"><td colspan="9">{% trans "Plans · sign up directly" %}</td></tr>
+            <tr class="cat ep-table-group"><td colspan="{{ compare_columns }}">{% trans "Plans · sign up directly" %}</td></tr>
             {% for plan in plans_main %}
               <tr{% if plan.featured_label %} class="primary-col"{% endif %}>
                 <td>
@@ -133,7 +134,7 @@
               </tr>
             {% endfor %}
             {% if plans_upgrade %}
-              <tr class="cat ep-table-group"><td colspan="9">{% trans "More capacity" %}</td></tr>
+              <tr class="cat ep-table-group"><td colspan="{{ compare_columns }}">{% trans "More capacity" %}</td></tr>
               {% for plan in plans_upgrade %}
                 <tr>
                   <td><strong>{{ plan.name }}</strong></td>

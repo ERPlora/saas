@@ -267,7 +267,7 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
   con tarjetas y recibos (los cambios de plan van por el panel, que pone nuestros `TaxRate`); precios con
   `tax_behavior = exclusive` (no hay sincronización de productos: los ids se copian en el admin).
 - **aws**: `sweep_unpaid` corre cada hora (`sweep-unpaid-hourly` en `stacks/prod/scheduler.tf`);
-  `reconcile_platform_invoices` cada 15 minutos (`reconcile-platform-invoices`, L3-C);
+  `reconcile_platform_invoices` cada 15 minutos en el proceso `saas-worker` (`base/worker.py`, saas#305; L3-C);
   `sync_subscriptions` y `purge_webhook_events` cada noche (`sync-subscriptions-nightly`, 00:10 UTC, y
   `purge-webhook-events-nightly`, 00:50 UTC; FIX-AWS-BILLING-SYNC-AND-PURGE-NOT-SCHEDULED), y `audit_tax_rules` y
   `retax_subscriptions` cada día (`audit-tax-rules-daily`, 05:10 UTC, y `retax-subscriptions-daily`, 05:20 UTC;
@@ -374,7 +374,7 @@ PDF). Aquí nunca se simula VeriFactu: sin respuesta del Hub la factura sigue «
 | `queries.py` | `billing.invoice.list`, `.get`, `.pdf`, `.csv`, `billing.subscription.list`, `billing.payment_method.get` |
 | `live.py` | Facturas y Suscripciones son vivas; un evento de una factura llega al canal de su pagador y al del propietario de su negocio. La tarjeta no es viva (pregunta a Stripe) |
 | `emails.py` | El aviso al pagador cuando el Hub la emite (texto plano en su idioma, con enlace a Facturación) |
-| `management/commands/reconcile_platform_invoices.py` | `saas-cron`, cada 15 min: reintenta lo que el Hub debe y los correos que no salieron |
+| `management/commands/reconcile_platform_invoices.py` | La pasada a mano; el `saas-worker` corre la misma cada 15 min (`services.reconcile_platform_invoices_exclusively`): reintenta lo que el Hub debe y los correos que no salieron |
 
 ### Contrato con el hub de plataforma (lo implementa el carril Hub; firma HMAC v1 + v2 como todo `/internal`)
 
@@ -510,7 +510,7 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
 - **Carril Hub**: hecho. El Hub sirve las cuatro rutas `/internal/platform/…` de arriba (`base/internal.py` y la app
   `invoice`; las facturas del hub de plataforma, VERIFACTU-G10…G14, `ERPlora/hub#133`). `Hub.is_platform` no hace
   falta en el SaaS: la ruta no lleva negocio.
-- **aws**: `reconcile_platform_invoices` corre cada 15 minutos (`reconcile-platform-invoices`, `saas-cron`).
+- **aws**: `reconcile_platform_invoices` corre cada 15 minutos en el servicio `saas-worker` (aws#59, saas#305).
   `PLATFORM_INVOICING_ENABLED` sigue en `false` en prod y en pre (`stacks/prod/apps.tf` y `pre_apps.tf`, fijado por
   `stacks/prod/tests/compute.tftest.hcl`): encenderlo es la transmisión real de las facturas de ERPlora a la AEAT, que
   queda bajo la supervisión de Ioan (reglas de trabajo §15). Hasta entonces, una clave live no cobra (409

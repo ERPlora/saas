@@ -48,7 +48,7 @@ from live.operations import INTERNAL, operation
 from live.outbox import record_event
 
 import whatsapp.fields
-from assistant import crypto, emails, events, fields, queries
+from assistant import crypto, emails, events, fields, queries, server_tools
 from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage, DocChunk
 from assistant.models import content_hash
 from assistant.queries import choosable_models, staff_with
@@ -618,6 +618,12 @@ def usage_record(ctx: OperationContext, data: UsageRecordIn) -> dict:
 REPORT_TEXT_MAX = 4000
 #: A report of the same answer within this time mails nothing again (a double tap, a retry of the Hub).
 REPORT_ONCE_SECONDS = 24 * 60 * 60
+#: What a report mails instead of an answer that may quote pages of the web (saas#287): Brave's terms, §3(b)(i), forbid
+#: keeping its results, in whole or in part, and a mailbox keeps; their addresses and titles are part of them too.
+REPORT_WEB_ANSWER = (
+    "Left out: it may quote web search results, which Brave Search's terms (§3(b)(i)) do not let us keep. "
+    "Ask the question again to see it."
+)
 
 
 @operation(
@@ -631,7 +637,9 @@ REPORT_ONCE_SECONDS = 24 * 60 * 60
 def report_send(ctx: OperationContext, data: ReportSendIn) -> dict:
     """Mail the report of an answer to the support mailbox (the platform only), in English (the team's mail), with
     the business (the demo, or the account of the panel's own assistant), the reason, the comment, the question and
-    the answer, each cut to ``REPORT_TEXT_MAX``; nothing is kept nor logged. The same answer (``message_id``) of the same business within a day is a ``duplicate``. A business
+    the answer, each cut to ``REPORT_TEXT_MAX``; nothing is kept nor logged. An answer whose turn brought pages from the
+    web (``web``), or that does not say while the search is offered, is not mailed (``REPORT_WEB_ANSWER`` instead).
+    The same answer (``message_id``) of the same business within a day is a ``duplicate``. A business
     that stopped working since the door resolved it gets the door's answer (404 ``hub_unknown``, 403 ``hub_inactive``)
     and nothing is mailed. 503 ``assistant.report_not_sent`` if the mail cannot leave. The event is written before the
     mail, so nothing that can undo the transaction comes after it: a mail that cannot leave undoes the event, and an
@@ -663,6 +671,12 @@ def report_send(ctx: OperationContext, data: ReportSendIn) -> dict:
     return {"sent": True, "duplicate": False}
 
 
+def _maybe_from_the_web(data: ReportSendIn) -> bool:
+    """Whether the reported answer may quote pages of the web: its turn says so, or a caller that does not say (a Hub
+    or a browser before the mark) while the search is offered."""
+    return server_tools.searching() if data.web is None else data.web
+
+
 def _mail_report(ctx: OperationContext, who: str, details: list[tuple[str, str]], data: ReportSendIn) -> None:
     """The report's mail to the support mailbox; 503 ``assistant.report_not_sent`` if it cannot leave."""
     from base.emails import branded_message
@@ -679,7 +693,7 @@ def _mail_report(ctx: OperationContext, who: str, details: list[tuple[str, str]]
         data.question[:REPORT_TEXT_MAX] or "—",
         "",
         "Answer:",
-        data.answer[:REPORT_TEXT_MAX],
+        REPORT_WEB_ANSWER if _maybe_from_the_web(data) else data.answer[:REPORT_TEXT_MAX],
     ]
     try:
         branded_message(f"[Assistant report] {who} · {data.reason}", lines, [settings.SUPPORT_EMAIL], language="en").send()

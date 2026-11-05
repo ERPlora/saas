@@ -365,6 +365,20 @@ class TestTheToolsOfErplora:
 
         said = "".join(frame["text"] for frame in got if frame["type"] == "text")
         assert said == "1 USD is 0.89 EUR.\n\nhttps://frankfurter.dev"
+        assert got[-1]["type"] == "done" and got[-1]["web"] is False
+
+    def test_the_panel_hears_that_an_answer_brought_pages_from_the_web(self, signed_in, account, answering, fake_provider, settings):
+        """The browser keeps the mark with the answer and sends it back with a report of it (saas#287)."""
+        settings.BRAVE_SEARCH_API_KEY = "made-up-brave-key"
+        settings.ASSISTANT_SEARCH_URL = f"{fake_provider.url}/res/v1/web/search"
+        page = {"url": "https://www.boe.es/ley", "title": "BOE", "description": "Ley de ejemplo"}
+        fake_provider.reply("GET", "/res/v1/web/search", json={"type": "search", "web": {"type": "search", "results": [page]}})
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("web_search", '{"query": "ley", "language": "es"}'))
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("La ley cambió: https://www.boe.es/ley"))
+
+        got = frames(post_turn(signed_in, {"messages": [ask("¿Qué dice la ley nueva?")]}))
+
+        assert got[-1]["type"] == "done" and got[-1]["web"] is True
 
 
 class TestTheTurnWhereNothingIsSold:
@@ -815,7 +829,7 @@ class TestWhatStopsATurn:
             "resets_at": queries.resets_at(queries.month_of(timezone.now())).isoformat(),
             "demo": False,
         }
-        assert got[1] == {"type": "done", "append": [], "pending": [], "continuation": None}
+        assert got[1] == {"type": "done", "append": [], "pending": [], "continuation": None, "web": False}
         assert model_requests(fake_provider) == []
 
     def test_the_budget_of_turns_is_the_accounts(self, signed_in, account, answering, fake_provider, settings):
@@ -841,7 +855,7 @@ class TestWhatStopsATurn:
         got = frames(post_turn(signed_in, {"messages": [ask("Hello")]}))
 
         assert {"type": "error", "code": "assistant.provider_failed", "retriable": False} in got
-        assert got[-1] == {"type": "done", "append": [], "pending": [], "continuation": None}
+        assert got[-1] == {"type": "done", "append": [], "pending": [], "continuation": None, "web": False}
         assert used_by(account) == 0
 
     def test_too_many_rounds_of_tools_stop_before_the_model(self, signed_in, account, answering, fake_provider):

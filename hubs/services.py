@@ -14,6 +14,7 @@ a business is told to its owner and admins (``notify_people``).
 
 import logging
 from collections import Counter
+from collections.abc import Callable
 from contextlib import contextmanager
 from datetime import UTC, date, timedelta
 from functools import partial
@@ -174,6 +175,7 @@ class SeatLimitReached(Conflict):
     permission="hubs.manage",
     input=BusinessCreateIn,
     output=BusinessDetailOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description=(
             "Creates a business on the Free plan with its address. An account has one free business, and whether one "
@@ -332,6 +334,7 @@ def _subscribe_to_free(hub: Hub, plan, now) -> Subscription:
     permission="hubs.manage",
     input=BusinessUpdateIn,
     output=BusinessDetailOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Changes the name, country, language or time zone of a business; its owner and administrators.",
         asks={
@@ -382,6 +385,7 @@ def business_update(ctx: OperationContext, data: BusinessUpdateIn) -> dict:
     permission="hubs.manage",
     input=BusinessAddressIn,
     output=BusinessDetailOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Moves a business to another web address; people must use the new one. Only its owner.",
         risk="high",
@@ -443,6 +447,7 @@ def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> d
     permission="hubs.manage",
     input=BusinessDeleteIn,
     output=BusinessDetailOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Deletes a business: it stops opening at once, is kept 90 days and its plan goes back to Free. "
                     "confirm_name is the business's exact name. Only its owner.",
@@ -550,6 +555,7 @@ def _back_to_free(hub: Hub) -> None:
     permission="hubs.manage",
     input=ByIdIn,
     output=BusinessDetailOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Recovers a business deleted less than 90 days ago, on the Free plan; only its owner.",
         asks={
@@ -615,6 +621,7 @@ NOT_OPENING = {
     permission="hubs.manage",
     input=BusinessOpenIn,
     output=BusinessOpenOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=INTERNAL,  # screen
 )
 def business_open(ctx: OperationContext, data: BusinessOpenIn) -> dict:
@@ -838,6 +845,7 @@ def _mail_invitation(ctx: OperationContext, member: HubMember) -> None:
     permission="hubs.manage",
     input=MemberInviteIn,
     output=MemberRowOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Invites a person by email to a business with a role below one's own; the invitation lasts 7 days.",
         asks={
@@ -920,6 +928,7 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
     permission="hubs.manage",
     input=MemberRoleIn,
     output=MemberRowOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Gives a member or a pending invitation of a business another role below one's own.",
         asks={
@@ -950,6 +959,7 @@ def member_change_role(ctx: OperationContext, data: MemberRoleIn) -> dict:
     permission="hubs.manage",
     input=ByIdIn,
     output=RemovedOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Takes a person out of one business: their access to it ends; their account and other businesses "
                     "stay.",
@@ -1021,6 +1031,7 @@ def _pending_only(target: HubMember) -> None:
     permission="hubs.manage",
     input=ByIdIn,
     output=MemberRowOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Sends a pending invitation to a business again, valid for 7 more days.",
         asks={
@@ -1058,6 +1069,7 @@ def member_resend(ctx: OperationContext, data: ByIdIn) -> dict:
     permission="hubs.manage",
     input=ByIdIn,
     output=RemovedOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Withdraws an invitation to a business nobody answered yet.",
         asks={
@@ -1108,6 +1120,7 @@ def _my_invitation(ctx: OperationContext, member_id: UUID) -> HubMember:
     permission="hubs.manage",
     input=ByIdIn,
     output=BusinessRowOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Accepts an invitation of this account to a business, within its 7 days.",
         asks={
@@ -1151,6 +1164,7 @@ def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     permission="hubs.manage",
     input=ByIdIn,
     output=RemovedOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Declines an invitation of this account to a business.",
         asks={
@@ -1206,6 +1220,7 @@ def _expire_stale(hub: Hub, now) -> None:
     permission="hubs.manage",
     input=OwnershipTransferIn,
     output=OwnershipTransferOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Offers a business to one of its members, who has 7 days to accept; the payer does not change and the "
                     "owner stays as administrator.",
@@ -1372,6 +1387,7 @@ def _resolve(transfer: HubOwnershipTransfer, status: str) -> None:
     permission="hubs.manage",
     input=ByIdIn,
     output=OwnershipTransferOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Declines the offer to become the owner of a business; nothing changes.",
         asks={
@@ -1403,6 +1419,7 @@ def ownership_decline(ctx: OperationContext, data: ByIdIn) -> dict:
     permission="hubs.manage",
     input=ByIdIn,
     output=OwnershipTransferOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="The owner withdraws an offer of the business nobody answered yet.",
         asks={
@@ -2106,8 +2123,20 @@ def _sync_counted(hub_id: UUID, counts: Counter) -> None:
         counts[REFUSED] += outcome == REFUSED
 
 
-def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
-    """One pass of ``reconcile_hub_states``; the counts of what it did (each key is always present)."""
+def reconcile_exclusively(stuck_after: timedelta = STUCK_AFTER, go_on: Callable[[], bool] | None = None) -> Counter | None:
+    """One pass of ``reconcile`` under the lock of ``reconcile_hub_states``: its counts, or ``None`` when another run
+    holds the lock (and this one did nothing). What the command and the ``saas-worker`` (every 15 minutes,
+    ``base.worker``, saas#305; with its ``go_on``) both run."""
+    with run_exclusively("reconcile_hub_states") as mine:
+        return reconcile(stuck_after=stuck_after, go_on=go_on) if mine else None
+
+
+def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER, go_on: Callable[[], bool] | None = None) -> Counter:
+    """One pass of ``reconcile_hub_states``; the counts of what it did (each key is always present).
+
+    ``go_on`` (the ``saas-worker``'s stop request and the round's time budget) is asked before each call to the Hub:
+    once it says no, the pass ends after the business in course and ``cut_short`` is 1; what is left is still owed in
+    the database, and the next pass does it. The steps that only touch the database always run."""
     now = now or timezone.now()
     keys = (
         "purged",
@@ -2127,8 +2156,15 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
         "data_copy_none",
         "sessions_ended",
         "sessions_pending",
+        "cut_short",
     )
     counts = Counter({key: 0 for key in keys})
+
+    def more() -> bool:
+        if not counts["cut_short"] and go_on is not None and not go_on():
+            counts["cut_short"] = 1
+        return not counts["cut_short"]
+
     cutoff = now - Hub.RETENTION
     for hub_id in expired_deletions(cutoff):
         # Re-checked by the UPDATE itself: a business restored since the read is left alone.
@@ -2149,11 +2185,15 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
         ~Q(pending_hub_call="") | Q(pushed_state_version__lt=F("state_version"), status__in=LIVE_STATUSES)
     )
     for hub_id in owed.order_by("updated_at").values_list("id", flat=True):
+        if not more():
+            break
         _sync_counted(hub_id, counts)
     stuck = Hub.objects.filter(
         status=Hub.Status.PREPARING, ready_at__isnull=True, pending_hub_call="", provision_requested_at__lte=now - stuck_after
     )
-    for hub_id in stuck.values_list("id", flat=True):
+    for hub_id in () if counts["cut_short"] else stuck.values_list("id", flat=True):
+        if not more():
+            break
         try:
             _settle_stuck(hub_id, counts)
         except Exception:  # noqa: BLE001 - one business never stops the pass
@@ -2168,14 +2208,18 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
         deletion_requested_at__isnull=False,
         data_copy_mail_attempts__lt=DATA_COPY_MAIL_ATTEMPTS,
     )
-    for hub_id in untold.values_list("id", flat=True):
+    for hub_id in () if counts["cut_short"] else untold.values_list("id", flat=True):
+        if not more():
+            break
         try:
             _tell_data_copy(hub_id, counts)
         except Exception:  # noqa: BLE001 - one business never stops the pass
             logger.exception("hubs.data_copy.crashed hub=%s", hub_id)
             counts["failed"] += 1
     due = SessionRevocation.objects.filter(delivered_at__isnull=True, next_attempt_at__lte=now)
-    for revocation_id in due.order_by("next_attempt_at").values_list("id", flat=True):
+    for revocation_id in () if counts["cut_short"] else due.order_by("next_attempt_at").values_list("id", flat=True):
+        if not more():
+            break
         try:
             outcome = deliver_revocation(revocation_id)
         except Exception:  # noqa: BLE001 - one revocation never stops the pass; it stays queued

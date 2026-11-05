@@ -5,6 +5,9 @@
       "reportProblem": "Reportar un problema",
       "themeNotSaved": "No se ha podido guardar la apariencia en tu cuenta."
     },
+    "session": {
+      "notRefreshed": "No se ha podido actualizar el menú con tus cambios. Recarga la página."
+    },
     "load": {
       "heading": "No hemos podido cargar esta página",
       "body": "Comprueba la conexión y vuelve a intentarlo.",

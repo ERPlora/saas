@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 # Deploys an image tag of the saas to one environment, in that environment's own ECS cluster
 # (erplora-<ENVIRONMENT>; PLAN-AWS §6; plan 2026-10-14-entorno-pre), touching only that
-# environment's saas task families and service:
-#   prod: cluster erplora-prod, families erplora-prod-{saas,saas-migrate,saas-cron}, service saas,
-#         image erplora/saas;
-#   pre:  cluster erplora-pre, families erplora-pre-{saas,saas-migrate} (no saas-cron), service
-#         saas-pre, image erplora/saas-pre; the containers keep the short names (saas, saas-migrate).
+# environment's saas task families and services:
+#   prod: cluster erplora-prod, families erplora-prod-{saas,saas-migrate,saas-cron,saas-worker},
+#         services saas and saas-worker, image erplora/saas;
+#   pre:  cluster erplora-pre, families erplora-pre-{saas,saas-migrate,saas-worker} (no saas-cron),
+#         services saas-pre and saas-worker-pre, image erplora/saas-pre; the containers keep the
+#         short names (saas, saas-migrate, saas-worker).
+#   saas-worker (saas#305: manage.py run_worker, the WhatsApp deliveries and the reconciliations)
+#   is created by ERPlora/aws (aws#59) once an image with run_worker is out: while its family does
+#   not exist the deploy goes on without it and says so (::warning::); any other error looking for
+#   it or reading it fails the deploy as for the other families.
 #   0. reads the latest ACTIVE revision of every family and refuses them all, registering nothing,
 #      unless each one carries the tag Environment=<ENVIRONMENT> and the task and execution roles of
 #      its environment (role/erplora-<ENVIRONMENT>-…): ecs:RegisterTaskDefinition takes no resource,
@@ -61,6 +66,9 @@ PROJECT=saas
 migration=saas-migrate
 # Families that run as a service; the service of family <name> is <name><suffix>.
 services=(saas)
+# Services that may not exist yet (saas-worker until aws#59 is applied): deployed once their
+# family exists.
+not_yet=(saas-worker)
 if [ "$ENVIRONMENT" = prod ]; then
   families=(saas saas-migrate saas-cron)
   suffix=""
@@ -74,8 +82,8 @@ else
   wake=(--desired-count 1)
 fi
 prefix="erplora-$ENVIRONMENT"
-# The saas repo has no worker: the migration runs like the saas service (same subnets, sg-app,
-# public IP; sg-app reaches Aurora and Valkey, and nothing listens on 8000 in the migration).
+# The migration runs like the saas service (same subnets, sg-app, public IP; sg-app reaches Aurora
+# and Valkey, and nothing listens on 8000 in the migration), never like saas-worker (it may not exist).
 network_service="saas$suffix"
 
 project_image="$REGISTRY/erplora/$PROJECT$suffix:"
@@ -169,6 +177,26 @@ migrate() {
     exit 1
   fi
 }
+
+# A family prefix also lists longer families: only a revision of <name>'s own family counts.
+for name in "${not_yet[@]}"; do
+  if ! arns="$(aws ecs list-task-definitions --family-prefix "$prefix-$name" --status ACTIVE \
+    --region "$AWS_REGION" --query taskDefinitionArns --output text)"; then
+    echo "::error::could not look for $prefix-$name; nothing was registered" >&2
+    exit 1
+  fi
+  read -ra listed <<< "$arns"
+  found=0
+  for arn in "${listed[@]}"; do
+    if [[ "${arn%:*}" == */"$prefix-$name" ]]; then found=1; fi
+  done
+  if [ "$found" -eq 1 ]; then
+    families+=("$name")
+    services+=("$name")
+  else
+    echo "::warning::$prefix-$name does not exist yet (aws#59 not applied): skipped"
+  fi
+done
 
 # Every family is checked before any is registered.
 for name in "${families[@]}"; do

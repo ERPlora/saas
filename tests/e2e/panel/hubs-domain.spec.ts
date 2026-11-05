@@ -292,7 +292,7 @@ for (const { language, locale, domain } of RUNS) {
       expect(errors).toEqual([]);
     });
 
-    test(`HUBS-F17 (${language}): a plan without an own domain says so and leads to the plans, with no form`, async ({ page }) => {
+    test(`HUBS-F17 (${language}): a plan without an own domain says so, names the plan that includes one and leads to the plans, with no form`, async ({ page }) => {
       const errors = watchPageErrors(page);
       const id = await ownerOn(page, language, 'starter');
       await page.goto(`/dashboard/businesses/${id}/settings`);
@@ -300,14 +300,27 @@ for (const { language, locale, domain } of RUNS) {
       const notice = own.getByTestId('domain-not-in-plan');
       const detail = await page.request.get(`/api/hubs/businesses/detail?id=${id}`);
       const plan = ((await detail.json()) as { plan: { name: string } }).plan.name;
+      // The plan of the notice is the first on sale whose row includes one (saas#301), as `hubs.plan.list` says.
+      const onSale = (await (await page.request.get('/api/plans')).json()) as { plans: { slug: string; name: string; includes_custom_domain: boolean }[] };
+      const withIt = onSale.plans.find((candidate) => candidate.includes_custom_domain);
+      expect(withIt).toBeDefined();
       await atEverySize(page, 'not-in-plan', language, async () => {
         await expect(notice).toContainText(say(language, 'notInPlan.headingNamed', { plan }));
-        await expect(notice).toContainText(say(language, 'notInPlan.body'));
+        await expect(notice).toContainText(say(language, 'notInPlan.bodyNamed', { plan: withIt!.name }));
         await expect(own.getByTestId('domain-form')).toHaveCount(0);
       });
       expect(await kept(page, id)).toMatchObject({ available: true, in_plan: false, domain: null });
       await own.getByTestId('domain-plans').click();
       await expect(page).toHaveURL(new RegExp(`/dashboard/store/plans\\?business=${id}$`));
+      // The Store says it on the card of each plan that includes one, and only there.
+      const line = catalogueText('billing', language, 'billing.plans.customDomain');
+      await expect(page.getByTestId(`plan-${withIt!.slug}`).getByTestId('plan-domain')).toHaveText(line);
+      for (const { slug, includes_custom_domain: included } of onSale.plans) {
+        const shown = page.getByTestId(`plan-${slug}`);
+        if ((await shown.count()) === 0) continue;
+        await expect(shown.getByTestId('plan-domain')).toHaveCount(included ? 1 : 0);
+      }
+      await expect(page.getByTestId('plan-starter').getByTestId('plan-domain')).toHaveCount(0);
       expect(errors).toEqual([]);
     });
   });
