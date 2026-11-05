@@ -178,6 +178,20 @@ function panelDjangoEnv(vitePort: number, stack: Stack, real: boolean): Record<s
       // battery with the real model (QA_REAL_PROVIDER=1, assistant-battery.spec.ts, never in the CI) uses the real
       // «openai» that `assistant_seed.py real` keeps in the run's own e2e database.
       ASSISTANT_SERVICE_PROVIDER: real ? 'openai' : 'e2e-local',
+      // A business's own domain (HUBS-F17) is connected here as in production, and AWS is the Hub double's port: ACM,
+      // the listener and CloudWatch go there, which hubs-domain.spec.ts plays while it runs; outside it nobody listens and
+      // every call fails at once, as with AWS away. The keys are made up and come first in boto3, so no session of this
+      // box (`aws login`, a profile) ever signs a call; nor the instance's metadata.
+      CUSTOM_DOMAINS_ENABLED: 'True',
+      CUSTOM_DOMAINS_LISTENER_ARN: 'arn:aws:elasticloadbalancing:eu-west-1:000000000000:listener/app/e2e/0/0',
+      CUSTOM_DOMAINS_TARGET_TEMPLATE: 'hub-{hub_id}.erplora.com',
+      AWS_ENDPOINT_URL_ACM: `http://127.0.0.1:${stack.hubDoublePort}`,
+      AWS_ENDPOINT_URL_ELASTIC_LOAD_BALANCING_V2: `http://127.0.0.1:${stack.hubDoublePort}`,
+      AWS_ENDPOINT_URL_CLOUDWATCH: `http://127.0.0.1:${stack.hubDoublePort}`,
+      AWS_ACCESS_KEY_ID: 'e2e-made-up',
+      AWS_SECRET_ACCESS_KEY: 'e2e-made-up',
+      AWS_SESSION_TOKEN: '',
+      AWS_EC2_METADATA_DISABLED: 'true',
       // Each account's messages a month with the panel's assistant (30 in production): assistant-panel.spec.ts asks
       // twice, then sees the month spent (ASSISTANT-F26). The real battery asks as in production.
       ASSISTANT_ACCOUNT_MESSAGES: real ? '30' : '2',

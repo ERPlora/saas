@@ -307,6 +307,55 @@
       "countryLocked": "The country cannot change once the business is ready: its invoices belong to one country.",
       "changeAddress": "Change address"
     },
+    "domain": {
+      "title": "Own domain",
+      "lead": "Show your public website on a domain of yours, like www.yourbusiness.com. The app and the way into the business stay at their erplora.com address.",
+      "loadError": "We could not load the domain of this business.",
+      "unavailable": "Own domains are not available yet.",
+      "notInPlan": {
+        "heading": "Your plan does not include an own domain",
+        "headingNamed": "The {plan} plan does not include an own domain",
+        "body": "Change to a plan that includes one to show your website on your own domain.",
+        "plans": "See plans"
+      },
+      "field": "Your domain",
+      "placeholder": "www.yourbusiness.com",
+      "fieldHint": "Use www or another subdomain. A root domain such as yourbusiness.com cannot point to ERPlora: redirect it to www at your domain provider.",
+      "connect": "Connect domain",
+      "connected": "Now create the records of {domain}",
+      "ownerOnly": "Only the owner of the business can connect or remove its domain.",
+      "active": "Your website is served on {domain}.",
+      "records": {
+        "title": "Records to create at your domain provider",
+        "lead": "Create both as CNAME records, in this order.",
+        "type": "Type",
+        "name": "Name",
+        "value": "Value",
+        "copyName": "Copy the name",
+        "copyValue": "Copy the value",
+        "copied": "Copied",
+        "copyFailed": "It could not be copied. Select it and copy it by hand."
+      },
+      "validation": {
+        "title": "1. Validation record",
+        "hint": "Create it first and keep it for good: it renews the certificate.",
+        "coming": "It is still being prepared and appears here in a few seconds.",
+        "lookAgain": "Look again"
+      },
+      "traffic": {
+        "title": "2. Record that points to ERPlora",
+        "hint": "Create it once the certificate is ready: before that, your domain would show a security warning."
+      },
+      "checks": "We check your domain every hour. If it stops pointing to ERPlora three times in a row, we stop serving your website on it and email you; it comes back by itself when the record does.",
+      "checkedAt": "Last check: {date}.",
+      "activeSince": "Connected since {date}.",
+      "failures": "The last check found a problem: at three in a row we stop serving your website on this domain. | The last {count} checks found a problem: at three in a row we stop serving your website on this domain.",
+      "removing": "Your website is no longer served on {domain}. Its certificate is being deleted; then the domain is free to connect again.",
+      "remove": "Remove domain",
+      "removeTitle": "Remove {domain}",
+      "removeMessage": "Your website stops being served on {domain} and stays at its erplora.com address. Its certificate is deleted and the domain is free to connect again.",
+      "removed": "{domain} is being removed"
+    },
     "danger": {
       "title": "Danger zone",
       "deleteTitle": "Delete business",

@@ -63,6 +63,16 @@ const DATA_COPY_ROUTES = {
   'hubs.data_copy.link': { method: 'get', path: '/api/hubs/data-copies/link' },
 };
 
+/**
+ * The own domain of a business (hubs/api.py, HUBS-F17): its state and its records, asking for one and removing it, on
+ * the Settings of the business. The hourly check's `hubs.custom_domain.record` is the platform's, never the panel's.
+ */
+const CUSTOM_DOMAIN_ROUTES = {
+  'hubs.custom_domain.get': { method: 'get', path: '/api/hubs/businesses/custom-domain' },
+  'hubs.custom_domain.request': { method: 'post', path: '/api/hubs/businesses/custom-domain' },
+  'hubs.custom_domain.remove': { method: 'post', path: '/api/hubs/businesses/custom-domain/remove' },
+};
+
 /** The signed authorisation of a business (fiscal/api.py, plan 2026-10-15): its state on the business's page. */
 const FISCAL_ROUTES = {
   'fiscal.representation.status': { method: 'get', path: '/api/fiscal/representation' },
@@ -202,6 +212,13 @@ describe('OPERATION_ROUTES', () => {
     for (const [op, route] of Object.entries(DATA_COPY_ROUTES)) expect(api[op], op).toEqual(route);
   });
 
+  it('binds the own domain of a business to its routes, as hubs/api.py does, and never the hourly check’s write', () => {
+    expect(OPERATION_ROUTES).toMatchObject(CUSTOM_DOMAIN_ROUTES);
+    const api = hubsRoutes(HUBS_API);
+    for (const [op, route] of Object.entries(CUSTOM_DOMAIN_ROUTES)) expect(api[op], op).toEqual(route);
+    expect(OPERATION_ROUTES).not.toHaveProperty(['hubs.custom_domain.record']);
+  });
+
   it('binds the operations of the Billing section to their routes, as billing/api.py does', () => {
     expect(OPERATION_ROUTES).toMatchObject(BILLING_ROUTES);
     const api = hubsRoutes(BILLING_API);
@@ -254,6 +271,7 @@ describe('OPERATION_ROUTES', () => {
         ...Object.keys(BILLING_ROUTES),
         ...Object.keys(USAGE_ROUTES),
         ...Object.keys(DATA_COPY_ROUTES),
+        ...Object.keys(CUSTOM_DOMAIN_ROUTES),
         ...Object.keys(FISCAL_ROUTES),
         ...Object.keys(ASSISTANT_ROUTES),
       ].sort(),

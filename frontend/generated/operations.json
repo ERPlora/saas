@@ -75,5 +75,8 @@
   "hubs.usage.series": { "method": "get", "path": "/api/hubs/usage/series" },
   "hubs.data_copy.list": { "method": "get", "path": "/api/hubs/data-copies" },
   "hubs.data_copy.link": { "method": "get", "path": "/api/hubs/data-copies/link" },
+  "hubs.custom_domain.get": { "method": "get", "path": "/api/hubs/businesses/custom-domain" },
+  "hubs.custom_domain.request": { "method": "post", "path": "/api/hubs/businesses/custom-domain" },
+  "hubs.custom_domain.remove": { "method": "post", "path": "/api/hubs/businesses/custom-domain/remove" },
   "fiscal.representation.status": { "method": "get", "path": "/api/fiscal/representation" }
 }

@@ -101,7 +101,12 @@ unos segundos. Esta página se actualiza sola.».
 ### Ajustes del negocio
 La pestaña «Ajustes» de cada negocio. «General»: «Nombre del negocio», «País» (solo texto una vez listo),
 «Zona horaria», «Idioma del negocio» y «Dirección web» con su botón de copiar y, para el propietario, «Cambiar
-dirección»; «Guardar cambios» se activa al cambiar algo. Debajo, la «Zona de peligro» con «Eliminar negocio».
+dirección»; «Guardar cambios» se activa al cambiar algo. Debajo, «Dominio propio»: con un plan que lo incluye, el
+propietario escribe «Tu dominio» y pulsa «Conectar dominio»; con un dominio, su estado, por qué está parado, los dos
+registros CNAME («1. Registro de validación» y «2. Registro que apunta a ERPlora», cada uno con «Copiar el nombre» y
+«Copiar el valor»), la revisión de cada hora y «Quitar dominio». Un plan que no lo incluye dice «El plan … no incluye
+dominio propio» con «Ver planes»; un administrador lo ve sin poder cambiarlo. Al final, la «Zona de peligro» con
+«Eliminar negocio».
 
 ### Cambiar la dirección web
 El diálogo de «Cambiar dirección»: «Nueva dirección», debajo «Tu negocio se abrirá en:» con la dirección que dará
@@ -175,7 +180,7 @@ con buscador por negocio o por correo y filtro por rol; solo se consulta.
 | HUBS-F14 | Ver los negocios por la API | hecho |
 | HUBS-F15 | Cambiar el nombre, el idioma y la zona horaria del negocio | hecho |
 | HUBS-F16 | Cambiar la dirección web del negocio | hecho |
-| HUBS-F17 | Conectar un dominio propio a la web del negocio | parcial |
+| HUBS-F17 | Conectar un dominio propio a la web del negocio | hecho |
 | HUBS-F18 | Eliminar un negocio | hecho |
 | HUBS-F19 | Recuperar un negocio eliminado | hecho |
 | HUBS-F20 | Avisar y dar de baja un negocio suspendido por impago | hecho |
@@ -426,19 +431,19 @@ Implicados: el negocio (recibe su nueva dirección), accounts (la entrada a la n
 
 ### HUBS-F17 Conectar un dominio propio a la web del negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F11 old-saas:SAAS_DASHBOARD-F12 fi:saas/hubs#configuracion-de-dominios-subdominio-dominios-personalizados fi:saas/support/hubs#modelo-hubcustomdomain pc:cloud/dashboard/hubs-domains fi:saas/support/hubs#task-check_domain_validation old-saas:SAAS_DASHBOARD-F39 -->
-Estado: parcial — el servidor ya lo hace donde `CUSTOM_DOMAINS_ENABLED` está encendido (pedirlo, la comprobación de cada hora y quitarlo, también por el asistente); falta la pantalla en Ajustes y, hasta que llegue, el panel no lo enseña ni los planes lo venden (saas#195)
+Estado: hecho
 Actor: propietario
-Pantalla: Ajustes del negocio (aún no existe)
+Pantalla: Ajustes del negocio › Dominio propio
 Pasos:
-1. El propietario de un negocio con un plan que incluye dominio propio escribe el suyo, por ejemplo www.minegocio.es, y erplora.com le da los dos registros CNAME que tiene que crear en su proveedor: el de validación y el que lleva las visitas a ERPlora.
+1. El propietario de un negocio con un plan que incluye dominio propio escribe el suyo en «Tu dominio», por ejemplo www.minegocio.es, y pulsa «Conectar dominio»; erplora.com le da los dos registros CNAME que tiene que crear en su proveedor, cada uno con su nombre y su valor para copiar: «1. Registro de validación» y «2. Registro que apunta a ERPlora».
 2. Primero crea el de validación, que se queda para siempre porque renueva el certificado. Cuando ACM lo ve, el certificado se emite y erplora.com lo pone en la entrada de ERPlora.
 3. Con el certificado puesto crea el segundo, que apunta al nombre de ese negocio. Cuando la comprobación de cada hora lo ve, el negocio sirve su web por ese dominio y, si responde bien, el dominio queda activo.
-4. Cada hora vuelve a mirarlo; si deja de apuntar bien o de servirse tres veces seguidas, avisa al propietario por correo y lo deja de servir. Cuando el registro vuelve, el dominio vuelve solo.
-5. Para quitarlo, lo quita y lo confirma: deja de servirse, se borra su certificado y el nombre queda libre.
+4. Cada hora vuelve a mirarlo y la pantalla dice cuándo fue la última vez; si deja de apuntar bien o de servirse tres veces seguidas, avisa al propietario por correo y lo deja de servir. Mientras tanto la pantalla cuenta los fallos seguidos. Cuando el registro vuelve, el dominio vuelve solo.
+5. Para quitarlo pulsa «Quitar dominio» y lo confirma en «Quitar …»: deja de servirse, se borra su certificado y el nombre queda libre.
 Entra: el dominio del propietario y los dos registros de su proveedor.
 Sale: la web pública del negocio en su dominio, con su certificado.
-Si falla: un dominio que no apunta a ERPlora se queda sin activar y se dice qué registro falta. Un dominio raíz (minegocio.es) no se ofrece, porque ni admite CNAME ni la entrada tiene IP fija: se conecta www y el raíz se redirige en el proveedor. Un plan que no lo incluye no lo ofrece, y al bajar a uno así se deja de servir y vuelve al subir. Sin sitio para más certificados, el dominio espera y se reintenta cada hora, y lo ya activo no se entera. Un certificado rechazado o sin validar en 72 horas hay que volver a pedirlo. Si el DNS, AWS o el Hub no responden, no cuenta como fallo y se reintenta. La aplicación y la entrada al negocio siguen en su dirección de erplora.com.
-Implicados: website (la web pública del negocio), el negocio (BASE-F110: sirve la web por su dominio), public (PUBLIC-F07: hasta que llegue la pantalla ni los planes ni la web lo venden, saas#233)
+Si falla: lo que erplora.com no acepta del nombre se dice en el propio campo («Ese dominio es de ERPlora. Escribe el tuyo.»). Un dominio que no apunta a ERPlora se queda sin activar y se dice qué registro falta. Un dominio raíz (minegocio.es) no se ofrece, porque ni admite CNAME ni la entrada tiene IP fija: se conecta www y el raíz se redirige en el proveedor. Un plan que no lo incluye no lo ofrece: dice «El plan … no incluye dominio propio» con «Ver planes», sin formulario; y al bajar a uno así se deja de servir y vuelve al subir. Sin sitio para más certificados, el dominio espera y se reintenta cada hora, y lo ya activo no se entera. Un certificado rechazado o sin validar en 72 horas hay que volver a pedirlo: el dominio sin conectar vuelve al campo para pedirlo otra vez con «Conectar dominio». Si el DNS, AWS o el Hub no responden, no cuenta como fallo y se reintenta. La aplicación y la entrada al negocio siguen en su dirección de erplora.com.
+Implicados: website (la web pública del negocio), el negocio (BASE-F110: sirve la web por su dominio), public (PUBLIC-F07: los planes y la web todavía no lo anuncian, saas#301)
 
 ### HUBS-F18 Eliminar un negocio
 <!-- origen: fi:saas/hubs#borrado-cancelacion-del-terminal old-saas:SAAS_DASHBOARD-F22 old-saas:SAAS_DASHBOARD-F23 old-saas:SAAS_DASHBOARD-F24 -->
@@ -739,7 +744,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   negocio); la parte 3, F24–F30 (las personas de cada negocio); la parte 4, F31–F37 (plan, derechos, contrato con el
   Hub y taxonomía). La revisión flujo a flujo de los `hecho` la hace la parte 5. Completa el 2026-11-01 (CLOSE-HUBS):
   F18, F20, F21 y F22 llegaron con la tenencia S2b (hub#580, saas#168); F32 y F34 ya los aplicaba el Hub (APP-BASE-3,
-  -4 y -5); F17 se descarta en esta versión (saas#195). Lo decidido durante la migración está en la ronda de PLAN-SAAS
+  -4 y -5); F17 se descartó entonces y llegó entero el 2026-11-05 (saas#195). Lo decidido durante la migración está en la ronda de PLAN-SAAS
   de ese día.
 - Equivalencia de claves del registro: G65 y G41 = F01; G66 = F02; G67, G09, G10 y G45 = F03; G68 = F04; G43,
   G04, G06, G21 y G44 = F05; G98 = F06; G91 = F07; G92 = F08; G69, G17, G18, G111 y G113 = F09; G14, G84 y
@@ -823,7 +828,10 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   `hubs.custom_domain.{request,get,remove}` y el comando `check_custom_domains`, cada hora en `saas-cron`
   (`services.check_custom_domains`). `hubs/domain_names.py` valida el nombre: el Hub rechaza la foto entera (422) por un
   dominio malo, así que nada de lo que él rechaza llega a una fila. `hubs/edge_client.py` son las llamadas a ACM, al ALB y
-  a CloudWatch, y `hubs/domain_checks.py`, el DNS y la sonda.
+  a CloudWatch, y `hubs/domain_checks.py`, el DNS y la sonda. La pantalla es `CustomDomainCard` en Ajustes: la consulta
+  viva `hubs.custom_domain.get` va en el primer flujo de la página, con el negocio, y solo el propietario ve el
+  formulario y «Quitar dominio» (`role`; el servidor lo vuelve a comprobar). e2e `hubs-domain.spec.ts`: el Django del
+  panel conecta dominios y manda AWS al puerto del doble del Hub, donde la spec juega ACM y los acuses del Hub.
   - **Estados**: `pending` → (certificado, en el listener, CNAME de este negocio, foto, sonda) → `active` → (tres fallos
     seguidos) → `lapsed` → (vuelve el CNAME) → `pending`; `removing`, cuando lo quita su dueño. La fila se borra la última,
     y eso libera el nombre (ADR-0496). Una pasada que encuentra otro estado del que leyó no escribe nada: gana el dueño.
@@ -904,8 +912,8 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 
 ## Lo que queda fuera
 
-- **La pantalla de Ajustes para conectar un dominio propio** (HUBS-F17) y la vuelta de su promesa a los planes y a la web:
-  es lo único visible y entra la última — saas#195.
+- **La vuelta del dominio propio a los planes, a «Planes y precios» y a los términos** (PUBLIC-F07, HUBS-F17): ya se
+  puede conectar, pero nada lo anuncia todavía — saas#301.
 
 ## Lo que NO hace, a propósito
 
@@ -918,8 +926,6 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - No pausa ni reinicia negocios, ni enseña su CPU, su memoria o sus conexiones: un solo servicio sirve a todos.
 - No pausa, avisa ni borra un negocio gratuito porque nadie lo use, ni lo despierta al volver: sin un servidor por
   negocio no hay nada que dormir, y no hay borrado por inactividad hasta medir lo que cuesta uno ocioso.
-- No enseña todavía en el panel el dominio propio (HUBS-F17, saas#195): la web y la entrada de cada negocio están en su
-  dirección de erplora.com.
 - No conecta un dominio raíz (minegocio.es): ni admite CNAME ni la entrada de ERPlora tiene una IP fija que dar.
 - No sirve la aplicación ni la entrada por el dominio propio: la cookie de sesión no llega a otro dominio.
 - No entra sola en un negocio ya existente al abrir la Entrada, tampoco con uno solo: elige la persona.

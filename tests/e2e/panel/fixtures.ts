@@ -5,7 +5,7 @@
 // Import `test` and `expect` from here, not from `@playwright/test`.
 import { execFile, execFileSync } from 'node:child_process';
 import { createHmac } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -357,6 +357,62 @@ export function djangoPrint(code: string): string {
     // stderr kept, not shown: uv's warnings; a failing snippet's traceback travels in the thrown error.
     stdio: ['ignore', 'pipe', 'pipe'],
   }).trim();
+}
+
+/** A fresh account of a spec, its address proven, speaking `language` (the account's language wins on the panel). */
+export function provenAccount(email: string, password: string, language: 'en' | 'es' = 'en'): void {
+  djangoPrint(
+    [
+      'from allauth.account.models import EmailAddress',
+      'from django.contrib.auth import get_user_model',
+      `user = get_user_model().objects.create_user(email=${JSON.stringify(email)}, password=${JSON.stringify(password)}, language="${language}")`,
+      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
+    ].join('\n'),
+  );
+}
+
+/**
+ * The text of `key` (`hubs.domain.title`) in the panel catalogue of `app` (`<app>/frontend/locale/<language>.json`), its
+ * `{placeholders}` filled; of a plural (`one | other`), the form for `count`. A spec reads a screen's words from there.
+ */
+export function catalogueText(app: string, language: 'en' | 'es', key: string, params: Record<string, string | number> = {}): string {
+  const catalogue = JSON.parse(readFileSync(join(SAAS_DIR, app, 'frontend', 'locale', `${language}.json`), 'utf8')) as unknown;
+  const text = key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], catalogue);
+  if (typeof text !== 'string') throw new Error(`no text ${key} in ${app}/frontend/locale/${language}.json`);
+  const forms = text.split(' | ');
+  const form = forms.length > 1 && params.count !== 1 ? forms[1] : forms[0];
+  return form.replace(/\{(\w+)\}/g, (_, name: string) => String(params[name] ?? `{${name}}`));
+}
+
+/**
+ * A business of `request`'s account called `name` (created through the API, as the panel creates it), ready as the Hub's
+ * callback leaves it and with nothing owed to the Hub, on the plan `plan` (its slug); its id.
+ */
+export async function readyBusinessOn(request: APIRequestContext, name: string, plan: string): Promise<string> {
+  const created = await apiPost(request, '/api/hubs/businesses', { name, country: 'ES' });
+  expect(created.status(), await created.text()).toBe(201);
+  const { id } = (await created.json()) as { id: string };
+  djangoPrint(
+    [
+      'from django.utils import timezone',
+      'from hubs.models import Hub, Plan, Subscription',
+      `Hub.objects.filter(pk=${JSON.stringify(id)}).update(status="active", ready_at=timezone.now(), pending_hub_call="")`,
+      `Subscription.objects.filter(hub_id=${JSON.stringify(id)}).update(plan=Plan.objects.get(slug=${JSON.stringify(plan)}))`,
+    ].join('\n'),
+  );
+  return id;
+}
+
+/** What a spec leaves behind: the businesses and the accounts whose email starts with its `prefix` (`e2e-<spec>-`). */
+export function removeAccountsOf(prefix: string): void {
+  djangoPrint(
+    [
+      'from django.contrib.auth import get_user_model',
+      'from hubs.models import Hub',
+      `Hub.objects.filter(members__user__email__startswith=${JSON.stringify(prefix)}).delete()`,
+      `get_user_model().objects.filter(email__startswith=${JSON.stringify(prefix)}).delete()`,
+    ].join('\n'),
+  );
 }
 
 const execFileAsync = promisify(execFile);

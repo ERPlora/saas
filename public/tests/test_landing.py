@@ -195,6 +195,20 @@ def test_the_closing_band_offers_to_start_free(client):
     assert 'href="/launch"' in closing
 
 
+MOCKUP_URL = re.compile(r'<span class="url">([^<]*)</span>')
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_the_browser_mockups_show_a_business_address_not_the_staff_host(client, language):
+    """The hero and the bento dashboard paint a made-up hub address (Ioan, 2026-11-05):
+    ``hub.erplora.com`` read as a real host, so they show ``my-erp.erplora.com``."""
+    html = html_of(client, language=language)
+    addresses = MOCKUP_URL.findall(html)
+
+    assert addresses == ["my-erp.erplora.com", "my-erp.erplora.com/overview"]
+    assert "hub.erplora.com" not in html
+
+
 def test_a_plan_card_of_the_home_starts_at_the_sign_in(no_plans, client):
     """The SPA's sign-in, which also signs up: no door of the home leads to allauth's old pages."""
     make_plan("starter")
