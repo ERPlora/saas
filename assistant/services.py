@@ -43,14 +43,14 @@ from django.db.models.functions import Cast
 from django.utils import timezone, translation
 from django.utils.translation import gettext as _
 from live.context import OperationContext, Scope, system_context
-from live.errors import Conflict, InvalidPayload, NotFound, OperationError, PermissionDenied
+from live.errors import Conflict, NotFound, OperationError, PermissionDenied
 from live.operations import INTERNAL, operation
 from live.outbox import record_event
 
 import whatsapp.fields
 from assistant import crypto, emails, events, fields, queries
 from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage, DocChunk
-from assistant.models import content_hash, provider_slug
+from assistant.models import content_hash
 from assistant.queries import choosable_models, staff_with
 from hubs.models import Hub
 from assistant.schemas import (
@@ -220,16 +220,12 @@ def policy_model_ids() -> set:
 def model_select(ctx: OperationContext, data: ModelSelectIn) -> dict:
     """Keep exactly the ticked models of a provider (``add_aimodel`` and ``delete_aimodel``): the ticked ones among
     those its API listed are created available (or made available again, their name kept); every other model of the
-    provider is deleted, except the ones the policy uses. 404 ``assistant.provider_unknown``; 422 ``invalid_payload``
-    for a provider that reads aloud (``SPEECH_KINDS``: it answers no turn)."""
+    provider is deleted, except the ones the policy uses. 404 ``assistant.provider_unknown``."""
     staff_with(ctx, "assistant.add_aimodel", "assistant.delete_aimodel")
     with translation.override(ctx.language):
         provider = AIProvider.objects.filter(pk=data.provider).first()
         if provider is None:
             raise NotFound(_("This provider does not exist."), code="assistant.provider_unknown")
-        if provider.reads_aloud:
-            reason = _("This provider reads aloud: it answers no turn, so it has no models to choose.")
-            raise InvalidPayload(reason, fields={"provider": reason})
     listed = {item.model_id: item for item in data.listed}
     ticked = [model_id for model_id in dict.fromkeys(data.selected) if model_id in listed]
     counts = {"created": 0, "kept": 0, "deleted": 0, "protected": 0}
@@ -354,7 +350,7 @@ def credential_import(ctx: OperationContext, data: CredentialImportIn) -> dict:
         with translation.override(ctx.language):
             raise PermissionDenied(_("Only the platform loads the keys of the environment."), code="assistant.platform_only")
     plaintext = data.api_key.get_secret_value().strip()
-    slug = provider_slug(data.kind)
+    slug = data.kind
     provider = AIProvider.objects.filter(slug=slug).first()
     credential = (
         AIProviderCredential.objects.select_for_update().filter(provider=provider, label=data.label).first()

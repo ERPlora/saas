@@ -23,10 +23,6 @@ the account.
 - ``panel <address> [<language>]``: ``gpt-e2e-large`` answering, as in ``gateway``, and ``e2e-assistant-owner``: an
   account like any other (no staff), in ``language`` (``es`` by default), owner of one working business on the Free
   plan, «E2E Asistente Panel». Prints one line of JSON for the spec: the owner's email, the business and its address.
-- ``voice <address> [<language>]``: ``panel`` plus the provider of the voice (``ASSISTANT_SPEECH_PROVIDER``, Azure AI
-  Speech), «E2E Azure Speech», at ``<address>``'s server under ``/westeurope`` with a made-up key: the panel then
-  offers its server voices (``assistant-voice.spec.ts``, ASSISTANT-F22). A provider of the voice that is not the e2e's
-  is never touched: ``voice`` refuses, and ``clear`` removes only «E2E Azure Speech».
 - ``paying <address> [<language>]``: ``panel`` with its business paying Starter by the month with its owner's card and
   an invoice of it not collected yet (Stripe ids ``cus_``/``sub_``/``in_e2e_assistant_…``, never sent to Stripe): what
   the spec asks the assistant to cancel, so its card shows what cancelling will do (BILLING-F13). ``clear`` also removes
@@ -64,12 +60,6 @@ DEMO = "demo-0e2ea55e"
 STRIPE_PREFIX = {"customer": "cus_e2e_assistant_", "subscription": "sub_e2e_assistant_", "invoice": "in_e2e_assistant_"}
 #: A made-up key in the shape of OpenAI's.
 API_KEY = "sk-e2e-0000000000000000000000000000e2e1"
-#: The e2e's provider of the voice (``voice``), by its name: ``clear`` never removes a real one.
-SPEECH_NAME = "E2E Azure Speech"
-#: A made-up key of Azure AI Speech.
-SPEECH_KEY = "e2e-not-a-real-azure-speech-key"
-#: The region its address names, as Azure's endpoints do (``https://<region>.tts.speech.microsoft.com``).
-SPEECH_REGION = "westeurope"
 VIEW_ONLY = ("view_aiprovider", "view_aiprovidercredential", "view_aimodel", "view_airoutingpolicy")
 #: The real providers of ``real``, as production has them (each key from its variable of the environment).
 QWEN = {
@@ -94,7 +84,6 @@ def setup_django() -> None:
 
 
 def clear() -> None:
-    from django.conf import settings
     from django.contrib.auth import get_user_model
     from django.db.models import Q
 
@@ -115,7 +104,6 @@ def clear() -> None:
         Q(active_model__provider__in=ours) | Q(fallback_model__provider__in=ours)
     ).update(active_model=None, fallback_model=None)
     ours.delete()
-    AIProvider.objects.filter(slug=settings.ASSISTANT_SPEECH_PROVIDER, name=SPEECH_NAME).delete()
     get_user_model().objects.filter(email__startswith=PREFIX, email__endswith=DOMAIN).delete()
 
 
@@ -206,26 +194,6 @@ def panel(address: str, language: str = "es") -> dict:
     answering(address)
     owner, hub = _owner_with_business("owner", ("Lena", "Panel"), "E2E Asistente Panel", "panel", language)
     return {"owner": owner.email, "business": hub.name, "slug": hub.slug}
-
-
-def voice(address: str, language: str = "es") -> dict:
-    """``panel`` with the provider of the voice at the spec's provider, its key made up."""
-    from django.conf import settings
-
-    from assistant.models import AIProvider, AIProviderCredential
-
-    slug = settings.ASSISTANT_SPEECH_PROVIDER
-    if AIProvider.objects.filter(slug=slug).exists():
-        sys.exit(f"voice: this database has its own provider of the voice {slug!r}; the e2e never touches it")
-    made = panel(address, language)
-    speech = AIProvider.objects.create(
-        slug=slug,
-        name=SPEECH_NAME,
-        kind=AIProvider.Kind.AZURE_SPEECH,
-        base_url=f"{address.removesuffix('/v1')}/{SPEECH_REGION}",
-    )
-    AIProviderCredential.objects.create(provider=speech, label="default", api_key=SPEECH_KEY, key_hint=SPEECH_KEY[-4:])
-    return made
 
 
 def paying(address: str, language: str = "es") -> dict:
@@ -402,7 +370,6 @@ def main(action: str, address: str, language: str) -> None:
         "models": lambda: models(address),
         "gateway": lambda: gateway(address),
         "panel": lambda: panel(address, language),
-        "voice": lambda: voice(address, language),
         "paying": lambda: paying(address, language),
         "real": lambda: real(keys, language),
         "forget": forget,

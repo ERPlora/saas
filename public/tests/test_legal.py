@@ -282,7 +282,7 @@ def list_items_naming(html: str, name: str) -> list[str]:
     [
         "Hetzner",  # the old hosting, in Germany
         "Cloudflare",  # out since ADR-0499 (infra#253); AWS WAF + ALB + Route 53 replace it
-        # No voice of the server since 2026-11-04: reading aloud is the device's, and no text goes to Azure AI Speech.
+        # No voice of the server: reading aloud is the device's, and no text goes to Azure AI Speech (it left, saas#242).
         "Microsoft Ireland Operations",
         "Azure",
     ],
@@ -350,8 +350,8 @@ def test_privacy_keeps_the_ai_assistant_in_frankfurt(client):
 # ``assistant/media.py`` sends two services to the provider of ``ASSISTANT_SERVICE_PROVIDER`` (OpenAI's API at
 # ``api.openai.com`` by default), none of them the backup model: the transcription of a dictation (``whisper-1``, the
 # audio of the recording) and the fingerprints of the Hub's index (``text-embedding-3-small``). Reading an answer aloud
-# is the device's own voice (the browser's or the system's): erplora.com has no voice of its own since 2026-11-04 (its
-# Azure AI Speech door sleeps without a provider), so no processor receives that text. Google Play checks the app's
+# is the device's own voice (the browser's or the system's): erplora.com has no voice of its own (no engine behind its
+# door, saas#242), so no processor receives that text. Google Play checks the app's
 # «Data safety › Audio» against this page (app#4).
 
 VOICE_PROVIDER = "OpenAI Ireland Ltd. ("
