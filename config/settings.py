@@ -17,6 +17,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils.csp import CSP
 from live.csp import base_policy, debug_policy
 from live.recaptcha import with_recaptcha
+from psycopg_pool import ConnectionPool
 
 from billing.stripe_keys import test_keys_allowed
 
@@ -148,6 +149,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     # First: answers /healthz before the Host is validated (the ALB probes each task by its IP).
     "base.health.HealthCheckMiddleware",
+    # Then: a cut of the database waits and repeats the whole request, when it may (live.database_cut; Django turns an
+    # exception into a response at every layer, so only the outermost sees it all).
+    "live.database_cut.DatabaseCutMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # The visitor's address behind the ALB in REMOTE_ADDR, before anything reads it.
     "public.client_ip.ClientIpMiddleware",
@@ -225,6 +229,8 @@ ASGI_APPLICATION = "config.asgi.application"
 # attempt (psycopg: 30 s and 130 s), so /readyz answers 503 before its probes give up. As in hub-next.
 # The pool keeps one connection and gives back the rest of a burst one per minute (max_idle;
 # psycopg's 600 s held them for over an hour): PLAN-DB «Conexiones», round 2026-10-18.
+# It checks a connection before handing it out: after a cut of the database it may hold a dead one
+# (PLAN-DB, round 2026-11-04e, point 5).
 db_connect_timeout = config("DB_CONNECT_TIMEOUT", default=5, cast=int)
 db_optional_options = {
     "DB_SSLMODE": "sslmode",
@@ -246,6 +252,7 @@ DATABASES = {
                 "max_size": 8,
                 "max_idle": 60,
                 "timeout": db_connect_timeout,
+                "check": ConnectionPool.check_connection,
             },
             "connect_timeout": db_connect_timeout,
             **{
@@ -651,6 +658,14 @@ LIVE = {
     # Signing out, a new password and «Close the other sessions» record it on the account's channel: every stream of
     # the account re-reads its session and the one that ended says bye, whatever its page subscribes to (live.E019).
     "session_events": ["accounts.session.closed"],
+    # A cut of the database (a restart, AWS's maintenance, the Blue/Green switchover; PLAN-DB, round 2026-11-04e, point 5):
+    # a read waits and tries again up to this long in the whole request, far below the 120 s of the load balancer;
+    # PLAN-DB's rehearsal measures the real cut. What tries again on its own gets its 503 at once: the Hub's /internal,
+    # the webhooks, and /readyz, which has to say the database is gone before its probes give up.
+    "database_cut": {
+        "wait_seconds": config("DB_CUT_WAIT_SECONDS", default=20, cast=int),
+        "no_wait_prefixes": ("/internal/", "/webhooks/", "/readyz"),
+    },
     # Shortest hub slug (live.slugs, shared with hub-next): 3 in production; development opens
     # one-letter slugs for the demo hubs `a` and `b` (`demo_seed`).
     "hub_slug_min_length": 1 if DEBUG else 3,
