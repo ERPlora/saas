@@ -199,6 +199,10 @@ describe('e2e browser window', () => {
     for (const project of e2eConfig.projects ?? []) expect(project.use?.headless).toBeUndefined();
   });
 
+  it('refuses a focused test in CI: a `test.only` left in a spec would turn the required e2e green with that one test', () => {
+    expect(e2eConfig.forbidOnly).toBe(Boolean(process.env.CI));
+  });
+
   it('`pnpm e2e` runs headless, `e2e:headed` opens the window and `e2e:ci` is the CI run', () => {
     const scripts = (JSON.parse(readFileSync(join(SAAS_DIR, 'package.json'), 'utf8')) as { scripts: Record<string, string> }).scripts;
     expect(scripts.e2e).toBe('playwright test -c tests/e2e/playwright.config.ts');

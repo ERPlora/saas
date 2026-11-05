@@ -96,14 +96,18 @@ check("only build and deploy get an OIDC token",
       sorted(name for name, job in jobs.items() if (job.get("permissions") or {}).get("id-token") == "write")
       == ["build", "deploy"])
 
-# --- test.yml: three independent jobs behind the required check "test / test" ------------------
+# --- test.yml: four independent jobs behind the required check "test / test" -------------------
 tjobs = test.get("jobs", {})
-check("test.yml has the jobs python, frontend, scripts and test",
-      {"python", "frontend", "scripts", "test"} <= set(tjobs))
-check("python, frontend and scripts wait for nothing",
-      all(not needs(tjobs.get(name, {})) for name in ("python", "frontend", "scripts")))
-check("test (the required check) needs the three jobs",
-      set(needs(tjobs.get("test", {}))) == {"python", "frontend", "scripts"})
+TEST_JOBS = ("python", "frontend", "scripts", "e2e-doors")
+check("test.yml has the jobs python, frontend, scripts, e2e-doors and test",
+      {*TEST_JOBS, "test"} <= set(tjobs))
+check("python, frontend, scripts and e2e-doors wait for nothing",
+      all(not needs(tjobs.get(name, {})) for name in TEST_JOBS))
+check("test (the required check) needs the four jobs",
+      set(needs(tjobs.get("test", {}))) == set(TEST_JOBS))
+results = str(next((step.get("env") or {} for step in steps(tjobs.get("test", {})) if "RESULTS" in (step.get("env") or {})), {}).get("RESULTS"))
+check("test looks at the result of each of the four jobs",
+      all(f"{name}=${{{{ needs.{name}.result }}}}" in results for name in TEST_JOBS))
 check("test reports even when a job fails or is cancelled", str(tjobs.get("test", {}).get("if", "")) == "always()")
 python_runs, frontend_runs, scripts_runs = (runs(tjobs.get(name, {})) for name in ("python", "frontend", "scripts"))
 check("python runs pytest over a Postgres service",
@@ -113,6 +117,15 @@ check("frontend runs lint, typecheck, Vitest and the build",
       all(f"pnpm {task}" in frontend_runs for task in ("lint", "typecheck", "test", "build")))
 check("scripts runs actionlint, shellcheck and the script tests",
       all(needle in scripts_runs for needle in ("actionlint", "shellcheck", ".test.sh")))
+doors = tjobs.get("e2e-doors", {})
+doors_runs = runs(doors)
+check("e2e-doors runs the panel's spec of the assistant's doors, and nothing else, over a Postgres service",
+      "pnpm e2e:ci --project=panel tests/e2e/panel/assistant-gateway.spec.ts" in doors_runs
+      and "postgres" in (doors.get("services") or {}))
+check("e2e-doors has its .env and its database migrated before the spec",
+      before(doors, "cp .env.example .env", "manage.py migrate") and before(doors, "manage.py migrate", "pnpm e2e:ci"))
+check("e2e-doors clones the submodules (the panel's Vite needs packages/ui)",
+      any((step.get("with") or {}).get("submodules") == "recursive" for step in steps(doors)))
 setup_uv = [step for job in tjobs.values() for step in steps(job) if "astral-sh/setup-uv" in str(step.get("uses", ""))]
 check("setup-uv is used", bool(setup_uv))
 check("setup-uv caches by uv.lock",

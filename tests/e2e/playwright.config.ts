@@ -177,6 +177,8 @@ export default defineConfig({
   testMatch: '*.spec.ts',
   outputDir: join(HERE, '.artifacts', 'test-results', process.env.PW_RUN_ID),
   globalSetup: join(HERE, 'global-setup.ts'),
+  // The CI's e2e is part of a required check: a `test.only` left in a spec would turn it green with that one test.
+  forbidOnly: Boolean(process.env.CI),
   fullyParallel: false,
   workers: 1,
   retries: 0,

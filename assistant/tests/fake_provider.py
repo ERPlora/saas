@@ -158,10 +158,6 @@ def openai_chunk(content: str | None = None, *, finish: str | None = None, tool_
     return chunk
 
 
-#: The e2e's reading aloud: an MP3 frame header and a few bytes (no real audio is needed to prove the door).
-E2E_SPEECH = b"ID3\x03\x00\x00\x00\x00\x00\x00e2e-speech"
-
-
 def serve_e2e(port: int) -> None:
     """The e2e's provider: an OpenAI-compatible API under ``/v1`` with two chat models, an embeddings model it
     leaves out, and an answer streamed in three pieces with its usage."""
@@ -192,8 +188,8 @@ def serve_e2e(port: int) -> None:
             "[DONE]",
         ],
     )
-    # The services' provider (assistant.media): two fingerprints, given in reverse so the order is the gateway's, a
-    # dictation and a reading aloud.
+    # The services' provider (assistant.media): two fingerprints, given in reverse so the order is the gateway's, and a
+    # dictation.
     fake.reply(
         "POST",
         "/v1/embeddings",
@@ -205,7 +201,6 @@ def serve_e2e(port: int) -> None:
         },
     )
     fake.reply("POST", "/v1/audio/transcriptions", always=True, json={"text": "How many appointments do I have today?"})
-    fake.reply("POST", "/v1/audio/speech", always=True, body=E2E_SPEECH, headers={"Content-Type": "audio/mpeg"})
     fake._server.serve_forever()
 
 
