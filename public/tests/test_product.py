@@ -665,7 +665,7 @@ def test_security_states_the_tls_versions_the_load_balancer_accepts(client, lang
 )
 def test_the_storage_answer_names_the_exceptions_of_the_privacy_policy(client, language, exceptions, one_exception):
     """The privacy policy (§6) has two transfers of the assistant: the backup model providers and the provider of
-    its voice and search services (a dictation's audio goes to OpenAI's API by default), so «the one exception» is
+    its voice and search fingerprint services (a dictation's audio goes to OpenAI's API by default), so «the one exception» is
     no longer true."""
     html = page(client, "/pricing/", language)
     answers = re.findall(r'<div class="ion-padding" slot="content">(.*?)</div>', html, re.S)
@@ -674,3 +674,5 @@ def test_the_storage_answer_names_the_exceptions_of_the_privacy_policy(client, l
     assert [exception for exception in exceptions if exception not in storage] == []
     assert one_exception not in storage
     assert 'href="/legal/privacy/"' in storage
+    # The web search goes to the United States under no safeguard of that policy (§6): the answer says it apart.
+    assert "Brave Search" in storage

@@ -1,0 +1,20 @@
+{% extends "public/public_base.html" %}
+{% load i18n %}
+{% comment %}
+  The reading pattern of a legal page with a date. The date is the page's `updated` block; of the terms and the privacy
+  policy it is also the version an account accepts (accounts/models.py; accounts/tests/test_terms.py keeps them equal).
+  The hero stays in the page: what it says is set beside it, in the same block.
+{% endcomment %}
+
+{% block page_content %}
+  {% block hero %}{% endblock %}
+
+  <section class="ep-section--compact ep-section--divider">
+    <div class="ep-container ep-section-content">
+      <article class="ep-prose max-w-4xl mx-auto">
+        <p class="text-sm text-fg/60"><strong>{% trans "Last updated:" %}</strong> {% block updated %}{% endblock %}</p>
+        {% block legal_text %}{% endblock %}
+      </article>
+    </div>
+  </section>
+{% endblock %}

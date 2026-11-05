@@ -74,6 +74,18 @@ def a_search(settings, fake_provider):
     return fake_provider
 
 
+def the_turn_asks(business, client: Client | None = None) -> list:
+    """A live turn of ``business`` with the secret question and the secret instructions: its frames."""
+    payload = {"hub": business.slug, "messages": [{"role": "user", "content": SECRET_QUESTION}], "instructions": INSTRUCTIONS}
+    return frames(door(client or Client(), "/internal/assistant/chat/stream", payload))
+
+
+def the_search(a_search):
+    """The one request the turn made to the search provider."""
+    [seen] = [seen for seen in a_search.requests if seen.path.startswith(SEARCH)]
+    return seen
+
+
 def test_a_live_turn_leaves_nothing_of_what_was_said(internal, business, answering, fake_provider, every_log):
     fake_provider.reply("POST", COMPLETIONS, sse=openai_answer(SECRET_ANSWER))
 
@@ -90,17 +102,28 @@ def test_a_live_turn_leaves_nothing_of_what_was_said(internal, business, answeri
 
 
 def test_a_search_leaves_nothing_of_what_was_searched(internal, business, answering, a_search, every_log):
-    frames(
-        door(
-            Client(),
-            "/internal/assistant/chat/stream",
-            {"hub": business.slug, "messages": [{"role": "user", "content": SECRET_QUESTION}], "instructions": INSTRUCTIONS},
-        )
-    )
+    the_turn_asks(business)
 
-    [seen] = [seen for seen in a_search.requests if seen.path.startswith(SEARCH)]
+    seen = the_search(a_search)
     assert parse_qs(urlsplit(seen.path).query)["q"] == [SECRET_QUESTION]
     assert_forgotten(every_log, SECRET_QUESTION, SECRET_ANSWER, SECRET_RESULT, SECRET_ADDRESS, "Rosalía", SEARCH_KEY)
+
+
+def test_a_search_tells_brave_what_is_looked_for_and_nothing_of_who_asks(internal, business, answering, a_search):
+    """The privacy policy (§5) says so: the request leaves from our servers with the query, where to look and our key;
+    no name, no address, nothing of the hub or of the person's browser."""
+    the_turn_asks(business, Client(headers={"x-forwarded-for": "203.0.113.7"}))
+
+    seen = the_search(a_search)
+    sent = parse_qs(urlsplit(seen.path).query)
+    assert sorted(sent) == ["count", "country", "q", "result_filter", "search_lang", "text_decorations"]
+    assert sent["q"] == [SECRET_QUESTION]
+    headers = {name.lower(): value for name, value in seen.headers.items()}
+    assert headers["x-subscription-token"] == SEARCH_KEY
+    known = {"accept", "accept-encoding", "connection", "host", "user-agent", "x-subscription-token"}
+    assert sorted(set(headers) - known) == []
+    assert business.slug not in seen.path + " ".join(headers.values())
+    assert "203.0.113.7" not in seen.path + " ".join(headers.values())
 
 
 def test_what_a_search_returned_goes_to_the_model_and_no_further_in_a_live_turn(internal, business, answering, a_search):

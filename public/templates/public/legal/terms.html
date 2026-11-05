@@ -1,4 +1,4 @@
-{% extends "public/public_base.html" %}
+{% extends "public/legal/_dated_page.html" %}
 {% load i18n %}
 {% comment %}
   The terms of use. Port of apps/public/legal/templates/legal/terms.html (origin/develop) with the
@@ -22,16 +22,16 @@
 {% block og_title %}{% trans "Terms of Use" %} · ERPlora{% endblock %}
 {% block og_description %}{% trans "Terms and Conditions of use of the ERPlora platform." %}{% endblock %}
 
-{% block page_content %}
+{% block hero %}
   {% trans "Service terms" as hero_eyebrow %}
   {% trans "Terms of Use" as hero_title %}
   {% trans "The rules governing access to and use of ERPlora's modular ERP and POS cloud services." as hero_description %}
   {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_description=hero_description hero_compact=True %}
+{% endblock %}
 
-  <section class="ep-section--compact ep-section--divider">
-    <div class="ep-container ep-section-content">
-      <article class="ep-prose max-w-4xl mx-auto">
-        <p class="text-sm text-fg/60"><strong>{% trans "Last updated:" %}</strong> {% trans "November 3, 2026" %}</p>
+{% block updated %}{% trans "November 5, 2026" %}{% endblock %}
+
+{% block legal_text %}
 
         <p>
           {% blocktrans trimmed %}
@@ -400,6 +400,7 @@
           <li>{% trans "Reverse engineer, decompile, or attempt to access the source code beyond the components published as open source." %}</li>
           <li>{% trans "Attempt to compromise security, overload the infrastructure, or access other customers' data." %}</li>
           <li>{% trans "Resell the service without ERPlora's express authorization." %}</li>
+          <li>{% blocktrans trimmed %}Store, cache, or build a database with the web results the AI assistant brings, in whole or in part, beyond what it takes to read its answer; create derivative works from them; redistribute, resell, or sublicense them; use them to create, train, fine-tune, benchmark, or improve artificial intelligence models; or get around the limits on searches, including by creating several accounts. Those results come from a third-party search provider, whose terms ask this of everyone who uses them.{% endblocktrans %}</li>
         </ul>
         <p>{% trans "Breach may result in immediate suspension without refund, without prejudice to any applicable legal action." %}</p>
 
@@ -470,7 +471,4 @@
           applicable.
           {% endblocktrans %}
         </p>
-      </article>
-    </div>
-  </section>
 {% endblock %}
