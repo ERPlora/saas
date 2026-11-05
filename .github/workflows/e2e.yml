@@ -66,6 +66,27 @@ jobs:
       - run: uv run --locked python manage.py migrate --no-input
       # The public project serves the build (its manifest must hold frontend/public.ts).
       - run: pnpm build
+      # The pages that use the system's font (Django's admin: "Segoe UI", system-ui, Roboto…) get DejaVu Sans on the
+      # runner, wider than the font of any phone or tablet (SF, Roboto, Segoe UI): two admin pages scrolled sideways at
+      # 390 and 834 only here, and passed on macOS (saas#296, nightly run 42072839453). Liberation Sans, installed with
+      # Chrome, has Arial's metrics, close to those; the step fails if fontconfig does not pick it.
+      - name: Render the system's font as a phone does
+        run: |
+          mkdir -p "$HOME/.config/fontconfig"
+          cat > "$HOME/.config/fontconfig/fonts.conf" <<'XML'
+          <?xml version="1.0"?>
+          <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+          <fontconfig>
+            <alias binding="same"><family>system-ui</family><prefer><family>Liberation Sans</family></prefer></alias>
+            <alias binding="same"><family>sans-serif</family><prefer><family>Liberation Sans</family></prefer></alias>
+            <alias binding="same"><family>sans</family><prefer><family>Liberation Sans</family></prefer></alias>
+          </fontconfig>
+          XML
+          for family in system-ui sans-serif sans; do
+            picked="$(fc-match -f '%{family[0]}' "$family")"
+            echo "$family -> $picked"
+            [ "$picked" = "Liberation Sans" ] || { echo "::error::fontconfig picks $picked for $family"; exit 1; }
+          done
       - name: Run the specs
         env:
           SPECS: ${{ inputs.specs }}

@@ -140,6 +140,8 @@ check("e2e checks out the whole history (the specs a branch changes since main)"
 check("e2e has its .env and its database migrated before the specs",
       before(ejob, "cp .env.example .env", "manage.py migrate") and before(ejob, "manage.py migrate", "pnpm e2e:ci"))
 check("e2e builds the SPA before the specs (the public project serves the build)", before(ejob, "pnpm build", "pnpm e2e:ci"))
+check("e2e renders the system's font with Arial's metrics (Liberation Sans), as a phone, before the specs",
+      before(ejob, "Liberation Sans", "pnpm e2e:ci") and "fc-match" in ejob_runs)
 run_step = next((step for step in steps(ejob) if "pnpm e2e:ci" in str(step.get("run", ""))), {})
 check("e2e passes the input on to the step that runs the specs",
       (run_step.get("env") or {}).get("SPECS") == "${{ inputs.specs }}")
