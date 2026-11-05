@@ -449,9 +449,9 @@ def dictation_refusal(refused: gateway.Refused) -> OperationError:
 
 
 def speech_refusal(refused: gateway.Refused) -> OperationError:
-    """A reading aloud the gateway did not make, in the panel's words: 503 ``assistant.speech_unavailable`` without
-    Azure's key, else a 503 that names neither the provider nor its answer. Either way the panel reads with the
-    device's voice."""
+    """A reading aloud the gateway did not make, in the panel's words: 503 ``assistant.speech_unavailable`` without an
+    engine, else a 503 that names neither the engine nor its answer. Either way the panel reads with the device's
+    voice."""
     if refused.code == "assistant.speech_unavailable":
         return OperationError(gettext("Reading aloud is not available right now."), code=refused.code, status=503)
     return OperationError(
@@ -461,7 +461,7 @@ def speech_refusal(refused: gateway.Refused) -> OperationError:
 
 async def spoken(request: HttpRequest, data: Any, language: str) -> HttpResponse:
     """The mp3 of what ``base.assistant.speak`` made ready, in ``language``, for the session's account: the gateway's
-    ``speech``, which waits on Azure with no transaction open and counts the characters in the account's month."""
+    ``speech``, which waits on the engine with no transaction open and counts the characters in the account's month."""
     caller = Caller(user_id=request.user.pk)
     try:
         audio = await gateway_door.speech(caller, data.model_copy(update={"language": language}))

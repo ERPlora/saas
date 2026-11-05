@@ -1,15 +1,13 @@
-// «Read aloud» of the panel's assistant (assistant/WORKBOOK.md, ASSISTANT-F22; PLAN-SAAS round 2026-11-03m), in a browser
-// against the panel's own Django. erplora.com has no voice of its own (decision of 2026-11-04): the page says so
-// (`spa-config.assistantSpeech`, base/spa.py), so the chat offers no choice of voice and reads each answer in the
-// device's, with no request to `/api/assistant/speak`. Only with a provider of the voice (Azure AI Speech, seeded with a
-// made-up key at the spec's own provider: `assistant_seed.py voice`) does its head offer the language's two server
-// voices and the device's (`@erplora/ui` `voices.ts`, the ids of `assistant.media.VOICES`) and «Read aloud» ask the
-// server; that provider answers no speech, so the chat falls back to the device's voice, with no error on the page.
+// «Read aloud» of the panel's assistant (assistant/WORKBOOK.md, ASSISTANT-F22), in a browser against the panel's own Django.
+// erplora.com has no voice of its own (PLAN-SAAS round 2026-11-04c): the page says so (`spa-config.assistantSpeech`,
+// base/spa.py), so the chat offers no choice of voice and reads each answer in the device's, with no request to
+// `/api/assistant/speak`. A page told otherwise (the flag turned on at the edge, everything behind it real) asks the
+// server, whose door answers 503 `assistant.speech_unavailable`, and the device reads it, with no error on the page.
 // In Spanish and in English, at 1440, 834 and 390 (screenshots under `.artifacts/panel/`).
 // The device's voice is the browser's `speechSynthesis`, which a headless Chrome cannot sound: the page's `speak` is
 // replaced by a recorder that ends each utterance at once, as the fake microphone stands in for the dictation's.
 // The model is assistant-provider.ts, a real HTTP server on 127.0.0.1 set by assistant_seed.py «panel».
-// flow: ASSISTANT-F22 — read an answer aloud: the server's voice when erplora.com has one, else the device's.
+// flow: ASSISTANT-F22 — read an answer aloud: the device's voice, and the door shut without an engine.
 import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -33,14 +31,12 @@ const WORDS = {
   es: {
     question: 'Hola',
     answer: 'Hola, soy el asistente de prueba.',
-    voices: ['Ximena', 'Tristan', 'Voz del dispositivo'],
     listen: 'Leer en voz alta',
     device: 'es-ES',
   },
   en: {
     question: 'Hello',
     answer: 'Hello, I am the test assistant.',
-    voices: ['Ava', 'Andrew', 'Device voice'],
     listen: 'Read aloud',
     device: 'en-US',
   },
@@ -48,7 +44,7 @@ const WORDS = {
 
 let provider: Provider | undefined;
 
-function seed(action: 'clear' | 'panel' | 'voice', language: 'es' | 'en' = 'es'): void {
+function seed(action: 'clear' | 'panel', language: 'es' | 'en' = 'es'): void {
   execFileSync('uv', ['run', 'python', 'tests/e2e/panel/assistant_seed.py', action, provider?.url ?? '', language], {
     cwd: SAAS_DIR,
     env: djangoEnv(true),
@@ -159,46 +155,35 @@ for (const language of ['es', 'en'] as const) {
     expect(consoleErrors).toEqual([]);
   });
 
-  test(`with a provider of the voice the chat offers the voices of its language and asks the server for the reading (${language})`, async ({
-    page,
-  }) => {
-    seed('voice', language);
+  test(`a page told there is a voice asks the server, whose door is shut, and the device reads (${language})`, async ({ page }) => {
+    seed('panel', language);
+    // The shell as an engine would leave it: the real page with its flag turned on as it is parsed, before the SPA's
+    // module runs, and everything behind it real. Not with `route.fulfill`: Chrome gives a page served that way no
+    // address, and refuses it the Vite server's scripts.
+    await page.addInitScript(() => {
+      const observer = new MutationObserver(() => {
+        const config = document.getElementById('spa-config');
+        const told = config?.textContent?.replace('"assistantSpeech": false', '"assistantSpeech": true');
+        if (!config || told === undefined || told === config.textContent) return;
+        config.textContent = told;
+        observer.disconnect();
+      });
+      observer.observe(document, { childList: true, subtree: true });
+    });
     const errors = watchPageErrors(page);
     const consoleErrors = watchConsoleErrors(page);
     const panel = await openChat(page);
 
-    // The head's choice of voice: the language's two server voices, the device's last, the first by default.
-    const voice = panel.getByTestId('assistant-voice');
-    await expect(voice).toBeVisible();
-    await expect(voice).toHaveJSProperty('value', language === 'es' ? 'es-ES-Ximena:DragonHDLatestNeural' : 'en-US-Ava:DragonHDLatestNeural');
-    for (const size of SIZES) {
-      await page.setViewportSize({ width: size.width, height: size.height });
-      await voice.click();
-      // The select's own popover (`select-popover`): the side menu keeps an inline one of its own.
-      const options = page.locator('ion-popover.select-popover ion-radio');
-      await expect(options).toHaveText([...words.voices]);
-      // Its enter is no animation `settled()` sees (Ionic's own): shot once it is fully drawn, not half-faded.
-      await expect
-        .poll(() =>
-          page
-            .locator('ion-popover.select-popover')
-            .evaluate((popover) => getComputedStyle(popover.shadowRoot!.querySelector('.popover-wrapper')!).opacity),
-        )
-        .toBe('1');
-      await settled(page);
-      await page.screenshot({ path: shot(`assistant-voice-choice-${size.name}-${language}`) });
-      // Closed by choosing the voice already chosen: Escape would close the whole chat (its own key).
-      await options.first().click();
-      await expect(page.locator('ion-popover.select-popover')).toHaveCount(0);
-      await expect(panel).toHaveAttribute('data-open', 'true');
-    }
-    await page.setViewportSize({ width: 1440, height: 900 });
-    const listen = await answerAndListen(page, panel, words, `assistant-voice-answer-${language}`);
+    // Nothing to choose: `@erplora/ui` names no voices, and the host gives none.
+    await expect(panel.getByTestId('assistant-voice')).toHaveCount(0);
+    const listen = await answerAndListen(page, panel, words, `assistant-voice-door-answer-${language}`);
 
-    // The reading goes to the server in the chosen voice; the e2e's provider speaks none, so the device reads it.
-    const asked = page.waitForRequest((request) => new URL(request.url()).pathname === '/api/assistant/speak');
+    const answered = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/assistant/speak');
     await listen.click();
-    expect((await asked).postDataJSON()).toMatchObject({ text: words.answer, language });
+    const response = await answered;
+    expect(response.status()).toBe(503);
+    expect((await response.json()).error.code).toBe('assistant.speech_unavailable');
+    expect(response.request().postDataJSON()).toEqual({ text: words.answer, language, voice: '' });
     await expect.poll(() => spoken(page)).toEqual([expect.objectContaining({ text: words.answer, lang: words.device })]);
     await expect(panel.getByTestId('assistant-listen-failed')).toHaveCount(0);
     await expect(listen).toContainText(words.listen);

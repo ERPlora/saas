@@ -88,21 +88,6 @@ def test_an_unknown_provider_is_refused(ai_admin, provider):
     assert (refused.value.status, refused.value.code) == (404, "assistant.provider_unknown")
 
 
-def test_a_provider_that_reads_aloud_has_no_models_to_choose(ai_admin):
-    """Azure AI Speech answers no turn (``SPEECH_KINDS``): the server refuses models for it, whatever the admin shows,
-    with the envelope of a validation (422 naming ``provider``), and keeps none."""
-    from assistant.models import AIProvider
-
-    speech = AIProvider.objects.create(slug="azure-speech", name="Azure AI Speech", kind=AIProvider.Kind.AZURE_SPEECH)
-
-    with pytest.raises(OperationError) as refused:
-        select(ai_admin, speech, ["gpt-4o"])
-
-    assert (refused.value.status, refused.value.code) == (422, "invalid_payload")
-    assert "provider" in refused.value.fields
-    assert not AIModel.objects.filter(provider=speech).exists()
-
-
 @pytest.mark.parametrize("held", [("add_aimodel",), ("delete_aimodel",), ()])
 def test_choosing_needs_to_add_and_to_delete_models(make_user, provider, held):
     member = grant(make_user("member@erplora.com", is_staff=True), *held)
