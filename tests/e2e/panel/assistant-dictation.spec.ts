@@ -7,21 +7,10 @@
 // The provider is assistant-provider.ts, a real HTTP server on 127.0.0.1 set by assistant_seed.py «panel»: the audio
 // goes through the panel's Django to it, as it would to the real one.
 // flow: ASSISTANT-F21 — dictate to the assistant: the words land in the box, nothing is sent.
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { DICTATION } from '../assistant-provider';
 
-import { DICTATION, type Provider, startProvider } from '../assistant-provider';
-import { djangoEnv } from '../django-env';
+import { localAssistant, openPanel, OWNER, SIZES } from './assistant-chat';
 import { expect, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
-
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const OWNER = { email: 'e2e-assistant-owner@example.com', password: process.env.QA_PANEL_PASSWORD ?? 'e2e-panel' };
-const SIZES = [
-  { name: '1440', width: 1440, height: 900 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '390', width: 390, height: 844 },
-] as const;
 
 /** What the person sees, in each language (the package's words, `assistant.voice.*`). */
 const WORDS = {
@@ -29,29 +18,12 @@ const WORDS = {
   en: { dictate: 'Dictate by voice', stop: 'Stop recording', failed: 'The audio could not be transcribed. Try again.' },
 } as const;
 
-let provider: Provider | undefined;
-
-function seed(action: 'clear' | 'panel', language: 'es' | 'en' = 'es'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/assistant_seed.py', action, provider?.url ?? '', language], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
-}
+const { provider, seed } = localAssistant();
 
 // The browser's fake microphone: a worker-wide launch option, so for the whole file.
 test.use({
   launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] },
   permissions: ['microphone'],
-});
-
-test.beforeAll(async () => {
-  provider = await startProvider(0);
-});
-
-test.afterAll(async () => {
-  seed('clear');
-  await provider?.close();
 });
 
 for (const language of ['es', 'en'] as const) {
@@ -61,13 +33,8 @@ for (const language of ['es', 'en'] as const) {
     page,
   }) => {
     seed('panel', language);
-    await signIn(page.request, OWNER);
     const errors = watchPageErrors(page);
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/dashboard/businesses');
-    await page.getByTestId('assistant-button').click();
-    const panel = page.getByTestId('assistant-panel');
-    await expect(panel).toHaveAttribute('data-open', 'true');
+    const panel = await openPanel(page);
 
     const mic = panel.getByTestId('assistant-mic');
     await expect(mic).toBeVisible();
@@ -79,13 +46,13 @@ for (const language of ['es', 'en'] as const) {
     await expect(panel.getByRole('button', { name: words.stop })).toBeVisible();
     // A second and a bit of the fake microphone's tone.
     await page.waitForTimeout(1200);
-    const before = provider!.seen.length;
+    const before = provider().seen.length;
     await mic.click();
 
     const box = panel.getByTestId('assistant-input').locator('textarea');
     await expect(box).toHaveValue(DICTATION);
     await expect(mic).toHaveAttribute('aria-pressed', 'false');
-    expect(provider!.seen.slice(before).map((seen) => seen.path)).toEqual(['/v1/audio/transcriptions']);
+    expect(provider().seen.slice(before).map((seen) => seen.path)).toEqual(['/v1/audio/transcriptions']);
 
     // Nothing is sent by itself: no question in the conversation, none to the model, no message of the month.
     await expect(panel.getByTestId('assistant-empty')).toBeVisible();

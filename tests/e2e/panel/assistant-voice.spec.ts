@@ -8,23 +8,10 @@
 // replaced by a recorder that ends each utterance at once, as the fake microphone stands in for the dictation's.
 // The model is assistant-provider.ts, a real HTTP server on 127.0.0.1 set by assistant_seed.py «panel».
 // flow: ASSISTANT-F22 — read an answer aloud: the device's voice, and the door shut without an engine.
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import type { Locator, Page } from '@playwright/test';
 
-import { type Provider, startProvider } from '../assistant-provider';
-import { djangoEnv } from '../django-env';
-import { expect, settled, shot, signIn, test, watchPageErrors } from './fixtures';
-
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const OWNER = { email: 'e2e-assistant-owner@example.com', password: process.env.QA_PANEL_PASSWORD ?? 'e2e-panel' };
-const SIZES = [
-  { name: '1440', width: 1440, height: 900 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '390', width: 390, height: 844 },
-] as const;
+import { localAssistant, openPanel, SIZES } from './assistant-chat';
+import { expect, settled, shot, test, watchPageErrors } from './fixtures';
 
 /** What the person sees and hears, in each language (the package's words, `assistant.speech.*`). */
 const WORDS = {
@@ -42,24 +29,7 @@ const WORDS = {
   },
 } as const;
 
-let provider: Provider | undefined;
-
-function seed(action: 'clear' | 'panel', language: 'es' | 'en' = 'es'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/assistant_seed.py', action, provider?.url ?? '', language], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
-}
-
-test.beforeAll(async () => {
-  provider = await startProvider(0);
-});
-
-test.afterAll(async () => {
-  seed('clear');
-  await provider?.close();
-});
+const { seed } = localAssistant();
 
 test.beforeEach(async ({ page }) => {
   // The device's voice, recorded: what it was asked to read and in which language, each utterance ended at once.
@@ -96,17 +66,6 @@ function watchConsoleErrors(page: Page): string[] {
   return errors;
 }
 
-/** The chat open on the panel, signed in as the owner, at 1440. */
-async function openChat(page: Page) {
-  await signIn(page.request, OWNER);
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/dashboard/businesses');
-  await page.getByTestId('assistant-button').click();
-  const panel = page.getByTestId('assistant-panel');
-  await expect(panel).toHaveAttribute('data-open', 'true');
-  return panel;
-}
-
 /** Asks `question` and gives back the answer's «Read aloud», checked at every size. */
 async function answerAndListen(page: Page, panel: Locator, words: (typeof WORDS)['es' | 'en'], shotName: string) {
   await panel.getByTestId('assistant-input').locator('textarea').fill(words.question);
@@ -136,7 +95,7 @@ for (const language of ['es', 'en'] as const) {
     const errors = watchPageErrors(page);
     const consoleErrors = watchConsoleErrors(page);
     const asked = speakRequests(page);
-    const panel = await openChat(page);
+    const panel = await openPanel(page);
 
     // No choice of voice: the only voice is the device's.
     await expect(panel.getByTestId('assistant-voice')).toHaveCount(0);
@@ -172,7 +131,7 @@ for (const language of ['es', 'en'] as const) {
     });
     const errors = watchPageErrors(page);
     const consoleErrors = watchConsoleErrors(page);
-    const panel = await openChat(page);
+    const panel = await openPanel(page);
 
     // Nothing to choose: `@erplora/ui` names no voices, and the host gives none.
     await expect(panel.getByTestId('assistant-voice')).toHaveCount(0);
