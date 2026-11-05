@@ -2,8 +2,9 @@ name: test
 
 # The saas's tests, in four jobs that run side by side: python (pytest over Postgres, spread over
 # the runner's CPUs with pytest-xdist), frontend (the SPA's lint, typecheck, Vitest and build),
-# scripts (the workflows with actionlint, the scripts with shellcheck, and their tests) and e2e-doors
-# (the e2e of the assistant's doors). Called by deploy.yml (pushes to main and pre) and ci.yml (every
+# scripts (the workflows with actionlint, the scripts with shellcheck, and their tests) and e2e
+# (e2e.yml: the spec of the assistant's doors and the e2e specs the branch changes; every spec runs
+# every night, nightly.yml). Called by deploy.yml (pushes to main and pre) and ci.yml (every
 # other branch) as the job `test`: the job `test` below waits for the four, and its check,
 # `test / test`, is the one main and pre require
 # (plan 2026-10-14-entorno-pre, §7.5).
@@ -108,57 +109,17 @@ jobs:
       - name: Script tests
         run: for t in .github/scripts/*.test.sh; do bash "$t"; done
 
-  # The only e2e the CI runs: the assistant's doors as the Hub calls them, signed, against a real stack. A change to a
-  # door touches no screen, so nobody runs this spec by hand, and it stayed red unseen (saas#285). No build: the panel's
-  # project runs on Vite. Its Chrome is the runner's own (`channel: 'chrome'`).
-  e2e-doors:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    services:
-      postgres:
-        # As the job python's, under the names of .env.example.
-        image: pgvector/pgvector:pg18
-        env:
-          POSTGRES_USER: hub
-          POSTGRES_PASSWORD: hub
-          POSTGRES_DB: saas
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U hub -d saas"
-          --health-interval 2s
-          --health-timeout 3s
-          --health-retries 30
-    steps:
-      # The panel's Vite serves packages/ui.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          submodules: recursive
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
-        with:
-          enable-cache: true
-          cache-dependency-glob: uv.lock
-      - run: uv sync --locked
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-        with:
-          version: 10.34.7 # = packageManager of package.json and the Dockerfile's PNPM_VERSION
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # What a new checkout does (tests/e2e/README.md): the e2e stops on a database with migrations to apply.
-      - run: cp .env.example .env
-      - run: uv run --locked python manage.py migrate --no-input
-      - run: pnpm e2e:ci --project=panel tests/e2e/panel/assistant-gateway.spec.ts
+  # The e2e a push touches (e2e.yml): the doors' spec, which no screen covers (saas#285), and the specs the branch
+  # adds, changes or renames. The rest run every night (nightly.yml, saas#296).
+  e2e:
+    uses: ./.github/workflows/e2e.yml
+    with:
+      specs: changed
 
   # The check main and pre require ("test / test"): green only when the four jobs are. It runs even
   # when one fails or the run is cancelled, so the check never ends up skipped (which counts as passed).
   test:
-    needs: [python, frontend, scripts, e2e-doors]
+    needs: [python, frontend, scripts, e2e]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -171,7 +132,7 @@ jobs:
             python=${{ needs.python.result }}
             frontend=${{ needs.frontend.result }}
             scripts=${{ needs.scripts.result }}
-            e2e-doors=${{ needs.e2e-doors.result }}
+            e2e=${{ needs.e2e.result }}
         run: |
           failed=""
           for result in $RESULTS; do
@@ -183,4 +144,4 @@ jobs:
             echo "::error::not every test job passed:$failed"
             exit 1
           fi
-          echo "python, frontend, scripts and e2e-doors passed"
+          echo "python, frontend, scripts and e2e passed"

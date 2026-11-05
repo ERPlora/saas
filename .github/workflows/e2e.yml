@@ -1,0 +1,96 @@
+name: e2e
+
+# The e2e (tests/e2e/, Playwright, both projects) on a stack of the runner's own: Postgres as a service, the panel's
+# Django and Vite, the public server over the SPA's build. Its Chrome is the runner's own (`channel: 'chrome'`).
+# Called with `specs: changed` by test.yml, inside the required check: the spec of the assistant's doors, which no
+# screen covers and stayed red unseen (saas#285), and every spec the branch adds, changes or renames since main
+# (e2e-specs.sh). Called with `specs: all` by nightly.yml: every spec, every night on main (saas#296), where a change
+# that breaks a spec it never touched shows.
+
+on:
+  workflow_call:
+    inputs:
+      specs:
+        description: "`changed` (the doors' spec and the specs the branch changes) or `all`"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-24.04
+    # Every spec, one at a time (`workers: 1`), takes most of an hour.
+    timeout-minutes: ${{ inputs.specs == 'all' && 120 || 30 }}
+    permissions:
+      contents: read
+    services:
+      postgres:
+        # As the job python's of test.yml, under the names of .env.example.
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_USER: hub
+          POSTGRES_PASSWORD: hub
+          POSTGRES_DB: saas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hub -d saas"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    steps:
+      # The panel's Vite serves packages/ui. The whole history: the specs a branch changes are counted from where it
+      # left main.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 10.34.7 # = packageManager of package.json and the Dockerfile's PNPM_VERSION
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # What a new checkout does (tests/e2e/README.md): the e2e stops on a database with migrations to apply.
+      - run: cp .env.example .env
+      - run: uv run --locked python manage.py migrate --no-input
+      # The public project serves the build (its manifest must hold frontend/public.ts).
+      - run: pnpm build
+      - name: Run the specs
+        env:
+          SPECS: ${{ inputs.specs }}
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ runner.temp }}/e2e-report/report.json
+        run: |
+          specs=()
+          if [ "$SPECS" != all ]; then
+            list="$(bash .github/scripts/e2e-specs.sh origin/main)"
+            mapfile -t specs <<< "$list"
+          fi
+          echo "specs: ${specs[*]:-all}"
+          pnpm e2e:ci --reporter=list,json "${specs[@]}"
+      # For nightly.yml's report (e2e-report.sh) and for whoever looks at a red run: the JSON report, and each failed
+      # test's trace and screenshot (`retain-on-failure`, playwright.config.ts).
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-report
+          path: ${{ runner.temp }}/e2e-report/
+          if-no-files-found: ignore
+          retention-days: 14
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-test-results
+          path: tests/e2e/.artifacts/test-results/
+          if-no-files-found: ignore
+          retention-days: 14

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Tests of the workflows' shape (deploy.yml, test.yml, ci.yml, rollback.yml): once the environment
-# of the branch is known, the tests and the image build run side by side, and only the deploy itself
-# waits for the one before.
+# Tests of the workflows' shape (deploy.yml, test.yml, ci.yml, rollback.yml, e2e.yml, nightly.yml):
+# once the environment of the branch is known, the tests and the image build run side by side, and
+# only the deploy itself waits for the one before; every push runs the e2e the branch touches, and
+# every night all of them run on main (saas#296).
 #   bash .github/scripts/workflows.test.sh
 # Needs python3 with PyYAML (preinstalled on GitHub's ubuntu runners and on macOS).
 set -euo pipefail
@@ -15,8 +16,9 @@ import sys
 import yaml
 
 folder = pathlib.Path(sys.argv[1])
-deploy, test, ci, rollback = (
-    yaml.safe_load((folder / f"{name}.yml").read_text()) for name in ("deploy", "test", "ci", "rollback")
+deploy, test, ci, rollback, e2e, nightly = (
+    yaml.safe_load((folder / f"{name}.yml").read_text())
+    for name in ("deploy", "test", "ci", "rollback", "e2e", "nightly")
 )
 failures = 0
 
@@ -98,10 +100,10 @@ check("only build and deploy get an OIDC token",
 
 # --- test.yml: four independent jobs behind the required check "test / test" -------------------
 tjobs = test.get("jobs", {})
-TEST_JOBS = ("python", "frontend", "scripts", "e2e-doors")
-check("test.yml has the jobs python, frontend, scripts, e2e-doors and test",
+TEST_JOBS = ("python", "frontend", "scripts", "e2e")
+check("test.yml has the jobs python, frontend, scripts, e2e and test",
       {*TEST_JOBS, "test"} <= set(tjobs))
-check("python, frontend, scripts and e2e-doors wait for nothing",
+check("python, frontend, scripts and e2e wait for nothing",
       all(not needs(tjobs.get(name, {})) for name in TEST_JOBS))
 check("test (the required check) needs the four jobs",
       set(needs(tjobs.get("test", {}))) == set(TEST_JOBS))
@@ -117,16 +119,69 @@ check("frontend runs lint, typecheck, Vitest and the build",
       all(f"pnpm {task}" in frontend_runs for task in ("lint", "typecheck", "test", "build")))
 check("scripts runs actionlint, shellcheck and the script tests",
       all(needle in scripts_runs for needle in ("actionlint", "shellcheck", ".test.sh")))
-doors = tjobs.get("e2e-doors", {})
-doors_runs = runs(doors)
-check("e2e-doors runs the panel's spec of the assistant's doors, and nothing else, over a Postgres service",
-      "pnpm e2e:ci --project=panel tests/e2e/panel/assistant-gateway.spec.ts" in doors_runs
-      and "postgres" in (doors.get("services") or {}))
-check("e2e-doors has its .env and its database migrated before the spec",
-      before(doors, "cp .env.example .env", "manage.py migrate") and before(doors, "manage.py migrate", "pnpm e2e:ci"))
-check("e2e-doors clones the submodules (the panel's Vite needs packages/ui)",
-      any((step.get("with") or {}).get("submodules") == "recursive" for step in steps(doors)))
-setup_uv = [step for job in tjobs.values() for step in steps(job) if "astral-sh/setup-uv" in str(step.get("uses", ""))]
+check("e2e runs e2e.yml on the specs the branch changes (and the doors' spec)",
+      tjobs.get("e2e", {}).get("uses") == "./.github/workflows/e2e.yml"
+      and (tjobs.get("e2e", {}).get("with") or {}).get("specs") == "changed")
+
+# --- e2e.yml: the e2e on a stack of the runner's own, for test.yml and nightly.yml --------------
+e2e_on = e2e.get(True) or {}
+check("e2e.yml is only called, never triggered on its own", set(e2e_on) == {"workflow_call"})
+e2e_input = ((e2e_on.get("workflow_call") or {}).get("inputs") or {}).get("specs") or {}
+check("e2e.yml asks which specs to run", e2e_input.get("required") is True and e2e_input.get("type") == "string")
+check("e2e.yml only reads", e2e.get("permissions") == {"contents": "read"})
+ejobs = e2e.get("jobs", {})
+check("e2e.yml has one job, e2e", list(ejobs) == ["e2e"])
+ejob = ejobs.get("e2e", {})
+ejob_runs = runs(ejob)
+check("e2e runs over a Postgres service", "postgres" in (ejob.get("services") or {}))
+checkout = next((step.get("with") or {} for step in steps(ejob) if "actions/checkout" in str(step.get("uses", ""))), {})
+check("e2e clones the submodules (the panel's Vite needs packages/ui)", checkout.get("submodules") == "recursive")
+check("e2e checks out the whole history (the specs a branch changes since main)", checkout.get("fetch-depth") == 0)
+check("e2e has its .env and its database migrated before the specs",
+      before(ejob, "cp .env.example .env", "manage.py migrate") and before(ejob, "manage.py migrate", "pnpm e2e:ci"))
+check("e2e builds the SPA before the specs (the public project serves the build)", before(ejob, "pnpm build", "pnpm e2e:ci"))
+run_step = next((step for step in steps(ejob) if "pnpm e2e:ci" in str(step.get("run", ""))), {})
+check("e2e passes the input on to the step that runs the specs",
+      (run_step.get("env") or {}).get("SPECS") == "${{ inputs.specs }}")
+check("e2e picks the changed specs with e2e-specs.sh against main, and every spec with `all`",
+      "e2e-specs.sh origin/main" in str(run_step.get("run", "")) and '[ "$SPECS" != all ]' in str(run_step.get("run", "")))
+check("e2e writes a JSON report beside the list",
+      "--reporter=list,json" in str(run_step.get("run", ""))
+      and "PLAYWRIGHT_JSON_OUTPUT_FILE" in (run_step.get("env") or {}))
+uploads = [step for step in steps(ejob) if "actions/upload-artifact" in str(step.get("uses", ""))]
+check("e2e keeps the JSON report and the traces of a red run",
+      {(step.get("with") or {}).get("name") for step in uploads} == {"e2e-report", "e2e-test-results"}
+      and all(str(step.get("if", "")) == "failure()" for step in uploads))
+check("e2e gives every spec more time than the changed ones",
+      "inputs.specs" in str(ejob.get("timeout-minutes", "")))
+
+# --- nightly.yml: every spec, every night on main, with an issue for what comes out red ---------
+nightly_on = nightly.get(True) or {}
+check("nightly.yml runs on a schedule and by hand only, never on a push or a PR",
+      set(nightly_on) == {"schedule", "workflow_dispatch"})
+check("nightly.yml has a cron", any("cron" in entry for entry in nightly_on.get("schedule") or []))
+check("nightly.yml only reads, at the workflow's level", nightly.get("permissions") == {"contents": "read"})
+njobs = nightly.get("jobs", {})
+check("nightly.yml has the jobs e2e and report", set(njobs) == {"e2e", "report"})
+check("nightly's e2e runs e2e.yml on every spec",
+      njobs.get("e2e", {}).get("uses") == "./.github/workflows/e2e.yml"
+      and (njobs.get("e2e", {}).get("with") or {}).get("specs") == "all")
+report = njobs.get("report", {})
+check("report waits for e2e and runs whatever its result",
+      needs(report) == ["e2e"] and str(report.get("if", "")) == "always()")
+check("only report may write issues",
+      [name for name, job in njobs.items() if (job.get("permissions") or {}).get("issues") == "write"] == ["report"]
+      and report.get("permissions") == {"contents": "read", "issues": "write"})
+check("report downloads the JSON report before e2e-report.sh reads it",
+      before(report, "actions/download-artifact", "e2e-report.sh"))
+report_env = next((step.get("env") or {} for step in steps(report) if "e2e-report.sh" in str(step.get("run", ""))), {})
+check("e2e-report.sh gets e2e's result and the run",
+      report_env.get("RESULT") == "${{ needs.e2e.result }}" and "RUN_URL" in report_env and "GH_TOKEN" in report_env)
+check("e2e-report.sh only writes issues for main",
+      report_env.get("PUBLISH") == "${{ github.ref == 'refs/heads/main' }}")
+
+setup_uv = [step for job in [*tjobs.values(), *ejobs.values()] for step in steps(job)
+            if "astral-sh/setup-uv" in str(step.get("uses", ""))]
 check("setup-uv is used", bool(setup_uv))
 check("setup-uv caches by uv.lock",
       bool(setup_uv) and all(str((step.get("with") or {}).get("enable-cache")).lower() == "true"
