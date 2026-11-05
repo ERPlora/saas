@@ -342,7 +342,7 @@ async def gateway_frames(request: HttpRequest, caller: Caller, plan: dict) -> As
     )
     try:
         await sync_to_async(gateway.spend)(request, "turn", settings.ASSISTANT_TURN_RATELIMIT, caller)
-        started = await gateway.start(caller, data)
+        started = await gateway.start(caller, data, answer_kept=False)
     except gateway.Refused as refused:
         yield refusal(refused)
         return

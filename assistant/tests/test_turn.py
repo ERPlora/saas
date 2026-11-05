@@ -19,7 +19,7 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
-from assistant import queries
+from assistant import queries, server_tools
 from assistant.models import AIModel, AIProviderCredential, AIRoutingPolicy, AssistantUsage
 from assistant.tests.conftest import API_KEY, on_plan, openai_answer, openai_tool_call
 from assistant.tests.doors import door, error_code, frames, hang_up
@@ -104,10 +104,9 @@ class TestTheLiveAnswer:
         )
 
         [sent] = chat_requests(fake_provider)
-        assert sent.body["messages"] == [
-            {"role": "system", "content": "You are the assistant of Bar Manolo."},
-            {"role": "user", "content": "What is on today?"},
-        ]
+        [system, question] = sent.body["messages"]
+        assert system == {"role": "system", "content": f"You are the assistant of Bar Manolo.\n\n{server_tools.rules()}"}
+        assert question == {"role": "user", "content": "What is on today?"}
         assert sent.body["model"] == "gpt-test"
         assert sent.body["max_tokens"] == 4096
         assert sent.headers["authorization"] == f"Bearer {API_KEY}"

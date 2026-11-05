@@ -164,8 +164,8 @@ async def chat_stream(call: Call) -> HttpResponse:
     """A turn answered live, ``text/event-stream``: ``text_delta`` as the text comes, a ``function_call`` per tool of
     the Hub, ``response`` (the whole output, its tokens and the ``continuation`` of the tools), ``usage`` (the
     allowance after the turn) and ``[DONE]``; a failure of the provider is an ``error`` frame (``code``,
-    ``retriable``) before ``usage``."""
-    started = await turn.start(call.caller, call.data)
+    ``retriable``) before ``usage``. What it answers reaches the person and no server keeps it."""
+    started = await turn.start(call.caller, call.data, answer_kept=False)
     response = StreamingHttpResponse(turn.stream(started), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"
     response["X-Accel-Buffering"] = "no"
@@ -175,11 +175,12 @@ async def chat_stream(call: Call) -> HttpResponse:
 @door(TurnIn, bucket="turn", rate="ASSISTANT_TURN_RATELIMIT", max_bytes=TURN_BODY_BYTES)
 async def chat(call: Call) -> HttpResponse:
     """A turn answered at once: ``{output, usage, continuation, quota}``; a failure of the provider is a 502 with its
-    ``code`` and ``retriable``, the allowance after it in ``quota``."""
-    started = await turn.start(call.caller, call.data)
+    ``code`` and ``retriable``, the allowance after it in ``quota``. What it answers is kept: the Hub calls it for an
+    automation's step (FLOW-F39) and writes the answer in the run and in the log of the step."""
+    started = await turn.start(call.caller, call.data, answer_kept=True)
     outcome = turn.Outcome()
     try:
-        async for _frame in turn.run(started.candidates, started.messages, started.tools, outcome):
+        async for _frame in turn.run(started, outcome):
             pass
     except Exception:
         logger.exception("assistant.turn.failed")
