@@ -34,10 +34,16 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
   `vite.config.test.ts`); ningún proyecto ni spec la cambia por su cuenta.
 - `pnpm e2e:ci` pone `CI=1`: sin ventana y sin `slowMo` aunque se pida `E2E_HEADED=1`, y un `test.only` olvidado es un
   error, no un verde con un solo test. Es la de la CI.
-- **Qué corre la CI**: solo `panel/assistant-gateway.spec.ts`, las puertas del asistente tal como las llama el Hub (job
-  `e2e-doors` de `.github/workflows/test.yml`, parte del check obligatorio `test / test`). Un cambio en una puerta no
-  toca ninguna pantalla y nadie corría esta spec a mano: estuvo en rojo sin que se viera (saas#285). Las demás specs no
-  corren solas: quien toca lo suyo las corre a mano (saas#296).
+- **Qué corre la CI** (saas#296), con los dos proyectos y la misma pila (`.github/workflows/e2e.yml`):
+  - **En cada push**, dentro del check obligatorio `test / test` (job `e2e` de `test.yml`): `panel/assistant-gateway.spec.ts`,
+    las puertas del asistente tal como las llama el Hub, que no toca ninguna pantalla y estuvo en rojo sin que se viera
+    (saas#285), y cada spec que la rama añade, cambia o renombra desde que salió de `main` (`.github/scripts/e2e-specs.sh`).
+    Un cambio en un helper o una siembra no arrastra sus specs: eso lo ve la pasada de la noche.
+  - **Cada noche, sobre `main`** (`nightly.yml`, 03:17 UTC; a mano, «Run workflow»): todas las specs. No frena ninguna PR
+    ni ningún despliegue; si sale en rojo abre una issue, «Pruebas de navegador del SaaS en rojo en la pasada nocturna»,
+    con cada prueba en rojo y su error (`.github/scripts/e2e-report.sh`), o comenta en ella si ya está abierta, y la
+    primera noche en verde la cierra. Las trazas y capturas de los fallos quedan 14 días en el artefacto `e2e-test-results`
+    del run.
 - **Depurar**: `DEBUG=pw:webserver pnpm e2e:ci <spec>` enseña el arranque y la salida de cada servidor
   (`DEBUG=pw:*`, todos los registros de Playwright). Los procesos de Django no heredan ese `DEBUG`, que leen
   como booleano: cada uno lleva el suyo por `django-env.ts` (`:8011` apagado; `:8012`, `globalSetup` y los

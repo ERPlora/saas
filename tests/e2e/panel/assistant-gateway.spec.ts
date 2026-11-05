@@ -5,7 +5,7 @@
 // dictation): no test reaches a real provider and no real key is ever typed. Then «Assistant usage» in erplora.com's
 // admin at the three sizes of the migration (390×844, 834×1112, 1440×900), in English and in Spanish.
 //
-// The one e2e the CI runs (job `e2e-doors` of test.yml): a change to a door touches no screen, so nobody runs it by hand.
+// The CI runs it on every push (job `e2e` of test.yml, e2e-specs.sh): a change to a door touches no screen, so nobody runs it by hand.
 // flow: ASSISTANT-F11 — only a signed call of a working business passes; it names the business it is for.
 // flow: ASSISTANT-F12 — a turn answered live, piece by piece, ending with the allowance left.
 // flow: ASSISTANT-F13 — the same turn answered at once.
