@@ -102,6 +102,10 @@ LEASE = timedelta(minutes=5)
 #: The first wait after the Hub did not take a delivery; each next one doubles, up to ``LONGEST_WAIT``.
 FIRST_WAIT = timedelta(seconds=30)
 LONGEST_WAIT = timedelta(hours=1)
+#: The lock of a business's deliveries, which each claim holds until its COMMIT (``pg_try_advisory_xact_lock`` of two
+#: keys: this namespace and the business): a claim never takes a message of a business while another claim of it has
+#: an older one locked and leased but not committed yet, which it would skip (``SKIP LOCKED``) without seeing it wait.
+CLAIM_LOCK = "erplora.saas.whatsapp_delivery"
 #: The channel the ``saas-worker`` LISTENs on (``base.worker``): a delivery due or whose wait moved, after the COMMIT.
 DELIVERY_CHANNEL = "whatsapp_delivery"
 IN_ORDER_ATTEMPTS = queries.IN_ORDER_ATTEMPTS
@@ -307,17 +311,22 @@ def _apply_verdicts(verdicts: list[parse.Verdict]) -> set[UUID]:
 def delivery_claim(ctx: OperationContext, data: ClaimIn) -> ClaimOut:
     """Lease what is due (oldest first) for ``LEASE``: another run skips it meanwhile (a row it holds locked, by
     ``SKIP LOCKED``; one it leased, by its time). A message waiting behind an older one of its business is left
-    (``queries.behind_a_waiting_message``)."""
+    (``queries.behind_a_waiting_message``), and so is every business another claim is taking now (``CLAIM_LOCK``,
+    held until this COMMIT): it goes in the next turn."""
     now = timezone.now()
-    due = (
-        Delivery.objects.select_for_update(skip_locked=True, of=("self",))
-        .select_related("hub")
-        .filter(delivered_at__isnull=True, next_attempt_at__lte=now)
-        .exclude(queries.behind_a_waiting_message(now))
+    due = Delivery.objects.filter(delivered_at__isnull=True, next_attempt_at__lte=now).exclude(
+        queries.behind_a_waiting_message(now)
     )
     if data.hub_ids is not None:
         due = due.filter(hub_id__in=data.hub_ids)
-    rows = list(due.order_by("received_at", "id")[: data.limit])
+    oldest = due.order_by("received_at", "id").values_list("hub_id", flat=True)[: data.limit]
+    mine = _lock_businesses(sorted(set(oldest), key=str))
+    rows = list(
+        due.filter(hub_id__in=mine)
+        .select_for_update(skip_locked=True, of=("self",))
+        .select_related("hub")
+        .order_by("received_at", "id")[: data.limit]
+    )
     Delivery.objects.filter(pk__in=[row.pk for row in rows]).update(next_attempt_at=now + LEASE)
     statuses = [row for row in rows if row.kind == Delivery.Kind.STATUS]
     keys, replies = _client_keys(statuses), _phone_replies(statuses)
@@ -335,6 +344,19 @@ def delivery_claim(ctx: OperationContext, data: ClaimIn) -> ClaimOut:
             for row in rows
         ]
     )
+
+
+def _lock_businesses(hub_ids: list[UUID]) -> list[UUID]:
+    """The businesses of ``hub_ids`` whose ``CLAIM_LOCK`` this transaction took (never waiting for one another claim
+    holds; the ones it holds already, again)."""
+    if not hub_ids:
+        return []
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT hub FROM unnest(%s::uuid[]) AS hub WHERE pg_try_advisory_xact_lock(hashtext(%s), hashtext(hub::text))",
+            [hub_ids, CLAIM_LOCK],
+        )
+        return [hub for (hub,) in cursor.fetchall()]
 
 
 def _client_keys(statuses: list[Delivery]) -> dict[tuple[UUID, str], str]:
@@ -416,6 +438,11 @@ def delivery_record(ctx: OperationContext, data: RecordIn) -> RecordOut:
         row.save(update_fields=["attempts", "last_error", "next_attempt_at"])
         if row.next_attempt_at is not None:
             on_commit(wake_the_worker)
+            if row.kind == Delivery.Kind.MESSAGE and row.attempts == IN_ORDER_ATTEMPTS:
+                # From now on the newer messages of the business go on without it (``queries.IN_ORDER_ATTEMPTS``).
+                logger.warning(
+                    "saas.worker.order_released hub=%s delivery=%s attempts=%s", row.hub_id, row.id, row.attempts
+                )
     record_event(ctx, events.DELIVERY_RECORDED, {"delivery_id": str(data.id), "outcome": data.outcome})
     waits = data.outcome == "retry"
     return RecordOut(

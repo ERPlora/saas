@@ -168,6 +168,15 @@ class TestWhatWaitsForTheHub:
             assert "wamid.1" in page and "HTTP 404 app_inactive" in page
             assert "mi secreto" not in page and "34600111222" not in page
 
+    def test_the_list_shows_the_tries_and_the_next_one_of_each_row(self, as_superuser, business):
+        """A message the Hub keeps failing on stops holding the newer ones of its business back after
+        ``IN_ORDER_ATTEMPTS`` tries (saas#305): the staff sees how many and when the next one is."""
+        parked(business, attempts=8, next_attempt_at=timezone.now() + timezone.timedelta(hours=1))
+
+        page = get(as_superuser, f"{ADMIN}/delivery/").content.decode()
+
+        assert "column-attempts" in page and "column-next_attempt_at" in page
+
     def test_the_list_filters_what_the_hub_has_not_taken(self, as_superuser, business):
         parked(business, wa_message_id="wamid.waiting")
         parked(business, wa_message_id="wamid.taken", delivered_at=timezone.now())
@@ -199,6 +208,26 @@ class TestWhatWaitsForTheHub:
 
         assert "0 taken by the Hub, 2 still waiting, 0 refused by the Hub." in response.content.decode()
         assert len(hub_double.calls_to("POST", "/internal/whatsapp/inbound")) == 1
+
+    @pytest.mark.django_db(transaction=True)
+    def test_push_now_never_pushes_past_an_older_message_another_claim_is_taking(
+        self, as_superuser, business, monkeypatch
+    ):
+        """Review of saas#317: the action pushes in the request, beside the worker (woken by its NOTIFY) and the
+        webhook. With M1 claimed by another, not committed yet, M2 is not pushed before it; the staff is told it still
+        waits."""
+        from whatsapp.tests.test_delivery_queue import Hub, a_claim_paused_in_its_transaction
+
+        hub = Hub(monkeypatch)
+        first = parked(business, wa_message_id="wamid.1", received_at=timezone.now() - timezone.timedelta(minutes=2))
+        second = parked(business, wa_message_id="wamid.2", received_at=timezone.now() - timezone.timedelta(minutes=1))
+
+        with a_claim_paused_in_its_transaction(monkeypatch, business.id) as claimed:
+            response = act(as_superuser, "delivery", "push_now", [second.pk])
+
+        assert claimed == ["wamid.1"] and first.pk
+        assert hub.pushes == []
+        assert "0 taken by the Hub, 1 still waiting, 0 refused by the Hub." in response.content.decode()
 
     def test_nothing_is_added_changed_nor_deleted_by_hand(self, as_superuser, business):
         row = parked(business)

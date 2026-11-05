@@ -157,8 +157,10 @@ class DeliveryAdmin(PlatformActions):
             self.message_user(request, _("Nothing selected waits for the Hub."), messages.WARNING)
             return
         counts = gateway.deliver(due.hub_ids)
-        # A message held behind an older one of its business the Hub did not take (saas#305) still waits too.
-        waiting = {**counts, "retried": counts["retried"] + counts["held"]}
+        # What still waits of what was chosen: retried, held behind an older one of its business the Hub did not take,
+        # or left to the worker because another claim of its business was under way (saas#305).
+        still = queryset.filter(delivered_at__isnull=True, next_attempt_at__isnull=False).count()
+        waiting = {**counts, "retried": still}
         self.message_user(
             request,
             _("%(delivered)d taken by the Hub, %(retried)d still waiting, %(refused)d refused by the Hub.")

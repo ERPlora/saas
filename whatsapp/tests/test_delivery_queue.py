@@ -11,6 +11,7 @@
 
 import threading
 import time
+from contextlib import contextmanager
 from datetime import timedelta
 
 import pytest
@@ -190,6 +191,28 @@ def test_a_stop_asked_during_a_batch_gives_back_what_it_has_not_pushed_yet(busin
 
 
 # --- What record and hold write ---------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("kind", "failed_before", "warned"),
+    [
+        ("message", services.IN_ORDER_ATTEMPTS - 1, True),  # this failure reaches the cap: it stops holding the rest
+        ("message", services.IN_ORDER_ATTEMPTS, False),  # past it already: said once
+        ("message", services.IN_ORDER_ATTEMPTS - 2, False),
+        ("status", services.IN_ORDER_ATTEMPTS - 1, False),  # a status never held anything back
+    ],
+)
+def test_a_message_that_stops_holding_the_rest_back_is_said_once(business, caplog, kind, failed_before, warned):
+    delivery = park(business, "wamid.1", kind=kind, attempts=failed_before)
+    (claimed,) = claim()
+
+    with caplog.at_level("WARNING", logger="whatsapp.services"):
+        services.delivery_record(CTX, RecordIn(id=claimed.id, revision=claimed.revision, outcome="retry"))
+
+    released = [record for record in caplog.records if record.getMessage().startswith("saas.worker.order_released")]
+    expected = f"saas.worker.order_released hub={business.id} delivery={delivery.id} attempts={services.IN_ORDER_ATTEMPTS}"
+    assert [record.getMessage() for record in released] == ([expected] if warned else [])
+    assert all(record.levelname == "WARNING" for record in released)
 
 
 def test_a_record_answers_when_its_delivery_is_due_again(business):
@@ -382,3 +405,71 @@ def test_two_deliverers_at_once_push_each_message_once(business, other_business,
     pushed = [wamid for _, wamid in hub.pushes]
     assert sorted(pushed) == sorted(f"wamid.{n}" for n in range(12))
     assert not Delivery.objects.filter(delivered_at__isnull=True).exists()
+
+
+# --- A claim not committed yet (review of saas#317) --------------------------------------------------------------
+
+
+@contextmanager
+def a_claim_paused_in_its_transaction(monkeypatch, hub_id, limit=1):
+    """Another claim of ``hub_id`` (the admin's «Entregar al Hub ahora», Meta's webhook, the worker) stopped after it
+    locked and leased its rows, before its COMMIT; yields what it claimed, and lets it end on the way out."""
+    inside, release = threading.Event(), threading.Event()
+    real = services._client_keys
+
+    def paused(statuses):
+        if threading.current_thread().name == "other-claim":
+            inside.set()
+            release.wait(10)
+        return real(statuses)
+
+    monkeypatch.setattr(services, "_client_keys", paused)
+    claimed: list[str] = []
+
+    def other_claim():
+        try:
+            claimed.extend(wamids(claim(hub_ids=[hub_id], limit=limit)))
+        finally:
+            connection.close()
+
+    thread = threading.Thread(target=other_claim, name="other-claim")
+    thread.start()
+    assert inside.wait(10)
+    try:
+        yield claimed
+    finally:
+        release.set()
+        thread.join(10)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_a_message_waits_while_another_claim_still_holds_the_older_one_uncommitted(business, other_business, monkeypatch):
+    """The race: a claim has locked and leased M1 and not committed yet. Another claim skipped M1 (``SKIP LOCKED``) and
+    did not see it waiting (the lease was not committed), so it pushed M2 first. Each claim now holds the lock of its
+    businesses until its COMMIT: the second one leaves that business for its next turn, and the others go on."""
+    hub = Hub(monkeypatch)
+    park(business, "wamid.1", ago=20)
+    park(business, "wamid.2", ago=10)
+    park(other_business, "wamid.9", ago=5)
+
+    with a_claim_paused_in_its_transaction(monkeypatch, business.id) as claimed:
+        counts = gateway.deliver()
+
+    assert claimed == ["wamid.1"]
+    assert hub.pushes == [(other_business.slug, "wamid.9")]
+    assert counts["delivered"] == 1
+    assert row("wamid.2").next_attempt_at <= timezone.now()  # untouched: due, for the next turn
+
+
+@pytest.mark.django_db(transaction=True)
+def test_the_webhook_does_not_push_past_an_older_message_another_claim_is_taking(number, monkeypatch):
+    """Meta's webhook pushes what it parked at once (``gateway.ingest``), without the pass's lock: while another claim
+    of the business holds an older message uncommitted, the new one is parked and waits (the worker takes it)."""
+    hub = Hub(monkeypatch)
+    park(number.hub, "wamid.1", ago=20)
+
+    with a_claim_paused_in_its_transaction(monkeypatch, number.hub_id):
+        gateway.ingest(messages(text("wamid.3")))
+
+    assert hub.pushes == []
+    assert row("wamid.3").delivered_at is None
