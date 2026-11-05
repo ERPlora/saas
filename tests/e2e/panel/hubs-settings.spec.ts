@@ -329,3 +329,4 @@ test.describe('against the real Hub', () => {
     expect(errors).toEqual([]);
   });
 });
+// TEMPORARY (saas#296): touched so the push runs this spec; reverted next.

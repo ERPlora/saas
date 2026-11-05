@@ -11,6 +11,9 @@ on:
     # 03:17 UTC, off the hour (GitHub delays the busy ones): 04:17 or 05:17 in Madrid.
     - cron: "17 3 * * *"
   workflow_dispatch:
+  # TEMPORARY (saas#296): the proof of the full run from this branch; reverted in the next commit.
+  push:
+    branches: [fix/296-e2e-visible-in-ci]
 
 permissions:
   contents: read
