@@ -349,6 +349,9 @@ class ReportFields(Schema):
     comment: str = Field(default="", max_length=20_000)
     question: str = Field(default="", max_length=200_000)
     answer: str = Field(min_length=1, max_length=200_000)
+    #: Whether the answer's turn brought pages from the web (the ``web`` of its ``response`` frame); none, a caller
+    #: that does not say. Its text is then not mailed (Brave's terms, §3(b)(i)).
+    web: bool | None = None
 
 
 class ReportIn(CallerIn, ReportFields):

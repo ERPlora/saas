@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:40739658fd16d3eb5389d968ea8f2a931479d46a5412d1545bc69913982dc5e4 -->
+<!-- generated from WORKBOOK.md sha256:16aeeace94beecb09591dc328e99ba89d3c6a8f2cc424fc1f4f355e50efb6f1d -->
 
 ## What it is for and who uses it
 
@@ -350,7 +350,7 @@ If it fails: the refusals before the model, the same as live; if the provider fa
 Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F18 and, in the Hub, FLOW-F39
 
 ### ASSISTANT-F14 Use erplora.com's tools and the business's
-Status: partial — the business's tools, the date and time and the exchange rate between currencies work; the web search is done and the privacy policy already names its provider; it is not offered in production until the infrastructure hands it its key, it is really tested in `pre` and reporting an answer keeps nothing that came from the web (saas#277, saas#287)
+Status: partial — the business's tools, the date and time and the exchange rate between currencies work; the web search is done and the privacy policy already names its provider; it is not offered in production until the infrastructure hands it its key and it is really tested in `pre` (saas#277)
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
@@ -476,10 +476,11 @@ Actor: the Hub's assistant of a business
 Screen: none
 Steps:
 1. The person marks an answer of the assistant as incorrect, harmful, not doing what was asked or something else, and adds, if they want, a comment.
-2. The Hub sends erplora.com the report with the question and the answer.
+2. The Hub sends erplora.com the report with the question, the answer and whether its turn brought pages from the web (erplora.com says so in the turn itself).
 3. erplora.com mails it to ERPlora's support mailbox with the business, the reason, the comment, the question and the answer (each text, at most 4,000 characters), and keeps nothing.
-4. If the same answer of the same business is reported again within 24 hours (a double tap, a retry), no other mail is sent.
-In: the business, the reported answer, the reason, the comment and the question.
+4. If the turn brought pages from the web, or the Hub does not say where the answer came from while the search is on, the mail carries everything but the answer: in its place it says it was left out because it may quote the web, and to ask the question again to see it. Brave's terms do not allow keeping its results, not even in part, and a mailbox keeps; their address and title are part of them too, so the sources do not go either.
+5. If the same answer of the same business is reported again within 24 hours (a double tap, a retry), no other mail is sent.
+In: the business, the reported answer, whether its turn brought pages from the web, the reason, the comment and the question.
 Out: the mail in the support mailbox, or the notice that it had already been sent (`assistant.report.sent`).
 If it fails: if the mail cannot leave, it says it could not be sent and to try again in a moment, and it can be sent again; a reason that is not one of the four is refused; a business that stops working (deleted or suspended) while its report arrives sends nothing and gets the same answer as in any other call (ASSISTANT-F11).
 Involved: ASSISTANT-F11, ASSISTANT-F14, ASSISTANT-F16, ASSISTANT-F17

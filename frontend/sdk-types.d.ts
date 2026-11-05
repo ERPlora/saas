@@ -1523,6 +1523,8 @@ export interface AssistantReportIn {
   comment?: string;
   question?: string;
   answer: string;
+  /** Whether the answer's turn brought pages from the web (the `web` of its `done` frame): its text is then not mailed. */
+  web?: boolean | null;
 }
 
 /** `base.AssistantReportOut`: mailed, or already reported. */

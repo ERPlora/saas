@@ -422,6 +422,18 @@ def sources_of(result: str) -> list[str]:
     return json.loads(result).get("sources", [])
 
 
+def not_to_keep(name: str, result: str) -> bool:
+    """Whether a result of ``run`` brought pages that nobody may keep (a search that found some): an answer built on
+    them is not mailed when it is reported (``assistant.report.send``)."""
+    tool = TOOLS.get(name)
+    return tool is not None and not tool.may_be_kept and bool(sources_of(result))
+
+
+def searching() -> bool:
+    """Whether the web search is offered now: an answer whose caller does not say where it came from may be from it."""
+    return TOOLS["web_search"].offered()
+
+
 def _site(address: str) -> str:
     return (urlsplit(address).hostname or "").removeprefix("www.")
 
