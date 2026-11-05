@@ -290,7 +290,10 @@ El panel de `erplora.com` (Negocios · Tienda · Facturación · Cuenta; plan
   su lock. Entre despertares no consulta la base de datos (Aurora puede bajar a su mínimo). Usa 2 conexiones: la de
   Django y la de su `LISTEN`. Una pasada que revienta, o una reconciliación que deja algo pendiente, escribe una línea
   ERROR que empieza por `saas.worker.pass_failed task=<nombre>` (el filtro de métrica de `aws` la busca) y el proceso
-  sigue; `SIGTERM` acaba la llamada en curso y sale con 0. Los comandos `whatsapp_deliver`, `reconcile_hub_states` y
+  sigue; `SIGTERM` acaba la llamada en curso y sale con 0. Cada reconciliación tiene 50 s por ronda
+  (`base.worker.ROUND_BUDGET`) y oye la parada entre dos negocios: lo que no entra va en la ronda siguiente (línea INFO
+  `saas.worker.pass_cut`, no un error). Señal de vida: `saas.worker.alive` (INFO) al arrancar y en cada ronda de 15
+  minutos, para la alarma de ausencia de logs de `aws`. Los comandos `whatsapp_deliver`, `reconcile_hub_states` y
   `reconcile_platform_invoices` siguen para lanzarlos a mano y comparten la pasada con el proceso. En local:
   `uv run python manage.py run_worker` (Ctrl-C para).
 - **Tareas programadas** (`saas-cron`, `aws-next/stacks/prod/scheduler.tf`): `sweep_unpaid` (cada hora) y

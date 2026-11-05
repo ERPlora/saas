@@ -764,7 +764,8 @@ Implicados: ninguno
   :30, :45 UTC) dentro del proceso `saas-worker` (`manage.py run_worker`, `base/worker.py`, saas#305), ya no como tarea
   de `saas-cron`; la pasada es `services.reconcile_platform_invoices_exclusively`, la misma del comando, que queda para
   lanzarla a mano. Lo que deja pendiente escribe la línea ERROR `saas.worker.pass_failed task=reconcile_platform_invoices
-  left work owed: …`, que es lo que avisa la alarma (antes, el código de salida de la tarea).
+  left work owed: …`, que es lo que avisa la alarma (antes, el código de salida de la tarea). En el worker la pasada
+  tiene 50 s y oye la parada entre dos facturas (`go_on`): lo que no entra va en la ronda siguiente (`cut_short=1`).
 - Tareas programadas (ECS, `saas-cron`): `manage.py audit_tax_rules` (BILLING-F04),
   `manage.py retax_subscriptions` (BILLING-F02, BILLING-F06) y `manage.py sync_subscriptions` (BILLING-F38;
   `--dry-run` solo informa) salen con error si dejan algo por hacer, que es lo que la alarma `task_failed`

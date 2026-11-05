@@ -479,7 +479,10 @@ Implicados: ninguno
   (`queries.behind_a_waiting_message`, con `FOR UPDATE SKIP LOCKED` y el arriendo de 5 minutos), y en un lote los
   siguientes mensajes de un negocio cuyo Hub falló se retienen con su espera (`whatsapp.delivery.hold`, sin contar
   intento); tras `queries.IN_ORDER_ATTEMPTS` (8, una hora de intentos) un mensaje que el Hub no toma deja de retener a
-  los siguientes. Los estados nunca esperan. Una pasada que revienta escribe una línea ERROR
+  los siguientes (WARNING `saas.worker.order_released`; el admin muestra intentos y próximo intento). Cada reclamación
+  guarda hasta su COMMIT el lock de sus negocios (`services.CLAIM_LOCK`), así el webhook y «Entregar al Hub ahora»,
+  que empujan en la petición, nunca adelantan un mensaje a otro anterior que reclama el worker. Los estados nunca
+  esperan. Una pasada que revienta escribe una línea ERROR
   `saas.worker.pass_failed task=whatsapp_deliver` (la alarma de `aws` la filtra) y el proceso sigue.
 - Tareas programadas (ECS, `saas-cron`): `whatsapp_refresh_tokens` (WHATSAPP-F12) y `whatsapp_purge` (WHATSAPP-F14)
   una vez al día; las programa el repo de infraestructura (`aws`, `stacks/prod/scheduler.tf`), que también da los

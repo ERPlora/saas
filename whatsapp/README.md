@@ -92,7 +92,11 @@ base de datos (su espera es un `select` sobre el socket de su conexión `LISTEN`
   que le queda (10 s cada una en el peor caso: 5 s para conectar y 5 s para responder). Así nada reservado (5 min; el
   webhook, 20 llamadas = 200 s) se vuelve a reservar mientras aún se empuja. Si queda más, la siguiente empieza ya.
 - Orden por negocio: un mensaje no sale antes que otro más antiguo de su negocio que aún espera (como mucho
-  `queries.IN_ORDER_ATTEMPTS` = 8 intentos, una hora); los estados no esperan; los demás negocios siguen.
+  `queries.IN_ORDER_ATTEMPTS` = 8 intentos, una hora; al llegar al tope, WARNING `saas.worker.order_released hub=…
+  delivery=… attempts=8`); los estados no esperan; los demás negocios siguen. Cada reclamación (el worker, el webhook,
+  «Entregar al Hub ahora») guarda hasta su COMMIT el lock de los negocios que reclama (`services.CLAIM_LOCK`,
+  `pg_try_advisory_xact_lock`): otra no empuja un mensaje mientras uno anterior de su negocio está reservado sin
+  COMMIT.
 - `SIGTERM` (un despliegue) acaba la llamada en curso, devuelve lo reservado sin empujar (vence ya, para el proceso
   siguiente) y sale con 0.
 - Una pasada que revienta escribe una línea ERROR `saas.worker.pass_failed task=whatsapp_deliver` (la alarma de `aws`
