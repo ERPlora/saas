@@ -177,6 +177,66 @@ def test_the_code_of_a_new_account_is_mailed_without_a_link(client):
     assert re.findall(r"https?://\S+", message.body) == ["https://erplora.com"]
 
 
+def _sign_up(client, email="new@example.com", **extra):
+    return client.post(
+        f"{BROWSER}/auth/signup",
+        {"email": email, "password": "a long pass phrase 2026"},
+        content_type="application/json",
+        HTTP_HOST=HOST,
+        **extra,
+    )
+
+
+class TestANewAccountSpeaksTheLanguageOfThePage:
+    """ACCOUNTS-F01: the language ``LocaleMiddleware`` already resolved for the page, never a second reading of it."""
+
+    @pytest.mark.parametrize(
+        ("accept_language", "language"),
+        [("es-ES,es;q=0.9,en;q=0.8", "es"), ("es", "es"), ("en-GB,en;q=0.9", "en"), ("fr-FR", settings.LANGUAGE_CODE)],
+    )
+    def test_the_browsers(self, client, accept_language, language):
+        _sign_up(client, HTTP_ACCEPT_LANGUAGE=accept_language)
+
+        assert get_user_model().objects.get(email="new@example.com").language == language
+
+    def test_the_one_chosen_on_the_public_web_wins_over_the_browsers(self, client):
+        client.cookies[settings.LANGUAGE_COOKIE_NAME] = "es"
+
+        _sign_up(client, HTTP_ACCEPT_LANGUAGE="en-GB")
+
+        assert get_user_model().objects.get(email="new@example.com").language == "es"
+
+    def test_a_browser_that_names_none_gets_the_default(self, client):
+        _sign_up(client)
+
+        assert get_user_model().objects.get(email="new@example.com").language == settings.LANGUAGE_CODE
+
+    def test_an_address_that_already_has_an_account_keeps_its_language(self, client, owner):
+        """«Create account» answers the same for a known address (ACCOUNTS-F01): nothing of that account changes."""
+        _sign_up(client, email=owner.email, HTTP_ACCEPT_LANGUAGE="es-ES")
+
+        owner.refresh_from_db()
+        assert owner.language == "en"
+
+    def test_the_code_that_proves_the_address_keeps_it(self, browser):
+        """The person lands on «Create your business» with the language the sign-up kept (the panel follows it)."""
+        email = "new@example.com"
+        csrf = {"HTTP_X_CSRFTOKEN": browser.cookies["csrftoken"].value}
+        _sign_up(browser, email=email, HTTP_ACCEPT_LANGUAGE="es-ES", **csrf)
+
+        confirmed = browser.post(
+            f"{BROWSER}/auth/email/verify",
+            {"key": take_mailed_code(email)},
+            content_type="application/json",
+            HTTP_ACCEPT_LANGUAGE="en-GB",
+            **csrf,
+        )
+
+        assert confirmed.status_code == 200, confirmed.content
+        assert get_user_model().objects.get(email=email).language == "es"
+        assert browser.get("/api/me", HTTP_ACCEPT_LANGUAGE="en-GB")["Content-Language"] == "es"
+
+
 @pytest.mark.parametrize("urlname", sorted(settings.HEADLESS_FRONTEND_URLS))
 def test_every_mailed_link_is_a_page_of_the_spa(urlname):
     path = settings.HEADLESS_FRONTEND_URLS[urlname].replace("{key}", "a-key")

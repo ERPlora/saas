@@ -209,11 +209,14 @@ Las specs del panel mandan las llamadas al Hub (`HUB_INTERNAL_URL`) al puerto `+
 salvo un doble (`startHubDouble`) mientras una spec lo pide: el negocio recién creado se queda «Preparando». Para
 ver el salto de verdad (el Hub recibe el registro, avisa de que está listo y la ventana entra), una spec puede
 correr contra **un Hub de verdad** en ese mismo puerto, con `E2E_REAL_HUB=1` (hoy, el bloque «against the real Hub»
-de `panel/hubs-flows.spec.ts`). Sin la variable, esos tests salen saltados y lo dicen; con ella, los que necesitan
+de `panel/hubs-flows.spec.ts` y el de `panel/signup-language.spec.ts`). Sin la variable, esos tests salen saltados y lo dicen; con ella, los que necesitan
 el negocio «Preparando» se saltan a su vez. Así la spec corre dos veces: una sin la variable y otra con ella.
 
 El Hub sale de un worktree del Hub (`HUB_DIR`) con su BD e2e (`HUB_DB_NAME`) y escucha en el puerto `+9`, con el
-mismo `INTERNAL_SHARED_SECRET` que el SaaS y su `SAAS_URL` apuntando al panel de la pila. El panel lleva
+mismo `INTERNAL_SHARED_SECRET` que el SaaS y su `SAAS_URL` apuntando al panel de la pila. A su lado corre
+`manage.py run_worker --databases-only`: es quien hace la BD del negocio y avisa de que está listo; sin él el Hub
+contesta `202` y el negocio se queda «Preparando». El Hub recuerda la dirección de cada pasada aunque el SaaS borre
+sus filas (un `409` a la siguiente): una spec que repita tiene que usar un nombre nuevo o una BD del Hub nueva. El panel lleva
 `HUB_CALLBACK_TEMPLATE` y `HUB_ADMIN_CALLBACK_URL` hacia ese Hub. Receta para la pila `8080` (`:8082` panel, `:8089`
 Hub; Vites `5480` y `5750`), con el Hub levantado antes y parado después por su PID:
 
@@ -223,11 +226,13 @@ for p in 8081 8082 8089 5480 5750; do lsof -nP -iTCP:$p -sTCP:LISTEN; done   # n
 DB_NAME=hub_e2e_8089 COMPOSE_FILE=<raíz>/compose.yaml node tests/e2e/database.ts
 DEBUG=True DB_NAME=hub_e2e_8089 VITE_DEV_PORT=5750 SAAS_URL=http://localhost:8082 SAAS_INTERNAL_URL=http://127.0.0.1:8082 \
   INTERNAL_SHARED_SECRET=<el del SaaS> uv run python manage.py runserver 127.0.0.1:8089 --noreload &
+DEBUG=True DB_NAME=hub_e2e_8089 SAAS_URL=http://localhost:8082 SAAS_INTERNAL_URL=http://127.0.0.1:8082 \
+  INTERNAL_SHARED_SECRET=<el del SaaS> uv run python manage.py run_worker --databases-only &
 # En el worktree del SaaS: la pasada con el Hub real
 env -u DB_NAME E2E_SAAS_PORT=8080 VITE_DEV_PORT=5480 E2E_REAL_HUB=1 HUB_DIR=<worktree del Hub> HUB_DB_NAME=hub_e2e_8089 \
   HUB_CALLBACK_TEMPLATE='http://{slug}.localhost:8089/auth/callback' HUB_ADMIN_CALLBACK_URL='http://hubs.localhost:8089/auth/callback' \
   pnpm e2e:ci panel/hubs-flows.spec.ts --workers=1
-# Al terminar: parar el Hub por su PID (o `lsof -tiTCP:8089 -sTCP:LISTEN | xargs kill`) y borrar las dos BD e2e
+# Al terminar: parar el Hub y su worker por su PID (el Hub, también con `lsof -tiTCP:8089 -sTCP:LISTEN | xargs kill`) y borrar las dos BD e2e
 ```
 
 - `INTERNAL_SHARED_SECRET` es el de `settings` del SaaS de ese worktree (los dos lados firman con él).

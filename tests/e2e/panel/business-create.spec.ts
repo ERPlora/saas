@@ -6,9 +6,7 @@
 // «Active». The panel's Django (project.ts) sends its calls to the Hub nowhere: a Hub running locally
 // never provisions this throwaway business (no orphan database), and the SaaS keeps the registry
 // pending as when the Hub is away.
-import { createHmac } from 'node:crypto';
-
-import { businessIdOf, expect, internalSecret, panelAccount, seedPanel, signIn, test, watchPageErrors } from './fixtures';
+import { businessIdOf, expect, panelAccount, reportBusinessReady, seedPanel, signIn, test, watchPageErrors } from './fixtures';
 test.beforeAll(() => seedPanel());
 test.afterAll(() => seedPanel('clear'));
 
@@ -27,16 +25,7 @@ test('create → Preparing → the Hub reports it ready → Ready', async ({ pag
   const row = page.getByTestId('businesses-row').filter({ hasText: 'Pastelería Dulce E2E' });
   await expect(row).toContainText('Preparing');
 
-  // The Hub's callback: the body names the hub of the path, signed with the shared secret.
-  const id = await businessIdOf(page.request, 'Pastelería Dulce E2E');
-  const body = JSON.stringify({ id });
-  const timestamp = Math.floor(Date.now() / 1000);
-  const signature = createHmac('sha256', internalSecret()).update(`${timestamp}.${body}`).digest('hex');
-  const ready = await page.request.post(`/internal/hubs/${id}/ready`, {
-    data: body,
-    headers: { 'Content-Type': 'application/json', 'X-Erplora-Timestamp': String(timestamp), 'X-Erplora-Signature': signature },
-  });
-  expect(ready.status(), await ready.text()).toBe(200);
+  await reportBusinessReady(page.request, await businessIdOf(page.request, 'Pastelería Dulce E2E'));
 
   await expect(page.getByTestId('create-modal')).toContainText('Your business is ready');
   await expect(page.getByTestId('create-modal-open')).toBeVisible();
