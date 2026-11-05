@@ -81,6 +81,17 @@ def test_signing_in_after_the_terms_changed_records_the_new_ones(ana, password):
     assert ana.terms_accepted_at > long_ago
 
 
+def test_signing_in_after_only_the_privacy_policy_changed_records_the_new_one(ana, password):
+    """A policy can change alone (a new recipient, saas#277): the terms being current is no reason to skip it."""
+    long_ago = timezone.now() - timedelta(days=200)
+    User.objects.filter(pk=ana.pk).update(terms_accepted_at=long_ago, terms_version=TERMS_VERSION, privacy_version=OLDER)
+
+    sign_in(Client(), ana.email, password)
+
+    assert _acceptance(ana) == (TERMS_VERSION, PRIVACY_VERSION)
+    assert ana.terms_accepted_at > long_ago
+
+
 def test_a_wrong_password_accepts_nothing(ana):
     Client(HTTP_HOST=HOST).post(
         f"{BROWSER}/auth/login", {"email": ana.email, "password": "wrong"}, content_type="application/json"

@@ -488,7 +488,7 @@ msgstr ""
 "Cómo ERPlora recoge, usa y protege los datos personales conforme al RGPD y a "
 "la normativa española de protección de datos."
 
-#: templates/public/legal/privacy.html templates/public/legal/cookies.html
+#: templates/public/legal/_dated_page.html
 msgid "Last updated:"
 msgstr "Última actualización:"
 
@@ -717,8 +717,8 @@ msgid "OpenAI Ireland Ltd. (Ireland) — OpenAI API:"
 msgstr "OpenAI Ireland Ltd. (Irlanda) — API de OpenAI:"
 
 #: templates/public/legal/privacy.html
-msgid "provider of the voice and search services the AI assistant uses BY DEFAULT. It transcribes voice dictation into text (it receives the audio of the recording) and, when your hub asks for them, it computes the search fingerprints, or embeddings, of your hub's index (it receives the texts to index). Used ONLY when someone in your hub, or in the assistant of your account's panel on erplora.com, uses one of these functions. Processing may take place outside the European Economic Area (section 6). Under its own DPA."
-msgstr "proveedor de los servicios de voz y de búsqueda que el asistente IA usa POR DEFECTO. Transcribe a texto el dictado por voz (recibe el audio de la grabación) y, cuando tu hub se las pide, calcula las huellas de búsqueda (embeddings) del índice de tu hub (recibe los textos que se indexan). Usado ÚNICAMENTE cuando alguien de tu hub, o en el asistente del panel de tu cuenta en erplora.com, usa una de estas funciones. El tratamiento puede realizarse fuera del Espacio Económico Europeo (apartado 6). Bajo su propio DPA."
+msgid "provider of the voice and search fingerprint services the AI assistant uses BY DEFAULT. It transcribes voice dictation into text (it receives the audio of the recording) and, when your hub asks for them, it computes the search fingerprints, or embeddings, of your hub's index (it receives the texts to index). Used ONLY when someone in your hub, or in the assistant of your account's panel on erplora.com, uses one of these functions. Processing may take place outside the European Economic Area (section 6). Under its own DPA."
+msgstr "proveedor de los servicios de voz y de huellas de búsqueda que el asistente IA usa POR DEFECTO. Transcribe a texto el dictado por voz (recibe el audio de la grabación) y, cuando tu hub se las pide, calcula las huellas de búsqueda (embeddings) del índice de tu hub (recibe los textos que se indexan). Usado ÚNICAMENTE cuando alguien de tu hub, o en el asistente del panel de tu cuenta en erplora.com, usa una de estas funciones. El tratamiento puede realizarse fuera del Espacio Económico Europeo (apartado 6). Bajo su propio DPA."
 
 #: templates/public/legal/privacy.html
 msgid "OpenAI Ireland Ltd. and Anthropic Ireland Ltd. (Ireland):"
@@ -784,10 +784,10 @@ msgstr "Lectura en voz alta: la respuesta la lee la voz de tu propio dispositivo
 
 #: templates/public/legal/privacy.html
 msgid ""
-"None of these providers uses the data to train their models, under the API "
-"terms of service applicable to us."
+"None of the processors above uses the data to train their models, under the "
+"API terms of service applicable to us."
 msgstr ""
-"Ninguno de estos proveedores utiliza los datos para entrenar sus modelos, "
+"Ninguno de los encargados anteriores utiliza los datos para entrenar sus modelos, "
 "conforme a las condiciones de servicio de API que nos resultan aplicables."
 
 #: templates/public/legal/privacy.html
@@ -2304,8 +2304,32 @@ msgid "Process transactions in milliseconds, with live updates on every device."
 msgstr "Procesa transacciones en milisegundos, con actualizaciones en vivo en todos los dispositivos."
 
 #: templates/public/legal/privacy.html templates/public/legal/terms.html
-msgid "November 3, 2026"
-msgstr "3 de noviembre de 2026"
+msgid "November 5, 2026"
+msgstr "5 de noviembre de 2026"
+
+#: templates/public/legal/privacy.html
+msgid "Another recipient: the web search of the AI assistant"
+msgstr "Otro destinatario: la búsqueda en la web del asistente IA"
+
+#: templates/public/legal/privacy.html
+msgid "Brave Software, Inc. (United States) — Brave Search API:"
+msgstr "Brave Software, Inc. (Estados Unidos) — Brave Search API:"
+
+#: templates/public/legal/privacy.html
+msgid "provider of the web search of the AI assistant. It is NOT one of the processors above: its data processing addendum (DPA) leaves the search queries out, so it receives them under its own privacy notice. When the model needs the public web to answer, our servers send Brave the text of the query and the language and country to look in, and nothing that says who asks: not your name, your email or your IP address, nor the name of your hub. Brave keeps its records of the queries for up to 90 days, for billing and troubleshooting, and says on its API page that it neither shares them nor trains on them. Used ONLY when someone uses the chat of the assistant of your hub or of your account's panel and the model searches the web."
+msgstr "proveedor de la búsqueda en la web del asistente IA. NO es uno de los encargados anteriores: su acuerdo de tratamiento de datos (DPA) deja fuera las consultas de búsqueda, así que las recibe según su propio aviso de privacidad. Cuando el modelo necesita la web pública para contestar, nuestros servidores envían a Brave el texto de la consulta y el idioma y el país en los que buscar, y nada que diga quién pregunta: ni tu nombre, ni tu correo, ni tu dirección IP, ni el nombre de tu hub. Brave conserva sus registros de las consultas hasta 90 días, para la facturación y la resolución de problemas, y dice en la página de su API que ni las comparte ni entrena con ellas. Se usa ÚNICAMENTE cuando alguien usa el chat del asistente de tu hub o del panel de tu cuenta y el modelo busca en la web."
+
+#: templates/public/legal/privacy.html
+msgid "Web search: the model searches the public web only when a question needs it, and the query leaves for Brave Search from our servers. The model is told that a query carries only what is being looked for, with no personal data and nothing of your business or its customers. That is a rule given to the model, not a guarantee: the model writes the query from the conversation, so do not ask it to search the web for anyone's personal data. Neither your hub nor ERPlora keeps the queries or their results: they live in the memory of that turn and reach only the model. An automation never searches."
+msgstr "Búsqueda en la web: el modelo busca en la web pública solo cuando una pregunta lo necesita, y la consulta sale hacia Brave Search desde nuestros servidores. Al modelo se le indica que una consulta lleva solo lo que se busca, sin datos personales y sin nada de tu negocio ni de sus clientes. Es una regla que se le da al modelo, no una garantía: la consulta la escribe el modelo a partir de la conversación, así que no le pidas que busque en la web datos personales de nadie. Ni tu hub ni ERPlora conservan las consultas ni sus resultados: viven en la memoria de ese turno y solo llegan al modelo. Una automatización nunca busca."
+
+#: templates/public/legal/privacy.html
+msgid "The queries of the AI assistant's web search go to Brave Software, Inc., in the United States. The Standard Contractual Clauses above do not cover them, because Brave's data processing addendum leaves the queries out: that is why a query must carry no personal data (section 5)."
+msgstr "Las consultas de la búsqueda en la web del asistente IA van a Brave Software, Inc., en Estados Unidos. Las Cláusulas Contractuales Tipo anteriores no las cubren, porque el acuerdo de tratamiento de datos de Brave deja fuera las consultas: por eso una consulta no debe llevar datos personales (apartado 5)."
+
+#: templates/public/legal/terms.html
+msgid "Store, cache, or build a database with the web results the AI assistant brings, in whole or in part, beyond what it takes to read its answer; create derivative works from them; redistribute, resell, or sublicense them; use them to create, train, fine-tune, benchmark, or improve artificial intelligence models; or get around the limits on searches, including by creating several accounts. Those results come from a third-party search provider, whose terms ask this of everyone who uses them."
+msgstr "Guardar, almacenar en caché o crear una base de datos con los resultados de la web que trae el asistente IA, en todo o en parte, más allá de lo necesario para leer su respuesta; crear obras derivadas de ellos; redistribuirlos, revenderlos o sublicenciarlos; usarlos para crear, entrenar, ajustar, evaluar o mejorar modelos de inteligencia artificial; o saltarse los límites de búsquedas, también creando varias cuentas. Esos resultados vienen de un proveedor de búsqueda externo, cuyos términos se lo piden a todo el que los usa."
 
 #: templates/public/legal/privacy.html
 msgid "Amazon Web Services EMEA SARL (Luxembourg) — Ireland region, eu-west-1:"
@@ -2324,8 +2348,8 @@ msgid "delivery of the service's transactional email. Processing takes place in 
 msgstr "envío del correo electrónico transaccional del servicio. El tratamiento se realiza en la Unión Europea."
 
 #: templates/public/legal/privacy.html
-msgid "Some processors may process data outside the EEA: the provider of the voice and search services of the assistant and, only if the European one is unavailable, the backup model providers. These transfers are carried out under Standard Contractual Clauses (SCCs) approved by the European Commission (EU Decision 2021/914) or, when possible, by keeping the data within the EU through regional configuration. The customer may request a copy of the SCCs at"
-msgstr "Algunos encargados pueden tratar datos fuera del EEE: el proveedor de los servicios de voz y de búsqueda del asistente y, solo si el europeo no está disponible, los proveedores de modelos de respaldo. Estas transferencias se realizan amparadas en Cláusulas Contractuales Tipo (CCT) aprobadas por la Comisión Europea (Decisión UE 2021/914) o, cuando es posible, manteniendo el dato dentro de la UE mediante configuración regional. El cliente puede solicitar copia de las CCT en"
+msgid "Some processors may process data outside the EEA: the provider of the voice and search fingerprint services of the assistant and, only if the European one is unavailable, the backup model providers. These transfers are carried out under Standard Contractual Clauses (SCCs) approved by the European Commission (EU Decision 2021/914) or, when possible, by keeping the data within the EU through regional configuration. The customer may request a copy of the SCCs at"
+msgstr "Algunos encargados pueden tratar datos fuera del EEE: el proveedor de los servicios de voz y de huellas de búsqueda del asistente y, solo si el europeo no está disponible, los proveedores de modelos de respaldo. Estas transferencias se realizan amparadas en Cláusulas Contractuales Tipo (CCT) aprobadas por la Comisión Europea (Decisión UE 2021/914) o, cuando es posible, manteniendo el dato dentro de la UE mediante configuración regional. El cliente puede solicitar copia de las CCT en"
 
 # --- L7: the home, /contact/, /pricing/, /legal/terms/ and /collaborate/ (landing.py, pricing.py, legal.py, company.py and their templates; origin/develop .po where the copy is the same) ---
 
@@ -3611,8 +3635,8 @@ msgstr[1] "Sí. Empieza gratis sin tarjeta —el plan Free es gratis para siempr
 msgid "Yes. Moving up is immediate and the difference is prorated; moving down takes effect at the end of the period you have already paid for. There's no penalty or commitment period, and moving down deletes nothing and turns nothing off: your apps and their data stay as they are. If you are over the new plan's limits, you keep what you have: apps turned on stay on, and your users and files stay; you just can't add more until you are under the limit."
 msgstr "Sí. Subir de plan es inmediato y la diferencia se prorratea; bajar se aplica al final del periodo que ya has pagado. No hay penalización ni periodo de compromiso, y bajar de plan no borra ni desactiva nada: tus apps y sus datos se quedan como están. Si superas los límites del plan nuevo, conservas lo que tienes: las apps activadas siguen activadas, y tus usuarios y tus archivos se quedan; solo no podrás añadir más hasta estar por debajo del límite."
 
-msgid "Within the European Union: on Amazon Web Services, in its Ireland region (eu-west-1), on GDPR-compliant infrastructure. The exceptions are in the AI assistant: its voice and search services, such as transcribing a voice dictation, and, if its European provider is unavailable, a backup provider may process data outside the EU, under the safeguards our privacy policy describes."
-msgstr "Dentro de la Unión Europea: en Amazon Web Services, en su región de Irlanda (eu-west-1), sobre infraestructura conforme al RGPD. Las excepciones están en el asistente de IA: sus servicios de voz y de búsqueda, como transcribir un dictado por voz, y, si su proveedor europeo no está disponible, un proveedor de respaldo pueden tratar datos fuera de la UE, con las garantías que describe nuestra política de privacidad."
+msgid "Within the European Union: on Amazon Web Services, in its Ireland region (eu-west-1), on GDPR-compliant infrastructure. The exceptions are in the AI assistant: its voice and search fingerprint services, such as transcribing a voice dictation, and, if its European provider is unavailable, a backup provider may process data outside the EU, under the safeguards our privacy policy describes; and what its web search looks for goes to Brave Search, in the United States, as that policy explains."
+msgstr "Dentro de la Unión Europea: en Amazon Web Services, en su región de Irlanda (eu-west-1), sobre infraestructura conforme al RGPD. Las excepciones están en el asistente de IA: sus servicios de voz y de huellas de búsqueda, como transcribir un dictado por voz, y, si su proveedor europeo no está disponible, un proveedor de respaldo pueden tratar datos fuera de la UE, con las garantías que describe nuestra política de privacidad; y lo que busca en la web va a Brave Search, en Estados Unidos, como explica esa política."
 
 msgid "Do you charge per app or per usage?"
 msgstr "¿Cobráis por app o por uso?"

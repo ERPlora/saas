@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:ec2e77802ecec0197c05a093f812f010088179b344304b33aeac6f425d77ba1e -->
+<!-- generated from WORKBOOK.md sha256:297292e1bf817c82a482e5a952924a5566bd263ac06cdc205d314f9140aa9756 -->
 
 ## What it is for and who it is for
 
@@ -274,7 +274,7 @@ Screen: Security, Plans and prices, Home, About us
 Steps:
 1. The person reads what Security, the pricing FAQ, the home and About us say about access, data and availability.
 2. They read what works today: server sessions in secure cookies, a one-time code to enter the business, sign-in with Google, salted password hashing, encryption in transit and at rest, HTTPS only with TLS 1.2 or 1.3, AWS in Ireland with its web firewall, continuous backups recoverable to any moment of the last 14 days and high availability.
-3. To "Where is my data stored?" the answer is the European Union, with the exceptions of the assistant: its voice and its search, such as transcribing a voice dictation, and its backup provider if the European one is unavailable; and the link "Read the privacy policy". The home says that the assistant's language model is served from the European Union, not the whole assistant.
+3. To "Where is my data stored?" the answer is the European Union, with the exceptions of the assistant: its voice and its search fingerprints, such as transcribing a voice dictation, its backup provider if the European one is unavailable and what it searches the web for, which goes to Brave Search, in the United States; and the link "Read the privacy policy". The home says that the assistant's language model is served from the European Union, not the whole assistant.
 In: nothing; the pages' text, checked against the infrastructure and the privacy policy.
 Out: nothing saved.
 If it fails: no availability agreement with a percentage, 24/7 support, regular audits, penetration test reports, end-to-end encryption or sign-in with GitHub is promised, and never "your data never leaves the EU", which would contradict the privacy policy.
@@ -431,12 +431,12 @@ Actor: visitor
 Screen: Legal texts
 Steps:
 1. In the footer, "Legal Notice", "Privacy" and "Terms" open each text on its own page; the cookie policy opens from the privacy policy.
-2. The privacy policy names who the data is entrusted to: Amazon Web Services in the Ireland region for hosting and email, the assistant's language model in Frankfurt, without training on it, and OpenAI for the assistant's voice and search: it transcribes the audio of a dictation, which neither the hub nor ERPlora keeps, and may process it outside the European Economic Area. An answer is read aloud by the device's own voice (the browser's or the system's): its text never leaves it.
-3. The terms give the numbers the product keeps: the days of the exit package, the days a suspended business waits before it is deleted and the trial of the plans on sale (none if none has one).
+2. The privacy policy names who the data is entrusted to: Amazon Web Services in the Ireland region for hosting and email, the assistant's language model in Frankfurt, without training on it, and OpenAI for the assistant's voice and search fingerprints: it transcribes the audio of a dictation, which neither the hub nor ERPlora keeps, and may process it outside the European Economic Area. Apart from those processors, it names Brave Search, in the United States, which receives the queries of the assistant's web search and keeps them for up to 90 days: its data processing addendum leaves them out and the Standard Contractual Clauses do not cover them. An answer is read aloud by the device's own voice (the browser's or the system's): its text never leaves it.
+3. The terms give the numbers the product keeps: the days of the exit package, the days a suspended business waits before it is deleted and the trial of the plans on sale (none if none has one). Their acceptable use forbids keeping, redistributing or training on the web results the assistant brings, as its provider's terms ask.
 In: the plans on sale (the terms).
 Out: nothing saved.
-If it fails: no text names a provider no longer used or another hosting, nor keeps quiet about where the audio of a dictation goes, nor promises EU residency or a retention period for it, nor a consent or a switch for the assistant that the hub does not have (the assistant is used when someone writes or dictates to it: in the hub, with the messages the plan gives; in erplora.com's panel, with the account's), and no link between texts leads to a page that does not exist.
-Involved: hubs (the plans)
+If it fails: no text names a provider no longer used or another hosting, nor keeps quiet about where the audio of a dictation goes, nor promises EU residency or a retention period for it, nor promises that a web query never carries personal data (that is a rule given to the model, not a guarantee), nor a consent or a switch for the assistant that the hub does not have (the assistant is used when someone writes or dictates to it: in the hub, with the messages the plan gives; in erplora.com's panel, with the account's), and no link between texts leads to a page that does not exist.
+Involved: hubs (the plans), ASSISTANT-F14
 
 ### PUBLIC-F21 Check the responsible declaration of the invoicing system
 Status: done
