@@ -5,8 +5,11 @@ Ported from ERPlora/saas ``apps/public/industries/views.py`` (origin/develop c5c
 * no model: the taxonomy and the plans are read through the operations of ``hubs``
   (``hubs.sector.list``, ``hubs.business_type.list``, ``hubs.plan.list``) and the apps through
   ``apps.app.list``, with ``run_operation_sync`` as ``base/spa.py`` does (plan §3.m, spec §5.1);
-* a page's apps are the listed apps of its business type's ``vertical``, in one list: what a business
-  of that vertical comes with (decision 13). Without a vertical, no block (spec §5.3);
+* a page's apps are the listed apps of its business type's ``vertical``, in one list: the apps made
+  for a business of that vertical (decision 13). Without a vertical, no block (spec §5.3);
+* available is not turned on: every business is born with every app off (round 2026-10-27, PLAN §33)
+  and turns them on with the template its Home suggests or one at a time, so no copy says a business
+  «comes with» its apps (saas#298);
 * the copy says «apps» and «catalogue» where it said «modules» and «marketplace», and every app is
   «included in every plan» (ronda 2026-10-24b, PLAN §32; before, decision 17 put the premium apps in
   the paid plans): there is no fee per app and no tier of apps;
@@ -179,6 +182,18 @@ def _examples(apps: list[dict[str, Any]]) -> str:
     return ", ".join(app["name"] for app in apps[:EXAMPLES_LIMIT])
 
 
+def how_apps_turn_on() -> str:
+    """How a new business gets its apps, in ONE place: the apps block and the FAQ both say it.
+
+    Every business is born with every app off (PLAN §33): its Home suggests a template that turns on
+    the apps of a business like it, or the owner turns them on one at a time in Apps.
+    """
+    return _(
+        "Your business starts with no app turned on: its Home suggests a template that turns on "
+        "the apps of a business like yours, or you turn them on one at a time."
+    )
+
+
 def faq_items(subject: str, apps: list[dict[str, Any]], plan) -> list[dict[str, str]]:
     """The FAQ of one industry page, in ONE place.
 
@@ -192,18 +207,17 @@ def faq_items(subject: str, apps: list[dict[str, Any]], plan) -> list[dict[str, 
 
     if apps:
         fit_answer = ngettext(
-            "Yes. A %(business)s comes with %(count)s app of our catalogue out of the box — "
-            "%(examples)s — and it works on the same data as everything else.",
-            "Yes. A %(business)s comes with %(count)s apps of our catalogue out of the box — "
-            "among them %(examples)s — and they all work on the same data.",
+            "Yes. Our catalogue has %(count)s app made for a %(business)s — %(examples)s — and "
+            "it works on the same data as everything else.",
+            "Yes. Our catalogue has %(count)s apps made for a %(business)s — among them "
+            "%(examples)s — and they all work on the same data.",
             len(apps),
         ) % {**business, "count": len(apps), "examples": _examples(apps)}
     else:
         fit_answer = (
             _(
-                "Yes. A %(business)s runs on the same core as every other business we serve — point "
-                "of sale, catalogue, customers and invoicing — and you turn on the apps of the "
-                "catalogue as you need them."
+                "Yes. A %(business)s uses the same apps as every other business we serve — point "
+                "of sale, catalogue, customers and invoicing — and you turn on the ones you need."
             )
             % business
         )
@@ -237,16 +251,17 @@ def faq_items(subject: str, apps: list[dict[str, Any]], plan) -> list[dict[str, 
         )
 
     if apps:
-        start_answer = _(
-            "Start with the apps a %(business)s comes with — %(examples)s — and turn on more "
-            "from the catalogue when the business asks for them."
+        first_steps = _(
+            "Start with the apps made for a %(business)s — %(examples)s — and turn on more from "
+            "the catalogue when the business asks for them."
         ) % {**business, "examples": _examples(apps)}
     else:
-        start_answer = _(
-            "Start with the core: point of sale, catalogue, customers and invoicing come with "
-            "every hub. You then turn on apps from the catalogue one at a time, so you never "
-            "configure something you are not using yet."
+        first_steps = _(
+            "Turn on what you use every day — point of sale, catalogue, customers and "
+            "invoicing — and add more apps when you need them, so you never configure "
+            "something you are not using yet."
         )
+    start_answer = f"{first_steps} {how_apps_turn_on()}"
     items.append(
         {
             "key": "start",
@@ -305,7 +320,7 @@ def _app_card(app) -> dict[str, Any]:
 
 
 def _vertical_apps(request: HttpRequest, vertical: str) -> list[dict[str, Any]]:
-    """The listed apps a business of ``vertical`` comes with; none without a vertical (§5.3)."""
+    """The listed apps made for a business of ``vertical``; none without a vertical (§5.3)."""
     if not vertical:
         return []
     listed = run_operation_sync(
@@ -316,7 +331,7 @@ def _vertical_apps(request: HttpRequest, vertical: str) -> list[dict[str, Any]]:
 
 @require_safe
 def detail(request: HttpRequest, slug: str) -> HttpResponse:
-    """One business type: the buyer's question, its answer, the apps it comes with and an FAQ."""
+    """One business type: the buyer's question, its answer, the apps made for it and an FAQ."""
     requested = slug.lower()
     # A folded code is an indexed URL: send it on for good instead of dropping it (saas#2099).
     if (current := current_business_type_code(requested)) != requested:
@@ -369,6 +384,7 @@ def detail(request: HttpRequest, slug: str) -> HttpResponse:
                 "sector_name": sector.name if sector else "",
             },
             "apps": apps,
+            "how_apps_turn_on": how_apps_turn_on(),
             "related": related,
             "faq_items": faq,
             # Serialised here, never interpolated into the template: a name carrying a quote

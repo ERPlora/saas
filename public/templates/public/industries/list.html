@@ -10,18 +10,18 @@
 {% endcomment %}
 
 {% block title %}{% trans "Business types" %} · ERPlora{% endblock %}
-{% block meta_description %}{% trans "Discover how ERPlora adapts to your business, with the apps a restaurant, a salon, a shop or a clinic comes with." %}{% endblock %}
+{% block meta_description %}{% trans "Discover how ERPlora adapts to your business, with the apps made for a restaurant, a salon, a shop or a clinic." %}{% endblock %}
 {% block og_title %}{% trans "Business types" %} · ERPlora{% endblock %}
-{% block og_description %}{% trans "Discover how ERPlora adapts to your business, with the apps every type of business comes with." %}{% endblock %}
+{% block og_description %}{% trans "Discover how ERPlora adapts to your business, with the apps made for every type of business." %}{% endblock %}
 
 {% block page_content %}
   {% trans "Industries" as hero_eyebrow %}
   {% trans "ERPlora for your business." as hero_title %}
   {% if total_count %}
     {% blocktrans trimmed count total=total_count asvar hero_description %}
-      Find your business type and see the apps it comes with: ERPlora is ready for {{ total }} type of business.
+      Find your business type and see the apps made for it: ERPlora is ready for {{ total }} type of business.
     {% plural %}
-      Find your business type and see the apps it comes with: ERPlora is ready for {{ total }} types of business.
+      Find your business type and see the apps made for it: ERPlora is ready for {{ total }} types of business.
     {% endblocktrans %}
   {% endif %}
   {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_description=hero_description %}
