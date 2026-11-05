@@ -117,13 +117,11 @@ describe('BusinessCreateForm: the fields', () => {
 
   // A business is born with every app off (PLAN §33): the type only orders the templates its Home proposes.
   it.each([
-    ['en', /template/i],
-    ['es', /plantilla/i],
-  ] as const)('in %s, the type promises a template proposed on the Home, never modules installed', async (locale, template) => {
+    ['en', "We'll suggest a template on your business's Home; the type helps us choose it. You can leave it blank."],
+    ['es', 'Te propondremos una plantilla en el Inicio de tu negocio; el tipo nos ayuda a elegirla. Puedes dejarlo en blanco.'],
+  ] as const)('in %s, the type promises a template proposed on the Home, never modules installed', async (locale, hint) => {
     const s = await setup({ locale });
-    const hint = s.get('create-type-hint').text();
-    expect(hint).toMatch(template);
-    expect(hint).not.toMatch(/m[oó]dul|instal/i);
+    expect(s.get('create-type-hint').text()).toBe(hint);
   });
 
   it('has no native select: only Ionic controls', async () => {
