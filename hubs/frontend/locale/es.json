@@ -93,7 +93,7 @@
       "country": "País",
       "type": "Tipo de negocio (opcional)",
       "typeUnknown": "Todavía no lo sé",
-      "typeHint": "Con el tipo, tu negocio nace con los módulos de tu sector. Puedes dejarlo en blanco.",
+      "typeHint": "Te propondremos una plantilla en el Inicio de tu negocio; el tipo nos ayuda a elegirla. Puedes dejarlo en blanco.",
       "typesFailed": "Ahora no se han podido cargar los tipos de negocio. Puedes crear el negocio sin tipo.",
       "address": "Tu dirección será {host}",
       "addressChecking": "Buscando una dirección libre…",
@@ -111,7 +111,7 @@
       "status": "Preparación de {name}",
       "created": "Negocio creado",
       "setup": "Preparando tu negocio",
-      "setupType": "Instalando los módulos de {type}",
+      "setupType": "Preparando tu negocio: {type}",
       "opensAlone": "Se abre solo al terminar",
       "ready": "Listo para abrir"
     },

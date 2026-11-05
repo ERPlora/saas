@@ -112,7 +112,18 @@ describe('BusinessCreateForm: the fields', () => {
       label: 'Business type (optional)',
     });
     expect(type.findAll('ion-select-option').map((o) => o.text())).toEqual(["I don't know yet", 'Bakery and pastry', 'Hair salon']);
-    expect(s.get('create-type-hint').text()).toBe('With the type, your business is born with the modules of its sector. You can leave it blank.');
+    expect(s.get('create-type-hint').text()).toBe("We'll suggest a template on your business's Home; the type helps us choose it. You can leave it blank.");
+  });
+
+  // A business is born with every app off (PLAN §33): the type only orders the templates its Home proposes.
+  it.each([
+    ['en', /template/i],
+    ['es', /plantilla/i],
+  ] as const)('in %s, the type promises a template proposed on the Home, never modules installed', async (locale, template) => {
+    const s = await setup({ locale });
+    const hint = s.get('create-type-hint').text();
+    expect(hint).toMatch(template);
+    expect(hint).not.toMatch(/m[oó]dul|instal/i);
   });
 
   it('has no native select: only Ionic controls', async () => {

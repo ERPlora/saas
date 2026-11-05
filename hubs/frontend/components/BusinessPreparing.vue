@@ -9,7 +9,7 @@ import { IonProgressBar, IonSpinner } from '@ionic/vue';
 defineProps<{
   /** The business's name. */
   name: string;
-  /** The business type picked at the sign-up, if any (its modules are being installed). */
+  /** The business type picked at the sign-up, if any (the step names it; a business is born with every app off, PLAN §33). */
   typeName?: string | null;
   /** The last step: the launcher opens it by itself; the dialog offers to open it. */
   last: 'opensAlone' | 'ready';

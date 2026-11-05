@@ -77,11 +77,11 @@ arriba. Una invitación pendiente sale encima.
 
 ### Crear negocio
 El formulario del alta: «Nombre del negocio», «País» (sugerido por el idioma del navegador), «Tipo de negocio
-(opcional)» con «Todavía no lo sé» y, debajo del nombre, «Tu dirección será …». En la Entrada va en la tarjeta «Crea tu
+(opcional)» con «Todavía no lo sé» y «Te propondremos una plantilla en el Inicio de tu negocio; el tipo nos ayuda a elegirla. Puedes dejarlo en blanco.» y, debajo del nombre, «Tu dirección será …». En la Entrada va en la tarjeta «Crea tu
 negocio»; en **Negocios**, en el diálogo «Crear negocio», bajo «¿Cómo se llama tu negocio?».
 
 ### Preparando
-La barra en marcha y tres pasos: «Negocio creado», «Preparando tu negocio» (o «Instalando los módulos de …») y
+La barra en marcha y tres pasos: «Negocio creado», «Preparando tu negocio» (o «Preparando tu negocio: …», con el tipo elegido) y
 «Se abre solo al terminar» en la Entrada o «Listo para abrir» en el diálogo.
 
 ### Negocios
@@ -204,12 +204,12 @@ Actor: cualquier persona con cuenta
 Pantalla: Entrada › Crear negocio
 Pasos:
 1. Tras crear la cuenta y entrar sin ningún negocio, la Entrada enseña «Crea tu negocio» («Gratis y sin tarjeta: solo el nombre y el país.»).
-2. Escribe el «Nombre del negocio»; debajo aparece «Tu dirección será …» con la dirección que propone el nombre. El «País» viene sugerido por el idioma del navegador y el «Tipo de negocio (opcional)» admite «Todavía no lo sé».
+2. Escribe el «Nombre del negocio»; debajo aparece «Tu dirección será …» con la dirección que propone el nombre. El «País» viene sugerido por el idioma del navegador y el «Tipo de negocio (opcional)» admite «Todavía no lo sé»; debajo avisa de que el Inicio del negocio le propondrá una plantilla y de que el tipo ayuda a elegirla.
 3. Pulsa «Crear mi negocio»: sale «Negocio creado: …» y la tarjeta pasa a **Preparando** (HUBS-F04).
 Entra: el nombre, el país (uno de los 27 de la Unión Europea en los que vende ERPlora) y, si la persona lo sabe, el tipo de negocio; la sesión de la cuenta.
-Sale: el negocio en el plan Gratis (sin tarjeta y sin prueba), con la persona como propietaria, su dirección sacada del nombre (si está cogida se numera, `bar-manolo-2`; una palabra reservada se completa sola) y quién paga, con el país del negocio. El servicio de los negocios recibe el alta en cuanto se guarda y, con el tipo de negocio, los módulos de su sector. Anota `hubs.business.created`.
+Sale: el negocio en el plan Gratis (sin tarjeta y sin prueba), con la persona como propietaria, su dirección sacada del nombre (si está cogida se numera, `bar-manolo-2`; una palabra reservada se completa sola) y quién paga, con el país del negocio. El servicio de los negocios recibe el alta en cuanto se guarda y, con el tipo de negocio, su sector. El negocio nace con todas las apps apagadas: su Inicio propone empezar con una plantilla, primero la de su sector si la hay (BASE-F02), o encenderlas una a una. Anota `hubs.business.created`.
 Si falla: sin nombre, «Escribe el nombre de tu negocio.» y no se manda nada; un país fuera de la lista, el error en el campo. Si la cuenta ya tiene su negocio gratuito, no crea otro: el diálogo dice «Ya tienes un negocio gratuito» y ofrece «Cambiar el plan de …»; pedido al asistente del panel, no enseña su tarjeta y dice que se cambie el plan del negocio que ya tiene (ASSISTANT-F25). Sin el plan Gratis disponible, «Ahora mismo no se pueden crear negocios. Inténtalo dentro de unos minutos.». Una cuenta del personal de ERPlora no crea negocios. Dos pulsaciones seguidas crean uno solo.
-Implicados: accounts (la cuenta y la Entrada), el negocio (recibe su alta), el asistente del panel (ASSISTANT-F25)
+Implicados: accounts (la cuenta y la Entrada), el negocio (recibe su alta; BASE-F02: propone la plantilla en su Inicio), el asistente del panel (ASSISTANT-F25)
 
 ### HUBS-F02 Crear el negocio gratuito desde la aplicación instalada
 <!-- origen: old-saas:SAAS_DASHBOARD-F02 -->

@@ -283,7 +283,7 @@ describe('LaunchPage: the first time (no business)', () => {
     s.wrapper.findComponent(BusinessCreateForm).vm.$emit('created', { id: 'bakery', name: 'Bakery', status: 'preparing' }, { typeName: 'Bakery and pastry' });
     await flush();
     expect(s.title()).toBe('Preparing Bakery');
-    expect(s.wrapper.get('ol.deploy-steps').text()).toContain('Installing the modules for Bakery and pastry');
+    expect(s.wrapper.get('ol.deploy-steps').text()).toContain('Setting up your business: Bakery and pastry');
     expect(s.testid('launch-panel').text()).toBe('Go to the panel meanwhile');
     await s.result(s.call, 'hubs.business.list', page([row('bakery', 'Bakery', PREPARING)]), 2);
     expect(s.opened()).toEqual([]);
