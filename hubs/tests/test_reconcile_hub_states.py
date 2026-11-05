@@ -302,6 +302,22 @@ class TestReconcile:
         assert taken is True
         other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
 
+    def test_the_saas_worker_runs_the_same_pass_under_the_same_lock(self, business, hub_double, other_session):
+        """``services.reconcile_exclusively`` is what the command and the ``saas-worker`` (every 15 minutes, saas#305)
+        both run: the pass's counts, or ``None`` while another run holds the lock."""
+        other_session.execute(f"SELECT pg_advisory_lock({LOCK_KEY})")
+        try:
+            assert services.reconcile_exclusively() is None
+        finally:
+            other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
+        assert hub_double.calls == []
+
+        counts = services.reconcile_exclusively()
+
+        assert counts is not None and not services.run_failed(counts)
+        assert other_session.execute(f"SELECT pg_try_advisory_lock({LOCK_KEY})").fetchone()[0] is True
+        other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
+
     def test_the_lock_is_released_when_a_run_fails(
         self, business, offline_hub, other_session
     ):

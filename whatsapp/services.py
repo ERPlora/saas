@@ -1,14 +1,17 @@
 """The commands of whatsapp (``@operation`` kind="command"): the only writes of the app, each in its transaction.
 
 Only the platform runs them (``platform_context``): the Hub through its signed doors, Meta through its webhook, the
-``saas-cron`` commands and the staff's admin actions. No account role holds ``whatsapp.manage``. A call to Meta or to
+``saas-worker`` and the commands, and the staff's admin actions. No account role holds ``whatsapp.manage``. A call to Meta or to
 the Hub never happens inside one of these: ``gateway`` calls Meta or the Hub between two commands, so no lock waits
 for a third party.
 
 - ``whatsapp.webhook.ingest``: what Meta's webhook reported, parked once per message for each active number
   (``Delivery``), the furthest status of each message, and Meta's verdicts on the templates (WHATSAPP-G07);
-- ``whatsapp.delivery.claim`` / ``whatsapp.delivery.record``: the push of what is parked to the Hub's doors 1 and 2,
-  leased so two processes never push the same thing at once, and retried with a growing wait;
+- ``whatsapp.delivery.claim`` / ``whatsapp.delivery.record`` / ``whatsapp.delivery.hold``: the push of what is parked
+  to the Hub's doors 1 and 2, leased so two processes never push the same thing at once, each business's messages in
+  the order they arrived (``queries.behind_a_waiting_message``), retried with a growing wait, and given back unpushed
+  (held behind a message of their business the Hub did not take, or a worker asked to stop). What makes a delivery
+  due or moves its wait wakes the ``saas-worker`` after the COMMIT (``wake_the_worker``, saas#305);
 - ``whatsapp.message.claim`` / ``whatsapp.message.record``: door 5, a send by its ``Idempotency-Key``. The claim
   reserves the month's place atomically (``UPDATE … WHERE used < limit``) before Meta is called, so two sends at once
   can never both pass the cap (saas#2652), and a key already sent answers its first id (saas#2633);
@@ -35,12 +38,12 @@ from datetime import timedelta
 from uuid import UUID
 
 from django.conf import settings
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
 from django.db.models import Count, F, Q
 from django.utils import timezone
 from live.context import OperationContext, Scope, system_context
 from live.errors import Conflict, NotFound, OperationError
-from live.operations import INTERNAL, operation
+from live.operations import INTERNAL, on_commit, operation
 from live.outbox import record_event
 
 from hubs import queries as hubs_queries
@@ -59,6 +62,8 @@ from whatsapp.schemas import (
     DisconnectIn,
     DueNowIn,
     DueNowOut,
+    HoldIn,
+    HoldOut,
     IngestIn,
     IngestOut,
     NumberConnectIn,
@@ -97,6 +102,9 @@ LEASE = timedelta(minutes=5)
 #: The first wait after the Hub did not take a delivery; each next one doubles, up to ``LONGEST_WAIT``.
 FIRST_WAIT = timedelta(seconds=30)
 LONGEST_WAIT = timedelta(hours=1)
+#: The channel the ``saas-worker`` LISTENs on (``base.worker``): a delivery due or whose wait moved, after the COMMIT.
+DELIVERY_CHANNEL = "whatsapp_delivery"
+IN_ORDER_ATTEMPTS = queries.IN_ORDER_ATTEMPTS
 #: How far each delivery status is; ``failed`` replaces anything but ``read``, and nothing replaces it.
 STATUS_RANK = {"sent": 1, "delivered": 2, "read": 3}
 #: How long a send whose call did not end is taken as still on its way (Meta cuts a send at 30 s; the Hub's
@@ -116,6 +124,13 @@ def media_url(delivery_id: UUID) -> str:
 
 def retry_wait(attempts: int) -> timedelta:
     return min(FIRST_WAIT * (2 ** max(attempts - 1, 0)), LONGEST_WAIT)
+
+
+def wake_the_worker() -> None:
+    """Tell the ``saas-worker`` a delivery is due or its wait moved, so it reads again when to wake; called after the
+    COMMIT (``on_commit``), so it never wakes for a row it cannot see yet nor for one rolled back."""
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT pg_notify(%s, '')", [DELIVERY_CHANNEL])
 
 
 def announce_channel(hub_id: UUID) -> None:
@@ -167,6 +182,8 @@ def webhook_ingest(ctx: OperationContext, data: IngestIn) -> IngestOut:
         logger.info("whatsapp.history.declined phone_number_id=%s", phone_number_id)
     if discarded:
         logger.info("whatsapp.webhook.discarded count=%s", discarded)
+    if touched:
+        on_commit(wake_the_worker)
     record_event(
         ctx,
         events.WEBHOOK_INGESTED,
@@ -288,16 +305,19 @@ def _apply_verdicts(verdicts: list[parse.Verdict]) -> set[UUID]:
     ai=INTERNAL,  # hub
 )
 def delivery_claim(ctx: OperationContext, data: ClaimIn) -> ClaimOut:
-    """Lease what is due (oldest first) for ``LEASE``: another run skips it meanwhile."""
+    """Lease what is due (oldest first) for ``LEASE``: another run skips it meanwhile (a row it holds locked, by
+    ``SKIP LOCKED``; one it leased, by its time). A message waiting behind an older one of its business is left
+    (``queries.behind_a_waiting_message``)."""
     now = timezone.now()
     due = (
         Delivery.objects.select_for_update(skip_locked=True, of=("self",))
         .select_related("hub")
         .filter(delivered_at__isnull=True, next_attempt_at__lte=now)
+        .exclude(queries.behind_a_waiting_message(now))
     )
     if data.hub_ids is not None:
         due = due.filter(hub_id__in=data.hub_ids)
-    rows = list(due.order_by("received_at")[: data.limit])
+    rows = list(due.order_by("received_at", "id")[: data.limit])
     Delivery.objects.filter(pk__in=[row.pk for row in rows]).update(next_attempt_at=now + LEASE)
     statuses = [row for row in rows if row.kind == Delivery.Kind.STATUS]
     keys, replies = _client_keys(statuses), _phone_replies(statuses)
@@ -305,6 +325,7 @@ def delivery_claim(ctx: OperationContext, data: ClaimIn) -> ClaimOut:
         deliveries=[
             ClaimedDelivery(
                 id=row.id,
+                hub_id=row.hub_id,
                 kind=row.kind,
                 revision=row.revision,
                 received_at=row.received_at,
@@ -380,7 +401,8 @@ def delivery_record(ctx: OperationContext, data: RecordIn) -> RecordOut:
         # Its body moved on while the older one was being pushed: the newer one is due now.
         row.next_attempt_at = now
         row.save(update_fields=["next_attempt_at"])
-        return RecordOut(outcome="stale")
+        on_commit(wake_the_worker)
+        return RecordOut(outcome="stale", next_attempt_at=now, attempts=row.attempts)
     if data.outcome == "drop":
         row.delete()
     elif data.outcome == "delivered":
@@ -392,8 +414,33 @@ def delivery_record(ctx: OperationContext, data: RecordIn) -> RecordOut:
         row.last_error = data.error[:300]
         row.next_attempt_at = None if data.outcome == "refused" else now + retry_wait(row.attempts)
         row.save(update_fields=["attempts", "last_error", "next_attempt_at"])
+        if row.next_attempt_at is not None:
+            on_commit(wake_the_worker)
     record_event(ctx, events.DELIVERY_RECORDED, {"delivery_id": str(data.id), "outcome": data.outcome})
-    return RecordOut(outcome=data.outcome)
+    waits = data.outcome == "retry"
+    return RecordOut(
+        outcome=data.outcome, next_attempt_at=row.next_attempt_at if waits else None, attempts=row.attempts
+    )
+
+
+@operation(
+    "whatsapp.delivery.hold",
+    kind="command",
+    permission=PERMISSION,
+    input=HoldIn,
+    output=HoldOut,
+    ai=INTERNAL,  # worker
+)
+def delivery_hold(ctx: OperationContext, data: HoldIn) -> HoldOut:
+    """Give claimed deliveries back without a push: due again at ``until`` (now when missing), no attempt counted. One
+    whose body moved on meanwhile (another revision) is left as it is: it is due already."""
+    claimed = Q(pk__in=[])
+    for held in data.deliveries:
+        claimed |= Q(pk=held.id, revision=held.revision)
+    count = Delivery.objects.filter(claimed, delivered_at__isnull=True).update(next_attempt_at=data.until or timezone.now())
+    if count:
+        on_commit(wake_the_worker)
+    return HoldOut(held=count)
 
 
 # --- Door 5: a send by its Idempotency-Key ----------------------------------------------------------------------
@@ -413,6 +460,8 @@ def delivery_due_now(ctx: OperationContext, data: DueNowIn) -> DueNowOut:
     waiting = Delivery.objects.filter(pk__in=data.ids, delivered_at__isnull=True)
     hub_ids = sorted(set(waiting.values_list("hub_id", flat=True)), key=str)
     count = waiting.update(next_attempt_at=timezone.now())
+    if count:
+        on_commit(wake_the_worker)
     return DueNowOut(hub_ids=hub_ids, count=count)
 
 

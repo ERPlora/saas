@@ -2106,6 +2106,14 @@ def _sync_counted(hub_id: UUID, counts: Counter) -> None:
         counts[REFUSED] += outcome == REFUSED
 
 
+def reconcile_exclusively(stuck_after: timedelta = STUCK_AFTER) -> Counter | None:
+    """One pass of ``reconcile`` under the lock of ``reconcile_hub_states``: its counts, or ``None`` when another run
+    holds the lock (and this one did nothing). What the command and the ``saas-worker`` (every 15 minutes,
+    ``base.worker``, saas#305) both run."""
+    with run_exclusively("reconcile_hub_states") as mine:
+        return reconcile(stuck_after=stuck_after) if mine else None
+
+
 def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
     """One pass of ``reconcile_hub_states``; the counts of what it did (each key is always present)."""
     now = now or timezone.now()

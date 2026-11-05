@@ -5025,7 +5025,7 @@ PLATFORM_FAILING = ("unreachable", "refused", "rejected", "stuck", "mail_failed"
 
 
 def reconcile_platform_invoices(now: datetime | None = None) -> Counter:
-    """One pass of ``reconcile_platform_invoices`` (``saas-cron``): post again every «issuing» invoice whose
+    """One pass of ``reconcile_platform_invoices`` (the ``saas-worker``, every 15 minutes): post again every «issuing» invoice whose
     wait passed, ask the platform hub about every issued (or rejected) one until the AEAT accepts it, and
     count the ones «issuing» for longer than ``PLATFORM_STUCK_AFTER``. One invoice never stops the others."""
     now = now or timezone.now()
@@ -5079,6 +5079,14 @@ def reconcile_platform_invoices(now: datetime | None = None) -> Counter:
 
 def platform_run_failed(counts: Counter) -> bool:
     return any(counts[key] for key in PLATFORM_FAILING)
+
+
+def reconcile_platform_invoices_exclusively() -> Counter | None:
+    """One pass of ``reconcile_platform_invoices`` under its lock: its counts, or ``None`` when another run holds the
+    lock (and this one did nothing). What the command and the ``saas-worker`` (every 15 minutes, ``base.worker``,
+    saas#305) both run."""
+    with hub_services.run_exclusively("reconcile_platform_invoices") as mine:
+        return reconcile_platform_invoices() if mine else None
 
 
 # --- «Pay» an invoice not collected -----------------------------------------------------------------

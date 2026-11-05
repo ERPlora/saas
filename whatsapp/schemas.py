@@ -41,6 +41,7 @@ class ClaimIn(Schema):
 
 class ClaimedDelivery(Schema):
     id: UUID
+    hub_id: UUID
     kind: Literal["message", "status"]
     revision: int
     received_at: datetime
@@ -65,6 +66,34 @@ class RecordIn(Schema):
 
 class RecordOut(Schema):
     outcome: str
+    next_attempt_at: datetime | None = Field(None, description="When it is due again; empty when taken, refused or gone.")
+    attempts: int = Field(0, description="The pushes the Hub did not take so far.")
+
+
+class HeldDelivery(Schema):
+    id: UUID
+    revision: int = Field(ge=0)
+
+
+class HoldIn(Schema):
+    """Claimed deliveries given back without a push: due again at ``until`` (now when missing), no attempt counted."""
+
+    deliveries: list[HeldDelivery] = Field(max_length=500)
+    until: datetime | None = None
+
+
+class HoldOut(Schema):
+    held: int
+
+
+class NextDueIn(Schema):
+    """No field: the soonest of every business."""
+
+
+class NextDueOut(Schema):
+    at: datetime | None = Field(
+        description="When the next delivery is due (now or before: due already); empty when nothing waits for the Hub."
+    )
 
 
 # --- Door 5: send ---------------------------------------------------------------------------------------------

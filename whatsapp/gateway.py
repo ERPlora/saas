@@ -5,7 +5,11 @@ Meta (``meta``) and to the Hub (``hub_client``), so that no transaction waits fo
   it touched (WHATSAPP-G07);
 - ``deliver``: what waits for the Hub, pushed to its doors 1 and 2 and recorded as the Hub answered
   (FIX-SAAS-WHATSAPP-GATEWAY-DOORS). Contract: 200 taken; 422 the body does not hold (never retried); anything
-  else (404 ``app_inactive``, a Hub without the door, 5xx, no answer) kept and retried with a growing wait;
+  else (404 ``app_inactive``, a Hub without the door, 5xx, no answer) kept and retried with a growing wait. Each
+  business's messages go in the order they arrived: once its Hub did not take one, the business's next messages of
+  the batch are held with its wait, and the other businesses go on. ``deliver_pass`` is one pass of it under the
+  lock of ``whatsapp_deliver``, for ``PASS_BUDGET`` at most: what the ``saas-worker`` runs when it wakes
+  (``base.worker``, saas#305) and the command ``whatsapp_deliver`` by hand;
 - ``send``: door 5. Claim (the month's place, by the key) → Meta, outside any transaction → record how it ended. The
   cap refuses before Meta (409 ``whatsapp.cap_reached``), the claim committed so the Hub gets the month's real usage
   in its snapshot (once per figure, WHATSAPP-F05).
@@ -38,12 +42,14 @@ What a door answers is ``(status, body)``: the body of a 2xx, or the single erro
 
 import logging
 import secrets
+import threading
 from datetime import timedelta
 
 from django.conf import settings
 from django.utils import timezone
 from live.errors import OperationError
 
+from hubs.services import run_exclusively
 from whatsapp import emails, hub_client, meta, queries, services, templates
 from whatsapp.schemas import (
     AlertedIn,
@@ -53,6 +59,8 @@ from whatsapp.schemas import (
     ConnectingIn,
     DisconnectIn,
     EraseIn,
+    HeldDelivery,
+    HoldIn,
     IngestIn,
     IngestOut,
     NumberConnectIn,
@@ -74,11 +82,17 @@ from whatsapp.schemas import (
 
 logger = logging.getLogger(__name__)
 
-#: How many deliveries the webhook pushes before answering Meta (the rest, ``whatsapp_deliver``).
+#: How many deliveries the webhook pushes before answering Meta (the rest, the ``saas-worker``).
 WEBHOOK_DELIVERIES = 20
+#: How long a pass of ``deliver_pass`` may push for: each batch claims only the rows whose calls fit in what is left
+#: (``hub_client.LONGEST_CALL``, 10 s each at the Hub's slowest), so the pass's last call ends by 50 s, inside
+#: ``services.LEASE`` (5 min) of every row it claimed. The worker starts the next pass at once when more is due.
+PASS_BUDGET = timedelta(seconds=50)
 #: How long a status waits for the Hub's key of its message before it is taken as a message the Hub never sent.
 STATUS_KEY_WAIT = timedelta(minutes=10)
 _COUNTED = {"delivered": "delivered", "retry": "retried", "refused": "refused", "drop": "dropped"}
+#: What a batch counts: each outcome, and ``held`` (claimed and given back without a push).
+COUNTS = (*_COUNTED.values(), "held")
 
 
 def ingest(payload: dict) -> IngestOut:
@@ -97,16 +111,66 @@ def ingest(payload: dict) -> IngestOut:
     return out
 
 
-def deliver(hub_ids=None, *, limit: int = 50) -> dict[str, int]:
-    """Push what is due (of ``hub_ids``, or of every business) and record each answer."""
-    counts = dict.fromkeys(_COUNTED.values(), 0)
+def deliver(hub_ids=None, *, limit: int = 50, stop: threading.Event | None = None) -> dict[str, int]:
+    """Push what is due (of ``hub_ids``, or of every business) and record each answer, in the order it arrived.
+
+    A message of a business whose Hub did not take an earlier message of this batch is held with that one's wait
+    (``services.IN_ORDER_ATTEMPTS`` failed tries at most): it never reaches the Hub before it. ``stop`` set (the worker
+    asked to stop) ends the batch after the push in course and gives the rest back, due again at once."""
+    counts = dict.fromkeys(COUNTS, 0)
     ctx = services.platform_context()
     claimed = services.delivery_claim(ctx, ClaimIn(hub_ids=hub_ids, limit=limit)).deliveries
-    for delivery in claimed:
+    failed: dict = {}
+    held: dict = {}
+    for index, delivery in enumerate(claimed):
+        if stop is not None and stop.is_set():
+            held.setdefault(None, []).extend(claimed[index:])
+            break
+        if delivery.kind == "message" and delivery.hub_id in failed:
+            held.setdefault(failed[delivery.hub_id], []).append(delivery)
+            continue
         outcome, error = _push(delivery)
-        services.delivery_record(ctx, RecordIn(id=delivery.id, revision=delivery.revision, outcome=outcome, error=error))
+        answer = services.delivery_record(
+            ctx, RecordIn(id=delivery.id, revision=delivery.revision, outcome=outcome, error=error)
+        )
         counts[_COUNTED[outcome]] += 1
+        if (
+            delivery.kind == "message"
+            and outcome == "retry"
+            and answer.next_attempt_at is not None
+            and answer.attempts < services.IN_ORDER_ATTEMPTS
+        ):
+            failed[delivery.hub_id] = answer.next_attempt_at
+    for until, deliveries in held.items():
+        given_back = [HeldDelivery(id=delivery.id, revision=delivery.revision) for delivery in deliveries]
+        services.delivery_hold(ctx, HoldIn(deliveries=given_back, until=until))
+        counts["held"] += len(deliveries)
     return counts
+
+
+def push_for(budget: timedelta, stop: threading.Event | None = None) -> dict[str, int]:
+    """Batch after batch while one comes full, each one only as big as the calls that still fit in ``budget``; a
+    ``stop`` set ends it after the push in course."""
+    now = timezone.now()
+    ends = now + budget
+    totals = dict.fromkeys(COUNTS, 0)
+    while (room := int((ends - now) / hub_client.LONGEST_CALL)) > 0 and not (stop is not None and stop.is_set()):
+        counts = deliver(limit=room, stop=stop)
+        for key, value in counts.items():
+            totals[key] += value
+        if sum(counts.values()) < room:
+            break
+        now = timezone.now()
+    return totals
+
+
+def deliver_pass(stop: threading.Event | None = None) -> dict[str, int] | None:
+    """One pass of what is due, under the lock of ``whatsapp_deliver``: two processes never run one at once.
+    ``None``: another one holds the lock, and this one pushed nothing."""
+    with run_exclusively("whatsapp_deliver") as mine:
+        if not mine:
+            return None
+        return push_for(PASS_BUDGET, stop)
 
 
 def _push(delivery) -> tuple[str, str]:

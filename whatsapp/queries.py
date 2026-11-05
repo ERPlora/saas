@@ -6,7 +6,10 @@ transaction) and by ``hubs.queries`` for the snapshot (the Hub reads the channel
 ``whatsapp.template.account`` is the read ``gateway`` makes before it calls Meta for a business's templates, and
 ``whatsapp.number.renewal_due`` the numbers whose permission is renewed today (WHATSAPP-G12);
 ``whatsapp.number.connecting`` the business a connection is for and the PIN its number already has (doors 10, 11);
-``whatsapp.media.locate`` the attachment a person of the business opens (WHATSAPP-G07).
+``whatsapp.media.locate`` the attachment a person of the business opens (WHATSAPP-G07);
+``whatsapp.delivery.next_due`` when the next delivery to the Hub is due: the ``saas-worker`` sleeps until then
+(saas#305). ``behind_a_waiting_message`` is the rule of the order of each business's messages, shared with
+``services.delivery_claim``.
 """
 
 import logging
@@ -14,7 +17,7 @@ from datetime import timedelta
 from typing import Any
 from uuid import UUID
 
-from django.db.models import Q
+from django.db.models import Exists, Min, OuterRef, Q
 from django.utils import timezone
 from live.context import OperationContext
 from live.errors import Conflict, NotFound
@@ -29,6 +32,8 @@ from whatsapp.schemas import (
     DueNumber,
     MediaIn,
     MediaOut,
+    NextDueIn,
+    NextDueOut,
     RenewalDueIn,
     RenewalDueOut,
     TemplateAccountIn,
@@ -46,7 +51,29 @@ HUB_STATUSES = ("APPROVED", "PENDING", "REJECTED", "PAUSED", "DISABLED")
 #: The most templates the Hub takes in one block (Meta allows a verified account more).
 HUB_TEMPLATE_LIMIT = 1000
 
+#: How many failed pushes a message holds the newer ones of its business back for (the order the customer wrote in):
+#: about an hour of tries (``services.retry_wait``: 30 s doubling, 1 h 3 min in all). Past it, a message the Hub keeps
+#: failing on that is not a 422 (a fault of the Hub's on that body) no longer silences the business's inbox: the newer
+#: ones go on, each with its own wait (a FIFO queue's limit of receives, without a queue of dead letters: it is still
+#: tried every hour, and the admin shows it).
+IN_ORDER_ATTEMPTS = 8
+
 logger = logging.getLogger(__name__)
+
+
+def behind_a_waiting_message(now) -> Q:
+    """A message of a business while an older one of the same business still waits for the Hub (its next try not due
+    yet, or leased: being pushed), for ``IN_ORDER_ATTEMPTS`` failed tries at most: it is not pushed before it. Ties in
+    ``received_at`` go by id (UUIDv7: the order they were parked in). A status is never held back: the Hub keeps the
+    furthest one of a message, whatever their order."""
+    older = Delivery.objects.filter(
+        hub_id=OuterRef("hub_id"),
+        kind=Delivery.Kind.MESSAGE,
+        delivered_at__isnull=True,
+        next_attempt_at__gt=now,
+        attempts__lt=IN_ORDER_ATTEMPTS,
+    ).filter(Q(received_at__lt=OuterRef("received_at")) | Q(received_at=OuterRef("received_at"), id__lt=OuterRef("id")))
+    return Q(kind=Delivery.Kind.MESSAGE) & Q(Exists(older))
 
 
 def known_hub(ref: str, *, live: bool = True) -> Hub | None:
@@ -256,3 +283,22 @@ def media_locate(ctx: OperationContext, data: MediaIn) -> MediaOut:
         mime_type=str(media.get("mime_type") or ""),
         filename=str(media.get("filename") or ""),
     )
+
+
+@operation(
+    "whatsapp.delivery.next_due",
+    kind="query",
+    permission=PERMISSION,
+    input=NextDueIn,
+    output=NextDueOut,
+    ai=INTERNAL,  # worker
+)
+def delivery_next_due(ctx: OperationContext, data: NextDueIn) -> NextDueOut:
+    """When the next delivery to the Hub is due: the soonest wait of what still waits (a refused one never is), a
+    message held back behind an older one of its business counting from that one's. ``None``: nothing waits."""
+    soonest = (
+        Delivery.objects.filter(delivered_at__isnull=True, next_attempt_at__isnull=False)
+        .exclude(behind_a_waiting_message(timezone.now()))
+        .aggregate(at=Min("next_attempt_at"))["at"]
+    )
+    return NextDueOut(at=soonest)
