@@ -36,7 +36,7 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
 - **Qué corre la CI**: solo `panel/assistant-gateway.spec.ts`, las puertas del asistente tal como las llama el Hub (job
   `e2e-doors` de `.github/workflows/test.yml`, parte del check obligatorio `test / test`). Un cambio en una puerta no
   toca ninguna pantalla y nadie corría esta spec a mano: estuvo en rojo sin que se viera (saas#285). Las demás specs no
-  corren solas: quien toca lo suyo las corre a mano.
+  corren solas: quien toca lo suyo las corre a mano (saas#296).
 - **Depurar**: `DEBUG=pw:webserver pnpm e2e:ci <spec>` enseña el arranque y la salida de cada servidor
   (`DEBUG=pw:*`, todos los registros de Playwright). Los procesos de Django no heredan ese `DEBUG`, que leen
   como booleano: cada uno lleva el suyo por `django-env.ts` (`:8011` apagado; `:8012`, `globalSetup` y los
