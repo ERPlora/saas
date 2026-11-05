@@ -26,7 +26,7 @@ import { ApiError, type FieldErrors, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, IonIcon, IonInput, IonInputPasswordToggle, IonLabel, IonSegment, IonSegmentButton } from '@ionic/vue';
 import { computed, onMounted, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRoute, useRouter } from 'vue-router';
+import { type RouteLocationNormalizedLoaded, useRoute, useRouter } from 'vue-router';
 
 import { localNext } from '../next';
 import { LAUNCHER } from '../paths';
@@ -93,8 +93,16 @@ const failure = shallowRef('');
 /** The failure is a wrong email or password: «Sign in» then offers «Create account». */
 const mismatch = shallowRef(false);
 
-/** The page the form lives on (`/launch`, or `/shell` in the installed app). */
-const home = route.path;
+/**
+ * The page of an address: its route, the same at every address the route answers (`/launch`, and `/shell` or
+ * `/shell/` where the installed app opens it: an alias is its route's `aliasOf`).
+ */
+function pageOf(location: RouteLocationNormalizedLoaded) {
+  const record = location.matched.at(-1);
+  return record?.aliasOf ?? record;
+}
+/** The page the form lives on. */
+const home = pageOf(route);
 /**
  * The query of the form's page: the address's while the address is that page's. Leaving for the code or the 2FA
  * page, the address is already the next page's while Ionic still animates this one out (and keeps it in its stack):
@@ -104,7 +112,7 @@ const query = shallowRef(route.query);
 watch(
   () => route.fullPath,
   () => {
-    if (route.path === home) query.value = route.query;
+    if (pageOf(route) === home) query.value = route.query;
   },
 );
 

@@ -9,6 +9,9 @@
 import { IonButton, IonIcon, IonInput, IonSegment } from '@ionic/vue';
 import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { RouteRecordRaw } from 'vue-router';
+
+import hubRoutes from '../../../hubs/frontend/routes';
 
 import {
   anonymous,
@@ -27,9 +30,13 @@ import {
 import { mountAccountPage } from '../__tests__/mount-account-page';
 import { forgetRecaptcha, withRecaptcha } from '../__tests__/recaptcha-page';
 import { choose } from '../__tests__/mount-panel';
+import { LAUNCHER } from '../paths';
 import SignInForm from './SignInForm.vue';
 
 type Control = HTMLElement & { errorText?: string; disabled?: boolean };
+
+/** The launcher's route as the app defines it (its path and its other addresses, `/shell`), on a blank page. */
+const LAUNCHER_ROUTE = { ...hubRoutes.find((route) => route.path === LAUNCHER), component: { template: '<div />' } } as RouteRecordRaw;
 
 let assign: ReturnType<typeof vi.fn>;
 
@@ -54,6 +61,7 @@ async function mountForm(options: Options = {}) {
     path: options.path ?? '/launch',
     locale: options.locale,
     config: options.googleEnabled === undefined ? {} : { googleEnabled: options.googleEnabled },
+    routes: [LAUNCHER_ROUTE],
   });
   const { wrapper } = mounted;
   const input = (name: 'email' | 'password') =>
@@ -468,6 +476,25 @@ describe('SignInForm: the tabs «Sign in» and «Create account» (FIX-LAUNCH-TA
     await flushPromises();
     expect(tab()).toBe('signup');
   });
+
+  // The installed app opens the launcher at /shell/; the pages that send back write `/launch` (LAUNCHER): one page.
+  it.each(['/shell', '/shell/'])(
+    'opened at %s, follows every address of the launcher when the page comes back (Ionic reuses it)',
+    async (opened) => {
+      fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/signup': pendingEmailVerification });
+      const { wrapper, signIn, router, tab } = await mountForm({ path: `${opened}?tab=signup` });
+      await signIn('new@example.com', 'a long pass phrase');
+      expect(router.currentRoute.value.path).toBe('/verify-email');
+      await router.replace('/launch?notice=code_expired');
+      await flushPromises();
+      expect(tab()).toBe('signin');
+      expect(wrapper.find('[data-testid="login-notice"]').exists()).toBe(true);
+      await router.replace(opened === '/shell' ? '/shell/?tab=signup' : '/shell?tab=signup');
+      await flushPromises();
+      expect(tab()).toBe('signup');
+      expect(wrapper.find('[data-testid="login-notice"]').exists()).toBe(false);
+    },
+  );
 
   it('leaves the errors of one tab behind when the other is chosen', async () => {
     fakeAllauth({
