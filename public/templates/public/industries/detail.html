@@ -7,8 +7,11 @@
     both so the title, the meta description and the JSON-LD say exactly the same;
   - the JSON-LD is serialised in the view (public/structured_data.py), never written here;
   - ONE block of apps, the listed apps of the business type's vertical (spec §8.1, decision 13),
-    instead of «included» and «optional» modules. A vertical with no listed app says they are on
-    the way, as today's page did («In preparation»); without a vertical, no block (spec §5.3);
+    instead of «included» and «optional» modules. They are the apps made for that business, not
+    apps it comes with: every business is born with every app off (PLAN §33), so the block says how
+    they are turned on (public.industries.how_apps_turn_on, also the end of the FAQ's «start»).
+    A vertical with no listed app says they are on the way, as today's page did («In
+    preparation»); without a vertical, no block (spec §5.3);
   - the FAQ renders the same list as the FAQPage JSON-LD (public.industries.faq_items), with the
     bare ion-accordion of /pricing/ (L8);
   - the closing band names the business type as the taxonomy writes it, as today (L8);
@@ -34,8 +37,8 @@
     <div class="ep-container ep-section-content">
       <header class="ep-section-head">
         <span class="ep-eyebrow">{% blocktrans trimmed count counter=apps|length %}{{ counter }} app{% plural %}{{ counter }} apps{% endblocktrans %}</span>
-        <h2 class="ep-section-title">{% trans "Apps included out of the box" %}</h2>
-        <p class="ep-section-sub">{% blocktrans trimmed with business=industry.subject %}Everything a {{ business }} needs, turned on from day one.{% endblocktrans %}</p>
+        <h2 class="ep-section-title">{% blocktrans trimmed with business=industry.subject %}Apps made for your {{ business }}{% endblocktrans %}</h2>
+        <p class="ep-section-sub">{{ how_apps_turn_on }}</p>
       </header>
       <div class="ep-grid-cards">
         {% for app in apps %}
