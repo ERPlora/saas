@@ -98,6 +98,8 @@ class PlanOut(Schema):
     #: Apps the business may choose to turn on at once, the ones they require aside (the cap the Hub applies, hub#256);
     #: 0 = no limit.
     max_apps: int
+    #: Whether the business's public website may go on a domain of its own (HUBS-F17); never the app.
+    includes_custom_domain: bool
     upgrade_only: bool
     internal_only: bool
 

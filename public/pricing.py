@@ -30,7 +30,11 @@ Port of ERPlora/saas ``apps/public/pricing/views.py`` (origin/develop c5ca8ca). 
   they require do not count) are a line of every card, right after what the plan includes, and a column of the table
   next to the devices and users (:func:`apps_at_once`), worked out from the row so the admin is the one place to
   change them; 0 is no limit. The switch answer says a downgrade over the plan's limits takes nothing away: the apps
-  turned on stay on, the users and the files stay, and only adding more waits (PLAN-SAAS, ronda 2026-11-03g).
+  turned on stay on, the users and the files stay, and only adding more waits (PLAN-SAAS, ronda 2026-11-03g);
+* the custom domain of the business's public website (HUBS-F17; the app stays on erplora.com, PLAN-SAAS §37 point 2) is
+  a line of the cards of the plans whose ``includes_custom_domain`` is true, after the messages a month, and a column
+  of the table while a plan on sale includes one (:func:`custom_domain_plans`; saas#301, which undid saas#233's ban
+  once a domain could be connected).
 """
 
 from __future__ import annotations
@@ -206,14 +210,28 @@ def _with_apps_at_once(features: list[str], line: str) -> list[str]:
     return [*features[:at], line, *features[at:]]
 
 
+def custom_domain_line() -> str:
+    """The card line of a plan that includes a custom domain: the business's public website, never the app."""
+    return _("Your own domain for your website (www.yourbusiness.com)")
+
+
+def custom_domain_plans(plans) -> list[str]:
+    """The names of the plans on sale that include a custom domain (``includes_custom_domain``), in their order."""
+    return [plan.name for plan in plans.plans if plan.includes_custom_domain]
+
+
 def plan_card(plan) -> dict[str, Any]:
     """A plan as the selling screens paint it: its own features with the apps it turns on at once, then the messages
-    a month it includes, then its trial (the operation's last line, saas#2424)."""
+    a month it includes and its custom domain if it has one, then its trial (the operation's last line, saas#2424)."""
     features = list(plan.features)
     trial = [features.pop()] if _has_trial_line(plan) else []
     assistant = messages_a_month(plan.assistant_messages_per_month)
     whatsapp = messages_a_month(plan.whatsapp_messages_per_month)
-    own_features = [*_with_apps_at_once(features, apps_at_once(plan.max_apps)), *_message_lines(assistant, whatsapp)]
+    own_features = [
+        *_with_apps_at_once(features, apps_at_once(plan.max_apps)),
+        *_message_lines(assistant, whatsapp),
+        *([custom_domain_line()] if plan.includes_custom_domain else []),
+    ]
     return {
         **plan.model_dump(),
         "apps_label": apps_at_once_label(plan.max_apps),
@@ -384,6 +402,10 @@ def section_surfaces(shown: list[str]) -> dict[str, bool]:
     return {name: index % 2 == 1 for index, name in enumerate(shown)}
 
 
+#: The columns of the table that compares the plans, without the custom domain's (shown while a plan on sale has one).
+COMPARE_COLUMNS = 9
+
+
 @require_safe
 def index(request: HttpRequest) -> HttpResponse:
     """The plans a visitor can sign up for, as cards, the upgrade-only ones under «More capacity», the table that
@@ -394,6 +416,7 @@ def index(request: HttpRequest) -> HttpResponse:
     entry = cheapest(plans)
     signable = signable_cards(plans)
     upgrades = upgrade_cards(plans) if signable else []
+    custom_domain_column = bool(custom_domain_plans(plans))
     shown = ["plans", *(["upgrades"] if upgrades else []), *(["compare"] if signable else []), "competitors", "faq"]
     return render(
         request,
@@ -405,6 +428,8 @@ def index(request: HttpRequest) -> HttpResponse:
             "cheapest_plan": plan_card(entry) if entry else None,
             "trial_note": trial_note(days),
             "months_free": common_months_free(plans),
+            "custom_domain_column": custom_domain_column,
+            "compare_columns": COMPARE_COLUMNS + custom_domain_column,
             "faq_items": faq,
             "json_ld_faq": json_ld(faq_page(faq)),
         },

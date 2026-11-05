@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:3afe93b485b10c0134d76dfc289cb461fac10a745912f91e290cc5c767bd5edf -->
+<!-- generated from WORKBOOK.md sha256:f3142c0a71c8d75f0c9b7dd754198e223164fa6de703aee0a8bbac008e8d1b4f -->
 
 ## What it is for and who it is for
 
@@ -57,7 +57,7 @@ Who uses it:
 Menu **Store**, with two sections: **Plans** and **Modules**, and at the top the business it buys for (only
 the businesses one owns). Plans shows each plan with its price without VAT, the period ("Monthly" or
 "Annual · −n %"), its lines as on /pricing/ (after "All apps included" or "Everything in …", "Up to 40 apps
-turned on at once", or "All the apps turned on at once" when the plan has no cap; then the messages a month and,
+turned on at once", or "All the apps turned on at once" when the plan has no cap; then the messages a month, "Your own domain for your website (www.yourbusiness.com)" on the plans that include it and,
 last, the trial), "Your current plan" on the one it has and each plan's button: "Upgrade to …",
 "Change to …", "Change to annual · …" or "Downgrade to Free"; with the plan cancelled or a downgrade scheduled,
 "Keep the plan". If the

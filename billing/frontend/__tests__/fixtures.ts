@@ -73,6 +73,7 @@ export function plan(slug: string, name: string, monthly: string, annual: string
     assistant_messages_per_month: 0,
     whatsapp_messages_per_month: 0,
     max_apps: 0,
+    includes_custom_domain: false,
     upgrade_only: false,
     internal_only: false,
     ...extra,

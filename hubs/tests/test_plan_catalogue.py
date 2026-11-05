@@ -723,21 +723,36 @@ def test_the_api_patterns_catch_the_lines_that_were_actually_published():
 CUSTOM_DOMAIN_WORDS = re.compile(
     r"\bcustom domains?\b|\bown domains?\b|\bdominios? propios?\b|\berp\.yourbusiness\b|\berp\.tunegocio\b", re.I
 )
+#: The app on a domain of the business's: never sold, the app and the way in stay on erplora.com (PLAN-SAAS §8, round
+#: 2026-10-22, and §37 point 2). The custom domain is only for the business's public website.
+APP_ON_A_CUSTOM_DOMAIN = re.compile(r"\berp\.yourbusiness\b|\berp\.tunegocio\b", re.I)
 
 
-def test_no_plan_sells_a_custom_domain_nobody_can_connect(catalogue):
-    """saas#233: Standard sold «Custom domain (erp.yourbusiness.com)» and «your own domain», but no business can
-    connect one: HUBS-F17 is ``descartado`` until saas#195 brings its three pieces at once (PLAN-SAAS §8, round
-    2026-10-22). ``includes_custom_domain`` stays, the gate saas#195 will read. When HUBS-F17 is done, this guard goes
-    back to «only the plans that gate it promise it» (saas#1956), and then only for the business's public website."""
-    sellers = {slug: [text for text in _copy(plan) if CUSTOM_DOMAIN_WORDS.search(text)] for slug, plan in catalogue.items()}
+def test_only_the_plans_that_include_a_custom_domain_sell_one(catalogue):
+    """saas#1956, back since saas#301: a plan's copy names a custom domain only if it includes one
+    (``includes_custom_domain``, the gate HUBS-F17 reads). saas#233 had banned the words on every plan while no business
+    could connect a domain; HUBS-F17 is done (saas#302). The cards paint the line from the gate itself."""
+    sellers = {
+        slug: texts
+        for slug, plan in catalogue.items()
+        if not plan.includes_custom_domain and (texts := [text for text in _copy(plan) if CUSTOM_DOMAIN_WORDS.search(text)])
+    }
+
+    assert sellers == {}
+
+
+def test_no_plan_sells_the_app_on_a_custom_domain(catalogue):
+    """0013 sold «Custom domain (erp.yourbusiness.com)»: the app never runs on the business's domain, only its
+    public website does."""
+    sellers = {slug: [text for text in _copy(plan) if APP_ON_A_CUSTOM_DOMAIN.search(text)] for slug, plan in catalogue.items()}
 
     assert {slug: texts for slug, texts in sellers.items() if texts} == {}
 
 
-def test_the_custom_domain_guard_catches_the_words_that_were_on_sale():
-    """Positive control: the exact lines Standard and the public web carried before saas#233, and the words that stay
-    (every plan's address on erplora.com) pass."""
+def test_the_custom_domain_guards_catch_the_words_that_were_on_sale():
+    """Positive control: the exact lines Standard and the public web carried before saas#233 are a custom domain, the
+    two that named the app's address are the app on one, and the words that stay (every plan's address on erplora.com)
+    are neither."""
     for published in (
         "Custom domain (erp.yourbusiness.com)",
         "Dominio propio (erp.tunegocio.com)",
@@ -749,8 +764,21 @@ def test_the_custom_domain_guard_catches_the_words_that_were_on_sale():
         "de los hubs *.erplora.com o dominios propios del cliente.",
     ):
         assert CUSTOM_DOMAIN_WORDS.search(published), f"guard is blind to the claim it exists to stop: {published!r}"
+    for app in ("Custom domain (erp.yourbusiness.com)", "Dominio propio (erp.tunegocio.com)"):
+        assert APP_ON_A_CUSTOM_DOMAIN.search(app), app
+    for website in ("Your own domain for your website (www.yourbusiness.com)", "Dominio propio para tu web (www.tunegocio.com)"):
+        assert CUSTOM_DOMAIN_WORDS.search(website) and not APP_ON_A_CUSTOM_DOMAIN.search(website), website
     for honest in (".erplora.com subdomain", "Subdominio .erplora.com", "Datos cifrados y certificado SSL automático"):
         assert not CUSTOM_DOMAIN_WORDS.search(honest), honest
+
+
+def test_a_plan_that_does_not_include_a_custom_domain_and_sells_one_is_caught(catalogue):
+    """Positive control of the first guard: Starter (no custom domain) with Standard's old line is a seller."""
+    starter = catalogue["starter"]
+    starter.features_en = [*starter.features_en, "Custom domain (erp.yourbusiness.com)"]
+
+    assert not starter.includes_custom_domain
+    assert any(CUSTOM_DOMAIN_WORDS.search(text) for text in _copy(starter))
 
 
 # --- From test_plan_trial_label.py (saas#2424) ------------------------------------------------

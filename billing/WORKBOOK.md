@@ -72,7 +72,7 @@ Menú **Tienda**, con dos secciones: **Planes** y **Módulos**, y arriba el nego
 (solo los negocios de los que se es propietario). Planes enseña cada plan con su precio sin IVA, el
 periodo («Mensual» o «Anual · −n %»), sus líneas como en /pricing/ (tras «Todas las apps incluidas» o «Todo lo
 del plan …», «Hasta 40 apps activadas a la vez», o «Todas las apps activadas a la vez» si el plan no tiene tope;
-después los mensajes al mes y, al final, la prueba), «Tu plan actual» en el que se tiene y el botón de cada uno:
+después los mensajes al mes, «Dominio propio para tu web (www.tunegocio.com)» en los planes que lo incluyen y, al final, la prueba), «Tu plan actual» en el que se tiene y el botón de cada uno:
 «Mejorar a …», «Cambiar a …», «Cambiar a anual · …» o «Bajar a Gratis»; con el plan cancelado o una bajada
 programada, «Mantener el plan». Si el negocio tiene una factura sin pagar, arriba sale el aviso con «Pagar la factura» y no se
 vende nada a ese negocio.

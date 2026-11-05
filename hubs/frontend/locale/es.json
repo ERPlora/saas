@@ -316,6 +316,7 @@
         "heading": "Tu plan no incluye dominio propio",
         "headingNamed": "El plan {plan} no incluye dominio propio",
         "body": "Cambia a un plan que lo incluya para mostrar tu web en tu propio dominio.",
+        "bodyNamed": "Lo incluye el plan {plan}. Cámbiate a él para mostrar tu web en tu propio dominio.",
         "plans": "Ver planes"
       },
       "field": "Tu dominio",

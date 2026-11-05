@@ -205,13 +205,13 @@ Estado: hecho
 Actor: visitante
 Pantalla: Planes y precios
 Pasos:
-1. La persona abre «Precios» y ve «Empieza gratis. Escala cuando lo necesites.», que todos los planes incluyen todas las apps, y una tarjeta por plan con el que se puede empezar (Gratis, Starter y Standard), con el precio mensual por hub, sus características, cuántas apps se pueden tener activadas a la vez («Hasta 20 apps activadas a la vez»; sin tope, «Todas las apps activadas a la vez») y los mensajes al mes del asistente y de WhatsApp.
+1. La persona abre «Precios» y ve «Empieza gratis. Escala cuando lo necesites.», que todos los planes incluyen todas las apps, y una tarjeta por plan con el que se puede empezar (Gratis, Starter y Standard), con el precio mensual por hub, sus características, cuántas apps se pueden tener activadas a la vez («Hasta 20 apps activadas a la vez»; sin tope, «Todas las apps activadas a la vez»), los mensajes al mes del asistente y de WhatsApp y, en los planes que lo incluyen, «Dominio propio para tu web (www.tunegocio.com)».
 2. Si el plan tiene precio anual, la tarjeta dice el precio del año y los meses que ahorra («≈ 299,90 €/año · 2 meses gratis»), calculados de los dos precios; si todos los planes de pago ahorran lo mismo, la cabecera lo dice una vez («Paga el año y llévate 2 meses gratis.»).
 3. Más abajo, «Más capacidad»: los planes de mejora (hoy Pro, Enterprise y Max), cada uno con su precio mensual y anual, su descripción y sus características, y «Disponible al pasar a Starter» en lugar del botón de alta; un solo botón, «Empieza gratis y mejora cuando quieras», lleva a la pantalla de entrar.
-4. Después, la tabla de lo incluido en cada plan (también los de mejora), con las apps activadas a la vez de cada uno, el mismo tope que aplica el Hub («Ilimitadas» sin tope); las comparativas con otros ERP y las preguntas frecuentes, donde la de cambiar de plan explica que bajar no apaga ninguna app: con más apps activadas que el tope nuevo, se quedan activadas y no se pueden activar más hasta estar por debajo. Nada se ofrece por contacto.
+4. Después, la tabla de lo incluido en cada plan (también los de mejora), con las apps activadas a la vez de cada uno, el mismo tope que aplica el Hub («Ilimitadas» sin tope), y su «Dominio propio» («Para tu web» o «No incluido»); las comparativas con otros ERP y las preguntas frecuentes, donde la de cambiar de plan explica que bajar no apaga ninguna app: con más apps activadas que el tope nuevo, se quedan activadas y no se pueden activar más hasta estar por debajo. Nada se ofrece por contacto.
 Entra: los planes a la venta, también los de mejora (activos y no internos), en el orden que les da el personal.
 Sale: nada guardado; los datos estructurados de las preguntas frecuentes, salidos de la misma lista que el desplegable.
-Si falla: sin planes a la venta, la página lo dice y no pinta tablas ni «Más capacidad»; sin planes de mejora, no hay «Más capacidad». Si el precio anual no ahorra ningún mes entero, la tarjeta dice solo el precio del año, sin «meses gratis». Un plan sin mensajes de asistente o de WhatsApp no los nombra.
+Si falla: sin planes a la venta, la página lo dice y no pinta tablas ni «Más capacidad»; sin planes de mejora, no hay «Más capacidad». Si el precio anual no ahorra ningún mes entero, la tarjeta dice solo el precio del año, sin «meses gratis». Un plan sin mensajes de asistente o de WhatsApp no los nombra; uno sin dominio propio tampoco lo nombra, y si ningún plan a la venta lo incluye, la tabla no tiene esa columna.
 Implicados: hubs (los planes), billing (el cobro, PUBLIC-F04)
 
 ### PUBLIC-F03 Ver el detalle de un plan
@@ -221,7 +221,7 @@ Actor: visitante
 Pantalla: Detalle de un plan
 Pasos:
 1. La persona llega a la página de un plan (por su dirección o desde «Otros planes» de otro plan).
-2. Ve el nombre, la descripción, el precio mensual por hub con la nota de IVA y «Qué incluye», con las apps que se pueden tener activadas a la vez.
+2. Ve el nombre, la descripción, el precio mensual por hub con la nota de IVA y «Qué incluye», con las apps que se pueden tener activadas a la vez y, si el plan lo incluye, el dominio propio para su web.
 3. Pulsa «Comenzar» y llega a la pantalla de entrar, donde también se crea la cuenta (PUBLIC-F11); «Otros planes» lleva a los demás planes a la venta.
 Entra: el plan por su identificador.
 Sale: nada guardado.
@@ -281,8 +281,8 @@ Pasos:
 3. La tabla de lo que se pagaría por separado solo lista funciones que las apps cubren y su total es la suma de sus filas.
 Entra: nada; el texto de las páginas, contrastado con las apps del producto.
 Sale: nada guardado.
-Si falla: no se anuncia contabilidad, nóminas, tickets de soporte, TicketBAI, los modelos 303, 390 y 347, almacenes con lotes y caducidades ni conciliación bancaria, porque ninguna app los hace; tampoco el dominio propio, porque ningún negocio puede conectar el suyo todavía (HUBS-F17, saas#195): no lo nombran ni las tarjetas ni las descripciones de los planes, ni Planes y precios, ni los términos de uso; la franja de sectores nombra los negocios que se sirven hoy (hostelería, comercio, peluquería y estética, servicios profesionales). Las comparativas con otros productos pueden nombrar lo que hacen ellos.
-Implicados: hubs (los textos de cada plan; HUBS-F17)
+Si falla: no se anuncia contabilidad, nóminas, tickets de soporte, TicketBAI, los modelos 303, 390 y 347, almacenes con lotes y caducidades ni conciliación bancaria, porque ninguna app los hace; el dominio propio se anuncia solo en los planes que lo incluyen y solo para la web pública del negocio, nunca para la aplicación, que sigue en su dirección de erplora.com (HUBS-F17): lo dicen la tarjeta de cada uno de esos planes, su columna en la tabla de Planes y precios y los términos de uso, que nombran esos planes; sin ningún plan a la venta que lo incluya, no lo nombra ninguna de esas páginas; la franja de sectores nombra los negocios que se sirven hoy (hostelería, comercio, peluquería y estética, servicios profesionales). Las comparativas con otros productos pueden nombrar lo que hacen ellos.
+Implicados: hubs (los textos de cada plan y si incluye dominio propio; HUBS-F17)
 
 ### PUBLIC-F08 Leer lo que la web dice de seguridad, datos y disponibilidad
 <!-- origen: old-saas:SAAS_PUBLIC-F77 -->
@@ -462,7 +462,7 @@ Pantalla: Textos legales
 Pasos:
 1. En el pie, «Aviso legal», «Privacidad» y «Términos» abren cada texto en su página; la política de cookies se abre desde la privacidad.
 2. La privacidad nombra a quién se confían los datos: Amazon Web Services en la región de Irlanda para el alojamiento y el correo, el modelo de lenguaje del asistente en Fráncfort, sin entrenar con ellos, y OpenAI para la voz y las huellas de búsqueda del asistente: transcribe el audio de un dictado, que ni el hub ni ERPlora guardan, y puede tratarlo fuera del Espacio Económico Europeo. Aparte de esos encargados, nombra a Brave Search, en Estados Unidos, que recibe las consultas de la búsqueda en la web del asistente y las conserva hasta 90 días: su acuerdo de tratamiento de datos las deja fuera y las cláusulas contractuales tipo no las cubren. Leer una respuesta en voz alta lo hace la voz del propio dispositivo (la del navegador o la del sistema): su texto no sale de él.
-3. Los términos dan los números que el producto cumple: los días del paquete de salida, los días que espera un negocio suspendido antes de borrarse y la prueba de los planes a la venta (ninguna si ninguno la tiene). Su uso aceptable prohíbe guardar, redistribuir o entrenar con los resultados de la web que trae el asistente, como piden los términos de su proveedor.
+3. Los términos dan los números que el producto cumple: los días del paquete de salida, los días que espera un negocio suspendido antes de borrarse y la prueba de los planes a la venta (ninguna si ninguno la tiene); y nombran los planes a la venta que incluyen dominio propio para la web pública del negocio (ninguno si ninguno lo incluye), con la aplicación y la entrada al negocio en erplora.com. Su uso aceptable prohíbe guardar, redistribuir o entrenar con los resultados de la web que trae el asistente, como piden los términos de su proveedor.
 Entra: los planes a la venta (los términos).
 Sale: nada guardado.
 Si falla: ningún texto nombra un proveedor que ya no se usa ni otro alojamiento, ni calla a quién va el audio de un dictado, ni promete para él residencia en la UE o un plazo de conservación, ni promete que una consulta a la web no lleve nunca un dato personal (es una regla que se da al modelo, no una garantía), ni un consentimiento o un interruptor del asistente que el hub no tiene (el asistente se usa cuando alguien le escribe o le dicta: en el hub, con los mensajes que dé el plan; en el panel de erplora.com, con los de la cuenta), y ningún enlace entre textos lleva a una página que no existe.

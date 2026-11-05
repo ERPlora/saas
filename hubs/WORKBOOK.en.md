@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:39ccbce3df4a2d7f2ff62b626810548fd85861a1da0760c55e7a6ba0f19d259d -->
+<!-- generated from WORKBOOK.md sha256:8aa7353671e12289d82285effb85d6420ee19af6f4a9ae9e077e25b20418b35c -->
 
 ## What it is for and who it is for
 
@@ -92,7 +92,8 @@ Each business's "Settings" tab. "General": "Business name", "Country" (only text
 is enabled when something changes. Below, "Own domain": on a plan that includes it, the owner types "Your domain"
 and presses "Connect domain"; with a domain, its state, where it is stuck, the two CNAME records ("1. Validation
 record" and "2. Record that points to ERPlora", each with "Copy the name" and "Copy the value"), the hourly check and
-"Remove domain". A plan that does not include it says "The … plan does not include an own domain" with "See plans";
+"Remove domain". A plan that does not include it says "The … plan does not include an own domain" and "The … plan
+includes it" with "See plans";
 an administrator sees it without being able to change it. Last, the "Danger zone" with "Delete business".
 
 ### Change the web address
@@ -412,8 +413,8 @@ Steps:
 5. To remove it, they press "Remove domain" and confirm it in "Remove …": it stops being served, its certificate is deleted and the name is free.
 In: the owner's domain and the two records at their provider.
 Out: the business's public website on its domain, with its certificate.
-If it fails: what erplora.com does not accept of the name is said on the field itself ("That domain belongs to ERPlora. Write your own."). A domain that does not point to ERPlora stays inactive and the missing record is said. A root domain (mybusiness.com) is not offered, because it takes no CNAME and the entrance has no fixed IP: they connect www and redirect the root to it at their provider. A plan that does not include it does not offer it: it says "The … plan does not include an own domain" with "See plans", without a form; and moving down to one stops serving it, which comes back on moving up. With no room for more certificates, the domain waits and it is tried again every hour, and what is already active does not notice. A certificate that was refused or not validated in 72 hours has to be asked for again: the domain that is not connected comes back in the field to ask for it again with "Connect domain". If the DNS, AWS or the Hub do not answer, that is no failure and it is tried again. The app and the way into the business stay at its address on erplora.com.
-Involved: website (the business's public website), the business (BASE-F110: serves the website on its domain), public (PUBLIC-F07: the plans and the web do not advertise it yet, saas#301)
+If it fails: what erplora.com does not accept of the name is said on the field itself ("That domain belongs to ERPlora. Write your own."). A domain that does not point to ERPlora stays inactive and the missing record is said. A root domain (mybusiness.com) is not offered, because it takes no CNAME and the entrance has no fixed IP: they connect www and redirect the root to it at their provider. A plan that does not include it does not offer it: it says "The … plan does not include an own domain" and "The … plan includes it", the first on sale that includes one (if that cannot be known, "Change to a plan that includes one…"), with "See plans", without a form; and moving down to one stops serving it, which comes back on moving up. With no room for more certificates, the domain waits and it is tried again every hour, and what is already active does not notice. A certificate that was refused or not validated in 72 hours has to be asked for again: the domain that is not connected comes back in the field to ask for it again with "Connect domain". If the DNS, AWS or the Hub do not answer, that is no failure and it is tried again. The app and the way into the business stay at its address on erplora.com.
+Involved: website (the business's public website), the business (BASE-F110: serves the website on its domain), public (PUBLIC-F02, PUBLIC-F07: Plans and prices and the terms advertise it on the plans that include it), billing (the Store says so on those plans)
 
 ### HUBS-F18 Delete a business
 Status: done

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:297292e1bf817c82a482e5a952924a5566bd263ac06cdc205d314f9140aa9756 -->
+<!-- generated from WORKBOOK.md sha256:e5969deefe62797d02e4c49b56ed3e62396b90d13a9e9b0b8e08c0b102ef3e0f -->
 
 ## What it is for and who it is for
 
@@ -193,13 +193,13 @@ Status: done
 Actor: visitor
 Screen: Plans and prices
 Steps:
-1. The person opens "Pricing" and sees "Start free. Scale when you need it.", that every plan includes all the apps, and one card per plan one can start with (Free, Starter and Standard), with the monthly price per hub, its features, how many apps can be turned on at once ("Up to 20 apps turned on at once"; with no cap, "All the apps turned on at once") and the assistant and WhatsApp messages a month.
+1. The person opens "Pricing" and sees "Start free. Scale when you need it.", that every plan includes all the apps, and one card per plan one can start with (Free, Starter and Standard), with the monthly price per hub, its features, how many apps can be turned on at once ("Up to 20 apps turned on at once"; with no cap, "All the apps turned on at once"), the assistant and WhatsApp messages a month and, on the plans that include it, "Your own domain for your website (www.yourbusiness.com)".
 2. If the plan has an annual price, the card states the year's price and the months it saves ("≈ €299.90/year · 2 months free"), worked out from the two prices; if every paid plan saves the same, the header says it once ("Pay for the year and get 2 months free.").
 3. Further down, "More capacity": the upgrade plans (today Pro, Enterprise and Max), each with its monthly and annual price, its description and its features, and "Available once you are on Starter" instead of the sign-up button; one button, "Start free and upgrade whenever you want", leads to the sign-in screen.
-4. Then the table of what each plan includes (the upgrade plans too), with the apps each one can have turned on at once, the same cap the Hub applies ("Unlimited" with no cap); the comparisons with other ERPs and the frequently asked questions, where the one on switching plans explains that moving down turns no app off: with more apps turned on than the new cap, they stay on and no more can be turned on until under it. Nothing is offered by contact.
+4. Then the table of what each plan includes (the upgrade plans too), with the apps each one can have turned on at once, the same cap the Hub applies ("Unlimited" with no cap), and its "Own domain" ("For your website" or "Not included"); the comparisons with other ERPs and the frequently asked questions, where the one on switching plans explains that moving down turns no app off: with more apps turned on than the new cap, they stay on and no more can be turned on until under it. Nothing is offered by contact.
 In: the plans on sale, the upgrade plans too (active and not internal), in the order staff give them.
 Out: nothing saved; the structured data of the frequently asked questions, taken from the same list as the accordion.
-If it fails: without plans on sale, the page says so and paints neither tables nor "More capacity"; without upgrade plans, there is no "More capacity". If the annual price saves no whole month, the card states only the year's price, without "months free". A plan without assistant or WhatsApp messages does not name them.
+If it fails: without plans on sale, the page says so and paints neither tables nor "More capacity"; without upgrade plans, there is no "More capacity". If the annual price saves no whole month, the card states only the year's price, without "months free". A plan without assistant or WhatsApp messages does not name them; one without an own domain does not name it either, and if no plan on sale includes one, the table has no such column.
 Involved: hubs (the plans), billing (the charge, PUBLIC-F04)
 
 ### PUBLIC-F03 See the detail of a plan
@@ -208,7 +208,7 @@ Actor: visitor
 Screen: Plan detail
 Steps:
 1. The person reaches the page of a plan (by its address or from "Other plans" of another plan).
-2. They see the name, the description, the monthly price per hub with the VAT note and "What's included", with the apps that can be turned on at once.
+2. They see the name, the description, the monthly price per hub with the VAT note and "What's included", with the apps that can be turned on at once and, if the plan includes it, the own domain for its website.
 3. They press "Get Started" and reach the sign-in screen, where the account is also created (PUBLIC-F11); "Other plans" leads to the other plans on sale.
 In: the plan by its identifier.
 Out: nothing saved.
@@ -264,8 +264,8 @@ Steps:
 3. The table of what one would pay separately lists only functions the apps cover and its total is the sum of its rows.
 In: nothing; the pages' text, checked against the product's apps.
 Out: nothing saved.
-If it fails: accounting, payroll, support tickets, TicketBAI, the 303, 390 and 347 tax returns, warehouses with lots and expiry dates and bank reconciliation are not advertised, because no app does them; nor is an own domain, because no business can connect theirs yet (HUBS-F17, saas#195): neither the plans' cards nor their descriptions, Plans and prices or the terms of use name it; the industries strip names the businesses served today (hospitality, retail, hair and beauty, professional services). The comparisons with other products may name what those do.
-Involved: hubs (the copy of each plan; HUBS-F17)
+If it fails: accounting, payroll, support tickets, TicketBAI, the 303, 390 and 347 tax returns, warehouses with lots and expiry dates and bank reconciliation are not advertised, because no app does them; an own domain is advertised only on the plans that include it and only for the business's public website, never for the app, which stays at its erplora.com address (HUBS-F17): the card of each of those plans, its column in the Plans and prices table and the terms of use, which name those plans, say so; with no plan on sale that includes one, none of those pages names it; the industries strip names the businesses served today (hospitality, retail, hair and beauty, professional services). The comparisons with other products may name what those do.
+Involved: hubs (the copy of each plan and whether it includes an own domain; HUBS-F17)
 
 ### PUBLIC-F08 Read what the web says about security, data and availability
 Status: done
@@ -432,7 +432,7 @@ Screen: Legal texts
 Steps:
 1. In the footer, "Legal Notice", "Privacy" and "Terms" open each text on its own page; the cookie policy opens from the privacy policy.
 2. The privacy policy names who the data is entrusted to: Amazon Web Services in the Ireland region for hosting and email, the assistant's language model in Frankfurt, without training on it, and OpenAI for the assistant's voice and search fingerprints: it transcribes the audio of a dictation, which neither the hub nor ERPlora keeps, and may process it outside the European Economic Area. Apart from those processors, it names Brave Search, in the United States, which receives the queries of the assistant's web search and keeps them for up to 90 days: its data processing addendum leaves them out and the Standard Contractual Clauses do not cover them. An answer is read aloud by the device's own voice (the browser's or the system's): its text never leaves it.
-3. The terms give the numbers the product keeps: the days of the exit package, the days a suspended business waits before it is deleted and the trial of the plans on sale (none if none has one). Their acceptable use forbids keeping, redistributing or training on the web results the assistant brings, as its provider's terms ask.
+3. The terms give the numbers the product keeps: the days of the exit package, the days a suspended business waits before it is deleted and the trial of the plans on sale (none if none has one); and they name the plans on sale that include an own domain for the business's public website (none if none includes one), with the app and the way into the business on erplora.com. Their acceptable use forbids keeping, redistributing or training on the web results the assistant brings, as its provider's terms ask.
 In: the plans on sale (the terms).
 Out: nothing saved.
 If it fails: no text names a provider no longer used or another hosting, nor keeps quiet about where the audio of a dictation goes, nor promises EU residency or a retention period for it, nor promises that a web query never carries personal data (that is a rule given to the model, not a guarantee), nor a consent or a switch for the assistant that the hub does not have (the assistant is used when someone writes or dictates to it: in the hub, with the messages the plan gives; in erplora.com's panel, with the account's), and no link between texts leads to a page that does not exist.
