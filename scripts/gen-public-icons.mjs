@@ -5,7 +5,7 @@
 // hubs/data/taxonomy.json.
 //
 // What counts as cited (template comments aside): a literal `{% icon "set:name" %}`, and an `icon="…"` / `<x>_icon="…"`
-// argument of an `{% include %}` (the component partials paint the icon their caller passes).
+// argument of an `{% include %}` or a `{% button %}` (the components paint the icon their caller passes).
 // Also the `icon` of every sector and business type of the taxonomy seed, which the industries
 // pages (public/industries.py) paint from data no template names.
 // A bare name is an Ionicon, as in the tag. The sources are the shell's own icon packages,
@@ -28,8 +28,8 @@ const ICONIFY_SETS = ['lucide', 'mdi', 'material-symbols'];
 /** `{% comment %}…{% endcomment %}` and `{# … #}`: usage examples there are documentation. */
 const TEMPLATE_COMMENT = /\{%\s*comment\s*%\}[\s\S]*?\{%\s*endcomment\s*%\}|\{#[\s\S]*?#\}/g;
 const ICON_TAG = /\{%\s*icon\s+["']([^"']+)["']/g;
-const INCLUDE_TAG = /\{%\s*include\b[^%]*%\}/g;
-const INCLUDE_ICON_ARG = /\b(?:\w+_)?icon=["']([^"']+)["']/g;
+const COMPONENT_TAG = /\{%\s*(?:include|button)\b.*?%\}/g;
+const COMPONENT_ICON_ARG = /\b(?:\w+_)?icon=["']([^"']+)["']/g;
 
 /** Resolves packages the way @erplora/ui does: they are its dependencies, not the SaaS's. */
 const requireFromUi = createRequire(join(SAAS_DIR, 'packages', 'ui', 'package.json'));
@@ -53,8 +53,8 @@ export function citedIcons(templatesDir) {
   for (const file of htmlFiles(templatesDir)) {
     const source = readFileSync(file, 'utf8').replace(TEMPLATE_COMMENT, '');
     for (const [, name] of source.matchAll(ICON_TAG)) names.add(iconKey(name));
-    for (const [include] of source.matchAll(INCLUDE_TAG)) {
-      for (const [, name] of include.matchAll(INCLUDE_ICON_ARG)) names.add(iconKey(name));
+    for (const [call] of source.matchAll(COMPONENT_TAG)) {
+      for (const [, name] of call.matchAll(COMPONENT_ICON_ARG)) names.add(iconKey(name));
     }
   }
   return [...names].sort();

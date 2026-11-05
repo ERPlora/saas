@@ -7,9 +7,12 @@ reach a log either. Checked by dumping the whole database and reading every log 
 """
 
 import io
+import json
 import logging
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
+from django.core.cache import cache
 from django.core.management import call_command
 from django.test import Client
 
@@ -18,8 +21,17 @@ from assistant.tests.doors import door, frames
 
 SECRET_QUESTION = "Mi cliente Rosalía Quintanar debe 400 euros"
 SECRET_ANSWER = "Apunta la deuda de Rosalía Quintanar"
+SECRET_RESULT = "Una página sobre Rosalía Quintanar"
 INSTRUCTIONS = "Negocio Bar Manolo, cajera Iratxe Bengoetxea"
+SECRET_ADDRESS = "https://example.com/quintanar"
 COMPLETIONS = "/v1/chat/completions"
+SEARCH = "/res/v1/web/search"
+SEARCH_KEY = "made-up-brave-key"
+#: Brave's answer: a page whose title and text are both the secret.
+FOUND = {
+    "type": "search",
+    "web": {"type": "search", "results": [{"title": SECRET_RESULT, "url": SECRET_ADDRESS, "description": SECRET_RESULT}]},
+}
 
 pytestmark = pytest.mark.django_db
 
@@ -36,12 +48,42 @@ def every_log(caplog):
     return caplog
 
 
+def cached() -> bytes:
+    """All the (local memory) cache holds, keys and values; ``_cache`` is its pickled store."""
+    return b"".join(key.encode() + value for key, value in cache._cache.items())
+
+
 def assert_forgotten(every_log, *phrases):
     kept = everything_kept()
     logged = "\n".join(record.getMessage() for record in every_log.records)
+    held = cached()
     for phrase in phrases:
         assert phrase not in kept
         assert phrase not in logged
+        assert phrase.encode() not in held
+
+
+@pytest.fixture
+def a_search(settings, fake_provider):
+    """A turn whose model searches, gets the secret page and answers naming no source."""
+    settings.BRAVE_SEARCH_API_KEY = SEARCH_KEY
+    settings.ASSISTANT_SEARCH_URL = f"{fake_provider.url}{SEARCH}"
+    fake_provider.reply("GET", SEARCH, json=FOUND)
+    fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("web_search", json.dumps({"query": SECRET_QUESTION})))
+    fake_provider.reply("POST", COMPLETIONS, sse=openai_answer(SECRET_ANSWER))
+    return fake_provider
+
+
+def the_turn_asks(business, client: Client | None = None) -> list:
+    """A live turn of ``business`` with the secret question and the secret instructions: its frames."""
+    payload = {"hub": business.slug, "messages": [{"role": "user", "content": SECRET_QUESTION}], "instructions": INSTRUCTIONS}
+    return frames(door(client or Client(), "/internal/assistant/chat/stream", payload))
+
+
+def the_search(a_search):
+    """The one request the turn made to the search provider."""
+    [seen] = [seen for seen in a_search.requests if seen.path.startswith(SEARCH)]
+    return seen
 
 
 def test_a_live_turn_leaves_nothing_of_what_was_said(internal, business, answering, fake_provider, every_log):
@@ -57,6 +99,76 @@ def test_a_live_turn_leaves_nothing_of_what_was_said(internal, business, answeri
 
     assert got[0]["text"] == SECRET_ANSWER
     assert_forgotten(every_log, SECRET_QUESTION, SECRET_ANSWER, INSTRUCTIONS, "Rosalía")
+
+
+def test_a_search_leaves_nothing_of_what_was_searched(internal, business, answering, a_search, every_log):
+    the_turn_asks(business)
+
+    seen = the_search(a_search)
+    assert parse_qs(urlsplit(seen.path).query)["q"] == [SECRET_QUESTION]
+    assert_forgotten(every_log, SECRET_QUESTION, SECRET_ANSWER, SECRET_RESULT, SECRET_ADDRESS, "Rosalía", SEARCH_KEY)
+
+
+def test_a_search_tells_brave_what_is_looked_for_and_nothing_of_who_asks(internal, business, answering, a_search):
+    """The privacy policy (§5) says so: the request leaves from our servers with the query, where to look and our key;
+    no name, no address, nothing of the hub or of the person's browser."""
+    the_turn_asks(business, Client(headers={"x-forwarded-for": "203.0.113.7"}))
+
+    seen = the_search(a_search)
+    sent = parse_qs(urlsplit(seen.path).query)
+    assert sorted(sent) == ["count", "country", "q", "result_filter", "search_lang", "text_decorations"]
+    assert sent["q"] == [SECRET_QUESTION]
+    headers = {name.lower(): value for name, value in seen.headers.items()}
+    assert headers["x-subscription-token"] == SEARCH_KEY
+    known = {"accept", "accept-encoding", "connection", "host", "user-agent", "x-subscription-token"}
+    assert sorted(set(headers) - known) == []
+    assert business.slug not in seen.path + " ".join(headers.values())
+    assert "203.0.113.7" not in seen.path + " ".join(headers.values())
+
+
+def test_what_a_search_returned_goes_to_the_model_and_no_further_in_a_live_turn(internal, business, answering, a_search):
+    """Brave's terms allow no keeping of its results (§3(b)(i)): the caller keeps the conversation, so what it gets is all
+    that can be kept. Its answer and where it comes from, never the page."""
+    got = frames(door(Client(), "/internal/assistant/chat/stream", {"hub": business.slug, "messages": [{"role": "user", "content": SECRET_QUESTION}]}))
+
+    second = [seen for seen in a_search.requests if seen.path == COMPLETIONS][1]
+    assert SECRET_RESULT in second.body["messages"][-1]["content"]
+    said = json.dumps(got, ensure_ascii=False)
+    assert SECRET_RESULT not in said
+    assert [frame["text"] for frame in got if isinstance(frame, dict) and frame.get("type") == "text_delta"] == [SECRET_ANSWER, f"\n\n{SECRET_ADDRESS}"]
+
+
+def test_a_turn_at_once_sends_nothing_to_the_search_so_nothing_of_it_can_be_kept(internal, business, answering, a_search, every_log):
+    """The Hub keeps what this door answers (ASSISTANT-F13), so this door never searches, even if the model asks: the
+    question does not leave for Brave and no page or address of its comes back."""
+    response = door(Client(), "/internal/assistant/chat", {"hub": business.slug, "messages": [{"role": "user", "content": SECRET_QUESTION}]})
+
+    assert response.status_code == 200
+    assert [seen for seen in a_search.requests if seen.path.startswith(SEARCH)] == []
+    said = json.dumps(response.json(), ensure_ascii=False)
+    assert SECRET_ANSWER in said
+    assert SECRET_RESULT not in said
+    assert SECRET_ADDRESS not in said
+    assert_forgotten(every_log, SECRET_QUESTION, SECRET_ANSWER, SECRET_RESULT, SECRET_ADDRESS, "Rosalía", SEARCH_KEY)
+
+
+def test_what_a_search_returned_goes_to_the_model_and_no_further_in_the_panel(client, owner, plans, answering, a_search, every_log):
+    """The panel keeps its conversation in the browser's tab, from these frames (``done``'s ``append`` too)."""
+    client.force_login(owner)
+
+    response = client.post(
+        "/api/assistant/turn",
+        {"messages": [{"role": "user", "content": SECRET_QUESTION}]},
+        content_type="application/json",
+        HTTP_HOST="localhost:8001",
+    )
+    got = frames(response)
+
+    said = json.dumps(got, ensure_ascii=False)
+    assert SECRET_ANSWER in said
+    assert SECRET_ADDRESS in said
+    assert SECRET_RESULT not in said
+    assert_forgotten(every_log, SECRET_QUESTION, SECRET_ANSWER, SECRET_RESULT, SECRET_ADDRESS, "Rosalía", SEARCH_KEY)
 
 
 def test_a_turn_at_once_with_a_tool_leaves_nothing_either(internal, business, answering, fake_provider, every_log):

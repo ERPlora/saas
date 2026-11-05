@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:ff263f994017c927fc7b50791b345402591f9dd8e9194ce0487b0dbb12154093 -->
+<!-- generated from WORKBOOK.md sha256:1d87e52dbfbf0f7297e2d45a83a2815e45f1b350a59a2f389f6850d407d755a7 -->
 
 ## What it is for and who it is for
 
@@ -66,11 +66,11 @@ with the last opened on top. A pending invitation shows above.
 
 ### Create business
 The sign-up form: "Business name", "Country" (suggested by the browser's language), "Business type (optional)" with
-"I don't know yet" and, under the name, "Your address will be …". On the Entrance it is in the "Create your business"
+"I don't know yet" and "We'll suggest a template on your business's Home; the type helps us choose it. You can leave it blank." and, under the name, "Your address will be …". On the Entrance it is in the "Create your business"
 card; in **Businesses**, in the "Create business" dialog, under "What is your business called?".
 
 ### Preparing
-The running bar and three steps: "Business created", "Setting up your business" (or "Installing the modules for …")
+The running bar and three steps: "Business created", "Setting up your business" (or "Setting up your business: …", with the type picked)
 and "It opens by itself when it finishes" on the Entrance or "Ready to open" in the dialog.
 
 ### Businesses
@@ -163,7 +163,7 @@ last access, with a search by business or by email and a filter by role; it is o
 | HUBS-F14 | See the businesses through the API | done |
 | HUBS-F15 | Change the name, the language and the time zone of the business | done |
 | HUBS-F16 | Change the web address of the business | done |
-| HUBS-F17 | Connect an own domain to the business's website | discarded |
+| HUBS-F17 | Connect an own domain to the business's website | partial |
 | HUBS-F18 | Delete a business | done |
 | HUBS-F19 | Recover a deleted business | done |
 | HUBS-F20 | Warn and close a business suspended for an unpaid plan | done |
@@ -191,12 +191,12 @@ Actor: anyone with an account
 Screen: Entrance › Create business
 Steps:
 1. After creating the account and signing in without any business, the Entrance shows "Create your business" ("Free and no card: just the name and the country.").
-2. They type the "Business name"; underneath appears "Your address will be …" with the address the name proposes. The "Country" comes suggested by the browser's language and the "Business type (optional)" accepts "I don't know yet".
+2. They type the "Business name"; underneath appears "Your address will be …" with the address the name proposes. The "Country" comes suggested by the browser's language and the "Business type (optional)" accepts "I don't know yet"; underneath it says the business's Home will suggest a template and that the type helps choose it.
 3. They press "Create my business": "Business created: …" shows and the card moves to **Preparing** (HUBS-F04).
 In: the name, the country (one of the 27 of the European Union where ERPlora sells) and, if the person knows it, the business type; the account's session.
-Out: the business on the Free plan (without a card and without a trial), with the person as owner, its address taken from the name (if it is taken it is numbered, `bar-manolo-2`; a reserved word is completed by itself) and who pays, with the business's country. The businesses' service receives the sign-up as soon as it is saved and, with the business type, the modules of its sector. Records `hubs.business.created`.
-If it fails: without a name, "Write the name of your business." and nothing is sent; a country outside the list, the error on the field. If the account already has its free business, it does not create another: the dialog says "You already have a free business" and offers "Change the plan of …". Without the Free plan available, "Businesses cannot be created right now. Try again in a few minutes.". An account of ERPlora's staff does not create businesses. Two presses in a row create a single one.
-Involved: accounts (the account and the Entrance), the business (receives its sign-up)
+Out: the business on the Free plan (without a card and without a trial), in the account's language (ACCOUNTS-F22), with the person as owner, its address taken from the name (if it is taken it is numbered, `bar-manolo-2`; a reserved word is completed by itself) and who pays, with the business's country. The businesses' service receives the sign-up as soon as it is saved and, with the business type, its sector. The business is born with every app off: its Home proposes starting with a template, its sector's first if there is one (BASE-F38), or turning them on one by one. Records `hubs.business.created`.
+If it fails: without a name, "Write the name of your business." and nothing is sent; a country outside the list, the error on the field. If the account already has its free business, it does not create another: the dialog says "You already have a free business" and offers "Change the plan of …"; asked of the panel's assistant, it shows no card and says to change the plan of the business it already has (ASSISTANT-F25). Without the Free plan available, "Businesses cannot be created right now. Try again in a few minutes.". An account of ERPlora's staff does not create businesses. Two presses in a row create a single one.
+Involved: accounts (the account and the Entrance), the business (receives its sign-up; BASE-F38: proposes the template on its Home), the panel's assistant (ASSISTANT-F25)
 
 ### HUBS-F02 Create the free business from the installed app
 Status: done
@@ -393,22 +393,23 @@ Steps:
 3. They press "Change address": "The business now opens at …" appears and the page shows the new one.
 In: the new address; the owner's session.
 Out: the business at its new address, which the business receives as soon as it is saved, and the way in from erplora.com and from the installed app towards it; the old one stays reserved for it. Records `hubs.business.address_changed`.
-If it fails: a reserved address, "This address is reserved. Choose another one."; one another business has, "This address is taken. Choose another one."; one with capitals, spaces or hyphens at the start or the end, the error on the field. The same address changes nothing. Only the owner changes it; a deleted business does not.
+If it fails: a reserved address, "This address is reserved. Choose another one."; one another business has, "This address is taken. Choose another one."; one with capitals, spaces or hyphens at the start or the end, the error on the field and "Check the highlighted details." on top, which goes away as soon as it is corrected and comes back if the next try is refused. The same address changes nothing. Only the owner changes it; a deleted business does not.
 Involved: the business (receives its new address), accounts (the way in at the new address)
 
 ### HUBS-F17 Connect an own domain to the business's website
-Status: discarded — not in phase 1: the own domain is only for the business's public website, on the plans that include it, and comes with its three pieces at once (the check of the domain in erplora.com, its certificate at ERPlora's entrance and the business serving its website on that domain); until then the panel does not show it (saas#195)
+Status: partial — the server already does it where `CUSTOM_DOMAINS_ENABLED` is on (asking for it, the hourly check and removing it, through the assistant too); the screen in Settings is missing and, until it comes, the panel does not show it and the plans do not sell it (saas#195)
 Actor: owner
-Screen: Business settings
+Screen: Business settings (it does not exist yet)
 Steps:
-1. In "Settings", the owner of a business on a plan that includes an own domain types theirs (for example, the business's website on its domain) and erplora.com shows the record to create at their domain provider.
-2. When the record points right, erplora.com checks it, asks for the certificate and, once set, the domain is active: the business's public website opens on it.
-3. Every hour it looks again; if it stops pointing right three times in a row, it tells the owner and stops serving it until it comes back.
-4. To remove it, they remove it from the settings and confirm it.
-In: the owner's domain and their provider's record.
+1. The owner of a business on a plan that includes an own domain types theirs, for example www.mybusiness.com, and erplora.com gives them the two CNAME records to create at their provider: the validation one and the one that takes the visits to ERPlora.
+2. First they create the validation one, which stays for good because it renews the certificate. When ACM sees it, the certificate is issued and erplora.com puts it on ERPlora's entrance.
+3. With the certificate on, they create the second one, which points at the name of that business. When the hourly check sees it, the business serves its website on that domain and, if it answers well, the domain is active.
+4. Every hour it looks again; if it stops pointing right or being served three times in a row, it tells the owner by email and stops serving it. When the record comes back, the domain comes back by itself.
+5. To remove it, they remove it and confirm: it stops being served, its certificate is deleted and the name is free.
+In: the owner's domain and the two records at their provider.
 Out: the business's public website on its domain, with its certificate.
-If it fails: a domain that does not point to ERPlora stays inactive and the missing record is said; a plan that does not include it does not offer it. The app and the way into the business stay at its erplora.com address.
-Involved: website (the business's public website), the business (serves the website on its domain)
+If it fails: a domain that does not point to ERPlora stays inactive and the missing record is said. A root domain (mybusiness.com) is not offered, because it takes no CNAME and the entrance has no fixed IP: they connect www and redirect the root to it at their provider. A plan that does not include it does not offer it, and moving down to one stops serving it, which comes back on moving up. With no room for more certificates, the domain waits and it is tried again every hour, and what is already active does not notice. A certificate that was refused or not validated in 72 hours has to be asked for again. If the DNS, AWS or the Hub do not answer, that is no failure and it is tried again. The app and the way into the business stay at its address on erplora.com.
+Involved: website (the business's public website), the business (BASE-F110: serves the website on its domain), public (PUBLIC-F07: until the screen comes, neither the plans nor the web sell it, saas#233)
 
 ### HUBS-F18 Delete a business
 Status: done
@@ -502,7 +503,7 @@ Steps:
 4. "Resend" sends the email again and gives it 7 more days; "Cancel invitation" withdraws it and its link no longer lets anyone in. An integration does the same with the account's session.
 In: the email, the role, the message and the business; the session of whoever invites.
 Out: the invitation, valid for 7 days, which holds a place of the plan; the account of that address if it did not exist, without a password. The business does not receive the person until they accept. Records `hubs.member.invited` (when resent, `hubs.member.invitation_resent`; when cancelled, `hubs.member.invitation_cancelled`).
-If it fails: somebody already in the business, "… is already on this business."; with an invitation still valid, "… already has an invitation waiting. Resend it instead." (an expired one is renewed by inviting again). A role equal to or above one's own, "You cannot hand out a role equal to or above yours.". Without places, the dialog says "The plan has no free places left: change the plan or remove someone to invite more people." and sends nothing. An address of ERPlora's staff, "This address belongs to ERPlora's staff and cannot join a business.". An account that never proved that address is released before being invited: it loses its password, its second factor, its Google and its sessions, and only whoever opens that mailbox gets in. A manager or an employee invites nobody; a deleted business takes no invitations; a business of another account does not exist for whoever invites. If the email does not leave, the invitation stays.
+If it fails: an address that is not valid (too long, for example), the error on the field and "Check the highlighted details." on top until it is corrected; somebody already in the business, "… is already on this business."; with an invitation still valid, "… already has an invitation waiting. Resend it instead." (an expired one is renewed by inviting again). A role equal to or above one's own, "You cannot hand out a role equal to or above yours.". Without places, the dialog says "The plan has no free places left: change the plan or remove someone to invite more people." and sends nothing. An address of ERPlora's staff, "This address belongs to ERPlora's staff and cannot join a business.". An account that never proved that address is released before being invited: it loses its password, its second factor, its Google and its sessions, and only whoever opens that mailbox gets in. A manager or an employee invites nobody; a deleted business takes no invitations; a business of another account does not exist for whoever invites. If the email does not leave, the invitation stays.
 Involved: accounts (the invited person's account and, if it never proved its address, its release), the business (receives the person when they accept)
 
 ### HUBS-F25 Accept or decline an invitation to a business

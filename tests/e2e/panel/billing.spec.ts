@@ -386,6 +386,18 @@ test.describe('billing', () => {
     expect(errors).toEqual([]);
   });
 
+  test('BILLING-F01: a postal code the server refuses says why on its field, and on top to look at it until it is corrected', async ({ page }) => {
+    await page.goto('/dashboard/billing/payment');
+    await page.getByTestId('profile-edit').click();
+    await page.getByTestId('details-postal-code').locator('input').fill('3500');
+    await page.getByTestId('billing-profile-submit').click();
+    await expect(page.getByTestId('billing-profile-error')).toHaveText('Check the highlighted details.');
+    await expect(page.getByTestId('details-postal-code')).toContainText('A Spanish postal code has five digits, e.g. 28001.');
+    await page.screenshot({ path: shot('refused-postal-code-en') });
+    await page.getByTestId('details-postal-code').locator('input').fill('35001');
+    await expect(page.getByTestId('billing-profile-error')).toBeHidden();
+  });
+
   test('Payment details: the card (Stripe away says so) and the billing details, edited with their VIES check', async ({ page }) => {
     await page.goto('/dashboard/billing/payment');
     // No Stripe here: the server says it cannot show the card now, never invents one.

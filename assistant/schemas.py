@@ -159,7 +159,8 @@ class ModelTryOut(Schema):
 
 
 class CredentialImportIn(Schema):
-    """A provider's key the platform loads (from the environment): the provider is the one of its API (``kind``)."""
+    """A provider's key the platform loads (from the environment): the provider is the one of its API (``kind``),
+    whose identifier is the API's."""
 
     kind: Literal["openai", "anthropic", "gemini", "deepseek"]
     api_key: SecretStr
@@ -273,7 +274,8 @@ class TurnIn(CallerIn):
 
 
 class ServiceConnectionOut(Schema):
-    """What the embeddings and the voice need of the services' provider (of OpenAI's API): its address and its key."""
+    """What a service needs of its provider: its address and its key (the embeddings and the dictation, of the
+    services' provider of OpenAI's API)."""
 
     provider: str
     base_url: str
@@ -293,9 +295,10 @@ class EmbeddingsIn(CallerIn):
         return texts
 
 
-class TranscribeIn(CallerIn):
+class DictationIn(Schema):
     """A dictation: its audio in base64, its type (``audio/webm``, ``audio/ogg``, ``audio/wav``, ``audio/mp4``,
-    ``audio/mpeg`` or ``audio/flac``) and, if the Hub knows it, its language (``es`` or ``es-ES``)."""
+    ``audio/mpeg`` or ``audio/flac``) and, if the caller knows it, its language (``es`` or ``es-ES``). The audio has no
+    length here: past ``media.MAX_AUDIO_BYTES`` it is a 413, not a 422 (``assistant.internal.dictation``)."""
 
     audio: str = Field(min_length=1)
     mime_type: str
@@ -312,19 +315,29 @@ class TranscribeIn(CallerIn):
         return kind
 
 
-class SynthesizeIn(CallerIn):
-    """A text to read aloud and, optionally, its voice (``alloy``, ``echo``, ``fable``, ``onyx``, ``nova`` or
-    ``shimmer``; another one is ``alloy``)."""
+class TranscribeIn(CallerIn, DictationIn):
+    """A dictation the Hub sends for a business."""
+
+
+class SpeechIn(Schema):
+    """A text to read aloud, its language (``es`` or ``en``) and, optionally, a voice of the engine that reads it
+    (``assistant.media.SPEECH_ENGINE``); without one, its own for the language."""
 
     text: str = Field(max_length=100_000)
-    voice: str = Field(default="", max_length=32)
+    language: Literal["es", "en"]
+    voice: str = Field(default="", max_length=64)
 
     @field_validator("text")
     @classmethod
     def _something_to_read(cls, value):
-        if not value.strip():
+        text = value.strip()
+        if not text:
             raise ValueError("write the text to read aloud")
-        return value.strip()
+        return text
+
+
+class SynthesizeIn(CallerIn, SpeechIn):
+    """A text the Hub sends for a business to read aloud."""
 
 
 class ReportFields(Schema):

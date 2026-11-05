@@ -38,7 +38,14 @@ from pgvector.django import CosineDistance
 
 from assistant import media
 from base.surface import sells_nothing
-from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage, DocChunk
+from assistant.models import (
+    AIModel,
+    AIProvider,
+    AIProviderCredential,
+    AIRoutingPolicy,
+    AssistantUsage,
+    DocChunk,
+)
 from assistant.schemas import (
     Caller,
     CallerIn,
@@ -349,7 +356,7 @@ def usage_show(ctx: OperationContext, data: Caller) -> dict:
 )
 def service_connection(ctx: OperationContext, data: NoInput) -> dict:
     """The address and the usable key of the services' provider (``ASSISTANT_SERVICE_PROVIDER``), which computes the
-    embeddings and the voice (the platform only). 409 ``assistant.provider_not_configured`` if it does not exist, is
+    embeddings and transcribes the dictation (the platform only). 409 ``assistant.provider_not_configured`` if it does not exist, is
     off, speaks another API than OpenAI's or has no active key that opens."""
     platform_only(ctx)
     service = services_provider()

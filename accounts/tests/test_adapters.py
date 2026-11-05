@@ -6,6 +6,7 @@ from allauth.core import context as allauth_context
 from allauth.socialaccount.adapter import get_adapter as get_social_adapter
 from allauth.socialaccount.internal.flows.login import complete_login
 from allauth.socialaccount.models import SocialAccount, SocialLogin
+from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.messages import get_messages
@@ -13,6 +14,7 @@ from django.contrib.messages.middleware import MessageMiddleware
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.core import mail
 from django.test import RequestFactory
+from django.utils import translation
 
 from accounts.adapters import AccountAdapter, SocialAccountAdapter
 
@@ -202,3 +204,17 @@ class TestTheOwnerIsToldWhenGoogleIsLinked:
         _finish(owner, INTRUDER_UID, INTRUDER_EMAIL, "connect")
 
         assert self._notices() == []
+
+
+class TestNewUserLanguage:
+    """The rest of what a new account's language can meet is ``test_headless`` and ``test_google``, by the real doors."""
+
+    @pytest.mark.parametrize("active", ["es", "en"])
+    def test_it_takes_the_active_language(self, active):
+        with translation.override(active):
+            assert AccountAdapter().new_user(None).language == active
+
+    @pytest.mark.parametrize("active", [None, "fr"])
+    def test_without_one_of_ours_active_it_keeps_the_default(self, active):
+        with translation.override(active):
+            assert AccountAdapter().new_user(None).language == django_settings.LANGUAGE_CODE

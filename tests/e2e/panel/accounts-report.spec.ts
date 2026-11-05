@@ -19,7 +19,12 @@ const SIZES = [
 
 function removeAccounts(): void {
   djangoPrint(
-    `from django.contrib.auth import get_user_model\nget_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
+    [
+      'from django.contrib.auth import get_user_model',
+      'from hubs.models import Hub',
+      `Hub.objects.filter(slug="${BUSINESS}").delete()`,
+      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
+    ].join('\n'),
   );
 }
 
@@ -29,10 +34,12 @@ function createAccount(email: string): { email: string; password: string } {
     [
       'from allauth.account.models import EmailAddress',
       'from django.contrib.auth import get_user_model',
-      'from accounts.models import HubMembership',
+      'from django.utils import timezone',
+      'from hubs.models import Hub, HubMember',
       `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", language="en")`,
       'EmailAddress.objects.update_or_create(user=user, email=user.email, defaults={"verified": True, "primary": True})',
-      `HubMembership.objects.create(user=user, hub_slug="${BUSINESS}", role=HubMembership.Role.ADMIN)`,
+      `hub, _ = Hub.objects.get_or_create(slug="${BUSINESS}", defaults={"name": "${BUSINESS}", "country": "ES"})`,
+      'HubMember.objects.create(hub=hub, user=user, role=HubMember.Role.ADMIN, accepted_at=timezone.now())',
     ].join('\n'),
   );
   return { email, password: PASSWORD };

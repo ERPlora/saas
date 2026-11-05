@@ -11,6 +11,11 @@ jump names the hub's host and links back to it from the slug alone. ``spa-config
 takes no attributes for ``<html>``, so ``frontend/main.ts`` reads it here and hands it to
 ``createShell({ surface })``.
 
+``spa-config.assistantSpeech`` says whether erplora.com has a voice of its own to read the assistant's answers aloud
+(ASSISTANT-F22): true only with an engine that reads (``assistant.media.SPEECH_ENGINE``). Only then does the chat ask the
+server for each reading (``assistant/frontend/options.ts``); false, as it is today (PLAN-SAAS round 2026-11-04c), it reads
+in the device's voice with no trip to the server.
+
 ``spa-config.recaptchaSiteKey`` is reCAPTCHA Enterprise's public key, only while it is switched on
 (``RECAPTCHA_ENABLED``; off by default since 2026-10-23): the sign-in's pages ask Google's enterprise.js for a token
 with it (``accounts/frontend/recaptcha.ts``, ``accounts/bot_check.py``). Off, the page names nothing of reCAPTCHA.
@@ -32,6 +37,7 @@ from live.ninja import run_operation_sync
 from live.spa import render_spa, spa_path_pattern
 
 from accounts.queries import hub_origin
+from assistant import media as assistant_media
 from base import queries
 from base.csp import spa_policy
 from base.surface import account_surface
@@ -57,6 +63,7 @@ def spa(request: HttpRequest) -> HttpResponse:
         "googleEnabled": settings.GOOGLE_OAUTH_ENABLED,
         "mfaEnabled": settings.ACCOUNTS_MFA_ENABLED,
         "hubOrigin": hub_origin("{slug}"),
+        "assistantSpeech": assistant_media.SPEECH_ENGINE is not None,
     }
     if recaptcha.is_enabled():
         config["recaptchaSiteKey"] = recaptcha.site_key()

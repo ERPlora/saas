@@ -57,3 +57,5 @@ live(
 # The usage of a business (lot L4-A): a new night's figures, and a change of plan (its space).
 live("hubs.usage.get", on=[events.BUSINESS_USAGE_COLLECTED, events.SUBSCRIPTION_CHANGED])
 live("hubs.usage.series", on=[events.BUSINESS_USAGE_COLLECTED, events.SUBSCRIPTION_CHANGED])
+# A business's own domain (HUBS-F17): what it is or what it misses, and a change of plan (whether it is offered).
+live("hubs.custom_domain.get", on=[events.CUSTOM_DOMAIN_CHANGED, events.SUBSCRIPTION_CHANGED])

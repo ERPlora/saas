@@ -6,6 +6,8 @@ from typing import Any, Literal
 from ninja import Schema
 from pydantic import Field
 
+from assistant.schemas import DictationIn, SpeechIn
+
 
 class SessionMeIn(Schema):
     pass
@@ -206,3 +208,25 @@ class AssistantReportIn(Schema):
 class AssistantReportOut(Schema):
     sent: bool
     duplicate: bool
+
+
+class AssistantTranscribeIn(DictationIn):
+    """The panel's dictation: the Hub's same contract, without a ``hub``: it is the session's account's."""
+
+
+class AssistantTranscribeOut(Schema):
+    text: str
+    language: str = Field(description="As asked or the account's, base code (``es``).")
+
+
+class AssistantSpeakIn(SpeechIn):
+    """The panel's reading aloud: the Hub's same contract, without a ``hub`` (it is the session's account's) and with
+    the language optional (empty: the account's)."""
+
+    language: Literal["", "es", "en"] = ""
+
+
+class AssistantSpeakOut(Schema):
+    """What the operation made ready for its route, which answers with the mp3 itself (``audio/mpeg``)."""
+
+    language: str = Field(description="As asked or the account's (English when it has no voice), base code (``es``).")

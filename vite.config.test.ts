@@ -199,6 +199,10 @@ describe('e2e browser window', () => {
     for (const project of e2eConfig.projects ?? []) expect(project.use?.headless).toBeUndefined();
   });
 
+  it('refuses a focused test in CI: a `test.only` left in a spec would turn the required e2e green with that one test', () => {
+    expect(e2eConfig.forbidOnly).toBe(Boolean(process.env.CI));
+  });
+
   it('`pnpm e2e` runs headless, `e2e:headed` opens the window and `e2e:ci` is the CI run', () => {
     const scripts = (JSON.parse(readFileSync(join(SAAS_DIR, 'package.json'), 'utf8')) as { scripts: Record<string, string> }).scripts;
     expect(scripts.e2e).toBe('playwright test -c tests/e2e/playwright.config.ts');
@@ -330,5 +334,24 @@ describe('the tests that load Playwright', () => {
       'first.test.ts',
       'second.test.ts',
     ]);
+  });
+});
+
+// The time a test has (saas#251). A runner that stalls takes with it the test each worker is in, whatever that test
+// does: in run 41748119535 (attempt 1) three tests that take under 0.5 s took 22.8–24.1 s and ended within the same
+// second, one per worker, on a machine that took 113 s over a step that takes 3–10 s. A limit on those three would not
+// help: the next stall takes three others. It also takes a hook, whose own limit was 10 s.
+describe('the time a test has', () => {
+  const WORST_STALL_MEASURED_MS = 24_100;
+
+  it('outlasts a stalled runner, in a test and in a hook alike', ({ task }) => {
+    expect(config.test?.testTimeout).toBeGreaterThan(WORST_STALL_MEASURED_MS);
+    expect(config.test?.hookTimeout).toBe(config.test?.testTimeout);
+    expect(task.timeout).toBe(config.test?.testTimeout);
+  });
+
+  // A test that hangs has to go red in time to read why: the job gives up at 30 minutes (`timeout-minutes`).
+  it('stays short enough for a hung test to go red in time', () => {
+    expect(config.test?.testTimeout).toBeLessThanOrEqual(60_000);
   });
 });

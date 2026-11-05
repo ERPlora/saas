@@ -1,9 +1,8 @@
 """Keep the AI providers' keys of the environment encrypted in the database (ASSISTANT-F09).
 
-Reads ``OPENAI_API_KEY``, ``ANTHROPIC_API_KEY``, ``GEMINI_API_KEY`` and ``DEEPSEEK_API_KEY`` (``config/settings.py``)
-and keeps each one in its provider through ``assistant.credential.import`` as the platform, adding the provider if
-missing. A key already kept with the label stays unless ``--force``. It never prints a key, only its last four
-characters.
+Reads ``OPENAI_API_KEY``, ``ANTHROPIC_API_KEY``, ``GEMINI_API_KEY`` and ``DEEPSEEK_API_KEY`` (``config/settings.py``) and
+keeps each one in its provider through ``assistant.credential.import`` as the platform, adding the provider if missing. A
+key already kept with the label stays unless ``--force``. It never prints a key, only its last four characters.
 
     python manage.py import_ai_keys_from_env
     python manage.py import_ai_keys_from_env --providers openai,anthropic --label default --force
@@ -17,12 +16,12 @@ from live.errors import OperationError
 from assistant import services
 from assistant.schemas import CredentialImportIn
 
-#: Each provider's API and the setting holding its key, in the order they are loaded.
+#: Each provider (its identifier), its API and the setting holding its key, in the order they are loaded.
 SETTINGS = {
-    "openai": "OPENAI_API_KEY",
-    "anthropic": "ANTHROPIC_API_KEY",
-    "gemini": "GEMINI_API_KEY",
-    "deepseek": "DEEPSEEK_API_KEY",
+    "openai": ("openai", "OPENAI_API_KEY"),
+    "anthropic": ("anthropic", "ANTHROPIC_API_KEY"),
+    "gemini": ("gemini", "GEMINI_API_KEY"),
+    "deepseek": ("deepseek", "DEEPSEEK_API_KEY"),
 }
 
 
@@ -44,7 +43,7 @@ class Command(BaseCommand):
         ctx = services.platform_context()
         counts = {"created": 0, "rotated": 0, "kept": 0, "skipped": 0}
         for slug in wanted:
-            name = SETTINGS[slug]
+            kind, name = SETTINGS[slug]
             value = (getattr(settings, name, "") or "").strip()
             if not value:
                 counts["skipped"] += 1
@@ -52,7 +51,7 @@ class Command(BaseCommand):
                 continue
             try:
                 out = services.credential_import(
-                    ctx, CredentialImportIn(kind=slug, api_key=value, label=label, force=force, dry_run=dry_run)
+                    ctx, CredentialImportIn(kind=kind, api_key=value, label=label, force=force, dry_run=dry_run)
                 )
             except OperationError as refused:
                 raise CommandError(refused.message) from None

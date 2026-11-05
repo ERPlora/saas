@@ -3,7 +3,9 @@
  * {% icon %} (it was <iconify-icon>). Only --ion-* tokens.
  *
  * z-index 60: above the page's own floating surfaces, so an unresolved GDPR choice is never hidden,
- * and still below Ionic's overlays (ion-modal and ion-toast are portalled to <body> far higher).
+ * and still below what the person opens: Ionic's overlays (ion-modal and ion-toast are portalled to
+ * <body> far higher) and the navbar's side menu (61, components/navbar.css). Nothing is measured
+ * until the choice is made, and the notice is on top again as soon as they close.
  */
 #cookie-consent-banner {
   position: fixed;
@@ -52,7 +54,8 @@
   gap: 0.375rem;
   flex: 0 0 auto;
 }
-.cookie-consent-actions ion-button {
+.cookie-consent-actions ion-button,
+.cookie-consent-actions .ep-button {
   min-height: 2.75rem;
   height: 2.75rem;
   margin: 0;
@@ -73,7 +76,8 @@
   .cookie-consent-actions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .cookie-consent-actions ion-button {
+  .cookie-consent-actions ion-button,
+  .cookie-consent-actions .ep-button {
     width: 100%;
     --padding-start: 0.375rem;
     --padding-end: 0.375rem;

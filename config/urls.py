@@ -21,7 +21,7 @@ from live.live_view import live_stream
 from live.spa import BASE_NON_SPA_PREFIXES
 
 from accounts import admin as accounts_admin
-from accounts import doors, google, handoff, internal
+from accounts import doors, google, handoff, hub_pass, internal
 from accounts.adapters import SPA_LOGIN
 from assistant import internal as assistant_internal
 from base.csp_report import csp_report
@@ -32,6 +32,7 @@ from billing import webhooks as billing_webhooks
 from config.api import api
 from fiscal import internal as fiscal_internal
 from fiscal_gateway import internal as fiscal_gateway_internal
+from hubs import admin as hubs_admin
 from hubs import internal as hubs_internal
 from hubs import shell as hubs_shell
 from public import landing
@@ -51,6 +52,7 @@ NON_SPA_PREFIXES = (
     "accounts",
     "auth",
     "hub-login",
+    "hub-pass",
     "webhooks",
     # The public web's own first segments (public/urls.py).
     *PUBLIC_PREFIXES,
@@ -124,6 +126,8 @@ urlpatterns = [
     path("auth/google/callback/", google.callback, name="google_callback"),
     path("launch/", handoff.launch, name="launch"),
     path("hub-login/", handoff.hub_login, name="hub_login"),
+    # The way back from a business (ACCOUNTS-F29): a pass the Hub signed opens the session and lands on the plan.
+    path("hub-pass/", hub_pass.follow, name="hub_pass"),
     # The installed app's «Open» (PLAN-SAAS bloque 3); its start, /shell/, is the SPA's launcher.
     path("shell/open/<uuid:hub_id>/", hubs_shell.open_business, name="shell_open"),
     # The old panel's addresses of the businesses, for good, to the new panel (PLAN-SAAS §1).
@@ -205,7 +209,7 @@ urlpatterns = [
     # The admin's «Hubs» page (ronda 13): before the admin's own URLs, whose catch-all would take it.
     path(
         "admin/accounts/hubs/",
-        admin.site.admin_view(accounts_admin.hubs_view),
+        admin.site.admin_view(hubs_admin.hubs_view),
         name="accounts_hubs",
     ),
     path("admin/", admin.site.urls),

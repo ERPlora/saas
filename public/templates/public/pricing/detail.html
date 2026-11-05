@@ -1,5 +1,5 @@
 {% extends "public/public_base.html" %}
-{% load i18n icons %}
+{% load buttons i18n icons %}
 {% comment %}
   /pricing/<slug>/ — port of apps/public/pricing/templates/pricing/detail.html (origin/develop): the
   plan with its net price, the ex-VAT note and its trial; what it includes; and the other plans on
@@ -36,10 +36,7 @@
                     </div>
 
                     <div class="flex flex-col gap-2 md:min-w-[16rem]">
-                        <ion-button size="large" color="primary" href="{{ launcher }}">
-                            <span slot="start">{% icon "rocket-outline" %}</span>
-                            {% trans "Get Started" %}
-                        </ion-button>
+                        {% button href=launcher label=_("Get Started") size="large" start_icon="rocket-outline" %}
                     </div>
                 </div>
             </ion-card-content>

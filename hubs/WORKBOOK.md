@@ -77,11 +77,11 @@ arriba. Una invitación pendiente sale encima.
 
 ### Crear negocio
 El formulario del alta: «Nombre del negocio», «País» (sugerido por el idioma del navegador), «Tipo de negocio
-(opcional)» con «Todavía no lo sé» y, debajo del nombre, «Tu dirección será …». En la Entrada va en la tarjeta «Crea tu
+(opcional)» con «Todavía no lo sé» y «Te propondremos una plantilla en el Inicio de tu negocio; el tipo nos ayuda a elegirla. Puedes dejarlo en blanco.» y, debajo del nombre, «Tu dirección será …». En la Entrada va en la tarjeta «Crea tu
 negocio»; en **Negocios**, en el diálogo «Crear negocio», bajo «¿Cómo se llama tu negocio?».
 
 ### Preparando
-La barra en marcha y tres pasos: «Negocio creado», «Preparando tu negocio» (o «Instalando los módulos de …») y
+La barra en marcha y tres pasos: «Negocio creado», «Preparando tu negocio» (o «Preparando tu negocio: …», con el tipo elegido) y
 «Se abre solo al terminar» en la Entrada o «Listo para abrir» en el diálogo.
 
 ### Negocios
@@ -175,7 +175,7 @@ con buscador por negocio o por correo y filtro por rol; solo se consulta.
 | HUBS-F14 | Ver los negocios por la API | hecho |
 | HUBS-F15 | Cambiar el nombre, el idioma y la zona horaria del negocio | hecho |
 | HUBS-F16 | Cambiar la dirección web del negocio | hecho |
-| HUBS-F17 | Conectar un dominio propio a la web del negocio | descartado |
+| HUBS-F17 | Conectar un dominio propio a la web del negocio | parcial |
 | HUBS-F18 | Eliminar un negocio | hecho |
 | HUBS-F19 | Recuperar un negocio eliminado | hecho |
 | HUBS-F20 | Avisar y dar de baja un negocio suspendido por impago | hecho |
@@ -204,12 +204,12 @@ Actor: cualquier persona con cuenta
 Pantalla: Entrada › Crear negocio
 Pasos:
 1. Tras crear la cuenta y entrar sin ningún negocio, la Entrada enseña «Crea tu negocio» («Gratis y sin tarjeta: solo el nombre y el país.»).
-2. Escribe el «Nombre del negocio»; debajo aparece «Tu dirección será …» con la dirección que propone el nombre. El «País» viene sugerido por el idioma del navegador y el «Tipo de negocio (opcional)» admite «Todavía no lo sé».
+2. Escribe el «Nombre del negocio»; debajo aparece «Tu dirección será …» con la dirección que propone el nombre. El «País» viene sugerido por el idioma del navegador y el «Tipo de negocio (opcional)» admite «Todavía no lo sé»; debajo avisa de que el Inicio del negocio le propondrá una plantilla y de que el tipo ayuda a elegirla.
 3. Pulsa «Crear mi negocio»: sale «Negocio creado: …» y la tarjeta pasa a **Preparando** (HUBS-F04).
 Entra: el nombre, el país (uno de los 27 de la Unión Europea en los que vende ERPlora) y, si la persona lo sabe, el tipo de negocio; la sesión de la cuenta.
-Sale: el negocio en el plan Gratis (sin tarjeta y sin prueba), con la persona como propietaria, su dirección sacada del nombre (si está cogida se numera, `bar-manolo-2`; una palabra reservada se completa sola) y quién paga, con el país del negocio. El servicio de los negocios recibe el alta en cuanto se guarda y, con el tipo de negocio, los módulos de su sector. Anota `hubs.business.created`.
-Si falla: sin nombre, «Escribe el nombre de tu negocio.» y no se manda nada; un país fuera de la lista, el error en el campo. Si la cuenta ya tiene su negocio gratuito, no crea otro: el diálogo dice «Ya tienes un negocio gratuito» y ofrece «Cambiar el plan de …». Sin el plan Gratis disponible, «Ahora mismo no se pueden crear negocios. Inténtalo dentro de unos minutos.». Una cuenta del personal de ERPlora no crea negocios. Dos pulsaciones seguidas crean uno solo.
-Implicados: accounts (la cuenta y la Entrada), el negocio (recibe su alta)
+Sale: el negocio en el plan Gratis (sin tarjeta y sin prueba), en el idioma de la cuenta (ACCOUNTS-F22), con la persona como propietaria, su dirección sacada del nombre (si está cogida se numera, `bar-manolo-2`; una palabra reservada se completa sola) y quién paga, con el país del negocio. El servicio de los negocios recibe el alta en cuanto se guarda y, con el tipo de negocio, su sector. El negocio nace con todas las apps apagadas: su Inicio propone empezar con una plantilla, primero la de su sector si la hay (BASE-F38), o encenderlas una a una. Anota `hubs.business.created`.
+Si falla: sin nombre, «Escribe el nombre de tu negocio.» y no se manda nada; un país fuera de la lista, el error en el campo. Si la cuenta ya tiene su negocio gratuito, no crea otro: el diálogo dice «Ya tienes un negocio gratuito» y ofrece «Cambiar el plan de …»; pedido al asistente del panel, no enseña su tarjeta y dice que se cambie el plan del negocio que ya tiene (ASSISTANT-F25). Sin el plan Gratis disponible, «Ahora mismo no se pueden crear negocios. Inténtalo dentro de unos minutos.». Una cuenta del personal de ERPlora no crea negocios. Dos pulsaciones seguidas crean uno solo.
+Implicados: accounts (la cuenta y la Entrada), el negocio (recibe su alta; BASE-F38: propone la plantilla en su Inicio), el asistente del panel (ASSISTANT-F25)
 
 ### HUBS-F02 Crear el negocio gratuito desde la aplicación instalada
 <!-- origen: old-saas:SAAS_DASHBOARD-F02 -->
@@ -421,23 +421,24 @@ Pasos:
 3. Pulsa «Cambiar dirección»: sale «El negocio se abre ahora en …» y la página enseña la nueva.
 Entra: la nueva dirección; la sesión del propietario.
 Sale: el negocio en su nueva dirección, que el negocio recibe en cuanto se guarda, y la entrada desde erplora.com y desde la aplicación instalada hacia ella; la antigua queda reservada para él. Anota `hubs.business.address_changed`.
-Si falla: una dirección reservada, «Esta dirección está reservada. Elige otra.»; una que tiene otro negocio, «Esta dirección ya está ocupada. Elige otra.»; una con mayúsculas, espacios o guiones al principio o al final, el error en el campo. La misma dirección no cambia nada. Solo el propietario la cambia; un negocio eliminado no.
+Si falla: una dirección reservada, «Esta dirección está reservada. Elige otra.»; una que tiene otro negocio, «Esta dirección ya está ocupada. Elige otra.»; una con mayúsculas, espacios o guiones al principio o al final, el error en el campo y «Revisa los datos marcados.» arriba, que se quita en cuanto la corriges y vuelve si el siguiente intento se rechaza. La misma dirección no cambia nada. Solo el propietario la cambia; un negocio eliminado no.
 Implicados: el negocio (recibe su nueva dirección), accounts (la entrada a la nueva dirección)
 
 ### HUBS-F17 Conectar un dominio propio a la web del negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F11 old-saas:SAAS_DASHBOARD-F12 fi:saas/hubs#configuracion-de-dominios-subdominio-dominios-personalizados fi:saas/support/hubs#modelo-hubcustomdomain pc:cloud/dashboard/hubs-domains fi:saas/support/hubs#task-check_domain_validation old-saas:SAAS_DASHBOARD-F39 -->
-Estado: descartado — no entra en la fase 1: el dominio propio es solo de la web pública del negocio, en los planes que lo incluyen, y llega a la vez con sus tres piezas (la comprobación del dominio en erplora.com, su certificado en la entrada de ERPlora y que el negocio sirva su web por ese dominio); hasta entonces el panel no lo enseña (saas#195)
+Estado: parcial — el servidor ya lo hace donde `CUSTOM_DOMAINS_ENABLED` está encendido (pedirlo, la comprobación de cada hora y quitarlo, también por el asistente); falta la pantalla en Ajustes y, hasta que llegue, el panel no lo enseña ni los planes lo venden (saas#195)
 Actor: propietario
-Pantalla: Ajustes del negocio
+Pantalla: Ajustes del negocio (aún no existe)
 Pasos:
-1. En «Ajustes», el propietario de un negocio con un plan que incluye dominio propio escribe el suyo (por ejemplo, la web del negocio en su dominio) y erplora.com le enseña el registro que tiene que crear en su proveedor del dominio.
-2. Cuando el registro apunta bien, erplora.com lo comprueba, pide el certificado y, puesto, el dominio queda activo: la web pública del negocio se abre por él.
-3. Cada hora vuelve a mirarlo; si deja de apuntar bien tres veces seguidas, avisa al propietario y lo deja de servir hasta que vuelve.
-4. Para quitarlo, lo quita de los ajustes y lo confirma.
-Entra: el dominio del propietario y el registro de su proveedor.
+1. El propietario de un negocio con un plan que incluye dominio propio escribe el suyo, por ejemplo www.minegocio.es, y erplora.com le da los dos registros CNAME que tiene que crear en su proveedor: el de validación y el que lleva las visitas a ERPlora.
+2. Primero crea el de validación, que se queda para siempre porque renueva el certificado. Cuando ACM lo ve, el certificado se emite y erplora.com lo pone en la entrada de ERPlora.
+3. Con el certificado puesto crea el segundo, que apunta al nombre de ese negocio. Cuando la comprobación de cada hora lo ve, el negocio sirve su web por ese dominio y, si responde bien, el dominio queda activo.
+4. Cada hora vuelve a mirarlo; si deja de apuntar bien o de servirse tres veces seguidas, avisa al propietario por correo y lo deja de servir. Cuando el registro vuelve, el dominio vuelve solo.
+5. Para quitarlo, lo quita y lo confirma: deja de servirse, se borra su certificado y el nombre queda libre.
+Entra: el dominio del propietario y los dos registros de su proveedor.
 Sale: la web pública del negocio en su dominio, con su certificado.
-Si falla: un dominio que no apunta a ERPlora se queda sin activar y se dice qué registro falta; un plan que no lo incluye no lo ofrece. La aplicación y la entrada al negocio siguen en su dirección de erplora.com.
-Implicados: website (la web pública del negocio), el negocio (sirve la web por su dominio)
+Si falla: un dominio que no apunta a ERPlora se queda sin activar y se dice qué registro falta. Un dominio raíz (minegocio.es) no se ofrece, porque ni admite CNAME ni la entrada tiene IP fija: se conecta www y el raíz se redirige en el proveedor. Un plan que no lo incluye no lo ofrece, y al bajar a uno así se deja de servir y vuelve al subir. Sin sitio para más certificados, el dominio espera y se reintenta cada hora, y lo ya activo no se entera. Un certificado rechazado o sin validar en 72 horas hay que volver a pedirlo. Si el DNS, AWS o el Hub no responden, no cuenta como fallo y se reintenta. La aplicación y la entrada al negocio siguen en su dirección de erplora.com.
+Implicados: website (la web pública del negocio), el negocio (BASE-F110: sirve la web por su dominio), public (PUBLIC-F07: hasta que llegue la pantalla ni los planes ni la web lo venden, saas#233)
 
 ### HUBS-F18 Eliminar un negocio
 <!-- origen: fi:saas/hubs#borrado-cancelacion-del-terminal old-saas:SAAS_DASHBOARD-F22 old-saas:SAAS_DASHBOARD-F23 old-saas:SAAS_DASHBOARD-F24 -->
@@ -539,7 +540,7 @@ Pasos:
 4. «Reenviar» manda el correo otra vez y le da 7 días más; «Cancelar invitación» la retira y su enlace ya no deja entrar a nadie. Una integración hace lo mismo con la sesión de la cuenta.
 Entra: el correo, el rol, el mensaje y el negocio; la sesión de quien invita.
 Sale: la invitación, que vale 7 días y ocupa una plaza del plan; la cuenta de esa dirección si no existía, sin contraseña. El negocio no recibe a la persona hasta que acepta. Anota `hubs.member.invited` (al reenviar, `hubs.member.invitation_resent`; al cancelar, `hubs.member.invitation_cancelled`).
-Si falla: alguien que ya está en el negocio, «… ya está en este negocio.»; con una invitación que aún vale, «… ya tiene una invitación pendiente. Reenvíala.» (una caducada se renueva al invitar otra vez). Un rol igual o superior al propio, «No puedes dar un rol igual o superior al tuyo.». Sin plazas, el diálogo dice «El plan no tiene plazas libres: cambia de plan o quita a alguien para invitar a más personas.» y no manda nada. Una dirección del equipo de ERPlora, «Esta dirección es del equipo de ERPlora y no puede unirse a un negocio.». Una cuenta que nunca confirmó esa dirección se libera antes de invitarla: pierde su contraseña, su segundo factor, su Google y sus sesiones, y solo entra quien abre ese buzón. Un encargado o un empleado no invita; un negocio eliminado no admite invitaciones; un negocio ajeno no existe para quien invita. Si el correo no sale, la invitación queda igual.
+Si falla: una dirección que no vale (demasiado larga, por ejemplo), el error en el campo y «Revisa los datos marcados.» arriba hasta que la corriges; alguien que ya está en el negocio, «… ya está en este negocio.»; con una invitación que aún vale, «… ya tiene una invitación pendiente. Reenvíala.» (una caducada se renueva al invitar otra vez). Un rol igual o superior al propio, «No puedes dar un rol igual o superior al tuyo.». Sin plazas, el diálogo dice «El plan no tiene plazas libres: cambia de plan o quita a alguien para invitar a más personas.» y no manda nada. Una dirección del equipo de ERPlora, «Esta dirección es del equipo de ERPlora y no puede unirse a un negocio.». Una cuenta que nunca confirmó esa dirección se libera antes de invitarla: pierde su contraseña, su segundo factor, su Google y sus sesiones, y solo entra quien abre ese buzón. Un encargado o un empleado no invita; un negocio eliminado no admite invitaciones; un negocio ajeno no existe para quien invita. Si el correo no sale, la invitación queda igual.
 Implicados: accounts (la cuenta de la persona invitada y, si nunca confirmó su dirección, su liberación), el negocio (recibe a la persona cuando acepta)
 
 ### HUBS-F25 Aceptar o rechazar una invitación a un negocio
@@ -794,7 +795,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   la `0013`, y reverse simétrico. `included_level` se queda en el modelo, sin uso en la web pública.
 - Dirección web (F16): `hubs.business.change_address` (solo el propietario; `can.change_address` en la página),
   validada como la valida el Hub (`live.slugs`, `_chosen_slug`); sube `registry_version` y `state_version`, debe
-  `put` y empuja tras el COMMIT; `sync_access(hub, previous_slug=…)` mueve el espejo del salto. La antigua queda en
+  `put` y empuja tras el COMMIT; el salto sigue al negocio porque lee a sus miembros. La antigua queda en
   `Hub.previous_slug` y `queries.slug_taken`/`free_slug` la cuentan como cogida para los demás (migración `0015`).
   El Hub acepta el cambio en su registro (`hub/base/tests/test_services_hub.py`,
   `test_registering_again_updates_it_without_another_ready`). Tests: `hubs/tests/test_change_address.py`,
@@ -816,10 +817,37 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   (`services.USAGE_RETENTION_DAYS`, 400 días; el motivo, junto a la constante y en PLAN-SAAS §27), sin programación
   propia y sin que su fallo se coma la recogida (`services.prune_usage`). La copia de los datos de F18 y F20 la hace el Hub al
   recibir la baja (hub#580) y el SaaS la enseña y la descarga con `GET /internal/hubs/{id}/dumps` (saas#168).
-- Dominio propio (F17, `descartado` en esta versión, saas#195): decisión de mercado de APP-HUBS-2 (PLAN-SAAS §8, ronda
-  2026-10-22; ADR-0502): se mantiene solo para la web pública (`website`) y en planes con `includes_custom_domain`, y
-  llega con sus tres piezas (erplora.com, borde de `aws` y el host en `base` del Hub); hasta entonces no hay modelo ni
-  pantalla.
+- Dominio propio (F17, saas#195; decisión de mercado de APP-HUBS-2, PLAN-SAAS §8 y §37 punto 2; ADR-0502): solo la web
+  pública (`website`) y en planes con `includes_custom_domain`. El contrato con AWS está en el README de `aws` («Dominio
+  propio de un negocio») y el del Hub, en BASE-F110. Aquí, `CustomDomain` (uno por negocio), las operaciones
+  `hubs.custom_domain.{request,get,remove}` y el comando `check_custom_domains`, cada hora en `saas-cron`
+  (`services.check_custom_domains`). `hubs/domain_names.py` valida el nombre: el Hub rechaza la foto entera (422) por un
+  dominio malo, así que nada de lo que él rechaza llega a una fila. `hubs/edge_client.py` son las llamadas a ACM, al ALB y
+  a CloudWatch, y `hubs/domain_checks.py`, el DNS y la sonda.
+  - **Estados**: `pending` → (certificado, en el listener, CNAME de este negocio, foto, sonda) → `active` → (tres fallos
+    seguidos) → `lapsed` → (vuelve el CNAME) → `pending`; `removing`, cuando lo quita su dueño. La fila se borra la última,
+    y eso libera el nombre (ADR-0496). Una pasada que encuentra otro estado del que leyó no escribe nada: gana el dueño.
+  - **Un nombre no es de nadie hasta que su CNAME lo prueba** (`proven_at`, único por `hostname` entre los probados): pedir
+    un dominio ajeno no se lo quita a su dueño. El CNAME de validación no prueba nada porque ACM lo reutiliza para quien lo
+    pida después desde esta cuenta; el segundo apunta a `hub-<id>`, de ese negocio y para siempre (un slug se puede volver
+    a coger).
+  - **La foto** lleva `custom_domain` desde que se prueba hasta que cae, y solo si el plan lo incluye. Sin dominio la
+    clave no va, y eso al Hub le dice «ninguno».
+  - **Qué es un fallo**: que el CNAME no llegue a este negocio, o que la sonda diga que la entrada no lo sirve (certificado
+    que no valida, Hub que no lo conoce, otro negocio detrás). **Nunca** lo es una pregunta sin respuesta (DNS caído,
+    sonda sin conexión, 5xx): tres horas de plataforma caída no pueden tirar todos los dominios. La comprobación no usa la
+    portada: una web sin publicar da 404 con el dominio bien puesto.
+  - **Orden al quitarlo o al caer**: foto sin la clave, y cuando el Hub la tiene, `RemoveListenerCertificates` y
+    `DeleteCertificate` (`ResourceInUseException`: se reintenta en la siguiente pasada).
+  - **Cupo**: `CUSTOM_DOMAINS_MAX_CERTIFICATES` se cuenta por las filas con `attached_at`, porque estos roles no pueden
+    listar el listener; en el tope no se pide certificado, y `TooManyCertificates` da lo mismo. Un certificado que espera
+    un CNAME 14 días (`CUSTOM_DOMAIN_PENDING_LIMIT`) devuelve su plaza. La pasada publica `ERPlora/CustomDomains
+    CertificatesAttached`, que lee la alarma del 80 %.
+  - **Un certificado rechazado no se vuelve a pedir solo** (`CustomDomain.RETURNS_BY_ITSELF`): cada hora, un solo CAA
+    gastaría los certificados del año de ACM.
+  - Hasta la pantalla nada lo vende: `hubs/0026` quitó la línea y la descripción de Standard, el guardia es
+    `test_plan_catalogue.py::test_no_plan_sells_a_custom_domain_nobody_can_connect` (y sus gemelos de `/pricing/` y de
+    los términos en `public/tests`).
 - Pruebas de la parte 2: e2e en `tests/e2e/panel/hubs-settings.spec.ts` (clave `HUBS-Gnn` en el título).
 - Personas (F24–F30): `hubs.member.{list,invite,change_role,remove,resend,cancel}`,
   `hubs.invitation.{list_mine,accept,decline}` y `hubs.ownership.{transfer,accept,decline,cancel}` (`api.py`, bajo
@@ -876,11 +904,8 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 
 ## Lo que queda fuera
 
-- **Conectar un dominio propio a la web del negocio** (HUBS-F17): fuera de la fase 1, llega con sus tres piezas
-  (erplora.com, la entrada de ERPlora y el Hub) — saas#195.
-- **Desde el Hub, «Mejorar plan» y «erplora.com» piden volver a entrar con la cuenta si el navegador no tenía la sesión
-  abierta** (BASE-F11 del Hub, cruza esta app) — saas#190.
-- **erplora.com guarda dos veces quién está en cada negocio** (el espejo `accounts.HubMembership`) — saas#199.
+- **La pantalla de Ajustes para conectar un dominio propio** (HUBS-F17) y la vuelta de su promesa a los planes y a la web:
+  es lo único visible y entra la última — saas#195.
 
 ## Lo que NO hace, a propósito
 
@@ -893,8 +918,10 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - No pausa ni reinicia negocios, ni enseña su CPU, su memoria o sus conexiones: un solo servicio sirve a todos.
 - No pausa, avisa ni borra un negocio gratuito porque nadie lo use, ni lo despierta al volver: sin un servidor por
   negocio no hay nada que dormir, y no hay borrado por inactividad hasta medir lo que cuesta uno ocioso.
-- No conecta todavía un dominio propio (HUBS-F17, saas#195): la web y la entrada de cada negocio están en su dirección
-  de erplora.com.
+- No enseña todavía en el panel el dominio propio (HUBS-F17, saas#195): la web y la entrada de cada negocio están en su
+  dirección de erplora.com.
+- No conecta un dominio raíz (minegocio.es): ni admite CNAME ni la entrada de ERPlora tiene una IP fija que dar.
+- No sirve la aplicación ni la entrada por el dominio propio: la cookie de sesión no llega a otro dominio.
 - No entra sola en un negocio ya existente al abrir la Entrada, tampoco con uno solo: elige la persona.
 - No tiene una página con las personas de todos los negocios: cada negocio enseña las suyas en «Miembros» (ronda 17:
   el panel es Negocios, Tienda, Facturación y Cuenta).

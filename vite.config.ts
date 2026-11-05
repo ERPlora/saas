@@ -63,6 +63,10 @@ export default defineConfig({
     environment: 'happy-dom',
     // happy-dom with the browser behaviour Ionic relies on (vitest.setup.ts).
     setupFiles: ['./vitest.setup.ts'],
+    // Long enough to outlast a runner that stalls: it took 24 s in a run where nothing was wrong (saas#251; the
+    // measure is in vite.config.test.ts). A failed assertion goes red at once whatever this says.
+    testTimeout: 60_000,
+    hookTimeout: 60_000,
     include: [
       'frontend/**/*.test.ts',
       ...FRONTEND_APPS.map((app) => `${app}/frontend/**/*.test.ts`),

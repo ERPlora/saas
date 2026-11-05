@@ -41,12 +41,14 @@ from assistant import media, queries, services, turn
 from assistant.schemas import (
     Caller,
     CallerIn,
+    DictationIn,
     DocsSearchDoorIn,
     DocsSearchIn,
     EmbeddingsIn,
     NoInput,
     ReportIn,
     ReportSendIn,
+    SpeechIn,
     SynthesizeIn,
     TranscribeIn,
     TurnIn,
@@ -162,8 +164,8 @@ async def chat_stream(call: Call) -> HttpResponse:
     """A turn answered live, ``text/event-stream``: ``text_delta`` as the text comes, a ``function_call`` per tool of
     the Hub, ``response`` (the whole output, its tokens and the ``continuation`` of the tools), ``usage`` (the
     allowance after the turn) and ``[DONE]``; a failure of the provider is an ``error`` frame (``code``,
-    ``retriable``) before ``usage``."""
-    started = await turn.start(call.caller, call.data)
+    ``retriable``) before ``usage``. What it answers reaches the person and no server keeps it."""
+    started = await turn.start(call.caller, call.data, answer_kept=False)
     response = StreamingHttpResponse(turn.stream(started), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"
     response["X-Accel-Buffering"] = "no"
@@ -173,11 +175,12 @@ async def chat_stream(call: Call) -> HttpResponse:
 @door(TurnIn, bucket="turn", rate="ASSISTANT_TURN_RATELIMIT", max_bytes=TURN_BODY_BYTES)
 async def chat(call: Call) -> HttpResponse:
     """A turn answered at once: ``{output, usage, continuation, quota}``; a failure of the provider is a 502 with its
-    ``code`` and ``retriable``, the allowance after it in ``quota``."""
-    started = await turn.start(call.caller, call.data)
+    ``code`` and ``retriable``, the allowance after it in ``quota``. What it answers is kept: the Hub calls it for an
+    automation's step (FLOW-F39) and writes the answer in the run and in the log of the step."""
+    started = await turn.start(call.caller, call.data, answer_kept=True)
     outcome = turn.Outcome()
     try:
-        async for _frame in turn.run(started.candidates, started.messages, started.tools, outcome):
+        async for _frame in turn.run(started, outcome):
             pass
     except Exception:
         logger.exception("assistant.turn.failed")
@@ -232,12 +235,13 @@ async def embeddings(call: Call) -> HttpResponse:
     return JsonResponse({"embeddings": vectors, "model": media.EMBEDDING_MODEL})
 
 
-@door(TranscribeIn, bucket="transcribe", rate="ASSISTANT_TRANSCRIBE_RATELIMIT", max_bytes=TRANSCRIBE_BODY_BYTES)
-async def transcribe(call: Call) -> HttpResponse:
-    """The text of a dictation: ``{text, language}`` (``language`` as asked, base code; empty: the model found it).
-    413 over ``MAX_AUDIO_BYTES`` of audio."""
+async def dictation(caller: Caller, data: DictationIn) -> dict:
+    """The text of a dictation for ``caller``, counted in its month and spending no message: ``{text, language}``
+    (``language`` as asked, base code; empty: the model found it). A ``Refused`` for what it cannot transcribe: 422 what
+    is not audio, 413 over ``MAX_AUDIO_BYTES``, 503 without the services' provider, 502 when it fails. Awaits the
+    provider, so never inside a transaction. The Hub's door, and the panel's route (``base.assistant.transcribed``)."""
     try:
-        audio = base64.b64decode(call.data.audio, validate=True)
+        audio = base64.b64decode(data.audio, validate=True)
     except (binascii.Error, ValueError):
         raise Refused(422, "invalid_payload", "The body is not the door's contract.", fields={"audio": "not valid base64"}) from None
     if not audio:
@@ -245,26 +249,44 @@ async def transcribe(call: Call) -> HttpResponse:
     if len(audio) > media.MAX_AUDIO_BYTES:
         raise Refused(413, "payload_too_large", f"The audio exceeds {media.MAX_AUDIO_BYTES} bytes.")
     service = await services_connection()
-    language = media.base_language(call.data.language)
+    language = media.base_language(data.language)
     try:
-        text = await media.transcribe(service, audio, call.data.mime_type, language)
+        text = await media.transcribe(service, audio, data.mime_type, language)
     except media.MediaFailed as problem:
-        return media_failed(problem)
-    await record(call.caller, transcriptions=1)
-    return JsonResponse({"text": text, "language": language})
+        raise Refused(502, problem.code, turn.MESSAGES[problem.code], retriable=problem.retriable) from None
+    await record(caller, transcriptions=1)
+    return {"text": text, "language": language}
+
+
+@door(TranscribeIn, bucket="transcribe", rate="ASSISTANT_TRANSCRIBE_RATELIMIT", max_bytes=TRANSCRIBE_BODY_BYTES)
+async def transcribe(call: Call) -> HttpResponse:
+    """The text of a dictation (``dictation``)."""
+    return JsonResponse(await dictation(call.caller, call.data))
+
+
+async def speech(caller: Caller, data: SpeechIn) -> bytes:
+    """``data.text`` read for ``caller`` by the engine (cut to ``MAX_SPEECH_CHARS``), as an mp3, in the voice asked or its
+    own for ``data.language``; the characters read are counted in its month and spend no message. A ``Refused`` for what
+    it cannot read: 503 ``assistant.speech_unavailable`` without an engine, as erplora.com is today (the caller reads with
+    the device's voice), 502 when it fails. Awaits the engine, so never inside a transaction. The Hub's door, and the
+    panel's route (``base.assistant.spoken``)."""
+    engine = media.SPEECH_ENGINE
+    if engine is None:
+        logger.warning("assistant.media.no_speech_provider")
+        raise Refused(503, "assistant.speech_unavailable", "Reading aloud is not available.", retriable=False)
+    text = media.speech_text(data.text)
+    try:
+        audio = await engine(text, data.language, data.voice)
+    except media.MediaFailed as problem:
+        raise Refused(502, problem.code, turn.MESSAGES[problem.code], retriable=problem.retriable) from None
+    await record(caller, speech_characters=len(text))
+    return audio
 
 
 @door(SynthesizeIn, bucket="synthesize", rate="ASSISTANT_SYNTHESIZE_RATELIMIT")
 async def synthesize(call: Call) -> HttpResponse:
-    """``text`` spoken (cut to ``MAX_SPEECH_CHARS``), ``audio/mpeg``; an unknown ``voice`` is the default one."""
-    service = await services_connection()
-    text = media.speech_text(call.data.text)
-    try:
-        audio = await media.synthesize(service, text, media.voice_of(call.data.voice))
-    except media.MediaFailed as problem:
-        return media_failed(problem)
-    await record(call.caller, speech_characters=len(text))
-    return HttpResponse(audio, content_type="audio/mpeg")
+    """``text`` spoken, ``audio/mpeg`` (``speech``)."""
+    return HttpResponse(await speech(call.caller, call.data), content_type="audio/mpeg")
 
 
 # --- ERPlora's documentation (ASSISTANT-F28) --------------------------------------------------------------------

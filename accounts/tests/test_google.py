@@ -292,6 +292,23 @@ class TestComingBackFromGoogle:
         ]
         assert not stranger.has_usable_password()
 
+    @pytest.mark.parametrize(("accept_language", "language"), [("es-ES,es;q=0.9", "es"), ("en-GB,en;q=0.9", "en")])
+    def test_a_new_account_speaks_the_language_of_the_page(self, client, google, accept_language, language):
+        """ACCOUNTS-F06, as the sign-up with a password (ACCOUNTS-F01): the language of this browser's way back."""
+        _sign_in_with_google(client, _claims(STRANGER_UID, "stranger@gmail.com"), HTTP_ACCEPT_LANGUAGE=accept_language)
+
+        assert get_user_model().objects.get(email="stranger@gmail.com").language == language
+
+    def test_signing_in_never_changes_the_language_of_the_account(self, client, google, ana):
+        """allauth builds a new account on every way back from Google, and drops it for the one it finds."""
+        assert ana.language == "es"
+
+        _sign_in_with_google(client, _claims(ANA_UID, ana.email), HTTP_ACCEPT_LANGUAGE="en-GB")
+
+        ana.refresh_from_db()
+        assert _signed_in_user_id(client) == str(ana.pk)
+        assert ana.language == "es"
+
     def test_a_new_account_continues_to_next(self, client, google):
         next_path = "/hub-login/?hub=a&next=/sales/"
 

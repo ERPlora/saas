@@ -32,7 +32,12 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
 - **Ventana visible solo con `E2E_HEADED=1`** (`pnpm e2e:headed`): Chrome visible y `slowMo` de 150 ms
   para poder seguirlo. La decide `browserWindow()` de `playwright.config.ts` (guarda en
   `vite.config.test.ts`); ningún proyecto ni spec la cambia por su cuenta.
-- `pnpm e2e:ci` pone `CI=1`: sin ventana y sin `slowMo` aunque se pida `E2E_HEADED=1`. Es la de la CI.
+- `pnpm e2e:ci` pone `CI=1`: sin ventana y sin `slowMo` aunque se pida `E2E_HEADED=1`, y un `test.only` olvidado es un
+  error, no un verde con un solo test. Es la de la CI.
+- **Qué corre la CI**: solo `panel/assistant-gateway.spec.ts`, las puertas del asistente tal como las llama el Hub (job
+  `e2e-doors` de `.github/workflows/test.yml`, parte del check obligatorio `test / test`). Un cambio en una puerta no
+  toca ninguna pantalla y nadie corría esta spec a mano: estuvo en rojo sin que se viera (saas#285). Las demás specs no
+  corren solas: quien toca lo suyo las corre a mano (saas#296).
 - **Depurar**: `DEBUG=pw:webserver pnpm e2e:ci <spec>` enseña el arranque y la salida de cada servidor
   (`DEBUG=pw:*`, todos los registros de Playwright). Los procesos de Django no heredan ese `DEBUG`, que leen
   como booleano: cada uno lleva el suyo por `django-env.ts` (`:8011` apagado; `:8012`, `globalSetup` y los
@@ -42,14 +47,22 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
   pila propia, su puerto: `…-8030`)
   (`retain-on-failure`; se abren con `pnpm exec playwright show-trace <ruta>/trace.zip`). Las capturas
   que dejan las specs, en `.artifacts/` (las del panel, en `.artifacts/panel/`). Todo ignorado por git.
+  Excepción: el recorrido de las pestañas de `panel/account-tabs.spec.ts` corre sin traza (`trace: 'off'`), porque con la
+  máquina cargada parar la traza de sus 12 páginas retiene el cierre del contexto hasta agotar el tiempo de la prueba
+  (saas#259); un fallo de pantalla deja su captura y dice qué pestaña, ancho y tema; los errores de página solo se
+  listan.
 
 ## Puertos y servidores
 
 Son los de la pila compartida, la de toda ejecución que no exporta nada. `E2E_SAAS_PORT` los mueve juntos para una
 segunda ejecución a la vez (`stack.ts`; ver «Dos e2e del SaaS a la vez»): `+1` el público, `+2` el panel, `+3` su
 gemelo con el segundo factor y una app de Google inventada, `+5` el doble de Google que levanta
-`panel/accounts-google.spec.ts`, `+8` el doble de reCAPTCHA y `+9` el Hub de las specs (por defecto `8010`: `:8011`,
-`:8012`, `:8013`, `:8015`, `:8018`, `:8019`).
+`panel/accounts-google.spec.ts`, `+6` el gemelo del público con el aviso de cookies, `+8` el doble de reCAPTCHA y `+9` el
+Hub de las specs (por defecto `8010`: `:8011`, `:8012`, `:8013`, `:8015`, `:8016`, `:8018`, `:8019`).
+
+- **`:8016` (el gemelo del público con el aviso de cookies)**: el mismo servidor que `:8011` (misma BD, misma CSP, sin
+  Vite) con `CLARITY_PROJECT_ID` inventado, el único que enseña el aviso (PUBLIC-F19, paso 2): producción no mide visitas
+  hoy y `:8011` tampoco. Nada carga el rastreador hasta que alguien acepta. Ahí juega `public-cookie-notice.spec.ts`.
 
 - **`:8012` (Django del panel)**: siempre propio (`reuseExistingServer: false`), sin autorecarga y con
   `HUB_INTERNAL_URL=http://127.0.0.1:8019`: las llamadas al Hub se quedan pendientes, como con el Hub
@@ -156,9 +169,16 @@ Reglas que la e2e hace cumplir antes de arrancar ningún servidor (`stack.ts`):
 - En cualquier pila, una BD que no es del SaaS se rechaza: el caso típico es el `DB_NAME` del Hub
   (`hub_e2e_8030`) aún exportado en la consola, con el que el SaaS abría la BD del Hub y su login caía con
   `relation "django_site" does not exist`. La salida: `env -u DB_NAME`.
-- **La BD se crea y se migra sola al arrancar**: el primer servidor que levanta Playwright (el público) corre antes
-  `node tests/e2e/database.ts`, que crea `saas_e2e_<puerto>` si falta y la migra (idempotente: conserva sus filas;
-  unos 10 s la primera vez). Solo toca BD e2e. La pila compartida sigue sin migrar nada: su BD es la `saas` de `.env`.
+- **La BD se crea y se migra sola al arrancar**: antes que ningún servidor, Playwright corre la entrada `database` de
+  `webServer` (`databaseStep` de `playwright.config.ts`), `node tests/e2e/database.ts`, que crea `saas_e2e_<puerto>` si
+  falta y la migra (idempotente: conserva sus filas; unos 10 s la primera vez con la máquina libre y minutos con la
+  máquina cargada: 170 s con carga 22). Solo toca BD e2e. La pila compartida sigue sin migrar nada: su BD es la `saas`
+  de `.env`.
+- **Ese paso no gasta el tope de los servidores**: tiene el suyo, 10 minutos, y los servidores siguen con sus 2 minutos.
+  Lo que hace sale en las líneas `[database]`. Si la migración falla, la pasada para en el acto con su error
+  (`Could not migrate the e2e database …` y `Process from config.webServer was not able to start`). Si agota el tope
+  (`Timed out waiting 600000ms` con `[database] … preparing …` como última línea del paso), la migración está atascada;
+  cada migración es su propia transacción, así que la pasada siguiente sigue donde se quedó.
 - **El Vite no se reutiliza** en una pila propia (`reuseExistingServer: false`): dos ejecuciones del mismo checkout
   con el mismo `VITE_DEV_PORT` no comparten uno (la primera lo pararía al acabar bajo la segunda). Si el puerto está
   ocupado, Playwright lo dice al arrancar; cada pila lleva su `VITE_DEV_PORT`.
@@ -189,11 +209,14 @@ Las specs del panel mandan las llamadas al Hub (`HUB_INTERNAL_URL`) al puerto `+
 salvo un doble (`startHubDouble`) mientras una spec lo pide: el negocio recién creado se queda «Preparando». Para
 ver el salto de verdad (el Hub recibe el registro, avisa de que está listo y la ventana entra), una spec puede
 correr contra **un Hub de verdad** en ese mismo puerto, con `E2E_REAL_HUB=1` (hoy, el bloque «against the real Hub»
-de `panel/hubs-flows.spec.ts`). Sin la variable, esos tests salen saltados y lo dicen; con ella, los que necesitan
+de `panel/hubs-flows.spec.ts` y el de `panel/signup-language.spec.ts`). Sin la variable, esos tests salen saltados y lo dicen; con ella, los que necesitan
 el negocio «Preparando» se saltan a su vez. Así la spec corre dos veces: una sin la variable y otra con ella.
 
 El Hub sale de un worktree del Hub (`HUB_DIR`) con su BD e2e (`HUB_DB_NAME`) y escucha en el puerto `+9`, con el
-mismo `INTERNAL_SHARED_SECRET` que el SaaS y su `SAAS_URL` apuntando al panel de la pila. El panel lleva
+mismo `INTERNAL_SHARED_SECRET` que el SaaS y su `SAAS_URL` apuntando al panel de la pila. A su lado corre
+`manage.py run_worker --databases-only`: es quien hace la BD del negocio y avisa de que está listo; sin él el Hub
+contesta `202` y el negocio se queda «Preparando». El Hub recuerda la dirección de cada pasada aunque el SaaS borre
+sus filas (un `409` a la siguiente): una spec que repita tiene que usar un nombre nuevo o una BD del Hub nueva. El panel lleva
 `HUB_CALLBACK_TEMPLATE` y `HUB_ADMIN_CALLBACK_URL` hacia ese Hub. Receta para la pila `8080` (`:8082` panel, `:8089`
 Hub; Vites `5480` y `5750`), con el Hub levantado antes y parado después por su PID:
 
@@ -203,11 +226,13 @@ for p in 8081 8082 8089 5480 5750; do lsof -nP -iTCP:$p -sTCP:LISTEN; done   # n
 DB_NAME=hub_e2e_8089 COMPOSE_FILE=<raíz>/compose.yaml node tests/e2e/database.ts
 DEBUG=True DB_NAME=hub_e2e_8089 VITE_DEV_PORT=5750 SAAS_URL=http://localhost:8082 SAAS_INTERNAL_URL=http://127.0.0.1:8082 \
   INTERNAL_SHARED_SECRET=<el del SaaS> uv run python manage.py runserver 127.0.0.1:8089 --noreload &
+DEBUG=True DB_NAME=hub_e2e_8089 SAAS_URL=http://localhost:8082 SAAS_INTERNAL_URL=http://127.0.0.1:8082 \
+  INTERNAL_SHARED_SECRET=<el del SaaS> uv run python manage.py run_worker --databases-only &
 # En el worktree del SaaS: la pasada con el Hub real
 env -u DB_NAME E2E_SAAS_PORT=8080 VITE_DEV_PORT=5480 E2E_REAL_HUB=1 HUB_DIR=<worktree del Hub> HUB_DB_NAME=hub_e2e_8089 \
   HUB_CALLBACK_TEMPLATE='http://{slug}.localhost:8089/auth/callback' HUB_ADMIN_CALLBACK_URL='http://hubs.localhost:8089/auth/callback' \
   pnpm e2e:ci panel/hubs-flows.spec.ts --workers=1
-# Al terminar: parar el Hub por su PID (o `lsof -tiTCP:8089 -sTCP:LISTEN | xargs kill`) y borrar las dos BD e2e
+# Al terminar: parar el Hub y su worker por su PID (el Hub, también con `lsof -tiTCP:8089 -sTCP:LISTEN | xargs kill`) y borrar las dos BD e2e
 ```
 
 - `INTERNAL_SHARED_SECRET` es el de `settings` del SaaS de ese worktree (los dos lados firman con él).
@@ -316,8 +341,9 @@ tiene de dónde salir y falla sin culpa del producto).
   lookups?, notes?}`, el mismo formato que el del Hub. `expect`:
   - `read`: su herramienta es la primera que corre (pasadas las que se ofrecen siempre, `base.assistant.ALWAYS`, y
     las `lookups` de la sonda, lecturas previas legítimas), sin tarjeta;
-  - `card`: la primera tarjeta es la de su herramienta y no sale otra; `decide` `cancel` por defecto (nada nuevo en
-    el outbox) o `confirm` (corre);
+  - `card`: la primera tarjeta es la de su herramienta y no sale otra, tampoco la suya otra vez tras cancelarla (un
+    «no» vale hasta que la persona vuelve a escribir, saas#193); `decide` `cancel` por defecto (nada nuevo en el
+    outbox) o `confirm` (corre);
   - `refused`: sin tarjeta ni escritura, su herramienta no corre y la respuesta dice **por qué** no puede (un permiso,
     un rol, la app, erplora.com en el navegador); un «no puedo» suelto o «no tengo facturas» no cuentan. Es lo que la
     superficie no ofrece, como la tienda en la app;

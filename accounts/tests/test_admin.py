@@ -12,7 +12,9 @@ from django.test import override_settings
 
 from accounts import services
 from accounts.admin import open_hub_admin_url
-from accounts.models import AuthExchangeCode, HubMembership
+from accounts.models import AuthExchangeCode
+from accounts.tests.conftest import enter
+from hubs.models import HubMember
 
 pytestmark = pytest.mark.django_db
 
@@ -20,13 +22,13 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def staff_client(client):
     admin = get_user_model().objects.create_superuser(email="root@example.com", password="x")
-    HubMembership.objects.create(user=admin, hub_slug="a", role=HubMembership.Role.ADMIN)
+    enter(admin, "a", "hub_admin")
     services.issue_code(admin, "a")
     client.force_login(admin)
     return client, admin
 
 
-@pytest.mark.parametrize("model", ["user", "hubmembership", "authexchangecode"])
+@pytest.mark.parametrize("model", ["user", "authexchangecode"])
 def test_changelist_and_change_page_load(staff_client, model):
     client, _ = staff_client
 
@@ -115,9 +117,9 @@ class TestWhoEntersTheAdmin:
         assert (response.status_code, response.url) == (302, "/launch?next=/admin/")
         assert client.get("/admin/").status_code == 302
 
-    @pytest.mark.parametrize("role", HubMembership.Role.values)
+    @pytest.mark.parametrize("role", HubMember.Role.values)
     def test_no_customer_role_enters_the_admin(self, client, ana, role):
-        HubMembership.objects.create(user=ana, hub_slug="a", role=role)
+        enter(ana, "a", role)
         client.force_login(ana)
 
         assert client.get("/admin/").status_code == 302
@@ -133,8 +135,9 @@ class TestWhoEntersTheAdmin:
         helper.groups.add(Group.objects.get(name="support"))
         client.force_login(helper)
 
-        for model in ("user", "hubmembership", "authexchangecode"):
+        for model in ("user", "authexchangecode"):
             assert client.get(f"/admin/accounts/{model}/").status_code == 200
+        assert client.get("/admin/hubs/hubmember/").status_code == 200
         assert client.get(f"/admin/accounts/user/{ana.pk}/change/").status_code == 200
         assert client.get("/admin/accounts/user/add/").status_code == 403
         assert client.post(f"/admin/accounts/user/{ana.pk}/change/", {"email": "x@example.com"}).status_code == 403
@@ -200,7 +203,7 @@ class TestOpenInTheHubAdmin:
         assert not AuthExchangeCode.objects.exists()
 
     def test_each_membership_row_has_the_button(self, client, platform):
-        response = client.get("/admin/accounts/hubmembership/")
+        response = client.get("/admin/hubs/hubmember/")
 
         html = response.content.decode()
         assert response.status_code == 200
@@ -210,7 +213,7 @@ class TestOpenInTheHubAdmin:
         assert f'href="{self.HUBS}"' in html
 
     def test_the_hubs_page_lists_each_hub_once_with_its_button(self, client, platform, ana):
-        HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.EMPLOYEE)
+        enter(ana, "a", "hub_employee")
 
         response = client.get(self.HUBS)
 
@@ -227,11 +230,11 @@ class TestOpenInTheHubAdmin:
     def test_a_row_saved_with_no_valid_hub_slug_shows_no_button_and_breaks_no_page(self, client, platform, slug):
         # ``objects.create`` skips the validators, as rows that predate the shared rule.
         owner = get_user_model().objects.get(email="owner@example.com")
-        HubMembership.objects.create(user=owner, hub_slug=slug, role=HubMembership.Role.OWNER)
+        enter(owner, slug, "hub_owner")
 
         # One button per valid membership (``demo_seed``: owner and employee of ``a`` and ``b``), and
         # one per hub on the Hubs page; none for the bad row.
-        for page, buttons in (("/admin/accounts/hubmembership/", 4), (self.HUBS, 2)):
+        for page, buttons in (("/admin/hubs/hubmember/", 4), (self.HUBS, 2)):
             response = client.get(page)
             html = response.content.decode()
             assert response.status_code == 200
@@ -576,14 +579,14 @@ def test_the_user_page_shows_the_preferences_and_the_photo(staff_client, ana):
 
 def test_the_user_page_hides_the_preferences_and_the_photo_it_never_saved(staff_client, ana):
     """ACCOUNTS-G35/G36: an account on the defaults has no row there; an empty read-only box says nothing."""
-    from accounts.models import HubMembership, ProfilePhoto, UserPreferences
+    from accounts.models import ProfilePhoto, UserPreferences
 
     client, _ = staff_client
 
     page = client.get(f"/admin/accounts/user/{ana.pk}/change/")
 
     assert page.status_code == 200
-    assert [inline.opts.model for inline in page.context["inline_admin_formsets"]] == [HubMembership]
+    assert [inline.opts.model for inline in page.context["inline_admin_formsets"]] == [HubMember]
 
     UserPreferences.objects.create(user=ana, theme_mode="dark")
     ProfilePhoto.objects.create(user=ana, content_type="image/png", data=b"\x89PNG")
@@ -592,7 +595,7 @@ def test_the_user_page_hides_the_preferences_and_the_photo_it_never_saved(staff_
     assert [inline.opts.model for inline in page.context["inline_admin_formsets"]] == [
         UserPreferences,
         ProfilePhoto,
-        HubMembership,
+        HubMember,
     ]
 
 
@@ -762,7 +765,7 @@ class TestACustomerIsNoStaff:
     @pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
     def test_a_customer_is_not_made_staff_here_and_nothing_is_saved(self, staff_client, ana, flag):
         client, _ = staff_client
-        HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.OWNER)
+        enter(ana, "a", "hub_owner")
 
         response = _save(client, ana, first_name="Anita", **{flag: "on"})
 
@@ -774,7 +777,7 @@ class TestACustomerIsNoStaff:
     def test_the_refusal_speaks_spanish(self, staff_client, ana):
         client, _ = staff_client
         client.defaults["HTTP_ACCEPT_LANGUAGE"] = "es"
-        HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.EMPLOYEE)
+        enter(ana, "a", "hub_employee")
 
         response = _save(client, ana, is_staff="on")
 

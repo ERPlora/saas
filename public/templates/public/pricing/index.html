@@ -1,5 +1,5 @@
 {% extends "public/public_base.html" %}
-{% load static i18n icons %}
+{% load buttons i18n icons static %}
 {% comment %}
   /pricing/ — port of apps/public/pricing/templates/pricing/index.html (origin/develop): the hero,
   the plan cards with the ex-VAT note and the trial note, the plan-by-plan table, the two competitor
@@ -80,10 +80,7 @@
         {% endfor %}
       </div>
       <div class="mt-8 text-center">
-        <ion-button href="/launch" fill="outline">
-          {% trans "Start free and upgrade whenever you want" %}
-          <span slot="end">{% icon "lucide:arrow-right" %}</span>
-        </ion-button>
+        {% button href="/launch" label=_("Start free and upgrade whenever you want") fill="outline" end_icon="lucide:arrow-right" %}
       </div>
     </div>
   </section>
@@ -99,8 +96,8 @@
         <p class="mt-3 text-fg/65 mx-auto max-w-2xl leading-relaxed">
           {% blocktrans trimmed %}
           Every plan is priced per hub, and one hub covers all your devices and users. You
-          start on the plan that fits you today and move up in one click when you need a custom
-          domain or more capacity — no migration and no downtime.
+          start on the plan that fits you today and move up in one click when you need more
+          capacity — no migration and no downtime.
           {% endblocktrans %}
         </p>
       </div>

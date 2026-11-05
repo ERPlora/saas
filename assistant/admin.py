@@ -43,7 +43,14 @@ from live.context import OperationContext, Scope
 from live.errors import NotFound, OperationError
 
 from assistant import crypto, queries, routing, services
-from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage, estimate_cost
+from assistant.models import (
+    AIModel,
+    AIProvider,
+    AIProviderCredential,
+    AIRoutingPolicy,
+    AssistantUsage,
+    estimate_cost,
+)
 from assistant.providers.base import ProviderError, ToolSpec, TurnRequest
 from assistant.providers.factory import get_provider
 from assistant.schemas import (
@@ -362,6 +369,7 @@ class AIProviderAdmin(admin.ModelAdmin):
             provider = await sync_to_async(lambda: AIProvider.objects.filter(pk=object_id).first())()
         else:
             provider = connection
+        if error is None:
             try:
                 client = get_provider(
                     kind=connection.kind, api_key=connection.api_key.get_secret_value(), base_url=connection.base_url

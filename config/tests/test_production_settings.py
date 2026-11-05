@@ -89,29 +89,29 @@ def development(expression: str, **env: str):
 # Database: TLS verify-full against Aurora with the RDS bundle the image ships.
 
 
+#: The connection options, the pool's check by name: the `repr` of a function is no literal to read back.
+CONNECTION_OPTIONS = (
+    "{**s.DATABASES['default']['OPTIONS'], 'pool': {**s.DATABASES['default']['OPTIONS']['pool'],"
+    " 'check': s.DATABASES['default']['OPTIONS']['pool']['check'].__qualname__}}"
+)
+POOL = {"min_size": 1, "max_size": 8, "max_idle": 60, "timeout": 5, "check": "ConnectionPool.check_connection"}
+
+
 def test_production_verifies_the_database_certificate_against_the_rds_bundle():
-    options = production("s.DATABASES['default']['OPTIONS']", **AWS_ENV)
+    options = production(CONNECTION_OPTIONS, **AWS_ENV)
 
     assert options["sslmode"] == "verify-full"
     assert options["sslrootcert"] == "/etc/ssl/certs/rds-global-bundle.pem"
     # The task's name in pg_stat_activity (saas, saas-migrate, saas-cron).
     assert options["application_name"] == "saas"
-    assert options["pool"] == {"min_size": 1, "max_size": 8, "max_idle": 60, "timeout": 5}
+    assert options["pool"] == POOL
 
 
 def test_without_tls_variables_the_connection_options_are_only_the_pool_and_its_timeouts():
     """Local Postgres (compose.yaml) has no TLS: nothing is added unless the variable is set."""
-    only_the_pool = {
-        "pool": {"min_size": 1, "max_size": 8, "max_idle": 60, "timeout": 5},
-        "connect_timeout": 5,
-    }
-    assert production("s.DATABASES['default']['OPTIONS']") == only_the_pool
-    assert (
-        production(
-            "s.DATABASES['default']['OPTIONS']", DB_SSLMODE="", DB_SSLROOTCERT=""
-        )
-        == only_the_pool
-    )
+    only_the_pool = {"pool": POOL, "connect_timeout": 5}
+    assert production(CONNECTION_OPTIONS) == only_the_pool
+    assert production(CONNECTION_OPTIONS, DB_SSLMODE="", DB_SSLROOTCERT="") == only_the_pool
 
 
 def test_a_burst_of_pooled_connections_is_given_back_within_minutes():
@@ -119,7 +119,7 @@ def test_a_burst_of_pooled_connections_is_given_back_within_minutes():
     burst the idle SaaS kept up to 8 connections for over an hour (4 measured on 2026-10-18). With
     60 s it is back to one within 7 minutes; that one stays open for the next request (PLAN-DB
     «Conexiones», round 2026-10-18). As in the Hub."""
-    pool = production("s.DATABASES['default']['OPTIONS']['pool']")
+    pool = production(f"{CONNECTION_OPTIONS}['pool']")
     assert (pool["min_size"], pool["max_size"], pool["max_idle"]) == (1, 8, 60)
 
 
@@ -988,6 +988,51 @@ def test_production_switched_on_refuses_to_start_without_a_recaptcha_key(missing
         env[missing] = ""
 
     result = _run("import config.settings", env)
+
+    assert result.returncode != 0
+    assert missing in result.stderr
+
+
+# A business's own domain (HUBS-F17): off unless the environment turns it on, as pre and development run it; on, what
+# `aws` stacks/prod/custom_domains.tf gives saas and saas-cron is required, so a half-made deployment does not start.
+
+CUSTOM_DOMAINS_ENV = {
+    "CUSTOM_DOMAINS_ENABLED": "true",
+    "CUSTOM_DOMAINS_LISTENER_ARN": "arn:aws:elasticloadbalancing:eu-west-1:1:listener/app/erplora/a/b",
+    "CUSTOM_DOMAINS_TARGET_TEMPLATE": "hub-{hub_id}.erplora.com",
+    "CUSTOM_DOMAINS_MAX_CERTIFICATES": "24",
+}
+
+
+@pytest.mark.parametrize("env", [{}, {"CUSTOM_DOMAINS_ENABLED": "false"}], ids=["absent", "false"])
+def test_custom_domains_are_off_without_the_variable_and_ask_for_nothing_else(env):
+    assert production("s.CUSTOM_DOMAINS_ENABLED", **env) is False
+    assert development("s.CUSTOM_DOMAINS_ENABLED", **env) is False
+
+
+def test_custom_domains_switched_on_read_what_the_infra_gives():
+    expression = (
+        "(s.CUSTOM_DOMAINS_ENABLED, s.CUSTOM_DOMAINS_LISTENER_ARN, s.CUSTOM_DOMAINS_TARGET_TEMPLATE, "
+        "s.CUSTOM_DOMAINS_MAX_CERTIFICATES)"
+    )
+    assert production(expression, **CUSTOM_DOMAINS_ENV) == (
+        True,
+        CUSTOM_DOMAINS_ENV["CUSTOM_DOMAINS_LISTENER_ARN"],
+        "hub-{hub_id}.erplora.com",
+        24,
+    )
+
+
+@pytest.mark.parametrize(
+    ("missing", "value"),
+    [
+        ("CUSTOM_DOMAINS_LISTENER_ARN", ""),
+        ("CUSTOM_DOMAINS_TARGET_TEMPLATE", ""),
+        ("CUSTOM_DOMAINS_TARGET_TEMPLATE", "hub.erplora.com"),
+    ],
+)
+def test_custom_domains_switched_on_refuse_to_start_without_what_they_need(missing, value):
+    result = _run("import config.settings", {**PRODUCTION_ENV, **CUSTOM_DOMAINS_ENV, missing: value})
 
     assert result.returncode != 0
     assert missing in result.stderr

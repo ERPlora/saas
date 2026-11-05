@@ -166,14 +166,6 @@ msgstr "rol"
 msgid "created at"
 msgstr "creado el"
 
-#: accounts/models.py:102
-msgid "hub membership"
-msgstr "miembro de un hub"
-
-#: accounts/models.py:103
-msgid "hub memberships"
-msgstr "miembros de hubs"
-
 #: accounts/models.py:132
 msgid "exchange code"
 msgstr "código de acceso"
@@ -378,35 +370,13 @@ msgid "You cancelled signing in with Google. Try again, or sign in with your ema
 msgstr "Has cancelado el inicio de sesión con Google. Vuelve a intentarlo o entra con tu email y tu contraseña."
 
 #: accounts/admin.py
-#: accounts/templates/admin/accounts/hubs.html
+#: hubs/templates/admin/hubs/hubs.html
 msgid "Open in the Hub admin"
 msgstr "Abrir en el admin del Hub"
-
-#: accounts/admin.py
-#: accounts/templates/admin/accounts/hubs.html
-msgid "Hub admin"
-msgstr "Admin del Hub"
 
 #: accounts/templates/accounts/hub_login_form.html
 msgid "Opening the Hub admin…"
 msgstr "Abriendo el admin del Hub…"
-
-#: accounts/admin.py
-#: accounts/templates/admin/accounts/hubmembership/change_list.html
-msgid "Hubs"
-msgstr "Hubs"
-
-#: accounts/templates/admin/accounts/hubs.html
-msgid "Hub"
-msgstr "Hub"
-
-#: accounts/templates/admin/accounts/hubs.html
-msgid "Members"
-msgstr "Miembros"
-
-#: accounts/templates/admin/accounts/hubs.html
-msgid "No hub has members yet."
-msgstr "Ningún hub tiene miembros todavía."
 
 #: accounts/admin.py
 msgid "Turn on two-factor authentication and sign in again before opening the Hub admin."
@@ -945,8 +915,8 @@ msgstr "Si no lo has cambiado tú, escribe cuanto antes a %(support)s."
 msgid "There is no change of email waiting for a code: ask for a new one."
 msgstr "No hay ningún cambio de correo esperando un código: pide uno nuevo."
 
-msgid "Invalid payload"
-msgstr "Los datos enviados no son válidos."
+msgid "Check the highlighted details."
+msgstr "Revisa los datos marcados."
 
 msgid "Revoke the selected keys (they stop working at once)"
 msgstr "Revocar las claves seleccionadas (dejan de funcionar al momento)"
@@ -1352,6 +1322,38 @@ msgstr "No se ha podido enviar la denuncia: inténtalo de nuevo en un momento."
 #: base/services.py
 msgid "Too many reports in a short time: wait a moment and try again."
 msgstr "Demasiadas denuncias seguidas: espera un momento y vuelve a intentarlo."
+
+#: base/services.py
+msgid "Too many dictations in a short time: wait a moment and try again."
+msgstr "Demasiados dictados seguidos: espera un momento y vuelve a intentarlo."
+
+#: base/assistant.py
+msgid "The recording is too long: dictate a shorter message."
+msgstr "La grabación es demasiado larga: dicta un mensaje más corto."
+
+#: base/assistant.py
+msgid "The recording could not be read: record it again."
+msgstr "No se ha podido leer la grabación: vuelve a grabarla."
+
+#: base/assistant.py
+msgid "Dictation is not available right now."
+msgstr "El dictado no está disponible en este momento."
+
+#: base/assistant.py
+msgid "The audio could not be transcribed: try again."
+msgstr "No se ha podido transcribir el audio: inténtalo de nuevo."
+
+#: base/services.py
+msgid "Too many readings aloud in a short time: wait a moment and try again."
+msgstr "Demasiadas lecturas en voz alta seguidas: espera un momento y vuelve a intentarlo."
+
+#: base/assistant.py
+msgid "Reading aloud is not available right now."
+msgstr "La lectura en voz alta no está disponible en este momento."
+
+#: base/assistant.py
+msgid "The answer could not be read aloud: try again."
+msgstr "No se ha podido leer la respuesta en voz alta: inténtalo de nuevo."
 
 #: base/assistant.py
 msgid "Help"

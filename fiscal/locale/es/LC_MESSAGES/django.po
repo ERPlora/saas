@@ -165,9 +165,6 @@ msgid ""
 "For a company, attach the document that proves the signer represents it."
 msgstr "Para una sociedad, adjunta el documento que acredita que el firmante la representa."
 
-msgid "Invalid payload"
-msgstr "Los datos enviados no son válidos."
-
 msgid "Each document may be 5 MB at most."
 msgstr "Cada documento puede ocupar 5 MB como máximo."
 

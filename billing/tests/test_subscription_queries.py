@@ -18,13 +18,15 @@ from datetime import timedelta
 
 import pytest
 from django.core.cache import cache
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
-from billing import queries
-from billing.models import Invoice, PaymentFailure
-from billing.schemas import PaymentMethodIn, SubscriptionListIn
+from billing import queries, services
+from billing.models import Invoice, PaymentFailure, PlanChangeSchedule
+from billing.schemas import HubIn, PaymentMethodIn, SubscriptionListIn
 from billing.tests.conftest import ctx_for, pay
-from billing.tests.stripe_double import connection_error, event, signed
+from billing.tests.stripe_double import connection_error, event, schedule, signed
 from hubs.models import BillingProfile, HubMember, Subscription
 from hubs.tests.conftest import add_member, create_business
 
@@ -269,6 +271,60 @@ class TestTheActions:
         assert (row["cancelling"], row["next_invoice"]) == (True, None)
         assert row["ends_at"] is not None
 
+    def test_a_downgrade_that_waits_is_kept_first_and_can_still_be_cancelled(self, owner, shop):
+        """PLAN-SAAS §31 point 2 (saas#208): a downgrade that waits for the end of the period is undone from the
+        row with «Keep the plan», as a cancellation is (BILLING-F14); the plan still renews until then, so the
+        row keeps its next invoice and «Cancel plan» in its «⋮»."""
+        pay(shop, plan="standard")
+        PlanChangeSchedule.objects.create(
+            hub=shop,
+            stripe_schedule_id="sub_sched_1",
+            plan_slug="starter",
+            interval="month",
+            starts_at=timezone.now() + timedelta(days=30),
+        )
+
+        [row] = subscriptions(owner)
+
+        assert row["actions"] == ["keep_plan", "change_plan", "cancel_plan", "view_invoices"]
+        assert row["can"]["keep_plan"] is True
+        assert row["scheduled_change"]["plan"] == "starter"
+        assert row["next_invoice"] is not None
+
+    def test_a_downgrade_that_waits_stays_on_its_business(self, owner, shop):
+        """Two businesses of one account: only the one with the downgrade says it and offers to keep it."""
+        pay(shop, plan="standard")
+        pay(create_business(owner, name="Bar Norte"), plan="standard", sub_id="sub_2")
+        PlanChangeSchedule.objects.create(
+            hub=shop,
+            stripe_schedule_id="sub_sched_1",
+            plan_slug="starter",
+            interval="month",
+            starts_at=timezone.now() + timedelta(days=30),
+        )
+
+        rows = {row["business"]["name"]: row for row in subscriptions(owner)}
+
+        assert rows["Panadería López"]["can"]["keep_plan"] is True
+        assert rows["Bar Norte"]["can"]["keep_plan"] is False
+        assert rows["Bar Norte"]["scheduled_change"] is None
+
+    def test_a_downgrade_that_waits_is_not_kept_by_an_owner_who_does_not_pay(self, owner, shop, make_user):
+        pay(shop, plan="standard")
+        PlanChangeSchedule.objects.create(
+            hub=shop,
+            stripe_schedule_id="sub_sched_1",
+            plan_slug="starter",
+            interval="month",
+            starts_at=timezone.now() + timedelta(days=30),
+        )
+        BillingProfile.objects.filter(pk=shop.billing_profile_id).update(owner=make_user("payer@example.com"))
+
+        [row] = subscriptions(owner)
+
+        assert row["can"]["keep_plan"] is False
+        assert "keep_plan" not in row["actions"]
+
     def test_with_an_invoice_not_collected_it_is_viewed_first(self, owner, shop):
         pay(shop, status="past_due")
         unpaid = Invoice.objects.create(
@@ -437,3 +493,145 @@ class TestThePaymentMethod:
         )
 
         assert self.methods(make_user("other@example.com")) == []
+
+
+class TestTheNextInvoiceOfADowngradeThatWaits:
+    """saas#213 (BILLING-F23, BILLING-F11): a downgrade starts when the paid period ends, and Stripe's next phase
+    bills the new items without proration, so the invoice of that date is already the new plan's: its price, on
+    its billing, with the modules that renew at their price of that billing. The rest of the row still says what
+    runs today, until that date."""
+
+    def waits(self, hub, plan="starter", interval="month"):
+        PlanChangeSchedule.objects.create(
+            hub=hub,
+            stripe_schedule_id="sub_sched_1",
+            plan_slug=plan,
+            interval=interval,
+            starts_at=hub.subscription.current_period_end,
+        )
+
+    def test_it_costs_what_the_new_plan_costs(self, owner, shop):
+        paid = pay(shop, plan="standard")
+        self.waits(paid)
+
+        [row] = subscriptions(owner)
+
+        # 29.99 + 21 % = 36.29, not the 66.54 of the Standard it leaves.
+        assert row["next_invoice"]["total_cents"] == 3629
+        assert row["next_invoice"]["date"].startswith(paid.subscription.current_period_end.date().isoformat())
+        assert (row["plan"]["slug"], row["plan"]["price_cents"]) == ("standard", 5499)
+
+    def test_from_annual_to_monthly_the_plan_and_its_modules_go_by_the_month(self, owner, shop, inventory):
+        paid = pay(shop, plan="starter", interval="year", modules=["inventory"])
+        self.waits(paid, plan="starter", interval="month")
+
+        [row] = subscriptions(owner)
+
+        # (29.99 + 10.00) + 21 % = 48.39
+        assert row["next_invoice"]["total_cents"] == 4839
+        assert (row["plan"]["interval"], row["plan"]["price_cents"]) == ("year", 29990)
+        assert (row["modules"][0]["interval"], row["modules"][0]["price_cents"]) == ("year", 10000)
+
+    def test_a_cheaper_annual_plan_keeps_its_modules_by_the_year(self, owner, shop, inventory):
+        paid = pay(shop, plan="standard", interval="year", modules=["inventory"])
+        self.waits(paid, plan="starter", interval="year")
+
+        [row] = subscriptions(owner)
+
+        # (299.90 + 100.00) + 21 % = 483.88
+        assert row["next_invoice"]["total_cents"] == 48388
+
+    def test_a_module_that_ends_is_not_billed_on_the_new_plan_either(self, owner, shop, inventory):
+        paid = pay(shop, plan="standard", modules=["inventory"])
+        paid.subscription.items.filter(module_slug="inventory").update(
+            valid_until=timezone.now() + timedelta(days=20)
+        )
+        self.waits(paid)
+
+        [row] = subscriptions(owner)
+
+        assert row["next_invoice"]["total_cents"] == 3629
+
+    def elsewhere(self, owner):
+        """A second paying business of the account, its payer in the same place."""
+        other = create_business(owner, name="Bar Norte")
+        BillingProfile.objects.filter(pk=other.billing_profile_id).update(
+            billing_country="ES", billing_postal_code="28013"
+        )
+        return pay(other, plan="standard", sub_id="sub_2")
+
+    def test_it_stays_on_its_business(self, owner, shop):
+        paid = pay(shop, plan="standard")
+        self.elsewhere(owner)
+        self.waits(paid)
+
+        rows = {row["business"]["name"]: row for row in subscriptions(owner)}
+
+        assert rows["Panadería López"]["next_invoice"]["total_cents"] == 3629
+        assert rows["Bar Norte"]["next_invoice"]["total_cents"] == 6654
+
+    def test_keeping_the_plan_brings_its_price_back(self, owner, shop, stripe_double):
+        stripe_double.answer("subscription_schedules.release", schedule(status="released"))
+        paid = pay(shop, plan="standard")
+        self.waits(paid)
+
+        services.plan_keep(ctx_for(owner), HubIn(hub_id=paid.id))
+
+        [row] = subscriptions(owner)
+        assert row["scheduled_change"] is None
+        assert row["next_invoice"]["total_cents"] == 6654
+
+    def test_a_cancellation_still_has_no_next_invoice(self, owner, shop):
+        paid = pay(shop, plan="standard", cancel_at_period_end=True)
+        self.waits(paid)
+
+        [row] = subscriptions(owner)
+
+        assert row["next_invoice"] is None
+
+    def test_without_the_payers_place_the_total_is_unknown(self, owner, shop):
+        paid = pay(shop, plan="standard")
+        self.waits(paid)
+        BillingProfile.objects.filter(pk=paid.billing_profile_id).update(billing_country="", billing_postal_code="")
+
+        [row] = subscriptions(owner)
+
+        assert row["next_invoice"]["total_cents"] is None
+
+    def test_a_plan_that_left_the_catalogue_is_never_priced_as_the_one_it_leaves(self, owner, shop):
+        # The schedule keeps the plan by its slug: Stripe still bills it, at a price we can no longer tell.
+        paid = pay(shop, plan="standard")
+        self.waits(paid, plan="retired")
+
+        [row] = subscriptions(owner)
+
+        assert row["next_invoice"]["total_cents"] is None
+        assert row["next_invoice"]["date"] is not None
+
+    def test_the_new_plans_are_read_once_not_per_row(self, owner, shop):
+        paid = pay(shop, plan="standard")
+        other = self.elsewhere(owner)
+        self.waits(paid)
+        PlanChangeSchedule.objects.create(
+            hub=other,
+            stripe_schedule_id="sub_sched_2",
+            plan_slug="starter",
+            interval="month",
+            starts_at=other.subscription.current_period_end,
+        )
+
+        with CaptureQueriesContext(connection) as seen:
+            rows = subscriptions(owner)
+
+        assert [row["next_invoice"]["total_cents"] for row in rows] == [3629, 3629]
+        assert len([query for query in seen if 'FROM "hubs_plan"' in query["sql"]]) == 1
+
+    def test_an_integration_reads_the_same_amount(self, owner, shop):
+        paid = pay(shop, plan="standard")
+        self.waits(paid)
+        api = TestTheApiOfSubscriptions()
+
+        response = api.by_key(api.key(owner, "billing.read"), hub_id=str(paid.id))
+
+        assert response.status_code == 200
+        assert response.json()["rows"][0]["next_invoice"]["total_cents"] == 3629

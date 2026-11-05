@@ -390,5 +390,12 @@ describe("sdk-types.d.ts follows the panel's assistant schemas of base/schemas.p
   it('types the allowance and the report with their input and output', () => {
     expect(TYPES).toContain("'base.assistant.usage': { input: AssistantUsageIn; output: AssistantUsageOut };");
     expect(TYPES).toContain("'base.assistant.report': { input: AssistantReportIn; output: AssistantReportOut };");
+    expect(TYPES).toContain("'base.assistant.transcribe': { input: AssistantTranscribeIn; output: AssistantTranscribeOut };");
+  });
+
+  it('types the reading aloud with its input and no JSON output: its route answers with the mp3 itself', () => {
+    expect(TYPES).toContain("'base.assistant.speak': { input: AssistantSpeakIn; output: never };");
+    // `base.AssistantSpeakIn` = `assistant.SpeechIn` with the language optional (empty: the account's).
+    expect(typeTypes('AssistantSpeakIn')).toEqual({ text: 'string', 'language?': "'' | 'es' | 'en'", 'voice?': 'string' });
   });
 });

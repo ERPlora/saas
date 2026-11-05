@@ -12,25 +12,17 @@
 // a real provider and no real key is ever typed.
 // flow: ASSISTANT-F25 — the account asks the panel's assistant: reads alone, writes after the card.
 // flow: ASSISTANT-F26 — the account's messages of the month, spent without a plan to upgrade.
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
+// flow: BILLING-F13 — cancelling the plan: its card first says what Billing's dialog says (seed `paying`, no Stripe).
+import { readMails } from '@erplora/ui/testing/mail';
 import type { Locator, Page } from '@playwright/test';
 
-import { NEW_BUSINESS, type Provider, startProvider } from '../assistant-provider';
-import { djangoEnv } from '../django-env';
-import { expect, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
+import { NEW_BUSINESS } from '../assistant-provider';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const PASSWORD = process.env.QA_PANEL_PASSWORD ?? 'e2e-panel';
-const OWNER = { email: 'e2e-assistant-owner@example.com', password: PASSWORD };
+import { ask, localAssistant, OWNER, SIZES } from './assistant-chat';
+import { expect, settled, shot, sidewaysScroll, signIn, test, waitForMail, watchPageErrors } from './fixtures';
+import { PANEL_MAIL_DIR } from './project';
+
 const BUSINESS = 'E2E Asistente Panel';
-const SIZES = [
-  { name: '1440', width: 1440, height: 900 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '390', width: 390, height: 844 },
-] as const;
 
 /** What the person sees, in each language (the package's words and the panel's, frontend/locale). */
 const WORDS = {
@@ -42,13 +34,27 @@ const WORDS = {
     create: `Crea un negocio llamado ${NEW_BUSINESS}`,
     word: 'CONFIRMAR',
     card: 'Crear negocio en Negocios. Revisa cada dato antes de seguir.',
+    country: /País:?\s*España/,
     notCreated: 'No he creado el negocio: no ha cambiado nada.',
     receipt: 'No se hizo, cancelado: Crear negocio en Negocios',
     footerSpent: /^Has usado los 2 mensajes de este mes\. Se renuevan el 1 de \p{L}+\.$/u,
     third: '¿Cuánto pago al mes?',
     spent: 'Has usado todos los mensajes del asistente de este mes (2 de 2).',
+    spentMail: /Has usado los 2 mensajes con el asistente de este mes\./,
+    spentSubject: 'Has usado los mensajes del asistente de este mes',
     elsewhere: 'Cada negocio tiene su propio asistente, con sus propios mensajes: abre el negocio para seguir preguntando allí.',
     upgrade: /mejorar|plan/i,
+    cancel: `Cancela el plan de ${BUSINESS}`,
+    preview: [
+      'Plan actual: Starter',
+      /^Pagado hasta: .*\d.*$/,
+      'Después pasa a: Gratis',
+      /^Personas en Gratis: \d+$/,
+      /^Dispositivos en Gratis: \d+$/,
+      'Personas del negocio ahora: 1',
+      'Factura sin pagar, sigue pendiente: 36,29 €',
+    ],
+    notCancelled: 'No he cancelado el plan: no ha cambiado nada.',
   },
   en: {
     empty: 'Ask me about your businesses, your invoices or your account.',
@@ -58,33 +64,31 @@ const WORDS = {
     create: `Create a business called ${NEW_BUSINESS}`,
     word: 'CONFIRM',
     card: 'Create business in Businesses. Check each datum before going on.',
+    country: /Country:?\s*Spain/,
     notCreated: 'I did not create the business: nothing changed.',
     receipt: 'Not done, cancelled: Create business in Businesses',
     footerSpent: /^You have used all 2 messages of this month\. They renew on \p{L}+ 1\.$/u,
     third: 'How much do I pay a month?',
     spent: "You have used all the assistant's messages of this month (2 of 2).",
+    spentMail: /You have used all 2 messages with the assistant this month\./,
+    spentSubject: "You have used this month's messages with the assistant",
     elsewhere: 'Each business has its own assistant, with its own messages: open the business to keep asking there.',
     upgrade: /upgrade|plan/i,
+    cancel: `Cancel the plan of ${BUSINESS}`,
+    preview: [
+      'Current plan: Starter',
+      /^Paid until: .*\d.*$/,
+      'Then it moves to: Free',
+      /^People on Free: \d+$/,
+      /^Devices on Free: \d+$/,
+      'People in the business now: 1',
+      'Unpaid invoice, still owed: €36.29',
+    ],
+    notCancelled: 'I did not cancel the plan: nothing changed.',
   },
 } as const;
 
-let provider: Provider | undefined;
-
-/** `assistant_seed.py <action> <provider address> <language>`: always from scratch. */
-function seed(action: 'clear' | 'panel', language: 'es' | 'en' = 'es'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/assistant_seed.py', action, provider?.url ?? '', language], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-}
-
-/** Writes `text` in the composer and sends it, once the turn before is over. */
-async function ask(page: Page, text: string): Promise<void> {
-  await expect(page.getByTestId('assistant-stop')).toHaveCount(0);
-  await page.getByTestId('assistant-input').locator('textarea').fill(text);
-  await page.getByTestId('assistant-send').click();
-}
+const { seed } = localAssistant();
 
 /** The panel's width and how far the pane is pushed from the right (0 when it is not). */
 async function docking(page: Page): Promise<{ panel: number; pushed: number }> {
@@ -127,15 +131,6 @@ async function openBusinesses(page: Page): Promise<void> {
   await expect(page.getByText(BUSINESS).first()).toBeVisible();
 }
 
-test.beforeAll(async () => {
-  provider = await startProvider(0);
-});
-
-test.afterAll(async () => {
-  seed('clear');
-  await provider?.close();
-});
-
 for (const language of ['es', 'en'] as const) {
   const words = WORDS[language];
 
@@ -144,6 +139,8 @@ for (const language of ['es', 'en'] as const) {
   }) => {
     seed('panel', language);
     await signIn(page.request, OWNER);
+    // From here on (the sign-in mails its code before), the only mail to the account is the month's last message's.
+    const since = Date.now();
     const errors = watchPageErrors(page);
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/dashboard/businesses');
@@ -182,6 +179,8 @@ for (const language of ['es', 'en'] as const) {
     const card = page.getByTestId('assistant-confirm');
     await expect(card).toBeVisible();
     await expect(card).toContainText(words.card);
+    // A country by its name, never its code (saas#217).
+    await expect(card).toContainText(words.country);
     await expect(card.getByText(words.word, { exact: true })).toBeVisible();
     // `ion-button` is no native button: Ionic says it is off on its host.
     await expect(page.getByTestId('assistant-confirm-submit')).toHaveAttribute('aria-disabled', 'true');
@@ -206,6 +205,11 @@ for (const language of ['es', 'en'] as const) {
     await expect(failure).toContainText(words.elsewhere);
     await expect(failure).not.toContainText(words.upgrade);
     await expect(page.getByTestId('assistant-upgrade')).toHaveCount(0);
+    // ASSISTANT-F29: the month's last message mailed the account, in its language, once: the refused third one
+    // mails nothing more (at 1 of 2 there was no «messages left» mail: under 80 %).
+    await waitForMail(OWNER.email, since, words.spentMail);
+    const mailed = readMails(PANEL_MAIL_DIR).filter((mail) => mail.writtenAt >= since && mail.to.includes(OWNER.email));
+    expect(mailed.map((mail) => mail.subject)).toEqual([words.spentSubject]);
 
     // The same conversation at the three sizes: docked from 768 px, over a veil on a phone.
     await atEachSize(page, 'spent', language, failure);
@@ -214,6 +218,31 @@ for (const language of ['es', 'en'] as const) {
     await page.getByTestId('assistant-close').click();
     await expect(panel).toHaveAttribute('data-open', 'false');
     await expect(page.locator('html')).not.toHaveClass(/assistant-docked/);
+    expect(errors).toEqual([]);
+  });
+
+  test(`cancelling the plan from the assistant says first what will happen, and «Cancel» changes nothing (${language})`, async ({
+    page,
+  }) => {
+    seed('paying', language);
+    await openBusinesses(page);
+    const errors = watchPageErrors(page);
+    await page.getByTestId('assistant-button').click();
+    await expect(page.getByTestId('assistant-panel')).toHaveAttribute('data-open', 'true');
+
+    // The model reads the account's businesses alone, then asks for the cancel: it stops at its card, which asks to
+    // type the word and first says what Billing's «Cancel the plan» dialog says, read from the server.
+    await ask(page, words.cancel);
+    const card = page.getByTestId('assistant-confirm');
+    await expect(card).toBeVisible();
+    await expect(card.getByText(words.word, { exact: true })).toBeVisible();
+    await expect(page.getByTestId('assistant-confirm-submit')).toHaveAttribute('aria-disabled', 'true');
+    await expect(page.getByTestId('assistant-confirm-preview').locator('li')).toHaveText([...words.preview]);
+    await atEachSize(page, 'cancel-card', language, card);
+
+    await page.getByTestId('assistant-confirm-cancel').click();
+    await expect(card).toBeHidden();
+    await expect(page.getByTestId('assistant-bubble-assistant').last()).toContainText(words.notCancelled);
     expect(errors).toEqual([]);
   });
 }
@@ -242,6 +271,13 @@ test('the panel closes with Escape, its own button or the veil, and the device r
   await expect(panel).toHaveAttribute('data-open', 'true');
   await button.click();
   await expect(panel).toHaveAttribute('data-open', 'false');
+
+  // With a keyboard and a mouse it opens with the cursor in the box, and closing gives the focus back to its button.
+  await button.click();
+  await expect(page.getByTestId('assistant-input').locator('textarea')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveAttribute('data-open', 'false');
+  await expect(button).toBeFocused();
 
   // Left closed, the next visit finds it closed.
   await page.reload();

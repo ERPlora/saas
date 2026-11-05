@@ -1,4 +1,4 @@
-{% load i18n icons %}
+{% load buttons i18n icons %}
 {% comment %}
   The hero of the landing: port of landing/home/sections/_hero.html (origin/develop). Three doors,
   and they are not interchangeable: signing up commits you, the demo lets you look without giving
@@ -28,18 +28,9 @@
             {% endblocktrans %}
           </p>
           <div class="mt-8 flex flex-wrap gap-3">
-            <ion-button href="/launch" size="large">
-              {% trans "Start free" %}
-              <span slot="end">{% icon "lucide:arrow-right" %}</span>
-            </ion-button>
-            <ion-button fill="outline" size="large" href="{% url 'public:demo' %}">
-              <span slot="start">{% icon "lucide:sparkles" %}</span>
-              {% trans "Try the demo" %}
-            </ion-button>
-            <ion-button fill="clear" size="large" href="{% url 'public:downloads' %}">
-              <span slot="start">{% icon "lucide:download" %}</span>
-              {% trans "Downloads" %}
-            </ion-button>
+            {% button href="/launch" label=_("Start free") size="large" end_icon="lucide:arrow-right" %}
+            {% button href="public:demo" label=_("Try the demo") fill="outline" size="large" start_icon="lucide:sparkles" %}
+            {% button href="public:downloads" label=_("Downloads") fill="clear" size="large" start_icon="lucide:download" %}
           </div>
 
           <div class="mt-12 grid grid-cols-3 gap-6 max-w-lg">

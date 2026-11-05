@@ -281,8 +281,8 @@ Pasos:
 3. La tabla de lo que se pagaría por separado solo lista funciones que las apps cubren y su total es la suma de sus filas.
 Entra: nada; el texto de las páginas, contrastado con las apps del producto.
 Sale: nada guardado.
-Si falla: no se anuncia contabilidad, nóminas, tickets de soporte, TicketBAI, los modelos 303, 390 y 347, almacenes con lotes y caducidades ni conciliación bancaria, porque ninguna app los hace; la franja de sectores nombra los negocios que se sirven hoy (hostelería, comercio, peluquería y estética, servicios profesionales). Las comparativas con otros productos pueden nombrar lo que hacen ellos.
-Implicados: ninguno
+Si falla: no se anuncia contabilidad, nóminas, tickets de soporte, TicketBAI, los modelos 303, 390 y 347, almacenes con lotes y caducidades ni conciliación bancaria, porque ninguna app los hace; tampoco el dominio propio, porque ningún negocio puede conectar el suyo todavía (HUBS-F17, saas#195): no lo nombran ni las tarjetas ni las descripciones de los planes, ni Planes y precios, ni los términos de uso; la franja de sectores nombra los negocios que se sirven hoy (hostelería, comercio, peluquería y estética, servicios profesionales). Las comparativas con otros productos pueden nombrar lo que hacen ellos.
+Implicados: hubs (los textos de cada plan; HUBS-F17)
 
 ### PUBLIC-F08 Leer lo que la web dice de seguridad, datos y disponibilidad
 <!-- origen: old-saas:SAAS_PUBLIC-F77 -->
@@ -292,7 +292,7 @@ Pantalla: Seguridad, Planes y precios, Portada, Sobre nosotros
 Pasos:
 1. La persona lee qué dicen Seguridad, las preguntas frecuentes de precios, la portada y Sobre nosotros sobre el acceso, los datos y la disponibilidad.
 2. Lee lo que funciona hoy: sesiones de servidor en cookies seguras, código de un solo uso para entrar en el negocio, entrar con Google, contraseñas con hash y sal, cifrado en tránsito y en reposo, solo HTTPS con TLS 1.2 o 1.3, AWS en Irlanda con su cortafuegos web, copias continuas recuperables a cualquier momento de los últimos 14 días y alta disponibilidad.
-3. A «¿Dónde se almacenan mis datos?» la respuesta es la Unión Europea, con las excepciones del asistente: su voz y su búsqueda, como transcribir un dictado por voz, y su proveedor de respaldo si el europeo no está disponible; y el enlace «Lee la política de privacidad». La portada dice que el modelo de lenguaje del asistente se sirve desde la Unión Europea, no el asistente entero.
+3. A «¿Dónde se almacenan mis datos?» la respuesta es la Unión Europea, con las excepciones del asistente: su voz y sus huellas de búsqueda, como transcribir un dictado por voz, su proveedor de respaldo si el europeo no está disponible y lo que busca en la web, que va a Brave Search, en Estados Unidos; y el enlace «Lee la política de privacidad». La portada dice que el modelo de lenguaje del asistente se sirve desde la Unión Europea, no el asistente entero.
 Entra: nada; el texto de las páginas, contrastado con la infraestructura y la política de privacidad.
 Sale: nada guardado.
 Si falla: no se promete un acuerdo de disponibilidad con porcentaje, soporte 24/7, auditorías periódicas, informes de pruebas de intrusión, cifrado de extremo a extremo ni entrar con GitHub, y nunca «tus datos nunca salen de la UE», que contradiría la política de privacidad.
@@ -332,12 +332,12 @@ Estado: hecho
 Actor: visitante
 Pantalla: Portada, Planes y precios, Detalle de un plan, Sectores, Características, Cumplimiento
 Pasos:
-1. La persona pulsa «Empieza gratis» (cabecera, portada, sectores, características) «Empezar» (tarjetas de plan de pago) o «Comenzar» (detalle de un plan) en cualquier página.
+1. La persona pulsa «Empieza gratis» (cabecera, portada, sectores, características) «Empezar» (tarjetas de plan de pago) o «Comenzar» (detalle de un plan) en cualquier página. El botón responde desde el primer momento, aunque la página no haya terminado de cargar, y se puede abrir en otra pestaña: es un enlace, como todos los botones de la web pública que llevan a otra página.
 2. Llega a la pantalla de entrar de erplora.com, donde también se crea la cuenta.
 3. Crea la cuenta y su negocio, que nace en el plan Gratis; el plan de pago se elige después, desde el panel.
 Entra: nada: el botón no lleva parámetros.
 Sale: nada en la web; la cuenta y el negocio los crea el alta.
-Si falla: la tarjeta del plan gratuito dice «Empieza gratis» y la de un plan de pago «Empezar», porque todo negocio empieza en Gratis. Elegir un plan o un sector en la web no lo preselecciona en el alta.
+Si falla: la tarjeta del plan gratuito dice «Empieza gratis» y la de un plan de pago «Empezar», porque todo negocio empieza en Gratis. Elegir un plan o un sector en la web no lo preselecciona en el alta. En el móvil, los enlaces de la cabecera están en el menú de las tres rayas, que se abre desde el primer momento, aunque la página no haya terminado de cargar o su script no llegue nunca. Con el menú abierto, el tabulador da la vuelta dentro de él y la página de detrás no se alcanza hasta cerrarlo, con la cruz, el fondo o Esc.
 Implicados: accounts (la entrada y el alta), hubs (el negocio en Gratis)
 
 ### PUBLIC-F12 Llegar a una página «Muy pronto» o a una dirección retirada
@@ -446,7 +446,7 @@ Actor: visitante
 Pantalla: Aviso de cookies y Preferencias de cookies
 Pasos:
 1. Mientras la web no mida visitas, solo pone las cookies técnicas (la sesión, la protección de los formularios, el idioma, el tema y la elección de cookies) y no enseña ningún aviso: no hay nada que consentir.
-2. Si se activa la medición de visitas, cada página enseña el aviso hasta que la persona elige «Aceptar todas», «Rechazar» o «Personalizar».
+2. Si se activa la medición de visitas, cada página enseña el aviso hasta que la persona elige «Aceptar todas», «Rechazar» o «Personalizar». El menú del móvil, al abrirlo, queda por encima del aviso, y sus botones se ven y se pueden pulsar; al cerrarlo, el aviso sigue ahí.
 3. «Cookies» del pie abre «Preferencias de cookies»: las «Cookies esenciales», «Siempre activas», y cada categoría opcional («Cookies analíticas», «Cookies de marketing») con sus cookies y su interruptor; la elección dura un año.
 4. Sin aceptar las analíticas no se carga ninguna medición, y en las pantallas de contraseñas y códigos no se carga nunca.
 Entra: la elección de la persona.
@@ -461,12 +461,12 @@ Actor: visitante
 Pantalla: Textos legales
 Pasos:
 1. En el pie, «Aviso legal», «Privacidad» y «Términos» abren cada texto en su página; la política de cookies se abre desde la privacidad.
-2. La privacidad nombra a quién se confían los datos: Amazon Web Services en la región de Irlanda para el alojamiento y el correo, el modelo de lenguaje del asistente en Fráncfort, sin entrenar con ellos, y OpenAI para la voz y la búsqueda del asistente: transcribe el audio de un dictado, que ni el hub ni ERPlora guardan, y puede tratarlo fuera del Espacio Económico Europeo.
-3. Los términos dan los números que el producto cumple: los días del paquete de salida, los días que espera un negocio suspendido antes de borrarse y la prueba de los planes a la venta (ninguna si ninguno la tiene).
+2. La privacidad nombra a quién se confían los datos: Amazon Web Services en la región de Irlanda para el alojamiento y el correo, el modelo de lenguaje del asistente en Fráncfort, sin entrenar con ellos, y OpenAI para la voz y las huellas de búsqueda del asistente: transcribe el audio de un dictado, que ni el hub ni ERPlora guardan, y puede tratarlo fuera del Espacio Económico Europeo. Aparte de esos encargados, nombra a Brave Search, en Estados Unidos, que recibe las consultas de la búsqueda en la web del asistente y las conserva hasta 90 días: su acuerdo de tratamiento de datos las deja fuera y las cláusulas contractuales tipo no las cubren. Leer una respuesta en voz alta lo hace la voz del propio dispositivo (la del navegador o la del sistema): su texto no sale de él.
+3. Los términos dan los números que el producto cumple: los días del paquete de salida, los días que espera un negocio suspendido antes de borrarse y la prueba de los planes a la venta (ninguna si ninguno la tiene). Su uso aceptable prohíbe guardar, redistribuir o entrenar con los resultados de la web que trae el asistente, como piden los términos de su proveedor.
 Entra: los planes a la venta (los términos).
 Sale: nada guardado.
-Si falla: ningún texto nombra un proveedor que ya no se usa ni otro alojamiento, ni calla a quién va el audio de un dictado, ni promete para él residencia en la UE o un plazo de conservación, ni un consentimiento o un interruptor del asistente que el hub no tiene (el asistente se usa cuando alguien del hub le escribe o le dicta, con los mensajes que dé el plan), y ningún enlace entre textos lleva a una página que no existe.
-Implicados: hubs (los planes)
+Si falla: ningún texto nombra un proveedor que ya no se usa ni otro alojamiento, ni calla a quién va el audio de un dictado, ni promete para él residencia en la UE o un plazo de conservación, ni promete que una consulta a la web no lleve nunca un dato personal (es una regla que se da al modelo, no una garantía), ni un consentimiento o un interruptor del asistente que el hub no tiene (el asistente se usa cuando alguien le escribe o le dicta: en el hub, con los mensajes que dé el plan; en el panel de erplora.com, con los de la cuenta), y ningún enlace entre textos lleva a una página que no existe.
+Implicados: hubs (los planes), ASSISTANT-F14
 
 ### PUBLIC-F21 Consultar la declaración responsable del sistema de facturación
 <!-- origen: old-saas:SAAS_PUBLIC-F73 -->
@@ -545,7 +545,7 @@ Pantalla: Textos legales
 Pasos:
 1. En la aplicación instalada (y en la cuenta que la aplicación abre en el navegador), la pantalla de entrada y la de comprobar el correo enlazan los términos y la privacidad.
 2. Al pulsar uno, el texto se abre como en el visor de una aplicación: solo el texto y «Volver», sin el menú, el pie ni los botones de alta de la web.
-3. Los textos que ese texto enlaza se abren igual mientras dure la sesión de la aplicación; «Volver» lleva a la pantalla de la aplicación que lo abrió, o a su inicio si el texto se abrió suelto.
+3. Los textos que ese texto enlaza se abren igual mientras dure la sesión de la aplicación; «Volver» lleva a la pantalla de la aplicación que lo abrió, o a su inicio si el texto se abrió suelto. «Volver» responde desde el primer momento: pulsado antes de que la página termine de cargar, lleva al inicio de la aplicación.
 Entra: desde qué parte de la aplicación se abre.
 Sale: la marca de aplicación en la sesión de esa ventana.
 Si falla: dentro de la aplicación no sale el aviso de cookies ni se carga ninguna medición, aunque se aceptaran en la web; una marca que la web no conoce se trata como la web.
@@ -658,12 +658,12 @@ Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. En cuanto pasa su hora, la dirección de la demo contesta «La demo ha terminado», aunque nadie la haya retirado todavía.
-2. Cada minuto, el hub retira las demos vencidas: borra los datos de cada una (cada demo tiene su propia base de datos, que se borra entera sin tocar la de ningún otro negocio), sus códigos de entrada, su usuario «Demo» y su acceso, y la marca como retirada; un fallo en una no detiene a las demás.
+2. Cada minuto, el hub retira las demos vencidas: borra los datos de cada una (cada demo tiene su propia base de datos, que se borra entera sin tocar la de ningún otro negocio), los ficheros que se subieron dentro de ella (por ejemplo, fotos) sin tocar los de ningún otro negocio, sus códigos de entrada, su usuario «Demo» y su acceso, y la marca como retirada; un fallo en una no detiene a las demás.
 3. Una demo que aún se estaba preparando cuando terminó se retira igual, sin acabar de prepararla.
 4. Pasados unos días, la dirección retirada deja de existir del todo.
 Entra: las demos cuya hora ha pasado.
-Sale: la demo retirada, sin sus datos, sin usuario ni forma de entrar. Los ficheros subidos dentro de la demo (por ejemplo, fotos) todavía no se borran, pero ya nadie puede abrirlos desde ERPlora.
-Si falla: si retirar una falla, se reintenta más tarde, cada vez con más espera; mientras, su dirección ya dice que ha terminado.
+Sale: la demo retirada, sin sus datos ni sus ficheros, sin usuario ni forma de entrar.
+Si falla: si retirar una falla, también si el almacén no borra sus ficheros, no se da por retirada y se reintenta más tarde, cada vez con más espera; mientras, su dirección ya dice que ha terminado.
 Implicados: el Hub (su registro de hubs y su proceso de fondo)
 
 ### PUBLIC-F35 De la demo a una cuenta de verdad
@@ -725,8 +725,9 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   demo vencida con su enlace a `/demo/?state=expired`, `reap_demos` en el worker cada `REAPER_INTERVAL_SECONDS` y
   `purge_demo_data`, que borra la BD propia de la demo (`<control>_demo_<hex>`, `DROP DATABASE … WITH (FORCE)`, solo
   esa) desde la tenencia S2a (hub#471; F34 `hecho` en CLOSE-PUBLIC). Una demo de antes de la tenencia (`db_name`
-  vacío) no tenía BD propia y no borra nada. Su prefijo `hub-<hex>/` del almacén no se borra (hub#613): su host contesta
-  410 y luego 404, así que nadie lo abre desde ERPlora, pero sigue ocupando espacio. El prefijo `demo-` lo reserva
+  vacío) no tenía BD propia y no borra nada de ella. Tras la BD, `purge_demo_data` borra el prefijo `hub-<hex>/` de esa
+  demo en el almacén y ningún otro (`base.files.delete_hub_files`, hub#613); si el almacén falla, la demo sigue
+  `dropping` con el error en su fila y se reintenta. El prefijo `demo-` lo reserva
   `live.slugs` (`validate_hub_slug(allow_demo=…)`) y `hubs.queries.base_slug` lo normaliza (F37).
 - Equivalencia de claves de la parte 3: G53 = F27; G54, G55 y G56 = F28; G57 = F29; G58 = F30; G59 = F31; G60 = F32;
   G61 = F33; G62 = F34; G63 = F35; G64 = F36; G65 = F37.
@@ -744,10 +745,32 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
 - Modo aplicación (F26): la entrada de la SPA (`hubs/frontend/pages/LaunchPage.vue`, `VerifyEmailPage.vue`) enlaza
   los textos con `accounts/frontend/legal.ts` (`?surface=<superficie>` fuera de la web); `context_processors.app_surface`
   lo guarda en la sesión (`public.surface`; `?surface=web` lo quita) y `public_base.html` pinta `partials/app_bar.html`
-  en lugar del menú, sin pie, aviso ni analítica; `frontend/public.ts` (`setupAppBack`) vuelve por el historial.
+  en lugar del menú, sin pie, aviso ni analítica. Su «Volver» es un `<a>` de verdad a `/shell/?surface=<superficie>`, con
+  el aspecto del `ion-button` claro al que sustituye (`components/app-bar.css`): un `ion-button` no es un enlace hasta que
+  `frontend/public.ts` lo define, y pulsado antes, en un dispositivo lento, no hacía nada (saas#236). Cuando el script ya
+  corrió, `setupAppBack` vuelve por el historial a la pantalla que abrió el texto. El e2e lo prueba también con los
+  scripts de la página retenidos (`public-web-2.spec.ts`, PUBLIC-G47 «on a slow device»).
+- Botones que llevan a otra página (F11, y todas las páginas públicas): un `<a class="ep-button …">` de verdad, con el
+  aspecto del `ion-button` iOS. Solo lo escribe `public/components/button.html`; cada página lo pide en una línea con
+  `{% button %}` (`public/templatetags/buttons.py`, con `href`, `label`, `fill`, `size`, `color`, `block` e iconos
+  `start_icon` / `end_icon`; `scripts/gen-public-icons.mjs` hornea esos iconos), y los parciales `_cta_actions.html`
+  siguen siendo donde se componen. El aspecto es `components/button.css`. Un `ion-button` no es un enlace hasta que
+  `frontend/public.ts` lo define, y pulsado antes no hacía nada (saas#238). Siguen siendo `ion-button` los que no
+  navegan: envíos de formulario, Aceptar y Rechazar cookies, idioma del pie y «Probar la demo» de la puerta. Lo guardan
+  el barrido de `public/tests/test_templates.py` y dos e2e de `public-web.spec.ts` (PUBLIC-G51): pulsar con los scripts
+  retenidos y la paridad de estilos calculados frente a un `ion-button` real, en reposo y bajo el puntero.
 - Correo de soporte (F18): `SUPPORT_EMAIL` es la única fuente; las páginas de error lo leen con `{% support_email %}`
   (`public/templatetags/support.py`: la 500 se pinta sin contexto) y la SPA con el bloque JSON `support-email` de
   `base/spa.py` (`accounts/frontend/support.ts`).
+- Menú del móvil (F11): lo abre y lo cierra el script en línea de `partials/navbar.html`, con el nonce de la respuesta y
+  justo después de `</nav>`, no `frontend/public.ts`: ese módulo llega tarde, y en una conexión lenta el toque se perdía;
+  si no llegaba, el menú no se abría nunca (saas#243). Las tres rayas, la cruz, el fondo, Esc, un enlace y ensanchar la
+  ventana hasta la barra de escritorio siguen siendo el contrato, con `aria-expanded` y el foco. Vitest ejecuta el propio
+  script de la plantilla (`frontend/public.test.ts`) y dos e2e de `public-web.spec.ts` (PUBLIC-G51) pulsan con los scripts
+  retenidos y con ellos ya cargados: un segundo enganche en el módulo cerraría lo que abre el botón. Con el panel abierto,
+  el tabulador da la vuelta dentro de él y lo demás de la página queda `inert` hasta cerrarlo (saas#252): también la marca y
+  las tres rayas, que el panel y el fondo tapan, y lo que llegue con el panel ya abierto en una conexión lenta. Vitest lo
+  cubre en la CI, que no corre los e2e, y PUBLIC-G51 lo recorre en el navegador, en esos mismos dos estados.
 - Equivalencia de claves del registro: G30 = F01; G31 y G14 = F02; G32 y G05 = F03; G33 = F04; G34, G06 y G09 = F05;
   G35 y G16 = F06; G49 = F07; G50 = F08; G36 y G13 = F09; G37, G12, G15 y G18 = F10; G51 = F11; G52 = F12; G42 = F13;
   G48, G22 y G23 = F14.
@@ -774,13 +797,23 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   prohibidas están en `public/tests/test_product.py` (`UNSHIPPED_CLAIMS`, `UNVERIFIED_SECURITY_CLAIMS` y
   `APP_TIER_CLAIMS`, los niveles de apps). El
   balanceador acepta TLS 1.2 y 1.3 (`ssl_policy` de ERPlora/aws).
-- Textos legales (F20, F08): la privacidad nombra a cada encargado que recibe datos y qué recibe. La voz y la búsqueda
-  del asistente (`assistant/media.py`: `whisper-1`, `tts-1` y `text-embedding-3-small`) van al proveedor de
+- Textos legales (F20, F08): la privacidad nombra a cada encargado que recibe datos y qué recibe. El dictado y las
+  huellas de búsqueda del asistente (`assistant/media.py`: `whisper-1` y `text-embedding-3-small`) van al proveedor de
   `ASSISTANT_SERVICE_PROVIDER`, la API de OpenAI en `api.openai.com` por defecto, sin residencia en la UE por contrato.
+  La lectura en voz alta es la del dispositivo: erplora.com no tiene voz propia (sin motor en
+  `assistant.media.SPEECH_ENGINE`; el proveedor de Azure AI Speech se retiró, saas#242), así que §5 no nombra a ningún
+  encargado de esa lectura (`test_legal.py` prohíbe «Azure» y «Microsoft Ireland Operations»). Un motor que lleve el texto
+  fuera de nuestros contenedores es volver a nombrar a su encargado en §5, con lo que recibe y dónde, en la misma entrega.
   Cambiarlo es cambiar en la misma entrega §5 y §6 de la privacidad, la respuesta «storage» de `/pricing/` y la celda
-  del asistente de la portada (`test_legal.py`, `test_product.py` y `test_landing.py`, en `en` y `es`). El Hub solo usa
-  hoy el dictado (`base.assistant.transcribe`); «Leer en voz alta» lee con la voz del dispositivo.
-- Cumplimiento (F09): `compliance.COUNTRY_NAMES` tiene que casar con `hubs.schemas.COUNTRIES` (lo exige un test);
+  del asistente de la portada (`test_legal.py`, `test_product.py` y `test_landing.py`, en `en` y `es`). El Hub y el
+  panel usan el dictado (`base.assistant.transcribe`, cada uno el suyo); «Leer en voz alta» lee con la voz del
+  dispositivo en los dos (el panel solo pediría `base.assistant.speak` con `spa-config.assistantSpeech`, que sin
+  motor es falso).
+  La búsqueda en la web (`assistant/server_tools.py`, ASSISTANT-F14) va a Brave Search: destinatario aparte en §5 y
+  fuera de las cláusulas de §6, porque su DPA deja fuera las consultas. Otro proveedor es otro destinatario:
+  `test_legal.py` cae si `ASSISTANT_SEARCH_URL` deja de ser de Brave. Sus términos, §4(c), piden atar por escrito a cada
+  usuario a lo que dice su §3(b): es la línea de «Uso aceptable» de los términos (§8).
+- Cumplimiento (F09): `hubs.countries.COUNTRY_NAMES` tiene que casar con `hubs.schemas.COUNTRIES` (lo exige un test);
   `FISCAL_SYSTEMS` dice qué sistema fiscal conecta cada país, hoy solo VeriFactu en España. Un país nuevo conectado
   se añade ahí con su app, en la misma entrega.
 - Idioma (F13): el pie lleva un formulario por idioma que envía a `/set-language/`; Ionic mueve `aria-current` a la

@@ -11,3 +11,34 @@
   backdrop-filter: blur(14px) saturate(1.4);
   border-bottom: 1px solid color-mix(in oklab, var(--ep-text, var(--ion-text-color, #1c1b17)) 9%, transparent);
 }
+/* «Back», a real link (saas#236): the look of the ion-button with fill="clear" it replaced, in iOS mode and with
+ * the weight the site gives its buttons (public-landing.css), so it reads the same before and after the script. */
+.ep-app-bar__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  box-sizing: border-box;
+  min-height: 3.1em;
+  padding: 13px 1em;
+  border-radius: 14px;
+  color: var(--ep-primary, var(--ion-color-primary, #1496d6));
+  font-size: min(1.0625rem, 51px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 100ms linear;
+}
+@media (any-hover: hover) {
+  .ep-app-bar__back:hover {
+    opacity: 0.6;
+  }
+}
+.ep-app-bar__back:active {
+  opacity: 0.4;
+}
+.ep-app-bar__back:focus-visible {
+  outline: 2px solid var(--ep-primary, var(--ion-color-primary, #1496d6));
+  outline-offset: 2px;
+}

@@ -16,6 +16,7 @@ from live.context import OperationContext
 from live.errors import OperationError, Unauthorized
 from live.operations import INTERNAL, operation
 
+from assistant import media as gateway_media
 from assistant import services as gateway_services
 from assistant import turn as gateway
 from assistant.schemas import Caller, ReportSendIn
@@ -23,6 +24,10 @@ from base import assistant
 from base.schemas import (
     AssistantReportIn,
     AssistantReportOut,
+    AssistantSpeakIn,
+    AssistantSpeakOut,
+    AssistantTranscribeIn,
+    AssistantTranscribeOut,
     AssistantTurnIn,
     AssistantTurnOut,
 )
@@ -33,8 +38,17 @@ logger = logging.getLogger(__name__)
 ASK = "assistant.ask"
 
 #: What the model hears of a tool that did not run (in English, as its instructions).
-NOT_CONFIRMED = "Not confirmed by the person: nothing was done."
+#: The person said no to a card: what the model hears, and what stops it asking again (saas#193).
+NOT_CONFIRMED_CODE = "base.assistant_not_confirmed"
+NOT_CONFIRMED = (
+    "The person said no on the card and the card is closed: nothing was done. Say it was not done, and do not tell them "
+    "to confirm it."
+)
 STOPPED = "The person stopped this request: nothing more was done."
+ASKED_AGAIN = (
+    "The person already said no to this and has not written since: nothing was done. Do not ask again: say it was not "
+    "done, and they will write if they want something else."
+)
 NOT_AVAILABLE = "This tool is not available to this person here: nothing was done."
 NOT_FROM_THE_CHAT = "This cannot be done from the chat (it names no record): nothing was done. Say where it is done."
 
@@ -42,6 +56,36 @@ NOT_FROM_THE_CHAT = "This cannot be done from the chat (it names no record): not
 def _refused(outcome: str, code: str, message: str) -> assistant.ToolOutcome:
     """A tool that did not run, told to the model in the same envelope as an operation's error."""
     return assistant.ToolOutcome(outcome, code, assistant.shared.error_content(code, message))
+
+
+def _calls_in(message: dict) -> dict[str, str]:
+    """The calls of a model's ``message``, id → tool's name; what the browser kept in another shape is none."""
+    calls = message.get("tool_calls")
+    named = {}
+    for call in calls if isinstance(calls, list) else []:
+        function = call.get("function") if isinstance(call, dict) else None
+        if isinstance(function, dict) and isinstance(function.get("name"), str):
+            named[str(call.get("id"))] = function["name"]
+    return named
+
+
+def _declined_before(messages: list[dict], call_id: str) -> set[str]:
+    """The tools the person said no to since they last wrote, in a round before ``call_id``'s: a no stands until they
+    write again, whatever the model decides (saas#193). A call of ``call_id``'s own round is another question, which
+    nobody has answered yet."""
+    noes: set[str] = set()
+    declined: set[str] = set()
+    for message in reversed(messages):
+        role = message.get("role")
+        if role == "user":
+            break
+        if role == "tool" and NOT_CONFIRMED_CODE in str(message.get("content")):
+            noes.add(str(message.get("tool_call_id")))
+        elif role == "assistant":
+            named = _calls_in(message)
+            if call_id not in named:
+                declined.update(name for called, name in named.items() if called in noes)
+    return declined
 
 
 def _answer(ctx: OperationContext, tools: dict, call, decision, *, stopped: bool):
@@ -77,7 +121,7 @@ def _answer(ctx: OperationContext, tools: dict, call, decision, *, stopped: bool
     if decision.stop:
         return _refused("cancelled", "base.assistant_stopped", STOPPED), None
     if not decision.accepted or not assistant.shared.confirmed(card, decision.typed):
-        return _refused("cancelled", "base.assistant_not_confirmed", NOT_CONFIRMED), None
+        return _refused("cancelled", NOT_CONFIRMED_CODE, NOT_CONFIRMED), None
     return assistant.shared.run_tool(ctx, op, call.arguments), None
 
 
@@ -109,6 +153,12 @@ def assistant_turn(ctx: OperationContext, data: AssistantTurnIn) -> dict:
     card = None
     while pending:
         call = pending[0]
+        if call.name in _declined_before(data.messages, call.call_id):
+            # No card and no receipt: the person answered once, and only the model asks again.
+            content = assistant.shared.error_content(NOT_CONFIRMED_CODE, ASKED_AGAIN)
+            append.append({"role": "tool", "tool_call_id": call.call_id, "content": content})
+            pending.pop(0)
+            continue
         outcome, card = _answer(ctx, tools, call, decision, stopped=stopped)
         if outcome is None:
             break
@@ -202,3 +252,60 @@ def assistant_report(ctx: OperationContext, data: AssistantReportIn) -> dict:
                 status=503,
             ) from None
     return sent.model_dump()
+
+
+@operation(
+    "base.assistant.transcribe",
+    kind="command",
+    permission=ASK,
+    input=AssistantTranscribeIn,
+    output=AssistantTranscribeOut,
+    ai=INTERNAL,  # panel
+    # The door, with no transaction open: the route waits on the provider after it (``assistant.transcribed``), and a
+    # connection never waits on the provider inside a transaction.
+    database=False,
+)
+def assistant_transcribe(ctx: OperationContext, data: AssistantTranscribeIn) -> dict:
+    """A dictation of the panel made ready, as a turn is: the session's account, its permission, its budget of the Hub's
+    ``transcribe`` door (``ASSISTANT_TRANSCRIBE_RATELIMIT``, 429 ``rate_limited``) and the language it goes in (as asked,
+    else the account's). The words come from the route (``base.assistant.transcribed``), to the box and never sent by
+    themselves; nothing else is ever written of them."""
+    try:
+        gateway.spend(getattr(ctx, "request", None), "transcribe", settings.ASSISTANT_TRANSCRIBE_RATELIMIT, Caller(user_id=ctx.actor.pk))
+    except gateway.Refused:
+        with translation.override(ctx.language):
+            raise OperationError(
+                gettext("Too many dictations in a short time: wait a moment and try again."),
+                code="rate_limited",
+                status=429,
+            ) from None
+    return {"text": "", "language": gateway_media.base_language(data.language or ctx.language)}
+
+
+@operation(
+    "base.assistant.speak",
+    kind="command",
+    permission=ASK,
+    input=AssistantSpeakIn,
+    output=AssistantSpeakOut,
+    ai=INTERNAL,  # panel
+    # The door, with no transaction open: the route waits on the engine after it (``assistant.spoken``), and a connection
+    # never waits on it inside a transaction.
+    database=False,
+)
+def assistant_speak(ctx: OperationContext, data: AssistantSpeakIn) -> dict:
+    """A reading aloud of the panel made ready, as a dictation is: the session's account, its permission, its budget
+    of the Hub's ``synthesize`` door (``ASSISTANT_SYNTHESIZE_RATELIMIT``, 429 ``rate_limited``) and the language it is
+    read in (as asked, else the account's; English for a language without voices). The audio comes from the route
+    (``base.assistant.spoken``); nothing is written of what is read."""
+    try:
+        gateway.spend(getattr(ctx, "request", None), "synthesize", settings.ASSISTANT_SYNTHESIZE_RATELIMIT, Caller(user_id=ctx.actor.pk))
+    except gateway.Refused:
+        with translation.override(ctx.language):
+            raise OperationError(
+                gettext("Too many readings aloud in a short time: wait a moment and try again."),
+                code="rate_limited",
+                status=429,
+            ) from None
+    language = data.language or gateway_media.base_language(ctx.language)
+    return {"language": language if language in gateway_media.SPEECH_LANGUAGES else "en"}

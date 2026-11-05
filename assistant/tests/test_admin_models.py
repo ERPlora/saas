@@ -2,6 +2,8 @@
 provider's API (here ``fake_provider``, a real HTTP server on ``127.0.0.1``) for its chat models; the staff tick the
 ones to keep and the provider's page lists them, with their prices to correct by hand."""
 
+import re
+
 import pytest
 from django.contrib.messages import get_messages
 
@@ -167,3 +169,32 @@ def test_an_unknown_provider_is_a_404(as_ai_admin):
 def test_an_address_that_names_no_provider_is_a_404(as_ai_admin):
     assert as_ai_admin.get("/admin/assistant/aiprovider/not-an-id/models/").status_code == 404
     assert as_ai_admin.post("/admin/assistant/aiprovider/not-an-id/models/", {"listed": [], "models": []}).status_code == 404
+
+
+def _new_provider_form(page: str, **fields) -> dict:
+    """What «Add AI provider» posts: the fields, and the empty management forms of its inlines as the page draws them."""
+    empty = {name: "0" for name in re.findall(r'name="([\w-]+-(?:TOTAL_FORMS|INITIAL_FORMS))"', page)}
+    return {**empty, "is_enabled": "on", **fields}
+
+
+def test_azure_speech_is_no_api_the_admin_can_add(as_ai_admin):
+    """The same form with an API it keeps goes through: only the kind is refused."""
+    url = "/admin/assistant/aiprovider/add/"
+    page = as_ai_admin.get(url).content.decode()
+
+    assert "azure_speech" not in page and "Azure" not in page
+    refused = as_ai_admin.post(url, _new_provider_form(page, name="Azure", slug="azure-speech", kind="azure_speech"))
+
+    assert refused.status_code == 200
+    assert "kind" in refused.context["adminform"].form.errors
+    assert not AIProvider.objects.exists()
+    added = as_ai_admin.post(url, _new_provider_form(page, name="Azure", slug="azure-speech", kind="openai"))
+    assert added.status_code == 302
+    assert AIProvider.objects.get().kind == "openai"
+
+
+def test_every_provider_offers_its_models_to_choose(as_ai_admin, listed_provider):
+    change = as_ai_admin.get(f"/admin/assistant/aiprovider/{listed_provider.pk}/change/").content.decode()
+
+    assert "models-TOTAL_FORMS" in change and choose_url(listed_provider) in change
+

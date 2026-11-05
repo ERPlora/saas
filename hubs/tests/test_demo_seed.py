@@ -2,8 +2,7 @@
 
 Ported from ``accounts/tests/test_demo_seed.py`` when the command moved to ``hubs`` (L1-A2): the two demo
 hubs are businesses of the SaaS (``Hub`` + ``HubMember``, adopted as they already run in the local Hub),
-and the jump's access is their mirror (``sync_access``), no longer rows written straight into
-``accounts.HubMembership``. Customer and platform roles never mix: the owner and the employee are no
+and the jump reads their members. Customer and platform roles never mix: the owner and the employee are no
 staff, and the platform administrator has no hub. The passwords are known, so it only runs with
 ``DEBUG`` on.
 """
@@ -16,7 +15,6 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import override_settings
 
-from accounts.models import HubMembership
 from accounts.tests.conftest import take_mailed_code
 from hubs import queries
 from hubs.models import Hub, HubMember
@@ -44,7 +42,7 @@ def test_refuses_to_run_without_debug_and_creates_nothing():
 
     assert not get_user_model().objects.exists()
     assert not Hub.objects.exists()
-    assert not HubMembership.objects.exists()
+    assert not HubMember.objects.exists()
 
 
 def test_the_demo_hubs_are_businesses_that_already_run_in_the_hub():
@@ -85,15 +83,14 @@ def test_creates_platform_example_com_as_a_superuser_with_no_hub():
     assert platform.check_password("platform")
     assert (platform.is_staff, platform.is_superuser) == (True, True)
     assert not HubMember.objects.filter(user=platform).exists()
-    assert not HubMembership.objects.filter(user=platform).exists()
     assert "platform@example.com" in output
 
 
-def test_the_jumps_access_is_the_mirror_of_the_businesses():
+def test_the_jumps_access_is_the_members_of_the_businesses():
     _seed()
 
-    assert queries.verify_access_mirror() == []
-    assert sorted(HubMembership.objects.values_list("user__email", "hub_slug", "role")) == [
+    answered = HubMember.objects.filter(accepted_at__isnull=False)
+    assert sorted(answered.values_list("user__email", "hub__slug", "role")) == [
         ("employee@example.com", "a", "hub_employee"),
         ("employee@example.com", "b", "hub_employee"),
         ("owner@example.com", "a", "hub_owner"),
@@ -111,8 +108,8 @@ def test_the_demo_hubs_are_valid_hub_slugs_in_local_development():
     """`a` and `b` pass the shared rule only because development lowers its minimum to one letter."""
     _seed()
 
-    for membership in HubMembership.objects.all():
-        membership.full_clean()
+    for hub in Hub.objects.all():
+        Hub._meta.get_field("slug").run_validators(hub.slug)
 
 
 @pytest.mark.parametrize(
@@ -182,4 +179,4 @@ def test_is_idempotent():
     _seed()
 
     assert get_user_model().objects.count() == 3
-    assert (Hub.objects.count(), HubMember.objects.count(), HubMembership.objects.count()) == (2, 4, 4)
+    assert (Hub.objects.count(), HubMember.objects.count()) == (2, 4)

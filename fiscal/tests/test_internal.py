@@ -120,6 +120,7 @@ def test_a_broken_rule_answers_its_fiscal_code_and_every_field(client, business)
 
     assert error_of(response) == (422, "fiscal.signer_required")
     assert set(response.json()["error"]["fields"]) == {"signer_name", "documents.signed_model"}
+    assert response.json()["error"]["message"] == "Check the highlighted details."
     assert not RepresentationGrant.objects.exists()
 
 
@@ -160,6 +161,7 @@ def test_the_messages_speak_the_language_the_hub_asks(client, business):
     assert response.json()["error"]["fields"]["signer_name"] == (
         "Indica quién firma la autorización: su nombre y su NIF."
     )
+    assert response.json()["error"]["message"] == "Revisa los datos marcados."
 
 
 def full_pdf_b64(marker: str) -> str:

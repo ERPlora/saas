@@ -9,7 +9,7 @@
 
   Variables: name; price; period (e.g. «/month»); description; features (a list of strings) or
   features_template (a template with your own list); featured; badge (replaces «Popular»; with
-  featured and no badge, «Popular»); cta_template (a template with the ion-button, full width).
+  featured and no badge, «Popular»); cta_template (a template with the button, full width).
 {% endcomment %}
 <div class="ep-pricing-card{% if featured %} ep-pricing-card--featured{% endif %}">
     {% if badge %}<span class="ep-pricing-card__badge">{{ badge }}</span>{% elif featured %}<span class="ep-pricing-card__badge">{% trans "Popular" %}</span>{% endif %}

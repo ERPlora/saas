@@ -12,9 +12,8 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from accounts.models import HubMembership
 from assistant import queries
-from assistant.models import AIRoutingPolicy, AssistantUsage
+from assistant.models import AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage
 from assistant.tests.conftest import fernet_key  # noqa: F401 - the credentials' key
 from hubs.models import Hub, HubMember
 from hubs.tests.conftest import plans  # noqa: F401 - the catalogue of plans
@@ -55,7 +54,6 @@ def test_the_owner_is_an_account_like_any_other_with_one_working_business(seed):
     assert list(HubMember.objects.filter(user=owner).values_list("hub__slug", "role")) == [
         ("e2e-assistant-panel", HubMember.Role.OWNER)
     ]
-    assert HubMembership.objects.filter(user=owner, hub_slug=hub.slug).exists()
 
 
 def test_the_e2e_model_answers_at_the_spec_provider(seed):
@@ -82,7 +80,6 @@ def test_clear_leaves_nothing_of_the_owner(seed):
 
     assert not get_user_model().objects.filter(email="e2e-assistant-owner@example.com").exists()
     assert not Hub.objects.filter(slug="e2e-assistant-panel").exists()
-    assert not HubMembership.objects.filter(hub_slug="e2e-assistant-panel").exists()
     assert not AssistantUsage.objects.filter(user__email="e2e-assistant-owner@example.com").exists()
 
 
@@ -92,6 +89,17 @@ def test_every_run_starts_from_scratch(seed):
     seed.panel(ADDRESS)
 
     assert get_user_model().objects.filter(email="e2e-assistant-owner@example.com").count() == 1
+    assert Hub.objects.filter(slug="e2e-assistant-panel").count() == 1
+
+
+
+
+
+def test_paying_runs_again_from_scratch(seed):
+    seed.paying(ADDRESS)
+    seed.clear()
+    seed.paying(ADDRESS)
+
     assert Hub.objects.filter(slug="e2e-assistant-panel").count() == 1
 
 

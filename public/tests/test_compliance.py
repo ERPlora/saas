@@ -23,6 +23,7 @@ from django.utils import translation
 
 from hubs.schemas import COUNTRIES
 from public import compliance
+from public.tests.conftest import without_tokens
 from public.tests.test_legal import template_messages
 
 pytestmark = pytest.mark.django_db
@@ -122,10 +123,14 @@ def test_the_spanish_regions_with_their_own_system_are_said_to_be_out(client, la
     assert "TicketBAI" in spain
 
 
-def test_no_foreign_mandate_is_named(client):
+def test_no_foreign_mandate_is_named(client, tokens_spelling):
     """Nobody here checked Italy's, Germany's or Portugal's rules: the page does not quote them."""
-    html = page(client)
+    tokens_spelling("SdI", "TSE", "ATCUD", "KSeF")
+    raw = page(client)
+    assert 'name="csrfmiddlewaretoken" value="SdI' in raw, "control: the token does spell one"
+    assert 'nonce="SdI' in raw, "control: the nonce does spell one"
 
+    html = without_tokens(raw)
     for mandate in ("SdI", "FatturaPA", "KassenSichV", "TSE", "SAF-T", "ATCUD", "KSeF", "myDATA", "Factur-X", "Peppol"):
         assert mandate not in html, mandate
 
@@ -169,12 +174,12 @@ def test_every_message_of_the_page_has_its_spanish_entry():
     assert [message for message in messages if not catalog.get(message)] == []
 
 
-def test_every_country_and_system_has_its_spanish_name():
+def test_every_system_has_its_spanish_name():
+    """The countries' own names live with their field: ``hubs/tests/test_countries.py``."""
     with CATALOG.open("rb") as compiled:
         catalog = gettext.GNUTranslations(compiled)._catalog
-    texts = [str(name) for name in compliance.COUNTRY_NAMES.values()]
     with translation.override("en"):
-        texts += [
+        texts = [
             str(system[key])
             for country in compliance.countries()
             for system in country["systems"]

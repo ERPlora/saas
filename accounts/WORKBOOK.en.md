@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:85efe546132d5e9487f56d8e71de760984f4f1aa1fa4bb0acd0b73a6de6bc47d -->
+<!-- generated from WORKBOOK.md sha256:01c9c83ec809038c9e50f17c48e23a6da0e2ba0df5aa41e0dfc80077cd1d0fec -->
 
 ## What it is for and who it is for
 
@@ -274,9 +274,9 @@ Steps:
 1. The person taps "Start free" on the website or opens the **Entrance** and chooses "Create account" (the old sign-up addresses lead to this tab and keep where they were going). They see "Enter your email and choose a password. We'll email you a code to confirm it.".
 2. They type their email and a password (with the eye to check it) and tap "Create account".
 3. erplora.com checks the password: at least 8 characters, not like their email, not a common password and not only numbers. It creates the account and sends them a six-digit code.
-4. The screen moves to **Check your email** (ACCOUNTS-F02); with the right code they are signed in and reach "Create your business".
+4. The screen moves to **Check your email** (ACCOUNTS-F02); with the right code they are signed in and reach "Create your business", in the language they signed up in.
 In: the email (without spaces, in lower case and with full-width letters turned into the usual ones, so that an address that looks like another does not create a second account; the same when inviting it to a business, which invites that account), the password and where they were going (only pages of erplora.com).
-Out: the account, active, with its email not confirmed yet and the terms accepted (ACCOUNTS-F10). No business is created. The application that draws this screen is the same door as any other program: the same rules apply to all.
+Out: the account, active, with its email not confirmed yet, the language of the page they signed up on (the one chosen on the public website or, failing that, the browser's) and the terms accepted (ACCOUNTS-F10). No business is created. The application that draws this screen is the same door as any other program: the same rules apply to all.
 If it fails: a password that does not pass the rules appears under the password and nothing is created; an invalid email (also with full-width letters before the at sign), under the email. An email that already has an account answers just like a new one and its mailbox receives "an account using that email address already exists" with the link to set a password, without a code: this is also how the invited person, whose account has no password yet, sets theirs, and nobody takes over someone else's account. More than 10 sign-ups in an hour from the same network address: "Too many attempts. Please wait a few minutes and try again.".
 Involved: hubs (the **Entrance** and "Create your business")
 
@@ -345,7 +345,7 @@ Steps:
 3. If there is already an erplora.com account with that email, they sign in to it, Google stays linked and its email receives the notice "Google sign-in was added to your account"; if there is none, the account is created with the email already confirmed and without a form.
 4. Once in, they go where they were going or to the **Entrance** with their session; with the authenticator app, they first go through **Two-step verification**.
 In: what Google confirms (email, first and last name) and where they were going.
-Out: the Google account linked and, if new, the account, without a password (set with "Forgot your password?"). Google does not ask for the email's code: it already proves it.
+Out: the Google account linked and, if new, the account, without a password (set with "Forgot your password?") and with the language of the page, as in ACCOUNTS-F01; signing in to an account that already exists does not change its language. Google does not ask for the email's code: it already proves it.
 If it fails: "Cancel" at Google goes back to the **Entrance**; a Google error or an email Google does not confirm leads to the sign-in's error page, without creating or linking anything. Linking Google to an open session without signing in with it is not allowed: it says that Google is only linked by signing in with the Google account of the email.
 Involved: none
 
@@ -551,7 +551,7 @@ Steps:
 5. The email changes with "Change": a code arrives at the new address and, once typed, that one becomes the one to sign in with; the old one gets a notice of the change.
 In: first and last name, the photo, or the new email and its code.
 Out: the profile changed, in the panel and in every business entered afterwards. Every account has its profile from the start, with nothing to fill in. The same is read and saved from any program with the person's session.
-If it fails: an empty first name is not saved ("Write your first name."); a photo that is no image or is too big says why and keeps the one there was; a network failure, "We could not reach ERPlora…" and nothing changes. The billing details are not here: they belong to **Billing**.
+If it fails: an empty first name is not saved ("Write your first name."); a photo that is no image or is too big says why and keeps the one there was; a new email that is not valid or that another account already uses is shown under the field, with "Check the highlighted details." on top until it is corrected; a network failure, "We could not reach ERPlora…" and nothing changes. The billing details are not here: they belong to **Billing**.
 Involved: hubs (the businesses get the name at sign-in)
 
 ### ACCOUNTS-F22 Choose the language and the appearance
@@ -564,7 +564,7 @@ Steps:
 3. In "Language" they pick "English" or "Español": the panel changes language at once, and so do the mails we send them.
 4. In another browser or after reloading, the panel opens with the account's appearance and language.
 In: the appearance and the language.
-Out: the account's appearance and language, the same on all its devices; the language is also the one of its mails and the one its businesses get at sign-in. In the panel the account's language rules; the public website follows the one chosen on it or the browser's.
+Out: the account's appearance and language, the same on all its devices; the language is also the one of its mails and the one its businesses get at sign-in. The account is born with the language of the page it signed up on (ACCOUNTS-F01, ACCOUNTS-F06), or with that of the business that invites it; from then on this screen decides it. In the panel the account's language rules; the public website follows the one chosen on it or the browser's.
 If it fails: if it cannot be saved, the control goes back to what it was and a notice says why; if the preferences do not load, "We could not load your preferences" with "Try again". No currency is chosen: ERPlora charges in euros.
 Involved: hubs (the language when entering a business)
 
@@ -573,14 +573,14 @@ Status: done
 Actor: any person with an account
 Screen: Account › Preferences
 Steps:
-1. In **Account › Preferences**, "Email notices" shows "Security, invoices and payments", always on ("Always on: sign-in codes, security notices, invoices, payments and anything that needs you to act.").
+1. In **Account › Preferences**, "Email notices" shows "Security, invoices and payments", always on ("Always on: sign-in codes, security notices, invoices, payments, the messages you have left with the assistant and anything that needs you to act.").
 2. Below, "Business notices" ("When a business of yours is ready to open."), on from the start.
 3. The person turns it off: "Preferences saved", and the next business they create no longer mails them that it is ready.
 4. They turn it on again and the mail comes back.
 In: "Business notices".
-Out: with it off, the mail that a business is ready is not sent; the business opens all the same and the panel says so. The other mails are always sent: the codes and the security notices, the invoices and the failed payments, the deleted business with its date to recover it, and anything that asks them to act, such as connecting WhatsApp again.
+Out: with it off, the mail that a business is ready is not sent; the business opens all the same and the panel says so. The other mails are always sent: the codes and the security notices, the invoices and the failed payments, the deleted business with its date to recover it, the notices that the month's messages with the panel's assistant are running out or spent (ASSISTANT-F29), and anything that asks them to act, such as connecting WhatsApp again.
 If it fails: if it cannot be saved, the switch goes back to how it was and a notice says why.
-Involved: hubs (the mail of a ready business), billing (the invoices and the payments, always)
+Involved: hubs (the mail of a ready business), billing (the invoices and the payments, always), assistant (ASSISTANT-F29: the notices about the panel's messages, always)
 
 ### ACCOUNTS-F24 Change the theme from the user menu
 Status: done
@@ -653,15 +653,16 @@ Involved: hubs (the person's businesses and "Open")
 ### ACCOUNTS-F29 Go back to erplora.com from my business
 Status: done
 Actor: any person with an account
-Screen: Entrance, Account, Businesses
+Screen: Entrance, Account, Businesses, Store
 Steps:
-1. Inside their business, the person taps a link to erplora.com: manage their account, their business or their plan.
-2. If that browser has their erplora.com session (the one they used to enter the business), the page opens without asking for anything.
-3. If it does not (another browser, the app's, or the session ended), the **Entrance** asks them to sign in and, once in, takes them to that same page.
-In: the erplora.com page they are going to (only erplora.com pages).
-Out: the page open with their erplora.com session. The business hands no credential to erplora.com: each keeps its own session.
-If it fails: an address that is not erplora.com's is not followed after signing in: it leads to the **Entrance** with their session. Signing out of erplora.com does not sign out of the business (ACCOUNTS-F09).
-Involved: hubs (the business's links to erplora.com)
+1. Inside their business, the person who came in with their account taps "Upgrade plan" or "Manage on erplora.com" (the Hub's BASE-F11). The business signs a pass at that moment and opens it on erplora.com, in a new tab; in the installed app, in the device's browser.
+2. erplora.com checks the pass and that the account still belongs to that business, and opens its session without asking for anything, even if that browser did not have it: it takes them to that business's plan page in the **Store** ("Upgrade plan") or to that business in **Businesses** ("Manage on erplora.com").
+3. If that browser already had their session open, it goes on with it to the same place, even if the pass expired or was already used (on a reload or on going back). If it had another account's session and the pass is good, whoever tapped the button comes in instead.
+4. The other links to erplora.com carry no pass: managing their account, "Invite on erplora.com", "Upgrade plan" on a paid app (it opens that business's **Store**) and the one in the assistant and in the WhatsApp Inbox, among others. Those links and a pass that does not arrive open the usual address: if that browser has their erplora.com session, the page opens without asking for anything; if not, the **Entrance** asks them to sign in and, once in, takes them to that same page.
+In: the business's pass (which account, which business and where it goes: the plan or the business) or, without a pass, the erplora.com page they are going to (only erplora.com pages).
+Out: the page open with their erplora.com session; the business and erplora.com each keep their own. The pass lasts one minute and works only once, and only for that account and that business; it travels in the address, so the answer is neither stored nor told to other sites. The session it opens does not count as a sign-in with a password, code or second factor (whatever requires one asks for it again), accepts the terms for nobody and shows in **Account › Security › Active sessions**, where it can be ended.
+If it fails: a pass the business did not sign, or that does not say what it must, opens nothing: "This link from your business is not valid", with "Sign in" and "Contact Support". An account that is not a member of that business, switched off or of ERPlora's staff does not get in: "You don't have access to this hub", naming only the business's address, with "Home", "Back to the hub" and "Contact Support". A pass past its minute or already used opens nothing: "This link from your business has expired", and "Sign in" goes on to where it was going, with "Contact Support". None of the three touches a session already open in that browser; with one, "Sign in" reads "Home". Without a pass, an address that is not erplora.com's is not followed after signing in: it leads to the **Entrance** with their session. Signing out of erplora.com does not sign out of the business (ACCOUNTS-F09).
+Involved: hubs (the business in the panel), billing (the plan in the **Store**), the hub (signs the pass and draws the buttons, BASE-F11)
 
 ### ACCOUNTS-F30 Open my account on its own from the app
 Status: done
@@ -755,7 +756,7 @@ Steps:
 3. Nobody can create, change or delete an entry by hand: they are only read.
 In: the changes to the accounts, to what is charged and to the fiscal documentation, made from the panel, with an API key, from the admin, by erplora.com's tasks or by Stripe when it charges.
 Out: one entry per change, naming whoever acted at that moment (the account with the open session or the owner of the API key; nobody in an erplora.com task or after signing out) and the visitor's real address, never the one its browser claims.
-If it fails: a secret is never written down (neither the password, nor the API key, nor a session's, nor a Stripe purchase's, nor the link that opens a Stripe invoice, nor an authorisation's documents or the stamp) nor what moves by itself (the last sign-in, a key's last use, the last time a session was seen, the counters, the retries sending an invoice to the AEAT). Writing a change down never changes an invoice or its VeriFactu record. If the account is deleted, its entries keep its email and no link to it until they are erased after 90 days (ACCOUNTS-F37). A team member without the permission cannot open it.
+If it fails: a secret is never written down (neither the password, nor the API key, nor a session's, nor a Stripe purchase's, nor the link that opens a Stripe invoice, nor an authorisation's documents or the stamp) nor what the inviter writes to a person invited to a business, nor what moves by itself (the last sign-in, a key's last use, the last time a session was seen, the last time a person opened a business, the counters, the retries sending an invoice to the AEAT). Writing a change down never changes an invoice or its VeriFactu record. If the account is deleted, its entries keep its email and no link to it until they are erased after 90 days (ACCOUNTS-F37). The entries left of the retired copy of who is in each business are also read until that day: with their resource type by its internal name and no link, because their row no longer exists. A team member without the permission cannot open it.
 Involved: none
 
 ### ACCOUNTS-F37 Erase the audit log older than 90 days
@@ -765,8 +766,9 @@ Screen: none (a daily task of erplora.com)
 Steps:
 1. Once a day, erplora.com erases, in batches, the audit log entries (ACCOUNTS-F36) older than 90 days.
 2. Those of the last 90 days stay, also those of an account already deleted.
+3. With the last entry of the retired copy of who is in each business its resource type goes too; not before, because erasing it would take the entries left with it.
 In: the date of each log entry.
-Out: the log with only the last 90 days; nothing else changes.
+Out: the log with only the last 90 days; nothing else changes, except that resource type once it has no entries left.
 If it fails: if a batch cannot be erased, the task ends with an error so the team sees it; what was erased before stays erased and the next pass goes on from there. If a pass is already running, the second does nothing. The team can count what would be erased without erasing anything, and change how many days are kept.
 Involved: none
 
@@ -939,3 +941,18 @@ In: the mark, which only staff set and remove, and the account's email and passw
 Out: that browser's session, as in ACCOUNTS-F04 but without the email code; the session shows among the account's open ones like any other (ACCOUNTS-F18 and ACCOUNTS-F19), and the audit log notes who set or removed the mark, when and from which address (ACCOUNTS-F36).
 If it fails: an account without the mark keeps asking for the code at each sign-in with a password (ACCOUNTS-F04). The person neither sees nor changes the mark from their account, support see it in the admin without being able to change it, and a staff account cannot carry it: "A staff account cannot be a store review account.", and it is not saved. The mark skips nothing else: an unconfirmed email asks for its code (ACCOUNTS-F03), the authenticator app, if the account has one, asks for its own (ACCOUNTS-F05), and a wrong password, the attempt limits (ACCOUNTS-F11) and the same answer whether the account exists or not stay as for any other.
 Involved: erplora.com's admin (the account's page and the audit log); ERPlora's app (repository ERPlora/app), whose Google Play check signs in with this account before each release; saas#132 and app#7
+
+### ACCOUNTS-F50 Wait for the database when it is cut for a moment
+Status: done
+Actor: any visitor of erplora.com, any person on the panel and any program connected through the API
+Screen: any of erplora.com and the panel, Maintenance page
+Steps:
+1. The person opens a page or the panel while the database is cut for a few seconds: a restart, an AWS maintenance or the version upgrade.
+2. What they were reading waits and is asked for again on its own, up to 20 seconds in total. If the database comes back earlier, the page arrives as always: the person only notices that it took longer.
+3. What they were saving waits too when it is known that nothing was applied: it never started, or it is a change of **Preferences** or **Profile**, which only touch the database and had not been confirmed yet. It is saved once.
+4. When the time is up, whoever reads a page sees "We will be back soon" with "ERPlora will be back in a moment: try again in a few seconds." and "Retry". Inside the panel, what could not be loaded says so in its place and offers "Retry", as in any connection failure.
+In: nothing: the person does nothing different.
+Out: the same answer as always, a few seconds late; or, past the time, a 503 answer with `Retry-After` and never a server error page. A program receives the code `database_unavailable`. Search engines understand that the web comes back soon.
+If it fails: what may have been applied is never repeated blindly. A cut while a save was being confirmed leaves its result unknown, and any other change may have done something outside the database (a Stripe charge, an invoice, an email): the person reads "The connection was lost while this was being saved. Check whether it was saved before trying again." and a program, the code `database_outcome_unknown`. What is no cut (a query that takes too long, a fault of the program) stays the error it always was. The businesses' calls to `/internal`, Stripe's and Meta's notices and `/readyz` get their 503 at once, without waiting: the first two try again on their own, and `/readyz` has to say the database is gone before its probes give up.
+Involved: hubs (their calls get the 503 and try again), billing (Stripe's notices get the 503 and try again), whatsapp (Meta's notices, too), ACCOUNTS-F43 (the same page), ACCOUNTS-F21 and ACCOUNTS-F22 (Profile and Preferences, which may repeat); saas#284 and its twin in the Hub, hub#831
+

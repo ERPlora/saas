@@ -35,6 +35,7 @@
       "backToHub": "Volver al hub",
       "contactSupport": "Contactar Soporte",
       "backToSignIn": "Volver a iniciar sesión",
+      "signIn": "Iniciar sesión",
       "invalidHub": {
         "title": "Enlace de acceso no válido",
         "badge": "400 · Enlace no válido",
@@ -64,6 +65,18 @@
         "badge": "429 · Demasiados intentos",
         "heading": "Demasiados intentos",
         "message": "Has abierto tus negocios demasiadas veces en pocos minutos. Espera unos minutos y vuelve a abrir tu negocio."
+      },
+      "invalidPass": {
+        "title": "Enlace no válido",
+        "badge": "400 · Enlace no válido",
+        "heading": "Este enlace de tu negocio no es válido",
+        "message": "No hemos podido comprobar de dónde viene, así que no hemos abierto tu sesión. Vuelve a tu negocio y pulsa el botón otra vez, o inicia sesión con tu cuenta."
+      },
+      "passExpired": {
+        "title": "Enlace caducado",
+        "badge": "410 · Enlace caducado",
+        "heading": "Este enlace de tu negocio ha caducado",
+        "message": "Por seguridad, los enlaces de tu negocio a erplora.com sirven una sola vez y durante un minuto. Inicia sesión para seguir, o vuelve a pulsar el botón en tu negocio."
       }
     },
     "verifyEmail": {
@@ -312,7 +325,7 @@
         "languageHint": "También el idioma de los correos que te enviamos.",
         "mails": "Avisos por correo",
         "invoices": "Seguridad, facturas y pagos",
-        "invoicesHint": "Siempre activos: códigos para entrar, avisos de seguridad, facturas, pagos y lo que te pide hacer algo.",
+        "invoicesHint": "Siempre activos: códigos para entrar, avisos de seguridad, facturas, pagos, los mensajes que te quedan con el asistente y lo que te pide hacer algo.",
         "hubAlerts": "Avisos de mis negocios",
         "hubAlertsHint": "Cuando un negocio tuyo está listo para abrir."
       },

@@ -8,7 +8,7 @@
     {% include "public/components/empty_state.html" with icon="search-outline" heading=title message=text action_template="public/<page>/_clear_filters.html" %}
 
   Variables: heading; message; icon (a baked `set:name`, default `file-tray-outline`); action_template
-  (a template with the ion-button).
+  (a template with the button).
 {% endcomment %}
 <div class="ep-empty-state">
     <span class="ep-empty-state__icon">{% if icon %}{% icon icon %}{% else %}{% icon "file-tray-outline" %}{% endif %}</span>

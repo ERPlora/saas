@@ -1,9 +1,9 @@
-"""Django admin of accounts: users (with their preferences and photo), their hub memberships (the jump's
-mirror), the one-time codes and the API keys (a superuser revokes them, and issues one for a team account). The sessions are
+"""Django admin of accounts: users (with their preferences and photo; their businesses, ``hubs.admin``), the one-time
+codes and the API keys (a superuser revokes them, and issues one for a team account). The sessions are
 ``allauth.usersessions``' own page, read only; a superuser closes them («Close sessions», ACCOUNTS-F19).
 
-«Open in the Hub admin» (ronda 13, PLAN §18.1.6), on every membership row and on the «Hubs» page
-(``/admin/accounts/hubs/``, routed in ``config/urls.py``): the staff jump from ``erplora.com/admin``
+«Open in the Hub admin» (ronda 13, PLAN §18.1.6), on every member row and on the «Hubs» page (``hubs.admin``,
+``/admin/accounts/hubs/``, routed in ``config/urls.py``): the staff jump from ``erplora.com/admin``
 to the hub's deep link ``hubs.erplora.com/admin/hub/<slug>/``. The jump starts at the Hub
 (``<HUB_ADMIN_ORIGIN>/auth/login?hub=<slug>&next=/admin/hub/<slug>/``), which binds it to the browser
 with its ``state`` cookie and sends it to ``/hub-login/?audience=hub-admin`` (``accounts.handoff``):
@@ -53,7 +53,6 @@ from accounts.models import (
     ApiKey,
     AuthExchangeCode,
     EmailChangeRequest,
-    HubMembership,
     ProfilePhoto,
     User,
     UserPreferences,
@@ -109,23 +108,6 @@ class UserEditForm(UserChangeForm):
         fields = "__all__"
 
 
-class HubMembershipInline(admin.TabularInline):
-    """The account's access to hubs, seen only: it mirrors the members of each business (``hubs`` admin)."""
-
-    model = HubMembership
-    extra = 0
-    can_delete = False
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-
 class ReadOnlyInline(admin.StackedInline):
     """What the account chose in the Account page, seen only: it changes it there."""
 
@@ -167,7 +149,7 @@ class UserAdmin(DjangoUserAdmin):
     list_filter = ("is_active", "is_staff", "is_superuser", "language")
     search_fields = ("email", "first_name", "last_name")
     readonly_fields = ("id", "last_login", "date_joined", "terms_accepted_at", "terms_version", "privacy_version")
-    inlines = [UserPreferencesInline, ProfilePhotoInline, HubMembershipInline]
+    inlines = [UserPreferencesInline, ProfilePhotoInline]
     fieldsets = (
         (None, {"fields": ("id", "email", "password")}),
         (_("Personal info"), {"fields": ("first_name", "last_name", "language")}),
@@ -220,33 +202,6 @@ class UserAdmin(DjangoUserAdmin):
         again on every browser."""
         count = services.close_sessions(by=request.user, users=list(queryset.values_list("pk", flat=True)))
         self.message_user(request, gettext("Sessions closed: %(count)s.") % {"count": count}, messages.SUCCESS)
-
-
-@admin.register(HubMembership)
-class HubMembershipAdmin(admin.ModelAdmin):
-    """Read only: the mirror of the businesses' members that the jump reads, written only by
-    ``hubs.services.sync_access`` (L1-A2). People are added, changed and removed on the business
-    (``hubs`` admin, «Members»)."""
-
-    list_display = ("user", "hub_slug", "role", "created_at", "open_in_hub_admin")
-    list_filter = ("role",)
-    search_fields = ("user__email", "hub_slug")
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-    @admin.display(description=_("Hub admin"))
-    def open_in_hub_admin(self, obj):
-        url = open_hub_admin_url(obj.hub_slug)
-        if url is None:
-            return self.get_empty_value_display()
-        return format_html('<a class="button" href="{}">{}</a>', url, OPEN_IN_HUB_ADMIN)
 
 
 def _admin_next(request: HttpRequest) -> str:
@@ -302,31 +257,6 @@ def admin_login(request: HttpRequest, extra_context=None) -> HttpResponse:
     if request.user.is_authenticated:
         raise PermissionDenied
     return HttpResponseRedirect(f"{settings.LOGIN_URL}?{urlencode({'next': next_url}, safe='/')}")
-
-
-def hubs_view(request: HttpRequest) -> HttpResponse:
-    """«Hubs» (``/admin/accounts/hubs/``): every hub with members, each with «Open in the Hub admin».
-
-    Wrapped in ``admin.site.admin_view`` by ``config/urls.py``: only active staff, and of them only
-    whoever may view memberships (superuser and ``support``). A failed jump comes back here with
-    ``?error=<code>``: the page says why, from ``JUMP_FAILED``, never echoing the value.
-    """
-    if not request.user.has_perm("accounts.view_hubmembership"):
-        raise PermissionDenied
-    if "error" in request.GET:
-        messages.error(request, JUMP_FAILED.get(request.GET["error"], JUMP_FAILED_UNKNOWN))
-    hubs = [
-        {"slug": slug, "members": members, "url": open_hub_admin_url(slug)}
-        for slug, members in queries.hubs_with_members()
-    ]
-    context = {
-        **admin.site.each_context(request),
-        "title": _("Hubs"),
-        "opts": HubMembership._meta,
-        "hubs": hubs,
-        "open_in_hub_admin": OPEN_IN_HUB_ADMIN,
-    }
-    return TemplateResponse(request, "admin/accounts/hubs.html", context)
 
 
 @admin.register(AuthExchangeCode)

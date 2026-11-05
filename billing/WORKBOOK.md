@@ -73,8 +73,8 @@ Menú **Tienda**, con dos secciones: **Planes** y **Módulos**, y arriba el nego
 periodo («Mensual» o «Anual · −n %»), sus líneas como en /pricing/ (tras «Todas las apps incluidas» o «Todo lo
 del plan …», «Hasta 40 apps activadas a la vez», o «Todas las apps activadas a la vez» si el plan no tiene tope;
 después los mensajes al mes y, al final, la prueba), «Tu plan actual» en el que se tiene y el botón de cada uno:
-«Mejorar a …», «Cambiar a …», «Cambiar a anual · …» o «Bajar a Gratis»; con el plan cancelado, «Mantener
-el plan». Si el negocio tiene una factura sin pagar, arriba sale el aviso con «Pagar la factura» y no se
+«Mejorar a …», «Cambiar a …», «Cambiar a anual · …» o «Bajar a Gratis»; con el plan cancelado o una bajada
+programada, «Mantener el plan». Si el negocio tiene una factura sin pagar, arriba sale el aviso con «Pagar la factura» y no se
 vende nada a ese negocio.
 
 **Módulos** enseña cada aplicación de pago con su icono, su nombre, su resumen y su precio sin IVA al
@@ -143,7 +143,7 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F11 | Cambiar de plan entre planes de pago | hecho |
 | BILLING-F12 | Dar días de prueba con un código promocional | hecho |
 | BILLING-F13 | Cancelar el plan al final del periodo | hecho |
-| BILLING-F14 | Deshacer una cancelación pendiente | hecho |
+| BILLING-F14 | Deshacer una cancelación o una bajada pendiente | hecho |
 | BILLING-F15 | Terminar la suscripción: el negocio vuelve a Gratis | hecho |
 | BILLING-F16 | Impago del plan: reintentos, suspensión y vuelta | hecho |
 | BILLING-F17 | Reactivar un negocio suspendido pagando su factura | hecho |
@@ -183,7 +183,7 @@ Pasos:
 5. Pulsa «Guardar datos»: «Datos de facturación guardados». Valen para las próximas facturas y para lo que manda Stripe (la página para confirmar un cobro que el banco quiere autenticar, sus recibos y su portal de pagos); las facturas ya emitidas no cambian.
 Entra: lo que escribe la persona; el país y el nombre del negocio si elige usarlos.
 Sale: los datos de facturación del negocio (los comparten los negocios que paga la misma cuenta), la comprobación de VIES anotada y, si quien paga ya pagó alguna vez, su ficha de cliente en Stripe al día; se avisa del cambio (`hubs.billing_profile.updated`).
-Si falla: un código postal español que no tiene cinco dígitos, un país que falta o un NIF que no vale para su país salen debajo de su campo y no se guarda nada. Tras un traspaso, si el negocio lo pagaba otra cuenta, el diálogo dice «Hasta ahora pagaba este negocio otra cuenta: di quién paga a partir de ahora». Si Stripe no contesta, los datos se guardan igual y Stripe los recibe en el siguiente pago desde el panel.
+Si falla: un código postal español que no tiene cinco dígitos, un país que falta o un NIF que no vale para su país salen debajo de su campo, con «Revisa los datos marcados.» arriba hasta que corriges algo, y no se guarda nada. Tras un traspaso, si el negocio lo pagaba otra cuenta, el diálogo dice «Hasta ahora pagaba este negocio otra cuenta: di quién paga a partir de ahora». Si Stripe no contesta, los datos se guardan igual y Stripe los recibe en el siguiente pago desde el panel.
 Implicados: hubs (los datos del negocio y de quien paga)
 
 ### BILLING-F02 Calcular el impuesto de una venta según dónde está el pagador
@@ -327,12 +327,12 @@ Pantalla: Tienda, Cambiar de plan
 Pasos:
 1. En **Tienda › Planes** de un negocio que ya paga, el propietario pulsa «Cambiar a …», «Cambiar a anual · …» o «Cambiar a mensual · …».
 2. El diálogo calcula lo que se cobra hoy («Calculando lo que se cobra hoy…») y enseña «Hoy (prorrateado)», el IVA, el «Total hoy» y lo que se cobrará «Después», con la nota de que los módulos siguen igual.
-3. Una subida se confirma con «Pagar … y cambiar»: se cobra ya con la tarjeta guardada y el negocio pasa al plan nuevo en el acto. Una bajada (un plan más barato, o de anual a mensual) no cobra nada hoy: pasa al plan nuevo al final del periodo pagado, y **Facturación › Suscripciones** dice «Cambia a … el …».
-4. Aviso: «… ya está en …» (o «…, con pago anual»).
+3. Una subida se confirma con «Pagar … y cambiar»: se cobra ya con la tarjeta guardada y el negocio pasa al plan nuevo en el acto. Una bajada (un plan más barato, o de anual a mensual) no cobra nada hoy: pasa al plan nuevo al final del periodo pagado, y **Facturación › Suscripciones** dice «Cambia a … el …» y su próxima factura ya es la de ese plan. Hasta esa fecha se deshace con «Mantener el plan», en esa fila y en la tarjeta del plan actual de la Tienda (BILLING-F14).
+4. Aviso: «… ya está en …» (o «…, con pago anual»); una bajada, que espera, avisa «… pasa a … el …» (o «… pasa a …, con pago mensual, el …»).
 Entra: el plan y el periodo nuevos y la suscripción del negocio con su tarjeta; al cambiar de periodo, también cambia el precio de cada módulo.
 Sale: el plan cambiado (`billing.plan.changed`) o la bajada programada (`billing.plan.change_scheduled`), con el IVA de la tabla en cada línea, y el plan nuevo enviado al negocio.
 Si falla: «El precio estaba desactualizado: aquí lo tienes de nuevo, revísalo antes de confirmar» si pasó demasiado tiempo; la tarjeta rechazada no cambia nada; el mismo plan y periodo no es un cambio; bajar a Gratis es cancelar (BILLING-F13); con una cancelación pendiente, «Mantén antes el plan para cambiarlo»; con una factura sin pagar, «Antes, paga la factura pendiente»; más de 400 € sin NIF pide el NIF.
-Implicados: el negocio (recibe su plan)
+Implicados: el negocio (recibe su plan), ASSISTANT-F25 (pedido al asistente del panel, que manda aquí)
 
 ### BILLING-F12 Dar días de prueba con un código promocional
 <!-- origen: old-saas:SAAS_DASHBOARD-F122 -->
@@ -360,19 +360,19 @@ Pasos:
 Entra: la suscripción de Stripe del negocio.
 Sale: la suscripción marcada en Stripe para terminar al final del periodo (`billing.plan.cancelled`); nada más cambia hasta esa fecha (BILLING-F15).
 Si falla: si Stripe la rechaza o no contesta, nada cambia y se dice. Cancelar con una factura sin pagar se permite, pero no la anula: el diálogo lo avisa. Un negocio en Gratis no tiene nada que cancelar.
-Implicados: el negocio (recibe la fecha de fin)
+Implicados: el negocio (recibe la fecha de fin), ASSISTANT-F25 (pedido desde el asistente del panel, su tarjeta enseña lo mismo que el diálogo)
 
-### BILLING-F14 Deshacer una cancelación pendiente
+### BILLING-F14 Deshacer una cancelación o una bajada pendiente
 <!-- origen: old-saas:SAAS_DASHBOARD-F102 gh:saas#2529 gh:saas#2574 -->
 Estado: hecho
 Actor: propietario que paga
 Pantalla: Facturación › Suscripciones, Tienda
 Pasos:
-1. En la fila de un negocio con el plan cancelado, el propietario pulsa «Mantener el plan» (en la Tienda: «Cancelado: … hasta el … y después Gratis» con «Mantener el plan»).
+1. En la fila de un negocio con el plan cancelado o con una bajada programada («Cambia a … el …»), el propietario pulsa «Mantener el plan». En la Tienda, la tarjeta del plan actual dice «Cancelado: … hasta el … y después Gratis» o «Bajada programada: … hasta el … y después …», con «Mantener el plan»; la tarjeta del plan al que se baja dice «El negocio pasa a … el …», sin botón.
 2. Aviso: «… sigue en …» o «… se mantiene: se renovará el …». La fila vuelve a tener próxima factura.
-Entra: la suscripción con su final marcado.
-Sale: la suscripción vuelve a renovarse en Stripe, con el estado que diga Stripe (`billing.plan.kept`); una bajada programada también se deshace.
-Si falla: con una factura sin pagar no se mantiene: primero se paga (no se recupera un plan sin pagarlo). Mantener un plan que no estaba cancelado no cambia nada.
+Entra: la suscripción con su final marcado o con su bajada programada.
+Sale: la suscripción vuelve a renovarse en Stripe, con el estado que diga Stripe (`billing.plan.kept`); una bajada programada se deshace y la fila deja de decir «Cambia a … el …».
+Si falla: con una factura sin pagar, un plan cancelado no se mantiene: primero se paga (no se recupera un plan sin pagarlo). Una bajada programada sí se deshace con una factura sin pagar: no cobra nada ni devuelve un plan que se haya perdido. Mantener un plan que no estaba cancelado ni tenía una bajada no cambia nada.
 Implicados: ninguno
 
 ### BILLING-F15 Terminar la suscripción: el negocio vuelve a Gratis
@@ -501,7 +501,7 @@ Estado: hecho
 Actor: propietario, cuenta que paga
 Pantalla: Facturación › Suscripciones
 Pasos:
-1. En **Facturación › Suscripciones** hay una fila por negocio que paga: el plan y sus aplicaciones de pago a precio sin IVA (una cancelada dice «(hasta el …)» y deja de salir cuando termina), la próxima factura con IVA y el estado.
+1. En **Facturación › Suscripciones** hay una fila por negocio que paga: el plan y sus aplicaciones de pago a precio sin IVA (una cancelada dice «(hasta el …)» y deja de salir cuando termina), la próxima factura con IVA (con una bajada programada, la del plan y el periodo nuevos, con sus aplicaciones al precio de ese periodo; al mantener el plan, vuelve a la del actual) y el estado.
 2. Cada fila lleva sus acciones: la principal a la vista («Ver la factura» si hay una sin cobrar; si no, «Mantenerlo con mi tarjeta», «Cambiar plan» o «Mantener el plan») y en «⋮» «Ver facturas» y «Cancelar plan».
 Entra: las suscripciones de los negocios que paga la cuenta o de los que es propietaria.
 Sale: nada.

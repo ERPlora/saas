@@ -31,16 +31,18 @@ from typing import Any
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
-from django.http import HttpRequest, StreamingHttpResponse
+from django.http import HttpRequest, HttpResponse, StreamingHttpResponse
 from django.utils import translation
 from django.utils.translation import get_language_info, gettext
 from live import assistant as shared
 from live.assistant import LEFT_OUT, MAX_ROUNDS, MAX_TOOLS, PlainWords, ToolOutcome, tool_spec  # noqa: F401
 from live.context import OperationContext, Scope
+from live.errors import InvalidPayload, OperationError
 from live.meta import all_live_app_configs, permissions_for_role
 from live.operations import Operation
 from live.operations import get as get_operation
 
+from assistant import internal as gateway_door
 from assistant import queries as gateway_queries
 from assistant import turn as gateway
 from assistant.schemas import Caller
@@ -245,8 +247,13 @@ ERPlora and its account. Answer in {language_name}, short and plain. Use Markdow
   To anything else, say kindly that you only help with ERPlora, in one sentence, and do not answer it.
 - Read before you answer: use the tools to look up businesses, plans, invoices and ids. Never invent a record, an
   id or a date, and never invent a plan, a price or an invoice: if no tool returned it, say you do not know.
-{how_to}- To change something, call its tool: the person sees a card and confirms it before it runs. If the tool comes back
-  «not confirmed» or with an error, nothing changed: say so, and never say it was done.
+{how_to}- To change something, call its tool as soon as you have the data it needs: the person sees a card and confirms it
+  there, once, before it runs. That card is the only question: never ask in your text whether to go ahead and never
+  write a summary of the change for them to approve. In your text, ask only for a datum its tool requires, that no tool
+  gives and the person has not said, and never invent it. Whether a change is allowed is for its tool to say: never refuse a change
+  yourself when you have its tool. If the tool comes back «not confirmed» or with an error, nothing changed: say so,
+  and never say it was done. A «not confirmed» is the person's answer and its card is gone: do not tell them to
+  confirm it, and do not call that tool again unless they ask anew.
 - Amounts: a datum whose name ends in `_cents` is in cents of its currency (euros unless it says another): write it
   in that currency with two decimals. Plan prices are net, VAT excluded.
 - When the person should go to a screen, link it with its path, only one of these:
@@ -335,7 +342,7 @@ async def gateway_frames(request: HttpRequest, caller: Caller, plan: dict) -> As
     )
     try:
         await sync_to_async(gateway.spend)(request, "turn", settings.ASSISTANT_TURN_RATELIMIT, caller)
-        started = await gateway.start(caller, data)
+        started = await gateway.start(caller, data, answer_kept=False)
     except gateway.Refused as refused:
         yield refusal(refused)
         return
@@ -419,3 +426,55 @@ def turn_response(request: HttpRequest, plan: dict) -> StreamingHttpResponse:
     response["Cache-Control"] = "no-cache"
     response["X-Accel-Buffering"] = "no"
     return response
+
+
+# ── The dictation, through the gateway in this process ───────────────────────────────────────────────────────────
+
+
+def dictation_refusal(refused: gateway.Refused) -> OperationError:
+    """A dictation the gateway did not take, in the panel's words: the codes of the Hub's ``base.assistant.transcribe``,
+    whose failures of the provider are a 503 that names neither the provider nor its answer."""
+    if refused.status == 413:
+        return OperationError(
+            gettext("The recording is too long: dictate a shorter message."), code="base.assistant_audio_too_long", status=413
+        )
+    if refused.status == 422:
+        unreadable = gettext("The recording could not be read: record it again.")
+        return InvalidPayload(unreadable, fields=dict.fromkeys(refused.fields or {"audio"}, unreadable))
+    if refused.code == "assistant.provider_not_configured":
+        return OperationError(gettext("Dictation is not available right now."), code=refused.code, status=503)
+    return OperationError(
+        gettext("The audio could not be transcribed: try again."), code="base.assistant_transcribe_failed", status=503
+    )
+
+
+def speech_refusal(refused: gateway.Refused) -> OperationError:
+    """A reading aloud the gateway did not make, in the panel's words: 503 ``assistant.speech_unavailable`` without an
+    engine, else a 503 that names neither the engine nor its answer. Either way the panel reads with the device's
+    voice."""
+    if refused.code == "assistant.speech_unavailable":
+        return OperationError(gettext("Reading aloud is not available right now."), code=refused.code, status=503)
+    return OperationError(
+        gettext("The answer could not be read aloud: try again."), code="base.assistant_speech_failed", status=503
+    )
+
+
+async def spoken(request: HttpRequest, data: Any, language: str) -> HttpResponse:
+    """The mp3 of what ``base.assistant.speak`` made ready, in ``language``, for the session's account: the gateway's
+    ``speech``, which waits on the engine with no transaction open and counts the characters in the account's month."""
+    caller = Caller(user_id=request.user.pk)
+    try:
+        audio = await gateway_door.speech(caller, data.model_copy(update={"language": language}))
+    except gateway.Refused as refused:
+        raise speech_refusal(refused) from None
+    return HttpResponse(audio, content_type="audio/mpeg")
+
+
+async def transcribed(request: HttpRequest, data: Any, language: str) -> dict:
+    """The words of a dictation ``base.assistant.transcribe`` made ready, in ``language``, for the session's account: the
+    gateway's ``dictation``, which waits on the provider with no transaction open and counts it in the account's month."""
+    caller = Caller(user_id=request.user.pk)
+    try:
+        return await gateway_door.dictation(caller, data.model_copy(update={"language": language}))
+    except gateway.Refused as refused:
+        raise dictation_refusal(refused) from None

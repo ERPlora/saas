@@ -38,7 +38,9 @@ from django.urls import reverse
 from django.utils import translation
 
 from hubs.models import Plan
+from hubs.tests.test_plan_catalogue import CUSTOM_DOMAIN_WORDS
 from public import pricing
+from public.tests.conftest import without_tokens
 from public.tests.test_legal import template_messages
 
 pytestmark = [pytest.mark.django_db]
@@ -214,8 +216,9 @@ PUBLIC_SPEC_PATTERNS = [
 SIZE_PATTERN = r"\b\d+\s*(MB|GB|TB)\b"
 
 
-def test_pricing_page_never_renders_infrastructure_specs(client, seeded):
-    html = html_of(client)
+def test_pricing_page_never_renders_infrastructure_specs(client, seeded, tokens_spelling):
+    tokens_spelling("CPU", "vCPU", "RAM", "5MB")
+    html = without_tokens(html_of(client))
 
     for pattern, label in PUBLIC_SPEC_PATTERNS:
         match = re.search(pattern, html, re.I)
@@ -240,10 +243,11 @@ def test_pricing_page_states_the_billing_unit_is_the_hub(client, seeded):
     assert "per hub" in html_of(client).lower()
 
 
-def test_billing_unit_survives_translation_to_spanish(client, seeded):
+def test_billing_unit_survives_translation_to_spanish(client, seeded, tokens_spelling):
     """The template strings, not the seed's «Precio por hub»: the cards (main and upgrade-only)
     both carry the period, so the count tells them apart."""
-    html = html_of(client, language="es")
+    tokens_spelling("CPU", "vCPU", "RAM")
+    html = without_tokens(html_of(client, language="es"))
 
     assert html.count("/ mes por hub") >= 2
     assert "Mensual, por hub" in html
@@ -258,6 +262,17 @@ def test_pricing_page_publishes_no_uptime_sla(client, seeded):
 
     match = re.search(r"\d{2}[.,]\d+\s*%\s*(uptime|SLA|disponibilidad)", html, re.I)
     assert match is None, match and match.group(0)
+
+
+@pytest.mark.parametrize("path", [INDEX, "/pricing/standard/"])
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_pricing_sells_no_custom_domain_nobody_can_connect(client, seeded, path, language):
+    """saas#233: Standard's card, its description and the table's intro sold a custom domain no business can connect
+    (HUBS-F17 ``descartado``, saas#195 deferred). The whole page, structured data included, in both languages."""
+    html = unescape(html_of(client, path, language))
+
+    match = CUSTOM_DOMAIN_WORDS.search(html)
+    assert match is None, f"{path} ({language}) sells a custom domain: {html[max(0, match.start() - 90) : match.end() + 90]!r}"
 
 
 # --- test_faq_structured_data.py --------------------------------------------------------------
@@ -1193,17 +1208,17 @@ def test_each_upgrade_only_card_says_when_it_opens_instead_of_a_sign_up_button(c
     for card in cards:
         foot = card_foot(card)
         assert "Available once you are on Starter" in foot
-        assert "<ion-button" not in card.split('<div class="ep-pricing-card__cta">', 1)[0] + foot
+        assert 'href="' not in card.split('<div class="ep-pricing-card__cta">', 1)[0] + foot
         assert "Get started" not in foot
 
 
 def test_more_capacity_has_one_call_to_action_to_start_free(client, seeded):
     section = upgrade_section(html_of(client))
-    buttons = re.findall(r"<ion-button\b[^>]*>(.*?)</ion-button>", section, re.S)
+    buttons = re.findall(r'<a class="ep-button[^"]*" href="([^"]*)">(.*?)</a>', section, re.S)
 
     assert len(buttons) == 1
-    assert "Start free and upgrade whenever you want" in buttons[0]
-    assert re.search(r'<ion-button\b[^>]*href="/launch"', section)
+    assert buttons[0][0] == "/launch"
+    assert "Start free and upgrade whenever you want" in buttons[0][1]
 
 
 def test_more_capacity_reads_in_spanish(client, seeded):
@@ -1253,7 +1268,7 @@ def test_the_plans_to_sign_up_on_stay_as_they_were(client, seeded):
     assert re.findall(r'<div class="ep-pricing-card__name">(.*?)</div>', signable) == ["Free", "Starter", "Standard"]
     assert len(CARD_START.split(signable)[1:]) == 3
     for card in CARD_START.split(signable)[1:]:
-        assert '<ion-button href="/launch"' in card_foot(card)
+        assert re.search(r'<a class="ep-button[^"]*" href="/launch">', card_foot(card))
         assert "Available once you are on Starter" not in card
     assert painted_prices(signable) == {"Free": Decimal("0"), "Starter": Decimal("29.99"), "Standard": Decimal("54.99")}
 

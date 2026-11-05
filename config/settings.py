@@ -14,8 +14,10 @@ from urllib.parse import urlsplit
 
 from decouple import Config, Csv, RepositoryEmpty, RepositoryEnv
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.csp import CSP
 from live.csp import base_policy, debug_policy
 from live.recaptcha import with_recaptcha
+from psycopg_pool import ConnectionPool
 
 from billing.stripe_keys import test_keys_allowed
 
@@ -147,6 +149,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     # First: answers /healthz before the Host is validated (the ALB probes each task by its IP).
     "base.health.HealthCheckMiddleware",
+    # Then: a cut of the database waits and repeats the whole request, when it may (live.database_cut; Django turns an
+    # exception into a response at every layer, so only the outermost sees it all).
+    "live.database_cut.DatabaseCutMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # The visitor's address behind the ALB in REMOTE_ADDR, before anything reads it.
     "public.client_ip.ClientIpMiddleware",
@@ -224,6 +229,8 @@ ASGI_APPLICATION = "config.asgi.application"
 # attempt (psycopg: 30 s and 130 s), so /readyz answers 503 before its probes give up. As in hub-next.
 # The pool keeps one connection and gives back the rest of a burst one per minute (max_idle;
 # psycopg's 600 s held them for over an hour): PLAN-DB «Conexiones», round 2026-10-18.
+# It checks a connection before handing it out: after a cut of the database it may hold a dead one
+# (PLAN-DB, round 2026-11-04e, point 5).
 db_connect_timeout = config("DB_CONNECT_TIMEOUT", default=5, cast=int)
 db_optional_options = {
     "DB_SSLMODE": "sslmode",
@@ -245,6 +252,7 @@ DATABASES = {
                 "max_size": 8,
                 "max_idle": 60,
                 "timeout": db_connect_timeout,
+                "check": ConnectionPool.check_connection,
             },
             "connect_timeout": db_connect_timeout,
             **{
@@ -571,6 +579,8 @@ HUB_ADMIN_CALLBACK_URL = config(
 _hub_admin_callback = urlsplit(HUB_ADMIN_CALLBACK_URL)
 HUB_ADMIN_ORIGIN = f"{_hub_admin_callback.scheme}://{_hub_admin_callback.netloc}"
 EXCHANGE_CODE_TTL_SECONDS = 60
+# How long a pass the Hub signs for the way back to erplora.com opens (accounts/hub_pass.py, ACCOUNTS-F29).
+HUB_PASS_MAX_AGE_SECONDS = 60
 # Jumps one account may start in a while (accounts/handoff.py, ACCOUNTS-F28; the old SaaS's 20 passes in 5 minutes):
 # past it, the error page asks to wait and no code is minted. django-ratelimit, over the default cache.
 HUB_LOGIN_RATELIMIT = config("HUB_LOGIN_RATELIMIT", default="20/5m")
@@ -619,6 +629,9 @@ SECURE_CSP["form-action"] = [
     HUB_ORIGIN_PATTERN,
     HUB_ADMIN_ORIGIN,
 ]
+# «Read aloud» of the panel's assistant plays the mp3 it fetched from its own route (base.assistant.speak) as a
+# `blob:` URL; without `media-src` the browser falls back to `default-src 'self'` and refuses it.
+SECURE_CSP["media-src"] = [CSP.SELF, "blob:"]
 
 # Static files: WhiteNoise. The template pages' Ionic (the public web, the error pages) and fonts are
 # vendored under static/vendor/ (nothing from a CDN). Vite already hashes the SPA build, served under /static/spa/
@@ -645,6 +658,14 @@ LIVE = {
     # Signing out, a new password and «Close the other sessions» record it on the account's channel: every stream of
     # the account re-reads its session and the one that ended says bye, whatever its page subscribes to (live.E019).
     "session_events": ["accounts.session.closed"],
+    # A cut of the database (a restart, AWS's maintenance, the Blue/Green switchover; PLAN-DB, round 2026-11-04e, point 5):
+    # a read waits and tries again up to this long in the whole request, far below the 120 s of the load balancer;
+    # PLAN-DB's rehearsal measures the real cut. What tries again on its own gets its 503 at once: the Hub's /internal,
+    # the webhooks, and /readyz, which has to say the database is gone before its probes give up.
+    "database_cut": {
+        "wait_seconds": config("DB_CUT_WAIT_SECONDS", default=20, cast=int),
+        "no_wait_prefixes": ("/internal/", "/webhooks/", "/readyz"),
+    },
     # Shortest hub slug (live.slugs, shared with hub-next): 3 in production; development opens
     # one-letter slugs for the demo hubs `a` and `b` (`demo_seed`).
     "hub_slug_min_length": 1 if DEBUG else 3,
@@ -770,12 +791,16 @@ ASSISTANT_DOCS_RATELIMIT = config("ASSISTANT_DOCS_RATELIMIT", default="600/h")
 ASSISTANT_TRANSCRIBE_RATELIMIT = config("ASSISTANT_TRANSCRIBE_RATELIMIT", default="120/h")
 ASSISTANT_SYNTHESIZE_RATELIMIT = config("ASSISTANT_SYNTHESIZE_RATELIMIT", default="120/h")
 ASSISTANT_REPORT_RATELIMIT = config("ASSISTANT_REPORT_RATELIMIT", default="60/h")
+# What a caller may ask of the providers of erplora.com's own tools (ASSISTANT-F14): the search's free credit is shared
+# by every business (about 4,000 searches a month) and the rates are a free public service. Every demo shares one.
+ASSISTANT_WEB_SEARCH_RATELIMIT = config("ASSISTANT_WEB_SEARCH_RATELIMIT", default="20/d")
+ASSISTANT_CURRENCY_RATE_RATELIMIT = config("ASSISTANT_CURRENCY_RATE_RATELIMIT", default="60/h")
 # A demo's messages for its whole life (SAAS_ASSISTANT-F11, saas#2599: each browser gets a new demo).
 ASSISTANT_DEMO_MESSAGES = config("ASSISTANT_DEMO_MESSAGES", default=10, cast=int)
 # An account's messages a month with the assistant of erplora.com's own panel (PLAN-SAAS §23): fixed, whatever the
 # plans of its businesses, each of which has its own allowance in its Hub.
 ASSISTANT_ACCOUNT_MESSAGES = config("ASSISTANT_ACCOUNT_MESSAGES", default=30, cast=int)
-# The provider (its identifier in the admin, of OpenAI's API) whose key computes the embeddings and the voice.
+# The provider (its identifier in the admin, of OpenAI's API) whose key computes the embeddings and the dictation.
 ASSISTANT_SERVICE_PROVIDER = config("ASSISTANT_SERVICE_PROVIDER", default="openai")
 # The demo hubs (PLAN-SAAS §3.5, round 2026-10-17; public/demo.py): one switch, and new demos per address
 # (django-ratelimit, over the default cache; a browser re-entering its live demo does not count). The Hub keeps
@@ -821,6 +846,21 @@ GOOGLE_PLAY_LISTING_LIVE = config("GOOGLE_PLAY_LISTING_LIVE", default=True, cast
 # AWS: the region of the platform, Ireland (PLAN-AWS round 2026-10-14; ECS sets AWS_REGION in every
 # task), where `report_seal_expiry` publishes to CloudWatch with the task role (no static keys).
 AWS_REGION = config("AWS_REGION", default="eu-west-1")
+
+# A business's own domain for its public website (HUBS-F17, PLAN-SAAS §37 point 2; `aws` README, «Dominio propio de un
+# negocio»). Off unless it is on, as in pre and in development: nothing asks for a certificate, nothing looks at a
+# domain, and the operations say it is not available. On, the listener that takes the certificates and the name a
+# customer's CNAME points at ({hub_id}: one for each business, for good) are required. The most certificates that
+# listener holds for customers (`hubs.custom_domain.request` and the hourly check stop asking at it).
+CUSTOM_DOMAINS_ENABLED = config("CUSTOM_DOMAINS_ENABLED", default=False, cast=bool)
+CUSTOM_DOMAINS_LISTENER_ARN = config("CUSTOM_DOMAINS_LISTENER_ARN", default="").strip()
+CUSTOM_DOMAINS_TARGET_TEMPLATE = config("CUSTOM_DOMAINS_TARGET_TEMPLATE", default="").strip()
+CUSTOM_DOMAINS_MAX_CERTIFICATES = config("CUSTOM_DOMAINS_MAX_CERTIFICATES", default=24, cast=int)
+if CUSTOM_DOMAINS_ENABLED:
+    if not CUSTOM_DOMAINS_LISTENER_ARN:
+        raise ImproperlyConfigured("CUSTOM_DOMAINS_LISTENER_ARN is required with CUSTOM_DOMAINS_ENABLED=True.")
+    if "{hub_id}" not in CUSTOM_DOMAINS_TARGET_TEMPLATE:
+        raise ImproperlyConfigured("CUSTOM_DOMAINS_TARGET_TEMPLATE needs {hub_id} with CUSTOM_DOMAINS_ENABLED=True.")
 
 # The fiscal seal's two .p12 slots (erplora/prod/fiscal/seal-{current,next}), base64 and password,
 # loaded at startup by `saas` and `saas-cron` (PLAN §16.5); empty = an empty slot (they are born
@@ -900,6 +940,14 @@ OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
 ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
 GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
 DEEPSEEK_API_KEY = config("DEEPSEEK_API_KEY", default="")
+
+# The providers of erplora.com's own tools (assistant/server_tools.py, ASSISTANT-F14). The rates need no key. The search
+# reads its key here, from the environment and not from the database, and without it is not offered: the assistant
+# just does not search and the server starts as usual. Before filling the key in production, the privacy policy must
+# name the provider (saas#277). Its addresses move only for the e2e's double.
+BRAVE_SEARCH_API_KEY = config("BRAVE_SEARCH_API_KEY", default="")
+ASSISTANT_SEARCH_URL = config("ASSISTANT_SEARCH_URL", default="https://api.search.brave.com/res/v1/web/search")
+ASSISTANT_RATES_URL = config("ASSISTANT_RATES_URL", default="https://api.frankfurter.dev/v1/latest")
 
 # WhatsApp, erplora.com's side (whatsapp/, PLAN-SAAS §1.1, round 2026-10-15b): Meta's app («ERPlora Inbox»), its
 # Embedded Signup configuration and its webhook. Empty = WhatsApp is off, visibly: the webhook answers 503 and the

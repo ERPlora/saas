@@ -1,15 +1,16 @@
 // The panel's configuration of the shared assistant (`options.ts`, plan 2026-10-30-asistente-saas §6): the same chat as
 // the Hub's, wired to the SaaS's own routes and operations (base/api.py), the account's words for its writes and its
-// screens, no microphone (D9) and nobody upgrading (an account has no plan for its 30 messages).
+// screens, its dictation (ASSISTANT-F21), its reading aloud in a server voice (ASSISTANT-F22) and nobody upgrading (an
+// account has no plan for its 30 messages).
 // clock: data only — no code under test compares these dates with now.
 import { createShellSession, type SessionMe } from '@erplora/ui/shell';
-import type { LiveClient } from '@erplora/ui/sdk';
+import { ApiError, type LiveClient } from '@erplora/ui/sdk';
 import { describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
 import en from '../../frontend/locale/en.json';
 import es from '../../frontend/locale/es.json';
-import { actionKey, ASK, PANEL_SCREENS, panelScreenKey, placeKey, SAAS_ASSISTANT } from './options';
+import { actionKey, ASK, PANEL_SCREENS, panelAssistant, panelScreenKey, placeKey, readsAloud, SAAS_ASSISTANT, speak } from './options';
 
 type Catalogue = { [key: string]: string | Catalogue };
 
@@ -71,8 +72,13 @@ describe('SAAS_ASSISTANT', () => {
     expect(call).toHaveBeenCalledWith('base.assistant.report', report);
   });
 
-  it('has no microphone: the voice stays out of the panel (D9)', () => {
-    expect(SAAS_ASSISTANT.transcribe).toBeUndefined();
+  it('dictates with base.assistant.transcribe: the microphone shows because the host transcribes', async () => {
+    const words = { text: 'Dos negocios', language: 'es' };
+    const { client, call } = clientAnswering(words);
+    const clip = { audio: 'GkXfow==', mime_type: 'audio/webm', language: 'es' };
+
+    expect(await SAAS_ASSISTANT.transcribe!(client, clip)).toEqual(words);
+    expect(call).toHaveBeenCalledWith('base.assistant.transcribe', clip);
   });
 
   it('shows the button to whoever may ask the assistant (assistant.ask), to nobody else', () => {
@@ -172,3 +178,102 @@ describe('panelScreenKey', () => {
     expect(panelScreenKey('/settings')).toBeNull();
   });
 });
+
+/** A page of the panel: its SPA config and its CSRF cookie, as Django serves it. */
+function panelPage(extra: Record<string, unknown> = {}): Document {
+  const doc = document.implementation.createHTMLDocument('panel');
+  const config = doc.createElement('script');
+  config.id = 'spa-config';
+  config.type = 'application/json';
+  config.textContent = JSON.stringify({
+    csrfCookieName: 'csrftoken',
+    csrfHeader: 'X-CSRFToken',
+    lang: 'es',
+    deviceIdStorageKey: 'erplora.device',
+    ...extra,
+  });
+  doc.body.append(config);
+  Object.defineProperty(doc, 'cookie', { value: 'csrftoken=tok123' });
+  return doc;
+}
+
+const SPEECH = { text: 'Tienes dos negocios.', language: 'es' as const, voice: 'a-voice' };
+
+describe('speak (ASSISTANT-F22): the mp3 of an answer in a server voice, base.assistant.speak', () => {
+  it('posts the text, its language and its voice to the route with the CSRF token, and gives back the mp3', async () => {
+    const mp3 = new Blob(['ID3 spoken words'], { type: 'audio/mpeg' });
+    const fetch = vi.fn().mockResolvedValue(new Response(mp3, { status: 200, headers: { 'Content-Type': 'audio/mpeg' } }));
+
+    const audio = await speak(SPEECH, { fetch, doc: panelPage() });
+
+    expect(audio).toBeInstanceOf(Blob);
+    expect(await audio.text()).toBe('ID3 spoken words');
+    const [url, init] = fetch.mock.calls[0];
+    expect(url).toBe('/api/assistant/speak');
+    expect(init.method).toBe('POST');
+    expect(init.credentials).toBe('same-origin');
+    expect(init.headers).toMatchObject({ 'X-CSRFToken': 'tok123', 'Content-Type': 'application/json', Accept: 'audio/mpeg' });
+    expect(JSON.parse(init.body)).toEqual(SPEECH);
+  });
+
+  it("passes the chat's signal to the request, so a reading stopped before its audio arrives is aborted", async () => {
+    const controller = new AbortController();
+    const fetch = vi.fn().mockResolvedValue(new Response(new Blob(['ID3']), { status: 200, headers: { 'Content-Type': 'audio/mpeg' } }));
+
+    await speak({ ...SPEECH, signal: controller.signal }, { fetch, doc: panelPage() });
+
+    const [, init] = fetch.mock.calls[0];
+    expect(init.signal).toBe(controller.signal);
+    expect(JSON.parse(init.body)).toEqual(SPEECH);
+  });
+
+  it('rejects with the envelope of a refusal, so the chat reads in the device voice', async () => {
+    const refusal = { error: { code: 'assistant.speech_unavailable', message: 'Reading aloud is not available right now.' } };
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(refusal), { status: 503, headers: { 'Content-Type': 'application/json' } }));
+
+    const spoken = speak(SPEECH, { fetch, doc: panelPage() });
+
+    await expect(spoken).rejects.toBeInstanceOf(ApiError);
+    await expect(spoken).rejects.toMatchObject({ status: 503, code: 'assistant.speech_unavailable', message: 'Reading aloud is not available right now.' });
+  });
+
+  it('rejects when there is no network at all', async () => {
+    const fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await expect(speak(SPEECH, { fetch, doc: panelPage() })).rejects.toMatchObject({ status: 0, code: 'network_error' });
+  });
+
+});
+
+describe("the server's voice only when erplora.com has one (spa-config.assistantSpeech, base/spa.py)", () => {
+  it('reads aloud in a server voice only when the server says it has one', () => {
+    expect(readsAloud(panelPage({ assistantSpeech: true }))).toBe(true);
+    expect(readsAloud(panelPage({ assistantSpeech: false }))).toBe(false);
+    // An older shell, or a page without the server's word: no voice of the server.
+    expect(readsAloud(panelPage())).toBe(false);
+    expect(readsAloud(panelPage({ assistantSpeech: 'true' }))).toBe(false);
+    expect(readsAloud(document.implementation.createHTMLDocument('no config'))).toBe(false);
+  });
+
+  it('gives the chat the server voice (speak) when it has one, so it offers its voices', () => {
+    const config = panelAssistant(panelPage({ assistantSpeech: true }));
+
+    expect(config.speak).toBeTypeOf('function');
+    expect({ ...config, speak: undefined }).toEqual({ ...SAAS_ASSISTANT, speak: undefined });
+  });
+
+  it('without one gives no speak: the chat offers no voice and reads with the device, with no trip to the server', () => {
+    expect(panelAssistant(panelPage({ assistantSpeech: false }))).toBe(SAAS_ASSISTANT);
+    expect(panelAssistant(panelPage())).toBe(SAAS_ASSISTANT);
+    expect(SAAS_ASSISTANT.speak).toBeUndefined();
+  });
+
+  it('an unreadable spa-config is no voice of the server (as its reCAPTCHA key, accounts/frontend/recaptcha.ts)', () => {
+    const doc = panelPage();
+    doc.getElementById('spa-config')!.textContent = '{not json';
+
+    expect(readsAloud(doc)).toBe(false);
+    expect(panelAssistant(doc)).toBe(SAAS_ASSISTANT);
+  });
+});
+

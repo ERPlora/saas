@@ -8,7 +8,7 @@ accounts never imports hubs (``accounts ← hubs ← billing``): it sends signal
   admin's too), delivered after the COMMIT and retried by ``reconcile_hub_states`` as any other;
 - ``account_deleting`` takes the account out of every business as removing a member does: its pending
   ownership offers (made or received) are cancelled (one pending offer per business would block the owner for
-  7 days), its memberships and invitations go with their access mirror (``sync_access``), and every business it
+  7 days), its memberships and invitations go with their access, and every business it
   answered gets a newer snapshot, pushed after the COMMIT, with its owner and admins told;
 - allauth's ``email_changed``: the snapshot's ``members[]`` carries the address, so every business the
   account answered gets a newer version, pushed after the COMMIT.
@@ -26,10 +26,9 @@ from live.models import OutboxEvent
 
 from accounts import services as account_services
 from accounts import signals
-from accounts.models import HubMembership
 from hubs import events
 from hubs.models import Hub, HubMember, HubOwnershipTransfer, SessionRevocation
-from hubs.tests.conftest import add_member, create_business
+from hubs.tests.conftest import add_member, create_business, role_on
 
 pytestmark = pytest.mark.django_db
 
@@ -119,13 +118,12 @@ class TestAccountDeleting:
         for snapshot in pushed.values():
             assert str(employee_id) not in {member["user_id"] for member in snapshot["members"]}
 
-    def test_its_memberships_go_with_their_access_mirror(self, business, team):
-        """As removing a member does (``sync_access``): the jump checks ``accounts.HubMembership``."""
+    def test_its_memberships_go_with_their_access(self, business, team):
+        """As removing a member does: the jump reads the members."""
         deleting(team["employee"])
 
         assert not HubMember.objects.filter(user=team["employee"]).exists()
-        assert not HubMembership.objects.filter(user=team["employee"]).exists()
-        assert HubMembership.objects.filter(user=team["manager"], hub_slug=business.slug).exists()
+        assert role_on(team["manager"], business.slug) == "hub_manager"
 
     def test_a_pending_invitation_goes_and_moves_no_snapshot(self, business, team):
         before = version(business)

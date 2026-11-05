@@ -49,6 +49,7 @@ from apps.tests.factories import CUBE_SVG, make_app, make_doc
 from hubs.models import BusinessType
 from public import seo, sitemaps
 from public.sitemaps import SITEMAPS
+from public.tests.conftest import without_tokens
 
 pytestmark = pytest.mark.django_db
 
@@ -218,9 +219,10 @@ def test_the_category_filter(client, catalog):
     assert section_titles(html) == ["Restaurant 1"]
 
 
-def test_there_is_no_access_filter(client, catalog):
+def test_there_is_no_access_filter(client, catalog, tokens_spelling):
     """The chips «Free» and «Premium» sold a tier of apps (PLAN §32): only the sections filter."""
-    html = get_html(client, "/apps/")
+    tokens_spelling("premium")
+    html = without_tokens(get_html(client, "/apps/"))
 
     assert 'aria-label="Filter by access"' not in html
     assert "premium" not in html.lower()
@@ -383,9 +385,10 @@ def test_the_app_page_shows_its_overview(client, catalog):
     assert "Access Included in every plan" in details
 
 
-def test_an_app_flagged_premium_has_the_page_of_any_other(client, catalog):
+def test_an_app_flagged_premium_has_the_page_of_any_other(client, catalog, tokens_spelling):
     """Every plan includes all the apps (PLAN §32): no «Premium» pill, no «Included in the paid plans»."""
-    html = get_html(client, "/apps/whatsapp_inbox/")
+    tokens_spelling("premium")
+    html = without_tokens(get_html(client, "/apps/whatsapp_inbox/"))
 
     assert "Access Included in every plan" in text_of(html[html.index("Details") :])
     assert "Included in every plan" in text_of(hero_of(html))
@@ -465,7 +468,7 @@ def test_the_button_on_a_free_app_too(client, catalog, ana):
     """The old page left a signed-in visitor of a free module with no action at all."""
     client.force_login(ana)
 
-    assert "<ion-button" in hero_of(get_html(client, "/apps/inventory/"))
+    assert '<a class="ep-button' in hero_of(get_html(client, "/apps/inventory/"))
 
 
 def test_the_button_is_translated(client, catalog, ana):

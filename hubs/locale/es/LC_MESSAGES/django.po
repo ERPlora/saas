@@ -1195,11 +1195,6 @@ msgstr "La dirección no puede empezar por «xn--»."
 msgid "This address is reserved. Choose another one."
 msgstr "Esta dirección está reservada. Elige otra."
 
-#: services.py:271 services.py:408 services.py:1151 services.py:1158
-#: services.py:1240
-msgid "Invalid payload"
-msgstr "Los datos enviados no son válidos."
-
 #: services.py:281
 msgid "This address is taken. Choose another one."
 msgstr "Esta dirección ya está ocupada. Elige otra."
@@ -1451,3 +1446,268 @@ msgstr "intentos del correo de la copia"
 #: queries.py
 msgid "The copy of the data could not be checked right now. Try again in a moment."
 msgstr "No se ha podido consultar la copia de los datos ahora mismo. Vuelve a intentarlo en un momento."
+
+#: hubs/admin.py hubs/templates/admin/hubs/hubs.html
+msgid "Hub admin"
+msgstr "Admin del Hub"
+
+#: hubs/admin.py hubs/templates/admin/hubs/hubmember/change_list.html
+msgid "Hubs"
+msgstr "Hubs"
+
+#: hubs/templates/admin/hubs/hubs.html
+msgid "Hub"
+msgstr "Hub"
+
+#: hubs/templates/admin/hubs/hubs.html
+msgid "Members"
+msgstr "Miembros"
+
+#: hubs/templates/admin/hubs/hubs.html
+msgid "No hub has members yet."
+msgstr "Ningún hub tiene miembros todavía."
+
+#: countries.py
+msgid "Austria"
+msgstr "Austria"
+
+msgid "Belgium"
+msgstr "Bélgica"
+
+msgid "Bulgaria"
+msgstr "Bulgaria"
+
+msgid "Croatia"
+msgstr "Croacia"
+
+msgid "Cyprus"
+msgstr "Chipre"
+
+msgid "Czechia"
+msgstr "Chequia"
+
+msgid "Denmark"
+msgstr "Dinamarca"
+
+msgid "Estonia"
+msgstr "Estonia"
+
+msgid "Finland"
+msgstr "Finlandia"
+
+msgid "France"
+msgstr "Francia"
+
+msgid "Germany"
+msgstr "Alemania"
+
+msgid "Greece"
+msgstr "Grecia"
+
+msgid "Hungary"
+msgstr "Hungría"
+
+msgid "Ireland"
+msgstr "Irlanda"
+
+msgid "Italy"
+msgstr "Italia"
+
+msgid "Latvia"
+msgstr "Letonia"
+
+msgid "Lithuania"
+msgstr "Lituania"
+
+msgid "Luxembourg"
+msgstr "Luxemburgo"
+
+msgid "Malta"
+msgstr "Malta"
+
+msgid "Netherlands"
+msgstr "Países Bajos"
+
+msgid "Poland"
+msgstr "Polonia"
+
+msgid "Portugal"
+msgstr "Portugal"
+
+msgid "Romania"
+msgstr "Rumanía"
+
+msgid "Slovakia"
+msgstr "Eslovaquia"
+
+msgid "Slovenia"
+msgstr "Eslovenia"
+
+msgid "Spain"
+msgstr "España"
+
+msgid "Sweden"
+msgstr "Suecia"
+
+msgid "United Kingdom"
+msgstr "Reino Unido"
+
+#: models.py
+msgid "Waiting for your records"
+msgstr "Esperando tus registros"
+
+#: models.py
+msgid "Connected"
+msgstr "Conectado"
+
+#: models.py
+msgid "Not connected"
+msgstr "Sin conectar"
+
+#: models.py
+msgid "Being removed"
+msgstr "Quitándose"
+
+#: models.py
+msgid "Create the validation record: the certificate is waiting for it."
+msgstr "Crea el registro de validación: el certificado lo está esperando."
+
+#: models.py
+msgid "The certificate could not be asked for now. We will try again within the hour."
+msgstr "Ahora no se ha podido pedir el certificado. Volveremos a intentarlo en menos de una hora."
+
+#: models.py
+msgid "The certificate was refused for this domain. Check that its CAA records allow amazon.com, and ask for the domain again."
+msgstr "Se ha rechazado el certificado de este dominio. Comprueba que sus registros CAA permiten amazon.com y vuelve a pedir el dominio."
+
+#: models.py
+msgid "The validation record did not appear in 72 hours. Create it and ask for the domain again."
+msgstr "El registro de validación no ha aparecido en 72 horas. Créalo y vuelve a pedir el dominio."
+
+#: models.py
+msgid "There is no room for more domains right now. We will try again every hour."
+msgstr "Ahora mismo no caben más dominios. Volveremos a intentarlo cada hora."
+
+#: models.py
+msgid "Create the record that points your domain at ERPlora."
+msgstr "Crea el registro que apunta tu dominio a ERPlora."
+
+#: models.py
+msgid "The records of your domain could not be read now. We will try again within the hour."
+msgstr "Ahora no se han podido leer los registros de tu dominio. Volveremos a intentarlo en menos de una hora."
+
+#: models.py
+msgid "Your domain points at ERPlora, but it is not being served yet. We will try again within the hour."
+msgstr "Tu dominio apunta a ERPlora, pero todavía no se sirve. Volveremos a intentarlo en menos de una hora."
+
+#: models.py
+msgid "Another business is connected to this domain."
+msgstr "Otro negocio está conectado a este dominio."
+
+#: models.py
+msgid "Your domain stopped pointing at ERPlora, so your website is no longer served on it. It comes back by itself when the record does."
+msgstr "Tu dominio ha dejado de apuntar a ERPlora, así que tu web ya no se sirve en él. Volverá sola cuando vuelva el registro."
+
+#: models.py
+msgid "Your plan does not include an own domain."
+msgstr "Tu plan no incluye un dominio propio."
+
+#: models.py
+msgid "domain"
+msgstr "dominio"
+
+#: models.py
+msgid "state"
+msgstr "estado"
+
+#: models.py
+msgid "reason"
+msgstr "motivo"
+
+#: models.py
+msgid "certificate token"
+msgstr "token del certificado"
+
+#: models.py
+msgid "certificate"
+msgstr "certificado"
+
+#: models.py
+msgid "on the listener since"
+msgstr "en la entrada desde"
+
+#: models.py
+msgid "validation record"
+msgstr "registro de validación"
+
+#: models.py
+msgid "validation value"
+msgstr "valor de validación"
+
+#: models.py
+msgid "proved at"
+msgstr "comprobado el"
+
+#: models.py
+msgid "connected at"
+msgstr "conectado el"
+
+#: models.py
+msgid "failures in a row"
+msgstr "fallos seguidos"
+
+#: models.py
+msgid "checked at"
+msgstr "mirado el"
+
+#: models.py
+msgid "own domains"
+msgstr "dominios propios"
+
+#: services.py
+msgid "Own domains are not available yet."
+msgstr "Los dominios propios todavía no están disponibles."
+
+#: services.py
+msgid "Write only the domain, like www.yourbusiness.com."
+msgstr "Escribe solo el dominio, como www.tunegocio.com."
+
+#: services.py
+msgid "That domain belongs to ERPlora. Write your own."
+msgstr "Ese dominio es de ERPlora. Escribe el tuyo."
+
+#: services.py
+msgid "A root domain cannot point at ERPlora. Connect www and redirect the root to it at your provider."
+msgstr "Un dominio raíz no puede apuntar a ERPlora. Conecta www y redirige el raíz a él en tu proveedor."
+
+#: services.py
+msgid "Nobody has registered that domain yet."
+msgstr "Nadie ha registrado todavía ese dominio."
+
+#: services.py
+msgid "The plan of this business does not include an own domain."
+msgstr "El plan de este negocio no incluye un dominio propio."
+
+#: services.py
+msgid "This business already has a domain. Remove it first."
+msgstr "Este negocio ya tiene un dominio. Quítalo primero."
+
+#: services.py
+msgid "Only the platform records what its check learned."
+msgstr "Solo la plataforma anota lo que ha visto su comprobación."
+
+#: emails.py
+msgid "Your domain %(domain)s is no longer connected"
+msgstr "Tu dominio %(domain)s ya no está conectado"
+
+#: emails.py
+msgid "%(domain)s stopped pointing at %(business)s on ERPlora, so its website is no longer served on that domain."
+msgstr "%(domain)s ha dejado de apuntar a %(business)s en ERPlora, así que su web ya no se sirve en ese dominio."
+
+#: emails.py
+msgid "Everything else keeps working at its address on erplora.com."
+msgstr "Todo lo demás sigue funcionando en su dirección de erplora.com."
+
+#: emails.py
+msgid "It comes back by itself within the hour once the record is back. The records are here: %(url)s"
+msgstr "Vuelve solo en menos de una hora cuando vuelva el registro. Los registros están aquí: %(url)s"

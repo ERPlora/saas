@@ -299,9 +299,9 @@ Pasos:
 1. La persona pulsa «Empieza gratis» en la web o abre la **Entrada** y elige «Crear cuenta» (las direcciones antiguas del alta llevan a esta pestaña y conservan adónde iba). Ve «Introduce tu email y elige una contraseña. Te enviaremos un código para confirmarlo.».
 2. Escribe su correo y una contraseña (con el ojo para comprobarla) y pulsa «Crear cuenta».
 3. erplora.com comprueba la contraseña: al menos 8 caracteres, que no se parezca a su correo, que no sea una contraseña común y que no sea solo números. Crea la cuenta y le manda un código de seis cifras.
-4. La pantalla pasa a **Revisa tu correo** (ACCOUNTS-F02); con el código bueno entra sola y llega a «Crea tu negocio».
+4. La pantalla pasa a **Revisa tu correo** (ACCOUNTS-F02); con el código bueno entra sola y llega a «Crea tu negocio», en el idioma en el que se dio de alta.
 Entra: el correo (sin espacios, en minúsculas y con las letras de ancho completo pasadas a las normales, para que una dirección que se parece a otra no cree una segunda cuenta; igual al invitarla a un negocio, que invita a esa cuenta), la contraseña y adónde iba (solo páginas de erplora.com).
-Sale: la cuenta, activa, con su correo aún sin confirmar y los términos aceptados (ACCOUNTS-F10). No se crea ningún negocio. La aplicación que pinta esta pantalla es la misma puerta que cualquier otro programa: las mismas reglas valen para todos.
+Sale: la cuenta, activa, con su correo aún sin confirmar, el idioma de la página en la que se dio de alta (el que eligió en la web pública o, si no eligió, el de su navegador) y los términos aceptados (ACCOUNTS-F10). No se crea ningún negocio. La aplicación que pinta esta pantalla es la misma puerta que cualquier otro programa: las mismas reglas valen para todos.
 Si falla: una contraseña que no pasa las reglas sale debajo de la contraseña y no se crea nada; un correo no válido (también con letras de ancho completo antes de la arroba), debajo del correo. Un correo que ya tiene cuenta responde igual que uno nuevo y a su buzón le llega «ya existe una cuenta con esa dirección de correo electrónico» con el enlace para poner contraseña, sin código: así pone la suya también la persona invitada, cuya cuenta aún no tiene contraseña, y nadie se queda con una cuenta ajena. Más de 10 altas en una hora desde la misma dirección de red: «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.».
 Implicados: hubs (la **Entrada** y «Crea tu negocio»)
 
@@ -375,7 +375,7 @@ Pasos:
 3. Si ya hay una cuenta de erplora.com con ese correo, entra en ella, Google queda enlazado y a su correo le llega el aviso «Se ha añadido el acceso con Google a tu cuenta»; si no la hay, la cuenta se crea con el correo ya confirmado y sin formulario.
 4. Dentro, va adonde iba o a la **Entrada** con su sesión; con la app autenticadora, primero pasa por **Verificación en dos pasos**.
 Entra: lo que Google confirma (correo, nombre y apellidos) y adónde iba.
-Sale: la cuenta de Google enlazada y, si es nueva, la cuenta, sin contraseña (se pone con «¿Olvidaste tu contraseña?»). Google no pide el código del correo: ya lo prueba él.
+Sale: la cuenta de Google enlazada y, si es nueva, la cuenta, sin contraseña (se pone con «¿Olvidaste tu contraseña?») y con el idioma de la página, como en ACCOUNTS-F01; entrar en una cuenta que ya existe no cambia su idioma. Google no pide el código del correo: ya lo prueba él.
 Si falla: «Cancelar» en Google vuelve a la **Entrada**; un error de Google o un correo que Google no confirma lleva a la página de error de la entrada, sin crear ni enlazar nada. Enlazar Google a una sesión abierta sin entrar con él no se permite: dice que Google solo se vincula entrando con la cuenta de Google del correo.
 Implicados: ninguno
 
@@ -596,7 +596,7 @@ Pasos:
 5. El correo se cambia con «Cambiar»: le llega un código a la dirección nueva y, al escribirlo, esa pasa a ser la de entrar; a la antigua le llega un aviso del cambio.
 Entra: nombre y apellidos, la foto o el correo nuevo y su código.
 Sale: el perfil cambiado, en el panel y en cada negocio en el que entre después. Toda cuenta tiene su perfil desde que nace, sin rellenar nada. Lo mismo se lee y se guarda desde cualquier programa con la sesión de la persona.
-Si falla: un nombre vacío no se guarda («Escribe tu nombre.»); una foto que no es imagen o es demasiado grande dice por qué y no cambia la que había; un fallo de red, «No hemos podido conectar con ERPlora…» y no cambia nada. Los datos de facturación no están aquí: son de **Facturación**.
+Si falla: un nombre vacío no se guarda («Escribe tu nombre.»); una foto que no es imagen o es demasiado grande dice por qué y no cambia la que había; un correo nuevo que no vale o que ya usa otra cuenta sale debajo del campo, con «Revisa los datos marcados.» arriba hasta que lo corriges; un fallo de red, «No hemos podido conectar con ERPlora…» y no cambia nada. Los datos de facturación no están aquí: son de **Facturación**.
 Implicados: hubs (los negocios reciben el nombre al entrar)
 
 ### ACCOUNTS-F22 Elegir el idioma y la apariencia
@@ -610,7 +610,7 @@ Pasos:
 3. En «Idioma» elige «English» o «Español»: el panel cambia de idioma al momento, también los correos que le enviamos.
 4. En otro navegador o tras recargar, el panel abre con la apariencia y el idioma de la cuenta.
 Entra: la apariencia y el idioma.
-Sale: la apariencia y el idioma de la cuenta, iguales en todos sus dispositivos; el idioma es también el de sus correos y el que reciben sus negocios al entrar. En el panel manda el idioma de la cuenta; la web pública sigue el que se elige en ella o el del navegador.
+Sale: la apariencia y el idioma de la cuenta, iguales en todos sus dispositivos; el idioma es también el de sus correos y el que reciben sus negocios al entrar. La cuenta nace con el idioma de la página en la que se dio de alta (ACCOUNTS-F01, ACCOUNTS-F06), o con el del negocio que la invita; desde entonces lo decide esta pantalla. En el panel manda el idioma de la cuenta; la web pública sigue el que se elige en ella o el del navegador.
 Si falla: si no se puede guardar, el control vuelve a lo que había y un aviso dice por qué; si las preferencias no cargan, «No hemos podido cargar tus preferencias» con «Reintentar». La moneda no se elige: ERPlora cobra en euros.
 Implicados: hubs (el idioma al entrar en un negocio)
 
@@ -620,14 +620,14 @@ Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Preferencias
 Pasos:
-1. En **Cuenta › Preferencias**, «Avisos por correo» enseña «Seguridad, facturas y pagos», siempre encendido («Siempre activos: códigos para entrar, avisos de seguridad, facturas, pagos y lo que te pide hacer algo.»).
+1. En **Cuenta › Preferencias**, «Avisos por correo» enseña «Seguridad, facturas y pagos», siempre encendido («Siempre activos: códigos para entrar, avisos de seguridad, facturas, pagos, los mensajes que te quedan con el asistente y lo que te pide hacer algo.»).
 2. Debajo, «Avisos de mis negocios» («Cuando un negocio tuyo está listo para abrir.»), encendido de entrada.
 3. La persona lo apaga: «Preferencias guardadas», y el siguiente negocio que cree ya no le manda el correo de que está listo.
 4. Lo vuelve a encender y el correo vuelve.
 Entra: «Avisos de mis negocios».
-Sale: con él apagado, el correo de un negocio listo no se manda; el negocio abre igual y el panel lo dice. Los demás correos se mandan siempre: los códigos y los avisos de seguridad, las facturas y los pagos fallidos, el negocio eliminado con su fecha para recuperarlo y lo que pide hacer algo, como volver a conectar WhatsApp.
+Sale: con él apagado, el correo de un negocio listo no se manda; el negocio abre igual y el panel lo dice. Los demás correos se mandan siempre: los códigos y los avisos de seguridad, las facturas y los pagos fallidos, el negocio eliminado con su fecha para recuperarlo, los avisos de que se acaban o se han gastado los mensajes del mes con el asistente del panel (ASSISTANT-F29) y lo que pide hacer algo, como volver a conectar WhatsApp.
 Si falla: si no se puede guardar, el interruptor vuelve a como estaba y un aviso dice por qué.
-Implicados: hubs (el correo de un negocio listo), billing (las facturas y los pagos, siempre)
+Implicados: hubs (el correo de un negocio listo), billing (las facturas y los pagos, siempre), assistant (ASSISTANT-F29: los avisos de los mensajes del panel, siempre)
 
 ### ACCOUNTS-F24 Cambiar el tema desde el menú de usuario
 <!-- origen: fi:saas/auth-services#toggle-de-tema-server-side-sin-js fi:saas/auth-services#context-processor-de-tema fi:saas/support/public-core-config#context_processors-py-theme-apps-py-coreconfig pc:cloud/dashboard/theme_picker -->
@@ -706,15 +706,16 @@ Implicados: hubs (los negocios de la persona y «Abrir»)
 <!-- origen: old-saas:SAAS_AUTH-F21 -->
 Estado: hecho
 Actor: cualquier persona con cuenta
-Pantalla: Entrada, Cuenta, Negocios
+Pantalla: Entrada, Cuenta, Negocios, Tienda
 Pasos:
-1. Dentro de su negocio, la persona pulsa un enlace a erplora.com: gestionar su cuenta, su negocio o su plan.
-2. Si ese navegador tiene su sesión de erplora.com (la que usó para entrar en el negocio), la página se abre sin pedirle nada.
-3. Si no la tiene (otro navegador, el de la aplicación, o la sesión se cerró), la **Entrada** le pide entrar y, ya dentro, la lleva a esa misma página.
-Entra: la página de erplora.com a la que va (solo páginas de erplora.com).
-Sale: la página abierta con su sesión de erplora.com. El negocio no le pasa ninguna credencial a erplora.com: cada uno guarda su propia sesión.
-Si falla: una dirección que no es de erplora.com no se sigue después de entrar: lleva a la **Entrada** con su sesión. Cerrar la sesión de erplora.com no cierra la del negocio (ACCOUNTS-F09).
-Implicados: hubs (los enlaces del negocio a erplora.com)
+1. Dentro de su negocio, la persona que entró con su cuenta pulsa «Mejorar plan» o «Gestionar en erplora.com» (BASE-F11 del Hub). El negocio firma en ese momento un pase y lo abre en erplora.com, en una pestaña nueva; en la aplicación instalada, en el navegador del dispositivo.
+2. erplora.com comprueba el pase y que esa cuenta sigue siendo de ese negocio, y abre su sesión sin pedirle nada, aunque ese navegador no la tuviera: la lleva a la página del plan de ese negocio en la **Tienda** («Mejorar plan») o a ese negocio en **Negocios** («Gestionar en erplora.com»).
+3. Si ese navegador ya tenía abierta su sesión, sigue con ella hasta el mismo sitio, aunque el pase haya caducado o ya se usara (al recargar o al volver atrás). Si tenía la de otra cuenta y el pase es bueno, entra en su lugar quien pulsó el botón.
+4. Los demás enlaces a erplora.com no llevan pase: gestionar su cuenta, «Invitar en erplora.com», «Mejorar plan» de una app de pago (abre la **Tienda** de ese negocio) y el del asistente y la Bandeja de WhatsApp, entre otros. Esos enlaces y un pase que no llega abren la dirección de siempre: si ese navegador tiene su sesión de erplora.com, la página se abre sin pedirle nada; si no, la **Entrada** le pide entrar y, ya dentro, la lleva a esa misma página.
+Entra: el pase del negocio (de qué cuenta, de qué negocio y a dónde va: el plan o el negocio) o, sin pase, la página de erplora.com a la que va (solo páginas de erplora.com).
+Sale: la página abierta con su sesión de erplora.com; el negocio y erplora.com guardan cada uno la suya. El pase vale un minuto y sirve una sola vez, y solo para esa cuenta y ese negocio; viaja en la dirección, así que la respuesta no se guarda ni se cuenta a otras webs. La sesión que abre no cuenta como entrada con contraseña, código ni segundo factor (lo que los exija los vuelve a pedir), no acepta los términos por nadie y sale en **Cuenta › Seguridad › Sesiones activas**, desde donde se puede cerrar.
+Si falla: un pase que el negocio no firmó, o que no dice lo que debe, no abre nada: «Este enlace de tu negocio no es válido», con «Iniciar sesión» y «Contactar Soporte». Una cuenta que no es miembro de ese negocio, desactivada o del personal de ERPlora no entra: «No tienes acceso a este hub», que nombra solo la dirección del negocio, con «Inicio», «Volver al hub» y «Contactar Soporte». Un pase pasado su minuto o ya usado no abre nada: «Este enlace de tu negocio ha caducado», e «Iniciar sesión» sigue hasta donde iba, con «Contactar Soporte». Ninguno de los tres toca la sesión que ya hubiera en ese navegador; con ella, «Iniciar sesión» dice «Inicio». Sin pase, una dirección que no es de erplora.com no se sigue después de entrar: lleva a la **Entrada** con su sesión. Cerrar la sesión de erplora.com no cierra la del negocio (ACCOUNTS-F09).
+Implicados: hubs (el negocio en el panel), billing (el plan en la **Tienda**), el hub (firma el pase y pinta los botones, BASE-F11)
 
 ### ACCOUNTS-F30 Abrir mi cuenta sola desde la aplicación
 <!-- origen: old-saas:SAAS_DASHBOARD-F209 -->
@@ -815,7 +816,7 @@ Pasos:
 3. Nadie puede crear, cambiar ni borrar una entrada a mano: solo se leen.
 Entra: los cambios de las cuentas, de lo que se cobra y de la documentación fiscal, hechos desde el panel, con una clave de API, desde el admin, por las tareas de erplora.com o por Stripe al cobrar.
 Sale: una entrada por cambio, que nombra a quien actuaba en ese momento (la cuenta con la sesión abierta o la dueña de la clave de API; nadie en una tarea de erplora.com o tras cerrar la sesión) y la dirección real del visitante, nunca la que diga su navegador.
-Si falla: nunca se anota un secreto (ni la contraseña, ni la clave de API, ni la de una sesión, ni la de una compra con Stripe, ni el enlace que abre una factura de Stripe, ni los documentos de una autorización ni el sello) ni lo que se mueve solo (la última entrada, el último uso de una clave, la última vez que se vio una sesión, los contadores, los reintentos de envío de una factura a la AEAT). Anotar un cambio nunca cambia una factura ni su registro en VeriFactu. Si la cuenta se elimina, sus entradas se quedan con su correo y sin enlace a ella hasta que se borran a los 90 días (ACCOUNTS-F37). Alguien del equipo sin el permiso no puede abrirlo.
+Si falla: nunca se anota un secreto (ni la contraseña, ni la clave de API, ni la de una sesión, ni la de una compra con Stripe, ni el enlace que abre una factura de Stripe, ni los documentos de una autorización ni el sello) ni lo que escribe quien invita a una persona a un negocio, ni lo que se mueve solo (la última entrada, el último uso de una clave, la última vez que se vio una sesión, la última vez que una persona abrió un negocio, los contadores, los reintentos de envío de una factura a la AEAT). Anotar un cambio nunca cambia una factura ni su registro en VeriFactu. Si la cuenta se elimina, sus entradas se quedan con su correo y sin enlace a ella hasta que se borran a los 90 días (ACCOUNTS-F37). Las entradas que quedan de la copia retirada de quién está en cada negocio también se leen hasta ese día: con su tipo de recurso por el nombre interno y sin enlace, porque su fila ya no existe. Alguien del equipo sin el permiso no puede abrirlo.
 Implicados: ninguno
 
 ### ACCOUNTS-F37 Borrar el registro de auditoría de más de 90 días
@@ -826,8 +827,9 @@ Pantalla: ninguna (una tarea diaria de erplora.com)
 Pasos:
 1. Una vez al día, erplora.com borra por tandas las entradas del registro de auditoría (ACCOUNTS-F36) de hace más de 90 días.
 2. Las de los últimos 90 días se quedan, también las de una cuenta ya eliminada.
+3. Con la última entrada de la copia retirada de quién está en cada negocio se va también su tipo de recurso; antes no, porque borrarlo se llevaría las entradas que quedan.
 Entra: la fecha de cada entrada del registro.
-Sale: el registro con solo los últimos 90 días; nada más cambia.
+Sale: el registro con solo los últimos 90 días; nada más cambia, salvo ese tipo de recurso cuando se queda sin entradas.
 Si falla: si una tanda no se puede borrar, la tarea termina con error para que el equipo lo vea; lo borrado antes se queda borrado y la pasada siguiente sigue desde ahí. Si ya hay una pasada en marcha, la segunda no hace nada. El equipo puede contar lo que se borraría sin borrar nada, y cambiar los días que se guardan.
 Implicados: ninguno
 
@@ -1013,6 +1015,21 @@ Sale: la sesión de ese navegador, como en ACCOUNTS-F04 pero sin el código por 
 Si falla: una cuenta sin la marca sigue pidiendo el código en cada entrada con contraseña (ACCOUNTS-F04). La persona no ve ni cambia la marca desde su cuenta, el soporte la ve en el admin sin poder cambiarla, y una cuenta del personal no puede llevarla: «Una cuenta del personal no puede ser cuenta de revisión de tienda.», y no se guarda. La marca no salta nada más: un correo sin confirmar pide su código (ACCOUNTS-F03), la app autenticadora, si la cuenta la tiene, pide el suyo (ACCOUNTS-F05), y una contraseña equivocada, los límites de intentos (ACCOUNTS-F11) y la respuesta igual exista o no la cuenta siguen como en cualquier otra.
 Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de auditoría); la app de ERPlora (repositorio ERPlora/app), cuya comprobación de Google Play entra con esta cuenta antes de cada publicación; saas#132 y app#7
 
+### ACCOUNTS-F50 Esperar a la base de datos cuando se corta un momento
+<!-- origen: nuevo (PLAN-DB, ronda 2026-11-04e, punto 5: un reinicio, un mantenimiento de AWS o el cambio de versión cortan la base unos segundos) gh:saas#284 gh:hub#831 -->
+Estado: hecho
+Actor: cualquier visitante de erplora.com, cualquier persona en el panel y cualquier programa conectado por la API
+Pantalla: cualquiera de erplora.com y del panel, Página de mantenimiento
+Pasos:
+1. La persona abre una página o el panel mientras la base de datos se corta unos segundos: un reinicio, un mantenimiento de AWS o el cambio de versión.
+2. Lo que estaba leyendo espera y se vuelve a pedir solo, hasta 20 segundos en total. Si la base vuelve antes, la página llega como siempre: la persona solo nota que ha tardado.
+3. Lo que estaba guardando espera igual cuando consta que no se aplicó nada: no llegó a empezar, o es un cambio de **Preferencias** o de **Perfil**, que solo tocan la base de datos y todavía no se habían confirmado. Se guarda una sola vez.
+4. Si se acaba el tiempo, quien lee una página ve «Volvemos enseguida» con «ERPlora vuelve en un momento: inténtalo de nuevo en unos segundos.» y «Reintentar». Dentro del panel, lo que no se pudo cargar lo dice en su sitio y ofrece «Reintentar», como en cualquier fallo de conexión.
+Entra: nada: la persona no hace nada distinto.
+Sale: la misma respuesta de siempre, con unos segundos de retraso; o, pasado el tiempo, una respuesta 503 con `Retry-After` y nunca una página de error del servidor. Un programa recibe el código `database_unavailable`. Los buscadores entienden que la web vuelve pronto.
+Si falla: lo que pudo aplicarse no se repite nunca a ciegas. Un corte mientras se confirmaba un guardado deja el resultado sin saberse, y cualquier otro cambio pudo haber hecho algo fuera de la base (un cobro de Stripe, una factura, un correo): la persona lee «Se ha perdido la conexión mientras se guardaba. Comprueba si se ha guardado antes de volver a intentarlo.» y un programa, el código `database_outcome_unknown`. Lo que no es un corte (una consulta que tarda demasiado, un fallo del programa) sigue siendo el error de siempre. Las llamadas de los negocios a `/internal`, los avisos de Stripe y de Meta y `/readyz` reciben su 503 al momento, sin esperar: los dos primeros reintentan por su cuenta, y `/readyz` tiene que decir que la base no está antes de que sus sondas se cansen.
+Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos de Stripe reciben el 503 y reintentan), whatsapp (los avisos de Meta, igual), ACCOUNTS-F43 (la misma página), ACCOUNTS-F21 y ACCOUNTS-F22 (Perfil y Preferencias, que se pueden repetir); saas#284 y su gemela del Hub, hub#831
+
 ## Para quien lo mantiene
 
 - Anatomía, operaciones y decisiones: `accounts/README.md` (allauth headless, puertas cerradas, sesiones,
@@ -1021,7 +1038,7 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
   (segundo factor, navegadores de confianza y sesiones) cierra F05 y añade F14–F20; la parte 3 (perfil,
   preferencias, avisos, menú de usuario, exportar y borrar la cuenta) añade F21–F27 y amplía F13; la parte 4
   (salto al Hub, llaves de API y su documentación, retención GDPR, auditlog y reportar un problema) añade F28–F38
-  y amplía F12 y F25; la parte 5 (plataforma del SaaS) añade F39–F48. El cierre (CLOSE-ACCOUNTS, 2026-11-03) pasa F06
+  y amplía F12 y F25; la parte 5 (plataforma del SaaS) añade F39–F48; saas#284 añade F50. El cierre (CLOSE-ACCOUNTS, 2026-11-03) pasa F06
   y F48 a `hecho` (PLAN-SAAS, ronda de `accounts`).
 - Equivalencia de claves del registro: G83, G124, G22 y G59 = F01; G84 y G21 = F02; G107 = F03; G85 y G17 =
   F04; G125 = F05; G86 = F06; G91, G123, G120, G121 y G122 = F07; G109, G92, G42, G45 y G46 = F08; G93 = F09;
@@ -1135,6 +1152,11 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
   `services.forget_deleted_actor` suelta el autor cuando su cuenta se elimina. Los modelos de cobro y de VeriFactu
   los registran sus apps. «Reportar un problema» (F38) es `accounts.support.report`: un correo en inglés a
   `SUPPORT_EMAIL` con «Reply-To» la cuenta, limitado por cuenta (`SUPPORT_REPORT_RATELIMIT`, 5 por hora).
+- El pase de vuelta desde el negocio (F29, BASE-F11 del Hub) es `GET /hub-pass/?pass=…` (`accounts/hub_pass.py`, con el
+  contrato en su cabecera): lo firma el Hub al pulsar (`base.saas_pass.create`) y el SaaS solo lo comprueba, sin
+  consultarse entre ellos (PLAN-SAAS §2). Lo que no abre nada cae en `/login/error?code=…`: `invalid_pass` (no firmado
+  como firma el Hub, o no dice lo que debe), `not_a_member&hub=<slug>` y `pass_expired&next=<a dónde iba>` (pasado su
+  minuto o ya usado). Tests: `accounts/tests/test_hub_pass.py`; e2e `tests/e2e/panel/accounts-pass.spec.ts`.
 - Parte 5 (F39–F48): la política de contenido del panel es `settings.SECURE_CSP` sobre `live.csp.base_policy` (más
   lo que añade `base/csp.py` en una página que cobra), con nonce, `strict-dynamic` y Trusted Types en producción; la
   de la web pública es `public/csp.py`, sin `strict-dynamic` ni Trusted Types a propósito, y la del admin,
@@ -1195,9 +1217,8 @@ Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de audi
 
 ## Lo que queda fuera
 
-- **erplora.com guarda dos veces quién está en cada negocio** (el espejo `accounts.HubMembership`) — saas#199.
-- **Desde el Hub, «Mejorar plan» y «erplora.com» piden volver a entrar con la cuenta si el navegador no tenía la sesión
-  abierta** (BASE-F11 del Hub, cruza ACCOUNTS-F28) — saas#190.
+- **«Mejorar plan» del asistente y de la Bandeja de WhatsApp del Hub aún no llevan el pase** (ACCOUNTS-F29, BASE-F11 del
+  Hub): abren la dirección de siempre, que pide entrar si ese navegador no tiene la sesión — ERPlora/hub#723.
 
 ## Lo que NO hace, a propósito
 

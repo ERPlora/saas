@@ -3,7 +3,7 @@
 // its twin with the second factor on at :8013 (panel/project.ts), the Hub the specs play on :8019 and the `saas` of
 // `.env`. A second run at once moves the four ports together with one variable, E2E_SAAS_PORT (8030: :8031, :8032, :8033, :8039), so that it can never leave one of
 // them behind (two panels sending their Hub calls to one double), and runs on a database of its own,
-// `saas_e2e_<port>`, which its first server creates and migrates (database.ts): two runs on the one `saas`
+// `saas_e2e_<port>`, which a step before its servers creates and migrates (database.ts): two runs on the one `saas`
 // write into each other's data. The rest of the e2e reads them here (playwright.config.ts, panel/project.ts,
 // django-env.ts, database.ts).
 //
@@ -28,6 +28,8 @@ export interface Stack {
   publicHubDoublePort: number;
   /** Where the panel's twin exchanges Google's code (`GOOGLE_OAUTH_TOKEN_URL`), which a spec plays (`base + 5`; accounts-google.spec.ts). */
   googleDoublePort: number;
+  /** The public server's twin with a tracker configured, the one that shows the cookie notice (`base + 6`; public-cookie-notice.spec.ts). */
+  publicNoticePort: number;
   /** The AI provider the assistant's specs start, assistant.tests.fake_provider (`base + 7`). */
   aiProviderPort: number;
   /** Where the public server asks reCAPTCHA's assessments (`RECAPTCHA_ENDPOINT`), the double of recaptcha-double.ts (`base + 8`). */
@@ -106,6 +108,7 @@ export function stackFrom(env: Env): Stack {
     panelMfaPort: base + 3,
     publicHubDoublePort: base + 4,
     googleDoublePort: base + 5,
+    publicNoticePort: base + 6,
     aiProviderPort: base + 7,
     recaptchaDoublePort: base + 8,
     hubDoublePort: base + LAST_OFFSET,

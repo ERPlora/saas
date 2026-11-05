@@ -13,7 +13,7 @@ import { mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { Page } from '@playwright/test';
+import type { Page, Route } from '@playwright/test';
 
 import { djangoEnv } from './django-env';
 import { horizontalOverflow } from './horizontal-overflow';
@@ -153,7 +153,7 @@ test('PUBLIC-G39 G40 G41 a message from Collaborate reaches support on its topic
 
   // From Collaborate, its button opens the form on its topic (G40).
   await page.goto('/collaborate/');
-  await page.locator('ion-button[href="/contact/?subject=collaborate"]').first().click();
+  await page.locator('a.ep-button[href="/contact/?subject=collaborate"]').first().click();
   await expect(page).toHaveURL(/\/contact\/\?subject=collaborate$/);
 
   await fill(page, 'first_name', 'Anne');
@@ -350,10 +350,16 @@ test('PUBLIC-G47 from the installed app, the terms open in app mode and «Back»
   await expect(page).toHaveURL(/\/legal\/terms\/\?surface=desktop$/);
   await expect(page.locator('nav.ep-navbar')).toHaveCount(0);
   await expect(page.locator('footer.ep-footer')).toHaveCount(0);
-  await expect(page.locator('ion-button[href="/launch"]')).toHaveCount(0);
+  await expect(page.locator('[href="/launch"]')).toHaveCount(0);
 
+  // With the page's script run (a module: it runs before DOMContentLoaded), «Back» goes back through the history to
+  // the screen that opened the text. Its link leads to the same address (saas#236), so only the history tells the
+  // two apart: forward is the text again.
+  await page.waitForLoadState('domcontentloaded');
   await page.locator('[data-app-back]').click();
   await expect(page).toHaveURL(/\/shell\/\?surface=desktop$/);
+  await page.goForward();
+  await expect(page).toHaveURL(/\/legal\/terms\/\?surface=desktop$/);
 
   await captureEverywhere(page, '/legal/privacy/', 'PUBLIC-G47', async (p) => {
     await expect(p.locator('[data-app-back]')).toBeVisible();
@@ -362,4 +368,29 @@ test('PUBLIC-G47 from the installed app, the terms open in app mode and «Back»
   await page.goto('/legal/privacy/?surface=web');
   await expect(page.locator('nav.ep-navbar')).toBeVisible();
   await clean('in-app legal texts');
+});
+
+test('PUBLIC-G47 on a slow device, «Back» returns to the sign-in even pressed before the page script has run', async ({
+  page,
+}) => {
+  await page.goto('/shell/?surface=desktop');
+  const terms = page.locator('.foot a').first();
+  await expect(terms).toHaveAttribute('href', '/legal/terms/?surface=desktop');
+
+  // The terms' scripts have not arrived yet when the person presses «Back» (saas#236): held until the end.
+  const held: Route[] = [];
+  await page.route('**/static/spa/**/*.js', (route) => {
+    held.push(route);
+  });
+  await terms.click();
+  await expect(page).toHaveURL(/\/legal\/terms\/\?surface=desktop$/);
+  await expect(page.locator('[data-app-back]')).toBeVisible();
+
+  await page.locator('[data-app-back]').click();
+  await expect(page).toHaveURL(/\/shell\/\?surface=desktop$/);
+
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
+  // Once its scripts arrive, the screen it returned to is the app's sign-in.
+  await Promise.all(held.map((route) => route.continue().catch(() => undefined)));
+  await expect(page.locator('.foot a').first()).toHaveAttribute('href', '/legal/terms/?surface=desktop');
 });

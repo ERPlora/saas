@@ -35,6 +35,7 @@ import {
   PRO,
   SALON,
   businessPage,
+  plan,
   storeModule,
   subscription,
 } from '../__tests__/fixtures';
@@ -379,6 +380,57 @@ describe('StoreShop', () => {
     expect(s.calls().at(-1)).toMatchObject({ path: '/api/billing/plan/keep', body: { hub_id: 'bakery' } });
     expect(toastSuccess).toHaveBeenCalledWith('Starter is kept: it renews on Oct 31, 2026');
     expect(s.el('plan-keep').exists()).toBe(false);
+  });
+
+  it('a downgrade that waits: its own card names the plan it moves to, and «Keep the plan» undoes it (PLAN-SAAS §31, saas#208)', async () => {
+    const STANDARD = plan('standard', 'Standard', '59.99', '599.90');
+    const waiting = catalog('bakery', {
+      subscription: subscription({ plan: 'standard', scheduled_change: { plan: 'starter', interval: 'month', starts_at: '2026-10-31T12:00:00Z' } }),
+    });
+    const s = await setup({
+      answer: ({ path }) => {
+        if (path === '/api/plans') return Response.json({ ...PLANS, plans: [...PLANS.plans, STANDARD] });
+        if (path === '/api/billing/store') return Response.json(waiting);
+        if (path === '/api/billing/plan/keep') {
+          return Response.json({ hub_id: 'bakery', plan: 'standard', billing_interval: 'month', status: 'active', cancel_at_period_end: false, current_period_end: '2026-10-31T12:00:00Z', trial_end: null, modules: [], scheduled_change: null });
+        }
+        return undefined;
+      },
+    });
+    expect(s.el('plan-standard').find('[data-testid="plan-note"]').text()).toBe('Downgrade scheduled: Standard until Oct 31, 2026, then Starter.');
+    expect(s.el('plan-starter').find('[data-testid="plan-note"]').text()).toBe('The business moves to Starter on Oct 31, 2026.');
+    await s.el('plan-keep').trigger('click');
+    await flush();
+    expect(s.calls().at(-1)).toMatchObject({ path: '/api/billing/plan/keep', body: { hub_id: 'bakery' } });
+    expect(toastSuccess).toHaveBeenCalledWith('Standard is kept: it renews on Oct 31, 2026');
+    expect(s.el('plan-keep').exists()).toBe(false);
+    expect(s.el('plan-standard').find('[data-testid="plan-note"]').exists()).toBe(false);
+    expect(s.el('plan-starter').find('[data-testid="plan-change"]').exists()).toBe(true);
+  });
+
+  it('a downgrade confirmed in its dialog shows at once on the card, before the catalog is asked again', async () => {
+    const STANDARD = plan('standard', 'Standard', '59.99', '599.90');
+    const s = await setup({
+      answer: ({ path }) => {
+        if (path === '/api/plans') return Response.json({ ...PLANS, plans: [...PLANS.plans, STANDARD] });
+        if (path === '/api/billing/store') return Response.json(catalog('bakery', { subscription: subscription({ plan: 'standard' }) }));
+        return undefined;
+      },
+    });
+    s.wrapper.findComponent(ProrationDialog).vm.$emit('done', {
+      hub_id: 'bakery',
+      plan: 'standard',
+      billing_interval: 'month',
+      status: 'active',
+      cancel_at_period_end: false,
+      current_period_end: '2026-10-31T12:00:00Z',
+      trial_end: null,
+      modules: [],
+      scheduled_change: { plan: 'starter', interval: 'month', starts_at: '2026-10-31T12:00:00Z' },
+    });
+    await flush();
+    expect(s.el('plan-standard').find('[data-testid="plan-note"]').text()).toBe('Downgrade scheduled: Standard until Oct 31, 2026, then Starter.');
+    expect(s.el('plan-keep').exists()).toBe(true);
   });
 
   it('«Keep · no charge today» keeps a cancelled module and says when it renews', async () => {

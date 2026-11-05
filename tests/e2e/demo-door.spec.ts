@@ -65,10 +65,10 @@ test.describe('in English', () => {
     for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/');
-      await expect(page.locator('section.hero-bg ion-button[href="/demo/"]')).toBeVisible();
+      await expect(page.locator('section.hero-bg a.ep-button[href="/demo/"]')).toBeVisible();
       await page.screenshot({ path: join(ARTIFACTS, `home-hero-en-${width}.png`) });
     }
-    await page.locator('section.hero-bg ion-button[href="/demo/"]').click();
+    await page.locator('section.hero-bg a.ep-button[href="/demo/"]').click();
 
     await expect(page).toHaveURL(/\/demo\/$/);
     await expect(page.getByTestId('demo-state-idle')).toBeVisible();

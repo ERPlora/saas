@@ -12,8 +12,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import override_settings
 
-from accounts.models import HubMembership
-from accounts.tests.conftest import HOST, api_post
+from accounts.tests.conftest import HOST, api_post, enter
 
 pytestmark = pytest.mark.django_db
 
@@ -34,7 +33,7 @@ def _report(client, **body):
 class TestSending:
     def test_the_report_reaches_support_with_the_account_and_where_it_came_from(self, client, ana, settings):
         settings.SUPPORT_EMAIL = "support@example.com"
-        HubMembership.objects.create(user=ana, hub_slug="bar-pepe", role=HubMembership.Role.ADMIN)
+        enter(ana, "bar-pepe", "hub_admin")
         client.force_login(ana)
 
         response = _report(client, page="/dashboard/businesses")
@@ -59,7 +58,7 @@ class TestSending:
         assert "Page: unknown" in body
 
     def test_only_the_callers_businesses_go_with_it(self, client, ana, olga):
-        HubMembership.objects.create(user=olga, hub_slug="someone-else", role=HubMembership.Role.OWNER)
+        enter(olga, "someone-else", "hub_owner")
         client.force_login(ana)
 
         _report(client)

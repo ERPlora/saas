@@ -18,12 +18,12 @@ BASE_DIR = Path(settings.BASE_DIR).resolve()
 # The pages known to override the breadcrumbs: if the walk stops finding them, it is walking the wrong place.
 KNOWN = {
     "accounts/templates/admin/accounts/apikey/issued.html",
-    "accounts/templates/admin/accounts/hubs.html",
     "assistant/templates/admin/assistant/aiprovider/models.html",
     "assistant/templates/admin/assistant/airoutingpolicy/policy.html",
     "assistant/templates/admin/assistant/airoutingpolicy/try.html",
     "fiscal/templates/admin/fiscal/representationgrant/review.html",
     "fiscal/templates/admin/fiscal/representationgrant/stamp.html",
+    "hubs/templates/admin/hubs/hubs.html",
 }
 
 BREADCRUMBS_BLOCK = re.compile(r"{%\s*block breadcrumbs\s*%}(.*?){%\s*endblock", re.S)

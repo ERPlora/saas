@@ -38,6 +38,7 @@ from hubs.models import BusinessType, Plan, Sector
 from public import industries
 from public.sitemaps import SITEMAPS, IndustryDetailSitemap, StaticPagesSitemap
 from public.templatetags import icons
+from public.tests.conftest import without_tokens
 
 pytestmark = [pytest.mark.django_db]
 
@@ -436,9 +437,10 @@ def test_the_lead_and_the_faq_state_the_entry_price(no_plans, client, salon, ent
     ],
 )
 def test_the_price_answer_puts_every_app_on_every_plan(
-    no_plans, client, salon, entry_plan, language, answer
+    no_plans, client, salon, entry_plan, language, answer, tokens_spelling
 ):
     """Ronda 2026-10-24b (PLAN §32): it said «the premium apps are included in the paid plans»."""
+    tokens_spelling("premium")
     client.cookies[settings.LANGUAGE_COOKIE_NAME] = language
     response = _page(client)
     (price,) = [
@@ -446,7 +448,7 @@ def test_the_price_answer_puts_every_app_on_every_plan(
     ]
 
     assert price == answer
-    assert "premium" not in response.content.decode().lower()
+    assert "premium" not in without_tokens(response.content.decode()).lower()
 
 
 def test_a_free_entry_plan_is_announced_as_free_and_permanent(no_plans, client, salon):

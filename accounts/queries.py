@@ -1,5 +1,5 @@
 """Reads of accounts: the hubs an account can enter (``accounts.hub.list``, the launcher's), the
-re-read of an account before a live re-run, the hubs the admin's «Open in the Hub admin» lists, the
+re-read of an account before a live re-run, the
 authenticators of the second factor (``mfa.py``), whether an email has an account (the unified login),
 whether an account proved its email or has any way in (the invitation of ``hubs``, saas#2541), and the
 Account page (plan 2026-10-13, L3-A): the profile, the
@@ -20,10 +20,10 @@ from allauth.mfa.models import Authenticator
 from allauth.socialaccount.models import SocialAccount
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db.models import Count
 from django.utils import timezone, translation
 from django.utils.crypto import constant_time_compare
 from django.utils.translation import gettext
+from live import operations
 from live.context import OperationContext
 from live.errors import Unauthorized
 from live.operations import AI, INTERNAL, operation
@@ -33,7 +33,6 @@ from accounts.models import (
     API_KEY_SCOPES,
     ApiKey,
     EmailChangeRequest,
-    HubMembership,
     ProfilePhoto,
     UserPreferences,
 )
@@ -55,18 +54,34 @@ from accounts.schemas import (
 )
 
 
+#: Who enters which business, ``hubs``' to say (called by its name: accounts never imports hubs).
+MEMBER_LIST_MINE = "hubs.member.list_mine"
+
+
+def as_account(user) -> OperationContext:
+    """The context ``user`` gets from a request, outside one: to read what it sees through other apps' operations."""
+    from live.context import Scope
+    from live.meta import all_live_app_configs, permissions_for_role
+
+    from base.operations import ACCOUNT_ROLE
+
+    return OperationContext(
+        scope=Scope("user", str(user.pk)),
+        actor=user,
+        permissions=permissions_for_role(all_live_app_configs(), ACCOUNT_ROLE),
+        language=user.language,
+    )
+
+
+def hub_roles_of(user) -> dict[str, str]:
+    """The ``hub_*`` role of ``user`` on each hub it enters, by slug, alphabetically: what the jump reads."""
+    mine = operations.get(MEMBER_LIST_MINE)
+    return {row.slug: row.role for row in mine(as_account(user), mine.input()).rows}
+
+
 def hub_slugs_of(user) -> list[str]:
-    """The slugs of the hubs ``user`` is a member of, alphabetically."""
-    return list(HubMembership.objects.filter(user=user).order_by("hub_slug").values_list("hub_slug", flat=True))
-
-
-def hubs_with_members() -> list[tuple[str, int]]:
-    """Every hub with members, alphabetically, as ``(slug, member count)``.
-
-    The SaaS has no ``Hub`` model yet (``HubMembership`` stands in), so a hub is a slug with members.
-    """
-    rows = HubMembership.objects.values("hub_slug").annotate(members=Count("id")).order_by("hub_slug")
-    return [(row["hub_slug"], row["members"]) for row in rows]
+    """The slugs of the hubs ``user`` enters, alphabetically."""
+    return list(hub_roles_of(user))
 
 
 def hub_admin_path(slug: str) -> str:

@@ -871,6 +871,8 @@ export interface StoreSubscriptionOut {
   current_period_end: string | null;
   trial_plan: string | null;
   trial_end: string | null;
+  /** A downgrade waiting for the end of the period: the card of the current plan offers to keep it. */
+  scheduled_change: ScheduledChangeOut | null;
 }
 
 /** `billing.StoreCatalogOut`. */
@@ -1465,9 +1467,35 @@ export interface AssistantReportOut {
   duplicate: boolean;
 }
 
+/** `base.AssistantTranscribeIn`: a dictation of the session's account, its audio in base64 (ASSISTANT-F21). */
+export interface AssistantTranscribeIn {
+  audio: string;
+  mime_type: string;
+  language?: string;
+}
+
+/** `base.AssistantTranscribeOut`: the words, for the person to check, and the language they went in. */
+export interface AssistantTranscribeOut {
+  text: string;
+  language: string;
+}
+
+/**
+ * `base.AssistantSpeakIn`: an answer to read aloud for the session's account (ASSISTANT-F22), in the language asked
+ * (empty: the account's) and a voice of the engine, or its own for the language (empty). Its route answers with the mp3
+ * itself (`audio/mpeg`), so the operation has no JSON output; without an engine, 503 `assistant.speech_unavailable`.
+ */
+export interface AssistantSpeakIn {
+  text: string;
+  language?: '' | 'es' | 'en';
+  voice?: string;
+}
+
 declare module '@erplora/ui/sdk' {
   interface Operations {
     'base.assistant.usage': { input: AssistantUsageIn; output: AssistantUsageOut };
     'base.assistant.report': { input: AssistantReportIn; output: AssistantReportOut };
+    'base.assistant.transcribe': { input: AssistantTranscribeIn; output: AssistantTranscribeOut };
+    'base.assistant.speak': { input: AssistantSpeakIn; output: never };
   }
 }

@@ -1,7 +1,7 @@
 """What the AI gateway keeps (README.md «Datos»): the providers ERPlora pays, their keys and their models, and which
 model answers. Keys are UUIDv7.
 
-- ``AIProvider`` (ASSISTANT-G25): one of the four APIs the gateway speaks (``kind``) at its address.
+- ``AIProvider`` (ASSISTANT-G25): one of the four APIs of models the gateway speaks (``kind``) at its address.
 - ``AIProviderCredential`` (G26): a key of a provider, encrypted (``assistant.fields``), with its last four
   characters as hint. Only ``assistant.services`` writes it.
 - ``AIModel`` (G24): a model of a provider the staff chose, with its prices (USD per million tokens, typed by hand:
@@ -304,6 +304,10 @@ class AssistantUsage(models.Model):
     transcriptions = models.PositiveIntegerField(_("dictations"), default=0)
     speech_characters = models.PositiveBigIntegerField(_("characters read aloud"), default=0)
     cost_usd = models.DecimalField(_("cost (USD)"), max_digits=14, decimal_places=6, default=Decimal("0"))
+    # An account's row only (ASSISTANT-F29): when the mail that its messages are running out (80 %) and the one that
+    # they are spent (100 %) were taken to be sent this month; a mail that could not leave frees its mark again.
+    near_warned_at = models.DateTimeField(_("mailed that the messages run out"), null=True, blank=True)
+    spent_warned_at = models.DateTimeField(_("mailed that the messages are spent"), null=True, blank=True)
     created_at = models.DateTimeField(_("created"), auto_now_add=True)
     updated_at = models.DateTimeField(_("updated"), auto_now=True)
 

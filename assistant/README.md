@@ -28,7 +28,7 @@ Completa desde el 2026-11-03. Lo que queda fuera, con su issue: `WORKBOOK.md`, �
 |---|---|
 | `apps.py` | `AssistantConfig`: `assistant.manage`, de la plataforma y del personal, y `assistant.ask`, de toda cuenta (el asistente del panel); registra la auditoría. |
 | `frontend/` | El chat del panel (ASSISTANT-F25): el del Hub, de `@erplora/ui/components`, configurado en `options.ts` (`SAAS_ASSISTANT`, con su frase bajo el cupo agotado en `spentNoteKey`); `components/AssistantTopbar.vue` (el botón de la barra) y `components/AssistantBackground.vue` (el panel con su vacío y sus atajos), que `frontend/main.ts` monta como `chrome`. Sus palabras, en `saas.assistant.*` del catálogo de la entrada (`frontend/locale`). |
-| `models.py` | `AIProvider` (una de las cuatro API, su dirección), `AIProviderCredential` (clave cifrada con su final), `AIModel` (precios, contexto, qué admite), `AIRoutingPolicy` (una fila: el modelo que contesta y su reserva), `AssistantUsage` (lo gastado por negocio y mes; una demo, una fila en su vida; una cuenta, una por mes) y `DocChunk` (un fragmento de la documentación con su huella, `vector(1536)`, sin índice aproximado: la búsqueda es exacta); `estimate_cost`, `content_hash`. |
+| `models.py` | `AIProvider` (una de las cuatro API, su dirección), `AIProviderCredential` (clave cifrada con su final), `AIModel` (precios, contexto, qué admite), `AIRoutingPolicy` (una fila: el modelo que contesta y su reserva), `AssistantUsage` (lo gastado por negocio y mes; una demo, una fila en su vida; una cuenta, una por mes, con las marcas `near_warned_at` y `spent_warned_at` de sus correos de ASSISTANT-F29) y `DocChunk` (un fragmento de la documentación con su huella, `vector(1536)`, sin índice aproximado: la búsqueda es exacta); `estimate_cost`, `content_hash`. |
 | `crypto.py`, `fields.py` | Fernet con `FERNET_KEY` (+ `FERNET_KEY_PREVIOUS` para leer en una rotación); la columna guarda el token. |
 | `schemas.py` | Entradas y salidas; la clave viaja como `SecretStr`. |
 | `queries.py` | Lecturas (`@operation`, `kind="query"`): la conexión de un proveedor, la política, la ruta de un turno, quién llama, el cupo que queda y el proveedor de servicios. |
@@ -36,13 +36,14 @@ Completa desde el 2026-11-03. Lo que queda fuera, con su issue: `WORKBOOK.md`, �
 | `routing.py` | El turno a través de su ruta: prueba los modelos en orden y pasa a la reserva si el proveedor falla antes de contestar. |
 | `internal.py` | Las puertas del Hub, vistas asíncronas firmadas (`door`: método, tamaño, firma, contrato, quién llama y freno por negocio): el turno en directo y de una vez, el cupo, las huellas, la búsqueda en la documentación, el dictado, la lectura en voz alta y la denuncia. |
 | `turn.py` | El turno: prepara la conversación, ofrece las herramientas, emite los frames, el token de continuación de un solo uso y lo gastado (`Outcome`); y el turno tal como lo sirve una puerta, sea la del Hub o la del panel (`start`, `frames`/`stream`, `settle`, `spend`, `Refused`). |
-| `server_tools.py` | Las herramientas que ejecuta erplora.com: la fecha y la hora (la búsqueda web y el tipo de cambio esperan a la etapa ERP, PLAN §30, saas#202). |
+| `server_tools.py` | Las herramientas que ejecuta erplora.com: la fecha y la hora, el tipo de cambio (Frankfurter) y la búsqueda en la web (Brave Search, solo con `BRAVE_SEARCH_API_KEY` y solo en el chat, nunca en una automatización; en producción aún no, saas#277). |
 | `attachments.py` | Los adjuntos: imágenes al modelo que ve, PDF/Word/Excel/texto a texto en memoria, con topes y el zip comprobado. El cuerpo de las puertas lo guarda en memoria el servidor (`config/asgi.py`, `BodiesInMemory`), nunca en el temporal en disco de Django. |
-| `media.py` | Huellas (`text-embedding-3-small`), dictado (`whisper-1`) y lectura en voz alta (`tts-1`) por la API de OpenAI del proveedor de servicios. |
+| `media.py` | Huellas (`text-embedding-3-small`) y dictado (`whisper-1`) por la API de OpenAI del proveedor de servicios; la lectura en voz alta no tiene motor (`SPEECH_ENGINE`, PLAN-SAAS ronda 2026-11-04c). |
 | `knowledge.py` | La documentación del asistente del panel (ASSISTANT-F27): `chunk_markdown` (corte por `##`/`###`, ventana de 220 palabras con solape de 50) y sus cuatro fuentes (ayuda pública, documentación de las apps del Hub por `apps.doc.list`, parte de usuario de los WORKBOOK del panel y los planes en venta por `hubs.plan.list`); `en_header`, la primera línea de un `WORKBOOK.en.md` (los mismos bytes que `base.catalog` del Hub para los comentarios en línea propia fuera de un bloque de código), que `tests/test_knowledge.py` exige en todos los del repo; sin ORM. |
 | `providers/` | Clientes `httpx` de OpenAI, Anthropic, Gemini y DeepSeek (`base.py`, `factory.py`): eventos normalizados, sin SDK ni caché; cada cliente toma el contexto TLS de `base.tls` (`trusted_context`): si el servidor no puede cargar sus certificados (`SSL_CERT_FILE`), el fallo es definitivo y nombra la variable y el fichero. |
 | `auditlog.py` | Registro de auditoría (django-auditlog) de los cuatro modelos, sin la clave ni `updated_at`. |
 | `events.py` | Nombres de los eventos del outbox (sin la clave ni lo que escribe una persona). |
+| `emails.py` | Los correos de ASSISTANT-F29 a una cuenta, en su idioma y con la marca de ERPlora (`base.emails.branded_message`): `send_messages_near` (80 % del mes) y `send_messages_spent` (el último); uno que no sale se registra como `assistant.mail.not_sent` y devuelve `False`. |
 | `admin.py`, `templates/admin/assistant/` | Admin de Django: proveedores con sus claves y modelos, «Elegir modelos del proveedor» (asíncrona), «Modelo que contesta», «Probar un modelo» (ejecución asíncrona en directo) y «Registros de uso del asistente» (solo lectura). |
 | `management/commands/` | `import_ai_keys_from_env`, `rotate_encryption_keys` e `index_docs`. |
 
@@ -80,7 +81,7 @@ No se guarda ninguna conversación, adjunto, audio ni texto leído: el turno pas
 | `assistant.caller.resolve` | solo la plataforma | — |
 | `assistant.usage.show` | la plataforma; el personal, `view_assistantusage` | — |
 | `assistant.service.connection` | solo la plataforma | — |
-| `assistant.message.claim` | solo la plataforma | `assistant.message.claimed` |
+| `assistant.message.claim` | solo la plataforma | `assistant.message.claimed`; el de una cuenta que llega al 80 % o al último del mes, `assistant.usage.warned` (una vez por aviso y mes, ASSISTANT-F29) |
 | `assistant.message.release` | solo la plataforma | `assistant.message.released` |
 | `assistant.usage.record` | solo la plataforma | `assistant.usage.recorded` |
 | `assistant.report.send` | solo la plataforma | `assistant.report.sent` |
@@ -113,8 +114,10 @@ Todas llevan `ai=INTERNAL` (son la pasarela, no herramientas del asistente) salv
   `ASSISTANT_TURN_RATELIMIT`, por cuenta.
 - `ASSISTANT_SERVICE_PROVIDER` (`openai`): el identificador del proveedor (de API OpenAI) que calcula las huellas
   de la documentación (`index_docs` y las preguntas de `assistant.docs.search`, del panel y de la puerta del Hub) y
-  la voz. Las puertas `/internal/assistant/embeddings` y `/internal/speech/synthesize` siguen abiertas, pero ningún Hub
-  las llama: el Hub no guarda índice y lee en voz alta con la voz del dispositivo.
+  el dictado. La puerta `/internal/assistant/embeddings` sigue abierta, pero ningún Hub la llama: el Hub no guarda
+  índice.
+- La lectura en voz alta no tiene ajuste ni proveedor: sin motor (`assistant.media.SPEECH_ENGINE`), `/internal/speech/synthesize`
+  y `POST /api/assistant/speak` contestan 503 `assistant.speech_unavailable` y quien llama lee con la voz del dispositivo.
 - Postgres con la extensión `vector` (pgvector, imagen `pgvector/pgvector` en local y CI, donde la crea la migración
   `assistant/0004_doc_chunks`). En Aurora no es de confianza (solo `rds_superuser`): la crea antes el arranque de
   plataforma del Hub (`bootstrap_databases`, usuario maestro) en `saas` y `pre_saas`.

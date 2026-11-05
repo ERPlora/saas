@@ -178,7 +178,8 @@ def test_the_door_of_a_browser_with_a_live_demo_takes_it_back(client, hub_double
 
     assert state_of(html) == "ready"
     assert f'href="{hub_start_url(slug)}"' in html
-    assert "Back to my demo" in html
+    # The shape public-demo-hub.spec.ts presses (a.ep-button): that spec needs a real Hub and no run has one.
+    assert re.search(rf'<a class="ep-button[^"]*" href="{re.escape(hub_start_url(slug))}">\s*Back to my demo', html)
     assert "It ends in 60 minutes." in html
     assert 'data-testid="demo-start"' not in html
     assert len(demo_calls(hub_double)) == 1

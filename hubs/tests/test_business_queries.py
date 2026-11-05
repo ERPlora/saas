@@ -14,13 +14,14 @@ Dropped with their reason: KPIs, activity, servers, metrics and the htmx cards (
 from datetime import timedelta
 
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
-from live.errors import NotFound, PermissionDenied
+from live.errors import NotFound, OperationError, PermissionDenied
 
-from accounts.models import HubMembership
 from hubs import queries
-from hubs.models import Hub, HubMember, Subscription
-from hubs.schemas import AddressProposeIn, BusinessListIn, ByIdIn
+from hubs.models import Hub, HubMember, Plan, Subscription
+from hubs.schemas import AddressProposeIn, BusinessCreateCheckIn, BusinessCreateCheckOut, BusinessListIn, ByIdIn
 from hubs.tests.conftest import add_member, create_business, ctx_for
 
 pytestmark = pytest.mark.django_db
@@ -255,13 +256,6 @@ class TestTheProposedAddress:
     def test_a_taken_name_proposes_the_free_address(self, business, owner):
         assert self.propose(owner, "Bar Manolo")["slug"] == "bar-manolo-2"
 
-    def test_an_address_held_by_an_older_hub_is_skipped(self, owner, plans):
-        HubMembership.objects.create(
-            user=owner, hub_slug="peluqueria-ana", role="hub_owner"
-        )
-
-        assert self.propose(owner, "Peluquería Ana")["slug"] == "peluqueria-ana-2"
-
     def test_a_reserved_name_proposes_a_legal_address(self, owner, plans):
         assert self.propose(owner, "Admin")["slug"] == "admin-store"
 
@@ -352,3 +346,84 @@ class TestWhatABusinessAllows:
         rows = client.get("/api/hubs/businesses", HTTP_HOST="localhost:8001").json()["rows"]
 
         assert rows[0]["can"] == {"open": False, "manage": True, "restore": False, "delete": False}
+
+
+class TestWhetherABusinessCanBeCreated:
+    """``hubs.business.create_check``, the read behind ``hubs.business.create``'s card (saas#193): it refuses as the
+    write refuses, so nobody confirms a business that was never going to be created."""
+
+    def check(self, user):
+        return queries.business_create_check(ctx_for(user), BusinessCreateCheckIn())
+
+    def test_an_account_with_room_passes(self, owner, plans):
+        assert self.check(owner) == BusinessCreateCheckOut()
+
+    def test_an_account_with_its_free_business_is_refused_as_the_write_refuses_it(self, owner, plans):
+        create_business(owner)
+
+        with pytest.raises(OperationError) as read:
+            self.check(owner)
+        with pytest.raises(OperationError) as write:
+            create_business(owner, name="Another")
+
+        assert read.value.code == write.value.code == "hubs.free_hub_limit"
+        assert read.value.status == write.value.status
+        assert str(read.value) == str(write.value)
+
+    def test_a_business_moved_to_a_paid_plan_leaves_room(self, owner, plans):
+        hub = create_business(owner)
+        Subscription.objects.filter(hub=hub).update(plan=Plan.objects.get(slug="starter"))
+
+        assert self.check(owner) == BusinessCreateCheckOut()
+
+    def test_the_free_business_of_another_account_takes_no_room(self, owner, make_user, plans):
+        create_business(make_user("someone.else@example.com"))
+
+        assert self.check(owner) == BusinessCreateCheckOut()
+
+    def test_a_free_business_it_only_works_in_takes_no_room(self, owner, make_user, plans):
+        hub = create_business(make_user("someone.else@example.com"))
+        add_member(hub, owner, HubMember.Role.MANAGER)
+
+        assert self.check(owner) == BusinessCreateCheckOut()
+
+    def test_an_account_of_the_staff_is_refused_as_the_write_refuses_it(self, make_user, plans):
+        staff = make_user("staff@example.com", is_staff=True)
+
+        with pytest.raises(OperationError) as read:
+            self.check(staff)
+        with pytest.raises(OperationError) as write:
+            create_business(staff)
+
+        assert read.value.code == write.value.code == "hubs.platform_account"
+        assert str(read.value) == str(write.value)
+
+    def test_without_the_free_plan_it_is_refused_as_the_write_refuses_it(self, owner, no_plans):
+        with pytest.raises(OperationError) as read:
+            self.check(owner)
+        with pytest.raises(OperationError) as write:
+            create_business(owner)
+
+        assert read.value.code == write.value.code == "hubs.free_plan_missing"
+        assert read.value.status == write.value.status == 503
+
+    def test_it_is_a_read_that_locks_and_writes_nothing(self, owner, plans):
+        create_business(owner)
+
+        with CaptureQueriesContext(connection) as seen, pytest.raises(OperationError):
+            self.check(owner)
+
+        said = [query["sql"].upper() for query in seen]
+        assert said, "the check reads the database"
+        assert not [sql for sql in said if "FOR UPDATE" in sql or sql.startswith(("INSERT", "UPDATE", "DELETE"))]
+
+    def test_a_visitor_without_an_account_is_refused(self, plans):
+        with pytest.raises(PermissionDenied):
+            self.check(None)
+
+    def test_it_asks_the_same_permission_as_the_write(self):
+        """The read behind the card refuses by role exactly as the write does: never wider, never narrower."""
+        from live.operations import registry
+
+        assert registry["hubs.business.create_check"].permission == registry["hubs.business.create"].permission
+        assert registry["hubs.business.create_check"].permission == "hubs.manage"

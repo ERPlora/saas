@@ -1,6 +1,6 @@
 /* ep-navbar (public/partials/navbar.html): port of <ok-navbar sticky glass>. A sticky glass bar
  * with the brand, the links and the actions; at 800 px and below the links and the actions live in
- * a side panel from the right that frontend/public.ts opens (data-open), over a backdrop. */
+ * a side panel from the right that the partial's inline script opens (data-open), over a backdrop. */
 .ep-navbar {
   position: sticky;
   top: 0;
@@ -14,8 +14,11 @@
   font-family: var(--ep-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
 }
 /* `backdrop-filter` makes the bar the containing block of its fixed descendants: open, the bar
-   drops the glass so the side panel and its backdrop are laid out against the viewport. */
+   drops the glass so the side panel and its backdrop are laid out against the viewport.
+   The bar's stacking context holds them both: open, it lies over the cookie notice (60,
+   cookie-consent-banner.css), which covered the panel's last buttons on a small phone (saas#244). */
 .ep-navbar[data-open] {
+  z-index: 61;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   background: var(--ep-surface, var(--ion-card-background, #fff));
@@ -212,7 +215,7 @@
     border-top: 1px solid var(--ep-border, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.12));
   }
   /* 3rem, not the 2.75rem floor: a subpixel measurement mid-slide must not drop under 44 px. */
-  .ep-navbar__actions ion-button {
+  .ep-navbar__actions .ep-button {
     width: 100%;
     min-height: 3rem;
     margin: 0;

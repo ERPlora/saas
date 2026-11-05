@@ -39,8 +39,8 @@ from django.test import Client, RequestFactory, override_settings
 from django.utils import timezone
 
 from accounts import mfa, services
-from accounts.models import AuthExchangeCode, HubMembership
-from accounts.tests.conftest import prove_address, take_mailed_code
+from accounts.models import AuthExchangeCode
+from accounts.tests.conftest import enter, prove_address, take_mailed_code
 
 pytestmark = pytest.mark.django_db
 
@@ -64,7 +64,8 @@ REAUTHENTICATE_FOR_THE_JUMP = (
 )
 #: «Open in the Hub admin» starts at the Hub, which sends the browser here with its ``state``.
 JUMP = "/hub-login/?hub={slug}&audience=hub-admin&next=/admin/hub/{slug}/&state=a-state"
-CHANGELIST = "/admin/accounts/hubmembership/"
+#: «Hubs»: the page «Open in the Hub admin» starts from, where a refused jump comes back.
+CHANGELIST = "/admin/accounts/hubs/"
 REFUSED_JUMP = "Turn on two-factor authentication and sign in again before opening the Hub admin."
 
 
@@ -171,7 +172,7 @@ def _hidden(html: str, name: str) -> str:
 
 @pytest.fixture
 def member(ana):
-    HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.ADMIN)
+    enter(ana, "a", "hub_admin")
     return ana
 
 

@@ -21,14 +21,19 @@ too (Ioan, 2026-10-14: the ERP serves all of Europe, not the Spain region it nam
 import ast
 import gettext
 import re
+from datetime import date
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 from django.conf import settings
 from django.urls import resolve, reverse
 from django.utils.translation.template import templatize
 
+from accounts.models import PRIVACY_VERSION, TERMS_VERSION
+from hubs.tests.test_plan_catalogue import CUSTOM_DOMAIN_WORDS
 from public.sitemaps import StaticPagesSitemap
+from public.tests.conftest import without_tokens
 
 ROOT = Path(settings.BASE_DIR)
 LEGAL_TEMPLATES = ROOT / "public" / "templates" / "public" / "legal"
@@ -280,12 +285,16 @@ def list_items_naming(html: str, name: str) -> list[str]:
     [
         "Hetzner",  # the old hosting, in Germany
         "Cloudflare",  # out since ADR-0499 (infra#253); AWS WAF + ALB + Route 53 replace it
+        # No voice of the server: reading aloud is the device's, and no text goes to Azure AI Speech (it left, saas#242).
+        "Microsoft Ireland Operations",
+        "Azure",
     ],
 )
-def test_no_legal_page_names_a_provider_we_no_longer_use(client, path, provider):
+def test_no_legal_page_names_a_provider_we_no_longer_use(client, path, provider, tokens_spelling):
     """Naming a processor that no longer holds the data is a false disclosure (art. 13.1.e GDPR)."""
-    assert provider not in client.get(path).content.decode()
-    assert provider not in spanish(client, path)
+    tokens_spelling("Hetzner", "Cloudflare", "Azure")
+    assert provider not in without_tokens(client.get(path).content.decode())
+    assert provider not in without_tokens(spanish(client, path))
 
 
 @pytest.mark.django_db
@@ -340,11 +349,13 @@ def test_privacy_keeps_the_ai_assistant_in_frankfurt(client):
     assert "Fráncfort" in ia
 
 
-# --- The assistant's voice and search services (FIX-SAAS-PRIVACY-POLICY-OMITS-DICTATION-AUDIO-TO-TRANSCRIPTION) ----
-# ``assistant/media.py`` sends three services to the provider of ``ASSISTANT_SERVICE_PROVIDER`` (OpenAI's API at
+# --- The assistant's voice and search fingerprints (FIX-SAAS-PRIVACY-POLICY-OMITS-DICTATION-AUDIO-TO-TRANSCRIPTION) 
+# ``assistant/media.py`` sends two services to the provider of ``ASSISTANT_SERVICE_PROVIDER`` (OpenAI's API at
 # ``api.openai.com`` by default), none of them the backup model: the transcription of a dictation (``whisper-1``, the
-# audio of the recording), the reading aloud of an answer (``tts-1``) and the fingerprints of the Hub's index
-# (``text-embedding-3-small``). Google Play checks the app's «Data safety › Audio» against this page (app#4).
+# audio of the recording) and the fingerprints of the Hub's index (``text-embedding-3-small``). Reading an answer aloud
+# is the device's own voice (the browser's or the system's): erplora.com has no voice of its own (no engine behind its
+# door, saas#242), so no processor receives that text. Google Play checks the app's
+# «Data safety › Audio» against this page (app#4).
 
 VOICE_PROVIDER = "OpenAI Ireland Ltd. ("
 
@@ -352,14 +363,12 @@ VOICE_SERVICES = {
     "en": (
         "BY DEFAULT",
         "transcribes voice dictation into text (it receives the audio of the recording)",
-        "reads an answer aloud (it receives the text of the answer)",
         "computes the search fingerprints, or embeddings",
         "outside the European Economic Area",
     ),
     "es": (
         "POR DEFECTO",
         "transcribe a texto el dictado por voz (recibe el audio de la grabación)",
-        "lee en voz alta una respuesta (recibe el texto de la respuesta)",
         "calcula las huellas de búsqueda (embeddings)",
         "fuera del Espacio Económico Europeo",
     ),
@@ -372,11 +381,56 @@ def privacy(client, language: str) -> str:
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("language", ["en", "es"])
-def test_privacy_names_the_default_provider_of_the_assistant_voice_and_search_services(client, language):
+def test_privacy_names_the_default_provider_of_the_assistant_voice_and_search_fingerprints(client, language):
     """Art. 13.1.e GDPR: the processor that receives a dictation's audio is named, with what it receives."""
     [voice] = list_items_naming(privacy(client, language), VOICE_PROVIDER)
 
     assert [claim for claim in VOICE_SERVICES[language] if claim.lower() not in voice.lower()] == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_privacy_names_no_provider_that_reads_answers_aloud(client, language):
+    """Art. 13.1.e GDPR: nobody receives the text of an answer read aloud, so no processor is named for it, and OpenAI
+    only transcribes and computes the fingerprints."""
+    html = privacy(client, language)
+    [voice] = list_items_naming(html, VOICE_PROVIDER)
+
+    assert "aloud" not in voice and "voz alta" not in voice
+    for server_voice in ("server's voice", "voz del servidor", "speech provider", "proveedor de voz"):
+        assert server_voice not in html
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("language", "marker", "claims"),
+    [
+        (
+            "en",
+            "Reading aloud:",
+            (
+                "the answer is read by your device's own voice (the browser's or the system's)",
+                "its text never leaves the device",
+            ),
+        ),
+        (
+            "es",
+            "Lectura en voz alta:",
+            (
+                "la respuesta la lee la voz de tu propio dispositivo (la del navegador o la del sistema)",
+                "su texto no sale de él",
+            ),
+        ),
+    ],
+)
+def test_privacy_says_an_answer_read_aloud_never_leaves_the_device(client, language, marker, claims):
+    """The panel and the Hub read with the device's voice (``spa-config.assistantSpeech`` false, base/spa.py): the
+    text is not sent anywhere, and nothing is counted."""
+    [reading] = list_items_naming(privacy(client, language), marker)
+
+    assert [claim for claim in claims if claim not in " ".join(reading.split())] == []
+    for gone in ("characters", "caracteres", "platform", "plataforma"):
+        assert gone not in reading
 
 
 @pytest.mark.django_db
@@ -422,13 +476,13 @@ def test_privacy_says_where_the_dictation_audio_goes_and_that_nobody_here_keeps_
             "en",
             "The language model of the AI assistant is served from",
             "Some processors may process data outside the EEA",
-            "the provider of the voice and search services of the assistant",
+            "the provider of the voice and search fingerprint services of the assistant",
         ),
         (
             "es",
             "El modelo de lenguaje del asistente IA se sirve desde",
             "Algunos encargados pueden tratar datos fuera del EEE",
-            "el proveedor de los servicios de voz y de búsqueda del asistente",
+            "el proveedor de los servicios de voz y de huellas de búsqueda del asistente",
         ),
     ],
 )
@@ -441,27 +495,198 @@ def test_privacy_counts_the_voice_provider_among_the_transfers_outside_the_eea(c
     assert voice in transfers
 
 
+# --- The assistant's web search: Brave Search (ASSISTANT-F14, saas#277) ----------------------------------------------
+#
+# Brave leaves the queries out of its data processing addendum and keeps them up to 90 days (its privacy notice, dated
+# 2026-11-03), so it is named as what it is: a recipient of its own, not one of the art. 28 processors of section 5, and
+# not under the Standard Contractual Clauses of section 6. Nothing may promise that a query never carries personal data:
+# that is a rule given to the model (``assistant.server_tools._SEARCH_QUERY_RULE``), no guarantee.
+
+WEB_SEARCH_PROVIDER = "Brave Software, Inc."
+
+WEB_SEARCH_RECIPIENT = {
+    "en": (
+        "Brave Search API",
+        "United States",
+        "NOT one of the processors above",
+        "leaves the search queries out",
+        "the text of the query",
+        "nothing that says who asks",
+        "for up to 90 days",
+    ),
+    "es": (
+        "Brave Search API",
+        "Estados Unidos",
+        "NO es uno de los encargados anteriores",
+        "deja fuera las consultas de búsqueda",
+        "el texto de la consulta",
+        "nada que diga quién pregunta",
+        "hasta 90 días",
+    ),
+}
+
+WEB_SEARCH_TRANSFER = {
+    "en": ("Some processors may process data outside the EEA", ("United States", "do not cover them")),
+    "es": ("Algunos encargados pueden tratar datos fuera del EEE", ("Estados Unidos", "no las cubren")),
+}
+
+WEB_SEARCH_RULE = {
+    "en": ("Web search:", "not a guarantee", "An automation never searches"),
+    "es": ("Búsqueda en la web:", "no una garantía", "Una automatización nunca busca"),
+}
+
+#: What only a guarantee could say of a query the model writes.
+WEB_SEARCH_PROMISES = {
+    "en": ("never carries", "never contains", "never includes", "no personal data reaches", "no personal data is sent"),
+    "es": ("nunca lleva", "nunca contiene", "nunca incluye", "ningún dato personal llega", "no se envía ningún dato personal"),
+}
+
+#: The fingerprints of the hub's index are OpenAI's, and the words that told them from nothing now read as the web search.
+AMBIGUOUS_SEARCH_SERVICES = {"en": "voice and search services", "es": "servicios de voz y de búsqueda"}
+
+
+def section(html: str, number: int) -> str:
+    """Section ``number`` of a legal page, up to the next heading."""
+    match = re.search(rf"<h2>{number}\. .*?</h2>(.*?)(?=<h2>|</article>)", html, re.S)
+    assert match, f"the page has no section {number}"
+    return match.group(1)
+
+
+def paragraphs_of(html: str) -> list[str]:
+    return [" ".join(text.split()) for text in re.findall(r"<p>(.*?)</p>", html, re.DOTALL)]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_privacy_names_brave_with_what_it_receives_and_keeps(client, language):
+    """Art. 13.1.e GDPR: whoever receives the queries is named, with what it receives and how long it keeps it."""
+    [search] = list_items_naming(privacy(client, language), WEB_SEARCH_PROVIDER)
+    search = " ".join(search.split())
+
+    assert [claim for claim in WEB_SEARCH_RECIPIENT[language] if claim not in search] == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_privacy_does_not_count_brave_among_the_art_28_processors(client, language):
+    """Its addendum leaves the queries out: under «with whom we have signed Art. 28 GDPR agreements» it would be false."""
+    recipients = section(privacy(client, language), 5)
+    before, processors = re.search(r"(.*?)<ul>(.*?)</ul>", recipients, re.S).groups()
+
+    assert "28" in before
+    assert "Amazon Web Services" in processors
+    assert "Brave" not in processors
+    assert WEB_SEARCH_PROVIDER in recipients
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_privacy_does_not_put_the_web_search_under_the_standard_contractual_clauses(client, language):
+    """Section 6: the clauses are in the addendum that leaves the queries out, so they cannot cover them."""
+    outside, says = WEB_SEARCH_TRANSFER[language]
+    paragraphs = paragraphs_of(section(privacy(client, language), 6))
+    [transfers] = [text for text in paragraphs if outside in text]
+    [web_search] = [text for text in paragraphs if WEB_SEARCH_PROVIDER in text]
+
+    assert "Brave" not in transfers
+    assert [claim for claim in says if claim not in web_search] == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_privacy_does_not_promise_a_query_never_carries_personal_data(client, language):
+    """The rule is told to a model: a policy that promised its result would be false the day it failed."""
+    html = privacy(client, language)
+    marker, *claims = WEB_SEARCH_RULE[language]
+    [rule] = list_items_naming(html, marker)
+    rule = " ".join(rule.split())
+
+    assert [claim for claim in claims if claim not in rule] == []
+    assert [promise for promise in WEB_SEARCH_PROMISES[language] if promise in " ".join(html.split())] == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("language", "scoped"),
+    [
+        ("en", "None of the processors above uses the data to train their models"),
+        ("es", "Ninguno de los encargados anteriores utiliza los datos para entrenar sus modelos"),
+    ],
+)
+def test_privacy_rests_its_no_training_promise_on_the_terms_only_for_the_processors(client, language, scoped):
+    """Brave's terms do not say it: its API page does, and the policy says so of Brave in those words (section 5)."""
+    assert scoped in " ".join(privacy(client, language).split())
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_privacy_tells_the_search_fingerprints_from_the_web_search(client, language):
+    """«Search services» was OpenAI's only while the assistant had no web search."""
+    assert AMBIGUOUS_SEARCH_SERVICES[language] not in " ".join(privacy(client, language).split())
+
+
+def test_the_search_the_assistant_calls_is_the_one_the_policy_names():
+    """Another provider of the web search is another recipient: this falls before the policy can go stale."""
+    assert urlsplit(settings.ASSISTANT_SEARCH_URL).hostname.endswith(".brave.com")
+
+
+@pytest.mark.django_db
+def test_the_privacy_date_moved_with_the_last_change(client):
+    """The version an account accepts is the date of the page (``accounts/tests/test_terms.py`` keeps them equal):
+    naming Brave is a new text, so both move, and every account accepts it at its next sign-in."""
+    assert PRIVACY_VERSION > date(2026, 11, 3)
+    assert "November 3, 2026" not in privacy(client, "en")
+    assert "3 de noviembre de 2026" not in privacy(client, "es")
+
+
+# The dictation of the account's panel reaches the same provider without a hub in the way (ASSISTANT-F21, saas#175).
+PANEL_DICTATION = {
+    "en": {
+        "voice": "Used ONLY when someone in your hub, or in the assistant of your account's panel on erplora.com, uses one of these functions",
+        "route": "through your hub if you dictate there",
+    },
+    "es": {
+        "voice": "Usado ÚNICAMENTE cuando alguien de tu hub, o en el asistente del panel de tu cuenta en erplora.com, usa una de estas funciones",
+        "route": "a través de tu hub si dictas allí",
+    },
+}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("language", "marker"), [("en", "Voice dictation:"), ("es", "Dictado por voz:")])
+def test_privacy_counts_the_dictation_of_the_account_panel(client, language, marker):
+    """Art. 13.1.e GDPR: the panel's microphone sends the audio to the voice provider too, so «ONLY from your hub» would
+    be false, and its route to the provider has no hub in it."""
+    html = privacy(client, language)
+    [voice] = list_items_naming(html, VOICE_PROVIDER)
+    [dictation] = list_items_naming(html, marker)
+
+    assert PANEL_DICTATION[language]["voice"] in " ".join(voice.split())
+    assert PANEL_DICTATION[language]["route"] in " ".join(dictation.split())
+
+
 # What decides that the assistant is used: the Hub has no switch for it and asks for no consent. Anyone with
 # ``base.view_home`` sees its button (hub ``base/frontend/components/TopbarChrome.vue``), it is used when someone sends
 # it a message or dictates, and the plan's monthly messages (``Plan.assistant_messages_per_month``, 0 = none;
-# ``assistant/queries.py`` ``monthly_limit``) bound the questions that reach the model.
+# ``assistant/queries.py`` ``monthly_limit``) bound the questions that reach the model. The account's panel on
+# erplora.com has an assistant of its own (ASSISTANT-F25), with the same chat and the same dictation (ASSISTANT-F21).
 
 ASSISTANT_CONDITION = {
     "en": {
         "promises": ("explicit consent in the Hub", "does not enable it", "the customer enables"),
         "condition": (
-            "it is used only when someone in your hub sends it a message or dictates to it",
+            "it is used only when someone sends a message or dictates to the assistant of your hub or of your account's panel on erplora.com",
             "A plan without assistant messages sends no question to the model",
         ),
-        "basis": "Used ONLY when someone in your hub uses the assistant, to provide the contracted service (Art. 6.1.b GDPR)",
+        "basis": "Used ONLY when someone uses the assistant of your hub or of your account's panel on erplora.com, to provide the contracted service (Art. 6.1.b GDPR)",
     },
     "es": {
         "promises": ("consentimiento explícito en el Hub", "no lo activa", "el cliente activa"),
         "condition": (
-            "solo se usa cuando alguien de tu hub le envía un mensaje o le dicta",
+            "solo se usa cuando alguien envía un mensaje o dicta al asistente de tu hub o al del panel de tu cuenta en erplora.com",
             "Un plan sin mensajes del asistente no envía ninguna pregunta al modelo",
         ),
-        "basis": "Usado ÚNICAMENTE cuando alguien de tu hub usa el asistente, para prestar el servicio contratado (Art. 6.1.b RGPD)",
+        "basis": "Usado ÚNICAMENTE cuando alguien usa el asistente de tu hub o el del panel de tu cuenta en erplora.com, para prestar el servicio contratado (Art. 6.1.b RGPD)",
     },
 }
 
@@ -483,25 +708,41 @@ def test_privacy_promises_no_switch_nor_consent_the_hub_lacks_and_says_when_the_
 # --- The shared reading pattern (test_ui_stack_contract.py) ------------------------------------
 
 
-@pytest.mark.parametrize("template", ["legal_notice", "privacy", "cookies"])
+#: What a page with a date extends: the reading pattern and where the date goes.
+DATED_PAGE = 'extends "public/legal/_dated_page.html"'
+
+
+@pytest.mark.parametrize("template", ["legal_notice", "privacy", "cookies", "terms"])
 def test_a_legal_page_uses_the_shared_public_reading_pattern(template):
     source = (LEGAL_TEMPLATES / f"{template}.html").read_text(encoding="utf-8")
+    shared = (LEGAL_TEMPLATES / "_dated_page.html").read_text(encoding="utf-8") if DATED_PAGE in source else source
     hero = next(
         line
         for line in source.splitlines()
         if 'include "public/partials/page_hero.html"' in line
     )
 
-    assert "{% block page_content %}" in source
+    assert "{% block page_content %}" in shared
     assert "{% block content %}" not in source
     assert "hero_compact=True" in hero
-    assert 'class="ep-section--compact ep-section--divider"' in source
-    assert 'class="ep-container ep-section-content"' in source
-    assert 'class="ep-prose max-w-4xl mx-auto"' in source
-    assert "<ion-card" not in source
-    assert "max-width:" not in source
-    assert 'style="' not in source
-    assert "<style" not in source
+    assert 'class="ep-section--compact ep-section--divider"' in shared
+    assert 'class="ep-container ep-section-content"' in shared
+    assert 'class="ep-prose max-w-4xl mx-auto"' in shared
+    for html in (source, shared):
+        assert "<ion-card" not in html
+        assert "max-width:" not in html
+        assert 'style="' not in html
+        assert "<style" not in html
+
+
+@pytest.mark.parametrize("template", ["privacy", "terms", "cookies"])
+def test_a_dated_legal_page_says_its_date_in_the_one_place(template):
+    """Of the terms and the privacy policy, that date is the version an account accepts (``accounts/models.py``)."""
+    source = (LEGAL_TEMPLATES / f"{template}.html").read_text(encoding="utf-8")
+
+    assert DATED_PAGE in source
+    assert "{% block updated %}" in source
+    assert "Last updated:" not in source
 
 
 # --- Links to the legal pages: footer, sitemap, llms.txt ---------------------------------------
@@ -565,9 +806,10 @@ def test_llms_txt_links_the_privacy_policy_as_optional_reading(client):
 # --- Every message has its Spanish entry -------------------------------------------------------
 
 _LITERAL = r"u?'(?:[^'\\]|\\.)*'|u?\"(?:[^\"\\]|\\.)*\""
-#: The calls ``templatize`` writes for {% trans %} and {% blocktrans %} (what makemessages reads).
+#: The calls ``templatize`` writes for {% trans %}, {% blocktrans %} and a ``_("…")`` argument of a tag, such as the
+#: label of a {% button %} (what makemessages reads).
 _CALL = re.compile(
-    rf"\b(gettext|pgettext|ngettext|npgettext)\(((?:{_LITERAL})(?:, (?:{_LITERAL}))*)"
+    rf"\b(gettext|pgettext|ngettext|npgettext|_)\(((?:{_LITERAL})(?:, (?:{_LITERAL}))*)"
 )
 
 
@@ -577,7 +819,7 @@ def template_messages(path: Path) -> list[str]:
     keys = []
     for function, arguments in _CALL.findall(source):
         literals = [ast.literal_eval(raw) for raw in re.findall(_LITERAL, arguments)]
-        if function == "gettext":
+        if function in ("gettext", "_"):
             keys.append(literals[0])
         elif function == "pgettext":
             keys.append(f"{literals[0]}\x04{literals[1]}")
@@ -592,11 +834,12 @@ def test_the_template_messages_are_read_like_makemessages(tmp_path):
     page = tmp_path / "page.html"
     page.write_text(
         '{% load i18n %}{% trans "It\'s here" %}'
-        "{% blocktrans trimmed with v=x %}\n  Version\n  {{ v }}\n{% endblocktrans %}",
+        "{% blocktrans trimmed with v=x %}\n  Version\n  {{ v }}\n{% endblocktrans %}"
+        '{% button href="/launch" label=_("It\'s a button") %}',
         encoding="utf-8",
     )
 
-    assert template_messages(page) == ["It's here", "Version %(v)s"]
+    assert template_messages(page) == ["It's here", "Version %(v)s", "It's a button"]
 
 
 @pytest.mark.parametrize(
@@ -667,6 +910,38 @@ def trial_clause(section: str) -> str:
 # test_terms_es.py
 
 
+#: What Brave's terms, §4(c), ask each end user to agree to: obligations substantially like those of §3(b).
+WEB_RESULTS_RESTRICTIONS = {
+    "en": (
+        "web results the AI assistant brings",
+        "Store, cache, or build a database",
+        "derivative works",
+        "redistribute, resell, or sublicense",
+        "train",
+        "get around the limits on searches",
+    ),
+    "es": (
+        "resultados de la web que trae el asistente IA",
+        "Guardar, almacenar en caché o crear una base de datos",
+        "obras derivadas",
+        "redistribuirlos, revenderlos o sublicenciarlos",
+        "entrenar",
+        "saltarse los límites de búsquedas",
+    ),
+}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_the_terms_bind_the_customer_to_what_the_search_provider_asks_of_its_results(client, language):
+    """Brave's terms, §4(c): each end user is bound in writing to something like §3(b); acceptable use is where breach
+    means suspension, as §4(c) also asks."""
+    [clause] = list_items_naming(section(terms_html(client, language), 8), WEB_RESULTS_RESTRICTIONS[language][0])
+    clause = " ".join(clause.split())
+
+    assert [claim for claim in WEB_RESULTS_RESTRICTIONS[language] if claim not in clause] == []
+
+
 @pytest.mark.django_db
 def test_terms_contains_spanish_marker(client):
     assert "Condiciones de uso" in terms_html(client, "es")
@@ -679,6 +954,17 @@ def test_terms_sections_are_numbered_consecutively(client):
 
     assert numbers, "the terms page renders no numbered <h2> clause at all"
     assert numbers == list(range(1, len(numbers) + 1))
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_the_terms_name_no_custom_domain_nobody_can_connect(client, language):
+    """saas#233: §1 said the service runs on «the customer's own domains», which no business can connect (HUBS-F17
+    ``descartado``, saas#195 deferred)."""
+    html = terms_html(client, language)
+
+    match = CUSTOM_DOMAIN_WORDS.search(html)
+    assert match is None, html[max(0, match.start() - 120) : match.end() + 40]
 
 
 @pytest.mark.django_db
@@ -1020,15 +1306,16 @@ def test_the_uk_clause_is_translated_into_spanish(client):
 @pytest.mark.django_db
 def test_the_terms_date_moved_with_the_last_change(client):
     """The page says when its text last changed: the marketplace sentences (L7), then §1 and §3.1,
-    every app on every plan and no module sold on its own (ronda 2026-10-24b, PLAN §32)."""
+    every app on every plan and no module sold on its own (ronda 2026-10-24b, PLAN §32), then §1 again,
+    no customer's own domain (saas#233), then §8, the web results of the assistant (saas#277)."""
     html = terms_html(client)
     spanish = terms_html(client, "es")
 
-    for old in ("August 8, 2026", "October 1, 2026", "October 13, 2026"):
+    for old in ("August 8, 2026", "October 1, 2026", "October 13, 2026", "October 25, 2026", "November 3, 2026"):
         assert old not in html, old
-    assert "<strong>Last updated:</strong> October 25, 2026" in html
-    assert "13 de octubre de 2026" not in spanish
-    assert "25 de octubre de 2026" in spanish
+    assert TERMS_VERSION > date(2026, 11, 3)
+    assert "25 de octubre de 2026" not in spanish
+    assert "3 de noviembre de 2026" not in spanish
 
 
 @pytest.mark.django_db
@@ -1084,10 +1371,11 @@ def test_the_terms_speak_of_our_apps_not_of_a_marketplace(client):
         ),
     ],
 )
-def test_the_service_clause_puts_every_app_on_every_plan(client, language, clause):
+def test_the_service_clause_puts_every_app_on_every_plan(client, language, clause, tokens_spelling):
     """§1 said «the free apps come with every plan, and the premium apps are included in the paid
     plans»: every plan includes all the apps now (PLAN §32), and the rest of the terms is untouched."""
-    html = terms_html(client, language)
+    tokens_spelling("premium")
+    html = without_tokens(terms_html(client, language))
 
     assert clause in html
     assert "premium" not in html.lower()
@@ -1096,14 +1384,3 @@ def test_the_service_clause_puts_every_app_on_every_plan(client, language, claus
 # The shared reading pattern (test_ui_stack_contract.py)
 
 
-def test_terms_of_use_uses_the_shared_public_reading_pattern():
-    terms = (LEGAL_TEMPLATES / "terms.html").read_text(encoding="utf-8")
-
-    assert "hero_compact=True" in terms
-    assert 'class="ep-section--compact ep-section--divider"' in terms
-    assert 'class="ep-container ep-section-content"' in terms
-    assert 'class="ep-prose max-w-4xl mx-auto"' in terms
-    assert "<ion-card" not in terms
-    assert "max-width:" not in terms
-    assert 'style="' not in terms
-    assert "<style" not in terms

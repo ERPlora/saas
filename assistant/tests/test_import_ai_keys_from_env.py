@@ -12,6 +12,7 @@ import pytest
 from django.core.management import CommandError, call_command
 from live.errors import PermissionDenied
 from live.models import OutboxEvent
+from pydantic import ValidationError
 
 from assistant import services
 from assistant.models import AIProvider, AIProviderCredential
@@ -61,6 +62,18 @@ def test_each_key_of_the_environment_is_kept_in_its_provider_which_is_added_if_m
     assert key_of("gemini").api_key == GEMINI and key_of("gemini").is_active
     assert "openai: created key 'default' (…ab12)" in printed
     assert printed.rstrip().endswith("created=4 rotated=0 kept=0 skipped=0")
+
+
+def test_azure_speech_is_no_provider_it_knows_and_nothing_is_written(env):
+    with pytest.raises(CommandError, match=r"Unknown provider\(s\): azure-speech\. Known: openai, anthropic, gemini, deepseek\."):
+        run("--providers", "openai,azure-speech")
+
+    assert not AIProvider.objects.exists()
+
+
+def test_azure_speech_is_no_api_a_key_can_be_loaded_for():
+    with pytest.raises(ValidationError):
+        CredentialImportIn(kind="azure_speech", api_key="not-a-real-key")
 
 
 def test_the_keys_are_never_printed(env):

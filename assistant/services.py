@@ -19,7 +19,8 @@ on the page. The commands call them as the platform (``platform_context``).
 - ``assistant.model.try`` (G61): a member of the staff tried a model from the admin; it stays in the audit trail (an
   access to the model) with how long the message was and how many tools it offered, never the message.
 - ``assistant.message.claim`` / ``.release`` (G51): a message of the plan's monthly allowance (a demo's own few),
-  taken before the model is called and given back if the turn failed before answering.
+  taken before the model is called and given back if the turn failed before answering. An account's claim that
+  reaches 80 % of its month, or the last message, mails it once that month (ASSISTANT-F29, ``assistant.emails``).
 - ``assistant.usage.record`` (G29, G52): what a turn, an embedding or the voice spent (tokens, dictations, characters
   read aloud) and its cost in USD.
 - ``assistant.report.send`` (G58): the report of an answer, mailed to the support mailbox; nothing kept.
@@ -29,11 +30,14 @@ on the page. The commands call them as the platform (``platform_context``).
 
 import logging
 from datetime import timedelta
+from fractions import Fraction
+from functools import partial
 
 from auditlog.models import LogEntry
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.db import transaction
 from django.db.models import F, TextField, Value
 from django.db.models.functions import Cast
 from django.utils import timezone, translation
@@ -44,7 +48,7 @@ from live.operations import INTERNAL, operation
 from live.outbox import record_event
 
 import whatsapp.fields
-from assistant import crypto, events, fields, queries
+from assistant import crypto, emails, events, fields, queries
 from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage, DocChunk
 from assistant.models import content_hash
 from assistant.queries import choosable_models, staff_with
@@ -346,22 +350,23 @@ def credential_import(ctx: OperationContext, data: CredentialImportIn) -> dict:
         with translation.override(ctx.language):
             raise PermissionDenied(_("Only the platform loads the keys of the environment."), code="assistant.platform_only")
     plaintext = data.api_key.get_secret_value().strip()
-    provider = AIProvider.objects.filter(slug=data.kind).first()
+    slug = data.kind
+    provider = AIProvider.objects.filter(slug=slug).first()
     credential = (
         AIProviderCredential.objects.select_for_update().filter(provider=provider, label=data.label).first()
         if provider is not None
         else None
     )
     if credential is not None and not data.force:
-        return {"provider": data.kind, "action": "kept", "label": data.label, "masked_key": credential.masked_key}
+        return {"provider": slug, "action": "kept", "label": data.label, "masked_key": credential.masked_key}
     action = "created" if credential is None else "rotated"
-    result = {"provider": data.kind, "action": action, "label": data.label, "masked_key": f"…{plaintext[-4:]}"}
+    result = {"provider": slug, "action": action, "label": data.label, "masked_key": f"…{plaintext[-4:]}"}
     if data.dry_run:
         return result
     if not crypto.configured():
         raise _encryption_missing(ctx)
     if provider is None:
-        provider = AIProvider.objects.create(slug=data.kind, name=AIProvider.Kind(data.kind).label, kind=data.kind)
+        provider = AIProvider.objects.create(slug=slug, name=AIProvider.Kind(data.kind).label, kind=data.kind)
     if credential is None:
         credential = AIProviderCredential(provider=provider, label=data.label)
     else:
@@ -500,6 +505,8 @@ def message_claim(ctx: OperationContext, data: Caller) -> dict:
     row.refresh_from_db(fields=["messages", "month"])
     if claimed:
         record_event(ctx, events.MESSAGE_CLAIMED, {**_caller_payload(data), "used": row.messages, "limit": limit})
+    if data.user_id is not None:
+        _warn_the_account(ctx, row, limit, now)
     return {
         "claimed": bool(claimed),
         "month": row.month,
@@ -508,6 +515,56 @@ def message_claim(ctx: OperationContext, data: Caller) -> dict:
         "resets_at": None if data.demo else queries.resets_at(row.month),
         "demo": bool(data.demo),
     }
+
+
+#: From this share of the month's messages an account is mailed that they run out: where the panel's footer starts
+#: saying it (``NOTE_FROM`` of ``usageNote`` in @erplora/ui), the 24th of 30 (ASSISTANT-F29).
+NEAR_FROM = Fraction(4, 5)
+#: The mark of each mail of ASSISTANT-F29 on the account's row of the month.
+WARNING_MARKS = {"near": "near_warned_at", "spent": "spent_warned_at"}
+
+
+def _warning_due(used: int, limit: int) -> str | None:
+    """The mail ``used`` of ``limit`` reaches: ``"spent"`` at the last one (then never how many are left), ``"near"``
+    from ``NEAR_FROM``, none before it nor without an allowance."""
+    if limit <= 0:
+        return None
+    if used >= limit:
+        return "spent"
+    return "near" if Fraction(used, limit) >= NEAR_FROM else None
+
+
+def _warn_the_account(ctx: OperationContext, row: AssistantUsage, limit: int, now) -> None:
+    """ASSISTANT-F29: take the month's mark of the mail the account's ``row`` reaches — one ``UPDATE … WHERE <mark> IS
+    NULL``, which a concurrent turn waits on and then finds taken, so each mail leaves once a month —, record it, and
+    send the mail after the COMMIT. Also when the claim was refused, so a last mail that could not leave is tried
+    again with the next message the person writes."""
+    warning = _warning_due(row.messages, limit)
+    if warning is None:
+        return
+    mark = WARNING_MARKS[warning]
+    if not AssistantUsage.objects.filter(pk=row.pk, **{f"{mark}__isnull": True}).update(**{mark: now}):
+        return
+    record_event(
+        ctx, events.USAGE_WARNED, {"user": str(row.user_id), "warning": warning, "used": row.messages, "limit": limit}
+    )
+    transaction.on_commit(partial(_mail_the_warning, row.pk, mark, now, row.messages, limit), robust=True)
+
+
+def _mail_the_warning(row_id, mark: str, taken_at, used: int, limit: int) -> None:
+    """After the COMMIT: the mail of ``mark`` to the account of the row. One that cannot leave frees the mark it took
+    (only its own), so the next message of the month tries again with the figures of that moment."""
+    row = AssistantUsage.objects.select_related("user").filter(pk=row_id).first()
+    if row is None:
+        logger.warning("assistant.mail.no_account usage=%s: the account went away before its mail", row_id)
+        return
+    resets_on = queries.resets_at(row.month).date()
+    if mark == WARNING_MARKS["spent"]:
+        sent = emails.send_messages_spent(row.user, limit=limit, resets_on=resets_on)
+    else:
+        sent = emails.send_messages_near(row.user, used=used, limit=limit, resets_on=resets_on)
+    if not sent:
+        AssistantUsage.objects.filter(pk=row_id, **{mark: taken_at}).update(**{mark: None})
 
 
 @operation(

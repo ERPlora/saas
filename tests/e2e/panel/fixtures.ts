@@ -4,6 +4,7 @@
 // the session /api/me reports, the three viewports, uncaught page errors and the evidence folder.
 // Import `test` and `expect` from here, not from `@playwright/test`.
 import { execFile, execFileSync } from 'node:child_process';
+import { createHmac } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join, resolve } from 'node:path';
@@ -26,7 +27,7 @@ const ARTIFACTS = join(HERE, '..', '.artifacts', 'panel');
 /** allauth.headless's sign-in for the browser client: what the launcher's form posts. */
 const SIGN_IN_API = '/_allauth/browser/v1/auth/login';
 /** The second step of every password sign-in: the code mailed to the account (what /verify-email posts). */
-const CONFIRM_CODE_API = '/_allauth/browser/v1/auth/code/confirm';
+export const CONFIRM_CODE_API = '/_allauth/browser/v1/auth/code/confirm';
 
 /** A SaaS account: what its sign-in asks for. */
 export interface Credentials {
@@ -102,6 +103,18 @@ export async function signIn(request: APIRequestContext, credentials: Credential
   const code = await waitForMailCode(credentials.email, since);
   const confirmed = await request.post(CONFIRM_CODE_API, { headers: { 'X-CSRFToken': csrf }, data: { code } });
   expect(confirmed.status(), `POST ${CONFIRM_CODE_API}: ${await confirmed.text()}`).toBe(200);
+}
+
+/**
+ * Signs the page's context in as `credentials`, signing out whoever was in (allauth refuses a second sign-in: 409).
+ * The page leaves first: left open, it sees its session end, reloads and asks for it again, and an answer that comes
+ * after the code to a request that carried the password step's cookie deletes the new session's
+ * (panel/sign-in-as.spec.ts).
+ */
+export async function signInAs(page: Page, credentials: Credentials): Promise<void> {
+  await page.goto('about:blank');
+  await page.context().clearCookies();
+  await signIn(page.request, credentials);
 }
 
 /**
@@ -364,6 +377,18 @@ export async function djangoPrintAsync(code: string): Promise<string> {
 /** `INTERNAL_SHARED_SECRET` of the local SaaS (`.env`), to sign what the Hub would send. */
 export function internalSecret(): string {
   return djangoPrint('from django.conf import settings;print(settings.INTERNAL_SHARED_SECRET)');
+}
+
+/** The Hub's callback (`POST /internal/hubs/{id}/ready`), as it sends it: the body names the hub of the path, signed. */
+export async function reportBusinessReady(request: APIRequestContext, id: string): Promise<void> {
+  const body = JSON.stringify({ id });
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signature = createHmac('sha256', internalSecret()).update(`${timestamp}.${body}`).digest('hex');
+  const ready = await request.post(`/internal/hubs/${id}/ready`, {
+    data: body,
+    headers: { 'Content-Type': 'application/json', 'X-Erplora-Timestamp': String(timestamp), 'X-Erplora-Signature': signature },
+  });
+  expect(ready.status(), await ready.text()).toBe(200);
 }
 
 /**

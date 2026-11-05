@@ -25,6 +25,7 @@ import {
   shot,
   sidewaysScroll,
   signIn,
+  signInAs,
   test,
   watchLiveStreams,
   watchPageErrors,
@@ -129,6 +130,38 @@ test('HUBS-G73: the owner renames the business in «General»; an empty name is 
   expect(errors).toEqual([]);
 });
 
+test('HUBS-G74: an address the server refuses says why on its field, and on top to look at it until it is corrected, in the language of the account', async ({ page }) => {
+  const errors = watchPageErrors(page);
+  const { id } = await ownerOf(page, 'address-refused', 'Bar Refused');
+  for (const { language, notice, reason } of [
+    { language: 'en', notice: 'Check the highlighted details.', reason: 'Use only lowercase letters, digits and hyphens' },
+    { language: 'es', notice: 'Revisa los datos marcados.', reason: 'Usa solo minúsculas' },
+  ]) {
+    expect((await apiPost(page.request, '/api/accounts/preferences', { language })).status()).toBe(200);
+    await page.goto(`/dashboard/businesses/${id}/settings`);
+    await shown(page).getByTestId('settings-general').getByTestId('settings-change-address').click();
+    const dialog = page.getByTestId('address-dialog');
+    await typeInto(page, 'address-dialog-slug', '-casa');
+    await dialog.getByTestId('address-dialog-submit').click();
+    await expect(dialog.getByTestId('address-dialog-error')).toHaveText(notice);
+    await expect(page.getByTestId('address-dialog-slug')).toContainText(reason);
+    for (const { width, height } of [{ width: 1440, height: 900 }, { width: 820, height: 1180 }, { width: 375, height: 667 }]) {
+      await page.setViewportSize({ width, height });
+      await settled(page);
+      await expect(dialog.getByTestId('address-dialog-error')).toBeInViewport({ ratio: 1 });
+      await page.screenshot({ path: shot(`refused-address-${language}-${width}x${height}`) });
+    }
+    await page.setViewportSize({ width: 1440, height: 900 });
+    // Corrected, the notice has done its job; refused again, it comes back.
+    await typeInto(page, 'address-dialog-slug', 'casa');
+    await expect(dialog.getByTestId('address-dialog-error')).toBeHidden();
+    await typeInto(page, 'address-dialog-slug', '-casa');
+    await dialog.getByTestId('address-dialog-submit').click();
+    await expect(dialog.getByTestId('address-dialog-error')).toHaveText(notice);
+  }
+  expect(errors).toEqual([]);
+});
+
 test('HUBS-G74: the owner moves the business to another web address; the old one stays its own', async ({ page }) => {
   const errors = watchPageErrors(page);
   const { id, slug } = await ownerOf(page, 'address', 'Bar Manolo');
@@ -150,7 +183,9 @@ test('HUBS-G74: the owner moves the business to another web address; the old one
   await typeInto(page, 'address-dialog-slug', 'hubs');
   await dialog.getByTestId('address-dialog-submit').click();
   await expect(dialog.getByTestId('address-dialog-error')).toContainText('This address is reserved. Choose another one.');
+  // No field says it, so it stays until the next try.
   await typeInto(page, 'address-dialog-slug', wanted);
+  await expect(dialog.getByTestId('address-dialog-error')).toContainText('This address is reserved. Choose another one.');
   await dialog.getByTestId('address-dialog-submit').click();
   await expect(page.getByText(`The business now opens at ${wanted}.`)).toBeVisible();
   await expect(general.getByTestId('copy-value')).toContainText(`${wanted}.`);
@@ -232,8 +267,7 @@ test('HUBS-G97: an action of the staff on a business is in its history in the ad
     ].join('\n'),
   );
   // The owner's session is open on this page: the staff signs in on a clean one.
-  await page.context().clearCookies();
-  await signIn(page.request, { email: staff, password: PASSWORD });
+  await signInAs(page, { email: staff, password: PASSWORD });
   await page.goto('/admin/hubs/hub/');
   await page.locator(`input[name="_selected_action"][value="${id}"]`).check();
   await page.locator('select[name="action"]').selectOption('retry_owed');

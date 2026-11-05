@@ -3,8 +3,8 @@
 import pytest
 from django.contrib.auth import get_user_model
 from django.urls import resolve
+from accounts.tests.conftest import enter
 
-from accounts.models import HubMembership
 
 pytestmark = pytest.mark.django_db
 
@@ -29,10 +29,10 @@ def test_an_anonymous_visitor_gets_the_401_envelope(client):
 
 
 def test_the_owner_sees_their_hubs_and_only_theirs(client, ana):
-    HubMembership.objects.create(user=ana, hub_slug="a", role=HubMembership.Role.OWNER)
-    HubMembership.objects.create(user=ana, hub_slug="b", role=HubMembership.Role.OWNER)
+    enter(ana, "a", "hub_owner")
+    enter(ana, "b", "hub_owner")
     bo = get_user_model().objects.create_user(email="bo@example.com", password="x")
-    HubMembership.objects.create(user=bo, hub_slug="c", role=HubMembership.Role.OWNER)
+    enter(bo, "c", "hub_owner")
     client.force_login(ana)
 
     response = client.get(HUBS, HTTP_HOST=HOST)

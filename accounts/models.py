@@ -2,10 +2,8 @@
 account's own settings (the Account page: preferences, photo and API keys; plan 2026-10-13, L3-A).
 
 ``User`` is ported from ERPlora/saas ``apps/auth/users/models.py`` (email as the identifier),
-with a UUIDv7 primary key (PLAN-SAAS §6) and the account's language. ``HubMembership`` is the mirror
-of the answered members of each business (``hubs.HubMember``) that the jump to a hub reads: written
-only by ``hubs.services.sync_access``, retired once the jump reads ``HubMember`` (``hubs/README.md``).
-``AuthExchangeCode`` is ported from the same file, stored hashed and bound to one hub
+with a UUIDv7 primary key (PLAN-SAAS §6) and the account's language. Who is on which business, and with which
+role, is ``hubs.HubMember``'s. ``AuthExchangeCode`` is ported from the same file, stored hashed and bound to one hub
 (PLAN-SAAS §2.1, §3.1 step 5). A hub slug follows the rule shared with hub-next
 (``live.slugs``: one DNS label, never a reserved name such as ``hub`` or ``www``) and is never
 ``hubs``, the platform host of the Hub's admin (ronda 13, PLAN §18).
@@ -34,8 +32,8 @@ from live.slugs import hub_slug_validator
 #: The versions of the terms (``/legal/terms/``) and of the privacy policy (``/legal/privacy/``) an account accepts
 #: today: the «Last updated» date each page shows (``tests/test_terms.py`` keeps them equal). Update the page and
 #: its date here together: every account then accepts the new text at its next sign-in.
-TERMS_VERSION = date(2026, 10, 25)
-PRIVACY_VERSION = date(2026, 10, 21)
+TERMS_VERSION = date(2026, 11, 5)
+PRIVACY_VERSION = date(2026, 11, 5)
 
 
 class UserManager(BaseUserManager):
@@ -122,9 +120,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         # raising: one that is both from before (``hubs.W002``) still saves its other changes, and lowering a flag.
         if self._raises_a_staff_flag():
             # Here, not at the top: accounts.services imports this module.
-            from accounts.services import is_a_customer
+            from accounts.services import on_a_business
 
-            if is_a_customer(self):
+            if on_a_business(self):
                 raise ValidationError(
                     _("This account is on a business: ERPlora's staff and the customers never share an account."),
                     code="staff_on_a_business",
@@ -147,49 +145,6 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def get_short_name(self):
         return self.first_name
-
-
-class HubMembership(models.Model):
-    """A user's access to one hub, with the role the hub will give them.
-
-    The roles are the customer's (what a person is inside a hub) and travel to the hub as they
-    are. Their ``hub_`` prefix keeps them apart from the platform's roles (Django's superuser and
-    the ``support`` group of the admin), which are never stored here nor given to a hub's member:
-    they only reach the Hub's Django admin, as ``platform_*``, with a ``hub-admin`` code. No
-    customer role implies ``is_staff``.
-    """
-
-    class Role(models.TextChoices):
-        OWNER = "hub_owner", _("Owner")
-        ADMIN = "hub_admin", _("Admin")
-        MANAGER = "hub_manager", _("Manager")
-        EMPLOYEE = "hub_employee", _("Employee")
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="hub_memberships",
-        verbose_name=_("user"),
-    )
-    hub_slug = models.CharField(
-        _("hub"), max_length=63, validators=[hub_slug_validator]
-    )
-    role = models.CharField(_("role"), max_length=16, choices=Role.choices)
-    created_at = models.DateTimeField(_("created at"), default=timezone.now)
-
-    class Meta:
-        verbose_name = _("hub membership")
-        verbose_name_plural = _("hub memberships")
-        ordering = ["hub_slug"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["user", "hub_slug"], name="accounts_membership_user_hub"
-            )
-        ]
-
-    def __str__(self):
-        return f"{self.user} @ {self.hub_slug} ({self.get_role_display()})"
 
 
 class AuthExchangeCode(models.Model):

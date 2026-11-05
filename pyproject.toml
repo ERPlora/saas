@@ -38,6 +38,8 @@ dependencies = [
     # The panel's assistant searches ERPlora's documentation by its fingerprints (assistant.DocChunk): pgvector's
     # VectorField and CosineDistance; the extension `vector` in Postgres (Aurora, compose, CI).
     "pgvector>=0.5",
+    "dnspython>=2.8",
+    "idna>=3.10",
 ]
 
 [tool.uv]

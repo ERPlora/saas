@@ -21,7 +21,7 @@ from functools import partial
 from django.conf import settings
 from django.contrib.auth import get_user_model, logout
 from django.contrib.auth.models import Group
-from django.db import connection, transaction
+from django.db import IntegrityError, connection, transaction
 from django.db.models import QuerySet
 from django.utils import timezone
 from django.utils.translation import gettext
@@ -39,7 +39,6 @@ from accounts.models import (
     ApiKey,
     AuthExchangeCode,
     EmailChangeRequest,
-    HubMembership,
     ProfilePhoto,
     UserPreferences,
 )
@@ -73,6 +72,7 @@ from accounts.schemas import (
     SupportReportIn,
     SupportReportOut,
 )
+from base.refusals import fields_refused
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ class SupportGroupMissing(Exception):
     """The ``support`` group (data migration ``0003_support_group``) is not in the database."""
 
 
-#: Platform roles, only for the SaaS admin: never stored in ``HubMembership`` nor sent to a hub.
+#: Platform roles, only for the SaaS admin: never stored in ``hubs.HubMember`` nor sent to a hub.
 PLATFORM_ADMIN = "admin"
 PLATFORM_SUPPORT = "support"
 PLATFORM_ROLES = (PLATFORM_ADMIN, PLATFORM_SUPPORT)
@@ -157,8 +157,7 @@ def _role_in(user, hub_slug: str, audience: str) -> str | None:
     """What ``user`` is on ``hub_slug`` for ``audience``: a member's ``hub_*`` role or a platform role."""
     if audience == AuthExchangeCode.HUB_ADMIN_AUDIENCE:
         return _platform_role(user)
-    membership = HubMembership.objects.filter(user=user, hub_slug=hub_slug).first()
-    return membership.role if membership is not None else None
+    return queries.hub_roles_of(user).get(hub_slug)
 
 
 def _needs_second_factor(user, audience: str) -> bool:
@@ -244,6 +243,58 @@ def redeem_code(code: str, hub_slug: str, *, audience: str = AuthExchangeCode.HU
     )
 
 
+# --- The pass back from a business to erplora.com (accounts/hub_pass.py, ACCOUNTS-F29) ------------------------------
+
+#: The audience of the row that spends a pass: never a jump's, so ``redeem_code`` finds no pass.
+HUB_PASS_AUDIENCE = "hub-pass"
+
+
+def hub_pass_member(user_id: str, hub_slug: str):
+    """``(account, id of the business)`` if the account ``user_id`` may follow a pass of ``hub_slug``; else ``None``.
+
+    Only an active account, never one of the platform's staff (a pass carries no second factor, PLAN §17-§18), that is
+    a member of that business as ``hubs.business.list`` sees it (an accepted invitation; called by its name: accounts
+    never imports hubs)."""
+    user = get_user_model().objects.filter(pk=user_id).first()
+    if user is None or not user.is_active or user.is_staff or user.is_superuser:
+        return None
+    business_list = operations.get(BUSINESS_LIST)
+    as_account = queries.as_account(user)
+    offset = 0
+    while True:
+        page = business_list(as_account, business_list.input(search=hub_slug, limit=100, offset=offset))
+        for row in page.rows:
+            if row.slug == hub_slug:
+                return user, row.id
+        offset += page.limit
+        if offset >= page.total:
+            return None
+
+
+def spend_hub_pass(user, hub_slug: str, nonce: str, lifetime: timedelta) -> bool:
+    """Spend the pass ``nonce``; whether it was not spent before.
+
+    One row per pass, stored used, with the nonce's SHA-256 under its own audience (no jump code shares it): the unique
+    hash refuses a second one, however many browsers follow the pass at once. The row outlives the pass twice over
+    (``purge_expired_sign_in_leftovers`` deletes it past ``expires_at``): a pass the Hub dated a little ahead of this
+    clock still meets it."""
+    now = timezone.now()
+    try:
+        with transaction.atomic():
+            AuthExchangeCode.objects.create(
+                code_hash=AuthExchangeCode.hash_code(f"{HUB_PASS_AUDIENCE}:{nonce}"),
+                user=user,
+                audience=HUB_PASS_AUDIENCE,
+                hub_slug=hub_slug,
+                created_at=now,
+                used_at=now,
+                expires_at=now + 2 * lifetime,
+            )
+    except IntegrityError:
+        return False
+    return True
+
+
 def release_unproven_account(user, *, reason: str) -> None:
     """Strip every credential of an account whose holder never proved its email (saas#2541).
 
@@ -274,7 +325,10 @@ def accept_legal_texts(sender, request=None, user=None, **kwargs) -> None:
     """allauth's ``user_signed_up`` and Django's ``user_logged_in``: the account accepts today's terms and privacy
     policy (ACCOUNTS-G119). Creating the account and signing in happen under «By continuing you agree to our Terms &
     Privacy Policy» (the launcher, Google's button too), so each records when and which versions
-    (``models.TERMS_VERSION``, ``PRIVACY_VERSION``) unless the account already accepted those: the first date stays."""
+    (``models.TERMS_VERSION``, ``PRIVACY_VERSION``) unless the account already accepted those: the first date stays.
+    Not a session opened by a pass from a business (``accounts.hub_pass``): nobody saw that line on the way."""
+    if getattr(request, "hub_pass", None) is not None:
+        return
     if user is None or (user.terms_version, user.privacy_version) == (TERMS_VERSION, PRIVACY_VERSION):
         return
     accepted = {"terms_accepted_at": timezone.now(), "terms_version": TERMS_VERSION, "privacy_version": PRIVACY_VERSION}
@@ -326,8 +380,7 @@ def seed_demo_customer(email: str, password: str):
     """Create (or leave as it is) a customer account of ``demo_seed``: never staff, in no hub yet, its
     address proven.
 
-    Its businesses and roles are ``hubs.services.seed_demo_business``'s: the access the jump reads
-    (``HubMembership``) is the mirror of a business's members, written only by ``hubs.services.sync_access``.
+    Its businesses and roles are ``hubs.services.seed_demo_business``'s.
     """
     user = get_user_model().objects.filter(email=email).first()
     if user is None:
@@ -357,7 +410,7 @@ def create_platform_user(email: str, role: str, password: str | None = None):
         created = user is None
         if created:
             user = user_model(email=email)
-        elif is_a_customer(user):
+        elif on_a_business(user):
             raise PlatformRoleRefused(f"{email} is a customer of a hub")
         elif user.is_store_review_account:
             # Its sign-in skips the mailed code (ACCOUNTS-F49): never a way into the admin.
@@ -395,6 +448,7 @@ def seed_demo_platform_admin(email: str, password: str):
     permission="accounts.manage",
     input=PreferencesUpdateIn,
     output=PreferencesOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Changes the account's theme, language or alerts of its businesses.",
         asks={
@@ -440,6 +494,7 @@ def preferences_update(ctx: OperationContext, data: PreferencesUpdateIn) -> dict
     permission="accounts.manage",
     input=ProfileUpdateIn,
     output=ProfileOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Changes the account's first and last name.",
         asks={
@@ -704,32 +759,12 @@ def inactive_account_ids(*, inactive_days: int = INACTIVE_DAYS) -> list:
     return list(_unused_since(inactive_days).order_by("date_joined", "pk").values_list("pk", flat=True))
 
 
-def _as_account(user) -> OperationContext:
-    """The context ``user`` gets from a request, outside one: to read what it sees through other apps' operations."""
-    from live.context import Scope
-    from live.meta import all_live_app_configs, permissions_for_role
-
-    from base.operations import ACCOUNT_ROLE
-
-    return OperationContext(
-        scope=Scope("user", str(user.pk)),
-        actor=user,
-        permissions=permissions_for_role(all_live_app_configs(), ACCOUNT_ROLE),
-        language=user.language,
-    )
-
-
-def is_a_customer(user) -> bool:
-    """Whether ``user`` is on a business: in the mirror the jump reads, or anywhere ``on_a_business`` sees. Neither
-    ``create_platform_user`` nor ``User.clean`` (the admin's form) makes such an account staff."""
-    return HubMembership.objects.filter(user=user).exists() or on_a_business(user)
-
-
 def on_a_business(user) -> bool:
     """Whether ``user`` is on a business in any way ``hubs.business.list`` sees (called by its name: accounts never
-    imports hubs): a member, also of one in its days of recovery (a restore gives it back), or invited to one."""
+    imports hubs): a member, also of one in its days of recovery (a restore gives it back), or invited to one. Neither
+    ``create_platform_user`` nor ``User.clean`` (the admin's form) makes such an account staff."""
     business_list = operations.get(BUSINESS_LIST)
-    page = business_list(_as_account(user), business_list.input(limit=1, offset=0))
+    page = business_list(queries.as_account(user), business_list.input(limit=1, offset=0))
     return page.total > 0 or bool(page.invitations)
 
 
@@ -737,7 +772,7 @@ def belongs_to_a_business(user) -> bool:
     """Whether ``user`` is in a business that is not deleted (owner, payer or member), from ``hubs.business.list``
     (called by its name: accounts never imports hubs). A business in its 90 days of recovery holds nobody (F27)."""
     business_list = operations.get(BUSINESS_LIST)
-    as_account = _as_account(user)
+    as_account = queries.as_account(user)
     offset = 0
     while True:
         page = business_list(as_account, business_list.input(limit=100, offset=offset))
@@ -812,6 +847,18 @@ def prune_audit_log_batch(cutoff) -> int:
     return deleted
 
 
+def forget_the_retired_audit_type() -> None:
+    """Delete the content type of ``accounts.HubMembership`` once no audit entry names it. ``accounts/0012`` could not
+    while one did: a content type takes its entries with it, and ``cleanup_old_logs`` still keeps them (saas#220)."""
+    from auditlog.models import LogEntry
+    from django.contrib.contenttypes.models import ContentType
+
+    with transaction.atomic():
+        retired = ContentType.objects.filter(app_label="accounts", model="hubmembership")
+        if not LogEntry.objects.filter(content_type__in=retired).exists():
+            retired.delete()
+
+
 # --- What a sign-in leaves behind (ACCOUNTS-G71; ``manage.py purge_expired_sessions``, daily) ---------------------
 
 
@@ -857,7 +904,7 @@ def purge_expired_sign_in_leftovers(now) -> dict[str, int]:
 
 
 def _email_refused(message: str) -> InvalidPayload:
-    return InvalidPayload(gettext("Invalid payload"), fields={"email": message})
+    return fields_refused({"email": message})
 
 
 def email_belongs_to_another_account(user, email: str) -> bool:
@@ -1096,7 +1143,7 @@ def photo_upload(ctx: OperationContext, data: PhotoUploadIn) -> dict:
     try:
         cleaned, content_type = photos.clean_photo(photos.decode_upload(data.image))
     except photos.PhotoRejected as refused:
-        raise InvalidPayload(gettext("Invalid payload"), fields={"image": _photo_refusal(refused.code)}) from None
+        raise fields_refused({"image": _photo_refusal(refused.code)}) from None
     if is_ratelimited(
         None,
         group="accounts.photo.upload",
@@ -1632,7 +1679,7 @@ def support_report_from_hub(account: str, *, hub: str, hub_id: str, data: Suppor
     user = queries.active_account(account)
     if user is None:
         raise UnknownAccount(gettext("That account does not exist."))
-    if not HubMembership.objects.filter(user=user, hub_slug=hub).exists():
+    if hub not in queries.hub_roles_of(user):
         raise NotAMember(gettext("That account is not a member of that business."))
     return send_support_report(user, data, browser=browser, source=REPORT_FROM_HUB, business=f"{hub} ({hub_id})")
 
@@ -1652,11 +1699,10 @@ def send_support_report(user, data: SupportReportIn, *, browser: str, source: st
         increment=True,
     ):
         raise too_many_attempts()
-    memberships = HubMembership.objects.filter(user=user).order_by("hub_slug")
     context = [
         ("Account", f"{user.email} ({user.pk})"),
         ("Language", user.language),
-        ("Businesses", ", ".join(f"{row.hub_slug} ({row.role})" for row in memberships) or "none"),
+        ("Businesses", ", ".join(f"{slug} ({role})" for slug, role in queries.hub_roles_of(user).items()) or "none"),
         ("From", source),
         *([("Business", _one_line(business))] if business else []),
         ("Page", _one_line(data.page or "") or "unknown"),

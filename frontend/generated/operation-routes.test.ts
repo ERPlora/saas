@@ -69,12 +69,15 @@ const FISCAL_ROUTES = {
 };
 
 /**
- * The panel's assistant (base/api.py, plan 2026-10-30-asistente-saas §6): the month's allowance of the account and the
- * report of an answer. Its turn is no call of the client: the chat posts it to its own route and reads the stream.
+ * The panel's assistant (base/api.py, plan 2026-10-30-asistente-saas §6): the month's allowance of the account, the
+ * report of an answer, its dictation and the reading aloud of an answer (an mp3). Its turn is no call of the client:
+ * the chat posts it to its own route and reads the stream.
  */
 const ASSISTANT_ROUTES = {
   'base.assistant.usage': { method: 'get', path: '/api/assistant/usage' },
   'base.assistant.report': { method: 'post', path: '/api/assistant/report' },
+  'base.assistant.transcribe': { method: 'post', path: '/api/assistant/transcribe' },
+  'base.assistant.speak': { method: 'post', path: '/api/assistant/speak' },
 };
 
 /** The operations of the Account page (accounts/api.py, plan 2026-10-13 L3-A): queries GET, commands POST. */
@@ -114,8 +117,9 @@ function accountsRoutes(source: string): Record<string, { method: string; path: 
  * view takes the operation's input as a body (`data: …`) is a command (POST), any other a query (GET).
  */
 function hubsRoutes(source: string): Record<string, { method: string; path: string }> {
-  // The decorator's other arguments may hold a call of their own (`openapi_extra=_binary("text/csv")`).
-  const bound = source.matchAll(/@bind\(router, "([\w.]+)", "([^"]+)"(?:[^()\n]|\([^()]*\))*\)\nasync def \w+\(request(?:, (\w+):)?/g);
+  // The decorator's other arguments may hold a call of their own (`openapi_extra=_binary("text/csv")`), and another
+  // decorator may follow it (`@decorate_view(accept_body_up_to(…))`).
+  const bound = source.matchAll(/@bind\(router, "([\w.]+)", "([^"]+)"(?:[^()\n]|\([^()]*\))*\)\n(?:@.*\n)*async def \w+\(request(?:, (\w+):)?/g);
   return Object.fromEntries([...bound].map(([, op, path, param]) => [op, { method: param === 'data' ? 'post' : 'get', path: `/api${path}` }]));
 }
 
@@ -210,7 +214,7 @@ describe('OPERATION_ROUTES', () => {
     expect(api).toEqual(FISCAL_ROUTES);
   });
 
-  it("binds the panel's assistant's allowance and report to their routes, as base/api.py does", () => {
+  it("binds the panel's assistant's allowance, report, dictation and reading aloud to their routes, as base/api.py does", () => {
     expect(OPERATION_ROUTES).toMatchObject(ASSISTANT_ROUTES);
     const api = hubsRoutes(BASE_API);
     for (const [op, route] of Object.entries(ASSISTANT_ROUTES)) expect(api[op], op).toEqual(route);

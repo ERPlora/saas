@@ -57,12 +57,21 @@ function createAccount(
   return { email, password: PASSWORD };
 }
 
-/** A business of `email` made by its operation, with one ERPlora invoice it paid, numbered `sequence`. */
-function businessWithInvoice(
-  email: string,
-  name: string,
-  sequence: number,
-): void {
+let lastSequence = 0;
+
+/** The sequence of this spec's next ERPlora invoice, never given before, as `address()` gives a fresh address: an
+ *  invoice is never deleted (ACCOUNTS-G112 checks that the deleted account's stays), so a fixed one met the previous
+ *  run's on the same e2e database (saas#227). The clock in seconds, since the field is a 32-bit integer too small for
+ *  `Date.now()`; one more than the last when two fall in the same second. */
+function nextSequence(): number {
+  lastSequence = Math.max(lastSequence + 1, Math.floor(Date.now() / 1000));
+  return lastSequence;
+}
+
+/** A business of `email` made by its operation, with one ERPlora invoice it paid; the invoice's number. */
+function businessWithInvoice(email: string, name: string): string {
+  const sequence = nextSequence();
+  const number = `ERP-2026-${sequence}`;
   djangoPrint(
     [
       "from datetime import date",
@@ -75,12 +84,13 @@ function businessWithInvoice(
       `hub = create_business(user, name="${name}")`,
       `invoice = Invoice.objects.create(stripe_invoice_id=f"in_{hub.slug}_${sequence}", hub=hub, business_name=hub.name,` +
         ` billing_profile=hub.billing_profile, payer_account=user, payment_status="paid", series="ERP", sequence=${sequence},` +
-        ` number="ERP-2026-0${sequence}", issued_on=date(2026, 9, 1), billed_at=timezone.now(), net_cents=2999,` +
+        ` number="${number}", issued_on=date(2026, 9, 1), billed_at=timezone.now(), net_cents=2999,` +
         ' tax_cents=630, total_cents=3629, tax_country="ES", fiscal_status="accepted", payer_name=hub.name, payer_country="ES")',
       'InvoiceLine.objects.create(invoice=invoice, position=1, description="1 × Starter", item_kind="plan",' +
         ' item_slug="starter", net_cents=2999, tax_cents=630, total_cents=3629)',
     ].join("\n"),
   );
+  return number;
 }
 
 /** The value Django reads back for `expression` of the account `email` (`user`), printed. */
@@ -228,7 +238,7 @@ test("ACCOUNTS-G115 (F23): «Business notices» is the one switch, kept after a 
   const mails = page.getByTestId("preferences-mails");
   await expect(mails).toContainText("Security, invoices and payments");
   await expect(mails).toContainText(
-    "Always on: sign-in codes, security notices, invoices, payments and anything that needs you to act.",
+    "Always on: sign-in codes, security notices, invoices, payments, the messages you have left with the assistant and anything that needs you to act.",
   );
   await expect(mails.locator("ion-toggle")).toHaveCount(2);
   await expect(page.getByTestId("preferences-invoices")).toHaveJSProperty(
@@ -342,8 +352,8 @@ test("ACCOUNTS-G111 (F26): «Download my data» saves a JSON with the account, i
   const errors = watchPageErrors(page);
   const account = createAccount(address("export"));
   const other = createAccount(address("export-other"), { firstName: "Bea" });
-  businessWithInvoice(account.email, "Panadería de Ana", 4242);
-  businessWithInvoice(other.email, "Bodega de Bea", 4243);
+  const number = businessWithInvoice(account.email, "Panadería de Ana");
+  businessWithInvoice(other.email, "Bodega de Bea");
   await signIn(page.request, account);
 
   await page.goto("/dashboard/account/profile");
@@ -367,7 +377,7 @@ test("ACCOUNTS-G111 (F26): «Download my data» saves a JSON with the account, i
   expect(data.format).toBe("erplora.account-export");
   expect(data.account.email).toBe(account.email);
   expect(data.businesses.map((row) => row.name)).toEqual(["Panadería de Ana"]);
-  expect(data.invoices.map((row) => row.number)).toEqual(["ERP-2026-04242"]);
+  expect(data.invoices.map((row) => row.number)).toEqual([number]);
   expect(text).not.toContain(other.email);
   expect(text).not.toContain("Bodega de Bea");
   await atEverySize(page, "G111", async () => {
@@ -382,7 +392,7 @@ test("ACCOUNTS-G112 (F27): an owner is told to hand over its business first; wit
 }) => {
   const errors = watchPageErrors(page);
   const account = createAccount(address("delete"));
-  businessWithInvoice(account.email, "Café de Ana", 4244);
+  const number = businessWithInvoice(account.email, "Café de Ana");
   await signIn(page.request, account);
 
   await page.goto("/dashboard/account/profile");
@@ -432,7 +442,7 @@ test("ACCOUNTS-G112 (F27): an owner is told to hand over its business first; wit
   expect(readBack(account.email, "user is None")).toBe("True");
   expect(
     djangoPrint(
-      'from billing.models import Invoice;print(Invoice.objects.filter(number="ERP-2026-04244", payer_account=None).count())',
+      `from billing.models import Invoice;print(Invoice.objects.filter(number="${number}", payer_account=None).count())`,
     ).trim(),
   ).toBe("1");
   expect(errors).toEqual([]);

@@ -21,6 +21,7 @@ from django.urls import reverse
 
 from apps.tests.factories import make_app
 from public.landing import TYPICAL_STACK
+from public.tests.conftest import without_tokens
 from public.tests.test_industries import make_business_type, make_sector
 from public.tests.test_stack_copy import copy_of, names_the_stack
 
@@ -34,17 +35,6 @@ def page(client, path: str, language: str = "en") -> str:
     response = client.get(path)
     assert response.status_code == 200, path
     return response.content.decode()
-
-
-#: Where a page writes its per-response tokens: the CSP nonce and the CSRF token.
-RESPONSE_TOKEN = re.compile(
-    r"""(nonce="|name="csrfmiddlewaretoken" value="|var CSRF = "|'X-CSRFToken': ')[^"']+"""
-)
-
-
-def without_tokens(html: str) -> str:
-    """The page without its per-response tokens: random strings, not what the page says."""
-    return RESPONSE_TOKEN.sub(r"\1", html)
 
 
 # --- The three pages (tests/unit/test_public_pages.py) ------------------------------------------
@@ -240,7 +230,7 @@ def test_updates_page_closing_band_links_the_contract_clause(client):
 
     assert "section 7 of the terms of service" in html
     # The button itself, not the footer's «Terms», which links the same page from every page.
-    assert f'href="{reverse("public:terms")}">Read section 7</ion-button>' in html
+    assert f'href="{reverse("public:terms")}">Read section 7</a>' in html
 
 
 def test_updates_page_is_reachable_from_the_footer(client):
@@ -376,17 +366,9 @@ def test_security_names_the_perimeter_on_aws(
 # business hours, the one of the contact form.
 
 @pytest.fixture
-def tokens_spelling_the_claims(monkeypatch):
-    """The per-response tokens spell stale claims, as a random one does now and then.
-
-    Every public page carries a CSP nonce and, since the language forms of its footer
-    (PUBLIC-F13), a CSRF token: random strings, not copy. A 64-character token holds «2FA» or
-    «JWT» about once in four thousand renders, which made the scans below fail by chance.
-    """
-    monkeypatch.setattr("django.utils.csp.generate_nonce", lambda: "2FA-JWT-CDN-GitHub-x")
-    monkeypatch.setattr(
-        "django.middleware.csrf._get_new_csrf_string", lambda: "2FAJWTCDNGitHub" + "a" * 17
-    )
+def tokens_spelling_the_claims(tokens_spelling):
+    """The per-response tokens spell stale claims, as a random one does now and then."""
+    tokens_spelling("2FA", "JWT", "CDN", "GitHub")
 
 
 STALE_CLAIMS = (
@@ -683,7 +665,7 @@ def test_security_states_the_tls_versions_the_load_balancer_accepts(client, lang
 )
 def test_the_storage_answer_names_the_exceptions_of_the_privacy_policy(client, language, exceptions, one_exception):
     """The privacy policy (§6) has two transfers of the assistant: the backup model providers and the provider of
-    its voice and search services (a dictation's audio goes to OpenAI's API by default), so «the one exception» is
+    its voice and search fingerprint services (a dictation's audio goes to OpenAI's API by default), so «the one exception» is
     no longer true."""
     html = page(client, "/pricing/", language)
     answers = re.findall(r'<div class="ion-padding" slot="content">(.*?)</div>', html, re.S)
@@ -692,3 +674,5 @@ def test_the_storage_answer_names_the_exceptions_of_the_privacy_policy(client, l
     assert [exception for exception in exceptions if exception not in storage] == []
     assert one_exception not in storage
     assert 'href="/legal/privacy/"' in storage
+    # The web search goes to the United States under no safeguard of that policy (§6): the answer says it apart.
+    assert "Brave Search" in storage

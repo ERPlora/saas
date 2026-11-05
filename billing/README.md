@@ -346,8 +346,9 @@ PDF). Aquí nunca se simula VeriFactu: sin respuesta del Hub la factura sigue «
   abonaría lo no usado del caro: una factura de Stripe en negativo). Stripe lo guarda como *subscription
   schedule*: la fase actual acaba con el periodo pagado y la siguiente cobra los items nuevos sin prorrateo; el
   negocio conserva lo pagado hasta entonces (`PlanChangeSchedule`, `scheduled_change` en la API). Las subidas se
-  cobran al momento. Mantener el plan deshace la bajada; cancelar la sustituye (gana Gratis); comprar o cancelar
-  módulos espera a deshacerla (409 `billing.plan_change_pending`).
+  cobran al momento. Mantener el plan deshace la bajada (en la fila de Suscripciones, en la tarjeta del plan
+  actual de la Tienda y por la API, sin mirar las facturas: no cobra nada); cancelar la sustituye (gana Gratis);
+  comprar o cancelar módulos espera a deshacerla (409 `billing.plan_change_pending`).
 - **Todo lo devuelto es una rectificativa** con importes negativos, la calificación y el destinatario de la
   original y su tipo VeriFactu (`rectification_type`: R1 devoluciones, duplicados y cambios de precio, art. 80.1 y
   80.2 LIVA; R4 lo demás, como un cobro fraudulento) y su motivo (`rectification_reason`, la nota o el motivo de
@@ -428,7 +429,9 @@ Ve una factura la cuenta que la pagó (su pagador ese día) y el propietario act
   409 `billing.invoice_paid`; anulada, 409 `billing.invoice_void`.
 - `billing.subscription.list` — `GET /api/billing/subscriptions` → una fila por negocio que Stripe cobra (del
   propietario o del pagador): plan y módulos a precio neto, `next_invoice {date, total_cents con IVA, currency}`
-  (null si se cancela; `total_cents` null sin lugar del pagador), estado, `cancelling`, `ends_at`,
+  (null si se cancela; `total_cents` null sin lugar del pagador; con una bajada que espera, el importe del plan y
+  el periodo nuevos, con sus módulos a ese precio, y null si ese plan salió del catálogo, porque Stripe cobra ese
+  día los items nuevos: `plan` y `modules` siguen diciendo lo de hoy), estado, `cancelling`, `ends_at`,
   `cancel_requested`, `unpaid_invoice_id`, `scheduled_change` (la bajada que espera), `actions` (`view_invoice`
   primero si hay una sin cobrar; si no, `change_plan` o `keep_plan`; `cancel_plan`; `view_invoices`) y `can`.
   Cambiar/cancelar/mantener: el propietario que paga. Viva. Filtros `?hub_id=` (uno ajeno da la lista vacía) y
@@ -494,8 +497,13 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
 - **La columna de acciones** la mide la propia `DataTable` de `@erplora/ui` (`max-content` hasta medirla y después el
   ancho de sus botones, `DataTable.actions.test.ts`), sin reglas propias en Facturas ni en Suscripciones;
   `billing.spec.ts` sigue vigilando que los botones no pisen la columna anterior («actions over the previous column»).
+- **Importes**: `formatAmount` (`invoices.ts`, también en los avisos de impago de Negocios) y `formatCents`/`formatEuros`
+  (`format.ts`, la Tienda) escriben con `formatMoney` de `@erplora/ui`, el mismo de la tarjeta del asistente: millares
+  desde cuatro cifras («1.234,56 €», saas#228). No hay `Intl.NumberFormat` propio para el dinero.
 - **e2e**: `tests/e2e/panel/billing.spec.ts` con `billing_seed.py` (cuatro negocios: facturas pagada y emitida,
   pagada emitiéndose, no cobrada con tarjeta rechazada y no cobrada con fallo blando; Gratis sin facturas).
+  `tests/e2e/panel/billing-downgrade.spec.ts` recorre la bajada programada (BILLING-F11, BILLING-F14, HUBS-F32, HUBS-F34) sobre
+  esa misma semilla; las rutas que llaman a Stripe corren en `billing_stripe_played.py`, un proceso aparte con Stripe doblado.
 
 ### Estado (L3-C)
 

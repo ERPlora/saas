@@ -18,7 +18,7 @@ pytestmark = pytest.mark.django_db
 # --- AIProvider (G25) ------------------------------------------------------------------------------------
 
 
-def test_the_kinds_are_the_four_apis_the_gateway_speaks():
+def test_the_kinds_are_the_four_apis_of_models():
     assert set(AIProvider.Kind.values) == {"openai", "anthropic", "gemini", "deepseek"}
 
 

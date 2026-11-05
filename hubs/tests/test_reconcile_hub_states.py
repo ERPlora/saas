@@ -21,10 +21,9 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.utils import timezone
 
-from accounts.models import HubMembership
 from hubs import hub_client, queries, services
 from hubs.models import Hub, Subscription
-from hubs.tests.conftest import create_business
+from hubs.tests.conftest import create_business, role_on
 
 pytestmark = pytest.mark.django_db
 
@@ -481,7 +480,7 @@ def test_nobody_enters_a_purged_business(business, owner):
 
     run("reconcile_hub_states")
 
-    assert not HubMembership.objects.filter(hub_slug=business.slug).exists()
+    assert queries.hubs_with_members() == []
 
 
 def test_a_business_restored_while_the_purge_runs_keeps_its_people(business, owner, hub_double, monkeypatch):
@@ -491,4 +490,4 @@ def test_a_business_restored_while_the_purge_runs_keeps_its_people(business, own
     run("reconcile_hub_states")
 
     assert fresh(business).status == "preparing"
-    assert HubMembership.objects.filter(hub_slug=business.slug, user=owner).exists()
+    assert role_on(owner, business.slug) == "hub_owner"

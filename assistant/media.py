@@ -1,18 +1,20 @@
-"""The services of OpenAI's API the assistants use besides the turn (ASSISTANT-G54, G56, G57, F27): the fingerprints
-(embeddings) of the Hub's index and of the panel's documentation (``index_docs``, ``assistant.docs.search``), the
-transcription of a dictation and the reading aloud of an answer.
+"""The services the assistants use besides the turn (ASSISTANT-G54, G56, G57, F27): the fingerprints (embeddings) of
+the Hub's index and of the panel's documentation (``index_docs``, ``assistant.docs.search``) and the transcription of a
+dictation, by OpenAI's API, through the services' provider (``assistant.service.connection``:
+``ASSISTANT_SERVICE_PROVIDER``), kept in the admin with its key, rotatable. The reading aloud of an answer has no engine
+(``SPEECH_ENGINE``, PLAN-SAAS round 2026-11-04c).
 
-Each call goes to the services' provider (``assistant.service.connection``: ``ASSISTANT_SERVICE_PROVIDER``, kept in
-the admin with its key, rotatable) over ``httpx``, with no SDK, the same way as ``assistant.providers``. A failure is
-a ``MediaFailed`` with the provider's class (rejected, or worth trying again) and never the key nor the provider's
-words (they could quote what was dictated); the log says the status only. A server whose trusted certificates cannot
-be loaded is a final failure, logged with the setting and its file by ``base.tls`` (caller ``assistant.media``).
-Nothing is written to disk: the audio goes from memory to the provider.
+Each call goes over ``httpx``, with no SDK, the same way as ``assistant.providers``. A failure is a ``MediaFailed``
+with the provider's class (rejected, or worth trying again) and never the key nor the provider's words (they could
+quote what was dictated); the log says the path and the status only. A server whose trusted certificates cannot be
+loaded is a final failure, logged with the setting and its file by ``base.tls`` (caller ``assistant.media``). Nothing is
+written to disk: the audio goes from memory to the provider and back.
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
 from decimal import Decimal
 
 import httpx
@@ -27,12 +29,9 @@ logger = logging.getLogger(__name__)
 EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_PRICE_PER_1M = Decimal("0.02")
 TRANSCRIBE_MODEL = "whisper-1"
-SPEECH_MODEL = "tts-1"
-VOICES = frozenset({"alloy", "echo", "fable", "onyx", "nova", "shimmer"})
-DEFAULT_VOICE = "alloy"
 #: A few seconds of speech fit many times over.
 MAX_AUDIO_BYTES = 2 * 1024 * 1024
-#: What the provider reads aloud in one call.
+#: What is read aloud in one call.
 MAX_SPEECH_CHARS = 4096
 #: The audio types a dictation comes in, and the extension the provider reads each by.
 AUDIO_TYPES = {
@@ -47,8 +46,17 @@ AUDIO_TYPES = {
 TIMEOUT = httpx.Timeout(connect=10.0, read=60.0, write=30.0, pool=10.0)
 
 
+#: The languages an answer is read aloud in, base code.
+SPEECH_LANGUAGES = ("es", "en")
+#: What reads an answer aloud: ``(text, language, voice)`` to an mp3, an empty voice being its own for the language. None
+#: since the provider of Azure AI Speech left (PLAN-SAAS round 2026-11-04c): the door and the panel's route answer 503
+#: ``assistant.speech_unavailable``, and the Hub and the panel read with the device's voice. A free engine, in our own
+#: containers, takes this place in a round of its own (§35); ``MediaFailed`` is how it fails.
+SPEECH_ENGINE: Callable[[str, str, str], Awaitable[bytes]] | None = None
+
+
 class MediaFailed(Exception):
-    """A call to the services' provider that failed: ``retriable`` if another attempt may succeed."""
+    """A call to a provider that failed: ``retriable`` if another attempt may succeed."""
 
     def __init__(self, retriable: bool, status: int | None = None):
         super().__init__("retriable" if retriable else "rejected")
@@ -120,15 +128,3 @@ def base_language(language: str) -> str:
 
 def speech_text(text: str) -> str:
     return text.strip()[:MAX_SPEECH_CHARS]
-
-
-def voice_of(voice: str) -> str:
-    chosen = voice.strip().lower()
-    return chosen if chosen in VOICES else DEFAULT_VOICE
-
-
-async def synthesize(service: ServiceConnectionOut, text: str, voice: str) -> bytes:
-    """``text`` spoken with ``voice``, as an mp3."""
-    body = {"model": SPEECH_MODEL, "voice": voice, "input": text, "response_format": "mp3"}
-    response = await _post(service, "/audio/speech", json=body)
-    return response.content

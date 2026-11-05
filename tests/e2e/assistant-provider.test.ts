@@ -3,7 +3,7 @@
 // OpenAI's streamed shape, as the gateway of the panel's Django reads it, and its server on 127.0.0.1.
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { answerTo, type Message, NEW_BUSINESS, startProvider } from './assistant-provider';
+import { answerTo, DICTATION, LONG_ADDRESS, type Message, NEW_BUSINESS, startProvider } from './assistant-provider';
 
 type Chunk = { choices: { delta: { content?: string; tool_calls?: { function: { name?: string; arguments?: string } }[] }; finish_reason: string | null }[] };
 
@@ -60,7 +60,34 @@ describe('answerTo', () => {
     );
   });
 
+  it('asks for the rate when asked what a currency is worth, and gives it naming no source', () => {
+    expect(asked(answerTo([SPANISH, { role: 'user', content: '¿A cómo está el dólar?' }]).frames)).toEqual({
+      name: 'currency_rate',
+      arguments: JSON.stringify({ from: 'USD', to: 'EUR' }),
+    });
+    expect(asked(answerTo([ENGLISH, { role: 'user', content: 'What is the dollar worth?' }]).frames)?.name).toBe('currency_rate');
+    const rate = JSON.stringify({ rate: '0.88755', converted: '0.89' });
+    const es = said(answerTo(answered(SPANISH, '¿A cómo está el dólar?', 'currency_rate', rate)).frames);
+    const en = said(answerTo(answered(ENGLISH, 'What is the dollar worth?', 'currency_rate', rate)).frames);
+    expect(es).toContain('0.89 EUR');
+    expect(en).toContain('0.89 EUR');
+    expect(`${es}${en}`).not.toContain('https://');
+  });
+
+  it('asks the web when asked about a law, and answers naming no source', () => {
+    const asking = asked(answerTo([ENGLISH, { role: 'user', content: 'What does the new law say?' }]).frames);
+    expect(asking?.name).toBe('web_search');
+    expect(JSON.parse(asking?.arguments ?? '{}')).toEqual({ query: 'What does the new law say?', language: 'en' });
+    const pregunta = asked(answerTo([SPANISH, { role: 'user', content: '¿Qué dice la nueva ley?' }]).frames);
+    expect(JSON.parse(pregunta?.arguments ?? '{}')).toEqual({ query: '¿Qué dice la nueva ley?', language: 'es' });
+    const found = JSON.stringify({ results: [{ url: LONG_ADDRESS }] });
+    const answer = said(answerTo(answered(ENGLISH, 'What does the new law say?', 'web_search', found)).frames);
+    expect(answer.length).toBeGreaterThan(0);
+    expect(answer).not.toContain('https://');
+  });
+
   it('asks to create the business it is told to create, by its name', () => {
+
     const answer = answerTo([SPANISH, { role: 'user', content: `Crea un negocio llamado ${NEW_BUSINESS}` }]);
     expect(asked(answer.frames)).toEqual({
       name: 'hubs__business__create',
@@ -81,6 +108,43 @@ describe('answerTo', () => {
     );
     expect(said(answerTo(answered(ENGLISH, question, 'hubs__business__create', created)).frames)).toBe(
       `Done: ${NEW_BUSINESS} is created.`,
+    );
+  });
+
+  it('reads the businesses first when asked to cancel the plan of one, then asks to cancel it by its id', () => {
+    const rows = JSON.stringify({ rows: [{ id: 'b0', name: 'Bar Lena' }, { id: 'b1', name: 'E2E Asistente Panel' }], total: 2 });
+    for (const [system, question] of [
+      [SPANISH, 'Cancela el plan de E2E Asistente Panel'],
+      [ENGLISH, 'Cancel the plan of E2E Asistente Panel'],
+    ] as const) {
+      expect(asked(answerTo([system, { role: 'user', content: question }]).frames)).toEqual({
+        name: 'hubs__business__list',
+        arguments: '{}',
+      });
+      expect(asked(answerTo(answered(system, question, 'hubs__business__list', rows)).frames)).toEqual({
+        name: 'billing__plan__cancel',
+        arguments: JSON.stringify({ hub_id: 'b1' }),
+      });
+    }
+  });
+
+  it("says it when the business whose plan it is told to cancel is not among the account's", () => {
+    const rows = JSON.stringify({ rows: [{ id: 'b0', name: 'Bar Lena' }], total: 1 });
+    const answer = answerTo(answered(ENGLISH, 'Cancel the plan of E2E Asistente Panel', 'hubs__business__list', rows));
+
+    expect(asked(answer.frames)).toBeNull();
+    expect(said(answer.frames)).toBe('You have no business called E2E Asistente Panel.');
+  });
+
+  it('says the plan was not cancelled when the person said no', () => {
+    const refused = JSON.stringify({ error: { code: 'base.assistant_not_confirmed', message: 'Not confirmed.' } });
+    const question = 'Cancela el plan de E2E Asistente Panel';
+
+    expect(said(answerTo(answered(SPANISH, question, 'billing__plan__cancel', refused)).frames)).toBe(
+      'No he cancelado el plan: no ha cambiado nada.',
+    );
+    expect(said(answerTo(answered(ENGLISH, question, 'billing__plan__cancel', refused)).frames)).toBe(
+      'I did not cancel the plan: nothing changed.',
     );
   });
 
@@ -122,6 +186,33 @@ describe('startProvider', () => {
     expect(text.trim().endsWith('data: [DONE]')).toBe(true);
     expect(text).toContain('Hello, I am the test assistant.'.slice(0, 10));
     expect(provider.seen.map((request) => request.path)).toEqual(['/v1/models', '/v1/chat/completions']);
+  });
+
+  it('transcribes a dictation sent as a form, as the gateway sends the audio, and remembers it', async () => {
+    const provider = await startProvider(0);
+    close = provider.close;
+    const form = new FormData();
+    form.set('model', 'whisper-1');
+    form.set('file', new Blob([new Uint8Array([0x1a, 0x45, 0xdf, 0xa3])], { type: 'audio/webm' }), 'dictation.webm');
+
+    const answer = await fetch(`${provider.url}/audio/transcriptions`, { method: 'POST', body: form });
+
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toEqual({ text: DICTATION });
+    expect(provider.seen.map((request) => request.path)).toEqual(['/v1/audio/transcriptions']);
+  });
+
+  it('plays the search as Brave does: GET, its answer under web.results, and remembers what it was asked', async () => {
+    const provider = await startProvider(0);
+    close = provider.close;
+    const origin = provider.url.replace(/\/v1$/, '');
+
+    const answer = await fetch(`${origin}/res/v1/web/search?q=ley&search_lang=es&country=ES`);
+
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toMatchObject({ type: 'search', web: { results: [{ title: 'BOE', url: LONG_ADDRESS }] } });
+    expect(provider.seen).toEqual([{ path: '/res/v1/web/search', query: 'q=ley&search_lang=es&country=ES', body: null }]);
+    expect((await fetch(`${origin}/res/v1/web/search`, { method: 'POST', body: '{}' })).status).toBe(404);
   });
 
   it('answers 404 to a path it does not serve', async () => {

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:9921279adfc56b09fa3f6659e1a87c0930c017d329f63afd8a137b0c07ea08bc -->
+<!-- generated from WORKBOOK.md sha256:46a9e6ad5d4dab30d907a81e146a40321abe6694a8ba19c1ab26abe4dac16b80 -->
 
 ## What it is for and who it is for
 
@@ -8,7 +8,8 @@ as it came, keeping nothing. There are two ways:
 
 - **With ERPlora's seal**: ERPlora presents on behalf of the business thanks to the authorisation the business
   signs (Anexo I of Agreement 17, the "grant of direct representation") and that a person of ERPlora reviews.
-  Without an approved authorisation, the seal is not used for that business.
+  Without an approved authorisation, the seal does not present for that business in production; in the AEAT's
+  test environment it is not needed, and the business tries VeriFactu while ERPlora reviews its authorisation.
 - **With the business's own certificate**: the certificate lives in the database of its Hub and only passes
   through the gateway during each submission; ERPlora does not keep it.
 
@@ -104,12 +105,12 @@ Actor: system (the business's Hub)
 Screen: none
 Steps:
 1. The Hub sends the gateway the envelope already signed and validated, with the business, its tax ID, the environment (test or production) and the way: ERPlora's seal or the business's own certificate, which travels in that submission only.
-2. Before touching the AEAT, the gateway checks that the business exists, that the envelope only names that taxpayer, that the production environment is only asked from the production deployment and, through ERPlora, that the business has its approved authorisation and that it is of the same tax ID.
+2. Before touching the AEAT, the gateway checks that the business exists, that the envelope only names that taxpayer, that the production environment is only asked from the production deployment and, through ERPlora, in production, that the business has its approved authorisation and that it is of the same tax ID. In the test environment the authorisation is not asked for (nobody presents on anybody's behalf there): a new business reaches the AEAT's test environment from its first ticket, and no business presents with ERPlora's tax ID.
 3. It presents the envelope to the AEAT door that applies (the one for entity seals or the holder's) with a secure connection with the certificate, and returns the AEAT's answer as it came.
 4. With the same door, the Hub queries what the AEAT already has, or tests whether it could present now and with which certificate, without sending anything.
 In: the Hub's envelope, the business, the tax ID, the environment, the way and, through its own way, the business's certificate with its password.
 Out: the AEAT's answer as it came (the Hub interprets it); in the connection test, whether it is ready and with which certificate.
-If it fails: every refusal says why and comes before touching the AEAT: unknown business, tax ID that does not match, authorisation not approved, no seal, no certificate, invalid or expired certificate, or production from a deployment that is not. The gateway waits at most 5 s to connect to the AEAT and 30 s for its answer, and never more than 41 s in all, less than the Hub waits for it, so the Hub always hears from the gateway before giving up; without an answer from the AEAT, the Hub knows whether the submission may have arrived or not so as not to repeat it blindly; with too many submissions at once, it asks it to retry. If the gateway's server cannot read its trusted certificates (`SSL_CERT_FILE` points to a file that does not exist or holds none), nothing leaves for the AEAT: the gateway says so naming the variable and the file, the Hub keeps the record and retries it without duplicating it, and the connection test comes out as not ready with that reason. The business's certificate is never kept nor appears in a log or in an error.
+If it fails: every refusal says why and comes before touching the AEAT: unknown business, tax ID that does not match, authorisation not approved (in production only), no seal, no certificate, invalid or expired certificate, or production from a deployment that is not. The gateway waits at most 5 s to connect to the AEAT and 30 s for its answer, and never more than 41 s in all, less than the Hub waits for it, so the Hub always hears from the gateway before giving up; without an answer from the AEAT, the Hub knows whether the submission may have arrived or not so as not to repeat it blindly; with too many submissions at once, it asks it to retry. If the gateway's server cannot read its trusted certificates (`SSL_CERT_FILE` points to a file that does not exist or holds none), nothing leaves for the AEAT: the gateway says so naming the variable and the file, the Hub keeps the record and retries it without duplicating it, and the connection test comes out as not ready with that reason. The business's certificate is never kept nor appears in a log or in an error.
 Involved: the Hub (VERIFACTU-F15 sends, VERIFACTU-F27 queries, VERIFACTU-F10 tests the connection), FISCAL-F01 (the seal), FISCAL-F05 (the approved authorisation)
 
 ### FISCAL-F03 Keep the authorisation's documents encrypted

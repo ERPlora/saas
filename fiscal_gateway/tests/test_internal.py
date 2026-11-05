@@ -8,10 +8,12 @@ and is never kept nor logged. The AEAT's answer goes back as it came; the refusa
 envelope ``{"error": {"code", "message"}}``. Only the AEAT's preproduction is ever reached, through
 ``respx``.
 
-The gateway presents for a business it knows only (``hub_unknown``), and through ERPlora's seal only
-for the taxpayer of the business's approved authorisation (``fiscal.RepresentationGrant``). The one
-exception is the platform's hub (``PLATFORM_HUB_SLUG``, no business of the SaaS): ERPlora's own records,
-in its own name, for the seal's holder only.
+The gateway presents for a business it knows only (``hub_unknown``), and through ERPlora's seal in
+production only for the taxpayer of the business's approved authorisation (``fiscal.RepresentationGrant``).
+In the AEAT's testing environment nobody is represented, so no authorisation is asked for there (PLAN-SAAS
+round 2026-11-03l; ADR-0360 of the old product). The one exception is the platform's hub
+(``PLATFORM_HUB_SLUG``, no business of the SaaS): ERPlora's own records, in its own name, for the seal's
+holder only; ERPlora's own NIF is that hub's alone in both environments.
 """
 
 import io
@@ -517,7 +519,7 @@ def test_a_purged_business_is_unknown(client, respx_mock, erplora_seal, business
 def test_without_an_authorisation_erplora_does_not_present_for_a_customer(
     client, respx_mock, erplora_seal, door
 ):
-    response = call(client, door, customer())
+    response = call(client, door, customer(environment="production"))
 
     assert error_of(response) == (409, "representation_not_approved")
     assert response.json()["error"]["message"]
@@ -530,7 +532,7 @@ def test_an_authorisation_not_in_force_is_not_enough(
 ):
     make_grant(business, status=status, taxpayer_tax_id=CUSTOMER)
 
-    response = call(client, "submit", customer())
+    response = call(client, "submit", customer(environment="production"))
 
     assert error_of(response) == (409, "representation_not_approved")
     assert not respx_mock.calls
@@ -542,7 +544,7 @@ def test_an_approval_of_another_business_is_not_enough(
     other = Hub.objects.create(slug="bar-paco", name="Bar Paco", country="ES")
     make_grant(other, status="approved", taxpayer_tax_id=CUSTOMER)
 
-    response = call(client, "submit", customer())
+    response = call(client, "submit", customer(environment="production"))
 
     assert error_of(response) == (409, "representation_not_approved")
     assert not respx_mock.calls
@@ -554,7 +556,7 @@ def test_an_approval_for_another_taxpayer_is_a_nif_mismatch(
     make_grant(business, status="approved", taxpayer_tax_id="B99999999")
 
     with caplog.at_level(logging.DEBUG):
-        response = call(client, "submit", customer())
+        response = call(client, "submit", customer(environment="production"))
 
     assert error_of(response) == (409, "nif_mismatch")
     assert not respx_mock.calls
@@ -603,7 +605,20 @@ def test_a_business_declaring_erploras_nif_needs_an_authorisation_too(
     client, respx_mock, erplora_seal
 ):
     """Only the platform's hub presents in ERPlora's name: a customer's hub never gets the seal for it."""
-    response = call(client, "submit", payload(hub=HUB))
+    response = call(client, "submit", payload(hub=HUB, environment="production"))
+
+    assert error_of(response) == (409, "representation_not_approved")
+    assert not respx_mock.calls
+
+
+def test_no_authorisation_covers_erploras_own_nif_for_a_business(
+    client, respx_mock, erplora_seal, business
+):
+    """Even an approved one naming ERPlora as the taxpayer: in production too, ERPlora's own NIF is the platform's
+    hub's alone (saas#2524)."""
+    make_grant(business, status="approved", taxpayer_tax_id=ISSUER)
+
+    response = call(client, "submit", payload(hub=HUB, environment="production"))
 
     assert error_of(response) == (409, "representation_not_approved")
     assert not respx_mock.calls
@@ -614,7 +629,7 @@ def test_a_business_declaring_erploras_nif_with_an_authorisation_of_its_own_is_a
 ):
     make_grant(business, status="approved", taxpayer_tax_id=CUSTOMER)
 
-    response = call(client, "submit", payload(hub=HUB_SLUG))
+    response = call(client, "submit", payload(hub=HUB_SLUG, environment="production"))
 
     assert error_of(response) == (409, "nif_mismatch")
     assert not respx_mock.calls
@@ -651,7 +666,7 @@ def test_the_own_route_needs_no_authorisation(client, respx_mock):
 def test_probe_through_erplora_without_an_authorisation_is_not_ready(
     client, respx_mock, erplora_seal
 ):
-    response = call(client, "probe", probe_body(customer()))
+    response = call(client, "probe", probe_body(customer(environment="production")))
 
     assert response.status_code == 200
     assert response.json()["ready"] is False
@@ -664,9 +679,78 @@ def test_probe_through_erplora_with_an_approved_authorisation_is_ready(
 ):
     make_grant(business, status="approved", taxpayer_tax_id=CUSTOMER)
 
-    response = call(client, "probe", probe_body(customer()))
+    response = call(client, "probe", probe_body(customer(environment="production")))
 
     assert response.json()["ready"] is True
+
+
+# In the AEAT's testing environment nobody is represented: no authorisation is asked for there
+
+
+@pytest.mark.parametrize("door", ["submit", "query"])
+def test_in_testing_erplora_presents_for_a_customer_without_an_authorisation(
+    client, respx_mock, erplora_seal, door
+):
+    """FISCAL-F02: a new business tries VeriFactu before its Anexo I is signed and approved, and its records reach
+    the AEAT's testing environment through ERPlora's seal, as its Hub sends them."""
+    route = respx_mock.post(PRE_SEAL).respond(200, text=ANSWER)
+
+    response = call(client, door, customer())
+
+    assert response.status_code == 200
+    assert route.calls.last.request.content == CUSTOMER_SENT.encode("utf-8")
+
+
+@pytest.mark.parametrize(
+    ("status", "taxpayer"),
+    [
+        ("submitted", CUSTOMER),
+        ("returned", CUSTOMER),
+        ("revoked", CUSTOMER),
+        ("approved", "B99999999"),
+    ],
+)
+def test_in_testing_the_authorisation_is_not_read(
+    client, respx_mock, erplora_seal, business, status, taxpayer
+):
+    """Under review, returned, withdrawn or for another taxpayer: none of it stops a testing presentation, as
+    none of it lets a production one through."""
+    make_grant(business, status=status, taxpayer_tax_id=taxpayer)
+    route = respx_mock.post(PRE_SEAL).respond(200, text=ANSWER)
+
+    response = call(client, "submit", customer())
+
+    assert response.status_code == 200
+    assert route.called
+
+
+def test_in_testing_a_business_never_presents_in_erploras_name(
+    client, respx_mock, erplora_seal
+):
+    """ERPlora's own NIF is the platform's hub's alone (saas#2524) in testing too: with no authorisation asked for
+    there, a business declaring it would file in ERPlora's own name."""
+    response = call(client, "submit", payload(hub=HUB, nif=ISSUER.lower()))
+
+    assert error_of(response) == (409, "nif_mismatch")
+    assert response.json()["error"]["message"]
+    assert not respx_mock.calls
+
+
+def test_probe_through_erplora_in_testing_is_ready_without_an_authorisation(
+    client, respx_mock, erplora_seal
+):
+    response = call(client, "probe", probe_body(customer()))
+
+    assert response.json() == {"ready": True, "detail": erplora_seal.describe()}
+    assert not respx_mock.calls
+
+
+def test_probe_of_a_business_declaring_erploras_nif_in_testing_is_not_ready(
+    client, erplora_seal
+):
+    response = call(client, "probe", probe_body(payload(hub=HUB)))
+
+    assert response.json()["ready"] is False
 
 
 def test_probe_of_a_business_the_saas_does_not_know_is_not_ready(client, erplora_seal):

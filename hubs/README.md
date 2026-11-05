@@ -42,17 +42,19 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 
 ## Lo que añadió L1-A2 (2026-10-14)
 
-- **Espejo del acceso**: `accounts.HubMembership` es solo el espejo de los miembros respondidos de cada negocio
-  que lee el salto (`issue_code`/`redeem_code`). Su **único escritor** es `services.sync_access` (guardarraíl AST
-  en `tests/test_access_mirror.py`); el admin de `accounts` lo enseña de solo lectura. `queries.verify_access_mirror()`
-  dice dónde discrepan y el check `hubs.W001` (`hubs/checks.py`, de base de datos: `manage.py check --database
-  default` y `migrate`; aviso, nunca error; calla mientras falten migraciones) lo avisa.
+- **El acceso son los miembros** (saas#199): el salto (`issue_code`/`redeem_code`) entra a quien es miembro respondido
+  de un negocio que aún abre (`queries.access_of`, fuera `deleting` y `deleted`). `accounts` nunca importa `hubs`: lo
+  pregunta por su nombre, `hubs.member.list_mine` (`accounts.queries.hub_roles_of`), sin ruta ni herramienta del
+  asistente. La copia que leía antes (`accounts.HubMembership`) salió del código en `accounts/0011` y su tabla, de la
+  base de datos en `accounts/0012` (saas#220). El salto se queda en `accounts`: moverlo (`/hub-login/`,
+  `/internal/auth/redeem`, `AuthExchangeCode`) no quitaba ninguna copia. Guardarraíl AST: `tests/test_access.py`.
 - **Personal en un negocio** (`hubs.W002`, W11b): el personal de ERPlora (`is_staff` o `is_superuser`) y los clientes
   nunca comparten cuenta. Las puertas lo impiden (`hubs.business.create`, `hubs.member.invite`/`resend` e
   `hubs.invitation.accept` responden 409 `hubs.platform_account`; `create_platform_user` y `User.clean`, es decir el
   formulario del admin, no hacen personal a quien está en un negocio). Lo que quede de antes lo nombra el check
   `hubs.W002` (`queries.staff_on_businesses`: miembro de un negocio no borrado, también en recuperación, o con una
-  invitación pendiente), de base de datos y aviso como `hubs.W001`, para no parar `migrate` ni el despliegue
+  invitación pendiente), de base de datos y aviso (`manage.py check --database default` y `migrate`; calla mientras
+  falten migraciones), para no parar `migrate` ni el despliegue
   (`--fail-level WARNING` lo vuelve fallo). Nada se apaga solo; se arregla a mano, cuenta por cuenta: si es del
   personal, se le quitan «Es del equipo» y «Estado de superusuario» en su página del admin (`/admin/accounts/user/<id>/change/`;
   bajar los flags siempre se guarda); si es cliente, se la saca del negocio (quitar al miembro o retirar la
@@ -63,8 +65,8 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   otra vez), `provision_requested_at` vacío (el SaaS nunca pidió aprovisionarlo), nombre = slug, país `ES`, idioma
   del propietario y suscripción Gratis si el plan está sembrado. Propietario: su `hub_owner` (el más antiguo; los
   demás pasan a `hub_admin`) o, si no hay, la pertenencia más antigua, ascendida. Un slug que no es de hub
-  (`live.slugs`) no abría nada: sus filas se borran. Después, el espejo de todos los negocios queda como lo deja
-  `sync_access`. Idempotente; la vuelta atrás conserva los negocios (son filas válidas del esquema anterior).
+  (`live.slugs`) no abría nada: sus filas se borran. Después, la copia de todos los negocios quedaba igual a sus
+  miembros. Idempotente; la vuelta atrás conserva los negocios (son filas válidas del esquema anterior).
 - **`demo_seed` vive en `hubs`** (`management/commands/demo_seed.py`): crea las cuentas (`accounts.services.
   seed_demo_customer`, `seed_demo_platform_admin`) y adopta `a` y `b` con `services.seed_demo_business`, igual que
   la migración.
@@ -117,6 +119,10 @@ Flujos en `WORKBOOK.md` (`HUBS-F01`…`HUBS-F14`, parte 1 de 4 de la migración;
   Resumen del negocio («En tus dispositivos»). Los filtros de las viejas se descartan.
 - **El país del alta** sale sugerido por los idiomas del navegador (`frontend/regions.ts`, `suggestedCountry`), entre
   los países que ERPlora sirve; si ninguno encaja, España.
+- **El nombre de un país en el servidor** son las `choices` de `Hub.country` y de `BillingProfile.billing_country`
+  (`countries.py`: `COUNTRY_NAMES` y `PAYER_COUNTRY_NAMES`, que suma el Reino Unido de un pagador; sin ORM, para que la web pública los lea): las leen la tarjeta del
+  asistente (`live.assistant.choice_label`, saas#217), el admin y `/compliance/`, con su español en el catálogo de `hubs`.
+  Las pantallas los nombran con `Intl`; `frontend/regions.test.ts` exige que ambos digan lo mismo.
 - **Planes**: los textos de cada plan (nombre, descripción, características, etiqueta) se escriben en inglés y en
   español en el admin. No hay API de escritura de planes para el personal: el admin es su única escritura (decisión
   de APP-HUBS-1, propuesta como ronda de PLAN-SAAS).
@@ -128,7 +134,7 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
 - **Cambiar la dirección web** (F16; PLAN-SAAS §1.1, ronda 2026-10-15b): `hubs.business.change_address`
   (`POST /api/hubs/businesses/address`, solo el propietario, `can.change_address`), validada como la valida el Hub
   (`live.slugs`). Sube `registry_version` (el Hub la registra con `PUT /internal/hubs/{id}`) y `state_version` (la
-  foto lleva el `slug`), y `sync_access(hub, previous_slug=…)` mueve el espejo del salto. La dirección que deja queda
+  foto lleva el `slug`); el salto sigue al negocio porque lee a sus miembros. La dirección que deja queda
   en `Hub.previous_slug` (migración `0015`): `queries.slug_taken`/`free_slug` la dan por cogida para los demás, así
   que nadie recibe los enlaces y QR viejos; se libera cuando la dirección vuelve a cambiar. Evento
   `hubs.business.address_changed`. Panel: «Cambiar dirección» en Ajustes (`AddressDialog.vue`).
@@ -247,15 +253,27 @@ Parte 5 de 5: cada flujo `hecho` contra su código, con mutantes ejecutados; los
   `collect_hub_usage` (arriba, en L4-A, y PLAN-SAAS §27).
 - Lo que queda fuera, con su issue: `WORKBOOK.md`, «Lo que queda fuera».
 
+## Lo que añadió saas#195 (2026-11-04): el dominio propio, el servidor
+
+Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»). Lo que hay que saber para tocarlo:
+
+- `hubs.custom_domain.request` y `.remove` (solo el propietario), `.get` (administrador; también la API de claves), y
+  `.record`, sin herramienta, lo único por donde escribe la comprobación. Rutas: `GET`/`POST /api/hubs/businesses/custom-domain`
+  y `POST …/custom-domain/remove`. Códigos: `hubs.custom_domains_off`, `hubs.custom_domain_not_in_plan` y
+  `_exists`/`_taken` (409); `_invalid`, `_ours`, `_apex`, `_unregistered` (422, con el campo `domain`).
+- **Variables** (`config/settings.py`; las da `aws`, `custom_domains.tf`): `CUSTOM_DOMAINS_ENABLED`, `CUSTOM_DOMAINS_LISTENER_ARN`,
+  `CUSTOM_DOMAINS_TARGET_TEMPLATE` y `CUSTOM_DOMAINS_MAX_CERTIFICATES`. Ausente o en `false`: ninguna llamada a AWS ni al
+  DNS, sin métrica, y un dominio que hubiera se queda como está; encendida sin las otras, no arranca.
+- **`check_custom_domains`** corre cada hora en `saas-cron`. Sale con error solo si un dominio rompe o la métrica no se
+  publica: AWS, el DNS o el Hub caídos no son error, porque vuelven y la siguiente pasada reintenta.
+- **Pedir el dominio llama a AWS dentro de la transacción**, para que dominio y certificado lleguen juntos. Si hace
+  rollback, queda en ACM un certificado gratis, etiquetado y en ningún listener.
+- **En los tests**, AWS es el `Stubber` de botocore por `aws_edge` (`tests/conftest.py`): sus errores son `BotoCoreError` y
+  `edge_client` los convierte en `EdgeUnavailable`, así que `StrictStubber` los recuerda y hace caer el test. Sin eso, una
+  llamada inesperada pasaría por AWS caído.
+
 ## Pendiente (lotes siguientes)
 
-- **Retirar `accounts.HubMembership`**, en este orden: (1) el salto pasa a `hubs` (`/hub-login/`,
-  `issue_code`/`redeem_code`, `AuthExchangeCode` con `destination_hub`, `/internal/auth/redeem`) y lee `HubMember`
-  de negocios abiertos; (2) `accounts.queries.hub_slugs_of`/`hubs_with_members` (página «Hubs» del admin) leen
-  `HubMember` (`create_platform_user` ya lo lee por `hubs.business.list`, W11b: solo le sobra mirar el espejo); (3) `queries.slug_taken`/`free_slug` dejan de mirar el espejo; (4) se
-  quitan `sync_access`, `verify_access_mirror`, el check `hubs.W001` y el guardarraíl; (5) migración que borra
-  `HubMembership` (y su inline y su admin). `tests/e2e/panel/panel_seed.py` escribe hoy el espejo a mano: que llame a
-  `sync_access` (carril front). Sigue pendiente: saas#199.
 - El Hub (carril Hub): verificar la v2 y los dos secretos en su `/internal`, firmar con v2 su canje, y adoptar por
   `id` los negocios que le llegan en la foto (los `a`/`b` adoptados aquí traen un UUID nuevo). Cuando los dos lados
   firmen v2, dejar de aceptar llamadas solo v1. `aws-next`: añadir `INTERNAL_SHARED_SECRET_PREVIOUS` (vacío) al

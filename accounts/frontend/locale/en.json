@@ -35,6 +35,7 @@
       "backToHub": "Back to the hub",
       "contactSupport": "Contact Support",
       "backToSignIn": "Back to sign in",
+      "signIn": "Sign in",
       "invalidHub": {
         "title": "Invalid sign-in link",
         "badge": "400 · Invalid link",
@@ -64,6 +65,18 @@
         "badge": "429 · Too many attempts",
         "heading": "Too many attempts",
         "message": "You have opened your businesses too many times in a few minutes. Wait a few minutes and open your business again."
+      },
+      "invalidPass": {
+        "title": "Invalid link",
+        "badge": "400 · Invalid link",
+        "heading": "This link from your business is not valid",
+        "message": "We couldn't check where it came from, so we didn't sign you in. Go back to your business and tap the button again, or sign in with your account."
+      },
+      "passExpired": {
+        "title": "Link expired",
+        "badge": "410 · Link expired",
+        "heading": "This link from your business has expired",
+        "message": "For your security, links from your business to erplora.com work only once and for one minute. Sign in to go on, or tap the button in your business again."
       }
     },
     "verifyEmail": {
@@ -312,7 +325,7 @@
         "languageHint": "Also the language of the mails we send you.",
         "mails": "Email notices",
         "invoices": "Security, invoices and payments",
-        "invoicesHint": "Always on: sign-in codes, security notices, invoices, payments and anything that needs you to act.",
+        "invoicesHint": "Always on: sign-in codes, security notices, invoices, payments, the messages you have left with the assistant and anything that needs you to act.",
         "hubAlerts": "Business notices",
         "hubAlertsHint": "When a business of yours is ready to open."
       },

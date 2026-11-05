@@ -9,7 +9,7 @@
 
   Variables: message (plain text) or message_template (a template); heading; tone `info`
   (default), `success`, `warning`, `danger` or `neutral` (each with its icon); actions_template (a
-  template with ion-buttons, beside the text on desktop and under it on a phone).
+  template with buttons, beside the text on desktop and under it on a phone).
 {% endcomment %}
 <div class="ep-inline-feedback ep-inline-feedback--{{ tone|default:'info' }}" role="status">
     <span class="ep-inline-feedback__icon">{% if tone == 'success' %}{% icon "checkmark-circle-outline" %}{% elif tone == 'warning' %}{% icon "warning-outline" %}{% elif tone == 'danger' %}{% icon "alert-circle-outline" %}{% else %}{% icon "information-circle-outline" %}{% endif %}</span>

@@ -6,7 +6,8 @@ body-only v1), records every call and answers what the test asks for, with the H
 
 - ``PUT /internal/hubs/{id}`` → 202 (asynchronous sign-up: «requested»), 200 once it is known;
 - ``PUT /internal/hubs/{id}/state`` → 200, ``applied`` false for a version not newer than the last
-  one applied (the Hub ignores an older snapshot, §2.2);
+  one applied (the Hub ignores an older snapshot, §2.2); 422 ``internal.payload_invalid`` for a ``custom_domain`` the
+  Hub would refuse, which refuses the whole snapshot;
 - ``GET /internal/hubs/{id}`` → 200 with the registry's status (a demo's too: ``requested`` until the test says
   ``ready``, ``expired`` once it ended), 404 for a hub it never got;
 - ``GET /internal/hubs/{id}/dumps`` → 200 ``{"available": bool, "dumps": [...]}``: the copies of ``dumps[id]`` as the
@@ -38,10 +39,15 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qs, urlsplit
 from dataclasses import dataclass, field
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from typing import Any
 
+from django.core.exceptions import ValidationError
+from django.core.validators import DomainNameValidator
+from django.http.request import validate_host
+
 from accounts.signing import SIGNATURE_V2_HEADER, verify_signed
+from base.tests.quiet_server import QuietServer
 
 HUB_PATH = re.compile(
     r"^/internal/hubs/(?P<id>[0-9a-f-]{36})(?P<rest>/state|/restore|/dumps)?$"
@@ -49,6 +55,22 @@ HUB_PATH = re.compile(
 DEMO_CODES_PATH = re.compile(r"^/internal/demos/(?P<slug>[a-z0-9-]+)/codes$")
 #: How long a demo of the double lives, as the Hub's ``DEMO_TTL_MINUTES``.
 DEMO_MINUTES = 60
+
+
+def _hub_takes_this_domain(domain: Any) -> bool:
+    """``custom_domain`` as the Hub reads it (hub#812, ``base.schemas.custom_domain_of_photo``), which refuses the whole
+    snapshot over a bad one: the form it is written in, none of its own hosts."""
+    if domain is None or domain == "":
+        return True
+    if not isinstance(domain, str) or domain != domain.lower() or domain.endswith("."):
+        return False
+    try:
+        DomainNameValidator(accept_idna=False)(domain)
+    except ValidationError:
+        return False
+    if domain.rpartition(".")[2].isdigit():
+        return False
+    return not validate_host(domain, [".erplora.com", "hub.erplora.internal", ".localhost", "localhost", "127.0.0.1"])
 
 
 @dataclass
@@ -114,7 +136,7 @@ class HubDouble:
 
             do_GET = do_PUT = do_POST = do_DELETE = _handle
 
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server = QuietServer(("127.0.0.1", 0), Handler)
         self.thread = threading.Thread(
             target=self.server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True)
 
@@ -209,6 +231,8 @@ class HubDouble:
                 return 404, {"error": {"code": "not_found", "message": "Unknown hub."}}
             return 200, {"status": self.registry[hub_id]["status"]}
         if method == "PUT" and rest == "/state":
+            if not _hub_takes_this_domain((body or {}).get("custom_domain")):
+                return 422, {"error": {"code": "internal.payload_invalid", "message": "Not a domain."}}
             version = int((body or {}).get("version", 0))
             applied = version > self.versions.get(hub_id, 0)
             if applied:

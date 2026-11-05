@@ -22,7 +22,7 @@ def test_each_api_gets_its_client(kind, client):
     assert provider.base_url == "https://example.com"
 
 
-def test_the_clients_are_the_four_apis_of_a_provider():
+def test_the_clients_are_the_four_apis_of_a_provider_of_models():
     from assistant.models import AIProvider
 
     assert set(CLIENTS) == set(AIProvider.Kind.values)

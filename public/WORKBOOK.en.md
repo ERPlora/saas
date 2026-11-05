@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:41f2365b8d6e3784e06cddc87b9336ff69cc68c6b9b2502dd8109eb64f9a6f56 -->
+<!-- generated from WORKBOOK.md sha256:297292e1bf817c82a482e5a952924a5566bd263ac06cdc205d314f9140aa9756 -->
 
 ## What it is for and who it is for
 
@@ -264,8 +264,8 @@ Steps:
 3. The table of what one would pay separately lists only functions the apps cover and its total is the sum of its rows.
 In: nothing; the pages' text, checked against the product's apps.
 Out: nothing saved.
-If it fails: accounting, payroll, support tickets, TicketBAI, the 303, 390 and 347 tax returns, warehouses with lots and expiry dates and bank reconciliation are not advertised, because no app does them; the industries strip names the businesses served today (hospitality, retail, hair and beauty, professional services). The comparisons with other products may name what those do.
-Involved: none
+If it fails: accounting, payroll, support tickets, TicketBAI, the 303, 390 and 347 tax returns, warehouses with lots and expiry dates and bank reconciliation are not advertised, because no app does them; nor is an own domain, because no business can connect theirs yet (HUBS-F17, saas#195): neither the plans' cards nor their descriptions, Plans and prices or the terms of use name it; the industries strip names the businesses served today (hospitality, retail, hair and beauty, professional services). The comparisons with other products may name what those do.
+Involved: hubs (the copy of each plan; HUBS-F17)
 
 ### PUBLIC-F08 Read what the web says about security, data and availability
 Status: done
@@ -274,7 +274,7 @@ Screen: Security, Plans and prices, Home, About us
 Steps:
 1. The person reads what Security, the pricing FAQ, the home and About us say about access, data and availability.
 2. They read what works today: server sessions in secure cookies, a one-time code to enter the business, sign-in with Google, salted password hashing, encryption in transit and at rest, HTTPS only with TLS 1.2 or 1.3, AWS in Ireland with its web firewall, continuous backups recoverable to any moment of the last 14 days and high availability.
-3. To "Where is my data stored?" the answer is the European Union, with the exceptions of the assistant: its voice and its search, such as transcribing a voice dictation, and its backup provider if the European one is unavailable; and the link "Read the privacy policy". The home says that the assistant's language model is served from the European Union, not the whole assistant.
+3. To "Where is my data stored?" the answer is the European Union, with the exceptions of the assistant: its voice and its search fingerprints, such as transcribing a voice dictation, its backup provider if the European one is unavailable and what it searches the web for, which goes to Brave Search, in the United States; and the link "Read the privacy policy". The home says that the assistant's language model is served from the European Union, not the whole assistant.
 In: nothing; the pages' text, checked against the infrastructure and the privacy policy.
 Out: nothing saved.
 If it fails: no availability agreement with a percentage, 24/7 support, regular audits, penetration test reports, end-to-end encryption or sign-in with GitHub is promised, and never "your data never leaves the EU", which would contradict the privacy policy.
@@ -311,12 +311,12 @@ Status: done
 Actor: visitor
 Screen: Home, Plans and prices, Plan detail, Industries, Features, Compliance
 Steps:
-1. The person presses "Start free" (header, home, industries, features), "Get started" (paid plan cards) or "Get Started" (plan detail) on any page.
+1. The person presses "Start free" (header, home, industries, features), "Get started" (paid plan cards) or "Get Started" (plan detail) on any page. The button responds from the first moment, even if the page has not finished loading, and can be opened in another tab: it is a link, like every button of the public web that leads to another page.
 2. They reach erplora.com's sign-in screen, where the account is also created.
 3. They create the account and their business, which is born on the Free plan; the paid plan is chosen afterwards, from the panel.
 In: nothing: the button carries no parameters.
 Out: nothing on the web; the account and the business are created by the sign-up.
-If it fails: the free plan's card says "Start free" and a paid plan's "Get started", because every business starts on Free. Choosing a plan or an industry on the web does not preselect it at sign-up.
+If it fails: the free plan's card says "Start free" and a paid plan's "Get started", because every business starts on Free. Choosing a plan or an industry on the web does not preselect it at sign-up. On a phone, the header's links are in the three-bar menu, which opens from the first moment, even if the page has not finished loading or its script never arrives. With the menu open, the Tab key goes round inside it and the page behind cannot be reached until it closes, with the cross, the backdrop or Esc.
 Involved: accounts (the entrance and the sign-up), hubs (the business on Free)
 
 ### PUBLIC-F12 Reach a "coming soon" page or a retired address
@@ -417,7 +417,7 @@ Actor: visitor
 Screen: Cookie notice and Cookie preferences
 Steps:
 1. While the web does not measure visits, it only sets the technical cookies (the session, the forms' protection, the language, the theme and the cookie choice) and shows no notice: there is nothing to consent to.
-2. If measuring visits is turned on, every page shows the notice until the person chooses "Accept All", "Decline" or "Customize".
+2. If measuring visits is turned on, every page shows the notice until the person chooses "Accept All", "Decline" or "Customize". The phone menu, when opened, lies over the notice, so its buttons show and can be pressed; when it closes, the notice is still there.
 3. "Cookies" in the footer opens "Cookie preferences": the "Essential cookies", "Always active", and each optional category ("Analytical cookies", "Marketing cookies") with its cookies and its switch; the choice lasts a year.
 4. Without accepting the analytical ones no measurement loads, and on the password and code screens it never does.
 In: the person's choice.
@@ -431,12 +431,12 @@ Actor: visitor
 Screen: Legal texts
 Steps:
 1. In the footer, "Legal Notice", "Privacy" and "Terms" open each text on its own page; the cookie policy opens from the privacy policy.
-2. The privacy policy names who the data is entrusted to: Amazon Web Services in the Ireland region for hosting and email, the assistant's language model in Frankfurt, without training on it, and OpenAI for the assistant's voice and search: it transcribes the audio of a dictation, which neither the hub nor ERPlora keeps, and may process it outside the European Economic Area.
-3. The terms give the numbers the product keeps: the days of the exit package, the days a suspended business waits before it is deleted and the trial of the plans on sale (none if none has one).
+2. The privacy policy names who the data is entrusted to: Amazon Web Services in the Ireland region for hosting and email, the assistant's language model in Frankfurt, without training on it, and OpenAI for the assistant's voice and search fingerprints: it transcribes the audio of a dictation, which neither the hub nor ERPlora keeps, and may process it outside the European Economic Area. Apart from those processors, it names Brave Search, in the United States, which receives the queries of the assistant's web search and keeps them for up to 90 days: its data processing addendum leaves them out and the Standard Contractual Clauses do not cover them. An answer is read aloud by the device's own voice (the browser's or the system's): its text never leaves it.
+3. The terms give the numbers the product keeps: the days of the exit package, the days a suspended business waits before it is deleted and the trial of the plans on sale (none if none has one). Their acceptable use forbids keeping, redistributing or training on the web results the assistant brings, as its provider's terms ask.
 In: the plans on sale (the terms).
 Out: nothing saved.
-If it fails: no text names a provider no longer used or another hosting, nor keeps quiet about where the audio of a dictation goes, nor promises EU residency or a retention period for it, nor a consent or a switch for the assistant that the hub does not have (the assistant is used when someone in the hub writes or dictates to it, with the messages the plan gives), and no link between texts leads to a page that does not exist.
-Involved: hubs (the plans)
+If it fails: no text names a provider no longer used or another hosting, nor keeps quiet about where the audio of a dictation goes, nor promises EU residency or a retention period for it, nor promises that a web query never carries personal data (that is a rule given to the model, not a guarantee), nor a consent or a switch for the assistant that the hub does not have (the assistant is used when someone writes or dictates to it: in the hub, with the messages the plan gives; in erplora.com's panel, with the account's), and no link between texts leads to a page that does not exist.
+Involved: hubs (the plans), ASSISTANT-F14
 
 ### PUBLIC-F21 Check the responsible declaration of the invoicing system
 Status: done
@@ -509,7 +509,7 @@ Screen: Legal texts
 Steps:
 1. In the installed app (and in the account the app opens in the browser), the sign-in screen and the email check screen link the terms and the privacy policy.
 2. Pressing one opens the text as an app's viewer does: only the text and "Back", without the web's menu, footer or sign-up buttons.
-3. The texts that one links open the same way while the app's session lasts; "Back" leads to the app screen that opened it, or to its start if the text was opened alone.
+3. The texts that one links open the same way while the app's session lasts; "Back" leads to the app screen that opened it, or to its start if the text was opened alone. "Back" responds from the first moment: pressed before the page has finished loading, it leads to the app's start.
 In: which part of the app opens it.
 Out: the app mark in that window's session.
 If it fails: inside the app the cookie notice does not show and no measurement loads, even if they were accepted on the web; a mark the web does not know is treated as the web.
@@ -614,12 +614,12 @@ Actor: system
 Screen: none
 Steps:
 1. As soon as its hour has passed, the demo's address answers "This demo has ended", even if nobody has retired it yet.
-2. Every minute, the hub retires the demos that ran out: it deletes each one's data (every demo has its own database, which is deleted whole without touching any other business's), their entry codes, their user "Demo" and their access, and marks them retired; a failure in one does not stop the others.
+2. Every minute, the hub retires the demos that ran out: it deletes each one's data (every demo has its own database, which is deleted whole without touching any other business's), the files uploaded inside it (photos, for example) without touching any other business's, their entry codes, their user "Demo" and their access, and marks them retired; a failure in one does not stop the others.
 3. A demo that was still being prepared when it ended is retired all the same, without finishing its preparation.
 4. After a few days, the retired address stops existing altogether.
 In: the demos whose hour has passed.
-Out: the retired demo, without its data, with no user and no way in. The files uploaded inside the demo (photos, for example) are not deleted yet, but nobody can open them from ERPlora any more.
-If it fails: if retiring one fails, it is tried again later, with a longer wait each time; meanwhile its address already says it has ended.
+Out: the retired demo, without its data or its files, with no user and no way in.
+If it fails: if retiring one fails, also when the store does not delete its files, it does not count as retired and it is tried again later, with a longer wait each time; meanwhile its address already says it has ended.
 Involved: the Hub (its registry of hubs and its background process)
 
 ### PUBLIC-F35 From the demo to a real account

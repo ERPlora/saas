@@ -21,6 +21,8 @@ LIVE = {
     # The usage of a business (L4-A): re-run by the nightly collection.
     "hubs.usage.get",
     "hubs.usage.series",
+    # A business's own domain (HUBS-F17): re-run by the hourly check.
+    "hubs.custom_domain.get",
 }
 
 
@@ -90,6 +92,7 @@ def inputs(hub_id):
         "hubs.invitation.list_mine": InvitationListIn(),
         "hubs.usage.get": UsageGetIn(business_id=hub_id),
         "hubs.usage.series": UsageSeriesIn(business_id=hub_id),
+        "hubs.custom_domain.get": ByIdIn(id=hub_id),
     }
 
 

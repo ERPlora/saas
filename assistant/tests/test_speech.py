@@ -1,30 +1,39 @@
 """ASSISTANT-F21 (ASSISTANT-G56, G12, G20) · Transcribe a dictation, and ASSISTANT-F22 (G57) · read an answer aloud.
 
 The Hub sends the audio of the person's dictation (``POST /internal/speech/transcribe``: base64, its type and,
-optionally, its language) and gets the text, which it leaves in the assistant's box for the person to check; it sends
-an answer (``POST /internal/speech/synthesize``) and gets it spoken, as an mp3. Both through the Hub, signed: the old
-product took the dictation only with the session of a person with an erplora.com account, so whoever entered with a
-PIN could not dictate (SAAS_ASSISTANT-F19, «parcial»). With the key of the services' provider (of OpenAI's API) kept in
-the admin and rotatable, never the old ``OPENAI_API_KEY`` of the environment. Neither spends messages; each door has
-its own budget per business, spent after the signature (saas#2531), and what is dictated never reaches a log (the old
-one kept its first 50 characters). Cases of the old ``speech/tests/test_synthesize.py``; OpenAI is the local fake.
+optionally, its language) and gets the text, which it leaves in the assistant's box for the person to check. It goes to
+the services' provider (OpenAI's API), with its key kept in the admin and rotatable: the old product took the dictation
+only with the session of a person with an erplora.com account, so whoever entered with a PIN could not dictate
+(SAAS_ASSISTANT-F19, «parcial»).
+
+No engine reads an answer aloud (PLAN-SAAS round 2026-11-04c): ``POST /internal/speech/synthesize`` answers 503
+``assistant.speech_unavailable`` and the caller reads with the device's voice. What the door keeps for an engine (the
+text and its voice to an mp3, the cut, the count, the failures) is held here with a stand-in. Neither door spends
+messages; each has its own budget per business, spent after the signature (saas#2531), and what is dictated or read
+never reaches a log (the old one kept its first 50 characters). Cases of the old ``speech/tests/test_synthesize.py``;
+OpenAI is the local fake.
 """
 
 import base64
 import logging
 
 import pytest
+from django.conf import settings as django_settings
 from django.test import Client
 
 from assistant import media
 from assistant.models import AssistantUsage
-from assistant.tests.conftest import API_KEY
+from assistant.tests.conftest import API_KEY, FakeSpeechEngine
 from assistant.tests.doors import door, error_code
+from config.tests.test_settings import PRODUCTION_ENV, _settings_in_a_fresh_process
 
 TRANSCRIBE = "/internal/speech/transcribe"
 SYNTHESIZE = "/internal/speech/synthesize"
 AUDIO = b"\x1aE\xdf\xa3 a few seconds of webm"
-MP3 = b"ID3\x04\x00 spoken words"
+MP3 = FakeSpeechEngine.MP3
+#: A voice of the catalogue that left: a caller that still names it hears what any other does.
+GONE = "es-ES-Ximena:DragonHDLatestNeural"
+
 
 pytestmark = pytest.mark.django_db
 
@@ -89,13 +98,17 @@ class TestTheDictation:
 
         assert "Rosalía" not in "\n".join(record.getMessage() for record in caplog.records)
 
-    @pytest.mark.parametrize(("status", "code"), [(401, "assistant.provider_rejected"), (500, "assistant.provider_unavailable")])
-    def test_a_failure_of_the_provider_is_a_502_with_its_code(self, client, internal, business, answering, fake_provider, status, code):
+    @pytest.mark.parametrize(
+        ("status", "code", "retriable"),
+        [(401, "assistant.provider_rejected", False), (500, "assistant.provider_unavailable", True)],
+    )
+    def test_a_failure_of_the_provider_is_a_502_with_its_code(self, client, internal, business, answering, fake_provider, status, code, retriable):
         fake_provider.reply("POST", "/v1/audio/transcriptions", status=status, json={"error": {"message": f"key {API_KEY}"}})
 
         response = door(client, TRANSCRIBE, dictation(business))
 
         assert (response.status_code, error_code(response)) == (502, code)
+        assert response.json()["error"]["retriable"] is retriable
         assert API_KEY not in response.content.decode()
 
     def test_without_the_services_provider_it_is_503(self, client, internal, business, answering, settings):
@@ -106,71 +119,156 @@ class TestTheDictation:
         assert (response.status_code, error_code(response)) == (503, "assistant.provider_not_configured")
 
 
-class TestReadingAloud:
-    def test_the_text_comes_back_spoken_as_an_mp3(self, client, internal, business, answering, fake_provider):
-        fake_provider.reply("POST", "/v1/audio/speech", body=MP3)
+def test_nothing_of_azure_is_left_to_configure():
+    """The settings and the example of the environment name none of it: a key left in a secret is read by nothing."""
+    names = ("ASSISTANT_SPEECH_PROVIDER", "AZURE_SPEECH_KEY", "AZURE_SPEECH_REGION")
+    expression = f"[hasattr(s, name) for name in {names!r}]"
 
-        response = door(client, SYNTHESIZE, {"hub": business.slug, "text": "Tienes dos citas hoy.", "voice": "nova"})
+    left = _settings_in_a_fresh_process({**PRODUCTION_ENV, "AZURE_SPEECH_KEY": "left-in-a-secret"}, expression)
+
+    assert left.returncode == 0, left.stderr
+    assert left.stdout.strip() == str([False, False, False])
+    example = (django_settings.BASE_DIR / ".env.example").read_text(encoding="utf-8")
+    assert not [name for name in names if name in example]
+
+
+def reading(business, text: str = "Tienes dos citas hoy.", **extra) -> dict:
+    return {"hub": business.slug, "text": text, "language": "es", **extra}
+
+
+class TestWithoutAnEngine:
+    """erplora.com as it is: nothing reads aloud, and the caller reads with the device's voice."""
+
+    @pytest.mark.parametrize("voice", ["", GONE, "nova"])
+    def test_it_is_a_503_so_the_hub_reads_with_the_devices_voice(self, client, internal, business, caplog, voice):
+        response = door(client, SYNTHESIZE, reading(business, voice=voice))
+
+        assert (response.status_code, error_code(response)) == (503, "assistant.speech_unavailable")
+        assert response.json()["error"]["retriable"] is False
+        assert not AssistantUsage.objects.filter(hub=business).exists()
+        assert "assistant.media.no_speech_provider" in caplog.text
+
+    def test_what_it_was_asked_to_read_never_reaches_a_log(self, client, internal, business, caplog):
+        caplog.set_level(logging.DEBUG)
+
+        door(client, SYNTHESIZE, reading(business, text="Rosalía Quintanar debe 400 euros"))
+
+        assert "Rosalía" not in "\n".join(record.getMessage() for record in caplog.records)
+
+    def test_a_provider_named_as_the_old_voice_reads_nothing(self, client, internal, business, fake_provider):
+        """Only an engine reads aloud: no provider of the admin does, whatever its identifier and with its key."""
+        from assistant.models import AIProvider, AIProviderCredential
+
+        named = AIProvider.objects.create(slug="azure-speech", name="Azure", kind="openai", base_url=fake_provider.url)
+        AIProviderCredential.objects.create(provider=named, label="default", api_key=API_KEY, key_hint="wxyz")
+
+        response = door(client, SYNTHESIZE, reading(business))
+
+        assert (response.status_code, error_code(response)) == (503, "assistant.speech_unavailable")
+        assert fake_provider.requests == []
+
+    @pytest.mark.parametrize(
+        ("change", "field"),
+        [({"language": "fr"}, "language"), ({"language": ""}, "language"), ({"language": None}, "language"), ({"text": "   "}, "text")],
+    )
+    def test_what_is_no_reading_is_still_a_422_naming_its_field(self, client, internal, business, change, field):
+        body = {key: value for key, value in {**reading(business), **change}.items() if value is not None}
+
+        response = door(client, SYNTHESIZE, body)
+
+        assert (response.status_code, error_code(response)) == (422, "invalid_payload")
+        assert field in response.json()["error"]["fields"]
+
+
+class TestTheContractOfTheDoor:
+    """What an engine finds when it comes (PLAN-SAAS §35): the stand-in in its place."""
+
+    def test_the_text_comes_back_spoken_as_an_mp3(self, client, internal, business, speech_engine):
+        response = door(client, SYNTHESIZE, reading(business))
 
         assert response.status_code == 200
         assert response["Content-Type"] == "audio/mpeg"
         assert response.content == MP3
-        [asked] = fake_provider.requests
-        assert asked.body == {"model": media.SPEECH_MODEL, "voice": "nova", "input": "Tienes dos citas hoy.", "response_format": "mp3"}
+        assert speech_engine.calls == [("Tienes dos citas hoy.", "es", "")]
 
-    def test_an_unknown_voice_is_the_default_one(self, client, internal, business, answering, fake_provider):
-        fake_provider.reply("POST", "/v1/audio/speech", body=MP3)
+    @pytest.mark.parametrize(("language", "voice"), [("es", ""), ("en", ""), ("es", "a-voice"), ("en", "another")])
+    def test_it_reads_in_the_language_and_the_voice_asked(self, client, internal, business, speech_engine, language, voice):
+        assert door(client, SYNTHESIZE, reading(business, language=language, voice=voice)).status_code == 200
+        assert speech_engine.calls == [("Tienes dos citas hoy.", language, voice)]
 
-        door(client, SYNTHESIZE, {"hub": business.slug, "text": "Hola", "voice": "darth"})
+    def test_a_long_text_is_cut_to_what_is_read(self, client, internal, business, speech_engine):
+        door(client, SYNTHESIZE, reading(business, text="a" * (media.MAX_SPEECH_CHARS + 100)))
 
-        assert fake_provider.requests[0].body["voice"] == media.DEFAULT_VOICE
+        assert speech_engine.calls[0][0] == "a" * media.MAX_SPEECH_CHARS
 
-    def test_a_long_text_is_cut_to_what_the_provider_reads(self, client, internal, business, answering, fake_provider):
-        fake_provider.reply("POST", "/v1/audio/speech", body=MP3)
+    def test_at_most_the_first_4096_characters_are_read(self, client, internal, business, speech_engine):
+        """The number the manual gives (ASSISTANT-F22): the test above follows the constant, this one pins it."""
+        door(client, SYNTHESIZE, reading(business, text="a" * 5000))
 
-        door(client, SYNTHESIZE, {"hub": business.slug, "text": "a" * (media.MAX_SPEECH_CHARS + 100)})
+        assert len(speech_engine.calls[0][0]) == 4096
 
-        assert len(fake_provider.requests[0].body["input"]) == media.MAX_SPEECH_CHARS
-
-    def test_at_most_the_first_4096_characters_are_read(self, client, internal, business, answering, fake_provider):
-        """The number the manual gives (ASSISTANT-F22, step 2): the test above follows the constant, this one pins it."""
-        fake_provider.reply("POST", "/v1/audio/speech", body=MP3)
-
-        door(client, SYNTHESIZE, {"hub": business.slug, "text": "a" * 5000})
-
-        assert len(fake_provider.requests[0].body["input"]) == 4096
-
-    def test_the_characters_read_are_counted(self, client, internal, business, answering, fake_provider):
-        fake_provider.reply("POST", "/v1/audio/speech", body=MP3)
-
-        door(client, SYNTHESIZE, {"hub": business.slug, "text": "Hola"})
+    def test_the_characters_read_are_counted_and_spend_no_message(self, client, internal, business, speech_engine):
+        door(client, SYNTHESIZE, reading(business, text="Hola"))
 
         row = AssistantUsage.objects.get(hub=business)
         assert (row.messages, row.speech_characters) == (0, 4)
 
-    def test_an_empty_text_is_refused(self, client, internal, business, answering, fake_provider):
-        response = door(client, SYNTHESIZE, {"hub": business.slug, "text": "   "})
+    def test_what_is_counted_is_what_was_read_not_what_was_sent(self, client, internal, business, speech_engine):
+        door(client, SYNTHESIZE, reading(business, text="a" * 5000))
+
+        assert AssistantUsage.objects.get(hub=business).speech_characters == media.MAX_SPEECH_CHARS
+
+    @pytest.mark.parametrize("text", ["   ", "\n\t "])
+    def test_an_empty_text_is_refused_and_the_engine_hears_nothing(self, client, internal, business, speech_engine, text):
+        response = door(client, SYNTHESIZE, reading(business, text=text))
 
         assert (response.status_code, error_code(response)) == (422, "invalid_payload")
-        assert fake_provider.requests == []
+        assert "text" in response.json()["error"]["fields"]
+        assert speech_engine.calls == []
 
-    def test_a_failure_of_the_provider_is_a_502(self, client, internal, business, answering, fake_provider):
-        fake_provider.reply("POST", "/v1/audio/speech", status=503, json={"error": {"message": "busy"}})
+    def test_it_needs_no_services_provider_of_openai(self, client, internal, business, speech_engine, settings):
+        settings.ASSISTANT_SERVICE_PROVIDER = "nobody"
 
-        response = door(client, SYNTHESIZE, {"hub": business.slug, "text": "Hola"})
+        assert door(client, SYNTHESIZE, reading(business)).status_code == 200
 
-        assert (response.status_code, error_code(response)) == (502, "assistant.provider_unavailable")
+    @pytest.mark.parametrize(
+        ("retriable", "code"), [(False, "assistant.provider_rejected"), (True, "assistant.provider_unavailable")]
+    )
+    def test_a_failure_is_a_502_with_its_code_that_counts_nothing(self, client, internal, business, speech_engine, retriable, code):
+        speech_engine.failure = media.MediaFailed(retriable=retriable)
+
+        response = door(client, SYNTHESIZE, reading(business))
+
+        assert (response.status_code, error_code(response)) == (502, code)
+        assert response.json()["error"]["retriable"] is retriable
+        assert not AssistantUsage.objects.filter(hub=business).exists()
+
+    def test_what_is_read_never_reaches_a_log(self, client, internal, business, speech_engine, caplog):
+        caplog.set_level(logging.DEBUG)
+        door(client, SYNTHESIZE, reading(business, text="Rosalía Quintanar debe 400 euros"))
+        speech_engine.failure = media.MediaFailed(retriable=True)
+        door(client, SYNTHESIZE, reading(business, text="Rosalía Quintanar debe 400 euros"))
+
+        assert "Rosalía" not in "\n".join(record.getMessage() for record in caplog.records)
 
 
-def test_saas_2531_each_voice_door_has_its_own_budget_spent_after_the_signature(client, internal, business, answering, fake_provider, settings):
+def test_saas_2531_each_voice_door_has_its_own_budget_spent_after_the_signature(client, internal, business, answering, fake_provider, speech_engine, settings):
     settings.ASSISTANT_TRANSCRIBE_RATELIMIT = "1/h"
     settings.ASSISTANT_SYNTHESIZE_RATELIMIT = "1/h"
     fake_provider.reply("POST", "/v1/audio/transcriptions", json={"text": "Hola"}, always=True)
-    fake_provider.reply("POST", "/v1/audio/speech", body=MP3, always=True)
     for _ in range(3):
         door(client, TRANSCRIBE, dictation(business), signed=False)
+        door(client, SYNTHESIZE, reading(business, text="Hola"), signed=False)
 
     assert door(client, TRANSCRIBE, dictation(business)).status_code == 200
     assert error_code(door(client, TRANSCRIBE, dictation(business))) == "rate_limited"
-    assert door(client, SYNTHESIZE, {"hub": business.slug, "text": "Hola"}).status_code == 200
-    assert error_code(door(client, SYNTHESIZE, {"hub": business.slug, "text": "Hola"})) == "rate_limited"
+    assert door(client, SYNTHESIZE, reading(business, text="Hola")).status_code == 200
+    assert error_code(door(client, SYNTHESIZE, reading(business, text="Hola"))) == "rate_limited"
+    assert len(speech_engine.calls) == 1
+
+
+def test_without_an_engine_the_budget_of_the_door_still_brakes(client, internal, business, settings):
+    settings.ASSISTANT_SYNTHESIZE_RATELIMIT = "1/h"
+
+    assert error_code(door(client, SYNTHESIZE, reading(business))) == "assistant.speech_unavailable"
+    assert error_code(door(client, SYNTHESIZE, reading(business))) == "rate_limited"

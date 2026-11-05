@@ -29,7 +29,7 @@ solo sobre la cuenta que llama. Ninguna está expuesta a claves de API.
 | `accounts.apikey.list` (viva) | `GET /api/accounts/api-keys` | Claves no revocadas (las caducadas, marcadas) y el catálogo de `scopes` con su rótulo |
 | `accounts.apikey.create` | `POST /api/accounts/api-keys` (201) | Reautenticación; devuelve la clave entera **una vez** (`secret`) y avisa por correo a la cuenta (sin la clave) |
 | `accounts.apikey.revoke` | `POST /api/accounts/api-keys/revoke` | La corta al momento; dos veces no cambia nada |
-| `accounts.support.report` | `POST /api/accounts/support/report` | «Reportar un problema» (ACCOUNTS-F38): un correo en inglés a `SUPPORT_EMAIL` con «Reply-To» la cuenta, el texto y debajo la cuenta, sus negocios (`HubMembership`), de dónde llega (`From: Panel`), la página de la que viene y el navegador; 422 por campo, 429 `accounts.too_many_attempts` pasado `SUPPORT_REPORT_RATELIMIT` (5/h por cuenta), 503 `accounts.report_not_sent` si el correo no sale; no guarda nada ni registra el texto. El del menú de usuario del Hub entra por `POST /internal/support/report` (firmada v1 + v2 como `/internal/auth/redeem`; `internal.support_report` → `services.support_report_from_hub`): el mismo `services.send_support_report`, con el mismo límite por cuenta, más `From: Hub` y `Business: <slug> (<id>)`; 404 `accounts.unknown_account` (cuenta que no existe o está apagada) y 403 `accounts.not_a_member` (no es del negocio), sin correo |
+| `accounts.support.report` | `POST /api/accounts/support/report` | «Reportar un problema» (ACCOUNTS-F38): un correo en inglés a `SUPPORT_EMAIL` con «Reply-To» la cuenta, el texto y debajo la cuenta, sus negocios (los que abre, `hubs.member.list_mine`), de dónde llega (`From: Panel`), la página de la que viene y el navegador; 422 por campo, 429 `accounts.too_many_attempts` pasado `SUPPORT_REPORT_RATELIMIT` (5/h por cuenta), 503 `accounts.report_not_sent` si el correo no sale; no guarda nada ni registra el texto. El del menú de usuario del Hub entra por `POST /internal/support/report` (firmada v1 + v2 como `/internal/auth/redeem`; `internal.support_report` → `services.support_report_from_hub`): el mismo `services.send_support_report`, con el mismo límite por cuenta, más `From: Hub` y `Business: <slug> (<id>)`; 404 `accounts.unknown_account` (cuenta que no existe o está apagada) y 403 `accounts.not_a_member` (no es del negocio), sin correo |
 
 Eventos (`events.py`): `accounts.profile.updated`, `accounts.profile.deleted`, `accounts.email.change_requested`,
 `accounts.preferences.updated`, `accounts.session.closed`, `accounts.browser_trust.revoked`,
@@ -83,6 +83,10 @@ ningún rol tiene su permiso.
   NFKC, sin espacios y en minúsculas; «ana@ｅxample.com» es Ana, nunca otra cuenta, ERPlora/saas#1018) y el alta
   comprueba la contraseña contra su propio correo (headless la validaba sin cuenta y el validador de parecido
   no veía nada; saas#2542).
+- **El idioma de una cuenta nueva** (`AccountAdapter.new_user`, saas#289): el activo en la petición del alta, el que
+  ya resolvió `LocaleMiddleware` (la cookie de la web pública o `Accept-Language`). Google pasa por el mismo sitio:
+  `DefaultSocialAccountAdapter.new_user` llama al adaptador de cuentas, también al entrar con una cuenta que ya existe,
+  pero ese usuario nuevo se descarta sin guardarse. Después manda Preferencias (`AccountLanguageMiddleware`).
 - **La contraseña nueva nunca es la actual** (`AccountAdapter.clean_password`, saas#2612): en «Cambiar
   contraseña» y en el enlace de «¿Has olvidado tu contraseña?», `password_unchanged` debajo del campo. La página
   del enlace enseña la misma pista y fuerza que Cuenta (`frontend/password.ts`, contra el correo que devuelve
@@ -132,6 +136,14 @@ ningún rol tiene su permiso.
   sesiones, eliminar la cuenta o poner contraseña nueva (`password_changed/set/reset` de allauth; PLAN-SAAS
   §2.1) y `account_deleting(user_id)` antes de borrar la cuenta. Al cambiar el correo se envía `email_changed`
   de allauth. Los propietarios se leen con la operación `hubs.business.list` (por nombre, `can.delete`).
+- **El pase de vuelta desde el Hub** (`hub_pass.py`, `GET /hub-pass/?pass=…`, ACCOUNTS-F29; saas#190): el Hub
+  firma con `django.core.signing.dumps({"user", "hub", "next": "plan"|"business", "nonce"}, key=INTERNAL_SHARED_SECRET,
+  salt="erplora.hub-pass.v1")` y el SaaS solo comprueba (`signing.live_secrets`, nunca `SECRET_KEY`): vida
+  `HUB_PASS_MAX_AGE_SECONDS` (60 s), un solo uso (fila de `AuthExchangeCode` con audiencia `hub-pass` y el SHA-256 del
+  nonce; la purga nocturna la borra), solo cuenta activa, sin `is_staff`/`is_superuser` y miembro según
+  `hubs.business.list` (`services.hub_pass_member`). Errores en `/login/error`: `invalid_pass`, `not_a_member`,
+  `pass_expired&next=`. La sesión que abre no acepta los términos (`accept_legal_texts` lee `request.hub_pass`). El
+  lado del Hub (firmar al pulsar y los dos botones) es ERPlora/hub#716.
 - **Claves de API**: `erps_live_` + 48 base62 (se distinguen de las `erpk_live_` del Hub; plan §7 punto 12),
   SHA-256 y prefijo de 8 indexado; caducidad 30/90 días o nunca (90 por defecto); tope de 50 vivas por cuenta;
   `last_used_at` cada 10 min como mucho. Scopes `hubs.read`, `hubs.write`, `billing.read` (`<app>.read` abre
@@ -178,7 +190,7 @@ ningún rol tiene su permiso.
   `saas-cron` con sus valores por defecto: `anonymize-old-users-weekly` los lunes a las 00:35 UTC y
   `cleanup-old-logs-nightly` cada noche a las 00:45 UTC (`aws/stacks/prod/scheduler.tf`).
 - **Registro de auditoría** (F36): `django-auditlog` (`accounts/auditlog.py`, desde `AccountsConfig.ready`) sobre
-  `User` (sin `password` ni `last_login`), `HubMembership`, `ApiKey` (sin `key_hash` ni `last_used_at`) y
+  `User` (sin `password` ni `last_login`), `ApiKey` (sin `key_hash` ni `last_used_at`) y
   `allauth.usersessions.UserSession` (sin `session_key`, `data` ni `last_seen_at`), todos con
   `serialize_auditlog_fields_only` (trampa #957 del viejo). `AuditActorMiddleware` sustituye al de la librería: la
   dirección es `REMOTE_ADDR` (ya resuelta por `public.client_ip`, nunca el primer `X-Forwarded-For`) y el autor se
@@ -193,6 +205,11 @@ ningún rol tiene su permiso.
   `OssNotice`), `fiscal/auditlog.py` (autorización y sello, sin sus documentos cifrados), `hubs/auditlog.py` (planes,
   pagador, suscripción sin `unpaid_invoice_url` y sus partidas) y `apps/auditlog.py` (`Module`). Sin `updated_at`. El
   registro solo lee un registro fiscal: escribe su propia tabla, y `cleanup_old_logs` poda también estas entradas.
+- **Entradas de un modelo que ya no existe** (saas#220): `accounts.HubMembership` estaba auditado. Su tabla y sus permisos
+  se borraron en `accounts/0012`, pero su tipo de contenido se queda mientras una entrada lo nombre:
+  `auditlog.LogEntry.content_type` es `CASCADE`, y borrarlo se llevaría lo que `cleanup_old_logs` aún guarda. Ese mismo
+  comando lo borra con la última (`services.forget_the_retired_audit_type`). El admin las sigue enseñando, con el tipo
+  por su nombre interno y sin enlace. No se corre `remove_stale_contenttypes` en producción: se llevaría las entradas.
 
 ## Plataforma del SaaS (parte 5)
 

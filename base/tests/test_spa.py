@@ -1,13 +1,19 @@
 """The SPA's HTML: live.spa with base.session.me embedded next to spa-config, every script with the nonce.
 
 spa-config also tells the login page whether «Continue with Google» is configured
-(``googleEnabled``), the same switch that serves Google's routes (``accounts/google.py``).
+(``googleEnabled``), the same switch that serves Google's routes (``accounts/google.py``), and the panel's assistant
+whether erplora.com has a voice of its own to read the answers aloud (``assistantSpeech``, ASSISTANT-F22): only then
+does the chat offer its voices and ask ``POST /api/assistant/speak``; without it, it reads in the device's voice and
+never makes that trip.
 """
 
 import json
 import re
 
 import pytest
+
+from assistant.models import AIProvider, AIProviderCredential
+from assistant.tests.conftest import fernet_key  # noqa: F401 - the credentials' key, autouse
 
 pytestmark = [pytest.mark.django_db, pytest.mark.usefixtures("spa_manifest")]
 
@@ -289,3 +295,29 @@ def test_every_page_of_the_spa_still_gets_the_shell_and_its_csrf_cookie(client, 
         response = client.get(path, HTTP_HOST=HOST, HTTP_ACCEPT=accept)
         assert response.status_code == 200 and is_the_shell(response), path
         assert settings.CSRF_COOKIE_NAME in response.cookies, path
+
+
+class TestTheAssistantsVoice:
+    """``assistantSpeech``: whether something reads aloud (``assistant.media.SPEECH_ENGINE``). False, the chat offers no
+    server voice and reads with the device's, with no trip to the server: erplora.com as it is (PLAN-SAAS round
+    2026-11-04c)."""
+
+    def test_without_an_engine_the_panel_reads_with_the_devices(self, client):
+        _, config = json_block(client.get("/launch", HTTP_HOST=HOST), "spa-config")
+
+        assert config["assistantSpeech"] is False
+
+    def test_no_provider_of_the_admin_turns_it_on(self, client):
+        from assistant.tests.conftest import API_KEY
+
+        named = AIProvider.objects.create(slug="azure-speech", name="Azure", kind="openai")
+        AIProviderCredential.objects.create(provider=named, label="default", api_key=API_KEY, key_hint="wxyz")
+
+        assert json_block(client.get("/launch", HTTP_HOST=HOST), "spa-config")[1]["assistantSpeech"] is False
+
+    def test_with_an_engine_the_panel_asks_the_server(self, client, monkeypatch):
+        monkeypatch.setattr("assistant.media.SPEECH_ENGINE", object())
+
+        _, config = json_block(client.get("/dashboard/businesses", HTTP_HOST=HOST), "spa-config")
+
+        assert config["assistantSpeech"] is True

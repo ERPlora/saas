@@ -24,26 +24,26 @@ from uuid import UUID
 from django.conf import settings
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
-from django.db.models import Case, Exists, IntegerField, OuterRef, Q, Value, When
+from django.db.models import Case, Count, Exists, IntegerField, OuterRef, Q, Value, When
 from django.utils import timezone, translation
 from django.utils.dateparse import parse_datetime
 from django.utils.text import slugify
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 from live.context import OperationContext
-from live.errors import NotFound, OperationError, PermissionDenied, Unauthorized
+from live.errors import Conflict, NotFound, OperationError, PermissionDenied, Unauthorized
 from live.operations import AI, INTERNAL, operation
 from live.slugs import is_demo_slug, is_reserved_hub_slug, validate_hub_slug
 
-from accounts.models import HubMembership
 from accounts.queries import hub_origin
 from apps.models import Module
-from hubs import hub_client
+from hubs import domain_checks, edge_client, hub_client
 from hubs.hub_client import HubRefused, HubUnavailable
 from fiscal.queries import snapshot_block as verifactu_representation
 from hubs.models import (
     BillingProfile,
     BusinessType,
+    CustomDomain,
     Hub,
     HubMember,
     HubOwnershipTransfer,
@@ -54,6 +54,9 @@ from hubs.models import (
 )
 from hubs.retired_codes import current_business_type_code
 from hubs.schemas import (
+    CustomDomainStatusOut,
+    BusinessCreateCheckIn,
+    BusinessCreateCheckOut,
     AddressProposeIn,
     AddressProposeOut,
     BillingProfileGetIn,
@@ -71,6 +74,8 @@ from hubs.schemas import (
     InvitationListIn,
     InvitationListOut,
     MemberListIn,
+    MemberListMineIn,
+    MemberListMineOut,
     MemberListOut,
     PlanListIn,
     PlanListOut,
@@ -409,6 +414,57 @@ def free_business_filling_quota(user) -> Hub | None:
     return owned.first()
 
 
+def plan_of_a_new_business() -> Plan:
+    """The Free plan a new business is born on; without it none can be created right now (503)."""
+    plan = free_plan()
+    if plan is None:
+        raise OperationError(
+            _("Businesses cannot be created right now. Try again in a few minutes."),
+            code="hubs.free_plan_missing",
+            status=503,
+        )
+    return plan
+
+
+def refuse_staff(user) -> None:
+    """The platform's staff and the customers never share an account: a staff or superuser account neither creates a
+    business, nor is invited to one (nor invited again), nor enters one with an invitation that waited while it was
+    made staff (409 ``hubs.platform_account``)."""
+    if user.is_staff or user.is_superuser:
+        raise Conflict(
+            _("This address belongs to ERPlora's staff and cannot join a business."), code="hubs.platform_account"
+        )
+
+
+def refuse_full_free_quota(user, excluding: UUID | None = None) -> None:
+    """One more Free business does not fit ``user``'s quota (``FREE_HUBS_PER_ACCOUNT``, ADR-0154): 409
+    ``hubs.free_hub_limit``. Counts without a lock: a write first takes it (``services.check_free_quota``)."""
+    if free_hubs_owned(user, excluding=excluding) >= getattr(settings, "FREE_HUBS_PER_ACCOUNT", 1):
+        raise Conflict(
+            _("You already have a free business. Change its plan to create another one."),
+            code="hubs.free_hub_limit",
+        )
+
+
+@operation(
+    "hubs.business.create_check",
+    kind="query",
+    permission="hubs.manage",
+    input=BusinessCreateCheckIn,
+    output=BusinessCreateCheckOut,
+    ai=INTERNAL,  # preview
+)
+def business_create_check(ctx: OperationContext, params: BusinessCreateCheckIn) -> dict:
+    """Refuses as ``hubs.business.create`` refuses, before its card asks anybody to confirm it (ASSISTANT-F25, saas#193):
+    the assistant hears why and nobody confirms a business that was never going to be created. It locks nothing and
+    the write checks again under its lock."""
+    user = account_of(ctx)
+    plan_of_a_new_business()
+    refuse_staff(user)
+    refuse_full_free_quota(user)
+    return {}
+
+
 def business_type_for(code: str | None) -> BusinessType | None:
     """The active business type of ``code`` (a retired code resolves to its survivor); else «not said»."""
     if not code:
@@ -419,12 +475,12 @@ def business_type_for(code: str | None) -> BusinessType | None:
 
 
 def slug_taken(slug: str, excluding: UUID | None = None) -> bool:
-    """A business has it (now or as the address it had before, HUBS-F16), or a hub of the phase-1 seed (only an
-    ``accounts.HubMembership`` row). ``excluding``: the business that asks, whose own addresses are free to it."""
+    """A business has it, now or as the address it had before (HUBS-F16). ``excluding``: the business that asks,
+    whose own addresses are free to it."""
     businesses = Hub.objects.filter(Q(slug=slug) | Q(previous_slug=slug))
     if excluding is not None:
         businesses = businesses.exclude(pk=excluding)
-    return businesses.exists() or HubMembership.objects.filter(hub_slug=slug).exists()
+    return businesses.exists()
 
 
 def base_slug(name: str) -> str:
@@ -462,11 +518,6 @@ def free_slug(name: str) -> str:
         Hub.objects.filter(slug__startswith=base).values_list("slug", flat=True)
     )
     taken |= set(Hub.objects.filter(previous_slug__startswith=base).values_list("previous_slug", flat=True))
-    taken |= set(
-        HubMembership.objects.filter(hub_slug__startswith=base).values_list(
-            "hub_slug", flat=True
-        )
-    )
     candidate, counter = base, 1
     while candidate in taken or not is_valid_slug(candidate):
         counter += 1
@@ -911,9 +962,9 @@ def answered_business_ids(user_id: UUID) -> list[UUID]:
     )
 
 
-def mirror_migrated() -> bool:
-    """Whether accounts and hubs have no migration left to apply, so the mirror can be compared (the check
-    ``hubs.W001`` runs in ``migrate`` too, before the tables or the data migration ``0006`` are there)."""
+def tables_migrated() -> bool:
+    """Whether accounts and hubs have no migration left to apply, so their tables can be read (the database checks of
+    ``hubs.checks`` run in ``migrate`` too, before the tables are there)."""
     executor = MigrationExecutor(connection)
     targets = [
         node
@@ -923,35 +974,38 @@ def mirror_migrated() -> bool:
     return not executor.migration_plan(targets)
 
 
-#: One disagreement of the mirror: ``(slug, user id, the role it should have, the role it has)``; a
-#: ``None`` role is a row that should not be there or is missing.
-MirrorDrift = tuple[str, str, str | None, str | None]
+def _who_enters():
+    """The members who enter a hub: answered, on a business that still opens. A business being deleted lets nobody in
+    (a restore gives the access back), whatever ``business_list`` shows its owner in its days of recovery."""
+    return HubMember.objects.filter(accepted_at__isnull=False).exclude(
+        hub__status__in=[Hub.Status.DELETING, Hub.Status.DELETED]
+    )
 
 
-def verify_access_mirror() -> list[MirrorDrift]:
-    """Where ``accounts.HubMembership`` (the access the jump reads) disagrees with the answered members of
-    the businesses that still open (``hubs.services.sync_access``'s rule), sorted; empty when they agree.
+def access_of(user_id) -> list[tuple[str, str]]:
+    """``(slug, role)`` of every business the account ``user_id`` enters, by address."""
+    return list(_who_enters().filter(user_id=user_id).order_by("hub__slug").values_list("hub__slug", "role"))
 
-    A deleted business gives no access, and neither does a slug no business has (the phase-1 seed before
-    the data migration ``0006``). The system check ``hubs.W001`` reports it (``hubs.checks``).
-    """
-    should = {
-        (slug, str(user_id)): role
-        for slug, user_id, role in HubMember.objects.filter(accepted_at__isnull=False)
-        .exclude(hub__status__in=[Hub.Status.DELETING, Hub.Status.DELETED])
-        .values_list("hub__slug", "user_id", "role")
-    }
-    has = {
-        (slug, str(user_id)): role
-        for slug, user_id, role in HubMembership.objects.values_list(
-            "hub_slug", "user_id", "role"
-        )
-    }
-    return [
-        (slug, user_id, should.get((slug, user_id)), has.get((slug, user_id)))
-        for slug, user_id in sorted(should.keys() | has.keys())
-        if should.get((slug, user_id)) != has.get((slug, user_id))
-    ]
+
+def hubs_with_members() -> list[tuple[str, int]]:
+    """``(slug, people who enter)`` of every business somebody enters, by address: «Hubs» of the SaaS admin."""
+    rows = _who_enters().values("hub__slug").annotate(members=Count("id")).order_by("hub__slug")
+    return [(row["hub__slug"], row["members"]) for row in rows]
+
+
+@operation(
+    "hubs.member.list_mine",
+    kind="query",
+    permission="hubs.view",
+    input=MemberListMineIn,
+    output=MemberListMineOut,
+    ai=INTERNAL,  # accounts
+)
+def member_list_mine(ctx: OperationContext, data: MemberListMineIn) -> dict[str, Any]:
+    """The businesses the account enters with its role on each: what the jump to a hub reads. Called by its name
+    from ``accounts`` (``accounts.queries.hub_roles_of``), which never imports ``hubs``; it has no route."""
+    user = account_of(ctx)
+    return {"rows": [{"slug": slug, "role": role} for slug, role in access_of(user.pk)]}
 
 
 #: An account of ERPlora's staff on a business: ``(email, slug, "member" | "invited")``.
@@ -1065,7 +1119,17 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
         # The business's WhatsApp channel, door 4 of the Hub's whatsapp_inbox contract: the body of its door 3 at the
         # snapshot's version (whatsapp.queries.channel_block).
         "whatsapp": channel_block(hub.id, version=hub.state_version),
+        **_snapshot_custom_domain(hub, plan),
     }
+
+
+def _snapshot_custom_domain(hub: Hub, plan: Plan | None) -> dict[str, str]:
+    """``custom_domain`` (hub#812): the host the Hub serves the business's website on, once it is proved and if the plan
+    includes it. Absent otherwise, which to the Hub means none: the snapshot is whole."""
+    if plan is None or not plan.includes_custom_domain:
+        return {}
+    domain = CustomDomain.objects.filter(hub=hub).first()
+    return {"custom_domain": domain.hostname} if domain is not None and domain.in_snapshot else {}
 
 
 def _effective_plan(subscription: Subscription | None, now: datetime) -> Plan | None:
@@ -1099,11 +1163,100 @@ SNAPSHOT_PLAN_FIELDS = (
 def _snapshot_plan(plan: Plan | None) -> dict[str, Any] | None:
     if plan is None:
         return None
-    # The space for files its tier includes (the Hub's «Space», BASE-F52 and F53): from ``included_level``, already
+    # The space for files its tier includes (the Hub's «Space», BASE-F72 and F73): from ``included_level``, already
     # a field above, so a change of tier owes the newer snapshot.
     return {field: getattr(plan, field) for field in SNAPSHOT_PLAN_FIELDS} | {
         "max_storage_bytes": storage_limit_bytes(plan)
     }
+
+
+# --- A business's own domain (HUBS-F17) ------------------------------------------------------------------
+
+
+def custom_domain_of(row: CustomDomain, language: str, *, validation: tuple[str, str] | None = None) -> dict[str, Any]:
+    """What the panel and the assistant are told of a domain, in ``language``; ``validation`` when ACM just said it."""
+    name, value = validation or (row.validation_name, row.validation_value)
+    with translation.override(language):
+        return {
+            "id": row.id,
+            "domain": row.hostname,
+            "state": row.state,
+            "state_label": row.get_state_display(),
+            "reason": row.reason,
+            "reason_label": row.get_reason_display(),
+            "validation": {"name": name, "value": value} if name else None,
+            "traffic": {"name": row.hostname, "value": domain_checks.target_of(row.hub_id)},
+            "failures": row.failures,
+            "checked_at": row.checked_at,
+            "activated_at": row.activated_at,
+        }
+
+
+def custom_domain_status(hub: Hub, language: str) -> dict[str, Any]:
+    """The answer of the panel's page about ``hub``: whether a domain is offered, and the one it has."""
+    row = CustomDomain.objects.filter(hub=hub).first()
+    plan = effective_plan(hub.id, timezone.now())
+    return {
+        "available": settings.CUSTOM_DOMAINS_ENABLED,
+        "in_plan": plan is not None and plan.includes_custom_domain,
+        "domain": custom_domain_of(row, language, validation=_validation_of(row)) if row is not None else None,
+    }
+
+
+def _validation_of(row: CustomDomain) -> tuple[str, str] | None:
+    """ACM's validation record the row does not have yet, for a few seconds: the next check keeps it."""
+    if row.state != CustomDomain.State.PENDING or row.validation_name or not row.certificate_arn:
+        return None
+    if not settings.CUSTOM_DOMAINS_ENABLED:
+        return None
+    try:
+        facts = edge_client.describe_certificate(row.certificate_arn)
+    except edge_client.EdgeUnavailable as error:
+        logger.warning("hubs.custom_domain.unread domain=%s: %s", row.hostname, error)
+        return None
+    return facts.validation_name, facts.validation_value
+
+
+@operation(
+    "hubs.custom_domain.get",
+    kind="query",
+    permission="hubs.view",
+    input=ByIdIn,
+    output=CustomDomainStatusOut,
+    expose_api=True,
+    ai=AI(
+        description=(
+            "Whether a business can connect its own domain to its public website, the one it has, what state it is in "
+            "and the two DNS records its owner has to create. Its owner and administrators."
+        ),
+        asks={
+            "en": ("how is my domain doing?", "which DNS records do I have to create for my domain?"),
+            "es": ("¿cómo va mi dominio?", "¿qué registros DNS tengo que crear para mi dominio?"),
+        },
+    ),
+)
+def custom_domain_get(ctx: OperationContext, data: ByIdIn) -> dict[str, Any]:
+    member = access(account_of(ctx), data.id, Role.ADMIN)
+    return custom_domain_status(member.hub, ctx.language)
+
+
+def custom_domain_ids() -> list[UUID]:
+    """Every domain the hourly check looks at, the oldest first."""
+    return list(CustomDomain.objects.order_by("created_at", "id").values_list("id", flat=True))
+
+
+def custom_domain_row(domain_id: UUID) -> CustomDomain | None:
+    return CustomDomain.objects.select_related("hub").filter(pk=domain_id).first()
+
+
+def certificates_attached() -> int:
+    """The certificates on the shared listener: AWS gives these roles no list of them."""
+    return CustomDomain.objects.filter(attached_at__isnull=False).count()
+
+
+def listener_has_room() -> bool:
+    """Whether one more certificate fits under ``CUSTOM_DOMAINS_MAX_CERTIFICATES``."""
+    return certificates_attached() < settings.CUSTOM_DOMAINS_MAX_CERTIFICATES
 
 
 # --- Members and invitations ----------------------------------------------------------------------

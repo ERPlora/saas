@@ -6,11 +6,10 @@ must learn is written in the same transaction (``Hub.pending_hub_call``, ``Hub.s
 pushed after the COMMIT (``sync_hub``, which never runs inside a transaction); when the Hub is away it
 stays owed and ``manage.py reconcile_hub_states`` retries it (plan 2026-10-13 §3, the push to the Hub).
 
-Until the jump to a hub moves to ``hubs`` (plan, L1-A step 2), ``accounts.services.issue_code`` and
-``redeem_code`` check an account's access in ``accounts.HubMembership``: ``sync_access``, its only writer,
-keeps those rows equal to the answered members of each business, in the same transaction. Taking access
-away queues a ``SessionRevocation`` (delivered after the COMMIT, retried by ``reconcile_hub_states``), and a
-change of the people of a business is told to its owner and admins (``notify_people``).
+``accounts.services.issue_code`` and ``redeem_code`` read an account's access from the answered members of each
+business (``hubs.member.list_mine``), so a change of people is the jump's next answer. Taking access away queues a
+``SessionRevocation`` (delivered after the COMMIT, retried by ``reconcile_hub_states``), and a change of the people of
+a business is told to its owner and admins (``notify_people``).
 """
 
 import logging
@@ -18,6 +17,7 @@ from collections import Counter
 from contextlib import contextmanager
 from datetime import UTC, date, timedelta
 from functools import partial
+from time import sleep
 from uuid import UUID
 
 from django.conf import settings
@@ -28,7 +28,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 from live.context import OperationContext, Scope, system_context
-from live.errors import Conflict, InvalidPayload, NotFound, OperationError, PermissionDenied
+from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
 from live.operations import AI, INTERNAL, operation
 from live.outbox import record_event
 from live.slugs import (
@@ -46,12 +46,13 @@ from pydantic import ValidationError
 from accounts import queries as account_queries
 from accounts import services as account_services
 from accounts.queries import hub_start_url
-from accounts.models import HubMembership
-from hubs import emails, events, hub_client, queries
+from base.refusals import fields_refused
+from hubs import domain_checks, domain_names, edge_client, emails, events, hub_client, queries
 from hubs.queries import expired_deletions
 from hubs.hub_client import HubRefused, HubUnavailable
 from hubs.models import (
     BillingProfile,
+    CustomDomain,
     Hub,
     HubMember,
     HubOwnershipTransfer,
@@ -60,8 +61,14 @@ from hubs.models import (
     SessionRevocation,
     Subscription,
     SubscriptionItem,
+    new_certificate_token,
 )
 from hubs.schemas import (
+    CustomDomainOut,
+    CustomDomainRecordIn,
+    CustomDomainRecordOut,
+    CustomDomainRequestIn,
+    CustomDomainStatusOut,
     BillingProfileIn,
     BillingProfileOut,
     BusinessCreateIn,
@@ -161,16 +168,6 @@ class SeatLimitReached(Conflict):
 # --- Creating a business --------------------------------------------------------------------------
 
 
-def _refuse_staff(user) -> None:
-    """The platform's staff and the customers never share an account: a staff or superuser account neither creates a
-    business, nor is invited to one (nor invited again), nor enters one with an invitation that waited while it was
-    made staff (409 ``hubs.platform_account``)."""
-    if user.is_staff or user.is_superuser:
-        raise Conflict(
-            _("This address belongs to ERPlora's staff and cannot join a business."), code="hubs.platform_account"
-        )
-
-
 @operation(
     "hubs.business.create",
     kind="command",
@@ -178,8 +175,14 @@ def _refuse_staff(user) -> None:
     input=BusinessCreateIn,
     output=BusinessDetailOut,
     ai=AI(
-        description="Creates a business on the Free plan with its address; one free business per account.",
+        description=(
+            "Creates a business on the Free plan with its address. An account has one free business, and whether one "
+            "more fits is for this tool to say: call it, never refuse on your own. With no room it answers "
+            "hubs.free_hub_limit: Change the plan of that business to create another one."
+        ),
         risk="high",
+        # Its card only comes if the write would run (saas#193): it has nothing more to show.
+        preview={"operation": "hubs.business.create_check", "fields": []},
         asks={
             "en": (
                 "create another business in Valencia",
@@ -202,14 +205,8 @@ def business_create(ctx: OperationContext, data: BusinessCreateIn) -> dict:
     One free business per account (``FREE_HUBS_PER_ACCOUNT``, ADR-0154); a name never blocks it.
     """
     user = queries.account_of(ctx)
-    plan = queries.free_plan()
-    if plan is None:
-        raise OperationError(
-            _("Businesses cannot be created right now. Try again in a few minutes."),
-            code="hubs.free_plan_missing",
-            status=503,
-        )
-    _refuse_staff(user)
+    plan = queries.plan_of_a_new_business()
+    queries.refuse_staff(user)
     check_free_quota(user)
     now = timezone.now()
     profile = BillingProfile.objects.create(
@@ -222,7 +219,6 @@ def business_create(ctx: OperationContext, data: BusinessCreateIn) -> dict:
         hub=hub, user=user, role=Role.OWNER, joined_at=now, accepted_at=now
     )
     _subscribe_to_free(hub, plan, now)
-    sync_access(hub)
     record_event(ctx, events.BUSINESS_CREATED, {"id": str(hub.id)})
     push_after_commit(hub.id)
     return queries.business_detail(owner)
@@ -235,11 +231,7 @@ def check_free_quota(user, excluding: UUID | None = None) -> None:
     serialised here, so the second counts the business the first is creating.
     """
     get_user_model().objects.select_for_update().filter(pk=user.pk).first()
-    if queries.free_hubs_owned(user, excluding=excluding) >= getattr(settings, "FREE_HUBS_PER_ACCOUNT", 1):
-        raise Conflict(
-            _("You already have a free business. Change its plan to create another one."),
-            code="hubs.free_hub_limit",
-        )
+    queries.refuse_full_free_quota(user, excluding=excluding)
 
 
 def _create_hub(
@@ -294,7 +286,7 @@ def _chosen_slug(slug: str, excluding: UUID | None = None) -> str:
             "min": hub_slug_min_length(),
             "max": HUB_SLUG_MAX_LENGTH,
         }
-        raise InvalidPayload(_("Invalid payload"), fields={"slug": message}) from None
+        raise fields_refused({"slug": message}) from None
     if slug == account_services.PLATFORM_HOST_SLUG:
         raise Conflict(_("This address is reserved. Choose another one."), code="hubs.slug_reserved")
     if queries.slug_taken(slug, excluding=excluding):
@@ -440,7 +432,6 @@ def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> d
     except IntegrityError:
         raise _slug_taken() from None  # another business took it between the check and the write
     hub.refresh_from_db()
-    sync_access(hub, previous_slug=previous)
     record_event(ctx, events.BUSINESS_ADDRESS_CHANGED, {"id": str(hub.id), "slug": slug, "previous_slug": previous})
     push_after_commit(hub.id)
     return queries.business_detail(member)
@@ -480,10 +471,8 @@ def business_delete(ctx: OperationContext, data: BusinessDeleteIn) -> dict:
     if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
         raise business_deleted()
     if data.confirm_name.strip().casefold() != hub.name.strip().casefold():
-        raise InvalidPayload(
-            _("Invalid payload"),
-            fields={"confirm_name": _("Type the name of the business to delete it.")},
-        )
+        reason = _("Type the name of the business to delete it.")
+        raise InvalidPayload(reason, fields={"confirm_name": reason})
     _delete_business(ctx, hub, member.user, base_url=emails.base_url(ctx.request))
     return queries.business_detail(member)
 
@@ -520,7 +509,6 @@ def _delete_business(ctx: OperationContext, hub: Hub, owner, *, base_url: str, u
     HubOwnershipTransfer.objects.filter(
         hub=hub, status=HubOwnershipTransfer.Status.PENDING
     ).update(status=HubOwnershipTransfer.Status.CANCELLED, resolved_at=timezone.now())
-    sync_access(hub)
     record_event(ctx, events.BUSINESS_DELETED, {"id": str(hub.id)})
     push_after_commit(hub.id)
     transaction.on_commit(
@@ -603,7 +591,6 @@ def business_restore(ctx: OperationContext, data: ByIdIn) -> dict:
         ]
     )
     hub.refresh_from_db()
-    sync_access(hub)
     record_event(ctx, events.BUSINESS_RESTORED, {"id": str(hub.id)})
     push_after_commit(hub.id)
     return queries.business_detail(member)
@@ -895,7 +882,7 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
             )
         if not queries.manages(actor, member):
             raise PermissionDenied(_("You cannot manage a member whose role is equal to or above yours."))
-        _refuse_staff(member.user)
+        queries.refuse_staff(member.user)
         _check_seat(hub, now)
         member.role = data.role
         member.invitation_message = data.message
@@ -907,7 +894,7 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
         if user is None:
             user = get_user_model().objects.create_user(email=data.email, password=None, language=hub.language)
         else:
-            _refuse_staff(user)
+            queries.refuse_staff(user)
             if not account_queries.email_is_proven(user, data.email):
                 account_services.release_unproven_account(user, reason="invited_while_unverified")
                 revoke_after_commit(user.pk)
@@ -948,7 +935,6 @@ def member_change_role(ctx: OperationContext, data: MemberRoleIn) -> dict:
         target.role = data.role
         target.save(update_fields=["role"])
         if not target.is_pending:
-            sync_access(target.hub)
             bump_state(target.hub_id)
             push_after_commit(target.hub_id)
             # The role travels in the Hub's session (``/internal/auth/redeem``): it signs in again with the new one.
@@ -1012,14 +998,13 @@ def _refuse_a_payer(target: HubMember) -> None:
 
 def _take_out(member: HubMember) -> None:
     """Take ``member`` out of its business (removed, or its account deleted): an ownership offer pending to it is
-    cancelled, its access goes with it (``sync_access``) and, once it had answered, the Hub gets a snapshot
-    without it after the COMMIT."""
+    cancelled, its access goes with its row and, once it had answered, the Hub gets a snapshot without it after the
+    COMMIT."""
     hub = member.hub
     HubOwnershipTransfer.objects.filter(
         hub=hub, to_user_id=member.user_id, status=HubOwnershipTransfer.Status.PENDING
     ).update(status=HubOwnershipTransfer.Status.CANCELLED, resolved_at=timezone.now())
     member.delete()
-    sync_access(hub)
     if member.accepted_at is not None:
         bump_state(hub.id)
         push_after_commit(hub.id)
@@ -1056,7 +1041,7 @@ def member_resend(ctx: OperationContext, data: ByIdIn) -> dict:
     """Send the invitation again: it gets 7 more days."""
     actor, target = _managed(ctx, data.id)
     _pending_only(target)
-    _refuse_staff(target.user)
+    queries.refuse_staff(target.user)
     now = timezone.now()
     if target.is_expired(now):
         _check_seat(target.hub, now)
@@ -1140,7 +1125,7 @@ def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     still has a seat beside the people already inside (``_check_seat_to_enter``). An account that never
     proved its address confirms it first (saas#2541: 403 ``hubs.email_unverified``)."""
     member = _my_invitation(ctx, data.id)
-    _refuse_staff(member.user)
+    queries.refuse_staff(member.user)
     if not account_queries.email_is_proven(member.user, member.user.email):
         raise PermissionDenied(
             _("Confirm your email address before accepting the invitation."), code="hubs.email_unverified"
@@ -1153,7 +1138,6 @@ def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     _check_seat_to_enter(member.hub, now)
     member.accepted_at = now
     member.save(update_fields=["accepted_at"])
-    sync_access(member.hub)
     bump_state(member.hub_id)
     record_event(ctx, events.INVITATION_ACCEPTED, {"id": str(member.id), "hub_id": str(member.hub_id)})
     notify_people(ctx, events.MEMBER_CHANGED, member.hub_id)
@@ -1360,7 +1344,6 @@ def ownership_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     paid_until = end_renewal_after_hand_over(transfer.hub, transfer.to_user)
     # What the previous owner left open in Stripe Checkout can no longer be paid (review of saas#89).
     transaction.on_commit(partial(expire_open_checkouts, transfer.hub_id), robust=True)
-    sync_access(transfer.hub)
     bump_state(transfer.hub_id)
     # Both roles changed, and each travels in its Hub session: both sign in again.
     revoke_after_commit(outgoing.user_id, transfer.hub_id)
@@ -1488,15 +1471,13 @@ def billing_profile_update(ctx: OperationContext, data: BillingProfileIn) -> dic
         values["billing_country"] = hub.country
     problem = postal_code_problem(values["billing_country"], values["billing_postal_code"])
     if problem:
-        raise InvalidPayload(_("Invalid payload"), fields={"billing_postal_code": problem})
+        raise fields_refused({"billing_postal_code": problem})
     try:
         # Without the payer's country yet (it may wait for the first checkout), read it in the business's.
         country = values["billing_country"] or hub.country
         values["tax_id"] = validate_vat_for_profile(country, values["tax_id"]).vat_number
     except MalformedVatNumber:
-        raise InvalidPayload(
-            _("Invalid payload"), fields={"tax_id": _("Enter a valid tax ID for the country of the payer.")}
-        ) from None
+        raise fields_refused({"tax_id": _("Enter a valid tax ID for the country of the payer.")}) from None
     profile = hub.billing_profile
     if profile is None or profile.owner_id != member.user_id:
         # A payer is somebody's: the one another account set up (the owner before a transfer) keeps
@@ -1578,7 +1559,8 @@ def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict
     if "plan" in sent:
         plan = Plan.objects.filter(slug=sent["plan"]).first()
         if plan is None:
-            raise InvalidPayload(_("Invalid payload"), fields={"plan": _("There is no plan with this identifier.")})
+            reason = _("There is no plan with this identifier.")
+            raise InvalidPayload(reason, fields={"plan": reason})
     if subscription is None:
         subscription = Subscription(hub=hub, plan=plan or queries.free_plan())
         changed = True
@@ -1778,46 +1760,12 @@ def _apply_standing(hub: Hub, standing: str, *, was_unpaid: bool) -> bool:
 # --- Access, state and the push to the Hub (not operations: called inside or after one) ---------
 
 
-def sync_access(hub: Hub, previous_slug: str = "") -> None:
-    """Make ``accounts.HubMembership`` (what the jump checks) equal to the business's answered members.
-
-    Nobody enters a deleted business. Called in the transaction that changed the members or the status.
-    The only writer of ``HubMembership`` (``hubs/tests/test_access_mirror.py``); ``queries.verify_access_mirror``
-    and the check ``hubs.W001`` say where the two disagree. Retired with the mirror once the jump reads
-    ``HubMember`` (``hubs/README.md``, «Pendiente»).
-    """
-    if previous_slug and previous_slug != hub.slug:
-        # The business moved to another address (HUBS-F16): the jump follows it.
-        HubMembership.objects.filter(hub_slug=previous_slug).delete()
-    deleted = hub.status in (Hub.Status.DELETING, Hub.Status.DELETED)
-    wanted = (
-        {}
-        if deleted
-        else dict(
-            HubMember.objects.filter(hub=hub, accepted_at__isnull=False).values_list(
-                "user_id", "role"
-            )
-        )
-    )
-    rows = HubMembership.objects.filter(hub_slug=hub.slug)
-    rows.exclude(user_id__in=wanted).delete()
-    have = dict(rows.values_list("user_id", "role"))
-    for user_id, role in wanted.items():
-        if user_id not in have:
-            HubMembership.objects.create(user_id=user_id, hub_slug=hub.slug, role=role)
-        elif have[user_id] != role:
-            HubMembership.objects.filter(user_id=user_id, hub_slug=hub.slug).update(
-                role=role
-            )
-
-
 def seed_demo_business(slug: str, people: dict) -> Hub:
     """The business of a hub that already runs in the local Hub (``demo_seed``: ``a`` and ``b``), with
     ``people`` (account → ``hub_*`` role) answered on it; creates what is missing, changes nothing else.
 
     Adopted, not provisioned: active, ready and owing the Hub nothing (as the data migration ``0006`` adopts
     the hubs of the phase-1 seed), on the Free plan if it is seeded; named after its address, in Spain.
-    Its access goes through ``sync_access``.
     """
     roles = set(people.values())
     if not roles <= set(Role.values):
@@ -1850,7 +1798,6 @@ def seed_demo_business(slug: str, people: dict) -> Hub:
             HubMember.objects.get_or_create(
                 hub=hub, user=user, defaults={"role": role, "joined_at": joined, "accepted_at": joined}
             )
-        sync_access(hub)
     return hub
 
 
@@ -2056,9 +2003,7 @@ def _restore(hub: Hub) -> str | None:
         hub_client.restore_hub(str(hub.id))
     except HubRefused as refused:
         if refused.code == "hub_purged":
-            purged = Hub.objects.filter(pk=hub.pk).update(status=Hub.Status.DELETED, pending_hub_call="")
-            if purged:
-                sync_access(Hub.objects.get(pk=hub.pk))
+            Hub.objects.filter(pk=hub.pk).update(status=Hub.Status.DELETED, pending_hub_call="")
             logger.warning("hubs.sync.purged hub=%s", hub.id)
             return None
         if refused.status != 404:
@@ -2191,7 +2136,6 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
             status=Hub.Status.DELETED, updated_at=now
         )
         if purged:
-            sync_access(Hub.objects.get(pk=hub_id))
             counts["purged"] += 1
     for subscription in Subscription.objects.filter(status=Subscription.Status.TRIALING, trial_end__lte=now):
         ended = Subscription.objects.filter(pk=subscription.pk, status=Subscription.Status.TRIALING).update(
@@ -2354,6 +2298,485 @@ def push_snapshots(*, behind_only: bool = False) -> Counter:
         counts["pushed" if outcome == DELIVERED else "owed"] += 1
         counts[REFUSED] += outcome == REFUSED
     return counts
+
+
+# --- A business's own domain (HUBS-F17, PLAN-SAAS §37 point 2; ``aws`` README, «Dominio propio de un negocio») -------
+
+#: How often the request looks for ACM's validation record, a second apart. It takes some seconds to exist, and asking
+#: holds the business's row: past them, the answer has none yet and ``hubs.custom_domain.get`` gives it.
+VALIDATION_RECORD_TRIES = 3
+#: Checks in a row that find it not pointing here or not served before it is no longer served (PLAN-SAAS §37).
+CUSTOM_DOMAIN_FAILURES_TO_LAPSE = 3
+#: How long a certificate waits on the shared listener for a CNAME that does not come: its place is another's.
+CUSTOM_DOMAIN_PENDING_LIMIT = timedelta(days=14)
+#: Counts that make ``check_custom_domains`` end with an error, after its whole pass. AWS, the DNS or the Hub being away
+#: are not: they come back, and the next pass tries again.
+CUSTOM_DOMAIN_FAILING_COUNTS = ("crashed", "metric_unpublished")
+
+_NOT_ISSUED_YET = "PENDING_VALIDATION"
+_ISSUED = "ISSUED"
+_TIMED_OUT = "VALIDATION_TIMED_OUT"
+
+
+def _custom_domains_on() -> None:
+    if not settings.CUSTOM_DOMAINS_ENABLED:
+        raise Conflict(_("Own domains are not available yet."), code="hubs.custom_domains_off")
+
+
+#: What ``hubs.domain_names`` and the DNS refuse, with the message of each.
+_DOMAIN_REFUSALS = {
+    domain_names.Refusal.NOT_A_DOMAIN: ("hubs.custom_domain_invalid", gettext_lazy("Write only the domain, like www.yourbusiness.com.")),
+    domain_names.Refusal.OURS: ("hubs.custom_domain_ours", gettext_lazy("That domain belongs to ERPlora. Write your own.")),
+    domain_checks.Zone.APEX: (
+        "hubs.custom_domain_apex",
+        gettext_lazy("A root domain cannot point at ERPlora. Connect www and redirect the root to it at your provider."),
+    ),
+    domain_checks.Zone.UNREGISTERED: ("hubs.custom_domain_unregistered", gettext_lazy("Nobody has registered that domain yet.")),
+}
+
+
+def _domain_refused(why) -> InvalidPayload:
+    code, message = _DOMAIN_REFUSALS[why]
+    return fields_refused({"domain": str(message)}, code=code)
+
+
+def _hostname_of(typed: str) -> str:
+    """The domain in the form everybody is given, or the 422 of what the Hub, ACM or the DNS would not take."""
+    try:
+        hostname = domain_names.normalized(typed)
+    except domain_names.DomainRefused as refused:
+        raise _domain_refused(refused.reason) from None
+    try:
+        zone = domain_checks.zone_of(hostname)
+    except domain_checks.DnsUnavailable as error:
+        # It cannot be told apart now: a root domain has no CNAME to prove itself with, so nothing is promised.
+        logger.warning("hubs.custom_domain.zone_unread domain=%s: %s", hostname, error)
+        return hostname
+    if zone != domain_checks.Zone.SUBDOMAIN:
+        raise _domain_refused(zone)
+    return hostname
+
+
+@operation(
+    "hubs.custom_domain.request",
+    kind="command",
+    permission="hubs.manage",
+    input=CustomDomainRequestIn,
+    output=CustomDomainOut,
+    ai=AI(
+        description=(
+            "Connects a domain of the owner's (www.theirbusiness.com, never a root domain) to the public website of a "
+            "business whose plan includes it, and gives the two DNS records to create. Only its owner."
+        ),
+        asks={
+            "en": ("connect www.barmanolo.com to my website", "I want my own domain on the salon's website"),
+            "es": ("conecta www.barmanolo.com a mi web", "quiero mi propio dominio en la web de la peluquería"),
+        },
+    ),
+)
+def custom_domain_request(ctx: OperationContext, data: CustomDomainRequestIn) -> dict:
+    """Keep the domain and ask ACM for its certificate; the hourly check (``check_custom_domains``) does the rest.
+
+    AWS is called inside the transaction, so a domain and its certificate come together: if it rolls back, the
+    certificate left in ACM is free, tagged and on nothing. Before the business's row is locked, what the Hub would refuse
+    and the DNS: a slow answer holds no other write of the business.
+    """
+    user = queries.account_of(ctx)
+    hub = queries.access(user, data.id, Role.OWNER).hub
+    _custom_domains_on()
+    if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
+        raise business_deleted()
+    plan = queries.effective_plan(hub.id, timezone.now())
+    if plan is None or not plan.includes_custom_domain:
+        raise Conflict(_("The plan of this business does not include an own domain."), code="hubs.custom_domain_not_in_plan")
+    hostname = _hostname_of(data.domain)
+    queries.access(user, data.id, Role.OWNER, lock=True)
+    row = CustomDomain.objects.select_for_update().filter(hub=hub).first()
+    if row is not None and row.hostname == hostname and row.state in (CustomDomain.State.PENDING, CustomDomain.State.ACTIVE):
+        return queries.custom_domain_of(row, ctx.language)
+    if row is not None and (row.state != CustomDomain.State.LAPSED or row.certificate_arn):
+        raise Conflict(_("This business already has a domain. Remove it first."), code="hubs.custom_domain_exists")
+    if CustomDomain.objects.filter(hostname=hostname, proven_at__isnull=False).exclude(hub=hub).exists():
+        raise Conflict(_("Another business is connected to this domain."), code="hubs.custom_domain_taken")
+    if row is None:
+        row = CustomDomain(hub=hub)
+    row.hostname = hostname
+    row.state = CustomDomain.State.PENDING
+    row.reason = CustomDomain.Reason.NONE
+    row.certificate_token = new_certificate_token()
+    row.validation_name = row.validation_value = ""
+    row.save()
+    _ask_for_a_certificate(row)
+    record_event(ctx, events.CUSTOM_DOMAIN_CHANGED, {"business_id": str(hub.id)})
+    return queries.custom_domain_of(row, ctx.language)
+
+
+def _ask_for_a_certificate(row: CustomDomain) -> None:
+    """The certificate of a domain that just came, and its validation record if ACM has it in time. Whatever fails, the
+    hourly check tries again with the same token."""
+    if not queries.listener_has_room():
+        row.reason = CustomDomain.Reason.QUOTA_FULL
+        row.save()
+        return
+    try:
+        row.certificate_arn = edge_client.request_certificate(row.hostname, row.certificate_token)
+        row.reason = CustomDomain.Reason.CERTIFICATE_PENDING
+        row.save()
+        for attempt in range(VALIDATION_RECORD_TRIES):
+            facts = edge_client.describe_certificate(row.certificate_arn)
+            if facts.validation_name:
+                row.validation_name, row.validation_value = facts.validation_name, facts.validation_value
+                row.save()
+                return
+            if attempt + 1 < VALIDATION_RECORD_TRIES:
+                sleep(1)
+    except edge_client.EdgeUnavailable as error:
+        logger.error("hubs.custom_domain.aws domain=%s: %s", row.hostname, error)
+        if not row.certificate_arn:
+            row.reason = CustomDomain.Reason.CERTIFICATE_UNAVAILABLE
+            row.save()
+
+
+@operation(
+    "hubs.custom_domain.remove",
+    kind="command",
+    permission="hubs.manage",
+    input=ByIdIn,
+    output=CustomDomainStatusOut,
+    ai=AI(
+        description=(
+            "Disconnects the own domain of a business: its website stops being served on it and stays at its address on "
+            "erplora.com. Only its owner."
+        ),
+        asks={
+            "en": ("disconnect my domain from the website", "remove www.barmanolo.com from the bar"),
+            "es": ("desconecta mi dominio de la web", "quita www.barmanolo.com del bar"),
+        },
+    ),
+)
+def custom_domain_remove(ctx: OperationContext, data: ByIdIn) -> dict:
+    """The snapshot first: the Hub stops serving it, then the certificate goes, and the row last, which frees the name
+    (after the COMMIT, and the hourly check finishes whatever is left)."""
+    hub = queries.access(queries.account_of(ctx), data.id, Role.OWNER, lock=True).hub
+    _custom_domains_on()
+    row = CustomDomain.objects.select_for_update().filter(hub=hub).first()
+    if row is None:
+        raise queries.not_found()
+    if row.state != CustomDomain.State.REMOVING:
+        was_in_snapshot = row.in_snapshot
+        row.state = CustomDomain.State.REMOVING
+        row.save()
+        if was_in_snapshot:
+            bump_state(hub.id)
+        record_event(ctx, events.CUSTOM_DOMAIN_CHANGED, {"business_id": str(hub.id)})
+    transaction.on_commit(partial(_finish_removal_quietly, row.id), robust=True)
+    return queries.custom_domain_status(hub, ctx.language)
+
+
+def _finish_removal_quietly(domain_id: UUID) -> None:
+    try:
+        _check_custom_domain(domain_id)
+    except Exception:  # noqa: BLE001 - it already answered; the hourly check finishes it
+        logger.exception("hubs.custom_domain.removal_crashed domain=%s", domain_id)
+
+
+@operation(
+    "hubs.custom_domain.record",
+    kind="command",
+    permission="hubs.manage",
+    input=CustomDomainRecordIn,
+    output=CustomDomainRecordOut,
+    ai=INTERNAL,  # the hourly check
+)
+def custom_domain_record(ctx: OperationContext, data: CustomDomainRecordIn) -> dict:
+    """What the hourly check learned, unless the domain left the state it found: the owner removing it wins. A command,
+    so a change has its event on the owner's channel, and one of what the Hub is told owes it a newer snapshot."""
+    if ctx.actor != "system":
+        raise PermissionDenied(_("Only the platform records what its check learned."), code="internal_command")
+    row = CustomDomain.objects.select_for_update().filter(pk=data.id).first()
+    if row is None or row.state != data.expected_state:
+        return {"recorded": False}
+    before = _what_the_owner_sees(row)
+    was_in_snapshot = row.in_snapshot
+    now = timezone.now()
+    if data.forget:
+        row.delete()
+        if was_in_snapshot:
+            bump_state(row.hub_id)
+        record_event(ctx, events.CUSTOM_DOMAIN_CHANGED, {"business_id": str(row.hub_id)})
+        return {"recorded": True}
+    for field in ("reason", "certificate_arn", "validation_name", "validation_value", "failures"):
+        value = getattr(data, field)
+        if value is not None:
+            setattr(row, field, value)
+    if data.state is not None:
+        row.state = data.state
+        if data.state == CustomDomain.State.ACTIVE:
+            row.activated_at = now
+    if data.new_token:
+        row.certificate_token = new_certificate_token()
+    if data.attached is not None:
+        row.attached_at = now if data.attached else None
+    if data.proven is False:
+        row.proven_at = None
+    elif data.proven and row.proven_at is None:
+        row.proven_at = now
+    row.checked_at = now
+    try:
+        with transaction.atomic():
+            row.save()
+    except IntegrityError:
+        # Another business holds the proof of this name: the Hub would serve neither, so this one waits for that one to fall.
+        row.proven_at = None
+        row.reason = CustomDomain.Reason.TAKEN
+        row.save()
+    if was_in_snapshot != row.in_snapshot or data.owe_snapshot:
+        bump_state(row.hub_id)
+    if _what_the_owner_sees(row) != before:
+        record_event(ctx, events.CUSTOM_DOMAIN_CHANGED, {"business_id": str(row.hub_id)})
+    return {"recorded": True}
+
+
+def _what_the_owner_sees(row: CustomDomain) -> tuple:
+    return (row.state, row.reason, row.validation_name, row.failures, row.attached_at is None, row.proven_at is None)
+
+
+class _DomainMovedOn(Exception):
+    """The domain left the state the check found it in: its owner removed it. What the check learned is not written."""
+
+
+def _learned(row: CustomDomain, **facts) -> CustomDomain:
+    """Write what the check learned of ``row``, and read it back."""
+    answer = custom_domain_record(
+        system_ctx_for(row.hub_id), CustomDomainRecordIn(id=row.id, expected_state=row.state, **facts)
+    )
+    if not answer.recorded:
+        raise _DomainMovedOn(str(row.id))
+    return queries.custom_domain_row(row.id) if not facts.get("forget") else row
+
+
+def check_custom_domains() -> Counter:
+    """One pass of ``check_custom_domains``: every domain, each on its own, and at the end the certificates attached."""
+    counts = Counter(checked=0, crashed=0)
+    for domain_id in queries.custom_domain_ids():
+        counts["checked"] += 1
+        try:
+            counts[_check_custom_domain(domain_id)] += 1
+        except Exception:  # noqa: BLE001 - one domain never stops the pass
+            logger.exception("hubs.custom_domain.crashed domain=%s", domain_id)
+            counts["crashed"] += 1
+    try:
+        edge_client.publish_certificates_attached(queries.certificates_attached())
+    except edge_client.EdgeUnavailable as error:
+        logger.error("hubs.custom_domain.metric_unpublished: %s", error)
+        counts["metric_unpublished"] = 1
+    return counts
+
+
+def custom_domains_failed(counts: Counter) -> bool:
+    """Whether a pass of ``check_custom_domains`` has to end with an error."""
+    return any(counts[key] for key in CUSTOM_DOMAIN_FAILING_COUNTS)
+
+
+def _check_custom_domain(domain_id: UUID) -> str:
+    """Move one domain as far as it goes today; the outcome names what happened, for the counts of the pass."""
+    row = queries.custom_domain_row(domain_id)
+    if row is None:
+        return "gone"
+    try:
+        if row.state == CustomDomain.State.REMOVING:
+            return _finish_removal(row)
+        if row.hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
+            return _lapse(row, CustomDomain.Reason.BUSINESS_GONE)
+        plan = queries.effective_plan(row.hub_id, timezone.now())
+        if plan is None or not plan.includes_custom_domain:
+            return _lapse(row, CustomDomain.Reason.NOT_IN_PLAN)
+        if row.state == CustomDomain.State.LAPSED:
+            return _check_lapsed(row)
+        if row.state == CustomDomain.State.PENDING:
+            return _check_pending(row)
+        return _check_active(row)
+    except _DomainMovedOn:
+        return "moved_on"
+    except edge_client.EdgeUnavailable as error:
+        logger.error("hubs.custom_domain.aws domain=%s: %s", row.hostname, error)
+        return "aws_unavailable"
+
+
+def _check_pending(row: CustomDomain) -> str:
+    """The way to active, step by step and as far as it goes: the certificate, on the listener, the customer's CNAME, the
+    snapshot and the probe."""
+    target = domain_checks.target_of(row.hub_id)
+    try:
+        if not row.certificate_arn:
+            if not queries.listener_has_room():
+                _learned(row, reason=CustomDomain.Reason.QUOTA_FULL)
+                return "waiting"
+            row = _learned(row, certificate_arn=edge_client.request_certificate(row.hostname, row.certificate_token))
+        facts = edge_client.describe_certificate(row.certificate_arn)
+        validation = {"validation_name": facts.validation_name, "validation_value": facts.validation_value} if facts.validation_name else {}
+        if facts.status == _NOT_ISSUED_YET:
+            _learned(row, reason=CustomDomain.Reason.CERTIFICATE_PENDING, **validation)
+            return "waiting"
+        if facts.status != _ISSUED:
+            logger.warning("hubs.custom_domain.certificate domain=%s %s %s", row.hostname, facts.status, facts.failure_reason)
+            reason = CustomDomain.Reason.VALIDATION_TIMED_OUT if facts.status == _TIMED_OUT else CustomDomain.Reason.CERTIFICATE_FAILED
+            return _lapse(row, reason)
+        if not row.attached_at:
+            if not queries.listener_has_room():
+                _learned(row, reason=CustomDomain.Reason.QUOTA_FULL, **validation)
+                return "waiting"
+            try:
+                edge_client.attach(row.certificate_arn)
+            except edge_client.TooManyCertificates:
+                logger.error("hubs.custom_domain.listener_full domain=%s", row.hostname)
+                _learned(row, reason=CustomDomain.Reason.QUOTA_FULL, **validation)
+                return "waiting"
+            row = _learned(row, attached=True, **validation)
+    except edge_client.EdgeUnavailable as error:
+        logger.error("hubs.custom_domain.aws domain=%s: %s", row.hostname, error)
+        _learned(row, reason=CustomDomain.Reason.CERTIFICATE_UNAVAILABLE)
+        return "aws_unavailable"
+    try:
+        pointing = domain_checks.points_at(row.hostname, target)
+    except domain_checks.DnsUnavailable as error:
+        logger.warning("hubs.custom_domain.dns domain=%s: %s", row.hostname, error)
+        _learned(row, reason=CustomDomain.Reason.DNS_UNAVAILABLE)
+        return "waiting"
+    if not pointing:
+        if timezone.now() - row.attached_at > CUSTOM_DOMAIN_PENDING_LIMIT:
+            return _lapse(row, CustomDomain.Reason.CNAME_MISSING)
+        was_in_snapshot = row.in_snapshot
+        _learned(row, reason=CustomDomain.Reason.CNAME_MISSING, proven=False)
+        if was_in_snapshot:
+            sync_hub(row.hub_id)
+        return "waiting"
+    if row.proven_at is None:
+        row = _learned(row, proven=True, reason=CustomDomain.Reason.PROBE_FAILED)
+        if row.proven_at is None:
+            return "waiting"
+    if not sync_hub(row.hub_id):
+        return "hub_away"
+    if domain_checks.probe(row.hostname, target, row.hub_id) != domain_checks.Probe.SERVED:
+        _learned(row, reason=CustomDomain.Reason.PROBE_FAILED)
+        return "waiting"
+    _learned(row, state=CustomDomain.State.ACTIVE, reason=CustomDomain.Reason.NONE, failures=0)
+    logger.info("hubs.custom_domain.active domain=%s hub=%s", row.hostname, row.hub_id)
+    return "activated"
+
+
+def _check_active(row: CustomDomain) -> str:
+    """An active domain still has to point here and be served. A question that got no answer says nothing of it."""
+    target = domain_checks.target_of(row.hub_id)
+    try:
+        pointing = domain_checks.points_at(row.hostname, target)
+    except domain_checks.DnsUnavailable as error:
+        logger.warning("hubs.custom_domain.dns domain=%s: %s", row.hostname, error)
+        _learned(row, reason=CustomDomain.Reason.DNS_UNAVAILABLE)
+        return "unknown"
+    if not pointing:
+        return _failed_a_check(row, CustomDomain.Reason.CNAME_MISSING)
+    answer = domain_checks.probe(row.hostname, target, row.hub_id)
+    if answer == domain_checks.Probe.UNREACHABLE:
+        _learned(row, reason=CustomDomain.Reason.PROBE_FAILED)
+        return "unknown"
+    if answer == domain_checks.Probe.NOT_SERVED:
+        return _failed_a_check(row, CustomDomain.Reason.PROBE_FAILED, owe_snapshot=True)
+    _learned(row, reason=CustomDomain.Reason.NONE, failures=0)
+    return "served"
+
+
+def _failed_a_check(row: CustomDomain, reason: str, *, owe_snapshot: bool = False) -> str:
+    """One failure more; the third in a row and the website stops being served there. ``owe_snapshot``: the Hub says it
+    does not know the domain, so it is told again, which is what brings it back if that was all."""
+    failures = row.failures + 1
+    if failures < CUSTOM_DOMAIN_FAILURES_TO_LAPSE:
+        row = _learned(row, reason=reason, failures=failures, owe_snapshot=owe_snapshot)
+        if owe_snapshot:
+            sync_hub(row.hub_id)
+        logger.warning("hubs.custom_domain.failure domain=%s %s of %s", row.hostname, failures, CUSTOM_DOMAIN_FAILURES_TO_LAPSE)
+        return "failing"
+    return _lapse(row, CustomDomain.Reason.CHECKS_FAILED, tell_the_owner=True)
+
+
+def _lapse(row: CustomDomain, reason: str, *, tell_the_owner: bool = False) -> str:
+    """Out of the snapshot now; its certificate goes as soon as the Hub heard, its place on the listener with it. A
+    business that was purged leaves nothing behind."""
+    row = _learned(row, state=CustomDomain.State.LAPSED, reason=reason, proven=False, failures=0)
+    if tell_the_owner:
+        _tell_the_owner_it_lapsed(row)
+    outcome = _drop_certificate(row)
+    if outcome:
+        return outcome
+    if row.hub.status == Hub.Status.DELETED:
+        _learned(row, forget=True)
+        return "gone"
+    return "lapsed"
+
+
+def _tell_the_owner_it_lapsed(row: CustomDomain) -> None:
+    owner = HubMember.objects.filter(hub_id=row.hub_id, role=Role.OWNER).select_related("user").first()
+    if owner is not None:
+        emails.send_custom_domain_lost(row.hub, owner.user, hostname=row.hostname, base_url=emails.base_url(None))
+
+
+def _check_lapsed(row: CustomDomain) -> str:
+    """A certificate still going goes first; then, if the CNAME is back and its reason allows, the way starts again."""
+    outcome = _drop_certificate(row)
+    if outcome:
+        return outcome
+    if row.reason not in CustomDomain.RETURNS_BY_ITSELF:
+        return "lapsed"
+    row = queries.custom_domain_row(row.id)
+    try:
+        back = domain_checks.points_at(row.hostname, domain_checks.target_of(row.hub_id))
+    except domain_checks.DnsUnavailable as error:
+        logger.warning("hubs.custom_domain.dns domain=%s: %s", row.hostname, error)
+        return "lapsed"
+    if not back:
+        return "lapsed"
+    row = _learned(
+        row,
+        state=CustomDomain.State.PENDING,
+        reason=CustomDomain.Reason.CERTIFICATE_PENDING,
+        new_token=True,
+        validation_name="",
+        validation_value="",
+    )
+    return _check_pending(row)
+
+
+def _finish_removal(row: CustomDomain) -> str:
+    """The certificate, and the row last: that is what frees the name."""
+    outcome = _drop_certificate(row)
+    if outcome:
+        return outcome
+    _learned(row, forget=True)
+    return "removed"
+
+
+def _drop_certificate(row: CustomDomain) -> str:
+    """Take the certificate of a domain out of AWS, once the Hub heard it no longer serves it (hub#812: the snapshot, then
+    the certificate). The empty answer: nothing is left. Otherwise why not yet, for the next pass."""
+    if not sync_hub(row.hub_id):
+        return "hub_away"
+    if not row.certificate_arn:
+        return ""
+    known_on_the_listener = row.attached_at is not None
+    if known_on_the_listener:
+        edge_client.detach(row.certificate_arn)
+        row = _learned(row, attached=False)
+    try:
+        edge_client.delete_certificate(row.certificate_arn)
+    except edge_client.CertificateInUse:
+        logger.info("hubs.custom_domain.certificate_in_use domain=%s", row.hostname)
+        if not known_on_the_listener:
+            # The ALB may still be letting go, or the pass that attached it lost to the owner or died before writing it:
+            # then no row says so, and without this no later pass would ever delete it.
+            edge_client.detach(row.certificate_arn)
+        return "certificates_in_use"
+    _learned(row, certificate_arn="")
+    return ""
 
 
 # --- Usage: the nightly collection (lot L4-A, PLAN-SAAS §5) -----------------------------------------
