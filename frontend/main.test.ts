@@ -506,6 +506,45 @@ describe('the session read again once an Account page changes what it says (saas
     expect(themeMode.value).toBe('dark');
   });
 
+  it('two changes in a row: the answer to the last one is the one painted, whatever arrives first', async () => {
+    renderShellHtml(IN_ENGLISH);
+    fakeShell();
+    await main.boot({});
+    const { session } = shellOptions();
+    const answers: Array<(answer: unknown) => void> = [];
+    vi.mocked(sdk.client.api.call).mockImplementation(() => new Promise((resolve) => answers.push(resolve)));
+    // Every boot of this file listens, in the order they booted: this one's ask is the last of each change.
+    sessionChanged();
+    const perChange = answers.length;
+    sessionChanged();
+    const [first, last] = [answers[perChange - 1], answers[2 * perChange - 1]];
+    last({ ...IN_ENGLISH, menu: menuIn('en') });
+    await vi.waitFor(() => expect(session.value?.menu).toEqual(menuIn('en')));
+    first({ ...IN_ENGLISH, language: 'es', account_language: 'es', menu: menuIn('es') });
+    await new Promise((settle) => setTimeout(settle, 0));
+    expect(session.value?.menu).toEqual(menuIn('en'));
+    expect(session.value?.language).toBe('en');
+  });
+
+  it('nor says a failure of an ask a later one already replaced', async () => {
+    renderShellHtml(IN_ENGLISH);
+    fakeShell();
+    await main.boot({});
+    const { session } = shellOptions();
+    const asks: Array<{ resolve: (answer: unknown) => void; reject: (error: unknown) => void }> = [];
+    vi.mocked(sdk.client.api.call).mockImplementation(() => new Promise((resolve, reject) => asks.push({ resolve, reject })));
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    sessionChanged();
+    const perChange = asks.length;
+    sessionChanged();
+    asks[perChange - 1].reject(new ApiError(0, 'network_error', 'Network error'));
+    asks[2 * perChange - 1].resolve({ ...IN_ENGLISH, menu: menuIn('es') });
+    await vi.waitFor(() => expect(session.value?.menu).toEqual(menuIn('es')));
+    expect(logged).toHaveBeenCalled();
+    expect(toastError).not.toHaveBeenCalled();
+    logged.mockRestore();
+  });
+
   it('a read that fails keeps the session on screen (the person stays signed in) and says so, in the language of the page', async () => {
     renderShellHtml(IN_ENGLISH);
     fakeShell();

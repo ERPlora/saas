@@ -153,17 +153,22 @@ function loadSession(client: LiveClient, doc: Document) {
       },
     );
   }
-  const reload = () =>
-    client.api.call('base.session.me', {}).then(
+  // Two changes in a row ask twice: only the answer to the last ask is painted, whichever arrives first.
+  let asked = 0;
+  const reload = () => {
+    const ask = ++asked;
+    return client.api.call('base.session.me', {}).then(
       (answer) => {
-        me.value = inAccountLanguage(answer);
+        if (ask === asked) me.value = inAccountLanguage(answer);
       },
       (error: unknown) => {
         console.error('saas: base.session.me failed', error);
+        if (ask !== asked) return;
         const texts = { en, es }[shellLocale(doc.documentElement.lang)];
         void toastError(texts.saas.session.notRefreshed);
       },
     );
+  };
   return { session: me, status, reload };
 }
 

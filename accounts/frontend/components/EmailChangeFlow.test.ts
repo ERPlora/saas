@@ -118,26 +118,9 @@ describe('EmailChangeFlow', () => {
     stop();
   });
 
-  it('a wrong code leaves the session as it was', async () => {
+  it('says a wrong code and the tries left; with none left, asks for a new code (the session stays as it was)', async () => {
     const heard = vi.fn();
     const stop = onSessionChanged(heard);
-    const s = await setup((call) =>
-      describeCall(call).path.endsWith('/verify')
-        ? Response.json({ verified: false, attempts_left: 1, profile: profile() })
-        : Response.json(profile()),
-    );
-    await typeInto(s.q('email-change-address'), 'laura@new.example');
-    s.q('email-change-submit')?.click();
-    await flush();
-    await typeInto(s.q('code'), '000000');
-    s.q('email-change-submit')?.click();
-    await flush();
-    expect(ionProps(s.q('code'), 'errorText')).toEqual({ errorText: 'That code is not right. Tries left: 1.' });
-    expect(heard).not.toHaveBeenCalled();
-    stop();
-  });
-
-  it('says a wrong code and the tries left; with none left, asks for a new code', async () => {
     let tries = 2;
     const s = await setup((call) =>
       describeCall(call).path.endsWith('/verify')
@@ -157,6 +140,8 @@ describe('EmailChangeFlow', () => {
     expect(s.q('email-change')?.getAttribute('aria-label')).toBe('Change your email');
     expect(ionProps(s.q('email-change-address'), 'value')).toEqual({ value: 'laura@new.example' });
     expect(s.open.value).toBe(true);
+    expect(heard).not.toHaveBeenCalled();
+    stop();
   });
 
   it('sends a new code on demand', async () => {
