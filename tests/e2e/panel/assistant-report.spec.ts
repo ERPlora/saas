@@ -29,13 +29,14 @@ const { seed } = localAssistant(STACK.aiProviderPort);
 async function report(page: Page, answer: Locator): Promise<{ message_id: string; answer: string; web?: unknown }> {
   await answer.getByTestId('assistant-report').click();
   await expect(page.getByTestId('assistant-report-dialog-submit')).toBeVisible();
+  // No thank-you of a report before still on screen (2.6 s, shell/toast.ts): the one that shows next is this report's.
+  await expect(toast(page, THANKS)).toHaveCount(0);
   const request = page.waitForRequest(
     (sent) => sent.method() === 'POST' && new URL(sent.url()).pathname.endsWith('/assistant/report'),
   );
   await page.getByTestId('assistant-report-dialog-submit').click();
   const body = (await request).postDataJSON() as { message_id: string; answer: string; web?: unknown };
-  // This report's: the one before may still be closing (two reports in a row).
-  await expect(toast(page, THANKS).last()).toBeVisible();
+  await expect(toast(page, THANKS)).toBeVisible();
   await expect(page.getByTestId('assistant-report-dialog-submit')).toBeHidden();
   return body;
 }
