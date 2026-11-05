@@ -22,7 +22,7 @@ import {
 } from '@erplora/ui/components';
 import { HubIcon, toastSuccess, useSurface, WebOnly } from '@erplora/ui/shell';
 import { fieldErrors, useCommand, useLive } from '@erplora/ui/sdk';
-import { IonButton, IonCard, IonCardContent, IonInput, IonSkeletonText, IonSpinner } from '@ionic/vue';
+import { IonButton, IonCard, IonCardContent, IonInput, IonSkeletonText, IonSpinner, IonText } from '@ionic/vue';
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
@@ -165,7 +165,11 @@ async function confirmRemove(): Promise<void> {
     data-testid="custom-domain"
   >
     <ion-card-content class="ion-padding">
-      <h2>{{ $t('hubs.domain.title') }}</h2>
+      <h2>
+        <ion-text color="dark">
+          <strong>{{ $t('hubs.domain.title') }}</strong>
+        </ion-text>
+      </h2>
       <p>{{ $t('hubs.domain.lead') }}</p>
 
       <div
@@ -226,9 +230,12 @@ async function confirmRemove(): Promise<void> {
             {{ $t('hubs.domain.failures', { count: failing }, failing) }}
           </InlineFeedback>
 
-          <template v-if="records.length">
-            <h3 class="ion-margin-top">
-              {{ $t('hubs.domain.records.title') }}
+          <div
+            v-if="records.length"
+            class="ion-margin-top"
+          >
+            <h3>
+              <strong>{{ $t('hubs.domain.records.title') }}</strong>
             </h3>
             <p>{{ $t('hubs.domain.records.lead') }}</p>
             <section
@@ -237,7 +244,9 @@ async function confirmRemove(): Promise<void> {
               class="ion-margin-top"
               :data-testid="`domain-record-${item.key}`"
             >
-              <h4>{{ $t(`hubs.domain.${item.key}.title`) }}</h4>
+              <h4>
+                <strong>{{ $t(`hubs.domain.${item.key}.title`) }}</strong>
+              </h4>
               <p>{{ $t(`hubs.domain.${item.key}.hint`) }}</p>
               <template v-if="item.record">
                 <p>
@@ -276,27 +285,28 @@ async function confirmRemove(): Promise<void> {
                 </ion-button>
               </div>
             </section>
-          </template>
+          </div>
 
-          <p
-            v-if="watched"
-            class="ion-margin-top"
-            data-testid="domain-checks"
-          >
-            {{ $t('hubs.domain.checks') }}
-          </p>
-          <p
-            v-if="domain.checked_at"
-            data-testid="domain-checked-at"
-          >
-            {{ $t('hubs.domain.checkedAt', { date: formatDateTime(domain.checked_at, locale) }) }}
-          </p>
-          <p
-            v-if="domain.state === 'active' && domain.activated_at"
-            data-testid="domain-active-since"
-          >
-            {{ $t('hubs.domain.activeSince', { date: formatDateTime(domain.activated_at, locale) }) }}
-          </p>
+          <div class="ion-margin-top">
+            <p
+              v-if="watched"
+              data-testid="domain-checks"
+            >
+              {{ $t('hubs.domain.checks') }}
+            </p>
+            <p
+              v-if="domain.checked_at"
+              data-testid="domain-checked-at"
+            >
+              {{ $t('hubs.domain.checkedAt', { date: formatDateTime(domain.checked_at, locale) }) }}
+            </p>
+            <p
+              v-if="domain.state === 'active' && domain.activated_at"
+              data-testid="domain-active-since"
+            >
+              {{ $t('hubs.domain.activeSince', { date: formatDateTime(domain.activated_at, locale) }) }}
+            </p>
+          </div>
         </div>
 
         <InlineFeedback

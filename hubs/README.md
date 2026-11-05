@@ -272,6 +272,19 @@ Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»)
   `edge_client` los convierte en `EdgeUnavailable`, así que `StrictStubber` los recuerda y hace caer el test. Sin eso, una
   llamada inesperada pasaría por AWS caído.
 
+## Lo que añadió saas#195 (2026-11-05): la pantalla de Ajustes
+
+- **`CustomDomainCard`** (`frontend/components/`), entre «General» y la «Zona de peligro» de Ajustes. Su
+  `hubs.custom_domain.get` vivo va en el primer flujo de `/api/live` con `hubs.business.get` (se monta con la página y se
+  enseña cuando llega el negocio; FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN). Lo que responden `.request` y `.remove` se pinta
+  al momento y lo sustituye la siguiente respuesta viva. Los textos de estado y de motivo son los del servidor
+  (`state_label`, `reason_label`); el resto, `hubs.domain.*` del catálogo del panel.
+- Solo el propietario (`role === 'hub_owner'`) ve el formulario y «Quitar dominio»: no hay un `can.*` propio, y el
+  servidor lo vuelve a comprobar. Con `available` en `false`, ni formulario ni botones (las dos escrituras darían 409).
+- **e2e** `tests/e2e/panel/hubs-domain.spec.ts`: el Django del panel conecta dominios y manda ACM, el ALB y CloudWatch al
+  puerto del doble del Hub con claves inventadas (`tests/e2e/panel/project.ts`); la spec juega allí ACM y los acuses del
+  Hub. Fuera de ella nadie escucha y las llamadas fallan al momento, como con AWS caído.
+
 ## Pendiente (lotes siguientes)
 
 - El Hub (carril Hub): verificar la v2 y los dos secretos en su `/internal`, firmar con v2 su canje, y adoptar por
