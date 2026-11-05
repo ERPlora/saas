@@ -368,13 +368,13 @@ Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
-1. Cuando el Hub no necesita ver la respuesta según llega (una tarea del propio Hub, un mensaje que no se pinta), manda el mismo turno que en ASSISTANT-F12 a la puerta que contesta de una vez. Así llega el paso «Pedírselo al asistente» de una automatización del negocio, sin nadie delante: es un turno más, sin nada que lo distinga del chat.
-2. erplora.com hace lo mismo que en directo: prepara la conversación, toma el mensaje del cupo, llama al modelo (o a su reserva) y ejecuta sus propias herramientas.
+1. Cuando el Hub no necesita ver la respuesta según llega (una tarea del propio Hub, un mensaje que no se pinta), manda el mismo turno que en ASSISTANT-F12 a la puerta que contesta de una vez. Así llega el paso «Pedírselo al asistente» de una automatización del negocio, sin nadie delante: es un turno más, y solo se distingue del chat en que no busca en la web, porque esta respuesta se guarda (paso 2).
+2. erplora.com hace lo mismo que en directo: prepara la conversación, toma el mensaje del cupo, llama al modelo (o a su reserva) y ejecuta sus propias herramientas, menos la búsqueda en la web: el Hub guarda esta respuesta (en la ejecución y en el registro de su paso) y los términos de Brave no dejan guardar sus resultados, ni en parte. Aquí no se ofrece y al modelo no se le habla de ella.
 3. Devuelve de una vez la respuesta entera, las herramientas que el negocio tiene que ejecutar con su pase de continuación, el consumo y el cupo que queda.
 Entra: lo mismo que el turno en directo.
 Sale: la respuesta entera con su consumo, su pase de continuación y el cupo que queda (`assistant.message.claimed`; lo gastado, `assistant.usage.recorded`).
-Si falla: los rechazos antes del modelo, iguales que en directo; si el proveedor falla, un error de pasarela con su motivo, si vale la pena repetir y el cupo que queda, y el mensaje vuelve al cupo si no se contestó nada. El paso de una automatización gasta lo mismo que el chat: su primer turno, un mensaje; los turnos que contestan a todas sus herramientas (también a las que no se hicieron) con su pase de continuación, ninguno; si contestan pasados los 15 minutos del pase (un cambio que esperó el sí de una persona), uno.
-Implicados: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F18 y, en el Hub, FLOW-F39
+Si falla: los rechazos antes del modelo, iguales que en directo; si el proveedor falla, un error de pasarela con su motivo, si vale la pena repetir y el cupo que queda, y el mensaje vuelve al cupo si no se contestó nada. El paso de una automatización gasta lo mismo que el chat: su primer turno, un mensaje; los turnos que contestan a todas sus herramientas (también a las que no se hicieron) con su pase de continuación, ninguno; si contestan pasados los 15 minutos del pase (un cambio que esperó el sí de una persona), uno. Si el modelo pide buscar en la web aunque no se le ofrezca, no se busca: recibe el motivo para decirlo, sin que el Hub vea nada ni se gaste nada de lo que cada negocio tiene para buscar.
+Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F18 y, en el Hub, FLOW-F39
 
 ### ASSISTANT-F14 Usar las herramientas de erplora.com y las del negocio
 <!-- origen: old-saas:SAAS_ASSISTANT-F06 -->
@@ -382,14 +382,14 @@ Estado: parcial — las herramientas del negocio, la fecha y la hora y el tipo d
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
-1. En cada turno, el modelo puede usar las herramientas del negocio (las que manda el Hub: buscar un cliente, crear una cita…) y las de erplora.com: la fecha, la hora y el día de la semana de hoy; a cómo está una moneda frente a otra, con el tipo de referencia del Banco Central Europeo y su fecha; y, si erplora.com tiene la clave del buscador, buscar en la web en el idioma de la persona (en español, en España).
+1. En cada turno, el modelo puede usar las herramientas del negocio (las que manda el Hub: buscar un cliente, crear una cita…) y las de erplora.com: la fecha, la hora y el día de la semana de hoy; a cómo está una moneda frente a otra, con el tipo de referencia del Banco Central Europeo y su fecha; y, si erplora.com tiene la clave del buscador, buscar en la web en el idioma de la persona (en español, en España). Buscar en la web es solo del chat, del Hub y del panel: una automatización no busca (ver ASSISTANT-F13).
 2. Si el modelo pide una herramienta de erplora.com, erplora.com la ejecuta y le devuelve el resultado sin que el Hub vea nada.
 3. Si pide una del negocio, el turno se la pasa al Hub para que la ejecute (ver ASSISTANT-F12).
 4. El modelo se vuelve a llamar como mucho cinco veces en un turno; en la última ya no se le ofrecen las herramientas de erplora.com y tiene que contestar.
 5. Una respuesta con lo que dieron el tipo de cambio o la búsqueda dice de dónde sale: si el modelo no nombra la fuente, erplora.com escribe su dirección debajo de la respuesta.
 Entra: las herramientas del negocio y las preguntas del modelo.
 Sale: el resultado de cada herramienta de erplora.com para el modelo; su consumo se suma al del turno y no gasta otro mensaje.
-Si falla: una herramienta de erplora.com que falla da al modelo el motivo para que conteste con él, nunca un turno fallido; un servicio caído, que tarda demasiado o que responde algo inservible, una moneda sin tipo publicado, una búsqueda sin resultados o demasiadas consultas de un negocio: el modelo recibe el motivo y ninguna cifra, para decirlo sin inventarla; una herramienta del negocio con el nombre de una de erplora.com la ejecuta erplora.com; sin la clave del buscador, la búsqueda no se ofrece y lo demás funciona igual. El tipo de cambio es una referencia para informar: no cambia el importe de ningún cobro ni factura.
+Si falla: una herramienta de erplora.com que falla da al modelo el motivo para que conteste con él, nunca un turno fallido; un servicio caído, que tarda demasiado o que responde algo inservible, una moneda sin tipo publicado, una búsqueda sin resultados o demasiadas consultas de un negocio: el modelo recibe el motivo y ninguna cifra, para decirlo sin inventarla; una herramienta del negocio con el nombre de una de erplora.com la ejecuta erplora.com; sin la clave del buscador, la búsqueda no se ofrece y lo demás funciona igual; en una automatización tampoco, y si el modelo la pide no se hace. El tipo de cambio es una referencia para informar: no cambia el importe de ningún cobro ni factura.
 Implicados: ASSISTANT-F12, ASSISTANT-F13, ASSISTANT-F17, ASSISTANT-F25
 
 ### ASSISTANT-F15 Rechazar un turno con su motivo
@@ -712,7 +712,11 @@ propio texto por `code`.
   resultados, ni en parte, más allá de lo transitorio (§3(b)(i)): el resultado vive en la memoria del turno, solo lo ve el
   modelo, y por eso no hay caché. Tope por llamante en la caché: `ASSISTANT_WEB_SEARCH_RATELIMIT` (20/d) y
   `ASSISTANT_CURRENCY_RATE_RATELIMIT` (60/h), con un solo presupuesto para todas las demos (`turn.tool_budget`); cinco
-  resultados de hasta 1.000 caracteres. `turn.prepare` añade `server_tools.rules()` a las instrucciones del llamante, que
+  resultados de hasta 1.000 caracteres. La puerta que contesta de una vez dice `answer_kept=True` (`turn.start`, donde
+  cada puerta tiene que decirlo): el Hub guarda esa respuesta (FLOW-F39) y una herramienta con `may_be_kept=False`, hoy
+  `web_search`, ni se ofrece, ni sale en las reglas, ni corre si el modelo la pide (`web_search.not_here`). El corte es por
+  puerta, no por un campo que mande el llamante, y el Hub solo llama a esa puerta desde `apps/flow/gateway.py`.
+  `turn.prepare` añade `server_tools.rules()` a las instrucciones del llamante, que
   rechazan lo que no sea su tema: solo la pasarela sabe qué se ofrece, y así ni el Hub ni el panel cambian. `turn.run`
   escribe la fuente con `source_line` si el modelo no la nombró, en texto: el Markdown del chat quita la dirección de un
   enlace a otro sitio, y es a propósito. Los avisos de la burbuja no ven estos resultados (ui#92).
@@ -742,7 +746,7 @@ propio texto por `code`.
 - **Ajustes nuevos** (`config/settings.py`, con valor seguro por defecto): `ASSISTANT_*_RATELIMIT`,
   `ASSISTANT_DEMO_MESSAGES` y `ASSISTANT_SERVICE_PROVIDER`.
 - **Tests** (todos contra `assistant/tests/fake_provider.py`, nunca un proveedor real): `test_internal_caller.py`
-  (F11), `test_turn.py` (F12, F13, F15), `test_server_tools.py` (F14), `test_ratelimit.py` (F16),
+  (F11), `test_turn.py` (F12, F13, F15), `test_automation_step.py` (F13: el paso de una automatización, que no busca en la web), `test_server_tools.py` (F14), `test_ratelimit.py` (F16),
   `test_privacy.py` (F17), `test_quota.py` (F18), `test_attachments.py` (F19), `test_embeddings.py` (F20),
   `test_speech.py` (F21, F22), `test_report.py` (F23), `test_admin_usage.py` (F24) y `test_internal_docs.py` (F28); `assistant/tests/doors.py`
   firma como el Hub, lee los frames y cuelga a medias (`hang_up`). e2e de las puertas y del admin:
@@ -908,3 +912,4 @@ propio texto por `code`.
 - No cambia de plan desde el chat: cobra en el acto, y lo que se cobra se ve y se confirma en la Tienda (BILLING-F11);
   el asistente lo dice y enlaza la Tienda (saas#211).
 - No cobra ni factura en otra moneda: el tipo de cambio solo informa (PLAN §40).
+- Una automatización no busca en la web: lo que contesta se guarda y los términos de Brave no lo dejan (ASSISTANT-F13).

@@ -6,7 +6,9 @@ sees the call; every other tool of the turn is the Hub's, which runs it.
   (Frankfurter, free and without a key). Always offered. Only codes leave for it, never anything of the person's.
 - ``web_search``: the public web (Brave Search; its key, ``BRAVE_SEARCH_API_KEY``, comes from the environment). Without
   the key it is not offered, and the server starts as usual. It looks in the language the model says the person writes
-  in (``SEARCH_LANGUAGES``): neither door of a turn carries it, and a wrong one only leans the results.
+  in (``SEARCH_LANGUAGES``): neither door of a turn carries it, and a wrong one only leans the results. A turn whose
+  answer its caller keeps (``answer_kept``: an automation's) never searches, even if the model asks: Brave's terms,
+  §3(b)(i), forbid keeping its results.
 
 ``run`` never raises: a tool that fails gives the model an error to answer with (``{"error": …, "code": …}``) and no
 figure, so a turn never fails because of one of these and the model has nothing to quote but the failure. They spend no
@@ -96,6 +98,8 @@ class ServerTool:
     offered: Callable[[], bool] = lambda: True
     #: The setting of its calls' budget per caller (``"20/d"``); none: it reaches no provider.
     budget: str = ""
+    #: Whether what it returns may reach an answer the caller keeps.
+    may_be_kept: bool = True
 
 
 def error(message: str, code: str = "") -> dict:
@@ -351,6 +355,7 @@ TOOLS = {
         web_search,
         offered=lambda: bool(_search_key()),
         budget="ASSISTANT_WEB_SEARCH_RATELIMIT",
+        may_be_kept=False,
     ),
 }
 
@@ -360,9 +365,13 @@ _SOURCE_RULES = """- An answer with what these tools returned says where it come
 - If one of them returns an error, say you could not get it and give no figure: not from memory and not an estimate."""
 
 
-def specs() -> list[ToolSpec]:
-    """Our tools offered now."""
-    return [tool.spec for tool in TOOLS.values() if tool.offered()]
+def _open_to(tool: ServerTool, answer_kept: bool) -> bool:
+    return tool.offered() and (tool.may_be_kept or not answer_kept)
+
+
+def specs(*, answer_kept: bool = False) -> list[ToolSpec]:
+    """Our tools offered now, to a turn whose answer its caller keeps or not."""
+    return [tool.spec for tool in TOOLS.values() if _open_to(tool, answer_kept)]
 
 
 def is_server_tool(name: str) -> bool:
@@ -370,10 +379,10 @@ def is_server_tool(name: str) -> bool:
     return name in TOOLS
 
 
-def rules() -> str:
+def rules(*, answer_kept: bool = False) -> str:
     """What the turn adds to the caller's instructions, which turn down anything but its own subject: what our tools
     answer is theirs too, and how to answer with it. Only the gateway knows which are offered."""
-    search = [_SEARCH_RULES] if TOOLS["web_search"].offered() else []
+    search = [_SEARCH_RULES] if _open_to(TOOLS["web_search"], answer_kept) else []
     return "\n".join([_RATE_RULES, *search, _SOURCE_RULES])
 
 
@@ -385,15 +394,17 @@ def over_budget(tool: str, setting: str, who: str) -> bool:
     return usage is not None and usage["should_limit"]
 
 
-async def run(name: str, arguments: str, who: str) -> str:
+async def run(name: str, arguments: str, who: str, *, answer_kept: bool = False) -> str:
     """The JSON result of our tool ``name`` for the budget ``who``; never raises (an error is a result the model answers
-    with)."""
+    with). A tool not offered to this turn runs no more than one that is not configured: the model may ask for any."""
     tool = TOOLS.get(name)
     if tool is None:
         return json.dumps(error(f"Unknown tool: {name}."))
     try:
         if not tool.offered():
             raise ToolFailed("not_configured", "This tool is not available: say so.")
+        if answer_kept and not tool.may_be_kept:
+            raise ToolFailed("not_here", "This tool is not available in an automation: say so, and answer without it.")
         if tool.budget and await sync_to_async(over_budget, thread_sensitive=False)(name, tool.budget, who):
             logger.warning("assistant.server_tools.budget_spent tool=%s caller=%s", name, who)
             raise ToolFailed("budget_spent", "This has been asked too many times for now: say so, and try again later.")

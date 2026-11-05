@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:a185a44b79dcf22a4bfd9f531480cf043995a9874548b9a8cbfd403af1c256b6 -->
+<!-- generated from WORKBOOK.md sha256:ff0053515611498e25427f5c0727fc7e7dcd0143c0922742841d6ff7ac1cbaa6 -->
 
 ## What it is for and who uses it
 
@@ -341,27 +341,27 @@ Status: done
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
-1. When the Hub does not need to see the answer as it arrives (a task of the Hub itself, a message that is not painted), it sends the same turn as in ASSISTANT-F12 to the door that answers at once. That is how the "Ask the assistant" step of one of the business's automations arrives, with nobody in front: one more turn, with nothing that tells it from the chat.
-2. erplora.com does the same as live: it prepares the conversation, takes the message from the allowance, calls the model (or its fallback) and runs its own tools.
+1. When the Hub does not need to see the answer as it arrives (a task of the Hub itself, a message that is not painted), it sends the same turn as in ASSISTANT-F12 to the door that answers at once. That is how the "Ask the assistant" step of one of the business's automations arrives, with nobody in front: one more turn, which differs from the chat only in not searching the web, because this answer is kept (step 2).
+2. erplora.com does the same as live: it prepares the conversation, takes the message from the allowance, calls the model (or its fallback) and runs its own tools, except the web search: the Hub keeps this answer (in the run and in the log of its step) and Brave's terms do not allow keeping its results, even in part. Here it is not offered and the model is not told of it.
 3. It sends back at once the whole answer, the tools the business has to run with their continuation pass, the consumption and the allowance left.
 In: the same as the live turn.
 Out: the whole answer with its consumption, its continuation pass and the allowance left (`assistant.message.claimed`; what it spent, `assistant.usage.recorded`).
-If it fails: the refusals before the model, the same as live; if the provider fails, a gateway error with its reason, whether it is worth repeating and the allowance left, and the message goes back to the allowance if nothing was answered. An automation's step spends the same as the chat: its first turn, one message; the turns that answer all its tools (also those that were not made) with their continuation pass, none; if they answer after the pass's 15 minutes (a change that waited for a person's yes), one.
-Involved: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F18 and, in the Hub, FLOW-F39
+If it fails: the refusals before the model, the same as live; if the provider fails, a gateway error with its reason, whether it is worth repeating and the allowance left, and the message goes back to the allowance if nothing was answered. An automation's step spends the same as the chat: its first turn, one message; the turns that answer all its tools (also those that were not made) with their continuation pass, none; if they answer after the pass's 15 minutes (a change that waited for a person's yes), one. If the model asks to search the web although it is not offered, nothing is searched: it gets the reason to say so, the Hub sees nothing and nothing of what each business has for searching is spent.
+Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F18 and, in the Hub, FLOW-F39
 
 ### ASSISTANT-F14 Use erplora.com's tools and the business's
 Status: partial — the business's tools, the date and time and the exchange rate between currencies work; the web search is done and is not offered in production until it has its key and the privacy policy names the provider (saas#277)
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
-1. In each turn, the model can use the business's tools (those the Hub sends: find a customer, create an appointment…) and erplora.com's: today's date, time and weekday; what one currency is worth in another, at the European Central Bank's reference rate and its date; and, if erplora.com has the search engine's key, searching the web in the person's language (in Spanish, in Spain).
+1. In each turn, the model can use the business's tools (those the Hub sends: find a customer, create an appointment…) and erplora.com's: today's date, time and weekday; what one currency is worth in another, at the European Central Bank's reference rate and its date; and, if erplora.com has the search engine's key, searching the web in the person's language (in Spanish, in Spain). Searching the web belongs only to the chat, the Hub's and the panel's: an automation does not search (see ASSISTANT-F13).
 2. If the model asks for a tool of erplora.com, erplora.com runs it and gives it the result without the Hub seeing anything.
 3. If it asks for one of the business, the turn passes it to the Hub to run it (see ASSISTANT-F12).
 4. The model is asked again at most five times in a turn; in the last one erplora.com's tools are no longer offered and it has to answer.
 5. An answer with what the exchange rate or the search gave says where it comes from: if the model names no source, erplora.com writes its address below the answer.
 In: the business's tools and the model's questions.
 Out: the result of each tool of erplora.com for the model; its consumption adds up to the turn's and spends no other message.
-If it fails: a tool of erplora.com that fails gives the model the reason to answer with, never a failed turn; a service that is down, takes too long or answers something unusable, a currency with no published rate, a search with no results or too many requests from a business: the model gets the reason and no figure, to say so without inventing one; a tool of the business named as one of erplora.com's is run by erplora.com; without the search engine's key, the search is not offered and the rest works the same. The exchange rate is a reference to inform: it changes the amount of no charge or invoice.
+If it fails: a tool of erplora.com that fails gives the model the reason to answer with, never a failed turn; a service that is down, takes too long or answers something unusable, a currency with no published rate, a search with no results or too many requests from a business: the model gets the reason and no figure, to say so without inventing one; a tool of the business named as one of erplora.com's is run by erplora.com; without the search engine's key, the search is not offered and the rest works the same; in an automation it is not offered either, and if the model asks for it, it is not done. The exchange rate is a reference to inform: it changes the amount of no charge or invoice.
 Involved: ASSISTANT-F12, ASSISTANT-F13, ASSISTANT-F17, ASSISTANT-F25
 
 ### ASSISTANT-F15 Refuse a turn with its reason

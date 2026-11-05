@@ -342,6 +342,19 @@ class TestTheToolsOfErplora:
         assert "`currency_rate`" in sent["messages"][0]["content"]
         assert "erplora.com" in sent["messages"][0]["content"]
 
+    def test_with_the_search_key_the_panels_model_is_offered_the_search_and_told_of_it(
+        self, signed_in, account, answering, fake_provider, settings
+    ):
+        """Only the door whose answer the caller keeps goes without it (ASSISTANT-F13): the panel keeps none."""
+        settings.BRAVE_SEARCH_API_KEY = "made-up-brave-key"
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Hi."))
+
+        frames(post_turn(signed_in, {"messages": [ask("What does the new law say?")]}))
+
+        sent = model_requests(fake_provider)[0].body
+        assert "web_search" in [tool["function"]["name"] for tool in sent["tools"]]
+        assert "`web_search`" in sent["messages"][0]["content"]
+
     def test_the_panel_shows_where_a_rate_comes_from(self, signed_in, account, answering, fake_provider, settings):
         settings.ASSISTANT_RATES_URL = f"{fake_provider.url}/v1/latest"
         fake_provider.reply("GET", "/v1/latest", json={"base": "USD", "date": "2026-11-04", "rates": {"EUR": 0.88755}})
