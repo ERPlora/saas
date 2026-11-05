@@ -17,6 +17,7 @@ import pytest
 from assistant.tests.fake_provider import FakeProvider
 
 REPO = Path(__file__).resolve().parents[2]
+A_SERVER_OF_ITS_OWN = re.compile(r"\b\w*(?:HTTP|TCP)Server\b")
 
 CUT_AS_THE_INTERPRETER_CLOSES = """
 import atexit, io, socket, struct, sys, threading, time
@@ -102,9 +103,13 @@ def test_a_client_that_cuts_does_not_abort_the_interpreter(conversation):
     assert ended.returncode == 0, ended.stderr
 
 
-def test_a_handler_that_breaks_still_says_so(capsys):
+@pytest.mark.parametrize("error", [ZeroDivisionError, ValueError, OSError])  # OSError: the parent of what it hushes
+def test_a_handler_that_breaks_still_says_so(error, capsys):
+    def breaks(body):
+        raise error("the handler broke")
+
     fake = FakeProvider()
-    fake.reply("POST", "/v1/embeddings", answer=lambda body: 1 / 0)
+    fake.reply("POST", "/v1/embeddings", answer=breaks)
     fake.start()
     try:
         with socket.create_connection(fake._server.server_address) as client:
@@ -113,7 +118,29 @@ def test_a_handler_that_breaks_still_says_so(capsys):
     finally:
         fake.stop()
 
-    assert "ZeroDivisionError" in capsys.readouterr().err
+    assert error.__name__ in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        'ThreadingHTTPServer(("127.0.0.1", 0), Handler)',
+        'http.server.HTTPServer(("127.0.0.1", 0), Handler)',
+        "class Mine(ThreadingHTTPServer):",
+        "from http.server import ThreadingHTTPServer as Server",
+        'socketserver.ThreadingTCPServer(("127.0.0.1", 0), Handler)',
+    ],
+)
+def test_the_guard_sees_every_way_of_a_server_of_its_own(source):
+    assert A_SERVER_OF_ITS_OWN.search(source)
+
+
+@pytest.mark.parametrize(
+    "source",
+    ['QuietServer(("127.0.0.1", 0), Handler)', "from http.server import BaseHTTPRequestHandler"],
+)
+def test_the_guard_lets_a_double_on_the_quiet_server_be(source):
+    assert not A_SERVER_OF_ITS_OWN.search(source)
 
 
 def test_no_double_starts_a_server_of_its_own():
@@ -121,4 +148,4 @@ def test_no_double_starts_a_server_of_its_own():
     doubles = [path for path in REPO.glob("*/tests/**/*.py") if path not in allowed]
 
     assert doubles, "the search finds the tests"
-    assert [path for path in doubles if re.search(r"\b\w*HTTPServer\(", path.read_text())] == []
+    assert [path for path in doubles if A_SERVER_OF_ITS_OWN.search(path.read_text())] == []
