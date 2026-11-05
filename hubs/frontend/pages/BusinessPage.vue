@@ -21,7 +21,7 @@
 // first request ended aborted (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN). The Summary's authorisation card goes the same
 // way: it asks with the page and shows only for a Spanish business that lives (`files`); hidden otherwise, so the
 // business's answer never takes a subscription out of the stream. Settings' own domain too: it asks with the page and
-// shows once the business is there.
+// shows once the business is there, for its owner and its administrators only (the role below lets it go).
 import { formatDateTime, InlineFeedback, StatusPill } from '@erplora/ui/components';
 import { AppPage, HubIcon, type ShellTab, toastError, toastSuccess, useSurface, WebOnly } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
@@ -90,6 +90,11 @@ const fills = computed(() => section.value === 'members');
 const opensAtAll = computed(() => !!business.value && business.value.status !== 'suspended' && !deleted.value);
 /** The authorisation for ERPlora to file its invoices with the AEAT (VeriFactu): a Spanish business's, while it lives. */
 const files = computed(() => business.value?.country === 'ES' && !deleted.value);
+/**
+ * The own domain is its owner's and its administrators' (`hubs.custom_domain.get`, `Role.ADMIN`). Asked with the page
+ * while the role is not known yet, so it rides the first stream; once the business says another role, it goes.
+ */
+const readsDomain = computed(() => !business.value || business.value.role === 'hub_owner' || business.value.role === 'hub_admin');
 const state = computed(() => {
   const now = business.value;
   if (!now || deleted.value) return '';
@@ -332,6 +337,7 @@ async function recover(): Promise<void> {
       />
       <template v-if="section === 'settings' && !loadFailed">
         <CustomDomainCard
+          v-if="readsDomain"
           :id="id"
           :business="business"
         />

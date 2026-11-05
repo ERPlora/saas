@@ -407,6 +407,37 @@ describe('BusinessPage: one stream', () => {
     expect(s.testid('custom-domain').exists()).toBe(true);
   });
 
+  it('an administrator’s Settings keep the own domain in that stream too', async () => {
+    const s = await setup('settings', { role: 'hub_admin', role_label: 'Admin' });
+    await s.clock.advance(RELEASE_GRACE_MS + 1000);
+    expect(s.net.streams).toHaveLength(1);
+    expect(s.client.stream.subscriptions('hubs.custom_domain.get').map((sub) => sub.params)).toEqual([{ id: 'h1' }]);
+    expect(s.testid('custom-domain').exists()).toBe(true);
+  });
+
+  // `hubs.custom_domain.get` is the owner's and the administrators' (`Role.ADMIN`), as `hubs.business.get` is: a manager
+  // or an employee never has the card, nor its refusal, and the query asked with the page before the role was known goes.
+  it('a manager’s or an employee’s deep link to Settings: the page’s refusal only, never the own domain’s nor its query', async () => {
+    const s = await setup('settings', null);
+    s.call.push(errorFrame(subId(s.client, 'hubs.business.get'), 'permission_denied'));
+    s.call.push(errorFrame(subId(s.client, 'hubs.custom_domain.get'), 'permission_denied'));
+    await flush();
+    expect(s.testid('business-error').text()).toContain('You do not have permission to manage this business');
+    expect(s.testid('custom-domain').exists()).toBe(false);
+    expect(s.testid('domain-error').exists()).toBe(false);
+    await s.clock.advance(RELEASE_GRACE_MS + 1000);
+    expect(s.client.stream.subscriptions('hubs.custom_domain.get')).toEqual([]);
+  });
+
+  it.each(['hub_manager', 'hub_employee'])('a business whose role is %s has no own domain card and lets its query go', async (role) => {
+    const s = await setup('settings', { role, role_label: role });
+    expect(s.testid('custom-domain').exists()).toBe(false);
+    expect(s.testid('domain-loading').exists()).toBe(false);
+    await s.clock.advance(RELEASE_GRACE_MS + 1000);
+    expect(s.client.stream.subscriptions('hubs.custom_domain.get')).toEqual([]);
+    expect(s.wrapper.findComponent(BusinessSettings).exists()).toBe(true);
+  });
+
   it('only Settings asks for the own domain', async () => {
     for (const tab of ['summary', 'members', 'modules']) {
       const s = await setup(tab, null);
