@@ -6,7 +6,10 @@
 # runs and records that revision's image tag in /erplora/<ENVIRONMENT>/saas/image_tag (aws-next
 # README, "Imagen"). saas-worker (saas#305) is created by ERPlora/aws (aws#59): while its family does
 # not exist the rollback goes on without it and says so (::warning::); any other error looking for it
-# fails before anything changes:
+# fails before anything changes. The worker never blocks the rollback of saas: without an earlier
+# revision (the first rollback after the deploy that brought it) or with one of another tag than
+# saas's (an image without run_worker would crash-loop), it stays as it is, with a ::warning::; a
+# revision of another environment or image still fails:
 #   1. finds the service's previous revision; nothing changes unless every service has one, it is a
 #      revision of this environment (the tag Environment=<ENVIRONMENT> and the roles
 #      erplora-<ENVIRONMENT>-*: another environment's deploy role could have registered it) on this
@@ -63,6 +66,8 @@ fi
 # Services that may not exist yet (saas-worker until aws#59 is applied); a family prefix also lists
 # longer families: only a revision of <name>'s own family counts.
 not_yet=(saas-worker)
+# The families of not_yet that exist: they never block the rollback of saas.
+optional=()
 for name in "${not_yet[@]}"; do
   family="erplora-$ENVIRONMENT-$name"
   if ! arns="$(aws ecs list-task-definitions --family-prefix "$family" --status ACTIVE \
@@ -77,6 +82,7 @@ for name in "${not_yet[@]}"; do
   done
   if [ "$found" -eq 1 ]; then
     families+=("$name")
+    optional+=("$name")
   else
     echo "::warning::$family does not exist yet (aws#59 not applied): skipped"
   fi
@@ -89,14 +95,25 @@ done
 
 echo "::warning::rolling back ${services[*]} ($ENVIRONMENT) to their previous revisions; migrations are not undone"
 
+# is_optional <name>: whether <name> may stay as it is (it never blocks the rollback of saas).
+is_optional() {
+  local o
+  for o in "${optional[@]}"; do
+    if [ "$o" = "$1" ]; then return 0; fi
+  done
+  return 1
+}
+
 # primary <service>: "<task definition ARN> <rollout state>" of its PRIMARY deployment.
 primary() {
   aws ecs describe-services --cluster "$CLUSTER" --services "$1" --region "$AWS_REGION" \
     --query "services[0].deployments[?status=='PRIMARY'] | [0].[taskDefinition, rolloutState]" --output text
 }
 
+moving=()
 targets=()
 tags=()
+names=()
 for i in "${!services[@]}"; do
   service="${services[i]}"
   name="${families[i]}"
@@ -121,6 +138,10 @@ for i in "${!services[@]}"; do
     fi
   done
   if [ -z "$previous" ]; then
+    if is_optional "$name"; then
+      echo "::warning::$service runs $current and $family has no earlier ACTIVE revision: it stays as it is"
+      continue
+    fi
     echo "::error::$service runs $current and $family has no earlier ACTIVE revision; nothing was changed" >&2
     exit 1
   fi
@@ -141,16 +162,29 @@ for i in "${!services[@]}"; do
     echo "::error::$previous does not run an $repository image ($image); nothing was changed" >&2
     exit 1
   fi
+  moving+=("$service")
   targets+=("$previous")
   tags+=("${image##*:}")
+  names+=("$name")
 done
 
-for tag in "${tags[@]}"; do
-  if [ "$tag" != "${tags[0]}" ]; then
+# saas comes first and is never skipped: the others go back only to its tag.
+kept_services=()
+kept_targets=()
+for i in "${!moving[@]}"; do
+  if [ "${tags[i]}" != "${tags[0]}" ]; then
+    if is_optional "${names[i]}"; then
+      echo "::warning::${moving[i]}: its previous revision ${targets[i]} runs ${tags[i]}, not ${tags[0]} as ${moving[0]}'s: it stays as it is"
+      continue
+    fi
     echo "::error::the previous revisions run different tags (${tags[*]}); nothing was changed" >&2
     exit 1
   fi
+  kept_services+=("${moving[i]}")
+  kept_targets+=("${targets[i]}")
 done
+services=("${kept_services[@]}")
+targets=("${kept_targets[@]}")
 
 for i in "${!services[@]}"; do
   aws ecs update-service --cluster "$CLUSTER" --service "${services[i]}" \

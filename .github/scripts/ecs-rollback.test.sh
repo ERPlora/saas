@@ -248,9 +248,30 @@ setup
 with_worker prod
 echo "$td/erplora-prod-saas-worker:10 reg.example/erplora/saas:tag-other" > "$FIXTURES/images"
 run_rollback && status=0 || status=$?
-check "saas-worker: a previous revision of another tag than saas's changes nothing" \
+check "saas-worker: a previous revision of another tag than saas's is skipped with a warning; saas still goes back" \
+  '[ "$status" -eq 0 ] &&
+   grep -q "::warning::saas-worker: its previous revision $td/erplora-prod-saas-worker:10 runs tag-other, not tag-10" "$work/out.log" &&
+   grep -q "update-service .*--service saas --task-definition $td/erplora-prod-saas:10 " "$CALLS_LOG" &&
+   ! grep -q "update-service .*--service saas-worker" "$CALLS_LOG" &&
+   grep -Eq "wait services-stable .*--services saas$" "$CALLS_LOG" &&
+   grep -q "^ssm put-parameter .*--value tag-10 " "$CALLS_LOG"'
+setup
+with_worker prod
+# The first rollback after the deploy that brought the worker: Terraform's revision is its only one.
+printf '%s\t' "$td/erplora-prod-saas-worker:12" > "$FIXTURES/list-erplora-prod-saas-worker"
+run_rollback && status=0 || status=$?
+check "saas-worker: without an earlier revision it stays as it is, with a warning; saas still goes back" \
+  '[ "$status" -eq 0 ] &&
+   grep -q "::warning::saas-worker runs $td/erplora-prod-saas-worker:12 and erplora-prod-saas-worker has no earlier ACTIVE revision: it stays as it is" "$work/out.log" &&
+   grep -q "update-service .*--service saas --task-definition $td/erplora-prod-saas:10 " "$CALLS_LOG" &&
+   ! grep -q "update-service .*--service saas-worker" "$CALLS_LOG"'
+setup
+with_worker prod
+echo "$td/erplora-prod-saas-worker:10 pre" > "$FIXTURES/environment-tags"
+run_rollback && status=0 || status=$?
+check "saas-worker: a previous revision of another environment still changes nothing" \
   '[ "$status" -ne 0 ] && ! grep -Eq "update-service|put-parameter" "$CALLS_LOG" &&
-   grep -q "::error::the previous revisions run different tags" "$work/out.log"'
+   grep -q "::error::$td/erplora-prod-saas-worker:10 is not a prod revision" "$work/out.log"'
 setup
 run_rollback FAKE_LIST_FAILURE=AccessDeniedException && status=0 || status=$?
 check "saas-worker: a failure to look for it is not taken for a missing family: nothing changes" \
