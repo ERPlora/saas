@@ -19,7 +19,7 @@ import type { Locator, Page } from '@playwright/test';
 import { NEW_BUSINESS } from '../assistant-provider';
 
 import { ask, localAssistant, OWNER, SIZES } from './assistant-chat';
-import { expect, settled, shot, sidewaysScroll, signIn, test, waitForMail, watchPageErrors } from './fixtures';
+import { expect, expectNoSidewaysScroll, settled, shot, signIn, test, waitForMail, watchPageErrors } from './fixtures';
 import { PANEL_MAIL_DIR } from './project';
 
 const BUSINESS = 'E2E Asistente Panel';
@@ -116,7 +116,7 @@ async function atEachSize(page: Page, name: string, language: string, visible: L
       expect((await docking(page)).panel).toBe(size.width);
     }
     await expect(visible).toBeVisible();
-    expect(await sidewaysScroll(page), `${size.name}: nothing scrolls sideways`).toEqual([]);
+    await expectNoSidewaysScroll(page, `${size.name}: nothing scrolls sideways`);
     await settled(page);
     await page.screenshot({ path: shot(`assistant-panel-${name}-${size.name}-${language}`) });
   }
