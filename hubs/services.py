@@ -174,6 +174,7 @@ class SeatLimitReached(Conflict):
     permission="hubs.manage",
     input=BusinessCreateIn,
     output=BusinessDetailOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description=(
             "Creates a business on the Free plan with its address. An account has one free business, and whether one "
@@ -332,6 +333,7 @@ def _subscribe_to_free(hub: Hub, plan, now) -> Subscription:
     permission="hubs.manage",
     input=BusinessUpdateIn,
     output=BusinessDetailOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Changes the name, country, language or time zone of a business; its owner and administrators.",
         asks={
@@ -382,6 +384,7 @@ def business_update(ctx: OperationContext, data: BusinessUpdateIn) -> dict:
     permission="hubs.manage",
     input=BusinessAddressIn,
     output=BusinessDetailOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Moves a business to another web address; people must use the new one. Only its owner.",
         risk="high",
@@ -443,6 +446,7 @@ def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> d
     permission="hubs.manage",
     input=BusinessDeleteIn,
     output=BusinessDetailOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Deletes a business: it stops opening at once, is kept 90 days and its plan goes back to Free. "
                     "confirm_name is the business's exact name. Only its owner.",
@@ -550,6 +554,7 @@ def _back_to_free(hub: Hub) -> None:
     permission="hubs.manage",
     input=ByIdIn,
     output=BusinessDetailOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Recovers a business deleted less than 90 days ago, on the Free plan; only its owner.",
         asks={
@@ -615,6 +620,7 @@ NOT_OPENING = {
     permission="hubs.manage",
     input=BusinessOpenIn,
     output=BusinessOpenOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=INTERNAL,  # screen
 )
 def business_open(ctx: OperationContext, data: BusinessOpenIn) -> dict:
@@ -838,6 +844,7 @@ def _mail_invitation(ctx: OperationContext, member: HubMember) -> None:
     permission="hubs.manage",
     input=MemberInviteIn,
     output=MemberRowOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Invites a person by email to a business with a role below one's own; the invitation lasts 7 days.",
         asks={
@@ -920,6 +927,7 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
     permission="hubs.manage",
     input=MemberRoleIn,
     output=MemberRowOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Gives a member or a pending invitation of a business another role below one's own.",
         asks={
@@ -950,6 +958,7 @@ def member_change_role(ctx: OperationContext, data: MemberRoleIn) -> dict:
     permission="hubs.manage",
     input=ByIdIn,
     output=RemovedOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Takes a person out of one business: their access to it ends; their account and other businesses "
                     "stay.",
@@ -1021,6 +1030,7 @@ def _pending_only(target: HubMember) -> None:
     permission="hubs.manage",
     input=ByIdIn,
     output=MemberRowOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Sends a pending invitation to a business again, valid for 7 more days.",
         asks={
@@ -1058,6 +1068,7 @@ def member_resend(ctx: OperationContext, data: ByIdIn) -> dict:
     permission="hubs.manage",
     input=ByIdIn,
     output=RemovedOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Withdraws an invitation to a business nobody answered yet.",
         asks={
@@ -1108,6 +1119,7 @@ def _my_invitation(ctx: OperationContext, member_id: UUID) -> HubMember:
     permission="hubs.manage",
     input=ByIdIn,
     output=BusinessRowOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Accepts an invitation of this account to a business, within its 7 days.",
         asks={
@@ -1151,6 +1163,7 @@ def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     permission="hubs.manage",
     input=ByIdIn,
     output=RemovedOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Declines an invitation of this account to a business.",
         asks={
@@ -1206,6 +1219,7 @@ def _expire_stale(hub: Hub, now) -> None:
     permission="hubs.manage",
     input=OwnershipTransferIn,
     output=OwnershipTransferOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Offers a business to one of its members, who has 7 days to accept; the payer does not change and the "
                     "owner stays as administrator.",
@@ -1372,6 +1386,7 @@ def _resolve(transfer: HubOwnershipTransfer, status: str) -> None:
     permission="hubs.manage",
     input=ByIdIn,
     output=OwnershipTransferOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Declines the offer to become the owner of a business; nothing changes.",
         asks={
@@ -1403,6 +1418,7 @@ def ownership_decline(ctx: OperationContext, data: ByIdIn) -> dict:
     permission="hubs.manage",
     input=ByIdIn,
     output=OwnershipTransferOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="The owner withdraws an offer of the business nobody answered yet.",
         asks={

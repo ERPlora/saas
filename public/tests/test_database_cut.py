@@ -7,6 +7,7 @@ pool hands out no dead connection, a read waits and answers, past the limit a pe
 503 and ``Retry-After``, and what tries again on its own (the Hub's ``/internal``, Stripe's webhook) gets it at once.
 """
 
+import base64
 import json
 import time
 import uuid
@@ -26,9 +27,13 @@ from psycopg import sql
 from psycopg.conninfo import make_conninfo
 
 from accounts.events import BROWSER_TRUST_REVOKED, PREFERENCES_UPDATED, PROFILE_UPDATED
+from accounts.models import ProfilePhoto, UserPreferences
 from accounts.signing import signed_headers
+from accounts.tests.images import png
 from billing.tests.conftest import stripe_double, stripe_keys  # noqa: F401 - Stripe's signature, with no network
-from hubs.tests.conftest import SECRET
+from hubs.events import BUSINESS_CREATED
+from hubs.models import Hub
+from hubs.tests.conftest import SECRET, offline_hub, plans  # noqa: F401 - the plans a new business takes, no Hub
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -39,6 +44,34 @@ PREFERENCES_UPDATE = "accounts.preferences.update"
 PROFILE_UPDATE = "accounts.profile.update"
 UNAVAILABLE = "database_unavailable"
 UNKNOWN = "database_outcome_unknown"
+APPLIED = "database_answer_lost"
+#: The commands a cut before their COMMIT runs again: their body and what it calls touch nothing but the database
+#: (what leaves, a mail or the push to the Hub, leaves in ``on_commit``). Each one was read before joining.
+REPEATABLE = {
+    "accounts.apikey.create",
+    "accounts.apikey.revoke",
+    "accounts.browser_trust.revoke",
+    "accounts.photo.remove",
+    PREFERENCES_UPDATE,
+    PROFILE_UPDATE,
+    "accounts.session.close_others",
+    "hubs.business.change_address",
+    "hubs.business.create",
+    "hubs.business.delete",
+    "hubs.business.open",
+    "hubs.business.restore",
+    "hubs.business.update",
+    "hubs.invitation.accept",
+    "hubs.invitation.decline",
+    "hubs.member.cancel",
+    "hubs.member.change_role",
+    "hubs.member.invite",
+    "hubs.member.remove",
+    "hubs.member.resend",
+    "hubs.ownership.cancel",
+    "hubs.ownership.decline",
+    "hubs.ownership.transfer",
+}
 LIMIT_SECONDS = 1
 
 
@@ -77,6 +110,20 @@ class Cut:
 
     def __call__(self, execute, query, params, many, context):
         if self.times is None or self.done < self.times:
+            self.done += 1
+            _terminate(context["connection"].connection.info.backend_pid)
+        return execute(query, params, many, context)
+
+
+class CutOn:
+    """Cuts the connection right before the first statement that names ``table``, once."""
+
+    def __init__(self, table: str) -> None:
+        self.table = table
+        self.done = 0
+
+    def __call__(self, execute, query, params, many, context):
+        if not self.done and self.table in str(query):
             self.done += 1
             _terminate(context["connection"].connection.info.backend_pid)
         return execute(query, params, many, context)
@@ -263,26 +310,95 @@ def test_a_change_of_name_refused_as_read_only_is_applied_once(person, ana):
 
 
 def test_only_what_touches_nothing_but_its_database_says_it_can_repeat():
-    """A command joins this list after reading its body and what it calls: a charge, a numbering, a call to a third party
-    or a mail sent in it would run twice. Nothing of billing, fiscal or the assistant's providers, ever."""
+    """A command joins this list after reading its body and what it calls: a charge, a numbering, a call to a third party,
+    a mail, a counter in the cache or a change of the session sent in it would run twice. Nothing of billing, fiscal or
+    the assistant's providers, ever."""
     declared = {op.name for op in registry.values() if op.repeatable}
 
-    assert declared == {PREFERENCES_UPDATE, PROFILE_UPDATE}
+    assert declared == REPEATABLE
 
 
-def test_a_write_that_does_not_say_it_can_repeat_is_not_repeated(person, ana):
-    """Only what declares it runs twice: its 503 asks the person to check first."""
+def test_stopping_the_trust_of_every_browser_refused_as_read_only_is_applied_once(person, ana):
     _new_sessions_read_only()
     refused = Refused()
 
     with connections["default"].execute_wrapper(refused):
         response = person.post("/api/accounts/browser-trust/revoke", json.dumps({}), content_type="application/json")
 
+    assert response.status_code == 200, response.content
+    assert refused.statements
+    assert OutboxEvent.objects.filter(name=BROWSER_TRUST_REVOKED).count() == 1
+
+
+def test_a_cut_after_the_trust_was_stopped_leaves_this_browser_the_code_it_gave(person, ana):
+    """The session follows the authenticators' new ids once nothing else is left to write: the try the cut rolled back
+    never touched it, so the one after it renames from the ids the database kept."""
+    from allauth.account.internal.flows.login import AUTHENTICATION_METHODS_SESSION_KEY
+    from allauth.mfa.models import Authenticator
+
+    app = Authenticator.objects.create(user=ana, type=Authenticator.Type.TOTP, data={"secret": "JBSWY3DPEHPK3PXP"})
+    session = person.session
+    session[AUTHENTICATION_METHODS_SESSION_KEY] = [{"method": "mfa", "type": "totp", "id": app.pk, "at": time.time()}]
+    session.save()
+    cut = CutOn("live_outboxevent")
+
+    with connections["default"].execute_wrapper(cut):
+        response = person.post("/api/accounts/browser-trust/revoke", json.dumps({}), content_type="application/json")
+
+    assert response.status_code == 200, response.content
+    assert cut.done == 1
+    renamed = Authenticator.objects.get(user=ana).pk
+    assert renamed != app.pk
+    assert [record["id"] for record in person.session[AUTHENTICATION_METHODS_SESSION_KEY]] == [renamed]
+
+
+def test_a_new_business_refused_as_read_only_is_created_once(person, ana, plans, offline_hub):  # noqa: F811
+    _new_sessions_read_only()
+    refused = Refused()
+
+    with connections["default"].execute_wrapper(refused):
+        response = person.post(
+            "/api/hubs/businesses", json.dumps({"name": "Bar Manolo", "country": "ES"}), content_type="application/json"
+        )
+
+    assert response.status_code == 201, response.content
+    assert refused.statements
+    assert Hub.objects.filter(name="Bar Manolo").count() == 1
+    assert OutboxEvent.objects.filter(name=BUSINESS_CREATED).count() == 1
+
+
+def test_a_write_that_does_not_say_it_can_repeat_is_not_repeated(person, ana):
+    """Only what declares it runs twice: its 503 asks the person to check first. A photo counts its uploads in the cache,
+    which no rollback undoes."""
+    _new_sessions_read_only()
+    refused = Refused()
+    image = base64.b64encode(png()).decode()
+
+    with connections["default"].execute_wrapper(refused):
+        response = person.post("/api/accounts/photo", json.dumps({"image": image}), content_type="application/json")
+
     assert response.status_code == 503, response.content
     assert response.json()["error"]["code"] == UNKNOWN
     assert int(response["Retry-After"]) > 0
-    assert sum("mfa_authenticator" in statement for statement in refused.statements) == 1
-    assert OutboxEvent.objects.filter(name=BROWSER_TRUST_REVOKED).count() == 0
+    assert sum("accounts_profilephoto" in statement for statement in refused.statements) == 1
+    assert not ProfilePhoto.objects.filter(user=ana).exists()
+
+
+def test_a_save_whose_answer_the_cut_lost_says_it_was_saved(person, ana):
+    """The preferences committed; the record of the session's use, after the view, is what the cut stopped. It was saved,
+    so the person is not asked to check: only to reload."""
+    cut = CutOn("usersessions_usersession")
+
+    with connections["default"].execute_wrapper(cut):
+        response = person.post(PANEL_READ, json.dumps({"theme_mode": "dark"}), content_type="application/json")
+
+    assert response.status_code == 503, response.content
+    assert response.json()["error"]["code"] == APPLIED
+    assert response.json()["error"]["message"] == DatabaseCut(repeatable=False, applied=True).message
+    assert int(response["Retry-After"]) > 0
+    assert cut.done == 1
+    assert UserPreferences.objects.get(user=ana).theme_mode == "dark"
+    assert OutboxEvent.objects.filter(name=PREFERENCES_UPDATED).count() == 1
 
 
 # --- What tries again on its own --------------------------------------------------------------------------------------

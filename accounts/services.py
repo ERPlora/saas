@@ -1163,6 +1163,7 @@ def photo_upload(ctx: OperationContext, data: PhotoUploadIn) -> dict:
     permission="accounts.manage",
     input=PhotoRemoveIn,
     output=ProfileOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=INTERNAL,  # file
 )
 def photo_remove(ctx: OperationContext, data: PhotoRemoveIn) -> dict:
@@ -1261,6 +1262,7 @@ def session_close(ctx: OperationContext, data: SessionCloseIn) -> dict:
     permission="accounts.manage",
     input=SessionCloseOthersIn,
     output=SessionsClosedOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Ends every session of the account except this one.",
         asks={
@@ -1420,6 +1422,7 @@ def _follow_new_authenticator_ids(request, renamed: dict[int, int]) -> None:
     permission="accounts.manage",
     input=BrowserTrustRevokeIn,
     output=BrowserTrustOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Stops trusting every browser for two-factor authentication, this one included.",
         asks={
@@ -1440,8 +1443,11 @@ def browser_trust_revoke(ctx: OperationContext, data: BrowserTrustRevokeIn) -> d
     """«Stop trusting all browsers» (Security → Two-factor authentication, ACCOUNTS-F17): as Google's and Microsoft's
     «Revoke all trusted devices». This browser too: the answer says it is no longer trusted."""
     user = queries.account_of(ctx)
-    _follow_new_authenticator_ids(ctx.request, forget_trusted_browsers(user))
+    renamed = forget_trusted_browsers(user)
     record_event(ctx, events.BROWSER_TRUST_REVOKED)
+    # Last, once nothing is left to write: a try a cut rolls back must leave the session naming the ids the database
+    # keeps, so the try after it renames from them (``repeatable``).
+    _follow_new_authenticator_ids(ctx.request, renamed)
     return {"trusted_until": None}
 
 
@@ -1459,6 +1465,7 @@ API_KEY_LAST_USED_RESOLUTION = timedelta(minutes=10)
     permission="accounts.manage",
     input=ApiKeyCreateIn,
     output=ApiKeyCreatedOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=INTERNAL,  # secret
 )
 def apikey_create(ctx: OperationContext, data: ApiKeyCreateIn) -> dict:
@@ -1510,6 +1517,7 @@ def _new_api_key(ctx: OperationContext, user, data: ApiKeyCreateIn) -> dict:
     permission="accounts.manage",
     input=ApiKeyRevokeIn,
     output=ApiKeyRowOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Revokes an API key of the account at once: what uses it stops working.",
         asks={
