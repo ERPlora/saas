@@ -10,11 +10,15 @@ provider fails before answering) and yields the frames the Hub reads:
     {"type": "text_delta", "text": str}
     {"type": "function_call", "name": str, "call_id": str, "arguments": str}     # a tool of the Hub, for it to run
     {"type": "error", "code": str, "message": str, "retriable": bool}
+    {"type": "web"}     # once, when a search brought pages: the caller keeps the mark with the answer (saas#287)
+
+The mark goes back with a report of the answer, whose text is then not mailed: Brave's terms (§3(b)(i)) forbid
+keeping its results, and a mailbox keeps.
 
 ``Outcome`` keeps what the door needs after the stream: the text, the Hub's tool calls, the tokens and their cost
-(with the prices of the model that answered), whether anything was answered and the error. The provider's own words
-of a failure reach neither the Hub nor a log (they may quote the conversation): the Hub gets a code and a plain
-sentence, the log the status.
+(with the prices of the model that answered), whether anything was answered, whether it brought pages from the web
+and the error. The provider's own words of a failure reach neither the Hub nor a log (they may quote the
+conversation): the Hub gets a code and a plain sentence, the log the status.
 
 When the model asks for tools of the Hub, the turn ends there with a ``continuation`` token: the Hub runs them and
 sends the conversation back with their results and that token, and that turn costs no message (it answers the same
@@ -227,6 +231,7 @@ class Outcome:
     tokens_output: int = 0
     cost: Decimal = Decimal("0")
     answered: bool = False
+    web: bool = False
     error: dict | None = None
 
     def output(self) -> list[dict]:
@@ -317,6 +322,9 @@ async def run(started: Turn, outcome: Outcome) -> AsyncIterator[dict]:
                     call["name"], call["arguments"], tool_budget(started.caller), answer_kept=started.answer_kept
                 )
                 sources += server_tools.sources_of(result)
+                if not outcome.web and server_tools.not_to_keep(call["name"], result):
+                    outcome.web = True
+                    yield {"type": "web"}
                 conversation.append({"role": "tool", "tool_call_id": call["call_id"], "content": result})
             rounds += 1
             continue

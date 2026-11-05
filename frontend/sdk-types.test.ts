@@ -14,13 +14,20 @@ const TYPES = readFileSync(join(HERE, 'sdk-types.d.ts'), 'utf8');
 const PAGE = ['rows', 'total', 'limit', 'offset'];
 const PAGE_IN = ['limit', 'offset'];
 
-/** The fields of a pydantic schema of hubs/schemas.py (or `source`), with what its base class adds. */
-function pythonFields(name: string, source = PYTHON): string[] {
+/** The fields of a pydantic schema of hubs/schemas.py (or `source`), with what its base class adds (a schema of
+ *  `parents` when it is one of them, as `base.AssistantReportIn` is the gateway's `ReportFields`). */
+function pythonFields(name: string, source = PYTHON, parents = ''): string[] {
   const match = new RegExp(`^class ${name}\\(([^)]*)\\):\\n((?:(?:    .*)?\\n)*)`, 'm').exec(source);
   if (!match) throw new Error(`the schemas have no class ${name}`);
   const [, base, body] = match;
   const own = [...body.matchAll(/^ {4}(\w+): /gm)].map((m) => m[1]);
-  const inherited = base.startsWith('Page[') ? PAGE : base === 'PageIn' ? PAGE_IN : [];
+  const inherited = base.startsWith('Page[')
+    ? PAGE
+    : base === 'PageIn'
+      ? PAGE_IN
+      : parents.includes(`class ${base}(`)
+        ? pythonFields(base, parents)
+        : [];
   return [...inherited, ...own].sort();
 }
 
@@ -34,12 +41,14 @@ function typeFields(name: string): string[] {
   return [...inherited, ...own].sort();
 }
 
-/** `name: annotation` of a pydantic schema (a multi-line `Field(...)` default is cut at `=`). */
-function pythonTypes(name: string, source = PYTHON): Record<string, string> {
+/** `name: annotation` of a pydantic schema (a multi-line `Field(...)` default is cut at `=`), with those of its base
+ *  class when it is a schema of `parents`. */
+function pythonTypes(name: string, source = PYTHON, parents = ''): Record<string, string> {
   const match = new RegExp(`^class ${name}\\(([^)]*)\\):\\n((?:(?:    .*)?\\n)*)`, 'm').exec(source);
   if (!match) throw new Error(`the schemas have no class ${name}`);
   const own = [...match[2].matchAll(/^ {4}(\w+): (.+?)(?: = .*)?$/gm)].map((m) => [m[1], m[2].trim()] as const);
-  return Object.fromEntries(own);
+  const inherited = parents.includes(`class ${match[1]}(`) ? pythonTypes(match[1], parents) : {};
+  return { ...inherited, ...Object.fromEntries(own) };
 }
 
 /** `name: type` of an interface, with `?` kept on the name's side (`name?`). */
@@ -377,14 +386,15 @@ describe('sdk-types.d.ts follows the schemas of fiscal/schemas.py', () => {
 
 describe("sdk-types.d.ts follows the panel's assistant schemas of base/schemas.py", () => {
   const source = readFileSync(join(HERE, '..', 'base', 'schemas.py'), 'utf8');
+  const gateway = readFileSync(join(HERE, '..', 'assistant', 'schemas.py'), 'utf8');
   const ASSISTANT_SCHEMAS = ['AssistantUsageOut', 'AssistantReportIn', 'AssistantReportOut'];
 
   it.each(ASSISTANT_SCHEMAS)('%s has the same fields on both sides', (name) => {
-    expect(typeFields(name)).toEqual(pythonFields(name, source));
+    expect(typeFields(name)).toEqual(pythonFields(name, source, gateway));
   });
 
   it.each(ASSISTANT_SCHEMAS)('%s types each field as its JSON is', (name) => {
-    const python = pythonTypes(name, source);
+    const python = pythonTypes(name, source, gateway);
     const types = typeTypes(name);
     for (const [field, annotation] of Object.entries(python)) {
       const optional = `${field}?` in types;

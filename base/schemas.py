@@ -6,7 +6,7 @@ from typing import Any, Literal
 from ninja import Schema
 from pydantic import Field
 
-from assistant.schemas import DictationIn, SpeechIn
+from assistant.schemas import DictationIn, ReportFields, SpeechIn
 
 
 class SessionMeIn(Schema):
@@ -194,15 +194,9 @@ class AssistantUsageOut(Schema):
     demo: bool
 
 
-class AssistantReportIn(Schema):
-    """A bad answer the person reports to ERPlora's team, with the limits of the gateway's ``report``: a long answer is
-    reported whole."""
-
-    message_id: str = Field(min_length=1, max_length=128)
-    reason: Literal["incorrect", "harmful", "instructions", "other"]
-    comment: str = Field(default="", max_length=20_000)
-    question: str = Field(default="", max_length=200_000)
-    answer: str = Field(min_length=1, max_length=200_000)
+class AssistantReportIn(ReportFields):
+    """A bad answer the person reports to ERPlora's team: the gateway's ``report`` and its limits, so a long answer is
+    reported whole; ``web`` is the one of its ``done`` frame."""
 
 
 class AssistantReportOut(Schema):
