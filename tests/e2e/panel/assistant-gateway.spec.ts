@@ -231,7 +231,8 @@ test('ASSISTANT-F21: a dictation is turned into its text', async ({ request }) =
 
 test('ASSISTANT-F22: asked to read an answer aloud, the door says it cannot and spends nothing', async ({ request }) => {
   const made = seed('gateway');
-  const reading = { hub: made.bar, text: 'You have two appointments today.', language: 'en' };
+  const withoutLanguage = { hub: made.bar, text: 'You have two appointments today.' };
+  const reading = { ...withoutLanguage, language: 'en' };
   const speak = (payload: unknown) => call(request, '/internal/speech/synthesize', payload);
   const used = async () => (await (await call(request, '/internal/assistant/usage', { hub: made.bar })).json()).used;
   const before = await used();
@@ -245,7 +246,6 @@ test('ASSISTANT-F22: asked to read an answer aloud, the door says it cannot and 
   }
   expect(await used()).toBe(before);
 
-  const { language: _language, ...withoutLanguage } = reading;
   for (const [refused, field] of [
     [withoutLanguage, 'language'],
     [{ ...reading, language: 'fr' }, 'language'],
