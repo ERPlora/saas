@@ -32,12 +32,13 @@ solo con v2, porque v1 firma el cuerpo y nunca la query). Cuerpo:
 
 `hub`: slug del hub (fase 1, el del host: `ctx.scope.key`) con el formato de slug de `live.slugs` (`HUB_SLUG_RE`),
 o su UUID en minúsculas (con guiones). Tiene que ser un negocio que el SaaS conoce (no purgado); si no,
-`404 hub_unknown`. Única excepción: el hub de plataforma (`PLATFORM_HUB_SLUG`) por `route = "erplora"`. `certificate` solo con `route = "own"`; `probe` no lleva `envelope`.
+`404 hub_unknown`. Excepciones: el hub de plataforma (`PLATFORM_HUB_SLUG`) por `route = "erplora"` y, solo en
+`environment = "testing"`, una demo (`demo-<8 hex>`, `live.slugs.is_demo_slug`), de la que el SaaS no guarda fila (saas#306). `certificate` solo con `route = "own"`; `probe` no lleva `envelope`.
 
 | Respuesta | Cuándo |
 |---|---|
 | `200 {"aeat_status", "aeat_body"}` | La AEAT contestó; su respuesta tal cual, diga lo que diga (la interpreta el Hub) |
-| `404 hub_unknown` | `hub` no es un negocio que el SaaS conozca (o está purgado) ni el hub de plataforma por `erplora`; no sale nada hacia la AEAT |
+| `404 hub_unknown` | `hub` no es un negocio que el SaaS conozca (o está purgado) ni el hub de plataforma por `erplora` ni, en pruebas, una demo; no sale nada hacia la AEAT |
 | `409 nif_mismatch` | El sobre nombra a otro contribuyente; se decide **antes** de tocar la AEAT. Con `route = "erplora"`, también si, en producción, el otorgamiento aprobado del negocio es de otro contribuyente (sin decir de cuál), si, en pruebas, un negocio declara el NIF de ERPlora, o si el hub de plataforma pide un `nif` que no es el del titular del sello |
 | `409 representation_not_approved` | `route = "erplora"` en **producción** para un negocio sin otorgamiento aprobado (ninguno, en revisión, devuelto o retirado; uno que nombre el NIF de ERPlora tampoco cuenta), declare el `nif` que declare, el de ERPlora incluido. En pruebas no se pide (abajo) |
 | `409 no_seal` | `route = "erplora"` sin sello utilizable (también si TLS rechaza el sello configurado) |
@@ -104,7 +105,8 @@ nadie presenta en nombre de nadie y nada tiene efectos, y la AEAT solo comprueba
 colaborador social (fault 4112), nunca el Anexo I de cada negocio, que guarda ERPlora. Así un negocio nuevo prueba
 VeriFactu por la vía de ERPlora antes de que se apruebe su autorización, y la pide el Hub al pasar a producción
 (PLAN-SAAS ronda 2026-11-03l, como ADR-0360 del producto viejo). Lo que no cambia en pruebas: el negocio tiene que
-existir (`404 hub_unknown`), el sobre solo nombra al contribuyente de `nif` y ningún negocio presenta con el NIF de
+existir (`404 hub_unknown`), salvo una demo, que siempre presenta en pruebas y de la que el SaaS no guarda fila
+(saas#306; en producción, `404`), el sobre solo nombra al contribuyente de `nif` y ningún negocio presenta con el NIF de
 ERPlora (`409 nif_mismatch`).
 
 Única excepción: el **hub de plataforma** (las facturas de ERPlora), que el Hub nombra con
