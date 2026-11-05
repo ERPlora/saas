@@ -14,7 +14,7 @@ test('create → Preparing → the Hub reports it ready → Ready', async ({ pag
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('creator'));
   await page.goto('/dashboard/businesses');
-  await expect(page.getByTestId('businesses-empty')).toContainText('Create your first business');
+  await expect(page.getByTestId('businesses-empty')).toContainText('Create your first business (broken on purpose, saas#296)');
 
   await page.getByTestId('create-name').locator('input').fill('Pastelería Dulce E2E');
   await expect(page.getByTestId('create-address')).toContainText('Your address will be pasteleria-dulce-e2e');
