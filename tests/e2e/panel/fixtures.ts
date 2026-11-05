@@ -12,7 +12,15 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
 import { readMailCode, readPasswordResetLink, waitForMail as waitForMailIn } from '@erplora/ui/testing/mail';
-import { type APIRequestContext, type APIResponse, type BrowserContext, type Page, test as base, expect } from '@playwright/test';
+import {
+  type APIRequestContext,
+  type APIResponse,
+  type BrowserContext,
+  type Locator,
+  type Page,
+  test as base,
+  expect,
+} from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
 import { overflowingBoxes } from '../horizontal-overflow';
@@ -481,6 +489,17 @@ export async function apiPost(request: APIRequestContext, path: string, data: un
   const csrf = cookies.find((cookie) => cookie.name === 'csrftoken')?.value;
   if (!csrf) throw new Error(`POST ${path}: no csrftoken cookie (sign in first)`);
   return request.post(path, { headers: { 'X-CSRFToken': csrf }, data });
+}
+
+// ── Toasts ────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The toasts that say `text`, the newest last: `shell/toast.ts` closes the one on screen as it presents the next, so
+ * for a moment both are in the page, the new one still hidden. `.last()` is the one just shown; `toHaveCount(0)`, that
+ * none is left (never `getByText`, which strict mode refuses while there are two).
+ */
+export function toast(page: Page, text: string | RegExp): Locator {
+  return page.locator('ion-toast').filter({ hasText: text });
 }
 
 // ── The mails the panel's Django sends (file backend, project.ts) ─────────────────────────────

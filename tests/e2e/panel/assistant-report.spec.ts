@@ -11,7 +11,7 @@ import type { Locator, Page } from '@playwright/test';
 import { STACK } from '../stack';
 
 import { ask, localAssistant, openPanel, SIZES } from './assistant-chat';
-import { djangoPrint, expect, settled, shot, sidewaysScroll, test, waitForMail, watchPageErrors } from './fixtures';
+import { djangoPrint, expect, settled, shot, sidewaysScroll, test, toast, waitForMail, watchPageErrors } from './fixtures';
 import { PANEL_MAIL_DIR } from './project';
 
 /** What support gets instead of an answer that may quote the web (assistant/services.py, `REPORT_WEB_ANSWER`). */
@@ -20,6 +20,8 @@ const SEARCHED = '¿Qué dice la nueva ley de mis negocios?';
 const SEARCHED_ANSWER = 'Tienes 1 negocio';
 const GREETING = 'Hola';
 const GREETING_ANSWER = 'Hola, soy el asistente de prueba.';
+/** The thank-you of a report that was sent. */
+const THANKS = 'Gracias, hemos recibido tu denuncia.';
 
 const { seed } = localAssistant(STACK.aiProviderPort);
 
@@ -32,7 +34,8 @@ async function report(page: Page, answer: Locator): Promise<{ message_id: string
   );
   await page.getByTestId('assistant-report-dialog-submit').click();
   const body = (await request).postDataJSON() as { message_id: string; answer: string; web?: unknown };
-  await expect(page.getByText('Gracias, hemos recibido tu denuncia.')).toBeVisible();
+  // This report's: the one before may still be closing (two reports in a row).
+  await expect(toast(page, THANKS).last()).toBeVisible();
   await expect(page.getByTestId('assistant-report-dialog-submit')).toBeHidden();
   return body;
 }
@@ -83,7 +86,7 @@ test('a reported answer reaches support with its text only when its turn brought
   expect(notFromTheWeb).not.toContain(LEFT_OUT);
 
   // The dialog, at every size, once the thank-you of the last report is gone: nothing scrolls sideways.
-  await expect(page.getByText('Gracias, hemos recibido tu denuncia.')).toBeHidden();
+  await expect(toast(page, THANKS)).toHaveCount(0);
   await answers.last().getByTestId('assistant-report').click();
   const dialog = page.getByTestId('assistant-report-dialog');
   for (const size of SIZES) {
