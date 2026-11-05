@@ -14,9 +14,11 @@ import json
 import threading
 import time
 from dataclasses import dataclass, field
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from collections.abc import Callable
 from typing import Any
+
+from base.tests.quiet_server import QuietServer
 
 
 @dataclass
@@ -56,7 +58,7 @@ class FakeProvider:
         self._fallback: dict[tuple[str, str], Reply] = {}
         self.requests: list[Seen] = []
         self._lock = threading.Lock()
-        self._server = ThreadingHTTPServer(("127.0.0.1", port), self._handler())
+        self._server = QuietServer(("127.0.0.1", port), self._handler())
         self._server.daemon_threads = True
         self._thread: threading.Thread | None = None
 
