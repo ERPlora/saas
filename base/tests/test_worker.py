@@ -96,11 +96,15 @@ def quiet_deliveries(monkeypatch):
     return passes
 
 
-@pytest.fixture
-def keep_the_connection(monkeypatch):
-    """``close_old_connections`` would end the test's transaction (its autocommit differs): noted, not run."""
+@pytest.fixture(autouse=True)
+def keep_the_connection(request, monkeypatch):
+    """``close_old_connections`` would end a test's transaction (its autocommit differs), and outside ``django_db``
+    closing a connection an earlier test left open is refused: noted, not run. A ``transaction=True`` test runs the
+    real one."""
     closes: list[int] = []
-    monkeypatch.setattr(worker, "close_old_connections", lambda: closes.append(1))
+    marker = request.node.get_closest_marker("django_db")
+    if marker is None or not marker.kwargs.get("transaction"):
+        monkeypatch.setattr(worker, "close_old_connections", lambda: closes.append(1))
     return closes
 
 
