@@ -7,8 +7,6 @@
 // Two parts, as panel/hubs-flows.spec.ts: the spec plays the Hub (`startHubDouble`) and reports the business ready, and
 // «the real Hub» (`E2E_REAL_HUB=1`, README «El Hub real de la e2e»), where the business itself opens in the language.
 // Accounts of this spec: `e2e-signup-lang-…@example.com`, removed before and after, with their businesses.
-import { createHmac } from 'node:crypto';
-
 import { type Page } from '@playwright/test';
 
 import {
@@ -16,7 +14,7 @@ import {
   djangoPrint,
   expect,
   type HubDouble,
-  internalSecret,
+  reportBusinessReady,
   shot,
   startHubDouble,
   submitSignInForm,
@@ -92,18 +90,6 @@ async function createBusiness(page: Page, lang: Lang, name: string): Promise<str
   return businessIdOf(page.request, name);
 }
 
-/** The Hub's callback (`POST /internal/hubs/{id}/ready`), signed with the shared secret: the owner gets the mail. */
-async function reportReady(page: Page, id: string): Promise<void> {
-  const body = JSON.stringify({ id });
-  const timestamp = Math.floor(Date.now() / 1000);
-  const signature = createHmac('sha256', internalSecret()).update(`${timestamp}.${body}`).digest('hex');
-  const ready = await page.request.post(`/internal/hubs/${id}/ready`, {
-    data: body,
-    headers: { 'Content-Type': 'application/json', 'X-Erplora-Timestamp': String(timestamp), 'X-Erplora-Signature': signature },
-  });
-  expect(ready.status(), await ready.text()).toBe(200);
-}
-
 test.beforeAll(removeOwnRows);
 test.afterAll(removeOwnRows);
 
@@ -154,7 +140,7 @@ test.describe('the spec plays the Hub', () => {
 
         // Off the launcher first: it goes into a business that is ready by itself, and nobody answers there.
         await page.goto('about:blank');
-        await reportReady(page, id);
+        await reportBusinessReady(page.request, id);
         await waitForMail(email, since, asPattern(readyLine(lang, business)));
       });
     });
@@ -188,7 +174,7 @@ test.describe('the spec plays the Hub', () => {
       expect(errors).toEqual([]);
 
       await page.goto('about:blank');
-      await reportReady(page, id);
+      await reportBusinessReady(page.request, id);
       await waitForMail(email, since, asPattern(readyLine('en', business)));
     });
   });
