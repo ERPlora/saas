@@ -10,8 +10,10 @@
 import { type Browser, type Page } from '@playwright/test';
 
 import {
+  closeMenu,
   djangoPrint,
   expect,
+  openMenu,
   settled,
   shot,
   sidewaysScroll,
@@ -54,29 +56,6 @@ function createAccount(name: string, { staff = false, language = 'en' } = {}): {
 /** The switch as the database has it, for a run that died half-way: off. */
 function maintenanceOffInTheDatabase(): void {
   djangoPrint('from base.models import SiteSettings\nSiteSettings.objects.update(maintenance_mode=False, maintenance_message_en="", maintenance_message_es="")');
-}
-
-/** The panel's menu: the side menu from `lg`, its drawer behind the topbar's menu button below. */
-async function openMenu(page: Page): Promise<void> {
-  const entries = page.locator('ion-menu .nav-item');
-  await expect(entries.first()).toBeAttached();
-  await settled(page);
-  if (!(await entries.first().isVisible())) {
-    await page.locator('ion-router-outlet > .ion-page:not(.ion-page-hidden) ion-menu-button').last().click();
-    await expect(entries.first()).toBeVisible();
-    // The drawer slides in: it counts as open once its animation ends and its entries sit inside the screen.
-    await expect
-      .poll(() => page.evaluate(() => (document.querySelector('ion-menu') as (HTMLElement & { isOpen: () => Promise<boolean> }) | null)?.isOpen() ?? false))
-      .toBe(true);
-    await expect.poll(async () => (await entries.first().boundingBox())?.x ?? -1).toBeGreaterThanOrEqual(0);
-  }
-}
-
-async function closeMenu(page: Page): Promise<void> {
-  await page.evaluate(async () => {
-    const menu = document.querySelector('ion-menu') as (HTMLElement & { close?: () => Promise<boolean> }) | null;
-    await menu?.close?.();
-  });
 }
 
 /** Each size: the page as `ready` leaves it, no sideways scroll, and its shot. */

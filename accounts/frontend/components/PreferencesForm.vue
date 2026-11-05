@@ -5,7 +5,8 @@
 //   - Appearance: system, light or dark, the shell's theme (`setThemeMode`), painted at once and kept in the
 //     account; the account's mode is painted when the preferences arrive (also when another tab changes it);
 //   - Language: the account's (`User.language`, which the mails and the jump to a business read): the panel
-//     switches to it at once (`<html lang>` too);
+//     switches to it at once (`<html lang>` too), and the entry reads the session again for the side menu the
+//     server translates (`sessionChanged`, saas#292);
 //   - Mails: «Security, invoices and payments» is always on; «Business notices» (the mail that a business is ready)
 //     is a switch. No «ERPlora news»: ERPlora sends no such mail (ACCOUNTS-F23).
 // A refusal puts the control back and says why. A failed load is said with «Retry», also when no answer comes in
@@ -31,6 +32,7 @@ import { useI18n } from 'vue-i18n';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
 import { useLiveState } from '../../../frontend/live-state';
 import type { AccountLanguage, AccountThemeMode, PreferencesOut, PreferencesUpdateIn } from '../../../frontend/sdk-types';
+import { sessionChanged } from '../../../frontend/session-changed';
 import { useErrorText } from '../error-text';
 
 const THEMES: AccountThemeMode[] = ['system', 'light', 'dark'];
@@ -86,6 +88,7 @@ async function chooseLanguage(event: CustomEvent<{ value?: unknown }>): Promise<
   if (!(await save({ language: chosen }, () => (language.value = before)))) return;
   locale.value = chosen;
   document.documentElement.lang = chosen;
+  sessionChanged();
   void toastSuccess(t('accounts.account.preferences.saved'));
 }
 
