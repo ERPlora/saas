@@ -10,7 +10,7 @@ import { LONG_ADDRESS } from '../assistant-provider';
 import { STACK } from '../stack';
 
 import { ask, localAssistant, openPanel, SIZES } from './assistant-chat';
-import { expect, settled, shot, sidewaysScroll, test, watchPageErrors } from './fixtures';
+import { expect, expectNoSidewaysScroll, settled, shot, test, watchPageErrors } from './fixtures';
 
 const RATE_SOURCE = 'https://frankfurter.dev';
 const WORDS = {
@@ -49,7 +49,7 @@ for (const language of ['es', 'en'] as const) {
     for (const size of SIZES) {
       await page.setViewportSize({ width: size.width, height: size.height });
       await expect(law).toContainText(LONG_ADDRESS);
-      await expect.poll(() => sidewaysScroll(page), `${size.name}: nothing scrolls sideways`).toEqual([]);
+      await expectNoSidewaysScroll(page, `${size.name}: nothing scrolls sideways`);
       const bubble = await law.boundingBox();
       const pane = await panel.boundingBox();
       expect(bubble!.x + bubble!.width, `${size.name}: the address stays inside the panel`).toBeLessThanOrEqual(pane!.x + pane!.width);
