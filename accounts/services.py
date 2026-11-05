@@ -473,9 +473,12 @@ def preferences_update(ctx: OperationContext, data: PreferencesUpdateIn) -> dict
     user = queries.account_of(ctx)
     changes = data.model_dump(exclude_none=True)
     language = changes.pop("language", None)
-    if language is not None and language != user.language:
-        user.language = language
-        user.save(update_fields=["language"])
+    if language is not None:
+        # Read again: ``ctx.actor`` is the request's account, which a try a cut rolled back changed in memory.
+        user.refresh_from_db(fields=["language"])
+        if language != user.language:
+            user.language = language
+            user.save(update_fields=["language"])
     if changes:
         preferences, _ = UserPreferences.objects.select_for_update().get_or_create(user=user)
         for field, value in changes.items():
@@ -943,10 +946,35 @@ def _no_email_change() -> Conflict:
     )
 
 
-def _spent(rate: str, group: str, key: str) -> bool:
-    from django_ratelimit.core import is_ratelimited
+#: Where a request keeps the tries it counted, by limit: the window's seconds left then, and whether it was past it.
+_COUNTED_TRIES = "_accounts_counted_tries"
 
-    return is_ratelimited(None, group=group, key=lambda group, request: key, rate=rate, increment=True)
+
+def _spent(request, rate: str, group: str, key: str) -> bool:
+    """Whether ``key`` has spent ``rate`` with this try (django-ratelimit, over the cache): once per request.
+
+    The try counts as it checks, so two at once never pass the limit together. A cut that rolls a try back runs it
+    again (``repeatable``), and no rollback undoes a count in the cache: the try after it keeps the answer the request
+    already got, and its place under the limit, unless the limit's window turned meanwhile, when it counts in the new
+    one. A window turns when its seconds left grow, which holds while the window is longer than the wait of a request
+    (``LIVE["database_cut"]``)."""
+    from django_ratelimit.core import get_usage
+
+    def usage(increment: bool) -> dict | None:
+        return get_usage(None, group=group, key=lambda group, request: key, rate=rate, increment=increment)
+
+    counted = vars(request).setdefault(_COUNTED_TRIES, {}) if request is not None else {}
+    limit = (group, key, rate)
+    if limit in counted:
+        seconds_left, past_it = counted[limit]
+        current = usage(increment=False)
+        if current is not None and current["time_left"] <= seconds_left:
+            return past_it
+    current = usage(increment=True)
+    if current is None:
+        return False
+    counted[limit] = (current["time_left"], current["should_limit"])
+    return current["should_limit"]
 
 
 @operation(
@@ -1005,7 +1033,7 @@ def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:
         and time.time() - pending.created_at.timestamp() < EMAIL_CODE_RESEND_AFTER
     ):
         return queries.profile_of(user, request)
-    if _spent(EMAIL_CODES_PER_ADDRESS, "accounts.email_code.address", f"to:{email}"):
+    if _spent(request, EMAIL_CODES_PER_ADDRESS, "accounts.email_code.address", f"to:{email}"):
         raise OperationError(
             gettext("That address already got several codes in the last hour: try again later."),
             code="accounts.too_many_codes",
@@ -1039,6 +1067,7 @@ def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:
     permission="accounts.manage",
     input=EmailVerifyIn,
     output=EmailVerifyOut,
+    repeatable=True,  # Its database, and its tries once per request (_spent): a cut before the COMMIT runs it again.
     ai=INTERNAL,  # reauthentication
 )
 def email_verify(ctx: OperationContext, data: EmailVerifyIn) -> dict:
@@ -1062,7 +1091,7 @@ def email_verify(ctx: OperationContext, data: EmailVerifyIn) -> dict:
     if change is None:
         raise _no_email_change()
     for rate in (EMAIL_CODE_TRIES_PER_MINUTE, EMAIL_CODE_TRIES_PER_HOUR):
-        if _spent(rate, f"accounts.email_code.tries.{rate}", f"user:{user.pk}"):
+        if _spent(request, rate, f"accounts.email_code.tries.{rate}", f"user:{user.pk}"):
             raise too_many_attempts()
     tries = EmailChangeRequest.objects.filter(pk=change.pk, attempts__lt=EMAIL_CODE_ATTEMPTS)
     if not tries.update(attempts=F("attempts") + 1):
@@ -1077,6 +1106,8 @@ def email_verify(ctx: OperationContext, data: EmailVerifyIn) -> dict:
     email = change.email
     if email_belongs_to_another_account(user, email):
         raise Conflict(gettext("This email is already used by another account."), code="accounts.email_taken")
+    # Read again: ``ctx.actor`` is the request's account, which a try a cut rolled back changed in memory (repeatable).
+    user.refresh_from_db(fields=["email"])
     old_email = user.email
     previous = EmailAddress.objects.filter(user=user, email__iexact=old_email).first()
     changed = email != old_email.lower()
@@ -1133,24 +1164,17 @@ def too_many_attempts() -> OperationError:
     permission="accounts.manage",
     input=PhotoUploadIn,
     output=ProfileOut,
+    repeatable=True,  # Its database, and its upload once per request (_spent): a cut before the COMMIT runs it again.
     ai=INTERNAL,  # file
 )
 def photo_upload(ctx: OperationContext, data: PhotoUploadIn) -> dict:
     """Keep the account's photo, cleaned (``accounts.photos``), in place of the one it had."""
-    from django_ratelimit.core import is_ratelimited
-
     user = queries.account_of(ctx)
     try:
         cleaned, content_type = photos.clean_photo(photos.decode_upload(data.image))
     except photos.PhotoRejected as refused:
         raise fields_refused({"image": _photo_refusal(refused.code)}) from None
-    if is_ratelimited(
-        None,
-        group="accounts.photo.upload",
-        key=lambda group, request: f"user:{user.pk}",
-        rate=f"{photos.UPLOADS_PER_HOUR}/h",
-        increment=True,
-    ):
+    if _spent(ctx.request, f"{photos.UPLOADS_PER_HOUR}/h", "accounts.photo.upload", f"user:{user.pk}"):
         raise too_many_attempts()
     ProfilePhoto.objects.update_or_create(user=user, defaults={"content_type": content_type, "data": cleaned})
     record_event(ctx, events.PROFILE_UPDATED)

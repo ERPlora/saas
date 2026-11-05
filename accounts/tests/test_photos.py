@@ -10,8 +10,11 @@ does not turn sideways. Kept in the database (no media storage in the SaaS) and 
 
 import base64
 import struct
+import threading
 
 import pytest
+from django.db import connections
+from django.test import Client
 from live.live_registry import live_registry
 
 from accounts import events, photos, services
@@ -344,3 +347,33 @@ class TestOverHttp:
         response = api_post(client, UPLOAD, {"image": _upload(images.png())})
 
         assert (response.status_code, response.json()["error"]["code"]) == (429, "accounts.too_many_attempts")
+
+    @pytest.mark.django_db(transaction=True)
+    def test_two_uploads_at_once_never_pass_the_limit_together(self, client, ana, monkeypatch):
+        """An upload counts as it checks the limit, not once it is saved: one that starts while another is still saving
+        finds that one's count (two tabs, or a script that sends them at once)."""
+        monkeypatch.setattr(photos, "UPLOADS_PER_HOUR", 1)
+        client.force_login(ana)
+        other_tab = Client()
+        other_tab.force_login(ana)
+        started, answers = [], []
+
+        def other_tab_uploads():
+            try:
+                answers.append(api_post(other_tab, UPLOAD, {"image": _upload(images.png())}).status_code)
+            finally:
+                connections.close_all()
+
+        def while_saving(execute, sql, params, many, context):
+            if "accounts_profilephoto" in sql and not started:
+                started.append(sql)
+                meanwhile = threading.Thread(target=other_tab_uploads)
+                meanwhile.start()
+                meanwhile.join()
+            return execute(sql, params, many, context)
+
+        with connections["default"].execute_wrapper(while_saving):
+            response = api_post(client, UPLOAD, {"image": _upload(images.png())})
+
+        assert (response.status_code, answers) == (200, [429])
+        assert ProfilePhoto.objects.filter(user=ana).count() == 1

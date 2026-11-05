@@ -8,26 +8,32 @@ pool hands out no dead connection, a read waits and answers, past the limit a pe
 """
 
 import base64
+import hashlib
 import json
 import time
 import uuid
+from types import SimpleNamespace
 from unittest.mock import patch
 
+import django_ratelimit.core
 import psycopg
 import pytest
+from allauth.account.models import EmailAddress
 from billing.tests.stripe_double import event, signed
+from django.core import mail
 from django.db import DatabaseError, connections
 from django.template import TemplateSyntaxError
 from django.test import Client
-from django.utils import translation
+from django.utils import timezone, translation
 from live.database_cut import DatabaseCut
 from live.models import OutboxEvent
 from live.operations import registry
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
 
+from accounts import photos, services
 from accounts.events import BROWSER_TRUST_REVOKED, PREFERENCES_UPDATED, PROFILE_UPDATED
-from accounts.models import ProfilePhoto, UserPreferences
+from accounts.models import EmailChangeRequest, ProfilePhoto, UserPreferences
 from accounts.signing import signed_headers
 from accounts.tests.images import png
 from billing.tests.conftest import stripe_double, stripe_keys  # noqa: F401 - Stripe's signature, with no network
@@ -45,13 +51,17 @@ PROFILE_UPDATE = "accounts.profile.update"
 UNAVAILABLE = "database_unavailable"
 UNKNOWN = "database_outcome_unknown"
 APPLIED = "database_answer_lost"
+NEW_EMAIL = "ana.garcia@new.example"
 #: The commands a cut before their COMMIT runs again: their body and what it calls touch nothing but the database
-#: (what leaves, a mail or the push to the Hub, leaves in ``on_commit``). Each one was read before joining.
+#: (what leaves, a mail or the push to the Hub, leaves in ``on_commit``), or count their try once per request (the
+#: photo and the email's code). Each one was read before joining.
 REPEATABLE = {
     "accounts.apikey.create",
     "accounts.apikey.revoke",
     "accounts.browser_trust.revoke",
+    "accounts.email.verify",
     "accounts.photo.remove",
+    "accounts.photo.upload",
     PREFERENCES_UPDATE,
     PROFILE_UPDATE,
     "accounts.session.close_others",
@@ -309,6 +319,21 @@ def test_a_change_of_name_refused_as_read_only_is_applied_once(person, ana):
     assert OutboxEvent.objects.filter(name=PROFILE_UPDATED).count() == 1
 
 
+def test_a_change_of_language_cut_at_its_last_statement_is_saved(person, ana):
+    """The try the cut rolled back left the account's new language in memory, not in the database: the try after it
+    still saves it."""
+    cut = CutOn("live_outboxevent")
+
+    with connections["default"].execute_wrapper(cut):
+        response = person.post(PANEL_READ, json.dumps({"language": "en"}), content_type="application/json")
+
+    assert response.status_code == 200, response.content
+    assert cut.done == 1
+    ana.refresh_from_db()
+    assert ana.language == "en"
+    assert OutboxEvent.objects.filter(name=PREFERENCES_UPDATED).count() == 1
+
+
 def test_only_what_touches_nothing_but_its_database_says_it_can_repeat():
     """A command joins this list after reading its body and what it calls: a charge, a numbering, a call to a third party,
     a mail, a counter in the cache or a change of the session sent in it would run twice. Nothing of billing, fiscal or
@@ -368,20 +393,163 @@ def test_a_new_business_refused_as_read_only_is_created_once(person, ana, plans,
 
 
 def test_a_write_that_does_not_say_it_can_repeat_is_not_repeated(person, ana):
-    """Only what declares it runs twice: its 503 asks the person to check first. A photo counts its uploads in the cache,
-    which no rollback undoes."""
+    """Only what declares it runs twice: its 503 asks the person to check first. A code to the email is mailed in its
+    body, which no rollback unsends."""
+    EmailAddress.objects.create(user=ana, email=ana.email, verified=False, primary=True)
     _new_sessions_read_only()
     refused = Refused()
-    image = base64.b64encode(png()).decode()
 
     with connections["default"].execute_wrapper(refused):
-        response = person.post("/api/accounts/photo", json.dumps({"image": image}), content_type="application/json")
+        response = person.post(
+            "/api/accounts/email/change", json.dumps({"email": ana.email}), content_type="application/json"
+        )
 
     assert response.status_code == 503, response.content
     assert response.json()["error"]["code"] == UNKNOWN
     assert int(response["Retry-After"]) > 0
-    assert sum("accounts_profilephoto" in statement for statement in refused.statements) == 1
-    assert not ProfilePhoto.objects.filter(user=ana).exists()
+    assert sum("accounts_emailchangerequest" in statement for statement in refused.statements) == 1
+    assert not EmailChangeRequest.objects.exists()
+    assert mail.outbox == []
+
+
+def _upload(client):
+    image = base64.b64encode(png()).decode()
+    return client.post("/api/accounts/photo", json.dumps({"image": image}), content_type="application/json")
+
+
+def _photo_usage(ana, *, increment: bool = False) -> dict:
+    """The account's uploads this hour, as ``accounts.photo.upload`` counts them; ``increment``, another tab's."""
+    rate = f"{photos.UPLOADS_PER_HOUR}/h"
+    key = f"user:{ana.pk}"
+    return django_ratelimit.core.get_usage(
+        None, group="accounts.photo.upload", key=lambda group, request: key, rate=rate, increment=increment
+    )
+
+
+def _photo_uploads(ana, *, increment: bool = False) -> int:
+    return _photo_usage(ana, increment=increment)["count"]
+
+
+def test_a_photo_refused_as_read_only_is_kept_once_and_counts_one_upload(person, ana, monkeypatch):
+    """The upload the cut rolled back runs again and counts once: the person still has the other upload of the hour."""
+    monkeypatch.setattr(photos, "UPLOADS_PER_HOUR", 2)
+    _new_sessions_read_only()
+    refused = Refused()
+
+    with connections["default"].execute_wrapper(refused):
+        response = _upload(person)
+
+    assert response.status_code == 200, response.content
+    assert response.json()["photo"].startswith("data:image/png;base64,")
+    assert refused.statements
+    assert ProfilePhoto.objects.filter(user=ana).count() == 1
+    assert OutboxEvent.objects.filter(name=PROFILE_UPDATED).count() == 1
+    assert _upload(person).status_code == 200
+    assert _upload(person).json()["error"]["code"] == "accounts.too_many_attempts"
+
+
+def test_an_upload_whose_hour_turned_while_the_database_was_cut_counts_in_the_new_one(person, ana, monkeypatch):
+    """The count the rolled back try left is the hour that ended: the try after it counts in the new one, so a cut
+    never hands out an upload."""
+    clock = [time.time()]
+    monkeypatch.setattr(django_ratelimit.core, "time", SimpleNamespace(time=lambda: clock[0]))
+    monkeypatch.setattr(photos, "UPLOADS_PER_HOUR", 1)
+    _new_sessions_read_only()
+    refused = Refused()
+
+    def as_the_hour_turns(execute, query, params, many, context):
+        try:
+            return refused(execute, query, params, many, context)
+        except DatabaseError:
+            if len(refused.statements) == 1:
+                clock[0] += _photo_usage(ana)["time_left"] + 1  # the second after the hour ends, during the cut
+            raise
+
+    with connections["default"].execute_wrapper(as_the_hour_turns):
+        response = _upload(person)
+
+    assert response.status_code == 200, response.content
+    assert refused.statements
+    assert _upload(person).json()["error"]["code"] == "accounts.too_many_attempts"
+
+
+def test_an_upload_the_cut_rolled_back_keeps_its_place_under_the_limit(person, ana, monkeypatch):
+    """It was counted within the limit before the cut: another tab's upload counted meanwhile is the one past it."""
+    monkeypatch.setattr(photos, "UPLOADS_PER_HOUR", 1)
+    _new_sessions_read_only()
+    refused = Refused()
+    meanwhile = []
+
+    def while_cut(execute, query, params, many, context):
+        try:
+            return refused(execute, query, params, many, context)
+        except DatabaseError:
+            if not meanwhile:
+                meanwhile.append(_photo_uploads(ana, increment=True))
+            raise
+
+    with connections["default"].execute_wrapper(while_cut):
+        response = _upload(person)
+
+    assert response.status_code == 200, response.content
+    assert meanwhile == [2]
+    assert _photo_uploads(ana) == 2
+    assert ProfilePhoto.objects.filter(user=ana).count() == 1
+
+
+def _waiting_code(person, ana, code: str = "123456") -> None:
+    """A change of email waiting for ``code`` in the person's session, as ``accounts.email.change`` leaves it."""
+    EmailChangeRequest.objects.create(
+        user=ana,
+        session_key=person.session.session_key,
+        email=NEW_EMAIL,
+        code_hash=hashlib.sha256(code.encode()).hexdigest(),
+        created_at=timezone.now(),
+    )
+
+
+def _verify(client, code: str):
+    return client.post("/api/accounts/email/verify", json.dumps({"code": code}), content_type="application/json")
+
+
+def test_a_wrong_code_refused_as_read_only_is_one_try(person, ana, monkeypatch):
+    """One try of the code and of the account's budget, not two: the budget still stops the try past it."""
+    monkeypatch.setattr(services, "EMAIL_CODE_TRIES_PER_MINUTE", "2/m")
+    _waiting_code(person, ana)
+    _new_sessions_read_only()
+    refused = Refused()
+
+    with connections["default"].execute_wrapper(refused):
+        response = _verify(person, "000000")
+
+    assert response.status_code == 200, response.content
+    assert (response.json()["verified"], response.json()["attempts_left"]) == (False, 2)
+    assert refused.statements
+    assert _verify(person, "000001").json()["attempts_left"] == 1
+    refused_past_the_budget = _verify(person, "123456")
+    assert (refused_past_the_budget.status_code, refused_past_the_budget.json()["error"]["code"]) == (
+        429,
+        "accounts.too_many_attempts",
+    )
+
+
+def test_the_right_code_cut_at_its_last_statement_changes_the_email_once(person, ana):
+    """The whole change ran, the old address's mail waiting for the COMMIT, when the cut rolled it back: the try after it
+    changes the email, records it and mails the old address once."""
+    _waiting_code(person, ana)
+    cut = CutOn("live_outboxevent")
+
+    with connections["default"].execute_wrapper(cut):
+        response = _verify(person, "123456")
+
+    assert response.status_code == 200, response.content
+    assert response.json()["verified"] is True
+    assert cut.done == 1
+    ana.refresh_from_db()
+    assert ana.email == NEW_EMAIL
+    assert not EmailChangeRequest.objects.exists()
+    assert OutboxEvent.objects.filter(name=PROFILE_UPDATED).count() == 1
+    assert [message.to for message in mail.outbox] == [["ana@example.com"]]
 
 
 def test_a_save_whose_answer_the_cut_lost_says_it_was_saved(person, ana):
