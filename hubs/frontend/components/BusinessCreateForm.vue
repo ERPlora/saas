@@ -16,6 +16,7 @@ import { useI18n } from 'vue-i18n';
 import type { BusinessDetailOut, BusinessTypeOut } from '../../../frontend/sdk-types';
 import { useErrorText } from '../error-text';
 import { countryOptions, DEFAULT_COUNTRY, suggestedCountry } from '../regions';
+import HostName from './HostName.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -160,7 +161,10 @@ defineExpose({ submit, pending: create.pending });
             tag="span"
           >
             <template #host>
-              <span class="mono">{{ address.host }}</span>
+              <HostName
+                class="mono ion-display-inline-block"
+                :host="address.host"
+              />
             </template>
           </i18n-t>
         </template>
