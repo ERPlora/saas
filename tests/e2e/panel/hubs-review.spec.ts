@@ -169,6 +169,9 @@ for (const { language, locale } of LANGUAGES) {
 
     test(`HUBS-F01 + HUBS-F02 + HUBS-F04 (${language}): the sign-up from erplora.com and from the app, then «Preparing»`, async ({ page }) => {
       const errors = watchPageErrors(page);
+      // The taxonomy every deploy seeds: the type picked below is named by the preparation's step.
+      djangoPrint('from django.core.management import call_command\ncall_command("seed_taxonomy")');
+      const typeName = language === 'es' ? 'Restaurante' : 'Restaurant';
       const owner = account('first', 'Olga', 'Ruiz', language);
       await signIn(page.request, { email: owner.email, password: PASSWORD });
 
@@ -186,10 +189,13 @@ for (const { language, locale } of LANGUAGES) {
           await expect(card.getByText(say(language, 'hubs.launch.first.title'), { exact: true })).toBeVisible();
           await expect(card).toContainText(say(language, 'hubs.launch.first.lead'));
           await expect(card.getByTestId('create-submit')).toContainText(say(language, 'hubs.create.submit'));
+          await expect(card.getByTestId('create-type-hint')).toHaveText(say(language, 'hubs.create.typeHint'));
         },
-        { where: card, english: [say('en', 'hubs.launch.first.lead'), say('en', 'hubs.create.submit')] },
+        { where: card, english: [say('en', 'hubs.launch.first.lead'), say('en', 'hubs.create.submit'), say('en', 'hubs.create.typeHint')] },
       );
       await card.getByTestId('create-name').locator('input').fill('Panadería Dulce');
+      await card.getByTestId('create-type').click();
+      await page.locator('ion-popover ion-radio', { hasText: new RegExp(`^${typeName}$`) }).click();
       await card.getByTestId('create-submit').click();
       await atEverySize(
         page,
@@ -198,8 +204,9 @@ for (const { language, locale } of LANGUAGES) {
         async () => {
           await expect(card).toContainText(say(language, 'hubs.launch.preparing.title', { name: 'Panadería Dulce' }));
           await expect(card).toContainText(say(language, 'hubs.launch.preparing.lead'));
+          await expect(card.locator('ol.deploy-steps li.current')).toHaveText(say(language, 'hubs.preparing.setupType', { type: typeName }));
         },
-        { where: card, english: [say('en', 'hubs.launch.preparing.lead')] },
+        { where: card, english: [say('en', 'hubs.launch.preparing.lead'), say('en', 'hubs.preparing.setupType', { type: typeName })] },
       );
       expect(errors).toEqual([]);
     });

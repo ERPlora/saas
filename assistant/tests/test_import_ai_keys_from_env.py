@@ -12,6 +12,7 @@ import pytest
 from django.core.management import CommandError, call_command
 from live.errors import PermissionDenied
 from live.models import OutboxEvent
+from pydantic import ValidationError
 
 from assistant import services
 from assistant.models import AIProvider, AIProviderCredential
@@ -25,18 +26,16 @@ OPENAI = "sk-test-openai-000000000000000000000000ab12"
 ANTHROPIC = "sk-ant-test-0000000000000000000000000cd34"
 GEMINI = "AIza-test-000000000000000000000000000ef56"
 DEEPSEEK = "sk-test-deepseek-0000000000000000000gh78"
-AZURE = "not-a-real-azure-speech-key-00000000ij90"
 NEWER = "sk-test-openai-999999999999999999999999zz99"
 
 
 @pytest.fixture
 def env(settings):
-    """The five keys in the environment, as ``config/settings.py`` reads them."""
+    """The four keys in the environment, as ``config/settings.py`` reads them."""
     settings.OPENAI_API_KEY = OPENAI
     settings.ANTHROPIC_API_KEY = ANTHROPIC
     settings.GEMINI_API_KEY = GEMINI
     settings.DEEPSEEK_API_KEY = DEEPSEEK
-    settings.AZURE_SPEECH_KEY = AZURE
     return settings
 
 
@@ -58,29 +57,29 @@ def test_each_key_of_the_environment_is_kept_in_its_provider_which_is_added_if_m
         ("anthropic", "Anthropic", "anthropic"),
         ("gemini", "Google Gemini", "gemini"),
         ("deepseek", "DeepSeek", "deepseek"),
-        ("azure-speech", "Azure AI Speech", "azure_speech"),
     }
     assert key_of("openai").api_key == OPENAI and key_of("openai").key_hint == "ab12"
     assert key_of("gemini").api_key == GEMINI and key_of("gemini").is_active
-    assert key_of("azure-speech").api_key == AZURE
     assert "openai: created key 'default' (…ab12)" in printed
-    assert "azure-speech: created key 'default' (…ij90)" in printed
-    assert printed.rstrip().endswith("created=5 rotated=0 kept=0 skipped=0")
+    assert printed.rstrip().endswith("created=4 rotated=0 kept=0 skipped=0")
 
 
-def test_the_voice_is_added_at_its_default_address_in_sweden_central(env):
-    """The region of Azure AI Speech is its provider's address, changed in the admin: Sweden Central until then."""
-    run("--providers", "azure-speech")
+def test_azure_speech_is_no_provider_it_knows_and_nothing_is_written(env):
+    with pytest.raises(CommandError, match=r"Unknown provider\(s\): azure-speech\. Known: openai, anthropic, gemini, deepseek\."):
+        run("--providers", "openai,azure-speech")
 
-    provider = AIProvider.objects.get(slug="azure-speech")
-    assert (provider.kind, provider.base_url) == (AIProvider.Kind.AZURE_SPEECH, "")
-    assert provider.api_base == "https://swedencentral.tts.speech.microsoft.com"
+    assert not AIProvider.objects.exists()
+
+
+def test_azure_speech_is_no_api_a_key_can_be_loaded_for():
+    with pytest.raises(ValidationError):
+        CredentialImportIn(kind="azure_speech", api_key="not-a-real-key")
 
 
 def test_the_keys_are_never_printed(env):
     printed = run() + run("--force") + run("--dry-run", "--force")
 
-    for key in (OPENAI, ANTHROPIC, GEMINI, DEEPSEEK, AZURE):
+    for key in (OPENAI, ANTHROPIC, GEMINI, DEEPSEEK):
         assert key not in printed
         assert key[:-4] not in printed
 
@@ -128,7 +127,7 @@ def test_an_empty_variable_is_skipped(env):
 
     assert "anthropic: skipped, ANTHROPIC_API_KEY is empty" in printed
     assert not AIProvider.objects.filter(slug__in=["anthropic", "gemini"]).exists()
-    assert printed.rstrip().endswith("created=3 rotated=0 kept=0 skipped=2")
+    assert printed.rstrip().endswith("created=2 rotated=0 kept=0 skipped=2")
 
 
 def test_only_the_providers_asked_for_are_loaded_with_their_label(env):
@@ -139,7 +138,7 @@ def test_only_the_providers_asked_for_are_loaded_with_their_label(env):
 
 
 def test_an_unknown_provider_is_refused_before_writing(env):
-    with pytest.raises(CommandError, match=r"Unknown provider\(s\): mistral\. Known: openai, anthropic, gemini, deepseek, azure-speech\."):
+    with pytest.raises(CommandError, match=r"Unknown provider\(s\): mistral\. Known: openai, anthropic, gemini, deepseek\."):
         run("--providers", "openai,mistral")
 
     assert not AIProvider.objects.exists()
@@ -155,7 +154,7 @@ def test_a_dry_run_says_what_would_happen_and_writes_nothing(env):
     assert "anthropic: would create key 'default' (…cd34)" in printed
     assert key_of("openai").api_key == OPENAI
     assert list(AIProvider.objects.values_list("slug", flat=True)) == ["openai"]
-    assert printed.rstrip().endswith("(dry run) created=4 rotated=1 kept=0 skipped=0")
+    assert printed.rstrip().endswith("(dry run) created=3 rotated=1 kept=0 skipped=0")
 
 
 def test_without_the_key_of_the_credentials_nothing_is_kept(env):

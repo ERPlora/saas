@@ -61,35 +61,6 @@ def test_a_model_that_is_off_cannot_answer(ai_admin, models):
     assert AIRoutingPolicy.solo().active_model is None
 
 
-def test_a_model_of_a_provider_that_reads_aloud_is_never_offered_chosen_nor_routed(ai_admin, models):
-    """A provider of the voice (Azure AI Speech, ``AIProvider.Kind.AZURE_SPEECH``) answers no turn: a model typed under
-    it is no choice of the policy, cannot be chosen and the route refuses it even when it was set by hand. Its provider
-    is on and has a key: only its kind keeps it out."""
-    from assistant.models import AIProviderCredential
-    from assistant.schemas import RouteIn
-    from assistant.services import platform_context
-
-    speech = AIProvider.objects.create(slug="azure-speech", name="Azure AI Speech", kind=AIProvider.Kind.AZURE_SPEECH)
-    credential = AIProviderCredential(provider=speech, label="default", key_hint="wxyz")
-    credential.api_key = "not-a-real-azure-speech-key-wxyz"
-    credential.save()
-    voice = AIModel.objects.create(provider=speech, model_id="es-ES-Ximena", display_name="Ximena")
-
-    offered = queries.policy_show(staff_ctx(ai_admin), NoInput()).choices
-    with pytest.raises(OperationError) as chosen:
-        update(ai_admin, active_model=voice.pk)
-    with pytest.raises(OperationError) as routed:
-        queries.route_resolve(platform_context(), RouteIn(model=voice.pk))
-    AIRoutingPolicy.objects.update_or_create(slot=AIRoutingPolicy.SLOT, defaults={"active_model": voice})
-    with pytest.raises(OperationError) as by_hand:
-        queries.route_resolve(platform_context(), RouteIn())
-
-    assert voice.pk not in [choice.id for choice in offered]
-    assert (chosen.value.status, chosen.value.code) == (422, "assistant.model_unavailable")
-    assert routed.value.code == "assistant.model_unavailable"
-    assert by_hand.value.code == "assistant.provider_not_configured"
-
-
 def test_a_model_of_a_provider_that_is_off_cannot_answer(ai_admin, models, provider):
     provider.is_enabled = False
     provider.save()

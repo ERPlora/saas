@@ -164,8 +164,8 @@ async def chat_stream(call: Call) -> HttpResponse:
     """A turn answered live, ``text/event-stream``: ``text_delta`` as the text comes, a ``function_call`` per tool of
     the Hub, ``response`` (the whole output, its tokens and the ``continuation`` of the tools), ``usage`` (the
     allowance after the turn) and ``[DONE]``; a failure of the provider is an ``error`` frame (``code``,
-    ``retriable``) before ``usage``."""
-    started = await turn.start(call.caller, call.data)
+    ``retriable``) before ``usage``. What it answers reaches the person and no server keeps it."""
+    started = await turn.start(call.caller, call.data, answer_kept=False)
     response = StreamingHttpResponse(turn.stream(started), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"
     response["X-Accel-Buffering"] = "no"
@@ -175,11 +175,12 @@ async def chat_stream(call: Call) -> HttpResponse:
 @door(TurnIn, bucket="turn", rate="ASSISTANT_TURN_RATELIMIT", max_bytes=TURN_BODY_BYTES)
 async def chat(call: Call) -> HttpResponse:
     """A turn answered at once: ``{output, usage, continuation, quota}``; a failure of the provider is a 502 with its
-    ``code`` and ``retriable``, the allowance after it in ``quota``."""
-    started = await turn.start(call.caller, call.data)
+    ``code`` and ``retriable``, the allowance after it in ``quota``. What it answers is kept: the Hub calls it for an
+    automation's step (FLOW-F39) and writes the answer in the run and in the log of the step."""
+    started = await turn.start(call.caller, call.data, answer_kept=True)
     outcome = turn.Outcome()
     try:
-        async for _frame in turn.run(started.candidates, started.messages, started.tools, outcome):
+        async for _frame in turn.run(started, outcome):
             pass
     except Exception:
         logger.exception("assistant.turn.failed")
@@ -209,17 +210,6 @@ async def services_connection():
         if refused.code != "assistant.provider_not_configured":
             raise
         logger.warning("assistant.media.no_provider")
-        raise Refused(503, refused.code, refused.message, retriable=False) from None
-
-
-async def speech_connection():
-    """The provider of the voice, or 503 ``assistant.speech_unavailable`` (the caller reads with the device's voice)."""
-    try:
-        return await sync_to_async(queries.speech_connection)(platform_context(), NoInput())
-    except OperationError as refused:
-        if refused.code != "assistant.speech_unavailable":
-            raise
-        logger.warning("assistant.media.no_speech_provider")
         raise Refused(503, refused.code, refused.message, retriable=False) from None
 
 
@@ -275,16 +265,18 @@ async def transcribe(call: Call) -> HttpResponse:
 
 
 async def speech(caller: Caller, data: SpeechIn) -> bytes:
-    """``data.text`` spoken for ``caller`` by Azure AI Speech (cut to ``MAX_SPEECH_CHARS``), as an mp3, in the voice
-    asked or the default of ``data.language``; the characters read are counted in its month and spend no message. A
-    ``Refused`` for what it cannot read: 503 ``assistant.speech_unavailable`` without the provider of the voice and
-    its key (the caller reads with the device's voice), 502 when Azure fails. Awaits Azure, so never inside a transaction. The Hub's door, and the
+    """``data.text`` read for ``caller`` by the engine (cut to ``MAX_SPEECH_CHARS``), as an mp3, in the voice asked or its
+    own for ``data.language``; the characters read are counted in its month and spend no message. A ``Refused`` for what
+    it cannot read: 503 ``assistant.speech_unavailable`` without an engine, as erplora.com is today (the caller reads with
+    the device's voice), 502 when it fails. Awaits the engine, so never inside a transaction. The Hub's door, and the
     panel's route (``base.assistant.spoken``)."""
-    service = await speech_connection()
-    voice = media.voice_of(data.language, data.voice)
+    engine = media.SPEECH_ENGINE
+    if engine is None:
+        logger.warning("assistant.media.no_speech_provider")
+        raise Refused(503, "assistant.speech_unavailable", "Reading aloud is not available.", retriable=False)
     text = media.speech_text(data.text)
     try:
-        audio = await media.synthesize(service, text, voice)
+        audio = await engine(text, data.language, data.voice)
     except media.MediaFailed as problem:
         raise Refused(502, problem.code, turn.MESSAGES[problem.code], retriable=problem.retriable) from None
     await record(caller, speech_characters=len(text))
@@ -293,7 +285,7 @@ async def speech(caller: Caller, data: SpeechIn) -> bytes:
 
 @door(SynthesizeIn, bucket="synthesize", rate="ASSISTANT_SYNTHESIZE_RATELIMIT")
 async def synthesize(call: Call) -> HttpResponse:
-    """``text`` spoken, ``audio/mpeg`` (``speech``); a voice the catalogue does not have is a 422."""
+    """``text`` spoken, ``audio/mpeg`` (``speech``)."""
     return HttpResponse(await speech(call.caller, call.data), content_type="audio/mpeg")
 
 

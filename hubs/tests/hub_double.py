@@ -39,7 +39,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qs, urlsplit
 from dataclasses import dataclass, field
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from typing import Any
 
 from django.core.exceptions import ValidationError
@@ -47,6 +47,7 @@ from django.core.validators import DomainNameValidator
 from django.http.request import validate_host
 
 from accounts.signing import SIGNATURE_V2_HEADER, verify_signed
+from base.tests.quiet_server import QuietServer
 
 HUB_PATH = re.compile(
     r"^/internal/hubs/(?P<id>[0-9a-f-]{36})(?P<rest>/state|/restore|/dumps)?$"
@@ -135,7 +136,7 @@ class HubDouble:
 
             do_GET = do_PUT = do_POST = do_DELETE = _handle
 
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server = QuietServer(("127.0.0.1", 0), Handler)
         self.thread = threading.Thread(
             target=self.server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True)
 

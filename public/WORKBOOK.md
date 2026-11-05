@@ -292,7 +292,7 @@ Pantalla: Seguridad, Planes y precios, Portada, Sobre nosotros
 Pasos:
 1. La persona lee qué dicen Seguridad, las preguntas frecuentes de precios, la portada y Sobre nosotros sobre el acceso, los datos y la disponibilidad.
 2. Lee lo que funciona hoy: sesiones de servidor en cookies seguras, código de un solo uso para entrar en el negocio, entrar con Google, contraseñas con hash y sal, cifrado en tránsito y en reposo, solo HTTPS con TLS 1.2 o 1.3, AWS en Irlanda con su cortafuegos web, copias continuas recuperables a cualquier momento de los últimos 14 días y alta disponibilidad.
-3. A «¿Dónde se almacenan mis datos?» la respuesta es la Unión Europea, con las excepciones del asistente: su voz y su búsqueda, como transcribir un dictado por voz, y su proveedor de respaldo si el europeo no está disponible; y el enlace «Lee la política de privacidad». La portada dice que el modelo de lenguaje del asistente se sirve desde la Unión Europea, no el asistente entero.
+3. A «¿Dónde se almacenan mis datos?» la respuesta es la Unión Europea, con las excepciones del asistente: su voz y sus huellas de búsqueda, como transcribir un dictado por voz, su proveedor de respaldo si el europeo no está disponible y lo que busca en la web, que va a Brave Search, en Estados Unidos; y el enlace «Lee la política de privacidad». La portada dice que el modelo de lenguaje del asistente se sirve desde la Unión Europea, no el asistente entero.
 Entra: nada; el texto de las páginas, contrastado con la infraestructura y la política de privacidad.
 Sale: nada guardado.
 Si falla: no se promete un acuerdo de disponibilidad con porcentaje, soporte 24/7, auditorías periódicas, informes de pruebas de intrusión, cifrado de extremo a extremo ni entrar con GitHub, y nunca «tus datos nunca salen de la UE», que contradiría la política de privacidad.
@@ -461,12 +461,12 @@ Actor: visitante
 Pantalla: Textos legales
 Pasos:
 1. En el pie, «Aviso legal», «Privacidad» y «Términos» abren cada texto en su página; la política de cookies se abre desde la privacidad.
-2. La privacidad nombra a quién se confían los datos: Amazon Web Services en la región de Irlanda para el alojamiento y el correo, el modelo de lenguaje del asistente en Fráncfort, sin entrenar con ellos, y OpenAI para la voz y la búsqueda del asistente: transcribe el audio de un dictado, que ni el hub ni ERPlora guardan, y puede tratarlo fuera del Espacio Económico Europeo. Leer una respuesta en voz alta lo hace la voz del propio dispositivo (la del navegador o la del sistema): su texto no sale de él.
-3. Los términos dan los números que el producto cumple: los días del paquete de salida, los días que espera un negocio suspendido antes de borrarse y la prueba de los planes a la venta (ninguna si ninguno la tiene).
+2. La privacidad nombra a quién se confían los datos: Amazon Web Services en la región de Irlanda para el alojamiento y el correo, el modelo de lenguaje del asistente en Fráncfort, sin entrenar con ellos, y OpenAI para la voz y las huellas de búsqueda del asistente: transcribe el audio de un dictado, que ni el hub ni ERPlora guardan, y puede tratarlo fuera del Espacio Económico Europeo. Aparte de esos encargados, nombra a Brave Search, en Estados Unidos, que recibe las consultas de la búsqueda en la web del asistente y las conserva hasta 90 días: su acuerdo de tratamiento de datos las deja fuera y las cláusulas contractuales tipo no las cubren. Leer una respuesta en voz alta lo hace la voz del propio dispositivo (la del navegador o la del sistema): su texto no sale de él.
+3. Los términos dan los números que el producto cumple: los días del paquete de salida, los días que espera un negocio suspendido antes de borrarse y la prueba de los planes a la venta (ninguna si ninguno la tiene). Su uso aceptable prohíbe guardar, redistribuir o entrenar con los resultados de la web que trae el asistente, como piden los términos de su proveedor.
 Entra: los planes a la venta (los términos).
 Sale: nada guardado.
-Si falla: ningún texto nombra un proveedor que ya no se usa ni otro alojamiento, ni calla a quién va el audio de un dictado, ni promete para él residencia en la UE o un plazo de conservación, ni un consentimiento o un interruptor del asistente que el hub no tiene (el asistente se usa cuando alguien le escribe o le dicta: en el hub, con los mensajes que dé el plan; en el panel de erplora.com, con los de la cuenta), y ningún enlace entre textos lleva a una página que no existe.
-Implicados: hubs (los planes)
+Si falla: ningún texto nombra un proveedor que ya no se usa ni otro alojamiento, ni calla a quién va el audio de un dictado, ni promete para él residencia en la UE o un plazo de conservación, ni promete que una consulta a la web no lleve nunca un dato personal (es una regla que se da al modelo, no una garantía), ni un consentimiento o un interruptor del asistente que el hub no tiene (el asistente se usa cuando alguien le escribe o le dicta: en el hub, con los mensajes que dé el plan; en el panel de erplora.com, con los de la cuenta), y ningún enlace entre textos lleva a una página que no existe.
+Implicados: hubs (los planes), ASSISTANT-F14
 
 ### PUBLIC-F21 Consultar la declaración responsable del sistema de facturación
 <!-- origen: old-saas:SAAS_PUBLIC-F73 -->
@@ -658,12 +658,12 @@ Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. En cuanto pasa su hora, la dirección de la demo contesta «La demo ha terminado», aunque nadie la haya retirado todavía.
-2. Cada minuto, el hub retira las demos vencidas: borra los datos de cada una (cada demo tiene su propia base de datos, que se borra entera sin tocar la de ningún otro negocio), sus códigos de entrada, su usuario «Demo» y su acceso, y la marca como retirada; un fallo en una no detiene a las demás.
+2. Cada minuto, el hub retira las demos vencidas: borra los datos de cada una (cada demo tiene su propia base de datos, que se borra entera sin tocar la de ningún otro negocio), los ficheros que se subieron dentro de ella (por ejemplo, fotos) sin tocar los de ningún otro negocio, sus códigos de entrada, su usuario «Demo» y su acceso, y la marca como retirada; un fallo en una no detiene a las demás.
 3. Una demo que aún se estaba preparando cuando terminó se retira igual, sin acabar de prepararla.
 4. Pasados unos días, la dirección retirada deja de existir del todo.
 Entra: las demos cuya hora ha pasado.
-Sale: la demo retirada, sin sus datos, sin usuario ni forma de entrar. Los ficheros subidos dentro de la demo (por ejemplo, fotos) todavía no se borran, pero ya nadie puede abrirlos desde ERPlora.
-Si falla: si retirar una falla, se reintenta más tarde, cada vez con más espera; mientras, su dirección ya dice que ha terminado.
+Sale: la demo retirada, sin sus datos ni sus ficheros, sin usuario ni forma de entrar.
+Si falla: si retirar una falla, también si el almacén no borra sus ficheros, no se da por retirada y se reintenta más tarde, cada vez con más espera; mientras, su dirección ya dice que ha terminado.
 Implicados: el Hub (su registro de hubs y su proceso de fondo)
 
 ### PUBLIC-F35 De la demo a una cuenta de verdad
@@ -725,8 +725,9 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   demo vencida con su enlace a `/demo/?state=expired`, `reap_demos` en el worker cada `REAPER_INTERVAL_SECONDS` y
   `purge_demo_data`, que borra la BD propia de la demo (`<control>_demo_<hex>`, `DROP DATABASE … WITH (FORCE)`, solo
   esa) desde la tenencia S2a (hub#471; F34 `hecho` en CLOSE-PUBLIC). Una demo de antes de la tenencia (`db_name`
-  vacío) no tenía BD propia y no borra nada. Su prefijo `hub-<hex>/` del almacén no se borra (hub#613): su host contesta
-  410 y luego 404, así que nadie lo abre desde ERPlora, pero sigue ocupando espacio. El prefijo `demo-` lo reserva
+  vacío) no tenía BD propia y no borra nada de ella. Tras la BD, `purge_demo_data` borra el prefijo `hub-<hex>/` de esa
+  demo en el almacén y ningún otro (`base.files.delete_hub_files`, hub#613); si el almacén falla, la demo sigue
+  `dropping` con el error en su fila y se reintenta. El prefijo `demo-` lo reserva
   `live.slugs` (`validate_hub_slug(allow_demo=…)`) y `hubs.queries.base_slug` lo normaliza (F37).
 - Equivalencia de claves de la parte 3: G53 = F27; G54, G55 y G56 = F28; G57 = F29; G58 = F30; G59 = F31; G60 = F32;
   G61 = F33; G62 = F34; G63 = F35; G64 = F36; G65 = F37.
@@ -796,18 +797,22 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   prohibidas están en `public/tests/test_product.py` (`UNSHIPPED_CLAIMS`, `UNVERIFIED_SECURITY_CLAIMS` y
   `APP_TIER_CLAIMS`, los niveles de apps). El
   balanceador acepta TLS 1.2 y 1.3 (`ssl_policy` de ERPlora/aws).
-- Textos legales (F20, F08): la privacidad nombra a cada encargado que recibe datos y qué recibe. El dictado y la
-  búsqueda del asistente (`assistant/media.py`: `whisper-1` y `text-embedding-3-small`) van al proveedor de
+- Textos legales (F20, F08): la privacidad nombra a cada encargado que recibe datos y qué recibe. El dictado y las
+  huellas de búsqueda del asistente (`assistant/media.py`: `whisper-1` y `text-embedding-3-small`) van al proveedor de
   `ASSISTANT_SERVICE_PROVIDER`, la API de OpenAI en `api.openai.com` por defecto, sin residencia en la UE por contrato.
-  La lectura en voz alta es la del dispositivo: erplora.com no tiene voz propia desde el 2026-11-04 (ningún proveedor
-  de `ASSISTANT_SPEECH_PROVIDER`; la puerta de Azure AI Speech queda dormida), así que §5 no nombra a ningún encargado
-  de esa lectura (`test_legal.py` prohíbe «Azure» y «Microsoft Ireland Operations»). Dar de alta un proveedor de voz
-  es volver a nombrarlo en §5, con lo que recibe y dónde, en la misma entrega.
+  La lectura en voz alta es la del dispositivo: erplora.com no tiene voz propia (sin motor en
+  `assistant.media.SPEECH_ENGINE`; el proveedor de Azure AI Speech se retiró, saas#242), así que §5 no nombra a ningún
+  encargado de esa lectura (`test_legal.py` prohíbe «Azure» y «Microsoft Ireland Operations»). Un motor que lleve el texto
+  fuera de nuestros contenedores es volver a nombrar a su encargado en §5, con lo que recibe y dónde, en la misma entrega.
   Cambiarlo es cambiar en la misma entrega §5 y §6 de la privacidad, la respuesta «storage» de `/pricing/` y la celda
   del asistente de la portada (`test_legal.py`, `test_product.py` y `test_landing.py`, en `en` y `es`). El Hub y el
   panel usan el dictado (`base.assistant.transcribe`, cada uno el suyo); «Leer en voz alta» lee con la voz del
   dispositivo en los dos (el panel solo pediría `base.assistant.speak` con `spa-config.assistantSpeech`, que sin
-  proveedor de voz es falso).
+  motor es falso).
+  La búsqueda en la web (`assistant/server_tools.py`, ASSISTANT-F14) va a Brave Search: destinatario aparte en §5 y
+  fuera de las cláusulas de §6, porque su DPA deja fuera las consultas. Otro proveedor es otro destinatario:
+  `test_legal.py` cae si `ASSISTANT_SEARCH_URL` deja de ser de Brave. Sus términos, §4(c), piden atar por escrito a cada
+  usuario a lo que dice su §3(b): es la línea de «Uso aceptable» de los términos (§8).
 - Cumplimiento (F09): `hubs.countries.COUNTRY_NAMES` tiene que casar con `hubs.schemas.COUNTRIES` (lo exige un test);
   `FISCAL_SYSTEMS` dice qué sistema fiscal conecta cada país, hoy solo VeriFactu en España. Un país nuevo conectado
   se añade ahí con su app, en la misma entrega.

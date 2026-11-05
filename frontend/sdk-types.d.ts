@@ -1481,9 +1481,9 @@ export interface AssistantTranscribeOut {
 }
 
 /**
- * `base.AssistantSpeakIn`: an answer to read aloud for the session's account (ASSISTANT-F22), in a voice of Azure's
- * catalogue (`es-ES-Ximena:DragonHDLatestNeural`…, the ids of `@erplora/ui`) or the default of its language (empty:
- * the account's). Its route answers with the mp3 itself (`audio/mpeg`), so the operation has no JSON output.
+ * `base.AssistantSpeakIn`: an answer to read aloud for the session's account (ASSISTANT-F22), in the language asked
+ * (empty: the account's) and a voice of the engine, or its own for the language (empty). Its route answers with the mp3
+ * itself (`audio/mpeg`), so the operation has no JSON output; without an engine, 503 `assistant.speech_unavailable`.
  */
 export interface AssistantSpeakIn {
   text: string;

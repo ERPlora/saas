@@ -121,7 +121,6 @@ SYSTEM_ONLY = frozenset(
         "assistant.message.release",
         "assistant.report.send",
         "assistant.service.connection",
-        "assistant.speech.connection",
         "assistant.usage.record",
         "fiscal.representation.notify",
         "fiscal.representation.submit",

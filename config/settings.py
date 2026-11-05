@@ -17,6 +17,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils.csp import CSP
 from live.csp import base_policy, debug_policy
 from live.recaptcha import with_recaptcha
+from psycopg_pool import ConnectionPool
 
 from billing.stripe_keys import test_keys_allowed
 
@@ -148,6 +149,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     # First: answers /healthz before the Host is validated (the ALB probes each task by its IP).
     "base.health.HealthCheckMiddleware",
+    # Then: a cut of the database waits and repeats the whole request, when it may (live.database_cut; Django turns an
+    # exception into a response at every layer, so only the outermost sees it all).
+    "live.database_cut.DatabaseCutMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # The visitor's address behind the ALB in REMOTE_ADDR, before anything reads it.
     "public.client_ip.ClientIpMiddleware",
@@ -225,6 +229,8 @@ ASGI_APPLICATION = "config.asgi.application"
 # attempt (psycopg: 30 s and 130 s), so /readyz answers 503 before its probes give up. As in hub-next.
 # The pool keeps one connection and gives back the rest of a burst one per minute (max_idle;
 # psycopg's 600 s held them for over an hour): PLAN-DB «Conexiones», round 2026-10-18.
+# It checks a connection before handing it out: after a cut of the database it may hold a dead one
+# (PLAN-DB, round 2026-11-04e, point 5).
 db_connect_timeout = config("DB_CONNECT_TIMEOUT", default=5, cast=int)
 db_optional_options = {
     "DB_SSLMODE": "sslmode",
@@ -246,6 +252,7 @@ DATABASES = {
                 "max_size": 8,
                 "max_idle": 60,
                 "timeout": db_connect_timeout,
+                "check": ConnectionPool.check_connection,
             },
             "connect_timeout": db_connect_timeout,
             **{
@@ -651,6 +658,14 @@ LIVE = {
     # Signing out, a new password and «Close the other sessions» record it on the account's channel: every stream of
     # the account re-reads its session and the one that ended says bye, whatever its page subscribes to (live.E019).
     "session_events": ["accounts.session.closed"],
+    # A cut of the database (a restart, AWS's maintenance, the Blue/Green switchover; PLAN-DB, round 2026-11-04e, point 5):
+    # a read waits and tries again up to this long in the whole request, far below the 120 s of the load balancer;
+    # PLAN-DB's rehearsal measures the real cut. What tries again on its own gets its 503 at once: the Hub's /internal,
+    # the webhooks, and /readyz, which has to say the database is gone before its probes give up.
+    "database_cut": {
+        "wait_seconds": config("DB_CUT_WAIT_SECONDS", default=20, cast=int),
+        "no_wait_prefixes": ("/internal/", "/webhooks/", "/readyz"),
+    },
     # Shortest hub slug (live.slugs, shared with hub-next): 3 in production; development opens
     # one-letter slugs for the demo hubs `a` and `b` (`demo_seed`).
     "hub_slug_min_length": 1 if DEBUG else 3,
@@ -776,6 +791,10 @@ ASSISTANT_DOCS_RATELIMIT = config("ASSISTANT_DOCS_RATELIMIT", default="600/h")
 ASSISTANT_TRANSCRIBE_RATELIMIT = config("ASSISTANT_TRANSCRIBE_RATELIMIT", default="120/h")
 ASSISTANT_SYNTHESIZE_RATELIMIT = config("ASSISTANT_SYNTHESIZE_RATELIMIT", default="120/h")
 ASSISTANT_REPORT_RATELIMIT = config("ASSISTANT_REPORT_RATELIMIT", default="60/h")
+# What a caller may ask of the providers of erplora.com's own tools (ASSISTANT-F14): the search's free credit is shared
+# by every business (about 4,000 searches a month) and the rates are a free public service. Every demo shares one.
+ASSISTANT_WEB_SEARCH_RATELIMIT = config("ASSISTANT_WEB_SEARCH_RATELIMIT", default="20/d")
+ASSISTANT_CURRENCY_RATE_RATELIMIT = config("ASSISTANT_CURRENCY_RATE_RATELIMIT", default="60/h")
 # A demo's messages for its whole life (SAAS_ASSISTANT-F11, saas#2599: each browser gets a new demo).
 ASSISTANT_DEMO_MESSAGES = config("ASSISTANT_DEMO_MESSAGES", default=10, cast=int)
 # An account's messages a month with the assistant of erplora.com's own panel (PLAN-SAAS §23): fixed, whatever the
@@ -783,11 +802,6 @@ ASSISTANT_DEMO_MESSAGES = config("ASSISTANT_DEMO_MESSAGES", default=10, cast=int
 ASSISTANT_ACCOUNT_MESSAGES = config("ASSISTANT_ACCOUNT_MESSAGES", default=30, cast=int)
 # The provider (its identifier in the admin, of OpenAI's API) whose key computes the embeddings and the dictation.
 ASSISTANT_SERVICE_PROVIDER = config("ASSISTANT_SERVICE_PROVIDER", default="openai")
-# The provider (its identifier in the admin, of Azure AI Speech's API) that reads the answers aloud
-# (/internal/speech/synthesize and the panel's base.assistant.speak; PLAN-SAAS round 2026-11-03m): its address is its
-# region's endpoint (Sweden Central unless the admin says another). Without it, or without its key: 503
-# assistant.speech_unavailable, and the Hub and the panel read with the device's voice.
-ASSISTANT_SPEECH_PROVIDER = config("ASSISTANT_SPEECH_PROVIDER", default="azure-speech")
 # The demo hubs (PLAN-SAAS §3.5, round 2026-10-17; public/demo.py): one switch, and new demos per address
 # (django-ratelimit, over the default cache; a browser re-entering its live demo does not count). The Hub keeps
 # the cap of live demos (MAX_CONCURRENT_DEMOS) and the WAF limits /demo per IP too.
@@ -926,7 +940,14 @@ OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
 ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
 GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
 DEEPSEEK_API_KEY = config("DEEPSEEK_API_KEY", default="")
-AZURE_SPEECH_KEY = config("AZURE_SPEECH_KEY", default="")
+
+# The providers of erplora.com's own tools (assistant/server_tools.py, ASSISTANT-F14). The rates need no key. The search
+# reads its key here, from the environment and not from the database, and without it is not offered: the assistant
+# just does not search and the server starts as usual. Before filling the key in production, the privacy policy must
+# name the provider (saas#277). Its addresses move only for the e2e's double.
+BRAVE_SEARCH_API_KEY = config("BRAVE_SEARCH_API_KEY", default="")
+ASSISTANT_SEARCH_URL = config("ASSISTANT_SEARCH_URL", default="https://api.search.brave.com/res/v1/web/search")
+ASSISTANT_RATES_URL = config("ASSISTANT_RATES_URL", default="https://api.frankfurter.dev/v1/latest")
 
 # WhatsApp, erplora.com's side (whatsapp/, PLAN-SAAS §1.1, round 2026-10-15b): Meta's app («ERPlora Inbox»), its
 # Embedded Signup configuration and its webhook. Empty = WhatsApp is off, visibly: the webhook answers 503 and the

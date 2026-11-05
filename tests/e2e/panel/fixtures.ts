@@ -4,6 +4,7 @@
 // the session /api/me reports, the three viewports, uncaught page errors and the evidence folder.
 // Import `test` and `expect` from here, not from `@playwright/test`.
 import { execFile, execFileSync } from 'node:child_process';
+import { createHmac } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join, resolve } from 'node:path';
@@ -376,6 +377,18 @@ export async function djangoPrintAsync(code: string): Promise<string> {
 /** `INTERNAL_SHARED_SECRET` of the local SaaS (`.env`), to sign what the Hub would send. */
 export function internalSecret(): string {
   return djangoPrint('from django.conf import settings;print(settings.INTERNAL_SHARED_SECRET)');
+}
+
+/** The Hub's callback (`POST /internal/hubs/{id}/ready`), as it sends it: the body names the hub of the path, signed. */
+export async function reportBusinessReady(request: APIRequestContext, id: string): Promise<void> {
+  const body = JSON.stringify({ id });
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signature = createHmac('sha256', internalSecret()).update(`${timestamp}.${body}`).digest('hex');
+  const ready = await request.post(`/internal/hubs/${id}/ready`, {
+    data: body,
+    headers: { 'Content-Type': 'application/json', 'X-Erplora-Timestamp': String(timestamp), 'X-Erplora-Signature': signature },
+  });
+  expect(ready.status(), await ready.text()).toBe(200);
 }
 
 /**

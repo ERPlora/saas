@@ -1,12 +1,12 @@
 """The SaaS's calls to ACM and to the ALB for a business's own domain (HUBS-F17; ``aws`` README, «Dominio propio de un
 negocio»), against botocore's Stubber: it refuses a parameter the API does not take and any call it was not told of."""
 
-import boto3
 import pytest
 from botocore.exceptions import EndpointConnectionError
 from botocore.stub import Stubber
 
 from hubs import edge_client
+from hubs.tests.conftest import fake_aws_client
 
 ARN = "arn:aws:acm:eu-west-1:123456789012:certificate/0193a0a0-0000-7000-8000-000000000001"
 LISTENER = "arn:aws:elasticloadbalancing:eu-west-1:123456789012:listener/app/erplora/abc/def"
@@ -15,7 +15,7 @@ TOKEN = "0193a0a000007000800000000000abcd"
 
 @pytest.fixture
 def acm(monkeypatch):
-    client = boto3.client("acm", region_name="eu-west-1", aws_access_key_id="x", aws_secret_access_key="x")
+    client = fake_aws_client(monkeypatch, "acm")
     with Stubber(client) as stubber:
         monkeypatch.setattr(edge_client, "_acm", lambda: client)
         yield stubber
@@ -25,7 +25,7 @@ def acm(monkeypatch):
 @pytest.fixture
 def alb(monkeypatch, settings):
     settings.CUSTOM_DOMAINS_LISTENER_ARN = LISTENER
-    client = boto3.client("elbv2", region_name="eu-west-1", aws_access_key_id="x", aws_secret_access_key="x")
+    client = fake_aws_client(monkeypatch, "elbv2")
     with Stubber(client) as stubber:
         monkeypatch.setattr(edge_client, "_elbv2", lambda: client)
         yield stubber
@@ -34,7 +34,7 @@ def alb(monkeypatch, settings):
 
 @pytest.fixture
 def cloudwatch(monkeypatch):
-    client = boto3.client("cloudwatch", region_name="eu-west-1", aws_access_key_id="x", aws_secret_access_key="x")
+    client = fake_aws_client(monkeypatch, "cloudwatch")
     with Stubber(client) as stubber:
         monkeypatch.setattr(edge_client, "_cloudwatch", lambda: client)
         yield stubber

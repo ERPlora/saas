@@ -11,7 +11,11 @@
 // - «cancel the plan of <business>» (`cancela el plan de`, `cancel the plan of`): reads the businesses for its id, then
 //   asks for the write `billing__plan__cancel` (whose card first says what cancelling will do), and says when the
 //   person said no;
+// - what a currency is worth (`dólar`, `dollar`): asks for erplora.com's `currency_rate`, then gives it naming no source;
+// - a law (`ley`, `law`): asks for erplora.com's `web_search`, then answers naming no source;
 // - anything else: a short greeting.
+// It also plays the providers of those two tools, Frankfurter (`/v1/latest`) and Brave (`/res/v1/web/search`), for a panel whose
+// `ASSISTANT_RATES_URL` and `ASSISTANT_SEARCH_URL` point here (panel/project.ts, `aiProviderPort`).
 // Each answer comes in pieces, a little apart, so the panel paints the bubble «writing» before the first word.
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 
@@ -20,6 +24,10 @@ export const NEW_BUSINESS = 'E2E Panel Nuevo';
 
 /** What any dictation says (panel/assistant-dictation.spec.ts). */
 export const DICTATION = 'Dos cafés y una tostada';
+
+/** The one page the search finds: an address too long for a phone's width (panel/assistant-web-tools.spec.ts). */
+export const LONG_ADDRESS =
+  'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-12345-una-direccion-muy-larga-que-no-cabe-en-la-pantalla-de-un-movil';
 
 export interface Message {
   role: string;
@@ -30,6 +38,8 @@ export interface Message {
 
 export interface Seen {
   path: string;
+  /** What the address carried after its `?`. */
+  query: string;
   body: Record<string, unknown> | null;
 }
 
@@ -133,6 +143,12 @@ export function answerTo(messages: Message[]): Answer {
       .flatMap((message) => message.tool_calls ?? [])
       .find((toolCall) => toolCall.id === last.tool_call_id)?.function?.name;
     const cancelled = cancelOf(textOf([...messages].reverse().find((message) => message.role === 'user')?.content));
+    if (asked === 'currency_rate' || asked === 'web_search') {
+      if (refused(result) || /"error"/.test(result)) return text(es ? 'No he podido consultarlo ahora.' : 'I could not look it up now.');
+      if (asked === 'web_search') return text(es ? 'La ley entra en vigor este mes.' : 'The law takes effect this month.');
+      const { converted } = JSON.parse(result) as { converted?: string };
+      return text(es ? `Hoy, 1 USD son ${converted} EUR.` : `Today, 1 USD is ${converted} EUR.`);
+    }
     if (asked === 'hubs__business__list' && cancelled) {
       const id = businessId(result, cancelled);
       if (id) return call('billing__plan__cancel', { hub_id: id });
@@ -164,6 +180,8 @@ export function answerTo(messages: Message[]): Answer {
   if (create) return call('hubs__business__create', { name: create[1].trim(), country: 'ES' });
   if (cancelOf(question)) return call('hubs__business__list', {});
   if (/negocios|businesses/i.test(question)) return call('hubs__business__list', {});
+  if (/d[oó]ll?ar/i.test(question)) return call('currency_rate', { from: 'USD', to: 'EUR' });
+  if (/\b(?:ley|law)\b/i.test(question)) return call('web_search', { query: question, language: es ? 'es' : 'en' });
   return text(es ? 'Hola, soy el asistente de prueba.' : 'Hello, I am the test assistant.');
 }
 
@@ -196,9 +214,9 @@ export interface Provider {
 export async function startProvider(port: number): Promise<Provider> {
   const seen: Seen[] = [];
   const server: Server = createServer(async (request: IncomingMessage, response: ServerResponse) => {
-    const path = (request.url ?? '').split('?', 1)[0];
+    const [path, query = ''] = (request.url ?? '').split('?', 2);
     const body = await read(request);
-    seen.push({ path, body });
+    seen.push({ path, query, body });
     const json = (status: number, value: unknown) => {
       response.writeHead(status, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify(value));
@@ -215,6 +233,16 @@ export async function startProvider(port: number): Promise<Provider> {
       });
     }
     if (path === '/v1/audio/transcriptions') return json(200, { text: DICTATION });
+    if (path === '/v1/latest') return json(200, { amount: 1, base: 'USD', date: '2026-11-04', rates: { EUR: 0.88755 } });
+    if (request.method === 'GET' && path === '/res/v1/web/search') {
+      return json(200, {
+        type: 'search',
+        web: {
+          type: 'search',
+          results: [{ title: 'BOE', url: LONG_ADDRESS, description: 'La ley entra en vigor este mes.', page_age: '2026-11-01T08:00:00' }],
+        },
+      });
+    }
     if (path === '/v1/chat/completions') {
       const answer = answerTo((body?.messages as Message[] | undefined) ?? []);
       response.writeHead(200, { 'Content-Type': 'text/event-stream' });

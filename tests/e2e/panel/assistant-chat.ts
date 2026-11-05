@@ -1,7 +1,9 @@
 // The panel's assistant as the QA specs with the real model drive it (assistant-battery.spec.ts and
 // assistant-probes.spec.ts): the turns it streams (`/api/assistant/turn`, read back as frames by `summarizeTurns`), a
 // question typed and followed to its end with its cards decided, and what the panel showed for it; and the seed both
-// start from: the real providers, the account «QA Base» and the documentation index (`assistant_seed.py real`).
+// start from: the real providers, the account «QA Base» and the documentation index (`assistant_seed.py real`). And for
+// the specs on the e2e's own model (assistant-provider.ts): its server and seed for a spec's file (`localAssistant`), the
+// panel open for an account (`openPanel`) and a question typed in the composer (`ask`).
 import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,10 +12,20 @@ import type { Locator, Page } from '@playwright/test';
 
 import { type Card, summarizeTurns, type Turns } from '../assistant-battery';
 import { redactedError } from '../assistant-probes';
+import { type Provider, startProvider } from '../assistant-provider';
 import { djangoEnv } from '../django-env';
-import { expect } from './fixtures';
+import { expect, signIn, test } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+
+/** The account `assistant_seed.py panel` makes, with its one business. */
+export const OWNER = { email: 'e2e-assistant-owner@example.com', password: process.env.QA_PANEL_PASSWORD ?? 'e2e-panel' };
+/** The panel's three sizes, for a spec's screenshots. */
+export const SIZES = [
+  { name: '1440', width: 1440, height: 900 },
+  { name: '834', width: 834, height: 1112 },
+  { name: '390', width: 390, height: 844 },
+] as const;
 
 /** How long one question may take, cards included: the real model, its tools and the documentation search. */
 export const TURN_MS = 240_000;
@@ -60,6 +72,44 @@ export function seedRealAssistant(language = 'es'): { seed: RealSeed; indexed: s
  *  after a worker, whatever happened to it. */
 export function forgetRealAssistant(): void {
   uvRun(['python', 'tests/e2e/panel/assistant_seed.py', 'forget']);
+}
+
+/** The e2e's own model for the tests of a spec's file, on `port` (0: any free one): started before them and, with what
+ *  the seed left, gone after them. `seed` is `assistant_seed.py <action> <its address> <language>`: always from scratch. */
+export function localAssistant(port = 0): {
+  provider: () => Provider;
+  seed: (action: 'clear' | 'panel' | 'paying', language?: 'es' | 'en') => void;
+} {
+  let provider: Provider | undefined;
+  const seed = (action: 'clear' | 'panel' | 'paying', language: 'es' | 'en' = 'es'): void => {
+    uvRun(['python', 'tests/e2e/panel/assistant_seed.py', action, provider?.url ?? '', language]);
+  };
+  test.beforeAll(async () => {
+    provider = await startProvider(port);
+  });
+  test.afterAll(async () => {
+    seed('clear');
+    await provider?.close();
+  });
+  return { provider: () => provider!, seed };
+}
+
+/** `OWNER` signed in on the businesses at 1440, with the assistant's panel open: that panel. */
+export async function openPanel(page: Page): Promise<Locator> {
+  await signIn(page.request, OWNER);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/dashboard/businesses');
+  await page.getByTestId('assistant-button').click();
+  const panel = page.getByTestId('assistant-panel');
+  await expect(panel).toHaveAttribute('data-open', 'true');
+  return panel;
+}
+
+/** Writes `text` in the composer and sends it, once the turn before is over. */
+export async function ask(page: Page, text: string): Promise<void> {
+  await expect(page.getByTestId('assistant-stop')).toHaveCount(0);
+  await page.getByTestId('assistant-input').locator('textarea').fill(text);
+  await page.getByTestId('assistant-send').click();
 }
 
 const isTurn = (url: string): boolean => new URL(url).pathname === '/api/assistant/turn';
@@ -132,9 +182,7 @@ export class AssistantChat {
 
   /** Writes `text` in the composer and sends it, once the turn before is over. */
   async send(text: string): Promise<void> {
-    await expect(this.page.getByTestId('assistant-stop')).toHaveCount(0);
-    await this.page.getByTestId('assistant-input').locator('textarea').fill(text);
-    await this.page.getByTestId('assistant-send').click();
+    await ask(this.page, text);
   }
 
   /** What the turns of the question streamed so far. */

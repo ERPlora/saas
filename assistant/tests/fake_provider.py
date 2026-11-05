@@ -14,9 +14,11 @@ import json
 import threading
 import time
 from dataclasses import dataclass, field
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from collections.abc import Callable
 from typing import Any
+
+from base.tests.quiet_server import QuietServer
 
 
 @dataclass
@@ -56,7 +58,7 @@ class FakeProvider:
         self._fallback: dict[tuple[str, str], Reply] = {}
         self.requests: list[Seen] = []
         self._lock = threading.Lock()
-        self._server = ThreadingHTTPServer(("127.0.0.1", port), self._handler())
+        self._server = QuietServer(("127.0.0.1", port), self._handler())
         self._server.daemon_threads = True
         self._thread: threading.Thread | None = None
 
@@ -156,10 +158,6 @@ def openai_chunk(content: str | None = None, *, finish: str | None = None, tool_
     return chunk
 
 
-#: The e2e's reading aloud: an MP3 frame header and a few bytes (no real audio is needed to prove the door).
-E2E_SPEECH = b"ID3\x03\x00\x00\x00\x00\x00\x00e2e-speech"
-
-
 def serve_e2e(port: int) -> None:
     """The e2e's provider: an OpenAI-compatible API under ``/v1`` with two chat models, an embeddings model it
     leaves out, and an answer streamed in three pieces with its usage."""
@@ -190,8 +188,8 @@ def serve_e2e(port: int) -> None:
             "[DONE]",
         ],
     )
-    # The services' provider (assistant.media): two fingerprints, given in reverse so the order is the gateway's, a
-    # dictation and a reading aloud.
+    # The services' provider (assistant.media): two fingerprints, given in reverse so the order is the gateway's, and a
+    # dictation.
     fake.reply(
         "POST",
         "/v1/embeddings",
@@ -203,7 +201,6 @@ def serve_e2e(port: int) -> None:
         },
     )
     fake.reply("POST", "/v1/audio/transcriptions", always=True, json={"text": "How many appointments do I have today?"})
-    fake.reply("POST", "/v1/audio/speech", always=True, body=E2E_SPEECH, headers={"Content-Type": "audio/mpeg"})
     fake._server.serve_forever()
 
 

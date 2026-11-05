@@ -261,7 +261,7 @@ Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»)
   `.record`, sin herramienta, lo único por donde escribe la comprobación. Rutas: `GET`/`POST /api/hubs/businesses/custom-domain`
   y `POST …/custom-domain/remove`. Códigos: `hubs.custom_domains_off`, `hubs.custom_domain_not_in_plan` y
   `_exists`/`_taken` (409); `_invalid`, `_ours`, `_apex`, `_unregistered` (422, con el campo `domain`).
-- **Variables** (`.env.example`; las da `aws`, `custom_domains.tf`): `CUSTOM_DOMAINS_ENABLED`, `CUSTOM_DOMAINS_LISTENER_ARN`,
+- **Variables** (`config/settings.py`; las da `aws`, `custom_domains.tf`): `CUSTOM_DOMAINS_ENABLED`, `CUSTOM_DOMAINS_LISTENER_ARN`,
   `CUSTOM_DOMAINS_TARGET_TEMPLATE` y `CUSTOM_DOMAINS_MAX_CERTIFICATES`. Ausente o en `false`: ninguna llamada a AWS ni al
   DNS, sin métrica, y un dominio que hubiera se queda como está; encendida sin las otras, no arranca.
 - **`check_custom_domains`** corre cada hora en `saas-cron`. Sale con error solo si un dominio rompe o la métrica no se

@@ -89,29 +89,29 @@ def development(expression: str, **env: str):
 # Database: TLS verify-full against Aurora with the RDS bundle the image ships.
 
 
+#: The connection options, the pool's check by name: the `repr` of a function is no literal to read back.
+CONNECTION_OPTIONS = (
+    "{**s.DATABASES['default']['OPTIONS'], 'pool': {**s.DATABASES['default']['OPTIONS']['pool'],"
+    " 'check': s.DATABASES['default']['OPTIONS']['pool']['check'].__qualname__}}"
+)
+POOL = {"min_size": 1, "max_size": 8, "max_idle": 60, "timeout": 5, "check": "ConnectionPool.check_connection"}
+
+
 def test_production_verifies_the_database_certificate_against_the_rds_bundle():
-    options = production("s.DATABASES['default']['OPTIONS']", **AWS_ENV)
+    options = production(CONNECTION_OPTIONS, **AWS_ENV)
 
     assert options["sslmode"] == "verify-full"
     assert options["sslrootcert"] == "/etc/ssl/certs/rds-global-bundle.pem"
     # The task's name in pg_stat_activity (saas, saas-migrate, saas-cron).
     assert options["application_name"] == "saas"
-    assert options["pool"] == {"min_size": 1, "max_size": 8, "max_idle": 60, "timeout": 5}
+    assert options["pool"] == POOL
 
 
 def test_without_tls_variables_the_connection_options_are_only_the_pool_and_its_timeouts():
     """Local Postgres (compose.yaml) has no TLS: nothing is added unless the variable is set."""
-    only_the_pool = {
-        "pool": {"min_size": 1, "max_size": 8, "max_idle": 60, "timeout": 5},
-        "connect_timeout": 5,
-    }
-    assert production("s.DATABASES['default']['OPTIONS']") == only_the_pool
-    assert (
-        production(
-            "s.DATABASES['default']['OPTIONS']", DB_SSLMODE="", DB_SSLROOTCERT=""
-        )
-        == only_the_pool
-    )
+    only_the_pool = {"pool": POOL, "connect_timeout": 5}
+    assert production(CONNECTION_OPTIONS) == only_the_pool
+    assert production(CONNECTION_OPTIONS, DB_SSLMODE="", DB_SSLROOTCERT="") == only_the_pool
 
 
 def test_a_burst_of_pooled_connections_is_given_back_within_minutes():
@@ -119,7 +119,7 @@ def test_a_burst_of_pooled_connections_is_given_back_within_minutes():
     burst the idle SaaS kept up to 8 connections for over an hour (4 measured on 2026-10-18). With
     60 s it is back to one within 7 minutes; that one stays open for the next request (PLAN-DB
     «Conexiones», round 2026-10-18). As in the Hub."""
-    pool = production("s.DATABASES['default']['OPTIONS']['pool']")
+    pool = production(f"{CONNECTION_OPTIONS}['pool']")
     assert (pool["min_size"], pool["max_size"], pool["max_idle"]) == (1, 8, 60)
 
 

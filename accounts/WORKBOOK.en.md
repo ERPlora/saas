@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:354d16f971f753d3ecd98c3b17b7c3917efa60bb881ec77502049e8ca1fb1fdb -->
+<!-- generated from WORKBOOK.md sha256:01c9c83ec809038c9e50f17c48e23a6da0e2ba0df5aa41e0dfc80077cd1d0fec -->
 
 ## What it is for and who it is for
 
@@ -274,9 +274,9 @@ Steps:
 1. The person taps "Start free" on the website or opens the **Entrance** and chooses "Create account" (the old sign-up addresses lead to this tab and keep where they were going). They see "Enter your email and choose a password. We'll email you a code to confirm it.".
 2. They type their email and a password (with the eye to check it) and tap "Create account".
 3. erplora.com checks the password: at least 8 characters, not like their email, not a common password and not only numbers. It creates the account and sends them a six-digit code.
-4. The screen moves to **Check your email** (ACCOUNTS-F02); with the right code they are signed in and reach "Create your business".
+4. The screen moves to **Check your email** (ACCOUNTS-F02); with the right code they are signed in and reach "Create your business", in the language they signed up in.
 In: the email (without spaces, in lower case and with full-width letters turned into the usual ones, so that an address that looks like another does not create a second account; the same when inviting it to a business, which invites that account), the password and where they were going (only pages of erplora.com).
-Out: the account, active, with its email not confirmed yet and the terms accepted (ACCOUNTS-F10). No business is created. The application that draws this screen is the same door as any other program: the same rules apply to all.
+Out: the account, active, with its email not confirmed yet, the language of the page they signed up on (the one chosen on the public website or, failing that, the browser's) and the terms accepted (ACCOUNTS-F10). No business is created. The application that draws this screen is the same door as any other program: the same rules apply to all.
 If it fails: a password that does not pass the rules appears under the password and nothing is created; an invalid email (also with full-width letters before the at sign), under the email. An email that already has an account answers just like a new one and its mailbox receives "an account using that email address already exists" with the link to set a password, without a code: this is also how the invited person, whose account has no password yet, sets theirs, and nobody takes over someone else's account. More than 10 sign-ups in an hour from the same network address: "Too many attempts. Please wait a few minutes and try again.".
 Involved: hubs (the **Entrance** and "Create your business")
 
@@ -345,7 +345,7 @@ Steps:
 3. If there is already an erplora.com account with that email, they sign in to it, Google stays linked and its email receives the notice "Google sign-in was added to your account"; if there is none, the account is created with the email already confirmed and without a form.
 4. Once in, they go where they were going or to the **Entrance** with their session; with the authenticator app, they first go through **Two-step verification**.
 In: what Google confirms (email, first and last name) and where they were going.
-Out: the Google account linked and, if new, the account, without a password (set with "Forgot your password?"). Google does not ask for the email's code: it already proves it.
+Out: the Google account linked and, if new, the account, without a password (set with "Forgot your password?") and with the language of the page, as in ACCOUNTS-F01; signing in to an account that already exists does not change its language. Google does not ask for the email's code: it already proves it.
 If it fails: "Cancel" at Google goes back to the **Entrance**; a Google error or an email Google does not confirm leads to the sign-in's error page, without creating or linking anything. Linking Google to an open session without signing in with it is not allowed: it says that Google is only linked by signing in with the Google account of the email.
 Involved: none
 
@@ -564,7 +564,7 @@ Steps:
 3. In "Language" they pick "English" or "Español": the panel changes language at once, and so do the mails we send them.
 4. In another browser or after reloading, the panel opens with the account's appearance and language.
 In: the appearance and the language.
-Out: the account's appearance and language, the same on all its devices; the language is also the one of its mails and the one its businesses get at sign-in. In the panel the account's language rules; the public website follows the one chosen on it or the browser's.
+Out: the account's appearance and language, the same on all its devices; the language is also the one of its mails and the one its businesses get at sign-in. The account is born with the language of the page it signed up on (ACCOUNTS-F01, ACCOUNTS-F06), or with that of the business that invites it; from then on this screen decides it. In the panel the account's language rules; the public website follows the one chosen on it or the browser's.
 If it fails: if it cannot be saved, the control goes back to what it was and a notice says why; if the preferences do not load, "We could not load your preferences" with "Try again". No currency is chosen: ERPlora charges in euros.
 Involved: hubs (the language when entering a business)
 
@@ -941,3 +941,18 @@ In: the mark, which only staff set and remove, and the account's email and passw
 Out: that browser's session, as in ACCOUNTS-F04 but without the email code; the session shows among the account's open ones like any other (ACCOUNTS-F18 and ACCOUNTS-F19), and the audit log notes who set or removed the mark, when and from which address (ACCOUNTS-F36).
 If it fails: an account without the mark keeps asking for the code at each sign-in with a password (ACCOUNTS-F04). The person neither sees nor changes the mark from their account, support see it in the admin without being able to change it, and a staff account cannot carry it: "A staff account cannot be a store review account.", and it is not saved. The mark skips nothing else: an unconfirmed email asks for its code (ACCOUNTS-F03), the authenticator app, if the account has one, asks for its own (ACCOUNTS-F05), and a wrong password, the attempt limits (ACCOUNTS-F11) and the same answer whether the account exists or not stay as for any other.
 Involved: erplora.com's admin (the account's page and the audit log); ERPlora's app (repository ERPlora/app), whose Google Play check signs in with this account before each release; saas#132 and app#7
+
+### ACCOUNTS-F50 Wait for the database when it is cut for a moment
+Status: done
+Actor: any visitor of erplora.com, any person on the panel and any program connected through the API
+Screen: any of erplora.com and the panel, Maintenance page
+Steps:
+1. The person opens a page or the panel while the database is cut for a few seconds: a restart, an AWS maintenance or the version upgrade.
+2. What they were reading waits and is asked for again on its own, up to 20 seconds in total. If the database comes back earlier, the page arrives as always: the person only notices that it took longer.
+3. What they were saving waits too when it is known that nothing was applied: it never started, or it is a change of **Preferences** or **Profile**, which only touch the database and had not been confirmed yet. It is saved once.
+4. When the time is up, whoever reads a page sees "We will be back soon" with "ERPlora will be back in a moment: try again in a few seconds." and "Retry". Inside the panel, what could not be loaded says so in its place and offers "Retry", as in any connection failure.
+In: nothing: the person does nothing different.
+Out: the same answer as always, a few seconds late; or, past the time, a 503 answer with `Retry-After` and never a server error page. A program receives the code `database_unavailable`. Search engines understand that the web comes back soon.
+If it fails: what may have been applied is never repeated blindly. A cut while a save was being confirmed leaves its result unknown, and any other change may have done something outside the database (a Stripe charge, an invoice, an email): the person reads "The connection was lost while this was being saved. Check whether it was saved before trying again." and a program, the code `database_outcome_unknown`. What is no cut (a query that takes too long, a fault of the program) stays the error it always was. The businesses' calls to `/internal`, Stripe's and Meta's notices and `/readyz` get their 503 at once, without waiting: the first two try again on their own, and `/readyz` has to say the database is gone before its probes give up.
+Involved: hubs (their calls get the 503 and try again), billing (Stripe's notices get the 503 and try again), whatsapp (Meta's notices, too), ACCOUNTS-F43 (the same page), ACCOUNTS-F21 and ACCOUNTS-F22 (Profile and Preferences, which may repeat); saas#284 and its twin in the Hub, hub#831
+

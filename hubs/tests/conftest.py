@@ -2,6 +2,7 @@
 
 from decimal import Decimal
 
+import boto3
 import pytest
 from botocore.exceptions import StubResponseError
 from botocore.stub import ANY, Stubber
@@ -203,6 +204,15 @@ def certificate_arn(number: int = 1) -> str:
     return f"arn:aws:acm:eu-west-1:123456789012:certificate/0193a0a0-0000-7000-8000-{number:012d}"
 
 
+def fake_aws_client(monkeypatch, service):
+    """A real client of ``service`` to put a Stubber on: dummy credentials from the environment, as
+    ``public/tests/test_downloads.py``, and a session of its own, so nothing stays in boto3's default one."""
+    monkeypatch.delenv("AWS_PROFILE", raising=False)
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+    return boto3.session.Session().client(service, region_name="eu-west-1")
+
+
 class StrictStubber(Stubber):
     """A Stubber that remembers what it refused. Its errors are ``BotoCoreError``s, which ``hubs.edge_client`` turns into
     ``EdgeUnavailable`` as it must: without this, a call nobody expected would pass for AWS being away, and a test that
@@ -302,14 +312,11 @@ class AwsEdge:
 @pytest.fixture
 def aws_edge(monkeypatch):
     """No test reaches AWS: an unexpected call fails on its Stubber, and an expected one that was not made fails here."""
-    import boto3
-
     from hubs import edge_client
 
-    def client(service):
-        return boto3.client(service, region_name="eu-west-1", aws_access_key_id="x", aws_secret_access_key="x")
-
-    acm, elbv2, cloudwatch = client("acm"), client("elbv2"), client("cloudwatch")
+    acm = fake_aws_client(monkeypatch, "acm")
+    elbv2 = fake_aws_client(monkeypatch, "elbv2")
+    cloudwatch = fake_aws_client(monkeypatch, "cloudwatch")
     monkeypatch.setattr(edge_client, "_acm", lambda: acm)
     monkeypatch.setattr(edge_client, "_elbv2", lambda: elbv2)
     monkeypatch.setattr(edge_client, "_cloudwatch", lambda: cloudwatch)
