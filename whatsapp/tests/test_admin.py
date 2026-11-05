@@ -186,6 +186,20 @@ class TestWhatWaitsForTheHub:
         assert row.delivered_at is not None
         assert "1 taken by the Hub" in response.content.decode()
 
+    def test_push_now_counts_as_waiting_the_messages_held_behind_one_the_hub_did_not_take(
+        self, as_superuser, business, hub_double
+    ):
+        """The second message of the business waits with the first one (saas#305, the order the customer wrote in):
+        both still wait, and the staff is told so."""
+        hub_double.answer("POST", r"^/internal/whatsapp/inbound$", 503, {})
+        first = parked(business, wa_message_id="wamid.1", received_at=timezone.now() - timezone.timedelta(minutes=2))
+        second = parked(business, wa_message_id="wamid.2", received_at=timezone.now() - timezone.timedelta(minutes=1))
+
+        response = act(as_superuser, "delivery", "push_now", [first.pk, second.pk])
+
+        assert "0 taken by the Hub, 2 still waiting, 0 refused by the Hub." in response.content.decode()
+        assert len(hub_double.calls_to("POST", "/internal/whatsapp/inbound")) == 1
+
     def test_nothing_is_added_changed_nor_deleted_by_hand(self, as_superuser, business):
         row = parked(business)
 

@@ -157,10 +157,12 @@ class DeliveryAdmin(PlatformActions):
             self.message_user(request, _("Nothing selected waits for the Hub."), messages.WARNING)
             return
         counts = gateway.deliver(due.hub_ids)
+        # A message held behind an older one of its business the Hub did not take (saas#305) still waits too.
+        waiting = {**counts, "retried": counts["retried"] + counts["held"]}
         self.message_user(
             request,
             _("%(delivered)d taken by the Hub, %(retried)d still waiting, %(refused)d refused by the Hub.")
-            % counts,
+            % waiting,
         )
 
 

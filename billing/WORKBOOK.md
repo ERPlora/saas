@@ -760,6 +760,11 @@ Implicados: ninguno
   `tests/e2e/hub-suspended.spec.ts`) citan la clave del registro (`BILLING-Gnn`) y llevan en su cabecera la
   equivalencia con la de este WORKBOOK. Igual los de la parte 2 (`tests/e2e/panel/billing-apps.spec.ts`) y
   los de la parte 3 (`tests/e2e/panel/billing-support.spec.ts`).
+- BILLING-F25, el reintento de la factura de ERPlora (`reconcile_platform_invoices`), corre cada 15 minutos (:00, :15,
+  :30, :45 UTC) dentro del proceso `saas-worker` (`manage.py run_worker`, `base/worker.py`, saas#305), ya no como tarea
+  de `saas-cron`; la pasada es `services.reconcile_platform_invoices_exclusively`, la misma del comando, que queda para
+  lanzarla a mano. Lo que deja pendiente escribe la línea ERROR `saas.worker.pass_failed task=reconcile_platform_invoices
+  left work owed: …`, que es lo que avisa la alarma (antes, el código de salida de la tarea).
 - Tareas programadas (ECS, `saas-cron`): `manage.py audit_tax_rules` (BILLING-F04),
   `manage.py retax_subscriptions` (BILLING-F02, BILLING-F06) y `manage.py sync_subscriptions` (BILLING-F38;
   `--dry-run` solo informa) salen con error si dejan algo por hacer, que es lo que la alarma `task_failed`

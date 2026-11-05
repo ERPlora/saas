@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:259a607dbf2d6b91d433bfd9b230b6ee1427c35f57cfcd5b97710d5a7b189235 -->
+<!-- generated from WORKBOOK.md sha256:05f5c74c4812353c433ac2bf47e04733c6e039edb279ff6aed5b091729e15ed9 -->
 
 ## What it is for and who it is for
 
@@ -195,7 +195,7 @@ Actor: system
 Screen: WhatsApp inbox (in the Hub)
 Steps:
 1. A customer writes to the business's number (or the owner replies from the phone, or the history arrives on connecting): Meta reports it to erplora.com, which checks the notice is Meta's and keeps it for the business of that number.
-2. erplora.com hands it to the Hub at once; if the Hub is away or does not have the inbox switched on, it tries again with a wait that grows up to one hour, every minute while something is left. If the Hub is slow, each minute hands over what fits in that minute, without repeating what is still on its way.
+2. erplora.com hands it to the Hub at once; if the Hub is away or does not have the inbox switched on, it tries again with a wait that grows up to one hour and hands it over as soon as that wait is over. Each business's messages arrive in the order they were written: while one waits, the next ones of that business wait with it (for an hour of tries at most) and the other businesses' go on. If the Hub is slow, it hands over what it can without repeating what is still on its way.
 3. A photo, a voice note or a document arrive as an erplora.com link that only a person of the business opens with their session; the file comes from Meta at that moment and is not kept.
 4. The status of a message of the business ("Delivered", "Read", "Not delivered") reaches the inbox: that of one sent from the Hub, once erplora.com knows which it is; that of a reply of the owner from the phone, after that reply.
 In: Meta's notices: messages, echoes from the phone, history, delivery statuses and template verdicts.

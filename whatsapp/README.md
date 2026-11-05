@@ -60,7 +60,7 @@ Las puertas 10–12 y la página de vuelta de la ventana de Meta (`GET /whatsapp
 
 ## Operaciones (`@operation`, permiso `whatsapp.manage`, contexto de plataforma)
 
-- Comandos (`services.py`): `whatsapp.webhook.ingest`, `whatsapp.delivery.claim|record|due_now`,
+- Comandos (`services.py`): `whatsapp.webhook.ingest`, `whatsapp.delivery.claim|record|hold|due_now`,
   `whatsapp.message.claim|record|erase`, `whatsapp.template.claim|record|forget|sync`,
   `whatsapp.number.connect|disconnect|reconnect_needed|renewal|alerted`, `whatsapp.retention.purge`.
 - Consultas (`queries.py`): `whatsapp.template.account`, `whatsapp.number.renewal_due`,
@@ -79,12 +79,29 @@ Las puertas 10–12 y la página de vuelta de la ventana de Meta (`GET /whatsapp
   registro por negocio, saas#1930) y claves de envíos y registros > 30 días (saas#2662).
 - Nada de lo que envía el negocio se guarda, salvo la clave; los adjuntos nunca.
 
+## La entrega al Hub (`saas-worker`, saas#305)
+
+Lo que espera al Hub lo entrega el proceso `saas-worker` (`manage.py run_worker`, `base/worker.py`; su servicio lo
+crea el repo `aws`, aws#59), no una tarea por minuto. Se despierta con lo primero de: el `NOTIFY whatsapp_delivery`
+que `services.wake_the_worker` manda tras el COMMIT de lo que deja una entrega pendiente o mueve su espera, la hora
+del siguiente reintento (`whatsapp.delivery.next_due`) y el siguiente cuarto de hora; entre despertares no consulta la
+base de datos (su espera es un `select` sobre el socket de su conexión `LISTEN`, `base/listener.py`).
+
+- Cada pasada es `gateway.deliver_pass`: bajo el lock de `whatsapp_deliver` (una a la vez, también con el comando) y
+  de 50 s como mucho (`gateway.PASS_BUDGET`): cada lote reserva solo las entregas cuyas llamadas al Hub caben en lo
+  que le queda (10 s cada una en el peor caso: 5 s para conectar y 5 s para responder). Así nada reservado (5 min; el
+  webhook, 20 llamadas = 200 s) se vuelve a reservar mientras aún se empuja. Si queda más, la siguiente empieza ya.
+- Orden por negocio: un mensaje no sale antes que otro más antiguo de su negocio que aún espera (como mucho
+  `queries.IN_ORDER_ATTEMPTS` = 8 intentos, una hora); los estados no esperan; los demás negocios siguen.
+- `SIGTERM` (un despliegue) acaba la llamada en curso, devuelve lo reservado sin empujar (vence ya, para el proceso
+  siguiente) y sale con 0.
+- Una pasada que revienta escribe una línea ERROR `saas.worker.pass_failed task=whatsapp_deliver` (la alarma de `aws`
+  filtra ese texto) y el proceso sigue; tras un fallo vuelve a mirar en 60 s como mucho.
+- `manage.py whatsapp_deliver`: la misma pasada, a mano (diagnóstico, rescate y `pre` mientras no tenga su
+  `saas-worker`); ya no está programada.
+
 ## Tareas (ECS, `saas-cron`)
 
-- `manage.py whatsapp_deliver`: cada minuto, lo que espera al Hub. Una pasada a la vez (bajo un lock de nombre: la que
-  lo encuentra cogido lo dice y sale sin error) y de 50 s como mucho: cada lote reserva solo las entregas cuyas
-  llamadas al Hub caben en lo que le queda (10 s cada una en el peor caso: 5 s para conectar y 5 s para responder).
-  Así nada reservado (5 min; el webhook, 20 llamadas = 200 s) se vuelve a reservar mientras aún se empuja.
 - `manage.py whatsapp_refresh_tokens`: cada día, renueva los permisos a 14 días de caducar (bajo un lock de nombre),
   marca «Hay que reconectar» y avisa al propietario. Sin ningún número que renovar sale bien y lo dice (`due=0`),
   aunque falte la app de Meta (no pide sus credenciales); con números que renovar sale con error sin la app de Meta
