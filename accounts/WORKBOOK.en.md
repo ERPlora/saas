@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:354d16f971f753d3ecd98c3b17b7c3917efa60bb881ec77502049e8ca1fb1fdb -->
+<!-- generated from WORKBOOK.md sha256:13c89d6ea42027929a6bb1c71f7f1c84b8a706cc02f2ef40b7026f9b5b2ced4b -->
 
 ## What it is for and who it is for
 
@@ -941,3 +941,18 @@ In: the mark, which only staff set and remove, and the account's email and passw
 Out: that browser's session, as in ACCOUNTS-F04 but without the email code; the session shows among the account's open ones like any other (ACCOUNTS-F18 and ACCOUNTS-F19), and the audit log notes who set or removed the mark, when and from which address (ACCOUNTS-F36).
 If it fails: an account without the mark keeps asking for the code at each sign-in with a password (ACCOUNTS-F04). The person neither sees nor changes the mark from their account, support see it in the admin without being able to change it, and a staff account cannot carry it: "A staff account cannot be a store review account.", and it is not saved. The mark skips nothing else: an unconfirmed email asks for its code (ACCOUNTS-F03), the authenticator app, if the account has one, asks for its own (ACCOUNTS-F05), and a wrong password, the attempt limits (ACCOUNTS-F11) and the same answer whether the account exists or not stay as for any other.
 Involved: erplora.com's admin (the account's page and the audit log); ERPlora's app (repository ERPlora/app), whose Google Play check signs in with this account before each release; saas#132 and app#7
+
+### ACCOUNTS-F50 Wait for the database when it is cut for a moment
+Status: done
+Actor: any visitor of erplora.com, any person on the panel and any program connected through the API
+Screen: any of erplora.com and the panel, Maintenance page
+Steps:
+1. The person opens a page or the panel while the database is cut for a few seconds: a restart, an AWS maintenance or the version upgrade.
+2. What they were reading waits and is asked for again on its own, up to 20 seconds in total. If the database comes back earlier, the page arrives as always: the person only notices that it took longer.
+3. What they were saving waits too when it is known that nothing was applied: it never started, or it is a change of **Preferences** or **Profile**, which only touch the database and had not been confirmed yet. It is saved once.
+4. When the time is up, whoever reads a page sees "We will be back soon" with "ERPlora will be back in a moment: try again in a few seconds." and "Retry". Inside the panel, what could not be loaded says so in its place and offers "Retry", as in any connection failure.
+In: nothing: the person does nothing different.
+Out: the same answer as always, a few seconds late; or, past the time, a 503 answer with `Retry-After` and never a server error page. A program receives the code `database_unavailable`. Search engines understand that the web comes back soon.
+If it fails: what may have been applied is never repeated blindly. A cut while a save was being confirmed leaves its result unknown, and any other change may have done something outside the database (a Stripe charge, an invoice, an email): the person reads "The connection was lost while this was being saved. Check whether it was saved before trying again." and a program, the code `database_outcome_unknown`. What is no cut (a query that takes too long, a fault of the program) stays the error it always was. The businesses' calls to `/internal`, Stripe's and Meta's notices and `/readyz` get their 503 at once, without waiting: the first two try again on their own, and `/readyz` has to say the database is gone before its probes give up.
+Involved: hubs (their calls get the 503 and try again), billing (Stripe's notices get the 503 and try again), whatsapp (Meta's notices, too), ACCOUNTS-F43 (the same page), ACCOUNTS-F21 and ACCOUNTS-F22 (Profile and Preferences, which may repeat); saas#284 and its twin in the Hub, hub#831
+

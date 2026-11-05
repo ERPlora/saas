@@ -14,6 +14,7 @@ from django.http.request import validate_host
 from live.csp import base_policy, debug_policy
 from live.meta import LiveAppConfig
 from live.recaptcha import with_recaptcha
+from psycopg_pool import ConnectionPool
 
 from config.tests.test_production_settings import IGNORE_DOTENV
 
@@ -495,6 +496,28 @@ def test_the_mails_link_the_pages_of_the_spa():
 
 
 # The public web (round 16, public/): its apps, middlewares and settings.
+
+
+def test_the_pool_checks_a_connection_before_handing_it_out():
+    """After a cut of the database the pool may still hold a dead connection (PLAN-DB, round 2026-11-04e, point 5)."""
+    pool = settings.DATABASES["default"]["OPTIONS"]["pool"]
+    assert pool["check"] is ConnectionPool.check_connection
+
+
+def test_a_cut_of_the_database_waits_first_of_all_but_the_health_checks():
+    """Django turns an exception into a response at every layer: only the outermost sees the whole request."""
+    assert settings.MIDDLEWARE[:2] == ["base.health.HealthCheckMiddleware", "live.database_cut.DatabaseCutMiddleware"]
+
+
+def test_a_cut_of_the_database_waits_far_less_than_the_load_balancer_gives_a_request():
+    """120 s of idle_timeout (aws): the limit, plus the try that was running and the one that ends it past the limit."""
+    connect_timeout = settings.DATABASES["default"]["OPTIONS"]["connect_timeout"]
+    assert settings.LIVE["database_cut"]["wait_seconds"] + 2 * connect_timeout < 60
+
+
+def test_what_tries_again_on_its_own_does_not_wait_for_a_cut():
+    prefixes = settings.LIVE["database_cut"]["no_wait_prefixes"]
+    assert {"/internal/", "/webhooks/", "/readyz"} <= set(prefixes)
 
 
 def test_the_public_web_is_installed_with_its_sitemaps_and_cookie_consent():

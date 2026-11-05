@@ -448,6 +448,7 @@ def seed_demo_platform_admin(email: str, password: str):
     permission="accounts.manage",
     input=PreferencesUpdateIn,
     output=PreferencesOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Changes the account's theme, language or alerts of its businesses.",
         asks={
@@ -493,6 +494,7 @@ def preferences_update(ctx: OperationContext, data: PreferencesUpdateIn) -> dict
     permission="accounts.manage",
     input=ProfileUpdateIn,
     output=ProfileOut,
+    repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
         description="Changes the account's first and last name.",
         asks={
