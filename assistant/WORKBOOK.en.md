@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:ff0053515611498e25427f5c0727fc7e7dcd0143c0922742841d6ff7ac1cbaa6 -->
+<!-- generated from WORKBOOK.md sha256:40739658fd16d3eb5389d968ea8f2a931479d46a5412d1545bc69913982dc5e4 -->
 
 ## What it is for and who uses it
 
@@ -350,7 +350,7 @@ If it fails: the refusals before the model, the same as live; if the provider fa
 Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F18 and, in the Hub, FLOW-F39
 
 ### ASSISTANT-F14 Use erplora.com's tools and the business's
-Status: partial — the business's tools, the date and time and the exchange rate between currencies work; the web search is done and is not offered in production until it has its key and the privacy policy names the provider (saas#277)
+Status: partial — the business's tools, the date and time and the exchange rate between currencies work; the web search is done and the privacy policy already names its provider; it is not offered in production until the infrastructure hands it its key, it is really tested in `pre` and reporting an answer keeps nothing that came from the web (saas#277, saas#287)
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
@@ -362,7 +362,7 @@ Steps:
 In: the business's tools and the model's questions.
 Out: the result of each tool of erplora.com for the model; its consumption adds up to the turn's and spends no other message.
 If it fails: a tool of erplora.com that fails gives the model the reason to answer with, never a failed turn; a service that is down, takes too long or answers something unusable, a currency with no published rate, a search with no results or too many requests from a business: the model gets the reason and no figure, to say so without inventing one; a tool of the business named as one of erplora.com's is run by erplora.com; without the search engine's key, the search is not offered and the rest works the same; in an automation it is not offered either, and if the model asks for it, it is not done. The exchange rate is a reference to inform: it changes the amount of no charge or invoice.
-Involved: ASSISTANT-F12, ASSISTANT-F13, ASSISTANT-F17, ASSISTANT-F25
+Involved: ASSISTANT-F12, ASSISTANT-F13, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F25, PUBLIC-F20
 
 ### ASSISTANT-F15 Refuse a turn with its reason
 Status: done
@@ -482,7 +482,7 @@ Steps:
 In: the business, the reported answer, the reason, the comment and the question.
 Out: the mail in the support mailbox, or the notice that it had already been sent (`assistant.report.sent`).
 If it fails: if the mail cannot leave, it says it could not be sent and to try again in a moment, and it can be sent again; a reason that is not one of the four is refused; a business that stops working (deleted or suspended) while its report arrives sends nothing and gets the same answer as in any other call (ASSISTANT-F11).
-Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17
+Involved: ASSISTANT-F11, ASSISTANT-F14, ASSISTANT-F16, ASSISTANT-F17
 
 ### ASSISTANT-F24 See what a business spent of the assistant
 Status: done

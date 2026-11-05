@@ -1,7 +1,7 @@
 # Workbook — Asistente de IA (assistant)
 Prefijo: ASSISTANT
 Alcance MVP: fase 1 (la pasarela de IA de erplora.com: los proveedores que paga ERPlora, sus claves cifradas, sus modelos y qué modelo contesta; el turno del asistente de cada negocio con sus herramientas y sus adjuntos, el cupo de mensajes de su plan, las huellas de su índice, el dictado y la lectura en voz alta, las denuncias de una respuesta y lo que gasta cada negocio; el asistente del panel de erplora.com para cada cuenta, con las herramientas del panel, su dictado y su propio cupo)
-Estado de la app: en uso (uno a medias: ASSISTANT-F14, la búsqueda en la web espera su clave, saas#277)
+Estado de la app: en uso (uno a medias: ASSISTANT-F14, la búsqueda en la web espera encenderse en producción, saas#277)
 
 > Manual de uso y especificación de la app `assistant` del SaaS (erplora.com). Cuenta lo que hace el personal de
 > ERPlora para que el asistente de IA conteste (dar de alta un proveedor de modelos y su clave, elegir sus modelos,
@@ -378,7 +378,7 @@ Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F18 y, en el 
 
 ### ASSISTANT-F14 Usar las herramientas de erplora.com y las del negocio
 <!-- origen: old-saas:SAAS_ASSISTANT-F06 -->
-Estado: parcial — las herramientas del negocio, la fecha y la hora y el tipo de cambio entre monedas funcionan; la búsqueda en la web está hecha y no se ofrece en producción hasta que tenga su clave y la política de privacidad nombre al proveedor (saas#277)
+Estado: parcial — las herramientas del negocio, la fecha y la hora y el tipo de cambio entre monedas funcionan; la búsqueda en la web está hecha y la política de privacidad ya nombra a su proveedor; no se ofrece en producción hasta que la infraestructura le pase su clave, se pruebe de verdad en `pre` y la denuncia de una respuesta no guarde lo que vino de la web (saas#277, saas#287)
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
@@ -390,7 +390,7 @@ Pasos:
 Entra: las herramientas del negocio y las preguntas del modelo.
 Sale: el resultado de cada herramienta de erplora.com para el modelo; su consumo se suma al del turno y no gasta otro mensaje.
 Si falla: una herramienta de erplora.com que falla da al modelo el motivo para que conteste con él, nunca un turno fallido; un servicio caído, que tarda demasiado o que responde algo inservible, una moneda sin tipo publicado, una búsqueda sin resultados o demasiadas consultas de un negocio: el modelo recibe el motivo y ninguna cifra, para decirlo sin inventarla; una herramienta del negocio con el nombre de una de erplora.com la ejecuta erplora.com; sin la clave del buscador, la búsqueda no se ofrece y lo demás funciona igual; en una automatización tampoco, y si el modelo la pide no se hace. El tipo de cambio es una referencia para informar: no cambia el importe de ningún cobro ni factura.
-Implicados: ASSISTANT-F12, ASSISTANT-F13, ASSISTANT-F17, ASSISTANT-F25
+Implicados: ASSISTANT-F12, ASSISTANT-F13, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F25, PUBLIC-F20
 
 ### ASSISTANT-F15 Rechazar un turno con su motivo
 <!-- origen: old-saas:SAAS_ASSISTANT-F07 -->
@@ -519,7 +519,7 @@ Pasos:
 Entra: el negocio, la respuesta denunciada, el motivo, el comentario y la pregunta.
 Sale: el correo en el buzón de soporte, o el aviso de que ya se había mandado (`assistant.report.sent`).
 Si falla: si el correo no puede salir, se dice que no se ha podido enviar y que se vuelva a intentar en un momento, y se puede volver a enviar; un motivo que no es uno de los cuatro se rechaza; un negocio que deja de trabajar (eliminado o suspendido) mientras llega su denuncia no manda nada y recibe la misma respuesta que en cualquier otra llamada (ASSISTANT-F11).
-Implicados: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17
+Implicados: ASSISTANT-F11, ASSISTANT-F14, ASSISTANT-F16, ASSISTANT-F17
 
 ### ASSISTANT-F24 Ver lo que ha gastado un negocio del asistente
 <!-- origen: old-saas:SAAS_ASSISTANT-F15 fi:saas/django-admin#admin-assistantusage fi:saas/auth-services#tiers-suscripcion-uso-del-asistente-modelos-admin -->
@@ -708,7 +708,8 @@ propio texto por `code`.
   del turno lo trae. Brave contesta 422 a una clave que no conoce, así que su 422 es un ERROR en el registro; por eso la
   consulta no pasa de sus 75 palabras. Sin clave no se ofrece y el servidor arranca igual. Una consulta sale tal como la
   escribe el modelo, con la regla de llevar solo lo que se busca: el aviso de privacidad de Brave deja las consultas fuera
-  de su DPA, y una regla al modelo no es una garantía. No se guarda ni se registra. Sus términos no dejan guardar sus
+  de su DPA, y una regla al modelo no es una garantía; por eso la política de privacidad lo nombra como destinatario
+  aparte, fuera de los encargados del art. 28 (§5) y de las cláusulas contractuales tipo (§6), `public/tests/test_legal.py`. No se guarda ni se registra. Sus términos no dejan guardar sus
   resultados, ni en parte, más allá de lo transitorio (§3(b)(i)): el resultado vive en la memoria del turno, solo lo ve el
   modelo, y por eso no hay caché. Tope por llamante en la caché: `ASSISTANT_WEB_SEARCH_RATELIMIT` (20/d) y
   `ASSISTANT_CURRENCY_RATE_RATELIMIT` (60/h), con un solo presupuesto para todas las demos (`turn.tool_budget`); cinco
@@ -892,7 +893,7 @@ propio texto por `code`.
 
 ## Lo que queda fuera
 
-- **Buscar en la web en producción** (ASSISTANT-F14): falta la clave del buscador y nombrarlo en la política de privacidad — saas#277.
+- **Buscar en la web en producción** (ASSISTANT-F14): falta que la infraestructura le pase la clave (aws#52, en borrador), probarla de verdad en `pre` y que la denuncia de una respuesta no guarde lo que vino de la web — saas#277, saas#287.
 
 ## Lo que NO hace, a propósito
 

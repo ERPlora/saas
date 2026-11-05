@@ -148,6 +148,13 @@ class TestWithoutAnEngine:
         assert not AssistantUsage.objects.filter(hub=business).exists()
         assert "assistant.media.no_speech_provider" in caplog.text
 
+    def test_what_it_was_asked_to_read_never_reaches_a_log(self, client, internal, business, caplog):
+        caplog.set_level(logging.DEBUG)
+
+        door(client, SYNTHESIZE, reading(business, text="Rosalía Quintanar debe 400 euros"))
+
+        assert "Rosalía" not in "\n".join(record.getMessage() for record in caplog.records)
+
     def test_a_provider_named_as_the_old_voice_reads_nothing(self, client, internal, business, fake_provider):
         """Only an engine reads aloud: no provider of the admin does, whatever its identifier and with its key."""
         from assistant.models import AIProvider, AIProviderCredential

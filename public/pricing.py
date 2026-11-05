@@ -331,9 +331,10 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
             "answer": _(
                 "Within the European Union: on Amazon Web Services, in its Ireland region "
                 "(eu-west-1), on GDPR-compliant infrastructure. The exceptions are in the AI "
-                "assistant: its voice and search services, such as transcribing a voice dictation, "
-                "and, if its European provider is unavailable, a backup provider may process data "
-                "outside the EU, under the safeguards our privacy policy describes."
+                "assistant: its voice and search fingerprint services, such as transcribing a voice "
+                "dictation, and, if its European provider is unavailable, a backup provider may process "
+                "data outside the EU, under the safeguards our privacy policy describes; and what its "
+                "web search looks for goes to Brave Search, in the United States, as that policy explains."
             ),
         },
         {

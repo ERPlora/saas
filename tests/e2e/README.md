@@ -32,7 +32,12 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
 - **Ventana visible solo con `E2E_HEADED=1`** (`pnpm e2e:headed`): Chrome visible y `slowMo` de 150 ms
   para poder seguirlo. La decide `browserWindow()` de `playwright.config.ts` (guarda en
   `vite.config.test.ts`); ningún proyecto ni spec la cambia por su cuenta.
-- `pnpm e2e:ci` pone `CI=1`: sin ventana y sin `slowMo` aunque se pida `E2E_HEADED=1`. Es la de la CI.
+- `pnpm e2e:ci` pone `CI=1`: sin ventana y sin `slowMo` aunque se pida `E2E_HEADED=1`, y un `test.only` olvidado es un
+  error, no un verde con un solo test. Es la de la CI.
+- **Qué corre la CI**: solo `panel/assistant-gateway.spec.ts`, las puertas del asistente tal como las llama el Hub (job
+  `e2e-doors` de `.github/workflows/test.yml`, parte del check obligatorio `test / test`). Un cambio en una puerta no
+  toca ninguna pantalla y nadie corría esta spec a mano: estuvo en rojo sin que se viera (saas#285). Las demás specs no
+  corren solas: quien toca lo suyo las corre a mano (saas#296).
 - **Depurar**: `DEBUG=pw:webserver pnpm e2e:ci <spec>` enseña el arranque y la salida de cada servidor
   (`DEBUG=pw:*`, todos los registros de Playwright). Los procesos de Django no heredan ese `DEBUG`, que leen
   como booleano: cada uno lleva el suyo por `django-env.ts` (`:8011` apagado; `:8012`, `globalSetup` y los

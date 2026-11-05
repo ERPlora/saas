@@ -1,4 +1,4 @@
-{% extends "public/public_base.html" %}
+{% extends "public/legal/_dated_page.html" %}
 {% load i18n %}
 {% comment %}
   The cookie policy (LSSI-CE art. 22.2). Port of apps/public/legal/templates/legal/cookies.html
@@ -16,16 +16,16 @@
 {% block og_title %}{% trans "Cookie Policy" %} · ERPlora{% endblock %}
 {% block og_description %}{% trans "ERPlora's Cookie Policy. Types of cookies we use and how to manage them." %}{% endblock %}
 
-{% block page_content %}
+{% block hero %}
   {% trans "Privacy preferences" as hero_eyebrow %}
   {% trans "Cookie Policy" as hero_title %}
   {% trans "How ERPlora uses essential and optional cookies, and how you can manage your preferences." as hero_description %}
   {% include "public/partials/page_hero.html" with hero_compact=True %}
+{% endblock %}
 
-  <section class="ep-section--compact ep-section--divider">
-    <div class="ep-container ep-section-content">
-      <article class="ep-prose max-w-4xl mx-auto">
-        <p class="text-sm text-fg/60"><strong>{% trans "Last updated:" %}</strong> {% trans "May 26, 2026" %}</p>
+{% block updated %}{% trans "May 26, 2026" %}{% endblock %}
+
+{% block legal_text %}
 
         <p>
           {% blocktrans trimmed %}
@@ -88,7 +88,4 @@
           <li><a href="{% url 'public:privacy' %}" class="text-primary">{% trans "Privacy Policy" %}</a></li>
           <li><a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer" class="text-primary">{% trans "AEPD — Guide on cookie use" %}</a></li>
         </ul>
-      </article>
-    </div>
-  </section>
 {% endblock %}
