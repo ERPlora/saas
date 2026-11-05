@@ -109,7 +109,7 @@ def keep_the_connection(request, monkeypatch):
 
 
 def recorder(name, ran, clock, counts=None):
-    def run():
+    def run(go_on):
         ran.append((name, clock.now))
         return Counter(counts or {"delivered": 0})
 
@@ -221,7 +221,7 @@ def test_a_reconciliation_that_leaves_work_owed_or_crashes_is_logged_and_the_oth
 ):
     clock, stop, ran = Clock(TEN_O_SEVEN.replace(minute=14, second=59)), threading.Event(), []
 
-    def crashes():
+    def crashes(go_on):
         raise RuntimeError("boom")
 
     monkeypatch.setattr(
@@ -251,13 +251,48 @@ def test_a_reconciliation_that_leaves_work_owed_or_crashes_is_logged_and_the_oth
 
 def test_a_reconciliation_another_run_holds_is_skipped_without_an_error(monkeypatch, quiet_deliveries, caplog):
     clock, stop = Clock(TEN_O_SEVEN.replace(minute=14, second=59)), threading.Event()
-    monkeypatch.setattr(worker, "PERIODIC", (worker.Periodic("reconcile_hub_states", lambda: None, lambda c: True),))
+    monkeypatch.setattr(worker, "PERIODIC", (worker.Periodic("reconcile_hub_states", lambda go_on: None, lambda c: True),))
 
     with caplog.at_level(logging.INFO, logger="base.worker"):
         worker.run(stop, listener=Ear(stop, waits=2, clock=clock), clock=clock)
 
     assert not [record for record in caplog.records if record.levelno >= logging.ERROR]
     assert "saas.worker.pass_skipped task=reconcile_hub_states" in caplog.text
+
+
+def test_a_round_ends_on_a_stop_request_or_when_its_time_is_up_and_says_so(monkeypatch, quiet_deliveries, caplog):
+    """Each reconciliation gets ``go_on``, asked between two businesses: false once a stop is asked or its
+    ``ROUND_BUDGET`` is spent, so a pass against Hubs that do not answer never holds the deliveries (nor a deploy's
+    SIGTERM) for long. The rest goes in the next round: an INFO line, not an error."""
+    clock, stop, seen = Clock(TEN_O_SEVEN.replace(minute=14, second=59)), threading.Event(), {}
+
+    def hubs(go_on):
+        seen["hubs"] = [go_on()]
+        clock.now += timedelta(seconds=worker.ROUND_BUDGET)
+        seen["hubs"].append(go_on())
+        return Counter({"delivered": 1, "cut_short": 1})
+
+    def billing(go_on):
+        seen["billing"] = [go_on()]
+        stop.set()
+        seen["billing"].append(go_on())
+        return Counter({"posted": 0})
+
+    monkeypatch.setattr(
+        worker,
+        "PERIODIC",
+        (
+            worker.Periodic("reconcile_hub_states", hubs, lambda counts: False),
+            worker.Periodic("reconcile_platform_invoices", billing, lambda counts: False),
+        ),
+    )
+
+    with caplog.at_level(logging.INFO, logger="base.worker"):
+        assert worker.run(stop, listener=Ear(stop, waits=2, clock=clock), clock=clock) == 0
+
+    assert seen == {"hubs": [True, False], "billing": [True, False]}  # each round has its own budget
+    assert "saas.worker.pass_cut task=reconcile_hub_states" in caplog.text
+    assert not [record for record in caplog.records if record.levelno >= logging.ERROR]
 
 
 def test_a_stop_asked_during_the_pass_ends_the_loop_after_it(monkeypatch):
@@ -275,6 +310,33 @@ def test_a_stop_asked_during_the_pass_ends_the_loop_after_it(monkeypatch):
     assert worker.run(stop, listener=ear, clock=Clock(TEN_O_SEVEN)) == 0
     assert finished == [stop]  # the pass hears the stop itself (it ends after the push in course)
     assert ear.timeouts == [] and ear.closed
+
+
+def test_a_stop_that_comes_while_it_takes_the_notifications_is_not_slept_through(monkeypatch, quiet_deliveries):
+    """SIGTERM sets ``stop`` and wakes the listener; when it lands while ``drain`` runs, ``drain`` takes the wake-up:
+    ``stop`` is looked at again before the wait, so the worker never sleeps until the next round (and ECS's kill)."""
+    stop = threading.Event()
+    monkeypatch.setattr(worker, "PERIODIC", ())
+    ear = Ear(stop, waits=99)
+    ear.drain = lambda: stop.set() or False
+
+    assert worker.run(stop, listener=ear, clock=Clock(TEN_O_SEVEN)) == 0
+
+    assert ear.timeouts == []
+
+
+def test_each_round_says_the_worker_is_alive(monkeypatch, quiet_deliveries, caplog):
+    """``saas.worker.alive`` once at start and at every quarter of an hour, whatever the rounds did: the infra can raise
+    an alarm when it stops coming (a loop stuck without dying)."""
+    clock, stop = Clock(TEN_O_SEVEN), threading.Event()
+    monkeypatch.setattr(worker, "PERIODIC", ())
+
+    with caplog.at_level(logging.INFO, logger="base.worker"):
+        worker.run(stop, listener=Ear(stop, waits=5, clock=clock), clock=clock)
+
+    alive = [record for record in caplog.records if record.getMessage().startswith("saas.worker.alive")]
+    assert len(alive) == 5  # at 10:07 (start), then 10:15, 10:30, 10:45 and 11:00
+    assert all(record.levelno == logging.INFO for record in alive)
 
 
 def test_a_crash_outside_the_passes_ends_the_worker_with_an_error(monkeypatch, quiet_deliveries, caplog):

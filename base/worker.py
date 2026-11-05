@@ -44,6 +44,8 @@ logger = logging.getLogger(__name__)
 
 #: The name of the deliveries' pass in its log lines (its lock's too).
 DELIVERY = "whatsapp_deliver"
+#: The INFO line the worker writes at start and at every round: its sign of life for the infra's alarm.
+LIVENESS = "saas.worker.alive"
 #: How often the reconciliations run: at each quarter of an hour of the clock.
 ROUND = timedelta(minutes=15)
 #: The least it waits after a pass that took nothing while a delivery is due already (another run holds the lock, or a
@@ -51,15 +53,20 @@ ROUND = timedelta(minutes=15)
 IDLE_FLOOR = 5.0
 #: The most it waits after a pass that failed (the database went away): when the next delivery is due is unknown.
 RETRY_AFTER_FAILURE = 60.0
+#: How long each reconciliation of a round may go on (seconds): asked between two businesses (``go_on``), so Hubs that
+#: do not answer (10 s a call at most) never hold the deliveries, which wait in the same thread, for long; what is left
+#: goes in the next round. As ``gateway.PASS_BUDGET``.
+ROUND_BUDGET = 50.0
 
 
 @dataclass(frozen=True)
 class Periodic:
-    """A pass the worker runs at each round: ``run`` returns its counts, or ``None`` when another run holds its lock;
-    ``failed`` says whether those counts leave work owed (its command ends with an error then)."""
+    """A pass the worker runs at each round: ``run(go_on=…)`` returns its counts, or ``None`` when another run holds its
+    lock, and asks ``go_on`` between two businesses (``cut_short`` in its counts when it said no); ``failed`` says
+    whether those counts leave work owed (its command ends with an error then)."""
 
     name: str
-    run: Callable[[], Counter | None]
+    run: Callable[..., Counter | None]
     failed: Callable[[Counter], bool]
 
 
@@ -98,17 +105,22 @@ def run(
         ear.start()
         upcoming = next_round(clock())
         logger.info("saas.worker.started next_round=%s", upcoming.isoformat())
+        _alive(upcoming)
         while not stop.is_set():
             counts, failed = _deliver(stop)
             if not stop.is_set() and clock() >= upcoming:
-                _rounds(stop)
+                _rounds(stop, clock)
                 upcoming = next_round(clock())
+                _alive(upcoming)
             if stop.is_set():
                 break
             # What was notified until now is in the read that follows: no wake-up for it after the read.
             ear.drain()
             due, unknown = _next_due()
             close_old_connections()
+            # A stop request that came during the drain had its wake-up taken by it: never sleep through it.
+            if stop.is_set():
+                break
             idle = counts is None or not any(counts.values())
             ear.wait(sleep_for(clock(), due, upcoming, idle=idle, failed=failed or unknown))
     except Exception:
@@ -129,6 +141,12 @@ def sleep_for(now: datetime, due: datetime | None, upcoming: datetime, *, idle: 
     if seconds == 0 and idle:
         return min(IDLE_FLOOR, to_round)
     return seconds
+
+
+def _alive(upcoming: datetime) -> None:
+    """The worker's sign of life, at start and at every round (``LIVENESS``): the infra raises an alarm when it stops
+    coming, a loop stuck without dying (the task has no health check)."""
+    logger.info("%s next_round=%s", LIVENESS, upcoming.isoformat())
 
 
 def _summary(counts) -> str:
@@ -167,18 +185,26 @@ def _next_due() -> tuple[datetime | None, bool]:
         return None, True
 
 
-def _rounds(stop: threading.Event) -> None:
+def _rounds(stop: threading.Event, clock: Callable[[], datetime]) -> None:
     for task in PERIODIC:
         if stop.is_set():
             return
+        deadline = clock() + timedelta(seconds=ROUND_BUDGET)
+
+        def go_on(deadline=deadline) -> bool:
+            return not stop.is_set() and clock() < deadline
+
         try:
-            counts = task.run()
+            counts = task.run(go_on=go_on)
         except Exception:
             _failed(task.name)
             continue
         if counts is None:
             logger.info("saas.worker.pass_skipped task=%s: another run holds its lock", task.name)
-        elif task.failed(counts):
+            continue
+        if counts.get("cut_short"):
+            logger.info("saas.worker.pass_cut task=%s: a stop request or its time ended it; the rest goes in the next round", task.name)
+        if task.failed(counts):
             _failed(task.name, owed=_summary(counts))
         else:
             logger.info("saas.worker.pass task=%s %s", task.name, _summary(counts))

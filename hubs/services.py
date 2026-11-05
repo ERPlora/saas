@@ -14,6 +14,7 @@ a business is told to its owner and admins (``notify_people``).
 
 import logging
 from collections import Counter
+from collections.abc import Callable
 from contextlib import contextmanager
 from datetime import UTC, date, timedelta
 from functools import partial
@@ -2106,16 +2107,20 @@ def _sync_counted(hub_id: UUID, counts: Counter) -> None:
         counts[REFUSED] += outcome == REFUSED
 
 
-def reconcile_exclusively(stuck_after: timedelta = STUCK_AFTER) -> Counter | None:
+def reconcile_exclusively(stuck_after: timedelta = STUCK_AFTER, go_on: Callable[[], bool] | None = None) -> Counter | None:
     """One pass of ``reconcile`` under the lock of ``reconcile_hub_states``: its counts, or ``None`` when another run
     holds the lock (and this one did nothing). What the command and the ``saas-worker`` (every 15 minutes,
-    ``base.worker``, saas#305) both run."""
+    ``base.worker``, saas#305; with its ``go_on``) both run."""
     with run_exclusively("reconcile_hub_states") as mine:
-        return reconcile(stuck_after=stuck_after) if mine else None
+        return reconcile(stuck_after=stuck_after, go_on=go_on) if mine else None
 
 
-def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
-    """One pass of ``reconcile_hub_states``; the counts of what it did (each key is always present)."""
+def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER, go_on: Callable[[], bool] | None = None) -> Counter:
+    """One pass of ``reconcile_hub_states``; the counts of what it did (each key is always present).
+
+    ``go_on`` (the ``saas-worker``'s stop request and the round's time budget) is asked before each call to the Hub:
+    once it says no, the pass ends after the business in course and ``cut_short`` is 1; what is left is still owed in
+    the database, and the next pass does it. The steps that only touch the database always run."""
     now = now or timezone.now()
     keys = (
         "purged",
@@ -2135,8 +2140,15 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
         "data_copy_none",
         "sessions_ended",
         "sessions_pending",
+        "cut_short",
     )
     counts = Counter({key: 0 for key in keys})
+
+    def more() -> bool:
+        if not counts["cut_short"] and go_on is not None and not go_on():
+            counts["cut_short"] = 1
+        return not counts["cut_short"]
+
     cutoff = now - Hub.RETENTION
     for hub_id in expired_deletions(cutoff):
         # Re-checked by the UPDATE itself: a business restored since the read is left alone.
@@ -2157,11 +2169,15 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
         ~Q(pending_hub_call="") | Q(pushed_state_version__lt=F("state_version"), status__in=LIVE_STATUSES)
     )
     for hub_id in owed.order_by("updated_at").values_list("id", flat=True):
+        if not more():
+            break
         _sync_counted(hub_id, counts)
     stuck = Hub.objects.filter(
         status=Hub.Status.PREPARING, ready_at__isnull=True, pending_hub_call="", provision_requested_at__lte=now - stuck_after
     )
-    for hub_id in stuck.values_list("id", flat=True):
+    for hub_id in () if counts["cut_short"] else stuck.values_list("id", flat=True):
+        if not more():
+            break
         try:
             _settle_stuck(hub_id, counts)
         except Exception:  # noqa: BLE001 - one business never stops the pass
@@ -2176,14 +2192,18 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER) -> Counter:
         deletion_requested_at__isnull=False,
         data_copy_mail_attempts__lt=DATA_COPY_MAIL_ATTEMPTS,
     )
-    for hub_id in untold.values_list("id", flat=True):
+    for hub_id in () if counts["cut_short"] else untold.values_list("id", flat=True):
+        if not more():
+            break
         try:
             _tell_data_copy(hub_id, counts)
         except Exception:  # noqa: BLE001 - one business never stops the pass
             logger.exception("hubs.data_copy.crashed hub=%s", hub_id)
             counts["failed"] += 1
     due = SessionRevocation.objects.filter(delivered_at__isnull=True, next_attempt_at__lte=now)
-    for revocation_id in due.order_by("next_attempt_at").values_list("id", flat=True):
+    for revocation_id in () if counts["cut_short"] else due.order_by("next_attempt_at").values_list("id", flat=True):
+        if not more():
+            break
         try:
             outcome = deliver_revocation(revocation_id)
         except Exception:  # noqa: BLE001 - one revocation never stops the pass; it stays queued
