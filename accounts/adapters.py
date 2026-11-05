@@ -76,6 +76,17 @@ def _is_store_review_account(user) -> bool:
 
 
 class AccountAdapter(DefaultAccountAdapter):
+    def new_user(self, request):
+        """A new account keeps the language of the page it signs up on (ACCOUNTS-F01, ACCOUNTS-F06), the one
+        ``LocaleMiddleware`` chose for this request: both doors come here (``SocialAccountAdapter`` through allauth's
+        own ``new_user``). Without it the panel would change language at the first signed-in page (ACCOUNTS-F22), and
+        so would the account's businesses and mails. Afterwards the language is Account → Preferences'."""
+        user = super().new_user(request)
+        language = translation.get_language()
+        if language in dict(settings.LANGUAGES):
+            user.language = language
+        return user
+
     def is_login_by_code_required(self, login) -> bool:
         """The mailed sign-in code (``ACCOUNT_LOGIN_BY_CODE_REQUIRED``), unless the login already waits for
         the code that proves its address: one code, never two.
