@@ -174,6 +174,36 @@ describe('CustomDomainCard: what is offered', () => {
     expect(notice.text()).not.toContain('Change to a plan that includes one');
   });
 
+  it('never names an upgrade-only plan, which a business can only reach from a paid one: then «a plan that includes one»', async () => {
+    const plans = {
+      plans: [
+        { slug: 'starter', name: 'Starter', includes_custom_domain: false, upgrade_only: false },
+        { slug: 'standard', name: 'Standard', includes_custom_domain: false, upgrade_only: false },
+        { slug: 'pro', name: 'Pro', includes_custom_domain: true, upgrade_only: true },
+      ],
+    };
+    const s = await setup(status(null, { in_plan: false }), {
+      business: { ...OWNER_BUSINESS, plan: { slug: 'free', name: 'Free' } },
+      api: (c) => Response.json(c.path === '/api/plans' ? plans : {}),
+    });
+    await flush();
+    const notice = s.testid('domain-not-in-plan');
+    expect(notice.text()).toContain('Change to a plan that includes one to show your website on your own domain.');
+    expect(notice.text()).not.toContain('Pro');
+  });
+
+  it('names the first plan one can sign up for that includes it, past an upgrade-only one listed before it', async () => {
+    const plans = {
+      plans: [
+        { slug: 'pro', name: 'Pro', includes_custom_domain: true, upgrade_only: true },
+        { slug: 'standard', name: 'Standard', includes_custom_domain: true, upgrade_only: false },
+      ],
+    };
+    const s = await setup(status(null, { in_plan: false }), { api: (c) => Response.json(c.path === '/api/plans' ? plans : {}) });
+    await flush();
+    expect(s.testid('domain-not-in-plan').text()).toContain('The Standard plan includes it. Switch to it to show your website on your own domain.');
+  });
+
   it('with a plan that includes it the plans are never asked for', async () => {
     const asked: string[] = [];
     const s = await setup(NONE, { api: (c) => (asked.push(c.path), Response.json({})) });

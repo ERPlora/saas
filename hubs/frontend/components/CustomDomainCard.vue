@@ -8,11 +8,11 @@
 // state and where it is stuck are the server's words (`state_label`, `reason_label`); the hourly check, its last run
 // and the failures that count towards the three in a row that stop serving it are said here. A domain that is not
 // connected is asked for again (or another one) with the same form; removing it asks first
-// (`hubs.custom_domain.remove`). A plan without it says so, names the first plan on sale that includes one (read then from
-// `hubs.plan.list`, saas#301; without it, «a plan that includes one») and gives the way to the plans (the Store, only on
-// the web and for whoever handles the billing), never a disabled form. Only the owner connects or removes it; an administrator
-// reads it. Nothing is shown until the business is there: the query rides the page's first stream
-// (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN), and its loading, error and time-out are `useLiveState`'s.
+// (`hubs.custom_domain.remove`). A plan without it says so, names the first plan on sale that includes one and is not
+// upgrade-only (read then from `hubs.plan.list`, saas#301; without it, «a plan that includes one») and gives the way to
+// the plans (the Store, only on the web and for whoever handles the billing), never a disabled form. Only the owner
+// connects or removes it; an administrator reads it. Nothing is shown until the business is there: the query rides the
+// page's first stream (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN), and its loading, error and time-out are `useLiveState`'s.
 import {
   ConfirmDialog,
   formatDateTime,
@@ -90,8 +90,9 @@ const asks = computed(() => changes.value && !!status.value?.in_plan && (!domain
 const toPlans = computed(() => `${STORE}/plans?business=${encodeURIComponent(props.id)}`);
 const plansWay = computed(() => inApp.value || !!props.business?.can.manage_billing);
 
-/** The plan of the notice: the first plan on sale that includes a custom domain, asked for only once a plan without
- * one shows it; '' while it is read or if it cannot be, and the notice says «a plan that includes one». */
+/** The plan of the notice: the first plan on sale that includes a custom domain and that any business can move to (an
+ * upgrade-only one opens only from a paid plan), asked for only once a plan without one shows it; '' while it is read,
+ * if it cannot be or if there is none, and the notice says «a plan that includes one». */
 const client = useLiveClient();
 const planWithIt = shallowRef('');
 let plansAsked = false;
@@ -102,7 +103,7 @@ watch(
     plansAsked = true;
     try {
       const { plans } = await client.api.call('hubs.plan.list');
-      planWithIt.value = plans?.find((plan) => plan.includes_custom_domain)?.name ?? '';
+      planWithIt.value = plans?.find((plan) => plan.includes_custom_domain && !plan.upgrade_only)?.name ?? '';
     } catch {
       // Without the plans on sale the notice still says what the plan lacks and leads to them.
     }
