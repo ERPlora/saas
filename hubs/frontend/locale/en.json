@@ -93,7 +93,7 @@
       "country": "Country",
       "type": "Business type (optional)",
       "typeUnknown": "I don't know yet",
-      "typeHint": "With the type, your business is born with the modules of its sector. You can leave it blank.",
+      "typeHint": "We'll suggest a template on your business's Home; the type helps us choose it. You can leave it blank.",
       "typesFailed": "The business types could not be loaded right now. You can create the business without one.",
       "address": "Your address will be {host}",
       "addressChecking": "Finding a free address…",
@@ -111,7 +111,7 @@
       "status": "Preparation of {name}",
       "created": "Business created",
       "setup": "Setting up your business",
-      "setupType": "Installing the modules for {type}",
+      "setupType": "Setting up your business: {type}",
       "opensAlone": "It opens by itself when it finishes",
       "ready": "Ready to open"
     },

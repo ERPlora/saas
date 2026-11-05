@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:012dfa54c5dad6e6b60d7a7a6b3f432bb80d8c01fb5414e5a83ccd4e08162cde -->
+<!-- generated from WORKBOOK.md sha256:92f8e27075f6fd61dc7fdbbbad5761af253ae4f1b3f3f5a5a511fc2441bd2072 -->
 
 ## What it is for and who it is for
 
@@ -66,11 +66,11 @@ with the last opened on top. A pending invitation shows above.
 
 ### Create business
 The sign-up form: "Business name", "Country" (suggested by the browser's language), "Business type (optional)" with
-"I don't know yet" and, under the name, "Your address will be …". On the Entrance it is in the "Create your business"
+"I don't know yet" and "We'll suggest a template on your business's Home; the type helps us choose it. You can leave it blank." and, under the name, "Your address will be …". On the Entrance it is in the "Create your business"
 card; in **Businesses**, in the "Create business" dialog, under "What is your business called?".
 
 ### Preparing
-The running bar and three steps: "Business created", "Setting up your business" (or "Installing the modules for …")
+The running bar and three steps: "Business created", "Setting up your business" (or "Setting up your business: …", with the type picked)
 and "It opens by itself when it finishes" on the Entrance or "Ready to open" in the dialog.
 
 ### Businesses
@@ -191,12 +191,12 @@ Actor: anyone with an account
 Screen: Entrance › Create business
 Steps:
 1. After creating the account and signing in without any business, the Entrance shows "Create your business" ("Free and no card: just the name and the country.").
-2. They type the "Business name"; underneath appears "Your address will be …" with the address the name proposes. The "Country" comes suggested by the browser's language and the "Business type (optional)" accepts "I don't know yet".
+2. They type the "Business name"; underneath appears "Your address will be …" with the address the name proposes. The "Country" comes suggested by the browser's language and the "Business type (optional)" accepts "I don't know yet"; underneath it says the business's Home will suggest a template and that the type helps choose it.
 3. They press "Create my business": "Business created: …" shows and the card moves to **Preparing** (HUBS-F04).
 In: the name, the country (one of the 27 of the European Union where ERPlora sells) and, if the person knows it, the business type; the account's session.
-Out: the business on the Free plan (without a card and without a trial), in the account's language (ACCOUNTS-F22), with the person as owner, its address taken from the name (if it is taken it is numbered, `bar-manolo-2`; a reserved word is completed by itself) and who pays, with the business's country. The businesses' service receives the sign-up as soon as it is saved and, with the business type, the modules of its sector. Records `hubs.business.created`.
+Out: the business on the Free plan (without a card and without a trial), in the account's language (ACCOUNTS-F22), with the person as owner, its address taken from the name (if it is taken it is numbered, `bar-manolo-2`; a reserved word is completed by itself) and who pays, with the business's country. The businesses' service receives the sign-up as soon as it is saved and, with the business type, its sector. The business is born with every app off: its Home proposes starting with a template, its sector's first if there is one (BASE-F38), or turning them on one by one. Records `hubs.business.created`.
 If it fails: without a name, "Write the name of your business." and nothing is sent; a country outside the list, the error on the field. If the account already has its free business, it does not create another: the dialog says "You already have a free business" and offers "Change the plan of …"; asked of the panel's assistant, it shows no card and says to change the plan of the business it already has (ASSISTANT-F25). Without the Free plan available, "Businesses cannot be created right now. Try again in a few minutes.". An account of ERPlora's staff does not create businesses. Two presses in a row create a single one.
-Involved: accounts (the account and the Entrance), the business (receives its sign-up), the panel's assistant (ASSISTANT-F25)
+Involved: accounts (the account and the Entrance), the business (receives its sign-up; BASE-F38: proposes the template on its Home), the panel's assistant (ASSISTANT-F25)
 
 ### HUBS-F02 Create the free business from the installed app
 Status: done
