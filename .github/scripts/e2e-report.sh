@@ -51,9 +51,10 @@ else
     "$RESULT" > "$details"
 fi
 
-# The open issue of exactly that title, if any (the newest when there were two).
+# The open issue of exactly that title, if any (the newest when there were two): searched by its title, never
+# among the latest issues, where a busy repo would bury it and a second one would be opened.
 open_issue() {
-  gh issue list --state open --limit 200 --json number,title \
+  gh issue list --state open --search "\"$TITLE\" in:title" --limit 50 --json number,title \
     | jq -r --arg title "$TITLE" '[.[] | select(.title == $title) | .number] | max // empty'
 }
 

@@ -115,6 +115,8 @@ expect "a red run with no open issue ends well" 0 "$(report)"
 expect "it opens one issue, with the title and prio:P1" 1 \
   "$(grep -cF -- "gh issue create --title $TITLE --label prio:P1 --body-file" "$CALLS_LOG" || true)"
 expect "it looks for the issue among the open ones only" 1 "$(grep -c '^gh issue list --state open' "$CALLS_LOG" || true)"
+expect "it searches the issue by its exact title, not among the latest N issues" 1 \
+  "$(grep -cF -- "--search \"$TITLE\" in:title" "$CALLS_LOG" || true)"
 expect "the body opens with «## Qué pasa»" "## Qué pasa" "$(head -n 1 "$BODIES_LOG")"
 expect "the body lists the red test of a describe: project, file:line and titles" 1 \
   "$(has "$BODIES_LOG" '- `[public] public-web.spec.ts:4` › PUBLIC-F01 the home › shows the plans — Error: expect(locator).toBeVisible()')"

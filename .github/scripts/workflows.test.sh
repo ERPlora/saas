@@ -154,6 +154,9 @@ uploads = [step for step in steps(ejob) if "actions/upload-artifact" in str(step
 check("e2e keeps the JSON report and the traces of a red run",
       {(step.get("with") or {}).get("name") for step in uploads} == {"e2e-report", "e2e-test-results"}
       and all(str(step.get("if", "")) == "failure()" for step in uploads))
+check("e2e uploads the traces from under tests/e2e/.artifacts/, a hidden folder, saying so",
+      any((step.get("with") or {}).get("name") == "e2e-test-results"
+          and (step.get("with") or {}).get("include-hidden-files") is True for step in uploads))
 check("e2e gives every spec more time than the changed ones",
       "inputs.specs" in str(ejob.get("timeout-minutes", "")))
 
@@ -163,6 +166,9 @@ check("nightly.yml runs on a schedule and by hand only, never on a push or a PR"
       set(nightly_on) == {"schedule", "workflow_dispatch"})
 check("nightly.yml has a cron", any("cron" in entry for entry in nightly_on.get("schedule") or []))
 check("nightly.yml only reads, at the workflow's level", nightly.get("permissions") == {"contents": "read"})
+check("two nightlies never run at once (a dispatch near the cron would write the issue twice); none is cancelled",
+      (nightly.get("concurrency") or {}).get("group") == "nightly-${{ github.repository }}"
+      and (nightly.get("concurrency") or {}).get("cancel-in-progress") is False)
 njobs = nightly.get("jobs", {})
 check("nightly.yml has the jobs e2e and report", set(njobs) == {"e2e", "report"})
 check("nightly's e2e runs e2e.yml on every spec",

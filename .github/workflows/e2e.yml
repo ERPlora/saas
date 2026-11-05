@@ -113,5 +113,7 @@ jobs:
         with:
           name: e2e-test-results
           path: tests/e2e/.artifacts/test-results/
+          # Under a hidden folder: said, so no version of upload-artifact leaves the traces out.
+          include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 14
