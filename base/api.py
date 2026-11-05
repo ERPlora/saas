@@ -62,6 +62,6 @@ AUDIO_RESPONSE = {"responses": {200: {"content": {"audio/mpeg": {"schema": {"typ
 
 @bind(router, "base.assistant.speak", "/assistant/speak", openapi_extra=AUDIO_RESPONSE)
 async def assistant_speak(request, data: AssistantSpeakIn):
-    # The operation is the door; the wait on Azure goes after it, with no transaction open, as the dictation's.
+    # The operation is the door; the wait on the engine goes after it, with no transaction open, as the dictation's.
     ready = await run_operation(request, services.assistant_speak, data)
     return await assistant.spoken(request, data, ready.language)

@@ -89,6 +89,30 @@ def fake_provider():
     server.stop()
 
 
+class FakeSpeechEngine:
+    """Stands in for the engine there is none of (``assistant.media.SPEECH_ENGINE``), to hold the door to its contract:
+    what it was asked to read, the mp3 it gives, or the failure it was told to raise."""
+
+    MP3 = b"ID3\x04\x00 spoken words"
+
+    def __init__(self):
+        self.calls: list[tuple[str, str, str]] = []
+        self.failure: Exception | None = None
+
+    async def __call__(self, text: str, language: str, voice: str) -> bytes:
+        self.calls.append((text, language, voice))
+        if self.failure is not None:
+            raise self.failure
+        return self.MP3
+
+
+@pytest.fixture
+def speech_engine(monkeypatch):
+    engine = FakeSpeechEngine()
+    monkeypatch.setattr("assistant.media.SPEECH_ENGINE", engine)
+    return engine
+
+
 @pytest.fixture
 def provider(db):
     """OpenAI, enabled, without a key."""

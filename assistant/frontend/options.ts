@@ -8,10 +8,10 @@
 // - Whoever may ask the assistant sees its button (`assistant.ask`, every account's); nobody upgrades a plan from it:
 //   the account's 30 messages a month are no plan's (ASSISTANT-F26). Its microphone goes to `base.assistant.transcribe`
 //   (ASSISTANT-F21): the Hub's same dictation, counted in the account's month. «Read aloud» reads in the device's voice;
-//   only when erplora.com has a voice of its own (`spa-config.assistantSpeech`, base/spa.py) does the chat offer the
-//   server voices and read in the one the person chooses (`speak`: `base.assistant.speak`, ASSISTANT-F22, the mp3 of
-//   Azure AI Speech), falling back to the device's when it fails. Without it (none since 2026-11-04) `speak` is absent:
-//   no choice of voice and no trip to the server per reading (`panelAssistant`). No approvals: the panel has no
+//   only when erplora.com has a voice of its own (`spa-config.assistantSpeech`, base/spa.py) does the chat ask the
+//   server for each reading (`speak`: `base.assistant.speak`, ASSISTANT-F22), falling back to the device's when it
+//   fails. Without it (none today: PLAN-SAAS round 2026-11-04c) `speak` is absent: no trip to the server per reading
+//   (`panelAssistant`). No approvals: the panel has no
 //   manager's approval (the Hub's).
 // - The panel's words (`saas.assistant.*`, frontend/locale): the verb of each write the assistant may run, by its
 //   operation (`card.operations.<app>.<entity>.<action>`, one per write: guardrail base/tests/

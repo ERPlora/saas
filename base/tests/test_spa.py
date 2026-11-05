@@ -13,8 +13,7 @@ import re
 import pytest
 
 from assistant.models import AIProvider, AIProviderCredential
-from assistant.tests.conftest import OTHER_FERNET_KEY, fernet_key  # noqa: F401 - the credentials' key, autouse
-from assistant.tests.conftest import FERNET_KEY as FERNET_KEY_OF_THE_TESTS
+from assistant.tests.conftest import fernet_key  # noqa: F401 - the credentials' key, autouse
 
 pytestmark = [pytest.mark.django_db, pytest.mark.usefixtures("spa_manifest")]
 
@@ -298,68 +297,27 @@ def test_every_page_of_the_spa_still_gets_the_shell_and_its_csrf_cookie(client, 
         assert settings.CSRF_COOKIE_NAME in response.cookies, path
 
 
-def voice_provider(*, key: str | None = "not-a-real-azure-speech-key", **fields) -> AIProvider:
-    """Azure AI Speech in the admin, as ``import_ai_keys_from_env`` leaves it (``ASSISTANT_SPEECH_PROVIDER``)."""
-    provider = AIProvider.objects.create(
-        slug="azure-speech", name="Azure AI Speech", kind=AIProvider.Kind.AZURE_SPEECH, **fields
-    )
-    if key is not None:
-        credential = AIProviderCredential(provider=provider, label="default")
-        credential.api_key = key
-        credential.key_hint = key[-4:]
-        credential.save()
-    return provider
-
-
 class TestTheAssistantsVoice:
-    """``assistantSpeech``: whether ``base.assistant.speak`` would find a provider of the voice it can use, the same
-    rule as ``assistant.speech.connection`` (``assistant.queries.speech_provider``). False, the chat offers no server
-    voice and reads with the device's, with no trip to the server (decision of 2026-11-04: no voice of the server)."""
+    """``assistantSpeech``: whether something reads aloud (``assistant.media.SPEECH_ENGINE``). False, the chat offers no
+    server voice and reads with the device's, with no trip to the server: erplora.com as it is (PLAN-SAAS round
+    2026-11-04c)."""
 
-    def test_without_a_provider_of_the_voice_the_panel_reads_with_the_devices(self, client):
+    def test_without_an_engine_the_panel_reads_with_the_devices(self, client):
         _, config = json_block(client.get("/launch", HTTP_HOST=HOST), "spa-config")
 
         assert config["assistantSpeech"] is False
 
-    def test_with_a_provider_of_the_voice_and_a_key_that_opens_the_panel_offers_its_voices(self, client):
-        voice_provider()
+    def test_no_provider_of_the_admin_turns_it_on(self, client):
+        from assistant.tests.conftest import API_KEY
+
+        named = AIProvider.objects.create(slug="azure-speech", name="Azure", kind="openai")
+        AIProviderCredential.objects.create(provider=named, label="default", api_key=API_KEY, key_hint="wxyz")
+
+        assert json_block(client.get("/launch", HTTP_HOST=HOST), "spa-config")[1]["assistantSpeech"] is False
+
+    def test_with_an_engine_the_panel_asks_the_server(self, client, monkeypatch):
+        monkeypatch.setattr("assistant.media.SPEECH_ENGINE", object())
 
         _, config = json_block(client.get("/dashboard/businesses", HTTP_HOST=HOST), "spa-config")
 
         assert config["assistantSpeech"] is True
-
-    @pytest.mark.parametrize(
-        "without",
-        ["key", "active key", "readable key", "enabled provider", "provider of its API", "provider named"],
-    )
-    def test_a_provider_the_reading_could_not_use_is_no_voice(self, client, settings, without):
-        """The same cases in which the speak route answers 503 ``assistant.speech_unavailable``."""
-        if without == "key":
-            voice_provider(key=None)
-        elif without == "active key":
-            voice_provider()
-            AIProviderCredential.objects.update(is_active=False)
-        elif without == "readable key":
-            settings.FERNET_KEY = OTHER_FERNET_KEY
-            voice_provider()
-            settings.FERNET_KEY = FERNET_KEY_OF_THE_TESTS
-        elif without == "enabled provider":
-            voice_provider(is_enabled=False)
-        elif without == "provider of its API":
-            AIProvider.objects.filter(pk=voice_provider().pk).update(kind=AIProvider.Kind.OPENAI)
-        elif without == "provider named":
-            voice_provider()
-            settings.ASSISTANT_SPEECH_PROVIDER = "nobody"
-
-        _, config = json_block(client.get("/launch", HTTP_HOST=HOST), "spa-config")
-
-        assert config["assistantSpeech"] is False
-
-    def test_it_is_read_again_on_every_load_of_the_shell(self, client):
-        """No copy outlives a change in the admin or ``import_ai_keys_from_env`` (another process): the next load of
-        the panel sees it."""
-        assert json_block(client.get("/launch", HTTP_HOST=HOST), "spa-config")[1]["assistantSpeech"] is False
-        provider = voice_provider()
-        assert json_block(client.get("/launch", HTTP_HOST=HOST), "spa-config")[1]["assistantSpeech"] is True
-        AIProvider.objects.filter(pk=provider.pk).update(is_enabled=False)
-        assert json_block(client.get("/launch", HTTP_HOST=HOST), "spa-config")[1]["assistantSpeech"] is False

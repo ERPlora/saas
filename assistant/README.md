@@ -38,7 +38,7 @@ Completa desde el 2026-11-03. Lo que queda fuera, con su issue: `WORKBOOK.md`, �
 | `turn.py` | El turno: prepara la conversación, ofrece las herramientas, emite los frames, el token de continuación de un solo uso y lo gastado (`Outcome`); y el turno tal como lo sirve una puerta, sea la del Hub o la del panel (`start`, `frames`/`stream`, `settle`, `spend`, `Refused`). |
 | `server_tools.py` | Las herramientas que ejecuta erplora.com: la fecha y la hora, el tipo de cambio (Frankfurter) y la búsqueda en la web (Brave Search, solo con `BRAVE_SEARCH_API_KEY`; en producción aún no, saas#277). |
 | `attachments.py` | Los adjuntos: imágenes al modelo que ve, PDF/Word/Excel/texto a texto en memoria, con topes y el zip comprobado. El cuerpo de las puertas lo guarda en memoria el servidor (`config/asgi.py`, `BodiesInMemory`), nunca en el temporal en disco de Django. |
-| `media.py` | Huellas (`text-embedding-3-small`) y dictado (`whisper-1`) por la API de OpenAI del proveedor de servicios; lectura en voz alta por la API REST de Azure AI Speech (SSML, voces DragonHD de `VOICES`, el mismo catálogo que `@erplora/ui`; `voice_of`, `ssml`, `synthesize`). |
+| `media.py` | Huellas (`text-embedding-3-small`) y dictado (`whisper-1`) por la API de OpenAI del proveedor de servicios; la lectura en voz alta no tiene motor (`SPEECH_ENGINE`, PLAN-SAAS ronda 2026-11-04c). |
 | `knowledge.py` | La documentación del asistente del panel (ASSISTANT-F27): `chunk_markdown` (corte por `##`/`###`, ventana de 220 palabras con solape de 50) y sus cuatro fuentes (ayuda pública, documentación de las apps del Hub por `apps.doc.list`, parte de usuario de los WORKBOOK del panel y los planes en venta por `hubs.plan.list`); `en_header`, la primera línea de un `WORKBOOK.en.md` (los mismos bytes que `base.catalog` del Hub para los comentarios en línea propia fuera de un bloque de código), que `tests/test_knowledge.py` exige en todos los del repo; sin ORM. |
 | `providers/` | Clientes `httpx` de OpenAI, Anthropic, Gemini y DeepSeek (`base.py`, `factory.py`): eventos normalizados, sin SDK ni caché; cada cliente toma el contexto TLS de `base.tls` (`trusted_context`): si el servidor no puede cargar sus certificados (`SSL_CERT_FILE`), el fallo es definitivo y nombra la variable y el fichero. |
 | `auditlog.py` | Registro de auditoría (django-auditlog) de los cuatro modelos, sin la clave ni `updated_at`. |
@@ -96,8 +96,7 @@ Todas llevan `ai=INTERNAL` (son la pasarela, no herramientas del asistente) salv
 ## Comandos y ajustes
 
 - `import_ai_keys_from_env [--providers …] [--label …] [--force] [--dry-run]`: guarda cifradas `OPENAI_API_KEY`,
-  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY` y `AZURE_SPEECH_KEY` (vacías por defecto); crea el
-  proveedor si falta (`azure-speech`, de API `azure_speech`, en la dirección de Suecia Central).
+  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` y `DEEPSEEK_API_KEY` (vacías por defecto); crea el proveedor si falta.
 - `rotate_encryption_keys [--dry-run]`: vuelve a cifrar con `FERNET_KEY` toda columna de `ROTATED_FIELD_CLASSES` (la
   clave del proveedor y el token y el PIN de WhatsApp); termina con error si alguna no se abre.
 - `index_docs [--full] [--dry-run]`: indexa la documentación del asistente del panel (ASSISTANT-F27); solo embebe lo
@@ -117,12 +116,8 @@ Todas llevan `ai=INTERNAL` (son la pasarela, no herramientas del asistente) salv
   de la documentación (`index_docs` y las preguntas de `assistant.docs.search`, del panel y de la puerta del Hub) y
   el dictado. La puerta `/internal/assistant/embeddings` sigue abierta, pero ningún Hub la llama: el Hub no guarda
   índice.
-- `ASSISTANT_SPEECH_PROVIDER` (`azure-speech`): el identificador del proveedor de voz (de API Azure AI Speech), que lee
-  en voz alta (`/internal/speech/synthesize` y `POST /api/assistant/speak` del panel; PLAN-SAAS ronda 2026-11-03m).
-  Como el de servicios, vive en el admin con su clave cifrada y rotable; su dirección es el endpoint de su región
-  (vacía: Suecia Central, `https://swedencentral.tts.speech.microsoft.com`). Sin él, o sin clave que se abra, las dos
-  contestan 503 `assistant.speech_unavailable` y quien llama lee con la voz del dispositivo. Hoy el panel la
-  pide (`speak` de `assistant/frontend/options.ts`) y el Hub todavía no. `AZURE_SPEECH_KEY` solo alimenta `import_ai_keys_from_env`.
+- La lectura en voz alta no tiene ajuste ni proveedor: sin motor (`assistant.media.SPEECH_ENGINE`), `/internal/speech/synthesize`
+  y `POST /api/assistant/speak` contestan 503 `assistant.speech_unavailable` y quien llama lee con la voz del dispositivo.
 - Postgres con la extensión `vector` (pgvector, imagen `pgvector/pgvector` en local y CI, donde la crea la migración
   `assistant/0004_doc_chunks`). En Aurora no es de confianza (solo `rds_superuser`): la crea antes el arranque de
   plataforma del Hub (`bootstrap_databases`, usuario maestro) en `saas` y `pre_saas`.

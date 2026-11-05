@@ -7,7 +7,7 @@ Estado de la app: en uso (uno a medias: ASSISTANT-F14, la búsqueda en la web es
 > ERPlora para que el asistente de IA conteste (dar de alta un proveedor de modelos y su clave, elegir sus modelos,
 > decidir qué modelo contesta y probarlo antes, ver lo que gasta cada negocio) y lo que hace erplora.com cada vez que
 > el asistente de un negocio le pide algo: contestar un turno, leer sus adjuntos, contar sus mensajes, buscar en la
-> documentación de ERPlora, transcribir un dictado o leer una respuesta en voz alta. También contesta al asistente del
+> documentación de ERPlora o transcribir un dictado. También contesta al asistente del
 > propio panel de erplora.com, el de cada cuenta: sus negocios, lo que paga a ERPlora y su cuenta. No se publica en la
 > tienda: es la referencia del equipo y de la QA. Ningún cliente ve las pantallas del admin; la cuenta ve el chat del
 > panel (ASSISTANT-F25), y el asistente que usa el negocio vive en el Hub.
@@ -89,10 +89,8 @@ Quién la usa:
   proveedores no los dan. Sin precio, la prueba dice el consumo y un coste de cero.
 - Las huellas del índice y el dictado los hace el proveedor de servicios (OpenAI): tiene que estar dado de alta,
   activado y con su clave.
-- La lectura en voz alta la hace el proveedor de voz (Azure AI Speech): tiene que estar dado de alta, activado y con su
-  clave; su dirección es la de su región (Suecia Central si no se escribe otra). Sin él, el Hub y el panel leen con la
-  voz del dispositivo, y el panel no ofrece elegir voz ni pide nada a erplora.com para leer. De momento no se da de alta
-  (decisión del 2026-11-04): el panel lee siempre con la voz del dispositivo.
+- La lectura en voz alta es la del dispositivo: erplora.com no tiene voz propia ni proveedor de voz que dar de alta
+  (ASSISTANT-F22), y el Hub y el panel leen sin pedirle nada.
 - El cupo de mensajes de cada plan («Mensajes del asistente de IA al mes») se escribe en el admin de «Planes».
 
 ## Pantallas
@@ -132,14 +130,12 @@ dirección del negocio, por la dirección de la demo o por el correo de la cuent
 En todas las pantallas del panel de erplora.com con la sesión abierta, al final de la barra de arriba, el botón
 «Asistente» (las chispas), marcado mientras el panel está abierto. El panel se abre a la derecha: desde 768 px de ancho
 se acopla junto a la pantalla, que se estrecha y sigue funcionando; en el móvil la cubre sobre un velo. Arriba,
-«Asistente», «Voz» (solo si erplora.com tiene voz propia, es decir, con el proveedor de voz dado de alta: la elección
-de la voz que lee las respuestas, las dos de su idioma, Ximena y Tristan o Ava y Andrew, y «Voz del dispositivo»; la
-primera, si no se elige otra), «Nueva conversación» (cuando ya hay una) y ×
+«Asistente», «Nueva conversación» (cuando ya hay una) y ×
 («Cerrar»); en medio, la conversación: sin ella, «Pregúntame
 por tus negocios, tus facturas o tu cuenta.» y tres atajos («¿Qué negocios tengo?», «¿Cuánto pago al mes?» y «¿Cómo
 creo un negocio?»); con ella, las burbujas de la persona y las respuestas, con «Ir a …» para las pantallas del panel
 que nombran, lo hecho bajo cada cambio («Hecho: …», «No se hizo, cancelado: …»), «Leer en voz alta» (con la voz
-elegida; sin voz de erplora.com, o si falla, con la del propio dispositivo) y «Denunciar un problema». Abajo, el aviso de cuántos mensajes quedan (desde el 80 % del mes), el clip de
+del propio dispositivo) y «Denunciar un problema». Abajo, el aviso de cuántos mensajes quedan (desde el 80 % del mes), el clip de
 adjuntar, el micrófono «Dictar por voz» («Detener la grabación» mientras graba; gira mientras transcribe) y la caja
 «Escribe un mensaje…» con «Enviar» («Parar» mientras contesta). Un cambio que pide el modelo abre
 encima la tarjeta «¿Ejecutar esta acción?» con «Cancelar» y «Ejecutar»; crear, borrar o cambiar la dirección de un
@@ -311,7 +307,7 @@ Estado: hecho
 Actor: personal de ERPlora, en la línea de órdenes de erplora.com
 Pantalla: ninguna
 Pasos:
-1. Con las claves de OpenAI, Anthropic, Google Gemini, DeepSeek y Azure AI Speech en el entorno de erplora.com, ejecuta la carga de las claves del entorno.
+1. Con las claves de OpenAI, Anthropic, Google Gemini y DeepSeek en el entorno de erplora.com, ejecuta la carga de las claves del entorno.
 2. Cada clave se guarda cifrada en su proveedor con la etiqueta por defecto (u otra que se elija); si falta el proveedor, se da de alta con su nombre y su API.
 3. Si el proveedor ya tenía una clave con esa etiqueta, se deja como está, salvo que se pida reemplazarla: entonces se cambia, se enciende y queda cuándo se cambió.
 4. Se puede elegir qué proveedores cargar y ensayar la carga sin guardar nada.
@@ -500,15 +496,14 @@ Implicados: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F24, ASSISTAN
 ### ASSISTANT-F22 Leer una respuesta en voz alta
 <!-- origen: old-saas:SAAS_ASSISTANT-F20 -->
 Estado: hecho
-Actor: el asistente del Hub de un negocio
+Actor: el asistente del Hub de un negocio, o el del panel de erplora.com
 Pantalla: ninguna
 Pasos:
-1. Un Hub que quiera leer una respuesta con la voz de erplora.com le manda el texto, su idioma (español o inglés) y, si quiere, la voz: Ximena o Tristan en español, Ava o Andrew en inglés; sin voz, la de mujer del idioma (Ximena o Ava). El asistente del panel de erplora.com la pide para la cuenta con la voz elegida en su cabecera, solo cuando erplora.com tiene el proveedor de voz dado de alta; sin él no ofrece voces y lee con la del dispositivo, sin pedir nada. El Hub de hoy no la pide y lee con la voz del propio dispositivo.
-2. erplora.com pide el audio a Azure AI Speech, con sus voces de alta definición (como mucho los primeros 4.096 caracteres), y lo devuelve en MP3.
-3. Los caracteres leídos se cuentan en el mes del negocio (o de la cuenta); no gasta mensajes.
+1. La persona pulsa «Leer en voz alta» en una respuesta: el Hub y el panel de erplora.com la leen con la voz del propio dispositivo, sin pedir nada a erplora.com, que no tiene voz propia.
+2. Si aun así se le pide a erplora.com que lea una respuesta (el texto, su idioma, español o inglés, y si se quiere una voz), contesta que la lectura en voz alta no está disponible, y quien la pidió la lee con la voz del dispositivo. No se cuenta nada ni se gasta ningún mensaje.
 Entra: el negocio, el texto, el idioma y la voz.
-Sale: el audio de la respuesta (`assistant.usage.recorded`).
-Si falla: un texto vacío, un idioma sin voces o una voz que no está en el catálogo se rechazan; sin el proveedor de voz configurado, que la lectura en voz alta no está disponible (y el Hub o el panel leen con la voz del dispositivo); si Azure falla, un error de pasarela que dice si vale la pena repetir. El texto no queda guardado ni en un registro.
+Sale: la respuesta de que no está disponible; el texto no queda guardado ni en un registro.
+Si falla: un texto vacío o un idioma que no es español ni inglés se rechazan.
 Implicados: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F24
 
 ### ASSISTANT-F23 Recibir la denuncia de una respuesta del asistente
@@ -646,10 +641,9 @@ Implicados: ASSISTANT-F25, ASSISTANT-F26, ACCOUNTS-F23
   erplora.com (PLAN-SAAS §1.1). La prueba de un modelo es una entrada `ACCESS` del modelo, escrita por
   `assistant.model.try`.
 - `import_ai_keys_from_env` (`--providers`, `--label`, `--force`, `--dry-run`) lee `OPENAI_API_KEY`,
-  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY` y `AZURE_SPEECH_KEY` de `config/settings.py` y guarda con
+  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` y `DEEPSEEK_API_KEY` de `config/settings.py` y guarda con
   `assistant.credential.import` (solo la plataforma); el proveedor que falta se da de alta con el identificador de su
-  API (`azure-speech` para `azure_speech`, `models.provider_slug`). El turno y la voz nunca leen esas variables: solo
-  la base de datos.
+  API (`data.kind`). El turno nunca lee esas variables: solo la base de datos.
 - `rotate_encryption_keys [--dry-run]` corre `assistant.encryption.rotate` (solo la plataforma) sobre toda columna de
   `ROTATED_FIELD_CLASSES` (`services.encrypted_columns`, derivada de los modelos: hoy la clave del proveedor y el
   token y el PIN de WhatsApp): rota cada token tal cual (`crypto.rotate`, por `UPDATE` sin pasar por `save`) y nunca
@@ -686,7 +680,7 @@ propio texto por `code`.
 | `/internal/assistant/embeddings` | `hub`, `texts` (1–256, ninguno vacío) | `{embeddings, model}` en el orden de `texts`; ningún Hub la llama hoy (no guarda índice) | `ASSISTANT_EMBED_RATELIMIT` 600/h |
 | `/internal/assistant/docs/search` | `hub`, `query` (1–500, no en blanco), `language` (`en` \| `es`), `limit` (≥1, recortado a 12; 8 por defecto) | `{results: [{source, path, heading, text, score, lang}]}` (vacío con el índice vacío); 409 `assistant.provider_not_configured`, 503 `assistant.provider_unavailable` | `ASSISTANT_DOCS_RATELIMIT` 600/h |
 | `/internal/speech/transcribe` | `hub`, `audio` (base64, ≤2 MB), `mime_type`, `language` | `{text, language}` | `ASSISTANT_TRANSCRIBE_RATELIMIT` 120/h |
-| `/internal/speech/synthesize` | `hub`, `text`, `language` (`es` \| `en`), `voice` (opcional, un id de `media.VOICES`) | `audio/mpeg` de Azure AI Speech (≤4096 caracteres leídos); 422 con una voz o un idioma fuera del catálogo; 503 `assistant.speech_unavailable` sin el proveedor de voz con clave; 502 si Azure falla | `ASSISTANT_SYNTHESIZE_RATELIMIT` 120/h |
+| `/internal/speech/synthesize` | `hub`, `text`, `language` (`es` \| `en`), `voice` (opcional) | 503 `assistant.speech_unavailable`, sin motor que lea (`media.SPEECH_ENGINE`); con motor, `audio/mpeg` (≤4096 caracteres leídos) y 502 si falla; 422 con un idioma fuera de `es`/`en` o un texto vacío | `ASSISTANT_SYNTHESIZE_RATELIMIT` 120/h |
 | `/internal/assistant/report` | `hub`, `message_id`, `reason` (`incorrect`, `harmful`, `instructions`, `other`), `comment`, `question`, `answer` | 202 `{sent, duplicate}`; 503 `assistant.report_not_sent` | `ASSISTANT_REPORT_RATELIMIT` 60/h |
 
 - **Frames del turno en directo** (`data: <json>`): `text_delta {text}`, `function_call {name, call_id, arguments}`
@@ -736,15 +730,12 @@ propio texto por `code`.
   decenas). En el Hub es la herramienta `base__docs__search` (`base.docs.search`, ERPlora/hub).
 - **Huellas y voz** (`assistant/media.py`): el proveedor de servicios es el `AIProvider` de slug
   `ASSISTANT_SERVICE_PROVIDER` («openai»), de API OpenAI, activado y con clave (`assistant.service.connection`);
-  modelos fijos `text-embedding-3-small` y `whisper-1`. La lectura en voz alta va al proveedor de voz, el `AIProvider`
-  de slug `ASSISTANT_SPEECH_PROVIDER` («azure-speech»), de API `azure_speech`, activado y con clave
-  (`assistant.speech.connection`; sin él, 503 `assistant.speech_unavailable`): su `base_url` es el endpoint de su
-  región (`DEFAULT_BASE_URLS`: Suecia Central) y su clave va en `Ocp-Apim-Subscription-Key`. SSML con el texto
-  escapado, voces DragonHD de `media.VOICES` (el mismo catálogo e ids que `@erplora/ui`), mp3
-  `audio-24khz-48kbitrate-mono-mp3`, 60 s de tope para leer la respuesta; sus fallos son `MediaFailed`, como los de OpenAI. Un proveedor de
-  `SPEECH_KINDS` no contesta turnos: sus modelos no se ofrecen, no se eligen ni se enrutan (`choosable_models`,
-  `can_answer`), y su ficha del admin no tiene «Elegir modelos del proveedor» ni lista de modelos
-  (`AIProvider.reads_aloud`).
+  modelos fijos `text-embedding-3-small` y `whisper-1`. La lectura en voz alta no tiene motor: `media.SPEECH_ENGINE` es `None`
+  (PLAN-SAAS ronda 2026-11-04c, saas#242, que retiró el proveedor de Azure AI Speech con su catálogo de voces, su conexión
+  `assistant.speech.connection` y sus ajustes; la migración `0008_retire_azure_speech` borra una fila de ese tipo con sus
+  claves y sus modelos, suelta la política que apuntara a uno y deja en el log qué identificadores borró; al volver atrás
+  vuelve el tipo, no las filas). El motor libre de PLAN-SAAS §35, si entra, ocupa ese sitio en su propia ronda:
+  `(texto, idioma, voz)` a un mp3, con la voz vacía para la suya del idioma, y `MediaFailed` si falla.
 - **Privacidad**: ni la conversación, ni los adjuntos, ni el audio, ni el texto leído van a la BD, a un log o al
   auditlog; del fallo de un proveedor el log solo lleva el estado (`test_privacy.py`). Ninguna variable `key`,
   `token` ni `api_key` en una llamada al logger (`test_guardrails.py`).
@@ -793,19 +784,18 @@ propio texto por `code`.
   `assistant.provider_not_configured` y 503 `base.assistant_transcribe_failed`, que no nombra al proveedor.
 - **La lectura en voz alta** (F22): como el dictado, la operación (`database=False`) es la puerta: sesión, permiso, cubo
   `synthesize` por `user:<id>` (`ASSISTANT_SYNTHESIZE_RATELIMIT`, 429 `rate_limited`) e idioma (el pedido o el de la
-  cuenta; inglés si el suyo no tiene voces); el texto, el idioma y la voz los valida `assistant.schemas.SpeechIn` antes
-  de gastar el cubo. La ruta espera después a Azure con `assistant.internal.speech`, la misma pieza que la puerta
+  cuenta; inglés si el suyo no tiene voces); el texto y el idioma los valida `assistant.schemas.SpeechIn` antes
+  de gastar el cubo. La ruta espera después al motor con `assistant.internal.speech`, la misma pieza que la puerta
   `synthesize` del Hub, y anota los caracteres en la fila del mes de la cuenta (`speech_characters`). `speech_refusal`
-  da 503 `assistant.speech_unavailable` sin el proveedor de voz con clave y 503 `base.assistant_speech_failed`, que no nombra al
+  da 503 `assistant.speech_unavailable` sin motor y 503 `base.assistant_speech_failed`, que no nombra al
   proveedor. El frontend del panel la pide con `speak` de `assistant/frontend/options.ts` (`fetchFile` del SDK con
   POST, sesión y CSRF: el mp3 o el `ApiError` del sobre, y entonces lee el dispositivo); la CSP del panel deja
   reproducir su `blob:` (`media-src`). Ese `speak` solo se le da al chat (`panelAssistant`) cuando `spa-config`
-  trae `assistantSpeech: true` (`base/spa.py`: `assistant.queries.speech_provider()`, la misma regla que
-  `assistant.speech.connection`, leída en cada carga del shell, sin caché); sin él, `@erplora/ui` no pinta la elección
-  de voz y lee con el dispositivo sin pedir la ruta (decisión del 2026-11-04: de momento sin voz de servidor; el código
-  de Azure y el tipo de proveedor `azure_speech` se quedan, dormidos). e2e: `tests/e2e/panel/assistant-voice.spec.ts`
-  (sin proveedor: sin elección ni petición; `assistant_seed.py voice`, con un proveedor de clave inventada: la
-  elección y la petición).
+  trae `assistantSpeech: true` (`base/spa.py`: `media.SPEECH_ENGINE` no es `None`); sin él, como está hoy, `@erplora/ui` no
+  pinta la elección de voz y lee con el dispositivo sin pedir la ruta. Los ids de voz ya no están en `@erplora/ui`: un
+  anfitrión con voces se las da con `AssistantConfig.voices`, y sin ellas `speak` se pide con la voz vacía. e2e:
+  `tests/e2e/panel/assistant-voice.spec.ts` (sin voz: sin elección ni petición; con la marca encendida en el borde del
+  navegador: la petición, su 503 y la lectura del dispositivo).
 - **Cupo por cuenta**: `Caller(user_id=…)`, una fila `AssistantUsage(user, month)` (check «negocio, demo o cuenta»,
   única por cuenta y mes; migración `0003_account_usage`, que al volver atrás borra las filas de cuentas),
   `ASSISTANT_ACCOUNT_MESSAGES` (30).

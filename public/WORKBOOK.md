@@ -658,12 +658,12 @@ Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. En cuanto pasa su hora, la dirección de la demo contesta «La demo ha terminado», aunque nadie la haya retirado todavía.
-2. Cada minuto, el hub retira las demos vencidas: borra los datos de cada una (cada demo tiene su propia base de datos, que se borra entera sin tocar la de ningún otro negocio), sus códigos de entrada, su usuario «Demo» y su acceso, y la marca como retirada; un fallo en una no detiene a las demás.
+2. Cada minuto, el hub retira las demos vencidas: borra los datos de cada una (cada demo tiene su propia base de datos, que se borra entera sin tocar la de ningún otro negocio), los ficheros que se subieron dentro de ella (por ejemplo, fotos) sin tocar los de ningún otro negocio, sus códigos de entrada, su usuario «Demo» y su acceso, y la marca como retirada; un fallo en una no detiene a las demás.
 3. Una demo que aún se estaba preparando cuando terminó se retira igual, sin acabar de prepararla.
 4. Pasados unos días, la dirección retirada deja de existir del todo.
 Entra: las demos cuya hora ha pasado.
-Sale: la demo retirada, sin sus datos, sin usuario ni forma de entrar. Los ficheros subidos dentro de la demo (por ejemplo, fotos) todavía no se borran, pero ya nadie puede abrirlos desde ERPlora.
-Si falla: si retirar una falla, se reintenta más tarde, cada vez con más espera; mientras, su dirección ya dice que ha terminado.
+Sale: la demo retirada, sin sus datos ni sus ficheros, sin usuario ni forma de entrar.
+Si falla: si retirar una falla, también si el almacén no borra sus ficheros, no se da por retirada y se reintenta más tarde, cada vez con más espera; mientras, su dirección ya dice que ha terminado.
 Implicados: el Hub (su registro de hubs y su proceso de fondo)
 
 ### PUBLIC-F35 De la demo a una cuenta de verdad
@@ -725,8 +725,9 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   demo vencida con su enlace a `/demo/?state=expired`, `reap_demos` en el worker cada `REAPER_INTERVAL_SECONDS` y
   `purge_demo_data`, que borra la BD propia de la demo (`<control>_demo_<hex>`, `DROP DATABASE … WITH (FORCE)`, solo
   esa) desde la tenencia S2a (hub#471; F34 `hecho` en CLOSE-PUBLIC). Una demo de antes de la tenencia (`db_name`
-  vacío) no tenía BD propia y no borra nada. Su prefijo `hub-<hex>/` del almacén no se borra (hub#613): su host contesta
-  410 y luego 404, así que nadie lo abre desde ERPlora, pero sigue ocupando espacio. El prefijo `demo-` lo reserva
+  vacío) no tenía BD propia y no borra nada de ella. Tras la BD, `purge_demo_data` borra el prefijo `hub-<hex>/` de esa
+  demo en el almacén y ningún otro (`base.files.delete_hub_files`, hub#613); si el almacén falla, la demo sigue
+  `dropping` con el error en su fila y se reintenta. El prefijo `demo-` lo reserva
   `live.slugs` (`validate_hub_slug(allow_demo=…)`) y `hubs.queries.base_slug` lo normaliza (F37).
 - Equivalencia de claves de la parte 3: G53 = F27; G54, G55 y G56 = F28; G57 = F29; G58 = F30; G59 = F31; G60 = F32;
   G61 = F33; G62 = F34; G63 = F35; G64 = F36; G65 = F37.
@@ -799,15 +800,15 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
 - Textos legales (F20, F08): la privacidad nombra a cada encargado que recibe datos y qué recibe. El dictado y la
   búsqueda del asistente (`assistant/media.py`: `whisper-1` y `text-embedding-3-small`) van al proveedor de
   `ASSISTANT_SERVICE_PROVIDER`, la API de OpenAI en `api.openai.com` por defecto, sin residencia en la UE por contrato.
-  La lectura en voz alta es la del dispositivo: erplora.com no tiene voz propia desde el 2026-11-04 (ningún proveedor
-  de `ASSISTANT_SPEECH_PROVIDER`; la puerta de Azure AI Speech queda dormida), así que §5 no nombra a ningún encargado
-  de esa lectura (`test_legal.py` prohíbe «Azure» y «Microsoft Ireland Operations»). Dar de alta un proveedor de voz
-  es volver a nombrarlo en §5, con lo que recibe y dónde, en la misma entrega.
+  La lectura en voz alta es la del dispositivo: erplora.com no tiene voz propia (sin motor en
+  `assistant.media.SPEECH_ENGINE`; el proveedor de Azure AI Speech se retiró, saas#242), así que §5 no nombra a ningún
+  encargado de esa lectura (`test_legal.py` prohíbe «Azure» y «Microsoft Ireland Operations»). Un motor que lleve el texto
+  fuera de nuestros contenedores es volver a nombrar a su encargado en §5, con lo que recibe y dónde, en la misma entrega.
   Cambiarlo es cambiar en la misma entrega §5 y §6 de la privacidad, la respuesta «storage» de `/pricing/` y la celda
   del asistente de la portada (`test_legal.py`, `test_product.py` y `test_landing.py`, en `en` y `es`). El Hub y el
   panel usan el dictado (`base.assistant.transcribe`, cada uno el suyo); «Leer en voz alta» lee con la voz del
   dispositivo en los dos (el panel solo pediría `base.assistant.speak` con `spa-config.assistantSpeech`, que sin
-  proveedor de voz es falso).
+  motor es falso).
 - Cumplimiento (F09): `hubs.countries.COUNTRY_NAMES` tiene que casar con `hubs.schemas.COUNTRIES` (lo exige un test);
   `FISCAL_SYSTEMS` dice qué sistema fiscal conecta cada país, hoy solo VeriFactu en España. Un país nuevo conectado
   se añade ahí con su app, en la misma entrega.

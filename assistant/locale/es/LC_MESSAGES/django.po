@@ -81,10 +81,6 @@ msgstr "El proveedor no ha dado sus modelos: %(reason)s"
 msgid "The provider listed no chat models."
 msgstr "El proveedor no tiene modelos de conversación en su lista."
 
-#: assistant/admin.py
-msgid "This provider reads aloud: it answers no turn, so it has no models to choose."
-msgstr "Este proveedor lee en voz alta: no contesta turnos, así que no tiene modelos que elegir."
-
 #: admin.py:385 templates/admin/assistant/aiprovider/change_form.html:5
 msgid "Choose models from the provider"
 msgstr "Elegir modelos del proveedor"
@@ -382,10 +378,6 @@ msgstr "Solo la plataforma pide esto."
 #: queries.py:328
 msgid "The provider of the embeddings and the voice is not configured: add OpenAI with its key."
 msgstr "El proveedor de las huellas y de la voz no está configurado: añade OpenAI con su clave."
-
-#: assistant/queries.py
-msgid "Reading aloud is not configured: add Azure AI Speech with its key."
-msgstr "La lectura en voz alta no está configurada: añade Azure AI Speech con su clave."
 
 #: services.py:131 services.py:133
 msgid "This provider already has a key with that label."

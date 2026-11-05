@@ -787,11 +787,6 @@ ASSISTANT_DEMO_MESSAGES = config("ASSISTANT_DEMO_MESSAGES", default=10, cast=int
 ASSISTANT_ACCOUNT_MESSAGES = config("ASSISTANT_ACCOUNT_MESSAGES", default=30, cast=int)
 # The provider (its identifier in the admin, of OpenAI's API) whose key computes the embeddings and the dictation.
 ASSISTANT_SERVICE_PROVIDER = config("ASSISTANT_SERVICE_PROVIDER", default="openai")
-# The provider (its identifier in the admin, of Azure AI Speech's API) that reads the answers aloud
-# (/internal/speech/synthesize and the panel's base.assistant.speak; PLAN-SAAS round 2026-11-03m): its address is its
-# region's endpoint (Sweden Central unless the admin says another). Without it, or without its key: 503
-# assistant.speech_unavailable, and the Hub and the panel read with the device's voice.
-ASSISTANT_SPEECH_PROVIDER = config("ASSISTANT_SPEECH_PROVIDER", default="azure-speech")
 # The demo hubs (PLAN-SAAS §3.5, round 2026-10-17; public/demo.py): one switch, and new demos per address
 # (django-ratelimit, over the default cache; a browser re-entering its live demo does not count). The Hub keeps
 # the cap of live demos (MAX_CONCURRENT_DEMOS) and the WAF limits /demo per IP too.
@@ -915,7 +910,6 @@ OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
 ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
 GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
 DEEPSEEK_API_KEY = config("DEEPSEEK_API_KEY", default="")
-AZURE_SPEECH_KEY = config("AZURE_SPEECH_KEY", default="")
 
 # The providers of erplora.com's own tools (assistant/server_tools.py, ASSISTANT-F14). The rates need no key. The search
 # reads its key here, from the environment and not from the database, and without it is not offered: the assistant

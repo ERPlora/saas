@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:b671af93c646e3b1d652b1c67c2764c9c9dce1303b23307e0dc4740d028c3004 -->
+<!-- generated from WORKBOOK.md sha256:a185a44b79dcf22a4bfd9f531480cf043995a9874548b9a8cbfd403af1c256b6 -->
 
 ## What it is for and who uses it
 
@@ -77,10 +77,8 @@ Who uses it:
   a price, the trial says the consumption and a cost of zero.
 - The index's fingerprints and the dictation are done by the services' provider (OpenAI): it must be added, enabled
   and with its key.
-- The reading aloud is done by the voice provider (Azure AI Speech): it must be added, enabled and with its key; its
-  address is its region's (Sweden Central unless another is typed). Without it, the Hub and the panel read with the
-  device's voice, and the panel offers no choice of voice nor asks erplora.com anything to read. For now it is not
-  added (decision of 2026-11-04): the panel always reads with the device's voice.
+- The reading aloud is the device's: erplora.com has no voice of its own nor a voice provider to add (ASSISTANT-F22),
+  and the Hub and the panel read without asking it anything.
 - The message allowance of each plan ("AI assistant messages a month") is typed in the admin of "Plans".
 
 ## Screens
@@ -119,14 +117,11 @@ to change it.
 ### Panel: Assistant
 On every screen of erplora.com's panel with the session open, at the end of the top bar, the "Assistant" button (the
 sparkles), pressed while the panel is open. The panel opens on the right: from 768 px wide it docks beside the screen,
-which narrows and keeps working; on a phone it covers it over a veil. On top, "Assistant", "Voice" (only when
-erplora.com has a voice of its own, that is, with the voice provider added: the choice of the voice that reads the
-answers, its language's two, Ximena and Tristan or Ava and Andrew, and "Device voice"; the first, unless another is
-chosen), "New conversation" (once there is one) and × ("Close"); in the middle, the conversation: without one, "Ask me about your businesses, your
+which narrows and keeps working; on a phone it covers it over a veil. On top, "Assistant", "New conversation" (once there is one) and × ("Close"); in the middle, the conversation: without one, "Ask me about your businesses, your
 invoices or your account." and three shortcuts ("Which businesses do I have?", "How much do I pay a month?" and "How do
 I create a business?"); with one, the person's bubbles and the answers, with "Go to …" for the panel's screens they
-name, what was done under each change ("Done: …", "Not done, cancelled: …"), "Read aloud" (in the chosen voice;
-without a voice of erplora.com, or when it fails, in the device's own) and "Report a problem". At the bottom, the notice of how many messages are left (from 80 % of the month), the clip to
+name, what was done under each change ("Done: …", "Not done, cancelled: …"), "Read aloud" (in the device's
+own voice) and "Report a problem". At the bottom, the notice of how many messages are left (from 80 % of the month), the clip to
 attach, the microphone "Dictate by voice" ("Stop recording" while it records; it spins while it transcribes) and the
 box "Write a message…" with "Send" ("Stop" while it answers). A change the model asks for opens the card
 "Run this action?" on top, with "Cancel" and "Run it"; creating, deleting or changing the address of a business,
@@ -289,7 +284,7 @@ Status: done
 Actor: ERPlora's staff, on erplora.com's command line
 Screen: none
 Steps:
-1. With the keys of OpenAI, Anthropic, Google Gemini, DeepSeek and Azure AI Speech in erplora.com's environment, run the loading of the environment's keys.
+1. With the keys of OpenAI, Anthropic, Google Gemini and DeepSeek in erplora.com's environment, run the loading of the environment's keys.
 2. Each key is kept encrypted in its provider with the default label (or another one chosen); if the provider is missing, it is added with its name and its API.
 3. If the provider already had a key with that label, it stays as it is, unless replacing it is asked for: then it changes, it is turned on and when it changed stays.
 4. The providers to load can be chosen, and the loading can be rehearsed without keeping anything.
@@ -465,15 +460,14 @@ Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F24, ASSISTANT-
 
 ### ASSISTANT-F22 Read an answer aloud
 Status: done
-Actor: the Hub's assistant of a business
+Actor: the Hub's assistant of a business, or the one of erplora.com's panel
 Screen: none
 Steps:
-1. A Hub that wants to read an answer with erplora.com's voice sends it the text, its language (Spanish or English) and, if it wants, the voice: Ximena or Tristan in Spanish, Ava or Andrew in English; without one, the language's woman's voice (Ximena or Ava). The assistant of erplora.com's panel asks for it for the account in the voice chosen in its head, only when erplora.com has the voice provider added; without it, it offers no voices and reads with the device's, asking nothing. Today's Hub does not ask for it and reads with the device's own voice.
-2. erplora.com asks Azure AI Speech for the audio, with its high-definition voices (at most the first 4,096 characters), and gives it back in MP3.
-3. The characters read are counted in the month of the business (or of the account); it spends no messages.
+1. The person presses "Read aloud" on an answer: the Hub and erplora.com's panel read it with the device's own voice, asking nothing of erplora.com, which has no voice of its own.
+2. If erplora.com is asked to read an answer all the same (the text, its language, Spanish or English, and a voice if wanted), it answers that reading aloud is not available, and whoever asked reads it with the device's voice. Nothing is counted and no message is spent.
 In: the business, the text, the language and the voice.
-Out: the audio of the answer (`assistant.usage.recorded`).
-If it fails: an empty text, a language without voices or a voice not in the catalogue are refused; without the voice provider configured, that reading aloud is not available (and the Hub or the panel reads with the device's voice); if Azure fails, a gateway error that says whether it is worth repeating. The text stays neither kept nor in a log.
+Out: the answer that it is not available; the text stays neither kept nor in a log.
+If it fails: an empty text or a language other than Spanish or English are refused.
 Involved: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F24
 
 ### ASSISTANT-F23 Receive the report of an answer of the assistant

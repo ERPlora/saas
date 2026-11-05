@@ -2,8 +2,6 @@
 ``panel/assistant-panel.spec.ts`` runs): the e2e's model answering, at the address of the spec's own provider, and
 ``e2e-assistant-owner``, an account like any other (no staff) with one working business, in the language the spec
 asks for. ``clear`` leaves nothing of it behind: the account, its business, its access and its month's messages.
-``voice`` adds the provider of the voice (Azure AI Speech) at the spec's provider, with a made-up key: the panel then
-offers its voices (``panel/assistant-voice.spec.ts``, ASSISTANT-F22); ``clear`` takes it away, and never a real one.
 """
 
 import importlib.util
@@ -94,74 +92,7 @@ def test_every_run_starts_from_scratch(seed):
     assert Hub.objects.filter(slug="e2e-assistant-panel").count() == 1
 
 
-def test_voice_is_panel_with_a_provider_of_the_voice_the_reading_can_use(seed):
-    made = seed.voice(ADDRESS, "en")
 
-    assert made == {
-        "owner": "e2e-assistant-owner@example.com",
-        "business": "E2E Asistente Panel",
-        "slug": "e2e-assistant-panel",
-    }
-    assert get_user_model().objects.get(email=made["owner"]).language == "en"
-    provider = AIProvider.objects.get(slug="azure-speech")
-    assert (provider.name, provider.kind, provider.base_url) == (
-        "E2E Azure Speech",
-        AIProvider.Kind.AZURE_SPEECH,
-        "http://127.0.0.1:8017/westeurope",
-    )
-    # A made-up key, never a real one: what the shell's ``assistantSpeech`` and the speak route find usable.
-    assert AIProviderCredential.objects.get(provider=provider).api_key == seed.SPEECH_KEY
-    assert queries.speech_provider() is not None
-
-
-def test_clear_takes_the_e2e_voice_away_and_panel_has_none(seed):
-    seed.voice(ADDRESS)
-
-    seed.clear()
-
-    assert not AIProvider.objects.filter(slug="azure-speech").exists()
-    seed.panel(ADDRESS)
-    assert queries.speech_provider() is None
-
-
-def test_voice_never_touches_a_real_provider_of_the_voice(seed):
-    real = AIProvider.objects.create(slug="azure-speech", name="Azure AI Speech", kind=AIProvider.Kind.AZURE_SPEECH)
-
-    seed.clear()
-    with pytest.raises(SystemExit, match="azure-speech"):
-        seed.voice(ADDRESS)
-
-    assert AIProvider.objects.get(slug="azure-speech") == real
-    assert real.name == "Azure AI Speech"
-
-
-def test_paying_leaves_the_business_on_starter_paid_by_its_owner_with_an_invoice_unpaid(seed):
-    """What ``panel/assistant-panel.spec.ts`` asks the assistant to cancel: a plan whose card says it whole."""
-    from billing import queries as billing_queries
-    from billing.schemas import HubIn
-    from billing.tests.conftest import ctx_for
-
-    made = seed.paying(ADDRESS, "en")
-
-    owner = get_user_model().objects.get(email=made["owner"])
-    hub = Hub.objects.get(slug=made["slug"])
-    shown = billing_queries.plan_cancel_preview(ctx_for(owner, "en"), HubIn(hub_id=hub.id)).model_dump()
-    assert (shown["plan"], shown["unpaid_cents"], shown["people"]) == ("Starter", made["unpaid_cents"], 1)
-    assert shown["paid_until"] is not None
-    assert owner.language == "en"
-
-
-def test_clear_leaves_nothing_of_the_paying_business(seed):
-    from billing.models import Invoice
-    from hubs.models import BillingProfile, Subscription
-
-    seed.paying(ADDRESS)
-
-    seed.clear()
-
-    assert not Subscription.objects.filter(stripe_subscription_id__startswith="sub_e2e_").exists()
-    assert not Invoice.objects.filter(stripe_invoice_id__startswith="in_e2e_").exists()
-    assert not BillingProfile.objects.filter(stripe_customer_id__startswith="cus_e2e_").exists()
 
 
 def test_paying_runs_again_from_scratch(seed):

@@ -77,8 +77,8 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13
   sitio. La puerta JSON (`/api/demo/spawn/`) queda descartada: nadie la llamaba y la demo solo se abre en el
   navegador que la pide (PUBLIC-F36). Los datos de una demo se borran con ella: al retirarla, el Hub borra
   su BD propia entera (`purge_demo_data`, tenencia S2a, hub#471; PUBLIC-F34 `hecho` desde CLOSE-PUBLIC, 2026-11-01).
-  Sus ficheros del almacén (prefijo `hub-<hex>/`) aún no: quedan fuera, en hub#613; nadie puede abrirlos desde ERPlora
-  (su host contesta 410 y luego 404). El SaaS no interviene: no guarda filas de demo.
+  Y después sus ficheros del almacén, su prefijo `hub-<hex>/` y ningún otro (hub#613). El SaaS no interviene: no guarda
+  filas de demo.
 - **Tabla de la portada (PUBLIC-F01):** «Cin7 / TradeGecko» pasa a «Zoho Inventory / Sortly» (TradeGecko lo cerró
   Intuit; las dos son las que más repiten las comparativas de 2026 para pequeños negocios, con tramos de 49 a 149 $).
 

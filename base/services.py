@@ -289,8 +289,8 @@ def assistant_transcribe(ctx: OperationContext, data: AssistantTranscribeIn) -> 
     input=AssistantSpeakIn,
     output=AssistantSpeakOut,
     ai=INTERNAL,  # panel
-    # The door, with no transaction open: the route waits on Azure after it (``assistant.spoken``), and a connection
-    # never waits on a provider inside a transaction.
+    # The door, with no transaction open: the route waits on the engine after it (``assistant.spoken``), and a connection
+    # never waits on it inside a transaction.
     database=False,
 )
 def assistant_speak(ctx: OperationContext, data: AssistantSpeakIn) -> dict:

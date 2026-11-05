@@ -1,28 +1,21 @@
 """The services the assistants use besides the turn (ASSISTANT-G54, G56, G57, F27): the fingerprints (embeddings) of
 the Hub's index and of the panel's documentation (``index_docs``, ``assistant.docs.search``) and the transcription of a
-dictation, by OpenAI's API; the reading aloud of an answer, by Azure AI Speech (PLAN-SAAS round 2026-11-03m).
-
-The embeddings and the dictation go to the services' provider (``assistant.service.connection``:
-``ASSISTANT_SERVICE_PROVIDER``); the reading aloud, to the provider of the voice (``assistant.speech.connection``:
-``ASSISTANT_SPEECH_PROVIDER``, Azure AI Speech's REST API at its region's address,
-``https://<region>.tts.speech.microsoft.com/cognitiveservices/v1``): its DragonHD voices (``VOICES``, the catalogue
-``@erplora/ui`` shows by the same ids), SSML in, an mp3 out. Each provider is kept in the admin with its key,
-rotatable.
+dictation, by OpenAI's API, through the services' provider (``assistant.service.connection``:
+``ASSISTANT_SERVICE_PROVIDER``), kept in the admin with its key, rotatable. The reading aloud of an answer has no engine
+(``SPEECH_ENGINE``, PLAN-SAAS round 2026-11-04c).
 
 Each call goes over ``httpx``, with no SDK, the same way as ``assistant.providers``. A failure is a ``MediaFailed``
 with the provider's class (rejected, or worth trying again) and never the key nor the provider's words (they could
-quote what was dictated or read); the log says the path and the status only. A server whose trusted certificates
-cannot be loaded is a final failure, logged with the setting and its file by ``base.tls`` (caller
-``assistant.media``). Nothing is written to disk: the audio goes from memory to the provider and back.
+quote what was dictated); the log says the path and the status only. A server whose trusted certificates cannot be
+loaded is a final failure, logged with the setting and its file by ``base.tls`` (caller ``assistant.media``). Nothing is
+written to disk: the audio goes from memory to the provider and back.
 """
 
 from __future__ import annotations
 
 import logging
-import re
-from dataclasses import dataclass
+from collections.abc import Awaitable, Callable
 from decimal import Decimal
-from xml.sax.saxutils import escape
 
 import httpx
 
@@ -53,45 +46,17 @@ AUDIO_TYPES = {
 TIMEOUT = httpx.Timeout(connect=10.0, read=60.0, write=30.0, pool=10.0)
 
 
-@dataclass(frozen=True)
-class Voice:
-    """A voice of Azure AI Speech: its id, the language of its SSML (``xml:lang``) and whom it sounds like."""
-
-    id: str
-    locale: str
-    gender: str
-
-    @property
-    def language(self) -> str:
-        return self.locale.split("-")[0]
-
-
-#: The voices that read aloud, the catalogue ``@erplora/ui`` shows by the same ids (a change here is a change there):
-#: Azure's DragonHD voices of Spain and of the United States. The first of each language is its default.
-VOICES = (
-    Voice("es-ES-Ximena:DragonHDLatestNeural", "es-ES", "female"),
-    Voice("es-ES-Tristan:DragonHDLatestNeural", "es-ES", "male"),
-    Voice("en-US-Ava:DragonHDLatestNeural", "en-US", "female"),
-    Voice("en-US-Andrew2:DragonHDLatestNeural", "en-US", "male"),
-)
-VOICE_IDS = frozenset(voice.id for voice in VOICES)
-#: The languages there is a voice for, base code.
-SPEECH_LANGUAGES = tuple(dict.fromkeys(voice.language for voice in VOICES))
-#: The path of text to speech on the endpoint of an Azure region (the provider's address).
-SPEECH_PATH = "/cognitiveservices/v1"
-#: An mp3 a browser plays everywhere, of the quality the HD voices are made for.
-SPEECH_FORMAT = "audio-24khz-48kbitrate-mono-mp3"
-#: Azure starts answering in under a second, but four thousand characters may take it longer than 20 s to read: a
-#: minute to answer, as the other services.
-SPEECH_TIMEOUT = httpx.Timeout(connect=10.0, read=60.0, write=30.0, pool=10.0)
-#: What XML 1.0 cannot carry (C0 controls but tab, newline and carriage return; surrogates; U+FFFE and U+FFFF):
-#: one of them makes Azure refuse the whole SSML.
-NOT_XML = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]")
+#: The languages an answer is read aloud in, base code.
+SPEECH_LANGUAGES = ("es", "en")
+#: What reads an answer aloud: ``(text, language, voice)`` to an mp3, an empty voice being its own for the language. None
+#: since the provider of Azure AI Speech left (PLAN-SAAS round 2026-11-04c): the door and the panel's route answer 503
+#: ``assistant.speech_unavailable``, and the Hub and the panel read with the device's voice. A free engine, in our own
+#: containers, takes this place in a round of its own (§35); ``MediaFailed`` is how it fails.
+SPEECH_ENGINE: Callable[[str, str, str], Awaitable[bytes]] | None = None
 
 
 class MediaFailed(Exception):
-    """A call to a provider (the services' one, or Azure) that failed: ``retriable`` if another attempt may
-    succeed."""
+    """A call to a provider that failed: ``retriable`` if another attempt may succeed."""
 
     def __init__(self, retriable: bool, status: int | None = None):
         super().__init__("retriable" if retriable else "rejected")
@@ -102,20 +67,11 @@ class MediaFailed(Exception):
         return "assistant.provider_unavailable" if self.retriable else "assistant.provider_rejected"
 
 
-class UnknownVoice(ValueError):
-    """A voice the catalogue does not have, or a language it has no voice for."""
-
-
 async def _post(service: ServiceConnectionOut, path: str, *, timeout: httpx.Timeout = TIMEOUT, **request) -> httpx.Response:
     headers = {"Authorization": f"Bearer {service.api_key.get_secret_value()}"}
-    return await _send(f"{service.base_url}{path}", path, headers=headers, timeout=timeout, **request)
-
-
-async def _send(url: str, path: str, *, headers: dict, timeout: httpx.Timeout, **request) -> httpx.Response:
-    """``POST url``; ``path`` is what the log names of it."""
     try:
         async with httpx.AsyncClient(timeout=timeout, verify=tls.trusted_context("assistant.media")) as client:
-            response = await client.post(url, headers=headers, **request)
+            response = await client.post(f"{service.base_url}{path}", headers=headers, **request)
     except tls.TrustStoreUnreadable:
         raise MediaFailed(retriable=False) from None
     except httpx.HTTPError as problem:
@@ -172,44 +128,3 @@ def base_language(language: str) -> str:
 
 def speech_text(text: str) -> str:
     return text.strip()[:MAX_SPEECH_CHARS]
-
-
-def voice_of(language: str, voice: str = "") -> Voice:
-    """``voice`` if the catalogue has it (whatever ``language``: the voice says its own), else the default voice of
-    ``language``; ``UnknownVoice`` for a voice the catalogue does not have or a language without voices."""
-    if voice:
-        for known in VOICES:
-            if known.id == voice:
-                return known
-        raise UnknownVoice("not a voice of the catalogue")
-    for known in VOICES:
-        if known.language == language:
-            return known
-    raise UnknownVoice("no voice speaks this language")
-
-
-def ssml(text: str, voice: Voice) -> str:
-    """The SSML Azure reads: ``text`` escaped as XML (and without what XML cannot carry) in ``voice``."""
-    spoken = escape(NOT_XML.sub("", text))
-    return (
-        f'<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="{voice.locale}">'
-        f'<voice name="{voice.id}">{spoken}</voice></speak>'
-    )
-
-
-async def synthesize(service: ServiceConnectionOut, text: str, voice: Voice) -> bytes:
-    """``text`` spoken with ``voice`` by the provider of the voice (Azure AI Speech), as an mp3. Azure takes its key in
-    ``Ocp-Apim-Subscription-Key``, not as a bearer token."""
-    headers = {
-        "Ocp-Apim-Subscription-Key": service.api_key.get_secret_value(),
-        "Content-Type": "application/ssml+xml",
-        "X-Microsoft-OutputFormat": SPEECH_FORMAT,
-        "User-Agent": "erplora",
-    }
-    body = ssml(text, voice).encode()
-    url = f"{service.base_url}{SPEECH_PATH}"
-    response = await _send(url, SPEECH_PATH, headers=headers, timeout=SPEECH_TIMEOUT, content=body)
-    if not response.content:
-        logger.warning("assistant.media.unreadable path=%s", SPEECH_PATH)
-        raise MediaFailed(retriable=True)
-    return response.content
