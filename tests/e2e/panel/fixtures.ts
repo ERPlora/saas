@@ -177,6 +177,16 @@ export async function sidewaysScroll(page: Page): Promise<string[]> {
   return [...boxes, ...tables];
 }
 
+/**
+ * Nothing scrolls sideways (`sidewaysScroll`) once the page has re-laid out, `label` naming the failure. Right after a
+ * resize, or the assistant docking beside the page, a DataTable fits its new box over a few frames (folds its row
+ * actions, then hands over to cards): one measure taken at once can catch the list half-way, still as wide as before,
+ * and report a scroll nobody sees (saas#319). So it is measured until it has settled.
+ */
+export async function expectNoSidewaysScroll(page: Page, label: string): Promise<void> {
+  await expect.poll(() => sidewaysScroll(page), { message: label }).toEqual([]);
+}
+
 /** How long `settled` waits for the page to stop moving: Ionic's overlays enter in well under a second. */
 const SETTLE_TIMEOUT_MS = 10_000;
 

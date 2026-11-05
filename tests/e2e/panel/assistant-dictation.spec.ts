@@ -10,7 +10,7 @@
 import { DICTATION } from '../assistant-provider';
 
 import { localAssistant, openPanel, OWNER, SIZES } from './assistant-chat';
-import { expect, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
+import { expect, expectNoSidewaysScroll, settled, shot, signIn, test, watchPageErrors } from './fixtures';
 
 /** What the person sees, in each language (the package's words, `assistant.voice.*`). */
 const WORDS = {
@@ -63,9 +63,7 @@ for (const language of ['es', 'en'] as const) {
       await page.setViewportSize({ width: size.width, height: size.height });
       await expect(box).toHaveValue(DICTATION);
       await expect(mic).toBeVisible();
-      // The page re-lays out after the resize (the businesses list turns into cards): measured until it has, else a
-      // list half-way to cards reads as a table scrolling sideways (seen once at 834 in this review).
-      await expect.poll(() => sidewaysScroll(page), { message: `${size.name}: nothing scrolls sideways` }).toEqual([]);
+      await expectNoSidewaysScroll(page, `${size.name}: nothing scrolls sideways`);
       await settled(page);
       await page.screenshot({ path: shot(`assistant-dictation-${size.name}-${language}`) });
     }
