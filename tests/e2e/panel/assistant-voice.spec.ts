@@ -91,7 +91,7 @@ for (const language of ['es', 'en'] as const) {
   test(`without a voice of the server the chat offers none and reads in the device's, never asking the server (${language})`, async ({
     page,
   }) => {
-    seed('panel', language);
+    await seed('panel', language);
     const errors = watchPageErrors(page);
     const consoleErrors = watchConsoleErrors(page);
     const asked = speakRequests(page);
@@ -115,7 +115,7 @@ for (const language of ['es', 'en'] as const) {
   });
 
   test(`a page told there is a voice asks the server, whose door is shut, and the device reads (${language})`, async ({ page }) => {
-    seed('panel', language);
+    await seed('panel', language);
     // The shell as an engine would leave it: the real page with its flag turned on as it is parsed, before the SPA's
     // module runs, and everything behind it real. Not with `route.fulfill`: Chrome gives a page served that way no
     // address, and refuses it the Vite server's scripts.

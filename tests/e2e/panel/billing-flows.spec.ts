@@ -5,9 +5,24 @@
 // everything else is the real server. Each test names its flow in its title, by its registry key; in
 // billing/WORKBOOK.md: G54=F16, G55=F13, G56=F14, G58=F17, G69=F22, G70=F23, G71=F24, G82=F01, G84=F07,
 // G87=F08, G88=F11.
-import { businessIdOf, captureAtEverySize, djangoPrint, expect, gotoWithCharge, panelAccount, playStripePortal, qaAccount, seededAndSignedIn, shot, STRIPE_PORTAL_URL, test, toast, watchPageErrors } from './fixtures';
+import {
+  businessIdOf,
+  captureAtEverySize,
+  djangoPrintWarm,
+  expect,
+  gotoWithCharge,
+  panelAccount,
+  playStripePortal,
+  qaAccount,
+  seededAndSignedInWarm,
+  shot,
+  STRIPE_PORTAL_URL,
+  test,
+  toast,
+  watchPageErrors,
+} from './fixtures';
 
-seededAndSignedIn('billing_seed.py', qaAccount('BILLING', panelAccount('billing')));
+seededAndSignedInWarm('billing_seed.py', qaAccount('BILLING', panelAccount('billing')));
 const atEverySize = captureAtEverySize('APP-BILLING-1');
 
 test.describe('billing flows', () => {
@@ -95,7 +110,7 @@ test.describe('billing flows', () => {
     await expect(dialog).toBeHidden();
     expect(asked).toEqual(['cancel']);
     // «Keep the plan» is what the server offers once the plan ends with its period (the seed marks it so).
-    djangoPrint(`from hubs.models import Subscription;print(Subscription.objects.filter(hub_id='${bakery}').update(cancel_at_period_end=True))`);
+    await djangoPrintWarm(`from hubs.models import Subscription;print(Subscription.objects.filter(hub_id='${bakery}').update(cancel_at_period_end=True))`);
     await page.goto('/dashboard/billing/subscriptions');
     await atEverySize(page, 'BILLING-G56', async () => {
       await expect(row.getByTestId(`subscriptions-row-${bakery}-lead`)).toHaveText('Keep the plan');

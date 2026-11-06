@@ -17,11 +17,11 @@ import { type Locator, type Page } from '@playwright/test';
 import {
   captureAtEverySize,
   catalogueText,
-  djangoPrint,
+  createAccountWarm,
+  djangoPrintWarm,
   expect,
-  provenAccount,
   readyBusinessOn,
-  removeAccountsOf,
+  removeAccountsWarm,
   signIn,
   test,
   watchPageErrors,
@@ -127,13 +127,13 @@ function startDouble(): Promise<Server> {
   });
 }
 
+// Django's boot on no test's clock (saas#354): the warm Django starts here.
 test.beforeAll(async () => {
-  removeAccountsOf(PREFIX);
-  double = await startDouble();
+  [double] = await Promise.all([startDouble(), removeAccountsWarm(PREFIX)]);
 });
 test.afterAll(async () => {
   await new Promise((closed) => double.close(closed));
-  removeAccountsOf(PREFIX);
+  await removeAccountsWarm(PREFIX);
 });
 test.beforeEach(() => {
   aws.length = 0;
@@ -144,7 +144,7 @@ test.beforeEach(() => {
 /** A fresh owner speaking `language`, signed in on `page`, of a business ready as the Hub leaves it, on `plan`. */
 async function ownerOn(page: Page, language: Language, plan: string): Promise<string> {
   const email = `${PREFIX}${plan}-${language}-${Date.now()}@example.com`;
-  provenAccount(email, PASSWORD, language);
+  await createAccountWarm(email, PASSWORD, { language });
   await signIn(page.request, { email, password: PASSWORD });
   return readyBusinessOn(page.request, 'Peluquería Aurora', plan);
 }
@@ -250,7 +250,8 @@ for (const { language, locale, domain } of RUNS) {
     test(`HUBS-F17 (${language}): a connected domain counts the checks that failed, and one that stopped is asked for again`, async ({ page }) => {
       const errors = watchPageErrors(page);
       const id = await ownerOn(page, language, 'standard');
-      djangoPrint(
+      // A domain connected two days ago with one failed check: only the hourly check writes one.
+      await djangoPrintWarm(
         [
           'from datetime import timedelta',
           'from django.utils import timezone',
@@ -273,7 +274,7 @@ for (const { language, locale, domain } of RUNS) {
       });
 
       // Three in a row: the hourly check took it down, as `check_custom_domains` leaves it; the page reads it again.
-      djangoPrint(
+      await djangoPrintWarm(
         `from hubs.models import CustomDomain\nCustomDomain.objects.filter(hub_id="${id}").update(state="lapsed", reason="checks_failed", failures=0, proven_at=None, activated_at=None)`,
       );
       await page.reload();

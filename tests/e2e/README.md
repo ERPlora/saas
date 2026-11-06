@@ -215,14 +215,16 @@ Las specs del panel mandan las llamadas al Hub (`HUB_INTERNAL_URL`) al puerto `+
 salvo un doble (`startHubDouble`) mientras una spec lo pide: el negocio recién creado se queda «Preparando». Para
 ver el salto de verdad (el Hub recibe el registro, avisa de que está listo y la ventana entra), una spec puede
 correr contra **un Hub de verdad** en ese mismo puerto, con `E2E_REAL_HUB=1` (hoy, el bloque «against the real Hub»
-de `panel/hubs-flows.spec.ts` y el de `panel/signup-language.spec.ts`). Sin la variable, esos tests salen saltados y lo dicen; con ella, los que necesitan
+de `panel/hubs-flows.spec.ts`, el de `panel/hubs-settings.spec.ts` y el de `panel/signup-language.spec.ts`). Sin la variable, esos tests salen saltados y lo dicen; con ella, los que necesitan
 el negocio «Preparando» se saltan a su vez. Así la spec corre dos veces: una sin la variable y otra con ella.
 
 El Hub sale de un worktree del Hub (`HUB_DIR`) con su BD e2e (`HUB_DB_NAME`) y escucha en el puerto `+9`, con el
 mismo `INTERNAL_SHARED_SECRET` que el SaaS y su `SAAS_URL` apuntando al panel de la pila. A su lado corre
 `manage.py run_worker --databases-only`: es quien hace la BD del negocio y avisa de que está listo; sin él el Hub
 contesta `202` y el negocio se queda «Preparando». El Hub recuerda la dirección de cada pasada aunque el SaaS borre
-sus filas (un `409` a la siguiente): una spec que repita tiene que usar un nombre nuevo o una BD del Hub nueva. El panel lleva
+sus filas (un `409` a la siguiente): una spec que repita tiene que usar un nombre nuevo o una BD del Hub nueva. Lo que una
+spec lee o cambia en el Hub lo pide con `realHubPrint(código)` de `panel/fixtures.ts` (su `manage.py shell` en `HUB_DIR`
+contra `HUB_DB_NAME`): asíncrono, para que el arranque de ese Django no bloquee Node ni el tope de la prueba (saas#354). El panel lleva
 `HUB_CALLBACK_TEMPLATE` y `HUB_ADMIN_CALLBACK_URL` hacia ese Hub. Receta para la pila `8080` (`:8082` panel, `:8089`
 Hub; Vites `5480` y `5750`), con el Hub levantado antes y parado después por su PID:
 
@@ -421,6 +423,10 @@ Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/t
   queda para los siguientes: se parchea dentro de un `with` (`mock.patch.object`, `override_settings`). Otro
   `env` (`MAILING`) es otro proceso. `warmDjango(env?)` lo arranca: la spec cuya primera llamada cae dentro
   de una prueba lo pide antes en un `beforeAll`.
+- `runSeedWarm(script, args, env)` y `seededAndSignedInWarm(script, cuenta)`: `runSeed` y `seededAndSignedIn` por
+  el Django caliente del worker (`warmDjango`, saas#352), para la siembra que va dentro de una prueba o en su
+  `beforeEach`: sin arranque de Django ni bloqueo de Node (saas#355). `localAssistant().seed` ya siembra así y
+  devuelve una promesa (`await seed(…)`).
 - **Sin recarga en caliente**: el `context` de toda spec responde él mismo al WebSocket de Vite
   (`freezeFrontend`), así que lo que otra sesión guarda a mitad de una ejecución no remonta
   componentes bajo la spec (un diálogo abierto se quedaba huérfano); cada carga de página sí trae los

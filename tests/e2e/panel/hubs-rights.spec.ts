@@ -9,21 +9,16 @@
 // pass of `reconcile_hub_states` is run as the scheduled task runs it, against this run's database. Its rows: a staff
 // account and an owner with a business on Starter (`e2e-hubs4-…@example.com`), the taxonomy every deploy seeds
 // (`seed_taxonomy`); Starter's places are put back after the test that changes them.
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import type { APIRequestContext, Page } from '@playwright/test';
 
-import type { Page } from '@playwright/test';
-
-import { djangoEnv } from '../django-env';
 import {
   captureAtEverySize,
-  djangoPrint,
-  djangoPrintAsync,
+  createAccountWarm,
+  djangoPrintWarm,
   expect,
   type HubCall,
   type HubDouble,
-  removeAccountsOf,
+  removeAccountsWarm,
   signIn,
   startHubDouble,
   test,
@@ -33,29 +28,17 @@ import { HUB_DOUBLE_PORT } from './project';
 
 const atEverySize = captureAtEverySize('APP-HUBS-4');
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const PREFIX = 'e2e-hubs4-';
 const PASSWORD = 'Harina-de-espelta-26';
 const STAFF = { email: `${PREFIX}staff@example.com`, password: PASSWORD };
-
-/** A superuser of the staff, their address proven. */
-function createStaff(): void {
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_superuser(email="${STAFF.email}", password="${PASSWORD}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-}
 
 /**
  * A business that pays Starter, created by `hubs.business.create` as the panel creates it, ready and with nothing owed
  * to the Hub: from here only what the staff change owes it a snapshot. Its id.
  */
-function businessOnStarter(): string {
-  return djangoPrint(
+async function businessOnStarter(): Promise<string> {
+  return (
+    await djangoPrintWarm(
     [
       'from django.contrib.auth import get_user_model',
       'from django.db.models import F',
@@ -70,27 +53,34 @@ function businessOnStarter(): string {
       'Hub.objects.filter(pk=created.id).update(status="active", ready_at=timezone.now(), pending_hub_call="", pushed_state_version=F("state_version"))',
       'print(created.id)',
     ].join('\n'),
+    )
   )
     .split('\n')
     .at(-1) as string;
 }
 
-/** Starter's `max_users` now. */
-function starterPlaces(): number {
-  return Number(djangoPrint('from hubs.models import Plan;print(Plan.objects.get(slug="starter").max_users)'));
+/** Starter's `max_users` now, as the plans on sale say it (`hubs.plan.list`, the Store's). */
+async function starterPlaces(request: APIRequestContext): Promise<number> {
+  const listed = await request.get('/api/plans');
+  expect(listed.status(), await listed.text()).toBe(200);
+  const { plans } = (await listed.json()) as { plans: Array<{ slug: string; max_users: number }> };
+  const starter = plans.find((plan) => plan.slug === 'starter');
+  if (!starter) throw new Error('Starter is not on sale');
+  return starter.max_users;
 }
 
 /**
  * The pass of `reconcile_hub_states` (every 15 minutes in production), with the Hub this spec plays, which answers
- * while it runs: the pass also takes whatever else the run's database owes the Hub (saas#176).
+ * while it runs: the pass also takes whatever else the run's database owes the Hub (saas#176). Run by the warm Django,
+ * its Hub only for this pass (the warm process outlives the spec).
  */
 async function nextPass(): Promise<void> {
-  await djangoPrintAsync(
+  await djangoPrintWarm(
     [
-      'from django.conf import settings',
-      `settings.HUB_INTERNAL_URL = "http://127.0.0.1:${HUB_DOUBLE_PORT}"`,
+      'from django.test import override_settings',
       'from hubs import services',
-      'services.reconcile()',
+      `with override_settings(HUB_INTERNAL_URL="http://127.0.0.1:${HUB_DOUBLE_PORT}"):`,
+      '    services.reconcile()',
     ].join('\n'),
   );
 }
@@ -103,27 +93,28 @@ function placesInLastSnapshot(hub: HubDouble, id: string): number | undefined {
   return plan?.max_users;
 }
 
-/** Whether the SaaS still owes business `id`'s Hub a snapshot: it never heard the Hub take the last one. */
-function snapshotOwed(id: string): boolean {
+/** Whether the SaaS still owes business `id`'s Hub a snapshot: it never heard the Hub take the last one (only Django knows). */
+async function snapshotOwed(id: string): Promise<boolean> {
   return (
-    djangoPrint(
+    (await djangoPrintWarm(
       `from django.db.models import F;from hubs.models import Hub;print(Hub.objects.filter(pk="${id}", pushed_state_version__lt=F("state_version")).exists())`,
-    ) === 'True'
+    )) === 'True'
   );
 }
 
 let hub: HubDouble;
 
+// Django's boots on no test's clock (saas#354): the warm Django starts here, with the spec's staff.
 test.beforeAll(async () => {
-  removeAccountsOf(PREFIX);
-  createStaff();
+  await removeAccountsWarm(PREFIX);
+  await createAccountWarm(STAFF.email, PASSWORD, { role: 'superuser' });
   // The taxonomy every deploy seeds (saas-migrate runs seed_taxonomy), as public-web.spec.ts: the same here.
-  execFileSync('uv', ['run', 'python', 'manage.py', 'seed_taxonomy'], { cwd: SAAS_DIR, env: djangoEnv(true), stdio: 'pipe' });
+  await djangoPrintWarm('from django.core.management import call_command\ncall_command("seed_taxonomy")');
   hub = await startHubDouble();
 });
 test.afterAll(async () => {
   await hub?.close();
-  removeAccountsOf(PREFIX);
+  await removeAccountsWarm(PREFIX);
 });
 
 /** What a plan's admin says in each language: its list's columns, its form's labels and the saved plan's name. */
@@ -139,7 +130,7 @@ interface PlanWords {
  * screen, which read «PRICE MONTHLY» and «Por is active» in Spanish), then the list with the notice saying who gets it.
  */
 async function raiseStarterPlaces(page: Page, words: PlanWords, key: string): Promise<number> {
-  const places = starterPlaces() + 3;
+  const places = (await starterPlaces(page.request)) + 3;
   await signIn(page.request, STAFF);
   await page.goto('/admin/hubs/plan/?q=starter');
   await page.locator('#result_list tbody th a', { hasText: /^starter$/ }).click();
@@ -192,8 +183,8 @@ for (const run of [
       page,
     }) => {
       const errors = watchPageErrors(page);
-      const before = starterPlaces();
-      const id = businessOnStarter();
+      const before = await starterPlaces(page.request);
+      const id = await businessOnStarter();
       try {
         const places = await raiseStarterPlaces(page, run.plan, `HUBS-G101${run.suffix}`);
         expect(placesInLastSnapshot(hub, id), 'nothing leaves before the pass').toBeUndefined();
@@ -203,9 +194,9 @@ for (const run of [
         await expect.poll(() => placesInLastSnapshot(hub, id)).toBe(places);
         // The Hub answered during the pass (saas#176): a double that cannot answer leaves the snapshot owed, and each
         // call of the pass waits out its timeout (80 queued revocations held the pass ~6 minutes).
-        expect(snapshotOwed(id), 'the SaaS heard the Hub take the snapshot').toBe(false);
+        expect(await snapshotOwed(id), 'the SaaS heard the Hub take the snapshot').toBe(false);
       } finally {
-        djangoPrint(`from hubs.models import Plan;Plan.objects.filter(slug="starter").update(max_users=${before})`);
+        await djangoPrintWarm(`from hubs.models import Plan;Plan.objects.filter(slug="starter").update(max_users=${before})`);
       }
       expect(errors).toEqual([]);
     });

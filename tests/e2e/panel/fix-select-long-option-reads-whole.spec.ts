@@ -3,11 +3,27 @@
 // tests/e2e/fix-ui-select-long-option-reads-whole.spec.ts; this says it reaches the panel, on the time zones of a
 // business's settings at 320, where the longest names need their second line: each label against its own box, never a capture.
 // flow: HUBS-F15
-import { apiPost, djangoPrint, expect, panelAccount, seedPanel, settled, shot, signIn, test, watchPageErrors } from './fixtures';
+import {
+  apiPost,
+  expect,
+  internalSecret,
+  panelAccount,
+  reportBusinessReady,
+  seedPanel,
+  settled,
+  shot,
+  signIn,
+  test,
+  watchPageErrors,
+} from './fixtures';
 
 const NAME = 'Zonas Largas E2E';
 
-test.beforeAll(() => seedPanel());
+test.beforeAll(async () => {
+  seedPanel();
+  // The Hub's callback signs with it: read here, so that its Django boot is on no test's clock (saas#346).
+  await internalSecret();
+});
 test.afterAll(() => seedPanel('clear'));
 
 test('HUBS-F15: every time zone reads whole in its list at 320x568', async ({ page }) => {
@@ -17,14 +33,8 @@ test('HUBS-F15: every time zone reads whole in its list at 320x568', async ({ pa
   const created = await apiPost(page.request, '/api/hubs/businesses', { name: NAME, country: 'ES' });
   expect(created.status(), 'POST /api/hubs/businesses').toBe(201);
   const { id } = (await created.json()) as { id: string };
-  // Ready, as the Hub's callback leaves it (here no Hub answers).
-  djangoPrint(
-    [
-      'from django.utils import timezone',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(pk="${id}").update(status="active", ready_at=timezone.now())`,
-    ].join('\n'),
-  );
+  // Ready by the Hub's own callback, signed (here no Hub answers): no Python inside the test (saas#355).
+  await reportBusinessReady(page.request, id);
   await page.goto(`/dashboard/businesses/${id}/settings`);
   await page.getByTestId('settings-timezone').click();
   await expect(page.locator('ion-select-popover ion-radio').first()).toBeVisible();

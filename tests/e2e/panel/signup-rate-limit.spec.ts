@@ -4,7 +4,7 @@
 // 10 sign-ups an hour per address the eleventh «Create account» of a run got «Too many attempts» (429). Production
 // and the dev server keep the 10 (config/tests/test_production_settings.py). Accounts of this spec:
 // `e2e-signup-limit-<n>-<time>@example.com`, removed before and after.
-import { djangoPrint, expect, settled, shot, sidewaysScroll, submitSignInForm, test, VIEWPORTS, watchPageErrors } from './fixtures';
+import { djangoPrintWarm, expect, settled, shot, sidewaysScroll, submitSignInForm, test, VIEWPORTS, watchPageErrors } from './fixtures';
 
 /** allauth.headless's sign-up for the browser client: what the launcher's «Create account» posts. */
 const SIGN_UP_API = '/_allauth/browser/v1/auth/signup';
@@ -14,10 +14,11 @@ const PASSWORD = 'Signup-e2e-2026!';
 
 const ACCOUNTS = 'get_user_model().objects.filter(email__startswith="e2e-signup-limit-", email__endswith="@example.com")';
 
-function removeAccounts(): void {
-  djangoPrint(['from django.contrib.auth import get_user_model', `${ACCOUNTS}.delete()`].join('\n'));
+async function removeAccounts(): Promise<void> {
+  await djangoPrintWarm(['from django.contrib.auth import get_user_model', `${ACCOUNTS}.delete()`].join('\n'));
 }
 
+// The first call boots this worker's warm Django: here, on no test's clock.
 test.beforeAll(removeAccounts);
 test.afterAll(removeAccounts);
 
@@ -61,7 +62,7 @@ test('more than ten «Create account» from one address in a run: the eleventh s
   }
 
   expect(
-    djangoPrint(['from django.contrib.auth import get_user_model', `print(${ACCOUNTS}.filter(email__contains="-${run}@").count())`].join('\n')),
+    await djangoPrintWarm(['from django.contrib.auth import get_user_model', `print(${ACCOUNTS}.filter(email__contains="-${run}@").count())`].join('\n')),
   ).toBe(String(SIGN_UPS_AN_HOUR + 1));
   expect(errors).toEqual([]);
 });
