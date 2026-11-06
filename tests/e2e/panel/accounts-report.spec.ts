@@ -5,17 +5,13 @@
 import { readMails } from '@erplora/ui/testing/mail';
 import { type Page } from '@playwright/test';
 
-import { djangoPrint, expect, settled, shot, sidewaysScroll, signIn, test, waitForMail, watchPageErrors } from './fixtures';
+import { captureAtEverySize, djangoPrint, expect, settled, signIn, test, waitForMail, watchPageErrors } from './fixtures';
 import { PANEL_MAIL_DIR } from './project';
 
 const PREFIX = 'e2e-acc4r-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
 const BUSINESS = 'e2e-acc4r-bar';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-4');
 
 function removeAccounts(): void {
   djangoPrint(
@@ -56,18 +52,6 @@ async function openUserMenu(page: Page): Promise<void> {
   }
   await trigger.click();
   await expect(page.getByTestId('user-menu-report')).toBeVisible();
-}
-
-/** Each size: the page as `ready` leaves it, no sideways scroll, and its shot. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-ACCOUNTS-4-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
 }
 
 test.beforeAll(() => removeAccounts());
