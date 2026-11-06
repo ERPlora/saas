@@ -15,6 +15,8 @@ import {
   expect,
   MAIL_LOGO_URL,
   MAILING,
+  type MailParts,
+  mailPartsOf,
   onlyTheMailLogo,
   removeAccountsWarm,
   settled,
@@ -22,7 +24,7 @@ import {
   test,
   warmDjango,
 } from './fixtures';
-import { PANEL_MAIL_DIR, PANEL_URL } from './project';
+import { PANEL_URL } from './project';
 
 const atEverySize = captureAtEverySize('APP-ACCOUNTS-5-ACCOUNTS-F46');
 
@@ -32,34 +34,6 @@ const PASSWORD = 'Centeno-y-masa-madre-26';
 /** What `code` prints, run by the SaaS's Django with the panel's mail backend: what it sends lands in the folder. */
 const djangoMailing = (code: string) => djangoPrintWarm(code, MAILING);
 
-interface ReadMail {
-  type: string;
-  parts: string[];
-  html: string;
-  text: string;
-}
-
-/**
- * The newest mail to `to` written from `since` on whose subject has `subject`, read from its file as a mail
- * client reads it (Python's `email`): its type, the types of its parts, its HTML and its text.
- */
-async function mailOf(to: string, since: number, subject: string): Promise<ReadMail> {
-  const read = [
-    'import email, json, pathlib',
-    'from email import policy',
-    `folder, to, since, subject = pathlib.Path(${JSON.stringify(PANEL_MAIL_DIR)}), ${JSON.stringify(to)}, ${since / 1000 - 0.05}, ${JSON.stringify(subject)}`,
-    'found = None',
-    'for path in sorted((p for p in folder.iterdir() if p.is_file() and p.stat().st_mtime >= since), key=lambda p: p.stat().st_mtime):',
-    '    for raw in path.read_text().split("\\n" + "-" * 79 + "\\n")[:-1]:',
-    '        message = email.message_from_string(raw, policy=policy.default)',
-    '        if to in str(message["To"]) and subject.lower() in str(message["Subject"]).lower():',
-    '            found = message',
-    'assert found is not None, f"no mail to {to} with {subject!r} in {folder}"',
-    'print(json.dumps({"type": found.get_content_type(), "parts": [part.get_content_type() for part in found.iter_parts()],',
-    '    "html": found.get_body(preferencelist=("html",)).get_content(), "text": found.get_body(preferencelist=("plain",)).get_content()}))',
-  ].join('\n');
-  return JSON.parse(await djangoPrintWarm(read)) as ReadMail;
-}
 
 const removeAccounts = () => removeAccountsWarm(PREFIX);
 
@@ -67,7 +41,7 @@ const removeAccounts = () => removeAccountsWarm(PREFIX);
 const createAccount = (email: string, language: 'en' | 'es') => createAccountWarm(email, PASSWORD, { language });
 
 /** The HTML part of `mail` at every size (`captureAtEverySize`): branded, every line of its text there, its shot. */
-async function paint(page: Page, key: string, mail: ReadMail, language: string): Promise<void> {
+async function paint(page: Page, key: string, mail: MailParts, language: string): Promise<void> {
   expect(mail.type, `${key} is text and HTML`).toBe('multipart/alternative');
   expect(mail.parts, `${key} parts`).toEqual(['text/plain', 'text/html']);
   const fetched = await onlyTheMailLogo(page);
@@ -101,7 +75,7 @@ test.describe('ACCOUNTS-F46 the mails of erplora.com, branded, as text and as HT
     // The running panel mails the code of a real sign-in; signIn reads it from the text part, as every spec does.
     await signIn(context.request, ana);
     await context.close();
-    const signInCode = await mailOf(ana.email, since, 'sign-in code');
+    const signInCode = await mailPartsOf(ana.email, since, 'sign-in code');
 
     const owner = `${PREFIX}owner@example.com`;
     await djangoMailing(
@@ -119,8 +93,8 @@ test.describe('ACCOUNTS-F46 the mails of erplora.com, branded, as text and as HT
         `fiscal._tell_the_business(grant, SimpleNamespace(language="es", email="${owner}"))`,
       ].join('\n'),
     );
-    const charge = await mailOf(owner, since, 'No hemos podido cobrar');
-    const fiscal = await mailOf(owner, since, 'devuelto la autorización');
+    const charge = await mailPartsOf(owner, since, 'No hemos podido cobrar');
+    const fiscal = await mailPartsOf(owner, since, 'devuelto la autorización');
 
     const page = await browser.newPage();
     await paint(page, 'sign-in-code', signInCode, 'en');

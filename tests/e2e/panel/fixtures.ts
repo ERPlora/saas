@@ -987,3 +987,33 @@ export async function createAccountWarm(email: string, password: string, options
 export async function removeAccountsWarm(prefix: string): Promise<void> {
   await djangoPrintWarm(removingAccountsOf(prefix));
 }
+
+/** A mail as a mail client reads it (Python's `email`): its type, the types of its parts, its HTML and its text. */
+export interface MailParts {
+  type: string;
+  parts: string[];
+  html: string;
+  text: string;
+}
+
+/**
+ * The newest mail to `to` written in the panel's mail folder from `since` on whose subject has `subject`, read from its
+ * file as a mail client reads it, by the warm Django's Python (what the person sees, painted with `setContent`).
+ */
+export async function mailPartsOf(to: string, since: number, subject: string): Promise<MailParts> {
+  const read = [
+    'import email, json, pathlib',
+    'from email import policy',
+    `folder, to, since, subject = pathlib.Path(${JSON.stringify(PANEL_MAIL_DIR)}), ${JSON.stringify(to)}, ${since / 1000 - 0.05}, ${JSON.stringify(subject)}`,
+    'found = None',
+    'for path in sorted((p for p in folder.iterdir() if p.is_file() and p.stat().st_mtime >= since), key=lambda p: p.stat().st_mtime):',
+    '    for raw in path.read_text().split("\\n" + "-" * 79 + "\\n")[:-1]:',
+    '        message = email.message_from_string(raw, policy=policy.default)',
+    '        if to in str(message["To"]) and subject.lower() in str(message["Subject"]).lower():',
+    '            found = message',
+    'assert found is not None, f"no mail to {to} with {subject!r} in {folder}"',
+    'print(json.dumps({"type": found.get_content_type(), "parts": [part.get_content_type() for part in found.iter_parts()],',
+    '    "html": found.get_body(preferencelist=("html",)).get_content(), "text": found.get_body(preferencelist=("plain",)).get_content()}))',
+  ].join('\n');
+  return JSON.parse(await djangoPrintWarm(read)) as MailParts;
+}

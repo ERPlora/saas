@@ -13,6 +13,7 @@ import { type APIRequestContext, type Browser, type Page } from '@playwright/tes
 import {
   captureAtEverySize,
   createAccountWarm,
+  type Credentials,
   expect,
   removeAccountsWarm,
   sessionOf,
@@ -126,6 +127,15 @@ async function setUpTheApp(page: Page, used: Set<string>): Promise<string> {
   return secret;
 }
 
+/** A fresh account of this spec (`name`) signed in on `page`, with the authenticator app set up: it, its key and the codes given. */
+async function accountWithTheApp(page: Page, name: string): Promise<{ account: Credentials; secret: string; used: Set<string> }> {
+  const account = await createAccount(address(name));
+  const used = new Set<string>();
+  await signIn(page.request, account);
+  await page.goto('/2fa');
+  return { account, secret: await setUpTheApp(page, used), used };
+}
+
 async function newContextOn(browser: Browser, baseURL: string) {
   return browser.newContext({ baseURL, locale: 'en-US' });
 }
@@ -190,11 +200,7 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
     browser,
   }) => {
     const errors = watchPageErrors(page);
-    const account = await createAccount(address('trust'));
-    const used = new Set<string>();
-    await signIn(page.request, account);
-    await page.goto('/2fa');
-    const secret = await setUpTheApp(page, used);
+    const { account, secret, used } = await accountWithTheApp(page, 'trust');
     await signOut(page.request);
 
     await page.goto('/launch');
@@ -240,11 +246,7 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
     page,
   }) => {
     const errors = watchPageErrors(page);
-    const account = await createAccount(address('forget'));
-    const used = new Set<string>();
-    await signIn(page.request, account);
-    await page.goto('/2fa');
-    const secret = await setUpTheApp(page, used);
+    const { account, secret, used } = await accountWithTheApp(page, 'forget');
     await signOut(page.request);
     await signInWithTheApp(page, account, secret, used, { trust: true });
 
@@ -273,11 +275,7 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
     page,
   }) => {
     const errors = watchPageErrors(page);
-    const account = await createAccount(address('off'));
-    const used = new Set<string>();
-    await signIn(page.request, account);
-    await page.goto('/2fa');
-    await setUpTheApp(page, used);
+    const { account } = await accountWithTheApp(page, 'off');
     const first = (await page.getByTestId('codes-list').textContent())?.trim();
     await page.getByTestId('codes-generate').click();
     await expect(page.getByTestId('regenerate-lead')).toHaveText('This replaces your 10 unused codes.');
