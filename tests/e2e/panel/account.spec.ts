@@ -303,6 +303,8 @@ async function askReauthOverNewKey(page: Page): Promise<void> {
       }),
   );
   await page.getByTestId('new-key-submit').click();
+  // A dialog that never opens fails here, naming it, instead of at the spec's timeout waiting for its event.
+  await expect(page.getByTestId('reauth-modal')).toBeVisible();
   await presented;
 }
 
@@ -378,10 +380,7 @@ test('an API key asks «Confirm it’s you», opens the API once and is refused 
   await ageSignIn(page.request);
   await page.goto('/dashboard/account/api-keys');
   await expect(page.getByTestId('api-keys-empty')).toBeVisible();
-  await page.getByTestId('api-keys-empty-new').click();
-  await page.getByTestId('new-key-name').locator('input').fill('Gestoría Martínez');
-  await page.getByTestId('new-key-scope-hubs.read').click();
-  await page.getByTestId('new-key-submit').click();
+  await askReauthOverNewKey(page);
   // The sign-in is older than 5 minutes: the password again.
   await expect(page.getByTestId('reauth-modal')).toContainText("Confirm it's you");
   await page.screenshot({ path: join(SHOTS_DIR, 'account-api-keys-reauth-1280-light.png') });
