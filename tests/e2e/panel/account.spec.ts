@@ -284,6 +284,28 @@ test('the password changes with the current one, and only the new one signs in a
   expect(errors).toEqual([]);
 });
 
+/**
+ * On «API keys» with a sign-in older than allauth's window (`ageSignIn`): fills «New key» and creates it, and waits for
+ * «Confirm it's you» to be in place over it (its sheet slides in after its text is there: a capture waits for it).
+ */
+async function askReauthOverNewKey(page: Page): Promise<void> {
+  await page.getByTestId('api-keys-empty-new').click();
+  await page.getByTestId('new-key-name').locator('input').fill('Gestoría Martínez');
+  await page.getByTestId('new-key-scope-hubs.read').click();
+  const presented = page.evaluate(
+    () =>
+      new Promise<void>((done) => {
+        document.addEventListener('ionModalDidPresent', function seen(event) {
+          if ((event.target as HTMLElement).dataset.testid !== 'reauth-modal') return;
+          document.removeEventListener('ionModalDidPresent', seen);
+          done();
+        });
+      }),
+  );
+  await page.getByTestId('new-key-submit').click();
+  await presented;
+}
+
 test('ACCOUNTS-F31 · «New key» with an old sign-in asks «Confirm it’s you» in a dialog and the page stays, at 390, 834 and 1440 px', async ({
   page,
 }) => {
@@ -295,24 +317,9 @@ test('ACCOUNTS-F31 · «New key» with an old sign-in asks «Confirm it’s you�
     await ageSignIn(page.request);
     await page.setViewportSize(size);
     await page.goto('/dashboard/account/api-keys');
-    await page.getByTestId('api-keys-empty-new').click();
-    await page.getByTestId('new-key-name').locator('input').fill('Gestoría Martínez');
-    await page.getByTestId('new-key-scope-hubs.read').click();
     // A mark on this page's window: a reload would take it away.
     await page.evaluate(() => Object.assign(window, { reauthE2ePage: 'same' }));
-    // The capture waits for the dialog to be in place: its sheet slides in after its text is there.
-    const presented = page.evaluate(
-      () =>
-        new Promise<void>((done) => {
-          document.addEventListener('ionModalDidPresent', function seen(event) {
-            if ((event.target as HTMLElement).dataset.testid !== 'reauth-modal') return;
-            document.removeEventListener('ionModalDidPresent', seen);
-            done();
-          });
-        }),
-    );
-    await page.getByTestId('new-key-submit').click();
-    await presented;
+    await askReauthOverNewKey(page);
     await expect(page.getByTestId('reauth-modal')).toContainText("Confirm it's you");
     expect(await page.evaluate(() => (window as { reauthE2ePage?: string }).reauthE2ePage), `reloaded at ${size.width}`).toBe(
       'same',
@@ -346,21 +353,7 @@ test('ACCOUNTS-F31 · «Confirm it’s you» over «New key» dims it and keeps 
       await page.setViewportSize(size);
       await page.goto('/dashboard/account/api-keys');
       await expect(page.locator('html')).toHaveClass(scheme === 'dark' ? /ion-palette-dark/ : /^(?!.*ion-palette-dark)/);
-      await page.getByTestId('api-keys-empty-new').click();
-      await page.getByTestId('new-key-name').locator('input').fill('Gestoría Martínez');
-      await page.getByTestId('new-key-scope-hubs.read').click();
-      const presented = page.evaluate(
-        () =>
-          new Promise<void>((done) => {
-            document.addEventListener('ionModalDidPresent', function seen(event) {
-              if ((event.target as HTMLElement).dataset.testid !== 'reauth-modal') return;
-              document.removeEventListener('ionModalDidPresent', seen);
-              done();
-            });
-          }),
-      );
-      await page.getByTestId('new-key-submit').click();
-      await presented;
+      await askReauthOverNewKey(page);
       // Over «New key», still open behind it.
       await expect(page.getByTestId('new-key')).toHaveClass(/show-modal/);
       const look = await page.getByTestId('reauth-modal').evaluate((modal) => {
