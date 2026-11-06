@@ -40,7 +40,7 @@ import {
   renderProbeReport,
 } from '../assistant-probes';
 import { AssistantChat, forgetRealAssistant, type RealSeed, seedRealAssistant, TURN_MS, uvRun } from './assistant-chat';
-import { apiPost, djangoPrint, expect, signIn, test } from './fixtures';
+import { apiPost, djangoPrintWarm, expect, signIn, test } from './fixtures';
 import { PANEL_URL } from './project';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -89,8 +89,8 @@ function seed(): Seeded {
 }
 
 /** What every turn offers (`base.assistant.ALWAYS`): a read may run them before its own tool. */
-const alwaysOffered = (): string[] =>
-  JSON.parse(djangoPrint('import json\nfrom base.assistant import ALWAYS\nprint(json.dumps(list(ALWAYS)))')) as string[];
+const alwaysOffered = async (): Promise<string[]> =>
+  JSON.parse(await djangoPrintWarm('import json\nfrom base.assistant import ALWAYS\nprint(json.dumps(list(ALWAYS)))')) as string[];
 
 /** The catalogue the panel offers the account on `surface` in `language` (`manage.py export_assistant_catalog`). */
 function catalog(language: string, surface: string): CatalogTool[] {
@@ -139,12 +139,13 @@ function record(result: ProbeResult): void {
   writeReport();
 }
 
-/** How many outbox events there are: what a probe recorded comes after. */
-const outboxMark = (): number => Number(djangoPrint('from live.models import OutboxEvent\nprint(OutboxEvent.objects.count())'));
+/** How many outbox events there are: what a probe recorded comes after. Asked of the warm Django: no boot in a probe. */
+const outboxMark = async (): Promise<number> =>
+  Number(await djangoPrintWarm('from live.models import OutboxEvent\nprint(OutboxEvent.objects.count())'));
 
 /** The outbox events recorded after `mark`, but the assistant's own (each turn records its message and usage). */
-function outboxSince(mark: number): string[] {
-  const names = djangoPrint(
+async function outboxSince(mark: number): Promise<string[]> {
+  const names = await djangoPrintWarm(
     [
       'import json',
       'from live.models import OutboxEvent',
@@ -172,7 +173,7 @@ async function placeFor(probe: Probe): Promise<void> {
 async function keepMessages(): Promise<void> {
   const { used, limit } = await chat.usage();
   if (used === null || limit === null || used < limit) return;
-  djangoPrint(
+  await djangoPrintWarm(
     `from assistant.models import AssistantUsage\nAssistantUsage.objects.filter(user__email=${JSON.stringify(OWNER.email)}).delete()`,
   );
   resets += 1;
@@ -183,7 +184,7 @@ async function ask(probe: Probe): Promise<ProbeObserved> {
   await placeFor(probe);
   await keepMessages();
   await chat.newConversation();
-  const mark = outboxMark();
+  const mark = await outboxMark();
   await chat.send(probe.phrase);
   await chat.settle(probe.id, async (card) => {
     await page.screenshot({ path: fileOf(probe, '-card.png') });
@@ -198,7 +199,7 @@ async function ask(probe: Probe): Promise<ProbeObserved> {
     notices: shown.notices,
     failures: shown.failures,
     turns: await chat.turns(),
-    events: outboxSince(mark),
+    events: await outboxSince(mark),
     screenshot: relative(SAAS_DIR, screenshot),
   };
 }
@@ -207,7 +208,11 @@ test.beforeAll(async ({ browser }) => {
   test.setTimeout(900_000);
   if (!REAL) return;
   seeded = seed();
-  always = alwaysOffered();
+  // The first call boots this worker's warm Django (the probes ask it for the outbox): here, on no test's clock.
+  always = await alwaysOffered();
+  // Every catalogue a probe reads (`manage.py export_assistant_catalog`, a Django boot each): here, not in a probe.
+  for (const language of ['en', 'es']) catalog(language, 'web');
+  for (const { probe } of PROBES) catalog(probe.language, probe.surface);
   context = await browser.newContext({ baseURL: PANEL_URL, locale: 'es-ES', viewport: { width: 1440, height: 900 } });
   page = await context.newPage();
   chat = new AssistantChat(page);

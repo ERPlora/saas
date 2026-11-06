@@ -13,12 +13,12 @@ import type { Page, Request } from '@playwright/test';
 import {
   apiPost,
   businessIdOf,
-  djangoPrint,
+  djangoPrintWarm,
   expect,
   panelAccount,
   qaAccount,
   repeatedTop,
-  seededAndSignedIn,
+  seededAndSignedInWarm,
   settled,
   shot,
   sidewaysScroll,
@@ -37,7 +37,7 @@ const BILLING = qaAccount('BILLING', panelAccount('billing'));
 const WIDTHS = [390, 834, 1024, 1180, 1280, 1440] as const;
 
 // Every test starts from the same rows (some pay, edit or cancel), signed in again.
-seededAndSignedIn('billing_seed.py', BILLING);
+seededAndSignedInWarm('billing_seed.py', BILLING);
 
 /**
  * How far above the bottom of the window the toast's box ends (Ionic leaves it 10 px up). Read after `settled()`,
@@ -301,7 +301,7 @@ test.describe('billing', () => {
     expect(paid).toHaveLength(1);
     expect(paid[0].postDataJSON()).toEqual({ id: ids['E2ENORTE-0001'] });
     // Stripe charged it: the webhook numbers it (played here with the ORM) and, back in Billing, it says so.
-    djangoPrint(
+    await djangoPrintWarm(
       [
         'from django.utils import timezone',
         'from billing.models import Invoice',

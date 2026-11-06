@@ -12,10 +12,25 @@ import { dirname, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
-import type { Locator, Page } from '@playwright/test';
+import type { APIRequestContext, Locator, Page } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
-import { apiPost, businessIdOf, captureAtEverySize, djangoPrint, expect, type HubDouble, panelAccount, qaAccount, seededAndSignedIn, shot, startHubDouble, test, toast, watchPageErrors } from './fixtures';
+import {
+  apiPost,
+  businessIdOf,
+  captureAtEverySize,
+  djangoPrintWarm,
+  expect,
+  type HubDouble,
+  panelAccount,
+  qaAccount,
+  seededAndSignedInWarm,
+  shot,
+  startHubDouble,
+  test,
+  toast,
+  watchPageErrors,
+} from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -121,17 +136,29 @@ async function downgradeToStarter(stripe: StripePlayed, bakery: string): Promise
   expect(change.status, JSON.stringify(change.body)).toBe(200);
 }
 
-const held = (bakery: string): { plan: string; waiting: string | null } =>
-  JSON.parse(
-    djangoPrint(
-      `import json;from billing.models import PlanChangeSchedule as W;from hubs.models import Subscription as S;` +
-        `print(json.dumps({'plan':S.objects.get(hub_id='${bakery}').plan.slug,'waiting':(W.objects.filter(hub_id='${bakery}').values_list('plan_slug',flat=True).first())}))`,
-    ),
-  ) as { plan: string; waiting: string | null };
+/** What the Store's API (`billing.store.catalog`) says of a business's subscription: the fields read here. */
+interface StoreSubscription {
+  plan: string;
+  current_period_end: string;
+  scheduled_change: { plan: string } | null;
+}
+
+/** The subscription of `bakery` as the Store reads it: what the server holds, read without Python (saas#355). */
+async function subscriptionOf(request: APIRequestContext, bakery: string): Promise<StoreSubscription> {
+  const store = await request.get(`/api/billing/store?hub_id=${bakery}`);
+  expect(store.status(), 'GET /api/billing/store').toBe(200);
+  return ((await store.json()) as { subscription: StoreSubscription }).subscription;
+}
+
+/** The plan the business is on, and the one that waits for the end of its period (`PlanChangeSchedule`). */
+async function held(request: APIRequestContext, bakery: string): Promise<{ plan: string; waiting: string | null }> {
+  const { plan, scheduled_change: waiting } = await subscriptionOf(request, bakery);
+  return { plan, waiting: waiting?.plan ?? null };
+}
 
 /** The last day of the period, as the panel writes it in `locale` (`billing/frontend/format.ts`). */
-function periodEnd(bakery: string, locale: 'en' | 'es'): string {
-  const end = djangoPrint(`from hubs.models import Subscription as S;print(S.objects.get(hub_id='${bakery}').current_period_end.isoformat())`);
+async function periodEnd(request: APIRequestContext, bakery: string, locale: 'en' | 'es'): Promise<string> {
+  const end = (await subscriptionOf(request, bakery)).current_period_end;
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(end));
 }
 
@@ -151,18 +178,18 @@ test.describe('a downgrade waits for the end of the paid period', () => {
     await stripe.close();
     await hub.close();
   });
-  seededAndSignedIn('billing_seed.py', BILLING);
+  seededAndSignedInWarm('billing_seed.py', BILLING);
 
   test.beforeEach(async ({ page }) => {
     bakery = await businessIdOf(page.request, BAKERY);
-    djangoPrint(`from hubs.models import Plan,Subscription as S;print(S.objects.filter(hub_id='${bakery}').update(plan=Plan.objects.get(slug='standard')))`);
+    await djangoPrintWarm(`from hubs.models import Plan,Subscription as S;print(S.objects.filter(hub_id='${bakery}').update(plan=Plan.objects.get(slug='standard')))`);
     hub.calls.length = 0;
     await playStripe(page, stripe);
   });
 
   test('BILLING-F11: from Standard, the Store charges nothing today and says when Starter starts', async ({ page }) => {
     const errors = watchPageErrors(page);
-    const until = periodEnd(bakery, 'en');
+    const until = await periodEnd(page.request, bakery, 'en');
     await page.goto(`/dashboard/store/plans?business=${bakery}`);
     const standard = page.getByTestId('plan-standard');
     const starter = page.getByTestId('plan-starter');
@@ -188,15 +215,15 @@ test.describe('a downgrade waits for the end of the paid period', () => {
       await expect(starter.getByTestId('plan-note')).toHaveText(`The business moves to Starter on ${until}.`);
       await expect(starter.getByTestId('plan-change')).toHaveCount(0);
     });
-    expect(held(bakery)).toEqual({ plan: 'standard', waiting: 'starter' });
+    expect(await held(page.request, bakery)).toEqual({ plan: 'standard', waiting: 'starter' });
     expect(hub.calls.filter((call) => call.path.endsWith('/state')), 'the Hub hears nothing until it arrives').toEqual([]);
     expect(errors).toEqual([]);
   });
 
   test('BILLING-F11: from annual back to monthly, the dialog and the notice say it waits for the end of the paid year', async ({ page }) => {
     const errors = watchPageErrors(page);
-    djangoPrint(`from hubs.models import Subscription as S;print(S.objects.filter(hub_id='${bakery}').update(billing_interval='year'))`);
-    const until = periodEnd(bakery, 'en');
+    await djangoPrintWarm(`from hubs.models import Subscription as S;print(S.objects.filter(hub_id='${bakery}').update(billing_interval='year'))`);
+    const until = await periodEnd(page.request, bakery, 'en');
     await page.goto(`/dashboard/store/plans?business=${bakery}`);
 
     // The Store opens on the billing the business pays; «Monthly» shows the switch back.
@@ -210,14 +237,14 @@ test.describe('a downgrade waits for the end of the paid period', () => {
 
     await expect(toast(page, `${BAKERY} moves to Standard, billed monthly, on ${until}`)).toBeVisible();
     await expect(dialog).toBeHidden();
-    expect(held(bakery)).toEqual({ plan: 'standard', waiting: 'standard' });
+    expect(await held(page.request, bakery)).toEqual({ plan: 'standard', waiting: 'standard' });
     expect(errors).toEqual([]);
   });
 
   test('BILLING-F14: «Keep the plan» on the Store card undoes it', async ({ page }) => {
     const errors = watchPageErrors(page);
     await downgradeToStarter(stripe, bakery);
-    const until = periodEnd(bakery, 'en');
+    const until = await periodEnd(page.request, bakery, 'en');
     await page.goto(`/dashboard/store/plans?business=${bakery}`);
     const standard = page.getByTestId('plan-standard');
 
@@ -227,14 +254,14 @@ test.describe('a downgrade waits for the end of the paid period', () => {
     await expect(standard.getByTestId('plan-note')).toHaveCount(0);
     await expect(standard.getByTestId('plan-keep')).toHaveCount(0);
     await expect(page.getByTestId('plan-starter').getByTestId('plan-change')).toBeVisible();
-    expect(held(bakery)).toEqual({ plan: 'standard', waiting: null });
+    expect(await held(page.request, bakery)).toEqual({ plan: 'standard', waiting: null });
     expect(errors).toEqual([]);
   });
 
   test('BILLING-F11 and BILLING-F14: Subscriptions says the change, and «Keep the plan» on its row undoes it', async ({ page }) => {
     const errors = watchPageErrors(page);
     await downgradeToStarter(stripe, bakery);
-    const until = periodEnd(bakery, 'en');
+    const until = await periodEnd(page.request, bakery, 'en');
     await page.goto('/dashboard/billing/subscriptions');
     const row = rowOf(page, bakery);
     const lead = page.getByTestId(`subscriptions-row-${bakery}-lead`);
@@ -248,7 +275,7 @@ test.describe('a downgrade waits for the end of the paid period', () => {
     await expect(toast(page, `${BAKERY} stays on Standard`)).toBeVisible();
     await expect(row.getByTestId('subscription-scheduled')).toHaveCount(0);
     await expect(lead).toHaveText('Change plan');
-    expect(held(bakery)).toEqual({ plan: 'standard', waiting: null });
+    expect(await held(page.request, bakery)).toEqual({ plan: 'standard', waiting: null });
     expect(errors).toEqual([]);
   });
 
@@ -268,7 +295,7 @@ test.describe('a downgrade waits for the end of the paid period', () => {
       await expect(row).toContainText('Starter');
       await expect(row).not.toContainText('Standard');
     });
-    expect(held(bakery)).toEqual({ plan: 'starter', waiting: null });
+    expect(await held(page.request, bakery)).toEqual({ plan: 'starter', waiting: null });
 
     const photos = hub.calls.filter((call) => call.method === 'PUT' && call.path === `/internal/hubs/${bakery}/state`);
     expect(photos.length, 'the Hub takes the new plan').toBeGreaterThan(0);
@@ -289,7 +316,7 @@ test.describe('a downgrade waits for the end of the paid period', () => {
     const errors = watchPageErrors(page);
     await page.goto('/dashboard');
     expect((await apiPost(page.request, '/api/accounts/preferences', { language: 'es' })).status()).toBe(200);
-    const until = periodEnd(bakery, 'es');
+    const until = await periodEnd(page.request, bakery, 'es');
     await page.goto(`/dashboard/store/plans?business=${bakery}`);
     const standard = page.getByTestId('plan-standard');
     const starter = page.getByTestId('plan-starter');

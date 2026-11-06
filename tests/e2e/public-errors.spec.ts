@@ -7,10 +7,11 @@
 //     (`public.errors`, tested in base/tests/test_error_pages.py and public/tests/test_errors.py) and served to the
 //     browser under this origin, which loads its own styles: what is checked here is how it paints.
 // The screenshots stay in `.artifacts/errors/`.
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 
 import { type Page, expect, test } from '@playwright/test';
 
@@ -30,12 +31,14 @@ const LANGUAGES = [
   { code: 'es', locale: 'es-ES' },
 ] as const;
 
+const execFileAsync = promisify(execFile);
+
 /**
  * The 500 page of `side` as Django answers a view that fails, in `language`: the project's `handler500` through the
  * whole middleware (CSP nonce included), on a URLconf of its own that adds one failing route to the project's, under
- * the public web's namespace (`public`) or outside it.
+ * the public web's namespace (`public`) or outside it. A Django boot of its own, without blocking this process.
  */
-function rendered500(side: 'private' | 'public', language: string): string {
+async function rendered500(side: 'private' | 'public', language: string): Promise<string> {
   const code = [
     'import django,os;os.environ.setdefault("DJANGO_SETTINGS_MODULE","config.settings");django.setup()',
     'from django.test import Client, override_settings',
@@ -52,12 +55,12 @@ function rendered500(side: 'private' | 'public', language: string): string {
     'assert answer.status_code == 500, answer.status_code',
     'print(answer.content.decode())',
   ].join('\n');
-  return execFileSync('uv', ['run', 'python', '-c', code], {
+  const { stdout } = await execFileAsync('uv', ['run', 'python', '-c', code], {
     cwd: SAAS_DIR,
     env: { ...djangoEnv(true), DEBUG: 'False', SECRET_KEY: 'e2e-only-500-page', INTERNAL_SHARED_SECRET: 'e2e-only', FISCAL_DOCUMENTS_KEY: '2EBDB2KSnvz5lBG1RHG5ldNq34ZjWvGZ_t5r4wl5Mpw=', GOOGLE_OAUTH_CLIENT_ID: 'e2e', GOOGLE_OAUTH_CLIENT_SECRET: 'e2e' },
     encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
   });
+  return stdout;
 }
 
 async function sidewaysScroll(page: Page): Promise<number> {
@@ -97,6 +100,13 @@ for (const { code, locale } of LANGUAGES) {
   test.describe(`in ${code}`, () => {
     test.use({ locale, extraHTTPHeaders: { 'Accept-Language': locale } });
 
+    /** Its two 500 pages, rendered side by side once here: no test waits on a Django boot (saas#355). */
+    let pages: Record<'private' | 'public', string>;
+    test.beforeAll(async () => {
+      const [privatePage, publicPage] = await Promise.all([rendered500('private', code), rendered500('public', code)]);
+      pages = { private: privatePage, public: publicPage };
+    });
+
     test(`ACCOUNTS-G81 · an unknown page of the public web is its 404, with a way home (${code})`, async ({ page }) => {
       const answer = await page.goto('/pricing/no-such-plan/');
       expect(answer?.status()).toBe(404);
@@ -118,7 +128,7 @@ for (const { code, locale } of LANGUAGES) {
 
     for (const side of ['private', 'public'] as const) {
       test(`ACCOUNTS-G81 · the ${side} 500 page paints at every size (${code})`, async ({ page }) => {
-        const html = rendered500(side, code);
+        const html = pages[side];
         await page.route('**/__the-500-page__', (route) =>
           route.fulfill({ status: 500, contentType: 'text/html; charset=utf-8', body: html }),
         );

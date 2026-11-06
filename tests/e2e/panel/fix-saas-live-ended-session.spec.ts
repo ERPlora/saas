@@ -10,7 +10,7 @@
 // removed before and after.
 import { type Browser, type Page } from '@playwright/test';
 
-import { VIEWPORTS, djangoPrint, expect, sessionOf, settled, shot, signIn, test, watchPageErrors } from './fixtures';
+import { VIEWPORTS, djangoPrintWarm, expect, sessionOf, settled, shot, signIn, test, watchPageErrors } from './fixtures';
 import { PANEL_URL } from './project';
 
 const PREFIX = 'e2e-liveend-';
@@ -21,8 +21,8 @@ const NEW_PASSWORD = 'Pan-de-espelta-y-sal-2026';
 /** Account → Security, left for the sign-in that brings it back there. */
 const LEFT_FOR_SIGN_IN = /\/launch\?next=(%2F|\/)dashboard(%2F|\/)account(%2F|\/)security$/;
 
-function removeAccounts(): void {
-  djangoPrint(
+async function removeAccounts(): Promise<void> {
+  await djangoPrintWarm(
     [
       'from django.contrib.auth import get_user_model',
       `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
@@ -30,10 +30,10 @@ function removeAccounts(): void {
   );
 }
 
-/** An account with its address proven, as one that signed in before. */
-function createAccount(name: string): { email: string; password: string } {
+/** An account with its address proven, as one that signed in before (by the warm Django: no boot inside the test). */
+async function createAccount(name: string): Promise<{ email: string; password: string }> {
   const email = `${PREFIX}${name}-${Date.now()}@example.com`;
-  djangoPrint(
+  await djangoPrintWarm(
     [
       'from allauth.account.models import EmailAddress',
       'from django.contrib.auth import get_user_model',
@@ -48,6 +48,7 @@ async function newContextOn(browser: Browser, baseURL: string) {
   return browser.newContext({ baseURL, locale: 'en-US' });
 }
 
+// The first call boots this worker's warm Django: here, on no test's clock.
 test.beforeAll(removeAccounts);
 test.afterAll(removeAccounts);
 
@@ -57,7 +58,7 @@ for (const size of VIEWPORTS) {
     browser,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(String(size.width));
+    const account = await createAccount(String(size.width));
     await page.setViewportSize(size);
     await signIn(page.request, account);
     const other = await newContextOn(browser, PANEL_URL);
@@ -113,7 +114,7 @@ for (const size of VIEWPORTS) {
     browser,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(`${size.width}-signout`);
+    const account = await createAccount(`${size.width}-signout`);
     await page.setViewportSize(size);
     await signIn(page.request, account);
     const other = await newContextOn(browser, PANEL_URL);
@@ -153,7 +154,7 @@ for (const size of VIEWPORTS) {
     browser,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(`${size.width}-password`);
+    const account = await createAccount(`${size.width}-password`);
     await page.setViewportSize(size);
     await signIn(page.request, account);
     const other = await newContextOn(browser, PANEL_URL);
@@ -205,7 +206,7 @@ for (const size of VIEWPORTS) {
       page,
     }) => {
       const errors = watchPageErrors(page);
-      const account = createAccount(`${size.width}-${target.name}`);
+      const account = await createAccount(`${size.width}-${target.name}`);
       await page.setViewportSize(size);
       await signIn(page.request, account);
       await page.goto(target.path);
@@ -234,7 +235,7 @@ for (const size of VIEWPORTS) {
     browser,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(`${size.width}-close-others`);
+    const account = await createAccount(`${size.width}-close-others`);
     const [businesses, profile] = PAGES;
     await page.setViewportSize(size);
     await signIn(page.request, account);

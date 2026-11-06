@@ -10,7 +10,7 @@
 import { type Page } from '@playwright/test';
 
 import {
-  djangoPrint,
+  djangoPrintWarm,
   expect,
   sessionOf,
   settled,
@@ -29,8 +29,8 @@ import {
 const RESET = { email: 'e2e-reset@example.com', password: 'e2e-panel' };
 const NEW_PASSWORD = 'Reset-e2e-2026!';
 
-function removeAccounts(): void {
-  djangoPrint(
+async function removeAccounts(): Promise<void> {
+  await djangoPrintWarm(
     [
       'from django.contrib.auth import get_user_model',
       'users = get_user_model().objects',
@@ -41,8 +41,8 @@ function removeAccounts(): void {
 }
 
 /** `RESET` with its address verified, as an account that already signed in once. */
-function createResetAccount(): void {
-  djangoPrint(
+async function createResetAccount(): Promise<void> {
+  await djangoPrintWarm(
     [
       'from allauth.account.models import EmailAddress',
       'from django.contrib.auth import get_user_model',
@@ -68,6 +68,7 @@ async function atEveryViewport(page: Page, name: string): Promise<void> {
   if (size) await page.setViewportSize(size);
 }
 
+// The first call boots this worker's warm Django: here, on no test's clock.
 test.beforeAll(removeAccounts);
 test.afterAll(removeAccounts);
 
@@ -82,7 +83,7 @@ test('«Sign in» with an unknown address creates nothing: the error of a wrong 
   await expect(page.getByTestId('login-password')).toContainText('The email address and/or password you specified are not correct.');
   await expect(page.getByTestId('login-error-signup')).toHaveText('First time here? Create your account');
   await expect(page).toHaveURL(/\/launch\?next=\/account$/);
-  expect(hasAccount(email)).toBe(false);
+  expect(await hasAccount(email)).toBe(false);
 
   await page.getByTestId('login-error-signup').getByRole('button').click();
   await expect(page).toHaveURL(/\/launch\?next=(%2F|\/)account&tab=signup$/);
@@ -91,15 +92,12 @@ test('«Sign in» with an unknown address creates nothing: the error of a wrong 
   expect(errors).toEqual([]);
 });
 
-/** Whether an account holds `email` (the SaaS's side: no page shows it to a visitor). */
-function hasAccount(email: string): boolean {
-  return (
-    djangoPrint(
-      ['from django.contrib.auth import get_user_model', `print(get_user_model().objects.filter(email__iexact="${email}").exists())`].join(
-        '\n',
-      ),
-    ) === 'True'
+/** Whether an account holds `email` (the SaaS's side: no page shows it to a visitor), asked of the warm Django. */
+async function hasAccount(email: string): Promise<boolean> {
+  const exists = await djangoPrintWarm(
+    ['from django.contrib.auth import get_user_model', `print(get_user_model().objects.filter(email__iexact="${email}").exists())`].join('\n'),
   );
+  return exists === 'True';
 }
 
 /** The launcher's «Create account» tab, from its default «Sign in». */
@@ -175,7 +173,7 @@ test('a mistyped address is left with «Use a different email»: the right accou
 
 test('«Forgot your password?»: the mailed link sets a new password, and the account signs in with it', async ({ page }) => {
   const errors = watchPageErrors(page);
-  createResetAccount();
+  await createResetAccount();
 
   await page.goto('/launch');
   await page.getByTestId('login-forgot').click();

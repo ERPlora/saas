@@ -11,7 +11,7 @@ import { type Browser, type Page } from '@playwright/test';
 import {
   apiPost,
   businessIdOf,
-  djangoPrint,
+  djangoPrintWarm,
   expect,
   freezeFrontend,
   type HubCall,
@@ -26,6 +26,7 @@ import {
   test,
   waitForMail,
   waitForPasswordResetLink,
+  warmDjango,
   watchPageErrors,
 } from './fixtures';
 import { PANEL_URL } from './project';
@@ -147,7 +148,8 @@ test.describe('members', () => {
 
   test.beforeAll(async () => {
     seedPanel();
-    hub = await startHubDouble();
+    // The test asks this worker's warm Django what only the SaaS knows: its boot here, on no test's clock.
+    [hub] = await Promise.all([startHubDouble(), warmDjango()]);
   });
   test.afterAll(async () => {
     await hub?.close();
@@ -258,7 +260,7 @@ test.describe('members', () => {
 
     // The revocations queued for them in this business (L1-A2's `SessionRevocation`, once it exists):
     // there, and all delivered, since the Hub took them.
-    const queued = djangoPrint(
+    const queued = await djangoPrintWarm(
       [
         'import json',
         'from django.apps import apps',
