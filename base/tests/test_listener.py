@@ -162,6 +162,9 @@ def test_a_database_it_cannot_reach_is_logged_and_tried_again_after_a_growing_pa
     # And it does sleep it: a select nobody wakes never returns before its time; load only makes it longer.
     assert [woke for woke, _ in waits] == [False] * 4
     assert all(took >= pause for (_, took), pause in zip(waits, asked, strict=True))
+    # Yet not much longer than its cap (0.2 s): a wide margin load stays under (0.55 s at most, measured in the
+    # background QoS under load), which a sleep longer than what it asked for does not.
+    assert waits[-1][1] < 1
     assert all(record.levelno == logging.ERROR for record in caplog.records)
 
 
