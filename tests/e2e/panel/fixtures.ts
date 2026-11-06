@@ -509,6 +509,9 @@ const DJANGO_BOOT = 'import django,os;os.environ.setdefault("DJANGO_SETTINGS_MOD
  *
  * It blocks this process until `code` ends, and the Hub a spec plays (`startHubDouble`) lives in this process: code
  * that calls that Hub runs with `djangoPrintAsync`, or every call waits out its timeout unanswered (saas#176).
+ * Each call boots Django cold: about 1 s on an idle machine, 57 s and 88 s on a loaded one, and the test's timeout
+ * cannot fire until it returns (saas#346). Inside a test, read what the panel shows through its API, and what only
+ * Django knows once for the spec, in a hook.
  */
 export function djangoPrint(code: string): string {
   return execFileSync('uv', ['run', 'python', '-c', `${DJANGO_BOOT}\n${code}`], {
@@ -591,16 +594,23 @@ export async function djangoPrintAsync(code: string): Promise<string> {
   return stdout.trim();
 }
 
-/** `INTERNAL_SHARED_SECRET` of the local SaaS (`.env`), to sign what the Hub would send. */
-export function internalSecret(): string {
-  return djangoPrint('from django.conf import settings;print(settings.INTERNAL_SHARED_SECRET)');
+let secretRead: Promise<string> | undefined;
+
+/**
+ * `INTERNAL_SHARED_SECRET` of the local SaaS (`.env`), to sign what the Hub would send: read once per worker, without
+ * blocking this process. A spec that signs inside a test reads it first in a `beforeAll`, so that the Django boot of
+ * the read is on no test's clock (saas#346).
+ */
+export function internalSecret(): Promise<string> {
+  secretRead ??= djangoPrintAsync('from django.conf import settings;print(settings.INTERNAL_SHARED_SECRET)');
+  return secretRead;
 }
 
 /** The Hub's callback (`POST /internal/hubs/{id}/ready`), as it sends it: the body names the hub of the path, signed. */
 export async function reportBusinessReady(request: APIRequestContext, id: string): Promise<void> {
   const body = JSON.stringify({ id });
   const timestamp = Math.floor(Date.now() / 1000);
-  const signature = createHmac('sha256', internalSecret()).update(`${timestamp}.${body}`).digest('hex');
+  const signature = createHmac('sha256', await internalSecret()).update(`${timestamp}.${body}`).digest('hex');
   const ready = await request.post(`/internal/hubs/${id}/ready`, {
     data: body,
     headers: { 'Content-Type': 'application/json', 'X-Erplora-Timestamp': String(timestamp), 'X-Erplora-Signature': signature },
