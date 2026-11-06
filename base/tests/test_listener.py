@@ -134,22 +134,37 @@ def test_a_lost_connection_wakes_it_and_the_next_wait_listens_again(listener, ot
 
 def test_a_database_it_cannot_reach_is_logged_and_tried_again_after_a_growing_pause(caplog):
     tries: list[float] = []
+    asked: list[float] = []
 
     def unreachable():
         tries.append(time.monotonic())
         raise psycopg.OperationalError("connection refused")
 
     ear = Listener(CHANNEL, connect=unreachable, backoff=(0.05, 0.2))
+
+    def sleep(seconds):
+        # The pause it asks for, noted; the real one still runs (as test_worker wraps ``ear.wait``).
+        asked.append(seconds)
+        Listener._sleep(ear, seconds)
+
+    ear._sleep = sleep
     try:
         with caplog.at_level(logging.ERROR, logger="base.listener"):
             assert ear.start() is False
-            pauses = [timed(ear.wait, 10)[1] for _ in range(4)]
+            waits = [timed(ear.wait, 10) for _ in range(4)]
     finally:
         ear.close()
 
     assert len(tries) == 5
     assert caplog.text.count("saas.worker.listen_failed") == 5
-    assert pauses[0] < pauses[1] < pauses[2] and pauses[3] < 1
+    # The pause doubles up to its cap: what it asks for, which a loaded machine cannot change.
+    assert asked == pytest.approx([0.05, 0.1, 0.2, 0.2])
+    # And it does sleep it: a select nobody wakes never returns before its time; load only makes it longer.
+    assert [woke for woke, _ in waits] == [False] * 4
+    assert all(took >= pause for (_, took), pause in zip(waits, asked, strict=True))
+    # Yet not much longer than its cap (0.2 s): a wide margin load stays under (0.55 s at most, measured in the
+    # background QoS under load), which a sleep longer than what it asked for does not.
+    assert waits[-1][1] < 1
     assert all(record.levelno == logging.ERROR for record in caplog.records)
 
 
