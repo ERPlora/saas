@@ -15,18 +15,15 @@ import { createServer, type Server } from 'node:http';
 import { type Locator, type Page } from '@playwright/test';
 
 import {
+  captureAtEverySize,
   catalogueText,
   djangoPrint,
   expect,
   provenAccount,
   readyBusinessOn,
   removeAccountsOf,
-  settled,
-  shot,
-  sidewaysScroll,
   signIn,
   test,
-  VIEWPORTS,
   watchPageErrors,
 } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
@@ -163,20 +160,18 @@ function cutLabels(page: Page): Promise<string[]> {
   );
 }
 
+const capture = captureAtEverySize('HUBS-F17');
+
 /**
  * `ready` at each size: no sideways scroll, no label cut, and the card «Own domain» whole in a capture
  * `HUBS-F17-<screen>-<size>-<language>` (the page scrolls inside its content, so a page capture would cut it).
  */
-async function atEverySize(page: Page, screen: string, language: Language, ready: () => Promise<void>): Promise<void> {
-  for (const size of VIEWPORTS) {
-    await page.setViewportSize(size);
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${screen} scrolls sideways at ${size.width}`).toEqual([]);
-    expect(await cutLabels(page), `${screen}: a label cut at ${size.width}`).toEqual([]);
-    await card(page).screenshot({ path: shot(`HUBS-F17-${screen}-${size.width}-${language}`) });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
+function atEverySize(page: Page, screen: string, language: Language, ready: () => Promise<void>): Promise<void> {
+  return capture(page, screen, ready, {
+    of: card(page),
+    suffix: language,
+    checks: async (size) => expect(await cutLabels(page), `${screen}: a label cut at ${size.width}`).toEqual([]),
+  });
 }
 
 /** What the server keeps of the business's domain, through the panel's own API. */

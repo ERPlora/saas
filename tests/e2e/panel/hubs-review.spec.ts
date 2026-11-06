@@ -14,13 +14,11 @@ import { type Browser, type Locator, type Page } from '@playwright/test';
 
 import {
   apiPost,
+  captureAtEverySize,
   djangoPrint,
   expect,
   readyBusinessOn,
   seedPanel,
-  settled,
-  shot,
-  sidewaysScroll,
   signIn,
   signInAs,
   test,
@@ -31,11 +29,6 @@ import { PANEL_URL } from './project';
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const PREFIX = 'e2e-hubs5-';
 const PASSWORD = 'Masa-madre-y-centeno-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 const LANGUAGES = [
   { language: 'en', locale: 'en-US' },
   { language: 'es', locale: 'es-ES' },
@@ -108,29 +101,28 @@ async function cutLabels(page: Page): Promise<string[]> {
   );
 }
 
+const capture = captureAtEverySize('APP-HUBS-5');
+
 /**
  * `ready` at each size: no sideways scroll, a capture `APP-HUBS-5-<key>-<size>-<language>`, and in Spanish none of
  * `english` (the same screen's English words) on `where`; back at 1440 after.
  */
-async function atEverySize(
+function atEverySize(
   page: Page,
   key: string,
   language: Language,
   ready: () => Promise<void>,
   { where, english = [] }: { where?: Locator; english?: string[] } = {},
 ): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    expect(await cutLabels(page), `${key}: a field's label cut at ${size.name}`).toEqual([]);
-    if (language === 'es' && where) {
-      for (const text of english) await expect(where, `${key}: English left in Spanish`).not.toContainText(text);
-    }
-    await page.screenshot({ path: shot(`APP-HUBS-5-${key}-${size.name}-${language}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
+  return capture(page, key, ready, {
+    suffix: language,
+    checks: async (size) => {
+      expect(await cutLabels(page), `${key}: a field's label cut at ${size.width}`).toEqual([]);
+      if (language === 'es' && where) {
+        for (const text of english) await expect(where, `${key}: English left in Spanish`).not.toContainText(text);
+      }
+    },
+  });
 }
 
 function removeOwnRows(): void {
