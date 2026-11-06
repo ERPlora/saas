@@ -6,9 +6,9 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Window } from 'happy-dom';
+import { parse } from 'vue/compiler-sfc';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';
-import { parse } from 'vue/compiler-sfc';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
