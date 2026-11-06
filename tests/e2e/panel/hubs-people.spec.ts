@@ -17,6 +17,7 @@ import { horizontalOverflow } from '../horizontal-overflow';
 import {
   apiPost,
   captureAtEverySize,
+  createAccountWarm,
   djangoPrintWarm,
   expect,
   freezeFrontend,
@@ -60,17 +61,10 @@ interface MemberRow {
   actions: string[];
 }
 
-/** A fresh account of this spec, its address proven, called `first last` (written by the warm Django). */
+/** A fresh account of this spec, its address proven, called `first last`, in English (written by the warm Django). */
 async function account(who: string, first: string, last: string): Promise<Account> {
   const email = `${PREFIX}${who}-${Date.now()}@example.com`;
-  await djangoPrintWarm(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", language="en", first_name="${first}", last_name="${last}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
+  await createAccountWarm(email, PASSWORD, { firstName: first, lastName: last, language: 'en' });
   return { email, name: `${first} ${last}` };
 }
 
@@ -660,16 +654,8 @@ test('HUBS-G03: the staff finds the accesses of a person in the admin, read only
   const ana = await account('admin-ana', 'Ana', 'Gil');
   const id = await businessOf(page, owner, 'Bar Manolo');
   await joins(page, browser, id, ana, 'hub_manager');
-  const staff = `${PREFIX}staff-${Date.now()}@example.com`;
-  await djangoPrintWarm(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_superuser(email="${staff}", password="${PASSWORD}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-  await signInAs(page, { email: staff, password: PASSWORD });
+  const staff = await createAccountWarm(`${PREFIX}staff-${Date.now()}@example.com`, PASSWORD, { role: 'superuser' });
+  await signInAs(page, staff);
   await page.goto(`/admin/hubs/hubmember/?q=${encodeURIComponent(ana.email)}`);
   const results = page.locator('#result_list tbody tr');
   await atEverySize(page, 'HUBS-G03', async () => {
