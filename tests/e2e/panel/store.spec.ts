@@ -9,28 +9,15 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { Page, Request } from '@playwright/test';
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-import { djangoEnv } from '../django-env';
 import { overflowingBoxes } from '../horizontal-overflow';
-import { businessIdOf, expect, panelAccount, qaAccount, repeatedTop, settled, shot, signIn, test, toast, VIEWPORTS, watchPageErrors } from './fixtures';
+import { businessIdOf, expect, panelAccount, qaAccount, repeatedTop, runSeed, settled, shot, signIn, test, toast, VIEWPORTS, watchPageErrors } from './fixtures';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/l2d-shots';
 mkdirSync(SHOTS_DIR, { recursive: true });
 
-function seedStore(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/store_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
-}
-
-test.beforeAll(() => seedStore('seed'));
-test.afterAll(() => seedStore('clear'));
+test.beforeAll(() => runSeed('store_seed.py', 'seed'));
+test.afterAll(() => runSeed('store_seed.py', 'clear'));
 
 const STORE = qaAccount('STORE', panelAccount('store'));
 

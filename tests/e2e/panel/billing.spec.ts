@@ -6,12 +6,10 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 import type { Page, Request } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
 import {
   apiPost,
   businessIdOf,
@@ -20,10 +18,10 @@ import {
   panelAccount,
   qaAccount,
   repeatedTop,
+  seededAndSignedIn,
   settled,
   shot,
   sidewaysScroll,
-  signIn,
   test,
   toast,
   VIEWPORTS,
@@ -31,7 +29,6 @@ import {
 } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/l3b2-shots';
 mkdirSync(SHOTS_DIR, { recursive: true });
 
@@ -39,20 +36,8 @@ const BILLING = qaAccount('BILLING', panelAccount('billing'));
 /** The widths of the mockups' screenshots (`billing-default-<width>-<theme>.png`). */
 const WIDTHS = [390, 834, 1024, 1180, 1280, 1440] as const;
 
-function seedBilling(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/billing_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
-}
-
 // Every test starts from the same rows (some pay, edit or cancel), signed in again.
-test.beforeEach(async ({ page }) => {
-  seedBilling('seed');
-  await signIn(page.request, BILLING);
-});
-test.afterAll(() => seedBilling('clear'));
+seededAndSignedIn('billing_seed.py', BILLING);
 
 /**
  * How far above the bottom of the window the toast's box ends (Ionic leaves it 10 px up). Read after `settled()`,

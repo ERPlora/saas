@@ -10,38 +10,26 @@
 //   - S-07/S-08: the grouped notice of Businesses in Billing's order, with amounts; R-07: a deleted business is
 //     recovered from the launcher; R-13: «View the invoices» is a 44 px target on a phone.
 // Screenshots at 390, 834 and 1440 px, light and dark, go to `$SHOTS_DIR` (/tmp/panel-fix3 by default).
-import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 import type { Locator, Page } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
-import { apiPost, businessIdOf, expect, panelAccount, seedPanel, settled, signIn, signInAs, test, watchPageErrors } from './fixtures';
+import { apiPost, businessIdOf, expect, panelAccount, runSeed, seedPanel, settled, signIn, signInAs, test, watchPageErrors } from './fixtures';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/panel-fix3';
 mkdirSync(SHOTS_DIR, { recursive: true });
 
 /** WCAG 2.x AA for normal text. */
 const AA = 4.5;
 
-function seedBilling(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/billing_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
-}
-
 test.beforeAll(() => {
   seedPanel();
-  seedBilling('seed');
+  runSeed('billing_seed.py', 'seed');
 });
 test.afterAll(() => {
   seedPanel('clear');
-  seedBilling('clear');
+  runSeed('billing_seed.py', 'clear');
 });
 
 /** The page on screen (Ionic keeps the ones it left in the outlet, hidden). */
