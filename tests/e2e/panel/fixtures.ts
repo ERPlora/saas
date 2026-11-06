@@ -569,13 +569,26 @@ export async function readyBusinessOn(request: APIRequestContext, name: string, 
   return id;
 }
 
-/** The snippet that removes what a spec leaves behind: the businesses and the accounts whose email starts with `prefix`. */
+/**
+ * The snippet that removes what a spec leaves behind: the businesses and the accounts whose email starts with `prefix`,
+ * and the billing profiles they would leave ownerless (as panel_seed.py's `clear`): the accounts' own (`owner` is
+ * SET_NULL) and the ownerless ones of the businesses, after the businesses (their PROTECT). Another account's profile
+ * stays, even one that paid a business a spec's account worked in. A profile of theirs still there fails the snippet.
+ * Its own tests: config/tests/test_e2e_removing_accounts.py.
+ */
 const removingAccountsOf = (prefix: string) =>
   [
     'from django.contrib.auth import get_user_model',
-    'from hubs.models import Hub',
-    `Hub.objects.filter(members__user__email__startswith=${JSON.stringify(prefix)}).delete()`,
-    `get_user_model().objects.filter(email__startswith=${JSON.stringify(prefix)}).delete()`,
+    'from hubs.models import BillingProfile, Hub',
+    `users = get_user_model().objects.filter(email__startswith=${JSON.stringify(prefix)})`,
+    `hubs = Hub.objects.filter(members__user__email__startswith=${JSON.stringify(prefix)})`,
+    'profiles = {*hubs.filter(billing_profile__owner=None).values_list("billing_profile_id", flat=True), *BillingProfile.objects.filter(owner__in=users).values_list("pk", flat=True)} - {None}',
+    'hubs.delete()',
+    'BillingProfile.objects.filter(pk__in=profiles).delete()',
+    'users.delete()',
+    'left = BillingProfile.objects.filter(pk__in=profiles).count()',
+    'if left:',
+    '    raise RuntimeError(f"{left} billing profiles of the removed businesses and accounts left behind")',
   ].join('\n');
 
 /** What a spec leaves behind: the businesses and the accounts whose email starts with its `prefix` (`e2e-<spec>-`). */
