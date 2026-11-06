@@ -8,36 +8,10 @@
 // flow: BILLING-F33 BILLING-F34 BILLING-F35 — what the Hub then receives: billing/tests/test_module_end_reaches_the_hub.py.
 import type { Locator, Page } from '@playwright/test';
 
-import { businessIdOf, captureAtEverySize, djangoPrint, expect, panelAccount, qaAccount, seededAndSignedIn, test, toast, watchPageErrors } from './fixtures';
+import { businessIdOf, captureAtEverySize, dialogInPlace, djangoPrint, expect, panelAccount, qaAccount, seededAndSignedIn, test, toast, watchPageErrors } from './fixtures';
 
 seededAndSignedIn('billing_apps_seed.py', qaAccount('BILLING_APPS', panelAccount('billing-apps')));
 const atEverySize = captureAtEverySize('APP-BILLING-2');
-
-/**
- * A dialog that slides in again at a new size (below 640px it is a sheet from the bottom) is in place once its
- * button `testid` is whole on screen and stays put for a frame: the slide runs in Ionic's shadow DOM, where
- * `settled` does not see it, and a capture taken before shows the sheet halfway.
- */
-async function dialogInPlace(page: Page, testid: string): Promise<void> {
-  const button = page.getByTestId(testid);
-  await expect(button).toBeInViewport({ ratio: 1 });
-  await button.evaluate(
-    (element) =>
-      new Promise<void>((still) => {
-        let last = '';
-        const frame = () => {
-          const { top, left, width, height } = element.getBoundingClientRect();
-          const now = `${top},${left},${width},${height}`;
-          if (now === last) still();
-          else {
-            last = now;
-            requestAnimationFrame(frame);
-          }
-        };
-        requestAnimationFrame(frame);
-      }),
-  );
-}
 
 /** The amounts of a charge's summary in `dialog` that do not fit their row: cut off at the edge. */
 async function cutAmounts(dialog: Locator): Promise<string[]> {
@@ -132,7 +106,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
         await dialogInPlace(page, 'proration-modal-submit');
         expect(await cutAmounts(dialog)).toEqual([]);
       },
-      false,
+      { fullPage: false },
     );
     await dialog.getByTestId('proration-modal-submit').click();
     await expect(toast(page, 'E2E Apps Loyalty added to Panadería López: it turns on in a few seconds')).toBeVisible();
@@ -184,7 +158,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
         await expect(dialog).toContainText('Nothing the business wrote with it is deleted.');
         await dialogInPlace(page, 'store-cancel-module-submit');
       },
-      false,
+      { fullPage: false },
     );
     await page.getByTestId('store-cancel-module-submit').click();
     await expect(toast(page, /E2E Apps Bookings cancelled: it works until/)).toBeVisible();
@@ -306,7 +280,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
         await dialogInPlace(page, 'proration-modal-submit');
         expect(await cutAmounts(dialog)).toEqual([]);
       },
-      false,
+      { fullPage: false },
     );
     expect(errors).toEqual([]);
   });

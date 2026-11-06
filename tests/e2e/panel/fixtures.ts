@@ -2,7 +2,7 @@
 // (allauth.headless's API, or the real form of the launcher when the sign-in is what a spec checks), both
 // with the code every password sign-in mails (read from the panel's mail folder, as the person reads it),
 // the session /api/me reports, the three viewports (and a spec's walk through them, with its captures), a spec's
-// seed with its sign-in, uncaught page errors and the evidence folder.
+// seed (with its sign-in), a dialog in place after a resize, uncaught page errors and the evidence folder.
 // Import `test` and `expect` from here, not from `@playwright/test`.
 import { execFile, execFileSync } from 'node:child_process';
 import { createHmac } from 'node:crypto';
@@ -344,25 +344,77 @@ export function shot(name: string): string {
   return join(ARTIFACTS, `${name}.png`);
 }
 
-/** A spec's walk through `VIEWPORTS` (`captureAtEverySize`): `ready` at each size, the whole page captured unless `fullPage` is false. */
-export type AtEverySize = (page: Page, key: string, ready: () => Promise<void>, fullPage?: boolean) => Promise<void>;
+/** One of `VIEWPORTS`. */
+export type Viewport = (typeof VIEWPORTS)[number];
+
+/** What a spec's walk through `VIEWPORTS` (`captureAtEverySize`) adds at each size. */
+export interface EverySizeOptions {
+  /** The whole page captured (the default), or what the window shows. */
+  fullPage?: boolean;
+  /** What is captured instead of the page: a card whose page scrolls inside its content. */
+  of?: Locator;
+  /** What follows the width in the capture's name, `<prefix>-<key>-<width>-<suffix>`: the language of the run. */
+  suffix?: string;
+  /** The spec's own checks once nothing scrolls sideways, before the capture. */
+  checks?: (size: Viewport) => Promise<void>;
+  /** What undoes `ready` once the capture is taken, before the next size: the menu it opened, closed. */
+  after?: () => Promise<void>;
+}
+
+/** A spec's walk through `VIEWPORTS` (`captureAtEverySize`): `ready` at each size, then the capture. */
+export type AtEverySize = (
+  page: Page,
+  key: string,
+  ready: (size: Viewport) => Promise<void>,
+  options?: EverySizeOptions,
+) => Promise<void>;
 
 /**
  * The walk through `VIEWPORTS` of the specs whose captures start with `prefix`: at each size, `ready`; once the page
- * has settled nothing scrolls sideways (`<key> at <width>`) and a capture `<prefix>-<key>-<width>` is taken. It ends
+ * has settled nothing scrolls sideways (`<key> at <width>`), the spec's `checks` pass, and a capture
+ * `<prefix>-<key>-<width>` (or `…-<width>-<suffix>`) is taken, of the whole page or of `of`; then `after`. It ends
  * back at the desktop size.
  */
 export function captureAtEverySize(prefix: string): AtEverySize {
-  return async (page, key, ready, fullPage = true) => {
+  return async (page, key, ready, { fullPage = true, of, suffix, checks, after } = {}) => {
     for (const size of VIEWPORTS) {
       await page.setViewportSize(size);
-      await ready();
+      await ready(size);
       await settled(page);
       expect(await sidewaysScroll(page), `${key} at ${size.width}`).toEqual([]);
-      await page.screenshot({ path: shot(`${prefix}-${key}-${size.width}`), fullPage });
+      await checks?.(size);
+      const path = shot(suffix === undefined ? `${prefix}-${key}-${size.width}` : `${prefix}-${key}-${size.width}-${suffix}`);
+      await (of ? of.screenshot({ path }) : page.screenshot({ path, fullPage }));
+      await after?.();
     }
     await page.setViewportSize(VIEWPORTS[VIEWPORTS.length - 1]);
   };
+}
+
+/**
+ * A dialog that slides in again at a new size (below 640px it is a sheet from the bottom) is in place once its
+ * button `testid` is whole on screen and stays put for a frame: the slide runs in Ionic's shadow DOM, where
+ * `settled` does not see it, and a capture taken before shows the sheet halfway.
+ */
+export async function dialogInPlace(page: Page, testid: string): Promise<void> {
+  const button = page.getByTestId(testid);
+  await expect(button).toBeInViewport({ ratio: 1 });
+  await button.evaluate(
+    (element) =>
+      new Promise<void>((still) => {
+        let last = '';
+        const frame = () => {
+          const { top, left, width, height } = element.getBoundingClientRect();
+          const now = `${top},${left},${width},${height}`;
+          if (now === last) still();
+          else {
+            last = now;
+            requestAnimationFrame(frame);
+          }
+        };
+        requestAnimationFrame(frame);
+      }),
+  );
 }
 
 /**
@@ -383,13 +435,25 @@ export const qaAccount = (role: string, fallback: Credentials): Credentials => (
   password: process.env[`QA_${role}_PASSWORD`] ?? fallback.password,
 });
 
-/** `tests/e2e/panel/<script> seed|clear` (`panel_seed.py`, `billing_seed.py`…), against the run's database (DEBUG on). */
-export function runSeed(script: string, action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', `tests/e2e/panel/${script}`, action], {
+/** What a Django process needs for what it mails to land in the panel's mail folder, as the panel's server does. */
+export const MAILING: Readonly<Record<string, string>> = {
+  EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
+  EMAIL_FILE_PATH: PANEL_MAIL_DIR,
+};
+
+/**
+ * `tests/e2e/panel/<script> <args…>` (`panel_seed.py seed|clear`, `assistant_seed.py <action> <provider address>`,
+ * `whatsapp_hub_seed.py <a> <b> --used N`…), against the run's database (DEBUG on) with `env` over it (`MAILING`,
+ * another stack's database): the last line it printed, where the seeds that tell what they made print it.
+ */
+export function runSeed(script: string, args: string | readonly string[], env: Readonly<Record<string, string>> = {}): string {
+  const out = execFileSync('uv', ['run', 'python', `tests/e2e/panel/${script}`, ...[args].flat()], {
     cwd: SAAS_DIR,
-    env: djangoEnv(true),
+    env: { ...djangoEnv(true), ...env },
+    encoding: 'utf8',
     stdio: 'pipe',
   });
+  return out.trim().split('\n').at(-1) ?? '';
 }
 
 /**
