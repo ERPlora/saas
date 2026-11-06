@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { type APIRequestContext, type Page, request as playwrightRequest } from '@playwright/test';
 
 import {
-  djangoPrint,
+  djangoPrintWarm,
   expect,
   panelAccount,
   seedPanel,
@@ -22,6 +22,7 @@ import {
   toast,
   VIEWPORTS,
   waitForMail,
+  warmDjango,
   watchPageErrors,
 } from './fixtures';
 import { PANEL_URL } from './project';
@@ -30,6 +31,8 @@ const SHOTS_DIR = process.env.SHOTS_DIR ?? join(shot('account-dir'), '..', 'acco
 mkdirSync(SHOTS_DIR, { recursive: true });
 
 test.beforeAll(() => seedPanel());
+// The Django the tests ask (ageSignIn, moreSessions), booted here and not on a test's clock.
+test.beforeAll(() => warmDjango());
 test.afterAll(() => seedPanel('clear'));
 
 /** The value of an Ionic field (its native `input` inside). */
@@ -43,7 +46,7 @@ async function ageSignIn(request: APIRequestContext): Promise<void> {
   const { cookies } = await request.storageState();
   const key = cookies.find((cookie) => cookie.name === 'sessionid')?.value;
   if (!key) throw new Error('no sessionid cookie (sign in first)');
-  const aged = djangoPrint(
+  const aged = await djangoPrintWarm(
     [
       'from importlib import import_module',
       'from django.conf import settings',
@@ -174,8 +177,8 @@ test('«Close other sessions» ends the other browser here and in the businesses
 const MANY_SESSIONS = 1800;
 
 /** `count` more sessions that still sign `email` in, used a minute apart before now, as as many sign-ins elsewhere. */
-function moreSessions(email: string, count: number): number {
-  const made = djangoPrint(
+async function moreSessions(email: string, count: number): Promise<number> {
+  const made = await djangoPrintWarm(
     [
       'from datetime import timedelta',
       'from importlib import import_module',
@@ -204,7 +207,7 @@ test('with more sessions than a page, «Active sessions» loads, this one first,
   const errors = watchPageErrors(page);
   const account = panelAccount('carlos');
   await signIn(page.request, account);
-  expect(moreSessions(account.email, MANY_SESSIONS)).toBe(MANY_SESSIONS);
+  expect(await moreSessions(account.email, MANY_SESSIONS)).toBe(MANY_SESSIONS);
   const rows = page.getByTestId('sessions-row');
   const pager = page.locator('.data-table__pager');
   for (const viewport of VIEWPORTS) {
