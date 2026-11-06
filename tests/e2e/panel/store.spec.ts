@@ -58,6 +58,12 @@ const stripeState = (page: Page) =>
     return { keys: s.keys, secrets: s.secrets, mountedIn: s.mountedIn, destroyed: s.destroyed };
   });
 
+/** What `billing.checkout.start` answers for a plan on Free: the Embedded Checkout's session, played. */
+const CHECKOUT = { flow: 'checkout', session_id: 'cs_test_e2e', client_secret: 'cs_test_e2e_secret', publishable_key: 'pk_test_e2e', preview: null };
+
+/** `billing.checkout.start` answered with {@link CHECKOUT}. */
+const answerCheckout = (page: Page) => page.route('**/api/billing/checkout/start', (route) => route.fulfill({ json: CHECKOUT }));
+
 /** Every request the page makes to Stripe's origins (none is expected: the double plays Stripe.js). */
 function watchStripeRequests(page: Page): string[] {
   const seen: string[] = [];
@@ -117,12 +123,39 @@ test.describe('store', () => {
     expect(errors).toEqual([]);
   });
 
+  // saas#344 (BILLING-F09, S-04 of the shell): the notice of what was paid for sits above the business's section tabbar,
+  // as every notice of the panel does, at the three sizes of the issue. It is asked while the payment dialog closes over
+  // the business's page: where it goes is the bar of the screen on view when it shows, not of the one under the dialog.
+  test('back from paying a plan, its notice sits above the business’s section tabbar, never over it (saas#344)', async ({ page }) => {
+    const errors = watchPageErrors(page);
+    await playStripe(page);
+    const cafe = await businessIdOf(page.request, 'Café Central');
+    await answerCheckout(page);
+    const notice = toast(page, 'Café Central is now on Starter').last();
+    const tabbar = page.locator('ion-footer.section-tabbar').filter({ has: page.getByTestId('tab-summary') });
+    for (const size of [{ width: 375, height: 667 }, { width: 820, height: 1180 }, { width: 1440, height: 900 }]) {
+      await page.setViewportSize(size);
+      await page.goto(`/dashboard/store/plans?business=${cafe}`);
+      await page.getByTestId('plan-starter').getByTestId('plan-upgrade').click();
+      await expect(page.getByTestId('checkout-modal').getByTestId('stripe-double')).toBeVisible();
+      await page.evaluate(() => (window as unknown as { __stripe: { complete: () => void } }).__stripe.complete());
+      await expect(page).toHaveURL(new RegExp(`/dashboard/businesses/${cafe}/summary$`));
+      await expect(notice).toBeVisible();
+      await settled(page);
+      await page.screenshot({ path: shot(`STORE-paid-notice-${size.width}`) });
+      // Soft: every size is measured (and captured) even when one fails.
+      const wrapper = notice.locator('.toast-wrapper');
+      await expect.soft(wrapper, `the notice whole on screen at ${size.width}`).toBeInViewport({ ratio: 1 });
+      const [bar, box] = [await tabbar.boundingBox(), await wrapper.boundingBox()];
+      expect.soft(bar && box && box.y + box.height <= bar.y, `the notice's bottom above the tabbar's top at ${size.width}: ${JSON.stringify({ bar, box })}`).toBe(true);
+    }
+    expect(errors).toEqual([]);
+  });
+
   test('Stripe.js that cannot load is said in the dialog, with «Retry»: waiting for its place hides no real failure (saas#326)', async ({ page }) => {
     await page.route(/^https:\/\/js\.stripe\.com\//, (route) => route.abort());
     const cafe = await businessIdOf(page.request, 'Café Central');
-    await page.route('**/api/billing/checkout/start', (route) =>
-      route.fulfill({ json: { flow: 'checkout', session_id: 'cs_test_e2e', client_secret: 'cs_test_e2e_secret', publishable_key: 'pk_test_e2e', preview: null } }),
-    );
+    await answerCheckout(page);
     await page.goto(`/dashboard/store/plans?business=${cafe}`);
     await expect(page.getByTestId('plan-free').getByTestId('plan-current')).toBeVisible();
     await page.getByTestId('plan-starter').getByTestId('plan-upgrade').click();
