@@ -18,7 +18,7 @@ import type { Locator, Page } from '@playwright/test';
 
 import { NEW_BUSINESS } from '../assistant-provider';
 
-import { ask, localAssistant, OWNER, SIZES } from './assistant-chat';
+import { ask, DESKTOP_FIRST, localAssistant, OWNER } from './assistant-chat';
 import { expect, expectNoSidewaysScroll, settled, shot, signIn, test, waitForMail, watchPageErrors } from './fixtures';
 import { PANEL_MAIL_DIR } from './project';
 
@@ -102,7 +102,7 @@ async function docking(page: Page): Promise<{ panel: number; pushed: number }> {
  *  docked beside the screen from 768 px, over a veil on a phone, nothing scrolling sideways. Ends back at 1440. */
 async function atEachSize(page: Page, name: string, language: string, visible: Locator): Promise<void> {
   const panel = page.getByTestId('assistant-panel');
-  for (const size of SIZES) {
+  for (const size of DESKTOP_FIRST) {
     await page.setViewportSize({ width: size.width, height: size.height });
     if (size.width >= 768) {
       await expect(page.locator('html')).toHaveClass(/assistant-docked/);
@@ -116,9 +116,9 @@ async function atEachSize(page: Page, name: string, language: string, visible: L
       expect((await docking(page)).panel).toBe(size.width);
     }
     await expect(visible).toBeVisible();
-    await expectNoSidewaysScroll(page, `${size.name}: nothing scrolls sideways`);
+    await expectNoSidewaysScroll(page, `${size.width}: nothing scrolls sideways`);
     await settled(page);
-    await page.screenshot({ path: shot(`assistant-panel-${name}-${size.name}-${language}`) });
+    await page.screenshot({ path: shot(`assistant-panel-${name}-${size.width}-${language}`) });
   }
   await page.setViewportSize({ width: 1440, height: 900 });
 }

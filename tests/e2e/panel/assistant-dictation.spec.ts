@@ -9,7 +9,7 @@
 // flow: ASSISTANT-F21 — dictate to the assistant: the words land in the box, nothing is sent.
 import { DICTATION } from '../assistant-provider';
 
-import { localAssistant, openPanel, OWNER, SIZES } from './assistant-chat';
+import { DESKTOP_FIRST, localAssistant, openPanel, OWNER } from './assistant-chat';
 import { expect, expectNoSidewaysScroll, settled, shot, signIn, test, watchPageErrors } from './fixtures';
 
 /** What the person sees, in each language (the package's words, `assistant.voice.*`). */
@@ -59,13 +59,13 @@ for (const language of ['es', 'en'] as const) {
     const usage = await page.request.get('/api/assistant/usage');
     expect((await usage.json()).used).toBe(0);
 
-    for (const size of SIZES) {
+    for (const size of DESKTOP_FIRST) {
       await page.setViewportSize({ width: size.width, height: size.height });
       await expect(box).toHaveValue(DICTATION);
       await expect(mic).toBeVisible();
-      await expectNoSidewaysScroll(page, `${size.name}: nothing scrolls sideways`);
+      await expectNoSidewaysScroll(page, `${size.width}: nothing scrolls sideways`);
       await settled(page);
-      await page.screenshot({ path: shot(`assistant-dictation-${size.name}-${language}`) });
+      await page.screenshot({ path: shot(`assistant-dictation-${size.width}-${language}`) });
     }
     expect(errors).toEqual([]);
   });

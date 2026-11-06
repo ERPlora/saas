@@ -10,7 +10,7 @@
 // flow: ASSISTANT-F22 — read an answer aloud: the device's voice, and the door shut without an engine.
 import type { Locator, Page } from '@playwright/test';
 
-import { localAssistant, openPanel, SIZES } from './assistant-chat';
+import { DESKTOP_FIRST, localAssistant, openPanel } from './assistant-chat';
 import { expect, settled, shot, test, watchPageErrors } from './fixtures';
 
 /** What the person sees and hears, in each language (the package's words, `assistant.speech.*`). */
@@ -75,11 +75,11 @@ async function answerAndListen(page: Page, panel: Locator, words: (typeof WORDS)
   // Under the answer, beside «Report a problem» (outside its bubble).
   const listen = panel.getByTestId('assistant-listen').last();
   await expect(listen).toContainText(words.listen);
-  for (const size of SIZES) {
+  for (const size of DESKTOP_FIRST) {
     await page.setViewportSize({ width: size.width, height: size.height });
     await expect(listen).toBeVisible();
     await settled(page);
-    await page.screenshot({ path: shot(`${shotName}-${size.name}`) });
+    await page.screenshot({ path: shot(`${shotName}-${size.width}`) });
   }
   await page.setViewportSize({ width: 1440, height: 900 });
   return listen;
