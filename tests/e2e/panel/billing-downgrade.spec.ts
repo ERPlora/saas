@@ -15,7 +15,7 @@ import { promisify } from 'node:util';
 import type { Locator, Page } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
-import { apiPost, businessIdOf, djangoPrint, expect, type HubDouble, panelAccount, qaAccount, settled, shot, sidewaysScroll, signIn, startHubDouble, test, watchPageErrors } from './fixtures';
+import { apiPost, businessIdOf, djangoPrint, expect, type HubDouble, panelAccount, qaAccount, settled, shot, sidewaysScroll, signIn, startHubDouble, test, toast, watchPageErrors } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -84,7 +84,6 @@ function periodEnd(bakery: string, locale: 'en' | 'es'): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(end));
 }
 
-const toast = (page: Page, text: string | RegExp) => page.locator('ion-toast').filter({ hasText: text });
 const rowOf = (page: Page, bakery: string): Locator => page.locator(`[data-testid="subscriptions-row"][data-id="${bakery}"]`);
 
 /** `ready` at each size: no sideways scroll, a capture `BILLING-DOWNGRADE-<key>-<size>`; back at 1440 after. */

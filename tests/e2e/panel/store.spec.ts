@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { djangoEnv } from '../django-env';
 import { overflowingBoxes } from '../horizontal-overflow';
-import { businessIdOf, expect, panelAccount, qaAccount, repeatedTop, settled, shot, signIn, test, VIEWPORTS, watchPageErrors } from './fixtures';
+import { businessIdOf, expect, panelAccount, qaAccount, repeatedTop, settled, shot, signIn, test, toast, VIEWPORTS, watchPageErrors } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/l2d-shots';
@@ -70,8 +70,6 @@ const stripeState = (page: Page) =>
     const s = (window as unknown as { __stripe: { keys: string[]; secrets: string[]; mountedIn: string[]; destroyed: number } }).__stripe;
     return { keys: s.keys, secrets: s.secrets, mountedIn: s.mountedIn, destroyed: s.destroyed };
   });
-
-const toast = (page: Page, text: string | RegExp) => page.locator('ion-toast').filter({ hasText: text });
 
 /** Every request the page makes to Stripe's origins (none is expected: the double plays Stripe.js). */
 function watchStripeRequests(page: Page): string[] {

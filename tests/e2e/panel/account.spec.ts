@@ -19,6 +19,7 @@ import {
   signIn,
   startHubDouble,
   test,
+  toast,
   VIEWPORTS,
   waitForMail,
   watchPageErrors,
@@ -30,9 +31,6 @@ mkdirSync(SHOTS_DIR, { recursive: true });
 
 test.beforeAll(() => seedPanel());
 test.afterAll(() => seedPanel('clear'));
-
-/** A toast of the shell (`ion-toast`) saying `text`. */
-const toast = (page: Page, text: string | RegExp) => page.locator('ion-toast').filter({ hasText: text });
 
 /** The value of an Ionic field (its native `input` inside). */
 const fieldValue = (page: Page, testid: string) => page.getByTestId(testid).locator('input');

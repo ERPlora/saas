@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
-import { businessIdOf, djangoPrint, expect, panelAccount, qaAccount, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
+import { businessIdOf, djangoPrint, expect, panelAccount, qaAccount, settled, shot, sidewaysScroll, signIn, test, toast, watchPageErrors } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const BILLING = qaAccount('BILLING', panelAccount('billing'));
@@ -31,8 +31,6 @@ test.beforeEach(async ({ page }) => {
   await signIn(page.request, BILLING);
 });
 test.afterAll(() => seedBilling('clear'));
-
-const toast = (page: Page, text: string | RegExp) => page.locator('ion-toast').filter({ hasText: text });
 
 /** `ready` at each size: no sideways scroll, a capture `APP-BILLING-1-<key>-<size>`; back at 1440 after. */
 async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
