@@ -6,7 +6,7 @@ import logging
 
 import pytest
 from django.conf import settings
-from django.db import OperationalError, connection
+from django.db import DEFAULT_DB_ALIAS, OperationalError, connection, connections
 from django.db.migrations.loader import MigrationLoader
 from django.db.migrations.recorder import MigrationRecorder
 from django.test import Client
@@ -79,16 +79,40 @@ def test_readyz_is_503_when_the_database_does_not_answer(client, monkeypatch, ca
     assert "connection refused" in caplog.text
 
 
+def database_unreachable(monkeypatch):
+    """The database refuses every connection until ``monkeypatch`` is undone.
+
+    On the connection's class, where pytest-django blocks it: patched on the connection itself, the
+    undo would leave there the real method read while the test had the database, hiding the block
+    from the tests after it (saas#324)."""
+
+    def unreachable(*args, **kwargs):
+        raise OperationalError("connection refused")
+
+    monkeypatch.setattr(type(connections[DEFAULT_DB_ALIAS]), "ensure_connection", unreachable)
+
+
+def test_a_test_without_the_database_still_cannot_query_once_the_outage_is_undone(
+    django_db_blocker,
+):
+    """The outage below is undone while its test still has the database (saas#324). Whatever it
+    leaves on the connection must not hide pytest-django's block: a later test of the same process
+    without the database, in any order and in any worker of ``-n 4``, still fails the moment it
+    queries."""
+    with django_db_blocker.unblock(), pytest.MonkeyPatch.context() as patch:
+        database_unreachable(patch)
+
+    with pytest.raises(RuntimeError, match="Database access not allowed"):
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+
+
 @pytest.mark.django_db
 def test_readyz_is_503_when_no_connection_to_the_database_opens(
     client, monkeypatch, caplog
 ):
     """An outage: every query of the request fails, the middleware's included (as hub-next's)."""
-
-    def unreachable(*args, **kwargs):
-        raise OperationalError("connection refused")
-
-    monkeypatch.setattr(connection, "ensure_connection", unreachable)
+    database_unreachable(monkeypatch)
 
     with caplog.at_level(logging.WARNING, logger="base.health"):
         response = client.get("/readyz", HTTP_HOST=HOST)
