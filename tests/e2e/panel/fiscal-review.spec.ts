@@ -10,7 +10,7 @@ import { writeFileSync } from 'node:fs';
 
 import type { Page } from '@playwright/test';
 
-import { captureAtEverySize, djangoPrint, expect, MAILING, runSeed, shot, signIn, test, waitForMail, watchPageErrors } from './fixtures';
+import { captureAtEverySize, djangoPrintWarm, expect, MAILING, runSeedWarm, shot, signIn, test, waitForMail, watchPageErrors } from './fixtures';
 
 const atEverySize = captureAtEverySize('APP-FISCAL_GATEWAY');
 
@@ -20,20 +20,29 @@ const OWNER = 'e2e-fiscal-owner@example.com';
 const REVIEW_PATH = /\/admin\/fiscal\/representationgrant\/[0-9a-f-]{36}\/review\//;
 
 /**
- * `fiscal_seed.py seed|clear`; `seed` files the authorisation and prints its id. Its mails land where the panel's
- * do (the panel's mail folder), as the upload's would on the server.
+ * `fiscal_seed.py seed|clear`, by this worker's warm Django of the panel's mail (no boot inside a test); `seed` files
+ * the authorisation and prints its id. Its mails land where the panel's do (the panel's mail folder), as the upload's
+ * would on the server.
  */
-const seed = (action: 'seed' | 'clear'): string => runSeed('fiscal_seed.py', action, MAILING);
+const seed = (action: 'seed' | 'clear'): Promise<string> => runSeedWarm('fiscal_seed.py', action, MAILING);
+/** What Django of the panel's mail prints: by the same warm Django as `seed`. */
+const djangoPrintMailing = (code: string): Promise<string> => djangoPrintWarm(code, MAILING);
 
-test.afterAll(() => {
-  seed('clear');
+/** The review desk's address (`FISCAL_REVIEW_EMAIL`), read once: the read boots the warm Django, on no test's clock. */
+let desk = '';
+
+test.beforeAll(async () => {
+  desk = await djangoPrintMailing('from django.conf import settings;print(settings.FISCAL_REVIEW_EMAIL)');
+});
+
+test.afterAll(async () => {
+  await seed('clear');
 });
 
 test('FISCAL-F05: the review desk gets the link to review an authorisation and the owner hears of the decision', async ({ page }) => {
   const errors = watchPageErrors(page);
-  const desk = djangoPrint('from django.conf import settings;print(settings.FISCAL_REVIEW_EMAIL)');
   const submitted = Date.now();
-  const grant = seed('seed');
+  const grant = await seed('seed');
 
   // The desk's mail: the business, the link to the review page, and no document, tax ID nor name of a person.
   const link = await waitForMail(desk, submitted, REVIEW_PATH);
@@ -62,7 +71,7 @@ test('FISCAL-F05: the review desk gets the link to review an authorisation and t
 
 test('FISCAL-F03: the documents of an authorisation are decrypted on its review page only', async ({ page }) => {
   const errors = watchPageErrors(page);
-  const grant = seed('seed');
+  const grant = await seed('seed');
   await signIn(page.request, REVIEWER);
 
   await page.goto(`/admin/fiscal/representationgrant/${grant}/review/`);
@@ -84,8 +93,8 @@ test('FISCAL-F03: the documents of an authorisation are decrypted on its review 
 });
 
 /** A synthetic stamp (a ring and a text on a transparent background), as base64 PNG; never ERPlora's real one. */
-function syntheticStamp(): Buffer {
-  const encoded = djangoPrint(
+async function syntheticStamp(): Promise<Buffer> {
+  const encoded = await djangoPrintMailing(
     [
       'import base64, io',
       'from PIL import Image, ImageDraw',
@@ -108,7 +117,7 @@ async function modelShape(page: Page, href: string, name: string): Promise<{ pag
   expect(served.headers()['content-type']).toBe('application/pdf');
   const file = shot(name).replace(/\.png$/, '.pdf');
   writeFileSync(file, await served.body());
-  const read = djangoPrint(
+  const read = await djangoPrintMailing(
     [
       'import json',
       'from pypdf import PdfReader',
@@ -121,7 +130,7 @@ async function modelShape(page: Page, href: string, name: string): Promise<{ pag
 
 test('FISCAL-F06: the staff upload ERPlora\'s stamp, see it on the model a business receives, and remove it', async ({ page }) => {
   const errors = watchPageErrors(page);
-  seed('seed');
+  await seed('seed');
   await signIn(page.request, REVIEWER);
 
   // While there is none, the queue says so and leads to the stamp's page.
@@ -147,7 +156,7 @@ test('FISCAL-F06: the staff upload ERPlora\'s stamp, see it on the model a busin
   await expect(page.locator('.messagelist')).toContainText('The stamp must be a PNG image.');
   await expect(missing).toBeVisible();
 
-  await file.setInputFiles({ name: 'stamp.png', mimeType: 'image/png', buffer: syntheticStamp() });
+  await file.setInputFiles({ name: 'stamp.png', mimeType: 'image/png', buffer: await syntheticStamp() });
   await page.getByRole('button', { name: 'Upload', exact: true }).click();
   await expect(page.locator('.messagelist')).toContainText('Stamp uploaded: every model downloaded from now on carries it.');
   const preview = page.getByRole('img', { name: "ERPlora's stamp and signature" });

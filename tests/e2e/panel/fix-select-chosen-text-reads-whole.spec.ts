@@ -6,7 +6,21 @@
 // flow: BILLING-F08
 import { type APIRequestContext, type Locator, type Page } from '@playwright/test';
 
-import { apiPost, businessIdOf, djangoPrint, expect, panelAccount, seedPanel, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
+import {
+  apiPost,
+  businessIdOf,
+  expect,
+  internalSecret,
+  panelAccount,
+  reportBusinessReady,
+  seedPanel,
+  settled,
+  shot,
+  sidewaysScroll,
+  signIn,
+  test,
+  watchPageErrors,
+} from './fixtures';
 
 /** As long as `hubs.schemas.Name` admits (120), in words a line can break at. */
 const LONG_NAME = 'Panadería y Pastelería Artesana de la Plaza Mayor de Santa María del Campo y Alrededores, Obrador Tradicional de Masa de';
@@ -72,30 +86,23 @@ async function everyOption(select: Locator): Promise<Field[]> {
   return seen;
 }
 
-/** The account's business, ready as the Hub's callback leaves it (here no Hub answers), with a name as long as allowed. */
+/**
+ * The account's business, with a name as long as allowed, ready by the Hub's own callback (`reportBusinessReady`, signed;
+ * here no Hub answers): no Python inside the test (saas#355).
+ */
 async function business(request: APIRequestContext): Promise<string> {
   const created = await apiPost(request, '/api/hubs/businesses', { name: LONG_NAME, country: 'ES' });
   const id = created.status() === 201 ? ((await created.json()) as { id: string }).id : await businessIdOf(request, LONG_NAME);
-  djangoPrint(
-    [
-      'from django.utils import timezone',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(pk="${id}").update(status="active", ready_at=timezone.now())`,
-    ].join('\n'),
-  );
+  await reportBusinessReady(request, id);
   return id;
 }
 
 /** The seeded account signed in, speaking `lang` (the seed leaves it in English), and the id of its business. */
 async function signedInWithBusiness(page: Page, lang = 'en'): Promise<string> {
-  const account = panelAccount('creator');
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      `get_user_model().objects.filter(email="${account.email}").update(language="${lang}")`,
-    ].join('\n'),
-  );
-  await signIn(page.request, account);
+  await signIn(page.request, panelAccount('creator'));
+  // As Preferences saves it.
+  const saved = await apiPost(page.request, '/api/accounts/preferences', { language: lang });
+  expect(saved.status(), 'POST /api/accounts/preferences').toBe(200);
   return business(page.request);
 }
 
@@ -104,7 +111,11 @@ const atSize = async (page: Page, size: (typeof SIZES)[number]) => {
   await settled(page);
 };
 
-test.beforeAll(() => seedPanel());
+test.beforeAll(async () => {
+  seedPanel();
+  // The Hub's callback signs with it: read here, so that its Django boot is on no test's clock (saas#346).
+  await internalSecret();
+});
 test.afterAll(() => seedPanel('clear'));
 
 for (const lang of ['en', 'es']) {
