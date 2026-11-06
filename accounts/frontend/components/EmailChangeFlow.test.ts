@@ -4,7 +4,6 @@
 // dialog says how many tries are left; with none, it asks for a new code. Proving the account's own address goes
 // straight to the code.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { h, type Ref, ref, unref } from 'vue';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
@@ -18,7 +17,7 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 import { toastSuccess } from '@erplora/ui/shell';
 
 import { fakeAllauth, ok } from '../__tests__/allauth-server';
-import { type ApiCall, apiError, describeCall, flush, ionProps, mountPanel, profile, reauthRequired, typeInto } from '../__tests__/mount-panel';
+import { type ApiCall, apiError, describeCall, flush, ionProps, mountDialog, profile, reauthRequired, typeInto } from '../__tests__/mount-panel';
 import type { ProfileOut } from '../../../frontend/sdk-types';
 import { onSessionChanged } from '../../../frontend/session-changed';
 import EmailChangeFlow from './EmailChangeFlow.vue';
@@ -31,20 +30,13 @@ afterEach(() => {
 
 type Mode = 'change' | 'verify' | 'resume';
 
-/** `me` as a ref is the live `accounts.profile.get`, which the page may receive again while the dialog is open. */
 async function setup(
   api: (call: ApiCall) => Response | Promise<Response>,
   mode: Mode = 'change',
-  me: ProfileOut | Ref<ProfileOut> = profile(),
+  me: ProfileOut = profile(),
   locale: 'en' | 'es' = 'en',
 ) {
-  const open = ref(true);
-  const Host = {
-    render: () => h(EmailChangeFlow, { profile: unref(me), mode, open: open.value, 'onUpdate:open': (v: boolean) => (open.value = v) }),
-  };
-  const s = await mountPanel(Host, { api, locale });
-  await flush();
-  return { ...s, open };
+  return mountDialog(EmailChangeFlow, { profile: me, mode }, { api, locale });
 }
 
 const verified = (email: string) => Response.json({ verified: true, attempts_left: 2, profile: profile({ email }) });
@@ -117,7 +109,6 @@ describe('EmailChangeFlow', () => {
   ] as const)(
     'says the new address (%s) also when the live profile shows it before the answer to the code arrives (saas#366)',
     async (locale, said) => {
-      const me = ref(profile());
       let answer: (() => void) | undefined;
       const s = await setup(
         (call) =>
@@ -125,7 +116,7 @@ describe('EmailChangeFlow', () => {
             ? new Promise<Response>((resolve) => (answer = () => resolve(verified('laura@new.example'))))
             : Response.json(profile()),
         'change',
-        me,
+        profile(),
         locale,
       );
       await typeInto(s.q('email-change-address'), 'laura@new.example');
@@ -135,8 +126,7 @@ describe('EmailChangeFlow', () => {
       s.q('email-change-submit')?.click();
       await flush();
       // The verify's `PROFILE_UPDATED` re-runs `accounts.profile.get`: its push can land before the command's answer.
-      me.value = profile({ email: 'laura@new.example' });
-      await flush();
+      await s.setProps({ profile: profile({ email: 'laura@new.example' }) });
       answer?.();
       await flush();
       expect(toastSuccess).toHaveBeenCalledTimes(1);
