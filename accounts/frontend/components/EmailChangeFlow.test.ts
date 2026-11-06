@@ -4,7 +4,6 @@
 // dialog says how many tries are left; with none, it asks for a new code. Proving the account's own address goes
 // straight to the code.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { h, ref } from 'vue';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
@@ -18,7 +17,7 @@ vi.mock('@erplora/ui/shell', async (importOriginal) => ({
 import { toastSuccess } from '@erplora/ui/shell';
 
 import { fakeAllauth, ok } from '../__tests__/allauth-server';
-import { type ApiCall, apiError, describeCall, flush, ionProps, mountPanel, profile, reauthRequired, typeInto } from '../__tests__/mount-panel';
+import { type ApiCall, apiError, describeCall, flush, ionProps, mountDialog, profile, reauthRequired, typeInto } from '../__tests__/mount-panel';
 import type { ProfileOut } from '../../../frontend/sdk-types';
 import { onSessionChanged } from '../../../frontend/session-changed';
 import EmailChangeFlow from './EmailChangeFlow.vue';
@@ -31,12 +30,13 @@ afterEach(() => {
 
 type Mode = 'change' | 'verify' | 'resume';
 
-async function setup(api: (call: ApiCall) => Response | Promise<Response>, mode: Mode = 'change', me: ProfileOut = profile()) {
-  const open = ref(true);
-  const Host = { render: () => h(EmailChangeFlow, { profile: me, mode, open: open.value, 'onUpdate:open': (v: boolean) => (open.value = v) }) };
-  const s = await mountPanel(Host, { api });
-  await flush();
-  return { ...s, open };
+async function setup(
+  api: (call: ApiCall) => Response | Promise<Response>,
+  mode: Mode = 'change',
+  me: ProfileOut = profile(),
+  locale: 'en' | 'es' = 'en',
+) {
+  return mountDialog(EmailChangeFlow, { profile: me, mode }, { api, locale });
 }
 
 const verified = (email: string) => Response.json({ verified: true, attempts_left: 2, profile: profile({ email }) });
@@ -100,6 +100,52 @@ describe('EmailChangeFlow', () => {
     await flush();
     expect(s.calls().at(-1)).toMatchObject({ path: '/api/accounts/email/verify', body: { code: '123456' } });
     expect(toastSuccess).toHaveBeenCalledWith('Your email is now laura@new.example');
+    expect(s.open.value).toBe(false);
+  });
+
+  it.each([
+    ['en', 'Your email is now laura@new.example'],
+    ['es', 'Tu correo ahora es laura@new.example'],
+  ] as const)(
+    'says the new address (%s) also when the live profile shows it before the answer to the code arrives (saas#366)',
+    async (locale, said) => {
+      let answer: (() => void) | undefined;
+      const s = await setup(
+        (call) =>
+          describeCall(call).path.endsWith('/verify')
+            ? new Promise<Response>((resolve) => (answer = () => resolve(verified('laura@new.example'))))
+            : Response.json(profile()),
+        'change',
+        profile(),
+        locale,
+      );
+      await typeInto(s.q('email-change-address'), 'laura@new.example');
+      s.q('email-change-submit')?.click();
+      await flush();
+      await typeInto(s.q('code'), '123456');
+      s.q('email-change-submit')?.click();
+      await flush();
+      // The verify's `PROFILE_UPDATED` re-runs `accounts.profile.get`: its push can land before the command's answer.
+      await s.setProps({ profile: profile({ email: 'laura@new.example' }) });
+      answer?.();
+      await flush();
+      expect(toastSuccess).toHaveBeenCalledTimes(1);
+      expect(toastSuccess).toHaveBeenCalledWith(said);
+      expect(s.open.value).toBe(false);
+    },
+  );
+
+  it('proving the account’s own address with its code says it is verified, not changed', async () => {
+    const s = await setup(
+      (call) => (describeCall(call).path.endsWith('/verify') ? verified('laura@example.com') : Response.json(profile({ email_verified: false }))),
+      'verify',
+      profile({ email_verified: false }),
+    );
+    await typeInto(s.q('code'), '123456');
+    s.q('email-change-submit')?.click();
+    await flush();
+    expect(toastSuccess).toHaveBeenCalledTimes(1);
+    expect(toastSuccess).toHaveBeenCalledWith('Your email is verified');
     expect(s.open.value).toBe(false);
   });
 

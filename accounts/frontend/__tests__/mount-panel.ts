@@ -6,7 +6,7 @@
 import { createShellI18n, provideSession, type SessionMe } from '@erplora/ui/shell';
 import { LIVE_CLIENT_KEY, type LiveClient, type OpName } from '@erplora/ui/sdk';
 import { mount } from '@vue/test-utils';
-import { type Component, createApp, ref } from 'vue';
+import { type Component, createApp, h, ref, shallowRef } from 'vue';
 import { createMemoryHistory, createRouter, type RouterHistory } from 'vue-router';
 
 import { PopoverStub } from '../../../packages/ui/src/components/DataTable/__tests__/harness';
@@ -167,6 +167,24 @@ export async function mountPanel(component: Component, options: MountOptions = {
   /** An element by its `data-testid`, anywhere in the document (dialogs render outside the mount). */
   const q = (testid: string) => document.querySelector(`[data-testid="${testid}"]`) as (HTMLElement & Record<string, unknown>) | null;
   return { ...harness, router, wrapper, live, result, calls, me, i18n, q };
+}
+
+/**
+ * A dialog with `v-model:open`, mounted open as its page holds it: `open` follows what the dialog sets (it closes
+ * itself), and `setProps` hands it new props while it is open, as a live query the page receives again (saas#366).
+ */
+export async function mountDialog(component: Component, props: Record<string, unknown>, options: MountOptions = {}) {
+  const open = ref(true);
+  const current = shallowRef(props);
+  const Host = { render: () => h(component, { ...current.value, open: open.value, 'onUpdate:open': (v: boolean) => (open.value = v) }) };
+  const s = await mountPanel(Host, options);
+  await flush();
+  /** Props over the current ones, rendered. */
+  async function setProps(next: Record<string, unknown>): Promise<void> {
+    current.value = { ...current.value, ...next };
+    await flush();
+  }
+  return { ...s, open, setProps };
 }
 
 /** What Ionic Vue sets on its elements: a property (fill, label, value…) or, for `mode`, an attribute. */

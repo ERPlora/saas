@@ -100,6 +100,9 @@ async function resend(): Promise<void> {
 
 async function confirm(): Promise<void> {
   codeError.value = '';
+  // The address before the code: once it switches, the live profile may show the new one before the answer arrives
+  // (saas#366), and the notice would say «verified» for a change.
+  const before = props.profile.email.toLowerCase();
   let answer;
   try {
     answer = await verify.run({ code: code.value.trim() });
@@ -109,8 +112,8 @@ async function confirm(): Promise<void> {
   if (answer.verified) {
     // The user menu shows the account's address: the entry reads the session again (saas#292).
     sessionChanged();
-    const proven = sentTo.value.toLowerCase() === props.profile.email.toLowerCase();
-    void toastSuccess(proven ? t('accounts.account.email.verified') : t('accounts.account.email.changed', { email: answer.profile.email }));
+    const changed = answer.profile.email.toLowerCase() !== before;
+    void toastSuccess(changed ? t('accounts.account.email.changed', { email: answer.profile.email }) : t('accounts.account.email.verified'));
     open.value = false;
   } else if (answer.attempts_left > 0) {
     codeError.value = t('accounts.account.email.wrongCode', { left: answer.attempts_left });
