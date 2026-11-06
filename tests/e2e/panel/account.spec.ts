@@ -326,6 +326,59 @@ test('ACCOUNTS-F31 · «New key» with an old sign-in asks «Confirm it’s you�
   expect(errors).toEqual([]);
 });
 
+test('ACCOUNTS-F31 · «Confirm it’s you» over «New key» dims it and keeps its shadow, light and dark, at 390, 768 and 1280 px', async ({
+  page,
+}) => {
+  // Ionic drops the backdrop and the shadow of a modal opened over another one (its core.css). FormModal gives both back
+  // (ERPlora/ui#112), 0.4 in light and 0.6 in dark, and it is the only rule: one of this dialog's own said 0.4 in dark
+  // too, and the bundle's order chose (saas#379). Read in the browser, with the bundle's stylesheets in their order.
+  const errors = watchPageErrors(page);
+  await signIn(page.request, panelAccount('one'));
+  const sizes = [
+    { width: 390, height: 844 },
+    { width: 768, height: 1024 },
+    { width: 1280, height: 800 },
+  ];
+  for (const scheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    for (const size of sizes) {
+      await ageSignIn(page.request);
+      await page.setViewportSize(size);
+      await page.goto('/dashboard/account/api-keys');
+      await expect(page.locator('html')).toHaveClass(scheme === 'dark' ? /ion-palette-dark/ : /^(?!.*ion-palette-dark)/);
+      await page.getByTestId('api-keys-empty-new').click();
+      await page.getByTestId('new-key-name').locator('input').fill('Gestoría Martínez');
+      await page.getByTestId('new-key-scope-hubs.read').click();
+      const presented = page.evaluate(
+        () =>
+          new Promise<void>((done) => {
+            document.addEventListener('ionModalDidPresent', function seen(event) {
+              if ((event.target as HTMLElement).dataset.testid !== 'reauth-modal') return;
+              document.removeEventListener('ionModalDidPresent', seen);
+              done();
+            });
+          }),
+      );
+      await page.getByTestId('new-key-submit').click();
+      await presented;
+      // Over «New key», still open behind it.
+      await expect(page.getByTestId('new-key')).toHaveClass(/show-modal/);
+      const look = await page.getByTestId('reauth-modal').evaluate((modal) => {
+        const style = getComputedStyle(modal);
+        return { backdrop: style.getPropertyValue('--backdrop-opacity').trim(), shadow: style.getPropertyValue('--box-shadow').trim() };
+      });
+      const at = `${scheme} at ${size.width}`;
+      expect(look.backdrop, at).toBe(scheme === 'dark' ? '0.6' : '0.4');
+      expect(look.shadow, at).not.toMatch(/^(none)?$/);
+      await settled(page);
+      await page.screenshot({ path: shot(`SAAS-379-reauth-over-new-key-${size.width}-${scheme}`) });
+      await page.getByTestId('reauth-modal-cancel').click();
+      await expect(page.getByTestId('reauth-modal')).toBeHidden();
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
 test('an API key asks «Confirm it’s you», opens the API once and is refused once revoked', async ({ page }) => {
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('one'));
