@@ -6,22 +6,28 @@ The panel's server has no Stripe in the e2e, so the spec hands the routes that c
 wrote it; the Plan rows get a Stripe price only while a call lasts, as the e2e's database has none.
 
 From saas-next/, against the database of the run (development only, refused without ``DEBUG``), with the Hub the spec
-plays at ``<hub_url>``; the last line printed is JSON, ``{"status", "body"}``:
+plays at ``<hub_url>``: ``uv run python tests/e2e/panel/billing_stripe_played.py serve <hub_url>``. One process for the
+whole spec (saas#328): Django starts once, says ``{"ready": true}``, and then answers each JSON line it reads on its
+stdin with one JSON line, in order, until its stdin ends:
 
-- ``uv run python tests/e2e/panel/billing_stripe_played.py api <email> <path> '<json>' <hub_url>``: the route, as
-  ``<email>`` signed in calls it;
-- ``uv run python tests/e2e/panel/billing_stripe_played.py arrive <hub_id> <hub_url>``: the paid period ended and
-  Stripe's schedule started the phase of the plan that waits: its signed ``customer.subscription.updated``.
+- ``{"command": "api", "email", "path", "body"}``: the route, as ``<email>`` signed in calls it → ``{"status", "body"}``;
+- ``{"command": "arrive", "hub_id"}``: the paid period ended and Stripe's schedule started the phase of the plan that
+  waits: its signed ``customer.subscription.updated`` → ``{"status", "body"}``;
+- a call that fails → ``{"error": <its traceback>}``, and the next one is answered as usual.
+
+Its stdout carries only those lines; whatever a call prints goes to its stderr.
 """
 
 import json
 import os
 import sys
+import traceback
 import uuid
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager, redirect_stdout
 from datetime import timedelta
 from pathlib import Path
+from typing import TextIO
 
 SAAS_DIR = Path(__file__).resolve().parents[3]
 HOST = "localhost:8001"
@@ -153,6 +159,33 @@ def arrive(hub_id: str, hub_url: str) -> dict:
     return _answer(response)
 
 
+def _played(request: dict, hub_url: str) -> dict:
+    match request:
+        case {"command": "api", "email": email, "path": path, "body": body}:
+            return api(email, path, body, hub_url)
+        case {"command": "arrive", "hub_id": hub_id}:
+            return arrive(hub_id, hub_url)
+        case _:
+            raise ValueError(f"no such call: {request!r}")
+
+
+def _say(answers: TextIO, answer: dict) -> None:
+    answers.write(json.dumps(answer) + "\n")
+    answers.flush()
+
+
+def serve(hub_url: str, requests: Iterable[str], answers: TextIO) -> None:
+    """``{"ready": true}``, then one answer line per request line of ``requests``, in order, until they end."""
+    _say(answers, {"ready": True})
+    for line in requests:
+        try:
+            answer = _played(json.loads(line), hub_url)
+        except Exception:
+            # The spec waits for this line: it rejects that call with the traceback, and the next call still runs.
+            answer = {"error": traceback.format_exc()}
+        _say(answers, answer)
+
+
 def main(argv: list[str]) -> None:
     setup_django()
     from django.conf import settings
@@ -160,13 +193,12 @@ def main(argv: list[str]) -> None:
     if not settings.DEBUG:
         sys.exit("billing_stripe_played.py only runs with DEBUG=True")
     match argv:
-        case ["api", email, path, body, hub_url]:
-            answer = api(email, path, json.loads(body), hub_url)
-        case ["arrive", hub_id, hub_url]:
-            answer = arrive(hub_id, hub_url)
+        case ["serve", hub_url]:
+            answers = sys.stdout
+            with redirect_stdout(sys.stderr):
+                serve(hub_url, sys.stdin, answers)
         case _:
-            sys.exit("usage: billing_stripe_played.py api <email> <path> <json> <hub_url> | arrive <hub_id> <hub_url>")
-    print(json.dumps(answer))
+            sys.exit("usage: billing_stripe_played.py serve <hub_url>")
 
 
 if __name__ == "__main__":

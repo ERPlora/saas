@@ -4,6 +4,8 @@ routes answer, with only Stripe doubled, and nothing of the double stays behind.
 """
 
 import importlib.util
+import io
+import json
 import sys
 from pathlib import Path
 
@@ -135,8 +137,72 @@ class TestTheArrival:
         assert (kept.source, kept.stripe_item_id) == (SubscriptionItem.Source.PURCHASE, "si_e2e_bought")
 
 
+def asked(**request) -> str:
+    """A request line of ``serve``."""
+    return json.dumps(request) + "\n"
+
+
+def answered(answers: io.StringIO) -> list[dict]:
+    return [json.loads(line) for line in answers.getvalue().splitlines()]
+
+
+class TestOneProcessForTheWholeSpec:
+    """saas#328: Django starts once and every call of the spec is a line in and a line out, so a loaded machine
+    no longer adds a Python start-up to each of them."""
+
+    def test_it_says_it_is_ready_then_answers_every_call_in_order(self, played, hub_double, owner, standard):
+        answers = io.StringIO()
+
+        def requests():
+            yield asked(command="api", email=owner.email, path="/api/billing/checkout/start", body=downgrade_of(standard))
+            preview = answered(answers)[-1]["body"]["preview"]
+            change = downgrade_of(standard) | {"proration_date": preview["proration_date"]}
+            yield asked(command="api", email=owner.email, path="/api/billing/plan/change", body=change)
+            yield asked(command="arrive", hub_id=str(standard.id))
+
+        played.serve(hub_double.url, requests(), answers)
+
+        lines = answered(answers)
+        assert lines[0] == {"ready": True}
+        assert [line["status"] for line in lines[1:]] == [200, 200, 200], lines
+        assert lines[2]["body"]["scheduled_change"]["plan"] == "starter"
+        assert Subscription.objects.get(hub=standard).plan.slug == "starter"
+
+    def test_a_call_that_fails_answers_its_error_and_the_next_one_still_answers(self, played, hub_double, owner, standard):
+        answers = io.StringIO()
+        requests = [
+            asked(command="api", email="nobody@example.com", path="/api/billing/plan/keep", body={"hub_id": str(standard.id)}),
+            asked(command="refund"),
+            asked(command="api", email=owner.email, path="/api/billing/checkout/start", body=downgrade_of(standard)),
+        ]
+
+        played.serve(hub_double.url, requests, answers)
+
+        ready, nobody, unknown, start = answered(answers)
+        assert ready == {"ready": True}
+        assert "DoesNotExist" in nobody["error"]
+        assert "refund" in unknown["error"]
+        assert start["status"] == 200, start
+
+    def test_what_a_call_prints_never_reaches_the_answers(self, played, hub_double, monkeypatch, capsys, settings):
+        settings.DEBUG = True
+
+        def noisy_api(email, path, body, hub_url):
+            print("a stray line")
+            return {"status": 200, "body": {}}
+
+        monkeypatch.setattr(played, "api", noisy_api)
+        monkeypatch.setattr(sys, "stdin", io.StringIO(asked(command="api", email="a@example.com", path="/x", body={})))
+
+        played.main(["serve", hub_double.url])
+
+        out, err = capsys.readouterr()
+        assert [json.loads(line) for line in out.splitlines()] == [{"ready": True}, {"status": 200, "body": {}}]
+        assert "a stray line" in err
+
+
 def test_it_refuses_to_run_without_debug(played, settings):
     settings.DEBUG = False
 
-    with pytest.raises(SystemExit):
-        played.main(["arrive", "any", "http://127.0.0.1:9"])
+    with pytest.raises(SystemExit, match="DEBUG"):
+        played.main(["serve", "http://127.0.0.1:9"])
