@@ -7,11 +7,11 @@ import { type Page } from '@playwright/test';
 
 import {
   closeMenu,
-  djangoPrint,
+  createAccountWarm,
+  djangoPrintWarm,
   expect,
   openMenu,
-  provenAccount,
-  removeAccountsOf,
+  removeAccountsWarm,
   settled,
   shot,
   signIn,
@@ -31,15 +31,16 @@ const SWITCHES = [
   { lang: 'en', option: 'English', saved: 'Preferences saved' },
 ] as const;
 
-test.beforeAll(() => {
-  removeAccountsOf(PREFIX);
-  provenAccount(ACCOUNT.email, ACCOUNT.password, 'en');
+// By this worker's warm Django, as the beforeEach below: its boot here, on no test's clock.
+test.beforeAll(async () => {
+  await removeAccountsWarm(PREFIX);
+  await createAccountWarm(ACCOUNT.email, ACCOUNT.password, { language: 'en' });
 });
-test.afterAll(() => removeAccountsOf(PREFIX));
+test.afterAll(() => removeAccountsWarm(PREFIX));
 
 /** Every run starts from an account speaking English, whatever a failed one left. */
-test.beforeEach(() => {
-  djangoPrint(
+test.beforeEach(async () => {
+  await djangoPrintWarm(
     `from django.contrib.auth import get_user_model\nget_user_model().objects.filter(email=${JSON.stringify(ACCOUNT.email)}).update(language="en", first_name="", last_name="")`,
   );
 });

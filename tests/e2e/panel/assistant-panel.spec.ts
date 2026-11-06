@@ -137,7 +137,7 @@ for (const language of ['es', 'en'] as const) {
   test(`the account asks the panel's assistant, a write waits for its card, and the month ends spent (${language})`, async ({
     page,
   }) => {
-    seed('panel', language);
+    await seed('panel', language);
     await signIn(page.request, OWNER);
     // From here on (the sign-in mails its code before), the only mail to the account is the month's last message's.
     const since = Date.now();
@@ -224,7 +224,7 @@ for (const language of ['es', 'en'] as const) {
   test(`cancelling the plan from the assistant says first what will happen, and «Cancel» changes nothing (${language})`, async ({
     page,
   }) => {
-    seed('paying', language);
+    await seed('paying', language);
     await openBusinesses(page);
     const errors = watchPageErrors(page);
     await page.getByTestId('assistant-button').click();
@@ -248,7 +248,7 @@ for (const language of ['es', 'en'] as const) {
 }
 
 test('the panel closes with Escape, its own button or the veil, and the device remembers it open', async ({ page }) => {
-  seed('panel');
+  await seed('panel');
   await openBusinesses(page);
   const errors = watchPageErrors(page);
   const button = page.getByTestId('assistant-button');
@@ -299,7 +299,7 @@ test('the panel closes with Escape, its own button or the veil, and the device r
 test('a session that ends in the middle of the conversation asks to sign in again, and the sign-in follows', async ({
   page,
 }) => {
-  seed('panel');
+  await seed('panel');
   await openBusinesses(page);
   await page.getByTestId('assistant-button').click();
   await expect(page.getByTestId('assistant-panel')).toHaveAttribute('data-open', 'true');

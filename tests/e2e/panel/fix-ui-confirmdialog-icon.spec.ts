@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 import type { Locator } from '@playwright/test';
 
-import { expect, panelAccount, qaAccount, seededAndSignedIn, settled, test, VIEWPORTS } from './fixtures';
+import { expect, panelAccount, qaAccount, seededAndSignedInWarm, settled, test, VIEWPORTS } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS = join(SAAS_DIR, 'tests', 'e2e', '.artifacts', 'fix-ui-confirmdialog-icon');
@@ -22,7 +22,7 @@ const BILLING = qaAccount('BILLING', panelAccount('billing'));
 /** The panel's buttons on `/dashboard/billing/invoices` with an icon in `slot="start"` and their own gap rule. */
 const BUTTONS = ['unpaid-group-change-card', 'pay-invoice', 'invoices-csv', 'invoices-filters'] as const;
 
-seededAndSignedIn('billing_seed.py', BILLING);
+seededAndSignedInWarm('billing_seed.py', BILLING);
 
 interface StartSide {
   /** The icon's margin on the outer side (`margin-inline-start`), as computed. */

@@ -32,7 +32,7 @@ for (const language of ['es', 'en'] as const) {
   test(`the account dictates to the panel's assistant: the words land in the box, nothing is sent (${language})`, async ({
     page,
   }) => {
-    seed('panel', language);
+    await seed('panel', language);
     const errors = watchPageErrors(page);
     const panel = await openPanel(page);
 
@@ -73,7 +73,7 @@ for (const language of ['es', 'en'] as const) {
   test(`a dictation the server could not transcribe is said under the box, which stays as it was (${language})`, async ({
     page,
   }) => {
-    seed('panel', language);
+    await seed('panel', language);
     await signIn(page.request, OWNER);
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.route('**/api/assistant/transcribe', (route) =>

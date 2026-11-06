@@ -423,6 +423,10 @@ Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/t
   queda para los siguientes: se parchea dentro de un `with` (`mock.patch.object`, `override_settings`). Otro
   `env` (`MAILING`) es otro proceso. `warmDjango(env?)` lo arranca: la spec cuya primera llamada cae dentro
   de una prueba lo pide antes en un `beforeAll`.
+- `runSeedWarm(script, args, env)` y `seededAndSignedInWarm(script, cuenta)`: `runSeed` y `seededAndSignedIn` por
+  el Django caliente del worker (`warmDjango`, saas#352), para la siembra que va dentro de una prueba o en su
+  `beforeEach`: sin arranque de Django ni bloqueo de Node (saas#355). `localAssistant().seed` ya siembra así y
+  devuelve una promesa (`await seed(…)`).
 - **Sin recarga en caliente**: el `context` de toda spec responde él mismo al WebSocket de Vite
   (`freezeFrontend`), así que lo que otra sesión guarda a mitad de una ejecución no remonta
   componentes bajo la spec (un diálogo abierto se quedaba huérfano); cada carga de página sí trae los

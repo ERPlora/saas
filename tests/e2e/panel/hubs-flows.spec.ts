@@ -22,7 +22,7 @@ import {
   panelAccount,
   realHubPrint,
   removeAccountsWarm,
-  seedPanel,
+  runSeedWarm,
   signIn,
   test,
   waitForMail,
@@ -77,12 +77,12 @@ let starterId: string;
 // Django's boots on no test's clock (saas#354): the warm Django, and what only Django knows, once here.
 test.beforeAll(async () => {
   await removeAccountsWarm(PREFIX);
-  seedPanel();
+  await runSeedWarm('panel_seed.py', 'seed');
   starterId = await djangoPrintWarm('from hubs.models import Plan;print(Plan.objects.get(slug="starter").pk)');
 });
 test.afterAll(async () => {
   await removeAccountsWarm(PREFIX);
-  seedPanel('clear');
+  await runSeedWarm('panel_seed.py', 'clear');
 });
 
 test('HUBS-G65: the free business with a single question, then «Preparing»', async ({ page }) => {

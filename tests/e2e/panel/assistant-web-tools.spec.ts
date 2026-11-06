@@ -24,7 +24,7 @@ for (const language of ['es', 'en'] as const) {
   const words = WORDS[language];
 
   test(`the panel's assistant says a rate and searches the web, its source in sight (${language})`, async ({ page }) => {
-    seed('panel', language);
+    await seed('panel', language);
     const errors = watchPageErrors(page);
     const panel = await openPanel(page);
 
