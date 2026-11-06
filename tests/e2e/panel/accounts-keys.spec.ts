@@ -3,27 +3,21 @@
 // key opens what its permission opens and nothing else (G102), and revoking it cuts it at once (G103). In
 // accounts/WORKBOOK.md: G101 = F31, G102 = F32, G103 = F33. The person's own keys (Account › API keys: create with
 // «Confirm it's you», use, revoke) are account.spec.ts's. Accounts of this spec: `e2e-acc4k-…@example.com`.
-import { type Page } from '@playwright/test';
 
 import {
+  captureAtEverySize,
   djangoPrint,
   expect,
-  settled,
-  shot,
-  sidewaysScroll,
   signIn,
   signInThroughPage,
   test,
   watchPageErrors,
 } from './fixtures';
 
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-4');
+
 const PREFIX = 'e2e-acc4k-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
@@ -55,19 +49,6 @@ function createAccount(email: string, role: 'superuser' | 'support' | 'customer'
     ].join('\n'),
   );
   return { email, password: PASSWORD };
-}
-
-/** Each size: the page as `ready` leaves it, no sideways scroll, and its shot (`fullPage` off for a page as long as the
- *  API's reference, whose full shot is tens of thousands of pixels tall). */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>, fullPage = true): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-ACCOUNTS-4-${key}-${size.name}`), fullPage });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
 }
 
 test.beforeAll(() => removeAccounts());

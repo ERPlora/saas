@@ -7,14 +7,12 @@
 // icon's outer margin is `0px` and the icon sits as far from the button's left padding as the label ends from
 // its right one, as on main.
 // flow: ui:ConfirmDialog
-import { execFileSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { Locator } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
-import { expect, panelAccount, qaAccount, settled, signIn, test, VIEWPORTS } from './fixtures';
+import { expect, panelAccount, qaAccount, seededAndSignedIn, settled, test, VIEWPORTS } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS = join(SAAS_DIR, 'tests', 'e2e', '.artifacts', 'fix-ui-confirmdialog-icon');
@@ -24,19 +22,7 @@ const BILLING = qaAccount('BILLING', panelAccount('billing'));
 /** The panel's buttons on `/dashboard/billing/invoices` with an icon in `slot="start"` and their own gap rule. */
 const BUTTONS = ['unpaid-group-change-card', 'pay-invoice', 'invoices-csv', 'invoices-filters'] as const;
 
-function seedBilling(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/billing_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
-}
-
-test.beforeEach(async ({ page }) => {
-  seedBilling('seed');
-  await signIn(page.request, BILLING);
-});
-test.afterAll(() => seedBilling('clear'));
+seededAndSignedIn('billing_seed.py', BILLING);
 
 interface StartSide {
   /** The icon's margin on the outer side (`margin-inline-start`), as computed. */

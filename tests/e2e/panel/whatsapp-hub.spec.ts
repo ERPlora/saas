@@ -33,7 +33,7 @@ import { readMailCode } from '@erplora/ui/testing/mail';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { horizontalOverflow } from '../horizontal-overflow';
-import { OWNER, shot, submitSignInForm, VIEWPORTS } from './fixtures';
+import { OWNER, runSeed, shot, submitSignInForm, VIEWPORTS } from './fixtures';
 import { WHATSAPP_E2E } from './project';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -79,12 +79,8 @@ function hubIds(): [string, string] {
 /** erplora.com's side of the run, and the snapshot of `a` pushed to the Hub: what the seed printed (`--used N`: the
  *  month's usage of `a`, 0 when not given). */
 function seedErplora(...options: string[]): { delivered: boolean; hub_error: string } {
-  const out = execFileSync('uv', ['run', 'python', 'tests/e2e/panel/whatsapp_hub_seed.py', ...hubIds(), ...options], {
-    cwd: SAAS_DIR,
-    encoding: 'utf8',
-    env: { ...process.env, DEBUG: 'True', DB_NAME: `saas_e2e_${HUB_PORT + 1}`, HUB_INTERNAL_URL: `http://127.0.0.1:${HUB_PORT}` },
-  });
-  return JSON.parse(out.trim().split('\n').at(-1) ?? '{}');
+  const env = { DB_NAME: `saas_e2e_${HUB_PORT + 1}`, HUB_INTERNAL_URL: `http://127.0.0.1:${HUB_PORT}` };
+  return JSON.parse(runSeed('whatsapp_hub_seed.py', [...hubIds(), ...options], env));
 }
 
 /** One change of Meta's webhook for `a`'s number, as Meta posts it. */

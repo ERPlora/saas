@@ -8,19 +8,17 @@
 //     table's toolbar in one row from 834 to 1180 px.
 // Screenshots at 390, 834 and 1440 go to `$SHOTS_DIR` (/tmp/panel-fix2 by default) for the supervisor, each one
 // refused when it repeats the top of the page at its bottom (taken before the page was painted at its size).
-import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 import type { Page } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
 import {
   businessIdOf,
   expect,
   panelAccount,
   repeatedTop,
+  runSeed,
   seedPanel,
   settled,
   shot,
@@ -29,28 +27,19 @@ import {
   watchPageErrors,
 } from './fixtures';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/panel-fix2';
 mkdirSync(SHOTS_DIR, { recursive: true });
 
 /** How long a page waits for its first result (`frontend/live-state.ts` LIVE_TIMEOUT_MS), plus a margin. */
 const LIVE_TIMEOUT = 10_000 + 5_000;
 
-function seedBilling(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/billing_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
-}
-
 test.beforeAll(() => {
   seedPanel();
-  seedBilling('seed');
+  runSeed('billing_seed.py', 'seed');
 });
 test.afterAll(() => {
   seedPanel('clear');
-  seedBilling('clear');
+  runSeed('billing_seed.py', 'clear');
 });
 
 /** `/api/live` refused, as when the stream's service is down (the API itself answers). */

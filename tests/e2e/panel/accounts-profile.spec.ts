@@ -9,24 +9,20 @@ import { readFile } from "node:fs/promises";
 import { type Page } from "@playwright/test";
 
 import {
+  captureAtEverySize,
   djangoPrint,
   expect,
   settled,
-  shot,
-  sidewaysScroll,
   signIn,
   test,
   toast,
   watchPageErrors,
 } from "./fixtures";
 
+const atEverySize = captureAtEverySize("APP-ACCOUNTS-3");
+
 const PREFIX = "e2e-acc3-";
 const PASSWORD = "Centeno-y-masa-madre-26";
-const SIZES = [
-  { name: "390", width: 390, height: 844 },
-  { name: "834", width: 834, height: 1112 },
-  { name: "1440", width: 1440, height: 900 },
-] as const;
 
 /** A fresh address of this spec, never used before. */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
@@ -103,31 +99,6 @@ const readBack = (email: string, expression: string) =>
       `print(${expression})`,
     ].join("\n"),
   ).trim();
-
-/** Each size of the migration: the page as `ready` leaves it, no sideways scroll, and its full-page shot; `after`
- *  undoes what `ready` opened (a menu) before the next size. */
-async function atEverySize(
-  page: Page,
-  key: string,
-  ready: () => Promise<void>,
-  after?: () => Promise<void>,
-): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(
-      await sidewaysScroll(page),
-      `${key} scrolls sideways at ${size.name}`,
-    ).toEqual([]);
-    await page.screenshot({
-      path: shot(`APP-ACCOUNTS-3-${key}-${size.name}`),
-      fullPage: true,
-    });
-    await after?.();
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
 
 /** The user menu (`UserMenuPopover`): in the side menu, a drawer behind the topbar's menu button below `lg`. */
 async function openUserMenu(page: Page): Promise<void> {
@@ -308,7 +279,7 @@ test("ACCOUNTS-G127 (F24): the theme of the user menu is painted at once and kep
         page.getByTestId("user-menu-theme").locator("ion-segment"),
       ).toHaveJSProperty("value", "dark");
     },
-    () => closeUserMenu(page),
+    { after: () => closeUserMenu(page) },
   );
   expect(errors).toEqual([]);
 });
@@ -335,7 +306,7 @@ test("ACCOUNTS-G128 (F25): the user menu has «Account», «Report a problem», 
         "Sign out",
       ]);
     },
-    () => closeUserMenu(page),
+    { after: () => closeUserMenu(page) },
   );
   await openUserMenu(page);
   await page.getByTestId("user-menu-account").click();

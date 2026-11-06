@@ -6,59 +6,28 @@
 // flow: FISCAL-F03 — the documents are only decrypted on the review page, for the staff who decide.
 // flow: FISCAL-F06 — ERPlora's stamp and signature as representative: the queue warns while there is none, the
 // staff upload a PNG, see it, download the model a business receives with it, and remove it.
-import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import type { Page } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
-import { djangoPrint, expect, settled, shot, sidewaysScroll, signIn, test, waitForMail, watchPageErrors } from './fixtures';
-import { PANEL_MAIL_DIR } from './project';
+import { captureAtEverySize, djangoPrint, expect, MAILING, runSeed, shot, signIn, test, waitForMail, watchPageErrors } from './fixtures';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const atEverySize = captureAtEverySize('APP-FISCAL_GATEWAY');
+
 const PASSWORD = process.env.QA_PANEL_PASSWORD ?? 'e2e-panel';
 const REVIEWER = { email: 'e2e-fiscal-reviewer@example.com', password: PASSWORD };
 const OWNER = 'e2e-fiscal-owner@example.com';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 const REVIEW_PATH = /\/admin\/fiscal\/representationgrant\/[0-9a-f-]{36}\/review\//;
 
 /**
  * `fiscal_seed.py seed|clear`; `seed` files the authorisation and prints its id. Its mails land where the panel's
  * do (the panel's mail folder), as the upload's would on the server.
  */
-function seed(action: 'seed' | 'clear'): string {
-  return execFileSync('uv', ['run', 'python', 'tests/e2e/panel/fiscal_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: { ...djangoEnv(true), EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend', EMAIL_FILE_PATH: PANEL_MAIL_DIR },
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-    .trim()
-    .split('\n')
-    .at(-1) as string;
-}
+const seed = (action: 'seed' | 'clear'): string => runSeed('fiscal_seed.py', action, MAILING);
 
 test.afterAll(() => {
   seed('clear');
 });
-
-/** `ready` at each size: no sideways scroll, a capture `APP-FISCAL_GATEWAY-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-FISCAL_GATEWAY-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
 
 test('FISCAL-F05: the review desk gets the link to review an authorisation and the owner hears of the decision', async ({ page }) => {
   const errors = watchPageErrors(page);

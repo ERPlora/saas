@@ -17,14 +17,13 @@ import type { Page } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
 import {
+  captureAtEverySize,
   djangoPrint,
   djangoPrintAsync,
   expect,
   type HubCall,
   type HubDouble,
-  settled,
-  shot,
-  sidewaysScroll,
+  removeAccountsOf,
   signIn,
   startHubDouble,
   test,
@@ -32,38 +31,12 @@ import {
 } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 
+const atEverySize = captureAtEverySize('APP-HUBS-4');
+
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const PREFIX = 'e2e-hubs4-';
 const PASSWORD = 'Harina-de-espelta-26';
 const STAFF = { email: `${PREFIX}staff@example.com`, password: PASSWORD };
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
-
-/** `ready` at each size: no sideways scroll and a capture `APP-HUBS-4-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-HUBS-4-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
-
-function removeOwnRows(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}").delete()`,
-    ].join('\n'),
-  );
-}
 
 /** A superuser of the staff, their address proven. */
 function createStaff(): void {
@@ -142,7 +115,7 @@ function snapshotOwed(id: string): boolean {
 let hub: HubDouble;
 
 test.beforeAll(async () => {
-  removeOwnRows();
+  removeAccountsOf(PREFIX);
   createStaff();
   // The taxonomy every deploy seeds (saas-migrate runs seed_taxonomy), as public-web.spec.ts: the same here.
   execFileSync('uv', ['run', 'python', 'manage.py', 'seed_taxonomy'], { cwd: SAAS_DIR, env: djangoEnv(true), stdio: 'pipe' });
@@ -150,7 +123,7 @@ test.beforeAll(async () => {
 });
 test.afterAll(async () => {
   await hub?.close();
-  removeOwnRows();
+  removeAccountsOf(PREFIX);
 });
 
 /** What a plan's admin says in each language: its list's columns, its form's labels and the saved plan's name. */

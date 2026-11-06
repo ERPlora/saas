@@ -11,39 +11,16 @@
 // flow: ACCOUNTS-F31 — the key just issued, shown once.
 // flow: FISCAL-F03 — the review page of a signed authorisation.
 // flow: FISCAL-F06 — ERPlora's stamp as representative.
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import type { Page } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
-import { djangoPrint, expect, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
-import { PANEL_MAIL_DIR } from './project';
+import { captureAtEverySize, djangoPrint, expect, MAILING, runSeed, signIn, test, watchPageErrors } from './fixtures';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const atEverySize = captureAtEverySize('APP-ASSISTANT-1');
+
 const PREFIX = 'e2e-admpages-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
 const ROOT = { email: `${PREFIX}root@example.com`, password: PASSWORD };
 const TEAMMATE = `${PREFIX}qa@example.com`;
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
-
-/** `fiscal_seed.py seed|clear`; `seed` files the authorisation and prints its id. */
-function fiscalSeed(action: 'seed' | 'clear'): string {
-  return execFileSync('uv', ['run', 'python', 'tests/e2e/panel/fiscal_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: { ...djangoEnv(true), EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend', EMAIL_FILE_PATH: PANEL_MAIL_DIR },
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-    .trim()
-    .split('\n')
-    .at(-1) as string;
-}
 
 function removeAccounts(): void {
   djangoPrint(
@@ -72,13 +49,14 @@ let grant = '';
 
 test.beforeAll(() => {
   removeAccounts();
-  grant = fiscalSeed('seed');
+  // `fiscal_seed.py seed` files the authorisation and prints its id.
+  grant = runSeed('fiscal_seed.py', 'seed', MAILING);
   expect(grant).toMatch(/^[0-9a-f-]{36}$/);
   createAccounts();
 });
 
 test.afterAll(() => {
-  fiscalSeed('clear');
+  runSeed('fiscal_seed.py', 'clear', MAILING);
   removeAccounts();
 });
 
@@ -89,8 +67,7 @@ test.afterAll(() => {
  */
 async function crumbsAtEverySize(page: Page, key: string, home: string, current: string, count: number): Promise<void> {
   const crumbs = page.locator('nav[aria-label] ol.breadcrumbs > li');
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
+  await atEverySize(page, key, async (size) => {
     await expect(page.locator('div.breadcrumbs')).toHaveCount(0);
     await expect(crumbs).toHaveCount(count);
     await expect(crumbs.first()).toHaveText(home);
@@ -98,15 +75,11 @@ async function crumbsAtEverySize(page: Page, key: string, home: string, current:
     await expect(crumbs.last()).toHaveAttribute('aria-current', 'page');
     await expect(crumbs.last().locator('a')).toHaveCount(0);
     await expect(page.locator('ol.breadcrumbs')).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-    if (size.name === '1440') {
+    if (size.width === 1440) {
       const tops = await crumbs.evaluateAll((items) => items.map((item) => Math.round(item.getBoundingClientRect().top)));
       expect(new Set(tops).size, `${key}: the crumbs on one line`).toBe(1);
     }
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-ASSISTANT-1-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
+  });
 }
 
 type IndexNames = Record<
@@ -123,8 +96,7 @@ async function indexAtEverySize(page: Page, names: IndexNames, suffix: string): 
   await signIn(page.request, ROOT);
   await page.goto('/admin/');
   const main = page.locator('#content-main');
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
+  await atEverySize(page, `admin-index${suffix}`, async () => {
     const sections = (await main.locator('caption a.section').allTextContents()).map((name) => name.trim());
     expect(sections.length).toBeGreaterThan(10);
     expect(sections.filter((name, at) => sections.indexOf(name) !== at), 'sections sharing a name').toEqual([]);
@@ -137,11 +109,7 @@ async function indexAtEverySize(page: Page, names: IndexNames, suffix: string): 
     await expect(main.locator('.app-usersessions .model-usersession th')).toHaveText(names.sessions);
     await expect(main.locator('.app-live caption')).toHaveText(names.live);
     await expect(main.locator('.app-live .model-outboxevent th')).toHaveText(names.outbox);
-    await settled(page);
-    expect(await sidewaysScroll(page), `admin-index${suffix} at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-ASSISTANT-1-admin-index${suffix}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
+  });
   expect(errors).toEqual([]);
 }
 

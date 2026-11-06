@@ -2,23 +2,10 @@
 // it again, and nothing is recorded. Chrome itself refuses: its fake media prompt answers «Block», a launch option, so a
 // file of its own (assistant-dictation.spec.ts needs the prompt that accepts).
 // flow: ASSISTANT-F21 — dictate to the assistant.
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-import { djangoEnv } from '../django-env';
 import { openPanel } from './assistant-chat';
-import { expect, settled, shot, test } from './fixtures';
+import { expect, runSeed, settled, shot, test } from './fixtures';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-
-function seed(action: 'clear' | 'panel'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/assistant_seed.py', action, 'http://127.0.0.1:9/v1', 'en'], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
-}
+const seed = (action: 'clear' | 'panel') => runSeed('assistant_seed.py', [action, 'http://127.0.0.1:9/v1', 'en']);
 
 test.use({
   launchOptions: { args: ['--use-fake-ui-for-media-stream=deny', '--use-fake-device-for-media-stream'] },

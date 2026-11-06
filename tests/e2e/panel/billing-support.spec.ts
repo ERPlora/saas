@@ -8,32 +8,10 @@
 // billing/WORKBOOK.md: G19=F08, G20=F09, G21=F10, G26=F01, G27=F24, G28=F32.
 import type { Page } from '@playwright/test';
 
-import { businessIdOf, captureAtEverySize, expect, panelAccount, qaAccount, seededAndSignedIn, test, toast, watchPageErrors } from './fixtures';
+import { businessIdOf, captureAtEverySize, dialogInPlace, expect, panelAccount, qaAccount, seededAndSignedIn, test, toast, watchPageErrors } from './fixtures';
 
 seededAndSignedIn('billing_apps_seed.py', qaAccount('BILLING_APPS', panelAccount('billing-apps')));
 const atEverySize = captureAtEverySize('APP-BILLING-3');
-
-/** A dialog that slides in again at a new size is in place once its button `testid` is whole on screen and still. */
-async function dialogInPlace(page: Page, testid: string): Promise<void> {
-  const button = page.getByTestId(testid);
-  await expect(button).toBeInViewport({ ratio: 1 });
-  await button.evaluate(
-    (element) =>
-      new Promise<void>((still) => {
-        let last = '';
-        const frame = () => {
-          const { top, left, width, height } = element.getBoundingClientRect();
-          const now = `${top},${left},${width},${height}`;
-          if (now === last) still();
-          else {
-            last = now;
-            requestAnimationFrame(frame);
-          }
-        };
-        requestAnimationFrame(frame);
-      }),
-  );
-}
 
 /** Stripe.js as the page would get it from js.stripe.com: mounts a placeholder and keeps `onComplete`. */
 async function playStripe(page: Page): Promise<void> {
