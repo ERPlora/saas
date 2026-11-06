@@ -27,6 +27,12 @@ async function restricted(code: string, filePath: string): Promise<string[]> {
   return result.messages.filter((m) => m.ruleId === 'no-restricted-globals').map((m) => m.message);
 }
 
+/** What the lint says of the imports of `code` it forbids. */
+async function forbiddenImports(code: string, filePath: string): Promise<string[]> {
+  const [result] = await eslint.lintText(code, { filePath });
+  return result.messages.filter((m) => m.ruleId === 'no-restricted-imports').map((m) => m.message);
+}
+
 /** The elements whose `slot="…"` attribute the lint reports as Vue 2 syntax. */
 async function deprecatedSlots(code: string, filePath: string): Promise<string[]> {
   const [result] = await eslint.lintText(code, { filePath });
@@ -103,6 +109,27 @@ describe('eslint config', () => {
       '',
     ].join('\n');
     expect(await deprecatedSlots(code, 'accounts/frontend/pages/Page.vue')).toEqual(['<ok-button']);
+  });
+
+  it.each(['@erplora/ui/testing/mail', '@erplora/ui/testing'])(
+    'forbids readMails from %s in an e2e: it stops Playwright reading the whole mail folder (saas#363)',
+    async (entry) => {
+      const code = `import { readMails } from '${entry}';\nexport const mails = readMails('.mail');\n`;
+      for (const spec of ['tests/e2e/panel/accounts-report.spec.ts', 'tests/e2e/recaptcha.spec.ts', 'tests/e2e/panel/fixtures.ts']) {
+        expect(await forbiddenImports(code, spec), spec).toEqual([
+          expect.stringContaining('readMailsSince'),
+        ]);
+      }
+    },
+  );
+
+  it('lets an e2e read the mails written from the action on, and wait for one', async () => {
+    const code = [
+      "import { readMailCode, readMailsSince, waitForMail } from '@erplora/ui/testing/mail';",
+      'export const read = [readMailCode, readMailsSince, waitForMail];',
+      '',
+    ].join('\n');
+    expect(await forbiddenImports(code, 'tests/e2e/panel/assistant-report.spec.ts')).toEqual([]);
   });
 
   it("leaves the template pages' vendored scripts alone", async () => {

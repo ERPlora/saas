@@ -13,7 +13,7 @@
 // flow: ASSISTANT-F25 — the account asks the panel's assistant: reads alone, writes after the card.
 // flow: ASSISTANT-F26 — the account's messages of the month, spent without a plan to upgrade.
 // flow: BILLING-F13 — cancelling the plan: its card first says what Billing's dialog says (seed `paying`, no Stripe).
-import { readMails } from '@erplora/ui/testing/mail';
+import { readMailsSince } from '@erplora/ui/testing/mail';
 import type { Locator, Page } from '@playwright/test';
 
 import { NEW_BUSINESS } from '../assistant-provider';
@@ -208,7 +208,7 @@ for (const language of ['es', 'en'] as const) {
     // ASSISTANT-F29: the month's last message mailed the account, in its language, once: the refused third one
     // mails nothing more (at 1 of 2 there was no «messages left» mail: under 80 %).
     await waitForMail(OWNER.email, since, words.spentMail);
-    const mailed = readMails(PANEL_MAIL_DIR).filter((mail) => mail.writtenAt >= since && mail.to.includes(OWNER.email));
+    const mailed = (await readMailsSince({ dir: PANEL_MAIL_DIR, since })).filter((mail) => mail.to.includes(OWNER.email));
     expect(mailed.map((mail) => mail.subject)).toEqual([words.spentSubject]);
 
     // The same conversation at the three sizes: docked from 768 px, over a veil on a phone.

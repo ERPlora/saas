@@ -1,11 +1,20 @@
-// Lint of saas-next's TypeScript: the same presets as packages/ui (its config is not exported), and
-// the rule that keeps TypeScript thin: the entry and the apps reach the server only through the SDK.
+// Lint of saas-next's TypeScript: the same presets as packages/ui (its config is not exported), the
+// rule that keeps TypeScript thin (the entry and the apps reach the server only through the SDK), and
+// the one that keeps an e2e from stopping Playwright's Node to read every mail of its stack.
 import pluginVue from 'eslint-plugin-vue';
 import tseslint from 'typescript-eslint';
 
 const restricted = ['fetch', 'EventSource', 'WebSocket', 'XMLHttpRequest'].map((name) => ({
   name,
   message: 'Network access goes through the SDK (@erplora/ui/sdk).',
+}));
+
+// `readMails` reads and parses every file of the mail folder with Node stopped, and a stack's folder keeps every
+// mail of every run (hundreds of ms each time, seconds on a busy machine: saas#363).
+const wholeMailFolder = ['@erplora/ui/testing/mail', '@erplora/ui/testing'].map((name) => ({
+  name,
+  importNames: ['readMails'],
+  message: 'It stops the e2e reading the whole mail folder: read the mails written from the action on with readMailsSince.',
 }));
 
 export default [
@@ -38,5 +47,9 @@ export default [
     // The entry and the apps, at the project root next to `base/` (no `apps/`, PLAN §20.2).
     files: ['frontend/**/*.{ts,vue}', '*/frontend/**/*.{ts,vue}'],
     rules: { 'no-restricted-globals': ['error', ...restricted] },
+  },
+  {
+    files: ['tests/e2e/**/*.ts'],
+    rules: { 'no-restricted-imports': ['error', { paths: wholeMailFolder }] },
   },
 ];
