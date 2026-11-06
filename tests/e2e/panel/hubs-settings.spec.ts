@@ -18,12 +18,12 @@ import { type Page } from '@playwright/test';
 
 import {
   apiPost,
+  captureAtEverySize,
   djangoPrint,
   expect,
   QUIET_MS,
   settled,
   shot,
-  sidewaysScroll,
   signIn,
   signInAs,
   test,
@@ -34,11 +34,7 @@ import { HUB_DOUBLE_PORT } from './project';
 
 const PREFIX = 'e2e-hubs2-';
 const PASSWORD = 'Masa-madre-y-centeno-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
+const atEverySize = captureAtEverySize('APP-HUBS-2');
 
 /** The page Ionic shows (it keeps the pages it left in the DOM, hidden). */
 const shown = (page: Page) => page.locator('ion-router-outlet > .ion-page:not(.ion-page-hidden)').last();
@@ -75,18 +71,6 @@ async function ownerOf(page: Page, who: string, name: string): Promise<{ email: 
     ].join('\n'),
   );
   return business;
-}
-
-/** `ready` at each size: no sideways scroll and a capture `APP-HUBS-2-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-HUBS-2-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
 }
 
 /** Type `value` into the `ion-input` with that test id (its native input). */

@@ -17,13 +17,11 @@ import { type Page } from '@playwright/test';
 
 import {
   businessIdOf,
+  captureAtEverySize,
   djangoPrint,
   expect,
   panelAccount,
   seedPanel,
-  settled,
-  shot,
-  sidewaysScroll,
   signIn,
   test,
   waitForMail,
@@ -33,11 +31,7 @@ import { HUB_DOUBLE_PORT } from './project';
 
 const PREFIX = 'e2e-hubs1-';
 const PASSWORD = 'Masa-madre-y-centeno-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
+const atEverySize = captureAtEverySize('APP-HUBS-1');
 
 /** The page Ionic shows (it keeps the pages it left in the DOM, hidden). */
 const shown = (page: Page) => page.locator('ion-router-outlet > .ion-page:not(.ion-page-hidden)').last();
@@ -55,18 +49,6 @@ async function freshAccount(page: Page, name: string): Promise<string> {
   );
   await signIn(page.request, { email, password: PASSWORD });
   return email;
-}
-
-/** `ready` at each size: no sideways scroll and a capture `APP-HUBS-1-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-HUBS-1-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
 }
 
 /** The Hub's door, caught: every request to a business's host is answered here and remembered. */

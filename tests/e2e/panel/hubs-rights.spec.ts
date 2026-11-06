@@ -17,14 +17,12 @@ import type { Page } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
 import {
+  captureAtEverySize,
   djangoPrint,
   djangoPrintAsync,
   expect,
   type HubCall,
   type HubDouble,
-  settled,
-  shot,
-  sidewaysScroll,
   signIn,
   startHubDouble,
   test,
@@ -36,23 +34,7 @@ const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '.
 const PREFIX = 'e2e-hubs4-';
 const PASSWORD = 'Harina-de-espelta-26';
 const STAFF = { email: `${PREFIX}staff@example.com`, password: PASSWORD };
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
-
-/** `ready` at each size: no sideways scroll and a capture `APP-HUBS-4-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-HUBS-4-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
+const atEverySize = captureAtEverySize('APP-HUBS-4');
 
 function removeOwnRows(): void {
   djangoPrint(
