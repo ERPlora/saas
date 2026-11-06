@@ -397,6 +397,14 @@ Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/t
 - `VIEWPORTS` (390, 834 y 1440 px), `watchPageErrors(page)` y `shot(nombre)`.
 - `apiPost(request, ruta, datos)`: un POST a la API con el token CSRF de la sesión.
 - `waitForMail(…)` y `startHubDouble()`: el correo y el Hub (ver «Puertos y servidores»).
+- **Stripe, de mentira** (en la pila e2e no hay claves ni red hacia Stripe): `playStripe(page)` es el doble de
+  Stripe.js (monta un marcador `stripe-double` donde iría el Embedded Checkout y anota lo que la página le da, que
+  devuelve `stripeState(page)`), `payInStripe(page)` es Stripe diciendo que el pago ha ido bien (corre su
+  `onComplete`) y `answerCheckoutStart(page, respuesta?)` responde a `billing.checkout.start` y devuelve lo que
+  la página pidió, en orden. Encima, `gotoWithCheckout(page, ruta)` (un negocio en Gratis paga en el checkout),
+  `addAppInCheckout(page, negocio, app)` (su «Add» de una app de pago), `gotoWithCharge(page, ruta, importe, IVA)`
+  (un negocio que ya paga, en el diálogo del panel) y `playStripePortal(page)` (el portal de Stripe,
+  `STRIPE_PORTAL_URL`). Ninguna spec lleva su propia copia.
 - `djangoPrint(código)`: lo que imprime un trozo de Python con Django montado contra la BD local, para
   lo que ninguna página enseña. Cada llamada arranca Django en frío y bloquea el proceso de Node hasta que
   termina (~1 s en reposo, 57–88 s con la máquina cargada, saas#346): dentro de una prueba, lo que enseña el
