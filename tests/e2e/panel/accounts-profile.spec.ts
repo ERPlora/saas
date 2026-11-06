@@ -10,8 +10,10 @@ import { type APIRequestContext, type Page } from "@playwright/test";
 
 import {
   captureAtEverySize,
+  createAccountWarm,
   djangoPrintWarm,
   expect,
+  removeAccountsWarm,
   sessionOf,
   settled,
   signIn,
@@ -28,32 +30,16 @@ const PASSWORD = "Centeno-y-masa-madre-26";
 /** A fresh address of this spec, never used before. */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
-async function removeAccounts(): Promise<void> {
-  await djangoPrintWarm(
-    [
-      "from django.contrib.auth import get_user_model",
-      "from hubs.models import Hub",
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join("\n"),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account with its address proven, as one that signed in before; `staff` makes it a platform administrator. */
-async function createAccount(
-  email: string,
-  options: { staff?: boolean; firstName?: string } = {},
-): Promise<{ email: string; password: string }> {
-  await djangoPrintWarm(
-    [
-      "from allauth.account.models import EmailAddress",
-      "from django.contrib.auth import get_user_model",
-      `user = get_user_model().objects.${options.staff ? "create_superuser" : "create_user"}(email="${email}", password="${PASSWORD}", first_name="${options.firstName ?? "Ana"}", last_name="García", language="en")`,
-      "EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)",
-    ].join("\n"),
-  );
-  return { email, password: PASSWORD };
-}
+const createAccount = (email: string, options: { staff?: boolean; firstName?: string } = {}) =>
+  createAccountWarm(email, PASSWORD, {
+    role: options.staff ? "superuser" : "customer",
+    firstName: options.firstName ?? "Ana",
+    lastName: "García",
+    language: "en",
+  });
 
 let lastSequence = 0;
 

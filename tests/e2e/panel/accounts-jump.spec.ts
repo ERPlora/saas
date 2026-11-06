@@ -14,9 +14,11 @@ import { type APIRequestContext, type Page } from '@playwright/test';
 
 import {
   captureAtEverySize,
+  createAccountWarm,
   djangoPrintWarm,
   expect,
   internalSecret,
+  removeAccountsWarm,
   sessionOf,
   signIn,
   signInThroughPage,
@@ -33,29 +35,11 @@ const STATE = 'state-of-the-browser-that-started-the-jump-0123456789';
 /** A fresh address of this spec, never used before. */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
-async function removeAccounts(): Promise<void> {
-  await djangoPrintWarm(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account with its address proven, as one that signed in before; the panel speaks its `language`. */
-async function createAccount(email: string, language: 'en' | 'es' = 'en'): Promise<{ email: string; password: string }> {
-  await djangoPrintWarm(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", first_name="Ana", last_name="García", language="${language}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-  return { email, password: PASSWORD };
-}
+const createAccount = (email: string, language: 'en' | 'es' = 'en') =>
+  createAccountWarm(email, PASSWORD, { firstName: 'Ana', lastName: 'García', language });
 
 /** A business of `email` made by its operation (its owner is `email`); returns its slug. */
 function businessOf(email: string, name: string): Promise<string> {

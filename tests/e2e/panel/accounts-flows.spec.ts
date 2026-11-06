@@ -10,8 +10,10 @@ import { type APIRequestContext, type Page } from '@playwright/test';
 
 import {
   captureAtEverySize,
+  createAccountWarm,
   djangoPrintWarm,
   expect,
+  removeAccountsWarm,
   sessionOf,
   settled,
   shot,
@@ -34,27 +36,11 @@ const PASSWORD = 'Centeno-y-masa-madre-26';
 /** A fresh address of this spec, never used before (a throttle or a code of an earlier run never leaks in). */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
-async function removeAccounts(): Promise<void> {
-  await djangoPrintWarm(
-    [
-      'from django.contrib.auth import get_user_model',
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account with its address proven, as one that signed in before; `staff` makes it a platform administrator. */
-async function createAccount(email: string, options: { verified?: boolean; staff?: boolean } = {}): Promise<void> {
-  const { verified = true, staff = false } = options;
-  await djangoPrintWarm(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.${staff ? 'create_superuser' : 'create_user'}(email="${email}", password="${PASSWORD}")`,
-      `EmailAddress.objects.create(user=user, email=user.email, verified=${verified ? 'True' : 'False'}, primary=True)`,
-    ].join('\n'),
-  );
-}
+const createAccount = (email: string, { verified = true, staff = false } = {}) =>
+  createAccountWarm(email, PASSWORD, { verified, role: staff ? 'superuser' : 'customer' });
 
 /** What the account accepted (ACCOUNTS-G119), before it ever signs in: `terms_version privacy_version`, or `None None`. */
 function acceptedVersions(email: string): Promise<string> {

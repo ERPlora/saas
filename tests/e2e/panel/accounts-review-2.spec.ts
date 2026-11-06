@@ -9,7 +9,17 @@
 // F37, F39–F41, F45, F46) have their integration tests; F42's pages and F43's maintenance page and F46's mails are
 // painted in both languages by public-errors, accounts-platform and accounts-mails.
 // Accounts of this spec: `e2e-acc7-…@example.com`, removed before and after, with their businesses.
-import { djangoPrintWarm, expect, openMenu, signIn, signInThroughPage, test, watchPageErrors } from './fixtures';
+import {
+  createAccountWarm,
+  djangoPrintWarm,
+  expect,
+  openMenu,
+  removeAccountsWarm,
+  signIn,
+  signInThroughPage,
+  test,
+  watchPageErrors,
+} from './fixtures';
 import { closeOverlays, LANGUAGES, type Lang, openUserMenu, reviewOf, t } from './language-review';
 
 const PREFIX = 'e2e-acc7-';
@@ -47,41 +57,19 @@ const ADMIN: Record<Lang, Record<string, string>> = {
 const address = (name: string, lang: Lang) => `${PREFIX}${name}-${lang}-${Date.now()}@example.com`;
 
 async function removeAccounts(): Promise<void> {
-  await djangoPrintWarm(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from base.models import SiteSettings',
-      'from hubs.models import Hub',
-      'SiteSettings.objects.update(maintenance_mode=False, maintenance_message_en="", maintenance_message_es="")',
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
+  await djangoPrintWarm('from base.models import SiteSettings\nSiteSettings.objects.update(maintenance_mode=False, maintenance_message_en="", maintenance_message_es="")');
+  await removeAccountsWarm(PREFIX);
 }
 
 /** An account speaking `lang`, its address proven; `superuser` and `team` make it ERPlora's admin or a team account. */
-async function createAccount(
-  email: string,
-  lang: Lang,
-  role: 'customer' | 'superuser' | 'team' = 'customer',
-): Promise<{ email: string; password: string }> {
-  const create = {
-    customer: `get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", first_name="Lucía", last_name="Fernández", language="${lang}")`,
-    superuser: `services.create_platform_user("${email}", services.PLATFORM_ADMIN, "${PASSWORD}")[0]`,
-    team: `services.create_platform_user("${email}", services.PLATFORM_SUPPORT, "${PASSWORD}")[0]`,
-  }[role];
-  await djangoPrintWarm(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      'from accounts import services',
-      `user = ${create}`,
-      `user.language = "${lang}"; user.save(update_fields=["language"])`,
-      'EmailAddress.objects.update_or_create(user=user, email=user.email, defaults={"verified": True, "primary": True})',
-    ].join('\n'),
+const createAccount = (email: string, lang: Lang, role: 'customer' | 'superuser' | 'team' = 'customer') =>
+  createAccountWarm(
+    email,
+    PASSWORD,
+    role === 'customer'
+      ? { firstName: 'Lucía', lastName: 'Fernández', language: lang }
+      : { role: role === 'superuser' ? 'platform-admin' : 'platform-support', language: lang },
   );
-  return { email, password: PASSWORD };
-}
 
 /** A business `email` owns (hubs' own fixture, as accounts-profile builds it). */
 async function ownBusiness(email: string, name: string): Promise<void> {

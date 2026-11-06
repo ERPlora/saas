@@ -7,7 +7,16 @@
 // Accounts of this spec: `e2e-pass-…@example.com`, removed before and after.
 import { type Browser, type Page } from '@playwright/test';
 
-import { captureAtEverySize, djangoPrintWarm, expect, signInThroughPage, test, watchPageErrors } from './fixtures';
+import {
+  captureAtEverySize,
+  createAccountWarm,
+  djangoPrintWarm,
+  expect,
+  removeAccountsWarm,
+  signInThroughPage,
+  test,
+  watchPageErrors,
+} from './fixtures';
 
 const atEverySize = captureAtEverySize('ACCOUNTS-F29');
 
@@ -17,29 +26,10 @@ const PASSWORD = 'Centeno-y-masa-madre-26';
 /** A fresh address of this spec, never used before. */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
-async function removeAccounts(): Promise<void> {
-  await djangoPrintWarm(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account with its address proven, as one that signed in before. */
-async function createAccount(email: string): Promise<{ email: string; password: string }> {
-  await djangoPrintWarm(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", first_name="Ana", last_name="García")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-  return { email, password: PASSWORD };
-}
+const createAccount = (email: string) => createAccountWarm(email, PASSWORD, { firstName: 'Ana', lastName: 'García' });
 
 /** A business of `email` made by its operation (its owner is `email`): its slug and its id. */
 async function businessOf(email: string, name: string): Promise<{ slug: string; id: string }> {

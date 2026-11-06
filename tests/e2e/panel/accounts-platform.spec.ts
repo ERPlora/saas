@@ -12,9 +12,11 @@ import { type Browser, type Page } from '@playwright/test';
 import {
   captureAtEverySize,
   closeMenu,
+  createAccountWarm,
   djangoPrintWarm,
   expect,
   openMenu,
+  removeAccountsWarm,
   signIn,
   signInThroughPage,
   test,
@@ -27,26 +29,11 @@ const PREFIX = 'e2e-acc5-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
 const SITE_SETTINGS = '/admin/base/sitesettings/';
 
-async function removeAccounts(): Promise<void> {
-  await djangoPrintWarm(
-    `from django.contrib.auth import get_user_model\nget_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account with its address proven; `staff` makes it a superuser of the admin. */
-async function createAccount(name: string, { staff = false, language = 'en' } = {}): Promise<{ email: string; password: string }> {
-  const email = `${PREFIX}${name}-${Date.now()}@example.com`;
-  const create = staff ? 'create_superuser' : 'create_user';
-  await djangoPrintWarm(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.${create}(email="${email}", password="${PASSWORD}", language="${language}")`,
-      'EmailAddress.objects.update_or_create(user=user, email=user.email, defaults={"verified": True, "primary": True})',
-    ].join('\n'),
-  );
-  return { email, password: PASSWORD };
-}
+const createAccount = (name: string, { staff = false, language = 'en' as 'en' | 'es' } = {}) =>
+  createAccountWarm(`${PREFIX}${name}-${Date.now()}@example.com`, PASSWORD, { role: staff ? 'superuser' : 'customer', language });
 
 /** The switch as the database has it, for a run that died half-way: off. */
 async function maintenanceOffInTheDatabase(): Promise<void> {

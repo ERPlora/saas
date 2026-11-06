@@ -12,8 +12,9 @@ import { type APIRequestContext, type Browser, type Page } from '@playwright/tes
 
 import {
   captureAtEverySize,
-  djangoPrintWarm,
+  createAccountWarm,
   expect,
+  removeAccountsWarm,
   sessionOf,
   sidewaysScroll,
   signIn,
@@ -32,27 +33,11 @@ const SIGN_OUT_API = '/_allauth/browser/v1/auth/session';
 /** A fresh address of this spec, never used before. */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
-async function removeAccounts(): Promise<void> {
-  await djangoPrintWarm(
-    [
-      'from django.contrib.auth import get_user_model',
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account with its address proven, as one that signed in before; `staff` makes it a platform administrator. */
-async function createAccount(email: string, options: { staff?: boolean } = {}): Promise<{ email: string; password: string }> {
-  await djangoPrintWarm(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.${options.staff ? 'create_superuser' : 'create_user'}(email="${email}", password="${PASSWORD}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-  return { email, password: PASSWORD };
-}
+const createAccount = (email: string, { staff = false } = {}) =>
+  createAccountWarm(email, PASSWORD, { role: staff ? 'superuser' : 'customer' });
 
 /** The row of `request`'s own session in Security's list, as the panel gives it (`GET /api/accounts/sessions`). */
 async function ownSessionRow(request: APIRequestContext): Promise<string> {

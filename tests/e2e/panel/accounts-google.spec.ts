@@ -18,7 +18,20 @@ import { createServer, type Server } from 'node:http';
 
 import { type Page } from '@playwright/test';
 
-import { djangoPrintWarm, expect, sessionOf, settled, shot, sidewaysScroll, test, VIEWPORTS, waitForMail, watchPageErrors } from './fixtures';
+import {
+  createAccountWarm,
+  djangoPrintWarm,
+  expect,
+  removeAccountsWarm,
+  sessionOf,
+  settled,
+  shot,
+  sidewaysScroll,
+  test,
+  VIEWPORTS,
+  waitForMail,
+  watchPageErrors,
+} from './fixtures';
 import { GOOGLE_E2E, PANEL_MFA_URL } from './project';
 import { STACK } from '../stack';
 
@@ -29,14 +42,7 @@ const SECURITY = '/dashboard/account/security';
 /** A fresh address of this spec, never used before. */
 const address = (name: string, size: number): string => `${PREFIX}${name}-${size}-${Date.now()}@example.com`;
 
-async function removeAccounts(): Promise<void> {
-  await djangoPrintWarm(
-    [
-      'from django.contrib.auth import get_user_model',
-      `get_user_model().objects.filter(email__startswith=${JSON.stringify(PREFIX)}, email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 // ── Google's token endpoint, as the panel's Django calls it ───────────────────────────────────
 
@@ -165,16 +171,7 @@ async function accountOf(email: string): Promise<AccountState | null> {
 }
 
 /** An account of erplora.com with `email` confirmed and a password, not linked to any Google. */
-async function createAccount(email: string): Promise<void> {
-  await djangoPrintWarm(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email=${JSON.stringify(email)}, password=${JSON.stringify(PASSWORD)})`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-}
+const createAccount = (email: string) => createAccountWarm(email, PASSWORD);
 
 /** That account with the authenticator app on: its key. */
 function turnOnTheApp(email: string): Promise<string> {

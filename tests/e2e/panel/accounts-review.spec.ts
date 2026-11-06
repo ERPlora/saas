@@ -14,8 +14,10 @@
 import { createHmac } from 'node:crypto';
 
 import {
+  createAccountWarm,
   djangoPrintWarm,
   expect,
+  removeAccountsWarm,
   sessionOf,
   signIn,
   signInThroughPage,
@@ -36,27 +38,11 @@ const review = reviewOf('APP-ACCOUNTS-6');
 
 const address = (name: string, lang: Lang) => `${PREFIX}${name}-${lang}-${Date.now()}@example.com`;
 
-async function removeAccounts(): Promise<void> {
-  await djangoPrintWarm(
-    [
-      'from django.contrib.auth import get_user_model',
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account speaking `lang`, its address proven, as one that signed in before; `staff` makes it a superuser. */
-async function createAccount(email: string, lang: Lang, options: { staff?: boolean } = {}): Promise<{ email: string; password: string }> {
-  await djangoPrintWarm(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.${options.staff ? 'create_superuser' : 'create_user'}(email="${email}", password="${PASSWORD}", first_name="Lucía", last_name="Fernández", language="${lang}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-  return { email, password: PASSWORD };
-}
+const createAccount = (email: string, lang: Lang, { staff = false } = {}) =>
+  createAccountWarm(email, PASSWORD, { role: staff ? 'superuser' : 'customer', firstName: 'Lucía', lastName: 'Fernández', language: lang });
 
 // ── The authenticator app, as the phone computes it (RFC 6238: SHA-1, 6 digits, 30 s) ─────────────
 

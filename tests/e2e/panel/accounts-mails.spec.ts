@@ -10,11 +10,13 @@ import { type Page } from '@playwright/test';
 
 import {
   captureAtEverySize,
+  createAccountWarm,
   djangoPrintWarm,
   expect,
   MAIL_LOGO_URL,
   MAILING,
   onlyTheMailLogo,
+  removeAccountsWarm,
   settled,
   signIn,
   test,
@@ -59,24 +61,10 @@ async function mailOf(to: string, since: number, subject: string): Promise<ReadM
   return JSON.parse(await djangoPrintWarm(read)) as ReadMail;
 }
 
-async function removeAccounts(): Promise<void> {
-  await djangoPrintWarm(
-    `from django.contrib.auth import get_user_model\nget_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account in `language` with its address proven. */
-async function createAccount(email: string, language: string): Promise<{ email: string; password: string }> {
-  await djangoPrintWarm(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", language="${language}")`,
-      'EmailAddress.objects.update_or_create(user=user, email=user.email, defaults={"verified": True, "primary": True})',
-    ].join('\n'),
-  );
-  return { email, password: PASSWORD };
-}
+const createAccount = (email: string, language: 'en' | 'es') => createAccountWarm(email, PASSWORD, { language });
 
 /** The HTML part of `mail` at every size (`captureAtEverySize`): branded, every line of its text there, its shot. */
 async function paint(page: Page, key: string, mail: ReadMail, language: string): Promise<void> {

@@ -5,9 +5,11 @@
 // «Confirm it's you», use, revoke) are account.spec.ts's. Accounts of this spec: `e2e-acc4k-…@example.com`.
 
 import {
+  type AccountRole,
   captureAtEverySize,
-  djangoPrintWarm,
+  createAccountWarm,
   expect,
+  removeAccountsWarm,
   signIn,
   signInThroughPage,
   test,
@@ -21,35 +23,14 @@ const PASSWORD = 'Centeno-y-masa-madre-26';
 
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
-async function removeAccounts(): Promise<void> {
-  await djangoPrintWarm(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account with its address proven; `role` makes it a superuser or a team account of support. */
-async function createAccount(email: string, role: 'superuser' | 'support' | 'customer'): Promise<{ email: string; password: string }> {
-  const create =
-    role === 'customer'
-      ? `get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", language="en")`
-      : `services.create_platform_user("${email}", ${role === 'superuser' ? 'services.PLATFORM_ADMIN' : 'services.PLATFORM_SUPPORT'}, "${PASSWORD}")[0]`;
-  await djangoPrintWarm(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      'from accounts import services',
-      `user = ${create}`,
-      'user.language = "en"; user.save(update_fields=["language"])',
-      'EmailAddress.objects.update_or_create(user=user, email=user.email, defaults={"verified": True, "primary": True})',
-    ].join('\n'),
-  );
-  return { email, password: PASSWORD };
-}
+const createAccount = (email: string, role: 'superuser' | 'support' | 'customer') =>
+  createAccountWarm(email, PASSWORD, {
+    role: { superuser: 'platform-admin', support: 'platform-support', customer: 'customer' }[role] as AccountRole,
+    language: 'en',
+  });
 
 test.beforeAll(() => removeAccounts());
 test.afterAll(() => removeAccounts());
