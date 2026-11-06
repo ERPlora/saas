@@ -10,10 +10,13 @@ import {
   captureAtEverySize,
   djangoPrintWarm,
   expect,
+  gotoWithCharge,
   panelAccount,
+  playStripePortal,
   qaAccount,
   seededAndSignedInWarm,
   shot,
+  STRIPE_PORTAL_URL,
   test,
   toast,
   watchPageErrors,
@@ -64,12 +67,7 @@ test.describe('billing flows', () => {
   test('BILLING-G88: a paying business sees its plan as current and changes to another with its proration', async ({ page }) => {
     const errors = watchPageErrors(page);
     const bakery = await businessIdOf(page.request, 'Panadería López');
-    await page.route('**/api/billing/checkout/start', (route) =>
-      route.fulfill({
-        json: { flow: 'confirm', session_id: null, client_secret: null, publishable_key: null, preview: { amount_due_cents: 1452, tax_cents: 252, currency: 'eur', proration_date: Math.floor(Date.now() / 1000), charge_starts_at: null } },
-      }),
-    );
-    await page.goto(`/dashboard/store/plans?business=${bakery}`);
+    await gotoWithCharge(page, `/dashboard/store/plans?business=${bakery}`, 1452, 252);
     await atEverySize(page, 'BILLING-G88', async () => {
       await expect(page.getByTestId('plan-starter').getByTestId('plan-current')).toBeVisible();
       await expect(page.getByTestId('plan-standard').getByTestId('plan-change')).toBeVisible();
@@ -160,21 +158,14 @@ test.describe('billing flows', () => {
 
   test('BILLING-G71: «Change card» opens the Stripe portal of that payer', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await page.route(/^https:\/\/billing\.stripe\.com\//, (route) =>
-      route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Stripe (test double)</title><p>Stripe (test double)</p>' }),
-    );
-    const opened: unknown[] = [];
-    await page.route('**/api/billing/portal', async (route) => {
-      opened.push(route.request().postDataJSON());
-      await route.fulfill({ json: { url: 'https://billing.stripe.com/p/session/e2e' } });
-    });
+    const opened = await playStripePortal(page);
     await page.goto('/dashboard/billing/invoices');
     const change = page.getByTestId('unpaid-group-item').filter({ hasText: 'Bar La Plaza' }).getByTestId('unpaid-group-change-card');
     await atEverySize(page, 'BILLING-G71', async () => {
       await expect(change).toBeVisible();
     });
     await change.click();
-    await page.waitForURL('https://billing.stripe.com/p/session/e2e');
+    await page.waitForURL(STRIPE_PORTAL_URL);
     expect(opened).toEqual([{ hub_id: await businessIdOf(page.request, 'Bar La Plaza') }]);
     expect(errors).toEqual([]);
   });
