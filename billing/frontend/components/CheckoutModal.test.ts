@@ -15,6 +15,15 @@ import { applySurface } from '@erplora/ui/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';
 
+vi.mock('@erplora/ui/shell', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
+  toastSuccess: vi.fn(() => Promise.resolve()),
+}));
+vi.mock('../stripe-js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../stripe-js')>()),
+  loadStripeJs: vi.fn(),
+}));
+
 /** Ionic renders an inline modal's content only once it presents it (`ionMount`), and that can come after the
  *  answers the dialog waits for (saas#326). With `held`, the dialog's content comes when the test calls `present()`. */
 const presentation = vi.hoisted(() => {
@@ -42,14 +51,6 @@ vi.mock('@ionic/vue', async (importOriginal) => {
   });
   return { ...(await importOriginal<typeof import('@ionic/vue')>()), IonModal };
 });
-vi.mock('@erplora/ui/shell', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
-  toastSuccess: vi.fn(() => Promise.resolve()),
-}));
-vi.mock('../stripe-js', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../stripe-js')>()),
-  loadStripeJs: vi.fn(),
-}));
 
 import { toastSuccess } from '@erplora/ui/shell';
 
@@ -361,23 +362,17 @@ describe('CheckoutModal', () => {
       expect(stripe.checkouts[0].destroyed).toBe(false);
     });
 
-    it('Stripe.js that does not load is still said, with «Retry», once the dialog shows it', async () => {
-      vi.mocked(loadStripeJs).mockImplementationOnce(() => Promise.reject(new Error('Stripe.js could not be loaded')));
+    it.each([
+      ['Stripe.js that does not load', () => vi.mocked(loadStripeJs).mockImplementationOnce(() => Promise.reject(new Error('Stripe.js could not be loaded')))],
+      ['a checkout Stripe refuses', () => stripe.failNext(new Error('Invalid client secret'))],
+    ])('%s is still said, with «Retry», once the dialog shows it', async (_failure, fail) => {
+      fail();
       const s = await setup();
       presentation.present();
       await flush();
       expect(s.q('checkout-error')?.textContent).toContain('We could not open the secure payment');
       expect(s.q('checkout-retry')).not.toBeNull();
       expect(stripe.checkouts).toEqual([]);
-    });
-
-    it('a checkout Stripe refuses is still said, once the dialog shows it', async () => {
-      stripe.failNext(new Error('Invalid client secret'));
-      const s = await setup();
-      presentation.present();
-      await flush();
-      expect(s.q('checkout-error')?.textContent).toContain('We could not open the secure payment');
-      expect(s.q('checkout-retry')).not.toBeNull();
     });
 
     it('closed before its content came, the checkout is let go and nothing is mounted later', async () => {
