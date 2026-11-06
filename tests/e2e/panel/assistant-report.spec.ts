@@ -5,7 +5,7 @@
 // only when it did not (Brave's terms do not let a mailbox keep its results). After a reload of the tab each answer
 // still says it. The dialog at 390, 834 and 1440 (screenshots under `.artifacts/panel/`).
 // flow: ASSISTANT-F23 — the report of an answer reaches support, without its text when it may quote the web.
-import { readMails } from '@erplora/ui/testing/mail';
+import { readMailsSince } from '@erplora/ui/testing/mail';
 import type { Locator, Page } from '@playwright/test';
 
 import { STACK } from '../stack';
@@ -51,7 +51,8 @@ async function report(page: Page, answer: Locator): Promise<{ message_id: string
 /** The mail support got of the report of `id`. */
 async function mailOf(support: string, since: number, id: string): Promise<string> {
   await waitForMail(support, since, new RegExp(`^Message: (${id})$`, 'm'));
-  return readMails(PANEL_MAIL_DIR).find((mail) => mail.body.includes(`Message: ${id}`))?.body ?? '';
+  const mails = await readMailsSince({ dir: PANEL_MAIL_DIR, since });
+  return mails.find((mail) => mail.body.includes(`Message: ${id}`))?.body ?? '';
 }
 
 test('a reported answer reaches support with its text only when its turn brought no pages of the web, also after a reload', async ({
