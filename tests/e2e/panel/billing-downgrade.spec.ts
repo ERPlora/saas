@@ -7,14 +7,13 @@
 // webhook write the database the page lives on, so what changes on screen is what the server wrote.
 //
 // «Next invoice» of a row is saas#213's, and its own tests'; nothing here fixes it.
-import { spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
-import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
 import type { Locator, Page } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
+import { startLineServer } from '../django-warm';
 import { apiPost, businessIdOf, captureAtEverySize, djangoPrint, expect, type HubDouble, panelAccount, qaAccount, seededAndSignedIn, shot, startHubDouble, test, toast, watchPageErrors } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 
@@ -39,65 +38,20 @@ interface StripePlayed {
   close(): Promise<void>;
 }
 
-interface Waiter {
-  answered(answer: Record<string, unknown>): void;
-  failed(error: Error): void;
-}
-
 /**
  * The Stripe of this spec, `billing_stripe_played.py serve`, as the Hub is played (`startHubDouble`): ONE process from
  * `beforeAll` to `afterAll`, so a loaded machine adds no Python start-up to each call (saas#328: one per call kept the
  * change past the notice's 15 s). It answers one line per call, in order, and never blocks this process: the Hub it
- * pushes to is played here (saas#176). A call it could not answer rejects with its traceback.
+ * pushes to is played here (saas#176). A call it could not answer rejects with its traceback (`startLineServer`).
  */
 async function startStripePlayed(): Promise<StripePlayed> {
-  const child = spawn('uv', ['run', 'python', 'tests/e2e/panel/billing_stripe_played.py', 'serve', HUB_URL], {
+  const served = await startLineServer('uv', ['run', 'python', 'tests/e2e/panel/billing_stripe_played.py', 'serve', HUB_URL], {
     cwd: SAAS_DIR,
     env: djangoEnv(true),
-    stdio: ['pipe', 'pipe', 'pipe'],
   });
-  let said = '';
-  const tell = (text: string) => {
-    said = (said + text).slice(-4000);
-  };
-  child.stderr.setEncoding('utf8').on('data', tell);
-  child.stdin.on('error', (error) => tell(`\n(stdin) ${error.message}`));
-  const waiting: Waiter[] = [];
-  let ended: Error | null = null;
-  const answer = () =>
-    ended ? Promise.reject(ended) : new Promise<Record<string, unknown>>((answered, failed) => waiting.push({ answered, failed }));
-  createInterface({ input: child.stdout }).on('line', (line) => {
-    const waiter = waiting.shift();
-    if (!waiter) return tell(`\n(stdout, unasked) ${line}`);
-    try {
-      waiter.answered(JSON.parse(line) as Record<string, unknown>);
-    } catch {
-      waiter.failed(new Error(`billing_stripe_played.py answered no JSON: ${line}`));
-    }
-  });
-  const gone = new Promise<void>((done) => {
-    const end = (why: string) => {
-      ended = new Error(`billing_stripe_played.py serve ${why}:\n${said}`);
-      for (const waiter of waiting.splice(0)) waiter.failed(ended);
-      done();
-    };
-    child.once('error', (error) => end(`did not start (${error.message})`));
-    child.once('exit', (code, signal) => end(`ended (${code ?? signal})`));
-  });
-
-  expect(await answer()).toEqual({ ready: true });
   return {
-    async call(request) {
-      const answered = answer();
-      child.stdin.write(`${JSON.stringify(request)}\n`);
-      const played = await answered;
-      if ('error' in played) throw new Error(`billing_stripe_played.py could not answer ${JSON.stringify(request)}:\n${String(played.error)}`);
-      return played as unknown as Played;
-    },
-    async close() {
-      child.stdin.end();
-      await gone;
-    },
+    call: async (request) => (await served.ask(request)) as unknown as Played,
+    close: () => served.close(),
   };
 }
 

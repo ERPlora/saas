@@ -17,13 +17,13 @@ import { horizontalOverflow } from '../horizontal-overflow';
 import {
   apiPost,
   captureAtEverySize,
-  djangoPrint,
   djangoPrintWarm,
   expect,
   freezeFrontend,
   type HubCall,
   type HubDouble,
   MAIL_LOGO_URL,
+  mailPartsOf,
   onlyTheMailLogo,
   payInStripe,
   playStripe,
@@ -37,7 +37,7 @@ import {
   waitForMail,
   watchPageErrors,
 } from './fixtures';
-import { PANEL_MAIL_DIR, PANEL_URL } from './project';
+import { PANEL_URL } from './project';
 
 const atEverySize = captureAtEverySize('APP-HUBS-3');
 
@@ -133,21 +133,7 @@ async function rowOf(page: Page, id: string, email: string): Promise<MemberRow> 
  * line of the text, nothing fetched but the logo, no sideways scroll, and its capture `APP-HUBS-3-<key>-<size>`.
  */
 async function paintMail(browser: Browser, key: string, to: string, since: number, subject: string, language: string): Promise<void> {
-  const read = [
-    'import email, json, pathlib',
-    'from email import policy',
-    `folder, to, since, subject = pathlib.Path(${JSON.stringify(PANEL_MAIL_DIR)}), ${JSON.stringify(to)}, ${since / 1000 - 0.05}, ${JSON.stringify(subject)}`,
-    'found = None',
-    'for path in sorted((p for p in folder.iterdir() if p.is_file() and p.stat().st_mtime >= since), key=lambda p: p.stat().st_mtime):',
-    '    for raw in path.read_text().split("\\n" + "-" * 79 + "\\n")[:-1]:',
-    '        message = email.message_from_string(raw, policy=policy.default)',
-    '        if to in str(message["To"]) and subject.lower() in str(message["Subject"]).lower():',
-    '            found = message',
-    'assert found is not None, f"no mail to {to} with {subject!r} in {folder}"',
-    'print(json.dumps({"parts": [part.get_content_type() for part in found.iter_parts()],',
-    '    "html": found.get_body(preferencelist=("html",)).get_content(), "text": found.get_body(preferencelist=("plain",)).get_content()}))',
-  ].join('\n');
-  const mail = JSON.parse(djangoPrint(read)) as { parts: string[]; html: string; text: string };
+  const mail = await mailPartsOf(to, since, subject);
   expect(mail.parts, `${key} is text and HTML`).toEqual(['text/plain', 'text/html']);
   const page = await browser.newPage();
   const fetched = await onlyTheMailLogo(page);

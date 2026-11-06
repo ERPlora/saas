@@ -8,7 +8,9 @@ JSON line it reads on its stdin with one JSON line, in order, until its stdin en
 
 - ``{"code": <Python>}`` → ``{"out": <what it printed>}``: the snippet runs as ``python -c`` runs it after
   ``django.setup()`` (``djangoPrint``): from no names of the one before, its connection back to the pool and the
-  language and the time zone it activated gone when it ends;
+  settings, the language, the time zone and this process's memory cache it touched back as they were when it ends.
+  What it patches on a module (``stripe_service.client = …``) stays for the next ones: patch inside a ``with``
+  (``mock.patch.object``, ``override_settings``);
 - a snippet that fails (``SystemExit`` too) → ``{"error": <its traceback>}``, and the next one is answered as usual.
 
 Its stdout carries only those lines; whatever is printed outside a snippet goes to its stderr.
@@ -42,9 +44,14 @@ def _say(answers: TextIO, answer: dict) -> None:
 
 def _run(code: str) -> dict:
     """What `code` printed, as a fresh ``python -c`` leaves things once it ends."""
+    from django.conf import settings
+    from django.core.cache import caches
+    from django.core.cache.backends.locmem import LocMemCache
     from django.db import close_old_connections
     from django.utils import timezone, translation
 
+    # What a snippet sets on the settings (`settings.X = …`) dies with a `python -c`: kept here to put it back.
+    kept_settings = dict(vars(settings._wrapped))
     printed = io.StringIO()
     try:
         with redirect_stdout(printed):
@@ -53,9 +60,18 @@ def _run(code: str) -> dict:
         # The spec waits for this line: it rejects that call with the traceback, and the next call still runs.
         return {"error": traceback.format_exc()}
     finally:
+        vars(settings._wrapped).clear()
+        vars(settings._wrapped).update(kept_settings)
+        # And what LazySettings cached of them as the snippet read them (it keeps every value it handed out).
+        for name in [name for name in vars(settings) if name != "_wrapped"]:
+            del vars(settings)[name]
         translation.deactivate()
         timezone.deactivate()
         close_old_connections()
+        # This process's memory dies with a `python -c`; a shared Valkey (VALKEY_URL) is the run's, never cleared here.
+        for cache in caches.all(initialized_only=True):
+            if isinstance(cache, LocMemCache):
+                cache.clear()
     return {"out": printed.getvalue()}
 
 

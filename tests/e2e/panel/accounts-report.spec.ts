@@ -5,7 +5,19 @@
 import { readMails } from '@erplora/ui/testing/mail';
 import { type Page } from '@playwright/test';
 
-import { captureAtEverySize, djangoPrint, expect, settled, signIn, test, waitForMail, watchPageErrors } from './fixtures';
+import {
+  captureAtEverySize,
+  createAccountWarm,
+  type Credentials,
+  djangoPrintWarm,
+  expect,
+  removeAccountsWarm,
+  settled,
+  signIn,
+  test,
+  waitForMail,
+  watchPageErrors,
+} from './fixtures';
 import { PANEL_MAIL_DIR } from './project';
 
 const atEverySize = captureAtEverySize('APP-ACCOUNTS-4');
@@ -14,32 +26,24 @@ const PREFIX = 'e2e-acc4r-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
 const BUSINESS = 'e2e-acc4r-bar';
 
-function removeAccounts(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(slug="${BUSINESS}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
+async function removeAccounts(): Promise<void> {
+  await djangoPrintWarm(`from hubs.models import Hub\nHub.objects.filter(slug="${BUSINESS}").delete()`);
+  await removeAccountsWarm(PREFIX);
 }
 
 /** An account in English with its address proven, admin of one business. */
-function createAccount(email: string): { email: string; password: string } {
-  djangoPrint(
+async function createAccount(email: string): Promise<Credentials> {
+  const account = await createAccountWarm(email, PASSWORD, { language: 'en' });
+  await djangoPrintWarm(
     [
-      'from allauth.account.models import EmailAddress',
       'from django.contrib.auth import get_user_model',
       'from django.utils import timezone',
       'from hubs.models import Hub, HubMember',
-      `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", language="en")`,
-      'EmailAddress.objects.update_or_create(user=user, email=user.email, defaults={"verified": True, "primary": True})',
       `hub, _ = Hub.objects.get_or_create(slug="${BUSINESS}", defaults={"name": "${BUSINESS}", "country": "ES"})`,
-      'HubMember.objects.create(hub=hub, user=user, role=HubMember.Role.ADMIN, accepted_at=timezone.now())',
+      `HubMember.objects.create(hub=hub, user=get_user_model().objects.get(email="${email}"), role=HubMember.Role.ADMIN, accepted_at=timezone.now())`,
     ].join('\n'),
   );
-  return { email, password: PASSWORD };
+  return account;
 }
 
 /** The user menu: in the side menu, a drawer behind the topbar's menu button below `lg`. */
@@ -55,15 +59,20 @@ async function openUserMenu(page: Page): Promise<void> {
   await expect(page.getByTestId('user-menu-report')).toBeVisible();
 }
 
+/** Where the reports go (`SUPPORT_EMAIL`): only Django knows it, read once before the tests. */
+let support: string;
+
 test.beforeAll(() => removeAccounts());
+test.beforeAll(async () => {
+  support = await djangoPrintWarm('from django.conf import settings\nprint(settings.SUPPORT_EMAIL)');
+});
 test.afterAll(() => removeAccounts());
 
 test('ACCOUNTS-G117 · G01 · report a problem from the user menu: support gets it with the account and its business, «Report sent»', async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const support = djangoPrint('from django.conf import settings\nprint(settings.SUPPORT_EMAIL)');
-  const me = createAccount(`${PREFIX}owner-${Date.now()}@example.com`);
+  const me = await createAccount(`${PREFIX}owner-${Date.now()}@example.com`);
   await signIn(page.request, me);
 
   await page.goto('/dashboard/account/profile');

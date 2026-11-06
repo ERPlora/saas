@@ -70,6 +70,28 @@ def test_the_language_a_snippet_activates_does_not_reach_the_next_one():
     assert answers[1:] == [{"out": "es\n"}, {"out": "en\n"}]
 
 
+def test_what_a_snippet_keeps_in_the_process_memory_cache_does_not_reach_the_next_one(settings):
+    settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    answers = served(
+        'from django.core.cache import cache\ncache.set("e2e-warm", "kept")\nprint(cache.get("e2e-warm"))',
+        'from django.core.cache import cache\nprint(cache.get("e2e-warm"))',
+    )
+    assert answers[1:] == [{"out": "kept\n"}, {"out": "None\n"}]
+
+
+def test_the_settings_a_snippet_changes_or_adds_are_back_for_the_next_one(settings):
+    settings.STRIPE_SECRET_KEY = "sk_of_the_run"
+    answers = served(
+        "from django.conf import settings\n"
+        'settings.STRIPE_SECRET_KEY = "rk_test_double"\n'
+        'settings.E2E_WARM_ONLY = "added"\n'
+        "print(settings.STRIPE_SECRET_KEY)",
+        "from django.conf import settings\n"
+        'print(settings.STRIPE_SECRET_KEY, hasattr(settings, "E2E_WARM_ONLY"))',
+    )
+    assert answers[1:] == [{"out": "rk_test_double\n"}, {"out": "sk_of_the_run False\n"}]
+
+
 def test_what_it_prints_outside_a_snippet_never_reaches_the_answers(monkeypatch, capsys):
     module = _load()
     # What an app prints as Django sets up (a warning, a banner) is no answer.

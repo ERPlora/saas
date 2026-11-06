@@ -1,12 +1,13 @@
 // @vitest-environment node
-// flow: ninguno — e2e harness (saas#352): the warm Django of the panel's specs (django-warm.ts), the side of this process.
-// `tests/e2e/panel/django_warm.py` boots Django once and answers one JSON line per snippet (its own tests:
-// config/tests/test_django_warm.py); here a stand-in that speaks the same lines checks what a spec gets back: what each
-// snippet printed, trimmed as `djangoPrint` trims it, in the order asked, a failing snippet rejecting with its traceback
-// and the next one still answered, and an ended process rejecting every call with what it said on its stderr.
+// flow: ninguno — e2e harness (saas#352): the side of this process of a line server (django-warm.ts), the warm Django
+// of the panel's specs and the Stripe of billing-downgrade.spec.ts. `tests/e2e/panel/django_warm.py` boots Django once
+// and answers one JSON line per snippet (its own tests: config/tests/test_django_warm.py); here a stand-in that speaks
+// the same lines checks what a spec gets back: each answer in the order asked, a failing call rejecting with its
+// traceback and the next one still answered, an ended process rejecting every call with what it said on its stderr,
+// and, for the warm Django, what each snippet printed, trimmed as `djangoPrint` trims it.
 import { describe, expect, it } from 'vitest';
 
-import { startWarm } from './django-warm';
+import { startLineServer, startWarm } from './django-warm';
 
 /** A stand-in for django_warm.py: «fail» answers a traceback, «die» ends the process, «garble» answers no JSON, the rest is echoed. */
 const STAND_IN = String.raw`
@@ -23,6 +24,26 @@ require('node:readline').createInterface({ input: process.stdin }).on('line', (l
 `;
 
 const standIn = (script = STAND_IN) => startWarm(process.execPath, ['-e', script], {});
+
+describe('startLineServer', () => {
+  it('answers each request with its own line, in the order asked', async () => {
+    const server = await startLineServer(process.execPath, ['-e', STAND_IN], {});
+    const answers = await Promise.all(['one', 'two'].map((code) => server.ask({ code })));
+    expect(answers).toEqual([{ out: '  one\n\n' }, { out: '  two\n\n' }]);
+  });
+
+  it('rejects a request it could not answer with its traceback, naming the request', async () => {
+    const server = await startLineServer(process.execPath, ['-e', STAND_IN], {});
+    await expect(server.ask({ code: 'fail' })).rejects.toThrow(/could not answer \{"code":"fail"\}[\s\S]*ValueError: no such account/);
+    expect(await server.ask({ code: 'after' })).toEqual({ out: '  after\n\n' });
+  });
+
+  it('closes: its stdin ends, the process with it, and nothing is answered after', async () => {
+    const server = await startLineServer(process.execPath, ['-e', STAND_IN], {});
+    await server.close();
+    await expect(server.ask({ code: 'after' })).rejects.toThrow(/ended \(0\)/);
+  });
+});
 
 describe('startWarm', () => {
   it('answers each snippet with what it printed, trimmed as djangoPrint trims it', async () => {

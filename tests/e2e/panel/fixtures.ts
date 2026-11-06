@@ -568,16 +568,18 @@ export async function readyBusinessOn(request: APIRequestContext, name: string, 
   return id;
 }
 
+/** The snippet that removes what a spec leaves behind: the businesses and the accounts whose email starts with `prefix`. */
+const removingAccountsOf = (prefix: string) =>
+  [
+    'from django.contrib.auth import get_user_model',
+    'from hubs.models import Hub',
+    `Hub.objects.filter(members__user__email__startswith=${JSON.stringify(prefix)}).delete()`,
+    `get_user_model().objects.filter(email__startswith=${JSON.stringify(prefix)}).delete()`,
+  ].join('\n');
+
 /** What a spec leaves behind: the businesses and the accounts whose email starts with its `prefix` (`e2e-<spec>-`). */
 export function removeAccountsOf(prefix: string): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(members__user__email__startswith=${JSON.stringify(prefix)}).delete()`,
-      `get_user_model().objects.filter(email__startswith=${JSON.stringify(prefix)}).delete()`,
-    ].join('\n'),
-  );
+  djangoPrint(removingAccountsOf(prefix));
 }
 
 const execFileAsync = promisify(execFile);
@@ -871,17 +873,27 @@ export async function playStripePortal(page: Page): Promise<unknown[]> {
   return opened;
 }
 
+/**
+ * `seedAccounts` without blocking this process (the same `demo_seed`, run by `djangoPrintAsync`): while it runs, what
+ * lives in this process (the Hub or Stripe a spec plays, the timers) keeps answering, and a timeout can fire. A failing
+ * seed rejects, its traceback in the error.
+ */
+export async function seedAccountsAsync(): Promise<void> {
+  await djangoPrintAsync('from django.core.management import call_command\ncall_command("demo_seed")');
+}
+
 export const test = base.extend<{ signedInPage: Page }, { owner: Credentials }>({
   // Every page of a spec: no hot updates mid-spec (`freezeFrontend`).
   context: async ({ context }, use) => {
     await freezeFrontend(context);
     await use(context);
   },
-  // Once per worker: the accounts exist before any spec signs in.
+  // Once per worker: the accounts exist before any spec signs in. Seeded without blocking Node (saas#358); as every
+  // worker fixture, on a clock of its own (the project's timeout), never on the first test's.
   owner: [
     // Playwright reads a fixture's dependencies from its first parameter's pattern: none here.
     async ({}, use) => {
-      seedAccounts();
+      await seedAccountsAsync();
       await use(OWNER);
     },
     { scope: 'worker' },
@@ -934,6 +946,86 @@ export function warmDjango(env: Readonly<Record<string, string>> = {}): Promise<
  */
 export async function djangoPrintWarm(code: string, env: Readonly<Record<string, string>> = {}): Promise<string> {
   return (await warmDjango(env)).print(code);
+}
+
+/**
+ * Who a spec's account is: a customer (`create_user`), Django's superuser (`create_superuser`), or a team account of
+ * ERPlora (`accounts.services.create_platform_user`, with its group: the platform's admin or its support).
+ */
+export type AccountRole = 'customer' | 'superuser' | 'platform-admin' | 'platform-support';
+
+export interface AccountOptions {
+  role?: AccountRole;
+  /** Its address proven (the default), as an account that signed in before; `false`, never proven. */
+  verified?: boolean;
+  firstName?: string;
+  lastName?: string;
+  /** The account's language (the panel speaks it once signed in); the model's own when left out. */
+  language?: 'en' | 'es';
+}
+
+/** A fresh account of a spec, `email` with `password` and `options`, written by the warm Django: its credentials. */
+export async function createAccountWarm(email: string, password: string, options: AccountOptions = {}): Promise<Credentials> {
+  const { role = 'customer', verified = true, firstName, lastName, language } = options;
+  const fields = Object.entries({ first_name: firstName, last_name: lastName, language }).filter(
+    (field): field is [string, string] => field[1] !== undefined,
+  );
+  const said = (value: string) => JSON.stringify(value);
+  const kwargs = [`email=${said(email)}`, `password=${said(password)}`, ...fields.map(([name, value]) => `${name}=${said(value)}`)];
+  const group = role === 'platform-admin' ? 'services.PLATFORM_ADMIN' : 'services.PLATFORM_SUPPORT';
+  const made =
+    role === 'customer' || role === 'superuser'
+      ? [`user = get_user_model().objects.${role === 'customer' ? 'create_user' : 'create_superuser'}(${kwargs.join(', ')})`]
+      : [
+          `user = services.create_platform_user(${said(email)}, ${group}, ${said(password)})[0]`,
+          ...fields.map(([name, value]) => `user.${name} = ${said(value)}`),
+          `user.save(update_fields=[${fields.map(([name]) => said(name)).join(', ')}])`,
+        ];
+  await djangoPrintWarm(
+    [
+      'from allauth.account.models import EmailAddress',
+      'from django.contrib.auth import get_user_model',
+      'from accounts import services',
+      ...made,
+      `EmailAddress.objects.update_or_create(user=user, email=user.email, defaults={"verified": ${verified ? 'True' : 'False'}, "primary": True})`,
+    ].join('\n'),
+  );
+  return { email, password };
+}
+
+/** `removeAccountsOf` through the warm Django: the businesses and the accounts whose email starts with `prefix`. */
+export async function removeAccountsWarm(prefix: string): Promise<void> {
+  await djangoPrintWarm(removingAccountsOf(prefix));
+}
+
+/** A mail as a mail client reads it (Python's `email`): its type, the types of its parts, its HTML and its text. */
+export interface MailParts {
+  type: string;
+  parts: string[];
+  html: string;
+  text: string;
+}
+
+/**
+ * The newest mail to `to` written in the panel's mail folder from `since` on whose subject has `subject`, read from its
+ * file as a mail client reads it, by the warm Django's Python (what the person sees, painted with `setContent`).
+ */
+export async function mailPartsOf(to: string, since: number, subject: string): Promise<MailParts> {
+  const read = [
+    'import email, json, pathlib',
+    'from email import policy',
+    `folder, to, since, subject = pathlib.Path(${JSON.stringify(PANEL_MAIL_DIR)}), ${JSON.stringify(to)}, ${since / 1000 - 0.05}, ${JSON.stringify(subject)}`,
+    'found = None',
+    'for path in sorted((p for p in folder.iterdir() if p.is_file() and p.stat().st_mtime >= since), key=lambda p: p.stat().st_mtime):',
+    '    for raw in path.read_text().split("\\n" + "-" * 79 + "\\n")[:-1]:',
+    '        message = email.message_from_string(raw, policy=policy.default)',
+    '        if to in str(message["To"]) and subject.lower() in str(message["Subject"]).lower():',
+    '            found = message',
+    'assert found is not None, f"no mail to {to} with {subject!r} in {folder}"',
+    'print(json.dumps({"type": found.get_content_type(), "parts": [part.get_content_type() for part in found.iter_parts()],',
+    '    "html": found.get_body(preferencelist=("html",)).get_content(), "text": found.get_body(preferencelist=("plain",)).get_content()}))',
+  ].join('\n');
+  return JSON.parse(await djangoPrintWarm(read)) as MailParts;
 }
 
 // ── A spec's seeds by the warm Django (saas#355) ──────────────────────────────────────────────
