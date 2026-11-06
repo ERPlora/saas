@@ -297,7 +297,7 @@ Estado: hecho
 Actor: propietario
 Pantalla: Pago seguro, Resumen del negocio
 Pasos:
-1. Al terminar el pago en el formulario de Stripe, el diálogo dice «Pagando…», cierra el formulario y abre la página del negocio; cuando esa página ha llegado, el diálogo se va y el aviso «… ya está en …» (o «… añadido a …: se enciende en unos segundos» para un módulo) sale en ella, con el negocio que se pagó, aunque la página tarde en llegar (saas#341).
+1. Al terminar el pago en el formulario de Stripe, el diálogo dice «Pagando…», cierra el formulario y abre la página del negocio; cuando esa página ha llegado, el diálogo se va y el aviso «… ya está en …» (o «… añadido a …: se enciende en unos segundos» para un módulo) sale en ella, con el negocio que se pagó, justo encima de su barra de secciones y sin taparla (saas#344), aunque la página tarde en llegar (saas#341).
 2. El plan del negocio (o la aplicación comprada) cambia cuando Stripe confirma el cobro: si el medio de pago tarda en confirmarse, como un adeudo SEPA, el negocio sigue como estaba hasta entonces y cambia solo, sin recargar.
 3. Si la persona cierra el diálogo antes de pagar, no se cobra nada y puede volver a abrirlo (BILLING-F10); el negocio sigue como estaba y no se borra nada.
 Entra: el pago que Stripe da por terminado.

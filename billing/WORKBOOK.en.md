@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:2caeedfc71558384c06ae163b937dff3227e36bce7f441cde178edc8d10018e4 -->
+<!-- generated from WORKBOOK.md sha256:a930bc6eedf457f05db0e1e8c757cacd50bf6c818af6006d923ba8f78147b6a6 -->
 
 ## What it is for and who it is for
 
@@ -283,7 +283,7 @@ Status: done
 Actor: owner
 Screen: Secure payment, Business summary
 Steps:
-1. When the payment is finished in Stripe's form, the dialog says "Paying…", closes the form and opens the business's page; once that page is there, the dialog goes and the notice "… is now on …" (or "… added to …: it turns on in a few seconds" for a module) shows on it, naming the business paid for, however long the page takes to arrive (saas#341).
+1. When the payment is finished in Stripe's form, the dialog says "Paying…", closes the form and opens the business's page; once that page is there, the dialog goes and the notice "… is now on …" (or "… added to …: it turns on in a few seconds" for a module) shows on it, naming the business paid for, just above its section bar and never over it (saas#344), however long the page takes to arrive (saas#341).
 2. The business's plan (or the app bought) changes when Stripe confirms the charge: if the payment method takes time to confirm, such as a SEPA direct debit, the business stays as it was until then and changes by itself, without reloading.
 3. If the person closes the dialog before paying, nothing is charged and they can open it again (BILLING-F10); the business stays as it was and nothing is deleted.
 In: the payment Stripe considers finished.

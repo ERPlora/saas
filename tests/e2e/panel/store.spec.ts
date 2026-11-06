@@ -58,6 +58,12 @@ const stripeState = (page: Page) =>
     return { keys: s.keys, secrets: s.secrets, mountedIn: s.mountedIn, destroyed: s.destroyed };
   });
 
+/** What `billing.checkout.start` answers for a plan on Free: the Embedded Checkout's session, played. */
+const CHECKOUT = { flow: 'checkout', session_id: 'cs_test_e2e', client_secret: 'cs_test_e2e_secret', publishable_key: 'pk_test_e2e', preview: null };
+
+/** `billing.checkout.start` answered with {@link CHECKOUT}. */
+const answerCheckout = (page: Page) => page.route('**/api/billing/checkout/start', (route) => route.fulfill({ json: CHECKOUT }));
+
 /** Every request the page makes to Stripe's origins (none is expected: the double plays Stripe.js). */
 function watchStripeRequests(page: Page): string[] {
   const seen: string[] = [];
@@ -124,9 +130,7 @@ test.describe('store', () => {
     const errors = watchPageErrors(page);
     await playStripe(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
-    await page.route('**/api/billing/checkout/start', (route) =>
-      route.fulfill({ json: { flow: 'checkout', session_id: 'cs_test_e2e', client_secret: 'cs_test_e2e_secret', publishable_key: 'pk_test_e2e', preview: null } }),
-    );
+    await answerCheckout(page);
     const notice = toast(page, 'Café Central is now on Starter').last();
     const tabbar = page.locator('ion-footer.section-tabbar').filter({ has: page.getByTestId('tab-summary') });
     for (const size of [{ width: 375, height: 667 }, { width: 820, height: 1180 }, { width: 1440, height: 900 }]) {
@@ -151,9 +155,7 @@ test.describe('store', () => {
   test('Stripe.js that cannot load is said in the dialog, with «Retry»: waiting for its place hides no real failure (saas#326)', async ({ page }) => {
     await page.route(/^https:\/\/js\.stripe\.com\//, (route) => route.abort());
     const cafe = await businessIdOf(page.request, 'Café Central');
-    await page.route('**/api/billing/checkout/start', (route) =>
-      route.fulfill({ json: { flow: 'checkout', session_id: 'cs_test_e2e', client_secret: 'cs_test_e2e_secret', publishable_key: 'pk_test_e2e', preview: null } }),
-    );
+    await answerCheckout(page);
     await page.goto(`/dashboard/store/plans?business=${cafe}`);
     await expect(page.getByTestId('plan-free').getByTestId('plan-current')).toBeVisible();
     await page.getByTestId('plan-starter').getByTestId('plan-upgrade').click();
