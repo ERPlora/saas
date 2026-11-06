@@ -2,7 +2,7 @@
 // migration (390×844, 834×1112, 1440×900): the person writes «Subject» and «What happened?», the report reaches the
 // support mailbox with the account, its business, the page it came from and the browser, «Reply-To» the account, and
 // the page says «Report sent». In accounts/WORKBOOK.md: G117 = G01 = F38. Accounts of this spec: `e2e-acc4r-…`.
-import { readMails } from '@erplora/ui/testing/mail';
+import { readMailsSince } from '@erplora/ui/testing/mail';
 import { type Page } from '@playwright/test';
 
 import {
@@ -97,7 +97,9 @@ test('ACCOUNTS-G117 · G01 · report a problem from the user menu: support gets 
   await expect(sent).toContainText(`will reply to ${me.email} as soon as possible`);
   // The text, and under it what goes on its own (Reply-To, a header, is test_support_report.py's).
   expect(await waitForMail(support, since, /(I sell a ticket and nothing prints\.)/)).toBeTruthy();
-  const mail = readMails(PANEL_MAIL_DIR).filter((one) => one.to.includes(support.toLowerCase()) && one.body.includes(me.email));
+  const mail = (await readMailsSince({ dir: PANEL_MAIL_DIR, since })).filter(
+    (one) => one.to.includes(support.toLowerCase()) && one.body.includes(me.email),
+  );
   expect(mail.map((one) => one.subject)).toEqual(['[Support] The printer stops']);
   expect(await waitForMail(support, since, /^Account: (\S+)/m)).toBe(me.email);
   expect(await waitForMail(support, since, /^Businesses: (.+)$/m)).toBe(`${BUSINESS} (hub_admin)`);
