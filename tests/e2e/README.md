@@ -411,6 +411,16 @@ Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/t
   panel se lee por su API y lo que solo sabe Django, una vez por spec en un `beforeAll` con `djangoPrintAsync`.
   `internalSecret()` ya lo hace así: asíncrono y leído una vez por worker; quien firma dentro de una prueba lo
   pide antes en un `beforeAll`.
+- `djangoPrintWarm(código, env?)`: el mismo trozo de Python, contestado por **un Django caliente por worker**
+  (`panel/django_warm.py`, una línea JSON por llamada por stdin/stdout, la receta del doble de Stripe de
+  saas#328; su cliente es `django-warm.ts`): arranca una vez y se queda, así que una prueba no paga arranques
+  ni bloquea Node (saas#352). Para lo que hay que escribir o leer en Django en mitad de un flujo y la API no
+  enseña (crear una cuenta, marcar un estado, contar filas). Cada trozo corre como con `python -c`: sin los
+  nombres del anterior, y los ajustes (`settings.X = …`), el idioma, la zona horaria y la caché en memoria que
+  tocó vuelven a como estaban al terminar. Lo que parchee en un módulo (`stripe_service.client = …`) sí se
+  queda para los siguientes: se parchea dentro de un `with` (`mock.patch.object`, `override_settings`). Otro
+  `env` (`MAILING`) es otro proceso. `warmDjango(env?)` lo arranca: la spec cuya primera llamada cae dentro
+  de una prueba lo pide antes en un `beforeAll`.
 - **Sin recarga en caliente**: el `context` de toda spec responde él mismo al WebSocket de Vite
   (`freezeFrontend`), así que lo que otra sesión guarda a mitad de una ejecución no remonta
   componentes bajo la spec (un diálogo abierto se quedaba huérfano); cada carga de página sí trae los
