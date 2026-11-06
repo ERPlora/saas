@@ -87,8 +87,19 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
     await page.goto(`/dashboard/store/plans?business=${cafe}`);
     await page.getByTestId('plan-starter').getByTestId('plan-upgrade').click();
     await expect(page.getByTestId('checkout-modal').getByTestId('stripe-double')).toBeVisible();
+    // The business's page comes late, as on a slow machine (saas#341): its module is held until the dialog says
+    // «Paying…» and no notice is left. A notice said before the page is there (its element is in the page by then)
+    // has run out when the page arrives; one said on the page is not there yet, and the hold lets it come at once.
+    let held = 0;
+    await page.route(/\/hubs\/frontend\/pages\/BusinessPage\.vue$/, async (route) => {
+      held += 1;
+      await expect(page.getByTestId('checkout-paying')).toBeVisible();
+      await expect(page.locator('ion-toast')).toHaveCount(0);
+      await route.continue();
+    });
     await page.evaluate(() => (window as unknown as { __stripe: { complete: () => void } }).__stripe.complete());
     await expect(page).toHaveURL(new RegExp(`/dashboard/businesses/${cafe}/summary$`));
+    expect(held).toBe(1);
     await expect(toast(page, 'Café Central is now on Starter')).toBeVisible();
     await atEverySize(page, 'BILLING-G20', async () => {
       await expect(page.getByTestId('summary-plan')).toBeVisible();

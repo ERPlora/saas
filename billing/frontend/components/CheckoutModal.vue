@@ -9,8 +9,8 @@
 //      `stripe-js.ts`) mounts it with `createEmbeddedCheckoutPage({ fetchClientSecret })` in the dialog, as soon
 //      as the dialog's content is on screen (Ionic may render it after Stripe answers: saas#326).
 //      A place the tax cannot be worked out for sends back to the form with the server's reason.
-//   3. Stripe's `onComplete` → «Paying…», the checkout is destroyed, a toast says what happened and the
-//      page goes to the business (the webhook applies the plan; Stripe's `return_url` is that page too).
+//   3. Stripe's `onComplete` → «Paying…», the checkout is destroyed, the page goes to the business and a toast
+//      says there what happened (the webhook applies the plan; Stripe's `return_url` is that page too).
 // Every failure is said, with «Retry» (saas#1565: a silent spinner is the most expensive failure).
 // Closing the dialog destroys the checkout (Stripe allows one at a time). The declined card is never
 // offered: the checkout always asks for a card, and the dialog says why when the same payer's was declined.
@@ -261,17 +261,20 @@ async function complete(): Promise<void> {
   payState.value = 'completing';
   letCheckoutGo();
   if (!purchase) return;
-  void toastSuccess(
+  // Worded now, for the business paid for: left behind in the stack, the Store may give this dialog another one meanwhile.
+  const business = props.business;
+  const done =
     purchase.kind === 'takeover'
-      ? t('billing.checkout.takenOver', { business: props.business.name, plan: purchase.name, date: keptFrom.value })
+      ? t('billing.checkout.takenOver', { business: business.name, plan: purchase.name, date: keptFrom.value })
       : purchase.kind === 'plan'
-        ? t('billing.checkout.plan', { business: props.business.name, plan: purchase.name })
-        : t('billing.checkout.module', { module: purchase.name, business: props.business.name }),
-  );
-  // «Paying…» stays on screen until the business's page takes over.
-  await router.push(`${BUSINESSES}/${props.business.id}/summary`);
+        ? t('billing.checkout.plan', { business: business.name, plan: purchase.name })
+        : t('billing.checkout.module', { module: purchase.name, business: business.name });
+  // «Paying…» stays on screen until the business's page takes over, and the notice is said on that page: said
+  // before, its seconds would run out while a slow page is still on its way, and the page would arrive silent (saas#341).
+  await router.push(`${BUSINESSES}/${business.id}/summary`);
   attempt += 1;
   open.value = false;
+  void toastSuccess(done);
 }
 
 async function saveDetails(): Promise<void> {
