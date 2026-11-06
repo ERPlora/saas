@@ -16,12 +16,14 @@ import {
   djangoPrint,
   expect,
   panelAccount,
+  playStripePortal,
   qaAccount,
   repeatedTop,
   seededAndSignedIn,
   settled,
   shot,
   sidewaysScroll,
+  STRIPE_PORTAL_URL,
   test,
   toast,
   VIEWPORTS,
@@ -315,16 +317,11 @@ test.describe('billing', () => {
   });
 
   test('«Change card» opens Stripe’s Customer Portal of that payer (web only)', async ({ page }) => {
-    await playStripePages(page);
-    const opened: unknown[] = [];
     // The Portal is Stripe's: the server's call to it is played (no Stripe keys here).
-    await page.route('**/api/billing/portal', async (route) => {
-      opened.push(route.request().postDataJSON());
-      await route.fulfill({ json: { url: 'https://billing.stripe.com/p/session/e2e' } });
-    });
+    const opened = await playStripePortal(page);
     await page.goto('/dashboard/billing/invoices');
     await banner(page, 'Bar La Plaza').getByTestId('unpaid-group-change-card').click();
-    await page.waitForURL('https://billing.stripe.com/p/session/e2e');
+    await page.waitForURL(STRIPE_PORTAL_URL);
     expect(opened).toEqual([{ hub_id: await businessIdOf(page.request, 'Bar La Plaza') }]);
   });
 
