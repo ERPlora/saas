@@ -10,7 +10,7 @@ import type { Locator, Page } from '@playwright/test';
 
 import { STACK } from '../stack';
 
-import { ask, localAssistant, openPanel, SIZES } from './assistant-chat';
+import { ask, DESKTOP_FIRST, localAssistant, openPanel } from './assistant-chat';
 import { djangoPrint, expect, settled, shot, sidewaysScroll, test, toast, waitForMail, watchPageErrors } from './fixtures';
 import { PANEL_MAIL_DIR } from './project';
 
@@ -90,12 +90,12 @@ test('a reported answer reaches support with its text only when its turn brought
   await expect(toast(page, THANKS)).toHaveCount(0);
   await answers.last().getByTestId('assistant-report').click();
   const dialog = page.getByTestId('assistant-report-dialog');
-  for (const size of SIZES) {
+  for (const size of DESKTOP_FIRST) {
     await page.setViewportSize({ width: size.width, height: size.height });
     await expect(page.getByTestId('assistant-report-dialog-submit')).toBeVisible();
-    await expect.poll(() => sidewaysScroll(page), `${size.name}: nothing scrolls sideways`).toEqual([]);
+    await expect.poll(() => sidewaysScroll(page), `${size.width}: nothing scrolls sideways`).toEqual([]);
     await settled(page);
-    await page.screenshot({ path: shot(`assistant-report-${size.name}`) });
+    await page.screenshot({ path: shot(`assistant-report-${size.width}`) });
   }
   await expect(dialog).toContainText('Denunciar esta respuesta');
   expect(errors).toEqual([]);

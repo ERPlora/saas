@@ -16,18 +16,19 @@ import { redactedError } from '../assistant-probes';
 import { type Provider, startProvider } from '../assistant-provider';
 import { djangoEnv } from '../django-env';
 import { STACK } from '../stack';
-import { expect, signIn, test } from './fixtures';
+import { expect, signIn, test, VIEWPORTS } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 /** The account `assistant_seed.py panel` makes, with its one business. */
 export const OWNER = { email: 'e2e-assistant-owner@example.com', password: process.env.QA_PANEL_PASSWORD ?? 'e2e-panel' };
-/** The panel's three sizes, for a spec's screenshots. */
-export const SIZES = [
-  { name: '1440', width: 1440, height: 900 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '390', width: 390, height: 844 },
-] as const;
+/**
+ * The panel's three sizes (`VIEWPORTS`) from the desktop down, for a spec's screenshots. The assistant's specs open the
+ * panel at 1440 (`openPanel`) and walk down from there: docked beside the screen, still docked at 834, over its veil at
+ * 390. Their checks and captures follow that order (each size reached from the wider one, as a window shrinks); phone
+ * first, the docked sizes would be reached from the veil, another walk.
+ */
+export const DESKTOP_FIRST = [...VIEWPORTS].reverse();
 
 /** How long one question may take, cards included: the real model, its tools and the documentation search. */
 export const TURN_MS = 240_000;
