@@ -18,7 +18,20 @@ import { createServer, type Server } from 'node:http';
 
 import { type Page } from '@playwright/test';
 
-import { djangoPrint, expect, sessionOf, settled, shot, sidewaysScroll, test, VIEWPORTS, waitForMail, watchPageErrors } from './fixtures';
+import {
+  createAccountWarm,
+  djangoPrintWarm,
+  expect,
+  removeAccountsWarm,
+  sessionOf,
+  settled,
+  shot,
+  sidewaysScroll,
+  test,
+  VIEWPORTS,
+  waitForMail,
+  watchPageErrors,
+} from './fixtures';
 import { GOOGLE_E2E, PANEL_MFA_URL } from './project';
 import { STACK } from '../stack';
 
@@ -29,14 +42,7 @@ const SECURITY = '/dashboard/account/security';
 /** A fresh address of this spec, never used before. */
 const address = (name: string, size: number): string => `${PREFIX}${name}-${size}-${Date.now()}@example.com`;
 
-function removeAccounts(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      `get_user_model().objects.filter(email__startswith=${JSON.stringify(PREFIX)}, email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 // ── Google's token endpoint, as the panel's Django calls it ───────────────────────────────────
 
@@ -143,8 +149,8 @@ interface AccountState {
   termsAccepted: boolean;
 }
 
-function accountOf(email: string): AccountState | null {
-  const state = djangoPrint(
+async function accountOf(email: string): Promise<AccountState | null> {
+  const state = await djangoPrintWarm(
     [
       'import json',
       'from allauth.account.models import EmailAddress',
@@ -165,20 +171,11 @@ function accountOf(email: string): AccountState | null {
 }
 
 /** An account of erplora.com with `email` confirmed and a password, not linked to any Google. */
-function createAccount(email: string): void {
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email=${JSON.stringify(email)}, password=${JSON.stringify(PASSWORD)})`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-}
+const createAccount = (email: string) => createAccountWarm(email, PASSWORD);
 
 /** That account with the authenticator app on: its key. */
-function turnOnTheApp(email: string): string {
-  return djangoPrint(
+function turnOnTheApp(email: string): Promise<string> {
+  return djangoPrintWarm(
     [
       'from allauth.mfa.totp.internal.auth import TOTP, generate_totp_secret',
       'from django.contrib.auth import get_user_model',
@@ -190,8 +187,8 @@ function turnOnTheApp(email: string): string {
 }
 
 /** The code the app shows now for `secret`. */
-function appCode(secret: string): string {
-  return djangoPrint(
+function appCode(secret: string): Promise<string> {
+  return djangoPrintWarm(
     [
       'import time',
       'from allauth.mfa import app_settings',
@@ -218,7 +215,7 @@ async function expectFirstBusinessForm(page: Page): Promise<void> {
 test.use({ baseURL: PANEL_MFA_URL });
 
 test.beforeAll(async () => {
-  removeAccounts();
+  await removeAccounts();
   await startTokenEndpoint();
 });
 
@@ -227,7 +224,7 @@ test.afterAll(async () => {
     tokenEndpoint.closeAllConnections();
     tokenEndpoint.close(() => closed());
   });
-  removeAccounts();
+  await removeAccounts();
 });
 
 for (const size of VIEWPORTS) {
@@ -264,7 +261,7 @@ for (const size of VIEWPORTS) {
       expect(await sidewaysScroll(page), `the launcher scrolls sideways at ${size.width}`).toEqual([]);
       await page.screenshot({ path: shot(`CLOSE-ACCOUNTS-F06-new-account-${size.width}`), fullPage: true });
 
-      const created = accountOf(email);
+      const created = await accountOf(email);
       expect(created).toMatchObject({
         usablePassword: false,
         addressVerified: true,
@@ -289,8 +286,8 @@ for (const size of VIEWPORTS) {
     }) => {
       const errors = watchPageErrors(page);
       const email = address('known', size.width);
-      createAccount(email);
-      const before = accountOf(email);
+      await createAccount(email);
+      const before = await accountOf(email);
       const account = { sub: `known-${size.width}-${Date.now()}`, email, email_verified: true };
       await playGoogle(page, account);
       const since = Date.now();
@@ -305,7 +302,7 @@ for (const size of VIEWPORTS) {
       expect(await sidewaysScroll(page), `Security scrolls sideways at ${size.width}`).toEqual([]);
       await page.screenshot({ path: shot(`CLOSE-ACCOUNTS-F06-linked-${size.width}`), fullPage: true });
 
-      const linked = accountOf(email);
+      const linked = await accountOf(email);
       expect(linked).toEqual({ ...before, googleUid: account.sub, termsAccepted: true });
       expect(linked?.usablePassword).toBe(true);
       expect((await sessionOf(page.request)).user?.id).toBe(before?.id);
@@ -318,8 +315,8 @@ for (const size of VIEWPORTS) {
     }) => {
       const errors = watchPageErrors(page);
       const email = address('app', size.width);
-      createAccount(email);
-      const secret = turnOnTheApp(email);
+      await createAccount(email);
+      const secret = await turnOnTheApp(email);
       await playGoogle(page, { sub: `app-${size.width}-${Date.now()}`, email, email_verified: true });
 
       await page.goto('/launch');
@@ -333,12 +330,12 @@ for (const size of VIEWPORTS) {
       await page.screenshot({ path: shot(`CLOSE-ACCOUNTS-F06-authenticator-${size.width}`), fullPage: true });
       expect((await sessionOf(page.request)).user).toBeNull();
 
-      await page.getByTestId('code').locator('input').fill(appCode(secret));
+      await page.getByTestId('code').locator('input').fill(await appCode(secret));
       await page.getByTestId('mfa-submit').click();
 
       await expect(page).toHaveURL(/\/launch$/);
       await expectFirstBusinessForm(page);
-      expect((await sessionOf(page.request)).user?.id).toBe(accountOf(email)?.id);
+      expect((await sessionOf(page.request)).user?.id).toBe((await accountOf(email))?.id);
       expect(errors).toEqual([]);
     });
 
@@ -358,7 +355,7 @@ for (const size of VIEWPORTS) {
       await settled(page);
       expect(await sidewaysScroll(page), `the sign-in scrolls sideways at ${size.width}`).toEqual([]);
       expect((await sessionOf(page.request)).user).toBeNull();
-      expect(accountOf(email)).toBeNull();
+      expect(await accountOf(email)).toBeNull();
       expect(errors).toEqual([]);
     });
 
@@ -368,7 +365,7 @@ for (const size of VIEWPORTS) {
       const errors = watchPageErrors(page);
       const stranger = address('unverified', size.width);
       const owner = address('owner', size.width);
-      createAccount(owner);
+      await createAccount(owner);
 
       for (const email of [stranger, owner]) {
         await page.context().clearCookies();
@@ -387,8 +384,8 @@ for (const size of VIEWPORTS) {
       }
       await page.screenshot({ path: shot(`CLOSE-ACCOUNTS-F06-error-${size.width}`), fullPage: true });
 
-      expect(accountOf(stranger)).toBeNull();
-      expect(accountOf(owner)?.googleUid).toBeNull();
+      expect(await accountOf(stranger)).toBeNull();
+      expect((await accountOf(owner))?.googleUid).toBeNull();
 
       await page.getByTestId('login-error-action').click();
       await expect(page).toHaveURL(/\/launch(\?|$)/);

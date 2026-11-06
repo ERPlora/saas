@@ -874,17 +874,27 @@ export async function playStripePortal(page: Page): Promise<unknown[]> {
   return opened;
 }
 
+/**
+ * `seedAccounts` without blocking this process (the same `demo_seed`, run by `djangoPrintAsync`): while it runs, what
+ * lives in this process (the Hub or Stripe a spec plays, the timers) keeps answering, and a timeout can fire. A failing
+ * seed rejects, its traceback in the error.
+ */
+export async function seedAccountsAsync(): Promise<void> {
+  await djangoPrintAsync('from django.core.management import call_command\ncall_command("demo_seed")');
+}
+
 export const test = base.extend<{ signedInPage: Page }, { owner: Credentials }>({
   // Every page of a spec: no hot updates mid-spec (`freezeFrontend`).
   context: async ({ context }, use) => {
     await freezeFrontend(context);
     await use(context);
   },
-  // Once per worker: the accounts exist before any spec signs in.
+  // Once per worker: the accounts exist before any spec signs in. Seeded without blocking Node (saas#358); as every
+  // worker fixture, on a clock of its own (the project's timeout), never on the first test's.
   owner: [
     // Playwright reads a fixture's dependencies from its first parameter's pattern: none here.
     async ({}, use) => {
-      seedAccounts();
+      await seedAccountsAsync();
       await use(OWNER);
     },
     { scope: 'worker' },
