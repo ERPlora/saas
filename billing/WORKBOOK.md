@@ -285,7 +285,7 @@ Pasos:
 1. En **Tienda › Planes**, con el negocio elegido arriba, el propietario ve cada plan con su precio sin IVA, sus usuarios, sus dispositivos y las apps que puede tener activadas a la vez, elige «Mensual» o «Anual» (que dice cuánto se ahorra) y pulsa «Mejorar a …».
 2. Se abre el pago seguro: los datos de facturación si faltan y después el formulario de tarjeta de Stripe dentro del diálogo, titulado «Mejorar a …» con «Para … · se renueva cada mes» (o cada año).
 3. Mete la tarjeta; si el banco pide autenticación, la muestra Stripe en el mismo formulario.
-4. Al terminar, «Pagando…», el aviso «… ya está en …» y la página del negocio, cuya tarjeta Plan cambia en cuanto Stripe lo confirma. El negocio sigue funcionando todo el tiempo.
+4. Al terminar, «Pagando…» hasta que llega la página del negocio, que avisa «… ya está en …» y cuya tarjeta Plan cambia en cuanto Stripe lo confirma. El negocio sigue funcionando todo el tiempo.
 Entra: el plan elegido (solo los que se ofrecen a esa persona), el periodo, los datos de facturación y el código promocional si lo hay.
 Sale: el negocio en el plan nuevo, su suscripción y su cliente en Stripe, el plan nuevo enviado al negocio (`hubs.subscription.changed`) y la factura de ERPlora del primer cobro (BILLING-F25), llegue antes o después el aviso del pago.
 Si falla: si el pago no se puede abrir, «No hemos podido abrir el pago seguro» y «No se ha cobrado nada» con «Reintentar»; un plan sin precio en Stripe, «no está a la venta»; sin datos de facturación, el formulario; con una factura sin pagar, no se vende nada a ese negocio. Si la persona cierra el diálogo, no se cobra nada y el negocio sigue en Gratis.
@@ -297,7 +297,7 @@ Estado: hecho
 Actor: propietario
 Pantalla: Pago seguro, Resumen del negocio
 Pasos:
-1. Al terminar el pago en el formulario de Stripe, el diálogo dice «Pagando…», cierra el formulario, avisa «… ya está en …» (o «… añadido a …: se enciende en unos segundos» para un módulo) y abre la página del negocio.
+1. Al terminar el pago en el formulario de Stripe, el diálogo dice «Pagando…», cierra el formulario y abre la página del negocio; cuando esa página ha llegado, el diálogo se va y el aviso «… ya está en …» (o «… añadido a …: se enciende en unos segundos» para un módulo) sale en ella, con el negocio que se pagó, aunque la página tarde en llegar (saas#341).
 2. El plan del negocio (o la aplicación comprada) cambia cuando Stripe confirma el cobro: si el medio de pago tarda en confirmarse, como un adeudo SEPA, el negocio sigue como estaba hasta entonces y cambia solo, sin recargar.
 3. Si la persona cierra el diálogo antes de pagar, no se cobra nada y puede volver a abrirlo (BILLING-F10); el negocio sigue como estaba y no se borra nada.
 Entra: el pago que Stripe da por terminado.

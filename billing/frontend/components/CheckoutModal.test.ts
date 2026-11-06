@@ -13,7 +13,8 @@
 // clock: data only — no code under test compares these dates with now.
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { h, ref } from 'vue';
+import { h, reactive, ref } from 'vue';
+import type { Router } from 'vue-router';
 
 vi.mock('@erplora/ui/shell', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
@@ -136,6 +137,21 @@ async function setup(api: Handler = happy, purchase: CheckoutPurchase = PLAN, ex
   return { ...m, open, stale };
 }
 
+/**
+ * Stripe completes the payment while the business's page is still on its way: the navigation it starts waits until
+ * the returned `arrive()` lets it through.
+ */
+async function completeWhileThePageIsOnItsWay(router: Router): Promise<() => Promise<void>> {
+  let letThrough = (): void => undefined;
+  router.beforeResolve(() => new Promise<void>((resolve) => (letThrough = resolve)));
+  stripe.complete();
+  await flush();
+  return async () => {
+    letThrough();
+    await flush();
+  };
+}
+
 describe('CheckoutModal', () => {
   it('with the payer on file, opens Stripe’s Embedded Checkout for the plan at the billing chosen', async () => {
     const s = await setup();
@@ -170,6 +186,29 @@ describe('CheckoutModal', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Café Central is now on Starter');
     expect(s.router.currentRoute.value.fullPath).toBe('/dashboard/businesses/cafe/summary');
     expect(s.open.value).toBe(false);
+  });
+
+  it('says what happened once the business’s page has taken over, never while that page is still on its way (saas#341)', async () => {
+    const s = await setup();
+    const arrive = await completeWhileThePageIsOnItsWay(s.router);
+    expect(s.q('checkout-paying')?.textContent?.trim()).toBe('Paying…');
+    expect(toastSuccess).not.toHaveBeenCalled();
+    await arrive();
+    expect(s.router.currentRoute.value.fullPath).toBe('/dashboard/businesses/cafe/summary');
+    expect(s.open.value).toBe(false);
+    expect(toastSuccess).toHaveBeenCalledWith('Café Central is now on Starter');
+  });
+
+  it('names the business paid for, though the Store behind moves to another one while that business’s page is on its way (saas#341)', async () => {
+    // Left behind in the stack, the Store loses its `?business=` and picks another business for its dialog.
+    const shown = reactive({ business: { id: 'cafe', name: 'Café Central' } });
+    const s = await setup(happy, PLAN, shown);
+    const arrive = await completeWhileThePageIsOnItsWay(s.router);
+    shown.business = { id: 'norte', name: 'Bar Norte' };
+    await flush();
+    await arrive();
+    expect(s.router.currentRoute.value.fullPath).toBe('/dashboard/businesses/cafe/summary');
+    expect(toastSuccess).toHaveBeenCalledWith('Café Central is now on Starter');
   });
 
   it('keeping a handed-over plan: its own checkout, nothing charged today, paid from the end of the paid period (HUBS-F28)', async () => {

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:f3142c0a71c8d75f0c9b7dd754198e223164fa6de703aee0a8bbac008e8d1b4f -->
+<!-- generated from WORKBOOK.md sha256:2caeedfc71558384c06ae163b937dff3227e36bce7f441cde178edc8d10018e4 -->
 
 ## What it is for and who it is for
 
@@ -271,7 +271,7 @@ Steps:
 1. In **Store › Plans**, with the business chosen at the top, the owner sees each plan with its price without VAT, its users, its devices and the apps it can have turned on at once, picks "Monthly" or "Annual" (which says how much is saved) and taps "Upgrade to …".
 2. The secure payment opens: the billing details if they are missing and then Stripe's card form inside the dialog, titled "Upgrade to …" with "For … · renews every month" (or every year).
 3. Enter the card; if the bank asks for authentication, Stripe shows it in the same form.
-4. When done, "Paying…", the notice "… is now on …" and the business's page, whose Plan card changes as soon as Stripe confirms it. The business keeps working all the time.
+4. When done, "Paying…" until the business's page arrives, which says "… is now on …" and whose Plan card changes as soon as Stripe confirms it. The business keeps working all the time.
 In: the chosen plan (only those offered to that person), the period, the billing details and the promo code if there is one.
 Out: the business on the new plan, its subscription and its customer in Stripe, the new plan sent to the business (`hubs.subscription.changed`) and ERPlora's invoice for the first charge (BILLING-F25), whether the payment notice arrives before or after.
 If it fails: if the payment cannot be opened, "We could not open the secure payment" and "Nothing has been charged" with "Retry"; a plan without a price in Stripe, "is not on sale"; without billing details, the form; with an unpaid invoice, nothing is sold to that business. If the person closes the dialog, nothing is charged and the business stays on Free.
@@ -283,7 +283,7 @@ Status: done
 Actor: owner
 Screen: Secure payment, Business summary
 Steps:
-1. When the payment is finished in Stripe's form, the dialog says "Paying…", closes the form, says "… is now on …" (or "… added to …: it turns on in a few seconds" for a module) and opens the business's page.
+1. When the payment is finished in Stripe's form, the dialog says "Paying…", closes the form and opens the business's page; once that page is there, the dialog goes and the notice "… is now on …" (or "… added to …: it turns on in a few seconds" for a module) shows on it, naming the business paid for, however long the page takes to arrive (saas#341).
 2. The business's plan (or the app bought) changes when Stripe confirms the charge: if the payment method takes time to confirm, such as a SEPA direct debit, the business stays as it was until then and changes by itself, without reloading.
 3. If the person closes the dialog before paying, nothing is charged and they can open it again (BILLING-F10); the business stays as it was and nothing is deleted.
 In: the payment Stripe considers finished.
