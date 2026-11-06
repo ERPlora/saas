@@ -398,7 +398,11 @@ Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/t
 - `apiPost(request, ruta, datos)`: un POST a la API con el token CSRF de la sesión.
 - `waitForMail(…)` y `startHubDouble()`: el correo y el Hub (ver «Puertos y servidores»).
 - `djangoPrint(código)`: lo que imprime un trozo de Python con Django montado contra la BD local, para
-  lo que ninguna página enseña.
+  lo que ninguna página enseña. Cada llamada arranca Django en frío y bloquea el proceso de Node hasta que
+  termina (~1 s en reposo, 57–88 s con la máquina cargada, saas#346): dentro de una prueba, lo que enseña el
+  panel se lee por su API y lo que solo sabe Django, una vez por spec en un `beforeAll` con `djangoPrintAsync`.
+  `internalSecret()` ya lo hace así: asíncrono y leído una vez por worker; quien firma dentro de una prueba lo
+  pide antes en un `beforeAll`.
 - **Sin recarga en caliente**: el `context` de toda spec responde él mismo al WebSocket de Vite
   (`freezeFrontend`), así que lo que otra sesión guarda a mitad de una ejecución no remonta
   componentes bajo la spec (un diálogo abierto se quedaba huérfano); cada carga de página sí trae los

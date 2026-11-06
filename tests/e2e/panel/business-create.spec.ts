@@ -12,6 +12,7 @@ import {
   businessIdOf,
   catalogueText,
   expect,
+  internalSecret,
   panelAccount,
   provenAccount,
   removeAccountsOf,
@@ -29,6 +30,8 @@ const PREFIX = 'e2e-create-host-';
 const PASSWORD = 'e2e-create-host-password';
 
 test.beforeAll(() => seedPanel());
+// What reportBusinessReady signs with, read here and not inside a test (fixtures.ts, internalSecret).
+test.beforeAll(() => internalSecret());
 test.afterAll(() => {
   seedPanel('clear');
   removeAccountsOf(PREFIX);
