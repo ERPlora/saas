@@ -551,13 +551,14 @@ export function catalogueText(app: string, language: 'en' | 'es', key: string, p
 
 /**
  * A business of `request`'s account called `name` (created through the API, as the panel creates it), ready as the Hub's
- * callback leaves it and with nothing owed to the Hub, on the plan `plan` (its slug); its id.
+ * callback leaves it and with nothing owed to the Hub, on the plan `plan` (its slug); its id. For inside a test: the
+ * rest of what the Hub's callback leaves goes through this worker's warm Django (`djangoPrintWarm`, saas#354).
  */
 export async function readyBusinessOn(request: APIRequestContext, name: string, plan: string): Promise<string> {
   const created = await apiPost(request, '/api/hubs/businesses', { name, country: 'ES' });
   expect(created.status(), await created.text()).toBe(201);
   const { id } = (await created.json()) as { id: string };
-  djangoPrint(
+  await djangoPrintWarm(
     [
       'from django.utils import timezone',
       'from hubs.models import Hub, Plan, Subscription',
@@ -1070,4 +1071,20 @@ export function seededAndSignedInWarm(script: string, account: Credentials): voi
     await signIn(page.request, account);
   });
   test.afterAll(() => runSeedWarm(script, 'clear'));
+}
+
+// ── The real Hub's Django, asked by a spec (saas#354) ─────────────────────────────────────────
+
+/**
+ * What `code` prints in the real Hub's Django (`HUB_DIR`, its database `HUB_DB_NAME`; README «El Hub real de la e2e»), by
+ * its `manage.py shell`: its last line. It never blocks this process, so a test's timeout still fires while it runs.
+ */
+export async function realHubPrint(code: string): Promise<string> {
+  const { stdout } = await execFileAsync('uv', ['run', 'python', 'manage.py', 'shell', '-c', code], {
+    cwd: process.env.HUB_DIR,
+    // The Hub's database: never this run's DB_NAME, which the SaaS's stack.ts refuses.
+    env: { ...process.env, DB_NAME: process.env.HUB_DB_NAME, DEBUG: 'True' },
+    encoding: 'utf8',
+  });
+  return stdout.trim().split('\n').pop() ?? '';
 }

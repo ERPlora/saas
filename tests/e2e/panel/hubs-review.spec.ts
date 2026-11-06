@@ -15,11 +15,12 @@ import { type Browser, type Locator, type Page } from '@playwright/test';
 import {
   apiPost,
   captureAtEverySize,
-  djangoPrint,
+  createAccountWarm,
+  djangoPrintWarm,
   expect,
   readyBusinessOn,
-  removeAccountsOf,
-  seedPanel,
+  removeAccountsWarm,
+  runSeedWarm,
   signIn,
   signInAs,
   test,
@@ -62,16 +63,9 @@ interface Account {
 }
 
 /** A fresh account of this spec speaking `language`, its address proven. */
-function account(who: string, first: string, last: string, language: Language): Account {
+async function account(who: string, first: string, last: string, language: Language): Promise<Account> {
   const email = `${PREFIX}${who}-${language}-${Date.now()}@example.com`;
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", language="${language}", first_name="${first}", last_name="${last}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
+  await createAccountWarm(email, PASSWORD, { language, firstName: first, lastName: last });
   return { email, first, name: `${first} ${last}` };
 }
 
@@ -126,13 +120,16 @@ function atEverySize(
   });
 }
 
-test.beforeAll(() => {
-  removeAccountsOf(PREFIX);
-  seedPanel();
+// Django's boots on no test's clock (saas#354): the warm Django starts here, with the taxonomy every deploy seeds (the
+// type HUBS-F01 picks is named by the preparation's step).
+test.beforeAll(async () => {
+  await removeAccountsWarm(PREFIX);
+  await runSeedWarm('panel_seed.py', 'seed');
+  await djangoPrintWarm('from django.core.management import call_command\ncall_command("seed_taxonomy")');
 });
-test.afterAll(() => {
-  removeAccountsOf(PREFIX);
-  seedPanel('clear');
+test.afterAll(async () => {
+  await removeAccountsWarm(PREFIX);
+  await runSeedWarm('panel_seed.py', 'clear');
 });
 
 for (const { language, locale } of LANGUAGES) {
@@ -141,10 +138,8 @@ for (const { language, locale } of LANGUAGES) {
 
     test(`HUBS-F01 + HUBS-F02 + HUBS-F04 (${language}): the sign-up from erplora.com and from the app, then «Preparing»`, async ({ page }) => {
       const errors = watchPageErrors(page);
-      // The taxonomy every deploy seeds: the type picked below is named by the preparation's step.
-      djangoPrint('from django.core.management import call_command\ncall_command("seed_taxonomy")');
       const typeName = language === 'es' ? 'Restaurante' : 'Restaurant';
-      const owner = account('first', 'Olga', 'Ruiz', language);
+      const owner = await account('first', 'Olga', 'Ruiz', language);
       await signIn(page.request, { email: owner.email, password: PASSWORD });
 
       await page.goto('/shell/');
@@ -185,7 +180,7 @@ for (const { language, locale } of LANGUAGES) {
 
     test(`HUBS-F11 + HUBS-F12 (${language}): the start with one business, then the app's start with several`, async ({ page }) => {
       const errors = watchPageErrors(page);
-      const owner = account('enter', 'Olga', 'Ruiz', language);
+      const owner = await account('enter', 'Olga', 'Ruiz', language);
       await signIn(page.request, { email: owner.email, password: PASSWORD });
       await businessOf(page, 'Bar Manolo', { paid: true });
 
@@ -217,7 +212,7 @@ for (const { language, locale } of LANGUAGES) {
 
     test(`HUBS-F03 + HUBS-F09 + HUBS-F10 + HUBS-F19 (${language}): Businesses with a deleted one, «Create business» and «Recover»`, async ({ page }) => {
       const errors = watchPageErrors(page);
-      const owner = account('list', 'Olga', 'Ruiz', language);
+      const owner = await account('list', 'Olga', 'Ruiz', language);
       await signIn(page.request, { email: owner.email, password: PASSWORD });
       await businessOf(page, 'Bar Manolo', { paid: true });
       const gone = await businessOf(page, 'Café Lola');
@@ -269,7 +264,7 @@ for (const { language, locale } of LANGUAGES) {
 
     test(`HUBS-F13 + HUBS-F15 + HUBS-F16 (${language}): the Summary's devices card, «General» and «Change address»`, async ({ page }) => {
       const errors = watchPageErrors(page);
-      const owner = account('settings', 'Olga', 'Ruiz', language);
+      const owner = await account('settings', 'Olga', 'Ruiz', language);
       await signIn(page.request, { email: owner.email, password: PASSWORD });
       const id = await businessOf(page, 'Bar Manolo');
 
@@ -331,8 +326,8 @@ for (const { language, locale } of LANGUAGES) {
 
     test(`HUBS-F24 + HUBS-F26 + HUBS-F27 + HUBS-F28 + HUBS-F29 (${language}): «Team» and its dialogs`, async ({ page, browser }) => {
       const errors = watchPageErrors(page);
-      const owner = account('team', 'Olga', 'Ruiz', language);
-      const ana = account('team-ana', 'Ana', 'Gil', language);
+      const owner = await account('team', 'Olga', 'Ruiz', language);
+      const ana = await account('team-ana', 'Ana', 'Gil', language);
       await signIn(page.request, { email: owner.email, password: PASSWORD });
       const id = await businessOf(page, 'Bar Manolo', { paid: true });
       const member = await invite(page, browser, id, ana, true);
@@ -388,8 +383,8 @@ for (const { language, locale } of LANGUAGES) {
 
     test(`HUBS-F25 (${language}): «You have been invited» for whoever has an invitation waiting`, async ({ page, browser }) => {
       const errors = watchPageErrors(page);
-      const owner = account('invites', 'Olga', 'Ruiz', language);
-      const lucia = account('invited', 'Lucía', 'Pérez', language);
+      const owner = await account('invites', 'Olga', 'Ruiz', language);
+      const lucia = await account('invited', 'Lucía', 'Pérez', language);
       await signIn(page.request, { email: owner.email, password: PASSWORD });
       const id = await businessOf(page, 'Bar Manolo');
       await invite(page, browser, id, lucia, false);
@@ -412,18 +407,11 @@ for (const { language, locale } of LANGUAGES) {
 
     test(`HUBS-F23 + HUBS-F30 (${language}): the staff's page of a business and the accesses list in the admin`, async ({ page }) => {
       const errors = watchPageErrors(page);
-      const owner = account('admin', 'Olga', 'Ruiz', language);
+      const owner = await account('admin', 'Olga', 'Ruiz', language);
       await signIn(page.request, { email: owner.email, password: PASSWORD });
       const id = await businessOf(page, 'Bar Manolo');
       const staff = `${PREFIX}staff-${language}-${Date.now()}@example.com`;
-      djangoPrint(
-        [
-          'from allauth.account.models import EmailAddress',
-          'from django.contrib.auth import get_user_model',
-          `user = get_user_model().objects.create_superuser(email="${staff}", password="${PASSWORD}", language="${language}")`,
-          'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-        ].join('\n'),
-      );
+      await createAccountWarm(staff, PASSWORD, { language, role: 'superuser' });
       await signInAs(page, { email: staff, password: PASSWORD });
 
       await page.goto(`/admin/hubs/hub/${id}/change/`);
