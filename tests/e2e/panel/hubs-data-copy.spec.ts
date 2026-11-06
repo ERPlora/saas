@@ -9,7 +9,6 @@
 // attachment, and 503 to the rest. Accounts of this spec: `e2e-copy-…@example.com`.
 import { createServer, type Server } from 'node:http';
 
-
 import { captureAtEverySize, djangoPrint, expect, settled, signIn, test, watchPageErrors } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 

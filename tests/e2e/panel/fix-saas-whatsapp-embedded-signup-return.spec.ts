@@ -30,7 +30,7 @@ import { readMailCode } from '@erplora/ui/testing/mail';
 import { type BrowserContext, expect, type Page, test } from '@playwright/test';
 
 import { horizontalOverflow } from '../horizontal-overflow';
-import { OWNER, repeatedTop, settled, shot, submitSignInForm, VIEWPORTS } from './fixtures';
+import { OWNER, repeatedTop, runSeed, settled, shot, submitSignInForm, VIEWPORTS } from './fixtures';
 import { PANEL_URL, WHATSAPP_E2E } from './project';
 
 const TASK = 'FIX-SAAS-WHATSAPP-EMBEDDED-SIGNUP-RETURN';
@@ -221,12 +221,8 @@ function hubIds(): [string, string] {
 
 /** erplora.com's side of the run (whatsapp_hub_seed.py: `a` with its number) pushed to the Hub: what the seed printed. */
 function seedErplora(): { delivered: boolean; hub_error: string } {
-  const out = execFileSync('uv', ['run', 'python', 'tests/e2e/panel/whatsapp_hub_seed.py', ...hubIds()], {
-    cwd: SAAS_DIR,
-    encoding: 'utf8',
-    env: { ...process.env, DEBUG: 'True', DB_NAME: `saas_e2e_${HUB_PORT + 1}`, HUB_INTERNAL_URL: `http://127.0.0.1:${HUB_PORT}` },
-  });
-  return JSON.parse(out.trim().split('\n').at(-1) ?? '{}');
+  const env = { DB_NAME: `saas_e2e_${HUB_PORT + 1}`, HUB_INTERNAL_URL: `http://127.0.0.1:${HUB_PORT}` };
+  return JSON.parse(runSeed('whatsapp_hub_seed.py', hubIds(), env));
 }
 
 /** The owner opens `url` of the hub `a`: the Hub sends them to erplora.com, which asks the password and the mailed code. */
