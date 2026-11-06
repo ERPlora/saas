@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import type { APIRequestContext, Locator, Page } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
-import { startLineServer } from '../line-server';
+import { startLineServer } from '../django-warm';
 import {
   apiPost,
   businessIdOf,
@@ -56,19 +56,17 @@ interface StripePlayed {
 /**
  * The Stripe of this spec, `billing_stripe_played.py serve`, as the Hub is played (`startHubDouble`): ONE process from
  * `beforeAll` to `afterAll`, so a loaded machine adds no Python start-up to each call (saas#328: one per call kept the
- * change past the notice's 15 s). It answers one line per call, in order, through the e2e's line pipe (line-server.ts),
- * and never blocks this process: the Hub it pushes to is played here (saas#176). A call it could not answer rejects with
- * its traceback.
+ * change past the notice's 15 s). It answers one line per call, in order, and never blocks this process: the Hub it
+ * pushes to is played here (saas#176). A call it could not answer rejects with its traceback (`startLineServer`).
  */
 async function startStripePlayed(): Promise<StripePlayed> {
-  const lines = await startLineServer('uv', ['run', 'python', 'tests/e2e/panel/billing_stripe_played.py', 'serve', HUB_URL], {
+  const served = await startLineServer('uv', ['run', 'python', 'tests/e2e/panel/billing_stripe_played.py', 'serve', HUB_URL], {
     cwd: SAAS_DIR,
     env: djangoEnv(true),
-    name: 'billing_stripe_played.py',
   });
   return {
-    call: async (request) => (await lines.ask(request)) as unknown as Played,
-    close: () => lines.close(),
+    call: async (request) => (await served.ask(request)) as unknown as Played,
+    close: () => served.close(),
   };
 }
 

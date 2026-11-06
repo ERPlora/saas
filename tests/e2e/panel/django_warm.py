@@ -8,7 +8,7 @@ JSON line it reads on its stdin with one JSON line, in order, until its stdin en
 
 - ``{"code": <Python>}`` → ``{"out": <what it printed>}``: the snippet runs as ``python -c`` runs it after
   ``django.setup()`` (``djangoPrint``): from no names of the one before, its connection back to the pool and the
-  language and the time zone it activated gone when it ends;
+  language, the time zone and this process's memory cache it touched gone when it ends;
 - a snippet that fails (``SystemExit`` too) → ``{"error": <its traceback>}``, and the next one is answered as usual.
 
 Its stdout carries only those lines; whatever is printed outside a snippet goes to its stderr.
@@ -42,6 +42,8 @@ def _say(answers: TextIO, answer: dict) -> None:
 
 def _run(code: str) -> dict:
     """What `code` printed, as a fresh ``python -c`` leaves things once it ends."""
+    from django.core.cache import caches
+    from django.core.cache.backends.locmem import LocMemCache
     from django.db import close_old_connections
     from django.utils import timezone, translation
 
@@ -56,6 +58,10 @@ def _run(code: str) -> dict:
         translation.deactivate()
         timezone.deactivate()
         close_old_connections()
+        # This process's memory dies with a `python -c`; a shared Valkey (VALKEY_URL) is the run's, never cleared here.
+        for cache in caches.all(initialized_only=True):
+            if isinstance(cache, LocMemCache):
+                cache.clear()
     return {"out": printed.getvalue()}
 
 

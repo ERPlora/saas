@@ -10,6 +10,7 @@
 import { type Page } from '@playwright/test';
 
 import {
+  createAccountWarm,
   djangoPrintWarm,
   expect,
   sessionOf,
@@ -36,18 +37,6 @@ async function removeAccounts(): Promise<void> {
       'users = get_user_model().objects',
       'users.filter(email__startswith="e2e-signup-", email__endswith="@example.com").delete()',
       `users.filter(email="${RESET.email}").delete()`,
-    ].join('\n'),
-  );
-}
-
-/** `RESET` with its address verified, as an account that already signed in once. */
-async function createResetAccount(): Promise<void> {
-  await djangoPrintWarm(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email="${RESET.email}", password="${RESET.password}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
     ].join('\n'),
   );
 }
@@ -173,7 +162,8 @@ test('a mistyped address is left with «Use a different email»: the right accou
 
 test('«Forgot your password?»: the mailed link sets a new password, and the account signs in with it', async ({ page }) => {
   const errors = watchPageErrors(page);
-  await createResetAccount();
+  // `RESET` with its address verified, as an account that already signed in once.
+  await createAccountWarm(RESET.email, RESET.password);
 
   await page.goto('/launch');
   await page.getByTestId('login-forgot').click();

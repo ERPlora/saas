@@ -10,7 +10,20 @@
 // removed before and after.
 import { type Browser, type BrowserContext, type Page } from '@playwright/test';
 
-import { type Viewport, VIEWPORTS, djangoPrintWarm, expect, sessionOf, settled, shot, signIn, test, watchPageErrors } from './fixtures';
+import {
+  createAccountWarm,
+  type Credentials,
+  expect,
+  removeAccountsWarm,
+  sessionOf,
+  settled,
+  shot,
+  signIn,
+  test,
+  type Viewport,
+  VIEWPORTS,
+  watchPageErrors,
+} from './fixtures';
 import { PANEL_URL } from './project';
 
 const PREFIX = 'e2e-liveend-';
@@ -21,28 +34,8 @@ const NEW_PASSWORD = 'Pan-de-espelta-y-sal-2026';
 /** Account → Security, left for the sign-in that brings it back there. */
 const LEFT_FOR_SIGN_IN = /\/launch\?next=(%2F|\/)dashboard(%2F|\/)account(%2F|\/)security$/;
 
-async function removeAccounts(): Promise<void> {
-  await djangoPrintWarm(
-    [
-      'from django.contrib.auth import get_user_model',
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
-
 /** An account with its address proven, as one that signed in before (by the warm Django: no boot inside the test). */
-async function createAccount(name: string): Promise<{ email: string; password: string }> {
-  const email = `${PREFIX}${name}-${Date.now()}@example.com`;
-  await djangoPrintWarm(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-  return { email, password: PASSWORD };
-}
+const createAccount = (name: string): Promise<Credentials> => createAccountWarm(`${PREFIX}${name}-${Date.now()}@example.com`, PASSWORD);
 
 async function newContextOn(browser: Browser, baseURL: string) {
   return browser.newContext({ baseURL, locale: 'en-US' });
@@ -57,7 +50,7 @@ async function signedInTwice(
   browser: Browser,
   size: Viewport,
   name: string,
-): Promise<{ account: { email: string; password: string }; other: BrowserContext }> {
+): Promise<{ account: Credentials; other: BrowserContext }> {
   const account = await createAccount(name);
   await page.setViewportSize(size);
   await signIn(page.request, account);
@@ -74,8 +67,8 @@ async function signedInTwice(
 }
 
 // The first call boots this worker's warm Django: here, on no test's clock.
-test.beforeAll(removeAccounts);
-test.afterAll(removeAccounts);
+test.beforeAll(() => removeAccountsWarm(PREFIX));
+test.afterAll(() => removeAccountsWarm(PREFIX));
 
 for (const size of VIEWPORTS) {
   test(`saas-live-session: a tab whose session was closed from another browser stops receiving live results and leaves for the sign-in (${size.width})`, async ({

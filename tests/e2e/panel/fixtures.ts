@@ -568,16 +568,18 @@ export async function readyBusinessOn(request: APIRequestContext, name: string, 
   return id;
 }
 
+/** The snippet that removes what a spec leaves behind: the businesses and the accounts whose email starts with `prefix`. */
+const removingAccountsOf = (prefix: string) =>
+  [
+    'from django.contrib.auth import get_user_model',
+    'from hubs.models import Hub',
+    `Hub.objects.filter(members__user__email__startswith=${JSON.stringify(prefix)}).delete()`,
+    `get_user_model().objects.filter(email__startswith=${JSON.stringify(prefix)}).delete()`,
+  ].join('\n');
+
 /** What a spec leaves behind: the businesses and the accounts whose email starts with its `prefix` (`e2e-<spec>-`). */
 export function removeAccountsOf(prefix: string): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(members__user__email__startswith=${JSON.stringify(prefix)}).delete()`,
-      `get_user_model().objects.filter(email__startswith=${JSON.stringify(prefix)}).delete()`,
-    ].join('\n'),
-  );
+  djangoPrint(removingAccountsOf(prefix));
 }
 
 const execFileAsync = promisify(execFile);
@@ -934,6 +936,56 @@ export function warmDjango(env: Readonly<Record<string, string>> = {}): Promise<
  */
 export async function djangoPrintWarm(code: string, env: Readonly<Record<string, string>> = {}): Promise<string> {
   return (await warmDjango(env)).print(code);
+}
+
+/**
+ * Who a spec's account is: a customer (`create_user`), Django's superuser (`create_superuser`), or a team account of
+ * ERPlora (`accounts.services.create_platform_user`, with its group: the platform's admin or its support).
+ */
+export type AccountRole = 'customer' | 'superuser' | 'platform-admin' | 'platform-support';
+
+export interface AccountOptions {
+  role?: AccountRole;
+  /** Its address proven (the default), as an account that signed in before; `false`, never proven. */
+  verified?: boolean;
+  firstName?: string;
+  lastName?: string;
+  /** The account's language (the panel speaks it once signed in); the model's own when left out. */
+  language?: 'en' | 'es';
+}
+
+/** A fresh account of a spec, `email` with `password` and `options`, written by the warm Django: its credentials. */
+export async function createAccountWarm(email: string, password: string, options: AccountOptions = {}): Promise<Credentials> {
+  const { role = 'customer', verified = true, firstName, lastName, language } = options;
+  const fields = Object.entries({ first_name: firstName, last_name: lastName, language }).filter(
+    (field): field is [string, string] => field[1] !== undefined,
+  );
+  const said = (value: string) => JSON.stringify(value);
+  const kwargs = [`email=${said(email)}`, `password=${said(password)}`, ...fields.map(([name, value]) => `${name}=${said(value)}`)];
+  const group = role === 'platform-admin' ? 'services.PLATFORM_ADMIN' : 'services.PLATFORM_SUPPORT';
+  const made =
+    role === 'customer' || role === 'superuser'
+      ? [`user = get_user_model().objects.${role === 'customer' ? 'create_user' : 'create_superuser'}(${kwargs.join(', ')})`]
+      : [
+          `user = services.create_platform_user(${said(email)}, ${group}, ${said(password)})[0]`,
+          ...fields.map(([name, value]) => `user.${name} = ${said(value)}`),
+          `user.save(update_fields=[${fields.map(([name]) => said(name)).join(', ')}])`,
+        ];
+  await djangoPrintWarm(
+    [
+      'from allauth.account.models import EmailAddress',
+      'from django.contrib.auth import get_user_model',
+      'from accounts import services',
+      ...made,
+      `EmailAddress.objects.update_or_create(user=user, email=user.email, defaults={"verified": ${verified ? 'True' : 'False'}, "primary": True})`,
+    ].join('\n'),
+  );
+  return { email, password };
+}
+
+/** `removeAccountsOf` through the warm Django: the businesses and the accounts whose email starts with `prefix`. */
+export async function removeAccountsWarm(prefix: string): Promise<void> {
+  await djangoPrintWarm(removingAccountsOf(prefix));
 }
 
 // ── A spec's seeds by the warm Django (saas#355) ──────────────────────────────────────────────

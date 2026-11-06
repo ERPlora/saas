@@ -411,6 +411,14 @@ Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/t
   panel se lee por su API y lo que solo sabe Django, una vez por spec en un `beforeAll` con `djangoPrintAsync`.
   `internalSecret()` ya lo hace así: asíncrono y leído una vez por worker; quien firma dentro de una prueba lo
   pide antes en un `beforeAll`.
+- `djangoPrintWarm(código, env?)`: el mismo trozo de Python, contestado por **un Django caliente por worker**
+  (`panel/django_warm.py`, una línea JSON por llamada por stdin/stdout, la receta del doble de Stripe de
+  saas#328; su cliente es `django-warm.ts`): arranca una vez y se queda, así que una prueba no paga arranques
+  ni bloquea Node (saas#352). Para lo que hay que escribir o leer en Django en mitad de un flujo y la API no
+  enseña (crear una cuenta, marcar un estado, contar filas). Cada trozo corre como con `python -c`: sin los
+  nombres del anterior, y el idioma, la zona horaria y la caché en memoria que tocó se van al terminar. Otro
+  `env` (`MAILING`) es otro proceso. `warmDjango(env?)` lo arranca: la spec cuya primera llamada cae dentro
+  de una prueba lo pide antes en un `beforeAll`.
 - `runSeedWarm(script, args, env)` y `seededAndSignedInWarm(script, cuenta)`: `runSeed` y `seededAndSignedIn` por
   el Django caliente del worker (`warmDjango`, saas#352), para la siembra que va dentro de una prueba o en su
   `beforeEach`: sin arranque de Django ni bloqueo de Node (saas#355). `localAssistant().seed` ya siembra así y
