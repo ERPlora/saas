@@ -1,6 +1,6 @@
 // The review of a screen in the language the person reads (the migration's review of the `hecho` flows of
-// accounts/WORKBOOK.md, APP-ACCOUNTS-6 and APP-ACCOUNTS-7): at the three sizes of the migration (390×844, 834×1112,
-// 1440×900), the page says its language (`<html lang>`), no whole text of the other language is left on screen (every
+// accounts/WORKBOOK.md, APP-ACCOUNTS-6 and APP-ACCOUNTS-7): at the panel's three sizes (`VIEWPORTS` of fixtures.ts),
+// the page says its language (`<html lang>`), no whole text of the other language is left on screen (every
 // catalogue of the panel, `accounts`, `hubs`, the shell and @erplora/ui), nothing scrolls sideways, and a capture
 // `<task>-<flow>-<size>-<lang>` stays for the eye.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -9,13 +9,8 @@ import { fileURLToPath } from 'node:url';
 
 import { type Page } from '@playwright/test';
 
-import { expect, settled, shot, sidewaysScroll } from './fixtures';
+import { captureAtEverySize, expect, settled } from './fixtures';
 
-export const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 export const LANGUAGES = [
   { lang: 'en', locale: 'en-US' },
   { lang: 'es', locale: 'es-ES' },
@@ -110,11 +105,13 @@ export async function textsOfTheOtherLanguage(page: Page, lang: Lang): Promise<s
 // ── The review of one screen ──────────────────────────────────────────────────────────────────
 
 /**
- * The review of a task (`APP-ACCOUNTS-6`…): `ready` at each size, then the checks of every screen (the page says
- * `lang`, no text of the other language, no sideways scroll) and the capture `<task>-<flow>-<size>-<lang>`; back at
- * 1440 after. `fullPage: false` for a page as long as the API's reference, whose full shot is thousands of pixels tall.
+ * The review of a task (`APP-ACCOUNTS-6`…), the panel's walk through its sizes (`captureAtEverySize`): `ready` at each
+ * size, then the checks of every screen (no sideways scroll, the page says `lang`, no text of the other language) and
+ * the capture `<task>-<flow>-<size>-<lang>`; back at 1440 after. `fullPage: false` for a page as long as the API's
+ * reference, whose full shot is thousands of pixels tall.
  */
 export function reviewOf(task: string) {
+  const walk = captureAtEverySize(task);
   return async function review(
     page: Page,
     lang: Lang,
@@ -122,16 +119,14 @@ export function reviewOf(task: string) {
     ready: () => Promise<void>,
     { fullPage = true }: { fullPage?: boolean } = {},
   ): Promise<void> {
-    for (const size of SIZES) {
-      await page.setViewportSize({ width: size.width, height: size.height });
-      await ready();
-      await settled(page);
-      await expect(page.locator('html'), `${flow} says its language`).toHaveAttribute('lang', new RegExp(`^${lang}\\b`));
-      expect(await textsOfTheOtherLanguage(page, lang), `${flow} at ${size.name} in ${lang}: text of the other language`).toEqual([]);
-      expect(await sidewaysScroll(page), `${flow} scrolls sideways at ${size.name} in ${lang}`).toEqual([]);
-      await page.screenshot({ path: shot(`${task}-${flow}-${size.name}-${lang}`), fullPage });
-    }
-    await page.setViewportSize({ width: 1440, height: 900 });
+    await walk(page, flow, ready, {
+      fullPage,
+      suffix: lang,
+      checks: async (size) => {
+        await expect(page.locator('html'), `${flow} says its language`).toHaveAttribute('lang', new RegExp(`^${lang}\\b`));
+        expect(await textsOfTheOtherLanguage(page, lang), `${flow} at ${size.width} in ${lang}: text of the other language`).toEqual([]);
+      },
+    });
   };
 }
 
