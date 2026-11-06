@@ -130,6 +130,21 @@ test.describe('store', () => {
     expect(errors).toEqual([]);
   });
 
+  test('Stripe.js that cannot load is said in the dialog, with «Retry»: waiting for its place hides no real failure (saas#326)', async ({ page }) => {
+    await page.route(/^https:\/\/js\.stripe\.com\//, (route) => route.abort());
+    const cafe = await businessIdOf(page.request, 'Café Central');
+    await page.route('**/api/billing/checkout/start', (route) =>
+      route.fulfill({ json: { flow: 'checkout', session_id: 'cs_test_e2e', client_secret: 'cs_test_e2e_secret', publishable_key: 'pk_test_e2e', preview: null } }),
+    );
+    await page.goto(`/dashboard/store/plans?business=${cafe}`);
+    await expect(page.getByTestId('plan-free').getByTestId('plan-current')).toBeVisible();
+    await page.getByTestId('plan-starter').getByTestId('plan-upgrade').click();
+    const dialog = page.getByTestId('checkout-modal');
+    await expect(dialog.getByTestId('checkout-error')).toContainText('We could not open the secure payment');
+    await expect(dialog.getByTestId('checkout-retry')).toBeVisible();
+    await expect(dialog.getByTestId('checkout-stripe')).toBeHidden();
+  });
+
   test('a paying business adds a module in its own dialog, with its proration, and then it is «Activating…»', async ({ page }) => {
     const bakery = await businessIdOf(page.request, 'Panadería López');
     await page.route('**/api/billing/checkout/start', (route) =>

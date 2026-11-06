@@ -6,7 +6,8 @@
 //      (`hubs.billing_profile.update`, VIES included); otherwise «Invoice to … · Change».
 //   2. `billing.checkout.start` — the plan at the billing chosen (with the promo code typed) or the module,
 //      named in the title — gives a Checkout Session's `client_secret`. Stripe.js (web only, loaded now:
-//      `stripe-js.ts`) mounts it with `createEmbeddedCheckoutPage({ fetchClientSecret })` in the dialog.
+//      `stripe-js.ts`) mounts it with `createEmbeddedCheckoutPage({ fetchClientSecret })` in the dialog, as soon
+//      as the dialog's content is on screen (Ionic may render it after Stripe answers: saas#326).
 //      A place the tax cannot be worked out for sends back to the form with the server's reason.
 //   3. Stripe's `onComplete` → «Paying…», the checkout is destroyed, a toast says what happened and the
 //      page goes to the business (the webhook applies the plan; Stripe's `return_url` is that page too).
@@ -21,7 +22,7 @@ import { FormModal, type FormModalError, InlineFeedback, StatusPill } from '@erp
 import { HubIcon, toastSuccess, useSurface } from '@erplora/ui/shell';
 import { useCommand, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, IonItem, IonLabel, IonSpinner } from '@ionic/vue';
-import { computed, nextTick, onBeforeUnmount, shallowRef, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, shallowRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
@@ -214,27 +215,46 @@ async function pay(mine = attempt): Promise<void> {
   const secret = session.client_secret;
   try {
     const Stripe = await loadStripeJs();
-    const mounted = await Stripe(session.publishable_key).createEmbeddedCheckoutPage({
+    const created = await Stripe(session.publishable_key).createEmbeddedCheckoutPage({
       fetchClientSecret: () => Promise.resolve(secret),
       onComplete: () => void complete(),
     });
     if (mine !== attempt) {
-      mounted.destroy();
+      created.destroy();
       return;
     }
-    checkout = mounted;
-    await nextTick();
-    if (!stripeArea.value) throw new Error('billing: the checkout has nowhere to mount');
-    mounted.mount(stripeArea.value);
-    payState.value = 'mounted';
+    checkout = created;
   } catch (error) {
     if (mine !== attempt) return;
-    console.error('billing: the Embedded Checkout could not be mounted', error);
-    letCheckoutGo();
-    payState.value = 'error';
-    payError.value = '';
+    couldNotMount(error);
+    return;
+  }
+  mountInPlace();
+}
+
+/**
+ * Puts the checkout in its place in the dialog once both are there. Ionic renders the dialog's content only when
+ * it presents it (`ionMount`), and Stripe can answer before that (saas#326): then the place's arrival mounts it.
+ */
+function mountInPlace(): void {
+  const place = stripeArea.value;
+  if (!place || !checkout) return;
+  try {
+    checkout.mount(place);
+    payState.value = 'mounted';
+  } catch (error) {
+    couldNotMount(error);
   }
 }
+
+function couldNotMount(error: unknown): void {
+  console.error('billing: the Embedded Checkout could not be mounted', error);
+  letCheckoutGo();
+  payState.value = 'error';
+  payError.value = '';
+}
+
+watch(stripeArea, mountInPlace, { flush: 'post' });
 
 async function complete(): Promise<void> {
   const purchase = props.purchase;
