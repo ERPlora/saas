@@ -12,17 +12,19 @@
 //   the Hub (HUBS-G73, HUBS-G97) are skipped, and say so. So the spec runs twice: once without, once with.
 // Each test has its own account (`e2e-hubs2-…@example.com`) and its own business, created through the API as the
 // panel creates it.
-import { execFileSync } from 'node:child_process';
-
 import { type Page } from '@playwright/test';
 
 import {
   apiPost,
   captureAtEverySize,
-  djangoPrint,
+  createAccountWarm,
+  djangoPrintWarm,
   expect,
+  internalSecret,
   QUIET_MS,
-  removeAccountsOf,
+  realHubPrint,
+  removeAccountsWarm,
+  reportBusinessReady,
   settled,
   shot,
   signIn,
@@ -47,14 +49,7 @@ const NO_HUB = 'reads what waits for the Hub; the real Hub takes it at once';
 /** A fresh account of this spec, its address proven, signed in on `page`, with a business called `name`. */
 async function signedUpWith(page: Page, who: string, name: string): Promise<{ email: string; id: string; slug: string }> {
   const email = `${PREFIX}${who}-${Date.now()}@example.com`;
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", language="en")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
+  await createAccountWarm(email, PASSWORD, { language: 'en' });
   await signIn(page.request, { email, password: PASSWORD });
   const created = await apiPost(page.request, '/api/hubs/businesses', { name, country: 'ES' });
   expect(created.status(), 'POST /api/hubs/businesses').toBe(201);
@@ -64,14 +59,8 @@ async function signedUpWith(page: Page, who: string, name: string): Promise<{ em
 /** `signedUpWith`, its business ready as the Hub's callback leaves it (here no Hub answers). */
 async function ownerOf(page: Page, who: string, name: string): Promise<{ email: string; id: string; slug: string }> {
   const business = await signedUpWith(page, who, name);
-  // Ready, as the Hub's callback leaves it (here no Hub answers).
-  djangoPrint(
-    [
-      'from django.utils import timezone',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(pk="${business.id}").update(status="active", ready_at=timezone.now())`,
-    ].join('\n'),
-  );
+  // Ready: the Hub's callback, sent here as the Hub sends it (no Hub answers here).
+  await reportBusinessReady(page.request, business.id);
   return business;
 }
 
@@ -81,8 +70,18 @@ async function typeInto(page: Page, testid: string, value: string): Promise<void
   await input.fill(value);
 }
 
-test.beforeAll(() => removeAccountsOf(PREFIX));
-test.afterAll(() => removeAccountsOf(PREFIX));
+/** What the SaaS keeps of business `id` and the panel shows, through its API (`hubs.business.get`). */
+async function kept(page: Page, id: string): Promise<{ name: string; slug: string; status: string }> {
+  const detail = await page.request.get(`/api/hubs/businesses/detail?id=${id}`);
+  expect(detail.status(), await detail.text()).toBe(200);
+  return detail.json();
+}
+
+// Django's boots on no test's clock (saas#354): the warm Django and the secret of the Hub's callback, once here.
+test.beforeAll(async () => {
+  await Promise.all([removeAccountsWarm(PREFIX), internalSecret()]);
+});
+test.afterAll(() => removeAccountsWarm(PREFIX));
 
 test('HUBS-G73: the owner renames the business in «General»; an empty name is not saved', async ({ page }) => {
   test.skip(!!process.env.E2E_REAL_HUB, NO_HUB);
@@ -99,7 +98,8 @@ test('HUBS-G73: the owner renames the business in «General»; an empty name is 
   await typeInto(page, 'settings-name', 'Casa Manolo');
   await general.getByTestId('settings-save').click();
   await expect(page.getByText('Changes saved')).toBeVisible();
-  expect(djangoPrint(`from hubs.models import Hub;h=Hub.objects.get(pk="${id}");print(h.name, h.pending_hub_call)`)).toBe(
+  // What waits for the Hub only Django knows: the warm one reads it.
+  expect(await djangoPrintWarm(`from hubs.models import Hub;h=Hub.objects.get(pk="${id}");print(h.name, h.pending_hub_call)`)).toBe(
     'Casa Manolo put',
   );
   expect(errors).toEqual([]);
@@ -164,7 +164,8 @@ test('HUBS-G74: the owner moves the business to another web address; the old one
   await dialog.getByTestId('address-dialog-submit').click();
   await expect(page.getByText(`The business now opens at ${wanted}.`)).toBeVisible();
   await expect(general.getByTestId('copy-value')).toContainText(`${wanted}.`);
-  expect(djangoPrint(`from hubs.models import Hub;h=Hub.objects.get(pk="${id}");print(h.slug, h.previous_slug)`)).toBe(
+  // The old address kept as the business's own only Django knows: the warm one reads it.
+  expect(await djangoPrintWarm(`from hubs.models import Hub;h=Hub.objects.get(pk="${id}");print(h.slug, h.previous_slug)`)).toBe(
     `${wanted} ${slug}`,
   );
   expect(errors).toEqual([]);
@@ -192,7 +193,7 @@ test('HUBS-G88 + HUBS-G22: the owner deletes the business typing its name, then 
   await expect(deleted).toContainText('It will be erased for good on');
   await deleted.getByTestId('business-restore').click();
   await expect(shown(page).getByTestId('business-deleted')).toHaveCount(0);
-  expect(djangoPrint(`from hubs.models import Hub;print(Hub.objects.get(pk="${id}").status)`)).toBe('active');
+  expect((await kept(page, id)).status).toBe('active');
   expect(errors).toEqual([]);
 });
 
@@ -200,7 +201,8 @@ test('HUBS-G90: the Summary says the business’s status, its plan and the usage
   const errors = watchPageErrors(page);
   const streams = watchLiveStreams(page);
   const { id } = await ownerOf(page, 'usage', 'Bar Manolo');
-  djangoPrint(
+  // What the Hub measured last night, as the nightly pass keeps it (no screen writes it).
+  await djangoPrintWarm(
     [
       'from datetime import UTC, datetime, timedelta',
       'from hubs.models import HubUsageDaily',
@@ -233,14 +235,7 @@ test('HUBS-G97: an action of the staff on a business is in its history in the ad
   const errors = watchPageErrors(page);
   const { id } = await ownerOf(page, 'admin', 'Bar Manolo');
   const staff = `${PREFIX}staff-${Date.now()}@example.com`;
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_superuser(email="${staff}", password="${PASSWORD}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
+  await createAccountWarm(staff, PASSWORD, { role: 'superuser' });
   // The owner's session is open on this page: the staff signs in on a clean one.
   await signInAs(page, { email: staff, password: PASSWORD });
   await page.goto('/admin/hubs/hub/');
@@ -263,23 +258,14 @@ test.describe('against the real Hub', () => {
   test.skip(!process.env.E2E_REAL_HUB, 'needs a real Hub on the stack’s Hub port (README «El Hub real de la e2e»)');
 
   /** What the Hub's registry has for the business `id`: `<address> <name>`, or `missing`. */
-  function inTheHub(id: string): string {
-    const out = execFileSync(
-      'uv',
-      ['run', 'python', 'manage.py', 'shell', '-c', `from base.models import Hub;h=Hub.objects.filter(pk="${id}").first();print(f"{h.slug} {h.name}" if h else "missing")`],
-      // The Hub's database: never this run's DB_NAME, which the SaaS's stack.ts refuses.
-      { cwd: process.env.HUB_DIR, env: { ...process.env, DB_NAME: process.env.HUB_DB_NAME, DEBUG: 'True' }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
-    );
-    return out.trim().split('\n').pop() ?? '';
-  }
-
-  const status = (id: string) => djangoPrint(`from hubs.models import Hub;print(Hub.objects.get(pk="${id}").status)`);
+  const inTheHub = (id: string) =>
+    realHubPrint(`from base.models import Hub;h=Hub.objects.filter(pk="${id}").first();print(f"{h.slug} {h.name}" if h else "missing")`);
 
   test('HUBS-G73 + HUBS-G74: renamed and moved, the business opens at its new address and no longer at the old one', async ({ page }) => {
     const errors = watchPageErrors(page);
     const { id, slug } = await signedUpWith(page, 'real', 'Taberna Hub Real E2E');
-    await expect.poll(() => status(id), { timeout: 30_000 }).toBe('active');
-    expect(inTheHub(id)).toBe(`${slug} Taberna Hub Real E2E`);
+    await expect.poll(async () => (await kept(page, id)).status, { timeout: 30_000 }).toBe('active');
+    expect(await inTheHub(id)).toBe(`${slug} Taberna Hub Real E2E`);
     await page.goto(`/dashboard/businesses/${id}/settings`);
     const general = shown(page).getByTestId('settings-general');
     await typeInto(page, 'settings-name', 'Bodegon Hub Real E2E');
