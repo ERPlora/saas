@@ -22,6 +22,7 @@ from django.utils import timezone
 from base import worker
 from base.listener import Listener
 from base.tests.conftest import other_session  # noqa: F401 - a second session, as another process
+from base.tests.test_listener import on_its_socket
 from hubs.tests.test_guardrails import database_touches
 from whatsapp import gateway, queries, services
 from whatsapp.models import Delivery
@@ -480,23 +481,35 @@ def test_it_delivers_a_parked_message_as_soon_as_its_notify_comes(number, hub_do
 @pytest.mark.django_db(transaction=True)
 def test_what_its_own_pass_notified_does_not_wake_it_again(number, offline_hub, monkeypatch):
     """The retry its own pass recorded notifies the channel after its COMMIT; it is taken before the read of the next
-    due (``drain``), so the worker sleeps until that retry instead of waking at once for an empty pass."""
+    due (``drain``), so the worker sleeps until that retry instead of waking at once for an empty pass.
+
+    Postgres hands a NOTIFY to the listening connection a moment after the COMMIT that sent it returned, later still on
+    a busy runner (saas#347, as saas#323): the drain waits until it reached the ear's socket, a few seconds at most,
+    and leaves the reading to it. A NOTIFY still on its way when the worker drains wakes it for one empty pass."""
     monkeypatch.setattr(worker, "PERIODIC", ())
+    # The round 15 minutes away whatever the wall clock reads: under 30 s before a quarter, a worker that slept until
+    # the round instead of the retry would pass the bound on the timeout below (saas#338).
+    monkeypatch.setattr(worker, "next_round", lambda now: now + worker.ROUND)
     ingest(messages(text("wamid.1")))
-    stop, seen = threading.Event(), []
+    stop, drained, seen = threading.Event(), [], []
     ear = Listener(services.DELIVERY_CHANNEL)
+
+    def drain():
+        drained.append((on_its_socket(ear, 5), Listener.drain(ear)))
+        return drained[-1][1]
 
     def wait(timeout):
         seen.append((timeout, Listener.wait(ear, min(timeout, 1.0))))
         stop.set()
         return False
 
-    ear.wait = wait
+    ear.drain, ear.wait = drain, wait
 
     assert worker.run(stop, listener=ear) == 0
 
     ((timeout, woke),) = seen
     assert Delivery.objects.get().attempts == 1
+    assert drained == [(True, True)]  # its own NOTIFY reached the ear, and the drain took it
     assert 0 < timeout <= services.FIRST_WAIT.total_seconds() + 0.5
     assert woke is False
 
