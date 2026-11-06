@@ -6,44 +6,12 @@
 // registry key (BILLING-Gnn); in billing/WORKBOOK.md: G61=F31, G62=F32, G63=F09, G66=F33, G67=F34, G68=F35,
 // G05=F36, G92=F22, G94=F23, G95=F08, G17=F11.
 // flow: BILLING-F33 BILLING-F34 BILLING-F35 — what the Hub then receives: billing/tests/test_module_end_reaches_the_hub.py.
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import type { Locator, Page } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
-import { businessIdOf, djangoPrint, expect, panelAccount, qaAccount, settled, shot, sidewaysScroll, signIn, test, toast, watchPageErrors } from './fixtures';
+import { businessIdOf, captureAtEverySize, djangoPrint, expect, panelAccount, qaAccount, seededAndSignedIn, test, toast, watchPageErrors } from './fixtures';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const ACCOUNT = qaAccount('BILLING_APPS', panelAccount('billing-apps'));
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
-
-function seed(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/billing_apps_seed.py', action], { cwd: SAAS_DIR, env: djangoEnv(true), stdio: 'pipe' });
-}
-
-test.beforeEach(async ({ page }) => {
-  seed('seed');
-  await signIn(page.request, ACCOUNT);
-});
-test.afterAll(() => seed('clear'));
-
-/** `ready` at each size: no sideways scroll, a capture `APP-BILLING-2-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>, fullPage = true): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-BILLING-2-${key}-${size.name}`), fullPage });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
+seededAndSignedIn('billing_apps_seed.py', qaAccount('BILLING_APPS', panelAccount('billing-apps')));
+const atEverySize = captureAtEverySize('APP-BILLING-2');
 
 /**
  * A dialog that slides in again at a new size (below 640px it is a sheet from the bottom) is in place once its

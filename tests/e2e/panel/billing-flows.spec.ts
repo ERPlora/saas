@@ -5,44 +5,10 @@
 // everything else is the real server. Each test names its flow in its title, by its registry key; in
 // billing/WORKBOOK.md: G54=F16, G55=F13, G56=F14, G58=F17, G69=F22, G70=F23, G71=F24, G82=F01, G84=F07,
 // G87=F08, G88=F11.
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { businessIdOf, captureAtEverySize, djangoPrint, expect, panelAccount, qaAccount, seededAndSignedIn, shot, test, toast, watchPageErrors } from './fixtures';
 
-import type { Page } from '@playwright/test';
-
-import { djangoEnv } from '../django-env';
-import { businessIdOf, djangoPrint, expect, panelAccount, qaAccount, settled, shot, sidewaysScroll, signIn, test, toast, watchPageErrors } from './fixtures';
-
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const BILLING = qaAccount('BILLING', panelAccount('billing'));
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
-
-function seedBilling(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/billing_seed.py', action], { cwd: SAAS_DIR, env: djangoEnv(true), stdio: 'pipe' });
-}
-
-test.beforeEach(async ({ page }) => {
-  seedBilling('seed');
-  await signIn(page.request, BILLING);
-});
-test.afterAll(() => seedBilling('clear'));
-
-/** `ready` at each size: no sideways scroll, a capture `APP-BILLING-1-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-BILLING-1-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
+seededAndSignedIn('billing_seed.py', qaAccount('BILLING', panelAccount('billing')));
+const atEverySize = captureAtEverySize('APP-BILLING-1');
 
 test.describe('billing flows', () => {
   test('BILLING-G82: «Payment details» says who ERPlora invoices for the businesses, and edits it', async ({ page }) => {
