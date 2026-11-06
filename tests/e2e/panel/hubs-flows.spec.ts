@@ -11,17 +11,17 @@
 //   variable those tests are skipped, and say so; with it, HUBS-G65 and HUBS-G66 are (they need the business to
 //   stay «Preparing», and the real Hub makes it ready at once). So the spec runs twice: once without, once with.
 // Accounts of this spec: `e2e-hubs1-…@example.com` (panel_seed.py's `clear` removes every `e2e-…@example.com`).
-import { execFileSync } from 'node:child_process';
-
 import { type Page } from '@playwright/test';
 
 import {
   businessIdOf,
   captureAtEverySize,
-  djangoPrint,
+  createAccountWarm,
+  djangoPrintWarm,
   expect,
   panelAccount,
-  removeAccountsOf,
+  realHubPrint,
+  removeAccountsWarm,
   seedPanel,
   signIn,
   test,
@@ -41,14 +41,7 @@ const shown = (page: Page) => page.locator('ion-router-outlet > .ion-page:not(.i
 /** A fresh account of this spec, its address proven, signed in on `page`. */
 async function freshAccount(page: Page, name: string): Promise<string> {
   const email = `${PREFIX}${name}-${Date.now()}@example.com`;
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", language="en")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
+  await createAccountWarm(email, PASSWORD, { language: 'en' });
   await signIn(page.request, { email, password: PASSWORD });
   return email;
 }
@@ -63,24 +56,32 @@ async function hubDoor(page: Page): Promise<string[]> {
   return visits;
 }
 
-/** What the SaaS keeps of the business called `name`: `status plan owner-email`. */
-function businessRow(name: string): string {
-  return djangoPrint(
-    [
-      'from hubs.models import Hub, HubMember',
-      `hub = Hub.objects.get(name="${name}")`,
-      'owner = HubMember.objects.get(hub=hub, role="hub_owner").user.email',
-      'print(hub.status, hub.subscription.plan.slug, owner)',
-    ].join('\n'),
-  );
+/**
+ * What the SaaS keeps of the business called `name` among those of `page`'s account, through the panel's API:
+ * `status plan owner-email` (its owner, from its people: `hubs.member.list`).
+ */
+async function businessRow(page: Page, name: string): Promise<string> {
+  const id = await businessIdOf(page.request, name);
+  const detail = await page.request.get(`/api/hubs/businesses/detail?id=${id}`);
+  expect(detail.status(), await detail.text()).toBe(200);
+  const { status, plan } = (await detail.json()) as { status: string; plan: { slug: string } | null };
+  const people = await page.request.get(`/api/hubs/members?hub_id=${id}&limit=50&offset=0`);
+  expect(people.status(), await people.text()).toBe(200);
+  const owners = ((await people.json()) as { rows: Array<{ email: string; role: string }> }).rows.filter((row) => row.role === 'hub_owner');
+  return `${status} ${plan?.slug} ${owners.map((row) => row.email).join(',')}`;
 }
 
-test.beforeAll(() => {
-  removeAccountsOf(PREFIX);
+/** The id of the plan Starter, for its admin page: no screen of the panel shows it, so Django says it once here. */
+let starterId: string;
+
+// Django's boots on no test's clock (saas#354): the warm Django, and what only Django knows, once here.
+test.beforeAll(async () => {
+  await removeAccountsWarm(PREFIX);
   seedPanel();
+  starterId = await djangoPrintWarm('from hubs.models import Plan;print(Plan.objects.get(slug="starter").pk)');
 });
-test.afterAll(() => {
-  removeAccountsOf(PREFIX);
+test.afterAll(async () => {
+  await removeAccountsWarm(PREFIX);
   seedPanel('clear');
 });
 
@@ -101,7 +102,7 @@ test('HUBS-G65: the free business with a single question, then «Preparing»', a
   await atEverySize(page, 'HUBS-G65-preparing', async () => {
     await expect(page.getByText('It opens by itself when it finishes')).toBeVisible();
   });
-  expect(businessRow('Horno Hubs Uno E2E')).toBe(`preparing free ${email}`);
+  expect(await businessRow(page, 'Horno Hubs Uno E2E')).toBe(`preparing free ${email}`);
   expect(errors).toEqual([]);
 });
 
@@ -118,7 +119,7 @@ test('HUBS-G66: from the installed app, its start /shell/ is the same sign-up', 
   await page.getByTestId('create-submit').click();
   await expect(page.getByRole('heading', { name: 'Preparing Taller Hubs App E2E' })).toBeVisible();
   await expect(page).toHaveURL(/\/shell\/\?surface=desktop$/);
-  expect(businessRow('Taller Hubs App E2E').split(' ').slice(0, 2)).toEqual(['preparing', 'free']);
+  expect((await businessRow(page, 'Taller Hubs App E2E')).split(' ').slice(0, 2)).toEqual(['preparing', 'free']);
   expect(errors).toEqual([]);
 });
 
@@ -145,7 +146,8 @@ test('HUBS-G67: a paid business is born on Free and «Upgrade plan» opens the S
 
 test('HUBS-G69: the list with each status, the deleted one with «Recover», and the old addresses lead to it', async ({ page }) => {
   const errors = watchPageErrors(page);
-  djangoPrint(
+  // A business deleted 5 days ago: no screen makes one in the past.
+  await djangoPrintWarm(
     [
       'from datetime import timedelta',
       'from django.contrib.auth import get_user_model',
@@ -222,14 +224,19 @@ test('HUBS-G71: in the installed app the launcher chooses and «Open» carries s
   const door = await page.request.get(`/shell/open/${id}/`, { maxRedirects: 0 });
   expect(door.status()).toBe(302);
   expect(door.headers().location).toMatch(/^http:\/\/e2e-[\w-]+\.localhost:\d+\/auth\/login\?next=\/&shell=1$/);
-  const foreign = await page.request.get(`/shell/open/${await otherBusiness()}/`, { maxRedirects: 0 });
+  const foreign = await page.request.get(`/shell/open/${await otherBusiness(page)}/`, { maxRedirects: 0 });
   expect(foreign.status()).toBe(404);
   expect(errors).toEqual([]);
 });
 
-/** A business «several» is no member of (Bar Norte invites it, unanswered). */
-async function otherBusiness(): Promise<string> {
-  return djangoPrint('from hubs.models import Hub;print(Hub.objects.get(name="Bar Norte").id)');
+/** A business «several» is no member of (Bar Norte invites it, unanswered): its invitation, as the panel lists it. */
+async function otherBusiness(page: Page): Promise<string> {
+  const listed = await page.request.get('/api/hubs/invitations');
+  expect(listed.status(), await listed.text()).toBe(200);
+  const { invitations } = (await listed.json()) as { invitations: Array<{ hub: { id: string; name: string } }> };
+  const invited = invitations.find((invitation) => invitation.hub.name === 'Bar Norte');
+  if (!invited) throw new Error('no invitation of Bar Norte for this account');
+  return invited.hub.id;
 }
 
 test('HUBS-G72: «On your devices» shares the business’s address and the apps', async ({ page, context }) => {
@@ -253,17 +260,9 @@ test('HUBS-G72: «On your devices» shares the business’s address and the apps
 test('HUBS-G43: the staff keep each plan’s texts in English and in Spanish in the admin', async ({ page }) => {
   const errors = watchPageErrors(page);
   const email = `${PREFIX}staff-${Date.now()}@example.com`;
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_superuser(email="${email}", password="${PASSWORD}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
+  await createAccountWarm(email, PASSWORD, { role: 'superuser' });
   await signIn(page.request, { email, password: PASSWORD });
-  const starter = djangoPrint('from hubs.models import Plan;print(Plan.objects.get(slug="starter").pk)');
-  await page.goto(`/admin/hubs/plan/${starter}/change/`);
+  await page.goto(`/admin/hubs/plan/${starterId}/change/`);
   await atEverySize(page, 'HUBS-G43', async () => {
     await expect(page.locator('#id_name_en')).toBeVisible();
   });
@@ -283,14 +282,6 @@ test.describe('against the real Hub', () => {
 
   const hubUrl = (slug: string, path = '/') => `http://${slug}.localhost:${HUB_DOUBLE_PORT}${path}`;
 
-  function hubShell(code: string): void {
-    execFileSync('uv', ['run', 'python', 'manage.py', 'shell', '-c', code], {
-      cwd: process.env.HUB_DIR,
-      // The Hub's database: never this run's DB_NAME, which the SaaS's stack.ts refuses.
-      env: { ...process.env, DB_NAME: process.env.HUB_DB_NAME, DEBUG: 'True' },
-      stdio: 'pipe',
-    });
-  }
 
   test('HUBS-G68: created, the Hub reports it ready and the launcher goes into the business by itself; «is ready» arrives', async ({ page }) => {
     const errors = watchPageErrors(page);
@@ -305,7 +296,7 @@ test.describe('against the real Hub', () => {
     await atEverySize(page, 'HUBS-G68', async () => {
       await expect(page).toHaveURL(/bodega-hub-real-e2e\.localhost/);
     });
-    expect(businessRow('Bodega Hub Real E2E')).toBe(`active free ${email}`);
+    expect(await businessRow(page, 'Bodega Hub Real E2E')).toBe(`active free ${email}`);
     const link = await waitForMail(email, since, /http:\/\/bodega-hub-real-e2e\.localhost:\d+\/auth\/login\?next=\/\S*/);
     expect(link).toContain(`bodega-hub-real-e2e.localhost:${HUB_DOUBLE_PORT}`);
     expect(errors).toEqual([]);
@@ -338,7 +329,7 @@ test.describe('against the real Hub', () => {
     await page.getByTestId('create-name').locator('input').fill('Molino Hub Real E2E');
     await page.getByTestId('create-submit').click();
     await page.waitForURL(/molino-hub-real-e2e\.localhost/, { timeout: 60_000 });
-    hubShell('from base.models import Hub;Hub.objects.filter(slug="molino-hub-real-e2e").update(status="requested")');
+    await realHubPrint('from base.models import Hub;Hub.objects.filter(slug="molino-hub-real-e2e").update(status="requested")');
     try {
       await page.goto(hubUrl('molino-hub-real-e2e'));
       await atEverySize(page, 'HUBS-G98', async () => {
@@ -346,7 +337,7 @@ test.describe('against the real Hub', () => {
       });
       await expect(page.locator('meta[http-equiv="refresh"]')).toHaveAttribute('content', '10');
     } finally {
-      hubShell('from base.models import Hub;Hub.objects.filter(slug="molino-hub-real-e2e").update(status="ready")');
+      await realHubPrint('from base.models import Hub;Hub.objects.filter(slug="molino-hub-real-e2e").update(status="ready")');
     }
     await expect(page.getByRole('heading', { name: 'Your business is being prepared' })).toHaveCount(0, { timeout: 20_000 });
   });
