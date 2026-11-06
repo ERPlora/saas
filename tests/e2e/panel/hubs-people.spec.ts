@@ -18,6 +18,7 @@ import {
   apiPost,
   captureAtEverySize,
   djangoPrint,
+  djangoPrintWarm,
   expect,
   freezeFrontend,
   type HubCall,
@@ -59,10 +60,10 @@ interface MemberRow {
   actions: string[];
 }
 
-/** A fresh account of this spec, its address proven, called `first last`. */
-function account(who: string, first: string, last: string): Account {
+/** A fresh account of this spec, its address proven, called `first last` (written by the warm Django). */
+async function account(who: string, first: string, last: string): Promise<Account> {
   const email = `${PREFIX}${who}-${Date.now()}@example.com`;
-  djangoPrint(
+  await djangoPrintWarm(
     [
       'from allauth.account.models import EmailAddress',
       'from django.contrib.auth import get_user_model',
@@ -83,7 +84,7 @@ async function businessOf(page: Page, owner: Account, name: string): Promise<str
   const created = await apiPost(page.request, '/api/hubs/businesses', { name, country: 'ES' });
   expect(created.status(), 'POST /api/hubs/businesses').toBe(201);
   const { id } = (await created.json()) as { id: string };
-  djangoPrint(
+  await djangoPrintWarm(
     [
       'from django.utils import timezone',
       'from hubs.models import Hub',
@@ -187,25 +188,26 @@ const revocations = (hub: HubDouble, id: string): HubCall[] =>
 
 /**
  * `code` run in the server's own code with Stripe at its boundary: `double` (billing/tests/stripe_double.py, as the Python
- * tests) answers what Stripe would; the operations of hubs and billing are the real ones, on this run's database.
+ * tests) answers what Stripe would; the operations of hubs and billing are the real ones, on this run's database. The
+ * warm Django runs it, and it outlives the snippet: Stripe's keys and client are put back as they were when it ends.
  */
-function withStripe(code: string[]): string {
-  return djangoPrint(
+async function withStripe(code: string[]): Promise<string> {
+  return djangoPrintWarm(
     [
-      'from django.conf import settings',
+      'from unittest import mock',
+      'from django.test import override_settings',
       'from billing import stripe_service',
       'from billing.tests.stripe_double import StripeDouble, item, subscription',
-      'settings.STRIPE_SECRET_KEY = "rk_test_double"',
-      'settings.STRIPE_PUBLISHABLE_KEY = "pk_test_double"',
       'double = StripeDouble()',
-      'stripe_service.client = lambda: double',
-      ...code,
+      'with override_settings(STRIPE_SECRET_KEY="rk_test_double", STRIPE_PUBLISHABLE_KEY="pk_test_double"), mock.patch.object(stripe_service, "client", lambda: double):',
+      ...code.map((line) => `    ${line}`),
     ].join('\n'),
   );
 }
 
-function removeOwnRows(): void {
-  djangoPrint(
+/** What this spec leaves behind, written by the warm Django (its first call, in `beforeAll`, starts it). */
+async function removeOwnRows(): Promise<void> {
+  await djangoPrintWarm(
     [
       'from django.contrib.auth import get_user_model',
       'from hubs.models import Hub, SessionRevocation',
@@ -220,17 +222,17 @@ function removeOwnRows(): void {
 let hub: HubDouble;
 
 test.beforeAll(async () => {
-  removeOwnRows();
+  await removeOwnRows();
   hub = await startHubDouble();
 });
 test.afterAll(async () => {
   await hub?.close();
-  removeOwnRows();
+  await removeOwnRows();
 });
 
 test('HUBS-G78: an address the schema refuses says why on its field, and on top to look at it until it is corrected, in the language of the account', async ({ page }) => {
   const errors = watchPageErrors(page);
-  const id = await businessOf(page, account('invite-refused', 'Olga', 'Ruiz'), 'Bar Refused');
+  const id = await businessOf(page, await account('invite-refused', 'Olga', 'Ruiz'), 'Bar Refused');
   for (const { language, notice, reason } of [
     { language: 'en', notice: 'Check the highlighted details.', reason: 'Enter a valid email address.' },
     { language: 'es', notice: 'Revisa los datos marcados.', reason: 'Introduce un correo válido.' },
@@ -252,7 +254,7 @@ test('HUBS-G78: an address the schema refuses says why on its field, and on top 
 
 test('HUBS-G78: the owner invites a person from «Team»; the invitation waits with «Resend» and «Cancel invitation»', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
-  const owner = account('invite-owner', 'Olga', 'Ruiz');
+  const owner = await account('invite-owner', 'Olga', 'Ruiz');
   const id = await businessOf(page, owner, 'Bar Manolo');
   const invitee = `${PREFIX}invitee-${Date.now()}@example.com`;
   await page.goto(`/dashboard/businesses/${id}/members`);
@@ -293,8 +295,8 @@ test('HUBS-G78: the owner invites a person from «Team»; the invitation waits w
 
 test('HUBS-G79: the invited person accepts in «You have been invited» and goes into the business', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
-  const owner = account('accept-owner', 'Olga', 'Ruiz');
-  const ana = account('accept-ana', 'Ana', 'Gil');
+  const owner = await account('accept-owner', 'Olga', 'Ruiz');
+  const ana = await account('accept-ana', 'Ana', 'Gil');
   const id = await businessOf(page, owner, 'Bar Manolo');
   const invited = await apiPost(page.request, '/api/hubs/members/invite', {
     hub_id: id,
@@ -331,8 +333,8 @@ test('HUBS-G79: the invited person accepts in «You have been invited» and goes
 
 test('HUBS-G80: the owner changes the role of a person; the Hub hears it and ends their session there', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
-  const owner = account('role-owner', 'Olga', 'Ruiz');
-  const ana = account('role-ana', 'Ana', 'Gil');
+  const owner = await account('role-owner', 'Olga', 'Ruiz');
+  const ana = await account('role-ana', 'Ana', 'Gil');
   const id = await businessOf(page, owner, 'Bar Manolo');
   await joins(page, browser, id, ana, 'hub_employee');
   const member = await rowOf(page, id, ana.email);
@@ -372,8 +374,8 @@ test('HUBS-G81 + HUBS-G64: the owner removes a person; the Hub gets a snapshot w
   browser,
 }) => {
   const errors = watchPageErrors(page);
-  const owner = account('remove-owner', 'Olga', 'Ruiz');
-  const ana = account('remove-ana', 'Ana', 'Gil');
+  const owner = await account('remove-owner', 'Olga', 'Ruiz');
+  const ana = await account('remove-ana', 'Ana', 'Gil');
   const id = await businessOf(page, owner, 'Bar Manolo');
   await joins(page, browser, id, ana, 'hub_employee');
   const member = await rowOf(page, id, ana.email);
@@ -396,7 +398,7 @@ test('HUBS-G81 + HUBS-G64: the owner removes a person; the Hub gets a snapshot w
   await expect
     .poll(() => revocations(hub, id).slice(revokedBefore).map((call) => ({ body: call.body, signed: call.signed })))
     .toEqual([{ body: { user_id: member.user_id, hub_id: id }, signed: true }]);
-  const owed = djangoPrint(
+  const owed = await djangoPrintWarm(
     `from hubs.models import SessionRevocation;print(SessionRevocation.objects.filter(user_id="${member.user_id}", hub_id="${id}", delivered_at__isnull=True).count())`,
   );
   expect(owed).toBe('0');
@@ -416,8 +418,8 @@ test('HUBS-G81 + HUBS-G64: the owner removes a person; the Hub gets a snapshot w
 
 test('HUBS-G82: the owner offers the business to a member, who accepts it on Businesses from the mail’s link', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
-  const owner = account('hand-owner', 'Olga', 'Ruiz');
-  const carlos = account('hand-carlos', 'Carlos', 'Mora');
+  const owner = await account('hand-owner', 'Olga', 'Ruiz');
+  const carlos = await account('hand-carlos', 'Carlos', 'Mora');
   const id = await businessOf(page, owner, 'Bar Manolo');
   await joins(page, browser, id, carlos, 'hub_admin');
   const member = await rowOf(page, id, carlos.email);
@@ -468,15 +470,15 @@ test('HUBS-G82 (F28): a business handed over on a paid plan: the new owner keeps
   browser,
 }) => {
   const errors = watchPageErrors(page);
-  const owner = account('paid-owner', 'Olga', 'Ruiz');
-  const carlos = account('paid-carlos', 'Carlos', 'Mora');
+  const owner = await account('paid-owner', 'Olga', 'Ruiz');
+  const carlos = await account('paid-carlos', 'Carlos', 'Mora');
   const id = await businessOf(page, owner, 'Bar Manolo');
   await joins(page, browser, id, carlos, 'hub_admin');
   const member = await rowOf(page, id, carlos.email);
   const stamp = Date.now();
   const [oldSub, oldCustomer, newSub, newCustomer] = [`sub_e2e_old_${stamp}`, `cus_e2e_olga_${stamp}`, `sub_e2e_new_${stamp}`, `cus_e2e_carlos_${stamp}`];
   // Olga pays Starter with her card, as the webhook of her checkout leaves it.
-  djangoPrint(
+  await djangoPrintWarm(
     [
       'from datetime import timedelta',
       'from django.utils import timezone',
@@ -490,7 +492,7 @@ test('HUBS-G82 (F28): a business handed over on a paid plan: the new owner keeps
   const offered = await apiPost(page.request, '/api/hubs/ownership/transfer', { hub_id: id, member_id: member.id });
   expect(offered.status(), await offered.text()).toBe(200);
   const transfer = ((await offered.json()) as { id: string }).id;
-  withStripe([
+  await withStripe([
     'from django.contrib.auth import get_user_model',
     'from hubs import services',
     'from hubs.schemas import ByIdIn',
@@ -535,7 +537,7 @@ test('HUBS-G82 (F28): a business handed over on a paid plan: the new owner keeps
   await expect(theirs).toHaveURL(new RegExp(`/dashboard/businesses/${id}/summary`));
 
   // Stripe tells the checkout completed (the webhook): the business moves to his card, Olga's subscription ends now.
-  withStripe([
+  await withStripe([
     'from billing import services',
     `held = {"${newSub}": subscription("${newSub}", customer="${newCustomer}", items=[item("si_e2e_new", "price_e2e_starter_month")]), "${oldSub}": subscription("${oldSub}", customer="${oldCustomer}", items=[item("si_e2e_plan", "price_e2e_starter_month")], cancel_at_period_end=True)}`,
     'double.answer("subscriptions.retrieve", lambda call: held[call.args[0]])',
@@ -557,14 +559,14 @@ test('HUBS-G82 (F28): a business handed over on a paid plan: the new owner keeps
 
 test('HUBS-G82 (F28), in Spanish: «Mantenerlo con mi tarjeta» and the secure payment that charges nothing today', async ({ browser, page }) => {
   const errors = watchPageErrors(page);
-  const owner = account('paid-es-owner', 'Olga', 'Ruiz');
-  const lucia = account('paid-es-lucia', 'Lucía', 'Gil');
+  const owner = await account('paid-es-owner', 'Olga', 'Ruiz');
+  const lucia = await account('paid-es-lucia', 'Lucía', 'Gil');
   const id = await businessOf(page, owner, 'Bar Manolo');
   await joins(page, browser, id, lucia, 'hub_admin');
   const member = await rowOf(page, id, lucia.email);
   const stamp = Date.now();
   const [oldSub, oldCustomer] = [`sub_e2e_es_${stamp}`, `cus_e2e_es_${stamp}`];
-  djangoPrint(
+  await djangoPrintWarm(
     [
       'from datetime import timedelta',
       'from django.contrib.auth import get_user_model',
@@ -582,7 +584,7 @@ test('HUBS-G82 (F28), in Spanish: «Mantenerlo con mi tarjeta» and the secure p
   // The offer of a paid business says until when it is paid and where she keeps it: her mail, in Spanish.
   await waitForMail(lucia.email, offeredAt, new RegExp(`${PANEL}/dashboard/billing/subscriptions(?=\\s|$)`, 'm'));
   await paintMail(browser, 'HUBS-G82-offer-mail-es', lucia.email, offeredAt, 'quiere traspasarte Bar Manolo', 'es');
-  withStripe([
+  await withStripe([
     'from django.contrib.auth import get_user_model',
     'from hubs import services',
     'from hubs.schemas import ByIdIn',
@@ -627,8 +629,8 @@ test('HUBS-G83: «Team» lists the people of a business, with their role, status
   browser,
 }) => {
   const errors = watchPageErrors(page);
-  const owner = account('list-owner', 'Olga', 'Ruiz');
-  const marta = account('list-marta', 'Marta', 'Gil');
+  const owner = await account('list-owner', 'Olga', 'Ruiz');
+  const marta = await account('list-marta', 'Marta', 'Gil');
   const id = await businessOf(page, owner, 'Bar Manolo');
   await joins(page, browser, id, marta, 'hub_manager');
   const pending = `${PREFIX}list-pending-${Date.now()}@example.com`;
@@ -659,7 +661,7 @@ test('HUBS-G83: «Team» lists the people of a business, with their role, status
   await context.close();
   expect(theirErrors).toEqual([]);
   // A stranger does not learn the business exists.
-  const stranger = account('list-stranger', 'Pepe', 'Sanz');
+  const stranger = await account('list-stranger', 'Pepe', 'Sanz');
   const { context: other, page: outsider } = await browserOf(browser, stranger);
   expect((await outsider.request.get(`/api/hubs/members?hub_id=${id}&limit=50&offset=0`)).status()).toBe(404);
   await other.close();
@@ -668,12 +670,12 @@ test('HUBS-G83: «Team» lists the people of a business, with their role, status
 
 test('HUBS-G03: the staff finds the accesses of a person in the admin, read only', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
-  const owner = account('admin-owner', 'Olga', 'Ruiz');
-  const ana = account('admin-ana', 'Ana', 'Gil');
+  const owner = await account('admin-owner', 'Olga', 'Ruiz');
+  const ana = await account('admin-ana', 'Ana', 'Gil');
   const id = await businessOf(page, owner, 'Bar Manolo');
   await joins(page, browser, id, ana, 'hub_manager');
   const staff = `${PREFIX}staff-${Date.now()}@example.com`;
-  djangoPrint(
+  await djangoPrintWarm(
     [
       'from allauth.account.models import EmailAddress',
       'from django.contrib.auth import get_user_model',

@@ -8,9 +8,9 @@
 // flow: BILLING-F33 BILLING-F34 BILLING-F35 — what the Hub then receives: billing/tests/test_module_end_reaches_the_hub.py.
 import type { Locator, Page } from '@playwright/test';
 
-import { addAppInCheckout, businessIdOf, captureAtEverySize, dialogInPlace, djangoPrint, expect, gotoWithCharge, panelAccount, payInStripe, qaAccount, seededAndSignedIn, test, toast, watchPageErrors } from './fixtures';
+import { addAppInCheckout, businessIdOf, captureAtEverySize, dialogInPlace, expect, gotoWithCharge, panelAccount, payInStripe, qaAccount, seededAndSignedInWarm, test, toast, watchPageErrors } from './fixtures';
 
-seededAndSignedIn('billing_apps_seed.py', qaAccount('BILLING_APPS', panelAccount('billing-apps')));
+seededAndSignedInWarm('billing_apps_seed.py', qaAccount('BILLING_APPS', panelAccount('billing-apps')));
 const atEverySize = captureAtEverySize('APP-BILLING-2');
 
 /** The amounts of a charge's summary in `dialog` that do not fit their row: cut off at the edge. */
@@ -182,9 +182,12 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
 
   test('BILLING-G05: the page of an invoice: its lines, totals and who it is made out to; a credit note links its invoice', async ({ page }) => {
     const errors = watchPageErrors(page);
-    const [id, creditId] = djangoPrint(
-      'from billing.models import Invoice\nfor number in ("ERP-2026-90201", "ERPR-2026-90007"): print(Invoice.objects.get(number=number).id)',
-    ).split('\n');
+    // The invoice and its credit note as Invoices lists them, by the number each page shows.
+    const listed = await page.request.get('/api/billing/invoices?limit=50');
+    expect(listed.status(), 'GET /api/billing/invoices').toBe(200);
+    const byNumber = new Map(((await listed.json()) as { rows: Array<{ id: string; number: string | null }> }).rows.map((row) => [row.number, row.id]));
+    const [id, creditId] = ['ERP-2026-90201', 'ERPR-2026-90007'].map((number) => byNumber.get(number));
+    expect([id, creditId], 'ERP-2026-90201 and ERPR-2026-90007 in Invoices').toEqual([expect.any(String), expect.any(String)]);
     await page.goto(`/dashboard/billing/invoices/${id}`);
     await atEverySize(page, 'BILLING-G05', async () => {
       await expect(page.getByTestId('invoice-title')).toHaveText('Invoice ERP-2026-90201');
