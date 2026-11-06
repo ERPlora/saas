@@ -21,16 +21,17 @@
 // erplora.com (door 10) what opens Meta's window, and that real page of the Hub, opening the window as its Settings
 // does, gets the code back from erplora.com's origin with its attempt's state. The Hub only offers «Connect WhatsApp»
 // with an https return page, so locally its button is not pressed: the window is opened from the page itself.
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 
 import { readMailCode } from '@erplora/ui/testing/mail';
 import { type BrowserContext, expect, type Page, test } from '@playwright/test';
 
 import { horizontalOverflow } from '../horizontal-overflow';
-import { OWNER, repeatedTop, runSeed, settled, shot, submitSignInForm, VIEWPORTS } from './fixtures';
+import { OWNER, repeatedTop, runSeedWarm, settled, shot, submitSignInForm, VIEWPORTS, warmDjango } from './fixtures';
 import { PANEL_URL, WHATSAPP_E2E } from './project';
 
 const TASK = 'FIX-SAAS-WHATSAPP-EMBEDDED-SIGNUP-RETURN';
@@ -206,23 +207,35 @@ const MAIL_DIR = process.env.E2E_MAIL_DIR ?? '';
 const HUB_A = `http://a.localhost:${HUB_PORT}`;
 const SAAS = `http://localhost:${HUB_PORT + 1}`;
 const SETTINGS = `${HUB_A}/whatsapp_inbox/settings`;
+/** The Django of the Hub's SaaS: its database and its Hub, over the run's. */
+const ERPLORA = { DB_NAME: `saas_e2e_${HUB_PORT + 1}`, HUB_INTERNAL_URL: `http://127.0.0.1:${HUB_PORT}` };
+const HUB_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const execFileAsync = promisify(execFile);
 
-/** The Hub's own ids of its local hubs `a` and `b`, read in its stack's database. */
-function hubIds(): [string, string] {
-  const rows = execFileSync(
+/** The Hub's own ids of its local hubs `a` and `b`, read in its stack's database without blocking this process. */
+async function hubIds(): Promise<[string, string]> {
+  const { stdout } = await execFileAsync(
     'docker',
     ['compose', 'exec', '-T', 'postgres', 'psql', '-U', 'hub', '-d', `hub_e2e_${HUB_PORT}`, '-At', '-c',
       "select slug || '=' || id from base_hub where slug in ('a', 'b') order by slug"],
     { cwd: REPO_DIR, encoding: 'utf8' },
   );
-  const ids = Object.fromEntries(rows.trim().split('\n').map((row) => row.split('=')));
+  const ids = Object.fromEntries(stdout.trim().split('\n').map((row) => row.split('=')));
   return [ids.a, ids.b];
 }
 
-/** erplora.com's side of the run (whatsapp_hub_seed.py: `a` with its number) pushed to the Hub: what the seed printed. */
-function seedErplora(): { delivered: boolean; hub_error: string } {
-  const env = { DB_NAME: `saas_e2e_${HUB_PORT + 1}`, HUB_INTERNAL_URL: `http://127.0.0.1:${HUB_PORT}` };
-  return JSON.parse(runSeed('whatsapp_hub_seed.py', hubIds(), env));
+/** What whatsapp_hub_seed.py printed: whether the Hub took erplora.com's snapshot, and its refusal code if not. */
+interface Pushed {
+  delivered: boolean;
+  hub_error: string;
+}
+
+/**
+ * erplora.com's side of the run (whatsapp_hub_seed.py: `a` with its number) pushed to the Hub, by the warm Django of the
+ * Hub's SaaS (no Django boot, and this process keeps running): what the seed printed.
+ */
+async function seedErplora(ids: readonly string[]): Promise<Pushed> {
+  return JSON.parse(await runSeedWarm('whatsapp_hub_seed.py', ids, ERPLORA)) as Pushed;
 }
 
 /** The owner opens `url` of the hub `a`: the Hub sends them to erplora.com, which asks the password and the mailed code. */
@@ -243,11 +256,18 @@ const number = (page: Page) => page.locator('.ion-page:not(.ion-page-hidden)').l
 test.describe('with the real Hub', () => {
   test.skip(!HUB_PORT || !MAIL_DIR, 'needs a real Hub stack and its SaaS (E2E_CROSS_HUB_PORT, E2E_MAIL_DIR): see the header');
   test.describe.configure({ mode: 'serial' });
+  let ids: [string, string];
+  // The Hub's ids of `a` and `b`, and the warm Django that seeds erplora.com for them, on no test's clock (saas#360).
+  test.beforeAll(async () => {
+    [ids] = await Promise.all([hubIds(), warmDjango(ERPLORA)]);
+    const named = [expect.stringMatching(HUB_ID), expect.stringMatching(HUB_ID)];
+    expect(ids, `the ids of a and b in hub_e2e_${HUB_PORT}`).toEqual(named);
+  });
 
   test('WHATSAPP-F02: the owner disconnects the number from the Hub’s Settings and erplora.com disconnects it', async ({
     page,
   }) => {
-    expect(seedErplora()).toEqual({ delivered: true, hub_error: '' });
+    expect(await seedErplora(ids)).toEqual({ delivered: true, hub_error: '' });
     await openHub(page, SETTINGS);
     await expect(number(page)).toContainText('Connected');
     await expect(number(page)).toContainText('+34910000101');
