@@ -12,6 +12,7 @@ wait is a ``select`` on the connection and on a pipe a stop request writes to.
 """
 
 import logging
+import select
 import threading
 import time
 
@@ -50,14 +51,23 @@ def test_a_notify_on_its_channel_wakes_it_before_its_time(listener, other_sessio
     assert listener.wait(0) is False
 
 
+def on_its_socket(listener, seconds):
+    """Wait, ``seconds`` at most, until something reached the listener's socket, leaving it there unread."""
+    ready, _, _ = select.select([listener._conn.fileno()], [], [], seconds)
+    return bool(ready)
+
+
 def test_drain_takes_what_was_notified_without_waiting(listener, other_session):
     listener.start()
-    other_session.execute(f"NOTIFY {CHANNEL}")
-    other_session.execute(f"NOTIFY {CHANNEL}, 'again'")
+    with other_session.transaction():  # one commit: both reach the listener in the same write, neither comes late
+        other_session.execute(f"NOTIFY {CHANNEL}")
+        other_session.execute(f"NOTIFY {CHANNEL}, 'again'")
+    assert on_its_socket(listener, 10)  # a NOTIFY takes its time to arrive (saas#323): wait for it, not for drain()
 
-    assert timed(lambda _: listener.drain(), None)[0] is True
-    assert timed(lambda _: listener.drain(), None)[1] < 0.5
-    assert listener.drain() is False
+    woke, took = timed(lambda _: listener.drain(), None)
+    assert woke is True and took < 0.5
+    woke, took = timed(lambda _: listener.drain(), None)
+    assert woke is False and took < 0.5
 
 
 def test_an_interrupt_after_the_close_is_harmless():
