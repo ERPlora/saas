@@ -6,44 +6,12 @@
 // API's edge, and Stripe.js is a double that mounts a placeholder; everything else (the billing details saved
 // included) is the real server. Each test names its flow by its registry key (BILLING-Gnn); in
 // billing/WORKBOOK.md: G19=F08, G20=F09, G21=F10, G26=F01, G27=F24, G28=F32.
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import type { Page } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
-import { businessIdOf, expect, panelAccount, qaAccount, settled, shot, sidewaysScroll, signIn, test, toast, watchPageErrors } from './fixtures';
+import { businessIdOf, captureAtEverySize, expect, panelAccount, qaAccount, seededAndSignedIn, test, toast, watchPageErrors } from './fixtures';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const ACCOUNT = qaAccount('BILLING_APPS', panelAccount('billing-apps'));
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
-
-function seed(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/billing_apps_seed.py', action], { cwd: SAAS_DIR, env: djangoEnv(true), stdio: 'pipe' });
-}
-
-test.beforeEach(async ({ page }) => {
-  seed('seed');
-  await signIn(page.request, ACCOUNT);
-});
-test.afterAll(() => seed('clear'));
-
-/** `ready` at each size: no sideways scroll, a capture `APP-BILLING-3-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>, fullPage = true): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-BILLING-3-${key}-${size.name}`), fullPage });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
+seededAndSignedIn('billing_apps_seed.py', qaAccount('BILLING_APPS', panelAccount('billing-apps')));
+const atEverySize = captureAtEverySize('APP-BILLING-3');
 
 /** A dialog that slides in again at a new size is in place once its button `testid` is whole on screen and still. */
 async function dialogInPlace(page: Page, testid: string): Promise<void> {

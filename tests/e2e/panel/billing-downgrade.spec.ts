@@ -7,7 +7,7 @@
 // the page lives on, so what changes on screen is what the server wrote.
 //
 // «Next invoice» of a row is saas#213's, and its own tests'; nothing here fixes it.
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
@@ -15,7 +15,7 @@ import { promisify } from 'node:util';
 import type { Locator, Page } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
-import { apiPost, businessIdOf, djangoPrint, expect, type HubDouble, panelAccount, qaAccount, settled, shot, sidewaysScroll, signIn, startHubDouble, test, toast, watchPageErrors } from './fixtures';
+import { apiPost, businessIdOf, captureAtEverySize, djangoPrint, expect, type HubDouble, panelAccount, qaAccount, seededAndSignedIn, shot, startHubDouble, test, toast, watchPageErrors } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -24,16 +24,8 @@ const BAKERY = 'Panadería López';
 const HUB_URL = `http://127.0.0.1:${HUB_DOUBLE_PORT}`;
 const GIB = 1024 ** 3;
 const STRIPE_ROUTES = /\/api\/billing\/(checkout\/start|plan\/change|plan\/keep)$/;
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 const execFileAsync = promisify(execFile);
-
-function seedBilling(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/billing_seed.py', action], { cwd: SAAS_DIR, env: djangoEnv(true), stdio: 'pipe' });
-}
+const atEverySize = captureAtEverySize('BILLING-DOWNGRADE');
 
 interface Played {
   status: number;
@@ -86,18 +78,6 @@ function periodEnd(bakery: string, locale: 'en' | 'es'): string {
 
 const rowOf = (page: Page, bakery: string): Locator => page.locator(`[data-testid="subscriptions-row"][data-id="${bakery}"]`);
 
-/** `ready` at each size: no sideways scroll, a capture `BILLING-DOWNGRADE-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`BILLING-DOWNGRADE-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
-
 test.describe('a downgrade waits for the end of the paid period', () => {
   let hub: HubDouble;
   let bakery: string;
@@ -107,12 +87,10 @@ test.describe('a downgrade waits for the end of the paid period', () => {
   });
   test.afterAll(async () => {
     await hub.close();
-    seedBilling('clear');
   });
+  seededAndSignedIn('billing_seed.py', BILLING);
 
   test.beforeEach(async ({ page }) => {
-    seedBilling('seed');
-    await signIn(page.request, BILLING);
     bakery = await businessIdOf(page.request, BAKERY);
     djangoPrint(`from hubs.models import Plan,Subscription as S;print(S.objects.filter(hub_id='${bakery}').update(plan=Plan.objects.get(slug='standard')))`);
     hub.calls.length = 0;

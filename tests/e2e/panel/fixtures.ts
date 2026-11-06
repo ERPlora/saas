@@ -1,7 +1,8 @@
 // What the panel's specs start from: the seeded account (`manage.py demo_seed`), the sign-in
 // (allauth.headless's API, or the real form of the launcher when the sign-in is what a spec checks), both
 // with the code every password sign-in mails (read from the panel's mail folder, as the person reads it),
-// the session /api/me reports, the three viewports, uncaught page errors and the evidence folder.
+// the session /api/me reports, the three viewports (and a spec's walk through them, with its captures), a spec's
+// seed with its sign-in, uncaught page errors and the evidence folder.
 // Import `test` and `expect` from here, not from `@playwright/test`.
 import { execFile, execFileSync } from 'node:child_process';
 import { createHmac } from 'node:crypto';
@@ -343,6 +344,27 @@ export function shot(name: string): string {
   return join(ARTIFACTS, `${name}.png`);
 }
 
+/** A spec's walk through `VIEWPORTS` (`captureAtEverySize`): `ready` at each size, the whole page captured unless `fullPage` is false. */
+export type AtEverySize = (page: Page, key: string, ready: () => Promise<void>, fullPage?: boolean) => Promise<void>;
+
+/**
+ * The walk through `VIEWPORTS` of the specs whose captures start with `prefix`: at each size, `ready`; once the page
+ * has settled nothing scrolls sideways (`<key> at <width>`) and a capture `<prefix>-<key>-<width>` is taken. It ends
+ * back at the desktop size.
+ */
+export function captureAtEverySize(prefix: string): AtEverySize {
+  return async (page, key, ready, fullPage = true) => {
+    for (const size of VIEWPORTS) {
+      await page.setViewportSize(size);
+      await ready();
+      await settled(page);
+      expect(await sidewaysScroll(page), `${key} at ${size.width}`).toEqual([]);
+      await page.screenshot({ path: shot(`${prefix}-${key}-${size.width}`), fullPage });
+    }
+    await page.setViewportSize(VIEWPORTS[VIEWPORTS.length - 1]);
+  };
+}
+
 /**
  * The accounts of `panel_seed.py` (`e2e-<name>@example.com`), all with the same password: `QA_PANEL_PASSWORD`
  * of the root `.env` (playwright.config.ts loads it), the seed's own default otherwise.
@@ -361,16 +383,21 @@ export const qaAccount = (role: string, fallback: Credentials): Credentials => (
   password: process.env[`QA_${role}_PASSWORD`] ?? fallback.password,
 });
 
+/** `tests/e2e/panel/<script> seed|clear` (`panel_seed.py`, `billing_seed.py`…), against the run's database (DEBUG on). */
+export function runSeed(script: string, action: 'seed' | 'clear'): void {
+  execFileSync('uv', ['run', 'python', `tests/e2e/panel/${script}`, action], {
+    cwd: SAAS_DIR,
+    env: djangoEnv(true),
+    stdio: 'pipe',
+  });
+}
+
 /**
  * `tests/e2e/panel/panel_seed.py seed|clear`: the businesses panel's accounts and businesses (the
  * launcher's variants, Businesses, a business's page, the invitations), always from scratch.
  */
 export function seedPanel(action: 'seed' | 'clear' = 'seed'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/panel_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
+  runSeed('panel_seed.py', action);
 }
 
 /** The id of the business called `name` among the businesses of `request`'s account. */
@@ -623,3 +650,15 @@ export const test = base.extend<{ signedInPage: Page }, { owner: Credentials }>(
     await use(page);
   },
 });
+
+/**
+ * Every test of the spec, or of the `describe` it is called in, starts from the rows of `script` (`runSeed`) seeded
+ * afresh, its page signed in as `account` through the API; once the last test has run, the rows go.
+ */
+export function seededAndSignedIn(script: string, account: Credentials): void {
+  test.beforeEach(async ({ page }) => {
+    runSeed(script, 'seed');
+    await signIn(page.request, account);
+  });
+  test.afterAll(() => runSeed(script, 'clear'));
+}
