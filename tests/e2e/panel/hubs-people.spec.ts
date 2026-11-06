@@ -8,7 +8,7 @@
 // end of a person's sessions in the business; the jump into a business is answered here (no Hub runs). Stripe does not
 // run either (no keys in the e2e stack): what calls it runs in the server's own code with Stripe at its boundary
 // (`withStripe`, the double of the Python tests), and the page plays Stripe.js and the one call that opens a payment
-// (`playStripe`), as panel/store.spec.ts. Each test has
+// (`playStripe` of fixtures.ts). Each test has
 // its own accounts (`e2e-hubs3-…@example.com`, their address proven) and its own business, created through the API as
 // the panel creates it; the people join it through the operations (invite, then accept), never written by hand.
 import { type Browser, type Page } from '@playwright/test';
@@ -24,6 +24,8 @@ import {
   type HubDouble,
   MAIL_LOGO_URL,
   onlyTheMailLogo,
+  payInStripe,
+  playStripe,
   settled,
   shot,
   signIn,
@@ -200,31 +202,6 @@ function withStripe(code: string[]): string {
       ...code,
     ].join('\n'),
   );
-}
-
-/** Stripe.js as the page would get it from js.stripe.com (as panel/store.spec.ts): a placeholder, and `onComplete` kept. */
-async function playStripe(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    type Options = { fetchClientSecret: () => Promise<string>; onComplete?: () => void };
-    const w = window as unknown as Record<string, unknown> & { __stripe: { secrets: string[]; complete?: () => void } };
-    w.__stripe = { secrets: [] };
-    w.Stripe = () => ({
-      async createEmbeddedCheckoutPage(options: Options) {
-        w.__stripe.secrets.push(await options.fetchClientSecret());
-        w.__stripe.complete = options.onComplete;
-        return {
-          mount(target: Element) {
-            const form = document.createElement('div');
-            form.setAttribute('data-testid', 'stripe-double');
-            form.textContent = 'Stripe Embedded Checkout (test double)';
-            form.style.cssText = 'padding:48px 16px;border:1px dashed #999;border-radius:8px;text-align:center';
-            target.append(form);
-          },
-          destroy() {},
-        };
-      },
-    });
-  });
 }
 
 function removeOwnRows(): void {
@@ -553,7 +530,7 @@ test('HUBS-G82 (F28): a business handed over on a paid plan: the new owner keeps
     await expect(modal.getByTestId('stripe-double')).toBeVisible();
   });
   expect(opened).toEqual([{ hub_id: id }]);
-  await theirs.evaluate(() => (window as unknown as { __stripe: { complete?: () => void } }).__stripe.complete?.());
+  await payInStripe(theirs);
   await expect(theirs.locator('ion-toast').filter({ hasText: /^Bar Manolo keeps Starter: your card pays it from / })).toBeVisible();
   await expect(theirs).toHaveURL(new RegExp(`/dashboard/businesses/${id}/summary`));
 

@@ -2,13 +2,13 @@
 // three sizes of the migration (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
 // billing_apps_seed.py. As store.spec.ts, Stripe does not run here: the operations that call it
 // (`billing.checkout.start` and `.confirm`, `billing.module.cancel`) are played at the API's edge, and Stripe.js
-// is a double that mounts a placeholder; everything else is the real server. Each test names its flow by its
+// is the double of fixtures.ts (`playStripe`); everything else is the real server. Each test names its flow by its
 // registry key (BILLING-Gnn); in billing/WORKBOOK.md: G61=F31, G62=F32, G63=F09, G66=F33, G67=F34, G68=F35,
 // G05=F36, G92=F22, G94=F23, G95=F08, G17=F11.
 // flow: BILLING-F33 BILLING-F34 BILLING-F35 — what the Hub then receives: billing/tests/test_module_end_reaches_the_hub.py.
 import type { Locator, Page } from '@playwright/test';
 
-import { businessIdOf, captureAtEverySize, dialogInPlace, djangoPrint, expect, panelAccount, qaAccount, seededAndSignedIn, test, toast, watchPageErrors } from './fixtures';
+import { addAppInCheckout, businessIdOf, captureAtEverySize, dialogInPlace, djangoPrint, expect, gotoWithCharge, panelAccount, payInStripe, qaAccount, seededAndSignedIn, test, toast, watchPageErrors } from './fixtures';
 
 seededAndSignedIn('billing_apps_seed.py', qaAccount('BILLING_APPS', panelAccount('billing-apps')));
 const atEverySize = captureAtEverySize('APP-BILLING-2');
@@ -27,6 +27,13 @@ async function cutAmounts(dialog: Locator): Promise<string[]> {
   );
 }
 
+/** The charge's summary in its dialog at a size: its rows shown, the dialog in place and no amount cut off (G62, G17). */
+const chargeInPlace = (page: Page, dialog: Locator) => async () => {
+  await expect(dialog.getByTestId('proration-row').first()).toBeVisible();
+  await dialogInPlace(page, 'proration-modal-submit');
+  expect(await cutAmounts(dialog)).toEqual([]);
+};
+
 /** What `billing.module.*` and `billing.checkout.confirm` answer: the business's subscription after the change. */
 function subscriptionOut(hubId: string, modules: Array<{ slug: string; valid_until: string | null }>) {
   return {
@@ -39,31 +46,6 @@ function subscriptionOut(hubId: string, modules: Array<{ slug: string; valid_unt
     trial_end: null,
     modules: modules.map((module) => ({ ...module, source: 'purchase' })),
   };
-}
-
-/** Stripe.js as the page would get it from js.stripe.com: mounts a placeholder and keeps `onComplete`. */
-async function playStripe(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    type Options = { fetchClientSecret: () => Promise<string>; onComplete?: () => void };
-    const w = window as unknown as Record<string, unknown> & { __stripe: { complete?: () => void } };
-    w.__stripe = {};
-    w.Stripe = () => ({
-      async createEmbeddedCheckoutPage(options: Options) {
-        await options.fetchClientSecret();
-        w.__stripe.complete = options.onComplete;
-        return {
-          mount(target: Element) {
-            const form = document.createElement('div');
-            form.setAttribute('data-testid', 'stripe-double');
-            form.textContent = 'Stripe Embedded Checkout (test double)';
-            form.style.cssText = 'padding:48px 16px;border:1px dashed #999;border-radius:8px;text-align:center';
-            target.append(form);
-          },
-          destroy() {},
-        };
-      },
-    });
-  });
 }
 
 test.describe('billing part 2: paid apps and the pages of Billing', () => {
@@ -86,26 +68,19 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
   test('BILLING-G62: a paying business adds a paid app with its proration, and it turns on', async ({ page }) => {
     const errors = watchPageErrors(page);
     const bakery = await businessIdOf(page.request, 'Panadería López');
-    await page.route('**/api/billing/checkout/start', (route) =>
-      route.fulfill({ json: { flow: 'confirm', session_id: null, client_secret: null, publishable_key: null, preview: { amount_due_cents: 435, tax_cents: 76, currency: 'eur', proration_date: Math.floor(Date.now() / 1000), charge_starts_at: null } } }),
-    );
+    await gotoWithCharge(page, `/dashboard/store/modules?business=${bakery}`, 435, 76);
     const confirmed: unknown[] = [];
     await page.route('**/api/billing/checkout/confirm', async (route) => {
       confirmed.push(route.request().postDataJSON());
       await route.fulfill({ json: subscriptionOut(bakery, [{ slug: 'e2e_apps_bookings', valid_until: null }, { slug: 'e2e_apps_loyalty', valid_until: null }]) });
     });
-    await page.goto(`/dashboard/store/modules?business=${bakery}`);
     const loyalty = page.getByTestId('module-e2e_apps_loyalty');
     await loyalty.getByTestId('module-add').click();
     const dialog = page.getByTestId('proration-modal');
     await atEverySize(
       page,
       'BILLING-G62',
-      async () => {
-        await expect(dialog.getByTestId('proration-row').first()).toBeVisible();
-        await dialogInPlace(page, 'proration-modal-submit');
-        expect(await cutAmounts(dialog)).toEqual([]);
-      },
+      chargeInPlace(page, dialog),
       false,
     );
     await dialog.getByTestId('proration-modal-submit').click();
@@ -117,18 +92,11 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
 
   test('BILLING-G63: on Free a paid app is paid in the secure checkout, and back from it the business says it turns on', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await playStripe(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
-    const started: unknown[] = [];
-    await page.route('**/api/billing/checkout/start', async (route) => {
-      started.push(route.request().postDataJSON());
-      await route.fulfill({ json: { flow: 'checkout', session_id: 'cs_test_e2e_apps', client_secret: 'cs_test_e2e_apps_secret', publishable_key: 'pk_test_e2e', preview: null } });
-    });
-    await page.goto(`/dashboard/store/modules?business=${cafe}`);
-    await page.getByTestId('module-e2e_apps_bookings').getByTestId('module-add').click();
+    const started = await addAppInCheckout(page, cafe, 'e2e_apps_bookings');
     await expect(page.getByTestId('checkout-modal').getByTestId('stripe-double')).toBeVisible();
     expect(started).toEqual([expect.objectContaining({ hub_id: cafe, module: 'e2e_apps_bookings' })]);
-    await page.evaluate(() => (window as unknown as { __stripe: { complete: () => void } }).__stripe.complete());
+    await payInStripe(page);
     await expect(page).toHaveURL(new RegExp(`/dashboard/businesses/${cafe}/summary$`));
     await expect(toast(page, 'E2E Apps Bookings added to Café Central: it turns on in a few seconds')).toBeVisible();
     await atEverySize(page, 'BILLING-G63', async () => {
@@ -265,21 +233,14 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
   test('BILLING-G17: a paying business changes plan with what it is charged today', async ({ page }) => {
     const errors = watchPageErrors(page);
     const bakery = await businessIdOf(page.request, 'Panadería López');
-    await page.route('**/api/billing/checkout/start', (route) =>
-      route.fulfill({ json: { flow: 'confirm', session_id: null, client_secret: null, publishable_key: null, preview: { amount_due_cents: 1452, tax_cents: 252, currency: 'eur', proration_date: Math.floor(Date.now() / 1000), charge_starts_at: null } } }),
-    );
-    await page.goto(`/dashboard/store/plans?business=${bakery}`);
+    await gotoWithCharge(page, `/dashboard/store/plans?business=${bakery}`, 1452, 252);
     await expect(page.getByTestId('plan-starter').getByTestId('plan-current')).toBeVisible();
     await page.getByTestId('plan-standard').getByTestId('plan-change').click();
     const dialog = page.getByTestId('proration-modal');
     await atEverySize(
       page,
       'BILLING-G17',
-      async () => {
-        await expect(dialog.getByTestId('proration-row').first()).toBeVisible();
-        await dialogInPlace(page, 'proration-modal-submit');
-        expect(await cutAmounts(dialog)).toEqual([]);
-      },
+      chargeInPlace(page, dialog),
       false,
     );
     expect(errors).toEqual([]);
