@@ -6,12 +6,14 @@
 // Google (F06) plays in accounts-google.spec.ts and the authenticator app (F05) in accounts-security.spec.ts, on the
 // panel's twin: this panel has neither, as the second factor is off in phase 1. Accounts of this spec: `e2e-acc1-…@example.com`,
 // removed before and after (panel_seed.py's `clear` removes every `e2e-…@example.com` too).
-import { type Page } from '@playwright/test';
+import { type APIRequestContext, type Page } from '@playwright/test';
 
 import {
   captureAtEverySize,
-  djangoPrint,
+  createAccountWarm,
+  djangoPrintWarm,
   expect,
+  removeAccountsWarm,
   sessionOf,
   settled,
   shot,
@@ -34,31 +36,15 @@ const PASSWORD = 'Centeno-y-masa-madre-26';
 /** A fresh address of this spec, never used before (a throttle or a code of an earlier run never leaks in). */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
-function removeAccounts(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account with its address proven, as one that signed in before; `staff` makes it a platform administrator. */
-function createAccount(email: string, options: { verified?: boolean; staff?: boolean } = {}): void {
-  const { verified = true, staff = false } = options;
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.${staff ? 'create_superuser' : 'create_user'}(email="${email}", password="${PASSWORD}")`,
-      `EmailAddress.objects.create(user=user, email=user.email, verified=${verified ? 'True' : 'False'}, primary=True)`,
-    ].join('\n'),
-  );
-}
+const createAccount = (email: string, { verified = true, staff = false } = {}) =>
+  createAccountWarm(email, PASSWORD, { verified, role: staff ? 'superuser' : 'customer' });
 
-/** What the account accepted (ACCOUNTS-G119): `terms_version privacy_version`, or `None None`. */
-function acceptedVersions(email: string): string {
-  return djangoPrint(
+/** What the account accepted (ACCOUNTS-G119), before it ever signs in: `terms_version privacy_version`, or `None None`. */
+function acceptedVersions(email: string): Promise<string> {
+  return djangoPrintWarm(
     [
       'from django.contrib.auth import get_user_model',
       `u = get_user_model().objects.get(email="${email}")`,
@@ -67,11 +53,21 @@ function acceptedVersions(email: string): string {
   );
 }
 
+/** What the account of `request` accepted, as «Download my data» gives it (`GET /api/accounts/export`, ACCOUNTS-F26),
+ *  in the words of `acceptedVersions`. */
+async function acceptedVersionsOf(request: APIRequestContext): Promise<string> {
+  const response = await request.get('/api/accounts/export');
+  expect(response.status(), 'GET /api/accounts/export').toBe(200);
+  type Terms = { accepted_at: string | null; terms_version: string | null; privacy_version: string | null };
+  const { terms } = ((await response.json()) as { account: { terms: Terms } }).account;
+  return `${terms.terms_version} ${terms.privacy_version} ${terms.accepted_at === null ? 'False' : 'True'}`;
+}
+
 /** The versions of the terms and of the privacy policy an account accepts today (`accounts.models`), as the
  *  database keeps them and as the admin shows the terms' one: read from the SaaS, so a new text never leaves this
- *  spec behind (saas#120 moved the terms to 2026-10-25). */
-function todaysVersions(): { kept: string; termsShown: string } {
-  const [kept, termsShown] = djangoPrint(
+ *  spec behind (saas#120 moved the terms to 2026-10-25). Read once, before the tests (`today`). */
+async function todaysVersions(): Promise<{ kept: string; termsShown: string }> {
+  const [kept, termsShown] = (await djangoPrintWarm(
     [
       'from django.utils import formats, translation',
       'from accounts.models import PRIVACY_VERSION, TERMS_VERSION',
@@ -79,7 +75,7 @@ function todaysVersions(): { kept: string; termsShown: string } {
       'print(f"{TERMS_VERSION} {PRIVACY_VERSION}")',
       'print(formats.date_format(TERMS_VERSION))',
     ].join('\n'),
-  ).split('\n');
+  )).split('\n');
   return { kept, termsShown };
 }
 
@@ -109,7 +105,12 @@ async function openUserMenuPresented(page: Page): Promise<void> {
 /** The page is on `path`, not merely naming it in its `next`. */
 const onPath = (path: string) => (url: URL) => url.pathname === path;
 
+let today: { kept: string; termsShown: string };
+
 test.beforeAll(removeAccounts);
+test.beforeAll(async () => {
+  today = await todaysVersions();
+});
 test.afterAll(removeAccounts);
 
 test('ACCOUNTS-G83: a new address creates its account on «Create account», refused passwords say why, and the code opens the launcher', async ({
@@ -126,7 +127,7 @@ test('ACCOUNTS-G83: a new address creates its account on «Create account», ref
   await submitSignInForm(page, { email, password: email.split('@')[0] });
   await expect(page.getByTestId('login-password')).toContainText('The password is too similar to the email.');
   await expect(page).toHaveURL(/\/launch\?tab=signup$/);
-  expect(djangoPrint(`from django.contrib.auth import get_user_model\nprint(get_user_model().objects.filter(email="${email}").exists())`)).toBe('False');
+  expect(await djangoPrintWarm(`from django.contrib.auth import get_user_model\nprint(get_user_model().objects.filter(email="${email}").exists())`)).toBe('False');
 
   const since = Date.now();
   await submitSignInForm(page, { email, password: PASSWORD });
@@ -174,7 +175,7 @@ test('ACCOUNTS-G107: an address never proven asks for its code before the panel 
 }) => {
   const errors = watchPageErrors(page);
   const email = address('unproven');
-  createAccount(email, { verified: false });
+  await createAccount(email, { verified: false });
 
   // A page of the panel without a session: the sign-in, keeping where it was going.
   await page.goto('/dashboard/account/profile');
@@ -197,7 +198,7 @@ test('ACCOUNTS-G107: an address never proven asks for its code before the panel 
 test('ACCOUNTS-G85: the email and the password, then the code mailed at every sign-in, lead to `next`', async ({ page }) => {
   const errors = watchPageErrors(page);
   const email = address('signin');
-  createAccount(email);
+  await createAccount(email);
 
   await page.goto('/launch?next=/dashboard/account/security');
   await atEverySize(page, 'ACCOUNTS-G85', async () => {
@@ -220,7 +221,7 @@ test('ACCOUNTS-G91: «Forgot your password?» mails a link whose page shows the 
 }) => {
   const errors = watchPageErrors(page);
   const email = address('reset');
-  createAccount(email);
+  await createAccount(email);
 
   await page.goto('/launch');
   await page.getByTestId('login-forgot').click();
@@ -270,7 +271,7 @@ test('ACCOUNTS-G109: «Change password» asks for the current one, refuses it as
 }) => {
   const errors = watchPageErrors(page);
   const email = address('change');
-  createAccount(email);
+  await createAccount(email);
   await signIn(page.request, { email, password: PASSWORD });
   const phone = await browser.newContext({ baseURL: PANEL_URL });
   try {
@@ -301,7 +302,7 @@ test('ACCOUNTS-G109: «Change password» asks for the current one, refuses it as
 test('ACCOUNTS-G93: «Sign out» in the user menu ends the session and leaves the sign-in on screen', async ({ page }) => {
   const errors = watchPageErrors(page);
   const email = address('signout');
-  createAccount(email);
+  await createAccount(email);
   await signIn(page.request, { email, password: PASSWORD });
 
   await atEverySize(page, 'ACCOUNTS-G93', async () => {
@@ -379,7 +380,7 @@ async function measureUserMenu(page: Page) {
 test('ACCOUNTS-G93: the user menu reads whole at every size — «Theme» on one line, an opaque sheet, and a long name or email ends in «…» before the chevron', async ({ page }) => {
   const errors = watchPageErrors(page);
   const email = address('menu-with-a-rather-long-address-for-its-card');
-  createAccount(email);
+  await createAccount(email);
   await signIn(page.request, { email, password: PASSWORD });
 
   // The spec's three sizes and the two others of the fleet's sweep (a short phone, a portrait tablet).
@@ -425,8 +426,8 @@ test('ACCOUNTS-G93: the user menu reads whole at every size — «Theme» on one
 test('ACCOUNTS-G119: the sign-in says what continuing accepts, and the account keeps when and which versions', async ({ page }) => {
   const errors = watchPageErrors(page);
   const email = address('terms');
-  createAccount(email);
-  expect(acceptedVersions(email)).toBe('None None False');
+  await createAccount(email);
+  expect(await acceptedVersions(email)).toBe('None None False');
 
   await page.goto('/launch');
   const foot = page.locator('.foot').filter({ hasText: 'By continuing you agree to our' });
@@ -437,7 +438,7 @@ test('ACCOUNTS-G119: the sign-in says what continuing accepts, and the account k
   await expect(foot.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', /\/legal\/privacy\/$/);
   await signInThroughPage(page, { email, password: PASSWORD });
 
-  expect(acceptedVersions(email)).toBe(`${todaysVersions().kept} True`);
+  expect(await acceptedVersionsOf(page.request)).toBe(`${today.kept} True`);
   expect(errors).toEqual([]);
 });
 
@@ -446,7 +447,7 @@ test('ACCOUNTS-G96: five wrong passwords stop the account, also to the right one
 }) => {
   const errors = watchPageErrors(page);
   const email = address('throttle');
-  createAccount(email);
+  await createAccount(email);
 
   await page.goto('/launch');
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -466,23 +467,24 @@ test('ACCOUNTS-G18: the staff sees on an account’s page what it accepted, read
   const errors = watchPageErrors(page);
   const staff = address('staff');
   const customer = address('customer');
-  createAccount(staff, { staff: true });
-  createAccount(customer);
-  // The customer signs in once, somewhere else: that accepts today's texts.
+  await createAccount(staff, { staff: true });
+  await createAccount(customer);
+  // The customer signs in once, somewhere else: that accepts today's texts. Its id, as its session gives it.
   const elsewhere = await browser.newContext({ baseURL: PANEL_URL });
+  let id: string | undefined;
   try {
     await signIn(elsewhere.request, { email: customer, password: PASSWORD });
+    id = (await sessionOf(elsewhere.request)).user?.id;
   } finally {
     await elsewhere.close();
   }
   await signIn(page.request, { email: staff, password: PASSWORD });
-  const id = djangoPrint(`from django.contrib.auth import get_user_model\nprint(get_user_model().objects.get(email="${customer}").pk)`);
 
   await page.goto(`/admin/accounts/user/${id}/change/`);
   await atEverySize(page, 'ACCOUNTS-G18', async () => {
     await expect(page.getByRole('heading', { name: 'Terms and privacy' })).toBeVisible();
   });
-  await expect(page.locator('.field-terms_version .readonly')).toHaveText(todaysVersions().termsShown);
+  await expect(page.locator('.field-terms_version .readonly')).toHaveText(today.termsShown);
   await expect(page.locator('input[name="terms_version"]')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

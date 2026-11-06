@@ -416,7 +416,9 @@ Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/t
   saas#328; su cliente es `django-warm.ts`): arranca una vez y se queda, así que una prueba no paga arranques
   ni bloquea Node (saas#352). Para lo que hay que escribir o leer en Django en mitad de un flujo y la API no
   enseña (crear una cuenta, marcar un estado, contar filas). Cada trozo corre como con `python -c`: sin los
-  nombres del anterior, y el idioma, la zona horaria y la caché en memoria que tocó se van al terminar. Otro
+  nombres del anterior, y los ajustes (`settings.X = …`), el idioma, la zona horaria y la caché en memoria que
+  tocó vuelven a como estaban al terminar. Lo que parchee en un módulo (`stripe_service.client = …`) sí se
+  queda para los siguientes: se parchea dentro de un `with` (`mock.patch.object`, `override_settings`). Otro
   `env` (`MAILING`) es otro proceso. `warmDjango(env?)` lo arranca: la spec cuya primera llamada cae dentro
   de una prueba lo pide antes en un `beforeAll`.
 - `runSeedWarm(script, args, env)` y `seededAndSignedInWarm(script, cuenta)`: `runSeed` y `seededAndSignedIn` por

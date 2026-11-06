@@ -6,12 +6,15 @@
 // Accounts of this spec: `e2e-acc3-…@example.com`, removed before and after.
 import { readFile } from "node:fs/promises";
 
-import { type Page } from "@playwright/test";
+import { type APIRequestContext, type Page } from "@playwright/test";
 
 import {
   captureAtEverySize,
-  djangoPrint,
+  createAccountWarm,
+  djangoPrintWarm,
   expect,
+  removeAccountsWarm,
+  sessionOf,
   settled,
   signIn,
   test,
@@ -27,32 +30,16 @@ const PASSWORD = "Centeno-y-masa-madre-26";
 /** A fresh address of this spec, never used before. */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
-function removeAccounts(): void {
-  djangoPrint(
-    [
-      "from django.contrib.auth import get_user_model",
-      "from hubs.models import Hub",
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join("\n"),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account with its address proven, as one that signed in before; `staff` makes it a platform administrator. */
-function createAccount(
-  email: string,
-  options: { staff?: boolean; firstName?: string } = {},
-): { email: string; password: string } {
-  djangoPrint(
-    [
-      "from allauth.account.models import EmailAddress",
-      "from django.contrib.auth import get_user_model",
-      `user = get_user_model().objects.${options.staff ? "create_superuser" : "create_user"}(email="${email}", password="${PASSWORD}", first_name="${options.firstName ?? "Ana"}", last_name="García", language="en")`,
-      "EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)",
-    ].join("\n"),
-  );
-  return { email, password: PASSWORD };
-}
+const createAccount = (email: string, options: { staff?: boolean; firstName?: string } = {}) =>
+  createAccountWarm(email, PASSWORD, {
+    role: options.staff ? "superuser" : "customer",
+    firstName: options.firstName ?? "Ana",
+    lastName: "García",
+    language: "en",
+  });
 
 let lastSequence = 0;
 
@@ -66,10 +53,10 @@ function nextSequence(): number {
 }
 
 /** A business of `email` made by its operation, with one ERPlora invoice it paid; the invoice's number. */
-function businessWithInvoice(email: string, name: string): string {
+async function businessWithInvoice(email: string, name: string): Promise<string> {
   const sequence = nextSequence();
   const number = `ERP-2026-${sequence}`;
-  djangoPrint(
+  await djangoPrintWarm(
     [
       "from datetime import date",
       "from django.contrib.auth import get_user_model",
@@ -90,15 +77,24 @@ function businessWithInvoice(email: string, name: string): string {
   return number;
 }
 
-/** The value Django reads back for `expression` of the account `email` (`user`), printed. */
+/** The value Django reads back for `expression` of the account `email` (`user`), printed: for what no page shows. */
 const readBack = (email: string, expression: string) =>
-  djangoPrint(
+  djangoPrintWarm(
     [
       "from django.contrib.auth import get_user_model",
       `user = get_user_model().objects.filter(email="${email}").first()`,
       `print(${expression})`,
     ].join("\n"),
-  ).trim();
+  );
+
+/** Account › Preferences of `request`'s account, as the panel reads it (`GET /api/accounts/preferences`). */
+async function preferencesOf(
+  request: APIRequestContext,
+): Promise<{ theme_mode: string; language: string; hub_alerts: boolean }> {
+  const response = await request.get("/api/accounts/preferences");
+  expect(response.status(), "GET /api/accounts/preferences").toBe(200);
+  return (await response.json()) as { theme_mode: string; language: string; hub_alerts: boolean };
+}
 
 /** The user menu (`UserMenuPopover`): in the side menu, a drawer behind the topbar's menu button below `lg`. */
 async function openUserMenu(page: Page): Promise<void> {
@@ -145,7 +141,7 @@ test("ACCOUNTS-G108 (F21): Profile shows the account and keeps the names after a
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const account = createAccount(address("profile"));
+  const account = await createAccount(address("profile"));
   await signIn(page.request, account);
 
   await page.goto("/dashboard/account/profile");
@@ -158,7 +154,7 @@ test("ACCOUNTS-G108 (F21): Profile shows the account and keeps the names after a
   await expect(
     page.getByTestId("profile-first-name").locator("input"),
   ).toHaveValue("Lucía");
-  expect(readBack(account.email, "user.get_full_name()")).toBe("Lucía Martín");
+  expect((await sessionOf(page.request)).user?.label).toBe("Lucía Martín");
   await atEverySize(page, "G108", async () => {
     await expect(page.getByTestId("profile-card")).toBeVisible();
   });
@@ -169,7 +165,7 @@ test("ACCOUNTS-G114 (F22): Preferences saves the appearance and the language on 
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const account = createAccount(address("preferences"));
+  const account = await createAccount(address("preferences"));
   await signIn(page.request, account);
 
   await page.goto("/dashboard/account/preferences");
@@ -187,9 +183,10 @@ test("ACCOUNTS-G114 (F22): Preferences saves the appearance and the language on 
     "Apariencia",
   );
   await expect(page.locator("html")).toHaveClass(/ion-palette-dark/);
-  expect(
-    readBack(account.email, "user.language, user.preferences.theme_mode"),
-  ).toBe("es dark");
+  expect(await preferencesOf(page.request)).toMatchObject({
+    language: "es",
+    theme_mode: "dark",
+  });
   await atEverySize(page, "G114", async () => {
     await expect(page.getByTestId("preferences-language-card")).toBeVisible();
   });
@@ -200,7 +197,7 @@ test("ACCOUNTS-G115 (F23): «Business notices» is the one switch, kept after a 
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const account = createAccount(address("notices"));
+  const account = await createAccount(address("notices"));
   await signIn(page.request, account);
 
   await page.goto("/dashboard/account/preferences");
@@ -225,7 +222,7 @@ test("ACCOUNTS-G115 (F23): «Business notices» is the one switch, kept after a 
     "checked",
     false,
   );
-  expect(readBack(account.email, "user.preferences.hub_alerts")).toBe("False");
+  expect((await preferencesOf(page.request)).hub_alerts).toBe(false);
   await atEverySize(page, "G115", async () => {
     await mails.scrollIntoViewIfNeeded();
     await expect(mails).toBeVisible();
@@ -251,7 +248,7 @@ test("ACCOUNTS-G127 (F24): the theme of the user menu is painted at once and kep
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const account = createAccount(address("theme"));
+  const account = await createAccount(address("theme"));
   await signIn(page.request, account);
 
   await page.goto("/dashboard/businesses");
@@ -265,7 +262,7 @@ test("ACCOUNTS-G127 (F24): the theme of the user menu is painted at once and kep
   await dark.click();
   await expect(page.locator("html")).toHaveClass(/ion-palette-dark/);
   await expect
-    .poll(() => readBack(account.email, "user.preferences.theme_mode"))
+    .poll(async () => (await preferencesOf(page.request)).theme_mode)
     .toBe("dark");
   await closeUserMenu(page);
   await page.reload();
@@ -288,7 +285,7 @@ test("ACCOUNTS-G128 (F25): the user menu has «Account», «Report a problem», 
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const account = createAccount(address("menu"), { firstName: "Marta" });
+  const account = await createAccount(address("menu"), { firstName: "Marta" });
   await signIn(page.request, account);
 
   await page.goto("/dashboard/businesses");
@@ -319,10 +316,10 @@ test("ACCOUNTS-G111 (F26): «Download my data» saves a JSON with the account, i
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const account = createAccount(address("export"));
-  const other = createAccount(address("export-other"), { firstName: "Bea" });
-  const number = businessWithInvoice(account.email, "Panadería de Ana");
-  businessWithInvoice(other.email, "Bodega de Bea");
+  const account = await createAccount(address("export"));
+  const other = await createAccount(address("export-other"), { firstName: "Bea" });
+  const number = await businessWithInvoice(account.email, "Panadería de Ana");
+  await businessWithInvoice(other.email, "Bodega de Bea");
   await signIn(page.request, account);
 
   await page.goto("/dashboard/account/profile");
@@ -360,8 +357,8 @@ test("ACCOUNTS-G112 (F27): an owner is told to hand over its business first; wit
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const account = createAccount(address("delete"));
-  const number = businessWithInvoice(account.email, "Café de Ana");
+  const account = await createAccount(address("delete"));
+  const number = await businessWithInvoice(account.email, "Café de Ana");
   await signIn(page.request, account);
 
   await page.goto("/dashboard/account/profile");
@@ -382,7 +379,7 @@ test("ACCOUNTS-G112 (F27): an owner is told to hand over its business first; wit
   });
 
   // The business deleted (its own flow, 90 days of recovery): it holds the account no more.
-  djangoPrint(
+  await djangoPrintWarm(
     [
       "from django.utils import timezone",
       "from hubs.models import Hub",
@@ -408,11 +405,11 @@ test("ACCOUNTS-G112 (F27): an owner is told to hand over its business first; wit
     .fill(account.email);
   await page.getByTestId("delete-account-submit").click();
   await expect(page).not.toHaveURL(/\/dashboard\/account/);
-  expect(readBack(account.email, "user is None")).toBe("True");
+  expect(await readBack(account.email, "user is None")).toBe("True");
   expect(
-    djangoPrint(
+    await djangoPrintWarm(
       `from billing.models import Invoice;print(Invoice.objects.filter(number="${number}", payer_account=None).count())`,
-    ).trim(),
+    ),
   ).toBe("1");
   expect(errors).toEqual([]);
 });
@@ -421,16 +418,16 @@ test("ACCOUNTS-G35 (F13): the admin shows an account with its preferences and it
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const staff = createAccount(address("root"), { staff: true });
-  const account = createAccount(address("seen"));
-  djangoPrint(
+  const staff = await createAccount(address("root"), { staff: true });
+  const account = await createAccount(address("seen"));
+  await djangoPrintWarm(
     [
       "from accounts.models import UserPreferences",
       "from django.contrib.auth import get_user_model",
       `UserPreferences.objects.create(user=get_user_model().objects.get(email="${account.email}"), theme_mode="dark", hub_alerts=False)`,
     ].join("\n"),
   );
-  const id = readBack(account.email, "user.pk");
+  const id = await readBack(account.email, "user.pk");
   await signIn(page.request, staff);
 
   await page.goto(`/admin/accounts/user/${id}/change/`);
