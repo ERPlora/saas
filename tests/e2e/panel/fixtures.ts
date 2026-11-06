@@ -24,6 +24,7 @@ import {
 } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
+import { startWarm, type WarmDjango } from '../django-warm';
 import { overflowingBoxes } from '../horizontal-overflow';
 import { HUB_DOUBLE_PORT, PANEL_MAIL_DIR, VITE_PORT, viteHmrSocket } from './project';
 
@@ -761,4 +762,35 @@ export function seededAndSignedIn(script: string, account: Credentials): void {
     await signIn(page.request, account);
   });
   test.afterAll(() => runSeed(script, 'clear'));
+}
+
+// ── A warm Django: one per worker, for what a test asks the SaaS's Django (saas#352) ──────────
+
+const warm = new Map<string, Promise<WarmDjango>>();
+
+/**
+ * This worker's warm Django (`tests/e2e/panel/django_warm.py`, django-warm.ts) against the run's database (DEBUG on) with
+ * `env` over it (`MAILING`): started on the first call and kept for the worker; another `env`, another process. A spec
+ * awaits it in a `beforeAll` (its first `djangoPrintWarm` there does), so that its boot is on no test's clock.
+ */
+export function warmDjango(env: Readonly<Record<string, string>> = {}): Promise<WarmDjango> {
+  const key = JSON.stringify(env);
+  let django = warm.get(key);
+  if (!django) {
+    django = startWarm('uv', ['run', 'python', 'tests/e2e/panel/django_warm.py'], {
+      cwd: SAAS_DIR,
+      env: { ...djangoEnv(true), ...env },
+    });
+    warm.set(key, django);
+  }
+  return django;
+}
+
+/**
+ * `djangoPrint` for inside a test: what `code` prints, run by this worker's warm Django (`warmDjango`), so the test pays
+ * no Django boot and this process never blocks (saas#352). The same snippet reads the same values: each one runs as
+ * `python -c` runs it after `django.setup()`; a failing one rejects with its traceback.
+ */
+export async function djangoPrintWarm(code: string, env: Readonly<Record<string, string>> = {}): Promise<string> {
+  return (await warmDjango(env)).print(code);
 }
