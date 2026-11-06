@@ -503,7 +503,9 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
 - **e2e**: `tests/e2e/panel/billing.spec.ts` con `billing_seed.py` (cuatro negocios: facturas pagada y emitida,
   pagada emitiéndose, no cobrada con tarjeta rechazada y no cobrada con fallo blando; Gratis sin facturas).
   `tests/e2e/panel/billing-downgrade.spec.ts` recorre la bajada programada (BILLING-F11, BILLING-F14, HUBS-F32, HUBS-F34) sobre
-  esa misma semilla; las rutas que llaman a Stripe corren en `billing_stripe_played.py`, un proceso aparte con Stripe doblado.
+  esa misma semilla; las rutas que llaman a Stripe corren en `billing_stripe_played.py serve`, un proceso aparte con Stripe
+  doblado, uno solo para toda la spec (Django arranca una vez y contesta una línea JSON por llamada): con la máquina
+  cargada, un Python por llamada dejaba el aviso fuera de los 15 s de la prueba (saas#328).
 
 ### Estado (L3-C)
 

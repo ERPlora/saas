@@ -3,14 +3,14 @@
 // Django and the rows of billing_seed.py: the Store says what it charges today (nothing) and when it changes, Billing ›
 // Subscriptions says it too, «Keep the plan» undoes it from either, and when the paid period ends the plan arrives and
 // the Hub takes its new limits. The panel's server has no Stripe here, so the routes that call it run in a process of
-// their own with only Stripe doubled (billing_stripe_played.py); that process and the signed webhook write the database
-// the page lives on, so what changes on screen is what the server wrote.
+// their own with only Stripe doubled (billing_stripe_played.py), one for the whole spec; that process and the signed
+// webhook write the database the page lives on, so what changes on screen is what the server wrote.
 //
 // «Next invoice» of a row is saas#213's, and its own tests'; nothing here fixes it.
-import { execFile } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
+import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
-import { promisify } from 'node:util';
 
 import type { Locator, Page } from '@playwright/test';
 
@@ -24,7 +24,6 @@ const BAKERY = 'Panadería López';
 const HUB_URL = `http://127.0.0.1:${HUB_DOUBLE_PORT}`;
 const GIB = 1024 ** 3;
 const STRIPE_ROUTES = /\/api\/billing\/(checkout\/start|plan\/change|plan\/keep)$/;
-const execFileAsync = promisify(execFile);
 const atEverySize = captureAtEverySize('BILLING-DOWNGRADE');
 
 interface Played {
@@ -32,33 +31,93 @@ interface Played {
   body: Record<string, unknown>;
 }
 
-/** The Stripe of this spec, in its own process and without blocking this one: the Hub it pushes to is played here (saas#176). */
-async function stripePlayed(...args: string[]): Promise<Played> {
-  const { stdout } = await execFileAsync('uv', ['run', 'python', 'tests/e2e/panel/billing_stripe_played.py', ...args, HUB_URL], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    encoding: 'utf8',
-  });
-  return JSON.parse(stdout.trim().split('\n').at(-1) ?? '') as Played;
+/** A call to the Stripe of this spec, as `billing_stripe_played.py serve` reads it. */
+type PlayedCall = { command: 'api'; email: string; path: string; body: unknown } | { command: 'arrive'; hub_id: string };
+
+interface StripePlayed {
+  call(request: PlayedCall): Promise<Played>;
+  close(): Promise<void>;
 }
 
-const callTheRoute = (path: string, body: unknown) => stripePlayed('api', BILLING.email, path, JSON.stringify(body));
+interface Waiter {
+  answered(answer: Record<string, unknown>): void;
+  failed(error: Error): void;
+}
+
+/**
+ * The Stripe of this spec, `billing_stripe_played.py serve`, as the Hub is played (`startHubDouble`): ONE process from
+ * `beforeAll` to `afterAll`, so a loaded machine adds no Python start-up to each call (saas#328: one per call kept the
+ * change past the notice's 15 s). It answers one line per call, in order, and never blocks this process: the Hub it
+ * pushes to is played here (saas#176). A call it could not answer rejects with its traceback.
+ */
+async function startStripePlayed(): Promise<StripePlayed> {
+  const child = spawn('uv', ['run', 'python', 'tests/e2e/panel/billing_stripe_played.py', 'serve', HUB_URL], {
+    cwd: SAAS_DIR,
+    env: djangoEnv(true),
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  let said = '';
+  const tell = (text: string) => {
+    said = (said + text).slice(-4000);
+  };
+  child.stderr.setEncoding('utf8').on('data', tell);
+  child.stdin.on('error', (error) => tell(`\n(stdin) ${error.message}`));
+  const waiting: Waiter[] = [];
+  let ended: Error | null = null;
+  const answer = () =>
+    ended ? Promise.reject(ended) : new Promise<Record<string, unknown>>((answered, failed) => waiting.push({ answered, failed }));
+  createInterface({ input: child.stdout }).on('line', (line) => {
+    const waiter = waiting.shift();
+    if (!waiter) return tell(`\n(stdout, unasked) ${line}`);
+    try {
+      waiter.answered(JSON.parse(line) as Record<string, unknown>);
+    } catch {
+      waiter.failed(new Error(`billing_stripe_played.py answered no JSON: ${line}`));
+    }
+  });
+  const gone = new Promise<void>((done) => {
+    const end = (why: string) => {
+      ended = new Error(`billing_stripe_played.py serve ${why}:\n${said}`);
+      for (const waiter of waiting.splice(0)) waiter.failed(ended);
+      done();
+    };
+    child.once('error', (error) => end(`did not start (${error.message})`));
+    child.once('exit', (code, signal) => end(`ended (${code ?? signal})`));
+  });
+
+  expect(await answer()).toEqual({ ready: true });
+  return {
+    async call(request) {
+      const answered = answer();
+      child.stdin.write(`${JSON.stringify(request)}\n`);
+      const played = await answered;
+      if ('error' in played) throw new Error(`billing_stripe_played.py could not answer ${JSON.stringify(request)}:\n${String(played.error)}`);
+      return played as unknown as Played;
+    },
+    async close() {
+      child.stdin.end();
+      await gone;
+    },
+  };
+}
+
+const callTheRoute = (stripe: StripePlayed, path: string, body: unknown) => stripe.call({ command: 'api', email: BILLING.email, path, body });
 
 /** The page's calls that reach Stripe go through the real routes of `billing_stripe_played.py`. */
-async function playStripe(page: Page): Promise<void> {
+async function playStripe(page: Page, stripe: StripePlayed): Promise<void> {
   await page.route(STRIPE_ROUTES, async (route) => {
-    const answer = await callTheRoute(new URL(route.request().url()).pathname, route.request().postDataJSON());
+    const answer = await callTheRoute(stripe, new URL(route.request().url()).pathname, route.request().postDataJSON());
     await route.fulfill({ status: answer.status, json: answer.body });
   });
 }
 
 /** The downgrade to Starter as the dialog asks it: its preview, then the change at the preview's moment. */
-async function downgradeToStarter(bakery: string): Promise<void> {
+async function downgradeToStarter(stripe: StripePlayed, bakery: string): Promise<void> {
   const asked = { hub_id: bakery, plan: 'starter', interval: 'month' };
-  const start = await callTheRoute('/api/billing/checkout/start', asked);
+  const start = await callTheRoute(stripe, '/api/billing/checkout/start', asked);
   expect(start.status, JSON.stringify(start.body)).toBe(200);
   const preview = start.body.preview as { proration_date: number };
-  const change = await callTheRoute('/api/billing/plan/change', { ...asked, proration_date: preview.proration_date });
+  const change = await callTheRoute(stripe, '/api/billing/plan/change', { ...asked, proration_date: preview.proration_date });
   expect(change.status, JSON.stringify(change.body)).toBe(200);
 }
 
@@ -80,12 +139,16 @@ const rowOf = (page: Page, bakery: string): Locator => page.locator(`[data-testi
 
 test.describe('a downgrade waits for the end of the paid period', () => {
   let hub: HubDouble;
+  let stripe: StripePlayed;
   let bakery: string;
 
   test.beforeAll(async () => {
     hub = await startHubDouble();
+    stripe = await startStripePlayed();
   });
+  // Stripe first: a call still running ends before the Hub goes, and before the seed's rows go.
   test.afterAll(async () => {
+    await stripe.close();
     await hub.close();
   });
   seededAndSignedIn('billing_seed.py', BILLING);
@@ -94,7 +157,7 @@ test.describe('a downgrade waits for the end of the paid period', () => {
     bakery = await businessIdOf(page.request, BAKERY);
     djangoPrint(`from hubs.models import Plan,Subscription as S;print(S.objects.filter(hub_id='${bakery}').update(plan=Plan.objects.get(slug='standard')))`);
     hub.calls.length = 0;
-    await playStripe(page);
+    await playStripe(page, stripe);
   });
 
   test('BILLING-F11: from Standard, the Store charges nothing today and says when Starter starts', async ({ page }) => {
@@ -153,7 +216,7 @@ test.describe('a downgrade waits for the end of the paid period', () => {
 
   test('BILLING-F14: «Keep the plan» on the Store card undoes it', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await downgradeToStarter(bakery);
+    await downgradeToStarter(stripe, bakery);
     const until = periodEnd(bakery, 'en');
     await page.goto(`/dashboard/store/plans?business=${bakery}`);
     const standard = page.getByTestId('plan-standard');
@@ -170,7 +233,7 @@ test.describe('a downgrade waits for the end of the paid period', () => {
 
   test('BILLING-F11 and BILLING-F14: Subscriptions says the change, and «Keep the plan» on its row undoes it', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await downgradeToStarter(bakery);
+    await downgradeToStarter(stripe, bakery);
     const until = periodEnd(bakery, 'en');
     await page.goto('/dashboard/billing/subscriptions');
     const row = rowOf(page, bakery);
@@ -191,13 +254,13 @@ test.describe('a downgrade waits for the end of the paid period', () => {
 
   test('BILLING-F11, HUBS-F32 and HUBS-F34: at the end of the period Starter arrives, on the open page and at the Hub', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await downgradeToStarter(bakery);
+    await downgradeToStarter(stripe, bakery);
     await page.goto('/dashboard/billing/subscriptions');
     const row = rowOf(page, bakery);
     await expect(row.getByTestId('subscription-scheduled')).toBeVisible();
     await expect(row).toContainText('Standard');
 
-    const arrived = await stripePlayed('arrive', bakery);
+    const arrived = await stripe.call({ command: 'arrive', hub_id: bakery });
 
     expect(arrived.status, JSON.stringify(arrived.body)).toBe(200);
     await atEverySize(page, 'subscriptions-arrived', async () => {
