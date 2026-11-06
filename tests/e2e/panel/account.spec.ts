@@ -390,6 +390,15 @@ test('the email changes with the code mailed to the new address', async ({ page 
   await signIn(page.request, panelAccount('first'));
   await page.goto('/dashboard/account/profile');
   await expect(page.getByTestId('profile-email')).toContainText('e2e-first@example.com');
+  // The answer to the code waits until the live profile shows the new address, the order a few runs in ten took
+  // on their own and that said «Your email is verified» instead (saas#366).
+  let answerTheCode = (): void => undefined;
+  const codeAnswered = new Promise<void>((resolve) => (answerTheCode = resolve));
+  await page.route('**/api/accounts/email/verify', async (route) => {
+    const answer = await route.fetch();
+    await codeAnswered;
+    await route.fulfill({ response: answer });
+  });
   await page.getByTestId('profile-email-change').click();
   await page.getByTestId('email-change-address').locator('input').fill(next);
   const since = Date.now();
@@ -398,6 +407,8 @@ test('the email changes with the code mailed to the new address', async ({ page 
   const code = await waitForMail(next, since, /\b\d{6}\b/);
   await page.getByTestId('code').locator('input').fill(code);
   await page.getByTestId('email-change-submit').click();
+  await expect(page.getByTestId('profile-email')).toContainText(next);
+  answerTheCode();
   await expect(toast(page, `Your email is now ${next}`)).toBeVisible();
   await expect(page.getByTestId('profile-email')).toContainText(next);
   expect(errors).toEqual([]);

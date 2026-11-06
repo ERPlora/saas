@@ -548,7 +548,7 @@ Steps:
 2. The person changes their first or last name: "Save changes" turns on when something changes ("It turns on when you change something.").
 3. They tap "Save changes": "Changes saved", and the user menu and the businesses they enter call them that.
 4. "Change photo" uploads a photo (JPEG, PNG or WebP), kept clean of the camera's hidden data; "Remove photo" goes back to the initials.
-5. The email changes with "Change": a code arrives at the new address and, once typed, that one becomes the one to sign in with; the old one gets a notice of the change.
+5. The email changes with "Change": a code arrives at the new address and, once typed, that one becomes the one to sign in with and the page says so ("Your email is now …", even when the profile already shows the new address before the answer, saas#366); the old one gets a notice of the change. Proving with its code the address it already had says "Your email is verified".
 In: first and last name, the photo, or the new email and its code.
 Out: the profile changed, in the panel and in every business entered afterwards. Every account has its profile from the start, with nothing to fill in. The same is read and saved from any program with the person's session.
 If it fails: an empty first name is not saved ("Write your first name."); a photo that is no image or is too big says why and keeps the one there was; a new email that is not valid or that another account already uses is shown under the field, with "Check the highlighted details." on top until it is corrected; a network failure, "We could not reach ERPlora…" and nothing changes. The billing details are not here: they belong to **Billing**.
