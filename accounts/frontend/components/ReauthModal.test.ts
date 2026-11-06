@@ -2,8 +2,13 @@
 // password, the password (allauth.headless `auth/reauthenticate`); with the authenticator, its code
 // (`auth/2fa/reauthenticate`); an account that only signs in with Google signs in with Google again (a form POST
 // to allauth.headless's provider redirect that comes back to this page).
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Window } from 'happy-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';
+import { parse } from 'vue/compiler-sfc';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
@@ -36,8 +41,6 @@ describe('ReauthModal', () => {
   it('asks for the password, as a dialog named after what it asks', async () => {
     const s = await setup({ flows: ['reauthenticate'], providers: [] });
     expect(s.q('reauth-modal')?.getAttribute('aria-label')).toBe("Confirm it's you");
-    // Its own backdrop and shadow when it opens over another dialog (Ionic strips a second modal's).
-    expect(s.q('reauth-modal')?.classList.contains('ep-reauth-modal')).toBe(true);
     expect(s.q('reauth-modal')?.textContent).toContain('enter your password again');
     expect(ionProps(s.q('reauth-password'), 'type', 'mode', 'fill', 'autocomplete')).toEqual({
       type: 'password',
@@ -135,5 +138,57 @@ describe('ReauthModal', () => {
     const s = await mountPanel(Host, { locale: 'es' });
     await flush();
     expect(s.q('reauth-modal')?.getAttribute('aria-label')).toBe('Confirma que eres tú');
+  });
+});
+
+// It opens over the dialog that asked for it (a new key, ACCOUNTS-F31; a new email, ACCOUNTS-F21), and Ionic drops the
+// backdrop and the shadow of a modal opened over another one (`ion-modal.modal-default.show-modal ~
+// ion-modal.modal-default`, its core.css). FormModal keeps both since ERPlora/ui#112, 0.4 in light and 0.6 in dark. A rule
+// of this dialog's own said 0.4 in dark too, as specific as FormModal's, so which one won hung on the order the bundle
+// loaded them (saas#379). One rule, FormModal's.
+describe('ReauthModal over the dialog that asked for it (saas#379)', () => {
+  const HERE = dirname(fileURLToPath(import.meta.url));
+  /** The rules of a single-file component that reach outside it (its `<style>` blocks without `scoped`). */
+  const unscoped = (file: string): string =>
+    parse(readFileSync(file, 'utf8'))
+      .descriptor.styles.filter((style) => !style.scoped)
+      .map((style) => style.content)
+      .join('\n');
+  const FORM_MODAL = unscoped(join(HERE, '../../../packages/ui/src/components/FormModal/FormModal.vue'));
+  const OWN = unscoped(join(HERE, 'ReauthModal.vue'));
+  const IONIC = readFileSync(join(HERE, '../../../node_modules/@ionic/vue/css/core.css'), 'utf8');
+  const SHADOW = '0 18px 50px rgba(17, 24, 39, 0.18)';
+
+  /** The dialog as the panel renders it, presented after the open one that asked for it, read with FormModal's
+   *  stylesheet, then its own, then Ionic's: what wins has to win by what it says, not by coming last. */
+  async function over(dark: boolean) {
+    const s = await setup({ flows: ['reauthenticate'], providers: [] });
+    const rendered = s.q('reauth-modal');
+    if (!rendered) throw new Error('the dialog is not there');
+    const win = new Window({ width: 1280, height: 800 });
+    if (dark) win.document.documentElement.classList.add('ion-palette-dark');
+    win.document.head.innerHTML = `<style>:root { --ep-shadow-modal: ${SHADOW}; }</style><style>${FORM_MODAL}</style><style>${OWN}</style><style>${IONIC}</style>`;
+    win.document.body.innerHTML = `<ion-app>
+      <ion-modal class="ios modal-default show-modal" data-testid="asked"></ion-modal>
+      <ion-modal class="${rendered.className} ios modal-default show-modal" data-size="${rendered.dataset.size}" data-testid="front"></ion-modal>
+    </ion-app>`;
+    const front = win.document.querySelector('[data-testid=front]');
+    if (!front) throw new Error('the dialog is not in the window');
+    const style = win.getComputedStyle(front);
+    const read = { backdrop: style.getPropertyValue('--backdrop-opacity'), shadow: style.getPropertyValue('--box-shadow') };
+    await win.happyDOM.close();
+    return read;
+  }
+
+  it('dims the dialog behind and keeps its shadow, as FormModal does over any window', async () => {
+    expect(await over(false)).toEqual({ backdrop: '0.4', shadow: SHADOW });
+  });
+
+  it('dark: the dialog behind as deep as FormModal says, 0.6 (UX audit U-90)', async () => {
+    expect(await over(true)).toEqual({ backdrop: '0.6', shadow: SHADOW });
+  });
+
+  it('has no rule of its own for its window: FormModal is the only one', () => {
+    expect(OWN).not.toMatch(/ion-modal/);
   });
 });
