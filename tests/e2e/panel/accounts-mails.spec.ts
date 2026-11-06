@@ -13,19 +13,14 @@ import { fileURLToPath } from 'node:url';
 import { type Page } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
-import { djangoPrint, expect, settled, shot, sidewaysScroll, signIn, test } from './fixtures';
+import { captureAtEverySize, djangoPrint, expect, MAIL_LOGO_URL, MAILING, onlyTheMailLogo, settled, signIn, test } from './fixtures';
 import { PANEL_MAIL_DIR, PANEL_URL } from './project';
 
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-5-ACCOUNTS-F46');
+
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const LOGO_URL = 'https://erplora.com/static/public/img/logo.png';
-const LOGO_FILE = resolve(SAAS_DIR, 'public', 'static', 'public', 'img', 'logo.png');
 const PREFIX = 'e2e-acc5m-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 
 const BOOT = 'import django,os;os.environ.setdefault("DJANGO_SETTINGS_MODULE","config.settings");django.setup()';
 
@@ -33,11 +28,7 @@ const BOOT = 'import django,os;os.environ.setdefault("DJANGO_SETTINGS_MODULE","c
 function djangoMailing(code: string): string {
   return execFileSync('uv', ['run', 'python', '-c', `${BOOT}\n${code}`], {
     cwd: SAAS_DIR,
-    env: {
-      ...djangoEnv(true),
-      EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
-      EMAIL_FILE_PATH: PANEL_MAIL_DIR,
-    },
+    env: { ...djangoEnv(true), ...MAILING },
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   }).trim();
@@ -91,36 +82,25 @@ function createAccount(email: string, language: string): { email: string; passwo
   return { email, password: PASSWORD };
 }
 
-/** The HTML part of `mail` at every size: branded, every line of its text there, its shot. */
+/** The HTML part of `mail` at every size (`captureAtEverySize`): branded, every line of its text there, its shot. */
 async function paint(page: Page, key: string, mail: ReadMail, language: string): Promise<void> {
   expect(mail.type, `${key} is text and HTML`).toBe('multipart/alternative');
   expect(mail.parts, `${key} parts`).toEqual(['text/plain', 'text/html']);
-  const fetched: string[] = [];
-  await page.route('**/*', (route) => {
-    fetched.push(route.request().url());
-    return route.abort();
-  });
-  await page.route(LOGO_URL, (route) => {
-    fetched.push(route.request().url());
-    return route.fulfill({ path: LOGO_FILE, contentType: 'image/png' });
-  });
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
+  const fetched = await onlyTheMailLogo(page);
+  await atEverySize(page, key, async (size) => {
     await page.setContent(mail.html, { waitUntil: 'load' });
     await settled(page);
     await expect(page.locator('html')).toHaveAttribute('lang', language);
     const logo = page.locator('img[alt="ERPlora"]');
     await expect(logo).toBeVisible();
-    expect(await logo.evaluate((image: HTMLImageElement) => image.naturalWidth), `${key} logo at ${size.name}`).toBeGreaterThan(0);
+    expect(await logo.evaluate((image: HTMLImageElement) => image.naturalWidth), `${key} logo at ${size.width}`).toBeGreaterThan(0);
     const shown = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
     for (const line of mail.text.split('\n')) {
       const words = line.replace(/^- /, '').replace(/\s+/g, ' ').trim();
-      if (words) expect(shown, `${key} at ${size.name} shows «${words}»`).toContain(words);
+      if (words) expect(shown, `${key} at ${size.width} shows «${words}»`).toContain(words);
     }
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-ACCOUNTS-5-ACCOUNTS-F46-${key}-${size.name}`), fullPage: true });
-  }
-  expect([...new Set(fetched)], `${key} fetches only the logo`).toEqual([LOGO_URL]);
+  });
+  expect([...new Set(fetched)], `${key} fetches only the logo`).toEqual([MAIL_LOGO_URL]);
   await page.unrouteAll();
 }
 

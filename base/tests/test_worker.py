@@ -171,17 +171,20 @@ def test_the_next_round_is_the_next_quarter_of_an_hour_after_now(now, expected):
 
 
 @pytest.mark.parametrize(
-    ("due_in", "pushed", "expected"),
+    ("now", "due_in", "pushed", "expected"),
     [
-        (None, 0, 480.0),  # nothing waits: until the next round
-        (42.0, 0, 42.0),  # a retry in 42 s: then
-        (-3.0, 1, 0.0),  # due already, after a pass that pushed (its budget ran out): again at once
-        (-3.0, 0, worker.IDLE_FLOOR),  # due already, yet the pass took nothing (another holds it): soon, not at once
+        (TEN_O_SEVEN, None, 0, 480.0),  # nothing waits: until the next round
+        (TEN_O_SEVEN, 42.0, 0, 42.0),  # a retry in 42 s: then
+        (TEN_O_SEVEN, -3.0, 1, 0.0),  # due already, after a pass that pushed (its budget ran out): again at once
+        # due already, yet the pass took nothing (another holds it): soon, not at once
+        (TEN_O_SEVEN, -3.0, 0, worker.IDLE_FLOOR),
+        # the same, 0.862 s before the round: the round comes first, the floor never puts it off (saas#338)
+        (TEN_O_SEVEN.replace(minute=14, second=59, microsecond=138_000), -3.0, 0, 0.862),
     ],
 )
-def test_it_sleeps_until_the_next_delivery_due_or_the_next_round(monkeypatch, due_in, pushed, expected):
-    clock, stop = Clock(TEN_O_SEVEN), threading.Event()
-    due = None if due_in is None else TEN_O_SEVEN + timedelta(seconds=due_in)
+def test_it_sleeps_until_the_next_delivery_due_or_the_next_round(monkeypatch, now, due_in, pushed, expected):
+    clock, stop = Clock(now), threading.Event()
+    due = None if due_in is None else now + timedelta(seconds=due_in)
     monkeypatch.setattr(gateway, "deliver_pass", lambda stop=None: {**NOTHING, "delivered": pushed})
     monkeypatch.setattr(queries, "delivery_next_due", lambda ctx, data: NextDueOut(at=due))
     monkeypatch.setattr(worker, "PERIODIC", ())
@@ -385,6 +388,9 @@ def test_it_does_not_push_before_the_retry_time_and_pushes_once_it_came(
     number, hub_double, keep_the_connection, monkeypatch
 ):
     monkeypatch.setattr(worker, "PERIODIC", ())
+    # On the wall clock (the claim reads it: the retry has to come for real), with the round 15 minutes away whatever
+    # it reads: 0.5 s before a quarter, the worker would wake for that round before the retry is due (saas#338).
+    monkeypatch.setattr(worker, "next_round", lambda now: now + worker.ROUND)
     hub_double.answer("POST", INBOUND, 200, {"created": True})
     ingest(messages(text("wamid.1")))
     Delivery.objects.update(attempts=1, next_attempt_at=timezone.now() + timedelta(seconds=0.5))
@@ -396,7 +402,8 @@ def test_it_does_not_push_before_the_retry_time_and_pushes_once_it_came(
         if len(seen) == 2:
             stop.set()
             return False
-        return Listener.wait(ear, timeout)
+        # A second at most: a worker that sleeps past the retry fails the asserts below, not after its whole round.
+        return Listener.wait(ear, min(timeout, 1.0))
 
     ear.wait = wait
 
@@ -414,11 +421,15 @@ def test_while_another_run_holds_the_lock_it_looks_again_in_a_few_seconds_not_at
 ):
     monkeypatch.setattr(worker, "PERIODIC", ())
     ingest(messages(text("wamid.1")))
+    # Due on the worker's own clock, 8 minutes before its round, and on the wall clock too (a past day: the pass would
+    # push it, were the lock free). Never the wall clock as the worker's: read 0.86 s before a quarter, the worker
+    # wakes for that round instead of the floor (saas#338).
+    Delivery.objects.update(next_attempt_at=TEN_O_SEVEN)
     other_session.execute(f"SELECT pg_advisory_lock({DELIVER_LOCK})")
     stop = threading.Event()
     ear = Ear(stop, waits=1)
     try:
-        worker.run(stop, listener=ear)
+        worker.run(stop, listener=ear, clock=Clock(TEN_O_SEVEN))
     finally:
         other_session.execute(f"SELECT pg_advisory_unlock({DELIVER_LOCK})")
 

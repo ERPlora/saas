@@ -9,29 +9,27 @@
 import { type Page } from '@playwright/test';
 
 import {
+  captureAtEverySize,
   djangoPrint,
   expect,
   sessionOf,
   settled,
   shot,
-  sidewaysScroll,
   signIn,
   signInThroughPage,
   submitSignInForm,
   test,
+  VIEWPORTS,
   waitForMailCode,
   waitForPasswordResetLink,
   watchPageErrors,
 } from './fixtures';
 import { PANEL_URL } from './project';
 
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-1');
+
 const PREFIX = 'e2e-acc1-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 
 /** A fresh address of this spec, never used before (a throttle or a code of an earlier run never leaks in). */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
@@ -83,18 +81,6 @@ function todaysVersions(): { kept: string; termsShown: string } {
     ].join('\n'),
   ).split('\n');
   return { kept, termsShown };
-}
-
-/** `ready` at each size: no sideways scroll and a capture `APP-ACCOUNTS-1-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-ACCOUNTS-1-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
 }
 
 /** The user menu (`UserMenuPopover`): in the side menu, a drawer behind the topbar's menu button below `lg`. */
@@ -397,13 +383,13 @@ test('ACCOUNTS-G93: the user menu reads whole at every size — «Theme» on one
   await signIn(page.request, { email, password: PASSWORD });
 
   // The spec's three sizes and the two others of the fleet's sweep (a short phone, a portrait tablet).
-  const sizes = [...SIZES, { name: '375', width: 375, height: 667 }, { name: '820', width: 820, height: 1180 }];
+  const sizes = [...VIEWPORTS, { width: 375, height: 667 }, { width: 820, height: 1180 }];
   for (const size of sizes) {
     await page.setViewportSize({ width: size.width, height: size.height });
     await page.goto('/dashboard/account/profile');
     await openUserMenuPresented(page);
     const menu = await measureUserMenu(page);
-    const at = `${size.name}: ${JSON.stringify(menu)}`;
+    const at = `${size.width}: ${JSON.stringify(menu)}`;
     console.log(`user menu at ${at}`);
 
     expect.soft(menu.themeLabel.lines, `«Theme» on one line at ${at}`).toBe(1);

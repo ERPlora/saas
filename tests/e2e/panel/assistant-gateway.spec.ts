@@ -16,27 +16,18 @@
 // flow: ASSISTANT-F22 — asked to read an answer aloud, the door says it cannot, and the caller uses the device's voice.
 // flow: ASSISTANT-F23 — the report of an answer, mailed once.
 // flow: ASSISTANT-F24 — the staff see what each business spent and what it cost, without changing it.
-import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { createHmac } from 'node:crypto';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-import type { APIRequestContext, APIResponse, Page } from '@playwright/test';
+import type { APIRequestContext, APIResponse } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
-import { STACK } from '../stack';
-import { expect, internalSecret, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
+import { FAKE_PROVIDER_URL, startFakeProvider } from './assistant-chat';
+import { captureAtEverySize, expect, internalSecret, runSeed, signIn, test, watchPageErrors } from './fixtures';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const atEverySize = captureAtEverySize('APP-ASSISTANT-2');
+
 const PASSWORD = process.env.QA_PANEL_PASSWORD ?? 'e2e-panel';
 const ADMIN = { email: 'e2e-assistant-admin@example.com', password: PASSWORD };
-const PROVIDER_PORT = STACK.aiProviderPort;
-const PROVIDER_URL = `http://127.0.0.1:${PROVIDER_PORT}/v1`;
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 
 interface Gateway {
   limit: number;
@@ -50,13 +41,7 @@ let secret = '';
 
 /** `assistant_seed.py <action> <provider address>`: always from scratch; «gateway» says what it made. */
 function seed(action: 'clear' | 'gateway'): Gateway {
-  const out = execFileSync('uv', ['run', 'python', 'tests/e2e/panel/assistant_seed.py', action, PROVIDER_URL], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  const last = out.trim().split('\n').at(-1) ?? '';
+  const last = runSeed('assistant_seed.py', [action, FAKE_PROVIDER_URL]);
   return action === 'gateway' ? (JSON.parse(last) as Gateway) : ({} as Gateway);
 }
 
@@ -97,23 +82,7 @@ const turn = (hub: string, text = 'How many appointments do I have today?') => (
 
 test.beforeAll(async () => {
   secret = internalSecret();
-  provider = spawn('uv', ['run', 'python', '-m', 'assistant.tests.fake_provider', '--port', String(PROVIDER_PORT)], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'ignore',
-  });
-  await expect
-    .poll(
-      async () => {
-        try {
-          return (await fetch(`${PROVIDER_URL}/models`)).status;
-        } catch {
-          return 0;
-        }
-      },
-      { timeout: 30_000, message: `the fake provider on :${PROVIDER_PORT}` },
-    )
-    .toBe(200);
+  provider = await startFakeProvider();
 });
 
 test.afterAll(() => {
@@ -278,18 +247,6 @@ test('ASSISTANT-F23: the report of an answer reaches support once', async ({ req
   expect(await first.json()).toEqual({ sent: true, duplicate: false });
   expect(await again.json()).toEqual({ sent: false, duplicate: true });
 });
-
-/** `ready` at each size: no sideways scroll, a capture `APP-ASSISTANT-2-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-ASSISTANT-2-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
 
 /** A turn of the bar and one of the demo, so «Assistant usage records» has a business, a spent one and a demo. */
 async function spend(request: APIRequestContext, made: Gateway): Promise<void> {

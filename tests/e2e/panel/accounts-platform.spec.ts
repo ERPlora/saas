@@ -10,26 +10,21 @@
 import { type Browser, type Page } from '@playwright/test';
 
 import {
+  captureAtEverySize,
   closeMenu,
   djangoPrint,
   expect,
   openMenu,
-  settled,
-  shot,
-  sidewaysScroll,
   signIn,
   signInThroughPage,
   test,
   watchPageErrors,
 } from './fixtures';
 
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-5');
+
 const PREFIX = 'e2e-acc5-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 const SITE_SETTINGS = '/admin/base/sitesettings/';
 
 function removeAccounts(): void {
@@ -56,19 +51,6 @@ function createAccount(name: string, { staff = false, language = 'en' } = {}): {
 /** The switch as the database has it, for a run that died half-way: off. */
 function maintenanceOffInTheDatabase(): void {
   djangoPrint('from base.models import SiteSettings\nSiteSettings.objects.update(maintenance_mode=False, maintenance_message_en="", maintenance_message_es="")');
-}
-
-/** Each size: the page as `ready` leaves it, no sideways scroll, and its shot. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>, after?: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-ACCOUNTS-5-${key}-${size.name}`), fullPage: true });
-    await after?.();
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
 }
 
 /** A visitor of its own, without a session, in `locale`. */
@@ -109,7 +91,7 @@ test('ACCOUNTS-G106 · G73 · the menu opens Businesses, Store, Billing and Acco
       await expect(page.locator('ion-menu .nav-item')).toHaveText(['Businesses', 'Store', 'Billing', 'Account']);
       await expect(page.locator('ion-menu .nav-item[aria-current="page"]')).toHaveText('Businesses');
     },
-    () => closeMenu(page),
+    { after: () => closeMenu(page) },
   );
 
   for (const [label, path] of [
@@ -138,7 +120,7 @@ test('ACCOUNTS-G106 · the menu speaks Spanish', async ({ page }) => {
       await openMenu(page);
       await expect(page.locator('ion-menu .nav-item')).toHaveText(['Negocios', 'Tienda', 'Facturación', 'Cuenta']);
     },
-    () => closeMenu(page),
+    { after: () => closeMenu(page) },
   );
   expect(errors).toEqual([]);
 });

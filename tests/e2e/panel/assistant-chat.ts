@@ -3,8 +3,9 @@
 // question typed and followed to its end with its cards decided, and what the panel showed for it; and the seed both
 // start from: the real providers, the account «QA Base» and the documentation index (`assistant_seed.py real`). And for
 // the specs on the e2e's own model (assistant-provider.ts): its server and seed for a spec's file (`localAssistant`), the
-// panel open for an account (`openPanel`) and a question typed in the composer (`ask`).
-import { execFileSync } from 'node:child_process';
+// panel open for an account (`openPanel`) and a question typed in the composer (`ask`). And for the staff's specs
+// (assistant-admin.spec.ts, assistant-gateway.spec.ts): the Python double of a provider (`startFakeProvider`).
+import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,6 +15,7 @@ import { type Card, summarizeTurns, type Turns } from '../assistant-battery';
 import { redactedError } from '../assistant-probes';
 import { type Provider, startProvider } from '../assistant-provider';
 import { djangoEnv } from '../django-env';
+import { STACK } from '../stack';
 import { expect, signIn, test } from './fixtures';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -31,6 +33,36 @@ export const SIZES = [
 export const TURN_MS = 240_000;
 /** How long nothing moves before a turn counts as over. */
 const QUIET_MS = 2_500;
+
+/** The address of `assistant.tests.fake_provider`, on its own port in the run's block (stack.ts): +8 is reCAPTCHA's double. */
+export const FAKE_PROVIDER_URL = `http://127.0.0.1:${STACK.aiProviderPort}/v1`;
+
+/** `assistant.tests.fake_provider` started on its port and answering its models (stopped again if it never does). */
+export async function startFakeProvider(): Promise<ChildProcess> {
+  const provider = spawn('uv', ['run', 'python', '-m', 'assistant.tests.fake_provider', '--port', String(STACK.aiProviderPort)], {
+    cwd: SAAS_DIR,
+    env: djangoEnv(true),
+    stdio: 'ignore',
+  });
+  try {
+    await expect
+      .poll(
+        async () => {
+          try {
+            return (await fetch(`${FAKE_PROVIDER_URL}/models`)).status;
+          } catch {
+            return 0;
+          }
+        },
+        { timeout: 30_000, message: `the fake provider on :${STACK.aiProviderPort}` },
+      )
+      .toBe(200);
+  } catch (error) {
+    provider.kill();
+    throw error;
+  }
+  return provider;
+}
 
 /** `uv run <args>` from the SaaS against the run's database, its output (the keys stay in the seed's environment);
  *  a failure's message (with the command's output) reaches the console without the real keys. */

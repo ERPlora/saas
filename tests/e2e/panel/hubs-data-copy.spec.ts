@@ -9,18 +9,13 @@
 // attachment, and 503 to the rest. Accounts of this spec: `e2e-copy-…@example.com`.
 import { createServer, type Server } from 'node:http';
 
-import { type Page } from '@playwright/test';
-
-import { djangoPrint, expect, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
+import { captureAtEverySize, djangoPrint, expect, removeAccountsOf, settled, signIn, test, watchPageErrors } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
+
+const atEverySize = captureAtEverySize('HUBS-F18');
 
 const PREFIX = 'e2e-copy-';
 const PASSWORD = 'Masa-madre-y-centeno-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 const DUMPS = /^\/internal\/hubs\/([0-9a-f-]{36})\/dumps$/;
 const FILES = /^\/files\/([^?]+)/;
 
@@ -62,17 +57,6 @@ function startHub(): Promise<Server> {
   });
 }
 
-function removeOwnRows(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}").delete()`,
-    ].join('\n'),
-  );
-}
-
 /** A fresh owner (address proven) of a business called `name` in `status`; its email and the business's id. */
 function ownerOf(name: string, status: 'deleting' | 'active'): { email: string; id: string } {
   const email = `${PREFIX}${status}-${Date.now()}@example.com`;
@@ -109,20 +93,8 @@ function copyOf(id: string, kind: 'offboarding' | 'reset', when: string, bytes: 
   return { id: `${id.replaceAll('-', '')}/${stamp}-${kind}.dump`, kind, created_at: when, bytes };
 }
 
-/** `ready` at each size: no sideways scroll and a capture `HUBS-F18-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`HUBS-F18-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
-
 test.beforeAll(async () => {
-  removeOwnRows();
+  removeAccountsOf(PREFIX);
   hub = await startHub();
 });
 test.afterAll(async () => {
@@ -130,7 +102,7 @@ test.afterAll(async () => {
     hub.closeAllConnections();
     hub.close(() => closed());
   });
-  removeOwnRows();
+  removeAccountsOf(PREFIX);
 });
 
 test('HUBS-F18: the owner of a deleted business downloads the copy of its data, in English and in Spanish', async ({ page }) => {

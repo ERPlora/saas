@@ -4,28 +4,15 @@
 // contract's body. The spec plays Meta (it signs with the e2e app's secret, project.ts `WHATSAPP_E2E`) and the Hub
 // (`startHubDouble`); Meta itself is never called. No screen: erplora.com has no WhatsApp page (PLAN-SAAS block 12).
 // The cross e2e with the real Hub's inbox (Meta → erplora.com → the Hub's «WhatsApp inbox») is whatsapp-hub.spec.ts.
-import { execFileSync } from 'node:child_process';
 import { createHmac } from 'node:crypto';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-import { djangoEnv } from '../django-env';
-import { expect, type HubCall, startHubDouble, test } from './fixtures';
+import { expect, type HubCall, runSeed, startHubDouble, test } from './fixtures';
 import { WHATSAPP_E2E } from './project';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const WEBHOOK = '/webhooks/whatsapp/';
 /** whatsapp_seed.py's business and number. */
 const SLUG = 'e2e-whatsapp-bar';
 const NUMBER_ID = '880000000000001';
-
-function seedWhatsapp(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/whatsapp_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
-}
 
 /** A text message of a customer, as Meta's webhook carries it. */
 function customerWrites(wamid: string, text: string): string {
@@ -57,8 +44,8 @@ function metaSignature(body: string, secret: string = WHATSAPP_E2E.appSecret): s
 }
 
 test.describe('WhatsApp: Meta’s webhook reaches the Hub', () => {
-  test.beforeAll(() => seedWhatsapp('seed'));
-  test.afterAll(() => seedWhatsapp('clear'));
+  test.beforeAll(() => runSeed('whatsapp_seed.py', 'seed'));
+  test.afterAll(() => runSeed('whatsapp_seed.py', 'clear'));
 
   test('WHATSAPP-G13: Meta confirms the address with our token, never with another', async ({ request }) => {
     const ok = await request.get(WEBHOOK, {

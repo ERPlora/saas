@@ -7,15 +7,12 @@
 // Accounts of this spec: `e2e-pass-…@example.com`, removed before and after.
 import { type Browser, type Page } from '@playwright/test';
 
-import { djangoPrint, expect, settled, shot, sidewaysScroll, signInThroughPage, test, watchPageErrors } from './fixtures';
+import { captureAtEverySize, djangoPrint, expect, signInThroughPage, test, watchPageErrors } from './fixtures';
+
+const atEverySize = captureAtEverySize('ACCOUNTS-F29');
 
 const PREFIX = 'e2e-pass-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 
 /** A fresh address of this spec, never used before. */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
@@ -79,18 +76,6 @@ const planOf = (id: string) => `/dashboard/store/plans?business=${id}`;
 async function freshBrowser(browser: Browser, baseURL: string, locale = 'en-US'): Promise<Page> {
   const context = await browser.newContext({ baseURL, locale, extraHTTPHeaders: { 'Accept-Language': locale } });
   return context.newPage();
-}
-
-/** Each size: the page as `ready` leaves it, no sideways scroll, and its full-page shot. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`ACCOUNTS-F29-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
 }
 
 test.beforeAll(() => removeAccounts());
