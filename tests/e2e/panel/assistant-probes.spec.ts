@@ -39,9 +39,8 @@ import {
   redact,
   renderProbeReport,
 } from '../assistant-probes';
-import { AssistantChat, forgetRealAssistant, type RealSeed, seedRealAssistant, TURN_MS, uvRun } from './assistant-chat';
-import { apiPost, djangoPrintWarm, expect, signIn, test } from './fixtures';
-import { PANEL_URL } from './project';
+import { type AssistantChat, forgetRealAssistant, qaChat, type RealSeed, seedRealAssistant, TURN_MS, uvRun } from './assistant-chat';
+import { apiPost, djangoPrintWarm, expect, test } from './fixtures';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SAAS_DIR = resolve(HERE, '..', '..', '..');
@@ -213,10 +212,7 @@ test.beforeAll(async ({ browser }) => {
   // Every catalogue a probe reads (`manage.py export_assistant_catalog`, a Django boot each): here, not in a probe.
   for (const language of ['en', 'es']) catalog(language, 'web');
   for (const { probe } of PROBES) catalog(probe.language, probe.surface);
-  context = await browser.newContext({ baseURL: PANEL_URL, locale: 'es-ES', viewport: { width: 1440, height: 900 } });
-  page = await context.newPage();
-  chat = new AssistantChat(page);
-  await signIn(page.request, OWNER);
+  ({ context, page, chat } = await qaChat(browser, OWNER));
 });
 
 test.afterAll(async () => {

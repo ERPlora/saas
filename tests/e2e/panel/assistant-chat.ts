@@ -9,14 +9,15 @@ import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { Locator, Page } from '@playwright/test';
+import type { Browser, BrowserContext, Locator, Page } from '@playwright/test';
 
 import { type Card, summarizeTurns, type Turns } from '../assistant-battery';
 import { redactedError } from '../assistant-probes';
 import { type Provider, startProvider } from '../assistant-provider';
 import { djangoEnv } from '../django-env';
 import { STACK } from '../stack';
-import { expect, runSeedWarm, signIn, test, VIEWPORTS, warmDjango } from './fixtures';
+import { type Credentials, expect, runSeedWarm, signIn, test, VIEWPORTS, warmDjango } from './fixtures';
+import { PANEL_URL } from './project';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
@@ -128,6 +129,16 @@ export function localAssistant(port = 0): {
     await provider?.close();
   });
   return { provider: () => provider!, seed };
+}
+
+/** The page of the QA specs with the real model (assistant-battery, assistant-probes): a context of its own at 1440 in
+ *  Spanish, signed in as `account`, and its chat. */
+export async function qaChat(browser: Browser, account: Credentials): Promise<{ context: BrowserContext; page: Page; chat: AssistantChat }> {
+  const context = await browser.newContext({ baseURL: PANEL_URL, locale: 'es-ES', viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  const chat = new AssistantChat(page);
+  await signIn(page.request, account);
+  return { context, page, chat };
 }
 
 /** `OWNER` signed in on the businesses at 1440, with the assistant's panel open: that panel. */
