@@ -20,7 +20,6 @@ import {
   expect,
   readyBusinessOn,
   removeAccountsWarm,
-  runSeedWarm,
   signIn,
   signInAs,
   test,
@@ -124,12 +123,10 @@ function atEverySize(
 // type HUBS-F01 picks is named by the preparation's step).
 test.beforeAll(async () => {
   await removeAccountsWarm(PREFIX);
-  await runSeedWarm('panel_seed.py', 'seed');
   await djangoPrintWarm('from django.core.management import call_command\ncall_command("seed_taxonomy")');
 });
 test.afterAll(async () => {
   await removeAccountsWarm(PREFIX);
-  await runSeedWarm('panel_seed.py', 'clear');
 });
 
 for (const { language, locale } of LANGUAGES) {

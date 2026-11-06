@@ -1099,3 +1099,39 @@ export async function realHubPrint(code: string): Promise<string> {
   });
   return stdout.trim().split('\n').pop() ?? '';
 }
+
+// ── The Hub stack's databases, read by a spec (saas#370) ──────────────────────────────────────
+
+/** A business of the Hub's stack, as `base_hub.slug` names it (`a`, `b`: its local hubs). */
+const HUB_SLUG = /^[a-z0-9][a-z0-9-]*$/;
+const HUB_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/**
+ * The rows `query` reads in the Hub's stack on `port` (whatsapp-hub.spec.ts's header; the Postgres of the root's
+ * compose.yaml), trimmed, by `psql` in that container without blocking this process: in its control database
+ * (`hub_e2e_<port>`, the registry `base_hub`), or with `hub` in that business's own database (its `db_name` there),
+ * where every app's tables live. A failing query rejects with what `psql` said.
+ */
+export async function hubStackSql(port: number, query: string, hub?: string): Promise<string> {
+  let database = `hub_e2e_${port}`;
+  if (hub !== undefined) {
+    if (!HUB_SLUG.test(hub)) throw new Error(`hubStackSql: ${JSON.stringify(hub)} is no slug of a business`);
+    database = await hubStackSql(port, `select db_name from base_hub where slug = '${hub}'`);
+    expect(database, `the database of ${hub} in hub_e2e_${port}`).toMatch(new RegExp(`^hub_e2e_${port}_[0-9a-f]+$`));
+  }
+  const { stdout } = await execFileAsync(
+    'docker',
+    ['compose', 'exec', '-T', 'postgres', 'psql', '-U', 'hub', '-d', database, '-At', '-c', query],
+    { cwd: resolve(SAAS_DIR, '..'), encoding: 'utf8' },
+  );
+  return stdout.trim();
+}
+
+/** The Hub's own ids of its local hubs `a` and `b` in its stack on `port`: two UUIDs, or the call fails saying so. */
+export async function hubStackIds(port: number): Promise<[string, string]> {
+  const rows = await hubStackSql(port, "select slug || '=' || id from base_hub where slug in ('a', 'b') order by slug");
+  const ids = Object.fromEntries(rows.split('\n').map((row) => row.split('=')));
+  const found: [string, string] = [ids.a, ids.b];
+  expect(found, `the ids of a and b in hub_e2e_${port}`).toEqual([expect.stringMatching(HUB_ID), expect.stringMatching(HUB_ID)]);
+  return found;
+}
