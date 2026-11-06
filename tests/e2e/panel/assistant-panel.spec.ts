@@ -208,7 +208,9 @@ for (const language of ['es', 'en'] as const) {
     // ASSISTANT-F29: the month's last message mailed the account, in its language, once: the refused third one
     // mails nothing more (at 1 of 2 there was no «messages left» mail: under 80 %).
     await waitForMail(OWNER.email, since, words.spentMail);
-    const mailed = (await readMailsSince({ dir: PANEL_MAIL_DIR, since })).filter((mail) => mail.to.includes(OWNER.email));
+    const mailed = (await readMailsSince({ dir: PANEL_MAIL_DIR, since })).filter(
+      (mail) => mail.writtenAt >= since && mail.to.includes(OWNER.email),
+    );
     expect(mailed.map((mail) => mail.subject)).toEqual([words.spentSubject]);
 
     // The same conversation at the three sizes: docked from 768 px, over a veil on a phone.
