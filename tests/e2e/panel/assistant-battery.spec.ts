@@ -34,7 +34,7 @@ import {
   type ReportMeta,
   verdictOf,
 } from '../assistant-battery';
-import { AssistantChat, seedRealAssistant, TURN_MS } from './assistant-chat';
+import { type AssistantChat, qaChat, seedRealAssistant, TURN_MS } from './assistant-chat';
 import { djangoPrint, expect, signIn, test } from './fixtures';
 import { PANEL_URL } from './project';
 
@@ -224,10 +224,7 @@ test.beforeAll(async ({ browser }) => {
   test.setTimeout(900_000);
   if (!REAL) return;
   seeded = seedOnce();
-  context = await browser.newContext({ baseURL: PANEL_URL, locale: 'es-ES', viewport: { width: 1440, height: 900 } });
-  page = await context.newPage();
-  chat = new AssistantChat(page);
-  await signIn(page.request, OWNER);
+  ({ context, page, chat } = await qaChat(browser, OWNER));
   await page.goto('/dashboard/businesses');
   await expect(page.getByText(BASE_BUSINESS).first()).toBeVisible();
   await chat.open();

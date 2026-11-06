@@ -11,7 +11,7 @@ import type { Locator, Page } from '@playwright/test';
 import { STACK } from '../stack';
 
 import { ask, DESKTOP_FIRST, localAssistant, openPanel } from './assistant-chat';
-import { djangoPrint, expect, settled, shot, sidewaysScroll, test, toast, waitForMail, watchPageErrors } from './fixtures';
+import { djangoPrintWarm, expect, settled, shot, sidewaysScroll, test, toast, waitForMail, watchPageErrors } from './fixtures';
 import { PANEL_MAIL_DIR } from './project';
 
 /** What support gets instead of an answer that may quote the web (assistant/services.py, `REPORT_WEB_ANSWER`). */
@@ -24,6 +24,13 @@ const GREETING_ANSWER = 'Hola, soy el asistente de prueba.';
 const THANKS = 'Gracias, hemos recibido tu denuncia.';
 
 const { seed } = localAssistant(STACK.aiProviderPort);
+
+/** Support's address (`SUPPORT_EMAIL`), read once, by the warm Django `localAssistant` started: on no test's clock. */
+let support = '';
+
+test.beforeAll(async () => {
+  support = await djangoPrintWarm('from django.conf import settings\nprint(settings.SUPPORT_EMAIL)');
+});
 
 /** Reports `answer` («It is wrong») and gives back what the chat sent. */
 async function report(page: Page, answer: Locator): Promise<{ message_id: string; answer: string; web?: unknown }> {
@@ -50,9 +57,8 @@ async function mailOf(support: string, since: number, id: string): Promise<strin
 test('a reported answer reaches support with its text only when its turn brought no pages of the web, also after a reload', async ({
   page,
 }) => {
-  seed('panel', 'es');
+  await seed('panel', 'es');
   const errors = watchPageErrors(page);
-  const support = djangoPrint('from django.conf import settings\nprint(settings.SUPPORT_EMAIL)');
   const panel = await openPanel(page);
   // Each answer's row: its bubble and, under it, «Report a problem».
   const answers = panel.getByTestId('assistant-answer');

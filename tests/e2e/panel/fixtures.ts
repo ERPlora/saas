@@ -1027,3 +1027,47 @@ export async function mailPartsOf(to: string, since: number, subject: string): P
   ].join('\n');
   return JSON.parse(await djangoPrintWarm(read)) as MailParts;
 }
+
+// ── A spec's seeds by the warm Django (saas#355) ──────────────────────────────────────────────
+
+/**
+ * `runSeed` for inside a test (or a `beforeEach`): `tests/e2e/panel/<script> <args…>` run as its command line runs it
+ * (as `__main__`, with its `sys.argv`) by this worker's warm Django for `env` (`warmDjango`), so the test pays no Django
+ * boot and this process never blocks (saas#355); the last line it printed. A seed that exits with a reason rejects.
+ */
+export async function runSeedWarm(
+  script: string,
+  args: string | readonly string[],
+  env: Readonly<Record<string, string>> = {},
+): Promise<string> {
+  const argv = JSON.stringify([`tests/e2e/panel/${script}`, ...[args].flat()]);
+  const out = await djangoPrintWarm(
+    [
+      'import runpy, sys',
+      'argv, path = sys.argv, list(sys.path)',
+      `sys.argv = ${argv}`,
+      'try:',
+      '    runpy.run_path(sys.argv[0], run_name="__main__")',
+      'except SystemExit as exited:',
+      '    if exited.code not in (None, 0): raise',
+      'finally:',
+      '    sys.argv, sys.path[:] = argv, path',
+    ].join('\n'),
+    env,
+  );
+  return out.split('\n').at(-1) ?? '';
+}
+
+/**
+ * `seededAndSignedIn` with every test's seed run by the warm Django (`runSeedWarm`): every test of the spec, or of the
+ * `describe` it is called in, starts from the rows of `script` seeded afresh, its page signed in as `account` through
+ * the API; once the last test has run, the rows go. The warm Django starts in a `beforeAll`, on no test's clock.
+ */
+export function seededAndSignedInWarm(script: string, account: Credentials): void {
+  test.beforeAll(() => warmDjango());
+  test.beforeEach(async ({ page }) => {
+    await runSeedWarm(script, 'seed');
+    await signIn(page.request, account);
+  });
+  test.afterAll(() => runSeedWarm(script, 'clear'));
+}

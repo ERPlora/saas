@@ -8,9 +8,22 @@
 // `@erplora/ui` reloads the page (ui#25), which ends at /launch. Before the fix, its list just lost a row and stayed.
 // At the three sizes of the migration (390×844, 834×1112, 1440×900). Accounts of this spec: `e2e-liveend-…@example.com`,
 // removed before and after.
-import { type Browser, type Page } from '@playwright/test';
+import { type Browser, type BrowserContext, type Page } from '@playwright/test';
 
-import { VIEWPORTS, djangoPrint, expect, sessionOf, settled, shot, signIn, test, watchPageErrors } from './fixtures';
+import {
+  createAccountWarm,
+  type Credentials,
+  expect,
+  removeAccountsWarm,
+  sessionOf,
+  settled,
+  shot,
+  signIn,
+  test,
+  type Viewport,
+  VIEWPORTS,
+  watchPageErrors,
+} from './fixtures';
 import { PANEL_URL } from './project';
 
 const PREFIX = 'e2e-liveend-';
@@ -21,35 +34,41 @@ const NEW_PASSWORD = 'Pan-de-espelta-y-sal-2026';
 /** Account → Security, left for the sign-in that brings it back there. */
 const LEFT_FOR_SIGN_IN = /\/launch\?next=(%2F|\/)dashboard(%2F|\/)account(%2F|\/)security$/;
 
-function removeAccounts(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
-
-/** An account with its address proven, as one that signed in before. */
-function createAccount(name: string): { email: string; password: string } {
-  const email = `${PREFIX}${name}-${Date.now()}@example.com`;
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-  return { email, password: PASSWORD };
-}
+/** An account with its address proven, as one that signed in before (by the warm Django: no boot inside the test). */
+const createAccount = (name: string): Promise<Credentials> => createAccountWarm(`${PREFIX}${name}-${Date.now()}@example.com`, PASSWORD);
 
 async function newContextOn(browser: Browser, baseURL: string) {
   return browser.newContext({ baseURL, locale: 'en-US' });
 }
 
-test.beforeAll(removeAccounts);
-test.afterAll(removeAccounts);
+/**
+ * A new account (`createAccount(name)`) signed in on `page` at `size` and in another browser, `page` on Account →
+ * Security listing both sessions: how each test of a session ended from another browser starts. That browser, to close.
+ */
+async function signedInTwice(
+  page: Page,
+  browser: Browser,
+  size: Viewport,
+  name: string,
+): Promise<{ account: Credentials; other: BrowserContext }> {
+  const account = await createAccount(name);
+  await page.setViewportSize(size);
+  await signIn(page.request, account);
+  const other = await newContextOn(browser, PANEL_URL);
+  try {
+    await signIn(other.request, account);
+    await page.goto('/dashboard/account/security');
+    await expect(page.getByTestId('sessions-row')).toHaveCount(2);
+  } catch (error) {
+    await other.close();
+    throw error;
+  }
+  return { account, other };
+}
+
+// The first call boots this worker's warm Django: here, on no test's clock.
+test.beforeAll(() => removeAccountsWarm(PREFIX));
+test.afterAll(() => removeAccountsWarm(PREFIX));
 
 for (const size of VIEWPORTS) {
   test(`saas-live-session: a tab whose session was closed from another browser stops receiving live results and leaves for the sign-in (${size.width})`, async ({
@@ -57,16 +76,9 @@ for (const size of VIEWPORTS) {
     browser,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(String(size.width));
-    await page.setViewportSize(size);
-    await signIn(page.request, account);
-    const other = await newContextOn(browser, PANEL_URL);
+    const { account, other } = await signedInTwice(page, browser, size, String(size.width));
     try {
-      await signIn(other.request, account);
-      await page.goto('/dashboard/account/security');
-      const rows = page.getByTestId('sessions-row');
-      await expect(rows).toHaveCount(2);
-      await expect(rows.first()).toContainText('This session');
+      await expect(page.getByTestId('sessions-row').first()).toContainText('This session');
 
       // The other browser closes every session but its own: this tab's among them.
       const otherPage = await other.newPage();
@@ -113,14 +125,8 @@ for (const size of VIEWPORTS) {
     browser,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(`${size.width}-signout`);
-    await page.setViewportSize(size);
-    await signIn(page.request, account);
-    const other = await newContextOn(browser, PANEL_URL);
+    const { account, other } = await signedInTwice(page, browser, size, `${size.width}-signout`);
     try {
-      await signIn(other.request, account);
-      await page.goto('/dashboard/account/security');
-      await expect(page.getByTestId('sessions-row')).toHaveCount(2);
       const otherPage = await other.newPage();
       await otherPage.goto('/dashboard/account/security');
       await expect(otherPage.getByTestId('sessions-row')).toHaveCount(2);
@@ -153,14 +159,8 @@ for (const size of VIEWPORTS) {
     browser,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(`${size.width}-password`);
-    await page.setViewportSize(size);
-    await signIn(page.request, account);
-    const other = await newContextOn(browser, PANEL_URL);
+    const { account, other } = await signedInTwice(page, browser, size, `${size.width}-password`);
     try {
-      await signIn(other.request, account);
-      await page.goto('/dashboard/account/security');
-      await expect(page.getByTestId('sessions-row')).toHaveCount(2);
 
       // The other browser changes the password on Account → Security.
       const otherPage = await other.newPage();
@@ -205,7 +205,7 @@ for (const size of VIEWPORTS) {
       page,
     }) => {
       const errors = watchPageErrors(page);
-      const account = createAccount(`${size.width}-${target.name}`);
+      const account = await createAccount(`${size.width}-${target.name}`);
       await page.setViewportSize(size);
       await signIn(page.request, account);
       await page.goto(target.path);
@@ -234,7 +234,7 @@ for (const size of VIEWPORTS) {
     browser,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(`${size.width}-close-others`);
+    const account = await createAccount(`${size.width}-close-others`);
     const [businesses, profile] = PAGES;
     await page.setViewportSize(size);
     await signIn(page.request, account);

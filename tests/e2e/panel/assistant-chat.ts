@@ -9,14 +9,15 @@ import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { Locator, Page } from '@playwright/test';
+import type { Browser, BrowserContext, Locator, Page } from '@playwright/test';
 
 import { type Card, summarizeTurns, type Turns } from '../assistant-battery';
 import { redactedError } from '../assistant-probes';
 import { type Provider, startProvider } from '../assistant-provider';
 import { djangoEnv } from '../django-env';
 import { STACK } from '../stack';
-import { expect, signIn, test, VIEWPORTS } from './fixtures';
+import { type Credentials, expect, runSeedWarm, signIn, test, VIEWPORTS, warmDjango } from './fixtures';
+import { PANEL_URL } from './project';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
@@ -108,23 +109,36 @@ export function forgetRealAssistant(): void {
 }
 
 /** The e2e's own model for the tests of a spec's file, on `port` (0: any free one): started before them and, with what
- *  the seed left, gone after them. `seed` is `assistant_seed.py <action> <its address> <language>`: always from scratch. */
+ *  the seed left, gone after them. `seed` is `assistant_seed.py <action> <its address> <language>`: always from scratch,
+ *  run by this worker's warm Django (`runSeedWarm`), so a test that seeds pays no Django boot and never blocks this
+ *  process, where the model it talks to lives (saas#355). */
 export function localAssistant(port = 0): {
   provider: () => Provider;
-  seed: (action: 'clear' | 'panel' | 'paying', language?: 'es' | 'en') => void;
+  seed: (action: 'clear' | 'panel' | 'paying', language?: 'es' | 'en') => Promise<void>;
 } {
   let provider: Provider | undefined;
-  const seed = (action: 'clear' | 'panel' | 'paying', language: 'es' | 'en' = 'es'): void => {
-    uvRun(['python', 'tests/e2e/panel/assistant_seed.py', action, provider?.url ?? '', language]);
+  const seed = async (action: 'clear' | 'panel' | 'paying', language: 'es' | 'en' = 'es'): Promise<void> => {
+    await runSeedWarm('assistant_seed.py', [action, provider?.url ?? '', language]);
   };
   test.beforeAll(async () => {
-    provider = await startProvider(port);
+    // The warm Django boots here, on no test's clock.
+    [provider] = await Promise.all([startProvider(port), warmDjango()]);
   });
   test.afterAll(async () => {
-    seed('clear');
+    await seed('clear');
     await provider?.close();
   });
   return { provider: () => provider!, seed };
+}
+
+/** The page of the QA specs with the real model (assistant-battery, assistant-probes): a context of its own at 1440 in
+ *  Spanish, signed in as `account`, and its chat. */
+export async function qaChat(browser: Browser, account: Credentials): Promise<{ context: BrowserContext; page: Page; chat: AssistantChat }> {
+  const context = await browser.newContext({ baseURL: PANEL_URL, locale: 'es-ES', viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  const chat = new AssistantChat(page);
+  await signIn(page.request, account);
+  return { context, page, chat };
 }
 
 /** `OWNER` signed in on the businesses at 1440, with the assistant's panel open: that panel. */
