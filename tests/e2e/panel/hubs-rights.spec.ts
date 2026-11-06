@@ -23,6 +23,7 @@ import {
   expect,
   type HubCall,
   type HubDouble,
+  removeAccountsOf,
   signIn,
   startHubDouble,
   test,
@@ -30,22 +31,12 @@ import {
 } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 
+const atEverySize = captureAtEverySize('APP-HUBS-4');
+
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const PREFIX = 'e2e-hubs4-';
 const PASSWORD = 'Harina-de-espelta-26';
 const STAFF = { email: `${PREFIX}staff@example.com`, password: PASSWORD };
-const atEverySize = captureAtEverySize('APP-HUBS-4');
-
-function removeOwnRows(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}").delete()`,
-    ].join('\n'),
-  );
-}
 
 /** A superuser of the staff, their address proven. */
 function createStaff(): void {
@@ -124,7 +115,7 @@ function snapshotOwed(id: string): boolean {
 let hub: HubDouble;
 
 test.beforeAll(async () => {
-  removeOwnRows();
+  removeAccountsOf(PREFIX);
   createStaff();
   // The taxonomy every deploy seeds (saas-migrate runs seed_taxonomy), as public-web.spec.ts: the same here.
   execFileSync('uv', ['run', 'python', 'manage.py', 'seed_taxonomy'], { cwd: SAAS_DIR, env: djangoEnv(true), stdio: 'pipe' });
@@ -132,7 +123,7 @@ test.beforeAll(async () => {
 });
 test.afterAll(async () => {
   await hub?.close();
-  removeOwnRows();
+  removeAccountsOf(PREFIX);
 });
 
 /** What a plan's admin says in each language: its list's columns, its form's labels and the saved plan's name. */

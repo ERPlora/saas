@@ -16,23 +16,18 @@
 // flow: ASSISTANT-F22 — asked to read an answer aloud, the door says it cannot, and the caller uses the device's voice.
 // flow: ASSISTANT-F23 — the report of an answer, mailed once.
 // flow: ASSISTANT-F24 — the staff see what each business spent and what it cost, without changing it.
-import { type ChildProcess, spawn } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { createHmac } from 'node:crypto';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import type { APIRequestContext, APIResponse } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
-import { STACK } from '../stack';
+import { FAKE_PROVIDER_URL, startFakeProvider } from './assistant-chat';
 import { captureAtEverySize, expect, internalSecret, runSeed, signIn, test, watchPageErrors } from './fixtures';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const atEverySize = captureAtEverySize('APP-ASSISTANT-2');
+
 const PASSWORD = process.env.QA_PANEL_PASSWORD ?? 'e2e-panel';
 const ADMIN = { email: 'e2e-assistant-admin@example.com', password: PASSWORD };
-const PROVIDER_PORT = STACK.aiProviderPort;
-const PROVIDER_URL = `http://127.0.0.1:${PROVIDER_PORT}/v1`;
-const atEverySize = captureAtEverySize('APP-ASSISTANT-2');
 
 interface Gateway {
   limit: number;
@@ -46,7 +41,7 @@ let secret = '';
 
 /** `assistant_seed.py <action> <provider address>`: always from scratch; «gateway» says what it made. */
 function seed(action: 'clear' | 'gateway'): Gateway {
-  const last = runSeed('assistant_seed.py', [action, PROVIDER_URL]);
+  const last = runSeed('assistant_seed.py', [action, FAKE_PROVIDER_URL]);
   return action === 'gateway' ? (JSON.parse(last) as Gateway) : ({} as Gateway);
 }
 
@@ -87,23 +82,7 @@ const turn = (hub: string, text = 'How many appointments do I have today?') => (
 
 test.beforeAll(async () => {
   secret = internalSecret();
-  provider = spawn('uv', ['run', 'python', '-m', 'assistant.tests.fake_provider', '--port', String(PROVIDER_PORT)], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'ignore',
-  });
-  await expect
-    .poll(
-      async () => {
-        try {
-          return (await fetch(`${PROVIDER_URL}/models`)).status;
-        } catch {
-          return 0;
-        }
-      },
-      { timeout: 30_000, message: `the fake provider on :${PROVIDER_PORT}` },
-    )
-    .toBe(200);
+  provider = await startFakeProvider();
 });
 
 test.afterAll(() => {

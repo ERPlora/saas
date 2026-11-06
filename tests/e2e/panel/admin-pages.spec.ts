@@ -15,11 +15,12 @@ import type { Page } from '@playwright/test';
 
 import { captureAtEverySize, djangoPrint, expect, MAILING, runSeed, signIn, test, watchPageErrors } from './fixtures';
 
+const atEverySize = captureAtEverySize('APP-ASSISTANT-1');
+
 const PREFIX = 'e2e-admpages-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
 const ROOT = { email: `${PREFIX}root@example.com`, password: PASSWORD };
 const TEAMMATE = `${PREFIX}qa@example.com`;
-const atEverySize = captureAtEverySize('APP-ASSISTANT-1');
 
 function removeAccounts(): void {
   djangoPrint(

@@ -8,10 +8,11 @@ import { type Page } from '@playwright/test';
 import { captureAtEverySize, djangoPrint, expect, settled, signIn, test, waitForMail, watchPageErrors } from './fixtures';
 import { PANEL_MAIL_DIR } from './project';
 
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-4');
+
 const PREFIX = 'e2e-acc4r-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
 const BUSINESS = 'e2e-acc4r-bar';
-const atEverySize = captureAtEverySize('APP-ACCOUNTS-4');
 
 function removeAccounts(): void {
   djangoPrint(

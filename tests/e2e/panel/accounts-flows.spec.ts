@@ -26,9 +26,10 @@ import {
 } from './fixtures';
 import { PANEL_URL } from './project';
 
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-1');
+
 const PREFIX = 'e2e-acc1-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
-const atEverySize = captureAtEverySize('APP-ACCOUNTS-1');
 
 /** A fresh address of this spec, never used before (a throttle or a code of an earlier run never leaks in). */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;

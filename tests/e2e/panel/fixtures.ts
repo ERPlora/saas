@@ -361,12 +361,15 @@ export interface EverySizeOptions {
   after?: () => Promise<void>;
 }
 
-/** A spec's walk through `VIEWPORTS` (`captureAtEverySize`): `ready` at each size, then the capture. */
+/**
+ * A spec's walk through `VIEWPORTS` (`captureAtEverySize`): `ready` at each size, then the capture. `options` may be
+ * `fullPage` alone, as the billing specs pass it (`false`: what the window shows).
+ */
 export type AtEverySize = (
   page: Page,
   key: string,
   ready: (size: Viewport) => Promise<void>,
-  options?: EverySizeOptions,
+  options?: boolean | EverySizeOptions,
 ) => Promise<void>;
 
 /**
@@ -376,7 +379,9 @@ export type AtEverySize = (
  * back at the desktop size.
  */
 export function captureAtEverySize(prefix: string): AtEverySize {
-  return async (page, key, ready, { fullPage = true, of, suffix, checks, after } = {}) => {
+  return async (page, key, ready, options = {}) => {
+    const { fullPage = true, of, suffix, checks, after }: EverySizeOptions =
+      typeof options === 'boolean' ? { fullPage: options } : options;
     for (const size of VIEWPORTS) {
       await page.setViewportSize(size);
       await ready(size);
@@ -440,6 +445,27 @@ export const MAILING: Readonly<Record<string, string>> = {
   EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
   EMAIL_FILE_PATH: PANEL_MAIL_DIR,
 };
+
+/** The logo of the branded mails, and the SaaS's file it is. */
+export const MAIL_LOGO_URL = 'https://erplora.com/static/public/img/logo.png';
+const MAIL_LOGO_FILE = resolve(SAAS_DIR, 'public', 'static', 'public', 'img', 'logo.png');
+
+/**
+ * From here on `page` fetches nothing but the mails' logo, served from its file, and writes down every address it
+ * asks for (the list returned): a mail painted with `setContent` asks for the logo and nothing else.
+ */
+export async function onlyTheMailLogo(page: Page): Promise<string[]> {
+  const fetched: string[] = [];
+  await page.route('**/*', (route) => {
+    fetched.push(route.request().url());
+    return route.abort();
+  });
+  await page.route(MAIL_LOGO_URL, (route) => {
+    fetched.push(route.request().url());
+    return route.fulfill({ path: MAIL_LOGO_FILE, contentType: 'image/png' });
+  });
+  return fetched;
+}
 
 /**
  * `tests/e2e/panel/<script> <args…>` (`panel_seed.py seed|clear`, `assistant_seed.py <action> <provider address>`,

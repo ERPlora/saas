@@ -14,9 +14,10 @@ import {
   watchPageErrors,
 } from './fixtures';
 
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-4');
+
 const PREFIX = 'e2e-acc4k-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
-const atEverySize = captureAtEverySize('APP-ACCOUNTS-4');
 
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
@@ -149,7 +150,7 @@ test('ACCOUNTS-G105 · G13 · the API documentation: for signed-in accounts, fro
   await atEverySize(docs, 'ACCOUNTS-G105', async () => {
     await expect(docs.getByRole('heading', { name: /ERPlora Cloud API/ }).first()).toBeVisible();
     await expect(docs.locator('#redoc-ui')).toContainText('/api/accounts/api-keys');
-  }, { fullPage: false });
+  }, false);
   expect(outside).toEqual([]);
   expect(consoleErrors).toEqual([]);
   expect([...errors, ...docsErrors]).toEqual([]);

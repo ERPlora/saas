@@ -13,15 +13,14 @@ import { fileURLToPath } from 'node:url';
 import { type Page } from '@playwright/test';
 
 import { djangoEnv } from '../django-env';
-import { captureAtEverySize, djangoPrint, expect, MAILING, settled, signIn, test } from './fixtures';
+import { captureAtEverySize, djangoPrint, expect, MAIL_LOGO_URL, MAILING, onlyTheMailLogo, settled, signIn, test } from './fixtures';
 import { PANEL_MAIL_DIR, PANEL_URL } from './project';
 
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-5-ACCOUNTS-F46');
+
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const LOGO_URL = 'https://erplora.com/static/public/img/logo.png';
-const LOGO_FILE = resolve(SAAS_DIR, 'public', 'static', 'public', 'img', 'logo.png');
 const PREFIX = 'e2e-acc5m-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
-const atEverySize = captureAtEverySize('APP-ACCOUNTS-5-ACCOUNTS-F46');
 
 const BOOT = 'import django,os;os.environ.setdefault("DJANGO_SETTINGS_MODULE","config.settings");django.setup()';
 
@@ -87,15 +86,7 @@ function createAccount(email: string, language: string): { email: string; passwo
 async function paint(page: Page, key: string, mail: ReadMail, language: string): Promise<void> {
   expect(mail.type, `${key} is text and HTML`).toBe('multipart/alternative');
   expect(mail.parts, `${key} parts`).toEqual(['text/plain', 'text/html']);
-  const fetched: string[] = [];
-  await page.route('**/*', (route) => {
-    fetched.push(route.request().url());
-    return route.abort();
-  });
-  await page.route(LOGO_URL, (route) => {
-    fetched.push(route.request().url());
-    return route.fulfill({ path: LOGO_FILE, contentType: 'image/png' });
-  });
+  const fetched = await onlyTheMailLogo(page);
   await atEverySize(page, key, async (size) => {
     await page.setContent(mail.html, { waitUntil: 'load' });
     await settled(page);
@@ -109,7 +100,7 @@ async function paint(page: Page, key: string, mail: ReadMail, language: string):
       if (words) expect(shown, `${key} at ${size.width} shows «${words}»`).toContain(words);
     }
   });
-  expect([...new Set(fetched)], `${key} fetches only the logo`).toEqual([LOGO_URL]);
+  expect([...new Set(fetched)], `${key} fetches only the logo`).toEqual([MAIL_LOGO_URL]);
   await page.unrouteAll();
 }
 

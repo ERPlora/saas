@@ -23,9 +23,10 @@ import {
 } from './fixtures';
 import { PANEL_MFA_URL, PANEL_URL } from './project';
 
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-2');
+
 const PREFIX = 'e2e-acc2-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
-const atEverySize = captureAtEverySize('APP-ACCOUNTS-2');
 const SIGN_OUT_API = '/_allauth/browser/v1/auth/session';
 
 /** A fresh address of this spec, never used before. */

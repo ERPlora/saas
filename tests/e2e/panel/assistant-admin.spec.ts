@@ -8,47 +8,25 @@
 // flow: ASSISTANT-F04 — the staff choose the provider's models from the list its API gives.
 // flow: ASSISTANT-F05 — the staff choose which model answers and its fallback.
 // flow: ASSISTANT-F07 — the staff try a model and watch its answer arrive with its tokens, time and cost.
-import { type ChildProcess, spawn } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import type { ChildProcess } from 'node:child_process';
 
-import { djangoEnv } from '../django-env';
-import { STACK } from '../stack';
+import { FAKE_PROVIDER_URL, startFakeProvider } from './assistant-chat';
 import { captureAtEverySize, expect, runSeed, signIn, test, watchPageErrors } from './fixtures';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const atEverySize = captureAtEverySize('APP-ASSISTANT-1');
+
 const PASSWORD = process.env.QA_PANEL_PASSWORD ?? 'e2e-panel';
 const ADMIN = { email: 'e2e-assistant-admin@example.com', password: PASSWORD };
 const VIEWER = { email: 'e2e-assistant-viewer@example.com', password: PASSWORD };
-// The provider's own port in the run's block (stack.ts): +8 is reCAPTCHA's double since saas#88.
-const PROVIDER_PORT = STACK.aiProviderPort;
-const PROVIDER_URL = `http://127.0.0.1:${PROVIDER_PORT}/v1`;
 const API_KEY = 'sk-e2e-0000000000000000000000000000e2e1';
-const atEverySize = captureAtEverySize('APP-ASSISTANT-1');
 
 let provider: ChildProcess | undefined;
 
 /** `assistant_seed.py <action> <provider address>`: always from scratch. */
-const seed = (action: 'clear' | 'staff' | 'provider' | 'models') => runSeed('assistant_seed.py', [action, PROVIDER_URL]);
+const seed = (action: 'clear' | 'staff' | 'provider' | 'models') => runSeed('assistant_seed.py', [action, FAKE_PROVIDER_URL]);
 
 test.beforeAll(async () => {
-  provider = spawn('uv', ['run', 'python', '-m', 'assistant.tests.fake_provider', '--port', String(PROVIDER_PORT)], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'ignore',
-  });
-  await expect
-    .poll(
-      async () => {
-        try {
-          return (await fetch(`${PROVIDER_URL}/models`)).status;
-        } catch {
-          return 0;
-        }
-      },
-      { timeout: 30_000, message: `the fake provider on :${PROVIDER_PORT}` },
-    )
-    .toBe(200);
+  provider = await startFakeProvider();
 });
 
 test.afterAll(() => {
@@ -73,7 +51,7 @@ test('ASSISTANT-F01 · ASSISTANT-F02: the staff add a provider with its key, whi
   // The key travels to the address: plain http only to this machine.
   await expect(page.locator('.errorlist')).toContainText("Use an https address: the provider's key travels to it.");
 
-  await page.getByLabel('Address:').fill(PROVIDER_URL);
+  await page.getByLabel('Address:').fill(FAKE_PROVIDER_URL);
   await page.locator('[name="credentials-0-new_key"]').fill(API_KEY);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.locator('.messagelist')).toContainText('was added successfully');

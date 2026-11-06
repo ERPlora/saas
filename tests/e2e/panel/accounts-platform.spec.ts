@@ -21,9 +21,10 @@ import {
   watchPageErrors,
 } from './fixtures';
 
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-5');
+
 const PREFIX = 'e2e-acc5-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
-const atEverySize = captureAtEverySize('APP-ACCOUNTS-5');
 const SITE_SETTINGS = '/admin/base/sitesettings/';
 
 function removeAccounts(): void {

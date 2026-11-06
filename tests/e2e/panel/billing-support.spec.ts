@@ -98,7 +98,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
         await expect(dialog.getByTestId('stripe-double')).toBeVisible();
         await expect(dialog.getByTestId('checkout-for')).toHaveText('For Café Central · renews every month');
       },
-      { fullPage: false },
+      false,
     );
     // The same choice twice: the server answers it with the same payment (billing/tests/test_checkout.py).
     expect(started).toEqual([
@@ -119,7 +119,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
       async () => {
         await dialogInPlace(page, 'billing-profile-submit');
       },
-      { fullPage: false },
+      false,
     );
     await page.getByTestId('details-city').locator('input').fill('Getafe');
     await page.getByTestId('billing-profile-submit').click();
@@ -183,7 +183,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
       async () => {
         await expect(dialog.getByTestId('stripe-double')).toBeVisible();
       },
-      { fullPage: false },
+      false,
     );
     expect(started).toEqual([expect.objectContaining({ hub_id: cafe, module: 'e2e_apps_bookings' })]);
     expect(errors).toEqual([]);

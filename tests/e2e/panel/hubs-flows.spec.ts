@@ -21,6 +21,7 @@ import {
   djangoPrint,
   expect,
   panelAccount,
+  removeAccountsOf,
   seedPanel,
   signIn,
   test,
@@ -29,9 +30,10 @@ import {
 } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 
+const atEverySize = captureAtEverySize('APP-HUBS-1');
+
 const PREFIX = 'e2e-hubs1-';
 const PASSWORD = 'Masa-madre-y-centeno-26';
-const atEverySize = captureAtEverySize('APP-HUBS-1');
 
 /** The page Ionic shows (it keeps the pages it left in the DOM, hidden). */
 const shown = (page: Page) => page.locator('ion-router-outlet > .ion-page:not(.ion-page-hidden)').last();
@@ -73,23 +75,12 @@ function businessRow(name: string): string {
   );
 }
 
-function removeOwnRows(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}").delete()`,
-    ].join('\n'),
-  );
-}
-
 test.beforeAll(() => {
-  removeOwnRows();
+  removeAccountsOf(PREFIX);
   seedPanel();
 });
 test.afterAll(() => {
-  removeOwnRows();
+  removeAccountsOf(PREFIX);
   seedPanel('clear');
 });
 

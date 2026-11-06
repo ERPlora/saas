@@ -12,10 +12,11 @@ import type { Page } from '@playwright/test';
 
 import { captureAtEverySize, djangoPrint, expect, MAILING, runSeed, shot, signIn, test, waitForMail, watchPageErrors } from './fixtures';
 
+const atEverySize = captureAtEverySize('APP-FISCAL_GATEWAY');
+
 const PASSWORD = process.env.QA_PANEL_PASSWORD ?? 'e2e-panel';
 const REVIEWER = { email: 'e2e-fiscal-reviewer@example.com', password: PASSWORD };
 const OWNER = 'e2e-fiscal-owner@example.com';
-const atEverySize = captureAtEverySize('APP-FISCAL_GATEWAY');
 const REVIEW_PATH = /\/admin\/fiscal\/representationgrant\/[0-9a-f-]{36}\/review\//;
 
 /**

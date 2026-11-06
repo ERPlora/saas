@@ -9,12 +9,13 @@
 // attachment, and 503 to the rest. Accounts of this spec: `e2e-copy-…@example.com`.
 import { createServer, type Server } from 'node:http';
 
-import { captureAtEverySize, djangoPrint, expect, settled, signIn, test, watchPageErrors } from './fixtures';
+import { captureAtEverySize, djangoPrint, expect, removeAccountsOf, settled, signIn, test, watchPageErrors } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
+
+const atEverySize = captureAtEverySize('HUBS-F18');
 
 const PREFIX = 'e2e-copy-';
 const PASSWORD = 'Masa-madre-y-centeno-26';
-const atEverySize = captureAtEverySize('HUBS-F18');
 const DUMPS = /^\/internal\/hubs\/([0-9a-f-]{36})\/dumps$/;
 const FILES = /^\/files\/([^?]+)/;
 
@@ -56,17 +57,6 @@ function startHub(): Promise<Server> {
   });
 }
 
-function removeOwnRows(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}").delete()`,
-    ].join('\n'),
-  );
-}
-
 /** A fresh owner (address proven) of a business called `name` in `status`; its email and the business's id. */
 function ownerOf(name: string, status: 'deleting' | 'active'): { email: string; id: string } {
   const email = `${PREFIX}${status}-${Date.now()}@example.com`;
@@ -104,7 +94,7 @@ function copyOf(id: string, kind: 'offboarding' | 'reset', when: string, bytes: 
 }
 
 test.beforeAll(async () => {
-  removeOwnRows();
+  removeAccountsOf(PREFIX);
   hub = await startHub();
 });
 test.afterAll(async () => {
@@ -112,7 +102,7 @@ test.afterAll(async () => {
     hub.closeAllConnections();
     hub.close(() => closed());
   });
-  removeOwnRows();
+  removeAccountsOf(PREFIX);
 });
 
 test('HUBS-F18: the owner of a deleted business downloads the copy of its data, in English and in Spanish', async ({ page }) => {

@@ -19,9 +19,10 @@ import {
   watchPageErrors,
 } from "./fixtures";
 
+const atEverySize = captureAtEverySize("APP-ACCOUNTS-3");
+
 const PREFIX = "e2e-acc3-";
 const PASSWORD = "Centeno-y-masa-madre-26";
-const atEverySize = captureAtEverySize("APP-ACCOUNTS-3");
 
 /** A fresh address of this spec, never used before. */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;

@@ -106,7 +106,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
         await dialogInPlace(page, 'proration-modal-submit');
         expect(await cutAmounts(dialog)).toEqual([]);
       },
-      { fullPage: false },
+      false,
     );
     await dialog.getByTestId('proration-modal-submit').click();
     await expect(toast(page, 'E2E Apps Loyalty added to Panadería López: it turns on in a few seconds')).toBeVisible();
@@ -158,7 +158,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
         await expect(dialog).toContainText('Nothing the business wrote with it is deleted.');
         await dialogInPlace(page, 'store-cancel-module-submit');
       },
-      { fullPage: false },
+      false,
     );
     await page.getByTestId('store-cancel-module-submit').click();
     await expect(toast(page, /E2E Apps Bookings cancelled: it works until/)).toBeVisible();
@@ -280,7 +280,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
         await dialogInPlace(page, 'proration-modal-submit');
         expect(await cutAmounts(dialog)).toEqual([]);
       },
-      { fullPage: false },
+      false,
     );
     expect(errors).toEqual([]);
   });

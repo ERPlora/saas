@@ -18,6 +18,7 @@ import {
   djangoPrint,
   expect,
   readyBusinessOn,
+  removeAccountsOf,
   seedPanel,
   signIn,
   signInAs,
@@ -25,6 +26,8 @@ import {
   watchPageErrors,
 } from './fixtures';
 import { PANEL_URL } from './project';
+
+const capture = captureAtEverySize('APP-HUBS-5');
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const PREFIX = 'e2e-hubs5-';
@@ -101,8 +104,6 @@ async function cutLabels(page: Page): Promise<string[]> {
   );
 }
 
-const capture = captureAtEverySize('APP-HUBS-5');
-
 /**
  * `ready` at each size: no sideways scroll, a capture `APP-HUBS-5-<key>-<size>-<language>`, and in Spanish none of
  * `english` (the same screen's English words) on `where`; back at 1440 after.
@@ -125,23 +126,12 @@ function atEverySize(
   });
 }
 
-function removeOwnRows(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}").delete()`,
-    ].join('\n'),
-  );
-}
-
 test.beforeAll(() => {
-  removeOwnRows();
+  removeAccountsOf(PREFIX);
   seedPanel();
 });
 test.afterAll(() => {
-  removeOwnRows();
+  removeAccountsOf(PREFIX);
   seedPanel('clear');
 });
 

@@ -9,9 +9,10 @@ import { type Browser, type Page } from '@playwright/test';
 
 import { captureAtEverySize, djangoPrint, expect, signInThroughPage, test, watchPageErrors } from './fixtures';
 
+const atEverySize = captureAtEverySize('ACCOUNTS-F29');
+
 const PREFIX = 'e2e-pass-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
-const atEverySize = captureAtEverySize('ACCOUNTS-F29');
 
 /** A fresh address of this spec, never used before. */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;

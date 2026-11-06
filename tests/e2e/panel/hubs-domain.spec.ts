@@ -28,6 +28,8 @@ import {
 } from './fixtures';
 import { HUB_DOUBLE_PORT } from './project';
 
+const capture = captureAtEverySize('HUBS-F17');
+
 const PREFIX = 'e2e-domain-';
 const PASSWORD = 'Dominio-propio-de-la-web-26';
 const RUNS = [
@@ -159,8 +161,6 @@ function cutLabels(page: Page): Promise<string[]> {
       .map((label) => label.textContent?.trim() ?? ''),
   );
 }
-
-const capture = captureAtEverySize('HUBS-F17');
 
 /**
  * `ready` at each size: no sideways scroll, no label cut, and the card «Own domain» whole in a capture

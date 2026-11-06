@@ -23,10 +23,11 @@ import {
   watchPageErrors,
 } from './fixtures';
 
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-4');
+
 const PREFIX = 'e2e-acc4-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
 const STATE = 'state-of-the-browser-that-started-the-jump-0123456789';
-const atEverySize = captureAtEverySize('APP-ACCOUNTS-4');
 
 /** A fresh address of this spec, never used before. */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
