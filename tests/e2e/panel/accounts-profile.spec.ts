@@ -16,6 +16,7 @@ import {
   sidewaysScroll,
   signIn,
   test,
+  toast,
   watchPageErrors,
 } from "./fixtures";
 
@@ -165,9 +166,6 @@ async function closeUserMenu(page: Page): Promise<void> {
     await menu?.close?.();
   });
 }
-
-const toast = (page: Page, text: string) =>
-  page.locator("ion-toast").filter({ hasText: text });
 
 test.beforeAll(removeAccounts);
 test.afterAll(removeAccounts);

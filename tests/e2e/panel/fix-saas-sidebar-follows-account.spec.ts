@@ -16,6 +16,7 @@ import {
   shot,
   signIn,
   test,
+  toast,
   VIEWPORTS,
   watchPageErrors,
 } from './fixtures';
@@ -42,8 +43,6 @@ test.beforeEach(() => {
     `from django.contrib.auth import get_user_model\nget_user_model().objects.filter(email=${JSON.stringify(ACCOUNT.email)}).update(language="en", first_name="", last_name="")`,
   );
 });
-
-const toast = (page: Page, text: string) => page.locator('ion-toast').filter({ hasText: text });
 
 /** Marks the page, so a spec can tell it was never reloaded (a reload starts a fresh window). */
 const markPage = (page: Page) => page.evaluate(() => Object.assign(window, { fix292SamePage: true }));

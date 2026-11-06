@@ -25,6 +25,7 @@ import {
   sidewaysScroll,
   signIn,
   test,
+  toast,
   VIEWPORTS,
   watchPageErrors,
 } from './fixtures';
@@ -52,8 +53,6 @@ test.beforeEach(async ({ page }) => {
   await signIn(page.request, BILLING);
 });
 test.afterAll(() => seedBilling('clear'));
-
-const toast = (page: Page, text: string | RegExp) => page.locator('ion-toast').filter({ hasText: text });
 
 /**
  * How far above the bottom of the window the toast's box ends (Ionic leaves it 10 px up). Read after `settled()`,
