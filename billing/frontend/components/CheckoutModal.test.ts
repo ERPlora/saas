@@ -15,10 +15,33 @@ import { applySurface } from '@erplora/ui/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';
 
-vi.mock('@ionic/vue', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@ionic/vue')>()),
-  IonModal: (await import('../../../hubs/frontend/__tests__/ion-modal-stub')).IonModalStub,
-}));
+/** Ionic renders an inline modal's content only once it presents it (`ionMount`), and that can come after the
+ *  answers the dialog waits for (saas#326). With `held`, the dialog's content comes when the test calls `present()`. */
+const presentation = vi.hoisted(() => {
+  const waiting: Array<() => void> = [];
+  return {
+    held: false,
+    waiting,
+    present: () => waiting.splice(0).forEach((show) => show()),
+  };
+});
+
+vi.mock('@ionic/vue', async (importOriginal) => {
+  const { IonModalStub } = await import('../../../hubs/frontend/__tests__/ion-modal-stub');
+  const { defineComponent, h: render, shallowRef } = await import('vue');
+  const IonModal = defineComponent({
+    name: 'IonModalPresentedLate',
+    inheritAttrs: false,
+    props: { isOpen: { type: Boolean, default: false }, backdropDismiss: { type: Boolean, default: true } },
+    setup(props, { attrs, slots }) {
+      const presented = shallowRef(!presentation.held);
+      if (!presented.value) presentation.waiting.push(() => (presented.value = true));
+      return () =>
+        render(IonModalStub, { ...attrs, isOpen: props.isOpen && presented.value, backdropDismiss: props.backdropDismiss }, slots);
+    },
+  });
+  return { ...(await importOriginal<typeof import('@ionic/vue')>()), IonModal };
+});
 vi.mock('@erplora/ui/shell', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
   toastSuccess: vi.fn(() => Promise.resolve()),
@@ -43,6 +66,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  presentation.held = false;
+  presentation.waiting.length = 0;
   vi.mocked(toastSuccess).mockClear();
   vi.mocked(loadStripeJs).mockReset();
   applySurface('web');
@@ -274,6 +299,18 @@ describe('CheckoutModal', () => {
     expect(s.q('details-name')).not.toBeNull();
   });
 
+  it('while Stripe.js loads, its place waits in the dialog and nothing says «could not open»', async () => {
+    let loaded: (factory: never) => void = () => undefined;
+    vi.mocked(loadStripeJs).mockImplementationOnce(() => new Promise((resolve) => (loaded = resolve)));
+    const s = await setup();
+    expect(s.q('checkout-stripe')).not.toBeNull();
+    expect(s.q('checkout-error')).toBeNull();
+    loaded(stripe.factory as never);
+    await flush();
+    expect(s.q('checkout-error')).toBeNull();
+    expect(stripe.checkouts[0].mountedOn).toBe(s.q('checkout-stripe'));
+  });
+
   it('Stripe.js that does not load is said, and «Retry» tries again (never a silent spinner)', async () => {
     vi.mocked(loadStripeJs).mockImplementationOnce(() => Promise.reject(new Error('Stripe.js could not be loaded')));
     const s = await setup();
@@ -305,6 +342,53 @@ describe('CheckoutModal', () => {
     expect(s.stale).toHaveBeenCalled();
     expect(s.open.value).toBe(false);
     expect(stripe.checkouts).toEqual([]);
+  });
+
+  describe('when Stripe answers before Ionic has rendered the dialog’s content (saas#326)', () => {
+    beforeEach(() => {
+      presentation.held = true;
+    });
+
+    it('the checkout waits for its place and mounts there as soon as the dialog shows it: never «could not open»', async () => {
+      const s = await setup();
+      expect(stripe.secrets).toEqual(['cs_test_1_secret_x']);
+      expect(s.q('checkout-stripe')).toBeNull();
+      presentation.present();
+      await flush();
+      expect(s.q('checkout-error')).toBeNull();
+      expect(stripe.checkouts).toHaveLength(1);
+      expect(stripe.checkouts[0].mountedOn).toBe(s.q('checkout-stripe'));
+      expect(stripe.checkouts[0].destroyed).toBe(false);
+    });
+
+    it('Stripe.js that does not load is still said, with «Retry», once the dialog shows it', async () => {
+      vi.mocked(loadStripeJs).mockImplementationOnce(() => Promise.reject(new Error('Stripe.js could not be loaded')));
+      const s = await setup();
+      presentation.present();
+      await flush();
+      expect(s.q('checkout-error')?.textContent).toContain('We could not open the secure payment');
+      expect(s.q('checkout-retry')).not.toBeNull();
+      expect(stripe.checkouts).toEqual([]);
+    });
+
+    it('a checkout Stripe refuses is still said, once the dialog shows it', async () => {
+      stripe.failNext(new Error('Invalid client secret'));
+      const s = await setup();
+      presentation.present();
+      await flush();
+      expect(s.q('checkout-error')?.textContent).toContain('We could not open the secure payment');
+      expect(s.q('checkout-retry')).not.toBeNull();
+    });
+
+    it('closed before its content came, the checkout is let go and nothing is mounted later', async () => {
+      const s = await setup();
+      s.open.value = false;
+      await flush();
+      presentation.present();
+      await flush();
+      expect(stripe.checkouts[0].destroyed).toBe(true);
+      expect(stripe.checkouts[0].mountedOn).toBeNull();
+    });
   });
 
   it('closing the dialog lets the checkout go', async () => {
