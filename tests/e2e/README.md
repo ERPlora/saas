@@ -427,6 +427,11 @@ Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/t
   el Django caliente del worker (`warmDjango`, saas#352), para la siembra que va dentro de una prueba o en su
   `beforeEach`: sin arranque de Django ni bloqueo de Node (saas#355). `localAssistant().seed` ya siembra así y
   devuelve una promesa (`await seed(…)`).
+- `hubStackSql(puerto, consulta, hub?)` y `hubStackIds(puerto)`: lo que una spec con un Hub de verdad al lado (la
+  pila cruzada de la cabecera de `panel/whatsapp-hub.spec.ts`) lee en las BD de ese Hub, por `psql` en el Postgres
+  de `compose.yaml` y sin bloquear Node (saas#370). Sin `hub`, la BD de control (`hub_e2e_<puerto>`: `base_hub`);
+  con `hub` (`'a'`), la BD propia de ese negocio (su `db_name`), que es donde viven las tablas de las apps desde la
+  BD por negocio. `hubStackIds` devuelve los ids de `a` y `b` y cae por aserción si no son dos UUID.
 - **Sin recarga en caliente**: el `context` de toda spec responde él mismo al WebSocket de Vite
   (`freezeFrontend`), así que lo que otra sesión guarda a mitad de una ejecución no remonta
   componentes bajo la spec (un diálogo abierto se quedaba huérfano); cada carga de página sí trae los
