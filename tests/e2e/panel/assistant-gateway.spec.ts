@@ -81,7 +81,7 @@ const turn = (hub: string, text = 'How many appointments do I have today?') => (
 });
 
 test.beforeAll(async () => {
-  secret = internalSecret();
+  secret = await internalSecret();
   provider = await startFakeProvider();
 });
 

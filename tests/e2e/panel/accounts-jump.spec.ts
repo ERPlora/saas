@@ -90,7 +90,7 @@ async function playTheHubs(page: Page): Promise<Jump[]> {
 async function redeem(request: APIRequestContext, body: Record<string, string>) {
   const raw = JSON.stringify(body);
   const timestamp = Math.floor(Date.now() / 1000);
-  const signature = createHmac('sha256', internalSecret()).update(`${timestamp}.${raw}`).digest('hex');
+  const signature = createHmac('sha256', await internalSecret()).update(`${timestamp}.${raw}`).digest('hex');
   const response = await request.post('/internal/auth/redeem', {
     headers: { 'Content-Type': 'application/json', 'X-Erplora-Timestamp': String(timestamp), 'X-Erplora-Signature': signature },
     data: raw,
@@ -109,6 +109,8 @@ async function nextOfTheSignIn(page: Page): Promise<string | null> {
 }
 
 test.beforeAll(() => removeAccounts());
+// What redeem signs with, read here and not inside a test (fixtures.ts, internalSecret).
+test.beforeAll(() => internalSecret());
 test.afterAll(() => removeAccounts());
 
 test('ACCOUNTS-G98 · ACCOUNTS-G104 · a member enters the business with a one-time code: posted, bound to it and spent once', async ({

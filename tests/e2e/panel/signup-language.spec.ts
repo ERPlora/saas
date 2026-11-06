@@ -18,6 +18,7 @@ import {
   djangoPrintAsync,
   expect,
   type HubDouble,
+  internalSecret,
   removeAccountsOf,
   reportBusinessReady,
   shot,
@@ -88,8 +89,8 @@ async function createBusiness(page: Page, lang: Lang, name: string): Promise<str
 
 test.beforeAll(() => removeAccountsOf(PREFIX));
 test.beforeAll(async () => {
-  readyLines = JSON.parse(
-    await djangoPrintAsync(
+  const [lines] = await Promise.all([
+    djangoPrintAsync(
       [
         'import json',
         'from django.utils import translation',
@@ -101,7 +102,10 @@ test.beforeAll(async () => {
         'print(json.dumps(lines))',
       ].join('\n'),
     ),
-  ) as Record<Lang, string>;
+    // What reportBusinessReady signs with, read here and not inside a test.
+    internalSecret(),
+  ]);
+  readyLines = JSON.parse(lines) as Record<Lang, string>;
 });
 test.afterAll(() => removeAccountsOf(PREFIX));
 
