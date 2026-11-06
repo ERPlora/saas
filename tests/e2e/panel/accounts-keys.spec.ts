@@ -6,7 +6,7 @@
 
 import {
   captureAtEverySize,
-  djangoPrint,
+  djangoPrintWarm,
   expect,
   signIn,
   signInThroughPage,
@@ -21,8 +21,8 @@ const PASSWORD = 'Centeno-y-masa-madre-26';
 
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
-function removeAccounts(): void {
-  djangoPrint(
+async function removeAccounts(): Promise<void> {
+  await djangoPrintWarm(
     [
       'from django.contrib.auth import get_user_model',
       'from hubs.models import Hub',
@@ -33,12 +33,12 @@ function removeAccounts(): void {
 }
 
 /** An account with its address proven; `role` makes it a superuser or a team account of support. */
-function createAccount(email: string, role: 'superuser' | 'support' | 'customer'): { email: string; password: string } {
+async function createAccount(email: string, role: 'superuser' | 'support' | 'customer'): Promise<{ email: string; password: string }> {
   const create =
     role === 'customer'
       ? `get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", language="en")`
       : `services.create_platform_user("${email}", ${role === 'superuser' ? 'services.PLATFORM_ADMIN' : 'services.PLATFORM_SUPPORT'}, "${PASSWORD}")[0]`;
-  djangoPrint(
+  await djangoPrintWarm(
     [
       'from allauth.account.models import EmailAddress',
       'from django.contrib.auth import get_user_model',
@@ -59,9 +59,9 @@ test('ACCOUNTS-G101 · G102 · G103 · a superuser issues a key for a team accou
   playwright,
 }) => {
   const errors = watchPageErrors(page);
-  const root = createAccount(address('root'), 'superuser');
-  const teammate = createAccount(address('qa'), 'support');
-  createAccount(address('customer'), 'customer');
+  const root = await createAccount(address('root'), 'superuser');
+  const teammate = await createAccount(address('qa'), 'support');
+  await createAccount(address('customer'), 'customer');
   await signIn(page.request, root);
 
   await page.goto('/admin/accounts/apikey/add/');
@@ -126,7 +126,7 @@ test('ACCOUNTS-G105 · G13 · the API documentation: for signed-in accounts, fro
     const url = new URL(request.url());
     if (url.protocol !== 'blob:' && !['localhost', '127.0.0.1'].includes(url.hostname)) outside.push(request.url());
   });
-  const ana = createAccount(address('docs'), 'customer');
+  const ana = await createAccount(address('docs'), 'customer');
 
   // Signed out: the sign-in, then back to the documentation.
   await page.goto('/api/docs');

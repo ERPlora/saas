@@ -14,8 +14,9 @@
 import { createHmac } from 'node:crypto';
 
 import {
-  djangoPrint,
+  djangoPrintWarm,
   expect,
+  sessionOf,
   signIn,
   signInThroughPage,
   submitSignInForm,
@@ -35,8 +36,8 @@ const review = reviewOf('APP-ACCOUNTS-6');
 
 const address = (name: string, lang: Lang) => `${PREFIX}${name}-${lang}-${Date.now()}@example.com`;
 
-function removeAccounts(): void {
-  djangoPrint(
+async function removeAccounts(): Promise<void> {
+  await djangoPrintWarm(
     [
       'from django.contrib.auth import get_user_model',
       `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
@@ -45,8 +46,8 @@ function removeAccounts(): void {
 }
 
 /** An account speaking `lang`, its address proven, as one that signed in before; `staff` makes it a superuser. */
-function createAccount(email: string, lang: Lang, options: { staff?: boolean } = {}): { email: string; password: string } {
-  djangoPrint(
+async function createAccount(email: string, lang: Lang, options: { staff?: boolean } = {}): Promise<{ email: string; password: string }> {
+  await djangoPrintWarm(
     [
       'from allauth.account.models import EmailAddress',
       'from django.contrib.auth import get_user_model',
@@ -129,8 +130,8 @@ for (const { lang, locale } of LANGUAGES) {
     test(`ACCOUNTS-F03 (${lang}): an address never proven asks for its code on the way to the panel`, async ({ page }) => {
       const errors = watchPageErrors(page);
       const email = address('unproven', lang);
-      createAccount(email, lang);
-      djangoPrint(`from allauth.account.models import EmailAddress\nEmailAddress.objects.filter(email="${email}").update(verified=False)`);
+      await createAccount(email, lang);
+      await djangoPrintWarm(`from allauth.account.models import EmailAddress\nEmailAddress.objects.filter(email="${email}").update(verified=False)`);
 
       await page.goto('/dashboard/account/profile');
       await expect(page).toHaveURL(/\/launch\?next=/);
@@ -144,7 +145,7 @@ for (const { lang, locale } of LANGUAGES) {
 
     test(`ACCOUNTS-F04 · ACCOUNTS-F11 (${lang}): a wrong password says so, and five stop the account`, async ({ page }) => {
       const errors = watchPageErrors(page);
-      const account = createAccount(address('brake', lang), lang);
+      const account = await createAccount(address('brake', lang), lang);
 
       await page.goto('/launch');
       await submitSignInForm(page, { email: account.email, password: 'not-the-password-26' });
@@ -164,7 +165,7 @@ for (const { lang, locale } of LANGUAGES) {
 
     test(`ACCOUNTS-F07 (${lang}): «Reset your password», the mail sent, the new password and a dead link`, async ({ page }) => {
       const errors = watchPageErrors(page);
-      const account = createAccount(address('reset', lang), lang);
+      const account = await createAccount(address('reset', lang), lang);
 
       await page.goto('/password/reset');
       await review(page, lang, 'ACCOUNTS-F07-request', async () => {
@@ -199,7 +200,7 @@ for (const { lang, locale } of LANGUAGES) {
       browser,
     }) => {
       const errors = watchPageErrors(page);
-      const account = createAccount(address('panel', lang), lang);
+      const account = await createAccount(address('panel', lang), lang);
       await signIn(page.request, account);
       const phone = await browser.newContext({ baseURL: test.info().project.use.baseURL, locale });
       try {
@@ -254,11 +255,9 @@ for (const { lang, locale } of LANGUAGES) {
       page,
     }) => {
       const errors = watchPageErrors(page);
-      const staff = createAccount(address('admin', lang), lang, { staff: true });
+      const staff = await createAccount(address('admin', lang), lang, { staff: true });
       await signIn(page.request, staff);
-      const id = djangoPrint(
-        `from django.contrib.auth import get_user_model\nprint(get_user_model().objects.get(email="${staff.email}").pk)`,
-      );
+      const id = (await sessionOf(page.request)).user?.id;
 
       await page.goto(`/admin/accounts/user/?q=${encodeURIComponent(PREFIX)}`);
       await review(page, lang, 'ACCOUNTS-F13', async () => {
@@ -293,7 +292,7 @@ for (const { lang, locale } of LANGUAGES) {
         page,
       }) => {
         const errors = watchPageErrors(page);
-        const account = createAccount(address('mfa', lang), lang);
+        const account = await createAccount(address('mfa', lang), lang);
         const used = new Set<string>();
         await signIn(page.request, account);
 
@@ -362,7 +361,7 @@ for (const { lang, locale } of LANGUAGES) {
 
       test(`ACCOUNTS-F20 (${lang}): the staff without the app are taken from the admin to set it up`, async ({ page }) => {
         const errors = watchPageErrors(page);
-        const staff = createAccount(address('staff', lang), lang, { staff: true });
+        const staff = await createAccount(address('staff', lang), lang, { staff: true });
         await page.goto('/launch');
         await signInThroughPage(page, staff);
 

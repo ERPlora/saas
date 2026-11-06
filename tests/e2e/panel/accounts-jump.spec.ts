@@ -14,9 +14,10 @@ import { type APIRequestContext, type Page } from '@playwright/test';
 
 import {
   captureAtEverySize,
-  djangoPrint,
+  djangoPrintWarm,
   expect,
   internalSecret,
+  sessionOf,
   signIn,
   signInThroughPage,
   test,
@@ -32,8 +33,8 @@ const STATE = 'state-of-the-browser-that-started-the-jump-0123456789';
 /** A fresh address of this spec, never used before. */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
-function removeAccounts(): void {
-  djangoPrint(
+async function removeAccounts(): Promise<void> {
+  await djangoPrintWarm(
     [
       'from django.contrib.auth import get_user_model',
       'from hubs.models import Hub',
@@ -44,8 +45,8 @@ function removeAccounts(): void {
 }
 
 /** An account with its address proven, as one that signed in before; the panel speaks its `language`. */
-function createAccount(email: string, language: 'en' | 'es' = 'en'): { email: string; password: string } {
-  djangoPrint(
+async function createAccount(email: string, language: 'en' | 'es' = 'en'): Promise<{ email: string; password: string }> {
+  await djangoPrintWarm(
     [
       'from allauth.account.models import EmailAddress',
       'from django.contrib.auth import get_user_model',
@@ -57,8 +58,8 @@ function createAccount(email: string, language: 'en' | 'es' = 'en'): { email: st
 }
 
 /** A business of `email` made by its operation (its owner is `email`); returns its slug. */
-function businessOf(email: string, name: string): string {
-  return djangoPrint(
+function businessOf(email: string, name: string): Promise<string> {
+  return djangoPrintWarm(
     [
       'from django.contrib.auth import get_user_model',
       'from hubs.tests.conftest import create_business',
@@ -117,8 +118,8 @@ test('ACCOUNTS-G98 · ACCOUNTS-G104 · a member enters the business with a one-t
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const ana = createAccount(address('owner'), 'es');
-  const slug = businessOf(ana.email, 'Panadería Ana');
+  const ana = await createAccount(address('owner'), 'es');
+  const slug = await businessOf(ana.email, 'Panadería Ana');
   const jumps = await playTheHubs(page);
   await signIn(page.request, ana);
 
@@ -136,9 +137,7 @@ test('ACCOUNTS-G98 · ACCOUNTS-G104 · a member enters the business with a one-t
   expect([other.status, (other.body.error as { code: string }).code]).toEqual([400, 'invalid_code']);
   const entered = await redeem(page.request, { code: jump.fields.code, hub: slug });
   expect(entered.status).toBe(200);
-  const userId = djangoPrint(
-    `from django.contrib.auth import get_user_model\nprint(get_user_model().objects.get(email="${ana.email}").pk)`,
-  );
+  const userId = (await sessionOf(page.request)).user?.id;
   expect(entered.body).toEqual({ user_id: userId, email: ana.email, name: 'Ana García', locale: 'es', role: 'hub_owner' });
   const again = await redeem(page.request, { code: jump.fields.code, hub: slug });
   expect([again.status, (again.body.error as { code: string }).code]).toEqual([400, 'invalid_code']);
@@ -149,8 +148,8 @@ test('ACCOUNTS-G99 · signed out, the jump signs in on erplora.com and goes on t
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const ana = createAccount(address('signed-out'));
-  const slug = businessOf(ana.email, 'Peluquería Ana');
+  const ana = await createAccount(address('signed-out'));
+  const slug = await businessOf(ana.email, 'Peluquería Ana');
   const jumps = await playTheHubs(page);
 
   await page.goto(`/hub-login/?hub=${slug}&next=/appointments&state=${STATE}`);
@@ -169,9 +168,9 @@ test('ACCOUNTS-G99 · signed out, the jump signs in on erplora.com and goes on t
 
 test('ACCOUNTS-G98 · a jump to a business of others is refused on its page, naming only its host', async ({ page }) => {
   const errors = watchPageErrors(page);
-  const owner = createAccount(address('other-owner'));
-  const slug = businessOf(owner.email, 'Bar de Otros');
-  const stranger = createAccount(address('stranger'));
+  const owner = await createAccount(address('other-owner'));
+  const slug = await businessOf(owner.email, 'Bar de Otros');
+  const stranger = await createAccount(address('stranger'));
   const jumps = await playTheHubs(page);
   await signIn(page.request, stranger);
 
@@ -190,8 +189,8 @@ test('ACCOUNTS-G98 · a jump to a business of others is refused on its page, nam
 
 test('ACCOUNTS-G98 · too many jumps in a few minutes wait, without a code', async ({ page }) => {
   const errors = watchPageErrors(page);
-  const ana = createAccount(address('brake'));
-  const slug = businessOf(ana.email, 'Frutería Ana');
+  const ana = await createAccount(address('brake'));
+  const slug = await businessOf(ana.email, 'Frutería Ana');
   await signIn(page.request, ana);
   const jump = () => page.request.get(`/hub-login/?hub=${slug}&next=/&state=${STATE}`, { maxRedirects: 0 });
 
@@ -204,7 +203,7 @@ test('ACCOUNTS-G98 · too many jumps in a few minutes wait, without a code', asy
     await expect(page.getByRole('heading', { name: 'Too many attempts' })).toBeVisible();
     await expect(page.getByTestId('login-error-badge')).toHaveText('429 · Too many attempts');
   });
-  const minted = djangoPrint(
+  const minted = await djangoPrintWarm(
     `from accounts.models import AuthExchangeCode\nprint(AuthExchangeCode.objects.filter(user__email="${ana.email}").count())`,
   );
   expect(minted).toBe('20');
@@ -215,7 +214,7 @@ test('ACCOUNTS-G100 · from a business, an erplora.com page opens with the sessi
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const ana = createAccount(address('back'));
+  const ana = await createAccount(address('back'));
 
   // Signed out (another browser, or the session ended): the sign-in, then the page the business linked to.
   await page.goto('/dashboard/account/security');
@@ -236,7 +235,7 @@ test('ACCOUNTS-G113 · the app opens the account on its own: its old address, th
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const ana = createAccount(address('app'));
+  const ana = await createAccount(address('app'));
 
   await page.goto('/dashboard/profile/?surface=account');
   expect(await nextOfTheSignIn(page)).toBe('/dashboard/account/profile?surface=account');

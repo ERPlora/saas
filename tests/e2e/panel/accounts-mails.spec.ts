@@ -6,33 +6,29 @@
 // its HTML part painted at the three sizes of the migration (390×844, 834×1112, 1440×900): the logo, every line of
 // the text, the footer, in the recipient's language, nothing scrolling sideways, and nothing fetched but the logo,
 // which the page takes from this checkout, never from the network. Accounts of this spec: `e2e-acc5m-…`.
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { type Page } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
-import { captureAtEverySize, djangoPrint, expect, MAIL_LOGO_URL, MAILING, onlyTheMailLogo, settled, signIn, test } from './fixtures';
+import {
+  captureAtEverySize,
+  djangoPrintWarm,
+  expect,
+  MAIL_LOGO_URL,
+  MAILING,
+  onlyTheMailLogo,
+  settled,
+  signIn,
+  test,
+  warmDjango,
+} from './fixtures';
 import { PANEL_MAIL_DIR, PANEL_URL } from './project';
 
 const atEverySize = captureAtEverySize('APP-ACCOUNTS-5-ACCOUNTS-F46');
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const PREFIX = 'e2e-acc5m-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
 
-const BOOT = 'import django,os;os.environ.setdefault("DJANGO_SETTINGS_MODULE","config.settings");django.setup()';
-
 /** What `code` prints, run by the SaaS's Django with the panel's mail backend: what it sends lands in the folder. */
-function djangoMailing(code: string): string {
-  return execFileSync('uv', ['run', 'python', '-c', `${BOOT}\n${code}`], {
-    cwd: SAAS_DIR,
-    env: { ...djangoEnv(true), ...MAILING },
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  }).trim();
-}
+const djangoMailing = (code: string) => djangoPrintWarm(code, MAILING);
 
 interface ReadMail {
   type: string;
@@ -45,7 +41,7 @@ interface ReadMail {
  * The newest mail to `to` written from `since` on whose subject has `subject`, read from its file as a mail
  * client reads it (Python's `email`): its type, the types of its parts, its HTML and its text.
  */
-function mailOf(to: string, since: number, subject: string): ReadMail {
+async function mailOf(to: string, since: number, subject: string): Promise<ReadMail> {
   const read = [
     'import email, json, pathlib',
     'from email import policy',
@@ -60,18 +56,18 @@ function mailOf(to: string, since: number, subject: string): ReadMail {
     'print(json.dumps({"type": found.get_content_type(), "parts": [part.get_content_type() for part in found.iter_parts()],',
     '    "html": found.get_body(preferencelist=("html",)).get_content(), "text": found.get_body(preferencelist=("plain",)).get_content()}))',
   ].join('\n');
-  return JSON.parse(djangoPrint(read)) as ReadMail;
+  return JSON.parse(await djangoPrintWarm(read)) as ReadMail;
 }
 
-function removeAccounts(): void {
-  djangoPrint(
+async function removeAccounts(): Promise<void> {
+  await djangoPrintWarm(
     `from django.contrib.auth import get_user_model\nget_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
   );
 }
 
 /** An account in `language` with its address proven. */
-function createAccount(email: string, language: string): { email: string; password: string } {
-  djangoPrint(
+async function createAccount(email: string, language: string): Promise<{ email: string; password: string }> {
+  await djangoPrintWarm(
     [
       'from allauth.account.models import EmailAddress',
       'from django.contrib.auth import get_user_model',
@@ -105,20 +101,22 @@ async function paint(page: Page, key: string, mail: ReadMail, language: string):
 }
 
 test.describe('ACCOUNTS-F46 the mails of erplora.com, branded, as text and as HTML', () => {
+  // The two Django the test asks, the panel's mail backend's too, booted here and not on the test's clock.
+  test.beforeAll(() => Promise.all([warmDjango(), warmDjango(MAILING)]));
   test.beforeEach(removeAccounts);
   test.afterEach(removeAccounts);
 
   test('the sign-in code, a charge that failed and a returned authorisation, at the three sizes', async ({ browser }) => {
-    const ana = createAccount(`${PREFIX}ana@example.com`, 'en');
+    const ana = await createAccount(`${PREFIX}ana@example.com`, 'en');
     const context = await browser.newContext({ baseURL: PANEL_URL });
     const since = Date.now();
     // The running panel mails the code of a real sign-in; signIn reads it from the text part, as every spec does.
     await signIn(context.request, ana);
     await context.close();
-    const signInCode = mailOf(ana.email, since, 'sign-in code');
+    const signInCode = await mailOf(ana.email, since, 'sign-in code');
 
     const owner = `${PREFIX}owner@example.com`;
-    djangoMailing(
+    await djangoMailing(
       [
         'import uuid',
         'from datetime import date',
@@ -133,8 +131,8 @@ test.describe('ACCOUNTS-F46 the mails of erplora.com, branded, as text and as HT
         `fiscal._tell_the_business(grant, SimpleNamespace(language="es", email="${owner}"))`,
       ].join('\n'),
     );
-    const charge = mailOf(owner, since, 'No hemos podido cobrar');
-    const fiscal = mailOf(owner, since, 'devuelto la autorización');
+    const charge = await mailOf(owner, since, 'No hemos podido cobrar');
+    const fiscal = await mailOf(owner, since, 'devuelto la autorización');
 
     const page = await browser.newPage();
     await paint(page, 'sign-in-code', signInCode, 'en');
