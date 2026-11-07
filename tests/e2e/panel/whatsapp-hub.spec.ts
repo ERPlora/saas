@@ -29,8 +29,17 @@ import { createHmac } from 'node:crypto';
 import { readMailCode } from '@erplora/ui/testing/mail';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
-import { horizontalOverflow } from '../horizontal-overflow';
-import { hubStackIds, hubStackSql, OWNER, runSeedWarm, shot, submitSignInForm, VIEWPORTS, warmDjango } from './fixtures';
+import {
+  expectNoSidewaysScroll,
+  hubStackIds,
+  hubStackSql,
+  OWNER,
+  runSeedWarm,
+  shot,
+  submitSignInForm,
+  VIEWPORTS,
+  warmDjango,
+} from './fixtures';
 import { WHATSAPP_E2E } from './project';
 
 const HUB_PORT = Number(process.env.E2E_CROSS_HUB_PORT ?? 0);
@@ -135,9 +144,6 @@ async function openInbox(page: Page): Promise<void> {
 
 const shown = (page: Page) => page.locator('.ion-page:not(.ion-page-hidden)').last();
 
-/** No horizontal scroll in the page at its current size. */
-const fits = async (page: Page) => (await horizontalOverflow(page)) === 0;
-
 /** `target` brought into sight at the page's new size, again if the page painted it anew meanwhile. */
 async function inSight(target: Locator): Promise<void> {
   await expect(async () => {
@@ -208,7 +214,7 @@ test('WHATSAPP-G07: a customer’s message, the owner’s reply from the phone a
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize(viewport);
     await expect(reply.locator('[data-testid=whatsapp-inbox-message-status]')).toContainText('Read');
-    expect(await horizontalOverflow(page)).toBe(0);
+    await expectNoSidewaysScroll(page, `the open conversation at ${viewport.width}`);
     await page.screenshot({ path: shot(`APP-WHATSAPP-WHATSAPP-G07-${viewport.width}`) });
   }
 });
@@ -233,7 +239,7 @@ test(`${TASK}: the real Hub lists the templates erplora.com keeps and, with the 
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize(viewport);
     await inSight(row(SEEDED.rejected));
-    expect(await fits(page)).toBe(true);
+    await expectNoSidewaysScroll(page, `the templates at ${viewport.width}`);
     await page.screenshot({ path: shot(`${TASK}-${viewport.width}`) });
   }
 
@@ -266,7 +272,7 @@ test(`${TASK}: the real Hub lists the templates erplora.com keeps and, with the 
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize(viewport);
     await inSight(blocked);
-    expect(await fits(page)).toBe(true);
+    await expectNoSidewaysScroll(page, `«Send» stopped at the cap at ${viewport.width}`);
     await page.screenshot({ path: shot(`${TASK}-cap-${viewport.width}`) });
   }
 });
@@ -322,7 +328,7 @@ test(`${CAP_TASK}: WHATSAPP-F05 — a send erplora.com refuses at the cap tells 
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize(viewport);
     await inSight(blocked);
-    expect(await fits(page)).toBe(true);
+    await expectNoSidewaysScroll(page, `the refused reply at ${viewport.width}`);
     await page.screenshot({ path: shot(`${CAP_TASK}-${viewport.width}`) });
   }
 });

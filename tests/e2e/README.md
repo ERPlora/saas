@@ -460,7 +460,8 @@ vertical (`scrollTop`, `scrollHeight`) sigue libre. Sus reglas son las del guard
 lado con la misma medida (`overflowingBoxes(page, 1)`: `document N > M`, `ion-content N > M`) y, además, las tablas. Tras cambiar el
 tamaño de la ventana (o acoplarse el asistente), una spec comprueba con `expectNoSidewaysScroll(page, '<qué>')`, que repite
 la medida hasta que la página se asienta: una DataTable se reacomoda en varios fotogramas (pliega sus acciones y pasa a
-tarjetas) y una sola medida al instante puede verla a medias (saas#319).
+tarjetas) y una sola medida al instante puede verla a medias (saas#319); en una spec cruzada, el menú lateral del Hub de
+verdad (`ion-split-pane`) sigue fijado un fotograma tras encoger la ventana por debajo de `lg` (saas#380).
 
 ## Tipos
 
