@@ -49,6 +49,7 @@ describe('CardShell', () => {
   it('paints the lockup inside the card, then the icon, the title as the heading and the lead', async () => {
     const { wrapper } = await mountShell();
     const card = wrapper.get('ion-card.shell-card');
+    expect(card.classes()).toContain('ep-surface');
     expect(card.get('[role="img"]').attributes('aria-label')).toBe('ERPlora');
     expect(card.get('.erp-wordmark').text()).toBe('ERPlora');
     const title = card.get('ion-card-title');

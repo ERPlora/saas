@@ -342,7 +342,7 @@ test('PUBLIC-G51 on a slow device, the buttons of the public web lead on even pr
 
   // Before the script it already looks like a button, and not like a text link: the stylesheet is enough.
   await page.goto('/', { waitUntil: 'commit' });
-  await expect(page.locator('section.hero-bg a.ep-button--large >> nth=0')).toHaveCSS('border-top-left-radius', '16px');
+  await expect(page.locator('section.hero-bg a.ep-button--large >> nth=0')).toHaveCSS('border-top-left-radius', '10px');
   expect(await page.evaluate(() => customElements.get('ion-button') === undefined)).toBe(true);
 
   await page.unrouteAll({ behavior: 'ignoreErrors' });

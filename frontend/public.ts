@@ -21,6 +21,7 @@ import '@ionic/core/css/typography.css';
 import '@ionic/core/css/palettes/dark.class.css';
 import '../packages/ui/src/shell/theme/variables.css';
 import '../packages/ui/src/shell/theme/palettes.css';
+import '../packages/ui/src/shell/theme/brand.css';
 import './fonts.css';
 import '../public/static/public/theme.css';
 import '../public/static/public/layout.css';
