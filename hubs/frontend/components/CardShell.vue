@@ -50,7 +50,7 @@ async function signOut(): Promise<void> {
     <ion-content class="card-shell-content">
       <div class="shell-page ion-padding">
         <div class="shell-wrap">
-          <ion-card class="shell-card">
+          <ion-card class="shell-card ep-surface">
             <div class="shell-logo">
               <span
                 class="erp-lockup md"
@@ -151,10 +151,7 @@ ion-router-outlet#main.split-pane-main > .ion-page > ion-content.card-shell-cont
 }
 .shell-card {
   margin: 0;
-  border-radius: 16px;
-  --background: var(--ion-card-background, var(--ion-item-background, #fff));
-  border: 1px solid var(--ion-border-color);
-  box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.25);
+  --background: var(--ion-card-background);
 }
 .shell-logo {
   display: flex;

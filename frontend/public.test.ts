@@ -95,6 +95,7 @@ describe('the public entry: components and styles', () => {
       '@ionic/core/css/palettes/dark.class.css',
       'packages/ui/src/shell/theme/variables.css',
       'packages/ui/src/shell/theme/palettes.css',
+      'packages/ui/src/shell/theme/brand.css',
       'frontend/fonts.css',
       'public/static/public/theme.css',
       'public/static/public/layout.css',
@@ -105,6 +106,14 @@ describe('the public entry: components and styles', () => {
     ]);
     // structure.css locks the body (position: fixed) for an app shell; the public pages scroll.
     expect(SOURCE).not.toMatch(/^import '[^']*structure\.css';$/m);
+  });
+
+  it('uses the current brand blue and shared geometry in the public chrome', () => {
+    const base = readFileSync(join(PUBLIC_TEMPLATES, 'public', 'public_base.html'), 'utf8');
+    const buttons = readFileSync(join(PUBLIC_STATIC, 'components', 'button.css'), 'utf8');
+    expect(base).toContain('<meta name="theme-color" content="#1496d6">');
+    expect(buttons.match(/--border-radius: var\(--ep-radius-sm\);/g)).toHaveLength(3);
+    expect(buttons).not.toContain('--border-radius: var(--ep-radius-lg);');
   });
 
   it('imports every component stylesheet', () => {
