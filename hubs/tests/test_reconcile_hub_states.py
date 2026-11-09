@@ -183,6 +183,59 @@ class TestReconcile:
         assert (fresh(business).status, fresh(business).last_hub_error) == ("active", "")
         assert "ready=1" in output
 
+    def test_maintenance_is_saved_and_cleared_without_moving_the_state_version(self, business, owner, hub_double):
+        """HUBS-F04: the signed poll reports a real freeze and its lift; the monotonic snapshot is untouched."""
+        from hubs.schemas import BusinessListIn, ByIdIn
+
+        stuck(business)
+        hub_double.registry[str(business.id)]["maintenance"] = {
+            "frozen": True,
+            "reason": "Aurora upgrade",
+            "since": "2026-11-09T20:00:00+00:00",
+        }
+        version = fresh(business).state_version
+
+        assert "preparing=1" in run("reconcile_hub_states")
+
+        from django.utils.dateparse import parse_datetime
+        from hubs.tests.conftest import ctx_for
+
+        maintained = fresh(business)
+        assert maintained.maintenance["frozen"] is True
+        assert maintained.maintenance["reason"] == "Aurora upgrade"
+        assert parse_datetime(maintained.maintenance["since"]) == parse_datetime("2026-11-09T20:00:00+00:00")
+        assert maintained.state_version == version
+        assert queries.business_list(ctx_for(owner), BusinessListIn()).rows[0].maintenance.frozen is True
+        assert queries.business_get(ctx_for(owner), ByIdIn(id=business.id)).maintenance.reason == "Aurora upgrade"
+
+        hub_double.registry[str(business.id)]["maintenance"] = None
+        assert "preparing=1" in run("reconcile_hub_states")
+        assert fresh(business).maintenance is None
+        assert fresh(business).state_version == version
+        assert queries.business_list(ctx_for(owner), BusinessListIn()).rows[0].maintenance is None
+
+    def test_check_now_recovers_maintenance_and_ready_without_waiting_for_reconcile(self, business, owner, hub_double):
+        """HUBS-F04: «Check now» runs the same recovery as the scheduled poll."""
+        from hubs.schemas import ByIdIn
+        from hubs.tests.conftest import ctx_for
+
+        stuck(business)
+        hub_double.registry[str(business.id)]["maintenance"] = {
+            "frozen": True,
+            "reason": "Aurora upgrade",
+            "since": "2026-11-09T20:00:00+00:00",
+        }
+        checked = services.business_check(ctx_for(owner), ByIdIn(id=business.id))
+        assert checked.maintenance.frozen is True
+
+        hub_double.registry[str(business.id)]["maintenance"] = None
+        checked = services.business_check(ctx_for(owner), ByIdIn(id=business.id))
+        assert checked.maintenance is None
+
+        hub_double.registry[str(business.id)]["status"] = "ready"
+        checked = services.business_check(ctx_for(owner), ByIdIn(id=business.id))
+        assert (checked.status, fresh(business).ready_at is not None) == ("active", True)
+
     def test_a_snapshot_delivered_meanwhile_does_not_hide_the_failed_preparation(self, business, hub_double):
         """A delivered push clears the Hub's last refusal, not the preparation it still owes."""
         stuck(business)

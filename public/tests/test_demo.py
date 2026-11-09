@@ -543,6 +543,23 @@ def test_the_status_of_a_demo_still_being_prepared_says_so(client, hub_double, s
 
 
 @pytest.mark.django_db
+def test_the_status_during_maintenance_says_so_and_recovers_without_losing_the_demo(client, hub_double):
+    """PUBLIC-F28: a freeze is not a failed preparation; the next poll recovers the real state."""
+    slug = start(client, hub_double, ready=False)
+    hub_double.demos[slug]["maintenance"] = {
+        "frozen": True,
+        "reason": "Aurora upgrade",
+        "since": "2026-11-09T20:00:00+00:00",
+    }
+
+    assert status(client) == {"state": "maintenance"}
+    assert client.session["demo"]["slug"] == slug
+
+    hub_double.demos[slug]["maintenance"] = None
+    assert status(client) == {"state": "preparing"}
+
+
+@pytest.mark.django_db
 def test_the_status_of_a_demo_the_hub_could_not_prepare_is_not_ready(client, hub_double, caplog):
     slug = start(client, hub_double, ready=False)
     hub_double.demos[slug]["status"] = "failed"

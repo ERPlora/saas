@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:63244a46a0841abebdbf2fb327f38c6ac6d36b8e3d86c0c69b103ee328e31d86 -->
+<!-- generated from WORKBOOK.md sha256:b699c4b2f5bb4e7ba3a8f5dd7dbbebf95d2a9a1ecf4dbfaea1b0a66fe0b3383b -->
 
 ## What it is for and who it is for
 
@@ -71,7 +71,7 @@ card; in **Businesses**, in the "Create business" dialog, under "What is your bu
 
 ### Preparing
 The running bar and three steps: "Business created", "Setting up your business" (or "Setting up your business: …", with the type picked)
-and "It opens by itself when it finishes" on the Entrance or "Ready to open" in the dialog.
+and "It opens by itself when it finishes" on the Entrance or "Ready to open" in the dialog. While ERPlora's staff keeps the platform frozen for a database upgrade, the notice "Provisioning paused for maintenance: your business will be ready in a few minutes." explains the wait, with "Check now"; it clears by itself after the lift or when the business is ready. If the check cannot run, another notice says so and offers a retry.
 
 ### Businesses
 The panel's home: the list of the account's businesses with "Business", "Web address", "Status", "Plan", "Role"
@@ -241,7 +241,7 @@ Steps:
 4. The owner also gets the email "… is ready" with the link to open it and the one to its page in the panel.
 In: the notice that the business is ready (HUBS-F07).
 Out: the entry into the business with a one-time pass, which never travels in the address; the "is ready" email, only once.
-If it fails: if the business could not be prepared, the screen says "It could not be prepared" and "We saved …, but it could not be prepared. We keep retrying; if it keeps failing, contact us.", and goes in by itself if the retry (HUBS-F08) fixes it. With several businesses it goes into none by itself: the person chooses.
+If it fails: if the business could not be prepared, the screen says "It could not be prepared" and "We saved …, but it could not be prepared. We keep retrying; if it keeps failing, contact us.", and goes in by itself if the retry (HUBS-F08) fixes it. While ERPlora's staff keeps the platform frozen for a database upgrade, the card and the row instead say "Provisioning paused for maintenance: your business will be ready in a few minutes.", with "Check now"; this is a pause, never a preparation failure, and it clears by itself after the lift or when the business is ready. If the check cannot run, an error says so and can be retried. With several businesses it goes into none by itself: the person chooses.
 Involved: accounts (the jump into the business), the business (reports it is ready)
 
 ### HUBS-F05 Keep the plans in the admin
@@ -288,8 +288,8 @@ Actor: system
 Screen: none
 Steps:
 1. Every 15 minutes, erplora.com looks for what the businesses' service has not received yet: a sign-up, a deletion, a recovery or the latest state of a business.
-2. It sends it again and, for a sign-up that has been more than 2 minutes without the "ready" notice, it asks how it is going: if it is already ready, it marks it ready; if the service does not know it, it sends it again.
-3. It notes in the log how much it delivered, how much stayed pending and how much the business refused.
+2. It sends it again and, for a sign-up that has been more than 2 minutes without the "ready" notice, it asks how it is going: if it is already ready, it marks it ready; if the service does not know it, it sends it again. If the platform is frozen, it saves that real pause and publishes it in the list and the page; after the lift it clears it, without changing the business snapshot's version.
+3. It notes in the log how much it delivered, how much stayed pending and how much the business refused. "Check now" in HUBS-F04 runs this same query and recovery immediately.
 In: the businesses with something pending.
 Out: what was delivered, marked as delivered; what fails stays pending for the next pass.
 If it fails: a business that fails does not stop the pass; the pass ends with an error if something stayed pending, unreachable or refused, and that error raises an alarm. Two passes at once do not step on each other: the second leaves without doing anything.

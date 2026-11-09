@@ -80,12 +80,55 @@ describe('waitForDemo (frontend/demo-wait.ts)', () => {
     expect(navigate).toHaveBeenCalledExactlyOnceWith(JUMP);
   });
 
+  it('shows maintenance and returns to preparing on the next answer, without navigating', async () => {
+    const doc = door();
+    const card = doc.querySelector<HTMLElement>('[data-demo-wait]')!;
+    card.dataset.demoPreparingTitle = 'Preparing your demo…';
+    card.dataset.demoPreparingBody = 'It takes a few seconds.';
+    card.dataset.demoMaintenanceTitle = 'Provisioning paused for maintenance';
+    card.dataset.demoMaintenanceBody = 'Your demo will be ready in a few minutes.';
+    card.innerHTML = '<ion-card-title data-demo-title>Preparing your demo…</ion-card-title><p data-demo-body>It takes a few seconds.</p>';
+    const navigate = vi.fn();
+    const fetch = server({ state: 'maintenance' }, { state: 'preparing' }, { state: 'ready', url: JUMP });
+    const time = clock();
+    const states: Array<string | undefined> = [];
+    const sleep = time.sleep.getMockImplementation()!;
+    time.sleep.mockImplementation(async (ms) => {
+      states.push(card.dataset.demoState);
+      await sleep(ms);
+    });
+
+    await waitForDemo(doc, { fetch, navigate, ...time });
+
+    expect(states).toEqual(['maintenance', 'preparing']);
+    expect(card.dataset.demoState).toBe('ready');
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(navigate).toHaveBeenCalledExactlyOnceWith(JUMP);
+  });
+
   it('goes to the door the answer names when the demo will not come (not ready, ended)', async () => {
     const navigate = vi.fn();
 
     await waitForDemo(door(), { fetch: server({ state: 'expired', url: '/demo/?state=expired' }), navigate, ...clock() });
 
     expect(navigate).toHaveBeenCalledExactlyOnceWith('/demo/?state=expired');
+  });
+
+  it('does not turn a real maintenance pause into a timeout', async () => {
+    const doc = door();
+    const card = doc.querySelector<HTMLElement>('[data-demo-wait]')!;
+    card.dataset.demoMaintenanceTitle = 'Provisioning paused for maintenance';
+    card.dataset.demoMaintenanceBody = 'Your demo will be ready in a few minutes.';
+    card.innerHTML = '<ion-card-title data-demo-title></ion-card-title><p data-demo-body></p>';
+    const answers = [...Array(TIMEOUT_MS / POLL_MS + 1).fill({ state: 'maintenance' }), { state: 'ready', url: JUMP }];
+    const fetch = server(...answers);
+    const navigate = vi.fn();
+
+    expect(await waitForDemo(doc, { fetch, navigate, ...clock() })).toBe(JUMP);
+
+    expect(fetch).toHaveBeenCalledTimes(TIMEOUT_MS / POLL_MS + 2);
+    expect(card.dataset.demoState).toBe('ready');
+    expect(navigate).toHaveBeenCalledExactlyOnceWith(JUMP);
   });
 
   it('gives up after 30 seconds with the door’s «not ready yet»', async () => {

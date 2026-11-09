@@ -52,6 +52,13 @@ export type BusinessStatusCode = 'preparing' | 'active' | 'past_due' | 'suspende
 /** Why «Open» does not work now (`BusinessRowOut.open_blocked_reason`). */
 export type OpenBlockedReason = 'preparing' | 'error' | 'suspended' | 'deleting';
 
+/** `hubs.HubMaintenanceOut`: the real platform-wide pause from the Hub's signed status poll. */
+export interface HubMaintenanceOut {
+  frozen: boolean;
+  reason: string;
+  since: string | null;
+}
+
 /** `hubs.UnpaidReason`: why a renewal is not paid. `card_declined`: «Pay» waits for another card. */
 export type UnpaidReason = 'card_declined' | 'card_changed' | 'authentication_required' | 'payment_failed';
 
@@ -185,6 +192,7 @@ export interface BusinessRowOut {
   can_open: boolean;
   open_blocked_reason: OpenBlockedReason | null;
   hub_error: string | null;
+  maintenance?: HubMaintenanceOut | null;
   deletion_requested_at: string | null;
   purge_after: string | null;
   created_at: string;
@@ -279,6 +287,7 @@ export interface BusinessDetailOut {
   status: BusinessStatusCode;
   status_label: string;
   hub_error: string | null;
+  maintenance?: HubMaintenanceOut | null;
   ready_at: string | null;
   created_at: string;
   deletion_requested_at: string | null;
@@ -701,6 +710,7 @@ declare module '@erplora/ui/sdk' {
     'hubs.business.list': { input: BusinessListIn; output: BusinessListOut };
     'hubs.business.create': { input: BusinessCreateIn; output: BusinessDetailOut };
     'hubs.business.get': { input: ByIdIn; output: BusinessDetailOut };
+    'hubs.business.check': { input: ByIdIn; output: BusinessDetailOut };
     'hubs.business.update': { input: BusinessUpdateIn; output: BusinessDetailOut };
     'hubs.business.change_address': { input: BusinessAddressIn; output: BusinessDetailOut };
     'hubs.business.delete': { input: BusinessDeleteIn; output: BusinessDetailOut };

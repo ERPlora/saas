@@ -307,6 +307,9 @@ def status(request: HttpRequest) -> JsonResponse:
     except HubUnavailable as away:
         logger.warning("demo.status.hub_unavailable hub=%s %s", slug, away)
         return _status("preparing")
+    maintenance = answer.body.get("maintenance") if isinstance(answer.body, dict) else None
+    if isinstance(maintenance, dict) and maintenance.get("frozen") is True:
+        return _status("maintenance")
     hub_status = answer.body.get("status") if isinstance(answer.body, dict) else None
     if hub_status == "ready":
         _remember(request, live, ready=True)

@@ -29,8 +29,13 @@ function followable(url: unknown): url is string {
   return typeof url === 'string' && /^(https?:\/\/|\/(?!\/))/.test(url);
 }
 
-/** The `url` of the status's answer, or `null` while there is none to follow (still preparing, or no answer). */
-async function ask(statusUrl: string, deps: WaitDeps): Promise<string | null> {
+interface StatusAnswer {
+  url: string | null;
+  state: string | null;
+}
+
+/** The status's answer, or `null` while there is none (a failed answer or no answer). */
+async function ask(statusUrl: string, deps: WaitDeps): Promise<StatusAnswer | null> {
   try {
     const response = await deps.fetch(statusUrl, {
       headers: { Accept: 'application/json' },
@@ -40,11 +45,28 @@ async function ask(statusUrl: string, deps: WaitDeps): Promise<string | null> {
     if (!response.ok) return null;
     const answer: unknown = await response.json();
     const url = answer && typeof answer === 'object' ? (answer as { url?: unknown }).url : undefined;
-    return followable(url) ? url : null;
+    const state = answer && typeof answer === 'object' ? (answer as { state?: unknown }).state : undefined;
+    return { url: followable(url) ? url : null, state: typeof state === 'string' ? state : null };
   } catch {
     // No answer this time (the network, a page that is not JSON): the next ask may have one.
     return null;
   }
+}
+
+/** The server's state and its translated copy, supplied by the Django template in both languages. */
+function show(card: HTMLElement, state: string): void {
+  card.dataset.demoState = state;
+  if (state !== 'preparing' && state !== 'maintenance') return;
+  const title = state === 'maintenance' ? card.dataset.demoMaintenanceTitle : card.dataset.demoPreparingTitle;
+  const body = state === 'maintenance' ? card.dataset.demoMaintenanceBody : card.dataset.demoPreparingBody;
+  const titleElement = card.querySelector<HTMLElement>('[data-demo-title]');
+  const bodyElement = card.querySelector<HTMLElement>('[data-demo-body]');
+  const preparingIcon = card.querySelector<HTMLElement>('[data-demo-preparing-icon]');
+  const maintenanceIcon = card.querySelector<HTMLElement>('[data-demo-maintenance-icon]');
+  if (preparingIcon) preparingIcon.hidden = state === 'maintenance';
+  if (maintenanceIcon) maintenanceIcon.hidden = state !== 'maintenance';
+  if (titleElement && title) titleElement.textContent = title;
+  if (bodyElement && body) bodyElement.textContent = body;
 }
 
 /**
@@ -59,8 +81,10 @@ export async function waitForDemo(doc: Document, overrides: Partial<WaitDeps> = 
   const deps = { ...BROWSER, ...overrides };
   const started = deps.now();
   for (;;) {
-    const url = await ask(statusUrl, deps);
-    const next = url ?? (deps.now() - started >= TIMEOUT_MS ? timeoutUrl : null);
+    const answer = await ask(statusUrl, deps);
+    if (answer?.state) show(card, answer.state);
+    const timedOut = card.dataset.demoState !== 'maintenance' && deps.now() - started >= TIMEOUT_MS;
+    const next = answer?.url ?? (timedOut ? timeoutUrl : null);
     if (next !== null) {
       deps.navigate(next);
       return next;

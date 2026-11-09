@@ -45,6 +45,7 @@ def call(name, hub, team):
     invitation = member_of(hub, team["invitee"]).id
     return {
         "business.get": (queries.business_get, ByIdIn(id=hub.id)),
+        "business.check": (services.business_check, ByIdIn(id=hub.id)),
         "business.update": (
             services.business_update,
             BusinessUpdateIn(id=hub.id, name="Renamed"),
@@ -113,6 +114,7 @@ def measured(hub):
 MATRIX = {
     #                          owner admin   manager employee invitee stranger
     "business.get": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
+    "business.check": (OK, OK, OK, OK, HIDDEN, HIDDEN),
     "business.update": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
     "business.change_address": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
     "business.delete": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
@@ -173,6 +175,7 @@ def test_every_operation_on_a_business_has_its_row():
         "hubs.business.create_check",
         "hubs.business.mark_ready",
         "hubs.business.record_hub_error",
+        "hubs.business.record_maintenance",
         "hubs.business.notify_people",
         # The platform's (billing writes what Stripe says): ``test_subscription_apply.py``.
         "hubs.subscription.apply",

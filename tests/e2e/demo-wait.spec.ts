@@ -16,6 +16,7 @@ import type { Page } from '@playwright/test';
 
 import { expect, test } from './public-test';
 import { STACK } from './stack';
+import { uiClipSweep } from './ui-evidence';
 
 const ARTIFACTS = join(dirname(fileURLToPath(import.meta.url)), '.artifacts', 'demo');
 const WIDTHS = [390, 834, 1440];
@@ -32,6 +33,7 @@ interface Demo {
 /** The demos the double made, by id; the next one is born with `next` as its statuses. */
 const demos = new Map<string, Demo>();
 let next: string[] = ['requested'];
+let maintenance: Record<string, unknown> | null = null;
 let hub: Server;
 
 function startHub(): Promise<Server> {
@@ -54,7 +56,7 @@ function startHub(): Promise<Server> {
       const asked = STATUS.exec(path);
       const demo = asked ? demos.get(asked[1]) : undefined;
       if (request.method === 'GET' && demo) {
-        answer(200, { status: demo.statuses[Math.min(demo.asked++, demo.statuses.length - 1)] });
+        answer(200, { status: demo.statuses[Math.min(demo.asked++, demo.statuses.length - 1)], maintenance });
         return;
       }
       answer(404, { error: { code: 'not_found', message: 'Unknown.' } });
@@ -94,6 +96,9 @@ test.afterAll(async () => {
     hub.close(() => closed());
   });
 });
+test.afterEach(() => {
+  maintenance = null;
+});
 
 test.describe('in English', () => {
   test.use({ locale: 'en-GB' });
@@ -112,6 +117,35 @@ test.describe('in English', () => {
     expect(visits).toHaveLength(1);
     const [demo] = [...demos.values()].slice(-1);
     expect(demo.asked).toBe(5);
+    expect(violations()).toEqual([]);
+  });
+
+  test('maintenance is explained and clears by itself without a timeout', async ({ page }) => {
+    next = ['requested', 'requested', 'ready'];
+    maintenance = { frozen: true, reason: 'Aurora upgrade', since: '2026-11-09T20:00:00Z' };
+    const violations = watchCsp(page);
+    const visits = await demoDoor(page);
+    await page.goto('/demo/');
+    await page.getByTestId('demo-start').click();
+
+    await expect(page.getByTestId('demo-state-preparing').getByRole('status')).toContainText('Provisioning paused for maintenance');
+    const evidence = join(process.env.HOME ?? '', '.erplora', 'fleet-next', 'logs', '387', 'ui');
+    mkdirSync(evidence, { recursive: true });
+    for (const size of [
+      { width: 1440, height: 900 },
+      { width: 820, height: 1180 },
+      { width: 375, height: 667 },
+    ] as const) {
+      await page.setViewportSize(size);
+      await expect(page.getByTestId('demo-state-preparing').getByRole('status')).toContainText('Your demo will be ready in a few minutes');
+      await page.evaluate(() => new Promise<void>((painted) => requestAnimationFrame(() => requestAnimationFrame(() => painted()))));
+      await page.screenshot({ path: join(evidence, `demo-maintenance-en-${size.width}x${size.height}.png`), fullPage: size.width > 375 });
+    }
+    await uiClipSweep(page, 'http://127.0.0.1:13871/demo/');
+
+    maintenance = null;
+    await page.waitForURL(/^http:\/\/demo-[0-9a-f]{8}\.localhost(:\d+)?\/auth\/login\?next=\/$/, { timeout: 15_000 });
+    expect(visits).toHaveLength(1);
     expect(violations()).toEqual([]);
   });
 
