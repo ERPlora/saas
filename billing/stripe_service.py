@@ -88,24 +88,18 @@ def client() -> stripe.StripeClient:
 def key_mode() -> StripeKeyMode:
     """Whether the configured key charges real money (``LIVE``), test money, or is not usable (``UNKNOWN``).
 
-    Live money only through a RESTRICTED key (``rk_live_``, PLAN-SAAS §4): the account's live secret key
-    (``sk_live_``) can do everything a stolen key could, so it is refused like no key at all. And only in
-    prod: outside it (``ERPLORA_ENVIRONMENT=pre``) any live key is refused the same way (``billing.E002``
-    stops the deploy first). Production itself (DEBUG off) refuses a test key (``billing.E003``,
-    ``settings.STRIPE_TEST_KEYS_ALLOWED``): development runs as prod with DEBUG on and keeps its test keys."""
+    Live money requires a restricted key (PLAN-SAAS §4). Both configured keys must match
+    STRIPE_EXPECTED_MODE, regardless of DEBUG or the deployment's metric label."""
     key = settings.STRIPE_SECRET_KEY or ""
     mode = stripe_key_mode(key)
     if mode is StripeKeyMode.LIVE and not key.startswith("rk_"):
         logger.error("[STRIPE] STRIPE_SECRET_KEY is a live SECRET key: use a restricted rk_live_ key")
         return StripeKeyMode.UNKNOWN
-    if mode is StripeKeyMode.LIVE and settings.ERPLORA_ENVIRONMENT != "prod":
-        logger.error(
-            "[STRIPE] STRIPE_SECRET_KEY is a live key outside prod (%s): use a test key", settings.ERPLORA_ENVIRONMENT
-        )
-        return StripeKeyMode.UNKNOWN
-    if mode is StripeKeyMode.TEST and not settings.STRIPE_TEST_KEYS_ALLOWED:
-        # Production (DEBUG off) with a test key would let anybody pay a plan with a test card (billing.E003).
-        logger.error("[STRIPE] STRIPE_SECRET_KEY is a test key in production: use the restricted rk_live_ key")
+    expected_mode = settings.STRIPE_EXPECTED_MODE
+    publishable = settings.STRIPE_PUBLISHABLE_KEY or ""
+    opposite_mode = "live" if expected_mode == "test" else "test"
+    if mode.value != expected_mode or publishable.startswith(f"pk_{opposite_mode}_"):
+        logger.error("[STRIPE] Configured keys do not match STRIPE_EXPECTED_MODE=%s", expected_mode)
         return StripeKeyMode.UNKNOWN
     return mode
 

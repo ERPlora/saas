@@ -94,11 +94,10 @@ def is_private(request: HttpRequest) -> bool:
 
 
 class NoIndexPrivatePathsMiddleware:
-    """``X-Robots-Tag: noindex`` on every private response, and outside prod on every response.
+    """``X-Robots-Tag: noindex`` on private responses, or all responses when indexing is disabled.
 
     robots.txt is advisory; this is not. It also covers what robots.txt cannot: a redirect to the
-    login is still a URL a crawler can index, and it leaks the shape of the private site. Outside prod
-    (``pre.erplora.com``, plan 2026-10-14-entorno-pre) the public web is the team's too.
+    login is still a URL a crawler can index, and it leaks the shape of the private site.
     """
 
     def __init__(self, get_response):
@@ -106,6 +105,6 @@ class NoIndexPrivatePathsMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        if settings.ERPLORA_ENVIRONMENT != "prod" or is_private(request):
+        if not settings.PUBLIC_INDEXING_ENABLED or is_private(request):
             response["X-Robots-Tag"] = NOINDEX_HEADER
         return response

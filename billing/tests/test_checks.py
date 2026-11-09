@@ -4,9 +4,7 @@ A restricted live key (``rk_live_``) has only the permissions the SaaS needs; th
 (``sk_live_``) can do everything a thief would want. ``manage.py check --deploy`` refuses it (``billing.E001``)
 and the gateway does not use it either (``billing.stripe_service.key_mode``).
 
-Outside prod (``ERPLORA_ENVIRONMENT=pre``, plan 2026-10-14-entorno-pre) Stripe runs in test mode only:
-whoever pushes to the pre branch runs code with pre's secrets, so a live key there fails the deploy
-(``billing.E002``).
+STRIPE_EXPECTED_MODE controls both configured keys independently of the deployment label or DEBUG.
 """
 
 import pytest
@@ -20,11 +18,13 @@ def deploy_errors(settings, key, publishable=""):
 
 
 def test_a_live_secret_key_fails_the_deploy_check(settings):
+    settings.STRIPE_EXPECTED_MODE = "live"
     assert deploy_errors(settings, "sk_live_dummy") == ["billing.E001"]
 
 
 @pytest.mark.parametrize("key", ["rk_live_dummy", "sk_test_dummy", "rk_test_dummy", ""])
 def test_any_other_key_passes(settings, key):
+    settings.STRIPE_EXPECTED_MODE = "live" if "live" in key else "test"
     assert deploy_errors(settings, key) == []
 
 
@@ -38,59 +38,50 @@ def test_the_check_runs_only_on_deploy(settings):
     ("key", "expected"),
     [("rk_live_dummy", ["billing.E002"]), ("sk_live_dummy", ["billing.E001", "billing.E002"])],
 )
-def test_a_live_key_outside_prod_fails_the_deploy_check(settings, key, expected):
-    settings.ERPLORA_ENVIRONMENT = "pre"
+def test_test_mode_refuses_a_live_key(settings, key, expected):
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.STRIPE_EXPECTED_MODE = "test"
 
     assert sorted(deploy_errors(settings, key)) == expected
 
 
-def test_a_live_publishable_key_outside_prod_fails_the_deploy_check(settings):
-    settings.ERPLORA_ENVIRONMENT = "pre"
+def test_test_mode_refuses_a_live_publishable_key(settings):
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.STRIPE_EXPECTED_MODE = "test"
 
     assert deploy_errors(settings, "rk_test_dummy", publishable="pk_live_dummy") == ["billing.E002"]
 
 
 @pytest.mark.parametrize("key", ["rk_test_dummy", "sk_test_dummy", ""])
-def test_outside_prod_a_test_key_passes(settings, key):
+def test_test_mode_accepts_a_test_key(settings, key):
     settings.ERPLORA_ENVIRONMENT = "pre"
+    settings.STRIPE_EXPECTED_MODE = "test"
 
     assert deploy_errors(settings, key, publishable="pk_test_dummy" if key else "") == []
 
 
-def test_prod_keeps_its_live_keys(settings):
+def test_live_mode_accepts_live_keys_independently_of_the_label(settings):
+    settings.ERPLORA_ENVIRONMENT = "pre"
+    settings.STRIPE_EXPECTED_MODE = "live"
     assert deploy_errors(settings, "rk_live_dummy", publishable="pk_live_dummy") == []
 
 
 @pytest.mark.parametrize("key", ["sk_test_dummy", "rk_test_dummy"])
-def test_a_test_key_in_production_fails_the_deploy_check(settings, key):
-    """BILLING-F30: a test key in production (DEBUG off) would sell paid plans for test cards, so the deploy
-    refuses it; development keeps its test keys (DEBUG on)."""
-    settings.STRIPE_TEST_KEYS_ALLOWED = False
+def test_live_mode_refuses_a_test_key(settings, key):
+    """BILLING-F30: live mode must not sell paid plans for test cards."""
+    settings.STRIPE_EXPECTED_MODE = "live"
 
     assert deploy_errors(settings, key, publishable="pk_test_dummy") == ["billing.E003"]
 
 
-def test_a_test_publishable_key_in_production_fails_the_deploy_check(settings):
-    settings.STRIPE_TEST_KEYS_ALLOWED = False
+def test_live_mode_refuses_a_test_publishable_key(settings):
+    settings.STRIPE_EXPECTED_MODE = "live"
 
     assert deploy_errors(settings, "rk_live_dummy", publishable="pk_test_dummy") == ["billing.E003"]
 
 
-@pytest.mark.parametrize(
-    ("debug", "environment", "allowed"), [(True, "prod", True), (False, "pre", True), (True, "pre", True), (False, "prod", False)]
-)
-def test_only_production_without_debug_refuses_test_keys(debug, environment, allowed):
-    """``settings.STRIPE_TEST_KEYS_ALLOWED`` comes from here when the settings load: development (prod with DEBUG
-    on) and pre keep their test keys; deployed production does not."""
-    from billing.stripe_keys import test_keys_allowed
-
-    assert test_keys_allowed(debug=debug, environment=environment) is allowed
-
-
-def test_the_settings_work_it_out_from_debug_and_the_environment():
-    from django.conf import settings
-
-    from billing.stripe_keys import test_keys_allowed
-
-    # pytest-django turns DEBUG off after the settings load; they loaded with DEBUG on (config.settings_pytest).
-    assert settings.STRIPE_TEST_KEYS_ALLOWED is test_keys_allowed(debug=True, environment=settings.ERPLORA_ENVIRONMENT)
+@pytest.mark.parametrize("debug", [True, False])
+def test_debug_does_not_bypass_the_expected_live_mode(settings, debug):
+    settings.DEBUG = debug
+    settings.STRIPE_EXPECTED_MODE = "live"
+    assert deploy_errors(settings, "rk_test_dummy", "pk_test_dummy") == ["billing.E003"]

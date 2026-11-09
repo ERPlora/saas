@@ -88,10 +88,9 @@ def robots_txt(request: HttpRequest) -> HttpResponse:
     but ``urllib.robotparser`` (and the crawlers built on it) picks the first that matches, and with
     this order the file means the same under both readings.
 
-    Outside prod (``pre.erplora.com``, plan 2026-10-14-entorno-pre) every agent is kept out of everything
-    and no sitemap is announced: pre is the team's, never a second copy of the public web in an index.
+    With PUBLIC_INDEXING_ENABLED off every agent is kept out and no sitemap is announced.
     """
-    if settings.ERPLORA_ENVIRONMENT != "prod":
+    if not settings.PUBLIC_INDEXING_ENABLED:
         return HttpResponse("User-agent: *\nDisallow: /\n", content_type="text/plain; charset=utf-8")
     lines: list[str] = []
     for agents in (("*",), *((agent,) for agent in ANSWER_ENGINE_AGENTS)):

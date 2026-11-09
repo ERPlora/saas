@@ -1,7 +1,7 @@
 """Push the public sitemap URLs to IndexNow. Safe to run repeatedly (it is a ping).
 
-Only from prod: outside it (``pre.erplora.com``, plan 2026-10-14-entorno-pre) nothing is announced to a
-search engine, and asking for it is an error, not a quiet no-op.
+Only with PUBLIC_INDEXING_ENABLED: otherwise nothing is announced to a search engine,
+and asking for it is an error, not a quiet no-op.
 
 It runs daily in a scheduled ECS task whose alarm (aws ``task_failed``) only sees the exit code, so a
 submission IndexNow rejects or never answers is a failed exit too (PUBLIC-F14); no key is not."""
@@ -25,9 +25,9 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        if settings.ERPLORA_ENVIRONMENT != "prod":
+        if not settings.PUBLIC_INDEXING_ENABLED:
             raise CommandError(
-                f"IndexNow only runs in prod, not in {settings.ERPLORA_ENVIRONMENT}: nothing submitted"
+                "PUBLIC_INDEXING_ENABLED is disabled: nothing submitted"
             )
         host = options["host"] or settings.PUBLIC_HOST
         try:

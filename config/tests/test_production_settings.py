@@ -23,6 +23,8 @@ SAAS_NEXT = Path(__file__).resolve().parents[2]
 # with dummies for the secrets. The key is long and varied enough for `check --deploy` (W009).
 PRODUCTION_ENV = {
     "DEBUG": "False",
+    "CACHE_KEY_PREFIX": "saas",
+    "STRIPE_EXPECTED_MODE": "live",
     "SECRET_KEY": "a-long-production-secret-key-with-enough-variety-0123456789-abcdefghij",
     "INTERNAL_SHARED_SECRET": "a-production-internal-secret",
     "GOOGLE_OAUTH_CLIENT_ID": "prod-client.apps.googleusercontent.com",
@@ -84,6 +86,78 @@ def development(expression: str, **env: str):
     """The same with ``DEBUG=True`` alone, as saas-next/.env (.env.example) runs it. The test run
     swaps some values (the mailers, for one), so development is read in a fresh process too."""
     return _settings(expression, {"DEBUG": "True", **env})
+
+
+def test_local_policy_defaults_are_safe_without_deployment_variables():
+    assert development(
+        "(s.CACHE_KEY_PREFIX, s.STRIPE_EXPECTED_MODE, s.PUBLIC_INDEXING_ENABLED, s.AEAT_PRODUCTION_ENABLED)"
+    ) == ("local-saas", "test", False, False)
+
+
+@pytest.mark.parametrize("valkey", ["", "redis://localhost:6379/0"])
+def test_cache_policy_applies_to_local_and_shared_backends(valkey):
+    assert development("s.CACHES['default']['KEY_PREFIX']", VALKEY_URL=valkey) == "local-saas"
+    assert development(
+        "s.CACHES['default']['KEY_PREFIX']", VALKEY_URL=valkey, CACHE_KEY_PREFIX="second-local-saas"
+    ) == "second-local-saas"
+
+
+@pytest.mark.parametrize("label", ["prod", "pre"])
+def test_explicit_policies_do_not_depend_on_the_deployment_label(label):
+    assert production(
+        "(s.CACHES['default']['KEY_PREFIX'], s.STRIPE_EXPECTED_MODE, s.PUBLIC_INDEXING_ENABLED, s.AEAT_PRODUCTION_ENABLED)",
+        ERPLORA_ENVIRONMENT=label,
+        CACHE_KEY_PREFIX="isolated-saas",
+        STRIPE_EXPECTED_MODE="test",
+        PUBLIC_INDEXING_ENABLED="true",
+        AEAT_PRODUCTION_ENABLED="true",
+        VALKEY_URL="redis://localhost:6379/0",
+    ) == ("isolated-saas", "test", True, True)
+
+
+@pytest.mark.parametrize("name", ["CACHE_KEY_PREFIX", "STRIPE_EXPECTED_MODE"])
+def test_deployed_policy_requires_explicit_critical_values(name):
+    environment = {key: value for key, value in PRODUCTION_ENV.items() if key != name}
+    result = _run("import config.settings", environment)
+    assert result.returncode != 0
+    assert name in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [("CACHE_KEY_PREFIX", " "), ("STRIPE_EXPECTED_MODE", "lve"),
+     ("STRIPE_EXPECTED_MODE", ""), ("PUBLIC_INDEXING_ENABLED", "tru"),
+     ("AEAT_PRODUCTION_ENABLED", "tru")],
+)
+def test_invalid_policy_values_refuse_to_start(name, value):
+    result = _run("import config.settings", {**PRODUCTION_ENV, name: value})
+    assert result.returncode != 0
+    assert name in result.stderr
+
+
+def test_deployed_optional_policies_are_disabled_by_default():
+    assert production("(s.PUBLIC_INDEXING_ENABLED, s.AEAT_PRODUCTION_ENABLED)") == (False, False)
+
+
+def test_local_django_check_starts_without_policy_variables_or_external_services():
+    result = _run(
+        "import django\ndjango.setup()\nfrom django.core.management import call_command\ncall_command('check')",
+        {"DEBUG": "True", "DJANGO_SETTINGS_MODULE": "config.settings"},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("label", ["prod", "pre"])
+def test_explicit_deployed_policy_matrix(label):
+    live = label == "prod"
+    assert production(
+        "(s.CACHE_KEY_PREFIX, s.STRIPE_EXPECTED_MODE, s.PUBLIC_INDEXING_ENABLED, s.AEAT_PRODUCTION_ENABLED)",
+        ERPLORA_ENVIRONMENT=label,
+        CACHE_KEY_PREFIX="saas" if live else "pre-saas",
+        STRIPE_EXPECTED_MODE="live" if live else "test",
+        PUBLIC_INDEXING_ENABLED=str(live).lower(),
+        AEAT_PRODUCTION_ENABLED=str(live).lower(),
+    ) == ("saas" if live else "pre-saas", "live" if live else "test", live, live)
 
 
 # Database: TLS verify-full against Aurora with the RDS bundle the image ships.
@@ -524,6 +598,10 @@ SAAS_TASK_ENV = {
     "AWS_REGION": "eu-west-1",
     "SES_REGION": "eu-west-1",
     "DEBUG": "False",
+    "CACHE_KEY_PREFIX": "saas",
+    "STRIPE_EXPECTED_MODE": "live",
+    "PUBLIC_INDEXING_ENABLED": "true",
+    "AEAT_PRODUCTION_ENABLED": "true",
     "DB_HOST": "erplora-prod.cluster-c0ffee.eu-west-1.rds.amazonaws.com",
     "DB_PORT": "5432",
     "DB_SSLMODE": "verify-full",
@@ -680,10 +758,7 @@ def test_development_has_empty_seal_slots_and_the_platform_region():
     ) == ("eu-west-1", "", "")
 
 
-# The environment (plan 2026-10-14-entorno-pre): `prod` or `pre`, the team's pre-production in the same
-# cluster, ALB, Aurora and Valkey as prod. What differs in pre: the cache prefix in the shared Valkey,
-# no indexing (public/seo.py, public/crawlers.py, indexnow_submit) and Stripe in test mode only
-# (billing.E002). Anything else refuses to start.
+# The metric label retains the CloudWatch alarm's prod/pre contract; it controls no policies.
 
 
 def test_the_environment_defaults_to_prod_and_keeps_the_saas_cache_prefix():
@@ -710,6 +785,10 @@ def test_an_unknown_environment_refuses_to_start(environment):
 
 PRE_TASK_ENV = {
     **SAAS_TASK_ENV,
+    "CACHE_KEY_PREFIX": "pre-saas",
+    "STRIPE_EXPECTED_MODE": "test",
+    "PUBLIC_INDEXING_ENABLED": "false",
+    "AEAT_PRODUCTION_ENABLED": "false",
     "ERPLORA_ENVIRONMENT": "pre",
     "DB_NAME": "pre_saas",
     "ALLOWED_HOSTS": "pre.erplora.com,saas-pre.erplora.internal",

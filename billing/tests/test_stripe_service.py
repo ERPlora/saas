@@ -68,12 +68,12 @@ def test_a_live_secret_key_is_not_used(settings):
     assert stripe_service.key_mode() is StripeKeyMode.UNKNOWN
 
 
-def test_outside_prod_a_live_key_is_not_usable(settings):
-    """pre (plan 2026-10-14-entorno-pre) charges test money only: even a restricted live key is refused
-    like no key at all, so a payment answers 503 instead of charging a real card."""
+def test_test_mode_refuses_live_keys_even_with_the_prod_label(settings):
+    """Test mode refuses even a restricted live key before a payment can charge a real card."""
     from billing.stripe_keys import StripeKeyMode
 
-    settings.ERPLORA_ENVIRONMENT = "pre"
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.STRIPE_EXPECTED_MODE = "test"
     settings.STRIPE_SECRET_KEY = "rk_live_51abc"
 
     assert stripe_service.key_mode() is StripeKeyMode.UNKNOWN
@@ -85,19 +85,18 @@ def test_outside_prod_a_live_key_is_not_usable(settings):
 
 
 @pytest.mark.parametrize("key", ["sk_test_51abc", "rk_test_51abc"])
-def test_in_production_a_test_key_is_not_usable(settings, key):
-    """BILLING-F30: production (DEBUG off) charges real money only. A test key there would let anybody pay a
-    plan with a test card: it is refused like no key at all (503), and development keeps its test keys."""
+def test_live_mode_refuses_test_keys(settings, key):
+    """BILLING-F30: live mode refuses test cards; explicitly switching to test permits them."""
     from billing.stripe_keys import StripeKeyMode
 
-    settings.STRIPE_TEST_KEYS_ALLOWED = False
+    settings.STRIPE_EXPECTED_MODE = "live"
     settings.STRIPE_SECRET_KEY = key
 
     assert stripe_service.key_mode() is StripeKeyMode.UNKNOWN
     with pytest.raises(StripeNotConfigured):
         stripe_service.client()
 
-    settings.STRIPE_TEST_KEYS_ALLOWED = True
+    settings.STRIPE_EXPECTED_MODE = "test"
     assert stripe_service.key_mode() is StripeKeyMode.TEST
 
 
@@ -121,6 +120,7 @@ def test_the_items_of_a_long_subscription_are_all_read(stripe_double):
 @pytest.mark.parametrize("key", ["sk_test_51abc", "rk_test_51abc", "rk_live_51abc"])
 def test_a_secret_or_restricted_key_builds_the_client(settings, key):
     settings.STRIPE_SECRET_KEY = key
+    settings.STRIPE_EXPECTED_MODE = "live" if "live" in key else "test"
 
     assert isinstance(stripe_service.client(), stripe.StripeClient)
 
@@ -129,9 +129,24 @@ def test_the_key_mode_is_the_configured_keys(settings):
     from billing.stripe_keys import StripeKeyMode
 
     settings.STRIPE_SECRET_KEY = "rk_live_51abc"
+    settings.ERPLORA_ENVIRONMENT = "pre"
+    settings.STRIPE_EXPECTED_MODE = "live"
     assert stripe_service.key_mode() is StripeKeyMode.LIVE
     settings.STRIPE_SECRET_KEY = ""
     assert stripe_service.key_mode() is StripeKeyMode.UNKNOWN
+
+
+@pytest.mark.parametrize(
+    ("mode", "key", "publishable"),
+    [("test", "rk_test_dummy", "pk_live_dummy"),
+     ("live", "rk_live_dummy", "pk_test_dummy")],
+)
+def test_mixed_publishable_and_secret_modes_cannot_build_a_client(settings, mode, key, publishable):
+    settings.STRIPE_EXPECTED_MODE = mode
+    settings.STRIPE_SECRET_KEY = key
+    settings.STRIPE_PUBLISHABLE_KEY = publishable
+    with pytest.raises(StripeNotConfigured):
+        stripe_service.client()
 
 
 # --- Plain dicts and errors --------------------------------------------------------------------------

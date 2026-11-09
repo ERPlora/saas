@@ -59,6 +59,7 @@ def _secrets(settings):
     settings.INTERNAL_SHARED_SECRET = SECRET
     settings.INTERNAL_SHARED_SECRET_PREVIOUS = ""
     settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.AEAT_PRODUCTION_ENABLED = True
     settings.PLATFORM_HUB_SLUG = PLATFORM
 
 
@@ -348,15 +349,30 @@ def test_own_route_with_a_certificate_tls_refuses_is_invalid_not_a_crash(
         assert secret not in response.content.decode()
 
 
-def test_the_pre_deployment_never_presents_to_production(
+def test_disabled_production_permission_never_presents_to_production(
     client, settings, respx_mock, erplora_seal
 ):
-    settings.ERPLORA_ENVIRONMENT = "pre"
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.AEAT_PRODUCTION_ENABLED = False
 
     response = call(client, "submit", payload(environment="production"))
 
     assert error_of(response) == (409, "environment_not_allowed")
     assert not respx_mock.calls
+
+
+@pytest.mark.parametrize("label", ["prod", "pre"])
+@pytest.mark.parametrize("enabled", [False, True])
+def test_fiscal_destination_permission_does_not_depend_on_the_label(settings, label, enabled):
+    settings.ERPLORA_ENVIRONMENT = label
+    settings.AEAT_PRODUCTION_ENABLED = enabled
+    internal._allowed("testing")
+    if enabled:
+        internal._allowed("production")
+    else:
+        with pytest.raises(internal._Refused) as refused:
+            internal._allowed("production")
+        assert refused.value.code == "environment_not_allowed"
 
 
 # Presentation
@@ -1054,8 +1070,9 @@ def test_probe_own_route_without_a_certificate_is_not_ready(client):
     assert call(client, "probe", body).json()["ready"] is False
 
 
-def test_probe_of_production_from_pre_is_not_ready(client, settings, erplora_seal):
-    settings.ERPLORA_ENVIRONMENT = "pre"
+def test_probe_without_production_permission_is_not_ready(client, settings, erplora_seal):
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.AEAT_PRODUCTION_ENABLED = False
     body = payload(environment="production")
     del body["envelope"]
 

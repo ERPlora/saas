@@ -264,7 +264,7 @@ def _too_large() -> _Refused:
 
 
 def _allowed(environment: str) -> None:
-    if environment == "production" and settings.ERPLORA_ENVIRONMENT != "prod":
+    if environment == "production" and not settings.AEAT_PRODUCTION_ENABLED:
         raise _Refused(
             409,
             "environment_not_allowed",
