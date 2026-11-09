@@ -560,6 +560,21 @@ def test_the_status_during_maintenance_says_so_and_recovers_without_losing_the_d
 
 
 @pytest.mark.django_db
+def test_a_ready_demo_enters_even_when_another_freeze_is_active(client, hub_double):
+    """PUBLIC-F28: a platform-wide pause never holds back a demo whose database is already ready."""
+    slug = start(client, hub_double, ready=False)
+    hub_double.demos[slug]["status"] = "ready"
+    hub_double.demos[slug]["maintenance"] = {
+        "frozen": True,
+        "reason": "Aurora upgrade",
+        "since": "2026-11-09T20:00:00+00:00",
+    }
+
+    assert status(client) == {"state": "ready", "url": f"http://{slug}.localhost:8000/auth/login?next=/"}
+    assert client.session["demo"]["ready"] is True
+
+
+@pytest.mark.django_db
 def test_the_status_of_a_demo_the_hub_could_not_prepare_is_not_ready(client, hub_double, caplog):
     slug = start(client, hub_double, ready=False)
     hub_double.demos[slug]["status"] = "failed"

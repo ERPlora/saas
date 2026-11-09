@@ -121,7 +121,7 @@ test.describe('in English', () => {
   });
 
   test('maintenance is explained and clears by itself without a timeout', async ({ page }) => {
-    next = ['requested', 'requested', 'ready'];
+    next = ['requested'];
     maintenance = { frozen: true, reason: 'Aurora upgrade', since: '2026-11-09T20:00:00Z' };
     const violations = watchCsp(page);
     const visits = await demoDoor(page);
@@ -143,6 +143,9 @@ test.describe('in English', () => {
     }
     await uiClipSweep(page, 'http://127.0.0.1:13871/demo/');
 
+    const [demo] = [...demos.values()].slice(-1);
+    demo.statuses = ['ready'];
+    demo.asked = 0;
     maintenance = null;
     await page.waitForURL(/^http:\/\/demo-[0-9a-f]{8}\.localhost(:\d+)?\/auth\/login\?next=\/$/, { timeout: 15_000 });
     expect(visits).toHaveLength(1);
