@@ -133,6 +133,12 @@
   text-transform: none;
   letter-spacing: normal;
 }
+@media (pointer: coarse) {
+  .ep-footer__language ion-button {
+    min-height: 44px;
+    height: 44px;
+  }
+}
 .ep-footer__language ion-button[data-current] {
   --color: var(--ep-text, var(--ion-text-color, #18181b));
   font-weight: 650;
