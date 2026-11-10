@@ -6,8 +6,9 @@ adapter now logs the failure and raises ``MailNotSent``; ``MailOutageMiddleware`
 error envelope with the code ``mail_unavailable``, which the pages show as their usual «try again» error.
 """
 
-from django.http import JsonResponse
 from django.utils.translation import gettext as _
+
+from accounts.bot_check import allauth_error
 
 
 class MailNotSent(Exception):
@@ -24,7 +25,4 @@ class MailOutageMiddleware:
     def process_exception(self, request, exception):
         if not isinstance(exception, MailNotSent):
             return None
-        message = _("We could not send the email right now. Try again in a few minutes.")
-        return JsonResponse(
-            {"status": 503, "errors": [{"code": "mail_unavailable", "message": message}]}, status=503
-        )
+        return allauth_error(503, "mail_unavailable", _("We could not send the email right now. Try again in a few minutes."))
