@@ -35,6 +35,7 @@ from django.utils import timezone, translation
 from django.utils.translation import gettext
 
 from accounts.handoff import login_error_url
+from accounts.mail_outage import MailNotSent
 from base import emails as branded_mail
 
 logger = logging.getLogger(__name__)
@@ -145,7 +146,11 @@ class AccountAdapter(DefaultAccountAdapter):
         ``apps/core/emails.py`` (``brand_context``).
         """
         brand = SimpleNamespace(name="ERPlora", domain=settings.PUBLIC_HOST)
-        return super().send_mail(template_prefix, email, {**context, "current_site": brand, **branded_mail.brand()})
+        try:
+            return super().send_mail(template_prefix, email, {**context, "current_site": brand, **branded_mail.brand()})
+        except Exception as exc:  # noqa: BLE001 - any failure of the mail backend is reported, not left as a 500
+            logger.exception("accounts.mail_failed kind=%s", template_prefix)
+            raise MailNotSent from exc
 
     def render_mail(self, template_prefix, email, context, headers=None):
         """Every allauth mail leaves as text and as HTML on the common template (ACCOUNTS-F46).

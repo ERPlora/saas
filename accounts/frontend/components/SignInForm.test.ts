@@ -400,6 +400,19 @@ describe('SignInForm: signing in', () => {
     expect(assign).not.toHaveBeenCalled();
   });
 
+  it('says the email could not be sent when the code cannot leave (allauth answers 503 mail_unavailable), not the generic failure', async () => {
+    const message = 'No hemos podido enviar el correo ahora mismo. Vuelve a intentarlo en unos minutos.';
+    fakeAllauth({
+      'GET /auth/session': anonymous,
+      'POST /auth/signup': () => json(503, { status: 503, errors: [{ code: 'mail_unavailable', message }] }),
+    });
+    const { signIn, failure } = await mountForm({ path: '/launch?tab=signup', locale: 'es' });
+    await signIn('new@example.com', 'a new long password');
+    expect(failure().text()).toBe(message);
+    expect(failure().attributes('role')).toBe('alert');
+    expect(assign).not.toHaveBeenCalled();
+  });
+
   it('goes on when a session was opened meanwhile in another tab (allauth answers 409)', async () => {
     fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/login': conflict });
     const { signIn, failure } = await mountForm();
