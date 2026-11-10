@@ -129,6 +129,20 @@ def error_of(response):
     return response.status_code, response.json()["error"]["code"]
 
 
+def log_text(caplog) -> str:
+    """Everything the gateway logged: the messages and their arguments."""
+    return caplog.text + "".join(str(record.args) for record in caplog.records)
+
+
+def assert_certificate_kept_out(caplog, response, p12: bytes, password: str) -> None:
+    """Something was logged, and neither the logs nor ``response`` carry ``p12``, its password or a private key."""
+    assert caplog.records
+    logged = log_text(caplog)
+    for secret in (password, b64(p12)[:60], b64(p12)[-60:], "PRIVATE KEY"):
+        assert secret not in logged
+        assert secret not in response.content.decode()
+
+
 # Signature
 
 
@@ -342,11 +356,7 @@ def test_own_route_with_a_certificate_tls_refuses_is_invalid_not_a_crash(
     assert error_of(response) == (409, "certificate_invalid")
     assert not respx_mock.calls
     assert _free_slots() == 8
-    logged = caplog.text + "".join(str(record.args) for record in caplog.records)
-    assert caplog.records
-    for secret in ("pw-5d1e8b", b64(weak)[:60], b64(weak)[-60:], "PRIVATE KEY"):
-        assert secret not in logged
-        assert secret not in response.content.decode()
+    assert_certificate_kept_out(caplog, response, weak, "pw-5d1e8b")
 
 
 def test_disabled_production_permission_never_presents_to_production(
@@ -577,7 +587,7 @@ def test_an_approval_for_another_taxpayer_is_a_nif_mismatch(
     assert error_of(response) == (409, "nif_mismatch")
     assert not respx_mock.calls
     # Nothing of the authorisation reaches the answer nor a log.
-    logged = caplog.text + "".join(str(record.args) for record in caplog.records)
+    logged = log_text(caplog)
     assert "B99999999" not in response.content.decode()
     assert "B99999999" not in logged
 
@@ -1041,11 +1051,7 @@ def test_probe_with_a_certificate_tls_refuses_is_not_ready(client, respx_mock, c
     assert response.json()["ready"] is False
     assert "TLS" in response.json()["detail"]
     assert not respx_mock.calls
-    logged = caplog.text + "".join(str(record.args) for record in caplog.records)
-    assert caplog.records
-    for secret in ("pw-5d1e8b", b64(weak)[:60], b64(weak)[-60:], "PRIVATE KEY"):
-        assert secret not in logged
-        assert secret not in response.content.decode()
+    assert_certificate_kept_out(caplog, response, weak, "pw-5d1e8b")
 
 
 @pytest.mark.parametrize("route", ["erplora", "own"])
@@ -1106,7 +1112,7 @@ def test_the_customers_certificate_never_reaches_a_log(client, respx_mock, caplo
         del body["envelope"]
         call(client, "probe", body)
 
-    logged = caplog.text + "".join(str(record.args) for record in caplog.records)
+    logged = log_text(caplog)
     assert caplog.records
     for secret in (
         "pw-7f3a9c",
