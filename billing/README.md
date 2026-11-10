@@ -212,8 +212,14 @@ comprueba en Stripe: activo, euros, periodicidad, importe del plan, `exclusive` 
 nunca se llama a Stripe: `billing/tests/stripe_double.py` sustituye a `stripe_service.client()` y los
 eventos se firman como los firma Stripe.
 
-**Stripe en pre** (`ERPLORA_ENVIRONMENT=pre`, `pre.erplora.com`; plan `../docs/plans/2026-10-14-entorno-pre.md`):
-solo modo test. Quien empuja a la rama `pre` ejecuta código con los secretos de pre, así que una clave live
+**Modo explícito** (`STRIPE_EXPECTED_MODE`, PLAN-SAAS ronda 2026-11-09b): obligatorio sin `DEBUG`;
+en local por defecto `test`, en prod `live` y en pre `test`. Ni `DEBUG` ni la etiqueta
+`ERPLORA_ENVIRONMENT` saltan esta validación. Un modo live rechaza claves test (`billing.E003`),
+y `sk_live_` sigue prohibida (`billing.E001`). La clave pública viaja en `publishable_key` con el
+checkout, nunca se incorpora como variable de Vite.
+
+**Stripe en pre** (`STRIPE_EXPECTED_MODE=test`, `pre.erplora.com`): solo modo test.
+Quien empuja a la rama `pre` ejecuta código con los secretos de pre, así que una clave live
 (`sk_live_`, `rk_live_` o `pk_live_`) falla `check --deploy` con `billing.E002` y `stripe_service.key_mode()` la
 trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobro real). En el secreto
 `erplora/pre/app` (lo carga `stripe-setup-pre.sh`, fuera del repo, gemelo de `stripe-setup-live.sh` en modo test):

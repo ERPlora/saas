@@ -14,7 +14,12 @@
 #   0. reads the latest ACTIVE revision of every family and refuses them all, registering nothing,
 #      unless each one carries the tag Environment=<ENVIRONMENT> and the task and execution roles of
 #      its environment (role/erplora-<ENVIRONMENT>-…): ecs:RegisterTaskDefinition takes no resource,
-#      so another environment's deploy role could have left a revision in this family;
+#      so another environment's deploy role could have left a revision in this family; and unless the
+#      container of the saas image has the four policies ERPlora/aws gives it (REQUIRED_ENV,
+#      config/settings.py; PLAN-SAAS §43): without a cache prefix or a Stripe mode the saas refuses to
+#      start outside DEBUG, so a revision from before that apply would register saas-cron's (the
+#      Scheduler's latest) and only fail at step 2; without either boolean it starts with it false,
+#      silently: prod refusing every hub's records for the AEAT's production, or out of the search engines;
 #   1. registers a new revision of each family from that one, with its tags, changing only the image
 #      of the containers that run the saas image (one per task: the app); Terraform owns the rest of
 #      the definition; saas-cron is only registered (the Scheduler runs its latest);
@@ -63,6 +68,8 @@ done
 
 # This repo deploys the saas; the hub repo keeps its own copy of this script.
 PROJECT=saas
+# What every container of the saas image must be given, in its environment or its secrets (step 0).
+REQUIRED_ENV='["CACHE_KEY_PREFIX", "STRIPE_EXPECTED_MODE", "PUBLIC_INDEXING_ENABLED", "AEAT_PRODUCTION_ENABLED"]'
 migration=saas-migrate
 # Families that run as a service; the service of family <name> is <name><suffix>.
 services=(saas)
@@ -104,6 +111,15 @@ prepare() {
            | all(type == "string" and test("^arn:aws[a-z-]*:iam::[0-9]{12}:role/erplora-\($environment)-")))' \
     "$workdir/$name.base.json" > /dev/null; then
     echo "::error::$prefix-$name is not a $ENVIRONMENT revision (it needs the tag Environment=$ENVIRONMENT and the roles erplora-$ENVIRONMENT-*); nothing was registered" >&2
+    exit 1
+  fi
+  local missing
+  missing="$(jq -r --arg project_image "$project_image" --argjson required "$REQUIRED_ENV" '
+      [.taskDefinition.containerDefinitions[] | select((.image // "") | startswith($project_image))
+       | [.environment[]?.name, .secrets[]?.name] as $names | $required[] | select(. as $n | $names | index($n) | not)]
+      | unique | join(" ")' "$workdir/$name.base.json")"
+  if [ -n "$missing" ]; then
+    echo "::error::$prefix-$name has no $missing in the environment or secrets of its saas container (apply ERPlora/aws first); nothing was registered" >&2
     exit 1
   fi
   jq --arg project_image "$project_image" --arg image "$image" '

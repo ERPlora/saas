@@ -5,7 +5,7 @@
 // environment: it loads the Playwright config (vite.config.test.ts, «the tests that load Playwright»).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { djangoEnv } from './django-env';
+import { djangoEnv, productionPolicies } from './django-env';
 import e2eConfig from './playwright.config';
 import { stackFrom } from './stack';
 
@@ -91,5 +91,22 @@ describe("the e2e's Django servers", () => {
       '127.0.0.1:8013': 'True',
       '127.0.0.1:8016': undefined,
     });
+  });
+});
+
+// With DEBUG off the settings refuse to start without a cache prefix and a Stripe mode (config/settings.py,
+// PLAN-SAAS §43): `runserver` then fell back to Django's own and stopped at `--novite --insecure` (saas#395).
+describe('productionPolicies', () => {
+  it("gives the production-like servers of a stack its own cache prefix, Stripe's test mode and an indexable web", () => {
+    expect(productionPolicies(stackFrom({}))).toEqual({
+      CACHE_KEY_PREFIX: 'e2e-saas-8011',
+      STRIPE_EXPECTED_MODE: 'test',
+      PUBLIC_INDEXING_ENABLED: 'True',
+      AEAT_PRODUCTION_ENABLED: 'False',
+    });
+  });
+
+  it("keeps a second stack's cache apart from the first's", () => {
+    expect(productionPolicies(stackFrom({ E2E_SAAS_PORT: '8030' })).CACHE_KEY_PREFIX).toBe('e2e-saas-8031');
   });
 });

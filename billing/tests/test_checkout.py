@@ -695,6 +695,8 @@ class TestNoMoneyMovesWhen:
 
         cache.clear()  # the platform hub's last health answer
         settings.STRIPE_SECRET_KEY = "rk_live_double"
+        settings.STRIPE_PUBLISHABLE_KEY = "pk_live_double"
+        settings.STRIPE_EXPECTED_MODE = "live"
         FiscalPolicy.objects.update(oss_carried_year=timezone.localdate().year)
 
     def test_a_live_key_is_held_while_invoicing_is_not_switched_on(self, shop, owner, settings, stripe_double,
@@ -762,6 +764,8 @@ class TestNoMoneyMovesWhen:
     def test_with_a_live_key_the_oss_total_must_still_be_known(self, shop, owner, settings, stripe_double,
                                                                hub_double):
         settings.STRIPE_SECRET_KEY = "rk_live_double"
+        settings.STRIPE_PUBLISHABLE_KEY = "pk_live_double"
+        settings.STRIPE_EXPECTED_MODE = "live"
         settings.PLATFORM_INVOICING_ENABLED = True
         hub_double.answer("GET", r"^/internal/platform/invoices/health$", 200, {"status": "ok"})
         FiscalPolicy.objects.update(oss_carried_year=None)
@@ -773,6 +777,8 @@ class TestNoMoneyMovesWhen:
     def test_a_live_secret_key_is_never_used(self, shop, owner, settings, stripe_double):
         """PLAN-SAAS §4: production holds a RESTRICTED live key (``rk_live_``), never the account's secret."""
         settings.STRIPE_SECRET_KEY = "sk_live_double"
+        settings.STRIPE_PUBLISHABLE_KEY = "pk_live_double"
+        settings.STRIPE_EXPECTED_MODE = "live"
 
         error = refused("billing.payments_unavailable", lambda: start(owner, shop, plan="starter"))
 

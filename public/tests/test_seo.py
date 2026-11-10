@@ -210,7 +210,8 @@ def test_every_linked_page_exists(client, llms):
 
 @pytest.mark.django_db
 def test_outside_prod_robots_txt_disallows_everything(client, settings):
-    settings.ERPLORA_ENVIRONMENT = "pre"
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.PUBLIC_INDEXING_ENABLED = False
 
     response = client.get("/robots.txt", HTTP_HOST=HOST)
     body = response.content.decode()

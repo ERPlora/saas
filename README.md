@@ -330,10 +330,35 @@ y el panel lo enseña en la ficha del negocio (`fiscal.representation.status`).
 
 ## Entornos y ramas: `prod` y `pre`
 
-`ERPLORA_ENVIRONMENT` dice qué despliegue es el proceso: `prod` (`erplora.com`; también por defecto en local
-y en los tests) o `pre`, la preproducción del equipo en `pre.erplora.com`, en su propio cluster ECS
-(`erplora-pre`; PLAN-AWS, ronda 2026-10-16) y con el mismo ALB, Aurora y Valkey que prod (plan
-`../docs/plans/2026-10-14-entorno-pre.md`). Cualquier otro valor no arranca. En `pre`:
+Las políticas del SaaS son explícitas (PLAN-SAAS, ronda 2026-11-09b), no se deducen del nombre
+del entorno ni de la rama:
+
+- `CACHE_KEY_PREFIX`: `saas` en prod, `pre-saas` en pre; obligatorio sin `DEBUG`.
+- `STRIPE_EXPECTED_MODE`: `live` en prod, `test` en pre; obligatorio sin `DEBUG`, solo admite esos
+  dos valores. Las claves secretas y públicas deben coincidir con el modo; live exige `rk_live_`.
+  `DEBUG` no evita esta comprobación. Se mantienen `billing.E001`, `billing.E002` y `billing.E003`.
+- `PUBLIC_INDEXING_ENABLED`: `true` en prod, `false` en pre; ausente, `false`.
+- `AEAT_PRODUCTION_ENABLED`: `true` en prod, `false` en pre; ausente, `false`. Solo permite el destino
+  `production`, no lo selecciona ni cambia el destino `testing` de las demos.
+
+Con `DEBUG=True` basta el entorno local habitual: los defaults son `local-saas`, `test`, `false` y
+`false`, sin necesitar las cuatro variables. Sin claves Stripe los pagos siguen no disponibles.
+Los valores inválidos impiden arrancar; no hay fallback ante una errata.
+
+`ERPLORA_ENVIRONMENT` se conserva únicamente como etiqueta `prod`/`pre` de la métrica CloudWatch
+`ERPlora/CustomDomains CertificatesAttached`: la alarma existente busca `Environment=prod`.
+No decide ninguna de las cuatro políticas. El Hub conserva su variable y comportamiento.
+
+**Orden de transición** (PLAN-AWS, ronda 2026-11-09b): primero el `apply` de ERPlora/aws#66, que da las
+cuatro variables a todas las tareas del SaaS (web, worker, migración y, en prod, `saas-cron`) de prod y pre;
+después el despliegue de este código. Fuera de `DEBUG`, sin prefijo o modo no arranca, así que
+`docker/image.test.sh` comprueba la imagen con ellos y sin cada uno. Sin uno de los dos booleanos sí
+arranca, con él en `false` y sin avisar: en prod, cada registro de los hubs para la AEAT de producción
+recibiría el 409 `environment_not_allowed` y erplora.com saldría de los buscadores. Por eso
+`.github/scripts/ecs-deploy.sh` rechaza, sin registrar nada, una revisión cuyo contenedor del SaaS no
+lleve las cuatro, en `environment` o en `secrets`.
+
+En `pre` (`pre.erplora.com`, cluster `erplora-pre`, mismo ALB, Aurora y Valkey que prod):
 
 - la caché de Valkey usa el prefijo `pre-saas` (prod, `saas`): no comparten límites ni claves;
 - nada se indexa: `robots.txt` responde `Disallow: /` sin `Sitemap`, toda respuesta lleva `X-Robots-Tag:

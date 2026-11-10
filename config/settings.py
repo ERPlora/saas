@@ -19,8 +19,6 @@ from live.csp import base_policy, debug_policy
 from live.recaptcha import with_recaptcha
 from psycopg_pool import ConnectionPool
 
-from billing.stripe_keys import test_keys_allowed
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 _ENV_FILE = BASE_DIR / ".env"
@@ -28,11 +26,8 @@ config = Config(
     RepositoryEnv(str(_ENV_FILE)) if _ENV_FILE.is_file() else RepositoryEmpty()
 )
 
-# Which deployment this process is (plan 2026-10-14-entorno-pre): `prod` (erplora.com, also the
-# default for development and the tests) or `pre`, the team's pre-production at pre.erplora.com in
-# the same cluster, Aurora and Valkey. Outside prod: its own cache prefix, nothing indexed
-# (public/seo.py, public/crawlers.py, indexnow_submit) and Stripe in test mode only (billing.E002).
-# Any other value refuses to start: a typo must never run as prod or as nothing.
+# Deployment label for the CertificatesAttached CloudWatch metric, not application policy.
+# The existing alarm matches Environment=prod; retain its contract and reject unknown labels.
 ENVIRONMENTS = ("prod", "pre")
 ERPLORA_ENVIRONMENT = config("ERPLORA_ENVIRONMENT", default="prod").strip()
 if ERPLORA_ENVIRONMENT not in ENVIRONMENTS:
@@ -43,6 +38,25 @@ if ERPLORA_ENVIRONMENT not in ENVIRONMENTS:
 # Off unless the environment turns it on: development sets `DEBUG=True` in saas-next/.env
 # (.env.example) and the test run in config/settings_pytest.py.
 DEBUG = config("DEBUG", default=False, cast=bool)
+
+CACHE_KEY_PREFIX = config("CACHE_KEY_PREFIX", default="local-saas" if DEBUG else "").strip()
+if not CACHE_KEY_PREFIX:
+    raise ImproperlyConfigured("CACHE_KEY_PREFIX must be explicitly configured outside DEBUG.")
+STRIPE_EXPECTED_MODE = config("STRIPE_EXPECTED_MODE", default="test" if DEBUG else "").strip()
+if STRIPE_EXPECTED_MODE not in ("test", "live"):
+    raise ImproperlyConfigured("STRIPE_EXPECTED_MODE must be explicitly set to test or live.")
+
+
+def _policy_boolean(name):
+    try:
+        return config(name, default=False, cast=bool)
+    except ValueError as exc:
+        raise ImproperlyConfigured(f"{name} must be a boolean.") from exc
+
+
+PUBLIC_INDEXING_ENABLED = _policy_boolean("PUBLIC_INDEXING_ENABLED")
+AEAT_PRODUCTION_ENABLED = _policy_boolean("AEAT_PRODUCTION_ENABLED")
+
 # Only local development may fall back to a known key; production refuses to start without one.
 SECRET_KEY = (
     config("SECRET_KEY", default="django-insecure-local-only")
@@ -283,12 +297,15 @@ CACHES = {
         {
             "BACKEND": "base.cache.FailSoftRedisCache",
             "LOCATION": VALKEY_URL,
-            "KEY_PREFIX": "saas" if ERPLORA_ENVIRONMENT == "prod" else f"{ERPLORA_ENVIRONMENT}-saas",
+            "KEY_PREFIX": CACHE_KEY_PREFIX,
             "TIMEOUT": 300,
             "OPTIONS": {"socket_connect_timeout": 2, "socket_timeout": 2},
         }
         if VALKEY_URL
-        else {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}
+        else {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "KEY_PREFIX": CACHE_KEY_PREFIX,
+        }
     )
 }
 
@@ -919,10 +936,6 @@ VAT_CHECK_GLOBAL_RATE = config("VAT_CHECK_GLOBAL_RATE", default="60/m")
 # and apps.Module.
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
 STRIPE_PUBLISHABLE_KEY = config("STRIPE_PUBLISHABLE_KEY", default="")
-# Production (DEBUG off) charges real money only: a test key there would sell paid plans for test cards, so it is
-# refused (billing.E003, billing.stripe_service.key_mode). Development runs as prod with DEBUG on and pre is test
-# mode only. Worked out here, once, from DEBUG and the environment: no variable turns it on in production.
-STRIPE_TEST_KEYS_ALLOWED = test_keys_allowed(debug=DEBUG, environment=ERPLORA_ENVIRONMENT)
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
 STRIPE_TIMEOUT_SECONDS = config("STRIPE_TIMEOUT_SECONDS", default=10.0, cast=float)
 # The Customer Portal's configuration (`bpc_…`): cards and receipts only; plan changes go through the panel,

@@ -128,9 +128,10 @@ def test_is_private_needs_the_path_or_the_spa_route(rf):
 @pytest.mark.parametrize(
     "path", ["/", "/features/", "/robots.txt", "/llms.txt", "/sitemap.xml", "/login", "/accounts/login/"]
 )
-def test_outside_prod_every_response_is_noindex(client, settings, path):
-    """pre.erplora.com (plan 2026-10-14-entorno-pre) is the team's: not even its public web is indexed."""
-    settings.ERPLORA_ENVIRONMENT = "pre"
+def test_disabled_indexing_marks_every_response_noindex(client, settings, path):
+    """Disabling indexing protects even public pages, regardless of the metric label."""
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.PUBLIC_INDEXING_ENABLED = False
 
     response = client.get(path, HTTP_HOST=HOST)
 

@@ -59,6 +59,7 @@ def _secrets(settings):
     settings.INTERNAL_SHARED_SECRET = SECRET
     settings.INTERNAL_SHARED_SECRET_PREVIOUS = ""
     settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.AEAT_PRODUCTION_ENABLED = True
     settings.PLATFORM_HUB_SLUG = PLATFORM
 
 
@@ -126,6 +127,20 @@ def call(client, door, body=None, *, secret=SECRET, signed=True, v2=False, raw=N
 
 def error_of(response):
     return response.status_code, response.json()["error"]["code"]
+
+
+def log_text(caplog) -> str:
+    """Everything the gateway logged: the messages and their arguments."""
+    return caplog.text + "".join(str(record.args) for record in caplog.records)
+
+
+def assert_certificate_kept_out(caplog, response, p12: bytes, password: str) -> None:
+    """Something was logged, and neither the logs nor ``response`` carry ``p12``, its password or a private key."""
+    assert caplog.records
+    logged = log_text(caplog)
+    for secret in (password, b64(p12)[:60], b64(p12)[-60:], "PRIVATE KEY"):
+        assert secret not in logged
+        assert secret not in response.content.decode()
 
 
 # Signature
@@ -341,22 +356,33 @@ def test_own_route_with_a_certificate_tls_refuses_is_invalid_not_a_crash(
     assert error_of(response) == (409, "certificate_invalid")
     assert not respx_mock.calls
     assert _free_slots() == 8
-    logged = caplog.text + "".join(str(record.args) for record in caplog.records)
-    assert caplog.records
-    for secret in ("pw-5d1e8b", b64(weak)[:60], b64(weak)[-60:], "PRIVATE KEY"):
-        assert secret not in logged
-        assert secret not in response.content.decode()
+    assert_certificate_kept_out(caplog, response, weak, "pw-5d1e8b")
 
 
-def test_the_pre_deployment_never_presents_to_production(
+def test_disabled_production_permission_never_presents_to_production(
     client, settings, respx_mock, erplora_seal
 ):
-    settings.ERPLORA_ENVIRONMENT = "pre"
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.AEAT_PRODUCTION_ENABLED = False
 
     response = call(client, "submit", payload(environment="production"))
 
     assert error_of(response) == (409, "environment_not_allowed")
     assert not respx_mock.calls
+
+
+@pytest.mark.parametrize("label", ["prod", "pre"])
+@pytest.mark.parametrize("enabled", [False, True])
+def test_fiscal_destination_permission_does_not_depend_on_the_label(settings, label, enabled):
+    settings.ERPLORA_ENVIRONMENT = label
+    settings.AEAT_PRODUCTION_ENABLED = enabled
+    internal._allowed("testing")
+    if enabled:
+        internal._allowed("production")
+    else:
+        with pytest.raises(internal._Refused) as refused:
+            internal._allowed("production")
+        assert refused.value.code == "environment_not_allowed"
 
 
 # Presentation
@@ -561,7 +587,7 @@ def test_an_approval_for_another_taxpayer_is_a_nif_mismatch(
     assert error_of(response) == (409, "nif_mismatch")
     assert not respx_mock.calls
     # Nothing of the authorisation reaches the answer nor a log.
-    logged = caplog.text + "".join(str(record.args) for record in caplog.records)
+    logged = log_text(caplog)
     assert "B99999999" not in response.content.decode()
     assert "B99999999" not in logged
 
@@ -1025,11 +1051,7 @@ def test_probe_with_a_certificate_tls_refuses_is_not_ready(client, respx_mock, c
     assert response.json()["ready"] is False
     assert "TLS" in response.json()["detail"]
     assert not respx_mock.calls
-    logged = caplog.text + "".join(str(record.args) for record in caplog.records)
-    assert caplog.records
-    for secret in ("pw-5d1e8b", b64(weak)[:60], b64(weak)[-60:], "PRIVATE KEY"):
-        assert secret not in logged
-        assert secret not in response.content.decode()
+    assert_certificate_kept_out(caplog, response, weak, "pw-5d1e8b")
 
 
 @pytest.mark.parametrize("route", ["erplora", "own"])
@@ -1054,8 +1076,9 @@ def test_probe_own_route_without_a_certificate_is_not_ready(client):
     assert call(client, "probe", body).json()["ready"] is False
 
 
-def test_probe_of_production_from_pre_is_not_ready(client, settings, erplora_seal):
-    settings.ERPLORA_ENVIRONMENT = "pre"
+def test_probe_without_production_permission_is_not_ready(client, settings, erplora_seal):
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.AEAT_PRODUCTION_ENABLED = False
     body = payload(environment="production")
     del body["envelope"]
 
@@ -1089,7 +1112,7 @@ def test_the_customers_certificate_never_reaches_a_log(client, respx_mock, caplo
         del body["envelope"]
         call(client, "probe", body)
 
-    logged = caplog.text + "".join(str(record.args) for record in caplog.records)
+    logged = log_text(caplog)
     assert caplog.records
     for secret in (
         "pw-7f3a9c",

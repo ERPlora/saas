@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { DATABASE_READY } from './database';
+import { productionPolicies } from './django-env';
 import { GOOGLE_E2E, panelMailDir, panelServers } from './panel/project';
 import { databaseStep, publicNoticeServer, publicServer, recaptchaDoubleServer, runId, stackServers } from './playwright.config';
 import { E2E_RECAPTCHA_API_KEY } from './recaptcha';
@@ -121,6 +122,14 @@ describe("the stack's servers", () => {
     expect(server.command).toBe('uv run python manage.py runserver 127.0.0.1:8011 --novite --insecure --noreload');
     expect(server.url).toBe('http://127.0.0.1:8011/robots.txt');
     expect(server.env).not.toHaveProperty('DB_NAME');
+  });
+
+  // DEBUG off refuses to start without them (config/settings.py, PLAN-SAAS §43; saas#395).
+  it('give both public servers the policies production is given explicitly', () => {
+    for (const stack of [SHARED, OWN]) {
+      expect(publicServer(SAAS_DIR, stack).env).toMatchObject(productionPolicies(stack));
+      expect(publicNoticeServer(SAAS_DIR, stack).env).toMatchObject(productionPolicies(stack));
+    }
   });
 
   it("start an own stack's public server on its port and its database, with no migration in its two minutes", () => {

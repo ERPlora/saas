@@ -105,6 +105,8 @@ def test_no_page_may_create_the_policy_of_iconify():
 SAAS_NEXT = Path(__file__).resolve().parents[2]
 PRODUCTION_ENV = {
     "DEBUG": "False",
+    "CACHE_KEY_PREFIX": "saas",
+    "STRIPE_EXPECTED_MODE": "live",
     "SECRET_KEY": "a-production-secret-key",
     "INTERNAL_SHARED_SECRET": "a-production-internal-secret",
     "FISCAL_DOCUMENTS_KEY": "2EBDB2KSnvz5lBG1RHG5ldNq34ZjWvGZ_t5r4wl5Mpw=",
