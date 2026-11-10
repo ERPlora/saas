@@ -349,9 +349,11 @@ Los valores inválidos impiden arrancar; no hay fallback ante una errata.
 `ERPlora/CustomDomains CertificatesAttached`: la alarma existente busca `Environment=prod`.
 No decide ninguna de las cuatro políticas. El Hub conserva su variable y comportamiento.
 
-**Orden de transición:** aplicar primero las cuatro variables de Terraform a todas las tareas SaaS
-(web, worker y migración) de prod y pre; desplegar después el código. Un despliegue sin prefijo o modo
-explícito no arranca. Esta modificación no aplica infraestructura ni despliega.
+**Orden de transición** (PLAN-AWS, ronda 2026-11-09b): primero el `apply` de ERPlora/aws#66, que da las
+cuatro variables a todas las tareas del SaaS (web, worker, migración y, en prod, `saas-cron`) de prod y pre;
+después el despliegue de este código. Fuera de `DEBUG`, sin prefijo o modo no arranca, así que
+`docker/image.test.sh` comprueba la imagen con ellos y sin cada uno, y `.github/scripts/ecs-deploy.sh`
+rechaza, sin registrar nada, una revisión cuyo contenedor del SaaS no los lleve.
 
 En `pre` (`pre.erplora.com`, cluster `erplora-pre`, mismo ALB, Aurora y Valkey que prod):
 

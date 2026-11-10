@@ -135,6 +135,23 @@ def test_invalid_policy_values_refuse_to_start(name, value):
     assert name in result.stderr
 
 
+def _image_check_env() -> dict[str, str]:
+    """The ``-e NAME=value`` pairs of ``PROD_ENV`` in docker/image.test.sh, the environment the image is checked with."""
+    script = (SAAS_NEXT / "docker" / "image.test.sh").read_text()
+    block = re.search(r"^PROD_ENV=\((.*?)^\)", script, re.DOTALL | re.MULTILINE)
+    assert block is not None, "docker/image.test.sh has no PROD_ENV=( … ) block"
+    return dict(pair.split("=", 1) for pair in re.findall(r'-e "?([A-Z_][A-Z0-9_]*=[^"\s]*)"?', block.group(1)))
+
+
+def test_the_image_check_environment_is_one_the_settings_start_with():
+    """docker/image.test.sh runs ``manage.py check`` with DEBUG=False only in the deploy's build (deploy.yml): a variable
+    the settings start requiring outside DEBUG and missing there fails every deploy, while a PR's CI stays green."""
+    environment = _image_check_env()
+    assert environment["DEBUG"] == "False"
+    result = _run("import config.settings", environment)
+    assert result.returncode == 0, result.stderr
+
+
 def test_deployed_optional_policies_are_disabled_by_default():
     assert production("(s.PUBLIC_INDEXING_ENABLED, s.AEAT_PRODUCTION_ENABLED)") == (False, False)
 

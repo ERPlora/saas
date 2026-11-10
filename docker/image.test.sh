@@ -11,6 +11,8 @@ failures=0
 # The variables production must provide with DEBUG=False (config/settings.py), all dummies.
 PROD_ENV=(
   -e DEBUG=False
+  -e CACHE_KEY_PREFIX=saas
+  -e STRIPE_EXPECTED_MODE=live
   -e SECRET_KEY=x
   -e ALLOWED_HOSTS=erplora.com
   -e INTERNAL_SHARED_SECRET=x
@@ -123,6 +125,23 @@ check "no .env file in the project" \
   run "$IMAGE" sh -c '! test -e .env'
 check "manage.py check passes with DEBUG=False and no database" \
   run "${PROD_ENV[@]}" "$IMAGE" python manage.py check
+# Outside DEBUG the cache prefix and the Stripe mode are only ever given (PLAN-SAAS §43; ERPlora/aws stacks/prod/apps.tf):
+# a task definition still without them stops at its migration, it never runs on a guess.
+# refuses_without <NAME>: `manage.py check` with PROD_ENV less <NAME> fails, and says which one is missing.
+refuses_without() {
+  local name="$1" i out env=()
+  for ((i = 0; i < ${#PROD_ENV[@]}; i += 2)); do
+    case "${PROD_ENV[i+1]}" in "$name="*) ;; *) env+=("${PROD_ENV[i]}" "${PROD_ENV[i+1]}") ;; esac
+  done
+  if out=$(run "${env[@]}" "$IMAGE" python manage.py check 2>&1); then
+    echo "manage.py check started without $name"
+    return 1
+  fi
+  grep -qF "$name" <<<"$out" || { printf '%s\n' "$out"; return 1; }
+}
+for policy in CACHE_KEY_PREFIX STRIPE_EXPECTED_MODE; do
+  check "manage.py check refuses DEBUG=False without $policy" refuses_without "$policy"
+done
 # The saas-worker task's command (saas#305; ERPlora/aws stacks/prod/apps.tf runs it): present, and it loads.
 check "the saas-worker's command is in the image: manage.py run_worker --help" \
   run "${PROD_ENV[@]}" "$IMAGE" python manage.py run_worker --help

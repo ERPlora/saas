@@ -15,7 +15,7 @@ import { promisify } from 'node:util';
 
 import { type Page, expect, test } from '@playwright/test';
 
-import { djangoEnv } from './django-env';
+import { djangoEnv, productionPolicies } from './django-env';
 import { horizontalOverflow } from './horizontal-overflow';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -57,7 +57,7 @@ async function rendered500(side: 'private' | 'public', language: string): Promis
   ].join('\n');
   const { stdout } = await execFileAsync('uv', ['run', 'python', '-c', code], {
     cwd: SAAS_DIR,
-    env: { ...djangoEnv(true), DEBUG: 'False', SECRET_KEY: 'e2e-only-500-page', INTERNAL_SHARED_SECRET: 'e2e-only', FISCAL_DOCUMENTS_KEY: '2EBDB2KSnvz5lBG1RHG5ldNq34ZjWvGZ_t5r4wl5Mpw=', GOOGLE_OAUTH_CLIENT_ID: 'e2e', GOOGLE_OAUTH_CLIENT_SECRET: 'e2e' },
+    env: { ...djangoEnv(true), ...productionPolicies(), DEBUG: 'False', SECRET_KEY: 'e2e-only-500-page', INTERNAL_SHARED_SECRET: 'e2e-only', FISCAL_DOCUMENTS_KEY: '2EBDB2KSnvz5lBG1RHG5ldNq34ZjWvGZ_t5r4wl5Mpw=', GOOGLE_OAUTH_CLIENT_ID: 'e2e', GOOGLE_OAUTH_CLIENT_SECRET: 'e2e' },
     encoding: 'utf8',
   });
   return stdout;

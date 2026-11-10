@@ -92,6 +92,8 @@ def key_mode() -> StripeKeyMode:
     STRIPE_EXPECTED_MODE, regardless of DEBUG or the deployment's metric label."""
     key = settings.STRIPE_SECRET_KEY or ""
     mode = stripe_key_mode(key)
+    if mode is StripeKeyMode.UNKNOWN:
+        return mode
     if mode is StripeKeyMode.LIVE and not key.startswith("rk_"):
         logger.error("[STRIPE] STRIPE_SECRET_KEY is a live SECRET key: use a restricted rk_live_ key")
         return StripeKeyMode.UNKNOWN

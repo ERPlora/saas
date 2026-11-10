@@ -57,6 +57,21 @@ def test_without_a_secret_key_nothing_is_called(settings, key):
         stripe_service.client()
 
 
+@pytest.mark.parametrize("mode", ["test", "live"])
+def test_no_secret_key_is_not_reported_as_a_mode_mismatch(settings, caplog, mode):
+    """Without a key Stripe is just not configured (development, CI): the admin asks ``key_mode`` on every list of
+    hubs, so it must not log a mismatch of modes that is not there."""
+    from billing.stripe_keys import StripeKeyMode
+
+    settings.STRIPE_EXPECTED_MODE = mode
+    settings.STRIPE_SECRET_KEY = ""
+    settings.STRIPE_PUBLISHABLE_KEY = ""
+
+    with caplog.at_level("ERROR", logger=stripe_service.logger.name):
+        assert stripe_service.key_mode() is StripeKeyMode.UNKNOWN
+    assert caplog.records == []
+
+
 def test_a_live_secret_key_is_not_used(settings):
     """PLAN-SAAS §4: live money only through a RESTRICTED key (``rk_live_``), never the account's secret."""
     from billing.stripe_keys import StripeKeyMode

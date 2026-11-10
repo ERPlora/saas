@@ -25,3 +25,18 @@ export function djangoEnv(
   if (stack.database !== undefined) result.DB_NAME = stack.database;
   return result;
 }
+
+/**
+ * The policies a Django process with DEBUG off is given explicitly, as ECS gives production its own (config/settings.py,
+ * PLAN-SAAS §43): without a cache prefix or a Stripe mode it refuses to start. The e2e's are the production-like public
+ * web's: a cache prefix of `stack`'s own, never another run's nor the dev server's `local-saas`; Stripe in test mode,
+ * since nothing here charges real money; the public web indexable, as erplora.com serves it; never the AEAT's production.
+ */
+export function productionPolicies(stack: Pick<Stack, 'publicPort'> = STACK): Record<string, string> {
+  return {
+    CACHE_KEY_PREFIX: `e2e-saas-${stack.publicPort}`,
+    STRIPE_EXPECTED_MODE: 'test',
+    PUBLIC_INDEXING_ENABLED: 'True',
+    AEAT_PRODUCTION_ENABLED: 'False',
+  };
+}

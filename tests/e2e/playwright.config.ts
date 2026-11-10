@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, type PlaywrightTestConfig } from '@playwright/test';
 
 import { DATABASE_READY } from './database';
-import { djangoEnv } from './django-env';
+import { djangoEnv, productionPolicies } from './django-env';
 import { panelProject, panelServers } from './panel/project';
 import { recaptchaServerEnv } from './recaptcha';
 import { STACK, type Stack } from './stack';
@@ -112,6 +112,8 @@ export function publicServer(saasDir: string, stack: Stack = STACK, env: Record<
       {
         // Production refuses to start without a key; this one only signs this local, throwaway server.
         SECRET_KEY: 'e2e-local-only-not-a-secret',
+        // And without its cache prefix and Stripe mode, which ECS gives production explicitly (django-env.ts).
+        ...productionPolicies(stack),
         // Production refuses to start without it either (fiscal/): a valid Fernet key that encrypts nothing here.
         FISCAL_DOCUMENTS_KEY: 'ZTJlLWxvY2FsLW9ubHktbm90LWEtc2VjcmV0LWtleSE=',
         ALLOWED_HOSTS: '127.0.0.1,localhost',
