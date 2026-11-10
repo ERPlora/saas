@@ -48,7 +48,7 @@ import { useRouter } from 'vue-router';
 import { BUSINESSES, STORE } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import type { BusinessDetailOut, BusinessRowOut, InvitationOut, OwnershipOfferOut } from '../../../frontend/sdk-types';
-import { opensAtAll, preparationFailed, reasonDate, reasonKey, statusPill } from '../business-status';
+import { opensAtAll, preparationFailed, preparingLeadKey, reasonDate, reasonKey, statusPill } from '../business-status';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessPreparing from '../components/BusinessPreparing.vue';
 import DeclineDialog from '../components/DeclineDialog.vue';
@@ -246,6 +246,8 @@ watch(created, (now) => {
 });
 onScopeDispose(() => following?.stop());
 const createdNow = computed(() => followed.value?.data.value);
+/** The sentence over its preparation: none during a platform pause (`BusinessPreparing` says the pause). */
+const preparingLead = computed(() => preparingLeadKey(createdNow.value?.maintenance));
 
 /** The account's Free business when its Free ones fill the quota (ADR-0154): a new business would be Free, so
  *  the dialog says so instead of a form that would be refused (audit 2 S-02). */
@@ -643,8 +645,11 @@ onIonViewWillEnter(entered);
         </p>
       </template>
       <template v-else-if="phase === 'preparing' && created">
-        <p class="create-lead">
-          {{ $t('hubs.launch.preparing.lead') }}
+        <p
+          v-if="preparingLead"
+          class="create-lead"
+        >
+          {{ $t(preparingLead) }}
         </p>
         <BusinessPreparing
           :id="created.id"

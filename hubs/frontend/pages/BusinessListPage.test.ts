@@ -634,6 +634,23 @@ describe('BusinessListPage: «Create business»', () => {
     expect(s.rows()[0].text()).toContain('Provisioning is paused for maintenance. It resumes automatically; you can check now.');
   });
 
+  it('the dialog promises no seconds while the pause lasts, and says «a few seconds» again once it lifts', async () => {
+    const maintenance = { frozen: true, reason: 'Aurora upgrade', since: '2026-11-09T20:00:00Z' };
+    const business = { id: 'dulce', name: 'Pastelería Dulce', host: 'dulce.localhost:8000', status: 'preparing', hub_error: null, can: { open: false } };
+    const s = await openCreate();
+    await submitDulce(s);
+    const lead = () => s.q('create-modal')?.querySelector('.create-lead')?.textContent?.trim();
+    expect(lead()).toBe('It usually takes a few seconds.');
+    await s.show(page([row('dulce', 'Pastelería Dulce', { ...PREPARING, maintenance }), ...ROWS]), 2);
+    await s.clock.advance(150);
+    await s.result(s.net.lastStream(), 'hubs.business.get', { ...business, maintenance }, 2);
+    expect(s.q('create-modal')?.querySelector('[data-testid="preparing-maintenance"]')).not.toBeNull();
+    expect(lead()).toBeUndefined();
+    await s.result(s.net.lastStream(), 'hubs.business.get', { ...business, maintenance: null }, 3);
+    expect(s.q('create-modal')?.querySelector('[data-testid="preparing-maintenance"]')).toBeNull();
+    expect(lead()).toBe('It usually takes a few seconds.');
+  });
+
   it('a preparation the Hub refused says so in the dialog', async () => {
     const s = await openCreate();
     const name = s.q('create-name') as HTMLElement & { value?: string };

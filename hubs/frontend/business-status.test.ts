@@ -4,7 +4,7 @@
 // clock: data only — no code under test compares these dates with now.
 import { describe, expect, it } from 'vitest';
 
-import { preparationFailed, reasonDate, reasonKey, statusPill, unpaidDeadline } from './business-status';
+import { preparationFailed, preparingLeadKey, reasonDate, reasonKey, statusPill, unpaidDeadline } from './business-status';
 
 const t = (key: string) => `t:${key}`;
 
@@ -34,6 +34,18 @@ describe('statusPill', () => {
       label: 't:hubs.status.error',
       busy: false,
     });
+  });
+});
+
+describe('preparingLeadKey', () => {
+  it('promises a few seconds while nothing holds the preparation back, the pause unknown included', () => {
+    expect(preparingLeadKey(undefined)).toBe('hubs.launch.preparing.lead');
+    expect(preparingLeadKey(null)).toBe('hubs.launch.preparing.lead');
+    expect(preparingLeadKey({ frozen: false, reason: '', since: null })).toBe('hubs.launch.preparing.lead');
+  });
+
+  it('promises nothing during a platform pause: the card says the pause', () => {
+    expect(preparingLeadKey({ frozen: true, reason: 'Aurora upgrade', since: '2026-11-09T20:00:00Z' })).toBeNull();
   });
 });
 

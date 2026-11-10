@@ -44,6 +44,13 @@ export function statusPill(business: BusinessState, t: (key: string) => string, 
   return businessStatusPill(business.status as BusinessStatus, locale);
 }
 
+/** The catalogue key of the sentence over the preparation of a business just created (the launcher's lead
+ *  and the «Create business» dialog); `null` during a platform pause, which promises no seconds: the
+ *  preparation's own notice says the pause, and the sentence comes back by itself when it lifts. */
+export function preparingLeadKey(maintenance: HubMaintenanceOut | null | undefined): string | null {
+  return maintenance?.frozen ? null : 'hubs.launch.preparing.lead';
+}
+
 /** The catalogue key of the sentence under a business that is not simply active; `null` if it is. */
 export function reasonKey(business: BusinessState, inApp: boolean): string | null {
   if (preparationFailed(business)) return 'hubs.reason.error';
