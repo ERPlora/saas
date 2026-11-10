@@ -2,6 +2,8 @@
 // card and the row explain it, and «Check now» clears it after the lift, without a reload. While the
 // pause lasts neither the Entry nor «Create business» promises «a few seconds» (saas#398): the
 // sentence comes back with the lift.
+import { type Page } from '@playwright/test';
+
 import {
   expect,
   panelAccount,
@@ -24,6 +26,16 @@ const VIEWPORTS = [
   { width: 375, height: 667 },
 ] as const;
 
+/** The pause on screen at the three sizes, without scrolling sideways, with a capture of each (`<name>-en-<W>x<H>`). */
+async function atEverySize(page: Page, name: string): Promise<void> {
+  for (const size of VIEWPORTS) {
+    await page.setViewportSize(size);
+    await expect(page.getByTestId('preparing-maintenance')).toBeVisible();
+    expect(await sidewaysScroll(page), `${name} at ${size.width}`).toEqual([]);
+    await page.screenshot({ path: shot(`${name}-en-${size.width}x${size.height}`), fullPage: true });
+  }
+}
+
 test.beforeAll(() => seedPanel());
 test.afterAll(() => seedPanel('clear'));
 
@@ -42,12 +54,7 @@ test('create during maintenance → the pause is visible → Check now recovers'
     await expect(dialog).not.toContainText(FEW_SECONDS);
     const row = page.getByTestId('businesses-row').filter({ hasText: 'Pastelería Dulce E2E' });
     await expect(row).toContainText('Paused for maintenance');
-    for (const size of VIEWPORTS) {
-      await page.setViewportSize(size);
-      await expect(page.getByTestId('preparing-maintenance')).toBeVisible();
-      expect(await sidewaysScroll(page), `maintenance at ${size.width}`).toEqual([]);
-      await page.screenshot({ path: shot(`business-maintenance-en-${size.width}x${size.height}`), fullPage: true });
-    }
+    await atEverySize(page, 'business-maintenance');
 
     hub.setMaintenance(null);
     await page.getByTestId('preparing-check').click();
@@ -74,12 +81,7 @@ test('the Entry during maintenance → only the pause, no «a few seconds» → 
     await expect(page.getByRole('heading', { name: 'Preparing Panadería Pausa E2E' })).toBeVisible();
     await expect(page.getByTestId('preparing-maintenance')).toContainText('Provisioning is paused for maintenance');
     await expect(page.locator('.shell-lead')).toHaveCount(0);
-    for (const size of VIEWPORTS) {
-      await page.setViewportSize(size);
-      await expect(page.getByTestId('preparing-maintenance')).toBeVisible();
-      expect(await sidewaysScroll(page), `launch maintenance at ${size.width}`).toEqual([]);
-      await page.screenshot({ path: shot(`launch-maintenance-en-${size.width}x${size.height}`), fullPage: true });
-    }
+    await atEverySize(page, 'launch-maintenance');
 
     hub.setMaintenance(null);
     await page.getByTestId('preparing-check').click();
