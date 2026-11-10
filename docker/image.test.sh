@@ -126,7 +126,7 @@ check "no .env file in the project" \
 check "manage.py check passes with DEBUG=False and no database" \
   run "${PROD_ENV[@]}" "$IMAGE" python manage.py check
 # Outside DEBUG the cache prefix and the Stripe mode are only ever given (PLAN-SAAS §43; ERPlora/aws stacks/prod/apps.tf):
-# a task definition still without them stops at its migration, it never runs on a guess.
+# a process still without them refuses to start, it never runs on a guess.
 # refuses_without <NAME>: `manage.py check` with PROD_ENV less <NAME> fails, and says which one is missing.
 refuses_without() {
   local name="$1" i out env=()

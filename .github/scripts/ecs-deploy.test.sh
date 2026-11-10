@@ -405,6 +405,13 @@ for policy in CACHE_KEY_PREFIX STRIPE_EXPECTED_MODE; do
     '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && ! grep -Eq "register-task-definition|run-task|update-service|put-parameter" "$CALLS_LOG"'
   check "its error names the family and $policy" 'grep -q "::error::erplora-prod-saas-cron .*$policy" "$work/out.log"'
 done
+# One given through `secrets` (Secrets Manager) is given too.
+setup
+task_definition erplora-prod-saas-cron '[{"name": "saas-cron", "image": "reg.example/erplora/saas:bootstrap",
+  "environment": [{"name": "CACHE_KEY_PREFIX", "value": "saas"}],
+  "secrets": [{"name": "STRIPE_EXPECTED_MODE", "valueFrom": "arn:secret:x"}]}]' > "$FIXTURES/erplora-prod-saas-cron.json"
+run_deploy && status=0 || status=$?
+check "a policy given as a secret counts as given" '[ "$status" -eq 0 ]'
 setup
 task_definition erplora-pre-saas '[{"name": "saas", "image": "reg.example/erplora/saas-pre:bootstrap", "environment": []}]' \
   > "$FIXTURES/erplora-pre-saas.json"

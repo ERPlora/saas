@@ -66,7 +66,7 @@ done
 
 # This repo deploys the saas; the hub repo keeps its own copy of this script.
 PROJECT=saas
-# What every container of the saas image must be given in its environment (step 0).
+# What every container of the saas image must be given, in its environment or its secrets (step 0).
 REQUIRED_ENV='["CACHE_KEY_PREFIX", "STRIPE_EXPECTED_MODE"]'
 migration=saas-migrate
 # Families that run as a service; the service of family <name> is <name><suffix>.
@@ -114,10 +114,10 @@ prepare() {
   local missing
   missing="$(jq -r --arg project_image "$project_image" --argjson required "$REQUIRED_ENV" '
       [.taskDefinition.containerDefinitions[] | select((.image // "") | startswith($project_image))
-       | [.environment[]?.name] as $names | $required[] | select(. as $n | $names | index($n) | not)]
+       | [.environment[]?.name, .secrets[]?.name] as $names | $required[] | select(. as $n | $names | index($n) | not)]
       | unique | join(" ")' "$workdir/$name.base.json")"
   if [ -n "$missing" ]; then
-    echo "::error::$prefix-$name has no $missing in the environment of its saas container (apply ERPlora/aws first); nothing was registered" >&2
+    echo "::error::$prefix-$name has no $missing in the environment or secrets of its saas container (apply ERPlora/aws first); nothing was registered" >&2
     exit 1
   fi
   jq --arg project_image "$project_image" --arg image "$image" '
