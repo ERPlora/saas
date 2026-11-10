@@ -84,7 +84,8 @@ negocio»; en **Negocios**, en el diálogo «Crear negocio», bajo «¿Cómo se 
 La barra en marcha y tres pasos: «Negocio creado», «Preparando tu negocio» (o «Preparando tu negocio: …», con el tipo elegido) y
 «Se abre solo al terminar» en la Entrada o «Listo para abrir» en el diálogo. Mientras el personal tiene la plataforma
 congelada para una subida de la base, el aviso «Alta en pausa por mantenimiento: tu negocio estará listo en unos
-minutos.» explica la espera, con «Comprobar ahora»; desaparece solo al descongelar o cuando el negocio queda listo.
+minutos.» explica la espera, con «Comprobar ahora», y no se lee «Suele tardar unos segundos.»; el aviso desaparece solo al
+descongelar (y la frase vuelve) o cuando el negocio queda listo.
 Si la comprobación no puede hacerse, otro aviso lo dice y deja reintentar.
 
 ### Negocios
@@ -254,13 +255,13 @@ Estado: hecho
 Actor: propietario
 Pantalla: Preparando
 Pasos:
-1. Tras «Crear mi negocio», la Entrada enseña «Preparando …» («Suele tardar unos segundos.») con la barra y los tres pasos; en **Negocios**, el diálogo enseña lo mismo y la fila dice «Preparando».
+1. Tras «Crear mi negocio», la Entrada enseña «Preparando …» («Suele tardar unos segundos.», salvo en una pausa por mantenimiento: ver «Si falla») con la barra y los tres pasos; en **Negocios**, el diálogo enseña lo mismo y la fila dice «Preparando».
 2. La pantalla se actualiza sola: no hace falta recargar ni quedarse («Ir al panel mientras tanto»).
 3. Cuando el negocio está listo, la Entrada lleva a la persona dentro del negocio sin volver a pedir la contraseña; el diálogo de **Negocios** dice «Tu negocio está listo» con «Abrir negocio».
 4. Al propietario le llega además el correo «… ya está listo» con el enlace para abrirlo y el de su página en el panel.
 Entra: el aviso de que el negocio está listo (HUBS-F07).
 Sale: la entrada en el negocio con un pase de un solo uso, que nunca viaja en la dirección; el correo «ya está listo», una sola vez.
-Si falla: si el negocio no se pudo preparar, la pantalla dice «No se ha podido preparar» y «Hemos guardado …, pero no se ha podido preparar. Seguimos reintentándolo; si sigue fallando, avísanos.», y entra sola si el reintento (HUBS-F08) lo arregla. Mientras el personal tiene la plataforma congelada para una subida de la base, la tarjeta y la fila dicen «Alta en pausa por mantenimiento: tu negocio estará listo en unos minutos.», con «Comprobar ahora»; es una pausa, nunca un fallo de preparación, y desaparece sola al descongelar o cuando el negocio queda listo. Si la comprobación no puede hacerse, un aviso lo dice y deja reintentar. Con varios negocios no entra sola en ninguno: la persona elige.
+Si falla: si el negocio no se pudo preparar, la pantalla dice «No se ha podido preparar» y «Hemos guardado …, pero no se ha podido preparar. Seguimos reintentándolo; si sigue fallando, avísanos.», y entra sola si el reintento (HUBS-F08) lo arregla. Mientras el personal tiene la plataforma congelada para una subida de la base, la tarjeta y la fila dicen «Alta en pausa por mantenimiento: tu negocio estará listo en unos minutos.», con «Comprobar ahora», y ni la Entrada ni el diálogo de **Negocios** dicen «Suele tardar unos segundos.» hasta que se levanta; es una pausa, nunca un fallo de preparación, y desaparece sola al descongelar o cuando el negocio queda listo. Si la comprobación no puede hacerse, un aviso lo dice y deja reintentar. Con varios negocios no entra sola en ninguno: la persona elige.
 Implicados: accounts (el salto al negocio), el negocio (avisa de que está listo)
 
 ### HUBS-F05 Mantener los planes en el admin

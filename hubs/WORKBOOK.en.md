@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:b699c4b2f5bb4e7ba3a8f5dd7dbbebf95d2a9a1ecf4dbfaea1b0a66fe0b3383b -->
+<!-- generated from WORKBOOK.md sha256:915e5181cad398ac0ee369e47e3c57e27757a0895d4c2db7e3063737385ddddc -->
 
 ## What it is for and who it is for
 
@@ -71,7 +71,7 @@ card; in **Businesses**, in the "Create business" dialog, under "What is your bu
 
 ### Preparing
 The running bar and three steps: "Business created", "Setting up your business" (or "Setting up your business: …", with the type picked)
-and "It opens by itself when it finishes" on the Entrance or "Ready to open" in the dialog. While ERPlora's staff keeps the platform frozen for a database upgrade, the notice "Provisioning paused for maintenance: your business will be ready in a few minutes." explains the wait, with "Check now"; it clears by itself after the lift or when the business is ready. If the check cannot run, another notice says so and offers a retry.
+and "It opens by itself when it finishes" on the Entrance or "Ready to open" in the dialog. While ERPlora's staff keeps the platform frozen for a database upgrade, the notice "Provisioning paused for maintenance: your business will be ready in a few minutes." explains the wait, with "Check now", and "It usually takes a few seconds." is not shown; the notice clears by itself after the lift (and the sentence comes back) or when the business is ready. If the check cannot run, another notice says so and offers a retry.
 
 ### Businesses
 The panel's home: the list of the account's businesses with "Business", "Web address", "Status", "Plan", "Role"
@@ -235,13 +235,13 @@ Status: done
 Actor: owner
 Screen: Preparing
 Steps:
-1. After "Create my business", the Entrance shows "Preparing …" ("It usually takes a few seconds.") with the bar and the three steps; in **Businesses**, the dialog shows the same and the row says "Preparing".
+1. After "Create my business", the Entrance shows "Preparing …" ("It usually takes a few seconds.", except during a maintenance pause: see "If it fails") with the bar and the three steps; in **Businesses**, the dialog shows the same and the row says "Preparing".
 2. The screen updates by itself: there is no need to reload or to stay ("Go to the panel meanwhile").
 3. When the business is ready, the Entrance takes the person into the business without asking for the password again; the dialog of **Businesses** says "Your business is ready" with "Open business".
 4. The owner also gets the email "… is ready" with the link to open it and the one to its page in the panel.
 In: the notice that the business is ready (HUBS-F07).
 Out: the entry into the business with a one-time pass, which never travels in the address; the "is ready" email, only once.
-If it fails: if the business could not be prepared, the screen says "It could not be prepared" and "We saved …, but it could not be prepared. We keep retrying; if it keeps failing, contact us.", and goes in by itself if the retry (HUBS-F08) fixes it. While ERPlora's staff keeps the platform frozen for a database upgrade, the card and the row instead say "Provisioning paused for maintenance: your business will be ready in a few minutes.", with "Check now"; this is a pause, never a preparation failure, and it clears by itself after the lift or when the business is ready. If the check cannot run, an error says so and can be retried. With several businesses it goes into none by itself: the person chooses.
+If it fails: if the business could not be prepared, the screen says "It could not be prepared" and "We saved …, but it could not be prepared. We keep retrying; if it keeps failing, contact us.", and goes in by itself if the retry (HUBS-F08) fixes it. While ERPlora's staff keeps the platform frozen for a database upgrade, the card and the row instead say "Provisioning paused for maintenance: your business will be ready in a few minutes.", with "Check now", and neither the Entrance nor the dialog of **Businesses** says "It usually takes a few seconds." until it lifts; this is a pause, never a preparation failure, and it clears by itself after the lift or when the business is ready. If the check cannot run, an error says so and can be retried. With several businesses it goes into none by itself: the person chooses.
 Involved: accounts (the jump into the business), the business (reports it is ready)
 
 ### HUBS-F05 Keep the plans in the admin
