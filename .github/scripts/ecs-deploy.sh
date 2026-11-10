@@ -15,9 +15,11 @@
 #      unless each one carries the tag Environment=<ENVIRONMENT> and the task and execution roles of
 #      its environment (role/erplora-<ENVIRONMENT>-…): ecs:RegisterTaskDefinition takes no resource,
 #      so another environment's deploy role could have left a revision in this family; and unless the
-#      container of the saas image has the policies the saas refuses to start without outside DEBUG
-#      (REQUIRED_ENV, config/settings.py; PLAN-SAAS §43): ERPlora/aws gives them, and a revision from
-#      before that apply would register saas-cron's (the Scheduler's latest) and only fail at step 2;
+#      container of the saas image has the four policies ERPlora/aws gives it (REQUIRED_ENV,
+#      config/settings.py; PLAN-SAAS §43): without a cache prefix or a Stripe mode the saas refuses to
+#      start outside DEBUG, so a revision from before that apply would register saas-cron's (the
+#      Scheduler's latest) and only fail at step 2; without either boolean it starts with it false,
+#      silently: prod refusing every hub's records for the AEAT's production, or out of the search engines;
 #   1. registers a new revision of each family from that one, with its tags, changing only the image
 #      of the containers that run the saas image (one per task: the app); Terraform owns the rest of
 #      the definition; saas-cron is only registered (the Scheduler runs its latest);
@@ -67,7 +69,7 @@ done
 # This repo deploys the saas; the hub repo keeps its own copy of this script.
 PROJECT=saas
 # What every container of the saas image must be given, in its environment or its secrets (step 0).
-REQUIRED_ENV='["CACHE_KEY_PREFIX", "STRIPE_EXPECTED_MODE"]'
+REQUIRED_ENV='["CACHE_KEY_PREFIX", "STRIPE_EXPECTED_MODE", "PUBLIC_INDEXING_ENABLED", "AEAT_PRODUCTION_ENABLED"]'
 migration=saas-migrate
 # Families that run as a service; the service of family <name> is <name><suffix>.
 services=(saas)

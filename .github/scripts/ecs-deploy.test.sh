@@ -12,21 +12,22 @@ failures=0
 # A task definition as `describe-task-definition --include TAGS` returns it, with the roles Terraform
 # gives it (aws-next modules/ecs-service: <family>-task and <family>-execution) and the Environment
 # tag of its family's environment (erplora-<environment>-<name>).
-# A container of the saas image with no `environment` of its own gets the policies Terraform gives every saas task
-# (ERPlora/aws stacks/prod/apps.tf, PLAN-SAAS §43), as a revision does once aws#66 is applied.
+# A container of the saas image with no `environment` of its own gets the four policies Terraform gives every saas
+# task (ERPlora/aws stacks/prod/apps.tf, PLAN-SAAS §43), as a revision does once aws#66 is applied.
+POLICIES='["CACHE_KEY_PREFIX", "STRIPE_EXPECTED_MODE", "PUBLIC_INDEXING_ENABLED", "AEAT_PRODUCTION_ENABLED"]'
 # task_definition <family> <containers JSON> [<Environment tag; empty = none> [<role prefix>]]
 task_definition() {
   local environment="${1#erplora-}"
   environment="${environment%%-*}"
   jq -n --arg family "$1" --argjson containers "$2" --arg environment "${3-$environment}" \
-    --arg role "arn:aws:iam::123456789012:role/${4:-$1}" '{
+    --arg role "arn:aws:iam::123456789012:role/${4:-$1}" --argjson policies "$POLICIES" '{
     taskDefinition: {
       family: $family, taskDefinitionArn: "arn:td/\($family):1", revision: 1, status: "ACTIVE",
       requiresAttributes: [], compatibilities: ["FARGATE"], registeredAt: "t", registeredBy: "u",
       taskRoleArn: "\($role)-task", executionRoleArn: "\($role)-execution",
       containerDefinitions: ($containers | map(
         if has("environment") or ((.image // "") | test("/erplora/saas(-pre)?:") | not) then .
-        else . + {environment: [{name: "CACHE_KEY_PREFIX", value: "saas"}, {name: "STRIPE_EXPECTED_MODE", value: "live"}]}
+        else . + {environment: ($policies | map({name: ., value: "x"}))}
         end))
     },
     tags: ([{key: "Project", value: "erplora"}, {key: "ManagedBy", value: "terraform"}]
@@ -391,12 +392,15 @@ check "a family on the hub image fails before the migration" \
   '[ "$status" -ne 0 ] && ! grep -Eq "run-task|update-service|put-parameter" "$CALLS_LOG" && grep -q "::error::erplora-prod-saas-migrate " "$work/out.log"'
 
 # --- a revision still without the policies of the saas image --------------------
-# Outside DEBUG the saas refuses to start without them (config/settings.py, PLAN-SAAS §43). A revision Terraform has
-# not given them yet (ERPlora/aws#66 not applied) would register saas-cron's, the one the Scheduler runs, and only
-# then fail at the migration: it is refused before anything is registered.
-for policy in CACHE_KEY_PREFIX STRIPE_EXPECTED_MODE; do
+# Outside DEBUG the saas refuses to start without a cache prefix or a Stripe mode (config/settings.py, PLAN-SAAS §43):
+# a revision Terraform has not given them yet (ERPlora/aws#66 not applied) would register saas-cron's, the one the
+# Scheduler runs, and only then fail at the migration. Without either boolean it starts, and quietly: no
+# AEAT_PRODUCTION_ENABLED in prod refuses every hub's records for the AEAT's production (409 environment_not_allowed),
+# no PUBLIC_INDEXING_ENABLED takes erplora.com out of the search engines. Each one is refused before anything is
+# registered.
+for policy in CACHE_KEY_PREFIX STRIPE_EXPECTED_MODE PUBLIC_INDEXING_ENABLED AEAT_PRODUCTION_ENABLED; do
   setup
-  other="$(jq -cn --arg policy "$policy" '["CACHE_KEY_PREFIX", "STRIPE_EXPECTED_MODE"] - [$policy] | map({name: ., value: "x"})')"
+  other="$(jq -cn --arg policy "$policy" --argjson policies "$POLICIES" '$policies - [$policy] | map({name: ., value: "x"})')"
   task_definition erplora-prod-saas-cron \
     "[{\"name\": \"saas-cron\", \"image\": \"reg.example/erplora/saas:bootstrap\", \"environment\": $other}]" \
     > "$FIXTURES/erplora-prod-saas-cron.json"
@@ -408,7 +412,8 @@ done
 # One given through `secrets` (Secrets Manager) is given too.
 setup
 task_definition erplora-prod-saas-cron '[{"name": "saas-cron", "image": "reg.example/erplora/saas:bootstrap",
-  "environment": [{"name": "CACHE_KEY_PREFIX", "value": "saas"}],
+  "environment": [{"name": "CACHE_KEY_PREFIX", "value": "saas"}, {"name": "PUBLIC_INDEXING_ENABLED", "value": "true"},
+    {"name": "AEAT_PRODUCTION_ENABLED", "value": "true"}],
   "secrets": [{"name": "STRIPE_EXPECTED_MODE", "valueFrom": "arn:secret:x"}]}]' > "$FIXTURES/erplora-prod-saas-cron.json"
 run_deploy && status=0 || status=$?
 check "a policy given as a secret counts as given" '[ "$status" -eq 0 ]'
@@ -416,8 +421,8 @@ setup
 task_definition erplora-pre-saas '[{"name": "saas", "image": "reg.example/erplora/saas-pre:bootstrap", "environment": []}]' \
   > "$FIXTURES/erplora-pre-saas.json"
 run_deploy ENVIRONMENT=pre && status=0 || status=$?
-check "pre: a revision without the policies fails before anything is registered" \
-  '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && grep -q "::error::erplora-pre-saas .*CACHE_KEY_PREFIX STRIPE_EXPECTED_MODE" "$work/out.log"'
+check "pre: a revision without the policies fails before anything is registered, naming the four" \
+  '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && grep -q "::error::erplora-pre-saas has no AEAT_PRODUCTION_ENABLED CACHE_KEY_PREFIX PUBLIC_INDEXING_ENABLED STRIPE_EXPECTED_MODE " "$work/out.log"'
 
 # --- the rollout after services-stable ----------------------------------------
 # services-stable can return while the PRIMARY deployment is still IN_PROGRESS: ECS marks it

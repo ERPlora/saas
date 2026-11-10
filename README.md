@@ -352,8 +352,11 @@ No decide ninguna de las cuatro políticas. El Hub conserva su variable y compor
 **Orden de transición** (PLAN-AWS, ronda 2026-11-09b): primero el `apply` de ERPlora/aws#66, que da las
 cuatro variables a todas las tareas del SaaS (web, worker, migración y, en prod, `saas-cron`) de prod y pre;
 después el despliegue de este código. Fuera de `DEBUG`, sin prefijo o modo no arranca, así que
-`docker/image.test.sh` comprueba la imagen con ellos y sin cada uno, y `.github/scripts/ecs-deploy.sh`
-rechaza, sin registrar nada, una revisión cuyo contenedor del SaaS no los lleve.
+`docker/image.test.sh` comprueba la imagen con ellos y sin cada uno. Sin uno de los dos booleanos sí
+arranca, con él en `false` y sin avisar: en prod, cada registro de los hubs para la AEAT de producción
+recibiría el 409 `environment_not_allowed` y erplora.com saldría de los buscadores. Por eso
+`.github/scripts/ecs-deploy.sh` rechaza, sin registrar nada, una revisión cuyo contenedor del SaaS no
+lleve las cuatro, en `environment` o en `secrets`.
 
 En `pre` (`pre.erplora.com`, cluster `erplora-pre`, mismo ALB, Aurora y Valkey que prod):
 
