@@ -79,11 +79,15 @@ export async function waitForDemo(doc: Document, overrides: Partial<WaitDeps> = 
   const timeoutUrl = card?.dataset.demoTimeoutUrl;
   if (!statusUrl || !timeoutUrl) return null;
   const deps = { ...BROWSER, ...overrides };
-  const started = deps.now();
+  // The 30 seconds count from the last maintenance answer: a pause never times out, and its lift gives the Hub the
+  // same time to prepare the demo as a door without one.
+  let started = deps.now();
   for (;;) {
     const answer = await ask(statusUrl, deps);
     if (answer?.state) show(card, answer.state);
-    const timedOut = card.dataset.demoState !== 'maintenance' && deps.now() - started >= TIMEOUT_MS;
+    const paused = card.dataset.demoState === 'maintenance';
+    if (paused) started = deps.now();
+    const timedOut = !paused && deps.now() - started >= TIMEOUT_MS;
     const next = answer?.url ?? (timedOut ? timeoutUrl : null);
     if (next !== null) {
       deps.navigate(next);

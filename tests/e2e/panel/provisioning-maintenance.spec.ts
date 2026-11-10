@@ -1,12 +1,17 @@
 // A business created during a real platform freeze: the Hub's signed poll says maintenance, the
 // card and the row explain it, and «Check now» clears it after the lift, without a reload.
-import { mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import {
+  expect,
+  panelAccount,
+  seedPanel,
+  shot,
+  sidewaysScroll,
+  signIn,
+  startHubDouble,
+  test,
+  watchPageErrors,
+} from './fixtures';
 
-import { expect, panelAccount, seedPanel, sidewaysScroll, signIn, startHubDouble, test, watchPageErrors } from './fixtures';
-import { uiClipSweep } from '../ui-evidence';
-
-const EVIDENCE = join(process.env.HOME ?? '', '.erplora', 'fleet-next', 'logs', '387', 'ui');
 const VIEWPORTS = [
   { width: 1440, height: 900 },
   { width: 820, height: 1180 },
@@ -29,14 +34,12 @@ test('create during maintenance → the pause is visible → Check now recovers'
     await expect(page.getByTestId('preparing-maintenance')).toContainText('Provisioning is paused for maintenance');
     const row = page.getByTestId('businesses-row').filter({ hasText: 'Pastelería Dulce E2E' });
     await expect(row).toContainText('Paused for maintenance');
-    mkdirSync(EVIDENCE, { recursive: true });
     for (const size of VIEWPORTS) {
       await page.setViewportSize(size);
       await expect(page.getByTestId('preparing-maintenance')).toBeVisible();
       expect(await sidewaysScroll(page), `maintenance at ${size.width}`).toEqual([]);
-      await page.screenshot({ path: join(EVIDENCE, `business-maintenance-en-${size.width}x${size.height}.png`), fullPage: true });
+      await page.screenshot({ path: shot(`business-maintenance-en-${size.width}x${size.height}`), fullPage: true });
     }
-    await uiClipSweep(page, 'http://localhost:13872/dashboard/businesses');
 
     hub.setMaintenance(null);
     await page.getByTestId('preparing-check').click();

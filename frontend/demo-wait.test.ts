@@ -131,6 +131,20 @@ describe('waitForDemo (frontend/demo-wait.ts)', () => {
     expect(navigate).toHaveBeenCalledExactlyOnceWith(JUMP);
   });
 
+  it.each([
+    // The few seconds the Hub needs to prepare the demo after the lift.
+    { after: [{ state: 'preparing' }, { state: 'preparing' }, { state: 'ready', url: JUMP }], goes: JUMP, asksAfter: 3 },
+    // The last maintenance answer starts the window again: 30 more asks after it, and the one that times out.
+    { after: [{ state: 'preparing' }], goes: TIMEOUT_URL, asksAfter: TIMEOUT_MS / POLL_MS },
+  ])('gives the demo its 30 seconds again once a pause longer than them lifts → $goes', async ({ after, goes, asksAfter }) => {
+    const longPause = Array(2 * (TIMEOUT_MS / POLL_MS)).fill({ state: 'maintenance' });
+    const [fetch, navigate] = [server(...longPause, ...after), vi.fn()];
+
+    expect(await waitForDemo(door(), { fetch, navigate, ...clock() })).toBe(goes);
+    expect(navigate).toHaveBeenCalledExactlyOnceWith(goes);
+    expect(fetch).toHaveBeenCalledTimes(longPause.length + asksAfter);
+  });
+
   it('gives up after 30 seconds with the door’s «not ready yet»', async () => {
     const fetch = server({ state: 'preparing' });
     const navigate = vi.fn();

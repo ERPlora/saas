@@ -16,7 +16,6 @@ import type { Page } from '@playwright/test';
 
 import { expect, test } from './public-test';
 import { STACK } from './stack';
-import { uiClipSweep } from './ui-evidence';
 
 const ARTIFACTS = join(dirname(fileURLToPath(import.meta.url)), '.artifacts', 'demo');
 const WIDTHS = [390, 834, 1440];
@@ -129,8 +128,7 @@ test.describe('in English', () => {
     await page.getByTestId('demo-start').click();
 
     await expect(page.getByTestId('demo-state-preparing').getByRole('status')).toContainText('Provisioning paused for maintenance');
-    const evidence = join(process.env.HOME ?? '', '.erplora', 'fleet-next', 'logs', '387', 'ui');
-    mkdirSync(evidence, { recursive: true });
+    mkdirSync(ARTIFACTS, { recursive: true });
     for (const size of [
       { width: 1440, height: 900 },
       { width: 820, height: 1180 },
@@ -139,9 +137,8 @@ test.describe('in English', () => {
       await page.setViewportSize(size);
       await expect(page.getByTestId('demo-state-preparing').getByRole('status')).toContainText('Your demo will be ready in a few minutes');
       await page.evaluate(() => new Promise<void>((painted) => requestAnimationFrame(() => requestAnimationFrame(() => painted()))));
-      await page.screenshot({ path: join(evidence, `demo-maintenance-en-${size.width}x${size.height}.png`), fullPage: size.width > 375 });
+      await page.screenshot({ path: join(ARTIFACTS, `demo-maintenance-en-${size.width}x${size.height}.png`), fullPage: size.width > 375 });
     }
-    await uiClipSweep(page, 'http://127.0.0.1:13871/demo/');
 
     const [demo] = [...demos.values()].slice(-1);
     demo.statuses = ['ready'];

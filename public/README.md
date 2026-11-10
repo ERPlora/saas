@@ -73,7 +73,8 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13
   (2026-10-30):** la demo nace con su BD y el Hub la prepara después (202 «requested»): la puerta dice «Preparando tu
   demo…» y su página pregunta `/demo/status/` cada segundo durante 30 s (`frontend/demo-wait.ts`), con `not_ready`
   si no llega. Si el Hub responde `maintenance`, muestra la pausa real y sigue sondeando sin aplicar ese límite; al descongelar
-  vuelve a «Preparando…» o entra si ya está lista. Detalle en `hubs/README.md`, «Lo que añadió la tenencia». `/try/` vuelve como
+  vuelve a «Preparando…», con sus 30 s contados desde la última respuesta `maintenance`, o entra si ya está lista.
+  Detalle en `hubs/README.md`, «Lo que añadió la tenencia». `/try/` vuelve como
   la misma vista con canónica `/demo/` (la dirección que repartía el stack viejo, saas#1164), fuera del mapa del
   sitio. La puerta JSON (`/api/demo/spawn/`) queda descartada: nadie la llamaba y la demo solo se abre en el
   navegador que la pide (PUBLIC-F36). Los datos de una demo se borran con ella: al retirarla, el Hub borra
