@@ -294,15 +294,33 @@ describe('LaunchPage: the first time (no business)', () => {
 });
 
 describe('LaunchPage: the preparation paused for maintenance', () => {
-  it('passes the real maintenance to the preparing card instead of calling it failed', async () => {
-    const maintenance = { frozen: true, reason: 'Aurora upgrade', since: '2026-11-09T20:00:00Z' };
+  const maintenance = { frozen: true, reason: 'Aurora upgrade', since: '2026-11-09T20:00:00Z' };
+
+  /** The launcher of an account without a business, right after creating Bakery here. */
+  async function createdBakery() {
     const s = await showing(page([]));
     s.wrapper.findComponent(BusinessCreateForm).vm.$emit('created', { id: 'bakery', name: 'Bakery', status: 'preparing' }, { typeName: null });
     await flush();
+    return s;
+  }
+
+  it('passes the real maintenance to the preparing card instead of calling it failed', async () => {
+    const s = await createdBakery();
     await s.result(s.call, 'hubs.business.list', page([row('bakery', 'Bakery', { ...PREPARING, maintenance })]), 2);
     expect(s.wrapper.find('[data-testid="preparing-maintenance"]').exists()).toBe(true);
     expect(s.wrapper.find('[data-testid="launch-failed"]').exists()).toBe(false);
     expect(s.opened()).toEqual([]);
+  });
+
+  it('promises no seconds while the pause lasts, and says «a few seconds» again once it lifts', async () => {
+    const s = await createdBakery();
+    expect(s.wrapper.get('.shell-lead').text()).toBe('It usually takes a few seconds.');
+    await s.result(s.call, 'hubs.business.list', page([row('bakery', 'Bakery', { ...PREPARING, maintenance })]), 2);
+    expect(s.wrapper.find('[data-testid="preparing-maintenance"]').exists()).toBe(true);
+    expect(s.wrapper.find('.shell-lead').exists()).toBe(false);
+    await s.result(s.call, 'hubs.business.list', page([row('bakery', 'Bakery', { ...PREPARING, maintenance: null })]), 3);
+    expect(s.wrapper.find('[data-testid="preparing-maintenance"]').exists()).toBe(false);
+    expect(s.wrapper.get('.shell-lead').text()).toBe('It usually takes a few seconds.');
   });
 });
 

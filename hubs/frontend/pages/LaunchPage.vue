@@ -35,7 +35,7 @@ import { useRouter } from 'vue-router';
 import { useLiveState } from '../../../frontend/live-state';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
 import type { BusinessRowOut, InvitationOut } from '../../../frontend/sdk-types';
-import { preparationFailed, reasonDate, reasonKey, statusPill } from '../business-status';
+import { preparationFailed, preparingLeadKey, reasonDate, reasonKey, statusPill } from '../business-status';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessPreparing from '../components/BusinessPreparing.vue';
 import CardShell from '../components/CardShell.vue';
@@ -110,8 +110,10 @@ const title = computed(() => {
 
 const lead = computed(() => {
   switch (variant.value) {
-    case 'preparing':
-      return t('hubs.launch.preparing.lead');
+    case 'preparing': {
+      const key = preparingLeadKey(createdRow.value?.maintenance);
+      return key ? t(key) : '';
+    }
     case 'invited':
       return ''; // the `#lead` slot: the role in bold.
     case 'first':
