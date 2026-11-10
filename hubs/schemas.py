@@ -220,6 +220,14 @@ class BusinessRowCanOut(Schema):
     delete: bool
 
 
+class HubMaintenanceOut(Schema):
+    """The platform-wide provisioning pause reported by the Hub's signed status poll."""
+
+    frozen: bool
+    reason: str = Field(max_length=500)
+    since: datetime | None
+
+
 class BusinessRowOut(Schema):
     """A business the account belongs to, as the Businesses page and the launcher list it."""
 
@@ -238,6 +246,7 @@ class BusinessRowOut(Schema):
     open_blocked_reason: str | None
     #: The Hub's last refusal of this business (its error code), until a call succeeds; else None.
     hub_error: str | None
+    maintenance: HubMaintenanceOut | None
     deletion_requested_at: datetime | None
     purge_after: datetime | None
     created_at: datetime
@@ -404,6 +413,7 @@ class BusinessDetailOut(Schema):
     status: str
     status_label: str
     hub_error: str | None
+    maintenance: HubMaintenanceOut | None
     ready_at: datetime | None
     created_at: datetime
     deletion_requested_at: datetime | None
@@ -570,6 +580,13 @@ class HubErrorIn(Schema):
 
     id: UUID
     hub_error: str | None = Field(None, max_length=64)
+
+
+class HubMaintenanceIn(Schema):
+    """The maintenance state read by the platform from the Hub, or ``None`` after it lifts."""
+
+    id: UUID
+    maintenance: HubMaintenanceOut | None = None
 
 
 class HubStatusOut(Schema):

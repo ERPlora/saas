@@ -8,13 +8,14 @@
 import { businessStatusPill, type BusinessStatus, formatDateTime, type StatusPillSpec } from '@erplora/ui/components';
 
 import { formatDate } from '../../billing/frontend/format';
-import type { BusinessStatusCode, OpenBlockedReason } from '../../frontend/sdk-types';
+import type { BusinessStatusCode, HubMaintenanceOut, OpenBlockedReason } from '../../frontend/sdk-types';
 
 /** What both a row of the list and a business's detail carry. */
 export interface BusinessState {
   status: BusinessStatusCode;
   open_blocked_reason?: OpenBlockedReason | null;
   hub_error?: string | null;
+  maintenance?: HubMaintenanceOut | null;
   /** Since when its invoice is unpaid (past due or suspended). */
   unpaid_since?: string | null;
   /** Deleted: until when it can be recovered. */
@@ -39,12 +40,14 @@ export function preparationFailed(business: BusinessState): boolean {
 /** The pill of the business's status; `t` translates the panel's own «Not prepared». */
 export function statusPill(business: BusinessState, t: (key: string) => string, locale: string): StatusPillSpec {
   if (preparationFailed(business)) return { tone: 'danger', label: t('hubs.status.error'), busy: false };
+  if (business.maintenance?.frozen) return { tone: 'warning', label: t('hubs.status.maintenance'), busy: true };
   return businessStatusPill(business.status as BusinessStatus, locale);
 }
 
 /** The catalogue key of the sentence under a business that is not simply active; `null` if it is. */
 export function reasonKey(business: BusinessState, inApp: boolean): string | null {
   if (preparationFailed(business)) return 'hubs.reason.error';
+  if (business.maintenance?.frozen) return 'hubs.reason.maintenance';
   switch (business.status) {
     case 'preparing':
       return 'hubs.reason.preparing';

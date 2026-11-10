@@ -431,7 +431,11 @@ listo al responder, y lo dice.
   `seeding` siguen «preparando» (`preparing`); `ready` lo abre; `failed` graba el error `hubs.provision_failed`
   (`services.PROVISION_FAILED`, por `hubs.business.record_hub_error`, con su evento) y el panel dice «No hemos podido
   prepararlo. Seguimos reintentándolo; si sigue fallando, avísanos.» en vez de «preparando» para siempre (el Hub lo
-  reintenta solo: 1 min, 5 min, 15 min, 1 h); `cancelled`, `archiving`, `dropping`, `expired`, `purged` o un estado fuera del contrato se
+  reintenta solo: 1 min, 5 min, 15 min, 1 h). La misma respuesta trae `maintenance`: durante `control.freeze.set` el SaaS guarda
+  `{frozen, reason, since}` en `Hub.maintenance` y lo muestra como pausa, nunca como fallo; al descongelar llega `null` y se borra.
+  La operación `hubs.business.record_maintenance` emite `hubs.business.maintenance_changed` en el canal del propietario para actualizar
+  la lista y la ficha, sin cambiar `state_version` ni la foto monótona. `hubs.business.check` (POST `/api/hubs/businesses/check`)
+  ejecuta el mismo sondeo al momento para la acción «Comprobar ahora», con los permisos de cualquier miembro. `cancelled`, `archiving`, `dropping`, `expired`, `purged` o un estado fuera del contrato se
   registran (`hubs.reconcile.unexpected_status`) y hacen fallar la pasada (`unexpected`), igual que `failed`
   (`provision_failed`). El aviso `ready` (o el sondeo que lo oye) borra ese error; una llamada entregada después no
   lo borra (la preparación sigue debida). Los estados viven en `hub_client` (`PREPARING_STATUSES`, `FAILED_STATUS`,

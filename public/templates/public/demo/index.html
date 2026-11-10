@@ -42,13 +42,14 @@
           <ion-card-content class="p-6 flex flex-col gap-5">
 
             {% if demo_state == "preparing" %}
-              <div class="flex items-start gap-4" role="status" data-demo-wait data-demo-status-url="{{ wait.status_url }}" data-demo-timeout-url="{{ wait.timeout_url }}">
+              <div class="flex items-start gap-4" role="status" data-demo-wait data-demo-state="preparing" data-demo-status-url="{{ wait.status_url }}" data-demo-timeout-url="{{ wait.timeout_url }}" data-demo-preparing-title="{% trans "Preparing your demo…" %}" data-demo-preparing-body="{% trans "It takes a few seconds and opens by itself when it is ready." %}" data-demo-maintenance-title="{% trans "Provisioning paused for maintenance" %}" data-demo-maintenance-body="{% trans "Your demo will be ready in a few minutes. We will keep checking automatically." %}">
                 <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
-                  <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+                  <span data-demo-preparing-icon>{% icon "lucide:clock" size=26 %}</span>
+                  <span data-demo-maintenance-icon hidden>{% icon "lucide:pause" size=26 %}</span>
                 </div>
                 <div>
-                  <ion-card-title class="mb-2">{% trans "Preparing your demo…" %}</ion-card-title>
-                  <p class="text-fg/65 m-0">{% trans "It takes a few seconds and opens by itself when it is ready." %}</p>
+                  <ion-card-title class="mb-2" data-demo-title>{% trans "Preparing your demo…" %}</ion-card-title>
+                  <p class="text-fg/65 m-0" data-demo-body>{% trans "It takes a few seconds and opens by itself when it is ready." %}</p>
                 </div>
               </div>
 

@@ -216,7 +216,7 @@ class HubDouble:
         demo = self._demo_by_id(hub_id)
         if method == "GET" and rest is None and demo is not None:
             ended = demo["expires_at"] <= datetime.now(UTC)
-            return 200, {"status": "expired" if ended else demo["status"]}
+            return 200, {"status": "expired" if ended else demo["status"], "maintenance": demo.get("maintenance")}
         if method == "GET" and rest == "/dumps":
             return self._dumps(hub_id)
         if method == "PUT" and rest is None:
@@ -229,7 +229,10 @@ class HubDouble:
         if method == "GET" and rest is None:
             if hub_id not in self.registry:
                 return 404, {"error": {"code": "not_found", "message": "Unknown hub."}}
-            return 200, {"status": self.registry[hub_id]["status"]}
+            return 200, {
+                "status": self.registry[hub_id]["status"],
+                "maintenance": self.registry[hub_id].get("maintenance"),
+            }
         if method == "PUT" and rest == "/state":
             if not _hub_takes_this_domain((body or {}).get("custom_domain")):
                 return 422, {"error": {"code": "internal.payload_invalid", "message": "Not a domain."}}

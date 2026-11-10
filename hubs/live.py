@@ -30,6 +30,7 @@ live(
         events.BUSINESS_DELETED,
         events.BUSINESS_RESTORED,
         events.BUSINESS_HUB_ERROR_CHANGED,
+        events.BUSINESS_MAINTENANCE_CHANGED,
         *events.MEMBER,
         events.INVITATION_ACCEPTED,
         *events.OWNERSHIP,

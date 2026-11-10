@@ -572,7 +572,7 @@ Actor: visitante, sistema
 Pantalla: Demo
 Pasos:
 1. La persona pulsa «Prueba la demo».
-2. Se crea un hub vacío para ese navegador, con una dirección propia al azar que empieza por «demo-», y dura 60 minutos desde ese momento. Tarda unos segundos en estar listo: la pantalla de la demo dice «Preparando tu demo…» y «Tarda unos segundos y se abre sola cuando está lista.», y mira cada segundo si ya lo está.
+2. Se crea un hub vacío para ese navegador, con una dirección propia al azar que empieza por «demo-», y dura 60 minutos desde ese momento. Tarda unos segundos en estar listo: la pantalla de la demo dice «Preparando tu demo…» y «Tarda unos segundos y se abre sola cuando está lista.», y mira cada segundo si ya lo está. Mientras el personal tiene la plataforma congelada para una subida de la base, cambia a «Alta en pausa por mantenimiento» y explica que seguirá comprobándolo sola; no lo confunde con un fallo ni con el límite de 30 segundos, y al descongelar vuelve a «Preparando tu demo…» o entra si ya está lista.
 3. Lista la demo, la pantalla dice «Abriendo tu demo…» y el navegador entra solo en ella, como el usuario «Demo», sin cuenta, contraseña ni PIN; sin JavaScript, el botón «Continuar» hace lo mismo.
 4. Si vuelve a la pantalla de la demo mientras dura, ve «Tu demo está en marcha», «Termina en 12 minutos.» (lo que le quede) y «Volver a mi demo», que la devuelve a la misma demo.
 5. Pulsar otra vez, recargar o abrir otra pestaña del mismo navegador devuelve la misma demo, y entrar después en su cuenta de erplora.com no la pierde.

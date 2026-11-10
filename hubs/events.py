@@ -12,6 +12,8 @@ BUSINESS_DELETED = "hubs.business.deleted"
 BUSINESS_RESTORED = "hubs.business.restored"
 #: The Hub refused a call about the business, or a later one succeeded: «Preparing» ↔ «Error».
 BUSINESS_HUB_ERROR_CHANGED = "hubs.business.hub_error_changed"
+#: The Hub's signed poll reported a platform-wide provisioning pause, or its recovery.
+BUSINESS_MAINTENANCE_CHANGED = "hubs.business.maintenance_changed"
 #: A day of the business's usage was measured, or measured again with other figures (``collect_hub_usage``,
 #: nightly; lot L4-A): recorded on the channel of its owner and of each admin (``notify_people``), who see
 #: its page. Payload ``{"business_id"}``.
@@ -29,6 +31,7 @@ BUSINESS = [
     BUSINESS_DELETED,
     BUSINESS_RESTORED,
     BUSINESS_HUB_ERROR_CHANGED,
+    BUSINESS_MAINTENANCE_CHANGED,
 ]
 
 MEMBER_INVITED = "hubs.member.invited"

@@ -4060,3 +4060,11 @@ msgstr ""
 "Este sitio está protegido por reCAPTCHA y se aplican la <a href=\"%(privacy)s\" "
 "target=\"_blank\" rel=\"noopener\">Política de Privacidad</a> y las <a href=\"%(terms)s"
 "\" target=\"_blank\" rel=\"noopener\">Condiciones del Servicio</a> de Google."
+
+#: templates/public/demo/index.html
+msgid "Provisioning paused for maintenance"
+msgstr "Alta en pausa por mantenimiento"
+
+#: templates/public/demo/index.html
+msgid "Your demo will be ready in a few minutes. We will keep checking automatically."
+msgstr "Tu demo estará lista en unos minutos. Seguiremos comprobándolo automáticamente."

@@ -4,7 +4,7 @@
 // clock: data only — no code under test compares these dates with now.
 import { describe, expect, it } from 'vitest';
 
-import { reasonDate, reasonKey, statusPill, unpaidDeadline } from './business-status';
+import { preparationFailed, reasonDate, reasonKey, statusPill, unpaidDeadline } from './business-status';
 
 const t = (key: string) => `t:${key}`;
 
@@ -15,6 +15,17 @@ describe('statusPill', () => {
     expect(statusPill({ status: 'past_due', open_blocked_reason: null }, t, 'en').tone).toBe('warning');
     expect(statusPill({ status: 'suspended', open_blocked_reason: 'suspended' }, t, 'en').tone).toBe('danger');
     expect(statusPill({ status: 'deleting', open_blocked_reason: 'deleting' }, t, 'en').tone).toBe('danger');
+  });
+
+  it('maintenance is a paused preparation, never a failure', () => {
+    const business = {
+      status: 'preparing',
+      open_blocked_reason: 'preparing',
+      maintenance: { frozen: true, reason: 'Aurora upgrade', since: null },
+    } as const;
+    expect(statusPill(business, t, 'en')).toEqual({ tone: 'warning', label: 't:hubs.status.maintenance', busy: true });
+    expect(reasonKey(business, false)).toBe('hubs.reason.maintenance');
+    expect(preparationFailed(business)).toBe(false);
   });
 
   it('is a danger pill of its own when the Hub refused to prepare the business', () => {

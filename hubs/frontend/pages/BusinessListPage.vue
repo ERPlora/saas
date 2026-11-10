@@ -647,8 +647,10 @@ onIonViewWillEnter(entered);
           {{ $t('hubs.launch.preparing.lead') }}
         </p>
         <BusinessPreparing
+          :id="created.id"
           :name="created.name"
           :type-name="created.typeName"
+          :maintenance="createdNow?.maintenance ?? null"
           last="ready"
         />
         <p class="create-foot">

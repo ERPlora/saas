@@ -3,17 +3,42 @@
 // «creating»; the old SaaS's `deploy-steps` of `cloud.css`): a running bar (we do not know how far it
 // is, so it does not pretend a percentage) and three steps — created, being set up, and what happens
 // next. The list is a live region: a screen reader hears the step change.
+import { InlineFeedback } from '@erplora/ui/components';
 import { HubIcon } from '@erplora/ui/shell';
-import { IonProgressBar, IonSpinner } from '@ionic/vue';
+import { useCommand } from '@erplora/ui/sdk';
+import { IonButton, IonProgressBar, IonSpinner } from '@ionic/vue';
+import { onMounted, shallowRef } from 'vue';
 
-defineProps<{
+import type { HubMaintenanceOut } from '../../../frontend/sdk-types';
+
+const props = defineProps<{
+  /** The business id, when its server status can be checked. */
+  id?: string;
   /** The business's name. */
   name: string;
   /** The business type picked at the sign-up, if any (the step names it; a business is born with every app off, PLAN §33). */
   typeName?: string | null;
+  /** The real platform-wide pause reported by the Hub. */
+  maintenance?: HubMaintenanceOut | null;
   /** The last step: the launcher opens it by itself; the dialog offers to open it. */
   last: 'opensAlone' | 'ready';
 }>();
+
+const check = useCommand('hubs.business.check');
+const checkFailed = shallowRef(false);
+
+async function checkStatus(): Promise<void> {
+  if (!props.id || check.pending.value) return;
+  checkFailed.value = false;
+  try {
+    await check.run({ id: props.id });
+  } catch {
+    checkFailed.value = true;
+  }
+}
+onMounted(() => {
+  void checkStatus();
+});
 </script>
 
 <template>
@@ -40,7 +65,12 @@ defineProps<{
         aria-current="step"
       >
         <span class="step-icon"><ion-spinner
+          v-if="!maintenance?.frozen"
           name="crescent"
+          aria-hidden="true"
+        /><HubIcon
+          v-else
+          name="ion:time-outline"
           aria-hidden="true"
         /></span>
         <span>{{ typeName ? $t('hubs.preparing.setupType', { type: typeName }) : $t('hubs.preparing.setup') }}</span>
@@ -53,6 +83,41 @@ defineProps<{
         <span>{{ $t(`hubs.preparing.${last}`) }}</span>
       </li>
     </ol>
+    <InlineFeedback
+      v-if="maintenance?.frozen"
+      tone="warning"
+      data-testid="preparing-maintenance"
+    >
+      {{ $t('hubs.preparing.maintenance') }}
+    </InlineFeedback>
+    <InlineFeedback
+      v-if="checkFailed"
+      tone="danger"
+      data-testid="preparing-check-error"
+    >
+      {{ $t('hubs.preparing.checkError') }}
+    </InlineFeedback>
+    <ion-button
+      v-if="id"
+      fill="outline"
+      data-testid="preparing-check"
+      :disabled="check.pending.value"
+      @click="checkStatus"
+    >
+      <ion-spinner
+        v-if="check.pending.value"
+        slot="start"
+        name="crescent"
+        aria-hidden="true"
+      />
+      <HubIcon
+        v-else
+        slot="start"
+        name="ion:refresh-outline"
+        aria-hidden="true"
+      />
+      {{ $t('hubs.preparing.checkNow') }}
+    </ion-button>
   </div>
 </template>
 

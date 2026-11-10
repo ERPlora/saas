@@ -36,6 +36,7 @@
           "cancel": "Cancelar",
           "change_address": "Cambiar dirección",
           "change_role": "Cambiar rol",
+          "check": "Comprobar",
           "close": "Cerrar",
           "close_others": "Cerrar las demás",
           "create": "Crear",
@@ -86,6 +87,7 @@
             },
             "business": {
               "change_address": "Cambiar dirección",
+              "check": "Comprobar el estado del alta",
               "create": "Crear negocio",
               "delete": "Eliminar negocio",
               "restore": "Recuperar negocio",

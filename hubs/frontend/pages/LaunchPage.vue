@@ -274,8 +274,10 @@ onIonViewWillEnter(entered);
       <!-- ═══ Just created: preparing ═══ -->
       <template v-else-if="variant === 'preparing' && created">
         <BusinessPreparing
+          :id="created.id"
           :name="created.name"
           :type-name="created.typeName"
+          :maintenance="createdRow?.maintenance ?? null"
           last="opensAlone"
         />
         <ion-button
