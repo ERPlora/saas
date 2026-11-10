@@ -543,6 +543,63 @@ def test_the_status_of_a_demo_still_being_prepared_says_so(client, hub_double, s
 
 
 @pytest.mark.django_db
+def test_the_status_during_maintenance_says_so_and_recovers_without_losing_the_demo(client, hub_double):
+    """PUBLIC-F28: a freeze is not a failed preparation; the next poll recovers the real state."""
+    slug = start(client, hub_double, ready=False)
+    hub_double.demos[slug]["maintenance"] = {
+        "frozen": True,
+        "reason": "Aurora upgrade",
+        "since": "2026-11-09T20:00:00+00:00",
+    }
+
+    assert status(client) == {"state": "maintenance"}
+    assert client.session["demo"]["slug"] == slug
+
+    hub_double.demos[slug]["maintenance"] = None
+    assert status(client) == {"state": "preparing"}
+
+
+@pytest.mark.django_db
+def test_the_status_reads_the_hub_body_as_the_hub_writes_it_and_tolerates_an_older_hub(client, hub_double, monkeypatch):
+    """PUBLIC-F28, contract with ERPlora/hub#1113 (``base.schemas.HubGetOut``): the whole body of the signed poll, and
+    one of a Hub deployed before it, without ``maintenance``, which is no pause."""
+    from hubs import hub_client
+
+    slug = start(client, hub_double, ready=False)
+    hub_body = {
+        "id": client.session["demo"]["id"],
+        "slug": slug,
+        "status": "requested",
+        "is_demo": True,
+        "expires_at": "2026-11-09T21:00:00Z",
+        "ready_at": None,
+        "state_version": 0,
+        "maintenance": {"frozen": True, "reason": "Aurora upgrade", "since": "2026-11-09T20:00:00.123456Z"},
+    }
+    monkeypatch.setattr(hub_client, "get_hub", lambda hub_id: hub_client.HubAnswer(200, hub_body))
+    assert status(client) == {"state": "maintenance"}
+
+    older_hub = {key: value for key, value in hub_body.items() if key != "maintenance"}
+    monkeypatch.setattr(hub_client, "get_hub", lambda hub_id: hub_client.HubAnswer(200, older_hub))
+    assert status(client) == {"state": "preparing"}
+
+
+@pytest.mark.django_db
+def test_a_ready_demo_enters_even_when_another_freeze_is_active(client, hub_double):
+    """PUBLIC-F28: a platform-wide pause never holds back a demo whose database is already ready."""
+    slug = start(client, hub_double, ready=False)
+    hub_double.demos[slug]["status"] = "ready"
+    hub_double.demos[slug]["maintenance"] = {
+        "frozen": True,
+        "reason": "Aurora upgrade",
+        "since": "2026-11-09T20:00:00+00:00",
+    }
+
+    assert status(client) == {"state": "ready", "url": f"http://{slug}.localhost:8000/auth/login?next=/"}
+    assert client.session["demo"]["ready"] is True
+
+
+@pytest.mark.django_db
 def test_the_status_of_a_demo_the_hub_could_not_prepare_is_not_ready(client, hub_double, caplog):
     slug = start(client, hub_double, ready=False)
     hub_double.demos[slug]["status"] = "failed"

@@ -529,6 +529,8 @@ class Hub(models.Model):
     status = models.CharField(_("status"), max_length=16, choices=Status.choices, default=Status.PREPARING, db_index=True)
     ready_at = models.DateTimeField(_("ready at"), null=True, blank=True)
     provision_requested_at = models.DateTimeField(_("provisioning asked at"), null=True, blank=True)
+    #: The Hub's real platform-wide provisioning pause from its signed status poll; ``None`` when there is none.
+    maintenance = models.JSONField(_("provisioning maintenance"), null=True, blank=True, default=None)
     deletion_requested_at = models.DateTimeField(_("deletion asked at"), null=True, blank=True)
     #: The clock of a business suspended for an unpaid plan (HUBS-F20): set when it is suspended, cleared when it
     #: pays; the notices of day 30 and 150 go out once each, and on day 180 it is deleted (``services.age_suspended``).

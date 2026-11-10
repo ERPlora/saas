@@ -179,6 +179,8 @@ MIDDLEWARE = [
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    # A mail allauth cannot send (SES in its sandbox) answers a handled 503, not a 500 (saas#391).
+    "accounts.mail_outage.MailOutageMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # On the panel, a signed-in account speaks its own language (User.language), not the cookie's.
     "base.language.AccountLanguageMiddleware",

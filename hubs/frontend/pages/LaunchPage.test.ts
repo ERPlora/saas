@@ -293,6 +293,19 @@ describe('LaunchPage: the first time (no business)', () => {
   });
 });
 
+describe('LaunchPage: the preparation paused for maintenance', () => {
+  it('passes the real maintenance to the preparing card instead of calling it failed', async () => {
+    const maintenance = { frozen: true, reason: 'Aurora upgrade', since: '2026-11-09T20:00:00Z' };
+    const s = await showing(page([]));
+    s.wrapper.findComponent(BusinessCreateForm).vm.$emit('created', { id: 'bakery', name: 'Bakery', status: 'preparing' }, { typeName: null });
+    await flush();
+    await s.result(s.call, 'hubs.business.list', page([row('bakery', 'Bakery', { ...PREPARING, maintenance })]), 2);
+    expect(s.wrapper.find('[data-testid="preparing-maintenance"]').exists()).toBe(true);
+    expect(s.wrapper.find('[data-testid="launch-failed"]').exists()).toBe(false);
+    expect(s.opened()).toEqual([]);
+  });
+});
+
 describe('LaunchPage: the preparation the Hub refused', () => {
   it('after creating, a refused preparation says so and offers the panel, instead of preparing for ever', async () => {
     const s = await showing(page([]));

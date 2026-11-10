@@ -699,6 +699,7 @@ export interface HubCall {
 
 export interface HubDouble {
   calls: HubCall[];
+  setMaintenance(value: Record<string, unknown> | null): void;
   close(): Promise<void>;
 }
 
@@ -717,6 +718,7 @@ const PLAYED = [
  */
 export async function startHubDouble(): Promise<HubDouble> {
   const calls: HubCall[] = [];
+  let maintenance: Record<string, unknown> | null | undefined;
   const server = createServer((request, response) => {
     const chunks: Buffer[] = [];
     request.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -730,6 +732,11 @@ export async function startHubDouble(): Promise<HubDouble> {
         body: raw ? (JSON.parse(raw) as Record<string, unknown>) : {},
         signed: !!request.headers['x-erplora-timestamp'] && !!request.headers['x-erplora-signature'],
       });
+      if (method === 'GET' && /^\/internal\/hubs\/[0-9a-f-]+$/.test(path) && maintenance !== undefined) {
+        response.writeHead(200, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({ status: 'requested', maintenance }));
+        return;
+      }
       const played = PLAYED.some((route) => route.test(`${method} ${path}`));
       response.writeHead(played ? 200 : 503, { 'Content-Type': 'application/json' });
       response.end(played ? '{}' : '{"error":{"code":"hub_away"}}');
@@ -741,6 +748,9 @@ export async function startHubDouble(): Promise<HubDouble> {
   });
   return {
     calls,
+    setMaintenance(value) {
+      maintenance = value;
+    },
     close: () =>
       new Promise<void>((closed) => {
         server.closeAllConnections();

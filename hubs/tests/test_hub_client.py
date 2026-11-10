@@ -94,7 +94,7 @@ def test_put_state_sends_the_snapshot(hub_double):
 def test_get_hub_reads_the_registry(hub_double):
     hub_client.put_hub(REGISTRY)
 
-    assert hub_client.get_hub(HUB_ID).body == {"status": "requested"}
+    assert hub_client.get_hub(HUB_ID).body == {"status": "requested", "maintenance": None}
     assert hub_double.calls_to("GET")[0].path == f"/internal/hubs/{HUB_ID}"
 
 

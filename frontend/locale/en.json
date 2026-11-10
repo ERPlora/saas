@@ -36,6 +36,7 @@
           "cancel": "Cancel",
           "change_address": "Change address",
           "change_role": "Change role",
+          "check": "Check",
           "close": "Close",
           "close_others": "Close the others",
           "create": "Create",
@@ -86,6 +87,7 @@
             },
             "business": {
               "change_address": "Change address",
+              "check": "Check provisioning status",
               "create": "Create business",
               "delete": "Delete business",
               "restore": "Recover business",

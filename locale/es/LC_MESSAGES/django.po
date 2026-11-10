@@ -837,6 +837,9 @@ msgstr "Tu cuenta aún no tiene contraseña: crea una con «¿Has olvidado tu co
 msgid "Too many attempts. Please try again in a few minutes."
 msgstr "Demasiados intentos. Vuelve a intentarlo en unos minutos."
 
+msgid "We could not send the email right now. Try again in a few minutes."
+msgstr "No hemos podido enviar el correo ahora mismo. Vuelve a intentarlo en unos minutos."
+
 msgid "That is already your email."
 msgstr "Ese ya es tu correo."
 

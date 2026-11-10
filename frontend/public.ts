@@ -45,7 +45,6 @@ import { defineCustomElement as defineLabel } from '@ionic/core/components/ion-l
 import { defineCustomElement as defineList } from '@ionic/core/components/ion-list.js';
 import { defineCustomElement as defineNote } from '@ionic/core/components/ion-note.js';
 import { defineCustomElement as defineSearchbar } from '@ionic/core/components/ion-searchbar.js';
-import { defineCustomElement as defineSpinner } from '@ionic/core/components/ion-spinner.js';
 import { defineCustomElement as defineTextarea } from '@ionic/core/components/ion-textarea.js';
 import { defineCustomElement as defineToast } from '@ionic/core/components/ion-toast.js';
 import { defineCustomElement as defineToggle } from '@ionic/core/components/ion-toggle.js';
@@ -81,7 +80,6 @@ export const ION_COMPONENTS: Record<string, () => void> = {
   'ion-list': defineList,
   'ion-note': defineNote,
   'ion-searchbar': defineSearchbar,
-  'ion-spinner': defineSpinner,
   'ion-textarea': defineTextarea,
   'ion-toast': defineToast,
   'ion-toggle': defineToggle,

@@ -305,6 +305,12 @@ def open_blocked_reason(hub: Hub) -> str | None:
     return reason
 
 
+def maintenance_of(hub: Hub) -> dict[str, Any] | None:
+    """The Hub's provisioning pause of a sign-up still being prepared, else ``None``: a business deleted while paused
+    keeps the stored pause (only the poll of a preparing one clears it), and its pill says its own state."""
+    return hub.maintenance if hub.status == Hub.Status.PREPARING and hub.ready_at is None else None
+
+
 def is_writable(hub: Hub) -> bool:
     """Whether the business takes changes: a deleted one answers every write with 409 until recovered."""
     return hub.status not in (Hub.Status.DELETING, Hub.Status.DELETED)
@@ -635,6 +641,7 @@ def business_row(member: HubMember, now: datetime) -> dict[str, Any]:
         "can_open": hub.status not in OPEN_BLOCKED,
         "open_blocked_reason": open_blocked_reason(hub),
         "hub_error": hub.last_hub_error or None,
+        "maintenance": maintenance_of(hub),
         "deletion_requested_at": hub.deletion_requested_at,
         "purge_after": hub.purge_after,
         "created_at": hub.created_at,
@@ -848,6 +855,7 @@ def business_detail(member: HubMember) -> dict[str, Any]:
         "status": hub.status,
         "status_label": status_label(hub.status),
         "hub_error": hub.last_hub_error or None,
+        "maintenance": maintenance_of(hub),
         "ready_at": hub.ready_at,
         "created_at": hub.created_at,
         "deletion_requested_at": hub.deletion_requested_at,

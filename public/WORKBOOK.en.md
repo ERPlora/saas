@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:d5b0744ac9ed20b8e8cbd2ced68a08de766b810d940dda3e32d95840b0b504bb -->
+<!-- generated from WORKBOOK.md sha256:bbbd6f074461b168e65e74c196013393e83342e958208dc61e2212b21242bf9f -->
 
 ## What it is for and who it is for
 
@@ -534,7 +534,7 @@ Actor: visitor, system
 Screen: Demo
 Steps:
 1. The person presses "Try the demo".
-2. An empty hub is created for that browser, with its own random address starting with "demo-", and it lasts 60 minutes from that moment. It takes a few seconds to be ready: the demo screen says "Preparing your demo…" and "It takes a few seconds and opens by itself when it is ready.", and checks every second whether it is.
+2. An empty hub is created for that browser, with its own random address starting with "demo-", and it lasts 60 minutes from that moment. It takes a few seconds to be ready: the demo screen says "Preparing your demo…" and "It takes a few seconds and opens by itself when it is ready.", and checks every second whether it is. While ERPlora's staff keeps the platform frozen for a database upgrade, it changes to "Provisioning paused for maintenance" and says it will keep checking automatically; it is neither a failure nor the 30-second timeout, and after the lift it returns to "Preparing your demo…" or opens if it is ready.
 3. Once the demo is ready, the screen says "Opening your demo…" and the browser goes into it by itself, as the user "Demo", with no account, password or PIN; without JavaScript, the "Continue" button does the same.
 4. If they come back to the demo screen while it lasts, they see "Your demo is running", "It ends in 12 minutes." (whatever is left) and "Back to my demo", which takes them back to the same demo.
 5. Pressing again, reloading or opening another tab of the same browser gives back the same demo, and signing in to their erplora.com account afterwards does not lose it.
