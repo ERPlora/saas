@@ -1711,3 +1711,7 @@ msgstr "Todo lo demás sigue funcionando en su dirección de erplora.com."
 #: emails.py
 msgid "It comes back by itself within the hour once the record is back. The records are here: %(url)s"
 msgstr "Vuelve solo en menos de una hora cuando vuelva el registro. Los registros están aquí: %(url)s"
+
+#: services.py
+msgid "The provisioning status could not be checked. Try again."
+msgstr "No hemos podido comprobar el estado del alta. Inténtalo otra vez."

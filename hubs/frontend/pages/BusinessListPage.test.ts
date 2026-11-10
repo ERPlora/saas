@@ -505,6 +505,15 @@ describe('BusinessListPage: «Create business»', () => {
     return s;
   }
 
+  async function submitDulce(s: Awaited<ReturnType<typeof openCreate>>): Promise<void> {
+    const name = s.q('create-name') as HTMLElement & { value?: string };
+    name.value = 'Pastelería Dulce';
+    name.dispatchEvent(new CustomEvent('ionInput', { detail: { value: 'Pastelería Dulce' } }));
+    await flush();
+    s.q('create-modal-submit')!.click();
+    await flush();
+  }
+
   it('opens the dialog with the form, the dialog’s button creating', async () => {
     const s = await openCreate();
     expect(s.q('create-modal')?.getAttribute('aria-label')).toBe('Create business');
@@ -609,6 +618,20 @@ describe('BusinessListPage: «Create business»', () => {
     s.q('create-modal-open')!.click();
     await flush();
     expect(s.calls().find((c) => c.path === '/api/hubs/businesses/open')?.body).toEqual({ id: 'dulce', next: '/' });
+  });
+
+  it('maintenance reaches the dialog and the row without becoming an error', async () => {
+    const maintenance = { frozen: true, reason: 'Aurora upgrade', since: '2026-11-09T20:00:00Z' };
+    const s = await openCreate();
+    await submitDulce(s);
+    await s.show(page([row('dulce', 'Pastelería Dulce', { ...PREPARING, maintenance }), ...ROWS]), 2);
+    await s.clock.advance(150);
+    await s.result(s.net.lastStream(), 'hubs.business.get', { id: 'dulce', name: 'Pastelería Dulce', host: 'dulce.localhost:8000', status: 'preparing', maintenance, hub_error: null, can: { open: false } });
+
+    expect(s.q('create-modal')?.querySelector('[data-testid="preparing-maintenance"]')).not.toBeNull();
+    expect(s.q('create-modal')?.querySelector('ion-title')?.textContent).toContain('Preparing Pastelería Dulce');
+    expect(s.rows()[0].get('.status-pill').text()).toBe('Paused for maintenance');
+    expect(s.rows()[0].text()).toContain('Provisioning is paused for maintenance. It resumes automatically; you can check now.');
   });
 
   it('a preparation the Hub refused says so in the dialog', async () => {

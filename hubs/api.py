@@ -73,6 +73,11 @@ async def business_get(request, params: Query[ByIdIn]):
     return await run_operation(request, queries.business_get, params)
 
 
+@bind(router, "hubs.business.check", "/hubs/businesses/check")
+async def business_check(request, data: ByIdIn):
+    return await run_operation(request, services.business_check, data)
+
+
 @bind(router, "hubs.business.update", "/hubs/businesses/update")
 async def business_update(request, data: BusinessUpdateIn):
     return await run_operation(request, services.business_update, data)

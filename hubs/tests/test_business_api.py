@@ -253,3 +253,24 @@ def test_the_proposed_address_over_http(signed_in, owner, plans):
         get(signed_in(owner), "/hubs/address", name="Peluquería Ana").json()["slug"]
         == "peluqueria-ana"
     )
+
+
+def test_the_check_route_returns_the_real_maintenance_and_clears_it(client, business, owner, hub_double):
+    from hubs import services
+
+    services.sync_hub(business.id)
+    hub_double.registry[str(business.id)]["maintenance"] = {
+        "frozen": True,
+        "reason": "Aurora upgrade",
+        "since": "2026-11-09T20:00:00+00:00",
+    }
+    client.force_login(owner)
+
+    maintained = post(client, "/hubs/businesses/check", {"id": str(business.id)})
+    assert maintained.status_code == 200, maintained.content
+    assert maintained.json()["maintenance"]["reason"] == "Aurora upgrade"
+
+    hub_double.registry[str(business.id)]["maintenance"] = None
+    recovered = post(client, "/hubs/businesses/check", {"id": str(business.id)})
+    assert recovered.status_code == 200, recovered.content
+    assert recovered.json()["maintenance"] is None

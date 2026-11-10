@@ -82,7 +82,10 @@ negocio»; en **Negocios**, en el diálogo «Crear negocio», bajo «¿Cómo se 
 
 ### Preparando
 La barra en marcha y tres pasos: «Negocio creado», «Preparando tu negocio» (o «Preparando tu negocio: …», con el tipo elegido) y
-«Se abre solo al terminar» en la Entrada o «Listo para abrir» en el diálogo.
+«Se abre solo al terminar» en la Entrada o «Listo para abrir» en el diálogo. Mientras el personal tiene la plataforma
+congelada para una subida de la base, el aviso «Alta en pausa por mantenimiento: tu negocio estará listo en unos
+minutos.» explica la espera, con «Comprobar ahora»; desaparece solo al descongelar o cuando el negocio queda listo.
+Si la comprobación no puede hacerse, otro aviso lo dice y deja reintentar.
 
 ### Negocios
 La portada del panel: la lista de los negocios de la cuenta con «Negocio», «Dirección web», «Estado», «Plan»,
@@ -257,7 +260,7 @@ Pasos:
 4. Al propietario le llega además el correo «… ya está listo» con el enlace para abrirlo y el de su página en el panel.
 Entra: el aviso de que el negocio está listo (HUBS-F07).
 Sale: la entrada en el negocio con un pase de un solo uso, que nunca viaja en la dirección; el correo «ya está listo», una sola vez.
-Si falla: si el negocio no se pudo preparar, la pantalla dice «No se ha podido preparar» y «Hemos guardado …, pero no se ha podido preparar. Seguimos reintentándolo; si sigue fallando, avísanos.», y entra sola si el reintento (HUBS-F08) lo arregla. Con varios negocios no entra sola en ninguno: la persona elige.
+Si falla: si el negocio no se pudo preparar, la pantalla dice «No se ha podido preparar» y «Hemos guardado …, pero no se ha podido preparar. Seguimos reintentándolo; si sigue fallando, avísanos.», y entra sola si el reintento (HUBS-F08) lo arregla. Mientras el personal tiene la plataforma congelada para una subida de la base, la tarjeta y la fila dicen «Alta en pausa por mantenimiento: tu negocio estará listo en unos minutos.», con «Comprobar ahora»; es una pausa, nunca un fallo de preparación, y desaparece sola al descongelar o cuando el negocio queda listo. Si la comprobación no puede hacerse, un aviso lo dice y deja reintentar. Con varios negocios no entra sola en ninguno: la persona elige.
 Implicados: accounts (el salto al negocio), el negocio (avisa de que está listo)
 
 ### HUBS-F05 Mantener los planes en el admin
@@ -308,8 +311,8 @@ Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. Cada 15 minutos, erplora.com busca lo que el servicio de los negocios aún no ha recibido: un alta, una baja, una recuperación o el estado más reciente de un negocio.
-2. Se lo vuelve a mandar y, a un alta que lleva más de 2 minutos sin el aviso de «listo», le pregunta cómo va: si ya está listo, la da por lista; si el servicio no la conoce, la manda otra vez.
-3. Apunta en el registro cuánto entregó, cuánto quedó pendiente y cuánto rechazó el negocio.
+2. Se lo vuelve a mandar y, a un alta que lleva más de 2 minutos sin el aviso de «listo», le pregunta cómo va: si ya está listo, la da por lista; si el servicio no la conoce, la manda otra vez. Si la plataforma está congelada, guarda esa pausa real y la publica en la lista y en la ficha; al descongelar la borra, sin cambiar la versión de la foto del negocio.
+3. Apunta en el registro cuánto entregó, cuánto quedó pendiente y cuánto rechazó el negocio. La acción «Comprobar ahora» de HUBS-F04 hace esta misma consulta y recuperación al momento.
 Entra: los negocios con algo pendiente.
 Sale: lo entregado, marcado como entregado; lo que falla queda pendiente para la siguiente pasada.
 Si falla: un negocio que falla no para la pasada; la pasada termina con error si algo quedó pendiente, sin conexión o rechazado, y ese error salta como alarma. Dos pasadas a la vez no se pisan: la segunda sale sin hacer nada.

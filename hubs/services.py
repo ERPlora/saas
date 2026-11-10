@@ -29,7 +29,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 from live.context import OperationContext, Scope, system_context
-from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
+from live.errors import Conflict, InvalidPayload, NotFound, OperationError, PermissionDenied
 from live.operations import AI, INTERNAL, operation
 from live.outbox import record_event
 from live.slugs import (
@@ -82,6 +82,7 @@ from hubs.schemas import (
     BusinessUpdateIn,
     ByIdIn,
     HubErrorIn,
+    HubMaintenanceIn,
     HubStatusOut,
     SuspensionStepOut,
     HubUsageIn,
@@ -688,6 +689,9 @@ def business_mark_ready(ctx: OperationContext, data: MarkReadyIn) -> dict:
         # Ready after the Hub's own retry: the preparation it reported failed is no longer owed.
         hub.last_hub_error, hub.hub_error_at = "", None
         changed += ["last_hub_error", "hub_error_at"]
+    if hub.maintenance is not None:
+        hub.maintenance = None
+        changed.append("maintenance")
     if changed:
         hub.save(update_fields=[*changed, "updated_at"])
         record_event(ctx, events.BUSINESS_READY, {"id": str(hub.id)})
@@ -702,6 +706,16 @@ def business_mark_ready(ctx: OperationContext, data: MarkReadyIn) -> dict:
             robust=True,
         )
     return {"id": hub.id, "status": hub.status, "ready_at": hub.ready_at}
+
+
+def _system_hub(ctx: OperationContext, data: HubErrorIn | HubMaintenanceIn) -> Hub:
+    """The business a platform answer changes, after refusing any caller that is not the platform."""
+    if ctx.actor != "system":
+        raise PermissionDenied(_("Only the platform records the Hub's answers."), code="internal_command")
+    hub = Hub.objects.select_for_update().filter(pk=data.id).first()
+    if hub is None:
+        raise queries.not_found()
+    return hub
 
 
 @operation(
@@ -720,11 +734,7 @@ def business_record_hub_error(ctx: OperationContext, data: HubErrorIn) -> dict:
     ``ready``) the list and the page of the business re-run at once, and «Preparing» turns into «Error»
     (and back) without waiting for the 300 s safety re-run. The same answer again records nothing.
     """
-    if ctx.actor != "system":
-        raise PermissionDenied(_("Only the platform records the Hub's answers."), code="internal_command")
-    hub = Hub.objects.select_for_update().filter(pk=data.id).first()
-    if hub is None:
-        raise queries.not_found()
+    hub = _system_hub(ctx, data)
     code = data.hub_error or ""
     if hub.last_hub_error != code:
         hub.last_hub_error = code
@@ -732,6 +742,58 @@ def business_record_hub_error(ctx: OperationContext, data: HubErrorIn) -> dict:
         hub.save(update_fields=["last_hub_error", "hub_error_at", "updated_at"])
         record_event(ctx, events.BUSINESS_HUB_ERROR_CHANGED, {"id": str(hub.id), "hub_error": code or None})
     return {"id": hub.id, "status": hub.status, "ready_at": hub.ready_at}
+
+
+@operation(
+    "hubs.business.record_maintenance",
+    kind="command",
+    permission="hubs.manage",
+    input=HubMaintenanceIn,
+    output=HubStatusOut,
+    ai=INTERNAL,
+)
+def business_record_maintenance(ctx: OperationContext, data: HubMaintenanceIn) -> dict:
+    """Persist the Hub's real provisioning pause, or clear it after the lift, and notify the owner at once."""
+    hub = _system_hub(ctx, data)
+    maintenance = (
+        data.maintenance.model_dump(mode="json")
+        if data.maintenance is not None and hub.status == Hub.Status.PREPARING and hub.ready_at is None
+        else None
+    )
+    if hub.maintenance != maintenance:
+        hub.maintenance = maintenance
+        hub.save(update_fields=["maintenance", "updated_at"])
+        record_event(ctx, events.BUSINESS_MAINTENANCE_CHANGED, {"id": str(hub.id), "maintenance": maintenance})
+    return {"id": hub.id, "status": hub.status, "ready_at": hub.ready_at}
+
+
+@operation(
+    "hubs.business.check",
+    kind="command",
+    permission="hubs.view",
+    input=ByIdIn,
+    output=BusinessDetailOut,
+    ai=AI(
+        description="Check the real provisioning status of a business and recover it when it is ready.",
+        asks={
+            "en": ("check whether my business is ready", "why is my business taking so long to prepare?"),
+            "es": ("comprueba si mi negocio ya está listo", "¿por qué tarda tanto en prepararse mi negocio?"),
+        },
+    ),
+)
+def business_check(ctx: OperationContext, data: ByIdIn) -> dict:
+    """Run the scheduled status poll now for a member, without another path to the Hub or a version bump."""
+    member = queries.access(queries.account_of(ctx), data.id)
+    if member.hub.status == Hub.Status.PREPARING and member.hub.ready_at is None:
+        counts = Counter()
+        _settle_stuck(data.id, counts)
+        if counts["unreachable"] or counts["failed"] or counts["unexpected"]:
+            raise OperationError(
+                _("The provisioning status could not be checked. Try again."),
+                code="hubs.status_unavailable",
+                status=503,
+            )
+    return queries.business_detail(member)
 
 
 @operation(
@@ -2247,6 +2309,8 @@ def _settle_stuck(hub_id: UUID, counts: Counter) -> None:
         counts["unreachable"] += 1
         return
     status = answer.body.get("status") if isinstance(answer.body, dict) else None
+    maintenance = answer.body.get("maintenance") if isinstance(answer.body, dict) else None
+    business_record_maintenance(system_ctx_for(hub_id), HubMaintenanceIn(id=hub_id, maintenance=maintenance))
     if status == "ready":
         business_mark_ready(system_ctx_for(hub_id), MarkReadyIn(id=hub_id))
         counts["ready"] += 1

@@ -247,6 +247,7 @@ describe('OPERATION_ROUTES', () => {
         'hubs.business.list',
         'hubs.business.create',
         'hubs.business.get',
+        'hubs.business.check',
         'hubs.business.update',
         'hubs.business.change_address',
         'hubs.business.delete',
