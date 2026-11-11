@@ -1,50 +1,34 @@
-# Settings, permissions and data
+# Settings, devices and data
 
-Open **Settings** to manage personal preferences and Hub-wide configuration. Some controls are read-only unless your local role is owner or administrator.
+Open **Settings** in the side menu. At the bottom it has four tabs: "General", "Business", "Printing" and "Data and backups". What affects the whole business is only changed by the owner and the admins; everybody else sees those controls switched off and who can change them.
 
-## Hub
+Your personal preferences are not in Settings but in **My profile** ("Profile", in the user menu): the language, the theme, the palette and the interface size, which follow you on any device.
 
-The Hub area contains:
+## General
 
-- Your language on this device.
-- Timezone, country and interface appearance.
-- Hub-wide currency, default language and brand palette.
-- Optional internal API documentation.
-- Hardware and printing status when that integration is enabled.
-
-Personal language and appearance can differ by user. Currency, default language and the Hub palette affect the whole Hub and require administrator access.
-
-## Store
-
-Store settings describe the business type and regional presentation used by the Hub. App-specific workflows remain inside each app's own settings.
+- **"This device"**: whether the device you are on is "Shared — a till or tablet several people use" (it asks for a PIN to enter and forgets it at the end of the shift) or "Personal — a device only you use" (the session stays open and it never asks for a PIN). Each device is decided separately, from the device itself.
+- **"PIN pad"**: "Show PIN pad" decides for the whole business whether the tills ask who is there. "Ask again after inactivity" closes the session of a till nobody touches for 1, 5, 10, 15 or 30 minutes, or leaves it open "Until signing out". "PIN digits" chooses "4 digits" or "6 digits"; the PINs already in use keep working until their owners change them.
+- **"Devices"** (only for whoever runs the business): the devices someone has entered on, with their mode and when they were last used. "Name it" gives one a name ("Bar", "Kitchen") and "Remove this device" closes its session at once: to use it again, somebody has to sign in on it with their account.
+- **"API documentation"**: the "Show the API documentation" switch adds the API page and the "API" entry of the side menu, for whoever connects another system. It starts off. The API keys are created in **Employees › API keys**.
 
 ## Business
 
-Complete the legal and fiscal identity used by invoices and country-specific compliance apps:
+The "Your business" card shows "Business name", "Country", "Time zone", "Currency" and "Business language". They are not edited here: the name, the time zone and the language are changed on erplora.com with "Change on erplora.com"; the currency is the country's, and the country does not change once the business is ready.
 
-- Tax identifier (NIF, VAT number or local equivalent).
-- Legal business name.
-- Fiscal address.
-- Fiscal signing certificate when required by an installed compliance app.
+"Fiscal data" opens the issuer of the Invoicing app, where the legal name, the tax ID and the address the invoices use are written. Without that app, the tab says "Install the Invoicing app to write the fiscal data".
 
-Do not upload a personal certificate. The certificate belongs to the business represented by the Hub.
+In a business in Spain, sending the invoices to the AEAT is set up in the VeriFactu app, in **VeriFactu › Configuration**: either ERPlora files them on the business's behalf ("ERPlora files for you"), or the business uses its own certificate ("My certificate"), which has to carry the same tax ID as the Invoicing issuer.
 
-## Receipts
+## Printing
 
-Receipt options control presentation and output defaults. The fiscal meaning of an invoice or simplified receipt is managed by the installed invoicing and compliance apps.
+The tab has a single row, "Printers and ticket", which opens the Printing app: that is where the printers and the devices that print are added and where you decide what prints when charging. If the app is not there, it says "Install the Printing app to add your printer and set up the ticket" and takes you to **Apps**.
 
-## Permissions
+## Data and backups
 
-Apps can request explicit capabilities such as internet access, printer access, notifications or use of a fiscal certificate. Capabilities are denied until an administrator grants them. Review this area after installing an app and revoke access that is no longer necessary.
+At the top, a selector with "Import", "Export" and "Reset". All of this is only for the owner and the admins.
 
-## Data
+- **Import**: under "Choose what to load", use a template of the catalog with "Use template" or tap "Upload from file" and choose a .blueprint.zip (a backup or a template another business exported, 20 MB at most). Before anything is loaded, "Review what it brings" shows what each app brings and lets you untick the ones you do not want; at the end the "Import report" shows. What the business already had is neither duplicated nor overwritten.
+- **Export**: write the file's name and language, answer "What is this file for?" ("Backup of this business", which also carries the customers, or "Template to share", which never does) and tick, app by app, "App" and "Data". No file ever carries people, PINs or fiscal data.
+- **Reset**: "Undo an import" removes only what that import brought. "Reset the business" deletes for good the sections you tick, after you type the business's name to confirm; sales, invoices, fiscal records, people, files and the business's settings are never deleted.
 
-Use the Data area for the Hub's supported export and import workflows. To move or restore information, use these export, import and backup tools.
-
-Before a large import or a destructive lifecycle action:
-
-1. Export or back up the current data using the available Hub tools.
-2. Confirm that the file belongs to the same business and compatible Hub version.
-3. Review the import summary before applying it.
-
-Backup schedules and retention depend on the product and installed capabilities; they are not implied simply by opening Settings.
+Before anything is emptied, a full copy of the business's data is made and kept for 90 days in "Copies of the data", with its "Download". If in doubt, export a copy first.
