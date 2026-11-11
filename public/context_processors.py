@@ -79,6 +79,9 @@ def public_site(request: HttpRequest) -> dict:
     return {
         "GA_MEASUREMENT_ID": settings.GA_MEASUREMENT_ID,
         "CLARITY_PROJECT_ID": settings.CLARITY_PROJECT_ID,
+        # An optional tracker is the only thing to consent to: the cookie banner shows, and the cookie policy
+        # promises it, only with one configured (PUBLIC-F19).
+        "measures_visits": bool(settings.GA_MEASUREMENT_ID or settings.CLARITY_PROJECT_ID),
         # The visible support contact (footer, help, landing): one source each (PUBLIC-G41).
         "SUPPORT_EMAIL": settings.SUPPORT_EMAIL,
         "SUPPORT_REPLY_HOURS": SUPPORT_REPLY_HOURS,

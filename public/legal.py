@@ -12,6 +12,7 @@ from django.shortcuts import render
 from django.utils.text import get_text_list
 from django.utils.translation import pgettext
 from django.views.decorators.http import require_safe
+from live.spa import PALETTE_COOKIE
 
 from public import pricing
 
@@ -70,6 +71,7 @@ def cookies(request: HttpRequest) -> HttpResponse:
             "csrf_cookie_name": settings.CSRF_COOKIE_NAME,
             "consent_cookie_name": settings.COOKIE_CONSENT_NAME,
             "language_cookie_name": settings.LANGUAGE_COOKIE_NAME,
+            "palette_cookie_name": PALETTE_COOKIE,
         },
     )
 

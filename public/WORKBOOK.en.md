@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:bbbd6f074461b168e65e74c196013393e83342e958208dc61e2212b21242bf9f -->
+<!-- generated from WORKBOOK.md sha256:b952396d00e20706fc53289596f7dbb617f23472e89aa58f7cab479bee92a7b3 -->
 
 ## What it is for and who it is for
 
@@ -416,13 +416,13 @@ Status: done
 Actor: visitor
 Screen: Cookie notice and Cookie preferences
 Steps:
-1. While the web does not measure visits, it only sets the technical cookies (the session, the forms' protection, the language, the theme and the cookie choice) and shows no notice: there is nothing to consent to.
-2. If measuring visits is turned on, every page shows the notice until the person chooses "Accept All", "Decline" or "Customize". The phone menu, when opened, lies over the notice, so its buttons show and can be pressed; when it closes, the notice is still there.
+1. While the web does not measure visits, it only sets the technical cookies (the session, the forms' protection, the language, the theme and the cookie choice) and shows no notice: there is nothing to consent to. The cookie policy says so: no analytical cookies and no notice.
+2. If measuring visits is turned on, every page shows the notice until the person chooses "Accept All", "Decline" or "Customize", and the cookie policy says the notice shows until a choice and names the cookies of that measuring. The phone menu, when opened, lies over the notice, so its buttons show and can be pressed; when it closes, the notice is still there.
 3. "Cookies" in the footer opens "Cookie preferences": the "Essential cookies", "Always active", and each optional category ("Analytical cookies", "Marketing cookies") with its cookies and its switch; the choice lasts a year.
 4. Without accepting the analytical ones no measurement loads, and on the password and code screens it never does.
 In: the person's choice.
 Out: the choice, kept in the browser; the cookies of a declined category are deleted.
-If it fails: the essential cookies are never deleted (they would sign the person out); if the server's fast memory does not answer, the page goes out anyway and the cleaning happens on the next one.
+If it fails: the essential cookies are never deleted (they would sign the person out); if the server's fast memory does not answer, the page goes out anyway and the cleaning happens on the next one; the cookie policy never promises a notice the web does not show.
 Involved: accounts (the sign-in screens)
 
 ### PUBLIC-F20 Read the legal texts

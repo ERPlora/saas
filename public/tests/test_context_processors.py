@@ -35,6 +35,24 @@ def test_analytics_is_off_unless_configured(rf):
 
 
 @pytest.mark.parametrize(
+    ("ga", "clarity", "measures"),
+    [
+        ("", "", False),
+        ("G-TEST123", "", True),
+        ("", "clarity-test", True),
+        ("G-TEST123", "clarity-test", True),
+    ],
+)
+def test_the_site_measures_visits_only_with_an_optional_tracker(rf, settings, ga, clarity, measures):
+    """One answer for the cookie banner and the cookie policy (PUBLIC-F19): an optional tracker is the
+    only thing there is to consent to."""
+    settings.GA_MEASUREMENT_ID = ga
+    settings.CLARITY_PROJECT_ID = clarity
+
+    assert _context(rf, "/")["measures_visits"] is measures
+
+
+@pytest.mark.parametrize(
     "path", ["/", "/pricing/", "/legal/privacy/", "/apps/inventory/"]
 )
 def test_an_anonymous_visitor_on_the_public_web_is_on_a_public_page(rf, path):
