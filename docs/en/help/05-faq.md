@@ -2,56 +2,57 @@
 
 ## Access
 
-### Why do I see email and password instead of the PIN pad?
+### Why do I see the erplora.com sign-in instead of the PIN pad?
 
-PIN access is only shown on a trusted device with at least one PIN-enabled Hub user. Sign in with your Cloud email and password, enable **Trust this device**, and create the 4-digit PIN when prompted.
+The PIN pad only shows on a shared device of a business that shows the PIN pad, and after somebody has signed in on it once with their account. On a personal device, or the first time, you sign in with your erplora.com account: email and password, Google or the verification code you get by email. On a shared till, if you do not have a PIN yet, it then asks you to create one ("Create your PIN"), with the number of digits the business uses (4 or 6).
 
 ### Is there a setup wizard after login?
 
-No. The dashboard shows targeted notices only for installed apps that still require configuration. Hub-wide information is managed in **Settings**.
+There is no multi-step wizard. On **Home**, "Finish setting up your business" shows what is missing, with "Set up" on each step, and with "Ask the assistant" the **Assistant** tells you what is missing and where it is done. The business's information is checked in **Settings**.
 
 ### What happens if I clear browser data?
 
-The device may lose its trusted state and cached user presentation. Sign in with email and password again. The runtime remains the authority for which Hub users exist.
+The browser stops being a device of the business: you have to sign in once more with your erplora.com account and, from then on, it offers the PIN again. Your data, your PIN and your **My profile** preferences are not lost, because they are kept in the business; what is lost is how you had arranged the Home panels in that browser.
 
 ## Products and devices
 
 ### Does ERPlora require internet?
 
-Yes. Hub Cloud is a web app and needs an internet connection to work.
+Yes. The Hub is a web app and needs an internet connection to work.
 
 ### Can several devices use the same Hub?
 
-Yes. Hub Cloud supports multiple devices connected to the same Hub; each device must complete its own trust flow. They all share the same Hub database in the Cloud environment.
+Yes. They all share the business's database, with nothing to copy or synchronize. On each device somebody has to sign in once with their account. The plan says how many devices can have a session open at the same time: entering on one more closes the session of the one that was entered longest ago, and that device says "Session opened on another device".
 
 ### Can I install ERPlora like an app?
 
-Hub Cloud opens in the browser and can be installed as a PWA from a supported browser. There is also a single installable **ERPlora app** for desktop and Android — the same Hub, and the one that reaches receipt printers and cash drawers; see [Ways to try ERPlora](/download/).
+There is a single installable **ERPlora app** for desktop and Android: it is the same Hub, and the one that reaches receipt printers and cash drawers; see [Ways to try ERPlora](/download/). On a phone you can also keep the Hub on your home screen: scan the QR code at the foot of the side menu and add it from your browser menu.
 
 ## Apps
 
 ### Where are the apps?
 
-Use the app-grid button in the top bar, or open **Apps** to see the apps of the Hub and turn on the ones you need.
+"My apps", at the top right, opens any app of the business; they are also on **Home**, under "My apps", and in **Apps**. Whoever runs the business turns on the missing ones in **Apps › Add apps** with "Turn on".
 
 ### Why can I not turn on or configure an app?
 
-Check that your local role is owner or administrator, that the app is included in the Hub's plan, and that the apps it requires can be turned on too.
+- Only whoever runs the business turns apps on and off, and many of an app's settings are theirs alone too.
+- If the business has reached its plan's app limit, "Your plan’s app limit" shows: upgrade the plan or turn another one off.
+- An app the business cannot use shows as "Not available", with the reason (for example, VeriFactu is only for businesses in Spain).
+- If the app needs others that are turned off, it asks you first, naming them, and turns them on with it.
 
 ## Data and support
 
 ### Where is the business data stored?
 
-Hub Cloud stores the business database in ERPlora's managed Cloud environment.
+Each business has its own database, in the cloud managed by ERPlora.
 
 ### How do I report a problem?
 
-Open [Support](/support/) and include:
+Inside the Hub, "Report a problem", in the user menu, opens a form without leaving the business, and support answers to your account's email. It shows if you signed in with your account, not in a session opened with a PIN. The report already carries your account, your businesses, the page you were on and your browser; you tell us:
 
-- The Hub and page where the problem occurred.
 - The user action you were performing.
 - The exact error message.
-- Device, browser or app version.
 - Whether the issue affects one user or everyone.
 
-Never include passwords, PINs, recovery codes or private signing keys in a support message.
+You can also write from [Support](/support/). Never include passwords, PINs, verification codes or certificates or private signing keys in a support message.
