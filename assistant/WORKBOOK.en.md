@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:97a2688f96dbbd2159615f15ed4c87233dcfe2e63718eea616eb7b846c80b46d -->
+<!-- generated from WORKBOOK.md sha256:3543ba92958aa6aa3420a7fa7ee310df70a507e72da334d00ada8e7eab4545c8 -->
 
 ## What it is for and who uses it
 
@@ -153,7 +153,7 @@ offering it to someone else or cancelling its plan also ask to type "CONFIRM".
 | ASSISTANT-F11 | Know who calls and for which business | done |
 | ASSISTANT-F12 | Answer an assistant turn live | done |
 | ASSISTANT-F13 | Answer the same turn at once | done |
-| ASSISTANT-F14 | Use erplora.com's tools and the business's | partial |
+| ASSISTANT-F14 | Use erplora.com's tools and the business's | done |
 | ASSISTANT-F15 | Refuse a turn with its reason | done |
 | ASSISTANT-F16 | Stop a business that asks too much | done |
 | ASSISTANT-F17 | Do not keep the conversation | done |
@@ -350,7 +350,7 @@ If it fails: the refusals before the model, the same as live; if the provider fa
 Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F18 and, in the Hub, FLOW-F39
 
 ### ASSISTANT-F14 Use erplora.com's tools and the business's
-Status: partial — the business's tools, the date and time and the exchange rate between currencies work; the web search is done and the privacy policy already names its provider; it is not offered in production until the infrastructure hands it its key and it is really tested in `pre` (saas#277)
+Status: done
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:

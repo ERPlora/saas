@@ -213,8 +213,9 @@ Implicados: FISCAL-F05
   repo es público y un secreto de AWS no pasa de 64 KB). `GET /internal/representation/model` acepta en la query
   `taxpayer_tax_id`, `taxpayer_name`, `municipality`, `street` y `number` (opcionales; la firma v2 cubre la query, y
   una query firmada solo con v1 se rechaza con 401 `signature_v2_required`, regla general de `accounts/signing.py`);
-  hoy el Hub la pide sin ellos (`FIX-HUB-VERIFACTU-REPRESENTATION-MODEL-WITHOUT-BUSINESS-DATA`, en la cola de
-  `TODO.md`), así que el bloque del negocio sale en blanco hasta que el Hub los mande. Tests: `fiscal/tests/test_anexo.py`, `test_services.py::TestStamp`, `test_internal.py`,
+  el Hub los manda desde el emisor de su facturación (NIF, razón social, municipio y calle, con el número dentro de la
+  calle: `apps/verifactu/queries.py::issuer_model_details`, ERPlora/hub#170 del 2026-10-22), y un negocio sin emisor
+  recibe el bloque del negocio en blanco. Tests: `fiscal/tests/test_anexo.py`, `test_services.py::TestStamp`, `test_internal.py`,
   `test_admin.py` y la e2e FISCAL-F06 de `tests/e2e/panel/fiscal-review.spec.ts`.
 - Fiscal: los tests solo tocan la preproducción de la AEAT, y siempre con el transporte simulado (`respx`); nunca una
   transmisión real ni un certificado real (los `.p12` de los tests se generan en `tests/conftest.py`).

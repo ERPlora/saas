@@ -1,7 +1,7 @@
 # Workbook — Asistente de IA (assistant)
 Prefijo: ASSISTANT
 Alcance MVP: fase 1 (la pasarela de IA de erplora.com: los proveedores que paga ERPlora, sus claves cifradas, sus modelos y qué modelo contesta; el turno del asistente de cada negocio con sus herramientas y sus adjuntos, el cupo de mensajes de su plan, las huellas de su índice, el dictado y la lectura en voz alta, las denuncias de una respuesta y lo que gasta cada negocio; el asistente del panel de erplora.com para cada cuenta, con las herramientas del panel, su dictado y su propio cupo)
-Estado de la app: en uso (uno a medias: ASSISTANT-F14, la búsqueda en la web espera encenderse en producción, saas#277)
+Estado de la app: completa (2026-11-05)
 
 > Manual de uso y especificación de la app `assistant` del SaaS (erplora.com). Cuenta lo que hace el personal de
 > ERPlora para que el asistente de IA conteste (dar de alta un proveedor de modelos y su clave, elegir sus modelos,
@@ -167,7 +167,7 @@ negocio, ofrecerlo a otro o cancelar su plan piden además escribir «CONFIRMAR�
 | ASSISTANT-F11 | Reconocer quién llama y de qué negocio es | hecho |
 | ASSISTANT-F12 | Contestar un turno del asistente en directo | hecho |
 | ASSISTANT-F13 | Contestar el mismo turno de una vez | hecho |
-| ASSISTANT-F14 | Usar las herramientas de erplora.com y las del negocio | parcial |
+| ASSISTANT-F14 | Usar las herramientas de erplora.com y las del negocio | hecho |
 | ASSISTANT-F15 | Rechazar un turno con su motivo | hecho |
 | ASSISTANT-F16 | Frenar a un negocio que pide demasiado | hecho |
 | ASSISTANT-F17 | No guardar la conversación | hecho |
@@ -378,7 +378,7 @@ Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F18 y, en el 
 
 ### ASSISTANT-F14 Usar las herramientas de erplora.com y las del negocio
 <!-- origen: old-saas:SAAS_ASSISTANT-F06 -->
-Estado: parcial — las herramientas del negocio, la fecha y la hora y el tipo de cambio entre monedas funcionan; la búsqueda en la web está hecha y la política de privacidad ya nombra a su proveedor; no se ofrece en producción hasta que la infraestructura le pase su clave y se pruebe de verdad en `pre` (saas#277)
+Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
@@ -709,7 +709,8 @@ propio texto por `code`.
   `X-Subscription-Token`; la comparación que lo eligió está en saas#202): español en España (`search_lang=es`,
   `country=ES`) y lo demás en inglés en todo el mundo (`en`, `ALL`), con el idioma que dice el modelo, porque ninguna puerta
   del turno lo trae. Brave contesta 422 a una clave que no conoce, así que su 422 es un ERROR en el registro; por eso la
-  consulta no pasa de sus 75 palabras. Sin clave no se ofrece y el servidor arranca igual. Una consulta sale tal como la
+  consulta no pasa de sus 75 palabras. Sin clave no se ofrece y el servidor arranca igual. Producción y `pre` la leen del
+  secreto de su tarea `saas` (aws#52): encendida en producción desde el 2026-11-05 (saas#277). Una consulta sale tal como la
   escribe el modelo, con la regla de llevar solo lo que se busca: el aviso de privacidad de Brave deja las consultas fuera
   de su DPA, y una regla al modelo no es una garantía; por eso la política de privacidad lo nombra como destinatario
   aparte, fuera de los encargados del art. 28 (§5) y de las cláusulas contractuales tipo (§6), `public/tests/test_legal.py`. No se guarda ni se registra. Sus términos no dejan guardar sus
@@ -893,11 +894,6 @@ propio texto por `code`.
   nombra una pantalla del panel sino la ayuda.
 - **Tests**: `assistant/tests/test_knowledge.py`, `test_index_docs.py` (con la migración de ida y vuelta y sin índice
   aproximado) y `test_docs_search.py` (también por el turno del panel); `apps/tests/test_queries.py` (`apps.doc.list`).
-
-## Lo que queda fuera
-
-- **Buscar en la web en producción** (ASSISTANT-F14): falta que la infraestructura le pase la clave (aws#52, en borrador) y probarla de verdad en `pre` — saas#277.
-- **Que la denuncia del Hub diga de dónde vino la respuesta** (ASSISTANT-F23, paso 4): el chat ya guarda la marca y la manda con la denuncia (ui#103), y el panel de erplora.com la usa, pero el Hub aún no la pasa a erplora.com (hub#870); mientras, con la búsqueda encendida, toda denuncia del Hub llega sin la respuesta.
 
 ## Lo que NO hace, a propósito
 

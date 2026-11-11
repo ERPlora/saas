@@ -863,9 +863,12 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
     CertificatesAttached`, que lee la alarma del 80 %.
   - **Un certificado rechazado no se vuelve a pedir solo** (`CustomDomain.RETURNS_BY_ITSELF`): cada hora, un solo CAA
     gastaría los certificados del año de ACM.
-  - Hasta la pantalla nada lo vende: `hubs/0026` quitó la línea y la descripción de Standard, el guardia es
-    `test_plan_catalogue.py::test_no_plan_sells_a_custom_domain_nobody_can_connect` (y sus gemelos de `/pricing/` y de
-    los términos en `public/tests`).
+  - **Lo vende solo el plan que lo incluye** (saas#301): las tarjetas de la Tienda y de «Planes y precios» y los términos
+    pintan la línea desde `Plan.includes_custom_domain`, la misma marca que lee HUBS-F17 (`hubs/0026` había quitado la
+    línea y la descripción de Standard mientras nadie podía conectarlo). El guardia es
+    `test_plan_catalogue.py::test_only_the_plans_that_include_a_custom_domain_sell_one`, con su control
+    `test_a_plan_that_does_not_include_a_custom_domain_and_sells_one_is_caught` (y sus gemelos de `/pricing/` y de los
+    términos en `public/tests`).
 - Pruebas de la parte 2: e2e en `tests/e2e/panel/hubs-settings.spec.ts` (clave `HUBS-Gnn` en el título).
 - Personas (F24–F30): `hubs.member.{list,invite,change_role,remove,resend,cancel}`,
   `hubs.invitation.{list_mine,accept,decline}` y `hubs.ownership.{transfer,accept,decline,cancel}` (`api.py`, bajo
@@ -919,11 +922,6 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   (ronda 16, PLAN §21: la sección de una app la declara su `LiveAppConfig`). Tests: `test_api.py`,
   `test_seed_taxonomy.py`, `test_taxonomy_*.py` y `test_admin.py` («speak Spanish»); e2e `hubs-rights.spec.ts`
   («HUBS-G05 + HUBS-G01»).
-
-## Lo que queda fuera
-
-- **La vuelta del dominio propio a los planes, a «Planes y precios» y a los términos** (PUBLIC-F07, HUBS-F17): ya se
-  puede conectar, pero nada lo anuncia todavía — saas#301.
 
 ## Lo que NO hace, a propósito
 
