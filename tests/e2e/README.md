@@ -1,4 +1,4 @@
-# e2e del SaaS (`saas-next/tests/e2e/`)
+# e2e del SaaS (`saas/tests/e2e/`)
 
 Playwright con **un** `playwright.config.ts` y dos proyectos, cada uno contra su propio servidor:
 
@@ -9,7 +9,7 @@ Playwright con **un** `playwright.config.ts` y dos proyectos, cada uno contra su
 
 ## Cómo se corre
 
-Desde `saas-next/` (o con `pnpm --filter saas …` desde la raíz):
+Desde `saas/` (la raíz de `erplora-next` ya no es un workspace de pnpm: cada repo lleva el suyo):
 
 ```bash
 uv run python manage.py migrate      # la e2e no migra la BD local: la comparten las sesiones
@@ -135,7 +135,7 @@ Hub de las specs (por defecto `8010`: `:8011`, `:8012`, `:8013`, `:8015`, `:8016
 - **`:8011`**: el servidor de producción de `public`, siempre propio (`reuseExistingServer: false`):
   si el puerto está ocupado, la ejecución no arranca. Se levanta en toda ejecución, también con
   `--project=panel` (Playwright arranca todos los `webServer`).
-- **La e2e de la PoC del Hub** (`hub-next/tests/e2e/`) usa el SaaS de `:8001`; la del panel ya no lo
+- **La e2e del Hub** (`hub/tests/e2e/`) usa el SaaS de `:8001`; la del panel ya no lo
   toca.
 
 ## Dos SaaS a la vez

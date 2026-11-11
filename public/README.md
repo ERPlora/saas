@@ -49,7 +49,7 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13
   `INDEXNOW_KEY` (lo normal en desarrollo) o sin URL en el mapa del sitio (0, con aviso y el motivo en el log); y
   rechazado (4xx o 5xx) o sin respuesta (tiempo agotado o red), que `indexnow.SubmissionFailed` convierte en
   `CommandError` con el estado HTTP o el tipo de error. La clave nunca va al log ni al mensaje, aunque la respuesta o la
-  librería la devuelvan. Fuera de `prod` se niega con ≠ 0, como antes.
+  librería la devuelvan. Sin `PUBLIC_INDEXING_ENABLED` (en `pre` y en desarrollo) se niega con ≠ 0 (PLAN-SAAS §43).
 - **Ayuda y documentación (PUBLIC-F15, APP-PUBLIC-2):** `/documentation/` deja de ser «Muy pronto» y es un 301 a
   `/help/`, como `/company/` → `/about/`: la documentación que existe son las guías y la pestaña de cada app. Soporte
   ya no manda a «Ayuda y soporte › Reportar un problema» del Hub, que no existe.
@@ -75,7 +75,7 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13
   si no llega. Si el Hub responde `maintenance`, muestra la pausa real y sigue sondeando sin aplicar ese límite; al descongelar
   vuelve a «Preparando…», con sus 30 s contados desde la última respuesta `maintenance`, o entra si ya está lista.
   Detalle en `hubs/README.md`, «Lo que añadió la tenencia». `/try/` vuelve como
-  la misma vista con canónica `/demo/` (la dirección que repartía el stack viejo, saas#1164), fuera del mapa del
+  la misma vista con canónica `/demo/` (la dirección que repartía el stack viejo, erplora-old/saas#1164), fuera del mapa del
   sitio. La puerta JSON (`/api/demo/spawn/`) queda descartada: nadie la llamaba y la demo solo se abre en el
   navegador que la pide (PUBLIC-F36). Los datos de una demo se borran con ella: al retirarla, el Hub borra
   su BD propia entera (`purge_demo_data`, tenencia S2a, hub#471; PUBLIC-F34 `hecho` desde CLOSE-PUBLIC, 2026-11-01).

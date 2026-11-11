@@ -64,7 +64,7 @@ ningún rol tiene su permiso.
   pone un superusuario en el admin y nunca lleva una cuenta del personal), que entra solo con la contraseña y su
   correo ya probado; todo lo demás le aplica igual. Con la app autenticadora encendida, primero el código por
   correo y luego el de la app (orden de
-  allauth). `/admin/login/` también pasa por este login. En local cada correo queda en `saas-next/.mail/`
+  allauth). `/admin/login/` también pasa por este login. En local cada correo queda en `saas/.mail/`
   (`EMAIL_FILE_PATH`): el código se lee de ahí; las e2e, con `readMailCode` de `@erplora/ui/testing/mail`.
 - **Reautenticación** (lo destructivo y lo que da acceso: eliminar la cuenta, crear una clave, cambiar a otro
   correo): un inicio de sesión de hace menos de 5 min (`ACCOUNT_REAUTHENTICATION_TIMEOUT`), según los registros
@@ -80,14 +80,14 @@ ningún rol tiene su permiso.
   contraseña (con la sola sesión no se pone una: se pone con «¿Has olvidado tu contraseña?»; con contraseña se
   cambia como siempre). `auth/login` y `auth/signup` son las dos pestañas de la entrada, servidas con una regla
   que headless deja fuera (APP-ACCOUNTS-1): la entrada pliega el correo como el alta (`adapters.plain_email`:
-  NFKC, sin espacios y en minúsculas; «ana@ｅxample.com» es Ana, nunca otra cuenta, ERPlora/saas#1018) y el alta
+  NFKC, sin espacios y en minúsculas; «ana@ｅxample.com» es Ana, nunca otra cuenta, erplora-old/saas#1018) y el alta
   comprueba la contraseña contra su propio correo (headless la validaba sin cuenta y el validador de parecido
-  no veía nada; saas#2542).
+  no veía nada; erplora-old/saas#2542).
 - **El idioma de una cuenta nueva** (`AccountAdapter.new_user`, saas#289): el activo en la petición del alta, el que
   ya resolvió `LocaleMiddleware` (la cookie de la web pública o `Accept-Language`). Google pasa por el mismo sitio:
   `DefaultSocialAccountAdapter.new_user` llama al adaptador de cuentas, también al entrar con una cuenta que ya existe,
   pero ese usuario nuevo se descarta sin guardarse. Después manda Preferencias (`AccountLanguageMiddleware`).
-- **La contraseña nueva nunca es la actual** (`AccountAdapter.clean_password`, saas#2612): en «Cambiar
+- **La contraseña nueva nunca es la actual** (`AccountAdapter.clean_password`, erplora-old/saas#2612): en «Cambiar
   contraseña» y en el enlace de «¿Has olvidado tu contraseña?», `password_unchanged` debajo del campo. La página
   del enlace enseña la misma pista y fuerza que Cuenta (`frontend/password.ts`, contra el correo que devuelve
   la comprobación del enlace).
@@ -101,7 +101,7 @@ ningún rol tiene su permiso.
   apunta dirección, navegador y último uso como mucho cada 5 min (marca en la caché, releída antes de escribir:
   con Valkey caído no apunta nada en vez de escribir en cada petición; los límites sobre esa caché quedan
   abiertos, `RATELIMIT_FAIL_OPEN`), solo si la petición ya usó su sesión (cargarla borraría una cookie ilegible
-  en la web pública, saas#975), solo la cuenta de esa sesión (nunca la de una clave de API) y recoge las
+  en la web pública, erplora-old/saas#975), solo la cuenta de esa sesión (nunca la de una clave de API) y recoge las
   sesiones abiertas por otra vía. La lista solo enseña las vivas
   (sesión existente, sin caducar y con el hash de la contraseña actual), sin escribir: una consulta trae las sin
   caducar con sus datos y el hash se comprueba en memoria (nada de cargar una sesión por fila), y el servidor la
@@ -232,13 +232,15 @@ La plataforma no vive en `accounts/` sino en `base/` y `config/`; su manual es `
   códigos de salto y cambios de correo caducados (`services.purge_expired_sign_in_leftovers`), con candado y
   `--dry-run`. Sustituye a `clearsessions_task` y `flush_expired_tokens_task` del viejo (aquí no hay JWT). La lanza
   `saas-cron` cada noche a las 00:20 UTC (`purge-expired-sessions-nightly` de `aws/stacks/prod/scheduler.tf`).
-- **Correos** (F46): `AWS_SES_CONFIG` en `config/settings.py` (3 s + 10 s, dos intentos); cada correo, en texto y en
+- **Correos** (F46): fuera de `DEBUG`, `config/settings.py` elige SES con `SES_REGION` (`AWS_SES_CONFIG`: 3 s + 10 s, dos intentos) y, sin
+  ella, el SMTP de `EMAIL_*`; en prod y en `pre` sale por el SMTP de OVH como `ERPlora <noreply@erplora.com>`, sin
+  `SES_REGION` (PLAN-SAAS §47, aws#67; revisiones activas leídas el 2026-11-11). Cada correo, en texto y en
   HTML sobre `templates/emails/base.html` con `base/emails.py` (`branded_message`); los de allauth, por
   `AccountAdapter.render_mail`, y sus avisos propios con su `_message.html` (`templates/account/email/`,
   `templates/socialaccount/email/`).
 - No se portan `apps/core/circuit_breaker.py` (G06/G75) ni `templatetags/cards.py` (G27): motivo en el WORKBOOK.
 
-## Tests portados de ERPlora/saas (`origin/develop`)
+## Tests portados de erplora-old/saas (`origin/develop`)
 
 - `dashboard/profile/tests`: `test_api` (16) y `test_views` (27) → `test_profile`, `test_photos`,
   `test_delete_account` (sin dirección de facturación ni modo desarrollador: Facturación y ronda 17);
@@ -254,7 +256,7 @@ La plataforma no vive en `accounts/` sino en `base/` y `config/`; su manual es `
   no hay marketplace); los avisos (SAAS_DASHBOARD-F211, cuyos interruptores no leía nadie) → `test_notices`
   (ACCOUNTS-F23).
 - `auth/apikeys/tests` (80) → `test_models`, `test_api_keys`, `test_api_auth`, `test_admin`. Fuera: claves de
-  hub y su gracia (hub-next), entorno `pre`, scopes de flota/vendedor y el script de emisión.
+  hub y su gracia (el Hub), entorno `pre`, scopes de flota/vendedor y el script de emisión.
 - `tests/unit/test_gdpr_retention_policy.py`, `test_gdpr_retention_noinput.py` y
   `apps/auth/users/tests/test_anonymize_skips_hub_owners.py` → `test_anonymize_old_users` y `test_cleanup_old_logs`
   (sin `--no-input`: nunca preguntan); `tests/unit/test_auditlog_coverage.py` → `test_auditlog` de `accounts`,
@@ -271,4 +273,5 @@ La plataforma no vive en `accounts/` sino en `base/` y `config/`; su manual es `
 
 - **`live`**: `record_event` guarda `actor=str(ctx.actor)`, el correo de la cuenta. El arreglo bueno es guardar
   el id en `live.outbox` (próximo lote de `live`); mientras, eliminar una cuenta pasa sus filas al id
-  (`services.forget_in_outbox`).
+  (`services.forget_in_outbox`). Sigue así en `ERPlora/live` `origin/main` (`live/outbox.py`, leído el 2026-11-11),
+  sin issue abierta.
