@@ -6,6 +6,8 @@
   One correction: the essential cookies are named as the settings that set them call them
   (public/legal.py), so the language cookie is `_lang`, not the `django_language` the old page
   named. The per-cookie list of every group lives on the cookie settings page (/cookies/).
+  The analytics list and §3 follow `measures_visits` (public.context_processors), the flag that shows the cookie
+  banner (public/partials/cookie_banner.html): with no tracker configured the policy promises no banner (PUBLIC-F19).
   Contract: public/tests/test_legal.py.
 {% endcomment %}
 
@@ -23,7 +25,7 @@
   {% include "public/partials/page_hero.html" with hero_compact=True %}
 {% endblock %}
 
-{% block updated %}{% trans "May 26, 2026" %}{% endblock %}
+{% block updated %}{% trans "November 11, 2026" %}{% endblock %}
 
 {% block legal_text %}
 
@@ -50,11 +52,20 @@
           <li><strong>{{ csrf_cookie_name }}</strong>: {% trans "protects forms against CSRF." %}</li>
           <li><strong>{{ consent_cookie_name }}</strong>: {% trans "remembers your cookie preferences." %}</li>
           <li><strong>{{ language_cookie_name }}</strong>: {% trans "your preferred language." %}</li>
+          <li><strong>{{ palette_cookie_name }}</strong>: {% trans "the panel's colour palette, so it paints without a flash." %}</li>
         </ul>
 
         <p><strong>{% trans "b) Analytics" %}</strong> {% trans "(require your consent):" %}</p>
         <ul>
-          <li><strong>_ga, _ga_*, _gid</strong> {% trans "(Google Analytics, if active): aggregated and anonymized usage analysis." %}</li>
+          {% if GA_MEASUREMENT_ID %}
+          <li><strong>_ga, _ga_*</strong> {% trans "(Google Analytics): aggregated and anonymized usage analysis." %}</li>
+          {% endif %}
+          {% if CLARITY_PROJECT_ID %}
+          <li><strong>_clck, _clsk</strong> {% trans "(Microsoft Clarity): how visitors use the public pages (clicks and scrolling), to improve them." %}</li>
+          {% endif %}
+          {% if not measures_visits %}
+          <li>{% blocktrans trimmed %}We currently do <strong>NOT</strong> use cookies of this type: erplora.com does not measure visits.{% endblocktrans %}</li>
+          {% endif %}
         </ul>
 
         <p><strong>{% trans "c) Advertising / marketing" %}</strong> {% trans "(require your consent):" %}</p>
@@ -64,10 +75,24 @@
 
         <h2>{% trans "3. Managing your preferences" %}</h2>
         <p>
+          {% if measures_visits %}
           {% blocktrans trimmed %}
-          The first time you visit erplora.com we show you a banner to accept,
-          reject, or configure non-technical cookies. You can change your choice
-          at any time from the "Cookies" link in the footer.
+          Until you choose, every public page of erplora.com shows a banner to
+          accept, reject, or configure non-technical cookies, and none of them is
+          set before you accept.
+          {% endblocktrans %}
+          {% else %}
+          {% blocktrans trimmed %}
+          erplora.com currently sets only technical cookies, which are exempt from
+          consent, so we show no cookie banner: there is nothing to accept or
+          reject. If we add optional cookies, every public page will show a banner
+          to accept, reject, or configure them until you choose, and none of them
+          will be set before you accept.
+          {% endblocktrans %}
+          {% endif %}
+          {% blocktrans trimmed %}
+          You can see every cookie group and change your choice at any time from the
+          "Cookies" link in the footer.
           {% endblocktrans %}
         </p>
         <p>{% trans "Your browser also lets you block or delete cookies; see:" %}</p>

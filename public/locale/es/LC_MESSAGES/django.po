@@ -993,8 +993,8 @@ msgstr ""
 "gestionar tus preferencias."
 
 #: templates/public/legal/cookies.html
-msgid "May 26, 2026"
-msgstr "26 de mayo de 2026"
+msgid "November 11, 2026"
+msgstr "11 de noviembre de 2026"
 
 #: templates/public/legal/cookies.html
 msgid ""
@@ -1049,6 +1049,10 @@ msgid "your preferred language."
 msgstr "tu idioma preferido."
 
 #: templates/public/legal/cookies.html
+msgid "the panel's colour palette, so it paints without a flash."
+msgstr "la paleta de colores del panel, para pintarla sin parpadeos."
+
+#: templates/public/legal/cookies.html
 msgid "b) Analytics"
 msgstr "b) Analíticas"
 
@@ -1057,10 +1061,24 @@ msgid "(require your consent):"
 msgstr "(requieren tu consentimiento):"
 
 #: templates/public/legal/cookies.html
+msgid "(Google Analytics): aggregated and anonymized usage analysis."
+msgstr "(Google Analytics): análisis de uso agregado y anonimizado."
+
+#: templates/public/legal/cookies.html
 msgid ""
-"(Google Analytics, if active): aggregated and anonymized usage analysis."
+"(Microsoft Clarity): how visitors use the public pages (clicks and "
+"scrolling), to improve them."
 msgstr ""
-"(Google Analytics, si está activo): análisis de uso agregado y anonimizado."
+"(Microsoft Clarity): cómo se usan las páginas públicas (clics y "
+"desplazamiento), para mejorarlas."
+
+#: templates/public/legal/cookies.html
+msgid ""
+"We currently do <strong>NOT</strong> use cookies of this type: erplora.com "
+"does not measure visits."
+msgstr ""
+"Actualmente <strong>NO</strong> usamos cookies de este tipo: erplora.com no "
+"mide las visitas."
 
 #: templates/public/legal/cookies.html
 msgid "c) Advertising / marketing"
@@ -1081,13 +1099,35 @@ msgstr "3. Gestión de tus preferencias"
 
 #: templates/public/legal/cookies.html
 msgid ""
-"The first time you visit erplora.com we show you a banner to accept, reject, "
-"or configure non-technical cookies. You can change your choice at any time "
-"from the \"Cookies\" link in the footer."
+"Until you choose, every public page of erplora.com shows a banner to accept, "
+"reject, or configure non-technical cookies, and none of them is set before "
+"you accept."
 msgstr ""
-"Al entrar por primera vez en erplora.com te mostramos un banner para "
-"aceptar, rechazar o configurar las cookies no técnicas. Puedes cambiar tu "
-"elección en cualquier momento desde el enlace \"Cookies\" en el footer."
+"Hasta que elijas, cada página pública de erplora.com muestra un aviso para "
+"aceptar, rechazar o configurar las cookies no técnicas, y ninguna se instala "
+"antes de que las aceptes."
+
+#: templates/public/legal/cookies.html
+msgid ""
+"erplora.com currently sets only technical cookies, which are exempt from "
+"consent, so we show no cookie banner: there is nothing to accept or reject. "
+"If we add optional cookies, every public page will show a banner to accept, "
+"reject, or configure them until you choose, and none of them will be set "
+"before you accept."
+msgstr ""
+"Hoy erplora.com solo instala cookies técnicas, que no necesitan "
+"consentimiento, por eso no mostramos ningún aviso de cookies: "
+"no hay nada que aceptar ni rechazar. Si añadimos cookies opcionales, cada "
+"página pública mostrará un aviso para aceptarlas, rechazarlas o configurarlas hasta "
+"que elijas, y ninguna se instalará antes de que las aceptes."
+
+#: templates/public/legal/cookies.html
+msgid ""
+"You can see every cookie group and change your choice at any time from the "
+"\"Cookies\" link in the footer."
+msgstr ""
+"Puedes ver cada grupo de cookies y cambiar tu elección en cualquier momento "
+"desde el enlace «Cookies» del pie de página."
 
 #: templates/public/legal/cookies.html
 msgid "Your browser also lets you block or delete cookies; see:"
