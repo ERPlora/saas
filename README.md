@@ -1,8 +1,8 @@
-# saas-next
+# saas
 
-`erplora.com` de ERPlora Next (en local, `http://localhost:8001`). Los hubs son `<slug>.erplora.com`
+`erplora.com` de ERPlora Next (repo `ERPlora/saas`; en local, `http://localhost:8001`). Los hubs son `<slug>.erplora.com`
 (en local, `a.localhost:8000`) y `hubs.erplora.com` es el admin del Hub para el personal (PLAN §18;
-en local, `hubs.localhost:8000`): los sirve `hub-next`, nunca el SaaS. Planes: `../PLAN-SAAS.md` (contrato con el Hub en §2, flujos en §3, qué se
+en local, `hubs.localhost:8000`): los sirve el Hub (`ERPlora/hub`), nunca el SaaS. Planes: `../PLAN-SAAS.md` (contrato con el Hub en §2, flujos en §3, qué se
 porta en §6).
 
 ## Fase 1 (S1): entrar y saltar a un hub
@@ -22,7 +22,7 @@ Solo lo que necesita el salto al Hub (PLAN-SAAS §2.1 y §3.1, pasos 4–6; PLAN
   de nuevo. Google no pide código (ya es un inicio de sesión fuerte y prueba el correo).
 - Las direcciones de antes, `/login`, `/accounts/login/` y `/accounts/signup/`, redirigen para siempre (301)
   a `/launch` en un solo salto, conservando `next` y el resto de la query; el resto de `/accounts/…` da 404.
-- **«Continuar con Google»** (`allauth.socialaccount`, portado del SaaS de hoy; ver «Google» abajo).
+- **«Continuar con Google»** (`allauth.socialaccount`, portado del SaaS anterior; ver «Google» abajo).
 - `/launch` (página Ionic Vue `hubs/frontend/pages/LaunchPage.vue`, lee `hubs.business.list`): sin sesión,
   el formulario de entrada en la tarjeta del login de siempre (`AuthShell`); con sesión, sus negocios (crear
   el primero, la invitación pendiente, abrir uno o elegir entre varios). Con sesión y un `next` del propio
@@ -37,9 +37,9 @@ Solo lo que necesita el salto al Hub (PLAN-SAAS §2.1 y §3.1, pasos 4–6; PLAN
   `hub-session`, 60 s, un uso) y responde un formulario auto-enviado (`POST` a
   `HUB_CALLBACK_TEMPLATE`, campos `code` y `next`).
 - `POST /internal/auth/redeem` (servidor a servidor, firmado): cuerpo `{"code", "hub", "audience"?}`,
-  cabeceras `X-Erplora-Timestamp` y `X-Erplora-Signature` (v1: HMAC-SHA256 hex de `"{timestamp}.{cuerpo}"`,
-  la que firma hoy el Hub) o, si viene, `X-Erplora-Signature-V2` (cubre también método y ruta; entonces decide
-  solo ella), con `INTERNAL_SHARED_SECRET` o, durante una rotación, `INTERNAL_SHARED_SECRET_PREVIOUS`, ±300 s
+  cabeceras `X-Erplora-Timestamp` y `X-Erplora-Signature` (v1: HMAC-SHA256 hex de `"{timestamp}.{cuerpo}"`)
+  o, si viene, `X-Erplora-Signature-V2` (cubre también método y ruta; entonces decide solo ella; el Hub manda
+  las dos, `base/signing.signed_headers`), con `INTERNAL_SHARED_SECRET` o, durante una rotación, `INTERNAL_SHARED_SECRET_PREVIOUS`, ±300 s
   (`accounts/signing.py`, L1-A2). Sin `audience` es `hub-session` (un miembro entra en su hub);
   con `"hub-admin"` canjea el salto del personal al admin del Hub (ronda 13, PLAN §18). 200 →
   `{user_id, email, name, locale, role}` (`hub_*` del miembro, o `platform_admin`/`platform_support`
@@ -57,10 +57,10 @@ Solo lo que necesita el salto al Hub (PLAN-SAAS §2.1 y §3.1, pasos 4–6; PLAN
 
 ## SPA Ionic Vue (ronda 11): login
 
-El SaaS es también una SPA Ionic Vue, igual que `hub-next` (`base/`, `frontend/main.ts`,
+El SaaS es también una SPA Ionic Vue, igual que el Hub (`base/`, `frontend/main.ts`,
 `vite.config.ts`, `<app>/frontend/`). Sus apps (`accounts/` Cuenta, `hubs/` Negocios y uso, `billing/`
 Tienda, Facturación y Stripe, `fiscal/` la documentación fiscal de VeriFactu, más `apps/`, el catálogo de
-módulos de la ronda 16, y `public/`, la web pública) viven en la raíz, junto a `base/`: `saas-next` no tiene carpeta de módulos (PLAN §20.2), y cada app
+módulos de la ronda 16, y `public/`, la web pública) viven en la raíz, junto a `base/`: el SaaS no tiene carpeta de módulos (PLAN §20.2), y cada app
 con `frontend/` se nombra en los globs de `frontend/main.ts` y en `FRONTEND_APPS` de `vite.config.ts`
 (guardarraíles en `frontend/main.test.ts` y `vite.config.test.ts`). Todas las páginas de cuenta son
 Vue, sobre `allauth.headless` (cliente `browser`, `/_allauth/browser/v1/…`), en modo solo headless
@@ -69,7 +69,7 @@ Vue, sobre `allauth.headless` (cliente `browser`, `/_allauth/browser/v1/…`), e
 (`accounts/frontend/routes.ts`; `/login` solo redirige a `/launch`). `LOGIN_URL` es `/launch`.
 
 - Formulario de entrada (`accounts/frontend/components/SignInForm.vue`, dentro de `LaunchPage.vue` con el
-  marco `AuthShell`): el de la plantilla de login del SaaS de hoy (mismos msgids,
+  marco `AuthShell`): el de la plantilla de login del SaaS anterior (mismos msgids,
   `accounts/frontend/locale/{en,es}.json`). No pregunta si mantener la sesión: headless no recibe
   `remember` y toda sesión dura `SESSION_COOKIE_AGE`. Tras la contraseña va a `/verify-email` (el código
   por correo; la dirección viaja en el estado del historial, nunca en la URL) o a `/2fa/authenticate`; con
@@ -100,12 +100,12 @@ Vue, sobre `allauth.headless` (cliente `browser`, `/_allauth/browser/v1/…`), e
 
 ## Segundo factor (2FA)
 
-App autenticadora (TOTP) y códigos de recuperación con `allauth.mfa`, como el SaaS de hoy
+App autenticadora (TOTP) y códigos de recuperación con `allauth.mfa`, como el SaaS anterior
 (`accounts/mfa.py`, tests en `accounts/tests/test_mfa.py`). `allauth.mfa` está siempre
 instalado (su tabla existe siempre); lo enciende el flag `ACCOUNTS_MFA_ENABLED`, **apagado por
 defecto en la fase 1**.
 
-- **Encenderlo**: `ACCOUNTS_MFA_ENABLED=true` en `saas-next/.env` (o en el entorno del proceso) y
+- **Encenderlo**: `ACCOUNTS_MFA_ENABLED=true` en `saas/.env` (o en el entorno del proceso) y
   reiniciar. Apagarlo es quitar la línea: las cuentas conservan sus autenticadores, pero ningún login
   pide el código.
 - **Apagado** (por defecto): ningún login pide código, ni a una cuenta que ya tenga app
@@ -139,11 +139,12 @@ defecto en la fase 1**.
   desactivarlo, `/2fa` pide antes reautenticarse. allauth no deja activarlo con un email sin verificar
   (409 `unverified_email`).
 - Ajustes: `MFA_SUPPORTED_TYPES = ["totp", "recovery_codes"]`, emisor `ERPlora`, ±1 periodo (30 s) de
-  desfase del reloj del móvil; sin llaves de acceso (passkeys) ni «confiar en este navegador».
+  desfase del reloj del móvil; «Confiar en este navegador» 14 días con `MFA_TRUST_ENABLED`
+  (`accounts/README.md`, «Segundo factor»); sin llaves de acceso (passkeys).
 
 ## Google
 
-Mismo comportamiento que el SaaS de hoy (ADR-0154; `accounts/{google,adapters}.py`, el botón en
+Mismo comportamiento que el SaaS anterior (ADR-0154; `accounts/{google,adapters}.py`, el botón en
 `SignInForm.vue`), sobre allauth.headless. Google no pide el código por correo (`ACCOUNT_LOGIN_BY_CODE_REQUIRED`
 solo cubre la contraseña):
 
@@ -151,9 +152,9 @@ solo cubre la contraseña):
   `process=login`, `callback_url` = la página a la que volver; un `GET` da 405, así que un enlace no
   inicia sesión a nadie) y `GET /auth/google/callback/`, con el nombre de allauth (`google_callback`)
   para que el `redirect_uri` de la autorización y el del canje del código sean los dos
-  `/auth/google/callback/`. Ojo: en el SaaS de hoy (allauth 65.18) la autorización salía con
+  `/auth/google/callback/`. Ojo: en el SaaS anterior (allauth 65.18) la autorización salía con
   `/accounts/google/login/callback/` aunque la vista fijaba otra ruta.
-- **Credenciales**: `GOOGLE_OAUTH_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_SECRET` (entorno o `saas-next/.env`,
+- **Credenciales**: `GOOGLE_OAUTH_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_SECRET` (entorno o `saas/.env`,
   nunca una fila `SocialApp`). En local son opcionales: sin ellas el botón no aparece, las dos rutas
   dan 404 (el redirect, con el JSON de headless) y `check` lo avisa (`accounts.I001`). En producción (`DEBUG=False`) son obligatorias: sin
   ellas el proceso no arranca.
@@ -171,7 +172,7 @@ solo cubre la contraseña):
   contraseña (defensa de allauth, igual que hoy: desde entonces, Google o «¿Has olvidado tu
   contraseña?»). Un email sin cuenta crea la suya y entra (alta abierta, ADR-0154), solo si Google lo
   verificó; si no, ninguna cuenta y `/login/error?code=authentication_error`, como cualquier otro fallo.
-  allauth rechaza el proceso «conectar» con la sesión abierta (saas#2552): Google se vincula entrando con
+  allauth rechaza el proceso «conectar» con la sesión abierta (erplora-old/saas#2552): Google se vincula entrando con
   él. Cuenta → Seguridad no tiene botón «Conectar» (explica cómo se vincula), y un `process=connect` enviado
   igualmente acaba en `/login/error?code=google_link_refused`. Cancelar en Google vuelve al formulario de `/launch` conservando `next`, así que
   `/hub-login/?hub=…&next=…` sigue funcionando tras Google. «Confirma que eres tú» de una cuenta solo de
@@ -296,17 +297,20 @@ El panel de `erplora.com` (Negocios · Tienda · Facturación · Cuenta; plan
   minutos, para la alarma de ausencia de logs de `aws`. Los comandos `whatsapp_deliver`, `reconcile_hub_states` y
   `reconcile_platform_invoices` siguen para lanzarlos a mano y comparten la pasada con el proceso. En local:
   `uv run python manage.py run_worker` (Ctrl-C para).
-- **Tareas programadas** (`saas-cron`, `aws-next/stacks/prod/scheduler.tf`): `sweep_unpaid` (cada hora) y
-  `collect_hub_usage` (01:15 UTC), además de `push_hub_snapshots`, `report_seal_expiry` y `check_custom_domains`
-  (cada hora; con `CUSTOM_DOMAINS_ENABLED` apagada no hace nada). En `saas-migrate`, tras `migrate`:
-  `seed_taxonomy` (y, hasta que se aplique el Terraform de ERPlora/aws#4, también `sync_hub_plans`, hoy vacío).
-  Todas idempotentes y con advisory lock (una segunda ejecución vuelve al momento).
+- **Tareas programadas** (`saas-cron`, `stacks/prod/scheduler.tf` de `ERPlora/aws`, horas en UTC): `sweep_unpaid`
+  (cada hora, :05), `check_custom_domains` (cada hora, :25; con `CUSTOM_DOMAINS_ENABLED` apagada no hace nada),
+  `push_hub_snapshots` (00:30), `collect_hub_usage` (01:15) y `report_seal_expiry` (07:00); las demás de cada app,
+  en su README. En `saas-migrate`, tras `migrate`: `seed_taxonomy`, `init_cookie_groups`, `import_ai_keys_from_env`
+  y `check --database default` (`stacks/prod/apps.tf`); `sync_hub_plans` ya no se llama (ERPlora/aws#4, mergeada el
+  2026-10-15). Las cinco de arriba y `seed_taxonomy`, idempotentes y con advisory lock (una segunda ejecución vuelve
+  al momento).
 - **Planes**: viven solo en la base de datos y se mantienen en el admin de Django (`/admin/hubs/plan/`). La
   siembra inicial es la migración `hubs/0013_plans_in_the_database` (siete planes: Free, Starter y Standard
   en venta, Pro, Enterprise y Max `upgrade_only`, y `payment-test` interno), sin periodo de prueba; ningún
   despliegue los vuelve a escribir. `sync_hub_plans` es desde el 2026-10-15 un comando vacío (no siembra ni toca la
-  BD; `--update` se acepta y se ignora): sigue solo porque la tarea `saas-migrate` de pre y prod lo llama hasta que
-  se aplique el Terraform de ERPlora/aws#4; después se borra.
+  BD; `--update` se acepta y se ignora). Se quedó porque la tarea `saas-migrate` lo llamaba hasta ERPlora/aws#4; desde
+  entonces ninguna tarea lo llama (revisiones activas de `erplora-prod-saas-migrate` y `erplora-pre-saas-migrate`,
+  leídas el 2026-11-11) y el comando vacío sigue en el repo, por borrar.
 - **Local**: con claves de prueba de Stripe en `.env` y `stripe listen --forward-to
   localhost:8001/webhooks/stripe/` (su `whsec_…` en `STRIPE_WEBHOOK_SECRET`); sin clave, la Tienda dice que
   los pagos no están disponibles (503 `billing.payments_unavailable`).
@@ -318,7 +322,8 @@ convenio 017, representación directa; plan `../docs/plans/2026-10-15-saas-revis
 El cliente la sube desde el módulo VeriFactu de su Hub, que la envía firmada a
 `POST /internal/hubs/{id}/representation` (hasta cuatro PDF de 5 MB en base64; el cuerpo lo lee la propia
 vista, con su tope de 32 MB, y el resto del sitio conserva el de Django); `GET /internal/representation/model`
-sirve el modelo en blanco. El staff la revisa en `/admin/fiscal/representationgrant/` (aprobar, devolver o
+sirve el modelo, relleno con los datos del negocio que el Hub manda en la consulta (`taxpayer_tax_id`,
+`taxpayer_name`, `municipality`, `street`, `number`; `fiscal/schemas.py`) y en blanco sin ellos. El staff la revisa en `/admin/fiscal/representationgrant/` (aprobar, devolver o
 retirar, siempre con motivo para el cliente, por los servicios de `fiscal/services.py`); el grupo `support`
 solo la ve. El estado viaja al Hub en la foto (`verifactu.representation` de `PUT /internal/hubs/{id}/state`)
 y el panel lo enseña en la ficha del negocio (`fiscal.representation.status`).
@@ -365,7 +370,7 @@ En `pre` (`pre.erplora.com`, cluster `erplora-pre`, mismo ALB, Aurora y Valkey q
   noindex, nofollow, noarchive` e `indexnow_submit` falla;
 - Stripe va solo en modo test: una clave live (`sk_live_`, `rk_live_` o `pk_live_`) falla `check --deploy`
   (`billing.E002`) y la pasarela no la usa (503, como sin clave). Detalle en `billing/README.md`;
-- las direcciones son las de pre, por entorno (las pone `aws-next`, `stacks/prod/pre_apps.tf`): `PUBLIC_HOST`
+- las direcciones son las de pre, por entorno (las pone `ERPlora/aws`, `stacks/prod/pre_apps.tf`): `PUBLIC_HOST`
   (`pre.erplora.com`), `HUB_CALLBACK_TEMPLATE` (`https://{slug}.pre.erplora.com/auth/callback`),
   `HUB_ADMIN_CALLBACK_URL` y `HUB_STATIC_BASE_URL` (`hubs.pre.erplora.com`), `HUB_INTERNAL_URL`
   (`http://hub-pre.erplora.internal:8000`), BD `pre_saas` con los roles `pre_saas_app` y `pre_saas_migrator`,
@@ -378,9 +383,10 @@ En `pre` (`pre.erplora.com`, cluster `erplora-pre`, mismo ALB, Aurora y Valkey q
 3. Con el check en verde, `git push origin <rama>:pre` (fast-forward). `deploy.yml` prueba, construye la imagen
    en `erplora/saas-pre` y despliega `saas-pre` y `saas-worker-pre` (`ecs-deploy.sh` con `ENVIRONMENT=pre`: cluster
    `erplora-pre`, familias `erplora-pre-saas`, `erplora-pre-saas-migrate` y `erplora-pre-saas-worker`, sin
-   `saas-cron`; `/erplora/pre/saas/image_tag`). Si pre estaba apagado, lo enciende. Sin release. Mientras aws#59 no
-   esté aplicado y no exista la familia `erplora-<entorno>-saas-worker`, el despliegue (y `rollback.yml`) la salta con
-   un `::warning::` y sigue; cualquier otro error al leerla lo para.
+   `saas-cron`; `/erplora/pre/saas/image_tag`). Si pre estaba apagado, lo enciende. Sin release. Si no existiera la
+   familia `erplora-<entorno>-saas-worker`, el despliegue (y `rollback.yml`) la saltaría con un `::warning::` y
+   seguiría; cualquier otro error al leerla lo para. Desde aws#59 (mergeada el 2026-11-05) existen las dos,
+   `erplora-prod-saas-worker` y `erplora-pre-saas-worker`.
 4. Probado, PR `pre` → `main` con «Create a merge commit»: despliega prod como siempre, con su release
    `saas-v…`.
 5. Después, `git push origin main:pre` (fast-forward) para que `pre` no se separe de `main`.
@@ -394,7 +400,7 @@ sí: el grupo de concurrencia es por rama.
 **Guarda de entorno.** `ecs-deploy.sh` y `ecs-rollback.sh` solo copian o restauran revisiones con la etiqueta
 `Environment=<entorno>` y los roles `erplora-<entorno>-*`; si no, fallan sin registrar ni cambiar nada (el rol
 de despliegue de un entorno puede registrar revisiones en cualquier familia: `ecs:RegisterTaskDefinition` no
-admite recurso). Por eso el primer despliegue de prod con esta CI exige antes el `apply` de `aws-next` que
+admite recurso). Por eso el primer despliegue de prod con esta CI exigió antes el `apply` de `ERPlora/aws` que
 etiqueta las revisiones de prod (paso H1 del plan).
 
 **Variables del repo:** `AWS_REGION`, `ALB_DNS_NAME` (el mismo ALB para los dos), `AWS_DEPLOY_ROLE_ARN`
@@ -467,7 +473,7 @@ uv run python manage.py export_assistant_catalog --language es --apps hubs,billi
 ## Arrancar en local
 
 Postgres del `compose.yaml` raíz (BD `saas`). El SaaS lee solo el entorno del proceso y
-`saas-next/.env`, nunca el `.env` raíz (su `DB_NAME` es el del Hub). `DEBUG` está apagado por defecto
+`saas/.env`, nunca el `.env` raíz (su `DB_NAME` es el del Hub). `DEBUG` está apagado por defecto
 (producción): en local, `cp .env.example .env`, que lo enciende (`DEBUG=True`); `demo_seed` se niega a
 correr sin él. Los tests no lo necesitan: `pytest.ini` usa `config/settings_pytest.py`. Variables propias:
 `INTERNAL_SHARED_SECRET` (por defecto local, la misma que el Hub; `INTERNAL_SHARED_SECRET_PREVIOUS`, vacía
@@ -477,10 +483,10 @@ salvo durante una rotación), `HUB_CALLBACK_TEMPLATE`
 `FISCAL_DOCUMENTS_KEY` (con `DEBUG`, una clave local; ver «Documentación fiscal») y, para ver el botón de
 Google,
 `GOOGLE_OAUTH_CLIENT_ID`/`GOOGLE_OAUTH_CLIENT_SECRET`; ver `.env.example`. El
-segundo factor se enciende con `ACCOUNTS_MFA_ENABLED=true` en `saas-next/.env` (por defecto `false`;
+segundo factor se enciende con `ACCOUNTS_MFA_ENABLED=true` en `saas/.env` (por defecto `false`;
 ver «Segundo factor (2FA)»).
 
-**Correo en local**: con `DEBUG`, cada correo del SaaS queda en un fichero de `saas-next/.mail/` (fuera de
+**Correo en local**: con `DEBUG`, cada correo del SaaS queda en un fichero de `saas/.mail/` (fuera de
 git; `EMAIL_FILE_PATH` cambia la carpeta y `EMAIL_BACKEND` el backend, p. ej. la consola). El código de
 login se lee de ahí: el fichero más reciente para esa dirección, con las 6 cifras solas en su línea. Las
 e2e (también las del Hub) lo leen con `readMailCode({ dir, to, since })` de `@erplora/ui/testing/mail`.
@@ -490,7 +496,7 @@ e2e (también las del Hub) lo leen con `readMailCode({ dir, to, since })` de `@e
 `tests/e2e/panel/`), con los mismos valores que las semillas usan por defecto. Exportados
 (`set -a; . ../.env; set +a`), las semillas y las e2e los usan; sin exportar, valen esos mismos.
 
-Todo se corre dentro de este repo (`saas-next/`), que monta `ERPlora/live` y `ERPlora/ui` como submódulos en
+Todo se corre dentro de este repo (`saas/`), que monta `ERPlora/live` y `ERPlora/ui` como submódulos en
 `packages/`:
 
 ```bash
@@ -501,10 +507,10 @@ uv run python manage.py demo_seed        # (de hubs) negocios a y b adoptados; o
 uv run python manage.py create_platform_user <email> --role admin|support [--password …]   # staff de plataforma
 uv run python manage.py runserver 127.0.0.1:8001   # también Vite (`pnpm run dev`) en :5174 (`--novite` lo omite)
 VITE_DEV_PORT=5224 uv run python manage.py runserver 127.0.0.1:8051   # un segundo SaaS (otro worktree): su Vite en :5224 (runserver se lo pasa a su Vite; vale también en .env)
-# http://localhost:8001/launch   (el código de cada login, en saas-next/.mail/)
+# http://localhost:8001/launch   (el código de cada login, en saas/.mail/)
 # Admin del Hub de un hub: http://localhost:8001/admin/ con platform@example.com / platform → Hubs
-# → «Abrir en el admin del Hub» → http://hubs.localhost:8000/admin/hub/a/ (el lado del Hub llega con
-# la ronda 13 del carril de hub-next)
+# → «Abrir en el admin del Hub» → http://hubs.localhost:8000/admin/hub/a/ (el admin del Hub de la pila
+# local; en producción, hubs.erplora.com/admin)
 uv run pytest -q
 pnpm test     # y typecheck, lint, build
 pnpm e2e --project=panel   # e2e del panel, sin ventana (`pnpm e2e:headed` la abre)
@@ -514,8 +520,8 @@ pnpm e2e --project=panel   # e2e del panel, sin ventana (`pnpm e2e:headed` la ab
 
 Cada punto tiene su borrador de issue en `docs/issues/` (pendiente de abrir en `ERPlora/saas`):
 
-- Del segundo factor: «confiar en este navegador» 14 días (`MFA_TRUST`) y llaves de acceso
-  (WebAuthn/passkeys). Sin borrador de issue todavía.
+- Del segundo factor, las llaves de acceso (WebAuthn/passkeys). Sin borrador de issue todavía. («Confiar en este
+  navegador» 14 días ya no está fuera: `MFA_TRUST_ENABLED`, ACCOUNTS-F05.)
 - Que cinco contraseñas falsas de otra persona no dejen fuera al dueño de la cuenta durante 5 minutos
   (`login-lockout.md`; los límites ya están escritos y el WAF del ALB frena a los bots, «Protección contra bots») y la
   sesión que no se renueva con el uso (`remember-me-not-sliding.md`).

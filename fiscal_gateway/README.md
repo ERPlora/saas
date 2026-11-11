@@ -44,7 +44,7 @@ o su UUID en minúsculas (con guiones). Tiene que ser un negocio que el SaaS con
 | `409 no_seal` | `route = "erplora"` sin sello utilizable (también si TLS rechaza el sello configurado) |
 | `409 no_certificate` | `route = "own"` sin certificado |
 | `409 certificate_invalid` | No abre con su contraseña, no permite autenticación de cliente (EKU), ha caducado o TLS lo rechaza (la clave no es la del certificado o es demasiado débil, p. ej. RSA de 1024); no sale nada hacia la AEAT |
-| `409 environment_not_allowed` | `production` desde un despliegue que no es `prod` (`pre` solo presenta a pruebas) |
+| `409 environment_not_allowed` | `production` sin `AEAT_PRODUCTION_ENABLED` (apagada en `pre` y en desarrollo, que solo presentan a pruebas; PLAN-SAAS §43) |
 | `502 {"error": {"code": "aeat_unreachable", "sent"}}` | Sin respuesta de la AEAT; `sent = true` si la petición pudo llegar. También, con `sent = false`, si el servidor no puede cargar sus certificados de confianza (`SSL_CERT_FILE` a un fichero que no existe, a una carpeta o sin certificados): el mensaje nombra la variable y el fichero, y el Hub conserva el registro y lo reintenta |
 | `503 gateway_busy` | Semáforo lleno; el Hub reintenta |
 | `401 unauthorized` | Sin firma, firma caducada (±300 s) o que no casa. Sin marca de tiempo, sin firma o con la marca fuera de la ventana (o de más de 20 dígitos) se decide por las cabeceras, **sin leer** el cuerpo |

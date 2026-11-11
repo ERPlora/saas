@@ -17,7 +17,7 @@ registro de cambios. El manual y los flujos están en `WORKBOOK.md` (APPS-F01 a 
 | `api.py` | `GET /api/apps`, `/api/apps/get`, `/api/apps/doc` y `/api/apps/sitemap`, cada una ligada a su operación |
 | `icons.py` | Limpieza del `icon_svg` que manda el Hub (nh3, solo formas) y el icono de respaldo |
 | `checks.py` | `apps.E001`: un `Module.slug` sin app en `shared.app`; corre con `manage.py check --database default` |
-| `admin.py` | `App` y `AppDoc` de solo lectura para todos; `Module` editable con `ModuleForm`, que comprueba en Stripe los precios pegados (APPS-F04, `billing.services.module_price_problems`), que al guardar uno nuevo o con otro `tier` lo hace llegar a los negocios de su plan (HUBS-F34, `hubs.services.owe_module_rights`), y con el borrado de un módulo que algún negocio tiene rechazado (saas#2568) |
+| `admin.py` | `App` y `AppDoc` de solo lectura para todos; `Module` editable con `ModuleForm`, que comprueba en Stripe los precios pegados (APPS-F04, `billing.services.module_price_problems`), que al guardar uno nuevo o con otro `tier` lo hace llegar a los negocios de su plan (HUBS-F34, `hubs.services.owe_module_rights`), y con el borrado de un módulo que algún negocio tiene rechazado (erplora-old/saas#2568) |
 | `auditlog.py` | Registro de cambios de `Module` con django-auditlog (ACCOUNTS-F36, sin `updated_at`); `App` y `AppDoc` no se registran |
 
 ## Reglas

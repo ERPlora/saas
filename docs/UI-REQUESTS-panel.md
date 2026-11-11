@@ -1,6 +1,6 @@
 # Peticiones del panel del SaaS a `@erplora/ui`
 
-Lo que el panel (`hubs/`, `billing/`, `accounts/` de `saas-next`) necesita de los componentes compartidos y que
+Lo que el panel (`hubs/`, `billing/`, `accounts/` del SaaS) necesita de los componentes compartidos y que
 hoy resuelve con un rodeo mínimo en su propio carril. `packages/ui` es de otra sesión: aquí solo se pide; cuando
 el componente lo traiga, se quita el rodeo y se dice en la misma tarea.
 
@@ -38,7 +38,7 @@ limpia posible… las tablas tienen que ocupar la altura de la página, el espac
 
 ## 3. `DataTable`: «Columnas» y «Filas por página» solo cuando hacen falta
 
-- **Qué pasa**: la regla de las maquetas (`mockups/saas-panel/README.md` §3b) dice «Columnas» y «Filas por
+- **Qué pasa**: la regla de las maquetas (`mockups/saas-panel/README.md` §3b; esa carpeta ya no está en ningún repo) dice «Columnas» y «Filas por
   página» solo desde 1024 px y **cuando hacen falta** (más de 4 columnas; más filas que la página más corta).
   `DataTable` enseña «Filas por página» siempre que `pageSizeChooser` sea `true`.
 - **Rodeo hoy**: cada página lo calcula: `:page-size-chooser="total > PAGE_SIZES[0]"` en Negocios, Miembros y

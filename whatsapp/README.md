@@ -5,7 +5,7 @@ App de plataforma del SaaS (`LiveAppConfig`, `kind = "platform"`, siempre activa
 Signup), el webhook de Meta, la entrega al Hub con reintento, los envíos con el cupo del plan, las plantillas y los
 adjuntos. **Sin pantallas en el panel** (PLAN-SAAS, bloque 12): la bandeja y sus ajustes son del Hub
 (`hub/apps/whatsapp_inbox/`); por eso no hay `frontend/` ni `UI-REQUESTS.md`. Manual y flujos: `WORKBOOK.md`
-(`WHATSAPP-Fnn`). Porte de `ERPlora/saas` `apps/whatsapp_inbox/` (`origin/develop`) y del inventario
+(`WHATSAPP-Fnn`). Porte de `erplora-old/saas` `apps/whatsapp_inbox/` (`origin/develop`) y del inventario
 `fi:saas/auth-services` (MIGRATION-TASK APP-WHATSAPP, con FIX-SAAS-WHATSAPP-GATEWAY-DOORS).
 
 **Estado: completa (2026-10-30)**: los 18 flujos `hecho` (WHATSAPP-F01…F18; F16, la muestra de la cabecera de una
@@ -74,9 +74,9 @@ Las puertas 10–12 y la página de vuelta de la ventana de Meta (`GET /whatsapp
 
 - **Cupo**: `Plan.whatsapp_messages_per_month` (`hubs/0012`: Gratis 30, Starter 150, Standard 300; 0 = ninguno).
   Reserva atómica al aceptar (`UPDATE … WHERE used < limit`); `Idempotency-Key` repetida = la misma respuesta, sin
-  segundo envío ni segundo consumo; Meta 2xx sin id = enviado para siempre (saas#2653).
+  segundo envío ni segundo consumo; Meta 2xx sin id = enviado para siempre (erplora-old/saas#2653).
 - **Retención** (`whatsapp_purge`): entregado > 30 días, estados > 30 días, no recogido > 30 días (con aviso en el
-  registro por negocio, saas#1930) y claves de envíos y registros > 30 días (saas#2662).
+  registro por negocio, erplora-old/saas#1930) y claves de envíos y registros > 30 días (erplora-old/saas#2662).
 - Nada de lo que envía el negocio se guarda, salvo la clave; los adjuntos nunca.
 
 ## La entrega al Hub (`saas-worker`, saas#305)
@@ -101,8 +101,8 @@ base de datos (su espera es un `select` sobre el socket de su conexión `LISTEN`
   siguiente) y sale con 0.
 - Una pasada que revienta escribe una línea ERROR `saas.worker.pass_failed task=whatsapp_deliver` (la alarma de `aws`
   filtra ese texto) y el proceso sigue; tras un fallo vuelve a mirar en 60 s como mucho.
-- `manage.py whatsapp_deliver`: la misma pasada, a mano (diagnóstico, rescate y `pre` mientras no tenga su
-  `saas-worker`); ya no está programada.
+- `manage.py whatsapp_deliver`: la misma pasada, a mano (diagnóstico y rescate); ya no está programada. `pre` tiene
+  su propio proceso desde aws#59 (servicio `saas-worker-pre` del cluster `erplora-pre`, leído el 2026-11-11).
 
 ## Tareas (ECS, `saas-cron`)
 

@@ -7,7 +7,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 
 - Operaciones en `queries.py` (lecturas) y `services.py` (escrituras), rutas en `api.py` bajo `/api/hubs/`
   (y `/api/plans`, `/api/catalog/*`, públicas); consultas vivas en `live.py`.
-- Hacia el Hub: `hub_client.py` (llamadas firmadas a `/internal/*` de hub-next), empuje tras el COMMIT
+- Hacia el Hub: `hub_client.py` (llamadas firmadas a `/internal/*` del Hub), empuje tras el COMMIT
   (`services.sync_hub`), `reconcile_hub_states` (cada 15 min en el proceso `saas-worker`,
   `services.reconcile_exclusively`, saas#305; el comando, a mano) y `push_hub_snapshots` (cada noche en `saas-cron`,
   todos los negocios; `--behind-only`, solo los atrasados).
@@ -80,7 +80,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   La siguiente foto ya no lista al miembro quitado.
 - **Firma de `/internal`** (`accounts/signing.py`): dos secretos vivos (`INTERNAL_SHARED_SECRET` e
   `INTERNAL_SHARED_SECRET_PREVIOUS`, vacío fuera de una rotación; se firma con el actual) y, además de la v1 de solo
-  cuerpo (`X-Erplora-Signature`, la que firma hoy el Hub), la v2 `X-Erplora-Signature-V2`, HMAC de
+  cuerpo (`X-Erplora-Signature`), la v2 `X-Erplora-Signature-V2`, HMAC de
   `v2\n{ts}\n{MÉTODO}\n{ruta?query}\n{cuerpo}`. El SaaS firma toda llamada con las dos; al verificar, una llamada
   con v2 se juzga solo por v2 (sin degradar a v1) y una sin v2, por v1. Rotación en tres pasos y paso a solo v2:
   docstring de `accounts/signing.py`.
@@ -88,7 +88,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   `SubscriptionItem` y `SessionRevocation`: de solo lectura (las escrituras son las operaciones), con las acciones
   de superusuario «Enviar al Hub el estado más reciente», «Reintentar lo que el Hub tiene pendiente» y «Cerrar ya
   las sesiones en el Hub»; `support` los ve (migración `0007`) y no actúa.
-- **Invitar una cuenta que nunca verificó su correo** (saas#2541, `tests/test_invite_unverified_account.py`):
+- **Invitar una cuenta que nunca verificó su correo** (erplora-old/saas#2541, `tests/test_invite_unverified_account.py`):
   `accounts.queries.email_is_proven` decide; si no, `accounts.services.release_unproven_account` le quita
   contraseña (y con ella las sesiones del SaaS), segundo factor y Google, y se encolan los cierres de sesión de
   todos sus negocios; el correo de la invitación lleva el camino para reclamar la cuenta
@@ -155,6 +155,7 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
   el camino a la copia de los datos (abajo, «Lo que añadió la tenencia»).
 - **Dominio propio** (F17): no se porta en la fase 1; decisión de mercado y ronda propuesta en la PR de APP-HUBS-2.
   → **CLOSE-HUBS (2026-11-01):** `descartado` en esta versión, con su issue (saas#195).
+  → **saas#195 (2026-11-04 y 2026-11-05):** hecho; abajo, «Lo que añadió saas#195».
 
 ## Lo que añadió APP-HUBS-3 (2026-10-23): las personas de cada negocio
 
@@ -202,7 +203,8 @@ Flujos `HUBS-F31`…`HUBS-F37` del `WORKBOOK.md` (parte 4 de 5; la revisión flu
   reciben («… negocios con este plan reciben el cambio en los próximos 15 minutos.»). Textos, orden o precio no deben
   nada. Tests: `tests/test_plan_rights_reach_businesses.py`.
 - **Guardarraíl de `/internal`** (F35): `tests/test_internal_doors.py` recorre el resolver de URLs y comprueba que cada
-  puerta `internal/…` (hoy 14, de `accounts`, `hubs`, `fiscal`, `fiscal_gateway` y `whatsapp`) contesta 401 o 405 sin
+  puerta `internal/…` (entonces 14, de `accounts`, `hubs`, `fiscal`, `fiscal_gateway` y `whatsapp`; el 2026-11-11, 23,
+  con las de `assistant`) contesta 401 o 405 sin
   firma, con la firma de otro secreto, con una marca de hace 10 minutos o con la sesión de un superusuario. Una puerta
   nueva que se salte `accounts.signing` lo rompe.
 - **Taxonomía en el admin, en el idioma del personal** (F36): los campos de `Sector` y `BusinessType` (`code`, `icon`,
@@ -250,6 +252,7 @@ Parte 5 de 5: cada flujo `hecho` contra su código, con mutantes ejecutados; los
   nocturna del SaaS (`hub-usage-daily`) quedó encendida en prod el 2026-11-03 (aws#35, ver «Pendiente tras L4-A»).
 - **F32 y F34**, `hecho`: lo que les faltaba era del Hub y ya lo aplicaba (APP-BASE-3, -4 y -5; arriba, en APP-HUBS-4).
 - **F17**, `descartado` en esta versión (saas#195): fuera de la fase 1, llega con sus tres piezas.
+  → **saas#195 (cerrada el 2026-11-05):** F17 `hecho`; abajo, «Lo que añadió saas#195».
 - **La poda de `HubUsageDaily`** que PLAN-SAAS §1.1 dejaba a `hubs` y no existía: `hubs.usage.prune`, al final de
   `collect_hub_usage` (arriba, en L4-A, y PLAN-SAAS §27).
 - Lo que queda fuera, con su issue: `WORKBOOK.md`, «Lo que queda fuera».
@@ -292,10 +295,12 @@ Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»)
 
 - El Hub (carril Hub): verificar la v2 y los dos secretos en su `/internal`, firmar con v2 su canje, y adoptar por
   `id` los negocios que le llegan en la foto (los `a`/`b` adoptados aquí traen un UUID nuevo). Cuando los dos lados
-  firmen v2, dejar de aceptar llamadas solo v1. `aws-next`: añadir `INTERNAL_SHARED_SECRET_PREVIOUS` (vacío) al
+  firmen v2, dejar de aceptar llamadas solo v1. `ERPlora/aws`: añadir `INTERNAL_SHARED_SECRET_PREVIOUS` (vacío) al
   secreto `erplora/prod/internal` y a las tres tareas para poder rotar sin despliegue de código.
   → Hechos los dos secretos en `erplora/prod/internal` (2026-10-14) y la v2 con los dos secretos en el `/internal` del
   Hub (`base/signing.py`); dejar de aceptar solo v1 sigue para cuando los dos lados firmen v2.
+  → Leído el 2026-11-11: los dos lados ya firman con v1 y v2 (el Hub, `base/signing.signed_headers`). Dejar de
+  aceptar las llamadas solo v1 sigue sin hacer y sin issue.
 - El SDK (`@erplora/ui`, `ApiError`) solo conserva `code`, `message` y `fields` del sobre de error: para pintar
   `limit` y `used` de `hubs.seat_limit` el panel (L1-D) necesita que los conserve; hoy los tiene en `seats` de la
   lista y en el mensaje. → Hecho: `ApiError.details` conserva el resto del sobre (`@erplora/ui`, `src/sdk/errors.ts`).
@@ -314,7 +319,8 @@ Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»)
   comercial y `modules[]`) sube `state_version` y se empuja tras el COMMIT; cualquier cambio anota
   `hubs.subscription.changed`, que re-ejecuta la lista y la página. `standing` mueve el negocio (`good` →
   `active`, `grace` → `past_due`, `suspended`); uno eliminado no se mueve. Pagar un plan acaba con la prueba de
-  Starter del alta; comprar solo módulos la conserva.
+  Starter del alta; comprar solo módulos la conserva. → Desde el 2026-10-15 ningún plan trae prueba
+  (`hubs/0013_plans_in_the_database`): el mecanismo queda dormido.
 - `Subscription.unpaid_reason` / `unpaid_since` / `unpaid_invoice_url` (migración `0008`): la fila de
   Negocios y la página dan `unpaid_reason`, `unpaid_since` y `pay_url` (este, solo al propietario).
 - `hubs.billing_profile.update` escribe el NIF con la puerta de `billing` (`validate_vat_for_profile`: forma
@@ -415,7 +421,8 @@ X-Erplora-Timestamp, X-Erplora-Signature (v1) y X-Erplora-Signature-V2 (cubre m�
 - **`aws`**: `collect_hub_usage` está programado en `stacks/prod/scheduler.tf` (`hub-usage-daily`, 01:15 UTC). Estuvo
   apagado en prod desde el 2026-10-15 (`schedules_disabled`, mientras el Hub no servía su medición) hasta el 2026-11-03
   a las 07:08 UTC, cuando pasó de `DISABLED` a `ENABLED` (aws#35; `terraform.yml`, plan 41594080235 y apply 41594250082).
-  Falta leer su estado en vivo y su primera pasada: no se ha hecho, porque la sesión de AWS está caducada.
+  Leído el 2026-11-11: la programación `hub-usage-daily` (grupo `erplora-prod`) está `ENABLED`, y las pasadas del
+  9, 10 y 11 de noviembre en `/ecs/erplora-prod-saas-cron` registraron 4 negocios, 1 `unknown` y ningún fallo.
 - La gráfica del panel con `hubs.usage.series` (bloque 8 de PLAN-SAAS; no está en la maqueta): fuera de esta versión,
   ningún flujo la pide (HUBS-F21 enseña la última noche medida).
 
@@ -485,7 +492,7 @@ listo al responder, y lo dice.
   pasada) y se reintenta en las pasadas siguientes hasta `DATA_COPY_MAIL_ATTEMPTS` (6) veces
   (`Hub.data_copy_mail_attempts`, a 0 en cada baja; al rendirse, log `hubs.data_copy.mail_given_up`).
 - **Uso nocturno** (F21, F22; propuesta (j)): sin cambios en el SaaS. Un hub que aún comparte la BD de control no se
-  mide y no sale en `GET /internal/usage`: la pasada guarda el resto y termina bien (test de contrato en
+  mide y no sale en `GET /internal/usage` (desde el corte de la tenencia del 2026-11-01 el Hub ya no tiene modo compartido): la pasada guarda el resto y termina bien (test de contrato en
   `tests/test_collect_hub_usage.py`).
 
 ### Contrato para el Hub (carril Hub): alta, demo y copias
