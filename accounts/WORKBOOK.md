@@ -708,10 +708,10 @@ Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Entrada, Cuenta, Negocios, Tienda
 Pasos:
-1. Dentro de su negocio, la persona que entró con su cuenta pulsa «Mejorar plan» o «Gestionar en erplora.com» (BASE-F11 del Hub). El negocio firma en ese momento un pase y lo abre en erplora.com, en una pestaña nueva; en la aplicación instalada, en el navegador del dispositivo.
+1. Dentro de su negocio, la persona que entró con su cuenta pulsa «Mejorar plan» (también el del asistente y el de la Bandeja de WhatsApp) o «Gestionar en erplora.com» (BASE-F11 del Hub). El negocio firma en ese momento un pase y lo abre en erplora.com, en una pestaña nueva; en la aplicación instalada, en el navegador del dispositivo.
 2. erplora.com comprueba el pase y que esa cuenta sigue siendo de ese negocio, y abre su sesión sin pedirle nada, aunque ese navegador no la tuviera: la lleva a la página del plan de ese negocio en la **Tienda** («Mejorar plan») o a ese negocio en **Negocios** («Gestionar en erplora.com»).
 3. Si ese navegador ya tenía abierta su sesión, sigue con ella hasta el mismo sitio, aunque el pase haya caducado o ya se usara (al recargar o al volver atrás). Si tenía la de otra cuenta y el pase es bueno, entra en su lugar quien pulsó el botón.
-4. Los demás enlaces a erplora.com no llevan pase: gestionar su cuenta, «Invitar en erplora.com», «Mejorar plan» de una app de pago (abre la **Tienda** de ese negocio) y el del asistente y la Bandeja de WhatsApp, entre otros. Esos enlaces y un pase que no llega abren la dirección de siempre: si ese navegador tiene su sesión de erplora.com, la página se abre sin pedirle nada; si no, la **Entrada** le pide entrar y, ya dentro, la lleva a esa misma página.
+4. Los demás enlaces a erplora.com no llevan pase: gestionar su cuenta, «Invitar en erplora.com» y «Mejorar plan» de una app de pago (abre la **Tienda** de ese negocio), entre otros. Esos enlaces y un pase que no llega abren la dirección de siempre: si ese navegador tiene su sesión de erplora.com, la página se abre sin pedirle nada; si no, la **Entrada** le pide entrar y, ya dentro, la lleva a esa misma página.
 Entra: el pase del negocio (de qué cuenta, de qué negocio y a dónde va: el plan o el negocio) o, sin pase, la página de erplora.com a la que va (solo páginas de erplora.com).
 Sale: la página abierta con su sesión de erplora.com; el negocio y erplora.com guardan cada uno la suya. El pase vale un minuto y sirve una sola vez, y solo para esa cuenta y ese negocio; viaja en la dirección, así que la respuesta no se guarda ni se cuenta a otras webs. La sesión que abre no cuenta como entrada con contraseña, código ni segundo factor (lo que los exija los vuelve a pedir), no acepta los términos por nadie y sale en **Cuenta › Seguridad › Sesiones activas**, desde donde se puede cerrar.
 Si falla: un pase que el negocio no firmó, o que no dice lo que debe, no abre nada: «Este enlace de tu negocio no es válido», con «Iniciar sesión» y «Contactar Soporte». Una cuenta que no es miembro de ese negocio, desactivada o del personal de ERPlora no entra: «No tienes acceso a este hub», que nombra solo la dirección del negocio, con «Inicio», «Volver al hub» y «Contactar Soporte». Un pase pasado su minuto o ya usado no abre nada: «Este enlace de tu negocio ha caducado», e «Iniciar sesión» sigue hasta donde iba, con «Contactar Soporte». Ninguno de los tres toca la sesión que ya hubiera en ese navegador; con ella, «Iniciar sesión» dice «Inicio». Sin pase, una dirección que no es de erplora.com no se sigue después de entrar: lleva a la **Entrada** con su sesión. Cerrar la sesión de erplora.com no cierra la del negocio (ACCOUNTS-F09).
@@ -1057,7 +1057,7 @@ Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos
   `apps/core/circuit_breaker.py`: estado en memoria de cada proceso, solo alrededor de las llamadas a Stripe de sus
   webhooks; aquí cada llamada de fuera lleva su tiempo de espera corto y su error visible, Stripe con 10 s y un
   reintento (`billing/stripe_service.py`), VIES 3 + 5 s, Meta 5 + 15 s, la AEAT 5 + 30 s, el Hub 5 s, S3 2 + 3 s,
-  IndexNow 15 s y SES 3 + 10 s, y un aviso de Stripe que falla lo reintenta Stripe; un breaker por proceso no se
+  IndexNow 15 s y el correo 10 s por SMTP (3 + 10 s si se vuelve a SES), y un aviso de Stripe que falla lo reintenta Stripe; un breaker por proceso no se
   comparte entre tareas y no añade nada: simplicidad primero) y G27 (la etiqueta `{% card %}` del panel viejo: el
   panel es la SPA, con sus componentes de `@erplora/ui`, y la web pública pinta sus tarjetas con sus parciales de
   `public/templates/public/components/`, ronda 16). Las dos chocan con PLAN-SAAS §6 («Utilidades», casi tal cual):
@@ -1177,8 +1177,12 @@ Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos
   entrada con `next=/admin/…` (las dos trampas del viejo: la salud en 503 y el segundo factor cortado). Se enciende
   solo desde el admin (working-rules §4). `purge_expired_sessions` (F44) es diaria, con candado propio
   (`services.run_exclusively`), y la lanza `saas-cron` a las 00:20 UTC (`purge-expired-sessions-nightly` de
-  `aws/stacks/prod/scheduler.tf`, que por eso no programa `clearsessions` aparte); suelta a mano el candado de su conexión copiada del pool. Los correos (F46) salen por `django-ses` con
-  `AWS_SES_CONFIG` (3 s para conectar, 10 s para leer, dos intentos), cada uno en texto y en HTML sobre la plantilla
+  `aws/stacks/prod/scheduler.tf`, que por eso no programa `clearsessions` aparte); suelta a mano el candado de su conexión copiada del pool. Los correos (F46) salen, en
+  producción y en `pre`, por el SMTP de OVH desde el 2026-11-10 (aws#72): sin `SES_REGION`, `config/settings.py` usa el
+  `EmailBackend` SMTP de Django con `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` y
+  `EMAIL_USE_TLS` (10 s de espera) y el remitente de `DEFAULT_FROM_EMAIL`; en local, un fichero por correo en `.mail/`.
+  `django-ses` sigue en el código como vuelta atrás: con `SES_REGION` puesto, la API de SES firmada por el rol de la
+  tarea, con `AWS_SES_CONFIG` (3 s para conectar, 10 s para leer, dos intentos). Cada uno va en texto y en HTML sobre la plantilla
   común `templates/emails/base.html` (PLAN-SAAS §7, bloque 13; la vieja saas#1044): `base/emails.py`
   (`branded_message`, con el idioma del destinatario explícito, porque cada remitente envía fuera de su
   `translation.override`) en `accounts`, `billing`, `fiscal`, `whatsapp` y el contacto de `public`; los de allauth, por
@@ -1214,11 +1218,6 @@ Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos
   el segundo factor se juega en el gemelo del panel con el interruptor encendido (`PANEL_MFA_URL`).
   `signup.spec.ts` y `login.spec.ts` siguen cubriendo las pestañas de la entrada; `login.spec.ts` juega también
   F49 con la cuenta `e2e-store-review` de `panel_seed.py`.
-
-## Lo que queda fuera
-
-- **«Mejorar plan» del asistente y de la Bandeja de WhatsApp del Hub aún no llevan el pase** (ACCOUNTS-F29, BASE-F11 del
-  Hub): abren la dirección de siempre, que pide entrar si ese navegador no tiene la sesión — ERPlora/hub#723.
 
 ## Lo que NO hace, a propósito
 
