@@ -166,12 +166,12 @@ class Plan(TranslatedFields):
     max_db_connections = models.PositiveIntegerField(
         _("database transactions at a time"),
         default=1,
-        help_text=_("Database transactions a hub runs at a time per process (PLAN §14.2)."),
+        help_text=_("Database transactions a hub runs at a time per process."),
     )
     statement_timeout_seconds = models.PositiveIntegerField(
         _("longest database statement (seconds)"),
         default=5,
-        help_text=_("Longest database statement of a hub, in seconds (PLAN §14.2)."),
+        help_text=_("Longest database statement of a hub, in seconds."),
     )
     #: What the plan includes of the assistant and of WhatsApp each month: one request of the user to the
     #: assistant is one message. They travel in the hub's state snapshot and the Hub counts them (warns at
