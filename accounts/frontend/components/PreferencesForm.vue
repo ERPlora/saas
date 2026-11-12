@@ -1,16 +1,16 @@
 <script setup lang="ts">
-// Account → Preferences (mockups `account.html` «preferences»; no currency nor palette: one palette, charged in
-// euros, ronda 17): the live `accounts.preferences.get` and three cards whose controls save on their own
+// Account → Preferences (no currency nor palette: one palette, charged in euros): the live
+// `accounts.preferences.get` and three cards whose controls save on their own
 // (`accounts.preferences.update`, only what changed), each ending in «Preferences saved»:
 //   - Appearance: system, light or dark, the shell's theme (`setThemeMode`), painted at once and kept in the
 //     account; the account's mode is painted when the preferences arrive (also when another tab changes it);
 //   - Language: the account's (`User.language`, which the mails and the jump to a business read): the panel
 //     switches to it at once (`<html lang>` too), and the entry reads the session again for the side menu the
-//     server translates (`sessionChanged`, saas#292);
+//     server translates (`sessionChanged`);
 //   - Mails: «Security, invoices and payments» is always on; «Business notices» (the mail that a business is ready)
-//     is a switch. No «ERPlora news»: ERPlora sends no such mail (ACCOUNTS-F23).
+//     is a switch. No «ERPlora news»: ERPlora sends no such mail.
 // A refusal puts the control back and says why. A failed load is said with «Retry», also when no answer comes in
-// time: never a skeleton for ever (audit 2026-10-14 R-08).
+// time: never a skeleton for ever.
 import { setThemeMode, themeMode, toastError, toastSuccess } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
 import {
@@ -138,7 +138,7 @@ async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>):
             {{ $t('accounts.account.preferences.appearanceLead') }}
           </p>
         </ion-card-content>
-        <!-- Outside `ion-card-content`: a segment there takes the card's type and grows (README §6.14). -->
+        <!-- Outside `ion-card-content`: a segment there takes the card's type and grows. -->
         <div class="segment-pad">
           <ion-segment
             data-testid="preferences-theme"
@@ -234,7 +234,7 @@ async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>):
 .segment-pad {
   padding: 0 16px 16px;
 }
-/* The mockups' appearance switch: a grey track with the chosen mode on a raised pill (the shell's segments are
+/* The appearance switch: a grey track with the chosen mode on a raised pill (the shell's segments are
    transparent, made for the tabbar). */
 .theme-segment {
   max-width: 420px;
@@ -244,7 +244,7 @@ async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>):
 .theme-segment ion-segment-button {
   min-height: 36px;
 }
-/* A 44px target on touch (audit 2026-10-14, R-13), with the touch query of `@erplora/ui`'s DataTable. */
+/* A 44px target on touch, with the touch query of `@erplora/ui`'s DataTable. */
 @media (pointer: coarse), (max-width: 834px) {
   .theme-segment ion-segment-button {
     min-height: 44px;
@@ -268,7 +268,7 @@ async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>):
   white-space: normal;
 }
 /* Ionic's toggle label is one line with «…»: a title or a hint wraps instead of being cut (the always-on row's hint
-   names every mail that goes, ACCOUNTS-F23). */
+   names every mail that goes). */
 .toggle-title,
 .toggle-hint {
   white-space: normal;
@@ -278,7 +278,7 @@ async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>):
   color: var(--ion-text-color);
 }
 /* «Security, invoices and payments» cannot be turned off, yet the mails it names must read as any text: Ionic dims a
-   disabled toggle whole (0.3 in ios, 0.38 in md), its words included; only its switch stays dimmed (ACCOUNTS-F23). */
+   disabled toggle whole (0.3 in ios, 0.38 in md), its words included; only its switch stays dimmed. */
 .mail-list ion-toggle.toggle-disabled {
   opacity: 1;
 }

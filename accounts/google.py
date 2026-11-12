@@ -1,4 +1,4 @@
-"""«Continue with Google» (PLAN-SAAS §6, ADR-0154), over allauth.headless (headless only).
+"""«Continue with Google», over allauth.headless (headless only).
 
 The Vue sign-in posts allauth.headless's provider redirect (``provider_redirect``) with the page to come
 back to, and Google comes back to ``/auth/google/callback/``, the URI registered with it: allauth's own

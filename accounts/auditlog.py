@@ -1,12 +1,12 @@
-"""The audit trail of the account models (django-auditlog; ACCOUNTS-F36, PLAN-SAAS §1.1).
+"""The audit trail of the account models (django-auditlog).
 
 Who changed an account, its API keys and its signed-in sessions, when and from where; the staff read it in the admin
 («Entradas del registro»), and ``cleanup_old_logs`` keeps 90 days of it. Registered from ``AccountsConfig.ready``. The
 access to a business, the money and the fiscal models are registered by their own apps with ``audit`` (``billing``,
 ``fiscal``, the people, the subscription and the plans of ``hubs``, the paid apps of ``apps``).
 
-Every registration serializes only the logged fields (``serialize_auditlog_fields_only``, #957 of the old SaaS:
-without it the serialized copy carried the excluded password hash). Never logged: the secrets (the password hash, a
+Every registration serializes only the logged fields (``serialize_auditlog_fields_only``:
+without it the serialized copy carries the excluded password hash). Never logged: the secrets (the password hash, a
 key's hash, a session's key and data) and the fields that move on every request (``last_login``, a key's
 ``last_used_at``, a session's ``last_seen_at``: the sign-in is the session's own row).
 """

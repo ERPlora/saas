@@ -1,15 +1,13 @@
 <script setup lang="ts">
-// Account → Security, «Active sessions» (mockups `account.html` «security», README §3b «Sesiones activas»): the
-// live `accounts.session.list` (this session first) in a server-side DataTable — device, browser or app, IP address
-// (the location is the IP: no GeoIP, plan §6) and last use. The server pages it: an account signed in on more
-// browsers than one live result carries still sees its list; on a phone «Load more» grows one window from the
-// first row while every session fits one page of the server, and past it the phone pages too. Each row but this
-// one closes on its own
-// (`accounts.session.close`); an app's session asks first, since it may be charging at a till (W-F5). «Close
-// other sessions» (toolbar) is confirmed with how many go, every page's, the apps too (V-33). Closing a session
-// in the SaaS also ends it in the businesses (the server asks the Hub). Every close ends in a toast naming where. A failed load
-// (an error, or no answer in time) is said with «Retry», never as «no results · 0 sessions» (audit 2026-10-14
-// R-04). The list fills what the «Sign-in» card leaves of the page (`fill`, Ioan 2026-10-14).
+// Account → Security, «Active sessions»: the live `accounts.session.list` (this session first) in a server-side
+// DataTable — device, browser or app, IP address (the location is the IP: no GeoIP) and last use. The server pages it:
+// an account signed in on more browsers than one live result carries still sees its list; on a phone «Load more» grows
+// one window from the first row while every session fits one page of the server, and past it the phone pages too. Each
+// row but this one closes on its own (`accounts.session.close`); an app's session asks first, since it may be charging
+// at a till. «Close other sessions» (toolbar) is confirmed with how many go, every page's, the apps too. Closing a
+// session in the SaaS also ends it in the businesses (the server asks the Hub). Every close ends in a toast naming
+// where. A failed load (an error, or no answer in time) is said with «Retry», never as «no results · 0 sessions». The
+// list fills what the «Sign-in» card leaves of the page (`fill`).
 import {
   ConfirmDialog,
   DataTable,
@@ -169,7 +167,7 @@ async function closeTheOthers(): Promise<void> {
         {{ $t('accounts.account.sessions.closeOthers') }}
       </ion-button>
     </template>
-    <!-- Divs, not the span DataTable clips with «…»: the browser and the last use may wrap (audit 2 R-25). -->
+    <!-- Divs, not the span DataTable clips with «…»: the browser and the last use may wrap. -->
     <template #browser="{ row }">
       <div
         class="cell-wrap"

@@ -1,7 +1,6 @@
-// The panel's configuration of the shared assistant (`options.ts`, plan 2026-10-30-asistente-saas §6): the same chat as
-// the Hub's, wired to the SaaS's own routes and operations (base/api.py), the account's words for its writes and its
-// screens, its dictation (ASSISTANT-F21), its reading aloud in a server voice (ASSISTANT-F22) and nobody upgrading (an
-// account has no plan for its 30 messages).
+// The panel's configuration of the shared assistant (`options.ts`): the same chat as the Hub's, wired to the SaaS's
+// own routes and operations (base/api.py), the account's words for its writes and its screens, its dictation, its
+// reading aloud in a server voice and nobody upgrading (an account has no plan for its 30 messages).
 // clock: data only — no code under test compares these dates with now.
 import { createShellSession, type SessionMe } from '@erplora/ui/shell';
 import { ApiError, type LiveClient } from '@erplora/ui/sdk';
@@ -92,7 +91,7 @@ describe('SAAS_ASSISTANT', () => {
     expect(SAAS_ASSISTANT.planUrl).toBeUndefined();
   });
 
-  it('under a spent allowance sends to the business, never to a plan nobody offers (ui#49)', () => {
+  it('under a spent allowance sends to the business, never to a plan nobody offers', () => {
     expect(SAAS_ASSISTANT.spentNoteKey).toBe('saas.assistant.errors.quotaSpentAccount');
     for (const catalogue of [en, es]) {
       const line = lookup(catalogue as unknown as Catalogue, SAAS_ASSISTANT.spentNoteKey!);
@@ -199,7 +198,7 @@ function panelPage(extra: Record<string, unknown> = {}): Document {
 
 const SPEECH = { text: 'Tienes dos negocios.', language: 'es' as const, voice: 'a-voice' };
 
-describe('speak (ASSISTANT-F22): the mp3 of an answer in a server voice, base.assistant.speak', () => {
+describe('speak: the mp3 of an answer in a server voice, base.assistant.speak', () => {
   it('posts the text, its language and its voice to the route with the CSRF token, and gives back the mp3', async () => {
     const mp3 = new Blob(['ID3 spoken words'], { type: 'audio/mpeg' });
     const fetch = vi.fn().mockResolvedValue(new Response(mp3, { status: 200, headers: { 'Content-Type': 'audio/mpeg' } }));

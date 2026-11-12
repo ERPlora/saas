@@ -1,16 +1,16 @@
 """The reads of the AI gateway, each an operation (``@operation``, ``kind="query"``) in a read-only transaction.
 
-- ``assistant.provider.connection`` (ASSISTANT-G24): what the client of a provider needs to list its models: its
+- ``assistant.provider.connection``: what the client of a provider needs to list its models: its
   API, its address and its usable key, the most recent active one that opens (a ``SecretStr``).
-- ``assistant.policy.show`` (G27, G60): which model answers and which one is the fallback, with the models that
+- ``assistant.policy.show``: which model answers and which one is the fallback, with the models that
   can be chosen (available, of an enabled provider).
-- ``assistant.route.resolve`` (G45, G39): the models a turn tries, in order (the one that answers, then its
+- ``assistant.route.resolve``: the models a turn tries, in order (the one that answers, then its
   fallback), each with its usable key; read again on every turn, so a change applies to the next one.
-- ``assistant.caller.resolve`` (G42): the business (or the demo) a call of the Hub names, if its people can use the
+- ``assistant.caller.resolve``: the business (or the demo) a call of the Hub names, if its people can use the
   assistant now.
-- ``assistant.usage.show`` (G05, G50, G51): what a business (or a demo) spent of its allowance: the plan's monthly
+- ``assistant.usage.show``: what a business (or a demo) spent of its allowance: the plan's monthly
   messages (a demo, its own few for its whole life).
-- ``assistant.docs.search`` (F27): the excerpts of ERPlora's documentation nearest to a how-to question, a tool of
+- ``assistant.docs.search``: the excerpts of ERPlora's documentation nearest to a how-to question, a tool of
   the panel's assistant for every account; ``assistant.docs.list``, the hashes ``index_docs`` already has.
 
 ``staff_with`` is the gate every operation of the staff passes: an active member of the staff holding the model
@@ -231,7 +231,7 @@ def route_resolve(ctx: OperationContext, data: RouteIn) -> dict:
     return {"candidates": candidates}
 
 
-# --- The Hub's turn (part 2): who calls and what it spent (ASSISTANT-G42, G05, G50, G51) -------------------------
+# --- The Hub's turn: who calls and what it spent -------------------------
 
 #: The states of a business whose people use the assistant: working, or with a payment pending (its grace days).
 WORKING = (Hub.Status.ACTIVE, Hub.Status.PAST_DUE)
@@ -381,7 +381,7 @@ def services_provider() -> dict | None:
     return {"provider": provider.slug, "base_url": provider.api_base, "api_key": api_key}
 
 
-# --- The documentation of the panel's assistant (ASSISTANT-F27) -------------------------------------------------
+# --- The documentation of the panel's assistant -------------------------------------------------
 
 
 @operation(
@@ -412,7 +412,7 @@ QUESTION_MAX = 500
 
 
 #: The manuals that are about what ERPlora sells (paying, the store, the prices on the web): where nothing is sold they
-#: are not read, nor the plans (PLAN-SAAS §3.6 point 6). What they say of invoices has its tools and its screen there.
+#: are not read, nor the plans. What they say of invoices has its tools and its screen there.
 SELLING_WORKBOOKS = tuple(
     f"{app}/{name}" for app in ("billing", "apps", "public") for name in ("WORKBOOK.md", "WORKBOOK.en.md")
 )

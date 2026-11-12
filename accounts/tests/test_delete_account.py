@@ -1,20 +1,14 @@
-"""ACCOUNTS-F27 · Account → Profile → «Delete account»: ``accounts.profile.delete`` (plan 2026-10-13, L3-A).
-
-Ported from ERPlora/saas ``apps/dashboard/profile/tests/test_delete_account_sole_owner.py`` (15) and the
-deletion cases of ``test_views.py``:
+"""Account → Profile → «Delete account»: ``accounts.profile.delete``.
 
 - While the account owns a business that is not deleted, it cannot go (409 ``accounts.owns_businesses``,
-  with the businesses): nobody would be left to run, pay or close it (saas#2567). Checked before the
+  with the businesses): nobody would be left to run, pay or close it. Checked before the
   password is asked: a refusal never tests one. The businesses come from ``hubs.business.list`` (called by
-  its name: accounts never imports hubs) — a business has one owner (PLAN-SAAS §3.6 point 8), so «co-owner»
-  cases of the original become «admin of someone else's business».
+  its name: accounts never imports hubs) — a business has one owner, so there is no «co-owner»: any other
+  member is an «admin of someone else's business».
 - Then a recent sign-in (allauth's reauthentication, ``ACCOUNT_REAUTHENTICATION_TIMEOUT``): an open session
   alone does not delete; ``POST /_allauth/browser/v1/auth/reauthenticate`` with the password lets it through.
 - Deleting ends every session of the SaaS, asks every business to end its sessions (``signals``) and
   deletes the account with what hangs from it.
-
-Dropped, with their reason: the template pages and the account surface's «deleted» page (the SPA's), the
-invoices' anonymisation (the invoices are ``billing``'s, L3-C).
 """
 
 import time
@@ -173,7 +167,7 @@ class TestPayersFirstHandThePaymentOver:
         )
 
     def test_a_payer_taken_out_of_the_business_is_refused_too(self, signed_in, ana, handed_over, make_owner):
-        """saas#2587 again: the new owner tries to take the old one out of the business while its card still pays
+        """The new owner tries to take the old one out of the business while its card still pays
         for it. ``hubs.member.remove`` refuses it (``hubs.member_pays``), so the payer stays a member and its account
         is still refused, or Stripe would keep charging a card nobody can stop and ``forget_departed_payer`` would
         hold the payer for ever. (Deleting the membership through the ORM skips that door: no operation does it.)"""
@@ -247,7 +241,7 @@ class TestARecentSignInIsNeeded:
         assert not _exists(ana)
 
     def test_guessing_the_password_with_an_open_session_is_throttled(self, signed_in_long_ago, ana, password):
-        """saas#2664 (old SAAS_DASHBOARD-F208): a session left open is no way to try passwords without end. «Confirm
+        """A session left open is no way to try passwords without end. «Confirm
         it's you» is allauth's reauthentication, 10 tries a minute per account; past them, not even the right one."""
         tries = [
             signed_in_long_ago.post(REAUTHENTICATE, {"password": f"guess-{n}"}, content_type="application/json", HTTP_HOST=HOST)
@@ -342,7 +336,7 @@ class TestWhatDeletingDoes:
         assert set(OutboxEvent.objects.values_list("actor", flat=True)) == {str(ana.pk)}
 
     def test_erploras_invoices_stay_with_their_recipient_as_issued(self, signed_in, ana, plans):  # noqa: F811
-        """ACCOUNTS-F27: the law keeps ERPlora's invoices (PLAN-SAAS §4; GDPR art. 17.3.b), so deleting the account
+        """The law keeps ERPlora's invoices (GDPR art. 17.3.b), so deleting the account
         deletes the person, not its invoices: each keeps who it was issued to, only its link to the account goes."""
         from billing.models import Invoice
         from billing.tests.test_invoice_queries import issue

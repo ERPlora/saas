@@ -1,15 +1,15 @@
-"""FLOW-F39 (the Hub's ``apps/flow/WORKBOOK.md``; old SAAS_ASSISTANT-F04) · ASSISTANT-F13: an automation's «Ask the
-assistant» step, asked by the Hub's worker with nobody in front, is a turn of the door that answers at once
-(``POST /internal/assistant/chat``): no door of its own, no field that tells it from a chat. So it spends the same
-monthly messages as the chat — its first turn one, the turns that answer its tools with their ``continuation`` none —,
-says whether a failure is worth trying again (``retriable``), is refused to a business that does not work, and keeps
-nothing of what was said (``test_privacy.py``: ``test_a_turn_at_once_with_a_tool_leaves_nothing_either``). Its
-signature is every door's (``test_internal_caller.py``, ``DOORS``).
+"""An automation's «Ask the assistant» step, asked by the Hub's worker with nobody in front, is a turn of the door that
+answers at once (``POST /internal/assistant/chat``): no door of its own, no field that tells it from a chat. So it
+spends the same monthly messages as the chat — its first turn one, the turns that answer its tools with their
+``continuation`` none —, says whether a failure is worth trying again (``retriable``), is refused to a business that
+does not work, and keeps nothing of what was said (``test_privacy.py``:
+``test_a_turn_at_once_with_a_tool_leaves_nothing_either``). Its signature is every door's (``test_internal_caller.py``,
+``DOORS``).
 
-What the door answers is kept: the Hub writes it in the run and in the log of its step. Brave's terms (§3(b)(i)) forbid
-keeping its results, so this door never searches the web, even if the model asks; the chat, whose answer nobody keeps
-on a server, still does. Each case runs next to the chat's, with the same key and the same model, so that a search
-that is not offered at all cannot pass for one that this door refuses."""
+What the door answers is kept: the Hub writes it in the run and in the log of its step. Section 3(b)(i) of Brave
+Search's terms forbids keeping its results, so this door never searches the web, even if the model asks; the chat, whose
+answer nobody keeps on a server, still does. Each case runs next to the chat's, with the same key and the same model, so
+that a search that is not offered at all cannot pass for one that this door refuses."""
 
 import json
 import time

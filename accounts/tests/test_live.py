@@ -1,7 +1,7 @@
-"""The live queries of accounts and the events that re-run them (plan 2026-10-13 §3, live data).
+"""The live queries of accounts and the events that re-run them.
 
-The scope is the account (PLAN-SAAS §6): a command notifies the channel of the account that ran it, so
-The Account page's queries re-run at once in every tab of that account.
+The scope is the account: a command notifies the channel of the account that ran it, so
+the Account page's queries re-run at once in every tab of that account.
 """
 
 from live.live_registry import live_registry

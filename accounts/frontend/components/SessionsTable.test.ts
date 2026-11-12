@@ -1,8 +1,8 @@
-// Account → Security, «Active sessions» (mockups `account.html` «security», README §3b): the live
-// `accounts.session.list` in a DataTable — device (this session first, marked), browser or app, IP address, last
-// use — with «Close session» on every row but this one (an app's asks first: it may be charging at a till, W-F5)
-// and «Close other sessions» in the toolbar, confirmed with how many and that the apps close too. A failed load (an
-// error, or no answer in time) is said with «Retry», never as «no results · 0 sessions» (audit 2026-10-14, R-04).
+// Account → Security, «Active sessions»: the live `accounts.session.list` in a DataTable — device (this session
+// first, marked), browser or app, IP address, last use — with «Close session» on every row but this one (an app's
+// asks first: it may be charging at a till) and «Close other sessions» in the toolbar, confirmed with how many and
+// that the apps close too. A failed load (an error, or no answer in time) is said with «Retry», never as «no
+// results · 0 sessions».
 // clock: data only — no code under test compares these dates with now.
 import { DataTable } from '@erplora/ui/components';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -179,8 +179,8 @@ describe('SessionsTable', () => {
   });
 });
 
-// flow: ninguno — FIX accounts (FIX-SAAS-SESSIONS-RESULT-TOO-BIG): with more sessions than one live result carries,
-// the list never loaded («The result exceeds 262144 bytes»). The server pages it now; this session stays first.
+// With more sessions than one live result carries (a result over 262144 bytes is refused), the list still loads:
+// the server pages it, and this session stays first.
 describe('SessionsTable: more sessions than a page', () => {
   const FIRST_PAGE = [THIS, ...Array.from({ length: 24 }, (_, n) => other(n))];
 

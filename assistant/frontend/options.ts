@@ -1,16 +1,16 @@
 // The panel's configuration of the shared assistant (`@erplora/ui/components`: the Hub's same chat, with erplora.com's
-// own tools; plan 2026-10-30-asistente-saas §6, PLAN-SAAS §23): `configureAssistant(panelAssistant(doc))` when the SPA
+// own tools): `configureAssistant(panelAssistant(doc))` when the SPA
 // boots (frontend/main.ts), and `SAAS_ASSISTANT` in the tests that mount its pieces.
 // - A turn goes to `base.assistant.turn`'s route (base/api.py); the account's allowance and the report of an answer
 //   through base's operations. Where nothing is sold (the installed app's account surface) the session says so
 //   (base/surface.py): the route carries no `?surface=`, which would stick to the session and hide the Store from the
 //   web too.
 // - Whoever may ask the assistant sees its button (`assistant.ask`, every account's); nobody upgrades a plan from it:
-//   the account's 30 messages a month are no plan's (ASSISTANT-F26). Its microphone goes to `base.assistant.transcribe`
-//   (ASSISTANT-F21): the Hub's same dictation, counted in the account's month. «Read aloud» reads in the device's voice;
+//   the account's 30 messages a month are no plan's. Its microphone goes to `base.assistant.transcribe`:
+//   the Hub's same dictation, counted in the account's month. «Read aloud» reads in the device's voice;
 //   only when erplora.com has a voice of its own (`spa-config.assistantSpeech`, base/spa.py) does the chat ask the
-//   server for each reading (`speak`: `base.assistant.speak`, ASSISTANT-F22), falling back to the device's when it
-//   fails. Without it (none today: PLAN-SAAS round 2026-11-04c) `speak` is absent: no trip to the server per reading
+//   server for each reading (`speak`: `base.assistant.speak`), falling back to the device's when it
+//   fails. Without it (none today) `speak` is absent: no trip to the server per reading
 //   (`panelAssistant`). No approvals: the panel has no
 //   manager's approval (the Hub's).
 // - The panel's words (`saas.assistant.*`, frontend/locale): the verb of each write the assistant may run, by its
@@ -100,7 +100,7 @@ function writeHeaders(doc: Document): Record<string, string> {
   return provider.apiHeaders('POST');
 }
 
-/** The mp3 of `input` read in its server voice (`base.assistant.speak`, ASSISTANT-F22). Its answer is the file itself,
+/** The mp3 of `input` read in its server voice (`base.assistant.speak`). Its answer is the file itself,
  *  not JSON, so it is the SDK's `fetchFile` with the write's method, body and headers (the session cookie, the CSRF
  *  token): anything but an mp3 rejects with the envelope's `ApiError`, and no network (or an aborted request) with the
  *  SDK's `network_error`. The chat then reads the answer in the device's voice, unless it stopped the reading. */

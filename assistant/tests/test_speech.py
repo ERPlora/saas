@@ -1,17 +1,15 @@
-"""ASSISTANT-F21 (ASSISTANT-G56, G12, G20) · Transcribe a dictation, and ASSISTANT-F22 (G57) · read an answer aloud.
+"""Transcribe a dictation, and read an answer aloud.
 
 The Hub sends the audio of the person's dictation (``POST /internal/speech/transcribe``: base64, its type and,
 optionally, its language) and gets the text, which it leaves in the assistant's box for the person to check. It goes to
-the services' provider (OpenAI's API), with its key kept in the admin and rotatable: the old product took the dictation
-only with the session of a person with an erplora.com account, so whoever entered with a PIN could not dictate
-(SAAS_ASSISTANT-F19, «parcial»).
+the services' provider (OpenAI's API), with its key kept in the admin and rotatable. The door is signed by the Hub, not
+a person's session, so whoever entered the Hub with a PIN can dictate too.
 
-No engine reads an answer aloud (PLAN-SAAS round 2026-11-04c): ``POST /internal/speech/synthesize`` answers 503
+No engine reads an answer aloud: ``POST /internal/speech/synthesize`` answers 503
 ``assistant.speech_unavailable`` and the caller reads with the device's voice. What the door keeps for an engine (the
 text and its voice to an mp3, the cut, the count, the failures) is held here with a stand-in. Neither door spends
-messages; each has its own budget per business, spent after the signature (saas#2531), and what is dictated or read
-never reaches a log (the old one kept its first 50 characters). Cases of the old ``speech/tests/test_synthesize.py``;
-OpenAI is the local fake.
+messages; each has its own budget per business, spent after the signature, and what is dictated or read
+never reaches a log. OpenAI is the local fake.
 """
 
 import base64
@@ -181,7 +179,7 @@ class TestWithoutAnEngine:
 
 
 class TestTheContractOfTheDoor:
-    """What an engine finds when it comes (PLAN-SAAS §35): the stand-in in its place."""
+    """What an engine finds when it comes: the stand-in in its place."""
 
     def test_the_text_comes_back_spoken_as_an_mp3(self, client, internal, business, speech_engine):
         response = door(client, SYNTHESIZE, reading(business))
@@ -202,7 +200,7 @@ class TestTheContractOfTheDoor:
         assert speech_engine.calls[0][0] == "a" * media.MAX_SPEECH_CHARS
 
     def test_at_most_the_first_4096_characters_are_read(self, client, internal, business, speech_engine):
-        """The number the manual gives (ASSISTANT-F22): the test above follows the constant, this one pins it."""
+        """The number the manual gives: the test above follows the constant, this one pins it."""
         door(client, SYNTHESIZE, reading(business, text="a" * 5000))
 
         assert len(speech_engine.calls[0][0]) == 4096

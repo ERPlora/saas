@@ -5,7 +5,7 @@ import type { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
   {
-    // The sign-in lives in the launcher, `/launch` (Ioan, 2026-10-15), where the shell's auth gate sends a
+    // The sign-in lives in the launcher, `/launch`, where the shell's auth gate sends a
     // visitor without a session (`main.ts`): this old address (links, bookmarks) only leads there, keeping
     // `next` and the notice. Django answers a full load of it the same way (`config/urls.py`).
     path: '/login',
@@ -46,7 +46,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     // The 2FA settings (authenticator app, recovery codes), in the auth frame as the launcher: not the panel's (no
-    // menu), so at the root with the sign-in's pages (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX).
+    // menu), so at the root with the sign-in's pages.
     path: '/2fa',
     component: () => import('./pages/TwoFactorSettingsPage.vue'),
     meta: { auth: true, chrome: false },
@@ -58,7 +58,7 @@ const routes: RouteRecordRaw[] = [
     meta: { auth: true, chrome: false },
   },
   {
-    // Account (round 17, PLAN-SAAS §3.6): the user menu and the side menu land on its Profile.
+    // Account: the user menu and the side menu land on its Profile.
     path: '/dashboard/account',
     redirect: '/dashboard/account/profile',
     meta: { auth: true },
@@ -72,14 +72,14 @@ const routes: RouteRecordRaw[] = [
     meta: { auth: true },
   },
   {
-    // «Report a problem» of the user menu (ACCOUNTS-F38): the account, its businesses and the browser go with it.
+    // «Report a problem» of the user menu: the account, its businesses and the browser go with it.
     path: '/dashboard/report-a-problem',
     component: () => import('./pages/ReportProblemPage.vue'),
     meta: { auth: true },
   },
   {
-    // Where the Hub's «Sign out» lands on a device without the PIN pad (BASE-F61): erplora.com asks before closing its
-    // own session (ACCOUNTS-F09), in the auth card as the old SaaS's allauth page did. Open to a visitor, whom it sends
+    // Where the Hub's «Sign out» lands on a device without the PIN pad: erplora.com asks before closing its
+    // own session, in the auth card. Open to a visitor, whom it sends
     // to the launcher: there is nothing to close. Not under `/accounts/`, which is Django's (allauth's pages are gone).
     path: '/logout',
     component: () => import('./pages/SignOutPage.vue'),

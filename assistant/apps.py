@@ -1,11 +1,9 @@
-"""The AI gateway of erplora.com (PLAN-SAAS §1.1, round 2026-10-15b; round 2026-10-22b, PLAN §30: every request
-of AI goes through the SaaS with the same provider key; README.md).
+"""The AI gateway of erplora.com: every request of AI goes through the SaaS with the same provider key.
 
-A LiveAppConfig of kind "platform" (round 15, PLAN §20): always on, at the project root next to ``base/``, without
+A LiveAppConfig of kind "platform": always on, at the project root next to ``base/``, without
 module fields. The providers ERPlora pays (OpenAI, Anthropic, Gemini, DeepSeek), their keys kept encrypted, their
 models, which model answers, the trial of a model before it answers, and the clients that speak each provider's API.
-The Hub's turn and its voice (``/internal/assistant/*`` and ``/internal/speech/*``) come with part 2 of the port.
-The staff configure it in the admin; the panel's own assistant (PLAN-SAAS §23, ``base.assistant``) is every
+The staff configure it in the admin; the panel's own assistant (``base.assistant``) is every
 account's, with its own monthly allowance.
 """
 
@@ -29,5 +27,5 @@ class AssistantConfig(LiveAppConfig):
         super().ready()
         from assistant import auditlog
 
-        # The audit trail of the providers, their keys, their models and the model that answers (ASSISTANT-F08).
+        # The audit trail of the providers, their keys, their models and the model that answers.
         auditlog.register()

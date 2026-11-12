@@ -1,4 +1,4 @@
-"""``/hub-login/`` and ``/launch/``: the jump from the SaaS to a hub (PLAN-SAAS §3.1 steps 4-5).
+"""``/hub-login/`` and ``/launch/``: the jump from the SaaS to a hub.
 
 The code travels in an auto-submitted POST form to the hub's callback (OIDC
 ``response_mode=form_post``), never in a URL. Every other answer is a Vue page of the SPA: the
@@ -6,7 +6,7 @@ launcher at ``/launch`` and the errors at ``/login/error?code=…``.
 
 The Hub binds every jump to the browser that started it: it sends ``state`` in the query and the
 form hands it back verbatim next to ``code`` (login CSRF). ``audience=hub-admin`` is the staff's jump
-to the Hub admin at ``hubs.erplora.com``, which also starts at the Hub (ronda 13, PLAN §18).
+to the Hub admin at ``hubs.erplora.com``, which also starts at the Hub.
 """
 
 import re
@@ -156,7 +156,7 @@ class TestHubLogin:
     def test_a_reserved_name_is_no_hub_even_with_a_membership_row(
         self, client, member, hub
     ):
-        # `hubs` is the Hub's staff admin host (ronda 13, PLAN §18) and `hub` stays reserved: never
+        # `hubs` is the Hub's staff admin host and `hub` stays reserved: never
         # a customer's hub.
         enter(member, hub, "hub_owner")
 
@@ -276,7 +276,7 @@ class TestTheStateOfTheJump:
 
 
 class TestTheJumpToTheHubAdmin:
-    """``audience=hub-admin``: the staff's «Open in the Hub admin» (ronda 13, PLAN §18), started at
+    """``audience=hub-admin``: the staff's «Open in the Hub admin», started at
     ``hubs.erplora.com/auth/login``, which sends the browser here with its ``state``. A one-time
     ``hub-admin`` code is auto-posted to ``HUB_ADMIN_CALLBACK_URL`` with ``next`` and ``state``."""
 
@@ -390,8 +390,7 @@ class TestTheJumpToTheHubAdmin:
 
 
 class TestTheBrakeOfTheJump:
-    """ACCOUNTS-G98 (ACCOUNTS-F28; the brake ACCOUNTS-F11 left to this part): an account mints at most
-    ``HUB_LOGIN_RATELIMIT`` (20 in 5 minutes, the old SaaS's passes) jumps; past it, the error page says
+    """An account mints at most ``HUB_LOGIN_RATELIMIT`` (20 in 5 minutes) jumps; past it, the error page says
     to wait, and no code is minted. Each account has its own budget."""
 
     def _jump(self, client):

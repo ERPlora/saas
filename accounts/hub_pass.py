@@ -1,8 +1,7 @@
-"""The way back from a business to erplora.com: ``/hub-pass/?pass=<pass>`` (ACCOUNTS-F29, the Hub's BASE-F11;
-saas#190).
+"""The way back from a business to erplora.com: ``/hub-pass/?pass=<pass>``.
 
 The jump the other way round (``handoff.hub_login``) mints a one-time code on the SaaS. This one cannot: the Hub never
-asks the SaaS anything per request (PLAN-SAAS §2), so it signs the pass itself, with the secret of ``/internal``
+asks the SaaS anything per request, so it signs the pass itself, with the secret of ``/internal``
 (``accounts.signing``), and the SaaS only checks it. The pass is what the Hub's «Upgrade plan» and «erplora.com» open
 in the browser (in the installed app, the device's own): it lands on the plan or on the business already signed in.
 

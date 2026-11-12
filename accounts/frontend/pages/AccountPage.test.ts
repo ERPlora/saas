@@ -1,4 +1,4 @@
-// Account (`/dashboard/account/:tab`, round 17: PLAN-SAAS §3.6 point 1; mockups `account.html`): Profile · Security ·
+// Account (`/dashboard/account/:tab`): Profile · Security ·
 // Preferences · API keys in the footer tabbar, each at its own address, the top bar naming the section. Everything
 // here shows on every surface (nothing is sold here); the account's bills are Billing, a section of the menu.
 import { AppPage } from '@erplora/ui/shell';
@@ -63,7 +63,7 @@ describe('AccountPage', () => {
     ['api-keys', 'detail-fill', true],
     ['profile', 'detail', false],
     ['preferences', 'detail', false],
-  ] as const)('%s is `%s`: a list fills the space between the topbar and the tabbar (Ioan, 2026-10-14)', async (tab, layout, fills) => {
+  ] as const)('%s is `%s`: a list fills the space between the topbar and the tabbar', async (tab, layout, fills) => {
     const s = await open(tab);
     expect(s.wrapper.findComponent(AppPage).props('contentLayout')).toBe(layout);
     expect(s.wrapper.get('.account-stack').classes('panel-fill')).toBe(fills);

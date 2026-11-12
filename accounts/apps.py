@@ -3,10 +3,9 @@ from live.meta import LiveAppConfig
 
 
 class AccountsConfig(LiveAppConfig):
-    """Accounts, sign-in, the jump to a hub and the Account page (profile, security, preferences, API keys). A
-    platform app (``kind = "platform"``): always on, at the project root next to ``base/`` (round 15, PLAN
-    §20.2); the API mounts its router (``live.ninja.mount_app_routers``). No menu of its own (the panel's
-    is ``base/navigation.py``).
+    """Accounts, sign-in, the jump to a hub and the Account page (profile, security, preferences, API keys). A platform
+    app (``kind = "platform"``): always on, at the project root next to ``base/``; the API mounts its router
+    (``live.ninja.mount_app_routers``). No menu of its own (the panel's is ``base/navigation.py``).
 
     Every signed-in account (role ``account``, ``base.operations``) reads (``accounts.view``) and changes
     (``accounts.manage``) its own account; the operations only ever touch the caller's."""
@@ -38,15 +37,15 @@ class AccountsConfig(LiveAppConfig):
         signed_in.disconnect(receiver=usersessions.on_user_logged_in)
         signed_in.connect(record_sign_in, dispatch_uid="accounts.record_sign_in")
 
-        # A password set from the key mailed by «Forgot your password?» proves the mailbox (L1-A2).
+        # A password set from the key mailed by «Forgot your password?» proves the mailbox.
         password_reset.connect(prove_mailbox_by_reset, dispatch_uid="accounts.prove_mailbox_by_reset")
-        # A new password ends the account's sessions in its businesses too (PLAN-SAAS §2.1; L3-A).
+        # A new password ends the account's sessions in its businesses too.
         for name, signal in (("changed", password_changed), ("set", password_set), ("reset", password_reset)):
             signal.connect(password_changed_ends_sessions, dispatch_uid=f"accounts.ends_sessions.password_{name}")
-        # Creating the account and signing in accept today's terms and privacy policy (ACCOUNTS-G119).
+        # Creating the account and signing in accept today's terms and privacy policy.
         user_signed_up.connect(accept_legal_texts, dispatch_uid="accounts.accept_legal_texts.signed_up")
         user_logged_in.connect(accept_legal_texts, dispatch_uid="accounts.accept_legal_texts.logged_in")
-        # Who changed an account, its access to a business, its keys and its sessions (ACCOUNTS-F36).
+        # Who changed an account, its access to a business, its keys and its sessions.
         from accounts import auditlog
 
         auditlog.register()

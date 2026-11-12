@@ -1,8 +1,7 @@
-"""ACCOUNTS-F21 · The account's photo: ``accounts.photos`` (what an upload may be, and what is kept of it) and the operations
-``accounts.photo.upload`` and ``accounts.photo.remove`` (plan 2026-10-13, L3-A; Account → Profile, «Change photo»).
+"""The account's photo: ``accounts.photos`` (what an upload may be, and what is kept of it) and the operations
+``accounts.photo.upload`` and ``accounts.photo.remove`` (Account → Profile, «Change photo»).
 
-Ported from ERPlora/saas ``apps/dashboard/profile`` (``TestAvatarViews`` of ``test_views.py``), with what the old
-upload did not check: only JPEG, PNG or WebP, recognised by their bytes (never by the name or the type the
+Only JPEG, PNG or WebP, recognised by their bytes (never by the name or the type the
 browser claims); at most ``MAX_PHOTO_BYTES`` and ``MAX_SIDE`` pixels; no animation; and nothing of what a phone
 writes inside a photo (the place it was taken, the camera, comments) is kept, except a JPEG's orientation, so it
 does not turn sideways. Kept in the database (no media storage in the SaaS) and shown as a data URL.
