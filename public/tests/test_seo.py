@@ -1,14 +1,11 @@
-"""``/robots.txt`` and ``/llms.txt`` (spec §8.2), ported from ERPlora/saas ``landing/views.py`` and
-its ``test_ai_crawlers.py`` and ``test_llms_txt.py`` (origin/develop c5ca8ca).
+"""``/robots.txt`` and ``/llms.txt``.
 
-robots.txt: the answer engines reach the public web and nothing else. A robots.txt client obeys
-exactly ONE group, the most specific that matches its token, so a named group REPLACES ``*``: each
-named group repeats every private path, asserted agent by agent and by a real parser.
+robots.txt: the answer engines reach the public web and nothing else. A robots.txt client obeys exactly ONE group,
+the most specific that matches its token, so a named group REPLACES ``*``: each named group repeats every private
+path, asserted agent by agent and by a real parser.
 
-llms.txt: what ERPlora is, then the pages that answer what buyers ask. Adapted: it links only pages
-that exist (each batch of the port adds its own to ``LLMS_SECTIONS``) and has no apps section until
-the store reads the catalogue (L6; spec §5.3 omits the block with no listed app). The original's
-links to ``/solutions/`` are gone with that page (spec §8.3); ``/compliance/`` is back (PUBLIC-F09).
+llms.txt: what ERPlora is, then the pages that answer what buyers ask. It links only pages that exist
+(``LLMS_SECTIONS``) and has no apps section without listed apps.
 """
 
 import re
@@ -164,7 +161,7 @@ def test_llms_never_mentions_the_private_half(llms, prefix):
 
 
 def test_llms_has_no_apps_section_without_the_catalogue(llms):
-    """Spec §5.3: without listed apps the block is omitted (the store brings it, L6)."""
+    """Without listed apps the block is omitted; the store's listed apps bring it."""
     assert "## Apps" not in llms.content.decode()
 
 
@@ -204,7 +201,7 @@ def test_every_linked_page_exists(client, llms):
         ), link
 
 
-# Outside prod (pre.erplora.com, plan 2026-10-14-entorno-pre) nothing is crawled: pre is the team's, and
+# Outside prod (pre.erplora.com) nothing is crawled: pre is the team's, and
 # a copy of the public web in an index would compete with erplora.com.
 
 

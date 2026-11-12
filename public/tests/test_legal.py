@@ -1,21 +1,11 @@
-"""The legal pages of the public web: ``/legal/privacy/``, ``/legal/cookies/``,
-``/legal/legal-notice/`` and ``/legal/terms/`` (spec §8.1; the terms read ``Plan`` and came with L7,
-whose cases are at the end of this file).
+"""The legal pages of the public web: ``/legal/privacy/``, ``/legal/cookies/``, ``/legal/legal-notice/`` and
+``/legal/terms/`` (the terms read ``Plan``; their cases are at the end of this file). The declaración responsable has
+its own file, ``test_declaracion.py``.
 
-Ported from ERPlora/saas (origin/develop c5ca8ca): ``apps/public/legal/tests/test_cookies_es.py``
-(2), ``test_legal_notice.py`` (2) and ``test_privacy_es.py`` (10); the legal cases of
-``tests/unit/test_public_pages.py`` (the page loads, mentions privacy, resolves, and the footer links
-it); and the legal half of ``apps/public/landing/tests/test_ui_stack_contract.py`` (the shared
-reading pattern), with the ``ep-*`` classes that replace OutfitKit's ``ok-*`` (PLAN §16.11). The
-declaración responsable has its own file, ``test_declaracion.py``.
-
-New here: the cookie policy names the cookies this site really sets (the old page named a
-``django_language`` cookie nobody set: the language cookie is ``_lang``), the footer, the sitemap and
-``llms.txt`` link the pages, no internal link of a legal page is dead (the Terms of Use are only
-linked once their page exists), every message of the legal templates has its Spanish entry in
-``public``'s compiled catalog (UI in ``en`` + ``es``, plan §3.j), and the privacy policy names AWS
-as the host instead of Hetzner (Ioan, 2026-10-13), in its Ireland region, eu-west-1, the one of SES
-too (Ioan, 2026-10-14: the ERP serves all of Europe, not the Spain region it named before).
+The cookie policy names the cookies this site really sets (the language cookie is ``_lang``); the footer, the sitemap
+and ``llms.txt`` link the pages; no internal link of a legal page is dead; every message of the legal templates has
+its Spanish entry in ``public``'s compiled catalog; and the privacy policy names AWS as the host, in its Ireland
+region, eu-west-1, the one of SES too.
 """
 
 import ast
@@ -45,7 +35,7 @@ PAGES = {
     "public:privacy": "/legal/privacy/",
     "public:cookies": "/legal/cookies/",
     "public:legal_notice": "/legal/legal-notice/",
-    # L7: it reads Plan (the trial of §4).
+    # It reads Plan (the trial of section 4).
     "public:terms": "/legal/terms/",
 }
 
@@ -84,8 +74,7 @@ def test_a_legal_page_only_answers_safe_methods(client, path):
 @pytest.mark.django_db
 @pytest.mark.parametrize("path", PAGES.values())
 def test_no_internal_link_of_a_legal_page_is_dead(client, path):
-    """A link from a legal page to a 404 is a broken promise (the Terms of Use, named on the
-    privacy page, were linked only once ``/legal/terms/`` existed, L7)."""
+    """A link from a legal page to a 404 is a broken promise."""
     html = client.get(path).content.decode()
     links = {
         href
@@ -98,7 +87,7 @@ def test_no_internal_link_of_a_legal_page_is_dead(client, path):
         assert client.get(href, follow=True).status_code == 200, f"{path} links {href}"
 
 
-# --- Cookie policy (test_cookies_es.py) --------------------------------------------------------
+# --- Cookie policy -----------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -113,7 +102,7 @@ def test_cookies_contains_spanish_marker(client):
 
 @pytest.mark.django_db
 def test_the_cookie_policy_names_the_cookies_this_site_really_sets(client):
-    """The old page named ``django_language``; the language cookie is ``_lang`` (plan §3.a)."""
+    """The language cookie is ``_lang``, never ``django_language``."""
     html = client.get("/legal/cookies/").content.decode()
 
     for name in (
@@ -136,7 +125,7 @@ def test_the_cookie_policy_links_the_privacy_policy_and_the_aepd_guide(client):
     assert "https://www.aepd.es" in html
 
 
-# --- The banner the policy describes is the one the site shows (PUBLIC-F19) --------------------
+# --- The banner the policy describes is the one the site shows ---------------------------------
 
 COOKIE_POLICY = "/legal/cookies/"
 TRACKERS = {"GA_MEASUREMENT_ID": "G-TEST123", "CLARITY_PROJECT_ID": "xhn93kfr5b"}
@@ -159,8 +148,8 @@ def no_tracker(settings):
 
 @pytest.mark.django_db
 def test_without_a_tracker_the_cookie_policy_promises_no_banner(client, no_tracker):
-    """With no tracker configured (production today) no page shows the banner (PUBLIC-G24): the policy
-    says so, instead of promising a banner on the first visit, as it did until 2026-11-11."""
+    """With no tracker configured (production today) no page shows the banner: the policy says so, instead of
+    promising a banner on the first visit."""
     html = client.get(COOKIE_POLICY).content.decode()
     kinds, managing = policy_section(html, 2), policy_section(html, 3)
 
@@ -211,7 +200,7 @@ def test_the_cookie_policy_says_when_the_banner_shows_in_spanish(
     assert "Al entrar por primera vez" not in managing
 
 
-# --- Legal notice (test_legal_notice.py)-------------------------------------------------------
+# --- Legal notice -----------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -234,7 +223,7 @@ def test_legal_notice_gives_the_legal_contact_address(client):
     assert 'href="mailto:legal@erplora.com"' in html
 
 
-# --- Privacy policy (test_privacy_es.py + test_public_pages.py) --------------------------------
+# --- Privacy policy ----------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -254,7 +243,7 @@ def test_privacy_contains_spanish_marker(client):
 
 @pytest.mark.django_db
 def test_privacy_says_what_happens_to_the_payer_when_the_account_is_deleted(client):
-    """ACCOUNTS-F27 (GDPR art. 17 and 17(3)(b)): the payer details and the Stripe customer go with the account;
+    """GDPR art. 17 and 17(3)(b): the payer details and the Stripe customer go with the account;
     an unpaid ERPlora invoice holds them 90 days at most, and the issued invoices keep their own copy."""
     english = client.get("/legal/privacy/").content.decode()
     html = spanish(client, "/legal/privacy/")
@@ -276,7 +265,7 @@ def test_privacy_sections_are_numbered_consecutively(client):
 
 @pytest.mark.django_db
 def test_privacy_covers_updating_the_software_as_a_security_measure(client):
-    """ADR-0269: we modify the system that processes our customer's customers' data, unilaterally.
+    """We modify the system that processes our customer's customers' data, unilaterally.
 
     Art. 28.3.a GDPR says a processor acts on documented instructions. If the policy never says
     that keeping the software current is part of the instructed service — and one of the art. 32
@@ -308,7 +297,7 @@ def test_privacy_declares_the_eu_resident_llm_provider_actually_in_use(client):
 
 @pytest.mark.django_db
 def test_privacy_states_assistant_data_does_not_reach_china(client):
-    """China has no adequacy decision (ADR-0152), so silence here reads as a Chapter V transfer."""
+    """China has no adequacy decision, so silence here reads as a Chapter V transfer."""
     html = spanish(client, "/legal/privacy/")
 
     assert "China" in html
@@ -323,7 +312,7 @@ def test_privacy_does_not_name_llm_providers_we_never_engaged(client):
 
 @pytest.mark.django_db
 def test_privacy_describes_what_the_assistant_actually_sends_to_the_model(client):
-    """ADR-0149: no copy of the hub database, no stored conversation, only each query's result."""
+    """No copy of the hub database, no stored conversation, only each query's result."""
     html = spanish(client, "/legal/privacy/").lower()
 
     assert "no se replica" in html or "no se copia" in html
@@ -346,7 +335,7 @@ def test_privacy_names_the_terms_of_use_and_links_the_cookie_policy(client):
     assert f'href="{reverse("public:cookies")}"' in html
 
 
-# --- Where the data is hosted (Ioan, 2026-10-13: the servers are on AWS, not on Hetzner) ---------
+# --- Where the data is hosted: on AWS, not on Hetzner --------------------------------------------
 
 
 def list_items_naming(html: str, name: str) -> list[str]:
@@ -362,8 +351,8 @@ def list_items_naming(html: str, name: str) -> list[str]:
     "provider",
     [
         "Hetzner",  # the old hosting, in Germany
-        "Cloudflare",  # out since ADR-0499 (infra#253); AWS WAF + ALB + Route 53 replace it
-        # No voice of the server: reading aloud is the device's, and no text goes to Azure AI Speech (it left, saas#242).
+        "Cloudflare",  # replaced by AWS WAF + ALB + Route 53
+        # No voice of the server: reading aloud is the device's, and no text goes to Azure AI Speech.
         "Microsoft Ireland Operations",
         "Azure",
     ],
@@ -377,10 +366,9 @@ def test_no_legal_page_names_a_provider_we_no_longer_use(client, path, provider,
 
 @pytest.mark.django_db
 def test_privacy_names_aws_in_its_ireland_region_as_the_hosting_processor(client):
-    """Hosting, database, backups, storage and the network edge (DNS, DDoS protection) are AWS's,
-    Ireland region ``eu-west-1`` (Ioan, 2026-10-14: the ERP serves all of Europe; PLAN-AWS), never
-    the Spain region (``eu-south-2``, Aragón) the page named before. AWS is no longer an inactive
-    fallback. «España» stays in the page: it is the company's address, not where the data lives."""
+    """Hosting, database, backups, storage and the network edge (DNS, DDoS protection) are AWS's, Ireland region
+    ``eu-west-1``, since the ERP serves all of Europe: never the Spain region (``eu-south-2``, Aragón), and never as
+    an inactive fallback. «España» stays in the page: it is the company's address, not where the data lives."""
     english = client.get("/legal/privacy/").content.decode()
     es = spanish(client, "/legal/privacy/")
     [hosting] = list_items_naming(english, "Data hosted in")
@@ -417,7 +405,7 @@ def test_privacy_names_amazon_ses_in_ireland_for_transactional_email(client):
 
 @pytest.mark.django_db
 def test_privacy_keeps_the_ai_assistant_in_frankfurt(client):
-    """Only the hosting moved: the AI assistant stays in Alibaba Cloud's Frankfurt region."""
+    """The AI assistant stays in Alibaba Cloud's Frankfurt region."""
     [ai] = list_items_naming(
         client.get("/legal/privacy/").content.decode(), "Model Studio"
     )
@@ -427,13 +415,12 @@ def test_privacy_keeps_the_ai_assistant_in_frankfurt(client):
     assert "Fráncfort" in ia
 
 
-# --- The assistant's voice and search fingerprints (FIX-SAAS-PRIVACY-POLICY-OMITS-DICTATION-AUDIO-TO-TRANSCRIPTION) 
+# --- The assistant's voice and search fingerprints ----------------------------------------------------------------
 # ``assistant/media.py`` sends two services to the provider of ``ASSISTANT_SERVICE_PROVIDER`` (OpenAI's API at
 # ``api.openai.com`` by default), none of them the backup model: the transcription of a dictation (``whisper-1``, the
 # audio of the recording) and the fingerprints of the Hub's index (``text-embedding-3-small``). Reading an answer aloud
-# is the device's own voice (the browser's or the system's): erplora.com has no voice of its own (no engine behind its
-# door, saas#242), so no processor receives that text. Google Play checks the app's
-# «Data safety › Audio» against this page (app#4).
+# is the device's own voice (the browser's or the system's): erplora.com has no voice of its own, so no processor
+# receives that text. Google Play checks the app's «Data safety › Audio» against this page.
 
 VOICE_PROVIDER = "OpenAI Ireland Ltd. ("
 
@@ -573,7 +560,7 @@ def test_privacy_counts_the_voice_provider_among_the_transfers_outside_the_eea(c
     assert voice in transfers
 
 
-# --- The assistant's web search: Brave Search (ASSISTANT-F14, saas#277) ----------------------------------------------
+# --- The assistant's web search: Brave Search ------------------------------------------------------------------------
 #
 # Brave leaves the queries out of its data processing addendum and keeps them up to 90 days (its privacy notice, dated
 # 2026-11-03), so it is named as what it is: a recipient of its own, not one of the art. 28 processors of section 5, and
@@ -699,7 +686,7 @@ def test_privacy_rests_its_no_training_promise_on_the_terms_only_for_the_process
 @pytest.mark.django_db
 @pytest.mark.parametrize("language", ["en", "es"])
 def test_privacy_tells_the_search_fingerprints_from_the_web_search(client, language):
-    """«Search services» was OpenAI's only while the assistant had no web search."""
+    """«Search services» alone no longer names OpenAI's fingerprints, now that the assistant also searches the web."""
     assert AMBIGUOUS_SEARCH_SERVICES[language] not in " ".join(privacy(client, language).split())
 
 
@@ -717,7 +704,7 @@ def test_the_privacy_date_moved_with_the_last_change(client):
     assert "3 de noviembre de 2026" not in privacy(client, "es")
 
 
-# The dictation of the account's panel reaches the same provider without a hub in the way (ASSISTANT-F21, saas#175).
+# The dictation of the account's panel reaches the same provider without a hub in the way.
 PANEL_DICTATION = {
     "en": {
         "voice": "Used ONLY when someone in your hub, or in the assistant of your account's panel on erplora.com, uses one of these functions",
@@ -747,7 +734,7 @@ def test_privacy_counts_the_dictation_of_the_account_panel(client, language, mar
 # ``base.view_home`` sees its button (hub ``base/frontend/components/TopbarChrome.vue``), it is used when someone sends
 # it a message or dictates, and the plan's monthly messages (``Plan.assistant_messages_per_month``, 0 = none;
 # ``assistant/queries.py`` ``monthly_limit``) bound the questions that reach the model. The account's panel on
-# erplora.com has an assistant of its own (ASSISTANT-F25), with the same chat and the same dictation (ASSISTANT-F21).
+# erplora.com has an assistant of its own, with the same chat and the same dictation.
 
 ASSISTANT_CONDITION = {
     "en": {
@@ -783,7 +770,7 @@ def test_privacy_promises_no_switch_nor_consent_the_hub_lacks_and_says_when_the_
     assert expected["basis"] in model
 
 
-# --- The shared reading pattern (test_ui_stack_contract.py) ------------------------------------
+# --- The shared reading pattern ----------------------------------------------------------------
 
 
 #: What a page with a date extends: the reading pattern and where the date goes.
@@ -833,8 +820,8 @@ def footer_legal_links(html: str) -> list[str]:
 
 @pytest.mark.django_db
 def test_the_footer_links_the_legal_pages_in_the_old_order(client):
-    """Legal Notice, Privacy, (Terms, L7,) Cookies: the old footer's bottom bar. The declaración
-    responsable joins it: art. 13.2 RRSIF wants it at hand when buying, before any account."""
+    """Legal Notice, Privacy, Terms, Cookies, as in the footer's bottom bar. The declaración responsable joins it:
+    art. 13.2 RRSIF wants it at hand when buying, before any account."""
     links = footer_legal_links(client.get("/legal/privacy/").content.decode())
 
     assert links == [
@@ -860,8 +847,8 @@ def test_the_footer_legal_links_are_translated(client):
 @pytest.mark.parametrize(
     ("name", "priority"),
     [
-        # The old sitemap listed privacy (and terms) at 0.4; the others join below it, save the
-        # declaración responsable, which customers, resellers and the AEAT look up by name.
+        # Privacy and terms at 0.4 and the others below them, save the declaración responsable, which customers,
+        # resellers and the AEAT look up by name.
         ("public:privacy", 0.4),
         ("public:terms", 0.4),
         ("public:declaracion_responsable", 0.4),
@@ -934,21 +921,13 @@ def test_every_message_of_a_legal_template_has_its_spanish_entry(template):
     )
 
 
-# --- The Terms of Use (L7) -----------------------------------------------------------------------
+# --- The Terms of Use ----------------------------------------------------------------------------
 #
-# Port of apps/public/legal/tests/ (origin/develop c5ca8ca): test_terms_es.py (15),
-# test_terms_exit_package.py (7), test_terms_trial_period.py (8) and test_terms_uk_business_only.py
-# (7), plus the terms' reading pattern of test_ui_stack_contract.py. What changed, and why:
-#
-# * the trial of §4 is read from the plans on sale through hubs.plan.list (plan §3.m), not from
-#   Plan.objects; the tests still create the rows with the ORM of hubs;
-# * the suspension clock of §3 is public.legal.SUSPENDED_HUB_DELETE_DAYS: the task that deletes a
-#   suspended hub lives in the Hub, so the number the terms print is pinned here;
-# * the two marketplace sentences (§1 «modules available for purchase from a marketplace», §7.3
-#   «Modules installed from the marketplace…») now speak of our own apps (spec §8.3, decision 17), and
-#   the «Last updated» date moved with that change;
-# * the UK example number is checked against HMRC's check digit (the «97/55» rule): the checkout's
-#   validator belongs to the panel's billing (block 4) and does not exist in saas-next yet.
+# * The trial of section 4 is read from the plans on sale through hubs.plan.list; the tests still create the rows with
+#   the ORM of hubs.
+# * The suspension clock of section 3 is public.legal.SUSPENDED_HUB_DELETE_DAYS: the task that deletes a suspended hub
+#   lives in the Hub, so the number the terms print is pinned here.
+# * The UK example number is checked against HMRC's check digit (the «97/55» rule).
 
 TERMS = "/legal/terms/"
 
@@ -975,9 +954,9 @@ def make_plan(slug: str, trial_days: int, **fields):
 
 
 def trial_section(client, language: str | None = None) -> str:
-    """§4 of the terms, so a «15 days» elsewhere on the page cannot make a test pass."""
+    """Section 4 of the terms, so a «15 days» elsewhere on the page cannot make a test pass."""
     match = re.search(r"<h2>\s*4\..*?<h2>\s*5\.", terms_html(client, language), re.S)
-    assert match, "the terms lost their §4 / §5 headings"
+    assert match, "the terms lost the headings of their sections 4 and 5"
     return match.group(0)
 
 
@@ -985,10 +964,11 @@ def trial_clause(section: str) -> str:
     return section.split("<li>", 1)[1].split("</li>", 1)[0]
 
 
-# test_terms_es.py
+# The clauses
 
 
-#: What Brave's terms, §4(c), ask each end user to agree to: obligations substantially like those of §3(b).
+#: What section 4(c) of Brave's terms asks each end user to agree to: obligations substantially like those of its
+#: section 3(b).
 WEB_RESULTS_RESTRICTIONS = {
     "en": (
         "web results the AI assistant brings",
@@ -1012,8 +992,8 @@ WEB_RESULTS_RESTRICTIONS = {
 @pytest.mark.django_db
 @pytest.mark.parametrize("language", ["en", "es"])
 def test_the_terms_bind_the_customer_to_what_the_search_provider_asks_of_its_results(client, language):
-    """Brave's terms, §4(c): each end user is bound in writing to something like §3(b); acceptable use is where breach
-    means suspension, as §4(c) also asks."""
+    """Section 4(c) of Brave's terms: each end user is bound in writing to something like its section 3(b);
+    acceptable use is where breach means suspension, as section 4(c) also asks."""
     [clause] = list_items_naming(section(terms_html(client, language), 8), WEB_RESULTS_RESTRICTIONS[language][0])
     clause = " ".join(clause.split())
 
@@ -1034,8 +1014,8 @@ def test_terms_sections_are_numbered_consecutively(client):
     assert numbers == list(range(1, len(numbers) + 1))
 
 
-#: What the terms say of the custom domain (HUBS-F17, saas#301): on the plans that include one, read from their rows,
-#: and only the public website; the app and the way in stay on erplora.com (PLAN-SAAS §37 point 2).
+#: What the terms say of the custom domain: on the plans that include one, read from their rows, and only the public
+#: website; the app and the way in stay on erplora.com.
 CUSTOM_DOMAIN_TERMS = {
     "en": (
         "On the Standard, Pro, Enterprise and Max plans, the customer's public website can also be served on "
@@ -1051,8 +1031,8 @@ CUSTOM_DOMAIN_TERMS = {
 @pytest.mark.django_db
 @pytest.mark.parametrize("language", ["en", "es"])
 def test_the_terms_name_the_plans_that_include_a_custom_domain(client, language):
-    """§1 named «the customer's own domains» before any could be connected (saas#233 took it out); since saas#302
-    they can, on the plans whose ``includes_custom_domain`` is true, and only for the public website."""
+    """Section 1 names the customer's own domains only on the plans whose ``includes_custom_domain`` is true, and
+    only for the public website."""
     html = terms_html(client, language)
 
     assert CUSTOM_DOMAIN_TERMS[language] in paragraphs_of(html)
@@ -1073,7 +1053,7 @@ def test_the_terms_follow_the_rows_of_the_plans(client):
 @pytest.mark.django_db
 @pytest.mark.parametrize("language", ["en", "es"])
 def test_without_a_plan_that_includes_it_the_terms_name_no_custom_domain(client, language):
-    """saas#233's guard, now tied to the gate: no plan on sale with one, no custom domain in the terms."""
+    """No plan on sale with a custom domain, no custom domain in the terms."""
     from hubs.models import Plan
 
     Plan.objects.update(includes_custom_domain=False)
@@ -1185,7 +1165,7 @@ def test_terms_link_the_plain_language_explanation(client):
     assert f'href="{reverse("public:updates")}"' in terms_html(client, "es")
 
 
-# test_terms_exit_package.py
+# The exit package
 
 
 @pytest.mark.django_db
@@ -1244,7 +1224,7 @@ def test_a_spanish_customer_reads_the_exit_package_in_spanish(client, settings):
     assert "Código de Comercio" in html
 
 
-# test_terms_trial_period.py
+# The trial period
 
 
 @pytest.mark.django_db
@@ -1335,7 +1315,7 @@ def test_the_trial_is_promised_on_hub_creation_and_not_on_an_upgrade(no_plans, c
     assert "no inicia un nuevo periodo de prueba" in spanish_clause
 
 
-# test_terms_uk_business_only.py
+# UK customers: businesses only
 
 
 def uk_clause(html: str) -> str:
@@ -1401,8 +1381,8 @@ def test_the_uk_clause_is_limited_to_paid_services(client):
     ],
 )
 def test_the_uk_clause_sells_plans_not_modules(client, language, sells, old):
-    """Our modules are not sold on their own: every plan includes all the apps (ronda 2026-10-24b,
-    PLAN §32). The clause said «its paid plans and modules»."""
+    """Our apps are not sold on their own: every plan includes all of them, so the clause never says «its paid plans
+    and modules»."""
     clause = uk_clause(terms_html(client, language))
 
     assert sells in clause
@@ -1421,10 +1401,8 @@ def test_the_uk_clause_is_translated_into_spanish(client):
 
 @pytest.mark.django_db
 def test_the_terms_date_moved_with_the_last_change(client):
-    """The page says when its text last changed: the marketplace sentences (L7), then §1 and §3.1,
-    every app on every plan and no module sold on its own (ronda 2026-10-24b, PLAN §32), then §1 again,
-    no customer's own domain (saas#233), then §8, the web results of the assistant (saas#277), and the same day the
-    opening clause, the plans that include an own domain (saas#301)."""
+    """The page says when its text last changed: every change of a clause moves the date, so no earlier date of the
+    terms is still shown."""
     html = terms_html(client)
     spanish = terms_html(client, "es")
 
@@ -1452,7 +1430,7 @@ def test_the_way_in_is_translated_into_spanish(client):
     assert "website" not in spanish_clause
 
 
-# Our apps, not a marketplace (spec §8.3), and all of them on every plan (ronda 2026-10-24b, PLAN §32)
+# Our apps, not a marketplace, and all of them on every plan
 
 
 @pytest.mark.django_db
@@ -1489,8 +1467,7 @@ def test_the_terms_speak_of_our_apps_not_of_a_marketplace(client):
     ],
 )
 def test_the_service_clause_puts_every_app_on_every_plan(client, language, clause, tokens_spelling):
-    """§1 said «the free apps come with every plan, and the premium apps are included in the paid
-    plans»: every plan includes all the apps now (PLAN §32), and the rest of the terms is untouched."""
+    """Section 1 says every plan includes all the apps, with no «premium» tier anywhere in the terms."""
     tokens_spelling("premium")
     html = without_tokens(terms_html(client, language))
 
@@ -1498,6 +1475,6 @@ def test_the_service_clause_puts_every_app_on_every_plan(client, language, claus
     assert "premium" not in html.lower()
 
 
-# The shared reading pattern (test_ui_stack_contract.py)
+# The shared reading pattern
 
 

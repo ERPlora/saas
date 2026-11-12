@@ -1,4 +1,4 @@
-"""public is a platform app at the root of saas-next, next to ``base/`` (round 15, PLAN §20.2)."""
+"""``public`` is a platform app at the root of the SaaS, next to ``base/``."""
 
 from pathlib import Path
 

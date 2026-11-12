@@ -1,20 +1,8 @@
-"""The installable app ``com.erplora.app``: which version is the latest, where it is downloaded,
-its public page ``/app/`` and the «ways to try ERPlora» page ``/download/`` (public/appdist.py).
+"""The installable app ``com.erplora.app``: which version is the latest, where it is downloaded, its public page
+``/app/`` and the «ways to try ERPlora» page ``/download/`` (public/appdist.py).
 
-Port of, from origin/develop c5ca8ca:
-
-* ``apps/public/tests/test_app_distribution.py`` (25): ``GET /api/v1/app/release/`` and
-  ``/app/download/<platform>/``. The release is now a ninja route bound to the query
-  ``public.app.release`` (PLAN-SAAS §6); the bucket read and its cache stay in ``public.appdist``;
-* ``apps/public/tests/test_installable_app_page.py`` (20) without the ``/bridge/`` cases: the Bridge
-  and its 301 tombstones are gone (spec §8.3), ``/bridge/`` is a 404 now (one case below fixes it).
-  «The home points to the app page» asked the landing, which comes with L7: the same promise is
-  asked of the footer, which every public page carries;
-* the ``/download/`` cases of ``apps/public/landing/tests/test_views.py`` (``TestDownloadsView``),
-  without ``landing:app_download`` (a name that never existed here).
-
-The order of gravity is the old one: never invent a version (``null``, never a number); the
-question carries no credential; the 302 decides the channel; Android never hands out the APK.
+What matters most: a version is never invented (``null``, never a number), the release check carries no credential,
+the 302 picks the channel, and Android never gets the APK.
 """
 
 import json
@@ -32,7 +20,7 @@ pytestmark = pytest.mark.django_db
 
 RELEASE_URL = "/api/v1/app/release/"
 ROOT = Path(settings.BASE_DIR)
-#: How the dead product was linked: its URL names and its address.
+#: How the retired Bridge product was linked: its URL names and its address.
 _DEAD_BRIDGE_LINK = re.compile(r"""bridge:(?:index|download)|href=["']/bridge/""")
 
 
@@ -58,7 +46,7 @@ def download_url(platform: str) -> str:
     return reverse("public:app_download", args=[platform])
 
 
-# --- GET /api/v1/app/release/ (TestPublishedRelease) ---------------------------------------------
+# --- GET /api/v1/app/release/ --------------------------------------------------------------------
 
 
 class TestPublishedRelease:
@@ -76,7 +64,7 @@ class TestPublishedRelease:
         assert json.loads(response.content) == {"version": "1.4.0"}
 
     def test_asks_the_bucket_for_the_key_the_release_writes(self, client, appdist):
-        """A contract with `.github/workflows/tauri-release.yml` of the hub repo."""
+        """The key must match the one that `.github/workflows/tauri-release.yml` of ERPlora/app writes."""
         fake = _manifest_body(b'{"version": "1.4.0"}')
         with patch.object(appdist, "_s3_client", return_value=fake):
             client.get(RELEASE_URL)
@@ -149,7 +137,7 @@ class TestPublishedRelease:
         assert fake.get_object.call_count == 2
 
 
-# --- GET /app/download/<platform>/ (TestAppDownloadView) -------------------------------------------
+# --- GET /app/download/<platform>/ -----------------------------------------------------------------
 
 
 class TestAppDownloadView:
@@ -181,8 +169,8 @@ class TestAppDownloadView:
         assert response["Location"].endswith(f"/{filename}")
 
     def test_never_hands_out_a_versioned_address(self, client):
-        """Point 1 of hub#400: `latest/`, so a cached link keeps delivering the last build. The
-        bucket's key for Windows and GitHub's «latest release» address for Linux."""
+        """Always `latest/`, so a cached link keeps delivering the last build: the bucket's key for Windows and
+        GitHub's «latest release» address for Linux."""
         with patch(
             "public.appdist.presigned_download_url",
             return_value="https://signed.example/x",
@@ -194,11 +182,9 @@ class TestAppDownloadView:
         assert "/releases/latest/download/" in linux["Location"]
 
     def test_linux_gets_the_appimage_of_the_latest_github_release(self, client):
-        """The contract changed by product decision (Ioan, 2026-10-27): Linux no longer comes
-        from the bucket, where no AppImage is published and the presigned link answered 404, but
-        from the latest release of the public repo ``ERPlora/app``, whose CI
-        (``tauri-release.yml``) uploads ``erplora-app.AppImage`` and publishes it with
-        ``--latest``. The bucket is not even asked."""
+        """Linux comes from the latest release of the public repo ``ERPlora/app``, whose CI (``tauri-release.yml``)
+        uploads ``erplora-app.AppImage`` and publishes it with ``--latest``. The bucket holds no AppImage and is not
+        even asked."""
         with patch(
             "public.appdist.presigned_download_url",
             return_value="https://signed.example/x",
@@ -214,7 +200,7 @@ class TestAppDownloadView:
     def test_every_platform_has_one_channel_only(self):
         """One rule per platform: a platform served by a GitHub release is not also a binary of
         the bucket (the first table asked would win in silence), and Android is in neither: its
-        only channel is Google Play (hub#984)."""
+        only channel is Google Play."""
         from public.appdist import _APP_PLATFORM_FILES
         from public.downloads import GITHUB_RELEASE_URLS
 
@@ -252,8 +238,7 @@ class TestAppDownloadView:
         )
 
     def test_linux_never_goes_to_a_store(self, client, settings):
-        """With both stores configured, Linux still gets its GitHub release (2026-10-27; before,
-        the bucket's presigned AppImage)."""
+        """With both stores configured, Linux still gets its GitHub release."""
         settings.MICROSOFT_STORE_APP_ID = "9NBLGGH4ABCD"
         settings.GOOGLE_PLAY_APP_ID = "com.erplora.app"
         with patch(
@@ -269,7 +254,8 @@ class TestAppDownloadView:
     def test_android_never_hands_out_an_apk_even_with_the_setting_empty(
         self, client, settings
     ):
-        """The heart of hub#984: the package is baked into the AAB, not a deploy switch."""
+        """The package id is baked into the AAB: with the setting empty, Android still goes to its Play listing,
+        never to an APK."""
         settings.GOOGLE_PLAY_LISTING_LIVE = True
         settings.GOOGLE_PLAY_APP_ID = ""
         with patch("public.appdist.presigned_download_url") as presign:
@@ -311,7 +297,7 @@ class TestAppDownloadView:
 
 
 class TestAndroidPageWhileThePlayListingIsNotLive:
-    """`/app/download/android/` serves a page of ours while the Play listing does not exist (saas#1719)."""
+    """`/app/download/android/` serves a page of ours while the Play listing does not exist."""
 
     @pytest.fixture(autouse=True)
     def _listing_switched_off(self, settings):
@@ -329,7 +315,7 @@ class TestAndroidPageWhileThePlayListingIsNotLive:
             response = client.get(download_url("android"))
 
         presign.assert_not_called()
-        # The positive control first: an EMPTY response (the old 302) would pass the `not in`s.
+        # The positive control first: an empty response (a redirect) would pass the `not in` checks.
         assert response.status_code == 200
         html = response.content.decode()
         assert "Google Play" in html
@@ -389,7 +375,7 @@ class TestAndroidPageWhileThePlayListingIsNotLive:
         assert client.get(download_url("solaris")).status_code == 404
 
 
-# --- /app/ (test_installable_app_page.py) -----------------------------------------------------
+# --- /app/ ------------------------------------------------------------------------------------
 
 
 class TestInstallableAppPage:
@@ -479,9 +465,8 @@ LINUX_CARD = {
 
 
 class TestTheDownloadPagesSellNoInfrastructure:
-    """Ronda 2026-10-24b (PLAN-SAAS §9): the dedicated-infrastructure offer is gone from the public web, and the
-    download pages never name it nor its price. Their Linux card's «dedicated machine» is the business's own computer,
-    not that offer, and stays."""
+    """The public web sells no dedicated infrastructure: the download pages never name such an offer nor its price.
+    Their Linux card's «dedicated machine» is the business's own computer, not that offer, and stays."""
 
     @pytest.fixture(autouse=True)
     def _listing_switched_off(self, settings):
@@ -515,7 +500,7 @@ class TestTheAppPageIsTranslated:
         )
 
 
-# --- /download/ (TestDownloadsView of landing/tests/test_views.py) -------------------------------
+# --- /download/ ----------------------------------------------------------------------------------
 
 
 class TestWaysToTryPage:
@@ -545,8 +530,8 @@ class TestWaysToTryPage:
         ],
     )
     def test_the_free_hub_comes_with_every_app(self, client, language, line):
-        """Every plan includes all the apps (ronda 2026-10-24b, PLAN §32): the free hub said «All
-        free apps included», as if the paid plans had others; the web says «apps», never «modules»."""
+        """Every plan includes all the apps, so the free hub never reads as if the paid plans had others; the web
+        says «apps», never «modules»."""
         client.cookies[settings.LANGUAGE_COOKIE_NAME] = language
         html = client.get("/download/").content.decode()
 
@@ -560,7 +545,7 @@ class TestWaysToTryPage:
         assert "Dos formas gratuitas de probar ERPlora." in html
 
 
-# --- PUBLIC-G28: the free hub's limits are the Free plan's, never typed ----------------------------
+# --- The free hub's limits are the Free plan's, never typed ----------------------------------------
 
 
 def free_hub_card(html: str, a: str = "Option A", b: str = "Option B") -> str:
@@ -570,8 +555,6 @@ def free_hub_card(html: str, a: str = "Option A", b: str = "Option B") -> str:
 
 
 class TestTheFreeHubStatesTheFreePlan:
-    """PUBLIC-G28 (FIX of APP-PUBLIC-1): «1 device, 3 local users» was typed in the template."""
-
     def test_it_states_the_devices_and_users_of_the_free_plan(self, client):
         Plan.objects.filter(slug="free").update(max_devices=2, max_users=5)
 
@@ -609,7 +592,7 @@ class TestTheFreeHubStatesTheFreePlan:
 
 class TestPublicPagesSendPeopleToTheApp:
     def test_the_footer_points_to_the_app_page_and_the_downloads(self, client):
-        """On every public page (the footer is one partial): the home's promise until L7."""
+        """On every public page, since the footer is one partial."""
         html = client.get("/features/").content.decode()
         footer = html[html.index('<footer class="ep-footer"') :]
 
@@ -618,7 +601,7 @@ class TestPublicPagesSendPeopleToTheApp:
         assert "/bridge/" not in footer
 
     def test_the_bridge_is_gone_not_redirected(self, client):
-        """Spec §8.3: no tombstone, a 404 of the public web."""
+        """No redirect left behind: a 404 of the public web."""
         assert client.get("/bridge/").status_code == 404
         assert client.get("/bridge/download/windows/").status_code == 404
 

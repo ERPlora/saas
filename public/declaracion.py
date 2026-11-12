@@ -1,10 +1,7 @@
 """The declaración responsable of the Hub (art. 13 RRSIF, RD 1007/2023): its archive and its public
-pages, ``/legal/declaracion-responsable/``, ``<version>/`` and ``<version>/pdf/`` (spec §8.1, plan §3.e).
+pages, ``/legal/declaracion-responsable/``, ``<version>/`` and ``<version>/pdf/``.
 
-Ported from ERPlora/saas (origin/develop c5ca8ca): the archive service
-``apps/dashboard/fiscal/services/declaracion_responsable.py`` and the two views of
-``apps/public/legal/views.py``. The route is Spanish on purpose: it is the legal term the customer,
-the reseller and the AEAT look up.
+The route is Spanish on purpose: it is the legal term the customer, the reseller and the AEAT look up.
 
 ERPlora is the **producer** of a SIF, and art. 13 makes the producer certify compliance by its own
 responsible declaration: there is neither third-party certification nor prior registration (AEAT
@@ -44,7 +41,7 @@ from live.markdown import render_markdown
 DECLARATIONS_DIR = Path(__file__).resolve().parent / "declaracion"
 
 #: The declared modality: the product can only be used in VERI*FACTU mode. Declaring DUAL would make
-#: the *registro de eventos* mandatory (developer FAQ §15, note 1), which it does not implement.
+#: the *registro de eventos* mandatory (developer FAQ, section 15, note 1), which it does not implement.
 MODALITY_SOLO_VERIFACTU = "SOLO VERI*FACTU"
 
 #: File names inside a version directory.

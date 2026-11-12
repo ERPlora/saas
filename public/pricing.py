@@ -1,40 +1,34 @@
-"""``/pricing/`` and ``/pricing/<slug>/``: the plans on sale (spec §8.1), and the reading of the plans
-the other public pages share (the home, the terms, ``/collaborate/``, ``/download/``).
+"""``/pricing/`` and ``/pricing/<slug>/``: the plans on sale, and the reading of the plans the other
+public pages share (the home, the terms, ``/collaborate/``, ``/download/``).
 
-Port of ERPlora/saas ``apps/public/pricing/views.py`` (origin/develop c5ca8ca). What changed:
-
-* no model: the plans are read through ``hubs.plan.list`` (plan §3.m) with ``run_operation_sync``,
-  as ``base/spa.py`` does. The operation already lists only ``Plan.objects.public()``, drops the
-  old visual separators and ends each signable plan's features with its real trial (saas#2424), so
-  ``display_features`` is its ``features``;
-* the trial range (saas#2414) is read from the trials of the plans on sale, the same reading as
-  ``Plan.objects.signup_trial_days()``: an upgrade grants none (#809);
-* the period label (``{% plan_period %}`` of the old ``money`` tags, saas#1836) is
-  :func:`plan_period`, one definition for every selling screen;
-* every plan includes every module (ronda 2026-10-24b, PLAN §32; before, decision 17 put the premium apps in the
-  paid plans): the FAQ charges nothing «per activated module», sells no tier of apps, and a downgrade deletes and
-  turns nothing off;
-* the storage answer names the host: AWS (Ioan, 2026-10-13), Ireland region (Ioan, 2026-10-14);
-* three plans on sale at sign-up (Ioan, 2026-10-15): the cards with a sign-up button are only the plans a visitor
-  can sign up for; the infrastructure offer by contact that sat above them went in the ronda 2026-10-24b (PLAN-SAAS
-  §9), the plans no longer sell infrastructure;
-* the upgrade-only plans are shown too (Ioan, 2026-10-24, PLAN-SAAS §9; corrects 2026-10-15), so a visitor knows they
-  exist: an ``upgrade_only`` row — Pro, Enterprise and Max — is a card under «More capacity» and a row of the table,
-  read from the database like the others, marked «Available once you are on Starter» instead of a sign-up button.
-  The mechanism does not move: the Store offers them to a business that already pays, the checkout from Free refuses
-  them (``billing.plan_upgrade_only``) and their detail answers 404;
+* no model: the plans are read through ``hubs.plan.list`` with ``run_operation_sync``, as
+  ``base/spa.py`` does. The operation already lists only ``Plan.objects.public()`` and ends each
+  signable plan's features with its real trial, so ``display_features`` is its ``features``;
+* the trial range is read from the trials of the plans on sale, the same reading as
+  ``Plan.objects.signup_trial_days()``: an upgrade grants none;
+* the period label is :func:`plan_period`, one definition for every selling screen;
+* every plan includes every module: the FAQ charges nothing «per activated module», sells no tier of
+  apps, and a downgrade deletes and turns nothing off;
+* the storage answer names the host: AWS, Ireland region;
+* the cards with a sign-up button are only the plans a visitor can sign up for, and no plan sells
+  infrastructure;
+* the upgrade-only plans are shown too, so a visitor knows they exist: an ``upgrade_only`` row — Pro,
+  Enterprise and Max — is a card under «More capacity» and a row of the table, read from the database
+  like the others, marked «Available once you are on Starter» instead of a sign-up button. The Store
+  offers them to a business that already pays, the checkout from Free refuses them
+  (``billing.plan_upgrade_only``) and their detail answers 404;
 * the sections alternate their surface whatever the catalogue shows (:func:`section_surfaces`);
-* the assistant and WhatsApp messages a month each plan includes (PLAN-SAAS §3.6, 2026-10-15) are a line of
-  every card and a column of the table, in plain words (:func:`messages_a_month`); a quota of 0 is none;
-* the apps a business may choose to turn on at once (``max_apps``, the cap the Hub applies since hub#256; the ones
-  they require do not count) are a line of every card, right after what the plan includes, and a column of the table
-  next to the devices and users (:func:`apps_at_once`), worked out from the row so the admin is the one place to
-  change them; 0 is no limit. The switch answer says a downgrade over the plan's limits takes nothing away: the apps
-  turned on stay on, the users and the files stay, and only adding more waits (PLAN-SAAS, ronda 2026-11-03g);
-* the custom domain of the business's public website (HUBS-F17; the app stays on erplora.com, PLAN-SAAS §37 point 2) is
-  a line of the cards of the plans whose ``includes_custom_domain`` is true, after the messages a month, and a column
-  of the table while a plan on sale includes one (:func:`custom_domain_plans`; saas#301, which undid saas#233's ban
-  once a domain could be connected).
+* the assistant and WhatsApp messages a month each plan includes are a line of every card and a
+  column of the table, in plain words (:func:`messages_a_month`); a quota of 0 is none;
+* the apps a business may choose to turn on at once (``max_apps``, the cap the Hub applies; the ones
+  they require do not count) are a line of every card, right after what the plan includes, and a
+  column of the table next to the devices and users (:func:`apps_at_once`), worked out from the row
+  so the admin is the one place to change them; 0 is no limit. The switch answer says a downgrade
+  over the plan's limits takes nothing away: the apps turned on stay on, the users and the files
+  stay, and only adding more waits;
+* the custom domain of the business's public website (the app stays on erplora.com) is a line of the
+  cards of the plans whose ``includes_custom_domain`` is true, after the messages a month, and a
+  column of the table while a plan on sale includes one (:func:`custom_domain_plans`).
 """
 
 from __future__ import annotations
@@ -82,7 +76,7 @@ def plans_on_sale(request: HttpRequest | None = None):
 
 
 def trial_days(plans) -> TrialDays:
-    """The shortest and the longest trial a sign-up gets on a plan on sale (saas#2414)."""
+    """The shortest and the longest trial a sign-up gets on a plan on sale."""
     days = [
         plan.trial_period_days
         for plan in plans.plans
@@ -106,9 +100,7 @@ def free_plan(plans):
 def cheapest_paid_price(plans) -> Decimal | None:
     """The monthly price of the cheapest paid plan a visitor can sign up for, or ``None``.
 
-    What the collaborator year of ``/collaborate/`` is valued at. It is no app's price any more:
-    every plan includes all the apps (ronda 2026-10-24b, PLAN §32; before, decision 17 priced a
-    premium app at it).
+    What the collaborator year of ``/collaborate/`` is valued at.
     """
     prices = [
         plan.price_monthly
@@ -121,8 +113,8 @@ def cheapest_paid_price(plans) -> Decimal | None:
 def plan_period(plan, interval: str = "month") -> str:
     """``/ month per hub``; the free plan, ``/ month``: one rule for every selling screen.
 
-    The product is sold per hub (saas#1760), but «per hub» of a free plan informs of nothing, so
-    what decides is having a price (saas#1836).
+    The product is sold per hub, but «per hub» of a free plan informs of nothing, so what decides
+    is having a price.
     """
     priced = bool(plan.price_annual if interval == "year" else plan.price_monthly)
     if interval == "year":
@@ -133,8 +125,8 @@ def plan_period(plan, interval: str = "month") -> str:
 def annual_months_free(plan) -> int:
     """The months a year paid at once saves against twelve monthly payments, rounded down (0 = none).
 
-    Worked out from the two prices, never typed: edit the annual price and the saving follows
-    (SAAS_PUBLIC-F56). Rounded down so the page never promises more than the checkout gives.
+    Worked out from the two prices, never typed: edit the annual price and the saving follows.
+    Rounded down so the page never promises more than the checkout gives.
     """
     if not plan.price_monthly or not plan.price_annual:
         return 0
@@ -158,7 +150,7 @@ def _has_trial_line(plan) -> bool:
 
 
 def messages_a_month(count: int) -> str:
-    """``300 messages a month``; ``""`` for 0, which is «none» (PLAN-SAAS §3.6), never «unlimited»."""
+    """``300 messages a month``; ``""`` for 0, which is «none», never «unlimited»."""
     if count <= 0:
         return ""
     return ngettext("%(count)d message a month", "%(count)d messages a month", count) % {"count": count}
@@ -182,7 +174,7 @@ INCLUDES_PREFIXES = ("Everything in ", "Todo lo del plan ")
 
 
 def apps_at_once(count: int) -> str:
-    """The card line of the apps a business may choose to turn on at once (``max_apps``, hub#256): ``Up to 20 apps
+    """The card line of the apps a business may choose to turn on at once (``max_apps``): ``Up to 20 apps
     turned on at once``; 0 is no limit, so every app."""
     if count <= 0:
         return _("All the apps turned on at once")
@@ -222,7 +214,7 @@ def custom_domain_plans(plans) -> list[str]:
 
 def plan_card(plan) -> dict[str, Any]:
     """A plan as the selling screens paint it: its own features with the apps it turns on at once, then the messages
-    a month it includes and its custom domain if it has one, then its trial (the operation's last line, saas#2424)."""
+    a month it includes and its custom domain if it has one, then its trial (the operation's last line)."""
     features = list(plan.features)
     trial = [features.pop()] if _has_trial_line(plan) else []
     assistant = messages_a_month(plan.assistant_messages_per_month)
@@ -250,7 +242,7 @@ def plan_card(plan) -> dict[str, Any]:
 
 
 def trial_note(days: TrialDays) -> str:
-    """The line under the plans, with the trial the checkout grants (saas#2414)."""
+    """The line under the plans, with the trial the checkout grants."""
     shortest, longest = days
     if not longest:
         return _("Free plan with no card required. Cancel anytime.")
@@ -269,7 +261,7 @@ def trial_note(days: TrialDays) -> str:
 
 
 def _trial_answer(days: TrialDays) -> str:
-    """The FAQ answer on the trial, worded like the terms' §4 (saas#2409, saas#2414)."""
+    """The FAQ answer on the trial, worded like section 4 of the terms."""
     shortest, longest = days
     if not longest:
         return _(
@@ -366,7 +358,7 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
             ),
         },
         {
-            # The long detail goes here and not on the card (saas#1835).
+            # The long detail goes here and not on the card.
             "key": "vat",
             "question": _("Is VAT included in these prices?"),
             "answer": _(
@@ -438,8 +430,7 @@ def index(request: HttpRequest) -> HttpResponse:
 
 @require_safe
 def detail(request: HttpRequest, slug: str) -> HttpResponse:
-    """One plan a visitor can sign up for; an internal, retired, upgrade-only or unknown plan answers 404
-    (saas#1950)."""
+    """One plan a visitor can sign up for; an internal, retired, upgrade-only or unknown plan answers 404."""
     cards = signable_cards(plans_on_sale(request))
     plan = next((card for card in cards if card["slug"] == slug), None)
     if plan is None:

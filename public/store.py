@@ -1,17 +1,15 @@
-"""The app store of the public web: ``/apps/``, ``/apps/<id>/`` and ``/apps/<id>/docs/`` (spec §5,
-§8.1 and decisions 17 and 19), and the 301s of the marketplace's old addresses.
+"""The app store of the public web: ``/apps/``, ``/apps/<id>/`` and ``/apps/<id>/docs/``, and the
+301s of the marketplace's old addresses.
 
-Port of ``apps/public/modules`` (origin/develop c5ca8ca) reduced to what the catalog holds: the Hub
-registers its apps in ``shared.app`` and these pages read them through the operations of apps
+The Hub registers its apps in ``shared.app`` and these pages read them through the operations of apps
 (``apps.app.list``, ``apps.app.get``, ``apps.app.doc``) with the request's context, the same ones
 the ninja routes run. No view touches the ORM (``public/tests/test_store.py`` checks the imports).
-Each tab is its own URL (the old page swapped htmx fragments): «Overview» at ``/apps/<id>/`` and
-«Documentation» at ``/apps/<id>/docs/``. No reviews, changelog, tiers nor payment (spec §8.1).
+Each tab is its own URL: «Overview» at ``/apps/<id>/`` and «Documentation» at ``/apps/<id>/docs/``.
+No reviews, changelog, tiers nor payment.
 
-Every plan includes all the apps (ronda 2026-10-24b, PLAN §32; before, decision 17 split them into
-free and premium): every card and page says «Included in every plan», there is no «Premium» badge nor
-access filter, and every app is offered at ``0``. The ``premium`` flag stays reserved, unused today,
-for the panel's Store (PLAN-SAAS §9); the public web does not read it.
+Every plan includes all the apps: every card and page says «Included in every plan», there is no
+«Premium» badge nor access filter, and every app is offered at ``0``. The ``premium`` flag stays
+reserved, unused today, for the panel's Store; the public web does not read it.
 
 The sitemap's ``/apps/`` entry (``public/sitemaps.py``; the app pages read ``apps.app.sitemap``)
 and ``llms.txt`` (``public/seo.py``) read the listed apps through :func:`listed_apps`, outside any
@@ -86,15 +84,15 @@ def _category_label(category: str | None) -> str | None:
 
 
 def _card(app: AppSummaryOut) -> dict[str, Any]:
-    """What a card and the page header paint. ``icon_svg`` comes cleaned with nh3 by the operation
-    (spec §8.4), so it is painted inline as it is."""
+    """What a card and the page header paint. ``icon_svg`` comes cleaned with nh3 by the operation,
+    so it is painted inline as it is."""
     return {
         "id": app.id,
         "name": app.name,
         "summary": app.summary,
         "icon_svg": mark_safe(app.icon_svg),  # noqa: S308 - cleaned by apps.queries (nh3)
         "category_label": _category_label(app.category),
-        # Every plan includes all the apps (PLAN §32): no app is sold on its own (ADR-0474).
+        # Every plan includes all the apps: no app is sold on its own.
         "access_label": gettext("Included in every plan"),
         "href": reverse("public:store_detail", args=[app.id]),
     }
@@ -113,7 +111,7 @@ def _store_url(**params: Any) -> str:
 
 def _groups(apps: list[AppSummaryOut]) -> list[dict[str, Any]]:
     """The apps by section, in the order of ``live.meta.Category`` (the operation's order). Apps of
-    a category this SaaS does not know yet go last, in a group without a title (spec §5.3)."""
+    a category this SaaS does not know yet go last, in a group without a title."""
     sections: dict[str, list[dict[str, Any]]] = {}
     unsorted: list[dict[str, Any]] = []
     for app in apps:
@@ -135,9 +133,8 @@ def store(request: HttpRequest) -> HttpResponse:
     """``/apps/``: the listed apps by section, with ``?q=`` and ``?category=``.
 
     A filter it does not understand is ignored (``AppListIn``), and so is the old ``?premium=``: the
-    store sells no tier of apps (PLAN §32). Three states (spec §5.3): the
-    apps; no listed app at all (a new database), said so and kept out of the index; or filters
-    that match nothing, with a way to clear them.
+    store sells no tier of apps. Three states: the apps; no listed app at all (a new database), said
+    so and kept out of the index; or filters that match nothing, with a way to clear them.
     """
     filters = AppListIn(q=request.GET.get("q"), category=request.GET.get("category"))
     q, category = filters.q, filters.category
@@ -259,10 +256,10 @@ def store_detail(request: HttpRequest, app_id: str) -> HttpResponse:
 
 @require_safe
 def store_docs(request: HttpRequest, app_id: str) -> HttpResponse:
-    """``/apps/<id>/docs/``, the «Documentation» tab: the WORKBOOK's user part (spec §5.2).
+    """``/apps/<id>/docs/``, the «Documentation» tab: the WORKBOOK's user part.
 
     In English without an English document, the Spanish one is served with a notice and
-    ``lang="es"`` on its container (spec §5.3). An app without documentation is a 404.
+    ``lang="es"`` on its container. An app without documentation is a 404.
     """
     app = _run(request, "apps.app.get", AppByIdIn(id=app_id))
     doc = _run(request, "apps.app.doc", AppByIdIn(id=app_id))
@@ -279,7 +276,7 @@ def store_docs(request: HttpRequest, app_id: str) -> HttpResponse:
     )
 
 
-# --- The old addresses (decision 19) ------------------------------------------------------------
+# --- The old addresses --------------------------------------------------------------------------
 
 
 def _with_query(request: HttpRequest, path: str) -> str:
@@ -301,6 +298,6 @@ def marketplace(request: HttpRequest, app_id: str | None = None) -> HttpResponse
 
 @require_safe
 def to_store(request: HttpRequest, slug: str | None = None) -> HttpResponse:
-    """``/solutions/``, ``/solutions/<slug>/`` and ``/modules/`` are gone (spec §8.3): 301 to the
+    """``/solutions/``, ``/solutions/<slug>/`` and ``/modules/`` are retired: 301 to the
     store, without their query (``?unit=`` filtered functional units, which no longer exist)."""
     return HttpResponsePermanentRedirect(reverse("public:store"))

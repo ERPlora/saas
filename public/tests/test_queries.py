@@ -1,10 +1,8 @@
-"""Reads of the public web as operations: ``public.app.release`` (PLAN-SAAS §6).
+"""Reads of the public web as operations: ``public.app.release``.
 
-``GET /api/v1/app/release/`` (port of ``apps/public/appdist`` ``release``, origin/develop c5ca8ca) is
-now a ninja route bound to this query, so the route, the API keys and any later caller run the same
-function. The version comes from ``public.appdist.published_release`` (the bucket read and its
-cache); the query neither touches the ORM nor needs a permission: the installed app asks before any
-account exists.
+``GET /api/v1/app/release/`` is a ninja route bound to this query, so the route, the API keys and any later caller
+run the same function. The version comes from ``public.appdist.published_release`` (the bucket read and its cache);
+the query neither touches the ORM nor needs a permission: the installed app asks before any account exists.
 """
 
 from unittest.mock import patch

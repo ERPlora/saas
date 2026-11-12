@@ -1,9 +1,8 @@
-"""``/sitemap.xml`` of the public web (spec §8.2).
+"""``/sitemap.xml`` of the public web.
 
-Ported from ERPlora/saas ``apps/public/landing/sitemaps.py`` (origin/develop c5ca8ca). Only pages
-that exist: each batch of the port adds its own to ``StaticPagesSitemap.pages`` and the store adds
-its sitemaps to ``SITEMAPS`` (``public/tests/test_sitemaps.py`` fails on an entry that does not
-answer 200). IndexNow (``public/indexnow.py``) reads the same registry.
+Only pages that exist: ``StaticPagesSitemap.pages`` lists them and the store adds its sitemaps to
+``SITEMAPS`` (``public/tests/test_sitemaps.py`` fails on an entry that does not answer 200).
+IndexNow (``public/indexnow.py``) reads the same registry.
 
 The URLs are absolute on the request's host (``PUBLIC_HOST`` outside a request), not on the
 ``Site`` row (allauth's, ``example.com``), and always ``https``.
@@ -41,33 +40,31 @@ class StaticPagesSitemap(PublicSitemap):
     """The public web's pages with content of their own."""
 
     changefreq = "monthly"
-    #: ``(URL name, priority)`` of every page that exists; each batch of the port adds its own.
+    #: ``(URL name, priority)`` of every page that exists.
     pages: tuple[tuple[str, float], ...] = (
-        # Product, company and the app (L3a), with the old priorities. `/app/` replaced `/bridge/`
-        # (ADR-0196); the «coming soon» pages, the help and the support page are not indexed.
+        # Product, company and the app; the «coming soon» pages, the help and the support page are
+        # not indexed.
         ("public:features", 0.8),
         ("public:security", 0.7),
         ("public:updates", 0.5),
         ("public:app", 0.7),
         ("public:about", 0.6),
-        # Legal (L3b): the old sitemap had privacy (and terms, L7) at 0.4; the declaración
-        # responsable joins it (looked up by name, art. 13.2 RRSIF), the other two below.
+        # Legal: the declaración responsable ranks with the privacy policy, because a buyer looks
+        # it up by name (art. 13.2 RRSIF).
         ("public:privacy", 0.4),
         ("public:declaracion_responsable", 0.4),
         ("public:legal_notice", 0.3),
         ("public:cookies", 0.3),
-        # Industries (L4): the index; each business type's page is in IndustryDetailSitemap.
+        # Industries: the index; each business type's page is in IndustryDetailSitemap.
         ("public:industries_index", 0.7),
-        # Compliance (PUBLIC-F09), at the old level of the industries.
         ("public:compliance", 0.7),
-        # The pages that read Plan (L7), with the old priorities. /collaborate/ was not in the old
-        # sitemap although it is indexed and in the footer: it joins at the level of /updates/.
+        # The pages that read Plan.
         ("public:home", 1.0),
         ("public:pricing", 0.9),
         ("public:contact", 0.6),
         ("public:terms", 0.4),
         ("public:collaborate", 0.5),
-        # The demo's door (round 2026-10-17): its GET never creates a demo, so a crawler only reads it.
+        # The demo's door: its GET never creates a demo, so a crawler only reads it.
         ("public:demo", 0.6),
     )
 
@@ -82,9 +79,9 @@ class StaticPagesSitemap(PublicSitemap):
 
 
 class StoreSitemap(PublicSitemap):
-    """The store, ``/apps/`` (L6; the old ``MarketplaceSitemap``). Only with a listed app: without
-    one the page is ``noindex`` (spec §5.3), and a sitemap never lists a page it hides. Its old
-    addresses (``/marketplace/``, ``/solutions/``, ``/modules/``) are 301s and never listed."""
+    """The store, ``/apps/``. Only with a listed app: without one the page is ``noindex``, and a
+    sitemap never lists a page it hides. Its old addresses (``/marketplace/``, ``/solutions/``,
+    ``/modules/``) are 301s and never listed."""
 
     changefreq = "weekly"
     priority = 0.8
@@ -97,7 +94,7 @@ class StoreSitemap(PublicSitemap):
 
 
 class AppDetailSitemap(PublicSitemap):
-    """Each listed app's page and, when it has one, its documentation (spec §8.2), both dated by
+    """Each listed app's page and, when it has one, its documentation, both dated by
     the ``updated_at`` of the app's Spanish ``app_doc``; an app without one goes in undated.
 
     One read for every app (``apps.app.sitemap``). The sitemap is also read outside a request
@@ -130,11 +127,10 @@ class AppDetailSitemap(PublicSitemap):
 
 
 class IndustryDetailSitemap(PublicSitemap):
-    """One entry per active business type: exactly what ``/industries/<slug>/`` serves (ADR-0410).
+    """One entry per active business type: exactly what ``/industries/<slug>/`` serves.
 
-    The detail pages were published and unannounced for months. Only the active ones go in: any
-    other answers 404, and announcing a 404 spends crawl budget. No ``lastmod``: the taxonomy's
-    public read (``hubs.business_type.list``) does not carry the rows' dates.
+    Only the active ones go in: any other answers 404, and announcing a 404 spends crawl budget. No
+    ``lastmod``: the taxonomy's public read (``hubs.business_type.list``) does not carry the rows' dates.
     """
 
     changefreq = "monthly"

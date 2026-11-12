@@ -1,7 +1,5 @@
-"""JSON-LD builders of the public web (spec §8.2), ported from ERPlora/saas
-``apps/public/structured_data.py`` and ``landing/tests/test_structured_data.py`` (origin/develop
-c5ca8ca). The builders take data and read no model; the pages that call them (home, pricing,
-industries, the app pages) test the blocks they render in their own batches.
+"""JSON-LD builders of the public web. The builders take data and read no model; the pages that call them (home,
+pricing, industries, the app pages) test the blocks they render in their own files.
 """
 
 import json
@@ -134,9 +132,8 @@ class TestIndustrySoftwareApplication:
 
 
 class TestAppSoftwareApplication:
-    """One block per app page (spec §8.2): every app is offered at 0 on its own page, because every
-    plan includes all the apps, the Free one too (ronda 2026-10-24b, PLAN §32; before, decision 17
-    priced a premium app at the cheapest paid plan); no rating (there are no reviews)."""
+    """One block per app page: every app is offered at 0 on its own page, because every plan includes all the apps,
+    the Free one too; no rating (there are no reviews)."""
 
     def _block(self):
         return app_software_application(
@@ -160,9 +157,8 @@ class TestAppSoftwareApplication:
 
 
 class TestOperatingSystems:
-    """PUBLIC-F14: the systems the product runs on are the ones it is distributed for (SAAS_PUBLIC-F75):
-    the browser, the app for Windows and Linux (public/appdist.py) and Android through Google Play.
-    No macOS build and no iOS app are published."""
+    """The systems the product runs on are the ones it is distributed for: the browser, the app for Windows and Linux
+    (public/appdist.py) and Android through Google Play. No macOS build and no iOS app are published."""
 
     BLOCKS = {
         "home": lambda: software_application(BASE, Decimal("0"), 3),
@@ -177,7 +173,7 @@ class TestOperatingSystems:
             assert build()["operatingSystem"] == "Web, Windows, Linux, Android", name
 
     def test_the_systems_are_the_platforms_the_app_page_serves(self):
-        """Served from the bucket or from the GitHub release (Linux, 2026-10-27): both count."""
+        """Served from the bucket or from the GitHub release (Linux): both count."""
         from public.appdist import _APP_PLATFORM_FILES
         from public.downloads import GITHUB_RELEASE_URLS
 

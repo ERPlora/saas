@@ -1,4 +1,4 @@
-/* ep-product-card (public/components/product_card.html): port of <ok-product-card>. */
+/* ep-product-card (public/components/product_card.html). */
 .ep-product-card {
   box-sizing: border-box;
   height: 100%;
@@ -102,7 +102,7 @@
   opacity: 1;
   transform: none;
 }
-/* An app's `icon_svg` (the store, spec §8.4) keeps the classes of `ionicons/icons`, which only
+/* An app's `icon_svg` (the store) keeps the classes of `ionicons/icons`, which only
    ion-icon's shadow CSS styled (ionicons 8, icon.css): without these an outline icon paints filled. */
 .ep-product-card__icon svg.ionicon {
   fill: currentColor;

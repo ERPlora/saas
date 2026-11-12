@@ -1,14 +1,8 @@
-"""``/about/``, ``/blog/``, ``/careers/``, ``/press/`` and the old ``/company/`` (public/company.py).
+"""``/about/``, ``/blog/``, ``/careers/``, ``/press/``, ``/collaborate/`` and the old ``/company/``
+(public/company.py).
 
-Port of ``apps/public/company`` (origin/develop c5ca8ca). Its only suite,
-``company/tests/test_developers_page.py`` (3), is about ``/developers/``, which disappears (spec
-§8.3): one case here fixes that it answers 404. The rest come from ``tests/unit/test_public_pages.py``
-(200, brand, navbar, footer, GET only, URL names) and from the old ``company/urls.py`` (``/company/``
-answers 301 to ``/about/``, issue #547). ``/collaborate/`` reads ``Plan`` and the taxonomy and came
-with L7: its cases are at the end of this file.
-
-What changed: ``/about/`` no longer says that a module marketplace lets developers extend ERPlora:
-there are no third-party modules (PLAN-SAAS §6, spec §8.3), every app is ours.
+There are no third-party modules, every app is ours: ``/about/`` offers no module marketplace and ``/developers/``
+answers 404.
 """
 
 from decimal import Decimal
@@ -55,7 +49,7 @@ def test_the_url_names():
 
 
 def test_the_old_company_address_moves_permanently_to_about(client):
-    """No longer linked, but external and cached links still point there (issue #547)."""
+    """No longer linked, but external and cached links still point there."""
     response = client.get("/company/")
 
     assert response.status_code == 301
@@ -63,7 +57,7 @@ def test_the_old_company_address_moves_permanently_to_about(client):
 
 
 def test_the_developers_page_is_gone(client):
-    """The third-party module toolkit is gone with the marketplace (spec §8.3): a 404, not the SPA."""
+    """The third-party module toolkit is gone with the marketplace: a 404, not the SPA."""
     response = client.get("/developers/")
 
     assert response.status_code == 404
@@ -117,8 +111,7 @@ def test_about_speaks_of_our_apps_not_of_a_third_party_marketplace(client):
 def test_about_says_what_the_platform_gives_not_what_it_is_built_with(
     client, language, sentences
 ):
-    """Ioan, 2026-10-14: «Our Technology» no longer reads «Built with Django 6.1 and modern web
-    components. A cloud-native architecture on AWS…», but what that gives the business."""
+    """«Our Technology» says what the platform gives the business, not the stack it is built with."""
     html = page(client, "/about/", language)
 
     for sentence in sentences:
@@ -143,7 +136,7 @@ def test_about_says_what_the_platform_gives_not_what_it_is_built_with(
     ],
 )
 def test_our_apps_card_puts_every_app_on_every_plan(client, language, sentence):
-    """Ronda 2026-10-24b (PLAN §32): the card said «Free apps or premium features — you choose»."""
+    """Every plan includes every app: the card never offers free apps or premium features."""
     assert sentence in page(client, "/about/", language)
 
 
@@ -155,7 +148,7 @@ def test_about_in_spanish(client):
     assert "marketplace" not in html.lower()
 
 
-# --- The «coming soon» pages (F79) ------------------------------------------------------------
+# --- The «coming soon» pages ------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("path", COMING_SOON)
@@ -213,15 +206,12 @@ def test_llms_txt_says_who_builds_erplora(client):
     assert "- [About](https://testserver/about/): who builds ERPlora." in body
 
 
-# --- /collaborate/ (L7) ----------------------------------------------------------------------
+# --- /collaborate/ ---------------------------------------------------------------------------
 #
-# The old view had no test of its own. What it promised, and what changed: the counts of active
-# sectors and business types come from ``hubs.sector.list`` / ``hubs.business_type.list`` (plan
-# §3.m); the plan of «free for a year» is the cheapest PAID plan a visitor can sign up for, read from
-# ``hubs.plan.list`` — the old view read ``Plan.objects.filter(slug="starter")``, which WORKFLOW F63
-# marks as wrong (a plan off sale or internal would still be shown). ``cheapest_slug`` is the Free
-# plan, whose «valued at €0/year» says nothing, hence the cheapest paid one. The third-party
-# marketplace is gone (spec §8.3): no «Module marketplace», no paid modules with an 85 % share.
+# The counts of active sectors and business types come from ``hubs.sector.list`` / ``hubs.business_type.list``; the plan
+# of «free for a year» is the cheapest PAID plan a visitor can sign up for, read from ``hubs.plan.list``, so a plan off
+# sale or internal is never shown. ``cheapest_slug`` is the Free plan, whose «valued at €0/year» says nothing, hence the
+# cheapest paid one. There is no third-party marketplace: no «Module marketplace», no paid modules with an 85 % share.
 
 COLLABORATE = "/collaborate/"
 
@@ -302,8 +292,8 @@ def test_the_free_year_is_valued_at_the_cheapest_paid_plan_on_sale(no_plans, cli
 
 
 def test_the_free_year_is_valued_at_what_a_year_of_the_plan_costs(no_plans, client):
-    """PUBLIC-F10: a year of the plan is sold at its annual price, not at twelve monthly ones
-    (SAAS_PUBLIC-F58 counted ``price_monthly × 12`` next to an annual price of less)."""
+    """A year of the plan is valued at its annual price, not at twelve monthly ones: ``price_monthly × 12`` would
+    overstate it next to a cheaper annual price."""
     make_plan("free", "0")
     make_plan("starter", "29.99", price_annual=Decimal("299.90"))
 
@@ -332,7 +322,7 @@ def test_collaborate_speaks_of_our_apps_not_of_a_marketplace(client):
 
 
 def test_collaborate_names_no_old_host_and_no_past_launch_date(client):
-    """Ioan, 2026-10-13: the servers are on AWS. «Expected launch: September 2026» had passed."""
+    """The servers are on AWS, so no old host is named, and no launch date already past is announced."""
     for language in ("en", "es"):
         html = page(client, COLLABORATE, language)
         assert "Hetzner" not in html and "Falkenstein" not in html
@@ -340,7 +330,7 @@ def test_collaborate_names_no_old_host_and_no_past_launch_date(client):
 
 
 def test_collaborate_sends_to_the_contact_page_with_its_subject(client, settings):
-    """The form keeps the topic it is opened on (PUBLIC-G40): before, «Collaborator+Program» was ignored."""
+    """The contact link opens the form on its collaboration topic, and the mail link carries the subject."""
     settings.SUPPORT_EMAIL = "support@erplora.test"
     html = page(client, COLLABORATE)
 

@@ -1,24 +1,13 @@
 """The public web's base template, its partials, the component partials and the cookie templates.
 
-Port of ``apps/public/templates/public/public_base.html`` and its partials, ``templates/cookie_consent/``
-(origin/develop) and the contracts that pinned them: ``apps/public/tests/test_navbar_session.py`` (4)
-and the base-level half of ``apps/public/landing/tests/test_ui_stack_contract.py``. What changed, and
-why (spec §8.4, plan §3.b):
-
-* no ``ok-*``: OutfitKit is gone (PLAN §16.11). Its components are HTML + CSS partials
-  (``public/components/``, ``ep-*`` classes) and its ``layout.css`` classes are ``ep-*`` too, so the
-  contracts that named ``ok-container``/``ok-table-surface``… name the ``ep-*`` classes now;
-* no CDN and no runtime icon fetch: one Vite entry (``frontend/public.ts``) and ``{% icon %}``;
-* the demo CTA is back (round 2026-10-17, PLAN-SAAS §3.5): the navbar offers «Try the demo» (``/demo/``,
-  public/demo.py) to a visitor, as the old one did, and not to a customer with a session;
-* no PWA manifest nor app-shell head; the installed app's sign-in does open the legal texts, which then show in app
-  mode (`?surface=`, PUBLIC-F26: «Back» instead of the navbar, no footer, cookie notice nor analytics);
-* the CTA for a customer with a session goes to the SPA's launcher (``/launch``), the old
-  ``overview:index`` dashboard does not exist in saas-next; its language comes from the ``_lang``
-  cookie (plan §3.a), not from ``UserPreferences``.
-
-The page-specific contracts of ``test_ui_stack_contract.py`` (pricing, legal, help, contact, app,
-industries…) move with their pages to the lots that port them.
+* No ``ok-*``: the components are HTML + CSS partials (``public/components/``, ``ep-*`` classes) and the layout
+  classes are ``ep-*`` too.
+* No CDN and no runtime icon fetch: one Vite entry (``frontend/public.ts``) and ``{% icon %}``.
+* The navbar offers «Try the demo» (``/demo/``, public/demo.py) to a visitor, not to a customer with a session.
+* No PWA manifest nor app-shell head; the installed app's sign-in does open the legal texts, which then show in app
+  mode (`?surface=`: «Back» instead of the navbar, no footer, cookie notice nor analytics).
+* The CTA for a customer with a session goes to the SPA's launcher (``/launch``); its language comes from the
+  ``_lang`` cookie.
 """
 
 import re
@@ -43,7 +32,7 @@ PUBLIC_TEMPLATES = ROOT / "public" / "templates"
 PUBLIC_STATIC = ROOT / "public" / "static" / "public"
 COMPONENTS = PUBLIC_TEMPLATES / "public" / "components"
 COMPONENT_CSS = PUBLIC_STATIC / "components"
-#: The templates this lot owns: the base, its partials, the components, the errors and the cookies.
+#: The templates under test: the base, its partials, the components, the errors and the cookies.
 SHELL_TEMPLATES = [
     PUBLIC_TEMPLATES / "public" / "public_base.html",
     PUBLIC_TEMPLATES / "public" / "404.html",
@@ -59,7 +48,7 @@ NATIVE_VISIBLE_TAGS = re.compile(
 RAW_INPUT = re.compile(r"<input\b[^>]*>", re.IGNORECASE)
 INPUT_TYPE = re.compile(r"\btype=[\"']([^\"']+)[\"']", re.IGNORECASE)
 NOSCRIPT_BLOCK = re.compile(r"<noscript>.*?</noscript>", re.IGNORECASE | re.DOTALL)
-#: Copy of the retired local/offline desktop product (ADR-0154): whole phrases, never bare words.
+#: Copy of the retired local/offline desktop product: whole phrases, never bare words.
 RETIRED_LOCAL_OFFLINE_COPY = (
     "fully offline",
     "100% offline",
@@ -89,7 +78,7 @@ def without_noscript(source: str) -> str:
     return NOSCRIPT_BLOCK.sub("", source)
 
 
-#: The navbar's burger and close button (L8): native, because Ionic 8.8.9 copies the ``aria-*`` of
+#: The navbar's burger and close button: native, because Ionic 8.8.9 copies the ``aria-*`` of
 #: an ``ion-button`` host to its inner button once and never follows ``aria-expanded``.
 NAVBAR_NATIVE_BUTTON = re.compile(
     r'<button type="button" class="ep-navbar__(?:burger|close)"[^>]*\bdata-navbar-(?:toggle|close)\b[^>]*>'
@@ -118,7 +107,7 @@ def navbar_of(html: str) -> str:
 @pytest.fixture
 def cookie_groups(db, settings):
     """The groups seeded and an optional tracker configured: the banner only asks when there is one
-    (PUBLIC-G24, ``public/tests/test_analytics.py``)."""
+    (see ``public/tests/test_analytics.py``)."""
     settings.GA_MEASUREMENT_ID = "G-TEST123"
     call_command("init_cookie_groups")
 
@@ -169,7 +158,7 @@ def test_the_head_carries_description_open_graph_twitter_favicon_and_canonical(c
 
 @pytest.mark.django_db
 def test_hreflang_points_en_es_and_x_default_at_the_same_url(client):
-    """No `/es/` prefix: one URL per page, the language comes from the cookie (spec §7)."""
+    """No `/es/` prefix: one URL per page, the language comes from the cookie."""
     html = get_page(client).content.decode()
     url = "https://testserver/test-public-page/"
 
@@ -350,7 +339,7 @@ def test_the_dev_banner_announces_the_pre_launch(client):
 
 @pytest.mark.django_db
 def test_server_messages_reach_the_page(client):
-    """The contact form and other public forms answer with `messages.*` and a redirect (saas#1754)."""
+    """The contact form and other public forms answer with `messages.*` and a redirect."""
     html = get_page(client, "test_message_page").content.decode()
     messages = region(html, "data-server-messages", "</div>")
 
@@ -363,7 +352,7 @@ def test_no_messages_no_region(client):
     assert "data-server-messages" not in get_page(client).content.decode()
 
 
-# --- The navbar (port of test_navbar_session.py) ----------------------------------------------
+# --- The navbar -------------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -374,7 +363,7 @@ def test_an_anonymous_visitor_is_offered_to_start_free_and_the_demo(client):
     assert "Start free" in navbar
     assert f'href="{LAUNCHER}"' in navbar
     assert "Dashboard" not in navbar
-    # The demo (round 2026-10-17): a look without an account.
+    # The demo: a look without an account.
     assert "Try the demo" in navbar
     assert f'href="{reverse("public:demo")}"' in navbar
 
@@ -400,7 +389,7 @@ def test_the_session_aware_navbar_is_not_servable_from_a_shared_cache(client, an
 
 @pytest.mark.django_db
 def test_the_navbar_labels_are_translated(client, ana):
-    """Through i18n, not hard-coded: the `_lang` cookie picks Spanish (plan §3.a)."""
+    """Through i18n, not hard-coded: the `_lang` cookie picks Spanish."""
     client.force_login(ana)
     client.cookies[settings.LANGUAGE_COOKIE_NAME] = "es"
 
@@ -423,8 +412,8 @@ def opening_tag(html: str, marker: str, *, also: str = "") -> str:
 
 @pytest.mark.django_db
 def test_the_mobile_menu_is_a_native_button_with_its_labels(client):
-    """L8: Ionic 8.8.9 copies the ``aria-*`` of an ``ion-button`` host to its inner button once and
-    never follows ``aria-expanded`` again: a screen reader heard «collapsed» with the panel open."""
+    """Ionic 8.8.9 copies the ``aria-*`` of an ``ion-button`` host to its inner button once and never follows
+    ``aria-expanded`` again: a screen reader would hear «collapsed» with the panel open."""
     navbar = navbar_of(get_page(client).content.decode())
     burger = opening_tag(navbar, "data-navbar-toggle")
     close = opening_tag(navbar, "data-navbar-close", also="ep-navbar__close")
@@ -440,7 +429,7 @@ def test_the_mobile_menu_is_a_native_button_with_its_labels(client):
 
 @pytest.mark.django_db
 def test_the_mobile_menu_opens_from_an_inline_script_with_the_nonce(client):
-    """saas#243: pressed before ``frontend/public.ts`` arrived the burger did nothing. The script that opens the panel
+    """Pressed before ``frontend/public.ts`` arrives, the burger still opens the panel: the script that opens it
     comes with the navbar, right after it, and runs as the page is parsed; under the CSP, only with the nonce."""
     response = get_page(client)
     html = response.content.decode()
@@ -471,8 +460,8 @@ def literal_paths_to_public_routes(source: str) -> list[str]:
 
 
 def test_no_template_writes_the_path_of_a_public_route():
-    """L8: a route of the public web is a ``{% url %}``. A literal path survives a rename of the
-    route and points at a 404; ``|default:'/pricing/'`` waited for a URL name that exists now."""
+    """A route of the public web is a ``{% url %}``: a literal path survives a rename of the route and points at a
+    404."""
     offenders = [
         f"{template.relative_to(PUBLIC_TEMPLATES)}: {path}"
         for template in public_templates()
@@ -514,9 +503,8 @@ def names_a_route(href: str) -> bool:
 
 
 def test_navbar_and_footer_link_only_to_routes_that_exist():
-    """Each later lot adds its links in its turn (plan §3.i); until then nothing points at a page
-    that does not exist. An internal link is a `{% url %}` or the name of a route (the ``href`` of a
-    ``{% button %}``), or a page of the SPA: its launcher or its sign-in."""
+    """Nothing points at a page that does not exist. An internal link is a `{% url %}` or the name of a route (the
+    ``href`` of a ``{% button %}``), or a page of the SPA: its launcher or its sign-in."""
     for name in ("navbar.html", "nav_links.html", "footer.html", "footer_links.html"):
         source = without_comments(
             (PUBLIC_TEMPLATES / "public" / "partials" / name).read_text(
@@ -621,7 +609,7 @@ def test_the_cookie_banner_uses_the_shared_container_and_compact_ionic_actions(
     )
 
     assert 'class="ep-container cookie-consent-layout"' in banner
-    # Decline and Accept act on the page; Customize leads to another, so it is a real link (saas#238).
+    # Decline and Accept act on the page; Customize leads to another, so it is a real link.
     assert banner.count("<ion-button") == 2
     for control in ("cookie-customize", "cookie-decline", "cookie-accept"):
         assert f'id="{control}"' in banner
@@ -736,7 +724,7 @@ def test_the_500_page_stays_up_without_the_database(client, django_assert_num_qu
     """No navbar (session), no cookie banner and no analytics (cookie groups): an error page that
     needs the database cannot report that the database is down.
 
-    The maintenance switch every request reads (``base.maintenance``, ACCOUNTS-G82) is kept in the cache and, when it
+    The maintenance switch every request reads (``base.maintenance``) is kept in the cache and, when it
     cannot be read, leaves the site open (the next test): read once here, so only the page itself is counted."""
     from base.queries import maintenance_state
 
@@ -755,7 +743,7 @@ def test_the_500_page_stays_up_without_the_database(client, django_assert_num_qu
 
 @pytest.mark.django_db
 def test_the_500_page_stays_up_when_the_maintenance_switch_cannot_be_read(client, monkeypatch):
-    """The database down for the maintenance switch too (ACCOUNTS-G82): the site stays open and the 500 page answers."""
+    """The database down for the maintenance switch too: the site stays open and the 500 page answers."""
     from django.core.cache import cache
     from django.db import DatabaseError
 
@@ -773,7 +761,7 @@ def test_the_500_page_stays_up_when_the_maintenance_switch_cannot_be_read(client
     assert "Something went wrong" in response.content.decode()
 
 
-# --- Guardrails over every public template (base half of test_ui_stack_contract.py) -----------
+# --- Guardrails over every public template ----------------------------------------------------
 
 
 def test_no_outfitkit_and_no_cdn_in_any_public_template():
@@ -856,7 +844,7 @@ def test_public_navigation_has_no_global_floating_back_control():
 
 
 def test_no_public_template_advertises_the_retired_local_offline_product_or_the_old_demo_host():
-    """The demo is ``/demo/`` (round 2026-10-17), always by ``{% url 'public:demo' %}``; never the old
+    """The demo is ``/demo/``, always by ``{% url 'public:demo' %}``; never the old
     server-side demo host, nor a typed path that the route could leave behind."""
     offenders = []
     for template in public_templates():
@@ -911,7 +899,7 @@ def test_public_ios_outline_fields_keep_a_visible_shared_boundary():
     assert "focus-within" in css
 
 
-# --- Layout classes and component partials (spec §8.4) ----------------------------------------
+# --- Layout classes and component partials ----------------------------------------------------
 
 #: The OutfitKit layout.css classes the public templates used, rebuilt as `ep-*`.
 LAYOUT_CLASSES = (
@@ -965,7 +953,7 @@ def test_no_outfitkit_token_or_class_is_left_in_the_public_stylesheets():
         assert not re.search(r"(?<![\w-])\.?ok-[a-z]", text), sheet
 
 
-#: Every OutfitKit component the public templates used, as a partial (spec §8.4). The hero, the
+#: Every OutfitKit component the public templates used, as a partial. The hero, the
 #: navbar and the footer are the base's partials.
 COMPONENT_PARTIALS = (
     "reveal",
@@ -1015,7 +1003,7 @@ def test_no_public_stylesheet_washes_a_band_with_ionics_light_colour():
     """``--ion-color-light`` stays light in dark (theme.css pins it, so the CTA band's
     ``color="light"`` buttons stay white): a background mixed from it turned every page hero grey on
     a dark page. A soft band washes with ``--ep-wash``, which theme.css darkens with the page. The one rule that
-    may read it is that button's own, ``.ep-button--light``: a link since saas#238."""
+    may read it is that button's own, ``.ep-button--light``: a link."""
     offenders = []
     for sheet in PUBLIC_STATIC.rglob("*.css"):
         if sheet.name == "theme.css":
@@ -1226,7 +1214,7 @@ def test_the_open_mobile_panel_is_not_trapped_by_the_glass_bar():
     assert "-webkit-backdrop-filter: none" in open_rule.group(1)
 
 
-# --- L8: the public web looks like today's (side-by-side captures, old | new) -------------------
+# --- The public web keeps the look of the previous site (side-by-side captures) -----------------
 
 
 def css_rule(path: Path, selector: str, *, inside: str = "") -> str:
@@ -1240,7 +1228,7 @@ def css_rule(path: Path, selector: str, *, inside: str = "") -> str:
 
 
 def test_the_navbar_links_are_brand_blue_on_the_bar_and_plain_in_the_panel():
-    """Today the links of the bar take the brand colour; inside the mobile panel, the text one."""
+    """The links of the bar take the brand colour; inside the mobile panel, the text one."""
     navbar = COMPONENT_CSS / "navbar.css"
 
     assert "--ep-primary" in css_rule(navbar, ".ep-navbar__links a")
@@ -1258,14 +1246,14 @@ def test_the_navbar_links_are_brand_blue_on_the_bar_and_plain_in_the_panel():
     ],
 )
 def test_the_bar_and_the_footer_are_as_wide_as_today(sheet, selector):
-    """The old components measured 1140 px of content plus their padding (1172 px at 1440); with
-    the page's border-box they were 16 px narrower on each side."""
+    """1140 px of content plus the padding (1172 px at 1440), as on the previous site; with the page's border-box
+    they would be 16 px narrower on each side."""
     assert "box-sizing: content-box" in css_rule(COMPONENT_CSS / sheet, selector)
 
 
 def test_on_a_phone_the_footer_brand_takes_a_whole_row():
-    """At 390 px the brand sat in a column next to «Product»; today it spans the row above them,
-    whether the grid has one column or two."""
+    """At 390 px the brand spans the row above the columns, never a column next to «Product», whether the grid has
+    one column or two."""
     rule = css_rule(
         COMPONENT_CSS / "footer.css",
         ".ep-footer__brand-column",
@@ -1276,7 +1264,7 @@ def test_on_a_phone_the_footer_brand_takes_a_whole_row():
 
 
 def test_a_plan_card_lists_plain_checks_with_no_rule_and_no_stretch():
-    """Today: «✓ feature» as text, no line above the list, the button right after it."""
+    """«✓ feature» as text, no line above the list, the button right after it."""
     card = COMPONENT_CSS / "pricing-card.css"
     features = css_rule(card, ".ep-pricing-card__features")
     check = css_rule(card, ".ep-pricing-card__check")
@@ -1299,8 +1287,7 @@ TITLE_BLOCK = re.compile(r"\{%\s*block title\s*%\}(.*?)\{%\s*endblock", re.DOTAL
 
 
 def test_every_public_title_separates_the_brand_with_a_middle_dot():
-    """«Cookie Settings - ERPlora» and «Page not found - ERPlora» stood out among the
-    «<page> · ERPlora» of every other page (L8)."""
+    """Every title reads «<page> · ERPlora», the cookie settings and the not-found page too, never «… - ERPlora»."""
     offenders = [
         f"{template.relative_to(ROOT)}: {title.strip()}"
         for template in public_templates()
@@ -1328,7 +1315,7 @@ def test_the_cookie_settings_and_the_error_titles_read_like_the_rest(
     assert f"<title>{title}</title>" in html
 
 
-# --- PUBLIC-F26 (G47): a public page opened from the installed app ------------------------------------
+# --- A public page opened from the installed app ------------------------------------------------------
 #
 # The app's sign-in (`/shell/`, hubs/frontend/pages/LaunchPage.vue) links the terms and the privacy policy with
 # `?surface=<desktop|mobile|account>`; the page then opens like an app's in-app viewer (Shopify POS, Square POS:
@@ -1369,8 +1356,8 @@ def test_the_same_page_on_the_web_asks_for_cookies(client, cookie_groups):
 @pytest.mark.parametrize("surface", ["desktop", "mobile", "account"])
 def test_back_is_a_real_link_to_the_app_that_works_before_the_page_script(client, surface):
     """«Back» is an <a href> in the HTML, not an ion-button: an ion-button is no link until the page's script has
-    defined it, so on a slow device «Back» pressed before that did nothing (saas#236, PUBLIC-F26). The link keeps
-    the app's surface, as the app's own links to these texts do."""
+    defined it, so on a slow device «Back» pressed before that would do nothing. The link keeps the app's surface, as
+    the app's own links to these texts do."""
     body = body_of(client.get(f"{TERMS}?surface={surface}"))
 
     back = re.search(r"<(\w[\w-]*)\b[^>]*\bdata-app-back\b[^>]*>", body)
@@ -1418,7 +1405,7 @@ def test_the_way_back_in_spanish(client):
 
 @pytest.mark.django_db
 def test_inside_the_app_no_measurement_loads_even_with_every_cookie_accepted(client, settings):
-    """The same visitor, with every group accepted, is measured on the web and never inside the app (PUBLIC-F26)."""
+    """The same visitor, with every group accepted, is measured on the web and never inside the app."""
     settings.GA_MEASUREMENT_ID = "G-TEST123"
     settings.CLARITY_PROJECT_ID = "xhn93kfr5b"
     call_command("init_cookie_groups")
@@ -1432,7 +1419,7 @@ def test_inside_the_app_no_measurement_loads_even_with_every_cookie_accepted(cli
     assert "clarity.ms" not in in_the_app
 
 
-# --- A button that leads somewhere is a real link (saas#238, PUBLIC-F11) -------------------------
+# --- A button that leads somewhere is a real link ------------------------------------------------
 
 #: An ion-button with an href, over several lines and with template tags among its attributes.
 ION_BUTTON_LINK = re.compile(r"<ion-button\b[^>]*(?<![\w-])href=")
@@ -1504,7 +1491,7 @@ def test_every_link_button_really_is_a_link():
 
 
 def test_only_the_button_component_writes_a_link_button():
-    """One component (saas#238): a button written by hand in a page is how the 50 of them would drift apart."""
+    """One component: a button written by hand in a page is how the 50 of them would drift apart."""
     written = {
         str(template.relative_to(PUBLIC_TEMPLATES)): count
         for template in public_templates()
@@ -1562,9 +1549,9 @@ DOWNLOAD_PAGES = ("appdist/index.html", "appdist/android.html")
 
 @pytest.mark.parametrize("template", DOWNLOAD_PAGES)
 def test_the_download_pages_share_their_closing_section(template):
-    """«You need a hub before you need the app» (heading, lead and two buttons) was written twice, once per download
-    page, with only the second button differing: `dup-guard.sh` counts it the moment a change touches it (saas#238).
-    One partial, `appdist/_get_started.html`, and each page tells it where its second button goes."""
+    """«You need a hub before you need the app» (heading, lead and two buttons) is one partial,
+    `appdist/_get_started.html`, not a copy per download page (`dup-guard.sh` would count it): each page tells it
+    where its second button goes."""
     source = without_comments((PUBLIC_TEMPLATES / "public" / template).read_text(encoding="utf-8"))
 
     assert 'id="get-started"' not in source

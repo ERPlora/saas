@@ -1,17 +1,8 @@
 """``/help/`` and the help guides it renders (public/help.py, ``docs/<lang>/help/*.md``).
 
-Port of ``apps/dashboard/core/help_docs.py`` and its suite ``apps/dashboard/help/tests/test_help_docs.py``
-(9), plus the help case of ``apps/public/resources/test_views.py`` and of
-``tests/unit/test_public_pages.py`` (origin/develop c5ca8ca). What changed, and why (spec §7, §12;
-plan §3.d):
-
-* only ``en`` and ``es`` ship (``fr``, ``it``, ``de`` and ``pt`` are out of scope): the case that
-  read a German placeholder now builds its own placeholder in Spanish;
-* ``03-bridge.md`` (the Bridge, ADR-0196) and ``04-modules.md`` (the module marketplace) are
-  retired, and the rest are renumbered ``01``…``05``; no guide speaks of either;
-* the markdown is rendered by ``live.markdown.render_markdown`` (headings get their ``id``);
-* the page is the public web's: ``ep-*`` classes instead of OutfitKit's, ``{% icon %}`` instead of
-  ``<iconify-icon>``.
+Only ``en`` and ``es`` ship. The markdown is rendered by ``live.markdown.render_markdown`` (headings get their
+``id``), and the page is the public web's, with ``ep-*`` classes and ``{% icon %}``. No guide speaks of the retired
+Bridge or of a module marketplace.
 """
 
 import re
@@ -27,8 +18,8 @@ from public import help as help_docs
 
 ROOT = Path(settings.BASE_DIR)
 
-# ADR-0196 deleted the standalone Bridge app (one single `erplora-app` IS the hardware access) and
-# ADR-0254 dropped the word from the product vocabulary. AWS "EventBridge" is another product.
+# The standalone Bridge app is gone (the one `erplora-app` IS the hardware access) and the word is out of the product
+# vocabulary. AWS "EventBridge" is another product.
 _RETIRED_BRIDGE_RE = re.compile(r"(?<!event)\bbridge\b", re.IGNORECASE)
 # The dead WebSocket of the standalone Bridge and its retired public page.
 _RETIRED_BRIDGE_MARKERS = ("12321", "(/bridge/)")
@@ -59,7 +50,7 @@ def write_doc(root: Path, lang: str, name: str, text: str) -> None:
     (directory / name).write_text(text, encoding="utf-8")
 
 
-# --- The service (test_help_docs.py) ---------------------------------------------------------
+# --- The service -----------------------------------------------------------------------------
 
 
 def test_list_docs_returns_repo_guides():
@@ -118,7 +109,7 @@ def test_get_doc_unknown_id_returns_none():
 
 @pytest.mark.parametrize("crafted", ["../../UI-REQUESTS-panel", "../../../README"])
 def test_get_doc_never_reads_a_markdown_file_outside_the_guides(crafted):
-    """PUBLIC-G21: the id is checked against the guides, so an existing file next to them never leaks."""
+    """The id is checked against the guides, so an existing file next to them never leaks."""
     assert (Path(settings.BASE_DIR) / "docs" / "en" / "help" / f"{crafted}.md").resolve().is_file()
 
     assert help_docs.get_doc(crafted, "en") is None
@@ -175,7 +166,7 @@ def test_both_languages_ship_the_same_guides():
 
 
 def test_help_docs_do_not_document_the_retired_bridge():
-    """The help must not sell a product ADR-0196 deleted (saas#1275)."""
+    """The help must not sell the retired Bridge."""
     offenders = []
     for path in _help_files():
         for number, line in enumerate(
@@ -190,7 +181,7 @@ def test_help_docs_do_not_document_the_retired_bridge():
 
 
 def test_help_docs_do_not_speak_of_a_marketplace():
-    """Every app is ours: there is no module marketplace to install from (spec §8.3)."""
+    """Every app is ours: there is no module marketplace to install from."""
     offenders = [
         str(path.relative_to(ROOT))
         for path in _help_files()
@@ -270,9 +261,8 @@ def test_help_center_uses_ionic_accordions(client):
 
 @pytest.mark.django_db
 def test_every_guide_starts_folded(client):
-    """PUBLIC-F15: «a guide per topic, each one folded; opening one reads it whole». A ``value`` on the group opened the
-    first guide by itself, so a click on it folded it (PUBLIC-G01 of ``public-web-2.spec.ts`` passed only when its
-    check ran before Ionic repainted)."""
+    """A guide per topic, each one folded; opening one reads it whole. A ``value`` on the group would open the first
+    guide by itself, so a click on it would fold it."""
     sections = [
         {"id": "getting-started", "title": "Getting Started", "html": "<p>Welcome</p>"},
         {"id": "inventory", "title": "Inventory", "html": "<p>Stock guide</p>"},
@@ -336,7 +326,7 @@ def test_help_center_page_basics(client):
 
 
 def test_help_docs_do_not_name_the_old_hosting():
-    """The servers are on AWS, Ireland region, not on Hetzner in Germany (Ioan, 2026-10-13)."""
+    """The servers are on AWS, Ireland region, not on Hetzner in Germany."""
     offenders = [
         f"{path.relative_to(ROOT)}: {name}"
         for path in _help_files()

@@ -1,12 +1,10 @@
-"""``POST /set-language/``: the public web's language switcher (plan §3.a).
+"""``POST /set-language/``: the public web's language switcher.
 
-Ported from the ``set_language`` tests of ERPlora/saas ``apps/public/landing/tests/test_views.py``
-(origin/develop c5ca8ca). Not ported: ``test_set_language_authenticated_user`` — the switcher keeps
-only the ``_lang`` cookie and never writes ``User.language``, which the panel manages (its
+The switcher keeps only the ``_lang`` cookie and never writes ``User.language``, which the panel manages (its
 preferences page), so a public view does not write into ``accounts``.
 
-The order Django reads (``LocaleMiddleware``): the ``_lang`` cookie, then ``Accept-Language``, then
-``en``; Django 4+ no longer reads the session for it.
+The order Django reads (``LocaleMiddleware``): the ``_lang`` cookie, then ``Accept-Language``, then ``en``; Django 4+
+no longer reads the session for it.
 """
 
 import re
@@ -52,7 +50,7 @@ def test_only_the_cookie_is_written_never_the_session(client):
 
 @pytest.mark.django_db
 def test_a_signed_in_persons_account_language_is_not_touched(client, ana):
-    """``User.language`` belongs to the panel's preferences page (plan §3.a)."""
+    """``User.language`` belongs to the panel's preferences page."""
     client.force_login(ana)
 
     response = client.post(URL, {"language": "en", "next": "/"}, HTTP_HOST=HOST)
@@ -143,10 +141,9 @@ def test_an_external_referer_is_refused(client):
     assert response.url == "/"
 
 
-# --- PUBLIC-F13: a visitor without an account can switch (SAAS_PUBLIC-F68) ----------------------
-# The old menu lost its selector and nothing called /set-language/: a visitor could only change the
-# browser's language. As Stripe, Shopify, Square and Odoo do, the footer of every public page carries
-# the languages of the site, each the button of its own POST form back to the same page.
+# --- A visitor without an account can switch ----------------------------------------------------
+# As Stripe, Shopify, Square and Odoo do, the footer of every public page carries the languages of the site, each the
+# button of its own POST form back to the same page.
 
 FOOTER_SWITCHER = re.compile(r'<div class="ep-footer__language".*?</form>\s*</div>', re.S)
 

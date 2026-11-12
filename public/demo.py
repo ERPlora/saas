@@ -1,20 +1,20 @@
-"""``/demo/``: the door to a demo hub (PLAN-SAAS §3.5, round 2026-10-17).
+"""``/demo/``: the door to a demo hub.
 
-Plan ``docs/plans/2026-10-17-demo-hubs-fase-1.md`` §1.6 and §1.8. A demo is an empty hub of the Hub's own
+A demo is an empty hub of the Hub's own
 (``demo-<8 hex>``, 60 minutes); the SaaS keeps no row of it, only the browser's session knows it
 (``session["demo"] = {id, slug, expires_at, ready}``). Four routes:
 
 * ``index`` (GET): the page, in one of its states, always 200. It never creates a demo: a crawler, a prefetch
   or a reload must not spend the Hub's cap of live demos;
 * ``start`` (POST, CSRF): asks the Hub for a demo of this browser (``hubs.hub_client.create_demo``). The Hub answers
-  202 «requested» and prepares its database afterwards (the asynchronous demo of the tenancy, 2026-10-30): the browser
+  202 «requested» and prepares its database afterwards: the browser
   goes back to the door, which says «Preparing your demo…» while its page asks ``status`` every second (for 30 seconds,
-  ``frontend/demo-wait.ts``). A demo already ready (the live one given back, or a Hub from before, which answers 201
+  ``frontend/demo-wait.ts``). A demo already ready (the live one given back, or an older Hub, which answers 201
   without ``status``) jumps at once to its ``/auth/login`` (``accounts.queries.hub_start_url``), the same jump with
   ``state`` as a business.
   New demos are limited per address (``DEMO_SPAWN_RATELIMIT``, as the contact form); a browser that already
   has a live one is not counted, and the Hub answers it the same demo. Then reCAPTCHA Enterprise
-  (``recaptcha_token``, action ``demo_request``; ``live.recaptcha``; Ioan, 2026-10-22): only a person gets a demo,
+  (``recaptcha_token``, action ``demo_request``; ``live.recaptcha``): only a person gets a demo,
   and a refused try never reaches the Hub (``?state=unverified``);
 * ``status`` (GET, JSON): how the browser's demo is going, ``{state, url?}``; with a ``url`` the page goes there (the
   jump once the Hub has it ready, or the door with what happened: ``not_ready`` when the Hub could not prepare it,
@@ -62,7 +62,7 @@ from public.csp import public_policy
 logger = logging.getLogger(__name__)
 
 #: The browser's demo in its session: ``{"id": "<UUID>", "slug": "demo-…", "expires_at": "<ISO 8601>", "ready": bool}``.
-#: A session from before the asynchronous demo holds only ``slug`` and ``expires_at``: that demo was ready.
+#: An older session holds only ``slug`` and ``expires_at``: that demo was ready.
 SESSION_DEMO = "demo"
 #: The random token whose sha256 names this browser to the Hub (``session_key`` of ``/internal/demos``).
 SESSION_OWNER = "demo_owner"
@@ -74,7 +74,7 @@ RECAPTCHA_ACTION = "demo_request"
 #: The Hub's refusal when its cap of live demos is reached.
 DEMO_FULL = "base.demo_full"
 #: How often one browser may ask how its demo is going (its page asks once a second): past it, the answer is «still
-#: preparing» without reaching the Hub (review of saas#168).
+#: preparing» without reaching the Hub.
 STATUS_RATE = "90/m"
 
 
@@ -110,7 +110,7 @@ def _demo_of(body: Any) -> dict[str, Any] | None:
     """``{id, slug, expires_at, status}`` of an answer that names a demo hub with its end; ``None`` for anything else.
 
     The door only ever jumps into a ``demo-…`` hub: an answer naming a business is no demo, nor one whose ``id`` is not
-    a UUID. ``id`` and ``status`` are ``None`` when the answer has none (a Hub from before the asynchronous demo).
+    a UUID. ``id`` and ``status`` are ``None`` when the answer has none (an older Hub).
     """
     if not isinstance(body, dict):
         return None
@@ -237,7 +237,7 @@ def start(request: HttpRequest) -> HttpResponse:
         logger.warning("demo.start.hub_unavailable %s", away)
         return _door("unavailable")
     demo = _demo_of(answer.body)
-    # A Hub from before the asynchronous demo answers without ``status``: its demo is ready as it answers.
+    # An older Hub answers without ``status``: its demo is ready as it answers.
     ready = demo is not None and demo["status"] in (None, "ready")
     waiting = (
         demo is not None

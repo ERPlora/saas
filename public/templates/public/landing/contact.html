@@ -1,12 +1,11 @@
 {% extends "public/public_base.html" %}
 {% load i18n icons %}
 {% comment %}
-  /contact/ — port of apps/public/landing/templates/landing/contact/contact.html (origin/develop):
-  the compact hero, the form and the other ways to reach us, with the same texts and the ep-*
-  classes (PLAN §16.11). The form posts to /contact/submit/ (public/landing.py), which answers with
-  a message and a redirect back to #contacto; the messages are painted by the base
-  (public/partials/messages.html). The address, the chat and the reply time come from the context processor
-  (PUBLIC-G41), never typed here. Contract: public/tests/test_landing.py.
+  /contact/: the compact hero, the form and the other ways to reach us. The form posts to
+  /contact/submit/ (public/landing.py), which answers with a message and a redirect back to
+  #contacto; the messages are painted by the base (public/partials/messages.html). The address, the
+  chat and the reply time come from the context processor, never typed here. Contract:
+  public/tests/test_landing.py.
 {% endcomment %}
 
 {% block title %}{% trans "Contact Us" %} · ERPlora{% endblock %}
