@@ -1,12 +1,10 @@
-"""An account's API key opens ``/api/`` (``accounts.api_auth``; plan 2026-10-13, L3-A; PLAN-SAAS §2.4).
+"""An account's API key opens ``/api/`` (``accounts.api_auth``).
 
-Ported from ERPlora/saas ``apps/auth/apikeys/tests`` (``test_authentication``, ``test_permissions``,
-``test_apps``) onto ninja. A key makes the request act as its account, bounded by its scopes, and only on the
-operations declared with ``expose_api=True`` (opt-in, as in hub-next): ``<app>.read`` opens the app's queries,
+A key makes the request act as its account, bounded by its scopes, and only on the
+operations declared with ``expose_api=True`` (opt-in, as in the Hub): ``<app>.read`` opens the app's queries,
 ``<app>.write`` its commands. Everything else of the API answers a key with 403 ``api_key_not_allowed``: a key
 never manages the account nor mints keys. ``Authorization: Bearer erps_live_…`` (the convention of Stripe,
-GitHub and OpenAI) and ``X-Api-Key`` (the hubs' header and the old SaaS's) are both read. Dropped: the hubs'
-keys and ``X-Hub-Id`` (hub-next's, PLAN-SAAS §2.4), the environment check (one production).
+GitHub and OpenAI) and ``X-Api-Key`` (the hubs' header) are both read. A hub's keys and ``X-Hub-Id`` are the Hub's.
 """
 
 import logging
@@ -153,7 +151,7 @@ class TestAKeyOfAnAccount:
         [
             "erps_live_" + "A" * 48,  # well-formed, nobody's
             "erps_live_short",
-            "erpk_live_" + "A" * 48,  # a hub's key belongs to hub-next
+            "erpk_live_" + "A" * 48,  # a hub's key belongs to the Hub
             "not-a-key",
         ],
     )

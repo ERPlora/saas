@@ -1,5 +1,4 @@
-"""``0008_retire_azure_speech``: the kind of Azure AI Speech leaves, and a provider of it leaves with it (saas#242,
-PLAN-SAAS round 2026-11-04c).
+"""``0008_retire_azure_speech``: the kind of Azure AI Speech leaves, and a provider of it leaves with it (saas#242).
 
 A row of that kind would be a choice no form accepts and an API no client speaks: it goes with its keys and its models,
 and the policy lets go of a model of it. Nothing else moves, whatever its identifier. On the way back the kind returns

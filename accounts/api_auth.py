@@ -1,13 +1,13 @@
-"""An account's API key opens ``/api/`` (plan 2026-10-13, L3-A; PLAN-SAAS §2.4, ADR-0467).
+"""An account's API key opens ``/api/``.
 
 A key (``erps_live_…``, ``accounts.models.ApiKey``) makes the request act as its account, bounded by its scopes,
-and only on the operations declared with ``expose_api=True`` (opt-in, as in hub-next): ``<app>.read`` opens that
+and only on the operations declared with ``expose_api=True`` (opt-in, as in the Hub): ``<app>.read`` opens that
 app's queries and ``<app>.write`` its commands. Every other route of the API refuses a key with 403
 ``api_key_not_allowed``, so a key never manages the account, its sessions or its keys. Routes open to anonymous
 visitors (``auth=None``) ignore it.
 
 Two headers are read: ``Authorization: Bearer erps_live_…`` (Stripe's, GitHub's and OpenAI's convention) and
-``X-Api-Key`` (the hubs' header, PLAN-SAAS §6, and the old SaaS's). A browser never sends either by itself, so a
+``X-Api-Key`` (the hubs' header). A browser never sends either by itself, so a
 request with a key needs no CSRF token. Wrong keys are counted per address and a key's calls per minute; a key is
 never logged whole.
 

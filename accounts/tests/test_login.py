@@ -1,9 +1,9 @@
 """The sign-in lives in the launcher, the SPA's ``/launch`` (``hubs/frontend/pages/LaunchPage.vue`` with
 ``accounts/frontend/components/SignInForm.vue``), over allauth.headless.
 
-allauth runs headless only (``HEADLESS_ONLY``, PLAN-SAAS §2): none of its template pages exists. The old
+allauth runs headless only (``HEADLESS_ONLY``): none of its template pages exists. The old
 addresses of the sign-in (bookmarks, links of the public web cached elsewhere) and ``/login``, the SPA's
-sign-in page until the form moved into the launcher (Ioan, 2026-10-15), lead to ``/launch`` for good,
+sign-in page until the form moved into the launcher, lead to ``/launch`` for good,
 keeping where the person was going, in one hop; the old sign-up's leads to its «Create account» tab
 (``test_unified_login``). ``/login/error`` stays a page of the SPA. Logging in through the API is ``test_headless``'s, ``test_unified_login``'s and
 ``test_sign_in_code``'s; the Google round trip is ``test_google``'s.
@@ -108,9 +108,9 @@ def test_allauths_template_pages_are_gone(client, page):
     assert client.get(page, HTTP_HOST=HOST).status_code == 404
 
 
-#: Where the Hub's «Sign out» lands on a device without the PIN pad (hub ``base/auth_views.py`` ``SAAS_LOGOUT_PATH``,
-#: BASE-F61): erplora.com's page that asks before closing its own session (ACCOUNTS-F09,
-#: ``accounts/frontend/pages/SignOutPage.vue``), instead of allauth's ``/accounts/logout/``, gone above.
+#: Where the Hub's «Sign out» lands on a device without the PIN pad (the Hub's ``base/auth_views.py``
+#: ``SAAS_LOGOUT_PATH``): erplora.com's page that asks before closing its own session
+#: (``accounts/frontend/pages/SignOutPage.vue``), instead of allauth's ``/accounts/logout/``, gone above.
 HUB_SIGN_OUT = "/logout"
 
 

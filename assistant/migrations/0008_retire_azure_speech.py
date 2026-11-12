@@ -1,4 +1,4 @@
-"""The kind of Azure AI Speech leaves, and a provider of it leaves with it (saas#242, PLAN-SAAS round 2026-11-04c).
+"""The kind of Azure AI Speech leaves, and a provider of it leaves with it (saas#242).
 
 A row of that kind would be a choice no form accepts and an API no client speaks: it goes with its keys and its models,
 and the policy lets go of a model of it (its foreign keys protect the model). Its identifiers go to the log, never a key.

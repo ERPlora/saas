@@ -1,13 +1,9 @@
 """Account → API keys: ``accounts.apikey.list``, ``accounts.apikey.create`` and ``accounts.apikey.revoke``
-(plan 2026-10-13, L3-A; PLAN-SAAS §2.4: the SaaS keeps the account's keys, the hubs' are hub-next's).
+(the SaaS keeps the account's keys; a hub's keys are the Hub's).
 
-Ported from ERPlora/saas ``apps/auth/apikeys/tests`` (80): the key shown once and kept as a hash, its scopes,
-its expiry and last use, revoking as the audit trail. Changed: the account issues its own keys from the panel
-(the original issued them only from the console, a superuser for a staff account), with a recent sign-in, as
-GitHub, Stripe and Shopify do; the expiry is 30 or 90 days or never (90 by default, the mockup's). Dropped,
-with their reason: the hubs' keys and their grace (hub-next's, PLAN-SAAS §2.4), the ``pre`` environment (one
-production), the vendor and fleet scopes (the developer part left, PLAN-SAAS §3.6 point 2) and the mint script.
-How a key opens the API is ``test_api_auth.py``.
+The key is shown once and kept as a hash, with its scopes, its expiry and last use; revoking is the audit trail.
+The account issues its own keys from the panel, with a recent sign-in, as GitHub, Stripe and Shopify do; the expiry
+is 30 or 90 days or never (90 by default). How a key opens the API is ``test_api_auth.py``.
 """
 
 import logging

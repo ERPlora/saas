@@ -31,7 +31,7 @@ async function load(r: RouteRecordRaw): Promise<RouteComponent> {
 describe('accounts routes.ts', () => {
   it('maps the sign-in\'s errors, its code and 2FA steps and the password reset open to visitors, and the rest behind a session', () => {
     expect(routes.map((r) => [r.path, r.meta])).toEqual([
-      // The sign-in itself is the launcher's (`/launch`, the hubs app's: round 17 §2.2; Ioan, 2026-10-15):
+      // The sign-in itself is the launcher's (`/launch`, the hubs app's):
       // `/login` only leads there. It signs up an unknown address too: there is no `/signup`.
       ['/login', { auth: false }],
       ['/login/error', { auth: false }],
@@ -45,13 +45,13 @@ describe('accounts routes.ts', () => {
       // The 2FA settings and «Confirm it's you», in the auth card too.
       ['/2fa', { auth: true, chrome: false }],
       ['/reauthenticate', { auth: true, chrome: false }],
-      // Account (round 17, PLAN-SAAS §3.6): one address per section, the footer tabbar follows the route.
+      // Account: one address per section, the footer tabbar follows the route.
       ['/dashboard/account', { auth: true }],
       ['/dashboard/account/:tab(profile|security|preferences|api-keys)', { auth: true }],
-      // «Report a problem» of the user menu (ACCOUNTS-F38): the account goes with the report.
+      // «Report a problem» of the user menu: the account goes with the report.
       ['/dashboard/report-a-problem', { auth: true }],
-      // Where the Hub's «Sign out» lands (BASE-F61, hub `base/auth_views.py` SAAS_LOGOUT_PATH): erplora.com asks before
-      // closing its own session (ACCOUNTS-F09), in the auth card; open to a visitor, whom it sends to the launcher.
+      // Where the Hub's «Sign out» lands (the Hub's `base/auth_views.py` SAAS_LOGOUT_PATH): erplora.com asks before
+      // closing its own session, in the auth card; open to a visitor, whom it sends to the launcher.
       ['/logout', { auth: false, chrome: false }],
     ]);
   });

@@ -1,4 +1,4 @@
-"""HMAC-SHA256 + timestamp of the internal calls (PLAN-SAAS §2): hex HMAC of ``f"{ts}.{body}"``."""
+"""HMAC-SHA256 + timestamp of the internal calls: hex HMAC of ``f"{ts}.{body}"``."""
 
 import hashlib
 import hmac
@@ -69,7 +69,7 @@ def test_non_ascii_headers_are_refused_without_raising(timestamp, signature):
     assert verify(BODY, timestamp, signature, secret=SECRET, now=NOW) is False
 
 
-# --- Two live secrets and the signature that covers method and path (PLAN-SAAS §2.1; L1-A2) ------
+# --- Two live secrets and the signature that covers method and path ------
 
 from accounts.signing import (  # noqa: E402
     SIGNATURE_HEADER,
@@ -171,7 +171,7 @@ class TestTheSignatureV2:
 
 
 class TestTwoLiveSecrets:
-    """Rotation (PLAN-SAAS §2): both projects accept the current and the previous secret, and sign with the current."""
+    """Rotation: both projects accept the current and the previous secret, and sign with the current."""
 
     @pytest.mark.parametrize("version", ["v1", "v2"])
     def test_a_call_signed_with_the_previous_secret_verifies_during_the_rotation(self, version):

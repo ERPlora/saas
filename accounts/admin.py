@@ -1,8 +1,8 @@
 """Django admin of accounts: users (with their preferences and photo; their businesses, ``hubs.admin``), the one-time
 codes and the API keys (a superuser revokes them, and issues one for a team account). The sessions are
-``allauth.usersessions``' own page, read only; a superuser closes them («Close sessions», ACCOUNTS-F19).
+``allauth.usersessions``' own page, read only; a superuser closes them («Close sessions»).
 
-«Open in the Hub admin» (ronda 13, PLAN §18.1.6), on every member row and on the «Hubs» page (``hubs.admin``,
+«Open in the Hub admin», on every member row and on the «Hubs» page (``hubs.admin``,
 ``/admin/accounts/hubs/``, routed in ``config/urls.py``): the staff jump from ``erplora.com/admin``
 to the hub's deep link ``hubs.erplora.com/admin/hub/<slug>/``. The jump starts at the Hub
 (``<HUB_ADMIN_ORIGIN>/auth/login?hub=<slug>&next=/admin/hub/<slug>/``), which binds it to the browser
@@ -12,7 +12,7 @@ staff never type ``hubs.erplora.com``.
 
 ``/admin/login/`` hands over to the SaaS's sign-in, ``LOGIN_URL`` (``admin_login``, installed by
 ``config/urls.py``), which asks for the mailed code; with ``ACCOUNTS_MFA_ENABLED`` on, the staff enter only with
-an authenticator app (``admin_has_permission``, ACCOUNTS-F20; without one, ``/2fa`` to set it up) and the jump also
+an authenticator app (``admin_has_permission``; without one, ``/2fa`` to set it up) and the jump also
 needs the authenticator app's code in the session.
 """
 
@@ -59,11 +59,11 @@ from accounts.models import (
 )
 
 OPEN_IN_HUB_ADMIN = _("Open in the Hub admin")
-#: The Vue page of the second factor's settings, where staff without an authenticator app set it up (ACCOUNTS-F20).
+#: The Vue page of the second factor's settings, where staff without an authenticator app set it up.
 TWO_FACTOR_SETTINGS = "/2fa"
 
-#: Why the jump to the Hub admin failed, by the ``?error=`` the Hub sends back to «Hubs» (ERPlora/saas#1):
-#: the codes of ``hub-next/base/auth.py`` and ``auth_views.py``, and the 400s of ``/internal/auth/redeem``
+#: Why the jump to the Hub admin failed, by the ``?error=`` the Hub sends back to «Hubs»:
+#: the codes of the Hub's ``base/auth.py`` and ``auth_views.py``, and the 400s of ``/internal/auth/redeem``
 #: (``accounts/internal.py``), which the Hub forwards as they are.
 JUMP_FAILED = {
     "invalid_code": _("The access to the Hub admin expired or was already used. Open it again from this page."),
@@ -167,14 +167,14 @@ class UserAdmin(DjangoUserAdmin):
             },
         ),
         (_("Important dates"), {"fields": ("last_login", "date_joined")}),
-        # What the account accepted (ACCOUNTS-G119): evidence, so nobody edits it here.
+        # What the account accepted: evidence, so nobody edits it here.
         (_("Terms and privacy"), {"fields": ("terms_accepted_at", "terms_version", "privacy_version")}),
     )
     add_fieldsets = ((None, {"classes": ("wide",), "fields": ("email", "usable_password", "password1", "password2")}),)
     actions = ("close_sessions",)
 
     def get_readonly_fields(self, request, obj=None):
-        # The store review account (ACCOUNTS-F49) drops the mailed code of its sign-in: only a superuser sets or clears
+        # The store review account drops the mailed code of its sign-in: only a superuser sets or clears
         # it; whoever else sees the page sees it. A staff account never carries it (``User.clean``).
         readonly = super().get_readonly_fields(request, obj)
         return readonly if request.user.is_superuser else (*readonly, "is_store_review_account")
@@ -198,7 +198,7 @@ class UserAdmin(DjangoUserAdmin):
         permissions=["close_sessions"],
     )
     def close_sessions(self, request, queryset):
-        """An incident (ACCOUNTS-F19): the accounts picked are signed out everywhere and asked for their app's code
+        """An incident: the accounts picked are signed out everywhere and asked for their app's code
         again on every browser."""
         count = services.close_sessions(by=request.user, users=list(queryset.values_list("pk", flat=True)))
         self.message_user(request, gettext("Sessions closed: %(count)s.") % {"count": count}, messages.SUCCESS)
@@ -219,9 +219,9 @@ def _admin_next(request: HttpRequest) -> str:
 
 def admin_has_permission(request: HttpRequest) -> bool:
     """Who enters the admin (``admin.site.has_permission``, installed by ``config/urls.py``): an active staff account,
-    as Django's rule, and with ``ACCOUNTS_MFA_ENABLED`` only one with an authenticator app (ACCOUNTS-F20; PLAN-SAAS
-    «2FA obligatorio en el admin»). The account is checked, as in today's SaaS: the sign-in asked the app's code (or
-    a browser the account trusts skipped it). Recovery codes alone are no second factor."""
+    as Django's rule, and with ``ACCOUNTS_MFA_ENABLED`` only one with an authenticator app. The account is checked:
+    the sign-in asked the app's code (or a browser the account trusts skipped it). Recovery codes alone are no second
+    factor."""
     user = request.user
     if not (user.is_active and user.is_staff):
         return False
@@ -244,10 +244,9 @@ def admin_login(request: HttpRequest, extra_context=None) -> HttpResponse:
     goes to ``LOGIN_URL?next=…`` (the launcher's sign-in, allauth.headless), whose code steps
     (``/verify-email``, ``/2fa/authenticate``) record both. Staff already signed in go where they were
     going; staff without the authenticator app the admin needs (``admin_has_permission``) go to set it up on
-    ``/2fa``, which comes back to ``next`` (never a 403: old SAAS_AUTH-F08); any other signed-in account gets 403,
+    ``/2fa``, which comes back to ``next`` (never a 403); any other signed-in account gets 403,
     never the login: the sign-in sends a signed-in account straight to ``next`` (the admin), which would send it back
     here.
-    Ported from ERPlora/saas ``_admin_login`` (``config/urls.py``), there only with the second factor on.
     """
     next_url = _admin_next(request)
     if admin.site.has_permission(request):
@@ -276,7 +275,7 @@ class AuthExchangeCodeAdmin(admin.ModelAdmin):
 
 
 class ApiKeyIssueForm(forms.ModelForm):
-    """«Add API key» (ACCOUNTS-F31): a team account, a name, its permissions and when it expires."""
+    """«Add API key»: a team account, a name, its permissions and when it expires."""
 
     scopes = forms.MultipleChoiceField(
         label=capfirst(_("permissions")), choices=list(API_KEY_SCOPES.items()), widget=forms.CheckboxSelectMultiple
@@ -302,10 +301,10 @@ class ApiKeyIssueForm(forms.ModelForm):
 
 @admin.register(ApiKey)
 class ApiKeyAdmin(admin.ModelAdmin):
-    """Who has which key, what it may do, when it was last used (ported from ERPlora/saas ``apps/auth/apikeys``).
+    """Who has which key, what it may do, when it was last used.
 
-    An account issues its keys in the Account page. A superuser issues one here for a team account («Add API key»,
-    PLAN-SAAS §1.1, ronda 2026-10-15b), through ``services.issue_api_key``: the answer shows the key once
+    An account issues its keys in the Account page. A superuser issues one here for a team account («Add API key»),
+    through ``services.issue_api_key``: the answer shows the key once
     (``response_add``, never cached) and nothing keeps it in clear. A key is never changed and the hash is never shown;
     deleting is not offered (revoking is the audit trail). A superuser can cut keys on the spot («Revoke»);
     ``support`` sees them.
@@ -426,7 +425,7 @@ admin.site.unregister(UserSession)
 @admin.register(UserSession)
 class UserSessionAdmin(AllauthUserSessionAdmin):
     """Who is signed in where (``allauth.usersessions``): read only. Deleting a row would only hide a session that
-    still signs in; a superuser ends the picked ones with «Close the selected sessions» (ACCOUNTS-F19), which also
+    still signs in; a superuser ends the picked ones with «Close the selected sessions», which also
     asks their businesses; ``support`` sees them. Every column and label is named here, in the staff's language."""
 
     list_display = ("account", "signed_in", "last_used", "ip_address", "browser")
@@ -495,7 +494,7 @@ class ResourceTypeFilter(AuditlogResourceTypeFilter):
 
 @admin.register(LogEntry)
 class LogEntryAdmin(AuditlogLogEntryAdmin):
-    """The audit trail (ACCOUNTS-F36), read only as auditlog's own page, with what it says in English said in the
+    """The audit trail, read only as auditlog's own page, with what it says in English said in the
     staff's language: the summary counts the changes and names each field, as Django's own history does."""
 
     list_filter = ["action", ResourceTypeFilter, CIDFilter]

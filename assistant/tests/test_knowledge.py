@@ -1,5 +1,5 @@
-"""ASSISTANT-F27 · What the panel's assistant knows of ERPlora (``assistant.knowledge``): the documentation cut into
-the excerpts its search returns (plan 2026-10-30-asistente-saas §5).
+"""What the panel's assistant knows of ERPlora (``assistant.knowledge``): the documentation cut into
+the excerpts its search returns.
 
 ``chunk_markdown`` cuts a document at its ``##`` and ``###`` headings (a FAQ's questions are ``###``), names each
 excerpt by its path of headings («Title > Section > Question») and windows a long section into excerpts of

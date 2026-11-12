@@ -1,4 +1,4 @@
-"""``POST /internal/auth/redeem``: the hub spends the one-time code, signed (PLAN-SAAS §3.1 step 6)."""
+"""``POST /internal/auth/redeem``: the hub spends the one-time code, signed."""
 
 import json
 import time
@@ -90,7 +90,7 @@ def test_a_code_for_another_hub_is_refused(client, code):
 
 
 def test_a_code_for_one_business_never_opens_another_of_the_same_account_nor_is_spent_there(client, ana):
-    """The code is tied to the business it was issued for (PLAN-SAAS §2): the account's role on another business does
+    """The code is tied to the business it was issued for: the account's role on another business does
     not make it valid there, and the refusal leaves it for its own business."""
     enter(ana, "a", "hub_owner")
     enter(ana, "b", "hub_employee")
@@ -164,7 +164,7 @@ def test_only_post_is_allowed(client):
 
 
 class TestHubAdminAudience:
-    """``"audience": "hub-admin"`` (ronda 13, PLAN §18): the Hub at ``hubs.erplora.com`` spends the code
+    """``"audience": "hub-admin"``: the Hub at ``hubs.erplora.com`` spends the code
     of a staff jump and learns the platform role, never a ``hub_*`` one. Without ``audience``, the
     redeem is the member's ``hub-session``."""
 
@@ -247,7 +247,7 @@ class TestHubAdminAudience:
 
 
 class TestRotationAndTheSignatureV2:
-    """L1-A2 (PLAN-SAAS §2.1): two live secrets, and the signature that covers method and path."""
+    """Two live secrets, and the signature that covers method and path."""
 
     PREVIOUS = "the-secret-before-the-rotation"
 
