@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// «Recover business» wherever a deleted business is listed (audit 2 R-07: the launch card offered only «Go to
-// the panel»). Only what the server allows (`can.restore`: its owner, within its 90 days); it runs
+// «Recover business» wherever a deleted business is listed. Only what the server allows (`can.restore`: its
+// owner, within its 90 days); it runs
 // `hubs.business.restore` and says the result, or the server's sentence when it is refused (the Free quota
 // taken meanwhile…). In a list the button is named with its business.
 import { HubIcon, toastError, toastSuccess } from '@erplora/ui/shell';

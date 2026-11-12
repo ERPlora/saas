@@ -1,4 +1,4 @@
-// The Members of a business (mockups `business.html` «members», round 17 §2.7–2.8): the live
+// The Members of a business: the live
 // `hubs.member.list` in a server-side DataTable (cards up to 900 px) with name, email, role, status and
 // last access; per row ONLY the actions the server computed (`actions`, in its order); «Invite» when the
 // account may invite; the places of the plan, a pending ownership offer with «Withdraw», and what
@@ -74,7 +74,7 @@ async function setup(business: Record<string, unknown> = {}, api: (c: ReturnType
   return { ...m, call, table, prop, testid, q, actionsOf, show: (result: unknown, rev?: number) => m.result(call, 'hubs.member.list', result, rev) };
 }
 
-describe('MembersTab: before the business answers (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN)', () => {
+describe('MembersTab: before the business answers', () => {
   it('asks for the list with the business’s id alone, so it rides the page’s first stream', async () => {
     const m = await mountHubs(MembersTab, { props: { id: 'h1' } });
     const call = await m.live();
@@ -98,7 +98,7 @@ describe('MembersTab: the list', () => {
     expect(s.client.stream.subscriptions('hubs.member.list').map((sub) => sub.params)).toEqual([{ hub_id: 'h1', limit: 50, offset: 0 }]);
     await s.show(page());
     // The list counts the invited too: its count is of the people of the team, not of members («Members 5» with 4
-    // members and 1 invitation, audit 2 R-26).
+    // members and 1 invitation).
     expect(s.table().props()).toMatchObject({ serverSide: true, title: 'Team', total: 3, views: ['table', 'cards'], cardBreakpoint: 900, addable: true, testid: 'members' });
     expect(s.prop<(count: number) => string>('entityLabel')).toEqual({ one: 'person', many: 'people' });
     expect(s.prop<Array<{ key: string; label: string }>>('columns').map((c) => c.label)).toEqual(['Name', 'Email', 'Role', 'Status', 'Last access']);
@@ -112,7 +112,7 @@ describe('MembersTab: the list', () => {
     expect(rows[1].find('[data-testid="member-you"]').exists()).toBe(false);
     expect(rows.map((r) => r.get('.status-pill').text())).toEqual(['Active', 'Active', 'Pending']);
     expect(rows[2].get('[data-testid="member-last"]').text()).toMatch(/^Invited on Oct 11, 2026/);
-    // Audit 2 R-25: not the span DataTable clips with «…»: the date may take a second line.
+    // Not the span DataTable clips with «…»: the date may take a second line.
     expect(rows[2].get('[data-testid="member-last"]').element.tagName).toBe('DIV');
   });
 
@@ -172,8 +172,8 @@ describe('MembersTab: the list', () => {
   });
 });
 
-describe('MembersTab: a clean page (Ioan, 2026-10-14)', () => {
-  it('the stream gone before any answer: loading, then the table’s error with «Retry», never an empty list (R-04)', async () => {
+describe('MembersTab: a clean page', () => {
+  it('the stream gone before any answer: loading, then the table’s error with «Retry», never an empty list', async () => {
     const s = await setup();
     s.call.push(BYE);
     await flush();
@@ -196,7 +196,7 @@ describe('MembersTab: a clean page (Ioan, 2026-10-14)', () => {
     expect(s.table().element.parentElement).toBe(s.wrapper.element);
   });
 
-  it('asks for rows per page only when there are more members than the shortest page (mockups README §3b)', async () => {
+  it('asks for rows per page only when there are more members than the shortest page', async () => {
     const s = await setup();
     await s.show(page());
     expect(s.prop('pageSizeChooser')).toBe(false);

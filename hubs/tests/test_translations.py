@@ -1,4 +1,4 @@
-"""The messages L1-A2 added to hubs reach a Spanish account in Spanish (UI in ``en`` + ``es``, PLAN §5).
+"""The messages of hubs reach a Spanish account in Spanish.
 
 Read through Django's catalog of the app (``hubs/locale/es/LC_MESSAGES/django.mo``), so a ``.po`` edited
 without compiling it fails too.
@@ -31,7 +31,7 @@ NEW_MESSAGES = [
     "End the sessions in the Hub now",
     "%(count)d session end(s) delivered.",
     "%(count)d session end(s) still pending: the Hub is away or refused it; reconcile_hub_states retries it.",
-    # L2-B: what Stripe says of the plan (hubs.subscription.apply) and the payer's postal code.
+    # What Stripe says of the plan (hubs.subscription.apply) and the payer's postal code.
     "Only the platform applies what Stripe says.",
     "There is no plan with this identifier.",
     "A Spanish postal code has five digits, e.g. 28001.",
@@ -43,13 +43,13 @@ NEW_MESSAGES = [
     "why it is unpaid",
     "unpaid since",
     "invoice to pay",
-    # L4-A: the usage of a business (HubUsageDaily, hubs.usage.*) and its admin.
+    # The usage of a business (HubUsageDaily, hubs.usage.*) and its admin.
     "day",
     "files (bytes)",
     "database (bytes)",
     "active that day",
     "active in the 30 days",
-    # hub#603: what the Hub measures during the day, in the admin.
+    # What the Hub measures during the day, in the admin.
     "requests",
     "peak connections",
     "requests with no room",
@@ -78,7 +78,7 @@ NEW_MESSAGES = [
     "%(business)s is ready: open it and start selling.",
     "Open it: %(url)s",
     "Manage it from the panel: %(url)s",
-    # The copies of a business's data (PLAN-DB round 2026-10-30, (k)): the deletion's way to them, the mail when one
+    # The copies of a business's data: the deletion's way to them, the mail when one
     # is ready (emails.py) and the refusals of a download (queries.data_copy_link).
     "Download a full copy of its data: %(url)s",
     "The copy of the data of %(business)s is ready",

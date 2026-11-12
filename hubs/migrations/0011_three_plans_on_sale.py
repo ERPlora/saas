@@ -1,15 +1,14 @@
-"""Data: three plans on sale at sign-up, their copy and their resource ladder (Ioan, 2026-10-15).
+"""Data: three plans on sale at sign-up, their copy and their resource ladder.
 
 ``sync_hub_plans`` ran on every deploy (until ``0013`` replaced it) but never overwrote a row, so the
 plans seeded before this date kept what the old seed said, a database line naming the engine under it
 («Managed PostgreSQL database») included. From here Free, Starter and Standard read the copy the seed carried
-that day (``COPY``) — description and features, in both languages — and the resource ladder of 2026-10-15
+that day (``COPY``) — description and features, in both languages — and the resource ladder of that day
 (``max_db_connections``, ``statement_timeout_seconds``: each plan up doubles the one below, so Standard has
 twice Starter's), and keep everything else as staff left it (prices, trial, seat caps, Stripe ids).
 
-The upgrade-only tiers (``pro``, ``enterprise``, ``max``) are not touched: Ioan kept them on 2026-10-15, active
-and ``upgrade_only``, as production has them. (A first draft of this migration, never deployed, took them off
-sale; that was dropped before it left the branch.)
+The upgrade-only tiers (``pro``, ``enterprise``, ``max``) are not touched: they stay active and ``upgrade_only``,
+as production has them.
 
 Reverse: nothing to undo. The copy stays (its old wording is nowhere to be read back from), which is still a
 valid catalogue. Idempotent; a database without the rows is left as it is.
@@ -17,7 +16,7 @@ valid catalogue. Idempotent; a database without the rows is left as it is.
 
 from django.db import migrations
 
-#: The copy and the resource ladder the seed (``sync_hub_plans``, empty since 0013) carried on 2026-10-15, frozen here: a
+#: The copy and the resource ladder the seed (``sync_hub_plans``, empty since 0013) carried that day, frozen here: a
 #: migration is history, so a later change of the seed never rewrites what this one did.
 COPY = {
     "free": {

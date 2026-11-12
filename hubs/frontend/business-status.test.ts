@@ -65,7 +65,7 @@ describe('reasonKey', () => {
   });
 });
 
-describe('the real deadline of an unpaid invoice (audit 2026-10-14, R-06)', () => {
+describe('the real deadline of an unpaid invoice', () => {
   it('is 7 days after the invoice went unpaid, as the server suspends it (billing UNPAID_PLAN_GRACE)', () => {
     expect(unpaidDeadline('2026-10-10T14:23:00Z')).toBe('2026-10-17T14:23:00.000Z');
   });

@@ -1,11 +1,10 @@
 """``hubs.plan.list`` and ``GET /api/plans``: the plans on sale, for the public web and the panel.
 
-Public (no account): the pricing page reads it before anyone signs up. Adapted from ERPlora/saas
-``public/pricing/views.py`` (origin/develop): only ``Plan.objects.public()`` rows, by
-``display_order`` then price; each plan's features end with its real trial (``Plan.trial_label``,
-saas#2424) unless an upgrade grants none (#809), and the legacy visual separators («───») are
-dropped; the trial the sign-up grants (``signup_trial_days``) and the cheapest plan a visitor can
-sign up for (``cheapest_slug``: never an ``upgrade_only`` one).
+Public (no account): the pricing page reads it before anyone signs up. Only ``Plan.objects.public()`` rows, by
+``display_order`` then price; each plan's features end with its real trial (``Plan.trial_label``) unless an
+upgrade grants none, and visual separators («───») are dropped; the trial the sign-up grants
+(``signup_trial_days``) and the cheapest plan a visitor can sign up for (``cheapest_slug``: never an
+``upgrade_only`` one).
 """
 
 from decimal import Decimal
@@ -103,9 +102,9 @@ def test_the_shape_of_a_plan(seeded):
     )
     assert (starter["upgrade_only"], starter["internal_only"]) == (False, False)
     assert (starter["assistant_messages_per_month"], starter["whatsapp_messages_per_month"]) == (300, 150)
-    # The apps the business may choose to turn on (hub#256), published on /pricing/ as the Hub applies it.
+    # The apps the business may choose to turn on, published on /pricing/ as the Hub applies it.
     assert starter["max_apps"] == 40
-    # No trial since 2026-10-15 (the Free plan is the way in): the features end with the plan's own.
+    # No trial (the Free plan is the way in): the features end with the plan's own.
     assert starter["features"] == Plan.objects.get(slug="starter").features_en
     assert (starter["included_level_label"], starter["support_level_label"]) == (
         "Basic",
@@ -179,7 +178,7 @@ def test_the_visual_separators_of_old_rows_are_dropped(seeded):
 
 
 def test_the_catalogue_grants_no_signup_trial(seeded):
-    """Ioan, 2026-10-15: the Free plan is the way in."""
+    """The Free plan is the way in."""
     assert plan_list()["signup_trial_days"] == 0
 
 

@@ -1,9 +1,9 @@
 """The mails of hubs, in the recipient's language: the invitation, the ownership offer and its answer,
 and the deletion with the date until which the business can be recovered.
 
-Ported from ERPlora/saas ``hubs/main/emails.py`` and ``test_deletion_email`` (origin/develop). Every mail is
-branded, as text and as HTML (``base.emails.branded_message``, ACCOUNTS-F46). Each mail names the business and the
-way in; none is sent inside the transaction that wrote what it announces (services send them after the COMMIT).
+Every mail is branded, as text and as HTML (``base.emails.branded_message``, ACCOUNTS-F46). Each mail names the
+business and the way in; none is sent inside the transaction that wrote what it announces (services send them
+after the COMMIT).
 """
 
 from datetime import timedelta

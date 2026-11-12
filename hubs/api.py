@@ -204,7 +204,7 @@ async def billing_profile_update(request, data: BillingProfileIn):
     return await run_operation(request, services.billing_profile_update, data)
 
 
-# --- Usage (lot L4-A) -----------------------------------------------------------------------------
+# --- Usage ----------------------------------------------------------------------------------------
 
 
 @bind(router, "hubs.usage.get", "/hubs/usage")
@@ -217,7 +217,7 @@ async def usage_series(request, params: Query[UsageSeriesIn]):
     return await run_operation(request, queries.usage_series, params)
 
 
-# --- The copies of a business's data (PLAN-DB, round 2026-10-30, proposal (k)) ----------------------------------
+# --- The copies of a business's data --------------------------------------------------------------
 
 
 @bind(router, "hubs.data_copy.list", "/hubs/data-copies")

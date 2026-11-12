@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// «Delete business» (PLAN-SAAS §3.4, round 17 §2.11; mockups `business.html` «settings-delete»): a
+// «Delete business»: a
 // ConfirmDialog that asks to type the business's name (the server checks it too: `confirm_name`) and
 // says what follows. Deleting runs `hubs.business.delete`, says until when the business can be
 // recovered, closes and hands the deleted business to the page (`deleted`). Used by Businesses (row

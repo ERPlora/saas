@@ -1,10 +1,9 @@
-"""What the SaaS tells the Hub after each COMMIT, against the Hub double (PLAN-SAAS §2.2, §3.1, §3.4).
+"""What the SaaS tells the Hub after each COMMIT, against the Hub double.
 
-New with this lot (plan 2026-10-13 §3, the push to the Hub): ``services.sync_hub`` brings the Hub to what
-the SaaS knows (the registry, the deletion or the restoration it owes, then the snapshot), records
-each acknowledgement and leaves the rest pending when the Hub is away; ``reconcile_hub_states`` retries it.
-Ported from ``test_entitlement_push`` (origin/develop): a push is delivered only when the Hub
-acknowledged it; anything else is «not delivered», and nothing breaks.
+``services.sync_hub`` brings the Hub to what the SaaS knows (the registry, the deletion or the restoration it owes,
+then the snapshot), records each acknowledgement and leaves the rest pending when the Hub is away;
+``reconcile_hub_states`` retries it. A push is delivered only when the Hub acknowledged it; anything else is «not
+delivered», and nothing breaks.
 """
 
 from datetime import timedelta
@@ -77,7 +76,7 @@ class TestTheSnapshot:
             "plan",
             "modules",
             "members",
-            # The documentation for VeriFactu and its live sending (plan 2026-10-15, agreed with the Hub).
+            # The documentation for VeriFactu and its live sending (agreed with the Hub).
             "verifactu",
             # The business's WhatsApp channel (door 4 of hub/apps/whatsapp_inbox/WORKBOOK.md): whatsapp/tests.
             "whatsapp",
@@ -91,13 +90,13 @@ class TestTheSnapshot:
 
     def test_it_carries_the_verifactu_block(self, business):
         """``fiscal.queries.snapshot_block`` (the authorisation) and nothing of the plan, Free included: VeriFactu goes
-        in every plan (PLAN §30; a new business is on Free), so ``live_paid`` left the block with the Hub's condition
-        (FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID). The rest is ``fiscal/tests/test_snapshot.py``."""
+        in every plan (a new business is on Free), so the block carries no ``live_paid``. The rest is
+        ``fiscal/tests/test_snapshot.py``."""
         assert queries.hub_snapshot(business.id)["verifactu"] == {
             "representation": {"status": "none", "updated_at": None, "reason": ""},
         }
 
-    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one by default)
     def test_the_plan_is_the_trials_while_it_lasts(self, business):
         """Free is born with 15 days of Starter: the Hub applies Starter's rights meanwhile."""
         assert queries.hub_snapshot(business.id)["plan"] == {
@@ -107,7 +106,7 @@ class TestTheSnapshot:
             "max_users": 0,
             "max_db_connections": 3,
             "statement_timeout_seconds": 15,
-            # The monthly messages the Hub counts and blocks at (PLAN-SAAS §3.6, 2026-10-15): 0 = none.
+            # The monthly messages the Hub counts and blocks at: 0 = none.
             "assistant_messages_per_month": 300,
             "whatsapp_messages_per_month": 150,
             # The modules a business may choose to turn on (2026-10-24; what they require does not count): Starter's 40.
@@ -420,7 +419,7 @@ def test_a_plan_change_is_a_new_version(business):
     assert fresh(business).state_version == version + 1
 
 
-# --- Review of L1-A, finding 4: permanent refusals are visible, transient ones stay owed ----------
+# --- Permanent refusals are visible, transient ones stay owed --------------------------------------
 
 
 class TestRefusals:
@@ -456,7 +455,7 @@ class TestRefusals:
         assert queries.business_get(ctx_for(owner), ByIdIn(id=business.id)).hub_error == "unknown_vertical"
 
     def test_a_refused_snapshot_is_an_error_in_the_log_with_the_hubs_reason(self, business, hub_double, caplog):
-        """hub#127: a ``whatsapp`` block out of the Hub's schema makes it refuse the whole snapshot (422): the
+        """A ``whatsapp`` block out of the Hub's schema makes it refuse the whole snapshot (422): the
         business stops receiving its plan, modules and members, so the push says it as an ERROR, with the Hub's code
         and reason, and the snapshot stays owed."""
         reason = "The whatsapp block is out of contract: templates.0.name: String should have at least 1 character"
@@ -566,7 +565,7 @@ class TestRefusals:
 
 
 def test_falling_to_free_the_modules_of_the_paid_plan_leave_the_snapshot(business, owner):
-    """Review of L1-A: deleting drops the plan at once; what came with it goes, what was bought stays."""
+    """Deleting drops the plan at once; what came with it goes, what was bought stays."""
     subscription = Subscription.objects.get(hub=business)
     SubscriptionItem.objects.create(subscription=subscription, module_slug="loyalty", source="plan")
     SubscriptionItem.objects.create(subscription=subscription, module_slug="inventory", source="purchase")

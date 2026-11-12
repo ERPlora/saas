@@ -1,6 +1,5 @@
-"""A business's own domain, its operations and its snapshot (HUBS-F17; PLAN-SAAS §37 point 2; ``aws`` README, «Dominio
-propio de un negocio»; hub#812). The hourly check that moves a domain between its states is
-``test_check_custom_domains.py``.
+"""A business's own domain, its operations and its snapshot (HUBS-F17; ``aws`` README, «Dominio propio de un
+negocio»). The hourly check that moves a domain between its states is ``test_check_custom_domains.py``.
 
 AWS is botocore's Stubber (``hubs/tests/conftest.py``): a call the test did not expect fails, so a test that expects none
 proves nothing reached AWS.
@@ -565,7 +564,7 @@ def test_removing_what_is_already_being_removed_says_nothing_new(
 def test_a_certificate_the_alb_holds_stays_for_the_next_check_and_the_row_with_it(
     owner, standard_business, custom_domains_on, hub_double, django_capture_on_commit_callbacks
 ):
-    """The row goes last, and that is what frees the name (ADR-0496)."""
+    """The row goes last, and that is what frees the name."""
     active_row(standard_business)
     custom_domains_on.expect_detach()
     custom_domains_on.acm.add_client_error("delete_certificate", "ResourceInUseException", "in use")
@@ -701,7 +700,7 @@ def test_a_snapshot_with_the_domain_is_what_the_hub_takes(standard_business, hub
 
 
 def test_the_hub_refusing_a_domain_refuses_the_whole_snapshot(standard_business, hub_double):
-    """Why nothing it refuses may ever reach a row: this business would get no more snapshots at all (the double as hub#812)."""
+    """Why nothing it refuses may ever reach a row: this business would get no more snapshots at all."""
     make_row(standard_business, hostname="www.erplora.com", proven_at=timezone.now())
     Hub.objects.filter(pk=standard_business.pk).update(state_version=7, pushed_state_version=6)
 

@@ -1,4 +1,4 @@
-"""The Django admin shows every model of hubs (PLAN-SAAS §6: «el Django admin, lo más completo posible»)."""
+"""The Django admin shows every model of hubs."""
 
 import html
 import re
@@ -39,7 +39,7 @@ def test_changelist_add_and_change_pages_load(staff_client, rows, model):
 
 
 def test_staff_edit_the_monthly_messages_of_a_plan(staff_client, rows):
-    """The assistant and WhatsApp messages a plan includes are edited next to its limits (2026-10-15)."""
+    """The assistant and WhatsApp messages a plan includes are edited next to its limits."""
     page = staff_client.get(f"/admin/hubs/plan/{rows['plan'].pk}/change/").content.decode()
 
     assert 'name="assistant_messages_per_month"' in page
@@ -47,7 +47,7 @@ def test_staff_edit_the_monthly_messages_of_a_plan(staff_client, rows):
 
 
 def test_staff_edit_how_many_modules_a_plan_lets_a_business_turn_on(staff_client, rows):
-    """``max_apps`` (Ioan, 2026-10-24) is edited next to the plan's other limits."""
+    """``max_apps`` is edited next to the plan's other limits."""
     page = staff_client.get(f"/admin/hubs/plan/{rows['plan'].pk}/change/").content.decode()
 
     assert 'name="max_apps"' in page
@@ -83,7 +83,7 @@ def test_the_admin_refuses_a_folded_spanish_name(staff_client, rows):
 
 
 def test_a_business_type_is_added_with_its_sector_and_vertical(staff_client, rows):
-    # The vertical is one an app of the catalog builds (BusinessType.clean, spec §5.4).
+    # The vertical is one an app of the catalog builds (BusinessType.clean).
     make_app("appointment", verticals=["hair_salon"])
     response = staff_client.post(
         "/admin/hubs/businesstype/add/",
@@ -103,7 +103,7 @@ def test_a_business_type_is_added_with_its_sector_and_vertical(staff_client, row
     assert (added.sector, added.vertical) == (rows["sector"], "hair_salon")
 
 
-# --- The account plane of a business (L1-A2): read-mostly, with the actions of the platform -------
+# --- The account plane of a business: read-mostly, with the actions of the platform -------------
 
 from django.contrib.auth.models import Group  # noqa: E402
 
@@ -272,8 +272,8 @@ class TestTheActions:
 
 
 class TestTheTrail:
-    """HUBS-F23 (trap of ERPlora/saas SAAS_DASHBOARD-F41: «las acciones del admin no dejan rastro»): every action of
-    the platform on a business leaves, on each row, who ran it and which, in the admin's history."""
+    """HUBS-F23: every action of the platform on a business leaves, on each row, who ran it and which, in the admin's
+    history (the old admin's actions left no trace)."""
 
     def test_an_action_on_a_business_is_in_its_history(self, staff_client, business, hub_double):
         from django.contrib.admin.models import CHANGE, LogEntry
@@ -419,7 +419,7 @@ class TestTheTestClock:
 
 
 class TestSupport:
-    """``support`` (staff, view only, PLAN-SAAS §2.1 round 11) sees the account plane and acts on nothing."""
+    """``support`` (staff, view only) sees the account plane and acts on nothing."""
 
     @pytest.fixture
     def support_client(self, client, make_user):
@@ -461,7 +461,7 @@ class TestSupport:
         assert hub_double.calls == []
 
 
-# --- The usage of each business, day by day (L4-A): read only, as the Hub measured it ---------------
+# --- The usage of each business, day by day: read only, as the Hub measured it ---------------------
 
 
 class TestTheUsageAdmin:
@@ -504,7 +504,7 @@ class TestTheUsageAdmin:
 
 
 class TestTheFiguresOfTheDayInTheAdmin:
-    """hub#603, PLAN-SAAS §28: ERPlora's team sees what the Hub measures of each business; unmeasured is never a 0."""
+    """ERPlora's team sees what the Hub measures of each business; unmeasured is never a 0."""
 
     COLUMNS = ("served", "connections", "without_room")
 
@@ -658,8 +658,8 @@ PLAN_FIELDS = [
 
 
 def test_the_plan_list_speaks_spanish(staff_client, rows):
-    """Its columns and filters said «PRICE MONTHLY», «TRIAL PERIOD DAYS» and «Por is active» in a Spanish admin (the
-    capture of HUBS-F31's notice, APP-HUBS-4)."""
+    """Its columns and filters once said «PRICE MONTHLY», «TRIAL PERIOD DAYS» and «Por is active» in a Spanish
+    admin."""
     page = staff_client.get("/admin/hubs/plan/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
 
     assert _headings(page) == PLAN_COLUMNS

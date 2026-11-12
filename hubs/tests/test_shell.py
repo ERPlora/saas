@@ -1,8 +1,8 @@
 """The installed app's doors on erplora.com: ``/shell/`` and ``/shell/open/<id>/`` (HUBS-F02, HUBS-F12).
 
-``ERPlora/app`` boots on ``{SaaS}/shell/`` and never changes it (working-rules §12): ``/shell/`` is the launcher
+``ERPlora/app`` boots on ``{SaaS}/shell/`` and never changes it: ``/shell/`` is the launcher
 (the SPA's ``/launch`` under the app's address). The app links the till to a hub only when a navigation with
-``?shell=1`` leaves an entry page of the SaaS (``hub_link.rs``; PLAN-SAAS bloque 3, PLAN-HUB round 18), so
+``?shell=1`` leaves an entry page of the SaaS (``hub_link.rs``), so
 ``/shell/open/<id>/`` runs «Open» (``hubs.business.open``) with the mark and sends the window to the Hub's start.
 """
 
@@ -58,7 +58,7 @@ def test_signed_out_it_signs_in_on_the_apps_start_and_comes_back(client, busines
 
 @pytest.mark.parametrize("who", ["stranger", "invitee"])
 def test_a_business_of_someone_else_is_not_found(client, business, team, who):
-    """Old saas SAAS_DASHBOARD-F07: «un negocio ajeno, 404»; an invitation is accepted first."""
+    """A stranger's business is a 404; an invitation is accepted first."""
     ready(business)
     client.force_login(team[who])
 

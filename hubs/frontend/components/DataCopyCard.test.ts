@@ -1,4 +1,4 @@
-// «Download the data» on a business's Summary (PLAN-DB round 2026-10-30, proposals (a), (k), (l); HUBS-F18, HUBS-F20):
+// «Download the data» on a business's Summary (HUBS-F18, HUBS-F20):
 // the copies the Hub keeps of the business's data (`hubs.data_copy.list`: when, which, how big), each downloaded with
 // a fresh link of the Hub's asked on the click (`hubs.data_copy.link`, 15 minutes). Only its owner (`can.download_data`,
 // the server's). A deleted business always shows the card: «not ready yet, we will let you know» while the Hub has no

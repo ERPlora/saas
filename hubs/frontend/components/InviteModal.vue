@@ -1,10 +1,10 @@
 <script setup lang="ts">
-// «Invite» (mockups `business.html` «members-invite», round 17 §2.8): the email, the role (only those
+// «Invite»: the email, the role (only those
 // the account may hand out: the server's `invitable_roles`, employee by default) and an optional
 // message. `hubs.member.invite` creates the invitation (and the account if needed) and mails it; the
 // toast names who was invited. With every place of the plan taken (the list's `seats`, or the server's
 // 409 `hubs.seat_limit` when somebody took the last one meanwhile) it says so and sends nothing more; it waits
-// for an email that looks like one (audit 2 R-28); a
+// for an email that looks like one; a
 // 422 puts its message on its field; anything else stays in the dialog, said in the person's language.
 import { FormModal, InlineFeedback } from '@erplora/ui/components';
 import { toastSuccess } from '@erplora/ui/shell';
@@ -37,7 +37,7 @@ const message = shallowRef('');
 const full = computed(
   () => (props.seats.limit !== null && props.seats.used >= props.seats.limit) || invite.error.value?.code === 'hubs.seat_limit',
 );
-/** «Send invitation» waits for an address (audit 2 R-28): the server still checks it. */
+/** «Send invitation» waits for an address: the server still checks it. */
 const sendable = computed(() => looksLikeEmail(email.value));
 
 watch(open, (isOpen) => {

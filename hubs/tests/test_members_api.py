@@ -1,21 +1,12 @@
 """The members page and its doors over HTTP (``/api/hubs/members*``, ``/api/hubs/invitations*``,
 ``/api/hubs/ownership/*``): what each row offers, computed by the server so the panel never guesses, and
-what each door allows, whatever a row showed (plan 2026-10-13, L1-B).
+what each door allows, whatever a row showed.
 
 Each row of ``hubs.member.list`` carries ``is_me`` and ``actions``, a list in a fixed order
 (``change_role``, ``remove``, ``resend``, ``cancel``, ``transfer``) of what the account may do on it: a
 role change and «Remove» on somebody it manages and who answered, «Resend» and «Cancel» on an
 invitation it manages, «Transfer» only for the owner, on somebody else who answered, while no offer
 waits. Nothing on one's own row, on a peer or a superior, nor on a deleted business.
-
-Ported from ERPlora/saas (origin/develop), from the okdt table and the dashboard views to the query and
-the ninja routes: ``dashboard/users/tests/`` ``test_users_row_actions`` (14), ``test_users_list_shows_self``
-(7), ``test_pending_invitation_status`` (11), ``test_remove_user`` (10), ``test_members_per_hub`` (9),
-``test_account_role_choices`` (6), ``test_role_pill_is_translated`` (3) and ``test_ownership_transfer_views``
-(28); and the HTTP cases of ``hubs/main/tests/`` ``test_members_role_escalation`` (malformed input),
-``test_invitation_accept`` (a poked, malformed or empty body grants nothing; other verbs) and
-``test_permissions`` (the account part: a missing, malformed or unknown business). Each file's cases that
-are covered elsewhere, or dropped, are listed in the report of the lot.
 """
 
 import json
@@ -94,7 +85,7 @@ class TestWhatEachRowOffers:
         assert row["assignable_roles"] == ["hub_admin", "hub_manager", "hub_employee"]
 
     def test_my_own_row_offers_nothing(self, as_, business, team):
-        """9 of 9 products deny the destructive action on your own row (saas#1626)."""
+        """9 of 9 products deny the destructive action on your own row."""
         listed = rows(as_(team["owner"]), business)
 
         # The neighbour proves the check sees actions at all.
@@ -163,7 +154,7 @@ class TestWhatEachRowOffers:
         assert listed["employee@example.com"]["actions"] == ["change_role", "remove"]
 
     def test_the_owner_is_never_on_offer(self, as_, business, team):
-        """Ownership changes hands only by the hand-over (saas#1626), never from the role menu."""
+        """Ownership changes hands only by the hand-over, never from the role menu."""
         listed = page(as_(team["owner"]), business)
 
         assert all("hub_owner" not in row["assignable_roles"] for row in listed["rows"])
@@ -190,7 +181,7 @@ class TestWhatEachRowOffers:
 
 class TestTheListShowsMe:
     def test_a_lone_owner_sees_their_own_row(self, as_, owner, plans):
-        """One owner, nobody invited: one row, never the empty state (saas#1566)."""
+        """One owner, nobody invited: one row, never the empty state."""
         hub = create_business(owner)
 
         listed = page(as_(owner), hub)
@@ -227,7 +218,7 @@ class TestTheListShowsMe:
     def test_the_people_of_a_business_i_do_not_manage_stay_hidden(
         self, as_, business, team, make_user
     ):
-        """Tenancy (ADR-0201): the list is per business, and somebody else's does not exist for me."""
+        """Tenancy: the list is per business, and somebody else's does not exist for me."""
         lola = make_user("lola@example.com")
         other = create_business(lola, name="Café Lola")
         client = as_(team["owner"])
@@ -239,7 +230,7 @@ class TestTheListShowsMe:
         )
 
     def test_english_is_the_source_of_the_role_names(self, as_, business, team):
-        """saas#2176: the role reads through the one translated catalogue (Spanish: test_members). The panel
+        """The role reads through the one translated catalogue (Spanish: test_members). The panel
         speaks the account's language (``base.language``): this owner chose English."""
         team["owner"].language = "en"
         team["owner"].save(update_fields=["language"])
@@ -288,8 +279,7 @@ class TestAnInvitationIsNotSomebodyInside:
         )
 
     def test_signing_in_does_not_answer_an_invitation(self, as_, business, team):
-        """Round 17 §2.8: only «Accept» answers it (the old rule took a later sign-in as an answer,
-        because then the invitation was a greeting and not the gate it is now)."""
+        """Only «Accept» answers it: the invitation is the gate, so a later sign-in is no answer."""
         User.objects.filter(pk=team["invitee"].pk).update(
             last_login=timezone.now() + timedelta(minutes=5)
         )
@@ -479,7 +469,7 @@ class TestTheInviteDoor:
     def test_only_the_three_invitable_roles_are_accepted(
         self, as_, business, team, role
     ):
-        """The four roles are new (round 11): an old key is not quietly collapsed, it is refused."""
+        """The four roles are new: an old key is not quietly collapsed, it is refused."""
         response = self.invite(
             as_(team["owner"]), business, email="nope@example.com", role=role
         )
@@ -503,7 +493,7 @@ class TestTheInviteDoor:
         assert not User.objects.filter(email="weird@example.com").exists()
 
 
-# --- Reading and answering (test_invitation_accept, test_ownership_transfer_views) ----------------
+# --- Reading and answering ------------------------------------------------------------------------
 
     @pytest.mark.parametrize(
         "language, notice, reason",

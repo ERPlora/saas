@@ -1,9 +1,9 @@
-"""Live queries of hubs and the events that re-run them after the COMMIT (plan 2026-10-13 §3, live data).
+"""Live queries of hubs and the events that re-run them after the COMMIT.
 
-The scope is the account (PLAN-SAAS §6): a command notifies the channel of the account that ran it, so
-each list re-runs for that account. A change of the people of a business also reaches the owner, the
-admins and the account it touched (``events.PEOPLE``, L1-A2); anybody else sees a change at the 300 s
-safety re-run or on reload.
+The scope is the account: a command notifies the channel of the account that ran it, so each list
+re-runs for that account. A change of the people of a business also reaches the owner, the admins and
+the account it touched (``events.PEOPLE``); anybody else sees a change at the 300 s safety re-run or on
+reload.
 """
 
 from live.live_registry import live
@@ -55,7 +55,7 @@ live(
     "hubs.invitation.list_mine",
     on=[*events.INVITATION, events.MEMBER_INVITED, events.MEMBER_INVITATION_CANCELLED, *events.PEOPLE],
 )
-# The usage of a business (lot L4-A): a new night's figures, and a change of plan (its space).
+# The usage of a business: a new night's figures, and a change of plan (its space).
 live("hubs.usage.get", on=[events.BUSINESS_USAGE_COLLECTED, events.SUBSCRIPTION_CHANGED])
 live("hubs.usage.series", on=[events.BUSINESS_USAGE_COLLECTED, events.SUBSCRIPTION_CHANGED])
 # A business's own domain (HUBS-F17): what it is or what it misses, and a change of plan (whether it is offered).

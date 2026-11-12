@@ -1,12 +1,11 @@
-"""The ``saas-cron`` commands that keep the Hub equal to the SaaS (aws-next README, the app ↔ infra contract;
-plan 2026-10-13 §3, the push to the Hub):
+"""The ``saas-cron`` commands that keep the Hub equal to the SaaS (the app ↔ infra contract of the ``aws`` README):
 
 - ``reconcile_hub_states`` (every 15 minutes): retries what the Hub still owes an answer to (the
-  registry, a deletion, a restoration, a snapshot), asks the Hub about an sign-up stuck without its
+  registry, a deletion, a restoration, a snapshot), asks the Hub about a sign-up stuck without its
   ``ready`` callback (``GET /internal/hubs/{id}``), ends the trials that ran out and marks purged the
   businesses past their 90 days;
 - ``push_hub_snapshots`` (nightly): pushes every snapshot the Hub is behind on; ``--all`` pushes every
-  business's (the safety net of PLAN-SAAS §2.2).
+  business's.
 
 Both are idempotent (a second run with nothing new does nothing) and hold a Postgres advisory lock, so
 two runs never overlap: the second returns at once. A business that fails never stops the batch.
@@ -73,7 +72,7 @@ class TestReconcile:
         assert "delivered=0" in output
 
     def test_with_the_hub_away_it_stays_owed_and_the_run_fails_after_the_pass(self, owner, plans, offline_hub, make_user):
-        """Review of L1-A, finding 4: an unreachable Hub fails the run (exit ≠ 0, the ``task_failed``
+        """An unreachable Hub fails the run (exit ≠ 0, the ``task_failed``
         alarm), but only after every business was tried."""
         first = create_business(owner)
         second = create_business(make_user("lola@example.com"), name="Café Lola")
@@ -150,7 +149,7 @@ class TestReconcile:
 
     @pytest.mark.parametrize("status", ["requested", "creating", "migrating", "seeding"])
     def test_a_stuck_sign_up_the_hub_is_still_preparing_keeps_waiting(self, business, hub_double, status):
-        """The asynchronous sign-up (202 «requested», PLAN-SAAS §3.1): each step the Hub reports is «still preparing»."""
+        """The asynchronous sign-up (202 «requested»): each step the Hub reports is «still preparing»."""
         stuck(business)
         hub_double.registry[str(business.id)]["status"] = status
 
@@ -254,7 +253,7 @@ class TestReconcile:
     def test_the_poll_reads_the_hub_body_as_the_hub_writes_it_and_tolerates_an_older_hub(
         self, business, hub_double, monkeypatch
     ):
-        """Contract with ERPlora/hub#1113 (``base.schemas.HubGetOut`` of ``GET /internal/hubs/{id}``): ``maintenance``
+        """Contract with the Hub's ``base.schemas.HubGetOut`` of ``GET /internal/hubs/{id}``: ``maintenance``
         is ``null`` or exactly ``{frozen, reason, since}``, ``since`` an ISO 8601 UTC instant; a Hub deployed before it
         sends no key at all, which is no pause."""
         stuck(business)
@@ -295,7 +294,7 @@ class TestReconcile:
     @pytest.mark.parametrize("status", ["cancelled", "archiving", "dropping", "expired", "purged", "dropped", None])
     def test_a_status_the_sign_up_cannot_have_is_logged_and_fails_the_run(self, business, hub_double, status, caplog):
         """A business the SaaS is preparing that the Hub calls ended (``cancelled``, or on its way out: ``archiving``,
-        ``dropping``, hub#471), or anything off the contract, is a person's job."""
+        ``dropping``), or anything off the contract, is a person's job."""
         stuck(business)
         hub_double.registry[str(business.id)]["status"] = status
 
@@ -342,7 +341,7 @@ class TestReconcile:
 
         assert hub_double.calls == []
 
-    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one by default)
     def test_a_trial_that_ran_out_reaches_the_hub_as_free(self, business, hub_double):
         services.sync_hub(business.id)
         Subscription.objects.filter(hub=business).update(
@@ -449,7 +448,7 @@ class TestReconcile:
         other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
 
 
-# --- «We'll let you know»: the copy of a deleted business's data is ready (PLAN-DB round 2026-10-30, (a), (k)) -----
+# --- «We'll let you know»: the copy of a deleted business's data is ready -------------------------
 
 
 def deleted_at(hub, moment):
@@ -548,7 +547,7 @@ class TestDataCopyReady:
         assert caplog.text.count(f"hubs.data_copy.mail_given_up hub={hub.id}") == 1
 
     def test_a_deleted_business_whose_owner_left_is_not_asked_and_the_pass_passes(self, business, owner, hub_double):
-        """Review of saas#168: the owner deletes their account after deleting the business (``HubMember.user``
+        """The owner deletes their account after deleting the business (``HubMember.user``
         cascades); nobody is left to tell, so the Hub is not asked and no pass fails for it."""
         moment = timezone.now()
         hub = deleted_at(business, moment)
@@ -573,7 +572,7 @@ class TestDataCopyReady:
 
     @pytest.mark.parametrize("refusal", [401, 403, 410])
     def test_a_refusal_of_the_hub_fails_the_run_and_tells_nobody(self, business, hub_double, refusal):
-        """Review of saas#168: only a 404 is «no copy»; any other refusal is a fault, as in ``_settle_stuck``."""
+        """Only a 404 is «no copy»; any other refusal is a fault, as in ``_settle_stuck``."""
         deleted_at(business, timezone.now())
         hub_double.answer("GET", r"/dumps$", refusal, {"error": {"code": "refused"}})
 
@@ -621,7 +620,7 @@ def test_nobody_enters_a_purged_business(business, owner):
 
 
 def test_a_business_restored_while_the_purge_runs_keeps_its_people(business, owner, hub_double, monkeypatch):
-    """Review of L1-A: the purge re-checks the row it updates; one restored meanwhile is left alone."""
+    """The purge re-checks the row it updates; one restored meanwhile is left alone."""
     monkeypatch.setattr(services, "expired_deletions", lambda cutoff: [business.id])  # read before the restore
 
     run("reconcile_hub_states")

@@ -1,15 +1,15 @@
-"""The monthly messages of each plan, assistant and WhatsApp (Ioan, 2026-10-15; PLAN-SAAS §3.6).
+"""The monthly messages of each plan, assistant and WhatsApp.
 
 Two columns on ``Plan``: ``assistant_messages_per_month`` (one request of the user to the assistant is one
-message) and ``whatsapp_messages_per_month``. 0 = none, never «unlimited». There is no pack nor overage
-(ADR-0474): a business that needs more moves a plan up. They travel in the hub's state snapshot and the Hub
+message) and ``whatsapp_messages_per_month``. 0 = none, never «unlimited». There is no pack nor overage: a
+business that needs more moves a plan up. They travel in the hub's state snapshot and the Hub
 counts them.
 
 The columns are new, so every row already in production reads 0 after ``AddField``; ``RunPython`` gives the
 plans the seed (``sync_hub_plans``, empty since 0013) carried the figures of that day, frozen here as literals (a migration is
 history: a later change of the seed never rewrites what this one did). Standard doubles Starter;
 ``payment-test`` reads as Starter; the upgrade-only tiers (``pro``, ``enterprise``, ``max``) get the figures of
-the old stack (ADR-0474, levels pro and enterprise). Only a row that exists is written.
+the old stack (levels pro and enterprise). Only a row that exists is written.
 
 Reverse: the two columns go (``RunPython`` has nothing to undo). Idempotent; a database without the rows is
 left as it is.
@@ -17,13 +17,13 @@ left as it is.
 
 from django.db import migrations, models
 
-#: slug → (assistant, WhatsApp) messages a month on 2026-10-15, the seed's plans.
+#: slug → (assistant, WhatsApp) messages a month, the seed's plans of that day.
 MONTHLY_MESSAGES = {
     "free": (30, 30),
     "starter": (300, 150),
     "standard": (600, 300),
     "payment-test": (300, 150),
-    # The upgrade-only tiers: the old stack's levels (ADR-0474), pro and enterprise.
+    # The upgrade-only tiers: the old stack's levels, pro and enterprise.
     "pro": (1000, 500),
     "enterprise": (3000, 800),
     "max": (3000, 800),

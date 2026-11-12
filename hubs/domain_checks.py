@@ -1,11 +1,10 @@
-"""What the DNS and the ALB say of a business's own domain (HUBS-F17; no ORM). Ported from ERPlora/saas
-``services/custom_domains.py`` (origin/develop), for ACM and the ALB.
+"""What the DNS and the ALB say of a business's own domain (HUBS-F17; no ORM), for ACM and the ALB.
 
 Two proofs, and neither is the website's home page: a business without a published page answers 404 with its domain well
 connected (BASE-F110).
 
 - ``points_at``: the customer's CNAME chain ends in the name of THIS business (``target_of``, by its id, which is never
-  taken again: its slug can be, so a CNAME left behind would then prove the domain for a stranger; ADR-0502). The
+  taken again: its slug can be, so a CNAME left behind would then prove the domain for a stranger). The
   validation CNAME proves nothing here: ACM reuses it for whoever asks next from this account.
 - ``probe``: the Hub, through the ALB, says that name is this business's. It dials OUR address, never what the customer's
   DNS gives, so their DNS cannot aim our servers anywhere else; the SNI, the certificate check and the ``Host`` carry the

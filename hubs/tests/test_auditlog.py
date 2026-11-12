@@ -1,11 +1,10 @@
-"""ACCOUNTS-F36 · The audit trail of what a business pays and who pays it (django-auditlog; PLAN-SAAS §1.1: «en los
-modelos de cuenta, cobro y fiscal»).
+"""ACCOUNTS-F36 · The audit trail of what a business pays and who pays it (django-auditlog).
 
-Ported from ERPlora/saas ``apps/dashboard/billing/auditlog.py`` (#970, its ``Subscription``): the subscription of a
-business (plan, status, the Stripe that renews it, an unpaid renewal), the paid apps it carries, its payer's details
-and the plans' prices the staff keep, with only the logged fields serialized (#957). Never written: the link that opens
-an unpaid Stripe invoice to whoever holds it, and ``updated_at``. The rest of ``hubs`` (the business, its
-usage) is not money. Its people are audited too, but as access, not money: ``HubMember``, in ``accounts/tests/test_auditlog.py``.
+The subscription of a business (plan, status, the Stripe that renews it, an unpaid renewal), the paid apps it carries,
+its payer's details and the plans' prices the staff keep, with only the logged fields serialized. Never written: the
+link that opens an unpaid Stripe invoice to whoever holds it, and ``updated_at``. The rest of ``hubs`` (the business,
+its usage) is not money. Its people are audited too, but as access, not money: ``HubMember``, in
+``accounts/tests/test_auditlog.py``.
 """
 
 import pytest

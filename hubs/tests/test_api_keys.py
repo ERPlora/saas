@@ -1,8 +1,8 @@
-"""An account's API key reads its businesses (``expose_api=True``; plan 2026-10-13, L3-A; PLAN-SAAS §2.4).
+"""An account's API key reads its businesses (``expose_api=True``).
 
 A key opens only the operations declared with ``expose_api=True``, within its scopes (``accounts.api_auth``):
-hubs exposes its reads to ``hubs.read`` and billing its tax preview, ERPlora's invoices (L3-C) and the
-subscriptions of the account's businesses (BILLING-F18) to ``billing.read``; no write yet. The key
+hubs exposes its reads to ``hubs.read`` and billing its tax preview, ERPlora's invoices and the subscriptions of
+the account's businesses (BILLING-F18) to ``billing.read``; no write yet. The key
 acts as its account, so it sees what the account sees and nothing else (``queries.access``). The taxonomy and
 the plans on sale are public routes: exposed too, a key there is simply ignored.
 """
@@ -25,10 +25,10 @@ EXPOSED = {
     "hubs.business.list",
     "hubs.business.get",
     "hubs.member.list",
-    # The usage of a business (L4-A).
+    # The usage of a business.
     "hubs.usage.get",
     "hubs.usage.series",
-    # The copies of a business's data, listed (PLAN-DB round 2026-10-30, (k)): never their links.
+    # The copies of a business's data, listed: never their links.
     "hubs.data_copy.list",
     # A business's own domain, read (HUBS-F17): connecting or removing it is the panel's.
     "hubs.custom_domain.get",
@@ -36,7 +36,7 @@ EXPOSED = {
     "hubs.sector.list",
     "hubs.business_type.list",
     "billing.tax.preview",
-    # ERPlora's invoices of the account (billing, lot L3-C): the scope «Invoices · read».
+    # ERPlora's invoices of the account (billing): the scope «Invoices · read».
     "billing.invoice.list",
     "billing.invoice.get",
     "billing.invoice.pdf",

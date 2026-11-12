@@ -1,6 +1,6 @@
 {% extends "admin/change_list.html" %}
 {% load i18n %}
-{% comment %}The members' list links the «Hubs» page (ronda 13): one row per hub, with its jump.{% endcomment %}
+{% comment %}The members' list links the «Hubs» page: one row per hub, with its jump.{% endcomment %}
 {% block object-tools-items %}
 <li><a href="{% url 'accounts_hubs' %}">{% translate "Hubs" %}</a></li>
 {{ block.super }}

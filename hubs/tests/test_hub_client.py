@@ -1,4 +1,4 @@
-"""``hubs.hub_client``: the SaaS's signed calls to hub-next's ``/internal`` (PLAN-SAAS §2, §3.1, §3.4).
+"""``hubs.hub_client``: the SaaS's signed calls to the Hub's ``/internal``.
 
 Against the Hub double: each call goes to its route with its method, signed with HMAC-SHA256 +
 timestamp as ``accounts.signing`` signs (the scheme ``/internal/auth/redeem`` already verifies), and
@@ -46,7 +46,7 @@ SNAPSHOT = {
 
 
 def test_the_hub_is_reached_on_its_private_address_by_default(settings):
-    """Local development: hub-next's runserver; production sets HUB_INTERNAL_URL (aws-next, Cloud Map)."""
+    """Local development: the Hub's runserver; production sets HUB_INTERNAL_URL (Cloud Map of the ``aws`` repo)."""
     assert settings.HUB_INTERNAL_URL == "http://localhost:8000"
 
 
@@ -167,7 +167,7 @@ def test_a_signature_covers_its_own_body_and_no_other(settings):
 
 
 def test_every_call_also_signs_its_method_and_path(hub_double):
-    """L1-A2 (PLAN-SAAS §2.1): ``X-Erplora-Signature-V2`` covers method, path, timestamp and body; the
+    """``X-Erplora-Signature-V2`` covers method, path, timestamp and body; the
     double, as the Hub will, judges a call that carries it by it alone."""
     hub_client.put_state(HUB_ID, SNAPSHOT)
     hub_client.revoke_sessions(str(uuid.uuid7()))
@@ -193,7 +193,7 @@ def test_the_client_signs_with_the_current_secret_only(hub_double, settings):
 
 
 def test_a_broken_answer_is_the_hub_being_away(monkeypatch, settings):
-    """Review of L1-A: a connection cut mid-answer raises ``http.client.HTTPException``, not ``OSError``."""
+    """A connection cut mid-answer raises ``http.client.HTTPException``, not ``OSError``."""
     import http.client
 
     def broken(*args, **kwargs):
@@ -205,7 +205,7 @@ def test_a_broken_answer_is_the_hub_being_away(monkeypatch, settings):
         hub_client.put_hub(REGISTRY)
 
 
-# --- GET /internal/usage: one day's usage of every business (L4-A, PLAN-SAAS §5) --------------------
+# --- GET /internal/usage: one day's usage of every business --------------------------------------
 
 from datetime import date  # noqa: E402
 
@@ -246,7 +246,7 @@ def test_get_usage_refused_or_away_as_every_call(hub_double):
     assert (refused.value.status, refused.value.code) == (409, "usage_not_ready")
 
 
-# --- POST /internal/demos and /internal/demos/{slug}/codes: the demo hubs (round 2026-10-17) --------
+# --- POST /internal/demos and /internal/demos/{slug}/codes: the demo hubs --------------------------
 
 import re  # noqa: E402
 
@@ -256,7 +256,7 @@ OTHER_BROWSER = "cd" * 32
 
 
 def test_get_dumps_asks_for_the_copies_of_a_hubs_data_signed(hub_double):
-    """``GET /internal/hubs/{id}/dumps`` (PLAN-DB, round 2026-10-30, proposal (k)): the copies, newest first, each with
+    """``GET /internal/hubs/{id}/dumps``: the copies, newest first, each with
     a link of 15 minutes; ``[]`` without any; 404 for a hub the Hub never had."""
     hub_id = "0193a0c4-0000-7000-8000-00000000000a"
     hub_double.dumps[hub_id] = [
@@ -363,7 +363,7 @@ def test_an_error_that_is_not_an_object_is_still_a_refusal(hub_double):
 
 
 def test_a_hub_on_its_way_out_has_ended():
-    """hub#471: ``GET /internal/hubs/{id}`` also says ``archiving`` (its copy being made) and ``dropping`` (its database
+    """``GET /internal/hubs/{id}`` also says ``archiving`` (its copy being made) and ``dropping`` (its database
     going) after ``cancelled`` or ``expired``: ended, like those, never being prepared."""
     assert {"cancelled", "archiving", "dropping", "expired", "purged"} == hub_client.ENDED_STATUSES
     assert not hub_client.ENDED_STATUSES & hub_client.PREPARING_STATUSES

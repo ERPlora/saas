@@ -1,4 +1,4 @@
-// «Open»: the jump from the panel into a business (PLAN-SAAS §3.1 step 5). `hubs.business.open` checks
+// «Open»: the jump from the panel into a business. `hubs.business.open` checks
 // the member and the business, remembers it as the last opened, and answers where the jump starts: the
 // Hub's `/auth/login?next=`, which binds the jump to this browser with a `state` of its own and bounces
 // to the SaaS's `/hub-login/`, the door that mints the code (and asks for the second factor of an
@@ -7,7 +7,7 @@
 // with the browser's back button the page may come from the cache (`pageshow` persisted): nothing is
 // opening any more. Inside the installed app (the `desktop` and `mobile` surfaces, never the account it opens
 // in the system browser) the jump carries `shell=1`: the app links the till to the business a navigation with
-// that mark reaches when it leaves erplora.com (`ERPlora/app` hub_link.rs; PLAN-SAAS bloque 3).
+// that mark reaches when it leaves erplora.com (`ERPlora/app` hub_link.rs).
 import { toastError, useSurface } from '@erplora/ui/shell';
 import { useCommand } from '@erplora/ui/sdk';
 import { onScopeDispose, shallowRef } from 'vue';

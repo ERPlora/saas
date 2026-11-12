@@ -1,5 +1,4 @@
-"""The modules a plan includes are rights of the business too: ``SubscriptionItem(source="plan")`` (PLAN-SAAS
-§2.2 and §2.6, ADR-0474).
+"""The modules a plan includes are rights of the business too: ``SubscriptionItem(source="plan")``.
 
 A plan includes every paid module (``apps.Module``) whose ``tier`` its ``included_level`` reaches, in the order
 free < basic < pro < enterprise. Those rows are recomputed whenever the plan of the business may change
@@ -193,7 +192,7 @@ class TestBoughtAndIncluded:
         assert (item.source, item.stripe_item_id) == ("purchase", "si_inv")
 
 
-@pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+@pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one by default)
 class TestTheSignUpTrial:
     def test_the_sign_up_writes_them(self, catalog, owner, plans):
         business = create_business(owner, name="Bar Nuevo")

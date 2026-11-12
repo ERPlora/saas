@@ -1,4 +1,4 @@
-// «Decline» an invitation (README §5, U-06): a confirmation that names who invited and to what, with
+// «Decline» an invitation: a confirmation that names who invited and to what, with
 // «Cancel» as the safe choice; declining runs `hubs.invitation.decline` (the row goes) and says so.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';

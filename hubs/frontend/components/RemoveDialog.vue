@@ -1,6 +1,5 @@
 <script setup lang="ts">
-// «Remove» a member or «Cancel invitation» (mockups `business.html` «members-remove»,
-// «members-cancel-invite»; README §3b: confirm whatever leaves somebody out). An answered member is
+// «Remove» a member or «Cancel invitation», confirmed because it leaves somebody out. An answered member is
 // removed from this business only (`hubs.member.remove`: their account and other businesses stay, the
 // Hub ends their sessions); an invitation is withdrawn (`hubs.member.cancel`: its link stops working),
 // with «Back» as the way out so two «Cancel» never sit together.

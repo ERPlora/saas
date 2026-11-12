@@ -13,7 +13,7 @@ HUB_ALLOWED_HOSTS = [".erplora.com", "hub.erplora.internal", ".localhost", "127.
 
 
 def hub_accepts(domain: str) -> bool:
-    """The Hub's ``base.schemas.custom_domain_of_photo`` (hub#812), word by word: what its 422 tests."""
+    """The Hub's ``base.schemas.custom_domain_of_photo``, word by word: what its 422 tests."""
     value = domain.lower().removesuffix(".")
     if len(value) > 253 or value.endswith("."):
         return False

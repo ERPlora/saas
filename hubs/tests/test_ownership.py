@@ -1,11 +1,8 @@
-"""Handing a business over: ``hubs.ownership.{transfer,accept,decline,cancel}`` (saas#1670; round 17 §2.7).
+"""Handing a business over: ``hubs.ownership.{transfer,accept,decline,cancel}``.
 
-Ported from ERPlora/saas (origin/develop) ``hubs/main/tests/test_ownership_transfer.py`` and
-``dashboard/users/tests/test_ownership_transfer_views.py``, from services and views to operations:
-only the owner offers, only to somebody already on the business, the named recipient answers within 7
+Only the owner offers, only to somebody already on the business, the named recipient answers within 7
 days, one offer at a time, the outgoing owner stays as admin, nobody is removed, the payer does not
-move and the trail survives the accounts. Dropped with their reason: the machine credential (no
-runtime acts for the owner any more) and the confirmation page (SPA, lot L1-D).
+move and the trail survives the accounts.
 """
 
 from datetime import timedelta
@@ -388,11 +385,11 @@ class TestWhatTheScreensRead:
         )
 
 
-# --- Review of L1-A: the payer and the quota of the new owner -------------------------------------
+# --- The payer and the quota of the new owner -----------------------------------------------------
 
 
 class TestTheNewOwnersPayer:
-    """PLAN-SAAS §3.1: a payer is somebody's (``BillingProfile.owner``). The business keeps being paid
+    """A payer is somebody's (``BillingProfile.owner``). The business keeps being paid
     by its payer after the hand-over, but the new owner neither reads nor edits the old owner's data:
     saving a payer gives the business one of their own."""
 
