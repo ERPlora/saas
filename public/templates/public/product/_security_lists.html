@@ -4,8 +4,9 @@
   "compliance". Only what the platform does today (Ioan, 2026-10-13): server sessions and a
   one-time code to enter the hub (PLAN-SAAS §2, no JWT), Google as the only social sign-in,
   Django's PBKDF2, AWS in Ireland (eu-west-1, Ioan, 2026-10-14) with its WAF and the ALB (ADR-0499,
-  no Cloudflare, no CDN), Aurora's continuous backups with point-in-time recovery for 14 days
-  (aws-next, `backup_retention_period = 14`; the same words as the plans of the panel), no uptime
+  no Cloudflare, no CDN), continuous backups from which a business gets back any moment of the last 14 days, keeping
+  what it already sent to the tax agency (`backup_retention_period = 14`, saas#408; the same clause as the plans of the
+  panel), no uptime
   SLA and no reCAPTCHA. The load balancer accepts TLS 1.2 and 1.3 (ERPlora/aws, `ssl_policy`), so not «TLS 1.3
   required», and no «regular security audits» nobody runs (PUBLIC-F08).
 {% endcomment %}
@@ -20,7 +21,7 @@
   <li>✓ {% trans "Salted password hashing (PBKDF2)" %}</li>
 {% elif list == "infrastructure" %}
   <li>✓ {% trans "Amazon Web Services, Ireland region (eu-west-1)" %}</li>
-  <li>✓ {% trans "Continuous backups, point-in-time recovery for 14 days" %}</li>
+  <li>✓ {% trans "Continuous backups: recover your data from any moment of the last 14 days, and what was already sent to the tax agency is kept" %}</li>
   <li>✓ {% trans "DDoS protection and WAF on AWS" %}</li>
   <li>✓ {% trans "High availability on AWS" %}</li>
 {% else %}

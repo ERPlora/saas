@@ -39,7 +39,7 @@
               <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "No credit card required" %}</span></li>
               {% if free_plan %}<li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% include "public/pricing/_plan_limits.html" with plan=free_plan only %}</span></li>{% endif %}
               <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "All apps included, VeriFactu ready" %}</span></li>
-              <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "Managed database, replicated across several European data centres, with continuous backups and point-in-time recovery for 14 days" %}</span></li>
+              <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "Managed database, replicated across several European data centres, with continuous backups: recover your data from any moment of the last 14 days, and what was already sent to the tax agency is kept" %}</span></li>
             </ul>
             {% button href="/launch" label=_("Start free") block=True end_icon="lucide:arrow-right" icon_size=15 extra_class="mt-auto" %}
           </ion-card-content>

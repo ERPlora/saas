@@ -492,7 +492,8 @@ def test_llms_txt_sells_no_tier_of_apps(client, catalogue_with_the_premium_flag)
                 "Encryption in transit and at rest",
                 "DDoS protection and WAF on AWS",
                 "High availability on AWS",
-                "Continuous backups, point-in-time recovery for 14 days",
+                "Continuous backups: recover your data from any moment of the last 14 days, and what was already "
+                "sent to the tax agency is kept",
                 "Rate limiting per IP and WAF",
             ),
         ),
@@ -506,7 +507,8 @@ def test_llms_txt_sells_no_tier_of_apps(client, catalogue_with_the_premium_flag)
                 "Cifrado en tránsito y en reposo",
                 "Protección anti-DDoS y WAF en AWS",
                 "Alta disponibilidad en AWS",
-                "Copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días",
+                "Copias de seguridad continuas: recuperas los datos de cualquier momento de los últimos 14 días, y lo "
+                "ya enviado a Hacienda se conserva",
                 "Límite de peticiones por IP y WAF",
             ),
         ),

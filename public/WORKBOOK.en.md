@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:b952396d00e20706fc53289596f7dbb617f23472e89aa58f7cab479bee92a7b3 -->
+<!-- generated from WORKBOOK.md sha256:e55d2841bcd2c7c47debcf663f8a9f02e0f6cb0460c32ed3f01a6af4d5c37a47 -->
 
 ## What it is for and who it is for
 
@@ -273,12 +273,12 @@ Actor: visitor
 Screen: Security, Plans and prices, Home, About us
 Steps:
 1. The person reads what Security, the pricing FAQ, the home and About us say about access, data and availability.
-2. They read what works today: server sessions in secure cookies, a one-time code to enter the business, sign-in with Google, salted password hashing, encryption in transit and at rest, HTTPS only with TLS 1.2 or 1.3, AWS in Ireland with its web firewall, continuous backups recoverable to any moment of the last 14 days and high availability.
+2. They read what works today: server sessions in secure cookies, a one-time code to enter the business, sign-in with Google, salted password hashing, encryption in transit and at rest, HTTPS only with TLS 1.2 or 1.3, AWS in Ireland with its web firewall, continuous backups from which the data of any moment of the last 14 days is recovered, keeping what was already sent to the tax agency, and high availability.
 3. To "Where is my data stored?" the answer is the European Union, with the exceptions of the assistant: its voice and its search fingerprints, such as transcribing a voice dictation, its backup provider if the European one is unavailable and what it searches the web for, which goes to Brave Search, in the United States; and the link "Read the privacy policy". The home says that the assistant's language model is served from the European Union, not the whole assistant.
 In: nothing; the pages' text, checked against the infrastructure and the privacy policy.
 Out: nothing saved.
-If it fails: no availability agreement with a percentage, 24/7 support, regular audits, penetration test reports, end-to-end encryption or sign-in with GitHub is promised, and never "your data never leaves the EU", which would contradict the privacy policy.
-Involved: none
+If it fails: no availability agreement with a percentage, 24/7 support, regular audits, penetration test reports, end-to-end encryption or sign-in with GitHub is promised, and never "your data never leaves the EU", which would contradict the privacy policy. No page or plan promises going back to a moment of the last 14 days without saying that what was already sent to the tax agency is kept: a business that invoices with VeriFactu is not given back whole, it gets back what it lost from a copy of that moment.
+Involved: hubs (the database line of the plans' cards, with the same promise)
 
 ### PUBLIC-F09 See compliance by country
 Status: done
