@@ -1,16 +1,7 @@
 {% extends "public/legal/_dated_page.html" %}
 {% load i18n %}
 {% comment %}
-  The privacy policy (GDPR arts. 13 and 28). Port of apps/public/legal/templates/legal/privacy.html
-  (origin/develop) with the same sections, numbering and text, on the shared reading pattern with
-  ep-* classes. The Tauri app does not open the public web in phase 1, so the web-only/app-only
-  doubles are gone. The Terms of Use (section 10) are linked once their page exists (/legal/terms/
-  reads Plan and comes with L7): until then they are named without a link, never a link to a 404.
-  Section 5 names AWS instead of Hetzner (Ioan, 2026-10-13: the servers are on AWS): hosting and
-  transactional email by SES, both in the Ireland region, eu-west-1 (Ioan, 2026-10-14: the ERP
-  serves all of Europe; aws-next/README.md).
-  The old CDN is gone too (ADR-0499, infra#253): Route 53, AWS WAF and the ALB are the network edge
-  (PLAN-AWS), so sections 5 and 6 no longer name it.
+  The privacy policy (GDPR arts. 13 and 28), on the shared reading pattern with ep-* classes.
   Brave Search is a recipient of its own, outside the list of processors: its addendum leaves the
   queries out, so neither «Art. 28 agreements» (section 5) nor the SCCs (section 6) can claim them,
   and a query free of personal data is a rule to a model, never a promise (saas#277).

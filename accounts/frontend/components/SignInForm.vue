@@ -1,10 +1,9 @@
 <script setup lang="ts">
-// The form of the launcher (`/launch`, the entrance; Ioan, 2026-10-15), over allauth.headless (browser client,
-// headless only): the form of the old template login (ERPlora/saas `templates/account/login.html`), same
-// structure and texts (its msgids, `../locale`). The frame is the page's (`AuthShell`, as the template's). A
-// rejected login or sign-up paints each message under its input.
+// The launcher's form (`/launch`, the entrance) over allauth.headless (browser client, headless only). Its
+// texts are the server's msgids (`../locale`) and the frame is the page's (`AuthShell`). A rejected login or
+// sign-up paints each message under its input.
 //
-// Two strict tabs over the same email and password, as the market does (FIX-LAUNCH-TABS): «Sign in», the
+// Two strict tabs over the same email and password, as the market does: «Sign in», the
 // default, is allauth's login and never creates an account; «Create account» (`?tab=signup`, the address the
 // old sign-up pages lead to) is allauth's sign-up and never signs in. allauth answers an unknown address as a
 // wrong password, and an address already held as a new one: neither tab tells which addresses hold an

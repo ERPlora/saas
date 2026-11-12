@@ -1,9 +1,7 @@
-// The form of the launcher (`/launch`, the entrance; Ioan, 2026-10-15), over allauth.headless, with two strict
-// tabs (FIX-LAUNCH-TABS): «Sign in» (the default) and «Create account» (`?tab=signup`). «Sign in» is the form
-// of the old template login (ERPlora/saas `templates/account/login.html`): email and password in outlined md
-// inputs, «Forgot your password?», its button and «Continue with Google» when it is configured; it never
-// creates an account (gh:saas#1018). «Create account» is allauth's sign-up and never signs in. Every password
-// sign-in then waits for the code mailed to the account (`verify_email` for a new or unproven address,
+// The launcher's form (`/launch`, the entrance) over allauth.headless, with two strict tabs: «Sign in» (the
+// default) and «Create account» (`?tab=signup`). «Sign in» shows email and password in outlined md inputs,
+// «Forgot your password?», its button and «Continue with Google» when it is configured; it never creates an
+// account. «Create account» is allauth's sign-up and never signs in. Every password sign-in then waits for the code mailed to the account (`verify_email` for a new or unproven address,
 // `login_by_code` for the rest), typed at `/verify-email`; the 2FA step at `/2fa/authenticate`. Signed in, the
 // launcher loads again with the new session (or `next`, a path of this site).
 import { IonButton, IonIcon, IonInput, IonSegment } from '@ionic/vue';
@@ -429,7 +427,7 @@ describe('SignInForm: signing in', () => {
   });
 });
 
-describe('SignInForm: the tabs «Sign in» and «Create account» (FIX-LAUNCH-TABS)', () => {
+describe('SignInForm: the tabs «Sign in» and «Create account»', () => {
   it('names both tabs above the form, «Sign in» chosen', async () => {
     fakeAllauth({ 'GET /auth/session': anonymous });
     const { wrapper, tab, tabLabel } = await mountForm();
@@ -529,7 +527,7 @@ describe('SignInForm: the tabs «Sign in» and «Create account» (FIX-LAUNCH-TA
     expect(wrapper.find('form[data-testid="login-google"]').exists()).toBe(true);
   });
 
-  it('speaks Spanish in both tabs (gh:saas#1425)', async () => {
+  it('speaks Spanish in both tabs', async () => {
     fakeAllauth({ 'GET /auth/session': anonymous });
     const { wrapper, chooseTab, tabLabel } = await mountForm({ locale: 'es' });
     expect([tabLabel('signin'), tabLabel('signup')]).toEqual(['Entrar', 'Crear cuenta']);
@@ -542,7 +540,7 @@ describe('SignInForm: the tabs «Sign in» and «Create account» (FIX-LAUNCH-TA
   });
 });
 
-describe('SignInForm: «Sign in» never creates an account (gh:saas#1018)', () => {
+describe('SignInForm: «Sign in» never creates an account', () => {
   it('posts only to the login, never to the sign-up', async () => {
     const server = fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/login': pendingLoginCode, 'POST /auth/signup': signedIn });
     const { signIn } = await mountForm();
@@ -671,7 +669,7 @@ describe('SignInForm: «Create account» never signs in', () => {
   });
 });
 
-describe('SignInForm: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
+describe('SignInForm: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts)', () => {
   afterEach(forgetRecaptcha);
 
   it('signs in with Google’s token of `login` and says reCAPTCHA protects the form', async () => {

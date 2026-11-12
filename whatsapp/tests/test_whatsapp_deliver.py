@@ -3,7 +3,7 @@ is due (``gateway.deliver_pass``, saas#305): what still waits for the Hub (it wa
 5xx) is pushed again once its growing wait passed (``gateway.deliver``), so a message Meta reported is never lost
 while the Hub is away.
 
-One pass at a time (FIX-SAAS-WHATSAPP-DELIVER-OVERLAP): under the advisory lock of its name, the worker's passes
+One pass at a time: under the advisory lock of its name, the worker's passes
 included, and each pass pushes only what fits in its time, inside the lease of what it claimed. A slow Hub is played by a clock moved by hand (``Clock``):
 its slowness costs the tests no real time.
 """

@@ -1,5 +1,5 @@
 // The panel's buttons keep their icon where it was when ui gave the icon of a button its gap back
-// (FIX-UI-CONFIRMDIALOG-ICON-GAP, saas#54). The panel already set its own gap, on one side only
+// (saas#54). The panel already set its own gap, on one side only
 // (`hubs/frontend/components/buttons.css`, `InvoiceFilters.vue`: `margin-inline-end`), so a ui rule that brought
 // back ALL of Ionic's slotted margin (`margin: revert-layer`) also brought its `-0.3em` on the outer side: the icon
 // sank 4.5–5.3 px into the button's padding («Change card», «Pay the invoice», «Download Excel», «Filters»).

@@ -4,7 +4,7 @@
 // asks when there is something to ask, the legal texts and the responsible declaration, the documentation's old
 // address, the app store with its filters and an app's page, the free hub on /download/ with the Free plan's
 // limits, the app's page, the published version and the retired Bridge. Each screen is captured at 390×844,
-// 834×1112 and 1440×900 as `APP-PUBLIC-2-<key>-<width>.png` in `.artifacts/`.
+// 834×1112 and 1440×900 in `.artifacts/`.
 // flow: PUBLIC-G01 PUBLIC-G02 PUBLIC-G03 PUBLIC-G21 PUBLIC-G25 PUBLIC-G38 PUBLIC-G19 PUBLIC-G39 PUBLIC-G40
 // flow: PUBLIC-G41 PUBLIC-G24 PUBLIC-G43 PUBLIC-G44 PUBLIC-G20 PUBLIC-G45 PUBLIC-G17 PUBLIC-G46 PUBLIC-G07
 // flow: PUBLIC-G26 PUBLIC-G10 PUBLIC-G11 PUBLIC-G27 PUBLIC-G08 PUBLIC-G28 PUBLIC-G29 PUBLIC-G04 PUBLIC-G47
@@ -61,7 +61,7 @@ async function watch(page: Page) {
   };
 }
 
-/** The page at the three viewports, each loaded afresh, captured whole as `APP-PUBLIC-2-<key>-<width>.png`. */
+/** The page at the three viewports, each loaded afresh and captured whole. */
 async function captureEverywhere(page: Page, path: string, key: string, ready: (page: Page) => Promise<void>) {
   mkdirSync(ARTIFACTS, { recursive: true });
   for (const viewport of VIEWPORTS) {

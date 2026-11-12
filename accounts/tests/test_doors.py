@@ -1,8 +1,8 @@
 """allauth's doors around the account's addresses and password that the SaaS closes (``accounts.doors``,
-``config/urls.py``), as Google's «connections» are closed (saas#2552).
+``config/urls.py``), as Google's «connections» are closed.
 
 - ``/_allauth/browser/v1/account/email`` (allauth's API: add an address, make it the primary one): the sign-in
-  email changes only through ``accounts.email.change`` and its code (saas#2536). The API answers 404, whatever
+  email changes only through ``accounts.email.change`` and its code. The API answers 404, whatever
   the method; allauth's page ``/accounts/email/`` no longer exists (headless only).
 - ``account/password/change`` for an account without a password: the session alone would give it one (and
   with it every door a password opens). «Forgot your password?» gives it one, proving the mailbox; allauth's
@@ -11,8 +11,8 @@
 
 Each is shown closed with a sign-in of a moment ago: closed, not just behind allauth's reauthentication.
 
-allauth's own sign-up (``auth/signup``) is open since the launcher's «Create account» tab (FIX-LAUNCH-TABS;
-its contract is ``test_unified_login``'s): that one door, none of allauth's other ways in.
+allauth's own sign-up (``auth/signup``) stays open for the launcher's «Create account» tab (its contract is
+``test_unified_login``'s): that one door, none of allauth's other ways in.
 """
 
 import time

@@ -1,5 +1,5 @@
 // flow: ACCOUNTS-F06
-// «Continue with Google» (accounts/WORKBOOK.md, ACCOUNTS-F06) at the three sizes of the migration, on the panel's
+// «Continue with Google» (accounts/WORKBOOK.md, ACCOUNTS-F06) at the three sizes, on the panel's
 // twin with a made-up Google app (`GOOGLE_E2E`, panel/project.ts), because the flow hands over to the second factor.
 // Everything of ours is the real thing: the button, the form post, allauth.headless's redirect with its state and
 // its PKCE, the page's `form-action` over that redirect, the way back, allauth's exchange of the code, the account,

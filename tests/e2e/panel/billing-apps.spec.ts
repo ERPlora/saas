@@ -1,5 +1,5 @@
-// Part 2 of billing (MIGRATION-TASK APP-BILLING-2): the paid apps in the Store and the pages of Billing, at the
-// three sizes of the migration (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
+// Part 2 of billing: the paid apps in the Store and the pages of Billing, at the
+// three sizes (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
 // billing_apps_seed.py. As store.spec.ts, Stripe does not run here: the operations that call it
 // (`billing.checkout.start` and `.confirm`, `billing.module.cancel`) are played at the API's edge, and Stripe.js
 // is the double of fixtures.ts (`playStripe`); everything else is the real server. Each test names its flow by its

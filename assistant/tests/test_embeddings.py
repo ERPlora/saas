@@ -120,9 +120,8 @@ def test_a_failure_of_the_provider_is_a_502_with_its_code_never_the_key(client, 
 
 
 def test_a_server_without_its_trusted_certificates_is_a_final_502_the_log_explains(client, internal, business, answering, fake_provider, unreadable_ca, caplog):
-    """FIX-SAAS-ASSISTANT-GATEWAY-502-WHEN-SSL-CERT-FILE-MISSING: ``SSL_CERT_FILE`` naming a file that is not there, or
-    one that holds no certificate, is the server's configuration, not the provider's: final, and the log names the
-    setting and its file. FIX-SAAS-ASSISTANT-OWN-TRUST-STORE-COPY-INSTEAD-OF-BASE-TLS: in ``base.tls``'s one ERROR
+    """``SSL_CERT_FILE`` naming a file that is not there, or one that holds no certificate, is the server's
+    configuration, not the provider's: final, and the log names the setting and its file in ``base.tls``'s one ERROR
     line, naming the caller, never in a copy of the assistant's own."""
     with caplog.at_level(logging.ERROR):
         response = door(client, EMBEDDINGS, {"hub": business.slug, "texts": ["x"]})

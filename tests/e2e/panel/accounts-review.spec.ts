@@ -3,12 +3,12 @@
 // flow: ACCOUNTS-F18 ACCOUNTS-F19 ACCOUNTS-F20 ACCOUNTS-F21 ACCOUNTS-F22 ACCOUNTS-F23 ACCOUNTS-F24
 // (ACCOUNTS-F06 aside: it plays on the panel's twin, in English, in accounts-google.spec.ts.)
 // The review of the `hecho` flows of «create the account, sign in, the second factor, the sessions, the profile and the
-// preferences» (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-6): every screen of those flows in English AND in
-// Spanish, at the three sizes of the migration (390×844, 834×1112, 1440×900). The flows themselves are played by
+// preferences» (accounts/WORKBOOK.md): every screen of those flows in English AND in
+// Spanish, at the three sizes (390×844, 834×1112, 1440×900). The flows themselves are played by
 // accounts-flows, accounts-security and accounts-profile (in English); here each screen is checked in the language
 // the person reads: the page says it (`<html lang>`), its title is the catalogue's text of that language, no text of
 // the other language is left on screen (every catalogue of the panel, `accounts`, `hubs`, the shell and @erplora/ui),
-// nothing scrolls sideways, and a capture `APP-ACCOUNTS-6-<flow>-<size>-<lang>` stays for the eye. Without a session
+// nothing scrolls sideways, and a capture per flow, size and language stays for the eye. Without a session
 // the language is the browser's (`Accept-Language`); with one, the account's own (ACCOUNTS-F22).
 // Accounts of this spec: `e2e-acc6-…@example.com`, removed before and after.
 import { createHmac } from 'node:crypto';

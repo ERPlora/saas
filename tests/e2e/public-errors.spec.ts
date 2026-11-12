@@ -1,5 +1,5 @@
-// The error pages of erplora.com (accounts/WORKBOOK.md, ACCOUNTS-G30 · G81; MIGRATION-TASK APP-ACCOUNTS-5), at the
-// three sizes of the migration (390×844, 834×1112, 1440×900), in English and in Spanish, against the production-like
+// The error pages of erplora.com (accounts/WORKBOOK.md, ACCOUNTS-G30 · G81), at the
+// three sizes (390×844, 834×1112, 1440×900), in English and in Spanish, against the production-like
 // server of this project (DEBUG off: Django renders the project's handlers, never its debug pages):
 //   - an unknown page of the public web: its own 404, with the navbar and a way home;
 //   - an unknown page of the private half (`/accounts/…`): the error layout's 404, «Home» and «Contact Support»;

@@ -1,10 +1,9 @@
 """The tools a turn of the panel's assistant offers for what an account asks (``live.assistant.relevant`` over the
 SaaS's real catalogue).
 
-Block A of the QA battery of the assistant with the real model (2026-10-31, docs/plans/2026-10-31-qa-asistente.md of
-erplora-next), in order: each question with the operations its turn must offer. A1 asks how something is done (the
-documentation search); A2 asks to do it (the operation that does it). The Hub's twin is block B
-(``base/tests/test_assistant_relevance.py`` of ERPlora/hub).
+Block A holds the questions the assistant's QA asks the real model, in order, each with the operations its turn must
+offer: some ask how something is done (the documentation search), others ask to do it (the operation that does it).
+The Hub's twin is ``base/tests/test_assistant_relevance.py`` of ERPlora/hub.
 """
 
 import pytest

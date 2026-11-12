@@ -1,5 +1,4 @@
-// The third fix pass of the panel, after the second audit of the real product
-// (docs/plans/2026-10-14-auditoria-ux-panel-real-2.md), in Chrome without a window:
+// What the second audit of the real panel found, checked in Chrome without a window:
 //   - R-01/R-10: the AA theme (`createShell({ contrast: 'aa' })`): the primary, «Retry» on its pink, the links and
 //     the hints read ≥ 4.5:1, light and dark (text colour against the colours painted under it);
 //   - S-05: «Skip to content» inside a landmark of its own, pointing at an element that exists;

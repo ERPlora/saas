@@ -1,8 +1,8 @@
-"""Every «…» the WORKBOOK quotes from the web is the web's text, letter by letter (hub#152: the lint does not look).
+"""Every «…» the WORKBOOK quotes from the web is the web's text, letter by letter (the lint does not look).
 
 The customer's part of ``public/WORKBOOK.md`` (its flows, up to «## Para quien lo mantiene») quotes buttons, notices
 and headings in Spanish. A quote that drifts from the catalog sends QA and the assistant after a text that is not on
-screen: the APP-PUBLIC-3 review found «¿Dónde se guardan mis datos?» where the FAQ says «¿Dónde se almacenan mis
+screen: a review found «¿Dónde se guardan mis datos?» where the FAQ says «¿Dónde se almacenan mis
 datos?» and «Sobre nosotros» where the menu says «Sobre Nosotros». A quote matches a Spanish ``msgstr`` of the SaaS's
 catalogs, or a part of one; a placeholder (``%(minutes)s``) stands for any value, so «Termina en 12 minutos.» is
 «Termina en %(minutes)s minutos.», and a figure in a part of one stands for its number placeholder («En un plazo de 4

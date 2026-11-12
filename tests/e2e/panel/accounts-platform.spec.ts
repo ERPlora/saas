@@ -1,5 +1,5 @@
-// The platform of erplora.com (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-5), at the three sizes of the
-// migration (390×844, 834×1112, 1440×900):
+// The platform of erplora.com (accounts/WORKBOOK.md), at the three sizes
+// (390×844, 834×1112, 1440×900):
 //   - ACCOUNTS-G106 · G73 (moving around the panel): the menu has «Businesses», «Store», «Billing» and «Account», in the
 //     side menu from 1440 px and in its drawer below; each entry opens its page and is marked as the current one;
 //     in Spanish, «Negocios», «Tienda», «Facturación» and «Cuenta».

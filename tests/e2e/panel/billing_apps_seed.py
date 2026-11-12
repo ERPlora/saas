@@ -1,4 +1,4 @@
-"""The account, businesses, paid apps and invoices of part 2 of billing (billing-apps.spec.ts, APP-BILLING-2).
+"""The account, businesses, paid apps and invoices of part 2 of billing (billing-apps.spec.ts).
 
 ``uv run python tests/e2e/panel/billing_apps_seed.py seed|clear`` from saas/, against the run's database (the
 local one of ``.env`` or the stack's own; development only: a known password, refused without ``DEBUG``).
@@ -7,7 +7,7 @@ Stripe): the spec plays Stripe and the operations that call it at the browser's 
 
 - ``e2e-billing-apps`` (password ``e2e-panel``, English) owns and pays three businesses, one payer for all:
   - Panadería López: Starter monthly; E2E Apps Bookings bought (running) and E2E Apps Reports bought and then
-    taken off sale (it still pays it, saas#2589); one invoice with its plan and module lines, issued by the
+    taken off sale (it still pays it); one invoice with its plan and module lines, issued by the
     platform hub, and the credit note that rectifies it;
   - Bar Norte: Starter monthly; E2E Apps Loyalty cancelled (works until the renewal) and E2E Apps Bookings,
     whose cancellation ended yesterday (on sale again);

@@ -1,5 +1,5 @@
-// «Report a problem» of the user menu (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-4), at the three sizes of the
-// migration (390×844, 834×1112, 1440×900): the person writes «Subject» and «What happened?», the report reaches the
+// «Report a problem» of the user menu (accounts/WORKBOOK.md), at the three sizes
+// (390×844, 834×1112, 1440×900): the person writes «Subject» and «What happened?», the report reaches the
 // support mailbox with the account, its business, the page it came from and the browser, «Reply-To» the account, and
 // the page says «Report sent». In accounts/WORKBOOK.md: G117 = G01 = F38. Accounts of this spec: `e2e-acc4r-…`.
 import { readMailsSince } from '@erplora/ui/testing/mail';

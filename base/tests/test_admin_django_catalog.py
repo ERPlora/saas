@@ -2,7 +2,7 @@
 
 Django ships its Spanish catalogues with holes: a message new in a release keeps ``msgstr ""`` until its translators
 reach it, and the admin shows it in English (6.1.2: «Run» on the actions of every list and «- Select an option -» in
-its select; APP-ACCOUNTS-6). This reads every Spanish catalogue of Django that the admin uses and asks that each empty
+its select). This reads every Spanish catalogue of Django that the admin uses and asks that each empty
 entry comes out translated anyway: our catalogue (``locale/es``, ``LOCALE_PATHS``, first in Django's lookup) covers it.
 An upgrade of Django that opens a new hole fails here, naming the message to translate.
 """

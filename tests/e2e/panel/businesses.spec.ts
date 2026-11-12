@@ -1,4 +1,4 @@
-// Businesses (`/dashboard/businesses`, mockups `businesses.html`) in Ioan's Chrome: the account's businesses in
+// Businesses (`/dashboard/businesses`, mockups `businesses.html`) in Chrome: the account's businesses in
 // the DataTable with their statuses, the banners of what waits (an invitation, an unpaid invoice), the
 // cards on a phone, «Manage» into a business's page and its four sections, and «Delete» → «Recover».
 import { type Page } from '@playwright/test';
@@ -105,7 +105,7 @@ test('«Delete» lives in the business’s Settings and asks for the name; delet
   expect(errors).toEqual([]);
 });
 
-// flow: ninguno — FIX hubs (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN). A page declares its live data when it
+// flow: ninguno — regression test of Businesses. A page declares its live data when it
 // mounts, so its stream (`GET /api/live?s=…`) opens once; a second subscription arriving after the first
 // open makes the SDK reopen it, and the first request ends `ERR_ABORTED` (`watchLiveStreams`, fixtures.ts).
 

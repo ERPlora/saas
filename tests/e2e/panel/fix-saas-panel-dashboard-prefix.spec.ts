@@ -1,5 +1,4 @@
-// FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX in Chrome: the panel lives under /dashboard/, as the old product's
-// `apps/dashboard/`. «Go to the panel» of the launcher lands on /dashboard/businesses (HUBS-F10), each entry of the menu
+// In Chrome: the panel lives under /dashboard/. «Go to the panel» of the launcher lands on /dashboard/businesses (HUBS-F10), each entry of the menu
 // opens its page under /dashboard/, /dashboard itself is Businesses, and an address of the panel at the root (a bookmark,
 // a link of the Hub, a mail already sent) lands on the same page under /dashboard/ with its query. Accounts of
 // panel_seed.py; at 390, 834 and 1440 px.

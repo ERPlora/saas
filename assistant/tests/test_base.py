@@ -119,10 +119,10 @@ def test_a_client_without_a_key_is_unavailable():
         OpenAIProvider(api_key="", base_url="https://api.openai.com/v1")
 
 
-# --- The server's trusted certificates (FIX-SAAS-ASSISTANT-GATEWAY-502-WHEN-SSL-CERT-FILE-MISSING) ------------------
+# --- The server's trusted certificates --------------------------------------------------------------------------
 #
-# FIX-SAAS-ASSISTANT-OWN-TRUST-STORE-COPY-INSTEAD-OF-BASE-TLS: they are read by ``base.tls``, the one place every
-# outgoing call of the SaaS reads them, never by a copy of its own: one ERROR line, ``base.tls``'s, naming the caller.
+# They are read by ``base.tls``, the one place every outgoing call of the SaaS reads them, never by a copy of its
+# own: one ERROR line, ``base.tls``'s, naming the caller.
 
 KEY = "sk-test-base-0000"
 

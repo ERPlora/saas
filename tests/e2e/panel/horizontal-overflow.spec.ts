@@ -1,5 +1,4 @@
-// flow: e2e-overflow — FIX of the e2e harness (FIX-HUB-E2E-HORIZONTAL-SCROLL-CHECK-BLIND-TO-ION-CONTENT; the Hub's twin is
-// its tests/e2e/helpers-overflow.spec.ts)
+// flow: e2e-overflow — the e2e harness (the Hub's twin is its tests/e2e/helpers-overflow.spec.ts)
 // The «no horizontal scroll» checks of the specs read the document alone (how wide it is, against the window). Ionic
 // pins the `body` to the window and every panel screen scrolls inside its `ion-content`, so a screen that runs past the
 // right edge is cut there and the document never grows: the check read 0 and the spec passed. `horizontalOverflow(page)`

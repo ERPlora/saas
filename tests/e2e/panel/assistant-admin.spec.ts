@@ -1,5 +1,5 @@
-// The AI gateway in erplora.com's admin (MIGRATION-TASK APP-ASSISTANT-1; assistant/WORKBOOK.md), at the three sizes
-// of the migration (390×844, 834×1112, 1440×900), in English and in Spanish, against the panel's own Django and the
+// The AI gateway in erplora.com's admin (assistant/WORKBOOK.md), at the three sizes
+// (390×844, 834×1112, 1440×900), in English and in Spanish, against the panel's own Django and the
 // rows of assistant_seed.py. The provider is assistant.tests.fake_provider, a real HTTP server on 127.0.0.1 that
 // speaks OpenAI's API (two chat models, one embeddings model, an answer streamed in three pieces): no test reaches a
 // real provider and no real key is ever typed.

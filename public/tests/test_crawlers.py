@@ -74,7 +74,7 @@ def test_the_answer_engines_are_named_one_by_one():
         "/api/nope",
         "/_allauth/nope",
         "/webhooks/stripe/",
-        # The panel's old addresses, now 301s to it (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX): a redirect to the
+        # The panel's old addresses, now 301s to it: a redirect to the
         # panel is still a URL a crawler can index, as it was when the SPA answered them.
         "/businesses",
         "/account/profile?surface=account",

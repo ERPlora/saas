@@ -12,7 +12,7 @@ A crash ends with an error.
 
 One pass at a time, under the advisory lock of its name (``gateway.deliver_pass``), the worker's included: a pass that
 finds another one running says so and ends without error. The figures, so that no row a pass claimed is claimed again
-while it still pushes it (FIX-SAAS-WHATSAPP-DELIVER-OVERLAP):
+while it still pushes it:
 
 - a call to the Hub takes ``hub_client.LONGEST_CALL`` at most: 10 s (5 s to connect, 5 s more to answer);
 - each batch claims only the rows whose calls fit in what is left of ``gateway.PASS_BUDGET`` (50 s), so the pass's

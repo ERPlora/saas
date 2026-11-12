@@ -12,8 +12,8 @@
 //
 // Without a Hub (the CI): the window is opened from a page of the hubs' origin (`a`, served by the browser's route
 // with the Hub's own Cross-Origin-Opener-Policy, `same-origin-allow-popups`): the page takes the code, or Meta's
-// reason, the hub `b` does not, and a state that names no hub leaves the page open saying it can be closed (the
-// three sizes: FIX-SAAS-WHATSAPP-EMBEDDED-SIGNUP-RETURN-<width>).
+// reason, the hub `b` does not, and a state that names no hub leaves the page open saying it can be closed (at
+// three sizes).
 //
 // With the real Hub (E2E_CROSS_HUB_PORT, E2E_MAIL_DIR; the stack of whatsapp-hub.spec.ts's header, its SaaS with
 // `WHATSAPP_REDIRECT_URI=http://localhost:<port+1>/whatsapp/return`): F02, the owner disconnects `a`'s seeded number

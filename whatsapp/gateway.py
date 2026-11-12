@@ -3,8 +3,7 @@ Meta (``meta``) and to the Hub (``hub_client``), so that no transaction waits fo
 
 - ``ingest``: Meta's webhook, parked (``whatsapp.webhook.ingest``) and pushed at once to the Hub of each business
   it touched (WHATSAPP-G07);
-- ``deliver``: what waits for the Hub, pushed to its doors 1 and 2 and recorded as the Hub answered
-  (FIX-SAAS-WHATSAPP-GATEWAY-DOORS). Contract: 200 taken; 422 the body does not hold (never retried); anything
+- ``deliver``: what waits for the Hub, pushed to its doors 1 and 2 and recorded as the Hub answered. Contract: 200 taken; 422 the body does not hold (never retried); anything
   else (404 ``app_inactive``, a Hub without the door, 5xx, no answer) kept and retried with a growing wait. Each
   business's messages go in the order they arrived: once its Hub did not take one, the business's next messages of
   the batch are held with its wait, and the other businesses go on. ``deliver_pass`` is one pass of it under the
@@ -14,7 +13,7 @@ Meta (``meta``) and to the Hub (``hub_client``), so that no transaction waits fo
   cap refuses before Meta (409 ``whatsapp.cap_reached``), the claim committed so the Hub gets the month's real usage
   in its snapshot (once per figure, WHATSAPP-F05).
   Meta's refusal frees the place and the key; no answer keeps both (``unknown``: the same key sends again only after
-  ``services.IN_FLIGHT``); a 2xx without Meta's id is sent for good, never again (saas#2653). Meta's 190 (the
+  ``services.IN_FLIGHT``); a 2xx without Meta's id is sent for good, never again. Meta's 190 (the
   permission expired or withdrawn) is ``whatsapp.reconnect_needed`` and marks the number «needs reconnecting». A
   template whose header is a photo, a video or a document carries its file (``templates.send_sample``: 409
   ``whatsapp.template_invalid`` before the claim when Meta would refuse it); after the claim it is uploaded to the

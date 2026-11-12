@@ -1,5 +1,5 @@
-// The flows of «the plan and its money» (billing/WORKBOOK.md, MIGRATION-TASK APP-BILLING-1) on their screens, at
-// the three sizes of the migration (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
+// The flows of «the plan and its money» (billing/WORKBOOK.md) on their screens, at
+// the three sizes (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
 // billing_seed.py. As billing.spec.ts and store.spec.ts, Stripe does not run here: the operations that call it
 // (`billing.plan.cancel`, `.keep`, `billing.checkout.start`, `billing.portal.open`) are played at the API's edge;
 // everything else is the real server. Each test names its flow in its title, by its registry key; in

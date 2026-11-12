@@ -1,6 +1,5 @@
-"""Spanish tax id shape: one spelling of a tax id, and is the taxpayer a company or a person? (saas#1725)
+"""Spanish tax id shape: one spelling of a tax id, and is the taxpayer a company or a person?
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_nif.py`` (origin/develop, 8 tests).
 ``normalise_nif`` is the single spelling of every tax id billing reads (VAT numbers included,
 ``billing.vies.normalise``). The Anexo I of the Convenio 17 has two opening blocks —a natural person or
 «La Entidad»— and the first character of the NIF decides which one; the Hub implements
@@ -25,7 +24,7 @@ class TestNormaliseNif:
         assert normalise_nif(None) == ""
 
     def test_it_strips_dots_the_way_every_other_door_does(self):
-        """``b-12.345.678`` is the taxpayer ``B12345678`` (saas#1740)."""
+        """``b-12.345.678`` is the taxpayer ``B12345678``."""
         assert normalise_nif("b-12.345.678") == "B12345678"
         assert normalise_nif("12.345.678-Z") == "12345678Z"
 
@@ -65,7 +64,7 @@ class TestIsLegalPersonNif:
 
 
 class TestIsSpanishTaxId:
-    """The shape of a Spanish tax id (the taxpayer of an Anexo I, plan 2026-10-15): nine characters as the
+    """The shape of a Spanish tax id (the taxpayer of an Anexo I): nine characters as the
     AEAT spells them, never the control digit (the AEAT validates it; refusing one it accepts would be ours)."""
 
     @pytest.mark.parametrize(

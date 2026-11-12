@@ -3,7 +3,7 @@
 // price of each plan's page, the industries, the product pages, what the web promises, /compliance/, the
 // company pages, every «Start free» down to the sign-in, the «coming soon» pages and the retired addresses,
 // the footer's language switcher, and robots, the sitemap, llms.txt and the structured data. Each screen is
-// captured at 390×844, 834×1112 and 1440×900 as `APP-PUBLIC-1-<key>-<width>.png` in `.artifacts/`.
+// captured at 390×844, 834×1112 and 1440×900 in `.artifacts/`.
 // flow: PUBLIC-G30 PUBLIC-G31 PUBLIC-G32 PUBLIC-G33 PUBLIC-G34 PUBLIC-G35 PUBLIC-G36 PUBLIC-G37 PUBLIC-G42
 // flow: PUBLIC-G48 PUBLIC-G49 PUBLIC-G50 PUBLIC-G51 PUBLIC-G52
 import { execFileSync } from 'node:child_process';
@@ -56,7 +56,7 @@ async function watch(page: Page) {
   };
 }
 
-/** The page at the three viewports, each loaded afresh, captured whole as `APP-PUBLIC-1-<key>-<width>.png`. */
+/** The page at the three viewports, each loaded afresh and captured whole. */
 async function captureEverywhere(page: Page, path: string, key: string, ready: (page: Page) => Promise<void>) {
   mkdirSync(ARTIFACTS, { recursive: true });
   for (const viewport of VIEWPORTS) {
