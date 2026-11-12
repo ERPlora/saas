@@ -1,8 +1,8 @@
-"""A cheaper plan, or annual → monthly, starts with the next period (review of L3-C; decision of the lot).
+"""A cheaper plan, or annual → monthly, starts with the next period.
 
 Charging a downgrade now credits the unused part of the dearer plan: a Stripe invoice with a NEGATIVE total,
 which a Spanish invoice cannot be (it would need a rectifying one for every downgrade). Like cancelling to
-Free (PLAN-SAAS §3.3), a downgrade waits for the end of the paid period: Stripe holds it as a subscription
+Free, a downgrade waits for the end of the paid period: Stripe holds it as a subscription
 schedule whose current phase ends with the period and whose next one bills the new items without proration.
 The business keeps what it paid for until then; the panel says «Starter from …». An upgrade stays immediate.
 

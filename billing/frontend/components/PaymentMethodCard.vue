@@ -1,9 +1,7 @@
 <script setup lang="ts">
-// Billing → Payment details: the card of one payer (mockups `billing.html` «payment»; README §4 and §6.18;
-// `billing.payment_method.get`): brand and last four, when it expires and which businesses it pays; the last
-// charge that failed, with its date and business; on the web «Change card» — Stripe's Customer Portal,
-// «the secure payment page», the main action after a failure (`portal.ts`). Inside the apps, how to change
-// it, without a button nor a link (README §4). Stripe away, or no card yet: it says so.
+// The card of one payer: brand and last four, when it expires, which businesses it pays and the last charge that
+// failed. «Change card» (Stripe's Customer Portal, `portal.ts`) only on the web; inside the apps, how to change it,
+// without a button nor a link.
 import { StatusPill } from '@erplora/ui/components';
 import { HubIcon, useSurface, WebOnly } from '@erplora/ui/shell';
 import { IonButton, IonCard, IonCardContent, IonSpinner } from '@ionic/vue';
@@ -44,7 +42,7 @@ const failure = computed(() => {
   const last = props.method.last_failure;
   return last ? t('billing.payment.method.failedWhen', { date: formatDate(last.at, locale.value), business: last.business }) : '';
 });
-/** The account the app opens in the browser says why, not where (audit 2 S-09). */
+/** The account the app opens in the browser says why, not where. */
 const { surface } = useSurface();
 </script>
 

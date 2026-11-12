@@ -1,20 +1,12 @@
 <script setup lang="ts">
-// The Store on the web (round 17 §2.10–§2.11; mockups `store.html`; README §3, §4 and §6.18; UX-AUDIT-4):
-// the business it sells to, that business's unpaid invoice if any, and then Plans or Modules. Only the
-// owner buys for a business, so the picker lists the businesses the account owns (`hubs.business.list`,
-// live); `?business=` chooses the one it came from, and an unknown one falls back to the first that can buy (not
-// one an unpaid invoice blocks), saying so.
-//   - Plans: `hubs.plan.list`, with a monthly/annual switch and a promo code (`billing.promo.check`); the ones the
-//     business is not offered yet (upgrades of a paid plan, `billing.store.catalog`'s `offered_plans`) are named in
-//     one line under them (audit 2 S-03).
-//   - Modules: `apps.app.list` (name, summary and icon in the person's language; asked again when the
-//     language changes) joined by slug with `billing.store.catalog` (net prices, what the business has).
-//   - A business Stripe does not bill yet buys in the Embedded Checkout (CheckoutModal); one that pays
-//     confirms with its proration, one dialog per module (ProrationDialog), and switches its own plan's
-//     billing with the total with VAT (AnnualSwitchDialog). «Downgrade to Free» cancels at the end of
-//     the period (ConfirmDialog with the dates and Free's limits); «Cancel module» ends a bought module with
-//     its period (ConfirmDialog with the date, BILLING-G66); «Keep» undoes a cancellation.
-//   - After buying a module, «Activating… in <business>»: never on sale twice.
+// The Store on the web: the business it sells to, that business's unpaid invoice if any, and then Plans or Modules.
+// Only the owner buys for a business, so the picker lists the businesses the account owns; `?business=` chooses
+// the one it came from, and an unknown one falls back to the first that can buy (not one an unpaid invoice
+// blocks), saying so.
+//   - Plans the business is not offered yet (upgrades of a paid plan) are named in one line under the others.
+//   - Modules join `apps.app.list` (asked again when the language changes) with `billing.store.catalog` by slug.
+//   - A business Stripe does not bill yet buys in the Embedded Checkout (CheckoutModal); one that pays confirms
+//     with its proration, one dialog per module (ProrationDialog).
 //   - An unpaid invoice blocks what charges for THAT business, says why and where to pay.
 // Web only: StorePage renders it in `<WebOnly>`, so inside the apps nothing here loads.
 import { ConfirmDialog, type ConfirmConsequence, EmptyState, InlineFeedback } from '@erplora/ui/components';
@@ -70,14 +62,14 @@ const client = useLiveClient();
 
 const list = useLive('hubs.business.list', { limit: 100 });
 /** Loading, failed (the query, the stream, or nothing in time), none owned or some: «You have no business to
- *  buy for» only with a real answer (audit 2026-10-14, R-04). */
+ *  buy for» only with a real answer. */
 const listState = useLiveState(list, { isEmpty: (data) => ownedBusinesses(data.rows).length === 0 });
 const rows = computed(() => list.data.value?.rows ?? []);
 const owned = computed(() => ownedBusinesses(rows.value));
 /** What the owner picked here; until then, `?business=`. */
 const picked = shallowRef<string | null>(null);
 const wanted = computed(() => picked.value ?? props.businessId ?? null);
-/** The one asked for; else the first that can buy (not one an unpaid invoice blocks, audit 2 R-17); else the first. */
+/** The one asked for; else the first that can buy (not one an unpaid invoice blocks); else the first. */
 const business = computed(
   () =>
     owned.value.find((row) => row.id === wanted.value) ??
@@ -96,7 +88,7 @@ const chosenId = computed({
   },
 });
 const block = computed(() => (business.value ? blockOf(business.value) : null));
-/** The business whose card, the same payer's as this one, the bank declined: the checkout says so (R-21). */
+/** The business whose card, the same payer's as this one, the bank declined: the checkout says so. */
 const declinedFor = computed(() => (business.value ? declinedCard(rows.value, business.value) : null));
 
 // --- What is on sale, and what the business has ------------------------------------------------------
@@ -161,7 +153,7 @@ const saving = computed(() => annualSaving(plans.value ?? []));
 const freePlan = computed(() => plans.value?.find((plan) => isFree(plan)) ?? null);
 /** What the business may move to (`billing.store.catalog`): no upgrade-only plan while Stripe does not bill it. */
 const offered = computed(() => new Set(catalog.value?.offered_plans ?? []));
-/** Free, the plan it has and the ones it is offered (audit 2 S-03). */
+/** Free, the plan it has and the ones it is offered. */
 const shownPlans = computed(() =>
   (plans.value ?? []).filter((plan) => isFree(plan) || plan.slug === subscription.value?.plan || offered.value.has(plan.slug)),
 );
@@ -374,7 +366,7 @@ async function keepThePlan(): Promise<void> {
   }
 }
 
-// A bought module ends with its period (BILLING-G66): the dialog says until when and that it can be kept.
+// A bought module ends with its period: the dialog says until when and that it can be kept.
 const moduleToCancel = shallowRef<SaleModule | null>(null);
 const cancelModuleOpen = computed({
   get: () => moduleToCancel.value !== null,
@@ -796,7 +788,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
   flex-direction: column;
   gap: 14px;
 }
-/* The mockup's `.section-title`: a small monospaced eyebrow. */
+/* A small monospaced eyebrow. */
 .section-title {
   margin: 0;
   font-family: var(--font-mono, ui-monospace, monospace);
@@ -811,9 +803,9 @@ async function keepTheModule(module: SaleModule): Promise<void> {
   font-size: 0.88rem;
   color: color-mix(in oklab, var(--ion-text-color) 72%, transparent);
 }
-/* The billing switch is Ionic's segment as iOS paints a filter (the mockup's «Mensual | Anual»): a tinted
-   track with a raised indicator, 28px buttons. The shell's polish.css restyles every segment as its
-   footer tabbar (transparent, 46px tabs, the primary colour): here Ionic's own look is put back. */
+/* The billing switch is Ionic's segment as iOS paints a filter: a tinted track with a raised indicator, 28px
+   buttons. The shell's polish.css restyles every segment as its footer tabbar (transparent, 46px tabs, the
+   primary colour): here Ionic's own look is put back. */
 .store-period {
   --background: rgba(var(--ion-text-color-rgb, 0, 0, 0), 0.065);
   width: 100%;
@@ -835,7 +827,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
 .store-period ion-segment-button::part(indicator-background) {
   border-radius: 7px;
 }
-/* A phone or a touch screen: 44 px to tap (audit 2026-10-14, R-13; `frontend/panel-chrome.css`). */
+/* A phone or a touch screen: 44 px to tap, as `frontend/panel-chrome.css` does. */
 @media (max-width: 640px), (pointer: coarse) {
   .store-period ion-segment-button {
     min-height: 44px;

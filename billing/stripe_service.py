@@ -1,7 +1,5 @@
-"""The one door to Stripe (lot L2-B; PLAN-SAAS §4): the only module of the SaaS that imports ``stripe``.
-
-Ported from ERPlora/saas ``hubs/subscriptions/services/stripe.py`` (``StripeService``) and the Stripe half of
-``fiscal/services/stripe_tax_rates.py`` (origin/develop), as plain functions over one ``StripeClient``:
+"""The one door to Stripe: the only module of the SaaS that imports ``stripe``, as plain functions over one
+``StripeClient``:
 
 - ``client()`` builds it from ``STRIPE_SECRET_KEY`` (a restricted ``rk_live_`` key in production, test keys
   locally; never a key in code), with a short timeout and one retry: a command waits for Stripe inside its
@@ -88,7 +86,7 @@ def client() -> stripe.StripeClient:
 def key_mode() -> StripeKeyMode:
     """Whether the configured key charges real money (``LIVE``), test money, or is not usable (``UNKNOWN``).
 
-    Live money requires a restricted key (PLAN-SAAS §4). Both configured keys must match
+    Live money requires a restricted key. Both configured keys must match
     STRIPE_EXPECTED_MODE, regardless of DEBUG or the deployment's metric label."""
     key = settings.STRIPE_SECRET_KEY or ""
     mode = stripe_key_mode(key)
@@ -367,7 +365,7 @@ def _every(method: Callable, parent_id: str) -> list[dict]:
 
 
 def webhook_endpoints() -> list[dict]:
-    """Every webhook endpoint of the account behind the key, page after page (``audit_stripe_webhooks``, BILLING-F39)."""
+    """Every webhook endpoint of the account behind the key, page after page (``audit_stripe_webhooks``)."""
     params: dict = {"limit": 100}
     found: list[dict] = []
     while True:

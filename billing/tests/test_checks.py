@@ -1,4 +1,4 @@
-"""System checks of billing: production never holds the Stripe account's live SECRET key (PLAN-SAAS §4).
+"""System checks of billing: production never holds the Stripe account's live SECRET key.
 
 A restricted live key (``rk_live_``) has only the permissions the SaaS needs; the account's secret key
 (``sk_live_``) can do everything a thief would want. ``manage.py check --deploy`` refuses it (``billing.E001``)
@@ -68,7 +68,7 @@ def test_live_mode_accepts_live_keys_independently_of_the_label(settings):
 
 @pytest.mark.parametrize("key", ["sk_test_dummy", "rk_test_dummy"])
 def test_live_mode_refuses_a_test_key(settings, key):
-    """BILLING-F30: live mode must not sell paid plans for test cards."""
+    """Live mode must not sell paid plans for test cards."""
     settings.STRIPE_EXPECTED_MODE = "live"
 
     assert deploy_errors(settings, key, publishable="pk_test_dummy") == ["billing.E003"]

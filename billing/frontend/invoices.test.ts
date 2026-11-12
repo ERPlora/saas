@@ -1,6 +1,4 @@
-// The Billing section's rules about an invoice, apart from the screen (mockups `billing.html`, README §3b and
-// §6.18; billing/README.md «Facturas de ERPlora (L3-C)»): how its status reads, what names it, the grace of an
-// unpaid one, the years the filter offers and the businesses whose invoices the account sees.
+// The Billing section's rules about an invoice, apart from the screen.
 // clock: data only — no code under test compares these dates with now.
 import { formatMoney } from '@erplora/ui/components';
 import { describe, expect, it } from 'vitest';
@@ -39,7 +37,7 @@ describe('invoiceName', () => {
 });
 
 describe('graceEnd', () => {
-  it('is 7 days after the invoice went unpaid (PLAN-SAAS §3.3)', () => {
+  it('is 7 days after the invoice went unpaid', () => {
     expect(graceEnd('2026-10-10T08:00:00Z')).toBe('2026-10-17T08:00:00.000Z');
   });
 
@@ -77,7 +75,7 @@ describe('formatAmount', () => {
     expect(formatAmount(500, '', 'en')).toBe('€5.00');
   });
 
-  it('groups the thousands from four digits, as every ledger of the market does (saas#228)', () => {
+  it('groups the thousands from four digits, as every ledger of the market does', () => {
     expect(formatAmount(123456, 'eur', 'es')).toBe('1.234,56 €');
     expect(formatAmount(123456, 'eur', 'en')).toBe('€1,234.56');
   });

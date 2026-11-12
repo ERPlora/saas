@@ -1,14 +1,12 @@
 """The Checkout Session vocabulary of billing: its ``ui_mode`` and what a session pays for.
 
-Ported from ERPlora/saas ``apps/core/stripe_checkout.py`` (origin/develop).
-
-``ui_mode`` (saas#1565): Stripe renamed ``embedded`` to ``embedded_page`` and the retired spelling killed
+``ui_mode``: Stripe renamed ``embedded`` to ``embedded_page`` and the retired spelling killed
 both embedded checkouts at once. The value lives here, and ``accepted_ui_modes`` reads the enum of the
 INSTALLED SDK, so the test that compares them turns red on the SDK bump, before a customer meets it.
 
-``kind`` (saas#2539): every Checkout Session carries ``metadata.kind``. The SaaS has one webhook route
-(PLAN-SAAS §4), which tells a plan payment from a module purchase and ignores any other session of the
-account (the old SaaS's assistant shares it until the cut-over).
+``kind``: every Checkout Session carries ``metadata.kind``. The SaaS has one webhook route, which tells a
+plan payment from a module purchase and ignores any other session of the Stripe account (the old SaaS's
+assistant shares it).
 """
 
 import re
@@ -56,7 +54,7 @@ class CheckoutKind(StrEnum):
 
     HUB_PLAN = "hub_plan"
     MODULE_PURCHASE = "module_purchase"
-    #: The new owner of a handed-over business keeps its plan with their own card (HUBS-F28).
+    #: The new owner of a handed-over business keeps its plan with their own card.
     PLAN_TAKEOVER = "plan_takeover"
     #: Not ERPlora's billing of a business: ignored by the webhook.
     UNKNOWN = "unknown"

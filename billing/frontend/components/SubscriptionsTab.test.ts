@@ -1,10 +1,5 @@
-// Billing → Subscriptions (mockups `billing.html` «subscriptions», «cancelling»; README §3b; UX-AUDIT-4 W-F1,
-// W-F7, W-F10, X-15): one row per business Stripe bills (live `billing.subscription.list`) in a DataTable that
-// turns into cards up to 1280 px — business, plan (net), its paid modules (net; «(until …)» on one line when
-// cancelled), next invoice (with VAT) and status — with ONLY the actions the server computed, in its order:
-// «View the invoice» with an unpaid one, «Change plan» (→ the Store with that business), «Keep the plan»,
-// «Cancel plan» (its own dialog) and «View invoices». Changing, keeping and cancelling are web only; inside
-// the apps a sentence says where to do it. A downgrade waiting for the end of the period says so.
+// Billing → Subscriptions: one row per business Stripe bills, with ONLY the actions the server computed, in its
+// order. Changing, keeping and cancelling are web only; inside the apps a sentence says where to do it.
 // clock: data only — no code under test compares these dates with now.
 import { DataTable } from '@erplora/ui/components';
 import { applySurface } from '@erplora/ui/shell';
@@ -67,7 +62,7 @@ const CANCELLING = subscriptionRow('bakery', 'Panadería López', {
   actions: ['keep_plan', 'view_invoices'],
   can: { take_over: false, change_plan: true, cancel_plan: false, keep_plan: true, view_invoice: false, view_invoices: true },
 });
-/** A business handed over with its plan still on the previous owner's card (HUBS-F28): it ends with its period. */
+/** A business handed over with its plan still on the previous owner's card: it ends with its period. */
 const HANDED_OVER = subscriptionRow('bakery', 'Panadería López', {
   cancelling: true,
   ends_at: '2026-11-01T10:00:00Z',
@@ -113,7 +108,7 @@ describe('SubscriptionsTab: the list', () => {
     const s = await setup();
     expect(s.client.stream.subscriptions('billing.subscription.list').map((sub) => sub.params)).toEqual([{ limit: 100 }]);
     await s.show();
-    // Audit 2 R-33: three rows turned into cards on a 1024–1180 laptop; R-30: a card does not repeat its title.
+    // A list from 1000 px, so three rows on a 1024–1180 laptop stay a list; a card does not repeat its title.
     expect(s.table().props()).toMatchObject({
       title: 'Subscriptions',
       views: ['table', 'cards'],
@@ -142,7 +137,7 @@ describe('SubscriptionsTab: the list', () => {
       'Active',
     ]);
     expect(s.cells(1).slice(0, 5)).toEqual(['Bar La Plaza', 'Starter€29.99/month + VAT', '—', 'Nov 10, 2026 · €36.29with VAT', 'Payment pending']);
-    // «Payment pending» is the mockups' `st-overdue`: red, as the banner that explains it.
+    // «Payment pending» is red, as the banner that explains it.
     const tones = s.wrapper.findAll('[data-testid="subscriptions-row"]').map((row) => row.get('.status-pill').attributes('data-tone'));
     expect(tones).toEqual(['success', 'danger']);
     expect(s.wrapper.find('[data-testid="subscription-until"]').classes()).toContain('nowrap');
@@ -160,7 +155,7 @@ describe('SubscriptionsTab: the list', () => {
     expect(s.testid('subscription-scheduled').text()).toBe('Changes to Basic on Nov 1, 2026');
   });
 
-  it('one action per row: its first one fixed and labelled; with a «⋮» (Cancel plan), «View invoices» goes in it too (Ioan, 2026-10-14)', async () => {
+  it('one action per row: its first one fixed and labelled; with a «⋮» (Cancel plan), «View invoices» goes in it too', async () => {
     const s = await setup();
     await s.show([BAKERY_SUB, PLAZA_SUB]);
     expect(s.prop<Array<Record<string, unknown>>>('actions').map((a) => [a.id, !!a.pinned, !!a.menuOnly, !!a.showLabel])).toEqual([
@@ -169,7 +164,7 @@ describe('SubscriptionsTab: the list', () => {
       ['view_invoices_menu', false, true, true],
       ['cancel_plan', false, true, true],
     ]);
-    // Mockups (`billing.html`): an unpaid row keeps «View the invoice» and the rest in «⋮»; an active one, «Change plan».
+    // An unpaid row keeps «View the invoice» and the rest in «⋮»; an active one, «Change plan».
     expect(s.actionsOf('bakery')).toEqual(['lead', 'menu']);
     expect(s.actionsOf('plaza')).toEqual(['lead', 'menu']);
     expect(s.testid('subscriptions-row-bakery-lead').text()).toBe('Change plan');
@@ -225,7 +220,7 @@ describe('SubscriptionsTab: the list', () => {
     expect(dialog.props('unpaid')).toMatchObject({ id: 'i9' });
   });
 
-  it('a business handed over with its plan on the previous owner’s card: «Keep it with my card» leads and the row says whose card pays it (HUBS-F28)', async () => {
+  it('a business handed over with its plan on the previous owner’s card: «Keep it with my card» leads and the row says whose card pays it', async () => {
     const s = await setup();
     await s.show([HANDED_OVER]);
     expect(s.actionsOf('bakery')).toEqual(['lead', 'view_invoices']);
@@ -262,7 +257,7 @@ describe('SubscriptionsTab: the list', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Panadería López stays on Starter');
   });
 
-  it('a downgrade that waits leads with «Keep the plan», «Cancel plan» in its «⋮», and keeping it says so (PLAN-SAAS §31, saas#208)', async () => {
+  it('a downgrade that waits leads with «Keep the plan», «Cancel plan» in its «⋮», and keeping it says so', async () => {
     const waiting = subscriptionRow('bakery', 'Panadería López', {
       plan: { slug: 'standard', name: 'Standard', interval: 'month', price_cents: 5999 },
       scheduled_change: { plan: 'starter', interval: 'month', starts_at: '2026-11-01T10:00:00Z' },
@@ -336,7 +331,7 @@ describe('SubscriptionsTab: a handed-over business, in Spanish', () => {
   });
 });
 
-describe('SubscriptionsTab: a list that does not load says so, never «All your businesses are on Free» (audit 2026-10-14, R-04)', () => {
+describe('SubscriptionsTab: a list that does not load says so, never «All your businesses are on Free»', () => {
   const state = (s: Awaited<ReturnType<typeof setup>>) => ({
     error: s.prop<string | undefined>('error'),
     loading: s.prop<boolean>('loading'),

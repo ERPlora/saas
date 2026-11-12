@@ -1,7 +1,5 @@
-// Who ERPlora invoices (PLAN-SAAS §3.1; mockups `store.html` checkout note): asked once, before the first
-// payment, in the checkout dialog — legal name, tax ID (checked in VIES by the server), address, city,
-// postal code and country, or «use the business’s name and country». Ionic fields, outlined in `md`, each
-// with the server's message under it (`fieldErrors`, a 422). Country is an `ion-select`, never native.
+// Who ERPlora invoices, asked once before the first payment: Ionic fields outlined in `md`, each with the server's
+// message under it (a 422); the country is an `ion-select`, never native.
 import { describe, expect, it } from 'vitest';
 import { h, ref } from 'vue';
 

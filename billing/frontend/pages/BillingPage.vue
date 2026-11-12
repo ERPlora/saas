@@ -1,12 +1,8 @@
 <script setup lang="ts">
-// Billing (`/dashboard/billing/:tab`; round 17, PLAN-SAAS §3.6 points 1, 6, 7 and 11; mockups `billing.html`): what the
-// account pays ERPlora for its businesses, in the shell's page with its three sections in the footer tabbar —
-// Invoices · Subscriptions · Payment details — each at its own address (Back leaves Billing). A composition
-// surface: on top, what waits for a payment (BillingNotices) and, on Invoices, what this section is in one
-// line; below, the section, each with its own data. It is not selling: it shows on every surface, to look at
-// invoices and subscriptions and edit the fiscal data; paying, changing the card and changing or cancelling a
-// plan are web only, inside each section. One payment at a time on the page (`providePaying`). The lists
-// (Invoices, Subscriptions) fill the page between the topbar and the tabbar (`detail-fill` + `.panel-fill`).
+// Billing (`/dashboard/billing/:tab`): what the account pays ERPlora for its businesses, three sections in the
+// footer tabbar, each at its own address. It is not selling, so it shows on every surface; paying, changing the
+// card and changing or cancelling a plan are web only, inside each section. One payment at a time on the page
+// (`providePaying`).
 import { AppPage, HubIcon, type ShellTab } from '@erplora/ui/shell';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -34,7 +30,7 @@ const SECTIONS: Array<{ id: Tab; icon: string }> = [
 const { t } = useI18n();
 providePaying();
 
-/** Invoices and Subscriptions are lists: they fill the page between the topbar and the tabbar (Ioan, 2026-10-14). */
+/** Invoices and Subscriptions are lists: they fill the page between the topbar and the tabbar. */
 const fills = computed(() => props.tab !== 'payment');
 
 const tabs = computed<ShellTab[]>(() =>

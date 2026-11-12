@@ -1,14 +1,5 @@
-// Buying for a business Stripe does not bill yet (PLAN-SAAS §3.2 and §4; mockups `store.html`
-// «modal-checkout»; UX-AUDIT-4 W-06/X-02/X-09): Stripe's Embedded Checkout inside our dialog.
-//   - First who pays (`hubs.billing_profile.get`): without a name, a country and a postal code, the form
-//     comes first and is saved (`hubs.billing_profile.update`); otherwise «Invoice to … · Change».
-//   - Then `billing.checkout.start` (the plan at the billing chosen, with the promo code; or the module,
-//     named in the title) gives a Checkout Session's `client_secret`; Stripe.js (web only) mounts it with
-//     `createEmbeddedCheckoutPage({ fetchClientSecret })` inside the dialog.
-//   - Stripe's `onComplete` → «Paying…», the checkout is destroyed and the page goes to the business,
-//     saying what happened. A failure is always said, with «Retry» (saas#1565: never a silent spinner).
-//   - Closing destroys the checkout. The declined card is never offered: Stripe asks for a card, and the
-//     dialog says why when the account's card was declined.
+// Buying for a business Stripe does not bill yet: Stripe's Embedded Checkout inside our dialog, after the payer's
+// details. A failure is always said, with «Retry», never a silent spinner.
 // Stripe cannot run here: `window.Stripe` is a double (`__tests__/stripe-double.ts`).
 // clock: data only — no code under test compares these dates with now.
 import { applySurface } from '@erplora/ui/shell';
@@ -26,7 +17,7 @@ vi.mock('../stripe-js', async (importOriginal) => ({
 }));
 
 /** Ionic renders an inline modal's content only once it presents it (`ionMount`), and that can come after the
- *  answers the dialog waits for (saas#326). With `held`, the dialog's content comes when the test calls `present()`. */
+ *  answers the dialog waits for. With `held`, the dialog's content comes when the test calls `present()`. */
 const presentation = vi.hoisted(() => {
   const waiting: Array<() => void> = [];
   return {
@@ -92,7 +83,7 @@ const EMPTY_PROFILE = { ...PROFILE, billing_name: '', tax_id: '', billing_addres
 const SESSION = { flow: 'checkout', session_id: 'cs_test_1', client_secret: 'cs_test_1_secret_x', publishable_key: 'pk_test_double', preview: null };
 const PLAN: CheckoutPurchase = { kind: 'plan', slug: 'starter', name: 'Starter', interval: 'year' };
 const MODULE: CheckoutPurchase = { kind: 'module', slug: 'booking', name: 'Bookings', interval: 'month' };
-/** The plan of a handed-over business, kept with the new owner's card from the end of the paid period (HUBS-F28). */
+/** The plan of a handed-over business, kept with the new owner's card from the end of the paid period. */
 const TAKE_OVER: CheckoutPurchase = { kind: 'takeover', slug: 'starter', name: 'Starter', interval: 'month', from: '2026-11-01T10:00:00Z' };
 const takeOver: Handler = ({ path }) => {
   if (path === '/api/hubs/billing-profile') return Response.json(PROFILE);
@@ -188,7 +179,7 @@ describe('CheckoutModal', () => {
     expect(s.open.value).toBe(false);
   });
 
-  it('says what happened once the business’s page has taken over, never while that page is still on its way (saas#341)', async () => {
+  it('says what happened once the business’s page has taken over, never while that page is still on its way', async () => {
     const s = await setup();
     const arrive = await completeWhileThePageIsOnItsWay(s.router);
     expect(s.q('checkout-paying')?.textContent?.trim()).toBe('Paying…');
@@ -199,7 +190,7 @@ describe('CheckoutModal', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Café Central is now on Starter');
   });
 
-  it('names the business paid for, though the Store behind moves to another one while that business’s page is on its way (saas#341)', async () => {
+  it('names the business paid for, though the Store behind moves to another one while that business’s page is on its way', async () => {
     // Left behind in the stack, the Store loses its `?business=` and picks another business for its dialog.
     const shown = reactive({ business: { id: 'cafe', name: 'Café Central' } });
     const s = await setup(happy, PLAN, shown);
@@ -211,7 +202,7 @@ describe('CheckoutModal', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Café Central is now on Starter');
   });
 
-  it('keeping a handed-over plan: its own checkout, nothing charged today, paid from the end of the paid period (HUBS-F28)', async () => {
+  it('keeping a handed-over plan: its own checkout, nothing charged today, paid from the end of the paid period', async () => {
     const s = await setup(takeOver, TAKE_OVER);
     expect(s.calls().map((c) => [c.method, c.path, c.body ?? c.query])).toEqual([
       ['GET', '/api/hubs/billing-profile', { hub_id: 'cafe' }],
@@ -384,7 +375,7 @@ describe('CheckoutModal', () => {
     expect(stripe.checkouts).toEqual([]);
   });
 
-  describe('when Stripe answers before Ionic has rendered the dialog’s content (saas#326)', () => {
+  describe('when Stripe answers before Ionic has rendered the dialog’s content', () => {
     beforeEach(() => {
       presentation.held = true;
     });
@@ -432,7 +423,7 @@ describe('CheckoutModal', () => {
     expect(stripe.checkouts[0].destroyed).toBe(true);
   });
 
-  it('when the card of the same payer was declined, says whose and to pay with another (audit 2 R-21)', async () => {
+  it('when the card of the same payer was declined, says whose and to pay with another', async () => {
     const s = await setup(happy, PLAN, { declinedFor: 'Bar La Plaza' });
     expect(s.q('checkout-declined')?.textContent).toContain('The card that pays for Bar La Plaza was declined: pay with another one.');
   });

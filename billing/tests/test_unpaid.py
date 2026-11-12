@@ -1,24 +1,17 @@
-"""An unpaid renewal: 7 days of grace, then suspended; paid, back at once (PLAN-SAAS §3.3; lot L2-B).
+"""An unpaid renewal: 7 days of grace, then suspended; paid, back at once.
 
-Ported from ERPlora/saas (origin/develop) ``hubs/main/tests/test_unpaid_hub_is_suspended.py`` (13),
-``test_paid_hub_resumes_after_payment.py`` (14), ``test_late_payment_failed_keeps_paid_plan.py`` (7),
-``test_suspended_hub_lifecycle.py`` (the clock) and the invoice half of ``test_webhooks.py``, through the
-webhook (``invoice.payment_failed``, ``invoice.paid``, ``customer.updated``). The rules:
+Through the webhook (``invoice.payment_failed``, ``invoice.paid``, ``customer.updated``). The rules:
 
 - The grace runs from the FAILED INVOICE (its ``created``), never from the local period, which Stripe has
-  already renewed (saas#2574): inside it the business works with «payment pending» (round 17 §2.10); past
+  already renewed: inside it the business works with «payment pending»; past
   it, or with Stripe's final ``unpaid``, it is suspended. A later failure does not move the clock.
-- The LIVE subscription decides (saas#2261): a failure delivered after the retry was collected is ignored;
+- The LIVE subscription decides: a failure delivered after the retry was collected is ignored;
   a late success while the subscription is still in dunning wakes nothing.
-- Paying brings it back at once (saas#2529); Stripe not answering a paid invoice counts as paid.
-- Why it is unpaid reaches the panel (mockups README §6.18): a declined card blocks «Pay» until the card
+- Paying brings it back at once; Stripe not answering a paid invoice counts as paid.
+- Why it is unpaid reaches the panel: a declined card blocks «Pay» until the card
   changes (``card_changed`` after the Customer Portal), an authentication or any other failure does not.
 - The money Stripe collected is checked against our engine (``vat.resolve_vat``): a subject sale with no
   tax is a structured ERROR, the alarm of a missing TaxRate.
-
-Dropped with reason: stopping and starting the container, the suspension e-mails' Celery tasks, the 30/150/
-180-day deletion notices and the start/resume endpoints of the old API (no container per business; the
-Hub paints «suspended», PLAN-SAAS §2.3).
 """
 
 import logging
@@ -196,8 +189,8 @@ class TestAFailedRenewal:
         assert PaymentFailure.objects.count() == 0
 
     def test_stripe_not_answering_is_left_to_its_retry(self, running, stripe_double):
-        """Changed from the old SaaS (review of L2-B): applying a failure «as it came» suspended businesses on
-        a stale event. Without the live subscription nothing is written; Stripe retries (500)."""
+        """Applying a failure «as it came» would suspend businesses on a stale event. Without the live subscription
+        nothing is written; Stripe retries (500)."""
         stripe_double.answer("subscriptions.retrieve", connection_error())
         stripe_double.answer("invoice_payments.list", listing([]))
         body, header = signed(event("invoice.payment_failed", invoice("in_1", created=days_ago(9))))
@@ -232,7 +225,7 @@ class TestAFailedRenewal:
 
     @pytest.mark.parametrize("decline", ["insufficient_funds", "try_again_later", "processing_error"])
     def test_a_decline_the_same_card_may_pass_later_does_not_block_paying(self, running, stripe_double, decline):
-        """Review of L2-B: only a card that will not pay as it is blocks «Pay» (mockups README §6.18)."""
+        """Only a card that will not pay as it is blocks «Pay»."""
         failed(stripe_double, code="card_declined", decline=decline)
 
         assert local(running).unpaid_reason == "payment_failed"
@@ -308,7 +301,7 @@ class TestTheCardChanges:
         assert row_of(owner, running)["unpaid_reason"] == "card_changed"
 
     def test_a_failure_whose_card_is_unknown_is_not_taken_for_a_change(self, running, owner, stripe_double):
-        """Without the card that failed, any default card would look «new» (review of L2-B)."""
+        """Without the card that failed, any default card would look «new»."""
         stripe_double.answer("subscriptions.retrieve", subscription(status="past_due"))
         stripe_double.answer("invoice_payments.list", connection_error())
         deliver(event("invoice.payment_failed", invoice("in_1", created=days_ago(1))))
@@ -426,8 +419,8 @@ class TestPayingBringsItBack:
         assert status_of(running) == Hub.Status.SUSPENDED
 
     def test_stripe_not_answering_a_paid_invoice_is_left_to_its_retry(self, running, stripe_double):
-        """Changed from the old SaaS (review of L2-B): without the live subscription a paid invoice may be a
-        proration or an older one; guessing «active» and a period woke businesses still in dunning. Stripe
+        """Without the live subscription a paid invoice may be a proration or an older one; guessing «active»
+        and a period would wake businesses still in dunning. Stripe
         retries the event (500) and the next delivery reads the truth."""
         self.suspended(running, stripe_double)
         stripe_double.answer("subscriptions.retrieve", connection_error())
@@ -461,7 +454,7 @@ class TestPayingBringsItBack:
 
 
 class TestThePayerIsTold:
-    """BILLING-F16 (saas#2593): the market tells the customer as soon as a renewal fails (Shopify, Square,
+    """The market tells the customer as soon as a renewal fails (Shopify, Square,
     Lightspeed, WooCommerce), with the way to pay and the day the business stops, and again when it stops. Once
     per unpaid invoice and once per suspension, after the COMMIT; a mail that could not leave is sent by the
     next ``sweep_unpaid``. Each mail names what it is in ``X-ERPlora-Notice``."""

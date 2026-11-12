@@ -1,15 +1,8 @@
 <script setup lang="ts">
-// Two or more invoices Stripe could not charge, on top of Invoices, in ONE banner (mockups `billing.html`
-// «past-due-two»; audit 2026-10-14, R-15: one banner per business took half the page at 1024 px). One invoice
-// keeps its own banner (UnpaidInvoiceNotice).
-//   - the heading says how many and how much in all («2 unpaid invoices: €72.58»);
-//   - each business on its own line, the most urgent first (the suspended, then the one suspended soonest; audit 2
-//     S-07): suspended until it is paid, or the day it is suspended if not paid (7 days of grace, `graceEnd`), with
-//     its amount; days, never the hour;
-//   - on the web each line has its action: «Pay the invoice» (PayInvoiceButton); after a declined card
-//     «Change card» (Stripe's Customer Portal) leads and «Pay» waits, described by why; only the first line's is
-//     filled (audit 2 S-06). Another account paying the business: only why;
-//   - inside the apps, no button nor link: where to pay them (README §4).
+// Two or more invoices Stripe could not charge, on top of Invoices, in ONE banner (one banner per business took
+// half the page at 1024 px); one invoice keeps its own (UnpaidInvoiceNotice). Each business on its own line, the
+// most urgent first, with its action on the web: after a declined card «Change card» leads and «Pay» waits.
+// Inside the apps, no button nor link: where to pay them.
 import { InlineFeedback } from '@erplora/ui/components';
 import { HubIcon, useSurface, WebOnly } from '@erplora/ui/shell';
 import { IonButton, IonSpinner } from '@ionic/vue';
@@ -29,7 +22,7 @@ const props = defineProps<{
 
 const { t, locale } = useI18n();
 const portal = useCardPortal();
-/** The account the app opens in the browser says why it pays nothing, not where (audit 2 S-09). */
+/** The account the app opens in the browser says why it pays nothing, not where. */
 const { isWeb, surface } = useSurface();
 const uid = useId();
 
@@ -45,7 +38,7 @@ const isSuspended = (item: UnpaidItem) => item.business?.status === 'suspended';
 /** The day the invoice was left unpaid: its 7 days of grace end first. */
 const since = (item: UnpaidItem) => Date.parse(item.business?.unpaid_since ?? item.invoice.date) || Infinity;
 
-/** The most urgent first (audit 2 S-07, as Businesses orders them): the suspended, then the one suspended soonest. */
+/** The most urgent first (as Businesses orders them): the suspended, then the one suspended soonest. */
 const lines = computed(() =>
   [...props.items]
     .sort((a, b) => Number(isSuspended(b)) - Number(isSuspended(a)) || since(a) - since(b))
@@ -66,7 +59,7 @@ const lines = computed(() =>
         payerElsewhere: invoice.pay_blocked_reason === 'payer_required',
         hubId: invoice.business.id ?? business?.id ?? null,
         whyId: `unpaid-group-why-${uid}-${invoice.id}`,
-        /** Only the most urgent line's way out is filled (audit 2 S-06). */
+        /** Only the most urgent line's way out is filled. */
         first: index === 0,
       };
     }),
@@ -111,7 +104,7 @@ const anyDeclined = computed(() => lines.value.some((line) => line.declined));
             >{{ line.declined ? $t('billing.notice.changeFirst') : $t('billing.notice.payerRequired') }}</span>
           </WebOnly>
         </div>
-        <!-- Web only (README §4): inside the apps the actions are not even there. -->
+        <!-- Web only: inside the apps the actions are not even there. -->
         <div
           v-if="isWeb && !line.payerElsewhere"
           class="unpaid-group__actions"
@@ -206,7 +199,7 @@ const anyDeclined = computed(() => lines.value.some((line) => line.declined));
   white-space: nowrap;
   text-transform: none;
 }
-/* A real tap target on a phone (audit 2026-10-14, R-13). */
+/* A real tap target on a phone. */
 @media (max-width: 640px) {
   .unpaid-group__actions ion-button {
     min-height: 44px;

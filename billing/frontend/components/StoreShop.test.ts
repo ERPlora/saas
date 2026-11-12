@@ -1,14 +1,7 @@
-// The Store itself, on the web (round 17 §2.10–§2.11; mockups `store.html`; README §3, §4, §6.18;
-// UX-AUDIT-4): the business it sells to (`?business=` or the first the account owns), its unpaid invoice
-// if any, and then Plans or Modules:
-//   - plans of `hubs.plan.list`; modules of `apps.app.list` (name, summary, icon, in the person's language)
-//     joined by slug with `billing.store.catalog` (prices, what the business has): a module is sold when
-//     its app is premium AND billing has it on sale;
-//   - a business on Free buys in the Embedded Checkout; one that pays confirms with its proration — one
-//     dialog per module — and its own plan switches billing with the total with VAT;
-//   - after buying, «Activating…»; owned, never on sale twice; cancelled, «Keep · no charge today»;
-//   - with an unpaid invoice, nothing that charges, for THAT business.
-// The dialogs have their own tests: here they are stubs, and what the shop hands them is checked.
+// The Store on the web: the business it sells to (`?business=` or the first the account owns), its unpaid invoice
+// if any, then Plans or Modules. A module is sold when its app is premium AND billing has it on sale; with an unpaid
+// invoice nothing charges for THAT business. The dialogs have their own tests: here they are stubs, and what the
+// shop hands them is checked.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
@@ -134,13 +127,13 @@ describe('StoreShop', () => {
     expect(s.el('plan-starter').find('[data-testid="plan-current"]').exists()).toBe(true);
   });
 
-  it('without ?business= it sells to the first business that can buy, not one blocked by an unpaid invoice (audit 2 R-17)', async () => {
+  it('without ?business= it sells to the first business that can buy, not one blocked by an unpaid invoice', async () => {
     const s = await setup({ rows: [PLAZA, BAKERY, CAFE] });
     expect(ionProps(s.el('store-business'), 'value')).toEqual({ value: 'bakery' });
     expect(s.el('store-unpaid').exists()).toBe(false);
   });
 
-  it('a Free business is offered the plans sold at sign-up; the upgrades wait for a paid plan (audit 2 S-03)', async () => {
+  it('a Free business is offered the plans sold at sign-up; the upgrades wait for a paid plan', async () => {
     const plans = { ...PLANS, plans: [...PLANS.plans, PRO, MAX] };
     const s = await setup({ businessId: 'cafe', answer: ({ path }) => (path === '/api/plans' ? Response.json(plans) : undefined) });
     expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter']);
@@ -187,7 +180,7 @@ describe('StoreShop', () => {
   });
 
   it('with nothing on sale, it says so', async () => {
-    // A business with no module: since saas#2589 one it still has is shown although the catalog lists none.
+    // A business with no module: one it still has is shown although the catalog lists none.
     const none = catalog('bakery', { modules: [storeModule('booking', 900)] });
     const s = await setup({
       tab: 'modules',
@@ -264,12 +257,12 @@ describe('StoreShop', () => {
       business: { id: 'cafe', name: 'Café Central' },
       purchase: { kind: 'plan', slug: 'starter', name: 'Starter', interval: 'year' },
       promoCode: 'SPRING',
-      // Bar La Plaza's card was declined, but Café Central has a payer of its own (audit 2 R-21).
+      // Bar La Plaza's card was declined, but Café Central has a payer of its own.
       declinedFor: null,
     });
   });
 
-  it('the card of the same payer declined: the checkout says whose (audit 2 R-21)', async () => {
+  it('the card of the same payer declined: the checkout says whose', async () => {
     const shared = { ...CAFE, payer_id: PLAZA.payer_id };
     const s = await setup({ businessId: 'cafe', rows: [BAKERY, shared, PLAZA] });
     await s.el('plan-upgrade').trigger('click');
@@ -382,7 +375,7 @@ describe('StoreShop', () => {
     expect(s.el('plan-keep').exists()).toBe(false);
   });
 
-  it('a downgrade that waits: its own card names the plan it moves to, and «Keep the plan» undoes it (PLAN-SAAS §31, saas#208)', async () => {
+  it('a downgrade that waits: its own card names the plan it moves to, and «Keep the plan» undoes it', async () => {
     const STANDARD = plan('standard', 'Standard', '59.99', '599.90');
     const waiting = catalog('bakery', {
       subscription: subscription({ plan: 'standard', scheduled_change: { plan: 'starter', interval: 'month', starts_at: '2026-10-31T12:00:00Z' } }),
@@ -448,7 +441,7 @@ describe('StoreShop', () => {
     expect(s.el('module-loyalty').find('[data-testid="module-owned"]').exists()).toBe(true);
   });
 
-  it('BILLING-G66: «Cancel module» confirms with the date it ends, cancels it, and it can be kept until then', async () => {
+  it('«Cancel module» confirms with the date it ends, cancels it, and it can be kept until then', async () => {
     const owned = catalog('bakery', { modules: [storeModule('booking', 900, { owned: true, source: 'purchase' })] });
     const s = await setup({
       tab: 'modules',
@@ -474,7 +467,7 @@ describe('StoreShop', () => {
     expect(s.el('module-booking').find('[data-testid="module-cancel"]').exists()).toBe(false);
   });
 
-  it('BILLING-G66: a refused cancellation stays in its dialog and says why', async () => {
+  it('a refused cancellation stays in its dialog and says why', async () => {
     const owned = catalog('bakery', { modules: [storeModule('booking', 900, { owned: true, source: 'purchase' })] });
     const s = await setup({
       tab: 'modules',
@@ -493,7 +486,7 @@ describe('StoreShop', () => {
     expect(s.el('module-booking').find('[data-testid="module-cancel"]').exists()).toBe(true);
   });
 
-  it('saas#2589: a module off sale the business still pays is shown to cancel it, named by billing if the catalog retired its app', async () => {
+  it('a module off sale the business still pays is shown to cancel it, named by billing if the catalog retired its app', async () => {
     const retired = catalog('bakery', { modules: [storeModule('retired', 500, { owned: true, source: 'purchase', on_sale: false, name: 'Old reports' })] });
     const s = await setup({ tab: 'modules', answer: ({ path, query }) => (path === '/api/billing/store' && query.hub_id === 'bakery' ? Response.json(retired) : undefined) });
     expect(s.el('module-retired').find('[data-testid="module-name"]').text()).toBe('Old reports');
@@ -540,7 +533,7 @@ describe('StoreShop', () => {
   });
 });
 
-describe('StoreShop: businesses that do not load are said, never «You have no business to buy for» (audit 2026-10-14, R-04)', () => {
+describe('StoreShop: businesses that do not load are said, never «You have no business to buy for»', () => {
   const states = (s: Awaited<ReturnType<typeof setup>>) => ({
     error: s.el('store-error').exists() ? s.el('store-error').find('.heading').text() : null,
     retry: s.el('store-retry').exists(),

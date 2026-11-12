@@ -1,24 +1,15 @@
-"""Stripe's single webhook, ``POST /webhooks/stripe/`` (PLAN-SAAS §4; lot L2-B).
-
-Ported from ERPlora/saas ``hubs/main/webhooks.py`` and its tests (origin/develop): ``test_webhooks.py`` (23),
-``test_webhooks_sdk15_compat.py`` (1), ``test_late_subscription_updated_follows_live.py`` (6),
-``test_live_period_read_from_subscription_item.py`` (6), ``dashboard/billing/tests/test_checkout_session_routing.py``
-(12) and the end of ``test_hub_delete_cancels_billing.py``. The four routes of the old SaaS are ONE now:
+"""Stripe's single webhook, ``POST /webhooks/stripe/``.
 
 - Only Stripe's signature opens it (the real check, ``stripe.Webhook``, against events signed as Stripe
   signs them): anything else is 400; without a webhook secret, 503.
-- Each event is processed once (``WebhookEvent``, saas#2530): a duplicate answers 200 without running it, a
+- Each event is processed once (``WebhookEvent``): a duplicate answers 200 without running it, a
   delivery being processed elsewhere 409 (Stripe retries), a failure 500 and stays claimable.
-- Stripe redelivers late and in any order (saas#2321): what is written is the LIVE subscription (read again
+- Stripe redelivers late and in any order: what is written is the LIVE subscription (read again
   with ``subscriptions.retrieve``), never the event's snapshot, unless Stripe does not answer.
 - What it learns goes through ``hubs.subscription.apply``: the plan, the modules, the period, and the
   snapshot pushed to the Hub after the COMMIT.
-
-Dropped with reason: the deploy of a container after the first payment, its resize after a change and the
-reduced «suspension» subscription of a cancelled plan (no container per business, PLAN §14; a plan that
-ends goes back to Free, PLAN-SAAS §3.3); the module and Connect routes and the assistant's (one route); the
-invoice written on ``checkout.session.completed`` (ERPlora's invoice is written on ``invoice.paid``, lot L3-C:
-``test_invoice_recording``).
+- A plan that ends goes back to Free. ERPlora's invoice is written on ``invoice.paid``
+  (``test_invoice_recording``), never on ``checkout.session.completed``.
 """
 
 import json
@@ -254,7 +245,7 @@ class TestACompletedCheckout:
             mine.stripe_subscription_id,
             mine.stripe_customer_id,
         ) == ("sub_new", "cus_new")
-        # The period of the current API lives on the subscription item (saas#2328).
+        # The period of the current API lives on the subscription item.
         assert int(mine.current_period_start.timestamp()) == MONTH_START
         assert int(mine.current_period_end.timestamp()) == MONTH_END
         assert mine.trial_plan is None
@@ -326,7 +317,7 @@ class TestACompletedCheckout:
         assert attempt.status == "completed" and attempt.completed_at is not None
         assert PromoCode.objects.get().redemption_count == 1
 
-    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no seeded plan carries one)
     def test_a_module_bought_on_free_keeps_the_sign_up_trial(
         self, shop, inventory, stripe_double
     ):
@@ -364,7 +355,7 @@ class TestACompletedCheckout:
     def test_a_module_paid_by_a_delayed_method_is_had_once_the_payment_settles(
         self, shop, inventory, stripe_double
     ):
-        """BILLING-G62/G63, saas#2566: with a delayed method (SEPA Direct Debit) the checkout completes before
+        """With a delayed method (SEPA Direct Debit) the checkout completes before
         the money arrives: nothing is had then, and the module is had when Stripe says the payment settled."""
         metadata = {"kind": "module_purchase", "hub_id": str(shop.id), "module": "inventory"}
 
@@ -393,7 +384,7 @@ class TestACompletedCheckout:
         assert [module["id"] for module in hub_queries.hub_snapshot(shop.id)["modules"]] == ["inventory"]
 
     def test_a_second_subscription_for_a_paying_business_is_cancelled_not_applied(self, shop, stripe_double, caplog):
-        """Two checkouts paid for one business (review of L2-B): the one the business already has stays; the
+        """Two checkouts paid for one business: the one the business already has stays; the
         new one is ended at once with a credit for the time not used, and support hears of it."""
         paid = pay(shop, sub_id="sub_1")
         stripe_double.answer("subscriptions.retrieve", subscription("sub_dup", items=[item("si_x", "price_standard_month")]))
@@ -410,7 +401,7 @@ class TestACompletedCheckout:
 
     def test_the_live_read_happens_under_the_business_lock(self, shop, stripe_double):
         """A webhook reads the live subscription only once it holds the business's row, so an operation in
-        between (a cancellation) is never overwritten by an older read (review of L2-B)."""
+        between (a cancellation) is never overwritten by an older read."""
         from django.db import connection
         from django.test.utils import CaptureQueriesContext
 
@@ -570,7 +561,7 @@ class TestTheLiveSubscriptionDecides:
         assert Hub.objects.get(pk=paid.pk).status == Hub.Status.SUSPENDED
 
     def test_stripe_not_answering_is_left_to_its_retry(self, shop, stripe_double):
-        """Changed from the old SaaS (review of L2-B): the event's snapshot may be stale; nothing is applied
+        """The event's snapshot may be stale; nothing is applied
         without the live subscription, and Stripe retries (500)."""
         paid = pay(shop)
         stripe_double.answer("subscriptions.retrieve", connection_error())
@@ -606,7 +597,7 @@ class TestTheLiveSubscriptionDecides:
         assert local(shop).stripe_subscription_id == "sub_new"
 
     def test_a_first_paid_invoice_ahead_of_its_checkout_finds_its_business(self, shop, stripe_double):
-        """Review of L2-B: Stripe does not order events; ``invoice.paid`` may come before
+        """Stripe does not order events; ``invoice.paid`` may come before
         ``checkout.session.completed``, and its subscription's metadata names the business."""
         from billing.tests.stripe_double import invoice
 
@@ -662,7 +653,7 @@ class TestTheLiveSubscriptionDecides:
         assert local(paid).plan.slug == "starter"
 
     def test_an_old_price_still_brings_the_status_and_the_period(self, shop, stripe_double):
-        """BILLING-F21 (saas#2540): after a plan's price changes, its subscribers keep the old one; their
+        """After a plan's price changes, its subscribers keep the old one; their
         dunning and their period must still reach erplora.com, with the plan left as it was."""
         paid = pay(shop)
         stripe_double.answer(
@@ -677,7 +668,7 @@ class TestTheLiveSubscriptionDecides:
         assert int(row.current_period_end.timestamp()) == MONTH_END
 
     def test_a_cancellation_made_in_stripe_is_seen(self, shop, stripe_double):
-        """BILLING-F21 (saas#2540): a plan cancelled outside the panel (Stripe's dashboard) is cancelled here too,
+        """A plan cancelled outside the panel (Stripe's dashboard) is cancelled here too,
         so the panel offers «Keep the plan» and stops promising a next invoice."""
         paid = pay(shop)
         stripe_double.answer("subscriptions.retrieve", subscription(cancel_at_period_end=True))
@@ -687,7 +678,7 @@ class TestTheLiveSubscriptionDecides:
         assert local(paid).cancel_at_period_end is True
 
     def test_the_zero_invoice_of_a_trial_leaves_it_on_trial(self, shop, stripe_double):
-        """BILLING-F20 (saas#2540): the 0 € invoice a trial starts with is paid at once; the subscription Stripe
+        """The 0 € invoice a trial starts with is paid at once; the subscription Stripe
         holds is still trialing, and that is what erplora.com keeps (never «active» before the first charge)."""
         paid = pay(shop)
         stripe_double.answer(
@@ -722,7 +713,7 @@ class TestTheLiveSubscriptionDecides:
     def test_a_cancelled_module_whose_period_ended_is_gone_at_the_renewal(
         self, shop, inventory, stripe_double
     ):
-        """BILLING-G67: a cancelled module left Stripe at once and worked until the end of its period (the photo
+        """A cancelled module left Stripe at once and worked until the end of its period (the photo
         carried that date). The renewal Stripe charges without it leaves the business without it: its row
         goes, the photo no longer names it and the Store sells it again."""
         paid = pay(shop, modules=["inventory"])
@@ -766,7 +757,7 @@ class TestTheLiveSubscriptionDecides:
 def test_an_event_body_is_read_as_plain_json_whatever_the_sdk_version(
     shop, stripe_double
 ):
-    """saas#2321 (``test_webhooks_sdk15_compat``): the handlers read dicts, never ``StripeObject.get()``."""
+    """The handlers read dicts, never ``StripeObject.get()``."""
     paid = pay(shop)
     stripe_double.answer(
         "subscriptions.retrieve",

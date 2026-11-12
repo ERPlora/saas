@@ -1,15 +1,12 @@
-"""Billing → Invoices: ERPlora's invoices of the account's businesses (lot L3-C; round 17 §2.7).
+"""Billing → Invoices: ERPlora's invoices of the account's businesses.
 
-Ported from ERPlora/saas ``apps/dashboard/billing/tests/`` (origin/develop): ``test_api.TestInvoiceAPI`` (the
-list is the account's own, filtered by status; another account's invoice is a 404; the PDF), ``test_hub_filter``
-(the per-business filter, only among the account's businesses), ``test_views`` (the invoices page and the
-CSV export of the datatable, as operations now) and ``test_money_json_shape`` (amounts in integer cents).
+The list is the account's own, filtered by status and by business (only among the account's businesses);
+another account's invoice is a 404; the PDF, the CSV export and amounts in integer cents.
 
 Who sees an invoice: the account that paid it (its payer that day, ``payer_account``) and the current owner
 of its business; nobody else, whatever their role (a 404, never a hint). The row's actions are the server's:
 «Pay» for one not collected (enabled for its payer, unless the bank declined the card), «PDF» once the
-platform hub issued it. Dropped: staff downloading any invoice (the admin is where staff work), the
-``invoice_type`` filter and the vendor's earnings.
+platform hub issued it. Staff download any invoice from the admin, not here.
 """
 
 import csv
@@ -537,7 +534,7 @@ class TestTheCsv:
         return list(csv.reader(io.StringIO(text), delimiter=delimiter))
 
     def test_it_opens_in_excel_with_its_accents(self, owner, business):
-        """UTF-8 with its BOM: without it Excel reads «Panadería» as «PanaderÃ­a» (W-F9, «Download Excel»)."""
+        """UTF-8 with its BOM: without it Excel reads «Panadería» as «PanaderÃ­a» («Download Excel»)."""
         issue(business, 1)
 
         document = self.export(owner)
@@ -609,7 +606,7 @@ class TestTheCsv:
 
 
 class TestTheCsvIsNotAFormula:
-    """Review of L3-C (CSV injection, OWASP): a business called «=HYPERLINK(…)» must not run in the accountant's
+    """CSV injection (OWASP): a business called «=HYPERLINK(…)» must not run in the accountant's
     Excel. A text cell that starts with ``= + - @`` (or a tab or carriage return) is prefixed with ``'``;
     amounts are numbers, a negative one stays a number."""
 
@@ -684,8 +681,7 @@ class TestPay:
 )
 def test_a_week_old_open_invoice_keeps_its_date(owner, business, monkeypatch, moment, billed_on):
     """An open invoice is dated the day it was billed in the SaaS's zone (Europe/Madrid), whatever the clock
-    says now: «today minus seven days» is a day off for an hour a night during the week after a clock change
-    (saas#148's CI, 22:42Z on 2026-10-28)."""
+    says now: «today minus seven days» is a day off for an hour a night during the week after a clock change."""
     monkeypatch.setattr(timezone, "now", lambda: moment)
     invoice = issue(business, 1, status="open")
     Invoice.objects.filter(pk=invoice.pk).update(billed_at=moment - timedelta(days=7))

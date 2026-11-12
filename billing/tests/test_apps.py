@@ -1,4 +1,4 @@
-"""billing is a platform app at the root of saas-next, next to ``base/`` (round 15, PLAN §20.2; plan 2026-10-13 §3)."""
+"""billing is a platform app at the root of the SaaS, next to ``base/``."""
 
 from pathlib import Path
 
@@ -39,7 +39,7 @@ def test_billing_declares_no_module_fields():
 
 
 def test_billing_comes_after_what_it_reads():
-    """The SaaS's graph ``accounts ← hubs ← billing`` (plan §2, point 15): billing reads the payer of
+    """The SaaS's graph ``accounts ← hubs ← billing``: billing reads the payer of
     a business (``hubs.BillingProfile``). Without a ``requires`` between platform apps, INSTALLED_APPS
     keeps that order."""
     installed = settings.INSTALLED_APPS
@@ -61,8 +61,7 @@ def test_the_admin_names_the_app_in_both_languages():
 def test_a_signed_in_account_previews_checks_and_pays_but_does_not_manage_billing():
     """The role ``account`` (base.operations) may preview the tax, check a VAT number and reach the
     operations that pay (``billing.pay``: buy, change, cancel, the portal), each of which checks that the
-    account OWNS the business (round 17 §2.7); ``billing.manage`` is not handed to every account (review of
-    L2-A)."""
+    account OWNS the business; ``billing.manage`` is not handed to every account."""
     config = billing()
 
     assert config.permissions == ["billing.view", "billing.vat_check", "billing.pay", "billing.manage"]

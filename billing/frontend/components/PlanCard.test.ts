@@ -1,11 +1,5 @@
-// A plan of the Store (mockups `store.html` «Planes»; round 17 §2.11; UX-AUDIT-4 X-03/X-08/X-09/X-14): its
-// name, description, price (net, monthly or annual as the switch says) and features, and the ONE thing
-// the chosen business can do with it now:
-//   - on Free: «Upgrade to …» (the Embedded Checkout), the trial it is trying said on its card;
-//   - paying: «Change to …» (confirmed with its proration), «Switch to annual/monthly» on its own plan,
-//     «Downgrade to Free» (a cancellation at the end of the period);
-//   - cancelled: «Keep the plan», and Free says from when;
-//   - with an unpaid invoice nothing that charges, and the reason under the button (X-34).
+// A plan of the Store and the ONE thing the chosen business can do with it now: upgrade, change, switch billing,
+// downgrade to Free, keep a cancelled plan, or nothing that charges with an unpaid invoice.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FREE, FREE_SUBSCRIPTION, STARTER, plan, subscription } from '../__tests__/fixtures';
@@ -175,8 +169,8 @@ describe('PlanCard', () => {
     });
   });
 
-  // PLAN-SAAS §31 point 2 (saas#208): a downgrade waits for the end of the period and, until then, is undone from
-  // the card of the current plan with «Keep the plan», as a cancellation is (BILLING-F14).
+  // A downgrade waits for the end of the period and, until then, is undone from the card of the current plan with
+  // «Keep the plan», as a cancellation is.
   describe('a downgrade that waits for the end of the period', () => {
     const STANDARD = plan('standard', 'Standard', '59.99', '599.90');
     const waiting = subscription({
@@ -252,7 +246,7 @@ describe('PlanCard', () => {
     expect(icon(await card({ plan: FREE }), 'plan-downgrade')).toBe('arrow-down-outline');
   });
 
-  describe('the messages a month it includes (PLAN-SAAS §3.6)', () => {
+  describe('the messages a month it includes', () => {
     const quotas = (s: Awaited<ReturnType<typeof card>>) =>
       s.wrapper.findAll('[data-testid="plan-quota"]').map((item) => (item.element as HTMLElement).innerText.trim());
     const withMessages = (assistant: number, whatsapp: number) =>
@@ -280,7 +274,7 @@ describe('PlanCard', () => {
     });
   });
 
-  describe('the custom domain of the business’s website (`includes_custom_domain`, HUBS-F17, saas#301)', () => {
+  describe('the custom domain of the business’s website (`includes_custom_domain`)', () => {
     const lines = (s: Awaited<ReturnType<typeof card>>) =>
       s.wrapper.findAll('ion-item').map((item) => [item.attributes('data-testid'), (item.element as HTMLElement).innerText.trim()]);
     const withDomain = (included: boolean, extra: Partial<typeof STARTER> = {}) =>
@@ -318,7 +312,7 @@ describe('PlanCard', () => {
     });
   });
 
-  describe('the apps it turns on at once (`max_apps`, the cap the Hub applies since hub#256)', () => {
+  describe('the apps it turns on at once (`max_apps`, the cap the Hub applies)', () => {
     /** Every line of the card, in order, with what it is. */
     const lines = (s: Awaited<ReturnType<typeof card>>) =>
       s.wrapper.findAll('ion-item').map((item) => [item.attributes('data-testid'), (item.element as HTMLElement).innerText.trim()]);

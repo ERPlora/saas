@@ -1,12 +1,8 @@
 <script setup lang="ts">
-// Adding a module to, or changing the plan of, a business Stripe bills already (PLAN-SAAS §3.2; mockups
-// `store.html` «modal-confirm»; UX-AUDIT-4 W-F4: one dialog per module, with ITS proration): no checkout,
-// an item of the business's subscription, charged now and prorated. It asks Stripe's preview first
-// (`billing.checkout.start`) and says it to the cent — today without VAT, the VAT, the total, and what it
-// costs from the renewal — then confirms with the preview's proration date (`billing.checkout.confirm` for
-// a module, `billing.plan.change` for a plan), so the charge is the one shown. A refusal (a declined
-// card, an unpaid invoice) stays in the dialog; an out-of-date price is asked again and said, never
-// charged blind. A business that turns out not to pay yet goes to the checkout (`checkout`).
+// Adding a module to, or changing the plan of, a business Stripe bills already: no checkout, an item of the
+// business's subscription, charged now and prorated, one dialog per module. It asks Stripe's preview first and
+// confirms with the preview's proration date, so the charge is the one shown. A refusal (a declined card, an unpaid
+// invoice) stays in the dialog; an out-of-date price is asked again and said, never charged blind.
 import { FormModal, type FormModalError } from '@erplora/ui/components';
 import { HubIcon, toastSuccess } from '@erplora/ui/shell';
 import { useCommand } from '@erplora/ui/sdk';

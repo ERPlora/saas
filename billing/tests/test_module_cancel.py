@@ -1,15 +1,14 @@
 """Cancelling and keeping a bought module, and the Customer Portal: ``billing.module.{cancel,keep}``,
-``billing.portal.open`` (lot L2-B).
+``billing.portal.open``.
 
-PLAN-SAAS §3.3: a cancelled module leaves the subscription WITHOUT proration and works until the end of
+A cancelled module leaves the subscription WITHOUT proration and works until the end of
 the period it was paid for (``valid_until`` in the snapshot, so the Hub switches it off then). Stripe keeps
 at least one item per subscription, so the last thing a subscription bills ends the whole subscription at
 the period's end instead. Keeping it before then bills it again from the next renewal, charging nothing
-now. New in this design (the old SaaS sold each module as its own subscription; its cancel was the
-subscription's ``cancel_at_period_end``, ported in ``test_plan_change.py``).
+now.
 
-The portal (Stripe's Customer Portal: cards and Stripe's receipts) was ``BillingPortalAPIView`` of
-``public/modules/api_views.py``: only for the payer, and only once there is a Stripe customer.
+The portal (Stripe's Customer Portal: cards and Stripe's receipts) is only for the payer, and only once there is a
+Stripe customer.
 """
 
 from datetime import timedelta
@@ -135,7 +134,7 @@ class TestCancellingAModule:
     def test_a_module_taken_off_sale_is_still_cancelled(
         self, shop, owner, inventory, stripe_double
     ):
-        """BILLING-G66, saas#2589: taking a module off sale stops new purchases, never the charge of the
+        """Taking a module off sale stops new purchases, never the charge of the
         businesses that have it, so they must still be able to stop paying it."""
         paid = pay(shop, modules=["inventory"])
         inventory.is_active = False
@@ -193,7 +192,7 @@ class TestKeepingAModule:
     def test_a_module_off_sale_is_not_kept(
         self, shop, owner, inventory, stripe_double
     ):
-        """BILLING-G66, saas#2589: a module no longer sold works until its cancellation ends, and is not
+        """A module no longer sold works until its cancellation ends, and is not
         sold again by undoing the cancellation: the Store says so instead of offering «Keep»."""
         paid = self.cancelled(shop)
         inventory.is_active = False
@@ -283,7 +282,7 @@ class TestThePortal:
         assert answer["url"].startswith("https://billing.stripe.com/")
 
     def test_it_opens_with_our_configuration(self, shop, owner, stripe_double, settings):
-        """Review of L2-B: an explicit portal configuration (cards and receipts; no plan changes, which must
+        """An explicit portal configuration (cards and receipts; no plan changes, which must
         carry our tax rates)."""
         settings.STRIPE_PORTAL_CONFIGURATION = "bpc_erplora"
         paid = pay(shop)
@@ -334,7 +333,7 @@ class TestThePortal:
 
 
 def test_a_new_owner_does_not_open_the_previous_owners_portal(shop, owner, make_user, stripe_double):
-    """Review of L2-B: the portal shows the payer's cards and address; a transfer does not hand them over."""
+    """The portal shows the payer's cards and address; a transfer does not hand them over."""
     from billing.tests.test_checkout import transferred
 
     paid = pay(shop)

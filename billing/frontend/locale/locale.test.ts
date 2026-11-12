@@ -1,8 +1,6 @@
-// The texts of the Store (and, with L3-C, of Billing): English
-// source + Spanish (PLAN §5), kept by hand next to the pages until Django's catalogues are exported to
-// JSON. Every text is new (the old SaaS's templates are not ported here), so the guard is the shape:
-// one root (`billing`), the same keys in both languages, nothing empty, the same placeholders and plural
-// forms, and every key a page or a component asks for exists.
+// The texts of the Store and of Billing: English source + Spanish, kept by hand next to the pages until Django's
+// catalogues are exported to JSON. The guard is the shape: one root (`billing`), the same keys in both languages,
+// nothing empty, the same placeholders and plural forms, and every key a page or a component asks for exists.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
