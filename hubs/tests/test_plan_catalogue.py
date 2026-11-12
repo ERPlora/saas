@@ -309,7 +309,7 @@ def test_recovery_window_is_the_same_on_every_plan(catalogue):
     )
     (backup_line,) = backup_lines_en
     assert "7-day" not in backup_line, f"stale 7-day retention claim: {backup_line!r}"
-    assert "point-in-time" in backup_line.lower(), (
+    assert "any moment of the last 14 days" in backup_line, (
         f"copy must describe what infra#136 proved: {backup_line!r}"
     )
 
@@ -317,16 +317,51 @@ def test_recovery_window_is_the_same_on_every_plan(catalogue):
 #: The database line of Free and Starter: one sentence with the backups, the same words as the public
 #: downloads page (``public/templates/public/downloads.html``). Since 2026-10-15 (Ioan) it tells the customer
 #: what they get in plain words — where it lives (AWS, Europe) and that it is replicated — never how it is run.
+#: Since saas#408 it also says what a recovery never undoes: a business that invoices with VeriFactu gets back what it
+#: lost from a copy of that moment, and what reached the tax agency stays (the Hub's BASE-F114).
 MANAGED_DATABASE = {
     "en": (
-        "Managed database, replicated across several European data centres, with continuous backups and "
-        "point-in-time recovery for 14 days"
+        "Managed database, replicated across several European data centres, with continuous backups: recover your "
+        "data from any moment of the last 14 days, and what was already sent to the tax agency is kept"
     ),
     "es": (
-        "Base de datos gestionada, replicada en varios centros de datos europeos, con copias de seguridad "
-        "continuas y recuperación a cualquier momento de los últimos 14 días"
+        "Base de datos gestionada, replicada en varios centros de datos europeos, con copias de seguridad continuas: "
+        "recuperas los datos de cualquier momento de los últimos 14 días, y lo ya enviado a Hacienda se conserva"
     ),
 }
+#: A recovery window, as the copy words it in English and in Spanish, and what every such promise must add (saas#408):
+#: a business that invoices with VeriFactu never goes back whole, because what it sent to the tax agency stays sent.
+RECOVERY_WINDOW = re.compile(r"\b14 (?:days|días)\b", re.IGNORECASE)
+RECOVERY_WORDS = re.compile(r"\brecover|\brecupera", re.IGNORECASE)
+WHAT_A_RECOVERY_KEEPS = re.compile(r"\btax agency\b|\bHacienda\b", re.IGNORECASE)
+
+
+def promises_a_recovery_without_what_it_keeps(text: str) -> bool:
+    """Whether ``text`` sells getting back to a moment of the window without saying that what was sent is kept."""
+    return bool(RECOVERY_WINDOW.search(text) and RECOVERY_WORDS.search(text) and not WHAT_A_RECOVERY_KEEPS.search(text))
+
+
+def test_no_plan_promises_a_recovery_without_saying_what_it_keeps(catalogue):
+    """saas#408: «any moment of the last 14 days» alone is not what a business with VeriFactu gets."""
+    for slug, plan in catalogue.items():
+        assert [text for text in _copy(plan) if promises_a_recovery_without_what_it_keeps(text)] == [], slug
+
+
+def test_the_recovery_guard_catches_the_lines_that_were_actually_published():
+    """Positive control: the promise the seed and the public web carried until saas#408, and the words they carry now."""
+    published = (
+        "Managed database, replicated across several European data centres, with continuous backups and "
+        "point-in-time recovery for 14 days",
+        "Base de datos gestionada, replicada en varios centros de datos europeos, con copias de seguridad "
+        "continuas y recuperación a cualquier momento de los últimos 14 días",
+        "Continuous backups, point-in-time recovery for 14 days",
+        "copias continuas recuperables a cualquier momento de los últimos 14 días",
+    )
+    for line in published:
+        assert promises_a_recovery_without_what_it_keeps(line), line
+    for line in MANAGED_DATABASE.values():
+        assert not promises_a_recovery_without_what_it_keeps(line), line
+    assert not promises_a_recovery_without_what_it_keeps("Trust this browser for 14 days")
 #: Ioan's rule for the public web: the copy sells what the customer gets, never the technology under it.
 TECHNOLOGY_NAMES = ("postgresql", "postgres", "aurora")
 

@@ -291,12 +291,12 @@ Actor: visitante
 Pantalla: Seguridad, Planes y precios, Portada, Sobre nosotros
 Pasos:
 1. La persona lee qué dicen Seguridad, las preguntas frecuentes de precios, la portada y Sobre nosotros sobre el acceso, los datos y la disponibilidad.
-2. Lee lo que funciona hoy: sesiones de servidor en cookies seguras, código de un solo uso para entrar en el negocio, entrar con Google, contraseñas con hash y sal, cifrado en tránsito y en reposo, solo HTTPS con TLS 1.2 o 1.3, AWS en Irlanda con su cortafuegos web, copias continuas recuperables a cualquier momento de los últimos 14 días y alta disponibilidad.
+2. Lee lo que funciona hoy: sesiones de servidor en cookies seguras, código de un solo uso para entrar en el negocio, entrar con Google, contraseñas con hash y sal, cifrado en tránsito y en reposo, solo HTTPS con TLS 1.2 o 1.3, AWS en Irlanda con su cortafuegos web, copias continuas de las que se recuperan los datos de cualquier momento de los últimos 14 días, conservando lo ya enviado a Hacienda, y alta disponibilidad.
 3. A «¿Dónde se almacenan mis datos?» la respuesta es la Unión Europea, con las excepciones del asistente: su voz y sus huellas de búsqueda, como transcribir un dictado por voz, su proveedor de respaldo si el europeo no está disponible y lo que busca en la web, que va a Brave Search, en Estados Unidos; y el enlace «Lee la política de privacidad». La portada dice que el modelo de lenguaje del asistente se sirve desde la Unión Europea, no el asistente entero.
 Entra: nada; el texto de las páginas, contrastado con la infraestructura y la política de privacidad.
 Sale: nada guardado.
-Si falla: no se promete un acuerdo de disponibilidad con porcentaje, soporte 24/7, auditorías periódicas, informes de pruebas de intrusión, cifrado de extremo a extremo ni entrar con GitHub, y nunca «tus datos nunca salen de la UE», que contradiría la política de privacidad.
-Implicados: ninguno
+Si falla: no se promete un acuerdo de disponibilidad con porcentaje, soporte 24/7, auditorías periódicas, informes de pruebas de intrusión, cifrado de extremo a extremo ni entrar con GitHub, y nunca «tus datos nunca salen de la UE», que contradiría la política de privacidad. Ninguna página ni plan promete volver a un momento de los últimos 14 días sin decir que lo ya enviado a Hacienda se conserva: a un negocio que factura con VeriFactu no se le devuelve entero, se le recupera lo que perdió desde una copia de ese momento.
+Implicados: hubs (la línea de la base de datos de las fichas de los planes, con la misma promesa)
 
 ### PUBLIC-F09 Ver el cumplimiento por país
 <!-- origen: old-saas:SAAS_PUBLIC-F62 fi:saas/public#pagina-publica-de-cumplimiento-por-pais -->

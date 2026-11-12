@@ -12,12 +12,19 @@ templates of the L3a port that said «daily backups» now say what aws-next does
 plans of the panel (``hubs/migrations/0013_plans_in_the_database.py``), so ``PENDING`` is empty. The list
 stays self-retiring, as the old one was: an exemption whose template no longer makes the claim makes
 ``test_the_exemptions_still_earn_their_place`` fail until it leaves the list.
+
+saas#408: the window alone promised a whole return to any moment, which a business that invoices with VeriFactu in
+production never gets (what it sent to the tax agency stays; the Hub's BASE-F114 gives back what it lost from a copy
+of that moment). Every page that states the window now says, in the same clause as the plans, what a recovery keeps,
+and no sentence of the catalogue promises the window without it.
 """
 
 from pathlib import Path
 
 import pytest
 from django.conf import settings
+
+from hubs.tests.test_plan_catalogue import promises_a_recovery_without_what_it_keeps
 
 PUBLIC_TEMPLATES = Path(settings.BASE_DIR) / "public" / "templates"
 CATALOG = Path(settings.BASE_DIR) / "public" / "locale" / "es" / "LC_MESSAGES" / "django.po"
@@ -33,10 +40,11 @@ DAILY_BACKUP_PATTERNS = (
 )
 #: The templates (and their catalog entries) still to be fixed, see the module docstring.
 PENDING: dict[str, tuple[str, ...]] = {}
-#: The promise, as the plans of the panel word it (hubs/migrations/0013_plans_in_the_database.py).
+#: The promise, as the plans of the panel word it (hubs/migrations/0029_backups_keep_what_was_sent.py): the window and
+#: what a recovery keeps, in one clause.
 PROMISE = {
-    "en": "point-in-time recovery for 14 days",
-    "es": "recuperación a cualquier momento de los últimos 14 días",
+    "en": "recover your data from any moment of the last 14 days, and what was already sent to the tax agency is kept",
+    "es": "recuperas los datos de cualquier momento de los últimos 14 días, y lo ya enviado a Hacienda se conserva",
 }
 #: The pages that state it: the ways to try ERPlora, about, features and security.
 PAGES_WITH_THE_PROMISE = ("/download/", "/about/", "/features/", "/security/")
@@ -119,3 +127,29 @@ def test_the_pages_promise_what_aurora_does(client, path, language):
 
     assert response.status_code == 200
     assert PROMISE[language] in response.content.decode()
+
+
+def test_no_message_of_the_public_web_promises_a_recovery_without_what_it_keeps():
+    """saas#408: neither the English of a template (the msgid) nor its Spanish sells the window alone."""
+    offenders = [
+        text
+        for msgid, msgstr in catalog_entries()
+        for text in (msgid, msgstr)
+        if promises_a_recovery_without_what_it_keeps(text)
+    ]
+
+    assert offenders == []
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Continuous backups with point-in-time recovery for 14 days, TLS and high availability on AWS.",
+        "with continuous backups, point-in-time recovery for 14 days and high availability in Europe",
+        "Copias de seguridad continuas con recuperación a cualquier momento de los últimos 14 días, TLS y alta "
+        "disponibilidad en AWS.",
+    ],
+)
+def test_the_recovery_sweep_catches_the_sentences_that_were_actually_written(sentence):
+    """Positive control: the bento of /features/, /about/ and their Spanish until saas#408."""
+    assert promises_a_recovery_without_what_it_keeps(sentence)

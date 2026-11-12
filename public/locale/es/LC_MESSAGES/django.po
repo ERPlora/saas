@@ -2012,8 +2012,8 @@ msgstr "Instala solo las apps que necesitas y añade más a medida que creces."
 msgid "Always available"
 msgstr "Siempre disponible"
 
-msgid "Continuous backups with point-in-time recovery for 14 days, TLS and high availability on AWS. Access from anywhere."
-msgstr "Copias de seguridad continuas con recuperación a cualquier momento de los últimos 14 días, TLS y alta disponibilidad en AWS. Accede desde cualquier lugar."
+msgid "Continuous backups: recover your data from any moment of the last 14 days, and what was already sent to the tax agency is kept. TLS and high availability on AWS. Access from anywhere."
+msgstr "Copias de seguridad continuas: recuperas los datos de cualquier momento de los últimos 14 días, y lo ya enviado a Hacienda se conserva. TLS y alta disponibilidad en AWS. Accede desde cualquier lugar."
 
 msgid "Multi-platform"
 msgstr "Multiplataforma"
@@ -2054,8 +2054,8 @@ msgstr "Contraseñas guardadas con hash y sal (PBKDF2)"
 msgid "Amazon Web Services, Ireland region (eu-west-1)"
 msgstr "Amazon Web Services, región de Irlanda (eu-west-1)"
 
-msgid "Continuous backups, point-in-time recovery for 14 days"
-msgstr "Copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días"
+msgid "Continuous backups: recover your data from any moment of the last 14 days, and what was already sent to the tax agency is kept"
+msgstr "Copias de seguridad continuas: recuperas los datos de cualquier momento de los últimos 14 días, y lo ya enviado a Hacienda se conserva"
 
 msgid "DDoS protection and WAF on AWS"
 msgstr "Protección anti-DDoS y WAF en AWS"
@@ -2328,8 +2328,8 @@ msgstr "No compartas credenciales"
 msgid "Never send passwords, PINs, recovery codes, signing keys, or complete payment details in a support message."
 msgstr "No mandes nunca contraseñas, PIN, códigos de recuperación, claves de firma ni datos de pago completos en un mensaje de soporte."
 
-msgid "Your data lives in its own database, isolated from every other business, with continuous backups, point-in-time recovery for 14 days and high availability in Europe to keep your business running."
-msgstr "Tus datos viven en su propia base de datos, aislada de la de cualquier otro negocio, con copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días y alta disponibilidad en Europa para que tu negocio no se detenga."
+msgid "Your data lives in its own database, isolated from every other business, with continuous backups and high availability in Europe to keep your business running. You can recover your data from any moment of the last 14 days, and what was already sent to the tax agency is kept."
+msgstr "Tus datos viven en su propia base de datos, aislada de la de cualquier otro negocio, con copias de seguridad continuas y alta disponibilidad en Europa para que tu negocio no se detenga: recuperas los datos de cualquier momento de los últimos 14 días, y lo ya enviado a Hacienda se conserva."
 
 msgid "Our Apps"
 msgstr "Nuestras apps"
@@ -3822,8 +3822,8 @@ msgstr "Espacio para crecer"
 msgid "app catalogue, 1 click"
 msgstr "catálogo de apps, 1 clic"
 
-msgid "Managed database, replicated across several European data centres, with continuous backups and point-in-time recovery for 14 days"
-msgstr "Base de datos gestionada, replicada en varios centros de datos europeos, con copias de seguridad continuas y recuperación a cualquier momento de los últimos 14 días"
+msgid "Managed database, replicated across several European data centres, with continuous backups: recover your data from any moment of the last 14 days, and what was already sent to the tax agency is kept"
+msgstr "Base de datos gestionada, replicada en varios centros de datos europeos, con copias de seguridad continuas: recuperas los datos de cualquier momento de los últimos 14 días, y lo ya enviado a Hacienda se conserva"
 
 msgid "Every plan is priced per hub, and one hub covers all your devices and users. You start on the plan that fits you today and move up in one click when you need more capacity — no migration and no downtime."
 msgstr "Cada plan se cobra por hub, y un hub cubre todos tus dispositivos y usuarios. Empiezas con el plan que te encaja hoy y subes en un clic cuando necesites más capacidad, sin migración y sin paradas."

@@ -98,15 +98,18 @@ def test_about_speaks_of_our_apps_not_of_a_third_party_marketplace(client):
             "en",
             (
                 "Your data lives in its own database, isolated from every other business,",
-                "point-in-time recovery for 14 days and high availability in Europe",
+                "with continuous backups and high availability in Europe to keep your business running. You can "
+                "recover your data from any moment of the last 14 days, and what was already sent to the tax agency "
+                "is kept.",
             ),
         ),
         (
             "es",
             (
                 "Tus datos viven en su propia base de datos, aislada de la de cualquier otro negocio,",
-                "recuperación a cualquier momento de los últimos 14 días y alta disponibilidad en "
-                "Europa",
+                "con copias de seguridad continuas y alta disponibilidad en Europa para que tu negocio no se "
+                "detenga: recuperas los datos de cualquier momento de los últimos 14 días, y lo ya enviado a "
+                "Hacienda se conserva.",
             ),
         ),
     ],
