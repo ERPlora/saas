@@ -1,6 +1,6 @@
-// Part 3 of billing (MIGRATION-TASK APP-BILLING-3): the screens of the old SaaS's pricing, payment result, retry,
+// Part 3 of billing: the screens of the old SaaS's pricing, payment result, retry,
 // billing details, portal and app purchase, which part 3 joins to the flows parts 1 and 2 built, at the three sizes
-// of the migration (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
+// (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
 // billing_apps_seed.py. As billing-apps.spec.ts, Stripe does not run here: the operations that call it
 // (`billing.checkout.start` and `.confirm`, `billing.portal.open`, `billing.payment_method.get`) are played at the
 // API's edge, and Stripe.js is the double of fixtures.ts (`playStripe`); everything else (the billing details saved

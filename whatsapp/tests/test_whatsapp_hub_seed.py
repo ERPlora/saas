@@ -1,4 +1,4 @@
-"""FIX-SAAS-WHATSAPP-E2E-SEED-TEMPLATES-AND-USAGE · erplora.com's side of WhatsApp's cross e2e with a real Hub
+"""erplora.com's side of WhatsApp's cross e2e with a real Hub
 (``tests/e2e/panel/whatsapp_hub_seed.py``, the one the Hub's ``tests/e2e/whatsapp-helpers.ts`` runs).
 
 Besides ``a``'s number, the seed keeps the templates erplora.com would hold after reading Meta's list (approved, in
@@ -137,7 +137,7 @@ def test_by_default_the_usage_is_zero_and_a_send_still_leaves(run, ids, client):
 def test_behind_sets_the_usage_without_telling_the_hub_until_a_send_is_refused(
     run, ids, client, hub_double, django_capture_on_commit_callbacks
 ):
-    """FIX-SAAS-WHATSAPP-CAP-REFUSAL-DOES-NOT-PUSH-USAGE (WHATSAPP-F05): ``--behind`` leaves the Hub with the figure it
+    """WHATSAPP-F05: ``--behind`` leaves the Hub with the figure it
     had (no newer snapshot), as after a send whose record never ran; the send erplora.com refuses at the cap tells it."""
     run()
     limit = hubs_queries.effective_plan(ids["a"], timezone.now()).whatsapp_messages_per_month

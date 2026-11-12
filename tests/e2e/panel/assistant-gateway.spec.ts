@@ -1,9 +1,9 @@
-// The assistant's doors of the Hub (MIGRATION-TASK APP-ASSISTANT-2; assistant/WORKBOOK.md, ASSISTANT-F11 to F24),
+// The assistant's doors of the Hub (assistant/WORKBOOK.md, ASSISTANT-F11 to F24),
 // called by HTTP as the Hub calls them: signed with the shared secret (accounts.signing, v1 and v2), against the
 // panel's own Django and the rows of assistant_seed.py («gateway»). The provider is assistant.tests.fake_provider, a
 // real HTTP server on 127.0.0.1 that speaks OpenAI's API (the turn streamed in three pieces, two fingerprints and a
 // dictation): no test reaches a real provider and no real key is ever typed. Then «Assistant usage» in erplora.com's
-// admin at the three sizes of the migration (390×844, 834×1112, 1440×900), in English and in Spanish.
+// admin at the three sizes (390×844, 834×1112, 1440×900), in English and in Spanish.
 //
 // The CI runs it on every push (job `e2e` of test.yml, e2e-specs.sh): a change to a door touches no screen, so nobody runs it by hand.
 // flow: ASSISTANT-F11 — only a signed call of a working business passes; it names the business it is for.

@@ -1,5 +1,5 @@
-// The flows of «the plan, the rights and the catalogue's taxonomy» (hubs/WORKBOOK.md, MIGRATION-TASK APP-HUBS-4) that
-// have a screen, at the three sizes of the migration (390×844, 834×1112, 1440×900), in English and in Spanish. Each test
+// The flows of «the plan, the rights and the catalogue's taxonomy» (hubs/WORKBOOK.md) that
+// have a screen, at the three sizes (390×844, 834×1112, 1440×900), in English and in Spanish. Each test
 // names its flow by its registry key; in hubs/WORKBOOK.md: G101=F31 (the snapshot: what a plan gives, changed in the
 // admin, reaches its businesses), G05 and G01=F36 (the sectors and the business types in the admin).
 // flow: HUBS-F31 — the staff change what a plan gives; the next pass of reconcile_hub_states takes it to the Hub.

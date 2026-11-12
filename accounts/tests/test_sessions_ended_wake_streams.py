@@ -1,5 +1,4 @@
-"""A session that ends outside the Account page wakes the account's live streams (ACCOUNTS-F08, ACCOUNTS-F09;
-FIX-SAAS-ACCOUNTS-SIGNOUT-AND-PASSWORD-DO-NOT-WAKE-STREAMS).
+"""A session that ends outside the Account page wakes the account's live streams (ACCOUNTS-F08, ACCOUNTS-F09).
 
 Signing out (allauth.headless ``DELETE auth/session``), a new password (``account/password/change``, its first one or the
 reset's: allauth's ``password_changed``, ``password_set`` and ``password_reset``) and allauth's ``DELETE auth/sessions``

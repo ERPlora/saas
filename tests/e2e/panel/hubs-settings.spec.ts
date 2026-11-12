@@ -1,6 +1,6 @@
 // The flows of «the settings of a business, its web address, deleting and recovering it, its status and usage, and
-// the staff on it in the admin» (hubs/WORKBOOK.md, MIGRATION-TASK APP-HUBS-2) on their screens, at the three sizes of
-// the migration (390×844, 834×1112, 1440×900). Each test names its flow by its registry key; in hubs/WORKBOOK.md:
+// the staff on it in the admin» (hubs/WORKBOOK.md) on their screens, at the three sizes
+// (390×844, 834×1112, 1440×900). Each test names its flow by its registry key; in hubs/WORKBOOK.md:
 // G73=F15, G74=F16, G88=F18, G22=F19, G90=F21, G97=F23. F20 (the clock of a suspended business) and F22 (the nightly
 // usage) have no screen: their tests are the server's (hubs/tests/test_suspended_lifecycle.py, test_collect_hub_usage.py).
 //

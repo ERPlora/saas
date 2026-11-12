@@ -2,8 +2,8 @@
 // flow: ACCOUNTS-F34 ACCOUNTS-F36 ACCOUNTS-F38 ACCOUNTS-F43 ACCOUNTS-F47
 // The review of the `hecho` flows of «the user menu, the data and the deletion of the account, the jump to a business
 // and back, the API keys and their documentation, the audit log, reporting a problem and the panel's platform»
-// (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-7, the second half of the review after accounts-review): every
-// screen of those flows in English AND in Spanish, at the three sizes of the migration (language-review.ts). The flows
+// (accounts/WORKBOOK.md, the second half of the review after accounts-review): every
+// screen of those flows in English AND in Spanish, at the three sizes (language-review.ts). The flows
 // themselves are played by accounts-profile, accounts-jump, accounts-keys, accounts-report and accounts-platform (in
 // English); here each screen is checked in the language the person reads. The flows without a screen (F32, F35,
 // F37, F39–F41, F45, F46) have their integration tests; F42's pages and F43's maintenance page and F46's mails are

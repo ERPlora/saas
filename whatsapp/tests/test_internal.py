@@ -1,4 +1,4 @@
-"""FIX-SAAS-WHATSAPP-GATEWAY-DOORS, WHATSAPP-G05 · Door 5, ``POST /internal/whatsapp/send``, and door 6,
+"""WHATSAPP-G05 · Door 5, ``POST /internal/whatsapp/send``, and door 6,
 ``POST /internal/whatsapp/erase`` (the Hub's WORKBOOK ``whatsapp_inbox``, «Contrato con el SaaS»).
 
 The Hub calls them signed (v1 over the body, as ``apps/whatsapp_inbox/gateway.py`` does), with an
@@ -144,7 +144,7 @@ class TestTheDoorsShape:
         assert send(client, key="k" * 256).status_code == 422
 
     def test_a_business_the_saas_does_not_know_is_404(self, client, number):
-        """saas#2599: a demo is no business of the SaaS; it can never send from ERPlora's Meta app."""
+        """A demo is no business of the SaaS; it can never send from ERPlora's Meta app."""
         response = send(client, {"hub": "demo-1a2b3c4d", "to": "+34600111222", "type": "text", "text": "x"})
 
         assert (response.status_code, error_code(response)) == (404, "hub_unknown")
@@ -237,7 +237,7 @@ class TestSending:
 class TestTheSameKeyNeverSendsTwice:
     @respx.mock
     def test_a_retry_gets_the_first_answer_without_a_second_send_or_charge(self, client, number, business):
-        """saas#2633: the Hub retries a send it could not confirm with the same key."""
+        """The Hub retries a send it could not confirm with the same key."""
         meta = respx.post(SEND).mock(return_value=httpx.Response(200, json=ACCEPTED))
 
         first = send(client)
@@ -270,7 +270,7 @@ class TestTheSameKeyNeverSendsTwice:
 
     @respx.mock
     def test_meta_accepting_without_an_id_is_never_sent_again(self, client, number, business):
-        """saas#2653: Meta took it (2xx) but gave no id: the Hub reads «unknown» and retries; erplora.com never sends it
+        """Meta took it (2xx) but gave no id: the Hub reads «unknown» and retries; erplora.com never sends it
         again, and it counts."""
         meta = respx.post(SEND).mock(return_value=httpx.Response(200, json={"messaging_product": "whatsapp"}))
 
@@ -337,7 +337,7 @@ class TestMetasRefusals:
     def test_an_expired_or_withdrawn_permission_asks_to_reconnect_and_tells_the_hub(
         self, client, number, business, hub_double, django_capture_on_commit_callbacks
     ):
-        """FIX-SAAS-WHATSAPP-EXPIRED-TOKEN-SAYS-NOT-CONNECTED (WHATSAPP-F06, F03): Meta's 190 (the business's
+        """WHATSAPP-F06, F03: Meta's 190 (the business's
         permission expired, or the business withdrew it in Meta) is not «not connected»: only connecting the number
         again fixes it. The answer says so with its own code, the number is marked «needs reconnecting» and the Hub
         gets the snapshot that says it, with a newer version."""
@@ -390,7 +390,7 @@ class TestMetasRefusals:
     def test_unreadable_trusted_certificates_left_nothing_and_the_hub_retries(
         self, client, number, business, unreadable_ca, monkeypatch
     ):
-        """FIX-SAAS-WHATSAPP-HTTP-CALLS-CRASH-WHEN-SSL-CERT-FILE-MISSING: the server cannot load its trusted
+        """The server cannot load its trusted
         certificates, so nothing leaves for Meta: the place and the key are free, as when Meta is not reached, and
         the same key sends once the server is fixed."""
         meta = respx.post(SEND).mock(return_value=httpx.Response(200, json=ACCEPTED))
@@ -419,7 +419,7 @@ class TestTheMonthsAllowance:
     def test_the_cap_refusal_tells_the_hub_the_months_real_usage(
         self, client, number, business, hub_double, django_capture_on_commit_callbacks
     ):
-        """FIX-SAAS-WHATSAPP-CAP-REFUSAL-DOES-NOT-PUSH-USAGE (WHATSAPP-F05): a Hub whose snapshot is behind (it was told
+        """WHATSAPP-F05: a Hub whose snapshot is behind (it was told
         less than the month's real usage) still offers «Send»; the send erplora.com refuses at the cap answers the same
         409 and, after the COMMIT, pushes the snapshot with a newer version and the real usage, so the Hub stops
         offering it. The refusal must not undo its own announcement (a rolled-back ``on_commit`` never runs)."""
@@ -514,7 +514,7 @@ SENDERS = 6
 
 @pytest.mark.django_db(transaction=True)
 def test_simultaneous_sends_cannot_pass_the_cap_together(make_user, settings, whatsapp_on):
-    """saas#2652: with one message left, six sends at once: one leaves, five are refused.
+    """With one message left, six sends at once: one leaves, five are refused.
 
     To make them meet where it matters, as several processes would, another connection holds the month's counter
     until the six wait on it (each one has already read it by then); then it lets go. Six, because with the test's

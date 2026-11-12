@@ -1,9 +1,9 @@
-// The review of the hubs flows marked «hecho» (MIGRATION-TASK APP-HUBS-5): each screen of hubs/WORKBOOK.md, in
-// English and in Spanish, at the three sizes of the migration (390×844, 834×1112, 1440×900). The account speaks the
+// The review of the hubs flows marked «hecho» : each screen of hubs/WORKBOOK.md, in
+// English and in Spanish, at the three sizes (390×844, 834×1112, 1440×900). The account speaks the
 // run's language (User.language wins on the panel) and each screen is checked with its catalogue's own words
 // (hubs/frontend/locale/<language>.json), so an untranslated text or one that drifted from the catalogue fails here;
 // in Spanish the English words of the same screen must not show. Each screen: no sideways scroll, no field's label
-// cut with «…», no page error, and a capture `APP-HUBS-5-<flow>-<size>-<language>`. The flows' own behaviour is in hubs-flows, hubs-settings,
+// cut with «…», no page error, and a capture per flow, size and language. The flows' own behaviour is in hubs-flows, hubs-settings,
 // hubs-people and hubs-rights (English captures there); this spec only looks at the screens.
 // Accounts of this spec: `e2e-hubs5-…@example.com` (panel_seed.py's `clear` removes every `e2e-…@example.com`).
 import { readFileSync } from 'node:fs';
@@ -98,7 +98,7 @@ async function cutLabels(page: Page): Promise<string[]> {
 }
 
 /**
- * `ready` at each size: no sideways scroll, a capture `APP-HUBS-5-<key>-<size>-<language>`, and in Spanish none of
+ * `ready` at each size: no sideways scroll, a capture per key, size and language, and in Spanish none of
  * `english` (the same screen's English words) on `where`; back at 1440 after.
  */
 function atEverySize(

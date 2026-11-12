@@ -1,7 +1,7 @@
 """BILLING-F33, F34 and F35 as the Hub receives them: the photo each moment of a paid app's end owes the business.
 
 The Hub decides what a business may use from the last photo the SaaS pushed to it (``PUT /internal/hubs/{id}/state``;
-the Hub's ``base/entitlement.py``, BASE-G12): a paid app runs while that photo names it, and one with ``valid_until``
+the Hub's ``base/entitlement.py``): a paid app runs while that photo names it, and one with ``valid_until``
 until that instant, read against the Hub's clock (nobody pushes a photo when a cancelled module's period ends). The Hub
 only takes a photo newer than the one it has. So each moment owes it a newer photo with the app's ``id``, ``source``
 and ``valid_until`` as they stand:

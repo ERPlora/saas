@@ -1,8 +1,8 @@
-// The demo's door against a real Hub (APP-PUBLIC-3, public/WORKBOOK.md PUBLIC-F28 and PUBLIC-F35): «Try the demo»
+// The demo's door against a real Hub (public/WORKBOOK.md PUBLIC-F28 and PUBLIC-F35): «Try the demo»
 // creates an empty demo hub, the jump posts its one-time code and the browser lands in its shell as
 // «Demo», with no account; back on the door, «Your demo is running» with the minutes left, «Back to my demo» into the
-// same demo and «Start free» beside it. The door and the shell are captured at 390×844, 834×1112 and 1440×900 as
-// `APP-PUBLIC-3-<key>-<width>.png` in `.artifacts/`.
+// same demo and «Start free» beside it. The door and the shell are captured at 390×844, 834×1112 and 1440×900
+// in `.artifacts/`.
 //
 // It needs a Hub whose SAAS_URL is this run's public server and this server's Hub variables exported for it (README
 // of this folder, «La demo contra un Hub de verdad»): `E2E_DEMO_HUB` is that Hub's origin, and without it every test

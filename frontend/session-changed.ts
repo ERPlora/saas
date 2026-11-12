@@ -1,7 +1,7 @@
 // What the session says of the account changed: its language (Account → Preferences) or its name (Account →
 // Profile). The entry point (`main.ts`) owns the session the shell paints, so a page says it on the window and the
 // entry reads `base.session.me` again: the side menu the server translates, and the person at its top, follow
-// without a reload (saas#292). The Hub does the same with its own event (BASE-G125).
+// without a reload (saas#292). The Hub does the same with its own event.
 
 /** Dispatched on the window when what the session says of the account changed. */
 export const SESSION_CHANGED = 'erplora:saas-session-changed';

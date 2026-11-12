@@ -1,5 +1,4 @@
-// The fix pass of the panel after the audit of the real product (docs/plans/2026-10-14-auditoria-ux-panel-real.md),
-// in Chrome without a window:
+// What the audit of the real panel found, checked in Chrome without a window:
 //   - R-04/R-08: with `/api/live` refused (503) or unreachable, every page says it could not load, with «Retry»,
 //     never an empty state that lies («Create your first business») nor a spinner for ever; «Retry» loads it;
 //   - R-06/R-07/R-09/R-15: the way to pay outside Billing — the launcher's real deadline and «Pay the invoice» /

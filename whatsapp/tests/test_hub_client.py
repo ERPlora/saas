@@ -1,4 +1,4 @@
-"""FIX-SAAS-WHATSAPP-GATEWAY-DOORS · erplora.com's calls to the Hub's doors 1 and 2 (WORKBOOK of the Hub
+"""erplora.com's calls to the Hub's doors 1 and 2 (WORKBOOK of the Hub
 ``whatsapp_inbox``, «Contrato con el SaaS»), against the real-HTTP double of the Hub, which verifies the signature
 as the Hub does."""
 
@@ -43,7 +43,7 @@ def test_no_hub_is_unreachable(offline_hub):
 
 
 def test_unreadable_trusted_certificates_are_unreachable_naming_the_file(hub_double, unreadable_ca, caplog):
-    """FIX-SAAS-WHATSAPP-HTTP-CALLS-CRASH-WHEN-SSL-CERT-FILE-MISSING · WHATSAPP-F07: ``httpx`` loads the server's
+    """WHATSAPP-F07: ``httpx`` loads the server's
     trusted certificates as it makes the client, also for the Hub's ``http://``. Unreadable, the call never leaves
     and ends in its own ``Unreachable``, naming the setting and its file, in an ERROR line too (never a bare
     ``FileNotFoundError`` or ``ssl.SSLError``)."""
@@ -59,7 +59,7 @@ def test_unreadable_trusted_certificates_are_unreachable_naming_the_file(hub_dou
 
 
 def test_the_call_uses_the_trusted_certificates_it_read(hub_double, ca_gone_after_one_read):
-    """FIX-SAAS-WHATSAPP-HTTP-CALLS-CRASH-WHEN-SSL-CERT-FILE-MISSING · WHATSAPP-F07: the client takes the context
+    """WHATSAPP-F07: the client takes the context
     ``base.tls`` read (``verify=``), so the certificates are read once per call and a file renewed between the check
     and the call never crashes it."""
     hub_double.answer("POST", r"^/internal/whatsapp/status$", 200, {"updated": True, "status": "read"})

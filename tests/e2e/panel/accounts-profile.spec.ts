@@ -1,5 +1,5 @@
 // The flows of «the profile, the preferences, the user menu, downloading the data and deleting the account»
-// (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-3) on their screens, at the three sizes of the migration
+// (accounts/WORKBOOK.md) on their screens, at the three sizes
 // (390×844, 834×1112, 1440×900), against the real hubs and billing (no mocks): the business is created by its
 // operation, ERPlora's invoice is a row billing reads. Each test names its flow by its registry key; in
 // accounts/WORKBOOK.md: G108=F21, G114=F22, G115=F23, G127=F24, G128=F25, G111=F26, G112=F27, G35=F13.

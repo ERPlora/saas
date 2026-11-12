@@ -2,8 +2,7 @@
 
 Found by the review with a probe: the owner opens the Embedded Checkout of a plan, hands the business over, and the
 payment still completes afterwards; the webhook applied it, so the business was charged to somebody who no longer
-owns it and cannot cancel it. The market's way (Stripe Checkout, Shopify, Square, Odoo; round proposed in
-APP-HUBS-3):
+owns it and cannot cancel it. The market's way (Stripe Checkout, Shopify, Square, Odoo):
 
 - accepting the hand-over expires the business's open Checkout Sessions (Stripe's ``expire``, after the COMMIT):
   nobody can pay them any more. One Stripe cannot expire (paid meanwhile, or Stripe away) never undoes nor blocks

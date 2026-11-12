@@ -1,5 +1,5 @@
 // The flows of «create the business, wait until it is ready, the list, the panel's home, enter and the other devices»
-// (hubs/WORKBOOK.md, MIGRATION-TASK APP-HUBS-1) on their screens, at the three sizes of the migration (390×844,
+// (hubs/WORKBOOK.md) on their screens, at the three sizes (390×844,
 // 834×1112, 1440×900). Each test names its flow by its registry key; in hubs/WORKBOOK.md: G65=F01, G66=F02,
 // G67=F03, G68=F04, G43=F05, G98=F06, G69=F09, G84=F10, G70=F11, G71=F12, G72=F13. F07, F08 and F14 have no screen.
 //

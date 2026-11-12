@@ -1,4 +1,4 @@
-// FIX-SAAS-SPA-STATIC-PROBES-SET-CSRF-COOKIE in Chrome: on erplora.com a crawler's or a browser's /favicon.ico and a
+// In Chrome: on erplora.com a crawler's or a browser's /favicon.ico and a
 // scanner's /wp-login.php got the SPA with a 200 and a `csrftoken` cookie. A path that names a file and has no URL of
 // its own is now a plain 404 with no shell and no cookie, signed in or not, whether it asks for a page or for
 // anything, on the panel's server (DEBUG on) and on the production-like one (DEBUG off: the project's 404 page); a page

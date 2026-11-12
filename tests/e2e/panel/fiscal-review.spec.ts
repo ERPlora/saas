@@ -1,5 +1,5 @@
-// The review of a signed authorisation (MIGRATION-TASK APP-FISCAL_GATEWAY; fiscal_gateway/WORKBOOK.md), at the three
-// sizes of the migration (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
+// The review of a signed authorisation (fiscal_gateway/WORKBOOK.md), at the three
+// sizes (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
 // fiscal_seed.py, whose upload runs the operation the Hub's upload runs. Mails are read from the panel's mail folder.
 // flow: FISCAL-F05 — the review desk hears of the authorisation that waits, with the link to its review page and
 // no document, and the owner hears of the decision in their language.

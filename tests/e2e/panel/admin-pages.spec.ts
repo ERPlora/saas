@@ -1,6 +1,6 @@
-// The admin pages of our own in erplora.com's admin wear Django 6.1's breadcrumbs (MIGRATION-TASK APP-ASSISTANT-1):
+// The admin pages of our own in erplora.com's admin wear Django 6.1's breadcrumbs:
 // «Hubs» and the API key just issued (accounts), the review of a signed authorisation and ERPlora's stamp as
-// representative (fiscal), at the three sizes of the migration (390×844, 834×1112, 1440×900), in English and in
+// representative (fiscal), at the three sizes (390×844, 834×1112, 1440×900), in English and in
 // Spanish. They kept the older `<div class="breadcrumbs">`, which Django 6.1 no longer styles: a bare line of links
 // above the title. config/tests/test_admin_templates.py keeps the markup of every page of our own; this spec looks at
 // the four on screen. Rows: fiscal_seed.py (a business with its member and a signed authorisation) and the accounts
@@ -63,7 +63,7 @@ test.afterAll(() => {
 /**
  * At each size: the page's breadcrumbs are Django 6.1's list (from «Home» to the page itself, `count` crumbs, the last
  * one the current page and no link), painted on the admin's band (a bare line of links has no background), on one line
- * at 1440; no sideways scroll; a capture `APP-ASSISTANT-1-<key>-<size>`. Back at 1440 after.
+ * at 1440; no sideways scroll; a capture per key and size. Back at 1440 after.
  */
 async function crumbsAtEverySize(page: Page, key: string, home: string, current: string, count: number): Promise<void> {
   const crumbs = page.locator('nav[aria-label] ol.breadcrumbs > li');
@@ -89,7 +89,7 @@ type IndexNames = Record<
 
 /**
  * The admin's index at each size: no two sections share a name, the four that did or spoke English say `names`, no
- * sideways scroll, a capture `APP-ASSISTANT-1-admin-index<suffix>-<size>`. Back at 1440 after.
+ * sideways scroll, a capture per size. Back at 1440 after.
  */
 async function indexAtEverySize(page: Page, names: IndexNames, suffix: string): Promise<void> {
   const errors = watchPageErrors(page);

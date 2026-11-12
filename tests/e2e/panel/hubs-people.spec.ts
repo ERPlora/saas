@@ -1,5 +1,5 @@
-// The flows of «the people of a business» (hubs/WORKBOOK.md, MIGRATION-TASK APP-HUBS-3) on their screens, at the three
-// sizes of the migration (390×844, 834×1112, 1440×900). Each test names its flow by its registry key; in
+// The flows of «the people of a business» (hubs/WORKBOOK.md) on their screens, at the three
+// sizes (390×844, 834×1112, 1440×900). Each test names its flow by its registry key; in
 // hubs/WORKBOOK.md: G78=F24 (invite), G79=F25 (accept), G80=F26 (change the role), G81 and G64=F27 (remove, and the
 // end of their sessions in the Hub), G82=F28 (hand the business over), G83=F29 (the people of a business), G03=F30
 // (the accesses in the admin).
@@ -124,7 +124,7 @@ async function rowOf(page: Page, id: string, email: string): Promise<MemberRow> 
 /**
  * The HTML part of the newest mail to `to` since `since` whose subject has `subject`, read from the panel's mail folder
  * as a mail client reads it (as panel/accounts-mails.spec.ts), painted at every size: text and HTML, the logo, every
- * line of the text, nothing fetched but the logo, no sideways scroll, and its capture `APP-HUBS-3-<key>-<size>`.
+ * line of the text, nothing fetched but the logo, no sideways scroll, and its capture.
  */
 async function paintMail(browser: Browser, key: string, to: string, since: number, subject: string, language: string): Promise<void> {
   const mail = await mailPartsOf(to, since, subject);

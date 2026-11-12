@@ -1,9 +1,9 @@
 // flow: ACCOUNTS-F46
-// Every mail of erplora.com leaves branded, as text and as HTML (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-5).
+// Every mail of erplora.com leaves branded, as text and as HTML (accounts/WORKBOOK.md).
 // Three mails land in the panel's mail folder as the person gets them: the sign-in code, sent by the running panel
 // at a real sign-in (whose code the e2e still reads from the text part), a renewal that could not be charged
 // (billing) and a returned authorisation (fiscal), sent by their own senders. Each is read back from its file and
-// its HTML part painted at the three sizes of the migration (390×844, 834×1112, 1440×900): the logo, every line of
+// its HTML part painted at the three sizes (390×844, 834×1112, 1440×900): the logo, every line of
 // the text, the footer, in the recipient's language, nothing scrolling sideways, and nothing fetched but the logo,
 // which the page takes from this checkout, never from the network. Accounts of this spec: `e2e-acc5m-…`.
 import { type Page } from '@playwright/test';

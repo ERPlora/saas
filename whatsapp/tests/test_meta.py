@@ -255,7 +255,7 @@ def test_a_refusal_longer_than_the_limit_is_meta_refused_without_metas_error(wha
     assert (refused.value.status, refused.value.code) == (401, None)
 
 
-# --- The server's trusted certificates (FIX-SAAS-WHATSAPP-HTTP-CALLS-CRASH-WHEN-SSL-CERT-FILE-MISSING) ---------------
+# --- The server's trusted certificates -------------------------------------------------------------------------------
 
 
 def logged_error_naming(caplog, path) -> bool:

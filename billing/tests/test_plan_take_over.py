@@ -1,6 +1,6 @@
 """A business handed over with a paid plan (HUBS-F28, «mover el pagador»): who pays from the hand-over.
 
-The market's way (Wix, Shopify, Lightspeed, Squarespace, Fresha; round proposed in APP-HUBS-3): the plan is the
+The market's way (Wix, Shopify, Lightspeed, Squarespace, Fresha): the plan is the
 business's and goes with it; the payment method does not. So:
 
 - accepting the hand-over stops the renewal on the previous payer's card (Stripe ``cancel_at_period_end``): the

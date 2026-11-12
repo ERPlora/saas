@@ -1,5 +1,4 @@
-// The review of a screen in the language the person reads (the migration's review of the `hecho` flows of
-// accounts/WORKBOOK.md, APP-ACCOUNTS-6 and APP-ACCOUNTS-7): at the panel's three sizes (`VIEWPORTS` of fixtures.ts),
+// The review of a screen in the language the person reads (the `hecho` flows of accounts/WORKBOOK.md): at the panel's three sizes (`VIEWPORTS` of fixtures.ts),
 // the page says its language (`<html lang>`), no whole text of the other language is left on screen (every
 // catalogue of the panel, `accounts`, `hubs`, the shell and @erplora/ui), nothing scrolls sideways, and a capture
 // `<task>-<flow>-<size>-<lang>` stays for the eye.
@@ -105,7 +104,7 @@ export async function textsOfTheOtherLanguage(page: Page, lang: Lang): Promise<s
 // ── The review of one screen ──────────────────────────────────────────────────────────────────
 
 /**
- * The review of a task (`APP-ACCOUNTS-6`…), the panel's walk through its sizes (`captureAtEverySize`): `ready` at each
+ * The review of a task, the panel's walk through its sizes (`captureAtEverySize`): `ready` at each
  * size, then the checks of every screen (no sideways scroll, the page says `lang`, no text of the other language) and
  * the capture `<task>-<flow>-<size>-<lang>`; back at 1440 after. `fullPage: false` for a page as long as the API's
  * reference, whose full shot is thousands of pixels tall.

@@ -1,5 +1,5 @@
-// The API keys of the SaaS from the admin (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-4), at the three sizes of
-// the migration (390×844, 834×1112, 1440×900): a superuser issues a key for a team account and sees it once (G101), the
+// The API keys of the SaaS from the admin (accounts/WORKBOOK.md), at the three sizes
+// (390×844, 834×1112, 1440×900): a superuser issues a key for a team account and sees it once (G101), the
 // key opens what its permission opens and nothing else (G102), and revoking it cuts it at once (G103). In
 // accounts/WORKBOOK.md: G101 = F31, G102 = F32, G103 = F33. The person's own keys (Account › API keys: create with
 // «Confirm it's you», use, revoke) are account.spec.ts's. Accounts of this spec: `e2e-acc4k-…@example.com`.

@@ -207,7 +207,7 @@ def test_meta_unreachable_is_502(client, number, business, owner):
 
 @respx.mock
 def test_unreadable_trusted_certificates_are_502_before_meta(client, number, business, owner, unreadable_ca):
-    """FIX-SAAS-WHATSAPP-HTTP-CALLS-CRASH-WHEN-SSL-CERT-FILE-MISSING: the server cannot load its trusted
+    """The server cannot load its trusted
     certificates: the attachment says it cannot be handed over now, never a 500, and Meta is not asked."""
     info, download = meta_has_it()
     row = attachment(business)

@@ -107,7 +107,7 @@ class TestMetasSignature:
         assert response.status_code == 413
 
     def test_no_throttle_spends_metas_traffic_before_the_signature(self, client, number, hub_takes_it):
-        """saas#2571, saas#2531: the old webhook counted 200 POST a minute per address BEFORE the signature, so at a
+        """The old webhook counted 200 POST a minute per address BEFORE the signature, so at a
         busy hour Meta's own notices were refused; anybody could spend that budget with unsigned posts. Here no
         budget exists: a burst of unsigned posts is refused one by one and Meta's next, signed one gets in."""
         for _ in range(250):
@@ -147,8 +147,8 @@ class TestACustomersMessageReachesTheHub:
         assert delivery.media_id == "1479537139650973"
 
     def test_a_hub_without_the_door_keeps_it_and_retries_later(self, client, number, hub_double):
-        """A Hub of ``main`` answers 404 until FIX-HUB-INTERNAL-WHATSAPP-RECEIVERS: Meta still gets its 200, the
-        message stays here and the next attempt waits."""
+        """A Hub without the inbox's door answers 404: Meta still gets its 200, the message stays here and the next
+        attempt waits."""
         before = timezone.now()
 
         assert signed(client, messages(text())).status_code == 200

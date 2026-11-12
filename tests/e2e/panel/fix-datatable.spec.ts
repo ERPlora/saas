@@ -5,7 +5,7 @@
 // between the topbar and the tabbar, its search and its heading stay, and its «Filters» popover
 // (InvoiceFilters.vue: the SaaS keeps its own; DataTable's own funnel stays off) still filters. One scroll at
 // every width: the page never scrolls at 834 and 1440 (the rows scroll inside), and on a phone nothing inside
-// the list scrolls (the page does). Screenshots: `FIX-DATATABLE-SAAS-<width>.png` in the artifacts, the
+// the list scrolls (the page does). Screenshots: one per width in the artifacts, the
 // viewport as a person sees it (not `fullPage`), so a second scrollbar or a cut list shows, and `-filters` with
 // the popover open.
 

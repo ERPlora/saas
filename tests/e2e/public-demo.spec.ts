@@ -1,8 +1,8 @@
-// The demo's door on erplora.com, part 3 (APP-PUBLIC-3, public/WORKBOOK.md PUBLIC-F27…F37), in a real Chrome under
+// The demo's door on erplora.com, part 3 (public/WORKBOOK.md PUBLIC-F27…F37), in a real Chrome under
 // the production CSP with zero violations: the home, the menu and the short address (/try/) lead to it; its card in
 // every state a visitor can meet without a Hub behind it (offered, not available, could not open, full, too many from
 // the connection, ended), each with its way out to «Start free»; and a press that finds no Hub is said, not kept.
-// Each screen is captured at 390×844, 834×1112 and 1440×900 as `APP-PUBLIC-3-<key>-<width>.png` in `.artifacts/`.
+// Each screen is captured at 390×844, 834×1112 and 1440×900 in `.artifacts/`.
 //
 // What needs a Hub is not here: nobody plays it for these specs (the waiting door is demo-wait.spec.ts). The walk
 // into a demo — created, «Opening your demo…», the shell as «Demo», «Back to my demo», ended → 410 → the door — is
@@ -68,7 +68,7 @@ const startFree = (page: Page, state: string) =>
     [...element.querySelectorAll('[href="/launch"]')].map((link) => (link.textContent ?? '').trim()),
   );
 
-/** `path` at the three viewports, each loaded afresh, captured whole as `APP-PUBLIC-3-<key>-<width>.png`. */
+/** `path` at the three viewports, each loaded afresh and captured whole. */
 async function captureEverywhere(page: Page, path: string, key: string, state: string) {
   mkdirSync(ARTIFACTS, { recursive: true });
   for (const viewport of VIEWPORTS) {

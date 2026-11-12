@@ -421,8 +421,8 @@ class TestTheJsonDoor:
         assert usage_row(business).messages == 0
 
     def test_a_server_without_its_trusted_certificates_is_a_final_502_the_log_explains(self, client, internal, business, answering, fake_provider, unreadable_ca, caplog):
-        """FIX-SAAS-ASSISTANT-GATEWAY-502-WHEN-SSL-CERT-FILE-MISSING: it was a mute ``assistant.internal_error``; now the
-        Hub gets the provider's final failure and the log names the setting and its file."""
+        """Not a mute ``assistant.internal_error``: the Hub gets the provider's final failure and the log names the
+        setting and its file."""
         with caplog.at_level(logging.ERROR):
             response = door(client, JSON, turn(business))
 

@@ -345,7 +345,7 @@ test.describe('members', () => {
     expect(errors).toEqual([]);
   });
 
-  test('after a hand-over, whoever still pays is not removed: «Remove» says what to do first (saas#2587)', async ({
+  test('after a hand-over, whoever still pays is not removed: «Remove» says what to do first', async ({
     page,
     browser,
   }) => {
