@@ -1,14 +1,14 @@
-"""Read operations of apps: the public catalog of the Hub's apps (spec §5.1–§5.3).
+"""Read operations of apps: the public catalog of the Hub's apps.
 
 No permission: the store is public and a visitor reads it before any account exists. The texts
 are in the caller's language (``ctx.language``, which a live stream carries outside the request):
 ``es`` reads the ``_es`` columns, any other the ``_en`` ones. The panel's SPA calls them through
 their ninja routes and the views of ``public/`` with ``run_operation_sync``; no ``live.py``, since
-the catalog only changes with a release of the Hub, which notifies nobody (spec §12). No cache of
+the catalog only changes with a release of the Hub, which notifies nobody. No cache of
 the list (tens of rows in the SaaS's own database); only the rendered documentation is cached.
 
 ``known_verticals()`` is no operation: it is what ``BusinessType.clean()`` (hubs) checks a vertical
-against (spec §5.4).
+against.
 """
 
 import logging
@@ -41,12 +41,12 @@ from apps.schemas import (
 
 logger = logging.getLogger(__name__)
 
-#: The WORKBOOK's language, the one every app documents first (spec §7).
+#: The WORKBOOK's language, the one every app documents first.
 SOURCE_LANGUAGE = "es"
 #: How long a rendered documentation is kept; a new document changes its hash, and so its key.
 DOC_CACHE_SECONDS = 60 * 60 * 24
 #: The version of what ``render_markdown`` produces, in the key: bumped when the renderer changes
-#: what it lets through (2: live 387d04f, stricter image paths), so HTML rendered before a deploy
+#: what it lets through (2: stricter image paths), so HTML rendered before a deploy
 #: is never served after it.
 DOC_RENDER_VERSION = 2
 #: The sections of the store, in the order of live.meta's Category; an unknown one goes last.
@@ -67,7 +67,7 @@ def _known_category(app: App) -> str | None:
 
 
 def _warn_unknown_categories(apps: list[App]) -> None:
-    """One warning per call: the Hub went ahead of this SaaS's live.meta (spec §5.3)."""
+    """One warning per call: the Hub went ahead of this SaaS's live.meta."""
     unknown = sorted(
         f"{app.id} ({app.category})" for app in apps if _known_category(app) is None
     )
@@ -121,8 +121,8 @@ def _listed_app(app_id: str) -> App:
 
 
 def _served_doc(app: App, language: str) -> AppDoc | None:
-    """The document to serve in ``language``: its own, else the Spanish one (spec §5.2). An empty
-    markdown is a language that no longer exists (spec §4.2), never an empty page."""
+    """The document to serve in ``language``: its own, else the Spanish one. An empty markdown is a
+    language that no longer exists, never an empty page."""
     docs = {doc.lang: doc for doc in app.docs.exclude(markdown="")}
     return docs.get(language) or docs.get(SOURCE_LANGUAGE)
 
@@ -278,8 +278,8 @@ def app_doc(ctx: OperationContext, data: AppByIdIn) -> dict[str, Any]:
 )
 def doc_list(ctx: OperationContext, data: AppDocListIn) -> dict[str, Any]:
     """Every listed app's user documentation, as written, in each language it has (an empty one is a language
-    that no longer exists, spec §4.2): what the panel's assistant indexes (``assistant.knowledge``). By app, then
-    language; one read."""
+    that no longer exists): what the panel's assistant indexes (``assistant.knowledge``). By app, then language;
+    one read."""
     docs = (
         AppDoc.objects.filter(app__listed=True)
         .exclude(markdown="")
@@ -303,7 +303,7 @@ def doc_list(ctx: OperationContext, data: AppDocListIn) -> dict[str, Any]:
     ai=INTERNAL,  # sitemap
 )
 def app_sitemap(ctx: OperationContext, data: AppSitemapIn) -> dict[str, Any]:
-    """Every listed app's page for ``/sitemap.xml`` (spec §8.2), by id, in one read.
+    """Every listed app's page for ``/sitemap.xml``, by id, in one read.
 
     Only the Spanish document counts: it is the source every language falls back to, so only it
     makes ``docs/`` answer in every language, and its ``updated_at`` is the pages' ``lastmod``.
@@ -328,14 +328,14 @@ def app_sitemap(ctx: OperationContext, data: AppSitemapIn) -> dict[str, Any]:
 def cards_of(app_ids: list[str], language: str) -> dict[str, dict[str, Any]]:
     """The card of each app of ``app_ids`` the catalog knows, listed or retired, by id: for another app of the
     SaaS that must name an app it still sells or bills (billing's Store names a retired app's module a business
-    still pays, saas#2589). ``language`` as a request's: ``es`` for any Spanish, ``en`` otherwise."""
+    still pays). ``language`` as a request's: ``es`` for any Spanish, ``en`` otherwise."""
     language = "es" if (language or "").split("-")[0].lower() == "es" else "en"
     return {app.id: _card(app, language) for app in App.objects.filter(pk__in=app_ids)}
 
 
 def known_verticals() -> list[str]:
     """Every vertical an app of the catalog declares, sorted; retired apps too, since their rows
-    still exist. ``BusinessType.clean()`` refuses a vertical outside it (spec §5.4)."""
+    still exist. ``BusinessType.clean()`` refuses a vertical outside it."""
     verticals: set[str] = set()
     for declared in App.objects.values_list("verticals", flat=True):
         verticals.update(declared)

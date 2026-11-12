@@ -1,9 +1,8 @@
-"""The panel's menu (round 17, PLAN-SAAS §3.6 point 1): Businesses · Store · Billing · Account.
+"""The panel's menu: Businesses · Store · Billing · Account.
 
-The SaaS's apps are platform apps, which declare no ``navigation`` (``live.checks``, PLAN §20.3.3),
+The SaaS's apps are platform apps, which declare no ``navigation`` (``live.checks``),
 so the menu is declared once in ``base/navigation.py`` and ``base.session.me`` sends it, already
-translated. The Store sells, so it is the only entry the app surfaces leave out (``webOnly``,
-PLAN-SAAS §3.6 point 6).
+translated. The Store sells, so it is the only entry the app surfaces leave out (``webOnly``).
 """
 
 import pytest

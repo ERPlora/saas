@@ -1,4 +1,4 @@
-"""The Hub's two calls about a business's signed authorisation (plan 2026-10-15, «Contrato»):
+"""The Hub's two calls about a business's signed authorisation:
 
 - ``POST /internal/hubs/{id}/representation``: the customer's documents, uploaded in the Hub's module, filed
   for the staff's review (``fiscal.representation.submit``, run as the platform in the owner's channel) →
@@ -14,7 +14,7 @@ Server to server, signed as ``/internal/auth/redeem`` (``accounts.signing.verify
 timestamp, v1 over the body, v2 also over the method and the path), so no CSRF token. v1 covers the body
 only, so a body that names a business must name the one of the path. The upload reads its body itself, up to
 ``MAX_BODY_BYTES``: Django's ``DATA_UPLOAD_MAX_MEMORY_SIZE`` (2.5 MB, for every other view) stays as it is.
-Every refusal answers the single envelope ``{"error": {"code", "message", "fields"?}}`` (PLAN §14.1): 400 a
+Every refusal answers the single envelope ``{"error": {"code", "message", "fields"?}}``: 400 a
 body that is no JSON object or a ``Content-Length`` that is no length, 401 the signature, 404 a business
 unknown or deleted, 405 another method, 413 (``fiscal.body_too_large``) a body beyond ``MAX_BODY_BYTES``,
 422 a broken rule (its ``fiscal.*`` code) or a malformed field (``invalid_payload``). Nothing is read before
@@ -23,8 +23,7 @@ timestamp out of the window is 401 from its headers alone; only then is the body
 verified. Behind Daphne the body arrives in memory, never in a temporary file on disk, up to ``MAX_BODY_BYTES``
 (``config.asgi.BodiesInMemory``): the customer's identity documents are in it, in the clear (FISCAL-F03). The
 field messages speak the language the Hub asks (``Accept-Language``). Nothing is cached: the answers carry
-``Cache-Control: no-store``. Plain Django views, like ``hubs.internal``, until the ``/internal`` ninja API takes
-them all.
+``Cache-Control: no-store``. Plain Django views, like ``hubs.internal``.
 """
 
 import json

@@ -1,4 +1,4 @@
-// The report of an answer of the panel's assistant (ASSISTANT-F23, F25; saas#287, ui#103), in a browser against the
+// The report of an answer of the panel's assistant (ASSISTANT-F23, F25; saas#287), in a browser against the
 // panel's own Django, with the e2e's own model and its web search on (assistant-provider.ts; panel/project.ts gives the
 // search a made-up key): «Report a problem» under an answer says whether its turn brought pages of the web — also when
 // the turn went on with a tool of the panel after the search, whose round brought none —, and support gets the answer

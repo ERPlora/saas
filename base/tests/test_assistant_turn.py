@@ -1,5 +1,5 @@
-"""ASSISTANT-F25 · The assistant of erplora.com's own panel answers a turn of the signed-in account (plan
-2026-10-30-asistente-saas §4, PLAN-SAAS §23): ``POST /api/assistant/turn`` (``base.assistant.turn``), the same frames
+"""ASSISTANT-F25 · The assistant of erplora.com's own panel answers a turn of the signed-in account:
+``POST /api/assistant/turn`` (``base.assistant.turn``), the same frames
 as the Hub's panel (``executed``, ``confirm``, ``text``, ``usage``, ``error``, ``done``), with the SaaS's own
 operations as its tools and the gateway called in process (no ``/internal``, no signature).
 
@@ -161,7 +161,7 @@ class TestTheCatalog:
         ]
 
     def test_where_nothing_is_sold_the_stores_tools_are_not_offered(self, account, rf):
-        """The app's account surface sells nothing (PLAN-SAAS §3.6 point 6): neither does its assistant."""
+        """The app's account surface sells nothing: neither does its assistant."""
         import dataclasses
 
         request = rf.post(TURN)
@@ -207,7 +207,7 @@ class TestTheInstructions:
 
     @pytest.mark.parametrize("language", ["es", "en"])
     def test_where_nothing_is_sold_they_give_the_sentences_of_the_screens(self, account, language, settings):
-        """PLAN-SAAS §3.6 point 6: the very sentences the panel paints there, in the person's language."""
+        """The very sentences the panel paints there, in the person's language."""
         billing = json.loads((settings.BASE_DIR / f"billing/frontend/locale/{language}.json").read_text("utf-8"))
         hubs = json.loads((settings.BASE_DIR / f"hubs/frontend/locale/{language}.json").read_text("utf-8"))
         buy = hubs["hubs"]["common"]["storeInBrowser"]
@@ -476,8 +476,8 @@ class TestAWrite:
     def test_data_the_write_would_refuse_show_no_card_and_the_model_corrects_them_in_the_same_turn(
         self, signed_in, account, answering, fake_provider
     ):
-        """live#17 (QA 2026-10-31, A2.12): the card said «country: España», the person typed CONFIRMAR, the write was
-        refused and a second card came. The model hears the refusal before any card, within the same turn, and its
+        """Otherwise the card would say «country: España», the person would type CONFIRMAR, the write would be refused
+        and a second card would come. The model hears the refusal before any card, within the same turn, and its
         corrected call is the only card the person answers."""
         spain = {"call_id": "call_1", "name": "hubs__business__create", "arguments": '{"name": "Sol Hair", "country": "España"}'}
         fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("hubs__business__create", spain["arguments"]))

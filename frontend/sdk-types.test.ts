@@ -1,7 +1,7 @@
-// `sdk-types.d.ts` is written by hand from the schemas of the API (until it is generated from
-// `/api/openapi.json`): this guard reads both and fails when a field of a hubs schema the panel uses is
-// missing from its TypeScript twin, the twin carries one the server no longer sends, or a field's type
-// differs (pydantic's annotation translated to what its JSON is in TypeScript).
+// `sdk-types.d.ts` is written by hand from the schemas of the API: this guard reads both and fails when a
+// field of a hubs schema the panel uses is missing from its TypeScript twin, the twin carries one the
+// server no longer sends, or a field's type differs (pydantic's annotation translated to what its JSON is
+// in TypeScript).
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -74,13 +74,13 @@ const SCALARS: Record<string, string> = {
   TimeZone: 'string',
   // Same values, the TypeScript name.
   Role: 'HubRole',
-  // billing/schemas.py and apps/schemas.py (the Store, L2-D).
+  // billing/schemas.py and apps/schemas.py (the Store).
   Interval: 'BillingInterval',
   ModuleSlug: 'string',
   Category: 'string',
   // hubs/schemas.py `BillingProfileIn.billing_postal_code`: a stripped string.
   'Annotated[str, StringConstraints(strip_whitespace=True)]': 'string',
-  // billing/schemas.py, the Billing section (L3-C): a day travels as `YYYY-MM-DD`; the literal aliases keep
+  // billing/schemas.py, the Billing section: a day travels as `YYYY-MM-DD`; the literal aliases keep
   // their name in TypeScript.
   date: 'string',
   InvoicePaymentStatus: 'InvoicePaymentStatus',
@@ -186,7 +186,7 @@ describe('sdk-types.d.ts follows hubs/schemas.py', () => {
   });
 });
 
-/** The Store's schemas (L2-D), by their file: the same guard as hubs'. */
+/** The Store's schemas, by their file: the same guard as hubs'. */
 const STORE_SCHEMAS: Array<[file: string, names: string[]]> = [
   ['hubs/schemas.py', ['BillingProfileGetIn', 'BillingProfileIn', 'BillingProfileOut']],
   [
@@ -238,7 +238,7 @@ describe('sdk-types.d.ts follows billing/schemas.py, apps/schemas.py and the pay
   });
 });
 
-/** The Billing section's schemas (L3-C front: invoices, subscriptions, payment details), by their file. */
+/** The Billing section's schemas (invoices, subscriptions, payment details), by their file. */
 const BILLING_SCHEMAS: Array<[file: string, names: string[]]> = [
   [
     'billing/schemas.py',
@@ -328,7 +328,7 @@ describe('sdk-types.d.ts follows billing/schemas.py (the Billing section)', () =
   });
 });
 
-/** The usage of a business (lot L4-A): `hubs.usage.get`, `hubs.usage.series` and `usage` of the business's page. */
+/** The usage of a business: `hubs.usage.get`, `hubs.usage.series` and `usage` of the business's page. */
 const USAGE_SCHEMAS = ['StorageUsageOut', 'ActiveUsersOut', 'UsageOut', 'UsageGetIn', 'UsageSeriesIn', 'UsagePointOut', 'UsageSeriesOut'];
 
 describe('sdk-types.d.ts follows the usage schemas of hubs/schemas.py', () => {
@@ -353,7 +353,7 @@ describe('sdk-types.d.ts follows the usage schemas of hubs/schemas.py', () => {
   });
 });
 
-/** The signed authorisation of a business (plan 2026-10-15): `fiscal.representation.status`, its card on the business's page. */
+/** The signed authorisation of a business: `fiscal.representation.status`, its card on the business's page. */
 const FISCAL_SCHEMAS = ['RepresentationStatusIn', 'RepresentationDocumentsOut', 'RepresentationHistoryOut', 'RepresentationStatusOut'];
 
 describe('sdk-types.d.ts follows the schemas of fiscal/schemas.py', () => {

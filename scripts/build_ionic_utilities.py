@@ -2,10 +2,8 @@
 """Writes ``public/static/public/ionic-utilities.css``: the utility classes the public templates
 really use, defined by US over Ionic's ``--ion-*`` tokens.
 
-Port of ``scripts/build_ionic_utilities.py`` of the old SaaS (origin/develop), with the same scales
-and the same output shape, plus the card-scoped re-emission its sibling
-``build_ion_card_content_utilities.py`` wrote to a second file (saas#1728): one generator, one sheet,
-so the two cannot drift apart. ``frontend/public.ts`` bundles the sheet; the Tailwind of the SPA
+The card-scoped classes come out of the same generator into the same sheet, so the two cannot drift
+apart. ``frontend/public.ts`` bundles the sheet; the Tailwind of the SPA
 never sees the public templates.
 
 Two engines:
@@ -14,7 +12,7 @@ Two engines:
                 bundle baked in as literals. They are NOT Tailwind's defaults (``--text-4xl`` is
                 2.5rem here, not 2.25rem).
 
-Usage (from saas-next/): ``uv run python scripts/build_ionic_utilities.py``. Regenerate whenever a
+Usage (from the repo): ``uv run python scripts/build_ionic_utilities.py``. Regenerate whenever a
 template gains a class: ``public/tests/test_build_ionic_utilities.py`` fails until you do.
 """
 
@@ -472,7 +470,7 @@ def utility_declarations(base: str) -> dict[str, str] | None:  # noqa: C901, PLR
             return {"transition-property": prop, **TRANSITION_REST}
     m = re.fullmatch(r"ring-(\d+)", base)
     if m:
-        # Like `text-*`/`leading-*`: the width READS the colour `ring-<colour>` writes (saas#1831).
+        # Like `text-*`/`leading-*`: the width READS the colour `ring-<colour>` writes.
         return {
             "box-shadow": f"0 0 0 {m.group(1)}px var(--tw-ring-color, currentcolor)"
         }
@@ -541,7 +539,7 @@ def utility_rule(token: str) -> tuple[str | None, str] | None:
 
 
 # ---------------------------------------------------------------------------
-# Card scope (saas#1728)
+# Card scope
 # ---------------------------------------------------------------------------
 # Ionic injects the styles of `ion-card-content` at runtime as a plain `<style>` with NO cascade
 # layer (`.card-content-ios p { margin-bottom: 2px; font-size: .875rem }`…), and an unlayered

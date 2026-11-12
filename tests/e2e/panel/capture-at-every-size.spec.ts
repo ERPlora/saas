@@ -1,4 +1,4 @@
-// flow: ninguno — tooling of the e2e harness, nothing anyone sees changes (saas#336)
+// flow: none — tooling of the e2e harness, nothing anyone sees changes (saas#336)
 // The walk of `captureAtEverySize` (fixtures.ts), which the panel's specs take to check a screen at phone, tablet and
 // desktop: if it skipped a size, no spec failed, only that size's captures were missing (saas#336). Here it walks a
 // page of its own (`page.setContent`, no server) whose `ready` writes down the size it is called at: the three sizes,
@@ -12,7 +12,7 @@ import { captureAtEverySize, expect, shot, test } from './fixtures';
 const PREFIX = 'saas-e2e-walk';
 const KEY = 'probe';
 
-/** Phone, tablet and desktop, in this order (working rules §2.4), and the size the walk leaves the page at. */
+/** Phone, tablet and desktop, in this order, and the size the walk leaves the page at. */
 const SIZES = [
   { width: 390, height: 844 },
   { width: 834, height: 1112 },

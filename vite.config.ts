@@ -1,4 +1,4 @@
-// Vite of saas-next (mirror of hub-next's). A contract with Django (`packages/live/live/spa.py`,
+// Vite of the SaaS (mirror of the Hub's). A contract with Django (`packages/live/live/spa.py`,
 // `LIVE["spa"]` in `config/settings.py`): with DEBUG the shell loads
 // `http://localhost:5174/static/spa/@vite/client` (`VITE_DEV_PORT` moves it) and
 // `…/static/spa/frontend/main.ts` (Vite applies `base` in dev too); in production Django reads
@@ -12,7 +12,7 @@ import { defineConfig } from 'vitest/config';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const DEV_HOST = 'localhost';
-// 5174 (hub-next's dev server owns 5173 and both run at once) unless a second checkout runs beside
+// 5174 (the Hub's dev server owns 5173 and both run at once) unless a second checkout runs beside
 // another one (the e2e of a branch): Django reads the same VITE_DEV_PORT (`config/settings.py`).
 const DEV_PORT_TEXT = process.env.VITE_DEV_PORT ?? '5174';
 const DEV_PORT = /^\d+$/.test(DEV_PORT_TEXT) ? Number(DEV_PORT_TEXT) : 0;
@@ -26,8 +26,8 @@ if (DEV_PORT <= 0 || DEV_PORT >= 65536) {
 const ROOT_HEADER = 'x-erplora-vite-root';
 
 /**
- * The apps with a `frontend/`: at the project root, next to `base/` (no `apps/`, PLAN §20.2). No
- * `marketplace` (round 16): the app catalogue is `apps`, and neither it nor `public` has a frontend.
+ * The apps with a `frontend/`: at the project root, next to `base/` (there is no `apps/` folder). The app
+ * catalogue is `apps`, and neither it nor `public` has a frontend.
  */
 export const FRONTEND_APPS = ['accounts', 'hubs', 'billing', 'fiscal', 'assistant'];
 
@@ -63,8 +63,8 @@ export default defineConfig({
     environment: 'happy-dom',
     // happy-dom with the browser behaviour Ionic relies on (vitest.setup.ts).
     setupFiles: ['./vitest.setup.ts'],
-    // Long enough to outlast a runner that stalls: it took 24 s in a run where nothing was wrong (saas#251; the
-    // measure is in vite.config.test.ts). A failed assertion goes red at once whatever this says.
+    // Long enough to outlast a runner that stalls: it took 24 s in a run where nothing was wrong (the measure is in
+    // vite.config.test.ts). A failed assertion goes red at once whatever this says.
     testTimeout: 60_000,
     hookTimeout: 60_000,
     include: [

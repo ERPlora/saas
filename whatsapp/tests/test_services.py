@@ -1,4 +1,4 @@
-"""The operations behind Meta's webhook and the deliveries to the Hub (WHATSAPP-G07; FIX-SAAS-WHATSAPP-GATEWAY-DOORS).
+"""The operations behind Meta's webhook and the deliveries to the Hub (WHATSAPP-G07).
 
 - ``whatsapp.webhook.ingest`` parks what Meta reported for each active number, once per message;
 - ``whatsapp.delivery.claim`` leases what is due, so two processes (the webhook's COMMIT and ``whatsapp_deliver``)
@@ -138,7 +138,7 @@ def test_a_dropped_delivery_is_gone(number):
 
 
 def test_writing_for_business_b_never_touches_business_a(number, other_business):
-    """Tenancy (working rules §4b.4): a notice of B's number parks only for B and leases only B's."""
+    """A notice of B's number parks only for B and leases only B's."""
     PhoneNumber.objects.create(hub=other_business, phone_number_id="2", display_phone="+34 2", waba_id="W2", access_token="t")
     notice = messages(text("wamid.B"))
     notice["entry"][0]["changes"][0]["value"]["metadata"]["phone_number_id"] = "2"

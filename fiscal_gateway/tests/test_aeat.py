@@ -2,7 +2,7 @@
 
 Only the AEAT's preproduction is ever reached, through ``respx``: no test opens a connection, and the
 production endpoints are checked as strings only. The envelopes are the Hub's (``fixtures/``, copied
-byte for byte from hub-next).
+byte for byte from the Hub).
 """
 
 import asyncio
@@ -287,9 +287,9 @@ def test_a_connect_timeout_means_nothing_was_sent(identity, respx_mock):
 
 
 def test_the_four_timeouts_are_set_five_to_connect_thirty_to_read_and_short_to_write_and_wait():
-    """PLAN-SAAS §4 (round 2026-10-15c) and PLAN §28: gateway → AEAT, 5 s to connect and 30 s to read. httpx
-    takes one figure for every phase it is not told otherwise, so writing the envelope and waiting for a
-    connection are set too, short: the envelope is a few kilobytes and each submission opens its own client."""
+    """Gateway → AEAT, 5 s to connect and 30 s to read. httpx takes one figure for every phase it is not told
+    otherwise, so writing the envelope and waiting for a connection are set too, short: the envelope is a few
+    kilobytes and each submission opens its own client."""
     assert aeat.TIMEOUT.connect == 5
     assert aeat.TIMEOUT.read == 30
     assert aeat.TIMEOUT.write == 5
@@ -327,11 +327,10 @@ def test_an_answer_slower_than_the_deadline_is_cut_and_may_have_arrived(identity
     assert time.monotonic() - started < 1.5
 
 
-# The server's trusted certificates (FIX-SAAS-FISCAL-GATEWAY-AEAT-TLS-CRASHES-WHEN-SSL-CERT-FILE-MISSING)
+# The server's trusted certificates
 #
-# FIX-SAAS-FISCAL-GATEWAY-OWN-TRUST-STORE-COPY-INSTEAD-OF-BASE-TLS: they are read by ``base.tls``, the one place every
-# outgoing call of the SaaS reads them, never by a copy of the gateway's own: one ERROR line, ``base.tls``'s, naming
-# the caller.
+# They are read by ``base.tls``, the one place every outgoing call of the SaaS reads them, never by a copy of the
+# gateway's own: one ERROR line, ``base.tls``'s, naming the caller.
 
 
 def the_trust_store_line(caplog, path) -> None:

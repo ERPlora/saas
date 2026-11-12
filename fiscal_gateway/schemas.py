@@ -1,11 +1,11 @@
-"""The bodies of ``/internal/verifactu/submit|query|probe`` (contract 3 of the fiscal block, PLAN-SAAS §2.2).
+"""The bodies of ``/internal/verifactu/submit|query|probe``.
 
 ``route=erplora`` presents with ERPlora's seal; ``route=own`` with the customer's own certificate, which
 travels in ``certificate`` (its .p12 in base64 and its password) on every call and is never kept. Both
 are ``SecretStr``: no ``repr``, ``str`` or log line of a body shows them.
 
-``hub`` names the calling hub: in phase 1 the slug of its host (``ctx.scope.key``), later the registry's
-UUID in lowercase. Both fit ``live.slugs.HUB_SLUG_RE``, the single source of the slug format, checked
+``hub`` names the calling hub: the slug of its host (``ctx.scope.key``) or the registry's UUID in
+lowercase. Both fit ``live.slugs.HUB_SLUG_RE``, the single source of the slug format, checked
 with ``fullmatch`` (its ``$`` would admit a trailing newline). The gateway presents for a business it
 knows only (``hub_unknown``), and through ``erplora`` only with that business's approved authorisation.
 """

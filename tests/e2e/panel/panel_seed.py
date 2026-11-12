@@ -1,6 +1,6 @@
 """The accounts and businesses the panel's specs open (launch, businesses, business, invitation).
 
-``uv run python tests/e2e/panel/panel_seed.py seed|clear`` from saas-next/, against the local database
+``uv run python tests/e2e/panel/panel_seed.py seed|clear`` from the repo, against the local database
 of ``.env`` (development only: known passwords, refused without ``DEBUG``). ``seed`` starts from
 ``clear``, so a run always finds the same rows; ``clear`` removes every account ``e2e-*@example.com``
 and every business one of them owns (also the ones a spec created through the panel).

@@ -1,6 +1,6 @@
-// The entry (`/launch`, round 17 §2.2, README §5) in Ioan's Chrome: the four variants of the mockups
-// (first time, invited, one business, several), the app surface and, signed out, the sign-in itself (the
-// form of the launcher, at the three viewports). Accounts of panel_seed.py.
+// The entry (`/launch`) in Chrome: its four variants (first time, invited, one business, several), the app
+// surface and, signed out, the sign-in itself (the form of the launcher, at the three viewports). Accounts of
+// panel_seed.py.
 // «Open» goes to the Hub's start of the jump (`http://<slug>.localhost:8000/auth/login?next=/`): the
 // spec answers that address itself and checks where the browser went, so no Hub has to run.
 import { type Page } from '@playwright/test';
@@ -88,12 +88,12 @@ test('several businesses: the last opened first, why one does not open, and the 
   await expect(page.getByTestId('launch-invitation')).toContainText('You have been invited to Bar Norte');
   await page.getByTestId('launch-create-another').click();
   await expect(page).toHaveURL(/\/dashboard\/businesses$/);
-  // Café Central fills its one Free business: the dialog says so before any form (audit 2 S-02).
+  // Café Central fills its one Free business: the dialog says so before any form.
   await expect(page.getByTestId('create-free-limit')).toContainText('yours is Café Central');
   expect(errors).toEqual([]);
 });
 
-// flow: FIX-LAUNCH-TABS
+// flow: none — regression test of the launcher's two tabs
 test('signed out, at 390, 834 and 1440 px: the form on «Sign in» with the tab «Create account», without scrolling sideways', async ({
   page,
 }) => {

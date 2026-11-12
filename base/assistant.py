@@ -1,5 +1,5 @@
-"""The assistant of erplora.com's own panel (plan 2026-10-30-asistente-saas §4; PLAN-SAAS §23, PLAN §36): the same
-assistant as the Hub's, with the SaaS's own operations as its tools, for the signed-in account.
+"""The assistant of erplora.com's own panel: the same assistant as the Hub's, with the SaaS's own operations as its
+tools, for the signed-in account.
 
 The mechanics are ``live.assistant``'s, shared with the Hub (its catalogue by ``ai=``, the relevance, the card of a
 write and its word, the tool run as the person); this module gives them the panel's own:
@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 #: Always offered when the account may read them: its businesses (the first thing asked of the panel) and the search in
 #: ERPlora's documentation, which the instructions send every how-to question to and whose words a question rarely
-#: shares (ASSISTANT-F27).
+#: shares.
 ALWAYS = ("hubs.business.list", "assistant.docs.search")
 #: What a word names in the panel and nowhere else (``live.assistant.relevant``'s ``synonyms``), for a turn and the
 #: assistant's QA. A person's own, other, new or old «tienda» is one of their businesses, as a «shop» is: the panel's
@@ -73,9 +73,8 @@ SCREEN_OF_APP = {"hubs": "businesses", "accounts": "account", "billing": "billin
 #: on sale with their prices.
 STORE_APPS = frozenset({"billing", "hubs"})
 STORE_ENTITIES = frozenset({"store", "promo", "plan"})
-#: The panel's roles, as the assistant's QA names them (docs plan 2026-10-31 §4): every signed-in account has the one
-#: role ``account``. Who may act on a business is decided inside each operation, so an owner's tools and an
-#: employee's are the same.
+#: The panel's roles, as the assistant's QA names them: every signed-in account has the one role ``account``. Who may
+#: act on a business is decided inside each operation, so an owner's tools and an employee's are the same.
 ROLES = (ACCOUNT_ROLE,)
 #: Where the panel is used: the web, and the app's account surface, which sells nothing (``sells_nothing``).
 SURFACES = ("web", "app")
@@ -209,7 +208,7 @@ def screens(ctx: OperationContext, request: HttpRequest | None = None) -> dict[s
 
 
 def nothing_sold_here(language: str) -> str:
-    """The rule of a turn where nothing is sold (PLAN-SAAS §3.6 point 6), with the sentences the panel paints there."""
+    """The rule of a turn where nothing is sold, with the sentences the panel paints there."""
     with translation.override(language):
         buy = gettext("To change your plan or add modules, go to erplora.com in your browser.")
         pay = gettext("To pay it, go to erplora.com in your browser.")
@@ -264,7 +263,7 @@ ERPlora and its account. Answer in {language_name}, short and plain. Use Markdow
 # ── What the tools wait on the network for, before the turn's transaction ───────────────────────────────────────
 
 
-#: The documentation search: the fingerprint of its question comes from the provider (ASSISTANT-F27).
+#: The documentation search: the fingerprint of its question comes from the provider.
 DOCS_SEARCH = "assistant.docs.search"
 
 

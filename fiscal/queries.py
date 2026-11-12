@@ -1,8 +1,8 @@
 """Queries of fiscal: the business's authorisation as its page shows it (``fiscal.representation.status``) and
-as its snapshot tells the Hub (``snapshot_block``; plan 2026-10-15, «Contrato»).
+as its snapshot tells the Hub (``snapshot_block``).
 
 Both read the same state (``_current``): the authorisation in force if there is one (a newer upload waiting or
-returned never takes it away, as in the old product); else the one waiting for review (what happens next,
+returned never takes it away); else the one waiting for review (what happens next,
 even after a later withdrawal of an older one); else the version that changed last (sent, reviewed or
 withdrawn; on a tie, the newer version), so a withdrawal after a newer version was returned reads
 «withdrawn»; «none» without any. Neither reads the documents (a live query re-runs after every change, and the encrypted megabytes are the

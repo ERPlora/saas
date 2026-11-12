@@ -1,12 +1,10 @@
-"""ACCOUNTS-G14 / ACCOUNTS-G76: the log keeps the event and loses the personal data and the secrets.
+"""ACCOUNTS-F40 · The log keeps the event and loses the personal data and the secrets.
 
-Ported from ERPlora/saas ``apps/core/tests/test_logging.py`` (origin/develop c5ca8cae8) with its traps: #969 (the
-patterns redacted nothing Spanish, mangled an IBAN, kept a JWT's payload, and a filter DROPPED every line that merely
-said "token" or "password" — the only evidence of a brute-force run), saas#2140 (the token rule ate the event keys the
-alarms look for), saas#2445 (secrets under a quoted or prefixed key, short bearer credentials, hex credentials read as
-hashes, 24-character tokens at a dash edge), saas#2458 (the password inside a connection url) and saas#2472 (a long
-line held the process for seconds: every rule must run in linear time). Only the formatter is ported: the old
-``SensitiveDataFilter`` had become a no-op kept for configuration compatibility, which this project does not need.
+The traps these tests pin: patterns that redact nothing Spanish, mangle an IBAN or keep a JWT's payload; a filter that
+DROPS every line that merely says "token" or "password" (the only evidence of a brute-force run); a token rule that
+eats the event keys the alarms look for; secrets under a quoted or prefixed key, short bearer credentials, hex
+credentials read as hashes and 24-character tokens at a dash edge; the password inside a connection url; and a long
+line that holds the process for seconds (every rule must run in linear time).
 """
 
 from __future__ import annotations
@@ -113,7 +111,7 @@ class TestAuthenticationFailuresAreNotDiscarded:
 
 
 class TestOurOwnEventKeysSurvive:
-    """saas#2140 — the token pattern ate the event keys the alerts grep for.
+    """The token pattern must not eat the event keys the alerts grep for.
 
     ``TOKEN_PATTERN`` redacts any run of 24+ ``[A-Za-z0-9_-]``, so a long snake_case event key
     reached Loki as ``billing.module_purchase.[TOKEN_REDACTED]`` and a rule keyed on it never
@@ -127,7 +125,7 @@ class TestOurOwnEventKeysSurvive:
             "billing.module_purchase.period_ended_while_row_says_active",
             "provisioning.hub.deploy_finished_without_health_check",
             "marketplace.upstream_catalogue_returned_empty_list",
-            # A key the old SaaS emitted (apps.dashboard.fiscal.vat).
+            # A dotted event key (apps.dashboard.fiscal.vat).
             "fiscal.vat.stripe_charged_no_tax_on_subject_sale",
             # A word right at the cap: "internationalization" is 20 letters.
             "core.internationalization_bundle_missing",
@@ -178,7 +176,7 @@ class TestOurOwnIdsSurvive:
 
 
 class TestCredentialsStillLookLikeCredentials:
-    """The other side of saas#2140: widening the keep-list must not open a door to a secret."""
+    """The other side of keeping the event keys: widening the keep-list must not open a door to a secret."""
 
     @pytest.mark.parametrize(
         "secret",
@@ -214,7 +212,7 @@ class TestCredentialsStillLookLikeCredentials:
             # base64url (``secrets.token_urlsafe``) carrying both of its extra characters.
             "kJ8x_Q2m-Zt7VwP_n4Ls-Yb9Hd3R_fG6aE1q",
             # A uuid with its hyphens swapped for underscores. As Python prints it, it is one of our ids, and it stays
-            # (TestOurOwnIdsSurvive): the old SaaS's list had it here, but no credential here is UUID-shaped.
+            # (TestOurOwnIdsSurvive): no credential here is UUID-shaped.
             "550e8400_e29b_41d4_a716_446655440000",
             # A slug is cut from the business name, and a sole trader's is their own name: a
             # hyphen anywhere keeps it out of the event-key rule, underscore prefix or not.
@@ -259,7 +257,7 @@ class TestCredentialsStillLookLikeCredentials:
 
 
 class TestSecretsWrittenTheWaysTheRedactorMissed:
-    """saas#2445 — four shapes of a credential walked through the redactor whole.
+    """Four shapes of a credential walked through the redactor whole.
 
     Each case pairs with what must keep reading as it was: the redactor is a safety net for the
     day someone logs a value by mistake, and a net that also eats ordinary lines gets switched off.
@@ -279,8 +277,8 @@ class TestSecretsWrittenTheWaysTheRedactorMissed:
             ("{'password': 'correct horse battery staple'}", "battery staple"),
             # A passphrase in lowercase words joined by ``_`` goes by its key, not by its shape.
             ("{'password': 'correct_horse_battery_staple'}", "correct_horse_battery_staple"),
-            # Field names that end in a credential word (the old SaaS's Hub.cloud_api_token,
-            # Hub.hub_secret_key) and the usual OAuth ones.
+            # Field names that end in a credential word (as cloud_api_token or hub_secret_key) and the
+            # usual OAuth ones.
             ("hub={'cloud_api_token': 'Zq81mXw0pLk2'}", "Zq81mXw0pLk2"),
             ("hub_secret_key=Zq81mXw0pLk2", "Zq81mXw0pLk2"),
             ('{"access_token": "Zq81mXw0pLk2"}', "Zq81mXw0pLk2"),
@@ -369,7 +367,7 @@ class TestSecretsWrittenTheWaysTheRedactorMissed:
             edged += raw[0] in "-_" or raw[-1] in "-_"
             out = _fmt(f"token {raw} used")
             if out != "token [TOKEN_REDACTED] used":
-                # An all-lowercase draw shaped like an event key is the rule of saas#2140, not a leak
+                # An all-lowercase draw shaped like an event key is kept by the event keys' rule, not a leak
                 # of this one; the draw can only land there if it carries no digit or capital.
                 assert GDPRSafeFormatter._EVENT_KEY.match(raw), raw
         assert edged > 100, "the sample did not exercise the edges"
@@ -397,7 +395,7 @@ class TestSecretsWrittenTheWaysTheRedactorMissed:
 
 
 class TestAPasswordInsideAConnectionUrl:
-    """saas#2458 — ``scheme://user:password@host`` walked through whole.
+    """``scheme://user:password@host`` walked through whole.
 
     No key named the value (the key was ``dsn``) and it was under the token length, so neither
     rule saw it; and with a dotted host the e-mail rule ate password AND host into one label. Only
@@ -477,7 +475,7 @@ class TestAPasswordInsideAConnectionUrl:
 
 
 class TestALongLineIsCleanedInLinearTime:
-    """saas#2472: every log line goes through the formatter, so no rule may be quadratic on it.
+    """Every log line goes through the formatter, so no rule may be quadratic on it.
 
     The e-mail rule started a scan at every word boundary of a long run of address characters
     and walked to its end looking for an ``@``: 140k characters without one held the process for
@@ -533,7 +531,7 @@ class TestALongLineIsCleanedInLinearTime:
 
 
 class TestAddressesAndJwtsAreRedactedExactlyAsBefore:
-    """saas#2472 changed how the two rules scan, not what they cover: the same lines come out.
+    """The linear scan changed how the two rules scan, not what they cover: the same lines come out.
 
     Compared against the rules as they were, on lines built from the pieces where their edges
     live — word and non-word characters, ``@``, dots, ``eyJ``, and a non-ASCII letter (``ñ``),
@@ -581,7 +579,7 @@ class TestAddressesAndJwtsAreRedactedExactlyAsBefore:
         [
             # A url-encoded list: the second address starts in the middle of a run (at the ``%``,
             # the word boundary after the first one's TLD). Starting only at the start of a run
-            # (the first idea in saas#2472) let it through.
+            # would let it through.
             ("to=ana@x.com%2Cbob@y.com", "to=[EMAIL_REDACTED][EMAIL_REDACTED]"),
             ("ana@x.com-bob@y.com", "[EMAIL_REDACTED][EMAIL_REDACTED]"),
             # The edge is still the word boundary: a leading dot stays outside.

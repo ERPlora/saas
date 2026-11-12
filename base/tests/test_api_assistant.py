@@ -1,5 +1,5 @@
-"""The routes of the panel's assistant (plan 2026-10-30-asistente-saas §4, PLAN-SAAS §23): ``POST
-/api/assistant/turn`` (``base.assistant.turn``, a stream), ``GET /api/assistant/usage`` (``base.assistant.usage``)
+"""The routes of the panel's assistant: ``POST /api/assistant/turn`` (``base.assistant.turn``, a stream),
+``GET /api/assistant/usage`` (``base.assistant.usage``)
 and ``POST /api/assistant/report`` (``base.assistant.report``), with the same paths and operations as the Hub's, so
 the shared panel of ``@erplora/ui`` is configured the same in both. Each one with a session; the account is the
 session's, never the payload's.

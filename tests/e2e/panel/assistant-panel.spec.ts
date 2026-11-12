@@ -1,15 +1,14 @@
-// The panel's assistant (MIGRATION-TASK T4 of plan 2026-10-30-asistente-saas; assistant/WORKBOOK.md, ASSISTANT-F25
-// and F26), in a browser against the panel's own Django: the sparkles «Assistant» at the end of the topbar opens the
-// shared chat's panel, docked beside the screen from 768 px (pushing it) and over a veil on a phone; its empty
-// conversation says the panel's sentence with three shortcuts; a read the model asks for runs alone and the answer
-// names the account's business; a write stops at its card, which asks to type the word, and a «Cancel» changes
-// nothing; the account's month (2 messages in this run, panel/project.ts) ends with the allowance spent and no
-// «Upgrade plan». In Spanish and in English, at 390, 834 and 1440 (screenshots under `.artifacts/panel/`). Signed out,
-// the panel sends to the sign-in and nobody sees the assistant; a session that ends in the middle of the conversation
-// asks to sign in again. The panel closes with ×, Escape, the veil or its own button, and the device remembers it open.
-// The model is assistant-provider.ts, a real HTTP server on 127.0.0.1 that speaks OpenAI's API, set to answer by
-// assistant_seed.py «panel» (with `e2e-assistant-owner`, an account like any other with one business): no test reaches
-// a real provider and no real key is ever typed.
+// The panel's assistant (assistant/WORKBOOK.md, ASSISTANT-F25 and F26), in a browser against the panel's own Django:
+// the sparkles «Assistant» at the end of the topbar opens the shared chat's panel, docked beside the screen from 768 px
+// (pushing it) and over a veil on a phone; its empty conversation says the panel's sentence with three shortcuts; a
+// read the model asks for runs alone and the answer names the account's business; a write stops at its card, which asks
+// to type the word, and a «Cancel» changes nothing; the account's month (2 messages in this run, panel/project.ts) ends
+// with the allowance spent and no «Upgrade plan». In Spanish and in English, at 390, 834 and 1440 (screenshots under
+// `.artifacts/panel/`). Signed out, the panel sends to the sign-in and nobody sees the assistant; a session that ends
+// in the middle of the conversation asks to sign in again. The panel closes with ×, Escape, the veil or its own button,
+// and the device remembers it open. The model is assistant-provider.ts, a real HTTP server on 127.0.0.1 that speaks
+// OpenAI's API, set to answer by assistant_seed.py «panel» (with `e2e-assistant-owner`, an account like any other with
+// one business): no test reaches a real provider and no real key is ever typed.
 // flow: ASSISTANT-F25 — the account asks the panel's assistant: reads alone, writes after the card.
 // flow: ASSISTANT-F26 — the account's messages of the month, spent without a plan to upgrade.
 // flow: BILLING-F13 — cancelling the plan: its card first says what Billing's dialog says (seed `paying`, no Stripe).
@@ -190,7 +189,7 @@ for (const language of ['es', 'en'] as const) {
     await expect(card).toBeHidden();
     await expect(page.getByTestId('assistant-bubble-assistant').last()).toContainText(words.notCreated);
     await expect(page.getByTestId('assistant-receipt').last()).toHaveText(words.receipt);
-    // Saying it did not create it is no claim of a change (ui#47): no «the assistant said it made a change» under it.
+    // Saying it did not create it is no claim of a change: no «the assistant said it made a change» under it.
     await expect(page.getByTestId('assistant-notice-claimed_change')).toHaveCount(0);
     const listed = (await (await page.request.get('/api/hubs/businesses')).json()) as { rows: { name: string }[] };
     expect(listed.rows.map((row) => row.name)).toEqual([BUSINESS]);

@@ -12,7 +12,7 @@ from django.db import connections
 @pytest.fixture(params=["missing", "not_a_certificate"])
 def unreadable_ca(request, tmp_path, monkeypatch):
     """The server's ``SSL_CERT_FILE`` naming a file that is not there (the e2e stack of the Hub starts the SaaS
-    before its CA exists, hub#415), or one that holds no certificate: ``httpx`` reads it as each client is made,
+    before its CA exists), or one that holds no certificate: ``httpx`` reads it as each client is made,
     before it connects, even to an ``http://`` address."""
     path = tmp_path / "ca" / "server.pem"
     path.parent.mkdir()

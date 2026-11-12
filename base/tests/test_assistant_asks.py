@@ -1,4 +1,4 @@
-"""Layer 1 of the assistant's QA (docs plan 2026-10-31, the assistant's knowledge and QA, §1.4 and §4 T2): what a
+"""The assistant's QA without the model: what a
 person would type to the panel's assistant to ask for each tool (its ``asks``, ``live.assistant_qa``) reaches that
 tool among the first ten a turn offers. Each phrase goes through the selection of a turn as the turn makes it: the
 real catalogue of the person (``base.assistant.catalog`` over the context ``base.operations`` builds from the
@@ -7,11 +7,11 @@ asks of an ``ALWAYS`` tool are ranked without it, so they reach it on their own 
 
 How far the asks reach their tool on the other asks' words (``own_asks=False``: as a person's new phrase would) is
 printed as a warning per app and language (``AsksReach``), information only; the phrases that reach so only through
-what ``live`` reads since live#22 or the panel's words (``REACH_ON_OTHERS``) must.
+what ``live`` reads of a question or the panel's words (``REACH_ON_OTHERS``) must.
 
 The panel has one role, ``account``: who may act on a business is decided inside each operation, so an owner and an
-employee of a business hold the same tools (one regression test says so). What changes a catalogue is where the panel is used: the app's account
-surface sells nothing (PLAN-SAAS §3.6 point 6), so the store's tools are not in it.
+employee of a business hold the same tools (one regression test says so). What changes a catalogue is where the panel
+is used: the app's account surface sells nothing, so the store's tools are not in it.
 """
 
 import warnings
@@ -33,9 +33,9 @@ LANGUAGES = ("en", "es")
 SURFACES = {"web": {}, "app": {"base.surface": "account"}}
 #: The tools of the store, offered on the web only.
 SOLD = ("billing.plan.cancel", "billing.plan.keep", "billing.store.catalog", "billing.promo.check", "apps.app.list")
-#: Asks that reach their tool on the other asks' words too only because of what ``live`` reads since live#22 or of
-#: what the panel passes a turn: its words (``base.assistant.SYNONYMS``: a person's own, other, new or old «tienda»
-#: and a «shop» are a business) and its how-to search (``HOWTO``). The first ten were kept out of the asks until then.
+#: Asks that reach their tool on the other asks' words too only because ``live`` reads a question's form, its pronouns
+#: and the names of other apps, or because of what the panel passes a turn: its words (``base.assistant.SYNONYMS``: a
+#: person's own, other, new or old «tienda» and a «shop» are a business) and its how-to search (``HOWTO``).
 REACH_ON_OTHERS = (
     ("accounts.preferences.update", "en", "turn off the alerts from my businesses"),
     ("accounts.preferences.update", "es", "no quiero recibir avisos de los negocios"),

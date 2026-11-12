@@ -1,4 +1,4 @@
-"""The account surface (PLAN-SAAS §3.6 point 6): ``?surface=account``, sticky in the session.
+"""The account surface: ``?surface=account``, sticky in the session.
 
 The app opens the account in the system browser with ``?surface=account``: there the panel paints
 nothing that sells. The query does not survive the sign-in's redirects, so the server keeps the

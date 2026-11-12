@@ -1,10 +1,10 @@
-// The Store (`/dashboard/store/:tab`, plan 2026-10-13 L2-D; mockups `store.html`) in Chrome, against the panel's own
-// Django (project.ts) and the rows of store_seed.py. Stripe cannot run here: no keys, no network to it. The
-// spec plays Stripe at the browser's boundary with fixtures.ts — its Stripe.js (`playStripe`, which records the
-// publishable key and the client secret and mounts a placeholder where the Embedded Checkout would be) and the
-// answers of the operations that call Stripe (`answerCheckoutStart`; `billing.checkout.confirm` and
-// `billing.module.keep` here) — so it proves the page up to the `client_secret` request and the modal's mount, not
-// Stripe's own form, the webhook nor a real charge (`store-checkout.spec.ts` with `stripe listen` does, «Hecho L2»).
+// The Store (`/dashboard/store/:tab`) in Chrome, against the panel's own Django (project.ts) and the rows of
+// store_seed.py. Stripe cannot run here: no keys, no network to it. The spec plays Stripe at the browser's boundary
+// with fixtures.ts — its Stripe.js (`playStripe`, which records the publishable key and the client secret and
+// mounts a placeholder where the Embedded Checkout would be) and the answers of the operations that call Stripe
+// (`answerCheckoutStart`; `billing.checkout.confirm` and `billing.module.keep` here) — so it proves the page up to
+// the `client_secret` request and the modal's mount, not Stripe's own form, the webhook nor a real charge
+// (`store-checkout.spec.ts` with `stripe listen` does).
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -74,9 +74,9 @@ test.describe('store', () => {
     expect(errors).toEqual([]);
   });
 
-  // saas#344 (BILLING-F09, S-04 of the shell): the notice of what was paid for sits above the business's section tabbar,
-  // as every notice of the panel does, at the three sizes of the issue. It is asked while the payment dialog closes over
-  // the business's page: where it goes is the bar of the screen on view when it shows, not of the one under the dialog.
+  // saas#344 (BILLING-F09): the notice of what was paid for sits above the business's section tabbar, as every notice
+  // of the panel does, at the three sizes. It is asked while the payment dialog closes over the business's page:
+  // where it goes is the bar of the screen on view when it shows, not of the one under the dialog.
   test('back from paying a plan, its notice sits above the business’s section tabbar, never over it (saas#344)', async ({ page }) => {
     const errors = watchPageErrors(page);
     await playStripe(page);
@@ -170,13 +170,13 @@ test.describe('store', () => {
     const stripe = watchStripeRequests(page);
     await page.goto('/dashboard/store/plans?surface=account');
     const notice = page.getByTestId('store-in-app');
-    // Already in the browser: why nothing is bought here, not «go to erplora.com in your browser» (audit 2 S-09).
+    // Already in the browser: why nothing is bought here, not «go to erplora.com in your browser».
     await expect(notice).toContainText('Nothing is bought from here');
     await expect(notice).toContainText('This account was opened from the app, and the app does not sell');
     await expect(page.getByTestId('plan-starter')).toHaveCount(0);
     expect(await page.locator('ion-router-outlet').innerText()).not.toMatch(/€/);
     await page.setViewportSize({ width: 390, height: 844 });
-    // flow: ninguno — FIX tests/e2e. Taken before a frame at the new size, it repeated the top at its bottom.
+    // flow: none — test tooling. Taken before a frame at the new size, it repeated the top at its bottom.
     await settled(page);
     const png = await page.screenshot({ path: join(SHOTS_DIR, 'store-app-390.png') });
     expect(await repeatedTop(page, png), 'store-app-390.png repeats the top of the page at its bottom').toBe(0);
@@ -193,7 +193,7 @@ test.describe('store', () => {
     expect(stripe).toEqual([]);
   });
 
-  // flow: ninguno — FIX tests/e2e. Resized under the spec, the Store is shot as painted at each size: a capture
+  // flow: none — test tooling. Resized under the spec, the Store is shot as painted at each size: a capture
   // taken before a frame at the new size repeated the top of the page at its bottom (87 rows, 3 in 6 at 390 px).
   test('a screenshot right after a resize is the Store as painted, never its top repeated at the bottom', async ({ page }) => {
     const bakery = await businessIdOf(page.request, 'Panadería López');

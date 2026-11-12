@@ -1,7 +1,7 @@
 // @vitest-environment node
-// The helpers of the assistant's QA battery with the real model (panel/assistant-battery.spec.ts, plan
-// 2026-10-31-qa-asistente block A and C35/C36/C38): the turn's frames as the panel's Django streams them, what each
-// question showed, its automatic verdict and the report the supervising chat reads.
+// The helpers of the assistant's QA battery with the real model (panel/assistant-battery.spec.ts; block A and the
+// checks C35, C36 and C38): the turn's frames as the panel's Django streams them, what each question showed, its
+// automatic verdict and the report a reviewer reads.
 import { describe, expect, it } from 'vitest';
 
 import {

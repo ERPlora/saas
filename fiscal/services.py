@@ -1,12 +1,10 @@
-"""Commands of fiscal: the Hub sends a business's authorisation, the staff decide on it (plan 2026-10-15,
-«Diseño en el SaaS»; PLAN-SAAS §4, round 2026-10-15).
+"""Commands of fiscal: the Hub sends a business's authorisation, the staff decide on it.
 
-Ported in behaviour from ERPlora/saas ``apps/dashboard/fiscal/services/representation_grant.py``
-(origin/develop): an upload is not an authority, it waits for a person (``submitted``); a newer upload replaces
-the one still waiting (``returned`` with ``SUPERSEDED``) and never the one in force; only a waiting one is
-approved or returned, and returning needs a reason the customer can act on; approving replaces the approval in
-force. New here: the staff may withdraw an approval (with a reason), and each step is keyed by the business,
-whose snapshot carries the outcome to the Hub (``hubs.queries.hub_snapshot``, block ``verifactu``).
+An upload is not an authority, it waits for a person (``submitted``); a newer upload replaces the one still
+waiting (``returned`` with ``SUPERSEDED``) and never the one in force; only a waiting one is approved or
+returned, and returning needs a reason the customer can act on; approving replaces the approval in force. The
+staff may also withdraw an approval (with a reason), and each step is keyed by the business, whose snapshot
+carries the outcome to the Hub (``hubs.queries.hub_snapshot``, block ``verifactu``).
 
 Every step bumps the business's ``state_version`` in its transaction (``hubs.services.bump_state``) and pushes
 the snapshot once it commits (``push_after_commit``; ``reconcile_hub_states`` retries it while the Hub is
@@ -129,7 +127,7 @@ def representation_submit(ctx: OperationContext, data: RepresentationSubmitIn) -
 
 def _checked(data: RepresentationSubmitIn) -> dict[str, Any]:
     """The row's fields from ``data`` (tax ids normalised, documents encrypted), or ``InvalidPayload`` naming
-    every broken rule, with the first one's code (the old product's table, ``GrantValidationError``)."""
+    every broken rule, with the first one's code."""
     problems: list[tuple[str, str, str]] = []  # (field, code, message)
     taxpayer = normalise_nif(data.taxpayer_tax_id)
     if not is_spanish_tax_id(taxpayer):

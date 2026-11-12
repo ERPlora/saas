@@ -1,5 +1,5 @@
 // «Read aloud» of the panel's assistant (assistant/WORKBOOK.md, ASSISTANT-F22), in a browser against the panel's own Django.
-// erplora.com has no voice of its own (PLAN-SAAS round 2026-11-04c): the page says so (`spa-config.assistantSpeech`,
+// erplora.com has no voice of its own: the page says so (`spa-config.assistantSpeech`,
 // base/spa.py), so the chat offers no choice of voice and reads each answer in the device's, with no request to
 // `/api/assistant/speak`. A page told otherwise (the flag turned on at the edge, everything behind it real) asks the
 // server, whose door answers 503 `assistant.speech_unavailable`, and the device reads it, with no error on the page.

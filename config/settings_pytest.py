@@ -2,7 +2,7 @@
 
 ``config.settings`` keeps ``DEBUG`` off unless the environment turns it on, and pytest-django loads
 the settings before any conftest runs, so the switch is set here, before they are read. The suite
-then runs whether or not ``saas-next/.env`` exists; the production values are tested in a fresh
+then runs whether or not the repo's ``.env`` exists; the production values are tested in a fresh
 process (``config/tests/test_settings.py``). Vite's default port too, whatever the shell exports or
 ``.env`` says (two SaaS at once, README; the environment wins over ``.env`` in python-decouple):
 ``VITE_DEV_PORT`` is tested in a fresh process as well. reCAPTCHA is off (``RECAPTCHA_ENABLED``), whatever ``.env``

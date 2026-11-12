@@ -1,5 +1,5 @@
-"""ASSISTANT-F25 · The panel's words for the writes of its assistant (``assistant/frontend/options.ts``, plan
-2026-10-30-asistente-saas §6): the card and the receipt of a write name it by its verb, in English and in Spanish.
+"""ASSISTANT-F25 · The panel's words for the writes of its assistant (``assistant/frontend/options.ts``): the card and
+the receipt of a write name it by its verb, in English and in Spanish.
 
 The catalogue of the entry (``frontend/locale/<lang>.json``, ``saas.assistant.card``) has one verb per write the
 assistant of an account may run (``operations.<app>.<entity>.<action>``) and none for one it does not run, and a verb

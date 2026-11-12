@@ -1,6 +1,6 @@
 // The SaaS's typeface: IBM Plex, as the template pages had it (`templates/partials/erplora_fonts.html`),
 // from the same files vendored under static/ (the CSP admits no CDN). Vite bundles the woff2 files
-// the @font-face rules name. The Hub ships no web font (packages/ui variables.css, hub#1166): the
+// the @font-face rules name. The Hub ships no web font (packages/ui variables.css): the
 // SaaS sets Ionic's font family itself, and only next to the @font-face that serves it.
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';

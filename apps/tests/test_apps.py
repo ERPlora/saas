@@ -1,4 +1,4 @@
-"""apps is the platform app of the app catalog (round 16, PLAN §21.1 point 10, spec decision 18)."""
+"""apps is the platform app of the app catalog."""
 
 from pathlib import Path
 

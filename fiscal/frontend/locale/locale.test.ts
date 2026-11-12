@@ -1,8 +1,7 @@
 // The texts of fiscal in the panel (the authorisation for ERPlora to file a business's invoices, on its
-// Summary): English source + Spanish (PLAN §5), kept by hand next to the components until Django's
-// catalogues are exported to JSON. The guard is the shape, as the hubs catalogue's: one root (`fiscal`),
-// the same keys in both languages, nothing empty, the same placeholders and plural forms, and every key
-// a component asks for exists.
+// Summary): English source + Spanish, kept by hand next to the components. The guard is the shape, as the
+// hubs catalogue's: one root (`fiscal`), the same keys in both languages, nothing empty, the same
+// placeholders and plural forms, and every key a component asks for exists.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';

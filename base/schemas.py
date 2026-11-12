@@ -1,5 +1,5 @@
 """Schemas of base's operations. ``SessionMeOut`` mirrors ``SessionMe`` of packages/ui (shell/session.ts)
-and hub-next's: one shell for both SPAs."""
+and the Hub's: one shell for both SPAs."""
 
 from typing import Any, Literal
 
@@ -30,7 +30,7 @@ class MenuItem(Schema):
     label: str
     icon: str
     # The shell's own name (``SessionMenuItem.webOnly``): the entry sells, so the app surfaces leave
-    # it out (PLAN-SAAS §3.6 point 6).
+    # it out.
     webOnly: bool
 
 
@@ -66,7 +66,7 @@ class SessionMeOut(Schema):
     account_language: str | None
 
 
-# --- The panel's assistant (PLAN-SAAS §23; the Hub's ``base/schemas.py``, the same contract) -----------------------
+# --- The panel's assistant (the Hub's ``base/schemas.py``, the same contract) --------------------------------------
 
 
 class AssistantCallIn(Schema):

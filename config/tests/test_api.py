@@ -45,7 +45,7 @@ def test_every_route_is_bound_to_its_operation():
     assert {"base.session.me", "accounts.hub.list"} <= operation_ids(api)
 
 
-# --- Mounting the routers of the apps (as hub-next does) -----------------------------------------
+# --- Mounting the routers of the apps (as the Hub does) ------------------------------------------
 # mount_app_routers itself lives in live.ninja and is tested there (packages/live/tests/test_ninja.py).
 
 
@@ -54,16 +54,16 @@ def test_accounts_is_an_app_whose_router_the_api_mounts():
 
 
 def test_live_mount_app_routers_mounts_base_and_accounts():
-    """Platform LiveAppConfigs (round 15, PLAN §20) with an api.py, mounted in INSTALLED_APPS order."""
+    """Platform LiveAppConfigs with an api.py, mounted in INSTALLED_APPS order."""
     assert mount_app_routers(build_api(urls_namespace="config-test-mount")) == [
         "base",
         "accounts",
-        # The app catalog (round 16, PLAN §21): before hubs, which reads it.
+        # The app catalog: before hubs, which reads it.
         "apps",
         "hubs",
-        # The EU VAT engine (lot L2-A): POST /api/billing/vat-check, GET /api/billing/tax-preview.
+        # The EU VAT engine: POST /api/billing/vat-check, GET /api/billing/tax-preview.
         "billing",
-        # The signed authorisation of a business (plan 2026-10-15): GET /api/fiscal/representation.
+        # The signed authorisation of a business: GET /api/fiscal/representation.
         "fiscal",
         # The public web: GET /api/v1/app/release/ (public.app.release).
         "public",
@@ -129,7 +129,7 @@ def test_no_object_of_the_openapi_document_repeats_a_key(client):
 @pytest.mark.django_db
 def test_the_docs_page_carries_the_nonce(client, django_user_model):
     """ninja's own page has scripts without the CSP nonce (blank under 'strict-dynamic'): ``/api/docs`` is ours
-    (``accounts.api_docs``, ACCOUNTS-F34), every script with the response's nonce."""
+    (``accounts.api_docs``), every script with the response's nonce."""
     client.force_login(django_user_model.objects.create_user(email="docs@example.com", password="x"))
 
     response = client.get("/api/docs", HTTP_HOST=HOST)

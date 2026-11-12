@@ -1,8 +1,7 @@
-"""The base app of saas-next is the platform: a LiveAppConfig of kind "platform", always on, never a module.
+"""The base app of the SaaS is the platform: a LiveAppConfig of kind "platform", always on, never a module.
 
-Round 15 (PLAN §20) supersedes "base is a plain AppConfig, not a LiveAppConfig": every app of ours
-extends LiveAppConfig so the API mounts its router and the live checks see it, and ``kind`` tells
-the platform from the modules a hub turns on and off (saas-next has no modules).
+Every app of ours extends LiveAppConfig so the API mounts its router and the live checks see it, and ``kind`` tells
+the platform from the modules a hub turns on and off (the SaaS has no modules).
 """
 
 from django.apps import apps

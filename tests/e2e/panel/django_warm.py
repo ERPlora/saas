@@ -2,7 +2,7 @@
 Django, so no test pays a Django boot nor blocks the process that drives it (``djangoPrintWarm`` of ``fixtures.ts``;
 the recipe of saas#328's ``billing_stripe_played.py serve``).
 
-From saas-next/, against the database of the run (development only, refused without ``DEBUG``):
+From the repo, against the database of the run (development only, refused without ``DEBUG``):
 ``uv run python tests/e2e/panel/django_warm.py``. Django starts once, says ``{"ready": true}``, and then answers each
 JSON line it reads on its stdin with one JSON line, in order, until its stdin ends:
 

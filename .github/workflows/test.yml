@@ -6,8 +6,7 @@ name: test
 # (e2e.yml: the spec of the assistant's doors and the e2e specs the branch changes; every spec runs
 # every night, nightly.yml). Called by deploy.yml (pushes to main and pre) and ci.yml (every
 # other branch) as the job `test`: the job `test` below waits for the four, and its check,
-# `test / test`, is the one main and pre require
-# (plan 2026-10-14-entorno-pre, §7.5).
+# `test / test`, is the one main and pre require.
 
 on:
   workflow_call:

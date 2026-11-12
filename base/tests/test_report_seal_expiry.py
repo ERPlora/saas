@@ -79,7 +79,7 @@ def published(days: int) -> dict:
 
 @pytest.fixture(autouse=True)
 def empty_slots(settings):
-    """Both slots empty and the platform's region, whatever saas-next/.env says."""
+    """Both slots empty and the platform's region, whatever the local .env says."""
     for name in SLOTS:
         setattr(settings, name, "")
     settings.AWS_REGION = "eu-west-1"

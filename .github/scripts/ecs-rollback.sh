@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Puts the saas's services of one environment, in that environment's own ECS cluster (prod: cluster
 # erplora-prod, services saas and saas-worker, families erplora-prod-{saas,saas-worker}; pre: cluster
-# erplora-pre, services saas-pre and saas-worker-pre, families erplora-pre-{saas,saas-worker}; plan
-# 2026-10-14-entorno-pre) back on the ACTIVE revision right before the one each PRIMARY deployment
-# runs and records that revision's image tag in /erplora/<ENVIRONMENT>/saas/image_tag (aws-next
-# README, "Imagen"). saas-worker (saas#305) is created by ERPlora/aws (aws#59): while its family does
+# erplora-pre, services saas-pre and saas-worker-pre, families erplora-pre-{saas,saas-worker}) back on
+# the ACTIVE revision right before the one each PRIMARY deployment runs and records that revision's
+# image tag in /erplora/<ENVIRONMENT>/saas/image_tag (ERPlora/aws README, "Imagen"). saas-worker is
+# created by ERPlora/aws once an image with run_worker is out: while its family does
 # not exist the rollback goes on without it and says so (::warning::); any other error looking for it
 # fails before anything changes. The worker never blocks the rollback of saas: without an earlier
 # revision (the first rollback after the deploy that brought it) or with one of another tag than
@@ -22,7 +22,7 @@
 #      ROLLOUT_TIMEOUT_SECONDS fails too;
 #   3. records the tag only then, so a failed rollback leaves the parameter as it was.
 # Migrations are NOT undone: the previous code must work on the current schema (expand/contract).
-# Scheduled saas tasks run the latest ACTIVE saas-cron revision (aws-next scheduler.tf), so they
+# Scheduled saas tasks run the latest ACTIVE saas-cron revision (ERPlora/aws scheduler.tf), so they
 # keep the newer image until the next deploy; to go back everywhere, deploy the previous release.
 # The saas-worker service goes back with saas, so its loop runs the same code as the web.
 #
@@ -63,7 +63,7 @@ suffix=""
 if [ "$ENVIRONMENT" = pre ]; then
   suffix=-pre
 fi
-# Services that may not exist yet (saas-worker until aws#59 is applied); a family prefix also lists
+# Services that may not exist yet (saas-worker until ERPlora/aws creates it); a family prefix also lists
 # longer families: only a revision of <name>'s own family counts.
 not_yet=(saas-worker)
 # The families of not_yet that exist: they never block the rollback of saas.
@@ -84,7 +84,7 @@ for name in "${not_yet[@]}"; do
     families+=("$name")
     optional+=("$name")
   else
-    echo "::warning::$family does not exist yet (aws#59 not applied): skipped"
+    echo "::warning::$family does not exist yet: skipped"
   fi
 done
 repository="erplora/$PROJECT$suffix"

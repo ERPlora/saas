@@ -1,5 +1,5 @@
 // flow: BILLING-F11 BILLING-F14 HUBS-F32 HUBS-F34
-// A paying business moves to a cheaper plan (PLAN-SAAS §31), on its screens at the three sizes, against the panel's own
+// A paying business moves to a cheaper plan, on its screens at the three sizes, against the panel's own
 // Django and the rows of billing_seed.py: the Store says what it charges today (nothing) and when it changes, Billing ›
 // Subscriptions says it too, «Keep the plan» undoes it from either, and when the paid period ends the plan arrives and
 // the Hub takes its new limits. The panel's server has no Stripe here, so the routes that call it run in a process of

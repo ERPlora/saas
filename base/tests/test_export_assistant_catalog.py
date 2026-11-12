@@ -1,5 +1,5 @@
 """``manage.py export_assistant_catalog``: the panel assistant's catalogue of a role, as JSON, for the QA with the real
-model (layer 2, docs plan 2026-10-31 §1.5): the same tools a turn of that role offers, each with its asks in the
+model: the same tools a turn of that role offers, each with its asks in the
 language asked (``live.assistant_qa.export_catalog``)."""
 
 import io

@@ -1,9 +1,8 @@
-// Account (`/dashboard/account/:tab`, round 17: PLAN-SAAS §3.6 point 1; mockups `account.html`) in Ioan's Chrome, the «Hecho
-// L3» flows of docs/plans/2026-10-13-panel-saas-unificado.md that L3-B covers: editing the profile; the theme and
-// the language, kept after a reload; the password, changed with the current one; the sessions (a second browser signed in as the same account, «Close other
-// sessions» ends it here and asks the Hub to end it in the businesses); an API key created after «Confirm it's you»
-// with the password, opening the API once (`X-Api-Key`) and refused after «Revoke»; and the change of the email
-// with the code read from the mail. Each tab at the three viewports: account-tabs.spec.ts.
+// Account (`/dashboard/account/:tab`) in Chrome: editing the profile; the theme and the language, kept after a
+// reload; the password, changed with the current one; the sessions (a second browser signed in as the same account,
+// «Close other sessions» ends it here and asks the Hub to end it in the businesses); an API key created after
+// «Confirm it's you» with the password, opening the API once (`X-Api-Key`) and refused after «Revoke»; and the change
+// of the email with the code read from the mail. Each tab at the three viewports: account-tabs.spec.ts.
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -77,7 +76,7 @@ test('editing the profile keeps the names after a reload', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-// flow: ninguno — FIX accounts
+// flow: none — regression test of the Account page
 test('opening the profile with no first name says nothing; leaving the empty field says it', async ({ page }) => {
   const errors = watchPageErrors(page);
   // e2e-jorge: the seeded account with no names yet. Nothing is saved: the account stays as seeded.
@@ -105,7 +104,7 @@ test('opening the profile with no first name says nothing; leaving the empty fie
   expect(errors).toEqual([]);
 });
 
-// flow: ninguno — FIX accounts
+// flow: none — regression test of the Account page
 test('changing only the last name with no first name says why «Save changes» stays off', async ({ page }) => {
   const errors = watchPageErrors(page);
   // e2e-jorge: no names yet. Nothing is saved: the account stays as seeded.
@@ -164,7 +163,7 @@ test('«Close other sessions» ends the other browser here and in the businesses
     await expect(rows).toHaveCount(1);
     const me = await other.request.get('/api/me');
     expect(((await me.json()) as { user: unknown }).user).toBeNull();
-    // The Hub is asked to end the account's sessions in its businesses too (PLAN-SAAS §2.1).
+    // The Hub is asked to end the account's sessions in its businesses too.
     await expect.poll(() => hub.calls.filter((call) => call.path === '/internal/sessions/revoke' && call.signed).length).toBeGreaterThan(0);
   } finally {
     await hub.close();
@@ -202,7 +201,7 @@ async function moreSessions(email: string, count: number): Promise<number> {
   return Number(made);
 }
 
-// flow: ninguno — FIX accounts (FIX-SAAS-SESSIONS-RESULT-TOO-BIG): the list said «The result exceeds 262144 bytes».
+// flow: none — regression test: with too many sessions the list said «The result exceeds 262144 bytes».
 test('with more sessions than a page, «Active sessions» loads, this one first, and pages', async ({ page }) => {
   const errors = watchPageErrors(page);
   const account = panelAccount('carlos');
@@ -311,8 +310,8 @@ async function askReauthOverNewKey(page: Page): Promise<void> {
 test('ACCOUNTS-F31 · «New key» with an old sign-in asks «Confirm it’s you» in a dialog and the page stays, at 390, 834 and 1440 px', async ({
   page,
 }) => {
-  // The server answers the command with a 401 that asks for a recent sign-in: the panel asks for it over the page,
-  // never reloads it (the SDK took every 401 for a session that ended, FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX).
+  // The server answers the command with a 401 that asks for a recent sign-in: the panel asks for it over the page and
+  // never reloads it, as it would for a session that ended.
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('one'));
   for (const size of VIEWPORTS) {
@@ -338,9 +337,9 @@ test('ACCOUNTS-F31 · «New key» with an old sign-in asks «Confirm it’s you�
 test('ACCOUNTS-F31 · «Confirm it’s you» over «New key» dims it and keeps its shadow, light and dark, at 390, 768 and 1280 px', async ({
   page,
 }) => {
-  // Ionic drops the backdrop and the shadow of a modal opened over another one (its core.css). FormModal gives both back
-  // (ERPlora/ui#112), 0.4 in light and 0.6 in dark, and it is the only rule: one of this dialog's own said 0.4 in dark
-  // too, and the bundle's order chose (saas#379). Read in the browser, with the bundle's stylesheets in their order.
+  // Ionic drops the backdrop and the shadow of a modal opened over another one (its core.css). FormModal gives both
+  // back, 0.4 in light and 0.6 in dark, and it is the only rule: one of this dialog's own said 0.4 in dark too, and the
+  // bundle's order chose (saas#379). Read in the browser, with the bundle's stylesheets in their order.
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('one'));
   const sizes = [

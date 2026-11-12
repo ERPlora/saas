@@ -1,4 +1,4 @@
-"""Rows of the catalog for the tests, as the Hub's ``register_apps`` writes them (spec §3.1).
+"""Rows of the catalog for the tests, as the Hub's ``register_apps`` writes them.
 
 The tests are the only code outside ``apps/{models,queries,admin,checks}.py`` that names ``App`` and
 ``AppDoc`` (``test_lint.py``): the SaaS never writes them, the Hub does.
@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from apps.models import App, AppDoc
 
-#: ionicons' cube-outline, as the Hub bakes it (spec §4.6).
+#: ionicons' cube-outline, as the Hub bakes it.
 CUBE_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="ionicon">'
     '<path d="m69 153.99 187 110 187-110M256 463.99v-200" fill="none" stroke="currentColor" '

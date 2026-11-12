@@ -1,4 +1,4 @@
-"""Inputs of the catalog's reads (spec §5.1): every filter optional, and a ``category`` or a
+"""Inputs of the catalog's reads: every filter optional, and a ``category`` or a
 ``premium`` that is not understood is ignored, never a 422: the store's links carry them in the
 query string (``/apps/?category=…&premium=0|1``) and an old or mistyped link still lists apps."""
 
@@ -64,7 +64,7 @@ def test_an_empty_vertical_is_none():
 @pytest.mark.parametrize("field", ["q", "vertical"])
 @pytest.mark.parametrize("value", ["\x00", "\x00\x01\x1f", " \t\n\r "])
 def test_a_filter_of_only_control_characters_is_none(field, value):
-    """psycopg refuses a NUL in a query parameter (``DataError``): ``?q=%00`` was a 500 on a public
+    """psycopg refuses a NUL in a query parameter (``DataError``): ``?q=%00`` would be a 500 on a public
     door. Control characters never belong in a search or a vertical id, so they are dropped."""
     assert getattr(AppListIn(**{field: value}), field) is None
 

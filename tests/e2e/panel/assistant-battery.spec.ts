@@ -1,18 +1,18 @@
-// The assistant's QA battery with the REAL model and the REAL documentation index (plan
-// docs/plans/2026-10-31-qa-asistente.md of erplora-next: block A, the panel's side of C35 and C36, and C38), in the
-// panel as an account asks it. Only with `QA_REAL_PROVIDER=1` (never in the CI: `realProviderMode` refuses on GitHub
-// Actions), on a stack of its own (`E2E_SAAS_PORT`, its own e2e database): `assistant_seed.py real` keeps the real
-// providers with the keys of `QA_QWEN_API_KEY` and `QA_OPENAI_API_KEY` (read there, never here), the panel's Django
-// sends the embeddings to the real «openai» and gives production's 30 messages (panel/project.ts), and `index_docs`
-// keeps the documentation the search reads. Recipe: tests/e2e/README.md, «El asistente con el modelo de verdad».
+// The assistant's QA battery with the REAL model and the REAL documentation index (block A, the panel's side of C35 and
+// C36, and C38), in the panel as an account asks it. Only with `QA_REAL_PROVIDER=1` (never in the CI:
+// `realProviderMode` refuses on GitHub Actions), on a stack of its own (`E2E_SAAS_PORT`, its own e2e database):
+// `assistant_seed.py real` keeps the real providers with the keys of `QA_QWEN_API_KEY` and `QA_OPENAI_API_KEY` (read
+// there, never here), the panel's Django sends the embeddings to the real «openai» and gives production's 30 messages
+// (panel/project.ts), and `index_docs` keeps the documentation the search reads. Recipe: tests/e2e/README.md,
+// «El asistente con el modelo de verdad».
 //
 // One test per item, each in a new conversation: the question typed in Spanish, the turn followed to its end (a card
 // of the expected write is confirmed with the word it asks for; any other card is cancelled), then what the panel
 // showed — the answer, the tools that ran (the turn's frames), the card, the excerpts the documentation search
 // returned, the receipts, the notices, the failures, the month's messages — and a screenshot under
 // `.artifacts/qa/`. The automatic verdict (assistant-battery.ts, `verdictOf`) asserts only what is objective; the
-// model's wording is never asserted. Every result goes to `.artifacts/qa/results/<run>/` and the report the supervising
-// chat reads, `.artifacts/qa/assistant-battery-A.md`, is written again after every worker.
+// model's wording is never asserted. Every result goes to `.artifacts/qa/results/<run>/` and the report a reviewer
+// reads, `.artifacts/qa/assistant-battery-A.md`, is written again after every worker.
 // flow: ASSISTANT-F25 — the account asks the panel's assistant: reads alone, writes after the card.
 // flow: ASSISTANT-F26 — the account's messages of the month.
 // flow: ASSISTANT-F27 — the panel's assistant answers how-to questions from ERPlora's documentation.

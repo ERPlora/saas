@@ -1,6 +1,6 @@
 // @vitest-environment node
-// `pnpm qa:probes`: the skeleton of a probe file from the exported catalogue (plan 2026-10-31-asistente-conocimiento-y-qa
-// §1.5 of erplora-next): one probe per sampled tool, its phrase empty, to be written by hand.
+// `pnpm qa:probes`: the skeleton of a probe file from the exported catalogue: one probe per sampled tool, its phrase
+// empty, to be written by hand.
 import { describe, expect, it } from 'vitest';
 
 import type { CatalogTool, Probe } from './assistant-probes';

@@ -94,8 +94,8 @@ describe("the e2e's Django servers", () => {
   });
 });
 
-// With DEBUG off the settings refuse to start without a cache prefix and a Stripe mode (config/settings.py,
-// PLAN-SAAS §43): `runserver` then fell back to Django's own and stopped at `--novite --insecure` (saas#395).
+// With DEBUG off the settings refuse to start without a cache prefix and a Stripe mode (config/settings.py):
+// `runserver` then fell back to Django's own and stopped at `--novite --insecure` (saas#395).
 describe('productionPolicies', () => {
   it("gives the production-like servers of a stack its own cache prefix, Stripe's test mode and an indexable web", () => {
     expect(productionPolicies(stackFrom({}))).toEqual({

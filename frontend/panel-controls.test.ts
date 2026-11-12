@@ -1,5 +1,5 @@
-// The panel's controls (Ioan, 2026-10-14: «it is a SaaS, not only a till»): a clean interface where nothing
-// slides an action sheet up from the bottom and every list fills the page between the topbar and the tabbar.
+// The panel's controls: a clean interface where nothing slides an action sheet up from the bottom and every
+// list fills the page between the topbar and the tabbar.
 // In the shell's `ios` mode an `ion-select` without `interface` opens an action sheet: every select of the
 // panel is a popover (or, with 2–4 visible options, an `ion-segment`), a date picker lives in a popover,
 // and every DataTable fills its page (`fill`, the page with `content-layout="detail-fill"`). A guard over the
@@ -119,7 +119,7 @@ describe('the panel: no action sheet, every list fills its page', () => {
   });
 });
 
-describe('the panel: live data says loading, error or empty truthfully (audit 2026-10-14, R-04 and R-08)', () => {
+describe('the panel: live data says loading, error or empty truthfully', () => {
   it('every component that follows live data reads it through `useLiveState` (never `data ?? []` as «empty»)', () => {
     const offenders = SOURCES.filter((s) => /\buseLive\(/.test(s.source) && !/\buseLiveState\(/.test(s.source)).map((s) => s.file);
     expect(offenders).toEqual([]);

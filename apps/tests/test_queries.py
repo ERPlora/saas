@@ -1,4 +1,4 @@
-"""Reads of apps: the public catalog of the Hub's apps as operations (spec §5.1–§5.3).
+"""Reads of apps: the public catalog of the Hub's apps as operations.
 
 The ninja routes (``test_api.py``), the panel's SPA and the views of ``public/`` call the same
 operations, so the operation itself decides what is listed, in which language and how a bad row
@@ -168,7 +168,7 @@ def test_an_unknown_category_is_listed_without_a_section_and_logged_once(
     catalog, caplog
 ):
     """The Hub went ahead of this SaaS's live.meta: the app is listed after the known sections,
-    without a category, and the category filter never finds it (spec §5.3)."""
+    without a category, and the category filter never finds it."""
     make_app("bookings", name_en="Bookings", category="scheduling")
     make_app("chat", name_en="Chat", category="messaging")
 
@@ -219,8 +219,7 @@ def test_an_unusable_icon_is_replaced_by_the_fallback_and_logged(caplog, icon_sv
 
 
 def test_the_list_reads_every_app_at_once(catalog):
-    """APPS-F01: no read per app (the old catalogue's flat query count): listing costs the same with three
-    apps or thirty."""
+    """APPS-F01: no read per app: listing costs the same with three apps or thirty."""
     with CaptureQueriesContext(connection) as three_apps:
         assert len(listed()) == 3
     for number in range(5):
@@ -233,7 +232,7 @@ def test_the_list_reads_every_app_at_once(catalog):
 
 
 def test_an_empty_catalog_is_an_empty_list():
-    """A new database, before any release of the Hub registered its apps (spec §5.3)."""
+    """A new database, before any release of the Hub registered its apps."""
     assert listed() == []
 
 
@@ -380,7 +379,7 @@ def test_the_documentation_in_english(documented):
 
 @pytest.mark.parametrize("english", [None, ""])
 def test_without_english_the_spanish_one_with_a_fallback(catalog, english):
-    """``en`` missing, or empty because it was retired (spec §4.2): Spanish, never empty."""
+    """``en`` missing, or empty because it was retired: Spanish, never empty."""
     make_doc(catalog["inventory"], "es", markdown="# Almacén\n")
     if english is not None:
         make_doc(catalog["inventory"], "en", markdown=english)
@@ -410,7 +409,7 @@ def test_the_second_read_comes_from_the_cache(documented):
 
 
 def test_html_rendered_by_an_older_renderer_is_never_served(documented):
-    """``render_markdown`` tightened what it lets through (live 387d04f: image paths): the key
+    """``render_markdown`` tightened what it lets through (image paths): the key
     carries the renderer's version, so a day-long entry rendered before the deploy is not reused."""
     markdown = documented.docs.get(lang="es").markdown
     cache.set(f"apps:doc:invoice:es:{source_hash(markdown)}", "<p>stale</p>", 60)
@@ -465,7 +464,7 @@ def test_an_app_without_documentation_is_a_404_of_its_own(catalog):
     assert detail("invoice", "es").has_docs is False
 
 
-# --- apps.app.sitemap: the store's entries of /sitemap.xml (spec §8.2) ---------------------------
+# --- apps.app.sitemap: the store's entries of /sitemap.xml ---------------------------------------
 
 
 def sitemap_entries():
@@ -501,7 +500,7 @@ def test_the_sitemap_dates_an_app_by_its_spanish_documentation(catalog):
 
 
 def test_without_a_spanish_document_the_sitemap_announces_no_documentation(catalog):
-    """An empty Spanish markdown is no document (spec §4.2), and an English one alone is a page
+    """An empty Spanish markdown is no document, and an English one alone is a page
     that answers 404 in Spanish: neither ``/docs/`` is announced, nor dated."""
     make_doc(catalog["invoice"], "es", markdown="")
     make_doc(catalog["inventory"], "en", markdown="# Stock\n")
@@ -563,7 +562,7 @@ def test_the_list_of_documents_is_no_tool_of_the_assistant():
     assert get("apps.doc.list").ai is INTERNAL
 
 
-# --- known_verticals: what BusinessType.clean() checks a vertical against (spec §5.4) -----------
+# --- known_verticals: what BusinessType.clean() checks a vertical against -----------------------
 
 
 def test_known_verticals_is_the_sorted_union_of_every_app(catalog):
@@ -577,7 +576,7 @@ def test_no_app_no_vertical():
 
 class TestCardsOf:
     """``cards_of``: the cards of the apps of some ids, listed or retired, for another app of the SaaS that must
-    name an app it still sells or bills (billing's Store, BILLING-G61, saas#2589); the catalog's own rules
+    name an app it still sells or bills (billing's Store, BILLING-G61); the catalog's own rules
     (language, cleaned icon), never its model."""
 
     def test_it_gives_the_card_of_each_known_id_in_the_language_retired_ones_too(self):

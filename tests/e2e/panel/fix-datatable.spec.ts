@@ -1,13 +1,13 @@
-// flow: FIX-DATATABLE-SAAS
-// The panel's lists after DataTable part 3 (ui#4, 070e74f): the `.panel-fill` height chain, the toolbar of
-// R-14 and the phone's heading come from the shell's theme (`polish.css`, loaded by createShell); the SaaS
-// keeps no sheet of its own (frontend/main.test.ts). Invoices, in Chrome at 390, 834 and 1440 px, against
-// the rows of billing_seed.py: the list fills the page between the topbar and the tabbar, its search and
-// its heading are as before, and its «Filters» popover (InvoiceFilters.vue: the SaaS keeps it,
-// PLAN-MIGRATIONS §13; DataTable's own funnel stays off) still filters. One scroll at every width: the page
-// never scrolls at 834 and 1440 (the rows scroll inside), and on a phone nothing inside the list scrolls (the
-// page does). Screenshots: `FIX-DATATABLE-SAAS-<width>.png` in the artifacts, the viewport as a person sees it
-// (not `fullPage`), so a second scrollbar or a cut list shows, and `-filters` with the popover open.
+// flow: none — regression test of the panel's lists
+// The panel's lists take the `.panel-fill` height chain, the toolbar and the phone's heading from the shell's
+// theme (`polish.css`, loaded by createShell); the SaaS keeps no sheet of its own (frontend/main.test.ts).
+// Invoices, in Chrome at 390, 834 and 1440 px, against the rows of billing_seed.py: the list fills the page
+// between the topbar and the tabbar, its search and its heading stay, and its «Filters» popover
+// (InvoiceFilters.vue: the SaaS keeps its own; DataTable's own funnel stays off) still filters. One scroll at
+// every width: the page never scrolls at 834 and 1440 (the rows scroll inside), and on a phone nothing inside
+// the list scrolls (the page does). Screenshots: `FIX-DATATABLE-SAAS-<width>.png` in the artifacts, the
+// viewport as a person sees it (not `fullPage`), so a second scrollbar or a cut list shows, and `-filters` with
+// the popover open.
 
 import type { Page } from '@playwright/test';
 

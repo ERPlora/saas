@@ -1,7 +1,7 @@
 """What a document of an authorisation may be: a PDF, recognised by its bytes (never a name or a claimed type),
-sent in base64, of ``MAX_DOCUMENT_BYTES`` at most (the contract of plan 2026-10-15).
+sent in base64, of ``MAX_DOCUMENT_BYTES`` at most (the contract with the Hub).
 
-The old product refused a photo of the signed sheet for the same reason: the AEAT is handed a PDF, and a JPEG
+A photo of the signed sheet is refused: the AEAT is handed a PDF, and a JPEG
 discovered when it asks is discovered months after the customer signed. Nothing here reaches the database.
 """
 

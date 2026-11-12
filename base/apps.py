@@ -1,6 +1,6 @@
-"""The platform app of saas-next (Odoo's ``base``, as in hub-next): session, the API root and the SPA.
+"""The platform app of the SaaS (Odoo's ``base``, as in the Hub): session, the API root and the SPA.
 
-A LiveAppConfig of kind "platform" (round 15, PLAN §20): always on, never turned on or off, so it
+A LiveAppConfig of kind "platform": always on, never turned on or off, so it
 declares no module fields (no requires, category, premium or menu of its own). Being a
 LiveAppConfig is what lets the API mount its router (``live.ninja.mount_app_routers``) and the
 live checks see it.

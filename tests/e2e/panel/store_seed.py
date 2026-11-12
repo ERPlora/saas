@@ -1,6 +1,6 @@
 """The account, businesses, apps and modules the Store's spec opens (store.spec.ts).
 
-``uv run python tests/e2e/panel/store_seed.py seed|clear`` from saas-next/, against the local database of
+``uv run python tests/e2e/panel/store_seed.py seed|clear`` from the repo, against the local database of
 ``.env`` (development only: a known password, refused without ``DEBUG``). ``seed`` starts from ``clear``.
 Rows are written with the ORM (nothing is pushed to the Hub, nothing reaches Stripe): the spec plays
 Stripe's part at the browser's boundary (the Embedded Checkout's ``Stripe`` global and the answers of the

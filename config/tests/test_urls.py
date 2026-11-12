@@ -1,4 +1,4 @@
-"""URLconf of saas-next: Django's own prefixes first (allauth's headless API, Google's redirect URI, the jump
+"""URLconf of the SaaS: Django's own prefixes first (allauth's headless API, Google's redirect URI, the jump
 to a hub, the internal redeem, the API, admin, health), then the SPA for every other path."""
 
 import json
@@ -25,7 +25,7 @@ def test_healthz_answers_without_the_database(client):
 @pytest.mark.django_db
 @pytest.mark.usefixtures("spa_manifest")
 def test_the_root_is_the_public_landing_not_the_launcher(client):
-    """Plan §3.c: the landing takes `/` (L7); until then it redirected to `/launch`. The name
+    """The landing takes `/`, not the launcher. The name
     `home` stays the project's way to reverse `/` (the public web's navbar, footer and error pages)."""
     response = client.get("/", HTTP_HOST=HOST)
 
@@ -120,7 +120,7 @@ def test_spa_paths_get_the_shell(client, path):
 def test_django_prefixes_never_get_the_shell(client, path):
     response = client.get(path, HTTP_HOST=HOST)
 
-    # 301: `/marketplace/` moved for good to the store, `/apps/` (decision 19).
+    # 301: `/marketplace/` moved for good to the store, `/apps/`.
     assert response.status_code in (301, 302, 404)
     assert not is_shell(response)
 
@@ -154,7 +154,7 @@ def test_the_built_shell_links_the_vite_build_with_nonces(client):
 
 @pytest.mark.django_db
 def test_the_debug_shell_loads_from_the_saas_vite_dev_server(client, settings):
-    """Port 5174: hub-next's Vite owns 5173 and both run at once in development."""
+    """Port 5174: the Hub's Vite owns 5173 and both run at once in development."""
     settings.DEBUG = True
 
     html = client.get("/launch", HTTP_HOST=HOST).content.decode()
@@ -201,7 +201,7 @@ def test_csp_report(client):
     assert response.status_code == 204
 
 
-# /webhooks/ is Django's (Stripe's single webhook, `/webhooks/stripe/`, PLAN-SAAS §4; lot L2-B): the SPA
+# /webhooks/ is Django's (Stripe's single webhook, `/webhooks/stripe/`): the SPA
 # must never swallow it. Stripe's POST reaches billing's view (an unsigned one is refused, 400), anything
 # else is 405; never the SPA's shell. Any other path under it is a plain 404.
 
@@ -235,8 +235,8 @@ def test_readyz_is_a_django_route():
     assert resolve("/readyz").url_name == "readyz"
 
 
-# ACCOUNTS-G30: the admin of erplora.com says it is ERPlora's (the old SaaS's ADMIN_SITE_HEADER, _TITLE and
-# _INDEX_TITLE), never «Django administration».
+# The admin of erplora.com says it is ERPlora's (its header, its title and its index's title), never «Django
+# administration».
 
 
 @pytest.mark.django_db

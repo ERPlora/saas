@@ -1,5 +1,5 @@
 """/healthz answers before the Host is validated (the ALB probes each task by its IP) and never
-touches the database. Same pattern as hub-next's ``base.health``. /readyz checks the database and
+touches the database. Same pattern as the Hub's ``base.health``. /readyz checks the database and
 keeps its answer for 10 s in the process."""
 
 import logging
@@ -111,7 +111,7 @@ def test_a_test_without_the_database_still_cannot_query_once_the_outage_is_undon
 def test_readyz_is_503_when_no_connection_to_the_database_opens(
     client, monkeypatch, caplog
 ):
-    """An outage: every query of the request fails, the middleware's included (as hub-next's)."""
+    """An outage: every query of the request fails, the middleware's included (as the Hub's)."""
     database_unreachable(monkeypatch)
 
     with caplog.at_level(logging.WARNING, logger="base.health"):

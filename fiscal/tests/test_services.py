@@ -1,11 +1,6 @@
-"""The commands of fiscal (plan 2026-10-15, «Diseño en el SaaS»): the Hub sends an authorisation, the staff
-approve it, return it with a reason or withdraw an approval; every step leaves its trail (the row and an
-``OutboxEvent``), bumps the business's snapshot in its transaction and pushes it after the COMMIT.
-
-Ported in behaviour from ERPlora/saas ``apps/dashboard/fiscal/services/representation_grant.py``
-(origin/develop: ``submit_grant_for_review``, ``approve_grant``, ``reject_grant``, their validation codes and
-``superseded_by_new_upload``), keyed by the business; the withdrawal by the staff is new (the old product only
-revoked from the API).
+"""The commands of fiscal: the Hub sends an authorisation, the staff approve it, return it with a reason or
+withdraw an approval; every step leaves its trail (the row and an ``OutboxEvent``), bumps the business's snapshot
+in its transaction and pushes it after the COMMIT. Every step is keyed by the business.
 """
 
 import base64
@@ -241,7 +236,7 @@ class TestSubmit:
 
 
 class TestTheRulesOfASubmission:
-    """The old product's table (``GrantValidationError``), with the business's codes: each broken rule names
+    """The validation table, with the business's codes: each broken rule names
     its field; the first one is the error's code; nothing is stored and the snapshot does not move."""
 
     @pytest.mark.parametrize(

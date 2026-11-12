@@ -1,7 +1,7 @@
-"""Input and output schemas of the catalog's reads (spec §5.1; OpenAPI and the SPA's typed client).
+"""Input and output schemas of the catalog's reads (OpenAPI and the SPA's typed client).
 
 Every filter is optional and lenient: a ``category`` or a ``premium`` that is not understood is
-ignored (spec §5.1), so an old or mistyped link of the store still lists apps instead of a 422.
+ignored, so an old or mistyped link of the store still lists apps instead of a 422.
 """
 
 from datetime import datetime
@@ -13,7 +13,7 @@ from pydantic import field_validator
 
 #: Longest search the store sends: a name and a summary are at most 80 and 120 characters.
 SEARCH_MAX_LENGTH = 120
-#: Longest vertical id: an app label (spec §3.1).
+#: Longest vertical id: an app label.
 VERTICAL_MAX_LENGTH = 63
 _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
@@ -121,7 +121,7 @@ class AppDocOut(Schema):
 
 
 class AppSitemapEntryOut(Schema):
-    """A listed app's page for ``/sitemap.xml`` (spec §8.2): ``has_docs`` = its ``docs/`` exists in
+    """A listed app's page for ``/sitemap.xml``: ``has_docs`` = its ``docs/`` exists in
     every language; ``updated_at`` = when its Spanish document changed (``None`` without one)."""
 
     id: str

@@ -1,17 +1,16 @@
-// flow: e2e-overflow — FIX of the e2e harness (FIX-HUB-E2E-HORIZONTAL-SCROLL-CHECK-BLIND-TO-ION-CONTENT; the Hub's twin is
-// its tests/e2e/horizontal-overflow.test.ts)
+// flow: none — tooling of the e2e harness (the Hub keeps the same guard in its tests/e2e/horizontal-overflow.test.ts)
 // Every «no horizontal scroll» check of the e2e goes through `horizontalOverflow(page)` (horizontal-overflow.ts), which
 // reads the document and every `ion-content` on screen. A spec that measures the document by hand (`documentElement.
 // scrollWidth` against the window) is blind to a panel screen cut inside `ion-content`: Ionic pins the `body`, so the
 // document never grows. No ratchet: no file of the e2e but horizontal-overflow.ts measures it.
 // Nor through a name given to the root (`const root = document.documentElement; root.scrollWidth`), nor one `ion-content`
 // by hand (its `getScrollElement()`, `.inner-scroll` or `part="scroll"` and their `scrollWidth`): that copy left out the
-// menu and the sheets (seen by the reviewer of hub#393), nor read through `??`, `as`, a `then()` or `window.document`. Nor
+// menu and the sheets, nor read through `??`, `as`, a `then()` or `window.document`. Nor
 // its width destructured (`const { scrollWidth } = document.documentElement`, also nested), the root found by its selector
-// or a locator (`page.locator('html')`), or a measure split over lines (seen by the reviewer of saas#153). Nor its width
+// or a locator (`page.locator('html')`), or a measure split over lines. Nor its width
 // destructured from what a `page.evaluate()` gives back, its call on one line or over several (the root, a scroll box or,
 // run on the root found by a locator, its own parameter: `page.locator('html').evaluate((html) => html)`), nor destructured
-// over lines (`const { scrollWidth } =` and the root below; seen by the reviewer of hub#473 and hub#481). The rules are the
+// over lines (`const { scrollWidth } =` and the root below). The rules are the
 // Hub's, line for line. Its vertical scroll (`scrollTop`, `scrollHeight`) stays free.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

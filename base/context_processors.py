@@ -1,16 +1,16 @@
-"""What every template of saas-next knows about the shell's colour mode.
+"""What every template of the SaaS knows about the shell's colour mode.
 
 ``theme`` is the mode of ``@erplora/ui`` (``packages/ui/src/shell/theme.ts``): ``system``, ``light`` or
 ``dark``, and ``system`` when nothing says otherwise. A signed-in account gets the mode it chose in
 Account → Preferences (``accounts.UserPreferences.theme_mode``, the one the panel paints), so the public
-web and the sign-in pages look like the panel. Anyone else gets the ``theme`` cookie, as ERPlora/saas
-did (``apps/core/context_processors.py``); its legacy ``orange-*`` values, and anything else, fall back
-to ``system``. The templates add ``ion-palette-dark`` for ``dark`` on the server and follow
+web and the sign-in pages look like the panel. Anyone else gets the ``theme`` cookie; its legacy
+``orange-*`` values, and anything else, fall back to ``system``. The templates add ``ion-palette-dark``
+for ``dark`` on the server and follow
 ``prefers-color-scheme`` for ``system``.
 
 TEMPLATES loads this module on every render, so ``accounts`` is reached lazily (``PREFERENCES_OF``,
-inside the function): a top-level import of a symbol that was not on main took the whole site down in
-CI (2026-10-14, hotfix cfc4adb). If it is missing, the account gets the cookie and the log says why.
+inside the function): a top-level import that fails here would take the whole site down. If it is
+missing, the account gets the cookie and the log says why.
 """
 
 import logging

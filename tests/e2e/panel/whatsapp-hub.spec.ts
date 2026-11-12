@@ -1,12 +1,11 @@
-// flow: WHATSAPP-G03, WHATSAPP-G07 — WhatsApp's cross e2e on a REAL Hub (its doors since hub#127): Meta → erplora.com
+// flow: WHATSAPP-G03, WHATSAPP-G07 — WhatsApp's cross e2e on a REAL Hub: Meta → erplora.com
 // → the Hub's «WhatsApp» inbox, nothing played. erplora.com (this checkout) pushes the snapshot of `a` with its
 // `whatsapp` key (door 4) to the Hub, which takes it; then the spec plays only Meta: a customer's message, the owner's
 // reply from the phone app and Meta's «read», each signed as Meta signs its webhook, posted to erplora.com, which
 // hands them to the Hub (doors 1 and 2); the owner sees them arrive in the open inbox without a reload, in three sizes.
-// flow: ninguno propio — desbloquea WHATSAPP_INBOX-F13 (tope), F27 y F28 del Hub
-// (FIX-SAAS-WHATSAPP-E2E-SEED-TEMPLATES-AND-USAGE): the seed's templates (what erplora.com keeps after reading Meta's
-// list) reach the Hub's Settings with Meta's verdict and reason, and with the month at the plan's allowance
-// (`--used`) the Hub says so and «Send» stops.
+// flow: none of its own — it unblocks the Hub's WHATSAPP_INBOX-F13 (the cap), F27 and F28
+// The seed's templates (what erplora.com keeps after reading Meta's list) reach the Hub's Settings with Meta's
+// verdict and reason, and with the month at the plan's allowance (`--used`) the Hub says so and «Send» stops.
 //
 // It needs the Hub's stack and, beside it, a SaaS of this checkout (the CI has no Hub: there it is skipped, and says
 // so). From a Hub checkout (`<port>` = E2E_CROSS_HUB_PORT, e.g. 8440; tests/e2e/README.md of the Hub):
@@ -219,7 +218,7 @@ test('WHATSAPP-G07: a customer’s message, the owner’s reply from the phone a
   }
 });
 
-// flow: ninguno propio — desbloquea WHATSAPP_INBOX-F13 (tope), F27 y F28 del Hub
+// flow: none of its own — it unblocks the Hub's WHATSAPP_INBOX-F13 (the cap), F27 and F28
 test(`${TASK}: the real Hub lists the templates erplora.com keeps and, with the month spent, «Send» stops`, async ({
   page,
 }) => {
@@ -277,7 +276,7 @@ test(`${TASK}: the real Hub lists the templates erplora.com keeps and, with the 
   }
 });
 
-// flow: WHATSAPP-F05 (rechazo por tope del mes)
+// flow: WHATSAPP-F05 (refused at the month's cap)
 const CAP_TASK = 'FIX-SAAS-WHATSAPP-CAP-REFUSAL-DOES-NOT-PUSH-USAGE';
 test(`${CAP_TASK}: WHATSAPP-F05 — a send erplora.com refuses at the cap tells the real Hub the month's usage`, async ({
   page,

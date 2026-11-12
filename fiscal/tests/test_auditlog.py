@@ -1,11 +1,9 @@
-"""ACCOUNTS-F36 · The audit trail of the fiscal documentation (django-auditlog; PLAN-SAAS §1.1: «en los modelos de
-cuenta, cobro y fiscal»).
+"""ACCOUNTS-F36 · The audit trail of the fiscal documentation (django-auditlog).
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/auditlog.py`` (#970): who sent, approved, returned or withdrew a
-business's signed authorisation (Anexo I) and who replaced ERPlora's stamp, with only the logged fields serialized
-(#957). Changed: the old models were the certificate and its password (``VerifactuConfig``) and each record sent to the
-AEAT; here the documents of an authorisation and the stamp are encrypted files that are never copied into the trail
-(``fiscal.crypto`` keeps them out of the clear, and a copy would outlive the row), nor is ``updated_at``.
+Who sent, approved, returned or withdrew a business's signed authorisation (Anexo I) and who replaced ERPlora's
+stamp, with only the logged fields serialized. The documents of an authorisation and the stamp are encrypted files
+that are never copied into the trail (``fiscal.crypto`` keeps them out of the clear, and a copy would outlive the
+row), nor is ``updated_at``.
 """
 
 from datetime import timedelta

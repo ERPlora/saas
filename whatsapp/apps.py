@@ -1,10 +1,9 @@
-"""WhatsApp, erplora.com's side (PLAN-SAAS §1.1, round 2026-10-15b; README.md).
+"""WhatsApp, erplora.com's side.
 
-A LiveAppConfig of kind "platform" (round 15, PLAN §20): always on, at the project root next to ``base/``,
-without module fields. The business's WhatsApp Business account before Meta (Embedded Signup, its number,
-its token and the token's renewal), Meta's webhook, the attachments, the delivery statuses, the templates
-and the doors of the Hub's contract (``hub/apps/whatsapp_inbox/WORKBOOK.md``, «Contrato con el SaaS»).
-No screen in the panel: the inbox and its settings are the Hub's (PLAN-SAAS block 12).
+A LiveAppConfig of kind "platform": always on, at the project root next to ``base/``, without module fields. It holds
+the business's WhatsApp Business account before Meta (Embedded Signup, its number, its token and the token's renewal),
+Meta's webhook, the attachments, the delivery statuses, the templates and the doors of the Hub's contract. No screen
+in the panel: the inbox and its settings live in the Hub.
 """
 
 from django.utils.translation import gettext_lazy as _

@@ -11,7 +11,7 @@ from uuid import UUID
 from ninja import Schema
 from pydantic import Field, SecretStr, StringConstraints, model_validator
 
-#: The Hub's ``hub``: the business's slug in phase 1 (its UUID in phase 2).
+#: The Hub's ``hub``: the business's slug or its UUID.
 HubRef = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
 #: An international number, with or without ``+`` (the Hub's ``INTERNATIONAL``).
 International = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^\+?[1-9]\d{6,14}$")]

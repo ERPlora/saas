@@ -1,11 +1,11 @@
 // The flows of «create the account, confirm the email, sign in, the password, sign out, the terms and the throttle»
-// (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-1) on their screens, at the three sizes of the migration
-// (390×844, 834×1112, 1440×900), against the panel's own Django: the codes and the reset links are read from its
-// mail folder (project.ts), nothing is played. Each test names its flow in its title by its registry key; in
-// accounts/WORKBOOK.md: G83=F01, G84=F02, G107=F03, G85=F04, G91=F07, G109=F08, G93=F09, G119=F10, G96=F11, G18=F13.
-// Google (F06) plays in accounts-google.spec.ts and the authenticator app (F05) in accounts-security.spec.ts, on the
-// panel's twin: this panel has neither, as the second factor is off in phase 1. Accounts of this spec: `e2e-acc1-…@example.com`,
-// removed before and after (panel_seed.py's `clear` removes every `e2e-…@example.com` too).
+// (accounts/WORKBOOK.md) on their screens, at three sizes (390×844, 834×1112, 1440×900), against the panel's own
+// Django: the codes and the reset links are read from its mail folder (project.ts), nothing is played. Each test
+// names its flow in its title by its registry key; in accounts/WORKBOOK.md: G83=F01, G84=F02, G107=F03, G85=F04,
+// G91=F07, G109=F08, G93=F09, G119=F10, G96=F11, G18=F13. Google (F06) plays in accounts-google.spec.ts and the
+// authenticator app (F05) in accounts-security.spec.ts, on the panel's twin: this panel has neither, as the second
+// factor is off by default. Accounts of this spec: `e2e-acc1-…@example.com`, removed before and after
+// (panel_seed.py's `clear` removes every `e2e-…@example.com` too).
 import { type APIRequestContext, type Page } from '@playwright/test';
 
 import {
@@ -65,7 +65,7 @@ async function acceptedVersionsOf(request: APIRequestContext): Promise<string> {
 
 /** The versions of the terms and of the privacy policy an account accepts today (`accounts.models`), as the
  *  database keeps them and as the admin shows the terms' one: read from the SaaS, so a new text never leaves this
- *  spec behind (saas#120 moved the terms to 2026-10-25). Read once, before the tests (`today`). */
+ *  spec behind. Read once, before the tests (`today`). */
 async function todaysVersions(): Promise<{ kept: string; termsShown: string }> {
   const [kept, termsShown] = (await djangoPrintWarm(
     [
@@ -123,7 +123,7 @@ test('ACCOUNTS-G83: a new address creates its account on «Create account», ref
   await atEverySize(page, 'ACCOUNTS-G83', async () => {
     await expect(page.getByTestId('login-submit')).toHaveText('Create account');
   });
-  // The rules of the old sign-up (ERPlora/saas#2542): one like the address is refused under the password.
+  // A password like the address is refused, and the error shows under the password.
   await submitSignInForm(page, { email, password: email.split('@')[0] });
   await expect(page.getByTestId('login-password')).toContainText('The password is too similar to the email.');
   await expect(page).toHaveURL(/\/launch\?tab=signup$/);
@@ -242,7 +242,7 @@ test('ACCOUNTS-G91: «Forgot your password?» mails a link whose page shows the 
   await atEverySize(page, 'ACCOUNTS-G121', async () => {
     await expect(field).toContainText('At least 8 characters; better long, and without your email.');
   });
-  // Today's password is not a new one (ERPlora/saas#2612).
+  // Today's password is not a new one.
   await field.locator('input').fill(PASSWORD);
   await page.getByTestId('password-reset-key-submit').click();
   await expect(field).toContainText('Your new password must be different from the current one.');
@@ -383,7 +383,7 @@ test('ACCOUNTS-G93: the user menu reads whole at every size — «Theme» on one
   await createAccount(email);
   await signIn(page.request, { email, password: PASSWORD });
 
-  // The spec's three sizes and the two others of the fleet's sweep (a short phone, a portrait tablet).
+  // The spec's three sizes and two more (a short phone, a portrait tablet).
   const sizes = [...VIEWPORTS, { width: 375, height: 667 }, { width: 820, height: 1180 }];
   for (const size of sizes) {
     await page.setViewportSize({ width: size.width, height: size.height });

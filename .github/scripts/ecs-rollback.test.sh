@@ -30,7 +30,7 @@ setup() {
   echo "$td/erplora-prod-worker:12" > "$STATE/primary-worker"
   printf '%s\t' "$td/erplora-prod-hub:12" "$td/erplora-prod-hub:10" > "$FIXTURES/list-erplora-prod-hub"
   printf '%s\t' "$td/erplora-prod-worker:12" "$td/erplora-prod-worker:10" > "$FIXTURES/list-erplora-prod-worker"
-  # pre (plan 2026-10-14-entorno-pre): service saas-pre runs erplora-pre-saas:12 in its own cluster
+  # pre: service saas-pre runs erplora-pre-saas:12 in its own cluster
   # (erplora-pre).
   echo "$td/erplora-pre-saas:12" > "$STATE/primary-saas-pre"
   printf '%s\t' "$td/erplora-pre-saas-migrate:11" "$td/erplora-pre-saas:12" "$td/erplora-pre-saas:10" \
@@ -221,8 +221,8 @@ check "nothing of the hub is touched" \
   '! grep -Eq -- "erplora-prod-hub|/erplora/prod/hub/|--services? hub( |$)" "$CALLS_LOG"'
 check "nothing of pre is touched" '! grep -Eq -- "erplora-pre-|/erplora/pre/|saas-pre" "$CALLS_LOG"'
 
-# --- the saas-worker service (saas#305) ---------------------------------------------------
-# ERPlora/aws creates it (aws#59): until its family exists the rollback goes on without it and says
+# --- the saas-worker service --------------------------------------------------------------
+# ERPlora/aws creates it: until its family exists the rollback goes on without it and says
 # so; from then on it goes back with saas, to a revision of the same tag.
 # with_worker <environment> [<suffix>]: saas-worker<suffix> runs erplora-<environment>-saas-worker:12.
 with_worker() {
@@ -232,7 +232,7 @@ with_worker() {
 setup
 run_rollback && status=0 || status=$?
 check "saas-worker: before it exists, the rollback succeeds without it and says so" \
-  '[ "$status" -eq 0 ] && grep -q "::warning::erplora-prod-saas-worker does not exist yet (aws#59 not applied): skipped" "$work/out.log" &&
+  '[ "$status" -eq 0 ] && grep -q "::warning::erplora-prod-saas-worker does not exist yet: skipped" "$work/out.log" &&
    ! grep -Eq -- "--services? saas-worker" "$CALLS_LOG"'
 setup
 with_worker prod
@@ -284,7 +284,7 @@ check "pre: saas-worker-pre goes back with saas-pre" \
   '[ "$status" -eq 0 ] && grep -q "update-service .*--service saas-worker-pre --task-definition $td/erplora-pre-saas-worker:10 " "$CALLS_LOG" &&
    grep -Eq "wait services-stable .*--services saas-pre saas-worker-pre$" "$CALLS_LOG"'
 
-# --- pre (plan 2026-10-14-entorno-pre) --------------------------------------------------
+# --- pre --------------------------------------------------------------------------------
 setup
 run_rollback ENVIRONMENT=pre && status=0 || status=$?
 check "pre: the rollback succeeds" '[ "$status" -eq 0 ]'

@@ -1,8 +1,7 @@
-// «Download the data» of a business (HUBS-F18, HUBS-F20; PLAN-DB round 2026-10-30, proposals (a), (k), (l)) in a real
-// browser, at the three sizes of the migration (390×844, 834×1112, 1440×900), in English and in Spanish: the page of a
-// deleted business, where its deletion mail leads, lists the copies the Hub keeps of its data (when, which, how big) and
-// each «Download» asks the Hub for a fresh link and the browser downloads the file. Without a copy yet it says so and
-// that we will tell; a live business without copies has no card.
+// «Download the data» of a business (HUBS-F18, HUBS-F20) in a real browser, at three sizes (390×844, 834×1112,
+// 1440×900), in English and in Spanish: the page of a deleted business, where its deletion mail leads, lists the copies
+// the Hub keeps of its data (when, which, how big) and each «Download» asks the Hub for a fresh link and the browser
+// downloads the file. Without a copy yet it says so and that we will tell; a live business without copies has no card.
 //
 // The spec plays the Hub on this stack's Hub port (`HUB_DOUBLE_PORT`, where the panel's Django calls it): it answers
 // `GET /internal/hubs/{id}/dumps` with the copies the test sets, each with a link to itself that serves the file as an
