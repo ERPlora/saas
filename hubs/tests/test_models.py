@@ -367,3 +367,19 @@ class TestVertical:
         from hubs.models import BusinessType
 
         BusinessType(code="bar", name_en="Bar", vertical="").full_clean()
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_help_texts_never_point_at_a_plan_section(language):
+    """The admin shows these texts to staff who have never read the planning documents."""
+    from django.apps import apps
+
+    section_sign = "\N{SECTION SIGN}"
+    with translation.override(language):
+        cited = [
+            f"{model.__name__}.{field.name}: {field.help_text}"
+            for model in apps.get_app_config("hubs").get_models()
+            for field in model._meta.get_fields()
+            if section_sign in str(getattr(field, "help_text", ""))
+        ]
+    assert not cited, "\n".join(cited)

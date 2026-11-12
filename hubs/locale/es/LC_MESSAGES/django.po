@@ -530,16 +530,14 @@ msgid "Active users per hub (0 = unlimited)."
 msgstr "Usuarios activos por hub (0 = ilimitados)."
 
 #: models.py:172
-msgid "Database transactions a hub runs at a time per process (PLAN §14.2)."
+msgid "Database transactions a hub runs at a time per process."
 msgstr ""
-"Transacciones de base de datos que un hub ejecuta a la vez por proceso (PLAN "
-"§14.2)."
+"Transacciones de base de datos que un hub ejecuta a la vez por proceso."
 
 #: models.py:175
-msgid "Longest database statement of a hub, in seconds (PLAN §14.2)."
+msgid "Longest database statement of a hub, in seconds."
 msgstr ""
-"Duración máxima de una sentencia de base de datos de un hub, en segundos "
-"(PLAN §14.2)."
+"Duración máxima de una sentencia de base de datos de un hub, en segundos."
 
 #: models.py:182
 msgid "AI assistant messages a month"
