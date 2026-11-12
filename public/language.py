@@ -1,7 +1,6 @@
-"""``POST /set-language/``: the public web's language switcher (plan §3.a).
+"""``POST /set-language/``: the public web's language switcher.
 
-Ported from ERPlora/saas ``landing.views.set_language`` (origin/develop c5ca8ca). It keeps the
-choice only in the language cookie (``settings.LANGUAGE_COOKIE_NAME``, ``_lang``), which
+It keeps the choice only in the language cookie (``settings.LANGUAGE_COOKIE_NAME``, ``_lang``), which
 ``LocaleMiddleware`` reads before ``Accept-Language``. It never writes the session (Django 4+ no
 longer reads it for the language) nor ``User.language``, which the panel manages.
 """

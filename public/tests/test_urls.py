@@ -41,8 +41,7 @@ def test_robots_and_llms_win_over_the_key_file():
     assert resolve("/llms.txt").view_name == "public:llms_txt"
 
 
-# Each first segment the public web serves (now or in a later batch of the port) and the retired
-# ones that must answer 404, never the SPA's shell (spec §8.1, §8.3).
+# Each first segment the public web serves and the retired ones that must answer 404, never the SPA's shell.
 PUBLIC_SEGMENTS = (
     "set-language",
     "robots.txt",
@@ -75,7 +74,7 @@ PUBLIC_SEGMENTS = (
     "modules",
     "compliance",
 )
-#: `compliance` is served again (PUBLIC-F09): only these two answer 404 (spec §8.3).
+#: The retired segments: only these two answer 404.
 RETIRED_SEGMENTS = ("developers", "bridge")
 
 

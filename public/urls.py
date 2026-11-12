@@ -1,6 +1,6 @@
 """Routes of the public web (namespace ``public``), mounted at the root by ``config/urls.py`` before
 the SPA's catch-all, and the first segments it owns (``PUBLIC_PREFIXES``, which the project keeps
-out of the SPA). Each batch of the port adds its pages here (PLAN-SAAS §6, «Rutas con vistas»).
+out of the SPA).
 
 django-cookie-consent's routes (``/cookies/``) are mounted by ``config/urls.py`` itself: under
 this namespace its names would become ``public:cookie_consent_*`` and break the ``{% url %}`` of the
@@ -20,11 +20,10 @@ from public import demo, landing, pricing
 
 app_name = "public"
 
-#: First segments of the public web: the ones it serves, those a later batch of the port will
-#: serve, and the retired ones that must answer 404, never the SPA's shell (`developers`, `bridge`;
-#: spec §8.3). `compliance` is served again (PUBLIC-F09, APP-PUBLIC-1). `help` is the public help (`/help/`): the panel has no help page of its
-#: own (in-app help is out of scope, spec §12). An unknown path under one of them is a 404 of the
-#: public web (public/errors.py).
+#: First segments of the public web: the ones it serves and the retired ones that must answer 404,
+#: never the SPA's shell (`developers`, `bridge`). `help` is the public help (`/help/`): the panel has
+#: no help page of its own. An unknown path under one of them is a 404 of the public web
+#: (public/errors.py).
 PUBLIC_PREFIXES = (
     "set-language",
     "robots.txt",
@@ -71,12 +70,12 @@ urlpatterns = [
         indexnow.key_file,
         name="indexnow_key",
     ),
-    # Pages without data (L3a): product, company, resources and help.
+    # Pages without data: product, company, resources and help.
     path("features/", product.features, name="features"),
     path("security/", product.security, name="security"),
     path("updates/", product.updates, name="updates"),
     path("about/", company.about, name="about"),
-    # No longer linked, but external and cached links still point there (issue #547).
+    # No longer linked, but external and cached links still point there.
     path(
         "company/",
         RedirectView.as_view(pattern_name="public:about", permanent=True),
@@ -85,28 +84,28 @@ urlpatterns = [
     path("blog/", company.blog, name="blog"),
     path("careers/", company.careers, name="careers"),
     path("press/", company.press, name="press"),
-    # It reads Plan and the taxonomy (L7).
+    # It reads Plan and the taxonomy.
     path("collaborate/", company.collaborate, name="collaborate"),
-    # The countries a business can be created in and the fiscal systems the apps connect to (PUBLIC-F09).
+    # The countries a business can be created in and the fiscal systems the apps connect to.
     path("compliance/", compliance.index, name="compliance"),
     path("documentation/", resources.documentation, name="documentation"),
     path("support/", resources.support, name="support"),
     path("help/", help_center.help_center, name="help"),
-    # The installable app (L3a): its page, its only download door and the ways to try ERPlora.
+    # The installable app: its page, its only download door and the ways to try ERPlora.
     path("app/", appdist.index, name="app"),
     path("app/download/<str:platform>/", appdist.download, name="app_download"),
     path("download/", appdist.ways_to_try, name="downloads"),
-    # The demo hubs (round 2026-10-17, PLAN-SAAS §3.5): the door (GET, never creates), the start (POST,
+    # The demo hubs: the door (GET, never creates), the start (POST,
     # limited per address) and the way back from the demo's /auth/login with its state (never indexed).
     path("demo/", demo.index, name="demo"),
     path("demo/start/", demo.start, name="demo_start"),
     path("demo/enter/", demo.enter, name="demo_enter"),
     # How the browser's demo is going, which the door's page asks while the Hub prepares it (JSON, never indexed).
     path("demo/status/", demo.status, name="demo_status"),
-    # The same door at the address the old stack handed out (PUBLIC-F27): /demo/ was once a permanent redirect
+    # The same door at the address the old stack handed out: /demo/ was once a permanent redirect
     # that browsers keep. It serves the page itself (never a redirect) and names /demo/ as canonical.
     path("try/", demo.index, name="demo_try"),
-    # Legal pages (L3b; the terms, which read Plan, L7).
+    # Legal pages (the terms read Plan).
     path("legal/privacy/", legal.privacy, name="privacy"),
     path("legal/terms/", legal.terms, name="terms"),
     path("legal/cookies/", legal.cookies, name="cookies"),
@@ -130,7 +129,7 @@ urlpatterns = [
         declaracion.declaracion_responsable_pdf,
         name="declaracion_responsable_pdf",
     ),
-    # The app store (L6, decision 19): each tab is its own URL. An app id is its label in the Hub.
+    # The app store: each tab is its own URL. An app id is its label in the Hub.
     path("apps/", store.store, name="store"),
     path("apps/<slug:app_id>/", store.store_detail, name="store_detail"),
     path("apps/<slug:app_id>/docs/", store.store_docs, name="store_docs"),
@@ -140,11 +139,11 @@ urlpatterns = [
     path("solutions/", store.to_store, name="solutions"),
     path("solutions/<slug:slug>/", store.to_store, name="solutions_detail"),
     path("modules/", store.to_store, name="modules"),
-    # The business types (L4): their list and one page each, by code (a retired code answers 301).
+    # The business types: their list and one page each, by code (a retired code answers 301).
     path("industries/", industries.index, name="industries_index"),
     path("industries/<slug:slug>/", industries.detail, name="industries_detail"),
-    # The pages that read Plan (L7): the home (`/`, no longer a redirect to the launcher), the
-    # contact page and its form, the plans on sale and one page per plan.
+    # The pages that read Plan: the home, the contact page and its form, the plans on sale and one
+    # page per plan.
     path("", landing.home, name="home"),
     path("contact/", landing.contact, name="contact"),
     path("contact/submit/", landing.contact_submit, name="contact_submit"),

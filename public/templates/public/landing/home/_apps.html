@@ -1,9 +1,8 @@
 {% load i18n icons %}
 {% comment %}
-  The apps of the catalogue (the old «Modules» section, _modules.html of origin/develop): the six
-  featured cards are the first listed apps by section and name (apps.app.list, spec §8.1), each with
-  its own icon and a link to its page in the store. Without any listed app the section is omitted
-  (spec §5.3). The id is the old anchor, kept for the links that point at it.
+  The apps of the catalogue: the six featured cards are the first listed apps by section and name
+  (apps.app.list), each with its own icon and a link to its page in the store. Without any listed
+  app the section is omitted. The id is the old anchor, kept for the links that point at it.
 {% endcomment %}
 {% if total_apps %}
   <section id="modulos" class="ep-section ep-section--compact ep-section--divider">

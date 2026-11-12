@@ -1,13 +1,9 @@
-"""The public web's own CSP (spec §8.2), ported from ERPlora/saas ``apps/public/csp.py`` and
-``apps/public/tests/test_csp_enforced.py`` (origin/develop c5ca8ca), adapted to the CSP of ``live``.
+"""The public web's own CSP, built on the CSP of ``live``.
 
-The account panel (the SPA) and the sign-in pages keep the global policy of ``live.csp``
-(``'strict-dynamic'`` and Trusted Types). The public web's pages are server templates with no
-dynamic script swap: no ``'strict-dynamic'`` (it would block an edge-injected script with no nonce)
-and no Trusted Types (Ionic's ``ion-icon`` writes its SVG through an HTML sink).
-
-Not ported: ``TestTheDefaultIsEnforce`` (``CSP_ENFORCE``) — saas-next has no report-only toggle, the
-CSP is always enforced (``test_the_public_policy_is_enforced_not_reported``).
+The account panel (the SPA) and the sign-in pages keep the global policy of ``live.csp`` (``'strict-dynamic'`` and
+Trusted Types). The public web's pages are server templates with no dynamic script swap: no ``'strict-dynamic'`` (it
+would block an edge-injected script with no nonce) and no Trusted Types (Ionic's ``ion-icon`` writes its SVG through
+an HTML sink). There is no report-only toggle: the CSP is always enforced.
 """
 
 import re
@@ -72,12 +68,9 @@ def test_the_public_policy_still_forbids_the_dangerous_directives(client):
     assert directives["report-uri"] == ["/csp-report/"]
 
 
-# The public web stopped loading anything from a CDN (OutfitKit from jsDelivr, icons from Iconify's
-# API) and stopped charging (Stripe): spec §8.2, decision 16. Nothing loads those CDNs anywhere; Stripe
-# is retired from the public web only: the panel's policy (the SPA's Store) carries Stripe's origins for
-# the Embedded Checkout (`base/csp.py`, plan 2026-10-13 L2-D; PLAN-SAAS §3.6 point 17). reCAPTCHA, retired with
-# them (ADR-0154), came back on every public form (Ioan, 2026-10-22) and is switched off by default since
-# 2026-10-23 (Ioan: the WAF on the ALB, the attempt limits): switched on, Google's `/recaptcha/` paths only
+# The public web loads nothing from a CDN (no OutfitKit from jsDelivr, no icons from Iconify's API) and charges nothing.
+# Stripe stays out of the public web only: the panel's policy (the SPA's Store) carries Stripe's origins for the
+# Embedded Checkout (`base/csp.py`). reCAPTCHA is off by default; switched on, Google's `/recaptcha/` paths only
 # (`test_the_public_policy_admits_googles_recaptcha`); off, nothing of it.
 RETIRED_EVERYWHERE = (
     "cdn.jsdelivr.net",
@@ -125,7 +118,7 @@ def test_google_analytics_and_clarity_stay_behind_the_consent():
 
 
 def test_the_hubs_static_origin_may_serve_images(settings):
-    """The apps' documentation images live on the Hub (spec decision 10); locally over http, which
+    """The apps' documentation images live on the Hub; locally over http, which
     `https:` does not cover."""
     settings.HUB_STATIC_BASE_URL = "http://hubs.localhost:8000/static/"
 
@@ -141,7 +134,7 @@ def test_production_takes_the_hubs_static_origin_from_the_setting(settings):
 
 
 def test_the_tauri_bridge_keeps_its_connection():
-    """Without `ipc:` the Tauri app loses the hardware with no visible error (CLAUDE.md)."""
+    """Without `ipc:` the Tauri app loses the hardware with no visible error."""
     assert public_policy()["connect-src"][:3] == [
         "'self'",
         "ipc:",
@@ -201,7 +194,7 @@ def test_the_public_pages_do_not_get_strict_dynamic_nor_trusted_types(client, pa
 @pytest.mark.django_db
 @pytest.mark.parametrize("path", PUBLIC_PATHS)
 def test_the_public_pages_get_the_very_same_policy(client, path):
-    """Whether a page is public is not a property of how its URL happens to be wired (saas#1559)."""
+    """Whether a page is public is not a property of how its URL happens to be wired."""
     assert _policy(client, path) == _policy(client, CONTROL_PATH)
 
 
@@ -223,7 +216,7 @@ def test_the_sign_in_pages_and_the_panel_keep_the_global_policy(client, path):
 @pytest.mark.parametrize("path", ADMIN_PATHS)
 def test_the_admin_keeps_the_panel_policy_without_trusted_types(client, path):
     """Neither does it widen to the admin, whose own policy is the panel's without Trusted Types: Django's admin
-    creates no Trusted Types policy and its jQuery dies under them (the old saas#1828; ACCOUNTS-G10)."""
+    creates no Trusted Types policy and its jQuery dies under them."""
     policy = _policy(client, path)
 
     assert "'strict-dynamic'" in policy
@@ -235,8 +228,7 @@ def test_the_admin_keeps_the_panel_policy_without_trusted_types(client, path):
 @pytest.mark.usefixtures("spa_manifest")
 @pytest.mark.parametrize("path", NONEXISTENT_PATHS)
 def test_an_unmatched_route_is_a_404_with_the_public_policy(client, path):
-    """Django sets no ``resolver_match`` when no pattern matched; the 404 page is the public web's
-    (saas#1827)."""
+    """Django sets no ``resolver_match`` when no pattern matched; the 404 page is the public web's."""
     response = client.get(path, HTTP_HOST=HOST)
 
     assert response.status_code == 404
@@ -271,7 +263,7 @@ def test_the_public_middleware_runs_before_djangos_builds_the_header():
 
 @pytest.mark.parametrize("debug", [False, True])
 def test_the_public_policy_without_recaptcha_names_nothing_of_it(settings, debug):
-    """Off (the default since 2026-10-23): no script, frame nor connection of Google's reCAPTCHA."""
+    """Off (the default): no script, frame nor connection of Google's reCAPTCHA."""
     settings.DEBUG = debug
     policy = public_policy()
     sources = " ".join(" ".join(map(str, values)) for values in policy.values())

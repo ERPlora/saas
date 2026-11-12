@@ -1,11 +1,10 @@
 """``/demo/``, ``/demo/start/`` and ``/demo/enter/``: the door to a demo hub (public/demo.py).
 
-PLAN-SAAS §3.5, round 2026-10-17 (plan ``docs/plans/2026-10-17-demo-hubs-fase-1.md`` §1.6, §1.8): the SaaS
-keeps no row of a demo. ``/demo/`` only reads the browser's session and never creates one; ``/demo/start/``
-(POST, limited per address) asks the Hub for a demo of this browser (``POST /internal/demos``) and jumps to
-its ``/auth/login``, which comes back to ``/demo/enter/`` with its ``state``; there the SaaS checks that this
-browser owns that demo, asks for a one-time code (``POST /internal/demos/{slug}/codes``) and posts it to the
-demo's ``/auth/callback`` (``accounts/hub_login_form.html``). Against the Hub double of ``hubs/tests``.
+The SaaS keeps no row of a demo. ``/demo/`` only reads the browser's session and never creates one; ``/demo/start/``
+(POST, limited per address) asks the Hub for a demo of this browser (``POST /internal/demos``) and jumps to its
+``/auth/login``, which comes back to ``/demo/enter/`` with its ``state``; there the SaaS checks that this browser
+owns that demo, asks for a one-time code (``POST /internal/demos/{slug}/codes``) and posts it to the demo's
+``/auth/callback`` (``accounts/hub_login_form.html``). Against the Hub double of ``hubs/tests``.
 """
 
 import gettext
@@ -111,9 +110,9 @@ def test_the_door_is_in_the_sitemap_and_the_entry_is_not():
     assert not {"public:demo_start", "public:demo_enter", "public:demo_status", "public:demo_try"} & listed
 
 
-# --- /try/: the same door at the address handed out (PUBLIC-F27) ------------------------------------------
-# erplora.com/demo/ answered a permanent redirect to the sign-up for a month in the old stack, which browsers keep;
-# /try/ was the door at an address that never redirected, and the link handed out (saas#1164).
+# --- /try/: the same door at the address handed out -------------------------------------------------------
+# Browsers keep a permanent redirect, and erplora.com/demo/ answered one to the sign-up in the old stack: the link
+# handed out is /try/, an address that never redirected.
 
 
 def test_the_door_has_a_second_address_to_hand_out():
@@ -223,7 +222,7 @@ def test_each_outcome_of_a_try_is_said_on_the_door(client, state, says):
 @pytest.mark.django_db
 @pytest.mark.parametrize("state", ["idle", "expired", "full", "throttled", "unavailable", "failed", "not_ready"])
 def test_every_state_of_the_door_has_a_way_to_start_free(client, state):
-    """PUBLIC-F35: from any state, «Start free» leads to the same entrance as every other one (/launch)."""
+    """From any state, «Start free» leads to the same entrance as every other one (/launch)."""
     html = page(client.get(DOOR if state == "idle" else f"{DOOR}?state={state}"))
 
     card = html.split(f'data-testid="demo-state-{state}"', 1)[1].split("</ion-card>", 1)[0]
@@ -544,7 +543,7 @@ def test_the_status_of_a_demo_still_being_prepared_says_so(client, hub_double, s
 
 @pytest.mark.django_db
 def test_the_status_during_maintenance_says_so_and_recovers_without_losing_the_demo(client, hub_double):
-    """PUBLIC-F28: a freeze is not a failed preparation; the next poll recovers the real state."""
+    """A freeze is not a failed preparation; the next poll recovers the real state."""
     slug = start(client, hub_double, ready=False)
     hub_double.demos[slug]["maintenance"] = {
         "frozen": True,
@@ -561,8 +560,8 @@ def test_the_status_during_maintenance_says_so_and_recovers_without_losing_the_d
 
 @pytest.mark.django_db
 def test_the_status_reads_the_hub_body_as_the_hub_writes_it_and_tolerates_an_older_hub(client, hub_double, monkeypatch):
-    """PUBLIC-F28, contract with ERPlora/hub#1113 (``base.schemas.HubGetOut``): the whole body of the signed poll, and
-    one of a Hub deployed before it, without ``maintenance``, which is no pause."""
+    """Contract with the Hub's ``base.schemas.HubGetOut``: the whole body of the signed poll, and that of an older
+    Hub without ``maintenance``, which is no pause."""
     from hubs import hub_client
 
     slug = start(client, hub_double, ready=False)
@@ -586,7 +585,7 @@ def test_the_status_reads_the_hub_body_as_the_hub_writes_it_and_tolerates_an_old
 
 @pytest.mark.django_db
 def test_a_ready_demo_enters_even_when_another_freeze_is_active(client, hub_double):
-    """PUBLIC-F28: a platform-wide pause never holds back a demo whose database is already ready."""
+    """A platform-wide pause never holds back a demo whose database is already ready."""
     slug = start(client, hub_double, ready=False)
     hub_double.demos[slug]["status"] = "ready"
     hub_double.demos[slug]["maintenance"] = {
@@ -612,7 +611,7 @@ def test_the_status_of_a_demo_the_hub_could_not_prepare_is_not_ready(client, hub
 @pytest.mark.django_db
 @pytest.mark.parametrize("ended", ["expired", "cancelled", "archiving", "dropping", "purged"])
 def test_the_status_of_a_demo_that_ended_forgets_it(client, hub_double, ended):
-    """``archiving`` and ``dropping`` (hub#471) are the Hub dropping it: ended as ``expired`` is, never «not available»."""
+    """``archiving`` and ``dropping`` are the Hub dropping it: ended as ``expired`` is, never «not available»."""
     slug = start(client, hub_double, ready=False)
     hub_double.answer("GET", rf"^/internal/hubs/{hub_double.demos[slug]['id']}$", 200, {"status": ended})
 
@@ -693,7 +692,7 @@ def test_the_status_is_never_stored_nor_indexed(client, hub_double):
 
 @pytest.mark.django_db
 def test_the_status_is_limited_per_browser_and_past_it_asks_the_hub_nothing(client, hub_double, monkeypatch, caplog):
-    """Review of saas#168: the page asks once a second; a browser asking faster than ``STATUS_RATE`` waits without
+    """The page asks once a second; a browser asking faster than ``STATUS_RATE`` waits without
     reaching the Hub."""
     from public import demo
 
@@ -1076,7 +1075,7 @@ def test_the_one_minute_left_is_singular_in_both_languages():
     )
 
 
-# --- reCAPTCHA (Ioan, 2026-10-22: every public form; live.recaptcha) ------------------------------------------------
+# --- reCAPTCHA (live.recaptcha) --------------------------------------------------------------------------------------
 # «Try the demo» is a form: its POST carries `recaptcha_token`, made by Google's enterprise.js for `demo_request`
 # (frontend/recaptcha.ts), and Google is asked before the Hub. Refused, the door says so (`?state=unverified`) and the
 # Hub is never called. Google is played by `FakeGoogleRecaptcha` (conftest.py).

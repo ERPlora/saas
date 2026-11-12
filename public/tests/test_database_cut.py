@@ -1,4 +1,4 @@
-"""erplora.com and the panel while the database is cut for a moment (ACCOUNTS-F50; PLAN-DB round 2026-11-04e, point 5).
+"""erplora.com and the panel while the database is cut for a moment.
 
 The whole chain of the project, against the real Postgres: ``pg_terminate_backend`` is the server cutting the connection
 right before a statement of the request, ``default_transaction_read_only`` the writer refusing writes. The piece itself,

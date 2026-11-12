@@ -4,10 +4,9 @@
 {% comment %}
   Layout of the error pages Django and allauth render by name (`400.html`, `403.html`,
   `403_csrf.html`, `404.html`, `429.html`, `500.html` at the root of `templates/`; the public web
-  has its own 404 and 500, `public.errors`). Ported from ERPlora/saas `templates/errors/base.html` (origin/develop c5ca8cae8)
-  without OutfitKit (PLAN §16.11): the page is the plain HTML that used to be the fallback of its
-  error-page component, styled by `error-pages.css`, so it paints and its links work with no
-  JavaScript. A page fills `title`, `code`, `heading` and `message`, and may replace `actions`.
+  has its own 404 and 500, `public.errors`). Plain HTML styled by `error-pages.css`, so it paints
+  and its links work with no JavaScript. A page fills `title`, `code`, `heading` and `message`, and
+  may replace `actions`.
   `theme` (`base.context_processors.theme`) falls back to `system` where no context processor ran.
 {% endcomment %}
 {% get_current_language as LANGUAGE_CODE %}

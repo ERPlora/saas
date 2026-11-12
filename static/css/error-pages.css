@@ -1,6 +1,5 @@
 /* HTTP error pages (templates/errors/base.html): plain HTML, links instead of buttons, so they
-   paint and work with no JavaScript. They used to be the fallback markup of a retired Web
-   Component (PLAN §16.11); its design tokens are ours now, --ep-*, with the values they had. */
+   paint and work with no JavaScript. */
 :root {
   --ep-type-page-title-compact-size: clamp(2rem, 1.55rem + 2vw, 3.25rem);
   --ep-type-page-title-weight: 650;
@@ -71,7 +70,7 @@ body {
 }
 
 .error-page__actions a {
-  /* Its padding inside its width: at 100% wide on a phone it must not run off the page (ACCOUNTS-G81). */
+  /* Its padding inside its width: at 100% wide on a phone it must not run off the page. */
   box-sizing: border-box;
   min-height: 2.75rem;
   display: inline-flex;

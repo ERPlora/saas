@@ -1,12 +1,11 @@
 {% extends "public/public_base.html" %}
 {% load buttons i18n icons %}
 {% comment %}
-  /download/ — port of apps/public/landing/templates/landing/downloads.html (origin/develop): the
-  two free ways to try ERPlora, both through the free sign-up. A: create a free cloud hub
+  /download/: the two free ways to try ERPlora, both through the free sign-up. A: create a free cloud hub
   (recommended). B: install the app on the device at the counter; its per-platform buttons go to
   public:app_download, which picks store or installer. The demo (/demo/) is the home's and the navbar's
   door, not one of these two: both of these end with your own hub.
-  Every plan includes all the apps, the free one too (ronda 2026-10-24b, PLAN §32).
+  Every plan includes all the apps, the free one too.
 {% endcomment %}
 
 {% block title %}{% trans "Ways to try ERPlora" %} · ERPlora{% endblock %}

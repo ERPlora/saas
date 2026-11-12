@@ -1,8 +1,7 @@
 /* layout.css — the layout primitives of the public web as plain CSS (no web component).
  *
- * Port of OutfitKit's layout.css (0.1.136; PLAN §16.11), with only the classes the public templates
- * use, renamed to `ep-*` and read from the `--ep-*` tokens (theme.css). Same values, same look:
- * container, 12-column grid, auto-fitting card grid, marketing sections with their head, eyebrow,
+ * Only the classes the public templates use, named `ep-*` and read from the `--ep-*` tokens
+ * (theme.css): container, 12-column grid, auto-fitting card grid, marketing sections with their head, eyebrow,
  * title and subtitle, the editorial surfaces (search, accordion, prose, titles) and the stackable
  * table. Geometry and typography are CSS; behaviour and state are Ionic components.
  */
@@ -227,7 +226,7 @@ ion-item.ep-accordion-header .ep-icon {
 }
 
 /* The title of a deed published inside a page (the declaración responsable): an <h2>, since the
-   hero is the page's <h1> (demote_h1), with the size it had as the old page's <h1>. */
+   hero is the page's <h1> (demote_h1), sized like a page's <h1>. */
 .ep-prose .ep-deed-title {
   margin: 1.25rem 0 0.625rem;
   font-size: 1.625rem;

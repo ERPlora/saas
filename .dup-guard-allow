@@ -1,0 +1,2 @@
+duplicados public/tests/test_product.py:21-31 clone already on main with test_resources.py; this change only edits a comment inside it
+duplicados public/static/public/theme.css:126-140 clone already on main with static/css/ionic-theme.css; this change only edits a comment inside it

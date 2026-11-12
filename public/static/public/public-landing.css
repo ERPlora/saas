@@ -1,9 +1,5 @@
 /* public-landing.css — the base rules of the public pages (Ionic + the ep-* partials).
  *
- * Port of static/css/public-landing.css of the old SaaS. Left behind, with the reason: the
- * <ok-navbar>/<ok-footer> adjustments and the old language links (the navbar and the footer are
- * components now: components/navbar.css and footer.css), the unused .surface helper, and the
- * process-stage and PIN boxes of the retired demo (/demo is out of scope, plan §3.b).
  * Bundled by frontend/public.ts after the theme, the layout and landing.css.
  */
 
