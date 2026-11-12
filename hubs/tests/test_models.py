@@ -1,10 +1,7 @@
-"""Models of hubs: ``Plan`` (PLAN-SAAS §1, without infrastructure) and the taxonomy (PLAN §21.4).
+"""Models of hubs: ``Plan``, without infrastructure, and the taxonomy.
 
-Ported from ERPlora/saas (origin/develop): the pure-model halves of
-``public/pricing/tests/test_internal_plans_are_never_public.py``,
-``hubs/main/tests/test_internal_plan_gate_after_alta.py`` (``TestOfferedTo``),
-``hubs/subscriptions/tests/test_payment_test_plan.py`` and ``test_plan_trial_label.py``. The
-pages, forms and Stripe halves stay with the lots that port those doors.
+The pure-model halves: internal plans are never public, who may buy which plan, the payment-test plan and the
+trial label. Their pages, forms and Stripe halves are tested with those doors.
 """
 
 import uuid
@@ -56,7 +53,7 @@ def test_a_plan_has_a_uuid7_primary_key():
 
 
 def test_a_plan_reads_as_its_name_and_monthly_price():
-    """In the active language since APP-HUBS-4 (it read «Starter - EUR 29.99/month» in a Spanish admin too):
+    """In the active language (it once read «Starter - EUR 29.99/month» in a Spanish admin too):
     ``test_admin.py::test_a_plan_is_named_in_the_staff_language`` has the Spanish."""
     from django.utils import translation
 
@@ -68,7 +65,7 @@ def test_plans_are_listed_by_display_order_then_price():
     assert Plan._meta.ordering == ["display_order", "price_monthly"]
 
 
-# --- Public plans (saas#1950) and who may buy which (saas#1052, saas#2388) -----------------------
+# --- Public plans and who may buy which -----------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -124,14 +121,14 @@ class TestOnlyStaffCanBuyTheInternalPlan:
         assert Plan.objects.get(slug="starter").is_available_to(customer) is True
 
 
-# --- The trial a visitor gets (saas#2414, saas#2424) ---------------------------------------------
+# --- The trial a visitor gets ---------------------------------------------------------------------
 
 
 class TestSignupTrialDays:
     """``Plan.objects.signup_trial_days()``: every public page that states the trial reads it here."""
 
     def test_the_catalogue_offers_no_trial(self, plans):
-        """Ioan, 2026-10-15: the Free plan is the way in; no plan on sale carries a trial."""
+        """The Free plan is the way in; no plan on sale carries a trial."""
         assert Plan.objects.signup_trial_days() == {"trial_days_min": None, "trial_days_max": None}
 
     def test_only_public_plans_bought_at_sign_up_count(self, signup_trial):
@@ -167,7 +164,7 @@ class TestTrialLabel:
         assert _plan(trial_days=0).has_trial() is False
 
 
-# --- The commercial ladder, translated (ADR-0474, ADR-0426) ---------------------------------------
+# --- The commercial ladder, translated ------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -198,7 +195,7 @@ def test_the_level_labels_are_read_in_the_active_language(included, support, eng
     ],
 )
 def test_the_resources_label_reads_the_database_ladder_in_plain_words(max_devices, connections, english, spanish):
-    """Ioan, 2026-10-15: a buyer reads how much database throughput a plan has relative to the plan below, never a
+    """A buyer reads how much database throughput a plan has relative to the plan below, never a
     connection count. Free is sized for one device; a paid plan has the full tier; Standard twice it."""
     plan = _plan(max_devices=max_devices, max_db_connections=connections)
 
@@ -247,7 +244,7 @@ class TestPlanCopyInALanguage:
             assert plan.translated("name") == "Starter"
 
 
-# --- The taxonomy: sectors and business types (PLAN §21.4) ----------------------------------------
+# --- The taxonomy: sectors and business types -----------------------------------------------------
 
 
 @pytest.fixture
@@ -296,7 +293,7 @@ class TestTaxonomyInALanguage:
 
 @pytest.mark.django_db
 def test_two_business_types_never_share_a_name_in_one_language():
-    """HUBS-F36 «Si falla» (saas#2099): the sign-up lists them by name, so a second «Peluquería» is refused, folded
+    """HUBS-F36 «Si falla»: the sign-up lists them by name, so a second «Peluquería» is refused, folded
     and trimmed; a blank (untranslated) name is never compared."""
     from hubs.models import BusinessType
 
@@ -311,7 +308,7 @@ def test_two_business_types_never_share_a_name_in_one_language():
 
 
 class TestVertical:
-    """``BusinessType.vertical``: the template a new hub of that type is cloned from (PLAN §15.2).
+    """``BusinessType.vertical``: the template a new hub of that type is cloned from.
 
     Blank is «no vertical» (the hub starts from ``hub_template``, only ``base``). The Hub names the
     template database after it (``hub_template_<vertical>``), so it is an identifier.
@@ -335,7 +332,7 @@ class TestVertical:
 
     @pytest.mark.django_db
     def test_a_vertical_some_app_of_the_catalog_declares_is_accepted(self):
-        """``apps.queries.known_verticals()``: the verticals the Hub registered with its apps (spec §5.4)."""
+        """``apps.queries.known_verticals()``: the verticals the Hub registered with its apps."""
         from hubs.models import BusinessType
 
         make_app("appointment", verticals=["hair_salon"])

@@ -1,4 +1,4 @@
-"""``python manage.py collect_hub_usage [--day YYYY-MM-DD]``: nightly in ``saas-cron`` (lot L4-A, PLAN-SAAS §5).
+"""``python manage.py collect_hub_usage [--day YYYY-MM-DD]``: nightly in ``saas-cron``.
 
 Asks the Hub for one day's usage of every business (``GET /internal/usage?day=``, page by page; contract in
 ``hubs/README.md``, «Uso») and keeps it as ``HubUsageDaily``, one row per business and day

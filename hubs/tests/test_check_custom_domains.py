@@ -1,5 +1,5 @@
-"""``manage.py check_custom_domains``: the hourly pass that moves each domain between its states (HUBS-F17; ``aws`` README,
-«Dominio propio de un negocio»; hub#812). Every transition has its row here:
+"""``manage.py check_custom_domains``: the hourly pass that moves each domain between its states (HUBS-F17; ``aws``
+README, «Dominio propio de un negocio»). Every transition has its row here:
 
     pending  → certificate requested → ISSUED → on the listener → CNAME → in the snapshot → probe → active
     active   → three failures in a row → lapsed (out of the snapshot, certificate gone), and the owner is told
@@ -246,7 +246,7 @@ def test_the_whole_way_from_pending_to_active_in_one_pass(standard_business, wor
     ids=["its slug or anything else", "another business's name"],
 )
 def test_a_cname_onto_another_name_proves_nothing(standard_business, world, dns_world, hub_double, probe_says, record):
-    """Why a validation CNAME left behind cannot hand the domain to whoever asks next (ADR-0502)."""
+    """Why a validation CNAME left behind cannot hand the domain to whoever asks next."""
     attached(standard_business)
     dns_world[(DOMAIN, "CNAME")] = [record]
     world.expect_describe("ISSUED")
@@ -841,7 +841,7 @@ def test_a_removal_with_nothing_on_aws_only_goes(standard_business, world):
 
 
 def test_while_a_removal_is_held_up_the_name_stays_taken(owner, standard_business, world, make_user):
-    """Its row goes last: that is what frees the name, once the Hub and the ALB have let go (ADR-0496)."""
+    """Its row goes last: that is what frees the name, once the Hub and the ALB have let go."""
     removing(standard_business, certificate_arn=ARN, proven_at=timezone.now())
     other_owner = make_user("otra@example.com")
     other = create_business(other_owner, name="Otro")

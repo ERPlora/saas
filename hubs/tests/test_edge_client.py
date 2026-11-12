@@ -150,7 +150,7 @@ def test_deleting_a_certificate_that_is_gone_is_done(acm):
 
 @pytest.mark.parametrize("code", ["AccessDeniedException", "ThrottlingException", "LimitExceededException"])
 def test_anything_else_from_acm_is_aws_being_unavailable_and_names_its_code(acm, code):
-    """aws#46 warns of it: an AccessDenied on the first real domain is the policy's, and has to be readable in the log."""
+    """An AccessDenied on the first real domain is the policy's, and has to be readable in the log."""
     acm.add_client_error("request_certificate", code, "no")
     with pytest.raises(edge_client.EdgeUnavailable, match=code):
         edge_client.request_certificate("www.minegocio.es", TOKEN)

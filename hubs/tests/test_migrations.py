@@ -24,7 +24,7 @@ HUBS_TABLES = {
     "hubs_hubownershiptransfer",
     "hubs_subscription",
     "hubs_subscriptionitem",
-    # The usage of each business, day by day (0010, L4-A).
+    # The usage of each business, day by day (0010).
     "hubs_hubusagedaily",
 }
 
@@ -55,7 +55,7 @@ def test_the_models_and_the_migrations_agree():
     call_command("makemigrations", "hubs", "--check", "--dry-run", verbosity=0)
 
 
-# --- 0006: the hubs of the phase-1 seed become businesses (plan 2026-10-13, L1-A2) -----------------
+# --- 0006: the hubs of the Hub's seed become businesses ------------------------------------------
 
 from datetime import timedelta  # noqa: E402
 from importlib import import_module  # noqa: E402
@@ -196,7 +196,7 @@ class TestTheSeedHubsBecomeBusinesses:
         assert not _copy().objects.exists()
 
     def test_a_business_of_the_panel_has_its_mirror_put_right(self, business, owner, people):
-        """A row of somebody who is no member (``demo_seed`` before L1-A2) is dropped, a missing one is added."""
+        """A row of somebody who is no member (an older ``demo_seed``) is dropped, a missing one is added."""
         self._membership(people["ana"], business.slug, "hub_admin")
 
         _adopt()
@@ -360,7 +360,7 @@ def test_0024_without_the_group_gives_nothing_and_does_not_fail():
     assert Permission.objects.filter(content_type__app_label="hubs", codename="view_hubusagedaily").exists()
 
 
-# --- 0011: three plans on sale at sign-up, their copy and ladder (Ioan, 2026-10-15) -------------------
+# --- 0011: three plans on sale at sign-up, their copy and ladder -----------------------------------
 
 THREE_PLANS = "0011_three_plans_on_sale"
 #: The database line the old seed carried and production still showed on 2026-10-15.
@@ -392,7 +392,7 @@ class TestTheCardsReadTheNewCopy:
         return Plan
 
     def test_the_upgrade_only_tiers_stay_on_sale_as_they_were(self, old_catalogue):
-        """Ioan, 2026-10-15: Pro, Enterprise and Max are kept, active and upgrade-only."""
+        """Pro, Enterprise and Max are kept, active and upgrade-only."""
         before = list(old_catalogue.objects.filter(slug__in=("pro", "enterprise", "max")).order_by("slug").values())
 
         _three_plans().refresh_the_copy(global_apps, _SchemaEditor())
@@ -417,7 +417,7 @@ class TestTheCardsReadTheNewCopy:
         assert old_catalogue.objects.get(slug="starter").price_monthly == 1
 
     def test_standard_gets_twice_the_resources_of_starter(self, old_catalogue):
-        """Ioan, 2026-10-15: the rows seeded before carried the flat paid ladder (3 and 15 s)."""
+        """The rows seeded before carried the flat paid ladder (3 and 15 s)."""
         old_catalogue.objects.filter(slug="standard").update(max_db_connections=3)
 
         _three_plans().refresh_the_copy(global_apps, _SchemaEditor())
@@ -472,12 +472,12 @@ def test_0011_is_frozen_and_reads_nothing_of_the_seed():
     assert [name for name in _imported_modules(_three_plans()) if name.startswith("hubs")] == []
 
 
-# --- 0012: the monthly messages of each plan, assistant and WhatsApp (Ioan, 2026-10-15) -----------------
+# --- 0012: the monthly messages of each plan, assistant and WhatsApp --------------------------------
 
 MONTHLY_MESSAGES = "0012_plan_monthly_messages"
 #: What 0012 writes, by slug: (assistant, WhatsApp) messages a month. Standard doubles Starter.
 MESSAGES_0012 = {"free": (30, 30), "starter": (300, 150), "standard": (600, 300), "payment-test": (300, 150)}
-#: The upgrade-only tiers get the figures of the old stack (ADR-0474, levels pro/enterprise), so a customer on one
+#: The upgrade-only tiers get the figures of the old stack (levels pro/enterprise), so a customer on one
 #: never has fewer than Free.
 UPGRADE_ONLY_0012 = {"pro": (1000, 500), "enterprise": (3000, 800), "max": (3000, 800)}
 
@@ -564,7 +564,7 @@ def test_hubs_migrates_back_before_the_monthly_messages_and_forward_again(plans)
     assert _messages_of(Plan) == {**MESSAGES_0012, **UPGRADE_ONLY_0012}
 
 
-# --- 0013: the plans live in the database; no trial (Ioan, 2026-10-15) ---------------------------------------
+# --- 0013: the plans live in the database; no trial -----------------------------------------------
 
 from decimal import Decimal  # noqa: E402
 
@@ -746,7 +746,7 @@ def _snapshot(Plan) -> dict[str, dict]:
 
 @pytest.mark.django_db
 class TestThePlansLiveInTheDatabase:
-    """Ioan, 2026-10-15: the plans live only in the database and staff keep them in the admin; 0013 is the seed
+    """The plans live only in the database and staff keep them in the admin; 0013 is the seed
     of a new database and puts production's rows right once. There is no trial any more: Starter and Standard
     carry 0 days (the Free plan is the way in); the mechanism stays, dormant. Pro, Enterprise and Max are kept,
     active and upgrade-only."""
@@ -868,7 +868,7 @@ class TestThePlansLiveInTheDatabase:
     @pytest.mark.parametrize("args", [(), ("--update",)])
     def test_the_seed_command_seeds_nothing(self, args):
         """The plans are kept in the admin. ``sync_hub_plans`` stays only as an empty command, because the deploy's
-        ``saas-migrate`` still calls it until aws#4 is applied: it writes nothing, ``--update`` included."""
+        ``saas-migrate`` still calls it: it writes nothing, ``--update`` included."""
         from hubs.models import Plan
 
         before = sorted(Plan.objects.values_list("slug", "updated_at"))
@@ -959,7 +959,7 @@ def test_hubs_migrates_back_before_the_clock_and_forward_again_dating_the_suspen
     assert Hub.objects.get(pk=business.pk).suspended_at is not None
 
 
-# --- 0019: how many modules a business may choose to turn on (Ioan, 2026-10-24) -----------------------------------
+# --- 0019: how many modules a business may choose to turn on ---------------------------------------
 
 
 MODULE_CAP = "0019_plan_max_apps"
@@ -1056,11 +1056,11 @@ def test_hubs_migrates_back_before_the_module_cap_and_forward_again():
     assert _caps_of(Plan) == {**MAX_APPS_0019, **UPGRADE_ONLY_0019, "old-code": 0}
 
 
-# --- 0020: the paid cards stop promising infrastructure (Ioan, 2026-10-24, PLAN-SAAS §9) ------------------------------
+# --- 0020: the paid cards stop promising infrastructure --------------------------------------------
 
 
 PLAN_COPY = "0020_paid_plan_copy"
-#: The words of a paid card that promise infrastructure the plans no longer sell (round 6) and nobody runs, in both
+#: The words of a paid card that promise infrastructure the plans no longer sell and nobody runs, in both
 #: languages; the support «agreed in contract» is Enterprise's and Max's real ``support_level`` and stays.
 INFRASTRUCTURE_WORDS = (
     "dedicated", "isolated", "autoscal", "disaster", "monitoring", "single-node", "infrastructure",
@@ -1273,7 +1273,7 @@ def test_putting_the_catalogue_back_leaves_what_the_migrations_leave():
     _assert_the_catalogue_the_migrations_leave(Plan)
 
 
-# --- 0021: the cards on sale say what every plan gives (Ioan, 2026-10-24, PLAN-SAAS §9; PLAN §32) -----------------
+# --- 0021: the cards on sale say what every plan gives ---------------------------------------------
 
 
 CARDS_ON_SALE = "0021_plan_copy_on_sale"
@@ -1477,7 +1477,7 @@ def test_hubs_migrates_back_before_the_cards_on_sale_and_forward_again():
     assert _cards_on_sale_of(Plan) == {**COPY_0021, "standard": {**COPY_0021["standard"], **FEATURES_0026}, **COPY_0029}
 
 
-# --- 0026: no card sells a custom domain nobody can connect (saas#233; PLAN-SAAS §8, round 2026-10-22) ---------------
+# --- 0026: no card sells a custom domain nobody can connect ----------------------------------------
 
 
 NO_CUSTOM_DOMAIN = "0026_no_custom_domain_on_sale"
@@ -1553,7 +1553,7 @@ class TestNoCardSellsACustomDomainNobodyCanConnect:
             assert len(card[column]) == len(CARD_0021[column]) - 1, column
         assert [text for text in [card["description_en"], card["description_es"]] if CUSTOM_DOMAIN_WORDS.search(text)] == []
 
-    def test_the_gate_stays_for_saas_195(self, seeded_card):
+    def test_the_custom_domain_gate_stays(self, seeded_card):
         _forward_0026()
 
         gates = dict(seeded_card.objects.values_list("slug", "includes_custom_domain"))
@@ -1627,7 +1627,7 @@ def test_hubs_migrates_back_before_0026_and_forward_again():
     assert _standard_card(Plan) == COPY_0026["standard"]
 
 
-# --- 0029: the database line says what a recovery keeps (saas#408; PLAN-DB §13, PLAN-SAAS §48 point 8) -------------
+# --- 0029: the database line says what a recovery keeps --------------------------------------------
 
 from hubs.tests.test_plan_catalogue import MANAGED_DATABASE, promises_a_recovery_without_what_it_keeps  # noqa: E402
 

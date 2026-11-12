@@ -1,10 +1,10 @@
-"""Data: the database line of the cards says what a recovery keeps (saas#408; PLAN-DB §13, PLAN-SAAS §48 point 8).
+"""Data: the database line of the cards says what a recovery keeps.
 
 0013 seeded Free and Starter with «Managed database, … with continuous backups and point-in-time recovery for 14
 days», which 0021 kept (Standard, Pro, Enterprise and Max say «Everything in …»). The public web, the plan's page, the
 panel's Store and the assistant paint it. A business that invoices with VeriFactu in production never goes back whole
 to a moment: what it sent to the tax agency stays sent, so the Hub refuses that return and restores a copy aside, from
-which it gets back what it lost (the Hub's BASE-F114). From here the line says both, as Business Central and Jetpack's
+which it gets back what it lost. From here the line says both, as Business Central and Jetpack's
 backups for WooCommerce word it: the window, and what a recovery keeps.
 
 The line is the unit, not the card: wherever a plan's features still read 0013's line word for word, that line moves

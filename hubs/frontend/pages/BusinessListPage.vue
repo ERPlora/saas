@@ -1,21 +1,20 @@
 <script setup lang="ts">
-// Businesses (`/dashboard/businesses`): the panel's home (round 17 §2.3; mockups `businesses.html`, README §3b).
+// Businesses (`/dashboard/businesses`): the panel's home.
 // Management, not the launcher: the account's businesses in a server-side DataTable (list or cards;
 // cards up to 900 px so names are not cut on a tablet) with their status (and why), plan, role and
 // last use; per row what the server says it allows (`can`): «Open» (not while suspended or deleted),
-// «Manage» and «Recover». «Delete» is not on the row (README §3b): it lives in the business's Settings.
+// «Manage» and «Recover». «Delete» is not on the row: it lives in the business's Settings.
 // Above the table, what waits for an answer: invitations, ownership offers and unpaid invoices (inside
-// the apps without a way to pay, README §4). «Create business» opens a dialog: the form, then the
+// the apps without a way to pay). «Create business» opens a dialog: the form, then the
 // preparation, then «ready» or why not, following the new business with its own `hubs.business.get`
 // (the list may not show it: a search, another page); meanwhile the list shows it «Preparing». Empty,
-// the table holds the sign-up form itself. With the account's Free business filling its quota (ADR-0154), the
-// dialog says so instead of the form, naming it, and offers to change its plan (audit 2 S-02). Live data:
-// `hubs.business.list`. Ionic reuses the page:
-// `?create=1` (the launcher's «Create another business») is read each time it comes on screen. The list
-// fills the page between the topbar and the footer (`detail-fill` + `.panel-fill`, Ioan 2026-10-14), and
-// asks for rows per page only when there are more businesses than the shortest page (README §3b). Its states are
-// truthful (audit 2026-10-14, R-04: `useLiveState`): the stream down or no answer in time is an error with
-// «Retry», never «Create your first business»; unpaid invoices of two or more businesses are one notice (R-15).
+// the table holds the sign-up form itself. With the account's Free business filling its quota, the dialog says so
+// instead of the form, naming it, and offers to change its plan. Live data: `hubs.business.list`. Ionic reuses the
+// page: `?create=1` (the launcher's «Create another business») is read each time it comes on screen. The list
+// fills the page between the topbar and the footer (`detail-fill` + `.panel-fill`), and asks for rows per page
+// only when there are more businesses than the shortest page. Its states are truthful (`useLiveState`): the
+// stream down or no answer in time is an error with «Retry», never «Create your first business»; unpaid invoices
+// of two or more businesses are one notice.
 import {
   DataTable,
   type DataTableAction,
@@ -60,7 +59,7 @@ import { useAcceptInvitation } from '../invitations';
 import { useOpenBusiness } from '../open-business';
 
 const PAGE_SIZES = [10, 25, 50, 100];
-/** Cards up to here: a tablet in portrait would cut the names (README §3b). */
+/** Cards up to here: a tablet in portrait would cut the names. */
 const CARD_BREAKPOINT = 900;
 
 const { t, locale } = useI18n();
@@ -163,7 +162,7 @@ function why(row: BusinessRowOut): string {
 
 const pageOf = (row: { id: string }) => `${BUSINESSES}/${row.id}/summary`;
 
-/** The row's buttons, as the table folds them when its box narrows (README §3b, W-19): «Open» stays,
+/** The row's buttons, as the table folds them when its box narrows: «Open» stays,
  *  «Manage» and «Recover» go into «⋮» first. Each is named with its business for a screen reader. */
 const actions = computed<DataTableAction<BusinessRowOut>[]>(() => [
   {
@@ -249,8 +248,8 @@ const createdNow = computed(() => followed.value?.data.value);
 /** The sentence over its preparation: none during a platform pause (`BusinessPreparing` says the pause). */
 const preparingLead = computed(() => preparingLeadKey(createdNow.value?.maintenance));
 
-/** The account's Free business when its Free ones fill the quota (ADR-0154): a new business would be Free, so
- *  the dialog says so instead of a form that would be refused (audit 2 S-02). */
+/** The account's Free business when its Free ones fill the quota: a new business would be Free, so
+ *  the dialog says so instead of a form that would be refused. */
 const freeBusiness = computed(() => live.data.value?.free_business ?? null);
 const limited = computed(() => !created.value && !!freeBusiness.value);
 
@@ -266,7 +265,7 @@ const phase = computed<'form' | 'preparing' | 'ready' | 'error'>(() => {
   return now?.can.open ? 'ready' : 'preparing';
 });
 
-// Each step puts the focus on its own button (V-19): a screen reader hears where it is.
+// Each step puts the focus on its own button: a screen reader hears where it is.
 const listButton = useTemplateRef<{ $el: HTMLElement }>('listButton');
 const openButton = useTemplateRef<{ $el: HTMLElement }>('openButton');
 watch(phase, async (now) => {
@@ -486,7 +485,7 @@ onIonViewWillEnter(entered);
           >{{ row.name }}</strong>
         </template>
         <template #host="{ row }">
-          <!-- A div, not the span DataTable clips with «…»: the address may take a second line, after a dot (R-25). -->
+          <!-- A div, not the span DataTable clips with «…»: the address may take a second line, after a dot. -->
           <div
             class="mono cell-wrap"
             data-testid="business-host"
@@ -789,7 +788,7 @@ a.business-name:hover {
 .mono {
   font-family: var(--font-mono, ui-monospace, monospace);
 }
-/* A cell that may take a second line instead of «…» (audit 2 R-25). */
+/* A cell that may take a second line instead of «…». */
 .cell-wrap {
   min-width: 0;
   white-space: normal;

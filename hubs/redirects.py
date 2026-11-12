@@ -1,11 +1,10 @@
 """The old panel's addresses of the businesses, for good (301), to their pages in the new panel.
 
-PLAN-SAAS §1 («Redirecciones de URLs viejas … SE PORTAN (301): … ``/dashboard/*``»), the part of the businesses:
-the old overview and lists (round 17, §3.6: the panel's home is Businesses, one list), «Create Terminal» (the
-dialog of Businesses, ``?create=1``) and the QR page («On your devices», on the business's Summary). A query of the
-old pages (their filters) means nothing here and is dropped. The other ``/dashboard/*`` addresses belong to their
-apps. The new panel lives under ``/dashboard/`` too (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX): ``/dashboard`` and
-``/dashboard/`` are Businesses, and each old address lands on its page in one hop.
+Of the old ``/dashboard/*`` addresses, the businesses' ones: the old overview and lists (the panel's home is
+Businesses, one list), «Create Terminal» (the dialog of Businesses, ``?create=1``) and the QR page («On your
+devices», on the business's Summary). A query of the old pages (their filters) means nothing here and is dropped.
+The other ``/dashboard/*`` addresses belong to their apps. The new panel lives under ``/dashboard/`` too:
+``/dashboard`` and ``/dashboard/`` are Businesses, and each old address lands on its page in one hop.
 """
 
 from django.urls import path

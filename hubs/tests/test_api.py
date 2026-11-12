@@ -1,10 +1,8 @@
 """``GET /api/catalog/sectors`` and ``GET /api/catalog/business-types``: the public taxonomy.
 
-Adapted from ERPlora/saas ``public/catalog/tests/test_categories_api.py`` (origin/develop), whose
-nine tests covered the same pattern for ``Category``/``Subcategory`` (gone, round 16): public,
-read-only, active rows only, ordered, nested parent, filter by parent. Here over ninja, bound to
-the operations ``hubs.sector.list`` and ``hubs.business_type.list`` (PLAN §21.4), in the request's
-language and without pagination (12 sectors, 70 business types).
+Public, read-only, active rows only, ordered, nested parent, filter by parent, over ninja and bound to the
+operations ``hubs.sector.list`` and ``hubs.business_type.list``, in the request's language and without
+pagination (12 sectors, 70 business types).
 """
 
 from datetime import datetime, timedelta
@@ -146,8 +144,8 @@ class TestSectorList:
 
 class TestBusinessTypeList:
     def test_lists_the_active_business_types_by_their_order_then_code_across_sectors(self, client, catalog):
-        """Like the origin ``catalog`` (``BusinessType.Meta.ordering = ["order", "code"]``): one order for
-        every type, not grouped by sector, so ``/industries/`` interleaves them as the seed orders them.
+        """One order for every type (``BusinessType.Meta.ordering = ["order", "code"]``), not grouped by sector,
+        so ``/industries/`` interleaves them as the seed orders them.
         Here grocery (retail, 1) sits between bar (hospitality, 1) and restaurant (hospitality, 2)."""
         assert _codes(_get(client, BUSINESS_TYPES)["business_types"]) == ["bar", "grocery", "restaurant"]
 

@@ -1,4 +1,4 @@
-"""Data: the plans live in the database, with no trial (Ioan, 2026-10-15).
+"""Data: the plans live in the database, with no trial.
 
 Until this date a command (``sync_hub_plans``) seeded the plans on every deploy, creating the missing ones and
 leaving the rest as staff left them. From here the plans live only in the database and staff keep them in the
@@ -8,7 +8,7 @@ the rows already in production right, once:
 - the seven plans of the seed that day (``CATALOGUE``) are written with its values, created if missing and updated
   in place if not, so the subscriptions that point at them keep pointing at them: ``free``, ``starter`` and
   ``standard`` (on sale at sign-up; the copy and the resource ladder 0011 froze), ``pro``, ``enterprise`` and
-  ``max`` (kept by Ioan on 2026-10-15: active and ``upgrade_only``, an upgrade of a business that already pays;
+  ``max`` (active and ``upgrade_only``, an upgrade of a business that already pays;
   their prices as production has them) and ``payment-test`` (internal). The messages a month are the ones 0012 gave;
 - no plan has a trial any more: Starter and Standard go from 15 days to 0 (the Free plan is the way in, and no
   law asks for a trial). The mechanism stays dormant (``trial_period_days``, the checkout's ``trial_end``): staff
@@ -46,7 +46,7 @@ MANAGED_DATABASE_ES = (
     "continuas y recuperación a cualquier momento de los últimos 14 días"
 )
 
-#: slug → every field of the plan on 2026-10-15, but the link to Stripe (staff's).
+#: slug → every field of the plan that day, but the link to Stripe (staff's).
 CATALOGUE = {
     "free": {
         "name_en": "Free",
@@ -131,7 +131,7 @@ CATALOGUE = {
         "featured_label_en": "",
         "featured_label_es": "",
         "price_monthly": Decimal("29.99"),
-        "price_annual": Decimal("299.90"),  # 10 × monthly = 2 months free (ADR-0006)
+        "price_annual": Decimal("299.90"),  # 10 × monthly = 2 months free
         "is_active": True,
         "upgrade_only": False,
         "internal_only": False,
@@ -181,7 +181,7 @@ CATALOGUE = {
         "max_hubs_per_org": 0,
         "max_devices": 0,
         "max_users": 0,
-        # Twice Starter, as every resource of the plan (Ioan, 2026-10-15).
+        # Twice Starter, as every resource of the plan.
         "max_db_connections": 6,
         "statement_timeout_seconds": 15,
         "assistant_messages_per_month": 600,
@@ -190,7 +190,7 @@ CATALOGUE = {
         "support_level": "priority_email",
         "includes_custom_domain": True,
     },
-    # The upgrade-only tiers (Ioan, 2026-10-15: kept, not retired), going on up the ladder: each twice the one below
+    # The upgrade-only tiers (kept, not retired), going on up the ladder: each twice the one below
     # (Pro 12, Enterprise 24, Max 48), and a card line that says so. The Store offers them to a business Stripe already
     # bills; the public web does not list them.
     "pro": {
@@ -224,7 +224,7 @@ CATALOGUE = {
         "max_users": 0,
         "max_db_connections": 12,
         "statement_timeout_seconds": 15,
-        # The old stack's level pro (ADR-0474); enterprise and max, its level enterprise.
+        # The old stack's level pro; enterprise and max, its level enterprise.
         "assistant_messages_per_month": 1000,
         "whatsapp_messages_per_month": 500,
         "included_level": "pro",
@@ -313,7 +313,7 @@ CATALOGUE = {
         "support_level": "contract",
         "includes_custom_domain": True,
     },
-    # saas#1052: a REAL subscription (charged through Stripe) with no trial, so a real invoice, its AEAT record and
+    # A real subscription (charged through Stripe) with no trial, so a real invoice, its AEAT record and
     # its QR can be seen at once. ``internal_only`` hides it from every public door and only staff may buy it.
     # 1.00 € net → 1.21 € with Spanish VAT.
     "payment-test": {

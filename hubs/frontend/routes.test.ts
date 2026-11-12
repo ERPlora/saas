@@ -28,7 +28,7 @@ describe('hubs routes.ts', () => {
     expect(routes.map((r) => [r.path, r.meta])).toEqual([
       // The entry: signed out it asks to sign in, so it is open; never the shell's menu.
       ['/launch', { auth: false, chrome: false }],
-      // The panel lives under /dashboard (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX): the bare address is Businesses.
+      // The panel lives under /dashboard: the bare address is Businesses.
       ['/dashboard', { auth: true }],
       ['/dashboard/businesses', { auth: true }],
       // A business opens on its Summary; each section has its address (the tabbar follows it).
@@ -41,7 +41,7 @@ describe('hubs routes.ts', () => {
   });
 
   // flow: HUBS-F02 (HUBS-G66) and HUBS-F12 (HUBS-G71): `ERPlora/app` boots on /shell/ and never changes it
-  // (working-rules §12; PLAN-SAAS bloque 3: «/shell/, alias de /launch»).
+  // and /shell/ is an alias of /launch.
   it("serves the launcher at the installed app's start, /shell/", async () => {
     const router = createRouter({ history: createMemoryHistory(), routes });
     const launcher = await load(routes.find((r) => r.path === '/launch') as RouteRecordRaw);

@@ -1,5 +1,4 @@
-"""Data: the hubs of the phase-1 seed become businesses, and the jump's access becomes their mirror
-(plan 2026-10-13, L1-A2).
+"""Data: the hubs of the Hub's seed become businesses, and the jump's access becomes their mirror.
 
 Before ``hubs`` existed, a hub was only a slug in ``accounts.HubMembership`` (``demo_seed``, the admin).
 From here every one of those slugs is a ``Hub`` with its ``HubMember`` rows, and ``HubMembership`` holds

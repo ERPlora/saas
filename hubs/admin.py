@@ -1,20 +1,19 @@
 """Django admin of hubs: the plans, the taxonomy of sectors and business types, and the account plane of
 every business.
 
-The plans and the taxonomy are ported from ERPlora/saas ``public/catalog/admin.py`` (origin/develop)
-without modeltranslation's tabs: each language is its own column. The guards of the Spanish copy and of
-duplicate names are the models' ``clean()``, which the admin form runs.
+Each language of the plans and the taxonomy is its own column. The guards of the Spanish copy and of duplicate
+names are the models' ``clean()``, which the admin form runs.
 
 The account plane (``Hub``, ``HubMember``, ``HubOwnershipTransfer``, ``BillingProfile``, ``Subscription``,
-``SubscriptionItem``, ``SessionRevocation``; L1-A2) is read-mostly: its writes are the operations of
+``SubscriptionItem``, ``SessionRevocation``) is read-mostly: its writes are the operations of
 ``hubs.services`` (state version, the push to the Hub), so the admin adds, changes and deletes nothing, not even for
 a superuser. Superusers get the platform's actions (``services.send_latest_state``, ``retry_owed``,
 ``deliver_revocations``); ``support`` only sees (data migration ``0007``). A ``User``'s page lists the businesses of the
 account (``AccountMemberInline``), and «Hubs» (``hubs_view``, ``/admin/accounts/hubs/``, routed in ``config/urls.py``)
 has one row per business people enter, each with «Open in the Hub admin».
 
-``HubUsageDaily`` (L4-A) is what the Hub measured of each business every night (``collect_hub_usage``): read only,
-for superusers, with its sizes readable and the database's, which the customer never sees (PLAN-SAAS §5).
+``HubUsageDaily`` is what the Hub measured of each business every night (``collect_hub_usage``): read only, for
+superusers, with its sizes readable and the database's, which the customer never sees.
 """
 
 import functools
@@ -186,8 +185,8 @@ class ReadOnly:
 
 def traced(action):
     """An action of the platform leaves, on each row it ran on, who ran it and which in the admin's history
-    (HUBS-F23; ERPlora/saas SAAS_DASHBOARD-F41 lost that trace). Under ``@admin.action``, whose description it
-    names: the line is written whatever the action reported, since the attempt is what the staff did."""
+    (HUBS-F23). Under ``@admin.action``, whose description it names: the line is written whatever the action
+    reported, since the attempt is what the staff did."""
 
     @functools.wraps(action)
     def run(model_admin, request, queryset):
@@ -454,7 +453,7 @@ class HubUsageDailyAdmin(ReadOnly, admin.ModelAdmin):
     def database(self, obj):
         return filesizeformat(obj.db_bytes)
 
-    # hub#603: their first click says who is highest, with what the Hub did not measure last, not on top.
+    # Their first click says who is highest, with what the Hub did not measure last, not on top.
 
     @admin.display(description=_("requests"), ordering=F("requests").desc(nulls_last=True))
     def served(self, obj):

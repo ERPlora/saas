@@ -30,7 +30,7 @@ describe('BusinessPreparing', () => {
     expect(bar.attributes('aria-label')).toBe('Preparation progress');
   });
 
-  // A business is born with every app off (PLAN §33): this step names its type, it installs nothing.
+  // A business is born with every app off: this step names its type, it installs nothing.
   it.each([
     ['en', 'Setting up your business: Restaurant'],
     ['es', 'Preparando tu negocio: Restaurant'],

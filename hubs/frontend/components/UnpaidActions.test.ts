@@ -1,4 +1,4 @@
-// The way out of an unpaid invoice wherever a business is listed (audit 2026-10-14, R-07 and R-09): on the web,
+// The way out of an unpaid invoice wherever a business is listed: on the web,
 // for whoever may pay it (`pay_url`), «Pay the invoice» (Stripe's page); after a declined card, «Change card»
 // (Stripe's Customer Portal, `billing.portal.open`) is the main action and «Pay» waits. Inside the apps nothing:
 // the notice says where to pay.
@@ -73,7 +73,7 @@ describe('UnpaidActions', () => {
     expect(ionProps(large.wrapper.get('[data-testid="unpaid-pay"]'), 'size')).toEqual({ size: undefined });
   });
 
-  it('secondary (not the most urgent of a list): every button outlined, so one business leads (audit 2 S-06)', async () => {
+  it('secondary (not the most urgent of a list): every button outlined, so one business leads', async () => {
     const declined = await mountActions({ unpaid_reason: 'card_declined' }, { secondary: true });
     expect(ionProps(declined.wrapper.get('[data-testid="unpaid-change-card"]'), 'fill')).toEqual({ fill: 'outline' });
     document.body.innerHTML = '';

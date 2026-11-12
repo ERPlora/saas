@@ -1,4 +1,4 @@
-"""What an account's own changes mean to its businesses (``accounts.signals``; PLAN-SAAS §2.1 and §2.2).
+"""What an account's own changes mean to its businesses (``accounts.signals``).
 
 accounts never imports hubs (``accounts ← hubs ← billing``): it sends signals and hubs, connected in
 ``HubsConfig.ready()``, turns them into what the Hub must learn:

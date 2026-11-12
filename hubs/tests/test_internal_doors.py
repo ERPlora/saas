@@ -1,11 +1,10 @@
 """HUBS-F35 (HUBS-G62, HUBS-G99): every door under ``/internal`` hears only the Hub's signed call, whichever app
 serves it.
 
-The old SaaS opened its machine doors with four credentials (a machine key, a business secret in ``X-Hub-Token``, a
-short pass or a person's session) and told an inactive business apart before checking any (SAAS_DASHBOARD-F50). Here
-there is one: the HMAC-SHA256 of the shared secret (the current one or, during a rotation, the previous one) with a
-timestamp of the last five minutes (``accounts.signing``). A session, even the staff's, opens nothing; nor does a call
-signed with another secret or too long ago. The business is the one the path names, never a header (PLAN-SAAS §2).
+There is one credential: the HMAC-SHA256 of the shared secret (the current one or, during a rotation, the previous
+one) with a timestamp of the last five minutes (``accounts.signing``). A session, even the staff's, opens nothing;
+nor does a call signed with another secret or too long ago, nor a machine key, a business secret in a header or a
+short pass. The business is the one the path names, never a header.
 
 The doors are read from the URL resolver, so one added tomorrow without the check fails here.
 """

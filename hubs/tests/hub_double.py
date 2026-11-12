@@ -1,4 +1,4 @@
-"""A stand-in for hub-next's ``/internal`` (PLAN-SAAS §2, §3.1), for the tests of the SaaS side.
+"""A stand-in for the Hub's ``/internal``, for the tests of the SaaS side.
 
 A real HTTP server (stdlib, a thread) that verifies the signature exactly as the Hub will
 (``accounts.signing.verify_signed``: v2 over method, path and body when the call carries it, else the
@@ -6,7 +6,7 @@ body-only v1), records every call and answers what the test asks for, with the H
 
 - ``PUT /internal/hubs/{id}`` → 202 (asynchronous sign-up: «requested»), 200 once it is known;
 - ``PUT /internal/hubs/{id}/state`` → 200, ``applied`` false for a version not newer than the last
-  one applied (the Hub ignores an older snapshot, §2.2); 422 ``internal.payload_invalid`` for a ``custom_domain`` the
+  one applied (the Hub ignores an older snapshot); 422 ``internal.payload_invalid`` for a ``custom_domain`` the
   Hub would refuse, which refuses the whole snapshot;
 - ``GET /internal/hubs/{id}`` → 200 with the registry's status (a demo's too: ``requested`` until the test says
   ``ready``, ``expired`` once it ended), 404 for a hub it never got;
@@ -21,13 +21,12 @@ body-only v1), records every call and answers what the test asks for, with the H
   422 without a ``day``;
 - ``POST /internal/demos`` (``{session_key, vertical, language}``) → 202 with a new ``demo-<8 hex>`` that ends
   ``DEMO_MINUTES`` later and is ``status: "requested"`` (the Hub prepares its database afterwards), or 200 with the
-  live one of that ``session_key`` and its status (``created`` false): one live demo per browser, as the Hub keeps it
-  (plan ``docs/plans/2026-10-17-demo-hubs-fase-1.md`` §1.5; the asynchronous demo of the tenancy, 2026-10-30);
+  live one of that ``session_key`` and its status (``created`` false): one live demo per browser, as the Hub keeps it;
 - ``POST /internal/demos/{slug}/codes`` (``{session_key, language}``) → 201 ``{code, expires_at}``; 404 for a demo
   it never made, 410 ``base.hub_gone`` once it ended, 403 ``base.demo_not_owner`` for another browser's.
 
 A bad or missing signature answers 401 and is recorded as refused. Only tests use it; the e2e double
-of the whole ``/internal`` is ``tests/doubles/hub.py`` (lot L0-G).
+of the whole ``/internal`` is ``tests/doubles/hub.py``.
 """
 
 import json
@@ -58,7 +57,7 @@ DEMO_MINUTES = 60
 
 
 def _hub_takes_this_domain(domain: Any) -> bool:
-    """``custom_domain`` as the Hub reads it (hub#812, ``base.schemas.custom_domain_of_photo``), which refuses the whole
+    """``custom_domain`` as the Hub reads it (``base.schemas.custom_domain_of_photo``), which refuses the whole
     snapshot over a bad one: the form it is written in, none of its own hosts."""
     if domain is None or domain == "":
         return True

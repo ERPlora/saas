@@ -1,7 +1,7 @@
 """The mails of hubs, each in its recipient's language (``User.language``), branded as text and as HTML
 (``base.emails.branded_message``, ACCOUNTS-F46).
 
-Ported from ERPlora/saas ``apps/dashboard/hubs/main/emails.py`` (origin/develop): the invitation
+They are the invitation
 (``send_invitation``), the ownership offer and its acceptance (``send_ownership_offer``,
 ``send_ownership_accepted``, which say until when a paid plan is paid, HUBS-F28), the deletion with the date
 until which the business can be recovered and the way to the copy of its data (``send_deletion``), that copy ready to

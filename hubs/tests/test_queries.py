@@ -1,4 +1,4 @@
-"""Reads of hubs: the public taxonomy as operations (PLAN §21.4).
+"""Reads of hubs: the public taxonomy as operations.
 
 The ninja routes (``test_api.py``), a live subscription and ``public/`` call the same operation,
 so the operation itself is what decides who may read and in which language.

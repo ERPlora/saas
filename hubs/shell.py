@@ -1,4 +1,4 @@
-"""The installed app's door into a business: ``GET /shell/open/<id>/`` (PLAN-SAAS bloque 3; PLAN-HUB round 18).
+"""The installed app's door into a business: ``GET /shell/open/<id>/``.
 
 ``ERPlora/app`` boots on ``{SaaS}/shell/`` (the SPA's launcher under the app's address, ``hubs/frontend/routes.ts``)
 and links the till to a hub only when a navigation with ``?shell=1`` leaves an entry page of the SaaS
@@ -24,7 +24,7 @@ from live.errors import Conflict, NotFound
 from hubs import services
 from hubs.schemas import BusinessOpenIn
 
-#: The app's start: ``ERPlora/app`` boots there and it never changes (working-rules §12).
+#: The app's start: ``ERPlora/app`` boots there, so it never changes.
 SHELL = "/shell/"
 
 

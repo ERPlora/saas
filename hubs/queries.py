@@ -1,12 +1,12 @@
 """Read operations of hubs, and the reads its commands and its push to the Hub share.
 
 The public ones need no permission and no account: the taxonomy of the sign-up and the industry pages
-(PLAN §21.4) and the plans on sale, which a visitor reads before signing up. Only active rows, in the
+and the plans on sale, which a visitor reads before signing up. Only active rows, in the
 caller's language (``ctx.language``, which a live stream carries outside the request).
 
 The rest are an account's (``hubs.view``, held by every signed-in account): its businesses, a
 business's page and members, its invitations and a business's payer. Who may read what is decided
-here by the account's ``HubMember`` role (round 17 §2.7): somebody without access to a business gets
+here by the account's ``HubMember`` role: somebody without access to a business gets
 404, never a hint that it exists; a role below the one needed gets 403.
 
 An account's API key with ``hubs.read`` opens the reads declared ``expose_api=True`` (its businesses, a
@@ -195,8 +195,8 @@ def _sector_ref(sector: Sector | None, language: str) -> dict[str, str] | None:
 def plan_list(ctx: OperationContext, data: PlanListIn) -> dict[str, Any]:
     """The plans on sale (``Plan.objects.public()``), by display order then price.
 
-    Each plan's features end with its real trial (saas#2424), except an upgrade's: an upgrade grants
-    none (#809). The rows of the old seed carried visual separators («───»): they are dropped.
+    Each plan's features end with its real trial, except an upgrade's: an upgrade grants none. Rows
+    that are only a visual separator («───») are dropped.
     """
     plans = list(Plan.objects.public().order_by("display_order", "price_monthly"))
     signable = [plan for plan in plans if not plan.upgrade_only]
@@ -251,7 +251,7 @@ def _plan(plan: Plan, language: str) -> dict[str, Any]:
 
 #: Statuses a business is listed with; ``deleted`` (purged) is gone for good.
 LISTED = [status for status in Hub.Status.values if status != Hub.Status.DELETED]
-#: Why «Open» does not work, by status (round 17 §2.2): a business with a payment pending still opens.
+#: Why «Open» does not work, by status: a business with a payment pending still opens.
 OPEN_BLOCKED = {
     Hub.Status.PREPARING: "preparing",
     Hub.Status.SUSPENDED: "suspended",
@@ -326,7 +326,7 @@ def is_restorable(hub: Hub, now: datetime) -> bool:
 
 
 def can(member: HubMember, now: datetime | None = None) -> dict[str, bool]:
-    """What ``member`` may do on its business, by role (round 17 §2.7) and status, computed here so no page
+    """What ``member`` may do on its business, by role and status, computed here so no page
     deduces it: the owner everything, an admin the team and the settings, a manager or an employee only
     «Open». «Open» while it serves; a deleted business takes no change, only «Recover» by its owner."""
     hub = member.hub
@@ -376,11 +376,11 @@ def free_plan() -> Plan | None:
 
 
 def trial_plan() -> Plan | None:
-    """The plan a Free business is born trying (ADR-0474: Starter), if it is on sale with a trial."""
+    """The plan a Free business is born trying (Starter), if it is on sale with a trial."""
     return Plan.objects.public().filter(slug="starter", trial_period_days__gt=0).first()
 
 
-#: The module tiers from the lowest (ADR-0474): ``Plan.included_level`` and ``apps.Module.tier`` share the names.
+#: The module tiers from the lowest: ``Plan.included_level`` and ``apps.Module.tier`` share the names.
 LEVELS = [Plan.IncludedLevel.FREE, Plan.IncludedLevel.BASIC, Plan.IncludedLevel.PRO, Plan.IncludedLevel.ENTERPRISE]
 
 
@@ -405,7 +405,7 @@ def _free_hubs(user):
 
 
 def free_hubs_owned(user, excluding: UUID | None = None) -> int:
-    """The Free businesses ``user`` owns (a deleted one no longer counts): ADR-0154's quota."""
+    """The Free businesses ``user`` owns (a deleted one no longer counts), for ``FREE_HUBS_PER_ACCOUNT``."""
     owned = _free_hubs(user)
     if excluding is not None:
         owned = owned.exclude(pk=excluding)
@@ -413,8 +413,8 @@ def free_hubs_owned(user, excluding: UUID | None = None) -> int:
 
 
 def free_business_filling_quota(user) -> Hub | None:
-    """The first Free business of ``user`` when its Free ones fill the quota (``FREE_HUBS_PER_ACCOUNT``,
-    ADR-0154), else ``None``: «Create business» says so before the form (audit 2 S-02)."""
+    """The first Free business of ``user`` when its Free ones fill the quota (``FREE_HUBS_PER_ACCOUNT``),
+    else ``None``: «Create business» says so before the form."""
     owned = _free_hubs(user).order_by("created_at", "id")
     if owned.count() < getattr(settings, "FREE_HUBS_PER_ACCOUNT", 1):
         return None
@@ -444,7 +444,7 @@ def refuse_staff(user) -> None:
 
 
 def refuse_full_free_quota(user, excluding: UUID | None = None) -> None:
-    """One more Free business does not fit ``user``'s quota (``FREE_HUBS_PER_ACCOUNT``, ADR-0154): 409
+    """One more Free business does not fit ``user``'s quota (``FREE_HUBS_PER_ACCOUNT``): 409
     ``hubs.free_hub_limit``. Counts without a lock: a write first takes it (``services.check_free_quota``)."""
     if free_hubs_owned(user, excluding=excluding) >= getattr(settings, "FREE_HUBS_PER_ACCOUNT", 1):
         raise Conflict(
@@ -459,10 +459,10 @@ def refuse_full_free_quota(user, excluding: UUID | None = None) -> None:
     permission="hubs.manage",
     input=BusinessCreateCheckIn,
     output=BusinessCreateCheckOut,
-    ai=INTERNAL,  # preview
+    ai=INTERNAL,  # the preview of ``hubs.business.create``
 )
 def business_create_check(ctx: OperationContext, params: BusinessCreateCheckIn) -> dict:
-    """Refuses as ``hubs.business.create`` refuses, before its card asks anybody to confirm it (ASSISTANT-F25, saas#193):
+    """Refuses as ``hubs.business.create`` refuses, before its card asks anybody to confirm it (ASSISTANT-F25):
     the assistant hears why and nobody confirms a business that was never going to be created. It locks nothing and
     the write checks again under its lock."""
     user = account_of(ctx)
@@ -495,7 +495,7 @@ def base_slug(name: str) -> str:
 
     ``slugify`` keeps ``_``, which no DNS label admits: it becomes ``-``, runs of hyphens collapse and
     none is left at an end (also after the cut). A reserved or too short name gets ``-store``. ``demo-…`` is
-    the demo hubs' prefix (round 2026-10-17, ``live.slugs``): its hyphen goes, so «Demo Bar» proposes
+    the demo hubs' prefix (``live.slugs``): its hyphen goes, so «Demo Bar» proposes
     ``demobar`` and «Demo» ``demostore``, never the fallback that loses the name.
     """
     base = re.sub(r"-+", "-", slugify(name).replace("_", "-"))[
@@ -581,7 +581,7 @@ def address_propose(ctx: OperationContext, data: AddressProposeIn) -> dict[str, 
     ),
 )
 def business_list(ctx: OperationContext, data: BusinessListIn) -> dict[str, Any]:
-    """The account's businesses, the last opened first (round 17 §2.2), then by name.
+    """The account's businesses, the last opened first, then by name.
 
     With them, what waits for its answer: invitations and ownership offers.
     """
@@ -705,7 +705,7 @@ def still_pays(member: HubMember) -> bool:
 
 
 def unpaid_of(member: HubMember, subscription: Subscription | None) -> dict[str, Any]:
-    """Why the business's renewal is not paid, and since when (mockups README §6.18), as ``member`` sees
+    """Why the business's renewal is not paid, and since when, as ``member`` sees
     it: the invoice to pay only for its PAYER (after a transfer the owner may not be; the invoice's page
     shows the payer's card), never for a role."""
     if subscription is None or not subscription.unpaid_reason:
@@ -895,14 +895,14 @@ def business_detail(member: HubMember) -> dict[str, Any]:
 
 
 def country_locked(hub: Hub) -> bool:
-    """The country no longer changes once the business is ready (mockups README §6.21, W-B7): its fiscal
+    """The country no longer changes once the business is ready: its fiscal
     series and records belong to one country. The SaaS does not see the invoices (the Hub keeps them), so
     the lock starts at ``ready_at``, the first moment the business can invoice."""
     return hub.ready_at is not None
 
 
 def seats_of(hub: Hub, now: datetime) -> dict[str, int | None]:
-    """The seats of the business (saas#2022): ``used`` = its people, answered or invited (a live
+    """The seats of the business: ``used`` = its people, answered or invited (a live
     invitation holds its seat: it is spent when somebody is added, never when they walk in), and
     ``limit`` = what its plan covers at ``now``, ``None`` when nothing caps it (``max_users = 0`` on
     every paid plan and the Starter trial, or no subscription at all)."""
@@ -1008,7 +1008,7 @@ def hubs_with_members() -> list[tuple[str, int]]:
     permission="hubs.view",
     input=MemberListMineIn,
     output=MemberListMineOut,
-    ai=INTERNAL,  # accounts
+    ai=INTERNAL,  # only ``accounts`` calls it
 )
 def member_list_mine(ctx: OperationContext, data: MemberListMineIn) -> dict[str, Any]:
     """The businesses the account enters with its role on each: what the jump to a hub reads. Called by its name
@@ -1024,8 +1024,8 @@ StaffOnABusiness = tuple[str, str, str]
 def staff_on_businesses(now: datetime) -> list[StaffOnABusiness]:
     """Every account of ERPlora's staff (``is_staff`` or ``is_superuser``) that is also on a business, as
     ``accounts.services.on_a_business`` sees it: a member of one not deleted (one in its days of recovery too, which a
-    restore gives back) or invited to one (``_waiting_invitations``). By email, then slug. The doors refuse it since
-    W11b; the system check ``hubs.W002`` names what is left from before (``hubs.checks``)."""
+    restore gives back) or invited to one (``_waiting_invitations``). By email, then slug. The doors refuse it;
+    the system check ``hubs.W002`` names the ones that were already on a business before (``hubs.checks``)."""
     staff = Q(user__is_staff=True) | Q(user__is_superuser=True)
     members = HubMember.objects.filter(staff, accepted_at__isnull=False, hub__status__in=LISTED)
     invited = _waiting_invitations(now).filter(staff)
@@ -1036,8 +1036,8 @@ def staff_on_businesses(now: datetime) -> list[StaffOnABusiness]:
 
 # --- What the Hub is told (hubs.services.sync_hub) ------------------------------------------------
 
-#: The snapshot's ``status`` is the commercial one (PLAN-SAAS §2.3): a business being prepared is
-#: active for the Hub's rights.
+#: The snapshot's ``status`` is the commercial one: a business being prepared is active for the Hub's
+#: rights.
 SNAPSHOT_STATUS = {
     Hub.Status.PREPARING: "active",
     Hub.Status.ACTIVE: "active",
@@ -1047,7 +1047,7 @@ SNAPSHOT_STATUS = {
 
 
 def hub_registry(hub_id: UUID) -> dict[str, Any]:
-    """The body of ``PUT /internal/hubs/{id}``: what the Hub provisions the business with (§3.1)."""
+    """The body of ``PUT /internal/hubs/{id}``: what the Hub provisions the business with."""
     hub = Hub.objects.select_related("business_type").get(pk=hub_id)
     vertical = hub.business_type.vertical if hub.business_type else ""
     return {
@@ -1062,16 +1062,14 @@ def hub_registry(hub_id: UUID) -> dict[str, Any]:
 
 
 def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
-    """The body of ``PUT /internal/hubs/{id}/state`` (PLAN-SAAS §2.2), at the business's state version.
+    """The body of ``PUT /internal/hubs/{id}/state``, at the business's state version.
 
     ``hub_id`` names the hub of the path, which the signature (body only) does not cover; ``slug`` names it
-    too. ``verifactu`` (plan 2026-10-15, agreed with the Hub): the authorisation for ERPlora to file its
-    records as the staff left it (``fiscal.queries.snapshot_block``), and nothing of the plan: VeriFactu goes in
-    every plan, Free included (PLAN §30, round 2026-10-22b), so the validated authorisation alone opens the Hub's
-    «live» through ERPlora (``live_paid`` left with the Hub's condition, FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID).
-    ``whatsapp``: the business's WhatsApp channel (its
-    number, the month's usage against the plan's allowance and its templates at Meta), door 4 of the Hub's
-    ``whatsapp_inbox`` contract (``whatsapp.queries.channel_block``).
+    too. ``verifactu``: the authorisation for ERPlora to file its records as the staff left it
+    (``fiscal.queries.snapshot_block``), and nothing of the plan: VeriFactu goes in every plan, Free
+    included, so the validated authorisation alone opens the Hub's «live» through ERPlora. ``whatsapp``:
+    the business's WhatsApp channel (its number, the month's usage against the plan's allowance and its
+    templates at Meta), door 4 of the Hub's ``whatsapp_inbox`` contract (``whatsapp.queries.channel_block``).
     """
     from whatsapp.queries import channel_block  # whatsapp reads hubs; hubs reads it only here
 
@@ -1133,7 +1131,7 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
 
 
 def _snapshot_custom_domain(hub: Hub, plan: Plan | None) -> dict[str, str]:
-    """``custom_domain`` (hub#812): the host the Hub serves the business's website on, once it is proved and if the plan
+    """``custom_domain``: the host the Hub serves the business's website on, once it is proved and if the plan
     includes it. Absent otherwise, which to the Hub means none: the snapshot is whole."""
     if plan is None or not plan.includes_custom_domain:
         return {}
@@ -1152,10 +1150,10 @@ def effective_plan(hub_id: UUID, now: datetime) -> Plan | None:
     return _effective_plan(subscription, now)
 
 
-#: The plan's fields its businesses' snapshots carry (``plan`` of PLAN-SAAS §2.2): changing one in the admin owes the
+#: The plan's fields its businesses' snapshots carry (``plan`` of the snapshot): changing one in the admin owes the
 #: Hub a newer snapshot of every business on the plan (``services.owe_plan_rights``). The monthly messages are counted
-#: and blocked at by the Hub (PLAN-SAAS §3.6): 0 = none. ``max_apps`` is how many modules the business may choose to
-#: turn on, which the Hub checks when it turns one on (2026-10-24): 0 = no limit.
+#: and blocked at by the Hub: 0 = none. ``max_apps`` is how many modules the business may choose to turn on, which
+#: the Hub checks when it turns one on: 0 = no limit.
 SNAPSHOT_PLAN_FIELDS = (
     "slug",
     "included_level",
@@ -1172,7 +1170,7 @@ SNAPSHOT_PLAN_FIELDS = (
 def _snapshot_plan(plan: Plan | None) -> dict[str, Any] | None:
     if plan is None:
         return None
-    # The space for files its tier includes (the Hub's «Space», BASE-F72 and F73): from ``included_level``, already
+    # The space for files its tier includes (the Hub's «Space»): from ``included_level``, already
     # a field above, so a change of tier owes the newer snapshot.
     return {field: getattr(plan, field) for field in SNAPSHOT_PLAN_FIELDS} | {
         "max_storage_bytes": storage_limit_bytes(plan)
@@ -1288,7 +1286,7 @@ def assignable_roles(role: str) -> list[str]:
 
 def manages(actor: HubMember, target: HubMember) -> bool:
     """Whether ``actor`` may act on ``target``: an admin or the owner, never on itself nor on a peer
-    or a superior (test_member_service: the hierarchy is per business)."""
+    or a superior; the hierarchy is per business."""
     return (
         target.user_id != actor.user_id
         and RANK[actor.role] <= RANK[Role.ADMIN]
@@ -1362,7 +1360,7 @@ MEMBER_ACTIONS = ("change_role", "remove", "resend", "cancel", "transfer")
 def member_actions(
     actor: HubMember, member: HubMember, *, transfer_pending: bool = False
 ) -> list[str]:
-    """What ``actor`` may do on ``member``'s row, in ``MEMBER_ACTIONS`` order (saas#1626, saas#1670): the
+    """What ``actor`` may do on ``member``'s row, in ``MEMBER_ACTIONS`` order: the
     same rules the writes apply (``services._managed``, ``services.ownership_transfer``), so the page never
     offers a button its door refuses. Nothing on one's own row, a peer, a superior or a deleted business."""
     if not is_writable(actor.hub):
@@ -1406,7 +1404,7 @@ def member_row(
         "invited_by": _name_of(member.invited_by),
         "invited_at": member.invited_at,
         "invitation_expires_at": member.invitation_expires_at,
-        # An invitation has not joined anything yet (saas#2251): no date until it is answered.
+        # An invitation has not joined anything yet: no date until it is answered.
         "joined_at": None if pending else member.joined_at,
         "accepted_at": member.accepted_at,
         "last_opened_at": member.last_opened_at,
@@ -1508,12 +1506,12 @@ def payer_of(hub: Hub, owner) -> dict[str, Any]:
     }
 
 
-# --- Usage (lot L4-A, PLAN-SAAS §5) ----------------------------------------------------------------
+# --- Usage ----------------------------------------------------------------------------------------
 
 GIB = 1024**3
-#: The space for files a plan includes, by its module tier (``Plan.included_level``). A decision of L4-A,
-#: flagged for Ioan (``hubs/README.md``, «Uso»): PLAN-SAAS §1 took the size limits off ``Plan``, and §5 shows
-#: the customer a percentage of «the space of the plan», so the space follows the tier instead of a column.
+#: The space for files a plan includes, by its module tier (``Plan.included_level``). ``Plan`` has no size limits
+#: and the customer sees a percentage of «the space of the plan», so the space follows the tier instead of a
+#: column (``hubs/README.md``, «Uso»).
 STORAGE_LIMIT_GIB = {
     Plan.IncludedLevel.FREE: 1,
     Plan.IncludedLevel.BASIC: 5,
@@ -1544,7 +1542,7 @@ def last_measured_day(now: datetime) -> date:
 def usage_point(sample: HubUsageDaily, limit: int | None) -> dict[str, Any]:
     return {
         "day": sample.day,
-        # The files only (S3): the database is the admin's (PLAN-SAAS §5).
+        # The files only (S3): the database is the admin's.
         "storage": {
             "used_bytes": sample.s3_bytes,
             "limit_bytes": limit,
@@ -1649,7 +1647,7 @@ def usage_series(ctx: OperationContext, data: UsageSeriesIn) -> dict[str, Any]:
     }
 
 
-# --- The copies of a business's data (PLAN-DB, round 2026-10-30, proposals (a), (k), (l), (m)) -------------------
+# --- The copies of a business's data --------------------------------------------------------------
 
 #: What the Hub copies a business's data for (``GET /internal/hubs/{id}/dumps``): its deletion, and before a reset.
 DATA_COPY_KINDS = frozenset({"offboarding", "reset"})
@@ -1660,7 +1658,7 @@ DATA_COPY_ID_MAX = 512
 def hub_data_copies(hub_id: UUID) -> dict[str, Any] | None:
     """What the Hub keeps of a business's data: ``{available, copies}``, ``copies`` newest first, each ``{id, kind,
     created_at, bytes, url}`` (``url`` a link of 15 minutes, as the Hub gave it). ``available`` false: the business has
-    no database of its own, so it never gets a copy (ruling of 2026-10-30); a Hub that does not say it is taken as able
+    no database of its own, so it never gets a copy; a Hub that does not say it is taken as able
     to make them. No copies, or a Hub that does not know the business (404): ``copies`` empty. A cancelled business
     answers 200 at ``/internal`` (the 410 is the door of its host), so any other refusal is a fault: ``HubRefused``,
     as ``HubUnavailable`` with the Hub away (both logged). A row out of the contract is left out, and an answer out of
@@ -1782,7 +1780,7 @@ def data_copy_list(ctx: OperationContext, data: DataCopyListIn) -> dict[str, Any
     permission="hubs.view",
     input=DataCopyLinkIn,
     output=DataCopyLinkOut,
-    ai=INTERNAL,  # file
+    ai=INTERNAL,  # its answer is a download link for the panel's button
 )
 def data_copy_link(ctx: OperationContext, data: DataCopyLinkIn) -> dict[str, Any]:
     """A link to download one copy of the business's data, asked to the Hub now (it lasts 15 minutes, so a page left

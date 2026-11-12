@@ -1,9 +1,9 @@
 <script setup lang="ts">
-// The entry of erplora.com and of the apps (`/launch`; Django's old `/launch/` redirects here): round 17
-// §2.2, mockups `launch.html`, README §5. A centred card without the menu
+// The entry of erplora.com and of the apps (`/launch`; Django's old `/launch/` redirects here). A centred card
+// without the menu
 // (`meta.chrome: false`) that never enters a business by itself unless the person just created it or
 // is waiting for the only one to be ready:
-//   - signed out → the sign-in itself (Ioan, 2026-10-15): the one form that signs in and creates the account
+//   - signed out → the sign-in itself: the one form that signs in and creates the account
 //     (`SignInForm`), in the frame of the old template login (`AuthShell`), then the code mailed to the
 //     account; signed in, the page loads again with the new session (or `next`). Signed in with a `next` of
 //     this site (Django's `LOGIN_URL` keeps it), it goes there at once, as the template login did;
@@ -14,10 +14,10 @@
 //     panel», with why it does not open;
 //   - several → the server's order (the last opened first), «Open» on each, «Create another business».
 // Live data: `hubs.business.list` (the account's businesses and its pending invitations), its states truthful
-// (`useLiveState`, audit 2026-10-14 R-08: no answer in time is an error with «Retry», never a spinner for ever).
-// A business that owes an invoice says its real deadline (R-06) and, on the web for whoever may pay it, «Pay the
-// invoice» (or «Change card») is the main action, «Open» the second, outlined (R-07, audit 2 S-06; mockups `launch.html`
-// «past-due»). A deleted business offers its owner «Recover business» there, within its 90 days (audit 2 R-07).
+// (`useLiveState`: no answer in time is an error with «Retry», never a spinner for ever).
+// A business that owes an invoice says its real deadline and, on the web for whoever may pay it, «Pay the
+// invoice» (or «Change card») is the main action, «Open» the second, outlined. A deleted business offers its
+// owner «Recover business» there, within its 90 days.
 // Ionic reuses the page when it comes back on screen: its address (`?notice=`) and the tab's title are read then.
 import { InlineFeedback, StatusPill } from '@erplora/ui/components';
 import AuthShell from '../../../accounts/frontend/components/AuthShell.vue';
@@ -180,7 +180,7 @@ function reason(business: BusinessRowOut, short = false): string {
   return t(key, { date: reasonDate(business, locale.value) });
 }
 
-/** On the web, whoever may pay a business's unpaid invoice is offered to pay it first (R-07). */
+/** On the web, whoever may pay a business's unpaid invoice is offered to pay it first. */
 const owes = (business: BusinessRowOut) =>
   isWeb.value && !!business.pay_url && (business.status === 'past_due' || business.status === 'suspended');
 
@@ -190,7 +190,7 @@ function meta(business: BusinessRowOut, withPlan: boolean): string {
     : business.role_label;
 }
 
-/** Suspended or deleted: «Open» is not offered at all (README §5.3). */
+/** Suspended or deleted: «Open» is not offered at all. */
 const opensAtAll = (business: BusinessRowOut) => business.status !== 'suspended' && business.status !== 'deleting';
 
 function decline(it: InvitationOut): void {

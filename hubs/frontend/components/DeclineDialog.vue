@@ -1,7 +1,6 @@
 <script setup lang="ts">
-// «Decline» an invitation (README §5, U-06; mockups `launch.html`, `businesses.html`,
-// `invitation.html` «reject»): a ConfirmDialog that names who invited and to what, «Cancel» first.
-// Declining runs `hubs.invitation.decline` (the invitation's row goes, round 17 §2.8), says so in a
+// «Decline» an invitation: a ConfirmDialog that names who invited and to what, «Cancel» first.
+// Declining runs `hubs.invitation.decline` (the invitation's row goes), says so in a
 // toast, closes and tells the page (`declined`); a refusal stays in the dialog.
 import { ConfirmDialog } from '@erplora/ui/components';
 import { toastSuccess } from '@erplora/ui/shell';

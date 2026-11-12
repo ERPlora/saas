@@ -1,25 +1,3 @@
-"""Models of hubs: the businesses of an account, who belongs to them, who pays, what they have,
-the plans and the taxonomy of businesses.
-
-``Plan`` is ported from ERPlora/saas ``hubs/subscriptions/models.py`` (origin/develop) without the
-container sizing PLAN-SAAS §1 drops (vCPU, memory, storage flavour and database size) nor the price
-of a paused container and its Stripe price: there is no container per hub any more. It keeps
-``max_db_connections`` and ``statement_timeout_seconds`` (round 9, PLAN §14.2) and, since 2026-10-15, the
-assistant and WhatsApp messages a month (PLAN-SAAS §3.6) and, since 2026-10-24, how many modules a business may
-choose to turn on (``max_apps``), which travel in the hub's state snapshot (PLAN-SAAS §2.2). No modeltranslation:
-each translatable field is one column per language (``name_en``, ``name_es``…), English being the source.
-
-``Sector`` and ``BusinessType`` are ported from ERPlora/saas ``public/catalog/models.py``
-(origin/develop) and live here, not in ``public/`` (PLAN §21.4: ``Hub.business_type`` points at
-them and ``public`` reads them through the operations of hubs). ``BusinessType`` gains ``vertical``.
-
-The account plane of a business (plan 2026-10-13 §3, round 17) is ported from ERPlora/saas
-``apps/dashboard/hubs/main/models.py`` and ``hubs/subscriptions/models.py`` (origin/develop), reduced to
-what the SaaS still knows now that the Hub runs every business in one service (PLAN §14): ``Hub``
-keeps about a dozen fields (no server, container, database, token, heartbeat nor metrics), ``HubMember``
-the four ``hub_*`` roles of round 11 with the hierarchy in code (no ``Role`` table), ``Subscription``
-and ``SubscriptionItem`` are thin (Stripe is billing's, lot L2).
-"""
 
 import uuid
 from datetime import datetime, timedelta
@@ -56,10 +34,10 @@ class TranslatedFields(models.Model):
 
 class PlanQuerySet(models.QuerySet):
     def public(self):
-        """The plans a visitor may be shown: active and not ``internal_only`` (saas#1052).
+        """Active plans not ``internal_only``: what a visitor may be shown.
 
-        Every public door lists plans through here (saas#1950); door-specific cuts
-        (``upgrade_only``…) go on top of this, never instead of it.
+        Every public door lists plans through here; door-specific cuts (``upgrade_only``…) go on
+        top of this, never instead of it.
         """
         return self.filter(is_active=True, internal_only=False)
 
@@ -67,8 +45,8 @@ class PlanQuerySet(models.QuerySet):
         """Shortest and longest free trial a visitor gets by creating a hub on a public plan.
 
         ``{"trial_days_min": …, "trial_days_max": …}``, both ``None`` when no plan on sale has a
-        trial. An upgrade grants none (#809), so ``upgrade_only`` plans never count. Every public
-        page that states the trial reads it here (saas#2414).
+        trial. An upgrade grants no trial, so ``upgrade_only`` plans never count. Every public
+        page that states the trial reads it here.
         """
         return (
             self.public()
@@ -79,8 +57,8 @@ class PlanQuerySet(models.QuerySet):
     def offered_to(self, user):
         """The plans ``user`` may pick: every active one for staff, ``public()`` for anyone else.
 
-        Every logged-in door that lists or accepts a plan goes through here (saas#2388). No user (or
-        an anonymous one) is treated as a customer.
+        Every logged-in door that lists or accepts a plan goes through here. No user (or an
+        anonymous one) is treated as a customer.
         """
         if user is not None and getattr(user, "is_authenticated", False) and user.is_staff:
             return self.filter(is_active=True)
@@ -88,17 +66,18 @@ class PlanQuerySet(models.QuerySet):
 
 
 class Plan(TranslatedFields):
-    """A subscription plan of a hub. Prices are NET, VAT excluded (saas#1098).
+    """A subscription plan of a hub. Prices are net, VAT excluded.
 
-    One subscription buys one hub and everything inside it: every device and user (saas#1760; multi-location
-    comes from Pro and is charged per location, PLAN §32). Free is permanent and needs no card (ADR-0154) and is
-    the way in: no plan carries a trial since 2026-10-15 (``trial_period_days`` stays, dormant, for staff to use);
-    Pro, Enterprise and Max are upgrade-only; ``payment-test`` is internal. The plans live only in the database and staff keep them in the
-    admin: migration ``hubs/0013`` seeds them, and no deploy writes them again.
+    One subscription buys one hub and everything inside it: every device and user (multi-location
+    comes from Pro and is charged per location). Free is permanent, needs no card and is the way in;
+    no plan on sale carries a trial (``trial_period_days`` stays, dormant, for staff to use). Pro,
+    Enterprise and Max are upgrade-only; ``payment-test`` is internal. The plans live only in the
+    database and staff keep them in the admin: migration ``hubs/0013`` seeds them, and no deploy writes
+    them again.
     """
 
     class IncludedLevel(models.TextChoices):
-        """ADR-0474: one level name, the same across every ERPlora premium module."""
+        """One level name, the same across every ERPlora premium module."""
 
         FREE = "free", "Free"
         BASIC = "basic", "Basic"
@@ -106,7 +85,7 @@ class Plan(TranslatedFields):
         ENTERPRISE = "enterprise", "Enterprise"
 
     class SupportLevel(models.TextChoices):
-        """ADR-0426: channel and priority, never a clock we do not staff."""
+        """Channel and priority, never a clock we do not staff."""
 
         COMMUNITY = "community", "Community forum"
         EMAIL = "email", "Email"
@@ -127,8 +106,8 @@ class Plan(TranslatedFields):
         SupportLevel.PRIORITY_EMAIL: _("Priority email"),
         SupportLevel.CONTRACT: _("Agreed in contract"),
     }
-    #: The full tier of resources, the one Starter has (``max_db_connections``; PLAN §14.2). Each plan up
-    #: doubles it (Ioan, 2026-10-15): what the customer reads is the multiple, never the number.
+    #: The full tier of resources, the one Starter has (``max_db_connections``). Each plan up doubles it:
+    #: what the customer reads is the multiple, never the number.
     PAID_BASE_DB_CONNECTIONS = 3
     RESOURCES_LABELS = {
         0: _("Basic, for one device"),
@@ -194,10 +173,10 @@ class Plan(TranslatedFields):
         default=5,
         help_text=_("Longest database statement of a hub, in seconds (PLAN §14.2)."),
     )
-    #: What the plan includes of the assistant and of WhatsApp each month (PLAN-SAAS §3.6, 2026-10-15): one request
-    #: of the user to the assistant is one message. They travel in the hub's state snapshot and the Hub counts
-    #: them (warns at 80 %, blocks at 100 %, restarts on the 1st, UTC). 0 = none, never «unlimited»; there is no
-    #: pack nor overage (ADR-0474): more messages, a plan up.
+    #: What the plan includes of the assistant and of WhatsApp each month: one request of the user to the
+    #: assistant is one message. They travel in the hub's state snapshot and the Hub counts them (warns at
+    #: 80 %, blocks at 100 %, restarts on the 1st, UTC). 0 = none, never «unlimited»; there is no pack nor
+    #: overage: more messages, a plan up.
     assistant_messages_per_month = models.PositiveIntegerField(
         _("AI assistant messages a month"),
         default=0,
@@ -208,11 +187,10 @@ class Plan(TranslatedFields):
         default=0,
         help_text=_("WhatsApp messages a business may send each month (0 = none)."),
     )
-    #: How many modules a business may choose to turn on (Ioan, 2026-10-24): every module is on every plan, a plan
-    #: caps only how many the business picks; the modules they require come along and do not count (as Odoo's «one
-    #: app free»). It travels in the hub's state snapshot; the Hub checks it when a business turns a module on, which
-    #: comes with the per-business activation of apps (phase 2). 0 = no limit (the upgrade-only tiers; the figures of
-    #: the catalogue, migration 0019).
+    #: How many modules a business may choose to turn on: every module is on every plan, a plan caps only how
+    #: many the business picks; the modules they require come along and do not count. It travels in the hub's
+    #: state snapshot and the Hub checks it when a business turns a module on. 0 = no limit (the upgrade-only
+    #: tiers).
     max_apps = models.PositiveIntegerField(
         _("modules turned on"),
         default=0,
@@ -266,8 +244,7 @@ class Plan(TranslatedFields):
 
     @property
     def resources_label(self) -> str:
-        """How much database throughput the plan has, in plain words, relative to the full tier (Ioan, 2026-10-15:
-        the «resources» that grow from plan to plan are the database's input/output capacity, never named by engine).
+        """How much database throughput the plan has, in plain words, relative to the full tier.
 
         A single-device plan is «basic»; a paid plan has the full tier; from there the multiple of the
         full tier (double, triple…). Never a connection count: the page sells what the customer gets.
@@ -281,7 +258,7 @@ class Plan(TranslatedFields):
         return _("%(times)d times the full tier") % {"times": times}
 
     def is_available_to(self, user) -> bool:
-        """Whether ``user`` may subscribe to this plan: an internal one only for staff (saas#1052)."""
+        """Whether ``user`` may subscribe to this plan: an internal one only for staff."""
         if not self.internal_only:
             return True
         return bool(user is not None and getattr(user, "is_authenticated", False) and user.is_staff)
@@ -293,9 +270,9 @@ class Plan(TranslatedFields):
 class TaxonomyEntry(TranslatedFields):
     """A sector or business type: a stable ``code`` and its copy in English and Spanish.
 
-    The Spanish columns are Spanish: accented (saas#2017) and translated (saas#2027). The seed is
-    guarded by its tests; this ``clean()`` guards the other door, the Django admin. Only the ``_es``
-    columns are measured: «Menu» and «Salon» are English words and belong in the ``_en`` ones.
+    The Spanish columns are Spanish: accented and translated. The seed is guarded by its tests; this
+    ``clean()`` guards the other door, the Django admin. Only the ``_es`` columns are measured: «Menu»
+    and «Salon» are English words and belong in the ``_en`` ones.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
@@ -350,8 +327,8 @@ class Sector(TaxonomyEntry):
 class BusinessType(TaxonomyEntry):
     """A business type (bar, restaurant, hair salon…), under its sector.
 
-    ``vertical`` names the template a new hub of this type is cloned from (``hub_template_<vertical>``,
-    PLAN §15.2); blank, the hub starts from ``hub_template``, only ``base``.
+    ``vertical`` names the template a new hub of this type is cloned from (``hub_template_<vertical>``);
+    blank, the hub starts from ``hub_template``, only ``base``.
     """
 
     code = models.SlugField(
@@ -384,8 +361,8 @@ class BusinessType(TaxonomyEntry):
         verbose_name_plural = _("business types")
 
     def clean(self):
-        """Two business types may not share a visible name in the same language (saas#2099), and a
-        ``vertical`` is one an app of the catalog builds (``apps.queries.known_verticals``, spec §5.4).
+        """Two business types may not share a visible name in the same language, and a ``vertical`` is
+        one an app of the catalog builds (``apps.queries.known_verticals``).
 
         The sign-up dropdown lists them by name, so two rows called «Peluquería» are two identical
         options. Blank columns are not compared: an untranslated name is empty on many rows.
@@ -423,19 +400,19 @@ class BusinessType(TaxonomyEntry):
 
 # --- The account plane of a business --------------------------------------------------------------
 
-#: The label of an app = its folder in the Hub = ``modules[].id`` of the snapshot (PLAN §20.2).
+#: The label of an app = its folder in the Hub = ``modules[].id`` of the snapshot.
 MODULE_SLUG_VALIDATOR = RegexValidator(
     r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$", _("Enter the label of an app: lowercase letters, digits and underscores.")
 )
 
 
 class BillingProfile(models.Model):
-    """Who pays ERPlora for one or many hubs (ADR-0201 decision 3): the identity on ERPlora's invoice.
+    """Who pays ERPlora for one or many hubs: the identity on ERPlora's invoice.
 
-    Not the business's own fiscal identity (the one on its receipts), which lives in the Hub
-    (PLAN-SAAS §3.1, the two identities). ``same_as_business`` is the «use the business's data» box:
-    saving with it on copies what the SaaS knows of the business (its name and country) into the
-    payer; a copy, never a sync. Every field but the owner may wait for the first checkout.
+    Not the business's own fiscal identity (the one on its receipts), which lives in the Hub.
+    ``same_as_business`` is the «use the business's data» box: saving with it on copies what the SaaS
+    knows of the business (its name and country) into the payer; a copy, never a sync. Every field but
+    the owner may wait for the first checkout.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
@@ -476,10 +453,10 @@ class Hub(models.Model):
     """A business of an account: what the SaaS knows of it, and what it owes the Hub service.
 
     ``id`` is the UUIDv7 the SaaS generates and the Hub keys its registry and database with
-    (``hub_<hex>``, PLAN-SAAS §2). ``state_version`` grows with every change of the snapshot the Hub
-    keeps (§2.2); ``pushed_state_version`` is the last one the Hub acknowledged. ``pending_hub_call``
-    is the lifecycle call the Hub still owes an answer to (``put`` the registry, ``delete``,
-    ``restore``): set in the command's transaction, cleared when the Hub acknowledges it, retried by
+    (``hub_<hex>``). ``state_version`` grows with every change of the snapshot the Hub keeps;
+    ``pushed_state_version`` is the last one the Hub acknowledged. ``pending_hub_call`` is the
+    lifecycle call the Hub still owes an answer to (``put`` the registry, ``delete``, ``restore``):
+    set in the command's transaction, cleared when the Hub acknowledges it, retried by
     ``reconcile_hub_states`` meanwhile.
     """
 
@@ -497,7 +474,7 @@ class Hub(models.Model):
         DELETE = "delete", _("Delete")
         RESTORE = "restore", _("Restore")
 
-    #: How long a deleted business can be recovered before the Hub purges it (ADR-0273 §10).
+    #: How long a deleted business can be recovered before the Hub purges it.
     RETENTION = timedelta(days=90)
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
@@ -579,16 +556,15 @@ class Hub(models.Model):
 
     @property
     def purge_after(self) -> datetime | None:
-        """When the Hub purges a deleted business; until then it can be recovered."""
         if self.deletion_requested_at is None:
             return None
         return self.deletion_requested_at + self.RETENTION
 
 
 class HubMember(models.Model):
-    """Who belongs to a hub, with which of the four roles of round 11 (ADR-0201: access is per hub).
+    """Who belongs to a hub, with which of the four roles: access is per hub.
 
-    An invitation is a member without an answer (``accepted_at`` empty, round 17 §2.8): it expires
+    An invitation is a member without an answer (``accepted_at`` empty): it expires
     ``INVITATION_WINDOW`` after it was sent (``invitation_expires_at``; «Resend» renews it) and
     «Decline» deletes the row. Only an answered membership enters the hub. The owner is born
     answered, with the business, and there is at most one per hub: ownership only moves by an
@@ -650,7 +626,6 @@ class HubMember(models.Model):
 
     @property
     def is_pending(self) -> bool:
-        """Invited and not answered yet."""
         return self.accepted_at is None
 
     def is_expired(self, now: datetime) -> bool:
@@ -659,7 +634,7 @@ class HubMember(models.Model):
 
 
 class HubOwnershipTransfer(models.Model):
-    """A pending or resolved hand-over of a hub's ownership (saas#1670).
+    """A pending or resolved hand-over of a hub's ownership.
 
     Only the owner offers it, only to somebody already on the hub, and the recipient answers within
     ``WINDOW``; the outgoing owner stays as admin and the payer does not move. ``from_user`` and
@@ -709,16 +684,15 @@ class HubOwnershipTransfer(models.Model):
 
 
 class Subscription(models.Model):
-    """The plan a hub is on (one per hub). Stripe fills its ids and dates (lot L2-B, through
-    ``hubs.subscription.apply``, which billing calls with what the LIVE Stripe subscription says).
+    """The plan a hub is on (one per hub). Stripe fills its ids and dates through
+    ``hubs.subscription.apply``, which billing calls with what the live Stripe subscription says.
 
-    The Free plan is born with ``trial_plan`` = Starter for its trial days (ADR-0474: Free is born
-    with 15 days of Starter): while ``trial_end`` is ahead, the hub gets the trial plan's rights. A paid
-    plan carries its own trial in Stripe, so paying clears ``trial_plan``.
+    While ``trial_end`` is ahead, the hub gets the rights of ``trial_plan``. A paid plan carries its
+    own trial in Stripe, so paying clears ``trial_plan``.
 
-    ``unpaid_*`` say why a renewal is not paid, while it is not (mockups README §6.18): with a declined
-    card «Pay» waits until the card changes; ``unpaid_since`` is when the failed invoice was issued (the
-    7 days of grace count from it); ``unpaid_invoice_url`` is Stripe's page to pay it (its owner's only).
+    ``unpaid_*`` say why a renewal is not paid, while it is not: with a declined card «Pay» waits
+    until the card changes; ``unpaid_since`` is when the failed invoice was issued (the 7 days of
+    grace count from it); ``unpaid_invoice_url`` is Stripe's page to pay it (its owner's only).
     """
 
     class UnpaidReason(models.TextChoices):
@@ -783,8 +757,8 @@ class Subscription(models.Model):
 
 
 class SubscriptionItem(models.Model):
-    """A paid module a hub has, included in its plan or bought (PLAN-SAAS §2.6): ``modules[]`` of the
-    snapshot. ``module_slug`` is the app's label (a slug, no FK: the catalog is ``apps``'s)."""
+    """A paid module a hub has, included in its plan or bought: ``modules[]`` of the snapshot.
+    ``module_slug`` is the app's label (a slug, no FK: the catalog is ``apps``'s)."""
 
     class Source(models.TextChoices):
         PLAN = "plan", _("Included in the plan")
@@ -816,8 +790,8 @@ class SubscriptionItem(models.Model):
 
 
 class SessionRevocation(models.Model):
-    """An account's sessions the Hub must end (PLAN-SAAS §2.1, OIDC's back-channel logout): in one
-    business, or in every one (``hub`` empty).
+    """An account's sessions the Hub must end, as OIDC's back-channel logout does: in one business,
+    or in every one (``hub`` empty).
 
     Queued in the transaction that took the access away (removing a member, changing a role, handing
     the ownership over), delivered after the COMMIT (``POST /internal/sessions/revoke``) and, while the
@@ -866,15 +840,15 @@ class SessionRevocation(models.Model):
 
 
 class HubUsageDaily(models.Model):
-    """One day of a business's usage, as the Hub measured it that night (PLAN-SAAS §5; lot L4-A).
+    """One day of a business's usage, as the Hub measured it that night.
 
     ``s3_bytes`` is what its files take in S3 (the storage the customer sees, as a percentage of what the
     plan includes), ``db_bytes`` what its database takes (the admin's only), ``active_users_1d`` the people
     active that day and ``active_users_30d`` in the 30 days up to it. ``requests`` is what it served that day,
     ``peak_connections`` the most transactions at once against its database and ``busy_requests`` the times a
-    request found no room (hub#603, PLAN-SAAS §28): for the admin only, the panel never shows them, and ``None``
-    when the Hub did not measure them, never a 0. One row per business and day, written only by the system
-    command ``hubs.usage.record`` (``manage.py collect_hub_usage``, nightly in ``saas-cron``): collecting a day
+    request found no room: for the admin only, the panel never shows them, and ``None`` when the Hub did not
+    measure them, never a 0. One row per business and day, written only by the system command
+    ``hubs.usage.record`` (``manage.py collect_hub_usage``, nightly in ``saas-cron``): collecting a day
     again replaces its figures. That pass ends by forgetting the days past ``services.USAGE_RETENTION_DAYS``
     (``hubs.usage.prune``).
     """
@@ -910,12 +884,12 @@ def new_certificate_token() -> str:
 
 
 class CustomDomain(models.Model):
-    """A business's own domain for its public website (HUBS-F17, PLAN-SAAS §37 point 2): one for each business.
+    """A business's own domain for its public website (HUBS-F17): one for each business.
 
     It is nobody's until its CNAME reaches the name of THIS business (``proven_at``): asking for a stranger's domain keeps
     it from nobody, and only one business holds the proof of a name. A row goes last, once the Hub and the ALB have let
-    go of the domain: that is what frees the name (ADR-0496). ``attached_at`` is what counts for the listener's quota: AWS
-    gives no list of its certificates to these roles (``aws`` README, «Dominio propio de un negocio»).
+    go of the domain: that is what frees the name. ``attached_at`` is what counts for the listener's quota: AWS gives no
+    list of its certificates to these roles (``aws`` README, «Dominio propio de un negocio»).
     """
 
     class State(models.TextChoices):

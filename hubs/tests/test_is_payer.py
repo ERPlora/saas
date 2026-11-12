@@ -1,7 +1,7 @@
 """``is_payer`` on a business's row and page: the account owns the business's payer (``hub.billing_profile``).
 
-The payer is somebody's (PLAN-SAAS §3.1): the owner who set it up keeps it after handing the business over,
-until the new owner writes its own (``hubs.billing_profile.update``). Since saas#2587 the flag is ``still_pays``: it
+The payer is somebody's: the owner who set it up keeps it after handing the business over, until the new owner
+writes its own (``hubs.billing_profile.update``). The flag is ``still_pays``: it
 also holds when the plan's Stripe subscription is still charged to a customer of one of the account's own payers
 after a hand-over. accounts reads the flag through ``hubs.business.list`` to refuse deleting an account that still
 pays for a live business, and ``hubs.member.remove`` refuses to take that person out of it.
@@ -52,7 +52,7 @@ def test_without_a_payer_nobody_pays(business, owner):
 
 
 def test_the_row_names_the_payer_to_whoever_pays_only(business, team, owner):
-    """Audit 2 R-21: the Store warns about a declined card only when the business it sells to has the same payer
+    """The Store warns about a declined card only when the business it sells to has the same payer
     (its Stripe customer) as the one whose card was declined; the row says which payer, to whoever pays."""
     assert row(owner, business).payer_id == business.billing_profile_id
     assert row(team["admin"], business).payer_id is None
@@ -65,7 +65,7 @@ def test_without_a_payer_the_row_names_none(business, owner):
 
 
 def test_the_card_that_still_pays_the_plan_after_a_hand_over_pays(business, team, owner):
-    """saas#2587: the new owner wrote its own payer, but the plan's Stripe subscription is still charged to the old
+    """The new owner wrote its own payer, but the plan's Stripe subscription is still charged to the old
     owner's customer until support moves it (``billing.payer_required``): the old owner still pays, on the row and
     on the page, so it can neither be taken out nor delete its account."""
     from billing.tests.conftest import pay

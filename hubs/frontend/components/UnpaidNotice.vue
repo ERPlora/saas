@@ -1,11 +1,9 @@
 <script setup lang="ts">
-// The notice of an unpaid invoice of a business (mockups `businesses.html`, `business.html` «past-due»;
-// README §4 and §6.18; PLAN-SAAS §3.3): since when it is unpaid and, while it still works, until when
-// (7 days of grace from the invoice, `unpaidDeadline`), as days (never the minute, audit R-15); suspended,
-// that it waits for the payment and nothing is deleted. On the web, «Pay the invoice» goes to Stripe's page
-// (`pay_url`, only for whoever may pay it); after a declined card «Change card» (Stripe's Customer Portal) is
-// the way out and «Pay» waits for it (`UnpaidActions`, audit R-09). Inside the apps, how to settle it, without
-// a button nor a link (README §4).
+// The notice of an unpaid invoice of a business: since when it is unpaid and, while it still works, until when
+// (7 days of grace from the invoice, `unpaidDeadline`), as days (never the minute); suspended, that it waits for
+// the payment and nothing is deleted. On the web, «Pay the invoice» goes to Stripe's page (`pay_url`, only for
+// whoever may pay it); after a declined card «Change card» (Stripe's Customer Portal) is the way out and «Pay»
+// waits for it (`UnpaidActions`). Inside the apps, how to settle it, without a button nor a link.
 import { InlineFeedback } from '@erplora/ui/components';
 import { WebOnly } from '@erplora/ui/shell';
 import { computed } from 'vue';

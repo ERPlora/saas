@@ -1,9 +1,8 @@
-"""The old panel's addresses of the businesses lead, for good (301), to the new panel (PLAN-SAAS §1, «Redirecciones
-de URLs viejas … SE PORTAN (301): … /dashboard/*»): bookmarks, old mails and the page contracts of the old SaaS
-(``pc:cloud/dashboard/overview``, ``…/hubs-active``, ``…/hubs-inactive``). Round 17 (§3.6): the panel's home is
-Businesses, one list (the deleted ones in it, with «Recover»), «Create business» is its dialog and the old QR page is
-«On your devices» of the business's Summary. The new panel lives under ``/dashboard/`` too
-(FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX): each old address lands on its page there in one hop, never through the root.
+"""The old panel's addresses of the businesses lead, for good (301), to the new panel: bookmarks, old mails and the
+page contracts of the old SaaS (``pc:cloud/dashboard/overview``, ``…/hubs-active``, ``…/hubs-inactive``). The
+panel's home is Businesses, one list (the deleted ones in it, with «Recover»), «Create business» is its dialog and
+the old QR page is «On your devices» of the business's Summary. The new panel lives under ``/dashboard/`` too: each
+old address lands on its page there in one hop, never through the root.
 """
 
 import uuid

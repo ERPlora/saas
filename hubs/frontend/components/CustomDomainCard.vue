@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// «Own domain» in a business's Settings (HUBS-F17, saas#195; PLAN-SAAS §8 round 2026-10-22 and §37 point 2): the public
+// «Own domain» in a business's Settings (HUBS-F17): the public
 // website of the business on a domain of its owner's, never the app. The live `hubs.custom_domain.get` says whether this
 // deployment connects domains (`available`), whether the plan the business has now includes one (`in_plan`) and the
 // domain it has; it follows the domain's changes and the plan's. The owner writes `www.…` and asks for it
@@ -9,10 +9,10 @@
 // and the failures that count towards the three in a row that stop serving it are said here. A domain that is not
 // connected is asked for again (or another one) with the same form; removing it asks first
 // (`hubs.custom_domain.remove`). A plan without it says so, names the first plan on sale that includes one and is not
-// upgrade-only (read then from `hubs.plan.list`, saas#301; without it, «a plan that includes one») and gives the way to
+// upgrade-only (read then from `hubs.plan.list`; without it, «a plan that includes one») and gives the way to
 // the plans (the Store, only on the web and for whoever handles the billing), never a disabled form. Only the owner
 // connects or removes it; an administrator reads it. Nothing is shown until the business is there: the query rides the
-// page's first stream (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN), and its loading, error and time-out are `useLiveState`'s.
+// page's first stream, and its loading, error and time-out are `useLiveState`'s.
 import {
   ConfirmDialog,
   formatDateTime,

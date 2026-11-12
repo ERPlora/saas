@@ -1,5 +1,4 @@
-"""``POST /internal/hubs/{id}/ready``: the Hub says a business's database is ready (PLAN-SAAS §3.1 step 3;
-round 17 §2.14).
+"""``POST /internal/hubs/{id}/ready``: the Hub says a business's database is ready.
 
 Server to server, signed as ``/internal/auth/redeem`` (``accounts.signing``), so no CSRF token; the body
 may name the hub, and then it must be the one of the path (the signature covers the body only). It
@@ -56,7 +55,7 @@ def test_a_signed_callback_makes_the_business_active(client, business):
 
 
 def test_an_empty_body_is_refused(client, business):
-    """Review of L1-A: the signature covers the body only, so the body must name the hub of the path."""
+    """The signature covers the body only, so the body must name the hub of the path."""
     response = ready(client, business.id)
 
     assert (response.status_code, response.json()["error"]["code"]) == (400, "invalid_request")
@@ -136,7 +135,7 @@ def test_a_deleted_business_stays_deleted(client, business):
     assert ready(client, business.id, {"id": str(business.id)}).json()["status"] == "deleting"
 
 
-# --- Rotation and the signature that covers method and path (L1-A2, PLAN-SAAS §2.1) ---------------
+# --- Rotation and the signature that covers method and path ------------------------------------
 
 
 def test_a_hub_on_the_previous_secret_is_heard_during_the_rotation(client, business, settings):

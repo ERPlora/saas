@@ -1,8 +1,8 @@
 """HUBS-F34 (HUBS-G107, HUBS-G109, HUBS-G16): the paid apps a business may use, and why, travel in its own snapshot
 only.
 
-The old SaaS answered the Hub's «Plan» tab of an app with the purchase of THAT business (SAAS_DASHBOARD-F62) and gave
-nothing for a purchase without one (SAAS_PUBLIC-F20: «1 compra = 1 hub»). Here a right is a row of the business's own
+The old SaaS answered the Hub's «Plan» tab of an app with the purchase of THAT business and gave
+nothing for a purchase without one («1 purchase = 1 hub»). Here a right is a row of the business's own
 subscription: its ``modules[]`` say each app's ``source`` (``plan`` or ``purchase``) and until when it holds, and
 neither a purchase nor the paid plan of another business, even of the same account, ever reaches it.
 """

@@ -1,11 +1,9 @@
 """HUBS-F16: the owner changes the web address of a business (``hubs.business.change_address``).
 
-PLAN-SAAS §1.1, round 2026-10-15b: «Cambiar el subdominio … SE PORTA: Ajustes del negocio (dueño), validado contra
-``packages/live/live/slugs.py``; el Hub lo recibe en la foto». Cases from ERPlora/saas ``apps/dashboard/hubs/main``
-(origin/develop) ``change-subdomain`` and its flow SAAS_DASHBOARD-F10, whose trap this closes: the old door rewrote
-the address without moving the business, so it kept answering on the old one while erplora.com linked to the new.
-Here the address the Hub registers (``PUT /internal/hubs/{id}``) and the photo both carry the new one, and the old
-address stays the business's own: nobody else can take it and land the old links and QR codes.
+An old door rewrote the address without moving the business, so it kept answering on the old one while
+erplora.com linked to the new. Here the address the Hub registers (``PUT /internal/hubs/{id}``) and the snapshot
+both carry the new one, validated against ``live.slugs``, and the old address stays the business's own: nobody
+else can take it and land the old links and QR codes.
 """
 
 import pytest
