@@ -1,15 +1,14 @@
 """The VAT of a sale: how it is qualified, at which rate, and how a charged amount splits.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/vat.py`` (origin/develop). No ORM here: the rule in force
-and the policy are read through ``billing.queries`` (only ``services.py`` and ``queries.py`` touch the ORM).
+No ORM here: the rule in force and the policy are read through ``billing.queries``.
 
-The amount charged rules — the breakdown never alters it (saas#1051). Where the quota comes from depends on
+The amount charged rules — the breakdown never alters it. Where the quota comes from depends on
 how the price is announced:
 
-* **Plans — NET price** (saas#1098). Stripe's ``Price`` is the base and OUR engine resolves the rate, sent
-  with the sale (``default_tax_rates``, lot L2-B). Stripe adds it on top and the invoice only collects it
+* **Plans — NET price**. Stripe's ``Price`` is the base and OUR engine resolves the rate, sent
+  with the sale (``default_tax_rates``). Stripe adds it on top and the invoice only collects it
   (``tax_included=False``) — **except a ZERO on a sale we qualified as subject**: that is reconciled as
-  VAT-inclusive and reported (saas#1478, saas#1479), because a zero there is a misconfiguration (the rate
+  VAT-inclusive and reported, because a zero there is a misconfiguration (the rate
   mirrored in Stripe is not ours, or a VAT id Stripe accepted by its format and VIES did not confirm).
 * **Modules — price with the VAT inside** (``tax_included=True``, the default): the quota is split out.
 
@@ -38,7 +37,7 @@ The rules, in this order:
 The RATE comes from ``TaxRule`` (editable in the admin, by country/region/category and validity).
 ``EU_VAT_RATES`` is a backstop for a member state whose rule was deleted, never for a region: there the
 absence is «I don't know» and the sale is refused, because guessing the rate of an excluded territory is
-charging Las Palmas 21 % it does not owe (ADR-0190).
+charging Las Palmas 21 % it does not owe.
 """
 
 from __future__ import annotations
@@ -99,7 +98,7 @@ BILLING_COUNTRIES: tuple[str, ...] = (
 
 #: Stripe's tax id type per billing country. Anything not listed is skipped rather than guessed: a wrong
 #: type makes Stripe reject the whole tax id. Derived from the VAT table so no member state is left out
-#: (a hand list of nine dropped a verified Polish VAT id, saas#1621).
+#: (a hand list of nine dropped a verified Polish VAT id).
 TAX_ID_TYPES: dict[str, str] = {**dict.fromkeys(EU_VAT_RATES, "eu_vat"), "GB": "gb_vat"}
 
 DOMESTIC = "domestic"
@@ -130,7 +129,7 @@ class VatBreakdown:
     treatment: str = DOMESTIC
     tax_region: str = ""
     #: The quota was NOT charged by the gateway: it was taken out of the amount charged as VAT-inclusive
-    #: (saas#1479). A FACT of the breakdown, so the invoice can say why its base is not the plan's price.
+    #: A FACT of the breakdown, so the invoice can say why its base is not the plan's price.
     vat_included_reconciled: bool = False
 
     @property
@@ -148,7 +147,7 @@ def tax_id_type_for(country: str) -> str:
 
 
 def _q(value: Decimal) -> Decimal:
-    # ADR-0123 §4: explicit HALF_UP; a bare quantize() inherits HALF_EVEN from the context.
+    # Explicit HALF_UP: a bare quantize() inherits HALF_EVEN from the context.
     return value.quantize(_CENT, rounding=ROUND_HALF_UP)
 
 
@@ -257,7 +256,7 @@ def _lookup_rate(
     REGION and the answer came from the country's rule (``queries.tax_rule`` falls from one to the other).
 
     Both collapse into «no quota» to INVOICE what was charged, but not to SELL: Las Palmas is sold without
-    VAT because a rule says so, while a territory we know nothing about is not sold to (saas#1968).
+    VAT because a rule says so, while a territory we know nothing about is not sold to.
     """
     from billing import queries
 
@@ -270,7 +269,7 @@ def _lookup_rate(
     if rule is not None and region and rule.region_code.upper() != region:
         # The only regions here are the three territories OUTSIDE VAT: falling to the country's 21 % is
         # charging a Canarian what they do not owe. The rule is one click away in the admin; asked about a
-        # region that is not in the table, this answers «I don't know» and the sale is refused (ADR-0190).
+        # region that is not in the table, this answers «I don't know» and the sale is refused.
         logger.error(
             "[VAT] No rule for the region %s/%s: the table fell back to the country's (%s), which in a "
             "territory outside VAT overcharges. Not guessing: add the rule %s/%s in the admin",
@@ -332,8 +331,8 @@ def _qualify(
 
     ``rate_charged`` is the one fact that depends on the amount: whether the gateway already charged a
     rate; asked for the customer's country's and the issuer's, the charged rate rules over the policy in
-    both directions (saas#2292). ``pending_base_cents`` is the base of the sale being priced: the OSS
-    threshold is crossed BY a sale, and that sale already goes to destination (saas#1969).
+    both directions. ``pending_base_cents`` is the base of the sale being priced: the OSS
+    threshold is crossed BY a sale, and that sale already goes to destination.
 
     ``selling``: a Spanish place without a real postal code is «I don't know» when SELLING (``None``: the
     sale door asks for the address), and the mainland when invoicing what was already charged (the VAT
@@ -394,7 +393,7 @@ def _qualify(
         issuer_rate, issuer_known = _lookup_rate(
             issuer, issuer_region, category_key, on_date
         )
-        # The charged rate is the evidence, both ways (saas#2292). When both rates are the same figure (NL,
+        # The charged rate is the evidence, both ways. When both rates are the same figure (NL,
         # BE, CZ, LV, LT share the Spanish 21 %) the money proves nothing and the policy decides.
         destination_rate_charged = rate_charged is not None and rate_charged(rate)
         issuer_rate_charged = (
@@ -435,7 +434,7 @@ def quote_vat(
     on_date=None,
 ) -> VatBreakdown | None:
     """The tax to ADD to a net price, or ``None`` when it cannot be resolved — the answer that REFUSES the
-    sale (saas#1968): without a rule the rate would be a guess and the price is net.
+    sale: without a rule the rate would be a guess and the price is net.
 
     Different from a NOT SUBJECT breakdown, which IS an answer (the Canaries pay the net, not a cent more).
     Same qualification as the invoice (``_qualify``), so what is charged and what is declared agree.
@@ -524,7 +523,7 @@ def resolve_vat(
         category_key=category_key,
         issuer_country=issuer_country,
         on_date=on_date,
-        # The invoice describes the money really charged: the rate Stripe charged is the evidence (saas#2292).
+        # The invoice describes the money really charged: the rate Stripe charged is the evidence.
         rate_charged=lambda rate: (
             bool(tax_cents) and _effective_rate(gross, tax_cents) == rate
         ),
@@ -566,8 +565,8 @@ def _report_stripe_charged_no_tax(
 ) -> None:
     """A subject sale on which Stripe collected nothing: always a structured ERROR (alert on ``event``).
 
-    Two misconfigurations end here —a sale that reached Stripe without our rate (saas#1478) and a VAT id
-    Stripe reverse charged by its format while VIES had not confirmed it (saas#1479)— and both are silent
+    Two misconfigurations end here —a sale that reached Stripe without our rate and a VAT id
+    Stripe reverse charged by its format while VIES had not confirmed it— and both are silent
     on Stripe's side. The sale is reconciled out of our own margin until it is fixed.
     """
     logger.error(
@@ -615,8 +614,8 @@ def _breakdown(
 
     reconciled = False
     if not tax_included and not tax_cents:
-        # NET price and Stripe charged no tax on a sale OUR qualification says is SUBJECT: reconcile
-        # (saas#1479 + saas#1478). A Spanish domestic sale at 0 % does not exist; what was charged becomes
+        # NET price and Stripe charged no tax on a sale OUR qualification says is SUBJECT: reconcile.
+        # A Spanish domestic sale at 0 % does not exist; what was charged becomes
         # VAT-inclusive, as the tax office does when VAT was not charged (TJUE C-249/12 and C-250/12,
         # Tulică; art. 78.Cuatro LIVA). The total does not move; the quota comes out of our margin.
         _report_stripe_charged_no_tax(

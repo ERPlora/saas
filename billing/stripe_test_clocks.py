@@ -1,6 +1,6 @@
-"""Stripe test clocks: a REAL charge for the billing QA (saas#1961; PLAN-SAAS §4).
+"""Stripe test clocks: a REAL charge for the billing QA.
 
-Ported from ERPlora/saas ``hubs/main/services/stripe_test_clocks.py`` (origin/develop). Every paid plan
+Every paid plan
 carries a trial and Stripe charges nothing during it, so the chain after a payment never ran in a test. A
 clock removes the need for an internal 1 € plan: the customer is created attached to it
 (``billing.services.ensure_customer(hub, test_clock=…)``), subscribes to a NORMAL plan with its NORMAL trial,

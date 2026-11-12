@@ -1,4 +1,4 @@
-"""Billing → Subscriptions and Billing → Payment details (lot L3-C; round 17 §2.7, mockups ``billing.html``).
+"""Billing → Subscriptions and Billing → Payment details.
 
 Subscriptions: one row per business of the account that Stripe bills (a paid plan or paid modules), for its
 owner and for its payer: the plan and its modules at their net price, the next invoice with VAT (priced by
@@ -9,9 +9,8 @@ who pays (``billing.plan.*``); anyone else sees the row to consult it.
 
 Payment details: the card of each payer of the account (one Stripe customer per business's payer), read from
 Stripe (the subscription's card, else the customer's default) and kept 10 minutes; ``customer.updated``
-forgets it. Stripe away is ``unavailable``, never an invented card. Ported in spirit from ERPlora/saas
-``test_api.TestSubscriptionAPI`` (the list is the account's, another account's is not there); the old module
-subscriptions and purchases are gone (one subscription per business, PLAN-SAAS §4).
+forgets it. Stripe away is ``unavailable``, never an invented card. The list is the account's: another account's
+subscription is not there.
 """
 
 from datetime import timedelta
@@ -47,7 +46,7 @@ def subscriptions(user, language="en") -> list[dict]:
 
 
 class TestTheApiOfSubscriptions:
-    """BILLING-G02 (the old DRF list «filtered by status» and «the detail of one»): the same rows, filtered by
+    """The same rows, filtered by
     business (one business's subscription) and by status, and open to an integration's key with ``billing.read``
     as the invoices are."""
 
@@ -207,7 +206,7 @@ class TestTheRow:
     def test_a_module_whose_cancellation_ended_is_not_listed(
         self, owner, shop, inventory
     ):
-        # BILLING-G67: once its paid period is over the module is gone from the business, as in the
+        # Once its paid period is over the module is gone from the business, as in the
         # snapshot the Hub gets and in the store, which sells it again.
         pay(shop, modules=["inventory"])
         shop.subscription.items.filter(module_slug="inventory").update(
@@ -272,8 +271,8 @@ class TestTheActions:
         assert row["ends_at"] is not None
 
     def test_a_downgrade_that_waits_is_kept_first_and_can_still_be_cancelled(self, owner, shop):
-        """PLAN-SAAS §31 point 2 (saas#208): a downgrade that waits for the end of the period is undone from the
-        row with «Keep the plan», as a cancellation is (BILLING-F14); the plan still renews until then, so the
+        """A downgrade that waits for the end of the period is undone from the
+        row with «Keep the plan», as a cancellation is; the plan still renews until then, so the
         row keeps its next invoice and «Cancel plan» in its «⋮»."""
         pay(shop, plan="standard")
         PlanChangeSchedule.objects.create(
@@ -345,7 +344,7 @@ class TestTheActions:
 
     def test_an_owner_who_does_not_pay_only_consults_or_keeps_it_with_their_card(self, owner, shop, make_user):
         """The plan on another account's card is neither changed nor cancelled by the owner: the owner keeps it
-        with their own card first (HUBS-F28, ``billing.plan.take_over``)."""
+        with their own card first (``billing.plan.take_over``)."""
         pay(shop)
         BillingProfile.objects.filter(pk=shop.billing_profile_id).update(
             owner=make_user("payer@example.com")
@@ -403,7 +402,7 @@ class TestThePaymentMethod:
     def test_a_free_business_on_the_same_payer_is_not_said_to_be_paid_with_it(
         self, owner, shop, stripe_double
     ):
-        """Audit 2 R-26: «Pays Bar La Plaza, Bar Norte, Café Central and Panadería López» named a Free business."""
+        """«Pays Bar La Plaza, Bar Norte, Café Central and Panadería López» named a Free business."""
         from hubs.models import Hub
 
         pay(shop)
@@ -496,7 +495,7 @@ class TestThePaymentMethod:
 
 
 class TestTheNextInvoiceOfADowngradeThatWaits:
-    """saas#213 (BILLING-F23, BILLING-F11): a downgrade starts when the paid period ends, and Stripe's next phase
+    """A downgrade starts when the paid period ends, and Stripe's next phase
     bills the new items without proration, so the invoice of that date is already the new plan's: its price, on
     its billing, with the modules that renew at their price of that billing. The rest of the row still says what
     runs today, until that date."""

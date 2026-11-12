@@ -1,12 +1,7 @@
-// The Store's rules, apart from the screen (round 17 §2.9–§2.11; mockups `store.html`, README §6.18):
-//   - a module is sold when the catalog lists its app as premium AND billing has it on sale
-//     (`apps.Module`), joined by `slug == app.id`: name, summary and icon from `apps.app.list`, prices and
-//     what the business has from `billing.store.catalog`; one taken off sale (or whose app the catalog
-//     retired) is still shown to the business that has it, to cancel it (saas#2589);
-//   - only the owner buys for a business, and a deleted one buys nothing;
-//   - a business with an unpaid invoice buys nothing more until it pays it (the server refuses it too,
-//     409 `billing.invoice_unpaid`), by business;
-//   - a module follows the business's billing; a business Stripe does not bill yet buys it monthly.
+// The Store's rules, apart from the screen. A module is sold when the catalog lists its app as premium AND billing
+// has it on sale (`apps.Module`), joined by `slug == app.id`; one taken off sale is still shown to the business that
+// has it, to cancel it. A business with an unpaid invoice buys nothing more until it pays it (the server refuses it
+// too, 409 `billing.invoice_unpaid`).
 import type {
   AppSummaryOut,
   BillingInterval,
@@ -30,7 +25,7 @@ export interface SaleModule {
   source: 'plan' | 'purchase' | null;
   /** Cancelled: it works until then. */
   validUntil: string | null;
-  /** Still sold. Off sale, only the business that has it sees it, to cancel it (saas#2589). */
+  /** Still sold. Off sale, only the business that has it sees it, to cancel it. */
   onSale: boolean;
 }
 
@@ -40,7 +35,7 @@ export type Block = 'card_declined' | 'card_changed' | 'unpaid';
 /**
  * The modules on sale, in the catalog's order (by section, then by name in the person's language), and then the
  * ones the business still has whose app the catalog no longer lists, with billing's own name for them
- * (saas#2589: taken off sale, they are still charged until cancelled). One off sale it does not have is not shown.
+ * (taken off sale, they are still charged until cancelled). One off sale it does not have is not shown.
  */
 export function saleModules(apps: readonly AppSummaryOut[], modules: readonly StoreModuleOut[]): SaleModule[] {
   const shown = modules.filter((module) => module.on_sale || module.owned);
@@ -84,7 +79,7 @@ export function blockOf(row: Pick<BusinessRowOut, 'status' | 'unpaid_reason'>): 
 /**
  * The business whose card the bank declined when it has the same payer (the same Stripe customer) as `business`,
  * or `null`: the checkout says whose and asks for another card. Every business gets a payer of its own when it
- * is created, so another business's declined card is not this one's (audit 2 R-21).
+ * is created, so another business's declined card is not this one's.
  */
 export function declinedCard(rows: readonly BusinessRowOut[], business: Pick<BusinessRowOut, 'payer_id'>): string | null {
   if (!business.payer_id) return null;

@@ -1,4 +1,4 @@
-"""BILLING-F11, HUBS-F32 and HUBS-F34 when the paid period ends: a downgrade arrives (PLAN-SAAS §31).
+"""When the paid period ends, a downgrade arrives in the Hub.
 
 ``test_downgrade_at_period_end.py`` proves the downgrade while it waits. This is its other end, over Stripe's signed
 webhook and with the Hub double taking the push each COMMIT queues, as in production:

@@ -1,23 +1,17 @@
 <script setup lang="ts">
-// Buying for a business Stripe does not bill yet (PLAN-SAAS §3.2 and §4; mockups `store.html`
-// «modal-checkout»; UX-AUDIT-4 W-06, X-02, X-09): Stripe's Embedded Checkout inside our own dialog.
-//   1. Who pays (`hubs.billing_profile.get`): without a name, a country and a postal code — or when the
-//      payer is another account's (after a transfer) — the form comes first and is saved
-//      (`hubs.billing_profile.update`, VIES included); otherwise «Invoice to … · Change».
-//   2. `billing.checkout.start` — the plan at the billing chosen (with the promo code typed) or the module,
-//      named in the title — gives a Checkout Session's `client_secret`. Stripe.js (web only, loaded now:
-//      `stripe-js.ts`) mounts it with `createEmbeddedCheckoutPage({ fetchClientSecret })` in the dialog, as soon
-//      as the dialog's content is on screen (Ionic may render it after Stripe answers: saas#326).
-//      A place the tax cannot be worked out for sends back to the form with the server's reason.
-//   3. Stripe's `onComplete` → «Paying…», the checkout is destroyed, the page goes to the business and a toast
-//      says there what happened (the webhook applies the plan; Stripe's `return_url` is that page too).
-// Every failure is said, with «Retry» (saas#1565: a silent spinner is the most expensive failure).
-// Closing the dialog destroys the checkout (Stripe allows one at a time). The declined card is never
-// offered: the checkout always asks for a card, and the dialog says why when the same payer's was declined.
-// Off the web nothing starts: the apps sell nothing (round 17 §2.6).
-// «Keep it with my card» (HUBS-F28, kind `takeover`): the plan of a business handed over, still on the previous
-// owner's card, is kept with the new owner's: the same dialog, its details first, then `billing.plan.take_over`,
-// whose checkout charges nothing today and bills from the end of the paid period (`from`).
+// Buying for a business Stripe does not bill yet: Stripe's Embedded Checkout inside our own dialog.
+//   1. Who pays: without a name, a country and a postal code — or when the payer is another account's (after a
+//      transfer) — the form comes first and is saved; otherwise «Invoice to … · Change».
+//   2. `billing.checkout.start` gives a Checkout Session's `client_secret`; Stripe.js mounts it as soon as the
+//      dialog's content is on screen (Ionic may render it after Stripe answers). A place the tax cannot be worked
+//      out for sends back to the form with the server's reason.
+//   3. Stripe's `onComplete` → «Paying…», the checkout is destroyed and the page goes to the business, where a
+//      toast says what happened (the webhook applies the plan).
+// Every failure is said, with «Retry»: a silent spinner is the most expensive failure. Closing the dialog destroys
+// the checkout (Stripe allows one at a time). Off the web nothing starts: the apps sell nothing.
+// «Keep it with my card» (kind `takeover`): the plan of a business handed over, still on the previous owner's card,
+// is kept with the new owner's through `billing.plan.take_over`, whose checkout charges nothing today and bills
+// from the end of the paid period (`from`).
 import { FormModal, type FormModalError, InlineFeedback, StatusPill } from '@erplora/ui/components';
 import { HubIcon, toastSuccess, useSurface } from '@erplora/ui/shell';
 import { useCommand, useLiveClient } from '@erplora/ui/sdk';
@@ -47,7 +41,7 @@ const props = defineProps<{
   purchase: CheckoutPurchase | null;
   /** A promo code the owner typed in the Store (a plan only). */
   promoCode: string;
-  /** The business whose card (the same payer's) the bank declined: the checkout asks for another (audit 2 R-21). */
+  /** The business whose card (the same payer's) the bank declined: the checkout asks for another. */
   declinedFor?: string | null;
 }>();
 
@@ -234,7 +228,7 @@ async function pay(mine = attempt): Promise<void> {
 
 /**
  * Puts the checkout in its place in the dialog once both are there. Ionic renders the dialog's content only when
- * it presents it (`ionMount`), and Stripe can answer before that (saas#326): then the place's arrival mounts it.
+ * it presents it (`ionMount`), and Stripe can answer before that: then the place's arrival mounts it.
  */
 function mountInPlace(): void {
   const place = stripeArea.value;
@@ -270,7 +264,7 @@ async function complete(): Promise<void> {
         ? t('billing.checkout.plan', { business: business.name, plan: purchase.name })
         : t('billing.checkout.module', { module: purchase.name, business: business.name });
   // «Paying…» stays on screen until the business's page takes over, and the notice is said on that page: said
-  // before, its seconds would run out while a slow page is still on its way, and the page would arrive silent (saas#341).
+  // before, its seconds would run out while a slow page is still on its way, and the page would arrive silent.
   await router.push(`${BUSINESSES}/${business.id}/summary`);
   attempt += 1;
   open.value = false;

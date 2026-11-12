@@ -1,24 +1,21 @@
-"""The VIES contract (``architecture/contracts/vies-vat-contract.md`` §10): without a VAT number checked
-against VIES there is no reverse charge; when in doubt the VAT is charged.
+"""The VIES contract: without a VAT number checked against VIES there is no reverse charge; when in doubt the
+VAT is charged.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_vies_contract.py`` (origin/develop, 34 tests).
 Directive 2006/112/EC puts the burden of proof on the issuer, and Stripe applies reverse charge by the
-FORMAT of a VAT number (``DE999999999`` came back at 0 € like a real one, saas#1479), so the proof is
+FORMAT of a VAT number (``DE999999999`` came back at 0 € like a real one), so the proof is
 ours: a VIES answer with its consultation number.
 
 Every test goes through the door that decides —never by seeding the verdict it then asserts— with only
-the network faked (``billing.tests.vies_double``). Adapted: the old door was Stripe's
-``checkout.session.completed`` webhook writing an ``Invoice``; in this lot (L2-A) the door is the one
-that prices a sale BEFORE it is charged, ``billing.services.sale_quote`` / ``sale_tax_rates`` on the
-business's payer, which the L2-B checkout and webhook call. So a refused verdict now means the VAT is
-added on top of the net price (121 € charged), and the reconciliation of a sale Stripe already charged
-at 0 € (82.64 + 17.36) is proved on ``resolve_vat`` with the door's clearance, as the webhook will use it.
+the network faked (``billing.tests.vies_double``). The door is the one that prices a sale BEFORE it is charged,
+``billing.services.sale_quote`` / ``sale_tax_rates`` on the business's payer, which the checkout and the
+webhook call. So a refused verdict means the VAT is added on top of the net price (121 € charged), and the
+reconciliation of a sale Stripe already charged at 0 € (82.64 + 17.36) is proved on ``resolve_vat`` with the
+door's clearance, as the webhook uses it.
 
-Lot L3-C ported the invoice half: «7. The issued invoice keeps the consultation number» is in
-``test_invoice_recording.TestTheVatOfEachSale``, and the decision of «The note never lies» and «The note
-survives OSS» (``Invoice.vat_included_because_unverified``) in ``test_invoice_models.TestTheNoteNeverLies``;
-the sentence of the PDF and «The document explains the reconciliation» are the platform hub's, which prints
-the document (the SaaS sends it the flag, ``test_platform_invoices``).
+The invoice keeping the consultation number is in ``test_invoice_recording.TestTheVatOfEachSale``, and the note
+that explains a reconciled VAT (``Invoice.vat_included_because_unverified``) in
+``test_invoice_models.TestTheNoteNeverLies``; the PDF is the platform hub's, which prints the document (the SaaS
+sends it the flag, ``test_platform_invoices``).
 """
 
 from datetime import timedelta
@@ -101,7 +98,7 @@ class TestAFakeVatNumberIsNotReverseCharge:
         ]
 
     def test_a_sale_stripe_charged_at_zero_is_reconciled_with_the_doors_verdict(self):
-        """What the L2-B webhook does with a sale already charged: Stripe charged 100.00 € with no tax on
+        """What the webhook does with a sale already charged: Stripe charged 100.00 € with no tax on
         a number never proved, so the collected amount is VAT-inclusive (TJUE C-249/12, Tulică)."""
         with vies_says(**NOT_REGISTERED):
             clearance = services.clear_tax_id_for_stripe(
@@ -182,7 +179,7 @@ class TestNotVerifiedIsNotVerified:
 
 
 class TestAnExpiredVerdictDoesNotBlockTheSale:
-    """A year-old verdict proves nothing about today's operation (§8)."""
+    """A year-old verdict proves nothing about today's operation."""
 
     def _stale_verified(self, days=40):
         check = VatCheck.objects.create(
@@ -203,8 +200,8 @@ class TestAnExpiredVerdictDoesNotBlockTheSale:
         assert quote.base + quote.tax == Decimal("121.00")
 
     def test_the_next_sale_asks_again(self, german_payer):
-        """No queue in this stack (round 11, no ``django.tasks``): the revalidation the old SaaS queued
-        is the next need asking the Commission, because only a current proof is reused."""
+        """There is no revalidation queue: the next need asks the Commission, because only a current proof is
+        reused."""
         self._stale_verified()
         business = german_payer(REAL_VAT)
         with vies_is_down():
@@ -286,7 +283,7 @@ class TestTheQueryIdentifiesTheRequester:
 
 
 class TestTheManualOverride:
-    """For the company incorporated last week that is not in VIES yet (§7)."""
+    """For the company incorporated last week that is not in VIES yet."""
 
     def test_it_demands_a_reason_and_an_author(self):
         with pytest.raises(ValueError):
@@ -400,7 +397,7 @@ class TestTheBreakdownSealsTheReconciliation:
 
     def test_whether_a_number_needed_a_verdict_is_decided_against_the_issuer(self):
         """Under OSS ``tax_country`` IS the customer's, so comparing the prefix with it made the note
-        vanish on the very sale that needs it (saas#1633); the issuer's country never moves."""
+        vanish on the very sale that needs it; the issuer's country never moves."""
         policy = queries.fiscal_policy()
         policy.oss_registered = True
         policy.save()

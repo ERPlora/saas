@@ -1,10 +1,10 @@
-"""The legal invoice is issued by ERPlora's platform hub, not by the SaaS (PLAN-SAAS §4, ADR-0478; lot L3-C).
+"""The legal invoice is issued by ERPlora's platform hub, not by the SaaS.
 
-Once the webhook's transaction commits, the SaaS posts the invoice to hub-next's
+Once the webhook's transaction commits, the SaaS posts the invoice to the Hub's
 ``POST /internal/platform/invoices`` (signed like every ``/internal`` call, ``hubs.hub_client``), keyed by
 the invoice's id (idempotent: posting it again answers what the Hub has). The platform hub chains it in
 VeriFactu and answers its status and the QR; the SaaS stores them (``fiscal_status`` mirrors the Hub) and
-never simulates them (working rules §2: VeriFactu is never simulated): with the Hub away the invoice stays
+never simulates them: with the Hub away the invoice stays
 «issuing» and ``reconcile_platform_invoices`` posts it again; an issued one is asked
 (``GET /internal/platform/invoices/{id}``) until the AEAT answers.
 
@@ -40,7 +40,7 @@ QR = "https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQR?nif=B275931
 @pytest.fixture(autouse=True)
 def _stripe(stripe_double, issuer_identity):
     stripe_double.answer("subscriptions.retrieve", subscription())
-    # A credit note is read LIVE before it becomes a rectifying invoice (a voided one never does, BILLING-F26).
+    # A credit note is read LIVE before it becomes a rectifying invoice (a voided one never does).
     stripe_double.answer("credit_notes.retrieve", lambda call: {"id": call.args[0], "object": "credit_note", "status": "issued"})
     return stripe_double
 

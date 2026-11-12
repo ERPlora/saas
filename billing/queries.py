@@ -4,7 +4,7 @@ business, and the operation ``billing.tax.preview``.
 Only this module and ``services.py`` touch the ORM: the VAT engine (``billing.vat``) reads the table and the
 policy through the functions below. Nothing here asks VIES nor writes: a query runs READ ONLY.
 
-The Billing section (lot L3-C): ``billing.invoice.{list,get,pdf,csv}`` (ERPlora's invoices; the PDF is asked
+The Billing section: ``billing.invoice.{list,get,pdf,csv}`` (ERPlora's invoices; the PDF is asked
 to the platform hub), ``billing.subscription.list`` and ``billing.payment_method.get`` (the card, asked to
 Stripe and kept a few minutes).
 """
@@ -133,7 +133,7 @@ def fiscal_policy() -> FiscalPolicy:
     return FiscalPolicy.objects.first() or FiscalPolicy()
 
 
-# --- The audit of the rate table (BILLING-F04, saas#1968, saas#1995) ---------------------------------
+# --- The audit of the rate table ----------------------------------------------------------------------
 
 #: The three Spanish territories outside the scope of VAT, each with a postal code that belongs to it: the
 #: postal code is the only thing that tells Las Palmas from Madrid, so the audit asks through the same door
@@ -232,7 +232,7 @@ def _audit_territories_outside_vat(report: TaxRuleAuditReport) -> None:
 
 def _region_rule_does_not_answer(region: str, category: str) -> str:
     """Say WHICH of the two things happened: a missing row is fixed by creating it, a row that stopped
-    answering by ticking a box (saas#1995). The row is looked for with the precedence ``tax_rule`` uses —
+    answering by ticking a box. The row is looked for with the precedence ``tax_rule`` uses —
     the category first, then the generic one — or another row of the territory is described instead."""
     rows = TaxRule.objects.filter(country_code="ES", region_code=region).order_by("-valid_from", "-id")
     shadow = next(
@@ -315,9 +315,9 @@ def cross_border_b2c_cents(policy: FiscalPolicy, year: int) -> int:
     """The tax base of the year's intra-EU B2C distance sales, in integer cents (the OSS threshold).
 
     The sales to consumers of OTHER member states —a payer without a VIES-verified VAT number; an
-    unverified business was taxed like a consumer and counts (saas#1969)— invoiced outside this SaaS by the
+    unverified business was taxed like a consumer and counts— invoiced outside this SaaS by the
     old one, carried by hand in ``FiscalPolicy`` for ``oss_carried_year`` and the year before, plus
-    ERPlora's invoices issued here that year (``billing.Invoice``, lot L3-C: paid ones and their credit
+    ERPlora's invoices issued here that year (``billing.Invoice``: paid ones and their credit
     notes, which take their base back). Only the base counts: the threshold is on the value of the
     supplies, VAT excluded. Domestic and non-EU sales never count.
     """
@@ -341,8 +341,7 @@ def oss_total_is_known(policy: FiscalPolicy, year: int) -> bool:
     """Whether the year's cross-border B2C total is a fact or an assumption. Until the old SaaS's amounts are
     carried (``oss_carried_year``) a 0 is not a fact, and the admin says «unknown». From the carried year on it
     is: the old SaaS sells no more, so a later year is this SaaS's invoices alone, and the carried «this year»
-    is that year's «last year» (``cross_border_b2c_cents``), with nobody editing the policy each January
-    (review of L3-C)."""
+    is that year's «last year» (``cross_border_b2c_cents``), with nobody editing the policy each January."""
     return policy.oss_carried_year is not None and year >= policy.oss_carried_year
 
 
@@ -444,7 +443,7 @@ class Payer:
     @property
     def has_location(self) -> bool:
         """Both halves on file, the postal code of its country's shape: a country alone prices Madrid and
-        Las Palmas the same (saas#1972), and «3500» is not Las Palmas (``vat.postal_code_is_valid``)."""
+        Las Palmas the same, and «3500» is not Las Palmas (``vat.postal_code_is_valid``)."""
         return vat.postal_code_is_valid(self.country, self.postal_code)
 
 
@@ -556,7 +555,7 @@ def tax_preview(ctx: OperationContext, params: TaxPreviewIn) -> dict:
     return answer
 
 
-# --- Promo codes (lot L2-B) --------------------------------------------------------------------------
+# --- Promo codes --------------------------------------------------------------------------------------
 
 #: The per-person budget of ``billing.promo.check``.
 PROMO_CHECK_GROUP = "billing.promo-check"
@@ -567,7 +566,7 @@ def redeemable_promo(
 ) -> PromoCode | None:
     """The promo code that grants a trial now, or ``None``: unknown, inactive, expired and exhausted are all
     ``None``, because none of them may block a sale (a bad code is simply not applied). With ``hub`` (and its
-    payer's Stripe ``customer``), also ``None`` once that business or that payer used it (review of L2-B)."""
+    payer's Stripe ``customer``), also ``None`` once that business or that payer used it."""
     normalised = normalise_promo_code(code)
     if not normalised:
         return None
@@ -628,7 +627,7 @@ def promo_check(ctx: OperationContext, params: PromoCheckIn) -> dict:
     }
 
 
-# --- What is sold, and what Stripe bills (lot L2-B) --------------------------------------------------
+# --- What is sold, and what Stripe bills --------------------------------------------------------------
 
 
 def plan_on_sale(slug: str):
@@ -643,7 +642,7 @@ def module_on_sale(slug: str):
 
 def businesses_having_module(slug: str) -> list[str]:
     """The names of the businesses that have the bought module ``slug`` now (open-ended, or cancelled and still
-    working): what Stripe bills or billed for this period (BILLING-G66, saas#2568: its row is not deleted)."""
+    working): what Stripe bills or billed for this period (its row is not deleted)."""
     now = timezone.now()
     items = SubscriptionItem.objects.filter(
         module_slug=slug, source=SubscriptionItem.Source.PURCHASE
@@ -673,7 +672,7 @@ def module_for_price(price_id: str):
     return (module, "year") if module is not None else None
 
 
-# --- The Store (lot L2-D) ----------------------------------------------------------------------------
+# --- The Store ----------------------------------------------------------------------------------------
 
 #: Statuses of a Stripe subscription that bill nothing any more (``billing.services.ENDED_STATUSES``).
 _ENDED_STATUSES = frozenset({"canceled", "incomplete_expired"})
@@ -689,7 +688,7 @@ def is_paying(subscription: Subscription | None) -> bool:
 
 
 def offered_plans(paying: bool):
-    """The paid plans on sale a business may move to (audit 2 S-03; the catalogue, ``hubs/0013``): the ones sold at sign-up
+    """The paid plans on sale a business may move to (the catalogue, ``hubs/0013``): the ones sold at sign-up
     while Stripe does not bill it (Free), the ``upgrade_only`` ones too once it pays. Free is not bought (a paid
     plan is cancelled to get it) and an ``internal_only`` plan is never offered here."""
     plans = Plan.objects.public().filter(price_monthly__gt=0)
@@ -724,8 +723,8 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
     """What the Store sells the business and what it already has: every paid module on sale with its net
     prices in cents, whether the business owns it (bought or included in its plan; a cancelled one until it
     ends), the plan, its billing and whether Stripe bills it already, and the paid plans it may move to
-    (``offered_plans``: no upgrade-only plan for a business Stripe does not bill, audit 2 S-03). Only the owner buys for a business
-    (round 17 §2.7), so only the owner reads it; a deleted business buys nothing (409). Never asks Stripe."""
+    (``offered_plans``: no upgrade-only plan for a business Stripe does not bill). Only the owner buys for a business,
+    so only the owner reads it; a deleted business buys nothing (409). Never asks Stripe."""
     member = hub_queries.access(hub_queries.account_of(ctx), params.hub_id, HubMember.Role.OWNER)
     if not hub_queries.is_writable(member.hub):
         raise hub_services.business_deleted()
@@ -738,7 +737,7 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
         for item in SubscriptionItem.objects.filter(subscription=subscription).order_by("module_slug"):
             if item.is_live(now):
                 owned[item.module_slug] = item
-    # On sale, and the ones the business has although they are not any more (saas#2589: taking a module off
+    # On sale, and the ones the business has although they are not any more (taking a module off
     # sale stops new purchases, never the charge of who has it, so its owner still sees it to cancel it).
     rows = Module.objects.filter(Q(is_active=True) | Q(slug__in=owned)).order_by("slug")
     cards = app_queries.cards_of([row.slug for row in rows], ctx.language or "")
@@ -783,10 +782,10 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
     }
 
 
-# --- The Billing section: ERPlora's invoices, the subscriptions and the payment details (lot L3-C) -----
+# --- The Billing section: ERPlora's invoices, the subscriptions and the payment details -----------------
 #
 # Who sees an invoice: the account that paid it (its payer that day) and the current owner of its business
-# (round 17 §2.7: the owner manages billing); nobody else, whatever their role: a 404, never a hint. The same
+# (the owner manages billing); nobody else, whatever their role: a 404, never a hint. The same
 # rule gives the subscriptions (the owner's businesses and the ones the account pays) and the cards (only the
 # account's own payers: a card is never shown to anybody but whoever it belongs to).
 
@@ -831,7 +830,7 @@ def pays_for(user, invoice: Invoice) -> bool:
 
 
 def _cards_declined(stripe_invoice_ids) -> set[str]:
-    """The Stripe invoices whose payment the bank declined with the card still unchanged (mockups §6.18)."""
+    """The Stripe invoices whose payment the bank declined with the card still unchanged."""
     return set(
         PaymentFailure.objects.filter(
             stripe_invoice_id__in=list(stripe_invoice_ids),
@@ -1019,14 +1018,14 @@ def invoice_get(ctx: OperationContext, data: InvoiceByIdIn) -> dict:
 )
 def invoice_pdf(ctx: OperationContext, data: InvoiceByIdIn) -> dict:
     """The PDF of an invoice, as ERPlora's platform hub issued it (``GET /internal/platform/invoices/{id}/pdf``,
-    asked on demand: round 17 §2.7). 404 ``billing.invoice_not_issued`` until the Hub issued it."""
+    asked on demand). 404 ``billing.invoice_not_issued`` until the Hub issued it."""
     user = _billing_account(ctx)
     invoice = invoice_of(user, data.id)
     return {"filename": f"{invoice.number}.pdf", "content_type": "application/pdf", "content": platform_invoice_pdf(invoice)}
 
 
 def platform_invoice_pdf(invoice: Invoice) -> bytes:
-    """The PDF ERPlora's platform hub issued of ``invoice``, asked now (also the admin's, BILLING-G12): 404
+    """The PDF ERPlora's platform hub issued of ``invoice``, asked now (also the admin's): 404
     ``billing.invoice_not_issued`` until it is issued, 503 ``billing.platform_unavailable`` with the Hub away."""
     if invoice.payment_status != Invoice.PaymentStatus.PAID or invoice.fiscal_status not in ISSUED_STATUSES:
         raise NotFound(
@@ -1052,7 +1051,7 @@ FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
 
 
 def _csv_text(value: str) -> str:
-    """A text cell that cannot run as a formula in the accountant's spreadsheet (review of L3-C)."""
+    """A text cell that cannot run as a formula in the accountant's spreadsheet."""
     return f"'{value}" if value.startswith(FORMULA_STARTS) else value
 
 
@@ -1070,7 +1069,7 @@ def _csv_amount(cents: int, separator: str) -> str:
     ai=INTERNAL,  # file
 )
 def invoice_csv(ctx: OperationContext, data: InvoiceFilterIn) -> dict:
-    """«Download Excel» (W-F9): the invoices the filters show, all of them, as CSV for the accountant.
+    """«Download Excel»: the invoices the filters show, all of them, as CSV for the accountant.
 
     UTF-8 with its BOM, so Excel reads the accents; in a language that writes a decimal comma (Spanish) the
     columns are split by «;» and the amounts carry the comma, as Excel expects there; elsewhere «,» and «.».
@@ -1107,7 +1106,7 @@ def invoice_csv(ctx: OperationContext, data: InvoiceFilterIn) -> dict:
 
 # --- Subscriptions -----------------------------------------------------------------------------------
 
-#: A Stripe subscription that ended bills nothing: the business is back on Free (PLAN-SAAS §3.3).
+#: A Stripe subscription that ended bills nothing: the business is back on Free.
 ENDED_SUBSCRIPTIONS = ("canceled", "incomplete_expired")
 
 
@@ -1195,7 +1194,7 @@ def _subscription_row(
     scheduled_change = scheduled.get(hub.id)
     next_invoice = None
     if not cancelling:
-        # A downgrade that waits starts on that very date: Stripe's next phase bills the new items (saas#213).
+        # A downgrade that waits starts on that very date: Stripe's next phase bills the new items.
         next_plan, next_interval = (
             (next_plans.get(scheduled_change["plan"]), scheduled_change["interval"])
             if scheduled_change
@@ -1207,13 +1206,13 @@ def _subscription_row(
             "currency": "EUR",
         }
     profile = hub.billing_profile
-    # Charged to the card of another account: the payer before a hand-over (HUBS-F28).
+    # Charged to the card of another account: the payer before a hand-over.
     elsewhere = profile is None or profile.owner_id != user.pk or subscription.stripe_customer_id != profile.stripe_customer_id
     writable = hub.id in owned and hub_queries.is_writable(hub)
     manages = writable and not elsewhere
     unpaid_id = unpaid.get(hub.id)
     # A cancellation, or a downgrade that waits for the end of the period, is undone with «Keep the plan» until
-    # that date (BILLING-F14, PLAN-SAAS §31 point 2): it leads the row.
+    # that date: it leads the row.
     undoable = cancelling or scheduled_change is not None
     can = {
         "take_over": writable and elsewhere,
@@ -1262,8 +1261,8 @@ def _subscription_row(
 def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
     """One row per business of the account that Stripe bills (it owns it or pays it): the plan and modules at
     their net price, the next invoice with VAT (the new plan's, with a downgrade that waits) and what the row's
-    buttons do (mockups ``billing.html``). Filtered
-    by business and by status for an integration (BILLING-G02), which reads it with a ``billing.read`` key."""
+    buttons do. Filtered
+    by business and by status for an integration, which reads it with a ``billing.read`` key."""
     user = _billing_account(ctx)
     owned = set(_owned_hub_ids(user).values_list("hub_id", flat=True))
     subscriptions = (
@@ -1386,8 +1385,8 @@ def payment_method_get(ctx: OperationContext, data: PaymentMethodIn) -> dict:
         )
         methods.append(
             {
-                # The card pays the businesses Stripe bills; a Free one on the same payer is not paid with it (audit 2
-                # R-26). With none billed, the ones it is kept for.
+                # The card pays the businesses Stripe bills; a Free one on the same payer is not paid with it.
+                # With none billed, the ones it is kept for.
                 "businesses": [{"id": hub.id, "name": hub.name} for hub in billed or businesses],
                 "card": card,
                 "unavailable": unavailable,
@@ -1441,11 +1440,11 @@ def _cancellable(ctx: OperationContext, hub_id) -> tuple[Hub, Subscription]:
     ai=INTERNAL,  # preview
 )
 def plan_cancel_preview(ctx: OperationContext, params: HubIn) -> dict:
-    """What cancelling the plan of a business will do, as Billing's «Cancel the plan» dialog says it (BILLING-F13):
+    """What cancelling the plan of a business will do, as Billing's «Cancel the plan» dialog says it:
     it stays on its plan until the last day of its period (the business's own day), then moves to Free and is not
     charged again; the modules it has turn off that day; what Free covers against the people it has now; an unpaid
-    invoice stays owed. ``billing.plan.cancel`` shows it on its card from the panel's assistant (ASSISTANT-F25, step 5:
-    its ``preview``). Only the owner who pays reads it, as only they cancel; never asks Stripe."""
+    invoice stays owed. ``billing.plan.cancel`` shows it on its card from the panel's assistant (its
+    ``preview``). Only the owner who pays reads it, as only they cancel; never asks Stripe."""
     hub, subscription = _cancellable(ctx, params.hub_id)
     now = timezone.now()
     language = ctx.language or settings.LANGUAGE_CODE

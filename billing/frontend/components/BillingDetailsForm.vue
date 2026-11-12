@@ -13,11 +13,9 @@ export interface BillingDetailsDraft {
 </script>
 
 <script setup lang="ts">
-// Who ERPlora invoices for a business (PLAN-SAAS §3.1; mockups `store.html`, the checkout's note): asked
-// once, before the first payment, inside the checkout dialog — legal name, tax ID (the server checks it in
-// VIES), address, city, postal code (five digits in Spain: it decides the tax) and country, or «use the
-// business’s name and country» (the server copies them). Only the fields; the dialog saves them with
-// `hubs.billing_profile.update`, and a 422 puts each message under its field. Country is an `ion-select`.
+// Who ERPlora invoices for a business, asked once before the first payment inside the checkout dialog. The postal
+// code decides the tax (five digits in Spain). Only the fields: the dialog saves them with
+// `hubs.billing_profile.update`, and a 422 puts each message under its field.
 import { IonCheckbox, IonInput, IonSelect, IonSelectOption } from '@ionic/vue';
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
