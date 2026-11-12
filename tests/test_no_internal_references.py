@@ -2,7 +2,8 @@
 
 Comments, docstrings, test names and log messages have to make sense on their own, so the code never
 points at a plan section, a dated planning round or a delivery slice. Markdown files are left out:
-they are where the plans live.
+they are where the plans live. A dependency patch is read too, and must not cite an issue of one of
+our repositories either: its comments land in the dependency's code, far from our trackers.
 """
 
 import re
@@ -27,7 +28,12 @@ INTERNAL_REFERENCE = re.compile(
     )
 )
 
+OUR_REPO_ISSUE = re.compile(r"(?<![\w-])(?:hub|saas|ui|live|aws|app|outfitkit|pm|knowledge)#[0-9]+")
+
+PATCH_SUFFIX = ".patch"
+
 CODE_SUFFIXES = {
+    PATCH_SUFFIX,
     ".py",
     ".ts",
     ".vue",
@@ -71,11 +77,12 @@ def internal_references(paths, root=REPO):
         if path in FROZEN_FILES:
             continue
         text = (root / path).read_text(encoding="utf-8", errors="replace")
+        patch = Path(path).suffix == PATCH_SUFFIX
         for number, line in enumerate(text.splitlines(), 1):
             unquoted = line
             for clause in QUOTED_CLAUSES:
                 unquoted = unquoted.replace(clause, "")
-            if INTERNAL_REFERENCE.search(unquoted):
+            if INTERNAL_REFERENCE.search(unquoted) or (patch and OUR_REPO_ISSUE.search(line)):
                 found.append(f"{path}:{number}: {line.strip()}")
     return found
 
@@ -115,6 +122,26 @@ def test_the_scan_catches_each_kind_of_reference(text):
 )
 def test_the_scan_leaves_ordinary_text_alone(text):
     assert not INTERNAL_REFERENCE.search(text)
+
+
+def test_the_dependency_patches_are_read():
+    patches = {p.relative_to(REPO).as_posix() for p in (REPO / "patches").glob("*.patch")}
+    assert patches <= set(code_files())
+
+
+def test_a_patch_comment_that_cites_an_issue_of_another_repo_is_caught(tmp_path):
+    (tmp_path / "patches").mkdir()
+    (tmp_path / "patches" / "some-lib@1.0.0.patch").write_text(
+        " const a = 1;\n"
+        "+ * one page at a time (hub#2242)\n"
+        "+ * see PLAN " + SECTION_SIGN + "3\n"
+        "+ * upstream capacitor-app#41 and color #123456 stay\n",
+        encoding="utf-8",
+    )
+    assert internal_references(["patches/some-lib@1.0.0.patch"], root=tmp_path) == [
+        "patches/some-lib@1.0.0.patch:2: + * one page at a time (hub#2242)",
+        "patches/some-lib@1.0.0.patch:3: + * see PLAN " + SECTION_SIGN + "3",
+    ]
 
 
 def test_a_quoted_clause_of_an_outside_contract_is_not_a_reference(tmp_path):
