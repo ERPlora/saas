@@ -1,10 +1,10 @@
 // How a business's status reads everywhere (the launcher, Businesses, a business's page): the ui's pill
 // (`businessStatusPill`), a danger pill of our own when the Hub refused to prepare the business, and
 // the catalogue key of the sentence that says why «Open» does not work or what to do. Inside the apps
-// the sentence never invites to pay (README §4): it says to go to erplora.com, without a link. An unpaid
-// invoice says its real deadline (audit 2026-10-14, R-06): the server suspends the business 7 days after the
-// invoice went unpaid (`billing.services.UNPAID_PLAN_GRACE`), so the date is `unpaid_since` + 7 days, said as
-// a day (never «7 more days», never the minute).
+// the sentence never invites to pay: it says to go to erplora.com, without a link. An unpaid invoice
+// says its real deadline: the server suspends the business 7 days after the invoice went unpaid
+// (`billing.services.UNPAID_PLAN_GRACE`), so the date is `unpaid_since` + 7 days, said as a day (never
+// «7 more days», never the minute).
 import { businessStatusPill, type BusinessStatus, formatDateTime, type StatusPillSpec } from '@erplora/ui/components';
 
 import { formatDate } from '../../billing/frontend/format';
@@ -86,7 +86,7 @@ export function reasonDate(business: BusinessState, locale: string): string {
   }
 }
 
-/** Suspended or deleted, «Open» is not offered at all (README §5.3); otherwise it is, disabled while it
+/** Suspended or deleted, «Open» is not offered at all; otherwise it is, disabled while it
  *  does not serve (`can.open`). */
 export function opensAtAll(business: { status: BusinessStatusCode }): boolean {
   return business.status !== 'suspended' && business.status !== 'deleting';

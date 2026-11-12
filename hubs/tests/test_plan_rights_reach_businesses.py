@@ -1,8 +1,8 @@
 """HUBS-F31 (HUBS-G101, HUBS-G96): what a plan includes, changed by the staff in the admin, reaches every business on
 that plan without waiting for the night.
 
-The trap of ERPlora/saas SAAS_DASHBOARD-F53 and F54: «un cambio de plan o de topes hecho en el admin de Django cambia
-lo que se firma sin empujarlo al hub». Here, saving a change to the rights a plan gives (its limits, its level of
+In the old SaaS a change of plan or of limits made in Django's admin changed what was signed without pushing it to
+the hub. Here, saving a change to the rights a plan gives (its limits, its level of
 modules, its monthly messages) leaves each business on it owing the Hub a newer snapshot, with the modules of the new
 level already written, and the next pass of ``reconcile_hub_states`` (every 15 minutes) delivers it. A change that
 only touches texts or prices owes nothing.
@@ -89,7 +89,7 @@ def test_the_next_pass_delivers_it(staff_client, on_starter, hub_double):
 
 
 def test_a_new_module_cap_reaches_the_hub_in_the_snapshot(staff_client, business, on_starter, hub_double):
-    """``max_apps`` (Ioan, 2026-10-24) is a right of the plan like its other limits: changing it owes every business
+    """``max_apps`` is a right of the plan like its other limits: changing it owes every business
     on the plan a newer snapshot, and the next pass takes it to the Hub, which checks it when a module is turned on."""
     services.reconcile()
     before = versions(business, on_starter)
@@ -137,7 +137,7 @@ def test_a_deleted_business_is_left_alone(staff_client, on_starter, owner):
     assert versions(on_starter) == before
 
 
-@pytest.mark.usefixtures("signup_trial")  # the dormant sign-up trial of Starter, on (no plan lends one since 2026-10-15)
+@pytest.mark.usefixtures("signup_trial")  # the dormant sign-up trial of Starter, on (no plan lends one by default)
 def test_a_business_trying_the_plan_owes_it_too(staff_client, business):
     """Free with Starter's trial in force: Starter's rights are the ones its snapshot carries."""
     before = versions(business)

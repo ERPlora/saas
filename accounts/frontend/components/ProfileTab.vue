@@ -1,9 +1,8 @@
 <script setup lang="ts">
-// Account → Profile (mockups `account.html` «profile»): the live `accounts.profile.get` — a skeleton while it
-// loads, its failure with «Retry» (also when no answer comes in time: never a skeleton for ever, audit
-// 2026-10-14 R-08), then «Your details» (ProfileForm), «Export your data» (DataExportCard, GDPR art. 20) and the danger
-// card, «Delete your account» (DeleteAccountCard), shown on every surface (PLAN-SAAS §3.6 point 6: Google Play asks
-// for it in the apps).
+// Account → Profile: the live `accounts.profile.get` — a skeleton while it loads, its failure with «Retry» (also
+// when no answer comes in time: never a skeleton for ever), then «Your details» (ProfileForm), «Export your data»
+// (DataExportCard, GDPR art. 20) and the danger card, «Delete your account» (DeleteAccountCard), shown on every
+// surface (Google Play asks for it in the apps).
 import { useLive } from '@erplora/ui/sdk';
 import { IonCard, IonCardContent, IonSkeletonText } from '@ionic/vue';
 import { computed } from 'vue';

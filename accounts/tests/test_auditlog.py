@@ -1,9 +1,8 @@
-"""ACCOUNTS-F36 · The audit trail of the account models (django-auditlog; PLAN-SAAS §1.1: «SE PORTA django-auditlog»).
+"""The audit trail of the account models (django-auditlog).
 
-Ported from ERPlora/saas ``apps/auth/users/auditlog.py`` and ``tests/unit/test_auditlog_coverage.py`` (#970): who
-changed an account, its access to a business, its API keys and its signed-in sessions, from which address, with
-the secrets never written (#957: without ``serialize_auditlog_fields_only`` the excluded password hash leaked into
-the serialized blob). Changed: the address is the one ``public.client_ip`` resolved behind the ALB, not the first
+Who changed an account, its access to a business, its API keys and its signed-in sessions, from which address, with
+the secrets never written (without ``serialize_auditlog_fields_only`` the excluded password hash leaks into
+the serialized blob). The address is the one ``public.client_ip`` resolved behind the ALB, not the first
 ``X-Forwarded-For`` entry the visitor may type; the actor is whoever the request acts as when the change is written,
 so a write through an API key (whose account ``accounts.api_auth`` sets after the middleware ran) has its actor too;
 the fields that move on every request (``last_login``, a key's ``last_used_at``, a session's ``last_seen_at``) are
@@ -225,7 +224,7 @@ class TestWhoAndFromWhere:
         assert entry.remote_addr == "203.0.113.9"
 
     def test_the_store_review_mark_names_who_set_it_and_cleared_it_and_from_where(self, client, ana, settings):
-        """ACCOUNTS-F49: the mark drops the mailed code of a sign-in; the trail says who put it on and took it off."""
+        """The mark drops the mailed code of a sign-in; the trail says who put it on and took it off."""
         settings.TRUSTED_PROXY_HOPS = 0
         root = get_user_model().objects.create_superuser(email="root@example.com", password="x")
         client.force_login(root)
@@ -390,8 +389,8 @@ class TestTheAdmin:
 
     def test_nobody_deletes_an_entry_here_not_even_the_superuser(self, client, ana):
         """The trail is read only for the whole staff (our ``LogEntryAdmin`` keeps auditlog's own permissions): the
-        delete page is refused and the list offers no «Delete selected» action; 90 days of it go by ``cleanup_old_logs``
-        (ACCOUNTS-F37), never by hand."""
+        delete page is refused and the list offers no «Delete selected» action; 90 days of it go by
+        ``cleanup_old_logs``, never by hand."""
         ana.first_name = "Anabel"
         ana.save()
         root = get_user_model().objects.create_superuser(email="root@example.com", password="x")

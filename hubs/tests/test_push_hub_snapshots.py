@@ -1,12 +1,10 @@
 """``push_hub_snapshots`` (``saas-cron``, nightly at 00:30 UTC, run without flags by ``scheduler.tf``):
-the safety net of PLAN-SAAS §2.2, every night for every business. By default it pushes the snapshot of
+the safety net of the push to the Hub, every night for every business. By default it pushes the snapshot of
 EVERY live business, each with a newer version (the Hub ignores an equal one), so a Hub that lost what
-it had acknowledged is put right overnight. ``--behind-only`` pushes only the snapshots the Hub is
-behind on. Under a Postgres advisory lock (a second run returns at once); a business that fails
-stays owed, never stops the batch, and makes the run end with an error after the pass.
-
-Review of L1-A, finding 3: the first version pushed only the businesses behind by default, so the
-nightly run the infra schedules never re-sent an acknowledged snapshot.
+it had acknowledged is put right overnight; pushing only the businesses behind would never re-send an
+acknowledged snapshot. ``--behind-only`` pushes only the snapshots the Hub is behind on. Under a Postgres
+advisory lock (a second run returns at once); a business that fails stays owed, never stops the batch, and
+makes the run end with an error after the pass.
 """
 
 import pytest
@@ -92,7 +90,7 @@ def test_a_deleted_business_gets_no_snapshot(business, hub_double):
 def test_with_the_hub_away_the_pass_ends_and_the_run_fails(
     owner, plans, offline_hub, make_user
 ):
-    """Review of L1-A, finding 4: the cron fails loudly (``task_failed`` alarm), after the whole pass."""
+    """The cron fails loudly (``task_failed`` alarm), after the whole pass."""
     first = create_business(owner)
     second = create_business(make_user("lola@example.com"), name="Café Lola")
 

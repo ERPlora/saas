@@ -1,4 +1,4 @@
-"""Keep the documentation the panel's assistant searches (ASSISTANT-F27; plan 2026-10-30-asistente-saas §5).
+"""Keep the documentation the panel's assistant searches.
 
 Every excerpt of the four sources of ``assistant.knowledge`` (the public help, the user documentation of the Hub's
 apps, the customer's part of the panel's WORKBOOKs and the plans on sale) is kept in ``assistant.DocChunk`` with its

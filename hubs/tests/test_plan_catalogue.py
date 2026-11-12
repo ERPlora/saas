@@ -1,25 +1,13 @@
 """Guard tests of the plan catalogue: the rows the migrations leave, which staff keep in the admin after.
 
-The plans live only in the database (Ioan, 2026-10-15): migration ``hubs/0013`` is the seed of a new database
-and puts production's rows right once; there is no command that seeds or overwrites them (``sync_hub_plans`` is
-an empty command until the deploy stops calling it). pytest builds its database by running every migration, so these tests read the catalogue a new
-database starts with.
+The plans live only in the database: migration ``hubs/0013`` is the seed of a new database and puts production's
+rows right once; there is no command that seeds or overwrites them (``sync_hub_plans`` is an empty command until
+the deploy stops calling it). pytest builds its database by running every migration, so these tests read the
+catalogue a new database starts with; what the migrations write is pinned by ``hubs/tests/test_migrations.py``.
 
-Ported from ERPlora/saas ``hubs/subscriptions/tests/test_sync_hub_plans.py`` (origin/develop),
-plus the seed halves of ``test_plan_trial_label.py`` and ``test_payment_test_plan.py``.
-
-Root cause of the "Spanish plan copy on an English landing" bug: the seed put Spanish into the
-English (default-language) fields, so an English visitor saw Spanish. These tests pin the ``_en``
-columns to English and keep the ``_es`` mirror in Spanish. saas-next has no modeltranslation: each
-language is its own column (``name_en``, ``name_es``…), as in the taxonomy (PLAN §21.4).
-
-Changed from the original:
-
-- ``test_resource_ladder_matches_the_2026_08_15_sizing_decision`` pinned the vCPU and memory of
-  each plan: a plan no longer sizes a container (PLAN-SAAS §1). What is left is the DB
-  ladder decided in round 9 (PLAN §14.2): Free, 1 transaction at a time and 5 s; paid, 3 and 15 s.
-- the tests of the seed command (idempotent, ``--update``, «N created, M existing») went with it on
-  2026-10-15; what the migrations write is pinned by ``hubs/tests/test_migrations.py``.
+The ``_en`` columns stay English and the ``_es`` mirror Spanish: a seed that put Spanish into the English
+(default-language) fields once showed an English visitor Spanish copy. Each language is its own column
+(``name_en``, ``name_es``…), as in the taxonomy.
 """
 
 import math
@@ -48,8 +36,8 @@ SPANISH_MARKERS = [
     "recuperación",
 ]
 
-#: Every field of a plan. An allowlist, so the container sizing PLAN-SAAS §1 drops (and the paused-hub
-#: price that went with it) cannot come back without changing this test.
+#: Every field of a plan. An allowlist, so the container sizing a plan no longer has (vCPU, memory, storage and the
+#: paused-hub price) cannot come back without changing this test.
 PLAN_FIELDS = {
     "id", "slug", "name_en", "name_es", "description_en", "description_es", "price_monthly", "price_annual",
     "features_en", "features_es", "featured_label_en", "featured_label_es", "is_active", "upgrade_only",
@@ -63,8 +51,8 @@ PLAN_FIELDS = {
 }  # fmt: skip
 
 PAYMENT_TEST = "payment-test"
-#: The catalogue (Ioan, 2026-10-15): three plans on sale at sign-up, the three upgrade-only tiers above them (kept,
-#: not retired) and the internal one.
+#: The catalogue: three plans on sale at sign-up, the three upgrade-only tiers above them (kept, not retired) and the
+#: internal one.
 UPGRADE_ONLY = ("pro", "enterprise", "max")
 CATALOGUE = ("free", "starter", "standard", *UPGRADE_ONLY, PAYMENT_TEST)
 
@@ -76,15 +64,15 @@ def catalogue():
 
 
 def test_the_catalogue_is_the_plans_on_sale_the_upgrade_only_tiers_and_the_internal_one(catalogue):
-    """Ioan, 2026-10-15: Free, Starter and Standard at sign-up; Pro, Enterprise and Max above them, kept as
-    upgrades of a business that pays; ``payment-test`` for staff."""
+    """Free, Starter and Standard at sign-up; Pro, Enterprise and Max above them, kept as upgrades of a business
+    that pays; ``payment-test`` for staff."""
     assert set(catalogue) == set(CATALOGUE)
     assert sorted(slug for slug, plan in catalogue.items() if plan.upgrade_only) == sorted(UPGRADE_ONLY)
 
 
 def test_no_plan_carries_a_trial(catalogue):
-    """Ioan, 2026-10-15: no trial; the Free plan is the way in. The mechanism stays (``trial_period_days``, the
-    checkout's ``trial_end``), dormant: a plan only has a trial if staff give it one in the admin."""
+    """No trial; the Free plan is the way in. The mechanism stays (``trial_period_days``, the checkout's
+    ``trial_end``), dormant: a plan only has a trial if staff give it one in the admin."""
     assert {slug: plan.trial_period_days for slug, plan in catalogue.items()} == dict.fromkeys(CATALOGUE, 0)
     assert Plan.objects.signup_trial_days() == {"trial_days_min": None, "trial_days_max": None}
 
@@ -121,7 +109,7 @@ def test_recommended_badge_is_translated(catalogue):
 
 
 def test_support_copy_never_promises_a_clock_we_do_not_run(catalogue):
-    """saas#1760: support is sold as CHANNEL + PRIORITY, never as an unmeasured clock."""
+    """Support is sold as CHANNEL + PRIORITY, never as an unmeasured clock."""
     for slug, plan in catalogue.items():
         for text in [plan.description_en, *plan.features_en]:
             assert "24/7" not in text, f"[{slug}] unbacked 24/7 support claim: {text!r}"
@@ -159,7 +147,7 @@ def test_no_english_field_contains_spanish(catalogue):
                 )
 
 
-# saas#1760: infra specs that must never reach commercial copy again.
+# Infra specs that must never reach commercial copy again.
 INFRA_SPEC_PATTERNS = [
     (r"\b\d+\s*(MB|GB|TB)\b", "raw memory/storage size"),
     (r"\bv?CPU\b", "CPU spec"),
@@ -182,7 +170,7 @@ def _copy(plan):
 
 
 def test_no_plan_sells_infrastructure_specs(catalogue):
-    """saas#1760: commercial copy sells the HUB, never the box it runs on."""
+    """Commercial copy sells the HUB, never the box it runs on."""
     for slug, plan in catalogue.items():
         for text in _copy(plan):
             for pattern, label in INFRA_SPEC_PATTERNS:
@@ -191,8 +179,8 @@ def test_no_plan_sells_infrastructure_specs(catalogue):
                 )
 
 
-#: What the plans no longer sell (round 6, PLAN-SAAS §9 of 2026-10-24b) and nobody runs: no description nor feature
-#: of any plan, what the Store shows a business, promises it. The support «agreed in contract» is a ``support_level``.
+#: What the plans no longer sell and nobody runs: no description nor feature of any plan, what the Store shows a
+#: business, promises it. The support «agreed in contract» is a ``support_level``.
 UNSOLD_INFRASTRUCTURE = (
     "dedicated", "isolated", "autoscal", "disaster", "monitoring", "single-node", "infrastructure",
     "dedicada", "aislada", "autoescalado", "desastres", "monitoreo", "un solo nodo", "infraestructura",
@@ -239,9 +227,9 @@ def test_the_infrastructure_guard_catches_the_lines_that_were_actually_published
     assert _infrastructure_promises(["Autoescalado automático de contenedores"])
 
 
-#: «Location» and its Spanish words. Multi-location comes from Pro and is charged per location (PLAN §32, ronda
-#: 2026-10-24b), so no card a business can sign up on (Free, Starter, Standard) names a location: 0013 said «every
-#: location included» and «several locations», and 0021 took it away.
+#: «Location» and its Spanish words. Multi-location comes from Pro and is charged per location, so no card a business
+#: can sign up on (Free, Starter, Standard) names a location: 0013 said «every location included» and «several
+#: locations», and 0021 took it away.
 LOCATION_WORDS = re.compile(r"\b(?:multi-?)?(?:locations?|locales?|sucursal(?:es)?|tiendas?)\b", re.IGNORECASE)
 PLANS_ON_SALE = ("free", "starter", "standard")
 
@@ -269,7 +257,7 @@ def test_the_location_guard_catches_the_lines_that_were_actually_published():
 
 
 def test_no_plan_publishes_an_uptime_sla_percentage(catalogue):
-    """saas#1760: the only availability statement is the one in the terms (99.5 %, reasonable efforts)."""
+    """The only availability statement is the one in the terms (99.5 %, reasonable efforts)."""
     for slug, plan in catalogue.items():
         for text in _copy(plan):
             assert not re.search(r"\d{2}[.,]\d+\s*%", text), (
@@ -279,8 +267,8 @@ def test_no_plan_publishes_an_uptime_sla_percentage(catalogue):
 
 
 def test_subscription_unit_is_the_hub(catalogue):
-    """saas#1760: one subscription buys ONE hub, with every device and user in it. The copy calls it what the
-    panel calls it, a business (audit 2 S-12: «Precio por hub» in the Store was the Hub's word)."""
+    """One subscription buys ONE hub, with every device and user in it. The copy calls it what the panel calls it,
+    a business («Precio por hub» in the Store was the Hub's word)."""
     for slug in ("starter", "standard"):
         plan = catalogue[slug]
         assert any("per business" in f.lower() for f in plan.features_en), (
@@ -296,7 +284,7 @@ def test_subscription_unit_is_the_hub(catalogue):
 
 
 def test_recovery_window_is_the_same_on_every_plan(catalogue):
-    """saas#1760 + infra#136: the backup window is physical and common to the cluster."""
+    """The backup window is physical and common to the cluster."""
     backup_lines_en = {
         line
         for plan in catalogue.values()
@@ -310,15 +298,15 @@ def test_recovery_window_is_the_same_on_every_plan(catalogue):
     (backup_line,) = backup_lines_en
     assert "7-day" not in backup_line, f"stale 7-day retention claim: {backup_line!r}"
     assert "any moment of the last 14 days" in backup_line, (
-        f"copy must describe what infra#136 proved: {backup_line!r}"
+        f"copy must describe the cluster's backup window: {backup_line!r}"
     )
 
 
 #: The database line of Free and Starter: one sentence with the backups, the same words as the public
-#: downloads page (``public/templates/public/downloads.html``). Since 2026-10-15 (Ioan) it tells the customer
-#: what they get in plain words — where it lives (AWS, Europe) and that it is replicated — never how it is run.
-#: Since saas#408 it also says what a recovery never undoes: a business that invoices with VeriFactu gets back what it
-#: lost from a copy of that moment, and what reached the tax agency stays (the Hub's BASE-F114).
+#: downloads page (``public/templates/public/downloads.html``). It tells the customer what they get in plain
+#: words — where it lives (AWS, Europe) and that it is replicated — never how it is run, and what a recovery
+#: never undoes: a business that invoices with VeriFactu gets back what it lost from a copy of that moment,
+#: and what reached the tax agency stays.
 MANAGED_DATABASE = {
     "en": (
         "Managed database, replicated across several European data centres, with continuous backups: recover your "
@@ -329,7 +317,7 @@ MANAGED_DATABASE = {
         "recuperas los datos de cualquier momento de los últimos 14 días, y lo ya enviado a Hacienda se conserva"
     ),
 }
-#: A recovery window, as the copy words it in English and in Spanish, and what every such promise must add (saas#408):
+#: A recovery window, as the copy words it in English and in Spanish, and what every such promise must add:
 #: a business that invoices with VeriFactu never goes back whole, because what it sent to the tax agency stays sent.
 RECOVERY_WINDOW = re.compile(r"\b14 (?:days|días)\b", re.IGNORECASE)
 RECOVERY_WORDS = re.compile(r"\brecover|\brecupera", re.IGNORECASE)
@@ -342,13 +330,13 @@ def promises_a_recovery_without_what_it_keeps(text: str) -> bool:
 
 
 def test_no_plan_promises_a_recovery_without_saying_what_it_keeps(catalogue):
-    """saas#408: «any moment of the last 14 days» alone is not what a business with VeriFactu gets."""
+    """«any moment of the last 14 days» alone is not what a business with VeriFactu gets."""
     for slug, plan in catalogue.items():
         assert [text for text in _copy(plan) if promises_a_recovery_without_what_it_keeps(text)] == [], slug
 
 
 def test_the_recovery_guard_catches_the_lines_that_were_actually_published():
-    """Positive control: the promise the seed and the public web carried until saas#408, and the words they carry now."""
+    """Positive control: the promise the seed and the public web carried before, and the words they carry now."""
     published = (
         "Managed database, replicated across several European data centres, with continuous backups and "
         "point-in-time recovery for 14 days",
@@ -362,7 +350,7 @@ def test_the_recovery_guard_catches_the_lines_that_were_actually_published():
     for line in MANAGED_DATABASE.values():
         assert not promises_a_recovery_without_what_it_keeps(line), line
     assert not promises_a_recovery_without_what_it_keeps("Trust this browser for 14 days")
-#: Ioan's rule for the public web: the copy sells what the customer gets, never the technology under it.
+#: The rule for the public web: the copy sells what the customer gets, never the technology under it.
 TECHNOLOGY_NAMES = ("postgresql", "postgres", "aurora")
 
 
@@ -394,7 +382,7 @@ def test_the_database_and_its_backups_are_one_line(catalogue):
 
 
 def test_the_cards_say_where_the_data_lives_and_that_the_database_is_replicated(catalogue):
-    """Ioan, 2026-10-15: a buyer reads «Amazon Web Services, in Europe» once per card (the cloud line) and
+    """A buyer reads «Amazon Web Services, in Europe» once per card (the cloud line) and
     «replicated» on the database line, never an engine name."""
     for slug in ("free", "starter"):
         plan = catalogue[slug]
@@ -407,9 +395,8 @@ def test_the_cards_say_where_the_data_lives_and_that_the_database_is_replicated(
 
 
 def test_the_recovery_window_is_the_one_aurora_keeps(catalogue):
-    """The card promises the 14 days Aurora keeps (``backup_retention_period = 14``,
-    ``aws-next/stacks/prod/aurora.tf``), no more: the old «up to 30 days» was the old cluster's
-    (the public web's session, 2026-10-14)."""
+    """The card promises the 14 days Aurora keeps (``backup_retention_period = 14`` in ``stacks/prod/aurora.tf``
+    of the ``aws`` repo), no more: the old «up to 30 days» was the old cluster's."""
     english = {
         line
         for plan in catalogue.values()
@@ -433,15 +420,15 @@ def test_the_recovery_window_is_the_one_aurora_keeps(catalogue):
 
 
 def test_free_and_starter_include_every_module(catalogue):
-    """Ronda 2026-10-24b (PLAN §32, corrects decision 17 of the catalog spec): every plan includes every module, so
-    Free's and Starter's cards say «All apps included» (hubs/0021; «apps», the public web's word, decision 19), not
-    «the free apps» nor «free and premium»; the plans above say «Everything in …»."""
+    """Every plan includes every module, so Free's and Starter's cards say «All apps included» (hubs/0021;
+    «apps» is the public web's word), not «the free apps» nor «free and premium»; the plans above say
+    «Everything in …»."""
     for slug in ("free", "starter"):
         assert "All apps included" in catalogue[slug].features_en, slug
         assert "Todas las apps incluidas" in catalogue[slug].features_es, slug
 
 
-#: A tier of apps, as no card says it any more (PLAN §32): ``premium`` stays a dormant field, never a card's word.
+#: A tier of apps, as no card says it any more: ``premium`` stays a dormant field, never a card's word.
 APP_TIER_WORDS = re.compile(r"\bpremium\b|\bfree apps\b|\bapps gratuitas\b|\bapps de pago\b|\bpaid apps\b", re.IGNORECASE)
 
 
@@ -466,15 +453,14 @@ def test_the_app_tier_guard_catches_the_lines_that_were_actually_published():
     assert _app_tiers_named(["All apps included", "Todas las apps incluidas", "Everything in Starter"]) == []
 
 
-def test_db_limits_match_the_round_9_decision(catalogue):
-    """PLAN §14.2 (Ioan): Free runs 1 transaction at a time per hub and process with a 5 s
-    ``statement_timeout``; a paid plan, 3 and 15 s. Since 2026-10-15 (Ioan) each plan up doubles the
-    resources of the one below: Standard, 6 and 15 s. They travel in the hub's state snapshot
-    (PLAN-SAAS §2.2) and the Hub enforces them with a semaphore per hub."""
+def test_db_limits_follow_the_resource_ladder(catalogue):
+    """Free runs 1 transaction at a time per hub and process with a 5 s ``statement_timeout``; a paid plan, 3 and
+    15 s, and each plan up doubles the resources of the one below: Standard, 6 and 15 s. They travel in the hub's
+    state snapshot and the Hub enforces them with a semaphore per hub."""
     expected = {slug: (3, 15) for slug in catalogue}
     expected["free"] = (1, 5)
     expected["standard"] = (6, 15)
-    # The upgrade-only tiers go on doubling (Ioan, 2026-10-15): Pro, Enterprise and Max.
+    # The upgrade-only tiers go on doubling: Pro, Enterprise and Max.
     expected.update({"pro": (12, 15), "enterprise": (24, 15), "max": (48, 15)})
     actual = {
         slug: (plan.max_db_connections, plan.statement_timeout_seconds)
@@ -484,7 +470,7 @@ def test_db_limits_match_the_round_9_decision(catalogue):
 
 
 def test_each_plan_up_doubles_the_resources_of_the_one_below_and_says_so(catalogue):
-    """Ioan, 2026-10-15: what grows from one plan to the next is the AI messages and the «resources», which are the
+    """What grows from one plan to the next is the AI messages and the «resources», which are the
     database's input/output capacity. Free is sized for one device; Starter has the full tier for several
     devices; Standard twice Starter. The cards say it as database throughput, in words: no engine name, no
     connection count, no timeout."""
@@ -509,7 +495,7 @@ def test_each_plan_up_doubles_the_resources_of_the_one_below_and_says_so(catalog
         ]
 
 
-#: The ladder from Starter up, each plan twice the one below (Ioan, 2026-10-15), and the line its card says it with.
+#: The ladder from Starter up, each plan twice the one below, and the line its card says it with.
 LADDER = (
     ("starter", "Full database throughput", "Capacidad de base de datos completa"),
     ("standard", "Twice the database throughput of Starter", "El doble de capacidad de base de datos que Starter"),
@@ -520,7 +506,7 @@ LADDER = (
 
 
 def test_from_starter_up_each_plan_doubles_the_one_below(catalogue):
-    """Ioan, 2026-10-15: the upgrade-only tiers go on up the same ladder (PLAN §14.2), all at 15 s."""
+    """The upgrade-only tiers go on up the same ladder, all at 15 s."""
     for (lower, *_), (upper, *_) in zip(LADDER, LADDER[1:], strict=False):
         assert catalogue[upper].max_db_connections == 2 * catalogue[lower].max_db_connections, upper
         assert catalogue[upper].statement_timeout_seconds == 15, upper
@@ -537,12 +523,12 @@ def test_every_paid_card_says_its_rung_of_the_ladder_in_words(catalogue):
 
 
 def test_a_plan_sizes_no_infrastructure():
-    """PLAN-SAAS §1: without a container per hub, a plan has no CPU, memory, storage nor paused price."""
+    """Without a container per hub, a plan has no CPU, memory, storage nor paused price."""
     assert {field.name for field in Plan._meta.get_fields()} == PLAN_FIELDS
 
 
 def test_the_seat_cap_is_the_number_the_free_card_promises(catalogue):
-    """saas#2022: the cap that is ENFORCED has to be the one that was SOLD."""
+    """The cap that is ENFORCED has to be the one that was SOLD."""
     free = catalogue["free"]
     assert free.max_users == 3, f"free plan caps users at {free.max_users}"
     promises = [f for f in free.features_en if "3" in f and "user" in f.lower()]
@@ -552,7 +538,7 @@ def test_the_seat_cap_is_the_number_the_free_card_promises(catalogue):
     )
 
 
-#: How many modules a business may choose to turn on, by plan (2026-10-24): every module is on every plan; a plan caps
+#: How many modules a business may choose to turn on, by plan: every module is on every plan; a plan caps
 #: only the ones the business picks (``max_apps``), never what they require. Free 20, each plan up doubles the one
 #: below; the upgrade-only tiers have no cap (0); ``payment-test`` reads as Starter.
 EXPECTED_MAX_APPS = {
@@ -565,7 +551,7 @@ EXPECTED_MAX_APPS = {
     PAYMENT_TEST: 40,
 }
 #: The modules a business on the biggest vertical template chooses: its roots, the ones no other module of it requires
-#: (the restaurant's 13 on the Hub's main of 2026-10-24, ``website`` included).
+#: (the restaurant's 13, ``website`` included).
 BIGGEST_TEMPLATE_ROOTS = 13
 #: The module on its way into that template (``tip``).
 ON_ITS_WAY = 1
@@ -582,7 +568,7 @@ def test_each_plan_on_sale_doubles_the_modules_of_the_one_below(catalogue):
 
 
 def test_free_caps_at_the_biggest_templates_roots_rounded_up_to_five_plus_five(catalogue):
-    """The criterion of the figures (2026-10-24): Free's cap is the roots of the biggest vertical template rounded up to
+    """The criterion of the figures: Free's cap is the roots of the biggest vertical template rounded up to
     the next multiple of 5, plus 5; so a business born on any template can turn on every module it came with, the one
     on its way, and more."""
     assert catalogue["free"].max_apps == math.ceil(BIGGEST_TEMPLATE_ROOTS / 5) * 5 + 5
@@ -598,23 +584,21 @@ def test_a_new_plan_caps_no_modules(db):
 
 
 def test_paid_plans_do_not_cap_people(catalogue):
-    """ "Every device and user included" is the paid promise (saas#1760; locations left it in 0021, PLAN §32)."""
+    """ "Every device and user included" is the paid promise (locations left it in 0021)."""
     for slug in ("starter", "standard", "pro", "enterprise", "max"):
         assert catalogue[slug].max_users == 0, (
             f"[{slug}] paid plans must not cap users"
         )
 
 
-# saas#1955: the two axes /pricing/ compares on. ADR-0474 fixes the module tier and ADR-0426
-# the support ladder. slug → (included_level, support_level, includes_custom_domain)
-#: Messages a month each plan includes (Ioan, 2026-10-15; ADR-0474 for Free and Starter): one request of the
+#: Messages a month each plan includes: one request of the
 #: user to the assistant is one message; WhatsApp has its own count. Standard doubles Starter (each plan up
 #: doubles the one below); ``payment-test`` reads as Starter. 0 would mean none, never «unlimited».
 EXPECTED_MONTHLY_MESSAGES = {
     "free": (30, 30),
     "starter": (300, 150),
     "standard": (600, 300),
-    # The upgrade-only tiers: the old stack's levels pro and enterprise (ADR-0474).
+    # The upgrade-only tiers: the old stack's levels pro and enterprise.
     "pro": (1000, 500),
     "enterprise": (3000, 800),
     "max": (3000, 800),
@@ -645,23 +629,23 @@ def test_a_plan_without_a_figure_includes_no_messages(db):
     assert (plan.assistant_messages_per_month, plan.whatsapp_messages_per_month) == (0, 0)
 
 
-#: What one message costs us at most, net (ADR-0474, saas#1952): the model's tokens of one assistant request, and
+#: What one message costs us at most, net: the model's tokens of one assistant request, and
 #: Meta's dearest billable WhatsApp message (marketing, Spain).
 ASSISTANT_COST_PER_MESSAGE = Decimal("0.02")
 WHATSAPP_COST_PER_MESSAGE = Decimal("0.0509")
-#: The share of a paid plan's net monthly price left when its customer uses up both quotas (Ioan's condition:
-#: never pay the model provider or Meta more than half of what the plan charges).
+#: The share of a paid plan's net monthly price left when its customer uses up both quotas (the condition: never pay
+#: the model provider or Meta more than half of what the plan charges).
 MIN_MARGIN_PERCENT = 50
 
 
 def _paid_plans(catalogue):
-    """The plans a customer pays for: Free is the permanent floor (ADR-0154) and ``payment-test`` is staff-only
-    (saas#1052), so neither has a price the margin can be taken from."""
+    """The plans a customer pays for: Free is the permanent floor and ``payment-test`` is staff-only, so neither
+    has a price the margin can be taken from."""
     return [plan for plan in catalogue.values() if plan.price_monthly > 0 and not plan.internal_only]
 
 
 def test_a_paid_plan_keeps_half_its_price_when_its_messages_are_used_up(catalogue):
-    """ADR-0474 (saas#1952): the net monthly price pays for a customer that burns the whole quota of both, and
+    """The net monthly price pays for a customer that burns the whole quota of both, and
     still keeps at least half of it. Assistant at its cost per message; WhatsApp at Meta's dearest rate."""
     for plan in _paid_plans(catalogue):
         worst_case = (
@@ -695,18 +679,18 @@ EXPECTED_COMMERCIAL_LADDER = {
 }
 
 
-def test_commercial_ladder_matches_adr_0474_and_adr_0426(catalogue):
+def test_commercial_ladder_matches_the_module_and_support_tiers(catalogue):
     """The ladder is a contract, not a default: both columns default to the bottom rung."""
     for slug, (included, support, custom_domain) in EXPECTED_COMMERCIAL_LADDER.items():
         plan = catalogue[slug]
         assert plan.included_level == included, (
-            f"[{slug}] included tier drifted from ADR-0474: {plan.included_level!r}"
+            f"[{slug}] included tier drifted: {plan.included_level!r}"
         )
         assert plan.support_level == support, (
-            f"[{slug}] support tier drifted from ADR-0426: {plan.support_level!r}"
+            f"[{slug}] support tier drifted: {plan.support_level!r}"
         )
         assert plan.includes_custom_domain is custom_domain, (
-            f"[{slug}] custom-domain gate drifted from the 2026-09-09 decision: {plan.includes_custom_domain!r}"
+            f"[{slug}] custom-domain gate drifted: {plan.includes_custom_domain!r}"
         )
 
 
@@ -725,7 +709,7 @@ def test_every_public_plan_has_a_declared_position_on_both_ladders(catalogue):
     )
 
 
-# saas#1956, ADR-0426: what we publish is what a customer can reclaim.
+# What we publish is what a customer can reclaim.
 UNLIMITED_API_PATTERNS = [
     (r"no usage limits", "unmetered API claim"),
     (r"sin l[ií]mites de uso", "unmetered API claim (es)"),
@@ -744,7 +728,7 @@ def test_no_plan_promises_an_api_the_limiter_does_not_deliver(catalogue):
 
 
 def test_the_api_patterns_catch_the_lines_that_were_actually_published():
-    """Positive control: these are the exact strings the seed carried before saas#1956."""
+    """Positive control: these are the exact strings the seed once carried."""
     for published in (
         "Full API with no usage limits",
         "API completa sin límites de uso",
@@ -754,19 +738,18 @@ def test_the_api_patterns_catch_the_lines_that_were_actually_published():
         ), f"guard is blind to the claim it exists to stop: {published!r}"
 
 
-#: A custom domain, in the words the copy sold it with, in both languages (saas#233).
+#: A custom domain, in the words the copy sold it with, in both languages.
 CUSTOM_DOMAIN_WORDS = re.compile(
     r"\bcustom domains?\b|\bown domains?\b|\bdominios? propios?\b|\berp\.yourbusiness\b|\berp\.tunegocio\b", re.I
 )
-#: The app on a domain of the business's: never sold, the app and the way in stay on erplora.com (PLAN-SAAS §8, round
-#: 2026-10-22, and §37 point 2). The custom domain is only for the business's public website.
+#: The app on a domain of the business's: never sold, the app and the way in stay on erplora.com. The custom domain
+#: is only for the business's public website.
 APP_ON_A_CUSTOM_DOMAIN = re.compile(r"\berp\.yourbusiness\b|\berp\.tunegocio\b", re.I)
 
 
 def test_only_the_plans_that_include_a_custom_domain_sell_one(catalogue):
-    """saas#1956, back since saas#301: a plan's copy names a custom domain only if it includes one
-    (``includes_custom_domain``, the gate HUBS-F17 reads). saas#233 had banned the words on every plan while no business
-    could connect a domain; HUBS-F17 is done (saas#302). The cards paint the line from the gate itself."""
+    """A plan's copy names a custom domain only if it includes one (``includes_custom_domain``, the gate HUBS-F17
+    reads). The cards paint the line from the gate itself."""
     sellers = {
         slug: texts
         for slug, plan in catalogue.items()
@@ -785,7 +768,7 @@ def test_no_plan_sells_the_app_on_a_custom_domain(catalogue):
 
 
 def test_the_custom_domain_guards_catch_the_words_that_were_on_sale():
-    """Positive control: the exact lines Standard and the public web carried before saas#233 are a custom domain, the
+    """Positive control: the exact lines Standard and the public web once carried are a custom domain, the
     two that named the app's address are the app on one, and the words that stay (every plan's address on erplora.com)
     are neither."""
     for published in (
@@ -816,7 +799,7 @@ def test_a_plan_that_does_not_include_a_custom_domain_and_sells_one_is_caught(ca
     assert any(CUSTOM_DOMAIN_WORDS.search(text) for text in _copy(starter))
 
 
-# --- From test_plan_trial_label.py (saas#2424) ------------------------------------------------
+# --- The trial on the cards -------------------------------------------------------------------
 
 
 def test_no_plan_types_the_trial_as_a_feature(catalogue):
@@ -831,7 +814,7 @@ def test_no_plan_types_the_trial_as_a_feature(catalogue):
             )
 
 
-# --- From test_payment_test_plan.py (saas#1052) -----------------------------------------------
+# --- The payment-test plan --------------------------------------------------------------------
 
 
 def test_the_catalogue_has_the_payment_test_plan(catalogue):
@@ -846,7 +829,7 @@ def test_the_payment_test_plan_has_no_trial(catalogue):
 
 
 def test_the_payment_test_price_breaks_down_cleanly_into_base_and_vat(catalogue):
-    """1.00 € net → 1.21 € charged to a Spanish customer: prices are net (saas#1098)."""
+    """1.00 € net → 1.21 € charged to a Spanish customer: prices are net."""
     assert catalogue[PAYMENT_TEST].price_monthly == Decimal("1.00")
 
 
@@ -854,11 +837,11 @@ def test_the_payment_test_plan_is_marked_internal(catalogue):
     assert catalogue[PAYMENT_TEST].internal_only is True
 
 
-# --- The catalogue of 2026-10-15: three plans on sale at sign-up, the upgrade-only tiers kept ---------------------
+# --- The catalogue: three plans on sale at sign-up, the upgrade-only tiers kept -------------------------------
 
 
 def test_the_upgrade_only_tiers_are_kept_active_above_the_plans_on_sale(catalogue):
-    """Ioan, 2026-10-15: Pro, Enterprise and Max are not retired. They stay active and ``upgrade_only``: the Store
+    """Pro, Enterprise and Max are not retired. They stay active and ``upgrade_only``: the Store
     offers them to a business that already pays, and the public web lists only the plans a visitor signs up for."""
     for slug in UPGRADE_ONLY:
         plan = catalogue[slug]

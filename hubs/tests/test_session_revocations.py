@@ -1,5 +1,5 @@
-"""``SessionRevocation``: the Hub ends an account's sessions, and a Hub that is away does not lose it
-(PLAN-SAAS §2.1, the back-channel logout; plan 2026-10-13 §3 and L1-A2).
+"""``SessionRevocation``: the Hub ends an account's sessions, and a Hub that is away does not lose it (as OIDC's
+back-channel logout).
 
 Taking access away (removing a member, changing a role, handing the ownership over) queues a revocation
 in the same transaction; it is delivered after the COMMIT (``POST /internal/sessions/revoke``) and, while

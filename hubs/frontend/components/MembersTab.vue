@@ -1,15 +1,15 @@
 <script setup lang="ts">
-// The Members of a business (mockups `business.html` «members», round 17 §2.7–2.8, README §3b): the
+// The Members of a business: the
 // live `hubs.member.list` in a server-side DataTable (cards up to 900 px) — name (the account's own row
 // marked), email, role, status and last access — and, per row, ONLY the actions the server computed
 // for the account (`actions`, in its fixed order: change role, remove, resend, cancel the invitation,
 // transfer the ownership). «Invite» when the account may invite (`invitable_roles`). Under the table,
 // the places of the plan and what each role may do; above it, a pending ownership offer the owner can
 // withdraw. Each action is a dialog of its own; «Resend» needs none. The list fills the section (a nested
-// `.panel-fill` of the business's page, Ioan 2026-10-14); rows per page only when there are more members
-// than the shortest page (README §3b). The list needs only the business's id, so it is asked for when the
-// tab mounts, with the page's own query (one `/api/live` stream); the tab shows once the business is there,
-// since its pending offer and its dialogs need it (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN).
+// `.panel-fill` of the business's page); rows per page only when there are more members than the shortest
+// page. The list needs only the business's id, so it is asked for when the tab mounts, with the page's own
+// query (one `/api/live` stream); the tab shows once the business is there, since its pending offer and its
+// dialogs need it.
 import {
   businessStatusPill,
   DataTable,
@@ -79,7 +79,7 @@ const live = useLive('hubs.member.list', () => ({
   limit: pageSize.value * windowPages.value,
   offset: page.value * pageSize.value,
 }));
-// Truthful states (audit 2026-10-14, R-04): the stream down or no answer in time is the table's error.
+// Truthful states: the stream down or no answer in time is the table's error.
 const load = useLiveState(live);
 const loadError = computed(() => (load.failed.value ? text(live.error.value) || t('saas.load.body') : undefined));
 const rows = computed<MemberRowOut[]>(() => live.data.value?.rows ?? []);
@@ -107,7 +107,7 @@ const labels = computed(() => ({
 const entityLabel = computed(() => ({ one: t('hubs.members.recordSingular'), many: t('hubs.members.recordPlural') }));
 
 /** The server's actions of each row (`row.actions`), in its order, for the table to fold: «Transfer
- *  ownership» lives only in «⋮» (README §3b: delicate, and confirmed). Named with the member. */
+ *  ownership» lives only in «⋮» (delicate, and confirmed). Named with the member. */
 const ORDER: MemberAction[] = ['change_role', 'remove', 'resend', 'cancel', 'transfer'];
 const actions = computed<DataTableAction<MemberRowOut>[]>(() =>
   ORDER.map((id) => ({
@@ -247,7 +247,7 @@ async function withdrawOffer(id: string): Promise<void> {
         <StatusPill v-bind="pill(row)" />
       </template>
       <template #last="{ row }">
-        <!-- A div, not the span DataTable clips with «…»: «Invited on Oct 11, 2026, 19:28» may wrap (audit 2 R-25). -->
+        <!-- A div, not the span DataTable clips with «…»: «Invited on Oct 11, 2026, 19:28» may wrap. -->
         <div
           class="member-last"
           data-testid="member-last"

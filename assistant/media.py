@@ -1,8 +1,8 @@
-"""The services the assistants use besides the turn (ASSISTANT-G54, G56, G57, F27): the fingerprints (embeddings) of
+"""The services the assistants use besides the turn: the fingerprints (embeddings) of
 the Hub's index and of the panel's documentation (``index_docs``, ``assistant.docs.search``) and the transcription of a
 dictation, by OpenAI's API, through the services' provider (``assistant.service.connection``:
 ``ASSISTANT_SERVICE_PROVIDER``), kept in the admin with its key, rotatable. The reading aloud of an answer has no engine
-(``SPEECH_ENGINE``, PLAN-SAAS round 2026-11-04c).
+(``SPEECH_ENGINE``).
 
 Each call goes over ``httpx``, with no SDK, the same way as ``assistant.providers``. A failure is a ``MediaFailed``
 with the provider's class (rejected, or worth trying again) and never the key nor the provider's words (they could
@@ -48,10 +48,9 @@ TIMEOUT = httpx.Timeout(connect=10.0, read=60.0, write=30.0, pool=10.0)
 
 #: The languages an answer is read aloud in, base code.
 SPEECH_LANGUAGES = ("es", "en")
-#: What reads an answer aloud: ``(text, language, voice)`` to an mp3, an empty voice being its own for the language. None
-#: since the provider of Azure AI Speech left (PLAN-SAAS round 2026-11-04c): the door and the panel's route answer 503
-#: ``assistant.speech_unavailable``, and the Hub and the panel read with the device's voice. A free engine, in our own
-#: containers, takes this place in a round of its own (§35); ``MediaFailed`` is how it fails.
+#: What reads an answer aloud: ``(text, language, voice)`` to an mp3, an empty voice being its own for the language.
+#: None for now: the door and the panel's route answer 503 ``assistant.speech_unavailable``, and the Hub and the panel
+#: read with the device's voice. An engine set here fails with ``MediaFailed``.
 SPEECH_ENGINE: Callable[[str, str, str], Awaitable[bytes]] | None = None
 
 

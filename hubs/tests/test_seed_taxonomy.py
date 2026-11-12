@@ -1,11 +1,8 @@
 """``seed_taxonomy`` seeds the 12 sectors and the 70 business types, each under its sector.
 
-Ported from ERPlora/saas ``public/catalog/tests/test_seed_taxonomy.py`` (origin/develop). Changed:
-``FunctionalUnit``, ``Category`` and ``Subcategory`` are gone (round 16, PLAN §21), so there is no
-reorg tree to delete nor units to seed; ``BusinessType`` gains ``vertical``, the template a new hub
-of that type is cloned from (PLAN §15.2, §21.4); and the seed runs in the ``saas-migrate`` task on every
-deploy, so by default it only creates the rows missing by ``code`` and keeps what staff edited in the
-admin, while ``--update`` refreshes every field from ``hubs/data/taxonomy.json``.
+``BusinessType`` has ``vertical``, the template a new hub of that type is cloned from. The seed runs in the
+``saas-migrate`` task on every deploy, so by default it only creates the rows missing by ``code`` and keeps what
+staff edited in the admin, while ``--update`` refreshes every field from ``hubs/data/taxonomy.json``.
 """
 
 import json

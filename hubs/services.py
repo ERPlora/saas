@@ -1,10 +1,10 @@
 """Write operations of hubs, and the push of what the SaaS knows to the Hub service.
 
 One operation = one transaction (``@operation``), with its event in the outbox. Who may write is
-decided by the account's ``HubMember`` role (``queries.access``, round 17 §2.7). Every change the Hub
-must learn is written in the same transaction (``Hub.pending_hub_call``, ``Hub.state_version``) and
-pushed after the COMMIT (``sync_hub``, which never runs inside a transaction); when the Hub is away it
-stays owed and ``manage.py reconcile_hub_states`` retries it (plan 2026-10-13 §3, the push to the Hub).
+decided by the account's ``HubMember`` role (``queries.access``). Every change the Hub must learn is
+written in the same transaction (``Hub.pending_hub_call``, ``Hub.state_version``) and pushed after the
+COMMIT (``sync_hub``, which never runs inside a transaction); when the Hub is away it stays owed and
+``manage.py reconcile_hub_states`` retries it.
 
 ``accounts.services.issue_code`` and ``redeem_code`` read an account's access from the answered members of each
 business (``hubs.member.list_mine``), so a change of people is the jump's next answer. Taking access away queues a
@@ -149,7 +149,7 @@ def business_deleted() -> Conflict:
 
 
 class SeatLimitReached(Conflict):
-    """409 ``hubs.seat_limit``: the plan has no seat for one more person (saas#2022).
+    """409 ``hubs.seat_limit``: the plan has no seat for one more person.
 
     Its envelope also says how many people the plan covers (``limit``) and how many seats are taken
     (``used``, as ``hubs.member.list`` counts them), so the panel offers the plan change with the
@@ -184,7 +184,7 @@ class SeatLimitReached(Conflict):
             "hubs.free_hub_limit: Change the plan of that business to create another one."
         ),
         risk="high",
-        # Its card only comes if the write would run (saas#193): it has nothing more to show.
+        # Its card only comes if the write would run: it has nothing more to show.
         preview={"operation": "hubs.business.create_check", "fields": []},
         asks={
             "en": (
@@ -201,11 +201,10 @@ class SeatLimitReached(Conflict):
     ),
 )
 def business_create(ctx: OperationContext, data: BusinessCreateIn) -> dict:
-    """The sign-up (PLAN-SAAS §3.1 step 2, round 17 §2.3): in one transaction the payer, the business, its
-    owner and its Free subscription (no plan carries a trial since 2026-10-15; the Starter trial of ADR-0474
-    only if the staff give it one again); after the COMMIT, the Hub.
+    """The sign-up: in one transaction the payer, the business, its owner and its Free subscription (with
+    the trial of ``queries.trial_plan`` when a plan carries one); after the COMMIT, the Hub.
 
-    One free business per account (``FREE_HUBS_PER_ACCOUNT``, ADR-0154); a name never blocks it.
+    One free business per account (``FREE_HUBS_PER_ACCOUNT``); a name never blocks it.
     """
     user = queries.account_of(ctx)
     plan = queries.plan_of_a_new_business()
@@ -228,7 +227,7 @@ def business_create(ctx: OperationContext, data: BusinessCreateIn) -> dict:
 
 
 def check_free_quota(user, excluding: UUID | None = None) -> None:
-    """One more Free business fits ``user``'s quota (``FREE_HUBS_PER_ACCOUNT``, ADR-0154).
+    """One more Free business fits ``user``'s quota (``FREE_HUBS_PER_ACCOUNT``).
 
     The account's row is locked first: two requests of one account (two tabs, a double click) are
     serialised here, so the second counts the business the first is creating.
@@ -405,10 +404,10 @@ def business_update(ctx: OperationContext, data: BusinessUpdateIn) -> dict:
     ),
 )
 def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> dict:
-    """The owner moves the business to another web address (HUBS-F16; PLAN-SAAS §1.1, round 2026-10-15b), checked
-    as the Hub checks it (``live.slugs``). The Hub registers it and the photo carries it, both pushed after the
-    COMMIT; the jump follows it. The address it leaves stays the business's own (``previous_slug``), so no other
-    business takes it and receives the old links and QR codes. The same address again changes nothing."""
+    """The owner moves the business to another web address (HUBS-F16), checked as the Hub checks it
+    (``live.slugs``). The Hub registers it and the snapshot carries it, both pushed after the COMMIT; the jump
+    follows it. The address it leaves stays the business's own (``previous_slug``), so no other business takes
+    it and receives the old links and QR codes. The same address again changes nothing."""
     member = queries.access(queries.account_of(ctx), data.id, Role.OWNER, lock=True)
     hub = member.hub
     if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
@@ -470,8 +469,8 @@ def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> d
     ),
 )
 def business_delete(ctx: OperationContext, data: BusinessDeleteIn) -> dict:
-    """The owner deletes the business (PLAN-SAAS §3.4, round 17 §2.11): it stops opening at once, the
-    Hub keeps it 90 days, and the plan goes back to Free on the spot (it comes back on Free)."""
+    """The owner deletes the business: it stops opening at once, the Hub keeps it 90 days, and the plan goes
+    back to Free on the spot (it comes back on Free)."""
     member = queries.access(queries.account_of(ctx), data.id, Role.OWNER, lock=True)
     hub = member.hub
     if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
@@ -484,7 +483,7 @@ def business_delete(ctx: OperationContext, data: BusinessDeleteIn) -> dict:
 
 
 def _delete_business(ctx: OperationContext, hub: Hub, owner, *, base_url: str, unpaid: bool = False) -> None:
-    """Delete ``hub`` (PLAN-SAAS §3.4): it stops opening at once, the Hub keeps it 90 days, its plan goes back to
+    """Delete ``hub``: it stops opening at once, the Hub keeps it 90 days, its plan goes back to
     Free (Stripe's subscription ends in billing's next sweep) and its owner hears until when it can be recovered.
     The owner's own deletion and the end of a long suspension (HUBS-F20, ``unpaid``) take this one path."""
     hub.status = Hub.Status.DELETING
@@ -525,8 +524,8 @@ def _delete_business(ctx: OperationContext, hub: Hub, owner, *, base_url: str, u
 
 def _send_deletion(hub: Hub, owner, *, base_url: str, unpaid: bool) -> None:
     """The deletion mail, after the COMMIT: it leads to the copy of the business's data unless the Hub says the business
-    never gets one (``available`` false: no database of its own; ruling of 2026-10-30 on saas#168). The Hub away or
-    refusing keeps the way to it: the page itself promises nothing it cannot keep."""
+    never gets one (``available`` false: no database of its own). The Hub away or refusing keeps the way to it: the page
+    itself promises nothing it cannot keep."""
     try:
         data_copy = queries.hub_data_copies(hub.id)["available"]
     except (HubUnavailable, HubRefused):
@@ -570,7 +569,7 @@ def _back_to_free(hub: Hub) -> None:
     ),
 )
 def business_restore(ctx: OperationContext, data: ByIdIn) -> dict:
-    """The owner recovers a deleted business within its 90 days (round 17 §2.11), on Free."""
+    """The owner recovers a deleted business within its 90 days, on Free."""
     member = queries.access(queries.account_of(ctx), data.id, Role.OWNER, lock=True)
     hub = member.hub
     if hub.status != Hub.Status.DELETING:
@@ -605,7 +604,7 @@ def business_restore(ctx: OperationContext, data: ByIdIn) -> dict:
 
 # --- Entering -------------------------------------------------------------------------------------
 
-#: Why a business does not open, by status (round 17 §2.2: a business with a payment pending still opens).
+#: Why a business does not open, by status (a business with a payment pending still opens).
 NOT_OPENING = {
     Hub.Status.PREPARING: ("hubs.business_preparing", gettext_lazy("This business is still being prepared.")),
     Hub.Status.SUSPENDED: (
@@ -623,12 +622,12 @@ NOT_OPENING = {
     input=BusinessOpenIn,
     output=BusinessOpenOut,
     repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
-    ai=INTERNAL,  # screen
+    ai=INTERNAL,  # the panel's «Open» button
 )
 def business_open(ctx: OperationContext, data: BusinessOpenIn) -> dict:
-    """«Open» (PLAN-SAAS §3.1 step 5), for every role: the Hub's start of the jump, ``url``.
+    """«Open», for every role: the Hub's start of the jump, ``url``.
 
-    No code is minted here any more: the Hub binds the jump to the browser with a ``state`` of its own,
+    No code is minted here: the Hub binds the jump to the browser with a ``state`` of its own,
     so it starts at its ``/auth/login?next=``, which bounces to ``/hub-login/``; that door mints the
     code (and asks for the second factor of an account that has one). This checks the member and the
     business, and remembers it as the last opened (the launcher lists it first). From the installed app
@@ -650,7 +649,7 @@ def business_open(ctx: OperationContext, data: BusinessOpenIn) -> dict:
 
 
 def system_ctx_for(hub_id: UUID) -> OperationContext:
-    """The platform acting on a business, in its owner's channel (its live lists re-run, plan §3)."""
+    """The platform acting on a business, in its owner's channel (its live lists re-run)."""
     owner = queries.owner_id(hub_id)
     return system_context(Scope("user", str(owner) if owner else "system"))
 
@@ -661,10 +660,10 @@ def system_ctx_for(hub_id: UUID) -> OperationContext:
     permission="hubs.manage",
     input=MarkReadyIn,
     output=HubStatusOut,
-    ai=INTERNAL,  # hub
+    ai=INTERNAL,  # only the Hub calls it
 )
 def business_mark_ready(ctx: OperationContext, data: MarkReadyIn) -> dict:
-    """The Hub's ``POST /internal/hubs/{id}/ready``: the business's database is ready (§3.1 step 3).
+    """The Hub's ``POST /internal/hubs/{id}/ready``: the business's database is ready.
 
     Only the platform calls it (``hubs.internal``). A business being prepared becomes active, and its owner
     hears it by mail after the COMMIT (once: the next call finds it active); one that was suspended or
@@ -724,7 +723,7 @@ def _system_hub(ctx: OperationContext, data: HubErrorIn | HubMaintenanceIn) -> H
     permission="hubs.manage",
     input=HubErrorIn,
     output=HubStatusOut,
-    ai=INTERNAL,  # hub
+    ai=INTERNAL,  # only the push to the Hub writes it
 )
 def business_record_hub_error(ctx: OperationContext, data: HubErrorIn) -> dict:
     """The Hub's last refusal of a call about the business (its error code), or ``None`` once a call
@@ -802,7 +801,7 @@ def business_check(ctx: OperationContext, data: ByIdIn) -> dict:
     permission="hubs.manage",
     input=NotifyPeopleIn,
     output=NotifyPeopleOut,
-    ai=INTERNAL,  # platform
+    ai=INTERNAL,  # only the platform runs it
 )
 def business_notify_people(ctx: OperationContext, data: NotifyPeopleIn) -> dict:
     """A change of the people of the business, recorded on this context's channel, so the lists of that
@@ -861,8 +860,8 @@ def _managed(ctx: OperationContext, member_id: UUID, role: str | None = None) ->
 
 
 def _check_seat(hub: Hub, now) -> None:
-    """The plan covers one more person (saas#2022), checked where the seat is spent: inviting (a live
-    invitation holds its seat), and renewing an invitation that had expired."""
+    """The plan covers one more person, checked where the seat is spent: inviting (a live invitation holds
+    its seat), and renewing an invitation that had expired."""
     seats = queries.seats_of(hub, now)
     if seats["limit"] is not None and seats["used"] >= seats["limit"]:
         raise SeatLimitReached(
@@ -925,12 +924,12 @@ def _mail_invitation(ctx: OperationContext, member: HubMember) -> None:
     ),
 )
 def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
-    """Invite somebody to the business with a role below one's own (round 17 §2.8).
+    """Invite somebody to the business with a role below one's own.
 
     The invitation is a member without an answer, valid for 7 days; an address without an account gets
     one to claim (no password: Google or «Forgot your password?»). An account that never proved the
-    address is released first (saas#2541, ``accounts.services.release_unproven_account``): whoever opens
-    the mailbox claims it, and its sessions in every business end. The plan must have a seat for one
+    address is released first (``accounts.services.release_unproven_account``): whoever opens the mailbox
+    claims it, and its sessions in every business end. The plan must have a seat for one
     more person. It reaches the Hub only once answered. An expired invitation is renewed.
     """
     actor = queries.access(queries.account_of(ctx), data.hub_id, Role.ADMIN, lock=True)
@@ -1051,8 +1050,8 @@ def member_remove(ctx: OperationContext, data: ByIdIn) -> dict:
 
 
 def _refuse_a_payer(target: HubMember) -> None:
-    """saas#2587: whoever still pays for the business (the owner before a hand-over, ``queries.still_pays``)
-    stays in it until the business is paid otherwise; out of it, it would pay for a business it no longer sees."""
+    """Whoever still pays for the business (the owner before a hand-over, ``queries.still_pays``) stays in it
+    until the business is paid otherwise; out of it, it would pay for a business it no longer sees."""
     if not queries.still_pays(target):
         return
     name = target.user.get_full_name() or target.user.email
@@ -1158,7 +1157,7 @@ def _my_invitation(ctx: OperationContext, member_id: UUID) -> HubMember:
     """The account's own unanswered invitation ``member_id``, locked after its hub; 404 otherwise.
 
     The security boundary of answering: nothing that is not the caller's own pending row can be
-    reached, so no poked id, replay or foreign invitation grants anything (test_invitation_accept).
+    reached, so no poked id, replay or foreign invitation grants anything.
     """
     user = queries.account_of(ctx)
     hub_id = (
@@ -1198,7 +1197,7 @@ def _my_invitation(ctx: OperationContext, member_id: UUID) -> HubMember:
 def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     """Accept an invitation within its 7 days: the account enters with the role it says, if the plan
     still has a seat beside the people already inside (``_check_seat_to_enter``). An account that never
-    proved its address confirms it first (saas#2541: 403 ``hubs.email_unverified``)."""
+    proved its address confirms it first (403 ``hubs.email_unverified``)."""
     member = _my_invitation(ctx, data.id)
     queries.refuse_staff(member.user)
     if not account_queries.email_is_proven(member.user, member.user.email):
@@ -1244,7 +1243,7 @@ def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     ),
 )
 def invitation_decline(ctx: OperationContext, data: ByIdIn) -> dict:
-    """Decline an invitation: the row goes (round 17 §2.8)."""
+    """Decline an invitation: the row goes."""
     member = _my_invitation(ctx, data.id)
     member.delete()
     record_event(ctx, events.INVITATION_DECLINED, {"id": str(data.id), "hub_id": str(member.hub_id)})
@@ -1302,7 +1301,7 @@ def _expire_stale(hub: Hub, now) -> None:
     ),
 )
 def ownership_transfer(ctx: OperationContext, data: OwnershipTransferIn) -> dict:
-    """The owner offers the business to somebody already on it, who answers within 7 days (saas#1670).
+    """The owner offers the business to somebody already on it, who answers within 7 days.
 
     The payer does not move with it; the outgoing owner stays as admin.
     """
@@ -1419,7 +1418,7 @@ def ownership_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     from billing.services import end_renewal_after_hand_over, expire_open_checkouts
 
     paid_until = end_renewal_after_hand_over(transfer.hub, transfer.to_user)
-    # What the previous owner left open in Stripe Checkout can no longer be paid (review of saas#89).
+    # What the previous owner left open in Stripe Checkout can no longer be paid.
     transaction.on_commit(partial(expire_open_checkouts, transfer.hub_id), robust=True)
     bump_state(transfer.hub_id)
     # Both roles changed, and each travels in its Hub session: both sign in again.
@@ -1535,11 +1534,11 @@ def ownership_cancel(ctx: OperationContext, data: ByIdIn) -> dict:
 )
 def billing_profile_update(ctx: OperationContext, data: BillingProfileIn) -> dict:
     """The owner says who ERPlora invoices for the business. «Use the business's data» copies its name
-    and country into the payer (PLAN-SAAS §3.1: a copy, not a sync).
+    and country into the payer: a copy, not a sync.
 
-    The tax ID goes through billing's VAT door (``billing.services.validate_vat_for_profile``, lot L2-B):
-    written as ERPlora invoices it and asked to VIES, whose verdict is logged; a malformed one is the
-    field's 422, one VIES does not confirm is kept as identification (it buys no reverse charge)."""
+    The tax ID goes through billing's VAT door (``billing.services.validate_vat_for_profile``): written
+    as ERPlora invoices it and asked to VIES, whose verdict is logged; a malformed one is the field's 422,
+    one VIES does not confirm is kept as identification (it buys no reverse charge)."""
     from billing.services import MalformedVatNumber, retax_payer, validate_vat_for_profile
 
     member = queries.access(queries.account_of(ctx), data.hub_id, Role.OWNER, lock=True)
@@ -1573,7 +1572,7 @@ def billing_profile_update(ctx: OperationContext, data: BillingProfileIn) -> dic
     return queries.payer_of(hub, member.user)
 
 
-# --- What Stripe says of the plan (billing, lot L2-B) ---------------------------------------------
+# --- What Stripe says of the plan (billing) ------------------------------------------------------
 
 #: The fields of ``Subscription`` that ``hubs.subscription.apply`` writes as they come (``None`` clears the
 #: two texts).
@@ -1611,14 +1610,14 @@ STANDING_MOVES = {
     permission="hubs.manage",
     input=SubscriptionApplyIn,
     output=SubscriptionApplyOut,
-    ai=INTERNAL,  # platform
+    ai=INTERNAL,  # only the platform runs it
 )
 def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict:
-    """Write what the LIVE Stripe subscription says of a business (billing reads it: webhook, checkout,
+    """Write what the live Stripe subscription says of a business (billing reads it: webhook, checkout,
     the sweep of unpaid plans). Only the platform runs it, in the owner's channel (``system_ctx_for``).
 
     A field left out is left as it is. What the Hub sees (the effective plan, the commercial status and
-    ``modules[]``, PLAN-SAAS §2.2) bumps ``state_version`` and is pushed after the COMMIT; anything written
+    ``modules[]``) bumps ``state_version`` and is pushed after the COMMIT; anything written
     records ``hubs.subscription.changed``. A paid subscription carries its own trial, so it ends the trial
     plan of the sign-up. A deleted business keeps its status whatever the standing.
     """
@@ -1844,7 +1843,7 @@ def seed_demo_business(slug: str, people: dict) -> Hub:
     ``people`` (account → ``hub_*`` role) answered on it; creates what is missing, changes nothing else.
 
     Adopted, not provisioned: active, ready and owing the Hub nothing (as the data migration ``0006`` adopts
-    the hubs of the phase-1 seed), on the Free plan if it is seeded; named after its address, in Spain.
+    the hubs of the Hub's seed), on the Free plan if it is seeded; named after its address, in Spain.
     """
     roles = set(people.values())
     if not roles <= set(Role.values):
@@ -1881,7 +1880,7 @@ def seed_demo_business(slug: str, people: dict) -> Hub:
 
 
 def bump_state(hub_id: UUID) -> None:
-    """The snapshot of the business changed: its next push carries a newer version (§2.2)."""
+    """The snapshot of the business changed: its next push carries a newer version."""
     Hub.objects.filter(pk=hub_id).update(state_version=F("state_version") + 1)
 
 
@@ -1906,7 +1905,7 @@ def revoke_after_commit(user_id: UUID, hub_id: UUID | None = None) -> SessionRev
 
 
 def end_account_sessions(sender, user_id: UUID, **kwargs) -> SessionRevocation:
-    """``accounts.signals.sessions_ended``: the account's sessions end in every business too (PLAN-SAAS §2.1).
+    """``accounts.signals.sessions_ended``: the account's sessions end in every business too.
 
     One revocation without a business (the Hub ends them all, its admin's too), queued in the sender's
     transaction and delivered after its COMMIT; ``reconcile_hub_states`` retries it while the Hub is away.
@@ -1931,7 +1930,7 @@ def account_leaving(sender, user_id: UUID, **kwargs) -> None:
 
 
 def account_email_changed(sender, user, **kwargs) -> None:
-    """allauth's ``email_changed``: the snapshot's ``members[]`` carries the address (PLAN-SAAS §2.2)."""
+    """allauth's ``email_changed``: the snapshot's ``members[]`` carries the address."""
     _people_changed(user.pk)
 
 
@@ -2043,7 +2042,7 @@ def sync_outcome(hub_id: UUID) -> str:
         hub.refresh_from_db(fields=["state_version", "pushed_state_version"])
         if hub.pushed_state_version < hub.state_version:
             # The registry is acknowledged by now: a refusal from here on is the snapshot's (a ``whatsapp`` block
-            # out of the Hub's schema refuses it whole, hub#127), and the log has to say which.
+            # out of the Hub's schema refuses it whole), and the log has to say which.
             call = "state"
             snapshot = queries.hub_snapshot(hub.id)
             hub_client.put_state(str(hub.id), snapshot)
@@ -2112,7 +2111,7 @@ def record_state_pushed(hub_id: UUID, version: int) -> None:
 
 # --- The saas-cron runs (manage.py reconcile_hub_states, push_hub_snapshots) ---------------------
 
-#: An sign-up without the Hub's ``ready`` callback this long is asked about (PLAN-SAAS §3.1 step 3).
+#: A sign-up without the Hub's ``ready`` callback this long is asked about.
 STUCK_AFTER = timedelta(minutes=2)
 LIVE_STATUSES = [Hub.Status.PREPARING, Hub.Status.ACTIVE, Hub.Status.PAST_DUE, Hub.Status.SUSPENDED]
 #: The Hub's last error recorded on a business it says it could not prepare (``failed``): the panel shows «We could not
@@ -2150,8 +2149,8 @@ def run_exclusively(command: str):
     (one business per transaction, so a failure never undoes another's acknowledgement). One transaction
     around it all would hold every business row it touched until the end, blocking the panel's writes
     (the nightly bump touches every live one), and would sit idle in transaction through every call to
-    the Hub, which Aurora ends past 30 s (``idle_in_transaction_session_timeout``,
-    ``aws-next/stacks/prod/aurora.tf``), taking the whole pass with it. ``base``'s ``migrate`` holds a
+    the Hub, which Aurora ends past 30 s (``idle_in_transaction_session_timeout``, ``stacks/prod/aurora.tf``
+    of the ``aws`` repo), taking the whole pass with it. ``base``'s ``migrate`` holds a
     session lock for the same reason. Released at the end, when the run fails, and when the task dies
     (Postgres ends its session). The SaaS's database is direct, never PgBouncer.
     """
@@ -2188,7 +2187,7 @@ def _sync_counted(hub_id: UUID, counts: Counter) -> None:
 def reconcile_exclusively(stuck_after: timedelta = STUCK_AFTER, go_on: Callable[[], bool] | None = None) -> Counter | None:
     """One pass of ``reconcile`` under the lock of ``reconcile_hub_states``: its counts, or ``None`` when another run
     holds the lock (and this one did nothing). What the command and the ``saas-worker`` (every 15 minutes,
-    ``base.worker``, saas#305; with its ``go_on``) both run."""
+    ``base.worker``; with its ``go_on``) both run."""
     with run_exclusively("reconcile_hub_states") as mine:
         return reconcile(stuck_after=stuck_after, go_on=go_on) if mine else None
 
@@ -2262,7 +2261,7 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER, go_on: Callable[[]
             logger.exception("hubs.reconcile.crashed hub=%s", hub_id)
             counts["failed"] += 1
     # Deleted, not told since this deletion, the mail not given up, and somebody to tell: an owner whose account was
-    # deleted since (``HubMember.user`` cascades) leaves nobody, so the Hub is not asked (review of saas#168).
+    # deleted since (``HubMember.user`` cascades) leaves nobody, so the Hub is not asked.
     untold = Hub.objects.filter(
         Q(data_copy_mailed_at__isnull=True) | Q(data_copy_mailed_at__lt=F("deletion_requested_at")),
         Exists(HubMember.objects.filter(hub=OuterRef("pk"), role=Role.OWNER)),
@@ -2390,9 +2389,8 @@ def deliver_revocations(revocation_ids) -> Counter:
 
 
 def push_snapshots(*, behind_only: bool = False) -> Counter:
-    """One pass of ``push_hub_snapshots``: every live business, each with a newer version (the Hub
-    ignores an equal one: PLAN-SAAS §2.2, every night for every business); with ``behind_only``, only
-    the ones whose snapshot the Hub is behind on."""
+    """One pass of ``push_hub_snapshots``: every live business, each with a newer version (the Hub ignores an
+    equal one); with ``behind_only``, only the ones whose snapshot the Hub is behind on."""
     counts = Counter(pushed=0, owed=0, refused=0)
     live = Hub.objects.filter(status__in=LIVE_STATUSES)
     if not behind_only:
@@ -2408,12 +2406,12 @@ def push_snapshots(*, behind_only: bool = False) -> Counter:
     return counts
 
 
-# --- A business's own domain (HUBS-F17, PLAN-SAAS §37 point 2; ``aws`` README, «Dominio propio de un negocio») -------
+# --- A business's own domain (HUBS-F17; ``aws`` README, «Dominio propio de un negocio») -----------------------------
 
 #: How often the request looks for ACM's validation record, a second apart. It takes some seconds to exist, and asking
 #: holds the business's row: past them, the answer has none yet and ``hubs.custom_domain.get`` gives it.
 VALIDATION_RECORD_TRIES = 3
-#: Checks in a row that find it not pointing here or not served before it is no longer served (PLAN-SAAS §37).
+#: Checks in a row that find it not pointing here or not served before it is no longer served.
 CUSTOM_DOMAIN_FAILURES_TO_LAPSE = 3
 #: How long a certificate waits on the shared listener for a CNAME that does not come: its place is another's.
 CUSTOM_DOMAIN_PENDING_LIMIT = timedelta(days=14)
@@ -2594,7 +2592,7 @@ def _finish_removal_quietly(domain_id: UUID) -> None:
     permission="hubs.manage",
     input=CustomDomainRecordIn,
     output=CustomDomainRecordOut,
-    ai=INTERNAL,  # the hourly check
+    ai=INTERNAL,  # only the hourly check runs it
 )
 def custom_domain_record(ctx: OperationContext, data: CustomDomainRecordIn) -> dict:
     """What the hourly check learned, unless the domain left the state it found: the owner removing it wins. A command,
@@ -2864,8 +2862,8 @@ def _finish_removal(row: CustomDomain) -> str:
 
 
 def _drop_certificate(row: CustomDomain) -> str:
-    """Take the certificate of a domain out of AWS, once the Hub heard it no longer serves it (hub#812: the snapshot, then
-    the certificate). The empty answer: nothing is left. Otherwise why not yet, for the next pass."""
+    """Take the certificate of a domain out of AWS, once the Hub heard it no longer serves it (first the
+    snapshot, then the certificate). The empty answer: nothing is left. Otherwise why not yet, for the next pass."""
     if not sync_hub(row.hub_id):
         return "hub_away"
     if not row.certificate_arn:
@@ -2887,7 +2885,7 @@ def _drop_certificate(row: CustomDomain) -> str:
     return ""
 
 
-# --- Usage: the nightly collection (lot L4-A, PLAN-SAAS §5) -----------------------------------------
+# --- Usage: the nightly collection ---------------------------------------------------------------
 
 #: The figures of a day of usage, as ``HubUsageDaily`` keeps them.
 USAGE_FIGURES = (
@@ -2901,10 +2899,10 @@ USAGE_FIGURES = (
 )
 #: Counts that make ``collect_hub_usage`` end with an error, after its whole pass.
 USAGE_FAILING_COUNTS = ("unreachable", "refused", "invalid", "failed")
-#: Days a day of usage is kept: about 13 months, so that a day can be compared with the same day of the year before.
-#: The old product's ``DAILY_USAGE_RETENTION_DAYS``, and in the market's range for metrics: Grafana Cloud and New Relic
-#: keep 13 months, Google Analytics 14, CloudWatch and Datadog 15. It has to outlast the longest window
-#: ``hubs.usage.series`` reads (``UsageSeriesIn``, 365 days), and a test holds the two together.
+#: Days a day of usage is kept: about 13 months, so that a day can be compared with the same day of the year before,
+#: in the market's range for metrics (Grafana Cloud and New Relic keep 13 months, Google Analytics 14, CloudWatch and
+#: Datadog 15). It has to outlast the longest window ``hubs.usage.series`` reads (``UsageSeriesIn``, 365 days), and a
+#: test holds the two together.
 USAGE_RETENTION_DAYS = 400
 
 
@@ -2914,7 +2912,7 @@ USAGE_RETENTION_DAYS = 400
     permission="hubs.manage",
     input=UsageRecordIn,
     output=UsageRecordOut,
-    ai=INTERNAL,  # hub
+    ai=INTERNAL,  # only the platform runs it
 )
 def usage_record(ctx: OperationContext, data: UsageRecordIn) -> dict:
     """One day of a business's usage as the Hub measured it (``collect_hub_usage``); only the platform runs it.
@@ -2944,7 +2942,7 @@ def usage_record(ctx: OperationContext, data: UsageRecordIn) -> dict:
     permission="hubs.manage",
     input=UsagePruneIn,
     output=UsagePruneOut,
-    ai=INTERNAL,  # scheduled
+    ai=INTERNAL,  # only the nightly usage pass runs it
 )
 def usage_prune(ctx: OperationContext, data: UsagePruneIn) -> dict:
     """Forget the days of usage past ``USAGE_RETENTION_DAYS``, of every business (HUBS-F22; ``collect_hub_usage``, at
@@ -3045,8 +3043,7 @@ def _record_counted(day: date, row: dict, counts: Counter) -> None:
 
 # --- The clock of a suspended business (HUBS-F20) -------------------------------------------------
 
-#: Days after the suspension of an unpaid plan: the first notice, the last one, and the deletion (PLAN-SAAS §1.1,
-#: round 2026-10-15b; ERPlora/saas ``SUSPENDED_HUB_*_DAYS``).
+#: Days after the suspension of an unpaid plan: the first notice, the last one, and the deletion.
 SUSPENDED_WARN_DAYS = 30
 SUSPENDED_FINAL_NOTICE_DAYS = 150
 SUSPENDED_DELETE_DAYS = 180
@@ -3078,7 +3075,7 @@ def age_suspended() -> Counter:
     permission="hubs.manage",
     input=ByIdIn,
     output=SuspensionStepOut,
-    ai=INTERNAL,  # scheduled
+    ai=INTERNAL,  # only the hourly pass runs it
 )
 def business_age_suspension(ctx: OperationContext, data: ByIdIn) -> dict:
     """The step of the clock that is due for one suspended business (HUBS-F20), platform only: the first notice

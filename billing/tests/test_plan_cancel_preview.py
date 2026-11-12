@@ -1,10 +1,10 @@
-"""BILLING-F13 · ASSISTANT-F25 step 5 · What cancelling a plan will do, before it is confirmed (saas#203).
+"""What cancelling a plan will do, before it is confirmed.
 
 ``billing.plan.cancel`` is the one dangerous write of billing (``risk="high"``): from the panel's assistant its card
 first shows what the «Cancel the plan» dialog of Billing says — until when it stays on its plan (the business's own
 day), the plan it moves to then, the modules that turn off that day, what Free covers against the people it has, and an
 unpaid invoice that cancelling does not void. Its ``ai=`` names that read as its ``preview``
-(``billing.plan.cancel_preview``, PLAN §30: «a high write, with its full preview»), which ``live.assistant.preview``
+(``billing.plan.cancel_preview``: a high-risk write comes with its full preview), which ``live.assistant.preview``
 runs as the person with the write's own data. The read refuses what the write refuses (not the owner, not the payer,
 nothing to cancel): the model hears it before any card, never a card that cannot be done.
 """
@@ -130,7 +130,7 @@ class TestWhatCancellingWillDo:
         assert preview(owner, paid, "en")["modules"] == "Inventory and Reports"
 
     def test_a_module_whose_app_the_catalog_no_longer_knows_is_named_by_its_slug(self, shop, owner, inventory):
-        """As the Store names it (saas#2589): it still turns off with the plan."""
+        """As the Store names it: it still turns off with the plan."""
         assert preview(owner, pay(shop, modules=("inventory",)))["modules"] == "inventory"
 
     def test_what_free_covers_against_the_people_it_has_now(self, shop, owner, make_user):
@@ -154,7 +154,7 @@ class TestWhatCancellingWillDo:
         assert (answer["free_users"], answer["free_devices"]) == (None, None)
 
     def test_a_module_already_ended_does_not_turn_off_again(self, shop, owner, inventory):
-        """A module cancelled on its own (BILLING-F21) ended on its day: it is not among those the plan takes."""
+        """A module cancelled on its own ended on its day: it is not among those the plan takes."""
         Module.objects.create(slug="reports", tier=Module.Tier.ENTERPRISE, price_monthly_cents=500, price_annual_cents=5000)
         paid = pay(shop, modules=("inventory", "reports"))
         SubscriptionItem.objects.filter(subscription__hub=paid, module_slug="reports").update(
@@ -200,7 +200,7 @@ class TestWhatCancellingWillDo:
         assert preview(owner, paid)["unpaid_cents"] is None
 
     def test_a_plan_already_cancelled_still_says_until_when(self, shop, owner):
-        """Cancelling again changes nothing (BILLING-F13): its preview says the same end."""
+        """Cancelling again changes nothing: its preview says the same end."""
         paid = pay(shop, cancel_at_period_end=True)
 
         assert preview(owner, paid)["paid_until"] is not None
@@ -258,7 +258,7 @@ class TestItRefusesWhatTheCancelRefuses:
 
     def test_a_plan_still_paid_with_the_previous_owners_card_is_refused_too(self, shop, owner, make_user):
         """The new owner already says who pays, but the plan is still billed to the previous owner's customer: as
-        the cancel, it is kept with their card first («Keep it with my card», HUBS-F28)."""
+        the cancel, it is kept with their card first («Keep it with my card»)."""
         from billing.tests.test_checkout import transferred
         from hubs import services as hub_services
         from hubs.schemas import BillingProfileIn
@@ -322,7 +322,7 @@ class TestTheCardOfTheCancel:
 
 class TestFromThePanelsAssistant:
     """The turn of the panel's assistant (``POST /api/assistant/turn``) stops at the card of the cancel with its
-    preview; nothing is cancelled (ASSISTANT-F25, step 5)."""
+    preview; nothing is cancelled."""
 
     def cancel_call(self, hub) -> dict:
         return {"call_id": "c1", "name": "billing__plan__cancel", "arguments": json.dumps({"hub_id": str(hub.id)})}

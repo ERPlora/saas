@@ -1,9 +1,7 @@
 """``python manage.py audit_stripe_webhooks [--base-url URL]``: does Stripe send our webhook every event it handles?
-(BILLING-F39)
 
-Ported from ERPlora/saas ``apps/core/stripe_webhooks.py`` and its command (origin/develop, saas#2402): the route a
-Stripe endpoint delivers to lives in Stripe and the events it sends are ticked there by hand (PLAN-SAAS §4, «A mano
-en el panel de Stripe»), so nothing else notices an endpoint pointed at the wrong route, disabled after its 404s, or
+The route a Stripe endpoint delivers to lives in Stripe and the events it sends are ticked there by hand in
+Stripe's Dashboard, so nothing else notices an endpoint pointed at the wrong route, disabled after its 404s, or
 one event short. Only an ENABLED endpoint counts (a disabled one delivers nothing). Problems: an endpoint on our host
 to a route we do not serve, one to another environment, more than one to our route (one ``whsec_`` fits
 ``STRIPE_WEBHOOK_SECRET``), none to it, and ours sending other events than ``billing.services.STRIPE_WEBHOOK_EVENTS``

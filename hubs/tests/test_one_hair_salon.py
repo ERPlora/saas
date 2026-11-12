@@ -1,15 +1,12 @@
-"""«Peluquería» is offered once, not twice (saas#2099).
+"""«Peluquería» is offered once, not twice.
 
-Ported from ERPlora/saas ``public/catalog/tests/test_one_hair_salon.py`` (origin/develop).
-Production served two business types with the same visible name, ``hair_salon`` and a legacy
+Production once served two business types with the same visible name, ``hair_salon`` and a legacy
 ``peluqueria``; the sign-up dropdown lists them by name, so a new customer could not tell which one
 to pick.
 
-Kept: the admin door refuses a second row with a visible name another row already has. Changed:
-the tests of migration ``catalog.0009``, which folded the legacy row in production, are dropped
-(saas-next starts from an empty database that never had it); the retired code still resolves
-through ``hubs.retired_codes`` (``test_retired_codes.py``), and the ``/industries/<code>/``
-redirect belongs to the public web (``public/``), which ports that page.
+The admin door refuses a second row with a visible name another row already has. The retired code still
+resolves through ``hubs.retired_codes`` (``test_retired_codes.py``), and the ``/industries/<code>/``
+redirect belongs to the public web (``public/``).
 """
 
 import pytest

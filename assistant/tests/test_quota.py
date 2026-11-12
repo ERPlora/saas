@@ -1,14 +1,12 @@
-"""ASSISTANT-F18 (ASSISTANT-G51, G50, G05, G29) · Count each business's messages against its plan, and a demo's
+"""Count each business's messages against its plan, and a demo's
 against its own few: ``assistant.message.claim`` takes one before the model is called, ``assistant.message.release``
 gives it back when the turn failed before answering, ``assistant.usage.record`` adds the tokens and the cost, and
 ``assistant.usage.show`` (the ``usage`` door) says how many are left and when they come back.
 
-The allowance is the plan's (``Plan.assistant_messages_per_month``, PLAN-SAAS §3.6; 0 = none, never «unlimited»; no
+The allowance is the plan's (``Plan.assistant_messages_per_month``; 0 = none, never «unlimited»; no
 packs: more messages is a plan up), of the plan whose rights the business has now (its trial's while it lasts). A
-demo has 10 for its whole life (SAAS_ASSISTANT-F11, saas#2599). Cases of the old product's ``test_quota_signal.py``,
-``test_demo_message_limit.py`` and ``test_stateless_bridge.py::TestMeteringPreserved``; the old one checked and
-counted apart, so two turns could both pass the last message (SAAS_ASSISTANT-F11): here one ``UPDATE … WHERE
-messages < limit`` decides.
+demo has 10 for its whole life. Checking and counting apart would let two turns both pass the last message: one
+``UPDATE … WHERE messages < limit`` decides.
 """
 
 import threading
@@ -252,7 +250,7 @@ def waiting_on_a_lock(count: int, *, within: float) -> bool:
 @pytest.mark.django_db(transaction=True)
 def test_turns_at_once_cannot_pass_the_last_message_together(make_user):
     """With one message left, four claims at once: one passes, three are refused. A claim that read the count and
-    wrote it apart would let the four through (SAAS_ASSISTANT-F11 «dos turnos a la vez»)."""
+    wrote it apart would let the four through."""
     from django.db import transaction
 
     from hubs.models import Hub

@@ -1,12 +1,9 @@
-"""ACCOUNTS-F36 · The audit trail of the billing models (django-auditlog; PLAN-SAAS §1.1: «en los modelos de cuenta,
-cobro y fiscal»).
+"""The audit trail of the billing models (django-auditlog).
 
-Ported from ERPlora/saas ``apps/dashboard/billing/auditlog.py`` and ``tests/unit/test_auditlog_coverage.py`` (#970):
-who changed what ERPlora charges and how (the VAT rules, ERPlora's company data, the promo codes) and what Stripe did
+Who changed what ERPlora charges and how (the VAT rules, ERPlora's company data, the promo codes) and what Stripe did
 to a business's money (a checkout, an unpaid renewal, an invoice and its VeriFactu state, a downgrade waiting), with
-only the logged fields serialized (#957). Changed: the old one had ``Subscription``, ``Payout`` and
-``StripeConnectAccount`` here; the subscription is ``hubs``' now (``hubs/tests/test_auditlog.py``) and there is no
-marketplace. Never written: a Stripe credential (an Embedded Checkout's client secret), the links that open a Stripe
+only the logged fields serialized. The subscription's trail is ``hubs``' (``hubs/tests/test_auditlog.py``). Never
+written: a Stripe credential (an Embedded Checkout's client secret), the links that open a Stripe
 invoice to whoever holds them, and the fields that move by themselves (a counter, the VeriFactu sending queue, an
 ``updated_at``).
 """
@@ -231,7 +228,7 @@ class TestWhatIsWritten:
 
 class TestAFiscalRecordIsOnlyRead:
     def test_logging_an_invoice_writes_only_the_log_entry(self):
-        """A record sent to the AEAT is never modified (CLAUDE.md, Fiscal): the trail reads the invoice and writes its
+        """A record sent to the AEAT is never modified: the trail reads the invoice and writes its
         own table, nothing else."""
         invoice = _invoice(fiscal_status="issuing")
         invoice.fiscal_status = "accepted"
@@ -246,7 +243,7 @@ class TestAFiscalRecordIsOnlyRead:
 
 class TestThePruning:
     def test_cleanup_old_logs_prunes_the_billing_entries_too(self):
-        """The same table as the account's: ``cleanup_old_logs`` keeps 90 days of these as well (ACCOUNTS-F37)."""
+        """The same table as the account's: ``cleanup_old_logs`` keeps 90 days of these as well."""
         old, recent = _invoice(1), _invoice(2)
         _entries_for(old).update(timestamp=timezone.now() - timedelta(days=91))
 

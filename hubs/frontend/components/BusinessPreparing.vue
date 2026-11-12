@@ -1,6 +1,5 @@
 <script setup lang="ts">
-// The preparation of a new business (mockups `launch.html` «first-preparing», `businesses.html`
-// «creating»; the old SaaS's `deploy-steps` of `cloud.css`): a running bar (we do not know how far it
+// The preparation of a new business: a running bar (we do not know how far it
 // is, so it does not pretend a percentage) and three steps — created, being set up, and what happens
 // next. The list is a live region: a screen reader hears the step change.
 import { InlineFeedback } from '@erplora/ui/components';
@@ -16,7 +15,7 @@ const props = defineProps<{
   id?: string;
   /** The business's name. */
   name: string;
-  /** The business type picked at the sign-up, if any (the step names it; a business is born with every app off, PLAN §33). */
+  /** The business type picked at the sign-up, if any (the step names it; a business is born with every app off). */
   typeName?: string | null;
   /** The real platform-wide pause reported by the Hub. */
   maintenance?: HubMaintenanceOut | null;

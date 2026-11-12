@@ -1,5 +1,5 @@
-"""Schemas of the hubs operations: the public taxonomy (PLAN §21.4) and plans, and the businesses of
-an account with their members, invitations, ownership and payer (plan 2026-10-13, lot L1-A)."""
+"""Schemas of the hubs operations: the public taxonomy and plans, and the businesses of an account with
+their members, invitations, ownership and payer."""
 
 import re
 from datetime import date, datetime
@@ -95,7 +95,7 @@ class PlanOut(Schema):
     assistant_messages_per_month: int
     #: WhatsApp messages the plan includes each month; 0 = none.
     whatsapp_messages_per_month: int
-    #: Apps the business may choose to turn on at once, the ones they require aside (the cap the Hub applies, hub#256);
+    #: Apps the business may choose to turn on at once, the ones they require aside (the cap the Hub applies);
     #: 0 = no limit.
     max_apps: int
     #: Whether the business's public website may go on a domain of its own (HUBS-F17); never the app.
@@ -136,7 +136,7 @@ def _country(value: str) -> str:
 
 def _email(value: str) -> str:
     # The form an account keeps its address in: another case or look-alike full-width letters are the same
-    # address, so an invitation never makes a second account that looks the same (ERPlora/saas#2562).
+    # address, so an invitation never makes a second account that looks the same.
     email = folded_email(value)
     if len(email) > 254 or not EMAIL_RE.match(email):
         raise ValueError(_("Enter a valid email address."))
@@ -160,7 +160,7 @@ def _timezone(value: str) -> str:
 
 
 #: An ISO 3166-1 alpha-2 code of the markets served; its JSON schema lists them, so a client (and the assistant's
-#: model, live#17) sends «ES», never «España».
+#: model) sends «ES», never «España».
 Country = Annotated[
     str,
     AfterValidator(_country),
@@ -256,13 +256,13 @@ class BusinessRowOut(Schema):
     unpaid_reason: UnpaidReason | None
     #: When the unpaid invoice was issued: the 7 days of grace count from it.
     unpaid_since: datetime | None
-    #: Stripe's page to pay that invoice: only for the owner (billing is the owner's, round 17 §2.7).
+    #: Stripe's page to pay that invoice: only for the owner, whose billing it is.
     pay_url: str | None
     #: The account pays for the business, whatever its role: it owns its payer (``billing_profile``), or the plan
     #: is still charged to the card of one of its payers after a hand-over (``queries.still_pays``).
     is_payer: bool
     #: That payer (its Stripe customer), only to whoever owns it: the Store warns about a declined card only for
-    #: the businesses it pays too (audit 2 R-21).
+    #: the businesses it pays too.
     payer_id: UUID | None
 
 
@@ -291,8 +291,8 @@ class OwnershipOfferOut(Schema):
 class BusinessListOut(Page[BusinessRowOut]):
     invitations: list[InvitationOut]
     ownership_offers: list[OwnershipOfferOut]
-    #: The account's Free business when its Free ones fill the quota (ADR-0154): a new business cannot be Free, so
-    #: «Create business» says so before the form, naming it (audit 2 S-02).
+    #: The account's Free business when its Free ones fill the quota: a new business cannot be Free, so
+    #: «Create business» says so before the form, naming it.
     free_business: HubRefOut | None
 
 
@@ -302,7 +302,7 @@ class BusinessTypeRefOut(Schema):
 
 
 class SeatsOut(Schema):
-    """People on the business (members and live invitations) and what its plan covers (saas#2022)."""
+    """People on the business (members and live invitations) and what its plan covers."""
 
     used: int
     #: ``None`` = unlimited (every paid plan, the Starter trial, no subscription).
@@ -316,7 +316,7 @@ class TransferRefOut(Schema):
 
 
 class BusinessCanOut(Schema):
-    """What the account may do on the business, by its role and the business's status (round 17 §2.7).
+    """What the account may do on the business, by its role and the business's status.
     ``open``, ``manage``, ``restore`` and ``delete`` mean what they mean on its row (``BusinessRowCanOut``);
     a deleted business takes no change (every write answers 409) until it is recovered."""
 
@@ -334,7 +334,7 @@ class BusinessCanOut(Schema):
     download_data: bool
 
 
-# The usage of a business (lot L4-A, PLAN-SAAS §5): the page carries the last day; ``hubs.usage.*`` below.
+# The usage of a business: the page carries the last day; ``hubs.usage.*`` below.
 
 
 class StorageUsageOut(Schema):
@@ -362,7 +362,7 @@ class UsageOut(Schema):
     stale: bool
 
 
-# The copies the Hub keeps of a business's data (PLAN-DB, round 2026-10-30, proposals (a), (k), (m)): ``hubs.data_copy.*``.
+# The copies the Hub keeps of a business's data: ``hubs.data_copy.*``.
 
 
 class DataCopyListIn(Schema):
@@ -431,7 +431,7 @@ class BusinessDetailOut(Schema):
     unpaid_since: datetime | None
     pay_url: str | None
     is_payer: bool
-    #: The last day the Hub measured (``hubs.usage.get``); ``None`` until the first night (lot L4-A).
+    #: The last day the Hub measured (``hubs.usage.get``); ``None`` until the first night.
     usage: UsageOut | None
 
 
@@ -447,7 +447,7 @@ class AddressProposeOut(Schema):
 
 
 class BusinessCreateIn(Schema):
-    """The minimal sign-up (round 17 §2.3): a name, a country, and a business type if the person knows."""
+    """The minimal sign-up: a name, a country, and a business type if the person knows."""
 
     name: Name
     country: Country
@@ -494,7 +494,7 @@ class BusinessOpenIn(Schema):
     id: UUID
     next: LocalPath = "/"
     #: «Open» inside the installed app: the jump carries ``shell=1``, the mark with which the app links the till
-    #: to this business (``ERPlora/app`` ``hub_link.rs``; PLAN-SAAS bloque 3).
+    #: to this business (``ERPlora/app`` ``hub_link.rs``).
     shell: bool = False
 
 
@@ -603,7 +603,7 @@ class SuspensionStepOut(Schema):
     outcome: str
 
 
-#: The label of a paid app (``modules[].id`` of the snapshot, PLAN §20.2).
+#: The label of a paid app (``modules[].id`` of the snapshot).
 ModuleSlug = Annotated[str, Field(max_length=63, pattern=r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")]
 SubscriptionStatus = Literal[
     "active", "trialing", "past_due", "unpaid", "canceled", "incomplete", "incomplete_expired", "paused"
@@ -612,7 +612,7 @@ SubscriptionStatus = Literal[
 
 class ModuleRightIn(Schema):
     """A module Stripe bills the business for (``source = purchase``): open-ended, or until ``valid_until``
-    (cancelled at the end of its period, PLAN-SAAS §3.3)."""
+    (cancelled at the end of its period)."""
 
     module_slug: ModuleSlug
     stripe_item_id: str = Field("", max_length=255)
@@ -620,7 +620,7 @@ class ModuleRightIn(Schema):
 
 
 class SubscriptionApplyIn(Schema):
-    """What the LIVE Stripe subscription says of a business (billing, lot L2-B), applied as it comes. A field
+    """What the live Stripe subscription says of a business (billing), applied as it comes. A field
     left out is left as it is; one sent as ``None`` is cleared.
 
     ``modules`` replaces the bought modules (the ones the plan includes are not Stripe's). ``standing``
@@ -776,7 +776,7 @@ class BillingProfileGetIn(Schema):
 
 
 #: A Spanish postal code: five digits, the first two its province, which decides the tax (the Canary
-#: Islands, Ceuta and Melilla are outside VAT; «3500» is not Las Palmas, saas#1972).
+#: Islands, Ceuta and Melilla are outside VAT; «3500» is not Las Palmas).
 SPANISH_POSTAL_CODE = re.compile(r"^\d{5}$")
 
 
@@ -790,8 +790,8 @@ def postal_code_problem(country: str, postal_code: str) -> str | None:
 
 class BillingProfileIn(Schema):
     """Who ERPlora invoices for this business. With ``same_as_business``, its name and country are
-    copied from the business (PLAN-SAAS §3.1: a copy, not a sync). The postal code must be one of the
-    payer's country (``postal_code_problem``)."""
+    copied from the business: a copy, not a sync. The postal code must be one of the payer's country
+    (``postal_code_problem``)."""
 
     hub_id: UUID
     billing_name: str = Field("", max_length=255)
@@ -821,7 +821,7 @@ class BillingProfileOut(Schema):
     same_as_business: bool
 
 
-# --- Usage (lot L4-A, PLAN-SAAS §5) ----------------------------------------------------------------
+# --- Usage ----------------------------------------------------------------------------------------
 
 #: The largest figures the columns of ``HubUsageDaily`` hold.
 MAX_BYTES = 2**63 - 1

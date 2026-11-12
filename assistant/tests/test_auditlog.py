@@ -1,10 +1,8 @@
-"""Who changed the configuration of the AI (ASSISTANT-G23, G13; saas#970 of the old product): the providers, their keys,
-their models and the model that answers stay in the audit trail of erplora.com (django-auditlog, ACCOUNTS-F36), with
-who did it, from where and what changed. A key is never written there, neither in clear nor encrypted: its rotation
-shows as its new hint and the time it changed.
+"""Who changed the configuration of the AI: the providers, their keys, their models and the model that answers stay
+in the audit trail of erplora.com (django-auditlog), with who did it, from where and what changed. A key is never
+written there, neither in clear nor encrypted: its rotation shows as its new hint and the time it changed.
 
-The old product kept its own ``AIConfigAuditLog`` beside the general history; here there is one trail (PLAN-SAAS
-§1.1: django-auditlog, each app registering its models with ``accounts.auditlog.audit``).
+There is one trail: each app registers its models with ``accounts.auditlog.audit``.
 """
 
 import pytest

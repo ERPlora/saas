@@ -1,10 +1,9 @@
-"""What an account pays ERPlora, and the VAT on it (plan 2026-10-13 §3, the ``billing`` row).
+"""What an account pays ERPlora, and the VAT on it.
 
-A LiveAppConfig of kind "platform" (round 15, PLAN §20): always on, at the project root next to
-``base/``, without module fields (no requires, category, premium or menu of its own; the «Billing»
-entry of the menu is ``base/navigation.py``'s). Lot L2-A brings the EU VAT engine (rates, the VIES
-check and the tax a sale carries); L2-B adds Stripe (checkout, the business's subscription and its items,
-the webhook, unpaid plans), L3-C the invoices.
+A platform app: always on, at the project root next to ``base/``, without module fields (no requires,
+category, premium or menu of its own; the «Billing» entry of the menu is ``base/navigation.py``'s). It holds
+the EU VAT engine (rates, the VIES check and the tax a sale carries), Stripe (checkout, the business's
+subscription and its items, the webhook, unpaid plans) and ERPlora's invoices.
 """
 
 from django.utils.translation import gettext_lazy as _
@@ -18,7 +17,7 @@ class BillingConfig(LiveAppConfig):
     verbose_name = _("Billing")
     default_auto_field = "django.db.models.BigAutoField"
     # Every signed-in account (role "account", base.operations) previews the tax of a sale, checks a VAT
-    # number in VIES and reaches the operations that pay (``billing.pay``, lot L2-B: buy, change, cancel,
+    # number in VIES and reaches the operations that pay (``billing.pay``: buy, change, cancel,
     # the portal), each of which checks that the account owns the business. ``billing.manage`` is no
     # account's by default.
     permissions = ["billing.view", "billing.vat_check", "billing.pay", "billing.manage"]
@@ -30,8 +29,7 @@ class BillingConfig(LiveAppConfig):
         from billing import auditlog, services
         from billing import checks  # noqa: F401  (registers the deploy check of the Stripe key)
 
-        # The audit trail of what ERPlora charges and what Stripe did (ACCOUNTS-F36, PLAN-SAAS §1.1).
         auditlog.register()
 
-        # The payers of a deleted account go once nothing can be charged to them (ACCOUNTS-F27).
+        # The payers of a deleted account go once nothing can be charged to them.
         account_signals.account_deleting.connect(services.payer_leaving, dispatch_uid="billing.account_deleting")

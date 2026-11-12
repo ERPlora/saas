@@ -5,26 +5,26 @@ The admin calls them as the member of the staff who clicks (``assistant.admin.st
 the model permission of Django that backs it, so a member of the staff without it is refused here too, not only
 on the page. The commands call them as the platform (``platform_context``).
 
-- ``assistant.credential.save`` / ``.delete`` (ASSISTANT-G26, G16): a provider's key, kept encrypted with its hint;
+- ``assistant.credential.save`` / ``.delete``: a provider's key, kept encrypted with its hint;
   typing another one is a rotation. A change that types no key never writes the stored token again (an unreadable
   one stays as it was, waiting for its key to come back or to be typed again).
-- ``assistant.model.select`` (G24, G14): the provider keeps exactly the models ticked among those its API listed,
+- ``assistant.model.select``: the provider keeps exactly the models ticked among those its API listed,
   except the ones the policy uses.
-- ``assistant.policy.update`` (G27, G17, G10, G60): the model that answers and the fallback one, each available and
+- ``assistant.policy.update``: the model that answers and the fallback one, each available and
   of an enabled provider, and different.
-- ``assistant.credential.import`` (G02, G21): the platform keeps a provider's key from the environment
+- ``assistant.credential.import``: the platform keeps a provider's key from the environment
   (``import_ai_keys_from_env``), adding the provider of its API if missing; a key already kept stays unless forced.
-- ``assistant.encryption.rotate`` (G03, G41): every value kept with ``FERNET_KEY`` (the providers' keys and
+- ``assistant.encryption.rotate``: every value kept with ``FERNET_KEY`` (the providers' keys and
   WhatsApp's tokens and PINs, ``encrypted_columns``) written again with the current key, so the previous one can go.
-- ``assistant.model.try`` (G61): a member of the staff tried a model from the admin; it stays in the audit trail (an
+- ``assistant.model.try``: a member of the staff tried a model from the admin; it stays in the audit trail (an
   access to the model) with how long the message was and how many tools it offered, never the message.
-- ``assistant.message.claim`` / ``.release`` (G51): a message of the plan's monthly allowance (a demo's own few),
+- ``assistant.message.claim`` / ``.release``: a message of the plan's monthly allowance (a demo's own few),
   taken before the model is called and given back if the turn failed before answering. An account's claim that
-  reaches 80 % of its month, or the last message, mails it once that month (ASSISTANT-F29, ``assistant.emails``).
-- ``assistant.usage.record`` (G29, G52): what a turn, an embedding or the voice spent (tokens, dictations, characters
+  reaches 80 % of its month, or the last message, mails it once that month (``assistant.emails``).
+- ``assistant.usage.record``: what a turn, an embedding or the voice spent (tokens, dictations, characters
   read aloud) and its cost in USD.
-- ``assistant.report.send`` (G58): the report of an answer, mailed to the support mailbox; nothing kept.
-- ``assistant.docs.index`` (F27): a batch of what one source of the panel's assistant's documentation has now
+- ``assistant.report.send``: the report of an answer, mailed to the support mailbox; nothing kept.
+- ``assistant.docs.index``: a batch of what one source of the panel's assistant's documentation has now
   (``index_docs``): its excerpts that no longer exist go, the ones just embedded are written with their fingerprint.
 """
 
@@ -384,7 +384,7 @@ def credential_import(ctx: OperationContext, data: CredentialImportIn) -> dict:
 
 
 #: The field classes whose columns keep their value with ``FERNET_KEY`` (MultiFernet with ``FERNET_KEY_PREVIOUS``),
-#: all rotated together. A new encrypted field class goes here, or the guard of the tests fails (#1016). The fiscal
+#: all rotated together. A new encrypted field class goes here, or the guard of the tests fails. The fiscal
 #: documents are kept with their own key (``FISCAL_DOCUMENTS_KEY``, ``fiscal.crypto``) and are not rotated here.
 ROTATED_FIELD_CLASSES = (fields.EncryptedTextField, whatsapp.fields.EncryptedTextField)
 
@@ -447,7 +447,7 @@ def encryption_rotate(ctx: OperationContext, data: EncryptionRotateIn) -> dict:
     return {"columns": columns, **totals}
 
 
-# --- The Hub's turn (part 2): the plan's messages and what each turn spent (ASSISTANT-G51, G29) -------------------
+# --- The Hub's turn: the plan's messages and what each turn spent -------------------
 
 #: How long the row of a demo is kept after it started: a demo lives an hour, and its row is forgotten when a later
 #: demo starts (no task needed).
@@ -518,9 +518,9 @@ def message_claim(ctx: OperationContext, data: Caller) -> dict:
 
 
 #: From this share of the month's messages an account is mailed that they run out: where the panel's footer starts
-#: saying it (``NOTE_FROM`` of ``usageNote`` in @erplora/ui), the 24th of 30 (ASSISTANT-F29).
+#: saying it (``NOTE_FROM`` of ``usageNote`` in @erplora/ui), the 24th of 30.
 NEAR_FROM = Fraction(4, 5)
-#: The mark of each mail of ASSISTANT-F29 on the account's row of the month.
+#: The mark of each mail that the month's messages run out, on the account's row of the month.
 WARNING_MARKS = {"near": "near_warned_at", "spent": "spent_warned_at"}
 
 
@@ -535,7 +535,7 @@ def _warning_due(used: int, limit: int) -> str | None:
 
 
 def _warn_the_account(ctx: OperationContext, row: AssistantUsage, limit: int, now) -> None:
-    """ASSISTANT-F29: take the month's mark of the mail the account's ``row`` reaches — one ``UPDATE … WHERE <mark> IS
+    """Take the month's mark of the mail the account's ``row`` reaches — one ``UPDATE … WHERE <mark> IS
     NULL``, which a concurrent turn waits on and then finds taken, so each mail leaves once a month —, record it, and
     send the mail after the COMMIT. Also when the claim was refused, so a last mail that could not leave is tried
     again with the next message the person writes."""
@@ -612,14 +612,15 @@ def usage_record(ctx: OperationContext, data: UsageRecordIn) -> dict:
     return queries.usage_of(data.caller, now)
 
 
-# --- The report of an answer (ASSISTANT-G58) ----------------------------------------------------------------------
+# --- The report of an answer ----------------------------------------------------------------------
 
 #: The characters of each text a report mails (the question, the answer, the comment).
 REPORT_TEXT_MAX = 4000
 #: A report of the same answer within this time mails nothing again (a double tap, a retry of the Hub).
 REPORT_ONCE_SECONDS = 24 * 60 * 60
-#: What a report mails instead of an answer that may quote pages of the web (saas#287): Brave's terms, §3(b)(i), forbid
-#: keeping its results, in whole or in part, and a mailbox keeps; their addresses and titles are part of them too.
+#: What a report mails instead of an answer that may quote pages of the web (saas#287): section 3(b)(i) of Brave
+#: Search's terms forbids keeping its results, in whole or in part, and a mailbox keeps; their addresses and titles are
+#: part of them too.
 REPORT_WEB_ANSWER = (
     "Left out: it may quote web search results, which Brave Search's terms (§3(b)(i)) do not let us keep. "
     "Ask the question again to see it."
@@ -705,7 +706,7 @@ def _mail_report(ctx: OperationContext, who: str, details: list[tuple[str, str]]
             ) from None
 
 
-# --- The documentation of the panel's assistant (ASSISTANT-F27) -------------------------------------------------
+# --- The documentation of the panel's assistant -------------------------------------------------
 
 
 @operation(

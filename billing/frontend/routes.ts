@@ -1,9 +1,7 @@
-// Routes → pages of the billing app (the Store and Billing), and nothing else: the menu
-// comes from the server (`base/navigation.py`). Types only: `main.ts` globs this file eagerly and Vite
-// hoists that glob above the shell's boot hooks. Each page is its own chunk (`import()`).
-// The Store sells, so it is the web's only (PLAN-SAAS §3.6 point 6): StorePage says so itself inside the
-// apps, with the Store's own text and live with the surface; the shell's `meta.webOnly` would mount its
-// generic NotInAppPage, which cannot say «The store is not in the app».
+// Routes → pages of the billing app; the menu comes from the server (`base/navigation.py`). Types only: `main.ts`
+// globs this file eagerly and Vite hoists that glob above the shell's boot hooks. Each page is its own chunk
+// (`import()`). The Store says itself that it is web only, with its own text: the shell's `meta.webOnly` would mount
+// the generic NotInAppPage, which cannot say «The store is not in the app».
 import type { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
@@ -20,7 +18,7 @@ const routes: RouteRecordRaw[] = [
     meta: { auth: true },
   },
   {
-    // Billing (lot L3-C; round 17 §2.7): what the account pays ERPlora. Not selling, so on every surface; the
+    // Billing: what the account pays ERPlora. Not selling, so on every surface; the
     // menu and Stripe's Customer Portal come back to `/dashboard/billing`, which opens Invoices keeping the query.
     path: '/dashboard/billing',
     redirect: (to) => ({ path: '/dashboard/billing/invoices', query: to.query }),
@@ -33,7 +31,7 @@ const routes: RouteRecordRaw[] = [
     meta: { auth: true },
   },
   {
-    // One invoice (BILLING-G05): its lines, totals and recipient; Back returns to Invoices. Not selling either.
+    // One invoice: its lines, totals and recipient; Back returns to Invoices. Not selling either.
     path: '/dashboard/billing/invoices/:id',
     component: () => import('./pages/InvoicePage.vue'),
     props: true,

@@ -1,4 +1,4 @@
-"""Issuing and redeeming the one-time code of the jump to a hub (PLAN-SAAS §3.1 steps 5-6)."""
+"""Issuing and redeeming the one-time code of the jump to a hub."""
 
 from datetime import timedelta
 
@@ -273,7 +273,7 @@ class TestSeedDemoPlatformAdmin:
 
 
 class TestHubAdminCode:
-    """Audience ``hub-admin`` (ronda 13, PLAN §18): the platform's staff jump to the Hub's Django admin
+    """Audience ``hub-admin``: the platform's staff jump to the Hub's Django admin
     at ``hubs.erplora.com/admin/hub/<slug>/``. Staff need no membership; customers never get one."""
 
     # The wire value the Hub sends back in ``/internal/auth/redeem``.
@@ -420,7 +420,7 @@ class TestHubAdminCode:
 
     @pytest.mark.parametrize("slug", ["hubs", "hub"])
     def test_a_code_bound_to_the_platform_host_is_refused_without_spending_it(self, platform_admin, slug):
-        # A row saved without validation, as if it predated ronda 13.
+        # A row saved without validation, as if it predated the platform host.
         now = timezone.now()
         AuthExchangeCode.objects.create(
             code_hash=AuthExchangeCode.hash_code("a-code"),
@@ -438,7 +438,7 @@ class TestHubAdminCode:
 
 
 def test_the_platform_host_is_no_customer_hub_either(member):
-    """``hubs`` is the Hub admin's host (ronda 13): a membership row naming it opens nothing."""
+    """``hubs`` is the Hub admin's host: a membership row naming it opens nothing."""
     enter(member, "hubs", "hub_owner")
 
     with pytest.raises(services.HubAccessDenied):
@@ -448,7 +448,7 @@ def test_the_platform_host_is_no_customer_hub_either(member):
 
 
 class TestReleaseUnprovenAccount:
-    """``release_unproven_account`` (saas#2541): every credential of an account whose holder never proved its
+    """``release_unproven_account``: every credential of an account whose holder never proved its
     email goes, so only whoever opens that mailbox gets in («Forgot your password?», or Google, which
     proves the address). The account, its addresses and what hangs from it stay."""
 
@@ -497,7 +497,7 @@ class TestReleaseUnprovenAccount:
 
 class TestTheResetLinkProvesTheMailbox:
     """A password set from the key mailed by «Forgot your password?» (allauth's ``password_reset`` signal)
-    proves the mailbox it went to: the account's address becomes verified and primary (L1-A2). Only when
+    proves the mailbox it went to: the account's address becomes verified and primary. Only when
     that address is the only one on record, since the key may have gone to any address of the account."""
 
     def _reset(self, client, email, password):

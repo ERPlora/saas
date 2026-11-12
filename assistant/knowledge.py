@@ -1,11 +1,10 @@
-"""What the panel's assistant knows of ERPlora (ASSISTANT-F27; plan 2026-10-30-asistente-saas §5): the documentation,
+"""What the panel's assistant knows of ERPlora: the documentation,
 cut into the excerpts ``assistant.docs.search`` returns and ``index_docs`` keeps with their fingerprints.
 
 - ``chunk_markdown`` cuts a document at its ``##`` and ``###`` headings (a FAQ's questions are ``###``), names each
   excerpt by its path of headings («FAQ > Access > Why…?») and windows a long section into excerpts of ``MAX_WORDS``
   words that overlap by ``OVERLAP_WORDS``: a sentence cut at the edge of one is whole in the next. HTML comments go;
-  a heading inside a code block is text. The idea of the old product's in-memory index (``apps/dashboard/assistant/
-  knowledge.py``), without its store: the excerpts live in ``assistant.DocChunk``.
+  a heading inside a code block is text. The excerpts live in ``assistant.DocChunk``.
 - The four sources (``SOURCES``), each in English and Spanish: the public help (``docs/<lang>/help/*.md``; a guide
   still waiting for its translation is only its ``<!-- pending translation from en -->``, with no excerpt); the user documentation of the Hub's apps
   (``apps.doc.list``, what the Hub registers with each release); the customer's part of the WORKBOOKs of the panel's

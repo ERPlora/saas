@@ -1,8 +1,8 @@
 <script setup lang="ts">
-// «Change role» (mockups `business.html` «members-role»): the roles the account may give this member
+// «Change role»: the roles the account may give this member
 // (the server's `assignable_roles`; never the owner's, which only moves by a transfer),
 // `hubs.member.change_role`, and a toast with the new role. A refusal stays in the dialog. «Change role» waits
-// until another role than the current one is picked (W-B16 of the mockups; audit 2026-10-14 R-28).
+// until another role than the current one is picked.
 import { FormModal } from '@erplora/ui/components';
 import { toastSuccess } from '@erplora/ui/shell';
 import { useCommand } from '@erplora/ui/sdk';

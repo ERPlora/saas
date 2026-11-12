@@ -1,9 +1,9 @@
 """``python manage.py reconcile_hub_states [--stuck-minutes N]``: one pass by hand; the ``saas-worker`` runs the same
-one every 15 minutes (``services.reconcile_exclusively``, ``base.worker``, saas#305).
+one every 15 minutes (``services.reconcile_exclusively``, ``base.worker``).
 
-Keeps the Hub equal to the SaaS (plan 2026-10-13 §3, the push to the Hub): retries what the Hub still owes
-an answer to (registry, deletion, restoration, snapshot), asks the Hub about a sign-up stuck without its
-``ready`` callback for more than N minutes (``GET /internal/hubs/{id}``; 2 by default, PLAN-SAAS §3.1)
+Keeps the Hub equal to the SaaS: retries what the Hub still owes an answer to (registry, deletion, restoration,
+snapshot), asks the Hub about a sign-up stuck without its ``ready`` callback for more than N minutes
+(``GET /internal/hubs/{id}``; 2 by default)
 (``preparing`` while the Hub prepares it, ``provision_failed`` when it says it could not, ``unexpected`` for any other
 answer), ends the trials that ran out, marks purged the businesses past their 90 days, tells the owner of a deleted
 business once the copy of its data is ready (``GET /internal/hubs/{id}/dumps``: ``data_copies_told``,

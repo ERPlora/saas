@@ -1,8 +1,8 @@
-"""Which Stripe mode a secret key belongs to (saas#2177).
+"""Which Stripe mode a secret key belongs to.
 
-Ported from ERPlora/saas ``apps/core/stripe_keys.py`` (origin/develop). Guards that protect money ask
+Guards that protect money ask
 about the MODE, not about one prefix: Stripe secret keys come as ``sk_<mode>_…`` and, for least
-privilege, as restricted ``rk_<mode>_…`` (production uses a restricted live key, PLAN-SAAS §4). A guard
+privilege, as restricted ``rk_<mode>_…`` (production uses a restricted live key). A guard
 that only knew ``sk_test_`` let a restricted test key into production and refused a legitimate one.
 """
 

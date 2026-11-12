@@ -1,4 +1,4 @@
-// The entry (`/launch`, round 17 §2.2; mockups `launch.html`, README §5): a centred card without the
+// The entry (`/launch`): a centred card without the
 // menu that never enters by itself. Signed out → sign in and come back; no business → create the first
 // one here (or, invited, the invitation is the card), then «Preparing» and it opens by itself; one
 // business → «Open X» or «Go to the panel», with why it does not open; several → the last opened first.
@@ -99,9 +99,8 @@ async function showing(result: unknown, options: MountOptions = {}) {
 }
 
 describe('LaunchPage: signed out, the sign-in itself', () => {
-  // The entrance holds the form with the tabs «Sign in» and «Create account» (Ioan, 2026-10-15;
-  // FIX-LAUNCH-TABS), in the frame of the old template login (`AuthShell`): logo, «ERPlora Cloud», «Global
-  // panel», the card and the terms.
+  // The entrance holds the form with the tabs «Sign in» and «Create account», in the frame of the old template
+  // login (`AuthShell`): logo, «ERPlora Cloud», «Global panel», the card and the terms.
   let assign: ReturnType<typeof vi.fn>;
   beforeEach(() => {
     assign = vi.fn();
@@ -178,7 +177,7 @@ describe('LaunchPage: signed out, the sign-in itself', () => {
     expect(document.title).toBe('Iniciar Sesión - ERPlora Cloud');
   });
 
-  // Where the old sign-up pages lead (gh:saas#894, gh:saas#943): the same card, on «Create account».
+  // Where the old sign-up pages lead: the same card, on «Create account».
   it('opens «Create account» from /launch?tab=signup, and creates the account there', async () => {
     const server = fakeAllauth({ 'GET /auth/session': anonymous, 'POST /auth/signup': pendingEmailVerification });
     const s = await setup({ session: ANONYMOUS, path: '/launch?tab=signup&next=%2Faccount' });
@@ -238,7 +237,7 @@ describe('LaunchPage: loading and errors', () => {
     expect(s.net.streams.length).toBeGreaterThan(streams);
   });
 
-  it('the stream gone before any answer (no network, /api/live down): an error with «Retry» after the time limit, never a spinner for ever (R-08)', async () => {
+  it('the stream gone before any answer (no network, /api/live down): an error with «Retry» after the time limit, never a spinner for ever', async () => {
     const s = await setup();
     const call = await s.live();
     call.push(BYE);
@@ -406,7 +405,7 @@ describe('LaunchPage: one business', () => {
     const tile = s.testid('launch-business');
     expect(tile.get('h2').text()).toBe('Panadería López');
     expect(tile.get('.launch-biz__url').text()).toBe('bakery.localhost:8000');
-    // Audit 2 R-25: it breaks only after a dot, never at a hyphen.
+    // It breaks only after a dot, never at a hyphen.
     expect(tile.find('.launch-biz__url .host-name').exists()).toBe(true);
     expect(tile.get('.status-pill').text()).toBe('Active');
     expect(tile.get('.launch-biz__meta').text()).toBe('Plan Starter · Owner');
@@ -441,7 +440,7 @@ describe('LaunchPage: one business', () => {
     expect(ionProps(s.testid('launch-open'), 'disabled')).toEqual({ disabled: true });
   });
 
-  it('with a payment pending it still opens, and says to pay (without its date, no number of days: R-06)', async () => {
+  it('with a payment pending it still opens, and says to pay (without its date, no number of days)', async () => {
     const s = await showing(page([row('bakery', 'Bakery', { status: 'past_due', status_label: 'Payment pending' })]));
     expect(s.testid('launch-business').get('.status-pill').text()).toBe('Payment due');
     expect(s.testid('launch-reason').text()).toBe('There is an unpaid invoice: pay it so the business is not suspended.');
@@ -460,7 +459,7 @@ describe('LaunchPage: one business', () => {
   });
 });
 
-describe('LaunchPage: the way to pay (audit 2026-10-14, R-06 and R-07)', () => {
+describe('LaunchPage: the way to pay', () => {
   const OWED = {
     status: 'past_due',
     status_label: 'Payment pending',
@@ -587,7 +586,7 @@ describe('LaunchPage: the stream', () => {
   });
 });
 
-describe('LaunchPage: a deleted business is recovered from the card (audit 2 R-07)', () => {
+describe('LaunchPage: a deleted business is recovered from the card', () => {
   const DELETED = {
     status: 'deleting',
     status_label: 'Deleted',
@@ -627,7 +626,7 @@ describe('LaunchPage: a deleted business is recovered from the card (audit 2 R-0
   });
 });
 
-describe('LaunchPage: one filled button per business (audit 2 S-06)', () => {
+describe('LaunchPage: one filled button per business', () => {
   it('several: a business that owes keeps the payment filled and «Open» outlined', async () => {
     const OWED = { status: 'past_due', status_label: 'Payment pending', unpaid_reason: 'payment_failed', unpaid_since: '2026-10-10T14:23:00Z', pay_url: 'https://invoice.stripe.com/i/bakery' };
     const s = await showing(page([row('salon', 'Peluquería Ana'), row('bakery', 'Bakery', OWED)]));

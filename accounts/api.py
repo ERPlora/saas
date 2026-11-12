@@ -31,7 +31,7 @@ async def hub_list(request):
     return await run_operation(request, queries.hub_list)
 
 
-# --- The Account page (plan 2026-10-13, L3-A) ---------------------------------------------------------------
+# --- The Account page ---------------------------------------------------------------
 
 
 @bind(router, "accounts.profile.get", "/accounts/profile")

@@ -1,4 +1,4 @@
-"""«Download the data» of a business (PLAN-DB, round 2026-10-30, proposals (a), (k), (l) and (m); HUBS-F18, HUBS-F20).
+"""«Download the data» of a business (HUBS-F18, HUBS-F20).
 
 The Hub copies a business's database (``pg_dump -Fc``) when it is deleted (``offboarding``) and before a reset
 (``reset``), and keeps each copy 90 days. The panel lists them from ``GET /internal/hubs/{id}/dumps``
@@ -81,7 +81,7 @@ def test_without_copies_yet_the_list_is_empty(business, owner, hub_double):
 
 
 def test_a_business_without_its_own_database_has_no_copy_and_never_will(business, owner, hub_double):
-    """``available: false`` (ruling 2026-10-30): the Hub never copies a business still on the shared database of
+    """``available: false``: the Hub never copies a business still on the shared database of
     control, so the page promises nothing."""
     hub = deleted(business)
     hub_double.dumps[str(hub.id)] = []
@@ -125,7 +125,7 @@ def test_a_hub_that_does_not_know_the_business_is_an_empty_list(business, owner,
 
 @pytest.mark.parametrize("refusal", [401, 403, 410])
 def test_any_other_refusal_of_the_hub_says_the_copy_could_not_be_checked(business, owner, hub_double, refusal, caplog):
-    """Review of saas#168: a cancelled business answers 200 at ``/internal`` (the 410 is the host's door), so any
+    """A cancelled business answers 200 at ``/internal`` (the 410 is the host's door), so any
     refusal but a 404 is a fault: the page says it could not check, never «we will let you know»."""
     from live.errors import OperationError
 

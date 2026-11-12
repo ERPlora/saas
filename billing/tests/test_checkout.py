@@ -1,33 +1,24 @@
 """Buying a plan or a module for a business: ``billing.checkout.start`` and ``billing.checkout.confirm``.
 
-PLAN-SAAS §3.2 and §4 (lot L2-B): ONE Stripe subscription per business, whose items are the plan and the
+ONE Stripe subscription per business, whose items are the plan and the
 modules, at net prices plus OUR tax rates. A business without a Stripe subscription (Free) pays in an
 Embedded Checkout (``client_secret`` for the modal); one that has it previews the prorated charge, and
 the confirmation adds the item, charged at once (``always_invoice``) or not at all
-(``error_if_incomplete``).
+(``error_if_incomplete``). The rules:
 
-Ported from ERPlora/saas ``hubs/subscriptions/tests/`` (origin/develop): ``test_billing_location_before_checkout``
-(11), ``test_checkout_customer_update`` (3), ``test_our_tax_engine_at_checkout`` (16),
-``test_annual_plan_needs_tax_id_before_checkout`` (4), ``test_vies_before_checkout`` (9), the checkout half of
-``hubs/main/tests/test_stripe_service.py`` and ``test_plan_change.py`` (``TestChangePlanUpgrade``) and of
-``test_stripe_test_clocks.py`` (the customer carries the clock). The rules that hold:
-
-- WHERE the payer is, before charging (saas#1972): the postal code tells the Canary Islands (outside VAT)
+- WHERE the payer is, before charging: the postal code tells the Canary Islands (outside VAT)
   from the mainland; without it, 409 ``billing.billing_location_required`` and Stripe is never called.
-- The rate is ours (``billing.TaxRule``, ADR-0478): ``automatic_tax`` is never sent; Stripe gets a
+- The rate is ours (``billing.TaxRule``): ``automatic_tax`` is never sent; Stripe gets a
   ``TaxRate`` per item; a territory without a rule is refused (``billing.tax_engine_missing``).
 - Over 400 € with VAT the invoice must name the buyer (RD 1619/2012, art. 4): 409 ``billing.tax_id_required``.
-- Stripe never collects the VAT number (it reverse charges by its FORMAT, saas#1479): only one VIES proved
+- Stripe never collects the VAT number (it reverse charges by its FORMAT): only one VIES proved
   (or a national one) reaches the customer.
-- A promo code replaces the trial (ADR-0107); a free business in its Starter trial keeps the days it has
+- A promo code replaces the trial; a free business in its Starter trial keeps the days it has
   left when it buys (no second free ride, and none taken away either).
-- No real money while the year's OSS total is unknown (billing README, L2-A): a LIVE key refuses with 409
-  ``billing.oss_total_unknown``. A business with an unpaid invoice buys nothing (mockups README §6.18).
-
-Dropped with reason: the hosted (redirect) checkout, every «hosted»/«embedded» pair (the panel only opens
-the Embedded Checkout), the quantity of a per-hub plan (one business = one subscription), the location
-form and its redirects (the payer is ``hubs.billing_profile.update``), the free sign-up through Stripe
-(Free never reaches Stripe, ADR-0154) and the HTMX answers of the old view.
+- No real money while the year's OSS total is unknown: a LIVE key refuses with 409
+  ``billing.oss_total_unknown``. A business with an unpaid invoice buys nothing.
+- Only the Embedded Checkout opens (no hosted redirect), one business is one subscription, and Free never
+  reaches Stripe.
 """
 
 from datetime import timedelta
@@ -201,7 +192,7 @@ class TestTheEmbeddedCheckout:
         assert len(stripe_double.calls_to("checkout.sessions.create")) == 2
 
     def test_a_new_selection_expires_the_other_open_session(self, shop, owner, stripe_double):
-        """Two open sessions could both be paid: two subscriptions for one business (review of L2-B)."""
+        """Two open sessions could both be paid: two subscriptions for one business."""
         first = start(owner, shop, plan="starter")
         stripe_double.answer("checkout.sessions.expire", {"id": first["session_id"], "status": "expired"})
 
@@ -481,7 +472,7 @@ class TestOverTheSimplifiedInvoiceLimit:
 
 
 class TestUpgradeOnlyPlans:
-    """Audit 2 S-03: Pro, Enterprise and Max (``upgrade_only``) are an upgrade of a business that already pays;
+    """Pro, Enterprise and Max (``upgrade_only``) are an upgrade of a business that already pays;
     a Free business is refused them (the Store does not offer them, ``billing.store.catalog``)."""
 
     def test_a_free_business_is_refused_an_upgrade_only_plan(
@@ -527,7 +518,7 @@ class TestUpgradeOnlyPlans:
 
 
 class TestTheTrial:
-    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no seeded plan carries one)
     def test_the_days_left_of_the_sign_up_trial_are_kept(
         self, shop, owner, stripe_double
     ):
@@ -570,7 +561,7 @@ class TestTheTrial:
         assert abs(params["subscription_data"]["trial_end"] - expected.timestamp()) < 60
         assert params["metadata"]["promo_code"] == "canary_2026"
 
-    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no seeded plan carries one)
     def test_the_longer_of_the_two_wins(self, shop, owner, stripe_double):
         PromoCode.objects.create(code="short", trial_days=3)
         trial_end = Subscription.objects.get(hub=shop).trial_end
@@ -701,9 +692,9 @@ class TestNoMoneyMovesWhen:
 
     def test_a_live_key_is_held_while_invoicing_is_not_switched_on(self, shop, owner, settings, stripe_double,
                                                                    hub_double):
-        """Working rules §15: in production nothing is charged without a route that sends the invoice. The model
-        existing is not that route: ``PLATFORM_INVOICING_ENABLED`` says the platform hub is wired (review of
-        L3-C), and nobody asks the Hub while it is off."""
+        """In production nothing is charged without a route that sends the invoice. The model
+        existing is not that route: ``PLATFORM_INVOICING_ENABLED`` says the platform hub is wired,
+        and nobody asks the Hub while it is off."""
         self.live_and_oss_known(settings)
         settings.PLATFORM_INVOICING_ENABLED = False
 
@@ -775,7 +766,7 @@ class TestNoMoneyMovesWhen:
         assert stripe_double.calls == []
 
     def test_a_live_secret_key_is_never_used(self, shop, owner, settings, stripe_double):
-        """PLAN-SAAS §4: production holds a RESTRICTED live key (``rk_live_``), never the account's secret."""
+        """Production holds a RESTRICTED live key (``rk_live_``), never the account's secret."""
         settings.STRIPE_SECRET_KEY = "sk_live_double"
         settings.STRIPE_PUBLISHABLE_KEY = "pk_live_double"
         settings.STRIPE_EXPECTED_MODE = "live"
@@ -787,7 +778,7 @@ class TestNoMoneyMovesWhen:
 
     def test_a_customer_stripe_already_has_is_found_not_created_twice(self, shop, owner, stripe_double):
         """A checkout that failed after the customer was created rolls back its id: the next one finds it by
-        the payer it belongs to (review of L2-B)."""
+        the payer it belongs to."""
         stripe_double.answer(
             "customers.search",
             {"object": "search_result", "data": [{"id": "cus_orphan", "object": "customer"}], "has_more": False},
@@ -967,7 +958,7 @@ class TestConfirmingAModule:
 
     @pytest.mark.parametrize("offset", [120, -2 * 3600])
     def test_a_preview_from_another_moment_is_previewed_again(self, shop, owner, inventory, stripe_double, offset):
-        """The proration date chooses what is charged: one in the future charges less (review of L2-B)."""
+        """The proration date chooses what is charged: one in the future charges less."""
         paid = paying(shop, stripe_double)
         moment = int(timezone.now().timestamp()) + offset
 
@@ -1055,7 +1046,7 @@ class TestConfirmingAModule:
         assert Decimal(inventory.price_monthly_cents) / 100 == Decimal("10")
 
 
-# --- Who pays is the payer, not the role (review of L2-B) ----------------------------------------------
+# --- Who pays is the payer, not the role ----------------------------------------------------------------
 
 
 def transferred(hub, old_owner, make_user):
@@ -1111,7 +1102,7 @@ class TestThePayerPays:
         assert stripe_double.calls == []
 
 
-# --- Retries, limits and trials (review of L2-B) -----------------------------------------------------
+# --- Retries, limits and trials ----------------------------------------------------------------------
 
 
 class TestRetriesAndLimits:
@@ -1165,7 +1156,7 @@ class TestRetriesAndLimits:
 
 class TestAPlanOnTopOfModules:
     """A Free business that bought modules alone pays a subscription without a plan item: buying the plan
-    keeps the days left of its sign-up trial and honours a promo code, as the checkout does (review of L2-B)."""
+    keeps the days left of its sign-up trial and honours a promo code, as the checkout does."""
 
     def modules_only(self, shop, stripe_double, inventory):
         paid = pay(shop, plan="free", modules=["inventory"])
@@ -1174,7 +1165,7 @@ class TestAPlanOnTopOfModules:
         )
         return paid
 
-    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no seeded plan carries one)
     def test_the_preview_and_the_change_carry_the_trial_left(self, shop, owner, inventory, stripe_double):
         from billing import services as billing_services
         from billing.schemas import PlanChangeIn

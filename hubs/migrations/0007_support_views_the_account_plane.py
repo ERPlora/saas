@@ -1,5 +1,5 @@
-"""Data: the platform's ``support`` group sees the account plane of every business, and changes nothing
-(PLAN-SAAS §2.1 round 11: superuser + ``support``, view only; plan 2026-10-13, L1-A2).
+"""Data: the platform's ``support`` group sees the account plane of every business, and changes nothing (only
+superusers and ``support`` see it, and only to view).
 
 ``view_*`` of ``Hub``, ``HubMember``, ``HubOwnershipTransfer``, ``BillingProfile``, ``Subscription``,
 ``SubscriptionItem`` and ``SessionRevocation``, as ``accounts``' ``0003_support_group`` gives it the accounts.

@@ -1,9 +1,9 @@
 """Reads of accounts: the hubs an account can enter (``accounts.hub.list``, the launcher's), the
 re-read of an account before a live re-run, the
 authenticators of the second factor (``mfa.py``), whether an email has an account (the unified login),
-whether an account proved its email or has any way in (the invitation of ``hubs``, saas#2541), and the
-Account page (plan 2026-10-13, L3-A): the profile, the
-preferences, the live sessions, whether this browser is trusted (ACCOUNTS-F17) and the API keys, and the key a
+whether an account proved its email or has any way in (the invitation of ``hubs``), and the
+Account page: the profile, the
+preferences, the live sessions, whether this browser is trusted and the API keys, and the key a
 request carries (``api_auth``)."""
 
 import time
@@ -85,7 +85,7 @@ def hub_slugs_of(user) -> list[str]:
 
 
 def hub_admin_path(slug: str) -> str:
-    """The deep link of the hub ``slug`` in the Hub's admin at ``hubs.erplora.com`` (PLAN §18.1.5)."""
+    """The deep link of the hub ``slug`` in the Hub's admin at ``hubs.erplora.com``."""
     return f"/admin/hub/{slug}/"
 
 
@@ -170,12 +170,12 @@ def hub_list(ctx: OperationContext, data: HubListIn) -> dict[str, Any]:
 
 
 def email_is_proven(user, email: str) -> bool:
-    """Whether ``user`` holds ``email`` by proof rather than by having typed it first (saas#2541).
+    """Whether ``user`` holds ``email`` by proof rather than by having typed it first.
 
     Proven means a **verified** ``EmailAddress`` for that address (another verified address proves
     nothing). Two kinds of account have nothing to prove and count as proven: staff, and an account with
     **no** address on record (made by an invitation, which leaves no password until the mailbox's owner
-    claims it, by the console or by staff). Ported from ERPlora/saas ``apps/auth/users/services.py``.
+    claims it, by the console or by staff).
     """
     if user.is_staff or user.is_superuser:
         return True
@@ -196,7 +196,7 @@ def has_no_way_in(user) -> bool:
     return not user.has_usable_password() and not SocialAccount.objects.filter(user=user).exists()
 
 
-# --- The Account page (plan 2026-10-13, L3-A) ---------------------------------------------------------------
+# --- The Account page ---------------------------------------------------------------
 
 
 def account_of(ctx: OperationContext):
@@ -228,7 +228,7 @@ def preferences_of(user) -> dict[str, Any]:
 def receives_business_notices(user) -> bool:
     """Whether ``user`` gets the business notices (Account → Preferences, ``hub_alerts``; on until turned off): the
     mail that a business is ready (``hubs.emails.send_ready``). The mails that keep the account safe or its businesses
-    running ask nobody (ACCOUNTS-F23)."""
+    running ask nobody."""
     preferences = UserPreferences.objects.filter(user=user).values_list("hub_alerts", flat=True).first()
     return True if preferences is None else preferences
 
@@ -399,7 +399,7 @@ def session_list(ctx: OperationContext, data: SessionListIn) -> dict[str, Any]:
     }
 
 
-# --- Two-factor authentication: the trusted browsers (ACCOUNTS-F05, ACCOUNTS-F17) -------------------------------
+# --- Two-factor authentication: the trusted browsers -------------------------------
 
 
 def browser_trusted_until(user, request) -> datetime | None:
@@ -515,7 +515,7 @@ def api_key_for(raw: str, now) -> ApiKey | None:
     return None
 
 
-# --- Account → Profile → «Download my data» (GDPR art. 20, ACCOUNTS-F26) ------------------------------------------
+# --- Account → Profile → «Download my data» (GDPR art. 20) ------------------------------------------
 
 #: The other apps' reads the file carries, called by their name: accounts never imports hubs nor billing.
 BUSINESS_LIST = "hubs.business.list"

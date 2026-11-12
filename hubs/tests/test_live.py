@@ -1,6 +1,6 @@
-"""The live queries of hubs and the events that re-run them (plan 2026-10-13 §3, live data).
+"""The live queries of hubs and the events that re-run them.
 
-The scope is the account (PLAN-SAAS §6): each list re-runs for the account whose command changed it;
+The scope is the account: each list re-runs for the account whose command changed it;
 other accounts see the change at the 300 s safety re-run or on reload.
 """
 
@@ -18,7 +18,7 @@ LIVE = {
     "hubs.business.get",
     "hubs.member.list",
     "hubs.invitation.list_mine",
-    # The usage of a business (L4-A): re-run by the nightly collection.
+    # The usage of a business: re-run by the nightly collection.
     "hubs.usage.get",
     "hubs.usage.series",
     # A business's own domain (HUBS-F17): re-run by the hourly check.
@@ -118,7 +118,7 @@ def test_a_subscription_follows_the_role_at_each_run(business, team):
     assert get("hubs.member.list")(ctx_for(team["admin"]), MemberListIn(hub_id=business.id)).total == 5
 
 
-# --- Changes of people reach every manager of the business at once (L1-A2) ------------------------
+# --- Changes of people reach every manager of the business at once -------------------------------
 #
 # A member or ownership command notifies the actor's channel with its own event (kept as it was), and
 # also ``hubs.member.changed`` / ``hubs.ownership.changed`` on the channel of every owner and admin of the

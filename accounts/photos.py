@@ -17,7 +17,7 @@ import struct
 import zlib
 
 #: At most this many bytes (decoded). Shown as a data URL in ``accounts.profile.get``, whose live result must
-#: stay under 256 KB (PLAN §16.2).
+#: stay under 256 KB.
 MAX_PHOTO_BYTES = 150_000
 #: Base64 of ``MAX_PHOTO_BYTES`` and a data URL's prefix: anything longer is too large before decoding it.
 MAX_UPLOAD_CHARACTERS = 4 * -(-MAX_PHOTO_BYTES // 3) + len("data:image/webp;base64,")

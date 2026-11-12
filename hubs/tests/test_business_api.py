@@ -1,5 +1,5 @@
 """The panel's routes under ``/api/hubs/``: each bound to its operation, over HTTP with the single error
-envelope (PLAN §14.1): 401 without an account, 404 for a business one has no access to, 403 for a role
+envelope: 401 without an account, 404 for a business one has no access to, 403 for a role
 below the one needed, 409 with the domain code, 422 with ``fields``.
 
 Django's sync test client (it sees the test's transaction); the session client of pytest-django
@@ -123,7 +123,7 @@ def test_a_reserved_or_taken_address_is_409_with_its_code(
             client, "/hubs/businesses", {"name": "Hub", "country": "ES", "slug": "hubs"}
         )
     ) == (409, "hubs.slug_reserved")
-    # The prefix of the demo hubs (round 2026-10-17): no customer takes ``demo-…``.
+    # The prefix of the demo hubs: no customer takes ``demo-…``.
     assert error(
         post(
             client, "/hubs/businesses", {"name": "Demo Bar", "country": "ES", "slug": "demo-bar"}

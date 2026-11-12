@@ -1,5 +1,5 @@
-"""ASSISTANT-F27 · ``index_docs`` keeps the documentation the panel's assistant searches (plan 2026-10-30-asistente-saas
-§5): every excerpt of the four sources (``assistant.knowledge``) in ``assistant.DocChunk`` with its fingerprint.
+"""``index_docs`` keeps the documentation the panel's assistant searches: every excerpt of the four sources
+(``assistant.knowledge``) in ``assistant.DocChunk`` with its fingerprint.
 
 Idempotent by the hash of each excerpt: a second run embeds nothing, a changed section is the only one embedded again
 and an excerpt that no longer exists goes. The fingerprints come from the services' provider

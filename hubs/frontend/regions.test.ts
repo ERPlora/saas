@@ -59,7 +59,7 @@ describe('countries', () => {
   });
 });
 
-// flow: HUBS-F01 (HUBS-G65, old saas SAAS_DASHBOARD-F01): «the country comes suggested by the browser's language».
+// flow: HUBS-F01 (HUBS-G65): «the country comes suggested by the browser's language».
 describe('the country the browser suggests', () => {
   it("is the region of the first language whose country ERPlora serves", () => {
     expect(suggestedCountry(['fr-BE', 'fr'])).toBe('BE');
@@ -90,7 +90,7 @@ describe('time zones', () => {
     }
   });
 
-  it('name a zone by its city and its time, true all year (audit 2 R-31: «Madrid (GMT+2)» stopped being true on Oct 25)', () => {
+  it('name a zone by its city and its time, true all year («Madrid (GMT+2)» stops being true when the clocks change)', () => {
     const winter = new Date('2026-01-15T12:00:00Z');
     const summer = new Date('2026-07-15T12:00:00Z');
     expect(timeZoneLabel('Europe/Madrid', 'en', winter)).toBe('Madrid (Central European Time)');

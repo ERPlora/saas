@@ -346,12 +346,11 @@ def content_hash(source: str, path: str, lang: str, heading: str, text: str) -> 
 
 
 class DocChunk(models.Model):
-    """An excerpt of ERPlora's documentation and its fingerprint (ASSISTANT-F27): what the panel's assistant finds
+    """An excerpt of ERPlora's documentation and its fingerprint: what the panel's assistant finds
     with ``assistant.docs.search``, nearest first by the cosine of the fingerprints.
 
     The search reads every excerpt of the language, with no approximate index: about 3000 excerpts take 5 ms that way,
-    and an HNSW index filters the language after its 40 nearest rows, so it loses excerpts (PLAN-SAAS, round
-    2026-11-03b).
+    and an HNSW index filters the language after its 40 nearest rows, so it loses excerpts.
 
     Written only by ``assistant.docs.index`` (``index_docs``), one source at a time: an excerpt is new when its
     ``content_hash`` is (``content_hash()``), so a run without changes computes no fingerprint.

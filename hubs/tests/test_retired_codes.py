@@ -1,7 +1,4 @@
-"""A retired business-type code still names the row that replaced it (saas#2099).
-
-Ported from ERPlora/saas ``public/catalog/tests/test_retired_codes.py`` (origin/develop).
-"""
+"""A retired business-type code still names the row that replaced it."""
 
 from hubs.retired_codes import current_business_type_code
 

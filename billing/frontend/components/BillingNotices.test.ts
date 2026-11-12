@@ -1,7 +1,5 @@
-// What waits for a payment, on top of every tab of Billing (mockups `billing.html`; README §6.18; UX-AUDIT-4
-// R2, W-F15): the account's invoices not collected (`billing.invoice.list` with `status=open`, live) with
-// the state of their business (`hubs.business.list`, live). On Invoices, its banner, or ONE banner for two or
-// more (audit 2026-10-14, R-15); on the other tabs the same warning in one line with a link to it. When one of them is paid — here, in another tab, or at
+// What waits for a payment, on top of every tab of Billing: on Invoices its banner, or ONE banner for two or more;
+// on the other tabs the same warning in one line with a link to it. When one is paid — here, in another tab, or at
 // Stripe's page and back — «Invoice paid: … is up to date again».
 // clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -64,7 +62,7 @@ describe('BillingNotices', () => {
     expect(s.wrapper.find('[data-testid="billing-unpaid-line"]').exists()).toBe(false);
   });
 
-  it('on Invoices, two or more: ONE banner with every one and its business (R-15)', async () => {
+  it('on Invoices, two or more: ONE banner with every one and its business', async () => {
     const s = await setup();
     await s.show([OPEN_PLAZA, OPEN_NORTE]);
     expect(s.wrapper.findAllComponents(UnpaidInvoiceNotice)).toHaveLength(0);
@@ -161,7 +159,7 @@ describe('BillingNotices', () => {
   });
 });
 
-describe('BillingNotices: unpaid invoices that do not load are never read as «nothing owed» (audit 2026-10-14, R-04)', () => {
+describe('BillingNotices: unpaid invoices that do not load are never read as «nothing owed»', () => {
   const UNKNOWN = 'We could not check whether you have unpaid invoices.';
 
   it.each(['subscriptions', 'payment'])('on %s, a failed list says it could not check, with «Retry»', async (tab) => {

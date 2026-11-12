@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// «Transfer ownership» (mockups `business.html` «members-transfer», round 17 §2.7; README §3b: always
-// behind a confirmation): the business is offered to a member, who has 7 days to accept it; until then
+// «Transfer ownership», always behind a confirmation: the business is offered to a member, who has 7 days to
+// accept it; until then
 // nothing changes and the invoices keep their payer. The business's name is typed to confirm.
 // `hubs.ownership.transfer`, and a toast naming to whom.
 import { ConfirmDialog } from '@erplora/ui/components';

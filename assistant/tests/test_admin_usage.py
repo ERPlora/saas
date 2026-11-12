@@ -1,11 +1,11 @@
-"""ASSISTANT-F24 (ASSISTANT-G52, G19, G11) · See what a business spent of the assistant and what it cost: the
+"""See what a business spent of the assistant and what it cost: the
 admin's «Assistant usage» (``erplora.com/admin/assistant/assistantusage/``), a row per business and month (a demo,
 one for its whole life) with its messages of the plan's allowance, the tokens of its turns and of its embeddings, its
 dictations, the characters read aloud and the cost in USD (with the prices of the model that answered each turn).
 
-Read only, for everybody, a superuser included: the old page let the staff edit the tokens, add rows and delete them,
-and deleting this month's row gave a business its whole allowance back (SAAS_ASSISTANT-F15). Only staff with the
-permission to see it enter. Cases of the old ``AssistantUsageAdmin`` and its gaps.
+Read only, for everybody, a superuser included: editing the tokens, adding rows or deleting them would change what a
+business spent, and deleting this month's row would give it its whole allowance back. Only staff with the permission
+to see it enter.
 """
 
 from decimal import Decimal
@@ -112,7 +112,7 @@ def test_the_counter_under_the_list_is_a_plural(client, viewer, rows):
     assert "2 assistant usage records" in client.get(USAGE).content.decode()
 
 
-# --- An account's own allowance of the panel's assistant (plan 2026-10-30, §4) ----------------------------------
+# --- An account's own allowance of the panel's assistant ----------------------------------
 
 
 @pytest.fixture

@@ -1,4 +1,4 @@
-// A business's page (`/dashboard/businesses/:id/:tab`, round 17 §2.3; mockups `business.html`): the live
+// A business's page (`/dashboard/businesses/:id/:tab`): the live
 // `hubs.business.get`, a header with its name, address, status, plan and role and «Open», and four
 // sections in the footer tabbar — Summary · Members · Modules · Settings — each at its own address.
 // Deleted, a banner says until when it can be recovered; a payment pending or a suspension is said too.
@@ -168,7 +168,7 @@ describe('BusinessPage: the frame', () => {
     expect(s.testid('business-retry').exists()).toBe(true);
   });
 
-  it('a role that may not manage it (a manager’s deep link): no permission, not a connection problem (audit 2 R-19)', async () => {
+  it('a role that may not manage it (a manager’s deep link): no permission, not a connection problem', async () => {
     const s = await setup('members', null);
     s.call.push(errorFrame(subId(s.client, 'hubs.business.get'), 'permission_denied'));
     await flush();
@@ -178,7 +178,7 @@ describe('BusinessPage: the frame', () => {
     expect(s.testid('business-retry').exists()).toBe(false);
   });
 
-  it('the stream gone before any answer: an error with «Retry» after the time limit, never a skeleton for ever (R-08)', async () => {
+  it('the stream gone before any answer: an error with «Retry» after the time limit, never a skeleton for ever', async () => {
     const s = await setup('summary', null);
     s.call.push(BYE);
     await flush();
@@ -193,7 +193,7 @@ describe('BusinessPage: the frame', () => {
     expect(s.testid('business-loading').exists()).toBe(true);
   });
 
-  it('an error has no tabbar: its sections would only repeat it (W-18 of the mockups)', async () => {
+  it('an error has no tabbar: its sections would only repeat it', async () => {
     const s = await setup('members', null);
     expect(s.page().props('tabs')).toHaveLength(4);
     s.call.push(errorFrame(subId(s.client, 'hubs.business.get'), 'not_found'));
@@ -222,7 +222,7 @@ describe('BusinessPage: the sections', () => {
   it('Modules: apps are turned on inside the business; the header’s «Open», solid, is its one action', async () => {
     const s = await setup('modules');
     expect(s.testid('business-modules').text()).toContain('Apps are turned on and off inside the business');
-    // One «Open» per screen (Ioan, 2026-10-14): the card no longer repeats the header's.
+    // One «Open» per screen: the card does not repeat the header's.
     expect(s.wrapper.findAll('[data-testid="business-modules-open"]')).toHaveLength(0);
     expect(ionProps(s.testid('business-open'), 'fill')).toEqual({ fill: 'solid' });
     await s.testid('business-open').trigger('click');
@@ -342,7 +342,7 @@ describe('BusinessPage: deleted', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Business recovered: Panadería López');
   });
 
-  it('has no tabbar and shows its Summary whatever the address (W-B3 of the mockups)', async () => {
+  it('has no tabbar and shows its Summary whatever the address', async () => {
     const s = await setup('members', DELETED);
     expect(s.page().props('tabs')).toEqual([]);
     expect(s.wrapper.findComponent(MembersTab).exists()).toBe(false);
@@ -370,9 +370,9 @@ describe('BusinessPage: deleted', () => {
   });
 });
 
-// FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN: a section that only needs the business's id (the route has it) asks for
-// its data with the page, so the page's stream opens once; waiting for `hubs.business.get` to mount it made
-// the SDK reopen the stream and the first `GET /api/live` ended aborted.
+// A section that only needs the business's id (the route has it) asks for its data with the page, so the page's
+// stream opens once; waiting for `hubs.business.get` to mount it would make the SDK reopen the stream and the
+// first `GET /api/live` end aborted.
 describe('BusinessPage: one stream', () => {
   /** `tab` asks for `op` with the page's own query while the business loads; its answer does not reopen the stream. */
   async function inTheFirstStream(tab: string, op: string, params: Record<string, unknown>) {

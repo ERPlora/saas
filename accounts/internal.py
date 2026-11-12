@@ -1,14 +1,12 @@
-"""``POST /internal/auth/redeem``: hub-next spends a one-time code (PLAN-SAAS §2.1, §3.1 step 6). ``POST
-/internal/support/report``: the Hub's «Report a problem» (its user menu; ACCOUNTS-F38), the panel's report for the
-account of the Hub's session.
+"""``POST /internal/auth/redeem``: the Hub spends a one-time code. ``POST /internal/support/report``: the Hub's
+«Report a problem» (its user menu), the panel's report for the account of the Hub's session.
 
 Server to server, signed with HMAC-SHA256 + timestamp (``accounts.signing``: v2 over method, path and
-body when the call carries it, else the body-only v1 hub-next sends today; current or previous secret),
+body when the call carries it, else the body-only v1; current or previous secret),
 so no CSRF token. Body ``{"code", "hub", "audience"?}``: without ``audience`` it is a member's ``hub-session``
 (``<slug>.erplora.com``); ``hub-admin`` is the staff's jump to the Hub's admin at
-``hubs.erplora.com`` (ronda 13, PLAN §18), and answers a ``platform_*`` role. Errors answer the
-single envelope ``{"error": {"code", "message"}}`` (PLAN §14.1). A plain Django view for phase 1;
-the ``/internal`` ninja router comes with block 1.
+``hubs.erplora.com``, and answers a ``platform_*`` role. Errors answer the
+single envelope ``{"error": {"code", "message"}}``.
 """
 
 import json

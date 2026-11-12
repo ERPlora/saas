@@ -63,8 +63,8 @@ export function countryOptions(locale: string): Option[] {
   return COUNTRIES.map((code) => ({ value: code, label: countryName(code, locale) })).sort(byLabel(locale));
 }
 
-/** «Madrid (Central European Time)»: the zone's city and its time's generic name, true all year (audit 2 R-31: an
- *  offset, «GMT+2», stops being true when the clocks change). `at` only picks the name where it has several. */
+/** «Madrid (Central European Time)»: the zone's city and its time's generic name, true all year (an offset,
+ *  «GMT+2», stops being true when the clocks change). `at` only picks the name where it has several. */
 export function timeZoneLabel(zone: string, locale: string, at: Date = new Date()): string {
   const city = zone.slice(zone.lastIndexOf('/') + 1).replace(/_/g, ' ');
   let name = '';

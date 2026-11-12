@@ -114,7 +114,7 @@ describe('InvitationPage', () => {
     expect(s.testid('invitation-retry').exists()).toBe(true);
   });
 
-  it('the stream gone before any answer: an error with «Retry» after the time limit, never a spinner for ever (R-08)', async () => {
+  it('the stream gone before any answer: an error with «Retry» after the time limit, never a spinner for ever', async () => {
     const s = await setup(null);
     s.call.push(BYE);
     await flush();

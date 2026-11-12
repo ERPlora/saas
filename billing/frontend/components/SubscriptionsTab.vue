@@ -1,17 +1,9 @@
 <script setup lang="ts">
-// Billing → Subscriptions (mockups `billing.html`; README §3b and §4; UX-AUDIT-4 W-F1, W-F7, W-F10, X-15;
-// PLAN-SAAS §3.6 point 11): one row per business Stripe bills, live (`billing.subscription.list`), in a
-// DataTable that turns into cards below 1000 px (its modules and next invoice fold first; audit 2 R-33) —
-// business, plan at its net price (and a downgrade waiting for the end of the period), its paid modules (net; «(until …)» kept on one line when cancelled), the next
-// invoice with VAT («Free from …» when cancelled) and the status. Per row only what the server computed
-// (`actions`): its leading one fixed — «View the invoice» (an unpaid one), «Keep the plan» or «Change plan»
-// (the Store with that business) —, and «Cancel plan» (CancelPlanDialog) and «View invoices» in «⋮» («View
-// invoices» a button when there is no «⋮»). The list fills the page (`fill`, Ioan 2026-10-14). Changing,
-// keeping and cancelling are web only; inside the apps a sentence says where, without a link (README §4).
-// A business handed over with its plan still on the previous owner's card (HUBS-F28) says so and leads with
-// «Keep it with my card»: the secure payment of that plan (CheckoutModal), billed from the end of the paid period.
-// Module names come from `apps.app.list` (premium, in the person's language) and plan names and Free's
-// limits from `hubs.plan.list`.
+// Billing → Subscriptions: one row per business Stripe bills, live, in a DataTable that turns into cards below
+// 1000 px. Per row only what the server computed (`actions`). Changing, keeping and cancelling are web only; inside
+// the apps a sentence says where, without a link. A business handed over with its plan still on the previous
+// owner's card says so and leads with «Keep it with my card»: the secure payment of that plan (CheckoutModal),
+// billed from the end of the paid period.
 import {
   DataTable,
   type DataTableAction,
@@ -40,17 +32,16 @@ import CheckoutModal, { type CheckoutPurchase } from './CheckoutModal.vue';
 /** A row as the table keys and searches it: by its business. */
 type Row = SubscriptionRowOut & { id: string; name: string };
 
-/** README §3b: the subscriptions' list is the widest. A list from here; its modules and next invoice fold first
- *  (audit 2 R-33: three rows were cards at 1024–1180). */
+/** The subscriptions' list is the widest: a list from 1000 px, where its modules and next invoice fold first. */
 const CARD_BREAKPOINT = 1000;
-/** What sells or cancels: web only (README §4). */
+/** What sells or cancels: web only. */
 const WEB_ONLY: ReadonlySet<SubscriptionAction> = new Set(['take_over', 'keep_plan', 'change_plan', 'cancel_plan']);
 /** What may lead a row: the server puts the one that applies first («View the invoice» with an unpaid one). */
 const LEADS: ReadonlySet<SubscriptionAction> = new Set(['view_invoice', 'take_over', 'keep_plan', 'change_plan']);
 const TONES: Readonly<Record<string, StatusPillTone>> = {
   active: 'success',
   trialing: 'info',
-  // The mockups' `st-overdue`: red, as the banner that explains it.
+  // Red, as the banner that explains it.
   past_due: 'danger',
   unpaid: 'danger',
   incomplete: 'warning',
@@ -69,7 +60,7 @@ const rows = computed<Row[]>(() =>
   (live.data.value?.rows ?? []).map((row) => ({ ...row, id: row.business.id ?? row.business.name, name: row.business.name })),
 );
 /** Loading, failed (the query, the stream, or nothing in time) or a real answer: never «All your businesses
- *  are on Free» on a failure (audit 2026-10-14, R-04). The unpaid invoices only feed «Cancel plan». */
+ *  are on Free» on a failure. The unpaid invoices only feed «Cancel plan». */
 const state = useLiveState(live, { isEmpty: (data) => data.rows.length === 0 });
 const loadError = computed(() => (state.failed.value ? text(state.error.value) || t('billing.load.reason') : undefined));
 
@@ -140,12 +131,10 @@ const offers = (row: Row, id: SubscriptionAction) => row.actions.includes(id) &&
 const hasMenu = (row: Row) => offers(row, 'cancel_plan');
 
 /**
- * README §3b, W-F7: the row's leading action is fixed and says what it does («View the invoice», «Keep the
- * plan» or «Change plan», one slot for the three: they never apply together); «Cancel plan», with its
- * confirmation, lives in «⋮» (mockups at 1440, UX-AUDIT-4 W-F1). «View invoices» goes into that «⋮» when the
- * row has one, so a row shows one button and its menu (Ioan, 2026-10-14: a clean list, as the mockups paint
- * an unpaid row); without a «⋮» (nothing to cancel, or inside the apps) it stays a button. Few and fixed, the
- * list fits wherever it is a list (from 1000 px; modules and the next invoice fold first).
+ * The row's leading action is fixed and says what it does («View the invoice», «Keep the plan» or «Change plan»,
+ * one slot for the three: they never apply together); «Cancel plan», with its confirmation, lives in «⋮». «View
+ * invoices» goes into that «⋮» when the row has one, so a row shows one button and its menu; without a «⋮»
+ * (nothing to cancel, or inside the apps) it stays a button.
  */
 const actions = computed<DataTableAction<Row>[]>(() => [
   {
@@ -192,7 +181,7 @@ const actions = computed<DataTableAction<Row>[]>(() => [
 const cancelling = shallowRef<Row | null>(null);
 const cancelOpen = shallowRef(false);
 const keeping = shallowRef<string | null>(null);
-/** «Keep it with my card»: the business and its plan, for the secure payment (HUBS-F28). */
+/** «Keep it with my card»: the business and its plan, for the secure payment. */
 const keepingWithCard = shallowRef<{ business: { id: string; name: string }; purchase: CheckoutPurchase } | null>(null);
 const takeOverOpen = shallowRef(false);
 const unpaidOf = (row: Row | null) => (row?.unpaid_invoice_id ? (unpaidLive.data.value?.rows.find((invoice) => invoice.id === row.unpaid_invoice_id) ?? null) : null);

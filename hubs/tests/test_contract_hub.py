@@ -1,5 +1,4 @@
-"""The contract SaaS ↔ Hub of a business's life, end to end against the Hub double (PLAN-SAAS §2.2, §3.1,
-§3.4; round 17 §2.11 and §2.14).
+"""The contract SaaS ↔ Hub of a business's life, end to end against the Hub double.
 
 Over HTTP on both sides: the panel's routes with a signed-in account, the SaaS's signed calls to the
 double after each COMMIT, and the double's signed ``ready`` callback to ``/internal/hubs/{id}/ready``.
@@ -45,7 +44,7 @@ def panel(client, owner, plans, hub_double, django_capture_on_commit_callbacks):
 
 
 def hub_reports_ready(client, hub_id):
-    """What hub-next does when the business's database is cloned and seeded."""
+    """What the Hub does when the business's database is cloned and seeded."""
     body, now = json.dumps({"id": str(hub_id)}).encode(), int(time.time())
     return client.post(
         f"/internal/hubs/{hub_id}/ready",
@@ -143,13 +142,14 @@ def test_every_change_reaches_the_hub_with_a_newer_version(panel, hub_double):
     assert [len(call.body["members"]) for call in snapshots] == [1, 2, 2, 1]
     assert hub_double.versions[created["id"]] == Hub.objects.get(pk=created["id"]).pushed_state_version == 4
     revoked = hub_double.calls_to("POST", "/internal/sessions/revoke")
-    # L1-A2: the role travels in the Hub's session, so changing it ends Ana's sessions there too
+    # The role travels in the Hub's session, so changing it ends Ana's sessions there too
     # (she signs in again with the new one); removing her ends them for good.
     assert [call.body for call in revoked] == [{"user_id": str(ana.pk), "hub_id": created["id"]}] * 2
 
 
 def test_an_older_snapshot_never_overwrites_a_newer_one_at_the_hub(panel, hub_double):
-    """The Hub's half of §2.2, as the double plays it: our versions only grow, so order never matters."""
+    """The Hub's half of the snapshot's contract, as the double plays it: our versions only grow, so order never
+    matters."""
     created = panel(
         "POST", "/hubs/businesses", {"name": "Bar Manolo", "country": "ES"}
     ).json()

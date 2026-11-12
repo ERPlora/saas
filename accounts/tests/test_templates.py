@@ -2,8 +2,8 @@
 launcher and every error of the sign-in. allauth runs headless only, so no sign-in page is a template.
 Templates stay only where no screen of the panel is painted: the auto-submitted form of the jump to a hub,
 which POSTs the one-time code to the hub (``hub_login_form.html``), the API reference, ReDoc's own page over the
-OpenAPI schema in place of ninja's (``api_docs.html``, ACCOUNTS-F34), and the mails allauth sends with ERPlora's
-wording (``templates/account/email`` and ``templates/socialaccount/email``), as text and as HTML (ACCOUNTS-F46)."""
+OpenAPI schema in place of ninja's (``api_docs.html``), and the mails allauth sends with ERPlora's
+wording (``templates/account/email`` and ``templates/socialaccount/email``), as text and as HTML."""
 
 import re
 from pathlib import Path
@@ -58,7 +58,7 @@ def test_the_mails_are_rendered_from_ours(name):
     assert Path(get_template(name).origin.name) == PROJECT_TEMPLATES / name
 
 
-# --- What Django still paints: our own CSS, no OutfitKit (PLAN §16.11) ---
+# --- What Django still paints: our own CSS, no OutfitKit ---
 
 #: An OutfitKit trace in rendered HTML or CSS: an ``ok-*`` tag, class, attribute or ``--ok-*`` token.
 #: Ionic's own ``ok-text`` attribute (``ion-select``) is not one of ours.

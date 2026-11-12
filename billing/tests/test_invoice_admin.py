@@ -1,12 +1,8 @@
-"""ERPlora's invoices in the Django admin: read-only, with «Send again to the platform hub» (lot L3-C).
+"""ERPlora's invoices in the Django admin: read-only, with «Send again to the platform hub».
 
-Ported from ERPlora/saas ``apps/dashboard/billing/tests/test_invoice_admin.py`` (origin/develop, 11 tests): the
-business and the fiscal answer are visible in the list, the related rows are fetched up front, the action is
-registered, and the recipient of an invoice already issued is frozen. Here every field is frozen: an invoice is
-recorded from what Stripe charged and issued by the platform hub, and a record sent to the AEAT is never
-modified (it is corrected with a new one, a credit note). Dropped with their reason: the AEAT environment
-column and the record's CSV (both are the platform hub's now) and adding a tax id by hand to an unreported
-invoice (the payer edits their billing details; the next invoice carries them).
+The business and the fiscal answer are visible in the list, the related rows are fetched up front and the action
+is registered. Every field is frozen: an invoice is recorded from what Stripe charged and issued by the platform
+hub, and a record sent to the AEAT is never modified (it is corrected with a new one, a credit note).
 """
 
 from datetime import date
@@ -152,7 +148,7 @@ class TestSendAgain:
 
 
 class TestWhoMaySendAgain:
-    """Review of L3-C: posting again and mailing again are writes: they need ``billing.change_invoice``; a staff
+    """Posting again and mailing again are writes: they need ``billing.change_invoice``; a staff
     member who only reads invoices sees no action."""
 
     def reader(self):
@@ -213,7 +209,7 @@ class TestSendTheMailAgain:
 
 
 class TestThePdfForTheStaff:
-    """BILLING-G01/G12 (the old ``staff puede descargar cualquier factura``): from the page of any invoice in the
+    """From the page of any invoice in the
     admin, the staff downloads its PDF, the platform hub's, asked when it is downloaded (as the account's
     «Download PDF»). Reading it is enough: it changes nothing."""
 
@@ -293,7 +289,7 @@ class TestThePdfForTheStaff:
 
 
 class TestDownloadThePdfs:
-    """BILLING-F27 (PLAN-SAAS §1.1, admin of ``Invoice``: «Descargar los PDF» in a ZIP). The staff selects invoices and
+    """The PDFs of the selected invoices in a ZIP. The staff selects invoices and
     downloads their PDFs at once, each asked of the platform hub as the single download is. One without its PDF (still
     being issued, or the Hub does not return it) never fails silently: the ZIP carries the others plus a note naming it,
     and the admin says it; with no PDF at all there is no empty ZIP, only the message."""

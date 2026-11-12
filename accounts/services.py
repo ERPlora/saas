@@ -1,11 +1,10 @@
-"""Writes of accounts: the one-time code of the jump to a hub (PLAN-SAAS §2.1, §3.1 steps 5-6) and the
-commands of the Account page (plan 2026-10-13, L3-A: preferences, profile, photo, email, sessions and API keys).
+"""Writes of accounts: the one-time code of the jump to a hub and the commands of the Account page (preferences,
+profile, photo, email, sessions and API keys).
 
-Ported from ERPlora/saas ``AuthExchangeCode.issue``/``redeem`` (``apps/auth/users/models.py``),
-with the code stored as its SHA-256, bound to one hub, and spent by a single conditional
+The jump code is stored as its SHA-256, bound to one hub, and spent by a single conditional
 ``UPDATE … WHERE used_at IS NULL`` instead of ``select_for_update``. Two audiences: ``hub-session``
 (a member enters their hub) and ``hub-admin`` (the platform's staff open a hub in the Hub's Django
-admin at ``hubs.erplora.com``, ronda 13, PLAN §18).
+admin at ``hubs.erplora.com``).
 """
 
 import hashlib
@@ -112,7 +111,7 @@ SUPPORT_GROUP = "support"
 #: The role a ``hub-admin`` code carries to the Hub's admin: the platform's, never a ``hub_*`` one.
 HUB_ADMIN_ROLE_ADMIN = "platform_admin"
 HUB_ADMIN_ROLE_SUPPORT = "platform_support"
-#: First label of the platform host ``hubs.erplora.com`` (ronda 13, PLAN §18): never a hub, so no
+#: First label of the platform host ``hubs.erplora.com``: never a hub, so no
 #: code of either audience names it. ``live.slugs`` reserves it as well; it is refused here too so
 #: the SaaS never mints a code for its own host, whatever the shared list says.
 PLATFORM_HOST_SLUG = "hubs"
@@ -130,7 +129,7 @@ class HubIdentity:
 
 
 def is_hub_slug(hub_slug) -> bool:
-    """Whether ``hub_slug`` follows the rule shared with hub-next (``live.slugs``) and is no platform host."""
+    """Whether ``hub_slug`` follows the rule shared with the Hub (``live.slugs``) and is no platform host."""
     try:
         validate_hub_slug(hub_slug)
     except ValueError:
@@ -183,7 +182,7 @@ def issue_code(
 
     ``second_factor`` is whether the caller's session passed the second factor
     (``mfa.mfa_completed(request)``); it only counts with ``ACCOUNTS_MFA_ENABLED`` on. Then
-    ``hub-admin`` always needs it (PLAN-SAAS §2.1, PLAN §17-§18), and ``hub-session`` needs it from an
+    ``hub-admin`` always needs it, and ``hub-session`` needs it from an
     account that turned on an authenticator app; without it, ``SecondFactorRequired``. The access
     is checked first: a stranger is refused as one, whatever their second factor.
     """
@@ -243,7 +242,7 @@ def redeem_code(code: str, hub_slug: str, *, audience: str = AuthExchangeCode.HU
     )
 
 
-# --- The pass back from a business to erplora.com (accounts/hub_pass.py, ACCOUNTS-F29) ------------------------------
+# --- The pass back from a business to erplora.com (accounts/hub_pass.py) ------------------------------
 
 #: The audience of the row that spends a pass: never a jump's, so ``redeem_code`` finds no pass.
 HUB_PASS_AUDIENCE = "hub-pass"
@@ -252,7 +251,7 @@ HUB_PASS_AUDIENCE = "hub-pass"
 def hub_pass_member(user_id: str, hub_slug: str):
     """``(account, id of the business)`` if the account ``user_id`` may follow a pass of ``hub_slug``; else ``None``.
 
-    Only an active account, never one of the platform's staff (a pass carries no second factor, PLAN §17-§18), that is
+    Only an active account, never one of the platform's staff (a pass carries no second factor), that is
     a member of that business as ``hubs.business.list`` sees it (an accepted invitation; called by its name: accounts
     never imports hubs)."""
     user = get_user_model().objects.filter(pk=user_id).first()
@@ -296,7 +295,7 @@ def spend_hub_pass(user, hub_slug: str, nonce: str, lifetime: timedelta) -> bool
 
 
 def release_unproven_account(user, *, reason: str) -> None:
-    """Strip every credential of an account whose holder never proved its email (saas#2541).
+    """Strip every credential of an account whose holder never proved its email.
 
     The address is then reserved by nobody: only whoever opens that mailbox gets in, through «Forgot your
     password?» (or Google, which proves the address), like any invited person. allauth's own defence when
@@ -307,8 +306,7 @@ def release_unproven_account(user, *, reason: str) -> None:
     Removes the password (which also ends every browser session of the SaaS: Django checks the session
     against the password hash), every second factor and every linked social account. The account, its
     addresses and what hangs from it stay. Its sessions in the hubs are the caller's to end (``hubs``
-    queues a ``SessionRevocation`` of every business). Ported from ERPlora/saas
-    ``apps/auth/users/services.py``; without its refresh tokens, which the SaaS no longer has.
+    queues a ``SessionRevocation`` of every business).
     """
     from allauth.mfa.models import Authenticator
     from allauth.socialaccount.models import SocialAccount
@@ -323,7 +321,7 @@ def release_unproven_account(user, *, reason: str) -> None:
 
 def accept_legal_texts(sender, request=None, user=None, **kwargs) -> None:
     """allauth's ``user_signed_up`` and Django's ``user_logged_in``: the account accepts today's terms and privacy
-    policy (ACCOUNTS-G119). Creating the account and signing in happen under «By continuing you agree to our Terms &
+    policy. Creating the account and signing in happen under «By continuing you agree to our Terms &
     Privacy Policy» (the launcher, Google's button too), so each records when and which versions
     (``models.TERMS_VERSION``, ``PRIVACY_VERSION``) unless the account already accepted those: the first date stays.
     Not a session opened by a pass from a business (``accounts.hub_pass``): nobody saw that line on the way."""
@@ -340,7 +338,7 @@ def accept_legal_texts(sender, request=None, user=None, **kwargs) -> None:
 
 def prove_mailbox_by_reset(sender, request=None, user=None, **kwargs) -> None:
     """allauth's ``password_reset`` signal: a password set from the key mailed by «Forgot your password?»
-    proves the mailbox, so the account's address becomes verified and primary (L1-A2).
+    proves the mailbox, so the account's address becomes verified and primary.
 
     How an account made by an invitation is claimed (its mail links to the reset): allauth's reset leaves
     its address on record unverified, and accepting needs it proved (``queries.email_is_proven``). Only
@@ -413,7 +411,7 @@ def create_platform_user(email: str, role: str, password: str | None = None):
         elif on_a_business(user):
             raise PlatformRoleRefused(f"{email} is a customer of a hub")
         elif user.is_store_review_account:
-            # Its sign-in skips the mailed code (ACCOUNTS-F49): never a way into the admin.
+            # Its sign-in skips the mailed code: never a way into the admin.
             raise PlatformRoleRefused(f"{email} is a store review account")
         if password is not None:
             user.set_password(password)
@@ -507,7 +505,7 @@ def preferences_update(ctx: OperationContext, data: PreferencesUpdateIn) -> dict
     ),
 )
 def profile_update(ctx: OperationContext, data: ProfileUpdateIn) -> dict:
-    """The names, trimmed: the first one is required (audit 2 S-10), an empty last one clears it. The sign-in email
+    """The names, trimmed: the first one is required, an empty last one clears it. The sign-in email
     has its own door, ``accounts.email.change``."""
     user = queries.account_of(ctx)
     user.first_name = data.first_name.strip()
@@ -578,7 +576,7 @@ def require_recent_authentication(ctx: OperationContext) -> None:
 
 class HoldsBusinesses(Conflict):
     """409 that names the businesses holding the account (``businesses: [{id, name}]``), so the panel links each
-    one: ``accounts.owns_businesses`` (it owns them, saas#2567) or ``accounts.pays_businesses`` (it pays for them
+    one: ``accounts.owns_businesses`` (it owns them) or ``accounts.pays_businesses`` (it pays for them
     after a hand-over: deleting it would leave Stripe charging a card nobody can stop)."""
 
     def __init__(self, message: str, *, code: str, businesses: list[dict]) -> None:
@@ -599,7 +597,7 @@ def businesses_holding(ctx: OperationContext) -> tuple[list[dict], list[dict]]:
     """``(owned, paid)``: the businesses that are not deleted which the caller owns, and those it pays for without
     owning them, as ``[{id, name}]``, from ``hubs.business.list``.
 
-    A business has one owner (PLAN-SAAS §3.6 point 8), and its row says what that owner may do: ``can.delete`` is
+    A business has one owner, and its row says what that owner may do: ``can.delete`` is
     «the owner, not deleted». ``is_payer`` says the account still pays for it: it owns the business's payer, or the
     plan is still charged to its card after a hand-over (``hubs.queries.still_pays``); and a payer cannot be taken
     out of the business (``hubs.member_pays``), so the list sees it. A deleted business in its 90 days of recovery
@@ -626,7 +624,7 @@ def forget_in_outbox(user) -> int:
     """GDPR: the outbox rows whose actor is ``user`` keep its id instead of its email.
 
     ``live.outbox.record_event`` writes ``str(ctx.actor)``, an account's email, as the actor. The proper fix is
-    the actor's id in ``live`` itself (the pending list of accounts/README.md); until then, a deleted account's events
+    the actor's id in ``live`` itself; until then, a deleted account's events
     keep no trace of its address. Called in the deletion's transaction, after its own event is recorded.
     """
     from live.models import OutboxEvent
@@ -636,14 +634,14 @@ def forget_in_outbox(user) -> int:
 
 
 def forget_deleted_actor(sender, instance, **kwargs) -> None:
-    """``post_delete`` of an account (ACCOUNTS-F36): the audit entries it authored stop pointing at it and keep its
+    """``post_delete`` of an account: the audit entries it authored stop pointing at it and keep its
     email (``actor_email``) until ``cleanup_old_logs`` prunes them.
 
     An entry's author is ``SET_NULL``, but only for the entries there when the deletion was collected: what goes with
     the account, and the account itself, is logged afterwards while the request may still act as it (the admin's
     «Delete» of one's own account), and its commit would fail. Connected after auditlog's own receiver, so the
     account's own entry is covered too. The audit trail is a security record kept 90 days, not erased with the
-    account (the old SaaS's policy; the outbox, kept for good, keeps the id instead, ``forget_in_outbox``)."""
+    account (the outbox, kept for good, keeps the id instead, ``forget_in_outbox``)."""
     from auditlog.models import LogEntry
 
     LogEntry.objects.filter(actor_id=instance.pk).update(actor=None)
@@ -699,7 +697,7 @@ def profile_delete(ctx: OperationContext, data: ProfileDeleteIn) -> dict:
 
 
 def _erase_account(ctx: OperationContext, user, *, request=None) -> None:
-    """What deleting an account does, whoever deletes it (ACCOUNTS-F27, F35): every business is asked to forget it and
+    """What deleting an account does, whoever deletes it: every business is asked to forget it and
     to end its sessions (``signals``), its event goes to its channel, the outbox keeps its id instead of its email, every
     session of the SaaS ends (``request``'s too, signed out) and the account goes with what hangs from it. ERPlora's
     invoices stay: their link to the account is ``SET_NULL`` and they keep their recipient as issued."""
@@ -713,9 +711,9 @@ def _erase_account(ctx: OperationContext, user, *, request=None) -> None:
     user.delete()
 
 
-# --- GDPR: the accounts unused for two years go (ACCOUNTS-F35) ---------------------------------------------------
+# --- GDPR: the accounts unused for two years go ---------------------------------------------------
 
-#: Days without signing in on erplora.com that make an account unused (the old SaaS's two years).
+#: Days without signing in on erplora.com that make an account unused (two years).
 INACTIVE_DAYS = 730
 #: ``accounts.profile.erase_inactive``: a system context only (no role grants it), on the account's channel.
 ERASE_INACTIVE = "accounts.erase_inactive"
@@ -773,7 +771,7 @@ def on_a_business(user) -> bool:
 
 def belongs_to_a_business(user) -> bool:
     """Whether ``user`` is in a business that is not deleted (owner, payer or member), from ``hubs.business.list``
-    (called by its name: accounts never imports hubs). A business in its 90 days of recovery holds nobody (F27)."""
+    (called by its name: accounts never imports hubs). A business in its 90 days of recovery holds nobody."""
     business_list = operations.get(BUSINESS_LIST)
     as_account = queries.as_account(user)
     offset = 0
@@ -822,9 +820,9 @@ def erase_inactive_account(user_id, *, inactive_days: int = INACTIVE_DAYS, dry_r
     ).outcome
 
 
-# --- GDPR: the audit log keeps 90 days (ACCOUNTS-F37) ---------------------------------------------------------
+# --- GDPR: the audit log keeps 90 days ---------------------------------------------------------
 
-#: Days an audit entry is kept (the old SaaS's 90; GDPR art. 5.1.e). ``cleanup_old_logs --retention-days`` changes it.
+#: Days an audit entry is kept (GDPR art. 5.1.e). ``cleanup_old_logs --retention-days`` changes it.
 AUDIT_LOG_RETENTION_DAYS = 90
 #: Audit entries deleted per transaction: a long run never holds one big transaction.
 AUDIT_LOG_BATCH = 1000
@@ -862,7 +860,7 @@ def forget_the_retired_audit_type() -> None:
             retired.delete()
 
 
-# --- What a sign-in leaves behind (ACCOUNTS-G71; ``manage.py purge_expired_sessions``, daily) ---------------------
+# --- What a sign-in leaves behind (``manage.py purge_expired_sessions``, daily) ---------------------
 
 
 def expired_sign_in_leftovers(now) -> dict[str, QuerySet]:
@@ -890,7 +888,7 @@ def count_expired_sign_in_leftovers(now) -> dict[str, int]:
 
 def purge_expired_sign_in_leftovers(now) -> dict[str, int]:
     """Delete them, the rows of «Active sessions» first (they name the sessions), each kind in its own transaction;
-    how many went of each, as the database counts them. Outside the audit log (ACCOUNTS-F36): it says who changed an
+    how many went of each, as the database counts them. Outside the audit log: it says who changed an
     account, and a row that ended by itself is no change; one entry per row would bury the real ones."""
     from auditlog.context import disable_auditlog
 
@@ -987,7 +985,7 @@ def _spent(request, rate: str, group: str, key: str) -> bool:
 )
 def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:
     """Mail a 6-digit code to the new address; the account switches to it once the code is typed in this same
-    session (``accounts.email.verify``), and until then it keeps answering to the old one (saas#2536). The change
+    session (``accounts.email.verify``), and until then it keeps answering to the old one. The change
     waits in ``EmailChangeRequest`` (bound to this session, the code kept as its hash). The account's own address,
     if it never proved it, is proven the same way.
 
@@ -1204,9 +1202,9 @@ def photo_remove(ctx: OperationContext, data: PhotoRemoveIn) -> dict:
 def record_sign_in(sender, request, user, **kwargs) -> None:
     """allauth's ``user_logged_in``, in place of ``allauth.usersessions``' own receiver: the account's sessions that
     no longer sign it in go (``queries.live_sessions``: gone, expired, or opened with an old password) and this one
-    is recorded. allauth's ``purge_and_list`` asked about each session on its own, about three queries for every
-    open one on every sign-in: one account with 1680 sessions answered the mailed code after 30 and 37 s
-    (FIX-HUB-E2E-LOGIN-FLAKY-UNDER-LOAD). Here it is two queries and one delete, however many there are.
+    is recorded. allauth's ``purge_and_list`` asks about each session on its own, about three queries for every
+    open one on every sign-in, so an account with many sessions waited tens of seconds for the mailed code. Here it
+    is two queries and one delete, however many there are.
 
     Only the sessions recorded before the live ones are told apart may go: one recorded meanwhile by another sign-in
     of the account is live (its session row comes first) but not among them yet, and it stays."""
@@ -1232,7 +1230,7 @@ def track_session(request) -> None:
 
 def end_sessions(sessions: list, *, user=None) -> None:
     """End ``sessions`` of the SaaS and ask the businesses of each account (and of ``user``, even with no
-    session to end) to end theirs (``signals.sessions_ended``, PLAN-SAAS §2.1)."""
+    session to end) to end theirs (``signals.sessions_ended``)."""
     accounts = [user.pk] if user is not None else []
     for session in sessions:
         session.end()
@@ -1313,7 +1311,7 @@ def session_close_others(ctx: OperationContext, data: SessionCloseOthersIn) -> d
     return {"closed": closed}
 
 
-#: The admin's «Close sessions» (ACCOUNTS-F19): a system context only (no role grants it), on the owner's channel.
+#: The admin's «Close sessions»: a system context only (no role grants it), on the owner's channel.
 CLOSE_ANY_SESSIONS = "accounts.close_any_sessions"
 
 
@@ -1326,10 +1324,9 @@ CLOSE_ANY_SESSIONS = "accounts.close_any_sessions"
     ai=INTERNAL,  # staff
 )
 def session_close_any(ctx: OperationContext, data: SessionCloseAnyIn) -> dict:
-    """End sessions of any account from the admin, as its owner would: the picked ones (``ids``) or, without them,
-    every one and the trust of its browsers (an incident: ERPlora/saas ``revoke_user_sessions``, which dropped the
-    trust too). Its businesses are asked to end theirs; the event goes to the owner's channel (the context's scope),
-    so its live list refreshes. Called only by ``close_sessions``; no route."""
+    """End sessions of any account from the admin, as its owner would: the picked ones (``ids``) or, without them, every
+    one and the trust of its browsers (an incident). Its businesses are asked to end theirs; the event goes to the
+    owner's channel (the context's scope), so its live list refreshes. Called only by ``close_sessions``; no route."""
     from allauth.usersessions.models import UserSession
 
     if ctx.scope.key != str(data.user_id):
@@ -1349,7 +1346,7 @@ def session_close_any(ctx: OperationContext, data: SessionCloseAnyIn) -> dict:
 
 
 def close_sessions(*, by, users=(), sessions=()) -> int:
-    """The admin's «Close sessions» (ACCOUNTS-F19): every session of the accounts ``users`` (ids) and the trust of
+    """The admin's «Close sessions»: every session of the accounts ``users`` (ids) and the trust of
     their browsers, or the picked ``sessions`` (``UserSession`` rows), each through its owner's channel; how many
     ended."""
     from live.context import Scope, system_context
@@ -1395,17 +1392,17 @@ def announce_ended_sessions(user_id) -> None:
     session_announce_ended(system_context(Scope("user", str(user_id))), SessionsEndedIn())
 
 
-# --- Account → Security → Two-factor authentication: the trusted browsers (ACCOUNTS-F17) ---------------------
+# --- Account → Security → Two-factor authentication: the trusted browsers ---------------------
 
 
 def forget_trusted_browsers(user) -> dict[int, int]:
-    """End the trust of every browser of ``user`` (ACCOUNTS-F05): their next sign-in asks for the app's code again.
+    """End the trust of every browser of ``user``: their next sign-in asks for the app's code again.
 
     allauth keeps no record of the browsers an account trusted: each one carries a signed fingerprint of the
     account's password and of every authenticator's id, type and seed (``allauth.mfa.internal.flows.trust``), so
     the only way to end them is to move one of those. The authenticators get new ids with the same type, data and
     dates: the app keeps its secret and the recovery codes written down keep working, and nobody sets anything up
-    again (ported from ERPlora/saas ``_invalidate_mfa_trust``). Returns the new id of each old one.
+    again. Returns the new id of each old one.
     """
     from allauth.mfa.models import Authenticator
 
@@ -1464,7 +1461,7 @@ def _follow_new_authenticator_ids(request, renamed: dict[int, int]) -> None:
     ),
 )
 def browser_trust_revoke(ctx: OperationContext, data: BrowserTrustRevokeIn) -> dict:
-    """«Stop trusting all browsers» (Security → Two-factor authentication, ACCOUNTS-F17): as Google's and Microsoft's
+    """«Stop trusting all browsers» (Security → Two-factor authentication): as Google's and Microsoft's
     «Revoke all trusted devices». This browser too: the answer says it is no longer trusted."""
     user = queries.account_of(ctx)
     renamed = forget_trusted_browsers(user)
@@ -1579,7 +1576,7 @@ def record_api_key_use(key: ApiKey, now) -> None:
 
 #: The admin's revocation: a system context only (no role grants it), on the owner's channel.
 REVOKE_ANY_KEY = "accounts.revoke_any_key"
-#: The admin's «Add API key» for a team account (ACCOUNTS-F31): a system context only, on the owner's channel.
+#: The admin's «Add API key» for a team account: a system context only, on the owner's channel.
 ISSUE_ANY_KEY = "accounts.issue_any_key"
 
 
@@ -1592,10 +1589,9 @@ ISSUE_ANY_KEY = "accounts.issue_any_key"
     ai=INTERNAL,  # staff
 )
 def apikey_issue_any(ctx: OperationContext, data: ApiKeyIssueIn) -> dict:
-    """A key for a team account, issued by a superuser from the admin (PLAN-SAAS §1.1, ronda 2026-10-15b; the old
-    SaaS's ``POST /api/v1/admin/api-keys/``). Only an active staff account: a customer's keys are the customer's own
-    (the old ``user_not_staff``). The event goes to the owner's channel, so its live list refreshes, and the owner is
-    told by mail. Called only by ``issue_api_key``; no route."""
+    """A key for a team account, issued by a superuser from the admin. Only an active staff account: a customer's keys
+    are the customer's own. The event goes to the owner's channel, so its live list refreshes, and the owner is told
+    by mail. Called only by ``issue_api_key``; no route."""
     if ctx.scope.key != str(data.user_id):
         raise LiveMisuse(f"accounts.apikey.issue_any runs on the key owner's channel, not {ctx.scope.key!r}.")
     user = get_user_model().objects.filter(pk=data.user_id, is_active=True, is_staff=True).first()
@@ -1655,7 +1651,7 @@ def revoke_api_keys(keys, *, by) -> int:
 
 def password_changed_ends_sessions(sender, request=None, user=None, **kwargs) -> None:
     """allauth's ``password_changed``, ``password_set`` and ``password_reset``: a new password ends the account's
-    other sessions here (Django), and in every business too (PLAN-SAAS §2.1, ``signals.sessions_ended``); the account's
+    other sessions here (Django), and in every business too (``signals.sessions_ended``); the account's
     tabs open with them leave for the sign-in by themselves (``announce_ended_sessions``)."""
     if user is None:
         return
@@ -1663,7 +1659,7 @@ def password_changed_ends_sessions(sender, request=None, user=None, **kwargs) ->
     announce_ended_sessions(user.pk)
 
 
-# --- «Report a problem» (ACCOUNTS-F38) ------------------------------------------------------------
+# --- «Report a problem» ------------------------------------------------------------
 
 #: Characters of the browser a report keeps: a user agent is one line, rarely over 300.
 REPORT_BROWSER_MAX = 300
@@ -1688,7 +1684,7 @@ REPORT_FROM_HUB = "Hub"
     ai=INTERNAL,  # dialog
 )
 def support_report(ctx: OperationContext, data: SupportReportIn) -> dict:
-    """«Report a problem» (ACCOUNTS-F38; PLAN-SAAS §1.1): mail the support mailbox what the person wrote, with the
+    """«Report a problem»: mail the support mailbox what the person wrote, with the
     account, its businesses, the page it came from and its browser, «Reply-To» the account (:func:`send_support_report`)."""
     browser = ctx.request.headers.get("User-Agent", "") if ctx.request is not None else ""
     return send_support_report(queries.account_of(ctx), data, browser=browser, source=REPORT_FROM_PANEL)

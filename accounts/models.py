@@ -1,12 +1,10 @@
-"""Accounts of saas-next: who signs in, which hubs they belong to, the one-time jump code and the
-account's own settings (the Account page: preferences, photo and API keys; plan 2026-10-13, L3-A).
+"""Accounts of the SaaS: who signs in, the one-time jump code and the account's own settings (the Account page:
+preferences, photo and API keys).
 
-``User`` is ported from ERPlora/saas ``apps/auth/users/models.py`` (email as the identifier),
-with a UUIDv7 primary key (PLAN-SAAS §6) and the account's language. Who is on which business, and with which
-role, is ``hubs.HubMember``'s. ``AuthExchangeCode`` is ported from the same file, stored hashed and bound to one hub
-(PLAN-SAAS §2.1, §3.1 step 5). A hub slug follows the rule shared with hub-next
-(``live.slugs``: one DNS label, never a reserved name such as ``hub`` or ``www``) and is never
-``hubs``, the platform host of the Hub's admin (ronda 13, PLAN §18).
+``User`` signs in with its email, has a UUIDv7 primary key and keeps the account's language. Who is on which business,
+and with which role, is ``hubs.HubMember``'s. ``AuthExchangeCode`` is stored hashed and bound to one hub. A hub slug
+follows the rule shared with the Hub (``live.slugs``: one DNS label, never a reserved name such as ``hub`` or ``www``)
+and is never ``hubs``, the platform host of the Hub's admin.
 """
 
 import base64
@@ -77,11 +75,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(_("staff status"), default=False)
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
     # What the account accepted by creating it or signing in under «By continuing you agree to our Terms &
-    # Privacy Policy» (ACCOUNTS-G119): when, and the version of each text. Empty until its first sign-in.
+    # Privacy Policy»: when, and the version of each text. Empty until its first sign-in.
     terms_accepted_at = models.DateTimeField(_("terms accepted at"), null=True, blank=True)
     terms_version = models.DateField(_("terms version"), null=True, blank=True)
     privacy_version = models.DateField(_("privacy policy version"), null=True, blank=True)
-    # The account Google Play and the App Store review the app with (ACCOUNTS-F49): its password sign-in skips the
+    # The account Google Play and the App Store review the app with: its password sign-in skips the
     # mailed code (``AccountAdapter.is_login_by_code_required``), nothing else. Only a superuser sets it, in the admin;
     # ``db_default`` keeps a row the previous code writes during a deploy valid.
     is_store_review_account = models.BooleanField(
@@ -109,13 +107,13 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def clean(self):
         super().clean()
-        # The mark drops a factor of the sign-in: never on an account that enters the admin (ACCOUNTS-F49). A
+        # The mark drops a factor of the sign-in: never on an account that enters the admin. A
         # non-field error, so a form that shows either field read only still says it.
         if self.is_store_review_account and (self.is_staff or self.is_superuser):
             raise ValidationError(
                 _("A staff account cannot be a store review account."), code="staff_store_review_account"
             )
-        # ERPlora's staff and the customers never share an account (W11b): raising either flag of an account on a
+        # ERPlora's staff and the customers never share an account: raising either flag of an account on a
         # business is refused, here (the admin's form validates the model) as in ``create_platform_user``. Only
         # raising: one that is both from before (``hubs.W002``) still saves its other changes, and lowering a flag.
         if self._raises_a_staff_flag():
@@ -153,7 +151,7 @@ class AuthExchangeCode(models.Model):
     Only its SHA-256 travels to the database: a leaked row cannot be replayed. Bound to one
     user, one audience and one hub; ``used_at`` is stamped once, atomically, on redemption.
     ``hub-session`` opens a member's session in ``<slug>.erplora.com``; ``hub-admin`` opens a staff
-    session in the Hub's admin at ``hubs.erplora.com``, on that hub (ronda 13, PLAN §18).
+    session in the Hub's admin at ``hubs.erplora.com``, on that hub.
     """
 
     HUB_SESSION_AUDIENCE = "hub-session"
@@ -188,11 +186,10 @@ class AuthExchangeCode(models.Model):
 class UserPreferences(models.Model):
     """What the account chose in Account → Preferences: the theme mode and whether it gets business notices.
 
-    Ported from ERPlora/saas ``apps/dashboard/settings`` without what the single panel dropped (palette,
-    currency, menu order, developer mode; plan 2026-10-13 §3, round 17). The language is ``User.language``,
+    The language is ``User.language``,
     which the mails and the jump to a hub already read. ``hub_alerts`` governs the mail that a business is
     ready (``hubs.emails.send_ready``); security, invoices and payments, a deleted business and what asks the
-    person to act have no switch (ACCOUNTS-F23). «ERPlora news» (``marketing_emails``) governed no mail: its
+    person to act have no switch. «ERPlora news» (``marketing_emails``) governed no mail: its
     column waits for the contract step with a database default (migration 0009). No row means the defaults.
     """
 
@@ -248,7 +245,7 @@ class ProfilePhoto(models.Model):
 
 
 #: Every account key starts so: the environment is written in the key (Stripe's ``sk_live_``), and ``erps``
-#: tells it apart from a hub's ``erpk_live_`` (hub-next; plan 2026-10-13 §7 point 12, decided in L3-A).
+#: tells it apart from a hub's ``erpk_live_``.
 API_KEY_PREFIX = "erps_live_"
 API_KEY_SECRET_LENGTH = 48
 #: The first characters of the secret, kept in clear and indexed: how a key is found before its hash is
@@ -279,8 +276,8 @@ def validate_scopes(scopes) -> list[str]:
 
 
 class ApiKey(models.Model):
-    """A key that makes a request act as its account, bounded by its scopes (ported from ERPlora/saas
-    ``apps/auth/apikeys``, ADR-0467: a key of a person; the hub keys are hub-next's, PLAN-SAAS §2.4).
+    """A key that makes a request act as its account, bounded by its scopes: a key of a person (a hub's keys are
+    the Hub's own).
 
     The table keeps the SHA-256 of the key and nothing else: its owner sees it once, when it is created.
     SHA-256 suffices for 48 random base62 characters (~285 bits); a slow hash would only slow every call.

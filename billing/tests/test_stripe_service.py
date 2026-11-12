@@ -1,8 +1,5 @@
 """The one door to Stripe (``billing.stripe_service``): keys, errors, plain dicts and the tax-rate mirror.
 
-Ported from ERPlora/saas ``hubs/subscriptions/services/stripe.py`` (``StripeService``) and
-``fiscal/services/stripe_tax_rates.py`` (the Stripe half; origin/develop), with what
-``hubs/main/tests/test_stripe_service.py`` and ``test_webhooks_sdk15_compat.py`` pinned about the SDK:
 ``StripeObject`` has no ``.get()`` and ``items`` collides with ``dict.items()``, so the gateway hands
 billing plain dicts and nothing else reads an SDK object. Every call goes through ``client()``, which the
 tests replace (``stripe_double``): no test reaches Stripe.
@@ -13,7 +10,7 @@ tests replace (``stripe_double``): no test reaches Stripe.
   nothing happened) and ``StripeRefused`` (a declined card, a missing object, a misconfiguration).
 - The tax rates are OURS (``billing.TaxRule``); Stripe only charges them as ``TaxRate`` objects. The mirror
   reuses an exact, exclusive one, creates it when missing, remembers it 24 h, and never creates blind: a
-  failed listing fills the account with duplicate 21 % (saas#1968).
+  failed listing fills the account with duplicate 21 %.
 """
 
 from decimal import Decimal
@@ -73,7 +70,7 @@ def test_no_secret_key_is_not_reported_as_a_mode_mismatch(settings, caplog, mode
 
 
 def test_a_live_secret_key_is_not_used(settings):
-    """PLAN-SAAS §4: live money only through a RESTRICTED key (``rk_live_``), never the account's secret."""
+    """Live money only through a RESTRICTED key (``rk_live_``), never the account's secret."""
     from billing.stripe_keys import StripeKeyMode
 
     settings.STRIPE_SECRET_KEY = "sk_live_51abc"
@@ -101,7 +98,7 @@ def test_test_mode_refuses_live_keys_even_with_the_prod_label(settings):
 
 @pytest.mark.parametrize("key", ["sk_test_51abc", "rk_test_51abc"])
 def test_live_mode_refuses_test_keys(settings, key):
-    """BILLING-F30: live mode refuses test cards; explicitly switching to test permits them."""
+    """Live mode refuses test cards; explicitly switching to test permits them."""
     from billing.stripe_keys import StripeKeyMode
 
     settings.STRIPE_EXPECTED_MODE = "live"
@@ -116,7 +113,7 @@ def test_live_mode_refuses_test_keys(settings, key):
 
 
 def test_the_items_of_a_long_subscription_are_all_read(stripe_double):
-    """Stripe embeds 10 items in a subscription; the rest are read page by page (review of L2-B)."""
+    """Stripe embeds 10 items in a subscription; the rest are read page by page."""
     from billing.tests.stripe_double import item
 
     first = [item(f"si_{n}", f"price_{n}") for n in range(10)]
@@ -356,7 +353,7 @@ def test_the_open_invoices_of_a_subscription(stripe_double):
 
 
 def test_a_customer_is_deleted_by_its_id(stripe_double):
-    """A departed payer (ACCOUNTS-F27): Stripe removes the customer and its payment methods; its invoices stay."""
+    """A departed payer: Stripe removes the customer and its payment methods; its invoices stay."""
     stripe_double.answer("customers.delete", {"id": "cus_1", "object": "customer", "deleted": True})
 
     assert stripe_service.delete_customer("cus_1")["deleted"] is True

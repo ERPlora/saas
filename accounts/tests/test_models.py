@@ -39,7 +39,7 @@ class TestUser:
         assert user.is_active and not user.is_staff
 
     def test_the_whole_email_is_kept_in_lower_case_also_before_the_at(self):
-        # ACCOUNTS-F13: Django's normalize_email only lowers the domain; one address is one account.
+        # Django's normalize_email only lowers the domain; one address is one account.
         user = get_user_model().objects.create_user(email="Ana.Lopez@Example.COM", password="s3cret-pass")
 
         assert user.email == "ana.lopez@example.com"
@@ -72,7 +72,7 @@ class TestUser:
 
 
 class TestStoreReviewAccount:
-    """ACCOUNTS-F49: the account the app stores review with signs in with its password, without the mailed code.
+    """The account the app stores review with signs in with its password, without the mailed code.
     Only the staff mark it, and never on an account of the staff."""
 
     def test_no_account_is_one_unless_marked(self, ana):
@@ -118,7 +118,7 @@ class TestStoreReviewAccount:
 
 
 class TestTheHubSlugRule:
-    """The shared rule of live.slugs (one DNS label, never a reserved name; Ioan, 2026-10-13) on the code of a jump. The
+    """The shared rule of live.slugs (one DNS label, never a reserved name) on the code of a jump. The
     tests run with the development minimum (1): the demo hubs are `a` and `b`."""
 
     @staticmethod
@@ -167,7 +167,7 @@ def test_the_hub_slug_of_a_code_uses_the_shared_validator():
 
 
 class TestUserPreferences:
-    """Account → Preferences (plan 2026-10-13 §3): the theme mode and the mails; the language is the
+    """Account → Preferences: the theme mode and the mails; the language is the
     account's own column (``User.language``), which the mails and the jump to a hub already read."""
 
     def test_defaults_follow_the_system_and_send_business_notices(self, ana):
@@ -177,7 +177,7 @@ class TestUserPreferences:
         assert preferences.pk.version == 7
 
     def test_no_switch_for_mails_erplora_never_sends(self):
-        """ACCOUNTS-F23: «ERPlora news» governed no mail. Its column stays until the contract step (accounts 0009
+        """«ERPlora news» governed no mail. Its column stays until the contract step (accounts 0009
         gives it a database default, so a new row is written without it), never read again."""
         assert "marketing_emails" not in {field.name for field in UserPreferences._meta.get_fields()}
 
@@ -200,9 +200,8 @@ class TestUserPreferences:
 
 
 class TestApiKey:
-    """An account's API key (ported from ERPlora/saas ``apps/auth/apikeys/models.py``): ``erps_live_`` and
-    48 base62 characters, shown once and kept as its SHA-256 (plan 2026-10-13 §7 point 12: ``erps_live``
-    tells the account's keys apart from a hub's ``erpk_live``)."""
+    """An account's API key: ``erps_live_`` and 48 base62 characters, shown once and kept as its SHA-256
+    (``erps_live`` tells the account's keys apart from a hub's ``erpk_live``)."""
 
     def test_a_new_secret_carries_the_prefix_and_only_its_hash_is_kept(self):
         secret, prefix, key_hash = ApiKey.new_secret()
@@ -229,7 +228,7 @@ class TestApiKey:
         [
             "",
             "erps_live_",
-            "erpk_live_" + "a" * 48,  # a hub's key (hub-next), not the account's
+            "erpk_live_" + "a" * 48,  # a hub's key, not the account's
             "erps_pre_" + "a" * 48,
             "erps_live_" + "a" * 47,
             "erps_live_" + "a" * 49,
@@ -284,7 +283,7 @@ class TestApiKey:
 
 class TestApiKeyScopes:
     """A scope is ``<app>.read`` (its queries) or ``<app>.write`` (its commands): the hub's app × {read,
-    write}, here for the account's apps (plan 2026-10-13, L3-A)."""
+    write}, here for the account's apps."""
 
     def test_the_registry_names_what_a_key_may_open(self):
         assert list(API_KEY_SCOPES) == ["hubs.read", "hubs.write", "billing.read"]

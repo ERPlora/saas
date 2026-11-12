@@ -1,7 +1,7 @@
-"""A turn of the Hub's assistant through the gateway (ASSISTANT-G43, G31, G46): the conversation made ready for the
+"""A turn of the Hub's assistant through the gateway: the conversation made ready for the
 model, the tools offered, the answer streamed as the Hub's frames, and what it spent.
 
-The conversation is the Hub's (the person's browser owns it, ADR-0149 of the old product): erplora.com uses it for
+The conversation is the Hub's (the person's browser owns it): erplora.com uses it for
 the call and forgets it. ``prepare`` refuses what is too big (never cuts it), drops the client's system messages for
 the Hub's ``instructions``, drops a tool result whose call is not there and keeps the last ``MAX_MESSAGES``. ``run``
 streams the turn through its route (``assistant.routing.stream``: the model that answers, then its fallback if the
@@ -12,8 +12,8 @@ provider fails before answering) and yields the frames the Hub reads:
     {"type": "error", "code": str, "message": str, "retriable": bool}
     {"type": "web"}     # once, when a search brought pages: the caller keeps the mark with the answer (saas#287)
 
-The mark goes back with a report of the answer, whose text is then not mailed: Brave's terms (§3(b)(i)) forbid
-keeping its results, and a mailbox keeps.
+The mark goes back with a report of the answer, whose text is then not mailed: section 3(b)(i) of Brave Search's
+terms forbids keeping its results, and a mailbox keeps.
 
 ``Outcome`` keeps what the door needs after the stream: the text, the Hub's tool calls, the tokens and their cost
 (with the prices of the model that answered), whether anything was answered, whether it brought pages from the web
@@ -307,7 +307,7 @@ async def run(started: Turn, outcome: Outcome) -> AsyncIterator[dict]:
             elif event.type == "error":
                 failed = payload
         if failed is not None:
-            # The status only: the provider's words may quote what the person wrote (ASSISTANT-G49).
+            # The status only: the provider's words may quote what the person wrote.
             logger.warning("assistant.turn.provider_failed status=%s retriable=%s", failed.get("status"), failed.get("retriable"))
             outcome.error = failure(failed)
             yield outcome.error
@@ -345,7 +345,7 @@ def _uuid(value: Any):
     return value if isinstance(value, UUID) else UUID(str(value))
 
 
-# --- The turn as a door serves it (ASSISTANT-G43, G44, G47, G51) -------------------------------------------------
+# --- The turn as a door serves it -------------------------------------------------
 
 
 class Refused(Exception):

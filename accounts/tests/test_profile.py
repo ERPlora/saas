@@ -1,11 +1,7 @@
-"""ACCOUNTS-F21 · Account → Profile: ``accounts.profile.get`` and ``accounts.profile.update`` (plan 2026-10-13, L3-A).
+"""Account → Profile: ``accounts.profile.get`` and ``accounts.profile.update``.
 
-Ported from ERPlora/saas ``apps/dashboard/profile/tests``: ``test_api`` (16) and ``test_views`` (27, the
-form → the API) for the names and the read of the profile. Dropped, with their reason: the billing address
-(``BillingAddress``: the payer's data is ``hubs.BillingProfile``, Billing), ``show_developer_menu``
-(the developer part left the panel, PLAN-SAAS §3.6 point 2), the htmx navigation and the template pages
-(the panel is the SPA). The photo, the email, the deletion and the password have their own files
-(``test_photo``, ``test_email_change``, ``test_delete_account``; the password is allauth.headless's).
+The photo, the email, the deletion and the password have their own files (``test_photo``, ``test_email_change``,
+``test_delete_account``; the password is allauth.headless's). The payer's data is ``hubs.BillingProfile``.
 """
 
 import pytest
@@ -41,7 +37,7 @@ class TestReading:
 
     def test_an_address_on_record_counts_once_proven(self, ana):
         """The same rule the invitations apply (``queries.email_is_proven``), so the panel can offer to
-        verify exactly when a business would refuse the account (the pending list of hubs/README.md)."""
+        verify exactly when a business would refuse the account."""
         EmailAddress.objects.create(user=ana, email=ana.email, verified=False, primary=True)
         assert queries.profile_get(ctx_for(ana), ProfileGetIn()).email_verified is False
 
@@ -125,7 +121,7 @@ class TestOverHttp:
         assert response.json()["full_name"] == "Ana Gil"
 
     def test_the_email_is_not_changed_here(self, client, ana):
-        """saas#2536: the sign-in email has its own door (``accounts.email.change``, with the password and a
+        """The sign-in email has its own door (``accounts.email.change``, with the password and a
         link to the new address); sent here, it is a 422 and nothing changes."""
         client.force_login(ana)
 
@@ -137,7 +133,7 @@ class TestOverHttp:
         assert (ana.email, ana.last_name) == ("ana@example.com", "García")
 
     def test_the_store_review_mark_is_neither_shown_nor_changed_here(self, client, ana):
-        """ACCOUNTS-F49: only the staff set it, in the admin; the account never sees it."""
+        """Only the staff set it, in the admin; the account never sees it."""
         client.force_login(ana)
 
         assert "is_store_review_account" not in api_get(client, PROFILE).json()
