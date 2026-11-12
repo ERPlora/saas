@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The launcher's form (`/launch`, the entrance) over allauth.headless (browser client, headless only). Its
-// texts are the server's msgids (`../locale`) and the frame is the page's (`AuthShell`). A rejected login or
-// sign-up paints each message under its input.
+// texts live in `../locale` and the frame is the page's (`AuthShell`). A rejected login or sign-up paints each
+// message under its input.
 //
 // Two strict tabs over the same email and password, as the market does: «Sign in», the
 // default, is allauth's login and never creates an account; «Create account» (`?tab=signup`, the address the
