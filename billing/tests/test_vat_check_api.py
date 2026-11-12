@@ -1,10 +1,8 @@
 """Checking a VAT number in VIES from the panel (``POST /api/billing/vat-check``) and from the admin.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_vat_check_api.py`` (origin/develop, 27 tests),
-whose ``/api/v1/fiscal/vat-checks/`` was ERPlora support's lever («ask VIES again»). In the new panel the
-same check is what the create-business and billing-profile forms ask before paying (the old form's
-``check_vat_htmx``), so the operation ``billing.vat_check.run`` is open to every signed-in account and
-answers the verdict that will price the sale: a current proof is reused, anything else is asked again.
+The check is what the create-business and billing-profile forms ask before paying, so the operation
+``billing.vat_check.run`` is open to every signed-in account and answers the verdict that will price the sale: a
+current proof is reused, anything else is asked again.
 The properties that hold, each pinned below:
 
 * every query is a NEW row, never an UPDATE: the history is the proof;
@@ -13,12 +11,8 @@ The properties that hold, each pinned below:
 * VIES down is a 200 with ``status: unavailable``, never a 5xx: it is an answer, not a fault;
 * one per-person budget (``VAT_CHECK_RATE``) for every door that spends a query, the panel's and the
   admin's «Check now in VIES»: each query is a request to the Commission under OUR requester number;
-* the admin action adds rows and the admin log stays read-only.
-
-Dropped with reason: the staff-only door is gone, so «a customer is 403», «staff without the fiscal
-permission is 403» and the GET history (2: the admin's changelist reads it, searchable by number) do not
-apply; the four API-key cases (``vat:read``/``vat:check`` scopes) are lot L3-A's keys; «a UK number is
-asked to HMRC» became «a UK number is not VIES's» (the HMRC client is not ported: open point of L2-B).
+* the admin action adds rows and the admin log stays read-only;
+* a UK number is not VIES's: nobody asks HMRC.
 """
 
 from datetime import timedelta
@@ -190,7 +184,7 @@ class TestAsking:
         assert VatCheck.objects.count() == 0
 
     def test_a_spanish_number_has_nothing_to_prove(self, signed_in):
-        """A domestic sale is never reverse charge: VIES is not asked (contract §10.6)."""
+        """A domestic sale is never reverse charge: VIES is not asked."""
         with no_network() as vies:
             response = _ask(signed_in, vat_number="B27593136", country="ES")
 
@@ -237,7 +231,7 @@ class TestAsking:
     def test_the_notice_speaks_the_accounts_language_whatever_the_browser_asks(
         self, signed_in, buyer
     ):
-        """saas#265's «No medido»: an account's language wins over ``Accept-Language`` (``base.language``)."""
+        """An account's language wins over ``Accept-Language`` (``base.language``)."""
 
         def asked_in(browser):
             return signed_in.post(
@@ -341,7 +335,7 @@ class TestTheSharedRateLimit:
 
     def test_only_a_real_query_spends_the_budget(self, signed_in, rate_limited):
         """A national number, a UK one, a malformed one or a current proof on file ask nobody, so they
-        cost nothing (review of L2-A)."""
+        cost nothing."""
         VatCheck.objects.create(vat_number=VAT, status=VatCheck.VERIFIED, consultation_number="WAPIAAAAXon_file")
         with no_network():
             assert _ask(signed_in, vat_number="B27593136", country="ES").status_code == 200
@@ -396,8 +390,7 @@ class TestTheSharedRateLimit:
 
 
 class TestTheAnswerSaysWhatTheSaleWillDo:
-    """``reverse_charge`` is what the sale will do, by the engine's own rule, not «VIES said yes»
-    (review of L2-A, finding 4)."""
+    """``reverse_charge`` is what the sale will do, by the engine's own rule, not «VIES said yes»."""
 
     def test_a_verified_number_of_another_member_state_is_reverse_charged(self, signed_in):
         with vies_says(**VALID):
@@ -545,7 +538,7 @@ class TestTheAdminAction:
     def test_the_limit_holds_when_the_minute_turns_between_two_queries(
         self, admin_client, support, rate_limited, monkeypatch
     ):
-        """saas#150: the budget's window is fixed (django-ratelimit's, one per key), so a first query in
+        """The budget's window is fixed (django-ratelimit's, one per key), so a first query in
         its last second and the next one a second later fall in two windows and both went through. The
         limit tests must not depend on the second the CI runs them: the limiter's clock stands still in
         every test (the root ``conftest._rate_limit_clock_stands_still``), whatever the wall clock says."""

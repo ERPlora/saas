@@ -1,5 +1,5 @@
 {
-  "_comment": "Taxonomy of sectors and business types (PLAN §21.4), ported from ERPlora/saas public/catalog/data/legacy_taxonomy.json (origin/develop) without the functional units. Codes are stable English names in lowercase; `vertical` names the hub template of a business type.",
+  "_comment": "Taxonomy of sectors and business types. Codes are stable English names in lowercase; `vertical` names the hub template of a business type.",
   "sectors": [
     {
       "code": "hospitality",

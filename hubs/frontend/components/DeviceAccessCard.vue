@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// «On your devices» (mockups `business.html` Summary; it replaces the old QR page, README §3): the
+// «On your devices» (it replaces the old QR page): the
 // business's address to open in the browser of the till, the tablet or the phone, with «Copy»; on
 // the web, the apps for Windows and Android through the public download doors
 // (`/app/download/<platform>/`, public/appdist.py: the store or the installer). Inside the apps the

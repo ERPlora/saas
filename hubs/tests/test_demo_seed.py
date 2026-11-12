@@ -1,6 +1,6 @@
 """``manage.py demo_seed``: the local accounts of the PoC and their businesses ``a`` and ``b``.
 
-Ported from ``accounts/tests/test_demo_seed.py`` when the command moved to ``hubs`` (L1-A2): the two demo
+The two demo
 hubs are businesses of the SaaS (``Hub`` + ``HubMember``, adopted as they already run in the local Hub),
 and the jump reads their members. Customer and platform roles never mix: the owner and the employee are no
 staff, and the platform administrator has no hub. The passwords are known, so it only runs with

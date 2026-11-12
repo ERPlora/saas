@@ -1,12 +1,11 @@
 <script setup lang="ts">
-// Account → API keys (mockups `account.html` «keys», README §3b «Claves de API»): the live `accounts.apikey.list`
-// (the keys not revoked, the newest first) in a DataTable that turns into cards up to 1180 px — name, prefix
-// (`erps_live_…`, how its owner tells it apart), permissions (the server's labels), created, last used, and
-// «Expires» (W-F14; an expired key is marked) — with «New key» (NewKeyModal) and, per row, «Revoke», confirmed
-// naming that key (W-F8) and said in a toast. Empty — a real answer of the server with no key — it says what a key is
-// for and offers the first one; a failed load (an error, or no answer in time) is said with «Retry», never as «no
-// keys» (audit 2026-10-14 R-04). Under the table, that the keys of a business are made inside the business. The
-// list fills the page (`fill`, Ioan 2026-10-14).
+// Account → API keys: the live `accounts.apikey.list` (the keys not revoked, the newest first) in a DataTable that
+// turns into cards up to 1180 px — name, prefix (`erps_live_…`, how its owner tells it apart), permissions (the
+// server's labels), created, last used, and «Expires» (an expired key is marked) — with «New key» (NewKeyModal) and,
+// per row, «Revoke», confirmed naming that key and said in a toast. Empty — a real answer of the server with no key —
+// it says what a key is for and offers the first one; a failed load (an error, or no answer in time) is said with
+// «Retry», never as «no keys». Under the table, that the keys of a business are made inside the business. The list
+// fills the page (`fill`).
 import {
   ConfirmDialog,
   DataTable,
@@ -27,8 +26,8 @@ import type { ApiKeyRowOut } from '../../../frontend/sdk-types';
 import { useErrorText } from '../error-text';
 import NewKeyModal from './NewKeyModal.vue';
 
-/** README §3b: the keys' list is wide (six columns); cards up to 1180 px. */
-/** A list from here; its dates fold first (audit 2 R-33: three keys were cards at 1024–1180). */
+/** The keys' list is wide (six columns); cards up to 1180 px. */
+/** A list from here; its dates fold first, so three keys are no cards at 1024–1180 px. */
 const CARD_BREAKPOINT = 1000;
 
 const { t, locale } = useI18n();
@@ -118,7 +117,7 @@ async function confirmRevoke(): Promise<void> {
       <strong>{{ row.name }}</strong>
     </template>
     <template #scopes="{ row }">
-      <!-- A div, not the span DataTable clips with «…»: the permissions may wrap (audit 2 R-25). -->
+      <!-- A div, not the span DataTable clips with «…»: the permissions may wrap. -->
       <div
         class="cell-wrap"
         data-testid="api-key-scopes"

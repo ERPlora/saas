@@ -1,7 +1,6 @@
-"""``/robots.txt`` and ``/llms.txt`` of the public web (spec §8.2).
+"""``/robots.txt`` and ``/llms.txt`` of the public web.
 
-Ported from ERPlora/saas ``apps/public/landing/views.py`` (origin/develop c5ca8ca). Both are
-machine-facing English files, not interface text: they are not translated.
+Both are machine-facing English files, not interface text: they are not translated.
 """
 
 from __future__ import annotations
@@ -15,7 +14,7 @@ from public import store
 from public.crawlers import ANSWER_ENGINE_AGENTS, private_prefixes
 
 #: Sections of llms.txt after the summary: ``(title, ((URL name, link text, note), …))``. Only
-#: pages that exist; each batch of the port adds its own. An empty section is omitted. The apps
+#: pages that exist. An empty section is omitted. The apps
 #: section (``## Apps``) goes before «Optional», built from the listed apps (``_apps_section``).
 LLMS_SECTIONS: tuple[tuple[str, tuple[tuple[str, str, str], ...]], ...] = (
     (
@@ -141,7 +140,7 @@ def llms_txt(request: HttpRequest) -> HttpResponse:
 
 def _apps_section(base: str) -> list[str]:
     """``## Apps``: the listed apps of the catalog, read live (never a list that goes stale), each
-    linked to its page in the store. Without a listed app the section is omitted (spec §5.3)."""
+    linked to its page in the store. Without a listed app the section is omitted."""
     apps = store.listed_apps()
     if not apps:
         return []

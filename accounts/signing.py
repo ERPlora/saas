@@ -1,10 +1,10 @@
-"""HMAC-SHA256 + timestamp of the internal calls between hub-next and saas-next (PLAN-SAAS §2, §2.1).
+"""HMAC-SHA256 + timestamp of the internal calls between the Hub and the SaaS.
 
 Every call carries ``X-Erplora-Timestamp`` (unix seconds) and up to two signatures, hex HMAC-SHA256
 keyed with the shared secret (the scheme of Stripe's webhook signatures):
 
-- ``X-Erplora-Signature`` (v1) over ``f"{timestamp}.{raw_body}"``: the body only. It is what hub-next
-  signs today (``hub-next/base/auth.py``, its call to ``/internal/auth/redeem``), so it is still heard.
+- ``X-Erplora-Signature`` (v1) over ``f"{timestamp}.{raw_body}"``: the body only. The Hub still signs its
+  call to ``/internal/auth/redeem`` this way, so it is still heard.
 - ``X-Erplora-Signature-V2`` (v2) over ``f"v2\\n{timestamp}\\n{METHOD}\\n{path}\\n"`` + the raw body,
   where ``path`` is the one requested, with its query string: also the method and the route, so a
   signed body cannot be replayed on another route within the window. The separators are newlines,
@@ -21,14 +21,13 @@ and, during a rotation, ``INTERNAL_SHARED_SECRET_PREVIOUS`` (empty otherwise). A
 ASCII digits (``int()`` raises beyond 4300: a 500 on every door). ``may_be_signed`` judges the headers
 alone, so a view that reads a large body itself refuses before reading it what can never verify.
 
-Rotation, with hub-next taking the same steps (each one deployed to both projects before the next):
+Rotation, with the Hub taking the same steps (each one deployed to both projects before the next):
 1. ``INTERNAL_SHARED_SECRET_PREVIOUS`` = the new secret: both accept it, both still sign with the old.
 2. ``INTERNAL_SHARED_SECRET`` = the new one and ``…_PREVIOUS`` = the old: both sign with the new and
    still accept a call of the other side signed before it moved.
 3. ``…_PREVIOUS`` empty: the old secret opens nothing any more.
 
-Migration to v2 only: hub-next verifies v2 when present and signs its own calls with it too (Hub
-lane); once both sides sign v2, a call without it is refused (v1 dropped here and in the Hub).
+v1 stays only until the Hub signs every call with v2; then a call without v2 is refused on both sides.
 """
 
 import hashlib

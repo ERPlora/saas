@@ -1,4 +1,4 @@
-"""allauth.headless, browser client: the login API of the Vue pages (PLAN-SAAS §6, ronda 11).
+"""allauth.headless, browser client: the login API of the Vue pages.
 
 Same-origin session cookie plus Django's CSRF: the SPA's HTML sets the ``csrftoken`` cookie and the
 SDK sends it back in ``X-CSRFToken`` (``GET …/auth/session`` sets it as well). Errors come as
@@ -164,7 +164,7 @@ def test_a_reset_asked_for_an_unknown_address_mails_the_create_account_tab(clien
 
 
 def test_the_code_of_a_new_account_is_mailed_without_a_link(client):
-    """Verification is by code (ADR-0159): allauth builds no confirmation link, so none is named."""
+    """Verification is by code: allauth builds no confirmation link, so none is named."""
     client.post(
         f"{BROWSER}/auth/signup",
         {"email": "new@example.com", "password": "a long pass phrase 2026"},
@@ -188,7 +188,7 @@ def _sign_up(client, email="new@example.com", **extra):
 
 
 class TestANewAccountSpeaksTheLanguageOfThePage:
-    """ACCOUNTS-F01: the language ``LocaleMiddleware`` already resolved for the page, never a second reading of it."""
+    """The language ``LocaleMiddleware`` already resolved for the page, never a second reading of it."""
 
     @pytest.mark.parametrize(
         ("accept_language", "language"),
@@ -212,7 +212,7 @@ class TestANewAccountSpeaksTheLanguageOfThePage:
         assert get_user_model().objects.get(email="new@example.com").language == settings.LANGUAGE_CODE
 
     def test_an_address_that_already_has_an_account_keeps_its_language(self, client, owner):
-        """«Create account» answers the same for a known address (ACCOUNTS-F01): nothing of that account changes."""
+        """«Create account» answers the same for a known address: nothing of that account changes."""
         _sign_up(client, email=owner.email, HTTP_ACCEPT_LANGUAGE="es-ES")
 
         owner.refresh_from_db()

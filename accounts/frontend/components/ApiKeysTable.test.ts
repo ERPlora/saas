@@ -1,8 +1,8 @@
-// Account → API keys (mockups `account.html` «keys», README §3b): the live `accounts.apikey.list` in a DataTable —
-// name, prefix (`erps_live_…`), permissions (the server's labels), created, last used, «Expires» (W-F14; an
-// expired key marked) — with «New key» (NewKeyModal) and «Revoke» on each row, confirmed naming that key
-// (W-F8). Empty, it explains what a key is for and offers to create one — only with a real answer of the server:
-// a failed load (an error, or no answer in time) is said with «Retry», never as «no keys» (audit 2026-10-14, R-04).
+// Account → API keys: the live `accounts.apikey.list` in a DataTable — name, prefix (`erps_live_…`), permissions
+// (the server's labels), created, last used, «Expires» (an expired key marked) — with «New key» (NewKeyModal) and
+// «Revoke» on each row, confirmed naming that key. Empty, it explains what a key is for and offers to create one —
+// only with a real answer of the server: a failed load (an error, or no answer in time) is said with «Retry», never
+// as «no keys».
 // clock: data only — no code under test compares these dates with now.
 import { DataTable } from '@erplora/ui/components';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -80,7 +80,7 @@ describe('ApiKeysTable', () => {
     expect(scopes).toContainEqual(['DIV', 'Businesses · read, Businesses · write']);
   });
 
-  it('is a list from 1000 px (its dates fold first), not cards on a 1024–1180 laptop (audit 2 R-33)', async () => {
+  it('is a list from 1000 px (its dates fold first), not cards on a 1024–1180 laptop', async () => {
     const s = await setup();
     const props = s.wrapper.findComponent(DataTable as unknown as Component).props() as Record<string, unknown>;
     expect(props.cardBreakpoint).toBe(1000);
@@ -99,7 +99,7 @@ describe('ApiKeysTable', () => {
     expect(s.q('new-key-scope-hubs.write')).not.toBeNull();
   });
 
-  it('paints «Revoke» with its text, and no «rows per page» (the mockup has none)', async () => {
+  it('paints «Revoke» with its text, and no «rows per page»', async () => {
     const s = await setup();
     expect(s.q('api-keys-row-k2-revoke')?.textContent?.trim()).toBe('Revoke');
     expect(accessibleName(s.q('api-keys-row-k2-revoke'))).toBe('Revoke');
@@ -127,7 +127,7 @@ describe('ApiKeysTable', () => {
     expect(s.q('revoke-key-error')?.textContent).toContain('That API key does not exist.');
   });
 
-  it('links to the documentation of the API, which opens beside the panel (ACCOUNTS-G105, ACCOUNTS-F34)', async () => {
+  it('links to the documentation of the API, which opens beside the panel', async () => {
     const s = await setup();
     const docs = s.q('api-keys-docs');
     expect(docs?.textContent?.trim()).toBe('API documentation');
@@ -138,7 +138,7 @@ describe('ApiKeysTable', () => {
     ]);
   });
 
-  it('explains an empty list and offers the first key, without the toolbar (mockups «keys-empty»)', async () => {
+  it('explains an empty list and offers the first key, without the toolbar', async () => {
     const s = await setup([]);
     expect(s.q('api-keys-empty')?.textContent).toContain('You have no keys yet');
     expect(s.q('api-keys-add')).toBeNull();

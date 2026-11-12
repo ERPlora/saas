@@ -1,19 +1,11 @@
 {% extends "public/legal/_dated_page.html" %}
 {% load i18n %}
 {% comment %}
-  The terms of use. Port of apps/public/legal/templates/legal/terms.html (origin/develop) with the
-  same sections, numbering and text, on the shared reading pattern with ep-* classes. The Tauri app
-  does not open the public web in phase 1, so the web-only/app-only doubles are gone. Every number
-  is read, never typed: the exit package from HUB_EXIT_PACKAGE_TTL_DAYS, the suspension clock from
-  public.legal.SUSPENDED_HUB_DELETE_DAYS and the trial of §4 from the plans on sale (public/legal.py).
-
-  Legal text changed in the port (L7), with the date: §1 and §7.3 spoke of modules bought from a
-  marketplace; every app is ours now (spec §8.3). §1 said that the free apps come with every plan
-  and the premium apps with the paid plans (decision 17); every plan includes all the apps now
-  (ronda 2026-10-24b, PLAN §32), and §3.1 no longer sells modules on their own, with the date of
-  October 25, 2026. §1 named the customer's own domains, which no business could connect yet (HUBS-F17,
-  saas#195), and stopped on November 3, 2026 (saas#233); since November 5, 2026 the opening clause names the
-  plans on sale that include one, read from their rows, and only for the public website (saas#301).
+  The terms of use, on the shared reading pattern with ep-* classes. Every number is read, never
+  typed: the exit package from HUB_EXIT_PACKAGE_TTL_DAYS, the suspension clock from
+  public.legal.SUSPENDED_HUB_DELETE_DAYS and the trial of section 4 from the plans on sale
+  (public/legal.py). The opening clause names the plans on sale that include a custom domain, read
+  from their rows, and only for the public website.
   Contract: public/tests/test_legal.py.
 {% endcomment %}
 
@@ -93,9 +85,9 @@
           <li>{% blocktrans trimmed with days=suspended_hub_delete_days %}A Hub that remains suspended for {{ days }} days is deleted, together with its data. The account holder is notified beforehand, by email and with a specific date, and receives the copy described in section 5.1.{% endblocktrans %}</li>
         </ul>
 
-        {% comment %} saas#2217: the written basis of what checkout enforces since saas#2205 (a paid UK
-             sale needs a UK VAT number) and saas#2216 (the number is looked up in HMRC's register).
-             The example number is tested against the code that accepts it. {% endcomment %}
+        {% comment %} The written basis of what checkout enforces: a paid UK sale needs a UK VAT
+             number, and the number is looked up in HMRC's register. The example number is tested
+             against the code that accepts it. {% endcomment %}
         <section id="united-kingdom">
           <h3>{% trans "3.1 Customers in the United Kingdom" %}</h3>
           <p>
@@ -187,8 +179,8 @@
           {% endblocktrans %}
         </p>
         {% comment %}
-          ADR-0269. The 48-hour notice above predates the update model and a customer reads it as
-          "you will warn me before you touch my terminal". Updates are not covered by it: they do
+          A customer could read the 48-hour notice above as "you will warn me before you touch my
+          terminal". Updates are not covered by it: they do
           not stop the service, so they are not an interruption to schedule. Said out loud here so
           the two clauses cannot be read against each other.
         {% endcomment %}
@@ -210,7 +202,7 @@
             and, when it hurts access or use more than minimally, advance notice ON A DURABLE MEDIUM
             plus 30 calendar days to walk away free of charge. 126 bis.4 would let us skip the
             termination right by offering the unmodified version — we cannot: the fleet runs one
-            version (ADR-0269). So the right is real and it is granted.
+            version. So the right is real and it is granted.
           - Art. 8.2/8.3 of the same Directive — we must supply the updates needed to stay in
             conformity, and we are shielded from a fault caused solely by an update the customer
             chose not to install, but only if we announced it AND its consequences. That is 7.7.
@@ -219,8 +211,8 @@
           is not one, but we cannot classify them reliably at signup and the promise is the same
           either way, so the section grants the regime to everybody (7.5, last paragraph).
 
-          Not legal advice and not written by a lawyer: pm#69 carries the list of what a
-          professional has to check before this is relied on.
+          Not legal advice and not written by a lawyer: a professional has to check it before
+          this is relied on.
         {% endcomment %}
         <h2>{% trans "7. Updates and versions" %}</h2>
 
@@ -453,7 +445,7 @@
         </p>
 
         {% comment %}
-          The heading gained "to these terms" on purpose (ADR-0269): this clause is about changing
+          The heading says "to these terms" on purpose: this clause is about changing
           the CONTRACT, and reading it as covering the software would subject every release to a
           30-day notice we do not give. Section 7 is the one that governs the software.
         {% endcomment %}

@@ -1,11 +1,9 @@
-"""Who may do what on a business, by role (round 17 §2.7): the owner everything (plan, billing, transfer,
+"""Who may do what on a business, by role: the owner everything (plan, billing, transfer,
 delete), an administrator the team and the settings, a manager or an employee only «Open»; somebody
 without access (a stranger, or an invitation not answered yet) does not learn the business exists.
 
-One table for every operation on a business, so a new operation cannot slip in without its row.
-Ported in spirit from ERPlora/saas ``hubs/main/tests/test_permissions.py`` (``IsHubMember``,
-``IsHubAdmin``: the part of the account plane) and ``test_member_cannot_act_as_admin.py`` (a member
-reaches neither the payer nor the plan).
+One table for every operation on a business, so a new operation cannot slip in without its row; a member
+reaches neither the payer nor the plan.
 """
 
 import pytest
@@ -87,7 +85,7 @@ def call(name, hub, team):
         # A night measured, so «nothing yet» (also a 404) never hides what the role decides.
         "usage.get": (queries.usage_get, UsageGetIn(business_id=measured(hub).id)),
         "usage.series": (queries.usage_series, UsageSeriesIn(business_id=hub.id)),
-        # The copies of its data (PLAN-DB round 2026-10-30, (k)): with the Hub away, past the role is an empty list or
+        # The copies of its data: with the Hub away, past the role is an empty list or
         # a 503, never the role's answer.
         "data_copy.list": (queries.data_copy_list, DataCopyListIn(business_id=hub.id)),
         "data_copy.link": (queries.data_copy_link, DataCopyLinkIn(business_id=hub.id, copy_id="any.dump")),
@@ -129,7 +127,7 @@ MATRIX = {
     "ownership.transfer": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
     "billing_profile.get": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
     "billing_profile.update": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
-    # The usage of the business (L4-A): who sees its page.
+    # The usage of the business: who sees its page.
     "usage.get": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
     "usage.series": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
     # A full copy of the business's data: only its owner, as deleting it.

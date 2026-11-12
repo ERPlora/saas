@@ -1,18 +1,16 @@
 {% load static i18n icons public_assets %}<!DOCTYPE html>
 {% comment %}
-  The public web's base (landing, pricing, legal, the app store…): Django templates for SEO.
-  Port of apps/public/templates/public/public_base.html (origin/develop), with the same sections:
-  the SEO head, the pre-launch strip, {% templatetag openblock %} block content {% templatetag closeblock %} with the navbar,
+  The public web's base (landing, pricing, legal, the app store…): Django templates for SEO. Its
+  sections: the SEO head, the pre-launch strip, {% templatetag openblock %} block content {% templatetag closeblock %} with the navbar,
   <main>{% templatetag openblock %} block page_content {% templatetag closeblock %}</main> and the footer, and the cookie banner.
 
-  What changed (spec §8.4): no OutfitKit, no CDN, no loose ionic.esm.js, no htmx. CSS and JS come
-  from ONE Vite entry, frontend/public.ts ({% templatetag openblock %} public_assets {% templatetag closeblock %}, with the
+  No CDN: CSS and JS come from ONE Vite entry, frontend/public.ts ({% templatetag openblock %} public_assets {% templatetag closeblock %}, with the
   response's CSP nonce): it registers the ion-* the templates use and brings Ionic's CSS, the
-  @erplora/ui tokens and the stylesheets of public/static/public/. The ok-* components are HTML + CSS
+  @erplora/ui tokens and the stylesheets of public/static/public/. The components are HTML + CSS
   partials (public/components/), icons are SVG painted on the server ({% templatetag openblock %} icon {% templatetag closeblock %}).
   No PWA manifest nor app-shell head. The installed app's sign-in opens the legal texts here: with `app_surface`
-  (`?surface=desktop|mobile|account`, kept in the session; public/context_processors.py) the page is in app mode,
-  PUBLIC-F26: `data-surface` on <html>, the app bar with «Back» instead of the navbar, and no footer, cookie notice
+  (`?surface=desktop|mobile|account`, kept in the session; public/context_processors.py) the page is in app mode:
+  `data-surface` on <html>, the app bar with «Back» instead of the navbar, and no footer, cookie notice
   nor analytics.
 
   Colour mode, as the panel paints it: `theme` (base.context_processors.theme) is the account's mode
@@ -93,8 +91,8 @@
     {% endblock %}
 
     {% comment %} Outside {% templatetag openblock %} block content {% templatetag closeblock %} on purpose: a page that replaces
-       that block whole would drop it, and the public forms answer with `messages.*` and a redirect
-       (saas#1754). {% endcomment %}
+       that block whole would drop it, and the public forms answer with `messages.*` and a redirect.
+       {% endcomment %}
     {% block messages %}{% include 'public/partials/messages.html' %}{% endblock %}
 
     {% block scripts %}{% endblock %}

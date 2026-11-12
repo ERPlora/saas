@@ -1,4 +1,4 @@
-"""The account's sessions as ``allauth.usersessions`` keeps them (Account → Security; PLAN-SAAS §6).
+"""The account's sessions as ``allauth.usersessions`` keeps them (Account → Security).
 
 allauth records a session when it signs in. ``SessionActivityMiddleware`` records it again (its address,
 browser and last use) at most once every ``TOUCH_EVERY`` seconds of use: a session opened some other way
@@ -33,7 +33,7 @@ def _seen_key(session_key: str) -> str:
 class SessionActivityMiddleware:
     """After ``AuthenticationMiddleware`` (it reads ``request.user``). It looks once the view answered, and only at
     a session the request already used: loading one nobody asked for would make Django drop a cookie it cannot
-    read, and the public web never signs anybody out (saas#975)."""
+    read, and the public web never signs anybody out."""
 
     def __init__(self, get_response) -> None:
         self.get_response = get_response

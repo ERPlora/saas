@@ -1,6 +1,6 @@
-"""Live queries of billing and the events that re-run them after the COMMIT (lot L3-C; plan 2026-10-13 §3).
+"""Live queries of billing and the events that re-run them after the COMMIT.
 
-The scope is the account (PLAN-SAAS §6): the webhook records an invoice in its payer's channel (or its
+The scope is the account: the webhook records an invoice in its payer's channel (or its
 business owner's) and ``hubs.subscription.apply`` in the owner's, so the Billing section of that account
 re-runs; anybody else sees a change at the 300 s safety re-run or on reload. The payment method is not live:
 it asks Stripe, and is read when the tab opens.
@@ -12,7 +12,7 @@ from billing import events
 from hubs import events as hub_events
 
 live("billing.invoice.list", on=[*events.INVOICES])
-# The page of one invoice (BILLING-G05): «Issuing» turns into its number and QR while it is on screen.
+# The page of one invoice: «Issuing» turns into its number and QR while it is on screen.
 live("billing.invoice.get", on=[*events.INVOICES])
 live(
     "billing.subscription.list",

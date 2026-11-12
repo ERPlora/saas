@@ -1,16 +1,16 @@
-"""``hubs.subscription.apply``: what Stripe says of a business's plan, written where hubs keeps it (lot L2-B).
+"""``hubs.subscription.apply``: what Stripe says of a business's plan, written where hubs keeps it.
 
-billing reads the LIVE Stripe subscription (webhook, checkout, sweep) and hubs writes it: an app writes
-in another only through its operations (plan 2026-10-13 §3). Only the platform runs it, as the hub's
+billing reads the live Stripe subscription (webhook, checkout, sweep) and hubs writes it: an app writes
+in another only through its operations. Only the platform runs it, as the hub's
 other system operations (``hubs.business.mark_ready``). A field left out is left as it is, so billing can
 link a Stripe customer without restating the plan.
 
-What the Hub must learn (PLAN-SAAS §2.2: the effective plan, the commercial status and ``modules[]``)
+What the Hub must learn (the effective plan, the commercial status and ``modules[]``)
 bumps ``state_version`` and is pushed after the COMMIT; the rest (period, Stripe ids, why it is unpaid)
 only records the event, so the owner's list and page re-run. The standing moves the business:
 ``good`` brings a business with a payment pending or suspended back, ``grace`` shows «payment pending»
-(«Open» still works, round 17 §2.10), ``suspended`` stops it; a deleted business never moves. Why it is
-unpaid travels to the Businesses row (mockups README §6.18: «Pay» stays disabled while the card was
+(«Open» still works), ``suspended`` stops it; a deleted business never moves. Why it is unpaid travels to the
+Businesses row («Pay» stays disabled while the card was
 declined), and the invoice to pay only to the owner.
 """
 
@@ -123,9 +123,9 @@ def test_a_paid_plan_is_written_with_its_stripe_ids_and_period(business):
     )
 
 
-@pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+@pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one by default)
 def test_paying_ends_the_free_trial_of_the_sign_up(business):
-    """Free is born with Starter's trial (ADR-0474); a paid plan carries its own trial in Stripe, so the
+    """Free is born with Starter's trial when staff give it one; a paid plan carries its own trial in Stripe, so the
     trial plan of the sign-up no longer decides the rights (it would hide a paid Standard behind Starter)."""
     assert subscription_of(business).trial_plan is not None
 
@@ -500,7 +500,7 @@ def test_the_page_of_the_business_says_it_too(business, owner):
 
 
 def test_the_invoice_to_pay_goes_to_the_payer_not_to_the_role(business, owner, make_user):
-    """Review of L2-B: after a transfer the new owner is not the payer; the invoice (and its page, with the
+    """After a transfer the new owner is not the payer; the invoice (and its page, with the
     payer's card) stays with whoever pays."""
     business = ready(business)
     unpaid(business)
@@ -514,7 +514,7 @@ def test_the_invoice_to_pay_goes_to_the_payer_not_to_the_role(business, owner, m
 
 
 def test_deleting_a_paying_business_asks_for_its_stripe_subscription_to_end(business, owner):
-    """Review of L2-B: the ask is durable (billing's sweep ends it), so recovering the business before the
+    """The ask is durable (billing's sweep ends it), so recovering the business before the
     sweep does not leave it charging while the panel says Free."""
     from hubs.schemas import BusinessDeleteIn, ByIdIn
 

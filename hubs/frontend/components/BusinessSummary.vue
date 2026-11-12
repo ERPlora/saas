@@ -1,12 +1,12 @@
 <script setup lang="ts">
-// The Summary of a business (mockups `business.html` «summary», PLAN-SAAS §3.6): four cards.
+// The Summary of a business: four cards.
 //   - Plan: its name, the trial while it lasts, the devices it covers and the apps it turns on at once
-//     (`max_apps`, the cap the Hub applies since hub#256; from `hubs.plan.list`: the plans on sale, public)
+//     (`max_apps`, the cap the Hub applies; from `hubs.plan.list`: the plans on sale, public)
 //     and the people (`seats`, the server's count against the plan's cap). Changing
 //     or cancelling the plan is the Store's (web only): whoever handles the billing gets «Upgrade plan» on
 //     Free and «Change plan» on a paid one, to the Store with this business chosen (BILLING-F07); inside the
 //     apps it says where, without a link.
-//   - Usage: what the Hub measured last night (`business.usage`, PLAN-SAAS §5; lot L4-A): the storage of
+//   - Usage: what the Hub measured last night (`business.usage`): the storage of
 //     its files as a percentage of the space of the plan (UsageMeter; never the bytes) and the people
 //     active that day and in the 30 days up to it (UsageCounter); «yesterday» or the day measured. Before
 //     the first night, that there is no data yet. The people against the places stay a line of the plan.

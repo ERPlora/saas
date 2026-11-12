@@ -1,4 +1,4 @@
-"""The account's sessions as ``allauth.usersessions`` keeps them (Account → Security; PLAN-SAAS §6).
+"""The account's sessions as ``allauth.usersessions`` keeps them (Account → Security).
 
 ``SessionActivityMiddleware``: a signed-in request records its session (address, browser, last use) at most
 once every ``TOUCH_EVERY`` seconds, so a session opened before ``allauth.usersessions`` existed shows too and
@@ -71,7 +71,7 @@ class TestTheActivity:
 
     def test_a_request_that_does_not_use_its_session_is_left_alone(self, client, db):
         """Loading a session nobody asked for would make Django drop a cookie it cannot read (the public web
-        must never sign anybody out, saas#975): the tracker only looks at a session the request already used."""
+        must never sign anybody out): the tracker only looks at a session the request already used."""
         from django.conf import settings
 
         client.cookies[settings.SESSION_COOKIE_NAME] = "not-a-session"

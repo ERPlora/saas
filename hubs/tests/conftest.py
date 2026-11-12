@@ -19,7 +19,7 @@ SECRET = "test-internal-secret"
 
 @pytest.fixture
 def hub_double(settings):
-    """hub-next's ``/internal`` on a free local port; the SaaS's client points at it."""
+    """The Hub's ``/internal`` on a free local port; the SaaS's client points at it."""
     settings.INTERNAL_SHARED_SECRET = SECRET
     double = HubDouble(SECRET).start()
     settings.HUB_INTERNAL_URL = double.url
@@ -79,7 +79,7 @@ def put_the_catalogue_back():
 
 @pytest.fixture
 def plans(db):
-    """The catalogue (``put_the_catalogue_back``), none with a trial since 2026-10-15."""
+    """The catalogue (``put_the_catalogue_back``), none with a trial."""
     put_the_catalogue_back()
 
 
@@ -93,8 +93,8 @@ def no_plans(db):
 
 @pytest.fixture
 def signup_trial(plans):
-    """Starter with a 15-day trial, as staff would give it in the admin. No plan carries one since 2026-10-15 (the
-    Free plan is the way in), but the mechanism stays, dormant, and these tests exercise it."""
+    """Starter with a 15-day trial, as staff would give it in the admin. No plan carries one (the Free plan is the
+    way in), but the mechanism stays, dormant, and these tests exercise it."""
     from hubs.models import Plan
 
     Plan.objects.filter(slug="starter").update(trial_period_days=15)
@@ -168,7 +168,7 @@ def business(owner, plans):
 @pytest.fixture
 def team(business, owner, make_user):
     """The business with one person per role, a pending invitee and a stranger. Five people do not fit in Free
-    (three), so the business is on Starter, as one that pays (no plan lends a trial since 2026-10-15)."""
+    (three), so the business is on Starter, as one that pays (no plan lends a trial)."""
     from hubs.models import HubMember, Plan, Subscription
 
     Subscription.objects.filter(hub=business).update(plan=Plan.objects.get(slug="starter"))

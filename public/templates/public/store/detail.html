@@ -1,10 +1,10 @@
 {% extends "public/store/app_base.html" %}
 {% load i18n icons %}
 {% comment %}
-  /apps/<id>/, the «Overview» tab (public/store.py). Port of modules/partials/tab_overview.html
-  (origin/develop): the description, the «Required apps» card (one linked ion-item per listed app,
-  with its icon and access; an unlisted one only by name, saas#2644) and the details (category,
-  access, the business types it is built for). Its SoftwareApplication JSON-LD (spec §8.2).
+  /apps/<id>/, the «Overview» tab (public/store.py): the description, the «Required apps» card (one
+  linked ion-item per listed app, with its icon and access; an unlisted one only by name) and the
+  details (category, access, the business types it is built for), with its SoftwareApplication
+  JSON-LD.
 {% endcomment %}
 
 {% block title %}{{ app.name }} · {% trans "ERPlora apps" %}{% endblock %}

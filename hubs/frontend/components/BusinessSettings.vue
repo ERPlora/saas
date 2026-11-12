@@ -111,7 +111,7 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
             :class="{ 'ion-invalid': !!errors.name, 'ion-touched': !!errors.name }"
             @ion-input="form.name = value($event)"
           />
-          <!-- Once ready, the country is read-only text with its reason under it, not a disabled select (R-31). -->
+          <!-- Once ready, the country is read-only text with its reason under it, not a disabled select. -->
           <div
             v-if="business.country_locked"
             class="readonly-country"
@@ -282,7 +282,7 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-/* Read-only once the business is ready (audit 2 R-31): the country as text, its reason under it. */
+/* Read-only once the business is ready: the country as text, its reason under it. */
 .readonly-country {
   display: flex;
   flex-direction: column;

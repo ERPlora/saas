@@ -1,17 +1,6 @@
-"""Models of billing's EU VAT engine (lot L2-A): what is sold at which rate, the issuer's policy and
-identity, and the log of VIES queries.
+"""Models of billing: the EU VAT engine, what Stripe needs remembered and ERPlora's invoices to its customers.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/models.py`` (origin/develop): ``TaxCategory``,
-``TaxRule``, ``FiscalPolicy``, ``CompanyConfig`` and ``VatCheck``, with UUIDv7 keys. The two singletons
-stop forcing ``pk=1`` (a UUID key) and keep a single row by a unique column that is always true. Their
-reads (the rule in force, the policy, the latest verdict) live in ``billing.queries``: only
-``services.py`` and ``queries.py`` touch the ORM. Without ``CompanyConfig.logo`` (the invoice PDF is the
-Hub's, plan §4 L3-C) nor the VeriFactu models, which are the Hub's (PLAN-HUB, fiscal).
-
-Lot L2-B adds what Stripe needs remembered: ``PromoCode`` (trial days, ADR-0107), ``CheckoutAttempt`` (one
-Embedded Checkout per intent), ``WebhookEvent`` (each Stripe event processed once) and ``PaymentFailure``
-(why a renewal is unpaid). Lot L3-C adds ERPlora's invoices to its customers: ``Invoice`` (and its credit
-notes), ``InvoiceLine`` and ``InvoiceCounter`` (the correlative number of each series and year).
+The invoice PDF and the VeriFactu records are not here: ERPlora's platform hub issues the legal invoice.
 """
 
 from datetime import timedelta
@@ -74,10 +63,10 @@ class SingletonModel(UUIDModel):
 
 
 class TaxCategory(UUIDModel):
-    """What is sold, in fiscal terms (saas#1063): a stable canonical key, never a loose percentage.
+    """What is sold, in fiscal terms: a stable canonical key, never a loose percentage.
 
     The % lives in ``TaxRule`` and may change over time without touching what was sold. Mirror of the
-    Hub's ``tax`` categories (ADR-0085).
+    Hub's ``tax`` categories.
     """
 
     key = models.CharField(
@@ -182,7 +171,7 @@ class TaxRule(UUIDModel):
 
 
 class FiscalPolicy(SingletonModel):
-    """The issuer's fiscal policy (saas#1063): where ERPlora invoices from, its ROI registration and the
+    """The issuer's fiscal policy: where ERPlora invoices from, its ROI registration and the
     One-Stop Shop.
 
     The OSS threshold: while the B2C sales to other member states stay under €10,000 a year, the issuer's
@@ -205,7 +194,7 @@ class FiscalPolicy(SingletonModel):
             "IC = Canary Islands, CE = Ceuta, ML = Melilla. Empty = mainland Spain and the Balearic Islands"
         ),
     )
-    # ERPlora is in the ROI since 08-08-2026 (ESB27593136), so the default is True (saas#1479).
+    # ERPlora is in the ROI since 08-08-2026 (ESB27593136), so the default is True.
     intra_eu_reverse_charge = models.BooleanField(
         _("registered in ROI / VIES"),
         default=True,
@@ -232,8 +221,8 @@ class FiscalPolicy(SingletonModel):
             "Yearly cross-border B2C sales (EU) from which the destination rate applies"
         ),
     )
-    # The cross-border B2C base invoiced OUTSIDE this SaaS (the old one) until its invoices live here
-    # (lot L3-C): without it the year's total is unknown, and the threshold could be crossed unseen.
+    # The cross-border B2C base the old SaaS invoiced this year, before the invoices moved here: without it
+    # the year's total is unknown, and the threshold could be crossed unseen.
     oss_carried_year = models.PositiveSmallIntegerField(
         _("year of the carried amounts"),
         null=True,
@@ -317,7 +306,7 @@ class CompanyConfig(SingletonModel):
 class VatCheck(UUIDModel):
     """The log of VIES queries: the proof that a VAT number was valid on a date.
 
-    Keyed by the VAT NUMBER, never by the customer (contract §5): a customer who changes their number
+    Keyed by the VAT NUMBER, never by the customer: a customer who changes their number
     must not inherit the verdict of the previous one. ``consultation_number`` is VIES' ``requestIdentifier``
     and the whole point of the table: it proves, with audit value, that on that date the Commission
     confirmed that number. VIES only returns it when the query identifies the requester. Rows are never
@@ -336,7 +325,7 @@ class VatCheck(UUIDModel):
         (PENDING, _("Awaiting an answer")),
     ]
 
-    #: Days a verdict proves anything about (contract §8). Past it nothing blocks the sale, but the
+    #: Days a verdict proves anything about. Past it nothing blocks the sale, but the
     #: verdict no longer grants reverse charge and the next need asks VIES again.
     TTL_DAYS = 30
 
@@ -360,7 +349,7 @@ class VatCheck(UUIDModel):
     )
     returned_name = models.CharField(_("name in VIES"), max_length=255, blank=True)
     returned_address = models.TextField(_("address in VIES"), blank=True)
-    # Manual override (contract §7): a company incorporated days ago is not in VIES yet.
+    # Manual override: a company incorporated days ago is not in VIES yet.
     override_by = models.CharField(_("overridden by"), max_length=254, blank=True)
     override_reason = models.TextField(_("reason of the override"), blank=True)
     override_at = models.DateTimeField(_("overridden at"), null=True, blank=True)
@@ -380,7 +369,7 @@ class VatCheck(UUIDModel):
 
     @property
     def is_current(self) -> bool:
-        """Still within the window in which it proves something (§8)."""
+        """Still within the window in which it proves something."""
         return self.requested_at >= timezone.now() - timedelta(days=self.TTL_DAYS)
 
     @property
@@ -395,20 +384,18 @@ class VatCheck(UUIDModel):
         return bool(self.consultation_number) or self.is_manual_override
 
 
-# --- Stripe (lot L2-B) -------------------------------------------------------------------------------
+# --- Stripe -------------------------------------------------------------------------------------------
 
 #: The longest trial a promo code may grant.
 MAX_PROMO_TRIAL_DAYS = 365
 
 
 class PromoCode(UUIDModel):
-    """A code that grants trial DAYS at checkout, replacing the plan's own (ADR-0107).
+    """A code that grants trial DAYS at checkout, replacing the plan's own.
 
     Deliberately not a Stripe coupon: a coupon's duration burns from the moment it is applied, trial
     included, so one shorter than the trial expires before the first invoice. And free time, never a lower
-    price: a discount anchors a cheaper price and turns the renewal into a price hike. Ported from
-    ERPlora/saas ``hubs/subscriptions/models.py`` (origin/develop); reads in ``billing.queries``
-    (``redeemable_promo``), the count in ``billing.services`` (``redeem_promo``).
+    price: a discount anchors a cheaper price and turns the renewal into a price hike.
     """
 
     code = models.CharField(
@@ -489,7 +476,7 @@ def normalise_promo_code(code: str | None) -> str:
 
 
 class PromoRedemption(UUIDModel):
-    """A promo code used by a business: once per business and once per payer (review of L2-B), so one
+    """A promo code used by a business: once per business and once per payer, so one
     code does not give a year free to every business an account opens. Written when its checkout is paid
     (or its plan change confirmed); ``PromoCode.redemption_count`` counts these."""
 
@@ -534,7 +521,7 @@ class CheckoutAttempt(UUIDModel):
     class Kind(models.TextChoices):
         PLAN = "plan", _("Plan")
         MODULE = "module", _("Module")
-        #: The new owner of a handed-over business keeps its plan with their own card (HUBS-F28).
+        #: The new owner of a handed-over business keeps its plan with their own card.
         TAKEOVER = "takeover", _("Plan kept by the new owner")
 
     class Status(models.TextChoices):
@@ -592,11 +579,11 @@ class CheckoutAttempt(UUIDModel):
 
 
 class WebhookEvent(UUIDModel):
-    """Each Stripe event the webhook received, processed once (saas#2530).
+    """Each Stripe event the webhook received, processed once.
 
     A delivery claims the event before processing it, so two deliveries at once never both process it; a
     claim left by a process that died expires after ``CLAIM_LEASE``. A failure stays claimable: Stripe's
-    retry processes it again. One endpoint (``/webhooks/stripe/``, PLAN-SAAS §4), so the event id alone is
+    retry processes it again. One endpoint (``/webhooks/stripe/``), so the event id alone is
     the key.
     """
 
@@ -627,13 +614,13 @@ class WebhookEvent(UUIDModel):
 
 
 class PaymentFailure(UUIDModel):
-    """A renewal Stripe could not collect, and why: what «Pay» and the panel need (mockups README §6.18).
+    """A renewal Stripe could not collect, and why: what «Pay» and the panel need.
 
     One row per unpaid Stripe invoice. ``reason`` tells a declined card (the bank refused it: paying again
     with it fails, so «Pay» waits until the card changes, ``card_changed_at``) from an authentication the
     customer must complete or any other failure. ``invoice_created_at`` starts the 7 days of grace.
     ``resolved_at`` is set when the invoice is paid (or the subscription ends). ``notified_at`` and
-    ``suspension_notified_at`` keep the mails of BILLING-F16 to one each (``services.notify_unpaid``).
+    ``suspension_notified_at`` keep the unpaid mails to one each (``services.notify_unpaid``).
     """
 
     class Reason(models.TextChoices):
@@ -684,7 +671,7 @@ class PaymentFailure(UUIDModel):
         return f"{self.stripe_invoice_id} {self.reason}"
 
 
-# --- ERPlora's invoices to its customers (lot L3-C) --------------------------------------------------
+# --- ERPlora's invoices to its customers --------------------------------------------------------------
 
 #: The qualifications of a sale (``billing.vat``); a line may seal ``exempt`` on its own.
 TAX_TREATMENTS = [
@@ -704,7 +691,7 @@ def _euros(cents: int):
 
 
 class InvoiceCounter(UUIDModel):
-    """The year and the last number of a series: ``fiscal_counter`` (CLAUDE.md, «Fiscal»).
+    """The year and the last number of a series: ``fiscal_counter``.
 
     ``billing.services.issue_number`` locks the series' row in the transaction that records the invoice, reads
     the issue date once it holds the lock (a later number never carries an earlier date) and moves it: a new
@@ -726,16 +713,16 @@ class InvoiceCounter(UUIDModel):
 
 class Invoice(UUIDModel):
     """An invoice ERPlora issues to a customer for a business's subscription, or a credit note rectifying
-    one (lot L3-C; PLAN-SAAS §4, ADR-0478).
+    one.
 
     Recorded from Stripe: an unpaid renewal is listed (``open``, without a number: «Not collected», with
     «Pay»); once paid it gets its number (``InvoiceCounter``), the payer as it was that day (a snapshot of
     ``hubs.BillingProfile``: editing the profile later never rewrites an issued invoice) and its lines, all
-    in the transaction of the webhook. The legal invoice is issued by ERPlora's platform hub in hub-next
+    in the transaction of the webhook. The legal invoice is issued by ERPlora's platform hub
     (``POST /internal/platform/invoices``), which chains it in VeriFactu and answers its status and QR:
     ``fiscal_status`` mirrors it. The PDF is the platform hub's, asked on demand.
 
-    Money in integer cents (ADR-0123): ``net + tax == total``, and the header is the sum of its lines. A
+    Money in integer cents: ``net + tax == total``, and the header is the sum of its lines. A
     credit note carries negative amounts and points at the invoice it rectifies.
     """
 
@@ -836,7 +823,7 @@ class Invoice(UUIDModel):
     net_cents = models.BigIntegerField(_("tax base (cents)"), default=0)
     tax_cents = models.BigIntegerField(_("VAT (cents)"), default=0)
     total_cents = models.BigIntegerField(_("total (cents)"), default=0)
-    # The qualification of the OPERATION, sealed on issue (saas#1063): rates and the policy change, and an
+    # The qualification of the OPERATION, sealed on issue: rates and the policy change, and an
     # issued invoice chained in VeriFactu cannot change meaning afterwards.
     tax_treatment = models.CharField(
         _("tax treatment"), max_length=20, choices=TAX_TREATMENTS, default="domestic"
@@ -845,7 +832,7 @@ class Invoice(UUIDModel):
     tax_rate = models.DecimalField(
         _("VAT rate"), max_digits=5, decimal_places=2, default=Decimal("0.00")
     )
-    #: Stripe charged no tax on a subject sale: the quota came out of the amount charged (saas#1479).
+    #: Stripe charged no tax on a subject sale: the quota came out of the amount charged.
     vat_included_reconciled = models.BooleanField(
         _("VAT taken out of the amount charged"), default=False
     )
@@ -908,7 +895,7 @@ class Invoice(UUIDModel):
         ]
         constraints = [
             # Two deliveries of one webhook (or ``invoice.paid`` and ``invoice.payment_succeeded`` of one
-            # payment) never invoice it twice (saas#1067).
+            # payment) never invoice it twice.
             models.UniqueConstraint(
                 fields=["stripe_invoice_id"],
                 condition=Q(kind="invoice"),
@@ -962,10 +949,10 @@ class Invoice(UUIDModel):
 
     @property
     def vat_included_because_unverified(self) -> bool:
-        """Must the document explain that the VAT came out of what was charged (saas#1479)?
+        """Must the document explain that the VAT came out of what was charged?
 
         Only when it was reconciled, there is a VAT number without a VIES verdict to show, and that number
-        is of ANOTHER member state (a Spanish one is never asked to VIES: nothing to prove; saas#1633 —
+        is of ANOTHER member state (a Spanish one is never asked to VIES: nothing to prove;
         under OSS the sealed jurisdiction is the customer's country, so it is not the test).
         """
         from billing.vies import is_domestic_vat_number
@@ -981,7 +968,7 @@ class Invoice(UUIDModel):
 
 
 class InvoiceLine(UUIDModel):
-    """A line of an invoice with its own fiscal snapshot (saas#1063): what is sold (``tax_category``), its
+    """A line of an invoice with its own fiscal snapshot: what is sold (``tax_category``), its
     base, rate and quota, sealed on issue. ``net + tax == total``; negative on a proration credit or a
     credit note. ``item_kind`` and ``item_slug`` say which plan or module it bills, so the platform hub
     prints it in the payer's language; ``description`` is Stripe's text of the line."""
@@ -1064,8 +1051,8 @@ class PlanChangeSchedule(UUIDModel):
     """A plan change waiting for the end of the period (a downgrade: a cheaper plan, or annual → monthly).
 
     Stripe holds it as a subscription schedule (``stripe_schedule_id``): the current phase ends with the paid
-    period and the next one bills the new items, without proration, so no negative invoice arises (review of
-    L3-C). Kept here so the panel says «Starter from 1 Nov»; gone once applied or undone.
+    period and the next one bills the new items, without proration, so no negative invoice arises.
+    Kept here so the panel says «Starter from 1 Nov»; gone once applied or undone.
     """
 
     hub = models.OneToOneField(
@@ -1087,10 +1074,9 @@ class PlanChangeSchedule(UUIDModel):
 
 
 class OssNotice(UUIDModel):
-    """A notice to the team's mailbox about the OSS threshold (BILLING-F06; old ``OssThresholdWarning`` and
-    ``OssRegimeChange``, saas#2297, saas#2299): the charged sale that took the year past 80 % of the threshold
-    (``near``: register in the OSS now, it takes days) and the one that crossed it, or the first charged sale
-    of a year that starts in destination because the previous one closed above (``crossed``).
+    """A notice to the team's mailbox about the OSS threshold: the charged sale that took the year past 80 % of
+    the threshold (``near``: register in the OSS now, it takes days) and the one that crossed it, or the first
+    charged sale of a year that starts in destination because the previous one closed above (``crossed``).
 
     Once per year and kind: the row is the dedupe, persistent on purpose (a cache would warn again). Not
     written under a voluntary OSS registration, and ``near`` not in a year already crossed. Read only in the

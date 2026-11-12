@@ -1,4 +1,4 @@
-"""``collect_hub_usage`` (``saas-cron``, nightly; lot L4-A, PLAN-SAAS §5): one day's usage of every business.
+"""``collect_hub_usage`` (``saas-cron``, nightly): one day's usage of every business.
 
 The Hub measures each business every night (the bytes of its files in S3 and of its database, the people
 active that day and in the 30 days up to it) and serves it at ``GET /internal/usage?day=``, in pages. The
@@ -155,7 +155,7 @@ class TestCollect:
     def test_a_business_the_hub_did_not_measure_is_left_out_and_the_run_passes(
         self, business, owner, make_user, hub_double
     ):
-        """HUBS-F21/F22 (PLAN-DB round 2026-10-30, proposal (j)): the nightly measure skips a hub still on the shared
+        """HUBS-F21/F22: the nightly measure skips a hub still on the shared
         database of control, so its row is not in the answer. The pass records the rest and ends well; the business
         left out keeps «no data yet» (or its last day), never the size of the control database."""
         measured = create_business(make_user("lola@example.com"), name="Café Lola")
@@ -287,7 +287,7 @@ class TestCollect:
         other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
 
 
-#: What the Hub measures during the day and adds to each row (hub#603, PLAN-SAAS §28, BASE-F40); for the admin only.
+#: What the Hub measures during the day and adds to each row; for the admin only.
 DAY_FIGURES = ("requests", "peak_connections", "busy_requests")
 
 
@@ -560,7 +560,7 @@ def prune_breaks(monkeypatch) -> None:
 
 
 class TestAPassForgetsWhatIsPastTheRetention:
-    """HUBS-F22; PLAN-SAAS §1.1, «Limpiezas y podas diarias», and §27: 400 days, as the old product."""
+    """HUBS-F22: 400 days of usage are kept, as the old product kept them."""
 
     def test_the_day_400_stays_and_the_day_401_goes(self, business, hub_double):
         keep_day(business, days_ago(30))

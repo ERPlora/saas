@@ -1,10 +1,9 @@
 """Account → Security → Active sessions: ``accounts.session.list``, ``accounts.session.close`` and
-``accounts.session.close_others`` (plan 2026-10-13, L3-A; ``allauth.usersessions``, PLAN-SAAS §6).
+``accounts.session.close_others`` (``allauth.usersessions``).
 
-Ported from ERPlora/saas ``apps/dashboard/profile`` (``sessions``, ``handle_session_action``), whose sessions
-were JWT refresh tokens: here they are the browser sessions of the SaaS. The location is the address (GeoIP is
-out of scope, plan §6). Closing a session also asks every business to end the account's sessions there
-(PLAN-SAAS §2.1; ``signals.sessions_ended``, which hubs turns into ``POST /internal/sessions/revoke``).
+The sessions are the browser sessions of the SaaS. The location is the address (no GeoIP). Closing a session also
+asks every business to end the account's sessions there (``signals.sessions_ended``, which hubs turns into
+``POST /internal/sessions/revoke``).
 """
 
 import json
@@ -151,7 +150,7 @@ class TestTheList:
 
 class TestALongList:
     """An account with more sessions than one live result carries (the sign-ins of the end-to-end runs) still
-    sees its list: the server pages it, this session first (FIX-SAAS-SESSIONS-RESULT-TOO-BIG)."""
+    sees its list: the server pages it, this session first."""
 
     def test_the_live_list_loads_with_more_sessions_than_a_result_carries(self, laptop, ana):
         _more_sessions(ana, PAST_THE_CAP)
@@ -210,8 +209,8 @@ class TestALongList:
 
 class TestSigningIn:
     """Each sign-in drops the account's sessions that no longer sign it in and records its own. allauth's
-    ``purge_and_list`` did it one session at a time, about three queries for each open one: with 1680 sessions of
-    one account the SaaS answered the mailed code after 30 and 37 s (FIX-HUB-E2E-LOGIN-FLAKY-UNDER-LOAD)."""
+    ``purge_and_list`` does it one session at a time, about three queries for each open one, so an account with many
+    sessions waited tens of seconds for the mailed code."""
 
     def test_signing_in_costs_the_same_queries_however_many_sessions_the_account_has(self, ana, password):
         def queries() -> int:
@@ -318,7 +317,7 @@ class TestClosingTheOthers:
 
     def test_a_session_that_no_longer_signs_in_is_not_counted_among_the_closed(self, laptop, phone, ana, password):
         """«Sessions closed: n» counts the sessions that still signed in: one left behind by its expiry is ended too,
-        but not counted (the count comes from ``live_sessions``, FIX-SAAS-SESSIONS-RESULT-TOO-BIG)."""
+        but not counted (the count comes from ``live_sessions``)."""
         tablet = _browser(ana.email, password, MAC)
         model = _session_store().get_model_class()
         model.objects.filter(session_key=phone.session.session_key).update(expire_date=timezone.now() - timedelta(seconds=1))

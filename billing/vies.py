@@ -1,7 +1,6 @@
 """The VIES client: is a customer's VAT number in the European Commission's register, and the proof.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/vies.py`` (origin/develop), split by where the code lives
-now: this module is the HTTP client and the reading of the Commission's answer (no ORM); asking as the
+This module is the HTTP client and the reading of the Commission's answer (no ORM); asking as the
 identified requester, logging the answer as a ``VatCheck`` and deciding with it are ``billing.services``.
 
 Invoicing an EU business without VAT needs a VAT number VALID IN VIES, and the burden of proof is the
@@ -37,7 +36,7 @@ UNAVAILABLE = "unavailable"
 PENDING = "pending"
 
 #: VIES errors that mean «I could not answer», not «it does not exist». VIES goes down often, and that is
-#: not «not yet»: it is «not verified» (contract §7).
+#: not «not yet»: it is «not verified».
 #: VIES refuses OUR requester identity (``CompanyConfig``): every check fails until it is fixed.
 INVALID_REQUESTER_INFO = "INVALID_REQUESTER_INFO"
 
@@ -59,7 +58,7 @@ _UNAVAILABLE_ERRORS = frozenset(
 
 #: A VIES query holds a database connection while it waits (it runs inside the operation's
 #: transaction), so a process asks at most this many at once; one more is ``unavailable`` at once
-#: rather than waiting for a slot (review of L2-A).
+#: rather than waiting for a slot.
 VIES_SLOTS = threading.BoundedSemaphore(3)
 
 #: The VIES prefix of a member state whose VAT numbers do not start with its ISO code: Greece files ``EL``.
@@ -123,7 +122,7 @@ def with_country_prefix(vat_number: str | None, country: str, *, issuer_country:
 
 def is_uk_vat_number(vat_number: str | None) -> bool:
     """Is this HMRC's number rather than a member state's? Then VIES has nothing to say: it answers
-    ``INVALID_INPUT`` to a ``GB`` prefix since Brexit (checked live on 2026-09-24, saas#2205)."""
+    ``INVALID_INPUT`` to a ``GB`` prefix since Brexit (checked against VIES itself)."""
     return split_vat_number(vat_number)[0] in UK_PREFIXES
 
 
@@ -133,7 +132,7 @@ def is_domestic_vat_number(
     """Is the VAT number from the ISSUER's own country? Then there is nothing to prove.
 
     The single rule for «this number needs a VIES verdict». Always against the issuer's country, never
-    the sale's jurisdiction, which under OSS is the customer's (saas#1633). A number without a prefix is
+    the sale's jurisdiction, which under OSS is the customer's. A number without a prefix is
     placed by the customer's country; with neither, it is foreign (asking more than needed does no harm).
     """
     country = (
@@ -200,8 +199,8 @@ def read_answer(body, vat_number: str) -> ViesAnswer:
     """Turn the Commission's answer into a verdict of ours.
 
     The REST endpoint says ``valid``; the per-member-state one, ``isValid``: both are read, so a renamed
-    field cannot end in invoices at 0 %. A «valid» WITHOUT a consultation number proves nothing (contract
-    §3): it is what VIES returns when the request does not identify the requester, so it is
+    field cannot end in invoices at 0 %. A «valid» WITHOUT a consultation number proves nothing: it
+    is what VIES returns when the request does not identify the requester, so it is
     ``unavailable``.
     """
     if not isinstance(body, dict):

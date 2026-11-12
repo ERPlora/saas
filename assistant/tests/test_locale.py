@@ -1,9 +1,8 @@
 """The assistant's Spanish catalog (``assistant/locale/es/LC_MESSAGES/django.mo``) covers every message of the app.
 
-UI in ``en`` + ``es`` (PLAN §5): a ``gettext`` literal or a ``{% translate %}`` of an admin page without its Spanish
-entry reaches a Spanish member of the staff in English (saas#2489 of the old product: the sections of the admin came
-out in English). This reads the compiled catalog, so a ``.po`` edited without ``compilemessages`` fails too. Same
-scans as ``fiscal/tests/test_locale.py``.
+UI in ``en`` + ``es``: a ``gettext`` literal or a ``{% translate %}`` of an admin page without its Spanish entry reaches
+a Spanish member of the staff in English. This reads the compiled catalog, so a ``.po`` edited without
+``compilemessages`` fails too. Same scans as ``fiscal/tests/test_locale.py``.
 """
 
 import gettext

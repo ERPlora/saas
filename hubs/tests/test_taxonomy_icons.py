@@ -1,4 +1,4 @@
-"""Every icon of the taxonomy is an Iconify name with its set prefix (working rules §11).
+"""Every icon of the taxonomy is an Iconify name with its set prefix.
 
 The seed came from the old SaaS with bare ionicons (``restaurant-outline``) and Material names in
 its own notation (``material:local_bar``). The public web renders them with its baked icon registry,

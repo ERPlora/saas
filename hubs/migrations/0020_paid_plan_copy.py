@@ -1,8 +1,8 @@
-"""Data: the paid cards stop promising infrastructure (Ioan, 2026-10-24; PLAN-SAAS §9, round 2026-10-24b).
+"""Data: the paid cards stop promising infrastructure.
 
 0013 seeded Pro, Enterprise and Max with copy that sold infrastructure: «isolated infrastructure», «dedicated
 infrastructure with autoscaling, disaster recovery…», «container autoscaling», «disaster recovery (PITR)», «advanced
-monitoring», «single-node performance». The plans no longer sell infrastructure (round 6) and nobody runs that, yet
+monitoring», «single-node performance». The plans no longer sell infrastructure and nobody runs that, yet
 the Store shows it to a business that already pays. From here each card says only what its row gives: its database
 throughput against Starter's (``max_db_connections`` 12 / 24 / 48 against 3) or Pro's, Enterprise's messages against
 Pro's, no cap on devices or users, its ``support_level`` (priority email; agreed in contract) and Max's named contact,

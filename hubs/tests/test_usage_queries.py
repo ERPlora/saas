@@ -1,12 +1,12 @@
-"""What a business's page says of its usage (lot L4-A, PLAN-SAAS §5; mockups ``business.html``, «Uso»).
+"""What a business's page says of its usage (mockups ``business.html``, «Uso»).
 
 ``hubs.usage.get`` is the last day the Hub measured: the storage of its files against what its plan includes
 (the customer sees a percentage, never the database), the people active that day and in the 30 days up to it,
 and whether that day is behind (``stale``: not yesterday's). ``hubs.business.get`` carries the same as
 ``usage`` (``null`` until the first night). ``hubs.usage.series`` is the days of a window, for a chart.
 
-The space a plan includes follows its module tier (``Plan.included_level``), a decision of L4-A flagged for
-Ioan (``hubs/README.md``): Free 1 GiB, Basic 5 GiB, Pro 20 GiB, Enterprise 50 GiB.
+The space a plan includes follows its module tier (``Plan.included_level``, ``hubs/README.md``): Free 1 GiB,
+Basic 5 GiB, Pro 20 GiB, Enterprise 50 GiB.
 """
 
 import json
@@ -87,7 +87,7 @@ class TestUsageGet:
         }
 
     def test_the_storage_is_the_files_never_the_database(self, business, owner):
-        """PLAN-SAAS §5: the customer sees the S3 bytes as a percentage; ``db_bytes`` is the admin's."""
+        """The customer sees the S3 bytes as a percentage; ``db_bytes`` is the admin's."""
         on_plan(business, "free")
         sample(business, s3=0, db=10 * GIB)
 
@@ -120,7 +120,7 @@ class TestUsageGet:
             "percent": 10,
         }
 
-    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one by default)
     def test_during_the_trial_the_space_is_the_trial_plans(self, business, owner):
         """Born on Free trying Starter: Starter's space while the trial lasts, as its seats."""
         sample(business, s3=GIB)
@@ -237,8 +237,8 @@ class TestSeries:
 
 
 class TestTheCustomerNeverSeesTheFiguresOfTheDay:
-    """PLAN-SAAS §28: requests, peak connections and requests without room are for ERPlora's admin only: the panel
-    of erplora.com keeps its «Usage» card, and whoever runs the business reads them in its Hub (BASE-F40)."""
+    """Requests, peak connections and requests without room are for ERPlora's admin only: the panel
+    of erplora.com keeps its «Usage» card, and whoever runs the business reads them in its Hub."""
 
     NAMES = {"requests", "peak_connections", "busy_requests"}
     #: Figures nothing else on these pages can be by chance.

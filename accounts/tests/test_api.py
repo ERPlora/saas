@@ -15,7 +15,7 @@ HUBS = "/api/accounts/hubs"
 def test_hub_list_is_bound_to_get_api_accounts_hubs():
     from accounts.api import router
 
-    # The router holds the Account page's routes too (L3-A): this one is found by its path.
+    # The router holds the Account page's routes too: this one is found by its path.
     [route] = router.path_operations["/accounts/hubs"].operations
     assert (route.methods, route.operation_id) == (["GET"], "accounts.hub.list")
     assert resolve(HUBS).url_name
@@ -52,7 +52,7 @@ def test_an_account_without_hubs_gets_an_empty_list(client, ana):
     assert client.get(HUBS, HTTP_HOST=HOST).json() == {"hubs": []}
 
 
-# The routes of the Account page (plan 2026-10-13, L3-A), as the OpenAPI publishes them (and Postman reads them).
+# The routes of the Account page, as the OpenAPI publishes them (and Postman reads them).
 CUENTA = {
     ("get", "/api/accounts/profile"): "accounts.profile.get",
     ("post", "/api/accounts/profile"): "accounts.profile.update",

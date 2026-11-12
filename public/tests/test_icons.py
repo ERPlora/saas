@@ -1,11 +1,8 @@
-"""``{% icon %}``: the public templates paint their icons on the server, from a baked JSON (spec §8.4).
+"""``{% icon %}``: the public templates paint their icons on the server, from a baked JSON.
 
-Port of ``apps/core/templatetags/icons.py`` (origin/develop), which emitted an empty
-``<span class="iconify">`` that Iconify filled in the browser from ``api.iconify.design``. Here the
-SVG comes from ``frontend/generated/public-icons.json``, written by ``pnpm gen:public-icons`` from the
-same icon packages the shell uses, with only the icons the public pages paint: the ones the templates
-cite and the sector and business type icons of ``hubs/data/taxonomy.json`` (the industries pages).
-Never a network call.
+The SVG comes from ``frontend/generated/public-icons.json``, written by ``pnpm gen:public-icons`` from the same icon
+packages the shell uses, with only the icons the public pages paint: the ones the templates cite and the sector and
+business type icons of ``hubs/data/taxonomy.json`` (the industries pages). Never a network call.
 """
 
 import json
@@ -90,7 +87,7 @@ def baked(tmp_path, monkeypatch):
 
 
 def test_every_icon_the_public_pages_paint_is_baked():
-    """The guardrail of spec §9: an icon that is not in the JSON would paint the fallback in production.
+    """An icon that is not in the JSON would paint the fallback in production.
 
     Templates and taxonomy alike: a sector or business type icon missing from the JSON would paint
     the generic ``ion:business-outline`` on the industries pages.
@@ -103,7 +100,7 @@ def test_every_icon_the_public_pages_paint_is_baked():
 
 
 def test_the_baked_json_holds_only_what_the_public_pages_paint():
-    """Only the icons the templates cite and the taxonomy names (spec §8.4): a stale entry is weight
+    """Only the icons the templates cite and the taxonomy names: a stale entry is weight
     nobody paints."""
     baked_names = set(json.loads(ICONS_JSON.read_text(encoding="utf-8")))
 
@@ -191,7 +188,7 @@ def test_the_tag_paints_the_baked_svg_inline(baked):
     assert '<path d="M1 1h10"/>' in html
     assert 'aria-hidden="true"' in html
     assert 'focusable="false"' in html
-    # Sized by the font like Iconify's span was, and painted in the text colour.
+    # Sized by the font and painted in the text colour.
     assert 'width="1em" height="1em"' in html
     assert 'fill="currentColor"' in html
     assert 'class="ep-icon"' in html
@@ -265,7 +262,7 @@ def test_the_baked_file_is_read_once_per_change(baked):
 
 
 def test_the_tag_never_reaches_the_network(baked, monkeypatch):
-    """It reads the JSON on disk and nothing else (spec §8.4: no network call for icons)."""
+    """It reads the JSON on disk and nothing else."""
     import socket
 
     def no_network(*args, **kwargs):

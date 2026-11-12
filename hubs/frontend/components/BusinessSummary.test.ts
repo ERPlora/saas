@@ -1,6 +1,6 @@
-// The Summary of a business (mockups `business.html` «summary», PLAN-SAAS §3.6): its plan (what it
+// The Summary of a business: its plan (what it
 // covers, the trial; changing it is the Store's, web only) with its people against the places of the
-// plan, the usage the Hub measured last night (storage against the plan, the people active; PLAN-SAAS §5),
+// plan, the usage the Hub measured last night (storage against the plan, the people active),
 // «On your devices» and its details. Deleted, only the plan (cancelled) and the details.
 import { UsageCounter, UsageMeter } from '@erplora/ui/components';
 import { applySurface } from '@erplora/ui/shell';
@@ -167,7 +167,7 @@ describe('BusinessSummary', () => {
       percent: 12,
       hint: 'Of the space included in your plan: photos, documents and copies.',
     });
-    // A percentage, never the bytes (PLAN-SAAS §5).
+    // A percentage, never the bytes.
     expect(usage.getComponent(UsageMeter).props('value')).toBeUndefined();
     expect(usage.findAllComponents(UsageCounter).map((c: { props: (k: string) => unknown }) => [c.props('label'), c.props('value')])).toEqual([
       ['Active yesterday', 3],

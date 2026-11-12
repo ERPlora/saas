@@ -855,11 +855,9 @@ class TestAdminLoginWithTheFlagOn:
 
 
 class TestTheAdminAsksTheStaffForTheApp:
-    """ACCOUNTS-F20 (old SAAS_AUTH-F08; ERPlora/saas ``test_admin_requires_second_factor.py``; PLAN-SAAS «2FA obligatorio
-    en el admin»: SE PORTA): with the second factor on, the staff enter the admin only with an authenticator app (the
-    sign-in then asks its code, or a browser they trust skips it); without one, the admin takes them to set it up,
-    keeping where they were going, never a 403. The account is what is checked, as in today's SaaS: the code was asked
-    at the sign-in."""
+    """With the second factor on, the staff enter the admin only with an authenticator app (the sign-in then asks its
+    code, or a browser they trust skips it); without one, the admin takes them to set it up, keeping where they were
+    going, never a 403. The account is what is checked: the code was asked at the sign-in."""
 
     def test_staff_without_the_app_are_taken_to_set_it_up_keeping_where_they_were_going(self, mfa_on, client, platform):
         client.force_login(platform)

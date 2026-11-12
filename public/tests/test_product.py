@@ -1,16 +1,7 @@
 """``/features/``, ``/security/`` and ``/updates/`` (public/product.py).
 
-Port of ``apps/public/product`` (origin/develop c5ca8ca): its only suite,
-``product/tests/test_updates_page.py`` (10), and the cases of ``tests/unit/test_public_pages.py``
-for these three pages (200, brand, the Features link of the navbar, the footer, GET only, the URL
-names). What changed, and why:
-
-* the URL names live in the ``public`` namespace (``public:features``…), not in ``product:``;
-* the footer is ``<footer class="ep-footer">`` (L2), not ``<ok-footer>``: OutfitKit is gone;
-* ``/updates/`` mirrors §7 of ``/legal/terms/``, which came with the pages that read ``Plan`` (L7),
-  and its closing band links it;
-* «reachable from the footer» asks another public page, the footer being the same partial on all of
-  them (``/`` was the launcher until the landing arrived, L7).
+``/updates/`` mirrors section 7 of ``/legal/terms/`` and its closing band links it. «Reachable from the footer» asks
+another public page, the footer being the same partial on all of them.
 """
 
 import re
@@ -37,7 +28,7 @@ def page(client, path: str, language: str = "en") -> str:
     return response.content.decode()
 
 
-# --- The three pages (tests/unit/test_public_pages.py) ------------------------------------------
+# --- The three pages ----------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("path", PAGES)
@@ -94,9 +85,8 @@ def test_features_keeps_its_sections(client):
     ],
 )
 def test_features_does_not_name_the_stack(client, language, section):
-    """Ioan, 2026-10-14: the page says what ERPlora does, not what it is built with. The «Built with
-    modern technology.» section and its two stack cards are gone, and so are the names the bento and
-    the meta descriptions dropped in passing (OutfitKit had already left, PLAN §16.11)."""
+    """The page says what ERPlora does, not what it is built with: no stack section, and no stack names in the bento
+    nor in the meta descriptions."""
     html = copy_of(page(client, "/features/", language))
 
     assert section not in html
@@ -157,7 +147,6 @@ def test_security_keeps_its_four_cards_and_the_contact_band(client):
     ):
         assert heading in html
     assert "Talk to our security team." in html
-    # The contact page comes with the landing (L7), at the address it has today.
     assert 'href="/contact/"' in html
 
 
@@ -165,7 +154,7 @@ def test_security_in_spanish(client):
     assert "Seguridad de nivel empresarial." in page(client, "/security/", "es")
 
 
-# --- /updates/ (product/tests/test_updates_page.py) --------------------------------------------
+# --- /updates/ ---------------------------------------------------------------------------------
 
 
 def test_updates_page_is_no_longer_a_coming_soon_stub(client):
@@ -202,7 +191,7 @@ def test_updates_page_states_when_we_do_warn(client):
 
 
 def test_updates_page_says_you_can_bring_an_update_forward(client):
-    """You cannot postpone it, but the Update button is still there (ADR-0269 §3.5)."""
+    """You cannot postpone it, but the Update button is still there."""
     assert "Puedes adelantarlo" in page(client, "/updates/", "es")
 
 
@@ -225,7 +214,7 @@ def test_updates_page_links_the_contract_clause(client):
 
 
 def test_updates_page_closing_band_links_the_contract_clause(client):
-    """The band says where the binding text is and links it (``public:terms``, L7)."""
+    """The band says where the binding text is and links it (``public:terms``)."""
     html = page(client, "/updates/")
 
     assert "section 7 of the terms of service" in html
@@ -286,10 +275,10 @@ def test_llms_txt_points_answer_engines_at_features_and_security(client):
     )
 
 
-# --- Where it is hosted (Ioan, 2026-10-13: the servers are on AWS, not on Hetzner) ---------------
+# --- Where it is hosted: on AWS, not on Hetzner --------------------------------------------------
 
-#: Every page of this lot, product, company, resources, help and the app.
-L3A_PAGES = (
+#: The product, company, resources, help and app pages.
+PAGES_WITHOUT_DATA = (
     "/features/",
     "/security/",
     "/updates/",
@@ -302,8 +291,8 @@ L3A_PAGES = (
     "/app/",
     "/download/",
 )
-#: The old hosting: Hetzner, in Falkenstein, Germany, behind Cloudflare (out: PLAN-AWS, ADR-0499),
-#: and the AWS Spain region the pages named until Ireland took its place (Ioan, 2026-10-14).
+#: The old hosting (Hetzner, in Falkenstein, Germany, behind Cloudflare) and the AWS Spain region: the servers are in
+#: AWS's Ireland region.
 OLD_HOSTING = (
     "hetzner",
     "falkenstein",
@@ -316,7 +305,7 @@ OLD_HOSTING = (
 
 
 @pytest.mark.parametrize("language", ["en", "es"])
-@pytest.mark.parametrize("path", L3A_PAGES)
+@pytest.mark.parametrize("path", PAGES_WITHOUT_DATA)
 def test_no_page_names_the_old_hosting(client, path, language):
     text = page(client, path, language).lower()
 
@@ -331,7 +320,7 @@ def test_no_page_names_the_old_hosting(client, path, language):
     ],
 )
 def test_security_names_the_aws_region_in_ireland(client, language, region):
-    """Ioan, 2026-10-14: Ireland, for all of Europe; never the Spain region named before."""
+    """Ireland, for all of Europe; never the Spain region."""
     html = page(client, "/security/", language)
 
     assert region in html
@@ -349,21 +338,19 @@ def test_security_names_the_aws_region_in_ireland(client, language, region):
 def test_security_names_the_perimeter_on_aws(
     client, language, perimeter, tokens_spelling_the_claims
 ):
-    """Route 53, AWS WAF and the ALB are the perimeter (ADR-0499); no CDN in front."""
+    """Route 53, AWS WAF and the ALB are the perimeter; no CDN in front."""
     html = without_tokens(page(client, "/security/", language))
 
     assert perimeter in html
     assert "CDN" not in html
 
 
-# --- Only what the new stack does (Ioan, 2026-10-13) ------------------------------------------
-# The old copy promised RS256 JWT (PLAN-SAAS §2: server sessions and a one-time code to enter the
-# hub), reCAPTCHA (there is none: the old CSP test fixed it), a 99.95 % SLA (the pricing tests
-# fixed «no uptime SLA»), Cloudflare (out, ADR-0499), Argon2 (saas-next keeps Django's PBKDF2),
-# required email verification (`ACCOUNT_EMAIL_VERIFICATION = "none"`), 2FA (off in phase 1) and
-# GitHub sign-in (Google only). The home and /contact/ promised the same SLA as an «Uptime 99.95%»
-# and support «24/7» (L8): the real promise is high availability on AWS and a reply within 4
-# business hours, the one of the contact form.
+# --- Only what the stack does -----------------------------------------------------------------
+# The pages promise nothing the platform does not do: no RS256 JWT (the SaaS keeps server sessions and a one-time code
+# to enter the hub), no reCAPTCHA, no 99.95 % SLA, no Cloudflare, no Argon2 (Django's PBKDF2), no required email
+# verification (`ACCOUNT_EMAIL_VERIFICATION = "none"`), no 2FA and no GitHub sign-in (Google only). Neither an «Uptime
+# 99.95%» nor support «24/7»: the real promise is high availability on AWS and a reply within 4 business hours, the one
+# of the contact form.
 
 @pytest.fixture
 def tokens_spelling_the_claims(tokens_spelling):
@@ -390,7 +377,7 @@ STALE_CLAIMS = (
     "Tiempo activo",
     "Tiempo Activo",
     "tiempo activo",
-    # The catalogue sells apps, not modules (decision 19; L8 found them left on these pages).
+    # The catalogue sells apps, not modules.
     "modules",
     "Modules",
     "módulos",
@@ -420,11 +407,10 @@ def test_no_page_promises_what_the_old_stack_did(
     assert [claim for claim in STALE_CLAIMS if claim in html] == []
 
 
-# --- No tiers of apps (ronda 2026-10-24b, PLAN §32 and PLAN-SAAS §9) -----------------------------
-# Every plan includes all the apps; what changes by plan is the devices, the capacity and the AI and
-# WhatsApp quotas, and a downgrade deletes and turns nothing off. /pricing/ stopped selling tiers of apps first
-# (saas#119); the home, llms.txt, the downloads, the store, the industries, «About» and the terms
-# still said «the free apps come with every plan and the premium ones with the paid plans».
+# --- No tiers of apps ----------------------------------------------------------------------------
+# Every plan includes all the apps; what changes by plan is the devices, the capacity and the AI and WhatsApp quotas,
+# and a downgrade deletes and turns nothing off. No page (the home, llms.txt, the downloads, the store, the industries,
+# «About» and the terms) says «the free apps come with every plan and the premium ones with the paid plans».
 
 #: Lower-case: a page is scanned in lower case, whatever the sentence starts with.
 APP_TIER_CLAIMS = (
@@ -438,7 +424,7 @@ APP_TIER_CLAIMS = (
 
 @pytest.fixture
 def catalogue_with_the_premium_flag():
-    """A listed app and one flagged ``premium`` (reserved, unused today: PLAN §32), both for the
+    """A listed app and one flagged ``premium`` (reserved, unused today), both for the
     restaurant vertical of a business type, so every block that reads the catalogue is painted."""
     make_business_type("pizzeria", sector=make_sector("hospitality"), vertical="restaurant")
     make_app("kitchen", verticals=["restaurant"])
@@ -520,10 +506,10 @@ def test_security_states_what_the_new_stack_does(client, language, claims):
     assert [claim for claim in claims if claim not in html] == []
 
 
-# --- PUBLIC-F07: the web promises only what the product does today (SAAS_PUBLIC-F76) --------------
-# Checked against the apps of the Hub (origin/main): there is no accounting, payroll or support-ticket
+# --- The web promises only what the product does today --------------------------------------------
+# Checked against the apps of the Hub: there is no accounting, payroll or support-ticket
 # app, no TicketBAI and no tax returns (303, 390, 347), no warehouses, lots or expiry dates in
-# inventory and no bank reconciliation; the release number was typed by hand. The competitors' own
+# inventory and no bank reconciliation; the release number is never typed by hand. The competitors' own
 # columns («Accounting + light CRM» of Holded) may still name what THEY do.
 
 UNSHIPPED_CLAIMS = (
@@ -576,7 +562,8 @@ def test_no_page_promises_what_the_product_does_not_do(client, path, language):
     [("en", ("Healthcare", "Automotive", "Logistics")), ("es", ("Salud", "Automoción", "Logística"))],
 )
 def test_the_home_names_the_businesses_it_is_built_for_not_every_sector(client, language, sectors):
-    """The trust strip said «Built for every kind of business» over sectors no vertical serves."""
+    """The trust strip names the businesses it is built for, never «every kind of business» over sectors no vertical
+    serves."""
     html = page(client, "/", language)
     strip = html[html.index('class="ep-logo-cloud') : html.index("</section>", html.index('class="ep-logo-cloud'))]
 
@@ -593,7 +580,7 @@ STACK_TOTAL = re.compile(r'<td colspan="2">[^<]+</td>\s*<td data-title="[^"]+" c
 
 
 def test_the_typical_stack_total_is_the_sum_of_its_rows(client):
-    """«€533» was typed next to rows that changed: the total is worked out from them."""
+    """The total is worked out from the rows, never typed next to them."""
     html = page(client, "/")
 
     rows = STACK_ROW.findall(html)
@@ -609,7 +596,7 @@ RETIRED_TOOLS = ("TradeGecko", "QuickBooks Commerce")
 
 
 def test_the_typical_stack_names_only_tools_on_sale_today(client):
-    """PUBLIC-F01: the home's «what you would pay» table compares ERPlora with tools a business can buy."""
+    """The home's «what you would pay» table compares ERPlora with tools a business can buy."""
     html = page(client, "/")
 
     named = " ".join(tool for _, tool, _ in TYPICAL_STACK)
@@ -617,10 +604,10 @@ def test_the_typical_stack_names_only_tools_on_sale_today(client):
     assert not [tool for tool in RETIRED_TOOLS if tool in html]
 
 
-# --- PUBLIC-F08: what the web says of security and data is what runs (SAAS_PUBLIC-F77) -------------
+# --- What the web says of security and data is what runs -------------------------------------------
 # The load balancer accepts TLS 1.2 and 1.3 (``ELBSecurityPolicy-TLS13-1-2-2021-06`` in ERPlora/aws):
 # «TLS 1.3 required» was false. Nothing in the platform runs «regular security audits» nor has a
-# pentest report to hand out. The privacy policy (§6) lets the assistant's backup model providers
+# pentest report to hand out. Section 6 of the privacy policy lets the assistant's backup model providers
 # process outside the EEA: «your data never leaves the EU» contradicted it.
 
 UNVERIFIED_SECURITY_CLAIMS = (
@@ -666,9 +653,9 @@ def test_security_states_the_tls_versions_the_load_balancer_accepts(client, lang
     ],
 )
 def test_the_storage_answer_names_the_exceptions_of_the_privacy_policy(client, language, exceptions, one_exception):
-    """The privacy policy (§6) has two transfers of the assistant: the backup model providers and the provider of
-    its voice and search fingerprint services (a dictation's audio goes to OpenAI's API by default), so «the one exception» is
-    no longer true."""
+    """Section 6 of the privacy policy has two transfers of the assistant: the backup model providers and the
+    provider of its voice and search fingerprint services (a dictation's audio goes to OpenAI's API by default), so
+    «the one exception» would be false."""
     html = page(client, "/pricing/", language)
     answers = re.findall(r'<div class="ion-padding" slot="content">(.*?)</div>', html, re.S)
     (storage,) = [answer for answer in answers if "eu-west-1" in answer]
@@ -676,5 +663,5 @@ def test_the_storage_answer_names_the_exceptions_of_the_privacy_policy(client, l
     assert [exception for exception in exceptions if exception not in storage] == []
     assert one_exception not in storage
     assert 'href="/legal/privacy/"' in storage
-    # The web search goes to the United States under no safeguard of that policy (§6): the answer says it apart.
+    # The web search goes to the United States under no safeguard of section 6 of that policy: the answer says it apart.
     assert "Brave Search" in storage

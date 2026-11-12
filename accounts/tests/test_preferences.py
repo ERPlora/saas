@@ -1,15 +1,9 @@
-"""Account → Preferences: ``accounts.preferences.get`` and ``accounts.preferences.update`` (plan 2026-10-13,
-L3-A).
+"""Account → Preferences: ``accounts.preferences.get`` and ``accounts.preferences.update``: the theme mode, the
+language and the «Business notices» switch.
 
-Ported from ERPlora/saas ``apps/dashboard/settings/tests``: ``test_api`` (17) and ``test_views`` (33, the
-form → the API) for what survives the single panel (the theme mode, the language and the «Business notices»
-switch; ACCOUNTS-F22, F23). Dropped, with their reason: the palette (``test_theme_palette``, 18 → only the mode: the SaaS
-paints one palette), currency, menu order and developer mode (gone with the panel of round 17); the cached
-language (``test_language_cache``, 5: there is no cache, the language is a column of the account row the
-session already loads); «unset until chosen» (``test_language_unset_until_chosen``, 9: ``User.language``
-always holds one, because the mails and the jump to a hub need one; how the panel applies it is the shell's,
-see accounts/README.md); the password change (allauth.headless ``account/password/change``, rate-limited by
-allauth itself).
+There is one palette, so only the mode is chosen. The language is a column of the account row the session already
+loads, never cached, and ``User.language`` always holds one, because the mails and the jump to a hub need one. The
+password change is allauth.headless's ``account/password/change``.
 """
 
 import pytest

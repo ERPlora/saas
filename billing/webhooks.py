@@ -1,7 +1,6 @@
-"""``POST /webhooks/stripe/``: Stripe's single webhook (PLAN-SAAS §4; lot L2-B).
+"""``POST /webhooks/stripe/``: Stripe's single webhook.
 
-Ported from ERPlora/saas ``hubs/main/webhooks.py`` (``stripe_webhook``, origin/develop), whose four routes
-(hub plans, modules, Connect, assistant) are one now. A plain Django view, as the ``/internal`` doors
+A plain Django view, as the ``/internal`` doors
 (``hubs/internal.py``): Stripe signs the body (``Stripe-Signature``), so no session, no CSRF and no ninja.
 
 1. The signature is Stripe's (``billing.stripe_service.construct_event``): anything else is 400; without
@@ -13,7 +12,7 @@ Ported from ERPlora/saas ``hubs/main/webhooks.py`` (``stripe_webhook``, origin/d
 
 Answers ``{"status": <outcome>, "event_id"}``. The events to subscribe in Stripe are
 ``billing.services.STRIPE_WEBHOOK_EVENTS``, the one list, which ``manage.py audit_stripe_webhooks`` compares the
-endpoint with every day (BILLING-F39). A paid invoice, a credit note or a refund that cannot be invoiced yet (its business or
+endpoint with every day. A paid invoice, a credit note or a refund that cannot be invoiced yet (its business or
 the invoice it rectifies unknown, VIES down with no proof on file, lines that do not add up) is a 500: Stripe
 retries it, nothing is forgotten.
 """

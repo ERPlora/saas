@@ -1,14 +1,13 @@
 """The VIES client: what is asked, what is logged and what happens when it fails.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_vies.py`` (origin/develop, 21 tests). The
-business contract —who is invoiced without VAT— is proved end to end in ``test_vies_contract.py``.
+The business contract —who is invoiced without VAT— is proved end to end in ``test_vies_contract.py``.
 Here, the piece: the query identifies the requester, each answer of the Commission becomes the right
 verdict and NOTHING that can go wrong (network down, HTTP 500, unintelligible JSON) ends in
 ``verified``: when in doubt the VAT is charged, which is the recoverable outcome.
 
-Split by where the code lives now: ``billing.vies`` is the HTTP client (no ORM) and
-``billing.services.check_vat_number`` asks it as the identified requester and logs the answer as a
-``VatCheck``. Added: the endpoint and the timeout come from the settings, a timeout is an answer
+``billing.vies`` is the HTTP client (no ORM) and ``billing.services.check_vat_number`` asks it as the
+identified requester and logs the answer as a ``VatCheck``. The endpoint and the timeout come from the
+settings, a timeout is an answer
 (``unavailable``), and a log that cannot be written is never reported as checked.
 """
 
@@ -141,7 +140,7 @@ class TestReadingTheAnswer:
             assert _check().status == "invalid"
 
     def test_valid_without_a_consultation_number_is_NOT_verified(self):
-        """A ``valid: true`` without ``requestIdentifier`` proves nothing (contract §3)."""
+        """A ``valid: true`` without ``requestIdentifier`` proves nothing."""
         with vies_answers(VALID, requestIdentifier=""):
             check = _check()
 
@@ -314,7 +313,7 @@ class TestTheDoor:
         assert again.consultation_number == "WAPIAAAAX5"
 
     def test_a_verdict_that_could_not_be_had_is_asked_again(self):
-        """There is no queue to revalidate in the background (no ``django.tasks``, round 11): the next
+        """There is no queue to revalidate in the background: the next
         need asks the Commission again, so an ``unavailable`` does not stick for thirty days."""
         with vies_is_down():
             first = services.verify_customer_vat(VAT)
@@ -325,7 +324,7 @@ class TestTheDoor:
         post.assert_called_once()
 
     def test_a_uk_number_is_hmrcs_not_vies(self):
-        """VIES answers INVALID_INPUT to a GB prefix since Brexit (saas#2205): nothing is asked."""
+        """VIES answers INVALID_INPUT to a GB prefix since Brexit: nothing is asked."""
         with no_network() as post:
             assert services.verify_customer_vat("GB123456789") is None
             assert services.verify_customer_vat("XI123456789") is None
@@ -353,7 +352,7 @@ class TestTheSettings:
 class TestAtMostThreeQueriesAtOnce:
     """A VIES query holds a database connection while it waits (it runs inside the operation's
     transaction): a process asks at most three at once, and a fourth is ``unavailable`` at once rather
-    than queueing (review of L2-A, finding 3)."""
+    than queueing."""
 
     def test_a_query_beyond_the_three_in_flight_does_not_wait(self):
         for _ in range(3):

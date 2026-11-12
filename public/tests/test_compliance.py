@@ -1,14 +1,9 @@
-"""``/compliance/``: where ERPlora meets each country's invoicing rules (PUBLIC-F09, public/compliance.py).
+"""``/compliance/``: where ERPlora meets each country's invoicing rules (public/compliance.py).
 
-The old page read ``CountryCompliance``, a table a person flipped to «Covered» in the admin, seeded with
-mandates «pending human legal review» (SAAS_PUBLIC-F62): Spain read «Verifactu / TicketBAI / Factura-e,
-Covered» and no app did TicketBAI or Factura-e. The port left it out (spec §11.1: nothing to read in
-saas). Decided with the market (Odoo's list of fiscal localizations, Business Central's country table,
-Lightspeed's per-country help, Holded, Shopify POS, Zettle, Mollie and fiskaly; table in the PR): a
-fixed list in the code, released with the product, of the countries a business can be created in
-(``hubs.schemas.COUNTRIES``) and, for each, the fiscal system the apps connect to today. Only Spain's
-VeriFactu does; the Basque Country (TicketBAI) and Navarre are said to be out, and no foreign mandate is
-named, because nobody here has checked one.
+A fixed list in the code, released with the product: the countries a business can be created in
+(``hubs.schemas.COUNTRIES``) and, for each, the fiscal system the apps connect to today. Only Spain's VeriFactu is
+connected; the Basque Country (TicketBAI) and Navarre are said to be out, and no foreign mandate is named, because
+nobody here has checked one.
 """
 
 from __future__ import annotations
@@ -114,8 +109,7 @@ def test_the_verifactu_card_says_what_it_does_and_links_the_declaration(client):
     [("en", ("Basque Country", "Navarre")), ("es", ("País Vasco", "Navarra"))],
 )
 def test_the_spanish_regions_with_their_own_system_are_said_to_be_out(client, language, regions):
-    """TicketBAI and Navarre's system are not connected: the old page marked Spain «Covered» with
-    TicketBAI in it."""
+    """TicketBAI and Navarre's system are not connected, so Spain is never said to cover them."""
     html = page(client, language=language)
     spain = html[html.index('data-country="ES"') : html.index("</article>", html.index('data-country="ES"'))]
 
@@ -156,8 +150,8 @@ def test_the_page_in_spanish(client):
 
 
 def test_no_spanish_figure_or_heading_reads_like_a_price_plan(client):
-    """saas#2650 and saas#2645: «En el plan» over the countries to come, and a section titled «Plan», read as a
-    pricing plan; the countries without a connection say so instead."""
+    """«En el plan» over the countries to come, or a section titled «Plan», would read as a pricing plan; the
+    countries without a connection say so instead."""
     html = page(client, language="es")
 
     assert "En el plan" not in html

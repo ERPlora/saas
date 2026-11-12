@@ -1,14 +1,10 @@
 """The reads of the panel: ``hubs.business.list`` (the Businesses page and the launcher), ``hubs.business.get`` (a
 business's page) and ``hubs.address.propose`` (the address proposed while the name is typed).
 
-Ported from ERPlora/saas (origin/develop), from views to queries: ``hubs/main/tests/test_api.py``
-(only one's own businesses; a stranger gets 404), ``test_business_selector`` (one row per business,
-only mine, any role is enough, a deleted one is not listed), ``test_last_business`` (the last opened
-first, then by name; a revoked membership or a gone business is forgotten),
-``test_shell_create_address_proposal`` (a taken name proposes the free address),
-``dashboard/overview/tests/test_api.py`` (what survives as a list: an account with no business, with
-several) and ``test_hub_card_status_is_translated`` (the status reads in the account's language).
-Dropped with their reason: KPIs, activity, servers, metrics and the htmx cards (round 17 §2.3).
+Only one's own businesses (a stranger gets 404), one row per business, any role is enough, a deleted one is not
+listed; the last opened first, then by name (a revoked membership or a gone business is forgotten); a taken name
+proposes the free address; an account with no business, and with several; the status reads in the account's
+language.
 """
 
 from datetime import timedelta
@@ -145,7 +141,7 @@ class TestMyBusinesses:
 
 
 class TestTheFreeQuotaBeforeTheForm:
-    """Audit 2 S-02: «Create business» says the one-Free-business limit (ADR-0154) before the form, naming the
+    """«Create business» says the one-Free-business limit before the form, naming the
     Free business that fills it and offering to change its plan; the list says which one."""
 
     def test_an_account_whose_free_business_fills_the_quota_is_told_which(self, business, owner):
@@ -187,7 +183,7 @@ class TestOneBusiness:
             detail["language"],
         ) == ("Bar Manolo", "ES", "Europe/Madrid", "es")
         assert detail["plan"] == {"slug": "free", "name": "Free"}
-        # No trial since 2026-10-15 (the Free plan is the way in): Free's own seats.
+        # No trial (the Free plan is the way in): Free's own seats.
         assert (detail["trial_plan"], detail["trial_end"]) == (None, None)
         assert detail["seats"] == {"used": 1, "limit": 3}
         assert detail["can"] == {
@@ -349,7 +345,7 @@ class TestWhatABusinessAllows:
 
 
 class TestWhetherABusinessCanBeCreated:
-    """``hubs.business.create_check``, the read behind ``hubs.business.create``'s card (saas#193): it refuses as the
+    """``hubs.business.create_check``, the read behind ``hubs.business.create``'s card: it refuses as the
     write refuses, so nobody confirms a business that was never going to be created."""
 
     def check(self, user):

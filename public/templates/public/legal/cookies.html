@@ -1,13 +1,12 @@
 {% extends "public/legal/_dated_page.html" %}
 {% load i18n %}
 {% comment %}
-  The cookie policy (LSSI-CE art. 22.2). Port of apps/public/legal/templates/legal/cookies.html
-  (origin/develop) with the same sections and text, on the shared reading pattern with ep-* classes.
-  One correction: the essential cookies are named as the settings that set them call them
-  (public/legal.py), so the language cookie is `_lang`, not the `django_language` the old page
-  named. The per-cookie list of every group lives on the cookie settings page (/cookies/).
-  The analytics list and §3 follow `measures_visits` (public.context_processors), the flag that shows the cookie
-  banner (public/partials/cookie_banner.html): with no tracker configured the policy promises no banner (PUBLIC-F19).
+  The cookie policy (LSSI-CE art. 22.2), on the shared reading pattern with ep-* classes. The
+  essential cookies are named as the settings that set them call them (public/legal.py), so the
+  language cookie is `_lang`. The per-cookie list of every group lives on the cookie settings page
+  (/cookies/). The analytics list and section 3 follow `measures_visits` (public.context_processors),
+  the flag that shows the cookie banner (public/partials/cookie_banner.html): with no tracker
+  configured the policy promises no banner.
   Contract: public/tests/test_legal.py.
 {% endcomment %}
 

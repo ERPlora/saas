@@ -47,7 +47,7 @@ describe('RoleModal', () => {
     expect([...s.q('role-select').querySelectorAll('ion-select-option')].map((o) => o.textContent?.trim())).toEqual(['Manager', 'Employee']);
   });
 
-  it('«Change role» waits for another role than the current one (W-B16 of the mockups)', async () => {
+  it('«Change role» waits for another role than the current one', async () => {
     const s = await setup(() => Response.json({}));
     const submit = () => s.q('role-modal-submit') as HTMLElement & { disabled?: boolean };
     expect(submit().disabled).toBe(true);

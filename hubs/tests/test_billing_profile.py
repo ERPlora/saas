@@ -1,15 +1,13 @@
-"""Who pays for a business: ``hubs.billing_profile.{get,update}`` (PLAN-SAAS §3.1, the two identities).
+"""Who pays for a business: ``hubs.billing_profile.{get,update}``, apart from the business's own fiscal identity.
 
-Ported from ERPlora/saas ``hubs/main/tests/test_billing_profile.py`` and ``test_billing_profile_model.py``
-(origin/develop), the part that is not Stripe (the customer and the checkout are lot L2): the owner
-reads and edits the payer; «use the business's data» copies what the SaaS knows of the business (its
-name and country), a copy and not a sync. Only the owner: billing is the owner's (round 17 §2.7).
+The owner reads and edits the payer; «use the business's data» copies what the SaaS knows of the business (its
+name and country), a copy and not a sync. Only the owner, whose billing it is.
 
-Lot L2-B wires billing's VAT door into it (``billing.services.validate_vat_for_profile``, L2-A): the tax ID
-is written as ERPlora invoices it (``b-12.345.678`` is ``B12345678``, a foreign one typed bare gets its
-prefix) and asked to VIES, whose verdict is logged; a malformed one is the field's 422, but a number VIES
-does not confirm is kept as identification (it simply buys no reverse charge). A Spanish postal code has
-five digits («3500» is not Las Palmas): its province decides the tax (saas#1972).
+The tax ID goes through billing's VAT door (``billing.services.validate_vat_for_profile``): it is written as
+ERPlora invoices it (``b-12.345.678`` is ``B12345678``, a foreign one typed bare gets its prefix) and asked to
+VIES, whose verdict is logged; a malformed one is the field's 422, but a number VIES does not confirm is kept as
+identification (it simply buys no reverse charge). A Spanish postal code has five digits («3500» is not Las
+Palmas): its province decides the tax.
 """
 
 import pytest
@@ -115,7 +113,7 @@ def test_a_tax_id_of_a_valid_form_is_accepted(business, owner, country, tax_id):
 @pytest.mark.parametrize(
     "country, typed, stored",
     [
-        # Typography, not identity (saas#1740): billing's one spelling of a tax id.
+        # Typography, not identity: billing's one spelling of a tax id.
         ("ES", "B12345678!", "B12345678"),
         # Two digits are a VAT number's shape (a Romanian CUI may be that short): VIES decides it exists.
         ("PT", "PT12", "PT12"),
@@ -171,7 +169,7 @@ def test_an_email_of_another_form_is_refused(business):
     assert "billing_email" in str(refused.value)
 
 
-# --- VIES and the postal code (lot L2-B) --------------------------------------------------------------
+# --- VIES and the postal code ----------------------------------------------------------------------
 
 
 @pytest.fixture

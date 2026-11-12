@@ -1,15 +1,9 @@
 """Writes of billing: the VIES verdict of a VAT number (asked, logged, cleared), the tax a sale carries,
 and the operation ``billing.vat_check.run``.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/vies.py`` (the doors: ``verify_customer_vat``,
-``check_vat_number``, ``record_manual_override``, ``clear_tax_id_for_stripe``, the per-person budget) and
-``fiscal/services/sale_tax_rates.py`` (origin/develop). Only this module and ``queries.py`` touch the ORM;
-the HTTP client is ``billing.vies``.
-
 Every VIES query is a NEW ``VatCheck`` row: the log is the proof and is never rewritten. A current proof
 (``grants_reverse_charge``) is reused for 30 days; anything else —invalid, unavailable, expired— is asked
-again on the next need. That is the revalidation the old SaaS queued (there is no queue here: no
-``django.tasks``, round 11), so an ``unavailable`` never sticks. Only a query really sent to VIES spends
+again on the next need, so an ``unavailable`` never sticks. Only a query really sent to VIES spends
 the budget: the person's (``VAT_CHECK_RATE``) when a person asks, and everybody's
 (``VAT_CHECK_GLOBAL_RATE``) always.
 
@@ -139,20 +133,20 @@ class MalformedVatNumber(ValueError):
 # --- The clearance of a VAT number --------------------------------------------------------------------
 
 CLEARANCE_ABSENT = "absent"
-#: The issuer's own country: it can never be reverse charge, so it travels without asking (contract §10.6).
+#: The issuer's own country: it can never be reverse charge, so it travels without asking.
 CLEARANCE_NATIONAL = "national"
 #: Checked in VIES, current and WITH PROOF (consultation number or manual override).
 CLEARANCE_VERIFIED = "verified"
 CLEARANCE_INVALID = "invalid"
-#: The Commission did not answer, or answered without proof. Not «not yet» (§7).
+#: The Commission did not answer, or answered without proof.
 CLEARANCE_UNAVAILABLE = "unavailable"
-#: An HMRC number (``GB``/``XI``): VIES cannot answer and no rate depends on it (saas#2205).
+#: An HMRC number (``GB``/``XI``): VIES cannot answer and no rate depends on it.
 CLEARANCE_OUTSIDE_VIES = "outside_vies"
 
 
 @dataclass(frozen=True)
 class TaxIdClearance:
-    """Whether a VAT number may travel to the payment gateway, and why (contract §9, saas#1621).
+    """Whether a VAT number may travel to the payment gateway, and why.
 
     Stripe applies reverse charge by the FORMAT of the number, without waiting for VIES: handing it an
     unchecked number gives away 21 % of the sale. Only three verdicts let the number out: proved in VIES,
@@ -236,7 +230,7 @@ def record_vat_check(vat_number: str, **fields) -> VatCheck:
 
 def check_vat_number(vat_number: str, *, spender=None) -> VatCheck:
     """Ask VIES NOW as the identified requester and log the answer. Never an anonymous query: it brings
-    no consultation number, so it proves nothing (contract §3). ``spender`` is the account that asked
+    no consultation number, so it proves nothing. ``spender`` is the account that asked
     (its budget is spent too); ``VatCheckThrottled`` when a budget is spent, before asking."""
     value = vies.normalise(vat_number)
     if not vies.split_vat_number(value)[0]:
@@ -337,7 +331,7 @@ def clear_tax_id_for_stripe(
 
 
 def record_manual_override(vat_number: str, *, by: str, reason: str) -> VatCheck:
-    """Mark a VAT number valid BY HAND, with author and reason (contract §7): the company incorporated last
+    """Mark a VAT number valid BY HAND, with author and reason: the company incorporated last
     week that is not in VIES yet. The only way to invoice at 0 % without the Commission's answer, so
     somebody must answer for it."""
     author, why = (by or "").strip(), (reason or "").strip()
@@ -402,10 +396,10 @@ class VatValidation:
 
 
 def validate_vat_for_profile(country: str, vat_id: str) -> VatValidation:
-    """What ``hubs.billing_profile.update`` calls in lot L2-B (instead of its form-only ``validate_tax_id``):
-    the number written as ERPlora invoices it plus its VIES verdict. A malformed one raises
-    ``MalformedVatNumber`` (the caller turns it into its field's 422); a number VIES does not confirm is
-    kept as identification and simply does not buy reverse charge."""
+    """What ``hubs.billing_profile.update`` calls (instead of its form-only ``validate_tax_id``): the number
+    written as ERPlora invoices it plus its VIES verdict. A malformed one raises ``MalformedVatNumber`` (the
+    caller turns it into its field's 422); a number VIES does not confirm is kept as identification and simply
+    does not buy reverse charge."""
     number = vat_number_for(country, vat_id)
     if not number:
         return VatValidation("", CLEARANCE_ABSENT)
@@ -443,7 +437,7 @@ _CANNOT_BE_PRICED = {
 
 def reverse_charge_cleared(tax_id: str, country: str) -> bool:
     """Whether VIES proved this VAT id: asked here, never trusted from the profile, because a number that
-    only looks right buys a sale tax free (saas#1479)."""
+    only looks right buys a sale tax free."""
     if not tax_id:
         return False
     return clear_tax_id_for_stripe(tax_id, customer_country=country).verified
@@ -455,7 +449,7 @@ def require_billing_location(
     """Refuse to sell before knowing WHERE the payer is: the 409 ``billing.billing_location_required``.
 
     The postal code is the only thing that tells the Canary Islands, Ceuta and Melilla (outside VAT) from
-    the mainland (saas#1972), and only a real one («3500» is Benidorm without its 0, not Las Palmas).
+    the mainland, and only a real one («3500» is Benidorm without its 0, not Las Palmas).
     Charging first leaves two wrong outcomes. A free sale is never refused.
     """
     if price is not None and not to_cents(price):
@@ -483,8 +477,8 @@ def sale_quote(
     something to charge, but the amount is not this question's business (the rate never depends on it).
 
     Refused (409) without a valid billing location, to a consumer in the UK (the terms sell to UK
-    businesses only: a UK consumer owes UK VAT that only a supplier registered with HMRC may charge,
-    saas#2205), and when no rule resolves the territory (the rate would be a guess and the price is net:
+    businesses only: a UK consumer owes UK VAT that only a supplier registered with HMRC may charge),
+    and when no rule resolves the territory (the rate would be a guess and the price is net:
     refusing is loud and reversible; a sale charged wrong is neither).
     """
     require_billing_location(hub, price=price, what=what)
@@ -526,12 +520,12 @@ def sale_quote(
 def sale_tax_rates(
     hub, *, category_key: str, price: Decimal | None = None, what: Sold = "sale"
 ) -> list[TaxRateSpec]:
-    """The rates Stripe must charge on top of this sale's net price (lot L2-B mirrors them into ``TaxRate``
-    ids), for every door that sells: the plan and the module price the same buyer the same way (saas#1992).
+    """The rates Stripe must charge on top of this sale's net price (mirrored into Stripe ``TaxRate``
+    ids), for every door that sells: the plan and the module price the same buyer the same way.
 
     An EMPTY list is an answer, not a failure: the Canaries are outside VAT and the reverse charge is the
     customer's. ``price`` €0.00 is never refused (21 % of nothing is nothing, and the Free plan is the way
-    in, ADR-0154); ``None`` = an amount that is not this function's business: the rate never depends on it.
+    in); ``None`` = an amount that is not this function's business: the rate never depends on it.
     """
     if price is not None and not to_cents(price):
         return []
@@ -641,14 +635,14 @@ def vat_check_run(ctx: OperationContext, data: VatCheckIn) -> dict:
     }
 
 
-# --- Promo codes (lot L2-B) --------------------------------------------------------------------------
+# --- Promo codes -------------------------------------------------------------------------------------
 
 
 def redeem_promo(
     code: str | None, *, hub: Hub | None = None, customer: str = "", session: str = ""
 ) -> bool:
     """Count one redemption of ``code``; ``False`` when unknown, at its cap, or already used by ``hub`` (once
-    per business, review of L2-B: the use is recorded, ``PromoRedemption``). The cap is in the UPDATE's
+    per business: the use is recorded, ``PromoRedemption``). The cap is in the UPDATE's
     WHERE, so two checkouts completing at once never pass it (the trial was granted when each session
     opened: two people taking the last seat at once both get it, only one is counted)."""
     normalised = normalise_promo_code(code)
@@ -679,7 +673,7 @@ def redeem_promo(
     return counted > 0
 
 
-# --- Stripe: buying, changing and cancelling (lot L2-B; PLAN-SAAS §3.2–§3.4 and §4) -------------------
+# --- Stripe: buying, changing and cancelling ----------------------------------------------------------
 #
 # ONE Stripe subscription per business, whose items are its plan and its bought modules, at NET prices
 # plus OUR tax rates (one ``TaxRate`` per item, ``billing.TaxRule``; never ``automatic_tax``). A business
@@ -695,13 +689,13 @@ SIMPLIFIED_INVOICE_LIMIT = Decimal("400.00")
 #: Stripe refuses a Checkout trial that ends in less than 48 hours: a shorter one is not carried.
 MIN_TRIAL = timedelta(hours=48)
 #: How long a business whose renewal failed keeps its whole plan while Stripe retries, counted from the
-#: failed invoice (saas#2574; market: WooCommerce 7 days, Square 9, Lightspeed 21; PLAN-SAAS §3.3).
+#: failed invoice (market: WooCommerce 7 days, Square 9, Lightspeed 21).
 UNPAID_PLAN_GRACE = timedelta(days=7)
 PAID_STATUSES = frozenset({"active", "trialing"})
 DUNNING_STATUSES = frozenset({"past_due", "unpaid"})
 ENDED_STATUSES = frozenset({"canceled", "incomplete_expired"})
 #: Stripe failure codes that mean the CARD will not pay again as it is (the bank refused it, or it is no
-#: longer valid): «Pay» waits until the card changes (mockups README §6.18).
+#: longer valid): «Pay» waits until the card changes.
 CARD_REFUSED_CODES = frozenset(
     {
         "card_declined",
@@ -793,10 +787,9 @@ PLATFORM_HEALTH_KEY = "billing.platform_invoicing.healthy"
 
 
 def invoicing_available() -> bool:
-    """Whether a route sends ERPlora's invoices now (working rules §15): the platform invoicing is switched on
+    """Whether a route sends ERPlora's invoices now: the platform invoicing is switched on
     (``PLATFORM_INVOICING_ENABLED``, off by default) AND the platform hub answers its health route
-    (``GET /internal/platform/invoices/health`` → 200 ``{"status": "ok"}``), kept ``PLATFORM_HEALTH_SECONDS``.
-    Not «the model exists» (review of L3-C)."""
+    (``GET /internal/platform/invoices/health`` → 200 ``{"status": "ok"}``), kept ``PLATFORM_HEALTH_SECONDS``."""
     if not settings.PLATFORM_INVOICING_ENABLED:
         return False
     if cache.get(PLATFORM_HEALTH_KEY):
@@ -814,12 +807,12 @@ def invoicing_available() -> bool:
 
 def require_payments() -> None:
     """Stripe is configured, and a LIVE key moves real money only while a route sends ERPlora's invoice of
-    it (``invoicing_available``: working rules §15, «in production nothing is charged without a sending
-    route») and this year's OSS total is known.
+    it (``invoicing_available``: in production nothing is charged without a route that sends its invoice)
+    and this year's OSS total is known.
 
     The OSS threshold (10,000 € a year of cross-border B2C sales) decides between Spanish and destination
     VAT, and part of the year was sold by the old SaaS (``FiscalPolicy.oss_carried_*``): until that sum is
-    on file for this year, a sale could cross the threshold unseen (billing README, «Fuera de L2-A»). A
+    on file for this year, a sale could cross the threshold unseen. A
     test key moves no real money and is never held.
     """
     require_stripe()
@@ -854,14 +847,14 @@ def require_payments() -> None:
 
 
 def _owned(ctx: OperationContext, hub_id) -> tuple[Hub, Subscription | None]:
-    """The business ``hub_id`` if the account OWNS it (what a business pays is its owner's, round 17 §2.7:
+    """The business ``hub_id`` if the account OWNS it (what a business pays is its owner's:
     404 without access, 403 for another role), locked, and its subscription; a deleted one buys nothing.
 
-    And the account is its PAYER (review of L2-B): an accepted transfer leaves the previous owner's payer, card
+    And the account is its PAYER: an accepted transfer leaves the previous owner's payer, card
     and Stripe customer on the business, and a new owner must not charge, read or cancel them (409
     ``billing.payer_required``): they say who pays first (``hubs.billing_profile.update`` gives the business
     a payer of theirs). A subscription still billed to the previous payer's customer is kept with the new owner's
-    card first («Keep it with my card», ``billing.plan.take_over``, HUBS-F28)."""
+    card first («Keep it with my card», ``billing.plan.take_over``)."""
     user = hub_queries.account_of(ctx)
     member = hub_queries.access(user, hub_id, HubMember.Role.OWNER, lock=True)
     if not hub_queries.is_writable(member.hub):
@@ -905,7 +898,7 @@ def _paying(subscription: Subscription | None) -> bool:
 
 
 def _require_paid_up(hub: Hub, subscription: Subscription | None) -> None:
-    """A business with an unpaid invoice buys nothing more until it pays it (mockups README §6.18)."""
+    """A business with an unpaid invoice buys nothing more until it pays it."""
     unpaid = subscription is not None and subscription.status in DUNNING_STATUSES
     if unpaid or hub.status == Hub.Status.SUSPENDED:
         raise Conflict(
@@ -927,7 +920,7 @@ def _not_on_sale(what: str) -> Conflict:
 
 
 def _upgrade_only() -> Conflict:
-    """Pro, Enterprise and Max (``upgrade_only``) are an upgrade of a business that already pays (audit 2 S-03);
+    """Pro, Enterprise and Max (``upgrade_only``) are an upgrade of a business that already pays;
     the Store does not offer them to a Free one (``billing.store.catalog``'s ``offered_plans``)."""
     return Conflict(
         _(
@@ -1079,7 +1072,7 @@ def price_sale(hub: Hub, sale: Sale, *, recurring_net: Decimal) -> list[str]:
 def ensure_customer(hub: Hub, *, test_clock: str | None = None) -> str:
     """The payer of ``hub`` as a Stripe customer: created once (and remembered on the payer through
     ``hubs.subscription.apply``), brought up to date otherwise. Its VAT number travels only when VIES
-    proved it, or it is national (Stripe reverse charges by the FORMAT of a number, saas#1479).
+    proved it, or it is national (Stripe reverse charges by the FORMAT of a number).
     ``test_clock`` attaches a new customer to a Stripe test clock (``billing.stripe_test_clocks``)."""
     profile = hub.billing_profile
     params = _customer_params(hub, profile)
@@ -1135,7 +1128,7 @@ def _customer_params(hub: Hub, profile) -> dict:
 
 
 def push_payer_to_stripe(profile_id) -> str:
-    """The billing details the owner saved, onto the payer's Stripe customer (BILLING-F01): what Stripe sends
+    """The billing details the owner saved, onto the payer's Stripe customer: what Stripe sends
     (the page to authenticate a renewal, its receipts) and the Customer Portal show them, not the old ones.
     ``updated`` · ``skipped`` (Stripe never saw this payer: the first checkout creates the customer with them,
     ``ensure_customer``). Stripe failing raises (``stripe_errors``)."""
@@ -1149,7 +1142,7 @@ def push_payer_to_stripe(profile_id) -> str:
     return "updated"
 
 
-# --- BILLING-F28 and APPS-F04: the Stripe prices pasted on a plan or a module are its own (the staff, in the admin) -
+# --- The Stripe prices pasted on a plan or a module are its own (the staff, in the admin) ----------------------
 
 #: Each Stripe price of a plan: its field, the plan's amount it must charge and how often.
 PLAN_PRICE_FIELDS = (("stripe_price_id", "price_monthly", "month"), ("stripe_price_id_annual", "price_annual", "year"))
@@ -1189,7 +1182,7 @@ def plan_price_problems(*, prices: dict[str, str], amounts: dict[str, Decimal], 
 
 
 def module_price_problems(*, prices: dict[str, str], amounts: dict[str, int], product: str) -> dict[str, str]:
-    """APPS-F04: the same checks as :func:`plan_price_problems`, for the Stripe prices pasted on a paid module, by the
+    """The same checks as :func:`plan_price_problems`, for the Stripe prices pasted on a paid module, by the
     module's own fields; ``amounts`` are its net prices in euro cents (``price_monthly_cents``, ``price_annual_cents``)."""
     return _price_problems(
         MODULE_PRICE_FIELDS,
@@ -1237,7 +1230,7 @@ def _price_problems(fields, prices: dict[str, str], cents: dict[str, int], produ
     return problems
 
 
-# --- BILLING-F29: a real charge in PRE with a Stripe test clock (the staff, from the admin) ------------
+# --- A real charge in PRE with a Stripe test clock (the staff, from the admin) ------------
 
 #: How far «Advance the clock» moves it: past a monthly renewal.
 TEST_CLOCK_STEP = timedelta(days=31)
@@ -1477,7 +1470,7 @@ def _open_checkout(
         "ui_mode": EMBEDDED_UI_MODE,
         "mode": "subscription",
         "customer": customer,
-        # With a customer, what the buyer types in the checkout is saved on it (saas#1077).
+        # With a customer, what the buyer types in the checkout is saved on it.
         "customer_update": {"name": "auto", "address": "auto"},
         "line_items": [{"price": sale.price_id, "quantity": 1, "tax_rates": tax_rates}],
         "metadata": metadata,
@@ -1485,10 +1478,10 @@ def _open_checkout(
         "redirect_on_completion": "if_required",
         "return_url": f"{base}{BUSINESSES}/{hub.id}/summary?checkout={{CHECKOUT_SESSION_ID}}",
         "locale": "auto",
-        # Without an address there is no country, and without it no tax jurisdiction (saas#1051).
+        # Without an address there is no country, and without it no tax jurisdiction.
         "billing_address_collection": "required",
         # Never: Stripe reverse charges by the FORMAT of a number. Ours is asked in our form and only a
-        # proved one reaches the customer (saas#1621, ``ensure_customer``).
+        # proved one reaches the customer (``ensure_customer``).
         "tax_id_collection": {"enabled": False},
         "integration_identifier": INTEGRATION_IDENTIFIER,
     }
@@ -1539,7 +1532,7 @@ def _require_room(live: dict, adding: int = 1) -> None:
 
 def is_downgrade(subscription: Subscription, sale: Sale) -> bool:
     """Whether a plan change gives the business less for its money: annual → monthly, or a cheaper plan on the
-    same billing. It waits for the end of the paid period (review of L3-C): charged now it would credit the
+    same billing. It waits for the end of the paid period: charged now it would credit the
     unused part of the dearer plan, a Stripe invoice with a negative total."""
     if subscription.billing_interval == Subscription.Interval.YEAR and sale.interval == "month":
         return True
@@ -1670,7 +1663,7 @@ def _plan_change(
     """The items of a plan change: the plan item gets the new price; on a change of billing, every module
     item its price of the new billing (Stripe bills one interval per subscription), each with our tax. A
     subscription of modules alone (a Free business) gets its plan item, keeping the days left of the sign-up
-    trial or a promo code's, as the checkout does (review of L2-B)."""
+    trial or a promo code's, as the checkout does."""
     if (
         sale.plan.pk == subscription.plan_id
         and sale.interval == subscription.billing_interval
@@ -1887,7 +1880,7 @@ def checkout_confirm(ctx: OperationContext, data: CheckoutConfirmIn) -> dict:
     permission="billing.pay",
     input=PlanChangeIn,
     output=SubscriptionOut,
-    # Not a tool of the chat, on purpose (saas#211, ASSISTANT-F25 step 5): it charges now, so it is done in the Store,
+    # Not a tool of the chat, on purpose: it charges now, so it is done in the Store,
     # whose dialog asks the server for the fresh preview (``proration_date``, ``_require_fresh_preview``) and shows it.
     ai=INTERNAL,  # preview
 )
@@ -1950,7 +1943,7 @@ def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
     ai=AI(
         description="Cancels the plan of a business at the end of its period: then it goes back to Free with its data.",
         risk="high",
-        # Its card first says what the «Cancel the plan» dialog of Billing says (BILLING-F13, saas#203).
+        # Its card first says what the «Cancel the plan» dialog of Billing says.
         preview={
             "operation": "billing.plan.cancel_preview",
             "fields": ["plan", "paid_until", "then", "modules", "free_users", "free_devices", "people", "unpaid_cents"],
@@ -1970,7 +1963,7 @@ def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
     ),
 )
 def plan_cancel(ctx: OperationContext, data: HubIn) -> dict:
-    """Cancel the plan at the end of its period (PLAN-SAAS §3.3): it works until then and the business goes
+    """Cancel the plan at the end of its period: it works until then and the business goes
     back to Free, with its data. Cancelling again changes nothing."""
     hub, subscription = _owned(ctx, data.hub_id)
     if not _paying(subscription):
@@ -2039,7 +2032,7 @@ def plan_keep(ctx: OperationContext, data: HubIn) -> dict:
     return subscription_out(hub.id)
 
 
-# --- A business handed over with a paid plan (HUBS-F28) -------------------------------------------------
+# --- A business handed over with a paid plan ----------------------------------------------------------
 
 
 def end_renewal_after_hand_over(hub: Hub, new_owner) -> datetime | None:
@@ -2071,7 +2064,7 @@ def end_renewal_after_hand_over(hub: Hub, new_owner) -> datetime | None:
 
 def billed_to_another_account(subscription: Subscription | None, profile) -> bool:
     """Whether the live plan of a business is charged to a Stripe customer that is not its payer's (``profile``):
-    the card of the payer before a hand-over (HUBS-F28)."""
+    the card of the payer before a hand-over."""
     if not _paying(subscription):
         return False
     return profile is None or subscription.stripe_customer_id != profile.stripe_customer_id
@@ -2093,7 +2086,7 @@ def _nothing_to_take_over() -> Conflict:
     ai=INTERNAL,  # stripe
 )
 def plan_take_over(ctx: OperationContext, data: HubIn) -> dict:
-    """«Keep it with my card» (HUBS-F28): the new owner of a handed-over business keeps its plan and modules with
+    """«Keep it with my card»: the new owner of a handed-over business keeps its plan and modules with
     their own payer. An Embedded Checkout of the same prices whose billing starts on the day the paid period ends
     (``billing_cycle_anchor``, no proration): nothing is charged today and nobody pays twice. Its completion
     (``checkout_completed``) moves the business to the new subscription and ends the previous one.
@@ -2209,7 +2202,7 @@ def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[d
 
 
 def _takeover_completed(hub: Hub, session: dict, subscription_id: str, replaced: str) -> str:
-    """The new owner kept the plan with their card (HUBS-F28): the business moves to the new subscription and the
+    """The new owner kept the plan with their card: the business moves to the new subscription and the
     previous one, on the previous payer's card, ends now without a refund (the business is using the period it
     paid; the new one bills from its end). Stripe not answering raises: nothing moves and Stripe delivers it
     again. A redelivery finds the business moved and ends nothing twice."""
@@ -2256,7 +2249,7 @@ def _bought_item(subscription: Subscription | None, slug: str) -> SubscriptionIt
 )
 def module_cancel(ctx: OperationContext, data: ModuleIn) -> dict:
     """Cancel a bought module: it leaves the subscription without proration and works until the end of the
-    period (PLAN-SAAS §3.3: ``valid_until`` in the snapshot). The last thing a subscription bills ends the
+    period (``valid_until`` in the snapshot). The last thing a subscription bills ends the
     subscription at the end of the period instead (Stripe keeps at least one item)."""
     hub, subscription = _owned(ctx, data.hub_id)
     _require_no_pending_change(hub)
@@ -2309,7 +2302,7 @@ def module_keep(ctx: OperationContext, data: ModuleIn) -> dict:
             code="billing.module_ended",
         )
     if queries.module_on_sale(item.module_slug) is None:
-        # saas#2589: it works until its cancellation ends, and is not sold again by undoing it.
+        # It works until its cancellation ends, and is not sold again by undoing it.
         raise Conflict(
             _("This module is no longer sold: it works until its cancellation ends and cannot be kept."),
             code="billing.module_off_sale",
@@ -2395,7 +2388,7 @@ def module_keep(ctx: OperationContext, data: ModuleIn) -> dict:
 )
 def portal_open(ctx: OperationContext, data: PortalOpenIn) -> dict:
     """Stripe's Customer Portal for the payer of the business: cards and Stripe's receipts (the panel opens
-    it only on the web; the apps sell nothing, round 17 §2.5)."""
+    it only on the web; the apps sell nothing)."""
     hub, _subscription = _owned(ctx, data.hub_id)
     require_stripe()
     if not settings.STRIPE_PORTAL_CONFIGURATION:
@@ -2566,7 +2559,7 @@ def _free_slug() -> str:
 
 
 def ended_state(hub: Hub, now: datetime | None = None) -> dict:
-    """A subscription that ended: back to Free (PLAN-SAAS §3.3), its bought modules over now, nothing owed."""
+    """A subscription that ended: back to Free, its bought modules over now, nothing owed."""
     now = now or timezone.now()
     subscription = Subscription.objects.filter(hub=hub).first()
     rights = [
@@ -2609,7 +2602,7 @@ def apply_state(hub: Hub, state: dict) -> bool:
     )
     if state.get("standing") in ("grace", "suspended"):
         # Whatever put the business in dunning (a failure, Stripe's ``unpaid``, the sweep), its payer is told
-        # once, after the COMMIT (BILLING-F16); a mail that cannot leave is sent by the next ``sweep_unpaid``.
+        # once, after the COMMIT; a mail that cannot leave is sent by the next ``sweep_unpaid``.
         transaction.on_commit(partial(_notify_quietly, hub.id), robust=True)
     return applied.changed
 
@@ -2658,7 +2651,7 @@ def finish_event(
     )
 
 
-#: How long an event's row is kept (BILLING-F37): Stripe resends an event for 3 days at most and keeps it 30, so
+#: How long an event's row is kept: Stripe resends an event for 3 days at most and keeps it 30, so
 #: an older row never guards a delivery again.
 WEBHOOK_EVENT_RETENTION = timedelta(days=30)
 
@@ -2670,8 +2663,8 @@ def purge_webhook_events() -> int:
     return deleted
 
 
-#: The events ERPlora's Stripe endpoint sends to ``/webhooks/stripe/`` (PLAN-SAAS §4): what ``process_stripe_event``
-#: handles, and the one list ``audit_stripe_webhooks`` compares the endpoint with every day (BILLING-F39);
+#: The events ERPlora's Stripe endpoint sends to ``/webhooks/stripe/``: what ``process_stripe_event``
+#: handles, and the one list ``audit_stripe_webhooks`` compares the endpoint with every day;
 #: ``billing/README.md`` and ``billing/webhooks.py`` cite it instead of repeating it. ``invoice.payment_succeeded`` is
 #: handled as ``invoice.paid`` but not subscribed: one notice per payment is enough.
 STRIPE_WEBHOOK_EVENTS = (
@@ -2844,8 +2837,8 @@ NOT_OWNER = "not_owner"
 
 
 def _end_not_owner(hub: Hub, attempt: CheckoutAttempt, session: dict, subscription_id: str) -> str:
-    """A checkout paid by somebody who no longer owns the business (handed over while it was open, review of
-    saas#89): it is not applied. Its subscription ends now and what it charged is refunded in full (Stripe's
+    """A checkout paid by somebody who no longer owns the business (handed over while it was open): it
+    is not applied. Its subscription ends now and what it charged is refunded in full (Stripe's
     «Cancel + refund»; ``charge.refunded`` makes the rectifying invoice), the attempt says ``refunded`` (its audit
     trail keeps when) and its payer is told after the COMMIT. Once: a redelivery finds it refunded. Stripe not
     answering raises, so nothing is marked and Stripe delivers it again (the refund is idempotent)."""
@@ -3028,10 +3021,10 @@ def _invoice_business(invoice: dict) -> tuple[Hub | None, str]:
 def invoice_paid(invoice: dict) -> str:
     """A renewal (or any invoice of the subscription) was paid: its failure is resolved and the LIVE
     subscription applied, which takes a business with a payment pending or suspended back once Stripe says
-    it is paid (saas#2529). A late success of an older invoice while the subscription is still in dunning
-    changes nothing (saas#2261). Stripe not answering is retried by Stripe (500), never guessed.
+    it is paid. A late success of an older invoice while the subscription is still in dunning
+    changes nothing. Stripe not answering is retried by Stripe (500), never guessed.
 
-    In the same transaction ERPlora's invoice is recorded and numbered (lot L3-C, ``billing.invoice.record``):
+    In the same transaction ERPlora's invoice is recorded and numbered (``billing.invoice.record``):
     when anything fails, neither the subscription nor the invoice nor its number is written. Its lines and the
     payer's VIES verdict are read before the business is locked (they may ask Stripe and VIES)."""
     hub, subscription_id = _invoice_business(invoice)
@@ -3067,7 +3060,7 @@ class UnplacedPayment(Exception):
 
 
 def _invoice_paid_elsewhere(invoice: dict, subscription_id: str) -> str:
-    """A paid invoice that is not of a business's current subscription (review of L3-C): the first invoice of
+    """A paid invoice that is not of a business's current subscription: the first invoice of
     a duplicate checkout (cancelled with its unused time as credit, ``_end_duplicate``) is still money of that
     business, invoiced to it without touching its plan. One nobody can place raises."""
     named = _hub_named(((invoice.get("parent") or {}).get("subscription_details") or {}).get("metadata", {}).get("hub_id")
@@ -3113,7 +3106,7 @@ SOFT_DECLINES = frozenset(
 def _failure_reason(why: dict | None) -> str:
     """Why a renewal failed, as the panel needs it: ``card_declined`` only when the card will not pay as it
     is (a true decline, an expired or mistyped card: «Pay» waits for another card), ``authentication_required``
-    (the customer confirms it), ``payment_failed`` otherwise (review of L2-B)."""
+    (the customer confirms it), ``payment_failed`` otherwise."""
     if why is None:
         return PaymentFailure.Reason.PAYMENT_FAILED
     code, decline = why.get("code"), why.get("decline_code")
@@ -3126,9 +3119,9 @@ def _failure_reason(why: dict | None) -> str:
 
 def invoice_payment_failed(invoice: dict, *, replay: bool = False) -> str:
     """A renewal could not be collected: why (``PaymentFailure``) and the business in dunning. The LIVE
-    subscription decides (saas#2261): outside ``past_due``/``unpaid`` what Stripe says now is written and the
+    subscription decides: outside ``past_due``/``unpaid`` what Stripe says now is written and the
     event is ignored; inside, 7 days of grace from the failed invoice, then suspended (``unpaid``: at once).
-    Stripe not answering raises: Stripe retries the event, the sweep its next pass (review of L2-B).
+    Stripe not answering raises: Stripe retries the event, the sweep its next pass.
     ``replay``: the sweep deciding again, not another failed attempt."""
     hub, subscription_id = _invoice_business(invoice)
     if hub is None:
@@ -3141,7 +3134,7 @@ def _record_failure(
     hub: Hub, subscription_id: str, invoice: dict, *, replay: bool
 ) -> str:
     # Stripe not answering raises (Stripe retries the event; the sweep, its next pass): a failure is never
-    # applied «as it came», which suspended businesses on stale events (review of L2-B).
+    # applied «as it came», which suspended businesses on stale events.
     live = stripe_service.retrieve_subscription(subscription_id)
     live_status = live.get("status")
     if live_status not in DUNNING_STATUSES:
@@ -3202,7 +3195,7 @@ def _record_failure(
             known.update(failed_at=now, attempts=F("attempts") + 1)
         PaymentFailure.objects.filter(pk=failure.pk).update(**known)
     apply_live(hub.id, live)
-    # Listed in Billing as «not collected», with «Pay» (lot L3-C); numbered once it is paid.
+    # Listed in Billing as «not collected», with «Pay»; numbered once it is paid.
     invoice_record(
         hub_services.system_ctx_for(hub.id), InvoiceRecordIn(hub_id=hub.id, invoice=invoice, status="open")
     )
@@ -3210,7 +3203,7 @@ def _record_failure(
 
 
 def subscription_updated(obj: dict) -> str:
-    """A subscription changed (plan, items, status, period, cancellation): the LIVE one is applied (saas#2321);
+    """A subscription changed (plan, items, status, period, cancellation): the LIVE one is applied;
     Stripe not answering → the event as it came. The first event of a new subscription finds its business
     by the ``hub_id`` of its metadata, only if that business has no other subscription."""
     subscription_id = obj.get("id") or ""
@@ -3238,7 +3231,7 @@ def subscription_updated(obj: dict) -> str:
 
 def subscription_deleted(obj: dict) -> str:
     """The subscription ended (a cancelled plan at its period's end, Stripe giving up, a deleted business):
-    the business goes back to Free (PLAN-SAAS §3.3), its bought modules end, nothing is owed. Nothing new is
+    the business goes back to Free, its bought modules end, nothing is owed. Nothing new is
     opened in Stripe (no «maintenance» subscription any more)."""
     subscription = _local_subscription(obj.get("id") or "")
     if subscription is None:
@@ -3248,7 +3241,7 @@ def subscription_deleted(obj: dict) -> str:
     return "processed"
 
 
-# --- saas-cron: manage.py sync_subscriptions (BILLING-F38) ----------------------------------------------
+# --- saas-cron: manage.py sync_subscriptions ----------------------------------------------------------
 
 #: The counts of a pass; ``missing`` and ``errors`` make the run fail after it (``task_failed``).
 SYNC_COUNTS = ("checked", "in_sync", "fixed", "drifted", "pending", "missing", "errors")
@@ -3282,7 +3275,7 @@ def _drift(subscription: Subscription, state: dict) -> list[str]:
 
 def sync_subscription(subscription: Subscription, *, apply: bool = True) -> str:
     """Read the business's subscription from Stripe and write what it says, as a lost
-    ``customer.subscription.updated`` would have (``live_state``, BILLING-F21), under the business's lock.
+    ``customer.subscription.updated`` would have (``live_state``), under the business's lock.
     ``in_sync`` · ``fixed`` · ``drifted`` (``apply=False``: nothing written) · ``pending`` (its first payment is
     not done) · ``missing`` (Stripe does not know it: left as it is, for the team). Stripe not answering raises
     (``stripe_service.StripeUnavailable``)."""
@@ -3346,7 +3339,7 @@ def sync_subscriptions(*, apply: bool = True) -> Counter:
 
 def customer_updated(customer: dict) -> str:
     """The payer's default card changed (the Customer Portal): a declined card's failure becomes
-    ``card_changed``, and «Pay» works again (mockups README §6.18). The card Billing shows
+    ``card_changed``, and «Pay» works again. The card Billing shows
     (``billing.payment_method.get``) is read again from Stripe."""
     cache.delete(queries.card_cache_key(customer.get("id") or ""))
     method = (customer.get("invoice_settings") or {}).get("default_payment_method")
@@ -3404,7 +3397,7 @@ def mark_card_changed(
     return noted
 
 
-# --- The rate of a live subscription (BILLING-F02, BILLING-F06) -----------------------------------------
+# --- The rate of a live subscription ------------------------------------------------------------------
 
 #: Stripe statuses whose next invoice is still going to be charged.
 RETAX_STATUSES = ("active", "trialing", "past_due")
@@ -3460,11 +3453,11 @@ def retax_subscription(hub: Hub) -> str:
     """Hand Stripe the rates the payer's place calls for today on every item of the business's live
     subscription: the checkout fixes a rate per item and Stripe charges it on every renewal, so a payer who
     moves (Madrid → Las Palmas), proves a VAT number, or a year that crosses the OSS threshold would keep the
-    old one (saas#2293). The same engine as the sale (``price_sale``); the next invoice takes the new rate,
+    old one. The same engine as the sale (``price_sale``); the next invoice takes the new rate,
     the paid period is not touched (no proration).
 
     ``retaxed`` · ``unchanged`` (Stripe already holds them: nothing sent) · ``skipped`` (no live Stripe
-    subscription, or one still charged to another account's card: its tax is that payer's, HUBS-F28) ·
+    subscription, or one still charged to another account's card: its tax is that payer's) ·
     ``refused`` (the place is not sold to now: an ERROR, and the old rates stay until the billing details are
     fixed). With a downgrade waiting in a schedule, its phases are retaxed instead (``_retax_schedule``). Stripe
     failing raises (``stripe_errors``)."""
@@ -3569,7 +3562,7 @@ def _retax_schedule(hub: Hub, subscription: Subscription, schedule_id: str) -> s
 
 def retax_payer(profile_id) -> None:
     """After the owner saves the billing details (on commit): the payer's Stripe customer takes them
-    (BILLING-F01) and every business this payer pays is retaxed (BILLING-F02). A failure is logged and never
+    and every business this payer pays is retaxed. A failure is logged and never
     stops the other: the next checkout brings the customer up to date (``ensure_customer``), the daily pass
     (``retax_subscriptions``) retaxes again."""
     paid = list(Hub.objects.filter(billing_profile_id=profile_id).order_by("pk"))
@@ -3627,7 +3620,7 @@ SWEEP_COUNTS = (
     "notified",
     "mail_failed",
     "errors",
-    # The clock of the suspended businesses (HUBS-F20, ``hubs.services.age_suspended``).
+    # The clock of the suspended businesses (``hubs.services.age_suspended``).
     "warned",
     "final_notice",
     "expired",
@@ -3638,7 +3631,7 @@ SWEPT_STATUSES = [Hub.Status.PREPARING, Hub.Status.ACTIVE, Hub.Status.PAST_DUE]
 
 
 def sweep_unpaid() -> Counter:
-    """One pass of ``sweep_unpaid`` (saas#2594): every business in dunning still running is replayed with its
+    """One pass of ``sweep_unpaid``: every business in dunning still running is replayed with its
     OLDEST open invoice through ``invoice_payment_failed`` (the live subscription decides; ``unpaid`` at once,
     else past the grace; one suspension), and the Stripe subscription of every deleted business is
     cancelled now. One business never stops the others; Stripe missing or failing for one is an error."""
@@ -3679,7 +3672,7 @@ def sweep_unpaid() -> Counter:
             pk=subscription.hub_id, status=Hub.Status.SUSPENDED
         ).exists():
             counts["suspended"] += 1
-    # The businesses suspended too long (HUBS-F20; PLAN-SAAS §1.1): the notices of day 30 and 150 and the deletion
+    # The businesses suspended too long: the notices of day 30 and 150 and the deletion
     # on day 180, which the loop below ends in Stripe in this same pass.
     counts.update(hub_services.age_suspended())
     # Asked at deletion (``hubs.business.delete``), whatever the business is now: recovered on Free, too.
@@ -3707,7 +3700,7 @@ def sweep_unpaid() -> Counter:
             counts["errors"] += 1
             continue
         counts["cancelled"] += 1
-    # The payers of deleted accounts, once nothing more can be charged to them (ACCOUNTS-F27).
+    # The payers of deleted accounts, once nothing more can be charged to them.
     departed = BillingProfile.objects.filter(forget_after__isnull=False).order_by("pk").values_list("pk", flat=True)
     for profile_id in list(departed):
         try:
@@ -3718,7 +3711,7 @@ def sweep_unpaid() -> Counter:
             continue
         if outcome == PAYER_FORGOTTEN:
             counts["payers_forgotten"] += 1
-    # A mail of the unpaid episode that could not leave is sent again here (BILLING-F16).
+    # A mail of the unpaid episode that could not leave is sent again here.
     untold = (
         PaymentFailure.objects.filter(resolved_at__isnull=True)
         .filter(
@@ -3745,7 +3738,7 @@ NOTIFIED, NOTHING_TO_TELL, MAIL_NOT_SENT = "notified", "nothing", "mail_failed"
 
 
 def notify_unpaid(hub_id) -> str:
-    """Tell the payer of ``hub_id`` what its unpaid episode owes them (BILLING-F16, saas#2593): each unpaid
+    """Tell the payer of ``hub_id`` what its unpaid episode owes them: each unpaid
     invoice once, while the business still works (how much, until when, where to pay); the suspension once,
     which also stands for the invoices not told yet. The business is locked, so two deliveries never send the
     same mail twice. Nobody to tell is done too; a mail that cannot leave stays owed (``MAIL_NOT_SENT``)."""
@@ -3829,7 +3822,7 @@ def _end_billing_of_deleted(subscription: Subscription) -> None:
         apply_state(subscription.hub, ended_state(subscription.hub))
 
 
-# --- The payer of an account that deleted itself (ACCOUNTS-F27) ----------------------------------------
+# --- The payer of an account that deleted itself ------------------------------------------------------
 #
 # GDPR art. 17: the payer record (``hubs.BillingProfile``) and its Stripe customer go with the account; the
 # invoices ERPlora issued keep their own copy of the payer (Commercial Code art. 30, General Tax Law art. 66),
@@ -3900,7 +3893,7 @@ def forget_departed_payer(profile_id, now: datetime | None = None) -> str:
     return PAYER_FORGOTTEN
 
 
-# --- ERPlora's invoices: the number (lot L3-C) ---------------------------------------------------------
+# --- ERPlora's invoices: the number -------------------------------------------------------------------
 
 #: The series of each kind of document: a rectifying invoice has its own (RD 1619/2012, art. 15.5).
 INVOICE_SERIES = {Invoice.Kind.INVOICE: "ERP", Invoice.Kind.CREDIT_NOTE: "ERPR"}
@@ -3914,9 +3907,9 @@ def invoice_today() -> date:
 def issue_number(kind: str) -> tuple[str, int, str, date]:
     """The next number of ``kind``'s series and its issue date: ``(series, sequence, "ERP-2026-00123", date)``.
 
-    ``fiscal_counter`` (CLAUDE.md, «Fiscal»): the series' row is locked in the transaction that records the
+    ``fiscal_counter``: the series' row is locked in the transaction that records the
     invoice, and only then the date is read, so a number that waited for another one never carries an earlier
-    date (review of L3-C); a new year starts at 1. A second invoice waits for the first one's COMMIT, and a
+    date; a new year starts at 1. A second invoice waits for the first one's COMMIT, and a
     ROLLBACK gives the number back: no gap, no duplicate (a Postgres sequence would leave a hole). Refused
     outside a transaction: a number given alone is a hole the day its invoice fails.
     """
@@ -3941,13 +3934,12 @@ def issue_number(kind: str) -> tuple[str, int, str, date]:
     return series, sequence, f"{series}-{on.year}-{sequence:05d}", on
 
 
-# --- ERPlora's invoices: recorded from Stripe (lot L3-C) -----------------------------------------------
+# --- ERPlora's invoices: recorded from Stripe ---------------------------------------------------------
 #
-# PLAN-SAAS §4: «the Stripe receipt is not the legal invoice». A paid Stripe invoice becomes ERPlora's
-# ``Invoice`` in the webhook's transaction (the durability is the row, ADR-0478 §4), numbered here and issued
-# by ERPlora's platform hub in hub-next, which chains it in VeriFactu (``post_platform_invoice``, after the
-# COMMIT). An unpaid one is listed without a number («Not collected», «Pay»); a credit note is a rectifying
-# invoice of its own series.
+# The Stripe receipt is not the legal invoice. A paid Stripe invoice becomes ERPlora's ``Invoice`` in the
+# webhook's transaction (the row is what makes it durable), numbered here and issued by ERPlora's platform
+# hub, which chains it in VeriFactu (``post_platform_invoice``, after the COMMIT). An unpaid one is listed
+# without a number («Not collected», «Pay»); a credit note is a rectifying invoice of its own series.
 
 
 def _with_all_lines(invoice: dict) -> dict:
@@ -3965,7 +3957,7 @@ def _payer_clearance(hub: Hub, charged_at: datetime) -> tuple[bool, str]:
     """Whether the payer's VAT number grants the reverse charge on a sale charged at ``charged_at``, and the
     VIES consultation number that proves it. Asked before the business is locked (VIES may take seconds).
 
-    Judged as of the charge (review of L3-C): the last verdict VIES gave until then decides, even one older
+    Judged as of the charge: the last verdict VIES gave until then decides, even one older
     than the 30 days a SALE trusts (the proof travels with the invoice; a later outage of VIES cannot turn a
     verified intra-EU B2B sale into a Spanish one). With no verdict before the charge, VIES is asked now; if it
     cannot answer, ``VatProofUnavailable``: never Spanish VAT because VIES was down. Only a number of ANOTHER
@@ -4043,7 +4035,7 @@ def _nominal_rate(breakdown: vat.VatBreakdown, category: str) -> Decimal:
 def _sealed_amounts(amount: int, tax: int, *, treatment: str, rate: Decimal, reconciled: bool) -> tuple[Decimal, int, int]:
     """``(rate, net, tax)`` of a line in cents, by the qualification of the sale: without a rate (reverse
     charge, not subject) all of it is base; reconciled (Stripe charged no tax on a subject sale) the VAT comes
-    out of the amount charged; otherwise Stripe's amounts rule (ADR-0123)."""
+    out of the amount charged; otherwise Stripe's amounts rule."""
     if treatment not in vat.TREATMENTS_WITH_RATE:
         return Decimal("0.00"), amount + tax, 0
     if reconciled:
@@ -4278,7 +4270,7 @@ def _record_paid(ctx, hub: Hub, data: InvoiceRecordIn, existing: Invoice | None)
     return _record_out(invoice, "numbered")
 
 
-# --- The team's notices of the OSS threshold (BILLING-F06, saas#2297, saas#2299) -------------------------
+# --- The team's notices of the OSS threshold ----------------------------------------------------------
 
 #: The share of the threshold whose passing tells the team to register in the OSS (it takes days).
 OSS_WARNING_PERCENT = 80
@@ -4403,7 +4395,7 @@ def send_pending_oss_notices() -> Counter:
 
 class InvoiceDoesNotAddUp(Exception):
     """The lines of a Stripe document do not add up to what it charged or credited: nothing is invoiced (a 500
-    for Stripe's retry and support's ERROR), never a different amount (review of L3-C)."""
+    for Stripe's retry and support's ERROR), never a different amount."""
 
 
 class RectifiedInvoiceMissing(Exception):
@@ -4547,7 +4539,7 @@ def _stripe_items(stripe_lines: list[dict], *, sign: int) -> list[dict]:
 def _record_negative(ctx, hub: Hub, stripe_invoice: dict) -> dict:
     """A Stripe invoice of a negative total (a proration credit larger than what it bills; legacy or manual:
     downgrades wait for the end of the period) rectifies the invoice whose period its credited lines belong to
-    (review of L3-C): R1, a modification of the price (art. 80.2 LIVA)."""
+    R1, a modification of the price (art. 80.2 LIVA)."""
     lines = (stripe_invoice.get("lines") or {}).get("data") or []
     credited = [
         _moment_or_none((line.get("period") or {}).get("start"))
@@ -4627,7 +4619,7 @@ def _missing_original(what: str, stripe_invoice_id: str):
 
 def credit_note_created(credit_note: dict) -> str:
     """A credit note of a paid invoice (``credit_note.created``) becomes a rectifying invoice of its own series.
-    Ahead of its invoice (Stripe does not order events) it raises: Stripe retries (review of L3-C)."""
+    Ahead of its invoice (Stripe does not order events) it raises: Stripe retries."""
     rectified = credit_note.get("invoice") or ""
     if isinstance(rectified, dict):
         rectified = rectified.get("id") or ""
@@ -4648,7 +4640,7 @@ def credit_note_created(credit_note: dict) -> str:
 
 
 def credit_note_voided(credit_note: dict) -> str:
-    """A credit note voided in Stripe (``credit_note.voided``; BILLING-F26). Stripe voids one only while its invoice is
+    """A credit note voided in Stripe (``credit_note.voided``). Stripe voids one only while its invoice is
     OPEN, and a rectifying invoice is recorded here only for a PAID one, so normally there is none: ``voided``, and its
     ``credit_note.created`` never records it (read live there). Nothing fiscal is done on its own: a rectifying
     invoice recorded anyway is never modified (a record sent to the AEAT is corrected with a new one) and the team is
@@ -4713,7 +4705,7 @@ def credit_note_record(ctx: OperationContext, data: CreditNoteRecordIn) -> dict:
 
 def charge_refunded(charge: dict) -> str:
     """Money given back without a credit note (``charge.refunded``; a refund in the Dashboard): each refund is a
-    rectifying invoice of the invoice the charge paid, its gross split at that invoice's rate (review of L3-C).
+    rectifying invoice of the invoice the charge paid, its gross split at that invoice's rate.
     A refund a credit note covers is that credit note's; one still pending waits for its next event; a charge
     that paid no invoice of Stripe is not ours."""
     intent = charge.get("payment_intent") or ""
@@ -4761,7 +4753,7 @@ def refund_record(ctx: OperationContext, data: RefundRecordIn) -> dict:
 
 def _record_invoice_event(ctx: OperationContext, invoice: Invoice, name: str, payload: dict) -> None:
     """Record an event of an invoice in the command's channel and tell, after the COMMIT, the other account that
-    sees it too (its payer and its business's owner, review of L3-C): both their Billing lists re-run."""
+    sees it too (its payer and its business's owner): both their Billing lists re-run."""
     record_event(ctx, name, payload)
     owner = hub_queries.owner_id(invoice.hub_id) if invoice.hub_id else None
     viewers = {str(account) for account in (invoice.payer_account_id, owner) if account}
@@ -4778,7 +4770,7 @@ def _invoice_ctx(invoice: Invoice) -> OperationContext:
     return system_context(Scope("user", "system"))
 
 
-# --- The platform hub issues them (PLAN-SAAS §4) -----------------------------------------------------
+# --- The platform hub issues them ---------------------------------------------------------------------
 
 #: What one post of an invoice came to: answered (its status stored), the Hub away (retried), the Hub
 #: refusing it (kept with its code, retried: the run fails), or nothing to post (not paid).
@@ -4998,8 +4990,7 @@ MAILED, MAIL_SKIPPED, MAIL_FAILED = "mailed", "mail_skipped", "mail_failed"
 
 def send_invoice_mail(invoice_id) -> str:
     """Send the payer the mail of an issued invoice (``billing.emails``) and mark it sent. Nothing to send
-    (nobody to send it to) is done too; a mail that cannot leave stays owed for ``reconcile_platform_invoices``
-    (review of L3-C)."""
+    (nobody to send it to) is done too; a mail that cannot leave stays owed for ``reconcile_platform_invoices``."""
     from billing import emails
 
     invoice = Invoice.objects.select_related("hub", "payer_account").get(pk=invoice_id)
@@ -5101,7 +5092,7 @@ def platform_run_failed(counts: Counter) -> bool:
 def reconcile_platform_invoices_exclusively(go_on: Callable[[], bool] | None = None) -> Counter | None:
     """One pass of ``reconcile_platform_invoices`` under its lock: its counts, or ``None`` when another run holds the
     lock (and this one did nothing). What the command and the ``saas-worker`` (every 15 minutes, ``base.worker``,
-    saas#305; with its ``go_on``) both run."""
+    with its ``go_on``) both run."""
     with hub_services.run_exclusively("reconcile_platform_invoices") as mine:
         return reconcile_platform_invoices(go_on=go_on) if mine else None
 
@@ -5119,8 +5110,8 @@ def reconcile_platform_invoices_exclusively(go_on: Callable[[], bool] | None = N
 )
 def invoice_pay(ctx: OperationContext, data: InvoicePayIn) -> dict:
     """Stripe's page to pay an invoice not collected (the panel opens it only on the web; the apps sell
-    nothing, round 17 §2.6). Only its payer pays it; with a card the bank declined, «Pay» waits until the
-    card changes (409 ``billing.card_change_required``, mockups README §6.18)."""
+    nothing). Only its payer pays it; with a card the bank declined, «Pay» waits until the
+    card changes (409 ``billing.card_change_required``)."""
     user = hub_queries.account_of(ctx)
     invoice = queries.invoice_of(user, data.id)
     if invoice.payment_status == Invoice.PaymentStatus.PAID:

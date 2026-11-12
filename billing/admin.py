@@ -1,20 +1,19 @@
 """Django admin of billing: the rate table, the fiscal policy, ERPlora's identity and the VIES log.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/admin.py`` (origin/develop), the VAT part. A new rate, a
-country raising its VAT or a service with its own rate are solved here, without a deploy (saas#1063). The
+A new rate, a country raising its VAT or a service with its own rate are solved here, without a deploy. The
 two singletons open straight on their row; the VIES log is read-only, except the manual override (adding
 a row by hand) and «Check now in VIES», which adds rows through the same door as the panel and spends the
 same per-person budget.
 
-Stripe (lot L2-B): promo codes are written here (sales hands them out); what Stripe did —the checkouts
-opened, the webhook's events and the renewals that failed— is read-only: Stripe is the source, and the
-webhook and the operations are its only writers.
+Promo codes are written here (sales hands them out); what Stripe did —the checkouts opened, the webhook's
+events and the renewals that failed— is read-only: Stripe is the source, and the webhook and the operations
+are its only writers.
 
-ERPlora's invoices (lot L3-C) are read-only too: recorded from what Stripe charged and issued by the platform
-hub, and a record sent to the AEAT is never modified (a credit note corrects it). Their one action, «Send
-again to the platform hub», posts them through ``billing.services.post_platform_invoice`` (idempotent on the
-Hub) and says what the Hub answered. Its page links the PDF the platform hub issued (BILLING-G12), asked when
-the staff downloads it, as the account's «Download PDF».
+ERPlora's invoices are read-only too: recorded from what Stripe charged and issued by the platform hub, and a
+record sent to the AEAT is never modified (a credit note corrects it). Their one action, «Send again to the
+platform hub», posts them through ``billing.services.post_platform_invoice`` (idempotent on the Hub) and says
+what the Hub answered. Its page links the PDF the platform hub issued, asked when the staff downloads it, as
+the account's «Download PDF».
 """
 
 import io
@@ -225,7 +224,7 @@ class FiscalPolicyAdmin(SingletonAdminMixin, admin.ModelAdmin):
 class VatCheckAdmin(admin.ModelAdmin):
     """The log of VIES queries — the proof, not a boolean. Read-only: rewriting a row forges the proof that
     defends an invoice issued without VAT. The only row written by hand is the override, with its author
-    and reason (contract §7)."""
+    and reason."""
 
     list_display = (
         "vat_number",
@@ -282,7 +281,7 @@ class VatCheckAdmin(admin.ModelAdmin):
 
     @admin.action(description=gettext_lazy("Check now in VIES"), permissions=["add"])
     def recheck_in_vies(self, request, queryset):
-        """Ask VIES again about the selected numbers, now: each answer is a NEW row (saas#1949). The lever
+        """Ask VIES again about the selected numbers, now: each answer is a NEW row. The lever
         for a number the Commission could not confirm at the sale, so the override stays the exception."""
         numbers = list(
             dict.fromkeys(
@@ -361,9 +360,6 @@ class VatCheckAdmin(admin.ModelAdmin):
         )
 
 
-# --- Stripe (lot L2-B) -------------------------------------------------------------------------------
-
-
 @admin.register(PromoCode)
 class PromoCodeAdmin(admin.ModelAdmin):
     list_display = ("code", "trial_days", "is_active", "expires_at", "redemption_count", "max_redemptions", "note")
@@ -409,7 +405,7 @@ class PaymentFailureAdmin(ReadOnlyAdmin):
 
 @admin.register(OssNotice)
 class OssNoticeAdmin(ReadOnlyAdmin):
-    """The team's notices of the OSS threshold (BILLING-F06): read only, the row is what keeps a notice from
+    """The team's notices of the OSS threshold: read only, the row is what keeps a notice from
     being sent twice in a year."""
 
     list_display = ("year", "kind", "reason", "accumulated", "threshold", "invoice", "effective_from", "mailed_at")
@@ -481,7 +477,7 @@ class InvoiceAdmin(ReadOnlyAdmin):
 
     @admin.display(description=gettext_lazy("PDF"))
     def pdf(self, obj):
-        """The platform hub's PDF, once it issued the invoice (BILLING-G12): asked when it is downloaded."""
+        """The platform hub's PDF, once it issued the invoice: asked when it is downloaded."""
         if obj is None or obj.payment_status != Invoice.PaymentStatus.PAID or obj.fiscal_status not in queries.ISSUED_STATUSES:
             return _("Not issued yet: its PDF is ready once the platform hub issues it.")
         return format_html(
@@ -550,7 +546,7 @@ class InvoiceAdmin(ReadOnlyAdmin):
         return f"{from_cents(obj.total_cents)} {obj.currency}"
 
     def has_send_permission(self, request):
-        """Posting or mailing again writes: it needs the change permission (review of L3-C), although nothing
+        """Posting or mailing again writes: it needs the change permission, although nothing
         of the invoice itself is edited here."""
         return request.user.has_perm("billing.change_invoice")
 

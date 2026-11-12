@@ -1,6 +1,5 @@
-// The centred-card frame of the launcher and the invitation (mockups `launch.html`, `invitation.html`;
-// old SaaS `_shell_styles.html`): no menu, the ERPlora lockup INSIDE the card above the title, the
-// state's icon and title (the page's heading), a lead under it, the content, and under the card
+// The centred-card frame of the launcher and the invitation: no menu, the ERPlora lockup INSIDE the card above
+// the title, the state's icon and title (the page's heading), a lead under it, the content, and under the card
 // «Signed in as … · Sign out» (allauth.headless ends the session, then the sign-in, as the user menu does).
 import { toastError } from '@erplora/ui/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -58,12 +57,12 @@ describe('CardShell', () => {
     expect(title.text()).toBe('Create your business');
     expect(card.get('.shell-lead').text()).toBe('Free and no card.');
     expect(card.get('[data-testid="content"]').text()).toBe('The form');
-    // The lockup comes first, above the title (README §5).
+    // The lockup comes first, above the title.
     const html = card.html();
     expect(html.indexOf('erp-lockup')).toBeLessThan(html.indexOf('ion-card-title'));
   });
 
-  it('has one main landmark, Ionic’s content (`role="main"`): the card’s frame is no second `main` inside it (audit 2 R-22)', async () => {
+  it('has one main landmark, Ionic’s content (`role="main"`): the card’s frame is no second `main` inside it', async () => {
     const { wrapper } = await mountShell();
     expect(wrapper.find('.ion-page ion-content .shell-page').exists()).toBe(true);
     expect(wrapper.find('main').exists()).toBe(false);

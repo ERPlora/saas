@@ -1,9 +1,9 @@
 <script setup lang="ts">
-// «Change password» of Account → Security (mockups `account.html` «security», «Contraseña»): the current password
+// «Change password» of Account → Security: the current password
 // and the new one, over allauth.headless (`account/password/change`; `accounts/doors.py` lets an account with a
 // password through). While the new one is typed, a hint of how strong it looks (`../password.ts`); the server's
 // validators decide, and allauth's refusals go under their field (`current_password`, `new_password`). A new
-// password ends the account's sessions in its businesses (PLAN-SAAS §2.1), so the toast says they will ask to sign
+// password ends the account's sessions in its businesses, so the toast says they will ask to sign
 // in again; a change that ends this session too leaves for the sign-in. «Confirm it's you» first if allauth asks.
 import { FormModal } from '@erplora/ui/components';
 import { toastSuccess } from '@erplora/ui/shell';
@@ -74,7 +74,7 @@ async function submit(): Promise<void> {
   } catch (error) {
     if (error instanceof ApiError && error.fields) {
       // allauth's «Please type your current password» reads «Por favor, escriba…» in Spanish: the panel says it
-      // in its own words (audit 2 R-26).
+      // in its own words.
       fields.value = WRONG_CURRENT.has(error.code)
         ? { ...error.fields, current_password: t('accounts.account.password.wrongCurrent') }
         : error.fields;

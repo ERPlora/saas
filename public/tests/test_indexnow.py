@@ -1,12 +1,8 @@
-"""IndexNow: telling Bing (and so ChatGPT search) the same day, not next month (spec §8.2).
+"""IndexNow: telling Bing (and so ChatGPT search) the same day, not next month.
 
-Ported from ERPlora/saas ``landing/indexnow.py`` and ``landing/tests/test_indexnow.py``
-(origin/develop c5ca8ca). Two halves, both needed or the protocol rejects everything: the key file
-at ``/<key>.txt`` (proof we control the domain) and the submission carrying the same key and only
-URLs on our host.
-
-Not ported: ``TestItActuallyRuns`` (the Celery task and its beat entry). saas-next has no Celery;
-the daily run becomes a scheduled ECS task with ``indexnow_submit`` (PLAN §16.5, plan §7).
+Two halves, both needed or the protocol rejects everything: the key file at ``/<key>.txt`` (proof we control the
+domain) and the submission carrying the same key and only URLs on our host. The daily run is the ``indexnow_submit``
+command.
 """
 
 import pytest
@@ -19,7 +15,7 @@ from public.sitemaps import StaticPagesSitemap
 KEY = "0123456789abcdef0123456789abcdef"
 HOST = "localhost:8001"
 
-# The submission reads the sitemaps, and the store's read the catalog from the database (L6).
+# The submission reads the sitemaps, and the store's read the catalog from the database.
 pytestmark = pytest.mark.django_db
 
 
@@ -176,7 +172,7 @@ def test_without_pages_nothing_is_posted_and_it_says_so(settings, monkeypatch, c
 
 @pytest.mark.usefixtures("a_public_page")
 def test_a_rejected_submission_is_reported_not_swallowed(settings, monkeypatch, caplog):
-    """A failure, not a zero: the daily command turns it into a failed exit (PUBLIC-F14)."""
+    """A failure, not a zero: the daily command turns it into a failed exit."""
     settings.INDEXNOW_KEY = KEY
     monkeypatch.setattr(
         indexnow.requests,

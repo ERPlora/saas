@@ -1,6 +1,6 @@
 """``python manage.py push_hub_snapshots [--behind-only]``: nightly in ``saas-cron`` (00:30 UTC, no flags).
 
-The safety net of PLAN-SAAS §2.2 (every night, every business): pushes the snapshot of every live
+The safety net of the push to the Hub (every night, every business): pushes the snapshot of every live
 business, each with a newer version (the Hub ignores an equal one), so a Hub that lost what it had
 acknowledged is put right. ``--behind-only`` pushes only the snapshots the Hub is behind on
 (``pushed_state_version < state_version``). Under the advisory lock

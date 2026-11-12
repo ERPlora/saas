@@ -1,22 +1,13 @@
 """Members and invitations of a business: ``hubs.member.{list,invite,change_role,remove,resend,cancel}``
-and ``hubs.invitation.{list_mine,accept,decline}`` (plan 2026-10-13, L1-A and L1-B; round 17 §2.7–2.8).
+and ``hubs.invitation.{list_mine,accept,decline}``, on the four ``hub_*`` roles.
 
-Cases ported from ERPlora/saas (origin/develop), from services, views and DRF to operations, on the four
-``hub_*`` roles of round 11 instead of owner/admin/member: ``hubs/main/tests/`` ``test_member_service``
-(per-hub writes, the hierarchy: nobody acts on a peer or a superior, nor on themselves, nor grants
-their own rank), ``test_hub_member_access``, ``test_members_invite_permission`` and
-``test_members_role_escalation`` (a role below admin manages nobody; a re-invite is no free pass; an
-owner elsewhere is a stranger here), ``test_invitation_accept`` (only the caller's own pending row is
-stamped; nothing is ever granted by a poked id, a replay, a cancelled or a stale invitation; accepting
-never changes the role), ``test_account_roles``; ``dashboard/users/tests/`` ``test_account_role_choices``
-(least privilege by default, owner is never grantable), ``test_members_per_hub``,
-``test_pending_invitation_status`` and ``test_remove_user``. Their HTTP halves and the row actions
-(``test_users_row_actions``, ``test_users_list_shows_self``) are in ``test_members_api.py``; the seats
-(``test_hub_seat_limit``), in ``test_seats.py``. New: the invitation expires after 7 days, «Resend»
-renews it and «Decline» deletes the row. Dropped with their reason: the machine credential and the
-hub's mirror door (no runtime pushes members up any more), retired role keys (the four roles are new),
-htmx fragments and pages (SPA), and ``test_invite_unverified_account`` (releasing an unproven account
-belongs to ``accounts``, L1-A2).
+Per-hub writes and the hierarchy: nobody acts on a peer or a superior, nor on themselves, nor grants their own
+rank; a role below admin manages nobody; a re-invite is no free pass; an owner elsewhere is a stranger here. Only
+the caller's own pending row is answered: nothing is ever granted by a poked id, a replay, a cancelled or a stale
+invitation, and accepting never changes the role. Least privilege by default, and owner is never grantable. The
+invitation expires after 7 days, «Resend» renews it and «Decline» deletes the row. The HTTP halves and the row
+actions are in ``test_members_api.py``; the seats, in ``test_seats.py``; releasing an unproven account belongs to
+``accounts`` (``test_invite_unverified_account.py``).
 """
 
 from datetime import timedelta
@@ -214,9 +205,8 @@ class TestInvite:
 
     @pytest.mark.parametrize("target", ["admin", "owner"])
     def test_re_inviting_somebody_inside_changes_nothing(self, business, team, target):
-        """test_members_role_escalation (same-role re-provisioning is no free pass) and test_member_service
-        (a re-invite with another role used to move the role in place): an invitation never touches
-        somebody who answered, a peer, a superior or oneself; a role moves only by «Change role»."""
+        """An invitation never touches somebody who answered, a peer, a superior or oneself, whatever the role it
+        asks for; a role moves only by «Change role»."""
         with pytest.raises(Conflict) as refused:
             invite(team["admin"], business, f"{target}@example.com", "hub_employee")
 
@@ -224,7 +214,7 @@ class TestInvite:
         assert member_of(business, team[target]).role == f"hub_{target}"
 
     def test_the_owner_of_another_business_is_a_stranger_here(self, business, team, make_user):
-        """test_members_role_escalation: authority stops at one's own business (ADR-0201)."""
+        """Authority stops at one's own business."""
         lola = make_user("lola@example.com")
         create_business(lola, name="Café Lola")
 
@@ -241,7 +231,7 @@ class TestInvite:
     def test_an_accounts_address_in_another_form_invites_that_account_and_it_accepts(
         self, business, owner, make_user, written
     ):
-        """saas#2562 (ACCOUNTS-F01): an address is the account's in its plain form, folded as
+        """An address is the account's in its plain form (ACCOUNTS-F01), folded as
         ``accounts.adapters.plain_email`` folds it (NFKC, trimmed, lower case), so another case or look-alike
         full-width letters never make a second account that looks the same and never gets the access."""
         ana = make_user("ana.lopez@example.com")
@@ -424,7 +414,7 @@ class TestRemove:
 
 
 class TestRemoveThePayer:
-    """saas#2587: after a hand-over the old owner stays as an admin and keeps paying (its payer and card) until the
+    """After a hand-over the old owner stays as an admin and keeps paying (its payer and card) until the
     new owner says who pays from now on. Taking it out of the business would leave it paying for a business it no
     longer sees, and free to delete its account with Stripe charging a card nobody can stop."""
 
@@ -772,7 +762,7 @@ class TestAccept:
             )
 
     def test_a_cancelled_invitation_is_not_resurrected(self, business, team):
-        """test_invitation_accept: the inviter changed their mind before the answer."""
+        """The inviter changed their mind before the answer."""
         member_id = member_of(business, team["invitee"]).id
         services.member_cancel(ctx_for(team["owner"]), ByIdIn(id=member_id))
 
@@ -782,7 +772,7 @@ class TestAccept:
         assert not HubMember.objects.filter(hub=business, user=team["invitee"]).exists()
 
     def test_an_id_that_is_no_invitation_of_mine_grants_nothing(self, business, team):
-        """test_invitation_accept: a business I was never invited to (or any id at all)."""
+        """A business I was never invited to (or any id at all)."""
         import uuid
 
         for poked in (business.id, uuid.uuid7()):
@@ -793,7 +783,7 @@ class TestAccept:
 
     @pytest.mark.parametrize("status", [Hub.Status.PREPARING, Hub.Status.SUSPENDED, Hub.Status.PAST_DUE])
     def test_a_business_that_cannot_open_now_can_still_be_answered(self, business, team, status):
-        """test_invitation_accept (a sleeping business still works): answering is not entering; «Open»
+        """A sleeping business still works: answering is not entering; «Open»
         says why it does not open yet."""
         Hub.objects.filter(pk=business.pk).update(status=status)
 

@@ -1,3 +1,9 @@
+duplicados billing/tests/test_invoice_recording.py:49-59 the Stripe double setup already repeated in main; this change only edits a comment inside it
+duplicados billing/tests/test_platform_invoices.py:40-52 the Stripe double setup already repeated in main; this change only edits a comment inside it
+duplicados billing/frontend/components/StoreShop.test.ts:444-451 two module-cancel tests already alike in main; this change only edits their names
+duplicados billing/frontend/components/StoreShop.test.ts:470-476 two module-cancel tests already alike in main; this change only edits their names
+duplicados public/tests/test_product.py:21-31 clone already on main with test_resources.py; this change only edits a comment inside it
+duplicados public/static/public/theme.css:126-140 clone already on main with static/css/ionic-theme.css; this change only edits a comment inside it
 duplicados frontend/main.test.ts:52-60 rootAppsWithFrontend was already copied in three test files on main; only its doc comment changed here
 duplicados vite.config.test.ts:34-40 rootAppsWithFrontend was already copied in three test files on main; only its doc comment changed here
 duplicados eslint.config.test.ts:15-25 rootAppsWithFrontend was already copied in three test files on main; only its doc comment changed here

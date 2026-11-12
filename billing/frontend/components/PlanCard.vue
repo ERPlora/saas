@@ -1,21 +1,13 @@
 <script setup lang="ts">
-// A plan of the Store (mockups `store.html` «Planes»; round 17 §2.11; UX-AUDIT-4 X-03, X-08, X-09, X-14):
-// its name, description, net price (monthly or annual, as the switch above says), features, the apps it turns
-// on at once (`max_apps`, the cap the Hub applies since hub#256; 0 = all), the messages a month it includes
-// (assistant and WhatsApp, PLAN-SAAS §3.6; 0 = none, no line), the custom domain of the business's website when the plan
-// includes one (`includes_custom_domain`, HUBS-F17, saas#301; never the app) and its trial, in the order of /pricing/'s cards
-// (public/pricing.py `plan_card`), and the ONE thing the chosen business can do with it now. What each button does is the page's: the card only
-// says which one applies and emits it.
-//   - On Free: «Upgrade to …» (Embedded Checkout), at the billing of the switch; the plan it is trying
-//     says until when, and that buying it keeps the days left.
-//   - Paying: «Change to …» (confirmed with its proration), «Switch to annual/monthly» on its own plan
-//     when the switch shows the other billing, «Downgrade to Free» (cancels at the end of the period).
-//   - Cancelled: «Keep the plan» on its plan; Free says from when; another plan waits for it.
-//   - A downgrade that waits for the end of the period (PLAN-SAAS §31): its plan says to what and when, with
-//     «Keep the plan» (it charges nothing, so an unpaid invoice does not stop it); the plan it moves to says from
-//     when; any other plan, and Free, still change it.
-//   - An unpaid invoice disables what charges, with the reason under the button (`aria-describedby`).
-//     Cancelling is never blocked: it only stops the next charges.
+// A plan of the Store: its name, description, net price, features, the apps it turns on at once (`max_apps`, the
+// cap the Hub applies; 0 = all), the messages a month it includes (assistant and WhatsApp; 0 = none, no line), the
+// custom domain of the business's website when the plan includes one, and its trial, in the order of /pricing/'s
+// cards (public/pricing.py `plan_card`). Then the ONE thing the chosen business can do with it now: the card says
+// which one applies and emits it.
+//   - A downgrade that waits for the end of the period: its plan says to what and when, with «Keep the plan» (it
+//     charges nothing, so an unpaid invoice does not stop it).
+//   - An unpaid invoice disables what charges, with the reason under the button. Cancelling is never blocked: it
+//     only stops the next charges.
 import { StatusPill } from '@erplora/ui/components';
 import { HubIcon } from '@erplora/ui/shell';
 import { IonButton, IonCard, IonCardContent, IonItem, IonLabel, IonList, IonNote } from '@ionic/vue';
@@ -343,7 +335,7 @@ function run(): void {
   font-weight: 400;
   color: color-mix(in oklab, var(--ion-text-color) 70%, transparent);
 }
-/* The features: Ionic's list, as compact as the mockups' checklist (no row height, no inset). */
+/* The features: Ionic's list, as compact as a checklist (no row height, no inset). */
 .plan-card__features {
   margin: 0;
   padding: 0;
@@ -384,7 +376,7 @@ function run(): void {
   display: block;
   margin: 6px 0 0;
   font-size: 0.82rem;
-  /* Ionic's note is a faded grey (2.43:1, audit R-10): the panel's secondary text instead. */
+  /* Ionic's note is a faded grey (2.43:1): the panel's secondary text instead. */
   --color: color-mix(in oklab, var(--ion-text-color) 72%, transparent);
 }
 .btn-neutral {

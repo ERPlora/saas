@@ -1,4 +1,4 @@
-"""hubs is a platform app at the root of saas-next, next to ``base/`` (round 15, PLAN §20.2; §21.4)."""
+"""hubs is a platform app at the root of the SaaS, next to ``base/``."""
 
 from pathlib import Path
 
@@ -34,7 +34,7 @@ def test_hubs_declares_no_module_fields():
 
 
 def test_hubs_sits_between_what_it_reads_and_what_reads_it():
-    """The SaaS's graph (PLAN §21.4): hubs reads accounts and apps, public reads hubs. Without a
+    """The SaaS's graph: hubs reads accounts and apps, public reads hubs. Without a
     ``requires`` between platform apps, INSTALLED_APPS keeps that order."""
     installed = settings.INSTALLED_APPS
     position = installed.index("hubs")
@@ -56,7 +56,7 @@ def test_every_installed_app_passes_the_live_checks():
 
 def test_every_signed_in_account_may_read_and_act_on_its_businesses():
     """The role ``account`` (base.operations) gets both permissions; which business and what on it is
-    decided inside each operation by the account's ``HubMember`` role (plan 2026-10-13 §3)."""
+    decided inside each operation by the account's ``HubMember`` role."""
     config = hubs()
 
     assert config.permissions == ["hubs.view", "hubs.manage"]

@@ -1,27 +1,16 @@
-"""``/pricing/`` and ``/pricing/<slug>/``: the plans on sale (public/pricing.py, spec §8.1).
+"""``/pricing/`` and ``/pricing/<slug>/``: the plans on sale (public/pricing.py).
 
-Port of ERPlora/saas ``apps/public/pricing/tests/`` (origin/develop c5ca8ca, 38 tests):
-``test_index.py`` (6), ``test_faq_structured_data.py`` (6), ``test_internal_plans_are_never_public.py``
-(the pricing half; the home's case lives in test_landing.py), ``test_plan_comparison_table.py`` (6),
-``test_pricing_card_trial.py`` (5) and ``test_pricing_trial_period.py`` (10); the ``_vat_note`` half
-of ``tests/unit/billing/test_net_price_display.py`` (7) and the pricing contracts of
-``apps/public/landing/tests/test_ui_stack_contract.py``. What changed, and why:
-
-* ``public`` imports no model (plan §3.m): the pages read ``hubs.plan.list``. The tests still create
-  the rows with the ORM of ``hubs`` (``name_en``, ``features_en``…, the columns of saas-next's
-  ``Plan``) and read the page or its context, whose plans are dicts now, matched by ``slug``;
-* the cards are the ``ep-pricing-card`` partial (``<ok-pricing-card>`` is gone, PLAN §16.11), so the
-  helper that read a card's ✓ lines reads that partial's markup;
-* the trial range comes from the trial of each plan on sale (``trial_period_days`` of the
-  operation's rows), the same reading as ``Plan.objects.signup_trial_days()``;
-* the comparison column «Modules included» is «Apps included» (decision 19: the catalogue is «Apps»
-  in en and es), and a premium app is included in the paid plans (decision 17): no «premium
-  add-ons», no fee per activated app, no «marketplace» in the competitor table;
-* the storage answer names the host, AWS in its Ireland region (Ioan, 2026-10-14), never Hetzner;
-* ``Plan.objects.public()`` is pinned by ``hubs/tests/test_plan_list.py``; here, what the pages
-  show of it;
-* the ex-VAT note is ``public/partials/_vat_note.html`` and links ``public:terms``; the panel's
-  selling screens (``/dashboard/…``) and the checkout cases belong to the panel (block 4).
+* ``public`` imports no model: the pages read ``hubs.plan.list``. The tests create the rows with the ORM of ``hubs``
+  (``name_en``, ``features_en``…) and read the page or its context, whose plans are dicts matched by ``slug``.
+* The cards are the ``ep-pricing-card`` partial, so the helper that reads a card's ✓ lines reads that partial's
+  markup.
+* The trial range comes from the trial of each plan on sale (``trial_period_days`` of the operation's rows), the same
+  reading as ``Plan.objects.signup_trial_days()``.
+* Every plan includes every app: no «premium add-ons», no fee per activated app, no «marketplace» in the competitor
+  table.
+* The storage answer names the host, AWS in its Ireland region, never Hetzner.
+* ``Plan.objects.public()`` is pinned by ``hubs/tests/test_plan_list.py``; here, what the pages show of it.
+* The ex-VAT note is ``public/partials/_vat_note.html`` and links ``public:terms``.
 """
 
 from __future__ import annotations
@@ -124,7 +113,7 @@ UPGRADE_SECTION = '<section id="more-capacity"'
 
 
 def upgrade_section(html: str) -> str:
-    """The «More capacity» section: the upgrade-only plans (Ioan, 2026-10-24, PLAN-SAAS §9)."""
+    """The «More capacity» section: the upgrade-only plans."""
     assert UPGRADE_SECTION in html, "no «More capacity» section on /pricing/"
     return html.split(UPGRADE_SECTION, 1)[1].split("</section>", 1)[0]
 
@@ -151,7 +140,7 @@ def test_the_pages_only_answer_safe_methods(client, seeded):
     assert client.post("/pricing/starter/").status_code == 405
 
 
-# --- test_index.py ----------------------------------------------------------------------------
+# --- The index page ---------------------------------------------------------------------------
 
 
 def test_pricing_renders_active_plan_data_from_the_database(no_plans, client):
@@ -194,7 +183,7 @@ def test_pricing_renders_active_plan_data_from_the_database(no_plans, client):
         "Database feature sentinel",
     ):
         assert text in html, text
-    # An upgrade-only row is shown under «More capacity» (Ioan, 2026-10-24), never with the cards a visitor signs up
+    # An upgrade-only row is shown under «More capacity», never with the cards a visitor signs up
     # on, and without the old visual separators.
     upgrades = upgrade_section(html)
     for text in ("DB Upgrade Sentinel", "€62.46", "Upgrade description loaded from the database", "Upgrade feature sentinel"):
@@ -204,7 +193,7 @@ def test_pricing_renders_active_plan_data_from_the_database(no_plans, client):
     assert "DB Inactive Sentinel" not in html
 
 
-# saas#1760: the public page must not rank plans by the box they run on.
+# The public page must not rank plans by the box they run on.
 PUBLIC_SPEC_PATTERNS = [
     (r"\bv?CPU\b", "CPU spec"),
     (r"\bRAM\b", "RAM spec"),
@@ -264,10 +253,9 @@ def test_pricing_page_publishes_no_uptime_sla(client, seeded):
     assert match is None, match and match.group(0)
 
 
-# --- The custom domain of the business's public website (HUBS-F17, saas#301) --------------------------------------
-# saas#233 kept it off the page while no business could connect a domain; since saas#302 they can, on the plans whose
-# ``includes_custom_domain`` is true: their cards and the table say so, read from that row, and only for the public
-# website (the app stays on erplora.com).
+# --- The custom domain of the business's public website -----------------------------------------------------------
+# A business can connect its own domain on the plans whose ``includes_custom_domain`` is true: their cards and the table
+# say so, read from that row, and only for the public website (the app stays on erplora.com).
 
 CUSTOM_DOMAIN_LINE = {
     "en": "Your own domain for your website (www.yourbusiness.com)",
@@ -347,9 +335,8 @@ def test_the_table_reads_the_custom_domain_from_the_rows(client, seeded):
 @pytest.mark.parametrize("path", [INDEX, "/pricing/standard/"])
 @pytest.mark.parametrize("language", ["en", "es"])
 def test_without_a_plan_that_includes_it_the_page_names_no_custom_domain(client, seeded, path, language):
-    """saas#233's guard, now tied to the gate: with no plan on sale that includes one, neither the cards, nor the
-    descriptions, nor the table (no column whose every cell says the same) name a custom domain. The whole page,
-    structured data included."""
+    """With no plan on sale that includes one, neither the cards, nor the descriptions, nor the table (no column
+    whose every cell says the same) name a custom domain. The whole page, structured data included."""
     Plan.objects.update(includes_custom_domain=False)
     html = unescape(html_of(client, path, language))
 
@@ -360,14 +347,14 @@ def test_without_a_plan_that_includes_it_the_page_names_no_custom_domain(client,
 @pytest.mark.parametrize("path", [INDEX, "/pricing/standard/"])
 @pytest.mark.parametrize("language", ["en", "es"])
 def test_the_pricing_page_never_puts_the_app_on_a_custom_domain(client, seeded, path, language):
-    """Only the public website goes on the business's domain; the app stays on erplora.com (PLAN-SAAS §37 point 2)."""
+    """Only the public website goes on the business's domain; the app stays on erplora.com."""
     html = unescape(html_of(client, path, language))
 
     assert CUSTOM_DOMAIN_WORDS.search(html), "control: the page names the custom domain of the plans that include it"
     assert APP_ON_A_CUSTOM_DOMAIN.search(html) is None
 
 
-# --- test_faq_structured_data.py --------------------------------------------------------------
+# --- The FAQ and its structured data ----------------------------------------------------------
 
 
 def test_there_is_a_faq_page_block(client):
@@ -420,7 +407,7 @@ def test_the_faq_is_an_ionic_accordion_opened_on_its_first_question(client):
     assert faq.count("<ion-accordion ") == len(pricing.faq_items())
 
 
-# --- test_internal_plans_are_never_public.py (the pricing half) --------------------------------
+# --- Internal plans are never public -----------------------------------------------------------
 
 
 @pytest.fixture
@@ -476,13 +463,13 @@ def test_public_plan_detail_does_not_offer_internal_plans_as_alternatives(
     assert "Internal Sentinel Plan" not in html
 
 
-# --- test_plan_comparison_table.py ------------------------------------------------------------
+# --- The comparison table ---------------------------------------------------------------------
 
 TABLE_RE = re.compile(r'<table[^>]*id="plan-compare".*?</table>', re.S)
 
 
-#: The columns of the comparison table: plan, price, devices and users, apps turned on at once (hub#256), database
-#: throughput, AI assistant, WhatsApp, own domain (saas#301: while a plan on sale includes one), support and access.
+#: The columns of the comparison table: plan, price, devices and users, apps turned on at once, database throughput, AI
+#: assistant, WhatsApp, own domain (while a plan on sale includes one), support and access.
 COLUMNS = 10
 
 
@@ -504,8 +491,7 @@ def test_table_shows_the_devices_and_users_each_plan_buys(client, seeded):
 
 
 def test_table_shows_the_support_of_each_plan(client, seeded):
-    """The plans on sale, then the upgrade-only ones (Ioan, 2026-10-24); the dedicated row is gone (PLAN-SAAS §9,
-    2026-10-24b)."""
+    """The plans on sale, then the upgrade-only ones; no dedicated row."""
     table = plan_table(html_of(client))
     signable, upgrades = table.split(f'<td colspan="{COLUMNS}">More capacity</td>', 1)
 
@@ -519,7 +505,7 @@ def test_table_shows_the_support_of_each_plan(client, seeded):
 
 
 def test_table_shows_the_resources_each_plan_buys_in_plain_words(client, seeded):
-    """Ioan, 2026-10-15: the «resources» that grow from plan to plan are the database's input/output capacity.
+    """The «resources» that grow from plan to plan are the database's input/output capacity.
     Free for one device, Starter the full tier, Standard twice it — a buyer reads the ladder as database
     throughput, never an engine, a connection count nor a timeout."""
     table = plan_table(html_of(client))
@@ -577,7 +563,7 @@ def test_the_columns_survive_translation_to_spanish(client, seeded):
     assert "Correo electrónico prioritario" in table
 
 
-# --- The monthly messages of each plan: assistant and WhatsApp (PLAN-SAAS §3.6, 2026-10-15) -------------
+# --- The monthly messages of each plan: assistant and WhatsApp ------------------------------------------
 
 
 def test_each_card_says_the_assistant_and_whatsapp_messages_a_month(client, seeded):
@@ -622,7 +608,7 @@ def test_the_table_compares_the_messages_of_each_plan(client, seeded):
     assert "<th>AI assistant</th>" in table and "<th>WhatsApp</th>" in table
     for messages in ("30 messages a month", "300 messages a month", "600 messages a month", "150 messages a month"):
         assert messages in table, messages
-    # No row agrees its quota by contact any more (PLAN-SAAS §9, 2026-10-24b).
+    # No row agrees its quota by contact.
     assert "Agreed with you" not in table
 
 
@@ -648,9 +634,9 @@ def test_every_row_of_the_table_spans_its_columns(client, seeded):
     assert set(re.findall(r'colspan="(\d+)"', table)) == {str(columns)}
 
 
-# --- The apps each plan lets a business turn on at once (hub#256, PLAN-SAAS §9) --------------------------------------
+# --- The apps each plan lets a business turn on at once --------------------------------------------------------------
 # The Hub caps the apps a business chooses to turn on by its plan's ``max_apps`` (the ones they require do not count;
-# 0 = no limit), «as the plans published on the SaaS say» (Ioan, 2026-10-25): the page publishes that same number,
+# 0 = no limit), «as the plans published on the SaaS say»: the page publishes that same number,
 # read from the row, in a column of the table and a line of every card.
 
 APPS_HEADER = {"en": "Apps turned on at once", "es": "Apps activadas a la vez"}
@@ -779,7 +765,7 @@ def test_the_cap_line_is_worked_out_on_the_page_and_never_written_in_the_rows(se
             assert "apps turned on" not in feature and "apps activadas" not in feature, (plan.slug, feature)
 
 
-#: A downgrade over the new plan's limits takes nothing away (PLAN-SAAS, ronda 2026-11-03g): the apps turned on stay on,
+#: A downgrade over the new plan's limits takes nothing away: the apps turned on stay on,
 #: and the users and the files stay; only adding more waits until the business is under the limit.
 SWITCH_CAP = {
     "en": (
@@ -825,7 +811,7 @@ def test_the_detail_says_the_apps_the_plan_turns_on_at_once(client, seeded, slug
     assert line in included
 
 
-# --- test_pricing_card_trial.py ---------------------------------------------------------------
+# --- The trial on the cards -------------------------------------------------------------------
 
 
 def test_the_card_shows_the_trial_the_plan_grants(no_plans, client):
@@ -859,10 +845,9 @@ def test_the_card_trial_is_translated(no_plans, client):
 
 
 def test_an_upgrade_only_plan_is_shown_but_has_no_sign_up_nor_detail_page(no_plans, client):
-    """Ioan, 2026-10-24 (PLAN-SAAS §9, corrects 2026-10-15): /pricing/ shows an ``upgrade_only`` row under «More
-    capacity», so a visitor knows it exists, but it is still no plan to sign up on: not among the cards a visitor
-    signs up on, no detail page and not in «Other plans». The mechanism does not move: the Store offers it to a
-    business that already pays and the checkout from Free refuses it (``billing.plan_upgrade_only``)."""
+    """/pricing/ shows an ``upgrade_only`` row under «More capacity», so a visitor knows it exists, but it is no plan
+    to sign up on: not among the cards a visitor signs up on, no detail page and not in «Other plans». The Store
+    offers it to a business that already pays and the checkout from Free refuses it (``billing.plan_upgrade_only``)."""
     make_plan("starter", trial_days=15)
     make_plan("pro", trial_days=15, upgrade_only=True)
 
@@ -878,7 +863,7 @@ def test_an_upgrade_only_plan_is_shown_but_has_no_sign_up_nor_detail_page(no_pla
     assert [plan["slug"] for plan in others] == []
 
 
-# --- test_pricing_trial_period.py -------------------------------------------------------------
+# --- The trial period -------------------------------------------------------------------------
 
 
 def trial_note(html: str) -> str:
@@ -988,12 +973,12 @@ def test_faq_items_called_on_its_own_reads_the_plans_too(no_plans):
     assert re.findall(r"\d+", str(item["answer"])) == ["30"], item["answer"]
 
 
-# --- Decision 17 and the host -----------------------------------------------------------------
+# --- No app sold on its own, and the host -----------------------------------------------------
 
 
 def test_no_app_is_sold_on_its_own_and_there_is_no_marketplace(client, seeded):
-    """No app is sold on its own (ADR-0474) and there is no marketplace; since the ronda 2026-10-24b (PLAN §32) every
-    plan includes every module, so the page sells no tier of apps either (the tests below)."""
+    """No app is sold on its own and there is no marketplace; every plan includes every app, so the page sells no
+    tier of apps either (the tests below)."""
     lowered = visible_markup(html_of(client)).lower()
 
     # «add-on» stays where it describes a competitor («paid add-on, read-only»): what goes is ours.
@@ -1010,10 +995,10 @@ def test_no_app_is_sold_on_its_own_and_there_is_no_marketplace(client, seeded):
     assert "Every plan includes all the apps" in str(pricing_item["answer"])
 
 
-# --- Every module in every plan (Ioan, 2026-10-24, PLAN §32 and PLAN-SAAS §9) ------------------------------------
-# The page sold tiers of apps («the free apps» on Free, «the premium apps» on the paid plans) and compared the plans
-# on «Apps included» (``included_level``). Every plan includes every module now; ``included_level`` stays, dormant, in
-# the model, the Store and the checkout, for when a ``premium`` module exists, and leaves the public web.
+# --- Every app in every plan -------------------------------------------------------------------------------------
+# Every plan includes every app: the page sells no tier of apps («the free apps» on Free, «the premium apps» on the paid
+# plans) and does not compare the plans on «Apps included» (``included_level``). ``included_level`` stays, dormant, in
+# the model, the Store and the checkout, for when a ``premium`` app exists, but not on the public web.
 
 HERO_EN = (
     "Every plan includes all the apps. Paid plans add unlimited devices, more capacity and higher AI and WhatsApp "
@@ -1059,8 +1044,8 @@ def test_premium_is_nowhere_on_the_page(client, seeded, language):
 
 @pytest.mark.parametrize(("language", "word"), [("en", r"\bmodules?\b"), ("es", r"\bmódulos?\b")])
 def test_the_page_calls_them_apps_never_modules(client, seeded, language, word):
-    """Decision 19 of the catalog spec: the public web's word is «apps» (its menu, /apps/), so «every module» of PLAN
-    §32 reads «all the apps» here, as on the home (public/tests/test_product.py)."""
+    """The public web's word is «apps» (its menu, /apps/), so the page says «all the apps», as on the home
+    (public/tests/test_product.py)."""
     body = " ".join(visible_text(html_of(client, language=language)).split())
 
     assert ("all the apps" if language == "en" else "todas las apps") in body
@@ -1098,8 +1083,8 @@ def test_the_faq_sells_no_tier_of_apps_and_a_downgrade_deletes_and_turns_nothing
 
 
 def test_the_storage_answer_names_aws_in_ireland_and_never_hetzner(client):
-    """Ioan, 2026-10-14: the servers are on AWS, Ireland region (eu-west-1), for all of Europe;
-    never the Spain region (eu-south-2, Aragón) the answer named before."""
+    """The servers are on AWS, Ireland region (eu-west-1), for all of Europe; never the Spain region (eu-south-2,
+    Aragón)."""
     (storage,) = [item for item in pricing.faq_items() if item["key"] == "storage"]
     answer = str(storage["answer"])
 
@@ -1130,7 +1115,7 @@ def test_without_plans_on_sale_the_page_says_so_and_paints_no_table(no_plans, cl
     assert faq_page_of(html)
 
 
-# --- Nothing above the plans: no dedicated infrastructure (Ioan, 2026-10-24, PLAN-SAAS §9) ---------
+# --- Nothing above the plans: no dedicated infrastructure ------------------------------------------
 
 CONTACT = "/contact/"
 PRICE_400 = re.compile(r"(?<![\d.,])400(?![\d.,])")
@@ -1142,9 +1127,8 @@ def visible_text(html: str) -> str:
 
 
 def test_the_page_offers_no_dedicated_infrastructure(client, seeded):
-    """Ronda 2026-10-24b: the «Dedicated infrastructure, from €400 a month» band is no product (no runbook, no
-    Terraform) and the plans no longer sell infrastructure; above Standard the page shows only the upgrade-only plans
-    (Pro, Enterprise and Max, Ioan 2026-10-24), never an offer by contact."""
+    """No «Dedicated infrastructure, from €400 a month» band: it is no product and the plans sell no infrastructure.
+    Above Standard the page shows only the upgrade-only plans (Pro, Enterprise and Max), never an offer by contact."""
     html = html_of(client)
     body = visible_markup(html)
 
@@ -1212,7 +1196,7 @@ def test_the_table_intro_sends_nobody_to_a_custom_setup(client, seeded):
 
 
 def test_the_page_includes_no_location_in_any_plan(client, seeded):
-    """Multi-location comes from Pro and is charged per location (PLAN §32, ronda 2026-10-24b): neither the table's
+    """Multi-location comes from Pro and is charged per location: neither the table's
     intro nor a card on sale (hubs/0021) says a hub covers every location."""
     for language, words in (("en", r"\blocations?\b"), ("es", r"\blocales\b")):
         body = " ".join(visible_text(html_of(client, language=language)).split())
@@ -1240,10 +1224,10 @@ def test_the_faq_has_no_dedicated_entry(client, seeded):
     assert "dedicated" not in json.dumps(faq_page_of(html)).lower()
 
 
-# --- More capacity: the upgrade-only plans on the page (Ioan, 2026-10-24, PLAN-SAAS §9) --------------------------
-# Corrects 2026-10-15 («/pricing/ no longer lists them»): Odoo, Holded and Square show the whole ladder on their
-# pricing page. The mechanism does not move: the rows stay ``upgrade_only``, the Store offers them to a business that
-# already pays and the checkout from Free refuses them (``billing.plan_upgrade_only``, billing/tests/test_checkout.py).
+# --- More capacity: the upgrade-only plans on the page -----------------------------------------------------------
+# Odoo, Holded and Square show the whole ladder on their pricing page. The rows stay ``upgrade_only``: the Store offers
+# them to a business that already pays and the checkout from Free refuses them (``billing.plan_upgrade_only``,
+# billing/tests/test_checkout.py).
 
 UPGRADE_ONLY = ("pro", "enterprise", "max")
 
@@ -1272,7 +1256,7 @@ def test_more_capacity_shows_each_upgrade_only_plan_from_its_row(client, seeded)
     for plan in upgrade_rows():
         features = without_separators(plan.features_en)
         assert plan.description_en in text, plan.slug
-        # The row's lines, with the apps it turns on at once (hub#256) right after its «Everything in …».
+        # The row's lines, with the apps it turns on at once right after its «Everything in …».
         expected = [features[0], "All the apps turned on at once", *features[1:]]
         assert card_items(section, plan.name_en)[: len(expected)] == expected, plan.slug
         assert f"≈ €{plan.price_annual:.2f}/year · 2 months free" in text, plan.slug
@@ -1280,7 +1264,7 @@ def test_more_capacity_shows_each_upgrade_only_plan_from_its_row(client, seeded)
 
 
 def without_separators(features: list[str]) -> list[str]:
-    """A row's features as ``hubs.plan.list`` gives them: the old seed's «───» lines (Max's) are dropped."""
+    """A row's features as ``hubs.plan.list`` gives them: the seed's «───» separator lines (Max's) are dropped."""
     return [feature for feature in features if feature.strip().strip("─").strip()]
 
 
@@ -1371,7 +1355,7 @@ def test_the_plans_to_sign_up_on_stay_as_they_were(client, seeded):
 
 
 def test_more_capacity_promises_no_trial_nor_a_saving_of_its_own_in_the_hero(no_plans, client):
-    """An upgrade grants no trial (#809) and the hero's saving is the plans on sale's: an upgrade-only row with a trial
+    """An upgrade grants no trial and the hero's saving is the plans on sale's: an upgrade-only row with a trial
     and another saving changes neither."""
     make_plan("starter", price_annual=Decimal("299.90"))
     make_plan("pro", upgrade_only=True, trial_days=30, price_monthly=Decimal("100"), price_annual=Decimal("900"))
@@ -1387,7 +1371,7 @@ def test_more_capacity_promises_no_trial_nor_a_saving_of_its_own_in_the_hero(no_
 
 
 def test_the_catalogue_promises_no_trial_and_points_to_the_free_plan(client, seeded):
-    """Ioan, 2026-10-15: no plan carries a trial; the Free plan is the way in, and the page says so."""
+    """No plan carries a trial; the Free plan is the way in, and the page says so."""
     html = html_of(client)
 
     assert "free trial" not in visible_markup(html).lower()
@@ -1396,7 +1380,7 @@ def test_the_catalogue_promises_no_trial_and_points_to_the_free_plan(client, see
 
 
 def test_the_detail_shows_the_plan_its_price_its_features_and_its_trial(client, seeded):
-    # The dormant trial, on: no plan carries one since 2026-10-15, but staff may give one in the admin.
+    # The dormant trial, on: no plan carries one, but staff may give one in the admin.
     Plan.objects.filter(slug="starter").update(trial_period_days=15)
     response = get(client, "/pricing/starter/")
     html = response.content.decode()
@@ -1444,10 +1428,10 @@ def test_the_detail_in_spanish(client, seeded):
     assert "/ mes por hub" in html
 
 
-# --- The ex-VAT note (tests/unit/billing/test_net_price_display.py, saas#1835) ----------------
+# --- The ex-VAT note --------------------------------------------------------------------------
 
 NET = "29.99"
-#: The 21 % gross of 29.99: exactly what a selling screen no longer shows.
+#: The 21 % gross of 29.99: exactly what a selling screen never shows.
 GROSS = "36.29"
 
 
@@ -1500,7 +1484,7 @@ def test_the_ex_vat_note_is_translated(client, net_plan):
     assert "NIF/CIF/NIE o NIF-IVA" in html
 
 
-# --- The shared patterns (test_ui_stack_contract.py, pricing half) ----------------------------
+# --- The shared UI patterns of the pricing page -----------------------------------------------
 
 
 def source(name: str) -> str:
@@ -1585,8 +1569,8 @@ def test_every_other_section_shown_is_soft(shown, soft):
 
 
 def test_the_template_has_no_offer_by_contact_above_the_plans():
-    """Neither the 2026-10-15 «Upgrade-only plans» band nor the dedicated band that replaced it (2026-10-24b): above
-    the plans on sale only the upgrade-only rows themselves, under «More capacity» (2026-10-24)."""
+    """No «Upgrade-only plans» band nor a dedicated-infrastructure band: above the plans on sale only the
+    upgrade-only rows themselves, under «More capacity»."""
     page = source("index.html")
 
     assert "<!-- PLAN CARDS -->" in page
@@ -1609,7 +1593,7 @@ def test_pricing_is_a_primary_page_with_the_compact_hero_and_the_shared_rhythm()
 
 
 def test_the_pricing_look_lives_in_a_stylesheet_not_in_the_page():
-    """The old page carried a <style> block; its rules are public/static/public/pricing.css."""
+    """No <style> block in the page: its rules are public/static/public/pricing.css."""
     for name in ("index.html", "detail.html", "_plan_compare_cells.html"):
         assert "<style" not in source(name), name
     css = (ROOT / "public" / "static" / "public" / "pricing.css").read_text(
@@ -1667,10 +1651,9 @@ def test_the_python_messages_have_their_spanish_entry(no_plans):
     assert [es for es, en in zip(texts, english) if es == en] == []
 
 
-# --- PUBLIC-F02: the annual saving is worked out from the two prices, never typed ------------------
-# The old card said «2 months free» next to any annual price (SAAS_PUBLIC-F56): edit the annual price
-# and the sentence stayed. The months free are 12 minus the months the annual price pays for,
-# rounded down so the page never promises more than the checkout gives.
+# --- The annual saving is worked out from the two prices, never typed ------------------------------
+# A typed «2 months free» would stay put when the annual price is edited. The months free are 12 minus the months the
+# annual price pays for, rounded down so the page never promises more than the checkout gives.
 
 
 @pytest.mark.parametrize(
@@ -1718,10 +1701,10 @@ def test_without_an_annual_saving_the_hero_promises_none(no_plans, client):
     assert "month free" not in html and "months free" not in html
 
 
-# --- PUBLIC-F04: the price painted is the price charged ---------------------------------------------
+# --- The price painted is the price charged ---------------------------------------------------------
 # One field, one amount: what /pricing/ and the detail page paint is the net ``Plan`` price, the checkout
 # charges that same amount (``billing.services.plan_sale``) and the Stripe price the plan sells with
-# must charge it to the cent, or the admin refuses it (BILLING-F28). Stripe is the double of billing's
+# must charge it to the cent, or the admin refuses it. Stripe is the double of billing's
 # tests: no call leaves the machine.
 
 from billing import services as billing_services  # noqa: E402

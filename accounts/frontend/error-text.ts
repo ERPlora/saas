@@ -2,11 +2,11 @@
 // (`ctx.language`). A failure that is not the server's answer — a call that never got one (`network_error`),
 // one that is not the API's envelope (`unexpected_response`: a proxy's HTML page, a 502) or a failure in the
 // browser (`client_error`) — is said with a sentence of the panel's catalogue, in its voice and naming ERPlora,
-// the same whoever made the error: the SDK words these in the person's language too (hub#2281), with its own
+// the same whoever made the error: the SDK words these in the person's language too, with its own
 // generic sentences, and Account's own `client_error`s (`new ApiError(0, 'client_error', String(error))`)
 // carry the browser's English text. Every toast, dialog and notice of Account goes through it.
-// A copy of hubs' `error-text.ts`: accounts never imports hubs (the dependency goes the other way, PLAN-SAAS
-// §3.6 point 16), and its sentences live in the accounts catalogues.
+// A copy of hubs' `error-text.ts`: accounts never imports hubs (the dependency goes the other way), and its
+// sentences live in the accounts catalogues.
 import type { FormModalError } from '@erplora/ui/components';
 import type { ApiError } from '@erplora/ui/sdk';
 import { useI18n } from 'vue-i18n';
