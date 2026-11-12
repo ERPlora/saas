@@ -1,4 +1,4 @@
-"""The SPA's Content Security Policy with Stripe (lot L2-D; PLAN-SAAS §3.6 point 17; plan §7 point 5).
+"""The SPA's Content Security Policy with Stripe.
 
 Stripe.js is the ONE script the SaaS takes from another origin — PCI: it is never served by us — and the
 Embedded Checkout runs in Stripe's frames, so the SPA's policy (``settings.SECURE_CSP``, ``live.csp``)
@@ -8,8 +8,8 @@ insertion, which ``'strict-dynamic'`` trusts); Stripe.js's loader then sets its 
 strings, which the page's ``default`` Trusted Types policy admits for ``https://js.stripe.com`` only
 (``createShell({ trustedScriptOrigins })``, frontend/main.ts): ``trusted-types`` is ``live.csp``'s, untouched.
 
-Only a page that may sell gets it: the account surface (``?surface=account``) sells nothing (round 17
-§2.6), and neither does any other response (the API, the public web, which has its own policy).
+Only a page that may sell gets it: the account surface (``?surface=account``) sells nothing, and
+neither does any other response (the API, the public web, which has its own policy).
 ``base/spa.py`` sets it on the SPA's HTML as Django's ``csp_override`` does (``response._csp_config``).
 """
 
@@ -49,7 +49,7 @@ def spa_policy(policy: dict[str, list[str]], *, sells: bool) -> dict[str, list[s
     return result
 
 
-# --- The admin (ACCOUNTS-G10; the old SaaS's saas#1828) -------------------------------------------------------------
+# --- The admin ------------------------------------------------------------------------------------------------------
 
 #: Trusted Types' directives: Django's admin creates no policy, and its jQuery assigns ``innerHTML`` while it loads.
 TRUSTED_TYPES_DIRECTIVES = ("require-trusted-types-for", "trusted-types")

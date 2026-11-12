@@ -1,4 +1,4 @@
-// The public web of erplora.com, flow by flow (APP-PUBLIC-1, public/WORKBOOK.md PUBLIC-F01…F14), in a real
+// The public web of erplora.com, flow by flow (public/WORKBOOK.md PUBLIC-F01…F14), in a real
 // Chrome under the production CSP with zero violations: the home, the plans and the price painted against the
 // price of each plan's page, the industries, the product pages, what the web promises, /compliance/, the
 // company pages, every «Start free» down to the sign-in, the «coming soon» pages and the retired addresses,
@@ -106,7 +106,7 @@ test('PUBLIC-G49 the home and the plans promise only what the product does', asy
   for (const claim of ['v3.4', 'QuickBooks', 'HR and payroll', 'Support tickets', 'Healthcare']) {
     await expect(page.getByText(claim, { exact: false })).toHaveCount(0);
   }
-  // Every plan includes all the apps (ronda 2026-10-24b, PLAN §32): the home sells no tier of apps.
+  // Every plan includes all the apps: the home sells no tier of apps.
   await expect(page.locator('#planes .ep-section-sub')).toHaveText(
     'Every plan includes all the apps. Paid plans add unlimited devices, more capacity and higher AI and WhatsApp quotas.',
   );
@@ -126,16 +126,16 @@ test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under
   const clean = await watch(page);
 
   await captureEverywhere(page, '/pricing/', 'PUBLIC-G31', async (p) => {
-    // Three plans to sign up on, then the three upgrade-only ones under «More capacity» (Ioan, 2026-10-24).
+    // Three plans to sign up on, then the three upgrade-only ones under «More capacity».
     await expect(p.locator('.ep-pricing-card')).toHaveCount(6);
     await expect(p.locator('#more-capacity .ep-pricing-card')).toHaveCount(3);
     await expect(p.locator('#more-capacity a.ep-button[href="/launch"]')).toBeVisible();
-    // The table gained a column (the apps turned on at once, hub#256): it still fits its surface at every width.
+    // With its column of the apps turned on at once, the table still fits its surface at every width.
     const spill = await p.locator('#plan-compare').evaluate((table) => table.scrollWidth - (table.parentElement?.clientWidth ?? 0));
     expect(spill, `the plan table spills out of its surface at ${p.viewportSize()?.width}px`).toBeLessThanOrEqual(0);
   });
 
-  // More capacity (PLAN-SAAS §9): Pro, Enterprise and Max from their rows, each saying when it opens instead of a
+  // More capacity: Pro, Enterprise and Max from their rows, each saying when it opens instead of a
   // sign-up button, and one call to action to start free.
   const more = page.locator('#more-capacity');
   await expect(more.getByRole('heading', { level: 2 })).toHaveText('More capacity');
@@ -149,7 +149,7 @@ test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under
   await expect(table.locator('tbody strong')).toHaveText(['Free', 'Starter', 'Standard', 'Pro', 'Enterprise', 'Max']);
   await expect(table.getByText('Available once you are on Starter')).toHaveCount(3);
   await expect(page.getByText('all your locations', { exact: false })).toHaveCount(0);
-  // Every plan includes all the apps (PLAN §32): no tier of apps on the page, no «Apps included» column.
+  // Every plan includes all the apps: no tier of apps on the page, no «Apps included» column.
   await expect(page.getByText('Every plan includes all the apps. Paid plans add unlimited devices', { exact: false })).toBeVisible();
   await expect(table.locator('thead th')).toHaveCount(10);
   await expect(table.locator('thead th', { hasText: 'Apps included' })).toHaveCount(0);
@@ -158,7 +158,7 @@ test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under
   const starter = page.locator('.ep-pricing-card', { has: page.locator('.ep-pricing-card__name', { hasText: 'Starter' }) });
   await expect(starter).toContainText('€29.99');
   await expect(starter).toContainText('≈ €299.90/year · 2 months free');
-  // The apps a business may turn on at once, the cap the Hub applies (hub#256), read from each plan's row: a column
+  // The apps a business may turn on at once, the cap the Hub applies, read from each plan's row: a column
   // next to the devices and users, and a line of every card right after what the plan includes.
   await expect(table.locator('thead th').nth(3)).toHaveText('Apps turned on at once');
   await expect(table.locator('thead th').nth(2)).toHaveText('Devices and users');
@@ -177,7 +177,8 @@ test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under
   await page.locator('ion-accordion[value="storage"] ion-item').click();
   const storage = page.locator('ion-accordion[value="storage"] [slot="content"]');
   await expect(storage).toContainText('if its European provider is unavailable');
-  // The assistant's voice provider is a transfer too (privacy policy §6): «the one exception» no longer holds.
+  // The assistant's voice provider is a transfer too (section 6 of the privacy policy): «the one exception» no longer
+  // holds.
   await expect(storage).toContainText('transcribing a voice dictation');
   await expect(storage).not.toContainText('The one exception');
   await expect(storage.getByRole('link', { name: 'Read the privacy policy' })).toHaveAttribute('href', '/legal/privacy/');
@@ -236,7 +237,7 @@ test('PUBLIC-G35 PUBLIC-G50 features, security and updates say what runs', async
     await expect(page.getByText(claim, { exact: false })).toHaveCount(0);
   }
   await page.locator('a.ep-button', { hasText: 'Contact Security Team' }).click();
-  // The form opens on the security topic (PUBLIC-G40, APP-PUBLIC-2).
+  // The form opens on the security topic (PUBLIC-G40).
   await expect(page).toHaveURL(/\/contact\/\?subject=security$/);
   await expect(page.locator('form[action="/contact/submit/"]')).toBeVisible();
   await clean('/security/ → /contact/');
@@ -624,7 +625,8 @@ test('PUBLIC-G51 on a slow device, the mobile menu opens and closes even pressed
 test('PUBLIC-G51 on a slow phone, the buttons of the menu lead on even pressed before the page script has run', async ({
   page,
 }) => {
-  // The steps of saas#238 on a phone, where the header's buttons live in the menu (saas#243 opens it without the script).
+  // Pressing before the page's scripts arrive, on a phone, where the header's buttons live in the menu (which opens
+  // without the script, saas#243).
   await page.setViewportSize({ width: 375, height: 667 });
   const held: Route[] = [];
   await page.route('**/static/spa/**/*.js', (route) => {

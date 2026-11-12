@@ -1,8 +1,8 @@
-// The jumps between erplora.com and a business (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-4), on their screens
-// at the three sizes of the migration (390×844, 834×1112, 1440×900): into a business with a one-time code (G98, and G99:
-// the sign-in on erplora.com on the way, then the business), what the business learns of the person (G104), back to
-// erplora.com from a business (G100) and the account on its own, as the installed app opens it (G113). In
-// accounts/WORKBOOK.md: G98 = G99 = F28, G104 = F12, G100 = F29, G113 = F30.
+// The jumps between erplora.com and a business (accounts/WORKBOOK.md), on their screens at three sizes (390×844,
+// 834×1112, 1440×900): into a business with a one-time code (G98, and G99: the sign-in on erplora.com on the way, then
+// the business), what the business learns of the person (G104), back to erplora.com from a business (G100) and the
+// account on its own, as the installed app opens it (G113). In accounts/WORKBOOK.md: G98 = G99 = F28, G104 = F12,
+// G100 = F29, G113 = F30.
 // The Hub is played at its own addresses (`http://<slug>.localhost:8000/…`, the panel's HUB_CALLBACK_TEMPLATE): the spec
 // receives the form the browser posts to the business's callback and redeems the code as the Hub does, signed, at the
 // real `/internal/auth/redeem`. The Hub's own half (its callback, its session) runs in every e2e of the Hub, whose sign-in
@@ -228,7 +228,7 @@ test('ACCOUNTS-G113 · the app opens the account on its own: its old address, th
 
   await atEverySize(page, 'ACCOUNTS-G113', async () => {
     await expect(page.getByRole('heading', { name: 'Your details' })).toBeVisible();
-    // The Store sells: the account surface leaves it out of the menu (PLAN-SAAS §3.6 point 6).
+    // The Store sells: the account surface leaves it out of the menu.
     await expect(menuItem(page, 'Store')).toHaveCount(0);
     await expect(menuItem(page, 'Businesses')).toHaveCount(1);
   });

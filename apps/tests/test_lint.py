@@ -1,4 +1,4 @@
-"""The SaaS reads the catalog and never writes it (spec §9 and §3.3; plan §3.p).
+"""The SaaS reads the catalog and never writes it.
 
 The Hub writes ``shared.app`` and ``shared.app_doc`` with each release; in the SaaS the role does not
 stop a write (``saas_app`` may get more than ``SELECT`` there), the code does:
@@ -44,7 +44,7 @@ WRITE_METHODS = frozenset(
 
 
 def python_files() -> list[str]:
-    """Every ``.py`` of saas-next as a path relative to it, tests and dependencies left out."""
+    """Every ``.py`` of the SaaS as a path relative to it, tests and dependencies left out."""
     found = []
     for root, dirs, files in os.walk(SAAS_NEXT):
         dirs[:] = sorted(
@@ -154,7 +154,7 @@ def test_nothing_writes_the_catalog():
 
 
 def test_the_saas_has_no_operation_that_writes_the_catalog():
-    """Module is written in the admin and the catalog by the Hub: no services.py (plan §3.p)."""
+    """Module is written in the admin and the catalog by the Hub: no services.py."""
     assert not (SAAS_NEXT / "apps" / "services.py").exists()
 
 

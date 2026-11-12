@@ -1,12 +1,12 @@
-"""Migrations of apps: the ``shared`` schema and its two tables, then ``Module`` (spec §3.2).
+"""Migrations of apps: the ``shared`` schema and its two tables, then ``Module``.
 
 ``0001_shared_schema`` creates the schema ``shared`` (``IF NOT EXISTS``) and, in it, ``app`` and
 ``app_doc``, never in ``public``. It is reversible: ``migrate apps zero`` drops both tables and keeps
 the schema, which production's ``bootstrap_databases`` creates with its default privileges for the
-Hub's role. ``0002_module`` creates ``Module`` in the SaaS's own schema (plan §3.l).
+Hub's role. ``0002_module`` creates ``Module`` in the SaaS's own schema.
 
 The tests migrate inside the test's transaction (Postgres DDL is transactional), so the rollback at
-the end restores everything: ``TestCase``-style, as spec §3.2 asks of every test of these tables.
+the end restores everything, ``TestCase``-style.
 """
 
 import pytest
@@ -76,7 +76,7 @@ def test_one_doc_per_app_and_language_is_a_named_unique_constraint():
 
 
 def test_the_only_foreign_key_is_app_doc_to_app_inside_shared():
-    """No FK leaves shared in either direction (spec §3.1): Module.slug has none."""
+    """No FK leaves shared in either direction: Module.slug has none."""
     assert foreign_keys() == [("shared", "app_doc", "shared", "app")]
 
 

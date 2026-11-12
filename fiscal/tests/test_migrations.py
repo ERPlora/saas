@@ -1,5 +1,5 @@
 """The migrations of fiscal are reversible and match the models; the ``support`` group sees the authorisations
-and decides nothing (PLAN-SAAS §2.1 round 11: superuser + ``support``, view only).
+and decides nothing.
 
 The round trip runs inside the test's transaction (Postgres DDL is transactional), so it leaves the test
 database as it found it.

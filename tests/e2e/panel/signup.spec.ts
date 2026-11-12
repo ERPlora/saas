@@ -1,8 +1,8 @@
-// flow: FIX-LAUNCH-TABS
-// The sign-up and the password reset of the panel, end to end. The launcher's form has two strict tabs
-// (FIX-LAUNCH-TABS): «Create account» creates the account of a new address, allauth mails a 6-digit code,
-// /verify-email takes it and the launcher opens signed in: one code, never a second one (gh:hub#858);
-// «Sign in» never creates one (gh:saas#1018). «Forgot your password?» mails a link, its key sets a new password on /password/reset/key/<key>, the
+// flow: none — regression test of the launcher's two tabs
+// The sign-up and the password reset of the panel, end to end. The launcher's form has two strict tabs:
+// «Create account» creates the account of a new address, allauth mails a 6-digit code, /verify-email takes
+// it and the launcher opens signed in: one code, never a second one; «Sign in» never creates one.
+// «Forgot your password?» mails a link, its key sets a new password on /password/reset/key/<key>, the
 // sign-in says so and the account signs in with the new password and the code mailed at every sign-in.
 // The mails are read from the panel's file backend (project.ts). Accounts of this spec: `e2e-signup-<time>`
 // and `e2e-reset` at example.com, removed before and after (panel_seed.py's `clear` removes every
@@ -42,7 +42,7 @@ async function removeAccounts(): Promise<void> {
 }
 
 /**
- * The page on screen at 390, 834 and 1440 px (working rules §2.4), back at Playwright's size after: no
+ * The page on screen at 390, 834 and 1440 px, back at Playwright's size after: no
  * sideways scroll, and a screenshot of each (`<name>-<width>.png`). For the screens only a flow reaches
  * (a sign-up waiting for its code, a real reset key); the rest are in viewports.spec.ts.
  */

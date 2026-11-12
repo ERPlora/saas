@@ -1,12 +1,11 @@
-// reCAPTCHA Enterprise, invisible, on every public form (Ioan, 2026-10-22: «no se vea en la pantalla», «siempre que
-// hay un form hay que meter recaptcha»), in a real browser against the production-like public server (its CSP, the
-// SPA's Trusted Types): the contact form, the demo and the sign-in with its mailed code. Google is played in the
-// browser by the fake enterprise.js of recaptcha.ts and on the server by the run's double (recaptcha-double.ts), so
-// a refused form is a bot the spec chose. No checkbox, no puzzle: only the notice under the form; Google's badge is
-// hidden. The last test loads Google's REAL script on localhost when the checkout has both keys in `.env` (the
-// localhost site key and the API key): its token is made under the very same policies, and Google itself says the
-// token is valid and made for that form (its score of a headless Chrome is not asserted).
-// Since 2026-10-23 reCAPTCHA is OFF by default (Ioan: the WAF on the ALB, the attempt limits): the run checks the
+// reCAPTCHA Enterprise, invisible, on every public form, in a real browser against the production-like public server
+// (its CSP, the SPA's Trusted Types): the contact form, the demo and the sign-in with its mailed code. Google is
+// played in the browser by the fake enterprise.js of recaptcha.ts and on the server by the run's double
+// (recaptcha-double.ts), so a refused form is a bot the spec chose. No checkbox, no puzzle: only the notice under the
+// form; Google's badge is hidden. The last test loads Google's REAL script on localhost when the checkout has both
+// keys in `.env` (the localhost site key and the API key): its token is made under the very same policies, and Google
+// itself says the token is valid and made for that form (its score of a headless Chrome is not asserted). reCAPTCHA
+// is OFF by default (the WAF on the load balancer and the attempt limits keep bots out): the run checks the
 // switched-off pages (no Google script, notice, badge style nor CSP source; the forms still go), and with
 // `E2E_RECAPTCHA=1` the public server switches it on and the tests above run instead (recaptcha.ts).
 import { readdirSync } from 'node:fs';
@@ -30,7 +29,7 @@ import { STACK } from './stack';
 
 const SAAS_DIR = new URL('../..', import.meta.url).pathname;
 const UNVERIFIED = 'We could not check that you are a person. Try again.';
-/** reCAPTCHA is off in the public server, as in production since 2026-10-23, unless the run sets E2E_RECAPTCHA=1. */
+/** reCAPTCHA is off in the public server, as in production, unless the run sets E2E_RECAPTCHA=1. */
 const ON = recaptchaOn();
 
 /** Every CSP violation, Trusted Types refusal and page error, however the browser reports it (as public-web.spec.ts). */
@@ -175,7 +174,7 @@ test.describe('switched on (E2E_RECAPTCHA=1)', () => {
   test.describe('with Google’s real script', () => {
     const siteKey = localRecaptchaSiteKey(SAAS_DIR);
     const apiKey = localRecaptchaApiKey(SAAS_DIR);
-    // Google is called only with both keys of a checkout that asked for it (encargo W16): the network and Google itself.
+    // Google is called only with both keys of a checkout that asked for it: the network and Google itself.
     test.skip(!siteKey || siteKey === E2E_RECAPTCHA_SITE_KEY || !apiKey, 'needs RECAPTCHA_SITE_KEY and RECAPTCHA_API_KEY in .env');
 
     /** The body the page will post to `path`, held there: Google's real token never reaches the double. (In an object:
@@ -219,7 +218,7 @@ test.describe('switched on (E2E_RECAPTCHA=1)', () => {
   });
 });
 
-test.describe('switched off (the default since 2026-10-23: the WAF on the ALB, the attempt limits)', () => {
+test.describe('switched off (the default)', () => {
   test.skip(ON, 'reCAPTCHA is on in this run (E2E_RECAPTCHA=1)');
 
   /** Every request of the page to Google's reCAPTCHA, from now on. */

@@ -31,7 +31,7 @@ function pluginNames(options: PluginOption[] | undefined): string[] {
   return plugins(options).flatMap((p) => ('name' in p ? [p.name] : []));
 }
 
-/** The apps of saas-next with a frontend: root directories next to `base/` holding a `frontend/` (no `apps/`, PLAN §20.2). */
+/** The apps with a frontend: root directories next to `base/` holding a `frontend/` (there is no `apps/` folder). */
 function rootAppsWithFrontend(): string[] {
   return readdirSync(SAAS_DIR, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name !== 'node_modules' && !entry.name.startsWith('.'))
@@ -56,7 +56,7 @@ describe('vite.config', () => {
     expect(config.test?.setupFiles).toEqual(['./vitest.setup.ts']);
   });
 
-  it('serves from the saas-next directory under /static/spa/ (dev and build alike)', () => {
+  it("serves from the SaaS's directory under /static/spa/ (dev and build alike)", () => {
     expect(config.root).toBe(SAAS_DIR);
     expect(config.base).toBe('/static/spa/');
   });
@@ -73,7 +73,7 @@ describe('vite.config', () => {
     expect(build.manifest).toBe('.vite/manifest.json');
     expect(build.target).toBe('es2022');
     // The manifest keys of the two entries: settings.LIVE["spa"]["entry"] (the SPA) and
-    // public.templatetags.public_assets.PUBLIC_ENTRY (the public web's Django templates, spec §8.4).
+    // public.templatetags.public_assets.PUBLIC_ENTRY (the public web's Django templates).
     expect(build.rollupOptions?.input).toEqual(['frontend/main.ts', 'frontend/public.ts']);
   });
 
@@ -109,7 +109,7 @@ describe('vite.config', () => {
       return (await import('./vite.config')).default;
     }
 
-    it("runs the dev server on localhost:5174 only (hub-next's owns 5173), with absolute asset URLs and HMR there", async () => {
+    it("runs the dev server on localhost:5174 only (the Hub's owns 5173), with absolute asset URLs and HMR there", async () => {
       // live/spa.py points DEBUG pages at http://localhost:5174/static/spa/{@vite/client,frontend/main.ts}.
       expect((await configWith(undefined)).server).toMatchObject({
         host: 'localhost',
@@ -139,11 +139,11 @@ describe('vite.config', () => {
     expect(config.server?.headers).toEqual({ [VITE_ROOT_HEADER]: encodeURIComponent(SAAS_DIR) });
   });
 
-  it("lists the apps with a frontend: accounts, hubs, billing, fiscal and the panel's assistant (round 16: no marketplace; apps and public have none)", () => {
+  it("lists the apps with a frontend: accounts, hubs, billing, fiscal and the panel's assistant (no marketplace; apps and public have none)", () => {
     expect(FRONTEND_APPS).toEqual(['accounts', 'hubs', 'billing', 'fiscal', 'assistant']);
   });
 
-  it('knows every root app with a frontend/ (saas-next has no apps/, PLAN §20.2)', () => {
+  it('knows every root app with a frontend/ (the SaaS has no apps/ folder)', () => {
     expect(FRONTEND_APPS).toContain('accounts');
     expect(rootAppsWithFrontend().filter((app) => !FRONTEND_APPS.includes(app))).toEqual([]);
   });
@@ -176,8 +176,8 @@ describe('vite.config', () => {
   });
 });
 
-// The e2e's browser (tests/e2e/playwright.config.ts): Ioan asked for headless by default (2026-10-14). A visible,
-// slowed-down Chrome only when a run asks for it with E2E_HEADED=1 (`pnpm e2e:headed`); CI never opens one.
+// The e2e's browser (tests/e2e/playwright.config.ts) is headless by default. A visible, slowed-down Chrome only when
+// a run asks for it with E2E_HEADED=1 (`pnpm e2e:headed`); CI never opens one.
 describe('e2e browser window', () => {
   it('is headless and at full speed by default', () => {
     expect(browserWindow({})).toEqual({ headless: true, slowMo: 0 });
@@ -228,9 +228,9 @@ interface ModuleImports {
 }
 
 /**
- * Each module's imports, read once per run. The ~140 test files share their pages, components and helpers:
- * walking each test's imports from the disk again read 4,606 files for 330 modules (2026-10-28), and on a
- * loaded machine that took this guardrail past Vitest's 5 s.
+ * Each module's imports, read once per run. The test files share their pages, components and helpers: walking
+ * each test's imports from the disk again read thousands of files for a few hundred modules, and on a loaded
+ * machine that took this guardrail past Vitest's 5 s.
  */
 const importsByPath = new Map<string, ModuleImports>();
 
@@ -268,9 +268,9 @@ describe('the tests that load Playwright', () => {
     expect(['window', 'XMLHttpRequest'].filter((name) => name in globalThis)).toEqual([]);
   });
 
-  // Reads every module the tests load from the disk, so its time is the machine's: with `pnpm test` beside other
-  // runs (load 25–40) it took up to 4.0 s reading each module once (2026-10-28; 18.7 s when it read them again for
-  // each test file), against Vitest's 5 s. 60 s, as the guardrail that type-checks the e2e (tests/e2e/typecheck.test.ts).
+  // Reads every module the tests load from the disk, so its time depends on the machine: with `pnpm test` beside
+  // other runs it took up to 4 s reading each module once (18.7 s when it read them again for each test file),
+  // against Vitest's 5 s. 60 s, as the guardrail that type-checks the e2e (tests/e2e/typecheck.test.ts).
   it("give every test file that loads Playwright Node's environment", () => {
     const files = globSync(config.test?.include ?? [], { cwd: SAAS_DIR }).filter(
       (file) => !file.split(sep).includes('node_modules'),
@@ -337,10 +337,10 @@ describe('the tests that load Playwright', () => {
   });
 });
 
-// The time a test has (saas#251). A runner that stalls takes with it the test each worker is in, whatever that test
-// does: in run 41748119535 (attempt 1) three tests that take under 0.5 s took 22.8–24.1 s and ended within the same
-// second, one per worker, on a machine that took 113 s over a step that takes 3–10 s. A limit on those three would not
-// help: the next stall takes three others. It also takes a hook, whose own limit was 10 s.
+// The time a test has. A runner that stalls takes with it the test each worker is in, whatever that test does: in
+// one CI run three tests that take under 0.5 s took 22.8–24.1 s and ended within the same second, one per worker, on a
+// machine that took 113 s over a step that takes 3–10 s. A limit on those three would not help: the next stall takes
+// three others. It also takes a hook, whose own limit was 10 s.
 describe('the time a test has', () => {
   const WORST_STALL_MEASURED_MS = 24_100;
 

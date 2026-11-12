@@ -1,6 +1,6 @@
 """The business with a connected WhatsApp number that WhatsApp's spec writes to (whatsapp.spec.ts).
 
-``uv run python tests/e2e/panel/whatsapp_seed.py seed|clear`` from saas-next/, against the database of the run
+``uv run python tests/e2e/panel/whatsapp_seed.py seed|clear`` from the repo, against the database of the run
 (development only: refused without ``DEBUG``). ``seed`` starts from ``clear``. Rows are written with the ORM: Meta is
 never called (the spec signs Meta's webhook itself) and the Hub is the spec's double.
 

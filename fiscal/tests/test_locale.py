@@ -1,6 +1,6 @@
 """fiscal's Spanish catalog (``fiscal/locale/es/LC_MESSAGES/django.mo``) covers every message of fiscal.
 
-UI in ``en`` + ``es`` (PLAN §5): a ``gettext`` literal or a ``{% translate %}`` of the review page without its
+UI in ``en`` + ``es``: a ``gettext`` literal or a ``{% translate %}`` of the review page without its
 Spanish entry reaches a Spanish member of the staff, or a Spanish customer, in English. This reads the compiled
 catalog, so a ``.po`` edited without ``compilemessages`` fails too. Same scans as ``billing/tests/test_locale.py``
 (Python) and ``public/tests/test_legal.py`` (templates), over fiscal's own catalog.

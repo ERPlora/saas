@@ -1,11 +1,10 @@
-// Creating a business (round 17 §2.3; mockups `businesses.html` «create»/«creating»/«create-ready») in
-// Ioan's Chrome: the empty Businesses holds the sign-up form; the address follows the name; after
-// «Create my business» the dialog shows the preparation and the row appears «Preparing» through the
-// live list; when the Hub reports it ready (here the spec plays the Hub: a signed
-// `POST /internal/hubs/{id}/ready`, as hub-next sends it) the dialog says it is ready and the row is
-// «Active». The panel's Django (project.ts) sends its calls to the Hub nowhere: a Hub running locally
-// never provisions this throwaway business (no orphan database), and the SaaS keeps the registry
-// pending as when the Hub is away.
+// Creating a business in Chrome: the empty Businesses holds the sign-up form; the address follows the
+// name; after «Create my business» the dialog shows the preparation and the row appears «Preparing»
+// through the live list; when the Hub reports it ready (here the spec plays the Hub: a signed
+// `POST /internal/hubs/{id}/ready`, as the Hub sends it) the dialog says it is ready and the row is «Active».
+// The panel's Django (project.ts) sends its calls to the Hub nowhere: a Hub running locally never
+// provisions this throwaway business (no orphan database), and the SaaS keeps the registry pending as
+// when the Hub is away.
 import type { Locator } from '@playwright/test';
 
 import {
@@ -82,7 +81,7 @@ function paintedLines(host: Locator): Promise<string[]> {
 }
 
 // saas#293 (HUBS-F01): on a phone the address «Create your business» proposes broke at the hyphen («casa- / lucia.…»), as
-// if it were two addresses. Like the launcher's own addresses (HostName, audit 2 R-25) it breaks only after a dot, and
+// if it were two addresses. Like the launcher's own addresses (HostName) it breaks only after a dot, and
 // only when it does not fit on a line of its own: a two-word name's address stays on one line at 390 px, the longest a
 // name proposes (a 30-character base) stays inside the hint. In both languages (the account's language wins on the panel).
 const NAMES = [

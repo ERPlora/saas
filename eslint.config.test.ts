@@ -1,5 +1,5 @@
 // @vitest-environment node
-// Lint of saas-next: the SPA reaches the server only through the SDK (`@erplora/ui/sdk`), so the
+// Lint of the SaaS: the SPA reaches the server only through the SDK (`@erplora/ui/sdk`), so the
 // shell entry and every app frontend are linted for raw network globals. Linted for real here.
 import { existsSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -14,7 +14,7 @@ const eslint = new ESLint({ cwd: SAAS_DIR });
 /** Node's module cache: ESLint, typescript-eslint, TypeScript and eslint-plugin-vue are CommonJS. */
 const loadedModules = createRequire(import.meta.url).cache;
 
-/** The apps of saas-next with a frontend: root directories next to `base/` holding a `frontend/` (no `apps/`, PLAN §20.2). */
+/** The apps with a frontend: root directories next to `base/` holding a `frontend/` (there is no `apps/` folder). */
 function rootAppsWithFrontend(): string[] {
   return readdirSync(SAAS_DIR, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name !== 'node_modules' && !entry.name.startsWith('.'))
@@ -43,12 +43,10 @@ async function deprecatedSlots(code: string, filePath: string): Promise<string[]
 
 describe('eslint config', () => {
   // The first lint loads the config and, through it, typescript-eslint, TypeScript, eslint-plugin-vue and its
-  // parser: 1,065 modules, once per run (the config is evaluated once; every later lint takes milliseconds). That
-  // fixed cost is the machine's: 0.5 s at rest and up to 3.0 s with `pnpm test` beside 8 busy cores or beside another
-  // `pnpm test` (load 17–50, 2026-10-28), but past Vitest's 5 s in the fleet at load ~26 (its workers run at nice 5).
-  // Paid here, once, with the limit of the guardrails that read the whole tree (60 s, vite.config.test.ts); each test
-  // keeps Vitest's 5 s for its own lints. Starved (this file 5 nice levels below 16 busy cores) it took 10–178 s: no
-  // limit holds that, and other test files time out with it.
+  // parser: about a thousand modules, once per run (the config is evaluated once; every later lint takes
+  // milliseconds). That fixed cost depends on the machine: 0.5 s at rest, up to 3 s beside another `pnpm test`, and
+  // past Vitest's 5 s on a heavily loaded machine. It is paid here, once, with the limit of the guardrails that read
+  // the whole tree (60 s, vite.config.test.ts); each test keeps Vitest's 5 s for its own lints.
   beforeAll(async () => {
     await restricted('export {};\n', 'frontend/main.ts');
   }, 60_000);
@@ -76,7 +74,7 @@ describe('eslint config', () => {
     ]);
   });
 
-  it('forbids it in the frontend of every root app (saas-next has no apps/, PLAN §20.2)', async () => {
+  it('forbids it in the frontend of every root app (the SaaS has no apps/ folder)', async () => {
     const apps = [...new Set([...rootAppsWithFrontend(), 'accounts', 'hubs', 'billing'])];
     for (const app of apps) {
       expect(await restricted('export const x = fetch;\n', `${app}/frontend/pages/Page.ts`), app).toHaveLength(1);
@@ -97,7 +95,7 @@ describe('eslint config', () => {
     expect(await eslint.isPathIgnored('.venv/lib/python3.14/site-packages/django/contrib/admin/static/admin/js/core.js')).toBe(true);
   });
 
-  it('allows the Web Components slot on ion-* and HubIcon, no longer on the retired ok-* (PLAN §16.11)', async () => {
+  it('allows the Web Components slot on ion-* and HubIcon, no longer on the retired ok-*', async () => {
     const code = [
       '<template>',
       '  <ion-button>',

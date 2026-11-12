@@ -1,12 +1,11 @@
-// The entry of the public web (spec §8.4): `frontend/public.ts`, loaded by `{% public_assets %}` on
-// every page that extends `public/public_base.html`. It registers the ion-* the templates use (from
-// @ionic/core, Ionic in `ios` mode as before), brings Ionic's CSS, the @erplora/ui tokens, the fonts
-// and the public stylesheets, and wires the few behaviours the OutfitKit components had in their
-// shadow DOM: the scroll reveal, the server messages as toasts, and Mermaid on demand (spec §6). No
-// CDN, no network for icons. It also keeps the page in the colour mode the server wrote on <html>
-// (`data-ep-theme`, the account's, as the panel paints it), and in `system` follows the operating
-// system live. The navbar's mobile panel is not in the module (saas#243): its contract here runs the
-// inline script of public/partials/navbar.html.
+// The entry of the public web: `frontend/public.ts`, loaded by `{% public_assets %}` on every page
+// that extends `public/public_base.html`. It registers the ion-* the templates use (from @ionic/core,
+// Ionic in `ios` mode), brings Ionic's CSS, the @erplora/ui tokens, the fonts and the public
+// stylesheets, and wires a few behaviours: the scroll reveal, the server messages as toasts, and
+// Mermaid on demand. No CDN, no network for icons. It also keeps the page in the colour mode the
+// server wrote on <html> (`data-ep-theme`, the account's, as the panel paints it), and in `system`
+// follows the operating system live. The navbar's mobile panel is not in the module (saas#243): its
+// contract here runs the inline script of public/partials/navbar.html.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,7 +47,7 @@ function usedIonTags(): Set<string> {
   return used;
 }
 
-/** The CSS this entry imports, in order, as paths relative to saas-next (or package names). */
+/** The CSS this entry imports, in order, as paths relative to the SaaS's root (or package names). */
 function importedSheets(): string[] {
   return [...SOURCE.matchAll(/^import '([^']+\.css)';$/gm)].map(([, spec]) =>
     spec.startsWith('.') ? relative(SAAS_DIR, join(HERE, spec)) : spec,
@@ -231,7 +230,7 @@ describe('the colour mode', () => {
 });
 
 describe('the navbar panel', () => {
-  // Native buttons (L8): Ionic 8.8.9 copies an ion-button host's aria-* to its inner button once
+  // Native buttons: Ionic 8.8.9 copies an ion-button host's aria-* to its inner button once
   // and never follows aria-expanded, so the burger and the close button are plain <button>s.
   const NAVBAR = `
     <nav class="ep-navbar" data-navbar>
@@ -525,7 +524,7 @@ describe('the server messages', () => {
   });
 });
 
-describe('Mermaid on demand (spec §6)', () => {
+describe('Mermaid on demand', () => {
   it('is not even loaded on a page without diagrams', async () => {
     const load = vi.fn();
     expect(await renderDiagrams(page('<pre><code>x</code></pre>'), load)).toBe(false);
@@ -615,7 +614,7 @@ describe('the door of a demo being prepared (frontend/demo-wait.ts)', () => {
   });
 });
 
-describe('reCAPTCHA on the public forms (frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
+describe('reCAPTCHA on the public forms (frontend/recaptcha.ts)', () => {
   it('protects the contact form and the demo at boot', () => {
     expect(SOURCE).toMatch(/export function boot\(doc: Document\): void \{[^}]*protectForms\(doc\)/);
   });

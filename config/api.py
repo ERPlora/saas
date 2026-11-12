@@ -1,4 +1,4 @@
-"""The SaaS's API (django-ninja), mounted at ``/api/``: the SPA's and, later, the integrations'.
+"""The SaaS's API (django-ninja), mounted at ``/api/``: the SPA's and the integrations'.
 
 Every route calls one operation (``ensure_api_parity`` keeps it so) and every failure answers with
 the single envelope ``{"error": {...}}``. Authentication is Django's session, which ninja checks
@@ -35,7 +35,6 @@ def build_api(*, urls_namespace: str = "api") -> NinjaAPI:
 
 
 api = build_api()
-# The api.py router of every app of ours: the platform apps base and accounts (round 15, PLAN §20).
 mount_app_routers(api)
-# After mounting: the API keys' checks in front of every route with authentication (plan 2026-10-13, L3-A).
+# After mounting: the API keys' checks in front of every route with authentication.
 install_api_key_auth(api)

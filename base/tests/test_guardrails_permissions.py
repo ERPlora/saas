@@ -1,5 +1,4 @@
-"""Guardrail of the permissions of the SaaS (W11b, phase 2; ARCHITECTURE.md §4 «Un solo camino»; Ioan, 2026-10-31).
-The Hub's twin is its ``tests/test_guardrails_permissions.py`` (hub#490).
+"""Guardrail of the permissions of the SaaS. The Hub's twin is its ``tests/test_guardrails_permissions.py``.
 
 ``live.operations.Operation`` checks ``ctx.has(op.permission)`` before it runs, and ``OperationContext.has(None)`` is
 ``True``: an ``@operation(..., permission=None)`` runs for every signed-in account and, on a route with ``auth=None``,

@@ -1,0 +1,3 @@
+duplicados frontend/main.test.ts:52-60 rootAppsWithFrontend was already copied in three test files on main; only its doc comment changed here
+duplicados vite.config.test.ts:34-40 rootAppsWithFrontend was already copied in three test files on main; only its doc comment changed here
+duplicados eslint.config.test.ts:15-25 rootAppsWithFrontend was already copied in three test files on main; only its doc comment changed here

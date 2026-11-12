@@ -1,6 +1,6 @@
 """Ninja routes of apps: each route calls exactly one operation and holds no logic.
 
-The public catalog (spec §5.1 and §8.2), for the panel's SPA: open to anonymous visitors
+The public catalog, for the panel's SPA: open to anonymous visitors
 (``auth=None``), with the input in the query string. No path parameters: the app's ``id`` travels
 in the input, because a route takes one parameter, the operation's input (as demo's).
 """

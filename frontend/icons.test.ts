@@ -1,8 +1,8 @@
-// Icon guardrail of the SaaS (PLAN §16.4): an icon that is not registered in @erplora/ui's shell
+// Icon guardrail of the SaaS: an icon that is not registered in @erplora/ui's shell
 // paints NOTHING (no network for icons, by CSP), so a page, a component or the server's menu that
 // names one must fail a test, not a sign-in. `scanIcons` is the reader @erplora/ui runs on itself;
 // here it reads the SaaS's own sources: the entry, the frontend of every app and the panel's menu
-// (`base/navigation.py`, round 17), whose `Nav(icon="set:name")` it reads like a template's `icon`.
+// (`base/navigation.py`), whose `Nav(icon="set:name")` it reads like a template's `icon`.
 // It does not read the action icon of `FormModal` (`submit-icon`) and `ConfirmDialog`
 // (`confirm-icon`), painted with HubIcon, so this file reads those too. It resolves icons through the
 // baked `~icons/*` modules, so it needs the `erploraVite()` plugins of vite.config.ts.
@@ -16,14 +16,14 @@ import { describe, expect, it } from 'vitest';
 
 import { FRONTEND_APPS } from '../vite.config';
 
-/** The root of saas-next: the globs below are relative to it. */
+/** The root of the SaaS: the globs below are relative to it. */
 const SAAS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 /**
  * Where the SaaS's frontend names icons: the shell entry and the frontend of every root app. The apps
  * go in one glob: some have no `frontend/` yet, so only their union must read something.
  */
 const FRONTEND_SOURCES = ['frontend/**/*.ts', `{${FRONTEND_APPS.join(',')}}/frontend/**/*.{vue,ts}`];
-/** The panel's menu, which `base.session.me` sends to the shell (round 17, PLAN-SAAS §3.6). */
+/** The panel's menu, which `base.session.me` sends to the shell. */
 const MENU_SOURCE = 'base/navigation.py';
 
 /**

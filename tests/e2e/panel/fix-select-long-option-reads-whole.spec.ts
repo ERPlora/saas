@@ -1,4 +1,4 @@
-// hub#775 — in the panel too, a long option of a dropdown reads whole before it is chosen, on as many lines as it takes.
+// In the panel too, a long option of a dropdown reads whole before it is chosen, on as many lines as it takes.
 // The rule is the shared theme's (@erplora/ui, polish.css), measured in detail by the Hub's
 // tests/e2e/fix-ui-select-long-option-reads-whole.spec.ts; this says it reaches the panel, on the time zones of a
 // business's settings at 320, where the longest names need their second line: each label against its own box, never a capture.

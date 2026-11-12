@@ -1,10 +1,9 @@
-"""The documentation a business sends so ERPlora can file its VeriFactu records, and its review by the staff
-(plan 2026-10-15, «revisión de la documentación fiscal»; PLAN-SAAS §4, round 2026-10-15).
+"""The documentation a business sends so ERPlora can file its VeriFactu records, and its review by the staff.
 
-A LiveAppConfig of kind "platform" (round 15, PLAN §20): always on, at the project root next to ``hubs/``,
-whose businesses it reads, without module fields. The Hub sends the signed authorisation (Anexo I of the
-AEAT's agreement 017) through ``/internal`` (``fiscal.internal``); the staff approve, return or withdraw it
-in the admin (``fiscal.admin``); the business's snapshot carries the outcome (``fiscal.queries.snapshot_block``).
+A LiveAppConfig of kind "platform": always on, at the project root next to ``hubs/``, whose businesses it reads,
+without module fields. The Hub sends the signed authorisation (Anexo I of the AEAT's agreement 017) through
+``/internal`` (``fiscal.internal``); the staff approve, return or withdraw it in the admin (``fiscal.admin``); the
+business's snapshot carries the outcome (``fiscal.queries.snapshot_block``).
 """
 
 from django.utils.translation import gettext_lazy as _
@@ -28,5 +27,5 @@ class FiscalConfig(LiveAppConfig):
         from fiscal import auditlog
         from fiscal import checks  # noqa: F401  (registers the check of FISCAL_DOCUMENTS_KEY)
 
-        # The audit trail of the authorisations and the stamp (ACCOUNTS-F36, PLAN-SAAS §1.1).
+        # The audit trail of the authorisations and the stamp.
         auditlog.register()

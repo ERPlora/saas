@@ -14,7 +14,7 @@
 // what the SaaS sends). Every mail it sends lands in a file of `PANEL_MAIL_DIR` (Django's file
 // backend), where the specs read the links (`waitForMail`). Vite is reused when it is up (it only
 // serves the files), but only when it serves this checkout: globalSetup checks it (`assertViteOfThisTree`),
-// since another tree's Vite on the port (a worker's SaaS of main) would have the specs test its frontend.
+// since another tree's Vite on the port (another checkout of the SaaS) would have the specs test its frontend.
 // Playwright stops what it started at the end, never what it reused. A stack beside the shared one never
 // reuses it: a second run of the same checkout on the same port would lose it when the first one ends.
 import { dirname, join } from 'node:path';
@@ -29,9 +29,9 @@ import { STACK, type Stack } from '../stack';
 export const PANEL_URL = `http://localhost:${STACK.panelPort}`;
 
 /**
- * The panel's twin with the second factor on (`ACCOUNTS_MFA_ENABLED`, off by default in phase 1): the same Django on
+ * The panel's twin with the second factor on (`ACCOUNTS_MFA_ENABLED`, off by default): the same Django on
  * `stack`'s next port, with the same database, Vite, mail folder and Hub double, for the specs of the authenticator
- * app, the trusted browsers and the staff's second factor (accounts/WORKBOOK.md, APP-ACCOUNTS-2), and of «Continue with
+ * app, the trusted browsers and the staff's second factor (accounts/WORKBOOK.md), and of «Continue with
  * Google», which hands over to that second factor (`GOOGLE_E2E`, ACCOUNTS-F06). Its pages are `localhost` too: a spec
  * keeps each browser context on one of the two panels, whose cookies would otherwise mix.
  */
@@ -111,7 +111,7 @@ const ANOTHER_PORT = 'Export VITE_DEV_PORT=<a free port> and retry (README.md, �
 
 /**
  * Throws unless the Vite on `port` serves `saasDir`. Playwright reuses whatever answers on the port, and
- * a Vite of another checkout (a worker's SaaS of main on 5174) would have the specs test its frontend.
+ * a Vite of another checkout (another checkout of the SaaS on 5174) would have the specs test its frontend.
  */
 export async function assertViteOfThisTree(saasDir: string, port: number, host = 'localhost'): Promise<void> {
   const url = viteClientUrl(port, host);

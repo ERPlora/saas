@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Tests for deploy-env.sh: which environment a deploy or rollback run goes to (plan
-# 2026-10-14-entorno-pre, §2.3 H-4): main -> prod, pre -> pre, nothing else.
+# Tests for deploy-env.sh: which environment a deploy or rollback run goes to: main -> prod,
+# pre -> pre, nothing else.
 #   bash .github/scripts/deploy-env.test.sh
 # Conditions are single-quoted on purpose: check() evaluates them later.
 # shellcheck disable=SC2016,SC2034

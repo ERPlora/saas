@@ -1,10 +1,10 @@
-"""The app catalog of the SaaS (round 16, PLAN §21.1 point 10, spec decision 18).
+"""The app catalog of the SaaS.
 
-A LiveAppConfig of kind "platform" (round 15, PLAN §20): always on, at the project root next to
-``base/``, without module fields (no requires, category, premium or menu of its own). It owns the
-``shared`` schema of the ``saas`` database, where the Hub registers its apps (``App`` and
-``AppDoc``, read-only here), and ``Module``, what the SaaS sells of a paid app. Not a folder of
-modules: the SaaS turns nothing on or off.
+A LiveAppConfig of kind "platform": always on, at the project root next to ``base/``, without
+module fields (no requires, category, premium or menu of its own). It owns the ``shared`` schema of
+the ``saas`` database, where the Hub registers its apps (``App`` and ``AppDoc``, read-only here),
+and ``Module``, what the SaaS sells of a paid app. Not a folder of modules: the SaaS turns nothing
+on or off.
 """
 
 from django.utils.translation import gettext_lazy as _
@@ -22,5 +22,5 @@ class AppsConfig(LiveAppConfig):
         from apps import auditlog
         from apps import checks  # noqa: F401  (registers the system checks)
 
-        # The audit trail of the paid apps' prices (ACCOUNTS-F36, PLAN-SAAS §1.1).
+        # The audit trail of the paid apps' prices.
         auditlog.register()

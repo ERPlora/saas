@@ -14,7 +14,7 @@ async def session_me(request):
     return await run_operation(request, queries.session_me)
 
 
-# --- The panel's assistant (PLAN-SAAS §23): the Hub's paths and operations ----------------------------------------
+# --- The panel's assistant: the Hub's paths and operations --------------------------------------------------------
 
 from ninja.decorators import decorate_view  # noqa: E402 - the assistant's block keeps its imports with it
 

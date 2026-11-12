@@ -1,6 +1,6 @@
 // Types of the SaaS's operations for the SDK (`useLive`, `useCommand`, `client.api.call`).
-// WRITTEN BY HAND for now from base/schemas.py, accounts/schemas.py and hubs/schemas.py (generated from
-// `/api/openapi.json` later, as in hub-next). Keep it in step with `./generated/operations.json`.
+// Written by hand from base/schemas.py, accounts/schemas.py and hubs/schemas.py. Keep it in step with
+// `./generated/operations.json`.
 // Dates and UUIDs travel as strings (ISO 8601). Sign-in is not an operation: the
 // SDK reaches allauth.headless through `createAllauthClient`.
 import type { SessionMe } from '@erplora/ui/shell';
@@ -145,7 +145,7 @@ export interface PlanOut {
   assistant_messages_per_month: number;
   /** WhatsApp messages the plan includes each month; 0 = none. */
   whatsapp_messages_per_month: number;
-  /** Apps the business may choose to turn on at once, the ones they require aside (hub#256); 0 = no limit. */
+  /** Apps the business may choose to turn on at once, the ones they require aside; 0 = no limit. */
   max_apps: number;
   /** Whether the business's public website may go on a domain of its own (HUBS-F17); never the app. */
   includes_custom_domain: boolean;
@@ -205,7 +205,7 @@ export interface BusinessRowOut {
   pay_url: string | null;
   /** The account owns the business's payer: it pays for it, whatever its role. */
   is_payer: boolean;
-  /** That payer (its Stripe customer), only to whoever owns it (audit 2 R-21). */
+  /** That payer (its Stripe customer), only to whoever owns it. */
   payer_id: string | null;
 }
 
@@ -233,7 +233,7 @@ export interface OwnershipOfferOut {
 export interface BusinessListOut extends Page<BusinessRowOut> {
   invitations: InvitationOut[];
   ownership_offers: OwnershipOfferOut[];
-  /** The account's Free business when its Free ones fill the quota: «Create business» says so (audit 2 S-02). */
+  /** The account's Free business when its Free ones fill the quota: «Create business» says so. */
   free_business: HubRefOut | null;
 }
 
@@ -308,7 +308,7 @@ export interface BusinessDetailOut {
   pay_url: string | null;
   /** The account owns the business's payer: it pays for it, whatever its role. */
   is_payer: boolean;
-  /** The last day the Hub measured (`hubs.usage.get`); `null` until the first night (lot L4-A). */
+  /** The last day the Hub measured (`hubs.usage.get`); `null` until the first night. */
   usage: UsageOut | null;
 }
 
@@ -752,9 +752,9 @@ declare module '@erplora/ui/sdk' {
   }
 }
 
-// --- The Store (lot L2-D): billing (billing/schemas.py), the app catalog (apps/schemas.py) and the payer of
-// a business (hubs/schemas.py `BillingProfile*`). Appended as its own block, with its own augmentation of
-// `Operations` below (interfaces merge), so the lots that edit this file never touch the same lines. -----
+// --- The Store: billing (billing/schemas.py), the app catalog (apps/schemas.py) and the payer of a
+// business (hubs/schemas.py `BillingProfile*`). Appended as its own block, with its own augmentation of
+// `Operations` below (interfaces merge). -----------------------------------------------------------------
 
 /** `billing.Interval`: how a subscription is billed. */
 export type BillingInterval = 'month' | 'year';
@@ -864,7 +864,7 @@ export interface StoreModuleOut {
   owned: boolean;
   source: 'plan' | 'purchase' | null;
   valid_until: string | null;
-  /** Sold to new buyers; off sale it is only listed to the business that still has it (saas#2589). */
+  /** Sold to new buyers; off sale it is only listed to the business that still has it. */
   on_sale: boolean;
   /** The catalog's name, summary and icon of its app (listed or retired); the slug without its app. */
   name: string;
@@ -892,7 +892,7 @@ export interface StoreCatalogOut {
   hub_id: string;
   subscription: StoreSubscriptionOut | null;
   modules: StoreModuleOut[];
-  /** The paid plans the business may move to: no upgrade-only plan while Stripe does not bill it (audit 2 S-03). */
+  /** The paid plans the business may move to: no upgrade-only plan while Stripe does not bill it. */
   offered_plans: string[];
 }
 
@@ -990,7 +990,7 @@ declare module '@erplora/ui/sdk' {
   }
 }
 
-// --- The Billing section (lot L3-C front): ERPlora's invoices, the subscriptions and the payment details
+// --- The Billing section: ERPlora's invoices, the subscriptions and the payment details
 // (billing/schemas.py). Its own block and its own augmentation of `Operations` below, as the Store's. --------
 
 /** `billing.InvoicePaymentStatus`: not collected yet, paid, or cancelled in Stripe. */
@@ -1301,7 +1301,7 @@ declare module '@erplora/ui/sdk' {
   }
 }
 
-// --- The usage of a business (lot L4-A, PLAN-SAAS §5): hubs/schemas.py `*Usage*`, appended as its own block
+// --- The usage of a business: hubs/schemas.py `*Usage*`, appended as its own block
 // with its own augmentation of `Operations` (interfaces merge). A day travels as `YYYY-MM-DD` (UTC). -------
 
 /** `hubs.StorageUsageOut`: the files (S3) against the space of the plan; `null` limit and percent without a plan. */
@@ -1358,7 +1358,7 @@ declare module '@erplora/ui/sdk' {
   }
 }
 
-/** `hubs.DataCopyListIn` / `hubs.DataCopyLinkIn`: the copies of a business's data (PLAN-DB round 2026-10-30, (k)). */
+/** `hubs.DataCopyListIn` / `hubs.DataCopyLinkIn`: the copies of a business's data. */
 export interface DataCopyListIn {
   business_id: string;
 }
@@ -1462,8 +1462,7 @@ declare module '@erplora/ui/sdk' {
 }
 
 /**
- * `fiscal.RepresentationState`: the state of a business's signed authorisation (plan 2026-10-15); `none` when it
- * never sent one.
+ * `fiscal.RepresentationState`: the state of a business's signed authorisation; `none` when it never sent one.
  */
 export type RepresentationState = 'none' | 'submitted' | 'approved' | 'returned' | 'revoked';
 

@@ -1,9 +1,8 @@
-// The businesses panel at the three viewports (working rules §2.4), light and dark, on the web and in
-// the app (plan 2026-10-13, «Hecho L1»): every page renders without scrolling sideways (read where
-// Ionic scrolls, not on `body`, which it pins; the reader is proved on an overflowing page) nor an
-// uncaught error, and leaves a screenshot named as `mockups/saas-panel/screenshots/`
-// (`<screen>-<state>[-<section>][-<surface>]-<width>-<theme>.png`) for the supervisor to compare with
-// the mockups. They go to `.artifacts/panel/viewports/`, or to `$SHOTS_DIR` when it is set.
+// The businesses panel at the three viewports, light and dark, on the web and in the app: every page
+// renders without scrolling sideways (read where Ionic scrolls, not on `body`, which it pins; the
+// reader is proved on an overflowing page) nor an uncaught error, and leaves a screenshot named
+// `<screen>-<state>[-<section>][-<surface>]-<width>-<theme>.png` for review. They go to
+// `.artifacts/panel/viewports/`, or to `$SHOTS_DIR` when it is set.
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -41,7 +40,7 @@ const SCREENS: Screen[] = [
   { name: 'launch-first-invited', account: 'invited', path: '/launch', ready: (p) => p.getByTestId('launch-accept') },
   { name: 'businesses-default', account: 'several', path: '/dashboard/businesses', ready: (p) => p.getByTestId('businesses-row').first() },
   { name: 'businesses-empty', account: 'first', path: '/dashboard/businesses', ready: (p) => p.getByTestId('businesses-empty') },
-  // An account without a Free business: «several» fills its one with Café Central (audit 2 S-02).
+  // An account without a Free business: «several» fills its one with Café Central.
   { name: 'businesses-create', account: 'first', path: '/dashboard/businesses?create=1', ready: (p) => p.getByTestId('create-modal-submit') },
   { name: 'business-default', account: 'several', path: bakery('summary'), ready: (p) => p.getByTestId('summary-plan') },
   { name: 'business-default-members', account: 'several', path: bakery('members'), ready: (p) => p.getByTestId('members-row').first() },
@@ -51,7 +50,7 @@ const SCREENS: Screen[] = [
   { name: 'invitation-expired', account: 'first', path: '/invitation', ready: (p) => p.getByTestId('invitation-expired') },
 ];
 
-/** The app surfaces of the mockups: the desktop app at 1440 and the mobile one at 390. */
+/** The app surfaces: the desktop app at 1440 and the mobile one at 390. */
 const APP_SCREENS = ['launch-one', 'business-default', 'businesses-default'];
 
 test.beforeAll(() => seedPanel());
@@ -116,7 +115,7 @@ test('the sideways-scroll reader catches a page that overflows (the check of the
   });
 });
 
-/** The widths where a table folds (W-19): phone, tablet both ways, the laptops and the desktop. */
+/** The widths where a table folds: phone, tablet both ways, the laptops and the desktop. */
 const TABLE_WIDTHS = [390, 834, 1024, 1180, 1280, 1366, 1440];
 
 for (const name of ['businesses-default', 'business-default-members']) {
@@ -136,7 +135,7 @@ for (const name of ['businesses-default', 'business-default-members']) {
 }
 
 /**
- * How a list fills its page (Ioan, 2026-10-14): whether the page itself scrolls, and how far the list's bottom
+ * How a list fills its page: whether the page itself scrolls, and how far the list's bottom
  * is from where it should end — the bottom of the content box, less what sits under the list inside its
  * `.panel-fill` stacks (the members' roles, a note) and their gaps.
  */

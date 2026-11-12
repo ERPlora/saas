@@ -1,11 +1,11 @@
-"""Admin of apps (spec §5.5): the catalog read-only, ``Module`` with its validation.
+"""Admin of apps: the catalog read-only, ``Module`` with its validation.
 
 ``App`` and ``AppDoc`` are written by the Hub with each release (``register_apps``): the SaaS's admin
 shows them and never adds, changes nor deletes a row. ``Module`` is written here, by hand, and its
-form runs ``Module.clean()`` (the slug is a paid app of the catalog, spec §5.4) and checks in Stripe the prices
-pasted on it (APPS-F04, the same checks as a plan's, BILLING-F28). A module some business still has is not deleted
-(saas#2568): taking it off sale («active» off) is how it stops being sold. A new module, or a new level of one, owes
-the businesses whose plan includes it a newer snapshot (``hubs.services.owe_module_rights``, HUBS-F34).
+form runs ``Module.clean()`` (the slug is a paid app of the catalog) and checks in Stripe the prices
+pasted on it (APPS-F04, the same checks as a plan's, BILLING-F28). A module some business still has is not deleted:
+taking it off sale («active» off) is how it stops being sold. A new module, or a new level of one, owes the
+businesses whose plan includes it a newer snapshot (``hubs.services.owe_module_rights``, HUBS-F34).
 """
 
 from django import forms
@@ -130,7 +130,7 @@ class ModuleAdmin(admin.ModelAdmin):
 
     def get_deleted_objects(self, objs, request):
         """Django's own refusal of a protected relation, for the modules some business still has: Stripe would
-        bill a price nobody sells, and the business would lose the module while paying it (saas#2568)."""
+        bill a price nobody sells, and the business would lose the module while paying it."""
         from billing.queries import businesses_having_module
 
         deleted, counts, perms_needed, protected = super().get_deleted_objects(objs, request)

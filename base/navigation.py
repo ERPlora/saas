@@ -1,10 +1,9 @@
-"""The panel's menu (round 17, PLAN-SAAS §3.6 point 1): Businesses · Store · Billing · Account.
+"""The panel's menu: Businesses · Store · Billing · Account.
 
 The SaaS's apps are platform apps (``kind = "platform"``), which declare no ``navigation``
-(``live.checks``, PLAN §20.3.3), so the panel's single menu is declared here, with the icons of the
-approved mockups (``mockups/saas-panel/``). ``base.session.me`` sends it already translated.
+(``live.checks``), so the panel's single menu is declared here. ``base.session.me`` sends it already translated.
 
-The Store sells, so the app surfaces leave it out (PLAN-SAAS §3.6 point 6): ``Nav`` has no field
+The Store sells, so the app surfaces leave it out: ``Nav`` has no field
 for that (``live.meta`` is shared with the Hub), so ``WEB_ONLY`` says it here.
 
 The panel's addresses are named here once (``PANEL`` and the pages under it): the menu, the 301s of the old ones
@@ -20,8 +19,8 @@ from live.meta import Nav
 #: The id of the menu's only section: the app that declares it. Its empty label paints no header.
 SECTION_ID = "base"
 
-#: Where the panel lives: every page shown with this menu, as the old product's ``apps/dashboard/``
-#: (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX). The launcher, the sign-in's pages and the invitations stay at the root.
+#: Where the panel lives: every page shown with this menu. The launcher, the sign-in's pages and the invitations stay
+#: at the root.
 PANEL = "/dashboard"
 BUSINESSES = f"{PANEL}/businesses"
 STORE = f"{PANEL}/store"

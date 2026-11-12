@@ -1,10 +1,11 @@
-// HUBS-F17, «Own domain» in a business's Settings (saas#195), in a real browser, in English and in Spanish, at the three
-// sizes of the migration (fixtures' VIEWPORTS: 390×844, 834×1112, 1440×900): the owner writes a domain, what the server
-// refuses of it goes on its field, and asking for it gives the two CNAME records to create, each copied with «Copy»; the
-// page reads what the server keeps through the real API, and removing it lets the name go. A connected domain counts the
-// checks that failed against the three that stop it; one that is not connected says why and is asked for again; a plan
-// without it leads to the plans. Each screen: no sideways scroll, no field's label cut, no page error, its texts the
-// catalogue's (hubs/frontend/locale/<language>.json) and a capture `HUBS-F17-<screen>-<size>-<language>`.
+// HUBS-F17, «Own domain» in a business's Settings (saas#195), in a real browser, in English and in Spanish, at
+// three sizes (fixtures' VIEWPORTS: 390×844, 834×1112, 1440×900): the owner writes a domain, what the server
+// refuses of it goes on its field, and asking for it gives the two CNAME records to create, each copied with
+// «Copy»; the page reads what the server keeps through the real API, and removing it lets the name go. A connected
+// domain counts the checks that failed against the three that stop it; one that is not connected says why and is
+// asked for again; a plan without it leads to the plans. Each screen: no sideways scroll, no field's label cut, no
+// page error, its texts the catalogue's (hubs/frontend/locale/<language>.json) and a capture
+// `HUBS-F17-<screen>-<size>-<language>`.
 //
 // The panel's Django connects domains here (project.ts) and sends AWS to the Hub double's port: this spec plays ACM
 // there (its certificate and its validation record, then its deletion) and the Hub's acknowledgements, as the hourly

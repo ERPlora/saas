@@ -5,7 +5,7 @@ The panel's server has no Stripe in the e2e, so the spec hands the routes that c
 (``page.route``). What the double answers comes from the database, so a downgrade that waits is held as the server
 wrote it; the Plan rows get a Stripe price only while a call lasts, as the e2e's database has none.
 
-From saas-next/, against the database of the run (development only, refused without ``DEBUG``), with the Hub the spec
+From the repo, against the database of the run (development only, refused without ``DEBUG``), with the Hub the spec
 plays at ``<hub_url>``: ``uv run python tests/e2e/panel/billing_stripe_played.py serve <hub_url>``. One process for the
 whole spec (saas#328): Django starts once, says ``{"ready": true}``, and then answers each JSON line it reads on its
 stdin with one JSON line, in order, until its stdin ends:

@@ -3,12 +3,11 @@
 (``…/disconnect``).
 
 Proposed doors, signed as every ``/internal`` call: the Hub's contract (doors 1–9) has none for connecting, and
-PLAN-SAAS (block 12) gives erplora.com no WhatsApp screen, so the Hub opens Meta's window (Embedded Signup) with
-door 10 and hands its one-time code to door 11. Meta is replaced at the HTTP border only (``respx``), with bodies of
-Meta's documentation. Cases of the old product's ``test_embedded_signup.py``, ``test_coexistence.py`` and
-``test_disconnect.py``, plus what its WORKFLOW left ``parcial``: a number the window chose that is not in the account
-is refused, never swapped for another; a subscription or a registration Meta refused saves nothing; disconnecting
-forgets the permission and unsubscribes the app.
+erplora.com has no WhatsApp screen, so the Hub opens Meta's window (Embedded Signup) with door 10 and hands its
+one-time code to door 11. Meta is replaced at the HTTP border only (``respx``), with bodies of Meta's
+documentation. A number the window chose that is not in the account is refused, never swapped for another; a
+subscription or a registration Meta refused saves nothing; disconnecting forgets the permission and unsubscribes
+the app.
 """
 
 import json
@@ -339,7 +338,7 @@ class TestDoor11Connect:
         assert not router.calls
 
     def test_a_demo_cannot_connect_a_number(self, client, internal, business):
-        """saas#2604: a demo is no business of the SaaS (it lives in the Hub's registry): it can never take a number,
+        """A demo is no business of the SaaS (it lives in the Hub's registry): it can never take a number,
         least of all one a real business has."""
         with respx.mock(assert_all_called=False) as router:
             response = connect(client, hub="demo-1a2b3c4d")

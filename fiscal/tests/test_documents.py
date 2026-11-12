@@ -1,5 +1,5 @@
-"""What a document of an authorisation may be: a PDF (by its bytes, never a name), in base64, of 5 MB at most
-(the contract of plan 2026-10-15; the old product refused a photo of the signed sheet the same way)."""
+"""What a document of an authorisation may be: a PDF (by its bytes, never a name), in base64, of 5 MB at most: a
+photo of the signed sheet is refused."""
 
 import base64
 

@@ -55,7 +55,7 @@ export const OWNER: Credentials = {
   password: process.env.QA_OWNER_PASSWORD ?? 'owner',
 };
 
-/** Phone, tablet and desktop (working rules §2.4). */
+/** Phone, tablet and desktop. */
 export const VIEWPORTS = [
   { width: 390, height: 844 },
   { width: 834, height: 1112 },
@@ -321,7 +321,7 @@ export function watchPageErrors(page: Page): string[] {
 /**
  * The `/api/live` streams a page opens (the operations of each, from `s=`) and the ones that failed. A page declares
  * its live data when it mounts, so its stream opens once; a subscription arriving after the first open makes the SDK
- * reopen it, and the first request ends `ERR_ABORTED` (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN).
+ * reopen it, and the first request ends `ERR_ABORTED`.
  */
 export function watchLiveStreams(page: Page): { opened: string[][]; failed: string[] } {
   const opened: string[][] = [];

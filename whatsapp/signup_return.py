@@ -1,19 +1,19 @@
 """``GET /whatsapp/return``: the page Meta's window (Embedded Signup) is sent back to with its one-time code
-(WHATSAPP-F01, WHATSAPP-F11; the Hub's WORKBOOK ``whatsapp_inbox``, «La ventana de Meta sin el SDK de Facebook»).
+(WHATSAPP-F01, WHATSAPP-F11).
 
-The Hub opens Meta's window without Facebook's SDK, with door 10's ``redirect_uri`` (this page) and a ``state`` of
-its own, ``<slug>.<32 hex>``; Meta ends the window here with ``?code=…&state=…`` (or ``?error=…&error_description=…``).
-The page posts ``{"type": "erplora.whatsapp.signup", "state", "code" | "error", "error_description"}`` to the window
-that opened Meta's, only at the origin of the hub the ``state`` names (``accounts.queries.hub_origin``), never
-``"*"``, and closes itself; the Hub takes it only with its attempt's ``state`` and connects the code through door 11.
-A ``state`` that names no hub, or nothing to hand back, posts nothing: the page says the window can be closed, as it
-does when nobody opened it.
+The Hub opens Meta's window without Facebook's SDK, with the ``redirect_uri`` the config door (``internal.config``)
+hands it, this page, and a ``state`` of its own, ``<slug>.<32 hex>``; Meta ends the window here with
+``?code=…&state=…`` (or ``?error=…&error_description=…``). The page posts ``{"type": "erplora.whatsapp.signup",
+"state", "code" | "error", "error_description"}`` to the window that opened Meta's, only at the origin of the hub the
+``state`` names (``accounts.queries.hub_origin``), never ``"*"``, and closes itself; the Hub takes it only with its
+attempt's ``state`` and exchanges the code through the connect door (``internal.connect``). A ``state`` that names no
+hub, or nothing to hand back, posts nothing: the page says the window can be closed, as it does when nobody opened it.
 
 Public and without a session (Meta's window brings no cookie of the Hub's), never cached, and it reads no database.
 Its ``Cross-Origin-Opener-Policy`` is ``unsafe-none``, on this view only: Django's ``same-origin`` (every other page)
 would cut the window from its opener, a page of another origin, and the message would never arrive (the Hub's pages
-send ``same-origin-allow-popups``, hub#154; PLAN-HUB, round 2026-10-21). What came from Meta is data
-(``json_script``) read by the page's one script, which carries the CSP's nonce.
+send ``same-origin-allow-popups``). What came from Meta is data (``json_script``) read by the page's one script, which
+carries the CSP's nonce.
 """
 
 import re
@@ -30,7 +30,7 @@ from accounts.queries import hub_origin
 MESSAGE_TYPE = "erplora.whatsapp.signup"
 #: The Hub's ``state``: the business's slug and the attempt's 16 random bytes in lowercase hex.
 STATE = re.compile(r"(?P<slug>[^.]+)\.[0-9a-f]{32}")
-#: The longest code door 11 takes (``schemas.ConnectIn.code``).
+#: The longest code the connect door takes (``schemas.ConnectIn.code``).
 MAX_CODE = 2048
 #: How much of Meta's reason is handed back: its code and the sentence the Hub shows.
 MAX_ERROR = 200

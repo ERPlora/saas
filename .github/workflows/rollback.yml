@@ -1,8 +1,8 @@
 name: rollback
 
 # Manual: puts the saas services of the branch's environment (main -> prod: saas and saas-worker;
-# pre -> pre: saas-pre and saas-worker-pre; plan 2026-10-14-entorno-pre; saas-worker once aws#59 is
-# applied, saas#305) back on the ACTIVE revision right before the one each runs and records their
+# pre -> pre: saas-pre and saas-worker-pre; saas-worker once ERPlora/aws creates it) back on the
+# ACTIVE revision right before the one each runs and records their
 # image tag (ecs-rollback.sh). Migrations are not undone. Scheduled saas tasks (prod
 # only) run the latest ACTIVE saas-cron revision, so they keep the newer image: to go back
 # everywhere, run deploy with the previous release instead.
@@ -48,7 +48,7 @@ jobs:
             exit 1
           fi
           if [ -z "$AWS_REGION" ]; then
-            echo "::error::empty repository variables: AWS_REGION (aws-next README, step 19)"
+            echo "::error::empty repository variables: AWS_REGION (ERPlora/aws README, step 19)"
             exit 1
           fi
 

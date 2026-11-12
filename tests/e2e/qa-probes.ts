@@ -1,11 +1,11 @@
 // `pnpm qa:probes --language en|es [--surface web|app] [--apps a,b] [--sample N | --all] [--out <file>]`: the skeleton
-// of a probe file for the panel assistant's QA with the real model, layer 2 (panel/assistant-probes.spec.ts; plan
-// docs/plans/2026-10-31-asistente-conocimiento-y-qa.md of erplora-next, §1.5). It reads the catalogue the panel offers
-// on that surface (`manage.py export_assistant_catalog`) and writes one probe per sampled tool with its phrase EMPTY:
-// whoever does the QA writes each one (new, natural, never one of the asks) before the spec runs. The expectation comes from
-// the tool: the documentation search → «docs», a read → «read», a write → «card» cancelled; the tools of the web that
-// the surface does not offer → «refused». The sample takes N tools per app (2 by default), those with fewer probes of
-// the same language and surface in the corpus (tests/e2e/qa/probes/) first, then by name. Run by Node itself.
+// of a probe file for the panel assistant's QA with the real model (panel/assistant-probes.spec.ts). It reads the
+// catalogue the panel offers on that surface (`manage.py export_assistant_catalog`) and writes one probe per sampled
+// tool with its phrase EMPTY: whoever does the QA writes each one (new, natural, never one of the asks) before the spec
+// runs. The expectation comes from the tool: the documentation search → «docs», a read → «read», a write → «card»
+// cancelled; the tools of the web that the surface does not offer → «refused». The sample takes N tools per app (2 by
+// default), those with fewer probes of the same language and surface in the corpus (tests/e2e/qa/probes/) first, then
+// by name. Run by Node itself.
 import { spawnSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';

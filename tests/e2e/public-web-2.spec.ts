@@ -1,4 +1,4 @@
-// The public web of erplora.com, part 2 (APP-PUBLIC-2, public/WORKBOOK.md PUBLIC-F15…F28), in a real Chrome under
+// The public web of erplora.com, part 2 (public/WORKBOOK.md PUBLIC-F15…F28), in a real Chrome under
 // the production CSP with zero violations: the help center and its search, the support routes, the contact form
 // (its topic, what reaches support and what comes back when a message is refused), the cookie notice that only
 // asks when there is something to ask, the legal texts and the responsible declaration, the documentation's old
@@ -232,7 +232,7 @@ test('PUBLIC-G45 G17 the legal texts read, each with its own page', async ({ pag
 test.describe('in Spanish', () => {
   test.use({ locale: 'es-ES' });
 
-  // flow: PUBLIC-F20 PUBLIC-F08 (FIX-SAAS-PRIVACY-POLICY-OMITS-DICTATION-AUDIO-TO-TRANSCRIPTION)
+  // flow: PUBLIC-F20 PUBLIC-F08
   test('PUBLIC-F20 the privacy policy names where the audio of a dictation goes', async ({ page }) => {
     const clean = await watch(page);
     mkdirSync(ARTIFACTS, { recursive: true });
@@ -284,7 +284,7 @@ test('PUBLIC-G26 G10 G11 the store lists the apps by section, filters them and t
   await captureEverywhere(page, '/apps/', 'PUBLIC-G26', async (p) => {
     await expect(p.locator(`a[href="/apps/${APP}/"]`).first()).toBeVisible();
   });
-  // Every plan includes all the apps (ronda 2026-10-24b, PLAN §32): no «Free» / «Premium» filter, every card says so.
+  // Every plan includes all the apps: no «Free» / «Premium» filter, every card says so.
   await expect(page.locator('nav[aria-label="Filter by access"]')).toHaveCount(0);
   await expect(page.locator(`a[href="/apps/${APP}/"] .ep-product-card__price`).first()).toHaveText('Included in every plan');
   expect(await page.evaluate(() => document.body.innerText)).not.toMatch(/premium/i);

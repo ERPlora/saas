@@ -1,8 +1,8 @@
 """``GET /api/apps``, ``/api/apps/get``, ``/api/apps/doc`` and ``/api/apps/sitemap``: the public
-catalog (spec §5.1 and §8.2).
+catalog.
 
-The routes the panel's SPA uses (block 5), each bound to its operation, with the input in the query
-string as demo's; open to an anonymous visitor (``auth=None``), in the request's language.
+The routes the panel's SPA uses, each bound to its operation, with the input in the query string as
+demo's; open to an anonymous visitor (``auth=None``), in the request's language.
 """
 
 from datetime import UTC, datetime
@@ -94,8 +94,8 @@ def test_the_request_language_picks_the_texts(client, invoice):
     [("/api/apps", "es-ES,es;q=0.9", "es"), ("/api/apps/get?id=invoice", "fr", "en")],
 )
 def test_the_answer_says_its_language_and_varies_with_it(client, invoice, path, accept, language):
-    """APPS-F01: a shared cache never serves one visitor's language to another (the old catalogue's
-    ``Vary: Accept-Language``), and a language the store does not speak falls back to English."""
+    """APPS-F01: a shared cache never serves one visitor's language to another (``Vary: Accept-Language``),
+    and a language the store does not speak falls back to English."""
     response = client.get(path, HTTP_HOST=HOST, HTTP_ACCEPT_LANGUAGE=accept)
 
     assert response.status_code == 200

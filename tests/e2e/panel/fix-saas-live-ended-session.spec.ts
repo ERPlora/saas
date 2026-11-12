@@ -1,13 +1,12 @@
-// flow: ninguno — contexto vivo del panel del SaaS (hermana de hub#190)
-// flow: ACCOUNTS-F09 — signing out in another tab of the same browser (FIX-SAAS-ACCOUNTS-SIGNOUT-AND-PASSWORD-DO-NOT-WAKE-STREAMS)
-// flow: ACCOUNTS-F08 — a new password from another browser (FIX-SAAS-ACCOUNTS-SIGNOUT-AND-PASSWORD-DO-NOT-WAKE-STREAMS)
-// FIX-SAAS-LIVE-ENDED-SESSION-KEEPS-RECEIVING (saas-live-session): a tab of the panel whose session ended stops
-// receiving live results and leaves for the sign-in by itself. Two browsers of the same account on Account → Security
-// (its live list of open sessions); the second one «Close the other sessions». The first one's next live re-run is the
-// stream's end (`bye`, 401 `base.session_ended`, `base/operations.py`), its reopening without a session is a 401 and
-// `@erplora/ui` reloads the page (ui#25), which ends at /launch. Before the fix, its list just lost a row and stayed.
-// At the three sizes of the migration (390×844, 834×1112, 1440×900). Accounts of this spec: `e2e-liveend-…@example.com`,
-// removed before and after.
+// flow: none — the live context of the SaaS panel
+// flow: ACCOUNTS-F09 — signing out in another tab of the same browser
+// flow: ACCOUNTS-F08 — a new password from another browser
+// saas-live-session: a tab of the panel whose session ended stops receiving live results and leaves for the sign-in by
+// itself. Two browsers of the same account on Account → Security (its live list of open sessions); the second one
+// «Close the other sessions». The first one's next live re-run is the stream's end (`bye`, 401 `base.session_ended`,
+// `base/operations.py`), its reopening without a session is a 401 and `@erplora/ui` reloads the page, which ends at
+// /launch. Without that, its list would just lose a row and stay. At three sizes (390×844, 834×1112, 1440×900).
+// Accounts of this spec: `e2e-liveend-…@example.com`, removed before and after.
 import { type Browser, type BrowserContext, type Page } from '@playwright/test';
 
 import {
@@ -115,10 +114,10 @@ async function signOutFromUserMenu(page: Page): Promise<void> {
   await page.getByTestId('user-menu-logout').click();
 }
 
-// FIX-SAAS-ACCOUNTS-SIGNOUT-AND-PASSWORD-DO-NOT-WAKE-STREAMS: signing out (allauth.headless `DELETE auth/session`) and a
-// new password (`account/password/change`) record `accounts.session.closed` on the account's channel, as «Close the other
-// sessions» does: the tabs whose session ended leave for the sign-in by themselves, without reloading and without waiting
-// for another event. Before the fix the outbox stayed empty and the tab stayed on screen with what it last saw.
+// Signing out (allauth.headless `DELETE auth/session`) and a new password (`account/password/change`) record
+// `accounts.session.closed` on the account's channel, as «Close the other sessions» does: the tabs whose session ended
+// leave for the sign-in by themselves, without reloading and without waiting for another event. Without it the outbox
+// would stay empty and the tab would stay on screen with what it last saw.
 for (const size of VIEWPORTS) {
   test(`ACCOUNTS-F09: signing out in another tab of the same browser takes this tab to the sign-in, and the other browser's list loses that session (${size.width})`, async ({
     page,
@@ -187,11 +186,11 @@ for (const size of VIEWPORTS) {
   });
 }
 
-// flow: live-session-events — FIX-LIVE-SESSION-CLOSED-WAKES-ONLY-SESSION-LIST: a tab on a page without the live list of
-// sessions (Businesses, Profile) also leaves for the sign-in when its session ends elsewhere. `accounts.session.closed`
-// is the session event of `LIVE["session_events"]` (config/settings.py): every stream of the account re-reads its
-// context and the one whose session ended says `bye`, whatever its page subscribes to; a tab whose session lives
-// stays. Before the fix only the live list of sessions heard the event: Businesses and Profile stayed on screen.
+// flow: live-session-events — a tab on a page without the live list of sessions (Businesses, Profile) also leaves for
+// the sign-in when its session ends elsewhere. `accounts.session.closed` is the session event of
+// `LIVE["session_events"]` (config/settings.py): every stream of the account re-reads its context and the one whose
+// session ended says `bye`, whatever its page subscribes to; a tab whose session lives stays. If only the live list of
+// sessions heard the event, Businesses and Profile would stay on screen.
 const SESSION_KEY = 'FIX-LIVE-SESSION-CLOSED-WAKES-ONLY-SESSION-LIST';
 /** Two pages whose live queries never listen to `accounts.session.closed`, and what shows each one loaded. */
 const PAGES = [

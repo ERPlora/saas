@@ -1,9 +1,9 @@
 // A confirmation (ui:ConfirmDialog, a centred card at every width) stays whole on screen when the window changes size
-// under it (ERPlora/ui#61): a desktop window narrowed to a phone and back, and a tablet turned both ways. Seen once in
-// the Hub, capturing «Deactivate» of a price list at 1280×860 and then 390×844 (hub#150), and never reproduced since,
-// in the Hub or here, in Ionic's `ios` or `md`: this spec is what keeps it from coming back. Two confirmations of the
-// panel, in English and in Spanish: «Delete business» at the end of the business's Settings (the page scrolls to it;
-// a tall confirmation, with the name to type) and «Close the other sessions» in Security (a short one).
+// under it: a desktop window narrowed to a phone and back, and a tablet turned both ways. Seen once in the Hub,
+// capturing «Deactivate» of a price list at 1280×860 and then 390×844, and never reproduced since, in the Hub or
+// here, in Ionic's `ios` or `md`: this spec is what keeps it from coming back. Two confirmations of the panel, in
+// English and in Spanish: «Delete business» at the end of the business's Settings (the page scrolls to it; a tall
+// confirmation, with the name to type) and «Close the other sessions» in Security (a short one).
 // The card is Ionic's `.modal-wrapper` (its shadow DOM): once the page has settled it is inside the window and opaque.
 // A card that lost its enter animation rests where Ionic parks it before the enter, its own height lower in `ios` (out
 // of a phone's window for «Delete business») and almost transparent in `md`, and fails here.

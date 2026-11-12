@@ -1,5 +1,4 @@
-"""Django admin of fiscal: the queue of signed authorisations and the staff's review (plan 2026-10-15,
-«Diseño en el SaaS»; the old product's review page, ERPlora/saas ``apps/dashboard/fiscal``, origin/develop).
+"""Django admin of fiscal: the queue of signed authorisations and the staff's review.
 
 The list is the queue: business, version, taxpayer, signer, state, when it came and who reviewed it, with a
 «Review» link. Nothing is added, deleted nor edited by hand, not even by a superuser: the normal form shows

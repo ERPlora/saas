@@ -1,12 +1,10 @@
-"""The block ``verifactu`` of a business's snapshot (``PUT /internal/hubs/{id}/state``, PLAN-SAAS §2.2; plan
-2026-10-15 «Contrato», agreed with the Hub's session):
+"""The block ``verifactu`` of a business's snapshot (``PUT /internal/hubs/{id}/state``):
 
     "verifactu": {"representation": {"status", "updated_at", "reason"}}
 
-``representation`` is the authorisation as the staff left it (``none`` without rows): VeriFactu goes in every plan
-(PLAN §30, round 2026-10-22b), so the validated authorisation alone opens «live» through ERPlora. ``live_paid``
-left the block once the Hub stopped reading it (FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID). It travels with the snapshot's
-``version``; never a document nor a name.
+``representation`` is the authorisation as the staff left it (``none`` without rows): VeriFactu goes in every plan,
+so the validated authorisation alone opens «live» through ERPlora. It travels with the snapshot's ``version``; never
+a document nor a name.
 """
 
 from datetime import timedelta
@@ -108,7 +106,7 @@ class TestTheRepresentation:
         }
 
     def test_the_approval_in_force_holds_while_a_newer_upload_waits(self, business):
-        """The old product: a customer who signs again keeps filing while the new document waits."""
+        """A customer who signs again keeps filing while the new document waits."""
         reviewed = timezone.now() - timedelta(days=5)
         make_grant(business, version=1, status="approved", reviewed_at=reviewed)
         make_grant(business, version=2, status="submitted")
@@ -196,13 +194,12 @@ class TestTheRepresentation:
         assert queries.snapshot_block(business.id)["representation"]["reason"] == ""
 
 
-# --- VeriFactu in every plan (PLAN §30, round 2026-10-22b) ----------------------------------------------
+# --- VeriFactu in every plan -----------------------------------------------------------------------------
 
 
 class TestVerifactuInEveryPlan:
     """HUBS-F31: VeriFactu goes in every plan, Free included, so the validated authorisation alone opens the live
-    sending through ERPlora: the block carries no plan fact (``live_paid`` left it with the Hub's condition,
-    FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID)."""
+    sending through ERPlora: the block carries no plan fact."""
 
     def test_free_carries_only_the_authorisation(self, business):
         assert set(block(on_free(business))) == {"representation"}
@@ -219,8 +216,8 @@ class TestVerifactuInEveryPlan:
         assert set(block(business)) == {"representation"}
 
     def test_no_module_is_needed_for_it(self, business):
-        """The old ``verifactu`` module paid the live sending on Free: neither a live one nor one that ended
-        changes anything now."""
+        """A ``verifactu`` module on Free, live or ended, adds nothing to the block: the live sending needs no
+        module."""
         on_free(business)
         SubscriptionItem.objects.create(
             subscription=business.subscription,
@@ -322,7 +319,7 @@ def test_dropping_to_free_keeps_the_approval_with_a_newer_version(
     business, hub_double, django_capture_on_commit_callbacks
 ):
     """What Stripe says (``hubs.subscription.apply``) changes the plan the Hub sees, so the snapshot is bumped
-    and pushed: the plan is Free, and VeriFactu and its approval stay (PLAN §30)."""
+    and pushed: the plan is Free, and VeriFactu and its approval stay."""
     Subscription.objects.filter(hub=business).update(trial_plan=None, trial_end=None)
     hub_services.subscription_apply(
         hub_services.system_ctx_for(business.id),

@@ -1,16 +1,16 @@
-// Entry of the public web of erplora.com (spec §8.4; `build.rollupOptions.input` in vite.config.ts,
-// loaded by `{% public_assets %}` in public/templates/public/public_base.html). The pages are Django
-// templates (SEO); this file gives them what the old base took from vendored files and a CDN:
+// Entry of the public web of erplora.com (`build.rollupOptions.input` in vite.config.ts, loaded by
+// `{% public_assets %}` in public/templates/public/public_base.html). The pages are Django templates
+// (SEO); this file gives them, without vendored files or a CDN:
 //   - the ion-* the templates use, registered one by one from @ionic/core (Ionic in `ios` mode, as
-//     the old base and the shell pin it) — guard: public.test.ts reads the templates;
+//     the shell pins it) — guard: public.test.ts reads the templates;
 //   - Ionic's CSS (no structure.css: these pages scroll the document), the @erplora/ui tokens and
 //     palettes, IBM Plex, and the stylesheets of public/static/public/;
-//   - the behaviour the OutfitKit components carried in their shadow DOM: the scroll reveal and the
-//     server messages as ion-toasts (the navbar's mobile panel is the inline script of its partial,
-//     public/partials/navbar.html, so that it never waits for this module: saas#243);
+//   - the scroll reveal and the server messages as ion-toasts (the navbar's mobile panel is the
+//     inline script of its partial, public/partials/navbar.html, so that it never waits for this
+//     module: saas#243);
 //   - the colour mode: the one the server wrote on <html> (`data-ep-theme`), and in `system` the
 //     operating system's, followed live (the head's inline script already painted the first frame);
-//   - Mermaid, imported only when the page has a `pre.mermaid` (spec §6);
+//   - Mermaid, imported only when the page has a `pre.mermaid`;
 //   - reCAPTCHA Enterprise on the forms that ask it (`data-recaptcha-action`: the contact form, the demo), invisible:
 //     the token of each submit in `recaptcha_token` (frontend/recaptcha.ts);
 //   - the door of a demo being prepared, which asks how it is going until it can go in (frontend/demo-wait.ts).
@@ -56,7 +56,7 @@ import { protectForms } from './recaptcha';
 // navbar and footer partials).
 import.meta.glob('../public/static/public/components/*.css', { eager: true });
 
-/** Ionic's global config: `ios`, as `window.Ionic = { config: { mode: 'ios' } }` set it before. */
+/** Ionic's global config: `ios` mode, as the shell pins it. */
 export const IONIC_CONFIG = { mode: 'ios' } as const;
 
 /**
@@ -113,7 +113,7 @@ export function setupColorScheme(doc: Document): void {
 
 // --- Scroll reveal (public/components/reveal.html) --------------------------------------------
 
-/** Adds `is-revealed` to each `.ep-reveal` once it enters the viewport (port of ok-reveal). */
+/** Adds `is-revealed` to each `.ep-reveal` once it enters the viewport. */
 export function setupReveal(doc: Document, Observer: typeof IntersectionObserver | undefined): void {
   const blocks = [...doc.querySelectorAll<HTMLElement>('.ep-reveal[data-reveal]')];
   for (const block of blocks) {
@@ -171,7 +171,7 @@ export function presentServerMessages(
   region.remove();
 }
 
-// --- Mermaid (spec §6) ------------------------------------------------------------------------
+// --- Mermaid ----------------------------------------------------------------------------------
 
 export const MERMAID_CONFIG = { startOnLoad: false, securityLevel: 'strict' } as const;
 

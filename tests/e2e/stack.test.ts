@@ -124,7 +124,7 @@ describe("the stack's servers", () => {
     expect(server.env).not.toHaveProperty('DB_NAME');
   });
 
-  // DEBUG off refuses to start without them (config/settings.py, PLAN-SAAS §43; saas#395).
+  // DEBUG off refuses to start without them (config/settings.py; saas#395).
   it('give both public servers the policies production is given explicitly', () => {
     for (const stack of [SHARED, OWN]) {
       expect(publicServer(SAAS_DIR, stack).env).toMatchObject(productionPolicies(stack));
@@ -184,7 +184,7 @@ describe("the stack's servers", () => {
     expect(publicServer(SAAS_DIR, OWN).env).not.toHaveProperty('CLARITY_PROJECT_ID');
   });
 
-  it('run the public server with reCAPTCHA off by default, as production since 2026-10-23', () => {
+  it('run the public server with reCAPTCHA off by default, as in production', () => {
     const env = publicServer(SAAS_DIR, SHARED, {}).env;
     expect(env).toMatchObject({ RECAPTCHA_ENABLED: 'False' });
     expect(env).not.toHaveProperty('RECAPTCHA_ENDPOINT');
@@ -278,8 +278,8 @@ describe("the stack's servers", () => {
     expect(runId(stackFrom({ E2E_SAAS_PORT: '8040' }), now)).not.toBe(runId(OWN, now));
   });
 
-  // The second factor is off by default (ACCOUNTS_MFA_ENABLED, phase 1): the panel the specs play on is production's.
-  // Its flows (accounts/WORKBOOK.md, APP-ACCOUNTS-2) play on a twin with it on, a port above, on the same database,
+  // The second factor is off by default (ACCOUNTS_MFA_ENABLED): the panel the specs play on is production's.
+  // Its flows (accounts/WORKBOOK.md) play on a twin with it on, a port above, on the same database,
   // Vite, mail folder and Hub double, so a spec signs in on either with the same helpers. «Continue with Google»
   // (ACCOUNTS-F06) plays there too, because it hands over to that second factor: with a made-up Google app whose code
   // is exchanged with the stack's double, so no run needs a credential of Google or calls it.

@@ -1,11 +1,11 @@
-// The flows of «the second factor, the trusted browsers and the open sessions» (accounts/WORKBOOK.md, MIGRATION-TASK
-// APP-ACCOUNTS-2) on their screens, at the three sizes of the migration (390×844, 834×1112, 1440×900). The second
-// factor is off by default in phase 1 (ACCOUNTS_MFA_ENABLED): its flows play on the panel's twin with it on
-// (`PANEL_MFA_URL`, panel/project.ts), the sessions and the admin's «Close sessions» on the panel as production has it.
-// The codes of the authenticator app are computed here from the key the setup page shows (RFC 6238, as the phone
-// does); the mailed codes are read from the panel's mail folder: nothing is played. Each test names its flow by its
-// registry key; in accounts/WORKBOOK.md: G87=F14, G116=F15, G89=F16, G88=F05, G23=F17, G94=F18, G09=F19, G90=F20.
-// Accounts of this spec: `e2e-acc2-…@example.com`, removed before and after.
+// The flows of «the second factor, the trusted browsers and the open sessions» (accounts/WORKBOOK.md) on their
+// screens, at three sizes (390×844, 834×1112, 1440×900). The second factor is off by default (ACCOUNTS_MFA_ENABLED):
+// its flows play on the panel's twin with it on (`PANEL_MFA_URL`, panel/project.ts), the sessions and the admin's
+// «Close sessions» on the panel as production has it. The codes of the authenticator app are computed here from the
+// key the setup page shows (RFC 6238, as the phone does); the mailed codes are read from the panel's mail folder:
+// nothing is played. Each test names its flow by its registry key; in accounts/WORKBOOK.md: G87=F14, G116=F15,
+// G89=F16, G88=F05, G23=F17, G94=F18, G09=F19, G90=F20. Accounts of this spec: `e2e-acc2-…@example.com`, removed
+// before and after.
 import { createHmac } from 'node:crypto';
 
 import { type APIRequestContext, type Browser, type Page } from '@playwright/test';

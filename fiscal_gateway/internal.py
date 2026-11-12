@@ -1,10 +1,9 @@
 """``POST /internal/verifactu/submit|query|probe``: the Hub hands the gateway an envelope to present.
 
-Contract 3 of the fiscal block (PLAN-SAAS §2.2 and §4): the body is ``{"hub", "nif", "environment":
-"testing"|"production", "route": "erplora"|"own", "envelope", "certificate"?: {"p12_base64",
-"password"}}`` (``schemas.PresentIn``; the probe has no envelope). Server to server, signed as every
-``/internal`` call (``accounts.signing``: v1 or v2, five minutes, the current or the previous secret),
-so no CSRF token. Plain Django views, like ``hubs/internal.py``, until the ``/internal`` ninja API.
+The body is ``{"hub", "nif", "environment": "testing"|"production", "route": "erplora"|"own", "envelope",
+"certificate"?: {"p12_base64", "password"}}`` (``schemas.PresentIn``; the probe has no envelope). Server to
+server, signed as every ``/internal`` call (``accounts.signing``: v1 or v2, five minutes, the current or the
+previous secret), so no CSRF token. Plain Django views, like ``hubs/internal.py``.
 
 What each door answers:
 
@@ -42,8 +41,8 @@ In production, ERPlora's seal presents for a business's taxpayer only with the b
 authorisation (the Anexo I the staff reviewed, ``fiscal.RepresentationGrant``) whose taxpayer is ``nif``.
 In the AEAT's testing environment nobody is represented and nothing is filed, so no authorisation is asked
 for there: a business tries VeriFactu before its Anexo I is approved, and going live is where the Hub asks
-for it (PLAN-SAAS round 2026-11-03l; ADR-0360 of the old product). So a demo hub (``demo-<8 hex>``), of which
-the SaaS keeps no row, presents there too, by either route, and only there (saas#306). The one exception is the platform's hub
+for it. So a demo hub (``demo-<8 hex>``), of which the SaaS keeps no row, presents there too, by either
+route, and only there (saas#306). The one exception is the platform's hub
 (``hub`` is ``settings.PLATFORM_HUB_SLUG``, a reserved slug no business bears): ERPlora's own records, in
 its own name, for the seal's holder only and without an authorisation; no business presents in ERPlora's
 name in either environment. What the authorisation says never reaches an answer nor a log. The reads are
@@ -301,7 +300,7 @@ def _platform_files_its_own(body: ProbeIn, holder_tax_id: str) -> None:
 
 def _never_in_erploras_name(body: ProbeIn, holder_tax_id: str) -> None:
     """Refuses a business ERPlora's own NIF in testing, where no authorisation is asked for: only the platform's
-    hub files in ERPlora's name (saas#2524). In production the authorisation refuses it already."""
+    hub files in ERPlora's name. In production the authorisation refuses it already."""
     if normalise_nif(body.nif) == normalise_nif(holder_tax_id):
         raise _Refused(
             409,
@@ -313,7 +312,7 @@ def _never_in_erploras_name(body: ProbeIn, holder_tax_id: str) -> None:
 def _represented(body: ProbeIn, hub_id: UUID, holder_tax_id: str) -> None:
     """Refuses ERPlora's seal for ``body.nif`` in production unless it is the taxpayer of the business's
     approved authorisation. One naming ERPlora's own NIF (``holder_tax_id``) is none: that NIF is the
-    platform's hub's alone (saas#2524). Never says whom that authorisation covers."""
+    platform's hub's alone. Never says whom that authorisation covers."""
     nif = normalise_nif(body.nif)
     approved = queries.approved_taxpayer(hub_id)
     if approved is None or approved == normalise_nif(holder_tax_id):

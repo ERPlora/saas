@@ -154,7 +154,7 @@ def test_the_shell_embeds_the_support_address_of_the_settings(client, settings):
     assert email == "help@erplora.test"
 
 
-# flow: saas-spa-icon (FIX-SAAS-SPA-NO-TAB-ICON) — the panel's tab and home-screen icons are the public web's
+# The panel's tab and home-screen icons are the public web's
 # (public/templates/public/public_base.html), static files of the SaaS linked by its static storage (live.spa,
 # LIVE["spa"]["icons"]), never a URL of elsewhere: without them the tab has no ERPlora logo.
 PANEL_ICONS = [
@@ -180,7 +180,7 @@ def test_the_panel_declares_the_public_web_s_icons_from_its_static_files(client,
         assert f'<link rel="{rel}" href="{static(static_path)}"{sizes}>' in head
 
 
-# flow: saas-spa-static-probes (FIX-SAAS-SPA-STATIC-PROBES-SET-CSRF-COOKIE) — a path that names a file (its last segment
+# A path that names a file (its last segment
 # has an extension) and has no URL of its own is no page of the SPA: a crawler's or a browser's /favicon.ico, a
 # scanner's /wp-login.php get Django's plain 404, with no shell and no `csrftoken`, signed in or not and whatever they
 # accept. The public web's files with a URL of their own (robots.txt, llms.txt, sitemap.xml, IndexNow's key) and every
@@ -299,8 +299,7 @@ def test_every_page_of_the_spa_still_gets_the_shell_and_its_csrf_cookie(client, 
 
 class TestTheAssistantsVoice:
     """``assistantSpeech``: whether something reads aloud (``assistant.media.SPEECH_ENGINE``). False, the chat offers no
-    server voice and reads with the device's, with no trip to the server: erplora.com as it is (PLAN-SAAS round
-    2026-11-04c)."""
+    server voice and reads with the device's, with no trip to the server: erplora.com as it is."""
 
     def test_without_an_engine_the_panel_reads_with_the_devices(self, client):
         _, config = json_block(client.get("/launch", HTTP_HOST=HOST), "spa-config")

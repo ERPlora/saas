@@ -1,4 +1,4 @@
-"""The SPA's Content Security Policy with Stripe (lot L2-D; PLAN-SAAS §3.6 point 17; plan §7 point 5).
+"""The SPA's Content Security Policy with Stripe.
 
 Stripe.js is the ONE script the SaaS takes from another origin — PCI: it is never served by us — so the
 SPA's policy (``settings.SECURE_CSP``, ``live.csp``) gains Stripe's origins for the Embedded Checkout, as
@@ -126,7 +126,7 @@ class TestTheSpaPage:
 
     @pytest.mark.parametrize("path", ["/", "/robots.txt"])
     def test_the_public_web_admits_no_stripe_while_the_panel_does(self, client, path):
-        """The public web no longer charges (spec §8.2): its own policy never names Stripe."""
+        """The public web charges nothing: its own policy never names Stripe."""
         public = client.get(path, HTTP_HOST=HOST)
         panel = client.get("/launch", HTTP_HOST=HOST)
 

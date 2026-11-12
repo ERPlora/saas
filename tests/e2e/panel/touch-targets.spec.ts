@@ -1,5 +1,5 @@
-// flow: ninguno — layout check of the panel by touch after ui#131 (saas#389): no flow changes, only the size of a button
-// With a coarse pointer `@erplora/ui` gives every `ion-button size="small"` at least 44×44 px (ui#131). The panel's
+// flow: none — layout check of the panel by touch (saas#389): no flow changes, only the size of a button
+// With a coarse pointer `@erplora/ui` gives every `ion-button size="small"` at least 44×44 px. The panel's
 // screens whose components use them (the businesses, a business's summary, members and settings, the account's profile
 // and security, billing's invoices and payment, the store's plans) at a phone and a tablet with touch: nothing scrolls
 // sideways and every small button on screen measures 44 px at least. The rows are panel_seed.py's (`e2e-several`, as
@@ -12,7 +12,7 @@ const VIEWPORTS = [
   { width: 390, height: 844 },
   { width: 834, height: 1112 },
 ];
-/** ui#131: a small button's minimum with a coarse pointer. */
+/** A small button's minimum with a coarse pointer. */
 const TOUCH_TARGET = 44;
 
 /** The panel page on screen (hidden pages stay in the DOM). */

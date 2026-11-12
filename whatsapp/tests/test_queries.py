@@ -1,4 +1,4 @@
-"""The reads of whatsapp: which business a door names (its slug in phase 1, its UUID in phase 2)."""
+"""The reads of whatsapp: which business a door names (its slug or its UUID)."""
 
 import pytest
 

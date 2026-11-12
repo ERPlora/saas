@@ -1,12 +1,11 @@
-// flow: FIX-LAUNCH-TABS, ACCOUNTS-F49
-// The panel's smoke (plan 2026-10-13-panel-saas-unificado, L0-G; launcher of L1-C): the pipeline from
-// the browser to the panel's dev server (:8012 by default, project.ts) works end to end. A visitor opens the entry
-// (/launch, open to visitors since round 17 §2.2), whose card is the sign-in itself (Ioan, 2026-10-15): the
-// password, then the code mailed to the account typed on /verify-email, and the launcher loads again signed
-// in, and /api/me answers with that session; then the signed-in fixture (allauth.headless's API with the
-// same code, what later specs start from) opens the launcher at the three viewports. The seeded owner has
-// no business of the panel (demo_seed only writes the jump's memberships), so the launcher is its sign-up
-// card; only its frame and that it did not fail are asserted here (its variants: launch.spec.ts).
+// flow: ACCOUNTS-F49
+// The panel's smoke: the pipeline from the browser to the panel's dev server (:8012 by default, project.ts) works
+// end to end. A visitor opens the entry (/launch, open to visitors), whose card is the sign-in itself: the
+// password, then the code mailed to the account typed on /verify-email, and the launcher loads again signed in, and
+// /api/me answers with that session; then the signed-in fixture (allauth.headless's API with the same code, what
+// later specs start from) opens the launcher at the three viewports. The seeded owner has no business of the panel
+// (demo_seed only writes the jump's memberships), so the launcher is its sign-up card; only its frame and that it
+// did not fail are asserted here (its variants: launch.spec.ts).
 import { type Page } from '@playwright/test';
 
 import { horizontalOverflow } from '../horizontal-overflow';
@@ -46,7 +45,7 @@ test('the seeded owner signs in on the launcher with the mailed code, and /api/m
   expect(anonymous.user).toBeNull();
   expect(anonymous.scope).toEqual({ kind: 'user', key: 'anonymous' });
 
-  // No session: the launcher is the sign-in, the old login card with its form.
+  // No session: the launcher is the sign-in, a card with its form.
   await page.goto('/launch');
   await expect(page).toHaveTitle('Sign In - ERPlora Cloud');
   await expect(page.getByRole('heading', { name: 'ERPlora Cloud' })).toBeVisible();
@@ -74,7 +73,7 @@ test('the old addresses of the sign-in (/login, /accounts/login/) land on the la
   await page.goto('/login?next=/account');
   await expect(page).toHaveURL(/\/launch\?next=\/account$/);
   await expect(page.getByTestId('login-form')).toBeVisible();
-  // On «Sign in», the tab of the sign-in (FIX-LAUNCH-TABS, gh:saas#2246).
+  // On «Sign in», the tab of the sign-in.
   await expect(page.getByTestId('login-submit')).toHaveText('Sign in');
   await expect(page.getByTestId('login-forgot')).toBeVisible();
   expect(pageErrors).toEqual([]);

@@ -1,6 +1,5 @@
-// The op → route map the SDK's API client uses. Written by hand for now (generated from
-// `/api/openapi.json` later, as in hub-next). Sign-in is not here: allauth.headless is not an
-// operation, the SDK reaches it through its own client (`createAllauthClient`).
+// The op → route map the SDK's API client uses, written by hand. Sign-in is not here: allauth.headless
+// is not an operation, the SDK reaches it through its own client (`createAllauthClient`).
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +14,7 @@ const APPS_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..'
 const FISCAL_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'fiscal', 'api.py'), 'utf8');
 const BASE_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'base', 'api.py'), 'utf8');
 
-/** The operations of the Store (plan 2026-10-13 L2-D): billing/api.py, apps/api.py and the payer of hubs/api.py. */
+/** The operations of the Store: billing/api.py, apps/api.py and the payer of hubs/api.py. */
 const STORE_ROUTES = {
   'apps.app.list': { method: 'get', path: '/api/apps' },
   'apps.app.get': { method: 'get', path: '/api/apps/get' },
@@ -33,10 +32,9 @@ const STORE_ROUTES = {
 };
 
 /**
- * The operations of the Billing section (plan 2026-10-13 L3-C front): ERPlora's invoices (the list, one, its PDF,
- * the CSV of the list and «Pay»), the subscriptions and «Keep it with my card» of a business handed over to you
- * (HUBS-F28), the payment method with Stripe's Customer Portal and the VIES check of the billing details
- * (billing/api.py).
+ * The operations of the Billing section: ERPlora's invoices (the list, one, its PDF, the CSV of the list and
+ * «Pay»), the subscriptions and «Keep it with my card» of a business handed over to you (HUBS-F28), the payment
+ * method with Stripe's Customer Portal and the VIES check of the billing details (billing/api.py).
  */
 const BILLING_ROUTES = {
   'billing.invoice.list': { method: 'get', path: '/api/billing/invoices' },
@@ -51,13 +49,13 @@ const BILLING_ROUTES = {
   'billing.vat_check.run': { method: 'post', path: '/api/billing/vat-check' },
 };
 
-/** The usage of a business (hubs/api.py, plan 2026-10-13 L4-A): the last day measured and the days of a window. */
+/** The usage of a business (hubs/api.py): the last day measured and the days of a window. */
 const USAGE_ROUTES = {
   'hubs.usage.get': { method: 'get', path: '/api/hubs/usage' },
   'hubs.usage.series': { method: 'get', path: '/api/hubs/usage/series' },
 };
 
-/** The copies of a business's data (hubs/api.py, PLAN-DB round 2026-10-30 (k)): the list and a fresh link per click. */
+/** The copies of a business's data (hubs/api.py): the list and a fresh link per click. */
 const DATA_COPY_ROUTES = {
   'hubs.data_copy.list': { method: 'get', path: '/api/hubs/data-copies' },
   'hubs.data_copy.link': { method: 'get', path: '/api/hubs/data-copies/link' },
@@ -73,15 +71,15 @@ const CUSTOM_DOMAIN_ROUTES = {
   'hubs.custom_domain.remove': { method: 'post', path: '/api/hubs/businesses/custom-domain/remove' },
 };
 
-/** The signed authorisation of a business (fiscal/api.py, plan 2026-10-15): its state on the business's page. */
+/** The signed authorisation of a business (fiscal/api.py): its state on the business's page. */
 const FISCAL_ROUTES = {
   'fiscal.representation.status': { method: 'get', path: '/api/fiscal/representation' },
 };
 
 /**
- * The panel's assistant (base/api.py, plan 2026-10-30-asistente-saas §6): the month's allowance of the account, the
- * report of an answer, its dictation and the reading aloud of an answer (an mp3). Its turn is no call of the client:
- * the chat posts it to its own route and reads the stream.
+ * The panel's assistant (base/api.py): the month's allowance of the account, the report of an answer, its dictation
+ * and the reading aloud of an answer (an mp3). Its turn is no call of the client: the chat posts it to its own route
+ * and reads the stream.
  */
 const ASSISTANT_ROUTES = {
   'base.assistant.usage': { method: 'get', path: '/api/assistant/usage' },
@@ -90,7 +88,7 @@ const ASSISTANT_ROUTES = {
   'base.assistant.speak': { method: 'post', path: '/api/assistant/speak' },
 };
 
-/** The operations of the Account page (accounts/api.py, plan 2026-10-13 L3-A): queries GET, commands POST. */
+/** The operations of the Account page (accounts/api.py): queries GET, commands POST. */
 const ACCOUNT_PAGE_ROUTES = {
   'accounts.profile.get': { method: 'get', path: '/api/accounts/profile' },
   'accounts.profile.update': { method: 'post', path: '/api/accounts/profile' },

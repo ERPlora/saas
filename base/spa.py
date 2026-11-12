@@ -11,15 +11,14 @@ jump names the hub's host and links back to it from the slug alone. ``spa-config
 takes no attributes for ``<html>``, so ``frontend/main.ts`` reads it here and hands it to
 ``createShell({ surface })``.
 
-``spa-config.assistantSpeech`` says whether erplora.com has a voice of its own to read the assistant's answers aloud
-(ASSISTANT-F22): true only with an engine that reads (``assistant.media.SPEECH_ENGINE``). Only then does the chat ask the
-server for each reading (``assistant/frontend/options.ts``); false, as it is today (PLAN-SAAS round 2026-11-04c), it reads
-in the device's voice with no trip to the server.
+``spa-config.assistantSpeech`` says whether erplora.com has a voice of its own to read the assistant's answers aloud:
+true only with an engine that reads (``assistant.media.SPEECH_ENGINE``). Only then does the chat ask the server for
+each reading (``assistant/frontend/options.ts``); false, it reads in the device's voice with no trip to the server.
 
 ``spa-config.recaptchaSiteKey`` is reCAPTCHA Enterprise's public key, only while it is switched on
-(``RECAPTCHA_ENABLED``; off by default since 2026-10-23): the sign-in's pages ask Google's enterprise.js for a token
+(``RECAPTCHA_ENABLED``, off by default): the sign-in's pages ask Google's enterprise.js for a token
 with it (``accounts/frontend/recaptcha.ts``, ``accounts/bot_check.py``). Off, the page names nothing of reCAPTCHA.
-Beside them, ``support-email`` is ``SUPPORT_EMAIL``, the address of the SPA's «Contact Support» (PUBLIC-F18).
+Beside them, ``support-email`` is ``SUPPORT_EMAIL``, the address of the SPA's «Contact Support».
 Its Content Security Policy admits Stripe for the Store's Embedded Checkout (``base/csp.py``), except on
 the account surface, which sells nothing.
 
@@ -74,7 +73,7 @@ def spa(request: HttpRequest) -> HttpResponse:
         request,
         extra_json={
             SESSION_ME_ID: me.model_dump(mode="json"),
-            # «Contact Support» of the SPA writes here: the public web's one support address (PUBLIC-F18).
+            # «Contact Support» of the SPA writes here: the public web's one support address.
             SUPPORT_EMAIL_ID: settings.SUPPORT_EMAIL,
         },
         extra_config=config,

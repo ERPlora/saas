@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 # Deploys an image tag of the saas to one environment, in that environment's own ECS cluster
-# (erplora-<ENVIRONMENT>; PLAN-AWS §6; plan 2026-10-14-entorno-pre), touching only that
-# environment's saas task families and services:
+# (erplora-<ENVIRONMENT>), touching only that environment's saas task families and services:
 #   prod: cluster erplora-prod, families erplora-prod-{saas,saas-migrate,saas-cron,saas-worker},
 #         services saas and saas-worker, image erplora/saas;
 #   pre:  cluster erplora-pre, families erplora-pre-{saas,saas-migrate,saas-worker} (no saas-cron),
 #         services saas-pre and saas-worker-pre, image erplora/saas-pre; the containers keep the
 #         short names (saas, saas-migrate, saas-worker).
-#   saas-worker (saas#305: manage.py run_worker, the WhatsApp deliveries and the reconciliations)
-#   is created by ERPlora/aws (aws#59) once an image with run_worker is out: while its family does
+#   saas-worker (manage.py run_worker: the WhatsApp deliveries and the reconciliations) is
+#   created by ERPlora/aws once an image with run_worker is out: while its family does
 #   not exist the deploy goes on without it and says so (::warning::); any other error looking for
 #   it or reading it fails the deploy as for the other families.
 #   0. reads the latest ACTIVE revision of every family and refuses them all, registering nothing,
@@ -16,7 +15,7 @@
 #      its environment (role/erplora-<ENVIRONMENT>-…): ecs:RegisterTaskDefinition takes no resource,
 #      so another environment's deploy role could have left a revision in this family; and unless the
 #      container of the saas image has the four policies ERPlora/aws gives it (REQUIRED_ENV,
-#      config/settings.py; PLAN-SAAS §43): without a cache prefix or a Stripe mode the saas refuses to
+#      config/settings.py): without a cache prefix or a Stripe mode the saas refuses to
 #      start outside DEBUG, so a revision from before that apply would register saas-cron's (the
 #      Scheduler's latest) and only fail at step 2; without either boolean it starts with it false,
 #      silently: prod refusing every hub's records for the AEAT's production, or out of the search engines;
@@ -34,8 +33,8 @@
 #      puts the old one back and the wait still succeeds) fails at once; a rollout that outlasts
 #      ROLLOUT_TIMEOUT_SECONDS fails too;
 #   4. records the tag in /erplora/<ENVIRONMENT>/saas/image_tag, so the revisions Terraform
-#      registers, and with them the scheduled tasks, keep running it (aws-next README, "Imagen").
-# Never db-bootstrap: the deploy role cannot pass its roles (aws-next deploy_role.tf).
+#      registers, and with them the scheduled tasks, keep running it (ERPlora/aws README, "Imagen").
+# Never db-bootstrap: the deploy role cannot pass its roles (ERPlora/aws deploy_role.tf).
 # Rollback: the circuit breaker reverts a broken deploy; back to the previous revisions, the
 #   rollback workflow (ecs-rollback.sh); back to a release, the deploy workflow with that release.
 #
@@ -73,7 +72,7 @@ REQUIRED_ENV='["CACHE_KEY_PREFIX", "STRIPE_EXPECTED_MODE", "PUBLIC_INDEXING_ENAB
 migration=saas-migrate
 # Families that run as a service; the service of family <name> is <name><suffix>.
 services=(saas)
-# Services that may not exist yet (saas-worker until aws#59 is applied): deployed once their
+# Services that may not exist yet (saas-worker until ERPlora/aws creates it): deployed once their
 # family exists.
 not_yet=(saas-worker)
 if [ "$ENVIRONMENT" = prod ]; then
@@ -82,7 +81,7 @@ if [ "$ENVIRONMENT" = prod ]; then
   # Autoscaling owns prod's desired count.
   wake=()
 else
-  # pre has no scheduled platform tasks (plan 2026-10-14-entorno-pre, §6).
+  # pre has no scheduled platform tasks.
   families=(saas saas-migrate)
   suffix=-pre
   # Its schedule stops pre every evening: a push starts it again.
@@ -151,7 +150,7 @@ primary() {
     --query "services[0].deployments[?status=='PRIMARY'] | [0].[taskDefinition, rolloutState]" --output text
 }
 
-# migrate <family>: its container has the family's name (aws-next modules/ecs-service).
+# migrate <family>: its container has the family's name (ERPlora/aws modules/ecs-service).
 migrate() {
   local name="$1" run task status code reason waited=0
   run="$(aws ecs run-task --cluster "$CLUSTER" --launch-type FARGATE \
@@ -210,7 +209,7 @@ for name in "${not_yet[@]}"; do
     families+=("$name")
     services+=("$name")
   else
-    echo "::warning::$prefix-$name does not exist yet (aws#59 not applied): skipped"
+    echo "::warning::$prefix-$name does not exist yet: skipped"
   fi
 done
 

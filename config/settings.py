@@ -1,9 +1,8 @@
-"""Django settings of saas-next (phase 1: sign-in, the jump to a hub and the Ionic Vue SPA, PLAN-SAAS §2.1,
-§3.1, §6).
+"""Django settings of the SaaS.
 
-Configuration comes from the process environment or ``saas-next/.env`` through python-decouple,
-never from a ``.env`` further up the tree: the root one belongs to hub-next (its ``DB_NAME`` is
-``hub``; saas#2416). ``DEBUG`` is off by default: production must provide ``SECRET_KEY``,
+Configuration comes from the process environment or this repo's ``.env`` through python-decouple,
+never from a ``.env`` further up the tree: one there may be the Hub's (its ``DB_NAME`` is
+``hub``). ``DEBUG`` is off by default: production must provide ``SECRET_KEY``,
 ``INTERNAL_SHARED_SECRET``, ``GOOGLE_OAUTH_CLIENT_ID`` and ``GOOGLE_OAUTH_CLIENT_SECRET``; local
 development sets ``DEBUG=True`` (``.env.example``) and gets defaults for the root ``compose.yaml``.
 """
@@ -35,7 +34,7 @@ if ERPLORA_ENVIRONMENT not in ENVIRONMENTS:
         f"ERPLORA_ENVIRONMENT must be one of {', '.join(ENVIRONMENTS)}, not {ERPLORA_ENVIRONMENT!r}"
     )
 
-# Off unless the environment turns it on: development sets `DEBUG=True` in saas-next/.env
+# Off unless the environment turns it on: development sets `DEBUG=True` in this repo's .env
 # (.env.example) and the test run in config/settings_pytest.py.
 DEBUG = config("DEBUG", default=False, cast=bool)
 
@@ -65,7 +64,7 @@ SECRET_KEY = (
 )
 # Customers sign in at `erplora.com` (locally `localhost:8001`). No host of a hub is the SaaS's:
 # hubs are `<slug>.erplora.com` (locally `a.localhost:8000`) and `hubs.erplora.com` (locally
-# `hubs.localhost:8000`) is the Hub's staff admin host, served only by the Hub (ronda 13, PLAN §18).
+# `hubs.localhost:8000`) is the Hub's staff admin host, served only by the Hub.
 ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS",
     default="localhost,127.0.0.1" if DEBUG else "erplora.com",
@@ -74,8 +73,8 @@ ALLOWED_HOSTS = config(
 
 # HTTPS: the ALB terminates TLS, redirects HTTP to HTTPS and sets X-Forwarded-Proto (daphne
 # --proxy-headers reads it as well), so `request.is_secure()` holds behind it. Django does not
-# redirect: hub-next calls /internal over plain HTTP on the private name (hub →
-# saas.erplora.internal), never through the ALB. Same values as hub-next.
+# redirect: the Hub calls /internal over plain HTTP on the private name (hub →
+# saas.erplora.internal), never through the ALB. Same values as the Hub.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # The visitor's address: the ALB APPENDS it to X-Forwarded-For (what comes before, the client may
 # have typed). public.client_ip puts the entry this many hops from the end in REMOTE_ADDR, which the
@@ -97,7 +96,7 @@ SECURE_HSTS_PRELOAD = config("SECURE_HSTS_PRELOAD", default=False, cast=bool)
 # preload list stay opt-in (W005, W021).
 SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W008", "security.W021"]
 
-# Vite's dev server (`vite.config.ts` reads the same VITE_DEV_PORT): 5174, since hub-next's owns 5173 and
+# Vite's dev server (`vite.config.ts` reads the same VITE_DEV_PORT): 5174, since the Hub's owns 5173 and
 # both run at once in development, unless a second checkout runs beside another one (the e2e of a branch,
 # README «Dos SaaS a la vez»). `runserver` hands the port it read to the Vite it starts (LIVE["vite"]);
 # `pnpm run dev` or the e2e on their own read the process environment only, not this repo's .env.
@@ -132,27 +131,27 @@ INSTALLED_APPS = [
     "allauth.headless",
     # Always installed, so its table always exists: ACCOUNTS_MFA_ENABLED decides whether it is used.
     "allauth.mfa",
-    # The account's active sessions (Cuenta → Seguridad; PLAN-SAAS §6): one row per signed-in browser.
+    # The account's active sessions (Account → Security): one row per signed-in browser.
     "allauth.usersessions",
     "ninja",
     "base",
     "accounts",
-    # Who changed an account, its access to a business, its keys and its sessions (ACCOUNTS-F36; PLAN-SAAS §1.1).
+    # Who changed an account, its access to a business, its keys and its sessions.
     "auditlog",
-    # The app catalog (round 16, PLAN §21): before hubs and public, which read it.
+    # The app catalog: before hubs and public, which read it.
     "apps",
     "hubs",
-    # The EU VAT engine and, from lot L2-B, Stripe: after hubs, whose payer it reads.
+    # The EU VAT engine and Stripe: after hubs, whose payer it reads.
     "billing",
-    # The documentation a business sends so ERPlora files its VeriFactu records (plan 2026-10-15): after
+    # The documentation a business sends so ERPlora files its VeriFactu records: after
     # hubs, whose businesses it reads and whose snapshot carries its outcome.
     "fiscal",
-    # The fiscal gateway (PLAN-SAAS §4): presents the Hub's VeriFactu envelopes to the AEAT.
+    # The fiscal gateway: presents the Hub's VeriFactu envelopes to the AEAT.
     "fiscal_gateway",
-    # WhatsApp, erplora.com's side (PLAN-SAAS §1.1, round 2026-10-15b): after hubs, whose businesses it serves
+    # WhatsApp, erplora.com's side: after hubs, whose businesses it serves
     # and whose snapshot carries its channel.
     "whatsapp",
-    # The AI gateway (PLAN-SAAS §1.1, round 2026-10-15b; PLAN §30): the providers ERPlora pays, their keys and
+    # The AI gateway: the providers ERPlora pays, their keys and
     # models, which model answers and the clients of each provider's API (assistant/README.md).
     "assistant",
     "public",
@@ -173,7 +172,7 @@ MIDDLEWARE = [
     "django.middleware.csp.ContentSecurityPolicyMiddleware",
     # After Django's: the public web's own policy, set before Django's builds the header.
     "public.csp.PublicCSPMiddleware",
-    # And the admin's: the panel's policy without Trusted Types, which Django's admin cannot run under (ACCOUNTS-G10).
+    # And the admin's: the panel's policy without Trusted Types, which Django's admin cannot run under.
     "base.csp.AdminCSPMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
@@ -185,7 +184,7 @@ MIDDLEWARE = [
     # On the panel, a signed-in account speaks its own language (User.language), not the cookie's.
     "base.language.AccountLanguageMiddleware",
     # The maintenance mode of «Site settings» in the admin: every visitor gets the 503 page but the staff, the health
-    # checks, the admin and its sign-in, /internal and the webhooks (ACCOUNTS-G82).
+    # checks, the admin and its sign-in, /internal and the webhooks.
     "base.maintenance.MaintenanceModeMiddleware",
     # With ACCOUNTS_MFA_ENABLED off, the 2FA endpoints answer 404 (accounts/mfa.py).
     "accounts.mfa.MFAFlagMiddleware",
@@ -198,9 +197,9 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     # Records each signed-in session's address, browser and last use (allauth.usersessions), at most once
-    # every few minutes: Cuenta → Seguridad → Sesiones activas.
+    # every few minutes: Account → Security → Active sessions.
     "accounts.session_tracking.SessionActivityMiddleware",
-    # The actor and the address of each audit log entry (ACCOUNTS-F36; after AuthenticationMiddleware and
+    # The actor and the address of each audit log entry (after AuthenticationMiddleware and
     # public.client_ip).
     "accounts.auditlog.AuditActorMiddleware",
     # Deletes the cookies of a group that was declined or never accepted (django-cookie-consent),
@@ -242,11 +241,10 @@ ASGI_APPLICATION = "config.asgi.application"
 # DB_SSLROOTCERT = the RDS bundle in the image) and names its task (DB_APPLICATION_NAME,
 # pg_stat_activity); each option only when set (the local Postgres has no TLS). A dead database
 # fails within DB_CONNECT_TIMEOUT seconds, both waiting for a pooled connection and per connection
-# attempt (psycopg: 30 s and 130 s), so /readyz answers 503 before its probes give up. As in hub-next.
+# attempt (psycopg: 30 s and 130 s), so /readyz answers 503 before its probes give up. As in the Hub.
 # The pool keeps one connection and gives back the rest of a burst one per minute (max_idle;
-# psycopg's 600 s held them for over an hour): PLAN-DB «Conexiones», round 2026-10-18.
-# It checks a connection before handing it out: after a cut of the database it may hold a dead one
-# (PLAN-DB, round 2026-11-04e, point 5).
+# psycopg's default of 600 s holds them for over an hour).
+# It checks a connection before handing it out: after a cut of the database it may hold a dead one.
 db_connect_timeout = config("DB_CONNECT_TIMEOUT", default=5, cast=int)
 db_optional_options = {
     "DB_SSLMODE": "sslmode",
@@ -309,9 +307,9 @@ CACHES = {
     )
 }
 
-# Logging: everything to the console (CloudWatch Logs in production), at LOG_LEVEL. As in hub-next. Every line goes
+# Logging: everything to the console (CloudWatch Logs in production), at LOG_LEVEL. As in the Hub. Every line goes
 # through base.logging.GDPRSafeFormatter: an address, a phone, an id number, a card, a key or a password logged by
-# mistake reaches the log as a label, never as written (ACCOUNTS-G14); no filter drops a record.
+# mistake reaches the log as a label, never as written; no filter drops a record.
 
 LOG_LEVEL = config("LOG_LEVEL", default="INFO").upper()
 LOGGING = {
@@ -335,7 +333,7 @@ LOGGING = {
     },
 }
 
-# Accounts: email as the identifier, primary key UUIDv7 (PLAN-SAAS §6).
+# Accounts: email as the identifier, primary key UUIDv7.
 
 AUTH_USER_MODEL = "accounts.User"
 
@@ -354,8 +352,8 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # allauth: email + password with a code mailed at every sign-in, and Google; the authenticator app behind
-# ACCOUNTS_MFA_ENABLED (below). One form in the launcher (/launch) with two tabs (FIX-LAUNCH-TABS, PLAN-SAAS
-# §3.7): «Sign in» is allauth's login, which never creates an account, and «Create account» is allauth's
+# ACCOUNTS_MFA_ENABLED (below). One form in the launcher (/launch) with two tabs: «Sign in» is allauth's
+# login, which never creates an account, and «Create account» is allauth's
 # signup, which never signs in (an address it already holds gets a mail, not a session: enumeration
 # prevention, allauth's default).
 
@@ -367,7 +365,7 @@ ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_USER_MODEL_EMAIL_FIELD = "email"
 ACCOUNT_UNIQUE_EMAIL = True
 # Every account proves its mailbox before its first session: a code typed on the same screen, not a
-# link that leaves for the mail app (ADR-0159), which then signs in. An account that never proved it
+# link that leaves for the mail app, which then signs in. An account that never proved it
 # is asked for the code at its next sign-in. Google's verified addresses need no code
 # (SOCIALACCOUNT_EMAIL_VERIFICATION below).
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
@@ -377,7 +375,7 @@ ACCOUNT_EMAIL_VERIFICATION_BY_CODE_FORMAT = {"length": 6, "numeric": True, "dash
 # «Send another code» (allauth: two more, 10 s apart): a lost mail must not strand the person there.
 ACCOUNT_EMAIL_VERIFICATION_SUPPORTS_RESEND = True
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
-# The second factor by email (Ioan, 2026-10-15): every sign-in with a password also asks for a code
+# The second factor by email: every sign-in with a password also asks for a code
 # mailed to the account (allauth's login-by-code stage, `POST …/auth/code/confirm`), typed in the app.
 # Only the password: Google is a strong sign-in of its own and proves the address itself. One code,
 # never two: a sign-up or an address never proven gets the verification code above, the same proof of
@@ -386,13 +384,13 @@ ACCOUNT_LOGIN_BY_CODE_REQUIRED = {"password"}
 ACCOUNT_LOGIN_BY_CODE_FORMAT = ACCOUNT_EMAIL_VERIFICATION_BY_CODE_FORMAT
 # Not ACCOUNT_LOGIN_BY_CODE_ENABLED: it would serve `auth/code/request`, a sign-in with the mailed code
 # alone (no password), and only with it does allauth resend this code. Signing in again mails a new one.
-# Every limit written out (allauth lays this dict over its defaults; Ioan, 2026-10-22: «que no intenten sin parar»),
+# Every limit written out (allauth lays this dict over its defaults),
 # per address (`ip`: REMOTE_ADDR, the visitor public.client_ip found behind the ALB) and per account (`key`: the
 # address typed), on the shared cache (Valkey):
 # - `login`: 30 sign-ins a minute per address, right or wrong (allauth's);
 # - `login_failed`: 5 wrong passwords in 5 minutes per address and per account; the right one gives its attempt
-#   back, so the owner is never locked out by their own sign-ins (before: 10 a minute per address);
-# - `signup`: creating an account mails a code, 10 an hour per address (today's SaaS, UNIFIED_SIGNUP_RATELIMIT);
+#   back, so the owner is never locked out by their own sign-ins;
+# - `signup`: creating an account mails a code, 10 an hour per address;
 # - `reset_password`: «Forgot your password?» mails a link, 10 an hour per address and 5 per account;
 # - `reset_password_from_key`: the link's form, 20 a minute per address (allauth's);
 # - `confirm_email`: «Send another code», one every 10 s per account (allauth's, with codes);
@@ -425,7 +423,7 @@ if E2E_RELAX_LOGIN_RATE_LIMIT:
     ACCOUNT_RATE_LIMITS["signup"] = "1000/m/ip"
     ACCOUNT_RATE_LIMITS["code_attempts"] = "1000/m/ip"
 # A recent sign-in (allauth's reauthentication) before any change of the account's addresses or of its
-# Google link through allauth.headless, as Cuenta's own «Cambiar correo» asks (accounts.email.change).
+# Google link through allauth.headless, as the Account page's own «Change email» asks (accounts.email.change).
 ACCOUNT_REAUTHENTICATION_REQUIRED = True
 # Every sign-in lasts SESSION_COOKIE_AGE: allauth.headless takes no `remember`, and without this a session
 # would end when the browser closes.
@@ -442,7 +440,7 @@ ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http" if DEBUG else "https"
 # Where an account holder writes when a mail says something they did not do.
 SUPPORT_EMAIL = config("SUPPORT_EMAIL", default="support@erplora.com")
 
-# «Continue with Google» (allauth.socialaccount), ported from ERPlora/saas (ADR-0154). Credentials
+# «Continue with Google» (allauth.socialaccount). Credentials
 # come from the environment only (no `SocialApp` row). Local development may go without them: the
 # button is hidden and `check` says so (accounts.I001). Production refuses to start without them.
 # Redirect URIs registered with Google: `<origin>/auth/google/callback/` (README.md).
@@ -465,8 +463,8 @@ GOOGLE_OAUTH_TOKEN_URL = config("GOOGLE_OAUTH_TOKEN_URL", default="") if DEBUG e
 
 # reCAPTCHA Enterprise, score-based and invisible (no checkbox, no puzzle), on every public form: the sign-in,
 # the sign-up, «Forgot your password?» and its link, the mailed codes, the authenticator app's code, the contact
-# form and the demo (Ioan, 2026-10-22; live.recaptcha, accounts/bot_check.py, public/). OFF by default since
-# 2026-10-23 (Ioan: «quitamos el reCAPTCHA y aplicamos el WAF»): the WAF on the ALB filters the suspicious traffic
+# form and the demo (live.recaptcha, accounts/bot_check.py, public/). OFF by default: the WAF on the ALB filters the
+# suspicious traffic
 # and the attempt limits (ACCOUNT_RATE_LIMITS, `code_attempts`, the contact form's and the demo's) stop the brute
 # force. Off, no form is checked, the pages load nothing of Google and the CSP names none of its sources.
 # RECAPTCHA_ENABLED=True switches it back on (production and development alike) and then requires both keys: the
@@ -492,7 +490,7 @@ if not 0 <= RECAPTCHA_MIN_SCORE <= 1:
     raise ImproperlyConfigured("RECAPTCHA_MIN_SCORE must be a number from 0 to 1.")
 RECAPTCHA_ENDPOINT = config("RECAPTCHA_ENDPOINT", default="") or None
 
-# Refuses allauth's «connect» process and tells the owner when Google gets linked (saas#2552); an
+# Refuses allauth's «connect» process and tells the owner when Google gets linked; an
 # unknown Google email creates its account (SOCIALACCOUNT_AUTO_SIGNUP).
 SOCIALACCOUNT_ADAPTER = "accounts.adapters.SocialAccountAdapter"
 SOCIALACCOUNT_PROVIDERS = {
@@ -506,25 +504,25 @@ SOCIALACCOUNT_PROVIDERS = {
         "AUTH_PARAMS": {"access_type": "online"},
         "OAUTH_PKCE_ENABLED": True,
         # No "VERIFIED_EMAIL": Google's own `email_verified` claim decides whether the address is
-        # proven. Today's SaaS forces True, which only matters when Google says the address is
-        # NOT verified, the one case in which signing in by email must not happen.
+        # proven. Forcing True would only matter when Google says the address is NOT verified, the one
+        # case in which signing in by email must not happen.
         **({"ACCESS_TOKEN_URL": GOOGLE_OAUTH_TOKEN_URL} if GOOGLE_OAUTH_TOKEN_URL else {}),
     }
 }
 # Google already proved the address it vouches for (`email_verified`): no code on top. An address it
 # does not vouch for creates no account (SocialAccountAdapter.is_open_for_signup).
 SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
-# An unknown Google email creates the account and signs in, with no form in between (ADR-0154).
+# An unknown Google email creates the account and signs in, with no form in between.
 SOCIALACCOUNT_AUTO_SIGNUP = True
-# A Google that proves an account's email signs in to it and is linked to it (as today's SaaS):
+# A Google that proves an account's email signs in to it and is linked to it:
 # allauth only does it for an address Google verified, the guard against account takeover.
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 # Sign-in only: no Google API is called afterwards.
 SOCIALACCOUNT_STORE_TOKENS = False
 
-# Second factor (allauth.mfa): an authenticator app (TOTP) and recovery codes, as today's SaaS, and «Trust this
-# browser for 14 days»; no passkeys. Off by default in phase 1: with ACCOUNTS_MFA_ENABLED=False no login asks for
+# Second factor (allauth.mfa): an authenticator app (TOTP) and recovery codes, and «Trust this
+# browser for 14 days»; no passkeys. Off by default: with ACCOUNTS_MFA_ENABLED=False no login asks for
 # a code and the 2FA endpoints answer 404 (accounts/mfa.py); turned on, an account with an authenticator app is
 # asked for its code after the first factor and the staff's jump to the Hub admin (`hub-admin`) needs it
 # (accounts/README.md, «Segundo factor»).
@@ -532,29 +530,29 @@ SOCIALACCOUNT_STORE_TOKENS = False
 ACCOUNTS_MFA_ENABLED = config("ACCOUNTS_MFA_ENABLED", default=False, cast=bool)
 MFA_SUPPORTED_TYPES = ["totp", "recovery_codes"]
 MFA_TOTP_ISSUER = "ERPlora"
-# Accept ±1 period (30 s) of clock drift between the phone and the server, as today's SaaS.
+# Accept ±1 period (30 s) of clock drift between the phone and the server.
 MFA_TOTP_TOLERANCE = 1
 MFA_PASSKEY_LOGIN_ENABLED = False
 MFA_ADAPTER = "accounts.mfa.MFAAdapter"
-# «Trust this browser» (old SAAS_AUTH-F06, ACCOUNTS-F05): after the app's code the login asks once; a trusted browser
+# «Trust this browser»: after the app's code the login asks once; a trusted browser
 # skips the app's code (never the mailed one) for 14 days. allauth's own signed cookie, bound to the password and the
 # authenticators: a new one of either ends every trust. Only for erplora.com, never the businesses' subdomains, even
 # if the session cookie one day has a domain.
 MFA_TRUST_ENABLED = True
 MFA_TRUST_COOKIE_AGE = timedelta(days=14)
 MFA_TRUST_COOKIE_DOMAIN = None
-# Ending a session (Cuenta → Seguridad, or allauth.headless `auth/sessions`) also asks the account's
-# businesses to end theirs (accounts.signals.sessions_ended, PLAN-SAAS §2.1).
+# Ending a session (Account → Security, or allauth.headless `auth/sessions`) also asks the account's
+# businesses to end theirs (accounts.signals.sessions_ended).
 USERSESSIONS_ADAPTER = "accounts.session_tracking.UserSessionsAdapter"
 
-# allauth.headless (ronda 11, PLAN-SAAS §2): the API of the Ionic Vue account pages, browser client only
+# allauth.headless: the API of the Ionic Vue account pages, browser client only
 # (same-origin session cookie + Django's CSRF), mounted at /_allauth/. Headless only: allauth serves no
 # template page; every screen of the sign-in is a page of the SPA (accounts/frontend/routes.ts).
 HEADLESS_ONLY = True
 HEADLESS_CLIENTS = ("browser",)
 # Where the links allauth mails lead, by URL name: pages of the SPA. The «no account here» mail of a
-# password reset invites to sign up, which the launcher's sign-in does (ADR-0154). Not
-# account_confirm_email: the address is proven by a code typed on /verify-email (ADR-0159), and allauth
+# password reset invites to sign up, which the launcher's sign-in does. Not
+# account_confirm_email: the address is proven by a code typed on /verify-email, and allauth
 # builds no link with codes on. Not socialaccount_login_error: the SocialAccountAdapter sends every
 # failure of Google's round trip to the Vue page /login/error before allauth would read it.
 HEADLESS_FRONTEND_URLS = {
@@ -567,9 +565,9 @@ HEADLESS_FRONTEND_URLS = {
 HEADLESS_SERVE_SPECIFICATION = DEBUG
 HEADLESS_SPECIFICATION_TEMPLATE_NAME = None
 
-# Jump to a hub with a one-time code (PLAN-SAAS §2.1, §3.1 steps 4-6).
+# Jump to a hub with a one-time code.
 
-# hub-next signs POST /internal/auth/redeem with this secret (HMAC-SHA256 + timestamp).
+# The Hub signs POST /internal/auth/redeem with this secret (HMAC-SHA256 + timestamp).
 INTERNAL_SHARED_SECRET = (
     config("INTERNAL_SHARED_SECRET", default="local-internal-shared-secret")
     if DEBUG
@@ -587,7 +585,7 @@ HUB_CALLBACK_TEMPLATE = config(
 # CSP source of every hub's origin (`http://*.localhost:8000`): the auto-submitted form posts there.
 _hub_callback = urlsplit(HUB_CALLBACK_TEMPLATE.format(slug="*"))
 HUB_ORIGIN_PATTERN = f"{_hub_callback.scheme}://{_hub_callback.netloc}"
-# The staff's jump from this admin to the Hub's (audience `hub-admin`, ronda 13, PLAN §18): the
+# The staff's jump from this admin to the Hub's (audience `hub-admin`): the
 # callback of the platform host `hubs.erplora.com`, which only the Hub serves.
 HUB_ADMIN_CALLBACK_URL = config(
     "HUB_ADMIN_CALLBACK_URL",
@@ -598,14 +596,14 @@ HUB_ADMIN_CALLBACK_URL = config(
 _hub_admin_callback = urlsplit(HUB_ADMIN_CALLBACK_URL)
 HUB_ADMIN_ORIGIN = f"{_hub_admin_callback.scheme}://{_hub_admin_callback.netloc}"
 EXCHANGE_CODE_TTL_SECONDS = 60
-# How long a pass the Hub signs for the way back to erplora.com opens (accounts/hub_pass.py, ACCOUNTS-F29).
+# How long a pass the Hub signs for the way back to erplora.com opens (accounts/hub_pass.py).
 HUB_PASS_MAX_AGE_SECONDS = 60
-# Jumps one account may start in a while (accounts/handoff.py, ACCOUNTS-F28; the old SaaS's 20 passes in 5 minutes):
+# Jumps one account may start in a while (accounts/handoff.py):
 # past it, the error page asks to wait and no code is minted. django-ratelimit, over the default cache.
 HUB_LOGIN_RATELIMIT = config("HUB_LOGIN_RATELIMIT", default="20/5m")
 INTERNAL_SIGNATURE_MAX_AGE_SECONDS = 300
-# Where the SaaS calls hub-next's /internal/* (hubs.hub_client), signed with the same secret: the ALB
-# answers 404 to it, so production uses the private name aws-next gives the Hub (Cloud Map).
+# Where the SaaS calls the Hub's /internal/* (hubs.hub_client), signed with the same secret: the ALB
+# answers 404 to it, so production uses the private name ERPlora/aws gives the Hub (Cloud Map).
 HUB_INTERNAL_URL = config(
     "HUB_INTERNAL_URL",
     default="http://localhost:8000" if DEBUG else "http://hub.erplora.internal:8000",
@@ -677,15 +675,15 @@ LIVE = {
     # Signing out, a new password and «Close the other sessions» record it on the account's channel: every stream of
     # the account re-reads its session and the one that ended says bye, whatever its page subscribes to (live.E019).
     "session_events": ["accounts.session.closed"],
-    # A cut of the database (a restart, AWS's maintenance, the Blue/Green switchover; PLAN-DB, round 2026-11-04e, point 5):
-    # a read waits and tries again up to this long in the whole request, far below the 120 s of the load balancer;
-    # PLAN-DB's rehearsal measures the real cut. What tries again on its own gets its 503 at once: the Hub's /internal,
+    # A cut of the database (a restart, AWS's maintenance, the Blue/Green switchover): a read waits and tries again up
+    # to this long in the whole request, far below the 120 s of the load balancer. What tries again on its own gets its
+    # 503 at once: the Hub's /internal,
     # the webhooks, and /readyz, which has to say the database is gone before its probes give up.
     "database_cut": {
         "wait_seconds": config("DB_CUT_WAIT_SECONDS", default=20, cast=int),
         "no_wait_prefixes": ("/internal/", "/webhooks/", "/readyz"),
     },
-    # Shortest hub slug (live.slugs, shared with hub-next): 3 in production; development opens
+    # Shortest hub slug (live.slugs, shared with the Hub): 3 in production; development opens
     # one-letter slugs for the demo hubs `a` and `b` (`demo_seed`).
     "hub_slug_min_length": 1 if DEBUG else 3,
     "spa": {
@@ -725,11 +723,10 @@ LIVE = {
 # app with tools (base/tests/test_assistant_asks.py keeps the list whole).
 LIVE_ASSISTANT_ASKS_REQUIRED = ("accounts", "apps", "assistant", "billing", "hubs")
 
-# Email (allauth's codes and password reset, the «Google was linked» notice, until block 1 brings the
-# branded mail): locally a file per mail in saas-next/.mail/ (EMAIL_FILE_PATH), where the code of every
+# Email: locally a file per mail in .mail/ (EMAIL_FILE_PATH), where the code of every
 # password sign-in is read, by a person or by an e2e (also the Hub's); in production the SES API signed
-# by the task role (no static keys, PLAN-AWS §3), or SMTP from EMAIL_* when SES_REGION is unset.
-# EMAIL_BACKEND overrides the choice. Same variables and order as hub-next.
+# by the task role (no static keys), or SMTP from EMAIL_* when SES_REGION is unset.
+# EMAIL_BACKEND overrides the choice. Same variables and order as the Hub.
 
 smtp_email_backend = "django.core.mail.backends.smtp.EmailBackend"
 ses_email_backend = "django_ses.SESBackend"
@@ -749,7 +746,7 @@ if email_backend == ses_email_backend:
     # SendEmail/SendRawEmail).
     AWS_SES_AUTO_THROTTLE = None
     # A sign-in mails its code inside the request: an SES that does not answer fails within seconds, as the SMTP mailer
-    # (10 s), never boto3's minutes (60 s to connect, 60 s to read, retried). One try more (ACCOUNTS-G79).
+    # (10 s), never boto3's minutes (60 s to connect, 60 s to read, retried). One try more.
     from botocore.config import Config as _BotoConfig
 
     AWS_SES_CONFIG = _BotoConfig(connect_timeout=3, read_timeout=10, retries={"total_max_attempts": 2, "mode": "standard"})
@@ -769,10 +766,10 @@ elif email_backend == file_email_backend:
     }
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@erplora.com")
 
-# The public web of erplora.com (round 16, `public/`): Django templates for SEO, its own CSP
+# The public web of erplora.com (`public/`): Django templates for SEO, its own CSP
 # (public/csp.py), crawlers, cookie consent, IndexNow and the app downloads.
 
-# The Hub serves the apps' documentation images (spec decision 10): the SaaS rewrites their paths
+# The Hub serves the apps' documentation images: the SaaS rewrites their paths
 # to this base and the public CSP adds its origin to `img-src`. Only for that.
 HUB_STATIC_BASE_URL = config(
     "HUB_STATIC_BASE_URL",
@@ -793,14 +790,14 @@ COOKIE_CONSENT_SECURE = not DEBUG
 
 # Messages of the contact form per address (django-ratelimit, over the default cache).
 CONTACT_FORM_RATELIMIT = config("CONTACT_FORM_RATELIMIT", default="10/h")
-# «Report a problem» of the panel per account (ACCOUNTS-F38; django-ratelimit, over the default cache).
+# «Report a problem» of the panel per account (django-ratelimit, over the default cache).
 SUPPORT_REPORT_RATELIMIT = config("SUPPORT_REPORT_RATELIMIT", default="5/h")
-# The browsers' CSP reports per address (/csp-report/, base/csp_report.py; the old SaaS's 60 an hour, ACCOUNTS-G78).
+# The browsers' CSP reports per address (/csp-report/, base/csp_report.py).
 CSP_REPORT_RATELIMIT = config("CSP_REPORT_RATELIMIT", default="60/h")
-# «Try a model» of the admin per member of the staff (ASSISTANT-F07; the old SaaS's 10 a minute): each try spends
+# «Try a model» of the admin per member of the staff: each try spends
 # ERPlora's key with the provider (django-ratelimit, over the default cache).
 ASSISTANT_TRY_RATELIMIT = config("ASSISTANT_TRY_RATELIMIT", default="10/m")
-# The Hub's doors of the assistant (/internal/assistant/*, /internal/speech/*; ASSISTANT-F16), per business or demo,
+# The Hub's doors of the assistant (/internal/assistant/*, /internal/speech/*), per business or demo,
 # counted after the signature and the business pass (django-ratelimit, over the default cache): the turn's doors
 # (live, JSON and the allowance), the embeddings, the searches in the documentation, each voice door on its own and
 # the reports of an answer.
@@ -810,25 +807,25 @@ ASSISTANT_DOCS_RATELIMIT = config("ASSISTANT_DOCS_RATELIMIT", default="600/h")
 ASSISTANT_TRANSCRIBE_RATELIMIT = config("ASSISTANT_TRANSCRIBE_RATELIMIT", default="120/h")
 ASSISTANT_SYNTHESIZE_RATELIMIT = config("ASSISTANT_SYNTHESIZE_RATELIMIT", default="120/h")
 ASSISTANT_REPORT_RATELIMIT = config("ASSISTANT_REPORT_RATELIMIT", default="60/h")
-# What a caller may ask of the providers of erplora.com's own tools (ASSISTANT-F14): the search's free credit is shared
+# What a caller may ask of the providers of erplora.com's own tools: the search's free credit is shared
 # by every business (about 4,000 searches a month) and the rates are a free public service. Every demo shares one.
 ASSISTANT_WEB_SEARCH_RATELIMIT = config("ASSISTANT_WEB_SEARCH_RATELIMIT", default="20/d")
 ASSISTANT_CURRENCY_RATE_RATELIMIT = config("ASSISTANT_CURRENCY_RATE_RATELIMIT", default="60/h")
-# A demo's messages for its whole life (SAAS_ASSISTANT-F11, saas#2599: each browser gets a new demo).
+# A demo's messages for its whole life (each browser gets a new demo).
 ASSISTANT_DEMO_MESSAGES = config("ASSISTANT_DEMO_MESSAGES", default=10, cast=int)
-# An account's messages a month with the assistant of erplora.com's own panel (PLAN-SAAS §23): fixed, whatever the
+# An account's messages a month with the assistant of erplora.com's own panel: fixed, whatever the
 # plans of its businesses, each of which has its own allowance in its Hub.
 ASSISTANT_ACCOUNT_MESSAGES = config("ASSISTANT_ACCOUNT_MESSAGES", default=30, cast=int)
 # The provider (its identifier in the admin, of OpenAI's API) whose key computes the embeddings and the dictation.
 ASSISTANT_SERVICE_PROVIDER = config("ASSISTANT_SERVICE_PROVIDER", default="openai")
-# The demo hubs (PLAN-SAAS §3.5, round 2026-10-17; public/demo.py): one switch, and new demos per address
+# The demo hubs (public/demo.py): one switch, and new demos per address
 # (django-ratelimit, over the default cache; a browser re-entering its live demo does not count). The Hub keeps
 # the cap of live demos (MAX_CONCURRENT_DEMOS) and the WAF limits /demo per IP too.
 DEMO_ENABLED = config("DEMO_ENABLED", default=True, cast=bool)
 DEMO_SPAWN_RATELIMIT = config("DEMO_SPAWN_RATELIMIT", default="3/h")
 # With Valkey down the per-IP limits of the app cannot count, and they let requests through instead
 # of refusing everyone. The ALB's WAF keeps limiting sign-in, sign-up, password, Google and the
-# headless API per IP meanwhile (aws-next/README.md, WAF of `stacks/shared`); the contact form has
+# headless API per IP meanwhile (ERPlora/aws README.md, WAF of `stacks/shared`); the contact form has
 # no WAF limit, so for that while it lasts only the app's fail-open applies.
 RATELIMIT_FAIL_OPEN = True
 
@@ -846,7 +843,7 @@ PUBLIC_HOST = config("PUBLIC_HOST", default="erplora.com").strip()
 HUB_EXIT_PACKAGE_TTL_DAYS = config("HUB_EXIT_PACKAGE_TTL_DAYS", default=90, cast=int)
 
 # The installable app (`/app/`): its installers live in a private S3 bucket on AWS (Ireland region,
-# PLAN-AWS «s3_downloads.tf»), served by short presigned links; `latest/`, never a version, so a
+# ERPlora/aws «s3_downloads.tf»), served by short presigned links; `latest/`, never a version, so a
 # cached link keeps delivering the last build. Linux's AppImage is the exception: it comes from the
 # latest GitHub release of `ERPlora/app` (`public.downloads.GITHUB_RELEASE_URLS`). No keys here:
 # boto3 takes the ECS task's role (or the environment in development); DOWNLOADS_ENDPOINT_URL is
@@ -862,12 +859,12 @@ MICROSOFT_STORE_APP_ID = config("MICROSOFT_STORE_APP_ID", default="")
 GOOGLE_PLAY_APP_ID = config("GOOGLE_PLAY_APP_ID", default="")
 GOOGLE_PLAY_LISTING_LIVE = config("GOOGLE_PLAY_LISTING_LIVE", default=True, cast=bool)
 
-# AWS: the region of the platform, Ireland (PLAN-AWS round 2026-10-14; ECS sets AWS_REGION in every
+# AWS: the region of the platform, Ireland (ECS sets AWS_REGION in every
 # task), where `report_seal_expiry` publishes to CloudWatch with the task role (no static keys).
 AWS_REGION = config("AWS_REGION", default="eu-west-1")
 
-# A business's own domain for its public website (HUBS-F17, PLAN-SAAS §37 point 2; `aws` README, «Dominio propio de un
-# negocio»). Off unless it is on, as in pre and in development: nothing asks for a certificate, nothing looks at a
+# A business's own domain for its public website (`aws` README, «Dominio propio de un negocio»). Off unless it is on,
+# as in pre and in development: nothing asks for a certificate, nothing looks at a
 # domain, and the operations say it is not available. On, the listener that takes the certificates and the name a
 # customer's CNAME points at ({hub_id}: one for each business, for good) are required. The most certificates that
 # listener holds for customers (`hubs.custom_domain.request` and the hourly check stop asking at it).
@@ -882,22 +879,22 @@ if CUSTOM_DOMAINS_ENABLED:
         raise ImproperlyConfigured("CUSTOM_DOMAINS_TARGET_TEMPLATE needs {hub_id} with CUSTOM_DOMAINS_ENABLED=True.")
 
 # The fiscal seal's two .p12 slots (erplora/prod/fiscal/seal-{current,next}), base64 and password,
-# loaded at startup by `saas` and `saas-cron` (PLAN §16.5); empty = an empty slot (they are born
+# loaded at startup by `saas` and `saas-cron`; empty = an empty slot (they are born
 # empty and filled by hand; `saas-migrate` gets none). `manage.py report_seal_expiry` publishes the
 # days left of the one that expires first.
 FISCAL_SEAL_CURRENT_P12_BASE64 = config("FISCAL_SEAL_CURRENT_P12_BASE64", default="")
 FISCAL_SEAL_CURRENT_PASSWORD = config("FISCAL_SEAL_CURRENT_PASSWORD", default="")
 FISCAL_SEAL_NEXT_P12_BASE64 = config("FISCAL_SEAL_NEXT_P12_BASE64", default="")
 FISCAL_SEAL_NEXT_PASSWORD = config("FISCAL_SEAL_NEXT_PASSWORD", default="")
-# The fiscal gateway (fiscal_gateway/, PLAN-SAAS §4): presentations to the AEAT under way at once in
+# The fiscal gateway (fiscal_gateway/): presentations to the AEAT under way at once in
 # one process; one more answers 503 `gateway_busy` and the Hub retries. 8 until it is measured in pre.
 VERIFACTU_GATEWAY_CONCURRENCY = config("VERIFACTU_GATEWAY_CONCURRENCY", default=8, cast=int)
-# The platform's hub (ERPlora's own invoices; PLAN-SAAS §4), named by the Hub as `hub`: the only one that
+# The platform's hub (ERPlora's own invoices), named by the Hub as `hub`: the only one that
 # presents through the seal without an authorisation, and only for the seal's holder. No business of the SaaS
 # bears it: a reserved slug (live.slugs), or `check` fails (fiscal_gateway.E001).
 PLATFORM_HUB_SLUG = config("PLATFORM_HUB_SLUG", default="erplora")
 
-# The documentation a hub sends so ERPlora files its VeriFactu records (fiscal/, plan 2026-10-15): the
+# The documentation a hub sends so ERPlora files its VeriFactu records (fiscal/): the
 # signed Anexo I, a copy of the signer's identity document and the rest, encrypted at rest with this Fernet
 # key (fiscal/crypto.py; `check` says if it is no Fernet key, fiscal.E001). Required in production, like
 # INTERNAL_SHARED_SECRET: a document stored with a lost key is lost. Local development uses a fixed key.
@@ -906,7 +903,7 @@ FISCAL_DOCUMENTS_KEY = (
     if DEBUG
     else config("FISCAL_DOCUMENTS_KEY")
 )
-# The review desk's mailbox (fiscal/emails.py, FISCAL-F05): it hears of every authorisation that waits for a review.
+# The review desk's mailbox (fiscal/emails.py): it hears of every authorisation that waits for a review.
 FISCAL_REVIEW_EMAIL = config("FISCAL_REVIEW_EMAIL", default=SUPPORT_EMAIL)
 # DATA_UPLOAD_MAX_MEMORY_SIZE stays Django's 2.5 MB for every view: the four documents of an authorisation
 # (up to about 27 MB) have their own ceiling, read by their view alone (fiscal.internal.MAX_BODY_BYTES).
@@ -927,7 +924,7 @@ VIES_TIMEOUT_SECONDS = config("VIES_TIMEOUT_SECONDS", default=5.0, cast=float)
 VAT_CHECK_RATE = config("VAT_CHECK_RATE", default="20/m")
 VAT_CHECK_GLOBAL_RATE = config("VAT_CHECK_GLOBAL_RATE", default="60/m")
 
-# Stripe (billing/, lot L2-B; PLAN-SAAS §4). Production holds a RESTRICTED live key (`rk_live_…`), local
+# Stripe (billing/). Production holds a RESTRICTED live key (`rk_live_…`), local
 # development test keys only; never a key in code. Without a secret key no payment starts (503
 # `billing.payments_unavailable`) and the webhook answers 503. STRIPE_WEBHOOK_SECRET is the `whsec_…` of
 # the one endpoint, `/webhooks/stripe/`; the publishable key travels to the SPA with each checkout. A
@@ -941,22 +938,22 @@ STRIPE_TIMEOUT_SECONDS = config("STRIPE_TIMEOUT_SECONDS", default=10.0, cast=flo
 # The Customer Portal's configuration (`bpc_…`): cards and receipts only; plan changes go through the panel,
 # which puts our TaxRates. Empty = the portal does not open (503 `billing.portal_unavailable`).
 STRIPE_PORTAL_CONFIGURATION = config("STRIPE_PORTAL_CONFIGURATION", default="")
-# ERPlora's invoices are issued by its platform hub (billing, lot L3-C): a live key charges nothing until this
-# says the route is wired AND the Hub answers `GET /internal/platform/invoices/health` (working rules §15).
+# ERPlora's invoices are issued by its platform hub (billing): a live key charges nothing until this
+# says the route is wired AND the Hub answers `GET /internal/platform/invoices/health`.
 PLATFORM_INVOICING_ENABLED = config("PLATFORM_INVOICING_ENABLED", default=False, cast=bool)
-# Promo codes grant trial days (ADR-0107): a person may ask whether one is valid this often, so the codes
+# Promo codes grant trial days: a person may ask whether one is valid this often, so the codes
 # cannot be guessed by brute force.
 PROMO_CHECK_RATE = config("PROMO_CHECK_RATE", default="20/m")
 
-# The AI gateway (assistant/, PLAN-SAAS §1.1): the providers' keys `import_ai_keys_from_env` keeps encrypted in the
-# database (ASSISTANT-F09); the staff may type them in the admin instead. Empty = nothing to load. The gateway reads
+# The AI gateway (assistant/): the providers' keys `import_ai_keys_from_env` keeps encrypted in the
+# database; the staff may type them in the admin instead. Empty = nothing to load. The gateway reads
 # the keys from the database, never from here.
 OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
 ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
 GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
 DEEPSEEK_API_KEY = config("DEEPSEEK_API_KEY", default="")
 
-# The providers of erplora.com's own tools (assistant/server_tools.py, ASSISTANT-F14). The rates need no key. The search
+# The providers of erplora.com's own tools (assistant/server_tools.py). The rates need no key. The search
 # reads its key here, from the environment and not from the database, and without it is not offered: the assistant
 # just does not search and the server starts as usual. Before filling the key in production, the privacy policy must
 # name the provider (saas#277). Its addresses move only for the e2e's double.
@@ -964,7 +961,7 @@ BRAVE_SEARCH_API_KEY = config("BRAVE_SEARCH_API_KEY", default="")
 ASSISTANT_SEARCH_URL = config("ASSISTANT_SEARCH_URL", default="https://api.search.brave.com/res/v1/web/search")
 ASSISTANT_RATES_URL = config("ASSISTANT_RATES_URL", default="https://api.frankfurter.dev/v1/latest")
 
-# WhatsApp, erplora.com's side (whatsapp/, PLAN-SAAS §1.1, round 2026-10-15b): Meta's app («ERPlora Inbox»), its
+# WhatsApp, erplora.com's side (whatsapp/): Meta's app («ERPlora Inbox»), its
 # Embedded Signup configuration and its webhook. Empty = WhatsApp is off, visibly: the webhook answers 503 and the
 # Hub's doors whatsapp.not_configured (`check --deploy` warns, whatsapp.W001). The secrets come from the
 # environment (Secrets Manager in AWS), never from code.

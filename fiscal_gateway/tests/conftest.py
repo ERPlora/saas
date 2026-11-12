@@ -1,11 +1,11 @@
 """Fixtures of the fiscal gateway's tests: throwaway certificates and the AEAT envelopes of the Hub.
 
-``make_p12`` is the helper of the Hub's ``apps/verifactu/tests/test_certificates.py`` (plan
-2026-10-15-bloque-fiscal-hub, task 1), extended with ``eseal`` (the eIDAS QcType of an entity seal)
+``make_p12`` is the helper of the Hub's ``apps/verifactu/tests/test_certificates.py``, extended with
+``eseal`` (the eIDAS QcType of an entity seal)
 and with ``org_id=None`` / ``serial=None`` leaving the attribute out. Every certificate is
 self-signed and generated in the test: never a real one.
 
-The XML fixtures are copied byte for byte from ``hub-next/apps/verifactu/tests/fixtures/``: an
+The XML fixtures are copied byte for byte from the Hub's ``apps/verifactu/tests/fixtures/``: an
 envelope the Hub sent to the AEAT's preproduction and the AEAT's answers to a submission and to a
 query.
 

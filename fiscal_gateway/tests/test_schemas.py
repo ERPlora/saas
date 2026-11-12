@@ -69,7 +69,7 @@ def test_what_is_outside_the_contract_is_refused(change):
 
 @pytest.mark.parametrize("hub", ["demo", "erplora", "a", "my-hub-2", HUB])
 def test_the_hub_is_its_slug_or_its_uuid(hub):
-    # Phase 1: the Hub sends the slug of its host; the registry's UUID comes in phase 2.
+    # The Hub sends the slug of its host, or the registry's UUID.
     body = PresentIn.model_validate(
         {
             "hub": hub,
