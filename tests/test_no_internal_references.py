@@ -2,7 +2,9 @@
 
 Comments, docstrings, test names and log messages have to make sense on their own, so the code never
 points at a plan section, a dated planning round, a delivery slice or phase, a task id or a dated plan
-or spec. Markdown files are left out: they are where the plans live.
+or spec. Markdown files are left out: they are where the plans live. A dependency patch is read too, and
+must not cite an issue of one of our repositories either: its comments land in the dependency's code, far
+from our trackers.
 """
 
 import re
@@ -33,6 +35,10 @@ INTERNAL_REFERENCE = re.compile(
     )
 )
 
+OUR_REPO_ISSUE = re.compile(r"(?<![\w-])(?:hub|saas|ui|live|aws|app|outfitkit|pm|knowledge)#[0-9]+")
+
+PATCH_SUFFIX = ".patch"
+
 # The end-to-end specs name their screenshots after the task that added them, and renaming those
 # string literals would orphan the evidence already captured. There only comments and test titles
 # are read.
@@ -42,6 +48,7 @@ COMMENT_OR_STRING = re.compile(r"""//.*|'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:
 TEST_TITLE_OPENER = re.compile(r"\b(?:test|it|describe)(?:\.\w+)*\(\s*$")
 
 CODE_SUFFIXES = {
+    PATCH_SUFFIX,
     ".py",
     ".ts",
     ".vue",
@@ -100,11 +107,12 @@ def internal_references(paths, root=REPO):
             continue
         e2e_script = path.startswith(E2E_DIR) and Path(path).suffix in E2E_SCRIPT_SUFFIXES
         text = (root / path).read_text(encoding="utf-8", errors="replace")
+        patch = Path(path).suffix == PATCH_SUFFIX
         for number, line in enumerate(text.splitlines(), 1):
             unquoted = without_string_literals(line) if e2e_script else line
             for clause in QUOTED_CLAUSES:
                 unquoted = unquoted.replace(clause, "")
-            if INTERNAL_REFERENCE.search(unquoted):
+            if INTERNAL_REFERENCE.search(unquoted) or (patch and OUR_REPO_ISSUE.search(line)):
                 found.append(f"{path}:{number}: {line.strip()}")
     return found
 
@@ -164,6 +172,26 @@ def test_the_scan_catches_each_kind_of_reference(text):
 )
 def test_the_scan_leaves_ordinary_text_alone(text):
     assert not INTERNAL_REFERENCE.search(text)
+
+
+def test_the_dependency_patches_are_read():
+    patches = {p.relative_to(REPO).as_posix() for p in (REPO / "patches").glob("*.patch")}
+    assert patches <= set(code_files())
+
+
+def test_a_patch_comment_that_cites_an_issue_of_another_repo_is_caught(tmp_path):
+    (tmp_path / "patches").mkdir()
+    (tmp_path / "patches" / "some-lib@1.0.0.patch").write_text(
+        " const a = 1;\n"
+        "+ * one page at a time (hub#2242)\n"
+        "+ * see PLAN " + SECTION_SIGN + "3\n"
+        "+ * upstream capacitor-app#41 and color #123456 stay\n",
+        encoding="utf-8",
+    )
+    assert internal_references(["patches/some-lib@1.0.0.patch"], root=tmp_path) == [
+        "patches/some-lib@1.0.0.patch:2: + * one page at a time (hub#2242)",
+        "patches/some-lib@1.0.0.patch:3: + * see PLAN " + SECTION_SIGN + "3",
+    ]
 
 
 def test_an_end_to_end_spec_keeps_its_capture_keys_but_not_its_comments(tmp_path):
