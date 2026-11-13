@@ -1,7 +1,6 @@
-"""WHATSAPP-G12 · The mail «Connect WhatsApp again» to the business's owner, in the owner's language.
+"""The mail «Connect WhatsApp again» to the business's owner, in the owner's language.
 
-Case of the old product's ``test_token_refresh.py`` (what to do, the number, the business, translated); its
-``parcial`` (the mail left in the server's language, not the person's) is fixed: the owner's ``language`` rules.
+It says what to do, the number and the business, in the owner's ``language``, never in the server's.
 """
 
 from django.core import mail

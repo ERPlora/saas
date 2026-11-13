@@ -4,9 +4,9 @@ at Meta its templates live in.
 ``known_hub`` and ``channel_block`` are plain functions called inside the commands of ``services`` (in their
 transaction) and by ``hubs.queries`` for the snapshot (the Hub reads the channel only there).
 ``whatsapp.template.account`` is the read ``gateway`` makes before it calls Meta for a business's templates, and
-``whatsapp.number.renewal_due`` the numbers whose permission is renewed today (WHATSAPP-G12);
+``whatsapp.number.renewal_due`` the numbers whose permission is renewed today;
 ``whatsapp.number.connecting`` the business a connection is for and the PIN its number already has (doors 10, 11);
-``whatsapp.media.locate`` the attachment a person of the business opens (WHATSAPP-G07);
+``whatsapp.media.locate`` the attachment a person of the business opens;
 ``whatsapp.delivery.next_due`` when the next delivery to the Hub is due: the ``saas-worker`` sleeps until then
 (saas#305). ``behind_a_waiting_message`` is the rule of the order of each business's messages, shared with
 ``services.delivery_claim``.
@@ -94,7 +94,7 @@ def known_hub(ref: str, *, live: bool = True) -> Hub | None:
 
 
 def channel_block(hub_id: UUID, *, version: int | None = None) -> dict[str, Any]:
-    """The business's WhatsApp as the Hub keeps it: door 3's body without ``hub`` (WHATSAPP-G03, WHATSAPP-G05), the
+    """The business's WhatsApp as the Hub keeps it: door 3's body without ``hub``, the
     ``whatsapp`` key of its snapshot (door 4) at ``version`` (the snapshot's; its state version when missing).
 
     ``templates`` is ``None`` without a connected number (nothing is known of an account at Meta: the Hub keeps its

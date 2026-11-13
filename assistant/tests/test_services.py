@@ -1,6 +1,6 @@
 """The writes of the AI gateway (``assistant.services``), each an operation the admin and the commands call.
 
-This file: a provider's key (ASSISTANT-G26, G16). The key is kept encrypted
+This file: a provider's key. The key is kept encrypted
 with its last four characters as hint; typing another one is a rotation (when, by whom); the outbox, the input's
 ``repr`` and the errors never carry it. Only an active member of the staff with the credential's model permission
 saves or deletes one.

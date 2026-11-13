@@ -1,5 +1,5 @@
 """A text column whose value is kept encrypted (``assistant.crypto``): the model reads the provider's key, the
-column its Fernet token (ASSISTANT-G26).
+column its Fernet token.
 
 A token no live key opens reads as empty and is logged at ERROR (``assistant.crypto.undecryptable``): loading the row
 (the admin's list, the turn's route) never crashes, and an empty key is a provider without a usable key. The value

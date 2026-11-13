@@ -1,4 +1,4 @@
-"""WHATSAPP-G07 · ``manage.py whatsapp_deliver``: one pass, by hand, of what the ``saas-worker`` delivers as soon as it
+"""``manage.py whatsapp_deliver``: one pass, by hand, of what the ``saas-worker`` delivers as soon as it
 is due (``gateway.deliver_pass``, saas#305): what still waits for the Hub (it was off, without the inbox, or answered
 5xx) is pushed again once its growing wait passed (``gateway.deliver``), so a message Meta reported is never lost
 while the Hub is away.

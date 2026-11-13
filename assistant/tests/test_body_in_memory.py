@@ -1,4 +1,4 @@
-"""ASSISTANT-F19 (ASSISTANT-G55), ASSISTANT-F21 (G56) · The server keeps the body of the assistant's doors in memory.
+"""ASSISTANT-F19, ASSISTANT-F21 · The server keeps the body of the assistant's doors in memory.
 
 Behind Daphne, Django's handler reads every request's body into a file that moves to disk past
 ``FILE_UPLOAD_MAX_MEMORY_SIZE`` (2.5 MB), before any view runs. A turn with its attachments (up to

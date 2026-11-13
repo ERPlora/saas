@@ -1,4 +1,4 @@
-"""The client of Anthropic's Messages API (ASSISTANT-G32): ``POST {base}/v1/messages`` streamed, ``GET
+"""The client of Anthropic's Messages API: ``POST {base}/v1/messages`` streamed, ``GET
 {base}/v1/models`` page by page to list.
 
 The instructions go apart (``system``), tool results are ``tool_result`` blocks of a user turn, the assistant's tool

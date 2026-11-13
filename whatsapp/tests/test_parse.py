@@ -1,9 +1,8 @@
-"""WHATSAPP-G07 · Reading Meta's webhook: what each change means for a business, before anything is stored.
+"""Reading Meta's webhook: what each change means for a business, before anything is stored.
 
 Bodies from Meta's reference (https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/components and
-the Embedded Signup «coexistence» webhooks) and the old product's tests (``test_webhook_echo_ingest.py``,
-``test_webhook_history_ingest.py``, ``test_inbox_reply_to.py``, ``test_inbox_reply_id.py``,
-``test_delivery_status.py``). The result is the body of the Hub's door 1 (``POST /internal/whatsapp/inbound``)
+the Embedded Signup «coexistence» webhooks).
+The result is the body of the Hub's door 1 (``POST /internal/whatsapp/inbound``)
 and door 2 (``/status``) without ``hub`` and the attachment's address, and the verdicts of Meta on templates.
 """
 

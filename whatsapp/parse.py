@@ -1,4 +1,4 @@
-"""Reading Meta's webhook (WHATSAPP-G07): what each change means for a business, before anything is stored.
+"""Reading Meta's webhook: what each change means for a business, before anything is stored.
 
 Pure: no database, no network. A webhook may carry changes of several numbers and businesses; each is read by its
 ``field`` (https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/components):

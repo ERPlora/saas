@@ -1,4 +1,4 @@
-"""The rows of the AI gateway (ASSISTANT-G25 provider, G26 credential, G24 model, G27 policy).
+"""The rows of the AI gateway: provider, credential, model and policy.
 
 - A provider is one of the four APIs our clients speak (``kind``), with its own address only over https (the key
   travels to it); a local address is for the tests and a provider of our own on the same machine.
@@ -15,7 +15,7 @@ from assistant.tests.conftest import API_KEY
 pytestmark = pytest.mark.django_db
 
 
-# --- AIProvider (G25) ------------------------------------------------------------------------------------
+# --- AIProvider ------------------------------------------------------------------------------------------
 
 
 def test_the_kinds_are_the_four_apis_of_models():
@@ -50,7 +50,7 @@ def test_a_provider_is_named_by_its_name():
     assert str(AIProvider(slug="openai", name="OpenAI", kind="openai")) == "OpenAI"
 
 
-# --- AIProviderCredential (G26) ------------------------------------------------------------------------
+# --- AIProviderCredential ------------------------------------------------------------------------------
 
 
 def test_a_credential_never_shows_its_key(provider):
@@ -80,7 +80,7 @@ def test_two_keys_of_a_provider_cannot_share_a_label(provider):
         AIProviderCredential(provider=provider, label="default", api_key=API_KEY, key_hint="wxyz").validate_constraints()
 
 
-# --- AIModel (G24) --------------------------------------------------------------------------------------
+# --- AIModel --------------------------------------------------------------------------------------------
 
 
 def test_a_model_is_named_with_its_provider(provider):
@@ -112,7 +112,7 @@ def test_a_provider_cannot_list_one_model_twice(provider):
         AIModel(provider=provider, model_id="gpt-5.5", display_name="again").validate_constraints()
 
 
-# --- AIRoutingPolicy (G27) ------------------------------------------------------------------------------
+# --- AIRoutingPolicy ------------------------------------------------------------------------------------
 
 
 def test_there_is_one_policy_and_a_model_it_uses_cannot_be_deleted(provider):

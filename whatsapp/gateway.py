@@ -2,7 +2,7 @@
 Meta (``meta``) and to the Hub (``hub_client``), so that no transaction waits for a third party. No ORM here.
 
 - ``ingest``: Meta's webhook, parked (``whatsapp.webhook.ingest``) and pushed at once to the Hub of each business
-  it touched (WHATSAPP-G07);
+  it touched;
 - ``deliver``: what waits for the Hub, pushed to its doors 1 and 2 and recorded as the Hub answered. Contract: 200 taken; 422 the body does not hold (never retried); anything
   else (404 ``app_inactive``, a Hub without the door, 5xx, no answer) kept and retried with a growing wait. Each
   business's messages go in the order they arrived: once its Hub did not take one, the business's next messages of
@@ -20,18 +20,18 @@ Meta (``meta``) and to the Hub (``hub_client``), so that no transaction waits fo
   number (``meta.upload_media``) and the message names its id. The upload sends no message: its refusal or silence
   frees the place and the key (the same 409 with a name, or 503 ``whatsapp.meta_unreachable``);
 - ``erase``: door 6;
-- ``submit_template``: door 8 (WHATSAPP-G15). Meta's rules checked first (``templates.check``, a header's file
+- ``submit_template``: door 8. Meta's rules checked first (``templates.check``, a header's file
   included), then claim (the key) → the header's file to Meta (``meta.upload_sample``), when it has one → Meta →
   record. Meta saying it already has that name in that language (a first call whose answer was lost) adopts its id
   and edits it. Every «not taken» is a 409 whose key is free to try again, the upload's too (Meta's 190 is
   ``whatsapp.reconnect_needed`` and marks the number, as in door 5); a file header without Meta's app configured
   is 503 ``whatsapp.not_configured``, its key free again;
-- ``delete_template``: door 9 (WHATSAPP-G17). Only that template in that language, by its id at Meta (the body's,
+- ``delete_template``: door 9. Only that template in that language, by its id at Meta (the body's,
   the mirror's or Meta's own list's); Meta not having it is the 404 ``whatsapp.template_not_found`` the Hub reads as
   deleted;
 - ``sync_templates``: Meta's list read again into the mirror, page by page (a verdict on a template the mirror lacks);
-- ``renew_tokens``: the daily renewal of Meta's permission (WHATSAPP-G12): exchange → record → the owner's mail;
-- ``config`` / ``connect`` / ``disconnect``: doors 10–12 (WHATSAPP-G11, G01, G02). Connecting is all of Meta's steps
+- ``renew_tokens``: the daily renewal of Meta's permission: exchange → record → the owner's mail;
+- ``config`` / ``connect`` / ``disconnect``: doors 10–12. Connecting is all of Meta's steps
   first (the code's exchange, the account's numbers, the app's subscription, the registration or, for a number of the
   WhatsApp Business app, its history) and only then the number is kept: a step Meta refused saves nothing. The
   history is the one step that does not undo it (the number works without it; the log says so).
@@ -512,7 +512,7 @@ def sync_templates(hub_id) -> bool:
     return complete
 
 
-# --- The renewal of Meta's permission (WHATSAPP-G12) -------------------------------------------------------------
+# --- The renewal of Meta's permission ----------------------------------------------------------------------------
 
 #: A number with less than this left and still not renewed after the round is an error in the log.
 ALARM = timedelta(days=7)
@@ -571,7 +571,7 @@ def _renew(token: str) -> tuple[str, str | None, object]:
     return "renewed", fresh, expires_at
 
 
-# --- Doors 10–12: connecting a number (WHATSAPP-G11, WHATSAPP-G01, WHATSAPP-G02) --------------------------------
+# --- Doors 10–12: connecting a number ---------------------------------------------------------------------------
 
 #: Embedded Signup's event of a number of the WhatsApp Business app (coexistence): never registered again.
 COEXISTENCE = "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING"

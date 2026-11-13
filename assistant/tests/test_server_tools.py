@@ -1,4 +1,4 @@
-"""ASSISTANT-F14 (ASSISTANT-G46) · Tell the tools erplora.com runs from the Hub's: ``current_datetime``,
+"""ASSISTANT-F14 · Tell the tools erplora.com runs from the Hub's: ``current_datetime``,
 ``currency_rate`` and ``web_search`` are run here and their result goes back to the model, which is asked again (at
 most ``MAX_ROUNDS`` times, the last one without them, so it answers); a tool of the Hub ends the turn as a
 ``function_call`` for the Hub to run. A tool of ours that fails gives the model an error to answer with, never a failed

@@ -1,4 +1,4 @@
-"""The attachments of a question (ASSISTANT-G55): images for the model to see, documents turned into their text.
+"""The attachments of a question: images for the model to see, documents turned into their text.
 
 A user message's content may be a list of parts. Besides ``{"type": "text"}``:
 

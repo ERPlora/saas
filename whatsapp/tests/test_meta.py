@@ -1,8 +1,7 @@
-"""WHATSAPP-G06, WHATSAPP-G10 · erplora.com's client of Meta's Graph API.
+"""erplora.com's client of Meta's Graph API.
 
 Meta is replaced at the HTTP border only (``respx``), with bodies of Meta's documentation
-(https://developers.facebook.com/docs/graph-api/guides/error-handling). Cases of the old product's
-``services/meta.py`` and its tests, plus what it left open (WORKFLOW «Fuentes contrastadas»): the business token
+(https://developers.facebook.com/docs/graph-api/guides/error-handling). The business token
 travels in a header, never in the address, and no call follows a redirect.
 """
 

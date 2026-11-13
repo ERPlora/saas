@@ -6,7 +6,7 @@ Meta or to the Hub never happens inside one of these: ``gateway`` calls Meta or 
 lock waits for a third party.
 
 - ``whatsapp.webhook.ingest``: what Meta's webhook reported, parked once per message for each active number
-  (``Delivery``), the furthest status of each message, and Meta's verdicts on the templates (WHATSAPP-G07);
+  (``Delivery``), the furthest status of each message, and Meta's verdicts on the templates;
 - ``whatsapp.delivery.claim`` / ``whatsapp.delivery.record`` / ``whatsapp.delivery.hold``: the push of what is parked
   to the Hub's doors 1 and 2, leased so two processes never push the same thing at once, each business's messages in
   the order they arrived (``queries.behind_a_waiting_message``), retried with a growing wait, and given back unpushed
@@ -20,13 +20,12 @@ lock waits for a third party.
   ``Idempotency-Key``: a key Meta took answers what it said the first time, never registers again;
 - ``whatsapp.template.forget`` / ``whatsapp.template.sync``: the mirror of Meta's templates, after a deletion at
   Meta (door 9) and when Meta's list is read again; ``whatsapp.number.reconnect_needed``: Meta refused the token;
-- ``whatsapp.number.renewal`` / ``whatsapp.number.alerted``: the daily renewal of Meta's permission (WHATSAPP-G12),
+- ``whatsapp.number.renewal`` / ``whatsapp.number.alerted``: the daily renewal of Meta's permission,
   the mark «needs reconnecting» and the owner told once per incident;
 - ``whatsapp.number.connect`` / ``whatsapp.number.disconnect``: the number a business connected through Meta's
-  window (door 11, WHATSAPP-G01) and its disconnection (door 12, WHATSAPP-G02);
-- ``whatsapp.delivery.due_now``: the staff's «Push to the Hub now» (WHATSAPP-G18);
-- ``whatsapp.retention.purge``: the daily forgetting of what the Hub took, of what it never took and of the keys
-  (WHATSAPP-G14).
+  window (door 11) and its disconnection (door 12);
+- ``whatsapp.delivery.due_now``: the staff's «Push to the Hub now»;
+- ``whatsapp.retention.purge``: the daily forgetting of what the Hub took, of what it never took and of the keys.
 
 A refusal raises the envelope's error (``live.errors``): the transaction rolls back, the reservation with it. The
 cap's is the exception: ``whatsapp.message.claim`` returns it (``refused``) so the snapshot it announces leaves after
@@ -802,7 +801,7 @@ def number_reconnect_needed(ctx: OperationContext, data: ReconnectIn) -> Reconne
     return ReconnectOut(changed=bool(changed))
 
 
-# --- The renewal of Meta's permission (WHATSAPP-G12) -------------------------------------------------------------
+# --- The renewal of Meta's permission ----------------------------------------------------------------------------
 
 #: Inside this many days (or past the deadline) the owner is told even without Meta's verdict.
 LAST_CALL = timedelta(days=3)
@@ -876,7 +875,7 @@ def number_alerted(ctx: OperationContext, data: AlertedIn) -> AlertedOut:
     return AlertedOut(alerted=bool(alerted))
 
 
-# --- Connecting a number (WHATSAPP-G01, WHATSAPP-G02) -----------------------------------------------------------
+# --- Connecting a number ----------------------------------------------------------------------------------------
 
 
 @operation(
@@ -972,7 +971,7 @@ def number_disconnect(ctx: OperationContext, data: DisconnectIn) -> NumberDiscon
     )
 
 
-# --- The retention (WHATSAPP-G14) --------------------------------------------------------------------------------
+# --- The retention -----------------------------------------------------------------------------------------------
 
 
 @operation(

@@ -1,5 +1,4 @@
-"""Django admin of whatsapp (``erplora.com/admin``): what ERPlora's staff sees of the businesses' WhatsApp
-(WHATSAPP-G08, WHATSAPP-G18).
+"""Django admin of whatsapp (``erplora.com/admin``): what ERPlora's staff sees of the businesses' WhatsApp.
 
 Each business's number, the mirror of its templates at Meta, what waits for its Hub, its sends and its month's count:
 seen, never written by hand, not even by a superuser (only Meta's window connects a number; the operations of

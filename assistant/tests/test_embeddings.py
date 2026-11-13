@@ -1,4 +1,4 @@
-"""ASSISTANT-F20 (ASSISTANT-G54, G09, G30) · Compute the fingerprints of some texts for the Hub's index: the Hub
+"""ASSISTANT-F20 · Compute the fingerprints of some texts for the Hub's index: the Hub
 never runs a model, so it sends ``texts`` (1 to 256) to ``POST /internal/assistant/embeddings`` and gets a vector per
 text, in the same order. erplora.com uses the key of the services' provider (``ASSISTANT_SERVICE_PROVIDER``, of
 OpenAI's API) and always its model (``EMBEDDING_MODEL``): the Hub never chooses it (models differ widely in

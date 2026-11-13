@@ -1,11 +1,11 @@
-"""WHATSAPP-G12 · Renew Meta's permission before it expires and tell the owner when it cannot be
+"""Renew Meta's permission before it expires and tell the owner when it cannot be
 (``manage.py whatsapp_refresh_tokens``, once a day; ``gateway.renew_tokens``).
 
-Cases of the old product's ``test_token_refresh.py``: inside the last 14 days the token is exchanged for a fresh one
+Inside the last 14 days the token is exchanged for a fresh one
 and its new deadline stored; Meta refusing marks the number «needs reconnecting» and mails the owner once per
 incident; no answer from Meta is no verdict, unless 3 days or less remain; a number still not renewed inside the last
-week is an error in the log. Its two ``parcial`` are fixed: the mail goes in the owner's language, and the number of
-a business that left is not renewed any more. Meta is replaced at the HTTP border only (``respx``).
+week is an error in the log. The mail goes in the owner's language, and the number of
+a business that left is not renewed. Meta is replaced at the HTTP border only (``respx``).
 """
 
 from datetime import timedelta

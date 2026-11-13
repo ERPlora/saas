@@ -1,6 +1,6 @@
 """The admin of the AI gateway (``erplora.com/admin``), as ERPlora's staff use it.
 
-This file: the providers and their keys (ASSISTANT-G15, G16, G59). A provider's page has its keys inline; a key is
+This file: the providers and their keys. A provider's page has its keys inline; a key is
 typed once in a field that never shows it again, and the list says, for each provider, the end of its active key or
 why it has none. Saving a key goes through ``assistant.credential.save|delete``. Only staff with the model
 permissions enter (each refused path has its test).

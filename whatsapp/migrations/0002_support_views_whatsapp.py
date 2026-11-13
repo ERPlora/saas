@@ -1,5 +1,5 @@
 """Data: the platform's ``support`` group sees the businesses' WhatsApp in the admin, and changes nothing
-(WHATSAPP-G18; as ``hubs`` ``0007_support_views_the_account_plane``).
+(as ``hubs`` ``0007_support_views_the_account_plane``).
 
 ``view_*`` of ``PhoneNumber``, ``Template``, ``Delivery``, ``Send`` and ``Usage``. Without the group (created by
 ``accounts`` ``0003_support_group``) there is nothing to give. Reverse: the permissions leave the group.

@@ -1,5 +1,5 @@
 """``GET /whatsapp/media/<id>``: a customer's photo, voice note, video or document, opened from the Hub's inbox
-(WHATSAPP-G07; door 1 carries this address in ``media.url``).
+(door 1 carries this address in ``media.url``).
 
 The browser opens it with the person's erplora.com session (``<slug>.erplora.com`` and ``erplora.com`` are one
 site, so the session travels); ``whatsapp.media.locate`` lets only an accepted member of the business through. The

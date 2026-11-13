@@ -1,4 +1,4 @@
-"""``python manage.py whatsapp_refresh_tokens``: once a day in ``saas-cron`` (WHATSAPP-G12).
+"""``python manage.py whatsapp_refresh_tokens``: once a day in ``saas-cron``.
 
 Renews Meta's permission of every connected number whose deadline is 14 days away or closer, marks «needs
 reconnecting» the ones Meta refused (or could not answer for with 3 days or less left) and mails their owner once

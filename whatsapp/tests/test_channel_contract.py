@@ -1,4 +1,4 @@
-"""The ``whatsapp`` key of the snapshot against the Hub's own schema of it (door 4, WHATSAPP-G03, WHATSAPP-G05).
+"""The ``whatsapp`` key of the snapshot against the Hub's own schema of it (door 4).
 
 The Hub validates that block with its ``ChannelSyncIn`` (``apps/whatsapp_inbox/schemas.py``, in the Hub's code)
 after putting the snapshot's ``version`` in it, and a block out of contract makes it answer 422 to the

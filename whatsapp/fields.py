@@ -1,5 +1,5 @@
 """A text column whose value is kept encrypted (``whatsapp.crypto``): the model reads the secret, the column its
-Fernet token. Used for Meta's business token and the number's PIN (WHATSAPP-G04).
+Fernet token. Used for Meta's business token and the number's PIN.
 
 A token no live key opens reads as empty and is logged at ERROR (``whatsapp.crypto.undecryptable``): loading the
 row (the admin's list, a sweep) never crashes, and every door treats an empty credential as «not connected».

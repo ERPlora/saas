@@ -1,20 +1,20 @@
 """Django admin of the AI gateway (``erplora.com/admin``): what ERPlora's staff configure so the assistant answers.
 
-- «AI providers» (ASSISTANT-G15, G59): each provider with its keys and its models inline. A key is typed once in a
+- «AI providers»: each provider with its keys and its models inline. A key is typed once in a
   field that never shows it again; the page and the list only say its last four characters, or why the provider has
   no usable key. Keys are saved and deleted through
   ``assistant.credential.save|delete`` as the member of the staff who clicks (``staff_context``), which also checks
   the model permission.
-- «Model that answers» (G27, G17, G10, G60): the one policy on one page (its list opens it), saved with
+- «Model that answers»: the one policy on one page (its list opens it), saved with
   ``assistant.policy.update``; nobody adds nor deletes it.
-- «Try a model» (G61): one message to one model, its answer streamed to the page as server-sent events with its
+- «Try a model»: one message to one model, its answer streamed to the page as server-sent events with its
   tokens, time and cost (``assistant.route.resolve`` with the model, then ``assistant.routing.stream``). The run is an
   asynchronous view (the provider's call never holds a thread), for the staff who may change the model that
   answers, at most ``ASSISTANT_TRY_RATELIMIT`` per person; each one is recorded with ``assistant.model.try``.
-- «Choose models from the provider» (G24, G14): an asynchronous page (the call to the provider never holds a thread
+- «Choose models from the provider»: an asynchronous page (the call to the provider never holds a thread
   other requests need) that lists the provider's chat models with ``assistant.provider.connection`` and its client,
   and keeps the ticked ones with ``assistant.model.select``. «AI models» lists them all, to correct their prices.
-- «Assistant usage records» (G52, G19, G11): what each business (or demo) spent by month, its messages of the plan's
+- «Assistant usage records»: what each business (or demo) spent by month, its messages of the plan's
   allowance, tokens, dictations, characters read aloud and cost. Read only for everybody: rows are written by the
   gateway alone (``assistant.message.claim|release``, ``assistant.usage.record``).
 
