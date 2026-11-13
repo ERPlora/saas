@@ -2,10 +2,10 @@
 
 Under ``/api/billing/`` with the API's session auth (an anonymous visitor gets the 401 envelope); a POST
 needs the CSRF token. No path parameters: the input is the query string (GET) or the body (POST). What a
-business pays (lot L2-B) is its owner's: each operation checks the role. Stripe's webhook is not here: it is
+business pays is its owner's: each operation checks the role. Stripe's webhook is not here: it is
 ``billing.webhooks`` (Stripe signs it; no session).
 
-The Billing section (lot L3-C): ERPlora's invoices (list, detail, the PDF of the platform hub, the CSV of the
+The Billing section: ERPlora's invoices (list, detail, the PDF of the platform hub, the CSV of the
 filtered list and «Pay»), the subscriptions and the payment details. The PDF and the CSV are answered as the
 file itself (``Content-Disposition: attachment``); the operation returns its name, type and bytes.
 """
@@ -102,7 +102,7 @@ async def store_catalog(request, params: Query[StoreCatalogIn]):
     return await run_operation(request, queries.store_catalog, params)
 
 
-# --- The Billing section (lot L3-C) --------------------------------------------------------------------
+# --- The Billing section -------------------------------------------------------------------------------
 
 
 def _file(document) -> HttpResponse:

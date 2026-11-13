@@ -3,7 +3,7 @@
 // read too) and the mail notices: «Security, invoices and payments» always on, «Business notices» a switch (the
 // mail that a business is ready); no «ERPlora news», a mail ERPlora never sends (ACCOUNTS-F23). Each control saves on its own
 // (`accounts.preferences.update`, only what changed) and says so; a refusal puts the control back. A failed load
-// is said with «Retry», never a skeleton for ever (audit 2026-10-14, R-08).
+// is said with «Retry», never a skeleton for ever.
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -198,7 +198,7 @@ describe('PreferencesForm', () => {
     expect(ionProps(s.q('preferences-theme'), 'value')).toEqual({ value: 'dark' });
   });
 
-  it('makes «System / Light / Dark» a 44px target on touch (audit 2026-10-14, R-13)', () => {
+  it('makes «System / Light / Dark» a 44px target on touch', () => {
     // happy-dom lays nothing out: the component's stylesheet is read, with the touch query of `@erplora/ui`.
     const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'PreferencesForm.vue'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')

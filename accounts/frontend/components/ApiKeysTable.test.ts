@@ -75,7 +75,7 @@ describe('ApiKeysTable', () => {
     expect(text).toContain('Never');
     expect(s.q('api-key-expired')?.textContent).toContain('Expired');
     expect(text).toContain('3 keys');
-    // Audit 2 R-25: the permissions are not cut with «…» (DataTable clips a cell's span): they may wrap.
+    // The permissions are not cut with «…» (DataTable clips a cell's span): they may wrap.
     const scopes = s.wrapper.findAll('[data-testid="api-key-scopes"]').map((cell) => [cell.element.tagName, cell.text()]);
     expect(scopes).toContainEqual(['DIV', 'Businesses · read, Businesses · write']);
   });

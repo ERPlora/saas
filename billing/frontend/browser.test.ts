@@ -2,7 +2,7 @@
 // Customer Portal) and downloading a file the API answers as an attachment (an invoice's PDF, the CSV of
 // the list). A download asks for the file (`Accept`, the session cookie) and saves it only when the answer
 // IS that file: an error (a 503 of the invoice service, a 404 of one still being issued, a proxy's page) is
-// never saved as `pdf.json` (audit 2026-10-14, R-05); it is thrown as the API's error, for the page to say.
+// never saved as `pdf.json`; it is thrown as the API's error, for the page to say.
 // The request is the SDK's (`fetchFile`, whose own tests read `Content-Disposition`): no answer at all is its
 // `network_error`, in the person's language.
 import { ApiError } from '@erplora/ui/sdk';

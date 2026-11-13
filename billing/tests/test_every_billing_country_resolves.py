@@ -24,7 +24,7 @@ PLAN = "service.saas_subscription"
 
 def _quote(country: str, postal_code: str = "", **kwargs):
     """A Spanish sale is priced with its 5-digit postal code (Madrid by default): without it the place is
-    unknown and the sale is not priced (review of L2-A, finding 1)."""
+    unknown and the sale is not priced."""
     postal_code = postal_code or ("28001" if country == "ES" else "")
     return quote_vat(
         Decimal("100.00"),

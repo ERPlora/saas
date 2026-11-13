@@ -1,9 +1,9 @@
 """What Stripe must charge for a quote OUR engine resolved, in Stripe's vocabulary (saas#1968).
 
 The rate is decided by ``billing.TaxRule``; Stripe only charges it, and on a net price it needs it as a
-``TaxRate`` object (``default_tax_rates``). This lot (L2-A) stops before Stripe: ``tax_rate_specs_for``
+``TaxRate`` object (``default_tax_rates``). This module stops before Stripe: ``tax_rate_specs_for``
 says WHICH rates (country, region, percentage, exclusive), and ``matches`` says whether an existing
-Stripe ``TaxRate`` is the one; lot L2-B finds or creates them (``TaxRate.list``/``create``) by
+Stripe ``TaxRate`` is the one; ``billing.stripe_service`` finds or creates them (``TaxRate.list``/``create``) by
 ``spec.cache_key``. The cases are those of ERPlora/saas ``fiscal/services/stripe_tax_rates.py``
 (origin/develop), which had no test file of its own (its cases ran inside ``test_sale_tax_rates``).
 """

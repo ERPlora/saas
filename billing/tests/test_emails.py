@@ -1,4 +1,4 @@
-"""The mail that tells the payer their invoice is issued (lot L3-C; saas#1061).
+"""The mail that tells the payer their invoice is issued (saas#1061).
 
 Ported from ERPlora/saas ``apps/dashboard/billing/tests/test_invoice_emails.py`` (origin/develop, 7 tests):
 the customer paid and got nothing, and had to remember to look in the panel. The mail LINKS to Billing
@@ -112,7 +112,7 @@ class TestItIsNotSentWhenItShouldNot:
 
 
 def test_a_mail_that_cannot_leave_raises_so_it_is_sent_again_later(invoice, monkeypatch):
-    """Review of L3-C: a failed mail is not «sent»; ``reconcile_platform_invoices`` sends it again."""
+    """A failed mail is not «sent»; ``reconcile_platform_invoices`` sends it again."""
     def broken(*args, **kwargs):
         raise ConnectionRefusedError("SMTP down")
 

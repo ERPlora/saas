@@ -86,8 +86,8 @@ class TestUpdating:
         assert (ana.first_name, ana.last_name) == ("Ana", "")
 
     def test_the_first_name_is_required(self, ana):
-        """Audit 2 S-10: a blank first name was saved («Changes saved») and the panel lost the «Hello, Laura»; it is
-        refused on its field, blank or only spaces, and nothing changes."""
+        """A blank first name, or one of only spaces, is refused on its field and nothing changes: saved, it would
+        leave the panel's «Hello, Laura» without a name."""
         from pydantic import ValidationError
 
         for blank in ("", "   "):

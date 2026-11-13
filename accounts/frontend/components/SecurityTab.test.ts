@@ -1,6 +1,6 @@
 // Account → Security (mockups `account.html` «security»): the card «Sign-in» — password, two-step verification and
 // Google, each a row — from the live `accounts.profile.get` (whether the account has a password), then the active
-// sessions (SessionsTable). A failure is said, never a skeleton for ever (audit 2026-10-14, R-08): an error of
+// sessions (SessionsTable). A failure is said, never a skeleton for ever: an error of
 // the query, or no answer in time.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

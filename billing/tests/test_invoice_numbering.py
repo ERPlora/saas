@@ -1,10 +1,10 @@
-"""The numbers of ERPlora's invoices: correlative per series and year, no gap, no duplicate (lot L3-C).
+"""The numbers of ERPlora's invoices: correlative per series and year, no gap, no duplicate.
 
 The counter is one row per series (``billing.InvoiceCounter``: the year and the last number), locked in the
 transaction that records the invoice (CLAUDE.md, «Fiscal»: ``fiscal_counter``, never a Postgres sequence,
 which leaves holes when a transaction rolls back). Its row lock serialises two invoices at once: the second
 waits for the first to commit or roll back. The issue date is read AFTER the lock is held, so a later number
-never carries an earlier date (review of L3-C), and a new year starts the series again at 1.
+never carries an earlier date, and a new year starts the series again at 1.
 
 Rewritten from ERPlora/saas ``Invoice.generate_invoice_number`` (``YYYYMMDD-NNNN``, a ``select_for_update`` of
 the day's last invoice) and ``test_invoice_environment`` (its own series per kind): the series are now

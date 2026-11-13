@@ -6,10 +6,10 @@ the same customer in Las Palmas got a right plan invoice and a module overcharge
 lives in ONE place, ``billing.services.sale_tax_rates``, and is tested here.
 
 Adapted: it answers with the rates Stripe must charge as ``TaxRateSpec`` (``billing.stripe_tax_rates``),
-which lot L2-B mirrors into Stripe ``TaxRate`` ids; a sale that cannot be priced raises the 409
-``billing.tax_engine_missing`` / ``billing.billing_location_required`` instead of returning a refusal
-dict. The old ``test_si_el_espejo_de_stripe_falla_se_niega_la_venta`` (the Stripe mirror down) moves
-to L2-B with the mirror.
+which ``billing.stripe_service`` mirrors into Stripe ``TaxRate`` ids; a sale that cannot be priced raises
+the 409 ``billing.tax_engine_missing`` / ``billing.billing_location_required`` instead of returning a
+refusal dict. The old ``test_si_el_espejo_de_stripe_falla_se_niega_la_venta`` (the Stripe mirror down)
+goes with the mirror: ``test_stripe_service`` tests its failures.
 """
 
 from decimal import Decimal
@@ -104,7 +104,7 @@ class TestWithoutKnowingWhereThePayerIsNothingIsSold:
 
 
 class TestASpanishPostalCodeHasFiveDigits:
-    """«3500» is Benidorm without its leading 0, not Las Palmas (review of L2-A, finding 1)."""
+    """«3500» is Benidorm without its leading 0, not Las Palmas."""
 
     def test_benidorm_without_its_zero_is_asked_for_its_address(self, business_paid_by):
         business = business_paid_by("ES", "3500")

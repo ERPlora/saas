@@ -3,10 +3,10 @@
 Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_reverse_charge_switch.py`` (origin/develop,
 9 tests). The path is closed by default and fails closed: when in doubt, the VAT is charged.
 
-Adapted: ``TestTheWebhookAsksVies`` (2) drove Stripe's ``checkout.session.completed`` webhook, which is
-lot L2-B; what it proved —the sale door asks the VIES verdict and believes it— is proved here through
-that door, ``billing.services.sale_tax_rates``, which the L2-B checkout and webhook call. Its third class,
-``TestTheInvoiceKeepsTheEvidence`` (1), is ``test_invoice_recording.TestTheVatOfEachSale`` (lot L3-C).
+Adapted: ``TestTheWebhookAsksVies`` (2) drove Stripe's ``checkout.session.completed`` webhook; what it
+proved —the sale door asks the VIES verdict and believes it— is proved here through that door,
+``billing.services.sale_tax_rates``, which Stripe's checkout and webhook call. Its third class,
+``TestTheInvoiceKeepsTheEvidence`` (1), is ``test_invoice_recording.TestTheVatOfEachSale``.
 """
 
 from decimal import Decimal

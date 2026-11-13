@@ -154,7 +154,7 @@ class TestWhatTheSaleCarries:
         )
 
     def test_an_unknown_spanish_place_cannot_be_priced(self, buyer):
-        """«3500» is Benidorm without its leading 0, not Las Palmas: no 0 % by a guess (finding 1)."""
+        """«3500» is Benidorm without its leading 0, not Las Palmas: no 0 % by a guess."""
         preview = _preview(buyer, country="ES", postal_code="3500", net=Decimal("100"))
 
         assert (preview["resolvable"], preview["rate"], preview["total"]) == (False, None, None)

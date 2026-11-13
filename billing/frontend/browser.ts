@@ -3,8 +3,8 @@
 //   - `assign`: a top-level navigation to Stripe (its page to pay an invoice, its Customer Portal);
 //   - `download`: a file the API answers as an attachment (an invoice's PDF, the CSV of the list), asked for
 //     by the SDK (`fetchFile`: the session cookie, its `Accept`) and saved only when the answer IS that file
-//     (audit 2026-10-14, R-05: a link with `download` saved the 503 of the invoice service as `pdf.json`, and
-//     the page said nothing). Any other answer is thrown as the API's error, and no answer at all as the SDK's
+//     (a plain link with `download` would save a 503 of the invoice service as `pdf.json`, and
+//     the page would say nothing). Any other answer is thrown as the API's error, and no answer at all as the SDK's
 //     `network_error` in the person's language (hub#2281), for the page to say it.
 import { fetchFile, type InputOf, type OpName } from '@erplora/ui/sdk';
 

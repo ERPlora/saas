@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// «Switch to annual» (or back to monthly) on the business's own plan (mockups `store.html` «modal-annual»;
-// UX-AUDIT-4 W-F2, X-03, V-37): always for THE business chosen in the Store, never another's, with what
+// «Switch to annual» (or back to monthly) on the business's own plan (mockups `store.html` «modal-annual»):
+// always for THE business chosen in the Store, never another's, with what
 // it charges today WITH VAT (Stripe's prorated preview, `billing.checkout.start`), the new price, what it
 // is a month, and that its modules follow the billing (Stripe bills one interval per subscription).
 // Confirmed with `billing.plan.change` at the preview's proration date; a refusal stays in the dialog.

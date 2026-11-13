@@ -3,7 +3,7 @@
 // (PasswordRow), two-step verification (TwoFactorRow) and Google (ConnectedAccountsRow), from the live
 // `accounts.profile.get` (whether the account has a password); then the active sessions (SessionsTable), which
 // load on their own and take the height the card leaves (a nested `.panel-fill` of the page). The account's
-// failure is said with «Retry», also when no answer comes in time: never a skeleton for ever (audit 2026-10-14 R-08).
+// failure is said with «Retry», also when no answer comes in time: never a skeleton for ever.
 import { useLive } from '@erplora/ui/sdk';
 import { IonCard, IonCardContent, IonSkeletonText } from '@ionic/vue';
 import { computed } from 'vue';

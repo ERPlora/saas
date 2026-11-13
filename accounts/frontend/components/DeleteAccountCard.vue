@@ -7,8 +7,7 @@
 // business in its 90 days of deletion holds nobody. Read from `hubs.business.list`, the operation the server reads
 // for the same rule (`accounts.services.businesses_holding`); the server decides in the end
 // (DeleteAccountDialog shows its 409 too). Until that list is known — loading, failed, or no answer in time —
-// nothing says the account is free to go: «Delete account» stays off, and a failure is said with «Retry» (audit
-// 2026-10-14 R-04/R-08).
+// nothing says the account is free to go: «Delete account» stays off, and a failure is said with «Retry».
 import { HubIcon } from '@erplora/ui/shell';
 import { useLive } from '@erplora/ui/sdk';
 import { IonButton, IonCard, IonCardContent } from '@ionic/vue';

@@ -69,7 +69,7 @@ class TestPolicyAdmin:
         assert policy_admin.has_delete_permission(None) is False
 
     def test_it_says_the_total_is_unknown_until_somebody_carries_it(self):
-        """A 0 shown as a fact would hide a threshold already crossed in the old SaaS (finding 2)."""
+        """A 0 shown as a fact would hide a threshold already crossed in the old SaaS."""
         from django.utils import translation
 
         policy_admin = site._registry[FiscalPolicy]

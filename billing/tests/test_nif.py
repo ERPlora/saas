@@ -7,7 +7,7 @@
 
 Adapted: the old test that compared the helper with ``RepresentationGrant`` (not in the SaaS any more:
 the representation is the Hub's) compares it with the payer's door (``hubs.billing_profile.update``, which
-spells a tax id with ``billing.services.vat_number_for`` since lot L2-B).
+spells a tax id with ``billing.services.vat_number_for``).
 """
 
 import pytest

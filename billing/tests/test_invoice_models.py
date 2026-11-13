@@ -1,4 +1,4 @@
-"""ERPlora's invoices to its customers, as rows (lot L3-C): ``billing.Invoice`` and ``billing.InvoiceLine``.
+"""ERPlora's invoices to its customers, as rows: ``billing.Invoice`` and ``billing.InvoiceLine``.
 
 Ported from ERPlora/saas ``apps/dashboard/billing/tests/`` (origin/develop): ``test_invoice_money_cents``
 (integer cents, the euro is a read-only view, the header is the exact sum of the lines),

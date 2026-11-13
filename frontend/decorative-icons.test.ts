@@ -1,4 +1,4 @@
-// Icons of the panel's pages and components (audit 2026-10-14, R-03): an icon sits next to a text that already
+// Icons of the panel's pages and components: an icon sits next to a text that already
 // says what it is (a button's own text, a row's title), so it is decorative and hidden from screen readers
 // (`aria-hidden="true"`); otherwise a reader announces «image» with no name on every button. Only an icon that
 // carries the meaning alone is named (`label` / `aria-label`). An icon-only button is named on the BUTTON

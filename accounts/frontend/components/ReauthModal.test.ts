@@ -184,7 +184,7 @@ describe('ReauthModal over the dialog that asked for it (saas#379)', () => {
     expect(await over(false)).toEqual({ backdrop: '0.4', shadow: SHADOW });
   });
 
-  it('dark: the dialog behind as deep as FormModal says, 0.6 (UX audit U-90)', async () => {
+  it('dark: the dialog behind as deep as FormModal says, 0.6', async () => {
     expect(await over(true)).toEqual({ backdrop: '0.6', shadow: SHADOW });
   });
 

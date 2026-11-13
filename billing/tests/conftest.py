@@ -156,7 +156,7 @@ def shop(owner, plans):
 @pytest.fixture
 def inventory(db):
     """A paid module on sale: 10 € a month, 100 € a year (net). Enterprise tier, so no plan the tests buy
-    (Starter, Standard: basic) includes it (lot L2-C: a plan includes the modules its level reaches)."""
+    (Starter, Standard: basic) includes it (a plan includes the modules its level reaches)."""
     from apps.models import Module
 
     return Module.objects.create(

@@ -76,7 +76,7 @@ describe('SessionsTable', () => {
     expect(table).toContain('ERPlora app 4.0');
     expect(table).toContain('198.51.100.4');
     expect(table).toContain('Now');
-    // Audit 2 R-25: the browser and the last use are not cut with «…» (DataTable clips a cell's span): they may wrap.
+    // The browser and the last use are not cut with «…» (DataTable clips a cell's span): they may wrap.
     expect(s.wrapper.findAll('[data-testid="session-browser"]').map((cell) => cell.element.tagName)).toEqual(['DIV', 'DIV', 'DIV']);
     expect(s.wrapper.findAll('[data-testid="session-last-used"]').map((cell) => cell.element.tagName)).toEqual(['DIV', 'DIV', 'DIV']);
   });

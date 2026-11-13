@@ -6,11 +6,10 @@ against VIES, and only a cleared one reaches Stripe: the fact that survives is t
 which ``billing.queries.payer_of`` reads for every door that sells. The verdict is never seeded: only
 the network is faked.
 
-Adapted (no ``Invoice`` in this lot): the four cases are proved on what the sale door decides
-(``billing.services.sale_quote``) and on the clearance that carries the proof. Moved: «a UK business with
-no VAT number is named by its Companies House number» needs ``BillingProfile.uk_business_*`` (L2-B) and
-«the renewal invoice keeps the payer's VAT id» is ``test_invoice_recording`` (lot L3-C: the payer is sealed
-on the invoice the webhook records).
+Adapted: the four cases are proved on what the sale door decides (``billing.services.sale_quote``) and on
+the clearance that carries the proof. Moved: «a UK business with no VAT number is named by its Companies
+House number» needs ``BillingProfile.uk_business_*`` and «the renewal invoice keeps the payer's VAT id» is
+``test_invoice_recording`` (the payer is sealed on the invoice the webhook records).
 """
 
 from decimal import Decimal

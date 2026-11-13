@@ -1,7 +1,7 @@
-// The invoices' toolbar on ONE line from 641 px (audit 2026-10-14, R-14: «Download Excel» alone on a second
+// The invoices' toolbar on ONE line from 641 px (not «Download Excel» alone on a second
 // line at 834, 1024 and 1180 px). DataTable lays its bar out as one flex row that wraps item by item, and the
 // room left depends on the side menu, the language and what the bar holds, not on the viewport: so what fits is
-// measured on the row's own box (a ResizeObserver), as DataTable fits its columns (W-19).
+// measured on the row's own box (a ResizeObserver), as DataTable fits its columns.
 //   - When the watched item falls below the first line, the toolbar folds (`compact`: the page folds the item
 //     to its icon and narrows the search).
 //   - Folded, it tries the full toolbar again only when the row grows wider than when it folded — never back

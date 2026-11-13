@@ -7,7 +7,7 @@ accepts). This is the opposite of ``automatic_tax``, where Stripe's own registra
 it wrong silently (a German consumer paid 0 € of VAT, saas#1478).
 
 Here: ``tax_rate_specs_for`` says WHICH ``TaxRate`` a quote needs, and ``matches`` whether an existing one
-is it. The Stripe side is ``billing.stripe_service.tax_rate_ids`` (lot L2-B): the id cached under
+is it. The Stripe side is ``billing.stripe_service.tax_rate_ids``: the id cached under
 ``spec.cache_key`` (24 h: a rate never changes its value, only someone archiving it in the dashboard can), else
 the first active ``TaxRate`` of the account that ``matches``, else a new one (``display_name``,
 ``description``, ``percentage``, ``inclusive=False``, ``country``, ``tax_type``). A failed listing is NOT

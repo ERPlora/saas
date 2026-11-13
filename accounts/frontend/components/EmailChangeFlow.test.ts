@@ -61,7 +61,7 @@ describe('EmailChangeFlow', () => {
     expect(s.q('code')).not.toBeNull();
   });
 
-  it('«Send code» waits for an address that looks like one, so nothing (not even «Confirm it’s you») opens on a typo (audit 2 R-32)', async () => {
+  it('«Send code» waits for an address that looks like one, so nothing (not even «Confirm it’s you») opens on a typo', async () => {
     const s = await setup(() => reauthRequired());
     await typeInto(s.q('email-change-address'), 'no-es-un-correo');
     expect(ionProps(s.q('email-change-submit'), 'disabled')).toEqual({ disabled: true });

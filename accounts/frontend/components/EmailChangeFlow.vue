@@ -136,7 +136,7 @@ const dialogError = computed(() => {
   const error = step.value === 'code' ? (verify.error.value ?? change.error.value) : change.error.value;
   return reauthRequestOf(error) ? null : forDialog(error);
 });
-/** The address step waits for an address that looks like one (audit 2 R-32): a typo never opens «Confirm it's you». */
+/** The address step waits for an address that looks like one: a typo never opens «Confirm it's you». */
 const incomplete = computed(() => (step.value === 'address' ? !looksLikeEmail(address.value) : !code.value.trim()));
 </script>
 

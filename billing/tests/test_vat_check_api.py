@@ -364,7 +364,7 @@ class TestTheSharedRateLimit:
         vies.assert_not_called()
 
     def test_one_check_at_a_time_per_person(self, signed_in, buyer):
-        """A double click or two tabs do not hold two connections waiting on VIES (finding 3)."""
+        """A double click or two tabs do not hold two connections waiting on VIES."""
         from django.core.cache import cache
 
         from billing import services
