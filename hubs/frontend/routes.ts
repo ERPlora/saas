@@ -15,8 +15,7 @@ const routes: RouteRecordRaw[] = [
     meta: { auth: false, chrome: false },
   },
   {
-    // The panel lives under /dashboard (`paths.ts` PANEL), as the old
-    // product's `apps/dashboard/`: the bare address is its home, Businesses.
+    // The panel lives under /dashboard (`paths.ts` PANEL): the bare address is its home, Businesses.
     path: '/dashboard',
     redirect: '/dashboard/businesses',
     meta: { auth: true },

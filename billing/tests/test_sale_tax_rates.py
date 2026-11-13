@@ -1,6 +1,5 @@
 """The TWO doors that sell charge the same tax to the same buyer.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_sale_tax_rates.py`` (origin/develop, 6 tests).
 The SaaS sells a business's plan and a paid module, and each door used to decide the tax on its own:
 the same customer in Las Palmas got a right plan invoice and a module overcharged by 21 %. The decision
 lives in ONE place, ``billing.services.sale_tax_rates``, and is tested here.
@@ -63,7 +62,7 @@ class TestBothDoorsChargeTheSame:
 
 
 class TestWhatIsFreeIsNeverRefused:
-    """21 % of nothing is nothing, and the Free plan is the only way in (ADR-0154)."""
+    """21 % of nothing is nothing, and the Free plan is the only way in."""
 
     def test_a_zero_amount_needs_neither_rate_nor_address(self, business_paid_by):
         nowhere = business_paid_by(None)

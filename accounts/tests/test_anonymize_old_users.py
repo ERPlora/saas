@@ -1,10 +1,9 @@
 """ACCOUNTS-F35 · ``manage.py anonymize_old_users``: the accounts unused for two years go (GDPR art. 5.1.e, storage
 limitation; ACCOUNTS-G97, G07, G52, G61). Weekly in ``saas-cron``.
 
-Ported from ERPlora/saas ``apps/auth/users/management/commands/anonymize_old_users.py`` and its test
-``test_anonymize_skips_hub_owners.py``, with what the old one left behind (SAAS_AUTH-F15: the real email in
-the addresses, the names, the linked Google account and the sessions' addresses): an account goes as its owner deletes
-it (ACCOUNTS-F27), with all of that, and ERPlora's invoices stay with their recipient as issued.
+An account goes as its owner deletes
+it (ACCOUNTS-F27), with its addresses, its names, its linked Google account and its sessions' addresses, and
+ERPlora's invoices stay with their recipient as issued.
 
 Which: active, not staff, and its last sign-in (or, never signed in, its creation) more than ``--inactive-days`` (730)
 ago. Never one that belongs to a business that is not deleted, owner, payer or member: ``last_login`` only moves when
@@ -237,7 +236,7 @@ class TestTheRun:
         assert "already running" in output
         assert _exists(user)
         # Given back: the pool keeps the other session open, and a lock left in it stopped every later run of
-        # the process ("already running"; the billing prune test after the cleanup's twin, 2026-10-22).
+        # the process ("already running").
         assert _lock_is_free(services.lock_name("anonymize_old_users"))
 
 

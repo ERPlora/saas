@@ -3,10 +3,9 @@ filled in (the business's, when the Hub sends them, and ERPlora's as representat
 signature in the representative's box, and a page of ERPlora's own with the data protection information
 (art. 13 RGPD) the model's «TRATAMIENTO DE DATOS» asks the social collaborator for.
 
-Cases from ERPlora/saas ``apps/dashboard/fiscal/tests/test_anexo_model.py`` (origin/develop): exactly one of the
-two opening blocks is filled, chosen by the shape of the taxpayer's tax ID; an empty field keeps the model's dotted
-line; ERPlora fills both slots of the granting sentence; the RGPD page says it is not part of the model. Every party
-here is synthetic: no real data of ERPlora, and the stamp is an image drawn by the test.
+Exactly one of the two opening blocks is filled, chosen by the shape of the taxpayer's tax ID; an empty field keeps
+the model's dotted line; ERPlora fills both slots of the granting sentence; the RGPD page says it is not part of the
+model. Every party here is synthetic: no real data of ERPlora, and the stamp is an image drawn by the test.
 """
 
 import hashlib

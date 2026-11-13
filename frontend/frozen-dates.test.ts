@@ -1,7 +1,6 @@
 // A test that writes a calendar date (an ISO date-time such as a module's `valid_until`) next to code that
-// compares it with now passes until the real clock reaches that date, and then fails with nothing changed:
-// StoreShop's «Keep» vanished at 12:00 UTC on 2026-10-31 and the failing `test / frontend` blocked the deploy of
-// main. So every test file Vitest runs that writes an ISO date-time either freezes the clock
+// compares it with now passes until the real clock reaches that date, and then fails with nothing changed and
+// blocks the deploy of main. So every test file Vitest runs that writes an ISO date-time either freezes the clock
 // (`vi.useFakeTimers({ toFake: ['Date'] })` + `vi.setSystemTime(…)`, or `vi.useFakeTimers({ now: … })`) or says,
 // on a line of its own, that its dates are only data no code compares with now: `// clock: data only`.
 // A guard over the files of `vite.config.ts` `test.include`, so a new test cannot bring the trap back.

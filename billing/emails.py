@@ -1,6 +1,5 @@
-"""The mail of billing: an invoice of ERPlora was issued (ported from ERPlora/saas
-``apps/dashboard/billing/emails.py``), and a renewal could not be collected or the business was
-suspended for it (BILLING-F16).
+"""The mail of billing: an invoice of ERPlora was issued, and a renewal could not be collected or the business
+was suspended for it (BILLING-F16).
 
 Branded, as text and as HTML (``base.emails``, ACCOUNTS-F46), in the language of the invoice (its payer's). It
 LINKS to the panel's Billing page instead of attaching the PDF: the PDF is the platform hub's, asked on demand,

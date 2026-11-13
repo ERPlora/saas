@@ -1,6 +1,6 @@
-"""The turn through its route (``assistant.routing.stream``, ASSISTANT-G45; the old product kept a fallback model it
-never used, SAAS_ASSISTANT-F05): the model that answers is called first; if its provider fails before answering
-anything, the fallback model answers; once text has come, a failure ends the turn (the person already saw it).
+"""The turn through its route (``assistant.routing.stream``, ASSISTANT-G45): the model that answers is called first;
+if its provider fails before answering anything, the fallback model answers; once text has come, a failure ends the
+turn (the person already saw it).
 
 Both providers are ``FakeProvider`` servers on ``127.0.0.1``: the clients run their real HTTP."""
 

@@ -5,9 +5,10 @@ points at a plan section, a dated planning round, a delivery slice or phase, a t
 or spec, nor signs a decision with who took it and when. Their prose does not cite the codes of an internal
 audit or review either: the reader has not seen it, so the reason is written out. Nor does it explain itself
 with an issue of another of our repositories or of the old product, which the reader of this one cannot open,
-nor with a work item's short label. Markdown files are left out: they are where the plans live. A dependency
-patch is read too, and must not cite an issue of one of our repositories either: its comments land in the
-dependency's code, far from our trackers.
+nor with a work item's short label. It does not tell where a piece was copied from in the old product, nor
+cite that product's decisions and flows, nor date when something happened: the history keeps all of that.
+Markdown files are left out: they are where the plans live. A dependency patch is read too, and must not cite an
+issue of one of our repositories either: its comments land in the dependency's code, far from our trackers.
 """
 
 import ast
@@ -34,7 +35,7 @@ INTERNAL_REFERENCE = re.compile(
             r"(Plan|PLAN)(-[A-Z]+)?(\.md)? ?" + SECTION_SIGN,
             r"[Rr](onda|ound) [0-9]{4}-[0-9]{2}",
             r"[Tt]ajada S?[0-9]",
-            r"([Pp]hase|[Ff]ase) [0-9]",
+            r"([Pp]hase|[Ff]ase)[ -][0-9]",
             r"(FIX|APP|CLOSE|MIG)-[A-Z0-9]+-[A-Z0-9-]+",
             "MIGRATION" + "-TASK",
             r"BASE-G[0-9]+",
@@ -80,10 +81,48 @@ OTHER_REPO_ISSUE = re.compile(
 )
 
 # The old product's tracker was called saas as well, and its numbers run far past this repository's: one of them
-# cited here opens an unrelated issue, or none. A number well beyond the newest merged pull request is one of those.
+# cited here opens an unrelated issue, or none. This repository's numbers were below 450 when the last of those was
+# cleaned out, so a number from ``OLD_TRACKER_FROM`` on is the old tracker's. It has to rise before this repository's
+# own numbers get near it.
 THIS_TRACKER_ISSUE = re.compile(r"(?<![\w/.:-])(?:gh:)?(?:ERPlora/)?saas#([0-9]+)|\b[Ii]ssue #([0-9]+)")
-OLD_TRACKER_MARGIN = 100
-MERGED_PULL_REQUEST = re.compile(r"\(#([0-9]+)\)|^Merge pull request #([0-9]+)", re.MULTILINE)
+OLD_TRACKER_FROM = 1000
+
+# Where a piece was copied from in the old product: its branch, its paths, its commits, its functional inventory and
+# its frozen files. The old product's repository had this one's name, so that name followed by anything but one of
+# this repository's issues or its OIDC subject is the old one. Its apps lived in folders this repository's ``apps/``
+# (the catalog) does not have; ``whatsapp_inbox`` is left out because it is also one of the Hub's apps.
+OLD_PRODUCT_APPS = ("assistant", "auth", "core", "dashboard", "notify", "public", "scheduled_tasks", "speech")
+COMMIT_ID = r"(?=[0-9a-f]*[a-f])(?=[0-9a-f]*[0-9])[0-9a-f]{7,40}\b"
+OLD_PRODUCT_SOURCE = re.compile(
+    "|".join(
+        (
+            r"\borigin/develop\b",
+            r"\bapps/(?:" + "|".join(OLD_PRODUCT_APPS) + ")/",
+            r"(?:@ ?|\b(?:commit|hotfix|develop|main) )" + COMMIT_ID,
+            r"(?<![:\w-])ERPlora/saas(?![#:\w/-])",
+            r"\bfi:saas/",
+            r"\bpm/LOCKED\b",
+            r"\bWORKFLOW F[0-9]",
+        )
+    )
+)
+
+# The old product's architecture decisions, and the flows of its WORKBOOKs, all named SAAS_<AREA>-F<n>. This
+# repository's WORKBOOKs name their flows after the app (ACCOUNTS-F05) and the Hub's are its own (BASE-F114).
+OLD_PRODUCT_RECORD = re.compile(r"\bADR-[0-9]+|\bSAAS(?:_[A-Z]+)?-F[0-9]+")
+
+# When something happened or was decided, in a parenthesis of its own or after since, until, before or as of: the
+# history keeps it. A date as data (a fixture's day, an API version, a format) is written otherwise.
+ISO_DATE = r"20[0-9]{2}-[0-9]{2}-[0-9]{2}"
+DATED_NOTE = re.compile(
+    "|".join(
+        (
+            r"\(" + ISO_DATE + r"[,;)]",
+            r"(?:[,;] |^[\s#/*]*)" + ISO_DATE + r"\)",
+            r"\b(?:[Uu]ntil|[Bb]efore|[Ss]ince|[Aa]s of) " + ISO_DATE,
+        )
+    )
+)
 
 # A work item's short label, a capital letter and a number, says nothing to the reader: the fact it stood for is
 # written instead. A Django check (hubs.W002), a standard's chapter (ASVS V6.3.7), an API's version (SigV4, v25.0)
@@ -271,32 +310,15 @@ def marked_prose(suffix, text):
     return prose
 
 
-def newest_merged_number(root=REPO):
-    """The number of the newest pull request in the history, or ``None`` without one. A shallow clone, as the CI
-    checks out, holds a commit or two: the number it names, if any, says nothing of the newest, so none is read."""
-
-    def git(*args):
-        return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, check=False).stdout
-
-    if git("rev-parse", "--is-shallow-repository").strip() != "false":
-        return None
-    subjects = git("log", "-n", "200", "--format=%s")
-    numbers = [int(match.group(1) or match.group(2)) for match in MERGED_PULL_REQUEST.finditer(subjects)]
-    return max(numbers, default=None)
-
-
-def old_tracker_issue(prose, newest):
-    """The first issue cited in ``prose`` that is the old product's, known by its number; without the newest
-    merged number to compare with, none is."""
-    if newest is None:
-        return None
+def old_tracker_issue(prose):
+    """The first issue cited in ``prose`` that is the old product's, known by its number."""
     for match in THIS_TRACKER_ISSUE.finditer(prose):
-        if int(match.group(1) or match.group(2)) > newest + OLD_TRACKER_MARGIN:
+        if int(match.group(1) or match.group(2)) >= OLD_TRACKER_FROM:
             return match
     return None
 
 
-def internal_references(paths, root=REPO, newest=None):
+def internal_references(paths, root=REPO):
     found = []
     for path in paths:
         if path in FROZEN_FILES:
@@ -316,7 +338,10 @@ def internal_references(paths, root=REPO, newest=None):
                 or AUDIT_CODE.search(line_prose)
                 or OTHER_REPO_ISSUE.search(line_prose)
                 or WORK_LABEL.search(line_prose)
-                or old_tracker_issue(line_prose, newest)
+                or old_tracker_issue(line_prose)
+                or OLD_PRODUCT_SOURCE.search(line_prose)
+                or OLD_PRODUCT_RECORD.search(line_prose)
+                or DATED_NOTE.search(line_prose)
             )
             if reference or (patch and OUR_REPO_ISSUE.search(line)):
                 found.append(f"{path}:{number}: {line.strip()}")
@@ -326,10 +351,10 @@ def internal_references(paths, root=REPO, newest=None):
 def test_code_never_points_at_internal_plans():
     paths = code_files()
     assert "tests/test_no_internal_references.py" in paths, "git ls-files listed no code"
-    found = internal_references(paths, newest=newest_merged_number())
+    found = internal_references(paths)
     assert not found, (
-        "Code that points at internal plans, rounds, slices, audits, work labels or another repository's issues, or "
-        "signs a decision:\n" + "\n".join(found)
+        "Code that points at internal plans, rounds, slices, audits, work labels, another repository's issues or the "
+        "old product, signs a decision or dates a note:\n" + "\n".join(found)
     )
 
 
@@ -347,6 +372,7 @@ def test_code_never_points_at_internal_plans():
         "does not open the public web in phase" + " 1",
         "Phase" + " 2 of the tenancy",
         "en la fase" + " 1",
+        "Off (the phase" + "-1 default)",
         "the tabs (FIX" + "-LAUNCH-TABS)",
         "FIX-SAAS" + "-PANEL-UNDER-DASHBOARD-PREFIX",
         "round proposed in APP" + "-HUBS-3",
@@ -487,6 +513,7 @@ def test_a_signature_with_its_date_is_caught_and_a_name_as_data_is_not(tmp_path)
         "accounts/flow.py:3",
         "accounts/flow.py:4",
         "accounts/Card.vue:2",
+        "accounts/Card.vue:3",
     ]
 
 
@@ -676,13 +703,13 @@ def test_the_scan_leaves_this_repository_and_third_parties_alone(text):
     [
         "the address is changed in two steps (saas#2536)",
         "an address in its plain form, as today's SaaS (ERPlora/saas#1018)",
-        "Meta's, never ERPlora's (gh:saas#958)",
-        "Cookie-consent banner (issue #958)",
+        "Meta's, never ERPlora's (gh:saas#1958)",
+        "Cookie-consent banner (issue #1000)",
         "Issue #2344: the period lives on the item",
     ],
 )
 def test_the_scan_catches_an_issue_of_the_old_tracker(text):
-    assert old_tracker_issue(text, newest=424)
+    assert old_tracker_issue(text)
 
 
 @pytest.mark.parametrize(
@@ -691,43 +718,23 @@ def test_the_scan_catches_an_issue_of_the_old_tracker(text):
         "the doors' spec, which no screen covers (saas#89)",
         "the newest pull request (saas#424)",
         "an issue opened since (saas#510)",
+        "the last number below the old tracker's (saas#999)",
         "issue #12 of the list",
         "the grey #999 of the border",
+        "the red #1000 of a badge",
     ],
 )
 def test_the_scan_leaves_this_trackers_issues_alone(text):
-    assert not old_tracker_issue(text, newest=424)
+    assert not old_tracker_issue(text)
 
 
-def test_without_the_newest_number_no_issue_is_the_old_trackers():
-    assert old_tracker_issue("the address is changed in two steps (saas#2536)", newest=None) is None
-
-
-def test_the_newest_merged_number_is_read_from_the_whole_history_only(tmp_path):
-    full = tmp_path / "full"
-    full.mkdir()
-
-    def commit(subject):
-        subprocess.run(
-            ["git", "-c", "core.hooksPath=/dev/null", "-c", "user.name=t", "-c", "user.email=t@example.com"]
-            + ["commit", "--allow-empty", "-qm", subject],
-            cwd=full,
-            check=True,
-        )
-
-    assert newest_merged_number(full) is None
-    subprocess.run(["git", "init", "-q"], cwd=full, check=True)
-    assert newest_merged_number(full) is None
-    commit("The first commit")
-    assert newest_merged_number(full) is None
-    commit("A fix that was squashed (#12)")
-    commit("A fix of a fix (#9) (#10)")
-    assert newest_merged_number(full) == 12
-    commit("Merge pull request #15 from ERPlora/some-branch")
-    assert newest_merged_number(full) == 15
-    shallow = tmp_path / "shallow"
-    subprocess.run(["git", "clone", "-q", "--depth", "1", full.as_uri(), str(shallow)], check=True)
-    assert newest_merged_number(shallow) is None
+def test_an_old_tracker_issue_is_caught_without_any_history(tmp_path):
+    """The CI checks out a commit or two: the rule reads no history, so it holds there as it does here."""
+    (tmp_path / "hubs").mkdir()
+    (tmp_path / "hubs" / "plans.py").write_text(
+        "# Only staff may buy it (saas#1052).\n# The doors' spec (saas#89).\n", encoding="utf-8"
+    )
+    assert found_lines(internal_references(["hubs/plans.py"], root=tmp_path)) == [1]
 
 
 @pytest.mark.parametrize(
@@ -799,7 +806,7 @@ def test_another_repositorys_issue_or_a_work_label_is_caught_in_prose_but_not_in
         encoding="utf-8",
     )
     paths = ["public/downloads.py", "tests/e2e/panel/some.spec.ts", "public/page.html", "public/theme.css"]
-    found = internal_references(paths, root=tmp_path, newest=424)
+    found = internal_references(paths, root=tmp_path)
     assert [":".join(line.split(":")[:2]) for line in found] == [
         "public/downloads.py:1",
         "public/downloads.py:5",
@@ -819,5 +826,172 @@ def test_a_generated_file_is_read_for_plans_but_its_comments_are_its_generators(
         "/* The bucket (PLAN" + "-AWS «s3_downloads.tf»). */\n",
         encoding="utf-8",
     )
-    found = internal_references(["public/static/public/ionic-utilities.css"], root=tmp_path, newest=424)
+    found = internal_references(["public/static/public/ionic-utilities.css"], root=tmp_path)
     assert found_lines(found) == [2]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Ported from ERPlora/saas ``apps/dashboard/fiscal/nif.py`` (origin/develop).",
+        "Port of ``apps/public/downloads.py`` (origin/develop c5ca8ca). The hub's CI",
+        "``config/context_processors.py``, origin/develop c5ca8ca; only the public part",
+        "ported from ../erplora/views.py @ abc1234",
+        "taken from the Hub's catalog (hub origin/main@b128e6e8)",
+        "took the whole site down in CI (hotfix cfc4adb)",
+        "``SocialAccountAdapter`` is ported from ERPlora/saas ``ERPloraSocialAccountAdapter``",
+        "the frame of every account screen, ported from ERPlora/saas's partials",
+        "Ported from the old ``WhatsAppPhoneMapping`` (``../ERPlora/saas`` ``models.py``)",
+        "ACCOUNTS-F17 (old ``fi:saas/auth-services#revocar-dispositivo-de-confianza``)",
+        "the old guard exempted ``landing/downloads.html``, frozen in ``pm/LOCKED.md``",
+        "It carries no VAT figure on purpose (WORKFLOW F55)",
+        "(``apps/auth/users/adapters.py``)",
+        "``apps/core/emails.py`` (``brand_context``)",
+    ],
+)
+def test_the_scan_catches_where_a_piece_came_from_in_the_old_product(text):
+    assert OLD_PRODUCT_SOURCE.search(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "its read-only admin and its checks (``apps/tests/test_lint.py``)",
+        "cleaned with nh3 by the SaaS, `apps/icons.py`",
+        "the operations of the Store: billing/api.py, apps/api.py and hubs/api.py",
+        "How long the Hub reads the gateway (``hub`` ``apps/verifactu/gateway.py``)",
+        "the Hub calls them from ``apps/whatsapp_inbox/gateway.py``",
+        "the OIDC subject (repo:ERPlora/saas:ref:refs/heads/<branch>)",
+        "a request is answered for its real path (ERPlora/saas#89)",
+        "https://github.com/ERPlora/saas/pull/12",
+        "`#fff` at 15% → `#ffffff26`",
+        "digits off a hex token (``612345678a…``) and leave the rest in clear",
+        "the usage of the demo ``demo-0e2ea55e``",
+        "in ``+34612345678`` there is no word boundary",
+        "a branch off main, merged when green",
+        "the mail goes out as noreply@erplora.com",
+        "the develop server answers on port 8001",
+    ],
+)
+def test_the_scan_leaves_this_repositorys_paths_and_other_hex_alone(text):
+    assert not OLD_PRODUCT_SOURCE.search(text)
+
+
+def test_the_old_products_app_folders_are_none_of_this_repositorys():
+    assert not [name for name in OLD_PRODUCT_APPS if (REPO / "apps" / name).exists()]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Sign-up is open, as in today's SaaS (ADR-0154)",
+        "of the installable app (ADR-0196/0160/0180)",
+        "the turn passes through and is forgotten (ADR-0149 of the old product)",
+        "with a Google that vouches for the account's own address (SAAS_AUTH-F04)",
+        "(old SAAS_ASSISTANT-F22 step 2 and 4)",
+        "which kept no record of it (old-saas:SAAS_PUBLIC-F72)",
+        "counted by the address (SAAS-F05)",
+    ],
+)
+def test_the_scan_catches_the_old_products_decisions_and_flows(text):
+    assert OLD_PRODUCT_RECORD.search(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Trust this browser for 14 days (ACCOUNTS-F05)",
+        "the Hub's BASE-F114 gives back what it lost",
+        "for the Hub's WHATSAPP_INBOX-F27 (Meta's verdict and reason)",
+        "an automation's step (FLOW-F38)",
+        "the ADRs of the platform",
+        "the SAAS-wide setting",
+    ],
+)
+def test_the_scan_leaves_this_repositorys_and_the_hubs_flows_alone(text):
+    assert not OLD_PRODUCT_RECORD.search(text)
+
+
+def test_this_repositorys_flows_are_not_named_as_the_old_products():
+    headings = [
+        line
+        for workbook in REPO.glob("*/WORKBOOK*.md")
+        for line in workbook.read_text(encoding="utf-8").splitlines()
+        if line.startswith("### ")
+    ]
+    assert headings, "no WORKBOOK flow was read"
+    assert not [heading for heading in headings if OLD_PRODUCT_RECORD.search(heading)]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "symbol that was not on main took the whole site down in CI (2026-10-14, the hotfix).",
+        "kept in the admin (2026-10-15).",
+        "The modules a business may choose to turn on (2026-10-24; what they require does not count)",
+        "the public repo ``ERPlora/app`` (Linux, 2026-10-27)",
+        "the default since 2026-10-23",
+        "until 2026-10-28 the panel asked twice",
+        "as of 2026-11-01 the listing is live",
+        "before 2026-10-15 the seed carried it",
+        " # 2026-11-03), so it is named as what it is",
+        "   2026-06-11). Same pattern as the assistant's drawer",
+    ],
+)
+def test_the_scan_catches_a_dated_note(text):
+    assert DATED_NOTE.search(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "# Generated by Django 6.1.2 on 2026-10-13 11:20",
+        "What the Hub measured yesterday (the clock is 2026-10-14 below).",
+        'the rows of each day (``"2026-10-13"`` → ``[{id, s3_bytes, …}]``)',
+        "the entry's page printed it raw («2026-10-23 11:46:10.268295+02:00»)",
+        "the API version the SDK pins (2026-09-30: the period on the subscription items)",
+        "``seal B27593136, expires 2027-10-15``: what it is",
+        "Since ``2025-03-31.basil`` the period lives on ``items.data[]``",
+        "The tax data of 2026-10-14: the EU-27 general rates",
+        "a timestamp in UTC (2026-10-13T11:20:00Z)",
+        "the period (2026-10-01 → 2026-10-31) of the invoice",
+    ],
+)
+def test_the_scan_leaves_a_date_as_data_alone(text):
+    assert not DATED_NOTE.search(text)
+
+
+def test_the_old_product_and_a_dated_note_are_caught_in_prose_but_not_in_data(tmp_path):
+    (tmp_path / "public").mkdir()
+    lines = (
+        '"""Port of ``apps/public/downloads.py`` (origin/develop c5ca8ca)."""',
+        'SOURCE = "origin/develop"',
+        "# Sign-up is open (ADR-0154).",
+        'FLOW = "SAAS_AUTH-F04"',
+        "# The default since 2026-10-23.",
+        'DAY = "(2026-10-23)"',
+        "# The rows of each day (``2026-10-13`` → its figures).",
+        "# The Hub's own icons (``apps/icons.py``).",
+    )
+    (tmp_path / "public" / "downloads.py").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (tmp_path / "public" / "page.html").write_text(
+        "{# Port of apps/public/pricing/templates/pricing/index.html (origin/develop) #}\n"
+        '<p data-flow="SAAS_AUTH-F04">2026-10-23</p>\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "public" / "Card.vue").write_text(
+        '<script setup lang="ts">\n'
+        "// Ported from ERPlora/saas's `account/_auth_header.html`.\n"
+        "const since = '(2026-10-14)';\n"
+        "it('keeps the browser trusted (old SAAS_AUTH-F06)', () => {});\n",
+        encoding="utf-8",
+    )
+    found = internal_references(["public/downloads.py", "public/page.html", "public/Card.vue"], root=tmp_path)
+    assert [":".join(line.split(":")[:2]) for line in found] == [
+        "public/downloads.py:1",
+        "public/downloads.py:3",
+        "public/downloads.py:5",
+        "public/page.html:1",
+        "public/Card.vue:2",
+        "public/Card.vue:4",
+    ]

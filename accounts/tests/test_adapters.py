@@ -1,4 +1,4 @@
-"""allauth adapters of saas-next: sign-up is open (the unified login and Google, ADR-0154), and Google
+"""allauth adapters of saas-next: sign-up is open (the unified login and Google), and Google
 links to an account only by signing in with it."""
 
 import pytest
@@ -29,8 +29,7 @@ def test_allauth_mails_carry_no_site_prefix_in_the_subject():
     assert AccountAdapter().format_email_subject("Reset your password") == "Reset your password"
 
 
-# Linking a Google account to an existing account (ported from ERPlora/saas
-# `apps/auth/users/tests/test_google_connect_needs_the_owner.py`, SAAS_AUTH-F04).
+# Linking a Google account to an existing account.
 #
 # The attack: someone with a minute in front of an open session finished allauth's «connect»
 # process with THEIR OWN Google account. allauth asked for nothing but the session, so the

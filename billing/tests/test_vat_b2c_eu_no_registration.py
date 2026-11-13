@@ -1,7 +1,6 @@
 """A silent zero from Stripe does not make a subject sale VAT-free.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_vat_b2c_eu_no_registration.py``
-(origin/develop, 13 tests). The zero measured on a real sale comes back as ``not_collecting``: below the
+The zero measured on a real sale comes back as ``not_collecting``: below the
 €10,000 EU threshold that sale owes Spanish VAT, so a 0 % invoice is a misconfiguration leaking
 through. There is no zero we accept on a sale we qualified as subject: the amount collected is
 treated as VAT-included (TJUE *Tulică* C-249/12 and C-250/12; art. 78.Cuatro LIVA) and the discrepancy

@@ -1,8 +1,7 @@
 {% extends "public/public_base.html" %}
 {% load i18n %}
 {% comment %}
-  / — the landing. Port of apps/public/landing/templates/landing/home/index.html (origin/develop)
-  with its eleven sections in the same order (public/landing/home/). The JSON-LD is serialised by
+  / — the landing, its eleven sections in public/landing/home/. The JSON-LD is serialised by
   the view (public/structured_data.py): the price comes from Plan and the escaping of a closing
   script tag cannot depend on remembering it. Data: public/landing.py. Contract:
   public/tests/test_landing.py.

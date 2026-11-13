@@ -6,10 +6,8 @@ which leaves holes when a transaction rolls back). Its row lock serialises two i
 waits for the first to commit or roll back. The issue date is read AFTER the lock is held, so a later number
 never carries an earlier date, and a new year starts the series again at 1.
 
-Rewritten from ERPlora/saas ``Invoice.generate_invoice_number`` (``YYYYMMDD-NNNN``, a ``select_for_update`` of
-the day's last invoice) and ``test_invoice_environment`` (its own series per kind): the series are now
-``ERP-<year>-<5 digits>`` for invoices and ``ERPR-<year>-<5 digits>`` for rectifying ones (their own series,
-RD 1619/2012 art. 15.5). The AEAT test environment is the platform hub's, not a series.
+The series are ``ERP-<year>-<5 digits>`` for invoices and ``ERPR-<year>-<5 digits>`` for rectifying ones (their own
+series, RD 1619/2012 art. 15.5). The AEAT test environment is the platform hub's, not a series.
 """
 
 import threading

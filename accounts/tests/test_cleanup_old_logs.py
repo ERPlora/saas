@@ -1,10 +1,8 @@
 """ACCOUNTS-F37 · ``manage.py cleanup_old_logs``: the audit log keeps 90 days (GDPR art. 5.1.e, storage limitation;
 ACCOUNTS-G08, G53, G62 and G28, its task). Daily in ``saas-cron``.
 
-Ported from ERPlora/saas ``apps/auth/users/management/commands/cleanup_old_logs.py`` and its tests
-(``tests/unit/test_gdpr_retention_policy.py``, ``test_gdpr_retention_noinput.py``): the entries older than
-``--retention-days`` (90) go, the younger stay, ``--dry-run`` only counts. Changed: no question is asked (the old
-``--no-input`` is the only way: a prompt killed the scheduled run), one batch per transaction instead of one
+The entries older than ``--retention-days`` (90) go, the younger stay, ``--dry-run`` only counts. No question is
+asked (a prompt would kill the scheduled run), one batch per transaction instead of one
 transaction for the whole run, and the advisory lock of ``anonymize_old_users`` so two runs never overlap.
 """
 
@@ -139,7 +137,7 @@ def test_a_second_run_while_one_holds_the_lock_does_nothing(entry):
 
     assert "already running" in output
     # Given back: the pool keeps the other session open, and a lock left in it stopped every later run of the
-    # process ("already running"; the billing prune test after this one, 2026-10-22).
+    # process ("already running").
     assert _lock_is_free(services.lock_name("cleanup_old_logs"))
     assert _left(old) == [True]
 

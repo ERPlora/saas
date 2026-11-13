@@ -2,8 +2,7 @@
 (``/internal/assistant/*`` and ``/internal/speech/*``) is the Hub's alone, signed as every ``/internal`` call
 (``accounts.signing``), and names the business in ``hub`` (its address or its id; a demo, by its ``demo-…`` address).
 
-Cases of the old product's SAAS_ASSISTANT-F01 (``IsHubMachine``/``IsHubMember``, ``api_key_hub_mismatch``,
-``hub_not_found``): here the credential is the platform's signature, never a key of a business, so a business can
+The credential is the platform's signature, never a key of a business, so a business can
 never be named by another one's credential; what is left is the signature and the business's state. The rate limit
 of a business is spent only after both pass (otherwise anybody could spend a business's budget with its id).
 """

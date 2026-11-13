@@ -1,7 +1,6 @@
 // `/password/reset/key/:resetKey`: the page the reset link of the mail opens (allauth's
-// `HEADLESS_FRONTEND_URLS`), over allauth.headless: ERPlora/saas's `account/password_reset_from_key.html`,
-// same structure and texts. It checks the key first (an expired or used link says so and offers a new
-// one), then asks for the new password; the password rules are allauth's (Django's validators), whose
+// `HEADLESS_FRONTEND_URLS`), over allauth.headless. It checks the key first (an expired or used link says so
+// and offers a new one), then asks for the new password; the password rules are allauth's (Django's validators), whose
 // messages paint under the input. Done → the sign-in with «Your password has been changed», or on at
 // once when the server signs the person in.
 import { IonButton, IonInput } from '@ionic/vue';

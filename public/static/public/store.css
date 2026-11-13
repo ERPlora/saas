@@ -1,7 +1,6 @@
 /* store.css — the app store's pages (public/templates/public/store/): the filter bar of /apps/,
  * the section headings, the app page's header and tabs, its cards and the documentation tab.
- * Port of the inline <style> of modules/pages/index.html and the Tailwind classes of
- * modules/pages/detail.html (origin/develop), over the --ep-* tokens (theme.css). Linked by the
+ * Over the --ep-* tokens (theme.css). Linked by the
  * store's templates ({% block extra_css %}); the cards are public/components/product_card.html.
  *
  * An app's icon (`icon_svg`, painted inline) keeps the classes of `ionicons/icons`; ion-icon's

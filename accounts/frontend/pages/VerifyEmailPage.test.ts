@@ -1,5 +1,5 @@
-// `/verify-email`: the one page of the codes allauth mails, over allauth.headless, in the frame of the
-// template `account/confirm_email_verification_code.html` (ERPlora/saas). Every sign-in with a password
+// `/verify-email`: the one page of the codes allauth mails, over allauth.headless, in the auth frame.
+// Every sign-in with a password
 // waits there: for the code that proves the address of a sign-up or of an address never
 // proven (`verify_email`, posted to `…/auth/email/verify`), or for the sign-in code mailed to every other
 // account (`login_by_code`, posted to `…/auth/code/confirm`). The page reads which from the session. Then

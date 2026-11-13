@@ -1,7 +1,6 @@
-"""Promo codes: extra trial days at checkout (ADR-0107), and ``billing.promo.check``.
+"""Promo codes: extra trial days at checkout, and ``billing.promo.check``.
 
-Ported from ERPlora/saas ``hubs/subscriptions/tests/test_promo_codes.py`` (origin/develop, 23 tests): a code
-grants free TIME, never a lower price (a Stripe coupon burns during the trial, and a discount turns the
+A code grants free TIME, never a lower price (a Stripe coupon burns during the trial, and a discount turns the
 renewal into a price hike). It is case-insensitive and trimmed; an unknown, inactive, expired or exhausted
 code resolves to nothing and never blocks a sale; the counter goes up once per completed checkout and
 never past its cap, even under races (the cap is in the UPDATE's WHERE).

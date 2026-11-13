@@ -1,9 +1,7 @@
 """ERPlora's invoices to its customers, as rows: ``billing.Invoice`` and ``billing.InvoiceLine``.
 
-Ported from ERPlora/saas ``apps/dashboard/billing/tests/`` (origin/develop): ``test_invoice_money_cents``
-(integer cents, the euro is a read-only view, the header is the exact sum of the lines),
-``test_invoice_dedup`` (one invoice per Stripe invoice, enforced by the database), ``test_money_contract``
-(EUR by default) and ``test_hub_invoices.TestInvoiceModel``; and from ``fiscal/tests/test_vies_contract.py``
+Integer cents (the euro is a read-only view, the header is the exact sum of the lines), one invoice per
+Stripe invoice (enforced by the database), EUR by default and
 the decision half of «The note never lies» (the sentence itself is printed by the platform hub's PDF).
 
 Dropped, with their reason: the admin typing euros into an editable invoice (an invoice here is never

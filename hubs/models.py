@@ -143,7 +143,7 @@ class Plan(TranslatedFields):
         _("only as an upgrade"), default=False, help_text=_("Only offered as an upgrade, never at sign-up.")
     )
     internal_only = models.BooleanField(
-        _("internal"), default=False, help_text=_("Never offered to customers; only staff may buy it (saas#1052).")
+        _("internal"), default=False, help_text=_("Never offered to customers; only staff may buy it.")
     )
     stripe_product_id = models.CharField(_("Stripe product"), max_length=255, blank=True)
     stripe_price_id = models.CharField(

@@ -5,7 +5,7 @@
   events, schemas and the ``saas-cron`` commands call operations or service functions). Allowed besides:
   ``models.py`` (managers and ``clean``), ``admin.py`` (Django's admin), the migrations and the seed
   loader of the taxonomy (``seed_taxonomy``: reference data, run by hand). The plans have none: they live in
-  the database, seeded by migration ``0013`` and kept in the admin (2026-10-15).
+  the database, seeded by migration ``0013`` and kept in the admin.
 - Nowhere ``using=``, ``.using(`` nor ``connections[``: one database (the SaaS has no tenancy).
 - ``hubs`` never names the catalog's ``App`` or ``AppDoc`` (``apps/tests/test_lint.py``): it reads apps
   through ``apps.queries`` and the operations ``apps.app.*``.

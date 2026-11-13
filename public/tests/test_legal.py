@@ -562,8 +562,8 @@ def test_privacy_counts_the_voice_provider_among_the_transfers_outside_the_eea(c
 
 # --- The assistant's web search: Brave Search ------------------------------------------------------------------------
 #
-# Brave leaves the queries out of its data processing addendum and keeps them up to 90 days (its privacy notice, dated
-# 2026-11-03), so it is named as what it is: a recipient of its own, not one of the art. 28 processors of section 5, and
+# Brave leaves the queries out of its data processing addendum and keeps them up to 90 days (its privacy notice
+# of 2026-11-03), so it is named as what it is: its own recipient, not one of the art. 28 processors of section 5, and
 # not under the Standard Contractual Clauses of section 6. Nothing may promise that a query never carries personal data:
 # that is a rule given to the model (``assistant.server_tools._SEARCH_QUERY_RULE``), no guarantee.
 

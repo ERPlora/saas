@@ -295,7 +295,7 @@ Pasos:
 
 - `hubs/services.py` crea el negocio.
 """
-#: What the Hub's own ``base.catalog`` prints for it (``en_header(source_hash(user_part(…)))``, hub origin/main@b128e6e8).
+#: What the Hub's own ``base.catalog`` prints for it (``en_header(source_hash(user_part(…)))``).
 COMMENTED_WORKBOOK_HEADER = (
     "<!-- generated from WORKBOOK.md sha256:a0e1874be64c5a435d434a10c04365c9766ff69e0ba0ad3f607d87fe11b46149 -->"
 )

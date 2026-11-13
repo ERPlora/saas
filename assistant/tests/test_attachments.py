@@ -5,9 +5,8 @@ The Hub sends each file inside the message, in base64: erplora.com downloads not
 image is fetched, so there is no door to the internal network) and writes nothing to disk. Each attachment has a
 size limit (``MAX_ATTACHMENT_BYTES`` of base64, about 9 MB; over it the turn is refused with 413, never cut) and a
 conversation a number of them; their data does not count in the 1 MB of text. What cannot be read becomes a note for
-the model, never a failed turn: the old product's ``internal_error`` with a corrupt PDF, ``.docx`` or ``.xlsx``
-(SAAS_ASSISTANT-F18, «parcial») is a test here. Cases of the old ``test_document_ingest.py`` and
-``test_stateless_bridge.py::TestPayloadCap``; the file's name never reaches a log.
+the model, never a failed turn, even with a corrupt PDF, ``.docx`` or ``.xlsx``; the file's name never reaches a
+log.
 """
 
 import base64

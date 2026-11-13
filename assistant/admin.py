@@ -2,7 +2,7 @@
 
 - «AI providers» (ASSISTANT-G15, G59): each provider with its keys and its models inline. A key is typed once in a
   field that never shows it again; the page and the list only say its last four characters, or why the provider has
-  no usable key (old SAAS_ASSISTANT-F22 painted it whole). Keys are saved and deleted through
+  no usable key. Keys are saved and deleted through
   ``assistant.credential.save|delete`` as the member of the staff who clicks (``staff_context``), which also checks
   the model permission.
 - «Model that answers» (G27, G17, G10, G60): the one policy on one page (its list opens it), saved with

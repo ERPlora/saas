@@ -1,8 +1,6 @@
 """The site's 404 and 500 pages (``handler404``/``handler500``).
 
-Ported from ERPlora/saas ``apps/dashboard/core/views.py`` (``custom_404_handler``,
-``custom_500_handler``) and ``apps/dashboard/core/tests/test_error_page_db_connection.py``
-(origin/develop c5ca8ca). Each half keeps its own look: the public web answers its templates
+Each half keeps its own look: the public web answers its templates
 (``public/404.html``, ``public/500.html``) and the private half (sign-in, the jump to a hub, the
 panel, the API) Django's default pages (``templates/404.html``, ``templates/500.html``, with the
 error layout of the sign-in pages; ``base/tests/test_error_pages.py``). These tests stand in a

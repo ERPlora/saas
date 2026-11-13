@@ -501,9 +501,8 @@ msgid "Only offered as an upgrade, never at sign-up."
 msgstr "Solo se ofrece como mejora, nunca en el alta."
 
 #: models.py:157
-msgid "Never offered to customers; only staff may buy it (saas#1052)."
-msgstr ""
-"Nunca se ofrece a clientes; solo el personal puede contratarlo (saas#1052)."
+msgid "Never offered to customers; only staff may buy it."
+msgstr "Nunca se ofrece a clientes; solo el personal puede contratarlo."
 
 #: models.py:160
 msgid "Stripe price of the monthly option."

@@ -746,7 +746,7 @@ class TestDelete:
         # The account reads Spanish.
         assert "recuperar" in message.body.lower()
 
-    # The deletion mail asks the Hub first whether a copy will come (ruling of 2026-10-30 on saas#168).
+    # The deletion mail asks the Hub first whether a copy will come.
     COPY_LINE = "Descarga una copia completa de sus datos"
 
     def test_the_mail_leads_to_the_copy_when_the_hub_will_make_one(

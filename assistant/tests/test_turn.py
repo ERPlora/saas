@@ -3,7 +3,7 @@ ASSISTANT-F13 (G44, G07) · the same turn answered at once, in JSON; ASSISTANT-F
 
 ``POST /internal/assistant/chat/stream`` answers ``text/event-stream`` (over HTTP, no channels: the old WebSocket,
 ``api/consumer.py``, is not ported) and ``POST /internal/assistant/chat`` the whole turn in one JSON. The conversation
-is the Hub's (the person's browser owns it, ADR-0149): erplora.com puts the Hub's ``instructions`` as the only system
+is the Hub's (the person's browser owns it): erplora.com puts the Hub's ``instructions`` as the only system
 message, keeps the last 100 messages, offers the Hub's tools and sends the turn to the model of the routing policy
 (ASSISTANT-F06), passing to its fallback if the provider fails before answering. What can be decided before the model
 is called is an HTTP status (quota, size, no model); a failure of the provider once the answer started is an ``error``
@@ -79,7 +79,7 @@ class TestTheLiveAnswer:
         assert got[4] == {"type": "usage", "used": 1, "limit": 30, "resets_at": got[4]["resets_at"], "demo": False}
 
     def test_the_stream_goes_through_the_asgi_path_as_an_async_iterator(self, client, internal, business, answering, fake_provider):
-        """ADR-0164 of the old product: a sync wrapper of the stream deadlocked the turn under daphne."""
+        """A sync wrapper of the stream would deadlock the turn under daphne."""
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Hi"))
 
         response = door(client, STREAM, turn(business))
@@ -206,8 +206,8 @@ class TestTheHubsTools:
         assert usage_row(business).tokens_input == 200
 
     def test_the_last_message_of_the_month_still_gets_its_tools_answered(self, client, internal, business, answering, fake_provider):
-        """SAAS_ASSISTANT-F11 of the old product: the turn that followed a tool was refused when the message that asked
-        for it was the month's last one; the person saw the tool run and no answer."""
+        """The turn that follows a tool is answered even when the message that asked for it was the month's last one:
+        otherwise the person sees the tool run and no answer."""
         AssistantUsage.objects.create(hub=business, month=queries.month_of(timezone.now()), messages=29)
         conversation, token = self._asked(client, business, fake_provider)
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Done."))

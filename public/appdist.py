@@ -1,8 +1,7 @@
 """The installable app ``com.erplora.app``: the latest version, its downloads, its page ``/app/`` and
 the «ways to try ERPlora» page ``/download/``.
 
-Port of ``apps/public/appdist/views.py`` and ``apps/public/landing/downloads_views.py``
-(origin/develop c5ca8ca). Together they are the whole install and update channel of the fleet:
+Together they are the whole install and update channel of the fleet:
 
 * ``published_release`` — which build we publish right now. The hub's release CI writes
   ``downloads/app/latest/latest.json`` next to the installers (an installer does not say which
@@ -13,16 +12,16 @@ Port of ``apps/public/appdist/views.py`` and ``apps/public/landing/downloads_vie
   does not exist.
 * ``download`` — ``GET /app/download/<platform>/``: the store when its listing is live, else the
   platform's own channel, always the latest build: Linux's AppImage from the latest GitHub release
-  of ``ERPlora/app`` (``public.downloads.GITHUB_RELEASE_URLS``, 2026-10-27), Windows' installer from
+  of ``ERPlora/app`` (``public.downloads.GITHUB_RELEASE_URLS``), Windows' installer from
   the bucket's ``latest/``. It is the only download door: where each channel lives is said once
   (``public.downloads``), and it is an address of ``erplora.com``, which the installed app may
-  open (ADR-0255), where a presigned URL of the bucket is not.
+  open, where a presigned URL of the bucket is not.
 * ``index`` — ``GET /app/``, the app's public page; ``ways_to_try`` — ``GET /download/``.
 
-**Android has no fallback**: its only channel is Google Play (ADR-0160). It is neither in
+**Android has no fallback**: its only channel is Google Play. It is neither in
 ``_APP_PLATFORM_FILES`` nor in ``GITHUB_RELEASE_URLS``, so without a store it gets a page of ours
-while ``GOOGLE_PLAY_LISTING_LIVE`` is off, and never the APK. The listing is live since
-2026-10-01 and the switch defaults to on: the page only comes back if Google pulls the listing.
+while ``GOOGLE_PLAY_LISTING_LIVE`` is off, and never the APK. The listing is live and the switch
+defaults to on: the page only comes back if Google pulls the listing.
 """
 
 import json

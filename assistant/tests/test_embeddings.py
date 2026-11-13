@@ -1,10 +1,10 @@
 """ASSISTANT-F20 (ASSISTANT-G54, G09, G30) · Compute the fingerprints of some texts for the Hub's index: the Hub
 never runs a model, so it sends ``texts`` (1 to 256) to ``POST /internal/assistant/embeddings`` and gets a vector per
 text, in the same order. erplora.com uses the key of the services' provider (``ASSISTANT_SERVICE_PROVIDER``, of
-OpenAI's API) and always its model (``EMBEDDING_MODEL``): the Hub no longer chooses it (the old product let the
-caller pick any model, of very different price, SAAS_ASSISTANT-F17 «parcial»). It does not look at the allowance
-(indexing is not a message) and adds the tokens and their cost to the business's month. Cases of the old
-``test_embeddings_endpoint.py``; OpenAI is the local fake.
+OpenAI's API) and always its model (``EMBEDDING_MODEL``): the Hub never chooses it (models differ widely in
+price). It does not look at the allowance
+(indexing is not a message) and adds the tokens and their cost to the business's month. OpenAI is the local
+fake.
 """
 
 import logging

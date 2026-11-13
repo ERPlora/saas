@@ -1,6 +1,5 @@
 """The audit of the table that prices every sale (BILLING-F04).
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_audit_tax_rules.py`` (origin/develop, 12 cases).
 The rate a sale is charged comes from ``billing.TaxRule``; the table can break without anything shouting —
 the issuer's rule deleted (the backstop in ``vat.py`` keeps charging, but the rate stops being editable),
 a territory outside VAT unticked from the admin list (Las Palmas would take the mainland 21 %, so the sale is

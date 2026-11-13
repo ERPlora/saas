@@ -1,7 +1,5 @@
 """The spelling of a tax id, and the shape of a Spanish one.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/nif.py`` (origin/develop).
-
 ``normalise_nif`` is the single spelling of every tax id billing reads, VAT numbers included
 (``billing.vies.normalise``): ``b-12.345.678`` and ``B12345678`` are the same taxpayer, and dots, dashes
 and spaces are typography, not identity.

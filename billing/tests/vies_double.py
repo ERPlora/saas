@@ -17,7 +17,7 @@ FAKE_VAT = (
     "DE999999999"  # well formed, nonexistent: the one Stripe lets through by its format
 )
 
-#: VIES answering «valid», with the proof (recorded shape, 2026-08-25).
+#: VIES answering «valid», with the proof (a recorded answer).
 VALID = {
     "countryCode": "DE",
     "vatNumber": "812871812",

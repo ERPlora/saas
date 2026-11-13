@@ -1,5 +1,4 @@
-"""Who may crawl what: the private half of erplora.com is never indexable (ported from ERPlora/saas
-``apps/public/crawlers.py`` and ``landing/tests/test_ai_crawlers.py``, origin/develop c5ca8ca).
+"""Who may crawl what: the private half of erplora.com is never indexable.
 
 robots.txt (``public/seo.py``, ``test_seo.py``) is only a polite request; the ``X-Robots-Tag``
 header is the enforcement. In saas-next the private half is the account and sign-in flows (allauth,

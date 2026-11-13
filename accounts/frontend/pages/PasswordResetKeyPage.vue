@@ -1,7 +1,6 @@
 <script setup lang="ts">
 // `/password/reset/key/:resetKey`: the page the reset link of the mail opens (allauth's
-// `HEADLESS_FRONTEND_URLS`), over allauth.headless: ERPlora/saas's
-// `account/password_reset_from_key.html`, same structure and texts. It checks the key first: an
+// `HEADLESS_FRONTEND_URLS`), over allauth.headless. It checks the key first: an
 // expired or used link says so («Request New Link», «Back to Login»), as the template's
 // `token_fail` did. The new password goes in one field with its show toggle (allauth.headless takes
 // one `password`), with the hint of Account's «Change password» under it (ACCOUNTS-G121: the rules in

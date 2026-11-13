@@ -1,16 +1,14 @@
 """One cluster, one backup window, one sentence everywhere.
 
-Port of ERPlora/saas ``apps/public/tests/test_backup_promise_is_consistent.py`` (origin/develop
-c5ca8ca, 3). ``hubs/tests/test_plan_catalogue.py`` pins the promise inside ``Plan.features``; this
+``hubs/tests/test_plan_catalogue.py`` pins the promise inside ``Plan.features``; this
 sweeps the copy of the public templates (and their Spanish, which lives in the catalog), so the next
 «daily backups» is caught wherever somebody writes it: Aurora backs up continuously, with
 point-in-time recovery inside its retention window (aws-next), never «daily».
 
-What changed: the old guard exempted ``landing/downloads.html``, frozen in ``pm/LOCKED.md``. The four
-templates ported before that said «daily backups» now say what aws-next does (Aurora,
-``backup_retention_period = 14``, continuous with point-in-time recovery), in the same words as the
-plans of the panel (``hubs/migrations/0013_plans_in_the_database.py``), so ``PENDING`` is empty. The list
-stays self-retiring, as the old one was: an exemption whose template no longer makes the claim makes
+The templates say what the platform does (Aurora, ``backup_retention_period = 14``, continuous with
+point-in-time recovery), in the same words as the plans of the panel
+(``hubs/migrations/0013_plans_in_the_database.py``), so ``PENDING`` is empty. The list is self-retiring: an
+exemption whose template no longer makes the claim makes
 ``test_the_exemptions_still_earn_their_place`` fail until it leaves the list.
 
 saas#408: the window alone promised a whole return to any moment, which a business that invoices with VeriFactu in

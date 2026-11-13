@@ -1,16 +1,14 @@
 """Second factor of saas-next: TOTP and recovery codes (``allauth.mfa``), behind ``ACCOUNTS_MFA_ENABLED``.
 
 ``allauth.mfa`` is always installed (its table always exists); the flag decides whether it is in use.
-Off (the phase-1 default): no login asks for a code, not even for an account with a TOTP row, and
+Off (the default): no login asks for a code, not even for an account with a TOTP row, and
 the 2FA endpoints answer 404 (JSON under ``/_allauth/``, which is how the Vue pages know). On: an
 account with an authenticator app is asked for the app's code after the password and the code mailed
 at every sign-in (or after Google), the jump to a hub needs that second factor in the session if the
 account has one and the staff's jump to the Hub admin (``hub-admin``) always needs it. Either way
 ``/admin/login/`` hands over to allauth's login (the launcher's).
 
-Cases ported from ERPlora/saas ``origin/develop``: ``test_mfa_login_flow.py``,
-``test_wrong_totp_code.py`` (a «wrong» code is chosen so it cannot be the live one),
-``test_admin_requires_second_factor.py`` and ``test_mfa_settings.py``.
+A «wrong» code is chosen so it cannot be the live one.
 """
 
 import asyncio
@@ -212,8 +210,8 @@ class TestSettings:
         assert "accounts.mfa.MFAFlagMiddleware" in django_settings.MIDDLEWARE
 
     def test_a_browser_is_trusted_for_14_days_and_only_by_erplora_com(self, settings):
-        """ACCOUNTS-F05: «Trust this browser» (old SAAS_AUTH-F06), allauth's own: a signed cookie, never sent to
-        the businesses' subdomains even if the session cookie one day is (ERPlora/saas test_shared_ip_budget)."""
+        """ACCOUNTS-F05: «Trust this browser», allauth's own: a signed cookie, never sent to the businesses'
+        subdomains even if the session cookie one day is."""
         settings.SESSION_COOKIE_DOMAIN = ".erplora.com"
 
         assert mfa_settings.TRUST_ENABLED is True
@@ -409,9 +407,8 @@ def _sign_out(client):
 
 
 class TestTrustThisBrowser:
-    """ACCOUNTS-F05 (old SAAS_AUTH-F06; ERPlora/saas ``test_mfa_login_flow.py`` and ``test_mfa_settings.py``): after
-    the app's code the login asks whether to trust this browser for 14 days; there, the next sign-ins skip the app's
-    code (never the mailed one) until the password or the authenticator app changes."""
+    """ACCOUNTS-F05: after the app's code the login asks whether to trust this browser for 14 days; there, the next
+    sign-ins skip the app's code (never the mailed one) until the password or the authenticator app changes."""
 
     def test_after_the_apps_code_the_login_waits_for_the_answer(self, mfa_on, browser, ana, secret, password):
         _sign_in(browser, ana.email, password)
@@ -531,8 +528,7 @@ class TestTrustWithTheFlagOff:
 
 
 class TestLoginWithTheFlagOn:
-    """Ported from ERPlora/saas ``test_mfa_login_flow.py``: the app's code comes after the password and the
-    code mailed to the account, in allauth's order of stages."""
+    """The app's code comes after the password and the code mailed to the account, in allauth's order of stages."""
 
     def test_an_account_with_an_authenticator_app_is_asked_for_its_code_and_not_signed_in_yet(
         self, mfa_on, browser, ana, secret, password
@@ -597,7 +593,7 @@ class TestLoginWithTheFlagOff:
     def test_an_account_with_an_authenticator_app_signs_in_without_the_apps_code(
         self, browser, ana, secret, password
     ):
-        # The phase-1 default: a TOTP row kept from a time the flag was on asks for nothing more than the
+        # The default: a TOTP row kept from a time the flag was on asks for nothing more than the
         # password and the mailed code.
         response = _first_factors(browser, "ana@example.com", password)
 
@@ -790,7 +786,7 @@ class TestOpenInTheHubAdminWithTheFlagOn:
 
 
 class TestAdminLoginWithTheFlagOn:
-    """Ported from ERPlora/saas ``_admin_login``: Django's admin login skips allauth's stages (no code),
+    """Django's admin login skips allauth's stages (no code),
     so every way into the admin is the SaaS's sign-in (the launcher's, ``/launch``, allauth.headless)."""
 
     def test_it_hands_over_to_the_sign_in_keeping_where_the_staff_were_going(self, mfa_on, client):
@@ -944,7 +940,7 @@ def _until(response):
 
 
 class TestTheTrustOfThisBrowser:
-    """ACCOUNTS-F17 (old ``fi:saas/orgs-users#dispositivos-de-confianza-listar``: the current one marked): Security →
+    """ACCOUNTS-F17 (the current browser marked): Security →
     Two-factor authentication says whether this browser is trusted, and until when. erplora.com keeps no list of the
     trusted browsers (the trust lives in each one, signed, as allauth gives it), so only this one can be told."""
 
@@ -994,8 +990,7 @@ class TestTheTrustOfThisBrowser:
 
 
 class TestStopTrustingEveryBrowser:
-    """ACCOUNTS-F17 (old ``fi:saas/auth-services#revocar-dispositivo-de-confianza``; ERPlora/saas
-    ``_invalidate_mfa_trust``): «Stop trusting all browsers» ends the trust of every browser at once, as Google's and
+    """ACCOUNTS-F17: «Stop trusting all browsers» ends the trust of every browser at once, as Google's and
     Microsoft's «Revoke all trusted devices». allauth keeps no list to cut from: the trust is bound to the account's
     password and authenticators, so the authenticators get new ids with the same secret and codes (nobody sets the app
     up again, nor loses the codes written down)."""

@@ -1,7 +1,6 @@
 """``python manage.py retax_subscriptions``: every live subscription takes today's rates (BILLING-F02, F06).
 
-Ported from ERPlora/saas ``fiscal.retax_live_subscriptions`` (``oss_subscription_retax.py``; a daily
-Celery beat task there, a scheduled ECS task here). The owner's save of the billing details retaxes at once;
+A daily scheduled ECS task. The owner's save of the billing details retaxes at once;
 this pass catches what that push missed, the year crossing the OSS threshold (or back to origin) and a rate
 the table schedules (``billing.services.retax_live_subscriptions``). It also sends again the team's OSS notices
 whose mail could not leave (``send_pending_oss_notices``).

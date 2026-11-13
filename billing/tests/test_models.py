@@ -1,8 +1,8 @@
 """The models of billing's VAT engine: what a row is and what it refuses to be.
 
 The rate tables (``TaxCategory``, ``TaxRule``) and the two singletons (``FiscalPolicy``, ``CompanyConfig``)
-are ported from ERPlora/saas ``apps/dashboard/fiscal/models.py`` (origin/develop) with UUIDv7 keys;
-the singletons stop forcing ``pk=1`` (a UUID key) and keep one row by a unique, always-true column.
+have UUIDv7 keys;
+the singletons do not force ``pk=1`` (a UUID key) and keep one row by a unique, always-true column.
 ``VatCheck`` is the log of VIES queries: a row is the proof that a VAT number was valid on a date.
 """
 

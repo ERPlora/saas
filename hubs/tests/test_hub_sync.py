@@ -109,7 +109,7 @@ class TestTheSnapshot:
             # The monthly messages the Hub counts and blocks at: 0 = none.
             "assistant_messages_per_month": 300,
             "whatsapp_messages_per_month": 150,
-            # The modules a business may choose to turn on (2026-10-24; what they require does not count): Starter's 40.
+            # The modules a business may choose to turn on (what they require does not count): Starter's 40.
             "max_apps": 40,
             # The space for the business's files its tier includes, the Hub's «Space» (BASE-F72, F73): 5 GiB.
             "max_storage_bytes": 5 * 1024**3,
@@ -328,7 +328,7 @@ class TestDeleteAndRestore:
                 BusinessDeleteIn(id=business.id, confirm_name="Bar Manolo"),
             )
 
-        # The deletion, and after it the deletion mail's read of whether a copy will come (ruling of 2026-10-30).
+        # The deletion, and after it the deletion mail's read of whether a copy will come.
         assert [(c.method, c.path, c.body) for c in hub_double.calls] == [
             ("DELETE", f"/internal/hubs/{business.id}", {"id": str(business.id)}),
             ("GET", f"/internal/hubs/{business.id}/dumps", None),

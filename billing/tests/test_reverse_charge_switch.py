@@ -1,7 +1,6 @@
 """Invoicing without VAT needs the ROI registration AND the VAT number checked in VIES.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_reverse_charge_switch.py`` (origin/develop,
-9 tests). The path is closed by default and fails closed: when in doubt, the VAT is charged.
+The path is closed by default and fails closed: when in doubt, the VAT is charged.
 
 Adapted: ``TestTheWebhookAsksVies`` (2) drove Stripe's ``checkout.session.completed`` webhook; what it
 proved —the sale door asks the VIES verdict and believes it— is proved here through that door,

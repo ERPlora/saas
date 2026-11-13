@@ -1,8 +1,6 @@
 """``manage.py sweep_unpaid``: the safety net of unpaid plans and deleted businesses (``saas-cron``).
 
-Ported from ERPlora/saas ``hubs/main/tests/test_unpaid_plan_sweep.py`` (12) with its recorded
-Stripe fixtures (``fixtures/stripe_unpaid_plan/``: a test-clock renewal that failed once) and the Stripe half
-of ``test_hub_delete_cancels_billing.py`` (9 × 5 paths):
+With recorded Stripe fixtures (``fixtures/stripe_unpaid_plan/``: a test-clock renewal that failed once):
 
 - The webhook only acts when Stripe sends an event, and how many retries Stripe makes (and what it does
   once they are spent) is set in its dashboard: retries that end before the 7 days leave the subscription

@@ -1,7 +1,6 @@
 """Today's tax data, written by ``manage.py seed_tax_rules``.
 
-Ported from ERPlora/saas ``fiscal/migrations/0006_seed_tax_rules.py``, ``0020_seed_united_kingdom_tax_rule.py``
-and ``management/commands/seed_company_036.py`` (origin/develop). The rates are COPIED here, not read from
+The rates are COPIED here, not read from
 ``billing.vat.EU_VAT_RATES`` (the live backstop): a seed describes a date. The migration
 ``0002_seed_tax_data`` carries its own frozen copy of the data of 2026-10-14 and never imports this
 module. From here on rates are edited in the admin, not in the code.

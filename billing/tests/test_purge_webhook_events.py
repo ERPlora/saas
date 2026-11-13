@@ -1,9 +1,7 @@
 """The Stripe events erplora.com received are forgotten after 30 days (BILLING-F37; registry BILLING-G43, G35).
 
-Ported from ERPlora/saas ``apps/dashboard/billing`` (``cleanup_old_webhook_events``, a weekly Celery beat task
-there; fi:saas/support/billing-fiscal#task-cleanup_old_webhook_events, origin/develop): the idempotency rows
-(``WebhookEvent``) older than 30 days are deleted. Stripe resends an event for 3 days at most and keeps it
-30 days, so a row that old never guards a delivery again. Here a ``manage.py`` command run by saas-cron.
+The idempotency rows (``WebhookEvent``) older than 30 days are deleted. Stripe resends an event for 3 days at most
+and keeps it 30 days, so a row that old never guards a delivery again. Here a ``manage.py`` command run by saas-cron.
 """
 
 from datetime import timedelta
