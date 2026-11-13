@@ -1,6 +1,6 @@
 """The site's 404 and 500 pages (``handler404``/``handler500`` in ``config/urls.py``).
 
-Ported from ERPlora/saas ``apps/dashboard/core/views.py`` (origin/develop c5ca8ca). Each side keeps
+Each side keeps
 its own look: a request of the public web (resolved to it, or an unknown path under one of its
 first segments, ``public.urls.PUBLIC_PREFIXES``) gets its templates (``public/404.html``,
 ``public/500.html``); everything else (sign-in, the jump to a hub, the admin, static files, the

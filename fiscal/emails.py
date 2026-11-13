@@ -2,11 +2,10 @@
 the owner and the admins of the business hear of every step of theirs (received, in force, returned, withdrawn),
 each in their language.
 
-Ported in behaviour from ERPlora/saas ``apps/dashboard/fiscal/services/grant_notifications.py`` (origin/develop) plus
-the desk's notice (nobody at ERPlora heard of what waited for them), without what made the old mail unsafe: the desk's
-mail carries the link to the admin's review page and no document, no tax id and no name of a person (the old one
-attached the decrypted documents), and the business is found by its id, never by a tax id. The desk's mailbox is
-``settings.FISCAL_REVIEW_EMAIL`` (support's unless another is set); it reads Spanish, the language of the Anexo I.
+The desk's notice exists so somebody at ERPlora hears of what waits for them. The desk's mail carries the link to
+the admin's review page and no document, no tax id and no name of a person, and the business is found by its id,
+never by a tax id. The desk's mailbox is ``settings.FISCAL_REVIEW_EMAIL`` (support's unless another is set); it
+reads Spanish, the language of the Anexo I.
 
 Whether ERPlora may file a business's invoices keeps the business running, so these mails ask no preference
 (ACCOUNTS-F23). A step a newer one replaced (a submission replaced before any review, an approval replaced by a

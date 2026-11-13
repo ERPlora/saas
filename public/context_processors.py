@@ -1,7 +1,6 @@
 """What every template of the public web knows.
 
-Ported from ERPlora/saas ``config/context_processors.py`` (``site_settings``, origin/develop
-c5ca8ca), only its public part: the analytics ids, the support address, chat and reply time, and the two
+The analytics ids, the support address, chat and reply time, and the two
 flags the analytics partial reads.
 """
 

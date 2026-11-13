@@ -1,12 +1,11 @@
-"""Account → Preferences → «Mail notices» (ACCOUNTS-F23; old SAAS_DASHBOARD-F211, whose four switches were saved
-and read by no mail).
+"""Account → Preferences → «Mail notices» (ACCOUNTS-F23).
 
 Each switch governs mails the SaaS really sends, and only those: «Business notices» (``hub_alerts``) is the mail
 that a business is ready to open (``hubs.emails.send_ready``). What keeps the account safe or its businesses
 running has no switch, as GitHub's and Stripe's «you will always get important account mails»: the sign-in codes
 and security notices, ERPlora's invoices and failed payments, a deleted business and its recovery date, and
 anything that asks the person to act (connecting WhatsApp again). There is no «ERPlora news» switch: ERPlora sends
-no such mail, and a switch that governs nothing is the old bug again.
+no such mail, and a switch that governs nothing would mislead the person.
 """
 
 from datetime import date

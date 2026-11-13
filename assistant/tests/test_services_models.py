@@ -1,4 +1,4 @@
-"""Choosing a provider's models (``assistant.model.select``, ASSISTANT-G24, G14; old SAAS_ASSISTANT-F22 step 3).
+"""Choosing a provider's models (``assistant.model.select``, ASSISTANT-G24, G14).
 
 The staff tick, among the chat models the provider's API listed, the ones the provider keeps: the ticked are created
 (or made available again), the rest of the provider's models are deleted, except the ones the policy uses, which

@@ -32,7 +32,7 @@ RATES = "/v1/latest"
 SEARCH = "/res/v1/web/search"
 USD_EUR = {"amount": 1.0, "base": "USD", "date": "2026-11-04", "rates": {"EUR": 0.88755}}
 KEY = "made-up-brave-key"
-#: What Brave really answers a key it does not know: a 422 (a real call, 2026-11-04).
+#: What Brave really answers a key it does not know: a 422 (recorded from a real call).
 KEY_REFUSED = {
     "error": {
         "code": "SUBSCRIPTION_TOKEN_INVALID",

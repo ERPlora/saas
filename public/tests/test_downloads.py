@@ -1,13 +1,12 @@
 """The foundations of the public downloads: presign against the bucket and pick the store.
 
-Port of ``apps/public/tests/test_downloads.py`` (14, origin/develop c5ca8ca), same cases, against
-``public.downloads``. The downloads bucket is PRIVATE: the views presign a short-lived GET URL
+The downloads bucket is PRIVATE: the views presign a short-lived GET URL
 and redirect to it (nothing world-public). On top of that, ``store_url_for`` is the ONLY switch
 between «store» and «our own binary».
 
 What changed: the installers no longer live in Hetzner's object storage but in a private S3 bucket on
 AWS (``s3_downloads.tf`` of ``ERPlora/aws``), region ``eu-west-1`` (Ireland, the
-platform's region since 2026-10-14). The client takes
+platform's region). The client takes
 no static keys: boto3 uses the ECS task's role (or the environment in development); only local
 development may point it at another endpoint (``DOWNLOADS_ENDPOINT_URL``).
 
@@ -135,7 +134,7 @@ class TestPresignedDownloadUrl:
 
 
 class TestStoreUrlFor:
-    """``store_url_for`` — the per-platform switch to the stores (ADR-0160).
+    """``store_url_for`` — the per-platform switch to the stores.
 
     Windows → the Web Installer Direct of the single Microsoft Store listing, by its Store ID
     (assigned by Microsoft: without it, the web download is right). Android → the single Google
@@ -217,7 +216,7 @@ class TestGithubReleaseUrls:
 
 
 class TestStoreSettingsContract:
-    """The store settings (ADR-0160): one listing per store, no legacy aliases."""
+    """The store settings: one listing per store, no legacy aliases."""
 
     def test_google_play_app_id_exists_with_empty_default(self):
         from django.conf import settings as django_settings
@@ -225,7 +224,7 @@ class TestStoreSettingsContract:
         assert getattr(django_settings, "GOOGLE_PLAY_APP_ID", None) == ""
 
     def test_google_play_listing_is_declared_live_by_default(self):
-        """The listing is published since 2026-10-01: «live» is the truthful default."""
+        """The listing is published: «live» is the truthful default."""
         from django.conf import settings as django_settings
 
         assert getattr(django_settings, "GOOGLE_PLAY_LISTING_LIVE", None) is True

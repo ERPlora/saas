@@ -13,7 +13,7 @@ model answers. Keys are UUIDv7.
 - ``DocChunk`` (ASSISTANT-F27): an excerpt of ERPlora's documentation with its fingerprint, what
   ``assistant.docs.search`` returns to the panel's assistant (``assistant.knowledge``; written by ``index_docs``).
 
-Nothing here holds a conversation: the turn passes through and is forgotten (ADR-0149 of the old product).
+Nothing here holds a conversation: the turn passes through and is forgotten.
 """
 
 import hashlib

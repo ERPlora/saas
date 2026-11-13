@@ -1,7 +1,6 @@
 """``RepresentationGrant``: each authorisation a business sends, one row per version, with its review.
 
-Ported in behaviour from ERPlora/saas ``apps/dashboard/fiscal/models.py`` (origin/develop), keyed by the
-business instead of the taxpayer's NIF (the Hub reads «validated or not» per business in its snapshot): a
+Keyed by the business, not by the taxpayer's NIF (the Hub reads «validated or not» per business in its snapshot): a
 version per business that is never reused, at most one approved per business, the documents encrypted.
 """
 

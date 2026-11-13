@@ -1,15 +1,14 @@
 """allauth adapters of saas-next.
 
-Sign-up is open, as in today's SaaS (ADR-0154): an email without an account creates one on the «Create
+Sign-up is open: an email without an account creates one on the «Create
 account» tab of the launcher (allauth's own sign-up; the sign-in tab never creates one), and a Google email
 without one creates it on the way back from Google. Every sign-in with a password also asks for the code mailed to the account
 (``ACCOUNT_LOGIN_BY_CODE_REQUIRED``, ``AccountAdapter.is_login_by_code_required``), except the store review account's
 (ACCOUNTS-F49). Every way back from
 Google that does not sign in lands on a Vue page: «Cancel» on the sign-in (``/launch``), any refusal or
 failure on ``/login/error?code=…``, both keeping ``next``.
-Google links to an account only by signing in with a Google that proves the account's own address;
-``SocialAccountAdapter`` is ported from ERPlora/saas ``ERPloraSocialAccountAdapter``
-(``apps/auth/users/adapters.py``).
+Google links to an account only by signing in with a Google that proves the account's own address
+(``SocialAccountAdapter``).
 """
 
 import logging
@@ -142,8 +141,7 @@ class AccountAdapter(DefaultAccountAdapter):
 
         allauth puts the ``Site`` row in every mail as ``current_site`` («… to register an account on
         example.com»). The brand is written, not looked up (``templates/account/email/base_message.txt``):
-        a misconfigured row must not make the first mail of an account read like phishing. As ERPlora/saas
-        ``apps/core/emails.py`` (``brand_context``).
+        a misconfigured row must not make the first mail of an account read like phishing.
         """
         brand = SimpleNamespace(name="ERPlora", domain=settings.PUBLIC_HOST)
         try:
@@ -157,7 +155,7 @@ class AccountAdapter(DefaultAccountAdapter):
 
         A notice ERPlora wrote has its own ``<prefix>_message.html`` (``templates/socialaccount/email/``); the
         mails allauth ships come only as text, so their text is shown on the common template, escaped, with the
-        code boxed (``base.emails``): one wrapper for all, as ERPlora/saas ``emails/_fallback.html``, instead of
+        code boxed (``base.emails``): one wrapper for all instead of
         a copy of each of allauth's texts and translations.
         """
         message = super().render_mail(template_prefix, email, context, headers=headers)
@@ -186,7 +184,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         """Refuse allauth's «connect» process: it attached ANY Google to the open session's account.
 
         ERPlora has no screen that connects a provider. The way Google gets linked is signing in
-        with a Google that vouches for the account's own address (SAAS_AUTH-F04). allauth's
+        with a Google that vouches for the account's own address. allauth's
         re-authentication is no guard here: it waves through an account that has no password.
         A connect posted anyway lands on the Vue error page, which says how Google gets linked
         (``google_link_refused``), keeping ``next``.

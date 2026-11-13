@@ -1,5 +1,4 @@
-"""``manage.py indexnow_submit``: the daily push to IndexNow (ported from ERPlora/saas
-``landing/management/commands/indexnow_submit.py`` and its test, origin/develop c5ca8ca).
+"""``manage.py indexnow_submit``: the daily push to IndexNow.
 
 It runs every day in a scheduled ECS task whose only alarm is a non-zero exit (aws ``task_failed``),
 so its three endings are part of the contract (PUBLIC-F14): submitted (0), no key configured (0, a

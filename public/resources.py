@@ -1,6 +1,6 @@
 """``/documentation/`` (a 301 to the help center) and ``/support/`` (the support routes).
 
-Port of ``apps/public/resources/views.py`` (origin/develop c5ca8ca). The help center (``/help/``)
+The help center (``/help/``)
 lives in ``public/help.py`` with the guides it renders. The support page reads ``SUPPORT_EMAIL``
 from the context processor of the public web (one source for the footer, the help and here).
 """

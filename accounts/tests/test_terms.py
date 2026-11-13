@@ -1,9 +1,8 @@
 """ACCOUNTS-G119: the terms and the privacy policy an account accepted, with when and which version.
 
-The launcher says «By continuing you agree to our Terms & Privacy Policy» under both of its tabs and under
-«Continue with Google», as today's SaaS did, which kept no record of it (old-saas:SAAS_PUBLIC-F72, «no hecho»).
-Here the account keeps the date it accepted and the versions it accepted (the «Last updated» date of each page),
-like Stripe's ``tos_acceptance``: creating the account records them, and signing in while they are older than
+The launcher says «By continuing you agree to our Terms & Privacy Policy» under both of its tabs and under «Continue
+with Google». The account keeps the date it accepted and the versions it accepted (the «Last updated» date of each
+page), like Stripe's ``tos_acceptance``: creating the account records them, and signing in while they are older than
 today's records the new ones (the terms: «continued use after they take effect implies acceptance»).
 """
 

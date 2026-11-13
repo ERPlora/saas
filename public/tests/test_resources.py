@@ -1,14 +1,7 @@
 """``/documentation/`` (a 301 to the help center, PUBLIC-G07) and ``/support/`` (public/resources.py).
 
-Port of ``apps/public/resources`` (origin/develop c5ca8ca): ``resources/test_views.py`` (2; its help
-case lives in test_help.py, with the help) and the cases of ``tests/unit/test_public_pages.py`` for
-these pages. What changed, and why:
-
-* the URL names live in the ``public`` namespace;
-* OutfitKit is gone: ``ok-container``/``ok-grid-cards``/``<ok-feature-card>`` are the ``ep-*``
-  classes and the feature-card partial;
-* the contact page comes with the landing at the address it has today, ``/contact/``: the
-  support page links that address (``landing:contact_page`` does not exist here).
+The URL names live in the ``public`` namespace, the cards are the ``ep-*`` classes and the feature-card
+partial, and the support page links the contact page at ``/contact/``.
 """
 
 import re

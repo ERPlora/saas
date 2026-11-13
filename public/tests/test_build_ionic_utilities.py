@@ -1,7 +1,6 @@
 """``scripts/build_ionic_utilities.py``: the utility classes the public templates use, owned by us.
 
-Port of the old SaaS's generator and of its contract ``tests/unit/test_owned_css_utilities.py``
-(origin/develop). It reads ``public/templates/**`` and writes ``public/static/public/ionic-utilities.css``
+It reads ``public/templates/**`` and writes ``public/static/public/ionic-utilities.css``
 (Tailwind-like names over ``--ion-*`` tokens), which ``frontend/public.ts`` bundles. Same scales, same
 ``@layer utilities``, same ``--tw-leading`` / ``--tw-ring-color`` indirection. New here: the
 card-scoped re-emission that the old ``build_ion_card_content_utilities.py`` wrote to a second file

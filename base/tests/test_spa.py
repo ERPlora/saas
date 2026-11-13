@@ -98,7 +98,7 @@ def test_spa_config_hands_the_sign_in_pages_recaptchas_site_key(client, recaptch
 
 
 def test_spa_config_without_recaptcha_names_no_site_key(client):
-    """Off (the default since 2026-10-23): the page says nothing of reCAPTCHA, so its pages load no Google script."""
+    """Off (the default): the page says nothing of reCAPTCHA, so its pages load no Google script."""
     response = client.get("/launch", HTTP_HOST=HOST)
     _, config = json_block(response, "spa-config")
 

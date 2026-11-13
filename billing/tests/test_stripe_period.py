@@ -1,8 +1,5 @@
 """The billing period of a Stripe subscription, whatever API version shaped it (``billing.stripe_period``).
 
-Ported from ERPlora/saas ``apps/core/stripe_period.py`` and the tests that pinned it
-(``hubs/subscriptions/tests/test_stripe_status_reads_item_period.py`` and
-``hubs/main/tests/test_live_period_read_from_subscription_item.py``, origin/develop).
 Since ``2025-03-31.basil`` the period lives on ``items.data[]``, not on the subscription root; an old
 event still carries it at the root. Both shapes yield the same period; the root wins when it has it.
 The gateway hands billing plain dicts (``billing.stripe_service``), so the reader takes a dict.

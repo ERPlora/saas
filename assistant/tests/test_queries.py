@@ -63,7 +63,7 @@ def test_reading_a_connection_needs_to_see_providers(make_user, provider):
         connection(member, provider)
 
 
-# --- The route of a turn (ASSISTANT-G45, G39; old SAAS_ASSISTANT-F05) -------------------------------------
+# --- The route of a turn (ASSISTANT-G45, G39) ------------------------------------------------------------
 
 from assistant.models import AIProvider, AIRoutingPolicy  # noqa: E402
 from assistant.schemas import RouteIn  # noqa: E402

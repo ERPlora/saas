@@ -1,7 +1,7 @@
 """Splitting and qualifying the VAT of a sale.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_vat.py`` (origin/develop, 21 tests), plus the
-public helpers of ``billing.vat`` the panel and the billing services read (``BILLING_COUNTRIES``, ``tax_id_type_for``).
+It also covers the public helpers of ``billing.vat`` the panel and the billing services read
+(``BILLING_COUNTRIES``, ``tax_id_type_for``).
 The rates come from ``TaxRule``, editable in the admin, so these tests touch the database.
 """
 
@@ -43,7 +43,7 @@ class TestDomesticSale:
             assert result.base + result.tax == Decimal(gross), gross
 
     def test_rounding_is_half_up(self):
-        """ADR-0123: explicit HALF_UP; a bare quantize() inherits HALF_EVEN."""
+        """Explicit HALF_UP; a bare quantize() inherits HALF_EVEN."""
         # 29.99 / 1.21 = 24.7851... → 24.79 (not 24.78)
         result = _resolve("29.99", customer_country="ES")
 

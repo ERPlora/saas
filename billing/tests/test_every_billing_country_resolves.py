@@ -1,7 +1,6 @@
 """Every country the forms offer has to be sellable with the seeded table.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_every_billing_country_resolves.py``
-(origin/develop, 5 tests). The form's list and the table that prices the sale were two lists nobody kept
+The form's list and the table that prices the sale were two lists nobody kept
 in step: a country added to a form without its rule fails here, before it refuses a customer's checkout.
 
 Adapted: the lists are ``billing.vat.BILLING_COUNTRIES`` and the countries a business may be created in

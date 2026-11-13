@@ -1,8 +1,8 @@
 """ACCOUNTS-G78: ``/csp-report/``, the browsers' reports of a blocked script, has its brake per address.
 
 Anyone may post there (no session, no CSRF: a browser sends it on its own) and each report is a log line of up to 8 KB
-(``live.csp.csp_report``): unbraked, one address could fill the log, and the log costs. The old SaaS kept 60 an hour per
-address (SAAS-F05), counted by the address the load balancer saw (``public.client_ip``), never by anything the request
+(``live.csp.csp_report``): unbraked, one address could fill the log, and the log costs. Each address gets 60 an
+hour, counted by the address the load balancer saw (``public.client_ip``), never by anything the request
 says about itself. Past it the report is answered 429 and not logged; another address keeps its own budget.
 """
 

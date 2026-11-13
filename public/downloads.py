@@ -1,13 +1,13 @@
 """Where each channel of the app lives: the private S3 bucket, the GitHub releases and the stores.
 
-Port of ``apps/public/downloads.py`` (origin/develop c5ca8ca). The hub's CI
+The hub's CI
 (``tauri-release.yml``) uploads the installers of the app to ``downloads/app/latest/`` of a PRIVATE
 S3 bucket on AWS (``DOWNLOADS_BUCKET`` in ``DOWNLOADS_REGION``, Ireland; ``stacks/prod/s3_downloads.tf`` of ERPlora/aws;
 before, Hetzner's object storage), so the public download asks for a short-lived presigned GET URL
 instead of redirecting to a world-public object. The client takes no static keys: boto3 uses the
 ECS task's role, or the environment in development, where ``DOWNLOADS_ENDPOINT_URL`` may point it
 at a local S3. ``GITHUB_RELEASE_URLS`` names the platforms served instead by the latest release of
-the public repo ``ERPlora/app`` (Linux, 2026-10-27). ``store_url_for`` is the ONLY switch between
+the public repo ``ERPlora/app`` (Linux). ``store_url_for`` is the ONLY switch between
 «store» and «our own binary»; ``public.appdist`` uses all three.
 """
 
@@ -65,7 +65,7 @@ def store_url_for(
     """The store URL for ``platform``, or ``None`` when there is no store to offer.
 
     * ``windows`` → the Web Installer Direct of the single «ERPlora» listing of Microsoft Store
-      (ADR-0160), by its Store ID. Microsoft assigns that ID and it cannot be derived, so here the
+      by its Store ID. Microsoft assigns that ID and it cannot be derived, so here the
       setting is a legitimate switch: without it, the web download is the right channel.
     * ``android`` → the single Google Play listing (Android client = Play ONLY). Two settings that
       do different things: ``play_live_setting`` says whether the listing EXISTS (off → ``None``,

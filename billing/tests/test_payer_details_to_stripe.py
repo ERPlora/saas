@@ -1,8 +1,6 @@
 """The payer's Stripe customer takes the billing details the owner saves (BILLING-F01; registry BILLING-G26).
 
-Ported from ERPlora/saas ``apps/dashboard/organizations`` (``update_billing`` → ``OrganizationStripeService
-.sync_billing_info``; fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar, origin/develop):
-saving the billing card updated the Stripe Customer when it existed. Without it the customer keeps the old name,
+Saving the billing card updates the Stripe Customer when it exists. Without it the customer keeps the old name,
 address and e-mail until the next checkout, so what Stripe itself sends (the page to confirm a renewal the bank
 wants authenticated, its receipts) and what the Customer Portal shows go on with the old ones.
 

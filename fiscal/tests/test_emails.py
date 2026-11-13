@@ -1,10 +1,8 @@
 """The mails of an authorisation's steps (FISCAL-F05): the review desk hears of every one that waits for it, and
 the owner and the admins of the business hear of every step of theirs, each in their language.
 
-Cases from ERPlora/saas ``apps/dashboard/fiscal/tests/test_grant_notifications.py`` (origin/develop), plus the desk's
-notice (nobody at ERPlora heard of what waited for them), without what made the old mail unsafe: the desk's mail carries
-the link to the review page and no document, no tax id and no name of a person; the business is found by its id, never
-by a tax id (the old one wrote to the first business with that tax id, of whichever account).
+The desk's mail carries the link to the review page and no document, no tax id and no name of a person; the
+business is found by its id, never by a tax id (several businesses, of different accounts, may share one).
 """
 
 import logging

@@ -1,11 +1,11 @@
 {% load i18n icons %}
 {% comment %}
   The contact form, on the home and on /contact/: a plain Django POST answered with a redirect
-  (PRG), port of landing/partials/contact_form.html (origin/develop). public/landing.py limits the form per
-  address and asks reCAPTCHA Enterprise (over ADR-0154): with a site key, frontend/recaptcha.ts
-  fills `recaptcha_token` with Google's token for `contact` on submit, before the checks below, and the notice
-  under the button says reCAPTCHA protects it (its badge is hidden). The result is a server message
-  painted by the base, so this partial no longer paints its own. The required fields are checked
+  (PRG). public/landing.py limits the form per address and asks reCAPTCHA Enterprise: with a site key,
+  frontend/recaptcha.ts fills `recaptcha_token` with Google's token for `contact` on submit, before the checks
+  below, and the notice under the button says reCAPTCHA protects it (its badge is hidden). The result is a server
+  message
+  painted by the base, so this partial paints none of its own. The required fields are checked
   here before posting, because the ion-input elements are custom elements and show no native
   tooltip; the server checks them again. A refused or failed message comes back with what was typed
   (`contact_draft`, PUBLIC-G39) and a page that links here may name its topic (`contact_topic`, PUBLIC-G40).

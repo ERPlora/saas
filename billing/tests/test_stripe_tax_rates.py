@@ -4,8 +4,7 @@ The rate is decided by ``billing.TaxRule``; Stripe only charges it, and on a net
 ``TaxRate`` object (``default_tax_rates``). This module stops before Stripe: ``tax_rate_specs_for``
 says WHICH rates (country, region, percentage, exclusive), and ``matches`` says whether an existing
 Stripe ``TaxRate`` is the one; ``billing.stripe_service`` finds or creates them (``TaxRate.list``/``create``) by
-``spec.cache_key``. The cases are those of ERPlora/saas ``fiscal/services/stripe_tax_rates.py``
-(origin/develop), which had no test file of its own (its cases ran inside ``test_sale_tax_rates``).
+``spec.cache_key``.
 """
 
 from decimal import Decimal

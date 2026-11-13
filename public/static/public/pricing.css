@@ -1,8 +1,7 @@
 /* pricing.css — the comparison tables of /pricing/ (public/templates/public/pricing/index.html).
  *
- * Port of the <style> block of apps/public/pricing/templates/pricing/index.html (origin/develop),
- * with only the rules the page uses: its .plan-card rules were dead (the cards were
- * <ok-pricing-card>, now public/components/pricing_card.html). Linked by the page itself, like
+ * Only the rules the page uses: the cards are public/components/pricing_card.html. Linked by the
+ * page itself, like
  * store.css, so the other pages do not carry it. The table frame and its stacking under 768 px are
  * .ep-table-surface / .ep-table-stack (layout.css); this sheet only adds the page's typography and
  * the brand column. Icons are {% icon %} SVGs (.ep-icon), no longer <iconify-icon>.

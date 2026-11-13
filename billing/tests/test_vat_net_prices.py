@@ -1,6 +1,5 @@
 """Adding VAT to a net price, and believing Stripe's quota when it is zero.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_vat_net_prices.py`` (origin/develop, 10 tests).
 Plans are sold at NET prices: ``add_vat`` / ``vat_rate_for`` are the way back («€29.99 + VAT —
 €36.29/month») so no template invents its own arithmetic, and Stripe's zero is believed only when OUR
 qualification also says there is no quota; on a subject sale it is reconciled as VAT-inclusive.

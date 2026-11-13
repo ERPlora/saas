@@ -1,7 +1,6 @@
 """The team's notices of the OSS threshold (BILLING-F06).
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_oss_threshold_warning.py``,
-``test_oss_crossing_alert.py`` and ``test_oss_regime_change_trail.py`` (origin/develop). Destination VAT
+Destination VAT
 switches on by itself when the year's cross-border B2C sales pass the threshold, but registering in the OSS
 (form 035) is paperwork that takes days: the team's mailbox (``SUPPORT_EMAIL``) is told when a charged sale
 takes the year past 80 % of the threshold, and again when one crosses it (or at the first charged sale of a

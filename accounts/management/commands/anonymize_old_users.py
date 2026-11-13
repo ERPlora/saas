@@ -1,7 +1,6 @@
 """``python manage.py anonymize_old_users``: the accounts unused for two years go (ACCOUNTS-F35; GDPR art. 5.1.e).
 
-Weekly in ``saas-cron``. Ported from ERPlora/saas ``apps/auth/users/management/commands/anonymize_old_users.py`` (a Celery
-beat task there, ``gdpr.anonymize_old_users``): every active account that is not staff and has not signed in on
+Weekly in ``saas-cron``: every active account that is not staff and has not signed in on
 erplora.com for ``--inactive-days`` (730; never signed in, since it was created) goes as its owner deletes it
 (``accounts.services.erase_inactive_account``, ACCOUNTS-F27), unless it belongs to a business that is not deleted.
 ERPlora's invoices stay with their recipient as issued.

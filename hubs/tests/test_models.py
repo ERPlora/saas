@@ -4,6 +4,7 @@ The pure-model halves: internal plans are never public, who may buy which plan, 
 trial label. Their pages, forms and Stripe halves are tested with those doors.
 """
 
+import re
 import uuid
 from decimal import Decimal
 
@@ -381,5 +382,20 @@ def test_help_texts_never_point_at_a_plan_section(language):
             for model in apps.get_app_config("hubs").get_models()
             for field in model._meta.get_fields()
             if section_sign in str(getattr(field, "help_text", ""))
+        ]
+    assert not cited, "\n".join(cited)
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_help_texts_never_cite_an_issue(language):
+    """Staff read these texts in the admin, where an issue number of any tracker says nothing."""
+    from django.apps import apps
+
+    with translation.override(language):
+        cited = [
+            f"{model.__name__}.{field.name}: {field.help_text}"
+            for model in apps.get_app_config("hubs").get_models()
+            for field in model._meta.get_fields()
+            if re.search(r"#[0-9]+", str(getattr(field, "help_text", "")))
         ]
     assert not cited, "\n".join(cited)

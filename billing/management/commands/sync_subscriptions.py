@@ -1,7 +1,6 @@
 """``python manage.py sync_subscriptions [--dry-run]``: every live subscription read again from Stripe (BILLING-F38).
 
-Ported from ERPlora/saas ``apps/dashboard/hubs/subscriptions/management/commands/sync_subscriptions.py``. The
-webhook keeps each subscription as Stripe says (BILLING-F21); this pass puts right what an event that never
+The webhook keeps each subscription as Stripe says (BILLING-F21); this pass puts right what an event that never
 arrived left behind, reading each one as the webhook does (``billing.services.sync_subscriptions``).
 ``--dry-run`` only says what drifted.
 

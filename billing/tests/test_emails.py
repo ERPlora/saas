@@ -1,7 +1,6 @@
 """The mail that tells the payer their invoice is issued.
 
-Ported from ERPlora/saas ``apps/dashboard/billing/tests/test_invoice_emails.py`` (origin/develop, 7 tests):
-the customer paid and got nothing, and had to remember to look in the panel. The mail LINKS to Billing
+Without it the customer paid and got nothing, and had to remember to look in the panel. The mail LINKS to Billing
 instead of attaching the PDF: the PDF is the platform hub's and carries the QR only once issued. It leaves
 the first time the platform hub issues the invoice (``billing.invoice.apply_fiscal_status``), once.
 

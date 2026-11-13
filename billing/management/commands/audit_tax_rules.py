@@ -1,6 +1,5 @@
 """``python manage.py audit_tax_rules``: does the rate table price every sale we can make? (BILLING-F04)
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/management/commands/audit_tax_rules.py``.
 The checks are a read-only query (``billing.queries.tax_rule_audit``); this is the human door and
 the daily scheduled task's: it prints what was looked at and exits non-zero on the first problem, so the
 ``task_failed`` alarm tells the team before a customer is refused (or overcharged) at checkout.

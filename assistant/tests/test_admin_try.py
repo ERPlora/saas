@@ -1,4 +1,4 @@
-"""«Try a model» in the admin (ASSISTANT-G61; old SAAS_ASSISTANT-F24): the staff who may change the model that answers
+"""«Try a model» in the admin (ASSISTANT-G61): the staff who may change the model that answers
 send one message to one model and watch its answer arrive, with its tokens, its time and its cost, before choosing it.
 
 The page is a form of the admin; the run is an asynchronous view that streams server-sent events (the provider's call

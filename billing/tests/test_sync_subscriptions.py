@@ -1,8 +1,7 @@
 """Every live subscription is read again from Stripe and what drifted is put right (BILLING-F38; registry
 BILLING-G45, G46).
 
-Ported from ERPlora/saas ``apps/dashboard/hubs/subscriptions/management/commands/sync_subscriptions.py``
-(fi:saas/support/hubs#command-sync_subscriptions, origin/develop): each local subscription with a Stripe id is read
+Each local subscription with a Stripe id is read
 from Stripe and its status, cancellation, period and trial written as Stripe says; ``--dry-run`` only reports; a
 subscription Stripe does not know is an error and is left alone.
 

@@ -1,6 +1,6 @@
 """The billing period of a Stripe subscription, whatever API version shaped it.
 
-Ported from ERPlora/saas ``apps/core/stripe_period.py`` (origin/develop). Since ``2025-03-31.basil``
+Since ``2025-03-31.basil``
 ``current_period_start``/``current_period_end`` live on ``items.data[]``, not on the subscription root;
 an event of an older endpoint still carries them at the root. Both shapes yield the same period. The
 gateway (``billing.stripe_service``) hands billing plain dicts, so this reads a dict.

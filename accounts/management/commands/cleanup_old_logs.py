@@ -1,7 +1,6 @@
 """``python manage.py cleanup_old_logs``: the audit log keeps 90 days (ACCOUNTS-F37; GDPR art. 5.1.e).
 
-Daily in ``saas-cron``. Ported from ERPlora/saas ``apps/auth/users/management/commands/cleanup_old_logs.py`` (a Celery
-beat task there, ``cleanup_old_logs_task``): the audit entries (ACCOUNTS-F36) older than ``--retention-days`` (90) go,
+Daily in ``saas-cron``: the audit entries (ACCOUNTS-F36) older than ``--retention-days`` (90) go,
 batch after batch, each in its own transaction (``accounts.services.prune_audit_log_batch``).
 
 ``--dry-run`` counts what a run would delete and deletes nothing. No question is asked (the old ``--no-input`` is the

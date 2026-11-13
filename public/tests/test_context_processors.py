@@ -1,5 +1,4 @@
-"""What every template of the public web knows (ported from ERPlora/saas ``site_settings``,
-``config/context_processors.py``, origin/develop c5ca8ca; only the public part)."""
+"""What every template of the public web knows."""
 
 import pytest
 from django.contrib.auth.models import AnonymousUser

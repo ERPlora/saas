@@ -178,7 +178,7 @@
   --ion-color-accent-tint: #5ce18d;
 }
 
-/* The dashboard's standard dialog (custom modals migrated to ion-modal, 2026-06-11).
+/* The dashboard's standard dialog, an ion-modal.
    Centred, auto-height (same .ion-page display:block pattern as erplora-theme-modal).
    Width per modal through style="--width: NNNpx". Opened and closed by the vanilla
    controller of cloud-ui.js (data-dialog-* hooks). */
@@ -217,8 +217,7 @@ ion-modal.erplora-assistant {
   ion-modal.erplora-assistant { --width: 100%; }
 }
 
-/* Generic side drawer (components/drawer/drawer.html migrated to ion-modal,
-   2026-06-11). Same pattern as the assistant's drawer: a full-height panel anchored to
+/* Generic side drawer, an ion-modal. Same pattern as the assistant's drawer: a full-height panel anchored to
    the right/left edge; width per instance through an inline --width. */
 ion-modal.erplora-drawer-right,
 ion-modal.erplora-drawer-left {

@@ -1,12 +1,10 @@
 """Tax rates are editable DATA, not a constant of the code.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_tax_rules.py`` (origin/develop, 20 tests).
 The rates change (Estonia 22→24 in Jul-2025, Romania 19→21 in Aug-2025, Slovakia 20→23 in Jan-2025,
 Finland 24→25.5): each change was a deploy, and what is sold decides the rate. The category is the
-linkable entity and the % lives in a rule ``(country, region, category, validity)``, as in the Hub
-(ADR-0085). The resolution moved from ``TaxRule.resolve`` to ``billing.queries.tax_rule`` (only
-``services.py`` and ``queries.py`` touch the ORM) and the policy's threshold to
-``billing.queries.uses_destination_rate``.
+linkable entity and the % lives in a rule ``(country, region, category, validity)``, as in the Hub.
+The resolution is ``billing.queries.tax_rule`` (only ``services.py`` and ``queries.py`` touch the ORM) and
+the policy's threshold ``billing.queries.uses_destination_rate``.
 
 The two tests that sum real invoices into the OSS threshold
 (``test_crossing_the_threshold_switches_to_destination_rates``,
