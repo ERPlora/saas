@@ -14,7 +14,7 @@ lock waits for a third party.
   due or moves its wait wakes the ``saas-worker`` after the COMMIT (``wake_the_worker``, saas#305);
 - ``whatsapp.message.claim`` / ``whatsapp.message.record``: door 5, a send by its ``Idempotency-Key``. The claim
   reserves the month's place atomically (``UPDATE … WHERE used < limit``) before Meta is called, so two sends at once
-  can never both pass the cap (saas#2652), and a key already sent answers its first id (saas#2633);
+  can never both pass the cap, and a key already sent answers its first id;
 - ``whatsapp.message.erase``: door 6, what is kept of a customer's number for a business is forgotten;
 - ``whatsapp.template.claim`` / ``whatsapp.template.record``: door 8, a template's registration at Meta by its
   ``Idempotency-Key``: a key Meta took answers what it said the first time, never registers again;

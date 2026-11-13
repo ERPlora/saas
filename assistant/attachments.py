@@ -12,7 +12,7 @@ A user message's content may be a list of parts. Besides ``{"type": "text"}``:
 
 Everything happens in memory: nothing is written to disk. A Word document or a spreadsheet is a zip, checked before
 it is opened (``MAX_UNZIPPED_BYTES``, ``MAX_ZIP_ENTRIES``), so a small file cannot unfold into gigabytes. What cannot
-be read becomes a note for the model, never a failed turn; the file's name stays out of the logs (saas#2445). Each
+be read becomes a note for the model, never a failed turn; the file's name stays out of the logs. Each
 attachment's data has a limit (``MAX_ATTACHMENT_BYTES``) and a conversation a number of them (``MAX_ATTACHMENTS``):
 over them the turn is refused (``turn.TurnRefused``, 413), never cut; their data does not count in the text's limit.
 """

@@ -1,6 +1,6 @@
 """System checks of hubs.
 
-``hubs.W002``: an account of ERPlora's staff is also on a business (``hubs.queries.staff_on_businesses``; W11b).
+``hubs.W002``: an account of ERPlora's staff is also on a business (``hubs.queries.staff_on_businesses``).
 The doors refuse it now; this names what is left from before, and nothing is turned off by itself:
 ``hubs/README.md`` says how to put each right by hand. A database check: ``manage.py check --database default`` runs
 it, and so does ``migrate`` with its database; a plain ``check`` or ``check --deploy`` reads no table. A warning, never

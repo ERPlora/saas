@@ -7,7 +7,7 @@ size limit (``MAX_ATTACHMENT_BYTES`` of base64, about 9 MB; over it the turn is 
 conversation a number of them; their data does not count in the 1 MB of text. What cannot be read becomes a note for
 the model, never a failed turn: the old product's ``internal_error`` with a corrupt PDF, ``.docx`` or ``.xlsx``
 (SAAS_ASSISTANT-F18, «parcial») is a test here. Cases of the old ``test_document_ingest.py`` and
-``test_stateless_bridge.py::TestPayloadCap``; the file's name never reaches a log (saas#2445).
+``test_stateless_bridge.py::TestPayloadCap``; the file's name never reaches a log.
 """
 
 import base64

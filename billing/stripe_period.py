@@ -1,4 +1,4 @@
-"""The billing period of a Stripe subscription, whatever API version shaped it (saas#2328).
+"""The billing period of a Stripe subscription, whatever API version shaped it.
 
 Ported from ERPlora/saas ``apps/core/stripe_period.py`` (origin/develop). Since ``2025-03-31.basil``
 ``current_period_start``/``current_period_end`` live on ``items.data[]``, not on the subscription root;

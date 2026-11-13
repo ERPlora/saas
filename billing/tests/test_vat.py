@@ -1,4 +1,4 @@
-"""Splitting and qualifying the VAT of a sale (saas#1051, saas#1063).
+"""Splitting and qualifying the VAT of a sale.
 
 Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_vat.py`` (origin/develop, 21 tests), plus the
 public helpers of ``billing.vat`` the panel and the billing services read (``BILLING_COUNTRIES``, ``tax_id_type_for``).
@@ -60,7 +60,7 @@ class TestDomesticSale:
 
 
 class TestOtherEuCountries:
-    """The One-Stop Shop threshold rules (saas#1063): below €10,000 a year of cross-border B2C sales
+    """The One-Stop Shop threshold rules: below €10,000 a year of cross-border B2C sales
     (and without the voluntary OSS registration) the ISSUER's VAT is charged, not the customer's."""
 
     def test_b2c_in_another_member_state_pays_the_issuer_rate_below_the_threshold(self):
@@ -88,7 +88,7 @@ class TestOtherEuCountries:
 
 
 class TestSpanishTerritoriesOutsideTheVatArea:
-    """The Canary Islands, Ceuta and Melilla are outside the scope of VAT (saas#1063)."""
+    """The Canary Islands, Ceuta and Melilla are outside the scope of VAT."""
 
     def test_the_canary_islands_are_not_subject(self):
         result = _resolve("100.00", customer_country="ES", customer_postal_code="35001")

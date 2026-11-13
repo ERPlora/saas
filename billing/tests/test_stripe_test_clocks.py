@@ -1,7 +1,7 @@
 """Stripe test clocks for the billing QA (``billing.stripe_test_clocks``).
 
 Ported from ERPlora/saas ``hubs/main/services/stripe_test_clocks.py`` and its
-``hubs/main/tests/test_stripe_test_clocks.py`` (origin/develop, 10 tests; saas#1961): a customer attached
+``hubs/main/tests/test_stripe_test_clocks.py`` (origin/develop, 10 tests): a customer attached
 to a clock subscribes to a NORMAL plan with its NORMAL trial and the clock jumps past it, so Stripe issues a
 real invoice (instead of the retired internal 1 € plan). Two refusals stay, because both failures are
 silent: a LIVE key (clocks do not exist there) is refused before any call, and advancing returns only once

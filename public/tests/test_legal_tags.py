@@ -1,7 +1,7 @@
 """``{% load legal %}`` (public/templatetags/legal.py): the filters of the legal pages.
 
 ``demote_h1``: the declaración responsable is a Markdown deed whose ``# title`` renders as an
-``<h1>``, and the page already has its own (the hero): two ``<h1>`` on one page (L8). The deed is
+``<h1>``, and the page already has its own (the hero): two ``<h1>`` on one page. The deed is
 published as it is (art. 13 RRSIF), so its title is not dropped: it becomes an ``<h2>``.
 """
 
@@ -28,7 +28,7 @@ def test_every_h1_is_demoted_so_the_page_keeps_one():
 
 
 def test_a_class_marks_the_demoted_title():
-    """``demote_h1:"ep-deed-title"``: the deed's title keeps the size it had as a page title (L8)
+    """``demote_h1:"ep-deed-title"``: the deed's title keeps the size it had as a page title
     without being a second ``<h1>``; the other headings are left as they are."""
     html = "<h1>Declaración responsable — v2</h1><h2>1. Declarante</h2>"
 

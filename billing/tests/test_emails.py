@@ -1,4 +1,4 @@
-"""The mail that tells the payer their invoice is issued (saas#1061).
+"""The mail that tells the payer their invoice is issued.
 
 Ported from ERPlora/saas ``apps/dashboard/billing/tests/test_invoice_emails.py`` (origin/develop, 7 tests):
 the customer paid and got nothing, and had to remember to look in the panel. The mail LINKS to Billing

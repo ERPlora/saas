@@ -286,7 +286,7 @@ class StoreModuleOut(Schema):
     source: Literal["plan", "purchase"] | None
     #: Cancelled: it works until then (``billing.module.keep`` undoes it, charging nothing now).
     valid_until: datetime | None
-    #: Sold to new buyers. A module off sale is only listed to the business that still has it (saas#2589),
+    #: Sold to new buyers. A module off sale is only listed to the business that still has it,
     #: which may cancel it but neither buy nor keep it again.
     on_sale: bool
     #: The catalog's name, summary and icon of its app in the person's language (``apps.App``, listed or

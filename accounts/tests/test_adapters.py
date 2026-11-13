@@ -30,7 +30,7 @@ def test_allauth_mails_carry_no_site_prefix_in_the_subject():
 
 
 # Linking a Google account to an existing account (ported from ERPlora/saas
-# `apps/auth/users/tests/test_google_connect_needs_the_owner.py`, saas#2552, SAAS_AUTH-F04).
+# `apps/auth/users/tests/test_google_connect_needs_the_owner.py`, SAAS_AUTH-F04).
 #
 # The attack: someone with a minute in front of an open session finished allauth's «connect»
 # process with THEIR OWN Google account. allauth asked for nothing but the session, so the

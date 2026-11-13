@@ -5,7 +5,7 @@
 Cases of the old product's SAAS_ASSISTANT-F01 (``IsHubMachine``/``IsHubMember``, ``api_key_hub_mismatch``,
 ``hub_not_found``): here the credential is the platform's signature, never a key of a business, so a business can
 never be named by another one's credential; what is left is the signature and the business's state. The rate limit
-of a business is spent only after both pass (saas#2531: anybody could spend a business's budget with its id).
+of a business is spent only after both pass (otherwise anybody could spend a business's budget with its id).
 """
 
 import time

@@ -18,7 +18,7 @@ from public.sitemaps import StaticPagesSitemap
 
 KEY = "0123456789abcdef0123456789abcdef"
 
-# The submission reads the sitemaps, and the store's read the catalog from the database (L6).
+# The submission reads the sitemaps, and the store's read the catalog from the database.
 pytestmark = pytest.mark.django_db
 
 

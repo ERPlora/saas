@@ -2,14 +2,14 @@
 
 - ``GET``: Meta proves the address is ours (``hub.mode=subscribe``, ``hub.verify_token``, ``hub.challenge``) when it
   is set in Meta's app. The token is compared in constant time; without ``WHATSAPP_VERIFY_TOKEN`` the answer is 503
-  ``whatsapp.not_configured`` (an empty token never matches, #971 of the old product); another token or mode, 403.
+  ``whatsapp.not_configured`` (an empty token never matches); another token or mode, 403.
 - ``POST``: a notice, signed by Meta with the app's secret (``X-Hub-Signature-256: sha256=<hex HMAC-SHA256 of the
   raw body>``). Without ``WHATSAPP_APP_SECRET``, 503 ``whatsapp.not_configured``; unsigned or badly signed, 403;
   signed but not JSON, 400; more than ``WHATSAPP_WEBHOOK_MAX_BYTES``, 413, decided by its declared length before
   it is read. A signed notice is parked and pushed to the Hub (``gateway.ingest``) and answered 200: Meta delivers
   at least once and out of order, and parking is idempotent. A database failure answers 500 and Meta sends it again.
 
-No throttle counts anything before the signature (saas#2571, saas#2531): the old one spent a budget of 200 posts a
+No throttle counts anything before the signature: the old one spent a budget of 200 posts a
 minute per address on forged posts too, and refused Meta's own at a busy hour. Server to server: no session nor
 CSRF token.
 """

@@ -2,7 +2,7 @@
 
 ``demote_h1`` turns every ``<h1>`` of an HTML fragment into an ``<h2>``. The declaración
 responsable is a Markdown deed whose ``# title`` renders as an ``<h1>``, and its page already has
-one, the hero: two ``<h1>`` on one page (L8). The deed is published as it is (art. 13 RRSIF), so
+one, the hero: two ``<h1>`` on one page. The deed is published as it is (art. 13 RRSIF), so
 its title is kept, one level down; ``demote_h1:"ep-deed-title"`` also gives it a class, so it keeps
 the size of a page title (layout.css). Contract: public/tests/test_legal_tags.py.
 """

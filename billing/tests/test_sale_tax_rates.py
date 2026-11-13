@@ -1,4 +1,4 @@
-"""The TWO doors that sell charge the same tax to the same buyer (saas#1992).
+"""The TWO doors that sell charge the same tax to the same buyer.
 
 Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_sale_tax_rates.py`` (origin/develop, 6 tests).
 The SaaS sells a business's plan and a paid module, and each door used to decide the tax on its own:
@@ -77,7 +77,7 @@ class TestWhatIsFreeIsNeverRefused:
 
 class TestWithoutKnowingWhereThePayerIsNothingIsSold:
     def test_without_country_and_postal_code_it_is_refused(self, business_paid_by):
-        """saas#1972: the postal code is the ONLY thing that tells Las Palmas from Madrid."""
+        """The postal code is the ONLY thing that tells Las Palmas from Madrid."""
         nowhere = business_paid_by(None)
 
         with pytest.raises(Conflict) as refused:

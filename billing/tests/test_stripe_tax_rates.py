@@ -1,4 +1,4 @@
-"""What Stripe must charge for a quote OUR engine resolved, in Stripe's vocabulary (saas#1968).
+"""What Stripe must charge for a quote OUR engine resolved, in Stripe's vocabulary.
 
 The rate is decided by ``billing.TaxRule``; Stripe only charges it, and on a net price it needs it as a
 ``TaxRate`` object (``default_tax_rates``). This module stops before Stripe: ``tax_rate_specs_for``

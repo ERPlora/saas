@@ -6,8 +6,8 @@ these pages. What changed, and why:
 
 * the URL names live in the ``public`` namespace;
 * OutfitKit is gone: ``ok-container``/``ok-grid-cards``/``<ok-feature-card>`` are the ``ep-*``
-  classes and the feature-card partial of L2;
-* the contact page comes with the landing (L7) at the address it has today, ``/contact/``: the
+  classes and the feature-card partial;
+* the contact page comes with the landing at the address it has today, ``/contact/``: the
   support page links that address (``landing:contact_page`` does not exist here).
 """
 

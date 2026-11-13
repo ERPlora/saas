@@ -61,7 +61,7 @@ def app_surface(request: HttpRequest) -> str | None:
 
 def _is_authenticated(request: HttpRequest) -> bool:
     """An error page may render a request that never reached ``AuthenticationMiddleware`` (a 404
-    raised before it): ``request.user`` is not guaranteed (saas#1631)."""
+    raised before it): ``request.user`` is not guaranteed."""
     user = getattr(request, "user", None)
     return bool(user is not None and user.is_authenticated)
 
@@ -89,9 +89,9 @@ def public_site(request: HttpRequest) -> dict:
         # Opened from the installed app: no menu, footer, cookie notice nor measurement, and a way back (PUBLIC-F26).
         "app_surface": app_surface(request),
         # Clarity records the screen: only an anonymous visitor on the public half. The boundary
-        # is the session, not the URL, so a private page added later is covered (saas#958).
+        # is the session, not the URL, so a private page added later is covered.
         "is_public_page": not _is_authenticated(request) and not is_private(request),
-        # Passwords and one-time codes: no analytics there, whatever the consent (saas#958).
+        # Passwords and one-time codes: no analytics there, whatever the consent.
         "is_credentials_page": _is_credentials_page(path),
         # reCAPTCHA Enterprise's public key: a form with it asks Google for a token (frontend/recaptcha.ts) and says
         # so (public/partials/recaptcha_notice.html); empty when reCAPTCHA is off.

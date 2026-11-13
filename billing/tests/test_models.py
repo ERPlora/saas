@@ -124,7 +124,7 @@ class TestSingletons:
 
         assert policy.issuer_country == "ES"
         assert policy.issuer_region == ""
-        # ERPlora is in the ROI since 08-08-2026 (ESB27593136): on by default (saas#1479).
+        # ERPlora is in the ROI since 08-08-2026 (ESB27593136): on by default.
         assert policy.intra_eu_reverse_charge is True
         assert policy.oss_registered is False
         assert policy.oss_threshold == Decimal("10000.00")

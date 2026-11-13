@@ -5,7 +5,7 @@ Port of the old SaaS's generator and of its contract ``tests/unit/test_owned_css
 (Tailwind-like names over ``--ion-*`` tokens), which ``frontend/public.ts`` bundles. Same scales, same
 ``@layer utilities``, same ``--tw-leading`` / ``--tw-ring-color`` indirection. New here: the
 card-scoped re-emission that the old ``build_ion_card_content_utilities.py`` wrote to a second file
-(saas#1728) is part of the same output, so the two cannot drift apart.
+is part of the same output, so the two cannot drift apart.
 """
 
 import importlib.util
@@ -99,7 +99,7 @@ def test_positive_control_layers_media_scales_and_colours(generator):
 
 
 def test_leading_overrides_the_text_size_line_height_regardless_of_order(generator):
-    """`text-*` reads `--tw-leading` with its own line as the fallback; `leading-*` sets it (saas#1811)."""
+    """`text-*` reads `--tw-leading` with its own line as the fallback; `leading-*` sets it."""
     css = generator.render(["text-sm", "leading-relaxed"])
 
     assert (
@@ -111,7 +111,7 @@ def test_leading_overrides_the_text_size_line_height_regardless_of_order(generat
 
 
 def test_ring_colour_overrides_the_ring_default_regardless_of_order(generator):
-    """`ring-<n>` reads `--tw-ring-color`; `ring-<colour>` only sets it (saas#1831)."""
+    """`ring-<n>` reads `--tw-ring-color`; `ring-<colour>` only sets it."""
     css = generator.render(["ring-2", "hover:ring-primary/30"])
 
     assert "box-shadow: 0 0 0 2px var(--tw-ring-color, currentcolor);" in css
@@ -125,7 +125,7 @@ def test_ring_colour_overrides_the_ring_default_regardless_of_order(generator):
 def test_utilities_ionic_shadows_inside_a_card_are_re_emitted_unlayered_and_card_scoped(
     generator,
 ):
-    """saas#1728: Ionic injects `ion-card-content` styles with no layer, so a layered `mb-4` on a card's
+    """Ionic injects `ion-card-content` styles with no layer, so a layered `mb-4` on a card's
     `<h3>` computed to 2px. Re-emitted with two classes and no layer, the utility wins inside a card."""
     css = generator.render(["mb-4", "p-6", "text-primary", "md:mb-8"])
     unlayered = re.sub(r"@layer utilities \{.*?\n\}", "", css, flags=re.S)

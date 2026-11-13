@@ -1,6 +1,6 @@
 """ACCOUNTS-F21 · Account → Profile → «Change» the email: ``accounts.email.change`` and ``accounts.email.verify``.
 
-Ported from ERPlora/saas ``apps/dashboard/profile/tests/test_change_email.py`` (24; saas#2536,
+Ported from ERPlora/saas ``apps/dashboard/profile/tests/test_change_email.py`` (24 tests,
 SAAS_DASHBOARD-F204). Two locks, as Google, GitHub, Shopify and Stripe do it:
 
 1. a recent sign-in (allauth's reauthentication: the password typed again, not just an open session);

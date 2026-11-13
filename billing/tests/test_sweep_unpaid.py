@@ -1,6 +1,6 @@
 """``manage.py sweep_unpaid``: the safety net of unpaid plans and deleted businesses (``saas-cron``).
 
-Ported from ERPlora/saas ``hubs/main/tests/test_unpaid_plan_sweep.py`` (12, saas#2594) with its recorded
+Ported from ERPlora/saas ``hubs/main/tests/test_unpaid_plan_sweep.py`` (12) with its recorded
 Stripe fixtures (``fixtures/stripe_unpaid_plan/``: a test-clock renewal that failed once) and the Stripe half
 of ``test_hub_delete_cancels_billing.py`` (9 × 5 paths):
 

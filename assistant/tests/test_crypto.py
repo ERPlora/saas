@@ -1,7 +1,7 @@
 """The key of the credentials (``assistant.crypto``): Fernet with ``FERNET_KEY``, the previous key only to read.
 
-The same scheme as WhatsApp's Meta credentials (``whatsapp.crypto``) and the old product's ``fernet_fields``
-(saas#528): the database only ever holds the token.
+The same scheme as WhatsApp's Meta credentials (``whatsapp.crypto``) and the old product's ``fernet_fields``:
+the database only ever holds the token.
 """
 
 import pytest

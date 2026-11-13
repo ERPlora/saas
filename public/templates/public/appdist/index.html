@@ -4,11 +4,11 @@
   /app/ — port of apps/public/appdist/templates/appdist/index.html (origin/develop): the public page
   of the installable app `com.erplora.app` (ADR-0196/0160/0180). It only announces what the app does
   TODAY: a NETWORK ESC/POS printer, the drawer through the printer's port, the notice of a new
-  version. No Bluetooth (hub#388), no published macOS build, no auto-start (hub#389).
+  version. No Bluetooth, no published macOS build, no auto-start.
 
   The button of each platform goes to public:app_download, which picks store or installer; the
   view only says whether each store is live (`app_ms_store`, `app_google_play`), so the label
-  matches the channel. Android never reads as a download (hub#984).
+  matches the channel. Android never reads as a download.
 {% endcomment %}
 
 {% block title %}{% trans "The ERPlora app" %} · ERPlora{% endblock %}
@@ -161,9 +161,9 @@
               <p class="font-mono text-xs uppercase tracking-wider text-fg/55 m-0 mb-2">{% trans "Android 9 or later" %}</p>
               <ion-card-title class="mb-3">Android</ion-card-title>
               <p class="text-sm text-fg/60 m-0 mb-6">{% trans "The same app on a phone or tablet — for taking orders at the table." %}</p>
-              {% comment %} Never «Download»: on Android the only channel is Play (hub#984). While the
+              {% comment %} Never «Download»: on Android the only channel is Play. While the
                  listing is under review the button says so instead of promising it, because the
-                 destination is the page of /app/download/android/, not Play (saas#1719). {% endcomment %}
+                 destination is the page of /app/download/android/, not Play. {% endcomment %}
               {% if app_google_play %}{% trans "Get it on Google Play" as play_label %}{% else %}{% trans "Coming to Google Play" as play_label %}{% endif %}
               {% button href="public:app_download" arg="android" label=play_label fill="outline" block=True start_icon="logo-google-playstore" extra_class="mt-auto" %}
             </ion-card-content>

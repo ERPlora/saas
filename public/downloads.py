@@ -2,7 +2,7 @@
 
 Port of ``apps/public/downloads.py`` (origin/develop c5ca8ca). The hub's CI
 (``tauri-release.yml``) uploads the installers of the app to ``downloads/app/latest/`` of a PRIVATE
-S3 bucket on AWS (``DOWNLOADS_BUCKET`` in ``DOWNLOADS_REGION``, Ireland; PLAN-AWS «s3_downloads.tf»;
+S3 bucket on AWS (``DOWNLOADS_BUCKET`` in ``DOWNLOADS_REGION``, Ireland; ``stacks/prod/s3_downloads.tf`` of ERPlora/aws;
 before, Hetzner's object storage), so the public download asks for a short-lived presigned GET URL
 instead of redirecting to a world-public object. The client takes no static keys: boto3 uses the
 ECS task's role, or the environment in development, where ``DOWNLOADS_ENDPOINT_URL`` may point it
@@ -17,7 +17,7 @@ from django.conf import settings
 
 #: The ``applicationId`` of the installable app. NOT deploy configuration: it is baked into the AAB
 #: the CI uploads and it is the same string that names the Play listing, so it is known at code
-#: time. That is why Android's door does not ask an environment variable (hub#984): when it did, a
+#: time. That is why Android's door does not ask an environment variable: when it did, a
 #: deploy without the variable handed out the APK outside Play, silently.
 ANDROID_PLAY_PACKAGE = "com.erplora.app"
 
@@ -26,7 +26,7 @@ ANDROID_PLAY_PACKAGE = "com.erplora.app"
 #: answered 404; the app's CI (``tauri-release.yml``) uploads it to the GitHub release under this
 #: exact name and publishes that release with ``--latest``. GitHub resolves
 #: ``releases/latest/download/<asset>`` to the newest release, so the address carries no version and
-#: a cached link keeps delivering the last build (hub#400, point 1). Until ``ERPlora/app`` publishes
+#: a cached link keeps delivering the last build. Until ``ERPlora/app`` publishes
 #: its first release, GitHub answers this address with a 404.
 GITHUB_RELEASE_URLS = {
     "linux": "https://github.com/ERPlora/app/releases/latest/download/erplora-app.AppImage",
@@ -62,16 +62,16 @@ def _s3_client():
 def store_url_for(
     platform: str, *, ms_store_setting: str, play_setting: str, play_live_setting: str
 ) -> str | None:
-    """The store URL for ``platform``, or ``None`` when there is no store to offer (saas#707).
+    """The store URL for ``platform``, or ``None`` when there is no store to offer.
 
     * ``windows`` → the Web Installer Direct of the single «ERPlora» listing of Microsoft Store
       (ADR-0160), by its Store ID. Microsoft assigns that ID and it cannot be derived, so here the
       setting is a legitimate switch: without it, the web download is the right channel.
     * ``android`` → the single Google Play listing (Android client = Play ONLY). Two settings that
       do different things: ``play_live_setting`` says whether the listing EXISTS (off → ``None``,
-      and the view serves a page of ours, never the APK; saas#1719); ``play_setting`` only
+      and the view serves a page of ours, never the APK); ``play_setting`` only
       overrides the ``applicationId`` (empty means ``ANDROID_PLAY_PACKAGE``, never «hand out the
-      APK»; hub#984).
+      APK»).
     * any other platform (linux, macos…) → ``None``.
 
     ``None`` does NOT mean «serve the binary»: it means «no store». Which platforms fall back to

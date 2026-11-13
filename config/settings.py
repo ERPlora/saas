@@ -630,7 +630,7 @@ URLIZE_ASSUME_HTTPS = True
 
 # Content Security Policy (Django's native middleware, nonce per response; packages/live).
 # `form-action` filters the whole redirect chain of a form post: «Continue with Google» posts to
-# allauth.headless's provider redirect, which answers 302 to accounts.google.com (saas#945), the hub-login page
+# allauth.headless's provider redirect, which answers 302 to accounts.google.com, the hub-login page
 # posts its form to the hub's origin and the admin's «Open in the Hub admin» to the platform host
 # (named on its own: `HUB_ADMIN_CALLBACK_URL` may live outside the hubs' pattern). «Continue with Google» adds no
 # script, frame nor connection source; reCAPTCHA does (below).

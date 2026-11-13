@@ -1,6 +1,6 @@
 """``python manage.py sweep_unpaid``: the safety net of unpaid plans and deleted businesses (``saas-cron``).
 
-Ported from ERPlora/saas ``suspend_lapsed_unpaid_plans`` (``hubs/main/webhooks.py``, saas#2594; a Celery beat
+Ported from ERPlora/saas ``suspend_lapsed_unpaid_plans`` (``hubs/main/webhooks.py``; a Celery beat
 task there, an ECS scheduled task here, ronda 14). The webhook acts when Stripe sends an event; this replays
 every business in dunning with its oldest open invoice (7 days of grace, then suspended; ``unpaid`` at
 once) and cancels the Stripe subscription of every deleted business (``billing.services.sweep_unpaid``).

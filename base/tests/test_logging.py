@@ -83,7 +83,7 @@ class TestOrdinaryTextSurvives:
 
 
 class TestAuthenticationFailuresAreNotDiscarded:
-    """#969: the lines an old filter silenced reach the log, word for word."""
+    """The lines an old filter silenced reach the log, word for word."""
 
     @pytest.mark.parametrize(
         "message",

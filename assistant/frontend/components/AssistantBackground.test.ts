@@ -124,7 +124,7 @@ describe('AssistantBackground', () => {
     expect(wrapper.get('[data-testid="assistant-bubble-assistant"]').text()).toContain('You have Bar Lena.');
   });
 
-  it('paints a «---» line of an answer as a separator, never as text (ui#56)', async () => {
+  it('paints a «---» line of an answer as a separator, never as text', async () => {
     const text = 'You have **Bar Lena**.\n\n---\n\nAsk me about your invoices.';
     test_.script.push([{ type: 'text', text }, done(text)]);
     const { wrapper } = await mountAssistant(AssistantBackground, { onApi: serving(usage(0)) });

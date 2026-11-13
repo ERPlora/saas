@@ -1,4 +1,4 @@
-"""Adding VAT to a net price, and believing Stripe's quota when it is zero (saas#1098).
+"""Adding VAT to a net price, and believing Stripe's quota when it is zero.
 
 Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_vat_net_prices.py`` (origin/develop, 10 tests).
 Plans are sold at NET prices: ``add_vat`` / ``vat_rate_for`` are the way back («€29.99 + VAT —
@@ -67,7 +67,7 @@ class TestStripesQuotaRulesEvenWhenZero:
         assert vat.tax == Decimal("0.00")
 
     def test_a_SUBJECT_sale_without_a_stripe_quota_is_reconciled(self):
-        """The reverse (saas#1479): a subject sale at 21 % cannot leave the invoice at 0 % — a Spanish
+        """The reverse: a subject sale at 21 % cannot leave the invoice at 0 % — a Spanish
         domestic sale at 0 % does not exist. What was charged becomes VAT-inclusive; the total stays."""
         vat = resolve_vat(
             Decimal("100.00"), customer_country="ES", tax_cents=0, tax_included=False

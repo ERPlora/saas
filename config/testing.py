@@ -1,7 +1,7 @@
 """What the test harness of ``conftest.py`` checks on the database connections once a test ends:
 connections left with their own ``ensure_connection`` (``database_block_left_as_found``).
 
-Same check as the Hub's ``config/testing.py`` (ERPlora/hub#822).
+Same check as the Hub's ``config/testing.py``.
 """
 
 import pytest

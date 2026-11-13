@@ -71,7 +71,7 @@
   font-family: var(--font-mono);
 }
 
-/* The plan table has nine columns since the apps each plan turns on at once joined it (hub#256), and ten while a plan
+/* The plan table has nine columns since the apps each plan turns on at once joined it, and ten while a plan
  * includes an own domain (saas#301): on a tablet, before it stacks under 768 px, its cells tighten so it fits its
  * surface instead of scrolling inside it. */
 @media (min-width: 768px) and (max-width: 1023px) {

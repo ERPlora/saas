@@ -1,4 +1,4 @@
-"""Tax rates are editable DATA, not a constant of the code (saas#1063).
+"""Tax rates are editable DATA, not a constant of the code.
 
 Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_tax_rules.py`` (origin/develop, 20 tests).
 The rates change (Estonia 22→24 in Jul-2025, Romania 19→21 in Aug-2025, Slovakia 20→23 in Jan-2025,
@@ -229,7 +229,7 @@ class TestFiscalPolicy:
         assert queries.uses_destination_rate(queries.fiscal_policy()) is True
 
     def test_the_sale_being_priced_counts_towards_the_threshold(self):
-        """The sale that crosses already goes to destination (art. 59c(2), saas#1969)."""
+        """The sale that crosses already goes to destination (art. 59c(2))."""
         policy = queries.fiscal_policy()
 
         assert queries.uses_destination_rate(policy, pending_cents=1_000_001) is True

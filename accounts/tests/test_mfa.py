@@ -9,7 +9,7 @@ account has one and the staff's jump to the Hub admin (``hub-admin``) always nee
 ``/admin/login/`` hands over to allauth's login (the launcher's).
 
 Cases ported from ERPlora/saas ``origin/develop``: ``test_mfa_login_flow.py``,
-``test_wrong_totp_code.py`` (a «wrong» code is chosen so it cannot be the live one, saas#2271),
+``test_wrong_totp_code.py`` (a «wrong» code is chosen so it cannot be the live one),
 ``test_admin_requires_second_factor.py`` and ``test_mfa_settings.py``.
 """
 
@@ -92,7 +92,7 @@ def _live_code(secret: str) -> str:
 def _wrong_code(secret: str) -> str:
     """A six-digit code the authenticator rejects now and for the next periods the test may still run in.
 
-    Never a fixed literal: ``"000000"`` is the live code once every million periods (saas#2271).
+    Never a fixed literal: ``"000000"`` is the live code once every million periods.
     """
     live = {_code_at(secret, _counter() + n) for n in range(-3, 4)}
     return next(code for code in (str(digit) * 6 for digit in range(10)) if code not in live)

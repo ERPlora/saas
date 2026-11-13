@@ -118,7 +118,7 @@ class Command(BaseCommand):
                     "description": description,
                     "is_required": is_required,
                     # The essential group is never deletable: `CleanCookiesMiddleware` reads only
-                    # `is_deletable`, and deleting the session cookie signs the person out (saas#975).
+                    # `is_deletable`, and deleting the session cookie signs the person out.
                     "is_deletable": not is_required,
                     "ordering": ordering,
                 },

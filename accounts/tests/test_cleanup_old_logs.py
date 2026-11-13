@@ -4,7 +4,7 @@ ACCOUNTS-G08, G53, G62 and G28, its task). Daily in ``saas-cron``.
 Ported from ERPlora/saas ``apps/auth/users/management/commands/cleanup_old_logs.py`` and its tests
 (``tests/unit/test_gdpr_retention_policy.py``, ``test_gdpr_retention_noinput.py``): the entries older than
 ``--retention-days`` (90) go, the younger stay, ``--dry-run`` only counts. Changed: no question is asked (the old
-``--no-input`` is the only way, #970: a prompt killed the scheduled run), one batch per transaction instead of one
+``--no-input`` is the only way: a prompt killed the scheduled run), one batch per transaction instead of one
 transaction for the whole run, and the advisory lock of ``anonymize_old_users`` so two runs never overlap.
 """
 
@@ -113,7 +113,7 @@ def test_it_deletes_batch_after_batch_until_none_is_left(entry, monkeypatch):
 
 
 def test_it_never_asks(entry, monkeypatch):
-    """#970: under the scheduled task there is nobody to answer, and a question killed the run."""
+    """Under the scheduled task there is nobody to answer, and a question killed the run."""
     monkeypatch.setattr("builtins.input", lambda *args: pytest.fail("cleanup_old_logs asked a question"))
     old = entry(120)
 
