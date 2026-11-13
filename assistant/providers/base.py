@@ -1,4 +1,4 @@
-"""What every provider's client shares (ASSISTANT-G33): the normalized events, the request of one turn, the reading
+"""What every provider's client shares: the normalized events, the request of one turn, the reading
 of a server-sent stream and the classification of upstream failures.
 
 Each concrete client (``openai``, ``deepseek``, ``anthropic``, ``gemini``) translates the canonical conversation (the

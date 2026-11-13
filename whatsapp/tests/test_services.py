@@ -1,4 +1,4 @@
-"""The operations behind Meta's webhook and the deliveries to the Hub (WHATSAPP-G07).
+"""The operations behind Meta's webhook and the deliveries to the Hub.
 
 - ``whatsapp.webhook.ingest`` parks what Meta reported for each active number, once per message;
 - ``whatsapp.delivery.claim`` leases what is due, so two processes (the webhook's COMMIT and ``whatsapp_deliver``)

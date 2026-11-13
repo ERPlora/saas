@@ -1,15 +1,13 @@
-"""ASSISTANT-F12 (ASSISTANT-G43, G08, G31) · Receive a turn of the Hub and send the answer live, and
-ASSISTANT-F13 (G44, G07) · the same turn answered at once, in JSON; ASSISTANT-F15 (G47) · refuse a turn with a code.
+"""ASSISTANT-F12 · Receive a turn of the Hub and send the answer live, and
+ASSISTANT-F13 · the same turn answered at once, in JSON; ASSISTANT-F15 · refuse a turn with a code.
 
-``POST /internal/assistant/chat/stream`` answers ``text/event-stream`` (over HTTP, no channels: the old WebSocket,
-``api/consumer.py``, is not ported) and ``POST /internal/assistant/chat`` the whole turn in one JSON. The conversation
+``POST /internal/assistant/chat/stream`` answers ``text/event-stream`` (over HTTP, no channels nor WebSocket)
+and ``POST /internal/assistant/chat`` the whole turn in one JSON. The conversation
 is the Hub's (the person's browser owns it): erplora.com puts the Hub's ``instructions`` as the only system
 message, keeps the last 100 messages, offers the Hub's tools and sends the turn to the model of the routing policy
 (ASSISTANT-F06), passing to its fallback if the provider fails before answering. What can be decided before the model
 is called is an HTTP status (quota, size, no model); a failure of the provider once the answer started is an ``error``
-frame. Cases of the old product's ``test_stateless_bridge.py``, ``test_error_codes.py``, ``test_quota_signal.py`` and
-``test_sse_stream_asgi.py``; the provider is the local fake (``fake_provider``), never a real one. The old two-step
-pipeline (G06) and its ``ContextObject`` (G38) are not ported: one model and its fallback (ASSISTANT-F06).
+frame. The provider is the local fake (``fake_provider``), never a real one.
 """
 
 import logging

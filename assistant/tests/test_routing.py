@@ -1,4 +1,4 @@
-"""The turn through its route (``assistant.routing.stream``, ASSISTANT-G45): the model that answers is called first;
+"""The turn through its route (``assistant.routing.stream``): the model that answers is called first;
 if its provider fails before answering anything, the fallback model answers; once text has come, a failure ends the
 turn (the person already saw it).
 

@@ -1,4 +1,4 @@
-"""A business's template as Meta takes it and as Meta gives it back (WHATSAPP-G15, WHATSAPP-G17).
+"""A business's template as Meta takes it and as Meta gives it back.
 
 Meta answers a malformed template with a generic error the business reads as «it did not work», so its rules
 are checked here before the call (``check``), each one refused with a sentence that names what is wrong; the

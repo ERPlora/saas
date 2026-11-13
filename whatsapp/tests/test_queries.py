@@ -37,7 +37,7 @@ def test_a_business_being_deleted_can_still_be_forgotten(business):
     assert queries.known_hub("bar-manolo", live=False) is None
 
 
-# --- WHATSAPP-G03, WHATSAPP-G05 · the channel the Hub learns in its snapshot (door 4) --------------------------
+# --- The channel the Hub learns in its snapshot (door 4) -------------------------------------------------------
 
 
 @pytest.fixture

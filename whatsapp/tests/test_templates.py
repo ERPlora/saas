@@ -1,9 +1,9 @@
-"""WHATSAPP-G15 · A template is checked against Meta's rules before Meta is called, and written in Meta's shape.
+"""A template is checked against Meta's rules before Meta is called, and written in Meta's shape.
 
-Cases of the old product's ``test_templates.py`` (``services/templates.py``: name, category, language, body,
-placeholders numbered without gaps or named, one example each, buttons and their limits), on the Hub's door 8 body
-(``{name, language, category, header, body, body_examples, footer, buttons, meta_id}``), plus Meta's lengths the old
-one left to Meta (header 60, body 1024, footer 60). And the way back: Meta's template as the mirror keeps it.
+Name, category, language, body, placeholders (numbered without gaps or named, one example each), buttons and their
+limits, and Meta's lengths (header 60, body 1024, footer 60), on the Hub's door 8 body
+(``{name, language, category, header, body, body_examples, footer, buttons, meta_id}``). And the way back: Meta's
+template as the mirror keeps it.
 """
 
 import pytest

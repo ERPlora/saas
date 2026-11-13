@@ -1,4 +1,4 @@
-"""WHATSAPP-G04 · The encrypted field: what the model reads is the secret, what the column holds is its token."""
+"""The encrypted field: what the model reads is the secret, what the column holds is its token."""
 
 import logging
 

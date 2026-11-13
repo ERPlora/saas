@@ -1,6 +1,6 @@
 """The reads of the AI gateway (``assistant.queries``).
 
-This file starts with the connection of a provider (``assistant.provider.connection``, ASSISTANT-G24): its API, its
+This file starts with the connection of a provider (``assistant.provider.connection``): its API, its
 address and its usable key (the most recent active one that opens), for the listing of its models. The key travels
 as a secret: the output's ``repr`` and dump never show it.
 """
@@ -63,7 +63,7 @@ def test_reading_a_connection_needs_to_see_providers(make_user, provider):
         connection(member, provider)
 
 
-# --- The route of a turn (ASSISTANT-G45, G39) ------------------------------------------------------------
+# --- The route of a turn ---------------------------------------------------------------------------------
 
 from assistant.models import AIProvider, AIRoutingPolicy  # noqa: E402
 from assistant.schemas import RouteIn  # noqa: E402

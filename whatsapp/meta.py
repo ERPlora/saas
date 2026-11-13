@@ -1,4 +1,4 @@
-"""erplora.com's client of Meta's Graph API (WHATSAPP-G06, WHATSAPP-G10).
+"""erplora.com's client of Meta's Graph API.
 
 Every call goes to ``https://graph.facebook.com/<WHATSAPP_GRAPH_VERSION>/…`` with the business token in the
 ``Authorization`` header (never in the address; only Meta's token exchange and ``debug_token`` carry the app's

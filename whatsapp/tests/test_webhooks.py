@@ -1,8 +1,7 @@
-"""WHATSAPP-G13, WHATSAPP-G07 · Meta's webhook at ``/webhooks/whatsapp/``: proving the address is ours, and taking
+"""Meta's webhook at ``/webhooks/whatsapp/``: proving the address is ours, and taking
 what Meta reports to the business's Hub.
 
-Cases of the old product's ``test_webhook_fail_closed.py``, ``test_webhook_echo_ingest.py`` and
-``test_webhook_coexistence_fields.py``, with the new contract: what arrives is pushed to the Hub's door 1 (or door 2
+What arrives is pushed to the Hub's door 1 (or door 2
 for a status) right after the COMMIT, and kept and retried while the Hub does not take it (a Hub of ``main`` without
 the doors answers 404). Meta is the client here (its signed POST); the Hub is the real-HTTP double.
 """
@@ -107,8 +106,8 @@ class TestMetasSignature:
         assert response.status_code == 413
 
     def test_no_throttle_spends_metas_traffic_before_the_signature(self, client, number, hub_takes_it):
-        """The old webhook counted 200 POST a minute per address BEFORE the signature, so at a
-        busy hour Meta's own notices were refused; anybody could spend that budget with unsigned posts. Here no
+        """A budget of posts per address counted BEFORE the signature would refuse Meta's own notices at a
+        busy hour, and anybody could spend it with unsigned posts. No such
         budget exists: a burst of unsigned posts is refused one by one and Meta's next, signed one gets in."""
         for _ in range(250):
             assert signed(client, {}, signature="sha256=00").status_code == 403
@@ -176,7 +175,7 @@ class TestACustomersMessageReachesTheHub:
         assert hub_takes_it.calls_to("POST", "/internal/whatsapp/inbound") == []
 
     def test_a_business_that_left_takes_nothing(self, client, number, business, hub_takes_it):
-        """The old product kept parking the messages of a business being deleted until its purge, for nobody."""
+        """A business being deleted has nobody to read its messages: nothing is parked for it."""
         from hubs.models import Hub
 
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)

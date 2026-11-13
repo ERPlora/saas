@@ -1,4 +1,4 @@
-"""ASSISTANT-F11 (ASSISTANT-G42) · Know who calls and for which business: every door of the assistant
+"""ASSISTANT-F11 · Know who calls and for which business: every door of the assistant
 (``/internal/assistant/*`` and ``/internal/speech/*``) is the Hub's alone, signed as every ``/internal`` call
 (``accounts.signing``), and names the business in ``hub`` (its address or its id; a demo, by its ``demo-…`` address).
 
