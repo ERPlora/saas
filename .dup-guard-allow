@@ -9,3 +9,4 @@ duplicados vite.config.test.ts:34-40 rootAppsWithFrontend was already copied in 
 duplicados eslint.config.test.ts:15-25 rootAppsWithFrontend was already copied in three test files on main; only its doc comment changed here
 duplicados tests/e2e/public-web.spec.ts:30-68 captureEverywhere already shared this body with public-web-2 and public-demo on main; this change only edits its doc comment
 duplicados tests/e2e/public-web-2.spec.ts:35-73 captureEverywhere already shared this body with public-web on main; this change only edits its doc comment
+duplicados tests/e2e/panel/chrome.spec.ts:256-261 the 390 px target loop was already repeated at 290-295 on main; this change only joins the comment after it into one line
