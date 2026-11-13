@@ -183,7 +183,7 @@ lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.s
   y sin prorrateo); el webhook pasa el negocio a la suscripción nueva y termina la anterior sin reembolso. Un cliente de
   Stripe enviado sin su suscripción ya no pisa el de una suscripción viva (`hubs.subscription.apply`), y
   `retax_subscription` no recalcula el impuesto de un plan que cobra otra cuenta. Tests:
-  `billing/tests/test_plan_take_over.py`; e2e: `tests/e2e/panel/hubs-people.spec.ts` («HUBS-G82 (F28)»).
+  `billing/tests/test_plan_take_over.py`; e2e: `tests/e2e/panel/hubs-people.spec.ts` («HUBS-F28»).
 - **Sin página global de personas** (G86, G34, G115 del SaaS viejo): ronda 17, cada negocio enseña las suyas en
   «Miembros». «Usuarios del Terminal» (G24) era esa misma página del SaaS viejo, no los empleados con PIN del Hub.
 

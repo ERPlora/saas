@@ -1,7 +1,7 @@
 // The flows of «the plan, the rights and the catalogue's taxonomy» (hubs/WORKBOOK.md) that
 // have a screen, at the three sizes (390×844, 834×1112, 1440×900), in English and in Spanish. Each test
-// names its flow by its registry key; in hubs/WORKBOOK.md: G101=F31 (the snapshot: what a plan gives, changed in the
-// admin, reaches its businesses), G05 and G01=F36 (the sectors and the business types in the admin).
+// names its flow of hubs/WORKBOOK.md in its title: F31 (the snapshot: what a plan gives, changed in the admin,
+// reaches its businesses) and F36 (the sectors and the business types in the admin).
 // flow: HUBS-F31 — the staff change what a plan gives; the next pass of reconcile_hub_states takes it to the Hub.
 // flow: HUBS-F36 — the staff keep the sectors and the business types of the sign-up.
 //
@@ -179,7 +179,7 @@ for (const run of [
   test.describe(`in ${run.language}`, () => {
     test.use({ locale: run.locale });
 
-    test(`HUBS-G101 (F31): the staff raise the places of a plan in the admin; its businesses get them at the Hub on the next pass${run.suffix}`, async ({
+    test(`HUBS-F31: the staff raise the places of a plan in the admin; its businesses get them at the Hub on the next pass${run.suffix}`, async ({
       page,
     }) => {
       const errors = watchPageErrors(page);
@@ -201,7 +201,7 @@ for (const run of [
       expect(errors).toEqual([]);
     });
 
-    test(`HUBS-G05 + HUBS-G01 (F36): the staff keep the sectors and the business types of the sign-up in the admin${run.suffix}`, async ({
+    test(`HUBS-F36: the staff keep the sectors and the business types of the sign-up in the admin${run.suffix}`, async ({
       page,
     }) => {
       const errors = watchPageErrors(page);

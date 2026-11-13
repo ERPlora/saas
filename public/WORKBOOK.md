@@ -749,7 +749,7 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   el aspecto del `ion-button` claro al que sustituye (`components/app-bar.css`): un `ion-button` no es un enlace hasta que
   `frontend/public.ts` lo define, y pulsado antes, en un dispositivo lento, no hacía nada (saas#236). Cuando el script ya
   corrió, `setupAppBack` vuelve por el historial a la pantalla que abrió el texto. El e2e lo prueba también con los
-  scripts de la página retenidos (`public-web-2.spec.ts`, PUBLIC-G47 «on a slow device»).
+  scripts de la página retenidos (`public-web-2.spec.ts`, PUBLIC-F26 «on a slow device»).
 - Botones que llevan a otra página (F11, y todas las páginas públicas): un `<a class="ep-button …">` de verdad, con el
   aspecto del `ion-button` iOS. Solo lo escribe `public/components/button.html`; cada página lo pide en una línea con
   `{% button %}` (`public/templatetags/buttons.py`, con `href`, `label`, `fill`, `size`, `color`, `block` e iconos
@@ -757,7 +757,7 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   siguen siendo donde se componen. El aspecto es `components/button.css`. Un `ion-button` no es un enlace hasta que
   `frontend/public.ts` lo define, y pulsado antes no hacía nada (saas#238). Siguen siendo `ion-button` los que no
   navegan: envíos de formulario, Aceptar y Rechazar cookies, idioma del pie y «Probar la demo» de la puerta. Lo guardan
-  el barrido de `public/tests/test_templates.py` y dos e2e de `public-web.spec.ts` (PUBLIC-G51): pulsar con los scripts
+  el barrido de `public/tests/test_templates.py` y dos e2e de `public-web.spec.ts` (PUBLIC-F11): pulsar con los scripts
   retenidos y la paridad de estilos calculados frente a un `ion-button` real, en reposo y bajo el puntero.
 - Correo de soporte (F18): `SUPPORT_EMAIL` es la única fuente; las páginas de error lo leen con `{% support_email %}`
   (`public/templatetags/support.py`: la 500 se pinta sin contexto) y la SPA con el bloque JSON `support-email` de
@@ -766,11 +766,11 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   justo después de `</nav>`, no `frontend/public.ts`: ese módulo llega tarde, y en una conexión lenta el toque se perdía;
   si no llegaba, el menú no se abría nunca (saas#243). Las tres rayas, la cruz, el fondo, Esc, un enlace y ensanchar la
   ventana hasta la barra de escritorio siguen siendo el contrato, con `aria-expanded` y el foco. Vitest ejecuta el propio
-  script de la plantilla (`frontend/public.test.ts`) y dos e2e de `public-web.spec.ts` (PUBLIC-G51) pulsan con los scripts
+  script de la plantilla (`frontend/public.test.ts`) y dos e2e de `public-web.spec.ts` (PUBLIC-F11) pulsan con los scripts
   retenidos y con ellos ya cargados: un segundo enganche en el módulo cerraría lo que abre el botón. Con el panel abierto,
   el tabulador da la vuelta dentro de él y lo demás de la página queda `inert` hasta cerrarlo (saas#252): también la marca y
   las tres rayas, que el panel y el fondo tapan, y lo que llegue con el panel ya abierto en una conexión lenta. Vitest lo
-  cubre en la CI, que no corre los e2e, y PUBLIC-G51 lo recorre en el navegador, en esos mismos dos estados.
+  cubre en la CI, que no corre los e2e, y PUBLIC-F11 lo recorre en el navegador, en esos mismos dos estados.
 - Equivalencia de claves del registro: G30 = F01; G31 y G14 = F02; G32 y G05 = F03; G33 = F04; G34, G06 y G09 = F05;
   G35 y G16 = F06; G49 = F07; G50 = F08; G36 y G13 = F09; G37, G12, G15 y G18 = F10; G51 = F11; G52 = F12; G42 = F13;
   G48, G22 y G23 = F14.

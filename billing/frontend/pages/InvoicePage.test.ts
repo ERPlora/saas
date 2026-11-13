@@ -1,5 +1,5 @@
-// The page of one ERPlora invoice (`/dashboard/billing/invoices/:id`, BILLING-G05; the old «Detalle de factura» and the
-// «View» of `/dashboard/billing/invoices/`, BILLING-G92): live (`billing.invoice.get`), with Back to Invoices:
+// The page of one ERPlora invoice (`/dashboard/billing/invoices/:id`, opened by «View invoice» on Invoices): live
+// (`billing.invoice.get`), with Back to Invoices:
 //   - its number (or Stripe's reference while it is not collected), date, business, status and fiscal status;
 //   - its lines (what it charges, the period, net, VAT and total) and the totals;
 //   - who it is made out to, as on the day it was issued;
@@ -83,7 +83,7 @@ async function setup(invoice: InvoiceDetailOut | null, options: { locale?: 'en' 
   return { ...m, stream, el, all };
 }
 
-describe('InvoicePage (BILLING-G05)', () => {
+describe('InvoicePage', () => {
   it('asks the server for that invoice, live, and goes back to Invoices', async () => {
     const s = await setup(detail());
     expect(s.client.stream.subscriptions('billing.invoice.get')[0].params).toEqual({ id: '00042' });

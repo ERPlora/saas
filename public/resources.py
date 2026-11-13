@@ -13,8 +13,8 @@ from django.views.decorators.http import require_safe
 
 @require_safe
 def documentation(request: HttpRequest) -> HttpResponse:
-    """The documentation that exists is the help center's guides (PUBLIC-G07): the old «coming soon» page
-    promised more, so its address, still linked from outside, leads there for good. Each app's own
+    """The documentation that exists is the help center's guides, so this address, still linked from outside,
+    leads there for good. Each app's own
     documentation is its tab in the app store (``/apps/<id>/docs/``)."""
     return HttpResponsePermanentRedirect(reverse("public:help"))
 

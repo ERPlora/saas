@@ -109,7 +109,7 @@ def test_the_ownership_offer_and_its_acceptance(hub, make_user):
 
 
 def test_the_ownership_mails_link_to_pages_the_panel_has(hub, make_user):
-    """HUBS-G82: the offer is answered on Businesses, whose card says «Accept the ownership» (the panel has no
+    """The offer is answered on Businesses, whose card says «Accept the ownership» (the panel has no
     ``/ownership/<id>`` page), and the outgoing owner, who stays as an administrator, finds the business there."""
     olga, ana = make_user("olga@example.com", language="en"), make_user("ana@example.com", language="en")
     transfer = HubOwnershipTransfer.objects.create(
@@ -257,7 +257,7 @@ def test_the_copy_ready_mail_without_an_owner_is_not_sent_and_says_so(hub, caplo
 
 
 def test_the_ready_mail_opens_the_business(hub, make_user, settings):
-    """HUBS-F04 (HUBS-G68) and HUBS-F07 (HUBS-G91): once the Hub reports it ready, the owner hears it with
+    """HUBS-F04 and HUBS-F07: once the Hub reports it ready, the owner hears it with
     the way in (the jump, which starts at the business) and the business's page in the panel."""
     settings.HUB_CALLBACK_TEMPLATE = "https://{slug}.erplora.com/auth/callback"
     owner = make_user("olga@example.com", language="es")

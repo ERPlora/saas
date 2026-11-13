@@ -1,5 +1,5 @@
 """ACCOUNTS-F35 · ``manage.py anonymize_old_users``: the accounts unused for two years go (GDPR art. 5.1.e, storage
-limitation; ACCOUNTS-G97, G07, G52, G61). Weekly in ``saas-cron``.
+limitation). Weekly in ``saas-cron``.
 
 An account goes as its owner deletes
 it (ACCOUNTS-F27), with its addresses, its names, its linked Google account and its sessions' addresses, and
@@ -8,7 +8,7 @@ ERPlora's invoices stay with their recipient as issued.
 Which: active, not staff, and its last sign-in (or, never signed in, its creation) more than ``--inactive-days`` (730)
 ago. Never one that belongs to a business that is not deleted, owner, payer or member: ``last_login`` only moves when
 signing in on erplora.com, so whoever works in a business every day (its session, its PIN) looks unused here, and
-erasing them would take them out of the business (the old SaaS spared only the owners). Google's policy for inactive
+erasing them would take them out of the business. Google's policy for inactive
 accounts spares the accounts of organisations the same way.
 """
 

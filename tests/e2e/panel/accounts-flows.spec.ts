@@ -1,8 +1,7 @@
 // The flows of «create the account, confirm the email, sign in, the password, sign out, the terms and the throttle»
 // (accounts/WORKBOOK.md) on their screens, at three sizes (390×844, 834×1112, 1440×900), against the panel's own
 // Django: the codes and the reset links are read from its mail folder (project.ts), nothing is played. Each test
-// names its flow in its title by its registry key; in accounts/WORKBOOK.md: G83=F01, G84=F02, G107=F03, G85=F04,
-// G91=F07, G109=F08, G93=F09, G119=F10, G96=F11, G18=F13. Google (F06) plays in accounts-google.spec.ts and the
+// names its flow of accounts/WORKBOOK.md in its title. Google (F06) plays in accounts-google.spec.ts and the
 // authenticator app (F05) in accounts-security.spec.ts, on the panel's twin: this panel has neither, as the second
 // factor is off by default. Accounts of this spec: `e2e-acc1-…@example.com`, removed before and after
 // (panel_seed.py's `clear` removes every `e2e-…@example.com` too).
@@ -42,7 +41,7 @@ const removeAccounts = () => removeAccountsWarm(PREFIX);
 const createAccount = (email: string, { verified = true, staff = false } = {}) =>
   createAccountWarm(email, PASSWORD, { verified, role: staff ? 'superuser' : 'customer' });
 
-/** What the account accepted (ACCOUNTS-G119), before it ever signs in: `terms_version privacy_version`, or `None None`. */
+/** What the account accepted, before it ever signs in: `terms_version privacy_version`, or `None None`. */
 function acceptedVersions(email: string): Promise<string> {
   return djangoPrintWarm(
     [
@@ -113,7 +112,7 @@ test.beforeAll(async () => {
 });
 test.afterAll(removeAccounts);
 
-test('ACCOUNTS-G83: a new address creates its account on «Create account», refused passwords say why, and the code opens the launcher', async ({
+test('ACCOUNTS-F01: a new address creates its account on «Create account», refused passwords say why, and the code opens the launcher', async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -142,7 +141,7 @@ test('ACCOUNTS-G83: a new address creates its account on «Create account», ref
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G84: the code that proves a new address, with «Send another code» when the mail is lost', async ({ page }) => {
+test('ACCOUNTS-F02: the code that proves a new address, with «Send another code» when the mail is lost', async ({ page }) => {
   const errors = watchPageErrors(page);
   const email = address('code');
 
@@ -170,7 +169,7 @@ test('ACCOUNTS-G84: the code that proves a new address, with «Send another code
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G107: an address never proven asks for its code before the panel opens, and then goes where it was going', async ({
+test('ACCOUNTS-F03: an address never proven asks for its code before the panel opens, and then goes where it was going', async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -195,7 +194,7 @@ test('ACCOUNTS-G107: an address never proven asks for its code before the panel 
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G85: the email and the password, then the code mailed at every sign-in, lead to `next`', async ({ page }) => {
+test('ACCOUNTS-F04: the email and the password, then the code mailed at every sign-in, lead to `next`', async ({ page }) => {
   const errors = watchPageErrors(page);
   const email = address('signin');
   await createAccount(email);
@@ -210,13 +209,13 @@ test('ACCOUNTS-G85: the email and the password, then the code mailed at every si
   await signInThroughPage(page, { email, password: PASSWORD });
 
   await expect(page).toHaveURL(onPath('/dashboard/account/security'));
-  // Who signed in (ACCOUNTS-G20): the shell's account and /api/me name it.
+  // Who signed in: the shell's account and /api/me name it.
   const session = await sessionOf(page.request);
   expect(session.user).toMatchObject({ label: email });
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G91: «Forgot your password?» mails a link whose page shows the rules, refuses the same password and the old link', async ({
+test('ACCOUNTS-F07: «Forgot your password?» mails a link whose page shows the rules, refuses the same password and the old link', async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -265,7 +264,7 @@ test('ACCOUNTS-G91: «Forgot your password?» mails a link whose page shows the 
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G109: «Change password» asks for the current one, refuses it as the new one, and ends the other sessions', async ({
+test('ACCOUNTS-F08: «Change password» asks for the current one, refuses it as the new one, and ends the other sessions', async ({
   page,
   browser,
 }) => {
@@ -299,7 +298,7 @@ test('ACCOUNTS-G109: «Change password» asks for the current one, refuses it as
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G93: «Sign out» in the user menu ends the session and leaves the sign-in on screen', async ({ page }) => {
+test('ACCOUNTS-F09: «Sign out» in the user menu ends the session and leaves the sign-in on screen', async ({ page }) => {
   const errors = watchPageErrors(page);
   const email = address('signout');
   await createAccount(email);
@@ -377,7 +376,7 @@ async function measureUserMenu(page: Page) {
   });
 }
 
-test('ACCOUNTS-G93: the user menu reads whole at every size — «Theme» on one line, an opaque sheet, and a long name or email ends in «…» before the chevron', async ({ page }) => {
+test('ACCOUNTS-F09: the user menu reads whole at every size — «Theme» on one line, an opaque sheet, and a long name or email ends in «…» before the chevron', async ({ page }) => {
   const errors = watchPageErrors(page);
   const email = address('menu-with-a-rather-long-address-for-its-card');
   await createAccount(email);
@@ -423,7 +422,7 @@ test('ACCOUNTS-G93: the user menu reads whole at every size — «Theme» on one
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G119: the sign-in says what continuing accepts, and the account keeps when and which versions', async ({ page }) => {
+test('ACCOUNTS-F10: the sign-in says what continuing accepts, and the account keeps when and which versions', async ({ page }) => {
   const errors = watchPageErrors(page);
   const email = address('terms');
   await createAccount(email);
@@ -442,7 +441,7 @@ test('ACCOUNTS-G119: the sign-in says what continuing accepts, and the account k
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G96: five wrong passwords stop the account, also to the right one, with the same words for any address', async ({
+test('ACCOUNTS-F11: five wrong passwords stop the account, also to the right one, with the same words for any address', async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -463,7 +462,7 @@ test('ACCOUNTS-G96: five wrong passwords stop the account, also to the right one
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G18: the staff sees on an account’s page what it accepted, read only', async ({ page, browser }) => {
+test('ACCOUNTS-F13: the staff sees on an account’s page what it accepted, read only', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
   const staff = address('staff');
   const customer = address('customer');

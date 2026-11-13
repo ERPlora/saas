@@ -92,8 +92,8 @@ describe('PasswordResetKeyPage: the page of the template', () => {
     expect(document.title).toBe('Set New Password - ERPlora Cloud');
   });
 
-  // ACCOUNTS-G121: the rules in sight, as the template's page and Account's «Change password» (one hint, the
-  // same words): only a hint, the server's validators decide and say which one failed under the input.
+  // The rules in sight, as Account's «Change password» shows them (one hint, the same words): only a hint, the
+  // server's validators decide and say which one failed under the input.
   it('says the rules under the new password and how strong it looks while it is typed, against its email', async () => {
     fakeAllauth({ 'GET /auth/password/reset': validKey });
     const { input } = await mountPage();

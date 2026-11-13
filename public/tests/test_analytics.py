@@ -1,20 +1,11 @@
 """GA4 and Microsoft Clarity load only after the analytical consent, never on credential pages.
 
-Port of ``tests/unit/test_ga4_analytics.py`` (9), ``test_clarity_analytics.py`` (11) and
-``test_analytics_consent_gate.py`` (6) of the old SaaS. The partial is
-``public/partials/analytics.html``; its context comes from ``public.context_processors.public_site``.
-
-What moved or changed, with the reason:
-
-* the CSP allowlist of Clarity and GA (2 cases) and the ``is_public_page`` /
-  ``is_credentials_page`` flags (2 cases) are the public CSP's and the context processor's, and
-  their tests live with them: ``public/tests/test_csp.py`` and ``test_context_processors.py``;
-* the full-stack cases went through the old dashboard (``overview:index``), a Django page with the
-  analytics partial and the banner. saas-next's panel is the SPA, which carries no analytics at
-  all; those cases now go through a page that extends the public base (``public/tests/urls.py``)
-  and assert that the SPA never loads a tracker, whatever the consent;
-* ``/shell/`` does not exist in saas-next: the launcher of a signed-in customer is the SPA's
-  ``/launch``.
+The partial is ``public/partials/analytics.html``; its context comes from ``public.context_processors.public_site``.
+The CSP allowlist of Clarity and GA and the ``is_public_page`` / ``is_credentials_page`` flags are the public CSP's and
+the context processor's, and their tests live with them: ``public/tests/test_csp.py`` and
+``test_context_processors.py``. The panel is the SPA, which carries no analytics at all: the full-stack cases go
+through a page that extends the public base (``public/tests/urls.py``), and the launcher (the SPA's ``/launch``)
+never loads a tracker, whatever the consent.
 """
 
 from __future__ import annotations
@@ -299,7 +290,7 @@ def test_the_spa_of_a_signed_in_customer_never_loads_a_tracker(
     assert CLARITY_MARKER not in html
 
 
-# --- PUBLIC-G24/G43: no tracker configured, nothing to consent to, no banner ---------------------------
+# --- No tracker configured, nothing to consent to, no banner -------------------------------------------
 
 
 @pytest.mark.urls("public.tests.urls")

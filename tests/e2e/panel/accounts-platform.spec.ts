@@ -1,9 +1,9 @@
 // The platform of erplora.com (accounts/WORKBOOK.md), at the three sizes
 // (390×844, 834×1112, 1440×900):
-//   - ACCOUNTS-G106 · G73 (moving around the panel): the menu has «Businesses», «Store», «Billing» and «Account», in the
+//   - ACCOUNTS-F47 (moving around the panel): the menu has «Businesses», «Store», «Billing» and «Account», in the
 //     side menu from 1440 px and in its drawer below; each entry opens its page and is marked as the current one;
 //     in Spanish, «Negocios», «Tienda», «Facturación» and «Cuenta».
-//   - ACCOUNTS-G82 · G33 · G64 (maintenance): the staff turns on «Maintenance mode» in the admin's «Site settings» with
+//   - ACCOUNTS-F43 (maintenance): the staff turns on «Maintenance mode» in the admin's «Site settings» with
 //     its message; a visitor gets the maintenance page (503) in English and in Spanish; the staff keeps using the panel
 //     and signs in again through the launcher on its way to the admin; turned off, everyone enters.
 // Accounts of this spec: `e2e-acc5-…`.
@@ -63,7 +63,7 @@ test.afterAll(async () => {
   await removeAccounts();
 });
 
-test('ACCOUNTS-G106 · G73 · the menu opens Businesses, Store, Billing and Account at every size, in English and in Spanish', async ({
+test('ACCOUNTS-F47 · the menu opens Businesses, Store, Billing and Account at every size, in English and in Spanish', async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -95,7 +95,7 @@ test('ACCOUNTS-G106 · G73 · the menu opens Businesses, Store, Billing and Acco
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G106 · the menu speaks Spanish', async ({ page }) => {
+test('ACCOUNTS-F47 · the menu speaks Spanish', async ({ page }) => {
   const errors = watchPageErrors(page);
   await signIn(page.request, await createAccount('nav-es', { language: 'es' }));
 
@@ -112,7 +112,7 @@ test('ACCOUNTS-G106 · the menu speaks Spanish', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G82 · G33 · G64 · the staff turns maintenance on in the admin: visitors get the 503 page, the staff keeps working and signs in again', async ({
+test('ACCOUNTS-F43 · the staff turns maintenance on in the admin: visitors get the 503 page, the staff keeps working and signs in again', async ({
   page,
   browser,
   baseURL,

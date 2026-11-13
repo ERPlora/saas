@@ -170,7 +170,7 @@ export async function freezeFrontend(context: BrowserContext): Promise<void> {
 /**
  * What scrolls sideways on the page on screen: Ionic pins `body` (its width never grows), so the
  * scroll is read where it happens — the scroll box of every `ion-content` and the document (a page
- * that is no Ionic page, Django's admin or a template, scrolls its document: ACCOUNTS-G09), by the one
+ * that is no Ionic page, Django's admin or a template, scrolls its document), by the one
  * measure (`overflowingBoxes` of ../horizontal-overflow.ts, past 1 px), and every DataTable's own
  * scroll box of the page, which also says so with `data-table__scroll--overflow`.
  */

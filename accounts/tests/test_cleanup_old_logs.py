@@ -1,5 +1,5 @@
-"""ACCOUNTS-F37 · ``manage.py cleanup_old_logs``: the audit log keeps 90 days (GDPR art. 5.1.e, storage limitation;
-ACCOUNTS-G08, G53, G62 and G28, its task). Daily in ``saas-cron``.
+"""ACCOUNTS-F37 · ``manage.py cleanup_old_logs``: the audit log keeps 90 days (GDPR art. 5.1.e, storage limitation).
+Daily in ``saas-cron``.
 
 The entries older than ``--retention-days`` (90) go, the younger stay, ``--dry-run`` only counts. No question is
 asked (a prompt would kill the scheduled run), one batch per transaction instead of one

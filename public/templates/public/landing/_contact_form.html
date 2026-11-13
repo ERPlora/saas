@@ -8,7 +8,7 @@
   painted by the base, so this partial paints none of its own. The required fields are checked
   here before posting, because the ion-input elements are custom elements and show no native
   tooltip; the server checks them again. A refused or failed message comes back with what was typed
-  (`contact_draft`, PUBLIC-G39) and a page that links here may name its topic (`contact_topic`, PUBLIC-G40).
+  (`contact_draft`) and a page that links here may name its topic (`contact_topic`).
   The fields are Material (md) outlines: an outline does not paint in ios mode.
 {% endcomment %}
 <form id="contact-form" class="contact-fields" method="post" action="{% url 'public:contact_submit' %}" novalidate{% if RECAPTCHA_SITE_KEY %} data-recaptcha-action="contact" data-recaptcha-site-key="{{ RECAPTCHA_SITE_KEY }}"{% endif %}>

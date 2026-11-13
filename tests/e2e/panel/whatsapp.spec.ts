@@ -1,4 +1,4 @@
-// flow: WHATSAPP-G13, WHATSAPP-G07 — Meta's webhook on the panel's real Django, end to end over HTTP: Meta's
+// flow: WHATSAPP-F13, WHATSAPP-F07 — Meta's webhook on the panel's real Django, end to end over HTTP: Meta's
 // verification of the address (its token and its challenge), then a customer's message, signed as Meta signs it,
 // handed to the Hub through door 1 (`POST /internal/whatsapp/inbound`), signed as every internal call, with the
 // contract's body. The spec plays Meta (it signs with the e2e app's secret, project.ts `WHATSAPP_E2E`) and the Hub
@@ -47,7 +47,7 @@ test.describe('WhatsApp: Meta’s webhook reaches the Hub', () => {
   test.beforeAll(() => runSeed('whatsapp_seed.py', 'seed'));
   test.afterAll(() => runSeed('whatsapp_seed.py', 'clear'));
 
-  test('WHATSAPP-G13: Meta confirms the address with our token, never with another', async ({ request }) => {
+  test('WHATSAPP-F13: Meta confirms the address with our token, never with another', async ({ request }) => {
     const ok = await request.get(WEBHOOK, {
       params: { 'hub.mode': 'subscribe', 'hub.verify_token': WHATSAPP_E2E.verifyToken, 'hub.challenge': '1158201444' },
     });
@@ -60,7 +60,7 @@ test.describe('WhatsApp: Meta’s webhook reaches the Hub', () => {
     expect(wrong.status()).toBe(403);
   });
 
-  test('WHATSAPP-G07: a customer’s message, signed by Meta, is handed to the Hub signed and as the contract says', async ({
+  test('WHATSAPP-F07: a customer’s message, signed by Meta, is handed to the Hub signed and as the contract says', async ({
     request,
   }) => {
     const hub = await startHubDouble();

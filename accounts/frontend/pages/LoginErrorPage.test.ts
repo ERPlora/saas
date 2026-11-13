@@ -127,7 +127,7 @@ describe('LoginErrorPage: the texts of each template', () => {
   );
 });
 
-describe('LoginErrorPage: too many jumps (ACCOUNTS-G98, ACCOUNTS-F28)', () => {
+describe('LoginErrorPage: too many jumps (ACCOUNTS-F28)', () => {
   it('too_many: the account opened its businesses too often; it waits, with the way home and support', async () => {
     const page = await mountError('code=too_many', { session: SIGNED_IN });
     expect(page.badge().text()).toBe('429 · Too many attempts');

@@ -76,7 +76,7 @@ async function setup(options: { props?: Record<string, unknown>; api?: Handler; 
 const props = ionProps;
 
 describe('BusinessCreateForm: the fields', () => {
-  // flow: HUBS-F01 (HUBS-G65): the country comes suggested by the browser's languages.
+  // flow: HUBS-F01: the country comes suggested by the browser's languages.
   it("picks the country the browser's languages suggest", async () => {
     vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['fr-BE', 'fr']);
     try {

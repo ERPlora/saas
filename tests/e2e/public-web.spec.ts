@@ -4,8 +4,8 @@
 // company pages, every «Start free» down to the sign-in, the «coming soon» pages and the retired addresses,
 // the footer's language switcher, and robots, the sitemap, llms.txt and the structured data. Each screen is
 // captured at 390×844, 834×1112 and 1440×900 in `.artifacts/`.
-// flow: PUBLIC-G30 PUBLIC-G31 PUBLIC-G32 PUBLIC-G33 PUBLIC-G34 PUBLIC-G35 PUBLIC-G36 PUBLIC-G37 PUBLIC-G42
-// flow: PUBLIC-G48 PUBLIC-G49 PUBLIC-G50 PUBLIC-G51 PUBLIC-G52
+// flow: PUBLIC-F01 PUBLIC-F02 PUBLIC-F03 PUBLIC-F04 PUBLIC-F05 PUBLIC-F06 PUBLIC-F07 PUBLIC-F08 PUBLIC-F09
+// flow: PUBLIC-F10 PUBLIC-F11 PUBLIC-F12 PUBLIC-F13 PUBLIC-F14
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -79,7 +79,7 @@ test.beforeAll(() => {
 // Reduced motion paints every revealed block at once, so a full-page capture shows the whole page (as public-dark.spec.ts).
 test.use({ locale: 'en-GB', reducedMotion: 'reduce' });
 
-test('PUBLIC-G30 the home shows the product, its apps, its plans and its three doors', async ({ page }) => {
+test('PUBLIC-F01 the home shows the product, its apps, its plans and its three doors', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/', 'PUBLIC-G30', async (p) => {
@@ -93,7 +93,7 @@ test('PUBLIC-G30 the home shows the product, its apps, its plans and its three d
   await clean('/');
 });
 
-test('PUBLIC-G49 the home and the plans promise only what the product does', async ({ page }) => {
+test('PUBLIC-F07 the home and the plans promise only what the product does', async ({ page }) => {
   const clean = await watch(page);
   await page.goto('/');
 
@@ -122,7 +122,7 @@ test('PUBLIC-G49 the home and the plans promise only what the product does', asy
   await clean('/ and /pricing/');
 });
 
-test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under More capacity, the annual saving worked out and the storage answer', async ({ page }) => {
+test('PUBLIC-F02 the plans: a card per plan on sale, the upgrade-only ones under More capacity, the annual saving worked out and the storage answer', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/pricing/', 'PUBLIC-G31', async (p) => {
@@ -185,7 +185,7 @@ test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under
   await clean('/pricing/');
 });
 
-test('PUBLIC-G32 PUBLIC-G33 a plan page paints the price of its card', async ({ page }) => {
+test('PUBLIC-F03 PUBLIC-F04 a plan page paints the price of its card', async ({ page }) => {
   const clean = await watch(page);
   await page.goto('/pricing/');
   const painted = await page
@@ -205,7 +205,7 @@ test('PUBLIC-G32 PUBLIC-G33 a plan page paints the price of its card', async ({ 
   await clean('/pricing/standard/');
 });
 
-test('PUBLIC-G34 the industries: the list, one business type and its links', async ({ page }) => {
+test('PUBLIC-F05 the industries: the list, one business type and its links', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/industries/', 'PUBLIC-G34', async (p) => {
@@ -221,7 +221,7 @@ test('PUBLIC-G34 the industries: the list, one business type and its links', asy
   await clean('/industries/');
 });
 
-test('PUBLIC-G35 PUBLIC-G50 features, security and updates say what runs', async ({ page }) => {
+test('PUBLIC-F06 PUBLIC-F08 features, security and updates say what runs', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/features/', 'PUBLIC-G35', async (p) => {
@@ -237,13 +237,13 @@ test('PUBLIC-G35 PUBLIC-G50 features, security and updates say what runs', async
     await expect(page.getByText(claim, { exact: false })).toHaveCount(0);
   }
   await page.locator('a.ep-button', { hasText: 'Contact Security Team' }).click();
-  // The form opens on the security topic (PUBLIC-G40).
+  // The form opens on the security topic (PUBLIC-F17).
   await expect(page).toHaveURL(/\/contact\/\?subject=security$/);
   await expect(page.locator('form[action="/contact/submit/"]')).toBeVisible();
   await clean('/security/ → /contact/');
 });
 
-test('PUBLIC-G36 compliance: the countries, the one connected and the rest, from the footer', async ({ page }) => {
+test('PUBLIC-F09 compliance: the countries, the one connected and the rest, from the footer', async ({ page }) => {
   const clean = await watch(page);
   await page.goto('/');
   await page.locator('footer a[href="/compliance/"]').click();
@@ -260,7 +260,7 @@ test('PUBLIC-G36 compliance: the countries, the one connected and the rest, from
   await clean('/compliance/');
 });
 
-test('PUBLIC-G37 the company: about, collaborate, the old address and the coming-soon pages', async ({ page }) => {
+test('PUBLIC-F10 the company: about, collaborate, the old address and the coming-soon pages', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/about/', 'PUBLIC-G37', async (p) => {
@@ -274,7 +274,7 @@ test('PUBLIC-G37 the company: about, collaborate, the old address and the coming
   await clean('/about/, /collaborate/, /company/');
 });
 
-test('PUBLIC-G51 every «Start free» and «Get started» ends at the sign-in, which also signs up', async ({ page }) => {
+test('PUBLIC-F11 every «Start free» and «Get started» ends at the sign-in, which also signs up', async ({ page }) => {
   const doors: Array<[string, string]> = [
     ['/', 'section.hero-bg a.ep-button[href="/launch"]'],
     ['/', '#planes a.ep-button[href="/launch"] >> nth=1'],
@@ -300,7 +300,7 @@ test('PUBLIC-G51 every «Start free» and «Get started» ends at the sign-in, w
   await expect(page.locator('#planes .ep-pricing-card').nth(1)).toContainText('Get started');
 });
 
-test('PUBLIC-G51 on a slow device, the buttons of the public web lead on even pressed before the page script has run', async ({
+test('PUBLIC-F11 on a slow device, the buttons of the public web lead on even pressed before the page script has run', async ({
   page,
 }) => {
   // The page's scripts have not arrived when the person presses (saas#238): held until the end. The stylesheet has,
@@ -350,7 +350,7 @@ test('PUBLIC-G51 on a slow device, the buttons of the public web lead on even pr
   await Promise.all(held.map((route) => route.continue().catch(() => undefined)));
 });
 
-test('PUBLIC-G51 a button that is a real link looks and reacts exactly like an ion-button', async ({ page }) => {
+test('PUBLIC-F11 a button that is a real link looks and reacts exactly like an ion-button', async ({ page }) => {
   /** One of each the public web uses: the attributes of the ion-button and the classes of the link it became. */
   const looks = (where: string, variants: Array<[Record<string, string>, string[]]>) => ({ where, variants });
   const scenes = [
@@ -451,7 +451,7 @@ test('PUBLIC-G51 a button that is a real link looks and reacts exactly like an i
   }
 });
 
-test('PUBLIC-G52 the coming-soon pages are not indexed and the retired addresses answer for good', async ({ page }) => {
+test('PUBLIC-F12 the coming-soon pages are not indexed and the retired addresses answer for good', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/blog/', 'PUBLIC-G52', async (p) => {
@@ -472,7 +472,7 @@ test('PUBLIC-G52 the coming-soon pages are not indexed and the retired addresses
   await clean('coming soon and retired');
 });
 
-test('PUBLIC-G42 a visitor switches the language from the footer and it stays', async ({ page, context }) => {
+test('PUBLIC-F13 a visitor switches the language from the footer and it stays', async ({ page, context }) => {
   const clean = await watch(page);
   await page.goto('/pricing/');
   await expect(heading(page)).toContainText('Start free.');
@@ -496,7 +496,7 @@ test('PUBLIC-G42 a visitor switches the language from the footer and it stays', 
   await clean('language switch');
 });
 
-test('PUBLIC-G48 robots, the sitemap, llms.txt and the structured data', async ({ page, request }) => {
+test('PUBLIC-F14 robots, the sitemap, llms.txt and the structured data', async ({ page, request }) => {
   const robots = await request.get('/robots.txt');
   expect(robots.status()).toBe(200);
   expect(await robots.text()).toContain('User-agent: *');
@@ -541,7 +541,7 @@ function mobileMenu(page: Page) {
   };
 }
 
-test('PUBLIC-G51 on a slow device, the mobile menu opens and closes even pressed before the page script has run', async ({
+test('PUBLIC-F11 on a slow device, the mobile menu opens and closes even pressed before the page script has run', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 375, height: 667 });
@@ -622,7 +622,7 @@ test('PUBLIC-G51 on a slow device, the mobile menu opens and closes even pressed
   await Promise.all(held.map((route) => route.continue().catch(() => undefined)));
 });
 
-test('PUBLIC-G51 on a slow phone, the buttons of the menu lead on even pressed before the page script has run', async ({
+test('PUBLIC-F11 on a slow phone, the buttons of the menu lead on even pressed before the page script has run', async ({
   page,
 }) => {
   // Pressing before the page's scripts arrive, on a phone, where the header's buttons live in the menu (which opens
@@ -652,7 +652,7 @@ test('PUBLIC-G51 on a slow phone, the buttons of the menu lead on even pressed b
   await Promise.all(held.map((route) => route.continue().catch(() => undefined)));
 });
 
-test('PUBLIC-G51 once the page script has run, one press opens the mobile menu and one closes it', async ({ page }) => {
+test('PUBLIC-F11 once the page script has run, one press opens the mobile menu and one closes it', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   const clean = await watch(page);
   const menu = mobileMenu(page);
@@ -694,7 +694,7 @@ async function pressThrough(page: Page, key: 'Tab' | 'Shift+Tab', stops: string[
   }
 }
 
-test('PUBLIC-G51 with the mobile menu open, Tab goes round inside it and the page behind waits until it closes', async ({ page }) => {
+test('PUBLIC-F11 with the mobile menu open, Tab goes round inside it and the page behind waits until it closes', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   const clean = await watch(page);
   const menu = mobileMenu(page);

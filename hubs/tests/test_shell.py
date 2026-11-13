@@ -27,7 +27,7 @@ def open_from_the_app(client, hub_id):
 
 
 def test_the_apps_start_is_the_launcher(client):
-    """HUBS-F02 (HUBS-G66): ``/shell/`` answers the SPA, whose router shows the launcher there."""
+    """HUBS-F02: ``/shell/`` answers the SPA, whose router shows the launcher there."""
     response = client.get("/shell/", HTTP_HOST=HOST)
 
     assert response.status_code == 200
@@ -36,7 +36,7 @@ def test_the_apps_start_is_the_launcher(client):
 
 
 def test_open_sends_the_window_to_the_hub_with_the_shell_mark(client, business, owner):
-    """HUBS-F12 (HUBS-G71): the jump starts at the Hub, marked, and the business is remembered as the last
+    """HUBS-F12: the jump starts at the Hub, marked, and the business is remembered as the last
     opened (the launcher lists it first)."""
     ready(business)
     client.force_login(owner)

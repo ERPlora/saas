@@ -230,7 +230,7 @@ describe("the stack's servers", () => {
     expect(panel()['panel-mfa-django'].env).toMatchObject({ RECAPTCHA_ENABLED: 'False' });
   });
 
-  it('send the public mails (the contact form, PUBLIC-G39) to a folder of the stack, never through SMTP', () => {
+  it('send the public mails (the contact form) to a folder of the stack, never through SMTP', () => {
     expect(publicServer(SAAS_DIR, SHARED).env).toMatchObject({
       EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
       EMAIL_FILE_PATH: join(SAAS_DIR, 'tests', 'e2e', '.artifacts', 'public', 'mail'),

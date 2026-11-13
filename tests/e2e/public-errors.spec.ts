@@ -1,4 +1,4 @@
-// The error pages of erplora.com (accounts/WORKBOOK.md, ACCOUNTS-G30 · G81), at the
+// The error pages of erplora.com (accounts/WORKBOOK.md, ACCOUNTS-F42), at the
 // three sizes (390×844, 834×1112, 1440×900), in English and in Spanish, against the production-like
 // server of this project (DEBUG off: Django renders the project's handlers, never its debug pages):
 //   - an unknown page of the public web: its own 404, with the navbar and a way home;
@@ -107,7 +107,7 @@ for (const { code, locale } of LANGUAGES) {
       pages = { private: privatePage, public: publicPage };
     });
 
-    test(`ACCOUNTS-G81 · an unknown page of the public web is its 404, with a way home (${code})`, async ({ page }) => {
+    test(`ACCOUNTS-F42 · an unknown page of the public web is its 404, with a way home (${code})`, async ({ page }) => {
       const answer = await page.goto('/pricing/no-such-plan/');
       expect(answer?.status()).toBe(404);
       await atEverySize(page, `ACCOUNTS-G81-public-404-${code}`, async () => {
@@ -116,7 +116,7 @@ for (const { code, locale } of LANGUAGES) {
       });
     });
 
-    test(`ACCOUNTS-G30 · G81 · an unknown page of the private half is the error layout's 404 (${code})`, async ({ page }) => {
+    test(`ACCOUNTS-F42 · an unknown page of the private half is the error layout's 404 (${code})`, async ({ page }) => {
       const answer = await page.goto('/accounts/no-such-page/');
       expect(answer?.status()).toBe(404);
       await atEverySize(page, `ACCOUNTS-G81-private-404-${code}`, async () => {
@@ -127,7 +127,7 @@ for (const { code, locale } of LANGUAGES) {
     });
 
     for (const side of ['private', 'public'] as const) {
-      test(`ACCOUNTS-G81 · the ${side} 500 page paints at every size (${code})`, async ({ page }) => {
+      test(`ACCOUNTS-F42 · the ${side} 500 page paints at every size (${code})`, async ({ page }) => {
         const html = pages[side];
         await page.route('**/__the-500-page__', (route) =>
           route.fulfill({ status: 500, contentType: 'text/html; charset=utf-8', body: html }),

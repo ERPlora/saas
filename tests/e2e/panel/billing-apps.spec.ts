@@ -2,9 +2,8 @@
 // three sizes (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
 // billing_apps_seed.py. As store.spec.ts, Stripe does not run here: the operations that call it
 // (`billing.checkout.start` and `.confirm`, `billing.module.cancel`) are played at the API's edge, and Stripe.js
-// is the double of fixtures.ts (`playStripe`); everything else is the real server. Each test names its flow by its
-// registry key (BILLING-Gnn); in billing/WORKBOOK.md: G61=F31, G62=F32, G63=F09, G66=F33, G67=F34, G68=F35,
-// G05=F36, G92=F22, G94=F23, G95=F08, G17=F11.
+// is the double of fixtures.ts (`playStripe`); everything else is the real server. Each test names its flow of
+// billing/WORKBOOK.md in its title.
 // flow: BILLING-F33 BILLING-F34 BILLING-F35 — what the Hub then receives: billing/tests/test_module_end_reaches_the_hub.py.
 import type { Locator, Page } from '@playwright/test';
 
@@ -27,7 +26,7 @@ async function cutAmounts(dialog: Locator): Promise<string[]> {
   );
 }
 
-/** The charge's summary in its dialog at a size: its rows shown, the dialog in place and no amount cut off (G62, G17). */
+/** The charge's summary in its dialog at a size: its rows shown, the dialog in place and no amount cut off (BILLING-F32, BILLING-F11). */
 const chargeInPlace = (page: Page, dialog: Locator) => async () => {
   await expect(dialog.getByTestId('proration-row').first()).toBeVisible();
   await dialogInPlace(page, 'proration-modal-submit');
@@ -49,7 +48,7 @@ function subscriptionOut(hubId: string, modules: Array<{ slug: string; valid_unt
 }
 
 test.describe('billing part 2: paid apps and the pages of Billing', () => {
-  test('BILLING-G61: the Store says what each paid app is in the business: had, cancelled, off sale or for sale', async ({ page }) => {
+  test('BILLING-F31: the Store says what each paid app is in the business: had, cancelled, off sale or for sale', async ({ page }) => {
     const errors = watchPageErrors(page);
     const bakery = await businessIdOf(page.request, 'Panadería López');
     await page.goto(`/dashboard/store/modules?business=${bakery}`);
@@ -65,7 +64,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G62: a paying business adds a paid app with its proration, and it turns on', async ({ page }) => {
+  test('BILLING-F32: a paying business adds a paid app with its proration, and it turns on', async ({ page }) => {
     const errors = watchPageErrors(page);
     const bakery = await businessIdOf(page.request, 'Panadería López');
     await gotoWithCharge(page, `/dashboard/store/modules?business=${bakery}`, 435, 76);
@@ -90,7 +89,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G63: on Free a paid app is paid in the secure checkout, and back from it the business says it turns on', async ({ page }) => {
+  test('BILLING-F09: on Free a paid app is paid in the secure checkout, and back from it the business says it turns on', async ({ page }) => {
     const errors = watchPageErrors(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
     const started = await addAppInCheckout(page, cafe, 'e2e_apps_bookings');
@@ -105,7 +104,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G66: «Cancel module» says until when it works, cancels it, and it can be kept until then', async ({ page }) => {
+  test('BILLING-F33: «Cancel module» says until when it works, cancels it, and it can be kept until then', async ({ page }) => {
     const errors = watchPageErrors(page);
     const bakery = await businessIdOf(page.request, 'Panadería López');
     const until = new Date(Date.now() + 18 * 86_400_000).toISOString();
@@ -141,7 +140,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G67: an app whose cancellation ended is for sale again; one still running says until when', async ({ page }) => {
+  test('BILLING-F34: an app whose cancellation ended is for sale again; one still running says until when', async ({ page }) => {
     const errors = watchPageErrors(page);
     const norte = await businessIdOf(page.request, 'Bar Norte');
     await page.goto(`/dashboard/store/modules?business=${norte}`);
@@ -152,7 +151,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G68: an app is taken to another business by cancelling it in one and adding it in the other', async ({ page }) => {
+  test('BILLING-F35: an app is taken to another business by cancelling it in one and adding it in the other', async ({ page }) => {
     const errors = watchPageErrors(page);
     const bakery = await businessIdOf(page.request, 'Panadería López');
     const norte = await businessIdOf(page.request, 'Bar Norte');
@@ -167,7 +166,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G92: Invoices lists every invoice with «View invoice», and it opens its page', async ({ page }) => {
+  test('BILLING-F22: Invoices lists every invoice with «View invoice», and it opens its page', async ({ page }) => {
     const errors = watchPageErrors(page);
     await page.goto('/dashboard/billing/invoices');
     await atEverySize(page, 'BILLING-G92', async () => {
@@ -180,7 +179,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G05: the page of an invoice: its lines, totals and who it is made out to; a credit note links its invoice', async ({ page }) => {
+  test('BILLING-F36: the page of an invoice: its lines, totals and who it is made out to; a credit note links its invoice', async ({ page }) => {
     const errors = watchPageErrors(page);
     // The invoice and its credit note as Invoices lists them, by the number each page shows.
     const listed = await page.request.get('/api/billing/invoices?limit=50');
@@ -206,20 +205,20 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G94: Subscriptions says the plan and the paid apps of each business, a cancelled one until when', async ({ page }) => {
+  test('BILLING-F23: Subscriptions says the plan and the paid apps of each business, a cancelled one until when', async ({ page }) => {
     const errors = watchPageErrors(page);
     await page.goto('/dashboard/billing/subscriptions');
     await atEverySize(page, 'BILLING-G94', async () => {
       await expect(page.getByText('Bar Norte').first()).toBeVisible();
       await expect(page.getByText(/E2E Apps Reports/).first()).toBeVisible();
       await expect(page.getByText(/E2E Apps Loyalty/).first()).toBeVisible();
-      // BILLING-G67: Bar Norte's Bookings ended yesterday and is gone; the bakery's is still had.
+      // BILLING-F34: Bar Norte's Bookings ended yesterday and is gone; the bakery's is still had.
       await expect(page.getByText(/E2E Apps Bookings/).filter({ visible: true })).toHaveCount(1);
     });
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G95: the plans and their prices, in the Store of a business on Free', async ({ page }) => {
+  test('BILLING-F08: the plans and their prices, in the Store of a business on Free', async ({ page }) => {
     const errors = watchPageErrors(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
     await page.goto(`/dashboard/store/plans?business=${cafe}`);
@@ -233,7 +232,7 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G17: a paying business changes plan with what it is charged today', async ({ page }) => {
+  test('BILLING-F11: a paying business changes plan with what it is charged today', async ({ page }) => {
     const errors = watchPageErrors(page);
     const bakery = await businessIdOf(page.request, 'Panadería López');
     await gotoWithCharge(page, `/dashboard/store/plans?business=${bakery}`, 1452, 252);

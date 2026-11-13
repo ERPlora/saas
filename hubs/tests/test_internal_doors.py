@@ -1,4 +1,4 @@
-"""HUBS-F35 (HUBS-G62, HUBS-G99): every door under ``/internal`` hears only the Hub's signed call, whichever app
+"""HUBS-F35: every door under ``/internal`` hears only the Hub's signed call, whichever app
 serves it.
 
 There is one credential: the HMAC-SHA256 of the shared secret (the current one or, during a rotation, the previous

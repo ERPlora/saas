@@ -54,8 +54,8 @@ def test_staff_edit_how_many_modules_a_plan_lets_a_business_turn_on(staff_client
 
 
 def test_staff_write_every_text_of_a_plan_in_english_and_in_spanish(staff_client, rows):
-    """HUBS-F05 (HUBS-G06, HUBS-G44: the old admin's translation tabs, ``PlanTranslationOptions``): the name,
-    the description, the card's features and its badge, one field per language, English the source."""
+    """HUBS-F05: the name, the description, the card's features and its badge, one field per language, English the
+    source."""
     page = staff_client.get(f"/admin/hubs/plan/{rows['plan'].pk}/change/").content.decode()
 
     for text in ("name", "description", "features", "featured_label"):
@@ -273,7 +273,7 @@ class TestTheActions:
 
 class TestTheTrail:
     """HUBS-F23: every action of the platform on a business leaves, on each row, who ran it and which, in the admin's
-    history (the old admin's actions left no trace)."""
+    history."""
 
     def test_an_action_on_a_business_is_in_its_history(self, staff_client, business, hub_double):
         from django.contrib.admin.models import CHANGE, LogEntry
@@ -598,9 +598,8 @@ def _headings(page: str) -> list[str]:
 
 @pytest.mark.parametrize("model", ["sector", "businesstype"])
 def test_the_taxonomy_lists_speak_spanish(staff_client, rows, model):
-    """HUBS-F36 (HUBS-G05, HUBS-G01): every column and filter of the list, in the staff's language: the old admin's
-    translation tabs became a column per language, and the rest of the row's fields had no Spanish («Code», «By is
-    active»)."""
+    """HUBS-F36: every column and filter of the list, in the staff's language: a name has a column per language, and
+    the other fields are translated too («Código», «Activo», the filter «Por activo»)."""
     page = staff_client.get(f"/admin/hubs/{model}/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
 
     assert _headings(page) == SPANISH_COLUMNS[model]

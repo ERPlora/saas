@@ -1,4 +1,4 @@
-"""ACCOUNTS-G96: whoever tries passwords, codes or reset links is stopped, the same for an account as for none.
+"""Whoever tries passwords, codes or reset links is stopped, the same for an account as for none.
 
 allauth's own limits (``ACCOUNT_RATE_LIMITS``, every one written out) on the shared cache (Valkey, Django's cache
 only): failed passwords spend the account's budget and the address's, 5 in 5 minutes each (so nobody tries without

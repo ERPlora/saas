@@ -2,7 +2,7 @@
 // lies over the notice, so its actions show and can be pressed, and the notice is there again when it closes.
 // The notice only shows with a tracker configured, which production does not have today (PUBLIC-F19, step 1), so these
 // specs run on the public server's twin that has one (`publicNoticePort`, playwright.config.ts).
-// flow: PUBLIC-G24
+// flow: PUBLIC-F19
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -59,7 +59,7 @@ function coverOf(control: Locator) {
   });
 }
 
-test('PUBLIC-G24 on a small phone, with the cookie notice up, the menu shows «Start free» and «Try the demo» whole', async ({ page }) => {
+test('PUBLIC-F19 on a small phone, with the cookie notice up, the menu shows «Start free» and «Try the demo» whole', async ({ page }) => {
   await openMenu(page);
   await page.screenshot({ path: join(SHOTS, 'menu-open-375x667.png') });
 
@@ -68,7 +68,7 @@ test('PUBLIC-G24 on a small phone, with the cookie notice up, the menu shows «S
   }
 });
 
-test('PUBLIC-G24 on a small phone, with the cookie notice up, pressing «Start free» and «Try the demo» leads on', async ({ page }) => {
+test('PUBLIC-F19 on a small phone, with the cookie notice up, pressing «Start free» and «Try the demo» leads on', async ({ page }) => {
   await openMenu(page);
   await page.locator(START_FREE).click();
   await expect(page).toHaveURL(/\/launch$/);
@@ -79,7 +79,7 @@ test('PUBLIC-G24 on a small phone, with the cookie notice up, pressing «Start f
   await expect(page).toHaveURL(/\/demo\/$/);
 });
 
-test('PUBLIC-G24 closing the menu leaves the cookie notice on top, and its choice still goes through', async ({ page }) => {
+test('PUBLIC-F19 closing the menu leaves the cookie notice on top, and its choice still goes through', async ({ page }) => {
   await openMenu(page);
   // The strip of backdrop beside the panel, right over the notice: a tap closes the menu and presses nothing behind it.
   const notice = await page.locator('#cookie-consent-banner').boundingBox();

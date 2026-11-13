@@ -1,10 +1,8 @@
-"""HUBS-F34 (HUBS-G107, HUBS-G109, HUBS-G16): the paid apps a business may use, and why, travel in its own snapshot
-only.
+"""HUBS-F34: the paid apps a business may use, and why, travel in its own snapshot only.
 
-The old SaaS answered the Hub's «Plan» tab of an app with the purchase of THAT business and gave
-nothing for a purchase without one («1 purchase = 1 hub»). Here a right is a row of the business's own
-subscription: its ``modules[]`` say each app's ``source`` (``plan`` or ``purchase``) and until when it holds, and
-neither a purchase nor the paid plan of another business, even of the same account, ever reaches it.
+A right is a row of the business's own subscription: its ``modules[]`` say each app's ``source`` (``plan`` or
+``purchase``) and until when it holds, and neither a purchase nor the paid plan of another business, even of the same
+account, ever reaches it.
 """
 
 from datetime import timedelta
@@ -72,7 +70,7 @@ def test_each_app_says_where_its_right_comes_from_and_until_when(business):
     ]
 
 
-# --- HUBS-F32 (HUBS-G103, HUBS-G104): the places and devices of the plan ------------------------------------------
+# --- HUBS-F32: the places and devices of the plan -----------------------------------------------------------------
 
 
 def test_dropping_to_free_removes_nobody_and_only_stops_new_invitations(business, team, owner):

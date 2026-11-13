@@ -1,4 +1,4 @@
-# Spanish translations of the public web of saas-next (public/, round 16).
+# Spanish translations of the public web of erplora.com (public/).
 # Copyright (C) 2026 ERPlora
 # This file is distributed under the same license as ERPlora.
 #
@@ -1279,7 +1279,7 @@ msgstr "en vigor"
 msgid "Privacy"
 msgstr "Privacidad"
 
-# --- The app store (L6): store.py, templates/public/store/, the menu and the footer ---
+# --- The app store: store.py, templates/public/store/, the menu and the footer ---
 
 #: store.py
 msgid "Included in every plan"
@@ -1424,7 +1424,7 @@ msgstr "Documentación de %(name)s"
 msgid "This documentation is only available in Spanish."
 msgstr "Esta documentación solo está disponible en español."
 
-# --- The industries (L4): industries.py, templates/public/industries/ and the footer ---
+# --- The industries: industries.py, templates/public/industries/ and the footer ---
 
 #: industries.py
 #, python-format
@@ -1671,7 +1671,7 @@ msgstr "Empieza gratis"
 msgid "Company"
 msgstr "Empresa"
 
-# --- L3a: product, company, resources, help, the app and /download/ (origin/develop .po) ---
+# --- Product, company, resources, help, the app and /download/ ---
 
 msgid "ERPlora for Android"
 msgstr "ERPlora para Android"
@@ -2391,7 +2391,7 @@ msgstr "envío del correo electrónico transaccional del servicio. El tratamient
 msgid "Some processors may process data outside the EEA: the provider of the voice and search fingerprint services of the assistant and, only if the European one is unavailable, the backup model providers. These transfers are carried out under Standard Contractual Clauses (SCCs) approved by the European Commission (EU Decision 2021/914) or, when possible, by keeping the data within the EU through regional configuration. The customer may request a copy of the SCCs at"
 msgstr "Algunos encargados pueden tratar datos fuera del EEE: el proveedor de los servicios de voz y de huellas de búsqueda del asistente y, solo si el europeo no está disponible, los proveedores de modelos de respaldo. Estas transferencias se realizan amparadas en Cláusulas Contractuales Tipo (CCT) aprobadas por la Comisión Europea (Decisión UE 2021/914) o, cuando es posible, manteniendo el dato dentro de la UE mediante configuración regional. El cliente puede solicitar copia de las CCT en"
 
-# --- L7: the home, /contact/, /pricing/, /legal/terms/ and /collaborate/ (landing.py, pricing.py, legal.py, company.py and their templates; origin/develop .po where the copy is the same) ---
+# --- The home, /contact/, /pricing/, /legal/terms/ and /collaborate/ (landing.py, pricing.py, legal.py, company.py and their templates) ---
 
 msgid "All fields are required except the phone number."
 msgstr "Todos los campos son obligatorios excepto el teléfono."
@@ -4016,7 +4016,7 @@ msgstr "Volver a intentarlo"
 msgid "Want to keep what you do? Start free: it takes the same minute."
 msgstr "¿Quieres conservar lo que hagas? Empieza gratis: se tarda lo mismo."
 
-# --- APP-PUBLIC-1: the promises (PUBLIC-F07, PUBLIC-F08), the plans and the language switcher ---
+# --- The promises (PUBLIC-F07, PUBLIC-F08), the plans and the language switcher ---
 msgid "Hair and beauty"
 msgstr "Peluquería y estética"
 
