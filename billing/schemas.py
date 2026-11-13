@@ -95,7 +95,7 @@ class TaxPreviewOut(Schema):
     reverse_charge: bool
 
 
-# --- Stripe (lot L2-B) -------------------------------------------------------------------------------
+# --- Stripe ------------------------------------------------------------------------------------------
 
 
 class PromoCheckIn(Schema):
@@ -195,7 +195,7 @@ class SubscriptionModuleOut(Schema):
 
 
 class ScheduledChangeOut(Schema):
-    """A plan change that starts with the next period (a downgrade, review of L3-C)."""
+    """A plan change that starts with the next period (a downgrade)."""
 
     plan: str
     interval: Interval
@@ -261,7 +261,7 @@ class PortalOpenOut(Schema):
     url: str
 
 
-# --- The Store (lot L2-D) ----------------------------------------------------------------------------
+# --- The Store ---------------------------------------------------------------------------------------
 
 
 class StoreCatalogIn(Schema):
@@ -320,11 +320,11 @@ class StoreCatalogOut(Schema):
     subscription: StoreSubscriptionOut | None
     modules: list[StoreModuleOut]
     #: The paid plans the business may move to (slugs, in display order): the ones sold at sign-up while Stripe
-    #: does not bill it; the ``upgrade_only`` ones too once it pays (audit 2 S-03, ``billing.queries.offered_plans``).
+    #: does not bill it; the ``upgrade_only`` ones too once it pays (``billing.queries.offered_plans``).
     offered_plans: list[str]
 
 
-# --- ERPlora's invoices, subscriptions and payment details: the Billing section (lot L3-C) ------------
+# --- ERPlora's invoices, subscriptions and payment details: the Billing section -----------------------
 
 InvoicePaymentStatus = Literal["open", "paid", "void"]
 InvoiceFiscalStatus = Literal["", "issuing", "issued", "accepted", "accepted_with_errors", "rejected"]

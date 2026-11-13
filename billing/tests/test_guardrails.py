@@ -6,8 +6,8 @@
   the migrations and the seed loader (``seed.py`` with the models it is handed, and the command that
   runs it).
 - Nowhere ``using=``, ``.using(`` nor ``connections[``: one database (the SaaS has no tenancy).
-- The network: only ``vies.py`` talks to VIES (``requests``) and only ``stripe_service.py`` to Stripe (lot
-  L2-B): it is the one door (keys, timeouts, errors, plain dicts), the one place tests replace
+- The network: only ``vies.py`` talks to VIES (``requests``) and only ``stripe_service.py`` to Stripe:
+  it is the one door (keys, timeouts, errors, plain dicts), the one place tests replace
   (``billing/tests/stripe_double.py``).
 
 Each scan is shown to catch its positive (rule 10 of the working rules: the control catches it).

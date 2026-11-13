@@ -154,7 +154,7 @@ export function catalog(hubId: string, extra: Partial<StoreCatalogOut> = {}): St
     hub_id: hubId,
     subscription: subscription(),
     modules: [storeModule('booking', 900), storeModule('loyalty', 600)],
-    // As the server offers them (audit 2 S-03): the upgrades only to a business Stripe bills.
+    // As the server offers them: the upgrades only to a business Stripe bills.
     offered_plans: paying ? ['starter', 'standard', 'pro', 'max'] : ['starter', 'standard'],
     ...extra,
   };

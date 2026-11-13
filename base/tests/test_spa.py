@@ -136,7 +136,7 @@ def test_the_title_is_the_saas_one(client):
 
 
 def test_the_web_panel_can_be_zoomed(client):
-    """WCAG 1.4.4 (audit R-02): no maximum-scale nor user-scalable=no in the viewport."""
+    """WCAG 1.4.4: no maximum-scale nor user-scalable=no in the viewport."""
     html = client.get("/launch", HTTP_HOST=HOST).content.decode()
 
     assert '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' in html

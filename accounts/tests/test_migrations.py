@@ -67,8 +67,7 @@ class TestSupportGroup:
     def test_exists_after_migrating_with_view_only_permissions_on_accounts(self):
         group = Group.objects.get(name="support")
 
-        # Of accounts' models these (the Account page's, 0006, L3-A); hubs adds the views of the account plane (hubs
-        # 0007, L1-A2).
+        # Of accounts' models these (the Account page's, 0006); hubs adds the views of the account plane (hubs 0007).
         assert {perm for perm in _perms(group) if perm.startswith("accounts.")} == {
             "accounts.view_user",
             "accounts.view_authexchangecode",

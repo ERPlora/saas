@@ -94,7 +94,7 @@ class ProfileUpdateIn(StrictIn):
     @field_validator("first_name")
     @classmethod
     def _first_name_given(cls, value: str) -> str:
-        """The first name is required (audit 2 S-10: a blank one was saved and the panel lost its «Hello, Laura»);
+        """The first name is required (a blank one would leave the panel's «Hello, Laura» without a name);
         the last name may be cleared."""
         value = value.strip()
         if not value:

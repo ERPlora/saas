@@ -1,7 +1,7 @@
 """Splitting and qualifying the VAT of a sale (saas#1051, saas#1063).
 
 Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_vat.py`` (origin/develop, 21 tests), plus the
-public helpers of ``billing.vat`` the panel and L2-B read (``BILLING_COUNTRIES``, ``tax_id_type_for``).
+public helpers of ``billing.vat`` the panel and the billing services read (``BILLING_COUNTRIES``, ``tax_id_type_for``).
 The rates come from ``TaxRule``, editable in the admin, so these tests touch the database.
 """
 
@@ -281,7 +281,7 @@ class TestTheCountriesErploraInvoices:
 
 class TestASpanishPostalCodeIsFiveDigits:
     """The first two digits of a Spanish postal code are its province, but only of a real code: «3500»
-    (Benidorm typed without its leading 0) is not Las Palmas (review of L2-A, finding 1)."""
+    (Benidorm typed without its leading 0) is not Las Palmas."""
 
     @pytest.mark.parametrize(
         "postal_code, region",
@@ -341,7 +341,7 @@ class TestTheOssIsEuropean:
 
 
 class TestTheReverseChargeRule:
-    """One rule for the engine and for the panel's answer (review of L2-A, finding 4)."""
+    """One rule for the engine and for the panel's answer."""
 
     def test_it_needs_the_roi_a_member_state_that_is_not_ours_and_a_proof(self):
         from billing.vat import reverse_charge_applies

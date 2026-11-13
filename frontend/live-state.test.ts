@@ -1,4 +1,4 @@
-// What a page driven by `useLive` says while its data is not there (audit 2026-10-14, R-04 and R-08): loading
+// What a page driven by `useLive` says while its data is not there: loading
 // (no result yet), error (the query or the stream failed, or nothing came in time) and, only with a real
 // result from the server, empty or ready. Never «empty» on a failure, never a spinner for ever; a «Retry»
 // reopens the stream, and a result that arrives later (the stream came back by itself) shows at once.

@@ -1,4 +1,4 @@
-"""``manage.py sweep_unpaid``: the safety net of unpaid plans and deleted businesses (``saas-cron``; lot L2-B).
+"""``manage.py sweep_unpaid``: the safety net of unpaid plans and deleted businesses (``saas-cron``).
 
 Ported from ERPlora/saas ``hubs/main/tests/test_unpaid_plan_sweep.py`` (12, saas#2594) with its recorded
 Stripe fixtures (``fixtures/stripe_unpaid_plan/``: a test-clock renewal that failed once) and the Stripe half
@@ -126,7 +126,7 @@ class TestStripeStopsRetryingBeforeTheGraceEnds:
         assert "suspended=1" in output
 
     def test_a_run_does_not_count_a_failure_stripe_did_not_have(self, shop, stripe_double):
-        """The sweep replays to decide; it is not a failed payment (review of L2-B)."""
+        """The sweep replays to decide; it is not a failed payment."""
         from billing.models import PaymentFailure
 
         owing(shop)
@@ -185,7 +185,7 @@ class TestStripeStopsRetryingBeforeTheGraceEnds:
 
 class TestTheSweepLeavesAloneWhoPaidOrOwesNothing:
     def test_a_plan_collected_meanwhile_is_brought_back(self, shop, stripe_double):
-        """Review of L2-B: the sweep applies the live subscription when it is no longer unpaid (a payment whose
+        """The sweep applies the live subscription when it is no longer unpaid (a payment whose
         event was lost), instead of leaving «payment pending» for ever."""
         business = owing(shop)
         stripe_double.answer("invoices.list", listing([open_invoice(10)]))
@@ -281,7 +281,7 @@ class TestADeletedBusinessStopsPaying:
         return business
 
     def test_a_business_restored_before_the_sweep_stops_paying_too(self, shop, owner, stripe_double):
-        """Review of L2-B: deleting asked for the end; recovering it (on Free) does not take that back."""
+        """Deleting asked for the end; recovering it (on Free) does not take that back."""
         from hubs import services as hub_services
         from hubs.schemas import ByIdIn
         from hubs.tests.conftest import ctx_for as hub_ctx

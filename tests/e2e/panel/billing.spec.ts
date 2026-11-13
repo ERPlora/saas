@@ -197,7 +197,7 @@ test.describe('billing', () => {
     }
   });
 
-  test('PDF and CSV refused (R-05): a toast says why, the action waits, and no `.json` is ever saved', async ({ page }) => {
+  test('PDF and CSV refused: a toast says why, the action waits, and no `.json` is ever saved', async ({ page }) => {
     const saved: string[] = [];
     page.on('download', (download) => saved.push(download.suggestedFilename()));
     await page.goto('/dashboard/billing/invoices');

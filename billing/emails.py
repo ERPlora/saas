@@ -1,4 +1,4 @@
-"""The mail of billing: an invoice of ERPlora was issued (lot L3-C; ported from ERPlora/saas
+"""The mail of billing: an invoice of ERPlora was issued (ported from ERPlora/saas
 ``apps/dashboard/billing/emails.py``, saas#1061), and a renewal could not be collected or the business was
 suspended for it (BILLING-F16, saas#2593).
 

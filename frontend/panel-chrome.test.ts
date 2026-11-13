@@ -1,8 +1,7 @@
-// The panel's chrome around every page (audit 2026-10-14): «Skip to content» hidden until it has the focus
-// (R-11), Back without ☰ in a detail page (R-20: the menu at the top level, Back inside a business) and targets
-// of 44 px on a phone or a touch screen (R-13: buttons, icon buttons, segments and tabs, the menu button,
-// chips). happy-dom lays nothing out, so this reads the stylesheet; the sizes are measured in Chrome
-// (tests/e2e/panel/chrome.spec.ts).
+// The panel's chrome around every page: «Skip to content» hidden until it has the focus, Back without ☰ in a
+// detail page (the menu at the top level, Back inside a business) and targets of 44 px on a phone or a touch
+// screen (buttons, icon buttons, segments and tabs, the menu button, chips). happy-dom lays nothing out, so
+// this reads the stylesheet; the sizes are measured in Chrome (tests/e2e/panel/chrome.spec.ts).
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,12 +43,12 @@ describe('panel-chrome.css', () => {
     expect(rule(".app-topbar ion-buttons[slot='start']:has(> [data-testid='topbar-back']) > ion-menu-button")).toBe('display: none;');
   });
 
-  it('on a phone the topbar title takes the row its buttons leave, not a third of it (audit 2 R-20: «Panadería Ló…»)', () => {
+  it('on a phone the topbar title takes the row its buttons leave, not a third of it («Panadería Ló…»)', () => {
     const phone = media('(max-width: 640px)');
     expect(rule("ion-header.app-topbar ion-toolbar.ios > ion-buttons[slot]", phone)).toBe('flex: 0 0 auto;');
   });
 
-  it('an outlined button on a table’s grey bar uses the accessible primary text (audit 2 R-10: «Download Excel» 4.19:1)', () => {
+  it('an outlined button on a table’s grey bar uses the accessible primary text («Download Excel» at 4.19:1)', () => {
     expect(rule('.data-table__bar ion-button.button-outline:not(.ion-color)')).toBe(
       '--color: var(--ep-primary-text, var(--ion-color-primary)); --border-color: var(--ep-primary-text, var(--ion-color-primary));',
     );

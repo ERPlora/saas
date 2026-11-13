@@ -1,4 +1,4 @@
-// What a page driven by `useLive` paints while its data is not there (audit 2026-10-14, R-04 and R-08). The
+// What a page driven by `useLive` paints while its data is not there. The
 // SDK's `status` says how the stream is, not what the page may claim: with `/api/live` down (503), no network
 // or a query that fails, `data` stays `undefined` and a page that read it as «no rows» lied («Create your first
 // business» with four of them) or spun for ever. One reading for every page of the panel:

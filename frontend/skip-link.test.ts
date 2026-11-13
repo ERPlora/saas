@@ -1,4 +1,4 @@
-// «Skip to content» (audit 2026-10-14, R-11; W-01 of the mockups): the first stop of the keyboard on every page
+// «Skip to content»: the first stop of the keyboard on every page
 // of the panel, hidden until it has the focus, that takes it to the page on screen (its `ion-content`) past the
 // menu and the topbar. In the page's language, following `<html lang>` as the shell changes it.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -31,7 +31,7 @@ describe('installSkipLink', () => {
     expect(document.body.firstElementChild?.contains(link)).toBe(true);
   });
 
-  it('lives in a landmark of its own and points at an element that exists (audit 2 S-05: axe `region`)', () => {
+  it('lives in a landmark of its own and points at an element that exists (axe `region`)', () => {
     installSkipLink(document, TEXTS, NAV);
     const nav = document.body.firstElementChild as HTMLElement;
     expect(nav.tagName).toBe('NAV');

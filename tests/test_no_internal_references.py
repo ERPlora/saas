@@ -2,13 +2,17 @@
 
 Comments, docstrings, test names and log messages have to make sense on their own, so the code never
 points at a plan section, a dated planning round, a delivery slice or phase, a task id or a dated plan
-or spec, nor signs a decision with who took it and when. Markdown files are left out: they are where the
-plans live. A dependency patch is read too, and must not cite an issue of one of our repositories either:
-its comments land in the dependency's code, far from our trackers.
+or spec, nor signs a decision with who took it and when. Their prose does not cite the codes of an internal
+audit or review either: the reader has not seen it, so the reason is written out. Markdown files are left
+out: they are where the plans live. A dependency patch is read too, and must not cite an issue of one of our
+repositories either: its comments land in the dependency's code, far from our trackers.
 """
 
+import ast
+import io
 import re
 import subprocess
+import tokenize
 from pathlib import Path
 
 import pytest
@@ -65,6 +69,36 @@ E2E_SCRIPT_SUFFIXES = {".ts", ".js", ".mjs"}
 COMMENT_OR_STRING = re.compile(r"""//.*|'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`""")
 TEST_TITLE_OPENER = re.compile(r"\b(?:test|it|describe)(?:\.\w+)*\(\s*$")
 
+# The codes of an internal audit or review: a finding's letter and number, a delivery lot, a review's numbered
+# finding and the audit's own name and date. The same shape is data elsewhere (an invoice series, a capture
+# key), so they are only looked for in prose: comments, docstrings and test titles. A ruling of the Court of
+# Justice has a year after a slash and is not one of them.
+AUDIT_CODE = re.compile(
+    "|".join(
+        (
+            r"(?<![\w\[\^-])[A-Z]-(?:[0-9]{2}|[A-Z][0-9])(?!\w|/[0-9])",
+            r"(?<![\w\[\^-])L[0-9]-[A-Z][0-9]?(?!\w|/[0-9])",
+            r"\bUX-AUDIT-[0-9]+",
+            r"\b[Aa]udit (?:of )?(?:2\b|20[0-9]{2}-)",
+            r"\b[Ff]inding [0-9]+\)",
+        )
+    )
+)
+
+SCRIPT_SUFFIXES = {".ts", ".js", ".mjs", ".vue", PATCH_SUFFIX}
+LINE_COMMENTS = {
+    **dict.fromkeys(SCRIPT_SUFFIXES, ("//",)),
+    **dict.fromkeys((".sh", ".toml", ".yml", ".yaml"), ("#",)),
+    ".ini": ("#", ";"),
+    ".sql": ("--",),
+}
+BLOCK_COMMENTS = {
+    **dict.fromkeys((".ts", ".js", ".mjs", PATCH_SUFFIX, ".css", ".sql"), {"/*": "*/"}),
+    ".vue": {"/*": "*/", "<!--": "-->"},
+    ".html": {"<!--": "-->", "{#": "#}", "{% comment %}": "{% endcomment %}"},
+}
+PATCH_HEADERS = ("+++", "---", "@@", "diff ", "index ")
+
 CODE_SUFFIXES = {
     PATCH_SUFFIX,
     ".py",
@@ -118,6 +152,90 @@ def without_string_literals(line):
     return COMMENT_OR_STRING.sub(keep_comment_and_title, line)
 
 
+def prose_lines(path, text):
+    """Line number → the prose on it: its comments, its docstrings and its test titles."""
+    suffix = Path(path).suffix
+    if suffix == ".py":
+        return python_prose(text)
+    return marked_prose(suffix, text)
+
+
+def python_prose(text):
+    lines = text.splitlines()
+    try:
+        tree = ast.parse(text)
+        comments = [t for t in tokenize.generate_tokens(io.StringIO(text).readline) if t.type == tokenize.COMMENT]
+    except (SyntaxError, tokenize.TokenError):
+        # A file that does not parse yet is read whole rather than not at all.
+        return dict(enumerate(lines, 1))
+    prose = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+            for number in range(node.lineno, node.end_lineno + 1):
+                prose[number] = lines[number - 1]
+    for comment in comments:
+        number = comment.start[0]
+        prose[number] = prose.get(number, "") + " " + comment.string
+    return prose
+
+
+def marked_prose(suffix, text):
+    """The comments of a file whose comments are marked (``//``, ``/* */``, ``<!-- -->``, ``#``…) and, in a
+    script, the titles of its tests; every other string literal is left out."""
+    quotes = "'\"`" if suffix in SCRIPT_SUFFIXES else "'\""
+    blocks = BLOCK_COMMENTS.get(suffix, {})
+    tokens = re.compile(
+        "|".join(
+            [re.escape(marker) + ".*" for marker in LINE_COMMENTS.get(suffix, ())]
+            + [re.escape(opener) for opener in blocks]
+            + [rf"{q}(?:[^{q}\\]|\\.)*{q}" for q in quotes]
+        )
+    )
+    script = suffix in SCRIPT_SUFFIXES
+    patch = suffix == PATCH_SUFFIX
+    prose = {}
+    closer = None
+    title_next = False
+    for number, line in enumerate(text.splitlines(), 1):
+        if patch:
+            if line.startswith(PATCH_HEADERS):
+                closer, title_next = None, False
+                continue
+            line = line[1:]
+            # A hunk can start inside a doc comment, after its opener.
+            if closer is None and line.lstrip().startswith("*"):
+                prose[number] = line
+                continue
+        pieces = []
+        position = 0
+        while position < len(line):
+            if closer:
+                end = line.find(closer, position)
+                if end < 0:
+                    pieces.append(line[position:])
+                    break
+                pieces.append(line[position:end])
+                position, closer = end + len(closer), None
+                continue
+            match = tokens.search(line, position)
+            if not match:
+                break
+            token = match.group(0)
+            if token in blocks:
+                closer = blocks[token]
+            elif token[0] not in quotes:
+                pieces.append(token)
+            elif script:
+                before = line[: match.start()]
+                if TEST_TITLE_OPENER.search(before) or (title_next and not before.strip()):
+                    pieces.append(token)
+            position = match.end()
+        title_next = script and closer is None and bool(TEST_TITLE_OPENER.search(line))
+        if pieces:
+            prose[number] = " ".join(pieces)
+    return prose
+
+
 def internal_references(paths, root=REPO):
     found = []
     for path in paths:
@@ -126,11 +244,16 @@ def internal_references(paths, root=REPO):
         e2e_script = path.startswith(E2E_DIR) and Path(path).suffix in E2E_SCRIPT_SUFFIXES
         text = (root / path).read_text(encoding="utf-8", errors="replace")
         patch = Path(path).suffix == PATCH_SUFFIX
+        prose = prose_lines(path, text)
         for number, line in enumerate(text.splitlines(), 1):
             unquoted = without_string_literals(line) if e2e_script else line
             for clause in QUOTED_CLAUSES:
                 unquoted = unquoted.replace(clause, "")
-            reference = INTERNAL_REFERENCE.search(unquoted) or AUTHORSHIP.search(unquoted)
+            reference = (
+                INTERNAL_REFERENCE.search(unquoted)
+                or AUTHORSHIP.search(unquoted)
+                or AUDIT_CODE.search(prose.get(number, ""))
+            )
             if reference or (patch and OUR_REPO_ISSUE.search(line)):
                 found.append(f"{path}:{number}: {line.strip()}")
     return found
@@ -140,7 +263,9 @@ def test_code_never_points_at_internal_plans():
     paths = code_files()
     assert "tests/test_no_internal_references.py" in paths, "git ls-files listed no code"
     found = internal_references(paths)
-    assert not found, "Code that points at internal plans, rounds or slices, or signs a decision:\n" + "\n".join(found)
+    assert not found, (
+        "Code that points at internal plans, rounds, slices or audits, or signs a decision:\n" + "\n".join(found)
+    )
 
 
 @pytest.mark.parametrize(
@@ -303,4 +428,141 @@ def test_a_quoted_clause_of_an_outside_contract_is_not_a_reference(tmp_path):
     (tmp_path / "plan.py").write_text('NOTE = "PLAN ' + SECTION_SIGN + '3"\n', encoding="utf-8")
     assert internal_references(["quote.py", "plan.py"], root=tmp_path) == [
         'plan.py:1: NOTE = "PLAN ' + SECTION_SIGN + '3"'
+    ]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "a wrong current password is said in the panel's words (audit 2 R-26)",
+        "a failure is said with «Retry» (audit 2026-10-14, R-04/R-08)",
+        "as with the SSE down in the audit of 2026-10-14",
+        "the dialog behind as deep as FormModal says (UX audit U-90)",
+        "every target is 44 px (W-F6, W-13 of the mockups)",
+        "for that business (UX-AUDIT-4 W-F2/X-03/V-37)",
+        "lives in a landmark of its own (S-05: axe `region`)",
+        "the views of the account plane (hubs 0007, L1-A2)",
+        "the Account page's models (0006, L3-A)",
+        "a downgrade waits for the end of the period (review of L3-C)",
+        "the safety net of unpaid plans (lot L2-B)",
+        "not Las Palmas: no 0 % by a guess (finding 1)",
+        "WCAG 1.4.4 (audit R-02): no maximum-scale",
+    ],
+)
+def test_the_scan_catches_each_kind_of_audit_code(text):
+    assert AUDIT_CODE.search(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "treated as VAT-included (TJUE *Tulică* C-249/12 and C-250/12)",
+        "CJEU C-375/15 (BAWAG): the email is the notice",
+        "the ruling in case C-41/14",
+        "the invoice A-1 of the series A is cancelled",
+        "BASE-F12: a flow of the Hub's WORKBOOK",
+        "ACCOUNTS-G93: «Sign out» in the user menu",
+        "decoded as UTF-8, dated as ISO-8601",
+        "a COVID-19 surcharge",
+        "the characters [A-Z0-9] and [^A-Z0-9]",
+        "the audit log keeps 90 days",
+        "the audit entries older than 90 days",
+        "after finding 3 rows the loop stops",
+    ],
+)
+def test_the_scan_leaves_rulings_series_and_flows_alone(text):
+    assert not AUDIT_CODE.search(text)
+
+
+def found_lines(found):
+    return [int(line.split(":")[1]) for line in found]
+
+
+def test_an_audit_code_is_caught_in_python_prose_but_not_in_its_data(tmp_path):
+    (tmp_path / "billing").mkdir()
+    lines = (
+        '"""The numbers of the invoices (lot L3-C)."""',
+        'SERIES = "A-1"',
+        "# W-19: the toolbar measures its own row.",
+        'note = CharField(help_text="kept as it was (review of L2-A)")',
+        "",
+        "",
+        "def test_the_first_name_is_required():",
+        '    """Audit 2 S-10: a blank first name',
+        '    was saved (finding 1)."""',
+        '    sent = "<sum1:NumSerieFacturaAnulada>A-1</sum1:NumSerieFacturaAnulada>"',
+        "    return sent  # VAT-inclusive (TJUE C-249/12 and C-250/12)",
+    )
+    (tmp_path / "billing" / "numbers.py").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    assert found_lines(internal_references(["billing/numbers.py"], root=tmp_path)) == [1, 3, 8, 9]
+
+
+def test_an_audit_code_is_caught_in_a_script_comment_or_test_title_but_not_in_a_capture_key(tmp_path):
+    spec = tmp_path / "tests" / "e2e" / "panel" / "some.spec.ts"
+    spec.parent.mkdir(parents=True)
+    lines = (
+        "// The toolbar on one line (audit 2026-10-14, R-14).",
+        "const series = 'A-1';",
+        "const key = 'R-05';",
+        "it('waits for an address (audit 2 R-32)', () => {",
+        "  expect(key).toBe(series); /* W-F2 */ expect(1).toBe(1);",
+        "});",
+        "test(",
+        "  'refused (R-05): a toast says why',",
+        "  async () => {",
+        "    await shot('R-05-desktop'); // the capture keeps its key",
+        "    /* the row is measured on its own box,",
+        "       as the table fits its columns (W-19) */",
+        "    const ruling = 'C-249/12'; // TJUE C-249/12",
+        "  },",
+        ");",
+    )
+    spec.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    assert found_lines(internal_references(["tests/e2e/panel/some.spec.ts"], root=tmp_path)) == [1, 4, 5, 8, 12]
+
+
+def test_an_audit_code_is_caught_in_the_comments_of_a_component_a_template_and_a_patch(tmp_path):
+    (tmp_path / "accounts").mkdir()
+    (tmp_path / "patches").mkdir()
+    (tmp_path / "accounts" / "Row.vue").write_text(
+        "<template>\n"
+        "  <!-- the Google row (U-63) -->\n"
+        "  <p class=\"note\">{{ t('R-05') }}</p>\n"
+        "</template>\n"
+        '<script setup lang="ts">\n'
+        "// The first name is required (audit 2 S-10).\n"
+        'const series = "A-1";\n'
+        "</script>\n"
+        "<style scoped>\n"
+        "/* 44 px targets on a phone\n"
+        "   (W-F6, W-13 of the mockups) */\n"
+        "</style>\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "accounts" / "page.html").write_text(
+        "{# The security lists (audit 2 R-10) #}\n"
+        '<p data-series="A-1">R-02</p>\n'
+        "<!-- R-02: no maximum-scale -->\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "patches" / "some-lib@1.0.0.patch").write_text(
+        "diff --git a/dist/index.js b/dist/index.js\n"
+        "--- a/dist/index.js\n"
+        "+++ b/dist/index.js\n"
+        "@@ -1,3 +1,4 @@\n"
+        "   * one page at a time\n"
+        "+  * and its title may wrap (R-25)\n"
+        "+ const series = 'R-25';\n",
+        encoding="utf-8",
+    )
+    found = internal_references(
+        ["accounts/Row.vue", "accounts/page.html", "patches/some-lib@1.0.0.patch"], root=tmp_path
+    )
+    assert [":".join(line.split(":")[:2]) for line in found] == [
+        "accounts/Row.vue:2",
+        "accounts/Row.vue:6",
+        "accounts/Row.vue:11",
+        "accounts/page.html:1",
+        "accounts/page.html:3",
+        "patches/some-lib@1.0.0.patch:6",
     ]

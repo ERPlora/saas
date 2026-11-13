@@ -22,7 +22,7 @@ MODULE_KEPT = "billing.module.kept"
 PLAN_CHANGED = "billing.plan.changed"
 #: The plan was cancelled at the end of its period (back to Free then), or kept after all.
 PLAN_CANCELLED = "billing.plan.cancelled"
-#: A downgrade waits for the end of the period (payload: ``hub_id``, ``plan``, ``interval``; review of L3-C).
+#: A downgrade waits for the end of the period (payload: ``hub_id``, ``plan``, ``interval``).
 PLAN_CHANGE_SCHEDULED = "billing.plan.change_scheduled"
 PLAN_KEPT = "billing.plan.kept"
 #: The owner opened Stripe's Customer Portal (payload: ``hub_id``).

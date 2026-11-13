@@ -1,6 +1,6 @@
 // Account → Profile (mockups `account.html` «profile»): the live `accounts.profile.get` — loading, its failure
 // with «Retry», then «Your details» (ProfileForm) and the danger card that deletes the account. A failure is
-// said, never a skeleton for ever (audit 2026-10-14, R-08): an error of the query, or no answer in time.
+// said, never a skeleton for ever: an error of the query, or no answer in time.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
