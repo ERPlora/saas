@@ -1,7 +1,7 @@
 {% load static i18n icons public_assets %}<!DOCTYPE html>
 {% comment %}
   The public web's base (landing, pricing, legal, the app store…): Django templates for SEO. Its
-  sections: the SEO head, the pre-launch strip, {% templatetag openblock %} block content {% templatetag closeblock %} with the navbar,
+  sections: the SEO head, {% templatetag openblock %} block content {% templatetag closeblock %} with the navbar,
   <main>{% templatetag openblock %} block page_content {% templatetag closeblock %}</main> and the footer, and the cookie banner.
 
   No CDN: CSS and JS come from ONE Vite entry, frontend/public.ts ({% templatetag openblock %} public_assets {% templatetag closeblock %}, with the
@@ -75,7 +75,6 @@
     {% block extra_head_scripts %}{% endblock %}
 </head>
 <body>
-    {% include 'public/partials/dev_banner.html' %}
     {% block content %}
     {% if app_surface %}{% include 'public/partials/app_bar.html' %}{% else %}{% include 'public/partials/navbar.html' %}{% endif %}
 

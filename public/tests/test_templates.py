@@ -23,6 +23,7 @@ from django.urls import NoReverseMatch, reverse
 
 from accounts.adapters import SPA_LOGIN
 from accounts.handoff import LAUNCHER
+from public.sitemaps import SITEMAPS
 from public.tests.conftest import PUBLIC_CSS, PUBLIC_JS, without_tokens
 
 pytestmark = pytest.mark.urls("public.tests.urls")
@@ -32,6 +33,8 @@ PUBLIC_TEMPLATES = ROOT / "public" / "templates"
 PUBLIC_STATIC = ROOT / "public" / "static" / "public"
 COMPONENTS = PUBLIC_TEMPLATES / "public" / "components"
 COMPONENT_CSS = PUBLIC_STATIC / "components"
+PUBLIC_CATALOG = ROOT / "public" / "locale" / "es" / "LC_MESSAGES" / "django.po"
+SITEMAP_HOST = "localhost:8001"
 #: The templates under test: the base, its partials, the components, the errors and the cookies.
 SHELL_TEMPLATES = [
     PUBLIC_TEMPLATES / "public" / "public_base.html",
@@ -61,6 +64,18 @@ RETIRED_LOCAL_OFFLINE_COPY = (
     "works offline at the counter",
     "mobile + offline pwa",
     "even offline",
+)
+
+#: The strip that said ERPlora was in development, with its English and Spanish copy.
+RETIRED_PRE_LAUNCH_STRIP = (
+    "dev-banner",
+    "dev_banner",
+    "Pre-launch",
+    "Prelanzamiento",
+    "active development",
+    "pleno desarrollo",
+    "product preview",
+    "vista previa del producto",
 )
 
 
@@ -110,6 +125,12 @@ def cookie_groups(db, settings):
     (see ``public/tests/test_analytics.py``)."""
     settings.GA_MEASUREMENT_ID = "G-TEST123"
     call_command("init_cookie_groups")
+
+
+def sitemap_locations():
+    for sitemap_class in SITEMAPS.values():
+        sitemap = sitemap_class(SITEMAP_HOST)
+        yield from map(sitemap.location, sitemap.items())
 
 
 def get_page(client, name="test_public_page", **headers):
@@ -310,11 +331,11 @@ def test_no_cdn_no_runtime_icons_no_pwa_and_no_app_shell(client, tokens_spelling
 
 
 @pytest.mark.django_db
-def test_body_order_is_dev_banner_navbar_main_footer(client, cookie_groups):
+def test_body_order_is_navbar_main_footer_with_nothing_above_the_navbar(client, cookie_groups):
     html = get_page(client).content.decode()
 
+    assert region(html, "<body>", '<nav class="ep-navbar"').removeprefix("<body>").strip() == ""
     order = [
-        html.index('class="dev-banner"'),
         html.index('<nav class="ep-navbar"'),
         html.index("<main"),
         html.index('<h1 id="test-page">'),
@@ -326,15 +347,37 @@ def test_body_order_is_dev_banner_navbar_main_footer(client, cookie_groups):
 
 
 @pytest.mark.django_db
-def test_the_dev_banner_announces_the_pre_launch(client):
-    banner = region(get_page(client).content.decode(), 'class="dev-banner"', "</div>")
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_no_public_page_carries_the_pre_launch_strip(client, language):
+    """ERPlora is on sale: no page of the public web says it is a preview in development."""
+    client.cookies[settings.LANGUAGE_COOKIE_NAME] = language
+    pages = [(location, 200) for location in sitemap_locations()]
+    pages += [(reverse("test_public_page"), 200), ("/pricing/no-such-plan/", 404)]
 
-    assert 'role="status"' in banner
-    assert "Pre-launch" in banner
-    assert (
-        "ERPlora is in active development. You're viewing a product preview." in banner
-    )
-    assert "<svg" in banner
+    offenders = []
+    for location, status in pages:
+        response = client.get(location, HTTP_HOST=SITEMAP_HOST)
+        assert response.status_code == status, location
+        html = response.content.decode().lower()
+        offenders += [
+            f"{location}: {marker!r}" for marker in RETIRED_PRE_LAUNCH_STRIP if marker.lower() in html
+        ]
+
+    assert reverse("public:home") in dict(pages)
+    assert offenders == []
+
+
+def test_no_public_template_stylesheet_or_catalog_keeps_the_pre_launch_strip():
+    sources = [*public_templates(), *sorted(PUBLIC_STATIC.rglob("*.css")), PUBLIC_CATALOG]
+
+    offenders = [
+        f"{source.relative_to(ROOT)}: {marker!r}"
+        for source in sources
+        for marker in RETIRED_PRE_LAUNCH_STRIP
+        if marker.lower() in without_comments(source.read_text(encoding="utf-8")).lower()
+    ]
+
+    assert offenders == []
 
 
 @pytest.mark.django_db

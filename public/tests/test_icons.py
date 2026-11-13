@@ -202,11 +202,11 @@ def test_the_default_set_is_ionicons(baked):
 
 def test_size_class_and_extra_attributes(baked):
     html = render(
-        '{% icon "lucide:check" size=20 css_class="dev-banner__icon" data_state="on" %}'
+        '{% icon "lucide:check" size=20 css_class="ep-badge__icon" data_state="on" %}'
     )
 
     assert 'width="20" height="20"' in html
-    assert 'class="ep-icon dev-banner__icon"' in html
+    assert 'class="ep-icon ep-badge__icon"' in html
     assert 'data-state="on"' in html
 
 
