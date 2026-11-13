@@ -2,7 +2,7 @@
 
 Fernet (AES-128-CBC + HMAC-SHA256) with ``settings.FERNET_KEY``, as the old product did (``fernet_fields``);
 during a rotation ``FERNET_KEY_PREVIOUS`` still opens what it closed, and everything is written with the
-current key (``MultiFernet``). The database and its backups only ever hold the token (saas#1906). Without a
+current key (``MultiFernet``). The database and its backups only ever hold the token. Without a
 key nothing is stored: a number cannot be connected (``NotConfigured``), which the doors say out loud.
 """
 

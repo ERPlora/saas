@@ -1,4 +1,4 @@
-"""Rates are edited in the admin, not in the code (saas#1063).
+"""Rates are edited in the admin, not in the code.
 
 Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_tax_admin.py`` (origin/develop, 6 tests): a
 new rate, a country raising its VAT or a service with its own rate are solved by editing data, without

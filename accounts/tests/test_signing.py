@@ -241,7 +241,7 @@ class TestVerifyRequest:
         assert verify_request(self._request(rf, headers), now=NOW) is False
 
 
-# --- A timestamp no clock writes, and the headers alone (T7b) ---------------------------------------
+# --- A timestamp no clock writes, and the headers alone ---------------------------------------------
 
 from accounts.signing import may_be_signed  # noqa: E402
 

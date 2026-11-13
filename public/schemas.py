@@ -8,7 +8,7 @@ class AppReleaseIn(Schema):
 
 
 class AppReleaseOut(Schema):
-    """The version ``latest/`` publishes, or ``None`` when it could not be read (hub#400): never a
+    """The version ``latest/`` publishes, or ``None`` when it could not be read: never a
     number, never an invented version."""
 
     version: str | None

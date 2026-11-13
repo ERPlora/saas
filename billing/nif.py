@@ -1,13 +1,13 @@
-"""The spelling of a tax id, and the shape of a Spanish one (saas#1725).
+"""The spelling of a tax id, and the shape of a Spanish one.
 
 Ported from ERPlora/saas ``apps/dashboard/fiscal/nif.py`` (origin/develop).
 
 ``normalise_nif`` is the single spelling of every tax id billing reads, VAT numbers included
 (``billing.vies.normalise``): ``b-12.345.678`` and ``B12345678`` are the same taxpayer, and dots, dashes
-and spaces are typography, not identity (saas#1740).
+and spaces are typography, not identity.
 
-``is_spanish_tax_id`` says whether a tax id has the shape the AEAT gives (the taxpayer of an Anexo I, plan
-2026-10-15): a shape again, never the control digit.
+``is_spanish_tax_id`` says whether a tax id has the shape the AEAT gives (the taxpayer of an Anexo I):
+a shape again, never the control digit.
 
 ``is_legal_person_nif`` answers the two questions of the Anexo I of the AEAT's collaboration agreement 017
 (a natural person or «La Entidad … y en su nombre D/Dña …», and whether a proof of representation is

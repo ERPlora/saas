@@ -112,7 +112,7 @@ class TestWhatIsAudited:
         assert {model for model in billing_models if auditlog.contains(model)} == AUDITED
 
     def test_every_registration_serializes_only_the_logged_fields(self):
-        """#957: without ``serialize_auditlog_fields_only`` the serialized copy carries the excluded fields."""
+        """Without ``serialize_auditlog_fields_only`` the serialized copy carries the excluded fields."""
         for model in AUDITED:
             assert auditlog.get_serialize_options(model)["serialize_auditlog_fields_only"] is True, model
 

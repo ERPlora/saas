@@ -74,7 +74,7 @@ def test_an_accepted_groups_cookie_stays(client):
 
 @pytest.mark.usefixtures("cookie_groups")
 def test_the_essential_cookies_are_never_deleted(client):
-    """Declining everything must not sign the person out (saas#975)."""
+    """Declining everything must not sign the person out."""
     client.cookies[settings.SESSION_COOKIE_NAME] = "a-session"
     client.cookies[settings.COOKIE_CONSENT_NAME] = dict_to_cookie_str(
         {"analytical": "-1", "marketing": "-1"}

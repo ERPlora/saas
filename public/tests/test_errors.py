@@ -149,8 +149,8 @@ def test_the_minimal_500_speaks_the_visitors_language(rf):
     assert "Algo ha fallado por nuestra parte" in html
 
 
-# An error page rendered off the request thread must not reuse nor leak a database connection
-# (saas#2244). Under ASGI (daphne) Django renders it with `sync_to_async(response_for_exception,
+# An error page rendered off the request thread must not reuse nor leak a database connection.
+# Under ASGI (daphne) Django renders it with `sync_to_async(response_for_exception,
 # thread_sensitive=False)`, in a pooled worker thread the request signals never reach: a connection
 # opened there was never closed (with Django's pool, a slot held forever) and, once the server
 # dropped it while idle, the next error page on that thread died with «connection already closed».

@@ -9,7 +9,7 @@ Google that does not sign in lands on a Vue page: «Cancel» on the sign-in (``/
 failure on ``/login/error?code=…``, both keeping ``next``.
 Google links to an account only by signing in with a Google that proves the account's own address;
 ``SocialAccountAdapter`` is ported from ERPlora/saas ``ERPloraSocialAccountAdapter``
-(``apps/auth/users/adapters.py``, saas#2552).
+(``apps/auth/users/adapters.py``).
 """
 
 import logging
@@ -59,12 +59,12 @@ def _with_next(next_url: str | None) -> dict[str, str]:
 def folded_email(email: str) -> str:
     """An address with the compatibility forms of its letters folded (NFKC), trimmed and in lower case: the form
     an account keeps, so «Ana@EXAMPLE.com» and «ana@ｅxample.com» are Ana's address (also when inviting it,
-    ``hubs.schemas``; ERPlora/saas#2562)."""
+    ``hubs.schemas``)."""
     return unicodedata.normalize("NFKC", email).strip().lower()
 
 
 def plain_email(email: str) -> str:
-    """An address in its plain form (``folded_email``), as today's SaaS (ERPlora/saas#1018). «ana@ｅxample.com»
+    """An address in its plain form (``folded_email``), as today's SaaS. «ana@ｅxample.com»
     is Ana's address, never a second account that looks the same, and a look-alike spends the account's budget
     of failed sign-ins, never one of its own. What the folding turns into an invalid address is refused as one."""
     email = folded_email(email)
@@ -115,7 +115,7 @@ class AccountAdapter(DefaultAccountAdapter):
         return super().clean_email(plain_email(email))
 
     def clean_password(self, password, user=None):
-        """A new password is never the account's current one (ERPlora/saas#2612): «Change password» and the key
+        """A new password is never the account's current one: «Change password» and the key
         of «Forgot your password?» both ask for a new one. A new account has no password to compare."""
         if user is not None and user.check_password(password):
             raise ValidationError(gettext("Your new password must be different from the current one."), code="password_unchanged")

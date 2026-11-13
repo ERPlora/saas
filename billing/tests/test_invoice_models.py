@@ -168,7 +168,7 @@ class TestTheDatabaseKeepsTheBooks:
 class TestTheSealsAreReadNotGuessed:
     def test_reverse_charge_is_what_was_sealed(self):
         assert make_invoice(tax_treatment="reverse_charge").is_reverse_charge is True
-        # A Spanish S.L. with a tax id is a domestic sale, whatever type Stripe gives its number (saas#1063).
+        # A Spanish S.L. with a tax id is a domestic sale, whatever type Stripe gives its number.
         assert (
             make_invoice(
                 stripe_invoice_id="in_2",
@@ -183,7 +183,7 @@ class TestTheSealsAreReadNotGuessed:
 
 class TestTheNoteNeverLies:
     """``vat_included_because_unverified``: whether the document must explain that the VAT came out of what
-    was charged (saas#1479, saas#1633). The platform hub prints the sentence; the decision is sealed here."""
+    was charged. The platform hub prints the sentence; the decision is sealed here."""
 
     def note(self, **fields) -> bool:
         defaults = {

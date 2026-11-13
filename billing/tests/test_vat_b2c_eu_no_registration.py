@@ -1,7 +1,7 @@
-"""A silent zero from Stripe does not make a subject sale VAT-free (saas#1478).
+"""A silent zero from Stripe does not make a subject sale VAT-free.
 
 Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_vat_b2c_eu_no_registration.py``
-(origin/develop, 13 tests). The zero measured in saas#1478 comes back as ``not_collecting``: below the
+(origin/develop, 13 tests). The zero measured on a real sale comes back as ``not_collecting``: below the
 €10,000 EU threshold that sale owes Spanish VAT, so a 0 % invoice is a misconfiguration leaking
 through. There is no zero we accept on a sale we qualified as subject: the amount collected is
 treated as VAT-included (TJUE *Tulică* C-249/12 and C-250/12; art. 78.Cuatro LIVA) and the discrepancy
@@ -25,7 +25,7 @@ def _resolve(total, **kwargs):
 
 
 def _german_consumer(**extra):
-    """The customer measured in saas#1478: Berlin, no VAT id, Stripe charged 0."""
+    """The customer of that sale: Berlin, no VAT id, Stripe charged 0."""
     return {
         "customer_country": "DE",
         "customer_postal_code": "10115",
@@ -40,7 +40,7 @@ def _alerts(caplog):
 
 class TestAnUnexplainedZeroIsReconciled:
     def test_an_eu_consumer_below_the_threshold_is_invoiced_with_spanish_vat(self):
-        """The exact row of saas#1478: €29.99 to a Berlin consumer at 0 %."""
+        """The exact row of that sale: €29.99 to a Berlin consumer at 0 %."""
         vat = _resolve("29.99", **_german_consumer())
 
         assert vat.treatment == "domestic"
@@ -48,7 +48,7 @@ class TestAnUnexplainedZeroIsReconciled:
         assert vat.rate == Decimal("21.00")
         assert vat.tax == Decimal("5.20")
         assert vat.base == Decimal("24.79")
-        # Sealed for the invoice's note (saas#1479).
+        # Sealed for the invoice's note.
         assert vat.vat_included_reconciled is True
 
     def test_the_total_collected_is_never_altered(self):

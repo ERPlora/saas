@@ -1,4 +1,4 @@
-"""Every country the forms offer has to be sellable with the seeded table (saas#2110).
+"""Every country the forms offer has to be sellable with the seeded table.
 
 Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_every_billing_country_resolves.py``
 (origin/develop, 5 tests). The form's list and the table that prices the sale were two lists nobody kept
@@ -64,7 +64,7 @@ class TestUnitedKingdom:
 
     def test_a_uk_consumer_is_not_sold_to(self, business_paid_by):
         """A UK consumer owes 20 % UK VAT that only a supplier registered with HMRC may charge, so the
-        terms sell to UK businesses only: without the payer's UK VAT number the sale is refused (saas#2205)."""
+        terms sell to UK businesses only: without the payer's UK VAT number the sale is refused."""
         from live.errors import Conflict
 
         consumer = business_paid_by("GB", "SW1A 1AA")

@@ -2,8 +2,8 @@
 the owner and the admins of the business hear of every step of theirs (received, in force, returned, withdrawn),
 each in their language.
 
-Ported in behaviour from ERPlora/saas ``apps/dashboard/fiscal/services/grant_notifications.py`` (origin/develop)
-and saas#2051 (nobody at ERPlora heard of what waited for them), without what made the old mail unsafe: the desk's
+Ported in behaviour from ERPlora/saas ``apps/dashboard/fiscal/services/grant_notifications.py`` (origin/develop) plus
+the desk's notice (nobody at ERPlora heard of what waited for them), without what made the old mail unsafe: the desk's
 mail carries the link to the admin's review page and no document, no tax id and no name of a person (the old one
 attached the decrypted documents), and the business is found by its id, never by a tax id. The desk's mailbox is
 ``settings.FISCAL_REVIEW_EMAIL`` (support's unless another is set); it reads Spanish, the language of the Anexo I.

@@ -53,7 +53,7 @@ def test_a_body_without_variables_carries_no_example():
 
 
 def test_named_variables_pair_each_name_with_its_example():
-    """saas#2281: a template of WhatsApp Manager with ``{{nombre}}`` can be edited from ERPlora."""
+    """A template of WhatsApp Manager with ``{{nombre}}`` can be edited from ERPlora."""
     clean = templates.check(template(body="Hola {{nombre}}, el {{dia}}. Hasta el {{dia}}.", body_examples=["Ana", "viernes"]))
 
     body = templates.components(clean)[1]

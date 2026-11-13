@@ -124,7 +124,7 @@ describe('browser.download', () => {
     expect(saves.clicked).toEqual([]);
   });
 
-  // The SDK's sentence in the person's language (ui hub#2281), never «Network error (Failed to fetch)».
+  // The SDK's sentence in the person's language, never «Network error (Failed to fetch)».
   it.each([
     ['es', /^No se pudo conectar con el servidor\./],
     ['en', /^Could not connect to the server\./],

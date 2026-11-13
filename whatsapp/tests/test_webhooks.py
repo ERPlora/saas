@@ -66,7 +66,7 @@ class TestProvingTheAddressIsOurs:
         assert self.verify(client, **{"hub.mode": "unsubscribe"}).status_code == 403
 
     def test_without_a_token_configured_it_fails_visibly_and_an_empty_one_never_opens(self, client, whatsapp_on, settings):
-        """#971 of the old product: an empty token never matches an empty setting."""
+        """An empty token never matches an empty setting."""
         settings.WHATSAPP_VERIFY_TOKEN = ""
 
         response = self.verify(client, **{"hub.verify_token": ""})

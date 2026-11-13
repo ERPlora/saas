@@ -1,7 +1,7 @@
 """The live subscription takes the rate the payer's place calls for today (BILLING-F02, BILLING-F06).
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/services/oss_subscription_retax.py`` (saas#2293, saas#2301,
-saas#2308; origin/develop). The checkout and the plan change fix OUR rate on every item and Stripe charges
+Ported from ERPlora/saas ``apps/dashboard/fiscal/services/oss_subscription_retax.py`` (origin/develop).
+The checkout and the plan change fix OUR rate on every item and Stripe charges
 that same rate on every renewal, so without this a payer who moves from Madrid to Las Palmas keeps paying
 21 %, and a consumer in Berlin keeps Spanish VAT after the year crosses the OSS threshold.
 

@@ -45,7 +45,7 @@ def _switch_reverse_charge(on: bool):
 
 class TestTheSwitch:
     def test_it_is_on_because_the_roi_registration_is_granted(self):
-        """ERPlora is in the ROI since 08-08-2026 (ESB27593136) (saas#1479)."""
+        """ERPlora is in the ROI since 08-08-2026 (ESB27593136)."""
         assert queries.fiscal_policy().intra_eu_reverse_charge is True
 
     def test_off_means_a_french_business_pays_spanish_vat(self):

@@ -1,7 +1,7 @@
 """The ``whatsapp`` key of the snapshot against the Hub's own schema of it (door 4, WHATSAPP-G03, WHATSAPP-G05).
 
-The Hub validates that block with its ``ChannelSyncIn`` (``apps/whatsapp_inbox/schemas.py``, the version merged in
-hub#127) after putting the snapshot's ``version`` in it, and a block out of contract makes it answer 422 to the
+The Hub validates that block with its ``ChannelSyncIn`` (``apps/whatsapp_inbox/schemas.py``, in the Hub's code)
+after putting the snapshot's ``version`` in it, and a block out of contract makes it answer 422 to the
 whole snapshot: the business's plan, modules and members stop reaching it too. ``HubChannelSyncIn`` below is that
 schema field for field (same names, types, bounds and whitespace stripping); every block erplora.com can build,
 with whatever its mirror of Meta holds, has to pass it. A change of the Hub's schema is a change of this copy.

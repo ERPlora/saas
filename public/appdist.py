@@ -19,9 +19,9 @@ Port of ``apps/public/appdist/views.py`` and ``apps/public/landing/downloads_vie
   open (ADR-0255), where a presigned URL of the bucket is not.
 * ``index`` — ``GET /app/``, the app's public page; ``ways_to_try`` — ``GET /download/``.
 
-**Android has no fallback** (hub#984): its only channel is Google Play (ADR-0160). It is neither in
+**Android has no fallback**: its only channel is Google Play (ADR-0160). It is neither in
 ``_APP_PLATFORM_FILES`` nor in ``GITHUB_RELEASE_URLS``, so without a store it gets a page of ours
-(saas#1719) while ``GOOGLE_PLAY_LISTING_LIVE`` is off, and never the APK. The listing is live since
+while ``GOOGLE_PLAY_LISTING_LIVE`` is off, and never the APK. The listing is live since
 2026-10-01 and the switch defaults to on: the page only comes back if Google pulls the listing.
 """
 
@@ -56,7 +56,7 @@ RELEASE_CACHE_TTL = 600
 #: The platforms served as a WEB DOWNLOAD from the bucket, and the binary of each. Not Linux: its
 #: AppImage comes from the latest GitHub release (``GITHUB_RELEASE_URLS``), and a platform is in one
 #: table only. No macOS (no Apple Developer ID certificate, nothing is published) and, on purpose,
-#: no Android (hub#984): its only channel is Google Play; the CI still uploads the APK, as an
+#: no Android: its only channel is Google Play; the CI still uploads the APK, as an
 #: internal QA artefact without a public door.
 _APP_PLATFORM_FILES = {
     "windows": "erplora-app-setup.exe",
@@ -64,7 +64,7 @@ _APP_PLATFORM_FILES = {
 
 #: The settings that pick the store, in one place: `download` decides the destination with them and
 #: `index` names the button with the same, so the page cannot promise another channel than the one
-#: the 302 serves (saas#1719).
+#: the 302 serves.
 _STORE_SETTINGS = {
     "ms_store_setting": "MICROSOFT_STORE_APP_ID",
     "play_setting": "GOOGLE_PLAY_APP_ID",
@@ -126,10 +126,10 @@ def index(request: HttpRequest) -> HttpResponse:
 def download(request: HttpRequest, platform: str) -> HttpResponse:
     """``/app/download/<platform>/``: the store, Android's page, the GitHub release or the bucket.
 
-    Never a versioned address, so a page that caches this link keeps delivering the latest build
-    (hub#400, point 1): GitHub's ``releases/latest/download/`` for Linux, the bucket's ``latest/``
-    prefix for Windows. The store is asked BEFORE any binary, and that order is the fix of
-    hub#984: Android has no binary entry, so without a store it falls on its page, never on the
+    Never a versioned address, so a page that caches this link keeps delivering the latest build:
+    GitHub's ``releases/latest/download/`` for Linux, the bucket's ``latest/``
+    prefix for Windows. The store is asked BEFORE any binary, and that order keeps the APK out of
+    reach: Android has no binary entry, so without a store it falls on its page, never on the
     presigned APK.
     """
     store_url = _store_url(platform)

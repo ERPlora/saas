@@ -6,7 +6,7 @@ first segments, ``public.urls.PUBLIC_PREFIXES``) gets its templates (``public/40
 ``public/500.html``); everything else (sign-in, the jump to a hub, the admin, static files, the
 SPA's panel) Django's default pages, ``templates/404.html`` and ``templates/500.html`` with the
 error layout of the sign-in pages. An API path that reaches the
-500 handler answers the JSON envelope of ``live`` instead (saas#895); its 404 is already enveloped
+500 handler answers the JSON envelope of ``live`` instead; its 404 is already enveloped
 by ``live.api_errors.ApiErrorEnvelopeMiddleware``.
 
 A cut of the database is no fault of the server (ACCOUNTS-F50, ``live.database_cut``): the 500 handler answers it with
@@ -17,7 +17,7 @@ Under ASGI (daphne) Django renders an error page with ``sync_to_async(response_f
 thread_sensitive=False)``, in a pooled worker thread the request signals never reach. A connection
 opened there (the templates read the signed-in person) was never released: with Django's pool, a
 slot held forever, and once the server dropped it while idle the next error page on that thread
-died with «connection already closed», a 500 where a 404 belonged (saas#2244). So each handler
+died with «connection already closed», a 500 where a 404 belonged. So each handler
 releases a stale connection before rendering and its own afterwards.
 """
 
@@ -82,7 +82,7 @@ def _release_stale_connections() -> None:
 
 
 def _own_db_connection_lifecycle(handler):
-    """Give an error page the connection lifecycle its thread does not have (saas#2244)."""
+    """Give an error page the connection lifecycle its thread does not have."""
 
     @functools.wraps(handler)
     def wrapper(*args, **kwargs):

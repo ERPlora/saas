@@ -67,7 +67,7 @@ describe('the public entry: components and styles', () => {
     expect([...used].filter((tag) => !(tag in ION_COMPONENTS))).toEqual([]);
   });
 
-  it('registers nothing else but ion-toast, which the server messages create (L8)', () => {
+  it('registers nothing else but ion-toast, which the server messages create', () => {
     const used = usedIonTags();
     expect(Object.keys(ION_COMPONENTS).filter((tag) => tag !== 'ion-toast' && !used.has(tag))).toEqual([]);
   });

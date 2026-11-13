@@ -1,4 +1,4 @@
-"""The providers' keys, encrypted at rest (ASSISTANT-G26; saas#528 of the old product).
+"""The providers' keys, encrypted at rest (ASSISTANT-G26).
 
 Fernet (AES-128-CBC + HMAC-SHA256) with ``settings.FERNET_KEY``, the scheme of WhatsApp's Meta credentials
 (``whatsapp.crypto``): during a rotation ``FERNET_KEY_PREVIOUS`` still opens what it closed, and everything is

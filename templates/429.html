@@ -3,7 +3,7 @@
 {% comment %}
   allauth renders `429.html` by name when a request outside its headless API is rate limited
   (`allauth/core/internal/ratelimit.py`; the headless API answers JSON); without it, a bare English
-  page with no link, a dead end inside the installed app (ERPlora/saas#1474).
+  page with no link, a dead end inside the installed app.
 {% endcomment %}
 
 {% block title %}429 — {% trans "Too Many Requests" %} · ERPlora Cloud{% endblock %}

@@ -1,4 +1,4 @@
-"""The payer's VAT id is what prices the sale, even when Stripe's session does not echo it (saas#1621).
+"""The payer's VAT id is what prices the sale, even when Stripe's session does not echo it.
 
 Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_payer_vat_reaches_the_invoice.py``
 (origin/develop, 6 tests). The VAT id is typed in OUR form (``hubs.BillingProfile.tax_id``), contrasted

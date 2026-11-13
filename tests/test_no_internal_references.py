@@ -3,9 +3,11 @@
 Comments, docstrings, test names and log messages have to make sense on their own, so the code never
 points at a plan section, a dated planning round, a delivery slice or phase, a task id or a dated plan
 or spec, nor signs a decision with who took it and when. Their prose does not cite the codes of an internal
-audit or review either: the reader has not seen it, so the reason is written out. Markdown files are left
-out: they are where the plans live. A dependency patch is read too, and must not cite an issue of one of our
-repositories either: its comments land in the dependency's code, far from our trackers.
+audit or review either: the reader has not seen it, so the reason is written out. Nor does it explain itself
+with an issue of another of our repositories or of the old product, which the reader of this one cannot open,
+nor with a work item's short label. Markdown files are left out: they are where the plans live. A dependency
+patch is read too, and must not cite an issue of one of our repositories either: its comments land in the
+dependency's code, far from our trackers.
 """
 
 import ast
@@ -38,6 +40,7 @@ INTERNAL_REFERENCE = re.compile(
             r"BASE-G[0-9]+",
             r"([Pp]lan|[Ss]pec) 20[0-9]{2}-[0-9]{2}",
             r"docs/(plans|superpowers)/",
+            r"\bPLAN-(?:HUB|SAAS|AWS|DB)\b",
         )
     )
 )
@@ -58,6 +61,34 @@ AUTHORSHIP = re.compile(
 )
 
 OUR_REPO_ISSUE = re.compile(r"(?<![\w-])(?:hub|saas|ui|live|aws|app|outfitkit|pm|knowledge)#[0-9]+")
+
+# Our other repositories, and the old product's: its modules, its design kit and its trackers, now archived.
+OTHER_REPOSITORIES = (
+    *("3d", "app", "aws", "blueprints", "corpus", "docs", "erplora-next", "hub", "knowledge", "live", "qa", "ui"),
+    *("ai-cluster", "appointments", "architecture", "attendance", "backup", "cart_checkout", "cash_register"),
+    *("combos", "customers", "ERPlora-Bridge-android", "ERPloraKiosk", "flows", "infra", "inventory", "invoice"),
+    *("kitchen", "kitchen_orders", "modifiers", "module-toolkit", "network-kit", "online_booking", "orders"),
+    *("outfitkit", "payments", "pm", "pricing", "printing", "reservations", "sales", "schedules", "services"),
+    *("setup", "staff", "tables", "tasks", "taxes", "verifactu", "verifactu-gateway", "warehouse", "whatsapp_inbox"),
+)
+
+# An issue of one of those, which the reader of this repository cannot open: the reason is written out instead.
+# An issue of a third party's project stays, as does a colour or one of this repository's own issues.
+OTHER_REPO_ISSUE = re.compile(
+    r"(?<![\w/.:-])(?:gh:)?(?:ERPlora/)?(?:" + "|".join(map(re.escape, OTHER_REPOSITORIES)) + r")#[0-9]+"
+    r"|\berplora-old/[\w.-]+#[0-9]+"
+)
+
+# The old product's tracker was called saas as well, and its numbers run far past this repository's: one of them
+# cited here opens an unrelated issue, or none. A number well beyond the newest merged pull request is one of those.
+THIS_TRACKER_ISSUE = re.compile(r"(?<![\w/.:-])(?:gh:)?(?:ERPlora/)?saas#([0-9]+)|\b[Ii]ssue #([0-9]+)")
+OLD_TRACKER_MARGIN = 100
+MERGED_PULL_REQUEST = re.compile(r"\(#([0-9]+)\)|^Merge pull request #([0-9]+)", re.MULTILINE)
+
+# A work item's short label, a capital letter and a number, says nothing to the reader: the fact it stood for is
+# written instead. A Django check (hubs.W002), a standard's chapter (ASVS V6.3.7), an API's version (SigV4, v25.0)
+# or one of the AEAT's lists («L3», list L2) has another shape.
+WORK_LABEL = re.compile(r"(?<![\w.«-])(?<!list )(?<!lista )[LVW][0-9]{1,2}[a-z]?(?![\w.»-])")
 
 PATCH_SUFFIX = ".patch"
 
@@ -121,6 +152,10 @@ FROZEN_FILES = {
     "hubs/migrations/0001_initial.py",
     "hubs/migrations/0018_plan_field_names.py",
 }
+
+# A generated file repeats its generator's strings word for word, and a test compares the two: its comments are
+# read as the generator's lines are, for plans and signatures, but not as prose of their own.
+GENERATED_FILES = {"public/static/public/ionic-utilities.css"}
 
 # A clause of Brave Search's terms of use, quoted to the user: an outside contract, not a plan.
 QUOTED_CLAUSES = ("Brave Search's terms (" + SECTION_SIGN + "3(b)(i))",)
@@ -236,7 +271,32 @@ def marked_prose(suffix, text):
     return prose
 
 
-def internal_references(paths, root=REPO):
+def newest_merged_number(root=REPO):
+    """The number of the newest pull request in the history, or ``None`` without one. A shallow clone, as the CI
+    checks out, holds a commit or two: the number it names, if any, says nothing of the newest, so none is read."""
+
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, check=False).stdout
+
+    if git("rev-parse", "--is-shallow-repository").strip() != "false":
+        return None
+    subjects = git("log", "-n", "200", "--format=%s")
+    numbers = [int(match.group(1) or match.group(2)) for match in MERGED_PULL_REQUEST.finditer(subjects)]
+    return max(numbers, default=None)
+
+
+def old_tracker_issue(prose, newest):
+    """The first issue cited in ``prose`` that is the old product's, known by its number; without the newest
+    merged number to compare with, none is."""
+    if newest is None:
+        return None
+    for match in THIS_TRACKER_ISSUE.finditer(prose):
+        if int(match.group(1) or match.group(2)) > newest + OLD_TRACKER_MARGIN:
+            return match
+    return None
+
+
+def internal_references(paths, root=REPO, newest=None):
     found = []
     for path in paths:
         if path in FROZEN_FILES:
@@ -249,10 +309,14 @@ def internal_references(paths, root=REPO):
             unquoted = without_string_literals(line) if e2e_script else line
             for clause in QUOTED_CLAUSES:
                 unquoted = unquoted.replace(clause, "")
+            line_prose = "" if path in GENERATED_FILES else prose.get(number, "")
             reference = (
                 INTERNAL_REFERENCE.search(unquoted)
                 or AUTHORSHIP.search(unquoted)
-                or AUDIT_CODE.search(prose.get(number, ""))
+                or AUDIT_CODE.search(line_prose)
+                or OTHER_REPO_ISSUE.search(line_prose)
+                or WORK_LABEL.search(line_prose)
+                or old_tracker_issue(line_prose, newest)
             )
             if reference or (patch and OUR_REPO_ISSUE.search(line)):
                 found.append(f"{path}:{number}: {line.strip()}")
@@ -262,9 +326,10 @@ def internal_references(paths, root=REPO):
 def test_code_never_points_at_internal_plans():
     paths = code_files()
     assert "tests/test_no_internal_references.py" in paths, "git ls-files listed no code"
-    found = internal_references(paths)
+    found = internal_references(paths, newest=newest_merged_number())
     assert not found, (
-        "Code that points at internal plans, rounds, slices or audits, or signs a decision:\n" + "\n".join(found)
+        "Code that points at internal plans, rounds, slices, audits, work labels or another repository's issues, or "
+        "signs a decision:\n" + "\n".join(found)
     )
 
 
@@ -272,10 +337,10 @@ def test_code_never_points_at_internal_plans():
     "text",
     [
         "Voice and video calls (Plan " + SECTION_SIGN + "66)",
-        "see PLAN-SAAS " + SECTION_SIGN + "47",
+        "see PLAN" + "-SAAS " + SECTION_SIGN + "47",
         "PLAN.md" + SECTION_SIGN + "5",
         "the limits of " + SECTION_SIGN + "14.2",
-        "PLAN-HUB round " + "2026-10-21",
+        "PLAN" + "-HUB round " + "2026-10-21",
         "ronda " + "2026-11-10f",
         "tajada " + "S3",
         "Tajada " + "4",
@@ -294,6 +359,7 @@ def test_code_never_points_at_internal_plans():
         "spec" + " 2026-10-11",
         "docs" + "/plans/2026-10-31-qa-asistente.md",
         "docs" + "/superpowers/specs/2026-10-10-knowledge.md",
+        "a private bucket (PLAN" + "-AWS «s3_downloads.tf»)",
     ],
 )
 def test_the_scan_catches_each_kind_of_reference(text):
@@ -312,6 +378,7 @@ def test_the_scan_catches_each_kind_of_reference(text):
         "the subscription schedule's next phase",
         "the plan's price for 2026",
         "docs/api/openapi.json",
+        "<!-- PLAN CARDS -->",
     ],
 )
 def test_the_scan_leaves_ordinary_text_alone(text):
@@ -566,3 +633,191 @@ def test_an_audit_code_is_caught_in_the_comments_of_a_component_a_template_and_a
         "accounts/page.html:3",
         "patches/some-lib@1.0.0.patch:6",
     ]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Android has no fallback (hub#984): its only channel is Google Play",
+        "FormModal keeps both since ERPlora/ui#112",
+        "Meta not answering is said as Meta's (gh:hub#2731)",
+        "the plain-language half of the update policy (pm#69)",
+        "Canonical = the Hub's develop (ERPlora issue outfitkit#14)",
+        "a separator, never as text (ui#56)",
+        "the chain of the records, as verifactu#12 left it",
+        "the old till's cash_register#7",
+        "erplora-old/saas#2536: the address is changed in two steps",
+    ],
+)
+def test_the_scan_catches_an_issue_of_another_repository(text):
+    assert OTHER_REPO_ISSUE.search(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "the doors' spec, which no screen covers (saas#89)",
+        "a request is answered for its real path (ERPlora/saas#89)",
+        "fixed upstream in capacitor-app#41",
+        "the colour #123456 of the border",
+        "the business's hub #3 in the list",
+        "UTS #46, which also folds the case",
+        "fi:saas/orgs-users#informacion-de-facturacion",
+        "https://github.com/ERPlora/hub/pull/12#issuecomment-1",
+        "the C# client",
+    ],
+)
+def test_the_scan_leaves_this_repository_and_third_parties_alone(text):
+    assert not OTHER_REPO_ISSUE.search(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "the address is changed in two steps (saas#2536)",
+        "an address in its plain form, as today's SaaS (ERPlora/saas#1018)",
+        "Meta's, never ERPlora's (gh:saas#958)",
+        "Cookie-consent banner (issue #958)",
+        "Issue #2344: the period lives on the item",
+    ],
+)
+def test_the_scan_catches_an_issue_of_the_old_tracker(text):
+    assert old_tracker_issue(text, newest=424)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "the doors' spec, which no screen covers (saas#89)",
+        "the newest pull request (saas#424)",
+        "an issue opened since (saas#510)",
+        "issue #12 of the list",
+        "the grey #999 of the border",
+    ],
+)
+def test_the_scan_leaves_this_trackers_issues_alone(text):
+    assert not old_tracker_issue(text, newest=424)
+
+
+def test_without_the_newest_number_no_issue_is_the_old_trackers():
+    assert old_tracker_issue("the address is changed in two steps (saas#2536)", newest=None) is None
+
+
+def test_the_newest_merged_number_is_read_from_the_whole_history_only(tmp_path):
+    full = tmp_path / "full"
+    full.mkdir()
+
+    def commit(subject):
+        subprocess.run(
+            ["git", "-c", "core.hooksPath=/dev/null", "-c", "user.name=t", "-c", "user.email=t@example.com"]
+            + ["commit", "--allow-empty", "-qm", subject],
+            cwd=full,
+            check=True,
+        )
+
+    assert newest_merged_number(full) is None
+    subprocess.run(["git", "init", "-q"], cwd=full, check=True)
+    assert newest_merged_number(full) is None
+    commit("The first commit")
+    assert newest_merged_number(full) is None
+    commit("A fix that was squashed (#12)")
+    commit("A fix of a fix (#9) (#10)")
+    assert newest_merged_number(full) == 12
+    commit("Merge pull request #15 from ERPlora/some-branch")
+    assert newest_merged_number(full) == 15
+    shallow = tmp_path / "shallow"
+    subprocess.run(["git", "clone", "-q", "--depth", "1", full.as_uri(), str(shallow)], check=True)
+    assert newest_merged_number(shallow) is None
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "ERPlora's staff is refused as a new invitation is (W11b)",
+        "the toolbar keeps one row (W8/W10)",
+        "until V3 generates them",
+        "native buttons styled as the component (L8)",
+        "the classes and the feature-card partial of L2;",
+        "the four templates of the L3a port",
+    ],
+)
+def test_the_scan_catches_a_work_label(text):
+    assert WORK_LABEL.search(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "the system check ``hubs.W002`` names them",
+        "the ALB redirects to HTTPS (W008)",
+        "always told to its address (OWASP ASVS V6.3.7)",
+        "the type of a rectifying invoice (AEAT, «L3» list)",
+        "one of the values of list L2",
+        "los valores de la lista L1",
+        "a presigned URL signed with SigV4",
+        "the Graph API v25.0",
+        "since Stripe's ``2025-03-31.basil``",
+        "allauth's ``/_allauth/browser/v1/account/email``",
+        "a W3C recommendation",
+        "a private S3 bucket, VAT regime S1, messages M1 and M2",
+    ],
+)
+def test_the_scan_leaves_standards_versions_and_checks_alone(text):
+    assert not WORK_LABEL.search(text)
+
+
+def test_another_repositorys_issue_or_a_work_label_is_caught_in_prose_but_not_in_data(tmp_path):
+    (tmp_path / "public").mkdir()
+    (tmp_path / "public" / "downloads.py").write_text(
+        '"""Android has no fallback (hub#984): its only channel is Google Play."""\n'
+        'ISSUE = "hub#984"\n'
+        "LABEL = 'W11b'\n"
+        "# The doors' spec, which no screen covers (saas#89).\n"
+        "# The address is changed in two steps (saas#2536).\n"
+        "# Refused as a new invitation is (W11b).\n"
+        "# Treated as VAT-included (TJUE C-249/12); the invoice A-1 of the series A.\n",
+        encoding="utf-8",
+    )
+    spec = tmp_path / "tests" / "e2e" / "panel" / "some.spec.ts"
+    spec.parent.mkdir(parents=True)
+    spec.write_text(
+        "// Android never reads as a download (hub#984).\n"
+        "it('paints a separator, never as text (ui#56)', async () => {\n"
+        "  await shot('W11b-desktop');\n"
+        "  test.info().annotations.push({ type: 'issue', description: 'hub#984' });\n"
+        "});\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "public" / "page.html").write_text(
+        "{# Never «Download»: on Android the only channel is Play (hub#984). #}\n"
+        '<a href="#984">hub#984</a>\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "public" / "theme.css").write_text(
+        "/* Canonical = the Hub's develop (outfitkit#14). */\n"
+        ".row { color: #999; } /* the grey #999 of the border */\n",
+        encoding="utf-8",
+    )
+    paths = ["public/downloads.py", "tests/e2e/panel/some.spec.ts", "public/page.html", "public/theme.css"]
+    found = internal_references(paths, root=tmp_path, newest=424)
+    assert [":".join(line.split(":")[:2]) for line in found] == [
+        "public/downloads.py:1",
+        "public/downloads.py:5",
+        "public/downloads.py:6",
+        "tests/e2e/panel/some.spec.ts:1",
+        "tests/e2e/panel/some.spec.ts:2",
+        "public/page.html:1",
+        "public/theme.css:1",
+    ]
+
+
+def test_a_generated_file_is_read_for_plans_but_its_comments_are_its_generators(tmp_path):
+    generated = tmp_path / "public" / "static" / "public" / "ionic-utilities.css"
+    generated.parent.mkdir(parents=True)
+    generated.write_text(
+        "/* Card scope (saas#2536): Ionic's rules shadow layered ones (hub#984, W11b). */\n"
+        "/* The bucket (PLAN" + "-AWS «s3_downloads.tf»). */\n",
+        encoding="utf-8",
+    )
+    found = internal_references(["public/static/public/ionic-utilities.css"], root=tmp_path, newest=424)
+    assert found_lines(found) == [2]

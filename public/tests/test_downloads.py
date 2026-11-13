@@ -135,12 +135,12 @@ class TestPresignedDownloadUrl:
 
 
 class TestStoreUrlFor:
-    """``store_url_for`` — the per-platform switch to the stores (saas#707, ADR-0160).
+    """``store_url_for`` — the per-platform switch to the stores (ADR-0160).
 
     Windows → the Web Installer Direct of the single Microsoft Store listing, by its Store ID
     (assigned by Microsoft: without it, the web download is right). Android → the single Google
     Play listing; ``GOOGLE_PLAY_LISTING_LIVE`` says whether it EXISTS, ``GOOGLE_PLAY_APP_ID`` only
-    overrides the baked-in package (never a switch to the APK, hub#984). Linux never goes to a
+    overrides the baked-in package (never a switch to the APK). Linux never goes to a
     store.
     """
 
@@ -164,7 +164,7 @@ class TestStoreUrlFor:
         )
 
     def test_android_has_no_store_while_the_listing_is_not_live(self, settings):
-        """saas#1719: the URL of a listing that does not exist is Google's 404, not an answer."""
+        """The URL of a listing that does not exist is Google's 404, not an answer."""
         settings.GOOGLE_PLAY_LISTING_LIVE = False
         settings.GOOGLE_PLAY_APP_ID = "com.erplora.app"
         from public.downloads import store_url_for
@@ -178,7 +178,7 @@ class TestStoreUrlFor:
         assert store_url_for("windows", **STORE_SETTINGS) is None
 
     def test_android_still_goes_to_play_with_the_package_setting_empty(self, settings):
-        """hub#984: an empty package setting resolves to the baked-in package, never to the APK."""
+        """An empty package setting resolves to the baked-in package, never to the APK."""
         settings.GOOGLE_PLAY_LISTING_LIVE = True
         settings.GOOGLE_PLAY_APP_ID = ""
         from public.downloads import ANDROID_PLAY_PACKAGE, store_url_for

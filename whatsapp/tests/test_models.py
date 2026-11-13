@@ -1,7 +1,7 @@
 """WHATSAPP-G04, WHATSAPP-G09 · What erplora.com keeps of a business's WhatsApp, and what it never keeps in clear.
 
 Ported from the old ``WhatsAppPhoneMapping`` (``../ERPlora/saas`` ``apps/whatsapp_inbox/models.py``): one row
-per number, its owner business, Meta's ids and the business token and PIN encrypted (saas#1906: nobody reads
+per number, its owner business, Meta's ids and the business token and PIN encrypted (nobody reads
 them in clear, not even in the database).
 """
 

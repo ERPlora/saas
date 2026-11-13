@@ -154,7 +154,7 @@ class TestInvite:
 
     @pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
     def test_an_expired_invitation_of_an_account_made_staff_is_not_renewed(self, business, team, flag):
-        """Renewing is inviting again: ERPlora's staff is refused as a new invitation is (W11b)."""
+        """Renewing is inviting again: ERPlora's staff is refused as a new invitation is."""
         invitee = team["invitee"]
         HubMember.objects.filter(user=invitee).update(invitation_expires_at=timezone.now() - timedelta(days=1))
         type(invitee).objects.filter(pk=invitee.pk).update(**{flag: True})
@@ -537,7 +537,7 @@ class TestResendAndCancel:
 
     @pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
     def test_an_invitee_made_staff_meanwhile_gets_no_invitation_again(self, business, team, flag):
-        """As ``member_invite`` refuses ERPlora's staff, so does sending it again (W11b)."""
+        """As ``member_invite`` refuses ERPlora's staff, so does sending it again."""
         invitee = team["invitee"]
         type(invitee).objects.filter(pk=invitee.pk).update(**{flag: True})
 
@@ -606,8 +606,7 @@ ON_A_BUSINESS = "This account is on a business: ERPlora's staff and the customer
 
 class TestThePlatformsDoor:
     """``manage.py create_platform_user`` makes no staff of anybody on a business, also where the jump would not let
-    them in: an invitation still waiting, or a business in its 90 days of recovery, which a restore gives back
-    (W11b)."""
+    them in: an invitation still waiting, or a business in its 90 days of recovery, which a restore gives back."""
 
     def test_an_invitee_is_never_made_staff(self, business, team):
         invitee = team["invitee"]
@@ -725,7 +724,7 @@ class TestAccept:
         """The platform's staff and the customers never share an account (``test_a_staff_account_creates_no_business``):
         an account raised to staff while its invitation waited (in the admin, by a superuser: ``create_platform_user``
         refuses an invitee, ``TestThePlatformsDoor``) does not enter with it, as the invitation itself would have
-        refused it (W11b)."""
+        refused it."""
         invitee = team["invitee"]
         type(invitee).objects.filter(pk=invitee.pk).update(is_staff=True)
         invitee.refresh_from_db()

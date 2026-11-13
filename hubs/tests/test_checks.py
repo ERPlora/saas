@@ -18,7 +18,7 @@ pytestmark = pytest.mark.django_db
 
 
 class TestStaffOnABusiness:
-    """``hubs.W002`` (W11b): an account of ERPlora's staff (``is_staff`` or ``is_superuser``) that is also on a business,
+    """``hubs.W002``: an account of ERPlora's staff (``is_staff`` or ``is_superuser``) that is also on a business,
     as a member or with an invitation waiting, made before the doors refused it. Nothing is turned off by itself: the
     check names them and why, and ``hubs/README.md`` says how to put each right by hand."""
 

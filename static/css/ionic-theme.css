@@ -137,7 +137,7 @@
 /* Same selector as Ionic (:root.ion-palette-dark, specificity 0,1,1) to beat it;
    loaded after it in main.tsx, our neutral values win. */
 :root.ion-palette-dark {
-  /* Neutral dark (zinc), consistent with the light one. Canonical = the Hub's develop (ERPlora issue outfitkit#14). */
+  /* Neutral dark (zinc), consistent with the light one. Canonical = the Hub's develop. */
   --ion-background-color: #0b0c0e;
   --ion-background-color-rgb: 11, 12, 14;
   --ion-text-color: #f4f5f7;
@@ -252,8 +252,8 @@ ion-modal.erplora-drawer-left ion-toolbar {
   ion-modal.erplora-drawer-left { --width: 100%; }
 }
 
-/* ── Minimum touch target inside an overlay (saas#1671) ──────────────────────────────
- * The 44px floor of saas#1625 hangs on `.dash-main` (dashboard-shell.css) and NO overlay is
+/* ── Minimum touch target inside an overlay ──────────────────────────────────────────
+ * The 44px touch-target floor hangs on `.dash-main` (dashboard-shell.css) and NO overlay is
  * inside it: the dialogs, the global modal and the drawer are `ion-modal`s included from
  * `base.html`, and Ionic presents them at the top of `ion-app`. Their actions therefore kept
  * the size `ios` mode draws them at — the X of every header at 36x32, the Cancel/Confirm/OK of
@@ -297,8 +297,8 @@ ion-modal.erplora-theme-modal ion-toolbar {
 /* An `ion-modal` that Ionic has not defined yet paints its children IN THE FLOW of the
    page: the body of the payment modal —spinner + «Loading payment form…»— shows up in the
    middle of the screen without anyone opening it, and if Ionic's bundle does not arrive (a
-   CSP refusal is enough) it keeps spinning forever without a single call to Stripe
-   (saas#1565). Ionic ships no guard of its own: hide it until the element is defined. */
+   CSP refusal is enough) it keeps spinning forever without a single call to Stripe.
+   Ionic ships no guard of its own: hide it until the element is defined. */
 ion-modal:not(:defined) {
   display: none;
 }

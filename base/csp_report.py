@@ -3,7 +3,7 @@
 ``live.csp.csp_report`` logs each report (up to 8 KB) and answers 204. Anyone may post there, with no session nor CSRF
 (a browser sends the report on its own), so an address past ``CSP_REPORT_RATELIMIT`` (60 an hour, the old SaaS's) is
 answered 429 and its report is not logged: the log never fills from one address. The address is the one the load
-balancer saw (``public.client_ip`` put it in ``REMOTE_ADDR``), never one the request typed (saas#2531). With the cache
+balancer saw (``public.client_ip`` put it in ``REMOTE_ADDR``), never one the request typed. With the cache
 down the brake lets reports through (``RATELIMIT_FAIL_OPEN``).
 """
 

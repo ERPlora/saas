@@ -132,7 +132,7 @@ class TestSignupTrialDays:
         assert Plan.objects.signup_trial_days() == {"trial_days_min": None, "trial_days_max": None}
 
     def test_only_public_plans_bought_at_sign_up_count(self, signup_trial):
-        """An upgrade grants no trial (#809), an internal plan is no offer, a retired one neither."""
+        """An upgrade grants no trial, an internal plan is no offer, a retired one neither."""
         _create("long-upgrade", trial_period_days=90, upgrade_only=True)
         _create("long-internal", trial_period_days=60, internal_only=True)
         _create("long-retired", trial_period_days=45, is_active=False)

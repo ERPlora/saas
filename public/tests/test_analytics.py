@@ -1,7 +1,7 @@
 """GA4 and Microsoft Clarity load only after the analytical consent, never on credential pages.
 
 Port of ``tests/unit/test_ga4_analytics.py`` (9), ``test_clarity_analytics.py`` (11) and
-``test_analytics_consent_gate.py`` (6) of the old SaaS (issue #958). The partial is
+``test_analytics_consent_gate.py`` (6) of the old SaaS. The partial is
 ``public/partials/analytics.html``; its context comes from ``public.context_processors.public_site``.
 
 What moved or changed, with the reason:

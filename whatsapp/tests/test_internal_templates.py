@@ -680,7 +680,7 @@ class TestHeaderSample:
     @pytest.mark.parametrize("failure", [httpx.ConnectError("refused"), httpx.ReadTimeout("slow")])
     @respx.mock
     def test_meta_unreachable_while_uploading_registers_nothing_and_frees_the_key(self, client, number, failure):
-        """gh:hub#2731: Meta not answering is said as Meta's, never as ERPlora's, and nothing is kept."""
+        """Meta not answering is said as Meta's, never as ERPlora's, and nothing is kept."""
         respx.post(UPLOADS).mock(return_value=httpx.Response(200, json={"id": UPLOAD_ID}))
         respx.post(UPLOAD).mock(side_effect=failure)
         meta = respx.post(TEMPLATES)

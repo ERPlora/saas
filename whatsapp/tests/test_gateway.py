@@ -114,7 +114,7 @@ def read(wamid="wamid.echo"):
 
 
 def test_the_status_of_the_owners_reply_from_the_phone_reaches_the_hub_without_a_key(number, hub_double):
-    """The Hub shows the owner's replies from the phone in the conversation («Sent», hub#127) and takes their status
+    """The Hub shows the owner's replies from the phone in the conversation («Sent») and takes their status
     without a key of its own (it never sent them): once erplora.com handed the echo over, its «read» follows."""
     hub_double.answer("POST", r"^/internal/whatsapp/inbound$", 200, {"created": True})
     hub_double.answer("POST", r"^/internal/whatsapp/status$", 200, {"updated": True, "status": "read"})

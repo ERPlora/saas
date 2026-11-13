@@ -143,7 +143,7 @@ describe('ReauthModal', () => {
 
 // It opens over the dialog that asked for it (a new key, ACCOUNTS-F31; a new email, ACCOUNTS-F21), and Ionic drops the
 // backdrop and the shadow of a modal opened over another one (`ion-modal.modal-default.show-modal ~
-// ion-modal.modal-default`, its core.css). FormModal keeps both since ERPlora/ui#112, 0.4 in light and 0.6 in dark. A rule
+// ion-modal.modal-default`, its core.css). FormModal keeps both, 0.4 in light and 0.6 in dark. A rule
 // of this dialog's own said 0.4 in dark too, as specific as FormModal's, so which one won hung on the order the bundle
 // loaded them (saas#379). One rule, FormModal's.
 describe('ReauthModal over the dialog that asked for it (saas#379)', () => {

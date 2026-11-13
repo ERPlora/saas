@@ -1,6 +1,6 @@
 {% load cookie_consent_tags %}
 {% comment %}
-  GDPR opt-in gate (issue #958): NEITHER tracker is loaded, not even the external <script src>,
+  GDPR opt-in gate: NEITHER tracker is loaded, not even the external <script src>,
   until the visitor has explicitly accepted the "analytical" cookie group (cookie banner or
   /cookies/). Being signed in is NOT consent. Google's Consent Mode only says what Google may
   store, not whether the browser may contact googletagmanager.com at all, so it is not used: the

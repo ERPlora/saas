@@ -1,4 +1,4 @@
-"""The team's notices of the OSS threshold (BILLING-F06, saas#2297, saas#2299).
+"""The team's notices of the OSS threshold (BILLING-F06).
 
 Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_oss_threshold_warning.py``,
 ``test_oss_crossing_alert.py`` and ``test_oss_regime_change_trail.py`` (origin/develop). Destination VAT

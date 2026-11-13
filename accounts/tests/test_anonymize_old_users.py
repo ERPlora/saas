@@ -2,7 +2,7 @@
 limitation; ACCOUNTS-G97, G07, G52, G61). Weekly in ``saas-cron``.
 
 Ported from ERPlora/saas ``apps/auth/users/management/commands/anonymize_old_users.py`` and its test
-``test_anonymize_skips_hub_owners.py`` (saas#2567), with what the old one left behind (SAAS_AUTH-F15: the real email in
+``test_anonymize_skips_hub_owners.py``, with what the old one left behind (SAAS_AUTH-F15: the real email in
 the addresses, the names, the linked Google account and the sessions' addresses): an account goes as its owner deletes
 it (ACCOUNTS-F27), with all of that, and ERPlora's invoices stay with their recipient as issued.
 
@@ -105,7 +105,7 @@ class TestWhichAccountsGo:
 
 
 class TestWhoeverBelongsToABusinessStays:
-    def test_the_owner_of_a_business_stays(self, plans):  # noqa: F811 - saas#2567
+    def test_the_owner_of_a_business_stays(self, plans):  # noqa: F811
         owner = _account("owner@example.com", last_login_days=900)
         create_business(owner, name="Panadería López")
 

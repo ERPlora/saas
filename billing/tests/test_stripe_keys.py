@@ -1,6 +1,6 @@
 """Which Stripe mode a secret key belongs to (``billing.stripe_keys``).
 
-Ported from ERPlora/saas ``apps/core/stripe_keys.py`` (origin/develop; saas#2177), whose guard asked about
+Ported from ERPlora/saas ``apps/core/stripe_keys.py`` (origin/develop), whose guard asked about
 one prefix: a restricted test key (``rk_test_``) passed for live and a legitimate one was refused. Guards
 that protect money ask about the MODE of a secret (``sk_``) or restricted (``rk_``) key; anything else is
 UNKNOWN, never «probably live».

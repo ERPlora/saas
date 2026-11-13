@@ -1,7 +1,7 @@
 {% extends "public/public_base.html" %}
 {% load buttons i18n icons %}
 {% comment %}
-  /app/download/android/ while the Google Play listing does not exist (saas#1719). Port of
+  /app/download/android/ while the Google Play listing does not exist. Port of
   apps/public/appdist/templates/appdist/android.html (origin/develop).
 
   Never painted while GOOGLE_PLAY_LISTING_LIVE is on: then the view answers 302 to Play, so
@@ -9,8 +9,8 @@
   paint, there is no asynchronous call; the only state (listing live or under review) is decided
   by the view before rendering.
 
-  What is NOT offered, on purpose: the APK. The CI uploads it as an internal QA artefact (ADR-0160,
-  hub#984); handing it out here would be exactly the failure hub#984 closed.
+  What is NOT offered, on purpose: the APK. The CI uploads it as an internal QA artefact (ADR-0160);
+  handing it out here would put the app outside Play, as a deploy without its setting once did.
 {% endcomment %}
 
 {% block title %}{% trans "ERPlora for Android" %} · ERPlora{% endblock %}

@@ -90,7 +90,7 @@ class TestWhatIsAudited:
 
 class TestNoSecretIsWritten:
     def test_the_password_hash_is_never_logged(self, ana):
-        """#957: ``exclude_fields`` alone still put the hash in the serialized copy of the account."""
+        """``exclude_fields`` alone still put the hash in the serialized copy of the account."""
         ana.set_password("another long passphrase")
         ana.save()
         ana.first_name = "Anabel"
