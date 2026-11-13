@@ -1,10 +1,10 @@
-"""WHATSAPP-G07 · ``GET /whatsapp/media/<id>``: a customer's photo, voice note, video or document, opened from the
+"""``GET /whatsapp/media/<id>``: a customer's photo, voice note, video or document, opened from the
 Hub's inbox (door 1 carries this address in ``media.url``).
 
 The browser opens it with the person's erplora.com session: only an accepted member of the business the message is
 for gets it, streamed from Meta as it arrives and never kept here. Meta is replaced at the HTTP border only
-(``respx``). Cases of the old product's ``test_media_proxy.py`` (Meta's link only from its hosts and over https,
-never redirected; everything decided before the first byte; no cache), plus what its WORKFLOW left open: the id is
+(``respx``). Meta's link is fetched only from its hosts and over https, never redirected; everything is decided
+before the first byte; nothing is cached; the id is
 checked against the business's own messages, and what is not a picture, a sound or a video is never shown on
 erplora.com's origin (downloaded, sandboxed).
 """

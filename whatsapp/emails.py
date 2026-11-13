@@ -1,6 +1,6 @@
 """The mails of whatsapp, each in its recipient's language (``User.language``).
 
-«Connect WhatsApp again» (WHATSAPP-G12): Meta did not renew the business's permission, so its customers' messages
+«Connect WhatsApp again»: Meta did not renew the business's permission, so its customers' messages
 stop reaching the Hub until the number is connected again. Branded, as text and as HTML (``base.emails``,
 ACCOUNTS-F46). Sent after the COMMIT of what it announces; one that cannot leave is logged, never raised (the next
 renewal round tries again).

@@ -1,4 +1,4 @@
-"""The client of OpenAI's Chat Completions API (ASSISTANT-G37), and the base of every API compatible with it
+"""The client of OpenAI's Chat Completions API, and the base of every API compatible with it
 (DeepSeek, a proxy): ``POST {base}/chat/completions`` streamed, ``GET {base}/models`` to list.
 
 One tool per answer (``parallel_tool_calls: false``) and at most ``max_tokens`` of output: the models released after

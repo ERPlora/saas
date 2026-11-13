@@ -1,4 +1,4 @@
-"""ASSISTANT-F19 (ASSISTANT-G55) · Read what a question attaches: an image goes to the model as it is (a model that
+"""ASSISTANT-F19 · Read what a question attaches: an image goes to the model as it is (a model that
 cannot see gets a note instead), a document (PDF, Word, Excel, text, CSV, Markdown, JSON) is turned into its text.
 
 The Hub sends each file inside the message, in base64: erplora.com downloads nothing (no address of a document or an

@@ -1,6 +1,5 @@
-"""The client of a provider by its API (ASSISTANT-G35). No cache: a client is a key and an address, built for each
-call from what the route read in that turn, so a changed key or policy applies to the next turn on every process
-(the old product cleared a per-process cache on each change, ASSISTANT-G39)."""
+"""The client of a provider by its API. No cache: a client is a key and an address, built for each
+call from what the route read in that turn, so a changed key or policy applies to the next turn on every process."""
 
 from assistant.providers.anthropic import AnthropicProvider
 from assistant.providers.base import Provider, ProviderUnavailable

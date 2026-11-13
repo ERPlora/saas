@@ -1,6 +1,6 @@
-"""The Meta credentials of a WhatsApp number (its business token and its PIN), encrypted at rest (WHATSAPP-G04).
+"""The Meta credentials of a WhatsApp number (its business token and its PIN), encrypted at rest.
 
-Fernet (AES-128-CBC + HMAC-SHA256) with ``settings.FERNET_KEY``, as the old product did (``fernet_fields``);
+Fernet (AES-128-CBC + HMAC-SHA256) with ``settings.FERNET_KEY``;
 during a rotation ``FERNET_KEY_PREVIOUS`` still opens what it closed, and everything is written with the
 current key (``MultiFernet``). The database and its backups only ever hold the token. Without a
 key nothing is stored: a number cannot be connected (``NotConfigured``), which the doors say out loud.

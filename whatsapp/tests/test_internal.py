@@ -1,4 +1,4 @@
-"""WHATSAPP-G05 · Door 5, ``POST /internal/whatsapp/send``, and door 6,
+"""Door 5, ``POST /internal/whatsapp/send``, and door 6,
 ``POST /internal/whatsapp/erase`` (the Hub's WORKBOOK ``whatsapp_inbox``, «Contrato con el SaaS»).
 
 The Hub calls them signed (v1 over the body, as ``apps/whatsapp_inbox/gateway.py`` does), with an
@@ -7,9 +7,7 @@ The Hub calls them signed (v1 over the body, as ``apps/whatsapp_inbox/gateway.py
 recipient_blocked | meta_rejected`` (it did not leave); another 4xx (also 429) did not leave; a 5xx: nobody knows, and the Hub retries with the same key. erplora.com
 never sends the same key twice and reserves the month's allowance atomically when it accepts.
 
-Meta is replaced at the HTTP border only (``respx``). Cases of the old product's ``test_notify.py``,
-``test_notify_idempotency.py``, ``test_plan_and_quota_count_the_same.py``, ``test_whatsapp_error_codes.py`` and
-``test_demo_hub_cannot_send.py``.
+Meta is replaced at the HTTP border only (``respx``).
 """
 
 import json

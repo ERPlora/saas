@@ -1,4 +1,4 @@
-"""Meta's webhook, ``/webhooks/whatsapp/`` (WHATSAPP-G13, WHATSAPP-G07): Meta's only address for every business.
+"""Meta's webhook, ``/webhooks/whatsapp/``: Meta's only address for every business.
 
 - ``GET``: Meta proves the address is ours (``hub.mode=subscribe``, ``hub.verify_token``, ``hub.challenge``) when it
   is set in Meta's app. The token is compared in constant time; without ``WHATSAPP_VERIFY_TOKEN`` the answer is 503
@@ -9,8 +9,8 @@
   it is read. A signed notice is parked and pushed to the Hub (``gateway.ingest``) and answered 200: Meta delivers
   at least once and out of order, and parking is idempotent. A database failure answers 500 and Meta sends it again.
 
-No throttle counts anything before the signature: the old one spent a budget of 200 posts a
-minute per address on forged posts too, and refused Meta's own at a busy hour. Server to server: no session nor
+No throttle counts anything before the signature: a budget of posts per address would be spent by forged
+posts too, and refuse Meta's own at a busy hour. Server to server: no session nor
 CSRF token.
 """
 

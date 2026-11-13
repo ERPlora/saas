@@ -1,5 +1,4 @@
-"""Choosing which model answers (``assistant.policy.update`` and ``assistant.policy.show``; ASSISTANT-G27, G17, G10,
-G60).
+"""Choosing which model answers (``assistant.policy.update`` and ``assistant.policy.show``).
 
 One row for the whole platform: the model that answers and the fallback one. Only an available model of an enabled
 provider can be chosen, the fallback is another model, and who changed it is kept. Only staff with the policy's

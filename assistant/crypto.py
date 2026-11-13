@@ -1,10 +1,10 @@
-"""The providers' keys, encrypted at rest (ASSISTANT-G26).
+"""The providers' keys, encrypted at rest.
 
 Fernet (AES-128-CBC + HMAC-SHA256) with ``settings.FERNET_KEY``, the scheme of WhatsApp's Meta credentials
 (``whatsapp.crypto``): during a rotation ``FERNET_KEY_PREVIOUS`` still opens what it closed, and everything is
 written with the current key (``MultiFernet``). The database and its backups only ever hold the token. Without a
 key nothing is stored (``NotConfigured``), which the admin says out loud. ``rotate`` writes a token again with the
-current key without the value ever leaving this module (``rotate_encryption_keys``, ASSISTANT-G03).
+current key without the value ever leaving this module (``rotate_encryption_keys``).
 """
 
 import binascii

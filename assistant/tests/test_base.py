@@ -1,4 +1,4 @@
-"""The common part of the providers' clients (``assistant.providers.base``, ASSISTANT-G33): the events every client
+"""The common part of the providers' clients (``assistant.providers.base``): the events every client
 yields, the reading of a server-sent stream, which upstream failures another attempt can clear, and the helpers
 that shape a conversation for each API."""
 

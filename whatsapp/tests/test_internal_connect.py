@@ -1,4 +1,4 @@
-"""WHATSAPP-G11, WHATSAPP-G01, WHATSAPP-G02 · Doors 10–12: what the Hub needs to open Meta's window
+"""Doors 10–12: what the Hub needs to open Meta's window
 (``POST /internal/whatsapp/config``), connecting the number the window chose (``…/connect``) and disconnecting it
 (``…/disconnect``).
 

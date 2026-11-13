@@ -1,4 +1,4 @@
-"""ASSISTANT-F16 (ASSISTANT-G48) · Stop a business that asks too much: each door has a budget per business (or demo)
+"""ASSISTANT-F16 · Stop a business that asks too much: each door has a budget per business (or demo)
 in Django's cache (Valkey in production; no Redis for anything live), spent only once the signature and the business
 passed. Over it, 429 ``rate_limited`` with ``Retry-After``: a code apart from the spent allowance
 (``assistant.quota_exceeded``), as the providers' APIs separate them.

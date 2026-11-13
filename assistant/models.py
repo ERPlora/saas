@@ -1,13 +1,13 @@
 """What the AI gateway keeps (README.md «Datos»): the providers ERPlora pays, their keys and their models, and which
 model answers. Keys are UUIDv7.
 
-- ``AIProvider`` (ASSISTANT-G25): one of the four APIs of models the gateway speaks (``kind``) at its address.
-- ``AIProviderCredential`` (G26): a key of a provider, encrypted (``assistant.fields``), with its last four
+- ``AIProvider``: one of the four APIs of models the gateway speaks (``kind``) at its address.
+- ``AIProviderCredential``: a key of a provider, encrypted (``assistant.fields``), with its last four
   characters as hint. Only ``assistant.services`` writes it.
-- ``AIModel`` (G24): a model of a provider the staff chose, with its prices (USD per million tokens, typed by hand:
+- ``AIModel``: a model of a provider the staff chose, with its prices (USD per million tokens, typed by hand:
   the APIs do not give them) and what it supports.
-- ``AIRoutingPolicy`` (G27): one row, the model that answers and the fallback one; a model it uses is never deleted.
-- ``AssistantUsage`` (G29, G51, G52): what a business (or a demo) spent through the gateway, a row per calendar month
+- ``AIRoutingPolicy``: one row, the model that answers and the fallback one; a model it uses is never deleted.
+- ``AssistantUsage``: what a business (or a demo) spent through the gateway, a row per calendar month
   (UTC; a demo, one row for its whole life): its messages, the tokens of its turns and of its embeddings, its voice
   and what it cost. Numbers only: never a conversation, a person nor a text.
 - ``DocChunk`` (ASSISTANT-F27): an excerpt of ERPlora's documentation with its fingerprint, what

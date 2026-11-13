@@ -1,8 +1,8 @@
-"""WHATSAPP-G14 · Forget what the Hub already took (``manage.py whatsapp_purge [--days N]``, once a day).
+"""Forget what the Hub already took (``manage.py whatsapp_purge [--days N]``, once a day).
 
-Cases of the old product's ``test_inbound_retention.py``: what the Hub took more than 30 days ago goes, and a delivery
+What the Hub took more than 30 days ago goes, and a delivery
 status older than 30 days goes taken or not (a status is news only while its message is recent); the window can be
-shortened by hand (1 to 30 days), never lengthened. Its ``parcial`` is fixed: what the Hub never takes (a Hub off, or
+shortened by hand (1 to 30 days), never lengthened. What the Hub never takes (a Hub off, or
 without the inbox) does not stay forever but 30 days, and the keys of the sends and of the templates'
 registrations go after 30 days too.
 """

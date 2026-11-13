@@ -1,4 +1,4 @@
-"""The client of Google's Gemini API (ASSISTANT-G36): ``POST {base}/v1beta/models/{model}:streamGenerateContent
+"""The client of Google's Gemini API: ``POST {base}/v1beta/models/{model}:streamGenerateContent
 ?alt=sse``, ``GET {base}/v1beta/models`` page by page to list, the key in ``x-goog-api-key`` (never in the address).
 
 The assistant's turns are ``model`` contents, tool results ``functionResponse`` parts of a user content (named after

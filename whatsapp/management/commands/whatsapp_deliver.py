@@ -1,4 +1,4 @@
-"""``python manage.py whatsapp_deliver``: one pass of what still waits for the Hub, by hand (WHATSAPP-G07).
+"""``python manage.py whatsapp_deliver``: one pass of what still waits for the Hub, by hand.
 
 The ``saas-worker`` (``manage.py run_worker``, ``base.worker``, saas#305) runs the same pass whenever a delivery is
 due: a ``NOTIFY`` after the COMMIT that parked it or moved its wait, the time of the next retry, and every 15 minutes.
