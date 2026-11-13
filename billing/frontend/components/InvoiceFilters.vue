@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The filters of Billing → Invoices in one control of the table's toolbar (Ioan, 2026-10-14: a clean SaaS, the
+// The filters of Billing → Invoices in one control of the table's toolbar (a clean SaaS, the
 // toolbar on one line at 1440 px and two on a phone): a «Filters» button that counts the ones on, and a popover
 // with the business (a popover select), the status (a segment: three visible options), the year (a popover
 // select) and «Clear filters» while any is on. Nothing slides up from the bottom. It keeps no state: the page

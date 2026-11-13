@@ -40,7 +40,7 @@ const held = computed(() => owned.value.length > 0 || paid.value.length > 0);
 
 /**
  * The businesses that hold the account, named in ONE line as the person's language joins them («A, B y C»),
- * each name a link to its Settings: not a stack of links (Ioan, 2026-10-14). The sentence above says what to do.
+ * each name a link to its Settings: not a stack of links, so the page stays clean. The sentence above says what to do.
  */
 const heldParts = computed<Array<{ business?: BusinessRowOut; text?: string }>>(() => {
   const list = owned.value.length ? owned.value : paid.value;

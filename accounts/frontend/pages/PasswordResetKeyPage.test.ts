@@ -257,7 +257,7 @@ describe('PasswordResetKeyPage: changing the password', () => {
   });
 });
 
-describe('PasswordResetKeyPage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
+describe('PasswordResetKeyPage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts)', () => {
   afterEach(forgetRecaptcha);
 
   it('sets the password with the token of `password_reset_confirm` and says reCAPTCHA protects the form', async () => {

@@ -1,6 +1,6 @@
 // `/verify-email`: the one page of the codes allauth mails, over allauth.headless, in the frame of the
 // template `account/confirm_email_verification_code.html` (ERPlora/saas). Every sign-in with a password
-// waits there (Ioan, 2026-10-15): for the code that proves the address of a sign-up or of an address never
+// waits there: for the code that proves the address of a sign-up or of an address never
 // proven (`verify_email`, posted to `…/auth/email/verify`), or for the sign-in code mailed to every other
 // account (`login_by_code`, posted to `…/auth/code/confirm`). The page reads which from the session. Then
 // the visitor leaves the SPA for `next` or the launcher, as the sign-in does. «Send a new code» only where
@@ -542,7 +542,7 @@ describe('VerifyEmailPage: coming back to it (Ionic keeps the page and shows it 
   });
 });
 
-describe('VerifyEmailPage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
+describe('VerifyEmailPage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts)', () => {
   afterEach(forgetRecaptcha);
 
   it('posts the address’s code with the token of `verify_email` and says reCAPTCHA protects the form', async () => {

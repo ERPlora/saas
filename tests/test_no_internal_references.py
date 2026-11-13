@@ -2,9 +2,9 @@
 
 Comments, docstrings, test names and log messages have to make sense on their own, so the code never
 points at a plan section, a dated planning round, a delivery slice or phase, a task id or a dated plan
-or spec. Markdown files are left out: they are where the plans live. A dependency patch is read too, and
-must not cite an issue of one of our repositories either: its comments land in the dependency's code, far
-from our trackers.
+or spec, nor signs a decision with who took it and when. Markdown files are left out: they are where the
+plans live. A dependency patch is read too, and must not cite an issue of one of our repositories either:
+its comments land in the dependency's code, far from our trackers.
 """
 
 import re
@@ -17,6 +17,9 @@ REPO = Path(__file__).resolve().parent.parent
 
 # Built from its code point so that this file does not trip its own scan.
 SECTION_SIGN = "\N{SECTION SIGN}"
+
+# The owner's name, kept in one place so that the patterns and the examples below do not trip the scan.
+OWNER = "Ioan"
 
 INTERNAL_REFERENCE = re.compile(
     "|".join(
@@ -31,6 +34,21 @@ INTERNAL_REFERENCE = re.compile(
             r"BASE-G[0-9]+",
             r"([Pp]lan|[Ss]pec) 20[0-9]{2}-[0-9]{2}",
             r"docs/(plans|superpowers)/",
+        )
+    )
+)
+
+# Who decided something and on which day. The reason stays in the comment; the person and the date are in the
+# history. A name as data (a fixture's first name, an address) signs nothing and is left alone.
+AUTHORSHIP = re.compile(
+    "|".join(
+        (
+            rf"\({OWNER}[,;:)]",
+            rf"\b{OWNER}, 20[0-9]{{2}}",
+            rf"\b{OWNER}:",
+            rf"\b{OWNER}'s (rule|decision|call|choice|request)",
+            rf"[Dd]ecisi[oó]n (de|of) {OWNER}\b",
+            rf"20[0-9]{{2}}-[0-9]{{2}}(-[0-9]{{2}})?[,;:]? {OWNER}\b",
         )
     )
 )
@@ -112,7 +130,8 @@ def internal_references(paths, root=REPO):
             unquoted = without_string_literals(line) if e2e_script else line
             for clause in QUOTED_CLAUSES:
                 unquoted = unquoted.replace(clause, "")
-            if INTERNAL_REFERENCE.search(unquoted) or (patch and OUR_REPO_ISSUE.search(line)):
+            reference = INTERNAL_REFERENCE.search(unquoted) or AUTHORSHIP.search(unquoted)
+            if reference or (patch and OUR_REPO_ISSUE.search(line)):
                 found.append(f"{path}:{number}: {line.strip()}")
     return found
 
@@ -121,7 +140,7 @@ def test_code_never_points_at_internal_plans():
     paths = code_files()
     assert "tests/test_no_internal_references.py" in paths, "git ls-files listed no code"
     found = internal_references(paths)
-    assert not found, "Code that points at internal plans, rounds or slices:\n" + "\n".join(found)
+    assert not found, "Code that points at internal plans, rounds or slices, or signs a decision:\n" + "\n".join(found)
 
 
 @pytest.mark.parametrize(
@@ -174,6 +193,37 @@ def test_the_scan_leaves_ordinary_text_alone(text):
     assert not INTERNAL_REFERENCE.search(text)
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"One line, not a stack of links ({OWNER}, 2026-10-14: a clean page).",
+        f"reCAPTCHA, invisible (accounts/frontend/recaptcha.ts; {OWNER}, 2026-10-22)",
+        f"what it is built with ({OWNER},",
+        f"the presigned link of each ({OWNER})",
+        f"{OWNER}'s rule (2026-10-15): the code is always mailed",
+        f"the default since 2026-10-23; {OWNER}: the WAF on the ALB",
+        f"por decisión de {OWNER} del 2026-10-14",
+        f"(2026-10-15, {OWNER})",
+    ],
+)
+def test_the_scan_catches_each_kind_of_signature(text):
+    assert AUTHORSHIP.search(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f'first_name="{OWNER}", last_name="Beilic", language="es"',
+        'override_by="ioan@erplora.com"',
+        f"const name = '{OWNER} Beilic';",
+        f"Hello, {OWNER}",
+        "the deadline (Friday, 2026-11-07)",
+    ],
+)
+def test_the_scan_leaves_a_name_as_data_alone(text):
+    assert not AUTHORSHIP.search(text)
+
+
 def test_the_dependency_patches_are_read():
     patches = {p.relative_to(REPO).as_posix() for p in (REPO / "patches").glob("*.patch")}
     assert patches <= set(code_files())
@@ -221,6 +271,31 @@ def test_outside_the_end_to_end_specs_a_string_literal_is_read_too(tmp_path):
     (tmp_path / "tests" / "e2e" / "seed.py").write_text('"""The seed (APP' + '-BILLING-2)."""\n', encoding="utf-8")
     found = internal_references(["accounts/keys.ts", "tests/e2e/seed.py"], root=tmp_path)
     assert [line.split(":")[0] for line in found] == ["accounts/keys.ts", "tests/e2e/seed.py"]
+
+
+def test_a_signature_with_its_date_is_caught_and_a_name_as_data_is_not(tmp_path):
+    (tmp_path / "accounts").mkdir()
+    (tmp_path / "accounts" / "flow.py").write_text(
+        f'"""The code is always mailed ({OWNER}, 2026-10-15)."""\n'
+        f'BUYER = {{"first_name": "{OWNER}", "last_name": "Beilic", "email": "ioan@erplora.com"}}\n'
+        f"# Off by default since 2026-10-23; {OWNER}: the WAF on the load balancer is enough.\n"
+        f"# {OWNER}'s rule (2026-10-15): one code per sign-in.\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "accounts" / "Card.vue").write_text(
+        '<script setup lang="ts">\n'
+        f"// One line, not a stack of links ({OWNER},\n"
+        "// 2026-10-14).\n"
+        f"const name = '{OWNER}';\n",
+        encoding="utf-8",
+    )
+    found = internal_references(["accounts/flow.py", "accounts/Card.vue"], root=tmp_path)
+    assert [":".join(line.split(":")[:2]) for line in found] == [
+        "accounts/flow.py:1",
+        "accounts/flow.py:3",
+        "accounts/flow.py:4",
+        "accounts/Card.vue:2",
+    ]
 
 
 def test_a_quoted_clause_of_an_outside_contract_is_not_a_reference(tmp_path):

@@ -1,6 +1,6 @@
 """The second factor by email: every sign-in with a password asks for a code mailed to the account.
 
-Ioan's rule (2026-10-15): the code is always mailed and typed in the app, at sign-up and at every sign-in.
+The rule: the code is always mailed and typed in the app, at sign-up and at every sign-in.
 It is allauth's own login-by-code stage (``ACCOUNT_LOGIN_BY_CODE_REQUIRED``), scoped to the password
 (``{"password"}``): ``POST …/auth/login`` with the right password answers 401 with the pending flow
 ``login_by_code`` and mails six digits (``ACCOUNT_LOGIN_BY_CODE_FORMAT``, as the email verification's);

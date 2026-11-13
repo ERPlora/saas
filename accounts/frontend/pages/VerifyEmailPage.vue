@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // `/verify-email`: the one page of the codes allauth mails, over allauth.headless, in the frame of
 // ERPlora/saas's `account/confirm_email_verification_code.html`. Every sign-in with a password waits here
-// (Ioan, 2026-10-15) for one of two codes, read from the session's pending flow:
+// for one of two codes, read from the session's pending flow:
 //   - `verify_email`: the code that proves the address of a sign-up (an unknown address on the launcher's
 //     form creates the account) or of a login whose address was never proven (`…/auth/email/verify`);
 //   - `login_by_code`: the sign-in code mailed to every other account, the second factor by email
