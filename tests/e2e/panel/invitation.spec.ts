@@ -1,4 +1,4 @@
-// The invitation (`/invitation`, mockups `invitation.html`) in Ioan's Chrome: the pending invitations
+// The invitation (`/invitation`, mockups `invitation.html`) in Chrome without a window: the pending invitations
 // with who invites and as what; «Decline» confirms and the invitation is gone («no longer valid»);
 // «Accept and enter» goes to the business's Hub, its start of the jump (answered by the spec, no Hub runs).
 import { expect, panelAccount, seedPanel, signIn, test, watchPageErrors } from './fixtures';

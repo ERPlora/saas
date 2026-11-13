@@ -5,8 +5,8 @@ Port of ``apps/public/tests/test_downloads.py`` (14, origin/develop c5ca8ca), sa
 and redirect to it (nothing world-public). On top of that, ``store_url_for`` is the ONLY switch
 between «store» and «our own binary».
 
-What changed (Ioan, 2026-10-13; PLAN-AWS «s3_downloads.tf»): the installers no longer live in
-Hetzner's object storage but in a private S3 bucket on AWS, region ``eu-west-1`` (Ireland, the
+What changed: the installers no longer live in Hetzner's object storage but in a private S3 bucket on
+AWS (``s3_downloads.tf`` of ``ERPlora/aws``), region ``eu-west-1`` (Ireland, the
 platform's region since 2026-10-14). The client takes
 no static keys: boto3 uses the ECS task's role (or the environment in development); only local
 development may point it at another endpoint (``DOWNLOADS_ENDPOINT_URL``).
@@ -200,7 +200,7 @@ class TestStoreUrlFor:
 
 class TestGithubReleaseUrls:
     """``GITHUB_RELEASE_URLS`` — the platforms downloaded from the latest release of the public
-    repo ``ERPlora/app`` (Ioan, 2026-10-27): today only Linux, whose AppImage the bucket never had.
+    repo ``ERPlora/app``: today only Linux, whose AppImage the bucket never had.
 
     A contract with ``.github/workflows/tauri-release.yml`` of ``ERPlora/app``: it uploads the
     asset with this exact name and publishes the release with ``--latest``, and GitHub resolves

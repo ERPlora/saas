@@ -359,7 +359,7 @@ describe('TwoFactorAuthenticatePage: «Back to sign in»', () => {
   });
 });
 
-describe('TwoFactorAuthenticatePage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
+describe('TwoFactorAuthenticatePage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts)', () => {
   afterEach(forgetRecaptcha);
 
   it('posts the app’s code with the token of `mfa_authenticate` and says reCAPTCHA protects the form', async () => {

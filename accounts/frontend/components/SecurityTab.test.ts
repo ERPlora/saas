@@ -39,7 +39,7 @@ describe('SecurityTab', () => {
     expect(s.q('google-row')).not.toBeNull();
   });
 
-  it('is a `.panel-fill` stack: the sessions’ list takes the height the sign-in card leaves (Ioan, 2026-10-14)', async () => {
+  it('is a `.panel-fill` stack: the sessions’ list takes the height the sign-in card leaves', async () => {
     const s = await setup();
     await s.result(s.stream, 'accounts.profile.get', profile({ has_password: true }));
     expect(s.wrapper.element.classList.contains('panel-fill')).toBe(true);

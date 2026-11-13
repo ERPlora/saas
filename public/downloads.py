@@ -22,7 +22,7 @@ from django.conf import settings
 ANDROID_PLAY_PACKAGE = "com.erplora.app"
 
 #: The platforms downloaded from the LATEST release of the public repo ``ERPlora/app``, and the
-#: address of each (Ioan, 2026-10-27). The bucket holds no AppImage, so Linux's presigned link
+#: address of each. The bucket holds no AppImage, so Linux's presigned link
 #: answered 404; the app's CI (``tauri-release.yml``) uploads it to the GitHub release under this
 #: exact name and publishes that release with ``--latest``. GitHub resolves
 #: ``releases/latest/download/<asset>`` to the newest release, so the address carries no version and

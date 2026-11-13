@@ -1,4 +1,4 @@
-// reCAPTCHA on allauth.headless's public doors (accounts/bot_check.py; Ioan, 2026-10-22): the sign-in, the sign-up,
+// reCAPTCHA on allauth.headless's public doors (accounts/bot_check.py): the sign-in, the sign-up,
 // «Forgot your password?» and its link, the mailed codes («Send another code» too) and the authenticator app's code.
 // Every POST to one of them carries `recaptcha_token`, Google's token of that door's action (frontend/recaptcha.ts),
 // added by the allauth client's own `fetch`: the pages create their client with `createProtectedAllauthClient` and

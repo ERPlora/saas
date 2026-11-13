@@ -1,9 +1,9 @@
 // What the audit of the real panel found, checked in Chrome without a window:
-//   - R-04/R-08: with `/api/live` refused (503) or unreachable, every page says it could not load, with «Retry»,
+//   - with `/api/live` refused (503) or unreachable, every page says it could not load, with «Retry»,
 //     never an empty state that lies («Create your first business») nor a spinner for ever; «Retry» loads it;
-//   - R-06/R-07/R-09/R-15: the way to pay outside Billing — the launcher's real deadline and «Pay the invoice» /
+//   - the way to pay outside Billing — the launcher's real deadline and «Pay the invoice» /
 //     «Change card», and one grouped notice on Businesses with each business's way out;
-//   - R-11/R-13/R-14/R-20: «Skip to content», 44 px targets at 390, Back without ☰ in a business, the
+//   - «Skip to content», 44 px targets at 390, Back without ☰ in a business, the
 //     table's toolbar in one row from 834 to 1180 px.
 // Screenshots at 390, 834 and 1440 go to `$SHOTS_DIR` (/tmp/panel-fix2 by default) for the supervisor, each one
 // refused when it repeats the top of the page at its bottom (taken before the page was painted at its size).
@@ -77,7 +77,7 @@ async function snap(page: Page, name: string): Promise<void> {
   expect(await repeatedTop(page, png), `${name}.png repeats the top of the page at its bottom`).toBe(0);
 }
 
-test.describe('R-04/R-08: a failure is never an empty page nor a spinner for ever', () => {
+test.describe('a failure is never an empty page nor a spinner for ever', () => {
   test('with /api/live answering 503, every page says it could not load, offers «Retry», and «Retry» loads it', async ({ page }) => {
     const errors = watchPageErrors(page);
     await signIn(page.request, panelAccount('several'));
@@ -97,7 +97,7 @@ test.describe('R-04/R-08: a failure is never an empty page nor a spinner for eve
 
     await page.goto(`/dashboard/businesses/${bakery}/members`);
     await expect(page.getByTestId('business-error')).toBeVisible();
-    // No tabbar on an error: its sections would only repeat it (W-18).
+    // No tabbar on an error: its sections would only repeat it.
     await expect(shown(page).locator('[data-testid^="tab-"]')).toHaveCount(0);
 
     await page.goto('/invitation');
@@ -136,7 +136,7 @@ test.describe('R-04/R-08: a failure is never an empty page nor a spinner for eve
   });
 });
 
-test.describe('R-06/R-07/R-09/R-15: the way to pay outside Billing', () => {
+test.describe('the way to pay outside Billing', () => {
   test.beforeEach(async ({ page }) => {
     await page.route(/^https:\/\/(invoice|billing)\.stripe\.com\//, (route) =>
       route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Stripe (test double)</title><p>Stripe (test double)</p>' }),
@@ -166,7 +166,7 @@ test.describe('R-06/R-07/R-09/R-15: the way to pay outside Billing', () => {
     expect(errors).toEqual([]);
   });
 
-  // flow: ninguno — FIX tests/e2e. A capture right after `setViewportSize` used to be taken before the page was
+  // A capture right after `setViewportSize` used to be taken before the page was
   // painted at the new size: an 87 px stripe at its bottom repeated the top of the page (8 in 12 at 834 px).
   test('a screenshot right after a resize is the page as painted, never its top repeated at the bottom', async ({ page }) => {
     await page.goto('/launch');
@@ -220,7 +220,7 @@ async function smallTargets(page: Page, inDialog = false): Promise<string[]> {
   }, inDialog);
 }
 
-test.describe('R-11/R-13/R-20: the chrome of every page', () => {
+test.describe('the chrome of every page', () => {
   test('«Skip to content» is the first stop of the keyboard and takes it to the page', async ({ page }) => {
     await signIn(page.request, panelAccount('several'));
     await page.goto('/dashboard/businesses');
@@ -258,8 +258,7 @@ test.describe('R-11/R-13/R-20: the chrome of every page', () => {
       offenders.push(...(await smallTargets(page)).map((target) => `${name}: ${target}`));
       await snap(page, `${name}-390`);
     }
-    // A dialog: its ✕ and its buttons (with Café Central on Free, the one-Free-business limit and its way out,
-    // audit 2 S-02).
+    // A dialog: its ✕ and its buttons (with Café Central on Free, the one-Free-business limit and its way out).
     await page.goto('/dashboard/businesses?create=1');
     await expect(page.getByTestId('create-free-limit-store')).toBeVisible();
     await settled(page);
@@ -275,7 +274,7 @@ test.describe('R-11/R-13/R-20: the chrome of every page', () => {
   });
 });
 
-test.describe('R-13: Billing and the Store at 390 px', () => {
+test.describe('Billing and the Store at 390 px', () => {
   test('every target is 44 px', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await signIn(page.request, panelAccount('billing'));
@@ -317,7 +316,7 @@ async function toolbarRows(page: Page): Promise<number> {
   });
 }
 
-test.describe('R-14: the table’s toolbar in one row on a tablet and a laptop', () => {
+test.describe('the table’s toolbar in one row on a tablet and a laptop', () => {
   for (const width of [834, 1024, 1180]) {
     test(`Businesses at ${width} px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });

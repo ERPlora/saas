@@ -152,7 +152,7 @@ describe('PasswordResetPage: sending the link', () => {
   });
 });
 
-describe('PasswordResetPage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
+describe('PasswordResetPage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts)', () => {
   afterEach(forgetRecaptcha);
 
   it('asks the link with the token of `password_reset` and says reCAPTCHA protects the form', async () => {

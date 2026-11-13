@@ -1,8 +1,8 @@
 """ACCOUNTS-G96: whoever tries passwords, codes or reset links is stopped, the same for an account as for none.
 
 allauth's own limits (``ACCOUNT_RATE_LIMITS``, every one written out) on the shared cache (Valkey, Django's cache
-only): failed passwords spend the account's budget and the address's, 5 in 5 minutes each (Ioan, 2026-10-22: «que no
-intenten sin parar»; before, the address had 10 a minute), the right one gives its attempt back, so failures alone
+only): failed passwords spend the account's budget and the address's, 5 in 5 minutes each (so nobody tries without
+end; before, the address had 10 a minute), the right one gives its attempt back, so failures alone
 never lock the owner out within the budget; the sign-in itself, 30 a minute per address; a reset link, 5 an hour per
 account and 10 per address; the mailed codes, 3 tries each (``test_sign_in_code``) and, whatever the code, 10 refused
 codes in 5 minutes per address (``code_attempts``, accounts/bot_check.py; a right one spends nothing), the authenticator

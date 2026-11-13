@@ -1,6 +1,5 @@
-"""The bots' check in front of allauth.headless's public doors (Ioan, 2026-10-22: «siempre que hay un form hay que
-meter recaptcha», «límites en los registros de login para que no intenten sin parar»): reCAPTCHA on every one, and a
-limit per address on the ones that take a code.
+"""The bots' check in front of allauth.headless's public doors (every form a bot can post to is checked, and nobody
+gets to try sign-ins without end): reCAPTCHA on every one, and a limit per address on the ones that take a code.
 
 Every POST to one of ``RECAPTCHA_DOORS`` carries ``recaptcha_token`` in its JSON body, a token Google's
 ``enterprise.js`` made for that door's action (the SPA adds it, ``accounts/frontend/recaptcha.ts``), and Google is
