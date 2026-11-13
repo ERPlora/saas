@@ -30,9 +30,9 @@ CREDENTIALS_SPA_PAGES = (
 
 
 #: How soon support answers, in business hours: the contact form, the contact page and the home state this number
-#: and no other (PUBLIC-G41). The address is ``SUPPORT_EMAIL`` (settings).
+#: and no other. The address is ``SUPPORT_EMAIL`` (settings).
 SUPPORT_REPLY_HOURS = 4
-#: The support chat (WhatsApp), the only place the web writes it (PUBLIC-G41).
+#: The support chat (WhatsApp), the only place the web writes it.
 SUPPORT_WHATSAPP_URL = "https://wa.me/34643759040"
 
 
@@ -81,7 +81,7 @@ def public_site(request: HttpRequest) -> dict:
         # An optional tracker is the only thing to consent to: the cookie banner shows, and the cookie policy
         # promises it, only with one configured (PUBLIC-F19).
         "measures_visits": bool(settings.GA_MEASUREMENT_ID or settings.CLARITY_PROJECT_ID),
-        # The visible support contact (footer, help, landing): one source each (PUBLIC-G41).
+        # The visible support contact (footer, help, landing): one source each.
         "SUPPORT_EMAIL": settings.SUPPORT_EMAIL,
         "SUPPORT_REPLY_HOURS": SUPPORT_REPLY_HOURS,
         "SUPPORT_WHATSAPP_URL": SUPPORT_WHATSAPP_URL,

@@ -1,10 +1,9 @@
 <script setup lang="ts">
 // `/password/reset/key/:resetKey`: the page the reset link of the mail opens (allauth's
 // `HEADLESS_FRONTEND_URLS`), over allauth.headless. It checks the key first: an
-// expired or used link says so («Request New Link», «Back to Login»), as the template's
-// `token_fail` did. The new password goes in one field with its show toggle (allauth.headless takes
-// one `password`), with the hint of Account's «Change password» under it (ACCOUNTS-G121: the rules in
-// sight, and how strong it looks against the account's email, which the key's check returns); the
+// expired or used link says so («Request New Link», «Back to Login»). The new password goes in one field with its
+// show toggle (allauth.headless takes one `password`), with the hint of Account's «Change password» under it (the
+// rules in sight, and how strong it looks against the account's email, which the key's check returns); the
 // server's validators (allauth's and Django's) decide, and their messages paint under the input. Done →
 // the sign-in with «Your password has been changed» (`?notice=password_reset`), or on at once when the
 // server signs the person in.

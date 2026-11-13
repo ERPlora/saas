@@ -1,11 +1,9 @@
-"""Every live subscription is read again from Stripe and what drifted is put right (BILLING-F38; registry
-BILLING-G45, G46).
+"""Every live subscription is read again from Stripe and what drifted is put right (BILLING-F38).
 
-Each local subscription with a Stripe id is read
-from Stripe and its status, cancellation, period and trial written as Stripe says; ``--dry-run`` only reports; a
-subscription Stripe does not know is an error and is left alone.
+Each local subscription with a Stripe id is read from Stripe and its status, cancellation, period and trial written
+as Stripe says; ``--dry-run`` only reports; a subscription Stripe does not know is an error and is left alone.
 
-Adapted: the same reading as the webhook (``live_state``, BILLING-F21), so the plan, the period, the bought modules
+It is the same reading as the webhook (``live_state``, BILLING-F21), so the plan, the period, the bought modules
 and the dunning move as a lost ``customer.subscription.updated`` would have moved them, under the business's lock;
 the pass is a ``manage.py`` command run by saas-cron that ends with an error when it left something to look at
 (the ``task_failed`` alarm). An ended subscription (no Stripe id any more) is not read.

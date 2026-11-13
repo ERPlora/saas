@@ -1,7 +1,7 @@
 // «Report a problem» of the user menu (accounts/WORKBOOK.md), at the three sizes
 // (390×844, 834×1112, 1440×900): the person writes «Subject» and «What happened?», the report reaches the
 // support mailbox with the account, its business, the page it came from and the browser, «Reply-To» the account, and
-// the page says «Report sent». In accounts/WORKBOOK.md: G117 = G01 = F38. Accounts of this spec: `e2e-acc4r-…`.
+// the page says «Report sent» (accounts/WORKBOOK.md, F38). Accounts of this spec: `e2e-acc4r-…`.
 import { readMailsSince } from '@erplora/ui/testing/mail';
 import { type Page } from '@playwright/test';
 
@@ -68,7 +68,7 @@ test.beforeAll(async () => {
 });
 test.afterAll(() => removeAccounts());
 
-test('ACCOUNTS-G117 · G01 · report a problem from the user menu: support gets it with the account and its business, «Report sent»', async ({
+test('ACCOUNTS-F38 · report a problem from the user menu: support gets it with the account and its business, «Report sent»', async ({
   page,
 }) => {
   const errors = watchPageErrors(page);

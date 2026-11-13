@@ -1,8 +1,7 @@
 // The flows of «the people of a business» (hubs/WORKBOOK.md) on their screens, at the three
-// sizes (390×844, 834×1112, 1440×900). Each test names its flow by its registry key; in
-// hubs/WORKBOOK.md: G78=F24 (invite), G79=F25 (accept), G80=F26 (change the role), G81 and G64=F27 (remove, and the
-// end of their sessions in the Hub), G82=F28 (hand the business over), G83=F29 (the people of a business), G03=F30
-// (the accesses in the admin).
+// sizes (390×844, 834×1112, 1440×900). Each test names its flow of hubs/WORKBOOK.md in its title: F24 (invite), F25
+// (accept), F26 (change the role), F27 (remove, and the end of their sessions in the Hub), F28 (hand the business
+// over), F29 (the people of a business), F30 (the accesses in the admin).
 //
 // The spec plays the Hub (`startHubDouble`, as panel/members.spec.ts): it sees the snapshot of each change and the
 // end of a person's sessions in the business; the jump into a business is answered here (no Hub runs). Stripe does not
@@ -210,7 +209,7 @@ test.afterAll(async () => {
   await removeOwnRows();
 });
 
-test('HUBS-G78: an address the schema refuses says why on its field, and on top to look at it until it is corrected, in the language of the account', async ({ page }) => {
+test('HUBS-F24: an address the schema refuses says why on its field, and on top to look at it until it is corrected, in the language of the account', async ({ page }) => {
   const errors = watchPageErrors(page);
   const id = await businessOf(page, await account('invite-refused', 'Olga', 'Ruiz'), 'Bar Refused');
   for (const { language, notice, reason } of [
@@ -232,7 +231,7 @@ test('HUBS-G78: an address the schema refuses says why on its field, and on top 
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G78: the owner invites a person from «Team»; the invitation waits with «Resend» and «Cancel invitation»', async ({ page, browser }) => {
+test('HUBS-F24: the owner invites a person from «Team»; the invitation waits with «Resend» and «Cancel invitation»', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
   const owner = await account('invite-owner', 'Olga', 'Ruiz');
   const id = await businessOf(page, owner, 'Bar Manolo');
@@ -273,7 +272,7 @@ test('HUBS-G78: the owner invites a person from «Team»; the invitation waits w
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G79: the invited person accepts in «You have been invited» and goes into the business', async ({ page, browser }) => {
+test('HUBS-F25: the invited person accepts in «You have been invited» and goes into the business', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
   const owner = await account('accept-owner', 'Olga', 'Ruiz');
   const ana = await account('accept-ana', 'Ana', 'Gil');
@@ -311,7 +310,7 @@ test('HUBS-G79: the invited person accepts in «You have been invited» and goes
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G80: the owner changes the role of a person; the Hub hears it and ends their session there', async ({ page, browser }) => {
+test('HUBS-F26: the owner changes the role of a person; the Hub hears it and ends their session there', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
   const owner = await account('role-owner', 'Olga', 'Ruiz');
   const ana = await account('role-ana', 'Ana', 'Gil');
@@ -349,7 +348,7 @@ test('HUBS-G80: the owner changes the role of a person; the Hub hears it and end
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G81 + HUBS-G64: the owner removes a person; the Hub gets a snapshot without them and the end of their sessions', async ({
+test('HUBS-F27: the owner removes a person; the Hub gets a snapshot without them and the end of their sessions', async ({
   page,
   browser,
 }) => {
@@ -373,7 +372,7 @@ test('HUBS-G81 + HUBS-G64: the owner removes a person; the Hub gets a snapshot w
   await expect(page.getByText('Ana Gil was removed from the business')).toBeVisible();
   await expect(shown(page).getByTestId('members-row').filter({ hasText: ana.email })).toHaveCount(0);
 
-  // HUBS-G64: the next snapshot no longer lists them, and the Hub is asked to end their sessions in this business.
+  // The next snapshot no longer lists them, and the Hub is asked to end their sessions in this business.
   await expect.poll(() => snapshots(hub, id).length > 0 && roleInLastSnapshot(hub, id, ana.email) === undefined).toBe(true);
   await expect
     .poll(() => revocations(hub, id).slice(revokedBefore).map((call) => ({ body: call.body, signed: call.signed })))
@@ -396,7 +395,7 @@ test('HUBS-G81 + HUBS-G64: the owner removes a person; the Hub gets a snapshot w
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G82: the owner offers the business to a member, who accepts it on Businesses from the mail’s link', async ({ page, browser }) => {
+test('HUBS-F28: the owner offers the business to a member, who accepts it on Businesses from the mail’s link', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
   const owner = await account('hand-owner', 'Olga', 'Ruiz');
   const carlos = await account('hand-carlos', 'Carlos', 'Mora');
@@ -445,7 +444,7 @@ test('HUBS-G82: the owner offers the business to a member, who accepts it on Bus
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G82 (F28): a business handed over on a paid plan: the new owner keeps it with their card, nothing charged today', async ({
+test('HUBS-F28: a business handed over on a paid plan: the new owner keeps it with their card, nothing charged today', async ({
   page,
   browser,
 }) => {
@@ -537,7 +536,7 @@ test('HUBS-G82 (F28): a business handed over on a paid plan: the new owner keeps
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G82 (F28), in Spanish: «Mantenerlo con mi tarjeta» and the secure payment that charges nothing today', async ({ browser, page }) => {
+test('HUBS-F28, in Spanish: «Mantenerlo con mi tarjeta» and the secure payment that charges nothing today', async ({ browser, page }) => {
   const errors = watchPageErrors(page);
   const owner = await account('paid-es-owner', 'Olga', 'Ruiz');
   const lucia = await account('paid-es-lucia', 'Lucía', 'Gil');
@@ -604,7 +603,7 @@ test('HUBS-G82 (F28), in Spanish: «Mantenerlo con mi tarjeta» and the secure p
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G83: «Team» lists the people of a business, with their role, status and places; a manager does not see it', async ({
+test('HUBS-F29: «Team» lists the people of a business, with their role, status and places; a manager does not see it', async ({
   page,
   browser,
 }) => {
@@ -648,7 +647,7 @@ test('HUBS-G83: «Team» lists the people of a business, with their role, status
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G03: the staff finds the accesses of a person in the admin, read only', async ({ page, browser }) => {
+test('HUBS-F30: the staff finds the accesses of a person in the admin, read only', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
   const owner = await account('admin-owner', 'Olga', 'Ruiz');
   const ana = await account('admin-ana', 'Ana', 'Gil');

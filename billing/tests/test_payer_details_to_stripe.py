@@ -1,10 +1,10 @@
-"""The payer's Stripe customer takes the billing details the owner saves (BILLING-F01; registry BILLING-G26).
+"""The payer's Stripe customer takes the billing details the owner saves (BILLING-F01).
 
 Saving the billing card updates the Stripe Customer when it exists. Without it the customer keeps the old name,
 address and e-mail until the next checkout, so what Stripe itself sends (the page to confirm a renewal the bank
 wants authenticated, its receipts) and what the Customer Portal shows go on with the old ones.
 
-Adapted: ERPlora's invoices take the details from erplora.com, never from Stripe (BILLING-F25); the push only keeps
+ERPlora's invoices take the details from erplora.com, never from Stripe (BILLING-F25); the push only keeps
 the customer in step, after the COMMIT, and a payer Stripe never saw gets no customer for it (the first checkout
 creates it, BILLING-F07/F08). The same parameters as the checkout's ``ensure_customer``.
 """
@@ -54,7 +54,7 @@ class TestSavingTheBillingDetails:
     def test_the_stripe_customer_takes_them_after_the_commit(
         self, shop, owner, stripe_double, django_capture_on_commit_callbacks
     ):
-        """BILLING-G26: name, address, e-mail and language reach the payer's customer, once committed."""
+        """Name, address, e-mail and language reach the payer's customer, once committed."""
         paid = paying(shop, stripe_double)
 
         with django_capture_on_commit_callbacks(execute=False) as callbacks:

@@ -92,7 +92,7 @@ def send_ownership_offer(transfer, *, base_url: str, paid_until=None) -> bool:
             _("Accept or decline it before %(date)s: %(url)s")
             % {
                 "date": _date(transfer.expires_at),
-                # Answered on Businesses, whose card offers «Accept the ownership» (HUBS-G82).
+                # Answered on Businesses, whose card offers «Accept the ownership».
                 "url": f"{base_url}{BUSINESSES}",
             },
         ]

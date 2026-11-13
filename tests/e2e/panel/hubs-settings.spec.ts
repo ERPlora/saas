@@ -1,15 +1,15 @@
 // The flows of «the settings of a business, its web address, deleting and recovering it, its status and usage, and
 // the staff on it in the admin» (hubs/WORKBOOK.md) on their screens, at the three sizes
-// (390×844, 834×1112, 1440×900). Each test names its flow by its registry key; in hubs/WORKBOOK.md:
-// G73=F15, G74=F16, G88=F18, G22=F19, G90=F21, G97=F23. F20 (the clock of a suspended business) and F22 (the nightly
-// usage) have no screen: their tests are the server's (hubs/tests/test_suspended_lifecycle.py, test_collect_hub_usage.py).
+// (390×844, 834×1112, 1440×900). Each test names its flow of hubs/WORKBOOK.md in its title. F20 (the clock of a
+// suspended business) and F22 (the nightly usage) have no screen: their tests are the server's
+// (hubs/tests/test_suspended_lifecycle.py, test_collect_hub_usage.py).
 //
 // Two parts, as panel/hubs-flows.spec.ts:
 // - against the panel's own Django (project.ts): its calls to the Hub go nowhere, so every write here waits for the
 //   Hub (owed, retried by reconcile_hub_states) and the page says what the SaaS keeps;
 // - «the real Hub» (`E2E_REAL_HUB=1`, README «El Hub real de la e2e»): the new name and address reach the Hub, «Open»
 //   goes in by the new one and the old one no longer opens. With the variable, the two tests that read what waits for
-//   the Hub (HUBS-G73, HUBS-G97) are skipped, and say so. So the spec runs twice: once without, once with.
+//   the Hub (HUBS-F15, HUBS-F23) are skipped, and say so. So the spec runs twice: once without, once with.
 // Each test has its own account (`e2e-hubs2-…@example.com`) and its own business, created through the API as the
 // panel creates it.
 import { type Page } from '@playwright/test';
@@ -83,7 +83,7 @@ test.beforeAll(async () => {
 });
 test.afterAll(() => removeAccountsWarm(PREFIX));
 
-test('HUBS-G73: the owner renames the business in «General»; an empty name is not saved', async ({ page }) => {
+test('HUBS-F15: the owner renames the business in «General»; an empty name is not saved', async ({ page }) => {
   test.skip(!!process.env.E2E_REAL_HUB, NO_HUB);
   const errors = watchPageErrors(page);
   const { id } = await ownerOf(page, 'rename', 'Bar Manolo');
@@ -105,7 +105,7 @@ test('HUBS-G73: the owner renames the business in «General»; an empty name is 
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G74: an address the server refuses says why on its field, and on top to look at it until it is corrected, in the language of the account', async ({ page }) => {
+test('HUBS-F16: an address the server refuses says why on its field, and on top to look at it until it is corrected, in the language of the account', async ({ page }) => {
   const errors = watchPageErrors(page);
   const { id } = await ownerOf(page, 'address-refused', 'Bar Refused');
   for (const { language, notice, reason } of [
@@ -137,7 +137,7 @@ test('HUBS-G74: an address the server refuses says why on its field, and on top 
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G74: the owner moves the business to another web address; the old one stays its own', async ({ page }) => {
+test('HUBS-F16: the owner moves the business to another web address; the old one stays its own', async ({ page }) => {
   const errors = watchPageErrors(page);
   const { id, slug } = await ownerOf(page, 'address', 'Bar Manolo');
   const wanted = `${slug}-nuevo`;
@@ -171,7 +171,7 @@ test('HUBS-G74: the owner moves the business to another web address; the old one
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G88 + HUBS-G22: the owner deletes the business typing its name, then recovers it', async ({ page }) => {
+test('HUBS-F18 + HUBS-F19: the owner deletes the business typing its name, then recovers it', async ({ page }) => {
   const errors = watchPageErrors(page);
   const { id } = await ownerOf(page, 'delete', 'Bar Manolo');
   await page.goto(`/dashboard/businesses/${id}/settings`);
@@ -197,7 +197,7 @@ test('HUBS-G88 + HUBS-G22: the owner deletes the business typing its name, then 
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G90: the Summary says the business’s status, its plan and the usage the Hub measured last night', async ({ page }) => {
+test('HUBS-F21: the Summary says the business’s status, its plan and the usage the Hub measured last night', async ({ page }) => {
   const errors = watchPageErrors(page);
   const streams = watchLiveStreams(page);
   const { id } = await ownerOf(page, 'usage', 'Bar Manolo');
@@ -230,7 +230,7 @@ test('HUBS-G90: the Summary says the business’s status, its plan and the usage
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G97: an action of the staff on a business is in its history in the admin', async ({ page }) => {
+test('HUBS-F23: an action of the staff on a business is in its history in the admin', async ({ page }) => {
   test.skip(!!process.env.E2E_REAL_HUB, NO_HUB);
   const errors = watchPageErrors(page);
   const { id } = await ownerOf(page, 'admin', 'Bar Manolo');
@@ -261,7 +261,7 @@ test.describe('against the real Hub', () => {
   const inTheHub = (id: string) =>
     realHubPrint(`from base.models import Hub;h=Hub.objects.filter(pk="${id}").first();print(f"{h.slug} {h.name}" if h else "missing")`);
 
-  test('HUBS-G73 + HUBS-G74: renamed and moved, the business opens at its new address and no longer at the old one', async ({ page }) => {
+  test('HUBS-F15 + HUBS-F16: renamed and moved, the business opens at its new address and no longer at the old one', async ({ page }) => {
     const errors = watchPageErrors(page);
     const { id, slug } = await signedUpWith(page, 'real', 'Taberna Hub Real E2E');
     await expect.poll(async () => (await kept(page, id)).status, { timeout: 30_000 }).toBe('active');

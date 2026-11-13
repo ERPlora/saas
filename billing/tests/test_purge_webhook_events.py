@@ -1,4 +1,4 @@
-"""The Stripe events erplora.com received are forgotten after 30 days (BILLING-F37; registry BILLING-G43, G35).
+"""The Stripe events erplora.com received are forgotten after 30 days (BILLING-F37).
 
 The idempotency rows (``WebhookEvent``) older than 30 days are deleted. Stripe resends an event for 3 days at most
 and keeps it 30 days, so a row that old never guards a delivery again. Here a ``manage.py`` command run by saas-cron.

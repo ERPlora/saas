@@ -5,8 +5,9 @@ points at a plan section, a dated planning round, a delivery slice or phase, a t
 or spec, nor signs a decision with who took it and when. Their prose does not cite the codes of an internal
 audit or review either: the reader has not seen it, so the reason is written out. Nor does it explain itself
 with an issue of another of our repositories or of the old product, which the reader of this one cannot open,
-nor with a work item's short label. It does not tell where a piece was copied from in the old product, nor
-cite that product's decisions and flows, nor date when something happened: the history keeps all of that.
+nor with a work item's short label or an id of the migration's registry. It does not tell where a piece was copied
+from in the old product, nor cite that product's decisions and flows, nor date when something happened: the history
+keeps all of that.
 Markdown files are left out: they are where the plans live. A dependency patch is read too, and must not cite an
 issue of one of our repositories either: its comments land in the dependency's code, far from our trackers.
 """
@@ -128,6 +129,12 @@ DATED_NOTE = re.compile(
 # written instead. A Django check (hubs.W002), a standard's chapter (ASVS V6.3.7), an API's version (SigV4, v25.0)
 # or one of the AEAT's lists («L3», list L2) has another shape.
 WORK_LABEL = re.compile(r"(?<![\w.«-])(?<!list )(?<!lista )[LVW][0-9]{1,2}[a-z]?(?![\w.»-])")
+
+# An id of the registry the migration kept of the old product's features: an area, a hyphen, a G and a number, or
+# the G and its number alone once the area is clear. The reader has never seen that registry, so the behaviour and
+# its reason are written instead. A flow of a WORKBOOK (ACCOUNTS-F05) is this repository's own and stays. The same
+# shape in a screenshot's key is data, so it is only looked for in prose.
+REGISTRY_ID = re.compile(r"\b[A-Z][A-Z0-9_]+-G[0-9]+\b|(?<![\w-])G[0-9]{2,3}\b")
 
 PATCH_SUFFIX = ".patch"
 
@@ -338,6 +345,7 @@ def internal_references(paths, root=REPO):
                 or AUDIT_CODE.search(line_prose)
                 or OTHER_REPO_ISSUE.search(line_prose)
                 or WORK_LABEL.search(line_prose)
+                or REGISTRY_ID.search(line_prose)
                 or old_tracker_issue(line_prose)
                 or OLD_PRODUCT_SOURCE.search(line_prose)
                 or OLD_PRODUCT_RECORD.search(line_prose)
@@ -353,8 +361,8 @@ def test_code_never_points_at_internal_plans():
     assert "tests/test_no_internal_references.py" in paths, "git ls-files listed no code"
     found = internal_references(paths)
     assert not found, (
-        "Code that points at internal plans, rounds, slices, audits, work labels, another repository's issues or the "
-        "old product, signs a decision or dates a note:\n" + "\n".join(found)
+        "Code that points at internal plans, rounds, slices, audits, work labels, the migration's registry, another "
+        "repository's issues or the old product, signs a decision or dates a note:\n" + "\n".join(found)
     )
 
 
@@ -400,7 +408,6 @@ def test_the_scan_catches_each_kind_of_reference(text):
         "Section 5 of the AEAT schema",
         "the second round 2 of retries",
         "BASE-F12: a flow of the Hub's WORKBOOK",
-        "ACCOUNTS-G93: «Sign out» in the user menu",
         "the subscription schedule's next phase",
         "the plan's price for 2026",
         "docs/api/openapi.json",
@@ -555,7 +562,6 @@ def test_the_scan_catches_each_kind_of_audit_code(text):
         "the ruling in case C-41/14",
         "the invoice A-1 of the series A is cancelled",
         "BASE-F12: a flow of the Hub's WORKBOOK",
-        "ACCOUNTS-G93: «Sign out» in the user menu",
         "decoded as UTF-8, dated as ISO-8601",
         "a COVID-19 surcharge",
         "the characters [A-Z0-9] and [^A-Z0-9]",
@@ -815,6 +821,81 @@ def test_another_repositorys_issue_or_a_work_label_is_caught_in_prose_but_not_in
         "tests/e2e/panel/some.spec.ts:2",
         "public/page.html:1",
         "public/theme.css:1",
+    ]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "ACCOUNTS-G93: «Sign out» in the user menu",
+        "the accounts nobody used for years are anonymised (ACCOUNTS-G97, G07, G52, G61)",
+        "the payer's customer takes the billing details (BILLING-F01; registry BILLING-G26)",
+        "no tracker configured, no banner (PUBLIC-G24/G43)",
+        "the sparkles of the Hub (BASE" + "-G110)",
+        "what waits for the Hub (whatsapp 0002, WHATSAPP_INBOX-G18)",
+        "describe('LoginErrorPage: too many jumps (ACCOUNTS-G98, ACCOUNTS-F28)', () => {",
+        "Each test names its flow by its registry key: G83=F01, G84=F02",
+        "One address, one chat and one reply time (G41).",
+        "into a business with a one-time code (G98, and G113: the app)",
+    ],
+)
+def test_the_scan_catches_an_id_of_the_migrations_registry(text):
+    assert REGISTRY_ID.search(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Trust this browser for 14 days (ACCOUNTS-F05)",
+        "the Hub's BASE-F114 gives back what it lost",
+        "for the Hub's WHATSAPP_INBOX-F27 (Meta's verdict and reason)",
+        "the summit of the G7 countries",
+        "a phone on a 4G or 5G network",
+        "a G7 summit",
+        "the printer model XG12",
+        "the key starts with ACCOUNTS-G and its number",
+    ],
+)
+def test_the_scan_leaves_flows_and_other_g_numbers_alone(text):
+    assert not REGISTRY_ID.search(text)
+
+
+def test_a_registry_id_is_caught_in_prose_but_not_in_a_capture_key_or_other_data(tmp_path):
+    (tmp_path / "accounts").mkdir()
+    (tmp_path / "accounts" / "purge.py").write_text(
+        '"""The accounts nobody used for years are anonymised (ACCOUNTS-G97, G07)."""\n'
+        'KEY = "ACCOUNTS-G97"\n'
+        "# Trust this browser for 14 days (ACCOUNTS-F05).\n"
+        "# Reports are braked per address (ACCOUNTS-G78).\n",
+        encoding="utf-8",
+    )
+    spec = tmp_path / "tests" / "e2e" / "panel" / "some.spec.ts"
+    spec.parent.mkdir(parents=True)
+    spec.write_text(
+        "// The accounts nobody used for years (ACCOUNTS-G97).\n"
+        "test('ACCOUNTS-G98: too many jumps', async ({ page }) => {\n"
+        "  await shot(page, 'ACCOUNTS-G98-desktop');\n"
+        "  const atEverySize = captureAtEverySize('HUBS-G65');\n"
+        "  await atEverySize(page, 'G108-held', async () => {});\n"
+        "});\n"
+        "test('ACCOUNTS-F28: too many jumps', async () => {});\n"
+        "// One address, one chat and one reply time (G41).\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "accounts" / "page.html").write_text(
+        "{# The terms an account accepted (ACCOUNTS-G119). #}\n"
+        '<p data-key="ACCOUNTS-G119">ACCOUNTS-F05</p>\n',
+        encoding="utf-8",
+    )
+    paths = ["accounts/purge.py", "tests/e2e/panel/some.spec.ts", "accounts/page.html"]
+    found = internal_references(paths, root=tmp_path)
+    assert [":".join(line.split(":")[:2]) for line in found] == [
+        "accounts/purge.py:1",
+        "accounts/purge.py:4",
+        "tests/e2e/panel/some.spec.ts:1",
+        "tests/e2e/panel/some.spec.ts:2",
+        "tests/e2e/panel/some.spec.ts:8",
+        "accounts/page.html:1",
     ]
 
 

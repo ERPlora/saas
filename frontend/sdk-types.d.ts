@@ -1153,7 +1153,7 @@ export interface InvoicePayOut {
 export interface SubscriptionListIn {
   limit?: number;
   offset?: number;
-  /** One business's subscription (BILLING-G02). */
+  /** One business's subscription; only among the account's. */
   hub_id?: string | null;
   status?: 'active' | 'trialing' | 'past_due' | 'unpaid' | 'incomplete' | 'paused' | null;
 }

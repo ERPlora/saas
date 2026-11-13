@@ -1,4 +1,4 @@
-"""ACCOUNTS-G72: ``config.wsgi`` builds Django's WSGI application (``WSGI_APPLICATION``); production serves ASGI
+"""``config.wsgi`` builds Django's WSGI application (``WSGI_APPLICATION``); production serves ASGI
 (Daphne, ``config.asgi``), and any WSGI server given this module answers the same project."""
 
 import pytest

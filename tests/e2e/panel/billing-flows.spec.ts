@@ -2,9 +2,7 @@
 // the three sizes (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
 // billing_seed.py. As billing.spec.ts and store.spec.ts, Stripe does not run here: the operations that call it
 // (`billing.plan.cancel`, `.keep`, `billing.checkout.start`, `billing.portal.open`) are played at the API's edge;
-// everything else is the real server. Each test names its flow in its title, by its registry key; in
-// billing/WORKBOOK.md: G54=F16, G55=F13, G56=F14, G58=F17, G69=F22, G70=F23, G71=F24, G82=F01, G84=F07,
-// G87=F08, G88=F11.
+// everything else is the real server. Each test names its flow of billing/WORKBOOK.md in its title.
 import {
   businessIdOf,
   captureAtEverySize,
@@ -26,7 +24,7 @@ seededAndSignedInWarm('billing_seed.py', qaAccount('BILLING', panelAccount('bill
 const atEverySize = captureAtEverySize('APP-BILLING-1');
 
 test.describe('billing flows', () => {
-  test('BILLING-G82: «Payment details» says who ERPlora invoices for the businesses, and edits it', async ({ page }) => {
+  test('BILLING-F01: «Payment details» says who ERPlora invoices for the businesses, and edits it', async ({ page }) => {
     const errors = watchPageErrors(page);
     await page.goto('/dashboard/billing/payment');
     await atEverySize(page, 'BILLING-G82', async () => {
@@ -36,7 +34,7 @@ test.describe('billing flows', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G84: the Plan card of a business leads to the Store, «Upgrade plan» on Free and «Change plan» paying', async ({ page }) => {
+  test('BILLING-F07: the Plan card of a business leads to the Store, «Upgrade plan» on Free and «Change plan» paying', async ({ page }) => {
     const errors = watchPageErrors(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
     const bakery = await businessIdOf(page.request, 'Panadería López');
@@ -53,7 +51,7 @@ test.describe('billing flows', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G87: a business on Free sees «Upgrade» on every paid plan of the Store', async ({ page }) => {
+  test('BILLING-F08: a business on Free sees «Upgrade» on every paid plan of the Store', async ({ page }) => {
     const errors = watchPageErrors(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
     await page.goto(`/dashboard/store/plans?business=${cafe}`);
@@ -64,7 +62,7 @@ test.describe('billing flows', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G88: a paying business sees its plan as current and changes to another with its proration', async ({ page }) => {
+  test('BILLING-F11: a paying business sees its plan as current and changes to another with its proration', async ({ page }) => {
     const errors = watchPageErrors(page);
     const bakery = await businessIdOf(page.request, 'Panadería López');
     await gotoWithCharge(page, `/dashboard/store/plans?business=${bakery}`, 1452, 252);
@@ -79,7 +77,7 @@ test.describe('billing flows', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G55 and BILLING-G56: «Cancel plan» ends it with its period, and «Keep the plan» undoes it', async ({ page }) => {
+  test('BILLING-F13 and BILLING-F14: «Cancel plan» ends it with its period, and «Keep the plan» undoes it', async ({ page }) => {
     const errors = watchPageErrors(page);
     const bakery = await businessIdOf(page.request, 'Panadería López');
     const asked: string[] = [];
@@ -121,7 +119,7 @@ test.describe('billing flows', () => {
   });
 
   // Paying it (the invoice page at Stripe, «Invoice paid» back) is billing.spec.ts's «Pay» test.
-  test('BILLING-G54 and BILLING-G58: an unpaid plan is said on Invoices business by business, with its way to pay', async ({ page }) => {
+  test('BILLING-F16 and BILLING-F17: an unpaid plan is said on Invoices business by business, with its way to pay', async ({ page }) => {
     const errors = watchPageErrors(page);
     await page.goto('/dashboard/billing/invoices');
     const declined = page.getByTestId('unpaid-group-item').filter({ hasText: 'Bar La Plaza' });
@@ -138,7 +136,7 @@ test.describe('billing flows', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G69: «Invoices» lists the invoices of every business it pays', async ({ page }) => {
+  test('BILLING-F22: «Invoices» lists the invoices of every business it pays', async ({ page }) => {
     const errors = watchPageErrors(page);
     await page.goto('/dashboard/billing/invoices');
     await atEverySize(page, 'BILLING-G69', async () => {
@@ -147,7 +145,7 @@ test.describe('billing flows', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G70: «Subscriptions» has one row per business with what it pays', async ({ page }) => {
+  test('BILLING-F23: «Subscriptions» has one row per business with what it pays', async ({ page }) => {
     const errors = watchPageErrors(page);
     await page.goto('/dashboard/billing/subscriptions');
     await atEverySize(page, 'BILLING-G70', async () => {
@@ -156,7 +154,7 @@ test.describe('billing flows', () => {
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G71: «Change card» opens the Stripe portal of that payer', async ({ page }) => {
+  test('BILLING-F24: «Change card» opens the Stripe portal of that payer', async ({ page }) => {
     const errors = watchPageErrors(page);
     const opened = await playStripePortal(page);
     await page.goto('/dashboard/billing/invoices');

@@ -30,7 +30,7 @@ describe('billing routes.ts', () => {
     ]);
   });
 
-  it('BILLING-G05: an invoice has its own page, its id as a prop, loaded on demand; not selling: no `webOnly`', async () => {
+  it('an invoice has its own page, its id as a prop, loaded on demand; not selling: no `webOnly`', async () => {
     const page = routes.find((r) => r.path === '/dashboard/billing/invoices/:id');
     expect(page?.props).toBe(true);
     expect(page?.meta?.webOnly).toBeUndefined();

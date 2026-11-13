@@ -896,7 +896,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   SAAS_DASHBOARD-F53/F54: el cambio del admin no llegaba al Hub). VeriFactu en todos los planes (PLAN §30, ronda
   2026-10-22b): el bloque `verifactu` lleva solo `representation`; `live_paid` se quitó de la foto cuando el Hub retiró
   esa condición (FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID). Tests: `hubs/tests/test_hub_sync.py`, `test_plan_rights_reach_businesses.py`,
-  `test_contract_hub.py`, `fiscal/tests/test_snapshot.py`; e2e `tests/e2e/panel/hubs-rights.spec.ts` («HUBS-G101»).
+  `test_contract_hub.py`, `fiscal/tests/test_snapshot.py`; e2e `tests/e2e/panel/hubs-rights.spec.ts` («HUBS-F31»).
 - Lo que el Hub aplica de la foto (F32 y F34; APP-BASE-3, -4 y -5 del Hub, hub#232, hub#229 y hub#244): `plan.max_devices`
   al entrar (`_end_other_devices`, BASE-F57), las plazas de `plan.max_users` en su personal (BASE-F77; las personas del
   Hub son las `members` de la foto, así que el tope lo aplica el SaaS al invitar) y el derecho de cada módulo `premium`
@@ -921,7 +921,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   (`/api/catalog/sectors`, `/api/catalog/business-types`). Sin unidades funcionales, categorías ni subcategorías
   (ronda 16, PLAN §21: la sección de una app la declara su `LiveAppConfig`). Tests: `test_api.py`,
   `test_seed_taxonomy.py`, `test_taxonomy_*.py` y `test_admin.py` («speak Spanish»); e2e `hubs-rights.spec.ts`
-  («HUBS-G05 + HUBS-G01»).
+  («HUBS-F36»).
 
 ## Lo que NO hace, a propósito
 

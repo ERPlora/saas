@@ -58,7 +58,7 @@ describe('useOpenBusiness', () => {
     expect(m.calls()[0].body).toEqual({ id: 'h1', next: '/apps' });
   });
 
-  // flow: HUBS-F12 (HUBS-G71): inside the installed app the jump carries the mark with which the app links the
+  // flow: HUBS-F12: inside the installed app the jump carries the mark with which the app links the
   // till to the business (`ERPlora/app` hub_link.rs: a `?shell=1` navigation leaving erplora.com).
   it.each(['desktop', 'mobile'] as const)('inside the app (%s) asks for the jump with the shell mark', async (surface) => {
     applySurface(surface);

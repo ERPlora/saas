@@ -1,4 +1,4 @@
-"""ACCOUNTS-G33: «Site settings» in the admin of erplora.com, the switch of the maintenance mode (one row)."""
+"""«Site settings» in the admin of erplora.com, the switch of the maintenance mode (one row)."""
 
 import re
 

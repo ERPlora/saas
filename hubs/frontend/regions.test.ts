@@ -59,7 +59,7 @@ describe('countries', () => {
   });
 });
 
-// flow: HUBS-F01 (HUBS-G65): «the country comes suggested by the browser's language».
+// flow: HUBS-F01: «the country comes suggested by the browser's language».
 describe('the country the browser suggests', () => {
   it("is the region of the first language whose country ERPlora serves", () => {
     expect(suggestedCountry(['fr-BE', 'fr'])).toBe('BE');

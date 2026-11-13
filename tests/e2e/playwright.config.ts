@@ -36,7 +36,7 @@ const SAAS_DIR = resolve(HERE, '..', '..');
 export const BASE_URL = `http://127.0.0.1:${STACK.publicPort}`;
 
 /**
- * Where the public server of `stack` writes the mails it sends (the contact form, PUBLIC-G39), as files: never SMTP.
+ * Where the public server of `stack` writes the mails it sends (the contact form), as files: never SMTP.
  * `tests/e2e/.artifacts/public/mail/` (ignored by git), `mail-<E2E_SAAS_PORT>/` beside the shared stack.
  */
 export function publicMailDir(stack: Stack): string {

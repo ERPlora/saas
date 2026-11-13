@@ -58,8 +58,8 @@ export const PANEL_MAIL_DIR = panelMailDir(STACK);
 export const HUB_DOUBLE_PORT = STACK.hubDoublePort;
 
 /**
- * Meta's app as the panel's Django sees it in the e2e (WHATSAPP-G13, WHATSAPP-G07): made-up ids and secrets, so the
- * specs can sign Meta's webhook as Meta does. Meta itself is never called: nothing here is a real credential.
+ * Meta's app as the panel's Django sees it in the e2e: made-up ids and secrets, so the specs can sign
+ * Meta's webhook as Meta does. Meta itself is never called: nothing here is a real credential.
  */
 export const WHATSAPP_E2E = {
   appId: '1234567890',

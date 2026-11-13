@@ -1,14 +1,13 @@
 // The flows of «create the business, wait until it is ready, the list, the panel's home, enter and the other devices»
 // (hubs/WORKBOOK.md) on their screens, at the three sizes (390×844,
-// 834×1112, 1440×900). Each test names its flow by its registry key; in hubs/WORKBOOK.md: G65=F01, G66=F02,
-// G67=F03, G68=F04, G43=F05, G98=F06, G69=F09, G84=F10, G70=F11, G71=F12, G72=F13. F07, F08 and F14 have no screen.
+// 834×1112, 1440×900). Each test names its flow of hubs/WORKBOOK.md in its title; F07, F08 and F14 have no screen.
 //
 // Two parts:
 // - against the panel's own Django (project.ts), whose calls to the Hub go nowhere: the jump into a business is
 //   caught at the Hub's door (`page.route`), so the spec reads where the window was sent;
 // - «the real Hub» (`E2E_REAL_HUB=1`): a Hub runserver listening on this stack's Hub port, so the sign-up reaches it,
 //   it reports the business ready and the window really goes in (README «El Hub real de la e2e»). Without the
-//   variable those tests are skipped, and say so; with it, HUBS-G65 and HUBS-G66 are (they need the business to
+//   variable those tests are skipped, and say so; with it, HUBS-F01 and HUBS-F02 are (they need the business to
 //   stay «Preparing», and the real Hub makes it ready at once). So the spec runs twice: once without, once with.
 // Accounts of this spec: `e2e-hubs1-…@example.com` (panel_seed.py's `clear` removes every `e2e-…@example.com`).
 import { type Page } from '@playwright/test';
@@ -85,7 +84,7 @@ test.afterAll(async () => {
   await runSeedWarm('panel_seed.py', 'clear');
 });
 
-test('HUBS-G65: the free business with a single question, then «Preparing»', async ({ page }) => {
+test('HUBS-F01: the free business with a single question, then «Preparing»', async ({ page }) => {
   test.skip(!!process.env.E2E_REAL_HUB, 'the real Hub makes the business ready at once; this needs it «Preparing»');
   const errors = watchPageErrors(page);
   const email = await freshAccount(page, 'first');
@@ -106,7 +105,7 @@ test('HUBS-G65: the free business with a single question, then «Preparing»', a
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G66: from the installed app, its start /shell/ is the same sign-up', async ({ page }) => {
+test('HUBS-F02: from the installed app, its start /shell/ is the same sign-up', async ({ page }) => {
   test.skip(!!process.env.E2E_REAL_HUB, 'the real Hub makes the business ready at once; this needs it «Preparing»');
   const errors = watchPageErrors(page);
   await freshAccount(page, 'app');
@@ -123,7 +122,7 @@ test('HUBS-G66: from the installed app, its start /shell/ is the same sign-up', 
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G67: a paid business is born on Free and «Upgrade plan» opens the Store; a second one waits for a paid plan', async ({ page }) => {
+test('HUBS-F03: a paid business is born on Free and «Upgrade plan» opens the Store; a second one waits for a paid plan', async ({ page }) => {
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('one'));
   const id = await businessIdOf(page.request, 'Panadería López');
@@ -144,7 +143,7 @@ test('HUBS-G67: a paid business is born on Free and «Upgrade plan» opens the S
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G69: the list with each status, the deleted one with «Recover», and the old addresses lead to it', async ({ page }) => {
+test('HUBS-F09: the list with each status, the deleted one with «Recover», and the old addresses lead to it', async ({ page }) => {
   const errors = watchPageErrors(page);
   // A business deleted 5 days ago: no screen makes one in the past.
   await djangoPrintWarm(
@@ -182,7 +181,7 @@ test('HUBS-G69: the list with each status, the deleted one with «Recover», and
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G84: the panel’s home is Businesses, from «Go to the panel» and from the old overview', async ({ page }) => {
+test('HUBS-F10: the panel’s home is Businesses, from «Go to the panel» and from the old overview', async ({ page }) => {
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('one'));
   await page.goto('/launch');
@@ -196,7 +195,7 @@ test('HUBS-G84: the panel’s home is Businesses, from «Go to the panel» and f
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G70: «Open» from erplora.com sends the window to the business’s start of the jump, without the app’s mark', async ({ page }) => {
+test('HUBS-F11: «Open» from erplora.com sends the window to the business’s start of the jump, without the app’s mark', async ({ page }) => {
   const errors = watchPageErrors(page);
   const visits = await hubDoor(page);
   await signIn(page.request, panelAccount('one'));
@@ -209,7 +208,7 @@ test('HUBS-G70: «Open» from erplora.com sends the window to the business’s s
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G71: in the installed app the launcher chooses and «Open» carries shell=1; /shell/open/<id>/ too', async ({ page }) => {
+test('HUBS-F12: in the installed app the launcher chooses and «Open» carries shell=1; /shell/open/<id>/ too', async ({ page }) => {
   const errors = watchPageErrors(page);
   const visits = await hubDoor(page);
   await signIn(page.request, panelAccount('several'));
@@ -239,7 +238,7 @@ async function otherBusiness(page: Page): Promise<string> {
   return invited.hub.id;
 }
 
-test('HUBS-G72: «On your devices» shares the business’s address and the apps', async ({ page, context }) => {
+test('HUBS-F13: «On your devices» shares the business’s address and the apps', async ({ page, context }) => {
   const errors = watchPageErrors(page);
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await signIn(page.request, panelAccount('one'));
@@ -257,7 +256,7 @@ test('HUBS-G72: «On your devices» shares the business’s address and the apps
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G43: the staff keep each plan’s texts in English and in Spanish in the admin', async ({ page }) => {
+test('HUBS-F05: the staff keep each plan’s texts in English and in Spanish in the admin', async ({ page }) => {
   const errors = watchPageErrors(page);
   const email = `${PREFIX}staff-${Date.now()}@example.com`;
   await createAccountWarm(email, PASSWORD, { role: 'superuser' });
@@ -276,14 +275,14 @@ test('HUBS-G43: the staff keep each plan’s texts in English and in Spanish in 
 // ── The real Hub ──────────────────────────────────────────────────────────────────────────────────────────────
 // A Hub runserver on HUB_DOUBLE_PORT, its `SAAS_URL` this stack's panel, the same INTERNAL_SHARED_SECRET, and this
 // run's `HUB_CALLBACK_TEMPLATE` pointing at it (README «El Hub real de la e2e»). `HUB_DIR` is its checkout and
-// `HUB_DB_NAME` its database (its `manage.py` puts a business back to «being prepared» for HUBS-G98).
+// `HUB_DB_NAME` its database (its `manage.py` puts a business back to «being prepared» for HUBS-F06).
 test.describe('against the real Hub', () => {
   test.skip(!process.env.E2E_REAL_HUB, 'needs a real Hub on the stack’s Hub port (README «El Hub real de la e2e»)');
 
   const hubUrl = (slug: string, path = '/') => `http://${slug}.localhost:${HUB_DOUBLE_PORT}${path}`;
 
 
-  test('HUBS-G68: created, the Hub reports it ready and the launcher goes into the business by itself; «is ready» arrives', async ({ page }) => {
+  test('HUBS-F04: created, the Hub reports it ready and the launcher goes into the business by itself; «is ready» arrives', async ({ page }) => {
     const errors = watchPageErrors(page);
     const since = Date.now();
     const email = await freshAccount(page, 'real');
@@ -302,7 +301,7 @@ test.describe('against the real Hub', () => {
     expect(errors).toEqual([]);
   });
 
-  test('HUBS-G70: «Open» in Businesses enters the business through the jump', async ({ page }) => {
+  test('HUBS-F11: «Open» in Businesses enters the business through the jump', async ({ page }) => {
     await freshAccount(page, 'open');
     await page.goto('/launch');
     await page.getByTestId('create-name').locator('input').fill('Granja Hub Real E2E');
@@ -313,7 +312,7 @@ test.describe('against the real Hub', () => {
     await page.waitForURL(new RegExp(`^http://granja-hub-real-e2e\\.localhost:${HUB_DOUBLE_PORT}/(?!auth)`), { timeout: 30_000 });
   });
 
-  test('HUBS-G71: from the app, the jump carries shell=1 and lands in the business', async ({ page }) => {
+  test('HUBS-F12: from the app, the jump carries shell=1 and lands in the business', async ({ page }) => {
     await freshAccount(page, 'shell');
     await page.goto('/shell/?surface=desktop');
     await page.getByTestId('create-name').locator('input').fill('Lonja Hub Real E2E');
@@ -323,7 +322,7 @@ test.describe('against the real Hub', () => {
     await page.waitForURL(new RegExp(`^http://lonja-hub-real-e2e\\.localhost:${HUB_DOUBLE_PORT}/(?!auth)`), { timeout: 30_000 });
   });
 
-  test('HUBS-G98: the address of a business being prepared says so and refreshes by itself', async ({ page }) => {
+  test('HUBS-F06: the address of a business being prepared says so and refreshes by itself', async ({ page }) => {
     await freshAccount(page, 'prep');
     await page.goto('/launch');
     await page.getByTestId('create-name').locator('input').fill('Molino Hub Real E2E');

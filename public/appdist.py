@@ -154,7 +154,7 @@ def ways_to_try(request: HttpRequest) -> HttpResponse:
     first launch also walks you through creating the free hub). The per-platform buttons go to
     ``download``, which picks store or installer. The demo is ``/demo/`` (``public/demo.py``), offered by
     the home and the navbar: it is no way to your own hub, so it is not one of these two. The free hub's
-    devices and users are the Free plan's (PUBLIC-G28), and without one on sale the page states none.
+    devices and users are the Free plan's, and without one on sale the page states none.
     """
     free = pricing.free_plan(pricing.plans_on_sale(request))
     return render(request, "public/downloads.html", {"free_plan": free})

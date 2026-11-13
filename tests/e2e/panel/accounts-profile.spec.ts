@@ -1,8 +1,7 @@
 // The flows of «the profile, the preferences, the user menu, downloading the data and deleting the account»
 // (accounts/WORKBOOK.md) on their screens, at the three sizes
 // (390×844, 834×1112, 1440×900), against the real hubs and billing (no mocks): the business is created by its
-// operation, ERPlora's invoice is a row billing reads. Each test names its flow by its registry key; in
-// accounts/WORKBOOK.md: G108=F21, G114=F22, G115=F23, G127=F24, G128=F25, G111=F26, G112=F27, G35=F13.
+// operation, ERPlora's invoice is a row billing reads. Each test names its flow of accounts/WORKBOOK.md in its title.
 // Accounts of this spec: `e2e-acc3-…@example.com`, removed before and after.
 import { readFile } from "node:fs/promises";
 
@@ -44,7 +43,7 @@ const createAccount = (email: string, options: { staff?: boolean; firstName?: st
 let lastSequence = 0;
 
 /** The sequence of this spec's next ERPlora invoice, never given before, as `address()` gives a fresh address: an
- *  invoice is never deleted (ACCOUNTS-G112 checks that the deleted account's stays), so a fixed one met the previous
+ *  invoice is never deleted (ACCOUNTS-F27 checks that the deleted account's stays), so a fixed one met the previous
  *  run's on the same e2e database (saas#227). The clock in seconds, since the field is a 32-bit integer too small for
  *  `Date.now()`; one more than the last when two fall in the same second. */
 function nextSequence(): number {
@@ -137,7 +136,7 @@ async function closeUserMenu(page: Page): Promise<void> {
 test.beforeAll(removeAccounts);
 test.afterAll(removeAccounts);
 
-test("ACCOUNTS-G108 (F21): Profile shows the account and keeps the names after a reload", async ({
+test("ACCOUNTS-F21: Profile shows the account and keeps the names after a reload", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -161,7 +160,7 @@ test("ACCOUNTS-G108 (F21): Profile shows the account and keeps the names after a
   expect(errors).toEqual([]);
 });
 
-test("ACCOUNTS-G114 (F22): Preferences saves the appearance and the language on their own, kept after a reload", async ({
+test("ACCOUNTS-F22: Preferences saves the appearance and the language on their own, kept after a reload", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -193,7 +192,7 @@ test("ACCOUNTS-G114 (F22): Preferences saves the appearance and the language on 
   expect(errors).toEqual([]);
 });
 
-test("ACCOUNTS-G115 (F23): «Business notices» is the one switch, kept after a reload; the mails that always go say so", async ({
+test("ACCOUNTS-F23: «Business notices» is the one switch, kept after a reload; the mails that always go say so", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -244,7 +243,7 @@ test("ACCOUNTS-G115 (F23): «Business notices» is the one switch, kept after a 
   expect(errors).toEqual([]);
 });
 
-test("ACCOUNTS-G127 (F24): the theme of the user menu is painted at once and kept in the account", async ({
+test("ACCOUNTS-F24: the theme of the user menu is painted at once and kept in the account", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -281,7 +280,7 @@ test("ACCOUNTS-G127 (F24): the theme of the user menu is painted at once and kep
   expect(errors).toEqual([]);
 });
 
-test("ACCOUNTS-G128 (F25): the user menu has «Account», «Report a problem», «Help», the theme and «Sign out»; «Account» opens the profile", async ({
+test("ACCOUNTS-F25: the user menu has «Account», «Report a problem», «Help», the theme and «Sign out»; «Account» opens the profile", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -312,7 +311,7 @@ test("ACCOUNTS-G128 (F25): the user menu has «Account», «Report a problem», 
   expect(errors).toEqual([]);
 });
 
-test("ACCOUNTS-G111 (F26): «Download my data» saves a JSON with the account, its business and its ERPlora invoice, nothing of another account", async ({
+test("ACCOUNTS-F26: «Download my data» saves a JSON with the account, its business and its ERPlora invoice, nothing of another account", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -353,7 +352,7 @@ test("ACCOUNTS-G111 (F26): «Download my data» saves a JSON with the account, i
   expect(errors).toEqual([]);
 });
 
-test("ACCOUNTS-G112 (F27): an owner is told to hand over its business first; without one, the account goes and its invoice stays", async ({
+test("ACCOUNTS-F27: an owner is told to hand over its business first; without one, the account goes and its invoice stays", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -414,7 +413,7 @@ test("ACCOUNTS-G112 (F27): an owner is told to hand over its business first; wit
   expect(errors).toEqual([]);
 });
 
-test("ACCOUNTS-G35 (F13): the admin shows an account with its preferences and its photo, only to read", async ({
+test("ACCOUNTS-F13: the admin shows an account with its preferences and its photo, only to read", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);

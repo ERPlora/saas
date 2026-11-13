@@ -1,8 +1,8 @@
 // The jumps between erplora.com and a business (accounts/WORKBOOK.md), on their screens at three sizes (390×844,
-// 834×1112, 1440×900): into a business with a one-time code (G98, and G99: the sign-in on erplora.com on the way, then
-// the business), what the business learns of the person (G104), back to erplora.com from a business (G100) and the
-// account on its own, as the installed app opens it (G113). In accounts/WORKBOOK.md: G98 = G99 = F28, G104 = F12,
-// G100 = F29, G113 = F30.
+// 834×1112, 1440×900): into a business with a one-time code (F28, also with the sign-in on erplora.com on the way,
+// then the business), what the business learns of the person (F12), back to erplora.com from a business (F29) and the
+// account on its own, as the installed app opens it (F30). Each test names its flow of accounts/WORKBOOK.md in its
+// title.
 // The Hub is played at its own addresses (`http://<slug>.localhost:8000/…`, the panel's HUB_CALLBACK_TEMPLATE): the spec
 // receives the form the browser posts to the business's callback and redeems the code as the Hub does, signed, at the
 // real `/internal/auth/redeem`. The Hub's own half (its callback, its session) runs in every e2e of the Hub, whose sign-in
@@ -98,7 +98,7 @@ test.beforeAll(() => removeAccounts());
 test.beforeAll(() => internalSecret());
 test.afterAll(() => removeAccounts());
 
-test('ACCOUNTS-G98 · ACCOUNTS-G104 · a member enters the business with a one-time code: posted, bound to it and spent once', async ({
+test('ACCOUNTS-F28 · ACCOUNTS-F12 · a member enters the business with a one-time code: posted, bound to it and spent once', async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -128,7 +128,7 @@ test('ACCOUNTS-G98 · ACCOUNTS-G104 · a member enters the business with a one-t
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G99 · signed out, the jump signs in on erplora.com and goes on to the business with its state', async ({
+test('ACCOUNTS-F28 · signed out, the jump signs in on erplora.com and goes on to the business with its state', async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -150,7 +150,7 @@ test('ACCOUNTS-G99 · signed out, the jump signs in on erplora.com and goes on t
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G98 · a jump to a business of others is refused on its page, naming only its host', async ({ page }) => {
+test('ACCOUNTS-F28 · a jump to a business of others is refused on its page, naming only its host', async ({ page }) => {
   const errors = watchPageErrors(page);
   const owner = await createAccount(address('other-owner'));
   const slug = await businessOf(owner.email, 'Bar de Otros');
@@ -171,7 +171,7 @@ test('ACCOUNTS-G98 · a jump to a business of others is refused on its page, nam
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G98 · too many jumps in a few minutes wait, without a code', async ({ page }) => {
+test('ACCOUNTS-F28 · too many jumps in a few minutes wait, without a code', async ({ page }) => {
   const errors = watchPageErrors(page);
   const ana = await createAccount(address('brake'));
   const slug = await businessOf(ana.email, 'Frutería Ana');
@@ -194,7 +194,7 @@ test('ACCOUNTS-G98 · too many jumps in a few minutes wait, without a code', asy
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G100 · from a business, an erplora.com page opens with the session of erplora.com, or after signing in', async ({
+test('ACCOUNTS-F29 · from a business, an erplora.com page opens with the session of erplora.com, or after signing in', async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
@@ -215,7 +215,7 @@ test('ACCOUNTS-G100 · from a business, an erplora.com page opens with the sessi
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G113 · the app opens the account on its own: its old address, the sign-in on the way, nothing that sells', async ({
+test('ACCOUNTS-F30 · the app opens the account on its own: its old address, the sign-in on the way, nothing that sells', async ({
   page,
 }) => {
   const errors = watchPageErrors(page);

@@ -1,4 +1,4 @@
-"""ACCOUNTS-G64: ``SiteSettings``, the one row of the site's switches (maintenance mode and its message)."""
+"""``SiteSettings``, the one row of the site's switches (maintenance mode and its message)."""
 
 import pytest
 from django.db import IntegrityError, transaction

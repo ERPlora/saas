@@ -3,9 +3,8 @@
 // its flows play on the panel's twin with it on (`PANEL_MFA_URL`, panel/project.ts), the sessions and the admin's
 // «Close sessions» on the panel as production has it. The codes of the authenticator app are computed here from the
 // key the setup page shows (RFC 6238, as the phone does); the mailed codes are read from the panel's mail folder:
-// nothing is played. Each test names its flow by its registry key; in accounts/WORKBOOK.md: G87=F14, G116=F15,
-// G89=F16, G88=F05, G23=F17, G94=F18, G09=F19, G90=F20. Accounts of this spec: `e2e-acc2-…@example.com`, removed
-// before and after.
+// nothing is played. Each test names its flow of accounts/WORKBOOK.md in its title. Accounts of this spec:
+// `e2e-acc2-…@example.com`, removed before and after.
 import { createHmac } from 'node:crypto';
 
 import { type APIRequestContext, type Browser, type Page } from '@playwright/test';
@@ -146,7 +145,7 @@ test.afterAll(removeAccounts);
 test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () => {
   test.use({ baseURL: PANEL_MFA_URL });
 
-  test('ACCOUNTS-G87 (F14): the authenticator app is set up from Security with its key, and the ten recovery codes are shown once and downloaded', async ({
+  test('ACCOUNTS-F14: the authenticator app is set up from Security with its key, and the ten recovery codes are shown once and downloaded', async ({
     page,
   }) => {
     const errors = watchPageErrors(page);
@@ -176,7 +175,7 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
     expect(errors).toEqual([]);
   });
 
-  test('ACCOUNTS-G116 (F15): Security says whether the second factor is on, and «Manage» leads to it', async ({ page }) => {
+  test('ACCOUNTS-F15: Security says whether the second factor is on, and «Manage» leads to it', async ({ page }) => {
     const errors = watchPageErrors(page);
     const account = await createAccount(address('state'));
     const used = new Set<string>();
@@ -195,7 +194,7 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
     expect(errors).toEqual([]);
   });
 
-  test('ACCOUNTS-G88 (F05): after the password and the mailed code, the app’s code; «Trust this browser» skips it next time, here only', async ({
+  test('ACCOUNTS-F05: after the password and the mailed code, the app’s code; «Trust this browser» skips it next time, here only', async ({
     page,
     browser,
   }) => {
@@ -242,7 +241,7 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
     expect(errors).toEqual([]);
   });
 
-  test('ACCOUNTS-G23 (F17): the settings say until when this browser is trusted, and «Stop trusting all browsers» asks for the app’s code again', async ({
+  test('ACCOUNTS-F17: the settings say until when this browser is trusted, and «Stop trusting all browsers» asks for the app’s code again', async ({
     page,
   }) => {
     const errors = watchPageErrors(page);
@@ -271,7 +270,7 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
     expect(errors).toEqual([]);
   });
 
-  test('ACCOUNTS-G89 (F16): new recovery codes replace the old ones, and turning the app off leaves the mailed code', async ({
+  test('ACCOUNTS-F16: new recovery codes replace the old ones, and turning the app off leaves the mailed code', async ({
     page,
   }) => {
     const errors = watchPageErrors(page);
@@ -300,7 +299,7 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
     expect(errors).toEqual([]);
   });
 
-  test('ACCOUNTS-G90 (F20): the staff without the app are taken from the admin to set it up, and «Continue» brings them back', async ({
+  test('ACCOUNTS-F20: the staff without the app are taken from the admin to set it up, and «Continue» brings them back', async ({
     page,
   }) => {
     const errors = watchPageErrors(page);
@@ -326,7 +325,7 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
 test.describe('the open sessions (the panel as production has it)', () => {
   test.use({ baseURL: PANEL_URL });
 
-  test('ACCOUNTS-G94 (F18): Security lists the open sessions, this one first; one is closed, then all the others', async ({
+  test('ACCOUNTS-F18: Security lists the open sessions, this one first; one is closed, then all the others', async ({
     page,
     browser,
   }) => {
@@ -368,7 +367,7 @@ test.describe('the open sessions (the panel as production has it)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('the sideways-scroll reader also catches a page that is no Ionic page: the admin, wider than the screen (the check of the check, ACCOUNTS-G09)', async ({
+  test('the sideways-scroll reader also catches a page that is no Ionic page: the admin, wider than the screen (the check of the check)', async ({
     page,
   }) => {
     const staff = await createAccount(address('reader'), { staff: true });
@@ -386,7 +385,7 @@ test.describe('the open sessions (the panel as production has it)', () => {
     expect((await sidewaysScroll(page)).join()).toMatch(/^document \d+ > \d+$/);
   });
 
-  test('ACCOUNTS-G09 (F19): a superuser closes every session of an account from the admin', async ({ page, browser }) => {
+  test('ACCOUNTS-F19: a superuser closes every session of an account from the admin', async ({ page, browser }) => {
     const errors = watchPageErrors(page);
     const staff = await createAccount(address('root'), { staff: true });
     const account = await createAccount(address('incident'));

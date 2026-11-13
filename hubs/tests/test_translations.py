@@ -69,7 +69,7 @@ NEW_MESSAGES = [
     # models.py: Plan.max_apps
     "modules turned on",
     "Modules a business may choose to turn on; the ones they require do not count (0 = unlimited).",
-    # HUBS-F01 (HUBS-G65): the refusals of the sign-up of a business, which a Spanish account reads.
+    # HUBS-F01: the refusals of the sign-up of a business, which a Spanish account reads.
     "Businesses cannot be created right now. Try again in a few minutes.",
     "You already have a free business. Change its plan to create another one.",
     "This address belongs to ERPlora's staff and cannot join a business.",

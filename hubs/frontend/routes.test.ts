@@ -40,7 +40,7 @@ describe('hubs routes.ts', () => {
     ]);
   });
 
-  // flow: HUBS-F02 (HUBS-G66) and HUBS-F12 (HUBS-G71): `ERPlora/app` boots on /shell/ and never changes it
+  // flow: HUBS-F02 and HUBS-F12: `ERPlora/app` boots on /shell/ and never changes it
   // and /shell/ is an alias of /launch.
   it("serves the launcher at the installed app's start, /shell/", async () => {
     const router = createRouter({ history: createMemoryHistory(), routes });

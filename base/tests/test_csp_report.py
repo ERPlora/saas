@@ -1,4 +1,4 @@
-"""ACCOUNTS-G78: ``/csp-report/``, the browsers' reports of a blocked script, has its brake per address.
+"""``/csp-report/``, the browsers' reports of a blocked script, has its brake per address.
 
 Anyone may post there (no session, no CSRF: a browser sends it on its own) and each report is a log line of up to 8 KB
 (``live.csp.csp_report``): unbraked, one address could fill the log, and the log costs. Each address gets 60 an

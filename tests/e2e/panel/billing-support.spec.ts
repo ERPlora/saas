@@ -1,18 +1,17 @@
-// Part 3 of billing: the screens of the old SaaS's pricing, payment result, retry,
-// billing details, portal and app purchase, which part 3 joins to the flows parts 1 and 2 built, at the three sizes
+// Part 3 of billing: the screens of the Store's prices, the payment's result, its retry, the billing details, the
+// portal and the purchase of an app, beside the flows of parts 1 and 2, at the three sizes
 // (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
 // billing_apps_seed.py. As billing-apps.spec.ts, Stripe does not run here: the operations that call it
 // (`billing.checkout.start` and `.confirm`, `billing.portal.open`, `billing.payment_method.get`) are played at the
 // API's edge, and Stripe.js is the double of fixtures.ts (`playStripe`); everything else (the billing details saved
-// included) is the real server. Each test names its flow by its registry key (BILLING-Gnn); in
-// billing/WORKBOOK.md: G19=F08, G20=F09, G21=F10, G26=F01, G27=F24, G28=F32.
+// included) is the real server. Each test names its flow of billing/WORKBOOK.md in its title.
 import { addAppInCheckout, businessIdOf, captureAtEverySize, dialogInPlace, expect, gotoWithCheckout, panelAccount, payInStripe, playStripePortal, qaAccount, seededAndSignedIn, STRIPE_PORTAL_URL, test, toast, watchPageErrors } from './fixtures';
 
 seededAndSignedIn('billing_apps_seed.py', qaAccount('BILLING_APPS', panelAccount('billing-apps')));
 const atEverySize = captureAtEverySize('APP-BILLING-3');
 
 test.describe('billing part 3: the screens of the old pricing, payment, billing details and purchase', () => {
-  test('BILLING-G19: the plans of the Store, with their monthly and their annual price', async ({ page }) => {
+  test('BILLING-F08: the plans of the Store, with their monthly and their annual price', async ({ page }) => {
     const errors = watchPageErrors(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
     await page.goto(`/dashboard/store/plans?business=${cafe}`);
@@ -28,7 +27,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G20: back from paying a plan, the business says it is on it', async ({ page }) => {
+  test('BILLING-F09: back from paying a plan, the business says it is on it', async ({ page }) => {
     const errors = watchPageErrors(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
     await gotoWithCheckout(page, `/dashboard/store/plans?business=${cafe}`);
@@ -54,7 +53,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G21: a payment closed before paying opens again with the same choice', async ({ page }) => {
+  test('BILLING-F10: a payment closed before paying opens again with the same choice', async ({ page }) => {
     const errors = watchPageErrors(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
     const started = await gotoWithCheckout(page, `/dashboard/store/plans?business=${cafe}`);
@@ -82,7 +81,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G26: the billing details are edited and saved, for the next invoices', async ({ page }) => {
+  test('BILLING-F01: the billing details are edited and saved, for the next invoices', async ({ page }) => {
     const errors = watchPageErrors(page);
     await page.goto('/dashboard/billing/payment');
     await expect(page.getByTestId('profile-name')).toHaveText('Panadería López S.L.');
@@ -102,7 +101,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G27: «Change card» opens Stripe’s page of that payer', async ({ page }) => {
+  test('BILLING-F24: «Change card» opens Stripe’s page of that payer', async ({ page }) => {
     const errors = watchPageErrors(page);
     const bakery = await businessIdOf(page.request, 'Panadería López');
     await page.route('**/api/billing/payment-method', (route) =>
@@ -132,7 +131,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G28: a business on Free buys a paid app in the secure checkout', async ({ page }) => {
+  test('BILLING-F32: a business on Free buys a paid app in the secure checkout', async ({ page }) => {
     const errors = watchPageErrors(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
     const started = await addAppInCheckout(page, cafe, 'e2e_apps_bookings');

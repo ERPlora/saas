@@ -1,4 +1,4 @@
-"""ACCOUNTS-G119: the terms and the privacy policy an account accepted, with when and which version.
+"""The terms and the privacy policy an account accepted, with when and which version.
 
 The launcher says «By continuing you agree to our Terms & Privacy Policy» under both of its tabs and under «Continue
 with Google». The account keeps the date it accepted and the versions it accepted (the «Last updated» date of each

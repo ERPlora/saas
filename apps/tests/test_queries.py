@@ -576,7 +576,7 @@ def test_no_app_no_vertical():
 
 class TestCardsOf:
     """``cards_of``: the cards of the apps of some ids, listed or retired, for another app of the SaaS that must
-    name an app it still sells or bills (billing's Store, BILLING-G61); the catalog's own rules
+    name an app it still sells or bills (billing's Store); the catalog's own rules
     (language, cleaned icon), never its model."""
 
     def test_it_gives_the_card_of_each_known_id_in_the_language_retired_ones_too(self):

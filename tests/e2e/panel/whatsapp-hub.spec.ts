@@ -1,4 +1,4 @@
-// flow: WHATSAPP-G03, WHATSAPP-G07 — WhatsApp's cross e2e on a REAL Hub: Meta → erplora.com
+// flow: WHATSAPP-F03, WHATSAPP-F07 — WhatsApp's cross e2e on a REAL Hub: Meta → erplora.com
 // → the Hub's «WhatsApp» inbox, nothing played. erplora.com (this checkout) pushes the snapshot of `a` with its
 // `whatsapp` key (door 4) to the Hub, which takes it; then the spec plays only Meta: a customer's message, the owner's
 // reply from the phone app and Meta's «read», each signed as Meta signs its webhook, posted to erplora.com, which
@@ -156,7 +156,7 @@ test.afterAll(async () => {
   if (ids) expect(await seedErplora()).toEqual({ delivered: true, hub_error: '' });
 });
 
-test('WHATSAPP-G03: the snapshot erplora.com pushes carries the connected number, and the real Hub takes it', async ({ page }) => {
+test('WHATSAPP-F03: the snapshot erplora.com pushes carries the connected number, and the real Hub takes it', async ({ page }) => {
   expect(await seedErplora()).toEqual({ delivered: true, hub_error: '' });
 
   await openInbox(page);
@@ -164,7 +164,7 @@ test('WHATSAPP-G03: the snapshot erplora.com pushes carries the connected number
   await expect(shown(page).locator('[data-testid=whatsapp-inbox-not-connected]')).toBeHidden();
 });
 
-test('WHATSAPP-G07: a customer’s message, the owner’s reply from the phone and her «read» reach the open inbox through erplora.com', async ({
+test('WHATSAPP-F07: a customer’s message, the owner’s reply from the phone and her «read» reach the open inbox through erplora.com', async ({
   page,
 }) => {
   const customer = `3469901${String(Math.floor(Math.random() * 1e4)).padStart(4, '0')}`;

@@ -1,11 +1,9 @@
-"""HUBS-F31 (HUBS-G101, HUBS-G96): what a plan includes, changed by the staff in the admin, reaches every business on
-that plan without waiting for the night.
+"""HUBS-F31: what a plan includes, changed by the staff in the admin, reaches every business on that plan without
+waiting for the night.
 
-In the old SaaS a change of plan or of limits made in Django's admin changed what was signed without pushing it to
-the hub. Here, saving a change to the rights a plan gives (its limits, its level of
-modules, its monthly messages) leaves each business on it owing the Hub a newer snapshot, with the modules of the new
-level already written, and the next pass of ``reconcile_hub_states`` (every 15 minutes) delivers it. A change that
-only touches texts or prices owes nothing.
+Saving a change to the rights a plan gives (its limits, its level of modules, its monthly messages) leaves each
+business on it owing the Hub a newer snapshot, with the modules of the new level already written, and the next pass
+of ``reconcile_hub_states`` (every 15 minutes) delivers it. A change that only touches texts or prices owes nothing.
 """
 
 import json

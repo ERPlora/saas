@@ -7,7 +7,7 @@
 // It needs a Hub whose SAAS_URL is this run's public server and this server's Hub variables exported for it (README
 // of this folder, «La demo contra un Hub de verdad»): `E2E_DEMO_HUB` is that Hub's origin, and without it every test
 // here is skipped and says so. The walk to the ended demo (410 → the door) is the Hub's tests/e2e/demo.spec.ts.
-// flow: PUBLIC-G54 PUBLIC-G55 PUBLIC-G56 PUBLIC-G63
+// flow: PUBLIC-F28 PUBLIC-F35
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,7 +41,7 @@ async function inTheDemo(page: Page): Promise<string> {
   return slug;
 }
 
-test('PUBLIC-G54 PUBLIC-G55 PUBLIC-G56 a press creates the demo, opens it as «Demo» and the door takes it back', async ({
+test('PUBLIC-F28 a press creates the demo, opens it as «Demo» and the door takes it back', async ({
   page,
   context,
 }) => {
