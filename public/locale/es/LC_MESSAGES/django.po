@@ -256,14 +256,6 @@ msgstr "Algo ha fallado"
 msgid "Popular"
 msgstr "Popular"
 
-#: templates/public/partials/dev_banner.html:10
-msgid "Pre-launch"
-msgstr "Prelanzamiento"
-
-#: templates/public/partials/dev_banner.html:12
-msgid "ERPlora is in active development. You're viewing a product preview."
-msgstr "ERPlora está en pleno desarrollo. Estás viendo una vista previa del producto."
-
 #: templates/public/partials/footer.html:18
 msgid "One ERP. Infinite configurations. Yours."
 msgstr "Un ERP. Infinitas configuraciones. El tuyo."

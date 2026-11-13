@@ -1,7 +1,7 @@
 // The error pages of erplora.com (accounts/WORKBOOK.md, ACCOUNTS-F42), at the
 // three sizes (390×844, 834×1112, 1440×900), in English and in Spanish, against the production-like
 // server of this project (DEBUG off: Django renders the project's handlers, never its debug pages):
-//   - an unknown page of the public web: its own 404, with the navbar and a way home;
+//   - an unknown page of the public web: its own 404, with the navbar on top and a way home;
 //   - an unknown page of the private half (`/accounts/…`): the error layout's 404, «Home» and «Contact Support»;
 //   - the 500 pages: no route fails on purpose, so each one is rendered by Django exactly as its handler renders it
 //     (`public.errors`, tested in base/tests/test_error_pages.py and public/tests/test_errors.py) and served to the
@@ -77,6 +77,9 @@ async function atEverySize(page: Page, key: string, check: () => Promise<void>):
   }
 }
 
+/** The strip that said ERPlora was in development: no page of erplora.com carries it any more. */
+const PRE_LAUNCH = /pre-?launch|prelanzamiento|active development|pleno desarrollo|product preview|vista previa del producto/i;
+
 const TEXTS = {
   en: {
     publicNotFound: 'Page not found',
@@ -113,6 +116,8 @@ for (const { code, locale } of LANGUAGES) {
       await atEverySize(page, `ACCOUNTS-G81-public-404-${code}`, async () => {
         await expect(page.locator('body')).toContainText(TEXTS[code].publicNotFound);
         await expect(page.locator('a[href="/"]').first()).toBeAttached();
+        await expect(page.locator('body')).not.toContainText(PRE_LAUNCH);
+        expect((await page.locator('nav.ep-navbar').boundingBox())?.y).toBe(0);
       });
     });
 
@@ -142,9 +147,9 @@ for (const { code, locale } of LANGUAGES) {
           // Its own styles load from this origin: the page is laid out, not raw HTML.
           const styled = await page.evaluate(() => getComputedStyle(document.body).fontFamily);
           expect(styled).not.toBe('');
-          // The public web's pre-launch strip, once, on top; the private layout has none.
-          await expect(page.locator('.dev-banner')).toHaveCount(side === 'public' ? 1 : 0);
-          if (side === 'public') expect((await page.locator('.dev-banner').boundingBox())?.y).toBe(0);
+          // The page starts at the top: no strip above it.
+          await expect(page.locator('body')).not.toContainText(PRE_LAUNCH);
+          if (side === 'public') expect((await page.locator('main').boundingBox())?.y).toBe(0);
         });
       });
     }
