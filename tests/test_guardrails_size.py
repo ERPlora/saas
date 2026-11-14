@@ -3,8 +3,8 @@
 A production file stops at 1,000 physical lines and a test file at 1,500. Generated and third-party files do not
 count. The files over their cap are listed in ``.file-size-allow``, one per line as ``<ceiling> <path> <issue>``,
 and that list only shrinks: a listed file never grows past its ceiling, its ceiling follows it down as it shrinks,
-it leaves the list once it fits its cap, and compared with the list on ``origin/main`` the list gains no path and
-raises no ceiling.
+it leaves the list once it fits its cap, and compared with the list where the branch left ``origin/main`` (their
+merge base) the list gains no path and raises no ceiling.
 """
 
 import re
@@ -16,6 +16,7 @@ import pytest
 REPO = Path(__file__).resolve().parent.parent
 ALLOW_LIST = ".file-size-allow"
 MAIN = "origin/main"
+BASE_NAME = f"the merge base with {MAIN}"
 
 PRODUCTION_CAP = 1000
 TEST_CAP = 1500
@@ -86,27 +87,37 @@ def read_allow_list(root: Path = REPO) -> dict[str, int]:
     return parse_allow_list(allow_list.read_text()) if allow_list.exists() else {}
 
 
-def main_text(name: str, root: Path = REPO) -> str | None:
-    """The file ``name`` as it is on ``origin/main``, or None when main does not have it.
+def git(root: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
 
-    Without ``origin/main`` the exceptions cannot be compared with main's, and that fails instead of passing
-    quietly: the workflow that runs the suite fetches main, and a local tree only needs ``git fetch origin main``.
+
+def main_base(root: Path = REPO) -> str:
+    """The commit where this branch left ``origin/main``: the exceptions are compared with that one, so a branch
+    cut before main lowered a ceiling does not fail for a change it never saw.
+
+    Without ``origin/main`` the comparison cannot be made, and that fails instead of passing quietly: the workflow
+    that runs the suite fetches main, and a local tree only needs ``git fetch origin main``.
     """
+    if git(root, "rev-parse", "--verify", "--quiet", f"{MAIN}^{{commit}}").returncode != 0:
+        pytest.fail(f"{MAIN} is not in this clone, so the exceptions cannot be compared: git fetch origin main")
+    base = git(root, "merge-base", "HEAD", MAIN)
+    if base.returncode != 0:
+        pytest.fail(f"HEAD has no history in common with {MAIN}, so the exceptions cannot be compared")
+    return base.stdout.strip()
 
-    def git(*args: str) -> subprocess.CompletedProcess:
-        return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
 
-    if git("rev-parse", "--verify", "--quiet", f"{MAIN}^{{commit}}").returncode != 0:
-        pytest.fail(f"{MAIN} is not in this clone, so {name} cannot be compared with main's: git fetch origin main")
-    if git("cat-file", "-e", f"{MAIN}:{name}").returncode != 0:
+def main_text(name: str, root: Path = REPO) -> str | None:
+    """The file ``name`` where this branch left ``origin/main``, or None when main did not have it there."""
+    base = main_base(root)
+    if git(root, "cat-file", "-e", f"{base}:{name}").returncode != 0:
         return None
-    shown = git("show", f"{MAIN}:{name}")
+    shown = git(root, "show", f"{base}:{name}")
     assert shown.returncode == 0, shown.stderr
     return shown.stdout
 
 
 def main_allow_list(root: Path = REPO) -> dict[str, int] | None:
-    """The list on ``origin/main``, or None while main has none yet (the change that brings the list in)."""
+    """The list at the merge base with ``origin/main``, or None while main has none (the change that brings it in)."""
     text = main_text(ALLOW_LIST, root)
     return None if text is None else parse_allow_list(text)
 
@@ -151,9 +162,9 @@ def widened_entries(ceilings: dict[str, int], main_ceilings: dict[str, int]) -> 
     widened = []
     for path, ceiling in ceilings.items():
         if path not in main_ceilings:
-            widened.append(f"{path}: not listed on {MAIN}")
+            widened.append(f"{path}: not listed at {BASE_NAME}")
         elif ceiling > main_ceilings[path]:
-            widened.append(f"{path}: ceiling {ceiling}, {main_ceilings[path]} on {MAIN}")
+            widened.append(f"{path}: ceiling {ceiling}, {main_ceilings[path]} at {BASE_NAME}")
     return widened
 
 
@@ -196,7 +207,7 @@ def test_the_list_only_shrinks_against_main(ceilings):
     if main_ceilings is None:
         return
     problems = widened_entries(ceilings, main_ceilings)
-    assert not problems, report(problems, f"{ALLOW_LIST} may only shrink against {MAIN}:")
+    assert not problems, report(problems, f"{ALLOW_LIST} may only shrink against {BASE_NAME}:")
 
 
 def test_a_last_line_without_its_newline_counts():
@@ -289,8 +300,8 @@ def test_the_list_may_not_gain_a_path_or_raise_a_ceiling_against_main():
     main = {"a.py": 1200, "b.py": 1200, "c.py": 1300, "d.py": 1100}
     ceilings = {"a.py": 1200, "b.py": 1300, "c.py": 1200, "e.py": 1100}
     assert widened_entries(ceilings, main) == [
-        "b.py: ceiling 1300, 1200 on origin/main",
-        "e.py: not listed on origin/main",
+        "b.py: ceiling 1300, 1200 at the merge base with origin/main",
+        "e.py: not listed at the merge base with origin/main",
     ]
 
 
@@ -322,22 +333,29 @@ def git_repo(root: Path) -> None:
     subprocess.run(["git", "init", "--quiet", "--initial-branch=main", str(root)], check=True)
 
 
+# A throwaway repository's commits: no global hooks, no signing, a fixed author.
+LOCAL_GIT = ["-c", "user.name=size", "-c", "user.email=size@example.com", "-c", "core.hooksPath=/dev/null"]
+LOCAL_GIT += ["-c", "commit.gpgsign=false"]
+
+
+def local_git(root: Path, *args: str) -> str:
+    return subprocess.run(["git", *LOCAL_GIT, *args], cwd=root, check=True, capture_output=True, text=True).stdout
+
+
 def commit_as_main(root: Path, files: dict[str, str]) -> None:
     for name, text in files.items():
         (root / name).write_text(text)
-    identity = [
-        "-c",
-        "user.name=size",
-        "-c",
-        "user.email=size@example.com",
-        "-c",
-        "core.hooksPath=/dev/null",
-        "-c",
-        "commit.gpgsign=false",
-    ]
-    subprocess.run(["git", *identity, "add", "--all"], cwd=root, check=True)
-    subprocess.run(["git", *identity, "commit", "--quiet", "-m", "main"], cwd=root, check=True)
-    subprocess.run(["git", "update-ref", "refs/remotes/origin/main", "HEAD"], cwd=root, check=True)
+    local_git(root, "add", "--all")
+    local_git(root, "commit", "--quiet", "-m", "main")
+    local_git(root, "update-ref", "refs/remotes/origin/main", "HEAD")
+
+
+def main_moves_on_without_the_branch(root: Path, files: dict[str, str]) -> None:
+    """Main gets a new commit after the branch in the working tree was cut from it."""
+    local_git(root, "checkout", "--quiet", "-b", "branch")
+    local_git(root, "checkout", "--quiet", "main")
+    commit_as_main(root, files)
+    local_git(root, "checkout", "--quiet", "branch")
 
 
 def test_without_main_the_comparison_fails_instead_of_passing(tmp_path):
@@ -357,6 +375,24 @@ def test_the_list_on_main_is_read_from_main(tmp_path):
     commit_as_main(tmp_path, {ALLOW_LIST: "1200 billing/services.py saas#1\n"})
     (tmp_path / ALLOW_LIST).write_text("1300 billing/services.py saas#1\n")
     assert main_allow_list(tmp_path) == {"billing/services.py": 1200}
+
+
+def test_a_branch_cut_before_main_lowered_a_ceiling_compares_with_where_it_left_main(tmp_path):
+    git_repo(tmp_path)
+    commit_as_main(tmp_path, {ALLOW_LIST: "1300 billing/services.py saas#1\n"})
+    main_moves_on_without_the_branch(tmp_path, {ALLOW_LIST: "1200 billing/services.py saas#1\n"})
+    assert (tmp_path / ALLOW_LIST).read_text() == "1300 billing/services.py saas#1\n"
+    assert main_allow_list(tmp_path) == {"billing/services.py": 1300}
+
+
+def test_a_branch_with_no_history_in_common_with_main_fails(tmp_path):
+    git_repo(tmp_path)
+    commit_as_main(tmp_path, {ALLOW_LIST: "1200 billing/services.py saas#1\n"})
+    empty_tree = local_git(tmp_path, "hash-object", "-t", "tree", "/dev/null").strip()
+    unrelated = local_git(tmp_path, "commit-tree", empty_tree, "-m", "unrelated").strip()
+    local_git(tmp_path, "update-ref", "refs/remotes/origin/main", unrelated)
+    with pytest.raises(pytest.fail.Exception, match="no history in common"):
+        main_allow_list(tmp_path)
 
 
 def test_new_code_files_count_before_they_are_added_and_ignored_ones_do_not(tmp_path):

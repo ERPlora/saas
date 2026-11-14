@@ -4,7 +4,7 @@ Complexity at most 10 (C901), at most 50 statements (PLR0915), 12 branches (PLR0
 5 arguments (PLR0913, PLR0917). Tests may take more arguments: pytest's fixtures arrive as arguments. A function
 over a limit today carries a ``# noqa`` for it, and RUF100 fails on a ``# noqa`` that no longer silences
 anything, so those exceptions only go away. Neither those ``# noqa`` nor the TypeScript ones in
-``eslint-suppressions.json`` may grow in number against ``origin/main``.
+``eslint-suppressions.json`` may grow in number against the merge base with ``origin/main``.
 """
 
 import json
@@ -17,12 +17,21 @@ from collections.abc import Iterable
 from pathlib import Path
 
 import pytest
-from test_guardrails_size import MAIN, commit_as_main, git_repo, main_text
+from test_guardrails_size import (
+    BASE_NAME,
+    commit_as_main,
+    git_repo,
+    main_base,
+    main_moves_on_without_the_branch,
+    main_text,
+)
 
 REPO = Path(__file__).resolve().parent.parent
 FUNCTION_LIMITS = {"C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR0917"}
 ARGUMENT_LIMITS = {"PLR0913", "PLR0917"}
 SUPPRESSIONS = "eslint-suppressions.json"
+# Split so that this file's own examples are not counted as exceptions of the repository.
+NOQA = "# " + "noqa"
 
 # Ten independent ifs: complexity 11, and no other limit crossed.
 TOO_COMPLEX = (
@@ -77,7 +86,7 @@ def suppressed_limits(text: str) -> Counter:
 
 def widened(counts: Counter, main_counts: Counter) -> list[str]:
     return [
-        f"{rule}: {counts[rule]}, {main_counts[rule]} on {MAIN}"
+        f"{rule}: {counts[rule]}, {main_counts[rule]} at {BASE_NAME}"
         for rule in sorted(counts)
         if counts[rule] > main_counts[rule]
     ]
@@ -90,14 +99,14 @@ def git_grep(root: Path, *args: str) -> list[str]:
 
 
 def silenced_more_than_main(root: Path = REPO) -> list[str] | None:
-    """The limits silenced more often than on main, counted over the whole repository so that moving a function
-    to another file is no new exception; None while main has no function limits (the change that brings them in).
+    """The limits silenced more often than at the merge base with main, counted over the whole repository so that a
+    function moved to another file is no new exception; None while main has no limits (the change that adds them).
     """
     main_pyproject = main_text("pyproject.toml", root)
     if main_pyproject is None or "lint" not in tomllib.loads(main_pyproject).get("tool", {}).get("ruff", {}):
         return None
     counts = silenced_limits(git_grep(root, "--untracked", "-e", "noqa", "--", "*.py"))
-    return widened(counts, silenced_limits(git_grep(root, "-e", "noqa", MAIN, "--", "*.py")))
+    return widened(counts, silenced_limits(git_grep(root, "-e", "noqa", main_base(root), "--", "*.py")))
 
 
 def suppressed_more_than_main(root: Path = REPO) -> list[str] | None:
@@ -166,7 +175,7 @@ def test_tests_may_take_more_arguments_but_not_more_complexity(path):
 
 
 def test_a_noqa_that_silences_nothing_is_reported():
-    assert reported("value = 1  # noqa: C901\n", "billing/sample.py") == {"RUF100"}
+    assert reported(f"value = 1  {NOQA}: C901\n", "billing/sample.py") == {"RUF100"}
 
 
 def test_a_noqa_kept_for_another_linter_is_left_alone():
@@ -181,9 +190,9 @@ def test_a_noqa_kept_for_another_linter_is_left_alone():
 
 def test_the_silenced_limits_are_counted_per_rule():
     lines = [
-        "def a(x):  # noqa: C901, PLR0911 - one grammar",
-        "def b(x):  # noqa: C901",
-        "import os  # noqa: F401",
+        f"def a(x):  {NOQA}: C901, PLR0911 - one grammar",
+        f"def b(x):  {NOQA}: C901",
+        f"import os  {NOQA}: F401",
         "value = 1  # a comment that mentions C901",
     ]
     assert silenced_limits(lines) == Counter({"C901": 2, "PLR0911": 1})
@@ -197,7 +206,10 @@ def test_the_eslint_suppressions_are_counted_per_rule():
 def test_an_exception_more_than_on_main_is_reported():
     counts = Counter({"C901": 3, "PLR0911": 2, "PLR0913": 1})
     main_counts = Counter({"C901": 3, "PLR0911": 1, "PLR0915": 4})
-    assert widened(counts, main_counts) == ["PLR0911: 2, 1 on origin/main", "PLR0913: 1, 0 on origin/main"]
+    assert widened(counts, main_counts) == [
+        "PLR0911: 2, 1 at the merge base with origin/main",
+        "PLR0913: 1, 0 at the merge base with origin/main",
+    ]
 
 
 LIMITS_ON = '[tool.ruff.lint]\nselect = ["C901"]\n'
@@ -205,23 +217,26 @@ LIMITS_ON = '[tool.ruff.lint]\nselect = ["C901"]\n'
 
 def test_a_new_noqa_against_main_is_reported(tmp_path):
     git_repo(tmp_path)
-    commit_as_main(tmp_path, {"pyproject.toml": LIMITS_ON, "a.py": "def a(x):  # noqa: C901\n    return x\n"})
-    (tmp_path / "b.py").write_text("def b(x):  # noqa: C901, PLR0911\n    return x\n")
-    assert silenced_more_than_main(tmp_path) == ["C901: 2, 1 on origin/main", "PLR0911: 1, 0 on origin/main"]
+    commit_as_main(tmp_path, {"pyproject.toml": LIMITS_ON, "a.py": f"def a(x):  {NOQA}: C901\n    return x\n"})
+    (tmp_path / "b.py").write_text(f"def b(x):  {NOQA}: C901, PLR0911\n    return x\n")
+    assert silenced_more_than_main(tmp_path) == [
+        "C901: 2, 1 at the merge base with origin/main",
+        "PLR0911: 1, 0 at the merge base with origin/main",
+    ]
 
 
 def test_a_noqa_moved_to_another_file_is_no_new_exception(tmp_path):
     git_repo(tmp_path)
-    commit_as_main(tmp_path, {"pyproject.toml": LIMITS_ON, "a.py": "def a(x):  # noqa: C901\n    return x\n"})
+    commit_as_main(tmp_path, {"pyproject.toml": LIMITS_ON, "a.py": f"def a(x):  {NOQA}: C901\n    return x\n"})
     (tmp_path / "a.py").write_text("")
-    (tmp_path / "b.py").write_text("def a(x):  # noqa: C901\n    return x\n")
+    (tmp_path / "b.py").write_text(f"def a(x):  {NOQA}: C901\n    return x\n")
     assert silenced_more_than_main(tmp_path) == []
 
 
 def test_before_main_has_function_limits_there_is_nothing_to_compare(tmp_path):
     git_repo(tmp_path)
     commit_as_main(tmp_path, {"pyproject.toml": "[project]\nname = 'saas'\n", "a.py": "x = 1\n"})
-    (tmp_path / "b.py").write_text("def b(x):  # noqa: C901\n    return x\n")
+    (tmp_path / "b.py").write_text(f"def b(x):  {NOQA}: C901\n    return x\n")
     assert silenced_more_than_main(tmp_path) is None
 
 
@@ -231,6 +246,25 @@ def test_a_new_eslint_suppression_against_main_is_reported(tmp_path):
     (tmp_path / SUPPRESSIONS).write_text(
         '{"a.vue": {"complexity": {"count": 1}}, "b.ts": {"complexity": {"count": 1}}}'
     )
-    assert suppressed_more_than_main(tmp_path) == ["complexity: 2, 1 on origin/main"]
+    assert suppressed_more_than_main(tmp_path) == ["complexity: 2, 1 at the merge base with origin/main"]
     (tmp_path / SUPPRESSIONS).write_text("{}")
+    assert suppressed_more_than_main(tmp_path) == []
+
+
+def test_the_test_data_of_this_control_is_not_counted_as_an_exception():
+    own_lines = git_grep(REPO, "--untracked", "-e", "noqa", "--", "tests/test_guardrails_lint.py")
+    assert silenced_limits(own_lines) == Counter()
+
+
+def test_a_branch_cut_before_main_dropped_an_exception_compares_with_where_it_left_main(tmp_path):
+    git_repo(tmp_path)
+    two_silenced = f"def a(x):  {NOQA}: C901\n    return x\n\n\ndef b(x):  {NOQA}: C901\n    return x\n"
+    commit_as_main(
+        tmp_path,
+        {"pyproject.toml": LIMITS_ON, "a.py": two_silenced, SUPPRESSIONS: '{"a.vue": {"complexity": {"count": 2}}}'},
+    )
+    main_moves_on_without_the_branch(
+        tmp_path, {"a.py": "def a(x):\n    return x\n", SUPPRESSIONS: '{"a.vue": {"complexity": {"count": 1}}}'}
+    )
+    assert silenced_more_than_main(tmp_path) == []
     assert suppressed_more_than_main(tmp_path) == []
