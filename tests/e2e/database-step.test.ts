@@ -8,6 +8,7 @@
 // flow: ninguno — test tooling, nothing anyone sees changes
 import { spawn } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer as createHttpServer, type Server } from 'node:http';
 import { createServer } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -52,12 +53,31 @@ case "$statement" in
 esac
 `;
 
+// With FAKE_TAKE_VITE_PORT_ONCE, the first Vite finds its port taken by another process after Playwright saw it free:
+// the window in which another session on the machine took a port of the block. With FAKE_VITE_PORT_TAKEN, every Vite
+// fails as one whose port another process holds.
 const FAKE_PNPM = `#!/bin/sh
 echo "vite" >> "$FAKE_LOG"
+if [ -n "$FAKE_VITE_PORT_TAKEN" ]; then echo "Error: listen EADDRINUSE: address already in use 127.0.0.1:$VITE_DEV_PORT" >&2; exit 1; fi
+if [ -n "$FAKE_TAKE_VITE_PORT_ONCE" ] && mkdir "$FAKE_TAKE_VITE_PORT_ONCE" 2>/dev/null; then
+  node "$FAKE_SQUATTER" "$VITE_DEV_PORT" "$FAKE_TAKE_VITE_PORT_ONCE/pid" </dev/null >/dev/null 2>&1 &
+  while [ ! -s "$FAKE_TAKE_VITE_PORT_ONCE/pid" ]; do sleep 0.1; done
+fi
 exec node "$FAKE_SERVER" "$VITE_DEV_PORT"
 `;
 
-const FAKE_SERVER = `require('node:http').createServer((_, response) => response.end('ok')).listen(Number(process.argv[2]));\n`;
+// On 127.0.0.1, like runserver: on macOS a listen on every address does not collide with another process's on
+// 127.0.0.1, which would then answer Playwright in its place and the run would wait for a server that never comes.
+const FAKE_SERVER = `require('node:http').createServer((_, response) => response.end('ok')).listen(Number(process.argv[2]), '127.0.0.1');\n`;
+
+/** Holds a port without ever answering, so that Playwright keeps waiting for the server that could not open it. */
+const FAKE_SQUATTER = `const { writeFileSync } = require('node:fs');
+const [port, pidFile] = process.argv.slice(2);
+const server = require('node:net').createServer((socket) => socket.destroy());
+server.once('error', (error) => { writeFileSync(pidFile, 'error ' + error.code); process.exit(1); });
+server.listen(Number(port), '127.0.0.1', () => writeFileSync(pidFile, String(process.pid)));
+setTimeout(() => process.exit(0), 60_000);
+`;
 
 const SPEC = `import { test } from '@playwright/test';\ntest('the run got to its specs', () => {});\n`;
 
@@ -86,7 +106,7 @@ function isFree(port: number): Promise<boolean> {
   });
 }
 
-/** A block of ten free ports: other sessions run their stacks and this same test on this machine. */
+/** A block of ten ports free when chosen: other sessions run their stacks and this same test on this machine. */
 async function freeBase(): Promise<number> {
   for (let attempt = 0; attempt < 50; attempt += 1) {
     const base = 30_000 + 10 * Math.floor(Math.random() * 3_000);
@@ -96,20 +116,54 @@ async function freeBase(): Promise<number> {
   throw new Error('No block of ten free ports.');
 }
 
+/** What a run prints when another process took a port of its block after `freeBase` found it free: a server of its
+ *  own could not open it, or Playwright found someone else's server already answering there. */
+const PORT_TAKEN = /EADDRINUSE|is already used, make sure that nothing is running on the port/;
+/** Blocks a run tries before it gives its last result as it is. */
+const BLOCK_ATTEMPTS = 3;
+
 interface Run {
   /** Playwright's exit status; `null` when it was still waiting at RUN_LIMIT_MS. */
   status: number | null;
   output: string;
+  /** The blocks it ran on, in order: one more each time another process took a port of the block. */
+  blocks: number[];
 }
 
 describe("a stack's database step, under Playwright", () => {
   let work: string;
   let base: number;
+  const others: Server[] = [];
+
+  /** Another process's HTTP server on 127.0.0.1:`port`, answering `status` to everything until the test ends. */
+  async function anotherServer(port: number, status: number): Promise<void> {
+    const server = createHttpServer((_, response) => {
+      response.statusCode = status;
+      response.end('not this run');
+    });
+    await new Promise<void>((listening, failed) => {
+      server.once('error', failed);
+      server.listen(port, '127.0.0.1', listening);
+    });
+    others.push(server);
+  }
 
   const log = () => (existsSync(join(work, 'log')) ? readFileSync(join(work, 'log'), 'utf8').trim().split('\n') : []);
 
+  /** A run of Playwright on `base`'s block; on a port another process took meanwhile, again on a new block. */
   async function run(env: Record<string, string>, databaseTimeoutMs?: number): Promise<Run> {
     writeFileSync(join(work, 'playwright.config.ts'), configSource(work, databaseTimeoutMs));
+    const blocks = [base];
+    for (;;) {
+      const { status, output } = await runOnBlock(env);
+      if (!PORT_TAKEN.test(output) || blocks.length === BLOCK_ATTEMPTS) return { status, output, blocks };
+      rmSync(join(work, 'log'), { force: true });
+      base = await freeBase();
+      blocks.push(base);
+    }
+  }
+
+  function runOnBlock(env: Record<string, string>): Promise<Omit<Run, 'blocks'>> {
     return new Promise((done) => {
       const child = spawn(PLAYWRIGHT, ['test', '-c', join(work, 'playwright.config.ts')], {
         cwd: SAAS_DIR,
@@ -121,6 +175,7 @@ describe("a stack's database step, under Playwright", () => {
           VITE_DEV_PORT: String(base + 5),
           FAKE_LOG: join(work, 'log'),
           FAKE_SERVER: join(work, 'server.cjs'),
+          FAKE_SQUATTER: join(work, 'squatter.cjs'),
           ...env,
         },
       });
@@ -135,6 +190,14 @@ describe("a stack's database step, under Playwright", () => {
     });
   }
 
+  /** The run reached its specs on a second block, chosen after `chosen` lost a port. */
+  function ranOnAnotherBlock({ status, output, blocks }: Run, chosen: number): void {
+    expect(status, output).toBe(0);
+    expect(output).toContain('1 passed');
+    expect(blocks).toEqual([chosen, base]);
+    expect(base).not.toBe(chosen);
+  }
+
   beforeEach(async () => {
     base = await freeBase();
     mkdirSync(join(HERE, '.artifacts'), { recursive: true });
@@ -145,10 +208,21 @@ describe("a stack's database step, under Playwright", () => {
       chmodSync(join(work, 'bin', name), 0o755);
     }
     writeFileSync(join(work, 'server.cjs'), FAKE_SERVER);
+    writeFileSync(join(work, 'squatter.cjs'), FAKE_SQUATTER);
     writeFileSync(join(work, 'ran.spec.ts'), SPEC);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await Promise.all(others.splice(0).map((server) => new Promise((closed) => server.close(closed))));
+    const squatter = join(work, 'taken', 'pid');
+    const pid = existsSync(squatter) ? Number(readFileSync(squatter, 'utf8')) : NaN;
+    if (Number.isInteger(pid)) {
+      try {
+        process.kill(pid);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error;
+      }
+    }
     rmSync(work, { recursive: true, force: true });
   });
 
@@ -173,9 +247,10 @@ describe("a stack's database step, under Playwright", () => {
   }, TEST_LIMIT_MS);
 
   it('says at once that a migration failed, why, and starts no server, without waiting for any timeout', async () => {
-    const { status, output } = await run({ FAKE_MIGRATE_FAILS: 'django.db.utils.ProgrammingError: boom' });
+    const { status, output, blocks } = await run({ FAKE_MIGRATE_FAILS: 'django.db.utils.ProgrammingError: boom' });
 
     expect(status, output).toBe(1);
+    expect(blocks).toEqual([base]);
     expect(output).toContain(`Could not migrate the e2e database saas_e2e_${base}`);
     expect(output).toContain('django.db.utils.ProgrammingError: boom');
     expect(output).toContain('Process from config.webServer was not able to start. Exit code: 1');
@@ -194,10 +269,41 @@ describe("a stack's database step, under Playwright", () => {
     expect(log()).toContain('migrate:end');
   }, TEST_LIMIT_MS);
 
-  it('gives a stuck migration a timeout of its own, saying what it was doing, and starts no server', async () => {
-    const { status, output } = await run({ FAKE_MIGRATE_SECONDS: '60' }, 4_000);
+  it('moves to another block when a server of its own cannot open a port another process took after the choice', async () => {
+    const chosen = base;
+
+    ranOnAnotherBlock(await run({ FAKE_TAKE_VITE_PORT_ONCE: join(work, 'taken') }), chosen);
+    expect(log().filter((line) => line.startsWith('migrate:start'))).toEqual([`migrate:start saas_e2e_${base}`]);
+    expect(log().filter((line) => line.startsWith('runserver'))).toEqual(Array.from({ length: 4 }, () => `runserver saas_e2e_${base}`));
+  }, TEST_LIMIT_MS);
+
+  it('moves to another block when Playwright finds another server already answering on a port of it', async () => {
+    const chosen = base;
+    await anotherServer(chosen + 1, 200);
+
+    ranOnAnotherBlock(await run({}), chosen);
+  }, TEST_LIMIT_MS);
+
+  it('moves to another block when another process holds a port of it on 127.0.0.1 only, as a test listening on port 0 does', async () => {
+    const chosen = base;
+    await anotherServer(chosen + 1, 404);
+
+    ranOnAnotherBlock(await run({}), chosen);
+  }, TEST_LIMIT_MS);
+
+  it('gives up after three blocks when each one loses a port, with the error of the last', async () => {
+    const { status, output, blocks } = await run({ FAKE_VITE_PORT_TAKEN: '1' });
 
     expect(status, output).toBe(1);
+    expect(output).toContain(`address already in use 127.0.0.1:${base + 5}`);
+    expect(blocks).toHaveLength(3);
+  }, TEST_LIMIT_MS);
+
+  it('gives a stuck migration a timeout of its own, saying what it was doing, and starts no server', async () => {
+    const { status, output, blocks } = await run({ FAKE_MIGRATE_SECONDS: '60' }, 4_000);
+
+    expect(status, output).toBe(1);
+    expect(blocks).toEqual([base]);
     expect(output).toContain('Timed out waiting 4000ms');
     expect(output).toContain(`[database] database.ts: preparing saas_e2e_${base}`);
     expect(log().filter((line) => line.startsWith('runserver'))).toEqual([]);
