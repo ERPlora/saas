@@ -21,16 +21,8 @@
 </ul>
 <div class="module">
 <table>
-<caption>{% translate "Totals per series" %}</caption>
-<thead>
-<tr>
-<th scope="col">{% translate "Series" %}</th>
-<th scope="col">{% translate "Invoices" %}</th>
-<th scope="col">{% translate "Tax base (€)" %}</th>
-<th scope="col">{% translate "VAT (€)" %}</th>
-<th scope="col">{% translate "Total (€)" %}</th>
-</tr>
-</thead>
+{% translate "Totals per series" as caption %}{% translate "Series" as first %}
+{% include "admin/billing/invoice/_report_table_head.html" with caption=caption first=first only %}
 <tbody>
 <tr><th scope="row">{% translate "Invoices (ERP)" %}</th>{% include "admin/billing/invoice/_report_amounts.html" with row=report.invoices only %}</tr>
 <tr><th scope="row">{% translate "Credit notes (ERPR)" %}</th>{% include "admin/billing/invoice/_report_amounts.html" with row=report.credit_notes only %}</tr>
@@ -40,16 +32,8 @@
 </div>
 <div class="module">
 <table>
-<caption>{% translate "By tax treatment, customer's country and VAT rate" %}</caption>
-<thead>
-<tr>
-<th scope="col">{% translate "Tax treatment · country · VAT rate" %}</th>
-<th scope="col">{% translate "Invoices" %}</th>
-<th scope="col">{% translate "Tax base (€)" %}</th>
-<th scope="col">{% translate "VAT (€)" %}</th>
-<th scope="col">{% translate "Total (€)" %}</th>
-</tr>
-</thead>
+{% translate "By tax treatment, customer's country and VAT rate" as caption %}{% translate "Tax treatment · country · VAT rate" as first %}
+{% include "admin/billing/invoice/_report_table_head.html" with caption=caption first=first only %}
 <tbody>
 {% for row in report.by_tax %}
 <tr>
@@ -64,16 +48,8 @@
 </div>
 <div class="module">
 <table>
-<caption>{% translate "By kind of customer" %}</caption>
-<thead>
-<tr>
-<th scope="col">{% translate "Customer" %}</th>
-<th scope="col">{% translate "Invoices" %}</th>
-<th scope="col">{% translate "Tax base (€)" %}</th>
-<th scope="col">{% translate "VAT (€)" %}</th>
-<th scope="col">{% translate "Total (€)" %}</th>
-</tr>
-</thead>
+{% translate "By kind of customer" as caption %}{% translate "Customer" as first %}
+{% include "admin/billing/invoice/_report_table_head.html" with caption=caption first=first only %}
 <tbody>
 {% for row in report.by_customer %}
 <tr><th scope="row">{{ row.label }}</th>{% include "admin/billing/invoice/_report_amounts.html" with row=row only %}</tr>
