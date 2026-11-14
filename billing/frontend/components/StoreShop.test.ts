@@ -64,6 +64,13 @@ const CATALOGS: Record<string, ReturnType<typeof catalog>> = {
   plaza: catalog('plaza'),
 };
 
+/** Café Central once ERPlora's staff marked it: offered the internal plan, whose card only its catalog brings. */
+const MARKED_CAFE = catalog('cafe', {
+  subscription: FREE_SUBSCRIPTION,
+  offered_plans: ['starter', 'standard', 'payment-test'],
+  internal_plans: [PAYMENT_TEST],
+});
+
 /** `list`: the account's businesses arrive (`result`, by default), nothing arrives yet (`none`), or the stream
  *  is refused (`down`: `/api/live` answers 503). */
 async function setup(
@@ -149,12 +156,7 @@ describe('StoreShop', () => {
   });
 
   it('a business ERPlora marked is offered the internal plan with the card its catalog brings, and buys it', async () => {
-    const marked = catalog('cafe', {
-      subscription: FREE_SUBSCRIPTION,
-      offered_plans: ['starter', 'standard', 'payment-test'],
-      internal_plans: [PAYMENT_TEST],
-    });
-    const s = await setup({ businessId: 'cafe', answer: ({ path }) => (path === '/api/billing/store' ? Response.json(marked) : undefined) });
+    const s = await setup({ businessId: 'cafe', answer: ({ path }) => (path === '/api/billing/store' ? Response.json(MARKED_CAFE) : undefined) });
     expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter', 'Payment Test (internal)']);
     await s.el('plan-payment-test').find('[data-testid="plan-upgrade"]').trigger('click');
     expect(s.wrapper.findComponent(CheckoutModal).props()).toMatchObject({
@@ -165,12 +167,7 @@ describe('StoreShop', () => {
   });
 
   it('the internal plan of one business is never shown for another: each catalog brings its own', async () => {
-    const marked = catalog('cafe', {
-      subscription: FREE_SUBSCRIPTION,
-      offered_plans: ['starter', 'standard', 'payment-test'],
-      internal_plans: [PAYMENT_TEST],
-    });
-    const s = await setup({ businessId: 'cafe', answer: ({ path, query }) => (path === '/api/billing/store' && query.hub_id === 'cafe' ? Response.json(marked) : undefined) });
+    const s = await setup({ businessId: 'cafe', answer: ({ path, query }) => (path === '/api/billing/store' && query.hub_id === 'cafe' ? Response.json(MARKED_CAFE) : undefined) });
     expect(s.el('plan-payment-test').exists()).toBe(true);
     await s.pick('bakery');
     expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter']);
