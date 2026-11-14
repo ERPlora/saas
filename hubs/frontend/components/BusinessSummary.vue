@@ -1,11 +1,11 @@
 <script setup lang="ts">
 // The Summary of a business: four cards.
 //   - Plan: its name, the trial while it lasts, the devices it covers and the apps it turns on at once
-//     (`max_apps`, the cap the Hub applies; from `hubs.plan.list`: the plans on sale, public)
-//     and the people (`seats`, the server's count against the plan's cap). Changing
-//     or cancelling the plan is the Store's (web only): whoever handles the billing gets «Upgrade plan» on
-//     Free and «Change plan» on a paid one, to the Store with this business chosen (BILLING-F07); inside the
-//     apps it says where, without a link.
+//     (`max_apps`, the cap the Hub applies), read from the plan the business carries: never from the plans on
+//     sale (`hubs.plan.list`), which leave out the internal ones; and the people (`seats`, the server's count
+//     against the plan's cap). Changing or cancelling the plan is the Store's (web only): whoever handles the
+//     billing gets «Upgrade plan» on Free and «Change plan» on a paid one, to the Store with this business
+//     chosen (BILLING-F07); inside the apps it says where, without a link.
 //   - Usage: what the Hub measured last night (`business.usage`): the storage of
 //     its files as a percentage of the space of the plan (UsageMeter; never the bytes) and the people
 //     active that day and in the 30 days up to it (UsageCounter); «yesterday» or the day measured. Before
@@ -14,13 +14,13 @@
 // Deleted, only the plan (cancelled with the deletion) and the details are left.
 import { formatDateTime, StatusPill, UsageCounter, UsageMeter } from '@erplora/ui/components';
 import { WebOnly } from '@erplora/ui/shell';
-import { useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, IonCard, IonCardContent } from '@ionic/vue';
-import { computed, onMounted, shallowRef } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { STORE } from '../../../accounts/frontend/paths';
-import type { BusinessDetailOut, PlanOut } from '../../../frontend/sdk-types';
+import { isFree } from '../../../billing/frontend/store';
+import type { BusinessDetailOut } from '../../../frontend/sdk-types';
 import { countryName } from '../regions';
 import { formatUsageDay, isYesterday } from '../usage-day';
 import DeviceAccessCard from './DeviceAccessCard.vue';
@@ -30,38 +30,23 @@ const props = defineProps<{
 }>();
 
 const { t, locale } = useI18n();
-const client = useLiveClient();
-const plans = shallowRef<PlanOut[]>([]);
-
-onMounted(async () => {
-  try {
-    plans.value = (await client.api.call('hubs.plan.list')).plans;
-  } catch {
-    // Without the plans on sale the devices read «—»: the rest of the card is the business's.
-  }
-});
 
 const deleted = computed(() => props.business.status === 'deleting');
 /** What the business uses now: the plan it tries while the trial lasts, else its own. */
 const effective = computed(() => props.business.trial_plan ?? props.business.plan);
-/** The plan on sale the business uses now; none while the plans load or if they could not. */
-const effectivePlan = computed(() => plans.value.find((candidate) => candidate.slug === effective.value?.slug));
 const devices = computed(() => {
-  const plan = effectivePlan.value;
+  const plan = effective.value;
   if (!plan) return '—';
   return plan.max_devices ? String(plan.max_devices) : t('hubs.common.unlimited');
 });
 /** How many apps the business may choose to turn on at once: 0 is no cap. */
 const apps = computed(() => {
-  const plan = effectivePlan.value;
+  const plan = effective.value;
   if (!plan) return '—';
   return plan.max_apps ? String(plan.max_apps) : t('hubs.business.plan.appsUnlimited');
 });
 /** Free is the plan without a price: from it the Store upgrades; from a paid one it changes. */
-const onFree = computed(() => {
-  const plan = plans.value.find((candidate) => candidate.slug === props.business.plan?.slug);
-  return !props.business.plan || (!!plan && Number(plan.price_monthly) === 0 && Number(plan.price_annual) === 0);
-});
+const onFree = computed(() => !props.business.plan || isFree(props.business.plan));
 const toStore = computed(() => `${STORE}/plans?business=${encodeURIComponent(props.business.id)}`);
 const seats = computed(() => props.business.seats);
 const users = computed(() =>
@@ -122,7 +107,7 @@ const dayHint = computed(() =>
             {{ $t('hubs.business.plan.trial', { plan: business.trial_plan.name, date: formatDateTime(business.trial_end, locale) }) }}
           </p>
           <dl class="kv">
-            <div>
+            <div data-testid="summary-plan-devices">
               <dt>{{ $t('hubs.business.plan.devices') }}</dt>
               <dd>{{ devices }}</dd>
             </div>

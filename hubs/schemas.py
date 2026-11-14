@@ -197,8 +197,16 @@ class HubRefOut(Schema):
 
 
 class PlanRefOut(Schema):
+    """The plan a business has, with what it covers: it may be an internal one, which ``hubs.plan.list`` never
+    lists, so a business's page reads its plan here."""
+
     slug: str
     name: str
+    #: 0 is Free (``isFree`` of the Store).
+    price_monthly: Decimal
+    #: As in ``PlanOut``: 0 = unlimited.
+    max_devices: int
+    max_apps: int
 
 
 #: Why a renewal is not paid (``hubs.Subscription.UnpaidReason``).

@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import type { Page, Request } from '@playwright/test';
 
 import { overflowingBoxes } from '../horizontal-overflow';
-import { answerCheckoutStart, businessIdOf, expect, gotoWithCharge, gotoWithCheckout, panelAccount, payInStripe, playStripe, qaAccount, repeatedTop, runSeed, settled, shot, signIn, stripeState, test, toast, VIEWPORTS, watchPageErrors } from './fixtures';
+import { answerCheckoutStart, businessIdOf, djangoPrint, expect, gotoWithCharge, gotoWithCheckout, panelAccount, payInStripe, playStripe, qaAccount, repeatedTop, runSeed, settled, shot, signIn, stripeState, test, toast, VIEWPORTS, watchPageErrors } from './fixtures';
 
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/l2d-shots';
 mkdirSync(SHOTS_DIR, { recursive: true });
@@ -28,6 +28,16 @@ function watchStripeRequests(page: Page): string[] {
     if (/stripe\.com/.test(request.url())) seen.push(request.url());
   });
   return seen;
+}
+
+/** Leaves the seeded business `name` on the plan `slug`, as a paid purchase would (nothing reaches Stripe nor the Hub). */
+function putOnPlan(name: string, slug: string): void {
+  djangoPrint(
+    [
+      'from hubs.models import Plan, Subscription',
+      `Subscription.objects.filter(hub__name="${name}", hub__slug__startswith="e2e-store-").update(plan=Plan.objects.get(slug="${slug}"))`,
+    ].join('\n'),
+  );
 }
 
 /** The sideways scroll of the page on screen, read where Ionic scrolls (the one measure, `overflowingBoxes`). */
@@ -118,6 +128,29 @@ test.describe('store', () => {
     await internal.getByTestId('plan-upgrade').click();
     await expect(page.getByTestId('checkout-modal').getByTestId('stripe-double')).toBeVisible();
     expect(started).toEqual([{ hub_id: marked, plan: 'payment-test', interval: 'month', promo_code: '' }]);
+    expect(errors).toEqual([]);
+  });
+
+  // saas#436 (HUBS-F21): the page of a business on the internal plan said «—» in what the plan covers, for it looked
+  // the plan up among the plans on sale, which leave the internal ones out.
+  test('a business on «Payment Test» reads on its page what that plan covers (saas#436)', async ({ page }) => {
+    const errors = watchPageErrors(page);
+    const marked = await businessIdOf(page.request, 'Prueba ERPlora');
+    putOnPlan('Prueba ERPlora', 'payment-test');
+    try {
+      for (const size of [{ width: 375, height: 667 }, { width: 820, height: 1180 }, { width: 1440, height: 900 }]) {
+        await page.setViewportSize(size);
+        await page.goto(`/dashboard/businesses/${marked}/summary`);
+        await expect(page.getByTestId('summary-plan').locator('.card-title')).toHaveText('Payment Test (internal)');
+        await expect(page.getByTestId('summary-plan-devices').locator('dd')).toHaveText('Unlimited');
+        await expect(page.getByTestId('summary-plan-apps').locator('dd')).toHaveText('40');
+        await expect(page.getByTestId('summary-plan-store')).toHaveText('Change plan');
+        await settled(page);
+        await page.screenshot({ path: shot(`STORE-internal-plan-summary-${size.width}`) });
+      }
+    } finally {
+      putOnPlan('Prueba ERPlora', 'free');
+    }
     expect(errors).toEqual([]);
   });
 

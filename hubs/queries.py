@@ -248,6 +248,17 @@ def plan_card(plan: Plan, language: str) -> dict[str, Any]:
     }
 
 
+def plan_ref(plan: Plan) -> dict[str, Any]:
+    """``plan`` as a business carries it (``PlanRefOut``), in the active language."""
+    return {
+        "slug": plan.slug,
+        "name": plan.translated("name"),
+        "price_monthly": plan.price_monthly,
+        "max_devices": plan.max_devices,
+        "max_apps": plan.max_apps,
+    }
+
+
 # --- Access to a business -------------------------------------------------------------------------
 
 #: Statuses a business is listed with; ``deleted`` (purged) is gone for good.
@@ -720,12 +731,11 @@ def unpaid_of(member: HubMember, subscription: Subscription | None) -> dict[str,
     }
 
 
-def _plan_of(hub: Hub, now: datetime) -> dict[str, str] | None:
+def _plan_of(hub: Hub, now: datetime) -> dict[str, Any] | None:
     subscription = getattr(hub, "subscription", None)
     if subscription is None:
         return None
-    plan = subscription.plan
-    return {"slug": plan.slug, "name": plan.translated("name")}
+    return plan_ref(subscription.plan)
 
 
 def _waiting_invitations(now: datetime):
@@ -863,20 +873,8 @@ def business_detail(member: HubMember) -> dict[str, Any]:
         "purge_after": hub.purge_after,
         "role": member.role,
         "role_label": str(member.get_role_display()),
-        "plan": {
-            "slug": subscription.plan.slug,
-            "name": subscription.plan.translated("name"),
-        }
-        if subscription
-        else None,
-        "trial_plan": (
-            {
-                "slug": subscription.trial_plan.slug,
-                "name": subscription.trial_plan.translated("name"),
-            }
-            if trial_live
-            else None
-        ),
+        "plan": plan_ref(subscription.plan) if subscription else None,
+        "trial_plan": plan_ref(subscription.trial_plan) if trial_live else None,
         "trial_end": subscription.trial_end if trial_live else None,
         "seats": seats_of(hub, now),
         "pending_transfer": (

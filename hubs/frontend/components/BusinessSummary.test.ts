@@ -6,18 +6,15 @@ import { UsageCounter, UsageMeter } from '@erplora/ui/components';
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { describeCall, flush, mountHubs } from '../__tests__/mount-hubs';
+import { flush, mountHubs } from '../__tests__/mount-hubs';
 import BusinessSummary from './BusinessSummary.vue';
 import DeviceAccessCard from './DeviceAccessCard.vue';
 
-const PLANS = {
-  signup_trial_days: 14,
-  cheapest_slug: 'free',
-  plans: [
-    { slug: 'free', name: 'Free', max_users: 3, max_devices: 1, max_apps: 20, price_monthly: '0.00', price_annual: '0.00' },
-    { slug: 'starter', name: 'Starter', max_users: 0, max_devices: 0, max_apps: 0, price_monthly: '19.00', price_annual: '190.00' },
-  ],
-};
+// The plan travels with the business, with what it covers: 0 is unlimited.
+const FREE = { slug: 'free', name: 'Free', price_monthly: '0.00', max_devices: 1, max_apps: 20 };
+const STARTER = { slug: 'starter', name: 'Starter', price_monthly: '19.00', max_devices: 0, max_apps: 0 };
+/** Not on sale: only the business ERPlora's staff marks may buy it (BILLING-F27). */
+const PAYMENT_TEST = { slug: 'payment-test', name: 'Payment Test (internal)', price_monthly: '1.00', max_devices: 0, max_apps: 40 };
 const BUSINESS = {
   id: 'h1',
   slug: 'bakery',
@@ -36,7 +33,7 @@ const BUSINESS = {
   purge_after: null,
   role: 'hub_owner',
   role_label: 'Owner',
-  plan: { slug: 'free', name: 'Free' },
+  plan: FREE,
   trial_plan: null,
   trial_end: null,
   seats: { used: 2, limit: 3 },
@@ -53,7 +50,7 @@ const USAGE = {
 };
 
 beforeEach(() => {
-  // Only the date: the timers stay real (the component awaits the plans).
+  // Only the date: the timers stay real.
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date(2026, 9, 14, 10, 0));
 });
@@ -64,11 +61,11 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-async function setup(business: Record<string, unknown> = {}, locale: 'en' | 'es' = 'en', plans: Response = Response.json(PLANS)) {
+async function setup(business: Record<string, unknown> = {}, locale: 'en' | 'es' = 'en') {
   const m = await mountHubs(BusinessSummary, {
     props: { business: { ...BUSINESS, ...business } },
     locale,
-    api: (call) => (describeCall(call).path === '/api/plans' ? plans : Response.json({})),
+    api: () => Response.json({}),
   });
   await flush();
   const card = (id: string) => m.wrapper.find(`[data-testid="${id}"]`);
@@ -77,15 +74,15 @@ async function setup(business: Record<string, unknown> = {}, locale: 'en' | 'es'
 }
 
 describe('BusinessSummary', () => {
-  it('the plan: its name and what it covers (devices from the plans on sale, people from the business)', async () => {
+  it('the plan: its name and what it covers, all from the business (never the plans on sale)', async () => {
     const s = await setup();
-    expect(s.calls().map((c) => c.path)).toEqual(['/api/plans']);
+    expect(s.calls()).toEqual([]);
     expect(s.card('summary-plan').get('.card-title').text()).toBe('Free');
     expect(s.kv('summary-plan')).toEqual({ Devices: '1', 'Apps turned on at once': '20', Users: '2 of 3' });
   });
 
   it('the apps it turns on at once, from the plan it uses (`max_apps`, the cap the Hub applies): 0 is unlimited', async () => {
-    const trying = await setup({ trial_plan: { slug: 'starter', name: 'Starter' }, trial_end: '2026-10-30T10:00:00Z' });
+    const trying = await setup({ trial_plan: STARTER, trial_end: '2026-10-30T10:00:00Z' });
     expect(trying.kv('summary-plan')).toMatchObject({ 'Apps turned on at once': 'Unlimited' });
   });
 
@@ -93,12 +90,23 @@ describe('BusinessSummary', () => {
     const free = await setup({}, 'es');
     expect(free.kv('summary-plan')).toMatchObject({ 'Apps activadas a la vez': '20' });
     document.body.innerHTML = '';
-    const trying = await setup({ trial_plan: { slug: 'starter', name: 'Starter' }, trial_end: '2026-10-30T10:00:00Z' }, 'es');
+    const trying = await setup({ trial_plan: STARTER, trial_end: '2026-10-30T10:00:00Z' }, 'es');
     expect(trying.kv('summary-plan')).toMatchObject({ 'Apps activadas a la vez': 'Ilimitadas' });
   });
 
-  it('without the plans on sale, what the plan covers reads «—» and the people stay the business’s', async () => {
-    const s = await setup({}, 'en', Response.json({ error: { code: 'internal' } }, { status: 500 }));
+  // saas#436: the plans on sale are the public ones, so an internal plan was not among them and read «—».
+  it('an internal plan, not on sale, says what it covers, and is changed in the Store', async () => {
+    const s = await setup({ plan: PAYMENT_TEST, seats: { used: 2, limit: null } });
+    expect(s.card('summary-plan').get('.card-title').text()).toBe('Payment Test (internal)');
+    expect(s.kv('summary-plan')).toEqual({ Devices: 'Unlimited', 'Apps turned on at once': '40', Users: 'Unlimited' });
+    expect(s.card('summary-plan').get('[data-testid="summary-plan-store"]').text()).toBe('Change plan');
+    document.body.innerHTML = '';
+    const es = await setup({ plan: { ...PAYMENT_TEST, name: 'Prueba de pago (interno)' } }, 'es');
+    expect(es.kv('summary-plan')).toMatchObject({ Dispositivos: 'Ilimitados', 'Apps activadas a la vez': '40' });
+  });
+
+  it('without a plan, what a plan covers reads «—» and the people stay the business’s', async () => {
+    const s = await setup({ plan: null });
     expect(s.kv('summary-plan')).toEqual({ Devices: '—', 'Apps turned on at once': '—', Users: '2 of 3' });
   });
 
@@ -111,7 +119,7 @@ describe('BusinessSummary', () => {
   });
 
   it('a paid plan or a trial covers everyone: unlimited, and the trial says until when', async () => {
-    const s = await setup({ trial_plan: { slug: 'starter', name: 'Starter' }, trial_end: '2026-10-30T10:00:00Z', seats: { used: 2, limit: null } });
+    const s = await setup({ trial_plan: STARTER, trial_end: '2026-10-30T10:00:00Z', seats: { used: 2, limit: null } });
     expect(s.kv('summary-plan')).toEqual({ Devices: 'Unlimited', 'Apps turned on at once': 'Unlimited', Users: 'Unlimited' });
     expect(s.card('summary-plan').get('[data-testid="summary-trial"]').text()).toMatch(/^Trying Starter until Oct 30, 2026/);
   });
@@ -132,7 +140,7 @@ describe('BusinessSummary', () => {
   });
 
   it('a paid plan is changed in the Store', async () => {
-    const s = await setup({ plan: { slug: 'starter', name: 'Starter' } }, 'es');
+    const s = await setup({ plan: STARTER }, 'es');
     expect(s.card('summary-plan').find('[data-testid="summary-plan-store"]').text()).toBe('Cambiar plan');
   });
 
@@ -188,7 +196,7 @@ describe('BusinessSummary', () => {
     expect(low.card('summary-usage').getComponent(UsageMeter).props('hint')).toBe('You are running out of space on the Free plan.');
     document.body.innerHTML = '';
     const full = await setup({
-      trial_plan: { slug: 'starter', name: 'Starter' },
+      trial_plan: STARTER,
       trial_end: '2026-10-30T10:00:00Z',
       usage: { ...USAGE, storage: { ...USAGE.storage, percent: 104 } },
     });

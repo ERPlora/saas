@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:0f81996f870447295e3ea8a03bc7d69ca97698bcb2c947cd55002a56271fec6a -->
+<!-- generated from WORKBOOK.md sha256:30792009892c7cd8dd61a6f53bfec2870f3e108e2b5d0e49e5c07d881a714d74 -->
 
 ## What it is for and who it is for
 
@@ -461,13 +461,13 @@ Status: done
 Actor: owner, administrator
 Screen: Business summary
 Steps:
-1. On the business's page, the header says its status ("Active", "Preparing", "Payment due", "Suspended" or deleted) and the Summary, its plan with the devices, the apps it can have turned on at once and the people against the seats.
+1. On the business's page, the header says its status ("Active", "Preparing", "Payment due", "Suspended" or deleted) and the Summary, its plan with the devices, the apps it can have turned on at once and the people against the seats. It is what the business's own plan covers, also an internal plan that is not on sale, such as "Payment Test (internal)" (BILLING-F27).
 2. The "Usage" card ("How your business is doing in ERPlora") shows the "Storage" used of its plan's space, with a warning when it nears the limit, and the people "Active yesterday" and over the "Last 30 days", with "Yesterday's data: updated every night.".
 3. This card does not show each day's requests, the peak connections or the requests with no room: those are for ERPlora's team, in its admin (HUBS-F22), and for whoever runs the business, in System · Resources of its hub (BASE-F40).
 In: the business and what it measured last night.
 Out: nothing is saved; the page changes by itself when a new night arrives.
-If it fails: without any night measured, "No data yet. The figures arrive every night, from the first one after the business is created."; with data of a day before yesterday, "Data from …: updated every night.". A manager or an employee do not see the business's page, only "Open".
-Involved: the business (BASE-F40: measures its usage and shows those figures to whoever runs it)
+If it fails: a business without a plan reads "—" in the devices and the apps. Without any night measured, "No data yet. The figures arrive every night, from the first one after the business is created."; with data of a day before yesterday, "Data from …: updated every night.". A manager or an employee do not see the business's page, only "Open".
+Involved: the business (BASE-F40: measures its usage and shows those figures to whoever runs it), billing (BILLING-F27: the internal plan the staff lets a business buy)
 
 ### HUBS-F22 Collect every night the usage of each business
 Status: done

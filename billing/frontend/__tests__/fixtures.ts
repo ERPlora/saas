@@ -18,7 +18,7 @@ export function businessRow(id: string, name: string, extra: Partial<BusinessRow
     host: `${id}.localhost:8000`,
     status: 'active',
     status_label: 'Active',
-    plan: { slug: 'starter', name: 'Starter' },
+    plan: { slug: 'starter', name: 'Starter', price_monthly: '29.99', max_devices: 0, max_apps: 0 },
     role: 'hub_owner',
     role_label: 'Owner',
     last_opened_at: null,
@@ -40,7 +40,9 @@ export function businessRow(id: string, name: string, extra: Partial<BusinessRow
 }
 
 export const BAKERY = businessRow('bakery', 'Panadería López');
-export const CAFE = businessRow('cafe', 'Café Central', { plan: { slug: 'free', name: 'Free' } });
+export const CAFE = businessRow('cafe', 'Café Central', {
+  plan: { slug: 'free', name: 'Free', price_monthly: '0.00', max_devices: 1, max_apps: 0 },
+});
 export const PLAZA = businessRow('plaza', 'Bar La Plaza', {
   status: 'past_due',
   status_label: 'Payment pending',

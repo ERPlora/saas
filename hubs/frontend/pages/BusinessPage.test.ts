@@ -48,7 +48,7 @@ const BUSINESS = {
   purge_after: null,
   role: 'hub_owner',
   role_label: 'Owner',
-  plan: { slug: 'starter', name: 'Starter' },
+  plan: { slug: 'starter', name: 'Starter', price_monthly: '19.00', max_devices: 0, max_apps: 40 },
   trial_plan: null,
   trial_end: null,
   seats: { used: 4, limit: null },
