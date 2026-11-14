@@ -62,26 +62,30 @@ const trying = computed(() => {
   return Date.parse(subscription.trial_end) > Date.now();
 });
 
+/** A paid plan without an annual price (the internal one) is sold by the month only, as a module without one is. */
+const monthlyOnly = computed(() => !free.value && Number(props.plan.price_annual) === 0);
+
 /** The one button of the card, whether it works now, and why not. */
 const action = computed<{ kind: Action; disabled: boolean; hint: string } | null>(() => {
-  const payFirst = props.block ? t('billing.plans.payFirst') : '';
+  const unpaid = props.block ? t('billing.plans.payFirst') : '';
+  const payFirst = unpaid || (props.period === 'year' && monthlyOnly.value ? t('billing.modules.monthlyOnly') : '');
   if (free.value) {
     if (current.value || !paying.value || cancelling.value) return null;
     return { kind: 'downgrade', disabled: false, hint: '' };
   }
   if (current.value && paying.value) {
-    if (cancelling.value) return { kind: 'keep', disabled: !!props.block, hint: payFirst };
+    if (cancelling.value) return { kind: 'keep', disabled: !!props.block, hint: unpaid };
     if (scheduled.value) return { kind: 'keep', disabled: false, hint: '' };
-    if (props.period !== props.subscription?.billing_interval) return { kind: 'switch', disabled: !!props.block, hint: payFirst };
+    if (props.period !== props.subscription?.billing_interval) return { kind: 'switch', disabled: !!payFirst, hint: payFirst };
     return null;
   }
   if (paying.value) {
     if (cancelling.value) return { kind: 'change', disabled: true, hint: t('billing.plans.keepFirst') };
     const waiting = scheduled.value;
     if (waiting && waiting.plan === props.plan.slug && waiting.interval === props.period) return null;
-    return { kind: 'change', disabled: !!props.block, hint: payFirst };
+    return { kind: 'change', disabled: !!payFirst, hint: payFirst };
   }
-  return { kind: 'upgrade', disabled: !!props.block, hint: payFirst };
+  return { kind: 'upgrade', disabled: !!payFirst, hint: payFirst };
 });
 
 const label = computed(() => {
@@ -114,7 +118,7 @@ const ICONS: Record<Action, string> = {
 
 const price = computed(() => {
   if (free.value) return { amount: formatEuros(0, locale.value), suffix: t('billing.plans.forever') };
-  if (props.period === 'year') {
+  if (props.period === 'year' && !monthlyOnly.value) {
     return {
       amount: formatEuros(props.plan.price_annual, locale.value),
       suffix: t('billing.plans.perYear', { monthly: formatEuros(Number(props.plan.price_annual) / 12, locale.value) }),
