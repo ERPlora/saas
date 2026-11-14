@@ -6,7 +6,8 @@ policy through the functions below. Nothing here asks VIES nor writes: a query r
 
 The Billing section: ``billing.invoice.{list,get,pdf,csv}`` (ERPlora's invoices; the PDF is asked
 to the platform hub), ``billing.subscription.list`` and ``billing.payment_method.get`` (the card, asked to
-Stripe and kept a few minutes).
+Stripe and kept a few minutes). The admin's billing report (``billing_report``) sums what was invoiced in a month,
+a quarter or a year, and its Excel shares the panel's CSV writer (``invoices_csv``).
 """
 
 import logging
@@ -1284,12 +1285,12 @@ def _totals(row: dict | None) -> ReportTotals:
     )
 
 
-AMOUNTS = {"net": Sum("net_cents"), "tax": Sum("tax_cents"), "total": Sum("total_cents")}
+_REPORT_SUMS = {"net": Sum("net_cents"), "tax": Sum("tax_cents"), "total": Sum("total_cents")}
 
 
 def billing_report(period: ReportPeriod) -> BillingReport:
     counted = report_invoices(period).order_by()
-    per_kind = {row["kind"]: row for row in counted.values("kind").annotate(invoices=Count("id"), **AMOUNTS)}
+    per_kind = {row["kind"]: row for row in counted.values("kind").annotate(invoices=Count("id"), **_REPORT_SUMS)}
     invoices = _totals(per_kind.get(Invoice.Kind.INVOICE))
     credit_notes = _totals(per_kind.get(Invoice.Kind.CREDIT_NOTE))
     net = ReportTotals(
@@ -1306,7 +1307,7 @@ def billing_report(period: ReportPeriod) -> BillingReport:
             country=F("invoice__payer_country"),
         )
         .values("treatment", "country", "tax_rate")
-        .annotate(invoices=Count("invoice", distinct=True), **AMOUNTS)
+        .annotate(invoices=Count("invoice", distinct=True), **_REPORT_SUMS)
         .order_by()
     )
     order = [code for code, _label in TAX_TREATMENTS]

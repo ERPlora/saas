@@ -13,7 +13,8 @@ ERPlora's invoices are read-only too: recorded from what Stripe charged and issu
 record sent to the AEAT is never modified (a credit note corrects it). Their one action, «Send again to the
 platform hub», posts them through ``billing.services.post_platform_invoice`` (idempotent on the Hub) and says
 what the Hub answered. Its page links the PDF the platform hub issued, asked when the staff downloads it, as
-the account's «Download PDF».
+the account's «Download PDF». From the list, «Billing report» shows what was invoiced in a month, a quarter or a
+year for the accountant, and downloads it as an Excel; it is read for whoever may read invoices.
 """
 
 import io
