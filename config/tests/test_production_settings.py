@@ -57,14 +57,16 @@ AWS_ENV = {
 IGNORE_DOTENV = "import decouple; decouple.RepositoryEnv = lambda *args, **kwargs: decouple.RepositoryEmpty()"
 
 
+def bare_environment() -> dict[str, str]:
+    """What a fresh interpreter needs from the shell to start, and nothing else a developer exports."""
+    return {key: os.environ[key] for key in ("PATH", "HOME", "LANG") if key in os.environ}
+
+
 def _run(code: str, env: dict[str, str]) -> subprocess.CompletedProcess:
-    minimal = {
-        key: os.environ[key] for key in ("PATH", "HOME", "LANG") if key in os.environ
-    }
     return subprocess.run(
         [sys.executable, "-c", f"{IGNORE_DOTENV}\n{code}"],
         cwd=SAAS_NEXT,
-        env={**minimal, **env},
+        env={**bare_environment(), **env},
         capture_output=True,
         text=True,
         check=False,
