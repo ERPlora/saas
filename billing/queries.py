@@ -6,10 +6,12 @@ policy through the functions below. Nothing here asks VIES nor writes: a query r
 
 The Billing section: ``billing.invoice.{list,get,pdf,csv}`` (ERPlora's invoices; the PDF is asked
 to the platform hub), ``billing.subscription.list`` and ``billing.payment_method.get`` (the card, asked to
-Stripe and kept a few minutes).
+Stripe and kept a few minutes). The admin's billing report (``billing_report``) sums what was invoiced in a month,
+a quarter or a year, and its Excel shares the panel's CSV writer (``invoices_csv``).
 """
 
 import logging
+from calendar import monthrange
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -17,10 +19,11 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.db import DatabaseError, transaction
-from django.db.models import Q, Sum
+from django.db.models import Count, F, Q, Sum, Value
 from django.utils import timezone
 from django.utils.text import get_text_list
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from django_ratelimit.core import is_ratelimited
 from live.context import OperationContext
 from live.errors import Conflict, OperationError, Unauthorized
@@ -42,6 +45,7 @@ from billing.models import (
     normalise_promo_code,
 )
 from billing.money import from_cents, to_cents
+from billing.nif import is_legal_person_nif, is_spanish_tax_id, normalise_nif
 from hubs.models import Plan
 from billing.schemas import PromoCheckIn, PromoCheckOut, TaxPreviewIn, TaxPreviewOut
 from billing.schemas import HubIn, PlanCancelPreviewOut, StoreCatalogIn, StoreCatalogOut
@@ -53,11 +57,11 @@ import io
 
 from django.core.cache import cache
 from django.db.models import Subquery
-from django.db.models.functions import Coalesce, TruncDate
+from django.db.models.functions import Coalesce, NullIf, TruncDate
 from django.utils import formats, translation
 from live.errors import NotFound
 
-from billing.models import PaymentFailure, PlanChangeSchedule
+from billing.models import TAX_TREATMENTS, InvoiceLine, PaymentFailure, PlanChangeSchedule
 from billing.schemas import (
     InvoiceByIdIn,
     InvoiceDetailOut,
@@ -73,6 +77,7 @@ from billing.schemas import (
 from billing import stripe_service
 from hubs import hub_client
 from hubs.hub_client import HubRefused, HubUnavailable
+from hubs.countries import PAYER_COUNTRY_NAMES
 from hubs.models import Hub
 
 logger = logging.getLogger("billing.queries")
@@ -1067,6 +1072,59 @@ def _csv_amount(cents: int, separator: str) -> str:
     return f"{from_cents(cents):.2f}".replace(".", separator)
 
 
+def _csv_rate(rate: Decimal, separator: str) -> str:
+    return f"{rate:.2f}".replace(".", separator)
+
+
+def _csv_columns() -> dict:
+    """Every column an invoice export can carry: its header and how an invoice fills its cell (given the language's
+    decimal separator). Built under the export's language, so the headers come out translated."""
+    return {
+        "number": (_("Invoice"), lambda invoice, sep: _csv_text(invoice.number or invoice.stripe_number)),
+        "date": (_("Date"), lambda invoice, sep: _date_of(invoice).isoformat()),
+        "business": (_("Business"), lambda invoice, sep: _csv_text(invoice.business_name)),
+        "payer": (_("Payer"), lambda invoice, sep: _csv_text(invoice.payer_name)),
+        "tax_id": (_("Tax ID"), lambda invoice, sep: _csv_text(invoice.payer_tax_id)),
+        "country": (_("Country"), lambda invoice, sep: _csv_text(invoice.payer_country)),
+        "treatment": (_("Tax treatment"), lambda invoice, sep: _csv_text(str(invoice.get_tax_treatment_display()))),
+        "rate": (_("VAT %"), lambda invoice, sep: _csv_rate(invoice.tax_rate, sep)),
+        "net": (_("Tax base"), lambda invoice, sep: _csv_amount(invoice.net_cents, sep)),
+        "tax": (_("VAT"), lambda invoice, sep: _csv_amount(invoice.tax_cents, sep)),
+        "total": (_("Total"), lambda invoice, sep: _csv_amount(invoice.total_cents, sep)),
+        "currency": (_("Currency"), lambda invoice, sep: _csv_text(invoice.currency)),
+        "payment": (_("Payment"), lambda invoice, sep: _csv_text(str(Invoice.PaymentStatus(invoice.payment_status).label))),
+        "status": (_("Status"), lambda invoice, sep: _csv_text(str(Invoice.FiscalStatus(invoice.fiscal_status).label))),
+    }
+
+
+#: The panel's «Download Excel».
+ACCOUNT_CSV_COLUMNS = ("number", "date", "business", "net", "tax", "total", "currency", "payment", "status")
+#: The admin's billing report: the panel's columns plus what the accountant needs for forms 303, 349 and 369.
+REPORT_CSV_COLUMNS = ("number", "date", "business", "payer", "tax_id", "country", "treatment", "rate", "net", "tax",
+                      "total", "currency", "payment", "status")
+
+
+def invoices_csv(invoices, *, columns: tuple[str, ...], language: str, filename: str) -> dict:
+    """The invoices as CSV for the accountant's Excel.
+
+    UTF-8 with its BOM, so Excel reads the accents; in a language that writes a decimal comma (Spanish) the
+    columns are split by «;» and the amounts carry the comma, as Excel expects there; elsewhere «,» and «.».
+    Dates in ISO (Excel reads them in every language)."""
+    with translation.override(language):
+        separator = formats.get_format("DECIMAL_SEPARATOR", lang=language)
+        chosen = [_csv_columns()[column] for column in columns]
+        buffer = io.StringIO()
+        writer = csv.writer(buffer, delimiter=";" if separator == "," else ",")
+        writer.writerow([header for header, _cell in chosen])
+        for invoice in invoices.iterator():
+            writer.writerow([cell(invoice, separator) for _header, cell in chosen])
+    return {
+        "filename": filename,
+        "content_type": "text/csv; charset=utf-8",
+        "content": ("\ufeff" + buffer.getvalue()).encode("utf-8"),
+    }
+
+
 @operation(
     "billing.invoice.csv",
     kind="query",
@@ -1077,39 +1135,216 @@ def _csv_amount(cents: int, separator: str) -> str:
     ai=INTERNAL,  # file
 )
 def invoice_csv(ctx: OperationContext, data: InvoiceFilterIn) -> dict:
-    """«Download Excel»: the invoices the filters show, all of them, as CSV for the accountant.
-
-    UTF-8 with its BOM, so Excel reads the accents; in a language that writes a decimal comma (Spanish) the
-    columns are split by «;» and the amounts carry the comma, as Excel expects there; elsewhere «,» and «.».
-    Dates in ISO (Excel reads them in every language)."""
+    """«Download Excel»: the invoices the filters show, all of them, as CSV for the accountant."""
     user = _billing_account(ctx)
-    with translation.override(ctx.language):
-        separator = formats.get_format("DECIMAL_SEPARATOR", lang=ctx.language)
-        buffer = io.StringIO()
-        writer = csv.writer(buffer, delimiter=";" if separator == "," else ",")
-        writer.writerow(
-            [_("Invoice"), _("Date"), _("Business"), _("Tax base"), _("VAT"), _("Total"), _("Currency"),
-             _("Payment"), _("Status")]
+    return invoices_csv(
+        _filtered_invoices(user, data),
+        columns=ACCOUNT_CSV_COLUMNS,
+        language=ctx.language,
+        filename=f"erplora-invoices-{timezone.localdate().isoformat()}.csv",
+    )
+
+
+# --- The billing report of the admin -------------------------------------------------------------------
+#
+# What ERPlora invoiced in a month, a quarter or a year, for the accountant: only invoices that were collected
+# and issued by the platform hub count, on their issue date. A credit note is negative, so the net is a plain sum.
+
+
+@dataclass(frozen=True)
+class ReportPeriod:
+    year: int
+    period: str
+    start: date
+    end: date
+    #: How the period is named in the file: ``2026``, ``2026-Q3`` or ``2026-08``.
+    key: str
+
+
+def report_period(year: int, period: str) -> ReportPeriod:
+    """``period`` is ``year``, a quarter (``q1``…``q4``) or a month (``m1``…``m12``); anything else is a
+    ``ValueError``."""
+    if period == "year":
+        return ReportPeriod(year, period, date(year, 1, 1), date(year, 12, 31), f"{year}")
+    kind, number = period[:1], period[1:]
+    if not number.isdigit():
+        raise ValueError(f"Unknown report period: {period!r}")
+    if kind == "q" and 1 <= int(number) <= 4:
+        first = 3 * int(number) - 2
+        last = first + 2
+        return ReportPeriod(
+            year, period, date(year, first, 1), date(year, last, monthrange(year, last)[1]), f"{year}-Q{number}"
         )
-        for invoice in _filtered_invoices(user, data).iterator():
-            writer.writerow(
-                [
-                    _csv_text(invoice.number or invoice.stripe_number),
-                    _date_of(invoice).isoformat(),
-                    _csv_text(invoice.business_name),
-                    _csv_amount(invoice.net_cents, separator),
-                    _csv_amount(invoice.tax_cents, separator),
-                    _csv_amount(invoice.total_cents, separator),
-                    _csv_text(invoice.currency),
-                    _csv_text(str(Invoice.PaymentStatus(invoice.payment_status).label)),
-                    _csv_text(str(Invoice.FiscalStatus(invoice.fiscal_status).label)),
-                ]
-            )
-    return {
-        "filename": f"erplora-invoices-{timezone.localdate().isoformat()}.csv",
-        "content_type": "text/csv; charset=utf-8",
-        "content": ("\ufeff" + buffer.getvalue()).encode("utf-8"),
-    }
+    if kind == "m" and 1 <= int(number) <= 12:
+        month = int(number)
+        return ReportPeriod(
+            year, period, date(year, month, 1), date(year, month, monthrange(year, month)[1]), f"{year}-{month:02d}"
+        )
+    raise ValueError(f"Unknown report period: {period!r}")
+
+
+def quarter_of(day: date) -> ReportPeriod:
+    return report_period(day.year, f"q{(day.month - 1) // 3 + 1}")
+
+
+@dataclass(frozen=True)
+class ReportTotals:
+    invoices: int
+    net_cents: int
+    tax_cents: int
+    total_cents: int
+
+    @property
+    def net(self) -> Decimal:
+        return from_cents(self.net_cents)
+
+    @property
+    def tax(self) -> Decimal:
+        return from_cents(self.tax_cents)
+
+    @property
+    def total(self) -> Decimal:
+        return from_cents(self.total_cents)
+
+
+@dataclass(frozen=True)
+class ReportTaxRow(ReportTotals):
+    treatment: str
+    country: str
+    rate: Decimal
+
+    @property
+    def treatment_label(self) -> str:
+        return dict(TAX_TREATMENTS).get(self.treatment, self.treatment)
+
+    @property
+    def country_name(self) -> str:
+        return PAYER_COUNTRY_NAMES.get(self.country, self.country)
+
+
+#: The kind of customer, told from the tax ID the invoice carries (there is no «company» flag): a Spanish tax ID
+#: of a legal person or any tax ID from abroad is a company; a Spanish one of a natural person (DNI or NIE) is a
+#: self-employed person or an individual with a tax ID; no tax ID, an individual.
+CUSTOMER_KINDS = {
+    "company": gettext_lazy("Company"),
+    "self_employed": gettext_lazy("Self-employed or individual with a Spanish tax ID"),
+    "individual": gettext_lazy("Individual without a tax ID"),
+}
+
+
+@dataclass(frozen=True)
+class ReportCustomerRow(ReportTotals):
+    kind: str
+
+    @property
+    def label(self) -> str:
+        return CUSTOMER_KINDS[self.kind]
+
+
+@dataclass(frozen=True)
+class BillingReport:
+    period: ReportPeriod
+    invoices: ReportTotals
+    credit_notes: ReportTotals
+    net: ReportTotals
+    by_tax: list[ReportTaxRow]
+    by_customer: list[ReportCustomerRow]
+    #: Collected in the period but not issued yet (being issued, or rejected by the platform hub): not counted.
+    not_issued: list[str]
+
+
+def customer_kind(country: str, tax_id: str) -> str:
+    nif = normalise_nif(tax_id)
+    if not nif:
+        return "individual"
+    if (country or "").upper() in ("", "ES"):
+        if nif.startswith("ES") and is_spanish_tax_id(nif[2:]):
+            nif = nif[2:]
+        return "company" if is_legal_person_nif(nif) else "self_employed"
+    return "company"
+
+
+def _period_invoices(period: ReportPeriod):
+    return Invoice.objects.filter(
+        issued_on__gte=period.start, issued_on__lte=period.end, payment_status=Invoice.PaymentStatus.PAID
+    )
+
+
+def report_invoices(period: ReportPeriod):
+    """The invoices the report counts: collected and issued, with their issue date in the period."""
+    return _period_invoices(period).filter(fiscal_status__in=ISSUED_STATUSES).order_by("issued_on", "series", "sequence")
+
+
+def _totals(row: dict | None) -> ReportTotals:
+    row = row or {}
+    return ReportTotals(
+        invoices=row.get("invoices", 0),
+        net_cents=int(row.get("net") or 0),
+        tax_cents=int(row.get("tax") or 0),
+        total_cents=int(row.get("total") or 0),
+    )
+
+
+_REPORT_SUMS = {"net": Sum("net_cents"), "tax": Sum("tax_cents"), "total": Sum("total_cents")}
+
+
+def billing_report(period: ReportPeriod) -> BillingReport:
+    counted = report_invoices(period).order_by()
+    per_kind = {row["kind"]: row for row in counted.values("kind").annotate(invoices=Count("id"), **_REPORT_SUMS)}
+    invoices = _totals(per_kind.get(Invoice.Kind.INVOICE))
+    credit_notes = _totals(per_kind.get(Invoice.Kind.CREDIT_NOTE))
+    net = ReportTotals(
+        invoices=invoices.invoices + credit_notes.invoices,
+        net_cents=invoices.net_cents + credit_notes.net_cents,
+        tax_cents=invoices.tax_cents + credit_notes.tax_cents,
+        total_cents=invoices.total_cents + credit_notes.total_cents,
+    )
+    # As the platform hub received each line: one without its own treatment carries the invoice's.
+    lines = (
+        InvoiceLine.objects.filter(invoice__in=counted)
+        .annotate(
+            treatment=Coalesce(NullIf("tax_treatment", Value("")), "invoice__tax_treatment"),
+            country=F("invoice__payer_country"),
+        )
+        .values("treatment", "country", "tax_rate")
+        .annotate(invoices=Count("invoice", distinct=True), **_REPORT_SUMS)
+        .order_by()
+    )
+    order = [code for code, _label in TAX_TREATMENTS]
+    by_tax = sorted(
+        (
+            ReportTaxRow(**vars(_totals(row)), treatment=row["treatment"], country=row["country"], rate=row["tax_rate"])
+            for row in lines
+        ),
+        key=lambda row: (order.index(row.treatment) if row.treatment in order else len(order), row.country, row.rate),
+    )
+    per_customer = {kind: [0, 0, 0, 0] for kind in CUSTOMER_KINDS}
+    for country, tax_id, net_cents, tax_cents, total_cents in counted.values_list(
+        "payer_country", "payer_tax_id", "net_cents", "tax_cents", "total_cents"
+    ):
+        sums = per_customer[customer_kind(country, tax_id)]
+        sums[0] += 1
+        sums[1] += net_cents
+        sums[2] += tax_cents
+        sums[3] += total_cents
+    by_customer = [ReportCustomerRow(*sums, kind=kind) for kind, sums in per_customer.items()]
+    not_issued = list(
+        _period_invoices(period)
+        .exclude(fiscal_status__in=ISSUED_STATUSES)
+        .order_by("issued_on", "series", "sequence")
+        .values_list("number", flat=True)
+    )
+    return BillingReport(period, invoices, credit_notes, net, by_tax, by_customer, not_issued)
+
+
+def billing_report_csv(period: ReportPeriod, language: str) -> dict:
+    """The report's «Download Excel»: one row per invoice it counts."""
+    return invoices_csv(
+        report_invoices(period),
+        columns=REPORT_CSV_COLUMNS,
+        language=language,
+        filename=f"erplora-invoices-{period.key}.csv",
+    )
 
 
 # --- Subscriptions -----------------------------------------------------------------------------------

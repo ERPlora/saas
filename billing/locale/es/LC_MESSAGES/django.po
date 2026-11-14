@@ -2044,3 +2044,142 @@ msgstr "Factura sin pagar, sigue pendiente"
 #: queries.py
 msgid "and"
 msgstr "y"
+
+# The billing report of the admin.
+#: admin.py
+msgid "Year"
+msgstr "Año"
+
+#: admin.py
+msgid "Period"
+msgstr "Periodo"
+
+#: admin.py
+msgid "Whole year"
+msgstr "Año completo"
+
+#: admin.py
+msgid "First quarter"
+msgstr "Primer trimestre"
+
+#: admin.py
+msgid "Second quarter"
+msgstr "Segundo trimestre"
+
+#: admin.py
+msgid "Third quarter"
+msgstr "Tercer trimestre"
+
+#: admin.py
+msgid "Fourth quarter"
+msgstr "Cuarto trimestre"
+
+#: admin.py
+#, python-format
+msgid "Collected in this period but not issued yet, so not counted: %(invoices)s"
+msgstr "Cobradas en este periodo pero aún sin emitir, así que no se cuentan: %(invoices)s"
+
+#: admin.py templates/admin/billing/invoice/change_list.html
+msgid "Billing report"
+msgstr "Informe de facturación"
+
+#: queries.py
+msgid "Payer"
+msgstr "Pagador"
+
+#: queries.py
+msgid "Tax ID"
+msgstr "NIF"
+
+#: queries.py
+msgid "Country"
+msgstr "País"
+
+#: queries.py
+msgid "Tax treatment"
+msgstr "Tratamiento del IVA"
+
+#: queries.py
+msgid "VAT %"
+msgstr "% IVA"
+
+#: queries.py
+msgid "Company"
+msgstr "Empresa"
+
+#: queries.py
+msgid "Self-employed or individual with a Spanish tax ID"
+msgstr "Autónomo o particular con NIF español"
+
+#: queries.py
+msgid "Individual without a tax ID"
+msgstr "Particular sin NIF"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Tax treatment · country · VAT rate"
+msgstr "Tratamiento · país · tipo de IVA"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Show"
+msgstr "Ver"
+
+#: templates/admin/billing/invoice/report.html
+#, python-format
+msgid "Invoices collected and issued from %(start)s to %(end)s, by their issue date."
+msgstr "Facturas cobradas y emitidas del %(start)s al %(end)s, por su fecha de expedición."
+
+#: templates/admin/billing/invoice/report.html
+msgid "Download Excel"
+msgstr "Descargar Excel"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Totals per series"
+msgstr "Totales por serie"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Series"
+msgstr "Serie"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Invoices"
+msgstr "Facturas"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Tax base (€)"
+msgstr "Base imponible (€)"
+
+#: templates/admin/billing/invoice/report.html
+msgid "VAT (€)"
+msgstr "IVA (€)"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Total (€)"
+msgstr "Total (€)"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Invoices (ERP)"
+msgstr "Facturas (ERP)"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Credit notes (ERPR)"
+msgstr "Rectificativas (ERPR)"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Net"
+msgstr "Neto"
+
+#: templates/admin/billing/invoice/report.html
+msgid "By tax treatment, customer's country and VAT rate"
+msgstr "Por tratamiento del IVA, país del cliente y tipo de IVA"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Nothing was invoiced in this period."
+msgstr "No se facturó nada en este periodo."
+
+#: templates/admin/billing/invoice/report.html
+msgid "By kind of customer"
+msgstr "Por tipo de cliente"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Customer"
+msgstr "Cliente"
