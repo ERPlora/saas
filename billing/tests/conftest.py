@@ -2,6 +2,7 @@
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from live.context import OperationContext, Scope
 from live.meta import all_live_app_configs, permissions_for_role
 
@@ -219,3 +220,18 @@ def pay(hub, *, plan="starter", interval="month", modules=(), status="active", c
         ),
     )
     return Hub.objects.select_related("billing_profile").get(pk=hub.pk)
+
+
+@pytest.fixture
+def staff_client(client):
+    """The client signed in as a superuser of the admin."""
+    client.force_login(get_user_model().objects.create_superuser(email="root@example.com", password="x"))
+    return client
+
+
+def staff_with(*codenames):
+    """A member of the staff with only these permissions of the admin."""
+    user = get_user_model().objects.create_user(email=f"{'-'.join(codenames) or 'none'}@example.com", password="x",
+                                                is_staff=True)
+    user.user_permissions.add(*Permission.objects.filter(codename__in=codenames))
+    return user
