@@ -61,10 +61,12 @@ ALWAYS = ("hubs.business.list", "assistant.docs.search")
 #: Store is one and is «la tienda» alone (its screen's name, ``app_words``), and the English panel calls it «Store».
 #: «Cuenta» needs no group here: it is the Account screen's name, so it already names the person's account. Rejecting a
 #: business or an invitation offered to the person is declining it: no tool of the panel has a «reject» action.
+#: Withdrawing an invitation or an offer the person sent is cancelling it: none has a «withdraw» action either.
 SYNONYMS = (
     ("negocio", "business", "shop", "mi tienda", "mis tiendas", "nuestra tienda", "otra tienda", "nueva tienda",
      "tienda nueva", "tienda vieja"),
     ("decline", "reject", "rechazar"),
+    ("cancel", "withdraw", "retirar"),
 )
 #: The tool a how-to question («how do I…?», «¿cómo invito…?») is for (``relevant``'s ``howto``): the search in
 #: ERPlora's documentation, which then reaches it on being such a question, not only on being always offered.

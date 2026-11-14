@@ -39,7 +39,7 @@ BLOCK_A = [
 ]
 #: What the panel's words name (``base.assistant.SYNONYMS``), right after what is always offered: a «tienda» that is
 #: the person's, another, new or old is one of their businesses; «la tienda» alone is the panel's Store. Rejecting a
-#: business or an invitation offered to the person is declining it.
+#: business or an invitation offered to the person is declining it; withdrawing one the person sent is cancelling it.
 PANEL_WORDS = [
     ("es", "borra mi tienda de pruebas", "hubs.business.delete"),
     ("es", "quiero abrir otra tienda", "hubs.business.create"),
@@ -50,6 +50,10 @@ PANEL_WORDS = [
     ("en", "reject Luis's invitation", "hubs.invitation.decline"),
     ("es", "rechaza el traspaso de Marta", "hubs.ownership.decline"),
     ("es", "rechaza la invitación de Luis", "hubs.invitation.decline"),
+    ("es", "retira la invitación que le mandé a Ana", "hubs.member.cancel"),
+    ("es", "retira el traspaso de la peluquería", "hubs.ownership.cancel"),
+    ("en", "withdraw the invitation to Ana", "hubs.member.cancel"),
+    ("en", "withdraw the offer to give the salon to Luis", "hubs.ownership.cancel"),
 ]
 #: How-to questions that name what other tools do (the team, the language, the plan): they reach the documentation
 #: search as how-to questions (``base.assistant.HOWTO``), not only because it is always offered.
