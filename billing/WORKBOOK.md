@@ -25,7 +25,7 @@ de facturación en España; en Canarias, Ceuta y Melilla, solo a empresas y prof
 - Si un cobro falla, el negocio sigue funcionando 7 días mientras se reintenta; después se suspende
   hasta que se pague, sin perder ningún dato.
 
-Hoy ninguna aplicación es de pago: todas van en todos los planes (ronda 2026-10-24b, PLAN §32 y PLAN-SAAS §9).
+Hoy ninguna aplicación es de pago: todas van en todos los planes.
 Lo que este manual cuenta de las aplicaciones de pago (la pantalla **Tienda › Módulos** y contratar, cancelar,
 terminar y llevar una a otro negocio, BILLING-F31 a BILLING-F35) funciona y está probado, pero no se usa hasta que
 vuelva a haber una.
@@ -175,7 +175,6 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F41 | Ver qué clientes pagan, con qué plan, desde cuándo y cuánto | hecho |
 
 ### BILLING-F01 Decir dónde se factura el negocio y con qué identificación fiscal
-<!-- origen: old-saas:SAAS_DASHBOARD-F90 fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar -->
 Estado: hecho
 Actor: propietario, cuenta que paga
 Pantalla: Pago seguro, Facturación › Datos de pago
@@ -191,7 +190,6 @@ Si falla: un código postal español que no tiene cinco dígitos, un país que f
 Implicados: hubs (los datos del negocio y de quien paga)
 
 ### BILLING-F02 Calcular el impuesto de una venta según dónde está el pagador
-<!-- origen: old-saas:SAAS_DASHBOARD-F91 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -207,7 +205,6 @@ Si falla: «Faltan los datos de facturación» lleva al formulario; quien paga f
 Implicados: hubs (los datos de quien paga)
 
 ### BILLING-F03 Decidir el IVA de cada cobro
-<!-- origen: old-saas:SAAS_DASHBOARD-F142 gh:saas#2528 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -221,7 +218,6 @@ Si falla: si VIES no contesta y no hay ninguna comprobación anterior, la factur
 Implicados: ninguno
 
 ### BILLING-F04 Mantener la tabla de tipos de IVA y no vender con ella rota
-<!-- origen: old-saas:SAAS_DASHBOARD-F143 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin › Reglas fiscales
@@ -236,7 +232,6 @@ Si falla: desactivar la regla de un territorio hace que toda venta a él se nieg
 Implicados: ninguno
 
 ### BILLING-F05 Comprobar en VIES el NIF-IVA de quien paga
-<!-- origen: old-saas:SAAS_DASHBOARD-F144 gh:saas#2665 -->
 Estado: hecho
 Actor: sistema, personal de ERPlora
 Pantalla: Facturación › Datos de pago, Admin › Comprobaciones de IVA
@@ -251,12 +246,11 @@ Si falla: VIES sin contestar es «no disponible» y la venta lleva IVA; pasado e
 Implicados: ninguno
 
 ### BILLING-F06 Seguir el umbral de ventas a distancia en la UE (OSS)
-<!-- origen: old-saas:SAAS_DASHBOARD-F145 -->
 Estado: hecho
 Actor: sistema, personal de ERPlora
 Pantalla: Admin › Política fiscal, Admin › Avisos de la OSS
 Pasos:
-1. Cada factura a un particular de otro país de la UE suma su base al total del año (las rectificativas restan); el total de lo vendido por el SaaS anterior se carga una vez a mano en **Política fiscal**. Como hoy solo se vende en España (BILLING-F02), el total solo crece con lo que ya se cobraba a particulares de otro país.
+1. Cada factura a un particular de otro país de la UE suma su base al total del año (las rectificativas restan); el total facturado fuera de erplora.com se carga una vez a mano en **Política fiscal**. Como hoy solo se vende en España (BILLING-F02), el total solo crece con lo que ya se cobraba a particulares de otro país.
 2. **Política fiscal** enseña el total del año contra el umbral (10.000 € por defecto) y los interruptores del alta en OSS y en el ROI.
 3. Por encima del umbral (o con el alta voluntaria en OSS, o si el año anterior cerró por encima) las ventas nuevas a particulares de la UE llevan el IVA del país del cliente.
 4. La venta cobrada que lleva el total del año por encima del 80 % del umbral manda un aviso al buzón del equipo para empezar ya el alta en la OSS, que tarda días; la que lo cruza (o la primera del año si el anterior cerró por encima) manda otro: desde ella esas ventas llevan el IVA del país del cliente. Cada aviso sale una sola vez al año y queda en **Admin › Avisos de la OSS**, de solo lectura.
@@ -267,7 +261,6 @@ Si falla: un negocio que Stripe no deja cambiar no para la revisión: se reinten
 Implicados: ninguno
 
 ### BILLING-F07 Pagar el plan de un negocio recién creado
-<!-- origen: old-saas:SAAS_DASHBOARD-F92 gh:saas#2527 -->
 Estado: hecho
 Actor: propietario
 Pantalla: Resumen del negocio, Tienda, Pago seguro
@@ -281,7 +274,6 @@ Si falla: los mismos rechazos que BILLING-F08.
 Implicados: hubs (el alta y la página del negocio)
 
 ### BILLING-F08 Pasar un negocio gratuito a un plan de pago
-<!-- origen: old-saas:SAAS_DASHBOARD-F95 gh:saas#2527 pc:cloud/dashboard/hubs-pricing fi:saas/hubs#pagina-de-planes-precios fi:saas/hubs#stripe-gestion-de-suscripciones-servicio-interno fi:saas/support/hubs#service-stripeservice -->
 Estado: hecho
 Actor: propietario
 Pantalla: Tienda, Pago seguro
@@ -296,12 +288,11 @@ Si falla: si el pago no se puede abrir, «No hemos podido abrir el pago seguro»
 Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
 
 ### BILLING-F09 Volver del pago: confirmado, pendiente o cerrado
-<!-- origen: old-saas:SAAS_DASHBOARD-F93 old-saas:SAAS_DASHBOARD-F109 gh:saas#2566 fi:saas/hubs#paginas-de-resultado-de-pago-success-cancel fi:saas/public#paginas-de-resultado-de-pago-success-cancel -->
 Estado: hecho
 Actor: propietario
 Pantalla: Pago seguro, Resumen del negocio
 Pasos:
-1. Al terminar el pago en el formulario de Stripe, el diálogo dice «Pagando…», cierra el formulario y abre la página del negocio; cuando esa página ha llegado, el diálogo se va y el aviso «… ya está en …» (o «… añadido a …: se enciende en unos segundos» para un módulo) sale en ella, con el negocio que se pagó, justo encima de su barra de secciones y sin taparla (saas#344), aunque la página tarde en llegar (saas#341).
+1. Al terminar el pago en el formulario de Stripe, el diálogo dice «Pagando…», cierra el formulario y abre la página del negocio; cuando esa página ha llegado, el diálogo se va y el aviso «… ya está en …» (o «… añadido a …: se enciende en unos segundos» para un módulo) sale en ella, con el negocio que se pagó, justo encima de su barra de secciones y sin taparla, aunque la página tarde en llegar.
 2. El plan del negocio (o la aplicación comprada) cambia cuando Stripe confirma el cobro: si el medio de pago tarda en confirmarse, como un adeudo SEPA, el negocio sigue como estaba hasta entonces y cambia solo, sin recargar.
 3. Si la persona cierra el diálogo antes de pagar, no se cobra nada y puede volver a abrirlo (BILLING-F10); el negocio sigue como estaba y no se borra nada.
 Entra: el pago que Stripe da por terminado.
@@ -310,7 +301,6 @@ Si falla: un pago que Stripe da por fallido después cierra ese intento sin camb
 Implicados: el negocio (recibe su plan)
 
 ### BILLING-F10 Reintentar un pago que no se terminó
-<!-- origen: old-saas:SAAS_DASHBOARD-F94 gh:saas#2527 fi:saas/hubs#reintento-de-pago-retry-payment -->
 Estado: hecho
 Actor: propietario
 Pantalla: Tienda, Pago seguro
@@ -324,7 +314,6 @@ Si falla: si por un descuido se llegasen a pagar dos (dos pestañas a la vez), e
 Implicados: ninguno
 
 ### BILLING-F11 Cambiar de plan entre planes de pago
-<!-- origen: old-saas:SAAS_DASHBOARD-F96 fi:saas/hubs#cambio-de-plan-upgrade -->
 Estado: hecho
 Actor: propietario que paga
 Pantalla: Tienda, Cambiar de plan
@@ -339,7 +328,6 @@ Si falla: «El precio estaba desactualizado: aquí lo tienes de nuevo, revísalo
 Implicados: el negocio (recibe su plan), ASSISTANT-F25 (pedido al asistente del panel, que manda aquí)
 
 ### BILLING-F12 Dar días de prueba con un código promocional
-<!-- origen: old-saas:SAAS_DASHBOARD-F122 -->
 Estado: hecho
 Actor: personal de ERPlora, propietario
 Pantalla: Admin › Códigos promocionales, Pago seguro
@@ -353,7 +341,6 @@ Si falla: un código desconocido, inactivo, caducado o agotado dice «Este códi
 Implicados: ninguno
 
 ### BILLING-F13 Cancelar el plan al final del periodo
-<!-- origen: old-saas:SAAS_DASHBOARD-F101 gh:saas#2530 -->
 Estado: hecho
 Actor: propietario que paga
 Pantalla: Facturación › Suscripciones, Tienda
@@ -367,7 +354,6 @@ Si falla: si Stripe la rechaza o no contesta, nada cambia y se dice. Cancelar co
 Implicados: el negocio (recibe la fecha de fin), ASSISTANT-F25 (pedido desde el asistente del panel, su tarjeta enseña lo mismo que el diálogo)
 
 ### BILLING-F14 Deshacer una cancelación o una bajada pendiente
-<!-- origen: old-saas:SAAS_DASHBOARD-F102 gh:saas#2529 gh:saas#2574 -->
 Estado: hecho
 Actor: propietario que paga
 Pantalla: Facturación › Suscripciones, Tienda
@@ -380,7 +366,6 @@ Si falla: con una factura sin pagar, un plan cancelado no se mantiene: primero s
 Implicados: ninguno
 
 ### BILLING-F15 Terminar la suscripción: el negocio vuelve a Gratis
-<!-- origen: old-saas:SAAS_DASHBOARD-F103 gh:saas#2575 gh:saas#2527 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -394,7 +379,6 @@ Si falla: un aviso de una suscripción desconocida se da por recibido sin tocar 
 Implicados: el negocio (recibe Gratis)
 
 ### BILLING-F16 Impago del plan: reintentos, suspensión y vuelta
-<!-- origen: old-saas:SAAS_DASHBOARD-F100 old-saas:SAAS_DASHBOARD-F111 gh:saas#2529 gh:saas#2574 gh:saas#2593 gh:saas#2594 -->
 Estado: hecho
 Actor: sistema, propietario, cuenta que paga
 Pantalla: Facturación, Negocios, el propio negocio
@@ -411,7 +395,6 @@ Si falla: si Stripe no contesta al releer la suscripción, no se aplica nada y S
 Implicados: hubs (el estado del negocio), el negocio (recibe el estado)
 
 ### BILLING-F17 Reactivar un negocio suspendido pagando su factura
-<!-- origen: old-saas:SAAS_DASHBOARD-F104 gh:saas#2575 gh:saas#2527 gh:saas#2529 -->
 Estado: hecho
 Actor: cuenta que paga
 Pantalla: Facturación › Facturas, Negocios
@@ -425,7 +408,6 @@ Si falla: «Pagando…» bloquea un segundo clic; solo la cuenta que paga el neg
 Implicados: hubs (el estado del negocio), el negocio (vuelve a abrirse)
 
 ### BILLING-F18 Ver, cancelar o mantener el plan del negocio por la API
-<!-- origen: old-saas:SAAS_DASHBOARD-F64 fi:saas/billing#api-rest-de-suscripciones-drf gh:saas#2529 gh:saas#2574 fi:saas/hubs#subscriptions-cancelar-reanudar-estado-stripe fi:saas/hubs#subscriptions-rest-listado-detalle-scoped-por-usuario fi:saas/support/billing-fiscal#serializer-subscriptionlistserializer-subscriptiondetailserializer -->
 Estado: hecho
 Actor: propietario, integración
 Pantalla: ninguna
@@ -438,7 +420,6 @@ Si falla: un negocio que no es de esa cuenta no se encuentra (filtrar por él da
 Implicados: ninguno
 
 ### BILLING-F19 Recibir y validar un aviso de Stripe
-<!-- origen: old-saas:SAAS_DASHBOARD-F97 gh:saas#2530 gh:saas#2539 fi:saas/hubs#webhook-de-stripe-pagos-suscripciones fi:saas/support/billing-fiscal#modelo-webhookevent fi:saas/support/public-core-config#service-stripe_webhook-handlers-webhooks-py -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -454,7 +435,6 @@ Si falla: un error al procesarlo se apunta y se contesta con error, para que Str
 Implicados: ninguno
 
 ### BILLING-F20 Renovar el plan cada periodo
-<!-- origen: old-saas:SAAS_DASHBOARD-F98 old-saas:SAAS_DASHBOARD-F110 gh:saas#2527 gh:saas#2529 gh:saas#2530 gh:saas#2540 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -469,7 +449,6 @@ Si falla: si Stripe no contesta al releer la suscripción, no se aplica nada y S
 Implicados: el negocio (recibe su estado)
 
 ### BILLING-F21 Mantener el plan al día con lo que dice Stripe
-<!-- origen: old-saas:SAAS_DASHBOARD-F99 gh:saas#2530 gh:saas#2540 fi:saas/support/hubs#modelo-subscription-alias-hubsubscription -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -483,7 +462,6 @@ Si falla: un precio que no vende ningún plan deja el plan como estaba, pero el 
 Implicados: el negocio (recibe su plan)
 
 ### BILLING-F22 Ver las facturas y descargarlas
-<!-- origen: old-saas:SAAS_DASHBOARD-F117 fi:saas/billing#api-rest-de-facturas-drf fi:saas/billing#descarga-de-pdf-de-factura fi:saas/billing#exportar-facturas-a-csv fi:saas/billing#historial-de-compras-pagos fi:saas/billing#listado-de-facturas-invoices fi:saas/billing#redireccion-raiz-de-billing fi:saas/hubs#facturas-del-hub pc:cloud/dashboard/billing-invoices fi:saas/support/billing-fiscal#serializer-hubbasicserializer fi:saas/support/billing-fiscal#serializer-invoiceitemserializer fi:saas/support/billing-fiscal#serializer-invoicelistserializer-invoicedetailserializer fi:saas/support/billing-fiscal#service-invoicepdfgenerator-generate_invoice_pdf -->
 Estado: hecho
 Actor: propietario, cuenta que paga
 Pantalla: Facturación › Facturas
@@ -500,7 +478,6 @@ Si falla: una factura que aún se emite dice «Emitiéndose» y no ofrece PDF; s
 Implicados: ninguno
 
 ### BILLING-F23 Ver las suscripciones de cada negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F118 fi:saas/billing#compras-de-modulos-purchases fi:saas/billing#suscripciones pc:cloud/dashboard/billing-purchases pc:cloud/dashboard/billing-subscriptions fi:saas/support/billing-fiscal#serializer-modulebasicserializer -->
 Estado: hecho
 Actor: propietario, cuenta que paga
 Pantalla: Facturación › Suscripciones
@@ -513,7 +490,6 @@ Si falla: sin negocios de pago, «Todos tus negocios están en Gratis» con «Ve
 Implicados: hubs (HUBS-F28: el plan de un negocio traspasado)
 
 ### BILLING-F24 Abrir el portal de pagos de Stripe para cambiar la tarjeta
-<!-- origen: old-saas:SAAS_DASHBOARD-F120 gh:saas#2554 fi:saas/orgs-users#portal-de-facturacion-stripe fi:saas/support/orgs-users#service-organizationstripeservice -->
 Estado: hecho
 Actor: cuenta que paga
 Pantalla: Facturación › Datos de pago
@@ -527,7 +503,6 @@ Si falla: antes del primer pago no hay nada que cambiar; si Stripe no contesta, 
 Implicados: ninguno
 
 ### BILLING-F25 Emitir la factura de ERPlora por un cobro
-<!-- origen: old-saas:SAAS_DASHBOARD-F130 gh:saas#2527 gh:saas#2528 fi:saas/support/billing-fiscal#modelo-invoice fi:saas/support/billing-fiscal#modelo-invoiceitem fi:saas/support/billing-fiscal#service-create_hub_invoice fi:saas/support/billing-fiscal#task-generate_invoice_pdf_async-regenerate_all_invoice_pdfs -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -541,7 +516,6 @@ Si falla: si el negocio de plataforma no responde, la factura queda «emitiéndo
 Implicados: el negocio de plataforma de ERPlora (emite la factura)
 
 ### BILLING-F26 Devolver un cobro
-<!-- origen: old-saas:SAAS_DASHBOARD-F121 gh:saas#2527 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: ninguna
@@ -555,7 +529,6 @@ Si falla: una devolución de una factura que aún no existe espera y Stripe vuel
 Implicados: el negocio de plataforma de ERPlora (emite la rectificativa)
 
 ### BILLING-F27 Lo que el personal de ERPlora puede hacer sobre el cobro de un cliente
-<!-- origen: old-saas:SAAS_DASHBOARD-F123 fi:saas/django-admin#admin-companyconfig-singleton fi:saas/django-admin#admin-invoice fi:saas/django-admin#admin-invoiceitem fi:saas/django-admin#admin-modulepurchase fi:saas/django-admin#admin-subscription fi:saas/django-admin#admin-subscription-2 fi:saas/hubs#admin-django-subscription-hub-subscriptions gh:saas#2529 gh:saas#2575 fi:saas/support/billing-fiscal#command-seed_company_036 fi:saas/support/billing-fiscal#modelo-companyconfig -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin
@@ -571,7 +544,6 @@ Si falla: sin el papel, el admin no se abre; el grupo de soporte solo mira, no l
 Implicados: hubs (el estado de los negocios)
 
 ### BILLING-F28 Mantener en Stripe los precios de los planes
-<!-- origen: old-saas:SAAS_DASHBOARD-F124 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin › Planes
@@ -586,7 +558,6 @@ Si falla: un precio que no cuadra no se guarda y dice por qué debajo de su camp
 Implicados: hubs (el admin de los planes)
 
 ### BILLING-F29 Probar el cobro real en PRE con un reloj de prueba de Stripe
-<!-- origen: old-saas:SAAS_DASHBOARD-F105 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin › Negocios
@@ -601,7 +572,6 @@ Si falla: con claves reales las dos acciones ni se ofrecen y, si se llegan a ped
 Implicados: hubs (el admin de los negocios)
 
 ### BILLING-F30 Usar claves reales de Stripe solo en producción y de prueba fuera de ella
-<!-- origen: old-saas:SAAS_DASHBOARD-F106 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -616,7 +586,6 @@ Si falla: sin clave, ningún pago empieza y se dice que los pagos no están disp
 Implicados: ninguno
 
 ### BILLING-F31 Ver las aplicaciones de pago y su estado en cada negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F107 gh:saas#2504 gh:saas#2535 -->
 Estado: hecho
 Actor: propietario
 Pantalla: Tienda
@@ -630,7 +599,6 @@ Si falla: «No hemos podido cargar los precios» con «Reintentar»; sin aplicac
 Implicados: apps (el nombre, el resumen y el icono de cada aplicación)
 
 ### BILLING-F32 Contratar una aplicación de pago para un negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F108 gh:saas#2566 gh:saas#2629 gh:saas#2639 gh:saas#2640 fi:saas/public#compra-de-un-modulo-stripe-embedded-checkout fi:saas/public#webhook-de-stripe-compras-de-modulos fi:saas/support/billing-fiscal#modelo-subscription fi:saas/support/public-core-config#modelo-modulepurchase fi:saas/support/public-core-config#service-send_module_purchase_email-send_vendor_sale_email-emails-py fi:saas/support/public-core-config#task-send_module_purchase_email_task-send_vendor_sale_email_task-tasks-py -->
 Estado: hecho
 Actor: propietario
 Pantalla: Tienda, Cambiar de plan, Pago seguro
@@ -645,7 +613,6 @@ Si falla: una aplicación que el negocio ya tiene no se vende dos veces; una ret
 Implicados: hubs (la suscripción del negocio), el negocio (recibe la aplicación)
 
 ### BILLING-F33 Cancelar una aplicación de pago
-<!-- origen: old-saas:SAAS_DASHBOARD-F112 gh:saas#2535 gh:saas#2568 gh:saas#2589 -->
 Estado: hecho
 Actor: propietario que paga
 Pantalla: Tienda
@@ -660,7 +627,6 @@ Si falla: una aplicación que viene con el plan se quita cambiando de plan; una 
 Implicados: hubs (la suscripción del negocio), el negocio (recibe hasta cuándo la tiene)
 
 ### BILLING-F34 Terminar una aplicación de pago al final de su periodo
-<!-- origen: old-saas:SAAS_DASHBOARD-F113 -->
 Estado: hecho
 Actor: sistema
 Pantalla: Tienda, Facturación › Suscripciones
@@ -674,7 +640,6 @@ Si falla: si se cancela el plan, sus aplicaciones terminan con él (BILLING-F15)
 Implicados: el negocio (deja de recibir la aplicación)
 
 ### BILLING-F35 Llevar una aplicación de pago a otro negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F114 gh:saas#2589 -->
 Estado: hecho
 Actor: propietario
 Pantalla: Tienda
@@ -688,7 +653,6 @@ Si falla: los rechazos de BILLING-F33 y BILLING-F32.
 Implicados: hubs (las suscripciones de los dos negocios)
 
 ### BILLING-F36 Ver una factura
-<!-- origen: fi:saas/billing#detalle-de-factura -->
 Estado: hecho
 Actor: propietario, cuenta que paga
 Pantalla: Factura
@@ -703,7 +667,6 @@ Si falla: una factura de otra cuenta no se encuentra; si no carga, «No hemos po
 Implicados: ninguno
 
 ### BILLING-F37 Olvidar los avisos de Stripe de más de 30 días
-<!-- origen: fi:saas/support/billing-fiscal#task-cleanup_old_webhook_events -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -716,7 +679,6 @@ Si falla: la noche siguiente borra lo que quedó. Stripe solo reenvía un aviso 
 Implicados: ninguno
 
 ### BILLING-F38 Releer cada noche las suscripciones en Stripe y corregir lo que se desvió
-<!-- origen: fi:saas/support/hubs#command-sync_subscriptions -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -730,7 +692,6 @@ Si falla: una suscripción que Stripe no conoce, o que no se pudo leer, no se to
 Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
 
 ### BILLING-F39 Comprobar cada día que Stripe avisa de todo lo que erplora.com trata
-<!-- origen: gh:saas#2402 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -744,7 +705,6 @@ Si falla: ningún destino activo hacia la dirección, uno que apunta a una ruta 
 Implicados: ninguno
 
 ### BILLING-F40 Sacar el informe de facturación de un periodo para la gestoría
-<!-- origen: gh:saas#443 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin › Facturas › Informe de facturación
@@ -760,7 +720,6 @@ Si falla: solo cuentan las facturas cobradas y ya emitidas por el negocio de pla
 Implicados: ninguno
 
 ### BILLING-F41 Ver qué clientes pagan, con qué plan, desde cuándo y cuánto
-<!-- origen: gh:saas#446 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin › Facturación › Clientes de pago
@@ -778,30 +737,20 @@ Implicados: hubs (las suscripciones y los pagadores de los negocios)
 ## Para quien lo mantiene
 
 - Anatomía y operaciones: `billing/README.md` (IVA, Stripe, facturas, impago y la Tienda).
-- Partes del porte (MIGRATION-TASK APP-BILLING-1/2/3): este WORKBOOK nace en la parte 1 con los flujos del
-  plan y su dinero; la parte 2 añade las aplicaciones de pago (BILLING-F31 a BILLING-F35), la página de una
-  factura (BILLING-F36) y amplía los flujos de la API y del admin; la parte 3 une a los flujos que ya
-  existían el soporte de Stripe del SaaS viejo (precios, vuelta del pago, servicio de Stripe, modelos,
-  serializadores y tareas) y añade BILLING-F37 y BILLING-F38. Lo que allí eran tareas de Celery aquí son
-  tareas programadas o se hace tras el COMMIT (el correo de la factura).
+- Sin colas de tareas: lo periódico son tareas programadas o pasadas del `saas-worker`, y el correo de la factura
+  sale tras el COMMIT.
 - Las aplicaciones de pago (BILLING-F31 a BILLING-F35) están hechas y probadas con los dobles de Stripe y del Hub
   (`billing/tests/test_module_end_reaches_the_hub.py`; en el Hub, `base/tests/test_entitlement.py`), pero hoy no se
-  usan: desde la ronda 2026-10-24b (PLAN §32 punto 1, PLAN-SAAS §9) todos los módulos van en todos los planes y
-  ninguno es `premium`, así que no hay fila `Module` a la venta. Vuelven a usarse en cuanto la haya.
-- Fuera del modelo viejo, a propósito: sin cuota de mantenimiento del 25 % al terminar un plan (PLAN-SAAS
-  §3.3: vuelve a Gratis), sin estado «pendiente de pago» en el alta (el negocio nace en Gratis) y sin
-  sincronización automática de productos de Stripe (los identificadores se pegan en el admin).
+  usan: todos los módulos van en todos los planes y ninguno es `premium`, así que no hay fila `Module` a la venta. Vuelven a usarse en cuanto la haya.
 - Los tests de cada flujo citan su clave en el nombre o en el docstring; los e2e, en el título o en
-  `// flow: …`. Los e2e de la parte 1 (`tests/e2e/panel/billing-flows.spec.ts` y, en el Hub,
-  `tests/e2e/hub-suspended.spec.ts`) citan la clave del registro (`BILLING-Gnn`) y llevan en su cabecera la
-  equivalencia con la de este WORKBOOK. Igual los de la parte 2 (`tests/e2e/panel/billing-apps.spec.ts`) y
-  los de la parte 3 (`tests/e2e/panel/billing-support.spec.ts`).
+  `// flow: …`. Los e2e `tests/e2e/panel/billing-flows.spec.ts`, `billing-apps.spec.ts` y `billing-support.spec.ts`
+  (y, en el Hub, `tests/e2e/hub-suspended.spec.ts`) citan la clave `BILLING-Gnn` y llevan en su cabecera la
+  equivalencia con la de este WORKBOOK.
 - BILLING-F25, el reintento de la factura de ERPlora (`reconcile_platform_invoices`), corre cada 15 minutos (:00, :15,
-  :30, :45 UTC) dentro del proceso `saas-worker` (`manage.py run_worker`, `base/worker.py`, saas#305), ya no como tarea
-  de `saas-cron`; la pasada es `services.reconcile_platform_invoices_exclusively`, la misma del comando, que queda para
+  :30, :45 UTC) dentro del proceso `saas-worker` (`manage.py run_worker`, `base/worker.py`); la pasada es `services.reconcile_platform_invoices_exclusively`, la misma del comando, que queda para
   lanzarla a mano. Lo que deja pendiente escribe la línea ERROR `saas.worker.pass_failed task=reconcile_platform_invoices
-  left work owed: …`, que es lo que avisa la alarma (antes, el código de salida de la tarea). En el worker la pasada
-  tiene 50 s y oye la parada entre dos facturas (`go_on`): lo que no entra va en la ronda siguiente (`cut_short=1`).
+  left work owed: …`, que es lo que avisa la alarma. En el worker la pasada
+  tiene 50 s y oye la parada entre dos facturas (`go_on`): lo que no entra va en la pasada siguiente (`cut_short=1`).
 - Tareas programadas (ECS, `saas-cron`): `manage.py audit_tax_rules` (BILLING-F04),
   `manage.py retax_subscriptions` (BILLING-F02, BILLING-F06) y `manage.py sync_subscriptions` (BILLING-F38;
   `--dry-run` solo informa) salen con error si dejan algo por hacer, que es lo que la alarma `task_failed`
@@ -809,29 +758,24 @@ Implicados: hubs (las suscripciones y los pagadores de los negocios)
   infraestructura (`stacks/prod/scheduler.tf` de `ERPlora/aws`): `sync_subscriptions` cada noche a las 00:10 UTC
   (antes de la foto de las 00:30 y de la re-tarificación), `purge_webhook_events` a las 00:50 UTC,
   `audit_tax_rules` cada día a las 05:10 UTC, `retax_subscriptions` a las 05:20 UTC y `audit_stripe_webhooks`
-  (BILLING-F39) a las 05:40 UTC (`audit-stripe-webhooks-daily`, `ERPlora/aws#21`, aplicada el 2026-10-28 tras
-  suscribir `credit_note.voided` en los destinos de Stripe live y pre). Solo cuenta un endpoint activo: los tres del
-  stack viejo en `erplora.com` (`we_1UIyXWG5mOoM2dqitS8TFImp` a `/marketplace/webhooks/stripe/`,
-  `we_1UIyXVG5mOoM2dqidg2Ai6WD` a `/dashboard/billing/webhooks/stripe-connect/` y `we_1UIyXUG5mOoM2dqiftLTSFdL` a
-  `/assistant/stripe/webhook/`) están `disabled` desde el 2026-10-28, sin borrar, y las ejecuciones del 29, 30 y 31 de
-  octubre terminaron en `OK` (CloudWatch `/ecs/erplora-prod-saas-cron`, leído el 2026-11-01). Si uno de esos tres volviera
-  a activarse, `endpoint_problems` lo contaría y la tarea saldría con error, que `task_failed` avisa. Los avisos que trata el webhook son una
+  (BILLING-F39) a las 05:40 UTC (`audit-stripe-webhooks-daily`). Solo cuenta un endpoint activo: la cuenta de Stripe
+  tiene otros tres en `erplora.com`, `disabled` y sin borrar (`we_1UIyXWG5mOoM2dqitS8TFImp` a
+  `/marketplace/webhooks/stripe/`, `we_1UIyXVG5mOoM2dqidg2Ai6WD` a `/dashboard/billing/webhooks/stripe-connect/` y
+  `we_1UIyXUG5mOoM2dqiftLTSFdL` a `/assistant/stripe/webhook/`); si uno de esos tres volviera a activarse,
+  `endpoint_problems` lo contaría y la tarea saldría con error, que `task_failed` avisa. Los avisos que trata el webhook son una
   sola lista, `billing.services.STRIPE_WEBHOOK_EVENTS`, que el comando compara con el destino de Stripe.
-- Cierre (CLOSE-BILLING, 2026-10-27): ronda en PLAN-SAAS §13, con lo que PLAN-SAAS §1.1 aún pedía portar: el admin
-  de solo lectura de los códigos usados, los contadores y las bajadas programadas, y el ZIP de los PDF (BILLING-F27),
-  `audit_stripe_webhooks` (BILLING-F39) y la nota de crédito anulada (BILLING-F26). Las facturas de ERPlora las emite el Hub desde
-  `ERPlora/hub#133`, pero en producción no se cobra con clave live mientras `PLATFORM_INVOICING_ENABLED` siga en
-  `false` (reglas de trabajo §15: la transmisión real queda bajo la supervisión de Ioan). La compra suelta de BILLING-F32
-  frente a PLAN §32 punto 1 es la contradicción ya señalada en PLAN-SAAS §12, que esa ronda cita sin elegir.
-- Segundo cierre (CLOSE-BILLING, 2026-11-03): ronda 2026-11-03 de PLAN-SAAS §28. BILLING-F39, el único `parcial` que
-  quedaba, pasa a `hecho` porque se cumplió su condición (los tres endpoints viejos desactivados y una ejecución buena), y
-  la app queda `completa`.
+- Las facturas de ERPlora las emite el Hub, pero en producción no se cobra con clave live mientras
+  `PLATFORM_INVOICING_ENABLED` siga en `false` (reglas de trabajo §15: la transmisión real queda bajo la supervisión de
+  Ioan). La compra suelta de BILLING-F32 choca con `PLAN.md` (nuestros módulos no se venden sueltos): la contradicción
+  está señalada en los planes.
 
 ## Lo que NO hace, a propósito
 
 - No vende en las apps ni desde la cuenta abierta en la app (reglas de las tiendas de apps).
 - No usa Stripe Tax ni deja que Stripe recoja el NIF: el IVA y el NIF son de erplora.com.
 - No cobra una cuota por conservar un negocio que ya no paga: vuelve a Gratis.
+- No tiene un estado «pendiente de pago» en el alta: el negocio nace en Gratis.
+- No sincroniza solo los productos de Stripe: sus identificadores se pegan en el admin.
 - No cambia el plan desde el portal de Stripe: allí solo se cambia la tarjeta y se ven los recibos.
 - No traspasa una aplicación contratada de un negocio a otro: se cancela en uno y se contrata en el otro
   (BILLING-F35).
@@ -840,7 +784,6 @@ Implicados: hubs (las suscripciones y los pagadores de los negocios)
 - No hace facturas a mano desde el admin: cada factura sale de un cobro de Stripe.
 - No presenta los modelos 303, 349 ni 369: el informe de facturación (BILLING-F40) da sus totales a la gestoría.
 - No cobra por uso ni por excesos (sin medidores ni plan «Flex»): quien necesita más sube de plan.
-- No pide ni guarda una moneda: ERPlora cobra siempre en euros, y la preferencia de moneda de la cuenta del
-  panel viejo no se porta (el panel único la quitó).
+- No pide ni guarda una moneda: ERPlora cobra siempre en euros.
 - No manda un correo aparte por cada compra ni al «vendedor» de una aplicación: todas son de ERPlora, y la
   confirmación de una compra es el correo de su factura (BILLING-F25).

@@ -89,10 +89,8 @@ negocio, cada uno en su idioma.
 | FISCAL-F04 | Avisar al equipo antes de que caduque el sello | hecho |
 | FISCAL-F05 | Avisar a la mesa de revisión y al negocio de cada paso de la autorización | hecho |
 | FISCAL-F06 | Poner el sello y la firma de ERPlora en el modelo de la autorización | hecho |
-| FISCAL-F07 | Vigilar los apoderamientos (ZP01) de los clientes | descartado |
 
 ### FISCAL-F01 Cambiar el sello de ERPlora con el que se presenta
-<!-- origen: fi:saas/django-admin#admin-verifactuconfig-singleton-vistas-operador fi:saas/support/billing-fiscal#modelo-verifactuconfig fi:saas/support/billing-fiscal#serializer-form-verifactuconfigform-load_pkcs12 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: ninguna
@@ -107,7 +105,6 @@ Si falla: sin ningún sello utilizable, cada envío por la vía de ERPlora se re
 Implicados: el Hub (VERIFACTU-F10 prueba la conexión y ve el sello), FISCAL-F04 (avisa antes de la caducidad)
 
 ### FISCAL-F02 Presentar a la AEAT los registros de un negocio
-<!-- origen: fi:saas/support/billing-fiscal#service-aeatclient -->
 Estado: hecho
 Actor: sistema (el Hub del negocio)
 Pantalla: ninguna
@@ -122,7 +119,6 @@ Si falla: cada rechazo dice por qué y sale antes de tocar la AEAT: negocio desc
 Implicados: el Hub (VERIFACTU-F15 envía, VERIFACTU-F27 consulta, VERIFACTU-F10 prueba la conexión), FISCAL-F01 (el sello), FISCAL-F05 (la autorización aprobada)
 
 ### FISCAL-F03 Guardar cifrados los documentos de la autorización
-<!-- origen: fi:saas/support/billing-fiscal#service-fields-encryptedcharfield-encrypt_bytes-decrypt_bytes -->
 Estado: hecho
 Actor: sistema
 Pantalla: Admin › Autorizaciones firmadas › Revisar
@@ -136,7 +132,6 @@ Si falla: una clave que no sirve para cifrar se dice al arrancar y el despliegue
 Implicados: FISCAL-F05 (la revisión), el Hub (VERIFACTU-F05 sube la autorización)
 
 ### FISCAL-F04 Avisar al equipo antes de que caduque el sello
-<!-- origen: fi:saas/support/billing-fiscal#task-check_certificate_expiry -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -149,7 +144,6 @@ Si falla: un hueco que no abre hace fallar la tarea, que también avisa al equip
 Implicados: FISCAL-F01
 
 ### FISCAL-F05 Avisar a la mesa de revisión y al negocio de cada paso de la autorización
-<!-- origen: old-saas:SAAS_DASHBOARD-F159 gh:saas#2051 -->
 Estado: hecho
 Actor: sistema
 Pantalla: Admin › Autorizaciones firmadas › Revisar
@@ -164,7 +158,6 @@ Si falla: los correos salen cuando el paso ya está guardado, nunca antes; un co
 Implicados: el Hub (VERIFACTU-F05 y VERIFACTU-F06 envían la autorización), FISCAL-F03 (los documentos)
 
 ### FISCAL-F06 Poner el sello y la firma de ERPlora en el modelo de la autorización
-<!-- origen: old-saas:SAAS_DASHBOARD-F160 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin › Autorizaciones firmadas › Sello del representante
@@ -178,33 +171,17 @@ Sale: el modelo de la autorización con ERPlora, su sello y su firma y la hoja d
 Si falla: un fichero que no es un PNG, que está dañado o que pasa de 2 MB se rechaza con su motivo («El sello tiene que ser una imagen PNG.») y no cambia nada. Sin sello subido, o con uno que la clave actual no puede leer, el modelo sale sin él y la cola y «Sello del representante» lo avisan para que alguien lo suba. Un dato del negocio que el modelo no puede escribir o un NIF que no es español se rechazan y el Hub dice que no ha podido descargarlo.
 Implicados: el Hub (VERIFACTU-F05 descarga el modelo), FISCAL-F05 (la revisión de la autorización firmada)
 
-### FISCAL-F07 Vigilar los apoderamientos (ZP01) de los clientes
-<!-- origen: old-saas:SAAS_DASHBOARD-F162 -->
-Estado: descartado — ERPlora presenta por la colaboración social del Convenio 17 con la autorización firmada del Anexo I, que revisa y retira el equipo (FISCAL-F05), no por apoderamientos ante la AEAT; no hay registro de apoderamientos que vigilar
-Actor: sistema
-Pantalla: ninguna
-Pasos:
-1. La autorización de cada negocio se revisa, se aprueba, se devuelve o se retira en el admin, y el Hub la ve en cada cambio.
-2. No hay un registro aparte de apoderamientos ni una consulta diaria a la AEAT.
-Entra: nada.
-Sale: nada.
-Si falla: no aplica.
-Implicados: FISCAL-F05
-
 ## Para quien lo mantiene
 
 - Anatomía: `fiscal_gateway/README.md` (la pasarela: `seal.py`, `aeat.py`, `internal.py`, `queries.py`, el contrato
   con el Hub y la tabla de respuestas) y la app `fiscal/` del SaaS (la autorización firmada: modelos, servicios,
   `crypto.py`, `emails.py`, admin). La pasarela es una app de plataforma sin modelos ni operaciones; los flujos
   FISCAL-F03, FISCAL-F05 y FISCAL-F06 viven en `fiscal/`.
-- Este WORKBOOK nace en la tarea de migración APP-FISCAL_GATEWAY con las filas FISCAL-G01 a FISCAL-G09 del registro:
-  G01, G02 y G03 (la configuración singleton de VerifactuConfig, su modelo y su formulario con `load_pkcs12`) son
-  FISCAL-F01, sin pantalla ni modelo, porque el sello va en los secretos del despliegue (dos huecos,
-  `FISCAL_SEAL_{CURRENT,NEXT}_{P12_BASE64,PASSWORD}`) y el entorno lo fija el despliegue (como VERIFACTU-G19); G04
-  (`AEATClient`) es FISCAL-F02 (`aeat.py` + `internal.py`); G05 (`EncryptedCharField`) es FISCAL-F03
-  (`fiscal/crypto.py`, Fernet con `FISCAL_DOCUMENTS_KEY`, saas#1057); G06 (`check_certificate_expiry`) es
-  FISCAL-F04 (`manage.py report_seal_expiry`, programada a diario en `saas-cron` con la alarma `seal_expiry` de
-  `aws`); G07 es FISCAL-F05 (`fiscal/emails.py`, `FISCAL_REVIEW_EMAIL`); G08 es FISCAL-F06; G09 es FISCAL-F07.
+- Dónde vive cada flujo: FISCAL-F01 no tiene pantalla ni modelo, porque el sello va en los secretos del despliegue
+  (dos huecos, `FISCAL_SEAL_{CURRENT,NEXT}_{P12_BASE64,PASSWORD}`, abiertos con `load_pkcs12`) y el entorno lo fija el
+  despliegue; FISCAL-F02 es `aeat.py` + `internal.py`; FISCAL-F03, `fiscal/crypto.py` (Fernet con
+  `FISCAL_DOCUMENTS_KEY`); FISCAL-F04, `manage.py report_seal_expiry`, programada a diario en `saas-cron` con la
+  alarma `seal_expiry` de `aws`; FISCAL-F05, `fiscal/emails.py` (`FISCAL_REVIEW_EMAIL`).
 - FISCAL-F06: `fiscal/anexo.py` escribe sobre el PDF oficial (`fiscal/static/fiscal/representation-model.pdf`,
   atado por `OFFICIAL_SHA256`; huecos medidos con `pdftotext -bbox`) con `pypdf` + `reportlab`, y añade la hoja RGPD
   (art. 13, responsable y contacto de `public/` y de `billing.CompanyConfig`). La imagen del sello vive cifrada con
@@ -214,7 +191,7 @@ Implicados: FISCAL-F05
   `taxpayer_tax_id`, `taxpayer_name`, `municipality`, `street` y `number` (opcionales; la firma v2 cubre la query, y
   una query firmada solo con v1 se rechaza con 401 `signature_v2_required`, regla general de `accounts/signing.py`);
   el Hub los manda desde el emisor de su facturación (NIF, razón social, municipio y calle, con el número dentro de la
-  calle: `apps/verifactu/queries.py::issuer_model_details`, ERPlora/hub#170 del 2026-10-22), y un negocio sin emisor
+  calle: `apps/verifactu/queries.py::issuer_model_details` del Hub), y un negocio sin emisor
   recibe el bloque del negocio en blanco. Tests: `fiscal/tests/test_anexo.py`, `test_services.py::TestStamp`, `test_internal.py`,
   `test_admin.py` y la e2e FISCAL-F06 de `tests/e2e/panel/fiscal-review.spec.ts`.
 - Fiscal: los tests solo tocan la preproducción de la AEAT, y siempre con el transporte simulado (`respx`); nunca una
@@ -224,20 +201,16 @@ Implicados: FISCAL-F05
   en los tres tamaños: el aviso a la mesa con su enlace, la aprobación y el correo al negocio (FISCAL-F05), y los
   documentos descifrados solo en la página de revisión (FISCAL-F03); y el sello del representante: el aviso de la cola,
   la subida (un fichero que no es PNG se rechaza), la vista previa, el modelo con una imagen más y el quitarlo (FISCAL-F06).
-- Completa el 2026-10-22 (CLOSE-FISCAL_GATEWAY): lo decidido durante su migración y lo que queda fuera están en la
-  ronda CLOSE-FISCAL_GATEWAY de `PLAN-SAAS.md` §4. `fiscal/` no tiene WORKBOOK propio: sus flujos son FISCAL-F03, F05 y
-  F06 de este, y la revisión del staff (aprobar, devolver, retirar) la recoge VERIFACTU-F05 del Hub.
+- `fiscal/` no tiene WORKBOOK propio: sus flujos son FISCAL-F03, F05 y F06 de este, y la revisión del staff (aprobar,
+  devolver, retirar) la recoge VERIFACTU-F05 del Hub.
 - `FISCAL_DOCUMENTS_KEY` es una sola clave Fernet, sin la anterior: cambiarla deja ilegibles los documentos y el sello
   guardados con ella (FISCAL-F03 y FISCAL-F06 lo dicen en pantalla); la rotación queda fuera de esta versión.
 - La vía de ERPlora pide la autorización aprobada solo en producción (`internal._identity`): en el entorno de pruebas
-  de la AEAT no se lee, como en el Hub (`hub/apps/verifactu/queries.py::_route_sending_problem`) y en ADR-0360 del
-  producto viejo, porque la AEAT solo comprueba que el titular del sello es colaborador social (fault 4112), nunca el
-  Anexo I de cada negocio. En pruebas, ningún negocio presenta con el NIF de ERPlora (`409 nif_mismatch`,
-  `_never_in_erploras_name`, saas#2524). Tests: `test_in_testing_erplora_presents_for_a_customer_without_an_authorisation`,
+  de la AEAT no se lee, como en el Hub (`hub/apps/verifactu/queries.py::_route_sending_problem`), porque la AEAT
+  solo comprueba que el titular del sello es colaborador social (fault 4112), nunca el Anexo I de cada negocio. En
+  pruebas, ningún negocio presenta con el NIF de ERPlora (`409 nif_mismatch`, `_never_in_erploras_name`). Tests: `test_in_testing_erplora_presents_for_a_customer_without_an_authorisation`,
   `test_in_testing_the_authorisation_is_not_read`, `test_in_testing_a_business_never_presents_in_erploras_name` y las
-  dos sondas de pruebas de `test_internal.py`; las negativas que leen la autorización corren en producción. Decidido en
-  la ronda 2026-11-03l de `PLAN-SAAS.md` (§33, FIX-FISCAL-TESTING-AUTHORISATION-CONTRADICTION), que cierra la
-  contradicción señalada en la ronda CLOSE-FISCAL_GATEWAY de §4.
+  dos sondas de pruebas de `test_internal.py`; las negativas que leen la autorización corren en producción.
 
 ## Lo que NO hace, a propósito
 

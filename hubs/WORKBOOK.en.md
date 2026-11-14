@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:30792009892c7cd8dd61a6f53bfec2870f3e108e2b5d0e49e5c07d881a714d74 -->
+<!-- generated from WORKBOOK.md sha256:c963aee71ad407edfe7a2d6b669b6a52257aa263b1350213ddb20bef65ab94f1 -->
 
 ## What it is for and who it is for
 
@@ -212,7 +212,7 @@ Steps:
 2. Without any business, the Entrance shows "Create your business" with the same form as HUBS-F01 (name, country and optional type, with the address proposed while typing).
 3. They press "Create my business": the card moves to **Preparing** and, when the business is ready, the app goes into it by itself and stays linked to that business (HUBS-F12).
 In: the same as HUBS-F01.
-Out: the same as HUBS-F01, with the country and the business type the person chooses (the old app did not ask for them).
+Out: the same as HUBS-F01, with the country and the business type the person chooses.
 If it fails: the same notices as HUBS-F01. Inside the app nothing is sold: to change the plan it says "To change your plan or add modules, go to erplora.com in your browser.".
 Involved: accounts (the Entrance), the installed app (starts on the Entrance and links to the business)
 

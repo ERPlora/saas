@@ -92,7 +92,6 @@ modificación, con filtros por nivel y activo y un buscador. La ficha de cada m�
 | APPS-F07 | Comprar una app de pago siempre en erplora.com, nunca dentro del negocio | hecho |
 
 ### APPS-F01 Consultar el catálogo de apps
-<!-- origen: old-saas:SAAS_PUBLIC-F12 old-saas:SAAS_PUBLIC-F13 fi:saas/support/public-core-config#serializer-modulelistserializer-moduledetailserializer -->
 Estado: hecho
 Actor: visitante, sistema
 Pantalla: ninguna (la enseñan la tienda pública de apps y la Tienda del panel)
@@ -108,7 +107,6 @@ Si falla: una app que no existe, o que ERPlora sacó de la tienda, responde que 
 Implicados: el Hub (registra sus apps con cada versión), public (la tienda pública de apps), billing (la Tienda del panel)
 
 ### APPS-F02 Leer la documentación de una app
-<!-- origen: old-saas:SAAS_PUBLIC-F31 fi:saas/support/public-core-config#service-module_readme_api-api-py fi:saas/support/public-core-config#service-render_markdown-services-rendering-py fi:saas/support/public-core-config#service-s3_docs-services-s3_docs-py -->
 Estado: hecho
 Actor: visitante, sistema
 Pantalla: ninguna (la enseña la pestaña de documentación de la ficha de la tienda pública)
@@ -123,7 +121,6 @@ Si falla: una app que no existe, o que está fuera de la tienda, responde que no
 Implicados: el Hub (registra el manual), public (la pestaña de documentación y el mapa del sitio)
 
 ### APPS-F03 Poner a la venta una app de pago
-<!-- origen: fi:saas/django-admin#admin-module fi:saas/support/public-core-config#modelo-module old-saas:SAAS_PUBLIC-F27 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin › Módulos
@@ -138,7 +135,6 @@ Si falla: una etiqueta que no está en el catálogo no se guarda y dice que el H
 Implicados: billing (la Tienda y el cobro), hubs (qué apps incluye cada plan y cómo llegan a cada negocio, HUBS-F34)
 
 ### APPS-F04 Enlazar una app de pago con su producto y sus precios de Stripe
-<!-- origen: fi:saas/support/public-core-config#service-modulestripeservice-services-stripe-py -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin › Módulos
@@ -153,7 +149,6 @@ Si falla: un precio que no cuadra no se guarda y dice por qué debajo de su camp
 Implicados: billing (la comprobación en Stripe y el cobro en la Tienda)
 
 ### APPS-F05 Sacar una app de la tienda o dejar de venderla
-<!-- origen: old-saas:SAAS_PUBLIC-F22 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin › Módulos
@@ -169,7 +164,6 @@ Si falla: borrar un módulo que algún negocio tiene, también desde la acción 
 Implicados: billing (la Tienda y las suscripciones), el Hub (marca la app fuera de la tienda), public (la tienda pública y el mapa del sitio)
 
 ### APPS-F06 Clasificar una app por sección y tipo de negocio
-<!-- origen: old-saas:SAAS_PUBLIC-F26 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -183,7 +177,6 @@ Si falla: una sección que esta versión de erplora.com aún no conoce sale al f
 Implicados: el Hub (declara la clasificación), hubs (los tipos de negocio del alta), public (las páginas de cada sector)
 
 ### APPS-F07 Comprar una app de pago siempre en erplora.com, nunca dentro del negocio
-<!-- origen: old-saas:SAAS_PUBLIC-F21 -->
 Estado: hecho
 Actor: propietario, sistema
 Pantalla: Tienda
@@ -204,7 +197,6 @@ Implicados: el Hub (su página de apps, BASE-F20), billing (la Tienda)
   `cards_of` (billing nombra un módulo retirado) y `known_verticals` (`BusinessType.clean()` de hubs). El check de
   BD `apps.E001` (un `Module.slug` sin app) corre con `manage.py check --database default` en la tarea
   `saas-migrate`. Sin `live.py`: el catálogo solo cambia con un despliegue del Hub, que no avisa a nadie.
-- Ronda 16 (PLAN §21) y PLAN-SAAS §2.6: el SaaS no guarda nombre, textos, icono ni documentación de una app.
 - Tests por flujo (los citan en el nombre o en el docstring): F01 `apps/tests/test_queries.py` (lista, ficha,
   iconos, consultas planas) y `apps/tests/test_api.py` (rutas, idioma y `Vary`); F02 `test_queries.py`
   (documentación, caché, imágenes) y `packages/live/tests/test_markdown.py`; F03 `apps/tests/test_models.py`
@@ -216,26 +208,20 @@ Implicados: el Hub (su página de apps, BASE-F20), billing (la Tienda)
   (la app instalada no vende) y, en el Hub, `base/tests/test_queries_apps.py::test_the_store_of_this_business` y
   `base/frontend/pages/AppsPage.test.ts` (BASE-F20: «Mejorar plan» a la Tienda, solo en el navegador y para quien
   administra).
-- Filas del registro: G01, G02 y G13 → F03; G03, G08 y G09 → F01; G04, G06, G07 y G14 → F02; G05 → F04;
-  G10 → F07; G11 → F05; G12 → F06.
-- Se tiraron con la entrega de código (rondas 15 y 16): `module.json`, git-sync, zips, firma, carriles y
-  versiones, la documentación en S3, el CHANGELOG, el catálogo por hub con credencial de máquina (`is_owned`,
-  `can_install`, descarga), `?lang=` (el idioma va por `Accept-Language` o la cookie `_lang`), CORS de la
-  documentación, los planes por app (`ModuleTier`), las pruebas gratuitas, el cobro por uso, la aprobación y
-  la clasificación por unidad funcional y por país.
+- El idioma de la ficha y del manual va por `Accept-Language` o la cookie `_lang`.
 - APPS-F04 comparte con BILLING-F28 la comprobación de `billing/services.py` (`_price_problems`, con
   `plan_price_problems` y `module_price_problems` encima): `PriceCheckSkipped` (sin claves: se guarda con aviso) y
   `PriceCheckFailed` (Stripe no contesta: no se guarda y se pide repetir), en `ModuleForm` y en `PlanForm`.
-- APPS-F07: la parte del Hub es BASE-F20 (hub#229; el enlace se llama «Mejorar plan» desde hub#256). Con la ronda
-  2026-10-24b (PLAN §32, PLAN-SAAS §9) ningún módulo es `premium`: el enlace no le sale a nadie hasta que vuelva uno.
+- APPS-F07: la parte del Hub es BASE-F20 (el enlace «Mejorar plan»). Ningún módulo es `premium`: el enlace no le
+  sale a nadie mientras no haya uno.
 - APPS-F03 paso 4: al guardar un `Module` nuevo o con otro `tier`, `ModuleAdmin.save_model` llama a
   `hubs.services.owe_module_rights` (HUBS-F34) y dice a cuántos negocios les llega
   (`hubs/tests/test_plan_rights_reach_businesses.py::test_a_new_module_of_a_plans_level_reaches_its_businesses`).
 - `Module` lleva registro de cambios (django-auditlog, `apps/auditlog.py`, ACCOUNTS-F36; sin `updated_at`); `App` y
   `AppDoc` no, porque no son dinero y el Hub los reescribe en cada arranque (`apps/tests/test_auditlog.py`).
-- Cierre (CLOSE-APPS, 2026-10-27): ronda en PLAN-SAAS §12. Desde la ronda 2026-10-24b, F03, F04, F05 (pasos 1 y 2) y
-  F07 están construidos y probados pero sin uso; PLAN §32 dice que nuestros módulos no se venden sueltos y PLAN-SAAS
-  §2.6 que el derecho de un módulo `premium` futuro lo daría el plan: contradicción señalada en esa ronda, no elegida.
+- F03, F04, F05 (pasos 1 y 2) y F07 están construidos y probados pero sin uso: hoy ningún módulo se vende suelto.
+  `PLAN.md` y `PLAN-SAAS.md` no coinciden en si un módulo `premium` futuro se vendería suelto o lo daría el plan: la
+  contradicción está señalada en los planes.
 
 ## Lo que NO hace, a propósito
 

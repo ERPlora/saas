@@ -18,7 +18,7 @@ Los flujos (prefijo `FISCAL`, también los de la autorización firmada que viven
 [`WORKBOOK.md`](WORKBOOK.md): el sello (FISCAL-F01), la presentación (F02), el cifrado de los documentos (F03), la
 caducidad del sello (F04), los avisos de cada paso de la autorización (F05, `fiscal/emails.py`), el modelo del
 Anexo I con ERPlora, su sello y la hoja RGPD (F06, `fiscal/anexo.py` y la página «Sello del representante» del
-admin) y lo descartado (F07, los apoderamientos ZP01).
+admin).
 
 ## Contrato con el Hub
 
