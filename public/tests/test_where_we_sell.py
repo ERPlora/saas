@@ -42,6 +42,24 @@ UK_WORDS = ("HMRC", "HM Revenue")
 #: Ceuta and Melilla from the rest of Spain), not the tax ID.
 BILLING_ADDRESS = {"en": "billing address", "es": "dirección de facturación"}
 
+#: How each text says who it sells to in ``vat.BUSINESS_ONLY_REGIONS``, what it asks them for and that the sale
+#: carries no Spanish VAT: what ``require_sold_to`` enforces there and ``vat.resolve_vat`` charges.
+BUSINESSES_ONLY = {
+    "en": r"only (sell |sells its paid plans only )?to businesses and professionals",
+    "es": r"solo (vendemos )?a empresas y profesionales",
+}
+TAX_ID = {"en": "tax ID", "es": "NIF"}
+NO_SPANISH_VAT = {
+    "en": r"(without|outside the scope of) Spanish VAT",
+    "es": r"(sin|fuera del) IVA español",
+}
+
+#: The sentence of the terms that turns a payer of another country down.
+REFUSES_ANOTHER_COUNTRY = {
+    "en": "ERPlora refuses a paid subscription billed to another country",
+    "es": "ERPlora rechaza una suscripción de pago que se facture a otro país",
+}
+
 LANGUAGES = ("en", "es")
 
 
@@ -49,12 +67,22 @@ def plain(html: str) -> str:
     return " ".join(unescape(re.sub(r"<[^>]+>", " ", html)).split())
 
 
-def terms_clause(client, language: str) -> str:
+def terms_clause_html(client, language: str) -> str:
     client.cookies[settings.LANGUAGE_COOKIE_NAME] = language
     html = client.get(TERMS).content.decode()
     match = re.search(r'<section[^>]*id="where-we-sell"[^>]*>(.*?)</section>', html, re.S)
     assert match, "the terms have no clause on where ERPlora sells (id=where-we-sell)"
-    return plain(match.group(1))
+    return match.group(1)
+
+
+def terms_clause(client, language: str) -> str:
+    return plain(terms_clause_html(client, language))
+
+
+def clause_parts(client, language: str) -> list[str]:
+    """The heading, the paragraph and each bullet of the clause, one by one."""
+    parts = re.findall(r"<(h3|p|li)[^>]*>(.*?)</\1>", terms_clause_html(client, language), re.S)
+    return [plain(part) for _tag, part in parts]
 
 
 def vat_answer(language: str) -> str:
@@ -126,6 +154,30 @@ def test_the_texts_sell_to_businesses_only_in_the_regions_without_vat(client, la
     for where, text in where_we_sell(client, language).items():
         for region in sorted(vat.BUSINESS_ONLY_REGIONS):
             assert REGION_NAMES[region][language] in text, (where, region)
+        assert re.search(BUSINESSES_ONLY[language], text), where
+        assert TAX_ID[language] in text, where
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_the_texts_say_those_regions_carry_no_spanish_vat(client, language):
+    for where, text in where_we_sell(client, language).items():
+        assert re.search(NO_SPANISH_VAT[language], text), where
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("language", "percent"), [("en", "{rate}%"), ("es", "{rate} %")])
+def test_the_vat_answer_gives_the_rate_the_payment_charges_in_spain(language, percent):
+    """The only rates the answer prints are Spain's and the «0%» it tells «outside the scope» from."""
+    rate = percent.format(rate=f"{vat.EU_VAT_RATES['ES']:f}")
+
+    assert set(re.findall(r"\d+(?:[.,]\d+)?\s?%", vat_answer(language))) == {rate, percent.format(rate=0)}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_the_terms_refuse_a_payer_of_another_country(client, language):
+    assert REFUSES_ANOTHER_COUNTRY[language] in terms_clause(client, language)
 
 
 @pytest.mark.django_db
@@ -157,3 +209,5 @@ def test_the_clause_is_translated_into_spanish(client):
     assert "España" in spanish
     assert "Spain" not in spanish
     assert english != spanish
+    assert clause_parts(client, "en"), "the clause has a heading, a paragraph and bullets"
+    assert not set(clause_parts(client, "en")) & set(clause_parts(client, "es"))
