@@ -209,7 +209,16 @@ def test_a_spanish_postal_code_has_five_digits(business, owner, postal_code):
 
 
 @pytest.mark.parametrize(
-    "country, postal_code", [("ES", "35001"), ("ES", " 28001 "), ("ES", ""), ("ES", "51001"), ("ES", "52001")]
+    "country, postal_code",
+    [
+        ("ES", "35001"),
+        ("ES", " 28001 "),
+        ("ES", ""),
+        ("ES", "51001"),
+        ("ES", "52001"),
+        # Only a Spanish postal code has a shape to check: without a country yet, any is kept.
+        ("", "1000-001"),
+    ],
 )
 def test_a_postal_code_of_its_country_is_saved(business, owner, country, postal_code):
     assert update(owner, business, billing_country=country, billing_postal_code=postal_code)["billing_postal_code"] == (
