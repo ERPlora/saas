@@ -88,10 +88,16 @@ export interface HubRefOut {
   name: string;
 }
 
-/** `hubs.PlanRefOut`. */
+/** `hubs.PlanRefOut`: the plan a business has (internal ones too), with what it covers. */
 export interface PlanRefOut {
   slug: string;
   name: string;
+  /** 0 is Free. */
+  price_monthly: string;
+  /** 0 = unlimited. */
+  max_devices: number;
+  /** 0 = unlimited. */
+  max_apps: number;
 }
 
 /** `hubs.BusinessTypeListIn`. */

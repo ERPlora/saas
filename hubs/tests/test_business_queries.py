@@ -23,6 +23,10 @@ from hubs.tests.conftest import add_member, create_business, ctx_for
 pytestmark = pytest.mark.django_db
 
 
+#: Free as a business carries it: its name and what it covers.
+FREE = {"slug": "free", "name": "Free", "price_monthly": "0.00", "max_devices": 1, "max_apps": 20}
+
+
 def business_list(user, language="en", **params):
     return queries.business_list(
         ctx_for(user, language), BusinessListIn(**params)
@@ -53,7 +57,7 @@ class TestMyBusinesses:
         assert (row["status"], row["role"], row["plan"]) == (
             "preparing",
             "hub_owner",
-            {"slug": "free", "name": "Free"},
+            FREE,
         )
         assert (row["can_open"], row["open_blocked_reason"]) == (False, "preparing")
 
@@ -182,7 +186,7 @@ class TestOneBusiness:
             detail["timezone"],
             detail["language"],
         ) == ("Bar Manolo", "ES", "Europe/Madrid", "es")
-        assert detail["plan"] == {"slug": "free", "name": "Free"}
+        assert detail["plan"] == FREE
         # No trial (the Free plan is the way in): Free's own seats.
         assert (detail["trial_plan"], detail["trial_end"]) == (None, None)
         assert detail["seats"] == {"used": 1, "limit": 3}
@@ -235,6 +239,46 @@ class TestOneBusiness:
 
         with pytest.raises(NotFound):
             queries.business_get(ctx_for(owner), ByIdIn(id=business.id))
+
+
+class TestWhatThePlanCovers:
+    """The plan of a business travels with what it covers, so its page never looks it up among the plans on
+    sale (``hubs.plan.list``, the public ones only): an internal plan covers what it covers too."""
+
+    def detail(self, user, business):
+        return queries.business_get(ctx_for(user), ByIdIn(id=business.id)).model_dump(mode="json")
+
+    def test_an_internal_plan_carries_its_limits_in_the_list_and_on_the_page(self, business, owner):
+        Subscription.objects.filter(hub=business).update(plan=Plan.objects.get(slug="payment-test"))
+        internal = {
+            "slug": "payment-test",
+            "name": "Payment Test (internal)",
+            "price_monthly": "1.00",
+            "max_devices": 0,
+            "max_apps": 40,
+        }
+
+        (row,) = business_list(owner)["rows"]
+
+        assert row["plan"] == internal
+        assert self.detail(owner, business)["plan"] == internal
+
+    def test_the_plan_on_trial_carries_its_own_limits(self, business, owner):
+        Plan.objects.filter(slug="starter").update(max_devices=2, max_apps=7)
+        Subscription.objects.filter(hub=business).update(
+            trial_plan=Plan.objects.get(slug="starter"), trial_end=timezone.now() + timedelta(days=7)
+        )
+
+        trial = self.detail(owner, business)["trial_plan"]
+
+        assert (trial["slug"], trial["max_devices"], trial["max_apps"]) == ("starter", 2, 7)
+
+    def test_the_name_reads_in_the_language_of_the_account(self, business, owner):
+        Subscription.objects.filter(hub=business).update(plan=Plan.objects.get(slug="payment-test"))
+
+        (row,) = business_list(owner, language="es")["rows"]
+
+        assert row["plan"]["name"] == "Prueba de pago (interno)"
 
 
 class TestTheProposedAddress:
