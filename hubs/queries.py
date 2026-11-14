@@ -207,7 +207,7 @@ def plan_list(ctx: OperationContext, data: PlanListIn) -> dict[str, Any]:
     )
     trial_days = Plan.objects.signup_trial_days()["trial_days_max"] or 0
     with translation.override(ctx.language):
-        rows = [_plan(plan, ctx.language) for plan in plans]
+        rows = [plan_card(plan, ctx.language) for plan in plans]
     return {
         "signup_trial_days": trial_days,
         "cheapest_slug": cheapest.slug if cheapest else None,
@@ -215,7 +215,8 @@ def plan_list(ctx: OperationContext, data: PlanListIn) -> dict[str, Any]:
     }
 
 
-def _plan(plan: Plan, language: str) -> dict[str, Any]:
+def plan_card(plan: Plan, language: str) -> dict[str, Any]:
+    """A plan as ``hubs.plan.list`` gives it (``PlanOut``), in ``language``."""
     features = [
         feature
         for feature in plan.translated("features", language)

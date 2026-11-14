@@ -1711,7 +1711,6 @@ from billing import services as billing_services  # noqa: E402
 from billing.money import to_cents  # noqa: E402
 from billing.tests.conftest import plans, stripe_double, stripe_keys  # noqa: E402,F401
 from billing.tests.test_services import stripe_price  # noqa: E402
-from hubs.tests.conftest import make_user  # noqa: E402,F401
 
 PAINTED_AMOUNT = re.compile(r'<span class="ep-pricing-card__amount">€([\d.,]+)</span>')
 
@@ -1724,34 +1723,31 @@ def painted_prices(html: str) -> dict[str, Decimal]:
     return {name: Decimal(amount.replace(",", "")) for name, amount in zip(names, amounts)}
 
 
-def test_every_card_paints_the_price_the_checkout_charges(client, plans, make_user):
-    buyer = make_user("painted@example.com")
+def test_every_card_paints_the_price_the_checkout_charges(client, plans):
     painted = painted_prices(html_of(client))
     paid = [plan for plan in Plan.objects.public() if not plan.upgrade_only and plan.price_monthly > 0]
 
     assert paid, "no paid plan on sale to compare"
     for plan in paid:
-        charged = billing_services.plan_sale(buyer, plan.slug, "month")
+        charged = billing_services.plan_sale(None, plan.slug, "month")
         assert painted[plan.name_en] == charged.net, plan.slug
         assert charged.price_id == plan.stripe_price_id
 
 
-def test_the_year_painted_is_the_year_charged(client, plans, make_user):
-    buyer = make_user("yearly@example.com")
+def test_the_year_painted_is_the_year_charged(client, plans):
     html = " ".join(html_of(client).split())
 
     for plan in Plan.objects.public().filter(upgrade_only=False, price_annual__gt=0):
-        charged = billing_services.plan_sale(buyer, plan.slug, "year")
+        charged = billing_services.plan_sale(None, plan.slug, "year")
         assert f"≈ €{charged.net.normalize():f}/year" in html or f"≈ €{charged.net:.2f}/year" in html, plan.slug
 
 
-def test_the_detail_page_paints_the_price_the_checkout_charges(client, plans, make_user):
-    buyer = make_user("detail@example.com")
+def test_the_detail_page_paints_the_price_the_checkout_charges(client, plans):
     starter = Plan.objects.get(slug="starter")
 
     html = html_of(client, f"/pricing/{starter.slug}/")
 
-    assert f"{billing_services.plan_sale(buyer, 'starter', 'month').net:.2f} &euro;" in html
+    assert f"{billing_services.plan_sale(None, 'starter', 'month').net:.2f} &euro;" in html
 
 
 def test_a_stripe_price_that_charges_the_painted_amount_is_accepted(client, plans, stripe_double):

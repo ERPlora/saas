@@ -418,6 +418,77 @@ class TestTheTestClock:
         ).content.decode()
 
 
+class TestTheInternalPlansMark:
+    """A superuser lets the owner of one business buy the internal plans («Payment test», a real charge of
+    1 € + VAT) in the Store, and takes it back. Production too: that first real purchase is what it is for."""
+
+    @pytest.fixture
+    def actions(self, staff_client):
+        def offered():
+            page = staff_client.get("/admin/hubs/hub/").content.decode()
+            return {name for name in ("allow_internal_plans", "stop_internal_plans") if f'value="{name}"' in page}
+
+        return offered
+
+    def test_marking_lets_its_owner_buy_them_and_unmarking_takes_it_back(self, staff_client, business):
+        allowed = _act(staff_client, "hub", "allow_internal_plans", [business]).content.decode()
+
+        assert Hub.objects.get(pk=business.pk).can_buy_internal_plans is True
+        assert "1 business(es): its owner now sees the internal plans in the Store." in allowed
+
+        stopped = _act(staff_client, "hub", "stop_internal_plans", [business]).content.decode()
+
+        assert Hub.objects.get(pk=business.pk).can_buy_internal_plans is False
+        assert "1 business(es): the Store no longer offers it the internal plans" in stopped
+
+    def test_only_the_chosen_businesses_are_marked(self, staff_client, business, make_user):
+        other = create_business(make_user("other@example.com"), name="Otro Bar")
+
+        _act(staff_client, "hub", "allow_internal_plans", [business])
+
+        assert Hub.objects.get(pk=other.pk).can_buy_internal_plans is False
+
+    def test_it_is_in_the_business_history(self, staff_client, business):
+        from django.contrib.admin.models import LogEntry
+
+        _act(staff_client, "hub", "allow_internal_plans", [business])
+
+        (entry,) = LogEntry.objects.filter(object_id=str(business.pk))
+        assert entry.user.email == "root@example.com"
+        assert "Let its owner buy the internal plans" in entry.get_change_message()
+
+    def test_the_list_says_which_businesses_are_marked(self, staff_client, business):
+        Hub.objects.filter(pk=business.pk).update(can_buy_internal_plans=True)
+
+        page = staff_client.get("/admin/hubs/hub/", {"can_buy_internal_plans__exact": "1"}).content.decode()
+
+        assert "field-can_buy_internal_plans" in page
+        assert business.name in page
+
+    def test_the_list_says_it_in_spanish(self, staff_client, business):
+        page = staff_client.get("/admin/hubs/hub/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+
+        assert "Dejar a su propietario comprar los planes internos" in page
+        assert "Dejar de venderle los planes internos" in page
+        assert "planes internos" in re.findall(r'data-filter-title="([^"]*)"', page)
+
+    def test_the_action_reports_in_spanish(self, staff_client, business):
+        page = staff_client.post(
+            "/admin/hubs/hub/",
+            {"action": "allow_internal_plans", "_selected_action": [str(business.pk)]},
+            follow=True,
+            HTTP_ACCEPT_LANGUAGE="es",
+        ).content.decode()
+
+        assert "1 negocio(s): su propietario ya ve los planes internos en la Tienda." in page
+
+    @pytest.mark.parametrize("key", ["rk_live_51abc", "rk_test_51abc"])
+    def test_they_are_offered_with_live_keys_too(self, actions, business, settings, key):
+        settings.STRIPE_SECRET_KEY = key
+
+        assert actions() == {"allow_internal_plans", "stop_internal_plans"}
+
+
 class TestSupport:
     """``support`` (staff, view only) sees the account plane and acts on nothing."""
 
@@ -459,6 +530,11 @@ class TestSupport:
         _act(support_client, "hub", "send_latest_state", [business])
 
         assert hub_double.calls == []
+
+    def test_marks_no_business_for_the_internal_plans(self, support_client, business):
+        _act(support_client, "hub", "allow_internal_plans", [business])
+
+        assert Hub.objects.get(pk=business.pk).can_buy_internal_plans is False
 
 
 # --- The usage of each business, day by day: read only, as the Hub measured it ---------------------

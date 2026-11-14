@@ -23,6 +23,7 @@ import {
   catalog,
   FREE_SUBSCRIPTION,
   MAX,
+  PAYMENT_TEST,
   PLANS,
   PLAZA,
   PRO,
@@ -145,6 +146,40 @@ describe('StoreShop', () => {
     const s = await setup({ answer: ({ path }) => (path === '/api/plans' ? Response.json(plans) : undefined) });
     expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter', 'Pro', 'Max']);
     expect(s.el('store-plans-later').exists()).toBe(false);
+  });
+
+  it('a business ERPlora marked is offered the internal plan with the card its catalog brings, and buys it', async () => {
+    const marked = catalog('cafe', {
+      subscription: FREE_SUBSCRIPTION,
+      offered_plans: ['starter', 'standard', 'payment-test'],
+      internal_plans: [PAYMENT_TEST],
+    });
+    const s = await setup({ businessId: 'cafe', answer: ({ path }) => (path === '/api/billing/store' ? Response.json(marked) : undefined) });
+    expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter', 'Payment Test (internal)']);
+    await s.el('plan-payment-test').find('[data-testid="plan-upgrade"]').trigger('click');
+    expect(s.wrapper.findComponent(CheckoutModal).props()).toMatchObject({
+      open: true,
+      business: { id: 'cafe' },
+      purchase: { kind: 'plan', slug: 'payment-test', name: 'Payment Test (internal)', interval: 'month' },
+    });
+  });
+
+  it('the internal plan of one business is never shown for another: each catalog brings its own', async () => {
+    const marked = catalog('cafe', {
+      subscription: FREE_SUBSCRIPTION,
+      offered_plans: ['starter', 'standard', 'payment-test'],
+      internal_plans: [PAYMENT_TEST],
+    });
+    const s = await setup({ businessId: 'cafe', answer: ({ path, query }) => (path === '/api/billing/store' && query.hub_id === 'cafe' ? Response.json(marked) : undefined) });
+    expect(s.el('plan-payment-test').exists()).toBe(true);
+    await s.pick('bakery');
+    expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter']);
+  });
+
+  it('a business on an internal plan sees its card as its current plan', async () => {
+    const onIt = catalog('bakery', { subscription: subscription({ plan: 'payment-test' }), internal_plans: [PAYMENT_TEST] });
+    const s = await setup({ answer: ({ path }) => (path === '/api/billing/store' ? Response.json(onIt) : undefined) });
+    expect(s.el('plan-payment-test').find('[data-testid="plan-current"]').exists()).toBe(true);
   });
 
   it('?business= chooses the business it came from', async () => {

@@ -627,10 +627,6 @@ class TestWhoAndWhat:
         # No form has a plan to mark: the reason itself is the notice.
         assert error.value.message == error.value.fields["plan"]
 
-    def test_an_internal_plan_is_not_offered_to_a_customer(self, shop, owner):
-        with pytest.raises(InvalidPayload):
-            start(owner, shop, plan="payment-test")
-
     def test_a_plan_without_its_stripe_price_is_not_on_sale(self, shop, owner):
         from hubs.models import Plan
 
@@ -657,6 +653,57 @@ class TestWhoAndWhat:
         paid = pay(shop, modules=["inventory"])
 
         refused("billing.module_owned", lambda: start(owner, paid, module="inventory"))
+
+
+class TestTheInternalPlan:
+    """``payment-test`` (1 € + VAT: a real charge, a real invoice with its QR) is sold only to a business ERPlora's
+    staff marked in the admin. Nobody else buys it, whatever they send: the refusal comes before Stripe."""
+
+    def test_the_owner_of_a_marked_business_buys_it_in_the_embedded_checkout(self, marked, owner, stripe_double):
+        answer = start(owner, marked, plan="payment-test")
+
+        params = session_params(stripe_double)
+        assert answer["flow"] == "checkout"
+        assert [line["price"] for line in params["line_items"]] == ["price_payment-test_month"]
+        assert params["metadata"]["plan"] == "payment-test"
+        assert CheckoutAttempt.objects.get(hub=marked).plan_slug == "payment-test"
+
+    def test_a_business_nobody_marked_is_refused_before_stripe(self, shop, owner, stripe_double):
+        from hubs.models import Plan
+
+        Plan.objects.filter(slug="payment-test").update(stripe_price_id="price_payment-test_month")
+
+        with pytest.raises(InvalidPayload) as error:
+            start(owner, shop, plan="payment-test")
+
+        assert set(error.value.fields) == {"plan"}
+        assert stripe_double.calls == []
+
+    def test_the_mark_is_of_the_business_not_of_its_owner(self, marked, owner, stripe_double):
+        from hubs.tests.conftest import create_business
+
+        pay(marked)
+        other = payer(
+            create_business(owner, name="Otro Bar"),
+            billing_name="Otro Bar SL",
+            billing_address="Calle Mayor 2",
+            billing_city="Madrid",
+            billing_postal_code="28001",
+        )
+
+        with pytest.raises(InvalidPayload):
+            start(owner, other, plan="payment-test")
+        assert stripe_double.calls == []
+
+    def test_a_paying_business_nobody_marked_cannot_move_to_it(self, shop, owner, stripe_double):
+        from hubs.models import Plan
+
+        Plan.objects.filter(slug="payment-test").update(stripe_price_id="price_payment-test_month")
+        paid = pay(shop)
+
+        with pytest.raises(InvalidPayload):
+            start(owner, paid, plan="payment-test")
+        assert stripe_double.calls == []
 
 
 # --- Guards of money ---------------------------------------------------------------------------------

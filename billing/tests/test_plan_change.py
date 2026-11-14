@@ -13,12 +13,13 @@ The plan is ONE item of the business's subscription, beside its modules:
 
 import pytest
 from django.utils import timezone
-from live.errors import NotFound, OperationError, PermissionDenied
+from live.errors import InvalidPayload, NotFound, OperationError, PermissionDenied
 
 from billing import services
 from billing.schemas import HubIn, PlanChangeIn
 from billing.tests.conftest import ctx_for, pay
-from billing.tests.stripe_double import card_error, item, subscription
+from billing.models import PlanChangeSchedule
+from billing.tests.stripe_double import card_error, item, schedule, subscription
 from hubs.models import Hub, HubMember, Subscription, SubscriptionItem
 from hubs.tests.conftest import add_member
 
@@ -67,6 +68,37 @@ def on_starter(shop, stripe_double, *modules, **live):
     ]
     stripe_double.answer("subscriptions.retrieve", subscription(items=lines, **live))
     return paid
+
+
+class TestTheInternalPlan:
+    """A paying business moves to ``payment-test`` only if ERPlora's staff marked it; the refusal comes before Stripe
+    changes anything."""
+
+    def test_a_business_nobody_marked_cannot_move_to_it(self, shop, owner, stripe_double):
+        from hubs.models import Plan
+
+        Plan.objects.filter(slug="payment-test").update(stripe_price_id="price_payment-test_month")
+        paid = on_starter(shop, stripe_double)
+
+        with pytest.raises(InvalidPayload) as error:
+            change(owner, paid, plan="payment-test")
+
+        assert set(error.value.fields) == {"plan"}
+        assert stripe_double.calls_to("subscriptions.update") == []
+        assert local(paid).plan.slug == "starter"
+
+    def test_a_marked_business_moves_to_it_at_the_end_of_its_period(self, marked, owner, stripe_double):
+        """1 € is below any paid plan: the move waits for the end of the period, as every downgrade does."""
+        paid = on_starter(marked, stripe_double)
+        stripe_double.answer("subscription_schedules.create", schedule())
+        stripe_double.answer("subscription_schedules.update", schedule())
+
+        change(owner, paid, plan="payment-test")
+
+        sent = stripe_double.last("subscription_schedules.update")
+        following = sent.params["phases"][-1]
+        assert [line["price"] for line in following["items"]] == ["price_payment-test_month"]
+        assert PlanChangeSchedule.objects.get(hub=paid).plan_slug == "payment-test"
 
 
 class TestChangingThePlan:

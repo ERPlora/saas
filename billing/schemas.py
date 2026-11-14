@@ -9,6 +9,8 @@ from django.utils.translation import gettext_noop
 from ninja import Field, Schema
 from pydantic import AfterValidator, model_validator
 
+from hubs.schemas import PlanOut
+
 #: The verdict a VAT number gets (``billing.services.clear_tax_id_for_stripe``):
 #: ``verified`` (VIES confirmed it, with proof: reverse charge), ``invalid`` (not in VIES),
 #: ``unavailable`` (VIES could not answer, or answered without proof), ``national`` (ERPlora's own
@@ -322,6 +324,8 @@ class StoreCatalogOut(Schema):
     #: The paid plans the business may move to (slugs, in display order): the ones sold at sign-up while Stripe
     #: does not bill it; the ``upgrade_only`` ones too once it pays (``billing.queries.offered_plans``).
     offered_plans: list[str]
+    #: The internal plans the business is offered, and the one it has: ``hubs.plan.list`` lists only the public ones.
+    internal_plans: list[PlanOut]
 
 
 # --- ERPlora's invoices, subscriptions and payment details: the Billing section -----------------------

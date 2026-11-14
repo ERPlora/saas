@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:915e5181cad398ac0ee369e47e3c57e27757a0895d4c2db7e3063737385ddddc -->
+<!-- generated from WORKBOOK.md sha256:0f81996f870447295e3ea8a03bc7d69ca97698bcb2c947cd55002a56271fec6a -->
 
 ## What it is for and who it is for
 
@@ -253,7 +253,7 @@ Steps:
 2. In a plan's form they write its name, its description, the lines of its card and its badge in English and in Spanish, its monthly and annual price, what it includes (module level, support, own domain, businesses, devices and people), the limits of its database, the assistant and WhatsApp messages per month and its Stripe prices.
 3. They save: the customer sees the texts in their language (English when the Spanish is missing) in the Store and on the pricing web page.
 In: what the staff type.
-Out: the plan, with each text in English and in Spanish. Free is offered at sign-up and without a trial; Pro, Enterprise and Max only as an upgrade; an internal plan is never offered to customers.
+Out: the plan, with each text in English and in Spanish. Free is offered at sign-up and without a trial; Pro, Enterprise and Max only as an upgrade; an internal plan is only offered to the business the staff mark in the admin (HUBS-F23).
 If it fails: a price Stripe refuses is not saved and the plan stays as it was; without Stripe, it is saved and warns that it was not checked. An account without the staff mark does not get into the admin.
 Involved: billing (the prices in Stripe, BILLING-F28), public (the pricing web page)
 
@@ -490,11 +490,11 @@ Actor: ERPlora's staff
 Screen: admin › Businesses
 Steps:
 1. The staff enter erplora.com's admin and look for the business by its address or its name; they see its record with its members, its plan, who pays, its usage and what the business still has to receive.
-2. They choose the business and an action: "Send the latest state to the Hub", "Retry what the Hub still owes" or, in the record of the session ends, "End the sessions in the Hub now"; the admin says how many are up to date and how many are still owed.
+2. They choose the business and an action: "Send the latest state to the Hub", "Retry what the Hub still owes" or, in the record of the session ends, "End the sessions in the Hub now"; the admin says how many are up to date and how many are still owed. A superuser can also "Let its owner buy the internal plans" or "Stop selling it the internal plans" (BILLING-F27).
 3. Each action stays in that business's history: who did it, when and which.
 In: the staff account with its second factor.
 Out: what the action sends to the business and the line of the history.
-If it fails: the admin does not create, change or delete businesses, members or paid plans: only their own screens do, so nobody of the staff makes themselves owner of a business or deletes it without its deletion. Support staff see everything and run no action. For the data inside the business there is the businesses' admin (in the businesses' service).
+If it fails: the admin does not create, change or delete businesses, members or paid plans: only their own screens do, so nobody of the staff makes themselves owner of a business or deletes it without its deletion. The mark of the internal plans buys nothing: the owner, if they want, buys it in the Store. Support staff see everything and run no action. For the data inside the business there is the businesses' admin (in the businesses' service).
 Involved: the business (receives what is sent again), accounts (the staff account)
 
 ### HUBS-F24 Invite a person to a business

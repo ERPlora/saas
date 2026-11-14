@@ -9,12 +9,11 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
 from django.utils import translation
 
 from apps.tests.factories import make_app
-from hubs.models import Plan
+from hubs.models import Hub, Plan
 
 INTERNAL = "payment-test"
 
@@ -35,11 +34,6 @@ def plans(db):
 @pytest.fixture
 def customer(django_user_model):
     return django_user_model.objects.create_user(email="client@example.com", password="x")
-
-
-@pytest.fixture
-def staff(django_user_model):
-    return django_user_model.objects.create_user(email="staff@example.com", password="x", is_staff=True)
 
 
 # --- Identity ------------------------------------------------------------------------------------
@@ -81,45 +75,49 @@ def test_public_queryset_keeps_active_customer_plans_only(plans):
 
 
 class TestOfferedTo:
-    """``Plan.objects.offered_to(user)``: the one rule every logged-in door lists plans through."""
+    """``Plan.objects.offered_to(hub)``: the one rule the Store lists and sells plans through. An internal plan
+    (``payment-test``) is only for a business ERPlora's staff marked in the admin (``Hub.can_buy_internal_plans``);
+    the staff never own a business, so its owner is a customer account like any other."""
 
-    def _slugs(self, user):
-        return set(Plan.objects.offered_to(user).values_list("slug", flat=True))
+    @pytest.fixture
+    def business(self, plans, customer):
+        from hubs.tests.conftest import create_business
 
-    def test_nobody_and_anonymous_get_only_public_plans(self, plans):
-        assert INTERNAL not in self._slugs(None)
-        assert INTERNAL not in self._slugs(AnonymousUser())
+        return create_business(customer)
 
-    def test_staff_gets_every_active_plan(self, plans, staff):
-        assert self._slugs(staff) == set(Plan.objects.filter(is_active=True).values_list("slug", flat=True))
+    @pytest.fixture
+    def marked(self, business):
+        Hub.objects.filter(pk=business.pk).update(can_buy_internal_plans=True)
+        return Hub.objects.get(pk=business.pk)
 
-    def test_a_customer_gets_exactly_the_public_plans(self, plans, customer):
-        assert self._slugs(customer) == set(Plan.objects.public().values_list("slug", flat=True))
+    def _slugs(self, hub):
+        return set(Plan.objects.offered_to(hub).values_list("slug", flat=True))
 
-    def test_an_inactive_plan_is_offered_to_nobody(self, plans, staff):
+    def test_without_a_business_only_the_public_plans(self, plans):
+        assert self._slugs(None) == set(Plan.objects.public().values_list("slug", flat=True))
+
+    def test_a_business_nobody_marked_gets_exactly_the_public_plans(self, business):
+        assert self._slugs(business) == set(Plan.objects.public().values_list("slug", flat=True))
+        assert INTERNAL not in self._slugs(business)
+
+    def test_a_marked_business_gets_every_active_plan(self, marked):
+        assert self._slugs(marked) == set(Plan.objects.filter(is_active=True).values_list("slug", flat=True))
+        assert INTERNAL in self._slugs(marked)
+
+    def test_an_inactive_plan_is_offered_to_nobody(self, marked):
         Plan.objects.filter(slug=INTERNAL).update(is_active=False)
 
-        assert INTERNAL not in self._slugs(staff)
+        assert INTERNAL not in self._slugs(marked)
 
 
-class TestOnlyStaffCanBuyTheInternalPlan:
+class TestTheMarkIsOffByDefault:
     """Purchasable, but not by anyone: it is a whole hub for 1.21 €."""
 
     def test_internal_defaults_to_false_so_real_plans_are_unaffected(self):
         assert Plan._meta.get_field("internal_only").default is False
 
-    def test_is_available_to_rejects_a_regular_user(self, plans, customer):
-        assert Plan.objects.get(slug=INTERNAL).is_available_to(customer) is False
-
-    def test_is_available_to_rejects_an_anonymous_visitor(self, plans):
-        assert Plan.objects.get(slug=INTERNAL).is_available_to(AnonymousUser()) is False
-        assert Plan.objects.get(slug=INTERNAL).is_available_to(None) is False
-
-    def test_is_available_to_accepts_staff(self, plans, staff):
-        assert Plan.objects.get(slug=INTERNAL).is_available_to(staff) is True
-
-    def test_a_normal_plan_is_available_to_everyone(self, plans, customer):
-        assert Plan.objects.get(slug="starter").is_available_to(customer) is True
+    def test_no_business_is_marked_until_the_staff_mark_it(self):
+        assert Hub._meta.get_field("can_buy_internal_plans").default is False
 
 
 # --- The trial a visitor gets ---------------------------------------------------------------------
