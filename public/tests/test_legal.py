@@ -927,7 +927,7 @@ def test_every_message_of_a_legal_template_has_its_spanish_entry(template):
 #   the ORM of hubs.
 # * The suspension clock of section 3 is public.legal.SUSPENDED_HUB_DELETE_DAYS: the task that deletes a suspended hub
 #   lives in the Hub, so the number the terms print is pinned here.
-# * The UK example number is checked against HMRC's check digit (the «97/55» rule).
+# * Where ERPlora sells its paid plans (the clause with id=where-we-sell) is public/tests/test_where_we_sell.py.
 
 TERMS = "/legal/terms/"
 
@@ -1315,88 +1315,7 @@ def test_the_trial_is_promised_on_hub_creation_and_not_on_an_upgrade(no_plans, c
     assert "no inicia un nuevo periodo de prueba" in spanish_clause
 
 
-# UK customers: businesses only
-
-
-def uk_clause(html: str) -> str:
-    match = re.search(r'<section[^>]*id="united-kingdom"[^>]*>(.*?)</section>', html, re.S)
-    assert match, "the terms have no United Kingdom clause (id=united-kingdom)"
-    return match.group(1)
-
-
-def hmrc_check_digit_is_valid(number: str) -> bool:
-    """HMRC's check digit of a 9-digit VAT number: weights 8..2, then «97» or «97-55»."""
-    digits = [int(char) for char in number[2:]]
-    total = sum(digit * weight for digit, weight in zip(digits[:7], range(8, 1, -1)))
-    check = digits[7] * 10 + digits[8]
-    return (total + check) % 97 == 0 or (total + check + 55) % 97 == 0
-
-
-def test_the_hmrc_check_tells_a_good_number_from_a_typo():
-    """Positive control of the check below."""
-    assert hmrc_check_digit_is_valid("GB123456782")
-    assert not hmrc_check_digit_is_valid("GB123456783")
-
-
-@pytest.mark.django_db
-def test_the_terms_have_a_united_kingdom_clause(client):
-    clause = uk_clause(terms_html(client))
-
-    assert "United Kingdom" in clause
-    assert "VAT" in clause
-
-
-@pytest.mark.django_db
-def test_the_example_uk_vat_number_is_a_valid_one(client):
-    examples = re.findall(r"\b(?:GB|XI)\d{9}\b", uk_clause(terms_html(client)))
-
-    assert examples, "the clause has to show what a UK VAT number looks like"
-    assert all(hmrc_check_digit_is_valid(example) for example in examples)
-
-
-@pytest.mark.django_db
-def test_the_uk_clause_is_limited_to_paid_services(client):
-    clause = uk_clause(terms_html(client)).lower()
-
-    assert "paid" in clause
-    assert "free plan" in clause
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    ("language", "sells", "old"),
-    [
-        (
-            "en",
-            "In the United Kingdom, ERPlora sells its paid plans only to businesses, for use in the "
-            "course of their business.",
-            "plans and modules",
-        ),
-        (
-            "es",
-            "En Reino Unido, ERPlora vende sus planes de pago solo a empresas y profesionales, para "
-            "el ejercicio de su actividad.",
-            "planes y módulos",
-        ),
-    ],
-)
-def test_the_uk_clause_sells_plans_not_modules(client, language, sells, old):
-    """Our apps are not sold on their own: every plan includes all of them, so the clause never says «its paid plans
-    and modules»."""
-    clause = uk_clause(terms_html(client, language))
-
-    assert sells in clause
-    assert old not in clause
-
-
-@pytest.mark.django_db
-def test_the_uk_clause_is_translated_into_spanish(client):
-    english = uk_clause(terms_html(client))
-    spanish_clause = uk_clause(terms_html(client, "es"))
-
-    assert "Reino Unido" in spanish_clause
-    heading = re.search(r"<h3>(.*?)</h3>", english).group(1)
-    assert heading not in spanish_clause
+# The date of the terms
 
 
 @pytest.mark.django_db
@@ -1406,28 +1325,13 @@ def test_the_terms_date_moved_with_the_last_change(client):
     html = terms_html(client)
     spanish = terms_html(client, "es")
 
-    for old in ("August 8, 2026", "October 1, 2026", "October 13, 2026", "October 25, 2026", "November 3, 2026"):
+    for old in ("August 8, 2026", "October 1, 2026", "October 13, 2026", "October 25, 2026", "November 3, 2026",
+                "November 5, 2026"):
         assert old not in html, old
-    assert TERMS_VERSION > date(2026, 11, 3)
+    assert TERMS_VERSION > date(2026, 11, 5)
     assert "25 de octubre de 2026" not in spanish
     assert "3 de noviembre de 2026" not in spanish
-
-
-@pytest.mark.django_db
-def test_a_business_that_is_not_vat_registered_has_a_way_in(client):
-    clause = uk_clause(terms_html(client))
-
-    assert "registered for VAT in the United Kingdom, for use" not in clause
-    assert "website" in clause
-    assert "declare" in clause
-
-
-@pytest.mark.django_db
-def test_the_way_in_is_translated_into_spanish(client):
-    spanish_clause = uk_clause(terms_html(client, "es"))
-
-    assert "web" in spanish_clause
-    assert "website" not in spanish_clause
+    assert "5 de noviembre de 2026" not in spanish
 
 
 # Our apps, not a marketplace, and all of them on every plan

@@ -362,13 +362,14 @@ def faq_items(days: TrialDays | None = None) -> list[dict[str, str]]:
             "key": "vat",
             "question": _("Is VAT included in these prices?"),
             "answer": _(
-                "No — every price on this page is net. The VAT that applies to you is "
-                "worked out at checkout from the tax ID you enter, and you see the exact "
-                "amount before you pay. A Spanish NIF/CIF/NIE pays 21%. A company in "
-                "another EU member state with a VAT number we validate against VIES pays "
-                "0% under the reverse charge, and accounts for the tax itself. The Canary "
-                "Islands, Ceuta and Melilla, and customers outside the EU are outside the "
-                "scope of Spanish VAT, which is not the same as a 0% rate."
+                "No — every price on this page is net. For now ERPlora only sells its paid "
+                "plans to payers billed in Spain, and the VAT is worked out at checkout from "
+                "your billing address: you see the exact amount before you pay. On the "
+                "mainland and in the Balearic Islands, Spanish VAT of 21% is added. The "
+                "Canary Islands, Ceuta and Melilla are outside the scope of Spanish VAT, "
+                "which is not the same as a 0% rate: there we only sell to businesses and "
+                "professionals, who give their tax ID and account for any IGIC or IPSI "
+                "themselves."
             ),
         },
     ]

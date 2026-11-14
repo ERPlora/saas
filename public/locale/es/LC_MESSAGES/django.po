@@ -2335,9 +2335,13 @@ msgstr "Todas las apps incluidas, listo para VeriFactu"
 msgid "Process transactions in milliseconds, with live updates on every device."
 msgstr "Procesa transacciones en milisegundos, con actualizaciones en vivo en todos los dispositivos."
 
-#: templates/public/legal/privacy.html templates/public/legal/terms.html
+#: templates/public/legal/privacy.html
 msgid "November 5, 2026"
 msgstr "5 de noviembre de 2026"
+
+#: templates/public/legal/terms.html
+msgid "November 14, 2026"
+msgstr "14 de noviembre de 2026"
 
 #: templates/public/legal/privacy.html
 msgid "Another recipient: the web search of the AI assistant"
@@ -2443,8 +2447,8 @@ msgstr "Sí, lo hace por ti nuestro equipo de soporte. Solo tienes que ponerte e
 msgid "Where is my data stored?"
 msgstr "¿Dónde se almacenan mis datos?"
 
-msgid "No — every price on this page is net. The VAT that applies to you is worked out at checkout from the tax ID you enter, and you see the exact amount before you pay. A Spanish NIF/CIF/NIE pays 21%. A company in another EU member state with a VAT number we validate against VIES pays 0% under the reverse charge, and accounts for the tax itself. The Canary Islands, Ceuta and Melilla, and customers outside the EU are outside the scope of Spanish VAT, which is not the same as a 0% rate."
-msgstr "No: todos los precios de esta página son sin IVA. El IVA que te corresponde se calcula en el checkout a partir del identificador fiscal que introduzcas, y ves el importe exacto antes de pagar. Un NIF/CIF/NIE español paga el 21 %. Una empresa de otro Estado miembro con un NIF-IVA que validamos contra VIES paga el 0 % por inversión del sujeto pasivo, y liquida ella el impuesto. Canarias, Ceuta y Melilla y los clientes de fuera de la UE quedan no sujetos al IVA español, que no es lo mismo que un tipo del 0 %."
+msgid "No — every price on this page is net. For now ERPlora only sells its paid plans to payers billed in Spain, and the VAT is worked out at checkout from your billing address: you see the exact amount before you pay. On the mainland and in the Balearic Islands, Spanish VAT of 21% is added. The Canary Islands, Ceuta and Melilla are outside the scope of Spanish VAT, which is not the same as a 0% rate: there we only sell to businesses and professionals, who give their tax ID and account for any IGIC or IPSI themselves."
+msgstr "No: todos los precios de esta página son sin IVA. Por ahora ERPlora solo vende sus planes de pago a pagadores que se facturan en España, y el IVA se calcula en el pago a partir de tu dirección de facturación: ves el importe exacto antes de pagar. En la península y en Baleares se suma el IVA español del 21 %. Canarias, Ceuta y Melilla quedan fuera del IVA español, que no es lo mismo que un tipo del 0 %: allí solo vendemos a empresas y profesionales, que dan su NIF y declaran ellas el IGIC o el IPSI que corresponda."
 
 msgid "Apply Now"
 msgstr "Solicitar Ahora"
@@ -2961,26 +2965,23 @@ msgstr "El impago a vencimiento dará lugar a la suspensión del servicio tras 7
 msgid "A Hub that remains suspended for %(days)s days is deleted, together with its data. The account holder is notified beforehand, by email and with a specific date, and receives the copy described in section 5.1."
 msgstr "Un Hub que permanezca suspendido %(days)s días se elimina, junto con sus datos. Se avisa antes al titular, por correo electrónico y con fecha concreta, y se le entrega la copia descrita en el apartado 5.1."
 
-msgid "3.1 Customers in the United Kingdom"
-msgstr "3.1 Clientes en Reino Unido"
+msgid "3.1 Where ERPlora sells its paid plans"
+msgstr "3.1 Dónde vende ERPlora sus planes de pago"
 
-msgid "In the United Kingdom, ERPlora sells its paid plans only to businesses, for use in the course of their business. By subscribing to a paid service with a billing address in the United Kingdom, the customer declares that it acts as a business and not as a consumer."
-msgstr "En Reino Unido, ERPlora vende sus planes de pago solo a empresas y profesionales, para el ejercicio de su actividad. Al contratar un servicio de pago con dirección de facturación en Reino Unido, el cliente declara que actúa como empresa o profesional y no como consumidor."
+msgid "For now, ERPlora sells its paid plans only to customers whose billing address is in Spain. The customer gives that address before paying, and ERPlora refuses a paid subscription billed to another country."
+msgstr "Por ahora, ERPlora vende sus planes de pago solo a clientes con la dirección de facturación en España. El cliente da esa dirección antes de pagar, y ERPlora rechaza una suscripción de pago que se facture a otro país."
 
-msgid "A customer registered for VAT in the United Kingdom must provide its UK VAT registration number (for example GB123456782) before paying. ERPlora may check it against the register of HM Revenue &amp; Customs (HMRC)."
-msgstr "El cliente registrado a efectos del IVA en el Reino Unido debe indicar su número de IVA británico (por ejemplo, GB123456782) antes de pagar. ERPlora puede comprobarlo en el registro de la administración tributaria británica (HMRC)."
+msgid "On the mainland and in the Balearic Islands, Spanish VAT is added to the price at the rate in force."
+msgstr "En la península y en Baleares, al precio se le suma el IVA español al tipo vigente."
 
-msgid "A business that is not registered for VAT in the United Kingdom, for example because it is below the registration threshold, may instead give its business website and declare that it buys for its business. ERPlora keeps that evidence with the subscription and may ask for other commercial documents."
-msgstr "Un negocio que no está dado de alta en el IVA británico, por ejemplo porque no alcanza el umbral de registro, puede dar en su lugar la web de su negocio y declarar que compra para su actividad. ERPlora conserva esa prueba con la suscripción y puede pedir otros documentos comerciales."
+msgid "In the Canary Islands, Ceuta and Melilla, ERPlora sells its paid plans only to businesses and professionals, for use in the course of their business, and asks for their tax ID before paying. By subscribing with a billing address there, the customer declares that it acts as a business or professional and not as a consumer."
+msgstr "En Canarias, Ceuta y Melilla, ERPlora vende sus planes de pago solo a empresas y profesionales, para el ejercicio de su actividad, y pide su NIF antes de pagar. Al suscribirse con una dirección de facturación allí, el cliente declara que actúa como empresa o profesional y no como consumidor."
 
-msgid "ERPlora may refuse a paid subscription, or decline to renew it, when neither the number nor that evidence is given, or when HMRC does not have the number on its register."
-msgstr "ERPlora puede rechazar una suscripción de pago, o no renovarla, cuando no se da ni el número ni esa prueba, o cuando HMRC no tiene el número en su registro."
+msgid "Those sales are invoiced without Spanish VAT. The customer accounts for any IGIC or IPSI that is due."
+msgstr "Esas ventas se facturan sin IVA español. El cliente declara el IGIC o el IPSI que corresponda."
 
-msgid "These sales are invoiced without Spanish VAT. The customer accounts for any UK VAT that is due under the reverse charge."
-msgstr "Estas ventas se facturan sin IVA español. El cliente liquida el IVA británico que corresponda por inversión del sujeto pasivo."
-
-msgid "The free plan is not affected: it charges nothing and asks for no VAT number."
-msgstr "El plan gratuito no cambia: no cobra nada y no pide número de IVA."
+msgid "The free plan is not affected: it charges nothing."
+msgstr "El plan gratuito no cambia: no cobra nada."
 
 msgid "4. Trial period and cancellation"
 msgstr "4. Periodo de prueba y cancelación"
@@ -3199,8 +3200,8 @@ msgid "Due to insolvency, bankruptcy, or cessation of activity of the other part
 msgstr "Por insolvencia, concurso o cese de actividad de la otra parte."
 
 #, python-format
-msgid "All prices exclude VAT. The VAT that applies to you is worked out at checkout from the tax ID you enter, and you see it before you pay. Our <a href=\"%(terms_url)s\">terms and conditions</a> apply."
-msgstr "Todos los precios sin IVA. El IVA que te corresponde se calcula en el checkout a partir del NIF/CIF/NIE o NIF-IVA que introduzcas, y lo ves antes de pagar. Se aplican nuestros <a href=\"%(terms_url)s\">términos y condiciones</a>."
+msgid "All prices exclude VAT. The VAT that applies to you is worked out at checkout from your billing address, and you see it before you pay. Our <a href=\"%(terms_url)s\">terms and conditions</a> apply."
+msgstr "Todos los precios sin IVA. El IVA que te corresponde se calcula en el pago a partir de tu dirección de facturación, y lo ves antes de pagar. Se aplican nuestros <a href=\"%(terms_url)s\">términos y condiciones</a>."
 
 msgid "Terms"
 msgstr "Términos"
