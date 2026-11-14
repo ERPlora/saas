@@ -6,7 +6,7 @@ then runs whether or not the repo's ``.env`` exists; the production values are t
 process (``config/tests/test_settings.py``). Vite's default port too, whatever the shell exports or
 ``.env`` says (two SaaS at once, README; the environment wins over ``.env`` in python-decouple):
 ``VITE_DEV_PORT`` is tested in a fresh process as well. reCAPTCHA is off (``RECAPTCHA_ENABLED``), whatever ``.env``
-holds: the test run never asks Google.
+holds: the test run never asks Google. The assistant's web search is off too (``BRAVE_SEARCH_API_KEY``), as in the CI.
 """
 
 import os
@@ -16,5 +16,8 @@ os.environ["VITE_DEV_PORT"] = "5174"
 # reCAPTCHA off, whatever `.env` holds: no test asks Google. A test that checks a form switches it on with the
 # `recaptcha` fixture (conftest.py), which plays Google.
 os.environ["RECAPTCHA_ENABLED"] = "False"
+# The web search off, whatever `.env` holds: no test asks Brave. A test that needs it on sets
+# `settings.BRAVE_SEARCH_API_KEY`.
+os.environ["BRAVE_SEARCH_API_KEY"] = ""
 
 from config.settings import *  # noqa: E402, F403

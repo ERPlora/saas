@@ -412,6 +412,44 @@ def test_the_test_run_keeps_the_default_vite_port_whatever_the_dotenv_says():
     assert result.stdout.strip() == VITE_DEV_SERVER
 
 
+A_DEVELOPERS_BRAVE_KEY = "a-developers-brave-key"
+DOTENV_WITH_A_BRAVE_KEY = (
+    "import decouple\n"
+    f"_dotenv = {{'BRAVE_SEARCH_API_KEY': {A_DEVELOPERS_BRAVE_KEY!r}}}\n"
+    "decouple.RepositoryEnv = lambda *args, **kwargs: _dotenv\n"
+    "decouple.RepositoryEmpty = lambda *args, **kwargs: _dotenv"
+)
+
+
+@pytest.mark.parametrize(
+    ("exported", "preamble"),
+    [
+        pytest.param({"BRAVE_SEARCH_API_KEY": A_DEVELOPERS_BRAVE_KEY}, IGNORE_DOTENV, id="shell"),
+        pytest.param({}, DOTENV_WITH_A_BRAVE_KEY, id="dotenv"),
+    ],
+)
+def test_the_test_run_has_no_web_search_whatever_the_shell_or_the_dotenv_say(exported, preamble):
+    """The developer's .env carries the Brave Search key (their runserver searches the web): the suite still runs
+    without it, as the CI does, so the tests that expect the search off hold and none reaches Brave. A test that
+    needs it on sets ``settings.BRAVE_SEARCH_API_KEY``."""
+    inherited = {key: value for key, value in os.environ.items() if key != "BRAVE_SEARCH_API_KEY"}
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            f"{preamble}\nimport config.settings_pytest as s; print(repr(s.BRAVE_SEARCH_API_KEY))",
+        ],
+        cwd=SAAS_NEXT,
+        env={**inherited, **exported},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "''"
+
+
 def test_live_serves_the_spa_of_this_project():
     live = settings.LIVE
     assert live["context_builder"] == "base.operations.UserContextBuilder"
