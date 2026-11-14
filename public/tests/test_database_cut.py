@@ -12,6 +12,7 @@ import hashlib
 import json
 import time
 import uuid
+from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -30,6 +31,7 @@ from live.models import OutboxEvent
 from live.operations import registry
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
+from psycopg_pool import PoolTimeout
 
 from accounts import photos, services
 from accounts.events import BROWSER_TRUST_REVOKED, PREFERENCES_UPDATED, PROFILE_UPDATED
@@ -83,6 +85,9 @@ REPEATABLE = {
     "hubs.ownership.transfer",
 }
 LIMIT_SECONDS = 1
+#: How long the pool waits for a connection in the tests of a slow Postgres, and how long a new one takes there.
+POOL_WAIT_SECONDS = 0.3
+SLOW_CONNECTION_SECONDS = 2 * POOL_WAIT_SECONDS
 
 
 def _admin() -> psycopg.Connection:
@@ -157,6 +162,37 @@ class Refused:
             raise
 
 
+class Failed:
+    """Keeps the statements that failed: the first one run on a connection the server had cut does."""
+
+    def __init__(self) -> None:
+        self.statements: list[str] = []
+
+    def __call__(self, execute, query, params, many, context):
+        try:
+            return execute(query, params, many, context)
+        except DatabaseError:
+            self.statements.append(str(query))
+            raise
+
+
+@contextmanager
+def new_connections_taking(seconds: float):
+    """Each new connection to Postgres takes ``seconds`` longer, as with the shared Postgres of development under load."""
+    connect = psycopg.Connection.connect
+
+    def slowly(cls, *args, **kwargs):
+        time.sleep(seconds)
+        return connect(*args, **kwargs)
+
+    with patch.object(psycopg.Connection, "connect", classmethod(slowly)):
+        yield
+
+
+def _logged(caplog) -> list[str]:
+    return [record.getMessage() for record in caplog.records if record.name == "django.request"]
+
+
 def _new_sessions_read_only() -> None:
     connections["default"].close()
     connections["default"].close_pool()
@@ -192,8 +228,8 @@ def request_in(client, url: str, cut: Cut):
 # --- The pool ---------------------------------------------------------------------------------------------------------
 
 
-def test_the_pool_hands_out_no_connection_the_server_cut_while_it_was_idle(person, caplog):
-    """Nothing waits, nothing fails: the panel's read does not even notice. Read, unlike a public page, from the database."""
+def _cut_the_idle_pool(person) -> None:
+    """The server cuts the connections the pool keeps from a read of the panel while they are idle."""
     assert person.get(PANEL_READ).status_code == 200
     connections["default"].close()
     with _admin() as admin:
@@ -203,27 +239,58 @@ def test_the_pool_hands_out_no_connection_the_server_cut_while_it_was_idle(perso
     assert pids, "the pool keeps its connection: there has to be one to cut"
     for (pid,) in pids:
         _terminate(pid)
-    caplog.clear()
 
-    response = person.get(PANEL_READ)
+
+def test_the_pool_hands_out_no_connection_the_server_cut_while_it_was_idle(person, caplog):
+    """Nothing fails, nothing is logged: the panel's read does not even notice. Read, unlike a public page, from the
+    database."""
+    _cut_the_idle_pool(person)
+    caplog.clear()
+    failed = Failed()
+
+    with connections["default"].execute_wrapper(failed):
+        response = person.get(PANEL_READ)
 
     assert response.status_code == 200, response.content
-    assert [record.getMessage() for record in caplog.records if record.name == "django.request"] == []
+    assert failed.statements == []
+    assert _logged(caplog) == []
+
+
+def test_a_new_connection_slower_than_the_pool_waits_is_waited_for_and_logs_no_error(person, caplog, settings, monkeypatch):
+    """The pool gives up before the new connection is ready: a cut that a read waits out. What answers 200 is no 503 in
+    the log."""
+    settings.LIVE = {**settings.LIVE, "database_cut": {**settings.LIVE["database_cut"], "wait_seconds": 10}}
+    options = connections["default"].settings_dict["OPTIONS"]
+    monkeypatch.setitem(options, "pool", {**options["pool"], "timeout": POOL_WAIT_SECONDS})
+    connections["default"].close()
+    connections["default"].close_pool()
+    _cut_the_idle_pool(person)
+    caplog.clear()
+    failed = Failed()
+
+    with new_connections_taking(SLOW_CONNECTION_SECONDS), connections["default"].execute_wrapper(failed):
+        response = person.get(PANEL_READ)
+
+    assert response.status_code == 200, response.content
+    assert isinstance(response.exc_info[1].__cause__, PoolTimeout), response.exc_info
+    assert failed.statements == []
+    assert _logged(caplog) == []
 
 
 # --- Reads ------------------------------------------------------------------------------------------------------------
 
 
-def test_a_public_page_waits_and_answers(visitor):
+def test_a_public_page_waits_and_answers(visitor, caplog):
     cut = Cut(1)
 
     response = request_in(visitor, PAGE, cut)
 
     assert response.status_code == 200
     assert cut.done == 1
+    assert _logged(caplog) == []
 
 
-def test_a_read_of_the_panel_waits_and_answers(person, ana):
+def test_a_read_of_the_panel_waits_and_answers(person, ana, caplog):
     cut = Cut(1)
 
     response = request_in(person, PANEL_READ, cut)
@@ -231,15 +298,17 @@ def test_a_read_of_the_panel_waits_and_answers(person, ana):
     assert response.status_code == 200, response.content
     assert cut.done == 1
     assert response.json()["theme_mode"]
+    assert _logged(caplog) == []
 
 
-def test_a_read_of_the_panel_that_stays_cut_says_come_back_as_its_envelope(person):
+def test_a_read_of_the_panel_that_stays_cut_says_come_back_as_its_envelope(person, caplog):
     response = request_in(person, PANEL_READ, Cut())
 
     assert response.status_code == 503, response.content
     assert response.json()["error"]["code"] == UNAVAILABLE
     assert int(response["Retry-After"]) > 0
     assert "no-store" in response["Cache-Control"]
+    assert _logged(caplog) == [f"Service Unavailable: {PANEL_READ}"]
 
 
 @pytest.mark.parametrize("language", ["en", "es"])
