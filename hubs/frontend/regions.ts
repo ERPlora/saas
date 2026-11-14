@@ -58,9 +58,9 @@ export function countryName(code: string, locale: string): string {
 
 const byLabel = (locale: string) => (a: Option, b: Option) => a.label.localeCompare(b.label, locale);
 
-/** The countries as select options, by name in `locale`. */
-export function countryOptions(locale: string): Option[] {
-  return COUNTRIES.map((code) => ({ value: code, label: countryName(code, locale) })).sort(byLabel(locale));
+/** The countries as select options, by name in `locale`: every market, or the shorter list `codes`. */
+export function countryOptions(locale: string, codes: readonly string[] = COUNTRIES): Option[] {
+  return codes.map((code) => ({ value: code, label: countryName(code, locale) })).sort(byLabel(locale));
 }
 
 /** «Madrid (Central European Time)»: the zone's city and its time's generic name, true all year (an offset,

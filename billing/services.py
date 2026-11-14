@@ -9,8 +9,10 @@ the budget: the person's (``VAT_CHECK_RATE``) when a person asks, and everybody'
 
 Nothing here blocks a sale for VIES: without a proven verdict the customer pays the VAT, which is the
 recoverable outcome. What refuses a sale (409) is not knowing where the payer is
-(``billing.billing_location_required``), a consumer in the UK (``billing.uk_business_required``) or a
-territory without a rule (``billing.tax_engine_missing``).
+(``billing.billing_location_required``), a payer outside the countries ERPlora sells to
+(``billing.country_not_sold``), a consumer in the Canary Islands, Ceuta or Melilla (``billing.business_required``),
+a consumer in the UK (``billing.uk_business_required``) or a territory without a rule
+(``billing.tax_engine_missing``).
 """
 
 import hashlib
@@ -470,19 +472,54 @@ def require_billing_location(
     )
 
 
+def require_sold_to(hub, payer: queries.Payer, what: Sold = "sale") -> None:
+    """Refuse a new sale to a payer ERPlora does not sell to: another country (409 ``billing.country_not_sold``),
+    or a consumer in the Canary Islands, Ceuta or Melilla (409 ``billing.business_required``)."""
+    if not vat.sells_to(payer.country):
+        logger.info(
+            "[FISCAL] Refusing a %s: ERPlora does not sell to payers in %s (hub=%s)",
+            what,
+            payer.country,
+            getattr(hub, "id", None),
+        )
+        raise Conflict(
+            _("For now ERPlora only sells to payers billed in Spain: change the billing details."),
+            code="billing.country_not_sold",
+        )
+    region = vat.spanish_region_for_postal_code(payer.postal_code) if payer.country == "ES" else ""
+    if region in vat.BUSINESS_ONLY_REGIONS and not payer.tax_id:
+        logger.info(
+            "[FISCAL] Refusing a %s: the payer is a consumer in %s (hub=%s)",
+            what,
+            region,
+            getattr(hub, "id", None),
+        )
+        raise Conflict(
+            _(
+                "In the Canary Islands, Ceuta and Melilla we only sell to businesses and professionals: add the tax ID "
+                "of the payer."
+            ),
+            code="billing.business_required",
+        )
+    return None
+
+
 def sale_quote(
-    hub, *, category_key: str, price: Decimal | None, what: Sold = "sale"
+    hub, *, category_key: str, price: Decimal | None, what: Sold = "sale", renewing: bool = False
 ) -> vat.VatBreakdown:
     """The tax of selling ``price`` (net) of ``category_key`` to the payer of ``hub``; ``None`` = there IS
     something to charge, but the amount is not this question's business (the rate never depends on it).
 
-    Refused (409) without a valid billing location, to a consumer in the UK (the terms sell to UK
+    Refused (409) without a valid billing location, to a payer ERPlora does not sell to (``require_sold_to``;
+    ``renewing`` = what is already paid, which keeps renewing), to a consumer in the UK (the terms sell to UK
     businesses only: a UK consumer owes UK VAT that only a supplier registered with HMRC may charge),
     and when no rule resolves the territory (the rate would be a guess and the price is net:
     refusing is loud and reversible; a sale charged wrong is neither).
     """
     require_billing_location(hub, price=price, what=what)
     payer = queries.payer_of(hub)
+    if not renewing:
+        require_sold_to(hub, payer, what)
     if payer.country == "GB" and not payer.tax_id:
         logger.info(
             "[FISCAL] Refusing a %s: the payer is a consumer in the UK (hub=%s)",
@@ -1043,12 +1080,13 @@ def _recurring_net(
     return total
 
 
-def price_sale(hub: Hub, sale: Sale, *, recurring_net: Decimal) -> list[str]:
+def price_sale(hub: Hub, sale: Sale, *, recurring_net: Decimal, renewing: bool = False) -> list[str]:
     """The Stripe ``TaxRate`` ids that charge OUR tax on ``sale``, after the guards that refuse it: no
-    location (409 ``billing.billing_location_required``), a UK consumer, a territory without a rule, and
-    a renewal over the simplified-invoice limit without the payer's tax id (409 ``billing.tax_id_required``)."""
+    location (409 ``billing.billing_location_required``), a payer ERPlora does not sell to (unless ``renewing``),
+    a UK consumer, a territory without a rule, and a renewal over the simplified-invoice limit without the payer's
+    tax id (409 ``billing.tax_id_required``)."""
     quote = sale_quote(
-        hub, category_key=sale.category_key, price=sale.net, what=sale.kind
+        hub, category_key=sale.category_key, price=sale.net, what=sale.kind, renewing=renewing
     )
     rate = Decimal(quote.rate or 0) if quote.is_subject else Decimal("0")
     gross = vat.add_vat(recurring_net, rate) if rate else recurring_net
@@ -3482,7 +3520,7 @@ def retax_subscription(hub: Hub) -> str:
             continue
         try:
             due = price_sale(
-                hub, sale, recurring_net=_recurring_net(subscription, sale.interval)
+                hub, sale, recurring_net=_recurring_net(subscription, sale.interval), renewing=True
             )
         except Conflict as refused:
             return _retax_refused(hub, sale.kind, refused)
@@ -3539,7 +3577,7 @@ def _retax_schedule(hub: Hub, subscription: Subscription, schedule_id: str) -> s
                 due = held
             else:
                 try:
-                    due = price_sale(hub, sale, recurring_net=recurring)
+                    due = price_sale(hub, sale, recurring_net=recurring, renewing=True)
                 except Conflict as refused:
                     return _retax_refused(hub, sale.kind, refused)
             changed = changed or sorted(held) != sorted(due)

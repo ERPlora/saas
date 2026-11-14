@@ -212,7 +212,7 @@ class TestTheEmbeddedCheckout:
 
     def test_a_payer_whose_tax_changed_gets_a_new_session(self, shop, owner, stripe_double):
         first = start(owner, shop, plan="starter")
-        payer(shop, billing_postal_code="35001", billing_city="Las Palmas")
+        payer(shop, billing_postal_code="35001", billing_city="Las Palmas", tax_id="ESB27593136")
         stripe_double.answer("checkout.sessions.expire", {"id": first["session_id"], "status": "expired"})
 
         again = start(owner, shop, plan="starter")
@@ -294,6 +294,7 @@ class TestTheCustomer:
         assert "test_clock" not in stripe_double.last("customers.create").params
 
 
+@pytest.mark.usefixtures("every_country_sold")
 class TestOnlyAProvedVatNumberReachesStripe:
     def test_a_number_vies_rejects_never_reaches_stripe(
         self, shop, owner, stripe_double
@@ -379,7 +380,7 @@ class TestWhereThePayerIsFirst:
     def test_a_canary_buyer_pays_the_net_and_not_a_cent_more(
         self, shop, owner, stripe_double
     ):
-        payer(shop, billing_postal_code="35001", billing_city="Las Palmas")
+        payer(shop, billing_postal_code="35001", billing_city="Las Palmas", tax_id="ESB27593136")
 
         start(owner, shop, plan="starter")
 
@@ -396,6 +397,7 @@ class TestWhereThePayerIsFirst:
             "ES",
         )
 
+    @pytest.mark.usefixtures("every_country_sold")
     def test_a_consumer_elsewhere_in_the_eu_pays_spanish_vat_under_the_oss_threshold(
         self, shop, owner, stripe_double
     ):
@@ -408,7 +410,7 @@ class TestWhereThePayerIsFirst:
 
     def test_a_territory_without_a_rule_is_refused(self, shop, owner, stripe_double):
         TaxRule.objects.filter(country_code="ES", region_code="IC").delete()
-        payer(shop, billing_postal_code="35001")
+        payer(shop, billing_postal_code="35001", tax_id="ESB27593136")
 
         refused(
             "billing.tax_engine_missing", lambda: start(owner, shop, plan="starter")
@@ -416,6 +418,7 @@ class TestWhereThePayerIsFirst:
 
         assert stripe_double.calls_to("checkout.sessions.create") == []
 
+    @pytest.mark.usefixtures("every_country_sold")
     def test_a_consumer_in_the_uk_is_not_sold_to(self, shop, owner, stripe_double):
         payer(shop, billing_country="GB", billing_postal_code="SW1A 1AA")
 

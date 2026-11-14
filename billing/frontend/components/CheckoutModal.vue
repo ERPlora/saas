@@ -58,6 +58,8 @@ const DETAILS_CODES = new Set([
   'billing.tax_id_required',
   'billing.payer_required',
   'billing.uk_business_required',
+  'billing.country_not_sold',
+  'billing.business_required',
 ]);
 
 type Step = 'loading' | 'details' | 'pay';

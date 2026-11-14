@@ -179,11 +179,12 @@
       "same": "Usar el nombre y el país del negocio",
       "name": "Razón social",
       "taxId": "NIF (opcional)",
-      "taxIdHint": "Con un NIF-IVA de la UE comprobado en VIES, la factura va sin IVA (inversión del sujeto pasivo).",
+      "taxIdHint": "Obligatorio en Canarias, Ceuta y Melilla, donde solo vendemos a empresas y profesionales.",
       "address": "Dirección",
       "city": "Ciudad",
       "postalCode": "Código postal",
       "country": "País",
+      "countryHint": "Por ahora ERPlora solo factura a pagadores en España.",
       "email": "Correo para las facturas (opcional)",
       "continue": "Continuar al pago",
       "anotherAccount": "Hasta ahora pagaba este negocio otra cuenta: di quién paga a partir de ahora."

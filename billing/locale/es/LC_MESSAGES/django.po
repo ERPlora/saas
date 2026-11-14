@@ -2044,3 +2044,13 @@ msgstr "Factura sin pagar, sigue pendiente"
 #: queries.py
 msgid "and"
 msgstr "y"
+
+#: services.py
+msgid "For now ERPlora only sells to payers billed in Spain: change the billing details."
+msgstr "Por ahora ERPlora solo vende a pagadores con dirección de facturación en España: cambia los datos de facturación."
+
+#: services.py
+msgid ""
+"In the Canary Islands, Ceuta and Melilla we only sell to businesses and professionals: add the tax ID "
+"of the payer."
+msgstr "En Canarias, Ceuta y Melilla solo vendemos a empresas y profesionales: añade el NIF de quien paga."

@@ -432,10 +432,11 @@ def test_a_change_of_billing_puts_our_tax_on_every_item(shop, owner, inventory, 
 
 
 def test_a_payer_not_subject_to_vat_loses_the_old_rate_on_the_change(shop, owner, inventory, stripe_double):
-    """A payer now in Las Palmas whose items still hold the Spanish 21 % changes plan. An empty
+    """A business now in Las Palmas whose items still hold the Spanish 21 % changes plan. An empty
     list of rates is dropped by the SDK and Stripe keeps the old rate on the item: the update has to say
     «none» with an empty string, on the plan and on every module it moves."""
     shop.billing_profile.billing_postal_code = "35001"
+    shop.billing_profile.tax_id = "ESB27593136"
     shop.billing_profile.save()
     paid = pay(shop, modules=("inventory",))
     stripe_double.answer("subscriptions.retrieve", subscription(items=[

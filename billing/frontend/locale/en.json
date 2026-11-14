@@ -179,11 +179,12 @@
       "same": "Use the business’s name and country",
       "name": "Legal name",
       "taxId": "Tax ID (optional)",
-      "taxIdHint": "With an EU VAT number checked in VIES, the invoice goes without VAT (reverse charge).",
+      "taxIdHint": "Required in the Canary Islands, Ceuta and Melilla, where we only sell to businesses and professionals.",
       "address": "Address",
       "city": "City",
       "postalCode": "Postal code",
       "country": "Country",
+      "countryHint": "For now ERPlora only invoices payers in Spain.",
       "email": "Invoice email (optional)",
       "continue": "Continue to payment",
       "anotherAccount": "Another account paid for this business until now: say who pays from now on."

@@ -14,6 +14,7 @@ from pydantic import AfterValidator, StringConstraints, model_validator
 
 from accounts.adapters import folded_email
 from accounts.queries import local_path
+from billing.vat import SOLD_TO_COUNTRIES
 
 
 class SectorListIn(Schema):
@@ -167,6 +168,16 @@ Country = Annotated[
     Field(
         description="ISO 3166-1 alpha-2 code of a country ERPlora serves (e.g. ES).",
         json_schema_extra={"enum": sorted(COUNTRIES)},
+    ),
+]
+#: The country of a payer: shaped as any market, and offered (to a client and the assistant's model) as the countries
+#: ERPlora sells to; ``hubs.billing_profile.update`` refuses the rest once «use the business's data» is resolved.
+BillingCountry = Annotated[
+    str,
+    AfterValidator(_country),
+    Field(
+        description="ISO 3166-1 alpha-2 code of the country the payer is billed in; ERPlora sells to Spain only (ES).",
+        json_schema_extra={"enum": sorted(SOLD_TO_COUNTRIES)},
     ),
 ]
 Email = Annotated[str, AfterValidator(_email)]
@@ -807,7 +818,7 @@ class BillingProfileIn(Schema):
     billing_address: str = Field("", max_length=500)
     billing_city: str = Field("", max_length=100)
     billing_postal_code: Annotated[str, StringConstraints(strip_whitespace=True)] = Field("", max_length=20)
-    billing_country: Country | Literal[""] = ""
+    billing_country: BillingCountry | Literal[""] = ""
     billing_email: Email | Literal[""] = ""
     same_as_business: bool = False
 

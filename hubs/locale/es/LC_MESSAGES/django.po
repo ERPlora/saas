@@ -1748,3 +1748,7 @@ msgstr "Vuelve solo en menos de una hora cuando vuelva el registro. Los registro
 #: services.py
 msgid "The provisioning status could not be checked. Try again."
 msgstr "No hemos podido comprobar el estado del alta. Inténtalo otra vez."
+
+#: services.py
+msgid "For now ERPlora only invoices payers in Spain."
+msgstr "Por ahora ERPlora solo factura a pagadores en España."

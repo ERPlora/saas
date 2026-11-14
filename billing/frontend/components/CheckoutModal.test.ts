@@ -322,6 +322,16 @@ describe('CheckoutModal', () => {
     expect(stripe.checkouts).toEqual([]);
   });
 
+  it.each([
+    ['billing.country_not_sold', 'For now ERPlora only sells to payers billed in Spain: change the billing details.'],
+    ['billing.business_required', 'In the Canary Islands, Ceuta and Melilla we only sell to businesses and professionals: add the tax ID of the payer.'],
+  ])('a payer the server does not sell to (%s) is sent back to the details, with its reason', async (code, reason) => {
+    const s = await setup(({ path }) => (path === '/api/hubs/billing-profile' ? Response.json(PROFILE) : apiError(409, code, reason)));
+    expect(s.q('details-country')).not.toBeNull();
+    expect(s.q('checkout-modal-error')?.textContent).toContain(reason);
+    expect(stripe.checkouts).toEqual([]);
+  });
+
   it('«Change» goes back to the details and lets the checkout go', async () => {
     const s = await setup();
     s.q('checkout-change-details')?.click();

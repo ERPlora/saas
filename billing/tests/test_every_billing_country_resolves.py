@@ -44,6 +44,7 @@ def test_every_country_a_business_may_be_created_in_resolves_a_rate():
     assert sorted(country for country in COUNTRIES if _quote(country) is None) == []
 
 
+@pytest.mark.usefixtures("every_country_sold")
 class TestUnitedKingdom:
     """Post-Brexit the UK is a third country: a service supplied there from Spain is outside the scope
     of Spanish VAT (art. 69.Uno.1º LIVA for a business, art. 69.Dos for a private customer). Net price,

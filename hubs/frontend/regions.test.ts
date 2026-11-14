@@ -43,6 +43,13 @@ describe('countries', () => {
     expect(countryOptions('en')[0]).toEqual({ value: 'AT', label: 'Austria' });
   });
 
+  it('can be offered from a shorter list, in the same order of names', () => {
+    expect(countryOptions('es', ['PT', 'ES'])).toEqual([
+      { value: 'ES', label: 'España' },
+      { value: 'PT', label: 'Portugal' },
+    ]);
+  });
+
   it('keep an unknown code as it came, never an empty label', () => {
     expect(countryName('XX', 'en')).toBe('XX');
   });

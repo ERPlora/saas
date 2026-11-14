@@ -98,6 +98,7 @@ class TestItFailsClosed:
         assert result.tax == Decimal("21.00")
 
 
+@pytest.mark.usefixtures("every_country_sold")
 class TestTheSaleDoorAsksVies:
     """The switch is worth nothing if the door that prices a sale does not ask the verdict."""
 

@@ -96,6 +96,19 @@ BILLING_COUNTRIES: tuple[str, ...] = (
     *sorted((set(EU_VAT_RATES) | {"GB"}) - {"ES"}),
 )
 
+#: The billing countries a NEW sale goes to: Spain only for now. Selling to another country takes its VAT
+#: registrations (the One-Stop Shop, the ROI) and a till that meets its fiscal rules; the engine already prices
+#: every ``BILLING_COUNTRIES``, so adding one here is what reopens it.
+SOLD_TO_COUNTRIES = frozenset({"ES"})
+
+#: The Spanish territories outside VAT, sold to businesses and professionals only: a consumer there owes IGIC or
+#: IPSI on an online service, charged by a supplier registered there, which ERPlora is not.
+BUSINESS_ONLY_REGIONS = frozenset({"IC", "CE", "ML"})
+
+
+def sells_to(country: str) -> bool:
+    return (country or "").strip().upper() in SOLD_TO_COUNTRIES
+
 #: Stripe's tax id type per billing country. Anything not listed is skipped rather than guessed: a wrong
 #: type makes Stripe reject the whole tax id. Derived from the VAT table so no member state is left out
 #: (a hand list of nine dropped a verified Polish VAT id).

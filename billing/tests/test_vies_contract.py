@@ -70,6 +70,7 @@ def _quote(business):
 # --------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("every_country_sold")
 class TestAFakeVatNumberIsNotReverseCharge:
     """The case Stripe lets through: without this test the contract is untested."""
 
@@ -140,6 +141,7 @@ class TestAFakeVatNumberIsNotReverseCharge:
 # --------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("every_country_sold")
 class TestNotVerifiedIsNotVerified:
     """VIES goes down often (``MS_UNAVAILABLE``) and that is not «not yet»."""
 
@@ -178,6 +180,7 @@ class TestNotVerifiedIsNotVerified:
 # --------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("every_country_sold")
 class TestAnExpiredVerdictDoesNotBlockTheSale:
     """A year-old verdict proves nothing about today's operation."""
 
@@ -306,6 +309,7 @@ class TestTheManualOverride:
         assert stored.override_reason == "Incorporated on 2026-08-20, not in VIES yet"
         assert stored.override_at is not None
 
+    @pytest.mark.usefixtures("every_country_sold")
     def test_an_override_does_invoice_without_vat(self, german_payer):
         services.record_manual_override(
             REAL_VAT, by="ioan@erplora.com", reason="Incorporated on 2026-08-20"
