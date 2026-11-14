@@ -23,7 +23,7 @@
   {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_description=hero_description hero_compact=True %}
 {% endblock %}
 
-{% block updated %}{% trans "November 5, 2026" %}{% endblock %}
+{% block updated %}{% trans "November 14, 2026" %}{% endblock %}
 
 {% block legal_text %}
 
@@ -85,25 +85,23 @@
           <li>{% blocktrans trimmed with days=suspended_hub_delete_days %}A Hub that remains suspended for {{ days }} days is deleted, together with its data. The account holder is notified beforehand, by email and with a specific date, and receives the copy described in section 5.1.{% endblocktrans %}</li>
         </ul>
 
-        {% comment %} The written basis of what checkout enforces: a paid UK sale needs a UK VAT
-             number, and the number is looked up in HMRC's register. The example number is tested
-             against the code that accepts it. {% endcomment %}
-        <section id="united-kingdom">
-          <h3>{% trans "3.1 Customers in the United Kingdom" %}</h3>
+        {% comment %} The written basis of what checkout enforces (billing.services.require_sold_to):
+             a paid sale needs a billing address in Spain, and in the Canary Islands, Ceuta and
+             Melilla a tax ID. Contract: public/tests/test_where_we_sell.py. {% endcomment %}
+        <section id="where-we-sell">
+          <h3>{% trans "3.1 Where ERPlora sells its paid plans" %}</h3>
           <p>
             {% blocktrans trimmed %}
-            In the United Kingdom, ERPlora sells its paid plans only to businesses, for
-            use in the course of their business. By
-            subscribing to a paid service with a billing address in the United Kingdom, the customer
-            declares that it acts as a business and not as a consumer.
+            For now, ERPlora sells its paid plans only to customers whose billing address is in
+            Spain. The customer gives that address before paying, and ERPlora refuses a paid
+            subscription billed to another country.
             {% endblocktrans %}
           </p>
           <ul>
-            <li>{% blocktrans trimmed %}A customer registered for VAT in the United Kingdom must provide its UK VAT registration number (for example GB123456782) before paying. ERPlora may check it against the register of HM Revenue &amp; Customs (HMRC).{% endblocktrans %}</li>
-            <li>{% blocktrans trimmed %}A business that is not registered for VAT in the United Kingdom, for example because it is below the registration threshold, may instead give its business website and declare that it buys for its business. ERPlora keeps that evidence with the subscription and may ask for other commercial documents.{% endblocktrans %}</li>
-            <li>{% blocktrans trimmed %}ERPlora may refuse a paid subscription, or decline to renew it, when neither the number nor that evidence is given, or when HMRC does not have the number on its register.{% endblocktrans %}</li>
-            <li>{% blocktrans trimmed %}These sales are invoiced without Spanish VAT. The customer accounts for any UK VAT that is due under the reverse charge.{% endblocktrans %}</li>
-            <li>{% trans "The free plan is not affected: it charges nothing and asks for no VAT number." %}</li>
+            <li>{% blocktrans trimmed %}On the mainland and in the Balearic Islands, Spanish VAT is added to the price at the rate in force.{% endblocktrans %}</li>
+            <li>{% blocktrans trimmed %}In the Canary Islands, Ceuta and Melilla, ERPlora sells its paid plans only to businesses and professionals, for use in the course of their business, and asks for their tax ID before paying. By subscribing with a billing address there, the customer declares that it acts as a business or professional and not as a consumer.{% endblocktrans %}</li>
+            <li>{% blocktrans trimmed %}Those sales are invoiced without Spanish VAT. The customer accounts for any IGIC or IPSI that is due.{% endblocktrans %}</li>
+            <li>{% trans "The free plan is not affected: it charges nothing." %}</li>
           </ul>
         </section>
 
