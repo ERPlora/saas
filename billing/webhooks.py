@@ -30,7 +30,7 @@ logger = logging.getLogger("billing.webhooks")
 
 @csrf_exempt
 @never_cache
-def stripe_webhook(request: HttpRequest) -> JsonResponse:
+def stripe_webhook(request: HttpRequest) -> JsonResponse:  # noqa: PLR0911
     if request.method != "POST":
         response = JsonResponse({"status": "method_not_allowed"}, status=405)
         response["Allow"] = "POST"

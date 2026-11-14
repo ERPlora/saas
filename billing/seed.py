@@ -109,7 +109,7 @@ def _rules():
     yield country, "", Decimal("0.00"), False, in_force_from
 
 
-def seed_tax_data(
+def seed_tax_data(  # noqa: C901
     *, TaxCategory, TaxRule, FiscalPolicy, CompanyConfig, dry_run: bool = False
 ) -> dict[str, int]:
     """Create what is missing of today's tax data; return how many rows of each kind it (would) create."""

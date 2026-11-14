@@ -39,7 +39,7 @@ class AnthropicProvider(Provider):
     def headers(self) -> dict[str, str]:
         return {"x-api-key": self.api_key, "anthropic-version": API_VERSION, "content-type": "application/json"}
 
-    def to_messages(self, messages: list[dict]) -> tuple[str, list[dict]]:
+    def to_messages(self, messages: list[dict]) -> tuple[str, list[dict]]:  # noqa: C901, PLR0912
         system, rest = self.split_system_messages(messages)
         translated: list[dict] = []
         for message in rest:
@@ -96,7 +96,7 @@ class AnthropicProvider(Provider):
             body["tool_choice"] = {"type": "auto", "disable_parallel_tool_use": True}
         return f"{self.base_url}/v1/messages", self.headers(), body
 
-    async def parse_stream(self, response: httpx.Response, req: TurnRequest) -> AsyncIterator[ProviderEvent]:
+    async def parse_stream(self, response: httpx.Response, req: TurnRequest) -> AsyncIterator[ProviderEvent]:  # noqa: C901, PLR0912
         tools: dict[int, dict[str, str]] = {}
         usage = {"input_tokens": 0, "output_tokens": 0}
         reason = "stop"

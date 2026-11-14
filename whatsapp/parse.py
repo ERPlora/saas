@@ -156,7 +156,7 @@ def _replace(message: Message, **changes) -> Message:
     return Message(**{**message.__dict__, **changes})
 
 
-def _message(
+def _message(  # noqa: PLR0913, PLR0917
     phone_number_id: str, raw, customer: str, direction: str, source: str, contact_name: str = ""
 ) -> Message | None:
     message = _dict(raw)

@@ -27,7 +27,7 @@ register = template.Library()
 
 
 @register.inclusion_tag("public/components/button.html")
-def button(
+def button(  # noqa: PLR0913
     *,
     href,
     label,

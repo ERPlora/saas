@@ -213,7 +213,7 @@ def index(request: HttpRequest) -> HttpResponse:
 
 @require_POST
 @ratelimit(key=landing.visitor_address, rate=_spawn_rate, method="POST", block=False)
-def start(request: HttpRequest) -> HttpResponse:
+def start(request: HttpRequest) -> HttpResponse:  # noqa: PLR0911
     """A demo of this browser (the same one while it lasts), then the jump into it."""
     if not settings.DEMO_ENABLED:
         return _door()
@@ -275,7 +275,7 @@ def _browser(group, request: HttpRequest) -> str:
 @require_safe
 @never_cache
 @ratelimit(key=_browser, rate=_status_rate, block=False)
-def status(request: HttpRequest) -> JsonResponse:
+def status(request: HttpRequest) -> JsonResponse:  # noqa: C901, PLR0911
     """How the browser's demo is going, for the door's page while it waits: ``{state}`` while the Hub prepares it (or
     is away a moment), ``{state, url}`` when the page should go to ``url``: the jump once it is ready (remembered, so
     the Hub is asked no more), or the door with what happened.
@@ -331,7 +331,7 @@ def status(request: HttpRequest) -> JsonResponse:
 
 @require_safe
 @never_cache
-def enter(request: HttpRequest) -> HttpResponse:
+def enter(request: HttpRequest) -> HttpResponse:  # noqa: C901, PLR0911
     """``?hub&next&state`` from the demo's ``/auth/login``: its one-time code, posted to its callback."""
     if not settings.DEMO_ENABLED:
         return _door()

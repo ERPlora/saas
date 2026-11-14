@@ -115,7 +115,7 @@ def _credential_out(credential: AIProviderCredential) -> dict:
     output=CredentialOut,
     ai=INTERNAL,  # staff
 )
-def credential_save(ctx: OperationContext, data: CredentialIn) -> dict:
+def credential_save(ctx: OperationContext, data: CredentialIn) -> dict:  # noqa: C901, PLR0912
     """Add a provider's key (``add_aiprovidercredential``) or change one (``change_aiprovidercredential``): its
     label, whether it is active and, if a key is typed, the key itself (a rotation). 422 ``assistant.key_required``
     for a new one without key, 409 ``assistant.label_taken``, 503 ``assistant.encryption_not_configured``."""

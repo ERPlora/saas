@@ -89,7 +89,7 @@ class Clean:
     sample: Sample | None = None
 
 
-def check(template: TemplateIn) -> Clean:
+def check(template: TemplateIn) -> Clean:  # noqa: C901, PLR0912, PLR0915
     """Refuse here everything Meta would refuse there, cheap identity checks first, so a template that breaks two
     rules is reported by the one the business can act on first."""
     name = template.name.strip()
@@ -211,7 +211,7 @@ def _file_name(name: str) -> str:
     return "".join(ch for ch in base if ch.isprintable())[:200] or "sample"
 
 
-def _buttons(raw: list[dict]) -> list[dict]:
+def _buttons(raw: list[dict]) -> list[dict]:  # noqa: C901
     if len(raw) > MAX_BUTTONS:
         raise Invalid(f"At most {MAX_BUTTONS} buttons.")
     buttons: list[dict] = []

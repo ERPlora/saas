@@ -125,7 +125,7 @@ def representation_submit(ctx: OperationContext, data: RepresentationSubmitIn) -
     }
 
 
-def _checked(data: RepresentationSubmitIn) -> dict[str, Any]:
+def _checked(data: RepresentationSubmitIn) -> dict[str, Any]:  # noqa: C901
     """The row's fields from ``data`` (tax ids normalised, documents encrypted), or ``InvalidPayload`` naming
     every broken rule, with the first one's code."""
     problems: list[tuple[str, str, str]] = []  # (field, code, message)

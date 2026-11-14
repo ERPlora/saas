@@ -328,7 +328,7 @@ def _assistant_message(text: str, calls: list[dict]) -> dict:
     return message
 
 
-async def gateway_frames(request: HttpRequest, caller: Caller, plan: dict) -> AsyncIterator[dict]:
+async def gateway_frames(request: HttpRequest, caller: Caller, plan: dict) -> AsyncIterator[dict]:  # noqa: C901
     """A turn through the gateway, as the panel's frames: ``text`` piece by piece, ``usage``, an ``error``, and
     ``done`` with what the browser keeps (``append``), the tools the model asked for (``pending``), their
     ``continuation`` and whether the answer brought pages from the web (``web``: the browser sends it back with a report

@@ -259,7 +259,7 @@ def assistant_message(text: str, calls: list[dict]) -> dict:
     }
 
 
-async def run(started: Turn, outcome: Outcome) -> AsyncIterator[dict]:
+async def run(started: Turn, outcome: Outcome) -> AsyncIterator[dict]:  # noqa: C901, PLR0912, PLR0915
     """Stream the turn: the frames of the answer as they come; ``outcome`` filled as it goes. The tools erplora.com
     runs itself (``server_tools``) are run here, on the caller's budget, and the model is asked again, at most
     ``server_tools.MAX_ROUNDS`` times; on the last round they are not offered, so the model answers. A tool of the Hub
