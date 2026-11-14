@@ -16,6 +16,8 @@ from django.utils.translation import gettext_lazy as _
 from django.utils.translation import pgettext_lazy
 from live.models import UUIDModel
 
+from hubs.models import Subscription
+
 #: The default category: what is sold when nobody says more. The net of every rule.
 GENERIC_CATEGORY = "service.generic"
 
@@ -1117,3 +1119,14 @@ class OssNotice(UUIDModel):
 
     def __str__(self):
         return f"OSS {self.year} {self.kind}"
+
+
+class PayingCustomer(Subscription):
+    """The subscriptions Stripe charges today, as the admin's «Paying customers» lists them (BILLING-F41). A proxy:
+    the rows are ``hubs.Subscription``; what the list adds (payer, monthly amount, customer since) is read by
+    ``billing.queries.paying_customers``."""
+
+    class Meta:
+        proxy = True
+        verbose_name = _("paying customer")
+        verbose_name_plural = _("paying customers")

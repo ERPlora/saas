@@ -56,12 +56,12 @@ import csv
 import io
 
 from django.core.cache import cache
-from django.db.models import Subquery
+from django.db.models import OuterRef, Subquery
 from django.db.models.functions import Coalesce, NullIf, TruncDate
 from django.utils import formats, translation
 from live.errors import NotFound
 
-from billing.models import TAX_TREATMENTS, InvoiceLine, PaymentFailure, PlanChangeSchedule
+from billing.models import TAX_TREATMENTS, InvoiceLine, PayingCustomer, PaymentFailure, PlanChangeSchedule
 from billing.schemas import (
     InvoiceByIdIn,
     InvoiceDetailOut,
@@ -1076,7 +1076,7 @@ def _csv_rate(rate: Decimal, separator: str) -> str:
     return f"{rate:.2f}".replace(".", separator)
 
 
-def _csv_columns() -> dict:
+def _invoice_csv_columns() -> dict:
     """Every column an invoice export can carry: its header and how an invoice fills its cell (given the language's
     decimal separator). Built under the export's language, so the headers come out translated."""
     return {
@@ -1104,25 +1104,36 @@ REPORT_CSV_COLUMNS = ("number", "date", "business", "payer", "tax_id", "country"
                       "total", "currency", "payment", "status")
 
 
-def invoices_csv(invoices, *, columns: tuple[str, ...], language: str, filename: str) -> dict:
-    """The invoices as CSV for the accountant's Excel.
+def rows_csv(rows, columns, *, language: str, filename: str) -> dict:
+    """``rows`` as CSV for Excel, one line each; ``columns()`` gives the ``(header, cell)`` of each column and is
+    called under ``language``, so the headers come out translated.
 
     UTF-8 with its BOM, so Excel reads the accents; in a language that writes a decimal comma (Spanish) the
     columns are split by «;» and the amounts carry the comma, as Excel expects there; elsewhere «,» and «.».
     Dates in ISO (Excel reads them in every language)."""
     with translation.override(language):
         separator = formats.get_format("DECIMAL_SEPARATOR", lang=language)
-        chosen = [_csv_columns()[column] for column in columns]
+        chosen = columns()
         buffer = io.StringIO()
         writer = csv.writer(buffer, delimiter=";" if separator == "," else ",")
         writer.writerow([header for header, _cell in chosen])
-        for invoice in invoices.iterator():
-            writer.writerow([cell(invoice, separator) for _header, cell in chosen])
+        for row in rows:
+            writer.writerow([cell(row, separator) for _header, cell in chosen])
     return {
         "filename": filename,
         "content_type": "text/csv; charset=utf-8",
         "content": ("\ufeff" + buffer.getvalue()).encode("utf-8"),
     }
+
+
+def invoices_csv(invoices, *, columns: tuple[str, ...], language: str, filename: str) -> dict:
+    """The invoices as CSV for the accountant's Excel, with the ``columns`` of ``_invoice_csv_columns``."""
+    return rows_csv(
+        invoices.iterator(),
+        lambda: [_invoice_csv_columns()[column] for column in columns],
+        language=language,
+        filename=filename,
+    )
 
 
 @operation(
@@ -1344,6 +1355,110 @@ def billing_report_csv(period: ReportPeriod, language: str) -> dict:
         columns=REPORT_CSV_COLUMNS,
         language=language,
         filename=f"erplora-invoices-{period.key}.csv",
+    )
+
+
+# --- The paying customers of the admin ------------------------------------------------------------------
+#
+# Which businesses Stripe charges today, on what plan, since when and how much. What a business pays is what it was
+# actually charged: the base of its last invoice collected for a whole period, never the price list, so a promo code
+# or a paid app shows as charged.
+
+
+def _collected_invoices(hub):
+    """The invoices (not credit notes) of ``hub`` that were collected; ``hub`` is an outer reference."""
+    return Invoice.objects.filter(hub=hub, kind=Invoice.Kind.INVOICE, payment_status=Invoice.PaymentStatus.PAID)
+
+
+def paying_customers():
+    """Every business Stripe charges today (``is_paying``), each with ``customer_since`` (the date of its first
+    collected invoice) and ``charged_cents`` (the base of the whole-period lines of its last collected invoice that
+    has any: the prorations of a change in the middle of a period are not what it pays). ``None`` before its first
+    collected invoice."""
+    last_whole_period = (
+        _collected_invoices(OuterRef(OuterRef("hub")))
+        .filter(lines__proration=False)
+        .order_by("-issued_on", "-sequence")
+        .values("pk")[:1]
+    )
+    charged = (
+        InvoiceLine.objects.filter(invoice=Subquery(last_whole_period), proration=False)
+        .order_by()
+        .values("invoice")
+        .annotate(cents=Sum("net_cents"))
+        .values("cents")
+    )
+    return (
+        PayingCustomer.objects.exclude(stripe_subscription_id="")
+        .exclude(status__in=_ENDED_STATUSES)
+        .select_related("hub__billing_profile", "plan")
+        .annotate(
+            customer_since=Subquery(_collected_invoices(OuterRef("hub")).order_by("issued_on").values("issued_on")[:1]),
+            charged_cents=Subquery(charged[:1]),
+        )
+        .order_by("hub__name", "pk")
+    )
+
+
+def monthly_cents(customer) -> int | None:
+    """What ``customer`` (a row of ``paying_customers``) pays a month before VAT: a yearly charge divided by 12."""
+    if customer.charged_cents is None:
+        return None
+    if customer.billing_interval == Subscription.Interval.YEAR:
+        return to_cents(from_cents(customer.charged_cents) / 12)
+    return customer.charged_cents
+
+
+def _payer_profile(customer):
+    return customer.hub.billing_profile
+
+
+def paying_customer_payer(customer) -> str:
+    profile = _payer_profile(customer)
+    return profile.billing_name if profile is not None else ""
+
+
+def paying_customer_country(customer) -> str:
+    profile = _payer_profile(customer)
+    return profile.billing_country if profile is not None else ""
+
+
+def paying_customer_kind(customer) -> str:
+    """Company, self-employed or individual, told from its payer's tax ID as the billing report tells it."""
+    profile = _payer_profile(customer)
+    return customer_kind(paying_customer_country(customer), profile.tax_id if profile is not None else "")
+
+
+def paying_customer_values(field: str) -> list[str]:
+    """The values ``field`` takes among the paying customers, for a filter that offers only those."""
+    return [value for value in paying_customers().order_by(field).values_list(field, flat=True).distinct() if value]
+
+
+def _paying_customer_csv_columns() -> list:
+    def amount(customer, separator):
+        cents = monthly_cents(customer)
+        return "" if cents is None else _csv_amount(cents, separator)
+
+    return [
+        (_("Business"), lambda customer, sep: _csv_text(customer.hub.name)),
+        (_("Payer"), lambda customer, sep: _csv_text(paying_customer_payer(customer))),
+        (_("Country"), lambda customer, sep: _csv_text(paying_customer_country(customer))),
+        (_("Customer"), lambda customer, sep: str(CUSTOMER_KINDS[paying_customer_kind(customer)])),
+        (_("Plan"), lambda customer, sep: _csv_text(customer.plan.translated("name"))),
+        (_("Billing frequency"), lambda customer, sep: str(customer.get_billing_interval_display())),
+        (_("Monthly tax base (€)"), amount),
+        (_("Customer since"), lambda customer, sep: customer.customer_since.isoformat() if customer.customer_since else ""),
+        (_("Status"), lambda customer, sep: str(customer.get_status_display())),
+    ]
+
+
+def paying_customers_csv(customers, language: str) -> dict:
+    """The admin's «Download Excel» of the paying customers: the list's columns, in the billing report's format."""
+    return rows_csv(
+        customers.iterator(),
+        _paying_customer_csv_columns,
+        language=language,
+        filename=f"erplora-paying-customers-{timezone.localdate().isoformat()}.csv",
     )
 
 
