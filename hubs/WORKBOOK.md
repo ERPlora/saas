@@ -498,13 +498,13 @@ Estado: hecho
 Actor: propietario, administrador
 Pantalla: Resumen del negocio
 Pasos:
-1. En la página del negocio, la cabecera dice su estado («Activo», «Preparando», «Pago pendiente», «Suspendido» o eliminado) y el Resumen, su plan con los dispositivos, las apps que puede tener activadas a la vez y las personas frente a las plazas.
+1. En la página del negocio, la cabecera dice su estado («Activo», «Preparando», «Pago pendiente», «Suspendido» o eliminado) y el Resumen, su plan con los dispositivos, las apps que puede tener activadas a la vez y las personas frente a las plazas. Es lo que cubre el plan que tiene el negocio, también un plan interno que no está a la venta, como «Prueba de pago (interno)» (BILLING-F27).
 2. La tarjeta «Uso» («Cómo va tu negocio en ERPlora») enseña el «Almacenamiento» usado del espacio de su plan, con aviso al acercarse al tope, y las personas «Activos ayer» y de los «Últimos 30 días», con «Datos de ayer: se actualizan cada noche.».
 3. Esta tarjeta no enseña las peticiones de cada día, el pico de conexiones ni las peticiones sin hueco: son para el equipo de ERPlora, en su admin (HUBS-F22), y para quien lleva el negocio, en Sistema · Recursos de su hub (BASE-F40).
 Entra: el negocio y lo que midió la última noche.
 Sale: nada se guarda; la página cambia sola cuando llega una noche nueva.
-Si falla: sin ninguna noche medida, «Sin datos todavía. Las cifras llegan cada noche, desde la primera tras crear el negocio.»; con datos de un día anterior a ayer, «Datos del …: se actualizan cada noche.». Un gerente o un empleado no ven la página del negocio, solo «Abrir».
-Implicados: el negocio (BASE-F40: mide su uso y enseña esas cifras a quien lo lleva)
+Si falla: un negocio sin plan dice «—» en los dispositivos y en las apps. Sin ninguna noche medida, «Sin datos todavía. Las cifras llegan cada noche, desde la primera tras crear el negocio.»; con datos de un día anterior a ayer, «Datos del …: se actualizan cada noche.». Un gerente o un empleado no ven la página del negocio, solo «Abrir».
+Implicados: el negocio (BASE-F40: mide su uso y enseña esas cifras a quien lo lleva), billing (BILLING-F27: el plan interno que el personal deja comprar)
 
 ### HUBS-F22 Recoger cada noche el uso de cada negocio
 <!-- origen: old-saas:SAAS_DASHBOARD-F57 -->
