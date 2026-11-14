@@ -94,7 +94,7 @@ def points_at(domain: str, target: str) -> bool:
     return False
 
 
-def probe(domain: str, target: str, hub_id: UUID) -> Probe:
+def probe(domain: str, target: str, hub_id: UUID) -> Probe:  # noqa: PLR0911
     """What the ALB answers for ``domain``: ``target`` gives its address, and ``hub_id`` is who should be behind it."""
     try:
         addresses = _lookup(target, "A")

@@ -302,7 +302,7 @@ class AIProviderAdmin(admin.ModelAdmin):
             credentials = list(provider.credentials.filter(is_active=True).order_by("-updated_at"))
         return key_state(credentials[0] if credentials else None)
 
-    def save_formset(self, request, form, formset, change):
+    def save_formset(self, request, form, formset, change):  # noqa: C901
         if formset.model is not AIProviderCredential:
             return super().save_formset(request, form, formset, change)
         ctx = staff_context(request)
@@ -348,7 +348,7 @@ class AIProviderAdmin(admin.ModelAdmin):
             *super().get_urls(),
         ]
 
-    async def models_view(self, request, object_id):
+    async def models_view(self, request, object_id):  # noqa: C901
         refused = await staff_gate(self.admin_site, request, CHOOSE_PERMISSIONS)
         if refused is not None:
             return refused

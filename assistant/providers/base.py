@@ -101,7 +101,7 @@ class DiscoveredModel:
     context_window: int = 0
 
 
-async def sse_events(response: httpx.Response) -> AsyncIterator[tuple[str | None, str]]:
+async def sse_events(response: httpx.Response) -> AsyncIterator[tuple[str | None, str]]:  # noqa: C901
     """``(event name, data)`` of each server-sent event of ``response``, however its bytes are split."""
     name: str | None = None
     data: list[str] = []

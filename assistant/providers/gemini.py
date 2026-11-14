@@ -68,7 +68,7 @@ class GeminiProvider(Provider):
     def headers(self) -> dict[str, str]:
         return {"x-goog-api-key": self.api_key, "Content-Type": "application/json"}
 
-    def to_contents(self, messages: list[dict]) -> tuple[str, list[dict]]:
+    def to_contents(self, messages: list[dict]) -> tuple[str, list[dict]]:  # noqa: C901, PLR0912
         system, rest = self.split_system_messages(messages)
         names: dict[str, str] = {}
         contents: list[dict] = []
@@ -141,7 +141,7 @@ class GeminiProvider(Provider):
         url = f"{self.base_url}/v1beta/models/{quote(req.model_id, safe='-._')}:streamGenerateContent?alt=sse"
         return url, self.headers(), body
 
-    async def parse_stream(self, response: httpx.Response, req: TurnRequest) -> AsyncIterator[ProviderEvent]:
+    async def parse_stream(self, response: httpx.Response, req: TurnRequest) -> AsyncIterator[ProviderEvent]:  # noqa: C901
         calls: list[dict[str, str]] = []
         usage: dict[str, int] = {}
         reason = "stop"

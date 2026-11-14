@@ -1,7 +1,7 @@
 // @vitest-environment node
 // Lint of the SaaS: the SPA reaches the server only through the SDK (`@erplora/ui/sdk`), so the
 // shell entry and every app frontend are linted for raw network globals. Linted for real here.
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -133,4 +133,94 @@ describe('eslint config', () => {
   it("leaves the template pages' vendored scripts alone", async () => {
     expect(await eslint.isPathIgnored('static/vendor/ionic/ionic.esm.js')).toBe(true);
   });
+
+  it('fails a function whose complexity passes 15, counting optional chaining', async () => {
+    expect(await functionLimits(branchy(15), 'billing/frontend/pick.ts')).toEqual([]);
+    expect(await functionLimits(branchy(16), 'billing/frontend/pick.ts')).toEqual(['complexity']);
+    expect(await functionLimits(chained(15), 'billing/frontend/pick.ts')).toEqual(['complexity']);
+  });
+
+  it('fails blocks nested deeper than 4', async () => {
+    expect(await functionLimits(nested(4), 'billing/frontend/nest.ts')).toEqual([]);
+    expect(await functionLimits(nested(5), 'billing/frontend/nest.ts')).toEqual(['max-depth']);
+  });
+
+  it('fails a function with more than 3 parameters', async () => {
+    expect(await functionLimits(withParameters(3), 'billing/frontend/sum.ts')).toEqual([]);
+    expect(await functionLimits(withParameters(4), 'billing/frontend/sum.ts')).toEqual(['max-params']);
+  });
+
+  it('fails a function longer than 50 lines, not counting blank lines and comments', async () => {
+    expect(await functionLimits(long(50), 'billing/frontend/long.ts')).toEqual([]);
+    expect(await functionLimits(long(51), 'billing/frontend/long.ts')).toEqual(['max-lines-per-function']);
+  });
+
+  it('applies the limits to the script of a .vue page too', async () => {
+    const page = `<script setup lang="ts">\n${withParameters(4)}</script>\n<template><div /></template>\n`;
+    expect(await functionLimits(page, 'billing/frontend/pages/Page.vue')).toEqual(['max-params']);
+  });
+
+  it('suppresses only in files it lints: ESLint skips the entry of a deleted or renamed file without a word', async () => {
+    const suppressions = JSON.parse(readFileSync(join(SAAS_DIR, 'eslint-suppressions.json'), 'utf8'));
+    for (const path of Object.keys(suppressions)) {
+      expect(existsSync(join(SAAS_DIR, path)), path).toBe(true);
+      expect(await eslint.isPathIgnored(path), path).toBe(false);
+    }
+  });
+
+  it('lints no shell script, though a script test is named like a test', async () => {
+    expect(await eslint.isPathIgnored('.github/scripts/deploy-env.test.sh')).toBe(true);
+    expect(await eslint.isPathIgnored('docker/image.test.sh')).toBe(true);
+  });
+
+  it.each([
+    'billing/frontend/pick.test.ts',
+    'billing/frontend/__tests__/mount-billing.ts',
+    'tests/e2e/panel/fixtures.ts',
+    'tests/e2e/public-web.spec.ts',
+  ])(
+    'lets a test have long functions and many parameters, not more complexity or depth: %s',
+    async (test) => {
+      expect(await functionLimits(long(80) + withParameters(6), test)).toEqual([]);
+      expect(await functionLimits(branchy(16) + nested(5), test)).toEqual(['complexity', 'max-depth']);
+    },
+  );
 });
+
+const FUNCTION_LIMITS = ['complexity', 'max-depth', 'max-params', 'max-lines-per-function'];
+
+/** The function limits the lint fails on `code`, as errors: a warning would not stop `pnpm lint`. */
+async function functionLimits(code: string, filePath: string): Promise<string[]> {
+  const [result] = await eslint.lintText(code, { filePath });
+  const limits = result.messages.filter((m) => FUNCTION_LIMITS.includes(m.ruleId ?? ''));
+  expect(limits.every((m) => m.severity === 2), JSON.stringify(limits)).toBe(true);
+  return [...new Set(limits.map((m) => m.ruleId ?? ''))].sort();
+}
+
+/** A function of the given complexity, one `if` per point past the first. */
+function branchy(complexity: number): string {
+  const ifs = Array.from({ length: complexity - 1 }, (_, n) => `  if (value === ${n}) return '${n}';\n`);
+  return `export function pick${complexity}(value: number): string {\n${ifs.join('')}  return '';\n}\n`;
+}
+
+/** A function of the given complexity made of optional chaining only. */
+function chained(steps: number): string {
+  return `export function path${steps}(value: any): unknown {\n  return value${'?.next'.repeat(steps)};\n}\n`;
+}
+
+function nested(depth: number): string {
+  const open = Array.from({ length: depth }, (_, n) => `${'  '.repeat(n + 1)}if (value > ${n}) {\n`);
+  const close = Array.from({ length: depth }, (_, n) => `${'  '.repeat(depth - n)}}\n`);
+  return `export function nest${depth}(value: number): number {\n${open.join('')}  value += 1;\n${close.join('')}  return value;\n}\n`;
+}
+
+function withParameters(count: number): string {
+  const names = Array.from({ length: count }, (_, n) => `p${n}: number`);
+  return `export function sum${count}(${names.join(', ')}): number {\n  return ${count};\n}\n`;
+}
+
+/** A function of `lines` lines counted with its signature and closing brace, plus blank lines and comments that do not count. */
+function long(lines: number): string {
+  const body = Array.from({ length: lines - 4 }, (_, n) => `  total += ${n};\n\n  // step ${n}\n`);
+  return `export function long${lines}(): number {\n  let total = 0;\n${body.join('')}  return total;\n}\n`;
+}

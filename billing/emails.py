@@ -98,7 +98,7 @@ def _send_notice(notice: str, subject: str, lines: list[str], to: str, *, langua
     logger.info("[EMAIL] %s sent to %s", notice, to)
 
 
-def send_payment_failed(hub, *, to: str, language: str, amount, declined: bool, suspends_on) -> None:
+def send_payment_failed(hub, *, to: str, language: str, amount, declined: bool, suspends_on) -> None:  # noqa: PLR0913
     """Tell the payer that the renewal of ``hub`` could not be collected: how much, until when it keeps working
     (``suspends_on``) and where to pay it. ``MailNotSent`` when the mail could not leave."""
     language = language or settings.LANGUAGE_CODE

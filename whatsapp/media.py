@@ -83,7 +83,7 @@ def _filename(name: str) -> str:
 
 @never_cache
 @require_GET
-def media(request: HttpRequest, delivery_id: str) -> HttpResponse:
+def media(request: HttpRequest, delivery_id: str) -> HttpResponse:  # noqa: C901, PLR0911
     if not request.user.is_authenticated:
         return _error(401, "unauthorized", "Sign in to erplora.com to open this attachment.")
     try:

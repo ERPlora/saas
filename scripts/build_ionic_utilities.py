@@ -339,7 +339,7 @@ def _length(raw: str, *, axis: str = "") -> str | None:
     }[keyword]
 
 
-def utility_declarations(base: str) -> dict[str, str] | None:  # noqa: C901, PLR0911, PLR0912 - one grammar
+def utility_declarations(base: str) -> dict[str, str] | None:  # noqa: C901, PLR0911, PLR0912, PLR0915 - one grammar
     """Declarations of a utility class WITHOUT a variant. None = not one we know."""
     if base in STATIC:
         return dict(STATIC[base])
@@ -606,7 +606,7 @@ def tokens_used(files: list[Path]) -> list[str]:
     return list(seen)
 
 
-def render(tokens: list[str]) -> str:  # noqa: C901 - the sheet, section by section
+def render(tokens: list[str]) -> str:  # noqa: C901, PLR0912 - the sheet, section by section
     color_rules: list[str] = []
     color_media_rules: set[str] = set()
     plain: list[str] = []

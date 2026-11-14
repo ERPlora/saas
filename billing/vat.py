@@ -326,7 +326,7 @@ class _Qualification:
     customer_country: str = ""
 
 
-def _qualify(
+def _qualify(  # noqa: C901, PLR0911, PLR0913
     *,
     customer_country: str = "",
     customer_tax_id: str = "",
@@ -434,7 +434,7 @@ def _qualify(
     return _Qualification(DOMESTIC, rate, country, region, customer_country=country)
 
 
-def quote_vat(
+def quote_vat(  # noqa: PLR0913
     net: Decimal,
     *,
     customer_country: str = "",
@@ -504,7 +504,7 @@ def quote_vat(
     )
 
 
-def resolve_vat(
+def resolve_vat(  # noqa: PLR0913
     gross: Decimal,
     *,
     customer_country: str = "",
@@ -602,7 +602,7 @@ def _report_stripe_charged_no_tax(
     )
 
 
-def _breakdown(
+def _breakdown(  # noqa: PLR0913
     gross: Decimal,
     treatment: str,
     *,

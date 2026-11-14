@@ -129,7 +129,7 @@ def _entropy_end(data: bytes, start: int) -> int:
             return j
 
 
-def _clean_jpeg(data: bytes) -> bytes:
+def _clean_jpeg(data: bytes) -> bytes:  # noqa: C901, PLR0912
     """The frame's segments before the first scan (``head``), then the scans with what goes between them
     (``body``) up to the end marker; nothing after it. Application segments and comments go, wherever they are."""
     head: list[bytes] = []
@@ -191,7 +191,7 @@ _PNG_KEPT = {b"IHDR", b"PLTE", b"IDAT", b"IEND", b"tRNS", b"gAMA", b"cHRM", b"sR
 _PNG_ANIMATION = {b"acTL", b"fcTL", b"fdAT"}
 
 
-def _clean_png(data: bytes) -> bytes:
+def _clean_png(data: bytes) -> bytes:  # noqa: C901
     kept = [data[:8]]
     i = 8
     kinds = []
@@ -246,7 +246,7 @@ def _vp8l_size(body: bytes) -> tuple[int, int]:
     raise PhotoRejected("corrupt")
 
 
-def _clean_webp(data: bytes) -> bytes:
+def _clean_webp(data: bytes) -> bytes:  # noqa: C901
     (riff_size,) = struct.unpack("<I", data[4:8])
     if riff_size + 8 != len(data) or riff_size < 4:
         raise PhotoRejected("corrupt")

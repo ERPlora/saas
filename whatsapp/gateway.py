@@ -208,7 +208,7 @@ def envelope(code: str, message: str) -> dict:
     return {"error": {"code": code, "message": message}}
 
 
-def send(data: SendIn, key: str) -> tuple[int, dict]:
+def send(data: SendIn, key: str) -> tuple[int, dict]:  # noqa: PLR0911
     ctx = services.platform_context()
     template = data.template
     try:

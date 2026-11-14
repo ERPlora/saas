@@ -1,0 +1,55 @@
+{
+  "billing/frontend/components/CheckoutModal.vue": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "billing/frontend/components/PlanCard.vue": {
+    "complexity": {
+      "count": 2
+    }
+  },
+  "frontend/live-state.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "scripts/gen-public-icons.mjs": {
+    "max-params": {
+      "count": 1
+    }
+  },
+  "tests/e2e/assistant-battery.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "tests/e2e/assistant-probes.ts": {
+    "complexity": {
+      "count": 3
+    }
+  },
+  "tests/e2e/assistant-provider.ts": {
+    "complexity": {
+      "count": 2
+    }
+  },
+  "tests/e2e/panel/assistant-battery.spec.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "tests/e2e/panel/chrome.spec.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "tests/e2e/qa-probes.ts": {
+    "complexity": {
+      "count": 1
+    }
+  }
+}
