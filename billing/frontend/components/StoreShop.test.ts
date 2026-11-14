@@ -179,6 +179,14 @@ describe('StoreShop', () => {
     expect(s.el('plan-payment-test').find('[data-testid="plan-current"]').exists()).toBe(true);
   });
 
+  it('cancelling an internal plan names it, as its card does', async () => {
+    const onIt = catalog('bakery', { subscription: subscription({ plan: 'payment-test' }), internal_plans: [PAYMENT_TEST] });
+    const s = await setup({ answer: ({ path }) => (path === '/api/billing/store' ? Response.json(onIt) : undefined) });
+    await s.el('plan-downgrade').trigger('click');
+    await flush();
+    expect(document.querySelector('[data-testid="store-cancel"]')?.textContent).toContain('Panadería López · Payment Test (internal)');
+  });
+
   it('?business= chooses the business it came from', async () => {
     const s = await setup({ businessId: 'cafe' });
     expect(ionProps(s.el('store-business'), 'value')).toEqual({ value: 'cafe' });

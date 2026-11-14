@@ -448,14 +448,21 @@ class TestTheInternalPlansMark:
 
         assert Hub.objects.get(pk=other.pk).can_buy_internal_plans is False
 
-    def test_it_is_in_the_business_history(self, staff_client, business):
+    @pytest.mark.parametrize(
+        ("action", "named"),
+        [
+            ("allow_internal_plans", "Let its owner buy the internal plans"),
+            ("stop_internal_plans", "Stop selling it the internal plans"),
+        ],
+    )
+    def test_it_is_in_the_business_history(self, staff_client, business, action, named):
         from django.contrib.admin.models import LogEntry
 
-        _act(staff_client, "hub", "allow_internal_plans", [business])
+        _act(staff_client, "hub", action, [business])
 
         (entry,) = LogEntry.objects.filter(object_id=str(business.pk))
         assert entry.user.email == "root@example.com"
-        assert "Let its owner buy the internal plans" in entry.get_change_message()
+        assert named in entry.get_change_message()
 
     def test_the_list_says_which_businesses_are_marked(self, staff_client, business):
         Hub.objects.filter(pk=business.pk).update(can_buy_internal_plans=True)
@@ -535,6 +542,13 @@ class TestSupport:
         _act(support_client, "hub", "allow_internal_plans", [business])
 
         assert Hub.objects.get(pk=business.pk).can_buy_internal_plans is False
+
+    def test_takes_the_mark_from_no_business(self, support_client, business):
+        Hub.objects.filter(pk=business.pk).update(can_buy_internal_plans=True)
+
+        _act(support_client, "hub", "stop_internal_plans", [business])
+
+        assert Hub.objects.get(pk=business.pk).can_buy_internal_plans is True
 
 
 # --- The usage of each business, day by day: read only, as the Hub measured it ---------------------
