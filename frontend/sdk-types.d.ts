@@ -892,8 +892,11 @@ export interface StoreCatalogOut {
   hub_id: string;
   subscription: StoreSubscriptionOut | null;
   modules: StoreModuleOut[];
-  /** The paid plans the business may move to: no upgrade-only plan while Stripe does not bill it. */
+  /** The paid plans the business may move to: no upgrade-only plan while Stripe does not bill it; the internal ones
+   *  only to a business ERPlora's staff marked. */
   offered_plans: string[];
+  /** The internal plans the business is offered, and the one it has: `hubs.plan.list` lists only the public ones. */
+  internal_plans: PlanOut[];
 }
 
 /** `apps.AppListIn`: every filter optional and lenient. */

@@ -192,6 +192,28 @@ msgstr ""
 msgid "Send the latest state to the Hub"
 msgstr "Enviar al Hub el estado más reciente"
 
+#: admin.py
+msgid "Let its owner buy the internal plans"
+msgstr "Dejar a su propietario comprar los planes internos"
+
+#: admin.py
+#, python-format
+msgid "%(count)d business(es): its owner now sees the internal plans in the Store."
+msgstr "%(count)d negocio(s): su propietario ya ve los planes internos en la Tienda."
+
+#: admin.py
+msgid "Stop selling it the internal plans"
+msgstr "Dejar de venderle los planes internos"
+
+#: admin.py
+#, python-format
+msgid ""
+"%(count)d business(es): the Store no longer offers it the internal plans; a "
+"plan already bought stays."
+msgstr ""
+"%(count)d negocio(s): la Tienda ya no le ofrece los planes internos; un plan "
+"ya comprado se mantiene."
+
 #: admin.py:245
 msgid "Retry what the Hub still owes"
 msgstr "Reintentar lo que el Hub tiene pendiente"
@@ -501,8 +523,22 @@ msgid "Only offered as an upgrade, never at sign-up."
 msgstr "Solo se ofrece como mejora, nunca en el alta."
 
 #: models.py:157
-msgid "Never offered to customers; only staff may buy it."
-msgstr "Nunca se ofrece a clientes; solo el personal puede contratarlo."
+msgid "Never offered to customers; only a business the staff mark in the admin may buy it."
+msgstr ""
+"Nunca se ofrece a clientes; solo lo puede comprar un negocio que el personal "
+"marque en el admin."
+
+#: models.py
+msgid "internal plans"
+msgstr "planes internos"
+
+#: models.py
+msgid ""
+"Its owner sees the internal plans in the Store and may buy them. Only for "
+"ERPlora's own businesses."
+msgstr ""
+"Su propietario ve los planes internos en la Tienda y puede comprarlos. Solo "
+"para los negocios propios de ERPlora."
 
 #: models.py:160
 msgid "Stripe price of the monthly option."

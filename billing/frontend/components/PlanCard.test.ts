@@ -2,7 +2,7 @@
 // downgrade to Free, keep a cancelled plan, or nothing that charges with an unpaid invoice.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { FREE, FREE_SUBSCRIPTION, STARTER, plan, subscription } from '../__tests__/fixtures';
+import { FREE, FREE_SUBSCRIPTION, PAYMENT_TEST, STARTER, plan, subscription } from '../__tests__/fixtures';
 import { mountBilling } from '../__tests__/mount-billing';
 import type { Block } from '../store';
 import PlanCard from './PlanCard.vue';
@@ -53,6 +53,21 @@ describe('PlanCard', () => {
   it('annual: the year’s price and what it is a month', async () => {
     const s = await card({ period: 'year', subscription: FREE_SUBSCRIPTION, locale: 'es' });
     expect(s.text('plan-price').text()).toBe(nb('299,90 € /año + IVA · 24,99 €/mes'));
+  });
+
+  it('a plan sold by the month only (the internal one): under «Annual» it keeps its monthly price and is not bought', async () => {
+    const s = await card({ plan: PAYMENT_TEST, period: 'year', subscription: FREE_SUBSCRIPTION, locale: 'es' });
+    expect(s.text('plan-price').text()).toBe(nb('1,00 € /mes + IVA'));
+    expect((s.text('plan-upgrade').element as unknown as { disabled: boolean }).disabled).toBe(true);
+    expect(s.text('plan-hint').text()).toBe('Solo con pago mensual');
+    const monthly = await card({ plan: PAYMENT_TEST, period: 'month', subscription: FREE_SUBSCRIPTION });
+    expect((monthly.text('plan-upgrade').element as unknown as { disabled: boolean }).disabled).toBe(false);
+  });
+
+  it('a business on a plan sold by the month only is not offered to switch it to annual', async () => {
+    const s = await card({ plan: PAYMENT_TEST, period: 'year', subscription: subscription({ plan: 'payment-test' }) });
+    expect((s.text('plan-switch').element as unknown as { disabled: boolean }).disabled).toBe(true);
+    expect(s.text('plan-hint').text()).toBe('Only with monthly billing');
   });
 
   it('Free says it costs nothing, forever', async () => {

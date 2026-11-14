@@ -930,9 +930,10 @@ def _upgrade_only() -> Conflict:
     )
 
 
-def plan_sale(user, slug: str, interval: str) -> Sale:
-    plan = queries.plan_on_sale(slug)
-    if plan is None or not plan.is_available_to(user):
+def plan_sale(hub: Hub | None, slug: str, interval: str) -> Sale:
+    """The plan ``slug`` as ``hub`` buys it; without a business, as any business nobody marked."""
+    plan = queries.plan_on_sale(slug, hub)
+    if plan is None:
         reason = _("There is no plan with this identifier.")
         raise InvalidPayload(reason, fields={"plan": reason})
     if not to_cents(plan.price_monthly or 0):
@@ -1351,18 +1352,17 @@ def checkout_start(ctx: OperationContext, data: CheckoutStartIn) -> dict:
     Checkout (``flow = checkout`` and its ``client_secret``; the same selection reuses its open session).
     With one: the prorated charge of adding it (``flow = confirm`` and ``preview``), confirmed with
     ``billing.checkout.confirm`` (a module) or ``billing.plan.change`` (a plan). Nothing is charged here."""
-    user = hub_queries.account_of(ctx)
     hub, subscription = _owned(ctx, data.hub_id)
     if _paying(subscription):
         interval = data.interval if data.plan else subscription.billing_interval
     else:
         interval = data.interval
     if data.plan and not _paying(subscription):
-        asked = queries.plan_on_sale(data.plan)
+        asked = queries.plan_on_sale(data.plan, hub)
         if asked is not None and asked.upgrade_only:
             raise _upgrade_only()
     sale = (
-        plan_sale(user, data.plan, interval)
+        plan_sale(hub, data.plan, interval)
         if data.plan
         else module_sale(data.module, interval)
     )
@@ -1889,11 +1889,10 @@ def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
     with the plan): charged NOW or not at all. A free business buys with the checkout; going back to Free is
     cancelling; a cancelled plan is kept before it changes. A business paying modules alone gets its plan
     with the trial it has left (or its promo code's), charging nothing until it ends."""
-    user = hub_queries.account_of(ctx)
     hub, subscription = _owned(ctx, data.hub_id)
     if not _paying(subscription):
         raise _checkout_required()
-    sale = plan_sale(user, data.plan, data.interval)
+    sale = plan_sale(hub, data.plan, data.interval)
     require_payments()
     _require_fresh_preview(data.proration_date)
     _require_paid_up(hub, subscription)

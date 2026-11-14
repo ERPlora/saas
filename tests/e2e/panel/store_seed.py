@@ -9,7 +9,9 @@ operations that call Stripe).
 - ``e2e-store`` (password ``e2e-panel``) owns three businesses:
   - Panadería López: pays Starter monthly; E2E Loyalty bought and cancelled (works until its renewal);
   - Café Central: on Free, its payer already on file (so the checkout goes straight to paying);
-  - Bar La Plaza: Starter with an unpaid invoice, the card declined.
+  - Bar La Plaza: Starter with an unpaid invoice, the card declined;
+  - Prueba ERPlora: on Free, marked by ERPlora's staff (``can_buy_internal_plans``): the Store offers it
+    «Payment Test (internal)».
 - Apps of the catalog (as the Hub's ``register_apps`` writes them): E2E Bookings and E2E Loyalty
   (premium, on sale as modules) and E2E Free App (not premium: never sold).
 """
@@ -85,7 +87,7 @@ def seed() -> None:
                 stripe_price_id_annual=f"price_{app_id}_year",
             )
 
-    def business(slug, name, *, plan, hub_status=Hub.Status.ACTIVE, paying=False, **subscription):
+    def business(slug, name, *, plan, hub_status=Hub.Status.ACTIVE, paying=False, marked=False, **subscription):
         profile = BillingProfile.objects.create(
             owner=user,
             billing_name=f"{name} SL",
@@ -105,6 +107,7 @@ def seed() -> None:
             billing_profile=profile,
             status=hub_status,
             ready_at=now - timedelta(days=200),
+            can_buy_internal_plans=marked,
         )
         made = Subscription.objects.create(
             hub=hub,
@@ -143,6 +146,7 @@ def seed() -> None:
         unpaid_reason=Subscription.UnpaidReason.CARD_DECLINED,
         unpaid_since=now - timedelta(days=4),
     )
+    business("erplora", "Prueba ERPlora", plan=free, marked=True)
 
 
 def main(action: str) -> None:

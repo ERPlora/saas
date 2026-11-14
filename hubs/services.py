@@ -2357,6 +2357,14 @@ def _tell_data_copy(hub_id: UUID, counts: Counter) -> None:
 # --- The platform's actions in the admin (hubs.admin) ----------------------------------------------
 
 
+def mark_for_internal_plans(hub_ids, allowed: bool) -> int:
+    """«Let its owner buy the internal plans» (or stop it): the Store offers these businesses the internal plans
+    (``Plan.objects.offered_to``). A plan already bought stays; how many businesses changed."""
+    return Hub.objects.filter(pk__in=hub_ids).exclude(can_buy_internal_plans=allowed).update(
+        can_buy_internal_plans=allowed, updated_at=timezone.now()
+    )
+
+
 def send_latest_state(hub_ids) -> Counter:
     """«Send the latest state to the Hub»: a newer snapshot of each live business, pushed now (with whatever
     else it owes). ``{delivered, owed}``; what stays owed, ``reconcile_hub_states`` retries."""

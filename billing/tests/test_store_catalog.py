@@ -21,7 +21,7 @@ from billing import queries
 from billing.models import PlanChangeSchedule
 from billing.schemas import StoreCatalogIn
 from billing.tests.conftest import ctx_for, pay
-from hubs.models import HubMember, SubscriptionItem
+from hubs.models import Hub, HubMember, Plan, SubscriptionItem
 from hubs.tests.conftest import add_member, create_business
 
 pytestmark = pytest.mark.django_db
@@ -169,6 +169,45 @@ class TestWhichPlansAreOffered:
         assert "standard" not in offered
         assert "payment-test" not in offered
         assert "free" not in offered
+
+
+class TestTheInternalPlans:
+    """An internal plan (``payment-test``, 1 € + VAT) is offered only to the owner of a business ERPlora's staff
+    marked in the admin. ``hubs.plan.list`` lists only the public plans, so the Store gets its card here."""
+
+    def test_a_business_nobody_marked_is_offered_none_and_gets_no_card(self, shop, owner):
+        Plan.objects.filter(slug="payment-test").update(stripe_price_id="price_payment-test_month")
+
+        answer = catalog(owner, shop)
+
+        assert "payment-test" not in answer["offered_plans"]
+        assert answer["internal_plans"] == []
+
+    def test_a_marked_business_is_offered_them_with_their_card(self, marked, owner):
+        answer = catalog(owner, marked)
+
+        assert answer["offered_plans"] == ["starter", "standard", "payment-test"]
+        (card,) = answer["internal_plans"]
+        assert (card["slug"], card["name"], card["internal_only"]) == ("payment-test", "Payment Test (internal)", True)
+        assert (card["price_monthly"], card["price_annual"]) == ("1.00", "0.00")
+
+    def test_the_mark_is_of_the_business_not_of_its_owner(self, marked, owner):
+        pay(marked)
+        other = create_business(owner, name="Otro Bar")
+
+        answer = catalog(owner, other)
+
+        assert "payment-test" not in answer["offered_plans"]
+        assert answer["internal_plans"] == []
+
+    def test_a_business_on_an_internal_plan_keeps_its_card_once_unmarked(self, marked, owner):
+        paid = pay(marked, plan="payment-test")
+        Hub.objects.filter(pk=paid.pk).update(can_buy_internal_plans=False)
+
+        answer = catalog(owner, paid)
+
+        assert "payment-test" not in answer["offered_plans"]
+        assert [card["slug"] for card in answer["internal_plans"]] == ["payment-test"]
 
 
 class TestWhatTheBusinessHas:

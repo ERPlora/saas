@@ -83,6 +83,8 @@ export function plan(slug: string, name: string, monthly: string, annual: string
 export const FREE = plan('free', 'Free', '0.00', '0.00', { max_users: 3, max_devices: 1 });
 export const STARTER = plan('starter', 'Starter', '29.99', '299.90');
 export const PLANS = { signup_trial_days: 15, cheapest_slug: 'free', plans: [FREE, STARTER] };
+/** The internal plan: only a business ERPlora's staff marked is offered it, with this card in its catalog. */
+export const PAYMENT_TEST = plan('payment-test', 'Payment Test (internal)', '1.00', '0.00', { internal_only: true });
 /** Two upgrade-only plans (Pro, Enterprise and Max are an upgrade of a business that pays). */
 export const PRO = plan('pro', 'Pro', '109.99', '1099.90', { upgrade_only: true });
 export const MAX = plan('max', 'Max', '419.99', '4199.90', { upgrade_only: true });
@@ -156,6 +158,7 @@ export function catalog(hubId: string, extra: Partial<StoreCatalogOut> = {}): St
     modules: [storeModule('booking', 900), storeModule('loyalty', 600)],
     // As the server offers them: the upgrades only to a business Stripe bills.
     offered_plans: paying ? ['starter', 'standard', 'pro', 'max'] : ['starter', 'standard'],
+    internal_plans: [],
     ...extra,
   };
 }

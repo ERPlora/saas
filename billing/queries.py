@@ -630,9 +630,9 @@ def promo_check(ctx: OperationContext, params: PromoCheckIn) -> dict:
 # --- What is sold, and what Stripe bills --------------------------------------------------------------
 
 
-def plan_on_sale(slug: str):
-    """The active plan with that slug, or ``None``."""
-    return Plan.objects.filter(slug=slug, is_active=True).first()
+def plan_on_sale(slug: str, hub):
+    """The active plan with that slug ``hub`` may be sold (``Plan.objects.offered_to``), or ``None``."""
+    return Plan.objects.offered_to(hub).filter(slug=slug).first()
 
 
 def module_on_sale(slug: str):
@@ -687,11 +687,11 @@ def is_paying(subscription: Subscription | None) -> bool:
     )
 
 
-def offered_plans(paying: bool):
-    """The paid plans on sale a business may move to (the catalogue, ``hubs/0013``): the ones sold at sign-up
+def offered_plans(hub, paying: bool):
+    """The paid plans on sale ``hub`` may move to (the catalogue, ``hubs/0013``): the ones sold at sign-up
     while Stripe does not bill it (Free), the ``upgrade_only`` ones too once it pays. Free is not bought (a paid
-    plan is cancelled to get it) and an ``internal_only`` plan is never offered here."""
-    plans = Plan.objects.public().filter(price_monthly__gt=0)
+    plan is cancelled to get it) and an ``internal_only`` plan only to a business the staff marked."""
+    plans = Plan.objects.offered_to(hub).filter(price_monthly__gt=0)
     if not paying:
         plans = plans.filter(upgrade_only=False)
     return plans.order_by("display_order", "price_monthly")
@@ -723,7 +723,8 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
     """What the Store sells the business and what it already has: every paid module on sale with its net
     prices in cents, whether the business owns it (bought or included in its plan; a cancelled one until it
     ends), the plan, its billing and whether Stripe bills it already, and the paid plans it may move to
-    (``offered_plans``: no upgrade-only plan for a business Stripe does not bill). Only the owner buys for a business,
+    (``offered_plans``: no upgrade-only plan for a business Stripe does not bill; the internal ones only to a business
+    the staff marked, with their card in ``internal_plans``). Only the owner buys for a business,
     so only the owner reads it; a deleted business buys nothing (409). Never asks Stripe."""
     member = hub_queries.access(hub_queries.account_of(ctx), params.hub_id, HubMember.Role.OWNER)
     if not hub_queries.is_writable(member.hub):
@@ -774,11 +775,18 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
             "trial_end": subscription.trial_end,
             "scheduled_change": scheduled_change_of(member.hub_id),
         }
+    offered = list(offered_plans(member.hub, paying))
+    # ``hubs.plan.list`` lists only the public plans: the internal ones the business is offered, and the one it
+    # has even once it is not offered any more, come with their card.
+    internal = [row for row in offered if row.internal_only]
+    if subscription is not None and subscription.plan.internal_only and subscription.plan not in internal:
+        internal.append(subscription.plan)
     return {
         "hub_id": member.hub_id,
         "subscription": plan,
         "modules": modules,
-        "offered_plans": [offered.slug for offered in offered_plans(paying)],
+        "offered_plans": [row.slug for row in offered],
+        "internal_plans": [hub_queries.plan_card(row, ctx.language or "") for row in internal],
     }
 
 

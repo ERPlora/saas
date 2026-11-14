@@ -103,6 +103,24 @@ test.describe('store', () => {
     expect(errors).toEqual([]);
   });
 
+  // saas#434 (BILLING-F07, F08, F27): the internal plan is offered only to the business ERPlora's staff marked in the
+  // admin, and it is bought like any plan; the catalog of every other business leaves it out.
+  test('only the business ERPlora marked is offered «Payment Test», and it pays it like any plan (saas#434)', async ({ page }) => {
+    const errors = watchPageErrors(page);
+    const cafe = await businessIdOf(page.request, 'Café Central');
+    const marked = await businessIdOf(page.request, 'Prueba ERPlora');
+    const started = await gotoWithCheckout(page, `/dashboard/store/plans?business=${cafe}`);
+    await expect(page.getByTestId('plan-free').getByTestId('plan-current')).toBeVisible();
+    await expect(page.getByTestId('plan-payment-test')).toHaveCount(0);
+    await page.goto(`/dashboard/store/plans?business=${marked}`);
+    const internal = page.getByTestId('plan-payment-test');
+    await expect(internal.getByTestId('plan-name')).toHaveText('Payment Test (internal)');
+    await internal.getByTestId('plan-upgrade').click();
+    await expect(page.getByTestId('checkout-modal').getByTestId('stripe-double')).toBeVisible();
+    expect(started).toEqual([{ hub_id: marked, plan: 'payment-test', interval: 'month', promo_code: '' }]);
+    expect(errors).toEqual([]);
+  });
+
   test('Stripe.js that cannot load is said in the dialog, with «Retry»: waiting for its place hides no real failure (saas#326)', async ({ page }) => {
     await page.route(/^https:\/\/js\.stripe\.com\//, (route) => route.abort());
     const cafe = await businessIdOf(page.request, 'Café Central');

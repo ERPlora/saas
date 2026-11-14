@@ -54,13 +54,14 @@ class PlanQuerySet(models.QuerySet):
             .aggregate(trial_days_min=models.Min("trial_period_days"), trial_days_max=models.Max("trial_period_days"))
         )
 
-    def offered_to(self, user):
-        """The plans ``user`` may pick: every active one for staff, ``public()`` for anyone else.
+    def offered_to(self, hub):
+        """The plans ``hub`` may be sold: every active one, internal ones included, if ERPlora's staff marked it
+        (``Hub.can_buy_internal_plans``); ``public()`` for any other business, or without one.
 
-        Every logged-in door that lists or accepts a plan goes through here. No user (or an
-        anonymous one) is treated as a customer.
+        The Store lists and sells plans through here. The staff never own a business, so the mark is how one of
+        ERPlora's own businesses, owned by a customer account, buys an internal plan.
         """
-        if user is not None and getattr(user, "is_authenticated", False) and user.is_staff:
+        if hub is not None and hub.can_buy_internal_plans:
             return self.filter(is_active=True)
         return self.public()
 
@@ -143,7 +144,9 @@ class Plan(TranslatedFields):
         _("only as an upgrade"), default=False, help_text=_("Only offered as an upgrade, never at sign-up.")
     )
     internal_only = models.BooleanField(
-        _("internal"), default=False, help_text=_("Never offered to customers; only staff may buy it.")
+        _("internal"),
+        default=False,
+        help_text=_("Never offered to customers; only a business the staff mark in the admin may buy it."),
     )
     stripe_product_id = models.CharField(_("Stripe product"), max_length=255, blank=True)
     stripe_price_id = models.CharField(
@@ -256,12 +259,6 @@ class Plan(TranslatedFields):
         if label is not None:
             return str(label)
         return _("%(times)d times the full tier") % {"times": times}
-
-    def is_available_to(self, user) -> bool:
-        """Whether ``user`` may subscribe to this plan: an internal one only for staff."""
-        if not self.internal_only:
-            return True
-        return bool(user is not None and getattr(user, "is_authenticated", False) and user.is_staff)
 
 
 # --- Taxonomy -------------------------------------------------------------------------------------
@@ -509,6 +506,13 @@ class Hub(models.Model):
     #: The Hub's real platform-wide provisioning pause from its signed status poll; ``None`` when there is none.
     maintenance = models.JSONField(_("provisioning maintenance"), null=True, blank=True, default=None)
     deletion_requested_at = models.DateTimeField(_("deletion asked at"), null=True, blank=True)
+    can_buy_internal_plans = models.BooleanField(
+        _("internal plans"),
+        default=False,
+        # In the table too: the code of the previous deploy keeps creating businesses while this one rolls out.
+        db_default=False,
+        help_text=_("Its owner sees the internal plans in the Store and may buy them. Only for ERPlora's own businesses."),
+    )
     #: The clock of a business suspended for an unpaid plan (HUBS-F20): set when it is suspended, cleared when it
     #: pays; the notices of day 30 and 150 go out once each, and on day 180 it is deleted (``services.age_suspended``).
     suspended_at = models.DateTimeField(_("suspended at"), null=True, blank=True)

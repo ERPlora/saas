@@ -74,7 +74,8 @@ periodo («Mensual» o «Anual · −n %»), sus líneas como en /pricing/ (tras
 del plan …», «Hasta 40 apps activadas a la vez», o «Todas las apps activadas a la vez» si el plan no tiene tope;
 después los mensajes al mes, «Dominio propio para tu web (www.tunegocio.com)» en los planes que lo incluyen y, al final, la prueba), «Tu plan actual» en el que se tiene y el botón de cada uno:
 «Mejorar a …», «Cambiar a …», «Cambiar a anual · …» o «Bajar a Gratis»; con el plan cancelado o una bajada
-programada, «Mantener el plan». Si el negocio tiene una factura sin pagar, arriba sale el aviso con «Pagar la factura» y no se
+programada, «Mantener el plan». Un negocio que el personal de ERPlora marcó en el admin (BILLING-F27) ve también,
+al final, el plan interno «Prueba de pago (interno)»; ningún otro negocio lo ve. Si el negocio tiene una factura sin pagar, arriba sale el aviso con «Pagar la factura» y no se
 vende nada a ese negocio.
 
 **Módulos** enseña cada aplicación de pago con su icono, su nombre, su resumen y su precio sin IVA al
@@ -271,7 +272,7 @@ Pasos:
 1. El negocio nace siempre en Gratis (el alta solo pide nombre, país y tipo de negocio).
 2. En el Resumen del negocio, la tarjeta Plan dice «Gratis» y ofrece «Mejorar plan» (en un plan de pago, «Cambiar plan»), que abre la Tienda con ese negocio elegido. Solo lo ve quien gestiona la facturación del negocio, y solo en la web: en las apps dice que se entre en erplora.com desde el navegador.
 3. Elige el plan y el periodo y pulsa «Mejorar a …»: el pago sigue como en BILLING-F08.
-Entra: el negocio recién creado y los planes que se ofrecen a esa persona (los internos, solo al personal).
+Entra: el negocio recién creado y los planes que se ofrecen a ese negocio (los internos, solo si el personal de ERPlora lo marcó en el admin, BILLING-F27).
 Sale: lo mismo que BILLING-F08.
 Si falla: los mismos rechazos que BILLING-F08.
 Implicados: hubs (el alta y la página del negocio)
@@ -286,9 +287,9 @@ Pasos:
 2. Se abre el pago seguro: los datos de facturación si faltan y después el formulario de tarjeta de Stripe dentro del diálogo, titulado «Mejorar a …» con «Para … · se renueva cada mes» (o cada año).
 3. Mete la tarjeta; si el banco pide autenticación, la muestra Stripe en el mismo formulario.
 4. Al terminar, «Pagando…» hasta que llega la página del negocio, que avisa «… ya está en …» y cuya tarjeta Plan cambia en cuanto Stripe lo confirma. El negocio sigue funcionando todo el tiempo.
-Entra: el plan elegido (solo los que se ofrecen a esa persona), el periodo, los datos de facturación y el código promocional si lo hay.
+Entra: el plan elegido (solo los que se ofrecen a ese negocio; los internos, solo a uno que el personal marcó), el periodo, los datos de facturación y el código promocional si lo hay.
 Sale: el negocio en el plan nuevo, su suscripción y su cliente en Stripe, el plan nuevo enviado al negocio (`hubs.subscription.changed`) y la factura de ERPlora del primer cobro (BILLING-F25), llegue antes o después el aviso del pago.
-Si falla: si el pago no se puede abrir, «No hemos podido abrir el pago seguro» y «No se ha cobrado nada» con «Reintentar»; un plan sin precio en Stripe, «no está a la venta»; sin datos de facturación, el formulario; con una factura sin pagar, no se vende nada a ese negocio. Si la persona cierra el diálogo, no se cobra nada y el negocio sigue en Gratis.
+Si falla: si el pago no se puede abrir, «No hemos podido abrir el pago seguro» y «No se ha cobrado nada» con «Reintentar»; un plan sin precio en Stripe, «no está a la venta»; un plan que no se ofrece a ese negocio (uno interno sin la marca, aunque se pida por la API) se rechaza antes de abrir el pago, «No hay ningún plan con este identificador»; sin datos de facturación, el formulario; con una factura sin pagar, no se vende nada a ese negocio. Si la persona cierra el diálogo, no se cobra nada y el negocio sigue en Gratis.
 Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
 
 ### BILLING-F09 Volver del pago: confirmado, pendiente o cerrado
@@ -558,11 +559,11 @@ Pantalla: Admin
 Pasos:
 1. Una persona de ERPlora entra en el admin con la cuenta del SaaS (código por correo y app de autenticación).
 2. Ve, solo para leer, las suscripciones y sus líneas, los avisos de Stripe, los intentos de pago, los códigos promocionales usados, los contadores de cada serie de facturas y los cambios de plan que esperan al final del periodo: lo que dice Stripe no se edita aquí, se cambia en Stripe y llega por su aviso.
-3. En los negocios puede «Enviar el último estado al negocio» y «Reintentar lo que el negocio aún debe»; en las facturas, con sus líneas, «Reenviar al negocio de plataforma», «Reenviar el correo de la factura», «Descargar el PDF» de cualquier factura ya emitida y, eligiendo varias en la lista, «Descargar los PDF (ZIP)».
+3. En los negocios puede «Enviar el último estado al negocio» y «Reintentar lo que el negocio aún debe» y, solo un superusuario, «Dejar a su propietario comprar los planes internos» y «Dejar de venderle los planes internos»: con la marca, el propietario de ese negocio ve «Prueba de pago (interno)» (1 € + IVA) en la Tienda y lo compra como cualquier plan, también en producción, para hacer una compra real y ver su factura con el QR; la columna «planes internos» de la lista dice qué negocios la tienen. En las facturas, con sus líneas, «Reenviar al negocio de plataforma», «Reenviar el correo de la factura», «Descargar el PDF» de cualquier factura ya emitida y, eligiendo varias en la lista, «Descargar los PDF (ZIP)».
 4. Mantiene los códigos promocionales, la tabla de IVA, la política fiscal y los datos de ERPlora (nacen con los del Modelo 036 y son los que VIES ve de quien pregunta); las devoluciones y las cancelaciones al momento se hacen en el panel de Stripe.
 5. Una aplicación de pago que algún negocio tiene no se borra del catálogo: el admin dice qué negocio la tiene y que se quite de la venta.
 Entra: la cuenta del personal con su papel.
-Sale: lo que hacen sus acciones; nada de lo que es de Stripe cambia desde el admin.
+Sale: lo que hacen sus acciones; nada de lo que es de Stripe cambia desde el admin. Quitar la marca no cancela un plan interno ya comprado: el negocio lo sigue viendo como su plan y deja de poder comprarlo.
 Si falla: sin el papel, el admin no se abre; el grupo de soporte solo mira, no lanza acciones. El PDF de una factura que aún no se ha emitido no existe: el admin lo dice («Aún no se ha emitido»), y si el negocio de plataforma no responde, vuelve a la factura diciendo por qué. En el ZIP, las facturas sin PDF (aún emitiéndose o que el negocio de plataforma no devuelve) quedan fuera con su motivo, en un aviso del admin y en `not-included.txt` dentro del ZIP; si ninguna tiene PDF, no se descarga nada y el aviso lo dice.
 Implicados: hubs (el estado de los negocios)
 

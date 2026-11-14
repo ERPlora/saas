@@ -23,6 +23,7 @@ import {
   catalog,
   FREE_SUBSCRIPTION,
   MAX,
+  PAYMENT_TEST,
   PLANS,
   PLAZA,
   PRO,
@@ -62,6 +63,13 @@ const CATALOGS: Record<string, ReturnType<typeof catalog>> = {
   cafe: catalog('cafe', { subscription: FREE_SUBSCRIPTION }),
   plaza: catalog('plaza'),
 };
+
+/** Café Central once ERPlora's staff marked it: offered the internal plan, whose card only its catalog brings. */
+const MARKED_CAFE = catalog('cafe', {
+  subscription: FREE_SUBSCRIPTION,
+  offered_plans: ['starter', 'standard', 'payment-test'],
+  internal_plans: [PAYMENT_TEST],
+});
 
 /** `list`: the account's businesses arrive (`result`, by default), nothing arrives yet (`none`), or the stream
  *  is refused (`down`: `/api/live` answers 503). */
@@ -145,6 +153,38 @@ describe('StoreShop', () => {
     const s = await setup({ answer: ({ path }) => (path === '/api/plans' ? Response.json(plans) : undefined) });
     expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter', 'Pro', 'Max']);
     expect(s.el('store-plans-later').exists()).toBe(false);
+  });
+
+  it('a business ERPlora marked is offered the internal plan with the card its catalog brings, and buys it', async () => {
+    const s = await setup({ businessId: 'cafe', answer: ({ path }) => (path === '/api/billing/store' ? Response.json(MARKED_CAFE) : undefined) });
+    expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter', 'Payment Test (internal)']);
+    await s.el('plan-payment-test').find('[data-testid="plan-upgrade"]').trigger('click');
+    expect(s.wrapper.findComponent(CheckoutModal).props()).toMatchObject({
+      open: true,
+      business: { id: 'cafe' },
+      purchase: { kind: 'plan', slug: 'payment-test', name: 'Payment Test (internal)', interval: 'month' },
+    });
+  });
+
+  it('the internal plan of one business is never shown for another: each catalog brings its own', async () => {
+    const s = await setup({ businessId: 'cafe', answer: ({ path, query }) => (path === '/api/billing/store' && query.hub_id === 'cafe' ? Response.json(MARKED_CAFE) : undefined) });
+    expect(s.el('plan-payment-test').exists()).toBe(true);
+    await s.pick('bakery');
+    expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter']);
+  });
+
+  it('a business on an internal plan sees its card as its current plan', async () => {
+    const onIt = catalog('bakery', { subscription: subscription({ plan: 'payment-test' }), internal_plans: [PAYMENT_TEST] });
+    const s = await setup({ answer: ({ path }) => (path === '/api/billing/store' ? Response.json(onIt) : undefined) });
+    expect(s.el('plan-payment-test').find('[data-testid="plan-current"]').exists()).toBe(true);
+  });
+
+  it('cancelling an internal plan names it, as its card does', async () => {
+    const onIt = catalog('bakery', { subscription: subscription({ plan: 'payment-test' }), internal_plans: [PAYMENT_TEST] });
+    const s = await setup({ answer: ({ path }) => (path === '/api/billing/store' ? Response.json(onIt) : undefined) });
+    await s.el('plan-downgrade').trigger('click');
+    await flush();
+    expect(document.querySelector('[data-testid="store-cancel"]')?.textContent).toContain('Panadería López · Payment Test (internal)');
   });
 
   it('?business= chooses the business it came from', async () => {

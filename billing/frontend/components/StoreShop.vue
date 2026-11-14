@@ -153,24 +153,26 @@ const saving = computed(() => annualSaving(plans.value ?? []));
 const freePlan = computed(() => plans.value?.find((plan) => isFree(plan)) ?? null);
 /** What the business may move to (`billing.store.catalog`): no upgrade-only plan while Stripe does not bill it. */
 const offered = computed(() => new Set(catalog.value?.offered_plans ?? []));
+/** The public plans and, after them, the internal ones only this business's catalog brings the card of. */
+const allPlans = computed(() => [...(plans.value ?? []), ...(ready.value ? (catalog.value?.internal_plans ?? []) : [])]);
 /** Free, the plan it has and the ones it is offered. */
 const shownPlans = computed(() =>
-  (plans.value ?? []).filter((plan) => isFree(plan) || plan.slug === subscription.value?.plan || offered.value.has(plan.slug)),
+  allPlans.value.filter((plan) => isFree(plan) || plan.slug === subscription.value?.plan || offered.value.has(plan.slug)),
 );
 /** The upgrades it is not offered yet, and the first plan that opens them: «Pro and Max: available after moving to
  *  Starter». */
 const later = computed(() => {
-  const waiting = (plans.value ?? []).filter((plan) => !shownPlans.value.includes(plan));
+  const waiting = allPlans.value.filter((plan) => !shownPlans.value.includes(plan));
   const first = shownPlans.value.find((plan) => offered.value.has(plan.slug));
   if (!waiting.length || !first) return '';
   const names = new Intl.ListFormat(locale.value, { type: 'conjunction' }).format(waiting.map((plan) => plan.name));
   return t('billing.plans.later', { plans: names, plan: first.name });
 });
-const currentPlan = computed(() => plans.value?.find((plan) => plan.slug === subscription.value?.plan) ?? null);
+const currentPlan = computed(() => allPlans.value.find((plan) => plan.slug === subscription.value?.plan) ?? null);
 /** The plan a downgrade that waits moves the business to: its card says it, the current one offers to keep it. */
 const scheduledPlanName = computed(() => {
   const slug = subscription.value?.scheduled_change?.plan;
-  return slug ? (plans.value?.find((plan) => plan.slug === slug)?.name ?? slug) : '';
+  return slug ? (allPlans.value.find((plan) => plan.slug === slug)?.name ?? slug) : '';
 });
 const renewal = computed(() => subscription.value?.current_period_end ?? null);
 /** Bought in this visit: `<business>:<module>`. */

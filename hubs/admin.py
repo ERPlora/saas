@@ -225,11 +225,19 @@ class HubAdmin(PlatformActions):
         "state_version",
         "pushed_state_version",
         "last_hub_error",
+        "can_buy_internal_plans",
     ]
-    list_filter = ["status", "pending_hub_call"]
+    list_filter = ["status", "pending_hub_call", "can_buy_internal_plans"]
     search_fields = ["slug", "name"]
     inlines = [HubMemberInline]
-    actions = ["send_latest_state", "retry_owed", "attach_test_clock", "advance_test_clock"]
+    actions = [
+        "send_latest_state",
+        "retry_owed",
+        "allow_internal_plans",
+        "stop_internal_plans",
+        "attach_test_clock",
+        "advance_test_clock",
+    ]
     #: BILLING-F29: offered only with Stripe's test keys (PRE, development); production never sees them.
     TEST_CLOCK_ACTIONS = ("attach_test_clock", "advance_test_clock")
 
@@ -274,6 +282,24 @@ class HubAdmin(PlatformActions):
                 _("%(business)s: its clock is advancing to %(date)s; Stripe tells what happens by its events.")
                 % {"business": hub.slug, "date": reached.date().isoformat()},
             )
+
+    @admin.action(description=_("Let its owner buy the internal plans"), permissions=["sync"])
+    @traced
+    def allow_internal_plans(self, request, queryset):
+        changed = services.mark_for_internal_plans(list(queryset.values_list("id", flat=True)), allowed=True)
+        self.message_user(
+            request, _("%(count)d business(es): its owner now sees the internal plans in the Store.") % {"count": changed}
+        )
+
+    @admin.action(description=_("Stop selling it the internal plans"), permissions=["sync"])
+    @traced
+    def stop_internal_plans(self, request, queryset):
+        changed = services.mark_for_internal_plans(list(queryset.values_list("id", flat=True)), allowed=False)
+        self.message_user(
+            request,
+            _("%(count)d business(es): the Store no longer offers it the internal plans; a plan already bought stays.")
+            % {"count": changed},
+        )
 
     @admin.action(description=_("Send the latest state to the Hub"), permissions=["sync"])
     @traced

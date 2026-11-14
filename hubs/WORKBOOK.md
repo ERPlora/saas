@@ -274,7 +274,7 @@ Pasos:
 2. En la ficha de un plan escribe su nombre, su descripción, las líneas de su tarjeta y su distintivo en inglés y en español, su precio mensual y anual, qué incluye (nivel de módulos, soporte, dominio propio, negocios, dispositivos y personas), los límites de su base de datos, los mensajes del asistente y de WhatsApp al mes y sus precios de Stripe.
 3. Guarda: el cliente ve los textos en su idioma (el inglés cuando falta el español) en la Tienda y en la web de precios.
 Entra: lo que escribe el personal.
-Sale: el plan, con cada texto en inglés y en español. Gratis se ofrece al darse de alta y sin prueba; Pro, Enterprise y Max solo como mejora; un plan interno nunca se ofrece a los clientes.
+Sale: el plan, con cada texto en inglés y en español. Gratis se ofrece al darse de alta y sin prueba; Pro, Enterprise y Max solo como mejora; un plan interno solo se ofrece al negocio que el personal marca en el admin (HUBS-F23).
 Si falla: un precio que Stripe rechaza no se guarda y el plan se queda como estaba; sin Stripe, se guarda y avisa de que no se ha comprobado. Una cuenta sin la marca de personal no entra en el admin.
 Implicados: billing (los precios en Stripe, BILLING-F28), public (la web de precios)
 
@@ -529,11 +529,11 @@ Actor: personal de ERPlora
 Pantalla: admin › Negocios
 Pasos:
 1. El personal entra en el admin de erplora.com y busca el negocio por su dirección o su nombre; ve su ficha con sus miembros, su plan, quién paga, su uso y lo que el negocio aún no ha recibido.
-2. Elige el negocio y una acción: «Enviar al Hub el estado más reciente», «Reintentar lo que el Hub tiene pendiente» o, en la ficha de los cierres de sesión, «Cerrar ya las sesiones en el Hub»; el admin dice cuántos quedaron al día y cuántos siguen pendientes.
+2. Elige el negocio y una acción: «Enviar al Hub el estado más reciente», «Reintentar lo que el Hub tiene pendiente» o, en la ficha de los cierres de sesión, «Cerrar ya las sesiones en el Hub»; el admin dice cuántos quedaron al día y cuántos siguen pendientes. Un superusuario también puede «Dejar a su propietario comprar los planes internos» o «Dejar de venderle los planes internos» (BILLING-F27).
 3. Cada acción queda en el historial de ese negocio: quién la hizo, cuándo y cuál.
 Entra: la cuenta del personal con su segundo factor.
 Sale: lo que la acción manda al negocio y la línea del historial.
-Si falla: el admin no crea, no cambia ni borra negocios, miembros ni planes de pago: eso solo lo hacen sus propias pantallas, así nadie del personal se hace propietario de un negocio ni lo borra sin su baja. El personal de soporte lo ve todo y no ejecuta acciones. Para los datos de dentro del negocio está el admin de los negocios (en el servicio de los negocios).
+Si falla: el admin no crea, no cambia ni borra negocios, miembros ni planes de pago: eso solo lo hacen sus propias pantallas, así nadie del personal se hace propietario de un negocio ni lo borra sin su baja. La marca de los planes internos no compra nada: el propietario, si quiere, lo compra él en la Tienda. El personal de soporte lo ve todo y no ejecuta acciones. Para los datos de dentro del negocio está el admin de los negocios (en el servicio de los negocios).
 Implicados: el negocio (recibe lo que se le reenvía), accounts (la cuenta del personal)
 
 ### HUBS-F24 Invitar a una persona a un negocio

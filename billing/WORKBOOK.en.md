@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:a930bc6eedf457f05db0e1e8c757cacd50bf6c818af6006d923ba8f78147b6a6 -->
+<!-- generated from WORKBOOK.md sha256:457f0709e1ff34d96587a25641f2bc4b9f7a136b1fbbc24c1735a5ebac0d298c -->
 
 ## What it is for and who it is for
 
@@ -60,7 +60,8 @@ the businesses one owns). Plans shows each plan with its price without VAT, the 
 turned on at once", or "All the apps turned on at once" when the plan has no cap; then the messages a month, "Your own domain for your website (www.yourbusiness.com)" on the plans that include it and,
 last, the trial), "Your current plan" on the one it has and each plan's button: "Upgrade to …",
 "Change to …", "Change to annual · …" or "Downgrade to Free"; with the plan cancelled or a downgrade scheduled,
-"Keep the plan". If the
+"Keep the plan". A business ERPlora staff marked in the admin (BILLING-F27) also sees, last, the internal plan
+"Payment Test (internal)"; no other business sees it. If the
 business has an unpaid invoice, the notice with "Pay the invoice" comes at the top and nothing is sold to that
 business.
 
@@ -257,7 +258,7 @@ Steps:
 1. The business is always born on Free (signing it up only asks for name, country and type of business).
 2. In the Business summary, the Plan card says "Free" and offers "Upgrade plan" (on a paid plan, "Change plan"), which opens the Store with that business chosen. Only whoever manages the business's billing sees it, and only on the web: in the apps it says to go to erplora.com in the browser.
 3. Choose the plan and the period and tap "Upgrade to …": the payment goes on as in BILLING-F08.
-In: the newly created business and the plans offered to that person (the internal ones, only to staff).
+In: the newly created business and the plans offered to that business (the internal ones, only if ERPlora staff marked it in the admin, BILLING-F27).
 Out: the same as BILLING-F08.
 If it fails: the same refusals as BILLING-F08.
 Involved: hubs (the sign-up and the business's page)
@@ -272,9 +273,9 @@ Steps:
 2. The secure payment opens: the billing details if they are missing and then Stripe's card form inside the dialog, titled "Upgrade to …" with "For … · renews every month" (or every year).
 3. Enter the card; if the bank asks for authentication, Stripe shows it in the same form.
 4. When done, "Paying…" until the business's page arrives, which says "… is now on …" and whose Plan card changes as soon as Stripe confirms it. The business keeps working all the time.
-In: the chosen plan (only those offered to that person), the period, the billing details and the promo code if there is one.
+In: the chosen plan (only those offered to that business; the internal ones, only to one the staff marked), the period, the billing details and the promo code if there is one.
 Out: the business on the new plan, its subscription and its customer in Stripe, the new plan sent to the business (`hubs.subscription.changed`) and ERPlora's invoice for the first charge (BILLING-F25), whether the payment notice arrives before or after.
-If it fails: if the payment cannot be opened, "We could not open the secure payment" and "Nothing has been charged" with "Retry"; a plan without a price in Stripe, "is not on sale"; without billing details, the form; with an unpaid invoice, nothing is sold to that business. If the person closes the dialog, nothing is charged and the business stays on Free.
+If it fails: if the payment cannot be opened, "We could not open the secure payment" and "Nothing has been charged" with "Retry"; a plan without a price in Stripe, "is not on sale"; a plan not offered to that business (an internal one without the mark, even if asked through the API) is refused before the payment opens, "There is no plan with this identifier"; without billing details, the form; with an unpaid invoice, nothing is sold to that business. If the person closes the dialog, nothing is charged and the business stays on Free.
 Involved: hubs (the business's subscription), the business (receives its plan)
 
 ### BILLING-F09 Come back from the payment: confirmed, pending or closed
@@ -544,11 +545,11 @@ Screen: Admin
 Steps:
 1. A person of ERPlora enters the admin with the SaaS account (email code and authenticator app).
 2. They see, read-only, the subscriptions and their lines, Stripe's notices, the payment attempts, the promo codes used, the counters of each invoice series and the plan changes waiting for the end of the period: what Stripe says is not edited here, it is changed in Stripe and arrives with its notice.
-3. On the businesses they can "Send the latest state to the business" and "Retry what the business still owes"; on the invoices, with their lines, "Send again to the platform business", "Send the invoice email again", "Download the PDF" of any invoice already issued and, choosing several in the list, "Download the PDFs (ZIP)".
+3. On the businesses they can "Send the latest state to the business" and "Retry what the business still owes" and, a superuser only, "Let its owner buy the internal plans" and "Stop selling it the internal plans": with the mark, the owner of that business sees "Payment Test (internal)" (1 € + VAT) in the Store and buys it like any plan, in production too, to make a real purchase and see its invoice with the QR; the list's "internal plans" column says which businesses have it. On the invoices, with their lines, "Send again to the platform business", "Send the invoice email again", "Download the PDF" of any invoice already issued and, choosing several in the list, "Download the PDFs (ZIP)".
 4. They keep the promo codes, the VAT table, the tax policy and ERPlora's details (born with those of the Modelo 036, and the ones VIES sees of who asks); refunds and immediate cancellations are made in Stripe's dashboard.
 5. A paid app some business has is not deleted from the catalog: the admin says which business has it and to take it off sale.
 In: the staff account with its role.
-Out: what its actions do; nothing that belongs to Stripe changes from the admin.
+Out: what its actions do; nothing that belongs to Stripe changes from the admin. Removing the mark does not cancel an internal plan already bought: the business still sees it as its plan and can no longer buy it.
 If it fails: without the role, the admin does not open; the support group only looks, it does not run actions. The PDF of an invoice not issued yet does not exist: the admin says so ("Not issued yet"), and if the platform business does not answer, it goes back to the invoice saying why. In the ZIP, the invoices without a PDF (still being issued, or that the platform business does not return) are left out with their reason, in an admin notice and in `not-included.txt` inside the ZIP; if none has a PDF, nothing is downloaded and the notice says so.
 Involved: hubs (the businesses' status)
 

@@ -154,6 +154,17 @@ def shop(owner, plans):
 
 
 @pytest.fixture
+def marked(shop):
+    """``shop`` once ERPlora's staff marked it in the admin: its owner is offered the internal plans. ``payment-test``
+    gets its monthly Stripe price, as the admin fills it in (it has no annual one)."""
+    from hubs.models import Hub, Plan
+
+    Plan.objects.filter(slug="payment-test").update(stripe_price_id="price_payment-test_month")
+    Hub.objects.filter(pk=shop.pk).update(can_buy_internal_plans=True)
+    return Hub.objects.select_related("billing_profile").get(pk=shop.pk)
+
+
+@pytest.fixture
 def inventory(db):
     """A paid module on sale: 10 € a month, 100 € a year (net). Enterprise tier, so no plan the tests buy
     (Starter, Standard: basic) includes it (a plan includes the modules its level reaches)."""
