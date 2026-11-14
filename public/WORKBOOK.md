@@ -182,11 +182,9 @@ llena, demasiadas desde la conexión, no disponible, terminada) con lo que se pu
 | PUBLIC-F33 | La demo terminó | hecho |
 | PUBLIC-F34 | Retirar las demos que vencen | hecho |
 | PUBLIC-F35 | De la demo a una cuenta de verdad | hecho |
-| PUBLIC-F36 | Pedir una demo desde otra aplicación | descartado |
 | PUBLIC-F37 | La demo no cuenta como un negocio | hecho |
 
 ### PUBLIC-F01 Ver la portada
-<!-- origen: old-saas:SAAS_PUBLIC-F55 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Portada
@@ -200,7 +198,6 @@ Si falla: sin apps publicadas se omiten los bloques de apps; sin planes a la ven
 Implicados: hubs (los planes), apps (el catálogo), accounts (la entrada)
 
 ### PUBLIC-F02 Ver los planes y los precios
-<!-- origen: old-saas:SAAS_PUBLIC-F56 fi:saas/public#pagina-publica-de-precios-planes -->
 Estado: hecho
 Actor: visitante
 Pantalla: Planes y precios
@@ -215,7 +212,6 @@ Si falla: sin planes a la venta, la página lo dice y no pinta tablas ni «Más 
 Implicados: hubs (los planes), billing (el cobro, PUBLIC-F04; a quién se vende, BILLING-F02)
 
 ### PUBLIC-F03 Ver el detalle de un plan
-<!-- origen: old-saas:SAAS_PUBLIC-F57 fi:saas/public#detalle-publico-de-un-plan -->
 Estado: hecho
 Actor: visitante
 Pantalla: Detalle de un plan
@@ -225,11 +221,10 @@ Pasos:
 3. Pulsa «Comenzar» y llega a la pantalla de entrar, donde también se crea la cuenta (PUBLIC-F11); «Otros planes» lleva a los demás planes a la venta.
 Entra: el plan por su identificador.
 Sale: nada guardado.
-Si falla: un plan interno, retirado, de mejora o que no existe da «Página no encontrada». «Qué incluye» es la lista del plan sin los separadores heredados.
+Si falla: un plan interno, retirado, de mejora o que no existe da «Página no encontrada». «Qué incluye» es la lista del plan sin las filas que solo son una línea separadora.
 Implicados: hubs (los planes), accounts (la entrada)
 
 ### PUBLIC-F04 Que el precio pintado sea el que se cobra
-<!-- origen: old-saas:SAAS_PUBLIC-F58 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -243,13 +238,12 @@ Si falla: un precio de Stripe que no casa con el del plan se rechaza al guardarl
 Implicados: hubs (los planes), billing (el cobro y la comprobación de precios)
 
 ### PUBLIC-F05 Ver los sectores y la página de un tipo de negocio
-<!-- origen: old-saas:SAAS_PUBLIC-F60 fi:saas/public#detalle-publico-de-una-industria fi:saas/public#listado-publico-de-industrias-tipos-de-negocio -->
 Estado: hecho
 Actor: visitante
 Pantalla: Sectores
 Pasos:
 1. La persona abre «Industrias» y ve «ERPlora para tu negocio.» con los tipos de negocio, que puede filtrar por sector.
-2. Abre uno y ve el titular con la pregunta que escribiría en un buscador («Software TPV y ERP para tu peluquería»), un arranque con el precio de entrada y cuántas apps hay, las apps pensadas para ese tipo de negocio, con cómo se activan (la plantilla que propone el Inicio del negocio, o una a una), y sus preguntas frecuentes. Nunca dice que el negocio las trae de serie: todo negocio nace con todas las apps apagadas (PLAN §33).
+2. Abre uno y ve el titular con la pregunta que escribiría en un buscador («Software TPV y ERP para tu peluquería»), un arranque con el precio de entrada y cuántas apps hay, las apps pensadas para ese tipo de negocio, con cómo se activan (la plantilla que propone el Inicio del negocio, o una a una), y sus preguntas frecuentes. Nunca dice que el negocio las trae de serie: todo negocio nace con todas las apps apagadas.
 3. Abajo tiene los enlaces a precios, a la tienda de apps, al producto y al cumplimiento, y «Empieza gratis» y «Explorar apps».
 Entra: los sectores y tipos de negocio activos y las apps publicadas de su sector.
 Sale: nada guardado; los datos estructurados de la aplicación y de las preguntas frecuentes.
@@ -257,7 +251,6 @@ Si falla: un tipo de negocio que no existe o está inactivo da «Página no enco
 Implicados: hubs (la taxonomía y los planes), apps (el catálogo)
 
 ### PUBLIC-F06 Leer Características, Seguridad y Actualizaciones
-<!-- origen: old-saas:SAAS_PUBLIC-F61 fi:saas/public#paginas-de-producto-estaticas-features-security-updates -->
 Estado: hecho
 Actor: visitante
 Pantalla: Características, Seguridad y Actualizaciones
@@ -271,7 +264,6 @@ Si falla: las tres páginas dicen lo que la plataforma da, nunca con qué tecnol
 Implicados: ninguno
 
 ### PUBLIC-F07 Leer solo lo que el producto hace
-<!-- origen: old-saas:SAAS_PUBLIC-F76 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Portada, Planes y precios, Características, Colabora
@@ -285,7 +277,6 @@ Si falla: no se anuncia contabilidad, nóminas, tickets de soporte, TicketBAI, l
 Implicados: hubs (los textos de cada plan y si incluye dominio propio; HUBS-F17)
 
 ### PUBLIC-F08 Leer lo que la web dice de seguridad, datos y disponibilidad
-<!-- origen: old-saas:SAAS_PUBLIC-F77 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Seguridad, Planes y precios, Portada, Sobre nosotros
@@ -299,7 +290,6 @@ Si falla: no se promete un acuerdo de disponibilidad con porcentaje, soporte 24/
 Implicados: hubs (la línea de la base de datos de las fichas de los planes, con la misma promesa)
 
 ### PUBLIC-F09 Ver el cumplimiento por país
-<!-- origen: old-saas:SAAS_PUBLIC-F62 fi:saas/public#pagina-publica-de-cumplimiento-por-pais -->
 Estado: hecho
 Actor: visitante
 Pantalla: Cumplimiento
@@ -313,7 +303,6 @@ Si falla: un país solo sale como conectado cuando una app se conecta de verdad 
 Implicados: hubs (los países del alta), verifactu del negocio (la conexión con la AEAT)
 
 ### PUBLIC-F10 Conocer la empresa: Sobre nosotros y Colabora
-<!-- origen: old-saas:SAAS_PUBLIC-F63 fi:saas/public#pagina-de-colaboracion-partners-con-cifras-dinamicas fi:saas/public#paginas-de-empresa-estaticas-about-careers-blog-press-developers fi:saas/public#redireccion-legacy-company -->
 Estado: hecho
 Actor: visitante
 Pantalla: Sobre nosotros, Colabora
@@ -327,7 +316,6 @@ Si falla: sin plan de pago a la venta, Colabora no inventa un valor; sin taxonom
 Implicados: hubs (los planes y la taxonomía)
 
 ### PUBLIC-F11 Empezar gratis desde cualquier página
-<!-- origen: old-saas:SAAS_PUBLIC-F78 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Portada, Planes y precios, Detalle de un plan, Sectores, Características, Cumplimiento
@@ -341,7 +329,6 @@ Si falla: la tarjeta del plan gratuito dice «Empieza gratis» y la de un plan d
 Implicados: accounts (la entrada y el alta), hubs (el negocio en Gratis)
 
 ### PUBLIC-F12 Llegar a una página «Muy pronto» o a una dirección retirada
-<!-- origen: old-saas:SAAS_PUBLIC-F79 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Muy pronto
@@ -355,7 +342,6 @@ Si falla: una dirección retirada nunca enseña la aplicación del panel en su l
 Implicados: apps (la tienda)
 
 ### PUBLIC-F13 Cambiar de idioma
-<!-- origen: old-saas:SAAS_PUBLIC-F68 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Pie de página
@@ -369,7 +355,6 @@ Si falla: un idioma que no está en la lista no cambia nada; una página de vuel
 Implicados: ninguno
 
 ### PUBLIC-F14 Que buscadores y asistentes lean la web
-<!-- origen: old-saas:SAAS_PUBLIC-F75 fi:saas/support/public-core-config#modelos-translation-sitemaps-landing fi:saas/support/public-core-config#translation-py-sitemaps-py-usage-helper-i18n -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -384,7 +369,6 @@ Si falla: las páginas privadas nunca aparecen en el mapa ni en el resumen ni en
 Implicados: apps (el catálogo), hubs (los planes y la taxonomía)
 
 ### PUBLIC-F15 Leer la ayuda y el soporte
-<!-- origen: old-saas:SAAS_DASHBOARD-F218 old-saas:SAAS_PUBLIC-F64 fi:saas/assistant-help#centro-de-ayuda-indice-de-guias fi:saas/assistant-help#guia-individual-markdown-html fi:saas/public#centro-de-ayuda-renderiza-guias-del-repo fi:saas/support/orgs-users#service-help_docs-list_docs-get_doc-all_sections-resolve_lang fi:saas/public#soporte-publico fi:saas/public#documentacion-publica-estatica -->
 Estado: hecho
 Actor: visitante
 Pantalla: Centro de ayuda y Soporte
@@ -399,7 +383,6 @@ Si falla: una guía todavía sin traducir se lee en inglés, y un idioma sin gu�
 Implicados: ninguno
 
 ### PUBLIC-F16 Escribir al equipo desde el formulario de contacto
-<!-- origen: old-saas:SAAS_PUBLIC-F65 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Contacto
@@ -413,7 +396,6 @@ Si falla: un campo obligatorio vacío, un correo que no es válido, demasiados m
 Implicados: ninguno
 
 ### PUBLIC-F17 Llegar al formulario desde otras páginas
-<!-- origen: old-saas:SAAS_PUBLIC-F66 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Contacto
@@ -427,7 +409,6 @@ Si falla: un tema que la web no conoce se ignora y el mensaje sale sin tema.
 Implicados: ninguno
 
 ### PUBLIC-F18 Ver los canales y el plazo de respuesta
-<!-- origen: old-saas:SAAS_PUBLIC-F67 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Contacto
@@ -440,7 +421,6 @@ Si falla: ninguna página promete atención a todas horas ni otro plazo; el corr
 Implicados: ninguno
 
 ### PUBLIC-F19 Decidir sobre las cookies
-<!-- origen: old-saas:SAAS-F10 old-saas:SAAS_PUBLIC-F69 old-saas:SAAS_PUBLIC-F70 fi:saas/support/orgs-users#command-init_cookie_groups -->
 Estado: hecho
 Actor: visitante
 Pantalla: Aviso de cookies y Preferencias de cookies
@@ -455,7 +435,6 @@ Si falla: las cookies esenciales nunca se borran (cerrarían la sesión); si la 
 Implicados: accounts (las pantallas de entrada)
 
 ### PUBLIC-F20 Leer los textos legales
-<!-- origen: old-saas:SAAS_PUBLIC-F71 fi:saas/public#paginas-legales-estaticas-privacy-terms-cookies-aviso-legal -->
 Estado: hecho
 Actor: visitante
 Pantalla: Textos legales
@@ -469,7 +448,6 @@ Si falla: ningún texto nombra un proveedor que ya no se usa ni otro alojamiento
 Implicados: hubs (los planes), billing (a quién se vende, BILLING-F02), ASSISTANT-F14
 
 ### PUBLIC-F21 Consultar la declaración responsable del sistema de facturación
-<!-- origen: old-saas:SAAS_PUBLIC-F73 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Declaración responsable
@@ -483,7 +461,6 @@ Si falla: una versión que no existe, o la copia de una versión todavía sin fi
 Implicados: ninguno
 
 ### PUBLIC-F22 Recorrer la tienda de apps
-<!-- origen: old-saas:SAAS_PUBLIC-F29 fi:saas/public#marketplace-publico-de-modulos-listado-busqueda-filtro fi:saas/public#overview-publico-de-modulos-agrupados-por-unidad-funcional-modules -->
 Estado: hecho
 Actor: visitante
 Pantalla: Tienda de apps
@@ -497,7 +474,6 @@ Si falla: sin apps publicadas dice «Todavía no hay apps publicadas.» y no se 
 Implicados: apps (el catálogo)
 
 ### PUBLIC-F23 Ver la ficha de una app
-<!-- origen: old-saas:SAAS_PUBLIC-F30 fi:saas/public#ficha-publica-de-un-modulo-detalle-ssr -->
 Estado: hecho
 Actor: visitante
 Pantalla: Ficha de una app
@@ -511,7 +487,6 @@ Si falla: una app que no existe o no está publicada da «Página no encontrada�
 Implicados: apps (el catálogo), accounts (la entrada)
 
 ### PUBLIC-F24 Conseguir la aplicación instalada
-<!-- origen: old-saas:SAAS_PUBLIC-F33 fi:saas/public#descarga-del-instalador-del-bridge-por-plataforma -->
 Estado: hecho
 Actor: visitante
 Pantalla: Descargas y La app de ERPlora
@@ -521,11 +496,10 @@ Pasos:
 3. La página de la app cuenta lo que hace en el mostrador y que primero hace falta un hub: «Antes que la app necesitas un hub.».
 Entra: el plan Gratis a la venta y las fichas de las tiendas.
 Sale: nada guardado.
-Si falla: sin plan Gratis a la venta, la tarjeta no da ningún límite; una plataforma sin versión publicada (macOS) no se ofrece, y el puente local de antes ya no existe y da «Página no encontrada».
+Si falla: sin plan Gratis a la venta, la tarjeta no da ningún límite; una plataforma sin versión publicada (macOS) no se ofrece, y la dirección del puente local da «Página no encontrada».
 Implicados: hubs (el plan Gratis)
 
 ### PUBLIC-F25 Saber qué versión de la aplicación está publicada
-<!-- origen: old-saas:SAAS_PUBLIC-F34 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -538,7 +512,6 @@ Si falla: si esa nota no se puede leer o no trae una versión, la respuesta es q
 Implicados: ninguno
 
 ### PUBLIC-F26 Abrir una página pública desde la aplicación instalada
-<!-- origen: old-saas:SAAS_PUBLIC-F74 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Textos legales
@@ -552,7 +525,6 @@ Si falla: dentro de la aplicación no sale el aviso de cookies ni se carga ningu
 Implicados: hubs (la entrada de la aplicación), accounts (comprobar el correo)
 
 ### PUBLIC-F27 Llegar a la demo
-<!-- origen: old-saas:SAAS_PUBLIC-F80 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Demo
@@ -566,7 +538,6 @@ Si falla: si ese navegador ya tiene una demo en marcha, la pantalla no ofrece ot
 Implicados: ninguno
 
 ### PUBLIC-F28 Crear la demo y entrar en ella
-<!-- origen: old-saas:SAAS_PUBLIC-F81 old-saas:SAAS_PUBLIC-F82 old-saas:SAAS_PUBLIC-F83 -->
 Estado: hecho
 Actor: visitante, sistema
 Pantalla: Demo
@@ -582,7 +553,6 @@ Si falla: solo entra el navegador que la pidió: el enlace de una demo abierto e
 Implicados: el Hub (su registro de hubs crea la demo y le abre la sesión)
 
 ### PUBLIC-F29 Una demo que no se ha podido abrir
-<!-- origen: old-saas:SAAS_PUBLIC-F84 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Demo
@@ -597,7 +567,6 @@ Si falla: el fallo queda en el registro del servicio; la persona solo ve el mens
 Implicados: el Hub (su registro de hubs)
 
 ### PUBLIC-F30 La demo está apagada
-<!-- origen: old-saas:SAAS_PUBLIC-F85 -->
 Estado: hecho
 Actor: visitante, sistema
 Pantalla: Demo
@@ -611,7 +580,6 @@ Si falla: apagarla no desmonta nada: quien ya está dentro de su demo sigue hast
 Implicados: ninguno
 
 ### PUBLIC-F31 Todas las demos están ocupadas
-<!-- origen: old-saas:SAAS_PUBLIC-F86 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Demo
@@ -624,7 +592,6 @@ Si falla: los huecos se liberan a medida que las demos terminan (PUBLIC-F34).
 Implicados: el Hub (su registro de hubs cuenta las demos en marcha)
 
 ### PUBLIC-F32 Límite de demos por conexión
-<!-- origen: old-saas:SAAS_PUBLIC-F87 -->
 Estado: hecho
 Actor: visitante, sistema
 Pantalla: Demo
@@ -638,7 +605,6 @@ Si falla: las demos que ya empezó siguen siendo suyas hasta que terminan.
 Implicados: ninguno
 
 ### PUBLIC-F33 La demo terminó
-<!-- origen: old-saas:SAAS_PUBLIC-F88 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Demo
@@ -652,7 +618,6 @@ Si falla: una demo puede terminar antes de su hora (el equipo la retira); «Volv
 Implicados: el Hub (la página de la demo terminada)
 
 ### PUBLIC-F34 Retirar las demos que vencen
-<!-- origen: old-saas:SAAS_PUBLIC-F89 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -667,7 +632,6 @@ Si falla: si retirar una falla, también si el almacén no borra sus ficheros, n
 Implicados: el Hub (su registro de hubs y su proceso de fondo)
 
 ### PUBLIC-F35 De la demo a una cuenta de verdad
-<!-- origen: old-saas:SAAS_PUBLIC-F92 -->
 Estado: hecho
 Actor: visitante
 Pantalla: Demo
@@ -679,21 +643,7 @@ Sale: nada de la demo pasa a la cuenta: el negocio nace vacío, como avisa la pa
 Si falla: su demo sigue en marcha hasta que termina, aunque ya tenga cuenta.
 Implicados: accounts (la entrada), hubs (el alta del negocio)
 
-### PUBLIC-F36 Pedir una demo desde otra aplicación
-<!-- origen: old-saas:SAAS_PUBLIC-F93 -->
-Estado: descartado — la demo de ahora se crea y se abre en el mismo navegador que la pide, con un código de un solo uso atado a él, así que una puerta sin pantalla no podría abrirla; ninguna aplicación de ERPlora la llamaba, y la ronda 2026-10-17 (PLAN-SAAS §3.5) dejó la pantalla como única puerta
-Actor: sistema
-Pantalla: ninguna
-Pasos:
-1. Quien quiere una demo la pide desde la pantalla de la demo (PUBLIC-F28).
-2. Los rechazos se ven en esa pantalla (PUBLIC-F29 a PUBLIC-F32).
-Entra: nada.
-Sale: nada.
-Si falla: no aplica.
-Implicados: ninguno
-
 ### PUBLIC-F37 La demo no cuenta como un negocio
-<!-- origen: old-saas:SAAS_PUBLIC-F94 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -712,10 +662,7 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   `pricing.py` (F02–F04), `industries.py` (F05), `product.py` (F06, F08), `compliance.py` (F09), `company.py` (F10),
   `store.py` (redirecciones de F12), `language.py` (F13), `seo.py`, `sitemaps.py` y `structured_data.py` (F14).
   Plantillas en `public/templates/public/`, catálogo en `public/locale/es/`.
-- Partes del porte (MIGRATION-TASK APP-PUBLIC-1…3): este WORKBOOK nace en la parte 1 (F01–F14); la parte 2 añade
-  F15–F26 (ayuda, contacto, cookies, legales, tienda de apps, descargas) y la 3, F27–F37 (la demo), con la revisión
-  flujo a flujo de los `hecho` de las tres.
-- Demo (F27–F37; ronda 2026-10-17, PLAN-SAAS §3.5, plan `docs/plans/2026-10-17-demo-hubs-fase-1.md`): `demo.py`
+- Demo (F27–F37): `demo.py`
   sirve `/demo/` (y la misma vista en `/try/`, canónica `/demo/`; GET, nunca crea), `/demo/start/` (POST con CSRF,
   `DEMO_SPAWN_RATELIMIT` por dirección solo si el navegador no tiene demo viva) y `/demo/enter/` (el salto con el
   `state` del Hub y `accounts/hub_login_form.html`). El SaaS no guarda filas de demo: solo `session["demo"]` y el token
@@ -724,14 +671,11 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   `base.Hub` con `is_demo`, `POST /internal/demos` con `MAX_CONCURRENT_DEMOS` (503 `base.demo_full`), el 410 de una
   demo vencida con su enlace a `/demo/?state=expired`, `reap_demos` en el worker cada `REAPER_INTERVAL_SECONDS` y
   `purge_demo_data`, que borra la BD propia de la demo (`<control>_demo_<hex>`, `DROP DATABASE … WITH (FORCE)`, solo
-  esa) desde la tenencia S2a (hub#471; F34 `hecho` en CLOSE-PUBLIC). Una demo de antes de la tenencia (`db_name`
-  vacío) no tenía BD propia y no borra nada de ella. Tras la BD, `purge_demo_data` borra el prefijo `hub-<hex>/` de esa
-  demo en el almacén y ningún otro (`base.files.delete_hub_files`, hub#613); si el almacén falla, la demo sigue
+  esa); una demo sin `db_name` no tiene BD propia que borrar. Tras la BD, `purge_demo_data` borra el prefijo `hub-<hex>/` de esa
+  demo en el almacén y ningún otro (`base.files.delete_hub_files`); si el almacén falla, la demo sigue
   `dropping` con el error en su fila y se reintenta. El prefijo `demo-` lo reserva
   `live.slugs` (`validate_hub_slug(allow_demo=…)`) y `hubs.queries.base_slug` lo normaliza (F37).
-- Equivalencia de claves de la parte 3: G53 = F27; G54, G55 y G56 = F28; G57 = F29; G58 = F30; G59 = F31; G60 = F32;
-  G61 = F33; G62 = F34; G63 = F35; G64 = F36; G65 = F37.
-- Parte 2, por flujo: `help.py` y `resources.py` (F15; `/documentation/` es un 301 a `/help/`), `landing.py`
+- Por flujo, F15–F26: `help.py` y `resources.py` (F15; `/documentation/` es un 301 a `/help/`), `landing.py`
   (F16–F18: `contact_submit` con `reply_to`, el borrador `CONTACT_DRAFT_KEY` en la sesión y los temas
   `CONTACT_TOPICS`), `context_processors.py` (F18: `SUPPORT_EMAIL` de settings, `SUPPORT_WHATSAPP_URL` y
   `SUPPORT_REPLY_HOURS`), `partials/cookie_banner.html`, `partials/analytics.html`, `cookies.py` e
@@ -739,15 +683,12 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   `downloads.py` (F24, F25; la versión es `public.app.release`, que lee `downloads/app/latest/latest.json` del
   bucket que escribe la publicación de ERPlora/app). Los límites del plan Gratis de `/download/` son
   `pricing.free_plan` con el parcial `pricing/_plan_limits.html`, el mismo de la tabla de precios.
-- Equivalencia de claves de la parte 2: G01, G02, G03, G21, G25, G38, G19 y G07 = F15; G39 = F16; G40 = F17;
-  G41 = F18; G24, G43, G44 y G20 = F19; G45 y G17 = F20; G46 = F21; G26, G10 y G11 = F22; G27 y G08 = F23; G28 y
-  G04 = F24; G29 = F25; G47 = F26.
 - Modo aplicación (F26): la entrada de la SPA (`hubs/frontend/pages/LaunchPage.vue`, `VerifyEmailPage.vue`) enlaza
   los textos con `accounts/frontend/legal.ts` (`?surface=<superficie>` fuera de la web); `context_processors.app_surface`
   lo guarda en la sesión (`public.surface`; `?surface=web` lo quita) y `public_base.html` pinta `partials/app_bar.html`
   en lugar del menú, sin pie, aviso ni analítica. Su «Volver» es un `<a>` de verdad a `/shell/?surface=<superficie>`, con
   el aspecto del `ion-button` claro al que sustituye (`components/app-bar.css`): un `ion-button` no es un enlace hasta que
-  `frontend/public.ts` lo define, y pulsado antes, en un dispositivo lento, no hacía nada (saas#236). Cuando el script ya
+  `frontend/public.ts` lo define, y pulsado antes, en un dispositivo lento, no hace nada. Cuando el script ya
   corrió, `setupAppBack` vuelve por el historial a la pantalla que abrió el texto. El e2e lo prueba también con los
   scripts de la página retenidos (`public-web-2.spec.ts`, PUBLIC-F26 «on a slow device»).
 - Botones que llevan a otra página (F11, y todas las páginas públicas): un `<a class="ep-button …">` de verdad, con el
@@ -755,7 +696,7 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   `{% button %}` (`public/templatetags/buttons.py`, con `href`, `label`, `fill`, `size`, `color`, `block` e iconos
   `start_icon` / `end_icon`; `scripts/gen-public-icons.mjs` hornea esos iconos), y los parciales `_cta_actions.html`
   siguen siendo donde se componen. El aspecto es `components/button.css`. Un `ion-button` no es un enlace hasta que
-  `frontend/public.ts` lo define, y pulsado antes no hacía nada (saas#238). Siguen siendo `ion-button` los que no
+  `frontend/public.ts` lo define, y pulsado antes no hace nada. Siguen siendo `ion-button` los que no
   navegan: envíos de formulario, Aceptar y Rechazar cookies, idioma del pie y «Probar la demo» de la puerta. Lo guardan
   el barrido de `public/tests/test_templates.py` y dos e2e de `public-web.spec.ts` (PUBLIC-F11): pulsar con los scripts
   retenidos y la paridad de estilos calculados frente a un `ion-button` real, en reposo y bajo el puntero.
@@ -763,36 +704,29 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   (`public/templatetags/support.py`: la 500 se pinta sin contexto) y la SPA con el bloque JSON `support-email` de
   `base/spa.py` (`accounts/frontend/support.ts`).
 - Menú del móvil (F11): lo abre y lo cierra el script en línea de `partials/navbar.html`, con el nonce de la respuesta y
-  justo después de `</nav>`, no `frontend/public.ts`: ese módulo llega tarde, y en una conexión lenta el toque se perdía;
-  si no llegaba, el menú no se abría nunca (saas#243). Las tres rayas, la cruz, el fondo, Esc, un enlace y ensanchar la
+  justo después de `</nav>`, no `frontend/public.ts`: ese módulo llega tarde, y en una conexión lenta el toque se
+  perdería y, si no llegara, el menú no se abriría nunca. Las tres rayas, la cruz, el fondo, Esc, un enlace y ensanchar la
   ventana hasta la barra de escritorio siguen siendo el contrato, con `aria-expanded` y el foco. Vitest ejecuta el propio
   script de la plantilla (`frontend/public.test.ts`) y dos e2e de `public-web.spec.ts` (PUBLIC-F11) pulsan con los scripts
   retenidos y con ellos ya cargados: un segundo enganche en el módulo cerraría lo que abre el botón. Con el panel abierto,
-  el tabulador da la vuelta dentro de él y lo demás de la página queda `inert` hasta cerrarlo (saas#252): también la marca y
+  el tabulador da la vuelta dentro de él y lo demás de la página queda `inert` hasta cerrarlo: también la marca y
   las tres rayas, que el panel y el fondo tapan, y lo que llegue con el panel ya abierto en una conexión lenta. Vitest lo
   cubre en la CI, que no corre los e2e, y PUBLIC-F11 lo recorre en el navegador, en esos mismos dos estados.
-- Equivalencia de claves del registro: G30 = F01; G31 y G14 = F02; G32 y G05 = F03; G33 = F04; G34, G06 y G09 = F05;
-  G35 y G16 = F06; G49 = F07; G50 = F08; G36 y G13 = F09; G37, G12, G15 y G18 = F10; G51 = F11; G52 = F12; G42 = F13;
-  G48, G22 y G23 = F14.
 - Precios (F02–F04): los planes se leen con `hubs.plan.list`; el ahorro anual es `annual_months_free` (12 menos los
   meses que paga el precio anual, redondeado hacia abajo) y la cabecera usa `common_months_free`. El cobro es
   `billing.services.plan_sale` y la comprobación de los precios de Stripe al guardar un plan, `plan_price_problems`
   (BILLING-F28). Por encima de Standard la página solo pinta los planes `upgrade_only` (`upgrade_cards`: tarjetas en
-  «Más capacidad» y filas de la tabla, sin botón de alta ni página de detalle; Ioan, 2026-10-24, PLAN-SAAS §9, que
-  corrige la nota del 2026-10-15); la infraestructura dedicada por contacto (la constante `DEDICATED_FROM`, su banda,
-  su fila y su pregunta) se retiró en la ronda 2026-10-24b. Las superficies de las secciones alternan según lo que se
+  «Más capacidad» y filas de la tabla, sin botón de alta ni página de detalle). Las superficies de las secciones alternan según lo que se
   pinta (`section_surfaces`). Ni la tabla ni las fichas de Gratis, Starter y Standard dicen que el plan incluya los
-  locales (`hubs/0021`): la multitienda va desde Pro y se cobra por ubicación (PLAN §32). Tampoco venden niveles de
-  apps: todos los planes incluyen todas las apps (PLAN §32; la palabra de la web es «apps», decisión 19), la `0021`
-  cambia «All free apps» y «free and premium» de Gratis y Starter por «All apps included» y la tabla ya no tiene la
-  fila «Apps included»: `included_level` queda dormido (modelo, Tienda y checkout) para cuando haya un módulo
+  locales (`hubs/0021`): la multitienda va desde Pro y se cobra por ubicación. Tampoco venden niveles de
+  apps: todos los planes incluyen todas las apps (la palabra de la web es «apps»), la `0021` cambia «All free apps» y
+  «free and premium» de Gratis y Starter por «All apps included» y la tabla no tiene fila «Apps included»: `included_level` queda dormido (modelo, Tienda y checkout) para cuando haya un módulo
   `premium`. Bajar de plan no borra ni apaga nada, y lo que excede el plan nuevo (apps activadas, usuarios, archivos) se
-  conserva sin poder añadir más (respuesta «switch» del FAQ; PLAN-SAAS, ronda 2026-11-03g).
-  El resto de la web pública tampoco vende niveles
-  de apps (ronda 2026-10-24b): la cabecera de planes, el ecosistema y la comparativa de la portada, `llms.txt`, las
+  conserva sin poder añadir más (respuesta «switch» del FAQ).
+  El resto de la web pública tampoco vende niveles de apps: la cabecera de planes, el ecosistema y la comparativa de la portada, `llms.txt`, las
   descargas, la tienda (sin insignia «Premium» ni filtro de acceso: `?premium=` se ignora y toda app se ofrece a 0 en
   su JSON-LD), los sectores, «Sobre nosotros» y la cláusula 1 de las condiciones dicen que todos los planes incluyen
-  todas las apps. La web no lee la marca `premium` (reservada, sin uso hoy: PLAN §32).
+  todas las apps. La web no lee la marca `premium` (reservada, sin uso hoy).
 - Promesas (F07, F08): la tabla de la portada es `landing.TYPICAL_STACK` (total sumado); las listas de frases
   prohibidas están en `public/tests/test_product.py` (`UNSHIPPED_CLAIMS`, `UNVERIFIED_SECURITY_CLAIMS` y
   `APP_TIER_CLAIMS`, los niveles de apps). El
@@ -801,7 +735,7 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   huellas de búsqueda del asistente (`assistant/media.py`: `whisper-1` y `text-embedding-3-small`) van al proveedor de
   `ASSISTANT_SERVICE_PROVIDER`, la API de OpenAI en `api.openai.com` por defecto, sin residencia en la UE por contrato.
   La lectura en voz alta es la del dispositivo: erplora.com no tiene voz propia (sin motor en
-  `assistant.media.SPEECH_ENGINE`; el proveedor de Azure AI Speech se retiró, saas#242), así que §5 no nombra a ningún
+  `assistant.media.SPEECH_ENGINE`), así que §5 no nombra a ningún
   encargado de esa lectura (`test_legal.py` prohíbe «Azure» y «Microsoft Ireland Operations»). Un motor que lleve el texto
   fuera de nuestros contenedores es volver a nombrar a su encargado en §5, con lo que recibe y dónde, en la misma entrega.
   Cambiarlo es cambiar en la misma entrega §5 y §6 de la privacidad, la respuesta «storage» de `/pricing/` y la celda
@@ -818,12 +752,11 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   se añade ahí con su app, en la misma entrega.
 - Idioma (F13): el pie lleva un formulario por idioma que envía a `/set-language/`; Ionic mueve `aria-current` a la
   sombra del botón, así que el estilo del idioma activo va por `data-current`.
-- Pruebas: cada test cita su flujo en el nombre o en el docstring; el e2e de esta parte es
-  `tests/e2e/public-web.spec.ts` (claves `PUBLIC-Gnn` del registro en el título y capturas
-  `APP-PUBLIC-1-<clave>-<ancho>.png` en `tests/e2e/.artifacts/`); el de la parte 2, `tests/e2e/public-web-2.spec.ts`
-  (capturas `APP-PUBLIC-2-<clave>-<ancho>.png`; el servidor público del e2e escribe los correos en
-  `.artifacts/public/mail*/`, nunca por SMTP); el de la parte 3, `tests/e2e/public-demo.spec.ts` (capturas
-  `APP-PUBLIC-3-<clave>-<ancho>.png`), con `demo-door.spec.ts`. El recorrido entero de la demo contra un Hub de verdad
+- Pruebas: cada test cita su flujo en el nombre o en el docstring, y cada e2e en su título. Los e2e son
+  `tests/e2e/public-web.spec.ts` (F01–F14; capturas `APP-PUBLIC-1-<clave>-<ancho>.png` en `tests/e2e/.artifacts/`),
+  `tests/e2e/public-web-2.spec.ts` (F15–F28; capturas `APP-PUBLIC-2-<clave>-<ancho>.png`; el servidor público del e2e
+  escribe los correos en `.artifacts/public/mail*/`, nunca por SMTP) y `tests/e2e/public-demo.spec.ts` (la demo;
+  capturas `APP-PUBLIC-3-<clave>-<ancho>.png`), con `demo-door.spec.ts`. El recorrido entero de la demo contra un Hub de verdad
   es `tests/e2e/demo.spec.ts` del Hub, con este SaaS como su SaaS (README de `tests/e2e/` del Hub, «La demo»).
 
 ## Lo que NO hace, a propósito
@@ -833,8 +766,7 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
 - No tiene página de desarrolladores, marketplace de terceros ni puente local: todas las apps son de ERPlora.
 - No cobra ni vende nada en la web pública: el pago está en el panel.
 - No vende nada por encima de Standard: los planes de mejora se enseñan, pero se contratan desde la Tienda de un
-  negocio que ya paga (el alta los rechaza), y no hay infraestructura dedicada ni planes por contacto (ronda
-  2026-10-24b, PLAN-SAAS §9).
+  negocio que ya paga (el alta los rechaza), y no hay infraestructura dedicada ni planes por contacto.
 - No nombra normativas fiscales de países a cuyo sistema no se conecta.
 - No pide consentimiento de cookies mientras no mide visitas: las cookies técnicas no lo necesitan.
 - No tiene una página de documentación aparte: la documentación es el centro de ayuda y la pestaña de cada app.
@@ -842,4 +774,4 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
 - La demo no arranca sola al abrir su pantalla: hay que pulsar «Prueba la demo», para que un buscador, una recarga o
   una vista previa del navegador no gasten huecos.
 - No pasa nada de la demo a la cuenta que se crea después: el negocio nace vacío.
-- No hay forma de pedir una demo sin su pantalla (PUBLIC-F36).
+- No hay forma de pedir una demo sin su pantalla.

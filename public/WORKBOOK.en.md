@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:020edd6b82441916351a25bd126be552f0f395103b0788805481a1922e4164cb -->
+<!-- generated from WORKBOOK.md sha256:f64de241a20aca329919a8113415a686a4e486b6444d62abb4de4dfdf19e0e9c -->
 
 ## What it is for and who it is for
 
@@ -172,7 +172,6 @@ many from the connection, not available, ended) with what can be done. There is 
 | PUBLIC-F33 | The demo ended | done |
 | PUBLIC-F34 | Retire the demos that run out | done |
 | PUBLIC-F35 | From the demo to a real account | done |
-| PUBLIC-F36 | Ask for a demo from another application | discarded |
 | PUBLIC-F37 | The demo does not count as a business | done |
 
 ### PUBLIC-F01 See the home page
@@ -212,7 +211,7 @@ Steps:
 3. They press "Get Started" and reach the sign-in screen, where the account is also created (PUBLIC-F11); "Other plans" leads to the other plans on sale.
 In: the plan by its identifier.
 Out: nothing saved.
-If it fails: an internal, retired, upgrade or non-existent plan gives "Page not found". "What's included" is the plan's list without the inherited separators.
+If it fails: an internal, retired, upgrade or non-existent plan gives "Page not found". "What's included" is the plan's list without the rows that are only a separator line.
 Involved: hubs (the plans), accounts (the entrance)
 
 ### PUBLIC-F04 The price painted is the price charged
@@ -234,7 +233,7 @@ Actor: visitor
 Screen: Industries
 Steps:
 1. The person opens "Industries" and sees "ERPlora for your business." with the business types, which they can filter by sector.
-2. They open one and see the headline with the question they would type into a search engine ("POS and ERP software for your hair salon"), an opening with the entry price and how many apps there are, the apps made for that business type, with how they are turned on (the template the business's Home suggests, or one at a time), and its frequently asked questions. It never says the business comes with them out of the box: every business is born with every app off (PLAN §33).
+2. They open one and see the headline with the question they would type into a search engine ("POS and ERP software for your hair salon"), an opening with the entry price and how many apps there are, the apps made for that business type, with how they are turned on (the template the business's Home suggests, or one at a time), and its frequently asked questions. It never says the business comes with them out of the box: every business is born with every app off.
 3. At the bottom they have the links to pricing, the app store, the product and compliance, and "Get started free" and "Browse apps".
 In: the active sectors and business types and the published apps of their sector.
 Out: nothing saved; the structured data of the application and of the frequently asked questions.
@@ -487,7 +486,7 @@ Steps:
 3. The app's page tells what it does at the counter and that a hub comes first: "You need a hub before you need the app.".
 In: the Free plan on sale and the stores' listings.
 Out: nothing saved.
-If it fails: without a Free plan on sale, the card states no limit; a platform without a published version (macOS) is not offered, and the old local bridge no longer exists and gives "Page not found".
+If it fails: without a Free plan on sale, the card states no limit; a platform without a published version (macOS) is not offered, and the local bridge's address gives "Page not found".
 Involved: hubs (the Free plan)
 
 ### PUBLIC-F25 Know which version of the app is published
@@ -633,18 +632,6 @@ In: nothing.
 Out: nothing of the demo goes to the account: the business is born empty, as the screen warns: "The demo hub is yours for 60 minutes; no account, no card. Everything you type disappears when it ends.".
 If it fails: their demo keeps running until it ends, even once they have an account.
 Involved: accounts (the entrance), hubs (the business sign-up)
-
-### PUBLIC-F36 Ask for a demo from another application
-Status: discarded — today's demo is created and opened in the same browser that asks for it, with a one-time code tied to it, so a door without a screen could not open it; no ERPlora application called it, and round 2026-10-17 (PLAN-SAAS §3.5) left the screen as the only door
-Actor: system
-Screen: none
-Steps:
-1. Whoever wants a demo asks for it from the demo screen (PUBLIC-F28).
-2. The refusals show on that screen (PUBLIC-F29 to PUBLIC-F32).
-In: nothing.
-Out: nothing.
-If it fails: does not apply.
-Involved: none
 
 ### PUBLIC-F37 The demo does not count as a business
 Status: done

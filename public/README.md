@@ -77,7 +77,7 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13
   Detalle en `hubs/README.md`, «Lo que añadió la tenencia». `/try/` vuelve como
   la misma vista con canónica `/demo/` (la dirección que repartía el stack viejo, erplora-old/saas#1164), fuera del mapa del
   sitio. La puerta JSON (`/api/demo/spawn/`) queda descartada: nadie la llamaba y la demo solo se abre en el
-  navegador que la pide (PUBLIC-F36). Los datos de una demo se borran con ella: al retirarla, el Hub borra
+  navegador que la pide. Los datos de una demo se borran con ella: al retirarla, el Hub borra
   su BD propia entera (`purge_demo_data`, tenencia S2a, hub#471; PUBLIC-F34 `hecho` desde CLOSE-PUBLIC, 2026-11-01).
   Y después sus ficheros del almacén, su prefijo `hub-<hex>/` y ningún otro (hub#613). El SaaS no interviene: no guarda
   filas de demo.

@@ -47,9 +47,6 @@ Quién la usa:
 - **Las consolas de los proveedores** (OpenAI, Anthropic, Google AI Studio, DeepSeek): la clave se enseña una vez
   al crearla y después solo su final; la lista de modelos sale de la API del propio proveedor
   (https://platform.openai.com/docs/models, https://docs.anthropic.com/en/docs/about-claude/models).
-- **El producto viejo de ERPlora** (`apps/assistant` del SaaS): proveedores con su clave y sus modelos en una sola
-  ficha, la política de qué modelo contesta y el probador con coste y latencia; el turno del Hub por la pasarela, con
-  el cupo por negocio, los adjuntos, las huellas y la voz.
 - **Asistentes con cupo** (ChatGPT, Claude, Gemini, Copilot de Microsoft 365, Shopify Magic): un número de mensajes
   por periodo según el plan, que vuelve al empezar el siguiente; al agotarse se avisa y se propone subir de plan; un
   mensaje que falla antes de contestar no se cobra. Las herramientas que no son del negocio las ejecuta el servidor,
@@ -185,7 +182,6 @@ negocio, ofrecerlo a otro o cancelar su plan piden además escribir «CONFIRMAR�
 | ASSISTANT-F29 | Avisar por correo a una cuenta de que se le acaban los mensajes del asistente del panel | hecho |
 
 ### ASSISTANT-F01 Dar de alta un proveedor de IA
-<!-- origen: fi:saas/support/auth-services#modelo-aiprovider fi:saas/django-admin#admin-aiprovider old-saas:SAAS_ASSISTANT-F22 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin: Proveedores de IA
@@ -199,7 +195,6 @@ Si falla: una dirección que no es https se rechaza con «Usa una dirección htt
 Implicados: ninguno
 
 ### ASSISTANT-F02 Guardar la clave de un proveedor sin que se vea
-<!-- origen: fi:saas/support/auth-services#modelo-aiprovidercredential fi:saas/django-admin#admin-aiprovidercredential -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin: Proveedores de IA
@@ -214,7 +209,6 @@ Si falla: una clave nueva sin clave se rechaza con «Escribe la clave del provee
 Implicados: ninguno
 
 ### ASSISTANT-F03 Hablar con cada proveedor en su propia API
-<!-- origen: fi:saas/support/auth-services#service-providers-base-provider-toolspec-turnrequest-providerevent fi:saas/support/auth-services#service-providers-factory-get_provider fi:saas/support/auth-services#service-providers-anthropic_provider-anthropicprovider fi:saas/support/auth-services#service-providers-openai_provider-openaiprovider fi:saas/support/auth-services#service-providers-gemini_provider-geminiprovider fi:saas/support/auth-services#service-providers-deepseek_provider-deepseekprovider -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -229,7 +223,6 @@ Si falla: si el proveedor rechaza la clave o la petición, el turno termina con 
 Implicados: ASSISTANT-F04, ASSISTANT-F06, ASSISTANT-F07
 
 ### ASSISTANT-F04 Elegir los modelos de un proveedor
-<!-- origen: fi:saas/support/auth-services#modelo-aimodel fi:saas/django-admin#admin-aimodel -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin: Proveedores de IA, Admin: Elegir modelos del proveedor, Admin: Modelos de IA
@@ -244,7 +237,6 @@ Si falla: sin clave activa que se pueda leer, «Este proveedor no tiene ninguna 
 Implicados: ASSISTANT-F03, ASSISTANT-F05
 
 ### ASSISTANT-F05 Elegir qué modelo contesta
-<!-- origen: fi:saas/support/auth-services#modelo-airoutingpolicy fi:saas/django-admin#admin-airoutingpolicy-singleton-tester fi:saas/auth-services#routing-ai-configuracion-de-proveedores-modelos-admin old-saas:SAAS_ASSISTANT-F23 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin: Modelo que contesta
@@ -258,7 +250,6 @@ Si falla: un modelo apagado, de un proveedor apagado o que ya no existe se recha
 Implicados: ASSISTANT-F04, ASSISTANT-F06
 
 ### ASSISTANT-F06 Elegir proveedor y modelo de cada turno
-<!-- origen: old-saas:SAAS_ASSISTANT-F05 fi:saas/support/auth-services#signals-provider-cache-invalidation -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -273,7 +264,6 @@ Si falla: sin modelo que contesta, «Todavía no contesta ningún modelo: elige 
 Implicados: ASSISTANT-F03, ASSISTANT-F05, ASSISTANT-F07
 
 ### ASSISTANT-F07 Probar un modelo antes de ponerlo a contestar
-<!-- origen: old-saas:SAAS_ASSISTANT-F24 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin: Probar un modelo
@@ -288,7 +278,6 @@ Si falla: sin modelo de la lista, «Elige de la lista el modelo que quieres prob
 Implicados: ASSISTANT-F05, ASSISTANT-F06
 
 ### ASSISTANT-F08 Ver quién cambió la configuración de la IA
-<!-- origen: fi:saas/support/auth-services#modelo-aiconfigauditlog fi:saas/django-admin#admin-aiconfigauditlog -->
 Estado: hecho
 Actor: superusuario de ERPlora (o alguien del equipo con permiso para ver el registro)
 Pantalla: el admin de erplora.com › «Registro de auditoría»
@@ -302,7 +291,6 @@ Si falla: nunca se anota una clave de proveedor, ni en claro ni cifrada: su camb
 Implicados: ACCOUNTS-F36, ASSISTANT-F02, ASSISTANT-F07
 
 ### ASSISTANT-F09 Cargar las claves de los proveedores desde el entorno
-<!-- origen: fi:saas/auth-services#comando-importar-claves-ai-desde-el-entorno fi:saas/support/auth-services#command-import_ai_keys_from_env -->
 Estado: hecho
 Actor: personal de ERPlora, en la línea de órdenes de erplora.com
 Pantalla: ninguna
@@ -317,7 +305,6 @@ Si falla: una variable vacía se salta; un proveedor desconocido detiene la carg
 Implicados: ASSISTANT-F01, ASSISTANT-F02, ASSISTANT-F08
 
 ### ASSISTANT-F10 Cambiar la clave de cifrado sin perder ninguna credencial
-<!-- origen: fi:saas/auth-services#comando-rotacion-de-claves-de-cifrado-gdpr fi:saas/support/public-core-config#command-rotate_encryption_keys -->
 Estado: hecho
 Actor: personal de ERPlora, en la línea de órdenes de erplora.com
 Pantalla: ninguna
@@ -332,7 +319,6 @@ Si falla: un valor que no abre ninguna de las dos claves no se escribe nunca: se
 Implicados: ASSISTANT-F02, ASSISTANT-F09
 
 ### ASSISTANT-F11 Reconocer quién llama y de qué negocio es
-<!-- origen: old-saas:SAAS_ASSISTANT-F01 -->
 Estado: hecho
 Actor: el asistente del Hub de un negocio (o de una demo)
 Pantalla: ninguna
@@ -347,7 +333,6 @@ Si falla: sin firma, con una firma mala, caducada o de otro secreto, se rechaza 
 Implicados: ASSISTANT-F16, ASSISTANT-F18
 
 ### ASSISTANT-F12 Contestar un turno del asistente en directo
-<!-- origen: old-saas:SAAS_ASSISTANT-F02 fi:saas/auth-services#proxy-de-chat-sse-streaming fi:saas/support/auth-services#service-orchestrator-run_turn -->
 Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
@@ -363,7 +348,6 @@ Si falla: lo que se sabe antes de llamar al modelo es un rechazo y no gasta ning
 Implicados: ASSISTANT-F06, ASSISTANT-F13, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F17, ASSISTANT-F18, ASSISTANT-F19
 
 ### ASSISTANT-F13 Contestar el mismo turno de una vez
-<!-- origen: old-saas:SAAS_ASSISTANT-F03 fi:saas/auth-services#proxy-de-chat-json-no-streamed -->
 Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
@@ -377,7 +361,6 @@ Si falla: los rechazos antes del modelo, iguales que en directo; si el proveedor
 Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F18 y, en el Hub, FLOW-F39
 
 ### ASSISTANT-F14 Usar las herramientas de erplora.com y las del negocio
-<!-- origen: old-saas:SAAS_ASSISTANT-F06 -->
 Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
@@ -393,7 +376,6 @@ Si falla: una herramienta de erplora.com que falla da al modelo el motivo para q
 Implicados: ASSISTANT-F12, ASSISTANT-F13, ASSISTANT-F17, ASSISTANT-F23, ASSISTANT-F25, PUBLIC-F20
 
 ### ASSISTANT-F15 Rechazar un turno con su motivo
-<!-- origen: old-saas:SAAS_ASSISTANT-F07 -->
 Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
@@ -407,7 +389,6 @@ Si falla: un fallo que no se esperaba se devuelve como un error interno que vale
 Implicados: ASSISTANT-F12, ASSISTANT-F13, ASSISTANT-F18, ASSISTANT-F19
 
 ### ASSISTANT-F16 Frenar a un negocio que pide demasiado
-<!-- origen: old-saas:SAAS_ASSISTANT-F08 -->
 Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
@@ -421,7 +402,6 @@ Si falla: un negocio frenado espera lo que se le dice y vuelve a intentarlo; los
 Implicados: ASSISTANT-F11
 
 ### ASSISTANT-F17 No guardar la conversación
-<!-- origen: old-saas:SAAS_ASSISTANT-F09 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -435,7 +415,6 @@ Si falla: si algo de la conversación llegara a un registro, un test lo detecta 
 Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F19, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F23
 
 ### ASSISTANT-F18 Contar los mensajes del plan de cada negocio
-<!-- origen: old-saas:SAAS_ASSISTANT-F11 old-saas:SAAS_ASSISTANT-F10 fi:saas/auth-services#config-del-asistente-tier-routing-cuota fi:saas/support/auth-services#modelo-assistantusage -->
 Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
@@ -451,7 +430,6 @@ Si falla: sin mensajes libres, el turno se rechaza con el cupo agotado y la prop
 Implicados: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F24, HUBS-F05
 
 ### ASSISTANT-F19 Leer los adjuntos de una pregunta
-<!-- origen: old-saas:SAAS_ASSISTANT-F18 -->
 Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
@@ -466,7 +444,6 @@ Si falla: un adjunto de más de unos 9 MB o más de 20 adjuntos en una conversac
 Implicados: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F17
 
 ### ASSISTANT-F20 Calcular la huella de unos textos para el índice del negocio
-<!-- origen: old-saas:SAAS_ASSISTANT-F17 fi:saas/auth-services#proxy-de-embeddings-rag-local-del-hub fi:saas/support/auth-services#service-embeddings -->
 Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
@@ -480,7 +457,6 @@ Si falla: sin proveedor de servicios configurado (o sin su clave), se rechaza di
 Implicados: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F24
 
 ### ASSISTANT-F21 Transcribir un dictado de voz
-<!-- origen: old-saas:SAAS_ASSISTANT-F19 fi:saas/auth-services#transcripcion-de-voz-speech-to-text fi:saas/hubs#transcripcion-de-voz-del-hub -->
 Estado: hecho
 Actor: el asistente del Hub de un negocio; la persona con cuenta en erplora.com, en el asistente del panel
 Pantalla: Panel: Asistente
@@ -494,7 +470,6 @@ Si falla: un audio de más de 2 MB se rechaza como demasiado grande; vacío, mal
 Implicados: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F24, ASSISTANT-F25, ASSISTANT-F26
 
 ### ASSISTANT-F22 Leer una respuesta en voz alta
-<!-- origen: old-saas:SAAS_ASSISTANT-F20 -->
 Estado: hecho
 Actor: el asistente del Hub de un negocio, o el del panel de erplora.com
 Pantalla: ninguna
@@ -507,7 +482,6 @@ Si falla: un texto vacío o un idioma que no es español ni inglés se rechazan.
 Implicados: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F24
 
 ### ASSISTANT-F23 Recibir la denuncia de una respuesta del asistente
-<!-- origen: old-saas:SAAS_ASSISTANT-F21 -->
 Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
@@ -523,7 +497,6 @@ Si falla: si el correo no puede salir, se dice que no se ha podido enviar y que 
 Implicados: ASSISTANT-F11, ASSISTANT-F14, ASSISTANT-F16, ASSISTANT-F17
 
 ### ASSISTANT-F24 Ver lo que ha gastado un negocio del asistente
-<!-- origen: old-saas:SAAS_ASSISTANT-F15 fi:saas/django-admin#admin-assistantusage fi:saas/auth-services#tiers-suscripcion-uso-del-asistente-modelos-admin -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin: Registros de uso del asistente
@@ -538,7 +511,6 @@ Si falla: nadie puede añadir, cambiar ni borrar una fila, ni siquiera un superu
 Implicados: ASSISTANT-F18, ASSISTANT-F20, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F26
 
 ### ASSISTANT-F25 Contestar al asistente del panel de una cuenta
-<!-- origen: old-saas:SAAS_DASHBOARD-F220 old-saas:SAAS_DASHBOARD-F221 -->
 Estado: hecho
 Actor: la persona con cuenta en erplora.com
 Pantalla: Panel: Asistente
@@ -556,7 +528,6 @@ Si falla: sin sesión, el panel lleva a entrar y no hay botón «Asistente», y 
 Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F21, ASSISTANT-F23, ASSISTANT-F26, ASSISTANT-F29, HUBS-F01, HUBS-F09, BILLING-F11, BILLING-F13
 
 ### ASSISTANT-F26 Contar los mensajes de una cuenta con el asistente del panel
-<!-- origen: nuevo (PLAN-SAAS §23: un cupo fijo por cuenta, como los asistentes de cuenta de Shopify, Square, Stripe, GitHub y Vercel, que van con la cuenta y no con el plan de cada tienda) -->
 Estado: hecho
 Actor: la persona con cuenta en erplora.com
 Pantalla: ninguna
@@ -571,7 +542,6 @@ Si falla: sin mensajes libres, el turno se rechaza con el cupo agotado y la fech
 Implicados: ASSISTANT-F18, ASSISTANT-F21, ASSISTANT-F24, ASSISTANT-F25, ASSISTANT-F29
 
 ### ASSISTANT-F27 Buscar en la documentación desde el panel
-<!-- origen: old-saas:SAAS_DASHBOARD-F220 old:saas/apps/dashboard/assistant/knowledge.py old:saas/apps/dashboard/assistant/tools.py#search_cloud_docs -->
 Estado: hecho
 Actor: la persona con cuenta en erplora.com
 Pantalla: ninguna
@@ -588,7 +558,6 @@ Si falla: sin el proveedor de las huellas configurado, o si falla, la búsqueda 
 Implicados: ASSISTANT-F20, ASSISTANT-F25, APPS-F02, HUBS-F05, PUBLIC-F15
 
 ### ASSISTANT-F28 Buscar en la documentación desde el Hub
-<!-- origen: old-saas:SAAS_ASSISTANT-F17 fi:saas/auth-services#proxy-de-embeddings-rag-local-del-hub -->
 Estado: hecho
 Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
@@ -604,7 +573,6 @@ Si falla: sin el proveedor de las huellas configurado, contesta que ahora no se 
 Implicados: ASSISTANT-F11, ASSISTANT-F16, ASSISTANT-F27
 
 ### ASSISTANT-F29 Avisar por correo a una cuenta de que se le acaban los mensajes del asistente del panel
-<!-- origen: nuevo (PLAN-SAAS §23 y §29; gh:saas#204; avisan al acercarse al tope y otra vez al llegar: ver «Referencia adoptada») -->
 Estado: hecho
 Actor: la persona con cuenta en erplora.com
 Pantalla: ninguna
@@ -629,17 +597,15 @@ Implicados: ASSISTANT-F25, ASSISTANT-F26, ACCOUNTS-F23
   proveedor no ocupa el hilo que usan las demás peticiones; lee la conexión con `assistant.provider.connection`
   (`view_aiprovider`) y guarda con `assistant.model.select` (`add_aimodel` y `delete_aimodel`).
 - La política es una sola fila (`AIRoutingPolicy.solo`), leída con `assistant.policy.show` (`view_airoutingpolicy`)
-  y cambiada con `assistant.policy.update` (`change_airoutingpolicy`). Sin el paso doble del producto viejo
-  (razonamiento y ejecución con dos modelos, apagado en producción): un modelo y su reserva, como las pasarelas del
-  mercado.
+  y cambiada con `assistant.policy.update` (`change_airoutingpolicy`): un modelo y su reserva, como las pasarelas
+  del mercado.
 - El turno: `assistant.route.resolve` (`queries.py`; la plataforma con `platform_context`, el personal con
   `change_airoutingpolicy` y un modelo) da los modelos en orden con su clave, leídos en cada turno (sin caché ni
-  señales que la limpien: lo que el producto viejo hacía con ASSISTANT-G39); `assistant.routing.stream` los prueba
+  señales que la limpien); `assistant.routing.stream` los prueba
   en orden y solo pasa a la reserva si el fallo llega antes del primer texto o herramienta (eventos `model` y
   `fallback`).
 - Auditoría: `assistant/auditlog.py` registra proveedores, claves, modelos y política con `accounts.auditlog.audit`
-  (sin `api_key` ni `updated_at`); sin el `AIConfigAuditLog` propio del producto viejo: un solo registro para todo
-  erplora.com (PLAN-SAAS §1.1). La prueba de un modelo es una entrada `ACCESS` del modelo, escrita por
+  (sin `api_key` ni `updated_at`), el mismo registro que el resto de erplora.com. La prueba de un modelo es una entrada `ACCESS` del modelo, escrita por
   `assistant.model.try`.
 - `import_ai_keys_from_env` (`--providers`, `--label`, `--force`, `--dry-run`) lee `OPENAI_API_KEY`,
   `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` y `DEEPSEEK_API_KEY` de `config/settings.py` y guarda con
@@ -648,18 +614,16 @@ Implicados: ASSISTANT-F25, ASSISTANT-F26, ACCOUNTS-F23
 - `rotate_encryption_keys [--dry-run]` corre `assistant.encryption.rotate` (solo la plataforma) sobre toda columna de
   `ROTATED_FIELD_CLASSES` (`services.encrypted_columns`, derivada de los modelos: hoy la clave del proveedor y el
   token y el PIN de WhatsApp): rota cada token tal cual (`crypto.rotate`, por `UPDATE` sin pasar por `save`) y nunca
-  escribe uno ilegible. Un test falla si aparece un campo cifrado que la rotación no conoce (#1016 del producto
-  viejo). Los documentos fiscales usan su propia clave (`FISCAL_DOCUMENTS_KEY`) y no entran aquí.
+  escribe uno ilegible. Un test falla si aparece un campo cifrado que la rotación no conoce. Los documentos fiscales usan su propia clave (`FISCAL_DOCUMENTS_KEY`) y no entran aquí.
 - Clientes (`assistant/providers/`): `httpx` contra cada API (sin SDK ni LiteLLM), sin caché, uno por llamada;
   todos terminan con un solo `finish` y un fallo es un `error` con `retriable`, nunca una excepción. Se prueban contra
   `assistant/tests/fake_provider.py` (servidor HTTP en `127.0.0.1` que habla el formato de cada proveedor).
-- Trampas del producto viejo cubiertas: saas#528 (clave en claro en la base de datos: `test_fields.py`), saas#2489
-  (nombre de la app sin traducir en el admin: `test_apps.py`).
+- Trampas cubiertas por tests: la clave en claro en la base de datos (`test_fields.py`) y el nombre de la app sin
+  traducir en el admin (`test_apps.py`).
 
 - El turno pide su ruta con `assistant.route.resolve` como la plataforma (`services.platform_context()`) y la
   recorre con `assistant.routing.stream`; el coste sale de `models.estimate_cost` con los precios del modelo que
-  contestó. `seed_ai_providers` del producto viejo no se porta (sembraba dos proveedores apagados de API que no
-  hablamos): los proveedores los da el admin o `import_ai_keys_from_env`.
+  contestó. No hay siembra de proveedores: los da el admin o `import_ai_keys_from_env`.
 
 ### Las puertas del Hub (`assistant/internal.py`, ASSISTANT-F11…F23, F28)
 
@@ -669,8 +633,7 @@ espera a su modelo no ocupa un hilo). Cada cuerpo nombra el negocio en `hub`: su
 la dirección `demo-…` de una demo (`assistant.caller.resolve`). Antes de su respuesta, cada puerta contesta, por
 orden: 405 `method_not_allowed`, 413 `payload_too_large` (por `Content-Length` antes de leer, o por lo leído), 401
 `unauthorized`, 422 `invalid_payload` (con `fields`), 404 `hub_unknown`, 403 `hub_inactive` (solo `ACTIVE` y
-`PAST_DUE` pasan) y 429 `rate_limited` (con `Retry-After`; el freno se gasta solo tras la firma y el negocio,
-saas#2531). Un rechazo es `{"error": {"code", "message", …}}`; el `message` es inglés y orientativo: el Hub enseña su
+`PAST_DUE` pasan) y 429 `rate_limited` (con `Retry-After`; el freno se gasta solo tras la firma y el negocio). Un rechazo es `{"error": {"code", "message", …}}`; el `message` es inglés y orientativo: el Hub enseña su
 propio texto por `code`.
 
 | Puerta | Cuerpo | Respuesta | Freno (ajuste) |
@@ -695,7 +658,7 @@ propio texto por `code`.
 - **Continuación**: con herramientas del Hub, el turno acaba con `continuation` (firmado con `CONTINUATION_SALT`,
   15 min, un solo uso por la caché, atado al negocio y a los `call_id`). El Hub vuelve a mandar la conversación con
   los resultados y ese token: no toma mensaje. Sin token (o caducado, usado, de otro negocio o de otras llamadas),
-  la vuelta cuenta: arregla el «último mensaje del mes» del producto viejo, que dejaba seguir gratis.
+  la vuelta cuenta, así que el último mensaje del mes no deja seguir gratis.
 - **El cupo lo cuenta erplora.com** (`assistant.message.claim`: un `UPDATE … WHERE messages < limit`;
   `assistant.message.release` si el turno no contestó nada, al mes en que se tomó; `assistant.usage.record` para
   tokens, huellas, dictados, caracteres y coste), en `AssistantUsage` (una fila por negocio y mes; una demo, una en
@@ -706,11 +669,11 @@ propio texto por `code`.
   como mucho `MAX_ROUNDS` (5) llamadas al modelo por turno. Ganan a una herramienta del Hub con el mismo nombre.
   `currency_rate` llama a Frankfurter (`ASSISTANT_RATES_URL`; gratis, sin clave, tipos de referencia del BCE: solo salen
   los códigos). `web_search` llama a Brave Search (`GET` a `ASSISTANT_SEARCH_URL`, con `BRAVE_SEARCH_API_KEY` en
-  `X-Subscription-Token`; la comparación que lo eligió está en saas#202): español en España (`search_lang=es`,
+  `X-Subscription-Token`): español en España (`search_lang=es`,
   `country=ES`) y lo demás en inglés en todo el mundo (`en`, `ALL`), con el idioma que dice el modelo, porque ninguna puerta
   del turno lo trae. Brave contesta 422 a una clave que no conoce, así que su 422 es un ERROR en el registro; por eso la
   consulta no pasa de sus 75 palabras. Sin clave no se ofrece y el servidor arranca igual. Producción y `pre` la leen del
-  secreto de su tarea `saas` (aws#52): encendida en producción desde el 2026-11-05 (saas#277). Una consulta sale tal como la
+  secreto de su tarea `saas`. Una consulta sale tal como la
   escribe el modelo, con la regla de llevar solo lo que se busca: el aviso de privacidad de Brave deja las consultas fuera
   de su DPA, y una regla al modelo no es una garantía; por eso la política de privacidad lo nombra como destinatario
   aparte, fuera de los encargados del art. 28 (§5) y de las cláusulas contractuales tipo (§6), `public/tests/test_legal.py`. No se guarda ni se registra. Sus términos no dejan guardar sus
@@ -724,7 +687,7 @@ propio texto por `code`.
   `turn.prepare` añade `server_tools.rules()` a las instrucciones del llamante, que
   rechazan lo que no sea su tema: solo la pasarela sabe qué se ofrece, y así ni el Hub ni el panel cambian. `turn.run`
   escribe la fuente con `source_line` si el modelo no la nombró, en texto: el Markdown del chat quita la dirección de un
-  enlace a otro sitio, y es a propósito. Los avisos de la burbuja no ven estos resultados (ui#92).
+  enlace a otro sitio, y es a propósito. Los avisos de la burbuja no ven estos resultados.
 - **Adjuntos** (`assistant/attachments.py`): `image_url` con `data:` de imagen, `input_file` con `filename`,
   `mime_type` y `data`; `MAX_ATTACHMENT_BYTES` (12 MB de base64) por adjunto, `MAX_ATTACHMENTS` (20) por
   conversación, `MAX_EXTRACTED_CHARS` por documento, zip comprobado antes de abrirlo; nada a disco (un test lo vigila
@@ -739,11 +702,8 @@ propio texto por `code`.
   decenas). En el Hub es la herramienta `base__docs__search` (`base.docs.search`, ERPlora/hub).
 - **Huellas y voz** (`assistant/media.py`): el proveedor de servicios es el `AIProvider` de slug
   `ASSISTANT_SERVICE_PROVIDER` («openai»), de API OpenAI, activado y con clave (`assistant.service.connection`);
-  modelos fijos `text-embedding-3-small` y `whisper-1`. La lectura en voz alta no tiene motor: `media.SPEECH_ENGINE` es `None`
-  (PLAN-SAAS ronda 2026-11-04c, saas#242, que retiró el proveedor de Azure AI Speech con su catálogo de voces, su conexión
-  `assistant.speech.connection` y sus ajustes; la migración `0008_retire_azure_speech` borra una fila de ese tipo con sus
-  claves y sus modelos, suelta la política que apuntara a uno y deja en el log qué identificadores borró; al volver atrás
-  vuelve el tipo, no las filas). El motor libre de PLAN-SAAS §35, si entra, ocupa ese sitio en su propia ronda:
+  modelos fijos `text-embedding-3-small` y `whisper-1`. La lectura en voz alta no tiene motor: `media.SPEECH_ENGINE` es `None`.
+  Un motor que entre ocupa ese sitio:
   `(texto, idioma, voz)` a un mp3, con la voz vacía para la suya del idioma, y `MediaFailed` si falla.
 - **Privacidad**: ni la conversación, ni los adjuntos, ni el audio, ni el texto leído van a la BD, a un log o al
   auditlog; del fallo de un proveedor el log solo lleva el estado (`test_privacy.py`). Ninguna variable `key`,
@@ -757,9 +717,8 @@ propio texto por `code`.
   firma como el Hub, lee los frames y cuelga a medias (`hang_up`). e2e de las puertas y del admin:
   `tests/e2e/panel/assistant-gateway.spec.ts`. El dictado del panel: `base/tests/test_assistant_transcribe.py` y
   `tests/e2e/panel/assistant-dictation.spec.ts` (`-denied`: el micrófono que el navegador deniega).
-- Trampas del producto viejo cubiertas: saas#2531 (el freno se gastaba antes de comprobar la firma:
-  `test_internal_caller.py`, `test_speech.py`), saas#2445 (el nombre del fichero en el log: `test_attachments.py`),
-  saas#2599 (la demo sin tope: `test_quota.py`).
+- Trampas cubiertas por tests: el freno no se gasta antes de comprobar la firma (`test_internal_caller.py`,
+  `test_speech.py`), el nombre del fichero no llega al log (`test_attachments.py`) y la demo tiene tope (`test_quota.py`).
 
 ### El asistente del panel (`base/assistant.py`, ASSISTANT-F25, F26)
 
@@ -777,8 +736,8 @@ propio texto por `code`.
   (`PanelWords`) nombra el negocio por `hubs.business.list` de la cuenta y la pantalla del panel; sus datos salen por
   `AssistantFieldOut` con todas las marcas de `live.assistant.field` (`titled`, `signed`, `named`, `money`), así que una
   lista que el servidor dijo elemento a elemento llega con `named` y la tarjeta de `@erplora/ui` dice sus elementos (hoy
-  ninguna escritura del panel manda una lista; guarda: `TestTheCardOfAList`, saas#181). `billing.plan.change`
-  es `INTERNAL` a propósito (saas#211): cobra en el acto, así que se hace en la Tienda (BILLING-F11), cuyo diálogo pide
+  ninguna escritura del panel manda una lista; guarda: `TestTheCardOfAList`). `billing.plan.change`
+  es `INTERNAL` a propósito: cobra en el acto, así que se hace en la Tienda (BILLING-F11), cuyo diálogo pide
   al servidor el `proration_date` reciente y enseña antes lo que se cobra. El modelo dice en qué pantalla se hace y la
   enlaza (`instructions`); guarda: `test_the_account_gets_the_saas_tools_and_none_of_what_is_internal`.
 - **La pasarela en proceso**: `turn_frames` → `assistant.turn.spend` (cubo `turn` por `user:<id>`) → `turn.start`
@@ -801,14 +760,14 @@ propio texto por `code`.
   POST, sesión y CSRF: el mp3 o el `ApiError` del sobre, y entonces lee el dispositivo); la CSP del panel deja
   reproducir su `blob:` (`media-src`). Ese `speak` solo se le da al chat (`panelAssistant`) cuando `spa-config`
   trae `assistantSpeech: true` (`base/spa.py`: `media.SPEECH_ENGINE` no es `None`); sin él, como está hoy, `@erplora/ui` no
-  pinta la elección de voz y lee con el dispositivo sin pedir la ruta. Los ids de voz ya no están en `@erplora/ui`: un
+  pinta la elección de voz y lee con el dispositivo sin pedir la ruta. Los ids de voz no están en `@erplora/ui`: un
   anfitrión con voces se las da con `AssistantConfig.voices`, y sin ellas `speak` se pide con la voz vacía. e2e:
   `tests/e2e/panel/assistant-voice.spec.ts` (sin voz: sin elección ni petición; con la marca encendida en el borde del
   navegador: la petición, su 503 y la lectura del dispositivo).
 - **Cupo por cuenta**: `Caller(user_id=…)`, una fila `AssistantUsage(user, month)` (check «negocio, demo o cuenta»,
   única por cuenta y mes; migración `0003_account_usage`, que al volver atrás borra las filas de cuentas),
   `ASSISTANT_ACCOUNT_MESSAGES` (30).
-- **El aviso por correo de los mensajes** (ASSISTANT-F29, saas#204): `assistant/emails.py` (`send_messages_near` y
+- **El aviso por correo de los mensajes** (ASSISTANT-F29): `assistant/emails.py` (`send_messages_near` y
   `send_messages_spent`, con `branded_message`; un correo que no sale se registra como `assistant.mail.not_sent` y
   devuelve `False`, nunca lanza). Las marcas son dos columnas nulas de la fila de la cuenta, `near_warned_at` y
   `spent_warned_at` (migración `0006_account_quota_mails`, que al volver atrás solo las quita). `message_claim`, solo
@@ -827,7 +786,7 @@ propio texto por `code`.
   (`saas.assistant.*` de `frontend/locale`, porque `assistant` es el espacio del chat compartido): el verbo de cada
   escritura `AI` (`card.operations`, una por escritura: `base/tests/test_assistant_panel_words.py`), el de cada acción
   (`card.actions`), las cuatro pantallas, el vacío y sus atajos; la frase bajo el cupo agotado, donde nadie sube de
-  plan, es `spentNoteKey: 'saas.assistant.errors.quotaSpentAccount'` de `SAAS_ASSISTANT` (opción del paquete, ui#49),
+  plan, es `spentNoteKey: 'saas.assistant.errors.quotaSpentAccount'` de `SAAS_ASSISTANT` (opción del paquete),
   y las palabras del chat (`assistant.*`) van tal cual.
 - **Tests**: `base/tests/test_assistant_turn.py`, `base/tests/test_api_assistant.py`,
   `assistant/tests/test_account_quota.py`, `test_emails.py` (ASSISTANT-F29, también por la ruta del panel y con dos
@@ -845,9 +804,8 @@ propio texto por `code`.
 
 - **Índice**: `assistant.DocChunk` en la BD de control (`id` UUIDv7, `source` `help` | `app_doc` | `workbook` |
   `plans`, `path`, `lang`, `heading`, `text`, `content_hash` único, `embedding` `vector(1536)`, `indexed_at`), con
-  búsqueda exacta, sin índice aproximado: la migración `0005_drop_doc_chunk_hnsw` quitó el `HnswIndex`, porque filtraba
-  el idioma después de sus 40 filas más cercanas y perdía fragmentos, también con todas las filas vivas (run 41600831045;
-  `TestTheIndexLosesNothing`). Unos 3000 fragmentos se leen en 5 ms. La extensión `vector` (pgvector) no es de confianza en
+  búsqueda exacta, sin índice aproximado: un `HnswIndex` filtra el idioma después de sus 40 filas más cercanas y pierde
+  fragmentos, también con todas las filas vivas (`TestTheIndexLosesNothing`). Unos 3000 fragmentos se leen en 5 ms. La extensión `vector` (pgvector) no es de confianza en
   Aurora (solo `rds_superuser`): la crea antes, como usuario maestro, el arranque de plataforma del Hub
   (`bootstrap_databases`) en `saas` y `pre_saas`; la migración `0004_doc_chunks`
   (`CREATE EXTENSION IF NOT EXISTS vector`) la encuentra antes de mirar permisos, así que solo la crea en local y en
@@ -874,10 +832,9 @@ propio texto por `code`.
   `hashtext('erplora.saas.index_docs')` (`hubs.services.run_exclusively`). Evento `assistant.docs.indexed` por lote.
   Medido en local (2026-10-31): 68 fragmentos de ayuda, 2162 de las apps del Hub, 685 de los WORKBOOK y 14 de planes;
   un indexado completo ≈ 680 000 tokens ≈ 0,014 $; una pasada sin cambios, 0 llamadas.
-- **Programación**: `index-docs-daily` de `platform_schedule_specs` en ERPlora/aws (aws#28, mergeada el 2026-10-31),
-  diario a las 06:50 UTC en `saas-cron`; encendida en producción desde el `apply` del 2026-11-01 y con la primera pasada
-  el 2026-11-02. Para adelantarla, se lanza a mano como tarea suelta de `saas-cron` (`saas/README.md`, «Operación»).
-- **Donde no se vende** (PLAN-SAAS §3.6 punto 6, `base.surface.sells_nothing`): `base.assistant.nothing_sold_here` abre
+- **Programación**: `index-docs-daily` de `platform_schedule_specs` en ERPlora/aws, diario a las 06:50 UTC en
+  `saas-cron`. Para adelantarla, se lanza a mano como tarea suelta de `saas-cron` (`saas/README.md`, «Operación»).
+- **Donde no se vende** (`base.surface.sells_nothing`): `base.assistant.nothing_sold_here` abre
   las instrucciones del turno con la regla y las dos frases de las pantallas (en el catálogo de Django, y un test las
   compara con `hubs` y `billing` de `frontend/locale`); el catálogo no ofrece lo de la tienda, tampoco `hubs.plan.list`;
   y `assistant.docs.search` no lee `queries.SELLING_WORKBOOKS` ni los planes. La redacción la pone el modelo: se mide con
@@ -890,7 +847,7 @@ propio texto por `code`.
   normalizada (espacios y mayúsculas fuera): ninguna conexión espera al proveedor dentro de una transacción. Sin la
   huella en la caché, 409 si no hay proveedor y 503 si no se pudo calcular. Orden por `CosineDistance` en el idioma de la persona (`es` para cualquier español, si no `en`); con menos
   de 3 a distancia < 0,55 se suman los de `en`; `limit` 8 por defecto, recortado a 12. En `base/assistant.py` está en `ALWAYS` (una
-  pregunta de «cómo se hace» no comparte palabras con la herramienta y sin eso quedaba fuera de las 40) y su recibo no
+  pregunta de «cómo se hace» no comparte palabras con la herramienta y sin eso quedaría fuera de las 40) y su recibo no
   nombra una pantalla del panel sino la ayuda.
 - **Tests**: `assistant/tests/test_knowledge.py`, `test_index_docs.py` (con la migración de ida y vuelta y sin índice
   aproximado) y `test_docs_search.py` (también por el turno del panel); `apps/tests/test_queries.py` (`apps.doc.list`).
@@ -900,17 +857,17 @@ propio texto por `code`.
 - No enseña nunca una clave guardada, ni a un superusuario: se vuelve a escribir.
 - No tiene pantalla en el Hub: el chat de cada negocio es la app del Hub. En el panel de erplora.com su única pantalla
   es el chat de la cuenta (ASSISTANT-F25), el mismo componente que el del Hub.
-- No guarda aparte una copia de la clave de cifrado (el producto viejo la copiaba a un almacén externo): la guarda el
+- No guarda aparte una copia de la clave de cifrado: la guarda el
   gestor de secretos de la nube, con sus versiones y su plazo de recuperación, y una credencial perdida se vuelve a
   escribir.
 - No guarda la conversación, ni un historial de chats: la conversación es del navegador de la persona, en el Hub o
   en el panel.
 - No habla por WebSocket: el turno en directo va por HTTP (sin channels), y el de una vez, en una respuesta.
-- No tiene «niveles» del asistente con su cupo, su precio y su modelo (el producto viejo, con su siembra y su admin):
+- No tiene «niveles» del asistente con su cupo, su precio y su modelo:
   el cupo es el del plan, que se edita en «Planes», y el modelo que contesta es uno para todos, con su reserva.
 - No vende paquetes de mensajes sueltos: más mensajes es subir de plan.
-- No usa dos modelos por turno (uno que razona y otro que ejecuta): el producto viejo lo tenía apagado.
+- No usa dos modelos por turno (uno que razona y otro que ejecuta): uno contesta y el otro es su reserva.
 - No cambia de plan desde el chat: cobra en el acto, y lo que se cobra se ve y se confirma en la Tienda (BILLING-F11);
-  el asistente lo dice y enlaza la Tienda (saas#211).
-- No cobra ni factura en otra moneda: el tipo de cambio solo informa (PLAN §40).
+  el asistente lo dice y enlaza la Tienda.
+- No cobra ni factura en otra moneda: el tipo de cambio solo informa.
 - Una automatización no busca en la web: lo que contesta se guarda y los términos de Brave no lo dejan (ASSISTANT-F13).

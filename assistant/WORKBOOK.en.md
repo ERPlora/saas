@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:3543ba92958aa6aa3420a7fa7ee310df70a507e72da334d00ada8e7eab4545c8 -->
+<!-- generated from WORKBOOK.md sha256:6841a6f7eedfddb5e51ed9d7719bdab4397d6aa01e3db8b1e672ac478908876b -->
 
 ## What it is for and who uses it
 
@@ -33,9 +33,6 @@ Who uses it:
 - **The providers' consoles** (OpenAI, Anthropic, Google AI Studio, DeepSeek): the key is shown once when created
   and then only its end; the list of models comes from the provider's own API
   (https://platform.openai.com/docs/models, https://docs.anthropic.com/en/docs/about-claude/models).
-- **ERPlora's old product** (the SaaS's `apps/assistant`): providers with their key and models on one page, the
-  policy of which model answers and the tester with cost and latency; the Hub's turn through the gateway, with the
-  allowance per business, the attachments, the fingerprints and the voice.
 - **Assistants with an allowance** (ChatGPT, Claude, Gemini, Microsoft 365 Copilot, Shopify Magic): a number of
   messages per period by plan, which comes back when the next one starts; when it is spent the person is told and a
   plan up is offered; a message that fails before answering is not charged. The tools that are not the business's

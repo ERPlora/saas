@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:f08cab09fbb528bb6206f0e6e7884887714472b2563a2a644712dd7fefdf1b78 -->
+<!-- generated from WORKBOOK.md sha256:302801bd3657dcc2bd41336a60894b87b00df612085b102e026e77d8063d9305 -->
 
 ## What it is for and who it is for
 
@@ -76,7 +76,7 @@ Who uses it:
   it is waited for until paid or cancelled, 90 days at most (the days a deleted business is kept), because the
   invoice must name whom it is issued to (GDPR art. 17.3.b; Commercial Code art. 30, General Tax Law art. 66).
 - **GitHub ("Export account data")**: downloading the account's data sits next to deleting it, on the same page.
-- **Store review account** (13 references, saas#132): the stores ask for an access the reviewer can use at
+- **Store review account** (13 references): the stores ask for an access the reviewer can use at
   any time, without a one-time code, and the market solves it by exempting that one account from the second
   step, from the administration and without touching the others. Google Play asks for reusable credentials that
   bypass two-step verification or the one-time password (https://support.google.com/googleplay/android-developer/answer/15748846);
@@ -548,7 +548,7 @@ Steps:
 2. The person changes their first or last name: "Save changes" turns on when something changes ("It turns on when you change something.").
 3. They tap "Save changes": "Changes saved", and the user menu and the businesses they enter call them that.
 4. "Change photo" uploads a photo (JPEG, PNG or WebP), kept clean of the camera's hidden data; "Remove photo" goes back to the initials.
-5. The email changes with "Change": if their last sign-in is not recent, first they confirm it is them with their password ("Confirm it's you", over the email window); a code arrives at the new address and, once typed, that one becomes the one to sign in with and the page says so ("Your email is now …", even when the profile already shows the new address before the answer, saas#366); the old one gets a notice of the change. Proving with its code the address it already had says "Your email is verified".
+5. The email changes with "Change": if their last sign-in is not recent, first they confirm it is them with their password ("Confirm it's you", over the email window); a code arrives at the new address and, once typed, that one becomes the one to sign in with and the page says so ("Your email is now …", even when the profile already shows the new address before the answer); the old one gets a notice of the change. Proving with its code the address it already had says "Your email is verified".
 In: first and last name, the photo, or the new email and its code.
 Out: the profile changed, in the panel and in every business entered afterwards. Every account has its profile from the start, with nothing to fill in. The same is read and saved from any program with the person's session.
 If it fails: an empty first name is not saved ("Write your first name."); a photo that is no image or is too big says why and keeps the one there was; a new email that is not valid or that another account already uses is shown under the field, with "Check the highlighted details." on top until it is corrected; a network failure, "We could not reach ERPlora…" and nothing changes. The billing details are not here: they belong to **Billing**.
@@ -940,7 +940,7 @@ Steps:
 In: the mark, which only staff set and remove, and the account's email and password.
 Out: that browser's session, as in ACCOUNTS-F04 but without the email code; the session shows among the account's open ones like any other (ACCOUNTS-F18 and ACCOUNTS-F19), and the audit log notes who set or removed the mark, when and from which address (ACCOUNTS-F36).
 If it fails: an account without the mark keeps asking for the code at each sign-in with a password (ACCOUNTS-F04). The person neither sees nor changes the mark from their account, support see it in the admin without being able to change it, and a staff account cannot carry it: "A staff account cannot be a store review account.", and it is not saved. The mark skips nothing else: an unconfirmed email asks for its code (ACCOUNTS-F03), the authenticator app, if the account has one, asks for its own (ACCOUNTS-F05), and a wrong password, the attempt limits (ACCOUNTS-F11) and the same answer whether the account exists or not stay as for any other.
-Involved: erplora.com's admin (the account's page and the audit log); ERPlora's app (repository ERPlora/app), whose Google Play check signs in with this account before each release; saas#132 and app#7
+Involved: erplora.com's admin (the account's page and the audit log); ERPlora's app (repository ERPlora/app), whose Google Play check signs in with this account before each release
 
 ### ACCOUNTS-F50 Wait for the database when it is cut for a moment
 Status: done
@@ -954,5 +954,5 @@ Steps:
 In: nothing: the person does nothing different.
 Out: the same answer as always, a few seconds late; or, past the time, a 503 answer with `Retry-After` and never a server error page. A program receives the code `database_unavailable`. Search engines understand that the web comes back soon.
 If it fails: what may have been applied is never repeated blindly, and each outcome says its own. If the save was already confirmed and the cut only took its answer, the person reads "It was saved, but the connection was lost before the answer arrived. Reload the page in a few seconds to see it." and a program, the code `database_answer_lost`: there is nothing to check. A cut while a save was being confirmed leaves its result unknown, and any other change may have done something outside the database (a Stripe charge, an invoice, an email, the VIES check or the certificate of an own domain): the person reads "The connection was lost while this was being saved. Check whether it was saved before trying again." and a program, the code `database_outcome_unknown`. What is no cut (a query that takes too long, a fault of the program) stays the error it always was. The businesses' calls to `/internal`, Stripe's and Meta's notices and `/readyz` get their 503 at once, without waiting: the first two try again on their own, and `/readyz` has to say the database is gone before its probes give up.
-Involved: hubs (their calls get the 503 and try again), billing (Stripe's notices get the 503 and try again), whatsapp (Meta's notices, too), ACCOUNTS-F43 (the same page), ACCOUNTS-F21 and ACCOUNTS-F22 (Profile and Preferences, which may repeat, like the changes of step 3), hubs (the changes of a business and of its people in step 3); saas#284, saas#288 and its twin in the Hub, hub#831
+Involved: hubs (their calls get the 503 and try again), billing (Stripe's notices get the 503 and try again), whatsapp (Meta's notices, too), ACCOUNTS-F43 (the same page), ACCOUNTS-F21 and ACCOUNTS-F22 (Profile and Preferences, which may repeat, like the changes of step 3), hubs (the changes of a business and of its people in step 3)
 

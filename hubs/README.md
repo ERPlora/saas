@@ -153,9 +153,7 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
 - **Eliminar** (F18): el texto ya no promete el enlace de descarga de los datos, que el correo no lleva: llega con
   el export por negocio de la fase 2 (PLAN-DB «Exports»). → **Tenencia (2026-10-30):** el correo de la baja ya lleva
   el camino a la copia de los datos (abajo, «Lo que añadió la tenencia»).
-- **Dominio propio** (F17): no se porta en la fase 1; decisión de mercado y ronda propuesta en la PR de APP-HUBS-2.
-  → **CLOSE-HUBS (2026-11-01):** `descartado` en esta versión, con su issue (saas#195).
-  → **saas#195 (2026-11-04 y 2026-11-05):** hecho; abajo, «Lo que añadió saas#195».
+- **Dominio propio** (F17): `hecho`; abajo, «Lo que añadió saas#195».
 
 ## Lo que añadió APP-HUBS-3 (2026-10-23): las personas de cada negocio
 
@@ -251,8 +249,7 @@ Parte 5 de 5: cada flujo `hecho` contra su código, con mutantes ejecutados; los
   tenencia S2b del Hub (hub#580, en prod el 2026-11-01) sobre lo que ya hacía el SaaS (saas#168). La pasada
   nocturna del SaaS (`hub-usage-daily`) quedó encendida en prod el 2026-11-03 (aws#35, ver «Pendiente tras L4-A»).
 - **F32 y F34**, `hecho`: lo que les faltaba era del Hub y ya lo aplicaba (APP-BASE-3, -4 y -5; arriba, en APP-HUBS-4).
-- **F17**, `descartado` en esta versión (saas#195): fuera de la fase 1, llega con sus tres piezas.
-  → **saas#195 (cerrada el 2026-11-05):** F17 `hecho`; abajo, «Lo que añadió saas#195».
+- **F17**, `hecho`: abajo, «Lo que añadió saas#195».
 - **La poda de `HubUsageDaily`** que PLAN-SAAS §1.1 dejaba a `hubs` y no existía: `hubs.usage.prune`, al final de
   `collect_hub_usage` (arriba, en L4-A, y PLAN-SAAS §27).
 - Lo que queda fuera, con su issue: `WORKBOOK.md`, «Lo que queda fuera».

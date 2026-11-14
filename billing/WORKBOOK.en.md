@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:a8ac0db99184fb40571870fcc93af84f5d5d245e18f148cff90dd07480821317 -->
+<!-- generated from WORKBOOK.md sha256:8798a3474aa514e59bc72bf0e7cc27fbb7e32354beb67d129e6754350e8446eb -->
 
 ## What it is for and who it is for
 
@@ -15,7 +15,7 @@ Islands, Ceuta and Melilla, only to businesses and professionals.
 - If a charge fails, the business keeps working for 7 days while it is retried; then it is suspended until it
   is paid, without losing any data.
 
-Today no app is paid: every app comes with every plan (round 2026-10-24b, PLAN §32 and PLAN-SAAS §9). What this
+Today no app is paid: every app comes with every plan. What this
 manual tells of the paid apps (the **Store › Modules** screen, and buying, cancelling, ending and taking one to
 another business, BILLING-F31 to BILLING-F35) works and is tested, but is not used until there is one again.
 
@@ -160,7 +160,6 @@ to upgrade or change it.
 | BILLING-F40 | Get the billing report of a period for the accountant | done |
 
 ### BILLING-F01 Say where the business is invoiced and with which tax ID
-<!-- origen: old-saas:SAAS_DASHBOARD-F90 fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar -->
 Status: done
 Actor: owner, paying account
 Screen: Secure payment, Billing › Payment details
@@ -176,7 +175,6 @@ If it fails: a Spanish postal code without five digits, a missing country or a t
 Involved: hubs (the business's and the payer's details)
 
 ### BILLING-F02 Work out the tax of a sale from where the payer is
-<!-- origen: old-saas:SAAS_DASHBOARD-F91 -->
 Status: done
 Actor: system
 Screen: none
@@ -192,7 +190,6 @@ If it fails: "Billing details are missing" leads to the form; a payer outside Sp
 Involved: hubs (the payer's details)
 
 ### BILLING-F03 Decide the VAT of each charge
-<!-- origen: old-saas:SAAS_DASHBOARD-F142 gh:saas#2528 -->
 Status: done
 Actor: system
 Screen: none
@@ -206,7 +203,6 @@ If it fails: if VIES does not answer and there is no earlier check, the invoice 
 Involved: none
 
 ### BILLING-F04 Keep the VAT rate table and never sell with it broken
-<!-- origen: old-saas:SAAS_DASHBOARD-F143 -->
 Status: done
 Actor: ERPlora staff
 Screen: Admin › Tax rules
@@ -221,7 +217,6 @@ If it fails: deactivating a territory's rule makes every sale to it be refused f
 Involved: none
 
 ### BILLING-F05 Check the payer's EU VAT number in VIES
-<!-- origen: old-saas:SAAS_DASHBOARD-F144 gh:saas#2665 -->
 Status: done
 Actor: system, ERPlora staff
 Screen: Billing › Payment details, Admin › VAT checks
@@ -236,12 +231,11 @@ If it fails: VIES not answering is "not available" and the sale carries VAT; pas
 Involved: none
 
 ### BILLING-F06 Follow the EU distance-selling threshold (OSS)
-<!-- origen: old-saas:SAAS_DASHBOARD-F145 -->
 Status: done
 Actor: system, ERPlora staff
 Screen: Admin › Tax policy, Admin › OSS notices
 Steps:
-1. Each invoice to a consumer in another EU country adds its base to the year's total (credit notes subtract); the total sold by the previous SaaS is loaded once by hand in **Tax policy**. Since today only Spain is sold to (BILLING-F02), the total only grows with what was already charged to consumers in another country.
+1. Each invoice to a consumer in another EU country adds its base to the year's total (credit notes subtract); the total invoiced outside erplora.com is loaded once by hand in **Tax policy**. Since today only Spain is sold to (BILLING-F02), the total only grows with what was already charged to consumers in another country.
 2. **Tax policy** shows the year's total against the threshold (€10,000 by default) and the switches of the OSS and ROI registrations.
 3. Above the threshold (or with the voluntary OSS registration, or if the previous year closed above it) new sales to EU consumers carry the VAT of the customer's country.
 4. The charged sale that takes the year's total past 80 % of the threshold sends a notice to the team's mailbox to start the OSS registration now, which takes days; the one that crosses it (or the first one of the year if the previous one closed above) sends another: from it those sales carry the VAT of the customer's country. Each notice goes out only once a year and stays in **Admin › OSS notices**, read-only.
@@ -252,7 +246,6 @@ If it fails: a business Stripe does not let change does not stop the review: it 
 Involved: none
 
 ### BILLING-F07 Pay the plan of a newly created business
-<!-- origen: old-saas:SAAS_DASHBOARD-F92 gh:saas#2527 -->
 Status: done
 Actor: owner
 Screen: Business summary, Store, Secure payment
@@ -266,7 +259,6 @@ If it fails: the same refusals as BILLING-F08.
 Involved: hubs (the sign-up and the business's page)
 
 ### BILLING-F08 Move a free business to a paid plan
-<!-- origen: old-saas:SAAS_DASHBOARD-F95 gh:saas#2527 pc:cloud/dashboard/hubs-pricing fi:saas/hubs#pagina-de-planes-precios fi:saas/hubs#stripe-gestion-de-suscripciones-servicio-interno fi:saas/support/hubs#service-stripeservice -->
 Status: done
 Actor: owner
 Screen: Store, Secure payment
@@ -281,12 +273,11 @@ If it fails: if the payment cannot be opened, "We could not open the secure paym
 Involved: hubs (the business's subscription), the business (receives its plan)
 
 ### BILLING-F09 Come back from the payment: confirmed, pending or closed
-<!-- origen: old-saas:SAAS_DASHBOARD-F93 old-saas:SAAS_DASHBOARD-F109 gh:saas#2566 fi:saas/hubs#paginas-de-resultado-de-pago-success-cancel fi:saas/public#paginas-de-resultado-de-pago-success-cancel -->
 Status: done
 Actor: owner
 Screen: Secure payment, Business summary
 Steps:
-1. When the payment is finished in Stripe's form, the dialog says "Paying…", closes the form and opens the business's page; once that page is there, the dialog goes and the notice "… is now on …" (or "… added to …: it turns on in a few seconds" for a module) shows on it, naming the business paid for, just above its section bar and never over it (saas#344), however long the page takes to arrive (saas#341).
+1. When the payment is finished in Stripe's form, the dialog says "Paying…", closes the form and opens the business's page; once that page is there, the dialog goes and the notice "… is now on …" (or "… added to …: it turns on in a few seconds" for a module) shows on it, naming the business paid for, just above its section bar and never over it, however long the page takes to arrive.
 2. The business's plan (or the app bought) changes when Stripe confirms the charge: if the payment method takes time to confirm, such as a SEPA direct debit, the business stays as it was until then and changes by itself, without reloading.
 3. If the person closes the dialog before paying, nothing is charged and they can open it again (BILLING-F10); the business stays as it was and nothing is deleted.
 In: the payment Stripe considers finished.
@@ -295,7 +286,6 @@ If it fails: a payment that Stripe later considers failed closes that attempt wi
 Involved: the business (receives its plan)
 
 ### BILLING-F10 Retry a payment that was not finished
-<!-- origen: old-saas:SAAS_DASHBOARD-F94 gh:saas#2527 fi:saas/hubs#reintento-de-pago-retry-payment -->
 Status: done
 Actor: owner
 Screen: Store, Secure payment
@@ -309,7 +299,6 @@ If it fails: if by mistake two were paid (two tabs at once), the second is not a
 Involved: none
 
 ### BILLING-F11 Change between paid plans
-<!-- origen: old-saas:SAAS_DASHBOARD-F96 fi:saas/hubs#cambio-de-plan-upgrade -->
 Status: done
 Actor: paying owner
 Screen: Store, Change plan
@@ -324,7 +313,6 @@ If it fails: "The price was out of date: here it is again, check it before confi
 Involved: the business (receives its plan), ASSISTANT-F25 (asked of the panel's assistant, which sends it here)
 
 ### BILLING-F12 Give trial days with a promo code
-<!-- origen: old-saas:SAAS_DASHBOARD-F122 -->
 Status: done
 Actor: ERPlora staff, owner
 Screen: Admin › Promo codes, Secure payment
@@ -338,7 +326,6 @@ If it fails: an unknown, inactive, expired or used-up code says "This code is no
 Involved: none
 
 ### BILLING-F13 Cancel the plan at the end of the period
-<!-- origen: old-saas:SAAS_DASHBOARD-F101 gh:saas#2530 -->
 Status: done
 Actor: paying owner
 Screen: Billing › Subscriptions, Store
@@ -352,7 +339,6 @@ If it fails: if Stripe refuses it or does not answer, nothing changes and it is 
 Involved: the business (receives the end date), ASSISTANT-F25 (asked from the panel's assistant, its card shows what the dialog says)
 
 ### BILLING-F14 Undo a pending cancellation or downgrade
-<!-- origen: old-saas:SAAS_DASHBOARD-F102 gh:saas#2529 gh:saas#2574 -->
 Status: done
 Actor: paying owner
 Screen: Billing › Subscriptions, Store
@@ -365,7 +351,6 @@ If it fails: with an unpaid invoice, a cancelled plan is not kept: it is paid fi
 Involved: none
 
 ### BILLING-F15 End the subscription: the business goes back to Free
-<!-- origen: old-saas:SAAS_DASHBOARD-F103 gh:saas#2575 gh:saas#2527 -->
 Status: done
 Actor: system
 Screen: none
@@ -379,7 +364,6 @@ If it fails: a notice about an unknown subscription is acknowledged without touc
 Involved: the business (receives Free)
 
 ### BILLING-F16 Unpaid plan: retries, suspension and return
-<!-- origen: old-saas:SAAS_DASHBOARD-F100 old-saas:SAAS_DASHBOARD-F111 gh:saas#2529 gh:saas#2574 gh:saas#2593 gh:saas#2594 -->
 Status: done
 Actor: system, owner, paying account
 Screen: Billing, Businesses, the business itself
@@ -396,7 +380,6 @@ If it fails: if Stripe does not answer when reading the subscription again, noth
 Involved: hubs (the business's status), the business (receives the status)
 
 ### BILLING-F17 Reactivate a suspended business by paying its invoice
-<!-- origen: old-saas:SAAS_DASHBOARD-F104 gh:saas#2575 gh:saas#2527 gh:saas#2529 -->
 Status: done
 Actor: paying account
 Screen: Billing › Invoices, Businesses
@@ -410,7 +393,6 @@ If it fails: "Paying…" blocks a second click; only the paying account of the b
 Involved: hubs (the business's status), the business (opens again)
 
 ### BILLING-F18 See, cancel or keep the business's plan through the API
-<!-- origen: old-saas:SAAS_DASHBOARD-F64 fi:saas/billing#api-rest-de-suscripciones-drf gh:saas#2529 gh:saas#2574 fi:saas/hubs#subscriptions-cancelar-reanudar-estado-stripe fi:saas/hubs#subscriptions-rest-listado-detalle-scoped-por-usuario fi:saas/support/billing-fiscal#serializer-subscriptionlistserializer-subscriptiondetailserializer -->
 Status: done
 Actor: owner, integration
 Screen: none
@@ -423,7 +405,6 @@ If it fails: a business that is not that account's is not found (filtering by it
 Involved: none
 
 ### BILLING-F19 Receive and validate a notice from Stripe
-<!-- origen: old-saas:SAAS_DASHBOARD-F97 gh:saas#2530 gh:saas#2539 fi:saas/hubs#webhook-de-stripe-pagos-suscripciones fi:saas/support/billing-fiscal#modelo-webhookevent fi:saas/support/public-core-config#service-stripe_webhook-handlers-webhooks-py -->
 Status: done
 Actor: system
 Screen: none
@@ -439,7 +420,6 @@ If it fails: an error while processing it is recorded and answered with an error
 Involved: none
 
 ### BILLING-F20 Renew the plan every period
-<!-- origen: old-saas:SAAS_DASHBOARD-F98 old-saas:SAAS_DASHBOARD-F110 gh:saas#2527 gh:saas#2529 gh:saas#2530 gh:saas#2540 -->
 Status: done
 Actor: system
 Screen: none
@@ -454,7 +434,6 @@ If it fails: if Stripe does not answer when reading the subscription again, noth
 Involved: the business (receives its status)
 
 ### BILLING-F21 Keep the plan in step with what Stripe says
-<!-- origen: old-saas:SAAS_DASHBOARD-F99 gh:saas#2530 gh:saas#2540 fi:saas/support/hubs#modelo-subscription-alias-hubsubscription -->
 Status: done
 Actor: system
 Screen: none
@@ -468,7 +447,6 @@ If it fails: a price that sells no plan leaves the plan as it was, but the statu
 Involved: the business (receives its plan)
 
 ### BILLING-F22 See the invoices and download them
-<!-- origen: old-saas:SAAS_DASHBOARD-F117 fi:saas/billing#api-rest-de-facturas-drf fi:saas/billing#descarga-de-pdf-de-factura fi:saas/billing#exportar-facturas-a-csv fi:saas/billing#historial-de-compras-pagos fi:saas/billing#listado-de-facturas-invoices fi:saas/billing#redireccion-raiz-de-billing fi:saas/hubs#facturas-del-hub pc:cloud/dashboard/billing-invoices fi:saas/support/billing-fiscal#serializer-hubbasicserializer fi:saas/support/billing-fiscal#serializer-invoiceitemserializer fi:saas/support/billing-fiscal#serializer-invoicelistserializer-invoicedetailserializer fi:saas/support/billing-fiscal#service-invoicepdfgenerator-generate_invoice_pdf -->
 Status: done
 Actor: owner, paying account
 Screen: Billing › Invoices
@@ -485,7 +463,6 @@ If it fails: an invoice still being issued says "Issuing" and offers no PDF; if 
 Involved: none
 
 ### BILLING-F23 See the subscriptions of each business
-<!-- origen: old-saas:SAAS_DASHBOARD-F118 fi:saas/billing#compras-de-modulos-purchases fi:saas/billing#suscripciones pc:cloud/dashboard/billing-purchases pc:cloud/dashboard/billing-subscriptions fi:saas/support/billing-fiscal#serializer-modulebasicserializer -->
 Status: done
 Actor: owner, paying account
 Screen: Billing › Subscriptions
@@ -498,7 +475,6 @@ If it fails: without paid businesses, "All your businesses are on Free" with "Se
 Involved: hubs (HUBS-F28: the plan of a business handed over)
 
 ### BILLING-F24 Open Stripe's payment portal to change the card
-<!-- origen: old-saas:SAAS_DASHBOARD-F120 gh:saas#2554 fi:saas/orgs-users#portal-de-facturacion-stripe fi:saas/support/orgs-users#service-organizationstripeservice -->
 Status: done
 Actor: paying account
 Screen: Billing › Payment details
@@ -512,7 +488,6 @@ If it fails: before the first payment there is nothing to change; if Stripe does
 Involved: none
 
 ### BILLING-F25 Issue ERPlora's invoice for a charge
-<!-- origen: old-saas:SAAS_DASHBOARD-F130 gh:saas#2527 gh:saas#2528 fi:saas/support/billing-fiscal#modelo-invoice fi:saas/support/billing-fiscal#modelo-invoiceitem fi:saas/support/billing-fiscal#service-create_hub_invoice fi:saas/support/billing-fiscal#task-generate_invoice_pdf_async-regenerate_all_invoice_pdfs -->
 Status: done
 Actor: system
 Screen: none
@@ -526,7 +501,6 @@ If it fails: if the platform business does not answer, the invoice stays "issuin
 Involved: ERPlora's platform business (issues the invoice)
 
 ### BILLING-F26 Refund a charge
-<!-- origen: old-saas:SAAS_DASHBOARD-F121 gh:saas#2527 -->
 Status: done
 Actor: ERPlora staff
 Screen: none
@@ -540,7 +514,6 @@ If it fails: a refund of an invoice that does not exist yet waits and Stripe sen
 Involved: ERPlora's platform business (issues the corrective invoice)
 
 ### BILLING-F27 What ERPlora staff can do about a customer's billing
-<!-- origen: old-saas:SAAS_DASHBOARD-F123 fi:saas/django-admin#admin-companyconfig-singleton fi:saas/django-admin#admin-invoice fi:saas/django-admin#admin-invoiceitem fi:saas/django-admin#admin-modulepurchase fi:saas/django-admin#admin-subscription fi:saas/django-admin#admin-subscription-2 fi:saas/hubs#admin-django-subscription-hub-subscriptions gh:saas#2529 gh:saas#2575 fi:saas/support/billing-fiscal#command-seed_company_036 fi:saas/support/billing-fiscal#modelo-companyconfig -->
 Status: done
 Actor: ERPlora staff
 Screen: Admin
@@ -556,7 +529,6 @@ If it fails: without the role, the admin does not open; the support group only l
 Involved: hubs (the businesses' status)
 
 ### BILLING-F28 Keep the plans' prices in Stripe
-<!-- origen: old-saas:SAAS_DASHBOARD-F124 -->
 Status: done
 Actor: ERPlora staff
 Screen: Admin › Plans
@@ -571,7 +543,6 @@ If it fails: a price that does not match is not saved and says why under its fie
 Involved: hubs (the plans' admin)
 
 ### BILLING-F29 Test real charging in PRE with a Stripe test clock
-<!-- origen: old-saas:SAAS_DASHBOARD-F105 -->
 Status: done
 Actor: ERPlora staff
 Screen: Admin › Businesses
@@ -586,7 +557,6 @@ If it fails: with live keys the two actions are not even offered and, if they ar
 Involved: hubs (the businesses' admin)
 
 ### BILLING-F30 Use live Stripe keys only in production and test keys elsewhere
-<!-- origen: old-saas:SAAS_DASHBOARD-F106 -->
 Status: done
 Actor: system
 Screen: none
@@ -601,7 +571,6 @@ If it fails: without a key, no payment starts and it says payments are not avail
 Involved: none
 
 ### BILLING-F31 See the paid apps and their state in each business
-<!-- origen: old-saas:SAAS_DASHBOARD-F107 gh:saas#2504 gh:saas#2535 -->
 Status: done
 Actor: owner
 Screen: Store
@@ -615,7 +584,6 @@ If it fails: "We could not load the prices" with "Retry"; without apps on sale, 
 Involved: apps (the name, the summary and the icon of each app)
 
 ### BILLING-F32 Subscribe a business to a paid app
-<!-- origen: old-saas:SAAS_DASHBOARD-F108 gh:saas#2566 gh:saas#2629 gh:saas#2639 gh:saas#2640 fi:saas/public#compra-de-un-modulo-stripe-embedded-checkout fi:saas/public#webhook-de-stripe-compras-de-modulos fi:saas/support/billing-fiscal#modelo-subscription fi:saas/support/public-core-config#modelo-modulepurchase fi:saas/support/public-core-config#service-send_module_purchase_email-send_vendor_sale_email-emails-py fi:saas/support/public-core-config#task-send_module_purchase_email_task-send_vendor_sale_email_task-tasks-py -->
 Status: done
 Actor: owner
 Screen: Store, Change plan, Secure payment
@@ -630,7 +598,6 @@ If it fails: an app the business already has is not sold twice; a retired or unk
 Involved: hubs (the business's subscription), the business (receives the app)
 
 ### BILLING-F33 Cancel a paid app
-<!-- origen: old-saas:SAAS_DASHBOARD-F112 gh:saas#2535 gh:saas#2568 gh:saas#2589 -->
 Status: done
 Actor: owner who pays
 Screen: Store
@@ -645,7 +612,6 @@ If it fails: an app that comes with the plan is dropped by changing the plan; on
 Involved: hubs (the business's subscription), the business (receives until when it has it)
 
 ### BILLING-F34 End a paid app at the end of its period
-<!-- origen: old-saas:SAAS_DASHBOARD-F113 -->
 Status: done
 Actor: system
 Screen: Store, Billing › Subscriptions
@@ -659,7 +625,6 @@ If it fails: if the plan is cancelled, its apps end with it (BILLING-F15).
 Involved: the business (stops receiving the app)
 
 ### BILLING-F35 Take a paid app to another business
-<!-- origen: old-saas:SAAS_DASHBOARD-F114 gh:saas#2589 -->
 Status: done
 Actor: owner
 Screen: Store
@@ -673,7 +638,6 @@ If it fails: the refusals of BILLING-F33 and BILLING-F32.
 Involved: hubs (the subscriptions of the two businesses)
 
 ### BILLING-F36 See an invoice
-<!-- origen: fi:saas/billing#detalle-de-factura -->
 Status: done
 Actor: owner, paying account
 Screen: Invoice
@@ -688,7 +652,6 @@ If it fails: an invoice of another account is not found; if it does not load, "W
 Involved: none
 
 ### BILLING-F37 Forget Stripe's notices older than 30 days
-<!-- origen: fi:saas/support/billing-fiscal#task-cleanup_old_webhook_events -->
 Status: done
 Actor: system
 Screen: none
@@ -701,7 +664,6 @@ If it fails: the next night deletes what was left. Stripe only sends a notice ag
 Involved: none
 
 ### BILLING-F38 Read the subscriptions again in Stripe every night and put right what drifted
-<!-- origen: fi:saas/support/hubs#command-sync_subscriptions -->
 Status: done
 Actor: system
 Screen: none
@@ -715,7 +677,6 @@ If it fails: a subscription Stripe does not know, or that could not be read, is 
 Involved: hubs (the business's subscription), the business (gets its plan)
 
 ### BILLING-F39 Check every day that Stripe sends a notice of everything erplora.com handles
-<!-- origen: gh:saas#2402 -->
 Status: done
 Actor: system
 Screen: none
@@ -729,7 +690,6 @@ If it fails: no enabled destination to the address, one that points at a route e
 Involved: none
 
 ### BILLING-F40 Get the billing report of a period for the accountant
-<!-- origen: gh:saas#443 -->
 Status: done
 Actor: ERPlora staff
 Screen: Admin › Invoices › Billing report

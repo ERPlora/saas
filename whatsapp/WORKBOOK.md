@@ -120,7 +120,6 @@ estado y su mes; y lo gastado cada mes por negocio.
 | WHATSAPP-F18 | Lo que puede hacer el personal de ERPlora | hecho |
 
 ### WHATSAPP-F01 Conectar el número de WhatsApp del negocio
-<!-- origen: fi:saas/auth-services#conectar-numero-whatsapp-embedded-signup-oauth -->
 Estado: hecho
 Actor: propietario, administrador
 Pantalla: Bandeja de WhatsApp › Ajustes (en el Hub); Vuelta de la ventana de Meta
@@ -135,7 +134,6 @@ Si falla: si Meta no da el código, el Hub recibe su motivo y no se conecta nada
 Implicados: bandeja de WhatsApp del Hub (ajustes)
 
 ### WHATSAPP-F02 Desconectar el número
-<!-- origen: fi:saas/auth-services#desconectar-numero -->
 Estado: hecho
 Actor: propietario, administrador
 Pantalla: Bandeja de WhatsApp › Ajustes (en el Hub)
@@ -149,7 +147,6 @@ Si falla: sin número conectado no cambia nada; si Meta no contesta al quitar la
 Implicados: bandeja de WhatsApp del Hub (ajustes)
 
 ### WHATSAPP-F03 Decir al Hub qué número tiene el negocio y si hay que reconectarlo
-<!-- origen: fi:saas/auth-services#listar-numeros-conectados -->
 Estado: hecho
 Actor: sistema
 Pantalla: Bandeja de WhatsApp › Ajustes (en el Hub)
@@ -163,7 +160,6 @@ Si falla: si el Hub no está, la foto se reintenta con la conciliación de cada 
 Implicados: bandeja de WhatsApp del Hub, negocios (la foto de estado)
 
 ### WHATSAPP-F04 Guardar el número de cada negocio con su permiso de Meta cifrado
-<!-- origen: fi:saas/auth-services#modelo-whatsappphonemapping-admin -->
 Estado: hecho
 Actor: sistema
 Pantalla: Admin: Números de WhatsApp
@@ -177,7 +173,6 @@ Si falla: un permiso que ya no se puede descifrar (la clave cambió) se lee como
 Implicados: ninguno
 
 ### WHATSAPP-F05 Llevar la cuenta de los mensajes del mes y parar al llegar al tope del plan
-<!-- origen: fi:saas/auth-services#plan-y-uso-de-whatsapp -->
 Estado: hecho
 Actor: sistema
 Pantalla: Bandeja de WhatsApp (en el Hub)
@@ -192,7 +187,6 @@ Si falla: dos envíos a la vez con una sola plaza libre: sale uno y el otro se p
 Implicados: negocios (el plan de cada negocio)
 
 ### WHATSAPP-F06 Enviar un WhatsApp en nombre del negocio
-<!-- origen: fi:saas/auth-services#servicio-meta-graph-api -->
 Estado: hecho
 Actor: sistema
 Pantalla: Bandeja de WhatsApp (en el Hub)
@@ -207,7 +201,6 @@ Si falla: fuera de las 24 horas desde el último mensaje del cliente, se dice qu
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F07 Recibir los avisos de Meta y entregarlos al Hub
-<!-- origen: fi:saas/auth-services#webhook-de-whatsapp-meta -->
 Estado: hecho
 Actor: sistema
 Pantalla: Bandeja de WhatsApp (en el Hub)
@@ -222,7 +215,6 @@ Si falla: un aviso sin la firma de Meta se rechaza y no se guarda; uno de un nú
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F08 Ver los números de WhatsApp en el admin
-<!-- origen: fi:saas/django-admin#admin-whatsappphonemapping -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin: Números de WhatsApp
@@ -236,7 +228,6 @@ Si falla: sin el papel, el admin no se abre; el permiso de Meta y el PIN no sale
 Implicados: ninguno
 
 ### WHATSAPP-F09 Mover un número al negocio que lo conecta
-<!-- origen: fi:saas/support/auth-services#modelo-whatsappphonemapping -->
 Estado: hecho
 Actor: sistema
 Pantalla: Bandeja de WhatsApp › Ajustes (en el Hub)
@@ -250,7 +241,6 @@ Si falla: si la conexión falla, el número sigue donde estaba.
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F10 Hablar con Meta sin dejar ver el permiso del negocio
-<!-- origen: fi:saas/support/auth-services#service-meta-meta_api_get-meta_api_post -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -264,7 +254,6 @@ Si falla: un adjunto cuyo enlace no es de Meta o no va cifrado no se descarga. S
 Implicados: ninguno
 
 ### WHATSAPP-F11 Dar al Hub lo que necesita para abrir la ventana de Meta
-<!-- origen: old-saas:SAAS_WHATSAPP_INBOX-F01 -->
 Estado: hecho
 Actor: sistema
 Pantalla: Bandeja de WhatsApp › Ajustes (en el Hub)
@@ -278,7 +267,6 @@ Si falla: un negocio que erplora.com no conoce, o una demo, no recibe nada.
 Implicados: bandeja de WhatsApp del Hub (ajustes)
 
 ### WHATSAPP-F12 Renovar el permiso de Meta antes de que caduque y avisar si no se puede
-<!-- origen: old-saas:SAAS_WHATSAPP_INBOX-F05 -->
 Estado: hecho
 Actor: sistema
 Pantalla: Correo «Vuelve a conectar WhatsApp»
@@ -292,7 +280,6 @@ Si falla: si Meta no contesta y queda margen, se reintenta al día siguiente; un
 Implicados: negocios (el propietario), bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F13 Confirmar a Meta que la dirección de los avisos es nuestra
-<!-- origen: old-saas:SAAS_WHATSAPP_INBOX-F06 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -306,7 +293,6 @@ Si falla: un token que no coincide se rechaza; sin token o sin secreto configura
 Implicados: ninguno
 
 ### WHATSAPP-F14 Olvidar los mensajes que el Hub ya recogió
-<!-- origen: old-saas:SAAS_WHATSAPP_INBOX-F11 -->
 Estado: hecho
 Actor: sistema
 Pantalla: Admin: Entregas de WhatsApp al Hub
@@ -320,7 +306,6 @@ Si falla: el plazo se puede acortar a mano (de 1 a 30 días), nunca alargar; fue
 Implicados: ninguno
 
 ### WHATSAPP-F15 Registrar en Meta una plantilla nueva o editada
-<!-- origen: old-saas:SAAS_WHATSAPP_INBOX-F17 -->
 Estado: hecho
 Actor: propietario, administrador
 Pantalla: Bandeja de WhatsApp › Ajustes › Plantilla (en el Hub)
@@ -334,7 +319,6 @@ Si falla: una regla rota dice cuál; Meta rechazándola da su motivo para la per
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F16 Subir a Meta la muestra de la cabecera de una plantilla
-<!-- origen: old-saas:SAAS_WHATSAPP_INBOX-F18 -->
 Estado: hecho
 Actor: propietario, administrador
 Pantalla: Bandeja de WhatsApp › Ajustes › Plantilla (en el Hub)
@@ -353,7 +337,6 @@ repetido no sube la muestra dos veces.
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F17 Borrar una plantilla en Meta
-<!-- origen: old-saas:SAAS_WHATSAPP_INBOX-F19 -->
 Estado: hecho
 Actor: propietario, administrador
 Pantalla: Bandeja de WhatsApp › Ajustes (en el Hub)
@@ -367,7 +350,6 @@ Si falla: si Meta ya no la tiene, cuenta como borrada; si el permiso de Meta cad
 Implicados: bandeja de WhatsApp del Hub
 
 ### WHATSAPP-F18 Lo que puede hacer el personal de ERPlora
-<!-- origen: old-saas:SAAS_WHATSAPP_INBOX-F20 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin: Números de WhatsApp, Admin: Entregas de WhatsApp al Hub
@@ -385,8 +367,7 @@ Implicados: ninguno
 
 - Anatomía, datos, operaciones y tareas: `whatsapp/README.md`.
 - **Contrato con el Hub**: las puertas 1–12 son las del WORKBOOK de `whatsapp_inbox` del Hub («Contrato con el SaaS»),
-  que mandan y no se renombran. Las 10–12 nacieron en este porte (saas#63) y el Hub las llama y las recoge en su
-  contrato desde hub#151; llevan la misma firma de todo `/internal` (`X-Erplora-Timestamp` + `X-Erplora-Signature`,
+  que mandan y no se renombran; las 10–12 las llama el Hub y están en ese mismo contrato. Llevan la misma firma de todo `/internal` (`X-Erplora-Timestamp` + `X-Erplora-Signature`,
   HMAC-SHA256 de `f"{timestamp}.{cuerpo}"` con `INTERNAL_SHARED_SECRET`, ±300 s):
   - **10** `POST /internal/whatsapp/config` `{"hub"}` → 200 `{"configured", "app_id", "config_id", "graph_version",
     "redirect_uri"}` (WHATSAPP-F11); 404 `hub_unknown`. `redirect_uri` = `WHATSAPP_REDIRECT_URI` (por defecto
@@ -401,9 +382,7 @@ Implicados: ninguno
   - **12** `POST /internal/whatsapp/disconnect` `{"hub"}` → 200 `{"disconnected": true|false}` (WHATSAPP-F02).
   El canal (puerta 3) no se usa desde el SaaS: la clave `whatsapp` de la foto (puerta 4) es la única fuente, con la
   versión de la foto y el reintento de `reconcile_hub_states`.
-- **El permiso caducado** (FIX-SAAS-WHATSAPP-EXPIRED-TOKEN-SAYS-NOT-CONNECTED en la puerta 5;
-  FIX-SAAS-WHATSAPP-TEMPLATE-DOORS-SAY-NOT-CONNECTED-ON-EXPIRED-PERMISSION en las puertas 8 y 9 y en los adjuntos):
-  a los 409 de la puerta 5 (`whatsapp.cap_reached`, `not_connected`, `window_closed`, `template_not_approved`,
+- **El permiso caducado** (puerta 5, puertas 8 y 9 y adjuntos): a los 409 de la puerta 5 (`whatsapp.cap_reached`, `not_connected`, `window_closed`, `template_not_approved`,
   `recipient_blocked` y `meta_rejected`) y de las puertas 8 y 9 (`whatsapp.meta_unreachable`, `meta_rate_limited`,
   `not_connected` y `template_invalid` en la 8 o `meta_rejected` en la 9) se suma `whatsapp.reconnect_needed`, que también
   contesta `GET /whatsapp/media/<id>`: Meta contestó 190 (el permiso caducó o el negocio lo retiró en Meta), el
@@ -413,11 +392,11 @@ Implicados: ninguno
   puertas 5, 8 y 9, sin marca. En los adjuntos el 190 cuenta igual al pedir el adjunto que al descargarlo; cualquier
   otro rechazo de Meta es un 404 `whatsapp.media_not_found` al pedirlo y un 502 `whatsapp.media_unavailable` al
   descargarlo, sin marca. El Hub lo entiende en la puerta 5 y en las plantillas
-  (`whatsapp_inbox.reconnect_needed` con su propio texto, hub#245). Un adjunto lo abre el navegador de la persona
+  (`whatsapp_inbox.reconnect_needed` con su propio texto). Un adjunto lo abre el navegador de la persona
   (`<img>`, `<audio>` o un enlace), que no lee el código: cualquier 409 es para el Hub un adjunto que no carga, así
   que el código nuevo no cambia lo que pinta.
-- **La muestra de la cabecera** (FIX-HUB-WHATSAPP-INBOX-TEMPLATE-HEADER-MEDIA-NOW-STORABLE, WHATSAPP-F16): la puerta 8
-  lleva `header_format` (vacío o `TEXT`: cabecera de texto, como antes; `IMAGE`, `VIDEO` o `DOCUMENT`) y, con archivo,
+- **La muestra de la cabecera** (WHATSAPP-F16): la puerta 8 lleva `header_format` (vacío o `TEXT`: cabecera de
+  texto; `IMAGE`, `VIDEO` o `DOCUMENT`) y, con archivo,
   `header_sample` `{"name", "content_base64"}`. Su cuerpo pesa hasta `MAX_TEMPLATE_BODY_BYTES` (los 256 KB de las otras
   puertas más 25 MB en base64; por encima, 413 `payload_too_large` sin leerlo). `templates.check` lee el tipo por los
   primeros bytes (JPEG o PNG hasta 5 MB y MP4 hasta 16 MB, los de Meta; PDF hasta 25 MB, el tope del Hub para un
@@ -429,8 +408,7 @@ Implicados: ninguno
   `example.header_handle`, también al editar. Un rechazo o un silencio de Meta en la subida son los mismos 409 con
   nombre que al registrar, con la clave libre, y sin `WHATSAPP_APP_ID` es 503 `whatsapp.not_configured`, también
   con la clave libre. El Hub espera la puerta 8 con archivo hasta 90 s. El archivo no se guarda en erplora.com.
-- **Puerta 5 con el archivo de la cabecera** (FIX-HUB-WHATSAPP-INBOX-TEMPLATE-HEADER-MEDIA-NOW-STORABLE, WHATSAPP-F06):
-  `template` lleva `header_format` (`IMAGE`, `VIDEO` o `DOCUMENT`) y `header_sample` `{"name", "content_base64"}`
+- **Puerta 5 con el archivo de la cabecera** (WHATSAPP-F06): `template` lleva `header_format` (`IMAGE`, `VIDEO` o `DOCUMENT`) y `header_sample` `{"name", "content_base64"}`
   cuando la cabecera es un archivo; el cuerpo pesa hasta `MAX_TEMPLATE_BODY_BYTES`, como la puerta 8.
   `templates.send_sample` lo comprueba como la puerta 8 (tipo por los primeros bytes, topes de Meta) y lo que no casa
   es 409 `whatsapp.template_invalid` antes de reclamar la clave. Con la clave reclamada, `meta.upload_media` lo sube
@@ -439,42 +417,39 @@ Implicados: ninguno
   documento, con `filename`). La subida no envía nada: su rechazo es el mismo 409 con nombre que el del envío y su
   silencio (o una respuesta sin `id`) es 503 `whatsapp.meta_unreachable`, los dos con la plaza y la clave libres. La
   misma clave ya enviada no sube ni envía otra vez. El archivo no se guarda en erplora.com.
-- **Puerta 5 y el tope** (FIX-SAAS-WHATSAPP-CAP-REFUSAL-DOES-NOT-PUSH-USAGE, WHATSAPP-F05): el 409
-  `whatsapp.cap_reached` no cambia para el Hub, pero ya no deshace la transacción: `whatsapp.message.claim` lo
+- **Puerta 5 y el tope** (WHATSAPP-F05): el 409 `whatsapp.cap_reached` no deshace la transacción: `whatsapp.message.claim` lo
   devuelve (`refused`, sin la clave: queda libre) y, si el consumo del mes no se había avisado con esa cifra
   (`Usage.cap_announced_usage`), sube la versión de la foto y la empuja tras el COMMIT, con `monthly_usage` al día
   (`reconcile_hub_states` la reintenta si el Hub no la toma). La misma cifra rechazada otra vez no sube nada: un
   empuje por cifra, no por envío rechazado.
-- **Sin los certificados de confianza del servidor** (FIX-SAAS-WHATSAPP-HTTP-CALLS-CRASH-WHEN-SSL-CERT-FILE-MISSING;
-  WHATSAPP-F06, F07, F10): `httpx` carga los certificados al crear cada cliente, también para el `http://` del Hub, y
-  un `SSL_CERT_FILE` que nombra un fichero que no está, una carpeta o un fichero sin certificados lanzaba
-  `FileNotFoundError` o `ssl.SSLError` (500 en la puerta 5 y en los adjuntos; `whatsapp_deliver` caía con las entregas
-  reclamadas). `hub_client` y `meta` sacan el contexto TLS de `base.tls.trusted_context`, que escribe una línea ERROR
+- **Sin los certificados de confianza del servidor** (WHATSAPP-F06, F07, F10): `httpx` carga los certificados al crear
+  cada cliente, también para el `http://` del Hub, y con un `SSL_CERT_FILE` que nombra un fichero que no está, una
+  carpeta o un fichero sin certificados lanza `FileNotFoundError` o `ssl.SSLError`. Por eso `hub_client` y `meta` sacan el contexto TLS de `base.tls.trusted_context`, que escribe una línea ERROR
   `base.tls.trust_store_unreadable caller=whatsapp.hub_client|whatsapp.meta` con la variable y el fichero, y se lo dan
   al cliente (`verify=`): el Hub es `Unreachable` (la entrega queda en `retry` con el motivo en `last_error` y llega en
   cuanto se arregla) y Meta es `MetaUnreachable(sent=False)` (puerta 5: 503 `whatsapp.meta_unreachable` con la plaza y la
   clave libres; plantillas: 409 `whatsapp.meta_unreachable`; conectar: 503; adjuntos: 502 `whatsapp.media_unavailable`;
   renovación del permiso: sin veredicto). Nada se comprueba al arrancar, a propósito: la pila e2e del Hub levanta el SaaS
-  antes de crear su CA (hub#415), y cada llamada vuelve a leer el fichero.
+  antes de crear su CA, y cada llamada vuelve a leer el fichero.
 - Vuelta de la ventana de Meta: `GET /whatsapp/return?code=…&state=<slug>.<32 hex>` (o `?error=…&error_description=…`;
   `whatsapp/signup_return.py`, WHATSAPP-F01), pública, sin sesión, sin caché y sin BD. Hace
   `window.opener.postMessage({"type": "erplora.whatsapp.signup", "state", "code" | "error", "error_description"},
   <origen del hub>)` y se cierra; el origen sale del `slug` del `state`, validado con `live.slugs` (ni reservados ni
   demos), y de `HUB_CALLBACK_TEMPLATE`, nunca `"*"`. Lleva `Cross-Origin-Opener-Policy: unsafe-none` solo en esa
   vista (el resto del SaaS, `same-origin` de Django, que corta la ventana de su `opener`; el Hub manda
-  `same-origin-allow-popups`, hub#154) y el dato va como `json_script` leído por su único script, con el nonce de la
+  `same-origin-allow-popups`) y el dato va como `json_script` leído por su único script, con el nonce de la
   CSP. El Hub abre la ventana sin el SDK de Facebook (su WORKBOOK `whatsapp_inbox`, «La ventana de Meta sin el SDK de
   Facebook»).
 - Adjuntos: `GET /whatsapp/media/<id de la entrega>` (WHATSAPP-F07), con la sesión de erplora.com y miembro aceptado
   del negocio; lo que no es imagen, audio o vídeo se descarga con `Content-Disposition: attachment` y CSP `sandbox`.
   El Hub debe permitir el origen de erplora.com en `img-src` y `media-src` (su «Contrato con `base`»).
-- La entrega al Hub (WHATSAPP-F07, saas#305) la hace el proceso `saas-worker` (`manage.py run_worker`,
-  `base/worker.py`), siempre encendido y de un hilo, en lugar de una tarea de `saas-cron` cada minuto: se despierta con
+- La entrega al Hub (WHATSAPP-F07) la hace el proceso `saas-worker` (`manage.py run_worker`, `base/worker.py`),
+  siempre encendido y de un hilo: se despierta con
   el `NOTIFY whatsapp_delivery` que se manda tras el COMMIT de lo que deja una entrega pendiente o mueve su espera
   (`services.wake_the_worker`: el webhook que aparca algo, un reintento, una entrega retenida, «Entregar al Hub ahora» del admin),
   a la hora del siguiente reintento (`whatsapp.delivery.next_due`) y cada 15 minutos; entre despertares no consulta la
   base de datos. Cada pasada es `gateway.deliver_pass` bajo el lock de `whatsapp_deliver`: el comando del mismo nombre
-  sigue para rescate a mano (y `pre`, mientras no tenga su `saas-worker`), ya sin programar. El orden por negocio:
+  queda para el rescate a mano (y para `pre`, mientras no tenga su `saas-worker`), sin programar. El orden por negocio:
   `whatsapp.delivery.claim` deja un mensaje detrás de uno más antiguo de su negocio que aún espera
   (`queries.behind_a_waiting_message`, con `FOR UPDATE SKIP LOCKED` y el arriendo de 5 minutos), y en un lote los
   siguientes mensajes de un negocio cuyo Hub falló se retienen con su espera (`whatsapp.delivery.hold`, sin contar
@@ -487,12 +462,9 @@ Implicados: ninguno
 - Tareas programadas (ECS, `saas-cron`): `whatsapp_refresh_tokens` (WHATSAPP-F12) y `whatsapp_purge` (WHATSAPP-F14)
   una vez al día; las programa el repo de infraestructura (`aws`, `stacks/prod/scheduler.tf`), que también da los
   secretos `WHATSAPP_*` y `FERNET_KEY` (`secrets.tf` y `apps.tf`; los de `pre`, propios, en `pre_data.tf`).
-- Los tests de cada flujo citan su clave del registro en el nombre del fichero de test o en su docstring:
-  `WHATSAPP-Gnn` los de antes de `promote` y `WHATSAPP-Fnn` los posteriores, con el mismo número.
-- Contradicción resuelta: «WhatsApp sale del SaaS y el Hub llama a Meta» lo derogan las rondas 2026-10-21 de
-  `PLAN-SAAS.md` (§1.1, saas#63) y `PLAN-HUB.md` (§8, saas#63): WhatsApp se queda en el SaaS como única pasarela con
-  Meta y el Hub habla con él por `/internal`. La ronda de cierre de la app (`PLAN-SAAS.md`, «cierre de `whatsapp`») recoge
-  lo decidido al migrarla.
+- Los tests de cada flujo citan su clave en el nombre del fichero de test o en su docstring (`WHATSAPP-Fnn`; la e2e
+  `whatsapp-hub.spec.ts` usa `WHATSAPP-Gnn` con el mismo número).
+- WhatsApp vive en el SaaS como única pasarela con Meta, y el Hub habla con él por `/internal`.
 
 ## Lo que NO hace, a propósito
 
