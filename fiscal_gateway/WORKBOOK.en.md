@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:e604fd29fa0f1cd8505e11be074fc468cbe5edd6850e57d3ca0b87825ec085d1 -->
+<!-- generated from WORKBOOK.md sha256:4884405676226a9c2bb874860f95921174e8cc2d378c1e639fe7e12e21d80124 -->
 
 ## What it is for and who it is for
 
@@ -81,10 +81,8 @@ business, each in its language.
 | FISCAL-F04 | Tell the team before the seal expires | done |
 | FISCAL-F05 | Tell the review desk and the business of every step of the authorisation | done |
 | FISCAL-F06 | Put ERPlora's seal and signature on the authorisation model | done |
-| FISCAL-F07 | Watch the customers' powers of attorney (ZP01) | discarded |
 
 ### FISCAL-F01 Change the ERPlora seal it presents with
-<!-- origen: fi:saas/django-admin#admin-verifactuconfig-singleton-vistas-operador fi:saas/support/billing-fiscal#modelo-verifactuconfig fi:saas/support/billing-fiscal#serializer-form-verifactuconfigform-load_pkcs12 -->
 Status: done
 Actor: ERPlora's staff
 Screen: none
@@ -99,7 +97,6 @@ If it fails: without any usable seal, every submission through ERPlora is refuse
 Involved: the Hub (VERIFACTU-F10 tests the connection and sees the seal), FISCAL-F04 (warns before expiry)
 
 ### FISCAL-F02 Present a business's records to the AEAT
-<!-- origen: fi:saas/support/billing-fiscal#service-aeatclient -->
 Status: done
 Actor: system (the business's Hub)
 Screen: none
@@ -114,7 +111,6 @@ If it fails: every refusal says why and comes before touching the AEAT: unknown 
 Involved: the Hub (VERIFACTU-F15 sends, VERIFACTU-F27 queries, VERIFACTU-F10 tests the connection), FISCAL-F01 (the seal), FISCAL-F05 (the approved authorisation)
 
 ### FISCAL-F03 Keep the authorisation's documents encrypted
-<!-- origen: fi:saas/support/billing-fiscal#service-fields-encryptedcharfield-encrypt_bytes-decrypt_bytes -->
 Status: done
 Actor: system
 Screen: Admin › Signed authorisations › Review
@@ -128,7 +124,6 @@ If it fails: a key that cannot encrypt is said on start and the deployment stops
 Involved: FISCAL-F05 (the review), the Hub (VERIFACTU-F05 uploads the authorisation)
 
 ### FISCAL-F04 Tell the team before the seal expires
-<!-- origen: fi:saas/support/billing-fiscal#task-check_certificate_expiry -->
 Status: done
 Actor: system
 Screen: none
@@ -141,7 +136,6 @@ If it fails: a slot that does not open makes the task fail, which also warns the
 Involved: FISCAL-F01
 
 ### FISCAL-F05 Tell the review desk and the business of every step of the authorisation
-<!-- origen: old-saas:SAAS_DASHBOARD-F159 gh:saas#2051 -->
 Status: done
 Actor: system
 Screen: Admin › Signed authorisations › Review
@@ -156,7 +150,6 @@ If it fails: the mails leave once the step is saved, never before; a mail that d
 Involved: the Hub (VERIFACTU-F05 and VERIFACTU-F06 send the authorisation), FISCAL-F03 (the documents)
 
 ### FISCAL-F06 Put ERPlora's seal and signature on the authorisation model
-<!-- origen: old-saas:SAAS_DASHBOARD-F160 -->
 Status: done
 Actor: ERPlora's staff
 Screen: Admin › Signed authorisations › Representative's stamp
@@ -169,16 +162,3 @@ In: the PNG of ERPlora's stamp and signature, kept encrypted; ERPlora's details 
 Out: the authorisation model with ERPlora, its stamp and its signature and the data protection sheet; the change is recorded (`fiscal.stamp.changed`).
 If it fails: a file that is not a PNG, that is damaged or that is over 2 MB is refused with its reason ("The stamp must be a PNG image.") and nothing changes. Without a stamp uploaded, or with one the current key cannot read, the model goes without it and the queue and "Representative's stamp" warn so that someone uploads it. A business detail the model cannot write or a tax ID that is not Spanish is refused and the Hub says it could not download it.
 Involved: the Hub (VERIFACTU-F05 downloads the model), FISCAL-F05 (the review of the signed authorisation)
-
-### FISCAL-F07 Watch the customers' powers of attorney (ZP01)
-<!-- origen: old-saas:SAAS_DASHBOARD-F162 -->
-Status: discarded — ERPlora presents through the social collaboration of Agreement 17 with the signed authorisation of the Anexo I, which the team reviews and withdraws (FISCAL-F05), not through powers of attorney before the AEAT; there is no register of powers of attorney to watch
-Actor: system
-Screen: none
-Steps:
-1. Each business's authorisation is reviewed, approved, returned or withdrawn in the admin, and the Hub sees it at every change.
-2. There is no separate register of powers of attorney nor a daily query to the AEAT.
-In: nothing.
-Out: nothing.
-If it fails: does not apply.
-Involved: FISCAL-F05
