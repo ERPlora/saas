@@ -218,6 +218,11 @@ class TestTheVatBreakdown:
             ("exempt", "ES", Decimal("0.00"), 1, 2000, 0, 2000),
         ]
 
+    def test_an_invoice_with_several_lines_on_a_row_counts_once(self):
+        record(net=12000, tax=2520, lines=[(10000, 2100, "", "21.00"), (2000, 420, "", "21.00")])
+
+        assert self.rows(report()) == [("domestic", "ES", Decimal("21.00"), 1, 12000, 2520, 14520)]
+
     def test_it_adds_up_to_the_net(self):
         record(net=10000, tax=2100)
         record(kind="credit_note", net=-5000, tax=-1050)
@@ -256,6 +261,19 @@ class TestTheKindOfCustomer:
             "self_employed": (3, 6000, 1260, 7260),
             "individual": (2, 0, 0, 0),
         }
+
+    @pytest.mark.parametrize(
+        ("country", "tax_id", "kind"),
+        [
+            ("", "B12345678", "company"),
+            ("", "12345678Z", "self_employed"),
+            ("FR", "12345678Z", "company"),
+            ("ES", "", "individual"),
+            ("FR", "", "individual"),
+        ],
+    )
+    def test_a_payer_without_a_country_is_read_as_spanish(self, country, tax_id, kind):
+        assert queries.customer_kind(country, tax_id) == kind
 
     def test_every_kind_is_listed_even_without_invoices(self):
         assert self.rows(report()) == {
@@ -380,6 +398,13 @@ class TestTheAdminPage:
         assert response["Content-Type"] == "text/csv; charset=utf-8"
         assert response["Content-Disposition"] == 'attachment; filename="erplora-invoices-2026-Q3.csv"'
         assert counted.number in response.content.decode("utf-8-sig")
+
+    def test_in_spanish_the_excel_is_the_spanish_one(self, staff_client):
+        record(net=10000, tax=2100)
+
+        text = staff_client.get(EXCEL, Q3, HTTP_ACCEPT_LANGUAGE="es").content.decode("utf-8-sig")
+
+        assert text.startswith("Factura;Fecha;") and ";100,00;21,00;121,00;" in text
 
     def test_the_excel_of_a_period_it_does_not_know_goes_back_to_the_report(self, staff_client):
         response = staff_client.get(EXCEL, {"year": "2026", "period": "q9"}, follow=True)
