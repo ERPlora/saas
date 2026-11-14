@@ -1482,7 +1482,7 @@ def test_hubs_migrates_back_before_the_cards_on_sale_and_forward_again():
 
 NO_CUSTOM_DOMAIN = "0026_no_custom_domain_on_sale"
 #: Standard's card as 0013 and 0021 leave it: its description sold «your own domain» and its features «Custom domain
-#: (erp.yourbusiness.com)», which no business can connect (HUBS-F17 ``descartado``, saas#195 deferred).
+#: (erp.yourbusiness.com)». 0026 takes both off; the cards show that line from ``Plan.includes_custom_domain``.
 CARD_0021 = {
     "description_en": "For growing businesses: your own domain, twice the resources and priority support.",
     "description_es": "Para negocios en crecimiento: dominio propio, el doble de recursos y soporte prioritario.",
@@ -1522,10 +1522,10 @@ def _standard_card(Plan) -> dict:
 
 @pytest.mark.django_db
 class TestNoCardSellsACustomDomainNobodyCanConnect:
-    """Standard's card (the public web, its detail page and the Store) sold a custom domain; HUBS-F17 is
-    ``descartado`` until saas#195 brings it with its three pieces, so from 0026 the card says only what the plan gives.
-    ``includes_custom_domain`` stays: it is the gate saas#195 will read. Each column moves only while it still reads
-    0021's words: what staff wrote in the admin is theirs."""
+    """Standard's card (the public web, its detail page and the Store) sold a custom domain in its own words; from
+    0026 the card says only what the plan gives, and the custom-domain line comes from ``includes_custom_domain``, the
+    gate HUBS-F17 reads. Each column moves only while it still reads 0021's words: what staff wrote in the admin is
+    theirs."""
 
     @pytest.fixture
     def seeded_card(self, plans):
