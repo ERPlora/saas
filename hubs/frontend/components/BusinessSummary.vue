@@ -107,7 +107,7 @@ const dayHint = computed(() =>
             {{ $t('hubs.business.plan.trial', { plan: business.trial_plan.name, date: formatDateTime(business.trial_end, locale) }) }}
           </p>
           <dl class="kv">
-            <div>
+            <div data-testid="summary-plan-devices">
               <dt>{{ $t('hubs.business.plan.devices') }}</dt>
               <dd>{{ devices }}</dd>
             </div>
