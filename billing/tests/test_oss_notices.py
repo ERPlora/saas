@@ -284,7 +284,9 @@ class TestChargingNeverBreaks:
             raise DatabaseError("sum failed")
 
         # Pricing takes a failed sum as origin (``uses_destination_rate``); the notice must not break the charge.
+        # The services read the sum from the package and pricing from the module that defines it: both fail.
         monkeypatch.setattr(queries, "cross_border_b2c_cents", broken)
+        monkeypatch.setattr(queries.tax, "cross_border_b2c_cents", broken)
         with caplog.at_level(logging.ERROR, logger="billing.services"):
             deliver(paid("in_1", lines=[invoice_line()]))
 

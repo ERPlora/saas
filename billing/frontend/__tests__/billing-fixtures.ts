@@ -1,4 +1,4 @@
-// Data of the Billing section's tests, shaped as billing/queries.py answers it: ERPlora's invoices
+// Data of the Billing section's tests, shaped as billing/queries/ answers it: ERPlora's invoices
 // (`billing.invoice.list`), the subscriptions (`billing.subscription.list`) and the payment method
 // (`billing.payment_method.get`).
 import type {
