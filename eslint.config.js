@@ -52,4 +52,19 @@ export default [
     files: ['tests/e2e/**/*.ts'],
     rules: { 'no-restricted-imports': ['error', { paths: wholeMailFolder }] },
   },
+  {
+    // A function a person can still follow. `complexity` also counts `?.` and default values. What breaks a
+    // limit today is listed in eslint-suppressions.json, and an entry that suppresses nothing fails the lint.
+    rules: {
+      complexity: ['error', 15],
+      'max-depth': ['error', 4],
+      'max-params': ['error', 3],
+      'max-lines-per-function': ['error', { max: 50, skipBlankLines: true, skipComments: true }],
+    },
+  },
+  {
+    // In a test every `describe` is one long function, and fixtures and helpers take many arguments.
+    files: ['**/*.{test,spec}.{ts,tsx,js,mjs,cjs,vue}', '**/tests/**', '**/__tests__/**', '**/e2e/**'],
+    rules: { 'max-params': 'off', 'max-lines-per-function': 'off' },
+  },
 ];

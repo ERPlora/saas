@@ -33,7 +33,7 @@ def _text(quoted: str) -> str:
     return re.sub(r"\\(.)", lambda match: ESCAPES.get(match.group(1), match.group(1)), quoted)
 
 
-def entries(path: Path) -> list[dict]:
+def entries(path: Path) -> list[dict]:  # noqa: C901
     """The live entries of a ``.po``: ``context``, ``msgid``, ``plural``, ``msgstr`` (a list) and ``fuzzy``."""
     found, entry, field = [], None, None
     for line in [*path.read_text(encoding="utf-8").splitlines(), ""]:

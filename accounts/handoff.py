@@ -100,7 +100,7 @@ def reauthenticate_url(next_path: str) -> str:
 
 @require_GET
 @never_cache
-def hub_login(request: HttpRequest) -> HttpResponse:
+def hub_login(request: HttpRequest) -> HttpResponse:  # noqa: PLR0911
     slug = request.GET.get("hub", "")
     audience = request.GET.get("audience", AuthExchangeCode.HUB_SESSION_AUDIENCE)
     state = request.GET.get("state", "")

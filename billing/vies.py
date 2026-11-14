@@ -195,7 +195,7 @@ def _post(value: str, payload: dict) -> ViesAnswer:
     return read_answer(body, value)
 
 
-def read_answer(body, vat_number: str) -> ViesAnswer:
+def read_answer(body, vat_number: str) -> ViesAnswer:  # noqa: PLR0911
     """Turn the Commission's answer into a verdict of ours.
 
     The REST endpoint says ``valid``; the per-member-state one, ``isValid``: both are read, so a renamed

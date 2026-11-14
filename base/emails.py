@@ -49,7 +49,7 @@ def branded_html(lines: list[str], *, language: str, subject: str = "", code: st
         return render_to_string(TEMPLATE, {"subject": subject, "paragraphs": _paragraphs(lines, code), **brand()})
 
 
-def branded_message(
+def branded_message(  # noqa: PLR0913
     subject: str,
     lines: list[str],
     to: list[str],

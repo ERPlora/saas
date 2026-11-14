@@ -68,7 +68,7 @@ class OpenAIProvider(Provider):
                 body["parallel_tool_calls"] = False
         return f"{self.base_url}/chat/completions", self.headers(), body
 
-    async def parse_stream(self, response: httpx.Response, req: TurnRequest) -> AsyncIterator[ProviderEvent]:
+    async def parse_stream(self, response: httpx.Response, req: TurnRequest) -> AsyncIterator[ProviderEvent]:  # noqa: C901
         fragments: dict[int, dict[str, str]] = {}
         usage: dict[str, int] = {}
         reason = "stop"

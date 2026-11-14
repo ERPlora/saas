@@ -92,7 +92,7 @@ class FakeProvider:
                 return queued.pop(0)
             return self._fallback.get(key)
 
-    def _handler(self):
+    def _handler(self):  # noqa: C901
         fake = self
 
         class Handler(BaseHTTPRequestHandler):

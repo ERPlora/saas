@@ -79,7 +79,7 @@ class Listener:
         """Take, without waiting, what was notified until now; whether anything was (or the connection changed)."""
         return self._wait(0.0)
 
-    def _wait(self, timeout: float) -> bool:
+    def _wait(self, timeout: float) -> bool:  # noqa: PLR0911
         deadline = time.monotonic() + max(timeout, 0.0)
         if self._conn is None:
             if self._listen():

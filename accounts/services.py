@@ -983,7 +983,7 @@ def _spent(request, rate: str, group: str, key: str) -> bool:
     output=ProfileOut,
     ai=INTERNAL,  # reauthentication
 )
-def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:
+def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:  # noqa: C901
     """Mail a 6-digit code to the new address; the account switches to it once the code is typed in this same
     session (``accounts.email.verify``), and until then it keeps answering to the old one. The change
     waits in ``EmailChangeRequest`` (bound to this session, the code kept as its hash). The account's own address,
@@ -1068,7 +1068,7 @@ def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:
     repeatable=True,  # Its database, and its tries once per request (_spent): a cut before the COMMIT runs it again.
     ai=INTERNAL,  # reauthentication
 )
-def email_verify(ctx: OperationContext, data: EmailVerifyIn) -> dict:
+def email_verify(ctx: OperationContext, data: EmailVerifyIn) -> dict:  # noqa: C901
     """The code mailed by ``accounts.email.change``, typed in the session that asked for it: the account answers to
     the new address from now on, proven (its only address on record), and the old one is told.
 

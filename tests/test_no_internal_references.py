@@ -260,7 +260,7 @@ def python_prose(text):
     return prose
 
 
-def marked_prose(suffix, text):
+def marked_prose(suffix, text):  # noqa: C901, PLR0912
     """The comments of a file whose comments are marked (``//``, ``/* */``, ``<!-- -->``, ``#``…) and, in a
     script, the titles of its tests; every other string literal is left out."""
     quotes = "'\"`" if suffix in SCRIPT_SUFFIXES else "'\""

@@ -115,6 +115,10 @@ python_runs, frontend_runs, scripts_runs = (runs(tjobs.get(name, {})) for name i
 check("python runs pytest over a Postgres service",
       "pytest" in python_runs and "postgres" in (tjobs.get("python", {}).get("services") or {}))
 check("pytest runs in parallel (pytest-xdist)", "pytest" in python_runs and " -n " in python_runs)
+python_checkout = next((step.get("with") or {} for step in steps(tjobs.get("python", {}))
+                        if "actions/checkout" in str(step.get("uses", ""))), {})
+check("python checks out the whole history (the size test compares .file-size-allow with main's)",
+      python_checkout.get("fetch-depth") == 0)
 check("frontend runs lint, typecheck, Vitest and the build",
       all(f"pnpm {task}" in frontend_runs for task in ("lint", "typecheck", "test", "build")))
 check("scripts runs actionlint, shellcheck and the script tests",

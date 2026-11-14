@@ -198,7 +198,7 @@ class HubDouble:
                     return status, answer_body
             return self._default(method, path, body)
 
-    def _default(self, method: str, path: str, body: Any) -> tuple[int, Any]:
+    def _default(self, method: str, path: str, body: Any) -> tuple[int, Any]:  # noqa: C901, PLR0911, PLR0912
         if method == "POST" and path == "/internal/sessions/revoke":
             return 200, {"revoked": 1}
         if method == "GET" and urlsplit(path).path == "/internal/usage":

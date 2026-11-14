@@ -1233,7 +1233,7 @@ def module_price_problems(*, prices: dict[str, str], amounts: dict[str, int], pr
     )
 
 
-def _price_problems(fields, prices: dict[str, str], cents: dict[str, int], product: str, other_amount) -> dict[str, str]:
+def _price_problems(fields, prices: dict[str, str], cents: dict[str, int], product: str, other_amount) -> dict[str, str]:  # noqa: C901
     """The checks of a pasted Stripe price; ``other_amount(stripe, expected)`` words an amount that differs."""
     pasted = [(field, prices.get(field) or "", amount, interval) for field, amount, interval in fields]
     pasted = [row for row in pasted if row[1]]
@@ -1466,7 +1466,7 @@ def _expire_other_sessions(hub: Hub, selection: str) -> None:
         )
 
 
-def _open_checkout(
+def _open_checkout(  # noqa: PLR0913, PLR0917
     ctx, hub, subscription, sale: Sale, tax_rates, promo, selection
 ) -> CheckoutAttempt:
     _expire_other_sessions(hub, selection)
@@ -2187,7 +2187,7 @@ def plan_take_over(ctx: OperationContext, data: HubIn) -> dict:
     }
 
 
-def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[dict], period_end, selection: str):
+def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[dict], period_end, selection: str):  # noqa: PLR0913, PLR0917
     _expire_other_sessions(hub, selection)
     customer = ensure_customer(hub)
     attempt = CheckoutAttempt.objects.create(
@@ -2519,7 +2519,7 @@ def unpaid_state(hub: Hub, live_status: str, now: datetime | None = None) -> dic
     }
 
 
-def live_state(hub: Hub, live: dict, now: datetime | None = None) -> dict:
+def live_state(hub: Hub, live: dict, now: datetime | None = None) -> dict:  # noqa: C901
     """``hubs.subscription.apply``'s fields for what the live subscription ``live`` says of ``hub``."""
     now = now or timezone.now()
     status = live.get("status") or ""
@@ -2723,7 +2723,7 @@ STRIPE_WEBHOOK_EVENTS = (
 )
 
 
-def process_stripe_event(event: dict) -> str:
+def process_stripe_event(event: dict) -> str:  # noqa: C901, PLR0911
     """Process one signed Stripe event; its outcome (``completed``, ``processed``, ``ignored``, ``unknown``,
     ``invalid``, ``pending``…). Raises when it must be retried (Stripe did not answer a read the event needs)."""
     obj = (event.get("data") or {}).get("object") or {}
@@ -2774,7 +2774,7 @@ def _checkout_paid(session: dict) -> bool:
     )
 
 
-def checkout_completed(session: dict) -> str:
+def checkout_completed(session: dict) -> str:  # noqa: PLR0911
     """A business paid in the Embedded Checkout: its subscription, read LIVE, is applied, the attempt is
     completed and its promo code counted, once whatever the redeliveries."""
     metadata = session.get("metadata") or {}
@@ -3667,7 +3667,7 @@ SWEEP_COUNTS = (
 SWEPT_STATUSES = [Hub.Status.PREPARING, Hub.Status.ACTIVE, Hub.Status.PAST_DUE]
 
 
-def sweep_unpaid() -> Counter:
+def sweep_unpaid() -> Counter:  # noqa: C901, PLR0912, PLR0915
     """One pass of ``sweep_unpaid``: every business in dunning still running is replayed with its
     OLDEST open invoice through ``invoice_payment_failed`` (the live subscription decides; ``unpaid`` at once,
     else past the grace; one suspension), and the Stripe subscription of every deleted business is
@@ -4496,7 +4496,7 @@ def _rectifying_lines(original: Invoice, items: list[dict]) -> list[InvoiceLine]
     return lines
 
 
-def _rectify(ctx, original: Invoice, *, source_id: str, items: list[dict], expected_total: int, rtype: str,
+def _rectify(ctx, original: Invoice, *, source_id: str, items: list[dict], expected_total: int, rtype: str,  # noqa: PLR0913
              reason: str, stripe_number: str = "", billed_at: datetime | None = None) -> dict:
     """A rectifying invoice of ``original`` (``ERPR`` series, its qualification and recipient), once per Stripe
     ``source_id``; its lines must add up to what Stripe gave back, or nothing is invoiced. Issued after the
@@ -5054,7 +5054,7 @@ PLATFORM_COUNTS = (
 PLATFORM_FAILING = ("unreachable", "refused", "rejected", "stuck", "mail_failed", "errors")
 
 
-def reconcile_platform_invoices(now: datetime | None = None, go_on: Callable[[], bool] | None = None) -> Counter:
+def reconcile_platform_invoices(now: datetime | None = None, go_on: Callable[[], bool] | None = None) -> Counter:  # noqa: C901, PLR0912
     """One pass of ``reconcile_platform_invoices`` (the ``saas-worker``, every 15 minutes): post again every
     «issuing» invoice whose wait passed, ask the platform hub about every issued (or rejected) one until the AEAT
     accepts it, and count the ones «issuing» for longer than ``PLATFORM_STUCK_AFTER``. One invoice never stops the

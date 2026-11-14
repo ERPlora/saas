@@ -1617,7 +1617,7 @@ STANDING_MOVES = {
     output=SubscriptionApplyOut,
     ai=INTERNAL,  # only the platform runs it
 )
-def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict:
+def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict:  # noqa: C901, PLR0912, PLR0915
     """Write what the live Stripe subscription says of a business (billing reads it: webhook, checkout,
     the sweep of unpaid plans). Only the platform runs it, in the owner's channel (``system_ctx_for``).
 
@@ -2016,7 +2016,7 @@ def sync_hub(hub_id: UUID) -> bool:
     return sync_outcome(hub_id) == DELIVERED
 
 
-def sync_outcome(hub_id: UUID) -> str:
+def sync_outcome(hub_id: UUID) -> str:  # noqa: C901, PLR0911
     """Push ``hub_id`` to the Hub: the deletion it owes (and nothing else), the restoration, the
     registry, then the snapshot if the Hub's version is behind.
 
@@ -2197,7 +2197,7 @@ def reconcile_exclusively(stuck_after: timedelta = STUCK_AFTER, go_on: Callable[
         return reconcile(stuck_after=stuck_after, go_on=go_on) if mine else None
 
 
-def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER, go_on: Callable[[], bool] | None = None) -> Counter:
+def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER, go_on: Callable[[], bool] | None = None) -> Counter:  # noqa: C901, PLR0912
     """One pass of ``reconcile_hub_states``; the counts of what it did (each key is always present).
 
     ``go_on`` (the ``saas-worker``'s stop request and the round's time budget) is asked before each call to the Hub:
@@ -2607,7 +2607,7 @@ def _finish_removal_quietly(domain_id: UUID) -> None:
     output=CustomDomainRecordOut,
     ai=INTERNAL,  # only the hourly check runs it
 )
-def custom_domain_record(ctx: OperationContext, data: CustomDomainRecordIn) -> dict:
+def custom_domain_record(ctx: OperationContext, data: CustomDomainRecordIn) -> dict:  # noqa: C901, PLR0912
     """What the hourly check learned, unless the domain left the state it found: the owner removing it wins. A command,
     so a change has its event on the owner's channel, and one of what the Hub is told owes it a newer snapshot."""
     if ctx.actor != "system":
@@ -2697,7 +2697,7 @@ def custom_domains_failed(counts: Counter) -> bool:
     return any(counts[key] for key in CUSTOM_DOMAIN_FAILING_COUNTS)
 
 
-def _check_custom_domain(domain_id: UUID) -> str:
+def _check_custom_domain(domain_id: UUID) -> str:  # noqa: PLR0911
     """Move one domain as far as it goes today; the outcome names what happened, for the counts of the pass."""
     row = queries.custom_domain_row(domain_id)
     if row is None:
@@ -2722,7 +2722,7 @@ def _check_custom_domain(domain_id: UUID) -> str:
         return "aws_unavailable"
 
 
-def _check_pending(row: CustomDomain) -> str:
+def _check_pending(row: CustomDomain) -> str:  # noqa: C901, PLR0911, PLR0912
     """The way to active, step by step and as far as it goes: the certificate, on the listener, the customer's CNAME, the
     snapshot and the probe."""
     target = domain_checks.target_of(row.hub_id)

@@ -88,7 +88,7 @@ def _declined_before(messages: list[dict], call_id: str) -> set[str]:
     return declined
 
 
-def _answer(ctx: OperationContext, tools: dict, call, decision, *, stopped: bool):
+def _answer(ctx: OperationContext, tools: dict, call, decision, *, stopped: bool):  # noqa: C901, PLR0911
     """Run one pending ``call`` (a read alone; a write with the person's yes) → ``(outcome, card)``: the card when the
     write still waits for its answer. None for data the write would refuse: the model hears which
     (``invalid_payload``) and asks again with them corrected, in the same turn."""

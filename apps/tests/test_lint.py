@@ -58,7 +58,7 @@ def python_files() -> list[str]:
     return sorted(found)
 
 
-def catalog_references(source: str) -> list[str]:
+def catalog_references(source: str) -> list[str]:  # noqa: C901
     """Each place ``source`` names ``App`` or ``AppDoc`` of ``apps.models`` (by import, attribute or
     ``get_model``), as ``line: what``."""
     tree = ast.parse(source)

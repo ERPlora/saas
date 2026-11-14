@@ -146,7 +146,7 @@ def _fields(error: pydantic.ValidationError) -> dict[str, str]:
 
 @csrf_exempt
 @never_cache
-def representation(request: HttpRequest, hub_id: UUID) -> JsonResponse:
+def representation(request: HttpRequest, hub_id: UUID) -> JsonResponse:  # noqa: C901, PLR0911
     refused = _not_allowed(request, "POST")
     if refused is not None:
         return refused

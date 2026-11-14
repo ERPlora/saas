@@ -1407,7 +1407,7 @@ def scheduled_change_of(hub_id) -> dict | None:
     return {"plan": pending.plan_slug, "interval": pending.interval, "starts_at": pending.starts_at}
 
 
-def _subscription_row(
+def _subscription_row(  # noqa: PLR0913, PLR0917
     subscription: Subscription, user, owned: set, unpaid: dict, modules: dict, scheduled: dict, next_plans: dict
 ) -> dict:
     hub = subscription.hub

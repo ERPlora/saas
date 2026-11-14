@@ -52,9 +52,44 @@ dev = [
     "pytest-asyncio>=1.4",
     "respx>=0.23.1",
     "pytest-xdist>=3.8.0",
+    "ruff>=0.17.5",
 ]
 
 # erplora-live is the packages/live submodule (`git submodule update --init`); editable locally,
 # the Dockerfile installs it with --no-editable.
 [tool.uv.sources]
 erplora-live = { path = "packages/live", editable = true }
+
+# Only the limits of a function's size: no formatter and none of ruff's default rules. The functions over a limit
+# today carry a `# noqa` for it, and RUF100 fails on one that no longer silences anything
+# (tests/test_guardrails_lint.py runs this from the suite).
+[tool.ruff]
+extend-exclude = ["packages", "migrations"]
+# The exclusions hold for a file named on the command line too, so `ruff format <file>` leaves it alone.
+force-exclude = true
+
+# The code is written about 120 columns wide: ruff's formatter is off for every file.
+[tool.ruff.format]
+exclude = ["*"]
+
+[tool.ruff.lint]
+select = ["C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "RUF100"]
+# Rules of other linters the code already carries a `# noqa` for: RUF100 leaves those markers alone.
+external = ["A002", "B017", "BLE001", "E402", "F401", "F403", "F811", "F821", "PT011", "S308"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 5
+max-positional-args = 5
+max-branches = 12
+max-returns = 6
+max-statements = 50
+
+# pytest's fixtures arrive as arguments.
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["PLR0913", "PLR0917"]
+"**/e2e/**" = ["PLR0913", "PLR0917"]
+"**/test_*.py" = ["PLR0913", "PLR0917"]
+"**/conftest.py" = ["PLR0913", "PLR0917"]
