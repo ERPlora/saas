@@ -1,0 +1,62 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+{% block breadcrumbs %}
+<ol class="breadcrumbs">
+<li><a href="{% url 'admin:index' %}">{% translate 'Home' %}</a></li>
+<li><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+<li><a href="{% url 'admin:billing_invoice_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+<li aria-current="page">{{ title }}</li>
+</ol>
+{% endblock breadcrumbs %}
+{% block content %}
+<div id="content-main">
+<form method="get">
+{{ form.as_div }}
+<input type="submit" class="default" value="{% translate 'Show' %}">
+</form>
+{% if report %}
+<p>{% blocktranslate with start=report.period.start|date:"SHORT_DATE_FORMAT" end=report.period.end|date:"SHORT_DATE_FORMAT" %}Invoices collected and issued from {{ start }} to {{ end }}, by their issue date.{% endblocktranslate %}</p>
+<ul class="object-tools">
+<li><a href="{{ excel_url }}">{% translate "Download Excel" %}</a></li>
+</ul>
+<div class="module">
+<table>
+{% translate "Totals per series" as caption %}{% translate "Series" as first %}
+{% include "admin/billing/invoice/_report_table_head.html" with caption=caption first=first only %}
+<tbody>
+<tr><th scope="row">{% translate "Invoices (ERP)" %}</th>{% include "admin/billing/invoice/_report_amounts.html" with row=report.invoices only %}</tr>
+<tr><th scope="row">{% translate "Credit notes (ERPR)" %}</th>{% include "admin/billing/invoice/_report_amounts.html" with row=report.credit_notes only %}</tr>
+<tr><th scope="row">{% translate "Net" %}</th>{% include "admin/billing/invoice/_report_amounts.html" with row=report.net only %}</tr>
+</tbody>
+</table>
+</div>
+<div class="module">
+<table>
+{% translate "By tax treatment, customer's country and VAT rate" as caption %}{% translate "Tax treatment · country · VAT rate" as first %}
+{% include "admin/billing/invoice/_report_table_head.html" with caption=caption first=first only %}
+<tbody>
+{% for row in report.by_tax %}
+<tr>
+<th scope="row">{{ row.treatment_label }} · {{ row.country_name|default:"—" }} · {{ row.rate|floatformat:2 }}&nbsp;%</th>
+{% include "admin/billing/invoice/_report_amounts.html" with row=row only %}
+</tr>
+{% empty %}
+<tr><td colspan="5">{% translate "Nothing was invoiced in this period." %}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+<div class="module">
+<table>
+{% translate "By kind of customer" as caption %}{% translate "Customer" as first %}
+{% include "admin/billing/invoice/_report_table_head.html" with caption=caption first=first only %}
+<tbody>
+{% for row in report.by_customer %}
+<tr><th scope="row">{{ row.label }}</th>{% include "admin/billing/invoice/_report_amounts.html" with row=row only %}</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endif %}
+</div>
+{% endblock content %}

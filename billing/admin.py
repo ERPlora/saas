@@ -13,19 +13,24 @@ ERPlora's invoices are read-only too: recorded from what Stripe charged and issu
 record sent to the AEAT is never modified (a credit note corrects it). Their one action, «Send again to the
 platform hub», posts them through ``billing.services.post_platform_invoice`` (idempotent on the Hub) and says
 what the Hub answered. Its page links the PDF the platform hub issued, asked when the staff downloads it, as
-the account's «Download PDF».
+the account's «Download PDF». From the list, «Billing report» shows what was invoiced in a month, a quarter or a
+year for the accountant, and downloads it as an Excel; it is read for whoever may read invoices.
 """
 
 import io
 import zipfile
+from urllib.parse import urlencode
 
+from django import forms
 from django.contrib import admin, messages
 from django.contrib.admin.utils import unquote
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import redirect
+from django.template.response import TemplateResponse
 from django.urls import path, reverse
-from django.utils import timezone
+from django.utils import timezone, translation
+from django.utils.dates import MONTHS
 from django.utils.html import format_html
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
@@ -461,6 +466,21 @@ class InvoiceLineInline(admin.TabularInline):
         return False
 
 
+class BillingReportForm(forms.Form):
+    year = forms.IntegerField(label=gettext_lazy("Year"), min_value=2000, max_value=2100)
+    period = forms.ChoiceField(
+        label=gettext_lazy("Period"),
+        choices=[
+            ("year", gettext_lazy("Whole year")),
+            ("q1", gettext_lazy("First quarter")),
+            ("q2", gettext_lazy("Second quarter")),
+            ("q3", gettext_lazy("Third quarter")),
+            ("q4", gettext_lazy("Fourth quarter")),
+            *((f"m{month}", name) for month, name in MONTHS.items()),
+        ],
+    )
+
+
 @admin.register(Invoice)
 class InvoiceAdmin(ReadOnlyAdmin):
     list_display = ("number", "stripe_number", "kind", "issued_on", "business_name", "payer_name", "total",
@@ -485,8 +505,66 @@ class InvoiceAdmin(ReadOnlyAdmin):
         )
 
     def get_urls(self):
-        own = [path("<path:object_id>/pdf/", self.admin_site.admin_view(self.pdf_view), name="billing_invoice_pdf")]
+        own = [
+            path("report/", self.admin_site.admin_view(self.report_view), name="billing_invoice_report"),
+            path(
+                "report/excel/",
+                self.admin_site.admin_view(self.report_excel_view),
+                name="billing_invoice_report_excel",
+            ),
+            path("<path:object_id>/pdf/", self.admin_site.admin_view(self.pdf_view), name="billing_invoice_pdf"),
+        ]
         return own + super().get_urls()
+
+    def _report_form(self, request) -> BillingReportForm:
+        """The period asked for; without one, the current quarter. Whoever may read invoices may read the report."""
+        if not self.has_view_permission(request):
+            raise PermissionDenied
+        if request.GET:
+            return BillingReportForm(request.GET)
+        current = queries.quarter_of(timezone.localdate())
+        return BillingReportForm({"year": current.year, "period": current.period})
+
+    @staticmethod
+    def _chosen_period(form: BillingReportForm):
+        return queries.report_period(form.cleaned_data["year"], form.cleaned_data["period"])
+
+    def report_view(self, request):
+        """What ERPlora invoiced in the chosen month, quarter or year, with what the accountant asks for."""
+        form = self._report_form(request)
+        report = None
+        excel_url = ""
+        if form.is_valid():
+            report = queries.billing_report(self._chosen_period(form))
+            excel_url = "{}?{}".format(
+                reverse("admin:billing_invoice_report_excel"),
+                urlencode({"year": report.period.year, "period": report.period.period}),
+            )
+            if report.not_issued:
+                messages.warning(
+                    request,
+                    _("Collected in this period but not issued yet, so not counted: %(invoices)s")
+                    % {"invoices": ", ".join(report.not_issued)},
+                )
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": self.opts,
+            "title": _("Billing report"),
+            "form": form,
+            "report": report,
+            "excel_url": excel_url,
+        }
+        return TemplateResponse(request, "admin/billing/invoice/report.html", context)
+
+    def report_excel_view(self, request):
+        """The report's «Download Excel»; a period it does not know goes back to the report, which says why."""
+        form = self._report_form(request)
+        if not form.is_valid():
+            return redirect(f"{reverse('admin:billing_invoice_report')}?{request.GET.urlencode()}")
+        document = queries.billing_report_csv(self._chosen_period(form), translation.get_language())
+        response = HttpResponse(document["content"], content_type=document["content_type"])
+        response["Content-Disposition"] = f'attachment; filename="{document["filename"]}"'
+        return response
 
     def pdf_view(self, request, object_id):
         """The PDF of any invoice for whoever may read invoices (``view_invoice``): the platform hub's file, or back to
