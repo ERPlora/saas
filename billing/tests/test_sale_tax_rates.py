@@ -32,6 +32,14 @@ def _percentages(specs) -> list[Decimal]:
     return [spec.percentage for spec in specs]
 
 
+def _canary_business_without_its_rule(business_paid_by):
+    """A place ERPlora sells to whose rule the admin removed: the territory has no rate to charge."""
+    from billing.models import TaxRule
+
+    TaxRule.objects.filter(country_code="ES", region_code="IC").delete()
+    return business_paid_by("ES", LAS_PALMAS, tax_id="ESB27593136")
+
+
 class TestBothDoorsChargeTheSame:
     def test_the_mainland_pays_21_percent_whatever_it_buys(self, business_paid_by):
         business = business_paid_by("ES", MADRID)
@@ -47,7 +55,7 @@ class TestBothDoorsChargeTheSame:
 
     def test_the_canaries_pay_none_whatever_they_buy(self, business_paid_by):
         """An EMPTY list is an answer, not a failure: outside the scope of VAT."""
-        business = business_paid_by("ES", LAS_PALMAS)
+        business = business_paid_by("ES", LAS_PALMAS, tax_id="ESB27593136")
 
         assert (
             services.sale_tax_rates(business, category_key=PLAN, price=Decimal("29.99"))
@@ -126,7 +134,7 @@ class TestASaleThatCannotKnowItsRateIsNotMade:
         self, business_paid_by
     ):
         """The rate would be a guess and the price is net: refusing is loud and reversible."""
-        abroad = business_paid_by("US", "10001")
+        abroad = _canary_business_without_its_rule(business_paid_by)
 
         with pytest.raises(Conflict) as refused:
             services.sale_tax_rates(
@@ -140,7 +148,7 @@ class TestASaleThatCannotKnowItsRateIsNotMade:
         """No noun glued into a sentence: each thing sold has its own translated sentence."""
         from django.utils import translation
 
-        abroad = business_paid_by("US", "10001")
+        abroad = _canary_business_without_its_rule(business_paid_by)
 
         with translation.override("es"), pytest.raises(Conflict) as refused:
             services.sale_tax_rates(abroad, category_key=PLAN, price=Decimal("29.99"), what="plan")

@@ -3,11 +3,11 @@
 The owner reads and edits the payer; «use the business's data» copies what the SaaS knows of the business (its
 name and country), a copy and not a sync. Only the owner, whose billing it is.
 
-The tax ID goes through billing's VAT door (``billing.services.validate_vat_for_profile``): it is written as
-ERPlora invoices it (``b-12.345.678`` is ``B12345678``, a foreign one typed bare gets its prefix) and asked to
-VIES, whose verdict is logged; a malformed one is the field's 422, but a number VIES does not confirm is kept as
-identification (it simply buys no reverse charge). A Spanish postal code has five digits («3500» is not Las
-Palmas): its province decides the tax.
+For now ERPlora invoices payers in Spain only: another country is refused under its field before anything is
+saved or asked to VIES. The tax ID goes through billing's VAT door (``billing.services.validate_vat_for_profile``,
+whose foreign shapes and VIES verdicts ``billing/tests/test_services.py`` holds): it is written as ERPlora invoices
+it (``b-12.345.678`` is ``B12345678``) and a malformed one is the field's 422. A Spanish postal code has five
+digits («3500» is not Las Palmas): its province decides the tax.
 """
 
 import pytest
@@ -98,8 +98,6 @@ def test_the_business_data_is_copied_not_synced(business, owner):
         ("ES", "12345678Z"),
         ("ES", "X1234567L"),
         ("ES", "ESB12345678"),
-        ("PT", "PT123456789"),
-        ("FR", "FRXX123456789"),
         ("", ""),
     ],
 )
@@ -115,10 +113,7 @@ def test_a_tax_id_of_a_valid_form_is_accepted(business, owner, country, tax_id):
     [
         # Typography, not identity: billing's one spelling of a tax id.
         ("ES", "B12345678!", "B12345678"),
-        # Two digits are a VAT number's shape (a Romanian CUI may be that short): VIES decides it exists.
-        ("PT", "PT12", "PT12"),
-        # Typed bare in another member state: the prefix VIES files it under.
-        ("DE", "812871812", "DE812871812"),
+        ("ES", "esb-12345678", "ESB12345678"),
     ],
 )
 def test_the_tax_id_is_written_as_erplora_invoices_it(business, owner, country, typed, stored):
@@ -127,7 +122,7 @@ def test_the_tax_id_is_written_as_erplora_invoices_it(business, owner, country, 
 
 @pytest.mark.parametrize(
     "country, tax_id",
-    [("ES", "123"), ("ES", "B1234567890123"), ("PT", "XX123456789"), ("DE", "DE1")],
+    [("ES", "123"), ("ES", "B1234567890123")],
 )
 def test_a_tax_id_of_another_form_is_an_invalid_field(business, owner, country, tax_id):
     with pytest.raises(InvalidPayload) as refused:
@@ -183,26 +178,16 @@ def issuer(db):
     company.save()
 
 
-def test_a_foreign_vat_number_is_asked_to_vies_and_the_answer_logged(business, owner, issuer):
+def test_a_foreign_vat_number_is_never_asked_to_vies_the_country_is_refused_first(business, owner, issuer):
     from billing.models import VatCheck
-    from billing.tests.vies_double import REAL_VAT, VALID, vies_says
+    from billing.tests.vies_double import REAL_VAT, no_network
 
-    with vies_says(**VALID):
-        saved = update(owner, business, billing_country="DE", billing_postal_code="10115", tax_id=REAL_VAT)
+    with no_network() as network, pytest.raises(InvalidPayload) as refused:
+        update(owner, business, billing_country="DE", billing_postal_code="10115", tax_id=REAL_VAT)
 
-    assert saved["tax_id"] == REAL_VAT
-    assert VatCheck.objects.get(vat_number=REAL_VAT).status == VatCheck.VERIFIED
-
-
-def test_a_number_vies_does_not_know_is_kept_as_identification(business, owner, issuer):
-    from billing.models import VatCheck
-    from billing.tests.vies_double import FAKE_VAT, NOT_REGISTERED, vies_says
-
-    with vies_says(**NOT_REGISTERED):
-        saved = update(owner, business, billing_country="DE", billing_postal_code="10115", tax_id=FAKE_VAT)
-
-    assert saved["tax_id"] == FAKE_VAT
-    assert VatCheck.objects.get(vat_number=FAKE_VAT).status == VatCheck.INVALID
+    network.assert_not_called()
+    assert set(refused.value.fields) == {"billing_country"}
+    assert VatCheck.objects.count() == 0
 
 
 def test_a_national_number_is_not_asked_to_vies(business, owner, issuer):
@@ -224,7 +209,16 @@ def test_a_spanish_postal_code_has_five_digits(business, owner, postal_code):
 
 
 @pytest.mark.parametrize(
-    "country, postal_code", [("ES", "35001"), ("ES", " 28001 "), ("ES", ""), ("PT", "1000-001"), ("DE", "10115")]
+    "country, postal_code",
+    [
+        ("ES", "35001"),
+        ("ES", " 28001 "),
+        ("ES", ""),
+        ("ES", "51001"),
+        ("ES", "52001"),
+        # Only a Spanish postal code has a shape to check: without a country yet, any is kept.
+        ("", "1000-001"),
+    ],
 )
 def test_a_postal_code_of_its_country_is_saved(business, owner, country, postal_code):
     assert update(owner, business, billing_country=country, billing_postal_code=postal_code)["billing_postal_code"] == (
@@ -237,6 +231,40 @@ def test_the_business_country_copied_into_the_payer_also_checks_the_postal_code(
         update(owner, business, billing_country="PT", billing_postal_code="3500", same_as_business=True)
 
     assert set(refused.value.fields) == {"billing_postal_code"}
+
+
+@pytest.mark.parametrize("country, postal_code", [("PT", "1000-001"), ("DE", "10115"), ("FR", "75001")])
+def test_a_payer_outside_spain_is_refused_and_nothing_is_saved(business, owner, country, postal_code):
+    with pytest.raises(InvalidPayload) as refused:
+        update(owner, business, billing_country=country, billing_postal_code=postal_code)
+
+    assert set(refused.value.fields) == {"billing_country"}
+    assert Hub.objects.get(pk=business.pk).billing_profile.billing_country == "ES"
+
+
+def test_a_business_outside_spain_is_not_copied_into_the_payer(business, owner):
+    """With «use the business's data» the country field is hidden, so the reason is said on top too."""
+    Hub.objects.filter(pk=business.pk).update(country="PT")
+
+    with pytest.raises(InvalidPayload) as refused:
+        update(owner, business, billing_country="ES", billing_postal_code="28001", same_as_business=True)
+
+    assert set(refused.value.fields) == {"billing_country"}
+    assert refused.value.message == refused.value.fields["billing_country"]
+    assert Hub.objects.get(pk=business.pk).billing_profile.same_as_business is False
+
+
+def test_a_business_in_spain_is_still_copied_into_the_payer(business, owner):
+    saved = update(owner, business, billing_country="", billing_postal_code="28001", same_as_business=True)
+
+    assert (saved["billing_country"], saved["same_as_business"]) == ("ES", True)
+
+
+def test_the_assistant_is_offered_only_spain_as_the_billing_country():
+    schema = BillingProfileIn.model_json_schema()["properties"]["billing_country"]
+    offered = {value for option in schema["anyOf"] for value in option.get("enum", [])}
+
+    assert offered - {""} == {"ES"}
 
 
 def test_without_a_payer_country_the_tax_id_is_read_in_the_business_country(business, owner):

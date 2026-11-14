@@ -39,6 +39,7 @@ def _quote(business):
     return services.sale_quote(business, category_key=PLAN, price=Decimal("100.00"))
 
 
+@pytest.mark.usefixtures("every_country_sold")
 class TestThePayerIsTheSource:
     def test_a_proved_vat_id_prices_the_sale_and_keeps_its_proof(
         self, business_paid_by
