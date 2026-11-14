@@ -7,7 +7,7 @@ proposes the free address; an account with no business, and with several; the st
 language.
 """
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from django.db import connection
@@ -265,13 +265,16 @@ class TestWhatThePlanCovers:
 
     def test_the_plan_on_trial_carries_its_own_limits(self, business, owner):
         Plan.objects.filter(slug="starter").update(max_devices=2, max_apps=7)
-        Subscription.objects.filter(hub=business).update(
-            trial_plan=Plan.objects.get(slug="starter"), trial_end=timezone.now() + timedelta(days=7)
-        )
+        end = timezone.now() + timedelta(days=7)
+        Subscription.objects.filter(hub=business).update(trial_plan=Plan.objects.get(slug="starter"), trial_end=end)
 
-        trial = self.detail(owner, business)["trial_plan"]
+        detail = self.detail(owner, business)
+        trial = detail["trial_plan"]
 
         assert (trial["slug"], trial["max_devices"], trial["max_apps"]) == ("starter", 2, 7)
+        assert datetime.fromisoformat(detail["trial_end"]) == end
+        # While the trial lasts, the business's own plan is still its own, with its own limits.
+        assert detail["plan"] == FREE
 
     def test_the_name_reads_in_the_language_of_the_account(self, business, owner):
         Subscription.objects.filter(hub=business).update(plan=Plan.objects.get(slug="payment-test"))
