@@ -170,6 +170,7 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F37 | Olvidar los avisos de Stripe de más de 30 días | hecho |
 | BILLING-F38 | Releer cada noche las suscripciones en Stripe y corregir lo que se desvió | hecho |
 | BILLING-F39 | Comprobar cada día que Stripe avisa de todo lo que erplora.com trata | hecho |
+| BILLING-F40 | Sacar el informe de facturación de un periodo para la gestoría | hecho |
 
 ### BILLING-F01 Decir dónde se factura el negocio y con qué identificación fiscal
 <!-- origen: old-saas:SAAS_DASHBOARD-F90 fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar -->
@@ -559,7 +560,7 @@ Pantalla: Admin
 Pasos:
 1. Una persona de ERPlora entra en el admin con la cuenta del SaaS (código por correo y app de autenticación).
 2. Ve, solo para leer, las suscripciones y sus líneas, los avisos de Stripe, los intentos de pago, los códigos promocionales usados, los contadores de cada serie de facturas y los cambios de plan que esperan al final del periodo: lo que dice Stripe no se edita aquí, se cambia en Stripe y llega por su aviso.
-3. En los negocios puede «Enviar el último estado al negocio» y «Reintentar lo que el negocio aún debe» y, solo un superusuario, «Dejar a su propietario comprar los planes internos» y «Dejar de venderle los planes internos»: con la marca, el propietario de ese negocio ve «Prueba de pago (interno)» (1 € + IVA) en la Tienda y lo compra como cualquier plan, también en producción, para hacer una compra real y ver su factura con el QR; la columna «planes internos» de la lista dice qué negocios la tienen. En las facturas, con sus líneas, «Reenviar al negocio de plataforma», «Reenviar el correo de la factura», «Descargar el PDF» de cualquier factura ya emitida y, eligiendo varias en la lista, «Descargar los PDF (ZIP)».
+3. En los negocios puede «Enviar el último estado al negocio» y «Reintentar lo que el negocio aún debe» y, solo un superusuario, «Dejar a su propietario comprar los planes internos» y «Dejar de venderle los planes internos»: con la marca, el propietario de ese negocio ve «Prueba de pago (interno)» (1 € + IVA) en la Tienda y lo compra como cualquier plan, también en producción, para hacer una compra real y ver su factura con el QR; la columna «planes internos» de la lista dice qué negocios la tienen. En las facturas, con sus líneas, «Reenviar al negocio de plataforma», «Reenviar el correo de la factura», «Descargar el PDF» de cualquier factura ya emitida y, eligiendo varias en la lista, «Descargar los PDF (ZIP)»; desde la lista, el «Informe de facturación» de un mes, un trimestre o un año (BILLING-F40).
 4. Mantiene los códigos promocionales, la tabla de IVA, la política fiscal y los datos de ERPlora (nacen con los del Modelo 036 y son los que VIES ve de quien pregunta); las devoluciones y las cancelaciones al momento se hacen en el panel de Stripe.
 5. Una aplicación de pago que algún negocio tiene no se borra del catálogo: el admin dice qué negocio la tiene y que se quite de la venta.
 Entra: la cuenta del personal con su papel.
@@ -740,6 +741,22 @@ Sale: nada que cambie: lo que se vio y, si algo no cuadra, el aviso al equipo.
 Si falla: ningún destino activo hacia la dirección, uno que apunta a una ruta que erplora.com no sirve o a otro entorno, más de uno hacia la dirección, o uno que manda todos los avisos (`*`) o le falta o le sobra alguno, termina con error y lo nombra. Si Stripe no contesta, también. Sin clave de Stripe (en desarrollo) no hay nada que comprobar: lo dice y termina bien.
 Implicados: ninguno
 
+### BILLING-F40 Sacar el informe de facturación de un periodo para la gestoría
+<!-- origen: gh:saas#443 -->
+Estado: hecho
+Actor: personal de ERPlora
+Pantalla: Admin › Facturas › Informe de facturación
+Pasos:
+1. En el admin, en la lista de **Facturas**, pulsa «Informe de facturación».
+2. Se abre en el trimestre en curso; elige el año y el periodo (el año completo, un trimestre o un mes) y pulsa «Ver».
+3. Lee los totales del periodo: base imponible, IVA y total de las facturas (serie ERP), de las rectificativas (serie ERPR, en negativo) y el neto de las dos.
+4. Debajo, el desglose por tratamiento del IVA, país del cliente y tipo de IVA, sacado de las líneas tal como llegaron a VeriFactu (lo nacional va al modelo 303, la inversión del sujeto pasivo al 349 y la ventanilla única, OSS, al 369), y el desglose por tipo de cliente: empresa (NIF español de una sociedad o un NIF de fuera de España), autónomo o particular con NIF español, y particular sin NIF.
+5. Pulsa «Descargar Excel»: una fila por factura del periodo con su número, fecha, negocio, pagador, NIF, país, tratamiento del IVA, % de IVA, base, IVA, total, moneda, cobro y estado, en el formato del Excel del panel (BILLING-F22).
+Entra: el año y el periodo.
+Sale: los totales en pantalla y la hoja de cálculo para la gestoría; nada cambia.
+Si falla: solo cuentan las facturas cobradas y ya emitidas por el negocio de plataforma, por su fecha de expedición; las cobradas del periodo que aún se emiten o que el negocio de plataforma rechazó no suman, y un aviso las nombra («Cobradas en este periodo pero aún sin emitir, así que no se cuentan: …»). Un periodo que no existe dice el error junto al campo, y su Excel vuelve al informe. Sin facturas en el periodo, los totales salen a cero y el desglose dice «No se facturó nada en este periodo». Quien no puede ver las facturas en el admin no lo abre.
+Implicados: ninguno
+
 ## Para quien lo mantiene
 
 - Anatomía y operaciones: `billing/README.md` (IVA, Stripe, facturas, impago y la Tienda).
@@ -803,6 +820,7 @@ Implicados: ninguno
 - No vende aplicaciones sueltas fuera de la suscripción del negocio: no hay compras aparte; lo pagado por
   una aplicación es una línea de la factura de su negocio.
 - No hace facturas a mano desde el admin: cada factura sale de un cobro de Stripe.
+- No presenta los modelos 303, 349 ni 369: el informe de facturación (BILLING-F40) da sus totales a la gestoría.
 - No cobra por uso ni por excesos (sin medidores ni plan «Flex»): quien necesita más sube de plan.
 - No pide ni guarda una moneda: ERPlora cobra siempre en euros, y la preferencia de moneda de la cuenta del
   panel viejo no se porta (el panel único la quitó).

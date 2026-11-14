@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:457f0709e1ff34d96587a25641f2bc4b9f7a136b1fbbc24c1735a5ebac0d298c -->
+<!-- generated from WORKBOOK.md sha256:fbd68fd6992d67735592292d6af3ea5e0d53f35bcde934098a90e8371635ccfc -->
 
 ## What it is for and who it is for
 
@@ -156,6 +156,7 @@ to upgrade or change it.
 | BILLING-F37 | Forget Stripe's notices older than 30 days | done |
 | BILLING-F38 | Read the subscriptions again in Stripe every night and put right what drifted | done |
 | BILLING-F39 | Check every day that Stripe sends a notice of everything erplora.com handles | done |
+| BILLING-F40 | Get the billing report of a period for the accountant | done |
 
 ### BILLING-F01 Say where the business is invoiced and with which tax ID
 <!-- origen: old-saas:SAAS_DASHBOARD-F90 fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar -->
@@ -545,7 +546,7 @@ Screen: Admin
 Steps:
 1. A person of ERPlora enters the admin with the SaaS account (email code and authenticator app).
 2. They see, read-only, the subscriptions and their lines, Stripe's notices, the payment attempts, the promo codes used, the counters of each invoice series and the plan changes waiting for the end of the period: what Stripe says is not edited here, it is changed in Stripe and arrives with its notice.
-3. On the businesses they can "Send the latest state to the business" and "Retry what the business still owes" and, a superuser only, "Let its owner buy the internal plans" and "Stop selling it the internal plans": with the mark, the owner of that business sees "Payment Test (internal)" (1 € + VAT) in the Store and buys it like any plan, in production too, to make a real purchase and see its invoice with the QR; the list's "internal plans" column says which businesses have it. On the invoices, with their lines, "Send again to the platform business", "Send the invoice email again", "Download the PDF" of any invoice already issued and, choosing several in the list, "Download the PDFs (ZIP)".
+3. On the businesses they can "Send the latest state to the business" and "Retry what the business still owes" and, a superuser only, "Let its owner buy the internal plans" and "Stop selling it the internal plans": with the mark, the owner of that business sees "Payment Test (internal)" (1 € + VAT) in the Store and buys it like any plan, in production too, to make a real purchase and see its invoice with the QR; the list's "internal plans" column says which businesses have it. On the invoices, with their lines, "Send again to the platform business", "Send the invoice email again", "Download the PDF" of any invoice already issued and, choosing several in the list, "Download the PDFs (ZIP)"; from the list, the "Billing report" of a month, a quarter or a year (BILLING-F40).
 4. They keep the promo codes, the VAT table, the tax policy and ERPlora's details (born with those of the Modelo 036, and the ones VIES sees of who asks); refunds and immediate cancellations are made in Stripe's dashboard.
 5. A paid app some business has is not deleted from the catalog: the admin says which business has it and to take it off sale.
 In: the staff account with its role.
@@ -724,4 +725,20 @@ Steps:
 In: the notice destinations of the Stripe account.
 Out: nothing that changes: what was seen and, if something does not match, the warning to the team.
 If it fails: no enabled destination to the address, one that points at a route erplora.com does not serve or at another environment, more than one to the address, or one that sends every notice (`*`) or misses or adds any, ends with an error and names it. If Stripe does not answer, too. Without a Stripe key (in development) there is nothing to check: it says so and ends well.
+Involved: none
+
+### BILLING-F40 Get the billing report of a period for the accountant
+<!-- origen: gh:saas#443 -->
+Status: done
+Actor: ERPlora staff
+Screen: Admin › Invoices › Billing report
+Steps:
+1. In the admin, on the **Invoices** list, press "Billing report".
+2. It opens on the current quarter; choose the year and the period (the whole year, a quarter or a month) and press "Show".
+3. Read the period's totals: tax base, VAT and total of the invoices (ERP series), of the credit notes (ERPR series, negative) and the net of both.
+4. Below, the breakdown by tax treatment, customer's country and VAT rate, taken from the lines as they reached VeriFactu (domestic goes to form 303, reverse charge to form 349 and the One-Stop Shop, OSS, to form 369), and the breakdown by kind of customer: company (a Spanish tax ID of a company or a tax ID from outside Spain), self-employed or individual with a Spanish tax ID, and individual without a tax ID.
+5. Press "Download Excel": one row per invoice of the period with its number, date, business, payer, tax ID, country, tax treatment, VAT %, base, VAT, total, currency, payment and status, in the format of the panel's Excel (BILLING-F22).
+In: the year and the period.
+Out: the totals on screen and the spreadsheet for the accountant; nothing changes.
+If it fails: only invoices collected and already issued by the platform business count, by their issue date; those collected in the period that are still being issued or that the platform business rejected do not add up, and a notice names them ("Collected in this period but not issued yet, so not counted: …"). A period that does not exist shows the error next to the field, and its Excel goes back to the report. Without invoices in the period, the totals are zero and the breakdown says "Nothing was invoiced in this period". Whoever cannot see the invoices in the admin does not open it.
 Involved: none

@@ -1,4 +1,4 @@
-"""The billing report of the admin: what ERPlora invoiced in a month, a quarter or a year.
+"""The billing report of the admin (BILLING-F40): what ERPlora invoiced in a month, a quarter or a year.
 
 The team picks a period and reads what the accountant asks for: base, VAT and total per series (``ERP``
 invoices, ``ERPR`` credit notes, which are negative) and the net of both; the VAT broken down by tax
