@@ -1481,7 +1481,7 @@ def test_the_ex_vat_note_is_translated(client, net_plan):
     html = html_of(client, language="es")
 
     assert "Todos los precios sin IVA" in html
-    assert "a partir de tu dirección de facturación" in html
+    assert "El IVA que te corresponde se calcula en el pago a partir de tu dirección de facturación" in html
 
 
 # --- The shared UI patterns of the pricing page -----------------------------------------------
