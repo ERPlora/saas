@@ -105,6 +105,14 @@ describe('BillingProfileModal', () => {
   });
 
   it.each([
+    [{ name: 'ACME GMBH' }, 'Checked in VIES: ACME GMBH. Billed in Spain, the invoice carries VAT.'],
+    [{}, 'Checked in VIES. Billed in Spain, the invoice carries VAT.'],
+  ])('a number VIES knows that does not take the VAT off (%o) says the invoice carries VAT', async (extra, sentence) => {
+    const s = await setup(() => verdict('verified', { ...extra, reverse_charge: false }));
+    expect(s.q('vies-status')?.textContent?.trim()).toBe(sentence);
+  });
+
+  it.each([
     ['invalid', 'VIES does not know this number: the invoice will carry VAT.'],
     ['unavailable', 'VIES does not answer right now: we check it again when invoicing.'],
     ['outside_vies', 'A UK number: it is not checked in VIES.'],

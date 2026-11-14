@@ -416,6 +416,8 @@
         "checking": "Checking in VIES…",
         "verified": "Checked in VIES: {name}. The invoice goes without VAT (reverse charge).",
         "verifiedNoName": "Checked in VIES. The invoice goes without VAT (reverse charge).",
+        "verifiedTaxed": "Checked in VIES: {name}. Billed in Spain, the invoice carries VAT.",
+        "verifiedTaxedNoName": "Checked in VIES. Billed in Spain, the invoice carries VAT.",
         "national": "Valid tax ID.",
         "invalid": "VIES does not know this number: the invoice will carry VAT.",
         "unavailable": "VIES does not answer right now: we check it again when invoicing.",

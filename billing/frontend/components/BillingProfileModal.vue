@@ -103,7 +103,10 @@ const viesText = computed(() => {
   const now = vies.value;
   if (!now) return '';
   if (now.state === 'checking') return t('billing.payment.vies.checking');
-  const { status, name } = now.verdict;
+  const { status, name, reverse_charge: reverseCharge } = now.verdict;
+  if (status === 'verified' && !reverseCharge) {
+    return name ? t('billing.payment.vies.verifiedTaxed', { name }) : t('billing.payment.vies.verifiedTaxedNoName');
+  }
   if (status === 'verified') return name ? t('billing.payment.vies.verified', { name }) : t('billing.payment.vies.verifiedNoName');
   return t(`billing.payment.vies.${status}`);
 });

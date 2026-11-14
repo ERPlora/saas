@@ -70,6 +70,16 @@ async function invoiceIds(page: Page): Promise<Record<string, string>> {
 /** What waits for a payment for business `name`: its line of the grouped notice (two or more unpaid). */
 const banner = (page: Page, name: string) => page.getByTestId('unpaid-group-item').filter({ hasText: name });
 
+/** The dialog on screen, as painted, at the desktop, tablet and low-phone sizes, each in its own `<name>-<W>x<H>.png`. */
+async function shootAtFleetSizes(page: Page, name: string): Promise<void> {
+  for (const [width, height] of [[1440, 900], [820, 1180], [375, 667]] as const) {
+    await page.setViewportSize({ width, height });
+    await settled(page);
+    const png = await page.screenshot({ path: shot(`${name}-${width}x${height}`) });
+    expect(await repeatedTop(page, png), `${name}-${width}x${height}.png repeats the top of the page at its bottom`).toBe(0);
+  }
+}
+
 /** Picks `option` in the `ion-select` hooked as `testid` (an Ionic popover). */
 async function pick(page: Page, testid: string, option: string): Promise<void> {
   await page.getByTestId(testid).click();
@@ -376,6 +386,30 @@ test.describe('billing', () => {
     await page.screenshot({ path: shot('refused-postal-code-en') });
     await page.getByTestId('details-postal-code').locator('input').fill('35001');
     await expect(page.getByTestId('billing-profile-error')).toBeHidden();
+  });
+
+  test('BILLING-F01: only a payer in Spain is invoiced: «Country» offers Spain alone and a business outside Spain is not copied into the payer', async ({ page }) => {
+    const errors = watchPageErrors(page);
+    await page.goto('/dashboard/billing/payment');
+    await page.getByTestId('profile-edit').click();
+    await expect(page.getByTestId('details-country')).toContainText('For now ERPlora only invoices payers in Spain.');
+    await expect(page.getByTestId('details-tax-id')).toContainText('Required in the Canary Islands, Ceuta and Melilla, where we only sell to businesses and professionals.');
+    await shootAtFleetSizes(page, 'payer-country-spain-only');
+    await page.getByTestId('details-country').click();
+    await expect(page.locator('ion-popover ion-radio')).toHaveText(['Spain']);
+    await page.locator('ion-popover ion-radio').filter({ hasText: 'Spain' }).click();
+    const moveTo = (country: string) =>
+      djangoPrintWarm(['from hubs.models import Hub', `Hub.objects.filter(slug__startswith="e2e-billing-").update(country="${country}")`].join('\n'));
+    await moveTo('PT');
+    try {
+      await page.getByTestId('details-same').click();
+      await page.getByTestId('billing-profile-submit').click();
+      await expect(page.getByTestId('billing-profile-error')).toHaveText('For now ERPlora only invoices payers in Spain.');
+      await shootAtFleetSizes(page, 'payer-business-outside-spain');
+    } finally {
+      await moveTo('ES');
+    }
+    expect(errors).toEqual([]);
   });
 
   test('Payment details: the card (Stripe away says so) and the billing details, edited with their VIES check', async ({ page }) => {

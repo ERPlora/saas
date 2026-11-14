@@ -416,6 +416,8 @@
         "checking": "Comprobando en VIES…",
         "verified": "Comprobado en VIES: {name}. La factura va sin IVA (inversión del sujeto pasivo).",
         "verifiedNoName": "Comprobado en VIES. La factura va sin IVA (inversión del sujeto pasivo).",
+        "verifiedTaxed": "Comprobado en VIES: {name}. Se factura en España, así que la factura lleva IVA.",
+        "verifiedTaxedNoName": "Comprobado en VIES. Se factura en España, así que la factura lleva IVA.",
         "national": "NIF válido.",
         "invalid": "VIES no reconoce este número: la factura llevará IVA.",
         "unavailable": "VIES no responde ahora: lo volvemos a comprobar al facturar.",

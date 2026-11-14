@@ -1,11 +1,12 @@
-<!-- generated from WORKBOOK.md sha256:457f0709e1ff34d96587a25641f2bc4b9f7a136b1fbbc24c1735a5ebac0d298c -->
+<!-- generated from WORKBOOK.md sha256:ac87b0f6bde8f252d5eb5801faefccb187bcab160d9d07813b9cfb2d1bf6d8fb -->
 
 ## What it is for and who it is for
 
 Billing is what an account pays ERPlora for its businesses. Every business starts on **Free** and, when it
 needs to, its owner moves it to a paid plan from the **Store**. ERPlora charges the card through Stripe, adds
 the VAT that applies to where the payer is, and issues its own legal invoice for every charge, which is seen
-and downloaded in **Billing**.
+and downloaded in **Billing**. For now it only sells to payers with a billing address in Spain; in the Canary
+Islands, Ceuta and Melilla, only to businesses and professionals.
 
 - One subscription per business: the plan and the modules bought go together and are charged on a single
   invoice a month (or a year).
@@ -163,14 +164,14 @@ Status: done
 Actor: owner, paying account
 Screen: Secure payment, Billing › Payment details
 Steps:
-1. The first time a plan or a module is paid, the payment dialog asks "Who do we invoice?": "Company name", "Tax ID (optional)", "Address", "City", "Postal code", "Country" and "Email for invoices (optional)", or "Use the business's name and country".
+1. The first time a plan or a module is paid, the payment dialog asks "Who do we invoice?": "Company name", "Tax ID (optional)", "Address", "City", "Postal code", "Country" and "Email for invoices (optional)", or "Use the business's name and country". "Country" only offers Spain and says under it "For now ERPlora only invoices payers in Spain."; the tax ID says "Required in the Canary Islands, Ceuta and Melilla, where we only sell to businesses and professionals.".
 2. Tap "Continue to payment": the details are saved and the payment goes on. The following times the dialog only says "Invoiced to …" with "Change".
 3. At any time, in **Billing › Payment details**, the "Billing details" card shows company name, tax ID, address, email and which businesses it pays, with "Edit details".
-4. When an EU VAT number of another country is typed, the window checks it in VIES and says "Checked in VIES: … The invoice goes without VAT", "VIES does not recognise this number: the invoice will carry VAT" or "VIES is not answering now: we check it again when invoicing".
+4. When the tax ID is typed, the window says "Valid tax ID.". An EU VAT number of another country is checked in VIES and the window says "Checked in VIES: …. Billed in Spain, the invoice carries VAT.", "VIES does not recognise this number: the invoice will carry VAT" or "VIES is not answering now: we check it again when invoicing". "Checked in VIES: … The invoice goes without VAT" only shows when the sale is reverse charged, which does not happen today: only Spain is invoiced.
 5. Tap "Save details": "Billing details saved". They apply to the next invoices and to what Stripe sends (the page to confirm a charge the bank wants authenticated, its receipts and its payment portal); the invoices already issued do not change.
 In: what the person types; the business's country and name if they choose to use them.
 Out: the business's billing details (shared by the businesses the same account pays), the VIES check recorded and, if the payer has ever paid, its customer record in Stripe up to date; the change is announced (`hubs.billing_profile.updated`).
-If it fails: a Spanish postal code without five digits, a missing country or a tax ID that is not valid for its country are shown under their field, with "Check the highlighted details." on top until something is corrected, and nothing is saved. After a transfer, if another account paid the business, the dialog says "Until now another account paid this business: say who pays from now on". If Stripe does not answer, the details are saved anyway and Stripe gets them with the next payment from the panel.
+If it fails: a Spanish postal code without five digits, a missing country or a tax ID that is not valid for its country are shown under their field, with "Check the highlighted details." on top until something is corrected, and nothing is saved. A country other than Spain is shown under "Country" and on top with "For now ERPlora only invoices payers in Spain.", also when "Use the business's name and country" is ticked for a business outside Spain (which can exist: a business is created in any EU country), and nothing is saved. After a transfer, if another account paid the business, the dialog says "Until now another account paid this business: say who pays from now on". If Stripe does not answer, the details are saved anyway and Stripe gets them with the next payment from the panel.
 Involved: hubs (the business's and the payer's details)
 
 ### BILLING-F02 Work out the tax of a sale from where the payer is
@@ -179,14 +180,14 @@ Status: done
 Actor: system
 Screen: none
 Steps:
-1. Before opening any payment (a plan, a plan change or a module), erplora.com reads the payer's country and postal code. Without both, the payment does not start and the billing details are asked for.
-2. It qualifies the sale with the same rule the invoice uses afterwards: mainland Spain and the Balearic Islands, Spanish VAT; Canary Islands, Ceuta and Melilla, no VAT (the price is charged with nothing on top); another EU country with an EU VAT number checked in VIES, reverse charge, no VAT; a consumer in another EU country, Spanish VAT until the distance-selling threshold is passed and then their country's; United Kingdom, businesses only and no VAT.
+1. Before opening any payment (a plan, a plan change, a module, keeping the plan after a transfer or keeping a cancelled module), erplora.com reads the payer's country and postal code. Without both, the payment does not start and the billing details are asked for. For now it only sells to payers in Spain: with another country the payment does not start and the dialog goes back to the details with "For now ERPlora only sells to payers billed in Spain: change the billing details." (`billing.country_not_sold`), also for a business with an EU VAT number checked in VIES.
+2. It qualifies the sale with the same rule the invoice uses afterwards: mainland Spain and the Balearic Islands, Spanish VAT; Canary Islands, Ceuta and Melilla, no VAT (the price is charged with nothing on top) and only to businesses and professionals, who declare the IGIC or the IPSI themselves: without a tax ID the payment does not start and the dialog goes back to the details with "In the Canary Islands, Ceuta and Melilla we only sell to businesses and professionals: add the tax ID of the payer." (`billing.business_required`). The engine keeps the rules for outside Spain (reverse charge with an EU VAT number checked in VIES; a consumer in another EU country, Spanish VAT until the distance-selling threshold is passed and then their country's; United Kingdom, businesses only and no VAT) for what is already charged and for when selling abroad reopens, which is adding the country to the list of those sold to.
 3. If the total with VAT goes over €400 and the payer has no tax ID, the sale is refused and the tax ID is asked for (a simplified invoice cannot go beyond that).
 4. The resulting rate travels to Stripe with each line of the subscription; Stripe only adds what it is given.
-5. When the **billing details** are saved, the subscription already being charged takes the rate of the new place from the next invoice, without touching what is already paid (for example, someone who moves from Madrid to Las Palmas stops paying VAT). With a downgrade already scheduled, the rate of what will be charged at the change changes too, so the first invoice of the new plan already carries today's rate. A daily review repeats the same with every live subscription in case a change did not get through.
+5. When the **billing details** are saved, the subscription already being charged takes the rate of the new place from the next invoice, without touching what is already paid (for example, someone who moves from Madrid to Las Palmas stops paying VAT). What is already charged is never refused for the country nor for being a consumer in the Canary Islands, Ceuta or Melilla: whoever already paid from another country keeps renewing with the engine and only cannot buy anything new; cancelling is always possible. With a downgrade already scheduled, the rate of what will be charged at the change changes too, so the first invoice of the new plan already carries today's rate. A daily review repeats the same with every live subscription in case a change did not get through.
 In: the payer's country, postal code and tax ID, the latest VIES check, the price without VAT and what is sold (plan or module).
 Out: the rate of each line in Stripe, or the refusal with its reason.
-If it fails: "Billing details are missing" leads to the form; a territory without a rule in the table is not sold to; a UK consumer does not buy; over €400 without a tax ID asks for it. A €0 price is never refused. If Stripe does not answer when the details are saved, the details are saved anyway and the daily review applies the rate; if the new place is not sold to, the subscription keeps its rate and the daily review goes red for the team.
+If it fails: "Billing details are missing" leads to the form; a payer outside Spain or a consumer in the Canary Islands, Ceuta or Melilla goes back to the form with the reason; a territory without a rule in the table is not sold to; a UK consumer does not buy; over €400 without a tax ID asks for it. A €0 price is never refused. If Stripe does not answer when the details are saved, the details are saved anyway and the daily review applies the rate; if the new place is not sold to, the subscription keeps its rate and the daily review goes red for the team.
 Involved: hubs (the payer's details)
 
 ### BILLING-F03 Decide the VAT of each charge
@@ -195,7 +196,7 @@ Status: done
 Actor: system
 Screen: none
 Steps:
-1. When pricing (before charging) and when invoicing (afterwards), the same engine qualifies the sale: domestic, not subject (Canary Islands, Ceuta, Melilla, United Kingdom), reverse charge or the VAT of the customer's country (distance sales above the threshold).
+1. When pricing (before charging) and when invoicing (afterwards), the same engine qualifies the sale: domestic, not subject (Canary Islands, Ceuta, Melilla, United Kingdom), reverse charge or the VAT of the customer's country (distance sales above the threshold). Since today only Spain is sold to (BILLING-F02), the last two only show in what was already charged to a payer from another country.
 2. When invoicing, it splits what Stripe charged into base and tax and stamps on the invoice the table's nominal rate (21 %, never a 21.01 % that comes from dividing cents).
 3. If Stripe charged no tax on a sale subject to VAT, the invoice takes the VAT out of what was charged and leaves an alarm for the team: VAT is never left undeclared.
 In: the payer's country, postal code and tax ID, their VIES check at the date of the charge, the tax policy and the rate table.
@@ -224,7 +225,7 @@ Status: done
 Actor: system, ERPlora staff
 Screen: Billing › Payment details, Admin › VAT checks
 Steps:
-1. When an EU VAT number of another country is typed in the billing details, and when charging, erplora.com asks VIES identifying itself with ERPlora's VAT number, so VIES returns the consultation number, which is the proof. A Spanish tax ID is not asked about; a British one is not in VIES.
+1. When an EU VAT number of another country is typed in the billing details, and when charging, erplora.com asks VIES identifying itself with ERPlora's VAT number, so VIES returns the consultation number, which is the proof. A Spanish tax ID is not asked about; a British one is not in VIES. Since today only Spain is invoiced, the proof only takes the VAT off what was already charged to a business in another EU country.
 2. Each answer is a new row that is never rewritten (checked, not valid, not available). Only a "checked" in force with its consultation number (or the manual override) allows invoicing without VAT.
 3. Staff can ask again with the "Check now in VIES" action of **VAT checks**, or leave a manual "checked" with its reason, which records who and when.
 4. Each person has 20 checks a minute and there is a global cap; only one check at a time per person.
@@ -239,7 +240,7 @@ Status: done
 Actor: system, ERPlora staff
 Screen: Admin › Tax policy, Admin › OSS notices
 Steps:
-1. Each invoice to a consumer in another EU country adds its base to the year's total (credit notes subtract); the total sold by the previous SaaS is loaded once by hand in **Tax policy**.
+1. Each invoice to a consumer in another EU country adds its base to the year's total (credit notes subtract); the total sold by the previous SaaS is loaded once by hand in **Tax policy**. Since today only Spain is sold to (BILLING-F02), the total only grows with what was already charged to consumers in another country.
 2. **Tax policy** shows the year's total against the threshold (€10,000 by default) and the switches of the OSS and ROI registrations.
 3. Above the threshold (or with the voluntary OSS registration, or if the previous year closed above it) new sales to EU consumers carry the VAT of the customer's country.
 4. The charged sale that takes the year's total past 80 % of the threshold sends a notice to the team's mailbox to start the OSS registration now, which takes days; the one that crosses it (or the first one of the year if the previous one closed above) sends another: from it those sales carry the VAT of the customer's country. Each notice goes out only once a year and stays in **Admin › OSS notices**, read-only.

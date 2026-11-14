@@ -15,7 +15,8 @@ Estado de la app: completa (2026-11-03)
 Facturación es lo que una cuenta paga a ERPlora por sus negocios. Cada negocio empieza en **Gratis** y,
 cuando lo necesita, su propietario lo pasa a un plan de pago desde la **Tienda**. ERPlora cobra con
 tarjeta a través de Stripe, pone el IVA que toca según dónde está quien paga y emite su propia factura
-legal por cada cobro, que se ve y se descarga en **Facturación**.
+legal por cada cobro, que se ve y se descarga en **Facturación**. Por ahora solo vende a quien paga con dirección
+de facturación en España; en Canarias, Ceuta y Melilla, solo a empresas y profesionales.
 
 - Una sola suscripción por negocio: el plan y los módulos que se compren van juntos y se cobran en una
   sola factura al mes (o al año).
@@ -177,14 +178,14 @@ Estado: hecho
 Actor: propietario, cuenta que paga
 Pantalla: Pago seguro, Facturación › Datos de pago
 Pasos:
-1. La primera vez que se paga un plan o un módulo, el diálogo de pago pregunta «¿A nombre de quién facturamos?»: «Razón social», «NIF (opcional)», «Dirección», «Ciudad», «Código postal», «País» y «Correo para las facturas (opcional)», o «Usar el nombre y el país del negocio».
+1. La primera vez que se paga un plan o un módulo, el diálogo de pago pregunta «¿A nombre de quién facturamos?»: «Razón social», «NIF (opcional)», «Dirección», «Ciudad», «Código postal», «País» y «Correo para las facturas (opcional)», o «Usar el nombre y el país del negocio». «País» solo ofrece España y dice debajo «Por ahora ERPlora solo factura a pagadores en España.»; el NIF dice «Obligatorio en Canarias, Ceuta y Melilla, donde solo vendemos a empresas y profesionales.».
 2. Pulsa «Continuar al pago»: los datos se guardan y sigue el pago. Las veces siguientes el diálogo solo dice «Factura a nombre de …» con «Cambiar».
 3. En cualquier momento, en **Facturación › Datos de pago**, la tarjeta «Datos de facturación» enseña razón social, NIF, dirección, correo y qué negocios paga, con «Editar datos».
-4. Al escribir un NIF-IVA de otro país de la UE, la ventana lo comprueba en VIES y dice «Comprobado en VIES: … La factura va sin IVA», «VIES no reconoce este número: la factura llevará IVA» o «VIES no responde ahora: lo volvemos a comprobar al facturar».
+4. Al escribir el NIF, la ventana dice «NIF válido.». Un NIF-IVA de otro país de la UE se comprueba en VIES y dice «Comprobado en VIES: …. Se factura en España, así que la factura lleva IVA.», «VIES no reconoce este número: la factura llevará IVA» o «VIES no responde ahora: lo volvemos a comprobar al facturar». «Comprobado en VIES: … La factura va sin IVA» solo sale cuando la venta va con inversión del sujeto pasivo, que hoy no ocurre: solo se factura en España.
 5. Pulsa «Guardar datos»: «Datos de facturación guardados». Valen para las próximas facturas y para lo que manda Stripe (la página para confirmar un cobro que el banco quiere autenticar, sus recibos y su portal de pagos); las facturas ya emitidas no cambian.
 Entra: lo que escribe la persona; el país y el nombre del negocio si elige usarlos.
 Sale: los datos de facturación del negocio (los comparten los negocios que paga la misma cuenta), la comprobación de VIES anotada y, si quien paga ya pagó alguna vez, su ficha de cliente en Stripe al día; se avisa del cambio (`hubs.billing_profile.updated`).
-Si falla: un código postal español que no tiene cinco dígitos, un país que falta o un NIF que no vale para su país salen debajo de su campo, con «Revisa los datos marcados.» arriba hasta que corriges algo, y no se guarda nada. Tras un traspaso, si el negocio lo pagaba otra cuenta, el diálogo dice «Hasta ahora pagaba este negocio otra cuenta: di quién paga a partir de ahora». Si Stripe no contesta, los datos se guardan igual y Stripe los recibe en el siguiente pago desde el panel.
+Si falla: un código postal español que no tiene cinco dígitos, un país que falta o un NIF que no vale para su país salen debajo de su campo, con «Revisa los datos marcados.» arriba hasta que corriges algo, y no se guarda nada. Un país que no sea España sale debajo de «País» y arriba con «Por ahora ERPlora solo factura a pagadores en España.», también al «Usar el nombre y el país del negocio» de un negocio de fuera de España (que puede existir: el negocio se crea en cualquier país de la UE), y no se guarda nada. Tras un traspaso, si el negocio lo pagaba otra cuenta, el diálogo dice «Hasta ahora pagaba este negocio otra cuenta: di quién paga a partir de ahora». Si Stripe no contesta, los datos se guardan igual y Stripe los recibe en el siguiente pago desde el panel.
 Implicados: hubs (los datos del negocio y de quien paga)
 
 ### BILLING-F02 Calcular el impuesto de una venta según dónde está el pagador
@@ -193,14 +194,14 @@ Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
-1. Antes de abrir cualquier pago (un plan, un cambio de plan o un módulo), erplora.com lee el país y el código postal de quien paga. Sin los dos, el pago no empieza y se piden los datos de facturación.
-2. Califica la venta con la misma regla que luego usa la factura: península y Baleares, IVA español; Canarias, Ceuta y Melilla, sin IVA (se cobra el precio sin nada encima); otro país de la UE con NIF-IVA comprobado en VIES, inversión del sujeto pasivo, sin IVA; un particular de otro país de la UE, IVA español hasta superar el umbral de ventas a distancia y después el de su país; Reino Unido, solo a empresas y sin IVA.
+1. Antes de abrir cualquier pago (un plan, un cambio de plan, un módulo, mantener el plan tras un traspaso o recuperar un módulo cancelado), erplora.com lee el país y el código postal de quien paga. Sin los dos, el pago no empieza y se piden los datos de facturación. Por ahora solo se vende a quien paga en España: con otro país, el pago no empieza y el diálogo vuelve a los datos con «Por ahora ERPlora solo vende a pagadores con dirección de facturación en España: cambia los datos de facturación.» (`billing.country_not_sold`), también a una empresa con NIF-IVA comprobado en VIES.
+2. Califica la venta con la misma regla que luego usa la factura: península y Baleares, IVA español; Canarias, Ceuta y Melilla, sin IVA (se cobra el precio sin nada encima) y solo a empresas y profesionales, que declaran ellas el IGIC o el IPSI: sin NIF, el pago no empieza y el diálogo vuelve a los datos con «En Canarias, Ceuta y Melilla solo vendemos a empresas y profesionales: añade el NIF de quien paga.» (`billing.business_required`). El motor conserva las reglas de fuera de España (inversión del sujeto pasivo con NIF-IVA comprobado en VIES; un particular de otro país de la UE, IVA español hasta superar el umbral de ventas a distancia y después el de su país; Reino Unido, solo a empresas y sin IVA) para lo que ya se cobra y para cuando se vuelva a vender fuera, que es añadir el país a la lista de los que se venden.
 3. Si el total con IVA pasa de 400 € y quien paga no tiene NIF, la venta se niega y se pide (una factura simplificada no puede pasar de ahí).
 4. El tipo resultante viaja a Stripe con cada línea de la suscripción; Stripe solo suma lo que se le da.
-5. Al guardar los **datos de facturación**, la suscripción que ya se cobra toma el tipo del lugar nuevo desde la siguiente factura, sin tocar lo ya pagado (por ejemplo, quien se muda de Madrid a Las Palmas deja de pagar IVA). Con un cambio a un plan menor ya programado, también cambia el tipo de lo que se cobrará al cambiar, así la primera factura del plan nuevo ya lleva el tipo de hoy. Una revisión diaria repite lo mismo con todas las suscripciones vivas por si un cambio no llegó.
+5. Al guardar los **datos de facturación**, la suscripción que ya se cobra toma el tipo del lugar nuevo desde la siguiente factura, sin tocar lo ya pagado (por ejemplo, quien se muda de Madrid a Las Palmas deja de pagar IVA). Lo que ya se cobra no se niega por el país ni por ser un consumidor de Canarias, Ceuta o Melilla: quien ya pagaba desde otro país sigue renovándose con el motor y solo deja de poder comprar nada nuevo; cancelar siempre se puede. Con un cambio a un plan menor ya programado, también cambia el tipo de lo que se cobrará al cambiar, así la primera factura del plan nuevo ya lleva el tipo de hoy. Una revisión diaria repite lo mismo con todas las suscripciones vivas por si un cambio no llegó.
 Entra: país, código postal y NIF de quien paga, la última comprobación de VIES, el precio sin IVA y qué se vende (plan o módulo).
 Sale: el tipo de cada línea en Stripe, o la negativa con su motivo.
-Si falla: «Faltan los datos de facturación» lleva al formulario; un territorio sin regla en la tabla no se vende; un consumidor del Reino Unido no compra; más de 400 € sin NIF pide el NIF. Un precio de 0 € nunca se niega. Si al guardar los datos Stripe no contesta, los datos se guardan igual y la revisión diaria aplica el tipo; si el lugar nuevo no se vende, la suscripción sigue con su tipo y la revisión diaria se pone en rojo para el equipo.
+Si falla: «Faltan los datos de facturación» lleva al formulario; quien paga fuera de España o un consumidor de Canarias, Ceuta o Melilla vuelve al formulario con su motivo; un territorio sin regla en la tabla no se vende; un consumidor del Reino Unido no compra; más de 400 € sin NIF pide el NIF. Un precio de 0 € nunca se niega. Si al guardar los datos Stripe no contesta, los datos se guardan igual y la revisión diaria aplica el tipo; si el lugar nuevo no se vende, la suscripción sigue con su tipo y la revisión diaria se pone en rojo para el equipo.
 Implicados: hubs (los datos de quien paga)
 
 ### BILLING-F03 Decidir el IVA de cada cobro
@@ -209,7 +210,7 @@ Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
-1. Al poner precio (antes de cobrar) y al facturar (después), el mismo motor califica la venta: nacional, no sujeta (Canarias, Ceuta, Melilla, Reino Unido), inversión del sujeto pasivo o IVA del país del cliente (ventas a distancia por encima del umbral).
+1. Al poner precio (antes de cobrar) y al facturar (después), el mismo motor califica la venta: nacional, no sujeta (Canarias, Ceuta, Melilla, Reino Unido), inversión del sujeto pasivo o IVA del país del cliente (ventas a distancia por encima del umbral). Como hoy solo se vende en España (BILLING-F02), las dos últimas solo salen en lo que ya se cobraba a quien paga desde otro país.
 2. Al facturar, reparte lo que Stripe cobró en base y cuota y sella en la factura el tipo nominal de la tabla (21 %, nunca un 21,01 % que salga de dividir céntimos).
 3. Si Stripe no cobró impuesto en una venta sujeta, la factura saca el IVA de lo cobrado y deja una alarma para el equipo: el IVA nunca se deja de declarar.
 Entra: país, código postal y NIF de quien paga, su comprobación de VIES a la fecha del cobro, la política fiscal y la tabla de tipos.
@@ -238,7 +239,7 @@ Estado: hecho
 Actor: sistema, personal de ERPlora
 Pantalla: Facturación › Datos de pago, Admin › Comprobaciones de IVA
 Pasos:
-1. Al escribir un NIF-IVA de otro país de la UE en los datos de facturación, y al cobrar, erplora.com pregunta a VIES identificándose con el NIF de ERPlora, así VIES devuelve el número de consulta, que es la prueba. Un NIF español no se consulta; uno británico no es de VIES.
+1. Al escribir un NIF-IVA de otro país de la UE en los datos de facturación, y al cobrar, erplora.com pregunta a VIES identificándose con el NIF de ERPlora, así VIES devuelve el número de consulta, que es la prueba. Un NIF español no se consulta; uno británico no es de VIES. Como hoy solo se factura en España, la prueba solo quita el IVA en lo que ya se cobraba a una empresa de otro país de la UE.
 2. Cada respuesta es una fila nueva que nunca se reescribe (comprobado, no válido, no disponible). Solo un «comprobado» vigente con número de consulta (o el forzado manual) permite facturar sin IVA.
 3. El personal puede volver a preguntar con la acción «Comprobar ahora en VIES» de **Comprobaciones de IVA**, o dejar a mano un «comprobado» con su motivo, que guarda quién y cuándo.
 4. Cada persona tiene 20 consultas por minuto y hay un tope global; una sola consulta a la vez por persona.
@@ -253,7 +254,7 @@ Estado: hecho
 Actor: sistema, personal de ERPlora
 Pantalla: Admin › Política fiscal, Admin › Avisos de la OSS
 Pasos:
-1. Cada factura a un particular de otro país de la UE suma su base al total del año (las rectificativas restan); el total de lo vendido por el SaaS anterior se carga una vez a mano en **Política fiscal**.
+1. Cada factura a un particular de otro país de la UE suma su base al total del año (las rectificativas restan); el total de lo vendido por el SaaS anterior se carga una vez a mano en **Política fiscal**. Como hoy solo se vende en España (BILLING-F02), el total solo crece con lo que ya se cobraba a particulares de otro país.
 2. **Política fiscal** enseña el total del año contra el umbral (10.000 € por defecto) y los interruptores del alta en OSS y en el ROI.
 3. Por encima del umbral (o con el alta voluntaria en OSS, o si el año anterior cerró por encima) las ventas nuevas a particulares de la UE llevan el IVA del país del cliente.
 4. La venta cobrada que lleva el total del año por encima del 80 % del umbral manda un aviso al buzón del equipo para empezar ya el alta en la OSS, que tarda días; la que lo cruza (o la primera del año si el anterior cerró por encima) manda otro: desde ella esas ventas llevan el IVA del país del cliente. Cada aviso sale una sola vez al año y queda en **Admin › Avisos de la OSS**, de solo lectura.
