@@ -38,13 +38,18 @@ BLOCK_A = [
     ("¿Cuántas ventas hice ayer en mi negocio?", {"hubs.business.list", DOCS}),
 ]
 #: What the panel's words name (``base.assistant.SYNONYMS``), right after what is always offered: a «tienda» that is
-#: the person's, another, new or old is one of their businesses; «la tienda» alone is the panel's Store.
+#: the person's, another, new or old is one of their businesses; «la tienda» alone is the panel's Store. Rejecting a
+#: business or an invitation offered to the person is declining it.
 PANEL_WORDS = [
-    ("borra mi tienda de pruebas", "hubs.business.delete"),
-    ("quiero abrir otra tienda", "hubs.business.create"),
-    ("cambia el nombre de mi tienda", "hubs.business.update"),
-    ("¿qué vende la tienda?", "billing.store.catalog"),
-    ("¿qué módulos hay en la tienda?", "apps.app.list"),
+    ("es", "borra mi tienda de pruebas", "hubs.business.delete"),
+    ("es", "quiero abrir otra tienda", "hubs.business.create"),
+    ("es", "cambia el nombre de mi tienda", "hubs.business.update"),
+    ("es", "¿qué vende la tienda?", "billing.store.catalog"),
+    ("es", "¿qué módulos hay en la tienda?", "apps.app.list"),
+    ("en", "reject the ownership offer from Luis", "hubs.ownership.decline"),
+    ("en", "reject Luis's invitation", "hubs.invitation.decline"),
+    ("es", "rechaza el traspaso de Marta", "hubs.ownership.decline"),
+    ("es", "rechaza la invitación de Luis", "hubs.invitation.decline"),
 ]
 #: How-to questions that name what other tools do (the team, the language, the plan): they reach the documentation
 #: search as how-to questions (``base.assistant.HOWTO``), not only because it is always offered.
@@ -80,9 +85,9 @@ def test_no_tool_hands_an_api_key_out(account):
     assert "accounts.apikey.create" not in assistant.catalog(ctx_for(account, "es"))
 
 
-@pytest.mark.parametrize(("asked", "expected"), PANEL_WORDS)
-def test_the_panels_words_name_what_they_mean_there(account, asked, expected):
-    assert offered(ctx_for(account, "es"), asked)[len(assistant.ALWAYS)] == expected
+@pytest.mark.parametrize(("language", "asked", "expected"), PANEL_WORDS)
+def test_the_panels_words_name_what_they_mean_there(account, language, asked, expected):
+    assert offered(ctx_for(account, language), asked)[len(assistant.ALWAYS)] == expected
 
 
 @pytest.mark.parametrize(("language", "asked"), HOW_TO)

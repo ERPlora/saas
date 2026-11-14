@@ -59,10 +59,12 @@ ALWAYS = ("hubs.business.list", "assistant.docs.search")
 #: What a word names in the panel and nowhere else (``live.assistant.relevant``'s ``synonyms``), for a turn and the
 #: assistant's QA. A person's own, other, new or old «tienda» is one of their businesses, as a «shop» is: the panel's
 #: Store is one and is «la tienda» alone (its screen's name, ``app_words``), and the English panel calls it «Store».
-#: «Cuenta» needs no group here: it is the Account screen's name, so it already names the person's account.
+#: «Cuenta» needs no group here: it is the Account screen's name, so it already names the person's account. Rejecting a
+#: business or an invitation offered to the person is declining it: no tool of the panel has a «reject» action.
 SYNONYMS = (
     ("negocio", "business", "shop", "mi tienda", "mis tiendas", "nuestra tienda", "otra tienda", "nueva tienda",
      "tienda nueva", "tienda vieja"),
+    ("decline", "reject", "rechazar"),
 )
 #: The tool a how-to question («how do I…?», «¿cómo invito…?») is for (``relevant``'s ``howto``): the search in
 #: ERPlora's documentation, which then reaches it on being such a question, not only on being always offered.
