@@ -2091,15 +2091,15 @@ msgstr "Pagador"
 msgid "Tax ID"
 msgstr "NIF"
 
-#: queries.py templates/admin/billing/invoice/report.html
+#: queries.py
 msgid "Country"
 msgstr "País"
 
-#: queries.py templates/admin/billing/invoice/report.html
+#: queries.py
 msgid "Tax treatment"
 msgstr "Tratamiento del IVA"
 
-#: queries.py templates/admin/billing/invoice/report.html
+#: queries.py
 msgid "VAT %"
 msgstr "% IVA"
 
@@ -2114,6 +2114,10 @@ msgstr "Autónomo o particular con NIF español"
 #: queries.py
 msgid "Individual without a tax ID"
 msgstr "Particular sin NIF"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Tax treatment · country · VAT rate"
+msgstr "Tratamiento · país · tipo de IVA"
 
 #: templates/admin/billing/invoice/report.html
 msgid "Show"
@@ -2139,6 +2143,18 @@ msgstr "Serie"
 #: templates/admin/billing/invoice/report.html
 msgid "Invoices"
 msgstr "Facturas"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Tax base (€)"
+msgstr "Base imponible (€)"
+
+#: templates/admin/billing/invoice/report.html
+msgid "VAT (€)"
+msgstr "IVA (€)"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Total (€)"
+msgstr "Total (€)"
 
 #: templates/admin/billing/invoice/report.html
 msgid "Invoices (ERP)"

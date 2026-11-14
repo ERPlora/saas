@@ -406,3 +406,4 @@ class TestTheAdminPage:
         body = staff_client.get(REPORT, Q3, HTTP_ACCEPT_LANGUAGE="es").content.decode()
 
         assert "Informe de facturación" in body and "Rectificativas" in body
+        assert "Tratamiento · país · tipo de IVA" in body and "Facturas cobradas y emitidas del" in body

@@ -26,9 +26,9 @@
 <tr>
 <th scope="col">{% translate "Series" %}</th>
 <th scope="col">{% translate "Invoices" %}</th>
-<th scope="col">{% translate "Tax base" %}</th>
-<th scope="col">{% translate "VAT" %}</th>
-<th scope="col">{% translate "Total" %}</th>
+<th scope="col">{% translate "Tax base (€)" %}</th>
+<th scope="col">{% translate "VAT (€)" %}</th>
+<th scope="col">{% translate "Total (€)" %}</th>
 </tr>
 </thead>
 <tbody>
@@ -43,25 +43,21 @@
 <caption>{% translate "By tax treatment, customer's country and VAT rate" %}</caption>
 <thead>
 <tr>
-<th scope="col">{% translate "Tax treatment" %}</th>
-<th scope="col">{% translate "Country" %}</th>
-<th scope="col">{% translate "VAT %" %}</th>
+<th scope="col">{% translate "Tax treatment · country · VAT rate" %}</th>
 <th scope="col">{% translate "Invoices" %}</th>
-<th scope="col">{% translate "Tax base" %}</th>
-<th scope="col">{% translate "VAT" %}</th>
-<th scope="col">{% translate "Total" %}</th>
+<th scope="col">{% translate "Tax base (€)" %}</th>
+<th scope="col">{% translate "VAT (€)" %}</th>
+<th scope="col">{% translate "Total (€)" %}</th>
 </tr>
 </thead>
 <tbody>
 {% for row in report.by_tax %}
 <tr>
-<th scope="row">{{ row.treatment_label }}</th>
-<td>{{ row.country_name|default:"—" }}</td>
-<td>{{ row.rate|floatformat:2 }} %</td>
+<th scope="row">{{ row.treatment_label }} · {{ row.country_name|default:"—" }} · {{ row.rate|floatformat:2 }}&nbsp;%</th>
 {% include "admin/billing/invoice/_report_amounts.html" with row=row only %}
 </tr>
 {% empty %}
-<tr><td colspan="7">{% translate "Nothing was invoiced in this period." %}</td></tr>
+<tr><td colspan="5">{% translate "Nothing was invoiced in this period." %}</td></tr>
 {% endfor %}
 </tbody>
 </table>
@@ -73,9 +69,9 @@
 <tr>
 <th scope="col">{% translate "Customer" %}</th>
 <th scope="col">{% translate "Invoices" %}</th>
-<th scope="col">{% translate "Tax base" %}</th>
-<th scope="col">{% translate "VAT" %}</th>
-<th scope="col">{% translate "Total" %}</th>
+<th scope="col">{% translate "Tax base (€)" %}</th>
+<th scope="col">{% translate "VAT (€)" %}</th>
+<th scope="col">{% translate "Total (€)" %}</th>
 </tr>
 </thead>
 <tbody>
