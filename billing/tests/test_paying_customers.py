@@ -9,7 +9,7 @@ admin sees it.
 
 import csv
 import io
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
@@ -48,9 +48,10 @@ def customer(plans, business_paid_by):
     return make
 
 
-def invoiced(hub, *, on=date(2026, 8, 10), net=2900, kind="invoice", payment="paid", lines=None) -> Invoice:
+def invoiced(hub, *, on=date(2026, 8, 10), net=2900, kind="invoice", payment="paid", lines=None,
+             period=(None, None)) -> Invoice:
     """An invoice of ``hub`` as the webhook records it. ``lines`` are ``(net, proration)`` pairs; by default one
-    line for the whole period carrying the whole amount."""
+    line for the whole period carrying the whole amount. ``period`` is the ``(from, until)`` its lines bill."""
     paid = payment == "paid"
     series = ("ERPR" if kind == "credit_note" else "ERP") if paid else ""
     sequence = None
@@ -81,6 +82,8 @@ def invoiced(hub, *, on=date(2026, 8, 10), net=2900, kind="invoice", payment="pa
             position=position,
             description="1 × Starter",
             proration=proration,
+            period_start=period[0],
+            period_end=period[1],
             tax_rate=Decimal("21.00"),
             net_cents=line_net,
             tax_cents=0,
@@ -144,6 +147,22 @@ class TestTheMonthlyAmount:
         invoiced(hub, net=29000 - 1500, lines=[(29000, False), (-1500, True)])
 
         assert queries.monthly_cents(listed()[hub.name]) == 2417
+
+    def test_a_year_charged_before_moving_to_monthly_is_still_divided_by_twelve(self, customer):
+        """A business that moved from yearly to monthly and whose first monthly charge failed: its last collected
+        invoice billed a year, whatever the subscription says today."""
+        hub = customer(interval="month", status="past_due")
+        invoiced(hub, on=date(2025, 8, 10), net=29000, period=(datetime(2025, 8, 10, tzinfo=UTC),
+                                                               datetime(2026, 8, 10, tzinfo=UTC)))
+        invoiced(hub, on=date(2026, 8, 10), net=2900, payment="open")
+
+        assert queries.monthly_cents(listed()[hub.name]) == 2417
+
+    def test_a_month_charged_before_moving_to_yearly_is_not_divided(self, customer):
+        hub = customer(interval="year")
+        invoiced(hub, net=2900, period=(datetime(2026, 8, 10, tzinfo=UTC), datetime(2026, 9, 10, tzinfo=UTC)))
+
+        assert queries.monthly_cents(listed()[hub.name]) == 2900
 
     def test_an_invoice_not_collected_or_a_credit_note_is_not_what_it_pays(self, customer):
         hub = customer()
@@ -240,6 +259,15 @@ class TestTheExcel:
         _, row = rows_of(queries.paying_customers_csv(queries.paying_customers(), "en"), ",")
 
         assert row[1] == "'=HYPERLINK(\"http://evil.example\",\"x\")"
+
+    def test_a_business_that_looks_like_a_formula_is_text(self, customer):
+        hub = customer()
+        hub.name = "=1+1"
+        hub.save()
+
+        _, row = rows_of(queries.paying_customers_csv(queries.paying_customers(), "en"), ",")
+
+        assert row[0] == "'=1+1"
 
 
 class TestTheAdminList:
@@ -344,6 +372,7 @@ class TestWhoSeesIt:
 
         assert hub.name in client.get(LIST).content.decode()
         assert client.get(EXCEL).status_code == 200
+        assert LIST in client.get("/admin/").content.decode()
 
     def test_staff_who_may_not_read_subscriptions_does_not(self, client, customer):
         customer()

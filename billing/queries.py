@@ -1373,21 +1373,17 @@ def _collected_invoices(hub):
 def paying_customers():
     """Every business Stripe charges today (``is_paying``), each with ``customer_since`` (the date of its first
     collected invoice) and ``charged_cents`` (the base of the whole-period lines of its last collected invoice that
-    has any: the prorations of a change in the middle of a period are not what it pays). ``None`` before its first
-    collected invoice."""
+    has any: the prorations of a change in the middle of a period are not what it pays), with the period those lines
+    bill (``charged_from``, ``charged_until``). ``None`` before its first collected invoice."""
     last_whole_period = (
         _collected_invoices(OuterRef(OuterRef("hub")))
         .filter(lines__proration=False)
         .order_by("-issued_on", "-sequence")
         .values("pk")[:1]
     )
-    charged = (
-        InvoiceLine.objects.filter(invoice=Subquery(last_whole_period), proration=False)
-        .order_by()
-        .values("invoice")
-        .annotate(cents=Sum("net_cents"))
-        .values("cents")
-    )
+    whole_period_lines = InvoiceLine.objects.filter(invoice=Subquery(last_whole_period), proration=False)
+    charged = whole_period_lines.order_by().values("invoice").annotate(cents=Sum("net_cents")).values("cents")
+    billed = whole_period_lines.order_by("position")
     return (
         PayingCustomer.objects.exclude(stripe_subscription_id="")
         .exclude(status__in=_ENDED_STATUSES)
@@ -1395,16 +1391,31 @@ def paying_customers():
         .annotate(
             customer_since=Subquery(_collected_invoices(OuterRef("hub")).order_by("issued_on").values("issued_on")[:1]),
             charged_cents=Subquery(charged[:1]),
+            charged_from=Subquery(billed.values("period_start")[:1]),
+            charged_until=Subquery(billed.values("period_end")[:1]),
         )
         .order_by("hub__name", "pk")
     )
+
+
+#: A charge that bills more days than this is a year's: a month never reaches it.
+_LONGEST_MONTHLY_PERIOD_DAYS = 62
+
+
+def _charged_a_year(customer) -> bool:
+    """Whether what ``customer`` was charged bills a year: told from the period of the lines charged, because a
+    business that changed how often it pays is still on its last charge until the next one is collected. Lines
+    without a period follow the subscription."""
+    if customer.charged_from and customer.charged_until:
+        return (customer.charged_until - customer.charged_from).days > _LONGEST_MONTHLY_PERIOD_DAYS
+    return customer.billing_interval == Subscription.Interval.YEAR
 
 
 def monthly_cents(customer) -> int | None:
     """What ``customer`` (a row of ``paying_customers``) pays a month before VAT: a yearly charge divided by 12."""
     if customer.charged_cents is None:
         return None
-    if customer.billing_interval == Subscription.Interval.YEAR:
+    if _charged_a_year(customer):
         return to_cents(from_cents(customer.charged_cents) / 12)
     return customer.charged_cents
 
