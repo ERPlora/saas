@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from decouple import RepositoryEnv
 from django.apps import apps as django_apps
 from django.conf import settings
 from django.http.request import validate_host
@@ -16,7 +17,7 @@ from live.meta import LiveAppConfig
 from live.recaptcha import with_recaptcha
 from psycopg_pool import ConnectionPool
 
-from config.tests.test_production_settings import IGNORE_DOTENV
+from config.tests.test_production_settings import IGNORE_DOTENV, bare_environment
 
 
 def test_the_hub_origin_pattern_is_derived_from_the_callback_template():
@@ -99,7 +100,8 @@ def test_no_page_may_create_the_policy_of_iconify():
 
 # Production settings are read in a fresh interpreter: `config.settings` is evaluated once per
 # process, from the environment and the repo's `.env`. That interpreter ignores that `.env`
-# (IGNORE_DOTENV), so a developer's file never leaks in and these tests always run.
+# (IGNORE_DOTENV) and starts from a bare environment, so a developer's file never leaks in, read or
+# exported to the shell, and these tests always run.
 
 SAAS_NEXT = Path(__file__).resolve().parents[2]
 PRODUCTION_ENV = {
@@ -119,13 +121,6 @@ PRODUCTION_ENV = {
 def _settings_in_a_fresh_process(
     env: dict[str, str], expression: str, preamble: str = IGNORE_DOTENV
 ) -> subprocess.CompletedProcess:
-    # DEBUG and VITE_DEV_PORT too: the test run sets them (config/settings_pytest.py), the fresh process
-    # must not inherit them.
-    base = {
-        key: value
-        for key, value in os.environ.items()
-        if key not in ("DEBUG", "VITE_DEV_PORT") and not key.startswith(("GOOGLE_", "DJANGO_", "RECAPTCHA_"))
-    }
     return subprocess.run(
         [
             sys.executable,
@@ -133,11 +128,29 @@ def _settings_in_a_fresh_process(
             f"{preamble}\nimport config.settings as s; print({expression})",
         ],
         cwd=SAAS_NEXT,
-        env={**base, **env},
+        env={**bare_environment(), **env},
         capture_output=True,
         text=True,
         check=False,
     )
+
+
+def test_the_production_process_inherits_nothing_the_developers_shell_exports(monkeypatch):
+    """A developer may export their `.env` to the shell (`set -a; . .env`) before running the suite: none of it
+    reaches the fresh process, or a production value turns into the developer's (the staff were sent to
+    `hubs.localhost`). That process starts from what Python needs plus what the test passes."""
+    exported = RepositoryEnv(SAAS_NEXT / ".env.example").data
+    for key, value in exported.items():
+        monkeypatch.setenv(key, value)
+
+    result = _settings_in_a_fresh_process(
+        PRODUCTION_ENV, "(sorted(__import__('os').environ), s.HUB_ADMIN_CALLBACK_URL)"
+    )
+
+    assert result.returncode == 0, result.stderr
+    environment, callback = ast.literal_eval(result.stdout.strip())
+    assert [key for key in environment if key in exported and key not in PRODUCTION_ENV] == []
+    assert callback == "https://hubs.erplora.com/auth/callback"
 
 
 def test_debug_is_off_unless_the_environment_turns_it_on():
