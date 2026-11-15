@@ -1,8 +1,8 @@
-"""An app's ``services``, ``queries`` and ``models`` are each a file or a package one level deep
+"""An app's ``services``, ``queries``, ``models`` and ``admin`` are each a file or a package one level deep
 (``billing/queries/invoices.py``), and a package keeps the shape that makes splitting a file safe.
 
-- Importing a module of the package is what registers its operations or its models, so the package's ``__init__.py``
-  imports every module by name, and nothing uses ``import *``, which hides what each module declares.
+- Importing a module of the package is what registers its operations, its models or its admins, so the package's
+  ``__init__.py`` imports every module by name, and nothing uses ``import *``, which hides what each module declares.
 - One level: no package inside the package.
 - Its modules never import each other around a loop at their top level. An import inside a function waits for a
   call, so it is the way out of a loop, with a comment saying why.
@@ -20,7 +20,7 @@ from django.apps import apps
 from django.conf import settings
 
 REPO = Path(settings.BASE_DIR).resolve()
-PACKAGES = ("services", "queries", "models")
+PACKAGES = ("services", "queries", "models", "admin")
 # Not the SaaS's code: dependencies, the live and ui submodules and git's own files.
 SKIPPED_DIRS = frozenset({".venv", "node_modules", "packages", ".git", "__pycache__"})
 
@@ -241,6 +241,10 @@ def test_the_sweep_reads_the_saas_s_code_and_not_its_dependencies():
 
     assert {Path("billing/apps.py"), Path("tests/test_door_packages.py")} <= set(files)
     assert not [path for path in files if SKIPPED_DIRS.intersection(path.parts)]
+
+
+def test_the_sweep_takes_an_admin_split_into_a_package():
+    assert REPO / "billing" / "admin" in door_packages()
 
 
 def test_every_packaged_door_keeps_its_shape():

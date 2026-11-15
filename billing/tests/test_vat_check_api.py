@@ -579,7 +579,7 @@ class TestTheAdminAction:
         assert any(message.level == constants.ERROR for message in _messages(response))
 
     def test_the_action_is_not_offered_without_the_permission_to_add_checks(self):
-        from billing.admin import VatCheckAdmin
+        from billing.admin.tax import VatCheckAdmin
 
         viewer = get_user_model().objects.create_user(
             email="viewer@erplora.com", password="x", is_staff=True
@@ -592,7 +592,7 @@ class TestTheAdminAction:
         assert ACTION not in VatCheckAdmin(VatCheck, AdminSite()).get_actions(request)
 
     def test_the_action_is_offered_to_whoever_may_add_checks(self, support):
-        from billing.admin import VatCheckAdmin
+        from billing.admin.tax import VatCheckAdmin
 
         request = RequestFactory().get(CHANGELIST)
         request.user = support
@@ -601,7 +601,7 @@ class TestTheAdminAction:
 
     def test_the_log_is_still_read_only(self, support):
         """The action adds rows; it cannot have opened editing or deleting on the way."""
-        from billing.admin import VatCheckAdmin
+        from billing.admin.tax import VatCheckAdmin
 
         request = RequestFactory().get(CHANGELIST)
         request.user = support
