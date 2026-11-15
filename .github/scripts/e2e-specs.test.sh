@@ -88,6 +88,17 @@ expect "a spec outside tests/e2e/ is not listed" 0 "$(specs main | grep -c '^fro
 expect "an unknown base fails instead of running fewer specs" FAILS "$(specs origin/nowhere)"
 expect "no base fails" FAILS "$(specs)"
 
+# --many: more specs than the short timeout of e2e.yml holds, as when a branch changes a helper every spec imports.
+expect "a branch that picks four specs keeps the short timeout" "many=false" "$(specs --many main)"
+for n in 1 2 3 4 5 6; do write "tests/e2e/panel/more-$n.spec.ts"; done
+commit "ten specs"
+expect "ten specs still keep the short timeout" "many=false" "$(specs --many main)"
+write tests/e2e/panel/more-7.spec.ts
+commit "eleven specs"
+expect "eleven specs get the timeout of every spec" "many=true" "$(specs --many main)"
+expect "--many with an unknown base fails" FAILS "$(specs --many origin/nowhere)"
+expect "--many without a base fails" FAILS "$(specs --many)"
+
 echo
 if [ "$failures" -gt 0 ]; then
   echo "$failures test(s) failed"

@@ -38,7 +38,9 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
   - **En cada push**, dentro del check obligatorio `test / test` (job `e2e` de `test.yml`): `panel/assistant-gateway.spec.ts`,
     las puertas del asistente tal como las llama el Hub, que no toca ninguna pantalla y estuvo en rojo sin que se viera
     (saas#285), y cada spec que la rama añade, cambia o renombra desde que salió de `main` (`.github/scripts/e2e-specs.sh`).
-    Un cambio en un helper o una siembra no arrastra sus specs: eso lo ve la pasada de la noche.
+    Un cambio en un helper o una siembra no arrastra sus specs: eso lo ve la pasada de la noche. El job tiene media hora;
+    si la rama elige más de 10 specs (por ejemplo, al mover un helper que importan todas), tiene el mismo tope que la
+    pasada de la noche (`e2e-specs.sh --many`).
   - **Cada noche, sobre `main`** (`nightly.yml`, 03:17 UTC; a mano, «Run workflow»): todas las specs. No frena ninguna PR
     ni ningún despliegue; si sale en rojo abre una issue, «Pruebas de navegador del SaaS en rojo en la pasada nocturna»,
     con cada prueba en rojo y su error (`.github/scripts/e2e-report.sh`), o comenta en ella si ya está abierta, y la

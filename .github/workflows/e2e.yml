@@ -19,10 +19,31 @@ permissions:
   contents: read
 
 jobs:
-  e2e:
+  # A job's timeout is fixed before it starts: this one tells e2e whether the branch picks more specs than the short
+  # timeout holds.
+  pick:
     runs-on: ubuntu-24.04
-    # Every spec, one at a time (`workers: 1`), takes most of an hour.
-    timeout-minutes: ${{ inputs.specs == 'all' && 120 || 30 }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      many: ${{ steps.count.outputs.many }}
+    steps:
+      # The whole history: the specs a branch changes are counted from where it left main.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Count the specs the branch changes
+        id: count
+        run: bash .github/scripts/e2e-specs.sh --many origin/main >> "$GITHUB_OUTPUT"
+
+  e2e:
+    needs: pick
+    runs-on: ubuntu-24.04
+    # Every spec, one at a time (`workers: 1`), takes most of an hour, and so do the many a branch changes at once (a
+    # helper every spec imports). A few specs keep half an hour, so a hung run stops early.
+    timeout-minutes: ${{ (inputs.specs == 'all' || needs.pick.outputs.many == 'true') && 120 || 30 }}
     permissions:
       contents: read
     services:
