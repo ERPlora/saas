@@ -5,7 +5,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 (`HubOwnershipTransfer`), quién paga (`BillingProfile`), qué plan y módulos tienen (`Subscription`,
 `SubscriptionItem`), los planes (`Plan`) y la taxonomía (`Sector`, `BusinessType`).
 
-- Operaciones en `queries.py` (lecturas) y el paquete `services/` (escrituras), rutas en `api.py` bajo `/api/hubs/`
+- Operaciones en `queries/` (lecturas) y `services/` (escrituras), rutas en `api.py` bajo `/api/hubs/`
   (y `/api/plans`, `/api/catalog/*`, públicas); consultas vivas en `live.py`.
 - Hacia el Hub: `hub_client.py` (llamadas firmadas a `/internal/*` del Hub), empuje tras el COMMIT
   (`services.sync_hub`), `reconcile_hub_states` (cada 15 min en el proceso `saas-worker`,
