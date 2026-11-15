@@ -2,8 +2,6 @@
 # <ceiling> <path> <issue>: the ceiling is the file's size rounded up to the hundred. The list only shrinks:
 # no new entries, no higher ceilings, and an entry leaves once its file is split below its cap.
 1800 accounts/services.py saas#462
-1200 billing/models.py saas#462
-1800 billing/queries.py saas#462
 5200 billing/services.py saas#462
 1600 frontend/sdk-types.d.ts saas#462
 1900 hubs/queries.py saas#462
