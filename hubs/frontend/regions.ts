@@ -1,6 +1,6 @@
 // The countries a business may be created in and the time zones its settings offer. Both lists are the
 // server's: `COUNTRIES` mirrors hubs/schemas.py (the EU-27 ERPlora serves) and the zones are each
-// country's starting zone of hubs/services.py `TIME_ZONES` plus the Atlantic islands of Spain and
+// country's starting zone of hubs/services/ `TIME_ZONES` plus the Atlantic islands of Spain and
 // Portugal (guard: regions.test.ts). Names come from Intl in the person's language, never from a
 // catalogue of ours.
 
@@ -29,7 +29,7 @@ export function suggestedCountry(languages: readonly string[]): string {
   return DEFAULT_COUNTRY;
 }
 
-/** Each country's starting zone (hubs/services.py `TIME_ZONES`) and the Atlantic islands. */
+/** Each country's starting zone (hubs/services/ `TIME_ZONES`) and the Atlantic islands. */
 const TIME_ZONES = [
   'Europe/Vienna', 'Europe/Brussels', 'Europe/Sofia', 'Europe/Zagreb', 'Asia/Nicosia', 'Europe/Prague',
   'Europe/Copenhagen', 'Europe/Tallinn', 'Europe/Helsinki', 'Europe/Paris', 'Europe/Berlin',

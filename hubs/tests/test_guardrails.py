@@ -1,6 +1,6 @@
 """Guardrails of hubs (the guardrails of django-ninja-live; CLAUDE.md, one road to the server).
 
-- Only ``services.py`` and ``queries.py`` touch the database: no ``Model.objects``, cursor, connection
+- Only ``services`` and ``queries`` (a file or a package) touch the database: no ``Model.objects``, cursor, connection
   or transaction anywhere else of hubs (routes, the ``/internal`` view, the Hub client, mails, live,
   events, schemas and the ``saas-cron`` commands call operations or service functions). Allowed besides:
   ``models.py`` (managers and ``clean``), ``admin.py`` (Django's admin), the migrations and the seed
@@ -20,6 +20,7 @@ from django.conf import settings
 
 HUBS = Path(settings.BASE_DIR) / "hubs"
 DATABASE_FILES = {"services.py", "queries.py", "models.py", "admin.py"}
+DATABASE_PACKAGES = {"services", "queries", "models", "admin"}
 SEED_LOADERS = {
     "management/commands/seed_taxonomy.py",
 }
@@ -40,6 +41,16 @@ def code_files() -> list[Path]:
         for path in HUBS.rglob("*.py")
         if "tests" not in path.relative_to(HUBS).parts
         and "migrations" not in path.relative_to(HUBS).parts
+    )
+
+
+def may_touch_the_database(relative: str) -> bool:
+    """A door file, a module of a door package one level deep (``services/__init__.py``) or a seed loader."""
+    parts = relative.split("/")
+    return (
+        parts[-1] in DATABASE_FILES
+        or (len(parts) == 2 and parts[0] in DATABASE_PACKAGES)
+        or relative in SEED_LOADERS
     )
 
 
@@ -92,8 +103,7 @@ def test_only_services_and_queries_touch_the_database():
     offenders = {
         path.relative_to(HUBS).as_posix(): touches
         for path in code_files()
-        if path.name not in DATABASE_FILES
-        and path.relative_to(HUBS).as_posix() not in SEED_LOADERS
+        if not may_touch_the_database(path.relative_to(HUBS).as_posix())
         if (touches := database_touches(path.read_text()))
     }
 
@@ -106,6 +116,16 @@ def test_the_database_scan_catches_its_positive():
     ]
     assert database_touches("from django.db import transaction\ntransaction.atomic()\n")
     assert database_touches("member.save()\n") == []
+
+
+def test_a_module_of_a_packaged_door_may_touch_the_database():
+    assert may_touch_the_database("services.py")
+    assert may_touch_the_database("services/__init__.py")
+    assert may_touch_the_database("queries/plans.py")
+    assert may_touch_the_database("management/commands/seed_taxonomy.py")
+    assert not may_touch_the_database("api.py")
+    assert not may_touch_the_database("services/inner/deep.py")
+    assert not may_touch_the_database("management/commands/push_hub_snapshots.py")
 
 
 def test_nothing_picks_another_database():

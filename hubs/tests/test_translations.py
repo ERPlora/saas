@@ -9,7 +9,7 @@ from django.utils import translation
 from django.utils.translation import gettext, ngettext
 
 NEW_MESSAGES = [
-    # services.py
+    # services/
     "Confirm your email address before accepting the invitation.",
     "Only the platform tells the people of a business.",
     # models.py: SessionRevocation
