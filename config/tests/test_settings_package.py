@@ -63,3 +63,17 @@ def test_each_setting_is_defined_in_one_module():
 
     assert {setting: names for setting, names in owners.items() if len(names) > 1} == {}
     assert {"DEBUG", "INSTALLED_APPS", "DATABASES", "SECURE_CSP", "STRIPE_SECRET_KEY"} <= owners.keys()
+
+
+def test_the_package_itself_only_gathers_its_modules():
+    """A setting written in the package's ``__init__`` belongs to no concern and has no single owner to check."""
+    tree = ast.parse((SETTINGS / "__init__.py").read_text())
+    gathered = [
+        node.module.removeprefix("config.settings.")
+        for node in tree.body[1:]
+        if isinstance(node, ast.ImportFrom) and [alias.name for alias in node.names] == ["*"]
+    ]
+
+    assert ast.get_docstring(tree)
+    assert len(gathered) == len(tree.body) - 1
+    assert sorted(gathered) == modules()
