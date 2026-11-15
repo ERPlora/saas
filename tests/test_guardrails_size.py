@@ -14,9 +14,11 @@ only shrinks: a listed file never grows past its ceiling, its ceiling comes down
 it leaves the list once it fits its cap, and compared with the list where the branch left ``origin/main`` (their
 merge base) the list gains no path and raises no ceiling. Two paths may enter it: a ``services.py``,
 ``queries.py`` or ``schemas.py`` moved whole to ``<name>/__init__.py`` takes its entry along, and when a cap comes
-down the files main already had over it enter at their size there.
+down the files main already had over it enter at their size there. The caps only come down too: against that same
+merge base none rises and no measured suffix stops being measured.
 """
 
+import ast
 import re
 import subprocess
 from collections.abc import Iterable
@@ -26,6 +28,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 ALLOW_LIST = ".file-size-allow"
+SELF = "tests/test_guardrails_size.py"
 MAIN = "origin/main"
 BASE_NAME = f"the merge base with {MAIN}"
 
@@ -152,6 +155,41 @@ def main_sizes(paths: Iterable[str], root: Path = REPO) -> dict[str, int]:
     return sizes
 
 
+def caps_in(source: str) -> dict[str, tuple[int, int]] | None:
+    """The ``CAPS`` table as ``source``, the text of this test, sets it; None when it has no such table."""
+    pairs: dict[str, tuple[int, int]] = {}
+    for node in ast.parse(source).body:
+        if not isinstance(node, ast.Assign) or not isinstance(node.targets[0], ast.Name):
+            continue
+        if node.targets[0].id == "CAPS":
+            return {
+                key.value: pairs[value.id] if isinstance(value, ast.Name) else ast.literal_eval(value)
+                for key, value in zip(node.value.keys, node.value.values, strict=True)
+            }
+        if isinstance(node.value, ast.Tuple):
+            pairs[node.targets[0].id] = ast.literal_eval(node.value)
+    return None
+
+
+def main_caps(root: Path = REPO) -> dict[str, tuple[int, int]] | None:
+    """The caps where this branch left ``origin/main``, or None while main's test has no caps by language."""
+    source = main_text(SELF, root)
+    return None if source is None else caps_in(source)
+
+
+def raised_caps(caps: dict[str, tuple[int, int]], caps_on_main: dict[str, tuple[int, int]]) -> list[str]:
+    """Caps above the ones on main, and suffixes main measures that are no longer measured."""
+    raised = []
+    for suffix, on_main in caps_on_main.items():
+        if suffix not in caps:
+            raised.append(f"{suffix}: no longer measured, capped at {BASE_NAME}")
+            continue
+        for kind, now, before in zip(("production", "test"), caps[suffix], on_main, strict=True):
+            if now > before:
+                raised.append(f"{suffix}: {kind} cap {now}, {before} at {BASE_NAME}")
+    return raised
+
+
 def unlisted_over_cap(sizes: dict[str, int], ceilings: dict[str, int]) -> list[str]:
     return [
         f"{path}: {lines} lines, over its cap of {cap_of(path)}"
@@ -269,6 +307,14 @@ def test_the_list_only_shrinks_against_main(ceilings):
     sizes_on_main = main_sizes([path for path in ceilings if path not in main_ceilings])
     problems = widened_entries(ceilings, main_ceilings, sizes_on_main)
     assert not problems, report(problems, f"{ALLOW_LIST} may only shrink against {BASE_NAME}:")
+
+
+def test_no_cap_rises_against_main():
+    caps_on_main = main_caps()
+    if caps_on_main is None:
+        return
+    problems = raised_caps(CAPS, caps_on_main)
+    assert not problems, report(problems, f"A cap only comes down against {BASE_NAME}:")
 
 
 def test_a_last_line_without_its_newline_counts():
@@ -421,6 +467,25 @@ def test_that_move_is_the_only_new_path_and_it_never_raises_the_ceiling():
     ]
 
 
+def test_a_cap_may_not_rise_or_stop_being_measured_against_main():
+    main = {".py": (500, 1000), ".ts": (300, 500), ".js": (300, 500), ".sh": (100, 1500)}
+    caps = {".py": (501, 1000), ".ts": (300, 501), ".js": (299, 400), ".css": (1000, 1500)}
+    assert raised_caps(caps, main) == [
+        ".py: production cap 501, 500 at the merge base with origin/main",
+        ".ts: test cap 501, 500 at the merge base with origin/main",
+        ".sh: no longer measured, capped at the merge base with origin/main",
+    ]
+    assert raised_caps(main, main) == []
+
+
+def test_the_caps_are_read_from_the_source_of_this_test():
+    assert caps_in(Path(__file__).read_text()) == CAPS
+
+
+def test_a_source_without_caps_by_language_has_none_to_compare():
+    assert caps_in("PRODUCTION_CAP = 1000\nTEST_CAP = 1500\n") is None
+
+
 def test_the_list_reads_its_entries_and_skips_notes():
     text = "# <ceiling> <path> <issue>\n\n5200 billing/services.py saas#1\n1800 hubs/tests/test_migrations.py saas#1\n"
     assert parse_allow_list(text) == {
@@ -511,10 +576,26 @@ def test_a_branch_with_no_history_in_common_with_main_fails(tmp_path):
         main_allow_list(tmp_path)
 
 
+def test_the_caps_on_main_are_read_from_this_test_where_the_branch_left_it(tmp_path):
+    git_repo(tmp_path)
+    (tmp_path / "tests").mkdir()
+    commit_as_main(tmp_path, {SELF: 'BOTH = (500, 1000)\nCAPS = {".py": BOTH, ".sh": (100, 1500)}\n'})
+    main_moves_on_without_the_branch(tmp_path, {SELF: 'CAPS = {".py": (400, 900)}\n'})
+    (tmp_path / SELF).write_text('CAPS = {".py": (600, 1000)}\n')
+    assert main_caps(tmp_path) == {".py": (500, 1000), ".sh": (100, 1500)}
+
+
+def test_main_without_this_test_has_no_caps_to_compare(tmp_path):
+    git_repo(tmp_path)
+    commit_as_main(tmp_path, {"README.md": "saas\n"})
+    assert main_caps(tmp_path) is None
+
+
 def test_the_sizes_on_main_are_read_where_the_branch_left_it(tmp_path):
     git_repo(tmp_path)
     commit_as_main(tmp_path, {"models.py": "a\n" * 600})
     main_moves_on_without_the_branch(tmp_path, {"models.py": "a\n" * 700, "admin.py": "a\n"})
+    (tmp_path / "models.py").write_text("a\n" * 650)
     assert main_sizes(["models.py", "admin.py", "gone.py"], tmp_path) == {"models.py": 600}
 
 
