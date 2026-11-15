@@ -1,10 +1,10 @@
 """Guardrails of billing (the guardrails of django-ninja-live; CLAUDE.md, one road to the server).
 
-- Only ``services.py`` and ``queries.py`` touch the database: the VAT engine (``vat.py``), the VIES
+- Only ``services`` and ``queries`` touch the database: the VAT engine (``vat.py``), the VIES
   client (``vies.py``), the Stripe mapping (``stripe_tax_rates.py``), the routes, schemas and events
-  call them. Allowed besides: ``models.py`` (the singletons' ``save``), ``admin.py`` (Django's admin),
+  call them. Allowed besides: ``models`` (the singletons' ``save``), ``admin.py`` (Django's admin),
   the migrations and the seed loader (``seed.py`` with the models it is handed, and the command that
-  runs it).
+  runs it). ``services``, ``queries`` and ``models`` are each a file or a package one level deep.
 - Nowhere ``using=``, ``.using(`` nor ``connections[``: one database (the SaaS has no tenancy).
 - The network: only ``vies.py`` talks to VIES (``requests``) and only ``stripe_service.py`` to Stripe:
   it is the one door (keys, timeouts, errors, plain dicts), the one place tests replace
@@ -27,6 +27,7 @@ DATABASE_FILES = {
     "seed.py",
     "management/commands/seed_tax_rules.py",
 }
+DATABASE_PACKAGES = {"services", "queries", "models"}
 DATABASE_NAMES = {"connection", "connections", "transaction"}
 DATABASE_ATTRIBUTES = {
     "objects",
@@ -103,6 +104,11 @@ def _relative(path: Path) -> str:
     return path.relative_to(BILLING).as_posix()
 
 
+def may_touch_the_database(relative: str) -> bool:
+    parts = relative.split("/")
+    return relative in DATABASE_FILES or (len(parts) == 2 and parts[0] in DATABASE_PACKAGES)
+
+
 def test_the_scans_catch_their_positive():
     assert database_touches(
         "from django.db import transaction\nVatCheck.objects.all()\nrow.save()"
@@ -122,14 +128,26 @@ def test_the_scans_catch_their_positive():
 def test_there_is_code_to_scan():
     names = {_relative(path) for path in code_files()}
 
-    assert {"vat.py", "vies.py", "services.py", "queries.py", "api.py"} <= names
+    assert {"vat.py", "vies.py", "api.py"} <= names
+    assert {"services.py", "services/__init__.py"} & names
+    assert {"queries.py", "queries/__init__.py"} & names
+
+
+def test_a_module_of_a_packaged_door_may_touch_the_database():
+    assert may_touch_the_database("queries.py")
+    assert may_touch_the_database("queries/invoices.py")
+    assert may_touch_the_database("services/checkout.py")
+    assert may_touch_the_database("models/tax.py")
+    assert not may_touch_the_database("vat.py")
+    assert not may_touch_the_database("queries/reports/csv.py")
+    assert not may_touch_the_database("emails/queries.py")
 
 
 def test_only_services_and_queries_touch_the_database():
     offenders = {
         _relative(path): touches
         for path in code_files()
-        if _relative(path) not in DATABASE_FILES
+        if not may_touch_the_database(_relative(path))
         and (touches := database_touches(path.read_text(encoding="utf-8")))
     }
 
