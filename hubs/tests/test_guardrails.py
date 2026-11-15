@@ -125,6 +125,7 @@ def test_a_module_of_a_packaged_door_may_touch_the_database():
     assert may_touch_the_database("management/commands/seed_taxonomy.py")
     assert not may_touch_the_database("api.py")
     assert not may_touch_the_database("services/inner/deep.py")
+    assert not may_touch_the_database("emails/sent.py")
     assert not may_touch_the_database("emails/queries/sent.py")
     assert not may_touch_the_database("management/commands/push_hub_snapshots.py")
 
