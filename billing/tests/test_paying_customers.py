@@ -308,6 +308,17 @@ class TestTheAdminList:
         offered = [value for value, _label in status.lookup_choices]
         assert offered == ["active", "trialing"]
 
+    def test_its_filters_do_not_offer_what_only_an_ended_subscription_has(self, staff_client, customer):
+        customer()
+        customer(status="canceled", country="PT")
+
+        specs = staff_client.get(LIST).context["cl"].filter_specs
+
+        offered = {getattr(spec, "parameter_name", ""): [value for value, _label in spec.lookup_choices]
+                   for spec in specs}
+        assert offered["status"] == ["active"]
+        assert offered["country"] == ["ES"]
+
     def test_it_filters_by_plan(self, staff_client, customer):
         from hubs.models import Plan
 
