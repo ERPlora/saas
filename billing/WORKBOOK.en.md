@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:8798a3474aa514e59bc72bf0e7cc27fbb7e32354beb67d129e6754350e8446eb -->
+<!-- generated from WORKBOOK.md sha256:6a7e789f19b20ba5ccb98aebf993e90b220d6781d4bd900c4586a4a9b4225045 -->
 
 ## What it is for and who it is for
 
@@ -158,6 +158,7 @@ to upgrade or change it.
 | BILLING-F38 | Read the subscriptions again in Stripe every night and put right what drifted | done |
 | BILLING-F39 | Check every day that Stripe sends a notice of everything erplora.com handles | done |
 | BILLING-F40 | Get the billing report of a period for the accountant | done |
+| BILLING-F41 | See which customers pay, on what plan, since when and how much | done |
 
 ### BILLING-F01 Say where the business is invoiced and with which tax ID
 Status: done
@@ -520,7 +521,7 @@ Screen: Admin
 Steps:
 1. A person of ERPlora enters the admin with the SaaS account (email code and authenticator app).
 2. They see, read-only, the subscriptions and their lines, Stripe's notices, the payment attempts, the promo codes used, the counters of each invoice series and the plan changes waiting for the end of the period: what Stripe says is not edited here, it is changed in Stripe and arrives with its notice.
-3. On the businesses they can "Send the latest state to the business" and "Retry what the business still owes" and, a superuser only, "Let its owner buy the internal plans" and "Stop selling it the internal plans": with the mark, the owner of that business sees "Payment Test (internal)" (1 € + VAT) in the Store and buys it like any plan, in production too, to make a real purchase and see its invoice with the QR; the list's "internal plans" column says which businesses have it. On the invoices, with their lines, "Send again to the platform business", "Send the invoice email again", "Download the PDF" of any invoice already issued and, choosing several in the list, "Download the PDFs (ZIP)"; from the list, the "Billing report" of a month, a quarter or a year (BILLING-F40).
+3. On the businesses they can "Send the latest state to the business" and "Retry what the business still owes" and, a superuser only, "Let its owner buy the internal plans" and "Stop selling it the internal plans": with the mark, the owner of that business sees "Payment Test (internal)" (1 € + VAT) in the Store and buys it like any plan, in production too, to make a real purchase and see its invoice with the QR; the list's "internal plans" column says which businesses have it. On the invoices, with their lines, "Send again to the platform business", "Send the invoice email again", "Download the PDF" of any invoice already issued and, choosing several in the list, "Download the PDFs (ZIP)"; from the list, the "Billing report" of a month, a quarter or a year (BILLING-F40). In **Paying customers**, which businesses pay, on what plan, since when and how much, with its Excel (BILLING-F41).
 4. They keep the promo codes, the VAT table, the tax policy and ERPlora's details (born with those of the Modelo 036, and the ones VIES sees of who asks); refunds and immediate cancellations are made in Stripe's dashboard.
 5. A paid app some business has is not deleted from the catalog: the admin says which business has it and to take it off sale.
 In: the staff account with its role.
@@ -703,3 +704,18 @@ In: the year and the period.
 Out: the totals on screen and the spreadsheet for the accountant; nothing changes.
 If it fails: only invoices collected and already issued by the platform business count, by their issue date; those collected in the period that are still being issued or that the platform business rejected do not add up, and a notice names them ("Collected in this period but not issued yet, so not counted: …"). A period that does not exist shows the error next to the field, and its Excel goes back to the report. Without invoices in the period, the totals are zero and the breakdown says "Nothing was invoiced in this period". Whoever cannot see the invoices in the admin does not open it.
 Involved: none
+
+### BILLING-F41 See which customers pay, on what plan, since when and how much
+Status: done
+Actor: ERPlora staff
+Screen: Admin › Billing › Paying customers
+Steps:
+1. In the admin, open **Billing › Paying customers**: one row per business Stripe charges today (also when it is on a trial, has a payment pending or is paused), in order of business.
+2. Each row says the business, who pays for it (its payer's legal name), their country, the kind of customer (company, self-employed or individual with a Spanish tax ID, or individual without a tax ID, as in the billing report, BILLING-F40), the plan, whether it pays monthly or yearly, the monthly amount before VAT, since when it is a customer and the status of its subscription.
+3. The monthly amount is the tax base of its last invoice collected for a whole period, with its paid apps and without the prorations of a change in the middle of a period; a yearly one, divided by 12. "Customer since" is the date of its first collected invoice.
+4. Filter by plan, status or country (each filter offers only what some paying customer has) or search by business, payer or tax ID.
+5. Press "Download Excel": one row per customer of what the list shows (with its filters and its search) and the same columns, in the format of the billing report's Excel (BILLING-F40).
+In: the filters and the search.
+Out: the list on screen and the spreadsheet; nothing changes.
+If it fails: a business without any collected invoice yet (on a trial with a promo code) shows the amount and "customer since" empty ("-"). A subscription that ended (cancelled, or expired without ever being paid) is no longer a paying customer and does not show. Without paying customers, the list says "0 paying customers". Whoever cannot see the subscriptions in the admin neither sees nor downloads it.
+Involved: hubs (the subscriptions and the payers of the businesses)

@@ -19,3 +19,4 @@ from billing.models.payments import CheckoutAttempt, PaymentFailure, WebhookEven
 from billing.models.invoices import TAX_TREATMENTS, Invoice, InvoiceCounter, InvoiceLine
 from billing.models.plan_changes import PlanChangeSchedule
 from billing.models.oss_notices import OssNotice
+from billing.models.paying_customers import PayingCustomer
