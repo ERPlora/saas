@@ -15,7 +15,7 @@
 #      its environment (role/erplora-<ENVIRONMENT>-…): ecs:RegisterTaskDefinition takes no resource,
 #      so another environment's deploy role could have left a revision in this family; and unless the
 #      container of the saas image has the four policies ERPlora/aws gives it (REQUIRED_ENV,
-#      config/settings.py): without a cache prefix or a Stripe mode the saas refuses to
+#      config/settings/core.py): without a cache prefix or a Stripe mode the saas refuses to
 #      start outside DEBUG, so a revision from before that apply would register saas-cron's (the
 #      Scheduler's latest) and only fail at step 2; without either boolean it starts with it false,
 #      silently: prod refusing every hub's records for the AEAT's production, or out of the search engines;

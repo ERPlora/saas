@@ -1011,7 +1011,7 @@ Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos
   «Last updated» de `/legal/terms/` y `/legal/privacy/`; `tests/test_terms.py` falla si una página cambia
   su fecha sin la versión. `services.accept_legal_texts` escucha `user_signed_up` de allauth y
   `user_logged_in` de Django.
-- Freno (ACCOUNTS-F11): todos los límites escritos en `ACCOUNT_RATE_LIMITS` de `config/settings.py`
+- Freno (ACCOUNTS-F11): todos los límites escritos en `ACCOUNT_RATE_LIMITS` de `config/settings/accounts.py`
   (`login_failed` 5/5m por dirección y por cuenta, `reset_password` 10/h por dirección y 5/h por cuenta y
   `code_attempts`, nuestro, 10 códigos rechazados en 5 minutos por dirección) sobre la caché de Django (Valkey en
   AWS, `base.cache.FailSoftRedisCache`); `tests/test_throttle.py`. reCAPTCHA Enterprise por puntuación, **apagado
@@ -1096,7 +1096,7 @@ Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos
   solo desde el admin (working-rules §4). `purge_expired_sessions` (F44) es diaria, con candado propio
   (`services.run_exclusively`), y la lanza `saas-cron` a las 00:20 UTC (`purge-expired-sessions-nightly` de
   `aws/stacks/prod/scheduler.tf`, que por eso no programa `clearsessions` aparte); suelta a mano el candado de su conexión copiada del pool. Los correos (F46) salen, en
-  producción y en `pre`, por el SMTP de OVH: sin `SES_REGION`, `config/settings.py` usa el
+  producción y en `pre`, por el SMTP de OVH: sin `SES_REGION`, `config/settings/mail.py` usa el
   `EmailBackend` SMTP de Django con `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` y
   `EMAIL_USE_TLS` (10 s de espera) y el remitente de `DEFAULT_FROM_EMAIL`; en local, un fichero por correo en `.mail/`.
   `django-ses` sigue en el código como vuelta atrás: con `SES_REGION` puesto, la API de SES firmada por el rol de la

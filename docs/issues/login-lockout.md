@@ -9,7 +9,7 @@ En la pantalla de entrada de ERPlora, si alguien prueba cinco contraseñas falsa
 Portar el freno de intentos del ERPlora anterior: por dirección real antes de comprobar la contraseña y por cuenta solo cuando la contraseña es mala, con un contador compartido entre procesos.
 
 ## Detalle técnico
-- Hoy (`config/settings.py`, `ACCOUNT_RATE_LIMITS`, leído el 2026-11-11): `login_failed` es `5/5m/ip,5/5m/key`, en la caché compartida (Valkey) y por la dirección real del visitante (`public.client_ip`). La contraseña buena devuelve su intento, pero las cinco malas de otra persona agotan el cupo de la cuenta durante 5 minutos, y allauth lo gasta en `pre_authenticate`, antes de comprobar la contraseña (erplora-old/saas#1015). Lo de la dirección compartida tras el ALB ya no pasa.
+- Hoy (`config/settings/accounts.py`, `ACCOUNT_RATE_LIMITS`, leído el 2026-11-11): `login_failed` es `5/5m/ip,5/5m/key`, en la caché compartida (Valkey) y por la dirección real del visitante (`public.client_ip`). La contraseña buena devuelve su intento, pero las cinco malas de otra persona agotan el cupo de la cuenta durante 5 minutos, y allauth lo gasta en `pre_authenticate`, antes de comprobar la contraseña (erplora-old/saas#1015). Lo de la dirección compartida tras el ALB ya no pasa.
 - Origen: `erplora-old/saas` `origin/develop` `ERPloraAccountAdapter.get_client_ip`/`pre_authenticate`, `apps/auth/users/login_throttle.py`, `apps/core/client_ip.py`, `ACCOUNT_RATE_LIMITS` y tests `test_shared_ip_budget.py`, `test_login_throttle*.py`. En AWS la dirección del cliente es la última entrada de `X-Forwarded-For` (plan del bloque 1a).
 
 ## Origen

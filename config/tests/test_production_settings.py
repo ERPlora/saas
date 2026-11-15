@@ -954,7 +954,7 @@ def rate_limits(env: dict[str, str]) -> tuple[dict, dict]:
 )
 def test_the_sign_in_limits_are_written_out(env):
     """Production and development alike (the dev server with DEBUG=True alone): every limit written out
-    (config/settings.py), allauth's sign-in limit kept, and nothing of allauth's left unsaid."""
+    (config/settings/accounts.py), allauth's sign-in limit kept, and nothing of allauth's left unsaid."""
     effective, allauth = rate_limits(env)
 
     assert effective["login"] == allauth["login"]

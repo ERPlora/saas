@@ -16,7 +16,7 @@ A certificate that declares an Extended Key Usage without clientAuth (nor anyExt
 never open the AEAT's mTLS connection, so it is refused here, before anything is sent.
 
 ``current()`` is ERPlora's seal, from the two slots ``FISCAL_SEAL_{CURRENT,NEXT}_{P12_BASE64,PASSWORD}``
-(``config/settings.py``; empty = an empty slot): ``CURRENT`` unless it is missing, unreadable, expired or
+(``config/settings/fiscal.py``; empty = an empty slot): ``CURRENT`` unless it is missing, unreadable, expired or
 expires within ``ROTATION_MARGIN``, and then ``NEXT`` if it is usable; ``CURRENT`` still while it has
 not expired and ``NEXT`` is not usable; ``None`` without a usable seal.
 

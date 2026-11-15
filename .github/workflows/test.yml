@@ -36,7 +36,7 @@ jobs:
           --health-timeout 3s
           --health-retries 30
     env:
-      # The defaults of config/settings.py, spelled out; pytest creates test_saas_next_gw<N>, one per
+      # The defaults of config/settings/backends.py, spelled out; pytest creates test_saas_next_gw<N>, one per
       # xdist worker.
       DB_HOST: 127.0.0.1
       DB_PORT: "5432"

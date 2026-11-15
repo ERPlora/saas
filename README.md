@@ -258,7 +258,7 @@ reconstruir nada si aparece spam:
   `goog#html` que crea el script de Google y, en la política `default`, solo sus dos rutas
   `https://www.google.com/recaptcha/` y `https://www.gstatic.com/recaptcha/` (`frontend/main.ts`; el resto de esos
   orígenes, no).
-- **Límites de intentos** (`ACCOUNT_RATE_LIMITS`, `config/settings.py`; por dirección de red, la que el ALB vio,
+- **Límites de intentos** (`ACCOUNT_RATE_LIMITS`, `config/settings/accounts.py`; por dirección de red, la que el ALB vio,
   `public.client_ip`, y por cuenta, en la caché compartida): 30 entradas por minuto por dirección; 5 contraseñas
   equivocadas en 5 minutos por dirección y por cuenta (la buena devuelve su intento); 10 altas por hora por
   dirección; 10 enlaces de restablecer por hora por dirección y 5 por cuenta; 20 envíos por minuto del formulario

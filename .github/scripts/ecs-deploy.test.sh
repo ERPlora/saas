@@ -392,7 +392,7 @@ check "a family on the hub image fails before the migration" \
   '[ "$status" -ne 0 ] && ! grep -Eq "run-task|update-service|put-parameter" "$CALLS_LOG" && grep -q "::error::erplora-prod-saas-migrate " "$work/out.log"'
 
 # --- a revision still without the policies of the saas image --------------------
-# Outside DEBUG the saas refuses to start without a cache prefix or a Stripe mode (config/settings.py):
+# Outside DEBUG the saas refuses to start without a cache prefix or a Stripe mode (config/settings/core.py):
 # a revision Terraform has not given them yet would register saas-cron's, the one the
 # Scheduler runs, and only then fail at the migration. Without either boolean it starts, and quietly: no
 # AEAT_PRODUCTION_ENABLED in prod refuses every hub's records for the AEAT's production (409 environment_not_allowed),
