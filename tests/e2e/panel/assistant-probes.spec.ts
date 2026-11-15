@@ -40,7 +40,9 @@ import {
   renderProbeReport,
 } from '../assistant-probes';
 import { type AssistantChat, forgetRealAssistant, qaChat, type RealSeed, seedRealAssistant, TURN_MS, uvRun } from './assistant-chat';
-import { apiPost, djangoPrintWarm, expect, test } from './fixtures';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { apiPost } from './session';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SAAS_DIR = resolve(HERE, '..', '..', '..');

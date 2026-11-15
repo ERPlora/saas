@@ -8,23 +8,13 @@
 // which the page takes from this checkout, never from the network. Accounts of this spec: `e2e-acc5m-…`.
 import { type Page } from '@playwright/test';
 
-import {
-  captureAtEverySize,
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  MAIL_LOGO_URL,
-  MAILING,
-  type MailParts,
-  mailPartsOf,
-  onlyTheMailLogo,
-  removeAccountsWarm,
-  settled,
-  signIn,
-  test,
-  warmDjango,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm, warmDjango } from './django';
+import { expect, test } from './fixtures';
+import { MAIL_LOGO_URL, MAILING, type MailParts, mailPartsOf, onlyTheMailLogo } from './mail';
 import { PANEL_URL } from './project';
+import { captureAtEverySize, settled } from './screen';
+import { signIn } from './session';
 
 const atEverySize = captureAtEverySize('APP-ACCOUNTS-5-ACCOUNTS-F46');
 

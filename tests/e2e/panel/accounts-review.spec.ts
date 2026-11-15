@@ -13,22 +13,14 @@
 // Accounts of this spec: `e2e-acc6-…@example.com`, removed before and after.
 import { createHmac } from 'node:crypto';
 
-import {
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  removeAccountsWarm,
-  sessionOf,
-  signIn,
-  signInThroughPage,
-  submitSignInForm,
-  test,
-  waitForMailCode,
-  waitForPasswordResetLink,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
 import { closeOverlays, LANGUAGES, type Lang, openUserMenu, reviewOf, t } from './language-review';
+import { waitForMailCode, waitForPasswordResetLink } from './mail';
+import { watchPageErrors } from './page-events';
 import { PANEL_MFA_URL } from './project';
+import { sessionOf, signIn, signInThroughPage, submitSignInForm } from './session';
 
 const PREFIX = 'e2e-acc6-';
 const PASSWORD = 'Centeno-y-masa-madre-26';

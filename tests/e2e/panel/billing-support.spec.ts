@@ -3,9 +3,14 @@
 // (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
 // billing_apps_seed.py. As billing-apps.spec.ts, Stripe does not run here: the operations that call it
 // (`billing.checkout.start` and `.confirm`, `billing.portal.open`, `billing.payment_method.get`) are played at the
-// API's edge, and Stripe.js is the double of fixtures.ts (`playStripe`); everything else (the billing details saved
+// API's edge, and Stripe.js is the double of stripe.ts (`playStripe`); everything else (the billing details saved
 // included) is the real server. Each test names its flow of billing/WORKBOOK.md in its title.
-import { addAppInCheckout, businessIdOf, captureAtEverySize, dialogInPlace, expect, gotoWithCheckout, panelAccount, payInStripe, playStripePortal, qaAccount, seededAndSignedIn, STRIPE_PORTAL_URL, test, toast, watchPageErrors } from './fixtures';
+import { panelAccount, qaAccount } from './accounts';
+import { businessIdOf } from './businesses';
+import { expect, seededAndSignedIn, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize, dialogInPlace, toast } from './screen';
+import { addAppInCheckout, gotoWithCheckout, payInStripe, playStripePortal, STRIPE_PORTAL_URL } from './stripe';
 
 seededAndSignedIn('billing_apps_seed.py', qaAccount('BILLING_APPS', panelAccount('billing-apps')));
 const atEverySize = captureAtEverySize('APP-BILLING-3');

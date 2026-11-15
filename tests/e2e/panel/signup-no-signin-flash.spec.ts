@@ -8,20 +8,12 @@
 // Accounts of this spec: `e2e-signup-flash-…@example.com`, removed before and after.
 import { type Page } from '@playwright/test';
 
-import {
-  captureAtEverySize,
-  type Credentials,
-  expect,
-  provenAccount,
-  removeAccountsOf,
-  settled,
-  submitSignInForm,
-  test,
-  type Viewport,
-  VIEWPORTS,
-  watchPageErrors,
-} from './fixtures';
+import { type Credentials, provenAccount, removeAccountsOf } from './accounts';
+import { expect, test } from './fixtures';
 import { LANGUAGES, t } from './language-review';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize, settled, type Viewport, VIEWPORTS } from './screen';
+import { submitSignInForm } from './session';
 
 const PREFIX = 'e2e-signup-flash-';
 const PASSWORD = 'Signup-e2e-2026!';

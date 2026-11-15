@@ -1,4 +1,4 @@
-// The review of a screen in the language the person reads (the `hecho` flows of accounts/WORKBOOK.md): at the panel's three sizes (`VIEWPORTS` of fixtures.ts),
+// The review of a screen in the language the person reads (the `hecho` flows of accounts/WORKBOOK.md): at the panel's three sizes (`VIEWPORTS` of screen.ts),
 // the page says its language (`<html lang>`), no whole text of the other language is left on screen (every
 // catalogue of the panel, `accounts`, `hubs`, the shell and @erplora/ui), nothing scrolls sideways, and a capture
 // `<task>-<flow>-<size>-<lang>` stays for the eye.
@@ -8,7 +8,8 @@ import { fileURLToPath } from 'node:url';
 
 import { type Page } from '@playwright/test';
 
-import { captureAtEverySize, expect, settled } from './fixtures';
+import { expect } from './fixtures';
+import { captureAtEverySize, settled } from './screen';
 
 export const LANGUAGES = [
   { lang: 'en', locale: 'en-US' },

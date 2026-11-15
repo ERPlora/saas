@@ -11,7 +11,11 @@
 import type { ChildProcess } from 'node:child_process';
 
 import { FAKE_PROVIDER_URL, startFakeProvider } from './assistant-chat';
-import { captureAtEverySize, expect, runSeed, signIn, test, watchPageErrors } from './fixtures';
+import { runSeed } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize } from './screen';
+import { signIn } from './session';
 
 const atEverySize = captureAtEverySize('APP-ASSISTANT-1');
 

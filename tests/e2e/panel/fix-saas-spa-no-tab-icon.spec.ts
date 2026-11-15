@@ -4,7 +4,11 @@
 // without a session and Businesses with one; accounts of panel_seed.py; at 390, 834 and 1440 px.
 // flow: saas-spa-icon
 import type { Page } from '@playwright/test';
-import { expect, panelAccount, seedPanel, settled, shot, signIn, test, VIEWPORTS } from './fixtures';
+import { panelAccount } from './accounts';
+import { seedPanel } from './businesses';
+import { expect, test } from './fixtures';
+import { settled, shot, VIEWPORTS } from './screen';
+import { signIn } from './session';
 
 const KEY = 'FIX-SAAS-SPA-NO-TAB-ICON';
 const ICONS = [

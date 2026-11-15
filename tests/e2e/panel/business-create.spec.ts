@@ -7,29 +7,20 @@
 // when the Hub is away.
 import type { Locator } from '@playwright/test';
 
-import {
-  businessIdOf,
-  catalogueText,
-  expect,
-  internalSecret,
-  panelAccount,
-  provenAccount,
-  removeAccountsOf,
-  reportBusinessReady,
-  seedPanel,
-  sidewaysScroll,
-  signIn,
-  test,
-  VIEWPORTS,
-  watchPageErrors,
-} from './fixtures';
+import { panelAccount, provenAccount, removeAccountsOf } from './accounts';
+import { businessIdOf, seedPanel } from './businesses';
+import { expect, test } from './fixtures';
+import { internalSecret, reportBusinessReady } from './hub';
+import { watchPageErrors } from './page-events';
+import { catalogueText, sidewaysScroll, VIEWPORTS } from './screen';
+import { signIn } from './session';
 
 /** The accounts of the address-wrapping test (saas#293), removed after the run. */
 const PREFIX = 'e2e-create-host-';
 const PASSWORD = 'e2e-create-host-password';
 
 test.beforeAll(() => seedPanel());
-// What reportBusinessReady signs with, read here and not inside a test (fixtures.ts, internalSecret).
+// What reportBusinessReady signs with, read here and not inside a test (hub.ts, internalSecret).
 test.beforeAll(() => internalSecret());
 test.afterAll(() => {
   seedPanel('clear');

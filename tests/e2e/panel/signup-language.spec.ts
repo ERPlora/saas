@@ -13,24 +13,17 @@
 // What the panel shows is read through its API; what only Django knows, once for the spec, before its tests.
 import { type APIRequestContext, type Page } from '@playwright/test';
 
-import {
-  businessIdOf,
-  djangoPrintAsync,
-  expect,
-  type HubDouble,
-  internalSecret,
-  removeAccountsOf,
-  reportBusinessReady,
-  shot,
-  startHubDouble,
-  submitSignInForm,
-  test,
-  waitForMail,
-  waitForMailCode,
-  watchPageErrors,
-} from './fixtures';
+import { removeAccountsOf } from './accounts';
+import { businessIdOf } from './businesses';
+import { djangoPrintAsync } from './django';
+import { expect, test } from './fixtures';
+import { type HubDouble, internalSecret, reportBusinessReady, startHubDouble } from './hub';
 import { type Lang, LANGUAGES, reviewOf, t, textsOfTheOtherLanguage } from './language-review';
+import { waitForMail, waitForMailCode } from './mail';
+import { watchPageErrors } from './page-events';
 import { HUB_DOUBLE_PORT } from './project';
+import { shot } from './screen';
+import { submitSignInForm } from './session';
 
 const PREFIX = 'e2e-signup-lang-';
 const PASSWORD = 'Signup-e2e-2026!';

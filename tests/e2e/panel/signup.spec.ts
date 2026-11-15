@@ -9,22 +9,13 @@
 // `e2e-…@example.com` too).
 import { type Page } from '@playwright/test';
 
-import {
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  sessionOf,
-  settled,
-  shot,
-  sidewaysScroll,
-  signInThroughPage,
-  submitSignInForm,
-  test,
-  VIEWPORTS,
-  waitForMailCode,
-  waitForPasswordResetLink,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { waitForMailCode, waitForPasswordResetLink } from './mail';
+import { watchPageErrors } from './page-events';
+import { settled, shot, sidewaysScroll, VIEWPORTS } from './screen';
+import { sessionOf, signInThroughPage, submitSignInForm } from './session';
 
 /** A verified account whose password the reset changes (never the seeded owner's: other specs sign in with it). */
 const RESET = { email: 'e2e-reset@example.com', password: 'e2e-panel' };

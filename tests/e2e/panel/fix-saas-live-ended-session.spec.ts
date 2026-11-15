@@ -9,21 +9,12 @@
 // Accounts of this spec: `e2e-liveend-…@example.com`, removed before and after.
 import { type Browser, type BrowserContext, type Page } from '@playwright/test';
 
-import {
-  createAccountWarm,
-  type Credentials,
-  expect,
-  removeAccountsWarm,
-  sessionOf,
-  settled,
-  shot,
-  signIn,
-  test,
-  type Viewport,
-  VIEWPORTS,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, type Credentials, removeAccountsWarm } from './accounts';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
 import { PANEL_URL } from './project';
+import { settled, shot, type Viewport, VIEWPORTS } from './screen';
+import { sessionOf, signIn } from './session';
 
 const PREFIX = 'e2e-liveend-';
 const PASSWORD = 'Centeno-y-masa-madre-26';

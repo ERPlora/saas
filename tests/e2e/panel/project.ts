@@ -10,7 +10,7 @@
 // :8000, whose answers (a refusal, a database provisioned for a throwaway business) are not the
 // specs'. Here it runs without the autoreloader and with `HUB_INTERNAL_URL` at a port nobody listens
 // on: every call to the Hub stays pending, as when the Hub is away, and the specs play the Hub (its
-// signed `ready` callback; `startHubDouble` of fixtures.ts listens there while a spec needs to see
+// signed `ready` callback; `startHubDouble` of hub.ts listens there while a spec needs to see
 // what the SaaS sends). Every mail it sends lands in a file of `PANEL_MAIL_DIR` (Django's file
 // backend), where the specs read the links (`waitForMail`). Vite is reused when it is up (it only
 // serves the files), but only when it serves this checkout: globalSetup checks it (`assertViteOfThisTree`),

@@ -4,17 +4,13 @@
 // sentence comes back with the lift.
 import { type Page } from '@playwright/test';
 
-import {
-  expect,
-  panelAccount,
-  seedPanel,
-  shot,
-  sidewaysScroll,
-  signIn,
-  startHubDouble,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { panelAccount } from './accounts';
+import { seedPanel } from './businesses';
+import { expect, test } from './fixtures';
+import { startHubDouble } from './hub';
+import { watchPageErrors } from './page-events';
+import { shot, sidewaysScroll } from './screen';
+import { signIn } from './session';
 
 /** The sentence over a preparation (`hubs.launch.preparing.lead`): never shown during the pause. */
 const FEW_SECONDS = 'It usually takes a few seconds.';

@@ -8,23 +8,16 @@ import { join } from 'node:path';
 
 import { type APIRequestContext, type Page, request as playwrightRequest } from '@playwright/test';
 
-import {
-  djangoPrintWarm,
-  expect,
-  panelAccount,
-  seedPanel,
-  settled,
-  shot,
-  signIn,
-  startHubDouble,
-  test,
-  toast,
-  VIEWPORTS,
-  waitForMail,
-  warmDjango,
-  watchPageErrors,
-} from './fixtures';
+import { panelAccount } from './accounts';
+import { seedPanel } from './businesses';
+import { djangoPrintWarm, warmDjango } from './django';
+import { expect, test } from './fixtures';
+import { startHubDouble } from './hub';
+import { waitForMail } from './mail';
+import { watchPageErrors } from './page-events';
 import { PANEL_URL } from './project';
+import { settled, shot, toast, VIEWPORTS } from './screen';
+import { signIn } from './session';
 
 const SHOTS_DIR = process.env.SHOTS_DIR ?? join(shot('account-dir'), '..', 'account');
 mkdirSync(SHOTS_DIR, { recursive: true });

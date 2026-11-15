@@ -5,21 +5,12 @@
 // reaches the top of the menu the same way (ACCOUNTS-F21).
 import { type Page } from '@playwright/test';
 
-import {
-  closeMenu,
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  openMenu,
-  removeAccountsWarm,
-  settled,
-  shot,
-  signIn,
-  test,
-  toast,
-  VIEWPORTS,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { closeMenu, openMenu, settled, shot, toast, VIEWPORTS } from './screen';
+import { signIn } from './session';
 
 const PREFIX = 'e2e-fix292-';
 const ACCOUNT = { email: `${PREFIX}menu@example.com`, password: 'e2e-fix292-password' };

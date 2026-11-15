@@ -3,7 +3,7 @@
 // (`tests/e2e/panel/django_warm.py`, `startWarm`) and the Stripe of billing-downgrade.spec.ts
 // (`billing_stripe_played.py serve`). Booted once and kept, it spares every call a Python and Django boot (about 1 s
 // idle, 57 s and 88 s on a loaded machine, saas#346), and it never blocks this process, which also plays the Hub of a
-// spec (saas#176). `fixtures.ts` starts one warm Django per worker (`djangoPrintWarm`).
+// spec (saas#176). `panel/django.ts` starts one warm Django per worker (`djangoPrintWarm`).
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 

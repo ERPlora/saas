@@ -10,7 +10,12 @@ import { writeFileSync } from 'node:fs';
 
 import type { Page } from '@playwright/test';
 
-import { captureAtEverySize, djangoPrintWarm, expect, MAILING, runSeedWarm, shot, signIn, test, waitForMail, watchPageErrors } from './fixtures';
+import { djangoPrintWarm, runSeedWarm } from './django';
+import { expect, test } from './fixtures';
+import { MAILING, waitForMail } from './mail';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize, shot } from './screen';
+import { signIn } from './session';
 
 const atEverySize = captureAtEverySize('APP-FISCAL_GATEWAY');
 

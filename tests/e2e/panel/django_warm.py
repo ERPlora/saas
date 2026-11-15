@@ -1,5 +1,5 @@
 """A warm Django for the panel's e2e (saas#352): ONE process per Playwright worker runs what a test asks the SaaS's
-Django, so no test pays a Django boot nor blocks the process that drives it (``djangoPrintWarm`` of ``fixtures.ts``;
+Django, so no test pays a Django boot nor blocks the process that drives it (``djangoPrintWarm`` of ``django.ts``;
 the recipe of saas#328's ``billing_stripe_played.py serve``).
 
 From the repo, against the database of the run (development only, refused without ``DEBUG``):

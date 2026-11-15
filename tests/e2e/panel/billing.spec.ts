@@ -10,26 +10,15 @@ import { join } from 'node:path';
 
 import type { Page, Request } from '@playwright/test';
 
-import {
-  apiPost,
-  businessIdOf,
-  djangoPrintWarm,
-  expect,
-  panelAccount,
-  playStripePortal,
-  qaAccount,
-  repeatedTop,
-  seededAndSignedInWarm,
-  settled,
-  shot,
-  sidewaysScroll,
-  STRIPE_PORTAL_URL,
-  test,
-  toast,
-  VIEWPORTS,
-  watchPageErrors,
-} from './fixtures';
+import { panelAccount, qaAccount } from './accounts';
+import { businessIdOf } from './businesses';
+import { djangoPrintWarm } from './django';
+import { expect, seededAndSignedInWarm, test } from './fixtures';
+import { watchPageErrors } from './page-events';
 import { HUB_DOUBLE_PORT } from './project';
+import { repeatedTop, settled, shot, sidewaysScroll, toast, VIEWPORTS } from './screen';
+import { apiPost } from './session';
+import { playStripePortal, STRIPE_PORTAL_URL } from './stripe';
 
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/l3b2-shots';
 mkdirSync(SHOTS_DIR, { recursive: true });

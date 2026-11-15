@@ -15,19 +15,14 @@ import { createServer, type Server } from 'node:http';
 
 import { type Locator, type Page } from '@playwright/test';
 
-import {
-  captureAtEverySize,
-  catalogueText,
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  readyBusinessOn,
-  removeAccountsWarm,
-  signIn,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { readyBusinessOn } from './businesses';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
 import { HUB_DOUBLE_PORT } from './project';
+import { captureAtEverySize, catalogueText } from './screen';
+import { signIn } from './session';
 
 const capture = captureAtEverySize('HUBS-F17');
 

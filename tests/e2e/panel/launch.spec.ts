@@ -5,19 +5,12 @@
 // spec answers that address itself and checks where the browser went, so no Hub has to run.
 import { type Page } from '@playwright/test';
 
-import {
-  expect,
-  panelAccount,
-  seedPanel,
-  settled,
-  shot,
-  sidewaysScroll,
-  signIn,
-  signInThroughPage,
-  test,
-  VIEWPORTS,
-  watchPageErrors,
-} from './fixtures';
+import { panelAccount } from './accounts';
+import { seedPanel } from './businesses';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { settled, shot, sidewaysScroll, VIEWPORTS } from './screen';
+import { signIn, signInThroughPage } from './session';
 
 test.beforeAll(() => seedPanel());
 test.afterAll(() => seedPanel('clear'));

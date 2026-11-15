@@ -12,19 +12,13 @@ import { createHmac } from 'node:crypto';
 
 import { type APIRequestContext, type Page } from '@playwright/test';
 
-import {
-  captureAtEverySize,
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  internalSecret,
-  removeAccountsWarm,
-  sessionOf,
-  signIn,
-  signInThroughPage,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { internalSecret } from './hub';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize } from './screen';
+import { sessionOf, signIn, signInThroughPage } from './session';
 
 const atEverySize = captureAtEverySize('APP-ACCOUNTS-4');
 
@@ -94,7 +88,7 @@ async function nextOfTheSignIn(page: Page): Promise<string | null> {
 }
 
 test.beforeAll(() => removeAccounts());
-// What redeem signs with, read here and not inside a test (fixtures.ts, internalSecret).
+// What redeem signs with, read here and not inside a test (hub.ts, internalSecret).
 test.beforeAll(() => internalSecret());
 test.afterAll(() => removeAccounts());
 

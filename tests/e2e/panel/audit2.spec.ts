@@ -14,7 +14,13 @@ import { join } from 'node:path';
 
 import type { Locator, Page } from '@playwright/test';
 
-import { apiPost, businessIdOf, expect, panelAccount, runSeed, seedPanel, settled, signIn, signInAs, test, watchPageErrors } from './fixtures';
+import { panelAccount } from './accounts';
+import { businessIdOf, seedPanel } from './businesses';
+import { runSeed } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { settled } from './screen';
+import { apiPost, signIn, signInAs } from './session';
 
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/panel-fix3';
 mkdirSync(SHOTS_DIR, { recursive: true });

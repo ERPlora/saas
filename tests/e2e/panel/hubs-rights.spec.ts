@@ -11,20 +11,14 @@
 // (`seed_taxonomy`); Starter's places are put back after the test that changes them.
 import type { APIRequestContext, Page } from '@playwright/test';
 
-import {
-  captureAtEverySize,
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  type HubCall,
-  type HubDouble,
-  removeAccountsWarm,
-  signIn,
-  startHubDouble,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { type HubCall, type HubDouble, startHubDouble } from './hub';
+import { watchPageErrors } from './page-events';
 import { HUB_DOUBLE_PORT } from './project';
+import { captureAtEverySize } from './screen';
+import { signIn } from './session';
 
 const atEverySize = captureAtEverySize('APP-HUBS-4');
 

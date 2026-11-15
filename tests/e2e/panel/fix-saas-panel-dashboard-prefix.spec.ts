@@ -3,19 +3,12 @@
 // a link of the Hub, a mail already sent) lands on the same page under /dashboard/ with its query. Accounts of
 // panel_seed.py; at 390, 834 and 1440 px.
 // flow: HUBS-F10
-import {
-  businessIdOf,
-  expect,
-  panelAccount,
-  seedPanel,
-  settled,
-  shot,
-  sidewaysScroll,
-  signIn,
-  test,
-  VIEWPORTS,
-  watchPageErrors,
-} from './fixtures';
+import { panelAccount } from './accounts';
+import { businessIdOf, seedPanel } from './businesses';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { settled, shot, sidewaysScroll, VIEWPORTS } from './screen';
+import { signIn } from './session';
 
 const KEY = 'FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX';
 

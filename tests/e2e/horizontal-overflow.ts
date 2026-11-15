@@ -37,7 +37,7 @@ export async function horizontalOverflow(page: Page): Promise<number> {
 /**
  * Each box of `boxWidths` whose content runs more than `slack` px past its right edge, named for a message as
  * `<box> <scrollWidth> > <clientWidth>` (`document 1600 > 390`, `ion-content 1632 > 390`): what scrolls sideways, by the
- * same measure. `sidewaysScroll` of panel/fixtures.ts reads it with its 1 px of slack.
+ * same measure. `sidewaysScroll` of panel/screen.ts reads it with its 1 px of slack.
  */
 export async function overflowingBoxes(page: Page, slack = 0): Promise<string[]> {
   const boxes = await page.evaluate(boxWidths);

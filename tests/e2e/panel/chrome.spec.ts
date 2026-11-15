@@ -12,19 +12,13 @@ import { join } from 'node:path';
 
 import type { Page } from '@playwright/test';
 
-import {
-  businessIdOf,
-  expect,
-  panelAccount,
-  repeatedTop,
-  runSeed,
-  seedPanel,
-  settled,
-  shot,
-  signIn,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { panelAccount } from './accounts';
+import { businessIdOf, seedPanel } from './businesses';
+import { runSeed } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { repeatedTop, settled, shot } from './screen';
+import { signIn } from './session';
 
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/panel-fix2';
 mkdirSync(SHOTS_DIR, { recursive: true });

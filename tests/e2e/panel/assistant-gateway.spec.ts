@@ -22,7 +22,12 @@ import { createHmac } from 'node:crypto';
 import type { APIRequestContext, APIResponse } from '@playwright/test';
 
 import { FAKE_PROVIDER_URL, startFakeProvider } from './assistant-chat';
-import { captureAtEverySize, expect, internalSecret, runSeed, signIn, test, watchPageErrors } from './fixtures';
+import { runSeed } from './django';
+import { expect, test } from './fixtures';
+import { internalSecret } from './hub';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize } from './screen';
+import { signIn } from './session';
 
 const atEverySize = captureAtEverySize('APP-ASSISTANT-2');
 

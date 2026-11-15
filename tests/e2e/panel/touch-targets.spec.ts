@@ -6,7 +6,11 @@
 // businesses.spec.ts reads them); nothing is created, changed or removed.
 import type { Locator, Page } from '@playwright/test';
 
-import { businessIdOf, expect, expectNoSidewaysScroll, panelAccount, seedPanel, settled, signIn, test } from './fixtures';
+import { panelAccount } from './accounts';
+import { businessIdOf, seedPanel } from './businesses';
+import { expect, test } from './fixtures';
+import { expectNoSidewaysScroll, settled } from './screen';
+import { signIn } from './session';
 
 const VIEWPORTS = [
   { width: 390, height: 844 },

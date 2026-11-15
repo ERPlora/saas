@@ -14,26 +14,14 @@
 // panel creates it.
 import { type Page } from '@playwright/test';
 
-import {
-  apiPost,
-  captureAtEverySize,
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  internalSecret,
-  QUIET_MS,
-  realHubPrint,
-  removeAccountsWarm,
-  reportBusinessReady,
-  settled,
-  shot,
-  signIn,
-  signInAs,
-  test,
-  watchLiveStreams,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { internalSecret, realHubPrint, reportBusinessReady } from './hub';
+import { QUIET_MS, watchLiveStreams, watchPageErrors } from './page-events';
 import { HUB_DOUBLE_PORT } from './project';
+import { captureAtEverySize, settled, shot } from './screen';
+import { apiPost, signIn, signInAs } from './session';
 
 const atEverySize = captureAtEverySize('APP-HUBS-2');
 

@@ -35,8 +35,10 @@ import {
   verdictOf,
 } from '../assistant-battery';
 import { type AssistantChat, qaChat, seedRealAssistant, TURN_MS } from './assistant-chat';
-import { djangoPrint, expect, signIn, test } from './fixtures';
+import { djangoPrint } from './django';
+import { expect, test } from './fixtures';
 import { PANEL_URL } from './project';
+import { signIn } from './session';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const QA_DIR = join(HERE, '..', '.artifacts', 'qa');

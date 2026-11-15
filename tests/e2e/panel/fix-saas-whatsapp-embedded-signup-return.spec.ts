@@ -27,8 +27,12 @@ import { readMailCode } from '@erplora/ui/testing/mail';
 import { type BrowserContext, expect, type Page, test } from '@playwright/test';
 
 import { horizontalOverflow } from '../horizontal-overflow';
-import { hubStackIds, OWNER, repeatedTop, runSeedWarm, settled, shot, submitSignInForm, VIEWPORTS, warmDjango } from './fixtures';
+import { OWNER } from './accounts';
+import { runSeedWarm, warmDjango } from './django';
+import { hubStackIds } from './hub';
 import { PANEL_URL, WHATSAPP_E2E } from './project';
+import { repeatedTop, settled, shot, VIEWPORTS } from './screen';
+import { submitSignInForm } from './session';
 
 const TASK = 'FIX-SAAS-WHATSAPP-EMBEDDED-SIGNUP-RETURN';
 const RETURN_TYPE = 'erplora.whatsapp.signup';

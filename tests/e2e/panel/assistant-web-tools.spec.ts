@@ -10,7 +10,9 @@ import { LONG_ADDRESS } from '../assistant-provider';
 import { STACK } from '../stack';
 
 import { ask, DESKTOP_FIRST, localAssistant, openPanel } from './assistant-chat';
-import { expect, expectNoSidewaysScroll, settled, shot, test, watchPageErrors } from './fixtures';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { expectNoSidewaysScroll, settled, shot } from './screen';
 
 const RATE_SOURCE = 'https://frankfurter.dev';
 const WORDS = {

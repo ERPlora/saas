@@ -1,5 +1,5 @@
 // flow: none — tooling of the e2e harness, nothing anyone sees changes (saas#336)
-// The walk of `captureAtEverySize` (fixtures.ts), which the panel's specs take to check a screen at phone, tablet and
+// The walk of `captureAtEverySize` (screen.ts), which the panel's specs take to check a screen at phone, tablet and
 // desktop: if it skipped a size, no spec failed, only that size's captures were missing (saas#336). Here it walks a
 // page of its own (`page.setContent`, no server) whose `ready` writes down the size it is called at: the three sizes,
 // in their order, a capture of each at its size, and back at the desktop at the end. Its captures are removed, before
@@ -7,7 +7,8 @@
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { basename } from 'node:path';
 
-import { captureAtEverySize, expect, shot, test } from './fixtures';
+import { expect, test } from './fixtures';
+import { captureAtEverySize, shot } from './screen';
 
 const PREFIX = 'saas-e2e-walk';
 const KEY = 'probe';

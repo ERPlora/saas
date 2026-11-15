@@ -10,18 +10,13 @@
 // flow: ui:ConfirmDialog
 import { type Page } from '@playwright/test';
 
-import {
-  catalogueText,
-  createAccountWarm,
-  expect,
-  internalSecret,
-  readyBusinessOn,
-  removeAccountsWarm,
-  settled,
-  signIn,
-  test,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { readyBusinessOn } from './businesses';
+import { expect, test } from './fixtures';
+import { internalSecret } from './hub';
 import { PANEL_URL } from './project';
+import { catalogueText, settled } from './screen';
+import { signIn } from './session';
 
 const PREFIX = 'e2e-confirm-in-view-';
 const PASSWORD = 'Masa-madre-y-centeno-26';

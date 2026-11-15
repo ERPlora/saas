@@ -6,7 +6,9 @@
 // The cross e2e with the real Hub's inbox (Meta → erplora.com → the Hub's «WhatsApp inbox») is whatsapp-hub.spec.ts.
 import { createHmac } from 'node:crypto';
 
-import { expect, type HubCall, runSeed, startHubDouble, test } from './fixtures';
+import { runSeed } from './django';
+import { expect, test } from './fixtures';
+import { type HubCall, startHubDouble } from './hub';
 import { WHATSAPP_E2E } from './project';
 
 const WEBHOOK = '/webhooks/whatsapp/';
