@@ -1,12 +1,62 @@
-# Code files over their cap (production 1,000 lines, tests 1,500), checked by tests/test_guardrails_size.py.
-# <ceiling> <path> <issue>: the ceiling is the file's size rounded up to the hundred. The list only shrinks:
-# no new entries, no higher ceilings, and an entry leaves once its file is split below its cap.
-1800 accounts/services.py saas#462
-5200 billing/services.py saas#462
-1600 frontend/sdk-types.d.ts saas#462
-1900 hubs/queries.py saas#462
-3200 hubs/services.py saas#462
-1800 hubs/tests/test_migrations.py saas#462
-1800 public/tests/test_pricing.py saas#462
-1700 public/tests/test_templates.py saas#462
-1100 whatsapp/services.py saas#462
+# Code files over their cap, checked by tests/test_guardrails_size.py: Python 500 lines (tests 1,000), TypeScript
+# and JavaScript 300 (tests 500), shell scripts 100, CSS and Django templates 1,000 (tests 1,500); a Vue page is
+# measured by blocks in the lint. <ceiling> <path> <issue>: the ceiling is the file's exact size in lines.
+# The list only shrinks: no new entries and no higher ceilings. A file that shrinks lowers its ceiling to its new
+# size and leaves the list once it fits its cap. A services.py, queries.py or schemas.py moved whole to
+# <name>/__init__.py takes its entry along, with the same ceiling.
+121 .github/scripts/e2e-report.sh saas#462
+278 .github/scripts/ecs-deploy.sh saas#462
+234 .github/scripts/ecs-rollback.sh saas#462
+523 accounts/admin.py saas#462
+722 accounts/frontend/components/SignInForm.test.ts saas#462
+775 accounts/frontend/pages/TwoFactorSettingsPage.test.ts saas#462
+584 accounts/frontend/pages/VerifyEmailPage.test.ts saas#462
+620 accounts/queries.py saas#462
+1747 accounts/services.py saas#462
+1076 accounts/tests/test_admin.py saas#462
+1080 accounts/tests/test_mfa.py saas#462
+613 assistant/admin.py saas#462
+546 assistant/queries.py saas#462
+753 assistant/services.py saas#462
+508 assistant/turn.py saas#462
+677 billing/admin.py saas#462
+815 billing/frontend/components/InvoicesTab.test.ts saas#462
+627 billing/frontend/components/StoreShop.test.ts saas#462
+639 billing/schemas.py saas#462
+5168 billing/services.py saas#462
+549 billing/stripe_service.py saas#462
+1292 billing/tests/test_checkout.py saas#462
+664 billing/vat.py saas#462
+990 config/settings.py saas#462
+1231 config/tests/test_production_settings.py saas#462
+511 fiscal/services.py saas#462
+1124 fiscal_gateway/tests/test_internal.py saas#462
+811 frontend/main.test.ts saas#462
+629 frontend/public.test.ts saas#462
+1587 frontend/sdk-types.d.ts saas#462
+522 hubs/frontend/components/CustomDomainCard.test.ts saas#462
+681 hubs/frontend/pages/BusinessListPage.test.ts saas#462
+638 hubs/frontend/pages/LaunchPage.test.ts saas#462
+965 hubs/models.py saas#462
+1803 hubs/queries.py saas#462
+932 hubs/schemas.py saas#462
+3126 hubs/services.py saas#462
+1053 hubs/tests/test_check_custom_domains.py saas#462
+1791 hubs/tests/test_migrations.py saas#462
+1074 hubs/tests/test_services.py saas#462
+1186 public/tests/test_demo.py saas#462
+1033 public/tests/test_industries.py saas#462
+1415 public/tests/test_landing.py saas#462
+1384 public/tests/test_legal.py saas#462
+1779 public/tests/test_pricing.py saas#462
+1613 public/tests/test_templates.py saas#462
+726 scripts/build_ionic_utilities.py saas#462
+510 tests/e2e/assistant-battery.ts saas#462
+534 tests/e2e/assistant-probes.test.ts saas#462
+517 tests/e2e/panel/billing.spec.ts saas#462
+1151 tests/e2e/panel/fixtures.ts saas#462
+670 tests/e2e/panel/hubs-people.spec.ts saas#462
+752 tests/e2e/public-web.spec.ts saas#462
+1078 tests/test_no_internal_references.py saas#462
+724 whatsapp/gateway.py saas#462
+1002 whatsapp/services.py saas#462

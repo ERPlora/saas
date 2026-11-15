@@ -3,7 +3,7 @@
 Complexity at most 10 (C901), at most 50 statements (PLR0915), 12 branches (PLR0912), 6 returns (PLR0911) and
 5 arguments (PLR0913, PLR0917). Tests may take more arguments: pytest's fixtures arrive as arguments. A function
 over a limit today carries a ``# noqa`` for it, and RUF100 fails on a ``# noqa`` that no longer silences
-anything, so those exceptions only go away. Neither those ``# noqa`` nor the TypeScript ones in
+anything, so those exceptions only go away. Neither those ``# noqa`` nor the TypeScript and Vue ones in
 ``eslint-suppressions.json`` may grow in number against the merge base with ``origin/main``.
 """
 
@@ -30,6 +30,7 @@ REPO = Path(__file__).resolve().parent.parent
 FUNCTION_LIMITS = {"C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR0917"}
 ARGUMENT_LIMITS = {"PLR0913", "PLR0917"}
 SUPPRESSIONS = "eslint-suppressions.json"
+ESLINT_CONFIG = "eslint.config.js"
 # Split so that this file's own examples are not counted as exceptions of the repository.
 NOQA = "# " + "noqa"
 
@@ -110,11 +111,20 @@ def silenced_more_than_main(root: Path = REPO) -> list[str] | None:
 
 
 def suppressed_more_than_main(root: Path = REPO) -> list[str] | None:
-    """The same for ``eslint-suppressions.json``; None while main has none."""
+    """The same for ``eslint-suppressions.json``; None while main has none.
+
+    A rule this branch's ``eslint.config.js`` turns on and main's does not name yet has nothing to compare with: the
+    change that turns it on freezes what breaks it today.
+    """
     main_suppressions = main_text(SUPPRESSIONS, root)
     if main_suppressions is None:
         return None
-    return widened(suppressed_limits((root / SUPPRESSIONS).read_text()), suppressed_limits(main_suppressions))
+    counts = suppressed_limits((root / SUPPRESSIONS).read_text())
+    config_path = root / ESLINT_CONFIG
+    config = config_path.read_text() if config_path.exists() else ""
+    main_config = main_text(ESLINT_CONFIG, root) or ""
+    compared = Counter({rule: count for rule, count in counts.items() if rule not in config or rule in main_config})
+    return widened(compared, suppressed_limits(main_suppressions))
 
 
 def test_no_function_limit_is_silenced_more_often_than_on_main():
@@ -249,6 +259,38 @@ def test_a_new_eslint_suppression_against_main_is_reported(tmp_path):
     assert suppressed_more_than_main(tmp_path) == ["complexity: 2, 1 at the merge base with origin/main"]
     (tmp_path / SUPPRESSIONS).write_text("{}")
     assert suppressed_more_than_main(tmp_path) == []
+
+
+LIMITS_IN_CONFIG = "export default [{ rules: { complexity: ['error', 15] } }];\n"
+BLOCKS_TURNED_ON = "export default [{ rules: { complexity: ['error', 15], 'vue/max-lines-per-block': ['error'] } }];\n"
+
+
+def test_a_rule_the_branch_turns_on_freezes_what_breaks_it_today(tmp_path):
+    git_repo(tmp_path)
+    commit_as_main(tmp_path, {ESLINT_CONFIG: LIMITS_IN_CONFIG, SUPPRESSIONS: "{}"})
+    (tmp_path / ESLINT_CONFIG).write_text(BLOCKS_TURNED_ON)
+    (tmp_path / SUPPRESSIONS).write_text('{"a.vue": {"vue/max-lines-per-block": {"count": 2}}}')
+    assert suppressed_more_than_main(tmp_path) == []
+    (tmp_path / SUPPRESSIONS).write_text('{"a.vue": {"vue/max-lines-per-block": {"count": 2}, "complexity": {"count": 1}}}')
+    assert suppressed_more_than_main(tmp_path) == ["complexity: 1, 0 at the merge base with origin/main"]
+
+
+def test_once_main_turns_a_rule_on_its_suppressions_only_shrink(tmp_path):
+    git_repo(tmp_path)
+    commit_as_main(
+        tmp_path, {ESLINT_CONFIG: BLOCKS_TURNED_ON, SUPPRESSIONS: '{"a.vue": {"vue/max-lines-per-block": {"count": 1}}}'}
+    )
+    (tmp_path / SUPPRESSIONS).write_text('{"a.vue": {"vue/max-lines-per-block": {"count": 2}}}')
+    assert suppressed_more_than_main(tmp_path) == ["vue/max-lines-per-block: 2, 1 at the merge base with origin/main"]
+
+
+def test_a_rule_the_config_does_not_name_is_compared_like_the_rest(tmp_path):
+    git_repo(tmp_path)
+    commit_as_main(tmp_path, {ESLINT_CONFIG: LIMITS_IN_CONFIG, SUPPRESSIONS: "{}"})
+    (tmp_path / SUPPRESSIONS).write_text('{"a.ts": {"@typescript-eslint/no-explicit-any": {"count": 1}}}')
+    assert suppressed_more_than_main(tmp_path) == [
+        "@typescript-eslint/no-explicit-any: 1, 0 at the merge base with origin/main"
+    ]
 
 
 def test_the_test_data_of_this_control_is_not_counted_as_an_exception():
