@@ -101,6 +101,9 @@ def package_problems(folder: Path, package: str) -> list[str]:
         for inner in sorted(folder.iterdir())
         if inner.is_dir() and any(inner.rglob("*.py"))
     ]
+    if folder.with_suffix(".py").is_file():
+        path = package.replace(".", "/")
+        problems.append(f"{path}.py is still there beside {path}/, which is the one Python loads: delete the file")
     problems += [
         f"{package}.{name} line {line}: import *, which hides what each module declares"
         for name, source in sources.items()
@@ -196,6 +199,15 @@ def test_a_package_inside_the_package_is_caught(tmp_path):
 
     assert package_problems(folder, "shop.queries") == [
         "shop.queries.reports is a package inside the package: make it a module of shop.queries"
+    ]
+
+
+def test_the_file_a_package_replaced_left_beside_it_is_caught(tmp_path):
+    folder = _package(tmp_path, {"__init__.py": ""})
+    (folder.parent / "queries.py").write_text("")
+
+    assert package_problems(folder, "shop.queries") == [
+        "shop/queries.py is still there beside shop/queries/, which is the one Python loads: delete the file"
     ]
 
 
