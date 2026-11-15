@@ -31,7 +31,7 @@ NEWER = "sk-test-openai-999999999999999999999999zz99"
 
 @pytest.fixture
 def env(settings):
-    """The four keys in the environment, as ``config/settings.py`` reads them."""
+    """The four keys in the environment, as ``config/settings/assistant.py`` reads them."""
     settings.OPENAI_API_KEY = OPENAI
     settings.ANTHROPIC_API_KEY = ANTHROPIC
     settings.GEMINI_API_KEY = GEMINI

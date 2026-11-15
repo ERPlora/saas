@@ -124,7 +124,7 @@ describe("the stack's servers", () => {
     expect(server.env).not.toHaveProperty('DB_NAME');
   });
 
-  // DEBUG off refuses to start without them (config/settings.py; saas#395).
+  // DEBUG off refuses to start without them (config/settings/core.py; saas#395).
   it('give both public servers the policies production is given explicitly', () => {
     for (const stack of [SHARED, OWN]) {
       expect(publicServer(SAAS_DIR, stack).env).toMatchObject(productionPolicies(stack));

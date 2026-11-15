@@ -26,7 +26,6 @@
 549 billing/stripe_service.py saas#462
 1292 billing/tests/test_checkout.py saas#462
 664 billing/vat.py saas#462
-990 config/settings.py saas#462
 1231 config/tests/test_production_settings.py saas#462
 511 fiscal/services.py saas#462
 1124 fiscal_gateway/tests/test_internal.py saas#462

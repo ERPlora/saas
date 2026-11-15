@@ -8,7 +8,7 @@ set -uo pipefail
 IMAGE="${1:?usage: docker/image.test.sh <image>}"
 failures=0
 
-# The variables production must provide with DEBUG=False (config/settings.py), all dummies.
+# The variables production must provide with DEBUG=False (config/settings/), all dummies.
 PROD_ENV=(
   -e DEBUG=False
   -e CACHE_KEY_PREFIX=saas

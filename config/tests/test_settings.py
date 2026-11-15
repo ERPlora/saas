@@ -373,7 +373,7 @@ def test_the_test_run_keeps_the_default_vite_port_whatever_the_shell_exports():
 
 
 # A python-decouple repository standing for a `.env` that carries VITE_DEV_PORT=5224: whichever branch
-# config/settings.py takes (the file exists or not), the value comes from "the file", not the environment.
+# config/settings/core.py takes (the file exists or not), the value comes from "the file", not the environment.
 DOTENV_WITH_VITE_PORT_5224 = (
     "import decouple\n"
     "_dotenv = {'VITE_DEV_PORT': '5224'}\n"

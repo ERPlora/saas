@@ -75,7 +75,7 @@ Hub de las specs (por defecto `8010`: `:8011`, `:8012`, `:8013`, `:8015`, `:8016
   caído, y las specs hacen de Hub (su callback `ready` firmado). Así ni el `runserver` de `:8001` de otra
   sesión (que se reinicia con cada `.py` guardado) ni un Hub en `:8000` cambian el resultado, y la
   e2e no deja BD de hub huérfanas. Se arranca y se para en cada ejecución. Además sube los límites por
-  dirección de la entrada (`E2E_RELAX_LOGIN_RATE_LIMIT=True`, `config/settings.py`): cada spec entra desde
+  dirección de la entrada (`E2E_RELAX_LOGIN_RATE_LIMIT=True`, `config/settings/accounts.py`): cada spec entra desde
   `127.0.0.1` con contraseña y código, y una spec repetida (`--repeat-each=6`) pasaba de los 30 por minuto (429 en
   el login); desde 2026-10-22 también las contraseñas falladas (5 en 5 minutos por dirección) y los códigos
   rechazados (10 en 5 minutos por dirección, `code_attempts`), y desde 2026-10-28 las altas (10 por hora por
@@ -119,11 +119,11 @@ Hub de las specs (por defecto `8010`: `:8011`, `:8012`, `:8013`, `:8015`, `:8016
   lo da por válido y de su acción (la puntuación de un Chrome sin ventana no se mira). El servidor público sube el
   límite de demos por dirección (`DEMO_SPAWN_RATELIMIT=30/h`): la ejecución pulsa «Prueba la demo» más de 3 veces.
 - **Correo**: el Django del panel usa el backend de ficheros de Django (`EMAIL_BACKEND` +
-  `EMAIL_FILE_PATH`, que `config/settings.py` pasa a `MAILERS`) y escribe cada correo en
+  `EMAIL_FILE_PATH`, que `config/settings/mail.py` pasa a `MAILERS`) y escribe cada correo en
   `.artifacts/panel/mail/` (en una pila propia, `.artifacts/panel/mail-<E2E_SAAS_PORT>/`); `waitForMail(destinatario, desde, enlace)` espera el que llega tras una
   acción y devuelve su enlace (invitación, contraseña). Los de ejecuciones anteriores se quedan y se
   saltan por fecha.
-- **`:5174` (Vite)**, o el puerto de `VITE_DEV_PORT` si se exporta (lo leen igual `config/settings.py`,
+- **`:5174` (Vite)**, o el puerto de `VITE_DEV_PORT` si se exporta (lo leen igual `config/settings/core.py`,
   `vite.config.ts` y `panel/project.ts`; el Django de `:8012` lo recibe también): si ya hay uno levantado,
   la e2e **lo reutiliza** y no lo para, **pero solo si es de este árbol** (y solo en la pila compartida: una
   pila propia arranca el suyo). Cada respuesta del Vite de
@@ -165,7 +165,7 @@ resultados y **su BD**. Con una BD compartida, las dos siembran y borran las mis
 | Variable | Qué aísla | Quién la lee |
 |---|---|---|
 | `E2E_SAAS_PORT` | los tres puertos (`+1` público, `+2` panel, `+9` Hub de las specs) y, con ellos, la BD `saas_e2e_<puerto>`, la carpeta de correo `mail-<puerto>/` y la de resultados `…-<puerto>` | `stack.ts` (y, por él, `playwright.config.ts`, `panel/project.ts`, `django-env.ts`, `database.ts`) |
-| `VITE_DEV_PORT` | el Vite del panel | `panel/project.ts`, `vite.config.ts`, `config/settings.py` (ver arriba) |
+| `VITE_DEV_PORT` | el Vite del panel | `panel/project.ts`, `vite.config.ts`, `config/settings/core.py` (ver arriba) |
 
 Reglas que la e2e hace cumplir antes de arrancar ningún servidor (`stack.ts`):
 

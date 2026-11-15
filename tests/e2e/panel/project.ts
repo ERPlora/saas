@@ -80,7 +80,7 @@ export const GOOGLE_E2E = {
 type WebServer = Exclude<NonNullable<PlaywrightTestConfig['webServer']>, unknown[]>;
 
 /**
- * Vite's port for a run with `env`: `VITE_DEV_PORT` (config/settings.py and vite.config.ts read it
+ * Vite's port for a run with `env`: `VITE_DEV_PORT` (config/settings/core.py and vite.config.ts read it
  * too), 5174 when it is not exported.
  */
 export function vitePort(env: Record<string, string | undefined>): number {
@@ -96,7 +96,7 @@ export const VITE_PORT = vitePort(process.env);
 /** The header with which vite.config.ts says which checkout it serves (`server.headers`, URI-encoded). */
 export const VITE_ROOT_HEADER = 'x-erplora-vite-root';
 
-/** What the dev shell loads first from Vite (`live.spa`, LIVE["spa"] in config/settings.py). */
+/** What the dev shell loads first from Vite (`live.spa`, LIVE["spa"] in config/settings/web.py). */
 function viteClientUrl(port: number, host = 'localhost'): string {
   return `http://${host}:${port}/static/spa/@vite/client`;
 }
@@ -162,7 +162,7 @@ function panelDjangoEnv(vitePort: number, stack: Stack, real: boolean): Record<s
       // Its dev shell and CSP point at this run's Vite.
       VITE_DEV_PORT: String(vitePort),
       // Every spec signs in from 127.0.0.1, password and code, and signs its accounts up from there, past the
-      // limits per address when repeated (config/settings.py): only this server raises them (sign-ins, failed
+      // limits per address when repeated (config/settings/accounts.py): only this server raises them (sign-ins, failed
       // passwords, typed codes, sign-ups).
       E2E_RELAX_LOGIN_RATE_LIMIT: 'True',
       // reCAPTCHA off, whatever `.env` holds: the specs sign in through allauth's API, with no browser to ask
