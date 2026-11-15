@@ -29,6 +29,7 @@ from billing.models import (
     InvoiceCounter,
     InvoiceLine,
     OssNotice,
+    PayingCustomer,
     PaymentFailure,
     PlanChangeSchedule,
     PromoCode,
@@ -61,6 +62,7 @@ NOT_AUDITED = {
     WebhookEvent: "the queue of Stripe's deliveries (a claim, its lease, its attempts), pruned by purge_webhook_events",
     InvoiceCounter: "a counter that moves with every invoice issued",
     OssNotice: "the once-a-year dedupe of a notice to the team's mailbox and the queue of its mail",
+    PayingCustomer: "a read-only view of hubs.Subscription, whose rows hubs already audits",
 }
 
 SECRET = "cs_test_secret_never_logged"

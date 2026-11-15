@@ -172,6 +172,7 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F38 | Releer cada noche las suscripciones en Stripe y corregir lo que se desvió | hecho |
 | BILLING-F39 | Comprobar cada día que Stripe avisa de todo lo que erplora.com trata | hecho |
 | BILLING-F40 | Sacar el informe de facturación de un periodo para la gestoría | hecho |
+| BILLING-F41 | Ver qué clientes pagan, con qué plan, desde cuándo y cuánto | hecho |
 
 ### BILLING-F01 Decir dónde se factura el negocio y con qué identificación fiscal
 Estado: hecho
@@ -534,7 +535,7 @@ Pantalla: Admin
 Pasos:
 1. Una persona de ERPlora entra en el admin con la cuenta del SaaS (código por correo y app de autenticación).
 2. Ve, solo para leer, las suscripciones y sus líneas, los avisos de Stripe, los intentos de pago, los códigos promocionales usados, los contadores de cada serie de facturas y los cambios de plan que esperan al final del periodo: lo que dice Stripe no se edita aquí, se cambia en Stripe y llega por su aviso.
-3. En los negocios puede «Enviar el último estado al negocio» y «Reintentar lo que el negocio aún debe» y, solo un superusuario, «Dejar a su propietario comprar los planes internos» y «Dejar de venderle los planes internos»: con la marca, el propietario de ese negocio ve «Prueba de pago (interno)» (1 € + IVA) en la Tienda y lo compra como cualquier plan, también en producción, para hacer una compra real y ver su factura con el QR; la columna «planes internos» de la lista dice qué negocios la tienen. En las facturas, con sus líneas, «Reenviar al negocio de plataforma», «Reenviar el correo de la factura», «Descargar el PDF» de cualquier factura ya emitida y, eligiendo varias en la lista, «Descargar los PDF (ZIP)»; desde la lista, el «Informe de facturación» de un mes, un trimestre o un año (BILLING-F40).
+3. En los negocios puede «Enviar el último estado al negocio» y «Reintentar lo que el negocio aún debe» y, solo un superusuario, «Dejar a su propietario comprar los planes internos» y «Dejar de venderle los planes internos»: con la marca, el propietario de ese negocio ve «Prueba de pago (interno)» (1 € + IVA) en la Tienda y lo compra como cualquier plan, también en producción, para hacer una compra real y ver su factura con el QR; la columna «planes internos» de la lista dice qué negocios la tienen. En las facturas, con sus líneas, «Reenviar al negocio de plataforma», «Reenviar el correo de la factura», «Descargar el PDF» de cualquier factura ya emitida y, eligiendo varias en la lista, «Descargar los PDF (ZIP)»; desde la lista, el «Informe de facturación» de un mes, un trimestre o un año (BILLING-F40). En **Clientes de pago**, qué negocios pagan, con qué plan, desde cuándo y cuánto, con su Excel (BILLING-F41).
 4. Mantiene los códigos promocionales, la tabla de IVA, la política fiscal y los datos de ERPlora (nacen con los del Modelo 036 y son los que VIES ve de quien pregunta); las devoluciones y las cancelaciones al momento se hacen en el panel de Stripe.
 5. Una aplicación de pago que algún negocio tiene no se borra del catálogo: el admin dice qué negocio la tiene y que se quite de la venta.
 Entra: la cuenta del personal con su papel.
@@ -717,6 +718,21 @@ Entra: el año y el periodo.
 Sale: los totales en pantalla y la hoja de cálculo para la gestoría; nada cambia.
 Si falla: solo cuentan las facturas cobradas y ya emitidas por el negocio de plataforma, por su fecha de expedición; las cobradas del periodo que aún se emiten o que el negocio de plataforma rechazó no suman, y un aviso las nombra («Cobradas en este periodo pero aún sin emitir, así que no se cuentan: …»). Un periodo que no existe dice el error junto al campo, y su Excel vuelve al informe. Sin facturas en el periodo, los totales salen a cero y el desglose dice «No se facturó nada en este periodo». Quien no puede ver las facturas en el admin no lo abre.
 Implicados: ninguno
+
+### BILLING-F41 Ver qué clientes pagan, con qué plan, desde cuándo y cuánto
+Estado: hecho
+Actor: personal de ERPlora
+Pantalla: Admin › Facturación › Clientes de pago
+Pasos:
+1. En el admin, abre **Facturación › Clientes de pago**: una fila por negocio que Stripe cobra hoy (también si está en prueba, con un cobro pendiente o en pausa), por orden de negocio.
+2. Cada fila dice el negocio, quién lo paga (el nombre fiscal de su pagador), su país, el tipo de cliente (empresa, autónomo o particular con NIF español, o particular sin NIF, como en el informe de facturación, BILLING-F40), el plan, si paga al mes o al año, el importe mensual sin IVA, desde cuándo es cliente y el estado de su suscripción.
+3. El importe mensual es la base de su última factura cobrada por un periodo entero, con sus aplicaciones de pago y sin los prorrateos de un cambio a mitad de periodo; la de un pago anual, entre 12. «Cliente desde» es la fecha de su primera factura cobrada.
+4. Filtra por plan, estado o país (cada filtro ofrece solo lo que tiene algún cliente de pago) o busca por negocio, pagador o NIF.
+5. Pulsa «Descargar Excel»: una fila por cliente de lo que enseña la lista (con sus filtros y su búsqueda) y las mismas columnas, en el formato del Excel del informe de facturación (BILLING-F40).
+Entra: los filtros y la búsqueda.
+Sale: la lista en pantalla y la hoja de cálculo; nada cambia.
+Si falla: un negocio sin ninguna factura cobrada todavía (en prueba con un código promocional) sale con el importe y «cliente desde» vacíos («-»). Una suscripción que terminó (cancelada, o caducada sin llegar a pagarse) ya no es un cliente de pago y no sale. Sin clientes de pago, la lista dice «0 clientes de pago». Quien no puede ver las suscripciones en el admin no la ve ni la descarga.
+Implicados: hubs (las suscripciones y los pagadores de los negocios)
 
 ## Para quien lo mantiene
 

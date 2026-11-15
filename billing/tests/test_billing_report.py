@@ -14,11 +14,10 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
 
 from billing import queries
 from billing.models import Invoice, InvoiceLine
+from billing.tests.conftest import staff_with
 
 pytestmark = pytest.mark.django_db
 
@@ -330,19 +329,6 @@ class TestTheExcel:
         _, row = self.rows(self.document(), ",")
 
         assert row[3] == "'=HYPERLINK(\"http://evil.example\",\"x\")"
-
-
-@pytest.fixture
-def staff_client(client):
-    client.force_login(get_user_model().objects.create_superuser(email="root@example.com", password="x"))
-    return client
-
-
-def staff_with(*codenames):
-    user = get_user_model().objects.create_user(email=f"{'-'.join(codenames) or 'none'}@example.com", password="x",
-                                                is_staff=True)
-    user.user_permissions.add(*Permission.objects.filter(codename__in=codenames))
-    return user
 
 
 class TestTheAdminPage:

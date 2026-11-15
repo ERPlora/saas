@@ -7,7 +7,8 @@ policy through its functions. Nothing here asks VIES nor writes: a query runs RE
 The Billing section: ``billing.invoice.{list,get,pdf,csv}`` (ERPlora's invoices; the PDF is asked
 to the platform hub), ``billing.subscription.list`` and ``billing.payment_method.get`` (the card, asked to
 Stripe and kept a few minutes). The admin's billing report (``billing_report``) sums what was invoiced in a month,
-a quarter or a year, and its Excel shares the panel's CSV writer (``invoices_csv``).
+a quarter or a year, and its Excel shares the panel's CSV writer (``invoices_csv``), as does the admin's list of
+paying customers (``paying_customers``).
 """
 
 from billing.queries.tax import (
@@ -81,4 +82,13 @@ from billing.queries.catalog import (
     plan_for_price,
     plan_on_sale,
     store_catalog,
+)
+from billing.queries.paying_customers import (
+    monthly_cents,
+    paying_customer_country,
+    paying_customer_kind,
+    paying_customer_payer,
+    paying_customer_values,
+    paying_customers,
+    paying_customers_csv,
 )

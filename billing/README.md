@@ -485,6 +485,11 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
   que el Hub no devuelve) se nombran con su motivo en el aviso del admin y en `not-included.txt` dentro del ZIP, y
   sin ningún PDF no hay ZIP, solo el aviso. `PromoRedemption`, `InvoiceCounter` y `PlanChangeSchedule` se ven en el
   admin de solo lectura (`ReadOnlyAdmin`): los escriben el cobro, la numeración y el cambio de plan.
+- **Clientes de pago** (BILLING-F41; `billing/admin/paying_customers.py`, `PayingCustomerAdmin`): lista de solo
+  lectura de los negocios que Stripe cobra hoy, con filtros por plan, estado y país y «Descargar Excel» de lo que
+  enseña; la ve quien puede ver las suscripciones. La lectura vive en `billing/queries/paying_customers.py` y el
+  proxy `PayingCustomer` de `hubs.Subscription`, en `billing/models/paying_customers.py`; el Excel usa el mismo
+  escritor que el de facturas (`rows_csv`, en `billing/queries/invoices.py`).
 - **Descargas**: el fichero lo pide el SDK (`fetchFile` de `@erplora/ui/sdk`, con su `Accept` y la cookie de
   sesión) y `browser.ts` lo guarda con un enlace del mismo origen solo si la respuesta es ese fichero; no hay
   `fetch` propio (el SPA solo llega al servidor por el SDK, regla de eslint, y `api.call` lee JSON). Sin red, el

@@ -2192,3 +2192,24 @@ msgstr "Por tipo de cliente"
 #: templates/admin/billing/invoice/report.html
 msgid "Customer"
 msgstr "Cliente"
+
+# The paying customers of the admin.
+#: models.py
+msgid "paying customer"
+msgstr "cliente de pago"
+
+#: models.py
+msgid "paying customers"
+msgstr "clientes de pago"
+
+#: admin.py queries.py
+msgid "Billing frequency"
+msgstr "Periodicidad"
+
+#: admin.py queries.py
+msgid "Monthly tax base (€)"
+msgstr "Base imponible mensual (€)"
+
+#: admin.py queries.py
+msgid "Customer since"
+msgstr "Cliente desde"

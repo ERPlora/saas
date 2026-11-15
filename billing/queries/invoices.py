@@ -314,7 +314,7 @@ def _csv_rate(rate: Decimal, separator: str) -> str:
     return f"{rate:.2f}".replace(".", separator)
 
 
-def _csv_columns() -> dict:
+def _invoice_csv_columns() -> dict:
     """Every column an invoice export can carry: its header and how an invoice fills its cell (given the language's
     decimal separator). Built under the export's language, so the headers come out translated."""
     return {
@@ -342,25 +342,36 @@ REPORT_CSV_COLUMNS = ("number", "date", "business", "payer", "tax_id", "country"
                       "total", "currency", "payment", "status")
 
 
-def invoices_csv(invoices, *, columns: tuple[str, ...], language: str, filename: str) -> dict:
-    """The invoices as CSV for the accountant's Excel.
+def rows_csv(rows, columns, *, language: str, filename: str) -> dict:
+    """``rows`` as CSV for Excel, one line each; ``columns()`` gives the ``(header, cell)`` of each column and is
+    called under ``language``, so the headers come out translated.
 
     UTF-8 with its BOM, so Excel reads the accents; in a language that writes a decimal comma (Spanish) the
     columns are split by «;» and the amounts carry the comma, as Excel expects there; elsewhere «,» and «.».
     Dates in ISO (Excel reads them in every language)."""
     with translation.override(language):
         separator = formats.get_format("DECIMAL_SEPARATOR", lang=language)
-        chosen = [_csv_columns()[column] for column in columns]
+        chosen = columns()
         buffer = io.StringIO()
         writer = csv.writer(buffer, delimiter=";" if separator == "," else ",")
         writer.writerow([header for header, _cell in chosen])
-        for invoice in invoices.iterator():
-            writer.writerow([cell(invoice, separator) for _header, cell in chosen])
+        for row in rows:
+            writer.writerow([cell(row, separator) for _header, cell in chosen])
     return {
         "filename": filename,
         "content_type": "text/csv; charset=utf-8",
         "content": ("\ufeff" + buffer.getvalue()).encode("utf-8"),
     }
+
+
+def invoices_csv(invoices, *, columns: tuple[str, ...], language: str, filename: str) -> dict:
+    """The invoices as CSV for the accountant's Excel, with the ``columns`` of ``_invoice_csv_columns``."""
+    return rows_csv(
+        invoices.iterator(),
+        lambda: [_invoice_csv_columns()[column] for column in columns],
+        language=language,
+        filename=filename,
+    )
 
 
 @operation(
