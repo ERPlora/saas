@@ -173,6 +173,26 @@ describe('eslint config', () => {
     expect(await eslint.isPathIgnored('docker/image.test.sh')).toBe(true);
   });
 
+  it('fails a Vue block past its cap, blank lines included: template 250, script 300 and style 150', async () => {
+    const path = 'billing/frontend/pages/LongPage.vue';
+    expect(await longBlocks(vuePage({ template: 250, script: 300, style: 150 }), path)).toEqual([]);
+    expect(await longBlocks(vuePage({ template: 251, script: 301, style: 151 }), path)).toEqual([
+      'template',
+      'script',
+      'style',
+    ]);
+  });
+
+  it('takes no comment that switches a rule off: a limit is never silenced in the code', async () => {
+    const code = `/* eslint-disable max-params */\n${withParameters(4)}`;
+    expect(await functionLimits(code, 'billing/frontend/sum.ts')).toEqual(['max-params']);
+    const page = vuePage({ template: 251, script: 1, style: 1 }).replace(
+      '<template>',
+      '<!-- eslint-disable vue/max-lines-per-block -->\n<template>',
+    );
+    expect(await longBlocks(page, 'billing/frontend/pages/LongPage.vue')).toEqual(['template']);
+  });
+
   it.each([
     'billing/frontend/pick.test.ts',
     'billing/frontend/__tests__/mount-billing.ts',
@@ -195,6 +215,29 @@ async function functionLimits(code: string, filePath: string): Promise<string[]>
   const limits = result.messages.filter((m) => FUNCTION_LIMITS.includes(m.ruleId ?? ''));
   expect(limits.every((m) => m.severity === 2), JSON.stringify(limits)).toBe(true);
   return [...new Set(limits.map((m) => m.ruleId ?? ''))].sort();
+}
+
+/** The blocks of a Vue page the lint fails as too long, as errors, in the order they appear. */
+async function longBlocks(code: string, filePath: string): Promise<string[]> {
+  const [result] = await eslint.lintText(code, { filePath });
+  const blocks = result.messages.filter((m) => m.ruleId === 'vue/max-lines-per-block');
+  expect(blocks.every((m) => m.severity === 2), JSON.stringify(blocks)).toBe(true);
+  return blocks.map((m) => code.split('\n')[m.line - 1].replace(/^<(\w+).*$/, '$1'));
+}
+
+/** `count` lines of `text`, every other one blank. */
+function lines(count: number, text: (n: number) => string): string {
+  return Array.from({ length: count }, (_, n) => (n % 2 ? '' : text(n))).join('\n');
+}
+
+/** A Vue page whose blocks hold the given number of lines between their opening and closing tags. */
+function vuePage(blocks: { template: number; script: number; style: number }): string {
+  return [
+    `<template>\n${lines(blocks.template, (n) => `  <p>${n}</p>`)}\n</template>`,
+    `<script setup lang="ts">\n${lines(blocks.script, (n) => `const line${n} = ${n};`)}\n</script>`,
+    `<style scoped>\n${lines(blocks.style, (n) => `.line${n} { order: ${n}; }`)}\n</style>`,
+    '',
+  ].join('\n');
 }
 
 /** A function of the given complexity, one `if` per point past the first. */

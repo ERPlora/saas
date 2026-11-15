@@ -241,7 +241,7 @@ class TestFiscalPolicy:
         def _boom(policy, year):
             raise DatabaseError("database went away")
 
-        monkeypatch.setattr(queries, "cross_border_b2c_cents", _boom)
+        monkeypatch.setattr(queries.tax, "cross_border_b2c_cents", _boom)
 
         assert queries.uses_destination_rate(queries.fiscal_policy()) is False
         assert any(
@@ -257,7 +257,7 @@ class TestFiscalPolicy:
         def _boom(policy, year):
             raise DatabaseError("database went away")
 
-        monkeypatch.setattr(queries, "cross_border_b2c_cents", _boom)
+        monkeypatch.setattr(queries.tax, "cross_border_b2c_cents", _boom)
 
         with pytest.raises(DatabaseError):
             queries.destination_rate_applies(queries.fiscal_policy())

@@ -31,11 +31,22 @@ export default [
       '.venv/**',
     ],
   },
+  // No comment in the code switches a rule off: what breaks a limit today is frozen in eslint-suppressions.json.
+  // `noInlineConfig` covers scripts; `vue/comment-directive` is what reads those comments in a Vue template.
+  { linterOptions: { noInlineConfig: true } },
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
   {
     files: ['**/*.vue'],
     languageOptions: { parserOptions: { parser: tseslint.parser } },
+  },
+  {
+    // A page measured by blocks: the function limits see neither its template nor its style.
+    files: ['**/*.vue'],
+    rules: {
+      'vue/comment-directive': 'off',
+      'vue/max-lines-per-block': ['error', { template: 250, script: 300, style: 150 }],
+    },
   },
   {
     // `slot="start|end|icon-only"` on ion-* (and on HubIcon, whose root is an ion-icon) is the Web
