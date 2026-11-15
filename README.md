@@ -258,7 +258,7 @@ reconstruir nada si aparece spam:
   `goog#html` que crea el script de Google y, en la política `default`, solo sus dos rutas
   `https://www.google.com/recaptcha/` y `https://www.gstatic.com/recaptcha/` (`frontend/main.ts`; el resto de esos
   orígenes, no).
-- **Límites de intentos** (`ACCOUNT_RATE_LIMITS`, `config/settings.py`; por dirección de red, la que el ALB vio,
+- **Límites de intentos** (`ACCOUNT_RATE_LIMITS`, `config/settings/accounts.py`; por dirección de red, la que el ALB vio,
   `public.client_ip`, y por cuenta, en la caché compartida): 30 entradas por minuto por dirección; 5 contraseñas
   equivocadas en 5 minutos por dirección y por cuenta (la buena devuelve su intento); 10 altas por hora por
   dirección; 10 enlaces de restablecer por hora por dirección y 5 por cuenta; 20 envíos por minuto del formulario
@@ -527,7 +527,7 @@ Cada punto tiene su borrador de issue en `docs/issues/` (pendiente de abrir en `
   sesión que no se renueva con el uso (`remember-me-not-sliding.md`).
 
 Ya no están fuera (PLAN-SAAS §1.1, ronda 2026-10-15b): el selector con el último negocio abierto primero
-(`HubMember.last_opened_at`, que sella `hubs.business.open` y ordena `hubs/queries.py`) y el cierre de las sesiones
+(`HubMember.last_opened_at`, que sella `hubs.business.open` y ordena `hubs/queries/`) y el cierre de las sesiones
 del Hub al cerrar sesión, poner o restablecer la contraseña o eliminar la cuenta (`accounts.signals.sessions_ended`
 → `hubs.services.end_account_sessions`, con los reintentos de `hubs.SessionRevocation`). Lo que la ronda añade al
 SaaS (asistente, WhatsApp, correos HTML, RGPD, operación y admin) son los bloques 11–15 de PLAN-SAAS §7.

@@ -165,7 +165,7 @@ def test_the_debug_shell_loads_from_the_saas_vite_dev_server(client, settings):
 
 @pytest.mark.django_db
 def test_the_debug_shell_loads_from_the_vite_of_vite_dev_port(client, settings):
-    """VITE_DEV_PORT=5224 (config/settings.py) moves the dev shell's scripts to that Vite, never 5174."""
+    """VITE_DEV_PORT=5224 (config/settings/core.py) moves the dev shell's scripts to that Vite, never 5174."""
     settings.DEBUG = True
     settings.LIVE = {
         **settings.LIVE,

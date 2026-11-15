@@ -179,7 +179,7 @@ for (const size of VIEWPORTS) {
 
 // flow: live-session-events — a tab on a page without the live list of sessions (Businesses, Profile) also leaves for
 // the sign-in when its session ends elsewhere. `accounts.session.closed` is the session event of
-// `LIVE["session_events"]` (config/settings.py): every stream of the account re-reads its context and the one whose
+// `LIVE["session_events"]` (config/settings/web.py): every stream of the account re-reads its context and the one whose
 // session ended says `bye`, whatever its page subscribes to; a tab whose session lives stays. If only the live list of
 // sessions heard the event, Businesses and Profile would stay on screen.
 const SESSION_KEY = 'FIX-LIVE-SESSION-CLOSED-WAKES-ONLY-SESSION-LIST';

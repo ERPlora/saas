@@ -1,6 +1,6 @@
 // @vitest-environment node
 // The Vite config is a contract with Django (`packages/live/live/spa.py` and `LIVE["spa"]` in
-// `config/settings.py`): the dev server URLs and the manifest Django reads come from here. Node's
+// `config/settings/web.py`): the dev server URLs and the manifest Django reads come from here. Node's
 // environment: it loads the e2e's Playwright config (see «the tests that load Playwright» below).
 import { existsSync, globSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

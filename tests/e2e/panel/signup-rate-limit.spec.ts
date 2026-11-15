@@ -1,6 +1,6 @@
 // flow: ninguno — arnés e2e del SaaS (límites de allauth con la marca de e2e)
 // The e2e's panel server raises allauth's limits per address (E2E_RELAX_LOGIN_RATE_LIMIT, project.ts and
-// config/settings.py), the sign-up's included: every spec creates its accounts from 127.0.0.1, and with the real
+// config/settings/accounts.py), the sign-up's included: every spec creates its accounts from 127.0.0.1, and with the real
 // 10 sign-ups an hour per address the eleventh «Create account» of a run got «Too many attempts» (429). Production
 // and the dev server keep the 10 (config/tests/test_production_settings.py). Accounts of this spec:
 // `e2e-signup-limit-<n>-<time>@example.com`, removed before and after.
@@ -12,7 +12,7 @@ import { submitSignInForm } from './session';
 
 /** allauth.headless's sign-up for the browser client: what the launcher's «Create account» posts. */
 const SIGN_UP_API = '/_allauth/browser/v1/auth/signup';
-/** allauth's sign-up limit per address everywhere but in the e2e's panel server (config/settings.py). */
+/** allauth's sign-up limit per address everywhere but in the e2e's panel server (config/settings/accounts.py). */
 const SIGN_UPS_AN_HOUR = 10;
 const PASSWORD = 'Signup-e2e-2026!';
 

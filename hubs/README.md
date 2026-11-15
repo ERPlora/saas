@@ -5,7 +5,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 (`HubOwnershipTransfer`), quién paga (`BillingProfile`), qué plan y módulos tienen (`Subscription`,
 `SubscriptionItem`), los planes (`Plan`) y la taxonomía (`Sector`, `BusinessType`).
 
-- Operaciones en `queries.py` (lecturas) y `services.py` (escrituras), rutas en `api.py` bajo `/api/hubs/`
+- Operaciones en `queries/` (lecturas) y `services.py` (escrituras), rutas en `api.py` bajo `/api/hubs/`
   (y `/api/plans`, `/api/catalog/*`, públicas); consultas vivas en `live.py`.
 - Hacia el Hub: `hub_client.py` (llamadas firmadas a `/internal/*` del Hub), empuje tras el COMMIT
   (`services.sync_hub`), `reconcile_hub_states` (cada 15 min en el proceso `saas-worker`,
@@ -262,7 +262,7 @@ Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»)
   `.record`, sin herramienta, lo único por donde escribe la comprobación. Rutas: `GET`/`POST /api/hubs/businesses/custom-domain`
   y `POST …/custom-domain/remove`. Códigos: `hubs.custom_domains_off`, `hubs.custom_domain_not_in_plan` y
   `_exists`/`_taken` (409); `_invalid`, `_ours`, `_apex`, `_unregistered` (422, con el campo `domain`).
-- **Variables** (`config/settings.py`; las da `aws`, `custom_domains.tf`): `CUSTOM_DOMAINS_ENABLED`, `CUSTOM_DOMAINS_LISTENER_ARN`,
+- **Variables** (`config/settings/aws.py`; las da `aws`, `custom_domains.tf`): `CUSTOM_DOMAINS_ENABLED`, `CUSTOM_DOMAINS_LISTENER_ARN`,
   `CUSTOM_DOMAINS_TARGET_TEMPLATE` y `CUSTOM_DOMAINS_MAX_CERTIFICATES`. Ausente o en `false`: ninguna llamada a AWS ni al
   DNS, sin métrica, y un dominio que hubiera se queda como está; encendida sin las otras, no arranca.
 - **`check_custom_domains`** corre cada hora en `saas-cron`. Sale con error solo si un dominio rompe o la métrica no se

@@ -1,6 +1,6 @@
 """System check of fiscal: ``FISCAL_DOCUMENTS_KEY`` is a Fernet key (``fiscal.E001``).
 
-Without one the settings refuse to start in production (``config/settings.py``); a value that is no Fernet
+Without one the settings refuse to start in production (``config/settings/fiscal.py``); a value that is no Fernet
 key would only fail at the first upload, so ``check`` (``migrate`` and the deploy run it) says it first.
 """
 

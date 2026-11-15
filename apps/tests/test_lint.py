@@ -166,7 +166,7 @@ def test_the_scan_sees_the_project():
         "apps/queries.py",
         "apps/models.py",
         "accounts/services.py",
-        "config/settings.py",
+        "config/settings/__init__.py",
     } <= set(files)
     assert not any(
         path.startswith(("packages/", "node_modules/")) or "/tests/" in path

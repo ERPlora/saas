@@ -232,7 +232,7 @@ La plataforma no vive en `accounts/` sino en `base/` y `config/`; su manual es `
   códigos de salto y cambios de correo caducados (`services.purge_expired_sign_in_leftovers`), con candado y
   `--dry-run`. Sustituye a `clearsessions_task` y `flush_expired_tokens_task` del viejo (aquí no hay JWT). La lanza
   `saas-cron` cada noche a las 00:20 UTC (`purge-expired-sessions-nightly` de `aws/stacks/prod/scheduler.tf`).
-- **Correos** (F46): fuera de `DEBUG`, `config/settings.py` elige SES con `SES_REGION` (`AWS_SES_CONFIG`: 3 s + 10 s, dos intentos) y, sin
+- **Correos** (F46): fuera de `DEBUG`, `config/settings/mail.py` elige SES con `SES_REGION` (`AWS_SES_CONFIG`: 3 s + 10 s, dos intentos) y, sin
   ella, el SMTP de `EMAIL_*`; en prod y en `pre` sale por el SMTP de OVH como `ERPlora <noreply@erplora.com>`, sin
   `SES_REGION` (PLAN-SAAS §47, aws#67; revisiones activas leídas el 2026-11-11). Cada correo, en texto y en
   HTML sobre `templates/emails/base.html` con `base/emails.py` (`branded_message`); los de allauth, por

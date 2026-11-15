@@ -1,5 +1,5 @@
 // Vite of the SaaS (mirror of the Hub's). A contract with Django (`packages/live/live/spa.py`,
-// `LIVE["spa"]` in `config/settings.py`): with DEBUG the shell loads
+// `LIVE["spa"]` in `config/settings/web.py`): with DEBUG the shell loads
 // `http://localhost:5174/static/spa/@vite/client` (`VITE_DEV_PORT` moves it) and
 // `…/static/spa/frontend/main.ts` (Vite applies `base` in dev too); in production Django reads
 // `frontend/dist/.vite/manifest.json` and links `/static/spa/assets/…` (WhiteNoise).
@@ -13,7 +13,7 @@ import { defineConfig } from 'vitest/config';
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const DEV_HOST = 'localhost';
 // 5174 (the Hub's dev server owns 5173 and both run at once) unless a second checkout runs beside
-// another one (the e2e of a branch): Django reads the same VITE_DEV_PORT (`config/settings.py`).
+// another one (the e2e of a branch): Django reads the same VITE_DEV_PORT (`config/settings/core.py`).
 const DEV_PORT_TEXT = process.env.VITE_DEV_PORT ?? '5174';
 const DEV_PORT = /^\d+$/.test(DEV_PORT_TEXT) ? Number(DEV_PORT_TEXT) : 0;
 if (DEV_PORT <= 0 || DEV_PORT >= 65536) {

@@ -197,7 +197,7 @@ describe('prepareRun', () => {
   });
 });
 
-// Django reads DEBUG as a boolean (config/settings.py) and Playwright the same variable as the namespaces of
+// Django reads DEBUG as a boolean (config/settings/core.py) and Playwright the same variable as the namespaces of
 // its logs: with `DEBUG=pw:webserver` exported, `manage.py migrate --check` stopped the run before the first
 // spec (`Invalid truth value: pw:webserver`). globalSetup's Django processes run with DEBUG on, like the seeds.
 describe('globalSetup', () => {

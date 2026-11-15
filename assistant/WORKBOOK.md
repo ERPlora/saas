@@ -608,7 +608,7 @@ Implicados: ASSISTANT-F25, ASSISTANT-F26, ACCOUNTS-F23
   (sin `api_key` ni `updated_at`), el mismo registro que el resto de erplora.com. La prueba de un modelo es una entrada `ACCESS` del modelo, escrita por
   `assistant.model.try`.
 - `import_ai_keys_from_env` (`--providers`, `--label`, `--force`, `--dry-run`) lee `OPENAI_API_KEY`,
-  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` y `DEEPSEEK_API_KEY` de `config/settings.py` y guarda con
+  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` y `DEEPSEEK_API_KEY` de `config/settings/assistant.py` y guarda con
   `assistant.credential.import` (solo la plataforma); el proveedor que falta se da de alta con el identificador de su
   API (`data.kind`). El turno nunca lee esas variables: solo la base de datos.
 - `rotate_encryption_keys [--dry-run]` corre `assistant.encryption.rotate` (solo la plataforma) sobre toda columna de
@@ -708,7 +708,7 @@ propio texto por `code`.
 - **Privacidad**: ni la conversación, ni los adjuntos, ni el audio, ni el texto leído van a la BD, a un log o al
   auditlog; del fallo de un proveedor el log solo lleva el estado (`test_privacy.py`). Ninguna variable `key`,
   `token` ni `api_key` en una llamada al logger (`test_guardrails.py`).
-- **Ajustes nuevos** (`config/settings.py`, con valor seguro por defecto): `ASSISTANT_*_RATELIMIT`,
+- **Ajustes nuevos** (`config/settings/assistant.py`, con valor seguro por defecto): `ASSISTANT_*_RATELIMIT`,
   `ASSISTANT_DEMO_MESSAGES` y `ASSISTANT_SERVICE_PROVIDER`.
 - **Tests** (todos contra `assistant/tests/fake_provider.py`, nunca un proveedor real): `test_internal_caller.py`
   (F11), `test_turn.py` (F12, F13, F15), `test_automation_step.py` (F13: el paso de una automatización, que no busca en la web), `test_server_tools.py` (F14), `test_ratelimit.py` (F16),

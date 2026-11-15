@@ -1,6 +1,6 @@
 // The environment of every Django process the e2e starts: the servers (playwright.config.ts,
 // panel/project.ts), globalSetup's `manage.py` and the seeds and helpers of the specs. Django reads DEBUG
-// as a boolean (config/settings.py, `cast=bool`), and Playwright the same variable as the namespaces of
+// as a boolean (config/settings/core.py, `cast=bool`), and Playwright the same variable as the namespaces of
 // its logs (`DEBUG=pw:webserver`, README.md): inherited, `manage.py migrate --check` stopped the run before
 // the first spec (`Invalid truth value: pw:webserver`). So each one says the DEBUG it runs with, here.
 // And the database: a stack beside the shared one opens its own e2e database (stack.ts) in every one of them,
@@ -28,7 +28,7 @@ export function djangoEnv(
 
 /**
  * The policies a Django process with DEBUG off is given explicitly, as ECS gives production its own
- * (config/settings.py): without a cache prefix or a Stripe mode it refuses to start. The e2e's are the production-like
+ * (config/settings/core.py): without a cache prefix or a Stripe mode it refuses to start. The e2e's are the production-like
  * public web's: a cache prefix of `stack`'s own, never another run's nor the dev server's `local-saas`; Stripe in test
  * mode, since nothing here charges real money; the public web indexable, as erplora.com serves it; never the AEAT's
  * production.

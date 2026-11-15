@@ -1,6 +1,6 @@
 // @vitest-environment node
 // The environment of every Django process the e2e starts (django-env.ts): Django reads DEBUG as a
-// boolean (config/settings.py) and Playwright the same variable as the namespaces of its logs, so
+// boolean (config/settings/core.py) and Playwright the same variable as the namespaces of its logs, so
 // `DEBUG=pw:webserver` reached `manage.py` and stopped the run before the first spec. Node's
 // environment: it loads the Playwright config (vite.config.test.ts, «the tests that load Playwright»).
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -82,7 +82,7 @@ describe("the e2e's Django servers", () => {
 
   // Every spec of the panel signs in from 127.0.0.1, and allauth allows 30 sign-ins a minute per address:
   // one spec repeated (`--repeat-each=6`) got 429 at the sign-in, and the eleventh sign-up of a run (10 an
-  // hour) too. Only that server raises the limits (config/settings.py, E2E_RELAX_LOGIN_RATE_LIMIT); the
+  // hour) too. Only that server raises the limits (config/settings/accounts.py, E2E_RELAX_LOGIN_RATE_LIMIT); the
   // public one signs nobody in, and production refuses to start with it.
   it("only the panel's (:8012, and its twin with the second factor on, :8013) raise allauth's sign-in limit", () => {
     expect(byServer('E2E_RELAX_LOGIN_RATE_LIMIT')).toEqual({
@@ -94,7 +94,7 @@ describe("the e2e's Django servers", () => {
   });
 });
 
-// With DEBUG off the settings refuse to start without a cache prefix and a Stripe mode (config/settings.py):
+// With DEBUG off the settings refuse to start without a cache prefix and a Stripe mode (config/settings/core.py):
 // `runserver` then fell back to Django's own and stopped at `--novite --insecure` (saas#395).
 describe('productionPolicies', () => {
   it("gives the production-like servers of a stack its own cache prefix, Stripe's test mode and an indexable web", () => {

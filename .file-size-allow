@@ -26,7 +26,6 @@
 549 billing/stripe_service.py saas#462
 1292 billing/tests/test_checkout.py saas#462
 664 billing/vat.py saas#462
-990 config/settings.py saas#462
 1231 config/tests/test_production_settings.py saas#462
 511 fiscal/services.py saas#462
 1124 fiscal_gateway/tests/test_internal.py saas#462
@@ -37,7 +36,7 @@
 681 hubs/frontend/pages/BusinessListPage.test.ts saas#462
 638 hubs/frontend/pages/LaunchPage.test.ts saas#462
 965 hubs/models.py saas#462
-1803 hubs/queries.py saas#462
+1803 hubs/queries/__init__.py saas#462
 932 hubs/schemas.py saas#462
 3126 hubs/services.py saas#462
 1053 hubs/tests/test_check_custom_domains.py saas#462
