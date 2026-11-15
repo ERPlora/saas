@@ -20,7 +20,7 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 | `queries/tax.py` | `tax_rule`, `fiscal_policy`, umbral OSS (`uses_destination_rate`/`destination_rate_applies`), `vies_requester`, `latest_vat_check`, `payer_of(hub)`; la operación `billing.tax.preview` |
 | `stripe_tax_rates.py` | Qué `TaxRate` de Stripe necesita una venta (`TaxRateSpec`) y si uno existente lo es (`matches`). **No llama a Stripe**: el espejo (`TaxRate.list`/`create`, caché 24 h) es de L2-B (ver el docstring) |
 | `seed.py` + `manage.py seed_tax_rules [--dry-run]` | Datos de hoy: tipos generales UE-27 de 2026, Canarias/Ceuta/Melilla no sujetas, Reino Unido no sujeto desde 2021-01-01, 6 categorías, la política y ERPlora (Modelo 036). Solo crea lo que falta; nunca pisa lo editado en el admin. Lo escribe también la migración `0002_seed_tax_data` |
-| `admin.py` | Tabla de tipos editable, política y empresa como filas únicas, bitácora de VIES de solo lectura con forzado manual (autor y motivo) y la acción «Comprobar ahora en VIES» |
+| `admin/tax.py` | Tabla de tipos editable, política y empresa como filas únicas, bitácora de VIES de solo lectura con forzado manual (autor y motivo) y la acción «Comprobar ahora en VIES» |
 
 ## Operaciones
 
@@ -478,7 +478,7 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
   totales y destinatario sellado. «Descargar PDF» con `can.pdf`, «Pagar» (solo web) si no se cobró, enlace a la
   factura que rectifica (`invoice-rectified-link`) y «Atrás» a Facturas. Se abre con «Ver la factura» (`view`) de
   cada fila de Facturas. Un error o un 404 se dicen igual: «No hemos podido cargar esta factura» con «Reintentar».
-- **Admin de facturas** (`billing/admin.py`, `InvoiceAdmin`): campo «PDF» con «Descargar el PDF» de cualquier
+- **Admin de facturas** (`billing/admin/invoices.py`, `InvoiceAdmin`): campo «PDF» con «Descargar el PDF» de cualquier
   factura emitida (`<id>/pdf/`, `queries.platform_invoice_pdf`, con `view_invoice`); sin emitir, lo dice; Hub
   caído, vuelve a la factura con el motivo. La acción «Descargar los PDF (ZIP)» (`download_pdfs`, con `view_invoice`)
   baja en un ZIP los de las facturas elegidas, cada uno pedido al Hub igual; las que no tienen PDF (emitiéndose o

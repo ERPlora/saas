@@ -4,7 +4,7 @@
   client (``vies.py``), the Stripe mapping (``stripe_tax_rates.py``), the routes, schemas and events
   call them. Allowed besides: ``models`` (the singletons' ``save``), ``admin.py`` (Django's admin),
   the migrations and the seed loader (``seed.py`` with the models it is handed, and the command that
-  runs it). ``services``, ``queries`` and ``models`` are each a file or a package one level deep.
+  runs it). ``services``, ``queries``, ``models`` and ``admin`` are each a file or a package one level deep.
 - Nowhere ``using=``, ``.using(`` nor ``connections[``: one database (the SaaS has no tenancy).
 - The network: only ``vies.py`` talks to VIES (``requests``) and only ``stripe_service.py`` to Stripe:
   it is the one door (keys, timeouts, errors, plain dicts), the one place tests replace
@@ -27,7 +27,7 @@ DATABASE_FILES = {
     "seed.py",
     "management/commands/seed_tax_rules.py",
 }
-DATABASE_PACKAGES = {"services", "queries", "models"}
+DATABASE_PACKAGES = {"services", "queries", "models", "admin"}
 DATABASE_NAMES = {"connection", "connections", "transaction"}
 DATABASE_ATTRIBUTES = {
     "objects",
@@ -138,6 +138,7 @@ def test_a_module_of_a_packaged_door_may_touch_the_database():
     assert may_touch_the_database("queries/invoices.py")
     assert may_touch_the_database("services/checkout.py")
     assert may_touch_the_database("models/tax.py")
+    assert may_touch_the_database("admin/invoices.py")
     assert not may_touch_the_database("vat.py")
     assert not may_touch_the_database("queries/reports/csv.py")
     assert not may_touch_the_database("emails/queries.py")
