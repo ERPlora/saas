@@ -29,12 +29,12 @@ class CheckoutTerms(NamedTuple):
 
 
 def redeem_promo(
-    code: str | None, *, hub: Hub | None = None, customer: str = "", session: str = "", free_until: datetime | None = None
+    code: str | None, *, hub: Hub | None = None, customer: str = "", session: str = "", live: dict | None = None
 ) -> bool:
     """Count one redemption of ``code``; ``False`` when unknown, at its cap, or already used by ``hub`` (once
-    per business: the use is recorded, ``PromoRedemption``, with when its free months end). The cap is in the
-    UPDATE's WHERE, so two checkouts completing at once never pass it (the trial was granted when each session
-    opened: two people taking the last seat at once both get it, only one is counted)."""
+    per business: the use is recorded, ``PromoRedemption``, with the ``live`` subscription it paid and when its free
+    months end). The cap is in the UPDATE's WHERE, so two checkouts completing at once never pass it (the trial was
+    granted when each session opened: two people taking the last seat at once both get it, only one is counted)."""
     normalised = normalise_promo_code(code)
     if not normalised:
         return False
@@ -45,7 +45,12 @@ def redeem_promo(
         _use, created = PromoRedemption.objects.get_or_create(
             promo=promo,
             hub=hub,
-            defaults={"stripe_customer_id": customer or "", "stripe_session_id": session or "", "free_until": free_until},
+            defaults={
+                "stripe_customer_id": customer or "",
+                "stripe_session_id": session or "",
+                "stripe_subscription_id": (live or {}).get("id") or "",
+                "free_until": free_months_end(live or {}),
+            },
         )
         if not created:
             return False

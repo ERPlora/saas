@@ -20,6 +20,7 @@ from billing import stripe_service, vat
 from billing.models import Invoice, PaymentFailure, PlanChangeSchedule
 from billing.money import from_cents, to_cents
 from billing.queries.invoices import CARD_CACHE_SECONDS, _billing_account, _owned_hub_ids
+from billing.queries.promo_codes import with_free_months
 from billing.queries.tax import Payer, _vat_status_on_file, payer_of
 from billing.schemas import (
     HubIn,
@@ -230,10 +231,10 @@ def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
             for change in PlanChangeSchedule.objects.filter(hub_id__in=[s.hub_id for s in page])
         }
         next_plans = Plan.objects.in_bulk({change["plan"] for change in scheduled.values()}, field_name="slug")
-        rows = [
-            _subscription_row(subscription, user, owned, unpaid, modules, scheduled, next_plans)
-            for subscription in page
-        ]
+        rows = with_free_months(
+            [_subscription_row(subscription, user, owned, unpaid, modules, scheduled, next_plans) for subscription in page],
+            page,
+        )
     return {"rows": rows, "total": total, "limit": data.limit, "offset": data.offset}
 
 

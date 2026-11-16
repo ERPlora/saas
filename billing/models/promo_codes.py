@@ -149,6 +149,7 @@ class PromoRedemption(UUIDModel):
     )
     stripe_customer_id = models.CharField(max_length=255, blank=True, db_index=True)
     stripe_session_id = models.CharField(max_length=255, blank=True)
+    stripe_subscription_id = models.CharField(max_length=255, blank=True, db_index=True)
     free_until = models.DateTimeField(
         _("free until"), null=True, blank=True, help_text=_("When the free months of the code end")
     )

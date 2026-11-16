@@ -2,6 +2,7 @@
 
 from django.conf import settings
 from django.db.models import Q
+from django.utils import timezone
 from django.utils.translation import gettext as _
 from django_ratelimit.core import is_ratelimited
 from live.context import OperationContext
@@ -84,3 +85,20 @@ def promo_check(ctx: OperationContext, params: PromoCheckIn) -> dict:
         "trial_days": (promo.trial_days if promo else None) or 0,
         "free_months": (promo.free_months if promo else None) or 0,
     }
+
+
+def with_free_months(rows: list[dict], subscriptions: list) -> list[dict]:
+    """The rows of ``billing.subscription.list`` (one per subscription, in order) with when the free months of a
+    promo code end (``None`` without them or once they ended): while they cover the renewal, the next invoice is 0."""
+    until = dict(
+        PromoRedemption.objects.filter(
+            stripe_subscription_id__in=[subscription.stripe_subscription_id for subscription in subscriptions],
+            free_until__gt=timezone.now(),
+        ).values_list("stripe_subscription_id", "free_until")
+    )
+    for row, subscription in zip(rows, subscriptions, strict=True):
+        row["free_until"] = until.get(subscription.stripe_subscription_id)
+        renewal = row["next_invoice"]
+        if row["free_until"] and renewal and renewal["date"] and row["free_until"] > renewal["date"]:
+            renewal["total_cents"] = 0
+    return rows

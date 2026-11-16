@@ -1106,6 +1106,8 @@ export interface InvoiceLineOut {
   net_cents: number;
   tax_cents: number;
   total_cents: number;
+  /** What a promo code took off the line, without VAT: `net_cents` is the base after it. */
+  discount_cents: number;
 }
 
 /** `billing.InvoiceRecipientOut`: the payer as it was on the issue date. */
@@ -1210,6 +1212,8 @@ export interface SubscriptionRowOut {
   scheduled_change: ScheduledChangeOut | null;
   /** The plan is charged to the card of another account (the payer before a hand-over, HUBS-F28). */
   paid_by_another_account: boolean;
+  /** While the free months of a promo code last: when they end (the renewals before it are 0 €). */
+  free_until: string | null;
   actions: SubscriptionAction[];
   can: SubscriptionCanOut;
 }

@@ -250,6 +250,7 @@ def invoice_get(ctx: OperationContext, data: InvoiceByIdIn) -> dict:
                 "net_cents": line.net_cents,
                 "tax_cents": line.tax_cents,
                 "total_cents": line.total_cents,
+                "discount_cents": line.discount_cents,
             }
             for line in invoice.lines.order_by("position")
         ],

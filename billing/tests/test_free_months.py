@@ -18,9 +18,9 @@ import pytest
 from django.utils import timezone
 from live.errors import OperationError
 
-from billing import services
+from billing import queries, services
 from billing.models import CheckoutAttempt, PromoCode, PromoRedemption
-from billing.schemas import CheckoutConfirmIn, CheckoutStartIn, HubIn, PlanChangeIn
+from billing.schemas import CheckoutConfirmIn, CheckoutStartIn, HubIn, PlanChangeIn, SubscriptionListIn
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import checkout_session, connection_error, item, preview, subscription
 
@@ -168,7 +168,7 @@ class TestTheCompletedCheckout:
 
         used = PromoRedemption.objects.get()
         assert (used.promo, used.hub_id, used.stripe_customer_id) == (testers, shop.id, "cus_new")
-        assert used.free_until == datetime.fromtimestamp(end, tz=UTC)
+        assert (used.free_until, used.stripe_subscription_id) == (datetime.fromtimestamp(end, tz=UTC), "sub_new")
         assert stripe_double.last("subscriptions.retrieve").params == {"expand": ["discounts"]}
         testers.refresh_from_db()
         assert testers.redemption_count == 1
@@ -236,3 +236,50 @@ class TestWhileTheFreeMonthsLast:
         stripe_double.answer("invoices.create_preview", preview(amount_due=2600, tax=546))
 
         assert start(owner, paid, plan="standard")["flow"] == "confirm"
+
+
+# --- The subscriptions list --------------------------------------------------------------------------------
+
+
+class TestTheSubscriptionsList:
+    def row(self, owner, shop):
+        [row] = queries.subscription_list(ctx_for(owner), SubscriptionListIn(hub_id=shop.id)).model_dump()["rows"]
+        return row
+
+    def redeemed(self, shop, testers, free_until, subscription_id="sub_1"):
+        PromoRedemption.objects.create(promo=testers, hub=shop, stripe_customer_id="cus_1",
+                                       stripe_subscription_id=subscription_id, free_until=free_until)
+
+    def test_it_says_until_when_it_is_free_and_the_next_invoice_is_zero(self, shop, owner, testers):
+        paid = pay(shop)
+        until = timezone.now() + timedelta(days=120)
+        self.redeemed(paid, testers, until)
+
+        row = self.row(owner, paid)
+
+        assert row["free_until"] == until
+        assert row["next_invoice"]["total_cents"] == 0
+
+    def test_the_renewal_after_the_free_months_is_charged(self, shop, owner, testers):
+        paid = pay(shop)  # renews in 30 days
+        self.redeemed(paid, testers, timezone.now() + timedelta(days=10))
+
+        row = self.row(owner, paid)
+
+        assert row["free_until"] is not None
+        assert row["next_invoice"]["total_cents"] == 3629
+
+    def test_free_months_that_ended_are_not_shown(self, shop, owner, testers):
+        paid = pay(shop)
+        self.redeemed(paid, testers, timezone.now() - timedelta(days=1))
+
+        assert self.row(owner, paid)["free_until"] is None
+
+    def test_the_free_months_of_an_earlier_subscription_do_not_count(self, shop, owner, testers):
+        paid = pay(shop, sub_id="sub_2")
+        self.redeemed(paid, testers, timezone.now() + timedelta(days=120), subscription_id="sub_1")
+
+        row = self.row(owner, paid)
+
+        assert row["free_until"] is None
+        assert row["next_invoice"]["total_cents"] == 3629

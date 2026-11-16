@@ -92,7 +92,6 @@ from billing.stripe_checkout import (
     CheckoutKind,
     checkout_session_kind,
 )
-from billing.stripe_coupons import free_months_end
 from billing.stripe_keys import StripeKeyMode
 from billing.stripe_period import subscription_period
 from billing.stripe_tax_rates import TaxRateSpec, tax_rate_specs_for
@@ -2774,7 +2773,7 @@ def _complete_checkout(hub: Hub, session: dict, subscription_id: str) -> str:
             hub=hub,
             customer=customer["id"] if isinstance(customer, dict) else customer or "",
             session=session.get("id") or "",
-            free_until=free_months_end(live),
+            live=live,
         )
     return "completed"
 
