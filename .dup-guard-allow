@@ -13,3 +13,13 @@ duplicados tests/e2e/panel/chrome.spec.ts:256-261 the 390 px target loop was alr
 duplicados billing/models/invoices.py:274-284 the net, tax and total properties of Invoice and InvoiceLine were already alike in billing/models.py on main; this change moves both literally into the package
 duplicados billing/models/invoices.py:378-388 the net, tax and total properties of Invoice and InvoiceLine were already alike in billing/models.py on main; this change moves both literally into the package
 duplicados tests/e2e/panel/screen.ts:62-74 movingInPage already shared its loop with stillMoving of settled.spec.ts on main, which reads the page on its own on purpose; this change moves it literally out of fixtures.ts
+duplicados hubs/tests/test_seats.py:182-193 the invite-then-accept block was already repeated on main; this change only names the module of hubs.services each call now lives in
+duplicados hubs/tests/test_seats.py:256-267 the invite-then-accept block was already repeated on main; this change only names the module of hubs.services each call now lives in
+duplicados hubs/tests/test_members.py:449-457 the block of a manager's write and its refusal was already repeated on main; this change only names the module of hubs.services each call now lives in
+duplicados hubs/tests/test_members.py:481-516 the block of a manager's write and its refusal was already repeated on main; this change only names the module of hubs.services each call now lives in
+duplicados hubs/tests/test_live.py:157-163 the block of the invitee's answer and what it notifies was already repeated on main; this change only names the module of hubs.services each call now lives in
+duplicados hubs/tests/test_live.py:209-215 the block of the invitee's answer and what it notifies was already repeated on main; this change only names the module of hubs.services each call now lives in
+duplicados billing/tests/test_checkout_after_hand_over.py:46-65 the hand-over helper was already repeated on main; this change only names the module of hubs.services each call now lives in
+duplicados billing/tests/test_plan_take_over.py:45-64 the hand-over helper was already repeated on main; this change only names the module of hubs.services each call now lives in
+duplicados billing/tests/test_checkout.py:1138-1149 the update of the payer's billing details was already repeated on main; this change only names the module of hubs.services each call now lives in
+duplicados billing/tests/test_plan_cancel_preview.py:263-274 the update of the payer's billing details was already repeated on main; this change only names the module of hubs.services each call now lives in
