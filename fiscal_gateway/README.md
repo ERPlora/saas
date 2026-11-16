@@ -3,7 +3,7 @@
 App de plataforma (`kind = "platform"`, PLAN §20) que presenta a la AEAT los sobres VeriFactu que el Hub ya ha
 construido y validado (cadena, huella, XSD, QR). Sustituye al gateway en Rust (`erplora-old/verifactu-gateway`):
 la pasarela vive en el SaaS y el Hub la llama por `/internal` (PLAN-SAAS §4; contrato 3 del bloque fiscal,
-`docs/superpowers/plans/2026-10-15-bloque-fiscal-hub.md`). No tiene modelos ni operaciones: no guarda nada; solo
+`knowledge/raw/superpowers/plans/2026-10-15-bloque-fiscal-hub.md`). No tiene modelos ni operaciones: no guarda nada; solo
 lee el negocio y su otorgamiento (`queries.py`, el único fichero que toca la BD).
 
 | Fichero | Qué hace |

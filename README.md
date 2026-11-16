@@ -272,7 +272,7 @@ reconstruir nada si aparece spam:
 ## Panel único (ronda 17): Stripe, facturas y uso
 
 El panel de `erplora.com` (Negocios · Tienda · Facturación · Cuenta; plan
-`../docs/plans/2026-10-13-panel-saas-unificado.md`, PLAN-SAAS §3.6). Detalle por app en
+`../knowledge/raw/plans/2026-10-13-panel-saas-unificado.md`, PLAN-SAAS §3.6). Detalle por app en
 `accounts/README.md`, `hubs/README.md` y `billing/README.md`.
 
 - **Variables nuevas** (todas con valor por defecto; en AWS, las claves de Stripe vienen de Secrets
@@ -318,7 +318,7 @@ El panel de `erplora.com` (Negocios · Tienda · Facturación · Cuenta; plan
 ## Documentación fiscal (VeriFactu): `fiscal/`
 
 La autorización que firma un negocio para que ERPlora remita sus registros VeriFactu a la AEAT (Anexo I del
-convenio 017, representación directa; plan `../docs/plans/2026-10-15-saas-revision-documentacion-fiscal.md`).
+convenio 017, representación directa; plan `../knowledge/raw/plans/2026-10-15-saas-revision-documentacion-fiscal.md`).
 El cliente la sube desde el módulo VeriFactu de su Hub, que la envía firmada a
 `POST /internal/hubs/{id}/representation` (hasta cuatro PDF de 5 MB en base64; el cuerpo lo lee la propia
 vista, con su tope de 32 MB, y el resto del sitio conserva el de Django); `GET /internal/representation/model`

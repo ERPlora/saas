@@ -3,7 +3,7 @@
 App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: quién entra (allauth, headless),
 el salto a un negocio (`handoff.py`, `/internal/auth/redeem`) y **Cuenta** (Perfil · Seguridad · Preferencias ·
 Claves de API; PLAN-SAAS §3.6, ronda 17). Este README recoge el lote **L3-A** (back) del plan
-`docs/plans/2026-10-13-panel-saas-unificado.md`; el front (`frontend/`) es de L3-B. Los flujos de la app, en
+`knowledge/raw/plans/2026-10-13-panel-saas-unificado.md`; el front (`frontend/`) es de L3-B. Los flujos de la app, en
 lenguaje de usuario, están en `WORKBOOK.md` (y `WORKBOOK.en.md`), que creció por partes (MIGRATION-TASK
 APP-ACCOUNTS-1…5) y se revisó flujo a flujo, en inglés y en español, en las partes 6 y 7 de 7.
 

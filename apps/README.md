@@ -5,7 +5,7 @@ punto 10). `hubs`, `billing` y `public` la leen; ella solo llama a otras desde e
 comprobar los precios y nombrar a quien lo tiene, `hubs` para avisar a los negocios de su plan) y a `accounts` para el
 registro de cambios. El manual y los flujos están en `WORKBOOK.md` (APPS-F01 a APPS-F07, app completa desde el
 2026-10-27); el contrato, en PLAN §21 y PLAN-SAAS §2.6 y §9, con el detalle en
-`docs/superpowers/specs/2026-10-13-saas-public-web-and-app-catalog-design.md`; el cierre, en PLAN-SAAS §12.
+`knowledge/raw/superpowers/specs/2026-10-13-saas-public-web-and-app-catalog-design.md`; el cierre, en PLAN-SAAS §12.
 
 ## Qué hay
 
