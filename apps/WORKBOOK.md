@@ -209,7 +209,7 @@ Implicados: el Hub (su página de apps, BASE-F20), billing (la Tienda)
   `base/frontend/pages/AppsPage.test.ts` (BASE-F20: «Mejorar plan» a la Tienda, solo en el navegador y para quien
   administra).
 - El idioma de la ficha y del manual va por `Accept-Language` o la cookie `_lang`.
-- APPS-F04 comparte con BILLING-F28 la comprobación de `billing/services.py` (`_price_problems`, con
+- APPS-F04 comparte con BILLING-F28 la comprobación de `billing/services/` (`_price_problems`, con
   `plan_price_problems` y `module_price_problems` encima): `PriceCheckSkipped` (sin claves: se guarda con aviso) y
   `PriceCheckFailed` (Stripe no contesta: no se guarda y se pide repetir), en `ModuleForm` y en `PlanForm`.
 - APPS-F07: la parte del Hub es BASE-F20 (el enlace «Mejorar plan»). Ningún módulo es `premium`: el enlace no le
