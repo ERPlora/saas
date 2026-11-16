@@ -1,7 +1,7 @@
 # `public` — la web pública de erplora.com
 
 App de plataforma (`LiveAppConfig`, `kind = "platform"`) que sirve la web pública con plantillas de Django (sin Vue,
-sin SSR y sin prefijo `/es/`; ronda 16 y spec `docs/superpowers/specs/2026-10-13-saas-public-web-and-app-catalog-design.md`
+sin SSR y sin prefijo `/es/`; ronda 16 y spec `knowledge/raw/superpowers/specs/2026-10-13-saas-public-web-and-app-catalog-design.md`
 §8). Es la excepción de PLAN-SAAS §6 «Rutas con vistas»: tiene `urls.py` y vistas, montadas en la raíz por
 `config/urls.py` delante del comodín de la SPA; sus primeros segmentos son `PUBLIC_PREFIXES`.
 

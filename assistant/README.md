@@ -7,7 +7,7 @@ APP-ASSISTANT-1) con los proveedores, las claves, los modelos, qué modelo conte
 auditoría y los comandos de claves; la 2 (APP-ASSISTANT-2) con las puertas del Hub (`/internal/assistant/*` y
 `/internal/speech/*`): el turno, sus herramientas y sus adjuntos, el cupo por plan y el uso, las huellas del índice,
 la voz y las denuncias. El contrato de esas puertas, en «Para quien lo mantiene» del WORKBOOK. Desde la ronda
-2026-10-30e (PLAN-SAAS §23, plan `docs/plans/2026-10-30-asistente-saas.md`) la pasarela contesta también, en
+2026-10-30e (PLAN-SAAS §23, plan `knowledge/raw/plans/2026-10-30-asistente-saas.md`) la pasarela contesta también, en
 proceso, al asistente del propio panel (`base/assistant.py`, `POST /api/assistant/turn`), con un cupo por cuenta y
 su propia documentación para buscar (`assistant.docs.search` sobre pgvector, ASSISTANT-F27), la misma que el Hub
 busca por `/internal/assistant/docs/search` (ASSISTANT-F28). El chat del panel
@@ -17,7 +17,7 @@ la acción que propone (SAAS_DASHBOARD-F221, hoy la tarjeta «¿Ejecutar esta ac
 Shopify, el Square Assistant, el asistente de Stripe y el Copilot de GitHub contestan en el panel de la cuenta. La
 búsqueda en la documentación viene de `search_cloud_docs`, una de las herramientas de aquel asistente
 (SAAS_DASHBOARD-F220), cuyo índice vivía en memoria y se rehacía en cada arranque; aquí es una herramienta del panel
-con su índice en la BD (plan `docs/plans/2026-10-30-asistente-saas.md` §5, PLAN-SAAS §23), porque el Sidekick de
+con su índice en la BD (plan `knowledge/raw/plans/2026-10-30-asistente-saas.md` §5, PLAN-SAAS §23), porque el Sidekick de
 Shopify, el Square Assistant y el asistente de Stripe contestan el «cómo se hace» con su propia ayuda y la citan.
 
 Completa desde el 2026-11-03. Lo que queda fuera, con su issue: `WORKBOOK.md`, «Lo que queda fuera».

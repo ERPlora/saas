@@ -94,7 +94,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   todos sus negocios; el correo de la invitación lleva el camino para reclamar la cuenta
   (`accounts.queries.has_no_way_in`). Aceptar exige el correo verificado: 403 `hubs.email_unverified`.
 
-Plan: `docs/plans/2026-10-13-panel-saas-unificado.md` (lotes L1-A, L1-B y L1-A2).
+Plan: `knowledge/raw/plans/2026-10-13-panel-saas-unificado.md` (lotes L1-A, L1-B y L1-A2).
 
 - Panel (`frontend/`, L1-C): las acciones de fila de Negocios y Miembros son solo icono, con nombre accesible y `title` que incluyen la fila («Abrir Panadería López», «Quitar a Marta Gil»), como pide la regla de la DataTable de SaaS y Hub (2026-10-14); las maquetas, que las pintan con texto, no obligan en esto.
 
@@ -425,7 +425,7 @@ X-Erplora-Timestamp, X-Erplora-Signature (v1) y X-Erplora-Signature-V2 (cubre m�
 
 ## Lo que añadió la tenencia (2026-10-30): alta y demo asíncronas, y las copias de los datos
 
-Plan: `docs/plans/2026-10-22-fase-2-tenencia.md`; PLAN-DB, ronda 2026-10-30 (propuestas (a), (e), (j), (k), (l) y (m),
+Plan: `knowledge/raw/plans/2026-10-22-fase-2-tenencia.md`; PLAN-DB, ronda 2026-10-30 (propuestas (a), (e), (j), (k), (l) y (m),
 decididas). Cada negocio nace con su BD propia, clonada de la plantilla de su vertical: el Hub ya no tiene el negocio
 listo al responder, y lo dice.
 
@@ -526,7 +526,7 @@ GET  /internal/hubs/{id}/dumps      → 200 {"available": true | false,
 
 ## Demo (ronda 2026-10-17; PLAN-SAAS §3.5)
 
-Plan: `docs/plans/2026-10-17-demo-hubs-fase-1.md` (§1.6 y §1.8). Una demo es un hub **vacío** del Hub
+Plan: `knowledge/raw/plans/2026-10-17-demo-hubs-fase-1.md` (§1.6 y §1.8). Una demo es un hub **vacío** del Hub
 (`demo-<8 hex>`, 60 minutos); el SaaS **no guarda ninguna fila**: solo la sesión del navegador sabe cuál es
 (`session["demo"] = {slug, expires_at}`). El código vive en `public/demo.py` (sin ORM) y en dos llamadas de
 `hub_client.py`.

@@ -1,7 +1,7 @@
 # `billing` — lo que una cuenta paga a ERPlora y su IVA
 
 App de plataforma del SaaS (`LiveAppConfig`, `kind = "platform"`), detrás de `hubs` en `INSTALLED_APPS`
-(grafo `accounts ← hubs ← billing`, plan `docs/plans/2026-10-13-panel-saas-unificado.md` §2 punto 15 y §3).
+(grafo `accounts ← hubs ← billing`, plan `knowledge/raw/plans/2026-10-13-panel-saas-unificado.md` §2 punto 15 y §3).
 Lote **L2-A**: el motor de IVA de la UE, portado de `erplora-old/saas` `apps/dashboard/fiscal/` (`origin/develop`,
 `c5ca8cae8`) con sus tests. Lote **L2-B**: Stripe (pago de planes y módulos, la suscripción de cada negocio, el
 webhook único y el impago), portado de `hubs/subscriptions`, `hubs/main/webhooks.py`, `services/lifecycle.py` y
