@@ -74,13 +74,13 @@ const SCALARS: Record<string, string> = {
   TimeZone: 'string',
   // Same values, the TypeScript name.
   Role: 'HubRole',
-  // billing/schemas.py and apps/schemas.py (the Store).
+  // billing/schemas/ and apps/schemas.py (the Store).
   Interval: 'BillingInterval',
   ModuleSlug: 'string',
   Category: 'string',
   // hubs/schemas.py `BillingProfileIn.billing_postal_code`: a stripped string.
   'Annotated[str, StringConstraints(strip_whitespace=True)]': 'string',
-  // billing/schemas.py, the Billing section: a day travels as `YYYY-MM-DD`; the literal aliases keep
+  // billing/schemas/, the Billing section: a day travels as `YYYY-MM-DD`; the literal aliases keep
   // their name in TypeScript.
   date: 'string',
   InvoicePaymentStatus: 'InvoicePaymentStatus',
@@ -117,7 +117,7 @@ const NARROWED: Record<string, string> = {
   // `Country | Literal[""]`, `Email | Literal[""]`: the empty string is a string.
   'BillingProfileIn.billing_country': 'string',
   'BillingProfileIn.billing_email': 'string',
-  // `CountryCode | Literal[""]` (billing/schemas.py `VatCheckIn.country`): a string.
+  // `CountryCode | Literal[""]` (billing/schemas/ `VatCheckIn.country`): a string.
   'VatCheckIn.country': 'string',
   // `list[Literal[…]]` of the row's actions: named in TypeScript (checked below against the literal).
   'InvoiceRowOut.actions': 'InvoiceAction[]',
@@ -190,7 +190,7 @@ describe('sdk-types.d.ts follows hubs/schemas.py', () => {
 const STORE_SCHEMAS: Array<[file: string, names: string[]]> = [
   ['hubs/schemas.py', ['BillingProfileGetIn', 'BillingProfileIn', 'BillingProfileOut']],
   [
-    'billing/schemas.py',
+    'billing/schemas/__init__.py',
     [
       'PromoCheckIn',
       'PromoCheckOut',
@@ -213,7 +213,7 @@ const STORE_SCHEMAS: Array<[file: string, names: string[]]> = [
 ];
 const STORE_CASES = STORE_SCHEMAS.flatMap(([file, names]) => names.map((name) => [file, name] as const));
 
-describe('sdk-types.d.ts follows billing/schemas.py, apps/schemas.py and the payer of hubs (the Store)', () => {
+describe('sdk-types.d.ts follows billing/schemas/, apps/schemas.py and the payer of hubs (the Store)', () => {
   const sources = new Map(STORE_SCHEMAS.map(([file]) => [file, readFileSync(join(HERE, '..', file), 'utf8')]));
 
   it.each(STORE_CASES)('%s %s has the same fields on both sides', (file, name) => {
@@ -233,7 +233,7 @@ describe('sdk-types.d.ts follows billing/schemas.py, apps/schemas.py and the pay
   });
 
   it('types the billing of a subscription as the server names it', () => {
-    expect(/^Interval = Literal\[([^\]]+)\]/m.exec(sources.get('billing/schemas.py') ?? '')?.[1]).toBe('"month", "year"');
+    expect(/^Interval = Literal\[([^\]]+)\]/m.exec(sources.get('billing/schemas/__init__.py') ?? '')?.[1]).toBe('"month", "year"');
     expect(/^export type BillingInterval = (.+);$/m.exec(TYPES)?.[1]).toBe("'month' | 'year'");
   });
 });
@@ -241,7 +241,7 @@ describe('sdk-types.d.ts follows billing/schemas.py, apps/schemas.py and the pay
 /** The Billing section's schemas (invoices, subscriptions, payment details), by their file. */
 const BILLING_SCHEMAS: Array<[file: string, names: string[]]> = [
   [
-    'billing/schemas.py',
+    'billing/schemas/__init__.py',
     [
       'InvoiceFilterIn',
       'InvoiceListIn',
@@ -279,7 +279,7 @@ const BILLING_SCHEMAS: Array<[file: string, names: string[]]> = [
 ];
 const BILLING_CASES = BILLING_SCHEMAS.flatMap(([file, names]) => names.map((name) => [file, name] as const));
 
-describe('sdk-types.d.ts follows billing/schemas.py (the Billing section)', () => {
+describe('sdk-types.d.ts follows billing/schemas/ (the Billing section)', () => {
   const sources = new Map(BILLING_SCHEMAS.map(([file]) => [file, readFileSync(join(HERE, '..', file), 'utf8')]));
 
   it.each(BILLING_CASES)('%s %s has the same fields on both sides', (file, name) => {
@@ -308,7 +308,7 @@ describe('sdk-types.d.ts follows billing/schemas.py (the Billing section)', () =
     ['VatStatus', '"verified", "invalid", "unavailable", "national", "outside_vies"', "'verified' | 'invalid' | 'unavailable' | 'national' | 'outside_vies'"],
     ['InvoiceRectificationType', '"R1", "R2", "R3", "R4"', "'R1' | 'R2' | 'R3' | 'R4'"],
   ])('types %s as the server names its values', (alias, python, typescript) => {
-    const source = sources.get('billing/schemas.py') ?? '';
+    const source = sources.get('billing/schemas/__init__.py') ?? '';
     expect(new RegExp(`^${alias} = Literal\\[([^\\]]+)\\]`, 'm').exec(source)?.[1]).toBe(python);
     expect(new RegExp(`^export type ${alias} = (.+);$`, 'm').exec(TYPES)?.[1]).toBe(typescript);
   });
@@ -322,7 +322,7 @@ describe('sdk-types.d.ts follows billing/schemas.py (the Billing section)', () =
       "'take_over' | 'change_plan' | 'keep_plan' | 'view_invoice' | 'cancel_plan' | 'view_invoices'",
     ],
   ])('types the actions of a %s row (%s) as the server names them, in its order', (schema, alias, python, typescript) => {
-    const annotation = pythonTypes(schema, sources.get('billing/schemas.py')).actions;
+    const annotation = pythonTypes(schema, sources.get('billing/schemas/__init__.py')).actions;
     expect(annotation).toBe(`list[Literal[${python}]]`);
     expect(new RegExp(`^export type ${alias} = (.+);$`, 'm').exec(TYPES)?.[1]).toBe(typescript);
   });
