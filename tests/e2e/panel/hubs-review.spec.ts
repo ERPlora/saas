@@ -12,20 +12,14 @@ import { fileURLToPath } from 'node:url';
 
 import { type Browser, type Locator, type Page } from '@playwright/test';
 
-import {
-  apiPost,
-  captureAtEverySize,
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  readyBusinessOn,
-  removeAccountsWarm,
-  signIn,
-  signInAs,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { readyBusinessOn } from './businesses';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
 import { PANEL_URL } from './project';
+import { captureAtEverySize } from './screen';
+import { apiPost, signIn, signInAs } from './session';
 
 const capture = captureAtEverySize('APP-HUBS-5');
 

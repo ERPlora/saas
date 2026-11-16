@@ -7,7 +7,8 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { horizontalOverflow, overflowingBoxes } from '../horizontal-overflow';
-import { expect, repeatedTop, settled, shot, test, VIEWPORTS } from './fixtures';
+import { expect, test } from './fixtures';
+import { repeatedTop, settled, shot, VIEWPORTS } from './screen';
 
 const TASK = 'FIX-HUB-E2E-HORIZONTAL-SCROLL-CHECK-BLIND-TO-ION-CONTENT';
 

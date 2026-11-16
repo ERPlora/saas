@@ -7,7 +7,11 @@
 // flow: saas-spa-static-probes
 import type { APIRequestContext } from '@playwright/test';
 import { STACK } from '../stack';
-import { expect, panelAccount, seedPanel, settled, shot, signIn, test, VIEWPORTS } from './fixtures';
+import { panelAccount } from './accounts';
+import { seedPanel } from './businesses';
+import { expect, test } from './fixtures';
+import { settled, shot, VIEWPORTS } from './screen';
+import { signIn } from './session';
 
 const KEY = 'FIX-SAAS-SPA-STATIC-PROBES-SET-CSRF-COOKIE';
 const PROBES = ['/favicon.ico', '/wp-login.php'];

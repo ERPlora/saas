@@ -12,7 +12,9 @@ import { fileURLToPath } from 'node:url';
 
 import type { Locator } from '@playwright/test';
 
-import { expect, panelAccount, qaAccount, seededAndSignedInWarm, settled, test, VIEWPORTS } from './fixtures';
+import { panelAccount, qaAccount } from './accounts';
+import { expect, seededAndSignedInWarm, test } from './fixtures';
+import { settled, VIEWPORTS } from './screen';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS = join(SAAS_DIR, 'tests', 'e2e', '.artifacts', 'fix-ui-confirmdialog-icon');

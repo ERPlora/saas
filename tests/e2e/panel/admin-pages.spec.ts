@@ -13,7 +13,12 @@
 // flow: FISCAL-F06 — ERPlora's stamp as representative.
 import type { Page } from '@playwright/test';
 
-import { captureAtEverySize, djangoPrint, expect, MAILING, runSeed, signIn, test, watchPageErrors } from './fixtures';
+import { djangoPrint, runSeed } from './django';
+import { expect, test } from './fixtures';
+import { MAILING } from './mail';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize } from './screen';
+import { signIn } from './session';
 
 const atEverySize = captureAtEverySize('APP-ASSISTANT-1');
 

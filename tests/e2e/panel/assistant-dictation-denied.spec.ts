@@ -3,7 +3,9 @@
 // file of its own (assistant-dictation.spec.ts needs the prompt that accepts).
 // flow: ASSISTANT-F21 — dictate to the assistant.
 import { openPanel } from './assistant-chat';
-import { expect, runSeed, settled, shot, test } from './fixtures';
+import { runSeed } from './django';
+import { expect, test } from './fixtures';
+import { settled, shot } from './screen';
 
 const seed = (action: 'clear' | 'panel') => runSeed('assistant_seed.py', [action, 'http://127.0.0.1:9/v1', 'en']);
 

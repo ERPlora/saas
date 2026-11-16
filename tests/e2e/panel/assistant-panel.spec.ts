@@ -18,8 +18,12 @@ import type { Locator, Page } from '@playwright/test';
 import { NEW_BUSINESS } from '../assistant-provider';
 
 import { ask, DESKTOP_FIRST, localAssistant, OWNER } from './assistant-chat';
-import { expect, expectNoSidewaysScroll, settled, shot, signIn, test, waitForMail, watchPageErrors } from './fixtures';
+import { expect, test } from './fixtures';
+import { waitForMail } from './mail';
+import { watchPageErrors } from './page-events';
 import { PANEL_MAIL_DIR } from './project';
+import { expectNoSidewaysScroll, settled, shot } from './screen';
+import { signIn } from './session';
 
 const BUSINESS = 'E2E Asistente Panel';
 

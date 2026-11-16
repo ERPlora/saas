@@ -1,6 +1,6 @@
 """The warm Django of the panel's e2e (``tests/e2e/panel/django_warm.py``, saas#352), kept honest here because the CI
 does not run the e2e: one process answers what each snippet prints, one line per snippet, and each snippet runs as
-``python -c`` would run it after ``django.setup()`` (``djangoPrint`` of ``fixtures.ts``), so a spec that moves its
+``python -c`` would run it after ``django.setup()`` (``djangoPrint`` of ``tests/e2e/panel/django.ts``), so a spec that moves its
 snippets there reads the same values as before.
 """
 

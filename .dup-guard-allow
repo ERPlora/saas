@@ -12,3 +12,4 @@ duplicados tests/e2e/public-web-2.spec.ts:35-73 captureEverywhere already shared
 duplicados tests/e2e/panel/chrome.spec.ts:256-261 the 390 px target loop was already repeated at 290-295 on main; this change only joins the comment after it into one line
 duplicados billing/models/invoices.py:274-284 the net, tax and total properties of Invoice and InvoiceLine were already alike in billing/models.py on main; this change moves both literally into the package
 duplicados billing/models/invoices.py:378-388 the net, tax and total properties of Invoice and InvoiceLine were already alike in billing/models.py on main; this change moves both literally into the package
+duplicados tests/e2e/panel/screen.ts:62-74 movingInPage already shared its loop with stillMoving of settled.spec.ts on main, which reads the page on its own on purpose; this change moves it literally out of fixtures.ts

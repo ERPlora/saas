@@ -6,21 +6,13 @@
 // flow: BILLING-F08
 import { type APIRequestContext, type Locator, type Page } from '@playwright/test';
 
-import {
-  apiPost,
-  businessIdOf,
-  expect,
-  internalSecret,
-  panelAccount,
-  reportBusinessReady,
-  seedPanel,
-  settled,
-  shot,
-  sidewaysScroll,
-  signIn,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { panelAccount } from './accounts';
+import { businessIdOf, seedPanel } from './businesses';
+import { expect, test } from './fixtures';
+import { internalSecret, reportBusinessReady } from './hub';
+import { watchPageErrors } from './page-events';
+import { settled, shot, sidewaysScroll } from './screen';
+import { apiPost, signIn } from './session';
 
 /** As long as `hubs.schemas.Name` admits (120), in words a line can break at. */
 const LONG_NAME = 'Panadería y Pastelería Artesana de la Plaza Mayor de Santa María del Campo y Alrededores, Obrador Tradicional de Masa de';

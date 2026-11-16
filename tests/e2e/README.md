@@ -225,7 +225,7 @@ mismo `INTERNAL_SHARED_SECRET` que el SaaS y su `SAAS_URL` apuntando al panel de
 `manage.py run_worker --databases-only`: es quien hace la BD del negocio y avisa de que está listo; sin él el Hub
 contesta `202` y el negocio se queda «Preparando». El Hub recuerda la dirección de cada pasada aunque el SaaS borre
 sus filas (un `409` a la siguiente): una spec que repita tiene que usar un nombre nuevo o una BD del Hub nueva. Lo que una
-spec lee o cambia en el Hub lo pide con `realHubPrint(código)` de `panel/fixtures.ts` (su `manage.py shell` en `HUB_DIR`
+spec lee o cambia en el Hub lo pide con `realHubPrint(código)` de `panel/hub.ts` (su `manage.py shell` en `HUB_DIR`
 contra `HUB_DB_NAME`): asíncrono, para que el arranque de ese Django no bloquee Node ni el tope de la prueba (saas#354). El panel lleva
 `HUB_CALLBACK_TEMPLATE` y `HUB_ADMIN_CALLBACK_URL` hacia ese Hub. Receta para la pila `8080` (`:8082` panel, `:8089`
 Hub; Vites `5480` y `5750`), con el Hub levantado antes y parado después por su PID:
@@ -388,7 +388,14 @@ QA_PROBES=tests/e2e/qa/probes/es-app-2026-11-01.json QA_REAL_PROVIDER=1 … pnpm
 
 ## Escribir una spec del panel
 
-Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/test`:
+Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/test`. Cada ayudante vive en el
+módulo de `panel/` de lo que hace y la spec lo importa de allí: `accounts.ts` (las cuentas: las sembradas, las de una
+spec, su alta y su baja), `session.ts` (la entrada, `GET /api/me` y los POST con CSRF), `mail.ts` (los correos),
+`screen.ts` (los tres tamaños, `settled`, el desplazamiento lateral, las capturas, el menú, los avisos y los textos
+del catálogo), `page-events.ts` (los errores de la página y sus `/api/live`), `django.ts` (el Django del SaaS, en
+frío o caliente, y las siembras), `businesses.ts` (los negocios de una spec), `hub.ts` (el Hub: su doble, su aviso
+firmado, el de verdad y las BD de su pila) y `stripe.ts` (Stripe de mentira). `fixtures.ts` lleva `test`, con
+estas fixtures, y las siembras por prueba (`seededAndSignedIn`, `seededAndSignedInWarm`):
 
 - `owner`: las credenciales del dueño sembrado.
 - `signedInPage`: una página con la sesión del dueño abierta por la API de `allauth.headless`
@@ -458,7 +465,7 @@ a medir el documento a mano, ni por un nombre dado a su raíz (`const root = doc
 `then()`, ni desestructurando su ancho (`const { scrollWidth } = document.documentElement`, también anidado), ni
 con un localizador del raíz (`page.locator('html').evaluate(…)`, `page.$eval('body', …)`), ni partida en varias líneas,
 ni un solo `ion-content` (su `getScrollElement()`, `.inner-scroll` o `part="scroll"` y su `scrollWidth`); su scroll
-vertical (`scrollTop`, `scrollHeight`) sigue libre. Sus reglas son las del guardarraíl del Hub, línea por línea. `sidewaysScroll(page)` de `panel/fixtures.ts` nombra lo que se desplaza de
+vertical (`scrollTop`, `scrollHeight`) sigue libre. Sus reglas son las del guardarraíl del Hub, línea por línea. `sidewaysScroll(page)` de `panel/screen.ts` nombra lo que se desplaza de
 lado con la misma medida (`overflowingBoxes(page, 1)`: `document N > M`, `ion-content N > M`) y, además, las tablas. Tras cambiar el
 tamaño de la ventana (o acoplarse el asistente), una spec comprueba con `expectNoSidewaysScroll(page, '<qué>')`, que repite
 la medida hasta que la página se asienta: una DataTable se reacomoda en varios fotogramas (pliega sus acciones y pasa a

@@ -9,20 +9,13 @@
 import { type Page } from '@playwright/test';
 
 import { horizontalOverflow } from '../horizontal-overflow';
-import {
-  OWNER,
-  VIEWPORTS,
-  expect,
-  panelAccount,
-  seedPanel,
-  sessionOf,
-  shot,
-  signInThroughPage,
-  submitSignInForm,
-  test,
-  waitForMailCode,
-  watchPageErrors,
-} from './fixtures';
+import { OWNER, panelAccount } from './accounts';
+import { seedPanel } from './businesses';
+import { expect, test } from './fixtures';
+import { waitForMailCode } from './mail';
+import { watchPageErrors } from './page-events';
+import { shot, VIEWPORTS } from './screen';
+import { sessionOf, signInThroughPage, submitSignInForm } from './session';
 
 /** The launcher's card, signed in: the logo inside it, a heading, and neither loading nor failed. */
 async function expectLauncher(page: Page): Promise<void> {

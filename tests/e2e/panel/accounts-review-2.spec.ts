@@ -9,18 +9,13 @@
 // F37, F39–F41, F45, F46) have their integration tests; F42's pages and F43's maintenance page and F46's mails are
 // painted in both languages by public-errors, accounts-platform and accounts-mails.
 // Accounts of this spec: `e2e-acc7-…@example.com`, removed before and after, with their businesses.
-import {
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  openMenu,
-  removeAccountsWarm,
-  signIn,
-  signInThroughPage,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
 import { closeOverlays, LANGUAGES, type Lang, openUserMenu, reviewOf, t } from './language-review';
+import { watchPageErrors } from './page-events';
+import { openMenu } from './screen';
+import { signIn, signInThroughPage } from './session';
 
 const PREFIX = 'e2e-acc7-';
 const PASSWORD = 'Centeno-y-masa-madre-26';

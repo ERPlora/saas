@@ -11,7 +11,12 @@
 
 import type { Page } from '@playwright/test';
 
-import { expect, panelAccount, qaAccount, runSeed, settled, shot, signIn, test, VIEWPORTS, watchPageErrors } from './fixtures';
+import { panelAccount, qaAccount } from './accounts';
+import { runSeed } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { settled, shot, VIEWPORTS } from './screen';
+import { signIn } from './session';
 
 const BILLING = qaAccount('BILLING', panelAccount('billing'));
 

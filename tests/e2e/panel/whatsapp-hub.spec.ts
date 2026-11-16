@@ -28,18 +28,12 @@ import { createHmac } from 'node:crypto';
 import { readMailCode } from '@erplora/ui/testing/mail';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
-import {
-  expectNoSidewaysScroll,
-  hubStackIds,
-  hubStackSql,
-  OWNER,
-  runSeedWarm,
-  shot,
-  submitSignInForm,
-  VIEWPORTS,
-  warmDjango,
-} from './fixtures';
+import { OWNER } from './accounts';
+import { runSeedWarm, warmDjango } from './django';
+import { hubStackIds, hubStackSql } from './hub';
 import { WHATSAPP_E2E } from './project';
+import { expectNoSidewaysScroll, shot, VIEWPORTS } from './screen';
+import { submitSignInForm } from './session';
 
 const HUB_PORT = Number(process.env.E2E_CROSS_HUB_PORT ?? 0);
 const MAIL_DIR = process.env.E2E_MAIL_DIR ?? '';

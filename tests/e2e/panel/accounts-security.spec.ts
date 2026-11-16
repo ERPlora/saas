@@ -9,20 +9,12 @@ import { createHmac } from 'node:crypto';
 
 import { type APIRequestContext, type Browser, type Page } from '@playwright/test';
 
-import {
-  captureAtEverySize,
-  createAccountWarm,
-  type Credentials,
-  expect,
-  removeAccountsWarm,
-  sessionOf,
-  sidewaysScroll,
-  signIn,
-  signInThroughPage,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, type Credentials, removeAccountsWarm } from './accounts';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
 import { PANEL_MFA_URL, PANEL_URL } from './project';
+import { captureAtEverySize, sidewaysScroll } from './screen';
+import { sessionOf, signIn, signInThroughPage } from './session';
 
 const atEverySize = captureAtEverySize('APP-ACCOUNTS-2');
 

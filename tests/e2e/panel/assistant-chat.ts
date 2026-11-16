@@ -16,8 +16,12 @@ import { redactedError } from '../assistant-probes';
 import { type Provider, startProvider } from '../assistant-provider';
 import { djangoEnv } from '../django-env';
 import { STACK } from '../stack';
-import { type Credentials, expect, runSeedWarm, signIn, test, VIEWPORTS, warmDjango } from './fixtures';
+import type { Credentials } from './accounts';
+import { runSeedWarm, warmDjango } from './django';
+import { expect, test } from './fixtures';
 import { PANEL_URL } from './project';
+import { VIEWPORTS } from './screen';
+import { signIn } from './session';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 

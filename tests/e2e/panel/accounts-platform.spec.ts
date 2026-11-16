@@ -9,19 +9,12 @@
 // Accounts of this spec: `e2e-acc5-…`.
 import { type Browser, type Page } from '@playwright/test';
 
-import {
-  captureAtEverySize,
-  closeMenu,
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  openMenu,
-  removeAccountsWarm,
-  signIn,
-  signInThroughPage,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize, closeMenu, openMenu } from './screen';
+import { signIn, signInThroughPage } from './session';
 
 const atEverySize = captureAtEverySize('APP-ACCOUNTS-5');
 

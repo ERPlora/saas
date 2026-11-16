@@ -18,21 +18,14 @@ import { createServer, type Server } from 'node:http';
 
 import { type Page } from '@playwright/test';
 
-import {
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  removeAccountsWarm,
-  sessionOf,
-  settled,
-  shot,
-  sidewaysScroll,
-  test,
-  VIEWPORTS,
-  waitForMail,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { waitForMail } from './mail';
+import { watchPageErrors } from './page-events';
 import { GOOGLE_E2E, PANEL_MFA_URL } from './project';
+import { settled, shot, sidewaysScroll, VIEWPORTS } from './screen';
+import { sessionOf } from './session';
 import { STACK } from '../stack';
 
 const PREFIX = 'e2e-google-';

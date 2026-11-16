@@ -11,7 +11,9 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { DESKTOP_FIRST, localAssistant, openPanel } from './assistant-chat';
-import { expect, settled, shot, test, watchPageErrors } from './fixtures';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { settled, shot } from './screen';
 
 /** What the person sees and hears, in each language (the package's words, `assistant.speech.*`). */
 const WORDS = {

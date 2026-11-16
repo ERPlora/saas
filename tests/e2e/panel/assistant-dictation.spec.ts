@@ -10,7 +10,10 @@
 import { DICTATION } from '../assistant-provider';
 
 import { DESKTOP_FIRST, localAssistant, openPanel, OWNER } from './assistant-chat';
-import { expect, expectNoSidewaysScroll, settled, shot, signIn, test, watchPageErrors } from './fixtures';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { expectNoSidewaysScroll, settled, shot } from './screen';
+import { signIn } from './session';
 
 /** What the person sees, in each language (the package's words, `assistant.voice.*`). */
 const WORDS = {

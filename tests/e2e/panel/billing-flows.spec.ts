@@ -3,22 +3,13 @@
 // billing_seed.py. As billing.spec.ts and store.spec.ts, Stripe does not run here: the operations that call it
 // (`billing.plan.cancel`, `.keep`, `billing.checkout.start`, `billing.portal.open`) are played at the API's edge;
 // everything else is the real server. Each test names its flow of billing/WORKBOOK.md in its title.
-import {
-  businessIdOf,
-  captureAtEverySize,
-  djangoPrintWarm,
-  expect,
-  gotoWithCharge,
-  panelAccount,
-  playStripePortal,
-  qaAccount,
-  seededAndSignedInWarm,
-  shot,
-  STRIPE_PORTAL_URL,
-  test,
-  toast,
-  watchPageErrors,
-} from './fixtures';
+import { panelAccount, qaAccount } from './accounts';
+import { businessIdOf } from './businesses';
+import { djangoPrintWarm } from './django';
+import { expect, seededAndSignedInWarm, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize, shot, toast } from './screen';
+import { gotoWithCharge, playStripePortal, STRIPE_PORTAL_URL } from './stripe';
 
 seededAndSignedInWarm('billing_seed.py', qaAccount('BILLING', panelAccount('billing')));
 const atEverySize = captureAtEverySize('APP-BILLING-1');

@@ -7,19 +7,12 @@ import { readFile } from "node:fs/promises";
 
 import { type APIRequestContext, type Page } from "@playwright/test";
 
-import {
-  captureAtEverySize,
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  removeAccountsWarm,
-  sessionOf,
-  settled,
-  signIn,
-  test,
-  toast,
-  watchPageErrors,
-} from "./fixtures";
+import { createAccountWarm, removeAccountsWarm } from "./accounts";
+import { djangoPrintWarm } from "./django";
+import { expect, test } from "./fixtures";
+import { watchPageErrors } from "./page-events";
+import { captureAtEverySize, settled, toast } from "./screen";
+import { sessionOf, signIn } from "./session";
 
 const atEverySize = captureAtEverySize("APP-ACCOUNTS-3");
 

@@ -3,19 +3,13 @@
 // tests/e2e/fix-ui-select-long-option-reads-whole.spec.ts; this says it reaches the panel, on the time zones of a
 // business's settings at 320, where the longest names need their second line: each label against its own box, never a capture.
 // flow: HUBS-F15
-import {
-  apiPost,
-  expect,
-  internalSecret,
-  panelAccount,
-  reportBusinessReady,
-  seedPanel,
-  settled,
-  shot,
-  signIn,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { panelAccount } from './accounts';
+import { seedPanel } from './businesses';
+import { expect, test } from './fixtures';
+import { internalSecret, reportBusinessReady } from './hub';
+import { watchPageErrors } from './page-events';
+import { settled, shot } from './screen';
+import { apiPost, signIn } from './session';
 
 const NAME = 'Zonas Largas E2E';
 

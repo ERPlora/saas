@@ -7,25 +7,14 @@
 // (panel_seed.py's `clear` removes every `e2e-…@example.com` too).
 import { type APIRequestContext, type Page } from '@playwright/test';
 
-import {
-  captureAtEverySize,
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  removeAccountsWarm,
-  sessionOf,
-  settled,
-  shot,
-  signIn,
-  signInThroughPage,
-  submitSignInForm,
-  test,
-  VIEWPORTS,
-  waitForMailCode,
-  waitForPasswordResetLink,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { waitForMailCode, waitForPasswordResetLink } from './mail';
+import { watchPageErrors } from './page-events';
 import { PANEL_URL } from './project';
+import { captureAtEverySize, settled, shot, VIEWPORTS } from './screen';
+import { sessionOf, signIn, signInThroughPage, submitSignInForm } from './session';
 
 const atEverySize = captureAtEverySize('APP-ACCOUNTS-1');
 

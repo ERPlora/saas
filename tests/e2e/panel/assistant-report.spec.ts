@@ -11,8 +11,12 @@ import type { Locator, Page } from '@playwright/test';
 import { STACK } from '../stack';
 
 import { ask, DESKTOP_FIRST, localAssistant, openPanel } from './assistant-chat';
-import { djangoPrintWarm, expect, settled, shot, sidewaysScroll, test, toast, waitForMail, watchPageErrors } from './fixtures';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { waitForMail } from './mail';
+import { watchPageErrors } from './page-events';
 import { PANEL_MAIL_DIR } from './project';
+import { settled, shot, sidewaysScroll, toast } from './screen';
 
 /** What support gets instead of an answer that may quote the web (assistant/services.py, `REPORT_WEB_ANSWER`). */
 const LEFT_OUT = 'Left out: it may quote web search results';

@@ -5,20 +5,14 @@
 import { readMailsSince } from '@erplora/ui/testing/mail';
 import { type Page } from '@playwright/test';
 
-import {
-  captureAtEverySize,
-  createAccountWarm,
-  type Credentials,
-  djangoPrintWarm,
-  expect,
-  removeAccountsWarm,
-  settled,
-  signIn,
-  test,
-  waitForMail,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, type Credentials, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { waitForMail } from './mail';
+import { watchPageErrors } from './page-events';
 import { PANEL_MAIL_DIR } from './project';
+import { captureAtEverySize, settled } from './screen';
+import { signIn } from './session';
 
 const atEverySize = captureAtEverySize('APP-ACCOUNTS-4');
 

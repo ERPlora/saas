@@ -10,18 +10,13 @@ import { createServer, type Server } from 'node:http';
 
 import { type Page } from '@playwright/test';
 
-import {
-  apiPost,
-  captureAtEverySize,
-  djangoPrintWarm,
-  expect,
-  removeAccountsWarm,
-  settled,
-  signIn,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
 import { HUB_DOUBLE_PORT } from './project';
+import { captureAtEverySize, settled } from './screen';
+import { apiPost, signIn } from './session';
 
 const atEverySize = captureAtEverySize('HUBS-F18');
 

@@ -7,28 +7,16 @@
 // the dialog and by the server.
 import { type Browser, type Page } from '@playwright/test';
 
-import {
-  apiPost,
-  businessIdOf,
-  djangoPrintWarm,
-  expect,
-  freezeFrontend,
-  type HubCall,
-  type HubDouble,
-  panelAccount,
-  seedPanel,
-  shot,
-  sidewaysScroll,
-  signIn,
-  signInThroughPage,
-  startHubDouble,
-  test,
-  waitForMail,
-  waitForPasswordResetLink,
-  warmDjango,
-  watchPageErrors,
-} from './fixtures';
+import { panelAccount } from './accounts';
+import { businessIdOf, seedPanel } from './businesses';
+import { djangoPrintWarm, warmDjango } from './django';
+import { expect, freezeFrontend, test } from './fixtures';
+import { type HubCall, type HubDouble, startHubDouble } from './hub';
+import { waitForMail, waitForPasswordResetLink } from './mail';
+import { watchPageErrors } from './page-events';
 import { PANEL_URL } from './project';
+import { shot, sidewaysScroll } from './screen';
+import { apiPost, signIn, signInThroughPage } from './session';
 
 /** An address with no account: the invitation creates one, without a password. */
 const NEWCOMER = 'e2e-newcomer@example.com';

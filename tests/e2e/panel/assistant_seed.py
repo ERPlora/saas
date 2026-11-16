@@ -19,7 +19,7 @@ the account.
 - ``gateway <address>``: ``models`` with ``gpt-e2e-large`` answering, and two working businesses on the Free plan
   (no subscription): ``e2e-assistant-bar`` with its allowance whole and ``e2e-assistant-spent`` with this month's
   messages spent. Prints one line of JSON for the spec: the plan's allowance and the addresses of the businesses and
-  of the demo (the spec signs with ``fixtures.internalSecret``, as the Hub would).
+  of the demo (the spec signs with ``hub.internalSecret``, as the Hub would).
 - ``panel <address> [<language>]``: ``gpt-e2e-large`` answering, as in ``gateway``, and ``e2e-assistant-owner``: an
   account like any other (no staff), in ``language`` (``es`` by default), owner of one working business on the Free
   plan, «E2E Asistente Panel». Prints one line of JSON for the spec: the owner's email, the business and its address.

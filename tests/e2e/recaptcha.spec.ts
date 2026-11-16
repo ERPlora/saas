@@ -13,7 +13,8 @@ import { readdirSync } from 'node:fs';
 import { readMailCode } from '@erplora/ui/testing/mail';
 import type { Page } from '@playwright/test';
 
-import { OWNER, seedAccounts, submitSignInForm } from './panel/fixtures';
+import { OWNER, seedAccounts } from './panel/accounts';
+import { submitSignInForm } from './panel/session';
 import { PUBLIC_MAIL_DIR } from './playwright.config';
 import { expect, test } from './public-test';
 import {

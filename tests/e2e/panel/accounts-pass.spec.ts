@@ -7,16 +7,12 @@
 // Accounts of this spec: `e2e-pass-…@example.com`, removed before and after.
 import { type Browser, type Page } from '@playwright/test';
 
-import {
-  captureAtEverySize,
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  removeAccountsWarm,
-  signInThroughPage,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize } from './screen';
+import { signInThroughPage } from './session';
 
 const atEverySize = captureAtEverySize('ACCOUNTS-F29');
 

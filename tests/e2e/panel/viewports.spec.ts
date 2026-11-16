@@ -8,8 +8,12 @@ import { join } from 'node:path';
 
 import { type Browser, type BrowserContext, type Page } from '@playwright/test';
 
-import { businessIdOf, expect, panelAccount, seedPanel, settled, shot, sidewaysScroll, signIn, test, VIEWPORTS } from './fixtures';
+import { panelAccount } from './accounts';
+import { businessIdOf, seedPanel } from './businesses';
+import { expect, test } from './fixtures';
 import { PANEL_URL } from './project';
+import { settled, shot, sidewaysScroll, VIEWPORTS } from './screen';
+import { signIn } from './session';
 
 const SHOTS_DIR = process.env.SHOTS_DIR ?? join(shot('viewports-dir'), '..', 'viewports');
 mkdirSync(SHOTS_DIR, { recursive: true });

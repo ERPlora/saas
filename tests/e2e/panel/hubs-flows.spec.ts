@@ -12,22 +12,16 @@
 // Accounts of this spec: `e2e-hubs1-…@example.com` (panel_seed.py's `clear` removes every `e2e-…@example.com`).
 import { type Page } from '@playwright/test';
 
-import {
-  businessIdOf,
-  captureAtEverySize,
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  panelAccount,
-  realHubPrint,
-  removeAccountsWarm,
-  runSeedWarm,
-  signIn,
-  test,
-  waitForMail,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, panelAccount, removeAccountsWarm } from './accounts';
+import { businessIdOf } from './businesses';
+import { djangoPrintWarm, runSeedWarm } from './django';
+import { expect, test } from './fixtures';
+import { realHubPrint } from './hub';
+import { waitForMail } from './mail';
+import { watchPageErrors } from './page-events';
 import { HUB_DOUBLE_PORT } from './project';
+import { captureAtEverySize } from './screen';
+import { signIn } from './session';
 
 const atEverySize = captureAtEverySize('APP-HUBS-1');
 

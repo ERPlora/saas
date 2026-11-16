@@ -4,17 +4,11 @@
 // accounts/WORKBOOK.md. The person's own keys (Account › API keys: create with
 // «Confirm it's you», use, revoke) are account.spec.ts's. Accounts of this spec: `e2e-acc4k-…@example.com`.
 
-import {
-  type AccountRole,
-  captureAtEverySize,
-  createAccountWarm,
-  expect,
-  removeAccountsWarm,
-  signIn,
-  signInThroughPage,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { type AccountRole, createAccountWarm, removeAccountsWarm } from './accounts';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize } from './screen';
+import { signIn, signInThroughPage } from './session';
 
 const atEverySize = captureAtEverySize('APP-ACCOUNTS-4');
 

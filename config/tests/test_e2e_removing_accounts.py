@@ -1,9 +1,9 @@
-"""What the panel's e2e specs remove when they end (``removingAccountsOf`` of ``tests/e2e/panel/fixtures.ts``, run by
+"""What the panel's e2e specs remove when they end (``removingAccountsOf`` of ``tests/e2e/panel/accounts.ts``, run by
 ``removeAccountsOf`` and ``removeAccountsWarm``), kept honest here because the CI does not run the e2e: a spec's
 accounts and businesses go with the billing profiles they would leave ownerless (saas#374), and a profile of another
 account stays, even one that paid a business a spec's account worked in.
 
-The snippet is read from ``fixtures.ts`` as the spec sends it and run as the warm Django runs it.
+The snippet is read from ``accounts.ts`` as the spec sends it and run as the warm Django runs it.
 """
 
 import json
@@ -15,7 +15,7 @@ from django.utils import timezone
 
 from hubs.models import BillingProfile, Hub, HubMember
 
-FIXTURES = Path(__file__).resolve().parents[2] / "tests" / "e2e" / "panel" / "fixtures.ts"
+ACCOUNTS = Path(__file__).resolve().parents[2] / "tests" / "e2e" / "panel" / "accounts.ts"
 PREFIX = "e2e-spec-"
 
 pytestmark = pytest.mark.django_db
@@ -23,7 +23,7 @@ pytestmark = pytest.mark.django_db
 
 def removing_accounts_of(prefix: str) -> str:
     """The Python of ``removingAccountsOf(prefix)``: its array of lines, each one unquoted, joined as the spec joins it."""
-    lines = FIXTURES.read_text().split("\n")
+    lines = ACCOUNTS.read_text().split("\n")
     start = lines.index("const removingAccountsOf = (prefix: string) =>") + 2
     end = lines.index("  ].join('\\n');", start)
     snippet = []

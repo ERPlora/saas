@@ -4,7 +4,11 @@
 // 10 sign-ups an hour per address the eleventh «Create account» of a run got «Too many attempts» (429). Production
 // and the dev server keep the 10 (config/tests/test_production_settings.py). Accounts of this spec:
 // `e2e-signup-limit-<n>-<time>@example.com`, removed before and after.
-import { djangoPrintWarm, expect, settled, shot, sidewaysScroll, submitSignInForm, test, VIEWPORTS, watchPageErrors } from './fixtures';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { settled, shot, sidewaysScroll, VIEWPORTS } from './screen';
+import { submitSignInForm } from './session';
 
 /** allauth.headless's sign-up for the browser client: what the launcher's «Create account» posts. */
 const SIGN_UP_API = '/_allauth/browser/v1/auth/signup';

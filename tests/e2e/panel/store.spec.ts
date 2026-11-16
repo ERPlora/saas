@@ -1,6 +1,6 @@
 // The Store (`/dashboard/store/:tab`) in Chrome, against the panel's own Django (project.ts) and the rows of
 // store_seed.py. Stripe cannot run here: no keys, no network to it. The spec plays Stripe at the browser's boundary
-// with fixtures.ts — its Stripe.js (`playStripe`, which records the publishable key and the client secret and
+// with stripe.ts — its Stripe.js (`playStripe`, which records the publishable key and the client secret and
 // mounts a placeholder where the Embedded Checkout would be) and the answers of the operations that call Stripe
 // (`answerCheckoutStart`; `billing.checkout.confirm` and `billing.module.keep` here) — so it proves the page up to
 // the `client_secret` request and the modal's mount, not Stripe's own form, the webhook nor a real charge
@@ -11,7 +11,14 @@ import { join } from 'node:path';
 import type { Page, Request } from '@playwright/test';
 
 import { overflowingBoxes } from '../horizontal-overflow';
-import { answerCheckoutStart, businessIdOf, djangoPrint, expect, gotoWithCharge, gotoWithCheckout, panelAccount, payInStripe, playStripe, qaAccount, repeatedTop, runSeed, settled, shot, signIn, stripeState, test, toast, VIEWPORTS, watchPageErrors } from './fixtures';
+import { panelAccount, qaAccount } from './accounts';
+import { businessIdOf } from './businesses';
+import { djangoPrint, runSeed } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { repeatedTop, settled, shot, toast, VIEWPORTS } from './screen';
+import { signIn } from './session';
+import { answerCheckoutStart, gotoWithCharge, gotoWithCheckout, payInStripe, playStripe, stripeState } from './stripe';
 
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/l2d-shots';
 mkdirSync(SHOTS_DIR, { recursive: true });

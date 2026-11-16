@@ -7,37 +7,22 @@
 // end of a person's sessions in the business; the jump into a business is answered here (no Hub runs). Stripe does not
 // run either (no keys in the e2e stack): what calls it runs in the server's own code with Stripe at its boundary
 // (`withStripe`, the double of the Python tests), and the page plays Stripe.js and the one call that opens a payment
-// (`playStripe` of fixtures.ts). Each test has
+// (`playStripe` of stripe.ts). Each test has
 // its own accounts (`e2e-hubs3-…@example.com`, their address proven) and its own business, created through the API as
 // the panel creates it; the people join it through the operations (invite, then accept), never written by hand.
 import { type Browser, type Page } from '@playwright/test';
 
 import { horizontalOverflow } from '../horizontal-overflow';
-import {
-  apiPost,
-  captureAtEverySize,
-  createAccountWarm,
-  djangoPrintWarm,
-  expect,
-  freezeFrontend,
-  type HubCall,
-  type HubDouble,
-  MAIL_LOGO_URL,
-  mailPartsOf,
-  onlyTheMailLogo,
-  payInStripe,
-  playStripe,
-  settled,
-  shot,
-  signIn,
-  signInAs,
-  startHubDouble,
-  test,
-  VIEWPORTS,
-  waitForMail,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, freezeFrontend, test } from './fixtures';
+import { type HubCall, type HubDouble, startHubDouble } from './hub';
+import { MAIL_LOGO_URL, mailPartsOf, onlyTheMailLogo, waitForMail } from './mail';
+import { watchPageErrors } from './page-events';
 import { PANEL_URL } from './project';
+import { captureAtEverySize, settled, shot, VIEWPORTS } from './screen';
+import { apiPost, signIn, signInAs } from './session';
+import { payInStripe, playStripe } from './stripe';
 
 const atEverySize = captureAtEverySize('APP-HUBS-3');
 
