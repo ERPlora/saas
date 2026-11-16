@@ -390,7 +390,7 @@ STAFF_FLAGS = frozenset({"is_staff", "is_superuser"})
 #: Where they may be set: ``createsuperuser`` and ``manage.py create_platform_user`` (the platform's ``admin`` and
 #: ``support``). The admin's user form writes them too (Django's own fields, for a superuser of the staff); what
 #: holds it is ``User.clean``, which the form runs: it never raises either flag of an account on a business.
-STAFF_DOORS = frozenset({("accounts/models.py", "create_superuser"), ("accounts/services.py", "create_platform_user")})
+STAFF_DOORS = frozenset({("accounts/models.py", "create_superuser"), ("accounts/services/__init__.py", "create_platform_user")})
 #: Calls that read the flags (``filter(is_staff=True)``) rather than write them.
 READS = frozenset({"filter", "exclude", "get", "first", "exists", "count"})
 

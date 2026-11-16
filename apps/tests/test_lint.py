@@ -165,7 +165,7 @@ def test_the_scan_sees_the_project():
     assert {
         "apps/queries.py",
         "apps/models.py",
-        "accounts/services.py",
+        "accounts/services/__init__.py",
         "config/settings/__init__.py",
     } <= set(files)
     assert not any(
