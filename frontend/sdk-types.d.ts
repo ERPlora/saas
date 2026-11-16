@@ -758,7 +758,7 @@ declare module '@erplora/ui/sdk' {
   }
 }
 
-// --- The Store: billing (billing/schemas.py), the app catalog (apps/schemas.py) and the payer of a
+// --- The Store: billing (billing/schemas/), the app catalog (apps/schemas.py) and the payer of a
 // business (hubs/schemas.py `BillingProfile*`). Appended as its own block, with its own augmentation of
 // `Operations` below (interfaces merge). -----------------------------------------------------------------
 
@@ -1000,7 +1000,7 @@ declare module '@erplora/ui/sdk' {
 }
 
 // --- The Billing section: ERPlora's invoices, the subscriptions and the payment details
-// (billing/schemas.py). Its own block and its own augmentation of `Operations` below, as the Store's. --------
+// (billing/schemas/). Its own block and its own augmentation of `Operations` below, as the Store's. --------
 
 /** `billing.InvoicePaymentStatus`: not collected yet, paid, or cancelled in Stripe. */
 export type InvoicePaymentStatus = 'open' | 'paid' | 'void';
