@@ -122,6 +122,32 @@ def test_promo_codes_are_written_in_the_admin(staff_client):
     assert PromoCode.objects.get().code == "feria_2026"
 
 
+def test_a_promo_code_of_free_months_is_written_in_the_admin(staff_client):
+    from billing.models import PromoCode
+
+    response = staff_client.post(
+        "/admin/billing/promocode/add/",
+        {"code": "testers", "free_months": "6", "is_active": "on", "redemption_count": "0"},
+    )
+
+    assert response.status_code == 302, response.content
+    assert PromoCode.objects.values_list("code", "trial_days", "free_months").get() == ("testers", None, 6)
+    assert "free_months" in staff_client.get("/admin/billing/promocode/").content.decode()
+
+
+@pytest.mark.parametrize("granted", [{"trial_days": "30", "free_months": "6"}, {}])
+def test_a_promo_code_with_both_kinds_or_none_is_refused_in_the_form(staff_client, granted):
+    from billing.models import PromoCode
+
+    response = staff_client.post(
+        "/admin/billing/promocode/add/", {"code": "both", "redemption_count": "0", **granted}
+    )
+
+    assert response.status_code == 200
+    assert "either trial days or free months" in response.content.decode()
+    assert not PromoCode.objects.exists()
+
+
 def test_a_promo_code_with_more_than_a_year_is_refused_in_the_form(staff_client):
     response = staff_client.post(
         "/admin/billing/promocode/add/", {"code": "long", "trial_days": "366", "redemption_count": "0"}

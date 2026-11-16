@@ -2213,3 +2213,24 @@ msgstr "Base imponible mensual (€)"
 #: admin.py queries.py
 msgid "Customer since"
 msgstr "Cliente desde"
+
+#: models/promo_codes.py
+msgid "free months"
+msgstr "meses gratis"
+
+#: models/promo_codes.py
+msgid "Months of a monthly plan at no charge, invoiced at 0 € (1 to 12); instead of trial days"
+msgstr ""
+"Meses de un plan mensual sin cobrar, facturados a 0 € (de 1 a 12); en lugar de días de prueba"
+
+#: models/promo_codes.py
+msgid "free until"
+msgstr "gratis hasta"
+
+#: models/promo_codes.py
+msgid "When the free months of the code end"
+msgstr "Cuándo acaban los meses gratis del código"
+
+#: models/promo_codes.py
+msgid "A promo code grants either trial days or free months: fill in one of the two."
+msgstr "Un código promocional da días de prueba o meses gratis: rellena uno de los dos."

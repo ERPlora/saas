@@ -1,5 +1,6 @@
-"""Promo codes: the trial days a checkout grants, and who used each code."""
+"""Promo codes: the trial days or the free months a checkout grants, and who used each code."""
 
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
@@ -10,14 +11,17 @@ from live.models import UUIDModel
 
 #: The longest trial a promo code may grant.
 MAX_PROMO_TRIAL_DAYS = 365
+#: The most months free a promo code may grant.
+MAX_FREE_MONTHS = 12
 
 
 class PromoCode(UUIDModel):
-    """A code that grants trial DAYS at checkout, replacing the plan's own.
+    """A code that grants, at checkout, either trial DAYS (replacing the plan's own) or free MONTHS.
 
-    Deliberately not a Stripe coupon: a coupon's duration burns from the moment it is applied, trial
-    included, so one shorter than the trial expires before the first invoice. And free time, never a lower
-    price: a discount anchors a cheaper price and turns the renewal into a price hike.
+    Trial days are no Stripe coupon: a coupon's duration burns from the moment it is applied, trial
+    included. Free months are one, a 100 % coupon for N months on a new monthly subscription and never with
+    a trial: Stripe issues an invoice every month (0 € while the coupon lasts), which is what the accountant
+    files, and charges the regular price from the month after without anyone doing anything.
     """
 
     code = models.CharField(
@@ -30,10 +34,19 @@ class PromoCode(UUIDModel):
     )
     trial_days = models.PositiveIntegerField(
         _("trial days"),
+        null=True,
+        blank=True,
         validators=[MinValueValidator(1), MaxValueValidator(MAX_PROMO_TRIAL_DAYS)],
         help_text=_(
             "Free trial days granted, replacing the plan's own trial (1 to 365)"
         ),
+    )
+    free_months = models.PositiveIntegerField(
+        _("free months"),
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(MAX_FREE_MONTHS)],
+        help_text=_("Months of a monthly plan at no charge, invoiced at 0 € (1 to 12); instead of trial days"),
     )
     is_active = models.BooleanField(_("active"), default=True)
     expires_at = models.DateTimeField(
@@ -63,18 +76,38 @@ class PromoCode(UUIDModel):
         verbose_name_plural = _("promo codes")
         constraints = [
             models.CheckConstraint(
-                condition=Q(trial_days__gte=1)
-                & Q(trial_days__lte=MAX_PROMO_TRIAL_DAYS),
-                name="billing_promocode_trial_days_in_range",
+                # A NULL comparison passes a CHECK: each side says which of the two is filled in.
+                condition=Q(
+                    trial_days__isnull=False,
+                    trial_days__gte=1,
+                    trial_days__lte=MAX_PROMO_TRIAL_DAYS,
+                    free_months__isnull=True,
+                )
+                | Q(
+                    free_months__isnull=False,
+                    free_months__gte=1,
+                    free_months__lte=MAX_FREE_MONTHS,
+                    trial_days__isnull=True,
+                ),
+                name="billing_promocode_one_kind_in_range",
             ),
         ]
 
     def __str__(self):
-        return f"{self.code} ({self.trial_days})"
+        return f"{self.code} ({self.trial_days or self.free_months})"
+
+    def clean(self):
+        super().clean()
+        if (self.trial_days is None) == (self.free_months is None):
+            raise ValidationError(_("A promo code grants either trial days or free months: fill in one of the two."))
 
     def save(self, *args, **kwargs):
         self.code = normalise_promo_code(self.code)
         super().save(*args, **kwargs)
+
+    @property
+    def kind(self) -> str:
+        return "free_months" if self.free_months is not None else "trial_days"
 
     @property
     def is_exhausted(self) -> bool:
@@ -116,6 +149,9 @@ class PromoRedemption(UUIDModel):
     )
     stripe_customer_id = models.CharField(max_length=255, blank=True, db_index=True)
     stripe_session_id = models.CharField(max_length=255, blank=True)
+    free_until = models.DateTimeField(
+        _("free until"), null=True, blank=True, help_text=_("When the free months of the code end")
+    )
     created_at = models.DateTimeField(_("used at"), auto_now_add=True)
 
     class Meta:

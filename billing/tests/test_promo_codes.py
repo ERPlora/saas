@@ -1,7 +1,7 @@
-"""Promo codes: extra trial days at checkout, and ``billing.promo.check``.
+"""Promo codes: trial days or free months at checkout, and ``billing.promo.check``.
 
-A code grants free TIME, never a lower price (a Stripe coupon burns during the trial, and a discount turns the
-renewal into a price hike). It is case-insensitive and trimmed; an unknown, inactive, expired or exhausted
+A code grants exactly one of the two: trial days, or 1 to 12 free months (``test_free_months.py``). It is
+case-insensitive and trimmed; an unknown, inactive, expired or exhausted
 code resolves to nothing and never blocks a sale; the counter goes up once per completed checkout and
 never past its cap, even under races (the cap is in the UPDATE's WHERE).
 
@@ -14,6 +14,7 @@ from datetime import timedelta
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.test import Client
 from django.utils import timezone
 from live.errors import OperationError
@@ -124,7 +125,7 @@ class TestRedeem:
         assert made.redemption_count == 3
 
 
-class TestTrialDaysCeiling:
+class TestKinds:
     def test_a_year_is_allowed(self):
         PromoCode(code="year", trial_days=365).full_clean()
 
@@ -132,6 +133,31 @@ class TestTrialDaysCeiling:
     def test_no_days_or_more_than_a_year_is_refused(self, days):
         with pytest.raises(ValidationError):
             PromoCode(code="bad", trial_days=days).full_clean()
+
+    @pytest.mark.parametrize("months", [1, 6, 12])
+    def test_one_to_twelve_free_months_are_allowed(self, months):
+        PromoCode(code="testers", free_months=months).full_clean()
+
+    @pytest.mark.parametrize("months", [0, 13])
+    def test_no_months_or_more_than_twelve_are_refused(self, months):
+        with pytest.raises(ValidationError):
+            PromoCode(code="bad", free_months=months).full_clean()
+
+    @pytest.mark.parametrize(("days", "months"), [(30, 6), (None, None)])
+    def test_a_code_grants_trial_days_or_free_months_never_both(self, days, months):
+        with pytest.raises(ValidationError) as refused:
+            PromoCode(code="bad", trial_days=days, free_months=months).full_clean()
+
+        assert "either trial days or free months" in str(refused.value)
+
+    @pytest.mark.parametrize(("days", "months"), [(30, 6), (None, None), (None, 13), (366, None)])
+    def test_the_database_refuses_a_code_that_is_not_one_kind_in_range(self, days, months):
+        with pytest.raises(IntegrityError), transaction.atomic():
+            PromoCode.objects.create(code="bad", trial_days=days, free_months=months)
+
+    def test_each_code_says_its_kind(self):
+        assert promo(trial_days=30).kind == "trial_days"
+        assert PromoCode.objects.create(code="testers", free_months=6).kind == "free_months"
 
 
 class TestCheck:

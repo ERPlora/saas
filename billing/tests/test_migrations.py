@@ -85,3 +85,40 @@ def test_the_spanish_regime_values_become_english_and_back():
     call_command("migrate", "billing", "0002", verbosity=0)
     assert CompanyConfig.objects.values_list("vat_regime", flat=True).get() == "recargo"
     call_command("migrate", "billing", verbosity=0)
+
+
+def _immediately():
+    """Rows written by the test fire their foreign keys now, so the migration may alter their tables."""
+    with connection.cursor() as cursor:
+        cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
+
+
+@pytest.mark.django_db
+def test_going_back_before_free_months_is_refused_while_a_code_grants_them():
+    from billing.models import PromoCode
+
+    PromoCode.objects.create(code="testers", free_months=6)
+    _immediately()
+
+    with pytest.raises(RuntimeError, match="free months"):
+        call_command("migrate", "billing", "0011", verbosity=0)
+
+    assert PromoCode.objects.values_list("free_months", flat=True).get() == 6
+
+
+@pytest.mark.django_db
+def test_without_codes_of_free_months_the_trial_codes_go_back_and_forth():
+    from billing.models import PromoCode
+
+    PromoCode.objects.create(code="canary", trial_days=30)
+    _immediately()
+
+    call_command("migrate", "billing", "0011", verbosity=0)
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT code, trial_days FROM billing_promocode")
+        assert cursor.fetchall() == [("canary", 30)]
+        columns = {column.name for column in connection.introspection.get_table_description(cursor, "billing_promocode")}
+    assert "free_months" not in columns
+
+    call_command("migrate", "billing", verbosity=0)
+    assert PromoCode.objects.values_list("code", "trial_days", "free_months").get() == ("canary", 30, None)

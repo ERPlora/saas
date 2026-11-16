@@ -23,7 +23,7 @@ from billing.money import from_cents
 
 @admin.register(PromoCode)
 class PromoCodeAdmin(admin.ModelAdmin):
-    list_display = ("code", "trial_days", "is_active", "expires_at", "redemption_count", "max_redemptions", "note")
+    list_display = ("code", "trial_days", "free_months", "is_active", "expires_at", "redemption_count", "max_redemptions", "note")
     list_filter = ("is_active",)
     search_fields = ("code", "note")
     readonly_fields = ("redemption_count", "created_at", "updated_at")
