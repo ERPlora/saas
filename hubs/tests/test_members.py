@@ -21,7 +21,8 @@ from django.utils import timezone, translation
 from live.errors import Conflict, NotFound, PermissionDenied
 
 from accounts.services import PlatformRoleRefused, create_platform_user
-from hubs import queries, services
+from hubs import services
+from hubs.queries import invitations, membership
 from hubs.models import BillingProfile, Hub, HubMember, Subscription
 from hubs.schemas import (
     BillingProfileIn,
@@ -46,7 +47,7 @@ def invite(actor, hub, email, role="hub_employee", message=""):
 
 
 def members(actor, hub, **params):
-    return queries.member_list(
+    return membership.member_list(
         ctx_for(actor), MemberListIn(hub_id=hub.id, **params)
     ).model_dump(mode="json")
 
@@ -793,7 +794,7 @@ class TestAccept:
 
 class TestMyInvitations:
     def mine(self, user):
-        return queries.invitation_list_mine(
+        return invitations.invitation_list_mine(
             ctx_for(user), InvitationListIn()
         ).model_dump(mode="json")["invitations"]
 
@@ -915,7 +916,7 @@ class TestMemberList:
         assert (page["total"], page["limit"], page["offset"]) == (5, 2, 2)
 
     def test_the_role_reads_in_the_callers_language(self, business, team):
-        page = queries.member_list(
+        page = membership.member_list(
             ctx_for(team["owner"], language="es"), MemberListIn(hub_id=business.id)
         ).model_dump()
 

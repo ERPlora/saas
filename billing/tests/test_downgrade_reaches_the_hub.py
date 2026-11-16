@@ -24,7 +24,7 @@ from billing.models import PlanChangeSchedule
 from billing.schemas import PlanChangeIn
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import event, item, schedule, signed, subscription
-from hubs import queries as hub_queries
+from hubs.queries import hub_sync
 from hubs import services as hub_services
 from hubs.models import Hub, HubMember, Plan, Subscription, SubscriptionItem
 from hubs.schemas import ByIdIn, MemberInviteIn
@@ -202,7 +202,7 @@ class TestTheArrival:
         hub = Hub.objects.get(pk=paid.pk)
         assert hub.pushed_state_version < hub.state_version
         assert Subscription.objects.get(hub=paid).plan.slug == "starter"
-        assert hub_queries.hub_snapshot(paid.id)["plan"]["slug"] == "starter"
+        assert hub_sync.hub_snapshot(paid.id)["plan"]["slug"] == "starter"
 
     def test_what_only_the_old_level_reached_leaves_the_photo_and_nothing_else_goes(
         self, waiting, hub_double, inventory, stripe_says

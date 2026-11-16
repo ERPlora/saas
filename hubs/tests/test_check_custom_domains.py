@@ -426,7 +426,7 @@ def test_three_failures_in_a_row_take_it_down_and_tell_the_owner_once(standard_b
 
     run_pass(world, attached=1)
     assert (row_of(standard_business).state, row_of(standard_business).failures) == (State.ACTIVE, 1)
-    assert queries.hub_snapshot(standard_business.id)["custom_domain"] == DOMAIN
+    assert queries.hub_sync.hub_snapshot(standard_business.id)["custom_domain"] == DOMAIN
 
     run_pass(world, attached=1)
     assert (row_of(standard_business).state, row_of(standard_business).failures) == (State.ACTIVE, 2)

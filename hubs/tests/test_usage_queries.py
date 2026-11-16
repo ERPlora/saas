@@ -16,7 +16,7 @@ import pytest
 from live.errors import NotFound, PermissionDenied
 from pydantic import ValidationError
 
-from hubs import queries
+from hubs.queries import businesses, hub_usage
 from hubs.models import HubUsageDaily, Plan, Subscription
 from hubs.schemas import (
     ActiveUsersOut,
@@ -59,7 +59,7 @@ def on_plan(hub, slug):
 
 
 def usage(user, hub):
-    return queries.usage_get(ctx_for(user), UsageGetIn(business_id=hub.id)).model_dump()
+    return hub_usage.usage_get(ctx_for(user), UsageGetIn(business_id=hub.id)).model_dump()
 
 
 def keys_of(answer) -> set[str]:
@@ -179,13 +179,13 @@ class TestUsageGet:
 class TestTheBusinessPageCarriesIt:
     def test_usage_is_null_until_the_first_night(self, business, owner):
         assert (
-            queries.business_get(ctx_for(owner), ByIdIn(id=business.id)).usage is None
+            businesses.business_get(ctx_for(owner), ByIdIn(id=business.id)).usage is None
         )
 
     def test_usage_is_what_hubs_usage_get_says(self, business, owner):
         sample(business, s3=GIB, on_day=2, last_30=5)
 
-        page = queries.business_get(ctx_for(owner), ByIdIn(id=business.id))
+        page = businesses.business_get(ctx_for(owner), ByIdIn(id=business.id))
 
         assert page.usage.model_dump() == usage(owner, business)
 
@@ -196,7 +196,7 @@ class TestSeries:
         for days_ago, s3 in ((41, 1), (30, 2), (11, 3), (1, GIB // 2)):
             sample(business, days_ago, s3=s3, on_day=days_ago, last_30=days_ago)
 
-        out = queries.usage_series(
+        out = hub_usage.usage_series(
             ctx_for(owner), UsageSeriesIn(business_id=business.id, days=30)
         ).model_dump()
 
@@ -223,7 +223,7 @@ class TestSeries:
                 )
 
     def test_without_a_day_measured_the_window_is_empty(self, business, owner):
-        out = queries.usage_series(
+        out = hub_usage.usage_series(
             ctx_for(owner), UsageSeriesIn(business_id=business.id)
         )
 
@@ -231,7 +231,7 @@ class TestSeries:
 
     def test_only_the_owner_and_the_admins_read_it(self, business, team):
         with pytest.raises(PermissionDenied):
-            queries.usage_series(
+            hub_usage.usage_series(
                 ctx_for(team["employee"]), UsageSeriesIn(business_id=business.id)
             )
 

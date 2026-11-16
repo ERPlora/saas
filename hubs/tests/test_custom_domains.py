@@ -17,7 +17,8 @@ from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
 from live.models import OutboxEvent
 from live.operations import AI, INTERNAL, registry
 
-from hubs import domain_checks, events, queries, services
+from hubs import domain_checks, events, services
+from hubs.queries import custom_domains, hub_sync
 from hubs.models import CustomDomain, Hub, HubMember, Plan, Subscription
 from hubs.schemas import ByIdIn, CustomDomainRequestIn
 from hubs.tests.conftest import DOMAIN, add_member, certificate_arn, create_business, ctx_for
@@ -95,11 +96,11 @@ def test_a_renamed_business_keeps_the_name_its_cname_points_at(owner, standard_b
     """By its id, which is never taken again; a slug can be, and a CNAME left behind would prove it for a stranger."""
     settings.CUSTOM_DOMAINS_TARGET_TEMPLATE = "hub-{hub_id}.erplora.com"
     make_row(standard_business, validation_name="_a", validation_value="_b")
-    before = queries.custom_domain_get(ctx_for(owner), ByIdIn(id=standard_business.id)).domain.traffic.value
+    before = custom_domains.custom_domain_get(ctx_for(owner), ByIdIn(id=standard_business.id)).domain.traffic.value
 
     Hub.objects.filter(pk=standard_business.pk).update(slug="otra-direccion")
 
-    assert queries.custom_domain_get(ctx_for(owner), ByIdIn(id=standard_business.id)).domain.traffic.value == before
+    assert custom_domains.custom_domain_get(ctx_for(owner), ByIdIn(id=standard_business.id)).domain.traffic.value == before
 
 
 def test_asking_takes_the_row_of_the_business_so_two_requests_never_interleave(owner, standard_business, custom_domains_on):
@@ -415,7 +416,7 @@ def test_asking_records_its_event(owner, standard_business, custom_domains_on):
 
 
 def read(user, hub):
-    return queries.custom_domain_get(ctx_for(user), ByIdIn(id=hub.id))
+    return custom_domains.custom_domain_get(ctx_for(user), ByIdIn(id=hub.id))
 
 
 def test_reading_a_business_without_a_domain_says_it_can_ask(owner, standard_business, settings):
@@ -520,7 +521,7 @@ def remove(user, hub):
 
 
 def snapshot_domain(hub):
-    return queries.hub_snapshot(hub.id).get("custom_domain", "absent")
+    return hub_sync.hub_snapshot(hub.id).get("custom_domain", "absent")
 
 
 def test_removing_takes_it_out_of_the_snapshot_before_anything_else(
@@ -666,7 +667,7 @@ def test_removing_records_its_event(owner, standard_business, custom_domains_on)
 
 
 def test_a_business_without_a_domain_sends_a_snapshot_without_the_key(standard_business):
-    assert "custom_domain" not in queries.hub_snapshot(standard_business.id)
+    assert "custom_domain" not in hub_sync.hub_snapshot(standard_business.id)
 
 
 @pytest.mark.parametrize(
@@ -712,7 +713,7 @@ def test_the_snapshot_of_one_business_never_names_anothers_domain(standard_busin
     other = create_business(make_user("otra@example.com"), name="Otro")
     Subscription.objects.filter(hub=other).update(plan=Plan.objects.get(slug="standard"))
     active_row(standard_business)
-    assert "custom_domain" not in queries.hub_snapshot(other.id)
+    assert "custom_domain" not in hub_sync.hub_snapshot(other.id)
 
 
 # --- The doors --------------------------------------------------------------------------------------

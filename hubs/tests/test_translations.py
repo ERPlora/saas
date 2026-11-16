@@ -79,7 +79,7 @@ NEW_MESSAGES = [
     "Open it: %(url)s",
     "Manage it from the panel: %(url)s",
     # The copies of a business's data: the deletion's way to them, the mail when one
-    # is ready (emails.py) and the refusals of a download (queries.data_copy_link).
+    # is ready (emails.py) and the refusals of a download (queries.data_copies.data_copy_link).
     "Download a full copy of its data: %(url)s",
     "The copy of the data of %(business)s is ready",
     "The full copy of the data of %(business)s is ready.",

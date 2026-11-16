@@ -29,7 +29,7 @@ from billing.schemas import (
     SubscriptionListIn,
     SubscriptionListOut,
 )
-from hubs import queries as hub_queries
+from hubs.queries import access_control, membership, payers, plan_catalog
 from hubs import services as hub_services
 from hubs.models import Hub, HubMember, Plan, Subscription
 
@@ -141,7 +141,7 @@ def _subscription_row(  # noqa: PLR0913, PLR0917
     profile = hub.billing_profile
     # Charged to the card of another account: the payer before a hand-over.
     elsewhere = profile is None or profile.owner_id != user.pk or subscription.stripe_customer_id != profile.stripe_customer_id
-    writable = hub.id in owned and hub_queries.is_writable(hub)
+    writable = hub.id in owned and access_control.is_writable(hub)
     manages = writable and not elsewhere
     unpaid_id = unpaid.get(hub.id)
     # A cancellation, or a downgrade that waits for the end of the period, is undone with «Keep the plan» until
@@ -336,9 +336,9 @@ def _cancellable(ctx: OperationContext, hub_id) -> tuple[Hub, Subscription]:
     """The business ``hub_id`` whose plan its account may cancel, and its subscription: what ``billing.plan.cancel``
     refuses, refused alike (``services._owned`` and its «nothing to cancel»), so the preview of a cancel that cannot be
     done reaches the model as the refusal, never as a card. Read without locking: nothing is written."""
-    user = hub_queries.account_of(ctx)
-    member = hub_queries.access(user, hub_id, HubMember.Role.OWNER)
-    if not hub_queries.is_writable(member.hub):
+    user = access_control.account_of(ctx)
+    member = access_control.access(user, hub_id, HubMember.Role.OWNER)
+    if not access_control.is_writable(member.hub):
         raise hub_services.business_deleted()
     hub = Hub.objects.select_related("billing_profile").get(pk=member.hub_id)
     subscription = Subscription.objects.select_related("plan", "trial_plan").filter(hub=hub).first()
@@ -351,7 +351,7 @@ def _cancellable(ctx: OperationContext, hub_id) -> tuple[Hub, Subscription]:
     paying = (
         subscription is not None
         and bool(subscription.stripe_subscription_id)
-        and subscription.status not in hub_queries.ENDED_STATUSES
+        and subscription.status not in payers.ENDED_STATUSES
     )
     if paying and subscription.stripe_customer_id != profile.stripe_customer_id:
         raise Conflict(
@@ -384,7 +384,7 @@ def plan_cancel_preview(ctx: OperationContext, params: HubIn) -> dict:
         live_slugs = sorted(item.module_slug for item in subscription.items.all() if item.is_live(now))
         cards = app_queries.cards_of(live_slugs, language)
         names = sorted(cards[slug]["name"] if slug in cards else slug for slug in live_slugs)
-        free = hub_queries.free_plan()
+        free = plan_catalog.free_plan()
         owed = (
             Invoice.objects.filter(
                 hub=hub, kind=Invoice.Kind.INVOICE, payment_status=Invoice.PaymentStatus.OPEN
@@ -401,7 +401,7 @@ def plan_cancel_preview(ctx: OperationContext, params: HubIn) -> dict:
             "modules": get_text_list(names, _("and")),
             "free_users": (free.max_users or None) if free is not None else None,
             "free_devices": (free.max_devices or None) if free is not None else None,
-            "people": hub_queries.seats_of(hub, now)["used"],
+            "people": membership.seats_of(hub, now)["used"],
             "unpaid_cents": owed.total_cents if owed is not None else None,
             "currency": owed.currency if owed is not None else "EUR",
         }

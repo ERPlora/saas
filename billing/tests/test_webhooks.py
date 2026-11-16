@@ -33,7 +33,7 @@ from billing.tests.stripe_double import (
     signed,
     subscription,
 )
-from hubs import queries as hub_queries
+from hubs.queries import hub_sync
 from hubs.models import Hub, Subscription, SubscriptionItem
 
 pytestmark = pytest.mark.django_db
@@ -381,7 +381,7 @@ class TestACompletedCheckout:
         )
 
         assert settled.json()["status"] == "completed"
-        assert [module["id"] for module in hub_queries.hub_snapshot(shop.id)["modules"]] == ["inventory"]
+        assert [module["id"] for module in hub_sync.hub_snapshot(shop.id)["modules"]] == ["inventory"]
 
     def test_a_second_subscription_for_a_paying_business_is_cancelled_not_applied(self, shop, stripe_double, caplog):
         """Two checkouts paid for one business: the one the business already has stays; the
@@ -727,7 +727,7 @@ class TestTheLiveSubscriptionDecides:
         deliver(event("customer.subscription.updated", subscription(items=[item("si_plan", "price_starter_month")])))
 
         assert not SubscriptionItem.objects.filter(subscription__hub=paid, module_slug="inventory").exists()
-        assert hub_queries.hub_snapshot(paid.id)["modules"] == []
+        assert hub_sync.hub_snapshot(paid.id)["modules"] == []
 
     def test_the_end_of_a_deleted_business_creates_nothing_and_moves_nothing(
         self, shop, stripe_double

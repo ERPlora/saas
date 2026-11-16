@@ -9,7 +9,7 @@ pays for a live business, and ``hubs.member.remove`` refuses to take that person
 
 import pytest
 
-from hubs import queries
+from hubs.queries import businesses
 from hubs.models import BillingProfile, Hub, HubMember
 from hubs.schemas import BusinessListIn, ByIdIn
 from hubs.tests.conftest import ctx_for
@@ -18,12 +18,12 @@ pytestmark = pytest.mark.django_db
 
 
 def row(user, business):
-    page = queries.business_list(ctx_for(user), BusinessListIn())
+    page = businesses.business_list(ctx_for(user), BusinessListIn())
     return next(row for row in page.rows if row.id == business.id)
 
 
 def page(user, business):
-    return queries.business_get(ctx_for(user), ByIdIn(id=business.id))
+    return businesses.business_get(ctx_for(user), ByIdIn(id=business.id))
 
 
 def test_the_owner_who_set_up_the_payer_pays(business, owner):

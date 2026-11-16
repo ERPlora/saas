@@ -3,7 +3,7 @@
 A key opens only the operations declared with ``expose_api=True``, within its scopes (``accounts.api_auth``):
 hubs exposes its reads to ``hubs.read`` and billing its tax preview, ERPlora's invoices and the subscriptions of
 the account's businesses (BILLING-F18) to ``billing.read``; no write yet. The key
-acts as its account, so it sees what the account sees and nothing else (``queries.access``). The taxonomy and
+acts as its account, so it sees what the account sees and nothing else (``queries.access_control.access``). The taxonomy and
 the plans on sale are public routes: exposed too, a key there is simply ignored.
 """
 

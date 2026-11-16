@@ -15,7 +15,7 @@ from django.utils import translation
 from live.context import OperationContext, Scope
 from live.operations import get
 
-from hubs import queries
+from hubs.queries import plan_catalog
 from hubs.models import Plan
 from hubs.schemas import PlanListIn
 
@@ -37,7 +37,7 @@ def anonymous(language="en"):
 
 
 def plan_list(language="en"):
-    return queries.plan_list(anonymous(language), PlanListIn()).model_dump(mode="json")
+    return plan_catalog.plan_list(anonymous(language), PlanListIn()).model_dump(mode="json")
 
 
 def test_it_is_an_open_query():

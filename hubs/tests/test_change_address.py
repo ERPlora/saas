@@ -10,7 +10,8 @@ import pytest
 from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
 from live.models import OutboxEvent
 
-from hubs import events, queries, services
+from hubs import events, services
+from hubs.queries import access_control, addresses, businesses, hub_sync
 from hubs.models import Hub
 from hubs.schemas import BusinessAddressIn, ByIdIn
 from hubs.tests.conftest import create_business, ctx_for, role_on
@@ -31,12 +32,12 @@ class TestChangeTheAddress:
         business.refresh_from_db()
 
         assert (business.slug, business.previous_slug) == ("casa-manolo", "bar-manolo")
-        assert detail.host == queries.host_of("casa-manolo")
+        assert detail.host == access_control.host_of("casa-manolo")
         # The Hub registers it (the registry) and the photo carries it: both owed and pushed after the COMMIT.
         assert business.pending_hub_call == "put"
         assert business.registry_version == before["registry_version"] + 1
         assert business.state_version == before["state_version"] + 1
-        assert queries.hub_registry(business.id)["slug"] == "casa-manolo"
+        assert hub_sync.hub_registry(business.id)["slug"] == "casa-manolo"
 
     def test_it_records_its_event(self, business, owner):
         change(owner, business, "casa-manolo")
@@ -73,7 +74,7 @@ class TestTheOldAddressStaysTheBusinesss:
             change(other.members.get().user, other, "bar-manolo")
 
         assert refused.value.code == "hubs.slug_taken"
-        assert queries.free_slug("Bar Manolo") == "bar-manolo-2"
+        assert addresses.free_slug("Bar Manolo") == "bar-manolo-2"
 
     def test_the_business_can_go_back_to_it(self, business, owner):
         change(owner, business, "casa-manolo")
@@ -134,7 +135,7 @@ class TestRefusals:
 
 class TestThePageSaysWhoMay:
     def test_only_the_owner_gets_the_button(self, business, team):
-        get = queries.business_get
+        get = businesses.business_get
 
         assert get(ctx_for(team["owner"]), ByIdIn(id=business.id)).can.change_address is True
         assert get(ctx_for(team["admin"]), ByIdIn(id=business.id)).can.change_address is False
@@ -142,4 +143,4 @@ class TestThePageSaysWhoMay:
     def test_not_on_a_deleted_business(self, business, owner):
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
 
-        assert queries.business_get(ctx_for(owner), ByIdIn(id=business.id)).can.change_address is False
+        assert businesses.business_get(ctx_for(owner), ByIdIn(id=business.id)).can.change_address is False

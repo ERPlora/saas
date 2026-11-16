@@ -961,5 +961,5 @@ class CustomDomain(models.Model):
 
     @property
     def in_snapshot(self) -> bool:
-        """Whether the Hub is told of it (``queries.hub_snapshot``, if the plan includes it too)."""
+        """Whether the Hub is told of it (``queries.hub_sync.hub_snapshot``, if the plan includes it too)."""
         return self.proven_at is not None and self.state in (self.State.PENDING, self.State.ACTIVE)

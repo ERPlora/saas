@@ -13,7 +13,8 @@ digits («3500» is not Las Palmas): its province decides the tax.
 import pytest
 from live.errors import InvalidPayload, NotFound, PermissionDenied
 
-from hubs import queries, services
+from hubs import services
+from hubs.queries import payers
 from hubs.models import BillingProfile, Hub
 from hubs.schemas import BillingProfileGetIn, BillingProfileIn
 from hubs.tests.conftest import ctx_for
@@ -22,7 +23,7 @@ pytestmark = pytest.mark.django_db
 
 
 def read(user, hub):
-    return queries.billing_profile_get(
+    return payers.billing_profile_get(
         ctx_for(user), BillingProfileGetIn(hub_id=hub.id)
     ).model_dump()
 

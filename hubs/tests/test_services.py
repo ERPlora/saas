@@ -226,7 +226,7 @@ class TestTheAddress:
 
     @pytest.mark.parametrize("name", ["Demo Bar", "demo-store", "DEMO--Tienda", "Demo_Bar"])
     def test_no_proposed_address_is_a_demo_hubs(self, owner, plans, name):
-        slug = queries.free_slug(name)
+        slug = queries.addresses.free_slug(name)
 
         assert not slug.startswith("demo-")
         assert validate_hub_slug(slug) == slug
@@ -437,7 +437,7 @@ def test_two_sign_ups_at_once_leave_one_free_business(make_user, plans):
 
     ana = make_user("ana@example.com")
     barrier = threading.Barrier(2, timeout=2)
-    real = queries.free_hubs_owned
+    real = queries.signup.free_hubs_owned
     outcomes = []
 
     def counted_then_wait(user, excluding=None):
@@ -458,8 +458,8 @@ def test_two_sign_ups_at_once_leave_one_free_business(make_user, plans):
         finally:
             connections.close_all()
 
-    original = queries.free_hubs_owned
-    queries.free_hubs_owned = counted_then_wait
+    original = queries.signup.free_hubs_owned
+    queries.signup.free_hubs_owned = counted_then_wait
     try:
         threads = [
             threading.Thread(target=sign_up, args=(name,)) for name in ("One", "Two")
@@ -469,7 +469,7 @@ def test_two_sign_ups_at_once_leave_one_free_business(make_user, plans):
         for thread in threads:
             thread.join(timeout=10)
     finally:
-        queries.free_hubs_owned = original
+        queries.signup.free_hubs_owned = original
 
     assert sorted(outcomes) == ["hubs.free_hub_limit", "preparing"]
     assert Hub.objects.count() == 1
@@ -643,14 +643,14 @@ class TestTheCountryLocksOnceReady:
         assert (detail.name, detail.country) == ("Renamed", "ES")
 
     def test_the_page_says_whether_the_country_is_locked(self, business, owner):
-        before = queries.business_get(
+        before = queries.businesses.business_get(
             ctx_for(owner), ByIdIn(id=business.id)
         ).country_locked
         self.ready(business)
 
         assert (
             before,
-            queries.business_get(ctx_for(owner), ByIdIn(id=business.id)).country_locked,
+            queries.businesses.business_get(ctx_for(owner), ByIdIn(id=business.id)).country_locked,
         ) == (False, True)
 
     def test_over_http_it_is_a_409_with_its_code(self, client, business, owner):
@@ -700,7 +700,7 @@ class TestDelete:
     def test_nobody_enters_a_deleted_business(self, business, team):
         self.delete(team["owner"], business)
 
-        assert queries.hubs_with_members() == []
+        assert queries.membership.hubs_with_members() == []
 
     def test_the_name_must_be_typed_again(self, business, owner):
         with pytest.raises(InvalidPayload) as refused:

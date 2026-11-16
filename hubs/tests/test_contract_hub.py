@@ -14,7 +14,8 @@ from django.utils import timezone
 
 from accounts.signing import sign
 from apps.tests.factories import make_app
-from hubs import hub_client, queries, services
+from hubs import hub_client, services
+from hubs.queries import hub_sync
 from hubs.models import BusinessType, Hub
 from hubs.schemas import ByIdIn
 from hubs.tests.conftest import SECRET, ctx_for
@@ -154,7 +155,7 @@ def test_an_older_snapshot_never_overwrites_a_newer_one_at_the_hub(panel, hub_do
         "POST", "/hubs/businesses", {"name": "Bar Manolo", "country": "ES"}
     ).json()
 
-    newer = {**queries.hub_snapshot(created["id"]), "version": 5}
+    newer = {**hub_sync.hub_snapshot(created["id"]), "version": 5}
     older = {**newer, "version": 4}
 
     assert hub_client.put_state(created["id"], newer).body["applied"] is True

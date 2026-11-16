@@ -15,7 +15,7 @@ from django.utils import timezone
 from fiscal import queries, services
 from fiscal.schemas import RepresentationSubmitIn, ReviewIn, WithdrawIn
 from fiscal.tests.conftest import make_grant, pdf_b64, staff_ctx, submission
-from hubs import queries as hub_queries
+from hubs.queries import hub_sync
 from hubs import services as hub_services
 from hubs.models import Hub, Subscription, SubscriptionItem
 from hubs.schemas import SubscriptionApplyIn
@@ -24,7 +24,7 @@ pytestmark = pytest.mark.django_db
 
 
 def block(hub):
-    return hub_queries.hub_snapshot(hub.id)["verifactu"]
+    return hub_sync.hub_snapshot(hub.id)["verifactu"]
 
 
 def version_of(hub):
@@ -212,7 +212,7 @@ class TestVerifactuInEveryPlan:
             plan=Plan.objects.get(slug=slug), trial_plan=None, trial_end=None
         )
 
-        assert hub_queries.hub_snapshot(business.id)["plan"]["slug"] == slug
+        assert hub_sync.hub_snapshot(business.id)["plan"]["slug"] == slug
         assert set(block(business)) == {"representation"}
 
     def test_no_module_is_needed_for_it(self, business):
@@ -302,14 +302,14 @@ def test_a_module_that_stops_being_live_leaves_modules_and_keeps_the_approval(bu
         subscription=business.subscription, module_slug="verifactu"
     )
     assert "verifactu" in [
-        module["id"] for module in hub_queries.hub_snapshot(business.id)["modules"]
+        module["id"] for module in hub_sync.hub_snapshot(business.id)["modules"]
     ]
 
     SubscriptionItem.objects.filter(pk=item.pk).update(
         valid_until=timezone.now() - timedelta(seconds=1)
     )
 
-    snapshot = hub_queries.hub_snapshot(business.id)
+    snapshot = hub_sync.hub_snapshot(business.id)
     assert "verifactu" not in [module["id"] for module in snapshot["modules"]]
     assert snapshot["verifactu"]["representation"]["status"] == "approved"
     assert set(snapshot["verifactu"]) == {"representation"}
@@ -411,7 +411,7 @@ def test_the_hub_never_receives_a_document(
 
 
 def test_the_snapshot_names_the_business_by_its_address(business):
-    snapshot = hub_queries.hub_snapshot(business.id)
+    snapshot = hub_sync.hub_snapshot(business.id)
 
     assert (snapshot["hub_id"], snapshot["slug"]) == (str(business.id), "bar-manolo")
     assert set(snapshot["verifactu"]) == {"representation"}

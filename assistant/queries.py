@@ -62,7 +62,7 @@ from assistant.schemas import (
     ServiceConnectionOut,
     UsageOut,
 )
-from hubs import queries as hubs_queries
+from hubs.queries import plan_catalog
 from hubs.models import Hub
 
 logger = logging.getLogger(__name__)
@@ -306,7 +306,7 @@ def monthly_limit(caller: Caller, now: datetime) -> int:
         return settings.ASSISTANT_DEMO_MESSAGES
     if caller.user_id is not None:
         return settings.ASSISTANT_ACCOUNT_MESSAGES
-    plan = hubs_queries.effective_plan(caller.hub_id, now)
+    plan = plan_catalog.effective_plan(caller.hub_id, now)
     return plan.assistant_messages_per_month if plan is not None else 0
 
 

@@ -736,7 +736,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   `/account`, `/billing`, `/store`, `/report-a-problem` y sus hijas, a las que enlaza el Hub) son 301 de
   `config/urls.py` (`MovedToPanel`) a la misma página bajo `/dashboard/`, con su consulta (`config/tests/test_panel_prefix.py`).
 - Quitar a quien aún paga (HUBS-F27): `hubs.member.remove`
-  no saca del negocio a quien aún lo paga (`queries.still_pays`: es dueño de su pagador, o tras un traspaso el plan
+  no saca del negocio a quien aún lo paga (`queries.payers.still_pays`: es dueño de su pagador, o tras un traspaso el plan
   se sigue cobrando al cliente de Stripe de uno de sus pagadores). 409 `hubs.member_pays` con qué hacer: que el
   propietario ponga sus datos de pago (se piden al pagar un plan o un módulo) o, si el plan sigue en la tarjeta
   anterior, que lo mantenga con la suya en Facturación (`billing.plan.take_over`, HUBS-F28; hasta entonces
@@ -754,7 +754,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - Dirección web (F16): `hubs.business.change_address` (solo el propietario; `can.change_address` en la página),
   validada como la valida el Hub (`live.slugs`, `_chosen_slug`); sube `registry_version` y `state_version`, debe
   `put` y empuja tras el COMMIT; el salto sigue al negocio porque lee a sus miembros. La antigua queda en
-  `Hub.previous_slug` y `queries.slug_taken`/`free_slug` la cuentan como cogida para los demás (migración `0015`).
+  `Hub.previous_slug` y `queries.addresses.slug_taken`/`free_slug` la cuentan como cogida para los demás (migración `0015`).
   El Hub acepta el cambio en su registro (`hub/base/tests/test_services_hub.py`,
   `test_registering_again_updates_it_without_another_ready`). Tests: `hubs/tests/test_change_address.py`,
   `hubs/frontend/components/AddressDialog.test.ts`.
@@ -813,7 +813,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - Personas (F24–F30): `hubs.member.{list,invite,change_role,remove,resend,cancel}`,
   `hubs.invitation.{list_mine,accept,decline}` y `hubs.ownership.{transfer,accept,decline,cancel}` (`api.py`, bajo
   `/api/hubs/members`, `/api/hubs/invitations` y `/api/hubs/ownership`). Cada fila de `hubs.member.list` trae sus
-  `actions`, calculadas con las mismas reglas que las escrituras (`queries.member_actions`, `services._managed`).
+  `actions`, calculadas con las mismas reglas que las escrituras (`queries.membership.member_actions`, `services._managed`).
   Quitar, cambiar el rol de alguien que ya respondió y aceptar un traspaso encolan `SessionRevocation`
   (`POST /internal/sessions/revoke`, `{user_id, hub_id}`), que el Hub sirve desde BASE-F13 (`base/internal.py`) y
   que se reintenta con espera creciente y en `reconcile_hub_states` si el negocio no contesta. Correos (`emails.py`,
@@ -827,8 +827,8 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   `test_permission_matrix.py` y `test_admin.py`; e2e en `tests/e2e/panel/hubs-people.spec.ts`, con `members.spec.ts` e `invitation.spec.ts`.
 - Pruebas: cada test cita su clave en el nombre o el docstring, y cada e2e la de su flujo en el título; los de F01–F14
   están en `tests/e2e/panel/hubs-flows.spec.ts`.
-- La foto (F31): `queries.hub_snapshot` (`PUT /internal/hubs/{id}/state`), con `plan` = los campos de
-  `queries.SNAPSHOT_PLAN_FIELDS`; sube `state_version` y se empuja tras el COMMIT (`services.sync_hub`), la reintenta
+- La foto (F31): `queries.hub_sync.hub_snapshot` (`PUT /internal/hubs/{id}/state`), con `plan` = los campos de
+  `queries.hub_sync.SNAPSHOT_PLAN_FIELDS`; sube `state_version` y se empuja tras el COMMIT (`services.sync_hub`), la reintenta
   `reconcile_hub_states` y la repite `push_hub_snapshots` cada noche. Un cambio en el admin de uno de esos campos de un
   `Plan` (`PlanAdmin.save_model` → `services.owe_plan_rights`) reescribe los módulos de su nivel (`sync_plan_modules`) y
   sube la versión de cada negocio vivo con ese plan o con su prueba; la entrega la siguiente pasada, así que el

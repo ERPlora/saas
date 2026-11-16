@@ -16,7 +16,8 @@ import pytest
 from django.utils import timezone
 
 from apps.models import Module
-from hubs import queries, services
+from hubs import services
+from hubs.queries import hub_sync
 from hubs.models import Hub, Subscription, SubscriptionItem
 from hubs.schemas import ModuleRightIn, SubscriptionApplyIn
 from hubs.tests.conftest import create_business
@@ -81,7 +82,7 @@ def test_a_paid_plan_includes_every_module_its_level_reaches(business, catalog, 
     apply(business, **paid(plan))
 
     assert plan_rights(business) == included
-    assert queries.hub_snapshot(business.id)["modules"] == [
+    assert hub_sync.hub_snapshot(business.id)["modules"] == [
         {"id": slug, "source": "plan", "valid_until": None} for slug in included
     ]
 
@@ -102,7 +103,7 @@ def test_a_bought_module_stays_bought_next_to_the_included_ones(business, catalo
         "kitchen": ("purchase", None),
         "loyalty": ("plan", None),
     }
-    assert [(m["id"], m["source"]) for m in queries.hub_snapshot(business.id)["modules"]] == [
+    assert [(m["id"], m["source"]) for m in hub_sync.hub_snapshot(business.id)["modules"]] == [
         ("inventory", "plan"),
         ("kitchen", "purchase"),
         ("loyalty", "plan"),
@@ -199,7 +200,7 @@ class TestTheSignUpTrial:
         trial_end = Subscription.objects.get(hub=business).trial_end
 
         assert rights(business) == {"inventory": ("plan", trial_end), "loyalty": ("plan", None)}
-        assert [(m["id"], m["valid_until"]) for m in queries.hub_snapshot(business.id)["modules"]] == [
+        assert [(m["id"], m["valid_until"]) for m in hub_sync.hub_snapshot(business.id)["modules"]] == [
             ("inventory", trial_end.isoformat()),
             ("loyalty", None),
         ]

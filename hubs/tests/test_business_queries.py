@@ -15,7 +15,7 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from live.errors import NotFound, OperationError, PermissionDenied
 
-from hubs import queries
+from hubs.queries import addresses, businesses, signup
 from hubs.models import Hub, HubMember, Plan, Subscription
 from hubs.schemas import AddressProposeIn, BusinessCreateCheckIn, BusinessCreateCheckOut, BusinessListIn, ByIdIn
 from hubs.tests.conftest import add_member, create_business, ctx_for
@@ -28,7 +28,7 @@ FREE = {"slug": "free", "name": "Free", "price_monthly": "0.00", "max_devices": 
 
 
 def business_list(user, language="en", **params):
-    return queries.business_list(
+    return businesses.business_list(
         ctx_for(user, language), BusinessListIn(**params)
     ).model_dump(mode="json")
 
@@ -176,7 +176,7 @@ class TestTheFreeQuotaBeforeTheForm:
 
 class TestOneBusiness:
     def test_the_owner_sees_everything_and_may_do_everything(self, business, owner):
-        detail = queries.business_get(
+        detail = businesses.business_get(
             ctx_for(owner), ByIdIn(id=business.id)
         ).model_dump(mode="json")
 
@@ -205,7 +205,7 @@ class TestOneBusiness:
         assert detail["country_locked"] is False
 
     def test_an_admin_manages_the_team_and_the_settings_only(self, business, team):
-        can = queries.business_get(ctx_for(team["admin"]), ByIdIn(id=business.id)).can
+        can = businesses.business_get(ctx_for(team["admin"]), ByIdIn(id=business.id)).can
 
         assert (
             can.manage_members,
@@ -218,19 +218,19 @@ class TestOneBusiness:
     @pytest.mark.parametrize("who", ["manager", "employee"])
     def test_a_manager_or_an_employee_only_opens_it(self, business, team, who):
         with pytest.raises(PermissionDenied):
-            queries.business_get(ctx_for(team[who]), ByIdIn(id=business.id))
+            businesses.business_get(ctx_for(team[who]), ByIdIn(id=business.id))
 
     @pytest.mark.parametrize("who", ["stranger", "invitee"])
     def test_without_access_it_does_not_exist(self, business, team, who):
         with pytest.raises(NotFound):
-            queries.business_get(ctx_for(team[who]), ByIdIn(id=business.id))
+            businesses.business_get(ctx_for(team[who]), ByIdIn(id=business.id))
 
     def test_after_the_trial_the_free_plans_cap_shows(self, business, owner):
         Subscription.objects.filter(hub=business).update(
             trial_end=timezone.now() - timedelta(seconds=1)
         )
 
-        detail = queries.business_get(ctx_for(owner), ByIdIn(id=business.id))
+        detail = businesses.business_get(ctx_for(owner), ByIdIn(id=business.id))
 
         assert (detail.trial_plan, detail.seats.limit) == (None, 3)
 
@@ -238,7 +238,7 @@ class TestOneBusiness:
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETED)
 
         with pytest.raises(NotFound):
-            queries.business_get(ctx_for(owner), ByIdIn(id=business.id))
+            businesses.business_get(ctx_for(owner), ByIdIn(id=business.id))
 
 
 class TestWhatThePlanCovers:
@@ -246,7 +246,7 @@ class TestWhatThePlanCovers:
     sale (``hubs.plan.list``, the public ones only): an internal plan covers what it covers too."""
 
     def detail(self, user, business):
-        return queries.business_get(ctx_for(user), ByIdIn(id=business.id)).model_dump(mode="json")
+        return businesses.business_get(ctx_for(user), ByIdIn(id=business.id)).model_dump(mode="json")
 
     def test_an_internal_plan_carries_its_limits_in_the_list_and_on_the_page(self, business, owner):
         Subscription.objects.filter(hub=business).update(plan=Plan.objects.get(slug="payment-test"))
@@ -286,7 +286,7 @@ class TestWhatThePlanCovers:
 
 class TestTheProposedAddress:
     def propose(self, user, name):
-        return queries.address_propose(
+        return addresses.address_propose(
             ctx_for(user), AddressProposeIn(name=name)
         ).model_dump()
 
@@ -358,7 +358,7 @@ class TestWhatABusinessAllows:
     def test_the_page_says_the_same_as_its_row(self, business, team, status, who):
         set_status(business, status)
 
-        detail = queries.business_get(ctx_for(team[who]), ByIdIn(id=business.id)).model_dump()["can"]
+        detail = businesses.business_get(ctx_for(team[who]), ByIdIn(id=business.id)).model_dump()["can"]
 
         assert {key: detail[key] for key in ("open", "manage", "restore", "delete")} == row_of(team[who], business)["can"]
 
@@ -366,7 +366,7 @@ class TestWhatABusinessAllows:
         """Every write on it answers 409 until it is recovered: no button of the page would work."""
         set_status(business, DELETING)
 
-        can = queries.business_get(ctx_for(team["owner"]), ByIdIn(id=business.id)).can
+        can = businesses.business_get(ctx_for(team["owner"]), ByIdIn(id=business.id)).can
 
         assert (can.manage_members, can.manage_settings, can.transfer, can.delete, can.restore) == (
             False,
@@ -396,7 +396,7 @@ class TestWhetherABusinessCanBeCreated:
     write refuses, so nobody confirms a business that was never going to be created."""
 
     def check(self, user):
-        return queries.business_create_check(ctx_for(user), BusinessCreateCheckIn())
+        return signup.business_create_check(ctx_for(user), BusinessCreateCheckIn())
 
     def test_an_account_with_room_passes(self, owner, plans):
         assert self.check(owner) == BusinessCreateCheckOut()

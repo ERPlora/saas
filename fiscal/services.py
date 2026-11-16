@@ -4,7 +4,7 @@ An upload is not an authority, it waits for a person (``submitted``); a newer up
 waiting (``returned`` with ``SUPERSEDED``) and never the one in force; only a waiting one is approved or
 returned, and returning needs a reason the customer can act on; approving replaces the approval in force. The
 staff may also withdraw an approval (with a reason), and each step is keyed by the business, whose snapshot
-carries the outcome to the Hub (``hubs.queries.hub_snapshot``, block ``verifactu``).
+carries the outcome to the Hub (``hubs.queries.hub_sync.hub_snapshot``, block ``verifactu``).
 
 Every step bumps the business's ``state_version`` in its transaction (``hubs.services.bump_state``) and pushes
 the snapshot once it commits (``push_after_commit``; ``reconcile_hub_states`` retries it while the Hub is
@@ -50,7 +50,7 @@ from fiscal.schemas import (
     StampUploadIn,
     WithdrawIn,
 )
-from hubs import queries as hub_queries
+from hubs.queries import access_control, membership
 from hubs import services as hub_services
 from hubs.models import Hub
 
@@ -97,7 +97,7 @@ def representation_submit(ctx: OperationContext, data: RepresentationSubmitIn) -
         .first()
     )
     if hub is None:
-        raise hub_queries.not_found()
+        raise access_control.not_found()
     now = timezone.now()
     # Under the business's lock, so two uploads never get one version; every row counts, so a version
     # names one document for ever.
@@ -413,7 +413,7 @@ def representation_notify(ctx: OperationContext, data: NotifyIn) -> dict:
 def tell_the_business(ctx: OperationContext, hub_id: UUID) -> None:
     """Tell the owner and the admins of the business (who read its authorisation), each on its own channel,
     but the channel ``ctx`` already notifies. Called inside the command: nothing leaves if it rolls back."""
-    for user_id in hub_queries.people_to_tell(hub_id):
+    for user_id in membership.people_to_tell(hub_id):
         scope = Scope("user", str(user_id))
         if scope != ctx.scope:
             representation_notify(system_context(scope), NotifyIn(id=hub_id))

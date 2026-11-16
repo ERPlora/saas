@@ -278,7 +278,7 @@ class BusinessRowOut(Schema):
     #: Stripe's page to pay that invoice: only for the owner, whose billing it is.
     pay_url: str | None
     #: The account pays for the business, whatever its role: it owns its payer (``billing_profile``), or the plan
-    #: is still charged to the card of one of its payers after a hand-over (``queries.still_pays``).
+    #: is still charged to the card of one of its payers after a hand-over (``queries.payers.still_pays``).
     is_payer: bool
     #: That payer (its Stripe customer), only to whoever owns it: the Store warns about a declined card only for
     #: the businesses it pays too.

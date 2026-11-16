@@ -23,7 +23,8 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone, translation
 from live.errors import Conflict
 
-from hubs import queries, services
+from hubs import services
+from hubs.queries import membership
 from hubs.models import HubMember, Plan, Subscription
 from hubs.schemas import ByIdIn, MemberInviteIn, MemberListIn, MemberRoleIn
 from hubs.tests.conftest import add_member, create_business, ctx_for
@@ -55,7 +56,7 @@ def full(business, owner):
 
 
 def seats(actor, hub):
-    return queries.member_list(ctx_for(actor), MemberListIn(hub_id=hub.id)).model_dump(
+    return membership.member_list(ctx_for(actor), MemberListIn(hub_id=hub.id)).model_dump(
         mode="json"
     )["seats"]
 
