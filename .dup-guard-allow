@@ -13,3 +13,6 @@ duplicados tests/e2e/panel/chrome.spec.ts:256-261 the 390 px target loop was alr
 duplicados billing/models/invoices.py:274-284 the net, tax and total properties of Invoice and InvoiceLine were already alike in billing/models.py on main; this change moves both literally into the package
 duplicados billing/models/invoices.py:378-388 the net, tax and total properties of Invoice and InvoiceLine were already alike in billing/models.py on main; this change moves both literally into the package
 duplicados tests/e2e/panel/screen.ts:62-74 movingInPage already shared its loop with stillMoving of settled.spec.ts on main, which reads the page on its own on purpose; this change moves it literally out of fixtures.ts
+duplicados accounts/tests/test_email_change.py:257-265 the two 409 tests of a taken address were already alike on main; this change only points the monkeypatch at the module that now holds the lookup
+duplicados accounts/tests/test_services.py:477-484 already alike with hubs/tests/test_invite_unverified_account.py on main; this change only points the call at the module that now holds release_unproven_account
+duplicados accounts/services/exclusive_runs.py:21-30 run_exclusively is the twin of hubs.services.run_exclusively on main (accounts never imports hubs); this change moves it literally out of accounts/services/__init__.py
