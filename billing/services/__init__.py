@@ -85,7 +85,7 @@ from billing.schemas import (
     VatCheckIn,
     VatCheckOut,
 )
-from billing.services import promo_codes
+from billing.services import invoice_discounts, promo_codes
 from billing.stripe_checkout import (
     EMBEDDED_UI_MODE,
     KIND_METADATA_KEY,
@@ -4076,7 +4076,7 @@ def invoice_record(ctx: OperationContext, data: InvoiceRecordIn) -> dict:
     total = int(stripe_invoice.get("total") or 0)
     if total < 0 and data.status == "paid":
         return _record_negative(ctx, hub, stripe_invoice)
-    if total <= 0:
+    if total <= 0 and not invoice_discounts.is_fully_discounted(stripe_invoice):
         return _record_out(existing, "ignored")
     if data.status == "open":
         return _record_open(ctx, hub, stripe_invoice, existing)
@@ -4141,6 +4141,38 @@ def _void(ctx, existing: Invoice | None) -> dict:
     return _record_out(existing, "voided")
 
 
+def _sealed_line(position: int, line: dict, breakdown: vat.VatBreakdown) -> InvoiceLine:
+    """A Stripe line as a line of ERPlora's invoice: what it sells, its discount and its base, rate and quota sealed."""
+    kind, slug, category = _item_of(_price_of(line))
+    amount, discount = invoice_discounts.line_amounts(line)
+    rate, net, tax = _sealed_amounts(
+        amount,
+        _line_tax_cents(line),
+        treatment=breakdown.treatment,
+        rate=_nominal_rate(breakdown, category) if breakdown.is_subject else Decimal("0.00"),
+        reconciled=breakdown.vat_included_reconciled,
+    )
+    period = line.get("period") or {}
+    return InvoiceLine(
+        position=position,
+        description=(line.get("description") or slug or _("Subscription"))[:255],
+        item_kind=kind,
+        item_slug=slug,
+        quantity=max(int(line.get("quantity") or 1), 1),
+        proration=_is_proration(line),
+        period_start=_moment_or_none(period.get("start")),
+        period_end=_moment_or_none(period.get("end")),
+        tax_category_id=category,
+        tax_treatment=breakdown.treatment,
+        tax_rate=rate,
+        net_cents=net,
+        tax_cents=tax,
+        total_cents=net + tax,
+        discount_cents=discount,
+        stripe_line_id=line.get("id") or "",
+    )
+
+
 def _record_paid(ctx, hub: Hub, data: InvoiceRecordIn, existing: Invoice | None) -> dict:
     """A paid Stripe invoice becomes ERPlora's invoice: the payer sealed, the qualification of the sale and
     each line's base, rate and quota sealed, the next number of the series; issued after the COMMIT."""
@@ -4158,36 +4190,10 @@ def _record_paid(ctx, hub: Hub, data: InvoiceRecordIn, existing: Invoice | None)
         tax_cents=tax_cents_of(stripe_invoice),
         tax_included=False,
     )
-    lines = []
-    for position, line in enumerate((stripe_invoice.get("lines") or {}).get("data") or [], start=1):
-        kind, slug, category = _item_of(_price_of(line))
-        rate, net, tax = _sealed_amounts(
-            int(line.get("amount") or 0),
-            _line_tax_cents(line),
-            treatment=breakdown.treatment,
-            rate=_nominal_rate(breakdown, category) if breakdown.is_subject else Decimal("0.00"),
-            reconciled=breakdown.vat_included_reconciled,
-        )
-        period = line.get("period") or {}
-        lines.append(
-            InvoiceLine(
-                position=position,
-                description=(line.get("description") or slug or _("Subscription"))[:255],
-                item_kind=kind,
-                item_slug=slug,
-                quantity=max(int(line.get("quantity") or 1), 1),
-                proration=_is_proration(line),
-                period_start=_moment_or_none(period.get("start")),
-                period_end=_moment_or_none(period.get("end")),
-                tax_category_id=category,
-                tax_treatment=breakdown.treatment,
-                tax_rate=rate,
-                net_cents=net,
-                tax_cents=tax,
-                total_cents=net + tax,
-                stripe_line_id=line.get("id") or "",
-            )
-        )
+    lines = [
+        _sealed_line(position, line, breakdown)
+        for position, line in enumerate((stripe_invoice.get("lines") or {}).get("data") or [], start=1)
+    ]
     if not lines:
         # Stripe always bills a line; without one the whole amount is one line of the subscription.
         lines.append(
@@ -4831,6 +4837,7 @@ def platform_payload(invoice: Invoice) -> dict:
                 "net_cents": line.net_cents,
                 "tax_cents": line.tax_cents,
                 "total_cents": line.total_cents,
+                "discount_cents": line.discount_cents,
             }
             for line in invoice.lines.order_by("position")
         ],

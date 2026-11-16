@@ -169,6 +169,7 @@ class TestTheInvoiceReachesThePlatformHub:
                 "net_cents",
                 "tax_cents",
                 "total_cents",
+                "discount_cents",
             )
         } == {
             "position": 1,
@@ -182,6 +183,7 @@ class TestTheInvoiceReachesThePlatformHub:
             "net_cents": 2999,
             "tax_cents": 630,
             "total_cents": 3629,
+            "discount_cents": 0,
         }
         assert line["description"] and line["period_start"] and line["period_end"]
 

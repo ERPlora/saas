@@ -2234,3 +2234,24 @@ msgstr "Cuándo acaban los meses gratis del código"
 #: models/promo_codes.py
 msgid "A promo code grants either trial days or free months: fill in one of the two."
 msgstr "Un código promocional da días de prueba o meses gratis: rellena uno de los dos."
+
+#: models/invoices.py
+msgid "discount (cents)"
+msgstr "descuento (céntimos)"
+
+#: services/promo_codes.py
+msgid "This code gives free months of a monthly plan: choose monthly billing to use it."
+msgstr "Este código da meses gratis de un plan mensual: elige la facturación mensual para usarlo."
+
+#: services/promo_codes.py
+msgid "This code gives free months to a business that starts paying a plan, not to a change of plan."
+msgstr "Este código da meses gratis a un negocio que empieza a pagar un plan, no a un cambio de plan."
+
+#: services/promo_codes.py
+#, python-format
+msgid ""
+"This business has free months until %(date)s: until then its plan, its billing and its apps stay as "
+"they are. You can still cancel the plan."
+msgstr ""
+"Este negocio tiene meses gratis hasta el %(date)s: hasta entonces su plan, su facturación y sus "
+"aplicaciones no cambian. El plan se puede cancelar igualmente."
