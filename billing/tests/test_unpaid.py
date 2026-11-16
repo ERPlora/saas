@@ -38,7 +38,7 @@ from billing.tests.stripe_double import (
     signed,
     subscription,
 )
-from hubs import queries as hub_queries
+from hubs.queries import businesses
 from hubs.models import Hub, Subscription
 from hubs.schemas import BusinessListIn
 from hubs.tests.conftest import ctx_for
@@ -111,7 +111,7 @@ def local(hub):
 
 
 def row_of(user, hub):
-    rows = hub_queries.business_list(ctx_for(user), BusinessListIn()).model_dump()[
+    rows = businesses.business_list(ctx_for(user), BusinessListIn()).model_dump()[
         "rows"
     ]
     return next(row for row in rows if row["id"] == hub.id)

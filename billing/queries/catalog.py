@@ -10,7 +10,7 @@ from apps.icons import FALLBACK_ICON_SVG
 from apps.models import Module
 from billing.queries.subscriptions import scheduled_change_of
 from billing.schemas import StoreCatalogIn, StoreCatalogOut
-from hubs import queries as hub_queries
+from hubs.queries import access_control, plan_catalog
 from hubs import services as hub_services
 from hubs.models import HubMember, Plan, Subscription, SubscriptionItem
 
@@ -114,8 +114,8 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
     (``offered_plans``: no upgrade-only plan for a business Stripe does not bill; the internal ones only to a business
     the staff marked, with their card in ``internal_plans``). Only the owner buys for a business,
     so only the owner reads it; a deleted business buys nothing (409). Never asks Stripe."""
-    member = hub_queries.access(hub_queries.account_of(ctx), params.hub_id, HubMember.Role.OWNER)
-    if not hub_queries.is_writable(member.hub):
+    member = access_control.access(access_control.account_of(ctx), params.hub_id, HubMember.Role.OWNER)
+    if not access_control.is_writable(member.hub):
         raise hub_services.business_deleted()
     subscription = (
         Subscription.objects.select_related("plan", "trial_plan").filter(hub_id=member.hub_id).first()
@@ -174,5 +174,5 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
         "subscription": plan,
         "modules": modules,
         "offered_plans": [row.slug for row in offered],
-        "internal_plans": [hub_queries.plan_card(row, ctx.language or "") for row in internal],
+        "internal_plans": [plan_catalog.plan_card(row, ctx.language or "") for row in internal],
     }

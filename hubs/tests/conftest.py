@@ -150,9 +150,9 @@ def add_member(hub, user, role, *, accepted=True, invited_by=None, invited_days_
 
 def role_on(user, slug: str) -> str | None:
     """What ``user`` is on the business at ``slug`` for the jump to a hub; ``None``: it does not enter."""
-    from hubs import queries
+    from hubs.queries import membership
 
-    return dict(queries.access_of(user.pk)).get(slug)
+    return dict(membership.access_of(user.pk)).get(slug)
 
 
 @pytest.fixture

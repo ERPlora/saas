@@ -37,7 +37,8 @@ from accounts.admin import (
     UserAdmin,
     open_hub_admin_url,
 )
-from hubs import queries, services
+from hubs import services
+from hubs.queries import hub_sync, membership
 from hubs.models import (
     CustomDomain,
     BillingProfile,
@@ -153,7 +154,7 @@ class PlanAdmin(admin.ModelAdmin):
         if getattr(form, "unchecked", ""):
             self.message_user(request, form.unchecked, messages.WARNING)
         # HUBS-F31: what the plan gives reaches its businesses within 15 minutes, not at night.
-        if change and set(queries.SNAPSHOT_PLAN_FIELDS) & set(form.changed_data):
+        if change and set(hub_sync.SNAPSHOT_PLAN_FIELDS) & set(form.changed_data):
             owed = services.owe_plan_rights(obj)
             if owed:
                 self.message_user(
@@ -372,7 +373,7 @@ def hubs_view(request: HttpRequest) -> HttpResponse:
         messages.error(request, JUMP_FAILED.get(request.GET["error"], JUMP_FAILED_UNKNOWN))
     hubs = [
         {"slug": slug, "members": members, "url": open_hub_admin_url(slug)}
-        for slug, members in queries.hubs_with_members()
+        for slug, members in membership.hubs_with_members()
     ]
     context = {
         **admin.site.each_context(request),

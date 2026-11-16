@@ -44,7 +44,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 ## Lo que añadió L1-A2 (2026-10-14)
 
 - **El acceso son los miembros** (saas#199): el salto (`issue_code`/`redeem_code`) entra a quien es miembro respondido
-  de un negocio que aún abre (`queries.access_of`, fuera `deleting` y `deleted`). `accounts` nunca importa `hubs`: lo
+  de un negocio que aún abre (`queries.membership.access_of`, fuera `deleting` y `deleted`). `accounts` nunca importa `hubs`: lo
   pregunta por su nombre, `hubs.member.list_mine` (`accounts.queries.hub_roles_of`), sin ruta ni herramienta del
   asistente. La copia que leía antes (`accounts.HubMembership`) salió del código en `accounts/0011` y su tabla, de la
   base de datos en `accounts/0012` (saas#220). El salto se queda en `accounts`: moverlo (`/hub-login/`,
@@ -53,7 +53,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   nunca comparten cuenta. Las puertas lo impiden (`hubs.business.create`, `hubs.member.invite`/`resend` e
   `hubs.invitation.accept` responden 409 `hubs.platform_account`; `create_platform_user` y `User.clean`, es decir el
   formulario del admin, no hacen personal a quien está en un negocio). Lo que quede de antes lo nombra el check
-  `hubs.W002` (`queries.staff_on_businesses`: miembro de un negocio no borrado, también en recuperación, o con una
+  `hubs.W002` (`queries.system_checks.staff_on_businesses`: miembro de un negocio no borrado, también en recuperación, o con una
   invitación pendiente), de base de datos y aviso (`manage.py check --database default` y `migrate`; calla mientras
   falten migraciones), para no parar `migrate` ni el despliegue
   (`--fail-level WARNING` lo vuelve fallo). Nada se apaga solo; se arregla a mano, cuenta por cuenta: si es del
@@ -136,7 +136,7 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
   (`POST /api/hubs/businesses/address`, solo el propietario, `can.change_address`), validada como la valida el Hub
   (`live.slugs`). Sube `registry_version` (el Hub la registra con `PUT /internal/hubs/{id}`) y `state_version` (la
   foto lleva el `slug`); el salto sigue al negocio porque lee a sus miembros. La dirección que deja queda
-  en `Hub.previous_slug` (migración `0015`): `queries.slug_taken`/`free_slug` la dan por cogida para los demás, así
+  en `Hub.previous_slug` (migración `0015`): `queries.addresses.slug_taken`/`free_slug` la dan por cogida para los demás, así
   que nadie recibe los enlaces y QR viejos; se libera cuando la dirección vuelve a cambiar. Evento
   `hubs.business.address_changed`. Panel: «Cambiar dirección» en Ajustes (`AddressDialog.vue`).
 - **Suspendidos por impago** (F20; PLAN-SAAS §1.1, «dentro de `sweep_unpaid`»): `Hub.suspended_at`,
@@ -194,7 +194,7 @@ Flujos `HUBS-F31`…`HUBS-F37` del `WORKBOOK.md` (parte 4 de 5; la revisión flu
   retiró esa condición (FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID: sin 409 `verifactu.live_option_unpaid`); el Hub acepta y
   no lee el campo si aún le llega de un SaaS anterior.
 - **Lo que da un plan, cambiado en el admin** (F31; trampa de SAAS_DASHBOARD-F53/F54): los campos de `plan` de la foto
-  son `queries.SNAPSHOT_PLAN_FIELDS` (una sola lista para la foto y el admin). Al guardar un `Plan` con alguno cambiado,
+  son `queries.hub_sync.SNAPSHOT_PLAN_FIELDS` (una sola lista para la foto y el admin). Al guardar un `Plan` con alguno cambiado,
   `PlanAdmin.save_model` llama a `services.owe_plan_rights(plan)`: por cada negocio vivo con ese plan o con su prueba,
   `sync_plan_modules` y, si su foto cambia, `bump_state`. No empuja en la petición (un plan puede tener miles de
   negocios): lo entrega la siguiente pasada de `reconcile_hub_states` (15 min), y el admin dice cuántos negocios lo
@@ -376,7 +376,7 @@ Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»)
 PLAN-SAAS §1 quitó de `Plan` los límites de tamaño (`max_database_size_gb`) y §5 enseña al cliente un
 porcentaje «del espacio de su plan» sin decir de cuánto. Para no reabrir §1 (y su guardarraíl
 `test_a_plan_sizes_no_infrastructure`), el espacio sale del **nivel de módulos del plan** (`Plan.included_level`,
-`queries.STORAGE_LIMIT_GIB`): Gratis 1 GiB, Básico 5 GiB (Starter y Standard), Pro 20 GiB, Enterprise 50 GiB
+`queries.hub_usage.STORAGE_LIMIT_GIB`): Gratis 1 GiB, Básico 5 GiB (Starter y Standard), Pro 20 GiB, Enterprise 50 GiB
 (también Max, que en el SaaS antiguo no tenía tope de BD). Solo cuentan los ficheros (S3), no la BD. No se aplica
 ningún tope: es un aviso. Un espacio por plan editable en el admin sería una columna `Plan.storage_limit_gb` (y una
 nota que corrija PLAN-SAAS §1); la ronda de cierre de `hubs` (PLAN-SAAS, 2026-11-01) deja la decisión como está.
@@ -578,7 +578,7 @@ Plan: `docs/plans/2026-10-17-demo-hubs-fase-1.md` (§1.6 y §1.8). Una demo es u
 - **SEO**: `/demo/` está en el sitemap (0.6) y es indexable (su GET no crea nada); `/demo/enter/` lleva `noindex`
   (meta y `X-Robots-Tag`) y `no-store`.
 - **Direcciones `demo-`**: `live.slugs` (≥ `cc36065`) reserva el prefijo para los clientes, así que un slug elegido
-  `demo-…` es 409 `hubs.slug_reserved`, y `queries.base_slug` quita el guion del prefijo al proponer
+  `demo-…` es 409 `hubs.slug_reserved`, y `queries.addresses.base_slug` quita el guion del prefijo al proponer
   (`Demo Bar` → `demobar`, `Demo` → `demostore`) en vez de caer en `my-business`.
 - **CTA**: «Try the demo» en el hero, en la banda final de la portada y en la barra para el visitante sin sesión.
 

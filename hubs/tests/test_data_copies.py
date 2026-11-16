@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 import pytest
 from django.utils import timezone
 
-from hubs import queries
+from hubs.queries import businesses, data_copies
 from hubs.models import Hub
 from hubs.schemas import ByIdIn, DataCopyLinkIn, DataCopyListIn
 from hubs.tests.conftest import ctx_for
@@ -35,11 +35,11 @@ def deleted(hub):
 
 
 def listed(user, hub) -> dict:
-    return queries.data_copy_list(ctx_for(user), DataCopyListIn(business_id=hub.id)).model_dump()
+    return data_copies.data_copy_list(ctx_for(user), DataCopyListIn(business_id=hub.id)).model_dump()
 
 
 def link(user, hub, copy_id: str) -> dict:
-    return queries.data_copy_link(ctx_for(user), DataCopyLinkIn(business_id=hub.id, copy_id=copy_id)).model_dump()
+    return data_copies.data_copy_link(ctx_for(user), DataCopyLinkIn(business_id=hub.id, copy_id=copy_id)).model_dump()
 
 
 # --- hubs.data_copy.list ------------------------------------------------------------------------------------
@@ -232,7 +232,7 @@ def test_a_link_that_is_no_web_address_is_never_given(business, owner, hub_doubl
 @pytest.mark.parametrize(("role", "may"), [("owner", True), ("admin", False)])
 def test_only_the_owner_is_offered_the_copy(business, team, role, may):
     """The page of a business (its owner and admins): only the owner gets «Download the data» (the rest: the matrix)."""
-    can = queries.business_get(ctx_for(team[role]), ByIdIn(id=business.id)).can
+    can = businesses.business_get(ctx_for(team[role]), ByIdIn(id=business.id)).can
 
     assert can.download_data is may
 

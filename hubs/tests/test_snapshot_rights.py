@@ -11,7 +11,8 @@ import pytest
 from django.utils import timezone
 
 from apps.models import Module
-from hubs import queries, services
+from hubs import services
+from hubs.queries import hub_sync
 from hubs.models import Plan, Subscription, SubscriptionItem
 from hubs.tests.conftest import create_business
 
@@ -27,7 +28,7 @@ def paid_business(owner, business):
 
 
 def module_ids(hub):
-    return [module["id"] for module in queries.hub_snapshot(hub.id)["modules"]]
+    return [module["id"] for module in hub_sync.hub_snapshot(hub.id)["modules"]]
 
 
 def test_a_purchase_reaches_only_the_business_it_was_bought_for(make_user, plans):
@@ -49,7 +50,7 @@ def test_the_paid_plan_of_one_business_gives_nothing_to_another_of_the_same_acco
 
     assert module_ids(standard) == ["inventory"]
     assert module_ids(free) == []
-    assert queries.hub_snapshot(free.id)["plan"]["slug"] == "free"
+    assert hub_sync.hub_snapshot(free.id)["plan"]["slug"] == "free"
 
 
 def test_each_app_says_where_its_right_comes_from_and_until_when(business):
@@ -64,7 +65,7 @@ def test_each_app_says_where_its_right_comes_from_and_until_when(business):
     )
     services.sync_plan_modules(Subscription.objects.get(hub=business))
 
-    assert queries.hub_snapshot(business.id)["modules"] == [
+    assert hub_sync.hub_snapshot(business.id)["modules"] == [
         {"id": "inventory", "source": "purchase", "valid_until": until.isoformat()},
         {"id": "loyalty", "source": "plan", "valid_until": None},
     ]
@@ -87,7 +88,7 @@ def test_dropping_to_free_removes_nobody_and_only_stops_new_invitations(business
     services.subscription_apply(services.system_ctx_for(business.id), SubscriptionApplyIn(hub_id=business.id, plan="free"))
 
     assert set(HubMember.objects.filter(hub=business).values_list("user_id", flat=True)) == inside
-    plan = queries.hub_snapshot(business.id)["plan"]
+    plan = hub_sync.hub_snapshot(business.id)["plan"]
     assert (plan["slug"], plan["max_users"], plan["max_devices"]) == ("free", 3, 1)
     with pytest.raises(Conflict) as refused:
         services.member_invite(ctx_for(owner), MemberInviteIn(hub_id=business.id, email="new@example.com"))

@@ -12,7 +12,8 @@ from django.core import mail
 from django.utils import timezone
 from live.errors import Conflict, NotFound, PermissionDenied
 
-from hubs import queries, services
+from hubs import services
+from hubs.queries import businesses, membership, payers
 from hubs.models import BillingProfile, Hub, HubMember, HubOwnershipTransfer
 from hubs.schemas import (
     BillingProfileGetIn,
@@ -334,7 +335,7 @@ class TestWhatTheScreensRead:
     def test_the_recipient_sees_the_offer_with_its_businesses(self, business, team):
         offer(team["owner"], business, team["admin"])
 
-        offers = queries.business_list(
+        offers = businesses.business_list(
             ctx_for(team["admin"]), BusinessListIn()
         ).model_dump(mode="json")["ownership_offers"]
 
@@ -347,7 +348,7 @@ class TestWhatTheScreensRead:
         HubOwnershipTransfer.objects.update(expires_at=timezone.now())
 
         assert (
-            queries.business_list(
+            businesses.business_list(
                 ctx_for(team["admin"]), BusinessListIn()
             ).ownership_offers
             == []
@@ -356,7 +357,7 @@ class TestWhatTheScreensRead:
     def test_the_row_action_disappears_while_an_offer_waits(self, business, team):
         offer(team["owner"], business, team["admin"])
 
-        rows = queries.member_list(
+        rows = membership.member_list(
             ctx_for(team["owner"]), MemberListIn(hub_id=business.id)
         ).rows
 
@@ -365,7 +366,7 @@ class TestWhatTheScreensRead:
     def test_the_owner_sees_the_offer_waiting_on_the_business(self, business, team):
         transfer = offer(team["owner"], business, team["admin"])
 
-        detail = queries.business_get(ctx_for(team["owner"]), ByIdIn(id=business.id))
+        detail = businesses.business_get(ctx_for(team["owner"]), ByIdIn(id=business.id))
 
         assert (detail.pending_transfer.id, detail.pending_transfer.to_email) == (
             transfer.id,
@@ -402,7 +403,7 @@ class TestTheNewOwnersPayer:
     def test_the_new_owner_does_not_read_the_old_owners_payer(self, business, team):
         self.handed_over(business, team)
 
-        payer = queries.billing_profile_get(ctx_for(team["admin"]), BillingProfileGetIn(hub_id=business.id))
+        payer = payers.billing_profile_get(ctx_for(team["admin"]), BillingProfileGetIn(hub_id=business.id))
 
         assert (payer.billing_name, payer.tax_id, payer.paid_by_another_account) == ("", "", True)
         assert Hub.objects.get(pk=business.pk).billing_profile.billing_name == "Olga SL"  # still paying

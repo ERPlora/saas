@@ -264,7 +264,7 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
   que algo aún se pueda cobrar: una suscripción que Stripe sigue cobrando o una factura sin pagar, que espera
   hasta su fecha de purga y entonces se anula en Stripe. Una suscripción viva solo llega aquí en un negocio
   **eliminado**, y la termina la siguiente pasada de `sweep_unpaid`; la de un negocio vivo no llega nunca: quien
-  aún lo paga (su pagador, o la tarjeta que paga el plan tras un traspaso, `hubs.queries.still_pays`) ni elimina
+  aún lo paga (su pagador, o la tarjeta que paga el plan tras un traspaso, `hubs.queries.payers.still_pays`) ni elimina
   su cuenta (409 `accounts.pays_businesses`) ni sale del negocio (409 `hubs.member_pays`). Las facturas emitidas
   guardan su copia del pagador. `sweep_unpaid` hace lo que el borrado no pudo (`payers_forgotten`; un fallo de
   Stripe cuenta en `errors`).

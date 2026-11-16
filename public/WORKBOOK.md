@@ -674,7 +674,7 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   esa); una demo sin `db_name` no tiene BD propia que borrar. Tras la BD, `purge_demo_data` borra el prefijo `hub-<hex>/` de esa
   demo en el almacén y ningún otro (`base.files.delete_hub_files`); si el almacén falla, la demo sigue
   `dropping` con el error en su fila y se reintenta. El prefijo `demo-` lo reserva
-  `live.slugs` (`validate_hub_slug(allow_demo=…)`) y `hubs.queries.base_slug` lo normaliza (F37).
+  `live.slugs` (`validate_hub_slug(allow_demo=…)`) y `hubs.queries.addresses.base_slug` lo normaliza (F37).
 - Por flujo, F15–F26: `help.py` y `resources.py` (F15; `/documentation/` es un 301 a `/help/`), `landing.py`
   (F16–F18: `contact_submit` con `reply_to`, el borrador `CONTACT_DRAFT_KEY` en la sesión y los temas
   `CONTACT_TOPICS`), `context_processors.py` (F18: `SUPPORT_EMAIL` de settings, `SUPPORT_WHATSAPP_URL` y

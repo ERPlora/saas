@@ -12,7 +12,19 @@ the pricing page read them before any account exists. A GET needs no CSRF token.
 from live.ninja import bind, run_operation
 from ninja import Query, Router
 
-from hubs import queries, services
+from hubs import services
+from hubs.queries import (
+    addresses,
+    businesses,
+    custom_domains,
+    data_copies,
+    hub_usage,
+    invitations,
+    membership,
+    payers,
+    plan_catalog,
+    taxonomy,
+)
 from hubs.schemas import (
     AddressProposeIn,
     BillingProfileGetIn,
@@ -42,17 +54,17 @@ router = Router(tags=["hubs"])
 
 @bind(router, "hubs.sector.list", "/catalog/sectors", auth=None)
 async def sector_list(request):
-    return await run_operation(request, queries.sector_list)
+    return await run_operation(request, taxonomy.sector_list)
 
 
 @bind(router, "hubs.business_type.list", "/catalog/business-types", auth=None)
 async def business_type_list(request, params: Query[BusinessTypeListIn]):
-    return await run_operation(request, queries.business_type_list, params)
+    return await run_operation(request, taxonomy.business_type_list, params)
 
 
 @bind(router, "hubs.plan.list", "/plans", auth=None)
 async def plan_list(request):
-    return await run_operation(request, queries.plan_list)
+    return await run_operation(request, plan_catalog.plan_list)
 
 
 # --- Businesses -----------------------------------------------------------------------------------
@@ -60,7 +72,7 @@ async def plan_list(request):
 
 @bind(router, "hubs.business.list", "/hubs/businesses")
 async def business_list(request, params: Query[BusinessListIn]):
-    return await run_operation(request, queries.business_list, params)
+    return await run_operation(request, businesses.business_list, params)
 
 
 @bind(router, "hubs.business.create", "/hubs/businesses", status=201)
@@ -70,7 +82,7 @@ async def business_create(request, data: BusinessCreateIn):
 
 @bind(router, "hubs.business.get", "/hubs/businesses/detail")
 async def business_get(request, params: Query[ByIdIn]):
-    return await run_operation(request, queries.business_get, params)
+    return await run_operation(request, businesses.business_get, params)
 
 
 @bind(router, "hubs.business.check", "/hubs/businesses/check")
@@ -90,7 +102,7 @@ async def business_change_address(request, data: BusinessAddressIn):
 
 @bind(router, "hubs.custom_domain.get", "/hubs/businesses/custom-domain")
 async def custom_domain_get(request, params: Query[ByIdIn]):
-    return await run_operation(request, queries.custom_domain_get, params)
+    return await run_operation(request, custom_domains.custom_domain_get, params)
 
 
 @bind(router, "hubs.custom_domain.request", "/hubs/businesses/custom-domain")
@@ -120,7 +132,7 @@ async def business_open(request, data: BusinessOpenIn):
 
 @bind(router, "hubs.address.propose", "/hubs/address")
 async def address_propose(request, params: Query[AddressProposeIn]):
-    return await run_operation(request, queries.address_propose, params)
+    return await run_operation(request, addresses.address_propose, params)
 
 
 # --- Members and invitations ----------------------------------------------------------------------
@@ -128,7 +140,7 @@ async def address_propose(request, params: Query[AddressProposeIn]):
 
 @bind(router, "hubs.member.list", "/hubs/members")
 async def member_list(request, params: Query[MemberListIn]):
-    return await run_operation(request, queries.member_list, params)
+    return await run_operation(request, membership.member_list, params)
 
 
 @bind(router, "hubs.member.invite", "/hubs/members/invite")
@@ -158,7 +170,7 @@ async def member_cancel(request, data: ByIdIn):
 
 @bind(router, "hubs.invitation.list_mine", "/hubs/invitations")
 async def invitation_list_mine(request):
-    return await run_operation(request, queries.invitation_list_mine, InvitationListIn())
+    return await run_operation(request, invitations.invitation_list_mine, InvitationListIn())
 
 
 @bind(router, "hubs.invitation.accept", "/hubs/invitations/accept")
@@ -196,7 +208,7 @@ async def ownership_cancel(request, data: ByIdIn):
 
 @bind(router, "hubs.billing_profile.get", "/hubs/billing-profile")
 async def billing_profile_get(request, params: Query[BillingProfileGetIn]):
-    return await run_operation(request, queries.billing_profile_get, params)
+    return await run_operation(request, payers.billing_profile_get, params)
 
 
 @bind(router, "hubs.billing_profile.update", "/hubs/billing-profile")
@@ -209,12 +221,12 @@ async def billing_profile_update(request, data: BillingProfileIn):
 
 @bind(router, "hubs.usage.get", "/hubs/usage")
 async def usage_get(request, params: Query[UsageGetIn]):
-    return await run_operation(request, queries.usage_get, params)
+    return await run_operation(request, hub_usage.usage_get, params)
 
 
 @bind(router, "hubs.usage.series", "/hubs/usage/series")
 async def usage_series(request, params: Query[UsageSeriesIn]):
-    return await run_operation(request, queries.usage_series, params)
+    return await run_operation(request, hub_usage.usage_series, params)
 
 
 # --- The copies of a business's data --------------------------------------------------------------
@@ -222,9 +234,9 @@ async def usage_series(request, params: Query[UsageSeriesIn]):
 
 @bind(router, "hubs.data_copy.list", "/hubs/data-copies")
 async def data_copy_list(request, params: Query[DataCopyListIn]):
-    return await run_operation(request, queries.data_copy_list, params)
+    return await run_operation(request, data_copies.data_copy_list, params)
 
 
 @bind(router, "hubs.data_copy.link", "/hubs/data-copies/link")
 async def data_copy_link(request, params: Query[DataCopyLinkIn]):
-    return await run_operation(request, queries.data_copy_link, params)
+    return await run_operation(request, data_copies.data_copy_link, params)

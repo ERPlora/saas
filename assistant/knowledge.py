@@ -30,7 +30,7 @@ from apps import queries as apps_queries
 from apps.schemas import AppDocListIn
 from assistant.models import content_hash
 from assistant.services import platform_context
-from hubs import queries as hubs_queries
+from hubs.queries import plan_catalog
 from hubs.schemas import PlanListIn
 from public import help as public_help
 
@@ -281,7 +281,7 @@ def plans_chunks() -> list[Chunk]:
     """The plans on sale, one document per language, each plan a section of its own."""
     chunks = []
     for lang in LANGUAGES:
-        plans = hubs_queries.plan_list(replace(platform_context(), language=lang), PlanListIn())
+        plans = plan_catalog.plan_list(replace(platform_context(), language=lang), PlanListIn())
         with translation.override(lang):
             title = _("ERPlora plans")
             document = [_("The plans a business can have on ERPlora, with their prices and what each one includes.")]

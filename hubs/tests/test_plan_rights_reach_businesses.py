@@ -146,7 +146,7 @@ def test_a_business_trying_the_plan_owes_it_too(staff_client, business):
 
 
 # --- HUBS-F34: a paid module added in the admin, or moved to another level -------------------------------------------
-# What the plans include is every module their level reaches (``queries.modules_included_in``), written per business by
+# What the plans include is every module their level reaches (``queries.plan_catalog.modules_included_in``), written per business by
 # ``sync_plan_modules``: a module saved in the admin reached nobody until Stripe next spoke of each business.
 
 

@@ -22,9 +22,10 @@ from live.context import Scope, system_context
 from live.errors import InvalidPayload, NotFound, PermissionDenied
 from live.models import OutboxEvent
 
-from hubs import events, queries, services
+from hubs import events, services
+from hubs.queries import businesses, hub_sync
 from hubs.models import Hub, HubMember, Subscription, SubscriptionItem
-from hubs.schemas import BusinessListIn, ModuleRightIn, SubscriptionApplyIn
+from hubs.schemas import BusinessListIn, ByIdIn, ModuleRightIn, SubscriptionApplyIn
 from hubs.tests.conftest import add_member, ctx_for
 
 pytestmark = pytest.mark.django_db
@@ -297,7 +298,7 @@ def test_a_cancelled_module_lasts_until_its_end_and_then_leaves_the_snapshot(bus
         modules=[ModuleRightIn(module_slug="inventory", valid_until=until)],
     )
 
-    assert queries.hub_snapshot(business.id)["modules"] == [
+    assert hub_sync.hub_snapshot(business.id)["modules"] == [
         {"id": "inventory", "source": "purchase", "valid_until": until.isoformat()}
     ]
 
@@ -311,7 +312,7 @@ def test_a_cancelled_module_lasts_until_its_end_and_then_leaves_the_snapshot(bus
         ],
     )
 
-    assert queries.hub_snapshot(business.id)["modules"] == []
+    assert hub_sync.hub_snapshot(business.id)["modules"] == []
 
 
 def test_the_end_of_a_subscription_takes_the_business_back_to_free(business):
@@ -335,8 +336,8 @@ def test_the_end_of_a_subscription_takes_the_business_back_to_free(business):
 
     subscription = subscription_of(business)
     assert (subscription.plan.slug, subscription.stripe_subscription_id) == ("free", "")
-    assert queries.hub_snapshot(business.id)["plan"]["slug"] == "free"
-    assert queries.hub_snapshot(business.id)["modules"] == []
+    assert hub_sync.hub_snapshot(business.id)["plan"]["slug"] == "free"
+    assert hub_sync.hub_snapshot(business.id)["modules"] == []
 
 
 # --- The standing ------------------------------------------------------------------------------------
@@ -424,7 +425,7 @@ def unpaid(business, reason="card_declined"):
 
 
 def row_of(user, business):
-    rows = queries.business_list(ctx_for(user), BusinessListIn()).model_dump()["rows"]
+    rows = businesses.business_list(ctx_for(user), BusinessListIn()).model_dump()["rows"]
     return next(row for row in rows if row["id"] == business.id)
 
 
@@ -488,8 +489,8 @@ def test_the_page_of_the_business_says_it_too(business, owner):
     business = ready(business)
     since = unpaid(business, "card_changed")
 
-    detail = queries.business_get(
-        ctx_for(owner), queries.ByIdIn(id=business.id)
+    detail = businesses.business_get(
+        ctx_for(owner), ByIdIn(id=business.id)
     ).model_dump()
 
     assert (detail["unpaid_reason"], detail["unpaid_since"], detail["pay_url"]) == (

@@ -93,7 +93,7 @@ def cheapest(plans):
 
 
 def free_plan(plans):
-    """The Free plan on sale (0 €), the one every business is born on (``hubs.queries.free_plan``), or ``None``."""
+    """The Free plan on sale (0 €), the one every business is born on (``hubs.queries.plan_catalog.free_plan``), or ``None``."""
     return next((plan for plan in plans.plans if not plan.price_monthly), None)
 
 

@@ -15,7 +15,8 @@ from live.context import OperationContext, Scope
 from live.errors import PermissionDenied, Unauthorized
 
 from accounts import services as account_services
-from hubs import queries, services
+from hubs import services
+from hubs.queries import membership
 from hubs.models import Hub, HubMember
 from hubs.schemas import ByIdIn, MemberListMineIn, MemberRoleIn, OwnershipTransferIn
 from hubs.tests.conftest import add_member, create_business, ctx_for, member_of, role_on
@@ -26,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def mine(user):
-    return [(row.slug, row.role) for row in queries.member_list_mine(ctx_for(user), MemberListMineIn()).rows]
+    return [(row.slug, row.role) for row in membership.member_list_mine(ctx_for(user), MemberListMineIn()).rows]
 
 
 class TestMemberListMine:
@@ -82,14 +83,14 @@ class TestMemberListMine:
 
     def test_a_visitor_without_an_account_is_refused(self):
         with pytest.raises(PermissionDenied):
-            queries.member_list_mine(ctx_for(None), MemberListMineIn())
+            membership.member_list_mine(ctx_for(None), MemberListMineIn())
 
     def test_a_caller_with_the_permission_but_no_account_is_refused(self):
         """A system context: the permission is not the account, and it has no businesses of its own."""
         system = OperationContext(scope=Scope("user", "system"), actor="system", permissions=["*"])
 
         with pytest.raises(Unauthorized):
-            queries.member_list_mine(system, MemberListMineIn())
+            membership.member_list_mine(system, MemberListMineIn())
 
     def test_it_is_reachable_by_name_as_a_read_without_a_route(self):
         operation = operations.get("hubs.member.list_mine")
@@ -143,12 +144,12 @@ class TestHubsWithMembers:
         other = create_business(make_user("lola@example.com"), name="Aaa Café")
 
         # The invitee has not answered: four people enter ``business``.
-        assert queries.hubs_with_members() == sorted([(business.slug, 4), (other.slug, 1)])
+        assert membership.hubs_with_members() == sorted([(business.slug, 4), (other.slug, 1)])
 
     def test_a_deleted_business_is_not_listed(self, business, owner):
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
 
-        assert queries.hubs_with_members() == []
+        assert membership.hubs_with_members() == []
 
 
 # --- Guardrail: the retired copy stays out of the code ------------------------------------------------

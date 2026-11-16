@@ -1,7 +1,7 @@
 """Write operations of hubs, and the push of what the SaaS knows to the Hub service.
 
 One operation = one transaction (``@operation``), with its event in the outbox. Who may write is
-decided by the account's ``HubMember`` role (``queries.access``). Every change the Hub must learn is
+decided by the account's ``HubMember`` role (``access_control.access``). Every change the Hub must learn is
 written in the same transaction (``Hub.pending_hub_call``, ``Hub.state_version``) and pushed after the
 COMMIT (``sync_hub``, which never runs inside a transaction); when the Hub is away it stays owed and
 ``manage.py reconcile_hub_states`` retries it.
@@ -48,8 +48,8 @@ from accounts import queries as account_queries
 from accounts import services as account_services
 from accounts.queries import hub_start_url
 from base.refusals import fields_refused
-from hubs import domain_checks, domain_names, edge_client, emails, events, hub_client, queries
-from hubs.queries import expired_deletions
+from hubs import domain_checks, domain_names, edge_client, emails, events, hub_client
+from hubs.queries import access_control, addresses, businesses, custom_domains, data_copies, hub_sync, membership, payers, plan_catalog, signup, taxonomy
 from hubs.hub_client import HubRefused, HubUnavailable
 from hubs.models import (
     BillingProfile,
@@ -202,20 +202,20 @@ class SeatLimitReached(Conflict):
 )
 def business_create(ctx: OperationContext, data: BusinessCreateIn) -> dict:
     """The sign-up: in one transaction the payer, the business, its owner and its Free subscription (with
-    the trial of ``queries.trial_plan`` when a plan carries one); after the COMMIT, the Hub.
+    the trial of ``plan_catalog.trial_plan`` when a plan carries one); after the COMMIT, the Hub.
 
     One free business per account (``FREE_HUBS_PER_ACCOUNT``); a name never blocks it.
     """
-    user = queries.account_of(ctx)
-    plan = queries.plan_of_a_new_business()
-    queries.refuse_staff(user)
+    user = access_control.account_of(ctx)
+    plan = signup.plan_of_a_new_business()
+    signup.refuse_staff(user)
     check_free_quota(user)
     now = timezone.now()
     profile = BillingProfile.objects.create(
         owner=user, billing_email=user.email, billing_country=data.country
     )
     hub = _create_hub(
-        data, user, profile, queries.business_type_for(data.business_type), now
+        data, user, profile, taxonomy.business_type_for(data.business_type), now
     )
     owner = HubMember.objects.create(
         hub=hub, user=user, role=Role.OWNER, joined_at=now, accepted_at=now
@@ -223,7 +223,7 @@ def business_create(ctx: OperationContext, data: BusinessCreateIn) -> dict:
     _subscribe_to_free(hub, plan, now)
     record_event(ctx, events.BUSINESS_CREATED, {"id": str(hub.id)})
     push_after_commit(hub.id)
-    return queries.business_detail(owner)
+    return businesses.business_detail(owner)
 
 
 def check_free_quota(user, excluding: UUID | None = None) -> None:
@@ -233,7 +233,7 @@ def check_free_quota(user, excluding: UUID | None = None) -> None:
     serialised here, so the second counts the business the first is creating.
     """
     get_user_model().objects.select_for_update().filter(pk=user.pk).first()
-    queries.refuse_full_free_quota(user, excluding=excluding)
+    signup.refuse_full_free_quota(user, excluding=excluding)
 
 
 def _create_hub(
@@ -260,7 +260,7 @@ def _create_hub(
     for _attempt in range(SLUG_ATTEMPTS):
         try:
             with transaction.atomic():
-                return Hub.objects.create(slug=queries.free_slug(data.name), **fields)
+                return Hub.objects.create(slug=addresses.free_slug(data.name), **fields)
         except IntegrityError:
             continue  # another sign-up took it between the read and the write: the next one is free
     raise _slug_taken()
@@ -291,7 +291,7 @@ def _chosen_slug(slug: str, excluding: UUID | None = None) -> str:
         raise fields_refused({"slug": message}) from None
     if slug == account_services.PLATFORM_HOST_SLUG:
         raise Conflict(_("This address is reserved. Choose another one."), code="hubs.slug_reserved")
-    if queries.slug_taken(slug, excluding=excluding):
+    if addresses.slug_taken(slug, excluding=excluding):
         raise _slug_taken()
     return slug
 
@@ -303,7 +303,7 @@ def _slug_taken() -> Conflict:
 
 
 def _subscribe_to_free(hub: Hub, plan, now) -> Subscription:
-    trial = queries.trial_plan()
+    trial = plan_catalog.trial_plan()
     if trial is None:
         subscription = Subscription.objects.create(
             hub=hub,
@@ -353,9 +353,9 @@ def _subscribe_to_free(hub: Hub, plan, now) -> Subscription:
 )
 def business_update(ctx: OperationContext, data: BusinessUpdateIn) -> dict:
     """Name, country, language and time zone (the Settings tab): the owner and the administrators. The
-    country is read-only once the business is ready (``queries.country_locked``): a change is the 409
+    country is read-only once the business is ready (``businesses.country_locked``): a change is the 409
     ``hubs.country_locked``; sending the same one again is no change."""
-    member = queries.access(queries.account_of(ctx), data.id, Role.ADMIN, lock=True)
+    member = access_control.access(access_control.account_of(ctx), data.id, Role.ADMIN, lock=True)
     hub = member.hub
     if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
         raise business_deleted()
@@ -363,7 +363,7 @@ def business_update(ctx: OperationContext, data: BusinessUpdateIn) -> dict:
     changes = {
         field: value for field, value in sent.items() if getattr(hub, field) != value
     }
-    if "country" in changes and queries.country_locked(hub):
+    if "country" in changes and businesses.country_locked(hub):
         raise Conflict(
             _("The country cannot change once the business is ready: its invoices belong to one country."),
             code="hubs.country_locked",
@@ -376,7 +376,7 @@ def business_update(ctx: OperationContext, data: BusinessUpdateIn) -> dict:
         hub.save(update_fields=[*changes, "pending_hub_call", "registry_version", "updated_at"])
         record_event(ctx, events.BUSINESS_UPDATED, {"id": str(hub.id)})
         push_after_commit(hub.id)
-    return queries.business_detail(member)
+    return businesses.business_detail(member)
 
 
 @operation(
@@ -408,12 +408,12 @@ def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> d
     (``live.slugs``). The Hub registers it and the snapshot carries it, both pushed after the COMMIT; the jump
     follows it. The address it leaves stays the business's own (``previous_slug``), so no other business takes
     it and receives the old links and QR codes. The same address again changes nothing."""
-    member = queries.access(queries.account_of(ctx), data.id, Role.OWNER, lock=True)
+    member = access_control.access(access_control.account_of(ctx), data.id, Role.OWNER, lock=True)
     hub = member.hub
     if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
         raise business_deleted()
     if data.slug == hub.slug:
-        return queries.business_detail(member)
+        return businesses.business_detail(member)
     slug = _chosen_slug(data.slug, excluding=hub.id)
     previous = hub.slug
     hub.slug = slug
@@ -438,7 +438,7 @@ def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> d
     hub.refresh_from_db()
     record_event(ctx, events.BUSINESS_ADDRESS_CHANGED, {"id": str(hub.id), "slug": slug, "previous_slug": previous})
     push_after_commit(hub.id)
-    return queries.business_detail(member)
+    return businesses.business_detail(member)
 
 
 @operation(
@@ -471,7 +471,7 @@ def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> d
 def business_delete(ctx: OperationContext, data: BusinessDeleteIn) -> dict:
     """The owner deletes the business: it stops opening at once, the Hub keeps it 90 days, and the plan goes
     back to Free on the spot (it comes back on Free)."""
-    member = queries.access(queries.account_of(ctx), data.id, Role.OWNER, lock=True)
+    member = access_control.access(access_control.account_of(ctx), data.id, Role.OWNER, lock=True)
     hub = member.hub
     if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
         raise business_deleted()
@@ -479,7 +479,7 @@ def business_delete(ctx: OperationContext, data: BusinessDeleteIn) -> dict:
         reason = _("Type the name of the business to delete it.")
         raise InvalidPayload(reason, fields={"confirm_name": reason})
     _delete_business(ctx, hub, member.user, base_url=emails.base_url(ctx.request))
-    return queries.business_detail(member)
+    return businesses.business_detail(member)
 
 
 def _delete_business(ctx: OperationContext, hub: Hub, owner, *, base_url: str, unpaid: bool = False) -> None:
@@ -527,14 +527,14 @@ def _send_deletion(hub: Hub, owner, *, base_url: str, unpaid: bool) -> None:
     never gets one (``available`` false: no database of its own). The Hub away or refusing keeps the way to it: the page
     itself promises nothing it cannot keep."""
     try:
-        data_copy = queries.hub_data_copies(hub.id)["available"]
+        data_copy = data_copies.hub_data_copies(hub.id)["available"]
     except (HubUnavailable, HubRefused):
         data_copy = True
     emails.send_deletion(hub, owner, base_url=base_url, unpaid=unpaid, data_copy=data_copy)
 
 
 def _back_to_free(hub: Hub) -> None:
-    plan = queries.free_plan()
+    plan = plan_catalog.free_plan()
     if plan is None:
         return
     Subscription.objects.filter(hub=hub).update(
@@ -570,7 +570,7 @@ def _back_to_free(hub: Hub) -> None:
 )
 def business_restore(ctx: OperationContext, data: ByIdIn) -> dict:
     """The owner recovers a deleted business within its 90 days, on Free."""
-    member = queries.access(queries.account_of(ctx), data.id, Role.OWNER, lock=True)
+    member = access_control.access(access_control.account_of(ctx), data.id, Role.OWNER, lock=True)
     hub = member.hub
     if hub.status != Hub.Status.DELETING:
         raise Conflict(
@@ -599,7 +599,7 @@ def business_restore(ctx: OperationContext, data: ByIdIn) -> dict:
     hub.refresh_from_db()
     record_event(ctx, events.BUSINESS_RESTORED, {"id": str(hub.id)})
     push_after_commit(hub.id)
-    return queries.business_detail(member)
+    return businesses.business_detail(member)
 
 
 # --- Entering -------------------------------------------------------------------------------------
@@ -634,7 +634,7 @@ def business_open(ctx: OperationContext, data: BusinessOpenIn) -> dict:
     (``shell``), the jump carries ``shell=1``: the app links the till to the hub a navigation with that mark
     reaches when it leaves erplora.com (``ERPlora/app`` ``hub_link.rs``).
     """
-    member = queries.access(queries.account_of(ctx), data.id)
+    member = access_control.access(access_control.account_of(ctx), data.id)
     hub = member.hub
     if hub.status in NOT_OPENING:
         code, message = NOT_OPENING[hub.status]
@@ -650,7 +650,7 @@ def business_open(ctx: OperationContext, data: BusinessOpenIn) -> dict:
 
 def system_ctx_for(hub_id: UUID) -> OperationContext:
     """The platform acting on a business, in its owner's channel (its live lists re-run)."""
-    owner = queries.owner_id(hub_id)
+    owner = membership.owner_id(hub_id)
     return system_context(Scope("user", str(owner) if owner else "system"))
 
 
@@ -675,7 +675,7 @@ def business_mark_ready(ctx: OperationContext, data: MarkReadyIn) -> dict:
         )
     hub = Hub.objects.select_for_update().filter(pk=data.id).first()
     if hub is None:
-        raise queries.not_found()
+        raise access_control.not_found()
     changed = []
     if hub.ready_at is None:
         hub.ready_at = timezone.now()
@@ -713,7 +713,7 @@ def _system_hub(ctx: OperationContext, data: HubErrorIn | HubMaintenanceIn) -> H
         raise PermissionDenied(_("Only the platform records the Hub's answers."), code="internal_command")
     hub = Hub.objects.select_for_update().filter(pk=data.id).first()
     if hub is None:
-        raise queries.not_found()
+        raise access_control.not_found()
     return hub
 
 
@@ -782,7 +782,7 @@ def business_record_maintenance(ctx: OperationContext, data: HubMaintenanceIn) -
 )
 def business_check(ctx: OperationContext, data: ByIdIn) -> dict:
     """Run the scheduled status poll now for a member, without another path to the Hub or a version bump."""
-    member = queries.access(queries.account_of(ctx), data.id)
+    member = access_control.access(access_control.account_of(ctx), data.id)
     if member.hub.status == Hub.Status.PREPARING and member.hub.ready_at is None:
         counts = Counter()
         _settle_stuck(data.id, counts)
@@ -792,7 +792,7 @@ def business_check(ctx: OperationContext, data: ByIdIn) -> dict:
                 code="hubs.status_unavailable",
                 status=503,
             )
-    return queries.business_detail(member)
+    return businesses.business_detail(member)
 
 
 @operation(
@@ -817,7 +817,7 @@ def notify_people(ctx: OperationContext, event: str, hub_id: UUID, *also) -> Non
     its own channel (``hubs.business.notify_people``), but the actor, whose own event already re-runs its
     lists. Called inside the command: it leaves after the COMMIT, and nothing leaves if it rolls back."""
     actor = getattr(ctx.actor, "pk", None)
-    for user_id in queries.people_to_tell(hub_id, also):
+    for user_id in membership.people_to_tell(hub_id, also):
         if user_id != actor:
             business_notify_people(system_context(Scope("user", str(user_id))), NotifyPeopleIn(id=hub_id, event=event))
 
@@ -835,11 +835,11 @@ def _managed(ctx: OperationContext, member_id: UUID, role: str | None = None) ->
     The actor must be an admin or the owner of the target's business (404 otherwise, 403 below
     admin), never act on itself nor on a peer or a superior, and never hand out its own rank or more.
     """
-    user = queries.account_of(ctx)
+    user = access_control.account_of(ctx)
     hub_id = HubMember.objects.filter(pk=member_id).values_list("hub_id", flat=True).first()
     if hub_id is None:
         raise _member_not_found()
-    actor = queries.access(user, hub_id, Role.ADMIN, lock=True)
+    actor = access_control.access(user, hub_id, Role.ADMIN, lock=True)
     if actor.hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
         raise business_deleted()
     target = (
@@ -852,9 +852,9 @@ def _managed(ctx: OperationContext, member_id: UUID, role: str | None = None) ->
         raise _member_not_found()
     if target.user_id == actor.user_id:
         raise PermissionDenied(_("You cannot change your own membership."), code="hubs.own_membership")
-    if not queries.manages(actor, target):
+    if not membership.manages(actor, target):
         raise PermissionDenied(_("You cannot manage a member whose role is equal to or above yours."))
-    if role is not None and role not in queries.assignable_roles(actor.role):
+    if role is not None and role not in membership.assignable_roles(actor.role):
         raise PermissionDenied(_("You cannot hand out a role equal to or above yours."))
     return actor, target
 
@@ -862,7 +862,7 @@ def _managed(ctx: OperationContext, member_id: UUID, role: str | None = None) ->
 def _check_seat(hub: Hub, now) -> None:
     """The plan covers one more person, checked where the seat is spent: inviting (a live invitation holds
     its seat), and renewing an invitation that had expired."""
-    seats = queries.seats_of(hub, now)
+    seats = membership.seats_of(hub, now)
     if seats["limit"] is not None and seats["used"] >= seats["limit"]:
         raise SeatLimitReached(
             _("This plan covers %(cap)s people and they are all taken.") % {"cap": seats["limit"]},
@@ -875,12 +875,12 @@ def _check_seat_to_enter(hub: Hub, now) -> None:
     """The plan still has a seat beside the people already inside: an invitation sent while nothing
     capped it (the Starter trial) and answered once the plan covers fewer people is first come, first
     served. Within the cap it always passes, because the invitation already holds its seat."""
-    limit = queries.seat_limit_of(hub, now)
-    if limit is not None and queries.people_inside(hub) >= limit:
+    limit = membership.seat_limit_of(hub, now)
+    if limit is not None and membership.people_inside(hub) >= limit:
         raise SeatLimitReached(
             _("This business has no seat left on its plan. Ask whoever invited you to free one or to change the plan."),
             limit=limit,
-            used=queries.seats_of(hub, now)["used"],
+            used=membership.seats_of(hub, now)["used"],
         )
 
 
@@ -932,11 +932,11 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
     claims it, and its sessions in every business end. The plan must have a seat for one
     more person. It reaches the Hub only once answered. An expired invitation is renewed.
     """
-    actor = queries.access(queries.account_of(ctx), data.hub_id, Role.ADMIN, lock=True)
+    actor = access_control.access(access_control.account_of(ctx), data.hub_id, Role.ADMIN, lock=True)
     hub = actor.hub
     if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
         raise business_deleted()
-    if data.role not in queries.assignable_roles(actor.role):
+    if data.role not in membership.assignable_roles(actor.role):
         raise PermissionDenied(_("You cannot hand out a role equal to or above yours."))
     now = timezone.now()
     member = HubMember.objects.select_for_update().select_related("user").filter(hub=hub, user__email__iexact=data.email).first()
@@ -949,9 +949,9 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
                 _("%(email)s already has an invitation waiting. Resend it instead.") % {"email": data.email},
                 code="hubs.already_invited",
             )
-        if not queries.manages(actor, member):
+        if not membership.manages(actor, member):
             raise PermissionDenied(_("You cannot manage a member whose role is equal to or above yours."))
-        queries.refuse_staff(member.user)
+        signup.refuse_staff(member.user)
         _check_seat(hub, now)
         member.role = data.role
         member.invitation_message = data.message
@@ -963,7 +963,7 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
         if user is None:
             user = get_user_model().objects.create_user(email=data.email, password=None, language=hub.language)
         else:
-            queries.refuse_staff(user)
+            signup.refuse_staff(user)
             if not account_queries.email_is_proven(user, data.email):
                 account_services.release_unproven_account(user, reason="invited_while_unverified")
                 revoke_after_commit(user.pk)
@@ -980,7 +980,7 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
     record_event(ctx, events.MEMBER_INVITED, {"id": str(member.id), "hub_id": str(hub.id)})
     notify_people(ctx, events.MEMBER_CHANGED, hub.id, member.user_id)
     _mail_invitation(ctx, member)
-    return queries.member_row(actor, member, now)
+    return membership.member_row(actor, member, now)
 
 
 @operation(
@@ -1011,7 +1011,7 @@ def member_change_role(ctx: OperationContext, data: MemberRoleIn) -> dict:
             revoke_after_commit(target.user_id, target.hub_id)
         record_event(ctx, events.MEMBER_ROLE_CHANGED, {"id": str(target.id), "hub_id": str(target.hub_id)})
         notify_people(ctx, events.MEMBER_CHANGED, target.hub_id, target.user_id)
-    return queries.member_row(actor, target, timezone.now())
+    return membership.member_row(actor, target, timezone.now())
 
 
 @operation(
@@ -1050,12 +1050,12 @@ def member_remove(ctx: OperationContext, data: ByIdIn) -> dict:
 
 
 def _refuse_a_payer(target: HubMember) -> None:
-    """Whoever still pays for the business (the owner before a hand-over, ``queries.still_pays``) stays in it
+    """Whoever still pays for the business (the owner before a hand-over, ``payers.still_pays``) stays in it
     until the business is paid otherwise; out of it, it would pay for a business it no longer sees."""
-    if not queries.still_pays(target):
+    if not payers.still_pays(target):
         return
     name = target.user.get_full_name() or target.user.email
-    if queries.is_payer(target):
+    if payers.is_payer(target):
         message = _(
             "%(name)s still pays for this business. Say who pays from now on first: your billing details are asked "
             "when you pay a plan or a module here."
@@ -1113,7 +1113,7 @@ def member_resend(ctx: OperationContext, data: ByIdIn) -> dict:
     """Send the invitation again: it gets 7 more days."""
     actor, target = _managed(ctx, data.id)
     _pending_only(target)
-    queries.refuse_staff(target.user)
+    signup.refuse_staff(target.user)
     now = timezone.now()
     if target.is_expired(now):
         _check_seat(target.hub, now)
@@ -1121,7 +1121,7 @@ def member_resend(ctx: OperationContext, data: ByIdIn) -> dict:
     record_event(ctx, events.MEMBER_INVITATION_RESENT, {"id": str(target.id), "hub_id": str(target.hub_id)})
     notify_people(ctx, events.MEMBER_CHANGED, target.hub_id, target.user_id)
     _mail_invitation(ctx, target)
-    return queries.member_row(actor, target, now)
+    return membership.member_row(actor, target, now)
 
 
 @operation(
@@ -1159,7 +1159,7 @@ def _my_invitation(ctx: OperationContext, member_id: UUID) -> HubMember:
     The security boundary of answering: nothing that is not the caller's own pending row can be
     reached, so no poked id, replay or foreign invitation grants anything.
     """
-    user = queries.account_of(ctx)
+    user = access_control.account_of(ctx)
     hub_id = (
         HubMember.objects.filter(pk=member_id, user=user, accepted_at__isnull=True).values_list("hub_id", flat=True).first()
     )
@@ -1199,7 +1199,7 @@ def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     still has a seat beside the people already inside (``_check_seat_to_enter``). An account that never
     proved its address confirms it first (403 ``hubs.email_unverified``)."""
     member = _my_invitation(ctx, data.id)
-    queries.refuse_staff(member.user)
+    signup.refuse_staff(member.user)
     if not account_queries.email_is_proven(member.user, member.user.email):
         raise PermissionDenied(
             _("Confirm your email address before accepting the invitation."), code="hubs.email_unverified"
@@ -1216,7 +1216,7 @@ def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     record_event(ctx, events.INVITATION_ACCEPTED, {"id": str(member.id), "hub_id": str(member.hub_id)})
     notify_people(ctx, events.MEMBER_CHANGED, member.hub_id)
     push_after_commit(member.hub_id)
-    return queries.business_row(member, now)
+    return businesses.business_row(member, now)
 
 
 @operation(
@@ -1305,7 +1305,7 @@ def ownership_transfer(ctx: OperationContext, data: OwnershipTransferIn) -> dict
 
     The payer does not move with it; the outgoing owner stays as admin.
     """
-    actor = queries.access(queries.account_of(ctx), data.hub_id, Role.OWNER, lock=True)
+    actor = access_control.access(access_control.account_of(ctx), data.hub_id, Role.OWNER, lock=True)
     hub = actor.hub
     if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
         raise business_deleted()
@@ -1338,7 +1338,7 @@ def ownership_transfer(ctx: OperationContext, data: OwnershipTransferIn) -> dict
             emails.send_ownership_offer,
             transfer,
             base_url=emails.base_url(ctx.request),
-            paid_until=queries.paid_until(hub.id),
+            paid_until=payers.paid_until(hub.id),
         ),
         robust=True,
     )
@@ -1353,7 +1353,7 @@ def _answer(ctx: OperationContext, transfer_id: UUID, party: str) -> HubOwnershi
     transaction), so the row moves off ``pending`` when the next offer of the business is made, and
     every read already hides it by its clock.
     """
-    user = queries.account_of(ctx)
+    user = access_control.account_of(ctx)
     hub_id = HubOwnershipTransfer.objects.filter(pk=transfer_id, **{party: user}).values_list("hub_id", flat=True).first()
     if hub_id is None:
         raise NotFound(_("This transfer does not exist or is not yours to answer."))
@@ -1542,7 +1542,7 @@ def billing_profile_update(ctx: OperationContext, data: BillingProfileIn) -> dic
     from billing import vat
     from billing.services import MalformedVatNumber, retax_payer, validate_vat_for_profile
 
-    member = queries.access(queries.account_of(ctx), data.hub_id, Role.OWNER, lock=True)
+    member = access_control.access(access_control.account_of(ctx), data.hub_id, Role.OWNER, lock=True)
     hub = member.hub
     values = data.model_dump(exclude={"hub_id"})
     if data.same_as_business:
@@ -1574,7 +1574,7 @@ def billing_profile_update(ctx: OperationContext, data: BillingProfileIn) -> dic
     record_event(ctx, events.BILLING_PROFILE_UPDATED, {"hub_id": str(hub.id)})
     # The live subscription takes the rate of the new place from its next invoice (BILLING-F02).
     transaction.on_commit(partial(retax_payer, profile.pk))
-    return queries.payer_of(hub, member.user)
+    return payers.payer_of(hub, member.user)
 
 
 # --- What Stripe says of the plan (billing) ------------------------------------------------------
@@ -1630,7 +1630,7 @@ def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict
         raise PermissionDenied(_("Only the platform applies what Stripe says."), code="internal_command")
     hub = Hub.objects.select_for_update().filter(pk=data.hub_id).first()
     if hub is None:
-        raise queries.not_found()
+        raise access_control.not_found()
     sent = data.model_dump(exclude_unset=True, exclude={"hub_id"})
     seen_before = _what_the_hub_sees(hub.id)
     subscription = Subscription.objects.select_for_update().filter(hub=hub).first()
@@ -1645,7 +1645,7 @@ def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict
             reason = _("There is no plan with this identifier.")
             raise InvalidPayload(reason, fields={"plan": reason})
     if subscription is None:
-        subscription = Subscription(hub=hub, plan=plan or queries.free_plan())
+        subscription = Subscription(hub=hub, plan=plan or plan_catalog.free_plan())
         changed = True
     changes = {}
     if plan is not None and subscription.plan_id != plan.pk:
@@ -1698,7 +1698,7 @@ def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict
 
 
 def _what_the_hub_sees(hub_id: UUID) -> tuple:
-    snapshot = queries.hub_snapshot(hub_id)
+    snapshot = hub_sync.hub_snapshot(hub_id)
     return snapshot["status"], snapshot["plan"], snapshot["modules"]
 
 
@@ -1749,10 +1749,10 @@ def sync_plan_modules(subscription: Subscription, now=None) -> bool:
     Called wherever the plan may change: ``hubs.subscription.apply``, the sign-up, the restore, a trial's end.
     """
     now = now or timezone.now()
-    wanted = dict.fromkeys(queries.modules_included_in(subscription.plan))
+    wanted = dict.fromkeys(plan_catalog.modules_included_in(subscription.plan))
     effective = subscription.effective_plan(now)
     if effective.pk != subscription.plan_id:
-        for slug in queries.modules_included_in(effective):
+        for slug in plan_catalog.modules_included_in(effective):
             wanted.setdefault(slug, subscription.trial_end)
     items = SubscriptionItem.objects.filter(subscription=subscription)
     rows = {item.module_slug: item for item in items}
@@ -1778,7 +1778,7 @@ def sync_plan_modules(subscription: Subscription, now=None) -> bool:
 
 
 def owe_plan_rights(plan: Plan, now=None) -> int:
-    """The staff changed in the admin what ``plan`` gives (``queries.SNAPSHOT_PLAN_FIELDS``; HUBS-F31): each live
+    """The staff changed in the admin what ``plan`` gives (``hub_sync.SNAPSHOT_PLAN_FIELDS``; HUBS-F31): each live
     business on it, as its plan or as the trial's, gets the modules of its level written (``sync_plan_modules``) and,
     when its snapshot changes, owes the Hub a newer one, which the next pass of ``reconcile_hub_states`` (every 15
     minutes) delivers instead of the night's. How many businesses owe it.
@@ -1804,10 +1804,10 @@ def owe_module_rights(tier: str, previous_tier: str | None = None, now=None) -> 
     and, where they changed, owes the Hub a newer snapshot, which the next pass of ``reconcile_hub_states`` delivers.
     How many businesses owe it. Never pushed here, as ``owe_plan_rights``."""
     now = now or timezone.now()
-    reached = [queries.LEVELS.index(level) for level in (tier, previous_tier) if level in queries.LEVELS]
+    reached = [plan_catalog.LEVELS.index(level) for level in (tier, previous_tier) if level in plan_catalog.LEVELS]
     if not reached:
         return 0
-    plans = Plan.objects.filter(included_level__in=queries.LEVELS[min(reached) :])
+    plans = Plan.objects.filter(included_level__in=plan_catalog.LEVELS[min(reached) :])
     owed = 0
     subscriptions = Subscription.objects.select_related("plan", "trial_plan").filter(
         Q(plan__in=plans) | Q(trial_plan__in=plans), hub__status__in=LIVE_STATUSES
@@ -1868,7 +1868,7 @@ def seed_demo_business(slug: str, people: dict) -> Hub:
                 pushed_state_version=1,
                 state_version=1,
             )
-            plan = queries.free_plan()
+            plan = plan_catalog.free_plan()
             if plan is not None:
                 sync_plan_modules(
                     Subscription.objects.create(
@@ -1940,7 +1940,7 @@ def account_email_changed(sender, user, **kwargs) -> None:
 
 
 def _people_changed(user_id: UUID) -> None:
-    for hub_id in queries.answered_business_ids(user_id):
+    for hub_id in membership.answered_business_ids(user_id):
         bump_state(hub_id)
         push_after_commit(hub_id)
         notify_people(system_ctx_for(hub_id), events.MEMBER_CHANGED, hub_id)
@@ -2042,14 +2042,14 @@ def sync_outcome(hub_id: UUID) -> str:  # noqa: C901, PLR0911
                 return DELIVERED
         if call == Call.PUT:
             version = hub.registry_version
-            hub_client.put_hub(queries.hub_registry(hub.id))
+            hub_client.put_hub(hub_sync.hub_registry(hub.id))
             record_registry_answered(hub.id, version)
         hub.refresh_from_db(fields=["state_version", "pushed_state_version"])
         if hub.pushed_state_version < hub.state_version:
             # The registry is acknowledged by now: a refusal from here on is the snapshot's (a ``whatsapp`` block
             # out of the Hub's schema refuses it whole), and the log has to say which.
             call = "state"
-            snapshot = queries.hub_snapshot(hub.id)
+            snapshot = hub_sync.hub_snapshot(hub.id)
             hub_client.put_state(str(hub.id), snapshot)
             record_state_pushed(hub.id, snapshot["version"])
     except HubUnavailable as failed:
@@ -2232,7 +2232,7 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER, go_on: Callable[[]
         return not counts["cut_short"]
 
     cutoff = now - Hub.RETENTION
-    for hub_id in expired_deletions(cutoff):
+    for hub_id in businesses.expired_deletions(cutoff):
         # Re-checked by the UPDATE itself: a business restored since the read is left alone.
         purged = Hub.objects.filter(pk=hub_id, status=Hub.Status.DELETING, deletion_requested_at__lte=cutoff).update(
             status=Hub.Status.DELETED, updated_at=now
@@ -2336,7 +2336,7 @@ def _tell_data_copy(hub_id: UUID, counts: Counter) -> None:
     cannot leave counts ``data_copy_unsent`` and is tried again next pass, ``DATA_COPY_MAIL_ATTEMPTS`` times at most."""
     hub = Hub.objects.get(pk=hub_id)
     try:
-        kept = queries.hub_data_copies(hub.id)
+        kept = data_copies.hub_data_copies(hub.id)
     except (HubUnavailable, HubRefused):
         counts["unreachable"] += 1
         return
@@ -2500,19 +2500,19 @@ def custom_domain_request(ctx: OperationContext, data: CustomDomainRequestIn) ->
     certificate left in ACM is free, tagged and on nothing. Before the business's row is locked, what the Hub would refuse
     and the DNS: a slow answer holds no other write of the business.
     """
-    user = queries.account_of(ctx)
-    hub = queries.access(user, data.id, Role.OWNER).hub
+    user = access_control.account_of(ctx)
+    hub = access_control.access(user, data.id, Role.OWNER).hub
     _custom_domains_on()
     if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
         raise business_deleted()
-    plan = queries.effective_plan(hub.id, timezone.now())
+    plan = plan_catalog.effective_plan(hub.id, timezone.now())
     if plan is None or not plan.includes_custom_domain:
         raise Conflict(_("The plan of this business does not include an own domain."), code="hubs.custom_domain_not_in_plan")
     hostname = _hostname_of(data.domain)
-    queries.access(user, data.id, Role.OWNER, lock=True)
+    access_control.access(user, data.id, Role.OWNER, lock=True)
     row = CustomDomain.objects.select_for_update().filter(hub=hub).first()
     if row is not None and row.hostname == hostname and row.state in (CustomDomain.State.PENDING, CustomDomain.State.ACTIVE):
-        return queries.custom_domain_of(row, ctx.language)
+        return custom_domains.custom_domain_of(row, ctx.language)
     if row is not None and (row.state != CustomDomain.State.LAPSED or row.certificate_arn):
         raise Conflict(_("This business already has a domain. Remove it first."), code="hubs.custom_domain_exists")
     if CustomDomain.objects.filter(hostname=hostname, proven_at__isnull=False).exclude(hub=hub).exists():
@@ -2527,13 +2527,13 @@ def custom_domain_request(ctx: OperationContext, data: CustomDomainRequestIn) ->
     row.save()
     _ask_for_a_certificate(row)
     record_event(ctx, events.CUSTOM_DOMAIN_CHANGED, {"business_id": str(hub.id)})
-    return queries.custom_domain_of(row, ctx.language)
+    return custom_domains.custom_domain_of(row, ctx.language)
 
 
 def _ask_for_a_certificate(row: CustomDomain) -> None:
     """The certificate of a domain that just came, and its validation record if ACM has it in time. Whatever fails, the
     hourly check tries again with the same token."""
-    if not queries.listener_has_room():
+    if not custom_domains.listener_has_room():
         row.reason = CustomDomain.Reason.QUOTA_FULL
         row.save()
         return
@@ -2576,11 +2576,11 @@ def _ask_for_a_certificate(row: CustomDomain) -> None:
 def custom_domain_remove(ctx: OperationContext, data: ByIdIn) -> dict:
     """The snapshot first: the Hub stops serving it, then the certificate goes, and the row last, which frees the name
     (after the COMMIT, and the hourly check finishes whatever is left)."""
-    hub = queries.access(queries.account_of(ctx), data.id, Role.OWNER, lock=True).hub
+    hub = access_control.access(access_control.account_of(ctx), data.id, Role.OWNER, lock=True).hub
     _custom_domains_on()
     row = CustomDomain.objects.select_for_update().filter(hub=hub).first()
     if row is None:
-        raise queries.not_found()
+        raise access_control.not_found()
     if row.state != CustomDomain.State.REMOVING:
         was_in_snapshot = row.in_snapshot
         row.state = CustomDomain.State.REMOVING
@@ -2589,7 +2589,7 @@ def custom_domain_remove(ctx: OperationContext, data: ByIdIn) -> dict:
             bump_state(hub.id)
         record_event(ctx, events.CUSTOM_DOMAIN_CHANGED, {"business_id": str(hub.id)})
     transaction.on_commit(partial(_finish_removal_quietly, row.id), robust=True)
-    return queries.custom_domain_status(hub, ctx.language)
+    return custom_domains.custom_domain_status(hub, ctx.language)
 
 
 def _finish_removal_quietly(domain_id: UUID) -> None:
@@ -2671,13 +2671,13 @@ def _learned(row: CustomDomain, **facts) -> CustomDomain:
     )
     if not answer.recorded:
         raise _DomainMovedOn(str(row.id))
-    return queries.custom_domain_row(row.id) if not facts.get("forget") else row
+    return custom_domains.custom_domain_row(row.id) if not facts.get("forget") else row
 
 
 def check_custom_domains() -> Counter:
     """One pass of ``check_custom_domains``: every domain, each on its own, and at the end the certificates attached."""
     counts = Counter(checked=0, crashed=0)
-    for domain_id in queries.custom_domain_ids():
+    for domain_id in custom_domains.custom_domain_ids():
         counts["checked"] += 1
         try:
             counts[_check_custom_domain(domain_id)] += 1
@@ -2685,7 +2685,7 @@ def check_custom_domains() -> Counter:
             logger.exception("hubs.custom_domain.crashed domain=%s", domain_id)
             counts["crashed"] += 1
     try:
-        edge_client.publish_certificates_attached(queries.certificates_attached())
+        edge_client.publish_certificates_attached(custom_domains.certificates_attached())
     except edge_client.EdgeUnavailable as error:
         logger.error("hubs.custom_domain.metric_unpublished: %s", error)
         counts["metric_unpublished"] = 1
@@ -2699,7 +2699,7 @@ def custom_domains_failed(counts: Counter) -> bool:
 
 def _check_custom_domain(domain_id: UUID) -> str:  # noqa: PLR0911
     """Move one domain as far as it goes today; the outcome names what happened, for the counts of the pass."""
-    row = queries.custom_domain_row(domain_id)
+    row = custom_domains.custom_domain_row(domain_id)
     if row is None:
         return "gone"
     try:
@@ -2707,7 +2707,7 @@ def _check_custom_domain(domain_id: UUID) -> str:  # noqa: PLR0911
             return _finish_removal(row)
         if row.hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
             return _lapse(row, CustomDomain.Reason.BUSINESS_GONE)
-        plan = queries.effective_plan(row.hub_id, timezone.now())
+        plan = plan_catalog.effective_plan(row.hub_id, timezone.now())
         if plan is None or not plan.includes_custom_domain:
             return _lapse(row, CustomDomain.Reason.NOT_IN_PLAN)
         if row.state == CustomDomain.State.LAPSED:
@@ -2728,7 +2728,7 @@ def _check_pending(row: CustomDomain) -> str:  # noqa: C901, PLR0911, PLR0912
     target = domain_checks.target_of(row.hub_id)
     try:
         if not row.certificate_arn:
-            if not queries.listener_has_room():
+            if not custom_domains.listener_has_room():
                 _learned(row, reason=CustomDomain.Reason.QUOTA_FULL)
                 return "waiting"
             row = _learned(row, certificate_arn=edge_client.request_certificate(row.hostname, row.certificate_token))
@@ -2742,7 +2742,7 @@ def _check_pending(row: CustomDomain) -> str:  # noqa: C901, PLR0911, PLR0912
             reason = CustomDomain.Reason.VALIDATION_TIMED_OUT if facts.status == _TIMED_OUT else CustomDomain.Reason.CERTIFICATE_FAILED
             return _lapse(row, reason)
         if not row.attached_at:
-            if not queries.listener_has_room():
+            if not custom_domains.listener_has_room():
                 _learned(row, reason=CustomDomain.Reason.QUOTA_FULL, **validation)
                 return "waiting"
             try:
@@ -2846,7 +2846,7 @@ def _check_lapsed(row: CustomDomain) -> str:
         return outcome
     if row.reason not in CustomDomain.RETURNS_BY_ITSELF:
         return "lapsed"
-    row = queries.custom_domain_row(row.id)
+    row = custom_domains.custom_domain_row(row.id)
     try:
         back = domain_checks.points_at(row.hostname, domain_checks.target_of(row.hub_id))
     except domain_checks.DnsUnavailable as error:
@@ -2936,7 +2936,7 @@ def usage_record(ctx: OperationContext, data: UsageRecordIn) -> dict:
     if ctx.actor != "system":
         raise PermissionDenied(_("Only the platform records the usage of a business."), code="internal_command")
     if not Hub.objects.filter(pk=data.id).exists():
-        raise queries.not_found()
+        raise access_control.not_found()
     figures = {name: getattr(data, name) for name in USAGE_FIGURES}
     sample, created = HubUsageDaily.objects.select_for_update().get_or_create(
         hub_id=data.id, day=data.day, defaults=figures

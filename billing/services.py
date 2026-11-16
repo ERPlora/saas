@@ -98,7 +98,7 @@ from billing.stripe_period import subscription_period
 from billing.stripe_tax_rates import TaxRateSpec, tax_rate_specs_for
 from hubs import emails as hub_emails
 from hubs import hub_client
-from hubs import queries as hub_queries
+from hubs.queries import access_control, membership, payers, plan_catalog
 from hubs import services as hub_services
 from hubs.models import BillingProfile, Hub, HubMember, Plan, Subscription, SubscriptionItem
 from hubs.hub_client import HubRefused, HubUnavailable
@@ -892,9 +892,9 @@ def _owned(ctx: OperationContext, hub_id) -> tuple[Hub, Subscription | None]:
     ``billing.payer_required``): they say who pays first (``hubs.billing_profile.update`` gives the business
     a payer of theirs). A subscription still billed to the previous payer's customer is kept with the new owner's
     card first («Keep it with my card», ``billing.plan.take_over``)."""
-    user = hub_queries.account_of(ctx)
-    member = hub_queries.access(user, hub_id, HubMember.Role.OWNER, lock=True)
-    if not hub_queries.is_writable(member.hub):
+    user = access_control.account_of(ctx)
+    member = access_control.access(user, hub_id, HubMember.Role.OWNER, lock=True)
+    if not access_control.is_writable(member.hub):
         raise hub_services.business_deleted()
     hub = Hub.objects.select_related("billing_profile").get(pk=member.hub_id)
     subscription = (
@@ -1473,7 +1473,7 @@ def _open_checkout(  # noqa: PLR0913, PLR0917
     customer = ensure_customer(hub)
     attempt = CheckoutAttempt.objects.create(
         hub=hub,
-        owner=hub_queries.account_of(ctx),
+        owner=access_control.account_of(ctx),
         kind=CheckoutAttempt.Kind.PLAN
         if sale.kind == "plan"
         else CheckoutAttempt.Kind.MODULE,
@@ -2083,7 +2083,7 @@ def end_renewal_after_hand_over(hub: Hub, new_owner) -> datetime | None:
     The end of that paid period, which the mail of the hand-over tells the previous payer; ``None`` on Free or when
     the new owner already pays it."""
     subscription = Subscription.objects.filter(hub=hub).first()
-    if not _paying(subscription) or hub_queries.plans_charged_to(hub.id, new_owner.pk).exists():
+    if not _paying(subscription) or payers.plans_charged_to(hub.id, new_owner.pk).exists():
         return None
     if subscription.cancel_at_period_end:
         return subscription.current_period_end
@@ -2131,13 +2131,13 @@ def plan_take_over(ctx: OperationContext, data: HubIn) -> dict:
     Only its owner (404 without access, 403 for another role); their own payer first (409
     ``billing.payer_required``, the form of the dialog); a business on Free or already paid with this owner's
     card has nothing to keep (409 ``billing.nothing_to_take_over``); an unpaid invoice is paid first."""
-    user = hub_queries.account_of(ctx)
-    member = hub_queries.access(user, data.hub_id, HubMember.Role.OWNER, lock=True)
-    if not hub_queries.is_writable(member.hub):
+    user = access_control.account_of(ctx)
+    member = access_control.access(user, data.hub_id, HubMember.Role.OWNER, lock=True)
+    if not access_control.is_writable(member.hub):
         raise hub_services.business_deleted()
     hub = Hub.objects.select_related("billing_profile").get(pk=member.hub_id)
     subscription = Subscription.objects.select_related("plan").filter(hub=hub).first()
-    if not _paying(subscription) or hub_queries.plans_charged_to(hub.id, user.pk).exists():
+    if not _paying(subscription) or payers.plans_charged_to(hub.id, user.pk).exists():
         raise _nothing_to_take_over()
     profile = hub.billing_profile
     if profile is None or profile.owner_id != user.pk:
@@ -2192,7 +2192,7 @@ def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[d
     customer = ensure_customer(hub)
     attempt = CheckoutAttempt.objects.create(
         hub=hub,
-        owner=hub_queries.account_of(ctx),
+        owner=access_control.account_of(ctx),
         kind=CheckoutAttempt.Kind.TAKEOVER,
         plan_slug=subscription.plan.slug if subscription.plan else "",
         billing_interval=subscription.billing_interval,
@@ -2591,7 +2591,7 @@ def live_state(hub: Hub, live: dict, now: datetime | None = None) -> dict:  # no
 
 
 def _free_slug() -> str:
-    plan = hub_queries.free_plan()
+    plan = plan_catalog.free_plan()
     return plan.slug if plan else "free"
 
 
@@ -2800,7 +2800,7 @@ def checkout_completed(session: dict) -> str:  # noqa: PLR0911
             attempt is not None
             and attempt.owner_id is not None
             and attempt.status != CheckoutAttempt.Status.COMPLETED
-            and attempt.owner_id != hub_queries.owner_id(hub.id)
+            and attempt.owner_id != membership.owner_id(hub.id)
         ):
             return _end_not_owner(hub, attempt, session, subscription_id)
         if checkout_session_kind(metadata) is CheckoutKind.PLAN_TAKEOVER:
@@ -3880,7 +3880,7 @@ def payer_leaving(sender, user_id, **kwargs) -> None:
     COMMIT, unless something can still be charged to it (``forget_departed_payer``; ``sweep_unpaid`` finishes).
 
     A live subscription only holds it here in a business that was deleted, which ``sweep_unpaid`` cancels on its
-    next pass. A business still alive never does: whoever still pays for it (``hubs.queries.still_pays``) can
+    next pass. A business still alive never does: whoever still pays for it (``hubs.queries.payers.still_pays``) can
     neither delete its account (409 ``accounts.pays_businesses``) nor be taken out of it (409 ``hubs.member_pays``)."""
     profile_ids = list(BillingProfile.objects.filter(owner_id=user_id).values_list("pk", flat=True))
     if not profile_ids:
@@ -4792,7 +4792,7 @@ def _record_invoice_event(ctx: OperationContext, invoice: Invoice, name: str, pa
     """Record an event of an invoice in the command's channel and tell, after the COMMIT, the other account that
     sees it too (its payer and its business's owner): both their Billing lists re-run."""
     record_event(ctx, name, payload)
-    owner = hub_queries.owner_id(invoice.hub_id) if invoice.hub_id else None
+    owner = membership.owner_id(invoice.hub_id) if invoice.hub_id else None
     viewers = {str(account) for account in (invoice.payer_account_id, owner) if account}
     for key in sorted(viewers - {ctx.scope.key}):
         transaction.on_commit(partial(notify, Scope("user", key), [name]), robust=True)
@@ -5149,7 +5149,7 @@ def invoice_pay(ctx: OperationContext, data: InvoicePayIn) -> dict:
     """Stripe's page to pay an invoice not collected (the panel opens it only on the web; the apps sell
     nothing). Only its payer pays it; with a card the bank declined, «Pay» waits until the
     card changes (409 ``billing.card_change_required``)."""
-    user = hub_queries.account_of(ctx)
+    user = access_control.account_of(ctx)
     invoice = queries.invoice_of(user, data.id)
     if invoice.payment_status == Invoice.PaymentStatus.PAID:
         raise Conflict(_("This invoice is paid already."), code="billing.invoice_paid")

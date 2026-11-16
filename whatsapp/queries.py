@@ -101,13 +101,13 @@ def channel_block(hub_id: UUID, *, version: int | None = None) -> dict[str, Any]
     own) and the mirror of Meta's otherwise. ``monthly_limit`` is the plan's ``whatsapp_messages_per_month`` (0: the
     plan includes none, and erplora.com refuses every send), ``monthly_usage`` this calendar month's (UTC) sends.
     """
-    from hubs import queries as hubs_queries
+    from hubs.queries import plan_catalog
 
     now = timezone.now()
     month = now.strftime("%Y-%m")
     if version is None:
         version = Hub.objects.filter(pk=hub_id).values_list("state_version", flat=True).get()
-    plan = hubs_queries.effective_plan(hub_id, now)
+    plan = plan_catalog.effective_plan(hub_id, now)
     number = PhoneNumber.objects.filter(hub_id=hub_id, is_active=True).first()
     used = Usage.objects.filter(hub_id=hub_id, month=month).values_list("used", flat=True).first() or 0
     status = "not_connected" if number is None else "reconnect_needed" if number.needs_reconnect else "connected"

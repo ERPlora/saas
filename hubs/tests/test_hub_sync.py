@@ -12,7 +12,8 @@ import pytest
 from django.utils import timezone
 
 from apps.tests.factories import make_app
-from hubs import hub_client, queries, services
+from hubs import hub_client, services
+from hubs.queries import businesses, hub_sync
 from hubs.models import (
     BusinessType,
     Hub,
@@ -36,7 +37,7 @@ def fresh(hub):
 
 class TestTheRegistry:
     def test_it_carries_what_the_hub_needs_to_provision(self, business):
-        assert queries.hub_registry(business.id) == {
+        assert hub_sync.hub_registry(business.id) == {
             "id": str(business.id),
             "slug": "bar-manolo",
             "name": "Bar Manolo",
@@ -54,19 +55,19 @@ class TestTheRegistry:
 
         hub = create_business(owner, business_type="restaurant")
 
-        assert queries.hub_registry(hub.id)["vertical"] == "restaurant"
+        assert hub_sync.hub_registry(hub.id)["vertical"] == "restaurant"
 
     def test_a_type_without_vertical_sends_none(self, owner, plans):
         BusinessType.objects.create(code="bar", name_en="Bar", vertical="")
 
         hub = create_business(owner, business_type="bar")
 
-        assert queries.hub_registry(hub.id)["vertical"] is None
+        assert hub_sync.hub_registry(hub.id)["vertical"] is None
 
 
 class TestTheSnapshot:
     def test_it_is_the_shape_of_section_2_2(self, business, team):
-        snapshot = queries.hub_snapshot(business.id)
+        snapshot = hub_sync.hub_snapshot(business.id)
 
         assert set(snapshot) == {
             "hub_id",
@@ -92,14 +93,14 @@ class TestTheSnapshot:
         """``fiscal.queries.snapshot_block`` (the authorisation) and nothing of the plan, Free included: VeriFactu goes
         in every plan (a new business is on Free), so the block carries no ``live_paid``. The rest is
         ``fiscal/tests/test_snapshot.py``."""
-        assert queries.hub_snapshot(business.id)["verifactu"] == {
+        assert hub_sync.hub_snapshot(business.id)["verifactu"] == {
             "representation": {"status": "none", "updated_at": None, "reason": ""},
         }
 
     @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one by default)
     def test_the_plan_is_the_trials_while_it_lasts(self, business):
         """Free is born with 15 days of Starter: the Hub applies Starter's rights meanwhile."""
-        assert queries.hub_snapshot(business.id)["plan"] == {
+        assert hub_sync.hub_snapshot(business.id)["plan"] == {
             "slug": "starter",
             "included_level": "basic",
             "max_devices": 0,
@@ -120,7 +121,7 @@ class TestTheSnapshot:
             trial_end=timezone.now() - timedelta(seconds=1)
         )
 
-        plan = queries.hub_snapshot(business.id)["plan"]
+        plan = hub_sync.hub_snapshot(business.id)["plan"]
 
         assert (
             plan["slug"],
@@ -145,7 +146,7 @@ class TestTheSnapshot:
         )
 
     def test_the_members_are_those_who_answered(self, business, team):
-        members = queries.hub_snapshot(business.id)["members"]
+        members = hub_sync.hub_snapshot(business.id)["members"]
 
         assert [(m["email"], m["role"]) for m in members] == [
             ("owner@example.com", "hub_owner"),
@@ -162,13 +163,13 @@ class TestTheSnapshot:
 
     def test_a_member_without_a_name_is_named_by_email(self, business, team):
         names = {
-            m["email"]: m["name"] for m in queries.hub_snapshot(business.id)["members"]
+            m["email"]: m["name"] for m in hub_sync.hub_snapshot(business.id)["members"]
         }
 
         assert names["admin@example.com"] == "Adela"
         add_member(business, team["stranger"], HubMember.Role.EMPLOYEE)
         names = {
-            m["email"]: m["name"] for m in queries.hub_snapshot(business.id)["members"]
+            m["email"]: m["name"] for m in hub_sync.hub_snapshot(business.id)["members"]
         }
         assert names["stranger@example.com"] == "stranger@example.com"
 
@@ -191,7 +192,7 @@ class TestTheSnapshot:
             valid_until=timezone.now() - timedelta(days=1),
         )
 
-        assert queries.hub_snapshot(business.id)["modules"] == [
+        assert hub_sync.hub_snapshot(business.id)["modules"] == [
             {"id": "inventory", "source": "purchase", "valid_until": until.isoformat()},
             {"id": "loyalty", "source": "plan", "valid_until": None},
         ]
@@ -208,7 +209,7 @@ class TestTheSnapshot:
     def test_the_status_is_the_commercial_one(self, business, status, sent):
         Hub.objects.filter(pk=business.pk).update(status=status)
 
-        assert queries.hub_snapshot(business.id)["status"] == sent
+        assert hub_sync.hub_snapshot(business.id)["status"] == sent
 
 
 # --- Pushing after the COMMIT ---------------------------------------------------------------------
@@ -230,7 +231,7 @@ class TestTheSignUp:
             "",
             hub.state_version,
         )
-        assert hub_double.calls[0].body == queries.hub_registry(hub.id)
+        assert hub_double.calls[0].body == hub_sync.hub_registry(hub.id)
 
     def test_nothing_leaves_before_the_commit(
         self, owner, plans, hub_double, django_capture_on_commit_callbacks
@@ -450,9 +451,9 @@ class TestRefusals:
 
         hub = fresh(business)
         assert (hub.last_hub_error, hub.hub_error_at is not None, hub.pending_hub_call) == ("unknown_vertical", True, "put")
-        row = queries.business_list(ctx_for(owner), BusinessListIn()).rows[0]
+        row = businesses.business_list(ctx_for(owner), BusinessListIn()).rows[0]
         assert (row.hub_error, row.open_blocked_reason) == ("unknown_vertical", "error")
-        assert queries.business_get(ctx_for(owner), ByIdIn(id=business.id)).hub_error == "unknown_vertical"
+        assert businesses.business_get(ctx_for(owner), ByIdIn(id=business.id)).hub_error == "unknown_vertical"
 
     def test_a_refused_snapshot_is_an_error_in_the_log_with_the_hubs_reason(self, business, hub_double, caplog):
         """A ``whatsapp`` block out of the Hub's schema makes it refuse the whole snapshot (422): the
@@ -573,4 +574,4 @@ def test_falling_to_free_the_modules_of_the_paid_plan_leave_the_snapshot(busines
     services.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name="Bar Manolo"))
 
     assert list(SubscriptionItem.objects.values_list("module_slug", flat=True)) == ["inventory"]
-    assert [module["id"] for module in queries.hub_snapshot(business.id)["modules"]] == ["inventory"]
+    assert [module["id"] for module in hub_sync.hub_snapshot(business.id)["modules"]] == ["inventory"]

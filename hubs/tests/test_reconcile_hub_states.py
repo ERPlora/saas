@@ -20,7 +20,8 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.utils import timezone
 
-from hubs import hub_client, queries, services
+from hubs import hub_client, services
+from hubs.queries import access_control, businesses, membership
 from hubs.models import Hub, Subscription
 from hubs.tests.conftest import create_business, role_on
 
@@ -168,7 +169,7 @@ class TestReconcile:
 
         assert "provision_failed=1" in str(failed.value)
         assert (fresh(business).status, fresh(business).last_hub_error) == ("preparing", services.PROVISION_FAILED)
-        assert queries.open_blocked_reason(fresh(business)) == "error"
+        assert access_control.open_blocked_reason(fresh(business)) == "error"
 
     def test_a_failed_sign_up_the_hub_prepares_later_opens_without_the_error(self, business, hub_double):
         stuck(business)
@@ -204,14 +205,14 @@ class TestReconcile:
         assert maintained.maintenance["reason"] == "Aurora upgrade"
         assert parse_datetime(maintained.maintenance["since"]) == parse_datetime("2026-11-09T20:00:00+00:00")
         assert maintained.state_version == version
-        assert queries.business_list(ctx_for(owner), BusinessListIn()).rows[0].maintenance.frozen is True
-        assert queries.business_get(ctx_for(owner), ByIdIn(id=business.id)).maintenance.reason == "Aurora upgrade"
+        assert businesses.business_list(ctx_for(owner), BusinessListIn()).rows[0].maintenance.frozen is True
+        assert businesses.business_get(ctx_for(owner), ByIdIn(id=business.id)).maintenance.reason == "Aurora upgrade"
 
         hub_double.registry[str(business.id)]["maintenance"] = None
         assert "preparing=1" in run("reconcile_hub_states")
         assert fresh(business).maintenance is None
         assert fresh(business).state_version == version
-        assert queries.business_list(ctx_for(owner), BusinessListIn()).rows[0].maintenance is None
+        assert businesses.business_list(ctx_for(owner), BusinessListIn()).rows[0].maintenance is None
 
     def test_check_now_recovers_maintenance_and_ready_without_waiting_for_reconcile(self, business, owner, hub_double):
         """HUBS-F04: «Check now» runs the same recovery as the scheduled poll."""
@@ -247,8 +248,8 @@ class TestReconcile:
             deletion_requested_at=timezone.now() if status == Hub.Status.DELETING else None,
         )
 
-        assert queries.business_list(ctx_for(owner), BusinessListIn()).rows[0].maintenance is None
-        assert queries.business_get(ctx_for(owner), ByIdIn(id=business.id)).maintenance is None
+        assert businesses.business_list(ctx_for(owner), BusinessListIn()).rows[0].maintenance is None
+        assert businesses.business_get(ctx_for(owner), ByIdIn(id=business.id)).maintenance is None
 
     def test_the_poll_reads_the_hub_body_as_the_hub_writes_it_and_tolerates_an_older_hub(
         self, business, hub_double, monkeypatch
@@ -616,7 +617,7 @@ def test_nobody_enters_a_purged_business(business, owner):
 
     run("reconcile_hub_states")
 
-    assert queries.hubs_with_members() == []
+    assert membership.hubs_with_members() == []
 
 
 def test_a_business_restored_while_the_purge_runs_keeps_its_people(business, owner, hub_double, monkeypatch):

@@ -599,7 +599,7 @@ def businesses_holding(ctx: OperationContext) -> tuple[list[dict], list[dict]]:
 
     A business has one owner, and its row says what that owner may do: ``can.delete`` is
     «the owner, not deleted». ``is_payer`` says the account still pays for it: it owns the business's payer, or the
-    plan is still charged to its card after a hand-over (``hubs.queries.still_pays``); and a payer cannot be taken
+    plan is still charged to its card after a hand-over (``hubs.queries.payers.still_pays``); and a payer cannot be taken
     out of the business (``hubs.member_pays``), so the list sees it. A deleted business in its 90 days of recovery
     holds nobody (``deletion_requested_at``).
     """

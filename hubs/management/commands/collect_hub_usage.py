@@ -20,7 +20,8 @@ from datetime import UTC, date
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
-from hubs import queries, services
+from hubs import services
+from hubs.queries import hub_usage
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         now = timezone.now()
-        day = options["day"] or queries.last_measured_day(now)
+        day = options["day"] or hub_usage.last_measured_day(now)
         if day >= now.astimezone(UTC).date():
             raise CommandError(
                 f"collect_hub_usage: {day} is not over yet in UTC; the Hub has not measured it."

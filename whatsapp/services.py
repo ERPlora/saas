@@ -45,7 +45,7 @@ from live.errors import Conflict, NotFound, OperationError
 from live.operations import INTERNAL, on_commit, operation
 from live.outbox import record_event
 
-from hubs import queries as hubs_queries
+from hubs.queries import plan_catalog
 from hubs import services as hubs_services
 from hubs.models import HubMember
 from whatsapp import events, parse, queries
@@ -564,7 +564,7 @@ def message_claim(ctx: OperationContext, data: SendClaimIn) -> SendClaimOut:
 def _reserve(hub_id: UUID, month: str, now) -> bool:
     """One more message of ``month`` if the plan's allowance has room: one ``UPDATE … WHERE used < limit``, which a
     concurrent send waits on and then evaluates again (0 = the plan includes none)."""
-    plan = hubs_queries.effective_plan(hub_id, now)
+    plan = plan_catalog.effective_plan(hub_id, now)
     limit = plan.whatsapp_messages_per_month if plan is not None else 0
     usage, _ = Usage.objects.get_or_create(hub_id=hub_id, month=month)
     return Usage.objects.filter(pk=usage.pk, used__lt=limit).update(used=F("used") + 1) == 1

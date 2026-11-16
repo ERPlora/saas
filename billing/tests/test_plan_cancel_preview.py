@@ -28,7 +28,7 @@ from billing.models import Invoice
 from billing.schemas import HubIn, PlanCancelPreviewOut
 from billing.tests.conftest import ctx_for, pay
 from hubs.models import Hub, HubMember, Plan, Subscription, SubscriptionItem
-from hubs.queries import free_plan
+from hubs.queries.plan_catalog import free_plan
 from hubs.tests.conftest import add_member
 
 pytestmark = pytest.mark.django_db

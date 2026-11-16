@@ -22,7 +22,8 @@ from live.errors import PermissionDenied
 from live.live_registry import live_registry
 from live.models import OutboxEvent
 
-from hubs import events, queries, services
+from hubs import events, services
+from hubs.queries import hub_usage
 from hubs.models import HubUsageDaily
 from hubs.schemas import UsagePruneIn, UsageRecordIn, UsageSeriesIn
 from hubs.tests.conftest import create_business, ctx_for
@@ -588,12 +589,12 @@ class TestAPassForgetsWhatIsPastTheRetention:
         keep_day(business, first_read)
         keep_day(business, days_ago(1))
         window = UsageSeriesIn(business_id=business.id, days=365)
-        before = [point.day for point in queries.usage_series(ctx_for(owner), window).points]
+        before = [point.day for point in hub_usage.usage_series(ctx_for(owner), window).points]
 
         collect()
 
         assert before == [first_read, days_ago(1)]
-        assert [point.day for point in queries.usage_series(ctx_for(owner), window).points] == before
+        assert [point.day for point in hub_usage.usage_series(ctx_for(owner), window).points] == before
 
     def test_the_retention_outlasts_whatever_a_series_may_read(self):
         """Holds the two numbers together: a longer window has to raise the retention with it."""

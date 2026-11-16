@@ -9,7 +9,8 @@ reaches neither the payer nor the plan.
 import pytest
 from live.errors import NotFound, OperationError, PermissionDenied
 
-from hubs import queries, services
+from hubs import services
+from hubs.queries import businesses, custom_domains, data_copies, hub_usage, membership, payers
 from hubs.schemas import (
     BillingProfileGetIn,
     BusinessAddressIn,
@@ -42,7 +43,7 @@ def call(name, hub, team):
     admin = member_of(hub, team["admin"]).id
     invitation = member_of(hub, team["invitee"]).id
     return {
-        "business.get": (queries.business_get, ByIdIn(id=hub.id)),
+        "business.get": (businesses.business_get, ByIdIn(id=hub.id)),
         "business.check": (services.business_check, ByIdIn(id=hub.id)),
         "business.update": (
             services.business_update,
@@ -58,7 +59,7 @@ def call(name, hub, team):
         ),
         "business.restore": (services.business_restore, ByIdIn(id=hub.id)),
         "business.open": (services.business_open, BusinessOpenIn(id=hub.id)),
-        "member.list": (queries.member_list, MemberListIn(hub_id=hub.id)),
+        "member.list": (membership.member_list, MemberListIn(hub_id=hub.id)),
         "member.invite": (
             services.member_invite,
             MemberInviteIn(hub_id=hub.id, email="new@example.com"),
@@ -75,7 +76,7 @@ def call(name, hub, team):
             OwnershipTransferIn(hub_id=hub.id, member_id=admin),
         ),
         "billing_profile.get": (
-            queries.billing_profile_get,
+            payers.billing_profile_get,
             BillingProfileGetIn(hub_id=hub.id),
         ),
         "billing_profile.update": (
@@ -83,14 +84,14 @@ def call(name, hub, team):
             BillingProfileIn(hub_id=hub.id, billing_name="Me"),
         ),
         # A night measured, so «nothing yet» (also a 404) never hides what the role decides.
-        "usage.get": (queries.usage_get, UsageGetIn(business_id=measured(hub).id)),
-        "usage.series": (queries.usage_series, UsageSeriesIn(business_id=hub.id)),
+        "usage.get": (hub_usage.usage_get, UsageGetIn(business_id=measured(hub).id)),
+        "usage.series": (hub_usage.usage_series, UsageSeriesIn(business_id=hub.id)),
         # The copies of its data: with the Hub away, past the role is an empty list or
         # a 503, never the role's answer.
-        "data_copy.list": (queries.data_copy_list, DataCopyListIn(business_id=hub.id)),
-        "data_copy.link": (queries.data_copy_link, DataCopyLinkIn(business_id=hub.id, copy_id="any.dump")),
+        "data_copy.list": (data_copies.data_copy_list, DataCopyListIn(business_id=hub.id)),
+        "data_copy.link": (data_copies.data_copy_link, DataCopyLinkIn(business_id=hub.id, copy_id="any.dump")),
         # A business's own domain (HUBS-F17): with the variable off, past the role is its 409, never the role's answer.
-        "custom_domain.get": (queries.custom_domain_get, ByIdIn(id=hub.id)),
+        "custom_domain.get": (custom_domains.custom_domain_get, ByIdIn(id=hub.id)),
         "custom_domain.request": (services.custom_domain_request, CustomDomainRequestIn(id=hub.id, domain="www.minegocio.es")),
         "custom_domain.remove": (services.custom_domain_remove, ByIdIn(id=hub.id)),
     }[name]

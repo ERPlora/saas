@@ -21,7 +21,7 @@ from billing import services
 from billing.schemas import ModuleIn, PortalOpenIn
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import MONTH_END, item, subscription
-from hubs import queries as hub_queries
+from hubs.queries import hub_sync
 from hubs.models import HubMember, SubscriptionItem
 from hubs.tests.conftest import add_member
 
@@ -81,7 +81,7 @@ class TestCancellingAModule:
         assert answer["modules"] == [
             {"slug": "inventory", "source": "purchase", "valid_until": until}
         ]
-        snapshot = hub_queries.hub_snapshot(shop.id)["modules"]
+        snapshot = hub_sync.hub_snapshot(shop.id)["modules"]
         assert snapshot == [
             {"id": "inventory", "source": "purchase", "valid_until": until.isoformat()}
         ]
