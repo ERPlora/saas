@@ -9,7 +9,7 @@ the Hub about every issued or rejected one until the AEAT accepts it, and counts
 than an hour (``billing.services.reconcile_platform_invoices``).
 
 Idempotent, under the advisory lock ``hashtext('erplora.saas.reconcile_platform_invoices')``
-(``hubs.services.run_exclusively``, the SaaS's convention: a second run returns at once). One invoice never
+(``hubs.services.exclusive_runs.run_exclusively``, the SaaS's convention: a second run returns at once). One invoice never
 stops the pass; the counts go to the log, and the run ends with an error after its pass when anything stayed
 owed, was refused, rejected, stuck or crashed (in the worker, its line ``saas.worker.pass_failed``, which the alarm
 of the infra reads).

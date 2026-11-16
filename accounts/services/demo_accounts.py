@@ -20,7 +20,7 @@ def seed_demo_customer(email: str, password: str):
     """Create (or leave as it is) a customer account of ``demo_seed``: never staff, in no hub yet, its
     address proven.
 
-    Its businesses and roles are ``hubs.services.seed_demo_business``'s.
+    Its businesses and roles are ``hubs.services.demo_businesses.seed_demo_business``'s.
     """
     user = get_user_model().objects.filter(email=email).first()
     if user is None:

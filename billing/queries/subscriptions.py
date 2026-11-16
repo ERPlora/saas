@@ -30,7 +30,7 @@ from billing.schemas import (
     SubscriptionListOut,
 )
 from hubs.queries import access_control, membership, payers, plan_catalog
-from hubs import services as hub_services
+from hubs.services import refusals
 from hubs.models import Hub, HubMember, Plan, Subscription
 
 
@@ -339,7 +339,7 @@ def _cancellable(ctx: OperationContext, hub_id) -> tuple[Hub, Subscription]:
     user = access_control.account_of(ctx)
     member = access_control.access(user, hub_id, HubMember.Role.OWNER)
     if not access_control.is_writable(member.hub):
-        raise hub_services.business_deleted()
+        raise refusals.business_deleted()
     hub = Hub.objects.select_related("billing_profile").get(pk=member.hub_id)
     subscription = Subscription.objects.select_related("plan", "trial_plan").filter(hub=hub).first()
     profile = hub.billing_profile

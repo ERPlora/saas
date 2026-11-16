@@ -16,7 +16,7 @@ from live.context import OperationContext, Scope
 from live.errors import PermissionDenied, Unauthorized
 
 from accounts.services import hub_jump
-from hubs import services
+from hubs.services import deletion, demo_businesses, invitation_answers, member_management, ownership
 from hubs.queries import membership
 from hubs.models import Hub, HubMember
 from hubs.schemas import ByIdIn, MemberListMineIn, MemberRoleIn, OwnershipTransferIn
@@ -110,25 +110,25 @@ class TestTheAccessFollowsTheMembersAtOnce:
             team["employee"],
             team["invitee"],
         )
-        services.member_change_role(
+        member_management.member_change_role(
             ctx_for(owner), MemberRoleIn(id=member_of(business, manager).id, role="hub_employee")
         )
         assert role_on(manager, business.slug) == "hub_employee"
 
-        services.member_remove(ctx_for(admin), ByIdIn(id=member_of(business, employee).id))
+        member_management.member_remove(ctx_for(admin), ByIdIn(id=member_of(business, employee).id))
         assert role_on(employee, business.slug) is None
 
-        services.invitation_accept(ctx_for(invitee), ByIdIn(id=member_of(business, invitee).id))
+        invitation_answers.invitation_accept(ctx_for(invitee), ByIdIn(id=member_of(business, invitee).id))
         assert role_on(invitee, business.slug) is not None
 
-        offer = services.ownership_transfer(
+        offer = ownership.ownership_transfer(
             ctx_for(owner), OwnershipTransferIn(hub_id=business.id, member_id=member_of(business, admin).id)
         )
-        services.ownership_accept(ctx_for(admin), ByIdIn(id=offer.id))
+        ownership.ownership_accept(ctx_for(admin), ByIdIn(id=offer.id))
         assert role_on(admin, business.slug) == "hub_owner"
         assert role_on(owner, business.slug) == "hub_admin"
 
-        services.business_delete(ctx_for(admin), _delete_in(business))
+        deletion.business_delete(ctx_for(admin), _delete_in(business))
         assert role_on(admin, business.slug) is None
 
 
@@ -213,13 +213,13 @@ def test_the_model_is_gone_from_the_app_registry():
 
 
 class TestSeedDemoBusiness:
-    """``hubs.services.seed_demo_business``: a hub that already runs in the local Hub (``a``, ``b``) becomes
+    """``hubs.services.demo_businesses.seed_demo_business``: a hub that already runs in the local Hub (``a``, ``b``) becomes
     a business the SaaS knows, with its people, without provisioning it again."""
 
     def test_adopts_the_hub_as_an_active_ready_business_that_owes_the_hub_nothing(self, owner, make_user, plans):
         employee = make_user("employee@example.com")
 
-        hub = services.seed_demo_business("a", {owner: "hub_owner", employee: "hub_employee"})
+        hub = demo_businesses.seed_demo_business("a", {owner: "hub_owner", employee: "hub_employee"})
 
         assert (hub.slug, hub.name, hub.country, hub.status) == ("a", "a", "ES", "active")
         assert hub.ready_at is not None and hub.provision_requested_at is None
@@ -232,8 +232,8 @@ class TestSeedDemoBusiness:
         assert hub.subscription.plan.slug == "free"
 
     def test_running_it_again_changes_nothing(self, owner, plans):
-        first = services.seed_demo_business("a", {owner: "hub_owner"})
-        again = services.seed_demo_business("a", {owner: "hub_owner"})
+        first = demo_businesses.seed_demo_business("a", {owner: "hub_owner"})
+        again = demo_businesses.seed_demo_business("a", {owner: "hub_owner"})
 
         assert again.pk == first.pk
         assert (Hub.objects.count(), HubMember.objects.count()) == (1, 1)
@@ -241,21 +241,21 @@ class TestSeedDemoBusiness:
     def test_a_business_the_panel_created_keeps_its_people(self, business, owner, make_user):
         ana = make_user("ana@example.com")
 
-        services.seed_demo_business(business.slug, {ana: "hub_employee"})
+        demo_businesses.seed_demo_business(business.slug, {ana: "hub_employee"})
 
         assert member_of(business, ana).role == "hub_employee"
         assert member_of(business, owner).role == "hub_owner"
 
     def test_a_customer_role_only(self, owner, plans):
         with pytest.raises(ValueError):
-            services.seed_demo_business("a", {owner: "platform_admin"})
+            demo_businesses.seed_demo_business("a", {owner: "platform_admin"})
 
         assert not Hub.objects.exists()
 
 
 def test_the_seeded_member_enters_through_the_jump(owner, plans):
     """The members are what the jump reads: a seeded owner gets a code for its hub."""
-    services.seed_demo_business("a", {owner: "hub_owner"})
+    demo_businesses.seed_demo_business("a", {owner: "hub_owner"})
 
     identity = hub_jump.redeem_code(hub_jump.issue_code(owner, "a"), "a")
 
@@ -282,7 +282,7 @@ class TestTheJumpReadsTheMembers:
 
     def test_a_code_does_not_outlive_the_member(self, business, team):
         code = hub_jump.issue_code(team["employee"], business.slug)
-        services.member_remove(ctx_for(team["admin"]), ByIdIn(id=member_of(business, team["employee"]).id))
+        member_management.member_remove(ctx_for(team["admin"]), ByIdIn(id=member_of(business, team["employee"]).id))
 
         with pytest.raises(hub_jump.InvalidCode):
             hub_jump.redeem_code(code, business.slug)

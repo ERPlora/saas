@@ -1,5 +1,5 @@
 """``python manage.py reconcile_hub_states [--stuck-minutes N]``: one pass by hand; the ``saas-worker`` runs the same
-one every 15 minutes (``services.reconcile_exclusively``, ``base.worker``).
+one every 15 minutes (``services.reconciliation.reconcile_exclusively``, ``base.worker``).
 
 Keeps the Hub equal to the SaaS: retries what the Hub still owes an answer to (registry, deletion, restoration,
 snapshot), asks the Hub about a sign-up stuck without its ``ready`` callback for more than N minutes
@@ -9,7 +9,7 @@ answer), ends the trials that ran out, marks purged the businesses past their 90
 business once the copy of its data is ready (``GET /internal/hubs/{id}/dumps``: ``data_copies_told``,
 ``data_copy_unsent``) and delivers the session revocations the Hub has not taken yet once their wait passed
 (``SessionRevocation``: ``sessions_ended``, ``sessions_pending``). Idempotent, under the
-advisory lock ``hashtext('erplora.saas.reconcile_hub_states')`` (``services.run_exclusively``; a second run
+advisory lock ``hashtext('erplora.saas.reconcile_hub_states')`` (``services.exclusive_runs.run_exclusively``; a second run
 returns at once). A business that fails never stops the pass: it stays owed for the next run, the counts
 go to the log, and the run ends with an error after its pass when anything stayed owed, unreachable or
 crashed (in the worker, its line ``saas.worker.pass_failed``, which the alarm of the infra reads).
@@ -20,7 +20,7 @@ from datetime import timedelta
 
 from django.core.management.base import BaseCommand, CommandError
 
-from hubs import services
+from hubs.services import reconciliation
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +35,17 @@ class Command(BaseCommand):
         parser.add_argument(
             "--stuck-minutes",
             type=int,
-            default=int(services.STUCK_AFTER.total_seconds() // 60),
+            default=int(reconciliation.STUCK_AFTER.total_seconds() // 60),
             help="Ask the Hub about an sign-up without its ready callback after this many minutes.",
         )
 
     def handle(self, *args, **options):
-        counts = services.reconcile_exclusively(stuck_after=timedelta(minutes=options["stuck_minutes"]))
+        counts = reconciliation.reconcile_exclusively(stuck_after=timedelta(minutes=options["stuck_minutes"]))
         if counts is None:
             self.stdout.write("reconcile_hub_states: already running, nothing done.")
             return
         summary = " ".join(f"{key}={value}" for key, value in counts.items())
         logger.info("hubs.reconcile %s", summary)
         self.stdout.write(f"reconcile_hub_states: {summary}")
-        if services.run_failed(counts):
+        if reconciliation.run_failed(counts):
             raise CommandError(f"reconcile_hub_states left work owed: {summary}")

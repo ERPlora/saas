@@ -59,7 +59,7 @@ def owner_id(hub_id: UUID) -> UUID | None:
 
 def people_to_tell(hub_id: UUID, also=()) -> list[UUID]:
     """Who sees the people of the business ``hub_id`` (its answered owner and admins) and the accounts in
-    ``also`` (whom a change touched), each once: the channels ``services.notify_people`` tells."""
+    ``also`` (whom a change touched), each once: the channels ``services.people_notices.notify_people`` tells."""
     managers = HubMember.objects.filter(
         hub_id=hub_id, accepted_at__isnull=False, role__in=[Role.OWNER, Role.ADMIN]
     ).values_list("user_id", flat=True)
@@ -204,7 +204,7 @@ def member_actions(
     actor: HubMember, member: HubMember, *, transfer_pending: bool = False
 ) -> list[str]:
     """What ``actor`` may do on ``member``'s row, in ``MEMBER_ACTIONS`` order: the
-    same rules the writes apply (``services._managed``, ``services.ownership_transfer``), so the page never
+    same rules the writes apply (``services.member_management._managed``, ``services.ownership.ownership_transfer``), so the page never
     offers a button its door refuses. Nothing on one's own row, a peer, a superior or a deleted business."""
     if not is_writable(actor.hub):
         return []

@@ -198,13 +198,13 @@ def pay(hub, *, plan="starter", interval="month", modules=(), status="active", c
 
     from django.utils import timezone
 
-    from hubs import services as hub_services
+    from hubs.services import hub_callbacks, subscription_sync
     from hubs.models import Hub
     from hubs.schemas import ModuleRightIn, SubscriptionApplyIn
 
     now = timezone.now()
-    hub_services.subscription_apply(
-        hub_services.system_ctx_for(hub.id),
+    subscription_sync.subscription_apply(
+        hub_callbacks.system_ctx_for(hub.id),
         SubscriptionApplyIn(
             hub_id=hub.id,
             plan=plan,

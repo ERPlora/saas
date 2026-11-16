@@ -6,7 +6,7 @@ the table schedules (``billing.services.retax_live_subscriptions``). It also sen
 whose mail could not leave (``send_pending_oss_notices``).
 
 Idempotent (a rate Stripe already holds is not sent again), under the advisory lock
-``hashtext('erplora.saas.retax_subscriptions')`` (``hubs.services.run_exclusively``). One business never stops
+``hashtext('erplora.saas.retax_subscriptions')`` (``hubs.services.exclusive_runs.run_exclusively``). One business never stops
 the pass; a refused place or an error ends the run with an error after it (the ``task_failed`` alarm).
 """
 
@@ -15,7 +15,7 @@ import logging
 from django.core.management.base import BaseCommand, CommandError
 
 from billing import services
-from hubs.services import run_exclusively
+from hubs.services.exclusive_runs import run_exclusively
 
 logger = logging.getLogger(__name__)
 

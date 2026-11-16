@@ -69,14 +69,14 @@ def test_the_card_that_still_pays_the_plan_after_a_hand_over_pays(business, team
     owner's customer until support moves it (``billing.payer_required``): the old owner still pays, on the row and
     on the page, so it can neither be taken out nor delete its account."""
     from billing.tests.conftest import pay
-    from hubs import services
+    from hubs.services import billing_profiles
     from hubs.schemas import BillingProfileIn
 
     BillingProfile.objects.filter(pk=business.billing_profile_id).update(stripe_customer_id="cus_old")
     pay(business, customer="cus_old")
     HubMember.objects.filter(hub=business, user=owner).update(role=HubMember.Role.ADMIN)
     HubMember.objects.filter(hub=business, user=team["admin"]).update(role=HubMember.Role.OWNER)
-    services.billing_profile_update(
+    billing_profiles.billing_profile_update(
         ctx_for(team["admin"]), BillingProfileIn(hub_id=business.id, billing_name="Adela SL")
     )
 

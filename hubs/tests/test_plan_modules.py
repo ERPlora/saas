@@ -16,7 +16,7 @@ import pytest
 from django.utils import timezone
 
 from apps.models import Module
-from hubs import services
+from hubs.services import hub_callbacks, reconciliation, subscription_sync
 from hubs.queries import hub_sync
 from hubs.models import Hub, Subscription, SubscriptionItem
 from hubs.schemas import ModuleRightIn, SubscriptionApplyIn
@@ -34,7 +34,7 @@ def catalog(db):
 
 
 def apply(hub, **fields):
-    return services.subscription_apply(services.system_ctx_for(hub.id), SubscriptionApplyIn(hub_id=hub.id, **fields))
+    return subscription_sync.subscription_apply(hub_callbacks.system_ctx_for(hub.id), SubscriptionApplyIn(hub_id=hub.id, **fields))
 
 
 NOW = timezone.now().replace(microsecond=0)
@@ -206,18 +206,18 @@ class TestTheSignUpTrial:
         ]
 
     def test_paying_the_plan_makes_its_modules_open_ended(self, business, catalog):
-        services.sync_plan_modules(Subscription.objects.get(hub=business))
+        subscription_sync.sync_plan_modules(Subscription.objects.get(hub=business))
 
         apply(business, **paid("starter"))
 
         assert rights(business) == {"inventory": ("plan", None), "loyalty": ("plan", None)}
 
     def test_the_end_of_the_trial_takes_them_away(self, business, catalog, offline_hub):
-        services.sync_plan_modules(Subscription.objects.get(hub=business))
+        subscription_sync.sync_plan_modules(Subscription.objects.get(hub=business))
         Subscription.objects.filter(hub=business).update(trial_end=timezone.now() - timedelta(seconds=1))
         version = Hub.objects.get(pk=business.pk).state_version
 
-        counts = services.reconcile()
+        counts = reconciliation.reconcile()
 
         assert counts["trials_ended"] == 1
         assert rights(business) == {"loyalty": ("plan", None)}

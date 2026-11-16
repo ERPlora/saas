@@ -6,7 +6,7 @@ returned, and returning needs a reason the customer can act on; approving replac
 staff may also withdraw an approval (with a reason), and each step is keyed by the business, whose snapshot
 carries the outcome to the Hub (``hubs.queries.hub_sync.hub_snapshot``, block ``verifactu``).
 
-Every step bumps the business's ``state_version`` in its transaction (``hubs.services.bump_state``) and pushes
+Every step bumps the business's ``state_version`` in its transaction (``hubs.services.hub_push.bump_state``) and pushes
 the snapshot once it commits (``push_after_commit``; ``reconcile_hub_states`` retries it while the Hub is
 away), records its event (the trail: who, which business, which version) and tells the owner and the admins of
 the business (``tell_the_business``), and once it commits mails them and, for one that waits for a review, the
@@ -51,7 +51,7 @@ from fiscal.schemas import (
     WithdrawIn,
 )
 from hubs.queries import access_control, membership
-from hubs import services as hub_services
+from hubs.services import hub_push
 from hubs.models import Hub
 
 Status = RepresentationGrant.Status
@@ -383,8 +383,8 @@ def _stepped(ctx: OperationContext, event: str, grant: RepresentationGrant) -> N
     )
     tell_the_business(ctx, grant.hub_id)
     transaction.on_commit(partial(emails.grant_stepped, grant.id), robust=True)
-    hub_services.bump_state(grant.hub_id)
-    hub_services.push_after_commit(grant.hub_id)
+    hub_push.bump_state(grant.hub_id)
+    hub_push.push_after_commit(grant.hub_id)
 
 
 # --- The owner and the admins of the business hear of it ----------------------------------------------

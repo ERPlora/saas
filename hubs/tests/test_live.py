@@ -126,7 +126,7 @@ def test_a_subscription_follows_the_role_at_each_run(business, team):
 # channel): the owner's members page re-runs when somebody else accepts, without waiting for the 300 s
 # safety re-run.
 
-from hubs import services  # noqa: E402
+from hubs.services import invitation_answers, member_management, ownership, people_notices  # noqa: E402
 from hubs.schemas import MemberInviteIn, MemberRoleIn, OwnershipTransferIn  # noqa: E402
 from hubs.tests.conftest import member_of  # noqa: E402
 
@@ -158,7 +158,7 @@ class TestEveryManagerHearsIt:
         self, business, team, notified, django_capture_on_commit_callbacks
     ):
         with django_capture_on_commit_callbacks(execute=True):
-            services.invitation_accept(ctx_for(team["invitee"]), ByIdIn(id=member_of(business, team["invitee"]).id))
+            invitation_answers.invitation_accept(ctx_for(team["invitee"]), ByIdIn(id=member_of(business, team["invitee"]).id))
 
         assert channels(notified, events.MEMBER_CHANGED) == {str(team["owner"].pk), str(team["admin"].pk)}
         # The actor keeps its own event on its own channel, as before.
@@ -168,7 +168,7 @@ class TestEveryManagerHearsIt:
     def test_the_event_names_its_business(self, business, team, django_capture_on_commit_callbacks):
         from live.models import OutboxEvent
 
-        services.invitation_accept(ctx_for(team["invitee"]), ByIdIn(id=member_of(business, team["invitee"]).id))
+        invitation_answers.invitation_accept(ctx_for(team["invitee"]), ByIdIn(id=member_of(business, team["invitee"]).id))
 
         rows = OutboxEvent.objects.filter(name=events.MEMBER_CHANGED)
         assert {(row.scope_key, row.actor) for row in rows} == {(str(team["owner"].pk), "system"), (str(team["admin"].pk), "system")}
@@ -176,7 +176,7 @@ class TestEveryManagerHearsIt:
 
     def test_a_decline_re_runs_the_managers_lists(self, business, team, notified, django_capture_on_commit_callbacks):
         with django_capture_on_commit_callbacks(execute=True):
-            services.invitation_decline(ctx_for(team["invitee"]), ByIdIn(id=member_of(business, team["invitee"]).id))
+            invitation_answers.invitation_decline(ctx_for(team["invitee"]), ByIdIn(id=member_of(business, team["invitee"]).id))
 
         assert channels(notified, events.MEMBER_CHANGED) == {str(team["owner"].pk), str(team["admin"].pk)}
 
@@ -190,9 +190,9 @@ class TestEveryManagerHearsIt:
         row = member_of(business, team[target])
         with django_capture_on_commit_callbacks(execute=True):
             if command == "change_role":
-                services.member_change_role(ctx_for(team["admin"]), MemberRoleIn(id=row.id, role="hub_employee"))
+                member_management.member_change_role(ctx_for(team["admin"]), MemberRoleIn(id=row.id, role="hub_employee"))
             else:
-                getattr(services, f"member_{command}")(ctx_for(team["admin"]), ByIdIn(id=row.id))
+                getattr(member_management, f"member_{command}")(ctx_for(team["admin"]), ByIdIn(id=row.id))
 
         assert channels(notified, events.MEMBER_CHANGED) == {str(team["owner"].pk), str(team[target].pk)}
 
@@ -200,7 +200,7 @@ class TestEveryManagerHearsIt:
         self, business, team, notified, django_capture_on_commit_callbacks
     ):
         with django_capture_on_commit_callbacks(execute=True):
-            services.member_invite(
+            member_management.member_invite(
                 ctx_for(team["owner"]), MemberInviteIn(hub_id=business.id, email=team["stranger"].email, role="hub_employee")
             )
 
@@ -210,13 +210,13 @@ class TestEveryManagerHearsIt:
         self, business, team, notified, django_capture_on_commit_callbacks
     ):
         with django_capture_on_commit_callbacks(execute=True):
-            services.invitation_accept(ctx_for(team["invitee"]), ByIdIn(id=member_of(business, team["invitee"]).id))
+            invitation_answers.invitation_accept(ctx_for(team["invitee"]), ByIdIn(id=member_of(business, team["invitee"]).id))
 
         assert not channels(notified, events.MEMBER_CHANGED) & {str(team["manager"].pk), str(team["employee"].pk)}
 
     def test_a_refused_write_tells_nobody(self, business, team, notified, django_capture_on_commit_callbacks):
         with django_capture_on_commit_callbacks(execute=True), pytest.raises(PermissionDenied):
-            services.member_remove(ctx_for(team["manager"]), ByIdIn(id=member_of(business, team["employee"]).id))
+            member_management.member_remove(ctx_for(team["manager"]), ByIdIn(id=member_of(business, team["employee"]).id))
 
         assert notified == []
 
@@ -224,7 +224,7 @@ class TestEveryManagerHearsIt:
 @pytest.mark.django_db
 class TestOwnershipChangesAreHeard:
     def offer(self, business, team):
-        return services.ownership_transfer(
+        return ownership.ownership_transfer(
             ctx_for(team["owner"]), OwnershipTransferIn(hub_id=business.id, member_id=member_of(business, team["manager"]).id)
         )
 
@@ -241,14 +241,14 @@ class TestOwnershipChangesAreHeard:
     ):
         offer = self.offer(business, team)
         with django_capture_on_commit_callbacks(execute=True):
-            services.ownership_accept(ctx_for(team["manager"]), ByIdIn(id=offer.id))
+            ownership.ownership_accept(ctx_for(team["manager"]), ByIdIn(id=offer.id))
 
         assert channels(notified, events.OWNERSHIP_CHANGED) == {str(team["owner"].pk), str(team["admin"].pk)}
 
     def test_declining_reaches_the_owner_and_the_admins(self, business, team, notified, django_capture_on_commit_callbacks):
         offer = self.offer(business, team)
         with django_capture_on_commit_callbacks(execute=True):
-            services.ownership_decline(ctx_for(team["manager"]), ByIdIn(id=offer.id))
+            ownership.ownership_decline(ctx_for(team["manager"]), ByIdIn(id=offer.id))
 
         assert channels(notified, events.OWNERSHIP_CHANGED) == {str(team["owner"].pk), str(team["admin"].pk)}
 
@@ -257,7 +257,7 @@ class TestOwnershipChangesAreHeard:
     ):
         offer = self.offer(business, team)
         with django_capture_on_commit_callbacks(execute=True):
-            services.ownership_cancel(ctx_for(team["owner"]), ByIdIn(id=offer.id))
+            ownership.ownership_cancel(ctx_for(team["owner"]), ByIdIn(id=offer.id))
 
         assert channels(notified, events.OWNERSHIP_CHANGED) == {str(team["admin"].pk), str(team["manager"].pk)}
 
@@ -267,4 +267,4 @@ def test_only_the_platform_notifies_people(business, owner):
     from hubs.schemas import NotifyPeopleIn
 
     with pytest.raises(PermissionDenied):
-        services.business_notify_people(ctx_for(owner), NotifyPeopleIn(id=business.id, event=events.MEMBER_CHANGED))
+        people_notices.business_notify_people(ctx_for(owner), NotifyPeopleIn(id=business.id, event=events.MEMBER_CHANGED))

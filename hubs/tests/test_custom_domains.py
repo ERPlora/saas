@@ -17,7 +17,8 @@ from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
 from live.models import OutboxEvent
 from live.operations import AI, INTERNAL, registry
 
-from hubs import domain_checks, events, services
+from hubs import domain_checks, events
+from hubs.services import custom_domain_checks, custom_domain_requests, hub_push
 from hubs.queries import custom_domains, hub_sync
 from hubs.models import CustomDomain, Hub, HubMember, Plan, Subscription
 from hubs.schemas import ByIdIn, CustomDomainRequestIn
@@ -29,7 +30,7 @@ HOST = "localhost:8001"
 
 
 def ask(user, hub, domain=DOMAIN):
-    return services.custom_domain_request(ctx_for(user), CustomDomainRequestIn(id=hub.id, domain=domain))
+    return custom_domain_requests.custom_domain_request(ctx_for(user), CustomDomainRequestIn(id=hub.id, domain=domain))
 
 
 def row_of(hub):
@@ -132,7 +133,7 @@ def test_an_international_domain_goes_to_acm_in_its_ascii_form(owner, standard_b
 def test_the_validation_record_can_arrive_after_the_answer(owner, standard_business, custom_domains_on):
     """ACM takes some seconds: the wait is bounded, the row keeps the certificate and the record comes with the next read."""
     custom_domains_on.expect_request()
-    for _ in range(services.VALIDATION_RECORD_TRIES):
+    for _ in range(custom_domain_requests.VALIDATION_RECORD_TRIES):
         custom_domains_on.expect_describe(record=False)
 
     answer = ask(owner, standard_business)
@@ -517,7 +518,7 @@ def test_two_businesses_read_their_own_domain(owner, standard_business, make_use
 
 
 def remove(user, hub):
-    return services.custom_domain_remove(ctx_for(user), ByIdIn(id=hub.id))
+    return custom_domain_requests.custom_domain_remove(ctx_for(user), ByIdIn(id=hub.id))
 
 
 def snapshot_domain(hub):
@@ -695,7 +696,7 @@ def test_a_snapshot_with_the_domain_is_what_the_hub_takes(standard_business, hub
     active_row(standard_business)
     Hub.objects.filter(pk=standard_business.pk).update(state_version=7, pushed_state_version=6)
 
-    assert services.sync_hub(standard_business.id) is True
+    assert hub_push.sync_hub(standard_business.id) is True
 
     assert hub_double.calls_to("PUT", "/state")[-1].body["custom_domain"] == DOMAIN
 
@@ -705,7 +706,7 @@ def test_the_hub_refusing_a_domain_refuses_the_whole_snapshot(standard_business,
     make_row(standard_business, hostname="www.erplora.com", proven_at=timezone.now())
     Hub.objects.filter(pk=standard_business.pk).update(state_version=7, pushed_state_version=6)
 
-    assert services.sync_hub(standard_business.id) is False
+    assert hub_push.sync_hub(standard_business.id) is False
     assert Hub.objects.get(pk=standard_business.pk).pushed_state_version == 6
 
 
@@ -749,7 +750,7 @@ def test_a_write_of_the_check_is_only_the_platforms(owner, standard_business):
 
     row = make_row(standard_business)
     with pytest.raises(PermissionDenied):
-        services.custom_domain_record(ctx_for(owner), CustomDomainRecordIn(id=row.id, expected_state="pending", reason=""))
+        custom_domain_checks.custom_domain_record(ctx_for(owner), CustomDomainRecordIn(id=row.id, expected_state="pending", reason=""))
 
 
 @pytest.mark.parametrize(

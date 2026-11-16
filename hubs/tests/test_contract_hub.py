@@ -14,7 +14,8 @@ from django.utils import timezone
 
 from accounts.signing import sign
 from apps.tests.factories import make_app
-from hubs import hub_client, services
+from hubs import hub_client
+from hubs.services import hub_push, invitation_answers, reconciliation
 from hubs.queries import hub_sync
 from hubs.models import BusinessType, Hub
 from hubs.schemas import ByIdIn
@@ -101,15 +102,15 @@ def test_202_then_still_preparing_then_failed_then_ready_by_its_callback(panel, 
     Hub's ``ready`` callback after its own retry opens it without the error."""
     created = panel("POST", "/hubs/businesses", {"name": "Bar Manolo", "country": "ES"}).json()
     assert hub_double.registry[created["id"]]["status"] == "requested"
-    later = timezone.now() + services.STUCK_AFTER + timedelta(seconds=1)
+    later = timezone.now() + reconciliation.STUCK_AFTER + timedelta(seconds=1)
 
     hub_double.registry[created["id"]]["status"] = "creating"
-    assert services.reconcile(now=later)["preparing"] == 1
+    assert reconciliation.reconcile(now=later)["preparing"] == 1
     row = panel("GET", "/hubs/businesses").json()["rows"][0]
     assert (row["status"], row["open_blocked_reason"]) == ("preparing", "preparing")
 
     hub_double.registry[created["id"]]["status"] = "failed"
-    assert services.reconcile(now=later)["provision_failed"] == 1
+    assert reconciliation.reconcile(now=later)["provision_failed"] == 1
     row = panel("GET", "/hubs/businesses").json()["rows"][0]
     assert (row["status"], row["open_blocked_reason"], row["can_open"]) == ("preparing", "error", False)
 
@@ -132,8 +133,8 @@ def test_every_change_reaches_the_hub_with_a_newer_version(panel, hub_double):
     ).json()
     ana = get_user_model().objects.get(email="ana@example.com")
 
-    services.invitation_accept(ctx_for(ana), ByIdIn(id=invited["id"]))  # Ana's own session
-    services.sync_hub(created["id"])
+    invitation_answers.invitation_accept(ctx_for(ana), ByIdIn(id=invited["id"]))  # Ana's own session
+    hub_push.sync_hub(created["id"])
     panel("POST", "/hubs/members/change_role", {"id": invited["id"], "role": "hub_employee"})
     panel("POST", "/hubs/members/remove", {"id": invited["id"]})
 

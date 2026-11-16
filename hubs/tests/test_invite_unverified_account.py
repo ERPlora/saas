@@ -19,7 +19,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from live.errors import Conflict, PermissionDenied
 
-from hubs import services
+from hubs.services import invitation_answers, member_management
 from hubs.models import HubMember, SessionRevocation
 from hubs.schemas import ByIdIn, MemberInviteIn
 from hubs.tests.conftest import ctx_for, member_of
@@ -48,13 +48,13 @@ def _reset_password(client, key, password):
 
 
 def invite(owner, hub, email=VICTIM, role="hub_employee"):
-    return services.member_invite(
+    return member_management.member_invite(
         ctx_for(owner), MemberInviteIn(hub_id=hub.id, email=email, role=role)
     )
 
 
 def accept(user, hub):
-    return services.invitation_accept(ctx_for(user), ByIdIn(id=member_of(hub, user).id))
+    return invitation_answers.invitation_accept(ctx_for(user), ByIdIn(id=member_of(hub, user).id))
 
 
 @pytest.fixture

@@ -215,7 +215,7 @@ Implicados: el Hub (su página de apps, BASE-F20), billing (la Tienda)
 - APPS-F07: la parte del Hub es BASE-F20 (el enlace «Mejorar plan»). Ningún módulo es `premium`: el enlace no le
   sale a nadie mientras no haya uno.
 - APPS-F03 paso 4: al guardar un `Module` nuevo o con otro `tier`, `ModuleAdmin.save_model` llama a
-  `hubs.services.owe_module_rights` (HUBS-F34) y dice a cuántos negocios les llega
+  `hubs.services.subscription_sync.owe_module_rights` (HUBS-F34) y dice a cuántos negocios les llega
   (`hubs/tests/test_plan_rights_reach_businesses.py::test_a_new_module_of_a_plans_level_reaches_its_businesses`).
 - `Module` lleva registro de cambios (django-auditlog, `apps/auditlog.py`, ACCOUNTS-F36; sin `updated_at`); `App` y
   `AppDoc` no, porque no son dinero y el Hub los reescribe en cada arranque (`apps/tests/test_auditlog.py`).

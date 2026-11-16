@@ -12,7 +12,7 @@ import pytest
 from django.conf import settings
 
 #: The packages nothing is re-exported from: a name is imported from its own module.
-GATHERING_PACKAGES = ("accounts.services", "hubs.queries")
+GATHERING_PACKAGES = ("accounts.services", "hubs.queries", "hubs.services")
 
 
 def statements_beyond_gathering(source: str, package: str, modules: set[str]) -> list[str]:

@@ -18,7 +18,7 @@ from django.views.decorators.csrf import csrf_exempt
 from live.errors import OperationError
 
 from accounts.signing import verify_request
-from hubs import services
+from hubs.services import hub_callbacks
 from hubs.schemas import MarkReadyIn
 
 logger = logging.getLogger(__name__)
@@ -46,8 +46,8 @@ def ready(request: HttpRequest, hub_id: UUID) -> JsonResponse:
     if not isinstance(payload, dict) or payload.get("id") != str(hub_id):
         return _error(400, "invalid_request", "The body must be {\"id\": the hub of the path}.")
     try:
-        result = services.business_mark_ready(
-            services.system_ctx_for(hub_id), MarkReadyIn(id=hub_id)
+        result = hub_callbacks.business_mark_ready(
+            hub_callbacks.system_ctx_for(hub_id), MarkReadyIn(id=hub_id)
         )
     except OperationError as refused:
         return JsonResponse(refused.envelope(), status=refused.status)

@@ -6,7 +6,7 @@ from django.db import connection
 
 
 def lock_name(command: str) -> str:
-    """The advisory lock of ``command``: ``hubs.services.lock_name``'s namespace (accounts never imports hubs)."""
+    """The advisory lock of ``command``: ``hubs.services.exclusive_runs.lock_name``'s namespace (accounts never imports hubs)."""
     return f"erplora.saas.{command}"
 
 
@@ -14,7 +14,7 @@ def lock_name(command: str) -> str:
 def run_exclusively(command: str):
     """Hold the session advisory lock of ``command`` while the block runs; yields ``False`` when another run holds it.
 
-    ``hubs.services.run_exclusively``'s twin (accounts never imports hubs): a session lock, because a run spans one
+    ``hubs.services.exclusive_runs.run_exclusively``'s twin (accounts never imports hubs): a session lock, because a run spans one
     transaction per account, so one that fails undoes no other. Released at the end, when the run fails and when the
     task dies (Postgres ends its session). The SaaS's database is direct, never PgBouncer.
     """

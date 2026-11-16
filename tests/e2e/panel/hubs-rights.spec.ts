@@ -37,12 +37,12 @@ async function businessOnStarter(): Promise<string> {
       'from django.contrib.auth import get_user_model',
       'from django.db.models import F',
       'from django.utils import timezone',
-      'from hubs import services',
       'from hubs.models import Hub, Plan, Subscription',
       'from hubs.schemas import BusinessCreateIn',
+      'from hubs.services import creation',
       'from hubs.tests.conftest import ctx_for',
       `owner = get_user_model().objects.create_user(email="${PREFIX}owner-${Date.now()}@example.com", password="${PASSWORD}")`,
-      'created = services.business_create(ctx_for(owner), BusinessCreateIn(name="Peluquería Ana", country="ES"))',
+      'created = creation.business_create(ctx_for(owner), BusinessCreateIn(name="Peluquería Ana", country="ES"))',
       'Subscription.objects.filter(hub_id=created.id).update(plan=Plan.objects.get(slug="starter"))',
       'Hub.objects.filter(pk=created.id).update(status="active", ready_at=timezone.now(), pending_hub_call="", pushed_state_version=F("state_version"))',
       'print(created.id)',
@@ -72,9 +72,9 @@ async function nextPass(): Promise<void> {
   await djangoPrintWarm(
     [
       'from django.test import override_settings',
-      'from hubs import services',
+      'from hubs.services import reconciliation',
       `with override_settings(HUB_INTERNAL_URL="http://127.0.0.1:${HUB_DOUBLE_PORT}"):`,
-      '    services.reconcile()',
+      '    reconciliation.reconcile()',
     ].join('\n'),
   );
 }

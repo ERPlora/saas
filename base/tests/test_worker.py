@@ -143,10 +143,10 @@ def test_the_two_reconciliations_run_every_quarter_of_an_hour_in_the_process(mon
 
 def test_the_real_reconciliations_are_the_ones_of_the_commands():
     from billing import services as billing_services
-    from hubs import services as hubs_services
+    from hubs.services import reconciliation
 
     assert [(task.name, task.run, task.failed) for task in worker.PERIODIC] == [
-        ("reconcile_hub_states", hubs_services.reconcile_exclusively, hubs_services.run_failed),
+        ("reconcile_hub_states", reconciliation.reconcile_exclusively, reconciliation.run_failed),
         (
             "reconcile_platform_invoices",
             billing_services.reconcile_platform_invoices_exclusively,

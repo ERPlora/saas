@@ -8,7 +8,7 @@
   no hub.
 
 ``a`` and ``b`` already run in the local Hub: they become businesses of the SaaS adopted as they are
-(``hubs.services.seed_demo_business``: active, ready, nothing owed to the Hub), and the jump reads their
+(``hubs.services.demo_businesses.seed_demo_business``: active, ready, nothing owed to the Hub), and the jump reads their
 members. It lives in ``hubs`` because it seeds businesses, which ``accounts`` does not know. Their addresses come
 proven, so they never owe the code a new account is mailed, only the sign-in code every password sign-in mails.
 Development only: known passwords, so it refuses to run without ``DEBUG``.
@@ -25,7 +25,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from accounts.services import demo_accounts
-from hubs import services
+from hubs.services import demo_businesses
 from hubs.models import HubMember
 
 OWNER_EMAIL = "owner@example.com"
@@ -58,7 +58,7 @@ class Command(BaseCommand):
         owner = demo_accounts.seed_demo_customer(owner_email, owner_password)
         employee = demo_accounts.seed_demo_customer(employee_email, employee_password)
         for slug in HUB_SLUGS:
-            services.seed_demo_business(
+            demo_businesses.seed_demo_business(
                 slug, {owner: HubMember.Role.OWNER, employee: HubMember.Role.EMPLOYEE}
             )
         demo_accounts.seed_demo_platform_admin(platform_email, platform_password)

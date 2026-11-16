@@ -252,7 +252,7 @@ trata como ninguna (`UNKNOWN`: 503 `billing.payments_unavailable`, nunca un cobr
 - **L2-D (front)**: hecho, ver «La Tienda (L2-D)» abajo, con Trusted Types resuelto el 2026-10-14.
 - **L2-C**: no hay `billing.module.list` ni `hubs.module.list`. La Tienda lee los módulos con `billing.store.catalog` y
   Suscripciones con `billing.subscription.list`; los items `source = plan` (módulos que trae el plan) los escribe
-  `hubs.services.sync_plan_modules` al cambiar de plan y cuando un módulo nuevo o con otro nivel llega a los negocios
+  `hubs.services.subscription_sync.sync_plan_modules` al cambiar de plan y cuando un módulo nuevo o con otro nivel llega a los negocios
   de su plan (HUBS-F34, `owe_module_rights`).
 - **Eliminar un negocio** cancela su suscripción de Stripe en la siguiente pasada de `sweep_unpaid` (no en el
   acto: `hubs.business.delete` no llama a `billing`). **Mover el pagador** en un traspaso: hecho en HUBS-F28

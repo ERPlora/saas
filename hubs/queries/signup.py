@@ -64,7 +64,7 @@ def refuse_staff(user) -> None:
 
 def refuse_full_free_quota(user, excluding: UUID | None = None) -> None:
     """One more Free business does not fit ``user``'s quota (``FREE_HUBS_PER_ACCOUNT``): 409
-    ``hubs.free_hub_limit``. Counts without a lock: a write first takes it (``services.check_free_quota``)."""
+    ``hubs.free_hub_limit``. Counts without a lock: a write first takes it (``services.creation.check_free_quota``)."""
     if free_hubs_owned(user, excluding=excluding) >= getattr(settings, "FREE_HUBS_PER_ACCOUNT", 1):
         raise Conflict(
             _("You already have a free business. Change its plan to create another one."),

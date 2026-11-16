@@ -197,7 +197,7 @@ class TestRedeemCode:
 
 
 class TestSeedDemoCustomer:
-    """A customer account of ``demo_seed``: its businesses and roles are ``hubs.services.seed_demo_business``'s
+    """A customer account of ``demo_seed``: its businesses and roles are ``hubs.services.demo_businesses.seed_demo_business``'s
     (the jump reads the members of the business)."""
 
     def test_creates_a_customer_that_is_no_staff_and_belongs_to_no_hub_yet(self):

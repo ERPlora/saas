@@ -99,7 +99,7 @@ from billing.stripe_tax_rates import TaxRateSpec, tax_rate_specs_for
 from hubs import emails as hub_emails
 from hubs import hub_client
 from hubs.queries import access_control, membership, payers, plan_catalog
-from hubs import services as hub_services
+from hubs.services import exclusive_runs, hub_callbacks, refusals, subscription_sync, suspensions
 from hubs.models import BillingProfile, Hub, HubMember, Plan, Subscription, SubscriptionItem
 from hubs.hub_client import HubRefused, HubUnavailable
 from hubs.schemas import ModuleRightIn, SubscriptionApplyIn
@@ -895,7 +895,7 @@ def _owned(ctx: OperationContext, hub_id) -> tuple[Hub, Subscription | None]:
     user = access_control.account_of(ctx)
     member = access_control.access(user, hub_id, HubMember.Role.OWNER, lock=True)
     if not access_control.is_writable(member.hub):
-        raise hub_services.business_deleted()
+        raise refusals.business_deleted()
     hub = Hub.objects.select_related("billing_profile").get(pk=member.hub_id)
     subscription = (
         Subscription.objects.select_related("plan", "trial_plan")
@@ -1135,8 +1135,8 @@ def ensure_customer(hub: Hub, *, test_clock: str | None = None) -> str:
                 customer = stripe_service.create_customer(
                     params, idempotency_key=f"customer-{profile.id}-{digest}"
                 )["id"]
-            hub_services.subscription_apply(
-                hub_services.system_ctx_for(hub.id),
+            subscription_sync.subscription_apply(
+                hub_callbacks.system_ctx_for(hub.id),
                 SubscriptionApplyIn(hub_id=hub.id, stripe_customer_id=customer),
             )
             profile.stripe_customer_id = customer
@@ -2134,7 +2134,7 @@ def plan_take_over(ctx: OperationContext, data: HubIn) -> dict:
     user = access_control.account_of(ctx)
     member = access_control.access(user, data.hub_id, HubMember.Role.OWNER, lock=True)
     if not access_control.is_writable(member.hub):
-        raise hub_services.business_deleted()
+        raise refusals.business_deleted()
     hub = Hub.objects.select_related("billing_profile").get(pk=member.hub_id)
     subscription = Subscription.objects.select_related("plan").filter(hub=hub).first()
     if not _paying(subscription) or payers.plans_charged_to(hub.id, user.pk).exists():
@@ -2634,8 +2634,8 @@ def apply_live(hub_id, live: dict) -> None:
 
 def apply_state(hub: Hub, state: dict) -> bool:
     """Write ``state`` through ``hubs.subscription.apply``; whether anything changed."""
-    applied = hub_services.subscription_apply(
-        hub_services.system_ctx_for(hub.id), SubscriptionApplyIn(hub_id=hub.id, **state)
+    applied = subscription_sync.subscription_apply(
+        hub_callbacks.system_ctx_for(hub.id), SubscriptionApplyIn(hub_id=hub.id, **state)
     )
     if state.get("standing") in ("grace", "suspended"):
         # Whatever put the business in dunning (a failure, Stripe's ``unpaid``, the sweep), its payer is told
@@ -3079,7 +3079,7 @@ def invoice_paid(invoice: dict) -> str:
         ).update(resolved_at=timezone.now())
         apply_live(hub.id, live)
         invoice_record(
-            hub_services.system_ctx_for(hub.id),
+            hub_callbacks.system_ctx_for(hub.id),
             InvoiceRecordIn(
                 hub_id=hub.id,
                 invoice=invoice,
@@ -3115,7 +3115,7 @@ def _invoice_paid_elsewhere(invoice: dict, subscription_id: str) -> str:
     verified, consultation = _payer_clearance(named, charged_at)
     with holding(named.id):
         invoice_record(
-            hub_services.system_ctx_for(named.id),
+            hub_callbacks.system_ctx_for(named.id),
             InvoiceRecordIn(
                 hub_id=named.id, invoice=invoice, status="paid", tax_id_verified=verified,
                 vat_consultation_number=consultation,
@@ -3234,7 +3234,7 @@ def _record_failure(
     apply_live(hub.id, live)
     # Listed in Billing as «not collected», with «Pay»; numbered once it is paid.
     invoice_record(
-        hub_services.system_ctx_for(hub.id), InvoiceRecordIn(hub_id=hub.id, invoice=invoice, status="open")
+        hub_callbacks.system_ctx_for(hub.id), InvoiceRecordIn(hub_id=hub.id, invoice=invoice, status="open")
     )
     return "processed"
 
@@ -3657,7 +3657,7 @@ SWEEP_COUNTS = (
     "notified",
     "mail_failed",
     "errors",
-    # The clock of the suspended businesses (``hubs.services.age_suspended``).
+    # The clock of the suspended businesses (``hubs.services.suspensions.age_suspended``).
     "warned",
     "final_notice",
     "expired",
@@ -3711,7 +3711,7 @@ def sweep_unpaid() -> Counter:  # noqa: C901, PLR0912, PLR0915
             counts["suspended"] += 1
     # The businesses suspended too long: the notices of day 30 and 150 and the deletion
     # on day 180, which the loop below ends in Stripe in this same pass.
-    counts.update(hub_services.age_suspended())
+    counts.update(suspensions.age_suspended())
     # Asked at deletion (``hubs.business.delete``), whatever the business is now: recovered on Free, too.
     deleted = (
         Subscription.objects.filter(cancel_requested_at__isnull=False)
@@ -4628,7 +4628,7 @@ def invoice_voided(stripe_invoice: dict) -> str:
     if listed is None or listed[1] != Invoice.PaymentStatus.OPEN or listed[0] is None:
         return "ignored"
     out = invoice_record(
-        hub_services.system_ctx_for(listed[0]), InvoiceRecordIn(hub_id=listed[0], invoice=stripe_invoice, status="void")
+        hub_callbacks.system_ctx_for(listed[0]), InvoiceRecordIn(hub_id=listed[0], invoice=stripe_invoice, status="void")
     )
     return "processed" if out.outcome == "voided" else "ignored"
 
@@ -4803,7 +4803,7 @@ def _invoice_ctx(invoice: Invoice) -> OperationContext:
     if invoice.payer_account_id:
         return system_context(Scope("user", str(invoice.payer_account_id)))
     if invoice.hub_id:
-        return hub_services.system_ctx_for(invoice.hub_id)
+        return hub_callbacks.system_ctx_for(invoice.hub_id)
     return system_context(Scope("user", "system"))
 
 
@@ -5130,7 +5130,7 @@ def reconcile_platform_invoices_exclusively(go_on: Callable[[], bool] | None = N
     """One pass of ``reconcile_platform_invoices`` under its lock: its counts, or ``None`` when another run holds the
     lock (and this one did nothing). What the command and the ``saas-worker`` (every 15 minutes, ``base.worker``,
     with its ``go_on``) both run."""
-    with hub_services.run_exclusively("reconcile_platform_invoices") as mine:
+    with exclusive_runs.run_exclusively("reconcile_platform_invoices") as mine:
         return reconcile_platform_invoices(go_on=go_on) if mine else None
 
 

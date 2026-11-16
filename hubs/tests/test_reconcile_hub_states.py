@@ -20,7 +20,8 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.utils import timezone
 
-from hubs import hub_client, services
+from hubs import emails, hub_client
+from hubs.services import deletion, exclusive_runs, hub_callbacks, hub_push, reconciliation
 from hubs.queries import access_control, businesses, membership
 from hubs.models import Hub, Subscription
 from hubs.tests.conftest import create_business, role_on
@@ -43,7 +44,7 @@ def fresh(hub):
 
 def stuck(hub):
     """A sign-up the Hub took (202) and has not reported ready for longer than the threshold."""
-    services.sync_hub(hub.id)
+    hub_push.sync_hub(hub.id)
     Hub.objects.filter(pk=hub.pk).update(provision_requested_at=timezone.now() - timedelta(minutes=5))
 
 
@@ -96,7 +97,7 @@ class TestReconcile:
         first = create_business(owner)
         second = create_business(make_user("lola@example.com"), name="Café Lola")
         for hub in (first, second):
-            services.sync_hub(hub.id)
+            hub_push.sync_hub(hub.id)
             hub_double.registry[str(hub.id)]["status"] = "ready"
         Hub.objects.update(provision_requested_at=timezone.now() - timedelta(minutes=5))
         real = hub_client.get_hub
@@ -118,14 +119,14 @@ class TestReconcile:
     ):
         first = create_business(owner)
         second = create_business(make_user("lola@example.com"), name="Café Lola")
-        real = services.sync_outcome  # what the pass calls for each business (``_sync_counted``)
+        real = hub_push.sync_outcome  # what the pass calls for each business (``_sync_counted``)
 
         def flaky(hub_id):
             if hub_id == first.id:
                 raise RuntimeError("boom")
             return real(hub_id)
 
-        monkeypatch.setattr(services, "sync_outcome", flaky)
+        monkeypatch.setattr(reconciliation, "sync_outcome", flaky)
 
         with pytest.raises(CommandError):
             run("reconcile_hub_states")
@@ -134,7 +135,7 @@ class TestReconcile:
         assert fresh(first).pending_hub_call == "put"
 
     def test_a_stuck_sign_up_the_hub_finished_is_marked_ready(self, business, hub_double):
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
         Hub.objects.filter(pk=business.pk).update(
             provision_requested_at=timezone.now() - timedelta(minutes=5)
         )
@@ -168,7 +169,7 @@ class TestReconcile:
             run("reconcile_hub_states")
 
         assert "provision_failed=1" in str(failed.value)
-        assert (fresh(business).status, fresh(business).last_hub_error) == ("preparing", services.PROVISION_FAILED)
+        assert (fresh(business).status, fresh(business).last_hub_error) == ("preparing", hub_callbacks.PROVISION_FAILED)
         assert access_control.open_blocked_reason(fresh(business)) == "error"
 
     def test_a_failed_sign_up_the_hub_prepares_later_opens_without_the_error(self, business, hub_double):
@@ -225,15 +226,15 @@ class TestReconcile:
             "reason": "Aurora upgrade",
             "since": "2026-11-09T20:00:00+00:00",
         }
-        checked = services.business_check(ctx_for(owner), ByIdIn(id=business.id))
+        checked = reconciliation.business_check(ctx_for(owner), ByIdIn(id=business.id))
         assert checked.maintenance.frozen is True
 
         hub_double.registry[str(business.id)]["maintenance"] = None
-        checked = services.business_check(ctx_for(owner), ByIdIn(id=business.id))
+        checked = reconciliation.business_check(ctx_for(owner), ByIdIn(id=business.id))
         assert checked.maintenance is None
 
         hub_double.registry[str(business.id)]["status"] = "ready"
-        checked = services.business_check(ctx_for(owner), ByIdIn(id=business.id))
+        checked = reconciliation.business_check(ctx_for(owner), ByIdIn(id=business.id))
         assert (checked.status, fresh(business).ready_at is not None) == ("active", True)
 
     @pytest.mark.parametrize("status", [Hub.Status.ACTIVE, Hub.Status.DELETING])
@@ -287,10 +288,10 @@ class TestReconcile:
         hub_double.registry[str(business.id)]["status"] = "failed"
         with pytest.raises(CommandError):
             run("reconcile_hub_states")
-        services.bump_state(business.id)
+        hub_push.bump_state(business.id)
 
-        assert services.sync_outcome(business.id) == services.DELIVERED
-        assert fresh(business).last_hub_error == services.PROVISION_FAILED
+        assert hub_push.sync_outcome(business.id) == hub_push.DELIVERED
+        assert fresh(business).last_hub_error == hub_callbacks.PROVISION_FAILED
 
     @pytest.mark.parametrize("status", ["cancelled", "archiving", "dropping", "expired", "purged", "dropped", None])
     def test_a_status_the_sign_up_cannot_have_is_logged_and_fails_the_run(self, business, hub_double, status, caplog):
@@ -324,7 +325,7 @@ class TestReconcile:
     def test_a_sign_up_younger_than_the_threshold_is_left_alone(
         self, business, hub_double
     ):
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
         hub_double.calls.clear()
 
         run("reconcile_hub_states")
@@ -332,7 +333,7 @@ class TestReconcile:
         assert hub_double.calls == []
 
     def test_the_threshold_is_an_option(self, business, hub_double):
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
         Hub.objects.filter(pk=business.pk).update(
             provision_requested_at=timezone.now() - timedelta(minutes=5)
         )
@@ -344,7 +345,7 @@ class TestReconcile:
 
     @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one by default)
     def test_a_trial_that_ran_out_reaches_the_hub_as_free(self, business, hub_double):
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
         Subscription.objects.filter(hub=business).update(
             trial_end=timezone.now() - timedelta(minutes=1)
         )
@@ -401,18 +402,18 @@ class TestReconcile:
         other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
 
     def test_the_saas_worker_runs_the_same_pass_under_the_same_lock(self, business, hub_double, other_session):
-        """``services.reconcile_exclusively`` is what the command and the ``saas-worker`` (every 15 minutes, saas#305)
+        """``services.reconciliation.reconcile_exclusively`` is what the command and the ``saas-worker`` (every 15 minutes, saas#305)
         both run: the pass's counts, or ``None`` while another run holds the lock."""
         other_session.execute(f"SELECT pg_advisory_lock({LOCK_KEY})")
         try:
-            assert services.reconcile_exclusively() is None
+            assert reconciliation.reconcile_exclusively() is None
         finally:
             other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
         assert hub_double.calls == []
 
-        counts = services.reconcile_exclusively()
+        counts = reconciliation.reconcile_exclusively()
 
-        assert counts is not None and not services.run_failed(counts)
+        assert counts is not None and not reconciliation.run_failed(counts)
         assert other_session.execute(f"SELECT pg_try_advisory_lock({LOCK_KEY})").fetchone()[0] is True
         other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
 
@@ -431,12 +432,12 @@ class TestReconcile:
             asked.append(1)
             return len(asked) == 1
 
-        counts = services.reconcile_exclusively(go_on=go_on)
+        counts = reconciliation.reconcile_exclusively(go_on=go_on)
 
         assert (counts["delivered"], counts["owed"], counts["cut_short"]) == (1, 0, 1)
-        assert not services.run_failed(counts)
+        assert not reconciliation.run_failed(counts)
         assert sorted(fresh(hub).pending_hub_call for hub in hubs) == ["", "put", "put"]
-        again = services.reconcile_exclusively()
+        again = reconciliation.reconcile_exclusively()
         assert (again["delivered"], again["cut_short"]) == (2, 0)
 
     def test_the_lock_is_released_when_a_run_fails(
@@ -534,9 +535,9 @@ class TestDataCopyReady:
         moment = timezone.now()
         hub = deleted_at(business, moment)
         hub_double.dumps[str(hub.id)] = [offboarding_copy(hub, moment)]
-        monkeypatch.setattr(services.emails, "send_data_copy_ready", lambda *args, **kwargs: False)
+        monkeypatch.setattr(emails, "send_data_copy_ready", lambda *args, **kwargs: False)
 
-        for attempt in range(1, services.DATA_COPY_MAIL_ATTEMPTS + 1):
+        for attempt in range(1, reconciliation.DATA_COPY_MAIL_ATTEMPTS + 1):
             output = run("reconcile_hub_states")
             assert "data_copy_unsent=1" in output
             assert fresh(hub).data_copy_mail_attempts == attempt
@@ -565,9 +566,9 @@ class TestDataCopyReady:
         from hubs.schemas import BusinessDeleteIn
         from hubs.tests.conftest import ctx_for
 
-        Hub.objects.filter(pk=business.pk).update(data_copy_mail_attempts=services.DATA_COPY_MAIL_ATTEMPTS)
+        Hub.objects.filter(pk=business.pk).update(data_copy_mail_attempts=reconciliation.DATA_COPY_MAIL_ATTEMPTS)
 
-        services.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
+        deletion.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
 
         assert fresh(business).data_copy_mail_attempts == 0
 
@@ -604,8 +605,8 @@ class TestDataCopyReady:
 def test_the_lock_follows_the_saas_convention_and_is_its_own():
     """``hashtext('erplora.saas.<command>')``, the key ``base``'s commands take (``migrate``,
     ``report_seal_expiry``): one namespace for every lock of the SaaS's database."""
-    assert services.lock_name("reconcile_hub_states") == "erplora.saas.reconcile_hub_states"
-    assert services.lock_name("push_hub_snapshots") != services.lock_name("reconcile_hub_states")
+    assert exclusive_runs.lock_name("reconcile_hub_states") == "erplora.saas.reconcile_hub_states"
+    assert exclusive_runs.lock_name("push_hub_snapshots") != exclusive_runs.lock_name("reconcile_hub_states")
 
 
 def test_nobody_enters_a_purged_business(business, owner):

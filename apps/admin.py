@@ -5,7 +5,7 @@ shows them and never adds, changes nor deletes a row. ``Module`` is written here
 form runs ``Module.clean()`` (the slug is a paid app of the catalog) and checks in Stripe the prices
 pasted on it (APPS-F04, the same checks as a plan's, BILLING-F28). A module some business still has is not deleted:
 taking it off sale («active» off) is how it stops being sold. A new module, or a new level of one, owes the
-businesses whose plan includes it a newer snapshot (``hubs.services.owe_module_rights``, HUBS-F34).
+businesses whose plan includes it a newer snapshot (``hubs.services.subscription_sync.owe_module_rights``, HUBS-F34).
 """
 
 from django import forms
@@ -113,10 +113,10 @@ class ModuleAdmin(admin.ModelAdmin):
         # HUBS-F34: a new module, or one moved to another level, reaches the businesses whose plan includes it within
         # 15 minutes, not at Stripe's next notice of each of them.
         if not change or "tier" in form.changed_data:
-            from hubs import services as hub_services
+            from hubs.services import subscription_sync
 
             previous = form.initial.get("tier") if change else None
-            owed = hub_services.owe_module_rights(obj.tier, previous)
+            owed = subscription_sync.owe_module_rights(obj.tier, previous)
             if owed:
                 self.message_user(
                     request,

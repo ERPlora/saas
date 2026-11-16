@@ -26,7 +26,7 @@ from whatsapp.tests.test_services import ingest
 
 pytestmark = pytest.mark.django_db
 
-#: The advisory lock a pass holds (``hubs.services.run_exclusively``, as ``whatsapp_refresh_tokens``).
+#: The advisory lock a pass holds (``hubs.services.exclusive_runs.run_exclusively``, as ``whatsapp_refresh_tokens``).
 LOCK_KEY = "hashtext('erplora.saas.whatsapp_deliver')"
 INBOUND = r"^/internal/whatsapp/inbound$"
 MINUTE = timedelta(minutes=1)

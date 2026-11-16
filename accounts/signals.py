@@ -2,7 +2,7 @@
 imports them).
 
 Both are sent inside the command's transaction with ``user_id`` (the account's UUID): a receiver that
-queues work (``hubs.services.revoke_after_commit``) commits or rolls back with the command.
+queues work (``hubs.services.session_revocations.revoke_after_commit``) commits or rolls back with the command.
 """
 
 from django.dispatch import Signal

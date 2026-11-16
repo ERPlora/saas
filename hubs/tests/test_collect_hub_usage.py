@@ -22,7 +22,8 @@ from live.errors import PermissionDenied
 from live.live_registry import live_registry
 from live.models import OutboxEvent
 
-from hubs import events, services
+from hubs import events
+from hubs.services import usage_collection
 from hubs.queries import hub_usage
 from hubs.models import HubUsageDaily
 from hubs.schemas import UsagePruneIn, UsageRecordIn, UsageSeriesIn
@@ -515,7 +516,7 @@ class TestTheyHearOfIt:
 class TestOnlyThePlatformRecordsIt:
     def test_an_account_cannot_record_usage(self, business, owner):
         with pytest.raises(PermissionDenied) as refused:
-            services.usage_record(
+            usage_collection.usage_record(
                 ctx_for(owner),
                 UsageRecordIn(
                     id=business.id,
@@ -557,7 +558,7 @@ def prune_breaks(monkeypatch) -> None:
     def broken(ctx, data):
         raise RuntimeError("the database went away")
 
-    monkeypatch.setattr(services, "usage_prune", broken)
+    monkeypatch.setattr(usage_collection, "usage_prune", broken)
 
 
 class TestAPassForgetsWhatIsPastTheRetention:
@@ -600,7 +601,7 @@ class TestAPassForgetsWhatIsPastTheRetention:
         """Holds the two numbers together: a longer window has to raise the retention with it."""
         longest = UsageSeriesIn.model_json_schema()["properties"]["days"]["maximum"]
 
-        assert services.USAGE_RETENTION_DAYS > longest
+        assert usage_collection.USAGE_RETENTION_DAYS > longest
 
     def test_a_day_collected_by_hand_past_the_retention_goes_at_the_end_of_its_pass(self, business, hub_double):
         old = days_ago(401)
@@ -629,7 +630,7 @@ class TestAPruneThatFailsNeverEatsTheCollection:
         hub_double.usage[DAY.isoformat()] = [row(business.id, s3_bytes=7)]
         prune_breaks(monkeypatch)
 
-        with caplog.at_level(logging.ERROR, logger="hubs.services"):
+        with caplog.at_level(logging.ERROR, logger="hubs.services.usage_collection"):
             failed, said = collect_saying()
 
         assert figures(business)[0] == 7
@@ -660,7 +661,7 @@ class TestThePruneOperation:
         keep_day(business, days_ago(401))
 
         with pytest.raises(PermissionDenied) as refused:
-            services.usage_prune(ctx_for(owner), UsagePruneIn())
+            usage_collection.usage_prune(ctx_for(owner), UsagePruneIn())
 
         assert refused.value.code == "internal_command"
         assert days_kept(business) == {days_ago(401)}

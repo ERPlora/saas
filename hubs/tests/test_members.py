@@ -21,7 +21,7 @@ from django.utils import timezone, translation
 from live.errors import Conflict, NotFound, PermissionDenied
 
 from accounts.services.platform_staff import PlatformRoleRefused, create_platform_user
-from hubs import services
+from hubs.services import billing_profiles, invitation_answers, member_management
 from hubs.queries import invitations, membership
 from hubs.models import BillingProfile, Hub, HubMember, Subscription
 from hubs.schemas import (
@@ -40,7 +40,7 @@ User = get_user_model()
 
 
 def invite(actor, hub, email, role="hub_employee", message=""):
-    return services.member_invite(
+    return member_management.member_invite(
         ctx_for(actor),
         MemberInviteIn(hub_id=hub.id, email=email, role=role, message=message),
     )
@@ -82,7 +82,7 @@ class TestInvite:
 
     def test_the_least_privilege_by_default(self, business, owner):
         assert (
-            services.member_invite(
+            member_management.member_invite(
                 ctx_for(owner),
                 MemberInviteIn(hub_id=business.id, email="x@example.com"),
             ).role
@@ -239,7 +239,7 @@ class TestInvite:
         EmailAddress.objects.create(user=ana, email=ana.email, verified=True, primary=True)
 
         invite(owner, business, written)
-        services.invitation_accept(ctx_for(ana), ByIdIn(id=member_of(business, ana).id))
+        invitation_answers.invitation_accept(ctx_for(ana), ByIdIn(id=member_of(business, ana).id))
 
         assert list(User.objects.exclude(pk=owner.pk).values_list("email", flat=True)) == ["ana.lopez@example.com"]
         assert member_of(business, ana).accepted_at is not None
@@ -251,7 +251,7 @@ class TestInvite:
 
 class TestChangeRole:
     def change(self, actor, member, role):
-        return services.member_change_role(
+        return member_management.member_change_role(
             ctx_for(actor), MemberRoleIn(id=member.id, role=role)
         )
 
@@ -326,7 +326,7 @@ class TestChangeRole:
         import uuid
 
         with pytest.raises(NotFound):
-            services.member_change_role(
+            member_management.member_change_role(
                 ctx_for(team["owner"]),
                 MemberRoleIn(id=uuid.uuid7(), role="hub_employee"),
             )
@@ -346,8 +346,8 @@ class TestChangeRole:
 @pytest.mark.parametrize(
     "write",
     [
-        lambda ctx, member: services.member_change_role(ctx, MemberRoleIn(id=member.id, role="hub_employee")),
-        lambda ctx, member: services.member_remove(ctx, ByIdIn(id=member.id)),
+        lambda ctx, member: member_management.member_change_role(ctx, MemberRoleIn(id=member.id, role="hub_employee")),
+        lambda ctx, member: member_management.member_remove(ctx, ByIdIn(id=member.id)),
     ],
     ids=["change_role", "remove"],
 )
@@ -363,7 +363,7 @@ def test_ones_own_membership_is_refused_with_its_own_code(business, team, write)
 
 class TestRemove:
     def remove(self, actor, member):
-        return services.member_remove(ctx_for(actor), ByIdIn(id=member.id))
+        return member_management.member_remove(ctx_for(actor), ByIdIn(id=member.id))
 
     def test_removing_revokes_exactly_that_business(
         self, business, team, make_user, hub_double, django_capture_on_commit_callbacks
@@ -427,7 +427,7 @@ class TestRemoveThePayer:
         return business
 
     def remove(self, actor, member):
-        return services.member_remove(ctx_for(actor), ByIdIn(id=member.id))
+        return member_management.member_remove(ctx_for(actor), ByIdIn(id=member.id))
 
     def test_the_new_owner_cannot_take_out_the_one_who_pays(self, handed_over, team):
         with pytest.raises(Conflict) as refused:
@@ -446,7 +446,7 @@ class TestRemoveThePayer:
         assert spanish.value.message and spanish.value.message != english.value.message
 
     def test_once_the_new_owner_pays_the_old_one_can_go(self, handed_over, team):
-        services.billing_profile_update(
+        billing_profiles.billing_profile_update(
             ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
         )
 
@@ -464,7 +464,7 @@ class TestRemoveThePayer:
         pay(handed_over, customer="cus_olga")
         with pytest.raises(Conflict) as by_its_payer:
             self.remove(team["admin"], member_of(handed_over, team["owner"]))
-        services.billing_profile_update(
+        billing_profiles.billing_profile_update(
             ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
         )
 
@@ -479,7 +479,7 @@ class TestRemoveThePayer:
         old_payer = HubMember.objects.get(hub=handed_over, user=team["owner"]).hub.billing_profile
         BillingProfile.objects.filter(pk=old_payer.pk).update(stripe_customer_id="cus_olga")
         Subscription.objects.filter(hub=handed_over).update(stripe_customer_id="cus_olga", status="active")
-        services.billing_profile_update(
+        billing_profiles.billing_profile_update(
             ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
         )
 
@@ -490,7 +490,7 @@ class TestRemoveThePayer:
     def test_a_plan_without_a_stripe_customer_is_on_nobodys_card(self, handed_over, team):
         """Neither the old payer nor the plan has a Stripe customer yet: an empty one matches nobody."""
         Subscription.objects.filter(hub=handed_over).update(stripe_subscription_id="sub_1", status="active")
-        services.billing_profile_update(
+        billing_profiles.billing_profile_update(
             ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
         )
 
@@ -504,7 +504,7 @@ class TestRemoveThePayer:
         old_payer = HubMember.objects.get(hub=handed_over, user=team["owner"]).hub.billing_profile
         BillingProfile.objects.filter(pk=old_payer.pk).update(stripe_customer_id="cus_olga")
         pay(handed_over, customer="cus_olga", status="canceled")
-        services.billing_profile_update(
+        billing_profiles.billing_profile_update(
             ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
         )
 
@@ -526,7 +526,7 @@ class TestResendAndCancel:
         )
 
         with django_capture_on_commit_callbacks(execute=True):
-            row = services.member_resend(
+            row = member_management.member_resend(
                 ctx_for(team["owner"]),
                 ByIdIn(id=member_of(business, team["invitee"]).id),
             )
@@ -543,14 +543,14 @@ class TestResendAndCancel:
         type(invitee).objects.filter(pk=invitee.pk).update(**{flag: True})
 
         with pytest.raises(Conflict) as refused:
-            services.member_resend(ctx_for(team["owner"]), ByIdIn(id=member_of(business, invitee).id))
+            member_management.member_resend(ctx_for(team["owner"]), ByIdIn(id=member_of(business, invitee).id))
 
         assert refused.value.code == "hubs.platform_account"
         assert mail.outbox == []
 
     def test_an_answered_member_has_nothing_to_resend(self, business, team):
         with pytest.raises(Conflict) as refused:
-            services.member_resend(
+            member_management.member_resend(
                 ctx_for(team["owner"]),
                 ByIdIn(id=member_of(business, team["employee"]).id),
             )
@@ -558,7 +558,7 @@ class TestResendAndCancel:
         assert refused.value.code == "hubs.member_not_pending"
 
     def test_cancel_deletes_the_invitation(self, business, team):
-        services.member_cancel(
+        member_management.member_cancel(
             ctx_for(team["admin"]), ByIdIn(id=member_of(business, team["invitee"]).id)
         )
 
@@ -566,7 +566,7 @@ class TestResendAndCancel:
 
     def test_an_answered_member_is_removed_not_cancelled(self, business, team):
         with pytest.raises(Conflict) as refused:
-            services.member_cancel(
+            member_management.member_cancel(
                 ctx_for(team["owner"]),
                 ByIdIn(id=member_of(business, team["employee"]).id),
             )
@@ -575,7 +575,7 @@ class TestResendAndCancel:
 
     def test_a_manager_cancels_nothing(self, business, team):
         with pytest.raises(PermissionDenied):
-            services.member_cancel(
+            member_management.member_cancel(
                 ctx_for(team["manager"]),
                 ByIdIn(id=member_of(business, team["invitee"]).id),
             )
@@ -591,7 +591,7 @@ class TestResendAndCancel:
         )
 
         with pytest.raises(PermissionDenied):
-            services.member_cancel(
+            member_management.member_cancel(
                 ctx_for(team["admin"]),
                 ByIdIn(
                     id=HubMember.objects.get(user__email="future-admin@example.com").id
@@ -655,7 +655,7 @@ class TestThePlatformsDoor:
 
 class TestAccept:
     def accept(self, user, member_id):
-        return services.invitation_accept(ctx_for(user), ByIdIn(id=member_id))
+        return invitation_answers.invitation_accept(ctx_for(user), ByIdIn(id=member_id))
 
     def test_accepting_lets_the_invitee_in_with_the_role_it_says(self, business, team):
         before = version(business)
@@ -748,7 +748,7 @@ class TestAccept:
         assert member_of(other, team["invitee"]).is_pending
 
     def test_declining_deletes_the_invitation(self, business, team):
-        services.invitation_decline(
+        invitation_answers.invitation_decline(
             ctx_for(team["invitee"]), ByIdIn(id=member_of(business, team["invitee"]).id)
         )
 
@@ -756,7 +756,7 @@ class TestAccept:
 
     def test_declining_somebody_elses_is_not_found(self, business, team):
         with pytest.raises(NotFound):
-            services.invitation_decline(
+            invitation_answers.invitation_decline(
                 ctx_for(team["stranger"]),
                 ByIdIn(id=member_of(business, team["invitee"]).id),
             )
@@ -764,7 +764,7 @@ class TestAccept:
     def test_a_cancelled_invitation_is_not_resurrected(self, business, team):
         """The inviter changed their mind before the answer."""
         member_id = member_of(business, team["invitee"]).id
-        services.member_cancel(ctx_for(team["owner"]), ByIdIn(id=member_id))
+        member_management.member_cancel(ctx_for(team["owner"]), ByIdIn(id=member_id))
 
         with pytest.raises(NotFound):
             self.accept(team["invitee"], member_id)

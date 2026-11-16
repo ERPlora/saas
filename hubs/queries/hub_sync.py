@@ -1,4 +1,4 @@
-"""What the Hub is told about a business (``hubs.services.sync_hub``): its registry and its snapshot."""
+"""What the Hub is told about a business (``hubs.services.hub_push.sync_hub``): its registry and its snapshot."""
 
 from typing import Any
 from uuid import UUID
@@ -117,7 +117,7 @@ def _snapshot_custom_domain(hub: Hub, plan: Plan | None) -> dict[str, str]:
 
 
 #: The plan's fields its businesses' snapshots carry (``plan`` of the snapshot): changing one in the admin owes the
-#: Hub a newer snapshot of every business on the plan (``services.owe_plan_rights``). The monthly messages are counted
+#: Hub a newer snapshot of every business on the plan (``services.subscription_sync.owe_plan_rights``). The monthly messages are counted
 #: and blocked at by the Hub: 0 = none. ``max_apps`` is how many modules the business may choose to turn on, which
 #: the Hub checks when it turns one on: 0 = no limit.
 SNAPSHOT_PLAN_FIELDS = (

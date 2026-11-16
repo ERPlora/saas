@@ -13,7 +13,7 @@ digits («3500» is not Las Palmas): its province decides the tax.
 import pytest
 from live.errors import InvalidPayload, NotFound, PermissionDenied
 
-from hubs import services
+from hubs.services import billing_profiles
 from hubs.queries import payers
 from hubs.models import BillingProfile, Hub
 from hubs.schemas import BillingProfileGetIn, BillingProfileIn
@@ -29,7 +29,7 @@ def read(user, hub):
 
 
 def update(user, hub, **fields):
-    return services.billing_profile_update(
+    return billing_profiles.billing_profile_update(
         ctx_for(user), BillingProfileIn(hub_id=hub.id, **fields)
     ).model_dump()
 

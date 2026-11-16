@@ -12,7 +12,7 @@ from django.core import mail
 from django.utils import timezone
 from live.errors import Conflict, NotFound, PermissionDenied
 
-from hubs import services
+from hubs.services import billing_profiles, member_management, ownership
 from hubs.queries import businesses, membership, payers
 from hubs.models import BillingProfile, Hub, HubMember, HubOwnershipTransfer
 from hubs.schemas import (
@@ -31,13 +31,13 @@ pytestmark = pytest.mark.django_db
 def offer(actor, hub, to_user):
     member = HubMember.objects.filter(hub=hub, user=to_user).first()
     member_id = member.id if member else HubMember.objects.first().id
-    return services.ownership_transfer(
+    return ownership.ownership_transfer(
         ctx_for(actor), OwnershipTransferIn(hub_id=hub.id, member_id=member_id)
     )
 
 
 def accept(user, transfer_id):
-    return services.ownership_accept(ctx_for(user), ByIdIn(id=transfer_id))
+    return ownership.ownership_accept(ctx_for(user), ByIdIn(id=transfer_id))
 
 
 def roles(hub):
@@ -100,7 +100,7 @@ class TestTheRecipientIsAlreadyOnTheBusiness:
         add_member(other, team["stranger"], HubMember.Role.EMPLOYEE)
 
         with pytest.raises(Conflict) as refused:
-            services.ownership_transfer(
+            ownership.ownership_transfer(
                 ctx_for(team["owner"]),
                 OwnershipTransferIn(
                     hub_id=business.id, member_id=member_of(other, team["stranger"]).id
@@ -244,7 +244,7 @@ class TestOnlyTheNamedRecipientAnswers:
 
     def test_a_recipient_who_left_cannot_accept(self, business, team):
         transfer = offer(team["owner"], business, team["admin"])
-        services.member_remove(
+        member_management.member_remove(
             ctx_for(team["owner"]), ByIdIn(id=member_of(business, team["admin"]).id)
         )
 
@@ -257,7 +257,7 @@ class TestOnlyTheNamedRecipientAnswers:
         """HUBS-F27 «Sale»: the offer pending to the person removed is withdrawn, so the owner may offer the
         business to somebody else at once (and the members page stops saying it is offered)."""
         transfer = offer(team["owner"], business, team["admin"])
-        services.member_remove(ctx_for(team["owner"]), ByIdIn(id=member_of(business, team["admin"]).id))
+        member_management.member_remove(ctx_for(team["owner"]), ByIdIn(id=member_of(business, team["admin"]).id))
 
         withdrawn = HubOwnershipTransfer.objects.get(pk=transfer.id)
         assert (withdrawn.status, withdrawn.resolved_at is not None) == ("cancelled", True)
@@ -286,7 +286,7 @@ class TestDeclineAndCancelLeaveEverythingWhereItWas:
         transfer = offer(team["owner"], business, team["admin"])
 
         assert (
-            services.ownership_decline(
+            ownership.ownership_decline(
                 ctx_for(team["admin"]), ByIdIn(id=transfer.id)
             ).status
             == "declined"
@@ -297,7 +297,7 @@ class TestDeclineAndCancelLeaveEverythingWhereItWas:
         transfer = offer(team["owner"], business, team["admin"])
 
         assert (
-            services.ownership_cancel(
+            ownership.ownership_cancel(
                 ctx_for(team["owner"]), ByIdIn(id=transfer.id)
             ).status
             == "cancelled"
@@ -309,12 +309,12 @@ class TestDeclineAndCancelLeaveEverythingWhereItWas:
         transfer = offer(team["owner"], business, team["admin"])
 
         with pytest.raises(NotFound):
-            services.ownership_cancel(ctx_for(team["admin"]), ByIdIn(id=transfer.id))
+            ownership.ownership_cancel(ctx_for(team["admin"]), ByIdIn(id=transfer.id))
         with pytest.raises(NotFound):
-            services.ownership_decline(ctx_for(team["owner"]), ByIdIn(id=transfer.id))
+            ownership.ownership_decline(ctx_for(team["owner"]), ByIdIn(id=transfer.id))
 
     def test_after_a_decline_a_new_offer_is_possible(self, business, team):
-        services.ownership_decline(
+        ownership.ownership_decline(
             ctx_for(team["admin"]),
             ByIdIn(id=offer(team["owner"], business, team["admin"]).id),
         )
@@ -326,7 +326,7 @@ class TestDeclineAndCancelLeaveEverythingWhereItWas:
         accept(team["admin"], transfer.id)
 
         with pytest.raises(Conflict) as refused:
-            services.ownership_cancel(ctx_for(team["owner"]), ByIdIn(id=transfer.id))
+            ownership.ownership_cancel(ctx_for(team["owner"]), ByIdIn(id=transfer.id))
 
         assert refused.value.code == "hubs.transfer_answered"
 
@@ -375,7 +375,7 @@ class TestWhatTheScreensRead:
 
     def test_the_trail_survives_the_accounts_it_names(self, business, team):
         transfer = offer(team["owner"], business, team["admin"])
-        services.ownership_decline(ctx_for(team["admin"]), ByIdIn(id=transfer.id))
+        ownership.ownership_decline(ctx_for(team["admin"]), ByIdIn(id=transfer.id))
         team["admin"].delete()
 
         row = HubOwnershipTransfer.objects.get()
@@ -395,7 +395,7 @@ class TestTheNewOwnersPayer:
     saving a payer gives the business one of their own."""
 
     def handed_over(self, business, team):
-        services.billing_profile_update(
+        billing_profiles.billing_profile_update(
             ctx_for(team["owner"]), BillingProfileIn(hub_id=business.id, billing_name="Olga SL", tax_id="B12345678")
         )
         accept(team["admin"], offer(team["owner"], business, team["admin"]).id)
@@ -412,7 +412,7 @@ class TestTheNewOwnersPayer:
         self.handed_over(business, team)
         old = Hub.objects.get(pk=business.pk).billing_profile_id
 
-        saved = services.billing_profile_update(ctx_for(team["admin"]), BillingProfileIn(hub_id=business.id, billing_name="Adela SL"))
+        saved = billing_profiles.billing_profile_update(ctx_for(team["admin"]), BillingProfileIn(hub_id=business.id, billing_name="Adela SL"))
 
         hub = Hub.objects.get(pk=business.pk)
         assert (saved.billing_name, saved.paid_by_another_account) == ("Adela SL", False)

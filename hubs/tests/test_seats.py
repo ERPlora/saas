@@ -23,7 +23,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone, translation
 from live.errors import Conflict
 
-from hubs import services
+from hubs.services import invitation_answers, member_management
 from hubs.queries import membership
 from hubs.models import HubMember, Plan, Subscription
 from hubs.schemas import ByIdIn, MemberInviteIn, MemberListIn, MemberRoleIn
@@ -36,7 +36,7 @@ HOST = "localhost:8001"
 
 
 def invite(actor, hub, email, role="hub_employee"):
-    return services.member_invite(
+    return member_management.member_invite(
         ctx_for(actor), MemberInviteIn(hub_id=hub.id, email=email, role=role)
     )
 
@@ -107,7 +107,7 @@ class TestTheInvitationSpendsTheSeat:
         two = HubMember.objects.get(user__email="two@example.com")
 
         with pytest.raises(Conflict) as resend:
-            services.member_resend(ctx_for(owner), ByIdIn(id=two.id))
+            member_management.member_resend(ctx_for(owner), ByIdIn(id=two.id))
         with pytest.raises(Conflict) as again:
             invite(owner, business, "two@example.com")
 
@@ -145,7 +145,7 @@ class TestTheInvitationSpendsTheSeat:
         two = HubMember.objects.get(user__email="two@example.com")
 
         assert (
-            services.member_change_role(
+            member_management.member_change_role(
                 ctx_for(owner), MemberRoleIn(id=two.id, role="hub_admin")
             ).role
             == "hub_admin"
@@ -169,7 +169,7 @@ class TestAcceptingNeedsASeatForThePeopleInside:
         full(business, owner)
         one = HubMember.objects.get(user__email="one@example.com")
 
-        row = services.invitation_accept(ctx_for(one.user), ByIdIn(id=one.id))
+        row = invitation_answers.invitation_accept(ctx_for(one.user), ByIdIn(id=one.id))
 
         assert row.slug == business.slug
         assert seats(owner, business) == {"used": 3, "limit": 3}
@@ -189,9 +189,9 @@ class TestAcceptingNeedsASeatForThePeopleInside:
         )
 
         for member in invited[:2]:
-            services.invitation_accept(ctx_for(member.user), ByIdIn(id=member.id))
+            invitation_answers.invitation_accept(ctx_for(member.user), ByIdIn(id=member.id))
         with pytest.raises(Conflict) as refused:
-            services.invitation_accept(
+            invitation_answers.invitation_accept(
                 ctx_for(invited[2].user), ByIdIn(id=invited[2].id)
             )
 
@@ -262,10 +262,10 @@ class TestTheRefusal:
             )
         )
         for member in invited[:2]:
-            services.invitation_accept(ctx_for(member.user), ByIdIn(id=member.id))
+            invitation_answers.invitation_accept(ctx_for(member.user), ByIdIn(id=member.id))
 
         with translation.override("es"), pytest.raises(Conflict) as refused:
-            services.invitation_accept(
+            invitation_answers.invitation_accept(
                 ctx_for(invited[2].user), ByIdIn(id=invited[2].id)
             )
 
