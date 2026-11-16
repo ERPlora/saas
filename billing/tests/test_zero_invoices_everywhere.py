@@ -19,9 +19,9 @@ from billing import queries, services
 from billing.models import Invoice
 from billing.queries.billing_report import quarter_of
 from billing.schemas import InvoiceByIdIn, InvoiceFilterIn, InvoiceListIn
-from billing.tests.conftest import ctx_for, pay
+from billing.tests.conftest import ctx_for
 from billing.tests.stripe_double import signed, subscription
-from hubs.models import Hub
+from billing.tests.test_invoice_recording import running  # noqa: F401 - a ready business paying Starter monthly
 
 pytestmark = pytest.mark.django_db
 
@@ -36,10 +36,9 @@ def _stripe(stripe_double, issuer_identity):
 
 
 @pytest.fixture
-def zero(shop) -> Invoice:
+def zero(request) -> Invoice:
     """The invoice of the first free month of Panadería López (Starter, ``sub_1``), recorded from Stripe's event."""
-    paid = pay(shop)
-    Hub.objects.filter(pk=paid.pk).update(status=Hub.Status.ACTIVE, ready_at=timezone.now(), pending_hub_call="")
+    request.getfixturevalue("running")
     payload = json.loads((FIXTURES / "invoice_paid_month_1.json").read_text())
     stripe_invoice = payload["data"]["object"]
     stripe_invoice["parent"]["subscription_details"]["subscription"] = "sub_1"

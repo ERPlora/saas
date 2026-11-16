@@ -14,14 +14,12 @@ from pathlib import Path
 
 import pytest
 from django.test import Client
-from django.utils import timezone
 
 from billing import services, vat
 from billing.models import Invoice, InvoiceCounter
 from billing.services.invoice_discounts import is_fully_discounted, line_amounts
-from billing.tests.conftest import pay
 from billing.tests.stripe_double import event, invoice, signed, subscription
-from hubs.models import Hub
+from billing.tests.test_invoice_recording import running  # noqa: F401 - a ready business paying Starter monthly
 
 pytestmark = pytest.mark.django_db
 
@@ -34,14 +32,6 @@ NO_TAX_ERROR = "fiscal.vat.stripe_charged_no_tax_on_subject_sale"
 def _stripe(stripe_double, issuer_identity):
     stripe_double.answer("subscriptions.retrieve", subscription())
     return stripe_double
-
-
-@pytest.fixture
-def running(shop):
-    """A ready business paying Starter monthly (``sub_1``), its payer in Madrid."""
-    paid = pay(shop)
-    Hub.objects.filter(pk=paid.pk).update(status=Hub.Status.ACTIVE, ready_at=timezone.now(), pending_hub_call="")
-    return Hub.objects.select_related("billing_profile").get(pk=paid.pk)
 
 
 def captured_paid(month: int) -> dict:
@@ -95,8 +85,9 @@ class TestWhatStripeSends:
 # --- The 0 € invoice of a free month -------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("running")
 class TestTheZeroInvoice:
-    def test_it_is_numbered_like_any_other_with_its_discount_on_the_line(self, running, caplog):
+    def test_it_is_numbered_like_any_other_with_its_discount_on_the_line(self, caplog):
         assert deliver(captured_paid(1)) == "processed"
 
         recorded = Invoice.objects.get()
@@ -111,7 +102,7 @@ class TestTheZeroInvoice:
         assert (line.discount_cents, line.net_cents, line.tax_cents, line.total_cents) == (2999, 0, 0, 0)
         assert not [record for record in caplog.records if getattr(record, "event", "") == NO_TAX_ERROR]
 
-    def test_it_reaches_the_platform_hub_with_the_discount(self, running, hub_double, django_capture_on_commit_callbacks):
+    def test_it_reaches_the_platform_hub_with_the_discount(self, hub_double, django_capture_on_commit_callbacks):
         hub_double.answer("POST", PLATFORM, 201, {"status": "issued", "qr": "https://example.com/qr"})
 
         with django_capture_on_commit_callbacks(execute=True):
@@ -124,7 +115,7 @@ class TestTheZeroInvoice:
         }
         assert Invoice.objects.get().fiscal_status == "issued"
 
-    def test_a_redelivery_is_the_same_invoice_and_spends_no_number(self, running):
+    def test_a_redelivery_is_the_same_invoice_and_spends_no_number(self):
         first = captured_paid(1)
         again = {**captured_paid(1), "id": "evt_free_month_again"}
 
@@ -134,15 +125,16 @@ class TestTheZeroInvoice:
         assert Invoice.objects.count() == 1
         assert InvoiceCounter.objects.get().last_number == 1
 
-    def test_a_trial_is_still_no_invoice(self, running):
+    def test_a_trial_is_still_no_invoice(self):
         deliver(event("invoice.paid", invoice("in_trial", status="paid", amount_due=0, tax=0)))
 
         assert not Invoice.objects.exists()
         assert not InvoiceCounter.objects.exists()
 
 
+@pytest.mark.usefixtures("running")
 class TestTheMonthAfter:
-    def test_it_is_charged_as_any_other(self, running):
+    def test_it_is_charged_as_any_other(self):
         deliver(captured_paid(7))
 
         recorded = Invoice.objects.get()
@@ -174,7 +166,8 @@ def test_a_subject_sale_charged_without_tax_is_still_reported(caplog):
     assert [record for record in caplog.records if getattr(record, "event", "") == NO_TAX_ERROR]
 
 
-def test_the_payload_of_every_line_carries_its_discount(running):
+@pytest.mark.usefixtures("running")
+def test_the_payload_of_every_line_carries_its_discount():
     deliver(captured_paid(7))
 
     [line] = services.platform_payload(Invoice.objects.get())["lines"]

@@ -12,7 +12,7 @@
 import { ConfirmDialog, type ConfirmConsequence, EmptyState, InlineFeedback } from '@erplora/ui/components';
 import { HubIcon, toastInfo, toastSuccess } from '@erplora/ui/shell';
 import { useCommand, useLive, useLiveClient } from '@erplora/ui/sdk';
-import { IonButton, IonCard, IonCardContent, IonInput, IonLabel, IonSegment, IonSegmentButton, IonSkeletonText } from '@ionic/vue';
+import { IonButton, IonCard, IonCardContent, IonLabel, IonSegment, IonSegmentButton, IonSkeletonText } from '@ionic/vue';
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
@@ -27,7 +27,7 @@ import type {
   StoreCatalogOut,
   SubscriptionOut,
 } from '../../../frontend/sdk-types';
-import { formatDate } from '../format';
+import { formatDate, formatEuros } from '../format';
 import type { PromoCheckOut } from '../promo-types';
 import {
   annualSaving,
@@ -44,6 +44,7 @@ import BusinessPicker from './BusinessPicker.vue';
 import CheckoutModal, { type CheckoutPurchase } from './CheckoutModal.vue';
 import ModuleCard from './ModuleCard.vue';
 import PlanCard from './PlanCard.vue';
+import PromoCodeField from './PromoCodeField.vue';
 import ProrationDialog, { type ProrationItem } from './ProrationDialog.vue';
 
 const props = defineProps<{
@@ -188,33 +189,11 @@ watch(subscription, (now, before) => {
 
 // --- Promo code (a plan bought on Free) -------------------------------------------------------------
 
-const promoOpen = shallowRef(false);
-const promoTyped = shallowRef('');
 const promo = shallowRef<PromoCheckOut | null>(null);
-const promoPending = shallowRef(false);
-const promoError = shallowRef('');
 const promoCode = computed(() => (promo.value?.valid ? promo.value.code : ''));
 const offersPromo = computed(() => !subscription.value?.paying || subscription.value.plan === freePlan.value?.slug);
-
-async function applyPromo(): Promise<void> {
-  const code = promoTyped.value.trim();
-  if (!code) return;
-  promoPending.value = true;
-  promoError.value = '';
-  try {
-    promo.value = await client.api.call('billing.promo.check', { code });
-  } catch (error) {
-    promo.value = null;
-    promoError.value = forDialog(error as never)?.message ?? '';
-  } finally {
-    promoPending.value = false;
-  }
-}
-
-function removePromo(): void {
-  promo.value = null;
-  promoTyped.value = '';
-}
+// A code of free months, on the plan the checkout sells: the checkout says when its price starts.
+const freeMonths = computed(() => (promo.value?.valid && promo.value.kind === 'free_months' ? promo.value.free_months : 0));
 
 // --- Buying ----------------------------------------------------------------------------------------
 
@@ -227,8 +206,11 @@ const annualInterval = shallowRef<BillingInterval>('year');
 
 const cents = (euros: string) => Math.round(Number(euros) * 100);
 
+const monthlyPrice = shallowRef('');
+
 function upgrade(plan: PlanOut, chosen: BillingInterval): void {
   purchase.value = { kind: 'plan', slug: plan.slug, name: plan.name, interval: chosen };
+  monthlyPrice.value = formatEuros(plan.price_monthly, locale.value);
   checkoutOpen.value = true;
 }
 
@@ -607,78 +589,10 @@ async function keepTheModule(module: SaleModule): Promise<void> {
         >
           {{ later }}
         </p>
-        <div
+        <PromoCodeField
           v-if="offersPromo"
-          class="store-promo"
-        >
-          <ion-button
-            v-if="!promoOpen"
-            fill="clear"
-            class="link-button"
-            data-testid="store-promo-toggle"
-            @click="promoOpen = true"
-          >
-            <HubIcon
-              slot="start"
-              name="ion:ticket-outline"
-              aria-hidden="true"
-            />
-            {{ $t('billing.promo.ask') }}
-          </ion-button>
-          <form
-            v-else
-            class="store-promo__form"
-            novalidate
-            @submit.prevent="applyPromo"
-          >
-            <ion-input
-              mode="md"
-              fill="outline"
-              label-placement="floating"
-              autocapitalize="characters"
-              :label="$t('billing.promo.label')"
-              :value="promoTyped"
-              data-testid="store-promo-code"
-              @ion-input="promoTyped = String($event.detail.value ?? '')"
-            />
-            <ion-button
-              fill="outline"
-              :disabled="promoPending || !promoTyped.trim()"
-              data-testid="store-promo-apply"
-              @click="applyPromo"
-            >
-              <HubIcon
-                slot="start"
-                name="ion:checkmark-outline"
-                aria-hidden="true"
-              />
-              {{ $t('billing.promo.apply') }}
-            </ion-button>
-            <ion-button
-              v-if="promo"
-              fill="clear"
-              class="btn-neutral"
-              data-testid="store-promo-remove"
-              @click="removePromo"
-            >
-              <HubIcon
-                slot="start"
-                name="ion:close-outline"
-                aria-hidden="true"
-              />
-              {{ $t('billing.promo.remove') }}
-            </ion-button>
-          </form>
-          <p
-            v-if="promo || promoError"
-            class="store-promo__result"
-            :class="{ 'is-invalid': !promo?.valid }"
-            role="status"
-            data-testid="store-promo-result"
-          >
-            {{ promoError || (promo?.valid ? $t('billing.promo.valid', { code: promo.code, days: promo.trial_days }) : $t('billing.promo.invalid')) }}
-          </p>
-        </div>
+          v-model="promo"
+        />
       </section>
 
       <section
@@ -729,7 +643,17 @@ async function keepTheModule(module: SaleModule): Promise<void> {
       :promo-code="purchase?.kind === 'plan' ? promoCode : ''"
       :declined-for="declinedFor"
       @stale="stale"
-    />
+    >
+      <template #notice>
+        <InlineFeedback
+          v-if="purchase?.kind === 'plan' && freeMonths"
+          icon="ion:ticket-outline"
+          data-testid="checkout-free-months"
+        >
+          {{ $t('billing.checkout.freeMonths', { months: freeMonths, price: monthlyPrice }, freeMonths) }}
+        </InlineFeedback>
+      </template>
+    </CheckoutModal>
     <ProrationDialog
       v-if="business"
       v-model:open="prorationOpen"
@@ -852,7 +776,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
   align-items: center;
   gap: 8px;
 }
-.store-promo__form {
+.store-promo :deep(.store-promo__form) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -860,21 +784,27 @@ async function keepTheModule(module: SaleModule): Promise<void> {
   width: 100%;
   max-width: 480px;
 }
-.store-promo__form ion-input {
+.store-promo :deep(.store-promo__form ion-input) {
   flex: 1 1 200px;
 }
-.store-promo__result {
+.store-promo :deep(.store-promo__result) {
   margin: 0;
   font-size: 0.88rem;
   color: var(--ep-success-text, var(--ion-color-success));
 }
-.store-promo__result.is-invalid {
+.store-promo :deep(.store-promo__result.is-invalid) {
   color: var(--ep-danger-text, var(--ion-color-danger));
 }
-.link-button {
-  margin: 0;
+/* The field is its own component: the buttons' rules of buttons.css reach inside it from here. */
+.store-promo :deep(ion-button > ion-icon[slot='start']) {
+  margin-inline-end: 0.45em;
+  font-size: 1.15em;
 }
-.btn-neutral {
+.store-promo :deep(ion-button.link-button) {
+  margin: 0;
+  --color: var(--ion-color-primary);
+}
+.store-promo :deep(.btn-neutral) {
   --color: var(--ion-text-color);
 }
 </style>

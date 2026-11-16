@@ -392,6 +392,7 @@ onBeforeUnmount(() => {
       >
         {{ $t('billing.checkout.declined', { name: declinedFor }) }}
       </InlineFeedback>
+      <slot name="notice" />
       <div class="checkout-stripe">
         <span class="checkout-secure">
           <HubIcon

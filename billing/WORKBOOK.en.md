@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:6a7e789f19b20ba5ccb98aebf993e90b220d6781d4bd900c4586a4a9b4225045 -->
+<!-- generated from WORKBOOK.md sha256:a25b8af8097f48f4aee5d2f37144bde087a731e5367c2e9bc0e25fb1c34d64a1 -->
 
 ## What it is for and who it is for
 
@@ -92,7 +92,7 @@ the notices of unpaid invoices.
 
 ### Invoice
 Page of one invoice, opened with "View invoice": its number (or "not collected"), the date, the business, the
-charge and its VeriFactu status; "What it charges", one line per item with its period, its base and its VAT;
+charge and its VeriFactu status; "What it charges", one line per item with its period, its base, its VAT and its discount if it has one;
 the taxable base, the VAT and the total; and "Made out to", the payer's details as they were that day. At the
 top, "Download PDF" once it is issued and "Pay" if it was not collected; a credit note links the invoice it
 corrects. The arrow at the top goes back to Invoices.
@@ -129,7 +129,7 @@ to upgrade or change it.
 | BILLING-F09 | Come back from the payment: confirmed, pending or closed | done |
 | BILLING-F10 | Retry a payment that was not finished | done |
 | BILLING-F11 | Change between paid plans | done |
-| BILLING-F12 | Give trial days with a promo code | done |
+| BILLING-F12 | Give trial days or free months with a promo code | done |
 | BILLING-F13 | Cancel the plan at the end of the period | done |
 | BILLING-F14 | Undo a pending cancellation or downgrade | done |
 | BILLING-F15 | End the subscription: the business goes back to Free | done |
@@ -313,18 +313,20 @@ Out: the plan changed (`billing.plan.changed`) or the downgrade scheduled (`bill
 If it fails: "The price was out of date: here it is again, check it before confirming" if too much time went by; a declined card changes nothing; the same plan and period is no change; downgrading to Free is cancelling (BILLING-F13); with a pending cancellation, "Keep the plan first to change it"; with an unpaid invoice, "First, pay the pending invoice"; over €400 without a tax ID asks for it.
 Involved: the business (receives its plan), ASSISTANT-F25 (asked of the panel's assistant, which sends it here)
 
-### BILLING-F12 Give trial days with a promo code
+### BILLING-F12 Give trial days or free months with a promo code
 Status: done
 Actor: ERPlora staff, owner
-Screen: Admin › Promo codes, Secure payment
+Screen: Admin › Promo codes, Secure payment, Billing › Subscriptions
 Steps:
-1. A person of ERPlora creates a code in the admin: the code, the trial days (1 to 365), whether it is active, until when it is valid, how many uses and a note.
-2. The owner, in the secure payment of a business that does not pay yet, taps "Have a promo code?", types it and taps "Apply": "Code …: n free days before the first charge".
-3. Pay: the first charge comes when those days end.
+1. A person of ERPlora creates a code in the admin: the code, the trial days (1 to 365) or the free months (1 to 12), one of the two, whether it is active, until when it is valid, how many uses and a note.
+2. The owner, in the secure payment of a business that does not pay yet, taps "Have a promo code?", types it and taps "Apply". With trial days: "Code …: n free days before the first charge". With free months: "Code …: n months free, then the plan's regular price".
+3. With trial days, pay: the first charge comes when those days end.
+4. With free months, choose the monthly plan and the secure payment warns "n months free, then … €/month. Your card is not charged until then."; give the card and the plan starts now. Each month brings its invoice of €0 (the plan's price with all of it discounted), numbered and registered in VeriFactu as any other, and the month after the last free one is charged at the regular price without doing anything.
+5. While they last, **Billing › Subscriptions** says "Free until …" and the next invoice at €0; each invoice says its discount on the line.
 In: the code (case and spaces do not matter).
-Out: the trial days on the subscription and the use counted once per business and per payer.
-If it fails: an unknown, inactive, expired or used-up code says "This code is not valid or has already been used" and does not stop paying without it; trying codes has a cap per person. A code never lowers the price and never goes past its number of uses.
-Involved: none
+Out: the trial days on the subscription, or the 100 % discount of those months in Stripe and when they end; the use counted once per business and per payer.
+If it fails: an unknown, inactive, expired or used-up code says "This code is not valid or has already been used" and does not stop paying without it; trying codes has a cap per person; a code never goes past its number of uses. Free months are only to start paying a monthly plan: with the yearly one, the payment does not start and says "This code gives free months of a monthly plan: choose monthly billing to use it.", and in a change of plan, "This code gives free months to a business that starts paying a plan, not to a change of plan.". While they last, changing the plan, moving to yearly or buying an app says "This business has free months until …" and changes nothing; cancelling is allowed, and the plan ends at the end of the period.
+Involved: ERPlora's platform business (issues the €0 invoices, BILLING-F25)
 
 ### BILLING-F13 Cancel the plan at the end of the period
 Status: done
@@ -498,7 +500,7 @@ Steps:
 3. It sends it to ERPlora's platform business, which records it with VeriFactu and returns its status and its QR; when it issues it, the payer is told by email.
 In: Stripe's charge with its lines and the payer's details.
 Out: the invoice and its lines (`billing.invoice.recorded`), its tax status and the email.
-If it fails: if the platform business does not answer, the invoice stays "issuing" and is retried (after 15 minutes, then double each time, at most 6 hours); if it refuses it, the reason is saved and it is retried. An uncollected renewal is listed "Not collected", without a number, and is numbered when paid. A €0 charge makes no invoice, and the same charge notified several times makes only one. With live keys, without a way to issue, nothing is charged.
+If it fails: if the platform business does not answer, the invoice stays "issuing" and is retried (after 15 minutes, then double each time, at most 6 hours); if it refuses it, the reason is saved and it is retried. An uncollected renewal is listed "Not collected", without a number, and is numbered when paid. A €0 charge of a trial makes no invoice; the one of a free month of a code does (BILLING-F12), with the discount on each line. The same charge notified several times makes only one. With live keys, without a way to issue, nothing is charged.
 Involved: ERPlora's platform business (issues the invoice)
 
 ### BILLING-F26 Refund a charge
@@ -644,7 +646,7 @@ Actor: owner, paying account
 Screen: Invoice
 Steps:
 1. In **Billing › Invoices**, the person taps "View invoice" on a row.
-2. The page says its number (or "Invoice … (not collected)"), the date, the business, the charge and its VeriFactu status; "What it charges", one line per item with its period, "Prorated" if it is, its base and its VAT; the taxable base, the VAT and the total; and "Made out to", with the payer's details as they were that day.
+2. The page says its number (or "Invoice … (not collected)"), the date, the business, the charge and its VeriFactu status; "What it charges", one line per item with its period, "Prorated" if it is, its base and its VAT, and its "Discount" if a code lowered it; the taxable base, the VAT and the total; and "Made out to", with the payer's details as they were that day.
 3. From it they download the PDF of an issued invoice, pay an uncollected one or, on a credit note, open the invoice it corrects. While it is being issued, the page turns by itself into its number and its QR.
 4. The arrow at the top goes back to Invoices.
 In: an invoice of the account.

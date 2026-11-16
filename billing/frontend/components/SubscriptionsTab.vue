@@ -273,6 +273,11 @@ async function keepPlan(row: Row, id: string): Promise<void> {
           class="cell-sub"
           data-testid="subscription-scheduled"
         >{{ $t('billing.subscriptions.scheduled', { plan: planName(row.scheduled_change.plan), date: day(row.scheduled_change.starts_at) }) }}</span>
+        <span
+          v-if="row.free_until"
+          class="cell-sub"
+          data-testid="subscription-free-until"
+        >{{ $t('billing.subscriptions.freeUntil', { date: day(row.free_until) }) }}</span>
       </div>
     </template>
     <template #modules="{ row }">

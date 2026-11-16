@@ -99,7 +99,7 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 |---|---|
 | `stripe_service.py` | La única puerta a Stripe (el único módulo que importa `stripe`): `client()` con la clave del entorno (restringida `rk_live_` en prod; sin clave no se llama a nada), 1 reintento y `STRIPE_TIMEOUT_SECONDS`; devuelve dicts; errores `StripeUnavailable` (red, 429, 5xx) y `StripeRefused` (tarjeta, objeto inexistente, configuración); espejo de `TaxRate` (`tax_rate_ids`: reutiliza uno exacto y exclusivo, crea el que falta, 24 h en caché, nunca crea a ciegas si el listado falla); firma del webhook |
 | `stripe_keys.py`, `stripe_period.py`, `stripe_checkout.py`, `stripe_test_clocks.py` | Modo de una clave (`sk_`/`rk_`), periodo de la suscripción (en el item desde la API de 2025), `ui_mode = embedded_page` y `metadata.kind`, relojes de prueba (rechaza una clave live) |
-| `models/promo_codes.py`, `models/payments.py` | `PromoCode` (días de prueba, ADR-0107), `CheckoutAttempt` (un Embedded Checkout por intención; la misma selección reutiliza su sesión abierta), `WebhookEvent` (cada evento una vez) y `PaymentFailure` (por qué no se cobró una renovación) |
+| `models/promo_codes.py`, `models/payments.py` | `PromoCode` (días de prueba, ADR-0107, o meses gratis), `CheckoutAttempt` (un Embedded Checkout por intención; la misma selección reutiliza su sesión abierta), `WebhookEvent` (cada evento una vez) y `PaymentFailure` (por qué no se cobró una renovación) |
 | `webhooks.py` | `POST /webhooks/stripe/`: firma de Stripe → reclamo del evento → `services.process_stripe_event` |
 | `management/commands/sweep_unpaid.py` | `saas-cron`: impagos que Stripe dejó de reintentar, suscripciones de negocios eliminados y pagadores de cuentas eliminadas (`payers_forgotten`) |
 | `management/commands/retax_subscriptions.py` | `saas-cron` (diaria): el tipo de hoy en cada suscripción viva y en las fases de su bajada programada (cambio de dirección no empujado, umbral OSS) y el reenvío de los avisos de la OSS que no salieron |
@@ -114,7 +114,9 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
   proration_date}}` (`invoices.create_preview`). Un plan comprado durante una prueba conserva los días que le
   quedan (`trial_end`); un código promocional los sustituye si da más; menos de 48 h no se arrastran. Desde el
   2026-10-15 ningún plan trae prueba (el plan Gratis es la entrada): el mecanismo queda dormido hasta que el staff
-  dé días de prueba a un plan en el admin.
+  dé días de prueba a un plan en el admin. Un código de **meses gratis** (ver «Códigos de meses gratis») abre la
+  sesión con el cupón `free-months-<N>` en `discounts` y `payment_method_collection="always"`, sin `trial_end`
+  (ni el de la prueba del alta); con `interval=year` → 409 `billing.promo_monthly_only`.
 - `billing.checkout.confirm` — añade un módulo a la suscripción con el prorrateo de la vista previa: se cobra ya
   (`always_invoice`) o no se añade (`error_if_incomplete`; tarjeta rechazada → 409 `billing.card_declined`).
 - `billing.plan.change` — cambia el precio del item del plan (y, si cambia la periodicidad, el de cada módulo),
@@ -128,8 +130,32 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
   (`valid_until` pasado) ya no sale en la foto, en `billing.subscription.list` ni en la Tienda, que lo vuelve a
   vender; el aviso de Stripe de la renovación que ya no lo cobra borra su fila (BILLING-F34).
 - `billing.portal.open` — sesión del Customer Portal (tarjetas y recibos de Stripe); `{url}`.
-- `billing.promo.check` — `GET /api/billing/promo-check?code=` → `{code, valid, trial_days}`; presupuesto por
-  persona `PROMO_CHECK_RATE` (429 `billing.promo_check_throttled`).
+- `billing.promo.check` — `GET /api/billing/promo-check?code=` → `{code, valid, kind, trial_days, free_months}`
+  (`kind`: `trial_days` o `free_months`; el otro, 0); presupuesto por persona `PROMO_CHECK_RATE` (429
+  `billing.promo_check_throttled`). El precio «después» de los meses gratis lo pone el panel desde el catálogo.
+
+### Códigos de meses gratis
+
+Un `PromoCode` da `trial_days` (1–365) **o** `free_months` (1–12), nunca los dos (restricción de la base de datos y
+validación del admin). El de meses gratis es un cupón de Stripe del 100 % durante N meses con id fijo
+`free-months-<N>` (`billing/stripe_coupons.py`): se crea la primera vez que se usa uno de N meses y se reutiliza
+después, en test y en live, sin guardar nada (la clave restringida `rk_live_` necesita escribir cupones). Solo vale
+para empezar a pagar un plan mensual; en un cambio de plan → 409 `billing.promo_new_subscription_only`. El pago
+completado lo cuenta en `PromoRedemption` con la suscripción de Stripe que pagó y `free_until`, el fin del descuento
+de la suscripción viva (`retrieve_subscription` la lee con `expand=["discounts"]`). Mientras dura (el descuento de
+la suscripción viva con fin futuro), cambiar de plan, pasar a anual o comprar un módulo → 409
+`billing.free_months_active` con la fecha; cancelar sí se puede. `billing.subscription.list` da `free_until` y la
+próxima factura a 0 mientras cubre la renovación.
+
+Cada mes Stripe emite una factura de 0 €: la línea trae su `amount` antes del descuento y `discount_amounts` con lo
+que quitó, y la factura, `subtotal` > 0 y `total` 0 (capturado de la cuenta de test en
+`tests/fixtures/free_months/`). `billing.invoice.record` registra la de total 0 con subtotal mayor que 0
+(`services/invoice_discounts.py`); la de una prueba (subtotal 0) sigue sin factura. `InvoiceLine.discount_cents`
+guarda el descuento sin IVA y `net_cents` la base ya descontada; `vat._breakdown` no concilia ni avisa de «cobrado
+sin IVA» cuando no se cobró nada. La factura de 0 € se numera, se manda al hub de plataforma (cada línea lleva
+`discount_cents`, siempre positivo y sin IVA: el hub le pone el signo de la línea y, en una línea OSS, su tipo) y
+sale en la lista, la ficha, el PDF, el CSV, el admin, el ZIP de PDF, el correo y el informe para la gestoría. El mes
+siguiente al último gratis se cobra el precio normal.
 
 Lo que cambia la suscripción se lee de vuelta de Stripe y lo escribe `hubs.subscription.apply` (una app escribe
 en otra solo por sus operaciones), que sube `state_version` y empuja la foto al Hub tras el COMMIT.
@@ -524,10 +550,10 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
   `invoice`; las facturas del hub de plataforma, VERIFACTU-G10…G14, `ERPlora/hub#133`). `Hub.is_platform` no hace
   falta en el SaaS: la ruta no lleva negocio.
 - **aws**: `reconcile_platform_invoices` corre cada 15 minutos en el servicio `saas-worker` (aws#59, saas#305).
-  `PLATFORM_INVOICING_ENABLED` sigue en `false` en prod y en pre (`stacks/prod/apps.tf` y `pre_apps.tf`, fijado por
-  `stacks/prod/tests/compute.tftest.hcl`): encenderlo es la transmisión real de las facturas de ERPlora a la AEAT, que
-  queda bajo la supervisión de Ioan (reglas de trabajo §15). Hasta entonces, una clave live no cobra (409
-  `billing.invoicing_unavailable`).
+  En el código de `aws`, `PLATFORM_INVOICING_ENABLED` está en `true` en prod (`stacks/prod/apps.tf`, desde aws#90,
+  fijado por `stacks/prod/tests/deploy.tftest.hcl`) y en `false` en pre (`pre_apps.tf`): en prod una clave live cobra
+  mientras el hub de plataforma conteste `GET /internal/platform/invoices/health`; en pre, 409
+  `billing.invoicing_unavailable`.
 - **PLAN-SAAS**: las decisiones fiscales de arriba (número del SaaS, bajadas al final del periodo, VIES al facturar)
   están en PLAN-SAAS §4, «Decidido (2026-10-14, L3-C)»; el cierre de la app, en PLAN-SAAS §13.
 - Una nota de crédito anulada en Stripe (`credit_note.voided`) se trata como dice «Webhook» (BILLING-F26): nunca se

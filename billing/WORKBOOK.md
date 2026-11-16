@@ -106,8 +106,8 @@ factura con IVA y estado; «Cambiar plan», «Mantener el plan», «Ver la factu
 
 ### Factura
 Página de una factura, que se abre con «Ver la factura»: su número (o «no cobrada»), la fecha, el negocio,
-el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, su base y su
-IVA; la base imponible, el IVA y el total; y «A nombre de», los datos de quien paga tal como estaban ese
+el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, su base, su
+IVA y su descuento si lo tiene; la base imponible, el IVA y el total; y «A nombre de», los datos de quien paga tal como estaban ese
 día. Arriba, «Descargar PDF» cuando ya está emitida y «Pagar» si no se cobró; una rectificativa enlaza la
 factura que rectifica. La flecha de arriba vuelve a Facturas.
 
@@ -143,7 +143,7 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F09 | Volver del pago: confirmado, pendiente o cerrado | hecho |
 | BILLING-F10 | Reintentar un pago que no se terminó | hecho |
 | BILLING-F11 | Cambiar de plan entre planes de pago | hecho |
-| BILLING-F12 | Dar días de prueba con un código promocional | hecho |
+| BILLING-F12 | Dar días de prueba o meses gratis con un código promocional | hecho |
 | BILLING-F13 | Cancelar el plan al final del periodo | hecho |
 | BILLING-F14 | Deshacer una cancelación o una bajada pendiente | hecho |
 | BILLING-F15 | Terminar la suscripción: el negocio vuelve a Gratis | hecho |
@@ -327,18 +327,20 @@ Sale: el plan cambiado (`billing.plan.changed`) o la bajada programada (`billing
 Si falla: «El precio estaba desactualizado: aquí lo tienes de nuevo, revísalo antes de confirmar» si pasó demasiado tiempo; la tarjeta rechazada no cambia nada; el mismo plan y periodo no es un cambio; bajar a Gratis es cancelar (BILLING-F13); con una cancelación pendiente, «Mantén antes el plan para cambiarlo»; con una factura sin pagar, «Antes, paga la factura pendiente»; más de 400 € sin NIF pide el NIF.
 Implicados: el negocio (recibe su plan), ASSISTANT-F25 (pedido al asistente del panel, que manda aquí)
 
-### BILLING-F12 Dar días de prueba con un código promocional
+### BILLING-F12 Dar días de prueba o meses gratis con un código promocional
 Estado: hecho
 Actor: personal de ERPlora, propietario
-Pantalla: Admin › Códigos promocionales, Pago seguro
+Pantalla: Admin › Códigos promocionales, Pago seguro, Facturación › Suscripciones
 Pasos:
-1. Una persona de ERPlora crea un código en el admin: el código, los días de prueba (de 1 a 365), si está activo, hasta cuándo vale, cuántos usos y una nota.
-2. El propietario, en el pago seguro de un negocio que aún no paga, pulsa «¿Tienes un código promocional?», lo escribe y pulsa «Aplicar»: «Código …: n días gratis antes del primer cobro».
-3. Paga: el primer cobro llega al acabar esos días.
+1. Una persona de ERPlora crea un código en el admin: el código, los días de prueba (de 1 a 365) o los meses gratis (de 1 a 12), uno de los dos, si está activo, hasta cuándo vale, cuántos usos y una nota.
+2. El propietario, en el pago seguro de un negocio que aún no paga, pulsa «¿Tienes un código promocional?», lo escribe y pulsa «Aplicar». Con días de prueba: «Código …: n días gratis antes del primer cobro». Con meses gratis: «Código …: n meses gratis; después, el precio normal del plan».
+3. Con días de prueba, paga: el primer cobro llega al acabar esos días.
+4. Con meses gratis, elige el plan mensual y el pago seguro avisa «n meses gratis; después, … €/mes. No se carga nada en tu tarjeta hasta entonces.»; da su tarjeta y el plan empieza ya. Cada mes llega su factura de 0 € (el precio del plan con todo su descuento), numerada y registrada en VeriFactu como cualquier otra, y el mes siguiente al último gratis se cobra el precio normal sin hacer nada.
+5. Mientras duran, **Facturación › Suscripciones** dice «Gratis hasta el …» y la próxima factura a 0 €; cada factura dice su descuento en la línea.
 Entra: el código (sin distinguir mayúsculas ni espacios).
-Sale: los días de prueba en la suscripción y el uso contado una vez por negocio y por quien paga.
-Si falla: un código desconocido, inactivo, caducado o agotado dice «Este código no es válido o ya se ha usado» y no impide pagar sin él; probar códigos tiene un tope por persona. Un código nunca rebaja el precio y nunca pasa de su número de usos.
-Implicados: ninguno
+Sale: los días de prueba en la suscripción, o el descuento del 100 % de esos meses en Stripe y cuándo acaban; el uso contado una vez por negocio y por quien paga.
+Si falla: un código desconocido, inactivo, caducado o agotado dice «Este código no es válido o ya se ha usado» y no impide pagar sin él; probar códigos tiene un tope por persona; un código nunca pasa de su número de usos. Los meses gratis son solo para empezar a pagar un plan mensual: con el anual, el pago no empieza y dice «Este código da meses gratis de un plan mensual: elige la facturación mensual para usarlo.», y en un cambio de plan, «Este código da meses gratis a un negocio que empieza a pagar un plan, no a un cambio de plan.». Mientras duran, cambiar de plan, pasar a anual o comprar una aplicación dice «Este negocio tiene meses gratis hasta el …» y no cambia nada; cancelar sí se puede, y el plan acaba al final del periodo.
+Implicados: el negocio de plataforma de ERPlora (emite las facturas de 0 €, BILLING-F25)
 
 ### BILLING-F13 Cancelar el plan al final del periodo
 Estado: hecho
@@ -512,7 +514,7 @@ Pasos:
 3. La manda al negocio de plataforma de ERPlora, que la registra con VeriFactu y devuelve su estado y su QR; cuando la emite, se avisa por correo a quien paga.
 Entra: el cobro de Stripe con sus líneas y los datos de quien paga.
 Sale: la factura y sus líneas (`billing.invoice.recorded`), su estado fiscal y el correo.
-Si falla: si el negocio de plataforma no responde, la factura queda «emitiéndose» y se reintenta (a los 15 minutos, después el doble cada vez, como mucho 6 horas); si lo rechaza, se guarda el motivo y se reintenta. Una renovación sin cobrar se lista «No cobrada», sin número, y se numera al pagarla. Un cobro de 0 € no hace factura, y el mismo cobro avisado varias veces hace una sola. Con claves reales, sin ruta de emisión no se cobra.
+Si falla: si el negocio de plataforma no responde, la factura queda «emitiéndose» y se reintenta (a los 15 minutos, después el doble cada vez, como mucho 6 horas); si lo rechaza, se guarda el motivo y se reintenta. Una renovación sin cobrar se lista «No cobrada», sin número, y se numera al pagarla. Un cobro de 0 € de una prueba no hace factura; el de un mes gratis de un código sí (BILLING-F12), con el descuento en cada línea. El mismo cobro avisado varias veces hace una sola. Con claves reales, sin ruta de emisión no se cobra.
 Implicados: el negocio de plataforma de ERPlora (emite la factura)
 
 ### BILLING-F26 Devolver un cobro
@@ -658,7 +660,7 @@ Actor: propietario, cuenta que paga
 Pantalla: Factura
 Pasos:
 1. En **Facturación › Facturas**, la persona pulsa «Ver la factura» en una fila.
-2. La página dice su número (o «Factura … (no cobrada)»), la fecha, el negocio, el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, «Prorrateado» si lo es, su base y su IVA; la base imponible, el IVA y el total; y «A nombre de», con los datos de quien paga tal como estaban ese día.
+2. La página dice su número (o «Factura … (no cobrada)»), la fecha, el negocio, el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, «Prorrateado» si lo es, su base y su IVA, y su «Descuento» si un código lo rebajó; la base imponible, el IVA y el total; y «A nombre de», con los datos de quien paga tal como estaban ese día.
 3. Desde ella descarga el PDF de una factura emitida, paga una no cobrada o, en una rectificativa, abre la factura que rectifica. Mientras se emite, la página pasa sola a su número y su QR.
 4. La flecha de arriba vuelve a Facturas.
 Entra: una factura de la cuenta.
