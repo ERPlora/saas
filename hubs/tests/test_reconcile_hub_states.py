@@ -622,7 +622,7 @@ def test_nobody_enters_a_purged_business(business, owner):
 
 def test_a_business_restored_while_the_purge_runs_keeps_its_people(business, owner, hub_double, monkeypatch):
     """The purge re-checks the row it updates; one restored meanwhile is left alone."""
-    monkeypatch.setattr(services, "expired_deletions", lambda cutoff: [business.id])  # read before the restore
+    monkeypatch.setattr(businesses, "expired_deletions", lambda cutoff: [business.id])  # read before the restore
 
     run("reconcile_hub_states")
 
