@@ -294,7 +294,7 @@ env -u DB_NAME E2E_SAAS_PORT=8180 VITE_DEV_PORT=5580 E2E_DEMO_HUB=http://localho
 ## El asistente con el modelo de verdad
 
 La batería de QA del asistente del panel (`panel/assistant-battery.spec.ts`; plan
-`docs/plans/2026-10-31-qa-asistente.md` de erplora-next: bloque A y las comprobaciones C35, C36 y C38) habla con el
+`knowledge/raw/plans/2026-10-31-qa-asistente.md` de erplora-next: bloque A y las comprobaciones C35, C36 y C38) habla con el
 **modelo de verdad** y con el **índice de verdad** de la documentación. Es una herramienta de QA local, **nunca de la
 CI**: sin `QA_REAL_PROVIDER=1` sus tests se saltan, y con él en GitHub Actions (`GITHUB_ACTIONS=true`) la ejecución se
 niega a arrancar (`realProviderMode`, `assistant-battery.ts`). Coste orientativo: unos 30 turnos de Qwen más las
@@ -339,7 +339,7 @@ búsqueda, los recibos, los avisos, los fallos y los mensajes del mes. El veredi
 
 ## Sondas del asistente (capa 2)
 
-La capa 2 de la QA del asistente (plan `docs/plans/2026-10-31-asistente-conocimiento-y-qa.md` de erplora-next, §1.5):
+La capa 2 de la QA del asistente (plan `knowledge/raw/plans/2026-10-31-asistente-conocimiento-y-qa.md` de erplora-next, §1.5):
 frases **nuevas**, escritas por quien hace la QA, para las herramientas del catálogo exportado, mandadas al chat real del
 panel con el **modelo de verdad**. Mide que el modelo generaliza más allá de las `asks` de cada operación (la capa 1,
 `base/tests/test_assistant_asks.py`, ya prueba que esas llegan). Mismas reglas que la batería: solo con
