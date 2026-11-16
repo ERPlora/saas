@@ -6,7 +6,7 @@ built in the shapes of the API version the SDK pins (2026-09-30: the period on t
 invoice's subscription under ``parent.subscription_details``), so the gateway's conversion to plain dicts is
 exercised too. An exception given as an answer is raised, as the SDK raises it.
 
-Boring calls have a default answer (the account's tax rates, a new customer, a checkout session, a portal
+Boring calls have a default answer (the account's tax rates and coupons, a new customer, a checkout session, a portal
 session); everything that decides money (a subscription, an invoice, a preview) must be answered by the
 test, or the call fails loudly. ``signed_event`` signs a webhook payload exactly as Stripe does, so the
 webhook's signature check is the real one.
@@ -49,7 +49,23 @@ class StripeDouble:
         self.tax_rates: list[dict] = []
         #: Each customer's tax ids (``customers.tax_ids.list``/``create``).
         self.customer_tax_ids: dict[str, list[dict]] = {}
+        #: The account's coupons by id (``coupons.retrieve``/``create``): none until a code of free months makes one.
+        self.coupons: dict[str, dict] = {}
+        self._answers.update({"coupons.retrieve": [self._coupon], "coupons.create": [self._new_coupon]})
         self.v1 = _Node(self, "")
+
+    def _coupon(self, call: Call) -> dict | BaseException:
+        coupon_id = call.args[0]
+        if coupon_id not in self.coupons:
+            return stripe.InvalidRequestError(
+                f"No such coupon: '{coupon_id}'", param="id", code="resource_missing", http_status=404
+            )
+        return self.coupons[coupon_id]
+
+    def _new_coupon(self, call: Call) -> dict:
+        coupon = {"object": "coupon", "valid": True, **call.params}
+        self.coupons[coupon["id"]] = coupon
+        return coupon
 
     # --- Arranging -----------------------------------------------------------------------------
 
