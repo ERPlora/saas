@@ -162,7 +162,7 @@ def test_migrations_are_left_out():
 def test_ruff_never_reformats_the_code():
     """The code is written about 120 columns wide: ruff's formatter would rewrite whole files, even one named."""
     result = subprocess.run(
-        [sys.executable, "-m", "ruff", "format", "--check", "billing/services.py"],
+        [sys.executable, "-m", "ruff", "format", "--check", "billing/services/__init__.py"],
         cwd=REPO,
         capture_output=True,
         text=True,

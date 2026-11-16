@@ -1,4 +1,4 @@
-"""Events of billing (``<app>.<entity>.<fact>``): recorded by services.py in the outbox.
+"""Events of billing (``<app>.<entity>.<fact>``): recorded by the services package in the outbox.
 
 billing reacts to no event of another app, so this module only names its own. What the panel shows of a
 business's plan re-runs with ``hubs.subscription.changed``, which ``hubs.subscription.apply`` records in the
