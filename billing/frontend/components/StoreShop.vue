@@ -23,12 +23,12 @@ import type {
   AppSummaryOut,
   BillingInterval,
   PlanOut,
-  PromoCheckOut,
   SubscriptionModuleOut,
   StoreCatalogOut,
   SubscriptionOut,
 } from '../../../frontend/sdk-types';
 import { formatDate } from '../format';
+import type { PromoCheckOut } from '../promo-types';
 import {
   annualSaving,
   blockOf,

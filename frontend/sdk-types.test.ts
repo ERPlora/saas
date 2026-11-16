@@ -9,7 +9,8 @@ import { describe, expect, it } from 'vitest';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PYTHON = readFileSync(join(HERE, '..', 'hubs', 'schemas.py'), 'utf8');
-const TYPES = readFileSync(join(HERE, 'sdk-types.d.ts'), 'utf8');
+// The types of a promo code live in their own file, next to the Store that uses them.
+const TYPES = ['sdk-types.d.ts', '../billing/frontend/promo-types.d.ts'].map((file) => readFileSync(join(HERE, file), 'utf8')).join('\n');
 
 const PAGE = ['rows', 'total', 'limit', 'offset'];
 const PAGE_IN = ['limit', 'offset'];
@@ -76,6 +77,7 @@ const SCALARS: Record<string, string> = {
   Role: 'HubRole',
   // billing/schemas/ and apps/schemas.py (the Store).
   Interval: 'BillingInterval',
+  PromoKind: 'PromoKind',
   ModuleSlug: 'string',
   Category: 'string',
   // hubs/schemas.py `BillingProfileIn.billing_postal_code`: a stripped string.
@@ -192,8 +194,6 @@ const STORE_SCHEMAS: Array<[file: string, names: string[]]> = [
   [
     'billing/schemas/__init__.py',
     [
-      'PromoCheckIn',
-      'PromoCheckOut',
       'CheckoutStartIn',
       'ChargePreviewOut',
       'CheckoutStartOut',
@@ -209,6 +209,7 @@ const STORE_SCHEMAS: Array<[file: string, names: string[]]> = [
       'StoreCatalogOut',
     ],
   ],
+  ['billing/schemas/promo_codes.py', ['PromoCheckIn', 'PromoCheckOut']],
   ['apps/schemas.py', ['AppListIn', 'AppSummaryOut', 'AppListOut', 'AppByIdIn', 'RequiredAppOut', 'AppOut']],
 ];
 const STORE_CASES = STORE_SCHEMAS.flatMap(([file, names]) => names.map((name) => [file, name] as const));
@@ -235,6 +236,11 @@ describe('sdk-types.d.ts follows billing/schemas/, apps/schemas.py and the payer
   it('types the billing of a subscription as the server names it', () => {
     expect(/^Interval = Literal\[([^\]]+)\]/m.exec(sources.get('billing/schemas/__init__.py') ?? '')?.[1]).toBe('"month", "year"');
     expect(/^export type BillingInterval = (.+);$/m.exec(TYPES)?.[1]).toBe("'month' | 'year'");
+  });
+
+  it('types what a promo code grants as the server names it', () => {
+    expect(/^PromoKind = Literal\[([^\]]+)\]/m.exec(sources.get('billing/schemas/promo_codes.py') ?? '')?.[1]).toBe('"trial_days", "free_months"');
+    expect(/^export type PromoKind = (.+);$/m.exec(TYPES)?.[1]).toBe("'trial_days' | 'free_months'");
   });
 });
 

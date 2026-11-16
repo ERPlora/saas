@@ -19,9 +19,10 @@ from django.test import Client
 from django.utils import timezone
 from live.errors import OperationError
 
-from billing import queries, services
+from billing import queries
+from billing.services import promo_codes
 from billing.models import PromoCode
-from billing.schemas import PromoCheckIn
+from billing.schemas.promo_codes import PromoCheckIn
 from billing.tests.conftest import ctx_for
 
 pytestmark = pytest.mark.django_db
@@ -94,24 +95,24 @@ class TestRedeem:
     def test_redeeming_counts_one(self):
         made = promo()
 
-        assert services.redeem_promo("canary_2026") is True
+        assert promo_codes.redeem_promo("canary_2026") is True
         made.refresh_from_db()
         assert made.redemption_count == 1
 
     def test_redeeming_is_case_insensitive(self):
         promo()
 
-        assert services.redeem_promo("CANARY_2026") is True
+        assert promo_codes.redeem_promo("CANARY_2026") is True
 
     def test_an_unknown_code_counts_nothing(self):
-        assert services.redeem_promo("nope") is False
-        assert services.redeem_promo("") is False
+        assert promo_codes.redeem_promo("nope") is False
+        assert promo_codes.redeem_promo("") is False
 
     def test_the_cap_is_never_passed(self):
         made = promo(max_redemptions=1)
 
-        assert services.redeem_promo("canary_2026") is True
-        assert services.redeem_promo("canary_2026") is False
+        assert promo_codes.redeem_promo("canary_2026") is True
+        assert promo_codes.redeem_promo("canary_2026") is False
         made.refresh_from_db()
         assert made.redemption_count == 1
 
@@ -119,7 +120,7 @@ class TestRedeem:
         made = promo()
 
         for _ in range(3):
-            services.redeem_promo("canary_2026")
+            promo_codes.redeem_promo("canary_2026")
 
         made.refresh_from_db()
         assert made.redemption_count == 3
@@ -168,7 +169,14 @@ class TestCheck:
             ctx_for(buyer), PromoCheckIn(code=" Canary_2026 ")
         ).model_dump()
 
-        assert answer == {"code": "canary_2026", "valid": True, "trial_days": 60}
+        assert answer == {"code": "canary_2026", "valid": True, "kind": "trial_days", "trial_days": 60, "free_months": 0}
+
+    def test_a_code_of_free_months_says_how_many(self, buyer):
+        PromoCode.objects.create(code="testers", free_months=6)
+
+        answer = queries.promo_check(ctx_for(buyer), PromoCheckIn(code="TESTERS")).model_dump()
+
+        assert answer == {"code": "testers", "valid": True, "kind": "free_months", "trial_days": 0, "free_months": 6}
 
     def test_an_invalid_code_is_an_answer_not_an_error(self, buyer):
         promo(is_active=False)
@@ -177,7 +185,7 @@ class TestCheck:
             ctx_for(buyer), PromoCheckIn(code="canary_2026")
         ).model_dump()
 
-        assert answer == {"code": "canary_2026", "valid": False, "trial_days": 0}
+        assert answer == {"code": "canary_2026", "valid": False, "kind": "trial_days", "trial_days": 0, "free_months": 0}
 
     def test_a_visitor_cannot_try_codes(self):
         response = Client().get("/api/billing/promo-check", {"code": "canary_2026"}, HTTP_HOST=HOST)
@@ -211,5 +219,7 @@ class TestCheck:
         assert response.json() == {
             "code": "canary_2026",
             "valid": True,
+            "kind": "trial_days",
             "trial_days": 30,
+            "free_months": 0,
         }

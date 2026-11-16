@@ -100,20 +100,6 @@ class TaxPreviewOut(Schema):
 # --- Stripe ------------------------------------------------------------------------------------------
 
 
-class PromoCheckIn(Schema):
-    """A promo code typed in the store, before paying."""
-
-    code: str = Field(max_length=64)
-
-
-class PromoCheckOut(Schema):
-    """Whether the code grants a trial now, and how many days (``0`` when it does not)."""
-
-    code: str
-    valid: bool
-    trial_days: int
-
-
 Interval = Literal["month", "year"]
 #: The label of an app of the Hub (``apps.Module.slug``).
 ModuleSlug = Annotated[str, Field(max_length=63, pattern=r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")]

@@ -235,10 +235,13 @@ def subscription(
     trial: tuple[int | None, int | None] = (None, None),
     metadata: dict | None = None,
     default_payment_method: str | None = None,
+    discounts: list[dict] | None = None,
 ) -> dict:
     return {
         "id": sub_id,
         "object": "subscription",
+        # Expanded, as ``retrieve_subscription`` asks for them: a promo code of free months is one.
+        "discounts": discounts or [],
         "status": status,
         "customer": customer,
         "cancel_at_period_end": cancel_at_period_end,

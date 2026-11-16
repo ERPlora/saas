@@ -9,7 +9,7 @@ from live.errors import OperationError, Unauthorized
 from live.operations import AI, operation
 
 from billing.models import PromoCode, PromoRedemption, normalise_promo_code
-from billing.schemas import PromoCheckIn, PromoCheckOut
+from billing.schemas.promo_codes import PromoCheckIn, PromoCheckOut
 
 
 # --- Promo codes --------------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ def redeemable_promo(
     input=PromoCheckIn,
     output=PromoCheckOut,
     ai=AI(
-        description="Whether a promo code is valid now and the trial it grants.",
+        description="Whether a promo code is valid now and what it grants: trial days or free months.",
         asks={
             "en": (
                 "is the code SUMMER26 valid?",
@@ -80,5 +80,7 @@ def promo_check(ctx: OperationContext, params: PromoCheckIn) -> dict:
     return {
         "code": code,
         "valid": promo is not None,
-        "trial_days": promo.trial_days if promo else 0,
+        "kind": promo.kind if promo else "trial_days",
+        "trial_days": (promo.trial_days if promo else None) or 0,
+        "free_months": (promo.free_months if promo else None) or 0,
     }

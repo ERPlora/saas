@@ -5,6 +5,8 @@
 // SDK reaches allauth.headless through `createAllauthClient`.
 import type { SessionMe } from '@erplora/ui/shell';
 
+import type { PromoCheckIn, PromoCheckOut } from '../billing/frontend/promo-types';
+
 /** `base.SessionMeIn`: no parameters. */
 export type SessionMeIn = Record<string, never>;
 
@@ -764,18 +766,6 @@ declare module '@erplora/ui/sdk' {
 
 /** `billing.Interval`: how a subscription is billed. */
 export type BillingInterval = 'month' | 'year';
-
-/** `billing.PromoCheckIn`. */
-export interface PromoCheckIn {
-  code: string;
-}
-
-/** `billing.PromoCheckOut`: whether the code grants a trial now, and how many days (0 when it does not). */
-export interface PromoCheckOut {
-  code: string;
-  valid: boolean;
-  trial_days: number;
-}
 
 /** `billing.CheckoutStartIn`: a plan (with its billing) OR a module, one at a time. */
 export interface CheckoutStartIn {

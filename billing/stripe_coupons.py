@@ -4,11 +4,15 @@ Its id is fixed (``free-months-<N>``), so the same code works with the test and 
 anything: the coupon is made the first time a code of N months is used and found after that.
 """
 
+from datetime import UTC, datetime
+
 from billing import stripe_service
+
+COUPON_PREFIX = "free-months-"
 
 
 def free_months_coupon_id(months: int) -> str:
-    return f"free-months-{months}"
+    return f"{COUPON_PREFIX}{months}"
 
 
 def ensure_free_months_coupon(months: int) -> str:
@@ -36,3 +40,19 @@ def ensure_free_months_coupon(months: int) -> str:
         if refused.code != "resource_already_exists":
             raise
     return coupon_id
+
+
+def free_months_end(live: dict) -> datetime | None:
+    """When the free months of a live subscription end: the end of the discount of one of these coupons (its
+    ``discounts`` expanded, as ``stripe_service.retrieve_subscription`` reads them); ``None`` without one."""
+    ends = [
+        discount["end"]
+        for discount in live.get("discounts") or []
+        if isinstance(discount, dict) and discount.get("end") and _coupon_of(discount).startswith(COUPON_PREFIX)
+    ]
+    return datetime.fromtimestamp(max(ends), tz=UTC) if ends else None
+
+
+def _coupon_of(discount: dict) -> str:
+    coupon = (discount.get("source") or {}).get("coupon") or ""
+    return coupon.get("id", "") if isinstance(coupon, dict) else coupon

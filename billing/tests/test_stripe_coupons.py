@@ -5,9 +5,13 @@ created the first time a code of N months is used and reused after that, in test
 is stored on our side. One that another checkout created meanwhile is the same coupon.
 """
 
+import json
+from datetime import UTC, datetime
+from pathlib import Path
+
 import pytest
 
-from billing.stripe_coupons import ensure_free_months_coupon
+from billing.stripe_coupons import ensure_free_months_coupon, free_months_end
 from billing.stripe_service import StripeRefused, StripeUnavailable
 from billing.tests.stripe_double import connection_error, invalid_request
 
@@ -59,3 +63,38 @@ def test_stripe_away_is_said_as_such(stripe_double):
         ensure_free_months_coupon(6)
 
     assert not stripe_double.calls_to("coupons.create")
+
+
+# --- When the free months of a subscription end --------------------------------------------------------
+
+
+def captured_discount() -> dict:
+    """The discount a code of six months left on a subscription of the test account, as Stripe expands it."""
+    fixture = Path(__file__).parent / "fixtures" / "free_months" / "subscription.json"
+    return json.loads(fixture.read_text())["discounts"][0]
+
+
+def test_the_free_months_end_with_the_discount_of_their_coupon():
+    discount = captured_discount()
+
+    assert free_months_end({"discounts": [discount]}) == datetime.fromtimestamp(discount["end"], tz=UTC)
+
+
+def test_the_latest_of_two_discounts_of_free_months_counts():
+    first, later = captured_discount(), {**captured_discount(), "end": captured_discount()["end"] + 86_400}
+
+    assert free_months_end({"discounts": [later, first]}).timestamp() == later["end"]
+
+
+@pytest.mark.parametrize(
+    "discounts",
+    [
+        [],
+        ["di_not_expanded"],
+        [{"source": {"coupon": "9KnYiLBN", "type": "coupon"}, "end": 1_900_000_000}],
+        [{"source": {"coupon": "free-months-6", "type": "coupon"}, "end": None}],
+    ],
+)
+def test_no_free_months_without_an_expanded_discount_of_ours_with_an_end(discounts):
+    assert free_months_end({"discounts": discounts}) is None
+    assert free_months_end({}) is None

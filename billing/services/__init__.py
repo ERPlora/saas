@@ -58,10 +58,8 @@ from billing.models import (
     PaymentFailure,
     PlanChangeSchedule,
     PromoCode,
-    PromoRedemption,
     VatCheck,
     WebhookEvent,
-    normalise_promo_code,
 )
 from billing.money import from_cents, to_cents
 from billing.schemas import (
@@ -87,12 +85,14 @@ from billing.schemas import (
     VatCheckIn,
     VatCheckOut,
 )
+from billing.services import promo_codes
 from billing.stripe_checkout import (
     EMBEDDED_UI_MODE,
     KIND_METADATA_KEY,
     CheckoutKind,
     checkout_session_kind,
 )
+from billing.stripe_coupons import free_months_end
 from billing.stripe_keys import StripeKeyMode
 from billing.stripe_period import subscription_period
 from billing.stripe_tax_rates import TaxRateSpec, tax_rate_specs_for
@@ -672,44 +672,6 @@ def vat_check_run(ctx: OperationContext, data: VatCheckIn) -> dict:
     }
 
 
-# --- Promo codes -------------------------------------------------------------------------------------
-
-
-def redeem_promo(
-    code: str | None, *, hub: Hub | None = None, customer: str = "", session: str = ""
-) -> bool:
-    """Count one redemption of ``code``; ``False`` when unknown, at its cap, or already used by ``hub`` (once
-    per business: the use is recorded, ``PromoRedemption``). The cap is in the UPDATE's
-    WHERE, so two checkouts completing at once never pass it (the trial was granted when each session
-    opened: two people taking the last seat at once both get it, only one is counted)."""
-    normalised = normalise_promo_code(code)
-    if not normalised:
-        return False
-    promo = PromoCode.objects.filter(code=normalised).first()
-    if promo is None:
-        return False
-    if hub is not None:
-        _use, created = PromoRedemption.objects.get_or_create(
-            promo=promo,
-            hub=hub,
-            defaults={
-                "stripe_customer_id": customer or "",
-                "stripe_session_id": session or "",
-            },
-        )
-        if not created:
-            return False
-    counted = (
-        PromoCode.objects.filter(pk=promo.pk)
-        .filter(
-            Q(max_redemptions__isnull=True)
-            | Q(redemption_count__lt=F("max_redemptions"))
-        )
-        .update(redemption_count=F("redemption_count") + 1, updated_at=timezone.now())
-    )
-    return counted > 0
-
-
 # --- Stripe: buying, changing and cancelling ----------------------------------------------------------
 #
 # ONE Stripe subscription per business, whose items are its plan and its bought modules, at NET prices
@@ -723,8 +685,6 @@ INTEGRATION_IDENTIFIER = "erplora_saas_billing_qmvhtkzd"
 #: A simplified invoice is allowed up to 400 € with VAT (RD 1619/2012, art. 4.1); above it the invoice
 #: names the buyer, so the sale needs the payer's tax id first.
 SIMPLIFIED_INVOICE_LIMIT = Decimal("400.00")
-#: Stripe refuses a Checkout trial that ends in less than 48 hours: a shorter one is not carried.
-MIN_TRIAL = timedelta(hours=48)
 #: How long a business whose renewal failed keeps its whole plan while Stripe retries, counted from the
 #: failed invoice (market: WooCommerce 7 days, Square 9, Lightspeed 21).
 UNPAID_PLAN_GRACE = timedelta(days=7)
@@ -1357,26 +1317,6 @@ def _attach_cleared_tax_id(customer: str, profile) -> None:
     )
 
 
-def _trial_end(
-    subscription: Subscription | None, promo: PromoCode | None, now: datetime
-) -> int | None:
-    """When a plan bought by a free business starts charging: the days left of its sign-up trial, or the
-    promo code's, the later of the two; none under Stripe's 48 h."""
-    ends = []
-    if (
-        subscription is not None
-        and subscription.trial_plan_id
-        and subscription.trial_end
-    ):
-        ends.append(subscription.trial_end)
-    if promo is not None:
-        ends.append(now + timedelta(days=promo.trial_days))
-    end = max(ends, default=None)
-    if end is None or end - now < MIN_TRIAL:
-        return None
-    return int(end.timestamp())
-
-
 @operation(
     "billing.checkout.start",
     kind="command",
@@ -1417,21 +1357,9 @@ def checkout_start(ctx: OperationContext, data: CheckoutStartIn) -> dict:
         if sale.kind == "plan"
         else None
     )
-    # The tax rates too: a payer whose place or VAT number changed is charged anew, never at the old rate.
-    selection = f"{sale.kind}:{sale.slug}:{interval}:{promo.code if promo else ''}:{','.join(tax_rates)}"[
-        :255
-    ]
-    reusable = CheckoutAttempt.objects.filter(
-        hub=hub,
-        selection=selection,
-        status=CheckoutAttempt.Status.OPEN,
-        created_at__gt=timezone.now() - CheckoutAttempt.REUSE_FOR,
-    ).exclude(client_secret="")
-    attempt = reusable.order_by("-created_at").first()
-    if attempt is None:
-        attempt = _open_checkout(
-            ctx, hub, subscription, sale, tax_rates, promo, selection
-        )
+    with stripe_errors():
+        terms = promo_codes.checkout_terms(sale, subscription, promo, timezone.now())
+    attempt = _checkout_attempt(ctx, hub, sale, tax_rates, terms)
     return {
         "flow": "checkout",
         "session_id": attempt.stripe_session_id,
@@ -1466,9 +1394,19 @@ def _expire_other_sessions(hub: Hub, selection: str) -> None:
         )
 
 
-def _open_checkout(  # noqa: PLR0913, PLR0917
-    ctx, hub, subscription, sale: Sale, tax_rates, promo, selection
-) -> CheckoutAttempt:
+def _checkout_attempt(ctx, hub, sale: Sale, tax_rates, terms: promo_codes.CheckoutTerms) -> CheckoutAttempt:
+    """The open checkout of this selection, reused for a while, or a new Checkout Session."""
+    # The tax rates too: a payer whose place or VAT number changed is charged anew, never at the old rate.
+    selection = f"{sale.kind}:{sale.slug}:{sale.interval}:{terms.code}:{','.join(tax_rates)}"[:255]
+    reusable = CheckoutAttempt.objects.filter(
+        hub=hub,
+        selection=selection,
+        status=CheckoutAttempt.Status.OPEN,
+        created_at__gt=timezone.now() - CheckoutAttempt.REUSE_FOR,
+    ).exclude(client_secret="")
+    attempt = reusable.order_by("-created_at").first()
+    if attempt is not None:
+        return attempt
     _expire_other_sessions(hub, selection)
     customer = ensure_customer(hub)
     attempt = CheckoutAttempt.objects.create(
@@ -1480,7 +1418,7 @@ def _open_checkout(  # noqa: PLR0913, PLR0917
         plan_slug=sale.slug if sale.kind == "plan" else "",
         module_slug=sale.slug if sale.kind == "module" else "",
         billing_interval=sale.interval,
-        promo_code=promo.code if promo else "",
+        promo_code=terms.code,
         selection=selection,
     )
     kind = (
@@ -1493,16 +1431,13 @@ def _open_checkout(  # noqa: PLR0913, PLR0917
         "billing_interval": sale.interval,
         "attempt": str(attempt.id),
     }
-    if promo is not None:
-        metadata["promo_code"] = promo.code
+    if terms.code:
+        metadata["promo_code"] = terms.code
     subscription_data = {
         "description": f"ERPlora — {hub.name}",
         "metadata": {"hub_id": str(hub.id)},
+        **terms.subscription_data,
     }
-    if sale.kind == "plan":
-        trial_end = _trial_end(subscription, promo, timezone.now())
-        if trial_end is not None:
-            subscription_data["trial_end"] = trial_end
     base = hub_emails.base_url(ctx.request)
     params = {
         "ui_mode": EMBEDDED_UI_MODE,
@@ -1522,6 +1457,7 @@ def _open_checkout(  # noqa: PLR0913, PLR0917
         # proved one reaches the customer (``ensure_customer``).
         "tax_id_collection": {"enabled": False},
         "integration_identifier": INTEGRATION_IDENTIFIER,
+        **terms.params,
     }
     with stripe_errors():
         session = stripe_service.create_checkout_session(
@@ -1701,7 +1637,8 @@ def _plan_change(
     """The items of a plan change: the plan item gets the new price; on a change of billing, every module
     item its price of the new billing (Stripe bills one interval per subscription), each with our tax. A
     subscription of modules alone (a Free business) gets its plan item, keeping the days left of the sign-up
-    trial or a promo code's, as the checkout does."""
+    trial or a promo code's, as the checkout does. Never while free months last, nor with a code of free months."""
+    promo_codes.require_no_free_months(live)
     if (
         sale.plan.pk == subscription.plan_id
         and sale.interval == subscription.billing_interval
@@ -1742,10 +1679,8 @@ def _plan_change(
             )
     if current is not None:
         return PlanChange(items, "always_invoice")
-    promo = queries.redeemable_promo(
-        promo_code, hub=hub, customer=subscription.stripe_customer_id
-    )
-    trial_end = _trial_end(subscription, promo, timezone.now())
+    promo = promo_codes.plan_change_promo(promo_code, hub=hub, customer=subscription.stripe_customer_id)
+    trial_end = promo_codes.trial_end(subscription, promo, timezone.now())
     if trial_end is None:
         return PlanChange(items, "always_invoice")
     return PlanChange(items, "none", trial_end=trial_end, promo=promo)
@@ -1787,6 +1722,7 @@ def _preview(
                 "trial_end": change.trial_end,
             }
     else:
+        promo_codes.require_no_free_months(live)
         _require_room(live)
         recurring = _recurring_net(subscription, sale.interval, adding=sale)
         details["items"] = [
@@ -1884,7 +1820,9 @@ def checkout_confirm(ctx: OperationContext, data: CheckoutConfirmIn) -> dict:
     _require_fresh_preview(data.proration_date)
     _require_paid_up(hub, subscription)
     _require_module_not_owned(subscription, sale.slug)
-    _require_room(_live(subscription))
+    live = _live(subscription)
+    promo_codes.require_no_free_months(live)
+    _require_room(live)
     tax_rates = price_sale(
         hub,
         sale,
@@ -1960,9 +1898,7 @@ def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
         )
     apply_live(hub.id, updated)
     if change.promo is not None:
-        redeem_promo(
-            change.promo.code, hub=hub, customer=subscription.stripe_customer_id
-        )
+        promo_codes.redeem_promo(change.promo.code, hub=hub, customer=subscription.stripe_customer_id)
     record_event(
         ctx,
         events.PLAN_CHANGED,
@@ -2774,7 +2710,7 @@ def _checkout_paid(session: dict) -> bool:
     )
 
 
-def checkout_completed(session: dict) -> str:  # noqa: PLR0911
+def checkout_completed(session: dict) -> str:
     """A business paid in the Embedded Checkout: its subscription, read LIVE, is applied, the attempt is
     completed and its promo code counted, once whatever the redeliveries."""
     metadata = session.get("metadata") or {}
@@ -2805,35 +2741,41 @@ def checkout_completed(session: dict) -> str:  # noqa: PLR0911
             return _end_not_owner(hub, attempt, session, subscription_id)
         if checkout_session_kind(metadata) is CheckoutKind.PLAN_TAKEOVER:
             return _takeover_completed(hub, session, subscription_id, metadata.get("replaces") or "")
-        local = Subscription.objects.filter(hub=hub).first()
-        if (
-            local is not None
-            and local.stripe_subscription_id
-            and local.stripe_subscription_id != subscription_id
-            and local.status not in ENDED_STATUSES
-        ):
-            return _end_duplicate(hub, local, session, subscription_id)
-        live = stripe_service.retrieve_subscription(subscription_id)
-        apply_live(hub.id, live)
-        completed = (
-            CheckoutAttempt.objects.filter(stripe_session_id=session.get("id"))
-            .exclude(status=CheckoutAttempt.Status.COMPLETED)
-            .update(
-                status=CheckoutAttempt.Status.COMPLETED,
-                completed_at=timezone.now(),
-                updated_at=timezone.now(),
-            )
+        return _complete_checkout(hub, session, subscription_id)
+
+
+def _complete_checkout(hub: Hub, session: dict, subscription_id: str) -> str:
+    """The subscription the checkout paid for, applied (unless the business pays another one), the attempt
+    completed and its promo code counted, with when its free months end."""
+    local = Subscription.objects.filter(hub=hub).first()
+    if (
+        local is not None
+        and local.stripe_subscription_id
+        and local.stripe_subscription_id != subscription_id
+        and local.status not in ENDED_STATUSES
+    ):
+        return _end_duplicate(hub, local, session, subscription_id)
+    live = stripe_service.retrieve_subscription(subscription_id)
+    apply_live(hub.id, live)
+    completed = (
+        CheckoutAttempt.objects.filter(stripe_session_id=session.get("id"))
+        .exclude(status=CheckoutAttempt.Status.COMPLETED)
+        .update(
+            status=CheckoutAttempt.Status.COMPLETED,
+            completed_at=timezone.now(),
+            updated_at=timezone.now(),
         )
-        if completed and metadata.get("promo_code"):
-            customer = live.get("customer")
-            redeem_promo(
-                metadata["promo_code"],
-                hub=hub,
-                customer=customer["id"]
-                if isinstance(customer, dict)
-                else customer or "",
-                session=session.get("id") or "",
-            )
+    )
+    code = (session.get("metadata") or {}).get("promo_code")
+    if completed and code:
+        customer = live.get("customer")
+        promo_codes.redeem_promo(
+            code,
+            hub=hub,
+            customer=customer["id"] if isinstance(customer, dict) else customer or "",
+            session=session.get("id") or "",
+            free_until=free_months_end(live),
+        )
     return "completed"
 
 
