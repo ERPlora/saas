@@ -10,9 +10,9 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management import call_command
 from django.test import override_settings
 
-from accounts import services
 from accounts.admin import open_hub_admin_url
 from accounts.models import AuthExchangeCode
+from accounts.services import active_sessions, api_keys, hub_jump, platform_staff
 from accounts.tests.conftest import enter
 from hubs.models import HubMember
 
@@ -23,7 +23,7 @@ pytestmark = pytest.mark.django_db
 def staff_client(client):
     admin = get_user_model().objects.create_superuser(email="root@example.com", password="x")
     enter(admin, "a", "hub_admin")
-    services.issue_code(admin, "a")
+    hub_jump.issue_code(admin, "a")
     client.force_login(admin)
     return client, admin
 
@@ -180,7 +180,7 @@ class TestOpenInTheHubAdmin:
 
     @pytest.fixture
     def support(self, client, password):
-        user, _ = services.create_platform_user("help@erplora.com", "support", password)
+        user, _ = platform_staff.create_platform_user("help@erplora.com", "support", password)
         client.force_login(user)
         return user
 
@@ -241,7 +241,7 @@ class TestOpenInTheHubAdmin:
             assert html.count('href="http://hubs.localhost:8000/auth/login?') == buttons
 
     def test_the_hubs_page_says_when_there_is_no_hub(self, client, password):
-        user, _ = services.create_platform_user("boss@erplora.com", "admin", password)
+        user, _ = platform_staff.create_platform_user("boss@erplora.com", "admin", password)
         client.force_login(user)
 
         response = client.get(self.HUBS)
@@ -432,7 +432,7 @@ class TestApiKeys:
     def test_support_sees_the_keys_and_cannot_revoke(self, client, ana):
         from accounts.models import ApiKey
 
-        supporter, _ = services.create_platform_user("support@example.com", services.PLATFORM_SUPPORT, "x")
+        supporter, _ = platform_staff.create_platform_user("support@example.com", platform_staff.PLATFORM_SUPPORT, "x")
         client.force_login(supporter)
         key = _key(ana)
 
@@ -450,7 +450,7 @@ class TestTheSuperuserIssuesAKey:
 
     @pytest.fixture
     def teammate(self, password):
-        user, _ = services.create_platform_user("qa@erplora.com", services.PLATFORM_SUPPORT, password)
+        user, _ = platform_staff.create_platform_user("qa@erplora.com", platform_staff.PLATFORM_SUPPORT, password)
         return user
 
     def _issue(self, client, user, **fields):
@@ -464,7 +464,7 @@ class TestTheSuperuserIssuesAKey:
 
         _, root = staff_client
         with pytest.raises(NotFound):
-            services.issue_api_key(ana, name="Monitor", scopes=["hubs.read"], expires_in_days=30, by=root)
+            api_keys.issue_api_key(ana, name="Monitor", scopes=["hubs.read"], expires_in_days=30, by=root)
         assert not ana.api_keys.exists()
 
     @pytest.mark.parametrize(
@@ -555,7 +555,7 @@ class TestTheSuperuserIssuesAKey:
         assert "no-store" in response.headers["Cache-Control"]
 
     def test_support_cannot_issue(self, client, teammate):
-        supporter, _ = services.create_platform_user("support@example.com", services.PLATFORM_SUPPORT, "x")
+        supporter, _ = platform_staff.create_platform_user("support@example.com", platform_staff.PLATFORM_SUPPORT, "x")
         client.force_login(supporter)
 
         assert client.get(self.ADD).status_code == 403
@@ -1023,7 +1023,7 @@ class TestCloseSessions:
     def test_support_sees_the_sessions_and_cannot_close_them(self, client, ana, password):
         from allauth.usersessions.models import UserSession
 
-        supporter, _ = services.create_platform_user("support@example.com", services.PLATFORM_SUPPORT, "x")
+        supporter, _ = platform_staff.create_platform_user("support@example.com", platform_staff.PLATFORM_SUPPORT, "x")
         client.force_login(supporter)
         _signed_in_browser(ana.email, password)
 
@@ -1054,7 +1054,7 @@ class TestCloseSessions:
         from accounts.schemas import SessionCloseAnyIn
 
         with pytest.raises(LiveMisuse):
-            services.session_close_any(system_context(Scope("user", "someone-else")), SessionCloseAnyIn(user_id=ana.pk))
+            active_sessions.session_close_any(system_context(Scope("user", "someone-else")), SessionCloseAnyIn(user_id=ana.pk))
 
     def test_an_account_that_is_gone_is_not_found(self):
         from uuid import uuid7
@@ -1066,11 +1066,11 @@ class TestCloseSessions:
 
         gone = uuid7()
         with pytest.raises(NotFound):
-            services.session_close_any(system_context(Scope("user", str(gone))), SessionCloseAnyIn(user_id=gone))
+            active_sessions.session_close_any(system_context(Scope("user", str(gone))), SessionCloseAnyIn(user_id=gone))
 
     def test_no_role_may_close_any_accounts_sessions(self):
         from live.meta import all_live_app_configs, permissions_for_role
 
         from base.operations import ACCOUNT_ROLE
 
-        assert services.CLOSE_ANY_SESSIONS not in permissions_for_role(all_live_app_configs(), ACCOUNT_ROLE)
+        assert active_sessions.CLOSE_ANY_SESSIONS not in permissions_for_role(all_live_app_configs(), ACCOUNT_ROLE)

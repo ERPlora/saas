@@ -6,7 +6,7 @@ written in the same transaction (``Hub.pending_hub_call``, ``Hub.state_version``
 COMMIT (``sync_hub``, which never runs inside a transaction); when the Hub is away it stays owed and
 ``manage.py reconcile_hub_states`` retries it.
 
-``accounts.services.issue_code`` and ``redeem_code`` read an account's access from the answered members of each
+``accounts.services.hub_jump.issue_code`` and ``redeem_code`` read an account's access from the answered members of each
 business (``hubs.member.list_mine``), so a change of people is the jump's next answer. Taking access away queues a
 ``SessionRevocation`` (delivered after the COMMIT, retried by ``reconcile_hub_states``), and a change of the people of
 a business is told to its owner and admins (``notify_people``).
@@ -45,8 +45,8 @@ from live.slugs import (
 from pydantic import ValidationError
 
 from accounts import queries as account_queries
-from accounts import services as account_services
 from accounts.queries import hub_start_url
+from accounts.services import hub_jump, mailbox_proof
 from base.refusals import fields_refused
 from hubs import domain_checks, domain_names, edge_client, emails, events, hub_client
 from hubs.queries import access_control, addresses, businesses, custom_domains, data_copies, hub_sync, membership, payers, plan_catalog, signup, taxonomy
@@ -289,7 +289,7 @@ def _chosen_slug(slug: str, excluding: UUID | None = None) -> str:
             "max": HUB_SLUG_MAX_LENGTH,
         }
         raise fields_refused({"slug": message}) from None
-    if slug == account_services.PLATFORM_HOST_SLUG:
+    if slug == hub_jump.PLATFORM_HOST_SLUG:
         raise Conflict(_("This address is reserved. Choose another one."), code="hubs.slug_reserved")
     if addresses.slug_taken(slug, excluding=excluding):
         raise _slug_taken()
@@ -928,7 +928,7 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
 
     The invitation is a member without an answer, valid for 7 days; an address without an account gets
     one to claim (no password: Google or «Forgot your password?»). An account that never proved the
-    address is released first (``accounts.services.release_unproven_account``): whoever opens the mailbox
+    address is released first (``accounts.services.mailbox_proof.release_unproven_account``): whoever opens the mailbox
     claims it, and its sessions in every business end. The plan must have a seat for one
     more person. It reaches the Hub only once answered. An expired invitation is renewed.
     """
@@ -965,7 +965,7 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
         else:
             signup.refuse_staff(user)
             if not account_queries.email_is_proven(user, data.email):
-                account_services.release_unproven_account(user, reason="invited_while_unverified")
+                mailbox_proof.release_unproven_account(user, reason="invited_while_unverified")
                 revoke_after_commit(user.pk)
         member = HubMember.objects.create(
             hub=hub,

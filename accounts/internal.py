@@ -20,9 +20,9 @@ from django.views.decorators.csrf import csrf_exempt
 
 from live.errors import InvalidPayload, OperationError
 
-from accounts import services
 from accounts.models import AuthExchangeCode
 from accounts.schemas import SupportReportIn
+from accounts.services import hub_jump, problem_reports
 from accounts.signing import verify_request
 
 AUDIENCES = (AuthExchangeCode.HUB_SESSION_AUDIENCE, AuthExchangeCode.HUB_ADMIN_AUDIENCE)
@@ -54,8 +54,8 @@ def redeem(request: HttpRequest) -> JsonResponse:
     if audience not in AUDIENCES:
         return _error(400, "invalid_request", "The audience, if given, must be hub-session or hub-admin.")
     try:
-        identity = services.redeem_code(payload["code"], payload["hub"], audience=audience)
-    except services.InvalidCode:
+        identity = hub_jump.redeem_code(payload["code"], payload["hub"], audience=audience)
+    except hub_jump.InvalidCode:
         logger.info("internal.redeem.invalid_code hub=%s audience=%s", payload["hub"][:63], audience)
         return _error(400, "invalid_code", "The code is unknown, expired, used or for another hub.")
     return JsonResponse(
@@ -105,7 +105,7 @@ def support_report(request: HttpRequest) -> JsonResponse:
         failure = InvalidPayload("Invalid report.", fields=fields)
         return JsonResponse(failure.envelope(), status=failure.status)
     try:
-        sent = services.support_report_from_hub(
+        sent = problem_reports.support_report_from_hub(
             payload["account"],
             hub=payload["hub"],
             hub_id=payload["hub_id"],

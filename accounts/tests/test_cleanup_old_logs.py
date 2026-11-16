@@ -17,7 +17,7 @@ from django.core.management import CommandError, call_command
 from django.db import connections
 from django.utils import timezone
 
-from accounts import services
+from accounts.services import audit_retention, exclusive_runs
 
 pytestmark = pytest.mark.django_db
 
@@ -100,7 +100,7 @@ def test_a_period_under_a_day_is_refused(entry):
 
 
 def test_it_deletes_batch_after_batch_until_none_is_left(entry, monkeypatch):
-    monkeypatch.setattr(services, "AUDIT_LOG_BATCH", 2)
+    monkeypatch.setattr(audit_retention, "AUDIT_LOG_BATCH", 2)
     old = [entry(100 + day) for day in range(5)]
     recent = entry(10)
 
@@ -123,7 +123,7 @@ def test_it_never_asks(entry, monkeypatch):
 def test_a_second_run_while_one_holds_the_lock_does_nothing(entry):
     old = entry(120)
     other = connections["default"].copy()
-    lock = [services.lock_name("cleanup_old_logs")]
+    lock = [exclusive_runs.lock_name("cleanup_old_logs")]
     try:
         with other.cursor() as cursor:
             cursor.execute("SELECT pg_advisory_lock(hashtext(%s))", lock)
@@ -138,7 +138,7 @@ def test_a_second_run_while_one_holds_the_lock_does_nothing(entry):
     assert "already running" in output
     # Given back: the pool keeps the other session open, and a lock left in it stopped every later run of the
     # process ("already running").
-    assert _lock_is_free(services.lock_name("cleanup_old_logs"))
+    assert _lock_is_free(exclusive_runs.lock_name("cleanup_old_logs"))
     assert _left(old) == [True]
 
 
@@ -216,7 +216,7 @@ class TestTheContentTypeOfTheRetiredCopy:
             yield False
 
         ContentType.objects.get_or_create(**self.KIND)
-        monkeypatch.setattr(services, "run_exclusively", taken)
+        monkeypatch.setattr(exclusive_runs, "run_exclusively", taken)
 
         assert "already running" in _run()
 

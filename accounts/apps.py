@@ -24,12 +24,9 @@ class AccountsConfig(LiveAppConfig):
         from django.contrib.auth.signals import user_logged_in
 
         from accounts import checks  # noqa: F401  (registers the system checks)
-        from accounts.services import (
-            accept_legal_texts,
-            password_changed_ends_sessions,
-            prove_mailbox_by_reset,
-            record_sign_in,
-        )
+        from accounts.services.active_sessions import password_changed_ends_sessions, record_sign_in
+        from accounts.services.legal_acceptance import accept_legal_texts
+        from accounts.services.mailbox_proof import prove_mailbox_by_reset
 
         # A sign-in drops the account's dead sessions in one go and records its own, in place of allauth's receiver,
         # which asked about every open session on its own (``record_sign_in``). allauth.usersessions is ready by now:

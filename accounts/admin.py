@@ -47,7 +47,7 @@ from auditlog.mixins import MAX as SUMMARY_MAX
 from auditlog.models import LogEntry
 from auditlog.render import get_field_verbose_name
 
-from accounts import queries, services
+from accounts import queries
 from accounts.models import (
     API_KEY_SCOPES,
     ApiKey,
@@ -57,6 +57,7 @@ from accounts.models import (
     User,
     UserPreferences,
 )
+from accounts.services import active_sessions, api_keys, hub_jump
 
 OPEN_IN_HUB_ADMIN = _("Open in the Hub admin")
 #: The Vue page of the second factor's settings, where staff without an authenticator app set it up.
@@ -90,7 +91,7 @@ def open_hub_admin_url(slug: str) -> str | None:
     ``http://hubs.localhost:8000/auth/login?hub=a&next=/admin/hub/a/`` locally,
     ``https://hubs.erplora.com/auth/login?hub=a&next=/admin/hub/a/`` in production (``HUB_ADMIN_ORIGIN``).
     """
-    if not services.is_hub_slug(slug):
+    if not hub_jump.is_hub_slug(slug):
         return None
     query = urlencode({"hub": slug, "next": queries.hub_admin_path(slug)}, safe="/")
     return f"{settings.HUB_ADMIN_ORIGIN}{queries.HUB_START_PATH}?{query}"
@@ -200,7 +201,7 @@ class UserAdmin(DjangoUserAdmin):
     def close_sessions(self, request, queryset):
         """An incident: the accounts picked are signed out everywhere and asked for their app's code
         again on every browser."""
-        count = services.close_sessions(by=request.user, users=list(queryset.values_list("pk", flat=True)))
+        count = active_sessions.close_sessions(by=request.user, users=list(queryset.values_list("pk", flat=True)))
         self.message_user(request, gettext("Sessions closed: %(count)s.") % {"count": count}, messages.SUCCESS)
 
 
@@ -304,10 +305,9 @@ class ApiKeyAdmin(admin.ModelAdmin):
     """Who has which key, what it may do, when it was last used.
 
     An account issues its keys in the Account page. A superuser issues one here for a team account («Add API key»),
-    through ``services.issue_api_key``: the answer shows the key once
-    (``response_add``, never cached) and nothing keeps it in clear. A key is never changed and the hash is never shown;
-    deleting is not offered (revoking is the audit trail). A superuser can cut keys on the spot («Revoke»);
-    ``support`` sees them.
+    through ``api_keys.issue_api_key``: the answer shows the key once (``response_add``, never cached) and nothing
+    keeps it in clear. A key is never changed and the hash is never shown; deleting is not offered (revoking is the
+    audit trail). A superuser can cut keys on the spot («Revoke»); ``support`` sees them.
     """
 
     add_form = ApiKeyIssueForm
@@ -365,7 +365,7 @@ class ApiKeyAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         """Issue the key through its operation (never ``obj.save()``) and keep the answer for ``response_add`` only."""
         data = form.cleaned_data
-        issued = services.issue_api_key(
+        issued = api_keys.issue_api_key(
             data["user"],
             name=data["name"],
             scopes=data["scopes"],
@@ -393,7 +393,7 @@ class ApiKeyAdmin(admin.ModelAdmin):
 
     @admin.action(description=_("Revoke the selected keys (they stop working at once)"), permissions=["revoke"])
     def revoke(self, request, queryset):
-        count = services.revoke_api_keys(queryset, by=request.user)
+        count = api_keys.revoke_api_keys(queryset, by=request.user)
         self.message_user(
             request,
             gettext("Keys revoked: %(count)s.") % {"count": count},
@@ -472,7 +472,7 @@ class UserSessionAdmin(AllauthUserSessionAdmin):
 
     @admin.action(description=_("Close the selected sessions"), permissions=["close_sessions"])
     def close_sessions(self, request, queryset):
-        count = services.close_sessions(by=request.user, sessions=list(queryset))
+        count = active_sessions.close_sessions(by=request.user, sessions=list(queryset))
         self.message_user(request, gettext("Sessions closed: %(count)s.") % {"count": count}, messages.SUCCESS)
 
 

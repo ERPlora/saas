@@ -98,7 +98,8 @@ export async function seedAccountsAsync(): Promise<void> {
 
 /**
  * Who a spec's account is: a customer (`create_user`), Django's superuser (`create_superuser`), or a team account of
- * ERPlora (`accounts.services.create_platform_user`, with its group: the platform's admin or its support).
+ * ERPlora (`accounts.services.platform_staff.create_platform_user`, with its group: the platform's admin or its
+ * support).
  */
 export type AccountRole = 'customer' | 'superuser' | 'platform-admin' | 'platform-support';
 
@@ -120,12 +121,12 @@ export async function createAccountWarm(email: string, password: string, options
   );
   const said = (value: string) => JSON.stringify(value);
   const kwargs = [`email=${said(email)}`, `password=${said(password)}`, ...fields.map(([name, value]) => `${name}=${said(value)}`)];
-  const group = role === 'platform-admin' ? 'services.PLATFORM_ADMIN' : 'services.PLATFORM_SUPPORT';
+  const group = role === 'platform-admin' ? 'platform_staff.PLATFORM_ADMIN' : 'platform_staff.PLATFORM_SUPPORT';
   const made =
     role === 'customer' || role === 'superuser'
       ? [`user = get_user_model().objects.${role === 'customer' ? 'create_user' : 'create_superuser'}(${kwargs.join(', ')})`]
       : [
-          `user = services.create_platform_user(${said(email)}, ${group}, ${said(password)})[0]`,
+          `user = platform_staff.create_platform_user(${said(email)}, ${group}, ${said(password)})[0]`,
           ...fields.map(([name, value]) => `user.${name} = ${said(value)}`),
           `user.save(update_fields=[${fields.map(([name]) => said(name)).join(', ')}])`,
         ];
@@ -133,7 +134,7 @@ export async function createAccountWarm(email: string, password: string, options
     [
       'from allauth.account.models import EmailAddress',
       'from django.contrib.auth import get_user_model',
-      'from accounts import services',
+      'from accounts.services import platform_staff',
       ...made,
       `EmailAddress.objects.update_or_create(user=user, email=user.email, defaults={"verified": ${verified ? 'True' : 'False'}, "primary": True})`,
     ].join('\n'),

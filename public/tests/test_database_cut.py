@@ -33,9 +33,10 @@ from psycopg import sql
 from psycopg.conninfo import make_conninfo
 from psycopg_pool import PoolTimeout
 
-from accounts import photos, services
+from accounts import photos
 from accounts.events import BROWSER_TRUST_REVOKED, PREFERENCES_UPDATED, PROFILE_UPDATED
 from accounts.models import EmailChangeRequest, ProfilePhoto, UserPreferences
+from accounts.services import email_address
 from accounts.signing import signed_headers
 from accounts.tests.images import png
 from billing.tests.conftest import stripe_double, stripe_keys  # noqa: F401 - Stripe's signature, with no network
@@ -583,7 +584,7 @@ def _verify(client, code: str):
 
 def test_a_wrong_code_refused_as_read_only_is_one_try(person, ana, monkeypatch):
     """One try of the code and of the account's budget, not two: the budget still stops the try past it."""
-    monkeypatch.setattr(services, "EMAIL_CODE_TRIES_PER_MINUTE", "2/m")
+    monkeypatch.setattr(email_address, "EMAIL_CODE_TRIES_PER_MINUTE", "2/m")
     _waiting_code(person, ana)
     _new_sessions_read_only()
     refused = Refused()
