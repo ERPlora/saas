@@ -329,7 +329,7 @@ def test_a_last_line_without_its_newline_counts():
 @pytest.mark.parametrize(
     ("path", "cap"),
     [
-        ("billing/services.py", 500),
+        ("billing/services/__init__.py", 500),
         ("billing/tests/helpers.py", 1000),
         ("conftest.py", 1000),
         ("hubs/test_rules.py", 1000),

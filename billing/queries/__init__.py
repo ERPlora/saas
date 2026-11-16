@@ -1,7 +1,7 @@
 """Reads of billing: the rule in force, the policy, ERPlora's identity, the VIES log, the payer of a
 business, and the operation ``billing.tax.preview``.
 
-Only this package and ``services.py`` touch the ORM: the VAT engine (``billing.vat``) reads the table and the
+Only this package and ``billing.services`` touch the ORM: the VAT engine (``billing.vat``) reads the table and the
 policy through its functions. Nothing here asks VIES nor writes: a query runs READ ONLY.
 
 The Billing section: ``billing.invoice.{list,get,pdf,csv}`` (ERPlora's invoices; the PDF is asked
