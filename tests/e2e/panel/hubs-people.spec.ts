@@ -446,10 +446,10 @@ test('HUBS-F28: a business handed over on a paid plan: the new owner keeps it wi
     [
       'from datetime import timedelta',
       'from django.utils import timezone',
-      'from hubs import services',
       'from hubs.schemas import SubscriptionApplyIn',
+      'from hubs.services import hub_callbacks, subscription_sync',
       'now = timezone.now()',
-      `services.subscription_apply(services.system_ctx_for("${id}"), SubscriptionApplyIn(hub_id="${id}", plan="starter", billing_interval="month", status="active", stripe_customer_id="${oldCustomer}", stripe_subscription_id="${oldSub}", current_period_start=now - timedelta(days=10), current_period_end=now + timedelta(days=20), cancel_at_period_end=False))`,
+      `subscription_sync.subscription_apply(hub_callbacks.system_ctx_for("${id}"), SubscriptionApplyIn(hub_id="${id}", plan="starter", billing_interval="month", status="active", stripe_customer_id="${oldCustomer}", stripe_subscription_id="${oldSub}", current_period_start=now - timedelta(days=10), current_period_end=now + timedelta(days=20), cancel_at_period_end=False))`,
     ].join('\n'),
   );
   // She offers it to Carlos; he accepts (`hubs.ownership.accept`, which stops her renewal in Stripe).
@@ -458,11 +458,11 @@ test('HUBS-F28: a business handed over on a paid plan: the new owner keeps it wi
   const transfer = ((await offered.json()) as { id: string }).id;
   await withStripe([
     'from django.contrib.auth import get_user_model',
-    'from hubs import services',
     'from hubs.schemas import ByIdIn',
+    'from hubs.services import ownership',
     'from hubs.tests.conftest import ctx_for',
     `double.answer("subscriptions.update", subscription("${oldSub}", customer="${oldCustomer}", items=[item("si_e2e_plan", "price_e2e_starter_month")], cancel_at_period_end=True))`,
-    `services.ownership_accept(ctx_for(get_user_model().objects.get(email="${carlos.email}")), ByIdIn(id="${transfer}"))`,
+    `ownership.ownership_accept(ctx_for(get_user_model().objects.get(email="${carlos.email}")), ByIdIn(id="${transfer}"))`,
     'assert [call.params for call in double.calls_to("subscriptions.update")] == [{"cancel_at_period_end": True}], double.paths()',
   ]);
 
@@ -535,10 +535,10 @@ test('HUBS-F28, in Spanish: «Mantenerlo con mi tarjeta» and the secure payment
       'from datetime import timedelta',
       'from django.contrib.auth import get_user_model',
       'from django.utils import timezone',
-      'from hubs import services',
       'from hubs.schemas import SubscriptionApplyIn',
+      'from hubs.services import hub_callbacks, subscription_sync',
       'now = timezone.now()',
-      `services.subscription_apply(services.system_ctx_for("${id}"), SubscriptionApplyIn(hub_id="${id}", plan="starter", billing_interval="month", status="active", stripe_customer_id="${oldCustomer}", stripe_subscription_id="${oldSub}", current_period_start=now - timedelta(days=10), current_period_end=now + timedelta(days=20), cancel_at_period_end=False))`,
+      `subscription_sync.subscription_apply(hub_callbacks.system_ctx_for("${id}"), SubscriptionApplyIn(hub_id="${id}", plan="starter", billing_interval="month", status="active", stripe_customer_id="${oldCustomer}", stripe_subscription_id="${oldSub}", current_period_start=now - timedelta(days=10), current_period_end=now + timedelta(days=20), cancel_at_period_end=False))`,
       `get_user_model().objects.filter(email="${lucia.email}").update(language="es")`,
     ].join('\n'),
   );
@@ -550,11 +550,11 @@ test('HUBS-F28, in Spanish: «Mantenerlo con mi tarjeta» and the secure payment
   await paintMail(browser, 'HUBS-G82-offer-mail-es', lucia.email, offeredAt, 'quiere traspasarte Bar Manolo', 'es');
   await withStripe([
     'from django.contrib.auth import get_user_model',
-    'from hubs import services',
     'from hubs.schemas import ByIdIn',
+    'from hubs.services import ownership',
     'from hubs.tests.conftest import ctx_for',
     `double.answer("subscriptions.update", subscription("${oldSub}", customer="${oldCustomer}", items=[item("si_e2e_plan", "price_e2e_starter_month")], cancel_at_period_end=True))`,
-    `services.ownership_accept(ctx_for(get_user_model().objects.get(email="${lucia.email}")), ByIdIn(id="${((await offered.json()) as { id: string }).id}"))`,
+    `ownership.ownership_accept(ctx_for(get_user_model().objects.get(email="${lucia.email}")), ByIdIn(id="${((await offered.json()) as { id: string }).id}"))`,
   ]);
 
   const context = await browser.newContext({ baseURL: PANEL_URL, locale: 'es-ES', viewport: { width: 1440, height: 900 } });
