@@ -20,7 +20,7 @@ from datetime import timedelta
 
 from django.core.management.base import BaseCommand, CommandError
 
-from hubs import services
+from hubs.services import reconciliation
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +35,17 @@ class Command(BaseCommand):
         parser.add_argument(
             "--stuck-minutes",
             type=int,
-            default=int(services.STUCK_AFTER.total_seconds() // 60),
+            default=int(reconciliation.STUCK_AFTER.total_seconds() // 60),
             help="Ask the Hub about an sign-up without its ready callback after this many minutes.",
         )
 
     def handle(self, *args, **options):
-        counts = services.reconcile_exclusively(stuck_after=timedelta(minutes=options["stuck_minutes"]))
+        counts = reconciliation.reconcile_exclusively(stuck_after=timedelta(minutes=options["stuck_minutes"]))
         if counts is None:
             self.stdout.write("reconcile_hub_states: already running, nothing done.")
             return
         summary = " ".join(f"{key}={value}" for key, value in counts.items())
         logger.info("hubs.reconcile %s", summary)
         self.stdout.write(f"reconcile_hub_states: {summary}")
-        if services.run_failed(counts):
+        if reconciliation.run_failed(counts):
             raise CommandError(f"reconcile_hub_states left work owed: {summary}")

@@ -43,7 +43,7 @@ from live.errors import OperationError
 from accounts.signing import live_secrets, may_be_signed, query_needs_v2, verify_request, verify_signed
 from fiscal import anexo, queries, services
 from fiscal.schemas import ModelQueryIn, RepresentationSubmitIn
-from hubs.services import system_ctx_for
+from hubs.services.hub_callbacks import system_ctx_for
 
 logger = logging.getLogger(__name__)
 

@@ -1120,12 +1120,12 @@ class TestThePayerPays:
         assert stripe_double.calls == []
 
     def test_once_the_new_owner_says_who_pays_a_free_business_is_bought(self, shop, owner, make_user, stripe_double):
-        from hubs import services as hub_services
+        from hubs.services import billing_profiles
         from hubs.schemas import BillingProfileIn
         from hubs.tests.conftest import ctx_for as hub_ctx
 
         new_owner = transferred(shop, owner, make_user)
-        hub_services.billing_profile_update(
+        billing_profiles.billing_profile_update(
             hub_ctx(new_owner),
             BillingProfileIn(hub_id=shop.id, billing_name="Nuevo SL", billing_country="ES", billing_postal_code="28002"),
         )
@@ -1135,13 +1135,13 @@ class TestThePayerPays:
 
     def test_a_subscription_still_paid_by_the_previous_owner_is_not_touched(self, shop, owner, make_user,
                                                                            inventory, stripe_double):
-        from hubs import services as hub_services
+        from hubs.services import billing_profiles
         from hubs.schemas import BillingProfileIn
         from hubs.tests.conftest import ctx_for as hub_ctx
 
         paid = pay(shop)
         new_owner = transferred(paid, owner, make_user)
-        hub_services.billing_profile_update(
+        billing_profiles.billing_profile_update(
             hub_ctx(new_owner),
             BillingProfileIn(hub_id=paid.id, billing_name="Nuevo SL", billing_country="ES", billing_postal_code="28002"),
         )

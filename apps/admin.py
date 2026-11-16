@@ -113,10 +113,10 @@ class ModuleAdmin(admin.ModelAdmin):
         # HUBS-F34: a new module, or one moved to another level, reaches the businesses whose plan includes it within
         # 15 minutes, not at Stripe's next notice of each of them.
         if not change or "tier" in form.changed_data:
-            from hubs import services as hub_services
+            from hubs.services import subscription_sync
 
             previous = form.initial.get("tier") if change else None
-            owed = hub_services.owe_module_rights(obj.tier, previous)
+            owed = subscription_sync.owe_module_rights(obj.tier, previous)
             if owed:
                 self.message_user(
                     request,

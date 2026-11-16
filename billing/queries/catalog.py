@@ -11,7 +11,7 @@ from apps.models import Module
 from billing.queries.subscriptions import scheduled_change_of
 from billing.schemas import StoreCatalogIn, StoreCatalogOut
 from hubs.queries import access_control, plan_catalog
-from hubs import services as hub_services
+from hubs.services import refusals
 from hubs.models import HubMember, Plan, Subscription, SubscriptionItem
 
 
@@ -116,7 +116,7 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
     so only the owner reads it; a deleted business buys nothing (409). Never asks Stripe."""
     member = access_control.access(access_control.account_of(ctx), params.hub_id, HubMember.Role.OWNER)
     if not access_control.is_writable(member.hub):
-        raise hub_services.business_deleted()
+        raise refusals.business_deleted()
     subscription = (
         Subscription.objects.select_related("plan", "trial_plan").filter(hub_id=member.hub_id).first()
     )

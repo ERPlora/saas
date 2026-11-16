@@ -17,7 +17,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.utils import timezone
 
-from hubs import services
+from hubs.services import member_management, ownership, session_revocations
 from hubs.models import Hub, HubMember, SessionRevocation
 from hubs.schemas import ByIdIn, MemberRoleIn, OwnershipTransferIn
 from hubs.tests.conftest import ctx_for, member_of
@@ -28,7 +28,7 @@ REVOKE = "/internal/sessions/revoke"
 
 
 def remove(actor, hub, user):
-    return services.member_remove(ctx_for(actor), ByIdIn(id=member_of(hub, user).id))
+    return member_management.member_remove(ctx_for(actor), ByIdIn(id=member_of(hub, user).id))
 
 
 def reconcile():
@@ -68,7 +68,7 @@ class TestQueued:
 
     def test_changing_the_role_of_a_member_queues_it(self, business, team):
         """The role travels in the Hub's session (``/internal/auth/redeem``): it must sign in again."""
-        services.member_change_role(
+        member_management.member_change_role(
             ctx_for(team["owner"]),
             MemberRoleIn(
                 id=member_of(business, team["manager"]).id, role="hub_employee"
@@ -80,7 +80,7 @@ class TestQueued:
         ]
 
     def test_an_invitation_has_no_session_to_end(self, business, team):
-        services.member_change_role(
+        member_management.member_change_role(
             ctx_for(team["owner"]),
             MemberRoleIn(
                 id=member_of(business, team["invitee"]).id, role="hub_manager"
@@ -90,7 +90,7 @@ class TestQueued:
         assert not SessionRevocation.objects.exists()
 
     def test_the_same_role_again_ends_nothing(self, business, team):
-        services.member_change_role(
+        member_management.member_change_role(
             ctx_for(team["owner"]),
             MemberRoleIn(
                 id=member_of(business, team["manager"]).id, role="hub_manager"
@@ -102,14 +102,14 @@ class TestQueued:
     def test_an_ownership_hand_over_ends_the_sessions_of_both_sides(
         self, business, team
     ):
-        offer = services.ownership_transfer(
+        offer = ownership.ownership_transfer(
             ctx_for(team["owner"]),
             OwnershipTransferIn(
                 hub_id=business.id, member_id=member_of(business, team["admin"]).id
             ),
         )
 
-        services.ownership_accept(ctx_for(team["admin"]), ByIdIn(id=offer.id))
+        ownership.ownership_accept(ctx_for(team["admin"]), ByIdIn(id=offer.id))
 
         assert set(SessionRevocation.objects.values_list("user_id", "hub_id")) == {
             (team["owner"].pk, business.pk),
@@ -145,7 +145,7 @@ class TestDelivered:
         self, team, hub_double, django_capture_on_commit_callbacks
     ):
         with django_capture_on_commit_callbacks(execute=True):
-            services.revoke_after_commit(team["admin"].pk)
+            session_revocations.revoke_after_commit(team["admin"].pk)
 
         (call,) = hub_double.calls_to("POST", REVOKE)
         assert call.body == {"user_id": str(team["admin"].pk)}
@@ -162,7 +162,7 @@ class TestDelivered:
         assert revocation.delivered_at is None
         assert revocation.attempts == 1
         assert revocation.last_error
-        assert revocation.next_attempt_at >= before + services.revocation_backoff(1)
+        assert revocation.next_attempt_at >= before + session_revocations.revocation_backoff(1)
 
     def test_a_refusal_of_the_hub_is_recorded_and_retried_too(
         self, business, team, hub_double, django_capture_on_commit_callbacks
@@ -277,7 +277,7 @@ class TestRetried:
         assert count(str(failed.value), "sessions_pending") == 1
         revocation = SessionRevocation.objects.get()
         assert revocation.attempts == 2
-        assert revocation.next_attempt_at >= before + services.revocation_backoff(2)
+        assert revocation.next_attempt_at >= before + session_revocations.revocation_backoff(2)
 
     @pytest.mark.parametrize(
         ("attempts", "wait"),
@@ -289,4 +289,4 @@ class TestRetried:
         ],
     )
     def test_the_wait_doubles_up_to_six_hours(self, attempts, wait):
-        assert services.revocation_backoff(attempts) == wait
+        assert session_revocations.revocation_backoff(attempts) == wait

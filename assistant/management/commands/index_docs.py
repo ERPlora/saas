@@ -27,7 +27,7 @@ from live.errors import OperationError
 
 from assistant import knowledge, media, queries, services
 from assistant.schemas import DocChunkIn, DocsIndexIn, DocsSourceIn, NoInput
-from hubs.services import run_exclusively
+from hubs.services.exclusive_runs import run_exclusively
 
 logger = logging.getLogger("assistant.index_docs")
 

@@ -17,7 +17,7 @@ from django.core import mail
 from accounts import queries
 from accounts.models import UserPreferences
 from accounts.tests.conftest import api_post
-from hubs import services as hub_services
+from hubs.services import deletion, hub_callbacks
 from hubs.schemas import BusinessDeleteIn, MarkReadyIn
 from hubs.tests.conftest import create_business, ctx_for, plans  # noqa: F401 - the plans fixture
 
@@ -31,7 +31,7 @@ def _business_notices_off(user) -> None:
 
 
 def _mark_ready(business) -> None:
-    hub_services.business_mark_ready(hub_services.system_ctx_for(business.id), MarkReadyIn(id=business.id))
+    hub_callbacks.business_mark_ready(hub_callbacks.system_ctx_for(business.id), MarkReadyIn(id=business.id))
 
 
 class TestBusinessNotices:
@@ -82,7 +82,7 @@ class TestWhatNoSwitchStops:
         mail.outbox.clear()
 
         with django_capture_on_commit_callbacks(execute=True):
-            hub_services.business_delete(ctx_for(ana), BusinessDeleteIn(id=business.id, confirm_name="Panadería López"))
+            deletion.business_delete(ctx_for(ana), BusinessDeleteIn(id=business.id, confirm_name="Panadería López"))
 
         assert [message.subject for message in mail.outbox] == ["Panadería López se ha eliminado"]
 

@@ -46,7 +46,7 @@ from live.operations import INTERNAL, on_commit, operation
 from live.outbox import record_event
 
 from hubs.queries import plan_catalog
-from hubs import services as hubs_services
+from hubs.services import hub_push
 from hubs.models import HubMember
 from whatsapp import events, parse, queries
 from whatsapp.models import Delivery, PhoneNumber, Send, Template, TemplateSubmission, Usage
@@ -139,8 +139,8 @@ def wake_the_worker() -> None:
 def announce_channel(hub_id: UUID) -> None:
     """The business's WhatsApp changed (its number, its month's usage, a template): its snapshot carries it under
     ``whatsapp`` (door 4) with a newer version, pushed after the COMMIT and retried by ``reconcile_hub_states``."""
-    hubs_services.bump_state(hub_id)
-    hubs_services.push_after_commit(hub_id)
+    hub_push.bump_state(hub_id)
+    hub_push.push_after_commit(hub_id)
 
 
 # --- Meta's webhook ---------------------------------------------------------------------------------------------
@@ -160,7 +160,7 @@ def webhook_ingest(ctx: OperationContext, data: IngestIn) -> IngestOut:
     # A number of a business that left (being deleted or purged) takes nothing any more.
     numbers = dict(
         PhoneNumber.objects.filter(
-            phone_number_id__in=named, is_active=True, hub__status__in=hubs_services.LIVE_STATUSES
+            phone_number_id__in=named, is_active=True, hub__status__in=hub_push.LIVE_STATUSES
         ).values_list("phone_number_id", "hub_id")
     )
     touched: set[UUID] = set()

@@ -37,7 +37,7 @@ from accounts.admin import (
     UserAdmin,
     open_hub_admin_url,
 )
-from hubs import services
+from hubs.services import platform_actions, subscription_sync
 from hubs.queries import hub_sync, membership
 from hubs.models import (
     CustomDomain,
@@ -155,7 +155,7 @@ class PlanAdmin(admin.ModelAdmin):
             self.message_user(request, form.unchecked, messages.WARNING)
         # HUBS-F31: what the plan gives reaches its businesses within 15 minutes, not at night.
         if change and set(hub_sync.SNAPSHOT_PLAN_FIELDS) & set(form.changed_data):
-            owed = services.owe_plan_rights(obj)
+            owed = subscription_sync.owe_plan_rights(obj)
             if owed:
                 self.message_user(
                     request,
@@ -287,7 +287,7 @@ class HubAdmin(PlatformActions):
     @admin.action(description=_("Let its owner buy the internal plans"), permissions=["sync"])
     @traced
     def allow_internal_plans(self, request, queryset):
-        changed = services.mark_for_internal_plans(list(queryset.values_list("id", flat=True)), allowed=True)
+        changed = platform_actions.mark_for_internal_plans(list(queryset.values_list("id", flat=True)), allowed=True)
         self.message_user(
             request, _("%(count)d business(es): its owner now sees the internal plans in the Store.") % {"count": changed}
         )
@@ -295,7 +295,7 @@ class HubAdmin(PlatformActions):
     @admin.action(description=_("Stop selling it the internal plans"), permissions=["sync"])
     @traced
     def stop_internal_plans(self, request, queryset):
-        changed = services.mark_for_internal_plans(list(queryset.values_list("id", flat=True)), allowed=False)
+        changed = platform_actions.mark_for_internal_plans(list(queryset.values_list("id", flat=True)), allowed=False)
         self.message_user(
             request,
             _("%(count)d business(es): the Store no longer offers it the internal plans; a plan already bought stays.")
@@ -305,12 +305,12 @@ class HubAdmin(PlatformActions):
     @admin.action(description=_("Send the latest state to the Hub"), permissions=["sync"])
     @traced
     def send_latest_state(self, request, queryset):
-        self._tell(request, services.send_latest_state(list(queryset.values_list("id", flat=True))))
+        self._tell(request, platform_actions.send_latest_state(list(queryset.values_list("id", flat=True))))
 
     @admin.action(description=_("Retry what the Hub still owes"), permissions=["sync"])
     @traced
     def retry_owed(self, request, queryset):
-        self._tell(request, services.retry_owed(list(queryset.values_list("id", flat=True))))
+        self._tell(request, platform_actions.retry_owed(list(queryset.values_list("id", flat=True))))
 
     def _tell(self, request, counts):
         if counts["delivered"]:
@@ -429,7 +429,7 @@ class SessionRevocationAdmin(PlatformActions):
     @admin.action(description=_("End the sessions in the Hub now"), permissions=["sync"])
     @traced
     def deliver_now(self, request, queryset):
-        counts = services.deliver_revocations(list(queryset.values_list("id", flat=True)))
+        counts = platform_actions.deliver_revocations(list(queryset.values_list("id", flat=True)))
         if counts["delivered"]:
             self.message_user(request, _("%(count)d session end(s) delivered.") % {"count": counts["delivered"]})
         if counts["pending"]:

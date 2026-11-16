@@ -23,7 +23,7 @@ from fiscal.schemas import (
 )
 from fiscal.tests.conftest import PDF, make_grant, pdf_b64, staff_ctx, submission
 from hubs.models import Hub, HubMember
-from hubs.services import system_ctx_for
+from hubs.services.hub_callbacks import system_ctx_for
 from hubs.tests.conftest import add_member, ctx_for
 
 pytestmark = pytest.mark.django_db

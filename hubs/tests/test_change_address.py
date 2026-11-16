@@ -10,7 +10,8 @@ import pytest
 from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
 from live.models import OutboxEvent
 
-from hubs import events, services
+from hubs import events
+from hubs.services import business_settings
 from hubs.queries import access_control, addresses, businesses, hub_sync
 from hubs.models import Hub
 from hubs.schemas import BusinessAddressIn, ByIdIn
@@ -20,7 +21,7 @@ pytestmark = pytest.mark.django_db
 
 
 def change(user, hub, slug):
-    return services.business_change_address(ctx_for(user), BusinessAddressIn(id=hub.id, slug=slug))
+    return business_settings.business_change_address(ctx_for(user), BusinessAddressIn(id=hub.id, slug=slug))
 
 
 class TestChangeTheAddress:

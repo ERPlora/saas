@@ -20,7 +20,7 @@ from datetime import UTC, date
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
-from hubs import services
+from hubs.services import exclusive_runs, usage_collection
 from hubs.queries import hub_usage
 
 logger = logging.getLogger(__name__)
@@ -50,17 +50,17 @@ class Command(BaseCommand):
             raise CommandError(
                 f"collect_hub_usage: {day} is not over yet in UTC; the Hub has not measured it."
             )
-        with services.run_exclusively("collect_hub_usage") as mine:
+        with exclusive_runs.run_exclusively("collect_hub_usage") as mine:
             if not mine:
                 self.stdout.write("collect_hub_usage: already running, nothing done.")
                 return
-            counts = services.collect_usage(day)
+            counts = usage_collection.collect_usage(day)
             summary = " ".join(f"{key}={value}" for key, value in counts.items())
             logger.info("hubs.collect_usage day=%s %s", day, summary)
             self.stdout.write(f"collect_hub_usage {day}: {summary}")
-            pruned = services.prune_usage()
+            pruned = usage_collection.prune_usage()
         failures = []
-        if services.usage_run_failed(counts):
+        if usage_collection.usage_run_failed(counts):
             failures.append(f"{day} did not get every business: {summary}")
         if pruned is None:
             failures.append("did not forget the usage past its retention (hubs.usage.prune_failed in the log)")

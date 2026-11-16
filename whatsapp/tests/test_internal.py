@@ -75,9 +75,9 @@ def used(hub) -> int:
 def refused_at_the_cap(business, hub_double) -> Hub:
     """The Free plan's 30 spent while the Hub was told 0: the business pushed and acknowledged (the Hub has its
     latest version), then the month's usage reached the cap without a newer snapshot (a send whose record never ran)."""
-    from hubs import services as hubs_services
+    from hubs.services import hub_push
 
-    assert hubs_services.sync_hub(business.pk)
+    assert hub_push.sync_hub(business.pk)
     told = hub_double.calls_to("PUT", f"/internal/hubs/{business.pk}/state")[-1].body["whatsapp"]
     assert told["monthly_usage"] == 0
     Usage.objects.create(hub=business, month=timezone.now().strftime("%Y-%m"), used=30)

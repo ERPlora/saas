@@ -35,7 +35,7 @@ def paying(shop, stripe_double):
 
 
 def save(owner, hub, **details):
-    from hubs import services as hub_services
+    from hubs.services import billing_profiles
     from hubs.schemas import BillingProfileIn
 
     values = {
@@ -47,7 +47,7 @@ def save(owner, hub, **details):
         "billing_email": "facturas@panaderialopez.es",
         **details,
     }
-    return hub_services.billing_profile_update(ctx_for(owner), BillingProfileIn(hub_id=hub.id, **values))
+    return billing_profiles.billing_profile_update(ctx_for(owner), BillingProfileIn(hub_id=hub.id, **values))
 
 
 class TestSavingTheBillingDetails:

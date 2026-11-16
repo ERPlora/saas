@@ -14,7 +14,7 @@ import logging
 from django.core.management.base import BaseCommand, CommandError
 
 from billing import services
-from hubs.services import run_exclusively
+from hubs.services.exclusive_runs import run_exclusively
 
 logger = logging.getLogger(__name__)
 

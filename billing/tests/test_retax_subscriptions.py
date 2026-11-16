@@ -311,7 +311,7 @@ class TestSavingTheBillingDetails:
     def test_the_live_subscription_is_retaxed_after_the_commit(
         self, shop, owner, stripe_double, django_capture_on_commit_callbacks
     ):
-        from hubs import services as hub_services
+        from hubs.services import billing_profiles
         from hubs.schemas import BillingProfileIn
 
         rate = spanish_rate(stripe_double, shop)
@@ -319,7 +319,7 @@ class TestSavingTheBillingDetails:
         sent_before = len(stripe_double.calls_to("subscriptions.update"))
 
         with django_capture_on_commit_callbacks(execute=False) as callbacks:
-            hub_services.billing_profile_update(
+            billing_profiles.billing_profile_update(
                 ctx_for(owner),
                 BillingProfileIn(
                     hub_id=paid.id,
@@ -342,7 +342,7 @@ class TestSavingTheBillingDetails:
         self, shop, owner, stripe_double, django_capture_on_commit_callbacks, caplog
     ):
         from billing.tests.stripe_double import connection_error
-        from hubs import services as hub_services
+        from hubs.services import billing_profiles
         from hubs.models import BillingProfile
         from hubs.schemas import BillingProfileIn
 
@@ -351,7 +351,7 @@ class TestSavingTheBillingDetails:
 
         with caplog.at_level(logging.ERROR, logger="billing.services"):
             with django_capture_on_commit_callbacks(execute=True):
-                hub_services.billing_profile_update(
+                billing_profiles.billing_profile_update(
                     ctx_for(owner),
                     BillingProfileIn(
                         hub_id=paid.id,

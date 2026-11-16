@@ -10,7 +10,7 @@ makes the run end with an error after the pass.
 import pytest
 from django.core.management.base import CommandError
 
-from hubs import services
+from hubs.services import hub_push
 from hubs.models import Hub, HubMember
 from hubs.tests.conftest import add_member, create_business
 from hubs.tests.test_reconcile_hub_states import fresh, run
@@ -24,7 +24,7 @@ LOCK_KEY = "hashtext('erplora.saas.push_hub_snapshots')"
 def test_by_default_every_live_business_is_pushed_again(
     business, owner, hub_double, make_user
 ):
-    services.sync_hub(business.id)
+    hub_push.sync_hub(business.id)
     deleted = create_business(make_user("lola@example.com"), name="Café Lola")
     Hub.objects.filter(pk=deleted.pk).update(
         status=Hub.Status.DELETING, pending_hub_call=""
@@ -51,9 +51,9 @@ def test_every_night_the_hub_applies_it_again(business, hub_double):
 
 
 def test_behind_only_pushes_what_the_hub_is_behind_on(business, team, hub_double):
-    services.sync_hub(business.id)
+    hub_push.sync_hub(business.id)
     add_member(business, team["stranger"], HubMember.Role.EMPLOYEE)
-    services.bump_state(business.id)
+    hub_push.bump_state(business.id)
     hub_double.calls.clear()
 
     output = run("push_hub_snapshots", "--behind-only")

@@ -23,7 +23,7 @@ from billing import services
 from billing.schemas import CheckoutConfirmIn, ModuleIn
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import MONTH_END, item, subscription
-from hubs import services as hub_services
+from hubs.services import hub_push
 from hubs.models import SubscriptionItem
 from hubs.tests.conftest import create_business
 
@@ -143,8 +143,8 @@ class TestTheEndReachesTheBusiness:
             stripe_item_id="", valid_until=timezone.now() - timedelta(minutes=1)
         )
         # Whatever pushes the next photo (a member, the plan…): it no longer names it.
-        hub_services.bump_state(paid.id)
-        committed(lambda: hub_services.sync_hub(paid.id))
+        hub_push.bump_state(paid.id)
+        committed(lambda: hub_push.sync_hub(paid.id))
         ended = photo(hub_double, paid)
         assert ended["modules"] == []
         stripe_double.answer(

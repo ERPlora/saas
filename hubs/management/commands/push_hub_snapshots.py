@@ -13,7 +13,7 @@ import logging
 
 from django.core.management.base import BaseCommand, CommandError
 
-from hubs import services
+from hubs.services import exclusive_runs, platform_actions, reconciliation
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +27,13 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        with services.run_exclusively("push_hub_snapshots") as mine:
+        with exclusive_runs.run_exclusively("push_hub_snapshots") as mine:
             if not mine:
                 self.stdout.write("push_hub_snapshots: already running, nothing done.")
                 return
-            counts = services.push_snapshots(behind_only=options["behind_only"])
+            counts = platform_actions.push_snapshots(behind_only=options["behind_only"])
         summary = " ".join(f"{key}={value}" for key, value in counts.items())
         logger.info("hubs.push_snapshots %s", summary)
         self.stdout.write(f"push_hub_snapshots: {summary}")
-        if services.run_failed(counts):
+        if reconciliation.run_failed(counts):
             raise CommandError(f"push_hub_snapshots left work owed: {summary}")

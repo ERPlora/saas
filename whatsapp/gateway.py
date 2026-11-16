@@ -48,7 +48,7 @@ from django.conf import settings
 from django.utils import timezone
 from live.errors import OperationError
 
-from hubs.services import run_exclusively
+from hubs.services.exclusive_runs import run_exclusively
 from whatsapp import emails, hub_client, meta, queries, services, templates
 from whatsapp.schemas import (
     AlertedIn,

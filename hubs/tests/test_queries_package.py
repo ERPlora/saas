@@ -12,9 +12,10 @@ from django.conf import settings
 PACKAGE = Path(settings.BASE_DIR) / "hubs" / "queries"
 
 
-def statements_beyond_gathering(source: str) -> list[str]:
-    """What a package's ``__init__`` holds besides its docstring and ``from hubs.queries import <module>``."""
-    modules = {path.stem for path in PACKAGE.glob("*.py")} - {"__init__"}
+def statements_beyond_gathering(source: str, package: str = "hubs.queries") -> list[str]:
+    """What a package's ``__init__`` holds besides its docstring and ``from <package> import <module>``."""
+    folder = Path(settings.BASE_DIR, *package.split("."))
+    modules = {path.stem for path in folder.glob("*.py")} - {"__init__"}
     found = []
     for node in ast.parse(source).body:
         if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
@@ -22,7 +23,7 @@ def statements_beyond_gathering(source: str) -> list[str]:
         gathers = (
             isinstance(node, ast.ImportFrom)
             and node.level == 0
-            and node.module == "hubs.queries"
+            and node.module == package
             and all(alias.name in modules and alias.asname is None for alias in node.names)
         )
         if not gathers:

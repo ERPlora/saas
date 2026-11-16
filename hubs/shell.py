@@ -21,7 +21,7 @@ from django.views.decorators.http import require_GET
 from live.context import get_builder
 from live.errors import Conflict, NotFound
 
-from hubs import services
+from hubs.services import opening
 from hubs.schemas import BusinessOpenIn
 
 #: The app's start: ``ERPlora/app`` boots there, so it never changes.
@@ -34,7 +34,7 @@ def open_business(request: HttpRequest, hub_id: UUID) -> HttpResponse:
     if not request.user.is_authenticated:
         return redirect_to_login(request.get_full_path(), login_url=SHELL)
     try:
-        opened = services.business_open(
+        opened = opening.business_open(
             get_builder().from_request(request), BusinessOpenIn(id=hub_id, shell=True)
         )
     except NotFound as missing:

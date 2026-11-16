@@ -25,7 +25,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from accounts import services as account_services
-from hubs import services
+from hubs.services import demo_businesses
 from hubs.models import HubMember
 
 OWNER_EMAIL = "owner@example.com"
@@ -58,7 +58,7 @@ class Command(BaseCommand):
         owner = account_services.seed_demo_customer(owner_email, owner_password)
         employee = account_services.seed_demo_customer(employee_email, employee_password)
         for slug in HUB_SLUGS:
-            services.seed_demo_business(
+            demo_businesses.seed_demo_business(
                 slug, {owner: HubMember.Role.OWNER, employee: HubMember.Role.EMPLOYEE}
             )
         account_services.seed_demo_platform_admin(platform_email, platform_password)

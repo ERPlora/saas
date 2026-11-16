@@ -22,7 +22,8 @@ from live.context import Scope, system_context
 from live.errors import InvalidPayload, NotFound, PermissionDenied
 from live.models import OutboxEvent
 
-from hubs import events, services
+from hubs import events
+from hubs.services import deletion, hub_callbacks, subscription_sync
 from hubs.queries import businesses, hub_sync
 from hubs.models import Hub, HubMember, Subscription, SubscriptionItem
 from hubs.schemas import BusinessListIn, ByIdIn, ModuleRightIn, SubscriptionApplyIn
@@ -35,8 +36,8 @@ PERIOD_END = PERIOD_START + timedelta(days=30)
 
 
 def apply(hub, **fields):
-    return services.subscription_apply(
-        services.system_ctx_for(hub.id), SubscriptionApplyIn(hub_id=hub.id, **fields)
+    return subscription_sync.subscription_apply(
+        hub_callbacks.system_ctx_for(hub.id), SubscriptionApplyIn(hub_id=hub.id, **fields)
     )
 
 
@@ -76,7 +77,7 @@ def ready(hub, status=Hub.Status.ACTIVE):
 
 def test_only_the_platform_applies_what_stripe_says(business, owner):
     with pytest.raises(PermissionDenied) as refused:
-        services.subscription_apply(
+        subscription_sync.subscription_apply(
             ctx_for(owner), SubscriptionApplyIn(hub_id=business.id, plan="starter")
         )
 
@@ -87,7 +88,7 @@ def test_an_unknown_business_is_not_found(plans):
     import uuid
 
     with pytest.raises(NotFound):
-        services.subscription_apply(
+        subscription_sync.subscription_apply(
             system_context(Scope("user", "system")),
             SubscriptionApplyIn(hub_id=uuid.uuid7(), plan="starter"),
         )
@@ -520,10 +521,10 @@ def test_deleting_a_paying_business_asks_for_its_stripe_subscription_to_end(busi
     from hubs.schemas import BusinessDeleteIn, ByIdIn
 
     apply(business, **paid_starter())
-    services.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
+    deletion.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
     asked = subscription_of(business).cancel_requested_at
 
-    services.business_restore(ctx_for(owner), ByIdIn(id=business.id))
+    deletion.business_restore(ctx_for(owner), ByIdIn(id=business.id))
 
     assert asked is not None
     assert subscription_of(business).cancel_requested_at == asked
@@ -533,7 +534,7 @@ def test_the_end_of_the_stripe_subscription_clears_the_ask(business, owner):
     from hubs.schemas import BusinessDeleteIn
 
     apply(business, **paid_starter())
-    services.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
+    deletion.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
 
     apply(business, stripe_subscription_id="", cancel_requested_at=None)
 
@@ -543,6 +544,6 @@ def test_the_end_of_the_stripe_subscription_clears_the_ask(business, owner):
 def test_deleting_a_free_business_asks_nothing_of_stripe(business, owner):
     from hubs.schemas import BusinessDeleteIn
 
-    services.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
+    deletion.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
 
     assert subscription_of(business).cancel_requested_at is None

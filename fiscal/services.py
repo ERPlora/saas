@@ -51,7 +51,7 @@ from fiscal.schemas import (
     WithdrawIn,
 )
 from hubs.queries import access_control, membership
-from hubs import services as hub_services
+from hubs.services import hub_push
 from hubs.models import Hub
 
 Status = RepresentationGrant.Status
@@ -383,8 +383,8 @@ def _stepped(ctx: OperationContext, event: str, grant: RepresentationGrant) -> N
     )
     tell_the_business(ctx, grant.hub_id)
     transaction.on_commit(partial(emails.grant_stepped, grant.id), robust=True)
-    hub_services.bump_state(grant.hub_id)
-    hub_services.push_after_commit(grant.hub_id)
+    hub_push.bump_state(grant.hub_id)
+    hub_push.push_after_commit(grant.hub_id)
 
 
 # --- The owner and the admins of the business hear of it ----------------------------------------------

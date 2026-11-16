@@ -16,7 +16,7 @@ from fiscal import queries, services
 from fiscal.schemas import RepresentationSubmitIn, ReviewIn, WithdrawIn
 from fiscal.tests.conftest import make_grant, pdf_b64, staff_ctx, submission
 from hubs.queries import hub_sync
-from hubs import services as hub_services
+from hubs.services import hub_callbacks, hub_push, reconciliation, subscription_sync
 from hubs.models import Hub, Subscription, SubscriptionItem
 from hubs.schemas import SubscriptionApplyIn
 
@@ -242,7 +242,7 @@ class TestVerifactuInEveryPlan:
 def test_two_businesses_each_carry_their_own_state(business, other_business, reviewer):
     approved = make_grant(business, status="approved", reviewed_at=timezone.now())
     services.representation_submit(
-        hub_services.system_ctx_for(other_business.id),
+        hub_callbacks.system_ctx_for(other_business.id),
         RepresentationSubmitIn(hub_id=other_business.id, **submission()),
     )
 
@@ -258,7 +258,7 @@ def test_what_happens_in_one_business_never_bumps_another(
     before = version_of(business)
 
     services.representation_submit(
-        hub_services.system_ctx_for(other_business.id),
+        hub_callbacks.system_ctx_for(other_business.id),
         RepresentationSubmitIn(hub_id=other_business.id, **submission()),
     )
     waiting = make_grant(other_business, version=2, status="submitted")
@@ -275,7 +275,7 @@ def test_what_happens_in_one_business_never_bumps_another(
 def test_a_withdrawal_reaches_the_hub_after_the_commit(
     business, reviewer, hub_double, django_capture_on_commit_callbacks
 ):
-    hub_services.sync_hub(business.id)
+    hub_push.sync_hub(business.id)
     approved = make_grant(business, status="approved", reviewed_at=timezone.now())
     before = version_of(business)
 
@@ -321,16 +321,16 @@ def test_dropping_to_free_keeps_the_approval_with_a_newer_version(
     """What Stripe says (``hubs.subscription.apply``) changes the plan the Hub sees, so the snapshot is bumped
     and pushed: the plan is Free, and VeriFactu and its approval stay."""
     Subscription.objects.filter(hub=business).update(trial_plan=None, trial_end=None)
-    hub_services.subscription_apply(
-        hub_services.system_ctx_for(business.id),
+    subscription_sync.subscription_apply(
+        hub_callbacks.system_ctx_for(business.id),
         SubscriptionApplyIn(hub_id=business.id, plan="starter"),
     )
     make_grant(business, status="approved", reviewed_at=timezone.now())
     before = version_of(business)
 
     with django_capture_on_commit_callbacks(execute=True):
-        hub_services.subscription_apply(
-            hub_services.system_ctx_for(business.id),
+        subscription_sync.subscription_apply(
+            hub_callbacks.system_ctx_for(business.id),
             SubscriptionApplyIn(hub_id=business.id, plan="free"),
         )
 
@@ -359,7 +359,7 @@ def test_reconcile_pushes_an_owed_state_with_its_block(
     try:
         settings.INTERNAL_SHARED_SECRET = SECRET
         settings.HUB_INTERNAL_URL = double.url
-        hub_services.reconcile()
+        reconciliation.reconcile()
     finally:
         double.stop()
 
@@ -381,7 +381,7 @@ def test_the_hub_never_receives_a_document(
     }
     with django_capture_on_commit_callbacks(execute=True):
         services.representation_submit(
-            hub_services.system_ctx_for(business.id),
+            hub_callbacks.system_ctx_for(business.id),
             RepresentationSubmitIn(
                 hub_id=business.id, **submission(documents=documents)
             ),

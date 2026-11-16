@@ -17,7 +17,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from hubs import services
+from hubs.services import ownership
 from hubs.models import Hub, HubMember, HubOwnershipTransfer
 from hubs.schemas import OwnershipTransferIn
 from hubs.tests.conftest import add_member, create_business, ctx_for, member_of
@@ -66,7 +66,7 @@ def rows(client, hub):
 
 
 def offer(owner, hub, to_user):
-    return services.ownership_transfer(
+    return ownership.ownership_transfer(
         ctx_for(owner),
         OwnershipTransferIn(hub_id=hub.id, member_id=member_of(hub, to_user).id),
     )

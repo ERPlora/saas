@@ -11,7 +11,7 @@ import pytest
 from django.utils import timezone
 
 from apps.models import Module
-from hubs import services
+from hubs.services import hub_callbacks, member_management, subscription_sync
 from hubs.queries import hub_sync
 from hubs.models import Plan, Subscription, SubscriptionItem
 from hubs.tests.conftest import create_business
@@ -45,8 +45,8 @@ def test_a_purchase_reaches_only_the_business_it_was_bought_for(make_user, plans
 def test_the_paid_plan_of_one_business_gives_nothing_to_another_of_the_same_account(paid_business):
     Module.objects.create(slug="inventory", tier="basic")
     standard, free = paid_business
-    services.sync_plan_modules(Subscription.objects.get(hub=standard))
-    services.sync_plan_modules(Subscription.objects.get(hub=free))
+    subscription_sync.sync_plan_modules(Subscription.objects.get(hub=standard))
+    subscription_sync.sync_plan_modules(Subscription.objects.get(hub=free))
 
     assert module_ids(standard) == ["inventory"]
     assert module_ids(free) == []
@@ -63,7 +63,7 @@ def test_each_app_says_where_its_right_comes_from_and_until_when(business):
         source=SubscriptionItem.Source.PURCHASE,
         valid_until=until,
     )
-    services.sync_plan_modules(Subscription.objects.get(hub=business))
+    subscription_sync.sync_plan_modules(Subscription.objects.get(hub=business))
 
     assert hub_sync.hub_snapshot(business.id)["modules"] == [
         {"id": "inventory", "source": "purchase", "valid_until": until.isoformat()},
@@ -85,12 +85,12 @@ def test_dropping_to_free_removes_nobody_and_only_stops_new_invitations(business
 
     inside = set(HubMember.objects.filter(hub=business).values_list("user_id", flat=True))
 
-    services.subscription_apply(services.system_ctx_for(business.id), SubscriptionApplyIn(hub_id=business.id, plan="free"))
+    subscription_sync.subscription_apply(hub_callbacks.system_ctx_for(business.id), SubscriptionApplyIn(hub_id=business.id, plan="free"))
 
     assert set(HubMember.objects.filter(hub=business).values_list("user_id", flat=True)) == inside
     plan = hub_sync.hub_snapshot(business.id)["plan"]
     assert (plan["slug"], plan["max_users"], plan["max_devices"]) == ("free", 3, 1)
     with pytest.raises(Conflict) as refused:
-        services.member_invite(ctx_for(owner), MemberInviteIn(hub_id=business.id, email="new@example.com"))
+        member_management.member_invite(ctx_for(owner), MemberInviteIn(hub_id=business.id, email="new@example.com"))
     assert refused.value.code == "hubs.seat_limit"
     assert refused.value.limit == 3

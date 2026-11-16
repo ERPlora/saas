@@ -178,7 +178,7 @@ def test_the_unconfirmed_refusal_is_said_in_spanish(business, owner):
     from django.contrib.auth import get_user_model
     from live.errors import PermissionDenied
 
-    from hubs import services
+    from hubs.services import invitation_answers
     from hubs.models import HubMember
     from hubs.schemas import ByIdIn
     from hubs.tests.conftest import ctx_for
@@ -188,7 +188,7 @@ def test_the_unconfirmed_refusal_is_said_in_spanish(business, owner):
     member = HubMember.objects.create(hub=business, user=ana, role="hub_employee")
 
     with translation.override("es"), pytest.raises(PermissionDenied) as refused:
-        services.invitation_accept(ctx_for(ana, language="es"), ByIdIn(id=member.id))
+        invitation_answers.invitation_accept(ctx_for(ana, language="es"), ByIdIn(id=member.id))
 
     assert refused.value.message == "Confirma tu correo electrónico antes de aceptar la invitación."
 

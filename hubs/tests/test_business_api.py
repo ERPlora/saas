@@ -256,9 +256,9 @@ def test_the_proposed_address_over_http(signed_in, owner, plans):
 
 
 def test_the_check_route_returns_the_real_maintenance_and_clears_it(client, business, owner, hub_double):
-    from hubs import services
+    from hubs.services import hub_push
 
-    services.sync_hub(business.id)
+    hub_push.sync_hub(business.id)
     hub_double.registry[str(business.id)]["maintenance"] = {
         "frozen": True,
         "reason": "Aurora upgrade",

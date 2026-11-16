@@ -25,7 +25,8 @@ class HubsConfig(LiveAppConfig):
         from allauth.account.signals import email_changed
 
         from accounts import signals as account_signals
-        from hubs import auditlog, services
+        from hubs import auditlog
+        from hubs.services import account_changes
         from hubs import checks  # noqa: F401  (registers the system checks)
 
         # The audit trail of what a business pays and who pays it (ACCOUNTS-F36).
@@ -33,6 +34,6 @@ class HubsConfig(LiveAppConfig):
 
         # What an account's own changes mean to its businesses (accounts never imports hubs): its sessions
         # end there too, and their snapshots drop it or carry its new address.
-        account_signals.sessions_ended.connect(services.end_account_sessions, dispatch_uid="hubs.sessions_ended")
-        account_signals.account_deleting.connect(services.account_leaving, dispatch_uid="hubs.account_deleting")
-        email_changed.connect(services.account_email_changed, dispatch_uid="hubs.email_changed")
+        account_signals.sessions_ended.connect(account_changes.end_account_sessions, dispatch_uid="hubs.sessions_ended")
+        account_signals.account_deleting.connect(account_changes.account_leaving, dispatch_uid="hubs.account_deleting")
+        email_changed.connect(account_changes.account_email_changed, dispatch_uid="hubs.email_changed")

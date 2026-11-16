@@ -14,7 +14,7 @@ from django.contrib.messages import get_messages
 from django.forms.models import model_to_dict
 
 from apps.models import Module
-from hubs import services
+from hubs.services import reconciliation
 from hubs.models import Hub, Plan, Subscription, SubscriptionItem
 from hubs.tests.conftest import create_business
 
@@ -72,10 +72,10 @@ def test_a_new_limit_leaves_every_business_on_the_plan_owing_the_hub(staff_clien
 
 
 def test_the_next_pass_delivers_it(staff_client, on_starter, hub_double):
-    services.reconcile()
+    reconciliation.reconcile()
     edit(staff_client, "starter", max_devices=2, assistant_messages_per_month=400)
 
-    counts = services.reconcile()
+    counts = reconciliation.reconcile()
 
     state = hub_double.calls_to("PUT", f"/internal/hubs/{on_starter.id}/state")[-1].body
     assert (state["plan"]["slug"], state["plan"]["max_devices"], state["plan"]["assistant_messages_per_month"]) == (
@@ -89,13 +89,13 @@ def test_the_next_pass_delivers_it(staff_client, on_starter, hub_double):
 def test_a_new_module_cap_reaches_the_hub_in_the_snapshot(staff_client, business, on_starter, hub_double):
     """``max_apps`` is a right of the plan like its other limits: changing it owes every business
     on the plan a newer snapshot, and the next pass takes it to the Hub, which checks it when a module is turned on."""
-    services.reconcile()
+    reconciliation.reconcile()
     before = versions(business, on_starter)
 
     edit(staff_client, "starter", max_apps=3)
 
     assert versions(business, on_starter) == [before[0], before[1] + 1]
-    services.reconcile()
+    reconciliation.reconcile()
     state = hub_double.calls_to("PUT", f"/internal/hubs/{on_starter.id}/state")[-1].body
     assert (state["plan"]["slug"], state["plan"]["max_apps"]) == ("starter", 3)
 
@@ -193,10 +193,10 @@ def test_a_new_module_of_a_plans_level_reaches_its_businesses(staff_client, busi
 
 
 def test_the_next_pass_takes_the_module_to_the_hub(staff_client, on_starter, whatsapp, hub_double):
-    services.reconcile()
+    reconciliation.reconcile()
     staff_client.post("/admin/apps/module/add/", module_form())
 
-    services.reconcile()
+    reconciliation.reconcile()
 
     state = hub_double.calls_to("PUT", f"/internal/hubs/{on_starter.id}/state")[-1].body
     assert {"id": "whatsapp_inbox", "source": "plan", "valid_until": None} in state["modules"]

@@ -9,7 +9,16 @@ reaches neither the payer nor the plan.
 import pytest
 from live.errors import NotFound, OperationError, PermissionDenied
 
-from hubs import services
+from hubs.services import (
+    billing_profiles,
+    business_settings,
+    custom_domain_requests,
+    deletion,
+    member_management,
+    opening,
+    ownership,
+    reconciliation,
+)
 from hubs.queries import businesses, custom_domains, data_copies, hub_usage, membership, payers
 from hubs.schemas import (
     BillingProfileGetIn,
@@ -44,35 +53,35 @@ def call(name, hub, team):
     invitation = member_of(hub, team["invitee"]).id
     return {
         "business.get": (businesses.business_get, ByIdIn(id=hub.id)),
-        "business.check": (services.business_check, ByIdIn(id=hub.id)),
+        "business.check": (reconciliation.business_check, ByIdIn(id=hub.id)),
         "business.update": (
-            services.business_update,
+            business_settings.business_update,
             BusinessUpdateIn(id=hub.id, name="Renamed"),
         ),
         "business.change_address": (
-            services.business_change_address,
+            business_settings.business_change_address,
             BusinessAddressIn(id=hub.id, slug="casa-manolo"),
         ),
         "business.delete": (
-            services.business_delete,
+            deletion.business_delete,
             BusinessDeleteIn(id=hub.id, confirm_name="not the name"),
         ),
-        "business.restore": (services.business_restore, ByIdIn(id=hub.id)),
-        "business.open": (services.business_open, BusinessOpenIn(id=hub.id)),
+        "business.restore": (deletion.business_restore, ByIdIn(id=hub.id)),
+        "business.open": (opening.business_open, BusinessOpenIn(id=hub.id)),
         "member.list": (membership.member_list, MemberListIn(hub_id=hub.id)),
         "member.invite": (
-            services.member_invite,
+            member_management.member_invite,
             MemberInviteIn(hub_id=hub.id, email="new@example.com"),
         ),
         "member.change_role": (
-            services.member_change_role,
+            member_management.member_change_role,
             MemberRoleIn(id=employee, role="hub_manager"),
         ),
-        "member.remove": (services.member_remove, ByIdIn(id=employee)),
-        "member.resend": (services.member_resend, ByIdIn(id=invitation)),
-        "member.cancel": (services.member_cancel, ByIdIn(id=invitation)),
+        "member.remove": (member_management.member_remove, ByIdIn(id=employee)),
+        "member.resend": (member_management.member_resend, ByIdIn(id=invitation)),
+        "member.cancel": (member_management.member_cancel, ByIdIn(id=invitation)),
         "ownership.transfer": (
-            services.ownership_transfer,
+            ownership.ownership_transfer,
             OwnershipTransferIn(hub_id=hub.id, member_id=admin),
         ),
         "billing_profile.get": (
@@ -80,7 +89,7 @@ def call(name, hub, team):
             BillingProfileGetIn(hub_id=hub.id),
         ),
         "billing_profile.update": (
-            services.billing_profile_update,
+            billing_profiles.billing_profile_update,
             BillingProfileIn(hub_id=hub.id, billing_name="Me"),
         ),
         # A night measured, so «nothing yet» (also a 404) never hides what the role decides.
@@ -92,8 +101,8 @@ def call(name, hub, team):
         "data_copy.link": (data_copies.data_copy_link, DataCopyLinkIn(business_id=hub.id, copy_id="any.dump")),
         # A business's own domain (HUBS-F17): with the variable off, past the role is its 409, never the role's answer.
         "custom_domain.get": (custom_domains.custom_domain_get, ByIdIn(id=hub.id)),
-        "custom_domain.request": (services.custom_domain_request, CustomDomainRequestIn(id=hub.id, domain="www.minegocio.es")),
-        "custom_domain.remove": (services.custom_domain_remove, ByIdIn(id=hub.id)),
+        "custom_domain.request": (custom_domain_requests.custom_domain_request, CustomDomainRequestIn(id=hub.id, domain="www.minegocio.es")),
+        "custom_domain.remove": (custom_domain_requests.custom_domain_remove, ByIdIn(id=hub.id)),
     }[name]
 
 

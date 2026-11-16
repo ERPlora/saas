@@ -25,7 +25,7 @@ from billing.schemas import PlanChangeIn
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import event, item, schedule, signed, subscription
 from hubs.queries import hub_sync
-from hubs import services as hub_services
+from hubs.services import member_management
 from hubs.models import Hub, HubMember, Plan, Subscription, SubscriptionItem
 from hubs.schemas import ByIdIn, MemberInviteIn
 from hubs.tests.conftest import add_member, create_business
@@ -118,7 +118,7 @@ def people_of(hub) -> set:
 
 
 def invite(owner, hub, email="one.more@example.com"):
-    return hub_services.member_invite(hub_ctx_for(owner), MemberInviteIn(hub_id=hub.id, email=email))
+    return member_management.member_invite(hub_ctx_for(owner), MemberInviteIn(hub_id=hub.id, email=email))
 
 
 class TestTheArrival:
@@ -266,7 +266,7 @@ class TestOverTheNewLimits:
 
         for email in ("ana@example.com", "berta@example.com"):
             member = HubMember.objects.get(hub=paid, user__email=email)
-            hub_services.member_remove(hub_ctx_for(owner), ByIdIn(hub_id=paid.id, id=member.pk))
+            member_management.member_remove(hub_ctx_for(owner), ByIdIn(hub_id=paid.id, id=member.pk))
         invite(owner, paid)
 
         assert len(people_of(paid)) == 4

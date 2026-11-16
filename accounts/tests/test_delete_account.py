@@ -173,13 +173,13 @@ class TestPayersFirstHandThePaymentOver:
         hold the payer for ever. (Deleting the membership through the ORM skips that door: no operation does it.)"""
         from live.errors import Conflict
 
-        from hubs import services as hub_services
+        from hubs.services import member_management
         from hubs.models import HubMember
         from hubs.schemas import ByIdIn
         from hubs.tests.conftest import ctx_for
 
         with pytest.raises(Conflict) as kept:
-            hub_services.member_remove(
+            member_management.member_remove(
                 ctx_for(make_owner), ByIdIn(id=HubMember.objects.get(hub=handed_over, user=ana).id)
             )
         assert kept.value.code == "hubs.member_pays"
@@ -195,14 +195,14 @@ class TestPayersFirstHandThePaymentOver:
         subscription is still charged to ana's customer until support moves it (``billing.payer_required``):
         deleting ana's customer would end the business's plan, keeping it would charge a card nobody can stop."""
         from billing.tests.conftest import pay
-        from hubs import services as hub_services
+        from hubs.services import billing_profiles
         from hubs.models import BillingProfile
         from hubs.schemas import BillingProfileIn
         from hubs.tests.conftest import ctx_for
 
         BillingProfile.objects.filter(pk=handed_over.billing_profile_id).update(stripe_customer_id="cus_ana")
         pay(handed_over, customer="cus_ana")
-        hub_services.billing_profile_update(
+        billing_profiles.billing_profile_update(
             ctx_for(make_owner), BillingProfileIn(hub_id=handed_over.id, billing_name="Marta SL")
         )
 

@@ -268,24 +268,24 @@ class TestTheSweepLeavesAloneWhoPaidOrOwesNothing:
 class TestADeletedBusinessStopsPaying:
     def deleted(self, hub, **paid):
         """Deleted through ``hubs.business.delete``, which asks for its Stripe subscription to end."""
-        from hubs import services as hub_services
+        from hubs.services import deletion
         from hubs.models import HubMember
         from hubs.schemas import BusinessDeleteIn
         from hubs.tests.conftest import ctx_for as hub_ctx
 
         business = pay(hub, **paid)
         owner = HubMember.objects.get(hub=business, role=HubMember.Role.OWNER).user
-        hub_services.business_delete(hub_ctx(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
+        deletion.business_delete(hub_ctx(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
         return business
 
     def test_a_business_restored_before_the_sweep_stops_paying_too(self, shop, owner, stripe_double):
         """Deleting asked for the end; recovering it (on Free) does not take that back."""
-        from hubs import services as hub_services
+        from hubs.services import deletion
         from hubs.schemas import ByIdIn
         from hubs.tests.conftest import ctx_for as hub_ctx
 
         business = self.deleted(shop)
-        hub_services.business_restore(hub_ctx(owner), ByIdIn(id=business.id))
+        deletion.business_restore(hub_ctx(owner), ByIdIn(id=business.id))
         stripe_double.answer("subscriptions.cancel", subscription(status="canceled"))
 
         run()

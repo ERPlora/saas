@@ -42,7 +42,7 @@ pytestmark = pytest.mark.django_db
 
 
 def create(user, **data):
-    return services.business_create(
+    return services.creation.business_create(
         ctx_for(user),
         BusinessCreateIn(**{"name": "Bar Manolo", "country": "ES", **data}),
     )
@@ -317,7 +317,7 @@ class TestTheCountry:
     def test_it_is_stored_uppercase(self, owner, plans):
         assert (
             Hub.objects.get(
-                pk=services.business_create(
+                pk=services.creation.business_create(
                     ctx_for(owner), BusinessCreateIn(name="Bar", country="pt")
                 ).id
             ).country
@@ -391,13 +391,13 @@ class TestTheFreeQuota:
     def test_restoring_a_free_business_respects_the_quota(self, owner, plans):
         """Delete a free business, create another, restore the first."""
         first = create_business(owner)
-        services.business_delete(
+        services.deletion.business_delete(
             ctx_for(owner), BusinessDeleteIn(id=first.id, confirm_name="Bar Manolo")
         )
         create(owner, name="Second")
 
         with pytest.raises(Conflict) as refused:
-            services.business_restore(ctx_for(owner), ByIdIn(id=first.id))
+            services.deletion.business_restore(ctx_for(owner), ByIdIn(id=first.id))
 
         assert refused.value.code == "hubs.free_hub_limit"
         assert Hub.objects.get(pk=first.pk).status == "deleting"
@@ -489,14 +489,14 @@ def test_an_anonymous_visitor_creates_nothing(plans):
 class TestUpdate:
     def test_the_owner_and_an_admin_change_the_settings(self, business, team):
         for who, name in (("owner", "Bar Manolo SL"), ("admin", "Bar Manolo")):
-            services.business_update(
+            services.business_settings.business_update(
                 ctx_for(team[who]), BusinessUpdateIn(id=business.id, name=name)
             )
             business.refresh_from_db()
             assert business.name == name
 
     def test_only_what_is_sent_changes(self, business, owner):
-        services.business_update(
+        services.business_settings.business_update(
             ctx_for(owner),
             BusinessUpdateIn(id=business.id, language="en", timezone="Atlantic/Canary"),
         )
@@ -517,7 +517,7 @@ class TestUpdate:
     def test_a_change_owes_the_hub_its_registry(self, business, owner):
         Hub.objects.filter(pk=business.pk).update(pending_hub_call="")
 
-        services.business_update(
+        services.business_settings.business_update(
             ctx_for(owner), BusinessUpdateIn(id=business.id, name="New name")
         )
         business.refresh_from_db()
@@ -527,7 +527,7 @@ class TestUpdate:
     def test_no_change_owes_nothing(self, business, owner):
         Hub.objects.filter(pk=business.pk).update(pending_hub_call="")
 
-        services.business_update(
+        services.business_settings.business_update(
             ctx_for(owner), BusinessUpdateIn(id=business.id, name="Bar Manolo")
         )
         business.refresh_from_db()
@@ -536,10 +536,10 @@ class TestUpdate:
 
     def test_a_change_records_its_event_and_no_change_records_none(self, business, owner):
         """HUBS-F15 «Sale»: ``hubs.business.updated``, only when something changed."""
-        services.business_update(ctx_for(owner), BusinessUpdateIn(id=business.id, name="Bar Manolo"))
+        services.business_settings.business_update(ctx_for(owner), BusinessUpdateIn(id=business.id, name="Bar Manolo"))
         assert not OutboxEvent.objects.filter(name=events.BUSINESS_UPDATED).exists()
 
-        services.business_update(ctx_for(owner), BusinessUpdateIn(id=business.id, name="New name"))
+        services.business_settings.business_update(ctx_for(owner), BusinessUpdateIn(id=business.id, name="New name"))
 
         (event,) = OutboxEvent.objects.filter(name=events.BUSINESS_UPDATED)
         assert event.payload == {"id": str(business.id)}
@@ -548,7 +548,7 @@ class TestUpdate:
         """HUBS-F15: in the old SaaS the new name never reached the hub (its screen, its
         receipts). Here the registry the Hub keeps is pushed again with it after the COMMIT."""
         with django_capture_on_commit_callbacks(execute=True):
-            services.business_update(ctx_for(owner), BusinessUpdateIn(id=business.id, name="Casa Manolo"))
+            services.business_settings.business_update(ctx_for(owner), BusinessUpdateIn(id=business.id, name="Casa Manolo"))
 
         assert hub_double.registry[str(business.id)]["name"] == "Casa Manolo"
 
@@ -574,7 +574,7 @@ class TestUpdate:
     @pytest.mark.parametrize("who", ["manager", "employee"])
     def test_a_manager_or_an_employee_only_opens(self, business, team, who):
         with pytest.raises(PermissionDenied):
-            services.business_update(
+            services.business_settings.business_update(
                 ctx_for(team[who]), BusinessUpdateIn(id=business.id, name="Mine")
             )
 
@@ -583,7 +583,7 @@ class TestUpdate:
         self, business, team, who
     ):
         with pytest.raises(NotFound):
-            services.business_update(
+            services.business_settings.business_update(
                 ctx_for(team[who]), BusinessUpdateIn(id=business.id, name="Mine")
             )
 
@@ -591,7 +591,7 @@ class TestUpdate:
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
 
         with pytest.raises(Conflict) as refused:
-            services.business_update(
+            services.business_settings.business_update(
                 ctx_for(owner), BusinessUpdateIn(id=business.id, name="Mine")
             )
 
@@ -609,7 +609,7 @@ class TestTheCountryLocksOnceReady:
         )
 
     def test_while_it_is_prepared_the_country_still_changes(self, business, owner):
-        services.business_update(
+        services.business_settings.business_update(
             ctx_for(owner), BusinessUpdateIn(id=business.id, country="PT")
         )
 
@@ -621,7 +621,7 @@ class TestTheCountryLocksOnceReady:
         self.ready(business)
 
         with pytest.raises(Conflict) as refused:
-            services.business_update(
+            services.business_settings.business_update(
                 ctx_for(owner),
                 BusinessUpdateIn(id=business.id, name="Renamed", country="PT"),
             )
@@ -635,7 +635,7 @@ class TestTheCountryLocksOnceReady:
     def test_once_ready_the_same_country_sent_again_is_no_change(self, business, owner):
         self.ready(business)
 
-        detail = services.business_update(
+        detail = services.business_settings.business_update(
             ctx_for(owner),
             BusinessUpdateIn(id=business.id, name="Renamed", country="es"),
         )
@@ -677,7 +677,7 @@ class TestTheCountryLocksOnceReady:
 
 class TestDelete:
     def delete(self, user, hub, name="Bar Manolo"):
-        return services.business_delete(
+        return services.deletion.business_delete(
             ctx_for(user), BusinessDeleteIn(id=hub.id, confirm_name=name)
         )
 
@@ -808,7 +808,7 @@ class TestDelete:
 
 class TestRestore:
     def deleted(self, business, owner, days_ago=1):
-        services.business_delete(
+        services.deletion.business_delete(
             ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name)
         )
         Hub.objects.filter(pk=business.pk).update(
@@ -821,7 +821,7 @@ class TestRestore:
         self.deleted(business, owner)
         version = Hub.objects.get(pk=business.pk).state_version
 
-        restored = services.business_restore(ctx_for(owner), ByIdIn(id=business.id))
+        restored = services.deletion.business_restore(ctx_for(owner), ByIdIn(id=business.id))
         business.refresh_from_db()
 
         assert (restored.status, business.status, business.deletion_requested_at) == (
@@ -840,7 +840,7 @@ class TestRestore:
         self.deleted(business, owner)
 
         assert (
-            services.business_restore(ctx_for(owner), ByIdIn(id=business.id)).status
+            services.deletion.business_restore(ctx_for(owner), ByIdIn(id=business.id)).status
             == "active"
         )
 
@@ -848,13 +848,13 @@ class TestRestore:
         self.deleted(business, owner, days_ago=90)
 
         with pytest.raises(Conflict) as refused:
-            services.business_restore(ctx_for(owner), ByIdIn(id=business.id))
+            services.deletion.business_restore(ctx_for(owner), ByIdIn(id=business.id))
 
         assert refused.value.code == "hubs.business_purged"
 
     def test_a_business_that_is_not_deleted_is_not_restored(self, business, owner):
         with pytest.raises(Conflict) as refused:
-            services.business_restore(ctx_for(owner), ByIdIn(id=business.id))
+            services.deletion.business_restore(ctx_for(owner), ByIdIn(id=business.id))
 
         assert refused.value.code == "hubs.business_not_deleted"
 
@@ -862,7 +862,7 @@ class TestRestore:
         self.deleted(business, team["owner"])
 
         with pytest.raises(PermissionDenied):
-            services.business_restore(ctx_for(team["admin"]), ByIdIn(id=business.id))
+            services.deletion.business_restore(ctx_for(team["admin"]), ByIdIn(id=business.id))
 
 
 # --- Opening --------------------------------------------------------------------------------------
@@ -882,7 +882,7 @@ class TestOpen:
     def test_it_answers_the_hubs_start_and_mints_no_code(self, business, owner):
         self.ready(business)
 
-        opened = services.business_open(
+        opened = services.opening.business_open(
             ctx_for(owner), BusinessOpenIn(id=business.id, next="/sales")
         )
 
@@ -893,14 +893,14 @@ class TestOpen:
         settings.HUB_CALLBACK_TEMPLATE = "https://{slug}.erplora.com/auth/callback"
         self.ready(business)
 
-        opened = services.business_open(ctx_for(owner), BusinessOpenIn(id=business.id))
+        opened = services.opening.business_open(ctx_for(owner), BusinessOpenIn(id=business.id))
 
         assert opened.url == "https://bar-manolo.erplora.com/auth/login?next=/"
 
     def test_it_remembers_the_business_last_opened(self, business, owner):
         self.ready(business)
 
-        services.business_open(ctx_for(owner), BusinessOpenIn(id=business.id))
+        services.opening.business_open(ctx_for(owner), BusinessOpenIn(id=business.id))
 
         assert (
             HubMember.objects.get(hub=business, user=owner).last_opened_at is not None
@@ -910,7 +910,7 @@ class TestOpen:
     def test_every_role_opens(self, business, team, who):
         self.ready(business)
 
-        assert services.business_open(
+        assert services.opening.business_open(
             ctx_for(team[who]), BusinessOpenIn(id=business.id)
         ).url.endswith("/auth/login?next=/")
 
@@ -920,7 +920,7 @@ class TestOpen:
         self.ready(business)
 
         with pytest.raises(NotFound):
-            services.business_open(ctx_for(team[who]), BusinessOpenIn(id=business.id))
+            services.opening.business_open(ctx_for(team[who]), BusinessOpenIn(id=business.id))
 
     @pytest.mark.parametrize(
         "status, code",
@@ -934,7 +934,7 @@ class TestOpen:
         Hub.objects.filter(pk=business.pk).update(status=status)
 
         with pytest.raises(Conflict) as refused:
-            services.business_open(ctx_for(owner), BusinessOpenIn(id=business.id))
+            services.opening.business_open(ctx_for(owner), BusinessOpenIn(id=business.id))
 
         assert refused.value.code == code
         assert HubMember.objects.get(hub=business, user=owner).last_opened_at is None
@@ -943,7 +943,7 @@ class TestOpen:
         """7 days of grace with «Open» enabled and a notice."""
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.PAST_DUE)
 
-        assert services.business_open(
+        assert services.opening.business_open(
             ctx_for(owner), BusinessOpenIn(id=business.id)
         ).url
 
@@ -958,7 +958,7 @@ class TestOpen:
 
         monkeypatch.setattr(account_queries, "has_totp", lambda user: True)
 
-        assert services.business_open(ctx_for(owner), BusinessOpenIn(id=business.id)).url
+        assert services.opening.business_open(ctx_for(owner), BusinessOpenIn(id=business.id)).url
         assert not AuthExchangeCode.objects.exists()
 
     def test_from_the_installed_app_the_jump_carries_the_shell_mark(self, business, owner):
@@ -967,7 +967,7 @@ class TestOpen:
         (``ERPlora/app`` ``hub_link.rs``), so its «Open» starts the jump with the mark."""
         self.ready(business)
 
-        opened = services.business_open(
+        opened = services.opening.business_open(
             ctx_for(owner), BusinessOpenIn(id=business.id, next="/sales", shell=True)
         )
 
@@ -976,7 +976,7 @@ class TestOpen:
     def test_the_web_jump_carries_no_shell_mark(self, business, owner):
         self.ready(business)
 
-        assert "shell" not in services.business_open(ctx_for(owner), BusinessOpenIn(id=business.id)).url
+        assert "shell" not in services.opening.business_open(ctx_for(owner), BusinessOpenIn(id=business.id)).url
 
     def test_next_is_a_path_of_the_business(self):
         for wrong in ("https://evil.example", "//evil.example", "sales"):
@@ -989,10 +989,10 @@ class TestOpen:
 
 class TestMarkReady:
     def system(self, hub):
-        return services.system_ctx_for(hub.id)
+        return services.hub_callbacks.system_ctx_for(hub.id)
 
     def test_the_hubs_callback_makes_it_active(self, business):
-        ready = services.business_mark_ready(
+        ready = services.hub_callbacks.business_mark_ready(
             self.system(business), MarkReadyIn(id=business.id)
         )
         business.refresh_from_db()
@@ -1001,30 +1001,30 @@ class TestMarkReady:
         assert business.ready_at is not None
 
     def test_it_is_idempotent(self, business):
-        services.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
+        services.hub_callbacks.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
         first = Hub.objects.get(pk=business.pk).ready_at
 
-        services.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
+        services.hub_callbacks.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
 
         assert Hub.objects.get(pk=business.pk).ready_at == first
 
     def test_a_deleted_business_stays_deleted(self, business, owner):
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
 
-        services.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
+        services.hub_callbacks.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
 
         assert Hub.objects.get(pk=business.pk).status == "deleting"
 
     def test_a_suspended_business_keeps_its_status(self, business):
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.SUSPENDED)
 
-        services.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
+        services.hub_callbacks.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
 
         assert Hub.objects.get(pk=business.pk).status == "suspended"
 
     def test_only_the_system_marks_a_business_ready(self, business, owner):
         with pytest.raises(PermissionDenied):
-            services.business_mark_ready(ctx_for(owner), MarkReadyIn(id=business.id))
+            services.hub_callbacks.business_mark_ready(ctx_for(owner), MarkReadyIn(id=business.id))
 
     def test_the_owner_is_mailed_once_after_the_commit(
         self, business, owner, mailoutbox, django_capture_on_commit_callbacks
@@ -1032,12 +1032,12 @@ class TestMarkReady:
         """HUBS-F04/HUBS-F07: «your business is ready», only once,
         and never inside the transaction that marks it ready."""
         with django_capture_on_commit_callbacks(execute=False) as callbacks:
-            services.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
+            services.hub_callbacks.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
         assert mailoutbox == []
         for callback in callbacks:
             callback()
         with django_capture_on_commit_callbacks(execute=True):
-            services.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
+            services.hub_callbacks.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
 
         assert [message.to for message in mailoutbox] == [[owner.email]]
 
@@ -1047,7 +1047,7 @@ class TestMarkReady:
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
 
         with django_capture_on_commit_callbacks(execute=True):
-            services.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
+            services.hub_callbacks.business_mark_ready(self.system(business), MarkReadyIn(id=business.id))
 
         assert mailoutbox == []
 
@@ -1062,13 +1062,13 @@ class TestMarkReady:
 def test_every_change_of_the_snapshot_moves_the_version_forward(business, team, plans):
     """The Hub ignores an older snapshot: ours must grow with every change it carries."""
     versions = [Hub.objects.get(pk=business.pk).state_version]
-    services.bump_state(business.id)
+    services.hub_push.bump_state(business.id)
     versions.append(Hub.objects.get(pk=business.pk).state_version)
-    services.business_delete(
+    services.deletion.business_delete(
         ctx_for(team["owner"]),
         BusinessDeleteIn(id=business.id, confirm_name="Bar Manolo"),
     )
-    services.business_restore(ctx_for(team["owner"]), ByIdIn(id=business.id))
+    services.deletion.business_restore(ctx_for(team["owner"]), ByIdIn(id=business.id))
     versions.append(Hub.objects.get(pk=business.pk).state_version)
 
     assert versions == sorted(set(versions))

@@ -118,11 +118,11 @@ def free_plan(db):
 
 def create_business(user, **data):
     """A business created through ``hubs.business.create``, as the panel creates it."""
-    from hubs import services
+    from hubs.services import creation
     from hubs.models import Hub
     from hubs.schemas import BusinessCreateIn
 
-    created = services.business_create(ctx_for(user), BusinessCreateIn(**{"name": "Bar Manolo", "country": "ES", **data}))
+    created = creation.business_create(ctx_for(user), BusinessCreateIn(**{"name": "Bar Manolo", "country": "ES", **data}))
     return Hub.objects.get(pk=created.id)
 
 
@@ -358,7 +358,7 @@ def custom_domains_on(settings, aws_edge, dns_world, monkeypatch):
     settings.ERPLORA_ENVIRONMENT = "prod"
     monkeypatch.setattr(domain_checks, "zone_of", lambda domain: domain_checks.Zone.SUBDOMAIN)
     # The wait for ACM's validation record is a test's to time, never a second of the run.
-    monkeypatch.setattr("hubs.services.sleep", lambda seconds: None)
+    monkeypatch.setattr("hubs.services.custom_domain_requests.sleep", lambda seconds: None)
     return aws_edge
 
 

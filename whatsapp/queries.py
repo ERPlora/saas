@@ -24,7 +24,7 @@ from live.errors import Conflict, NotFound
 from live.operations import INTERNAL, operation
 
 from hubs.models import Hub, HubMember
-from hubs.services import LIVE_STATUSES
+from hubs.services.hub_push import LIVE_STATUSES
 from whatsapp.models import Delivery, PhoneNumber, Template, Usage
 from whatsapp.schemas import (
     ConnectingIn,
