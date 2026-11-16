@@ -1,4 +1,4 @@
-"""HUBS-F20: a business suspended for an unpaid plan is warned and, at the end, deleted (``services.age_suspended``).
+"""HUBS-F20: a business suspended for an unpaid plan is warned and, at the end, deleted (``services.suspensions.age_suspended``).
 
 After ``suspended``, the notices of day 30 and day 150 go out and on day 180 the business is deleted the way its
 owner deletes it (90 days to recover it), inside ``billing.services.sweep_unpaid``. Suspending dates the clock and

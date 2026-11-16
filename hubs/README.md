@@ -8,8 +8,8 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 - Operaciones en `queries/` (lecturas) y `services/` (escrituras), rutas en `api.py` bajo `/api/hubs/`
   (y `/api/plans`, `/api/catalog/*`, públicas); consultas vivas en `live.py`.
 - Hacia el Hub: `hub_client.py` (llamadas firmadas a `/internal/*` del Hub), empuje tras el COMMIT
-  (`services.sync_hub`), `reconcile_hub_states` (cada 15 min en el proceso `saas-worker`,
-  `services.reconcile_exclusively`, saas#305; el comando, a mano) y `push_hub_snapshots` (cada noche en `saas-cron`,
+  (`services.hub_push.sync_hub`), `reconcile_hub_states` (cada 15 min en el proceso `saas-worker`,
+  `services.reconciliation.reconcile_exclusively`, saas#305; el comando, a mano) y `push_hub_snapshots` (cada noche en `saas-cron`,
   todos los negocios; `--behind-only`, solo los atrasados).
 - Del Hub: `POST /internal/hubs/{id}/ready` (`internal.py`).
 - «Abrir» (`hubs.business.open`) ya no emite el código: comprueba el miembro y el estado del negocio, sella
@@ -33,10 +33,10 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   global (sin agrupar por sector), como el `catalog` de origen; `?sector=` filtra.
 - Los comandos de `saas-cron` toman el advisory lock `hashtext('erplora.saas.<comando>')` (el espacio de
   nombres de `base`), de sesión: la pasada abarca muchas transacciones y llamadas al Hub (ver
-  `services.run_exclusively`).
+  `services.exclusive_runs.run_exclusively`).
 - Personas en vivo (L1-A2): toda escritura de miembros, invitaciones o traspasos, además de su evento en el canal de
   quien la hace, anota `hubs.member.changed` u `hubs.ownership.changed` (`{business_id}`) en el canal del
-  propietario, de cada administrador y de la cuenta afectada (`services.notify_people` → la operación de sistema
+  propietario, de cada administrador y de la cuenta afectada (`services.people_notices.notify_people` → la operación de sistema
   `hubs.business.notify_people`, una por canal, tras el COMMIT; nunca el del actor). `hubs.member.list`,
   `hubs.business.get`, `hubs.business.list` y `hubs.invitation.list_mine` se re-ejecutan con ellos: el propietario
   ve al momento que otro acepta, sin esperar los 300 s.
@@ -69,7 +69,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   (`live.slugs`) no abría nada: sus filas se borran. Después, la copia de todos los negocios quedaba igual a sus
   miembros. Idempotente; la vuelta atrás conserva los negocios (son filas válidas del esquema anterior).
 - **`demo_seed` vive en `hubs`** (`management/commands/demo_seed.py`): crea las cuentas (`accounts.services.
-  seed_demo_customer`, `seed_demo_platform_admin`) y adopta `a` y `b` con `services.seed_demo_business`, igual que
+  seed_demo_customer`, `seed_demo_platform_admin`) y adopta `a` y `b` con `services.demo_businesses.seed_demo_business`, igual que
   la migración.
 - **`SessionRevocation`** (`models.py`, migración `0005`): quitar a un miembro, cambiarle el rol (el rol viaja en la
   sesión del Hub), aceptar un traspaso (los dos lados) o liberar una cuenta no verificada (todos sus negocios) la
@@ -142,7 +142,7 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
 - **Suspendidos por impago** (F20; PLAN-SAAS §1.1, «dentro de `sweep_unpaid`»): `Hub.suspended_at`,
   `suspension_warned_at`, `suspension_final_notice_at` (migración `0016`, que pone en marcha el reloj de los que
   ya estaban suspendidos el día del despliegue). `_apply_standing` fecha la suspensión y la
-  olvida al pagar. `services.age_suspended()` (lo llama `billing.services.sweep_unpaid`, cada hora; sus cuentas
+  olvida al pagar. `services.suspensions.age_suspended()` (lo llama `billing.services.sweep_unpaid`, cada hora; sus cuentas
   `warned`, `final_notice`, `expired`, `undated` se suman a las de la pasada) corre por negocio la operación de
   sistema `hubs.business.age_suspension`: aviso a los 30 días, último a los 150 (`emails.send_suspension_notice`, al
   propietario, solo marcado si el correo salió) y, con el último enviado, la baja a los 180 por `_delete_business`,
@@ -195,7 +195,7 @@ Flujos `HUBS-F31`…`HUBS-F37` del `WORKBOOK.md` (parte 4 de 5; la revisión flu
   no lee el campo si aún le llega de un SaaS anterior.
 - **Lo que da un plan, cambiado en el admin** (F31; trampa de SAAS_DASHBOARD-F53/F54): los campos de `plan` de la foto
   son `queries.hub_sync.SNAPSHOT_PLAN_FIELDS` (una sola lista para la foto y el admin). Al guardar un `Plan` con alguno cambiado,
-  `PlanAdmin.save_model` llama a `services.owe_plan_rights(plan)`: por cada negocio vivo con ese plan o con su prueba,
+  `PlanAdmin.save_model` llama a `services.subscription_sync.owe_plan_rights(plan)`: por cada negocio vivo con ese plan o con su prueba,
   `sync_plan_modules` y, si su foto cambia, `bump_state`. No empuja en la petición (un plan puede tener miles de
   negocios): lo entrega la siguiente pasada de `reconcile_hub_states` (15 min), y el admin dice cuántos negocios lo
   reciben («… negocios con este plan reciben el cambio en los próximos 15 minutos.»). Textos, orden o precio no deben
@@ -209,7 +209,7 @@ Flujos `HUBS-F31`…`HUBS-F37` del `WORKBOOK.md` (parte 4 de 5; la revisión flu
   `color`, `display_order`, `is_active`, `created_at`, `updated_at`, `sector`, `vertical`) tienen nombre traducible
   (migración `0017`, solo de estado, sin SQL); antes la lista decía «Code» y «Por is active».
 - **Un módulo nuevo, o que cambia de nivel, en el admin** (F34; era una línea FIX de esta parte): `apps.admin.ModuleAdmin.
-  save_model` llama a `services.owe_module_rights(tier, previous_tier)`: `sync_plan_modules` de cada negocio vivo cuyo plan
+  save_model` llama a `services.subscription_sync.owe_module_rights(tier, previous_tier)`: `sync_plan_modules` de cada negocio vivo cuyo plan
   o prueba alcanza el nivel nuevo o el anterior y `bump_state` si cambian; el admin dice cuántos lo reciben. Antes no
   llegaba a nadie hasta el siguiente aviso de Stripe de cada negocio.
 - **El admin de Planes en el idioma del personal** (F31, pantalla de F05; era una línea FIX de esta parte): nombres
@@ -336,12 +336,12 @@ Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»)
 - **`manage.py collect_hub_usage [--day AAAA-MM-DD]`** (`saas-cron`, cada noche): por defecto, el día de **ayer en
   UTC**; `--day` recoge otro (relleno), nunca uno que no ha acabado en UTC. Lee todas las páginas de
   `GET /internal/usage`; una fila rota o que falla no para la pasada. Termina, con el Hub caído o sin él, olvidando los
-  días de más de `services.USAGE_RETENTION_DAYS` (400, unos 13 meses: el reloj del producto viejo y el rango del mercado;
+  días de más de `services.usage_collection.USAGE_RETENTION_DAYS` (400, unos 13 meses: el reloj del producto viejo y el rango del mercado;
   más que los 365 que lee `hubs.usage.series`, y un test los ata) con la operación de sistema `hubs.usage.prune`, que
   conserva el día justo en el corte y anota `hubs.usage.pruned` si borró algo. Sin programación propia en `aws`; si falla
-  (`services.prune_usage`, log `hubs.usage.prune_failed`), lo recogido se queda y se dice, y la pasada termina con error.
+  (`services.usage_collection.prune_usage`, log `hubs.usage.prune_failed`), lo recogido se queda y se dice, y la pasada termina con error.
   Lock `hashtext('erplora.saas.collect_hub_usage')`
-  (`services.run_exclusively`: una segunda pasada sale al momento). Sale con error **después** de la pasada si el
+  (`services.exclusive_runs.run_exclusively`: una segunda pasada sale al momento). Sale con error **después** de la pasada si el
   Hub no contestó o se negó (`unreachable`, `refused`), si respondió fuera del contrato (`invalid`: fila, página,
   otro día o un cursor repetido) o si una fila reventó (`failed`). Un hub que el SaaS no vendió (el de plataforma,
   las plantillas) cuenta como `unknown`, en el log, sin error.
@@ -433,7 +433,7 @@ listo al responder, y lo dice.
   así el SaaS) y el Hub avisa después con `POST /internal/hubs/{id}/ready`. El sondeo de las altas atascadas
   (`reconcile_hub_states`, más de 2 minutos sin el aviso) entiende cada estado: `requested`, `creating`, `migrating` y
   `seeding` siguen «preparando» (`preparing`); `ready` lo abre; `failed` graba el error `hubs.provision_failed`
-  (`services.PROVISION_FAILED`, por `hubs.business.record_hub_error`, con su evento) y el panel dice «No hemos podido
+  (`services.hub_callbacks.PROVISION_FAILED`, por `hubs.business.record_hub_error`, con su evento) y el panel dice «No hemos podido
   prepararlo. Seguimos reintentándolo; si sigue fallando, avísanos.» en vez de «preparando» para siempre (el Hub lo
   reintenta solo: 1 min, 5 min, 15 min, 1 h). La misma respuesta trae `maintenance`: durante `control.freeze.set` el SaaS guarda
   `{frozen, reason, since}` en `Hub.maintenance` y lo muestra como pausa, nunca como fallo; al descongelar llega `null` y se borra.
@@ -478,7 +478,7 @@ listo al responder, y lo dice.
   (`available: false`), «Este negocio no tiene copia de datos.», sin prometer nada; un error del panel, con
   «Reintentar». En uno vivo, solo si tiene alguna copia (lo restablecieron).
 - **Correos**: el de la baja (`send_deletion`, F18 y el del día 180 de F20) añade «Descarga una copia completa de
-  sus datos: <página del negocio>», salvo que el Hub diga `available: false` al enviarlo (`services._send_deletion`
+  sus datos: <página del negocio>», salvo que el Hub diga `available: false` al enviarlo (`services.deletion._send_deletion`
   pregunta `/dumps` antes; con el Hub caído o rechazando, el párrafo se queda) (el panel, nunca el fichero: así el enlace del correo no caduca). «Te avisaremos»
   se cumple en `reconcile_hub_states`: por cada negocio eliminado sin avisar, pregunta las copias y, con la de esta
   baja (`offboarding` no anterior a `deletion_requested_at`, un minuto de holgura entre relojes), manda

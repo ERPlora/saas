@@ -514,15 +514,15 @@ class Hub(models.Model):
         help_text=_("Its owner sees the internal plans in the Store and may buy them. Only for ERPlora's own businesses."),
     )
     #: The clock of a business suspended for an unpaid plan (HUBS-F20): set when it is suspended, cleared when it
-    #: pays; the notices of day 30 and 150 go out once each, and on day 180 it is deleted (``services.age_suspended``).
+    #: pays; the notices of day 30 and 150 go out once each, and on day 180 it is deleted (``services.suspensions.age_suspended``).
     suspended_at = models.DateTimeField(_("suspended at"), null=True, blank=True)
     suspension_warned_at = models.DateTimeField(_("first suspension notice"), null=True, blank=True)
     suspension_final_notice_at = models.DateTimeField(_("last suspension notice"), null=True, blank=True)
     #: When the owner of a deleted business was told the copy of its data made at that deletion is ready
-    #: (``services.reconcile``, «We'll let you know» of its page); older than ``deletion_requested_at``: not yet told.
+    #: (``services.reconciliation.reconcile``, «We'll let you know» of its page); older than ``deletion_requested_at``: not yet told.
     data_copy_mailed_at = models.DateTimeField(_("copy of the data announced at"), null=True, blank=True)
     #: How many passes the mail of the copy could not leave since this deletion (a refused recipient): given up at
-    #: ``services.DATA_COPY_MAIL_ATTEMPTS``; back to 0 when the business is deleted again.
+    #: ``services.reconciliation.DATA_COPY_MAIL_ATTEMPTS``; back to 0 when the business is deleted again.
     data_copy_mail_attempts = models.PositiveSmallIntegerField(_("tries of the copy's mail"), default=0, db_default=0)
     state_version = models.PositiveBigIntegerField(_("state version"), default=1)
     pushed_state_version = models.PositiveBigIntegerField(_("state version the Hub has"), default=0)
@@ -853,7 +853,7 @@ class HubUsageDaily(models.Model):
     request found no room: for the admin only, the panel never shows them, and ``None`` when the Hub did not
     measure them, never a 0. One row per business and day, written only by the system command
     ``hubs.usage.record`` (``manage.py collect_hub_usage``, nightly in ``saas-cron``): collecting a day
-    again replaces its figures. That pass ends by forgetting the days past ``services.USAGE_RETENTION_DAYS``
+    again replaces its figures. That pass ends by forgetting the days past ``services.usage_collection.USAGE_RETENTION_DAYS``
     (``hubs.usage.prune``).
     """
 

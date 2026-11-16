@@ -8,7 +8,7 @@
   no hub.
 
 ``a`` and ``b`` already run in the local Hub: they become businesses of the SaaS adopted as they are
-(``hubs.services.seed_demo_business``: active, ready, nothing owed to the Hub), and the jump reads their
+(``hubs.services.demo_businesses.seed_demo_business``: active, ready, nothing owed to the Hub), and the jump reads their
 members. It lives in ``hubs`` because it seeds businesses, which ``accounts`` does not know. Their addresses come
 proven, so they never owe the code a new account is mailed, only the sign-in code every password sign-in mails.
 Development only: known passwords, so it refuses to run without ``DEBUG``.

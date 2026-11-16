@@ -2,15 +2,15 @@
 
 Asks the Hub for one day's usage of every business (``GET /internal/usage?day=``, page by page; contract in
 ``hubs/README.md``, «Uso») and keeps it as ``HubUsageDaily``, one row per business and day
-(``services.collect_usage``). By default the day is yesterday in UTC, the last one the Hub's nightly
+(``services.usage_collection.collect_usage``). By default the day is yesterday in UTC, the last one the Hub's nightly
 measure closed; ``--day`` collects another (a backfill), never one not over yet. Idempotent: a day collected
 again replaces its figures and tells nobody when they are the same. Under the advisory lock
-``hashtext('erplora.saas.collect_hub_usage')`` (``services.run_exclusively``; a second run returns at once).
+``hashtext('erplora.saas.collect_hub_usage')`` (``services.exclusive_runs.run_exclusively``; a second run returns at once).
 A row that fails never stops the pass; the run ends with an error after it when the Hub was away or refused,
 or answered off the contract (the ``task_failed`` alarm).
 
 At the end of its pass, Hub away or not, it forgets the days of every business past their retention
-(``services.prune_usage``, ``hubs.usage.prune``; HUBS-F22), a day collected by hand past it included. A prune that
+(``services.usage_collection.prune_usage``, ``hubs.usage.prune``; HUBS-F22), a day collected by hand past it included. A prune that
 fails never eats the collection: what was collected stays and is said, and the run ends with an error after it.
 """
 

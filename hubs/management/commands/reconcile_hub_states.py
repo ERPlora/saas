@@ -1,5 +1,5 @@
 """``python manage.py reconcile_hub_states [--stuck-minutes N]``: one pass by hand; the ``saas-worker`` runs the same
-one every 15 minutes (``services.reconcile_exclusively``, ``base.worker``).
+one every 15 minutes (``services.reconciliation.reconcile_exclusively``, ``base.worker``).
 
 Keeps the Hub equal to the SaaS: retries what the Hub still owes an answer to (registry, deletion, restoration,
 snapshot), asks the Hub about a sign-up stuck without its ``ready`` callback for more than N minutes
@@ -9,7 +9,7 @@ answer), ends the trials that ran out, marks purged the businesses past their 90
 business once the copy of its data is ready (``GET /internal/hubs/{id}/dumps``: ``data_copies_told``,
 ``data_copy_unsent``) and delivers the session revocations the Hub has not taken yet once their wait passed
 (``SessionRevocation``: ``sessions_ended``, ``sessions_pending``). Idempotent, under the
-advisory lock ``hashtext('erplora.saas.reconcile_hub_states')`` (``services.run_exclusively``; a second run
+advisory lock ``hashtext('erplora.saas.reconcile_hub_states')`` (``services.exclusive_runs.run_exclusively``; a second run
 returns at once). A business that fails never stops the pass: it stays owed for the next run, the counts
 go to the log, and the run ends with an error after its pass when anything stayed owed, unreachable or
 crashed (in the worker, its line ``saas.worker.pass_failed``, which the alarm of the infra reads).

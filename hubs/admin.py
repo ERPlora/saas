@@ -7,7 +7,7 @@ names are the models' ``clean()``, which the admin form runs.
 The account plane (``Hub``, ``HubMember``, ``HubOwnershipTransfer``, ``BillingProfile``, ``Subscription``,
 ``SubscriptionItem``, ``SessionRevocation``) is read-mostly: its writes are the operations of
 ``hubs.services`` (state version, the push to the Hub), so the admin adds, changes and deletes nothing, not even for
-a superuser. Superusers get the platform's actions (``services.send_latest_state``, ``retry_owed``,
+a superuser. Superusers get the platform's actions (``services.platform_actions.send_latest_state``, ``retry_owed``,
 ``deliver_revocations``); ``support`` only sees (data migration ``0007``). A ``User``'s page lists the businesses of the
 account (``AccountMemberInline``), and «Hubs» (``hubs_view``, ``/admin/accounts/hubs/``, routed in ``config/urls.py``)
 has one row per business people enter, each with «Open in the Hub admin».

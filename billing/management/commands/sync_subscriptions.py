@@ -4,7 +4,7 @@ The webhook keeps each subscription as Stripe says (BILLING-F21); this pass puts
 arrived left behind, reading each one as the webhook does (``billing.services.sync_subscriptions``).
 ``--dry-run`` only says what drifted.
 
-Under the advisory lock ``hashtext('erplora.saas.sync_subscriptions')`` (``hubs.services.run_exclusively``). One
+Under the advisory lock ``hashtext('erplora.saas.sync_subscriptions')`` (``hubs.services.exclusive_runs.run_exclusively``). One
 business never stops the pass; one Stripe could not read, or does not know, ends the run with an error after
 its pass (the ``task_failed`` alarm).
 """

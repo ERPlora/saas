@@ -6,7 +6,7 @@ returned, and returning needs a reason the customer can act on; approving replac
 staff may also withdraw an approval (with a reason), and each step is keyed by the business, whose snapshot
 carries the outcome to the Hub (``hubs.queries.hub_sync.hub_snapshot``, block ``verifactu``).
 
-Every step bumps the business's ``state_version`` in its transaction (``hubs.services.bump_state``) and pushes
+Every step bumps the business's ``state_version`` in its transaction (``hubs.services.hub_push.bump_state``) and pushes
 the snapshot once it commits (``push_after_commit``; ``reconcile_hub_states`` retries it while the Hub is
 away), records its event (the trail: who, which business, which version) and tells the owner and the admins of
 the business (``tell_the_business``), and once it commits mails them and, for one that waits for a review, the

@@ -1,6 +1,6 @@
 """What the SaaS tells the Hub after each COMMIT, against the Hub double.
 
-``services.sync_hub`` brings the Hub to what the SaaS knows (the registry, the deletion or the restoration it owes,
+``services.hub_push.sync_hub`` brings the Hub to what the SaaS knows (the registry, the deletion or the restoration it owes,
 then the snapshot), records each acknowledgement and leaves the rest pending when the Hub is away;
 ``reconcile_hub_states`` retries it. A push is delivered only when the Hub acknowledged it; anything else is «not
 delivered», and nothing breaks.

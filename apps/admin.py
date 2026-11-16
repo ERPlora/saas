@@ -5,7 +5,7 @@ shows them and never adds, changes nor deletes a row. ``Module`` is written here
 form runs ``Module.clean()`` (the slug is a paid app of the catalog) and checks in Stripe the prices
 pasted on it (APPS-F04, the same checks as a plan's, BILLING-F28). A module some business still has is not deleted:
 taking it off sale («active» off) is how it stops being sold. A new module, or a new level of one, owes the
-businesses whose plan includes it a newer snapshot (``hubs.services.owe_module_rights``, HUBS-F34).
+businesses whose plan includes it a newer snapshot (``hubs.services.subscription_sync.owe_module_rights``, HUBS-F34).
 """
 
 from django import forms

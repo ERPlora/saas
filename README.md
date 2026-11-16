@@ -529,5 +529,5 @@ Cada punto tiene su borrador de issue en `docs/issues/` (pendiente de abrir en `
 Ya no están fuera (PLAN-SAAS §1.1, ronda 2026-10-15b): el selector con el último negocio abierto primero
 (`HubMember.last_opened_at`, que sella `hubs.business.open` y ordena `hubs/queries/businesses.py`) y el cierre de las sesiones
 del Hub al cerrar sesión, poner o restablecer la contraseña o eliminar la cuenta (`accounts.signals.sessions_ended`
-→ `hubs.services.end_account_sessions`, con los reintentos de `hubs.SessionRevocation`). Lo que la ronda añade al
+→ `hubs.services.account_changes.end_account_sessions`, con los reintentos de `hubs.SessionRevocation`). Lo que la ronda añade al
 SaaS (asistente, WhatsApp, correos HTML, RGPD, operación y admin) son los bloques 11–15 de PLAN-SAAS §7.

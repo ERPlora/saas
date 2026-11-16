@@ -3657,7 +3657,7 @@ SWEEP_COUNTS = (
     "notified",
     "mail_failed",
     "errors",
-    # The clock of the suspended businesses (``hubs.services.age_suspended``).
+    # The clock of the suspended businesses (``hubs.services.suspensions.age_suspended``).
     "warned",
     "final_notice",
     "expired",

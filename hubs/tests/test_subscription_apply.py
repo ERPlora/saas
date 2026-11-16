@@ -260,7 +260,7 @@ def test_the_bought_modules_are_the_ones_stripe_bills(
 ):
     from apps.models import Module
 
-    # Starter includes the basic tier (hubs.services.sync_plan_modules, test_plan_modules.py).
+    # Starter includes the basic tier (hubs.services.subscription_sync.sync_plan_modules, test_plan_modules.py).
     Module.objects.create(slug="loyalty", tier=Module.Tier.BASIC)
     business = ready(business)
     subscription = subscription_of(business)

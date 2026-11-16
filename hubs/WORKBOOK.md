@@ -707,12 +707,12 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   `reconcile_hub_states`, miembros, uso y demo).
 - HUBS-F08 (`reconcile_hub_states`) corre cada 15 minutos (:00, :15, :30, :45 UTC) dentro del proceso `saas-worker`
   (`manage.py run_worker`, `base/worker.py`); la pasada es
-  `services.reconcile_exclusively`, la misma del comando, que queda para lanzarla a mano. Lo que deja pendiente, sin
+  `services.reconciliation.reconcile_exclusively`, la misma del comando, que queda para lanzarla a mano. Lo que deja pendiente, sin
   conexión o rechazado escribe la línea ERROR `saas.worker.pass_failed task=reconcile_hub_states left work owed: …`,
   que es lo que avisa la alarma. En el worker la pasada tiene 50 s y oye la
   parada entre dos negocios (`go_on`): lo que no entra queda pendiente para la pasada siguiente (`cut_short=1`).
 - Alta (F01–F03): `hubs.business.create` (una transacción: `BillingProfile`, `Hub`, `HubMember` propietario y
-  `Subscription` Gratis) y el empuje tras el COMMIT (`services.sync_hub`). El pago es de `billing`
+  `Subscription` Gratis) y el empuje tras el COMMIT (`services.hub_push.sync_hub`). El pago es de `billing`
   (`billing.checkout.start`). El país sugerido sale de `navigator.languages` (`regions.suggestedCountry`, con
   `Intl.Locale.maximize`): la primera región que ERPlora vende; si no, España.
 - Listo (F04, F07): `POST /internal/hubs/{id}/ready` (`hubs/internal.py`) → `hubs.business.mark_ready`; el correo
@@ -760,7 +760,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   `hubs/frontend/components/AddressDialog.test.ts`.
 - Suspendidos (F20): `Hub.suspended_at`, `suspension_warned_at` y `suspension_final_notice_at` (migración `0016`,
   que pone en marcha el reloj de los que ya estaban suspendidos el día del despliegue);
-  `_apply_standing` fecha la suspensión y la olvida al pagar; `services.age_suspended()` (lo llama
+  `_apply_standing` fecha la suspensión y la olvida al pagar; `services.suspensions.age_suspended()` (lo llama
   `billing.services.sweep_unpaid`, cada hora) corre por negocio `hubs.business.age_suspension` (solo el sistema):
   aviso a los 30 días, último a los 150 y baja a los 180 por `_delete_business`, el mismo camino que
   `hubs.business.delete`; un aviso solo se marca si su correo salió (`emails.send_suspension_notice`). Tests:
@@ -770,14 +770,14 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - Uso (F21, F22): el Hub sirve `GET /internal/usage` (contrato en `hubs/README.md`):
   `db_bytes` es el tamaño de la BD propia de cada negocio. `collect_hub_usage` lo recoge cada noche (`hub-usage-daily`);
   sin ninguna noche medida, la tarjeta dice «Sin datos todavía…». Esa pasada termina con `hubs.usage.prune`
-  (`services.USAGE_RETENTION_DAYS`, 400 días; el motivo, junto a la constante), sin programación
-  propia y sin que su fallo se coma la recogida (`services.prune_usage`). La copia de los datos de F18 y F20 la hace el Hub al
+  (`services.usage_collection.USAGE_RETENTION_DAYS`, 400 días; el motivo, junto a la constante), sin programación
+  propia y sin que su fallo se coma la recogida (`services.usage_collection.prune_usage`). La copia de los datos de F18 y F20 la hace el Hub al
   recibir la baja, y el SaaS la enseña y la descarga con `GET /internal/hubs/{id}/dumps`.
 - Dominio propio (F17): solo la web
   pública (`website`) y en planes con `includes_custom_domain`. El contrato con AWS está en el README de `aws` («Dominio
   propio de un negocio») y el del Hub, en BASE-F110. Aquí, `CustomDomain` (uno por negocio), las operaciones
   `hubs.custom_domain.{request,get,remove}` y el comando `check_custom_domains`, cada hora en `saas-cron`
-  (`services.check_custom_domains`). `hubs/domain_names.py` valida el nombre: el Hub rechaza la foto entera (422) por un
+  (`services.custom_domain_checks.check_custom_domains`). `hubs/domain_names.py` valida el nombre: el Hub rechaza la foto entera (422) por un
   dominio malo, así que nada de lo que él rechaza llega a una fila. `hubs/edge_client.py` son las llamadas a ACM, al ALB y
   a CloudWatch, y `hubs/domain_checks.py`, el DNS y la sonda. La pantalla es `CustomDomainCard` en Ajustes: la consulta
   viva `hubs.custom_domain.get` va en el primer flujo de la página, con el negocio, y solo el propietario ve el
@@ -813,7 +813,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - Personas (F24–F30): `hubs.member.{list,invite,change_role,remove,resend,cancel}`,
   `hubs.invitation.{list_mine,accept,decline}` y `hubs.ownership.{transfer,accept,decline,cancel}` (`api.py`, bajo
   `/api/hubs/members`, `/api/hubs/invitations` y `/api/hubs/ownership`). Cada fila de `hubs.member.list` trae sus
-  `actions`, calculadas con las mismas reglas que las escrituras (`queries.membership.member_actions`, `services._managed`).
+  `actions`, calculadas con las mismas reglas que las escrituras (`queries.membership.member_actions`, `services.member_management._managed`).
   Quitar, cambiar el rol de alguien que ya respondió y aceptar un traspaso encolan `SessionRevocation`
   (`POST /internal/sessions/revoke`, `{user_id, hub_id}`), que el Hub sirve desde BASE-F13 (`base/internal.py`) y
   que se reintenta con espera creciente y en `reconcile_hub_states` si el negocio no contesta. Correos (`emails.py`,
@@ -828,9 +828,9 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - Pruebas: cada test cita su clave en el nombre o el docstring, y cada e2e la de su flujo en el título; los de F01–F14
   están en `tests/e2e/panel/hubs-flows.spec.ts`.
 - La foto (F31): `queries.hub_sync.hub_snapshot` (`PUT /internal/hubs/{id}/state`), con `plan` = los campos de
-  `queries.hub_sync.SNAPSHOT_PLAN_FIELDS`; sube `state_version` y se empuja tras el COMMIT (`services.sync_hub`), la reintenta
+  `queries.hub_sync.SNAPSHOT_PLAN_FIELDS`; sube `state_version` y se empuja tras el COMMIT (`services.hub_push.sync_hub`), la reintenta
   `reconcile_hub_states` y la repite `push_hub_snapshots` cada noche. Un cambio en el admin de uno de esos campos de un
-  `Plan` (`PlanAdmin.save_model` → `services.owe_plan_rights`) reescribe los módulos de su nivel (`sync_plan_modules`) y
+  `Plan` (`PlanAdmin.save_model` → `services.subscription_sync.owe_plan_rights`) reescribe los módulos de su nivel (`sync_plan_modules`) y
   sube la versión de cada negocio vivo con ese plan o con su prueba; la entrega la siguiente pasada, así que el
   cambio del admin llega al Hub. VeriFactu va en todos los planes: el bloque `verifactu` de la foto lleva solo
   `representation`. Tests: `hubs/tests/test_hub_sync.py`, `test_plan_rights_reach_businesses.py`,
@@ -843,7 +843,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   frena en cada turno la pasarela de `assistant` (ASSISTANT-F18, `assistant.message.claim`), con el cupo del plan
   (`Plan.assistant_messages_per_month`), y el Hub enseña las cifras de su puerta `usage` y del frame `usage`. El SaaS aplica `max_users` al invitar (`hubs/tests/test_seats.py`). Tests de F31–F37:
   `test_snapshot_rights.py` (una compra o el plan de otro negocio nunca llegan a este; bajar a Gratis no saca a nadie).
-  Un `Module` nuevo, o con otro `tier`, en el admin de `apps` (`ModuleAdmin.save_model` → `services.owe_module_rights`)
+  Un `Module` nuevo, o con otro `tier`, en el admin de `apps` (`ModuleAdmin.save_model` → `services.subscription_sync.owe_module_rights`)
   reescribe los módulos del plan de cada negocio vivo cuyo plan (o prueba) alcanza el nivel nuevo o el anterior, y sube
   su versión si cambian; lo entrega `reconcile_hub_states`. Tests: `test_plan_rights_reach_businesses.py` (HUBS-F34).
 - Admin de Planes (pantalla de F05, vista en F31): nombres traducibles en los campos de `Plan` (migración `0018`, solo

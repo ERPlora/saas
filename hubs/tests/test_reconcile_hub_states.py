@@ -402,7 +402,7 @@ class TestReconcile:
         other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
 
     def test_the_saas_worker_runs_the_same_pass_under_the_same_lock(self, business, hub_double, other_session):
-        """``services.reconcile_exclusively`` is what the command and the ``saas-worker`` (every 15 minutes, saas#305)
+        """``services.reconciliation.reconcile_exclusively`` is what the command and the ``saas-worker`` (every 15 minutes, saas#305)
         both run: the pass's counts, or ``None`` while another run holds the lock."""
         other_session.execute(f"SELECT pg_advisory_lock({LOCK_KEY})")
         try:

@@ -1,7 +1,7 @@
 """``python manage.py check_custom_domains``: hourly in ``saas-cron`` (HUBS-F17; ``aws`` README, «Dominio propio de un
 negocio»).
 
-Moves each business's own domain as far as it goes today (``services.check_custom_domains``): its certificate, on the
+Moves each business's own domain as far as it goes today (``services.custom_domain_checks.check_custom_domains``): its certificate, on the
 shared listener, the customer's CNAME, the snapshot and the probe to active; three failures in a row out of the snapshot,
 with its certificate gone and the owner told; back when the CNAME is. At the end it publishes
 ``ERPlora/CustomDomains CertificatesAttached``, which the alarm at 80 % of the listener reads.

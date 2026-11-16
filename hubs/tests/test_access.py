@@ -212,7 +212,7 @@ def test_the_model_is_gone_from_the_app_registry():
 
 
 class TestSeedDemoBusiness:
-    """``hubs.services.seed_demo_business``: a hub that already runs in the local Hub (``a``, ``b``) becomes
+    """``hubs.services.demo_businesses.seed_demo_business``: a hub that already runs in the local Hub (``a``, ``b``) becomes
     a business the SaaS knows, with its people, without provisioning it again."""
 
     def test_adopts_the_hub_as_an_active_ready_business_that_owes_the_hub_nothing(self, owner, make_user, plans):

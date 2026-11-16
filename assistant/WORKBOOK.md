@@ -829,7 +829,7 @@ propio texto por `code`.
   pantalla: `assistant.index_docs source=… chunks=… embedded=… deleted=… tokens=… cost_usd=…`; sin fila de
   `AssistantUsage` (gasto de la plataforma). Sin proveedor sale con código 2 sin escribir nada; si el proveedor falla
   sale con error, lo ya escrito se queda y no se borra nada (la siguiente pasada hace el resto). Advisory lock
-  `hashtext('erplora.saas.index_docs')` (`hubs.services.run_exclusively`). Evento `assistant.docs.indexed` por lote.
+  `hashtext('erplora.saas.index_docs')` (`hubs.services.exclusive_runs.run_exclusively`). Evento `assistant.docs.indexed` por lote.
   Medido en local (2026-10-31): 68 fragmentos de ayuda, 2162 de las apps del Hub, 685 de los WORKBOOK y 14 de planes;
   un indexado completo ≈ 680 000 tokens ≈ 0,014 $; una pasada sin cambios, 0 llamadas.
 - **Programación**: `index-docs-daily` de `platform_schedule_specs` en ERPlora/aws, diario a las 06:50 UTC en
