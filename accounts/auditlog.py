@@ -20,8 +20,8 @@ from django.contrib.auth import get_user_model
 from django.db.models.signals import post_delete
 from django.utils.functional import LazyObject
 
-from accounts import services
 from accounts.models import ApiKey
+from accounts.services import account_deletion
 
 def audit(model, *, exclude: Iterable[str] = ()) -> None:
     """Register ``model`` in the audit trail: its serialized copy keeps only the logged fields, never ``exclude``.
@@ -42,7 +42,9 @@ def register() -> None:
     user = get_user_model()
     audit(user, exclude=["password", "last_login"])
     # After auditlog's own receiver: the account's last entry is written before its author is let go.
-    post_delete.connect(services.forget_deleted_actor, sender=user, dispatch_uid="accounts.forget_deleted_actor")
+    post_delete.connect(
+        account_deletion.forget_deleted_actor, sender=user, dispatch_uid="accounts.forget_deleted_actor"
+    )
     audit(ApiKey, exclude=["key_hash", "last_used_at"])
     audit(UserSession, exclude=["session_key", "data", "last_seen_at"])
 

@@ -36,8 +36,9 @@ from django.http import HttpResponse
 from django.test import Client, RequestFactory, override_settings
 from django.utils import timezone
 
-from accounts import mfa, services
+from accounts import mfa
 from accounts.models import AuthExchangeCode
+from accounts.services import hub_jump, platform_staff
 from accounts.tests.conftest import enter, prove_address, take_mailed_code
 
 pytestmark = pytest.mark.django_db
@@ -222,8 +223,6 @@ class TestSettings:
         assert account_settings.LOGIN_BY_CODE_TRUST_ENABLED is False
 
     def test_the_authenticator_table_exists(self):
-        from allauth.mfa.models import Authenticator
-
         assert Authenticator.objects.count() == 0
 
 
@@ -603,46 +602,46 @@ class TestLoginWithTheFlagOff:
 
 
 class TestIssueCode:
-    """``services.issue_code(…, second_factor=mfa.mfa_completed(request))``: only with the flag on."""
+    """``hub_jump.issue_code(…, second_factor=mfa.mfa_completed(request))``: only with the flag on."""
 
     def test_hub_admin_needs_the_second_factor(self, mfa_on, platform):
-        with pytest.raises(services.SecondFactorRequired):
-            services.issue_code(platform, "a", audience=AuthExchangeCode.HUB_ADMIN_AUDIENCE)
+        with pytest.raises(hub_jump.SecondFactorRequired):
+            hub_jump.issue_code(platform, "a", audience=AuthExchangeCode.HUB_ADMIN_AUDIENCE)
 
         assert not AuthExchangeCode.objects.exists()
 
     def test_hub_admin_with_the_second_factor_gets_its_code(self, mfa_on, platform):
         _activate_totp(platform)
 
-        services.issue_code(platform, "a", audience=AuthExchangeCode.HUB_ADMIN_AUDIENCE, second_factor=True)
+        hub_jump.issue_code(platform, "a", audience=AuthExchangeCode.HUB_ADMIN_AUDIENCE, second_factor=True)
 
         assert AuthExchangeCode.objects.get().audience == "hub-admin"
 
     def test_a_member_with_an_authenticator_app_needs_the_second_factor(self, mfa_on, member, secret):
-        with pytest.raises(services.SecondFactorRequired):
-            services.issue_code(member, "a")
+        with pytest.raises(hub_jump.SecondFactorRequired):
+            hub_jump.issue_code(member, "a")
 
         assert not AuthExchangeCode.objects.exists()
-        services.issue_code(member, "a", second_factor=True)
+        hub_jump.issue_code(member, "a", second_factor=True)
         assert AuthExchangeCode.objects.count() == 1
 
     def test_a_member_without_an_authenticator_app_jumps_as_today(self, mfa_on, member):
-        services.issue_code(member, "a")
+        hub_jump.issue_code(member, "a")
 
         assert AuthExchangeCode.objects.count() == 1
 
     def test_a_stranger_is_refused_as_a_stranger_before_any_second_factor(self, mfa_on, ana, secret):
-        with pytest.raises(services.HubAccessDenied) as refused:
-            services.issue_code(ana, "a")
+        with pytest.raises(hub_jump.HubAccessDenied) as refused:
+            hub_jump.issue_code(ana, "a")
 
-        assert not isinstance(refused.value, services.SecondFactorRequired)
+        assert not isinstance(refused.value, hub_jump.SecondFactorRequired)
 
     def test_a_missing_second_factor_is_an_access_denied_for_callers_that_do_not_know_it(self):
-        assert issubclass(services.SecondFactorRequired, services.HubAccessDenied)
+        assert issubclass(hub_jump.SecondFactorRequired, hub_jump.HubAccessDenied)
 
     def test_with_the_flag_off_nothing_changes(self, platform, member, secret):
-        services.issue_code(platform, "a", audience=AuthExchangeCode.HUB_ADMIN_AUDIENCE)
-        services.issue_code(member, "a")
+        hub_jump.issue_code(platform, "a", audience=AuthExchangeCode.HUB_ADMIN_AUDIENCE)
+        hub_jump.issue_code(member, "a")
 
         assert AuthExchangeCode.objects.count() == 2
 
@@ -865,7 +864,7 @@ class TestTheAdminAsksTheStaffForTheApp:
         assert (response.status_code, response.url) == (302, "/2fa?next=/admin/accounts/user/")
 
     def test_support_without_the_app_too(self, mfa_on, client, password):
-        support, _ = services.create_platform_user("help@erplora.com", "support", password)
+        support, _ = platform_staff.create_platform_user("help@erplora.com", "support", password)
         client.force_login(support)
 
         assert client.get("/admin/login/", {"next": "/admin/"}).url == "/2fa?next=/admin/"

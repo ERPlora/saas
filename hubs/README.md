@@ -68,9 +68,9 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   demás pasan a `hub_admin`) o, si no hay, la pertenencia más antigua, ascendida. Un slug que no es de hub
   (`live.slugs`) no abría nada: sus filas se borran. Después, la copia de todos los negocios quedaba igual a sus
   miembros. Idempotente; la vuelta atrás conserva los negocios (son filas válidas del esquema anterior).
-- **`demo_seed` vive en `hubs`** (`management/commands/demo_seed.py`): crea las cuentas (`accounts.services.
-  seed_demo_customer`, `seed_demo_platform_admin`) y adopta `a` y `b` con `services.seed_demo_business`, igual que
-  la migración.
+- **`demo_seed` vive en `hubs`** (`management/commands/demo_seed.py`): crea las cuentas
+  (`accounts.services.demo_accounts.seed_demo_customer`, `seed_demo_platform_admin`) y adopta `a` y `b` con
+  `services.seed_demo_business`, igual que la migración.
 - **`SessionRevocation`** (`models.py`, migración `0005`): quitar a un miembro, cambiarle el rol (el rol viaja en la
   sesión del Hub), aceptar un traspaso (los dos lados) o liberar una cuenta no verificada (todos sus negocios) la
   encola en la transacción; se entrega tras el COMMIT (`POST /internal/sessions/revoke`) y, si el Hub no está o la
@@ -89,7 +89,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   de superusuario «Enviar al Hub el estado más reciente», «Reintentar lo que el Hub tiene pendiente» y «Cerrar ya
   las sesiones en el Hub»; `support` los ve (migración `0007`) y no actúa.
 - **Invitar una cuenta que nunca verificó su correo** (erplora-old/saas#2541, `tests/test_invite_unverified_account.py`):
-  `accounts.queries.email_is_proven` decide; si no, `accounts.services.release_unproven_account` le quita
+  `accounts.queries.email_is_proven` decide; si no, `accounts.services.mailbox_proof.release_unproven_account` le quita
   contraseña (y con ella las sesiones del SaaS), segundo factor y Google, y se encolan los cierres de sesión de
   todos sus negocios; el correo de la invitación lleva el camino para reclamar la cuenta
   (`accounts.queries.has_no_way_in`). Aceptar exige el correo verificado: 403 `hubs.email_unverified`.

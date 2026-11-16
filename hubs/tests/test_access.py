@@ -1,8 +1,9 @@
 """Who enters a hub is read in one place: the answered members of the businesses that still open.
 
-The jump (``accounts.services.issue_code``/``redeem_code``) reads them through ``hubs.member.list_mine``, by its name:
-accounts never imports hubs. ``accounts.HubMembership``, the copy the jump read until saas#199, left the code
-(``accounts/0011``) and its table the database (``accounts/0012``, saas#220), and the guardrail below keeps it out.
+The jump (``accounts.services.hub_jump.issue_code``/``redeem_code``) reads them through ``hubs.member.list_mine``, by
+its name: accounts never imports hubs. ``accounts.HubMembership``, the copy the jump read until saas#199, left the
+code (``accounts/0011``) and its table the database (``accounts/0012``, saas#220), and the guardrail below keeps it
+out.
 """
 
 import ast
@@ -14,7 +15,7 @@ from live import operations
 from live.context import OperationContext, Scope
 from live.errors import PermissionDenied, Unauthorized
 
-from accounts import services as account_services
+from accounts.services import hub_jump
 from hubs import services
 from hubs.queries import membership
 from hubs.models import Hub, HubMember
@@ -256,7 +257,7 @@ def test_the_seeded_member_enters_through_the_jump(owner, plans):
     """The members are what the jump reads: a seeded owner gets a code for its hub."""
     services.seed_demo_business("a", {owner: "hub_owner"})
 
-    identity = account_services.redeem_code(account_services.issue_code(owner, "a"), "a")
+    identity = hub_jump.redeem_code(hub_jump.issue_code(owner, "a"), "a")
 
     assert identity.role == "hub_owner"
 
@@ -265,38 +266,38 @@ class TestTheJumpReadsTheMembers:
     """The jump end to end, through the name of the operation."""
 
     def test_a_stranger_gets_no_code(self, business, team):
-        with pytest.raises(account_services.HubAccessDenied):
-            account_services.issue_code(team["stranger"], business.slug)
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(team["stranger"], business.slug)
 
     def test_an_invitee_gets_no_code(self, business, team):
-        with pytest.raises(account_services.HubAccessDenied):
-            account_services.issue_code(team["invitee"], business.slug)
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(team["invitee"], business.slug)
 
     def test_a_member_of_another_business_gets_no_code(self, business, owner, make_user):
         lola = make_user("lola@example.com")
         create_business(lola, name="Café Lola")
 
-        with pytest.raises(account_services.HubAccessDenied):
-            account_services.issue_code(lola, business.slug)
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(lola, business.slug)
 
     def test_a_code_does_not_outlive_the_member(self, business, team):
-        code = account_services.issue_code(team["employee"], business.slug)
+        code = hub_jump.issue_code(team["employee"], business.slug)
         services.member_remove(ctx_for(team["admin"]), ByIdIn(id=member_of(business, team["employee"]).id))
 
-        with pytest.raises(account_services.InvalidCode):
-            account_services.redeem_code(code, business.slug)
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, business.slug)
 
     def test_a_code_does_not_outlive_the_business(self, business, owner):
-        code = account_services.issue_code(owner, business.slug)
+        code = hub_jump.issue_code(owner, business.slug)
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
 
-        with pytest.raises(account_services.InvalidCode):
-            account_services.redeem_code(code, business.slug)
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, business.slug)
 
     def test_the_old_address_gets_no_code_after_a_move(self, business, owner):
         old = business.slug
         Hub.objects.filter(pk=business.pk).update(slug="casa-manolo", previous_slug=old)
 
-        with pytest.raises(account_services.HubAccessDenied):
-            account_services.issue_code(owner, old)
-        assert account_services.issue_code(owner, "casa-manolo")
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(owner, old)
+        assert hub_jump.issue_code(owner, "casa-manolo")

@@ -54,8 +54,9 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 from django_ratelimit.core import is_ratelimited
 
-from accounts import mfa, queries, services
+from accounts import mfa, queries
 from accounts.models import AuthExchangeCode
+from accounts.services import hub_jump
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +107,7 @@ def hub_login(request: HttpRequest) -> HttpResponse:  # noqa: PLR0911
     state = request.GET.get("state", "")
     # The rule shared with the Hub: a reserved name (``hub``, ``www``…) is no hub either, nor the
     # platform host ``hubs``.
-    if not services.is_hub_slug(slug):
+    if not hub_jump.is_hub_slug(slug):
         # Nothing that came from outside is echoed back: it was no hub slug.
         logger.warning("hub_login.invalid_hub")
         return HttpResponseRedirect(login_error_url("invalid_hub"))
@@ -121,15 +122,15 @@ def hub_login(request: HttpRequest) -> HttpResponse:  # noqa: PLR0911
         return HttpResponseRedirect(login_error_url("too_many"))
     staff_jump = audience == AuthExchangeCode.HUB_ADMIN_AUDIENCE
     try:
-        code = services.issue_code(request.user, slug, audience=audience, second_factor=mfa.mfa_completed(request))
-    except services.SecondFactorRequired:
+        code = hub_jump.issue_code(request.user, slug, audience=audience, second_factor=mfa.mfa_completed(request))
+    except hub_jump.SecondFactorRequired:
         if staff_jump:
             logger.info("hub_login.hub_admin.second_factor_required user=%s hub=%s", request.user.pk, slug)
             messages.error(request, REFUSED_WITHOUT_SECOND_FACTOR)
             return redirect("accounts_hubs")
         logger.info("hub_login.second_factor_required hub=%s", slug)
         return HttpResponseRedirect(reauthenticate_url(request.get_full_path()))
-    except services.HubAccessDenied:
+    except hub_jump.HubAccessDenied:
         if staff_jump:
             # Signed in without a platform role: 403, never a login.
             logger.warning("hub_login.hub_admin.denied user=%s", request.user.pk)

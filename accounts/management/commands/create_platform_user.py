@@ -9,7 +9,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 
-from accounts import services
+from accounts.services import platform_staff
 
 
 class Command(BaseCommand):
@@ -17,7 +17,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("email")
-        parser.add_argument("--role", required=True, choices=services.PLATFORM_ROLES)
+        parser.add_argument("--role", required=True, choices=platform_staff.PLATFORM_ROLES)
         parser.add_argument(
             "--password",
             help="Without it, a new account has no usable password (set it in the admin or by password reset).",
@@ -30,10 +30,10 @@ class Command(BaseCommand):
             except ValidationError as exc:
                 raise CommandError(f"The password is not valid: {' '.join(exc.messages)}") from exc
         try:
-            user, created = services.create_platform_user(email, role, password)
-        except services.PlatformRoleRefused as exc:
+            user, created = platform_staff.create_platform_user(email, role, password)
+        except platform_staff.PlatformRoleRefused as exc:
             raise CommandError(f"Refused: {exc}. A customer account cannot be platform staff.") from exc
-        except services.SupportGroupMissing as exc:
+        except platform_staff.SupportGroupMissing as exc:
             raise CommandError(
                 f"The {exc} group is missing: run `manage.py migrate accounts` to create it."
             ) from exc

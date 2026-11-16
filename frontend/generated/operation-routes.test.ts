@@ -113,10 +113,10 @@ const ACCOUNT_PAGE_ROUTES = {
 
 /**
  * The routes accounts/api.py binds and the kind of each operation: `run_operation(request,
- * queries.x)` is a query (GET), `services.x` a command (POST), whether or not it takes a body.
+ * queries.x)` is a query (GET), `<module of accounts/services>.x` a command (POST), whether or not it takes a body.
  */
 function accountsRoutes(source: string): Record<string, { method: string; path: string }> {
-  const bound = source.matchAll(/@bind\(router, "([\w.]+)", "([^"]+)"[^)]*\)\nasync def \w+\([^)]*\):\n\s+return await run_operation\(request, (queries|services)\./g);
+  const bound = source.matchAll(/@bind\(router, "([\w.]+)", "([^"]+)"[^)]*\)\nasync def \w+\([^)]*\):\n\s+return await run_operation\(request, (\w+)\./g);
   return Object.fromEntries([...bound].map(([, op, path, module]) => [op, { method: module === 'queries' ? 'get' : 'post', path: `/api${path}` }]));
 }
 

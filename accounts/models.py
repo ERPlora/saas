@@ -118,7 +118,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         # raising: one that is both from before (``hubs.W002``) still saves its other changes, and lowering a flag.
         if self._raises_a_staff_flag():
             # Here, not at the top: accounts.services imports this module.
-            from accounts.services import on_a_business
+            from accounts.services.account_businesses import on_a_business
 
             if on_a_business(self):
                 raise ValidationError(
