@@ -22,8 +22,9 @@ from live.ninja import bind, run_operation
 from live.operations import operation, registry
 from ninja import Router
 
-from accounts import api_auth, queries, services
+from accounts import api_auth, queries
 from accounts.models import ApiKey
+from accounts.services import api_keys
 from accounts.tests.conftest import HOST
 from accounts.tests.probe import queries as probe_queries
 from accounts.tests.probe import services as probe_services
@@ -232,7 +233,7 @@ class TestUse:
         assert ApiKey.objects.get(pk=key.pk).last_used_at == first
 
     def test_after_the_resolution_it_moves(self, probe, ana):
-        key, secret = _key(ana, last_used_at=timezone.now() - services.API_KEY_LAST_USED_RESOLUTION)
+        key, secret = _key(ana, last_used_at=timezone.now() - api_keys.API_KEY_LAST_USED_RESOLUTION)
 
         _call("get", "/api/hubs", secret=secret)
 

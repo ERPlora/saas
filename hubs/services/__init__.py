@@ -6,7 +6,7 @@ written in the same transaction (``Hub.pending_hub_call``, ``Hub.state_version``
 COMMIT (``sync_hub``, which never runs inside a transaction); when the Hub is away it stays owed and
 ``manage.py reconcile_hub_states`` retries it.
 
-``accounts.services.issue_code`` and ``redeem_code`` read an account's access from the answered members of each
+``accounts.services.hub_jump.issue_code`` and ``redeem_code`` read an account's access from the answered members of each
 business (``hubs.member.list_mine``), so a change of people is the jump's next answer. Taking access away queues a
 ``SessionRevocation`` (delivered after the COMMIT, retried by ``reconcile_hub_states``), and a change of the people of
 a business is told to its owner and admins (``notify_people``).

@@ -9,8 +9,9 @@ from allauth.account.models import EmailAddress
 from live.errors import PermissionDenied
 from live.live_registry import live_registry
 
-from accounts import events, queries, services
+from accounts import events, queries
 from accounts.schemas import ProfileGetIn, ProfileUpdateIn
+from accounts.services import profile
 from accounts.tests.conftest import api_get, api_post, ctx_for
 
 pytestmark = pytest.mark.django_db
@@ -73,14 +74,14 @@ class TestReading:
 
 class TestUpdating:
     def test_the_names_change_trimmed(self, ana):
-        result = services.profile_update(ctx_for(ana), ProfileUpdateIn(first_name="  Ana María ", last_name=" Ruiz "))
+        result = profile.profile_update(ctx_for(ana), ProfileUpdateIn(first_name="  Ana María ", last_name=" Ruiz "))
 
         ana.refresh_from_db()
         assert (ana.first_name, ana.last_name) == ("Ana María", "Ruiz")
         assert (result.first_name, result.full_name) == ("Ana María", "Ana María Ruiz")
 
     def test_the_last_name_can_be_cleared(self, ana):
-        services.profile_update(ctx_for(ana), ProfileUpdateIn(first_name="Ana", last_name="  "))
+        profile.profile_update(ctx_for(ana), ProfileUpdateIn(first_name="Ana", last_name="  "))
 
         ana.refresh_from_db()
         assert (ana.first_name, ana.last_name) == ("Ana", "")
@@ -100,7 +101,7 @@ class TestUpdating:
     def test_a_change_is_recorded_and_re_runs_the_live_profile(self, ana):
         from live.models import OutboxEvent
 
-        services.profile_update(ctx_for(ana), ProfileUpdateIn(first_name="Ana", last_name="G."))
+        profile.profile_update(ctx_for(ana), ProfileUpdateIn(first_name="Ana", last_name="G."))
 
         assert list(OutboxEvent.objects.values_list("name", flat=True)) == [events.PROFILE_UPDATED]
         assert "accounts.profile.get" in live_registry.affected([events.PROFILE_UPDATED])

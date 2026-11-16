@@ -43,8 +43,8 @@ from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 
-from accounts import services
 from accounts.handoff import login_error_url
+from accounts.services import hub_jump, hub_passes
 from accounts.signing import live_secrets
 from base.navigation import BUSINESSES, STORE
 
@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 #: What the Hub salts the pass with: a value signed for anything else with the same secret is no pass.
 SALT = "erplora.hub-pass.v1"
 #: The audience of the row that spends a pass (``AuthExchangeCode``): no jump to a hub redeems it.
-AUDIENCE = services.HUB_PASS_AUDIENCE
+AUDIENCE = hub_passes.HUB_PASS_AUDIENCE
 #: Where a pass may lead: the plan of the business in the Store, or the business in the panel.
 NEXT_PLAN = "plan"
 NEXT_BUSINESS = "business"
@@ -116,7 +116,7 @@ def _parse(payload, *, expired: bool) -> HubPass:
         user_id = str(uuid.UUID(user_id))
     except ValueError as error:
         raise InvalidPass from error
-    if not (isinstance(hub_slug, str) and services.is_hub_slug(hub_slug)):
+    if not (isinstance(hub_slug, str) and hub_jump.is_hub_slug(hub_slug)):
         raise InvalidPass
     if not (isinstance(next_, str) and next_ in NEXTS):
         raise InvalidPass
@@ -148,20 +148,20 @@ def follow(request: HttpRequest) -> HttpResponse:
         # Nothing of it is echoed back: it is not the Hub's.
         logger.warning("hub_pass.invalid")
         return _answer(login_error_url("invalid_pass"))
-    member = services.hub_pass_member(hub_pass.user_id, hub_pass.hub_slug)
+    member = hub_passes.hub_pass_member(hub_pass.user_id, hub_pass.hub_slug)
     if member is None:
         logger.info("hub_pass.not_a_member hub=%s", hub_pass.hub_slug)
         return _answer(login_error_url("not_a_member", hub=hub_pass.hub_slug))
     user, hub_id = member
     going_to = destination(hub_pass.next, hub_id)
-    spent = not hub_pass.expired and services.spend_hub_pass(user, hub_pass.hub_slug, hub_pass.nonce, lifetime())
+    spent = not hub_pass.expired and hub_passes.spend_hub_pass(user, hub_pass.hub_slug, hub_pass.nonce, lifetime())
     if request.user.is_authenticated and request.user.pk == user.pk:
         # Its session is open here already (a reload, the back button): nothing to open, it goes on.
         return _answer(going_to)
     if not spent:
         logger.info("hub_pass.expired_or_used hub=%s user=%s", hub_pass.hub_slug, user.pk)
         return _answer(login_error_url("pass_expired", next=going_to))
-    # ``services.accept_legal_texts`` reads it: nobody saw the terms on the way.
+    # ``accounts.services.legal_acceptance.accept_legal_texts`` reads it: nobody saw the terms on the way.
     request.hub_pass = hub_pass
     login(request, user, backend=_BACKEND)
     logger.info("hub_pass.signed_in hub=%s user=%s", hub_pass.hub_slug, user.pk)

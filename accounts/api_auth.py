@@ -26,8 +26,9 @@ from live.operations import Operation, registry
 from ninja import NinjaAPI
 from ninja.security import APIKeyHeader, HttpBearer
 
-from accounts import queries, services
+from accounts import queries
 from accounts.models import API_KEY_PREFIX, API_KEY_SCOPES
+from accounts.services import api_keys
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ def authenticate(request, raw: str, op: Operation):
         None, group="accounts.api_key", key=lambda group, request: f"key:{key.pk}", rate=API_KEY_RATE, increment=True
     ):
         raise _too_many()
-    services.record_api_key_use(key, now)
+    api_keys.record_api_key_use(key, now)
     request.user = key.user
     return key
 

@@ -41,9 +41,9 @@ function createAccounts(): void {
   djangoPrint(
     [
       'from allauth.account.models import EmailAddress',
-      'from accounts import services',
-      `for email, group in (("${ROOT.email}", services.PLATFORM_ADMIN), ("${TEAMMATE}", services.PLATFORM_SUPPORT)):`,
-      `    user = services.create_platform_user(email, group, "${PASSWORD}")[0]`,
+      'from accounts.services.platform_staff import PLATFORM_ADMIN, PLATFORM_SUPPORT, create_platform_user',
+      `for email, group in (("${ROOT.email}", PLATFORM_ADMIN), ("${TEAMMATE}", PLATFORM_SUPPORT)):`,
+      `    user = create_platform_user(email, group, "${PASSWORD}")[0]`,
       '    user.language = "en"; user.save(update_fields=["language"])',
       '    EmailAddress.objects.update_or_create(user=user, email=user.email, defaults={"verified": True, "primary": True})',
     ].join('\n'),

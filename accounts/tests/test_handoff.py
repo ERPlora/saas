@@ -20,8 +20,8 @@ from allauth.mfa import app_settings as mfa_settings
 from allauth.mfa.totp.internal import auth as totp_auth
 from django.contrib.auth import get_user_model
 
-from accounts import services
 from accounts.models import AuthExchangeCode
+from accounts.services import hub_jump, platform_staff
 from accounts.tests.conftest import enter
 
 pytestmark = pytest.mark.django_db
@@ -284,13 +284,13 @@ class TestTheJumpToTheHubAdmin:
 
     @pytest.fixture
     def platform(self, client, password):
-        user, _ = services.create_platform_user("boss@erplora.com", "admin", password)
+        user, _ = platform_staff.create_platform_user("boss@erplora.com", "admin", password)
         client.force_login(user)
         return user
 
     @pytest.fixture
     def support(self, client, password):
-        user, _ = services.create_platform_user("help@erplora.com", "support", password)
+        user, _ = platform_staff.create_platform_user("help@erplora.com", "support", password)
         client.force_login(user)
         return user
 
@@ -310,14 +310,14 @@ class TestTheJumpToTheHubAdmin:
     def test_the_code_redeems_as_hub_admin_with_the_platform_role(self, client, platform):
         code = _hidden(client.get(HUB_LOGIN, self.JUMP).content.decode(), "code")
 
-        identity = services.redeem_code(code, "a", audience="hub-admin")
+        identity = hub_jump.redeem_code(code, "a", audience="hub-admin")
 
         assert (identity.email, identity.role) == ("boss@erplora.com", "platform_admin")
 
     def test_support_jumps_with_the_support_role(self, client, support):
         code = _hidden(client.get(HUB_LOGIN, {**self.JUMP, "hub": "b"}).content.decode(), "code")
 
-        assert services.redeem_code(code, "b", audience="hub-admin").role == "platform_support"
+        assert hub_jump.redeem_code(code, "b", audience="hub-admin").role == "platform_support"
 
     def test_without_a_state_the_form_has_no_state_field(self, client, platform):
         params = {key: value for key, value in self.JUMP.items() if key != "state"}
@@ -427,7 +427,7 @@ class TestTheBrakeOfTheJump:
 
     def test_the_staff_jump_waits_the_same(self, client, settings, password):
         settings.HUB_LOGIN_RATELIMIT = "1/5m"
-        staff, _ = services.create_platform_user("boss@erplora.com", "admin", password)
+        staff, _ = platform_staff.create_platform_user("boss@erplora.com", "admin", password)
         client.force_login(staff)
         jump = {"hub": "a", "next": "/admin/hub/a/", "state": STATE, "audience": "hub-admin"}
 

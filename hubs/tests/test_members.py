@@ -20,7 +20,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone, translation
 from live.errors import Conflict, NotFound, PermissionDenied
 
-from accounts.services import PlatformRoleRefused, create_platform_user
+from accounts.services.platform_staff import PlatformRoleRefused, create_platform_user
 from hubs.services import billing_profiles, invitation_answers, member_management
 from hubs.queries import invitations, membership
 from hubs.models import BillingProfile, Hub, HubMember, Subscription

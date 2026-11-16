@@ -14,8 +14,9 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from live.live_registry import live_registry
 
-from accounts import events, services
+from accounts import events
 from accounts.models import API_KEY_PREFIX, ApiKey
+from accounts.services import api_keys, reauthentication
 from accounts.tests.conftest import HOST, api_get, api_post
 
 pytestmark = pytest.mark.django_db
@@ -116,12 +117,12 @@ class TestCreating:
         request.auth = key
 
         with pytest.raises(OperationError) as refused:
-            services.require_recent_authentication(ctx_for(ana, request=request))
+            reauthentication.require_recent_authentication(ctx_for(ana, request=request))
 
         assert (refused.value.status, refused.value.code) == (403, "api_key_not_allowed")
 
     def test_an_account_has_a_ceiling_of_live_keys(self, signed_in, monkeypatch):
-        monkeypatch.setattr(services, "MAX_ACTIVE_API_KEYS", 2)
+        monkeypatch.setattr(api_keys, "MAX_ACTIVE_API_KEYS", 2)
         _create(signed_in, name="a")
         _create(signed_in, name="b")
 
@@ -130,7 +131,7 @@ class TestCreating:
         assert (response.status_code, response.json()["error"]["code"]) == (409, "accounts.api_key_limit")
 
     def test_a_revoked_or_expired_key_does_not_count(self, signed_in, ana, monkeypatch):
-        monkeypatch.setattr(services, "MAX_ACTIVE_API_KEYS", 1)
+        monkeypatch.setattr(api_keys, "MAX_ACTIVE_API_KEYS", 1)
         _create(signed_in, name="a")
         ApiKey.objects.update(revoked_at=timezone.now())
 

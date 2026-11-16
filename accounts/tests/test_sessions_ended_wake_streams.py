@@ -152,8 +152,8 @@ def test_no_role_may_announce_ended_sessions(signed_in):
     """Only the system wakes an account's streams this way: no role holds the permission, and no route serves it."""
     from live.meta import all_live_app_configs, permissions_for_role
 
-    from accounts import services
+    from accounts.services import active_sessions
     from base.operations import ACCOUNT_ROLE
 
-    assert services.ANNOUNCE_ENDED_SESSIONS not in permissions_for_role(all_live_app_configs(), ACCOUNT_ROLE)
+    assert active_sessions.ANNOUNCE_ENDED_SESSIONS not in permissions_for_role(all_live_app_configs(), ACCOUNT_ROLE)
     assert signed_in.post("/api/accounts/sessions/announce_ended", {}, content_type="application/json", HTTP_HOST=HOST).status_code == 404

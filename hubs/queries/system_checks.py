@@ -29,9 +29,9 @@ StaffOnABusiness = tuple[str, str, str]
 
 def staff_on_businesses(now: datetime) -> list[StaffOnABusiness]:
     """Every account of ERPlora's staff (``is_staff`` or ``is_superuser``) that is also on a business, as
-    ``accounts.services.on_a_business`` sees it: a member of one not deleted (one in its days of recovery too, which a
-    restore gives back) or invited to one (``_waiting_invitations``). By email, then slug. The doors refuse it;
-    the system check ``hubs.W002`` names the ones that were already on a business before (``hubs.checks``)."""
+    ``accounts.services.account_businesses.on_a_business`` sees it: a member of one not deleted (one in its days of
+    recovery too, which a restore gives back) or invited to one (``_waiting_invitations``). By email, then slug. The
+    doors refuse it; the system check ``hubs.W002`` names the ones already on a business before (``hubs.checks``)."""
     staff = Q(user__is_staff=True) | Q(user__is_superuser=True)
     members = HubMember.objects.filter(staff, accepted_at__isnull=False, hub__status__in=LISTED)
     invited = _waiting_invitations(now).filter(staff)

@@ -13,7 +13,7 @@ from live.operations import AI, operation
 from live.outbox import record_event
 
 from accounts import queries as account_queries
-from accounts import services as account_services
+from accounts.services import mailbox_proof
 from hubs import emails, events
 from hubs.models import Hub, HubMember, HubOwnershipTransfer
 from hubs.queries import access_control, membership, payers, signup
@@ -115,7 +115,7 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
 
     The invitation is a member without an answer, valid for 7 days; an address without an account gets
     one to claim (no password: Google or «Forgot your password?»). An account that never proved the
-    address is released first (``accounts.services.release_unproven_account``): whoever opens the mailbox
+    address is released first (``accounts.services.mailbox_proof.release_unproven_account``): whoever opens the mailbox
     claims it, and its sessions in every business end. The plan must have a seat for one
     more person. It reaches the Hub only once answered. An expired invitation is renewed.
     """
@@ -152,7 +152,7 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
         else:
             signup.refuse_staff(user)
             if not account_queries.email_is_proven(user, data.email):
-                account_services.release_unproven_account(user, reason="invited_while_unverified")
+                mailbox_proof.release_unproven_account(user, reason="invited_while_unverified")
                 revoke_after_commit(user.pk)
         member = HubMember.objects.create(
             hub=hub,

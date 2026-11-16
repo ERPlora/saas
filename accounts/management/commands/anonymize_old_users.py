@@ -2,8 +2,8 @@
 
 Weekly in ``saas-cron``: every active account that is not staff and has not signed in on
 erplora.com for ``--inactive-days`` (730; never signed in, since it was created) goes as its owner deletes it
-(``accounts.services.erase_inactive_account``, ACCOUNTS-F27), unless it belongs to a business that is not deleted.
-ERPlora's invoices stay with their recipient as issued.
+(``accounts.services.inactive_accounts.erase_inactive_account``, ACCOUNTS-F27), unless it belongs to a business
+that is not deleted. ERPlora's invoices stay with their recipient as issued.
 
 ``--dry-run`` counts what a run would do and changes nothing. No question is asked (the old ``--no-input`` is the only
 way here). Idempotent, under the advisory lock ``hashtext('erplora.saas.anonymize_old_users')``: a second run returns at
@@ -16,7 +16,7 @@ from collections import Counter
 
 from django.core.management.base import BaseCommand, CommandError
 
-from accounts import services
+from accounts.services import exclusive_runs, inactive_accounts
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,10 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--inactive-days", type=int, default=services.INACTIVE_DAYS, help="Days without signing in (default 730)."
+            "--inactive-days",
+            type=int,
+            default=inactive_accounts.INACTIVE_DAYS,
+            help="Days without signing in (default 730).",
         )
         parser.add_argument("--dry-run", action="store_true", help="Count what would go and change nothing.")
 
@@ -38,14 +41,16 @@ class Command(BaseCommand):
         if inactive_days < 1:
             raise CommandError("--inactive-days must be at least 1.")
         names = DRY_COUNTS if dry_run else COUNTS
-        with services.run_exclusively("anonymize_old_users") as mine:
+        with exclusive_runs.run_exclusively("anonymize_old_users") as mine:
             if not mine:
                 self.stdout.write("anonymize_old_users: already running, nothing done.")
                 return
             counts = Counter({name: 0 for name in [*names.values(), "failed"]})
-            for user_id in services.inactive_account_ids(inactive_days=inactive_days):
+            for user_id in inactive_accounts.inactive_account_ids(inactive_days=inactive_days):
                 try:
-                    outcome = services.erase_inactive_account(user_id, inactive_days=inactive_days, dry_run=dry_run)
+                    outcome = inactive_accounts.erase_inactive_account(
+                        user_id, inactive_days=inactive_days, dry_run=dry_run
+                    )
                 except Exception:  # noqa: BLE001 - one account never stops the pass; it is tried again next week
                     logger.exception("accounts.anonymize_old_users.failed user=%s", user_id)
                     counts["failed"] += 1

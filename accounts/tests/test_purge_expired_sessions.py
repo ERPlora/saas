@@ -16,8 +16,8 @@ from django.core.management import call_command
 from django.db import connections
 from django.utils import timezone
 
-from accounts import services
 from accounts.models import AuthExchangeCode, EmailChangeRequest
+from accounts.services import exclusive_runs
 
 pytestmark = pytest.mark.django_db
 
@@ -132,7 +132,7 @@ class TestTheRun:
     def test_a_second_run_while_one_holds_the_lock_does_nothing(self, ana):
         code = _code(ana, seconds_left=-1)
         other = connections["default"].copy()
-        lock = [services.lock_name("purge_expired_sessions")]
+        lock = [exclusive_runs.lock_name("purge_expired_sessions")]
         try:
             with other.cursor() as cursor:
                 cursor.execute("SELECT pg_advisory_lock(hashtext(%s))", lock)

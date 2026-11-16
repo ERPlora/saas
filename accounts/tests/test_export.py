@@ -60,7 +60,7 @@ class TestWhatTheFileCarries:
         assert data["photo"] is None
 
     def test_the_terms_it_accepted(self, ana):
-        from accounts.services import accept_legal_texts
+        from accounts.services.legal_acceptance import accept_legal_texts
 
         accept_legal_texts(sender=None, user=ana)
 

@@ -10,9 +10,10 @@ import pytest
 from django.utils import translation
 from live.live_registry import live_registry
 
-from accounts import events, queries, services
+from accounts import events, queries
 from accounts.models import UserPreferences
 from accounts.schemas import PreferencesGetIn, PreferencesUpdateIn
+from accounts.services import preferences
 from accounts.tests.conftest import api_get, api_post, ctx_for
 
 pytestmark = pytest.mark.django_db
@@ -53,7 +54,7 @@ class TestReading:
 
 class TestUpdating:
     def test_the_first_change_creates_the_row(self, ana):
-        result = services.preferences_update(ctx_for(ana), PreferencesUpdateIn(theme_mode="dark"))
+        result = preferences.preferences_update(ctx_for(ana), PreferencesUpdateIn(theme_mode="dark"))
 
         assert result.theme_mode == "dark"
         assert UserPreferences.objects.get(user=ana).theme_mode == "dark"
@@ -61,7 +62,7 @@ class TestUpdating:
     def test_only_what_is_sent_changes(self, ana):
         UserPreferences.objects.create(user=ana, theme_mode="light", hub_alerts=True)
 
-        result = services.preferences_update(ctx_for(ana), PreferencesUpdateIn(hub_alerts=False))
+        result = preferences.preferences_update(ctx_for(ana), PreferencesUpdateIn(hub_alerts=False))
 
         assert result.model_dump() == {
             "theme_mode": "light",
@@ -71,7 +72,7 @@ class TestUpdating:
 
     def test_the_language_is_the_accounts_own(self, ana):
         """``User.language``: the one the mails, the hubs' invitations and the jump to a hub read."""
-        services.preferences_update(ctx_for(ana), PreferencesUpdateIn(language="en"))
+        preferences.preferences_update(ctx_for(ana), PreferencesUpdateIn(language="en"))
 
         ana.refresh_from_db()
         assert ana.language == "en"
@@ -83,7 +84,7 @@ class TestUpdating:
     def test_a_change_is_recorded_as_an_event(self, ana):
         from live.models import OutboxEvent
 
-        services.preferences_update(ctx_for(ana), PreferencesUpdateIn(hub_alerts=False))
+        preferences.preferences_update(ctx_for(ana), PreferencesUpdateIn(hub_alerts=False))
 
         assert list(OutboxEvent.objects.values_list("name", "scope_key")) == [
             (events.PREFERENCES_UPDATED, str(ana.pk))

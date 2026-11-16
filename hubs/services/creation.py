@@ -23,7 +23,7 @@ from live.slugs import (
     validate_hub_slug,
 )
 
-from accounts import services as account_services
+from accounts.services import hub_jump
 from base.refusals import fields_refused
 from hubs import events
 from hubs.models import BillingProfile, Hub, HubMember, Subscription
@@ -187,7 +187,7 @@ def _chosen_slug(slug: str, excluding: UUID | None = None) -> str:
             "max": HUB_SLUG_MAX_LENGTH,
         }
         raise fields_refused({"slug": message}) from None
-    if slug == account_services.PLATFORM_HOST_SLUG:
+    if slug == hub_jump.PLATFORM_HOST_SLUG:
         raise Conflict(_("This address is reserved. Choose another one."), code="hubs.slug_reserved")
     if addresses.slug_taken(slug, excluding=excluding):
         raise _slug_taken()

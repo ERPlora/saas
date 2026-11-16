@@ -18,8 +18,9 @@ from django.contrib.auth import SESSION_KEY, get_user_model
 from django.core import signing
 from django.test import Client
 
-from accounts import hub_pass, services
+from accounts import hub_pass
 from accounts.models import AuthExchangeCode
+from accounts.services import hub_jump
 from accounts.tests.conftest import AUTHENTICATION_RECORDS
 from hubs.models import HubMember
 from hubs.tests.conftest import add_member, create_business, make_user, plans  # noqa: F401 - the fixtures
@@ -174,8 +175,8 @@ class TestOnlyOnce:
         assert row.used_at is not None
         assert row.expires_at >= row.used_at + hub_pass.lifetime()
         for audience in (AuthExchangeCode.HUB_SESSION_AUDIENCE, AuthExchangeCode.HUB_ADMIN_AUDIENCE):
-            with pytest.raises(services.InvalidCode):
-                services.redeem_code(nonce, business.slug, audience=audience)
+            with pytest.raises(hub_jump.InvalidCode):
+                hub_jump.redeem_code(nonce, business.slug, audience=audience)
 
     def test_a_pass_spent_by_this_same_account_takes_it_on_where_it_was_going(self, client, ana, business):
         # The browser's back button or a reload: the session is already theirs, so nothing new opens.
