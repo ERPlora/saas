@@ -1,4 +1,4 @@
-"""The events of hubs (``<app>.<entity>.<fact>``): recorded by services.py, cited by live.py.
+"""The events of hubs (``<app>.<entity>.<fact>``): recorded by ``services``, cited by live.py.
 
 hubs reacts to no event of another app: ``events.py`` only names its own, and every one of them is
 recorded by some command (none is dead weight in ``live.py``).
@@ -17,7 +17,7 @@ from hubs.models import Hub, HubOwnershipTransfer
 from hubs.schemas import BusinessDeleteIn, BusinessOpenIn, ByIdIn, MemberInviteIn, MemberRoleIn, OwnershipTransferIn
 from hubs.tests.conftest import ctx_for, member_of
 
-SERVICES_SOURCE = (Path(events.__file__).parent / "services.py").read_text()
+SERVICES_SOURCE = "".join(path.read_text() for path in sorted(Path(services.__file__).parent.glob("*.py")))
 
 
 def test_every_event_is_named_app_entity_fact_and_belongs_to_hubs():

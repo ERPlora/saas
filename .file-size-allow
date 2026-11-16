@@ -38,7 +38,7 @@
 965 hubs/models.py saas#462
 1803 hubs/queries/__init__.py saas#462
 932 hubs/schemas.py saas#462
-3126 hubs/services.py saas#462
+3126 hubs/services/__init__.py saas#462
 1053 hubs/tests/test_check_custom_domains.py saas#462
 1791 hubs/tests/test_migrations.py saas#462
 1074 hubs/tests/test_services.py saas#462

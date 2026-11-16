@@ -1,4 +1,4 @@
-"""Events of hubs (``<app>.<entity>.<fact>``): recorded by services.py in the outbox, cited by live.py.
+"""Events of hubs (``<app>.<entity>.<fact>``): recorded by ``services`` in the outbox, cited by live.py.
 
 hubs reacts to no event of another app, so this module only names its own.
 """
