@@ -12,7 +12,7 @@
 775 accounts/frontend/pages/TwoFactorSettingsPage.test.ts saas#462
 584 accounts/frontend/pages/VerifyEmailPage.test.ts saas#462
 620 accounts/queries.py saas#462
-1747 accounts/services.py saas#462
+1747 accounts/services/__init__.py saas#462
 1076 accounts/tests/test_admin.py saas#462
 1080 accounts/tests/test_mfa.py saas#462
 613 assistant/admin.py saas#462
