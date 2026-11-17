@@ -75,7 +75,9 @@ periodo («Mensual» o «Anual · −n %»), sus líneas como en /pricing/ (tras
 del plan …», «Hasta 40 apps activadas a la vez», o «Todas las apps activadas a la vez» si el plan no tiene tope;
 después los mensajes al mes, «Dominio propio para tu web (www.tunegocio.com)» en los planes que lo incluyen y, al final, la prueba), «Tu plan actual» en el que se tiene y el botón de cada uno:
 «Mejorar a …», «Cambiar a …», «Cambiar a anual · …» o «Bajar a Gratis»; con el plan cancelado o una bajada
-programada, «Mantener el plan». Un negocio que el personal de ERPlora marcó en el admin (BILLING-F27) ve también,
+programada, «Mantener el plan». Cada tarjeta enseña sus cinco primeras líneas, con el botón justo debajo del
+precio; «Ver todas las características» despliega las demás en todas las tarjetas a la vez y «Ver menos» las
+recoge. Un negocio que el personal de ERPlora marcó en el admin (BILLING-F27) ve también,
 al final, el plan interno «Prueba de pago (interno)»; ningún otro negocio lo ve. Si el negocio tiene una factura sin pagar, arriba sale el aviso con «Pagar la factura» y no se
 vende nada a ese negocio.
 
@@ -278,7 +280,7 @@ Estado: hecho
 Actor: propietario
 Pantalla: Tienda, Pago seguro
 Pasos:
-1. En **Tienda › Planes**, con el negocio elegido arriba, el propietario ve cada plan con su precio sin IVA, sus usuarios, sus dispositivos y las apps que puede tener activadas a la vez, elige «Mensual» o «Anual» (que dice cuánto se ahorra) y pulsa «Mejorar a …».
+1. En **Tienda › Planes**, con el negocio elegido arriba, el propietario ve cada plan con su precio sin IVA y sus primeras características, como sus usuarios y sus dispositivos; «Ver todas las características» despliega el resto, entre ellas, cuando caen más allá de la quinta línea, las apps que puede tener activadas a la vez y el dominio propio. Elige «Mensual» o «Anual» (que dice cuánto se ahorra) y pulsa «Mejorar a …».
 2. Se abre el pago seguro: los datos de facturación si faltan y después el formulario de tarjeta de Stripe dentro del diálogo, titulado «Mejorar a …» con «Para … · se renueva cada mes» (o cada año).
 3. Mete la tarjeta; si el banco pide autenticación, la muestra Stripe en el mismo formulario.
 4. Al terminar, «Pagando…» hasta que llega la página del negocio, que avisa «… ya está en …» y cuya tarjeta Plan cambia en cuanto Stripe lo confirma. El negocio sigue funcionando todo el tiempo.
