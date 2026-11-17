@@ -10,13 +10,14 @@
 //     only stops the next charges.
 import { StatusPill } from '@erplora/ui/components';
 import { HubIcon } from '@erplora/ui/shell';
-import { IonButton, IonCard, IonCardContent, IonItem, IonLabel, IonList, IonNote } from '@ionic/vue';
+import { IonButton, IonCard, IonCardContent, IonNote } from '@ionic/vue';
 import { computed, useId } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { BillingInterval, PlanOut, StoreSubscriptionOut } from '../../../frontend/sdk-types';
 import { formatDate, formatEuros } from '../format';
 import { type Block, isFree } from '../store';
+import PlanFeatures from './PlanFeatures.vue';
 
 const props = defineProps<{
   plan: PlanOut;
@@ -42,6 +43,8 @@ const emit = defineEmits<{
   /** Undo the cancellation, or the downgrade that waits. */
   keep: [];
 }>();
+
+const expanded = defineModel<boolean>('expanded', { default: false });
 
 type Action = 'upgrade' | 'change' | 'switch' | 'downgrade' | 'keep';
 
@@ -191,7 +194,7 @@ function run(): void {
 <template>
   <ion-card
     class="plan-card"
-    :class="{ 'is-current': current }"
+    :class="{ 'is-current': current, 'is-featured': !!plan.featured_label }"
     :data-testid="`plan-${plan.slug}`"
   >
     <ion-card-content class="ion-padding plan-card__content">
@@ -224,7 +227,7 @@ function run(): void {
       </div>
       <p
         v-if="plan.description"
-        class="card-text"
+        class="card-text plan-card__description"
       >
         {{ plan.description }}
       </p>
@@ -234,25 +237,38 @@ function run(): void {
       >
         {{ price.amount }} <small>{{ price.suffix }}</small>
       </div>
-      <ion-list
-        lines="none"
-        class="plan-card__features"
-      >
-        <ion-item
-          v-for="(line, index) in lines"
-          :key="index"
-          :data-testid="`plan-${line.kind}`"
-        >
-          <HubIcon
-            slot="start"
-            name="ion:checkmark-outline"
-            aria-hidden="true"
-          />
-          <ion-label class="ion-text-wrap">
-            {{ line.text }}
-          </ion-label>
-        </ion-item>
-      </ion-list>
+      <div class="plan-card__actions">
+        <template v-if="action">
+          <ion-button
+            expand="block"
+            :fill="action.kind === 'upgrade' || action.kind === 'keep' ? 'solid' : 'outline'"
+            :class="{ 'btn-neutral': action.kind === 'downgrade' }"
+            :disabled="action.disabled"
+            :aria-describedby="action.hint ? hintId : undefined"
+            :data-testid="`plan-${action.kind}`"
+            @click="run"
+          >
+            <HubIcon
+              slot="start"
+              :name="ICONS[action.kind]"
+              aria-hidden="true"
+            />
+            {{ label }}
+          </ion-button>
+          <ion-note
+            v-if="action.hint && action.disabled"
+            :id="hintId"
+            class="plan-card__hint"
+            data-testid="plan-hint"
+          >
+            {{ action.hint }}
+          </ion-note>
+        </template>
+      </div>
+      <PlanFeatures
+        v-model:expanded="expanded"
+        :lines="lines"
+      />
       <p
         v-if="note"
         class="card-text plan-card__note"
@@ -260,55 +276,44 @@ function run(): void {
       >
         {{ note }}
       </p>
-      <div
-        v-if="action"
-        class="plan-card__actions"
-      >
-        <ion-button
-          expand="block"
-          :fill="action.kind === 'upgrade' || action.kind === 'keep' ? 'solid' : 'outline'"
-          :class="{ 'btn-neutral': action.kind === 'downgrade' }"
-          :disabled="action.disabled"
-          :aria-describedby="action.hint ? hintId : undefined"
-          :data-testid="`plan-${action.kind}`"
-          @click="run"
-        >
-          <HubIcon
-            slot="start"
-            :name="ICONS[action.kind]"
-            aria-hidden="true"
-          />
-          {{ label }}
-        </ion-button>
-        <ion-note
-          v-if="action.hint && action.disabled"
-          :id="hintId"
-          class="plan-card__hint"
-          data-testid="plan-hint"
-        >
-          {{ action.hint }}
-        </ion-note>
-      </div>
     </ion-card-content>
   </ion-card>
 </template>
 
 <style scoped>
 .plan-card {
+  grid-row: span 7;
+  display: grid;
+  grid-template-rows: repeat(7, auto);
+  grid-template-rows: subgrid;
+  /* Ionic's card containment disables subgrid on the host. */
+  contain: none;
+  min-inline-size: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
+  border: 1px solid var(--ep-border, var(--ion-border-color));
+  border-radius: 18px;
 }
 .plan-card.is-current {
-  border-color: color-mix(in oklab, var(--ion-color-primary) 45%, var(--ion-border-color));
+  border-color: color-mix(in oklab, var(--ion-color-primary) 55%, var(--ion-border-color));
+}
+.plan-card.is-featured {
+  border-color: color-mix(in oklab, var(--ion-color-primary) 70%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--ion-color-primary) 6%, var(--ion-card-background)),
+    var(--ion-card-background)
+  );
+  box-shadow: 0 24px 60px -30px color-mix(in oklab, var(--ion-color-primary) 65%, transparent);
 }
 .plan-card__content {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex: 1 1 auto;
+  grid-row: 1 / -1;
+  display: grid;
+  grid-template-rows: repeat(7, auto);
+  grid-template-rows: subgrid;
+  min-inline-size: 0;
 }
 .plan-card__head {
+  grid-row: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -316,72 +321,59 @@ function run(): void {
 }
 .card-title {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.125rem;
   font-weight: 600;
+  text-wrap: balance;
   color: var(--ion-text-color);
 }
 .card-text {
   margin: 0;
   font-size: 0.9rem;
   line-height: 1.45;
+  text-wrap: pretty;
   color: color-mix(in oklab, var(--ion-text-color) 75%, transparent);
 }
+.plan-card__description {
+  grid-row: 2;
+}
 .plan-card__price {
+  grid-row: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
   font-family: var(--font-display, inherit);
-  font-size: 1.6rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
   color: var(--ion-text-color);
 }
 .plan-card__price small {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 400;
-  color: color-mix(in oklab, var(--ion-text-color) 70%, transparent);
-}
-/* The features: Ionic's list, as compact as a checklist (no row height, no inset). */
-.plan-card__features {
-  margin: 0;
-  padding: 0;
-  background: transparent;
-}
-.plan-card__features ion-item {
-  --background: transparent;
-  --min-height: 0;
-  --padding-start: 0;
-  --inner-padding-end: 0;
-  --padding-top: 3px;
-  --padding-bottom: 3px;
-  font-size: 0.9rem;
-}
-.plan-card__features ion-item ion-label {
-  margin: 0;
-  font-size: 0.9rem;
   line-height: 1.4;
-  color: var(--ion-text-color);
-}
-.plan-card__features ion-icon {
-  margin: 2px 8px 0 0;
-  align-self: flex-start;
-  font-size: 16px;
-  color: var(--ep-success-text, var(--ion-color-success));
-}
-.plan-card__note {
-  color: var(--ion-text-color);
+  letter-spacing: normal;
+  color: color-mix(in oklab, var(--ion-text-color) 72%, transparent);
 }
 .plan-card__actions {
-  margin-top: auto;
-  padding-top: 4px;
+  grid-row: 4;
+  min-block-size: 44px;
 }
 .plan-card__actions ion-button {
+  min-block-size: 44px;
   margin: 0;
 }
 .plan-card__hint {
   display: block;
   margin: 6px 0 0;
   font-size: 0.82rem;
-  /* Ionic's note is a faded grey (2.43:1): the panel's secondary text instead. */
+  line-height: 1.35;
   --color: color-mix(in oklab, var(--ion-text-color) 72%, transparent);
+}
+.plan-card__note {
+  grid-row: 7;
+  color: var(--ion-text-color);
 }
 .btn-neutral {
   --color: var(--ion-text-color);
