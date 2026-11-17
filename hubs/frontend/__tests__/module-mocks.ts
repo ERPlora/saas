@@ -1,4 +1,4 @@
-// The module doubles most tests of the businesses panel start with, written once. `vi.mock` is hoisted in each test
+// The module doubles most tests of the panel (businesses, billing, account) start with, written once. `vi.mock` is hoisted in each test
 // file, so the file keeps its own call and hands the factory over (a factory cannot read the file's imports):
 //   vi.mock('@ionic/vue', async (original) => (await import('../__tests__/module-mocks')).ionicWithModalStub(original));
 //   vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/module-mocks')).shellWithToastSpies(original));
@@ -17,7 +17,9 @@ export async function ionicWithModalStub(original: Original) {
 export async function shellWithToastSpies(original: Original) {
   return {
     ...(await original<typeof import('@erplora/ui/shell')>()),
-    toastSuccess: vi.fn(() => Promise.resolve()),
-    toastError: vi.fn(() => Promise.resolve()),
+    toastSuccess: vi.fn(),
+    toastError: vi.fn(),
+    toastInfo: vi.fn(),
+    toastWarning: vi.fn(),
   };
 }

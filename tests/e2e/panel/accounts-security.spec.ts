@@ -13,7 +13,7 @@ import { createAccountWarm, type Credentials, removeAccountsWarm } from './accou
 import { expect, test } from './fixtures';
 import { watchPageErrors } from './page-events';
 import { PANEL_MFA_URL, PANEL_URL } from './project';
-import { captureAtEverySize, sidewaysScroll } from './screen';
+import { captureAtEverySize, sidewaysScroll, toast } from './screen';
 import { sessionOf, signIn, signInThroughPage } from './session';
 
 const atEverySize = captureAtEverySize('APP-ACCOUNTS-2');
@@ -340,7 +340,7 @@ test.describe('the open sessions (the panel as production has it)', () => {
       // One: the phone, with its own button (a browser: no question asked).
       const phoneRow = await ownSessionRow(phone.request);
       await page.getByTestId(`sessions-row-${phoneRow}-close`).click();
-      await expect(page.locator('ion-toast').filter({ hasText: 'Session closed on' })).toBeVisible();
+      await expect(toast(page, 'Session closed on')).toBeVisible();
       await expect(rows).toHaveCount(2);
       expect((await sessionOf(phone.request)).user).toBeNull();
       expect((await sessionOf(tablet.request)).user).not.toBeNull();

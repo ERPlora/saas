@@ -51,7 +51,7 @@ watch(open, (isOpen) => {
 async function send(): Promise<void> {
   try {
     const invited = await invite.run({ hub_id: props.business.id, email: email.value.trim(), role: role.value, message: message.value.trim() });
-    void toastSuccess(t('hubs.members.inviteModal.sent', { email: invited.email }));
+    toastSuccess(t('hubs.members.inviteModal.sent', { email: invited.email }));
     open.value = false;
   } catch {
     // `invite.error`: the dialog shows it.

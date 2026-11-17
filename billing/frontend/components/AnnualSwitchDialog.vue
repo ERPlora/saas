@@ -76,7 +76,7 @@ async function confirm(): Promise<void> {
     });
     const params = { business: props.business.name, plan: plan.name, period: periodName.value };
     const waiting = subscription.scheduled_change;
-    void toastSuccess(
+    toastSuccess(
       waiting
         ? t('billing.plans.switchScheduled', { ...params, date: formatDate(waiting.starts_at, locale.value) })
         : t('billing.plans.switched', params),

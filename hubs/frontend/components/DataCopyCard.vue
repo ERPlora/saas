@@ -60,7 +60,7 @@ async function download(copy: DataCopyOut): Promise<void> {
     const { url } = await link.run({ business_id: props.business.id, copy_id: copy.id });
     browser.assign(url);
   } catch {
-    void toastError(text(link.error.value));
+    toastError(text(link.error.value));
   } finally {
     opening.value = null;
   }

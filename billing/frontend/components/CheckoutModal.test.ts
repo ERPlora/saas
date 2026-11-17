@@ -7,10 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { h, reactive, ref } from 'vue';
 import type { Router } from 'vue-router';
 
-vi.mock('@erplora/ui/shell', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
-  toastSuccess: vi.fn(() => Promise.resolve()),
-}));
+vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/frontend/__tests__/module-mocks')).shellWithToastSpies(original));
 vi.mock('../stripe-js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../stripe-js')>()),
   loadStripeJs: vi.fn(),

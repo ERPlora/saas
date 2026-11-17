@@ -39,7 +39,7 @@ async function signOut(): Promise<void> {
   } catch (error) {
     console.error('saas: sign out failed', error);
     signingOut.value = false;
-    void toastError(t('userMenu.logoutFailed'));
+    toastError(t('userMenu.logoutFailed'));
   }
 }
 </script>

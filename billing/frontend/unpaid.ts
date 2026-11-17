@@ -59,7 +59,7 @@ export function useUnpaidInvoices() {
   async function sayPaid(id: string): Promise<void> {
     try {
       const invoice = await client.api.call('billing.invoice.get', { id });
-      if (invoice.payment_status === 'paid') void toastSuccess(t('billing.notice.paid', { name: invoice.business.name }));
+      if (invoice.payment_status === 'paid') toastSuccess(t('billing.notice.paid', { name: invoice.business.name }));
     } catch (error) {
       console.error('billing: an invoice that left the unpaid ones could not be read', error);
     } finally {
