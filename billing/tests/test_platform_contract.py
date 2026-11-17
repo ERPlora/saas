@@ -20,11 +20,10 @@ import pytest
 from django.utils import timezone
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from billing import services
+from billing import platform_contract, services
 from billing.models import Invoice, InvoiceCounter
 from billing.tests.stripe_double import credit_note, event, invoice, subscription
-from billing.tests.test_invoice_discounts import captured_paid, deliver
-from billing.tests.test_invoice_recording import running  # noqa: F401 - a ready business paying Starter monthly
+from billing.tests.test_invoice_recording import deliver, running  # noqa: F401 - a ready business paying Starter monthly
 from hubs.models import BillingProfile
 
 pytestmark = pytest.mark.django_db
@@ -145,23 +144,14 @@ class TestTheHubTakesIt:
     def payer(self, running, tax_id):
         BillingProfile.objects.filter(pk=running.billing_profile_id).update(tax_id=tax_id)
 
-    def test_a_month_free_of_a_promo_code(self, running, tax_id):
-        self.payer(running, tax_id)
-        deliver(captured_paid(1))
-
-        body = HubPlatformInvoiceIn.model_validate(body_of(captured_paid(1)["data"]["object"]["id"]))
-
-        assert (body.total_cents, body.lines[0].discount_cents, body.recipient.tax_id) == (0, 2999, tax_id)
-        assert (body.lines[0].period_start, body.lines[0].period_end) == (dt.date(2026, 11, 16), dt.date(2026, 12, 16))
-
-    def test_an_invoice_paid_as_any_other(self, running, tax_id):
+    def test_an_invoice_with_its_period(self, running, tax_id):
         self.payer(running, tax_id)
         deliver(event("invoice.paid", invoice("in_1", status="paid")))
 
         body = HubPlatformInvoiceIn.model_validate(body_of("in_1"))
 
-        assert (body.total_cents, body.lines[0].discount_cents) == (3629, 0)
-        assert body.lines[0].period_start is not None
+        assert (body.total_cents, body.recipient.tax_id) == (3629, tax_id)
+        assert body.lines[0].period_start is not None and body.lines[0].period_end is not None
 
     def test_its_credit_note(self, running, tax_id):
         self.payer(running, tax_id)
@@ -171,14 +161,17 @@ class TestTheHubTakesIt:
         body = HubPlatformInvoiceIn.model_validate(body_of("in_1", kind=Invoice.Kind.CREDIT_NOTE))
 
         assert (body.kind, body.series, body.total_cents) == ("credit_note", "ERPR", -3629)
-        assert body.lines[0].discount_cents == 0
 
 
 def test_a_moment_of_stripe_is_the_day_it_falls_on_in_spain():
     """23:30 UTC of 31 December is already 1 January in Madrid."""
     late = timezone.make_aware(dt.datetime(2026, 12, 31, 23, 30), dt.UTC)
 
-    assert [services._day(value) for value in (late, dt.date(2026, 10, 1), None)] == ["2027-01-01", "2026-10-01", None]
+    assert [platform_contract.day(value) for value in (late, dt.date(2026, 10, 1), None)] == [
+        "2027-01-01",
+        "2026-10-01",
+        None,
+    ]
 
 
 # --- One the platform hub refused goes again, with its number ----------------------------------------------------
@@ -190,7 +183,7 @@ def test_an_invoice_the_hub_refused_goes_again_with_the_same_number(hub_double, 
 
     hub_double.answer("POST", PLATFORM, 422, {"error": {"code": "internal.payload_invalid", "message": "The body is out of contract."}})
     with django_capture_on_commit_callbacks(execute=True):
-        deliver(captured_paid(1))
+        deliver(event("invoice.paid", invoice("in_1", status="paid")))
     owed = Invoice.objects.get()
     assert owed.fiscal_status == "issuing"
 

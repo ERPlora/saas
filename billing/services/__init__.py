@@ -48,7 +48,7 @@ from live.outbox import notify, record_event
 from apps.models import Module
 from base.navigation import BILLING, BUSINESSES
 from base.refusals import fields_refused
-from billing import events, queries, stripe_service, stripe_tax_ids, stripe_test_clocks, vat, vies
+from billing import events, platform_contract, queries, stripe_service, stripe_tax_ids, stripe_test_clocks, vat, vies
 from billing.models import (
     CheckoutAttempt,
     Invoice,
@@ -4771,14 +4771,6 @@ def platform_backoff(attempts: int) -> timedelta:
     return min(PLATFORM_FIRST_WAIT * 2 ** max(attempts - 1, 0), PLATFORM_LONGEST_WAIT)
 
 
-def _day(value) -> str | None:
-    """A day of the platform hub's contract, ``YYYY-MM-DD``: a moment (a period of Stripe) is the day it falls on in
-    Spain, never the moment itself, which the hub refuses."""
-    if isinstance(value, datetime):
-        value = timezone.localdate(value, timezone.get_default_timezone())
-    return value.isoformat() if value is not None else None
-
-
 def platform_payload(invoice: Invoice) -> dict:
     """The body of ``POST /internal/platform/invoices``: the whole invoice, so the platform hub issues it in
     VeriFactu and prints its PDF without asking the SaaS anything. Keyed by ``id`` (idempotent)."""
@@ -4788,7 +4780,7 @@ def platform_payload(invoice: Invoice) -> dict:
         "kind": invoice.kind,
         "series": invoice.series,
         "number": invoice.number,
-        "issued_on": _day(invoice.issued_on),
+        "issued_on": platform_contract.day(invoice.issued_on),
         "stripe_invoice_id": invoice.stripe_invoice_id,
         "stripe_source_id": invoice.stripe_source_id,
         "rectification": (
@@ -4827,8 +4819,8 @@ def platform_payload(invoice: Invoice) -> dict:
                 "item_slug": line.item_slug,
                 "quantity": line.quantity,
                 "proration": line.proration,
-                "period_start": _day(line.period_start),
-                "period_end": _day(line.period_end),
+                "period_start": platform_contract.day(line.period_start),
+                "period_end": platform_contract.day(line.period_end),
                 "tax_category": line.tax_category_id,
                 "tax_treatment": line.tax_treatment or invoice.tax_treatment,
                 "tax_rate": str(line.tax_rate),
@@ -4840,7 +4832,7 @@ def platform_payload(invoice: Invoice) -> dict:
             for line in invoice.lines.order_by("position")
         ],
         "rectifies": (
-            {"id": str(rectified.id), "number": rectified.number, "issued_on": _day(rectified.issued_on)}
+            {"id": str(rectified.id), "number": rectified.number, "issued_on": platform_contract.day(rectified.issued_on)}
             if rectified is not None
             else None
         ),
