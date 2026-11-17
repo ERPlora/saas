@@ -122,3 +122,38 @@ def test_without_codes_of_free_months_the_trial_codes_go_back_and_forth():
 
     call_command("migrate", "billing", verbosity=0)
     assert PromoCode.objects.values_list("code", "trial_days", "free_months").get() == ("canary", 30, None)
+
+
+def _insert_without(table: str, new_columns: set[str], source_id, **replaced) -> None:
+    """A copy of row ``source_id`` written as the code before ``new_columns`` writes it: every other column, with a
+    new id (and ``replaced`` values), so the database fills the new ones."""
+    with connection.cursor() as cursor:
+        columns = [
+            column.name
+            for column in connection.introspection.get_table_description(cursor, table)
+            if column.name not in new_columns | {"id"} | set(replaced)
+        ]
+        names = ", ".join(["id", *replaced, *columns])
+        values = ", ".join(["gen_random_uuid()", *(["%s"] * len(replaced)), *columns])
+        cursor.execute(
+            f"INSERT INTO {table} ({names}) SELECT {values} FROM {table} WHERE id = %s",
+            [*replaced.values(), source_id],
+        )
+
+
+@pytest.mark.django_db
+def test_rows_the_code_before_free_months_writes_still_go_in(shop):
+    """During a deploy the previous release still records invoices and promo codes used: its INSERTs carry none of
+    the new columns, and the database fills them (``db_default``) instead of refusing the row."""
+    from billing.models import Invoice, InvoiceLine, PromoCode, PromoRedemption
+
+    invoice = Invoice.objects.create(stripe_invoice_id="in_old", business_name="Old", net_cents=100, total_cents=100)
+    line = InvoiceLine.objects.create(invoice=invoice, position=1, net_cents=100, total_cents=100)
+    used = PromoRedemption.objects.create(promo=PromoCode.objects.create(code="old", trial_days=30), hub=shop)
+    other = PromoCode.objects.create(code="older", trial_days=30)
+
+    _insert_without("billing_invoiceline", {"discount_cents"}, line.id, position=2)
+    _insert_without("billing_promoredemption", {"stripe_subscription_id", "free_until"}, used.id, promo_id=other.id)
+
+    assert InvoiceLine.objects.get(invoice=invoice, position=2).discount_cents == 0
+    assert PromoRedemption.objects.get(promo=other).stripe_subscription_id == ""

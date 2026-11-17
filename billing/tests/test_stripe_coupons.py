@@ -1,11 +1,12 @@
 """The Stripe coupons of the promo codes of free months (``billing.stripe_coupons``).
 
-One coupon per number of months, with a fixed id (``free-months-<N>``): 100 % off, repeating for N months. It is
-created the first time a code of N months is used and reused after that, in test and live mode alike, so nothing
-is stored on our side. One that another checkout created meanwhile is the same coupon.
+One coupon per number of months, with a fixed id (``free-months-<N>``): 100 % off, repeating for N months. Every
+checkout of a code of N months asks Stripe to create it: the first one does, and Stripe answers the others that it
+exists already, which is no error (no ERROR in the log). Nothing is stored on our side, in test and live mode alike.
 """
 
 import json
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -16,10 +17,13 @@ from billing.stripe_service import StripeRefused, StripeUnavailable
 from billing.tests.stripe_double import connection_error, invalid_request
 
 
-def test_the_coupon_of_n_months_is_created_on_its_first_use(stripe_double):
+def errors(caplog) -> list[str]:
+    return [record.getMessage() for record in caplog.records if record.levelno >= logging.ERROR]
+
+
+def test_the_coupon_of_n_months_is_created_on_its_first_use_without_an_error(stripe_double, caplog):
     assert ensure_free_months_coupon(6) == "free-months-6"
 
-    assert stripe_double.last("coupons.retrieve").args == ("free-months-6",)
     assert stripe_double.last("coupons.create").params == {
         "id": "free-months-6",
         "percent_off": 100,
@@ -27,14 +31,18 @@ def test_the_coupon_of_n_months_is_created_on_its_first_use(stripe_double):
         "duration_in_months": 6,
         "name": "6 months free",
     }
+    assert not stripe_double.calls_to("coupons.retrieve")
+    assert errors(caplog) == []
 
 
-def test_a_coupon_that_exists_is_used_as_it_is(stripe_double):
+def test_once_it_exists_stripe_says_so_and_that_is_no_error(stripe_double, caplog):
     ensure_free_months_coupon(3)
 
     assert ensure_free_months_coupon(3) == "free-months-3"
-    assert len(stripe_double.calls_to("coupons.create")) == 1
-    assert len(stripe_double.calls_to("coupons.retrieve")) == 2
+    assert ensure_free_months_coupon(3) == "free-months-3"
+    assert len(stripe_double.calls_to("coupons.create")) == 3
+    assert stripe_double.coupons["free-months-3"]["duration_in_months"] == 3
+    assert errors(caplog) == []
 
 
 def test_each_number_of_months_has_its_own_coupon(stripe_double):
@@ -43,26 +51,20 @@ def test_each_number_of_months_has_its_own_coupon(stripe_double):
     assert [call.params["duration_in_months"] for call in stripe_double.calls_to("coupons.create")] == [1, 12]
 
 
-def test_a_coupon_another_checkout_created_meanwhile_is_the_same(stripe_double):
-    stripe_double.answer("coupons.create", invalid_request("resource_already_exists", "Coupon already exists."))
-
-    assert ensure_free_months_coupon(6) == "free-months-6"
-
-
-def test_any_other_refusal_is_not_taken_for_a_coupon(stripe_double):
+def test_any_other_refusal_is_not_taken_for_a_coupon(stripe_double, caplog):
     stripe_double.answer("coupons.create", invalid_request("parameter_invalid_integer", "Invalid integer"))
 
     with pytest.raises(StripeRefused):
         ensure_free_months_coupon(6)
 
+    assert errors(caplog)
+
 
 def test_stripe_away_is_said_as_such(stripe_double):
-    stripe_double.answer("coupons.retrieve", connection_error())
+    stripe_double.answer("coupons.create", connection_error())
 
     with pytest.raises(StripeUnavailable):
         ensure_free_months_coupon(6)
-
-    assert not stripe_double.calls_to("coupons.create")
 
 
 # --- When the free months of a subscription end --------------------------------------------------------

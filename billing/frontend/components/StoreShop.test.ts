@@ -300,7 +300,7 @@ describe('StoreShop', () => {
     await flush();
     await s.el('plan-upgrade').trigger('click');
     const notice = mount({ render: () => s.wrapper.findComponent(CheckoutModal).vm.$slots.notice?.({}) }, { global: { plugins: [s.i18n] } });
-    expect(notice.text()).toBe('6 months free, then €29.99/month. Your card is not charged until then.');
+    expect(notice.text()).toBe('6 months free, then €29.99/month + VAT. Your card is not charged until then.');
   });
 
   it('the card of the same payer declined: the checkout says whose', async () => {

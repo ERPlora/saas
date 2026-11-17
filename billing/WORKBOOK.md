@@ -335,7 +335,7 @@ Pasos:
 1. Una persona de ERPlora crea un código en el admin: el código, los días de prueba (de 1 a 365) o los meses gratis (de 1 a 12), uno de los dos, si está activo, hasta cuándo vale, cuántos usos y una nota.
 2. El propietario, en el pago seguro de un negocio que aún no paga, pulsa «¿Tienes un código promocional?», lo escribe y pulsa «Aplicar». Con días de prueba: «Código …: n días gratis antes del primer cobro». Con meses gratis: «Código …: n meses gratis; después, el precio normal del plan».
 3. Con días de prueba, paga: el primer cobro llega al acabar esos días.
-4. Con meses gratis, elige el plan mensual y el pago seguro avisa «n meses gratis; después, … €/mes. No se carga nada en tu tarjeta hasta entonces.»; da su tarjeta y el plan empieza ya. Cada mes llega su factura de 0 € (el precio del plan con todo su descuento), numerada y registrada en VeriFactu como cualquier otra, y el mes siguiente al último gratis se cobra el precio normal sin hacer nada.
+4. Con meses gratis, elige el plan mensual y el pago seguro avisa «n meses gratis; después, … €/mes + IVA. No se carga nada en tu tarjeta hasta entonces.»; da su tarjeta y el plan empieza ya. Cada mes llega su factura de 0 € (el precio del plan con todo su descuento), numerada y registrada en VeriFactu como cualquier otra, y el mes siguiente al último gratis se cobra el precio normal sin hacer nada.
 5. Mientras duran, **Facturación › Suscripciones** dice «Gratis hasta el …» y la próxima factura a 0 €; cada factura dice su descuento en la línea.
 Entra: el código (sin distinguir mayúsculas ni espacios).
 Sale: los días de prueba en la suscripción, o el descuento del 100 % de esos meses en Stripe y cuándo acaban; el uso contado una vez por negocio y por quien paga.

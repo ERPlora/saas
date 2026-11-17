@@ -61,7 +61,7 @@ test.describe('promo codes of free months', () => {
     const dialog = page.getByTestId('checkout-modal');
     const notice = dialog.getByTestId('checkout-free-months');
     await atEverySize(page, 'checkout', async () => {
-      await expect(notice).toHaveText('6 months free, then €29.99/month. Your card is not charged until then.');
+      await expect(notice).toHaveText('6 months free, then €29.99/month + VAT. Your card is not charged until then.');
       await expect(dialog.getByTestId('stripe-double')).toBeVisible();
     });
     expect(started).toEqual([{ hub_id: cafe, plan: 'starter', interval: 'month', promo_code: 'e2e_testers' }]);

@@ -49,20 +49,17 @@ class StripeDouble:
         self.tax_rates: list[dict] = []
         #: Each customer's tax ids (``customers.tax_ids.list``/``create``).
         self.customer_tax_ids: dict[str, list[dict]] = {}
-        #: The account's coupons by id (``coupons.retrieve``/``create``): none until a code of free months makes one.
+        #: The account's coupons by id (``coupons.create``): none until a code of free months makes one.
         self.coupons: dict[str, dict] = {}
-        self._answers.update({"coupons.retrieve": [self._coupon], "coupons.create": [self._new_coupon]})
+        self._answers.update({"coupons.create": [self._new_coupon]})
         self.v1 = _Node(self, "")
 
-    def _coupon(self, call: Call) -> dict | BaseException:
-        coupon_id = call.args[0]
-        if coupon_id not in self.coupons:
+    def _new_coupon(self, call: Call) -> dict | BaseException:
+        """A new coupon, or Stripe's refusal of an id the account already has (what it answers, captured)."""
+        if call.params["id"] in self.coupons:
             return stripe.InvalidRequestError(
-                f"No such coupon: '{coupon_id}'", param="id", code="resource_missing", http_status=404
+                "Coupon already exists.", param="id", code="resource_already_exists", http_status=400
             )
-        return self.coupons[coupon_id]
-
-    def _new_coupon(self, call: Call) -> dict:
         coupon = {"object": "coupon", "valid": True, **call.params}
         self.coupons[coupon["id"]] = coupon
         return coupon

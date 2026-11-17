@@ -164,7 +164,7 @@
       "change": "Cambiar",
       "secure": "Pago seguro",
       "declined": "La tarjeta con la que se paga {name} fue rechazada: paga con otra.",
-      "freeMonths": "1 mes gratis; después, {price}/mes. No se carga nada en tu tarjeta hasta entonces. | {months} meses gratis; después, {price}/mes. No se carga nada en tu tarjeta hasta entonces.",
+      "freeMonths": "1 mes gratis; después, {price}/mes + IVA. No se carga nada en tu tarjeta hasta entonces. | {months} meses gratis; después, {price}/mes + IVA. No se carga nada en tu tarjeta hasta entonces.",
       "loading": "Cargando el pago seguro…",
       "paying": "Pagando…",
       "terms": "Al pagar aceptas las Condiciones. Puedes cancelar cuando quieras desde Facturación.",

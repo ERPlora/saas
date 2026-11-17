@@ -85,7 +85,7 @@ class TestTheCheckout:
         params = stripe_double.last("checkout.sessions.create").params
         assert "discounts" not in params and "payment_method_collection" not in params
         assert abs(params["subscription_data"]["trial_end"] - (timezone.now() + timedelta(days=60)).timestamp()) < 60
-        assert not stripe_double.calls_to("coupons.retrieve")
+        assert not stripe_double.calls_to("coupons.create")
 
     def test_the_yearly_billing_is_refused_before_stripe_is_asked(self, shop, owner, testers, stripe_double):
         error = refused("billing.promo_monthly_only", lambda: start(owner, shop, plan="starter", interval="year",
@@ -93,7 +93,7 @@ class TestTheCheckout:
 
         assert error.status == 409
         assert not stripe_double.calls_to("checkout.sessions.create")
-        assert not stripe_double.calls_to("coupons.retrieve")
+        assert not stripe_double.calls_to("coupons.create")
 
     def test_a_module_does_not_take_the_code(self, shop, owner, testers, inventory, stripe_double):
         start(owner, shop, module="inventory", promo_code="testers")
@@ -103,7 +103,7 @@ class TestTheCheckout:
         assert "promo_code" not in params["metadata"]
 
     def test_stripe_away_while_finding_the_coupon_charges_nothing(self, shop, owner, testers, stripe_double):
-        stripe_double.answer("coupons.retrieve", connection_error())
+        stripe_double.answer("coupons.create", connection_error())
 
         error = refused("billing.stripe_unavailable", lambda: start(owner, shop, plan="starter", promo_code="testers"))
 

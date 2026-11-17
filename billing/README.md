@@ -147,6 +147,11 @@ la suscripción viva con fin futuro), cambiar de plan, pasar a anual o comprar u
 `billing.free_months_active` con la fecha; cancelar sí se puede. `billing.subscription.list` da `free_until` y la
 próxima factura a 0 mientras cubre la renovación.
 
+El tope `max_redemptions` y el «una vez por pagador» se comprueban al abrir la sesión de pago (el uso se cuenta al
+completarse, con el tope en el `WHERE` del `UPDATE`): dos sesiones abiertas a la vez, la de dos probadores con un
+código de tope 1 o la de un mismo pagador para dos negocios, pueden llevarse las dos los meses gratis, como ya pasaba
+con los días de prueba. No se deshace ninguna suscripción; está en ERPlora/saas#492.
+
 Cada mes Stripe emite una factura de 0 €: la línea trae su `amount` antes del descuento y `discount_amounts` con lo
 que quitó, y la factura, `subtotal` > 0 y `total` 0 (capturado de la cuenta de test en
 `tests/fixtures/free_months/`). `billing.invoice.record` registra la de total 0 con subtotal mayor que 0

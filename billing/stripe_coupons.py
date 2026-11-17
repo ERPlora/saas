@@ -1,7 +1,8 @@
 """The Stripe coupons of the promo codes of free months: one per number of months, 100 % off for that many months.
 
 Its id is fixed (``free-months-<N>``), so the same code works with the test and the live account without storing
-anything: the coupon is made the first time a code of N months is used and found after that.
+anything: every checkout of a code of N months asks Stripe to create it, and from the second one on Stripe answers
+that it exists already, which is the expected answer and no error.
 """
 
 from datetime import UTC, datetime
@@ -18,28 +19,29 @@ def free_months_coupon_id(months: int) -> str:
 def ensure_free_months_coupon(months: int) -> str:
     """The id of the coupon of ``months`` free months, created when Stripe does not have it yet."""
     coupon_id = free_months_coupon_id(months)
-    try:
-        stripe_service._call(stripe_service.client().v1.coupons.retrieve, coupon_id)
-        return coupon_id
-    except stripe_service.StripeRefused as refused:
-        if refused.code != "resource_missing":
-            raise
-    try:
-        stripe_service._call(
-            stripe_service.client().v1.coupons.create,
-            params={
-                "id": coupon_id,
-                "percent_off": 100,
-                "duration": "repeating",
-                "duration_in_months": months,
-                "name": f"{months} months free",
-            },
-        )
-    except stripe_service.StripeRefused as refused:
-        # Another checkout created it between the two calls: it is the same coupon.
-        if refused.code != "resource_already_exists":
-            raise
+    stripe_service._call(
+        _create_unless_there,
+        params={
+            "id": coupon_id,
+            "percent_off": 100,
+            "duration": "repeating",
+            "duration_in_months": months,
+            "name": f"{months} months free",
+        },
+    )
     return coupon_id
+
+
+def _create_unless_there(*, params: dict, options: dict) -> object:
+    """``coupons.create``, with Stripe's «already exists» taken as the coupon itself: it is the usual answer, and
+    ``stripe_service`` would log every refusal as an ERROR."""
+    try:
+        return stripe_service.client().v1.coupons.create(params=params, options=options)
+    except Exception as refused:
+        # Read by its code: only stripe_service imports the SDK, and any other failure goes back to it as it came.
+        if getattr(refused, "code", None) != "resource_already_exists":
+            raise
+        return {"id": params["id"], "object": "coupon"}
 
 
 def free_months_end(live: dict) -> datetime | None:

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:a25b8af8097f48f4aee5d2f37144bde087a731e5367c2e9bc0e25fb1c34d64a1 -->
+<!-- generated from WORKBOOK.md sha256:a52f65f67b62ca51bc5de1ed62ff386142341ea4bf6ecb0ec8cf98ffa14b0a25 -->
 
 ## What it is for and who it is for
 
@@ -321,7 +321,7 @@ Steps:
 1. A person of ERPlora creates a code in the admin: the code, the trial days (1 to 365) or the free months (1 to 12), one of the two, whether it is active, until when it is valid, how many uses and a note.
 2. The owner, in the secure payment of a business that does not pay yet, taps "Have a promo code?", types it and taps "Apply". With trial days: "Code …: n free days before the first charge". With free months: "Code …: n months free, then the plan's regular price".
 3. With trial days, pay: the first charge comes when those days end.
-4. With free months, choose the monthly plan and the secure payment warns "n months free, then … €/month. Your card is not charged until then."; give the card and the plan starts now. Each month brings its invoice of €0 (the plan's price with all of it discounted), numbered and registered in VeriFactu as any other, and the month after the last free one is charged at the regular price without doing anything.
+4. With free months, choose the monthly plan and the secure payment warns "n months free, then … €/month + VAT. Your card is not charged until then."; give the card and the plan starts now. Each month brings its invoice of €0 (the plan's price with all of it discounted), numbered and registered in VeriFactu as any other, and the month after the last free one is charged at the regular price without doing anything.
 5. While they last, **Billing › Subscriptions** says "Free until …" and the next invoice at €0; each invoice says its discount on the line.
 In: the code (case and spaces do not matter).
 Out: the trial days on the subscription, or the 100 % discount of those months in Stripe and when they end; the use counted once per business and per payer.
