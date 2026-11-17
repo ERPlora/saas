@@ -1,18 +1,15 @@
-"""The 0 € invoice of a free month is in every place an invoice is: the panel's list, its page, its PDF and CSV, the
-admin (list and ZIP of PDFs), the run that posts what the platform hub still owes, the payer's mail and the report for
-the accountant. Each test records it through Stripe's webhook, as Stripe sent it (``fixtures/free_months/``).
+"""The 0 € invoice of a discount of all of it is in every place an invoice is: the panel's list, its page, its PDF and
+CSV, the admin (list and ZIP of PDFs), the run that posts what the platform hub still owes, the payer's mail and the
+report for the accountant. Each test records it through Stripe's webhook, as Stripe sent it (``fixtures/discounts/``).
 """
 
 import csv
 import io
-import json
 import zipfile
-from pathlib import Path
 
 import pytest
 from django.core import mail
 from django.core.management import call_command
-from django.test import Client
 from django.utils import timezone
 
 from billing import queries, services
@@ -20,12 +17,12 @@ from billing.models import Invoice
 from billing.queries.billing_report import quarter_of
 from billing.schemas import InvoiceByIdIn, InvoiceFilterIn, InvoiceListIn
 from billing.tests.conftest import ctx_for
-from billing.tests.stripe_double import signed, subscription
-from billing.tests.test_invoice_recording import running  # noqa: F401 - a ready business paying Starter monthly
+from billing.tests.stripe_captured import paid
+from billing.tests.stripe_double import subscription
+from billing.tests.test_invoice_recording import deliver
 
 pytestmark = pytest.mark.django_db
 
-FIXTURES = Path(__file__).parent / "fixtures" / "free_months"
 PDF = b"%PDF-1.7\n% ERPlora test\n%%EOF\n"
 
 
@@ -36,17 +33,10 @@ def _stripe(stripe_double, issuer_identity):
 
 
 @pytest.fixture
-def zero(request) -> Invoice:
-    """The invoice of the first free month of Panadería López (Starter, ``sub_1``), recorded from Stripe's event."""
-    request.getfixturevalue("running")
-    payload = json.loads((FIXTURES / "invoice_paid_month_1.json").read_text())
-    stripe_invoice = payload["data"]["object"]
-    stripe_invoice["parent"]["subscription_details"]["subscription"] = "sub_1"
-    stripe_invoice["lines"]["data"][0]["pricing"]["price_details"]["price"] = "price_starter_month"
-    body, header = signed(payload)
-    response = Client().post("/webhooks/stripe/", body, content_type="application/json",
-                             HTTP_STRIPE_SIGNATURE=header, HTTP_HOST="localhost:8001")
-    assert response.json()["status"] == "processed", response.content
+def zero(running) -> Invoice:
+    """The invoice of the first month of Panadería López (Starter, ``sub_1``) with all of it discounted, recorded from
+    Stripe's event."""
+    assert deliver(paid("repeating_100/invoice_paid_1.json")) == "processed"
     return Invoice.objects.get(total_cents=0)
 
 

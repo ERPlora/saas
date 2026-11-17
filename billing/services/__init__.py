@@ -27,7 +27,7 @@ from functools import partial
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, NamedTuple
 
 from django.conf import settings
 from django.core.cache import cache
@@ -48,7 +48,7 @@ from live.outbox import notify, record_event
 from apps.models import Module
 from base.navigation import BILLING, BUSINESSES
 from base.refusals import fields_refused
-from billing import events, queries, stripe_service, stripe_test_clocks, vat, vies
+from billing import events, platform_contract, queries, stripe_service, stripe_tax_ids, stripe_test_clocks, vat, vies
 from billing.models import (
     CheckoutAttempt,
     Invoice,
@@ -85,7 +85,7 @@ from billing.schemas import (
     VatCheckIn,
     VatCheckOut,
 )
-from billing.services import invoice_discounts, promo_codes
+from billing.services import discounts, invoice_discounts, promo_codes, promo_holds
 from billing.stripe_checkout import (
     EMBEDDED_UI_MODE,
     KIND_METADATA_KEY,
@@ -1306,13 +1306,8 @@ def _attach_cleared_tax_id(customer: str, profile) -> None:
     tax_type = vat.tax_id_type_for(profile.billing_country)
     if not clearance.may_travel_to_stripe or not tax_type:
         return
-    if any(
-        existing.get("value") == clearance.vat_number
-        for existing in stripe_service.customer_tax_ids(customer)
-    ):
-        return
-    stripe_service.add_customer_tax_id(
-        customer, tax_type=tax_type, value=clearance.vat_number
+    stripe_tax_ids.attach(
+        customer, tax_type=tax_type, number=clearance.vat_number, country=profile.billing_country
     )
 
 
@@ -1351,11 +1346,7 @@ def checkout_start(ctx: OperationContext, data: CheckoutStartIn) -> dict:
         return _preview(hub, subscription, sale, data.promo_code)
     tax_rates = price_sale(hub, sale, recurring_net=sale.net)
     customer = hub.billing_profile.stripe_customer_id
-    promo = (
-        queries.redeemable_promo(data.promo_code, hub=hub, customer=customer)
-        if sale.kind == "plan"
-        else None
-    )
+    promo = promo_codes.checkout_promo(data.promo_code, hub=hub, customer=customer) if sale.kind == "plan" else None
     with stripe_errors():
         terms = promo_codes.checkout_terms(sale, subscription, promo, timezone.now())
     attempt = _checkout_attempt(ctx, hub, sale, tax_rates, terms)
@@ -1391,6 +1382,7 @@ def _expire_other_sessions(hub: Hub, selection: str) -> None:
         CheckoutAttempt.objects.filter(pk=attempt.pk).update(
             status=CheckoutAttempt.Status.EXPIRED, updated_at=timezone.now()
         )
+        promo_holds.release(attempt=attempt)
 
 
 def _checkout_attempt(ctx, hub, sale: Sale, tax_rates, terms: promo_codes.CheckoutTerms) -> CheckoutAttempt:
@@ -1420,6 +1412,8 @@ def _checkout_attempt(ctx, hub, sale: Sale, tax_rates, terms: promo_codes.Checko
         promo_code=terms.code,
         selection=selection,
     )
+    if terms.promo is not None:
+        promo_holds.hold(terms.promo, attempt, customer=customer, coupon=terms.coupon)
     kind = (
         CheckoutKind.HUB_PLAN if sale.kind == "plan" else CheckoutKind.MODULE_PURCHASE
     )
@@ -1585,11 +1579,13 @@ def _schedule_downgrade(hub: Hub, subscription: Subscription, live: dict, sale: 
                         "start_date": phase.get("start_date"),
                         "end_date": period_end,
                         "proration_behavior": "none",
+                        "discounts": discounts.phase_discounts(live),
                     },
                     {
                         "items": _phase_items(live, {item["id"]: item for item in items if item.get("id")}),
                         "proration_behavior": "none",
                         "duration": {"interval": sale.interval, "interval_count": 1},
+                        "discounts": discounts.phase_discounts(live),
                     },
                 ],
             },
@@ -1636,8 +1632,9 @@ def _plan_change(
     """The items of a plan change: the plan item gets the new price; on a change of billing, every module
     item its price of the new billing (Stripe bills one interval per subscription), each with our tax. A
     subscription of modules alone (a Free business) gets its plan item, keeping the days left of the sign-up
-    trial or a promo code's, as the checkout does. Never while free months last, nor with a code of free months."""
-    promo_codes.require_no_free_months(live)
+    trial or a promo code's, as the checkout does. Never with a code of a discount; yearly billing waits for a discount
+    for months to end."""
+    discounts.require_annual_allowed(live, subscription, sale)
     if (
         sale.plan.pk == subscription.plan_id
         and sale.interval == subscription.billing_interval
@@ -1721,7 +1718,6 @@ def _preview(
                 "trial_end": change.trial_end,
             }
     else:
-        promo_codes.require_no_free_months(live)
         _require_room(live)
         recurring = _recurring_net(subscription, sale.interval, adding=sale)
         details["items"] = [
@@ -1819,9 +1815,7 @@ def checkout_confirm(ctx: OperationContext, data: CheckoutConfirmIn) -> dict:
     _require_fresh_preview(data.proration_date)
     _require_paid_up(hub, subscription)
     _require_module_not_owned(subscription, sale.slug)
-    live = _live(subscription)
-    promo_codes.require_no_free_months(live)
-    _require_room(live)
+    _require_room(_live(subscription))
     tax_rates = price_sale(
         hub,
         sale,
@@ -2096,9 +2090,10 @@ def plan_take_over(ctx: OperationContext, data: HubIn) -> dict:
             )
         tax_rates = price_sale(hub, sale, recurring_net=_recurring_net(subscription, sale.interval))
         line_items.append({"price": sale.price_id, "quantity": line.get("quantity") or 1, "tax_rates": tax_rates})
+    carried = discounts.takeover_discounts(subscription.stripe_subscription_id, live)
     selection = f"takeover:{subscription.stripe_subscription_id}:" + ";".join(
         f"{line['price']}={','.join(line['tax_rates'])}" for line in line_items
-    )
+    ) + "".join(f":{held['coupon']}" for held in carried)
     selection = selection[:255]
     attempt = (
         CheckoutAttempt.objects.filter(
@@ -2112,7 +2107,7 @@ def plan_take_over(ctx: OperationContext, data: HubIn) -> dict:
         .first()
     )
     if attempt is None:
-        attempt = _open_takeover(ctx, hub, subscription, line_items, period_end, selection)
+        attempt = _open_takeover(ctx, hub, subscription, Takeover(line_items, period_end, selection, carried))
     return {
         "flow": "checkout",
         "session_id": attempt.stripe_session_id,
@@ -2122,8 +2117,18 @@ def plan_take_over(ctx: OperationContext, data: HubIn) -> dict:
     }
 
 
-def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[dict], period_end, selection: str):  # noqa: PLR0913, PLR0917
-    _expire_other_sessions(hub, selection)
+class Takeover(NamedTuple):
+    """The checkout of a new owner keeping the plan: its lines, the end of the paid period it bills from, its
+    selection and what it carries of the business's discount."""
+
+    line_items: list[dict]
+    period_end: int
+    selection: str
+    discounts: list[dict]
+
+
+def _open_takeover(ctx, hub: Hub, subscription: Subscription, takeover: Takeover):
+    _expire_other_sessions(hub, takeover.selection)
     customer = ensure_customer(hub)
     attempt = CheckoutAttempt.objects.create(
         hub=hub,
@@ -2131,7 +2136,7 @@ def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[d
         kind=CheckoutAttempt.Kind.TAKEOVER,
         plan_slug=subscription.plan.slug if subscription.plan else "",
         billing_interval=subscription.billing_interval,
-        selection=selection,
+        selection=takeover.selection,
     )
     base = hub_emails.base_url(ctx.request)
     params = {
@@ -2139,7 +2144,7 @@ def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[d
         "mode": "subscription",
         "customer": customer,
         "customer_update": {"name": "auto", "address": "auto"},
-        "line_items": line_items,
+        "line_items": takeover.line_items,
         "metadata": {
             KIND_METADATA_KEY: CheckoutKind.PLAN_TAKEOVER.value,
             "hub_id": str(hub.id),
@@ -2150,7 +2155,7 @@ def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[d
             "description": f"ERPlora — {hub.name}",
             "metadata": {"hub_id": str(hub.id)},
             # Billed from the day the paid period ends, nothing before it: the business uses what was paid.
-            "billing_cycle_anchor": period_end,
+            "billing_cycle_anchor": takeover.period_end,
             "proration_behavior": "none",
         },
         "redirect_on_completion": "if_required",
@@ -2160,6 +2165,8 @@ def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[d
         "tax_id_collection": {"enabled": False},
         "integration_identifier": INTEGRATION_IDENTIFIER,
     }
+    if takeover.discounts:
+        params["discounts"] = takeover.discounts
     with stripe_errors():
         session = stripe_service.create_checkout_session(params, idempotency_key=f"checkout-{attempt.id}")
     attempt.stripe_session_id = session["id"]
@@ -2181,8 +2188,10 @@ def _takeover_completed(hub: Hub, session: dict, subscription_id: str, replaced:
     with holding(hub.id):
         local = Subscription.objects.filter(hub=hub).first()
         if local is None or local.stripe_subscription_id != subscription_id:
-            apply_live(hub.id, stripe_service.retrieve_subscription(subscription_id))
+            live = stripe_service.retrieve_subscription(subscription_id)
+            apply_live(hub.id, live)
             if replaced and replaced != subscription_id:
+                discounts.move_redemption(replaced, live)
                 previous = stripe_service.retrieve_subscription(replaced)
                 if (previous.get("status") or "") not in ENDED_STATUSES:
                     stripe_service.cancel_subscription(replaced)
@@ -2745,7 +2754,7 @@ def checkout_completed(session: dict) -> str:
 
 def _complete_checkout(hub: Hub, session: dict, subscription_id: str) -> str:
     """The subscription the checkout paid for, applied (unless the business pays another one), the attempt
-    completed and its promo code counted, with when its free months end."""
+    completed and its promo code counted, with when its discount ends."""
     local = Subscription.objects.filter(hub=hub).first()
     if (
         local is not None
@@ -2768,7 +2777,7 @@ def _complete_checkout(hub: Hub, session: dict, subscription_id: str) -> str:
     code = (session.get("metadata") or {}).get("promo_code")
     if completed and code:
         customer = live.get("customer")
-        promo_codes.redeem_promo(
+        promo_holds.use(
             code,
             hub=hub,
             customer=customer["id"] if isinstance(customer, dict) else customer or "",
@@ -2870,6 +2879,7 @@ def checkout_refund_record(ctx: OperationContext, data: CheckoutRefundRecordIn) 
     attempt.status = CheckoutAttempt.Status.REFUNDED
     attempt.completed_at = timezone.now()
     attempt.save(update_fields=["status", "completed_at", "updated_at"])
+    promo_holds.release(attempt=attempt)
     record_event(
         ctx,
         events.CHECKOUT_REFUNDED,
@@ -2928,6 +2938,7 @@ def expire_open_checkouts(hub_id) -> None:
             continue
         attempt.status = CheckoutAttempt.Status.EXPIRED
         attempt.save(update_fields=["status", "updated_at"])
+        promo_holds.release(attempt=attempt)
 
 
 def checkout_closed(session: dict, status: str) -> str:
@@ -2938,6 +2949,7 @@ def checkout_closed(session: dict, status: str) -> str:
     CheckoutAttempt.objects.filter(
         stripe_session_id=session.get("id"), status=CheckoutAttempt.Status.OPEN
     ).update(status=status, updated_at=timezone.now())
+    promo_holds.release(session=session.get("id") or "")
     return status
 
 
@@ -3493,49 +3505,63 @@ def _retax_refused(hub: Hub, kind: str, refused: Conflict) -> str:
 def _retax_schedule(hub: Hub, subscription: Subscription, schedule_id: str) -> str:
     """A downgrade waiting in a Stripe schedule: the first invoice of the new plan is billed by its next phase,
     whose items carry the rates fixed when it was scheduled. Every phase still to run is re-stated with
-    today's rates (a phase over is left out; the current one keeps its start). Phases are re-stated whole, so
-    no rate is an empty list there, and changing the current phase changes the subscription at once (checked
-    against Stripe's test API). A price no plan nor module has keeps its rates."""
+    today's rates (a phase over is left out; the current one keeps its start) and its discounts. Phases are
+    re-stated whole, so no rate is an empty list there, and changing the current phase changes the subscription
+    at once (checked against Stripe's test API). A price no plan nor module has keeps its rates."""
     with stripe_errors():
         schedule = stripe_service.retrieve_schedule(schedule_id)
     now = int(timezone.now().timestamp())
     phases = []
     changed = False
     for phase in schedule.get("phases") or []:
-        end = phase.get("end_date")
-        if end is not None and end <= now:
+        if phase.get("end_date") is not None and phase["end_date"] <= now:
             continue
-        sales = []
-        for item in phase.get("items") or []:
-            price = item["price"] if isinstance(item["price"], str) else item["price"]["id"]
-            held = [rate["id"] if isinstance(rate, dict) else rate for rate in item.get("tax_rates") or []]
-            sales.append((price, item.get("quantity") or 1, held, _item_sale(subscription, {"price": {"id": price}})))
-        # What a renewal of that phase charges, net: the 400 € of the simplified invoice is on the whole of it.
-        recurring = sum((sale.net for _price, _quantity, _held, sale in sales if sale is not None), Decimal("0"))
-        items = []
-        for price, quantity, held, sale in sales:
-            if sale is None:
-                due = held
-            else:
-                try:
-                    due = price_sale(hub, sale, recurring_net=recurring, renewing=True)
-                except Conflict as refused:
-                    return _retax_refused(hub, sale.kind, refused)
-            changed = changed or sorted(held) != sorted(due)
-            items.append({"price": price, "quantity": quantity, "tax_rates": due})
-        restated = {"items": items, "start_date": phase["start_date"]}
-        if end is not None:
-            restated["end_date"] = end
-        if phase.get("trial_end"):
-            restated["trial_end"] = phase["trial_end"]
-        restated["proration_behavior"] = "none"
-        phases.append(restated)
+        restated = _restated_items(hub, subscription, phase)
+        if restated is None:
+            return "refused"
+        items, retaxed = restated
+        changed = changed or retaxed
+        phases.append(_restated_phase(phase, items))
     if not changed:
         return "unchanged"
     with stripe_errors():
         stripe_service.update_schedule(schedule_id, {"end_behavior": "release", "phases": phases})
     logger.info("[BILLING] Hub %s retaxed the phases of schedule %s", hub.id, schedule_id)
     return "retaxed"
+
+
+def _restated_items(hub: Hub, subscription: Subscription, phase: dict) -> tuple[list[dict], bool] | None:
+    """The items of a phase with today's rates, and whether any changed; ``None`` when one cannot be retaxed."""
+    sales = []
+    for item in phase.get("items") or []:
+        price = item["price"] if isinstance(item["price"], str) else item["price"]["id"]
+        held = [rate["id"] if isinstance(rate, dict) else rate for rate in item.get("tax_rates") or []]
+        sales.append((price, item.get("quantity") or 1, held, _item_sale(subscription, {"price": {"id": price}})))
+    # What a renewal of that phase charges, net: the 400 € of the simplified invoice is on the whole of it.
+    recurring = sum((sale.net for _price, _quantity, _held, sale in sales if sale is not None), Decimal("0"))
+    items = []
+    changed = False
+    for price, quantity, held, sale in sales:
+        due = held
+        if sale is not None:
+            try:
+                due = price_sale(hub, sale, recurring_net=recurring, renewing=True)
+            except Conflict as refused:
+                _retax_refused(hub, sale.kind, refused)
+                return None
+        changed = changed or sorted(held) != sorted(due)
+        items.append({"price": price, "quantity": quantity, "tax_rates": due})
+    return items, changed
+
+
+def _restated_phase(phase: dict, items: list[dict]) -> dict:
+    restated = {"items": items, "start_date": phase["start_date"], "proration_behavior": "none"}
+    if phase.get("end_date") is not None:
+        restated["end_date"] = phase["end_date"]
+    if phase.get("trial_end"):
+        restated["trial_end"] = phase["trial_end"]
+    restated["discounts"] = discounts.held_discounts(phase)
+    return restated
 
 
 def retax_payer(profile_id) -> None:
@@ -4776,10 +4802,6 @@ def platform_backoff(attempts: int) -> timedelta:
     return min(PLATFORM_FIRST_WAIT * 2 ** max(attempts - 1, 0), PLATFORM_LONGEST_WAIT)
 
 
-def _iso(value) -> str | None:
-    return value.isoformat() if value is not None else None
-
-
 def platform_payload(invoice: Invoice) -> dict:
     """The body of ``POST /internal/platform/invoices``: the whole invoice, so the platform hub issues it in
     VeriFactu and prints its PDF without asking the SaaS anything. Keyed by ``id`` (idempotent)."""
@@ -4789,7 +4811,7 @@ def platform_payload(invoice: Invoice) -> dict:
         "kind": invoice.kind,
         "series": invoice.series,
         "number": invoice.number,
-        "issued_on": _iso(invoice.issued_on),
+        "issued_on": platform_contract.day(invoice.issued_on),
         "stripe_invoice_id": invoice.stripe_invoice_id,
         "stripe_source_id": invoice.stripe_source_id,
         "rectification": (
@@ -4828,8 +4850,8 @@ def platform_payload(invoice: Invoice) -> dict:
                 "item_slug": line.item_slug,
                 "quantity": line.quantity,
                 "proration": line.proration,
-                "period_start": _iso(line.period_start),
-                "period_end": _iso(line.period_end),
+                "period_start": platform_contract.day(line.period_start),
+                "period_end": platform_contract.day(line.period_end),
                 "tax_category": line.tax_category_id,
                 "tax_treatment": line.tax_treatment or invoice.tax_treatment,
                 "tax_rate": str(line.tax_rate),
@@ -4841,7 +4863,7 @@ def platform_payload(invoice: Invoice) -> dict:
             for line in invoice.lines.order_by("position")
         ],
         "rectifies": (
-            {"id": str(rectified.id), "number": rectified.number, "issued_on": _iso(rectified.issued_on)}
+            {"id": str(rectified.id), "number": rectified.number, "issued_on": platform_contract.day(rectified.issued_on)}
             if rectified is not None
             else None
         ),

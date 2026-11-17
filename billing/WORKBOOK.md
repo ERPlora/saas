@@ -143,7 +143,7 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F09 | Volver del pago: confirmado, pendiente o cerrado | hecho |
 | BILLING-F10 | Reintentar un pago que no se terminó | hecho |
 | BILLING-F11 | Cambiar de plan entre planes de pago | hecho |
-| BILLING-F12 | Dar días de prueba o meses gratis con un código promocional | hecho |
+| BILLING-F12 | Dar días de prueba o un descuento con un código promocional | hecho |
 | BILLING-F13 | Cancelar el plan al final del periodo | hecho |
 | BILLING-F14 | Deshacer una cancelación o una bajada pendiente | hecho |
 | BILLING-F15 | Terminar la suscripción: el negocio vuelve a Gratis | hecho |
@@ -327,20 +327,20 @@ Sale: el plan cambiado (`billing.plan.changed`) o la bajada programada (`billing
 Si falla: «El precio estaba desactualizado: aquí lo tienes de nuevo, revísalo antes de confirmar» si pasó demasiado tiempo; la tarjeta rechazada no cambia nada; el mismo plan y periodo no es un cambio; bajar a Gratis es cancelar (BILLING-F13); con una cancelación pendiente, «Mantén antes el plan para cambiarlo»; con una factura sin pagar, «Antes, paga la factura pendiente»; más de 400 € sin NIF pide el NIF.
 Implicados: el negocio (recibe su plan), ASSISTANT-F25 (pedido al asistente del panel, que manda aquí)
 
-### BILLING-F12 Dar días de prueba o meses gratis con un código promocional
+### BILLING-F12 Dar días de prueba o un descuento con un código promocional
 Estado: hecho
 Actor: personal de ERPlora, propietario
-Pantalla: Admin › Códigos promocionales, Pago seguro, Facturación › Suscripciones
+Pantalla: Admin › Descuentos, Admin › Códigos promocionales, Pago seguro, Facturación › Suscripciones
 Pasos:
-1. Una persona de ERPlora crea un código en el admin: el código, los días de prueba (de 1 a 365) o los meses gratis (de 1 a 12), uno de los dos, si está activo, hasta cuándo vale, cuántos usos y una nota.
-2. El propietario, en el pago seguro de un negocio que aún no paga, pulsa «¿Tienes un código promocional?», lo escribe y pulsa «Aplicar». Con días de prueba: «Código …: n días gratis antes del primer cobro». Con meses gratis: «Código …: n meses gratis; después, el precio normal del plan».
+1. Una persona de ERPlora crea un descuento en el admin: un porcentaje (de 1 a 100) o un importe en euros, uno de los dos; cuánto dura (el primer pago, unos meses, de 1 a 36, o para siempre); los planes a los que se aplica (ninguno = todos los de pago; nunca a una aplicación), si está activo y una nota. Debajo, sus códigos: el código, si está activo, hasta cuándo vale, cuántos usos y una nota. Un código también puede dar días de prueba (de 1 a 365) en lugar de un descuento.
+2. El propietario, en el pago seguro de un negocio que aún no paga, pulsa «¿Tienes un código promocional?», lo escribe y pulsa «Aplicar». Con días de prueba: «Código …: n días gratis antes del primer cobro.». Con un descuento: «Código …: Gratis durante 6 meses.», «Código …: 20 % de descuento en el primer pago.» o «Código …: 10,00 € de descuento para siempre.».
 3. Con días de prueba, paga: el primer cobro llega al acabar esos días.
-4. Con meses gratis, elige el plan mensual y el pago seguro avisa «n meses gratis; después, … €/mes + IVA. No se carga nada en tu tarjeta hasta entonces.»; da su tarjeta y el plan empieza ya. Cada mes llega su factura de 0 € (el precio del plan con todo su descuento), numerada y registrada en VeriFactu como cualquier otra, y el mes siguiente al último gratis se cobra el precio normal sin hacer nada.
-5. Mientras duran, **Facturación › Suscripciones** dice «Gratis hasta el …» y la próxima factura a 0 €; cada factura dice su descuento en la línea.
+4. Con un descuento, el pago seguro avisa, junto a la tarjeta, «Gratis durante 6 meses. Después, 29,99 €/mes + IVA. Hoy no se carga nada en tu tarjeta.» (sin «Después» si es para siempre, y sin la última frase si hoy se cobra algo); da su tarjeta y el plan empieza ya. Cada factura lleva su descuento en la línea del plan, también la de 0 €, numerada y registrada en VeriFactu como cualquier otra; al acabar el descuento se cobra el precio normal sin hacer nada.
+5. Mientras dura, **Facturación › Suscripciones** dice «Gratis hasta el …» (o «10,00 € de descuento para siempre») y la próxima factura con el descuento. Subir de plan lo conserva; bajar de plan también, en la renovación; una aplicación se cobra entera. Si el negocio cambia de dueño y el nuevo mantiene el plan con su tarjeta, el descuento sigue: uno para siempre, igual; uno de unos meses, durante los meses enteros que le quedan (ninguno si le queda menos de uno); uno del primer pago, ya gastado, no vuelve.
 Entra: el código (sin distinguir mayúsculas ni espacios).
-Sale: los días de prueba en la suscripción, o el descuento del 100 % de esos meses en Stripe y cuándo acaban; el uso contado una vez por negocio y por quien paga.
-Si falla: un código desconocido, inactivo, caducado o agotado dice «Este código no es válido o ya se ha usado» y no impide pagar sin él; probar códigos tiene un tope por persona; un código nunca pasa de su número de usos. Los meses gratis son solo para empezar a pagar un plan mensual: con el anual, el pago no empieza y dice «Este código da meses gratis de un plan mensual: elige la facturación mensual para usarlo.», y en un cambio de plan, «Este código da meses gratis a un negocio que empieza a pagar un plan, no a un cambio de plan.». Mientras duran, cambiar de plan, pasar a anual o comprar una aplicación dice «Este negocio tiene meses gratis hasta el …» y no cambia nada; cancelar sí se puede, y el plan acaba al final del periodo.
-Implicados: el negocio de plataforma de ERPlora (emite las facturas de 0 €, BILLING-F25)
+Sale: los días de prueba en la suscripción, o el descuento en Stripe y cuándo acaba; el uso contado una vez por negocio y por quien paga.
+Si falla: un código desconocido, inactivo, caducado o agotado (o cuyo descuento está apagado) dice «Este código no es válido o ya se ha usado» y no impide pagar sin él; probar códigos tiene un tope por persona; un código nunca pasa de su número de usos: el uso se reserva al abrir el pago seguro y se devuelve si ese pago no se completa. Si el código deja de valer entre comprobarlo y pagar, el pago no empieza y dice «Este código no es válido o ya se ha usado: quítalo para pagar sin él.». Un descuento de unos meses solo va con la facturación mensual: con la anual, el pago no empieza y dice «El descuento de este código dura unos meses: elige la facturación mensual para usarlo.»; un plan que el descuento no nombra dice «Este código no se aplica al plan elegido.»; en un cambio de plan, «Este código da un descuento a un negocio que empieza a pagar un plan, no a un cambio de plan.». Mientras dura uno de unos meses, pasar a anual dice «Este negocio tiene un descuento hasta el …: podrá pasar a la facturación anual después.» y no cambia nada. Cambiar a un plan que el descuento no cubre (no lo nombra, o se creó después del código) sí se puede: ese plan se cobra entero y Suscripciones ya no enseña el descuento. Cancelar siempre se puede, y el plan acaba al final del periodo. En el admin, usado un código, su descuento ya no cambia de condiciones, y ni el descuento ni el código se borran (se desactivan).
+Implicados: el negocio de plataforma de ERPlora (emite las facturas con descuento, también las de 0 €, BILLING-F25)
 
 ### BILLING-F13 Cancelar el plan al final del periodo
 Estado: hecho
@@ -514,7 +514,7 @@ Pasos:
 3. La manda al negocio de plataforma de ERPlora, que la registra con VeriFactu y devuelve su estado y su QR; cuando la emite, se avisa por correo a quien paga.
 Entra: el cobro de Stripe con sus líneas y los datos de quien paga.
 Sale: la factura y sus líneas (`billing.invoice.recorded`), su estado fiscal y el correo.
-Si falla: si el negocio de plataforma no responde, la factura queda «emitiéndose» y se reintenta (a los 15 minutos, después el doble cada vez, como mucho 6 horas); si lo rechaza, se guarda el motivo y se reintenta. Una renovación sin cobrar se lista «No cobrada», sin número, y se numera al pagarla. Un cobro de 0 € de una prueba no hace factura; el de un mes gratis de un código sí (BILLING-F12), con el descuento en cada línea. El mismo cobro avisado varias veces hace una sola. Con claves reales, sin ruta de emisión no se cobra.
+Si falla: si el negocio de plataforma no responde, la factura queda «emitiéndose» y se reintenta (a los 15 minutos, después el doble cada vez, como mucho 6 horas); si lo rechaza, se guarda el motivo y se reintenta. Una renovación sin cobrar se lista «No cobrada», sin número, y se numera al pagarla. Un cobro de 0 € de una prueba no hace factura; el de un descuento de un código sí (BILLING-F12), con el descuento en cada línea. El mismo cobro avisado varias veces hace una sola. Con claves reales, sin ruta de emisión no se cobra.
 Implicados: el negocio de plataforma de ERPlora (emite la factura)
 
 ### BILLING-F26 Devolver un cobro

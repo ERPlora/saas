@@ -88,9 +88,9 @@
       "label": "Código promocional",
       "apply": "Aplicar",
       "valid": "Código {code}: {days} días gratis antes del primer cobro.",
-      "validMonths": "Código {code}: 1 mes gratis; después, el precio normal del plan. | Código {code}: {months} meses gratis; después, el precio normal del plan.",
       "invalid": "Este código no es válido o ya se ha usado.",
-      "remove": "Quitar el código"
+      "remove": "Quitar el código",
+      "validDiscount": "Código {code}: {discount}."
     },
     "modules": {
       "heading": "Módulos",
@@ -164,7 +164,6 @@
       "change": "Cambiar",
       "secure": "Pago seguro",
       "declined": "La tarjeta con la que se paga {name} fue rechazada: paga con otra.",
-      "freeMonths": "1 mes gratis; después, {price}/mes + IVA. No se carga nada en tu tarjeta hasta entonces. | {months} meses gratis; después, {price}/mes + IVA. No se carga nada en tu tarjeta hasta entonces.",
       "loading": "Cargando el pago seguro…",
       "paying": "Pagando…",
       "terms": "Al pagar aceptas las Condiciones. Puedes cancelar cuando quieras desde Facturación.",
@@ -174,7 +173,11 @@
       "stale": "Este negocio ya paga: el precio ha cambiado, revísalo de nuevo.",
       "plan": "{business} ya está en {plan}",
       "module": "{module} añadido a {business}: se enciende en unos segundos",
-      "takenOver": "{business} mantiene {plan}: tu tarjeta lo paga desde el {date}"
+      "takenOver": "{business} mantiene {plan}: tu tarjeta lo paga desde el {date}",
+      "discountThenMonth": "{discount}. Después, {price}/mes + IVA.",
+      "discountThenYear": "{discount}. Después, {price}/año + IVA.",
+      "discountOnly": "{discount}.",
+      "nothingDueToday": "Hoy no se carga nada en tu tarjeta."
     },
     "details": {
       "intro": "¿A nombre de quién facturamos? Lo pedimos una vez, antes del primer pago.",
@@ -346,7 +349,6 @@
       "next": "{date} · {amount}",
       "withVat": "con IVA",
       "freeFrom": "Gratis desde el {date}",
-      "freeUntil": "Gratis hasta el {date}",
       "scheduled": "Cambia a {plan} el {date}",
       "statusUntil": "Hasta el {date}",
       "paidByAnother": "Se paga con la tarjeta de otra cuenta",
@@ -378,7 +380,8 @@
         "unpaid": "La factura sin pagar del {date} ({amount}) sigue pendiente: cancelar no la anula.",
         "done": "Plan cancelado: {business} sigue en {plan} hasta el {date}",
         "doneNoDate": "Plan cancelado: {business} sigue en {plan} hasta el final del periodo"
-      }
+      },
+      "discountUntil": "{off} hasta el {date}"
     },
     "payment": {
       "loadError": "No hemos podido cargar tus datos de pago",
@@ -430,6 +433,18 @@
     },
     "load": {
       "reason": "Comprueba tu conexión y vuelve a intentarlo."
+    },
+    "discount": {
+      "off": {
+        "free": "Gratis",
+        "percent": "{percent} % de descuento",
+        "amount": "{amount} de descuento"
+      },
+      "duration": {
+        "once": "{off} en el primer pago",
+        "repeating": "{off} durante 1 mes | {off} durante {months} meses",
+        "forever": "{off} para siempre"
+      }
     }
   }
 }

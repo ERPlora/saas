@@ -2214,44 +2214,127 @@ msgstr "Base imponible mensual (€)"
 msgid "Customer since"
 msgstr "Cliente desde"
 
-#: models/promo_codes.py
-msgid "free months"
-msgstr "meses gratis"
-
-#: models/promo_codes.py
-msgid "Months of a monthly plan at no charge, invoiced at 0 € (1 to 12); instead of trial days"
-msgstr ""
-"Meses de un plan mensual sin cobrar, facturados a 0 € (de 1 a 12); en lugar de días de prueba"
-
-#: models/promo_codes.py
-msgid "free until"
-msgstr "gratis hasta"
-
-#: models/promo_codes.py
-msgid "When the free months of the code end"
-msgstr "Cuándo acaban los meses gratis del código"
-
-#: models/promo_codes.py
-msgid "A promo code grants either trial days or free months: fill in one of the two."
-msgstr "Un código promocional da días de prueba o meses gratis: rellena uno de los dos."
-
 #: models/invoices.py
 msgid "discount (cents)"
 msgstr "descuento (céntimos)"
 
-#: services/promo_codes.py
-msgid "This code gives free months of a monthly plan: choose monthly billing to use it."
-msgstr "Este código da meses gratis de un plan mensual: elige la facturación mensual para usarlo."
+#: discounts
+msgid "percent off"
+msgstr "porcentaje de descuento"
 
-#: services/promo_codes.py
-msgid "This code gives free months to a business that starts paying a plan, not to a change of plan."
-msgstr "Este código da meses gratis a un negocio que empieza a pagar un plan, no a un cambio de plan."
+#: discounts
+msgid "amount off (cents)"
+msgstr "importe de descuento (céntimos)"
 
-#: services/promo_codes.py
+#: discounts
+msgid "duration"
+msgstr "duración"
+
+#: discounts
+msgid "months"
+msgstr "meses"
+
+#: discounts
+msgid "applies to"
+msgstr "se aplica a"
+
+#: discounts
+msgid "discount"
+msgstr "descuento"
+
+#: discounts
+msgid "discounts"
+msgstr "descuentos"
+
+#: discounts
+msgid "Once"
+msgstr "Una vez"
+
+#: discounts
+msgid "For a number of months"
+msgstr "Durante unos meses"
+
+#: discounts
+msgid "Forever"
+msgstr "Para siempre"
+
+#: discounts
+msgid "Plans"
+msgstr "Planes"
+
+#: discounts
+msgid "Internal label, e.g. Testers 2026"
+msgstr "Etiqueta interna, p. ej. Probadores 2026"
+
+#: discounts
+msgid "Without VAT, taken off each payment it applies to; never more than its price"
+msgstr "Sin IVA, se descuenta de cada pago al que se aplica; nunca más que su precio"
+
+#: discounts
+msgid "Only for a discount for a number of months (1 to 36): monthly billing only"
+msgstr "Solo para un descuento durante unos meses (de 1 a 36): solo con facturación mensual"
+
+#: discounts
+msgid "plans"
+msgstr "planes"
+
+#: discounts
+msgid "Empty = every plan"
+msgstr "Vacío = todos los planes"
+
+#: discounts
+msgid "Inactive: its codes are not valid"
+msgstr "Inactivo: sus códigos no valen"
+
+#: discounts
+msgid "A discount takes off a percentage or an amount: fill in one of the two."
+msgstr "Un descuento quita un porcentaje o un importe: rellena uno de los dos."
+
+#: discounts
+msgid "Say how many months for a discount for a number of months, and only for that one."
+msgstr "Di cuántos meses en un descuento durante unos meses, y solo en ese."
+
+#: discounts
+msgid "discount ends at"
+msgstr "fin del descuento"
+
+#: discounts
+msgid "What it takes off; instead of trial days"
+msgstr "Lo que descuenta; en lugar de días de prueba"
+
+#: discounts
+msgid "When the discount of the code ends; empty = never"
+msgstr "Cuándo acaba el descuento del código; vacío = nunca"
+
+#: discounts
+msgid "A promo code grants either trial days or a discount: fill in one of the two."
+msgstr "Un código promocional da días de prueba o un descuento: rellena uno de los dos."
+
+#: discounts
+msgid "This code’s discount lasts a number of months: choose monthly billing to use it."
+msgstr "El descuento de este código dura unos meses: elige la facturación mensual para usarlo."
+
+#: discounts
+msgid "This code does not apply to the plan chosen."
+msgstr "Este código no se aplica al plan elegido."
+
+#: discounts
 #, python-format
-msgid ""
-"This business has free months until %(date)s: until then its plan, its billing and its apps stay as "
-"they are. You can still cancel the plan."
-msgstr ""
-"Este negocio tiene meses gratis hasta el %(date)s: hasta entonces su plan, su facturación y sus "
-"aplicaciones no cambian. El plan se puede cancelar igualmente."
+msgid "This business has a discount until %(date)s: it can move to yearly billing after that date."
+msgstr "Este negocio tiene un descuento hasta el %(date)s: podrá pasar a la facturación anual después."
+
+#: discounts
+msgid "This code gives a discount to a business that starts paying a plan, not to a change of plan."
+msgstr "Este código da un descuento a un negocio que empieza a pagar un plan, no a un cambio de plan."
+
+#: promo holds
+msgid "held until"
+msgstr "reservado hasta"
+
+#: promo holds
+msgid "Held by an open checkout until then; empty once used"
+msgstr "Reservado por un pago abierto hasta entonces; vacío una vez usado"
+
+#: promo holds
+msgid "This code is not valid or has already been used: remove it to pay without it."
+msgstr "Este código no es válido o ya se ha usado: quítalo para pagar sin él."

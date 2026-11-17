@@ -1,35 +1,45 @@
-"""The Stripe coupons of the promo codes of free months: one per number of months, 100 % off for that many months.
+"""The Stripe coupon of a discount: its mirror, with an id derived from it, so nothing is stored on our side.
 
-Its id is fixed (``free-months-<N>``), so the same code works with the test and the live account without storing
-anything: every checkout of a code of N months asks Stripe to create it, and from the second one on Stripe answers
-that it exists already, which is the expected answer and no error.
+The id is ``erp-discount-<12 hex of the discount>-<8 hex of its terms and products>``: the same discount on the same
+products is always the same coupon, in test and live mode alike. Every checkout asks Stripe to create it, and from the
+second one on Stripe answers that it exists already, which is the expected answer and no error.
 """
 
+import hashlib
+import json
 from datetime import UTC, datetime
 
-from billing import stripe_service
+from billing import discount_terms, stripe_service
 
-COUPON_PREFIX = "free-months-"
-
-
-def free_months_coupon_id(months: int) -> str:
-    return f"{COUPON_PREFIX}{months}"
+COUPON_PREFIX = "erp-discount-"
 
 
-def ensure_free_months_coupon(months: int) -> str:
-    """The id of the coupon of ``months`` free months, created when Stripe does not have it yet."""
-    coupon_id = free_months_coupon_id(months)
-    stripe_service._call(
-        _create_unless_there,
-        params={
-            "id": coupon_id,
-            "percent_off": 100,
-            "duration": "repeating",
-            "duration_in_months": months,
-            "name": f"{months} months free",
-        },
-    )
-    return coupon_id
+def coupon_id(discount, products: list[str]) -> str:
+    terms = {
+        "percent_off": discount.percent_off,
+        "amount_off": discount.amount_off_cents,
+        "currency": discount.currency,
+        "duration": discount.duration,
+        "duration_in_months": discount.duration_in_months,
+        "applies_to": discount.applies_to,
+        "products": sorted(products),
+    }
+    print_ = hashlib.sha256(json.dumps(terms, sort_keys=True).encode()).hexdigest()[:8]
+    return f"{COUPON_PREFIX}{discount.id.hex[:12]}-{print_}"
+
+
+def ensure_coupon(discount, products: list[str]) -> str:
+    """The id of the coupon of ``discount`` on ``products`` (those of its plans), created when Stripe does not have it."""
+    params = {"id": coupon_id(discount, products), "duration": discount.duration}
+    if discount.percent_off is not None:
+        params["percent_off"] = discount.percent_off
+    else:
+        params.update(amount_off=discount.amount_off_cents, currency=discount.currency)
+    if discount.duration_in_months is not None:
+        params["duration_in_months"] = discount.duration_in_months
+    params.update(applies_to={"products": products}, name=discount_terms.coupon_name(discount))
+    stripe_service._call(_create_unless_there, params=params)
+    return params["id"]
 
 
 def _create_unless_there(*, params: dict, options: dict) -> object:
@@ -44,14 +54,19 @@ def _create_unless_there(*, params: dict, options: dict) -> object:
         return {"id": params["id"], "object": "coupon"}
 
 
-def free_months_end(live: dict) -> datetime | None:
-    """When the free months of a live subscription end: the end of the discount of one of these coupons (its
-    ``discounts`` expanded, as ``stripe_service.retrieve_subscription`` reads them); ``None`` without one."""
-    ends = [
-        discount["end"]
+def live_discounts(live: dict) -> list[dict]:
+    """The discounts of ours on a live subscription (its ``discounts`` expanded, as
+    ``stripe_service.retrieve_subscription`` reads them)."""
+    return [
+        discount
         for discount in live.get("discounts") or []
-        if isinstance(discount, dict) and discount.get("end") and _coupon_of(discount).startswith(COUPON_PREFIX)
+        if isinstance(discount, dict) and _coupon_of(discount).startswith(COUPON_PREFIX)
     ]
+
+
+def discount_end(live: dict) -> datetime | None:
+    """When the discount of ours on a live subscription ends; ``None`` without one, or for one forever."""
+    ends = [discount["end"] for discount in live_discounts(live) if discount.get("end")]
     return datetime.fromtimestamp(max(ends), tz=UTC) if ends else None
 
 

@@ -1,8 +1,7 @@
 """Django admin of billing's payment records.
 
-Promo codes are written here (sales hands them out); what Stripe did —the checkouts opened, the webhook's
-events and the renewals that failed— is read-only: Stripe is the source, and the webhook and the operations
-are its only writers.
+What Stripe did —the checkouts opened, the webhook's events and the renewals that failed— is read-only: Stripe is
+the source, and the webhook and the operations are its only writers. Promo codes are written in their own module.
 """
 
 from django.contrib import admin
@@ -14,19 +13,10 @@ from billing.models import (
     OssNotice,
     PaymentFailure,
     PlanChangeSchedule,
-    PromoCode,
     PromoRedemption,
     WebhookEvent,
 )
 from billing.money import from_cents
-
-
-@admin.register(PromoCode)
-class PromoCodeAdmin(admin.ModelAdmin):
-    list_display = ("code", "trial_days", "free_months", "is_active", "expires_at", "redemption_count", "max_redemptions", "note")
-    list_filter = ("is_active",)
-    search_fields = ("code", "note")
-    readonly_fields = ("redemption_count", "created_at", "updated_at")
 
 
 class ReadOnlyAdmin(admin.ModelAdmin):
@@ -84,9 +74,10 @@ class OssNoticeAdmin(ReadOnlyAdmin):
 
 @admin.register(PromoRedemption)
 class PromoRedemptionAdmin(ReadOnlyAdmin):
-    """A promo code used by a business (once per business and per payer): written when its checkout is paid."""
+    """A promo code used by a business (once per business and per payer): held while its checkout is open
+    (``held_until``), a use once paid."""
 
-    list_display = ("created_at", "promo", "hub", "stripe_customer_id")
+    list_display = ("created_at", "promo", "hub", "stripe_customer_id", "held_until")
     list_select_related = ("promo", "hub")
     search_fields = ("promo__code", "hub__slug", "hub__name", "stripe_customer_id")
 

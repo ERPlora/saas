@@ -32,6 +32,5 @@ duplicados billing/services/__init__.py:2225-2236 already alike in billing/servi
 duplicados billing/services/__init__.py:2255-2257 already alike in billing/services.py on main; this change moves the file literally into the package
 duplicados billing/services/__init__.py:2819-2824 already alike in billing/services.py on main; this change moves the file literally into the package
 duplicados billing/services/__init__.py:4869-4884 already alike in billing/services.py on main; this change moves the file literally into the package
-duplicados billing/services/__init__.py:1459-1471 the creation of the Checkout Session was already alike with _open_takeover on main; this change only adds the promo code's parameters to its dict
-duplicados billing/services/__init__.py:2760-2765 the completion of the attempt was already alike with _takeover_completed on main; this change moves it out of checkout_completed into _complete_checkout
 duplicados billing/frontend/components/CheckoutModal.test.ts:116-123 the mount of setup was already alike with ProrationDialog.test.ts on main; this change only hands the checkout its slots
+duplicados billing/services/__init__.py:2769-2774 the completion of the attempt was already alike with _takeover_completed on main; this change moves it out of checkout_completed into _complete_checkout

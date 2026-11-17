@@ -155,18 +155,26 @@ describe('SubscriptionsTab: the list', () => {
     expect(s.testid('subscription-scheduled').text()).toBe('Changes to Basic on Nov 1, 2026');
   });
 
-  it('free months of a promo code say until when, and the next invoice is 0', async () => {
+  it('a discount for months says until when it lasts, and the next invoice takes it off', async () => {
     const s = await setup();
-    const free = { free_until: '2027-05-16T10:00:00Z', next_invoice: { date: '2026-11-01T00:00:00Z', total_cents: 0, currency: 'EUR' } };
-    await s.show([subscriptionRow('bakery', 'Panadería López', free)]);
-    expect(s.testid('subscription-free-until').text()).toBe('Free until May 16, 2027');
+    const terms = { percent_off: 100, amount_off_cents: null, currency: 'eur', duration: 'repeating' as const, duration_in_months: 6, applies_to: { kind: 'plans' as const, plans: [], intervals: ['month' as const] } };
+    const carried = { discount: { code: 'testers', ends_at: '2027-05-16T10:00:00Z', terms }, next_invoice: { date: '2026-11-01T00:00:00Z', total_cents: 0, currency: 'EUR' } };
+    await s.show([subscriptionRow('bakery', 'Panadería López', carried)]);
+    expect(s.testid('subscription-discount').text()).toBe('Free until May 16, 2027');
     expect(s.cells(0)[3]).toContain('€0.00');
   });
 
-  it('without free months it says nothing about them', async () => {
+  it('a discount forever says so', async () => {
+    const s = await setup();
+    const terms = { percent_off: 15, amount_off_cents: null, currency: 'eur', duration: 'forever' as const, duration_in_months: null, applies_to: { kind: 'plans' as const, plans: [], intervals: ['month' as const, 'year' as const] } };
+    await s.show([subscriptionRow('bakery', 'Panadería López', { discount: { code: 'loyal', ends_at: null, terms } })]);
+    expect(s.testid('subscription-discount').text()).toBe('15% off forever');
+  });
+
+  it('without a discount it says nothing about one', async () => {
     const s = await setup();
     await s.show([BAKERY_SUB]);
-    expect(s.wrapper.find('[data-testid="subscription-free-until"]').exists()).toBe(false);
+    expect(s.wrapper.find('[data-testid="subscription-discount"]').exists()).toBe(false);
   });
 
   it('one action per row: its first one fixed and labelled; with a «⋮» (Cancel plan), «View invoices» goes in it too', async () => {

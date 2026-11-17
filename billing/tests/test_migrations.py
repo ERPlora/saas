@@ -94,20 +94,21 @@ def _immediately():
 
 
 @pytest.mark.django_db
-def test_going_back_before_free_months_is_refused_while_a_code_grants_them():
-    from billing.models import PromoCode
+def test_going_back_before_discounts_is_refused_while_a_code_gives_one():
+    from billing.models import Discount, PromoCode
 
-    PromoCode.objects.create(code="testers", free_months=6)
+    given = Discount.objects.create(name="Testers", percent_off=100, duration="repeating", duration_in_months=6)
+    PromoCode.objects.create(code="testers", discount=given)
     _immediately()
 
-    with pytest.raises(RuntimeError, match="free months"):
+    with pytest.raises(RuntimeError, match="give a discount"):
         call_command("migrate", "billing", "0011", verbosity=0)
 
-    assert PromoCode.objects.values_list("free_months", flat=True).get() == 6
+    assert PromoCode.objects.get().discount == given
 
 
 @pytest.mark.django_db
-def test_without_codes_of_free_months_the_trial_codes_go_back_and_forth():
+def test_without_codes_of_a_discount_the_trial_codes_go_back_and_forth():
     from billing.models import PromoCode
 
     PromoCode.objects.create(code="canary", trial_days=30)
@@ -118,10 +119,10 @@ def test_without_codes_of_free_months_the_trial_codes_go_back_and_forth():
         cursor.execute("SELECT code, trial_days FROM billing_promocode")
         assert cursor.fetchall() == [("canary", 30)]
         columns = {column.name for column in connection.introspection.get_table_description(cursor, "billing_promocode")}
-    assert "free_months" not in columns
+    assert "discount_id" not in columns
 
     call_command("migrate", "billing", verbosity=0)
-    assert PromoCode.objects.values_list("code", "trial_days", "free_months").get() == ("canary", 30, None)
+    assert PromoCode.objects.values_list("code", "trial_days", "discount").get() == ("canary", 30, None)
 
 
 def _insert_without(table: str, new_columns: set[str], source_id, **replaced) -> None:
@@ -142,7 +143,7 @@ def _insert_without(table: str, new_columns: set[str], source_id, **replaced) ->
 
 
 @pytest.mark.django_db
-def test_rows_the_code_before_free_months_writes_still_go_in(shop):
+def test_rows_the_code_before_discounts_writes_still_go_in(shop):
     """During a deploy the previous release still records invoices and promo codes used: its INSERTs carry none of
     the new columns, and the database fills them (``db_default``) instead of refusing the row."""
     from billing.models import Invoice, InvoiceLine, PromoCode, PromoRedemption
@@ -153,7 +154,7 @@ def test_rows_the_code_before_free_months_writes_still_go_in(shop):
     other = PromoCode.objects.create(code="older", trial_days=30)
 
     _insert_without("billing_invoiceline", {"discount_cents"}, line.id, position=2)
-    _insert_without("billing_promoredemption", {"stripe_subscription_id", "free_until"}, used.id, promo_id=other.id)
+    _insert_without("billing_promoredemption", {"stripe_subscription_id", "discount_ends_at"}, used.id, promo_id=other.id)
 
     assert InvoiceLine.objects.get(invoice=invoice, position=2).discount_cents == 0
     assert PromoRedemption.objects.get(promo=other).stripe_subscription_id == ""

@@ -1,4 +1,4 @@
-"""Promo codes: the trial days or the free months a checkout grants, and who used each code."""
+"""Promo codes: the trial days or the discount a checkout grants, and who used each code."""
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -11,17 +11,14 @@ from live.models import UUIDModel
 
 #: The longest trial a promo code may grant.
 MAX_PROMO_TRIAL_DAYS = 365
-#: The most months free a promo code may grant.
-MAX_FREE_MONTHS = 12
 
 
 class PromoCode(UUIDModel):
-    """A code that grants, at checkout, either trial DAYS (replacing the plan's own) or free MONTHS.
+    """A code that grants, at checkout, either trial DAYS (replacing the plan's own) or a ``Discount``.
 
-    Trial days are no Stripe coupon: a coupon's duration burns from the moment it is applied, trial
-    included. Free months are one, a 100 % coupon for N months on a new monthly subscription and never with
-    a trial: Stripe issues an invoice every month (0 € while the coupon lasts), which is what the accountant
-    files, and charges the regular price from the month after without anyone doing anything.
+    Trial days are no Stripe coupon: a coupon's duration burns from the moment it is applied, trial included. A
+    discount is one (its mirror), on a new subscription and never with a trial: Stripe invoices every period with
+    the discount taken off (0 € when it takes all), which is what the accountant files.
     """
 
     code = models.CharField(
@@ -41,12 +38,14 @@ class PromoCode(UUIDModel):
             "Free trial days granted, replacing the plan's own trial (1 to 365)"
         ),
     )
-    free_months = models.PositiveIntegerField(
-        _("free months"),
+    discount = models.ForeignKey(
+        "billing.Discount",
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
-        validators=[MinValueValidator(1), MaxValueValidator(MAX_FREE_MONTHS)],
-        help_text=_("Months of a monthly plan at no charge, invoiced at 0 € (1 to 12); instead of trial days"),
+        related_name="codes",
+        verbose_name=_("discount"),
+        help_text=_("What it takes off; instead of trial days"),
     )
     is_active = models.BooleanField(_("active"), default=True)
     expires_at = models.DateTimeField(
@@ -81,33 +80,25 @@ class PromoCode(UUIDModel):
                     trial_days__isnull=False,
                     trial_days__gte=1,
                     trial_days__lte=MAX_PROMO_TRIAL_DAYS,
-                    free_months__isnull=True,
+                    discount__isnull=True,
                 )
-                | Q(
-                    free_months__isnull=False,
-                    free_months__gte=1,
-                    free_months__lte=MAX_FREE_MONTHS,
-                    trial_days__isnull=True,
-                ),
-                name="billing_promocode_one_kind_in_range",
+                | Q(discount__isnull=False, trial_days__isnull=True),
+                name="billing_promocode_discount_xor_trial_days",
             ),
         ]
 
     def __str__(self):
-        return f"{self.code} ({self.trial_days or self.free_months})"
+        return self.code
 
     def clean(self):
         super().clean()
-        if (self.trial_days is None) == (self.free_months is None):
-            raise ValidationError(_("A promo code grants either trial days or free months: fill in one of the two."))
+        # The discount may be one being made on the same page, not saved yet.
+        if (self.trial_days is None) == (self.discount is None):
+            raise ValidationError(_("A promo code grants either trial days or a discount: fill in one of the two."))
 
     def save(self, *args, **kwargs):
         self.code = normalise_promo_code(self.code)
         super().save(*args, **kwargs)
-
-    @property
-    def kind(self) -> str:
-        return "free_months" if self.free_months is not None else "trial_days"
 
     @property
     def is_exhausted(self) -> bool:
@@ -122,7 +113,13 @@ class PromoCode(UUIDModel):
 
     @property
     def is_redeemable(self) -> bool:
-        return self.is_active and not self.is_expired and not self.is_exhausted
+        return self.grants_now()
+
+    def grants_now(self, *, freed: int = 0) -> bool:
+        """Active (and its discount), not expired and with a use left once ``freed`` held ones are given back."""
+        live = self.discount is None or self.discount.is_active
+        left = self.max_redemptions is None or self.redemption_count - freed < self.max_redemptions
+        return self.is_active and live and not self.is_expired and left
 
 
 def normalise_promo_code(code: str | None) -> str:
@@ -131,13 +128,16 @@ def normalise_promo_code(code: str | None) -> str:
 
 
 class PromoRedemption(UUIDModel):
-    """A promo code used by a business: once per business and once per payer, so one
-    code does not give a year free to every business an account opens. Written when its checkout is paid
-    (or its plan change confirmed); ``PromoCode.redemption_count`` counts these."""
+    """A promo code used by a business: once per business and once per payer, so one code does not give a year free
+    to every business an account opens. Held by the checkout that offers it while its session can be paid
+    (``held_until``), and a use once paid (or its plan change confirmed); ``PromoCode.redemption_count`` counts both.
+    It keeps what the coupon of its discount covers (the Stripe products it was made with): a plan made later is
+    not discounted by Stripe, so it is not by the panel either."""
 
+    # A used code is turned off, never deleted: its uses would go with it.
     promo = models.ForeignKey(
         PromoCode,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="redemptions",
         verbose_name=_("promo code"),
     )
@@ -151,9 +151,22 @@ class PromoRedemption(UUIDModel):
     stripe_session_id = models.CharField(max_length=255, blank=True)
     # ``db_default``: the release before it still records uses during a deploy, without this column.
     stripe_subscription_id = models.CharField(max_length=255, blank=True, default="", db_default="", db_index=True)
-    free_until = models.DateTimeField(
-        _("free until"), null=True, blank=True, help_text=_("When the free months of the code end")
+    discount_ends_at = models.DateTimeField(
+        _("discount ends at"), null=True, blank=True, help_text=_("When the discount of the code ends; empty = never")
     )
+    attempt = models.ForeignKey(
+        "billing.CheckoutAttempt",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="promo_holds",
+        verbose_name=_("checkout"),
+    )
+    held_until = models.DateTimeField(
+        _("held until"), null=True, blank=True, help_text=_("Held by an open checkout until then; empty once used")
+    )
+    stripe_coupon_id = models.CharField(max_length=255, blank=True, default="", db_default="")
+    stripe_products = models.JSONField(default=list, blank=True, db_default=[])
     created_at = models.DateTimeField(_("used at"), auto_now_add=True)
 
     class Meta:

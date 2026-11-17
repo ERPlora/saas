@@ -1,0 +1,18 @@
+{
+  "amount_off": null,
+  "created": 1794906803,
+  "currency": null,
+  "duration": "repeating",
+  "duration_in_months": 6,
+  "id": "erp-discount-fixture-r100",
+  "livemode": false,
+  "max_redemptions": null,
+  "metadata": {},
+  "name": "Free for 6 months",
+  "object": "coupon",
+  "percent_off": 100.0,
+  "redeem_by": null,
+  "times_redeemed": 0,
+  "type": "percent_off",
+  "valid": true
+}

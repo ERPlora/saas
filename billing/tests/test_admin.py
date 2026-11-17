@@ -122,29 +122,18 @@ def test_promo_codes_are_written_in_the_admin(staff_client):
     assert PromoCode.objects.get().code == "feria_2026"
 
 
-def test_a_promo_code_of_free_months_is_written_in_the_admin(staff_client):
-    from billing.models import PromoCode
+@pytest.mark.parametrize("both", [True, False])
+def test_a_promo_code_with_both_or_none_of_trial_days_and_a_discount_is_refused_in_the_form(staff_client, both):
+    from billing.models import Discount, PromoCode
 
-    response = staff_client.post(
-        "/admin/billing/promocode/add/",
-        {"code": "testers", "free_months": "6", "is_active": "on", "redemption_count": "0"},
-    )
-
-    assert response.status_code == 302, response.content
-    assert PromoCode.objects.values_list("code", "trial_days", "free_months").get() == ("testers", None, 6)
-    assert "free_months" in staff_client.get("/admin/billing/promocode/").content.decode()
-
-
-@pytest.mark.parametrize("granted", [{"trial_days": "30", "free_months": "6"}, {}])
-def test_a_promo_code_with_both_kinds_or_none_is_refused_in_the_form(staff_client, granted):
-    from billing.models import PromoCode
-
+    discount = Discount.objects.create(name="Off", percent_off=10, duration="once")
+    granted = {"trial_days": "30", "discount": str(discount.pk)} if both else {}
     response = staff_client.post(
         "/admin/billing/promocode/add/", {"code": "both", "redemption_count": "0", **granted}
     )
 
     assert response.status_code == 200
-    assert "either trial days or free months" in response.content.decode()
+    assert "either trial days or a discount" in response.content.decode()
     assert not PromoCode.objects.exists()
 
 

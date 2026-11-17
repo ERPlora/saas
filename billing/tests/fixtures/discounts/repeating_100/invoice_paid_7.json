@@ -1,6 +1,6 @@
 {
   "api_version": "2024-04-10",
-  "created": 1794868035,
+  "created": 1794906854,
   "data": {
     "object": {
       "account_country": "ES",
@@ -27,12 +27,12 @@
       },
       "automatically_finalizes_at": null,
       "billing_reason": "subscription_cycle",
-      "charge": "ch_3UcYMmQGRHzdOa9L1oVQXC02",
+      "charge": "ch_3UciStQGRHzdOa9L1ivURvxI",
       "collection_method": "charge_automatically",
-      "created": 1810506382,
+      "created": 1810545204,
       "currency": "eur",
       "custom_fields": null,
-      "customer": "cus_Vdq2U82KI5yfsu",
+      "customer": "cus_Ve0TLkW7j1A7Hb",
       "customer_account": null,
       "customer_address": {
         "city": "Madrid",
@@ -55,12 +55,12 @@
       "discount": null,
       "discounts": [],
       "due_date": null,
-      "effective_at": 1810509982,
+      "effective_at": 1810548804,
       "ending_balance": 0,
       "footer": null,
       "from_invoice": null,
       "hosted_invoice_url": "https://invoice.stripe.com/i/fixture",
-      "id": "in_1UcYMiQGRHzdOa9L3EuwnThY",
+      "id": "in_1UciSqQGRHzdOa9Lqab5tG2I",
       "invoice_pdf": "https://pay.stripe.com/invoice/fixture/pdf",
       "issuer": {
         "type": "self"
@@ -77,8 +77,8 @@
             "discount_amounts": [],
             "discountable": true,
             "discounts": [],
-            "id": "il_1VgAcEQGRHzdOa9LPtddmPVG",
-            "invoice": "in_1UcYMiQGRHzdOa9L3EuwnThY",
+            "id": "il_1VgKiOQGRHzdOa9L4YxuL4XY",
+            "invoice": "in_1UciSqQGRHzdOa9Lqab5tG2I",
             "livemode": false,
             "metadata": {
               "hub_id": "00000000-0000-7000-8000-000000000001"
@@ -93,24 +93,24 @@
                 "proration_details": {
                   "credited_items": null
                 },
-                "subscription": "sub_1UcYM0QGRHzdOa9Lo8StPMHb",
-                "subscription_item": "si_Vdq2PQ0lJCQbOJ"
+                "subscription": "sub_1UciSAQGRHzdOa9LmkhYGmur",
+                "subscription_item": "si_Ve0TDkGIsfgXPJ"
               },
               "type": "subscription_item_details"
             },
             "period": {
-              "end": 1813184782,
-              "start": 1810506382
+              "end": 1813223604,
+              "start": 1810545204
             },
             "plan": {
-              "active": false,
+              "active": true,
               "aggregate_usage": null,
               "amount": 2999,
               "amount_decimal": "2999",
               "billing_scheme": "per_unit",
-              "created": 1794867984,
+              "created": 1794906801,
               "currency": "eur",
-              "id": "price_1UcYM0QGRHzdOa9LvSESZUew",
+              "id": "price_1UciS5QGRHzdOa9LWdIGMchB",
               "interval": "month",
               "interval_count": 1,
               "livemode": false,
@@ -118,7 +118,7 @@
               "meter": null,
               "nickname": null,
               "object": "plan",
-              "product": "prod_Vdq2Y1HViH6DHC",
+              "product": "prod_Ve0Tr13WpgtaDb",
               "tiers_mode": null,
               "transform_usage": null,
               "trial_period_days": null,
@@ -126,18 +126,18 @@
             },
             "pretax_credit_amounts": [],
             "price": {
-              "active": false,
+              "active": true,
               "billing_scheme": "per_unit",
-              "created": 1794867984,
+              "created": 1794906801,
               "currency": "eur",
               "custom_unit_amount": null,
-              "id": "price_1UcYM0QGRHzdOa9LvSESZUew",
+              "id": "price_1UciS5QGRHzdOa9LWdIGMchB",
               "livemode": false,
               "lookup_key": null,
               "metadata": {},
               "nickname": null,
               "object": "price",
-              "product": "prod_Vdq2Y1HViH6DHC",
+              "product": "prod_Ve0Tr13WpgtaDb",
               "recurring": {
                 "aggregate_usage": null,
                 "interval": "month",
@@ -146,7 +146,7 @@
                 "trial_period_days": null,
                 "usage_type": "licensed"
               },
-              "tax_behavior": "unspecified",
+              "tax_behavior": "exclusive",
               "tiers_mode": null,
               "transform_quantity": null,
               "type": "recurring",
@@ -155,8 +155,8 @@
             },
             "pricing": {
               "price_details": {
-                "price": "price_1UcYM0QGRHzdOa9LvSESZUew",
-                "product": "prod_Vdq2Y1HViH6DHC"
+                "price": "price_1UciS5QGRHzdOa9LWdIGMchB",
+                "product": "prod_Ve0Tr13WpgtaDb"
               },
               "type": "price_details",
               "unit_amount_decimal": "2999"
@@ -167,8 +167,8 @@
             },
             "quantity": 1,
             "quantity_decimal": "1",
-            "subscription": "sub_1UcYM0QGRHzdOa9Lo8StPMHb",
-            "subscription_item": "si_Vdq2PQ0lJCQbOJ",
+            "subscription": "sub_1UciSAQGRHzdOa9LmkhYGmur",
+            "subscription_item": "si_Ve0TDkGIsfgXPJ",
             "subtotal": 2999,
             "tax_amounts": [
               {
@@ -220,12 +220,12 @@
         "has_more": false,
         "object": "list",
         "total_count": 1,
-        "url": "/v1/invoices/in_1UcYMiQGRHzdOa9L3EuwnThY/lines"
+        "url": "/v1/invoices/in_1UciSqQGRHzdOa9Lqab5tG2I/lines"
       },
       "livemode": false,
       "metadata": {},
       "next_payment_attempt": null,
-      "number": "6393ED0E-1833",
+      "number": "6393ED0E-1841",
       "object": "invoice",
       "on_behalf_of": null,
       "paid": true,
@@ -236,18 +236,18 @@
           "metadata": {
             "hub_id": "00000000-0000-7000-8000-000000000001"
           },
-          "subscription": "sub_1UcYM0QGRHzdOa9Lo8StPMHb"
+          "subscription": "sub_1UciSAQGRHzdOa9LmkhYGmur"
         },
         "type": "subscription_details"
       },
-      "payment_intent": "pi_3UcYMmQGRHzdOa9L1fookD3Q",
+      "payment_intent": "pi_3UciStQGRHzdOa9L1vyWLDnj",
       "payment_settings": {
         "default_mandate": null,
         "payment_method_options": null,
         "payment_method_types": null
       },
-      "period_end": 1810506382,
-      "period_start": 1807914382,
+      "period_end": 1810545204,
+      "period_start": 1807953204,
       "post_payment_credit_notes_amount": 0,
       "pre_payment_credit_notes_amount": 0,
       "quote": null,
@@ -259,12 +259,12 @@
       "statement_descriptor": null,
       "status": "paid",
       "status_transitions": {
-        "finalized_at": 1810509982,
+        "finalized_at": 1810548804,
         "marked_uncollectible_at": null,
-        "paid_at": 1810509982,
+        "paid_at": 1810548804,
         "voided_at": null
       },
-      "subscription": "sub_1UcYM0QGRHzdOa9Lo8StPMHb",
+      "subscription": "sub_1UciSAQGRHzdOa9LmkhYGmur",
       "subscription_details": {
         "metadata": {
           "hub_id": "00000000-0000-7000-8000-000000000001"
@@ -273,7 +273,7 @@
       "subtotal": 2999,
       "subtotal_excluding_tax": 2999,
       "tax": 630,
-      "test_clock": "clock_1UcYLyQGRHzdOa9LXrJ5qt7F",
+      "test_clock": "clock_1UciS9QGRHzdOa9LGZg8P4ts",
       "total": 3629,
       "total_discount_amounts": [],
       "total_excluding_tax": 2999,
@@ -300,10 +300,10 @@
         }
       ],
       "transfer_data": null,
-      "webhooks_delivered_at": 1810506382
+      "webhooks_delivered_at": 1810545204
     }
   },
-  "id": "evt_1UcYMpQGRHzdOa9LSpffnoJR",
+  "id": "evt_1UciSxQGRHzdOa9LOi4JfJoE",
   "livemode": false,
   "object": "event",
   "pending_webhooks": 1,

@@ -1,0 +1,122 @@
+{
+  "application": null,
+  "billing_mode": {
+    "flexible": {
+      "proration_discounts": "included"
+    },
+    "type": "flexible",
+    "updated_at": 1795771108
+  },
+  "canceled_at": null,
+  "completed_at": null,
+  "created": 1795771108,
+  "current_phase": {
+    "end_date": 1797499108,
+    "start_date": 1794907108
+  },
+  "customer": "cus_Ve0Ypkn8WdkuQP",
+  "customer_account": null,
+  "default_settings": {
+    "application_fee_percent": null,
+    "automatic_tax": {
+      "disabled_reason": null,
+      "enabled": false,
+      "liability": null
+    },
+    "billing_cycle_anchor": "automatic",
+    "billing_thresholds": null,
+    "collection_method": "charge_automatically",
+    "default_payment_method": null,
+    "default_source": null,
+    "description": null,
+    "invoice_settings": {
+      "account_tax_ids": null,
+      "custom_fields": null,
+      "days_until_due": null,
+      "description": null,
+      "footer": null,
+      "issuer": {
+        "type": "self"
+      }
+    },
+    "on_behalf_of": null,
+    "transfer_data": null
+  },
+  "end_behavior": "release",
+  "id": "sub_sched_1UciX8QGRHzdOa9LFgUwpvI6",
+  "livemode": false,
+  "metadata": {},
+  "object": "subscription_schedule",
+  "pause_schedules": [],
+  "phases": [
+    {
+      "add_invoice_items": [],
+      "application_fee_percent": null,
+      "automatic_tax": {
+        "disabled_reason": null,
+        "enabled": false,
+        "liability": null
+      },
+      "billing_cycle_anchor": null,
+      "billing_thresholds": null,
+      "collection_method": null,
+      "currency": "eur",
+      "default_payment_method": null,
+      "default_tax_rates": [],
+      "description": null,
+      "discounts": [
+        {
+          "coupon": "erp-discount-fixture-down",
+          "discount": null,
+          "promotion_code": null
+        }
+      ],
+      "end_date": 1797499108,
+      "invoice_settings": null,
+      "items": [
+        {
+          "billing_thresholds": null,
+          "discounts": [],
+          "metadata": {},
+          "plan": "price_1UciX1QGRHzdOa9LiD6fwXRK",
+          "price": "price_1UciX1QGRHzdOa9LiD6fwXRK",
+          "quantity": 1,
+          "tax_rates": [
+            {
+              "active": true,
+              "country": "ES",
+              "created": 1788993236,
+              "description": "ERPlora — ES 21.00%",
+              "display_name": "IVA",
+              "effective_percentage": 21.0,
+              "flat_amount": null,
+              "id": "txr_1UDu40QGRHzdOa9LOvNODTMj",
+              "inclusive": false,
+              "jurisdiction": null,
+              "jurisdiction_level": null,
+              "livemode": false,
+              "metadata": {},
+              "object": "tax_rate",
+              "percentage": 21.0,
+              "rate_type": "percentage",
+              "state": null,
+              "tax_type": "vat"
+            }
+          ]
+        }
+      ],
+      "metadata": {},
+      "on_behalf_of": null,
+      "proration_behavior": "create_prorations",
+      "start_date": 1794907108,
+      "transfer_data": null,
+      "trial_end": null
+    }
+  ],
+  "released_at": null,
+  "released_subscription": null,
+  "renewal_interval": null,
+  "status": "active",
+  "subscription": "sub_1UciX4QGRHzdOa9L4Gq3apKU",
+  "test_clock": "clock_1UciX3QGRHzdOa9Lx9WuaClV"
+}

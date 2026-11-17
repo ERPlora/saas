@@ -1,4 +1,4 @@
-"""What a discount takes off a Stripe invoice: a promo code of free months leaves invoices of 0 € that are still
+"""What a discount takes off a Stripe invoice: a promo code's discount can leave invoices of 0 € that are still
 ERPlora's invoices, each line with its price, its discount and its base after it."""
 
 

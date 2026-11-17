@@ -27,7 +27,8 @@ import type {
   StoreCatalogOut,
   SubscriptionOut,
 } from '../../../frontend/sdk-types';
-import { formatDate, formatEuros } from '../format';
+import { checkoutNotice } from '../discount-text';
+import { formatCents, formatDate } from '../format';
 import type { PromoCheckOut } from '../promo-types';
 import {
   annualSaving,
@@ -192,8 +193,6 @@ watch(subscription, (now, before) => {
 const promo = shallowRef<PromoCheckOut | null>(null);
 const promoCode = computed(() => (promo.value?.valid ? promo.value.code : ''));
 const offersPromo = computed(() => !subscription.value?.paying || subscription.value.plan === freePlan.value?.slug);
-// A code of free months, on the plan the checkout sells: the checkout says when its price starts.
-const freeMonths = computed(() => (promo.value?.valid && promo.value.kind === 'free_months' ? promo.value.free_months : 0));
 
 // --- Buying ----------------------------------------------------------------------------------------
 
@@ -206,13 +205,24 @@ const annualInterval = shallowRef<BillingInterval>('year');
 
 const cents = (euros: string) => Math.round(Number(euros) * 100);
 
-const monthlyPrice = shallowRef('');
+const planCents = shallowRef(0);
 
 function upgrade(plan: PlanOut, chosen: BillingInterval): void {
   purchase.value = { kind: 'plan', slug: plan.slug, name: plan.name, interval: chosen };
-  monthlyPrice.value = formatEuros(plan.price_monthly, locale.value);
+  planCents.value = cents(chosen === 'year' ? plan.price_annual : plan.price_monthly);
   checkoutOpen.value = true;
 }
+
+// A code's discount on the plan the checkout sells (one it names, with that billing): the checkout says it.
+const discountNotice = computed(() => {
+  const discount = promo.value?.valid ? promo.value.discount : null;
+  const sale = purchase.value;
+  if (!discount || sale?.kind !== 'plan') return '';
+  const { plans, intervals } = discount.applies_to;
+  if (!intervals.includes(sale.interval) || (plans.length > 0 && !plans.includes(sale.slug))) return '';
+  const money = (amount: number) => formatCents(amount, locale.value);
+  return checkoutNotice({ t, money }, discount, { cents: planCents.value, interval: sale.interval });
+});
 
 function change(plan: PlanOut, chosen: BillingInterval): void {
   prorationItem.value = {
@@ -646,11 +656,11 @@ async function keepTheModule(module: SaleModule): Promise<void> {
     >
       <template #notice>
         <InlineFeedback
-          v-if="purchase?.kind === 'plan' && purchase.interval === 'month' && freeMonths"
+          v-if="discountNotice"
           icon="ion:ticket-outline"
-          data-testid="checkout-free-months"
+          data-testid="checkout-discount"
         >
-          {{ $t('billing.checkout.freeMonths', { months: freeMonths, price: monthlyPrice }, freeMonths) }}
+          {{ discountNotice }}
         </InlineFeedback>
       </template>
     </CheckoutModal>

@@ -16,11 +16,11 @@ from live.operations import AI, INTERNAL, operation
 
 from apps import queries as app_queries
 from apps.models import Module
-from billing import stripe_service, vat
-from billing.models import Invoice, PaymentFailure, PlanChangeSchedule
+from billing import discount_terms, stripe_service, vat
+from billing.models import Invoice, PaymentFailure, PlanChangeSchedule, PromoRedemption
 from billing.money import from_cents, to_cents
 from billing.queries.invoices import CARD_CACHE_SECONDS, _billing_account, _owned_hub_ids
-from billing.queries.promo_codes import with_free_months
+from billing.queries.promo_codes import discount_out
 from billing.queries.tax import Payer, _vat_status_on_file, payer_of
 from billing.schemas import (
     HubIn,
@@ -231,11 +231,52 @@ def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
             for change in PlanChangeSchedule.objects.filter(hub_id__in=[s.hub_id for s in page])
         }
         next_plans = Plan.objects.in_bulk({change["plan"] for change in scheduled.values()}, field_name="slug")
-        rows = with_free_months(
+        rows = with_discount(
             [_subscription_row(subscription, user, owned, unpaid, modules, scheduled, next_plans) for subscription in page],
             page,
         )
     return {"rows": rows, "total": total, "limit": data.limit, "offset": data.offset}
+
+
+
+def with_discount(rows: list[dict], subscriptions: list) -> list[dict]:
+    """The rows of ``billing.subscription.list`` (one per subscription, in order) with the discount of a promo code
+    that subscription still carries (one once is spent; one for months, until it ends) on the plan it bills: the
+    next invoice takes it off the plan before VAT when it still runs then, as Stripe does. A plan whose product its
+    coupon was not made with (one it does not name, or made later) is charged whole, and the discount is not shown."""
+    used = (
+        PromoRedemption.objects.select_related("promo__discount")
+        .filter(stripe_subscription_id__in=[subscription.stripe_subscription_id for subscription in subscriptions])
+        .filter(held_until__isnull=True)
+        .exclude(promo__discount=None)
+        .exclude(promo__discount__duration="once")
+        .exclude(discount_ends_at__lte=timezone.now())
+    )
+    by_subscription = {redemption.stripe_subscription_id: redemption for redemption in used}
+    for row, subscription in zip(rows, subscriptions, strict=True):
+        redemption = by_subscription.get(subscription.stripe_subscription_id)
+        row["discount"] = _carried_discount(row, subscription, redemption) if redemption is not None else None
+    return rows
+
+
+def _carried_discount(row: dict, subscription, redemption) -> dict | None:
+    discount = redemption.promo.discount
+    # A downgrade that waits bills the new plan on the renewal.
+    waiting = row["scheduled_change"]
+    plan = Plan.objects.filter(slug=waiting["plan"]).first() if waiting else subscription.plan
+    interval = waiting["interval"] if waiting else subscription.billing_interval
+    if plan is None or not plan.stripe_product_id or plan.stripe_product_id not in redemption.stripe_products:
+        return None
+    renewal = row["next_invoice"]
+    ends_at = redemption.discount_ends_at
+    if renewal is not None and renewal["total_cents"] is not None and (ends_at is None or ends_at > renewal["date"]):
+        payer = payer_of(subscription.hub)
+        plan_cents = _plan_price(plan, interval)
+        kept = plan_cents - discount_terms.off_cents(discount, plan_cents)
+        category = vat.SAAS_SUBSCRIPTION_CATEGORY
+        whole, rest = (_with_vat_cents([(cents, category)], payer) or 0 for cents in (plan_cents, kept))
+        renewal["total_cents"] -= whole - rest
+    return {"code": redemption.promo.code, "ends_at": ends_at, "terms": discount_out(discount)}
 
 
 # --- Payment details --------------------------------------------------------------------------------

@@ -71,7 +71,7 @@ export function subscriptionRow(id: string, name: string, extra: Partial<Subscri
     unpaid_invoice_id: null,
     scheduled_change: null,
     paid_by_another_account: false,
-    free_until: null,
+    discount: null,
     actions: ['change_plan', 'cancel_plan', 'view_invoices'],
     can: { take_over: false, change_plan: true, cancel_plan: true, keep_plan: false, view_invoice: false, view_invoices: true },
     ...extra,

@@ -1,6 +1,6 @@
-"""Promo codes: trial days or free months at checkout, and ``billing.promo.check``.
+"""Promo codes: trial days or a discount at checkout, and ``billing.promo.check``.
 
-A code grants exactly one of the two: trial days, or 1 to 12 free months (``test_free_months.py``). It is
+A code grants exactly one of the two: trial days, or a discount (``test_discounts.py``). It is
 case-insensitive and trimmed; an unknown, inactive, expired or exhausted
 code resolves to nothing and never blocks a sale; the counter goes up once per completed checkout and
 never past its cap, even under races (the cap is in the UPDATE's WHERE).
@@ -126,7 +126,7 @@ class TestRedeem:
         assert made.redemption_count == 3
 
 
-class TestKinds:
+class TestTrialDays:
     def test_a_year_is_allowed(self):
         PromoCode(code="year", trial_days=365).full_clean()
 
@@ -135,30 +135,10 @@ class TestKinds:
         with pytest.raises(ValidationError):
             PromoCode(code="bad", trial_days=days).full_clean()
 
-    @pytest.mark.parametrize("months", [1, 6, 12])
-    def test_one_to_twelve_free_months_are_allowed(self, months):
-        PromoCode(code="testers", free_months=months).full_clean()
-
-    @pytest.mark.parametrize("months", [0, 13])
-    def test_no_months_or_more_than_twelve_are_refused(self, months):
-        with pytest.raises(ValidationError):
-            PromoCode(code="bad", free_months=months).full_clean()
-
-    @pytest.mark.parametrize(("days", "months"), [(30, 6), (None, None)])
-    def test_a_code_grants_trial_days_or_free_months_never_both(self, days, months):
-        with pytest.raises(ValidationError) as refused:
-            PromoCode(code="bad", trial_days=days, free_months=months).full_clean()
-
-        assert "either trial days or free months" in str(refused.value)
-
-    @pytest.mark.parametrize(("days", "months"), [(30, 6), (None, None), (None, 13), (366, None)])
-    def test_the_database_refuses_a_code_that_is_not_one_kind_in_range(self, days, months):
+    @pytest.mark.parametrize("days", [0, 366])
+    def test_the_database_refuses_them_too(self, days):
         with pytest.raises(IntegrityError), transaction.atomic():
-            PromoCode.objects.create(code="bad", trial_days=days, free_months=months)
-
-    def test_each_code_says_its_kind(self):
-        assert promo(trial_days=30).kind == "trial_days"
-        assert PromoCode.objects.create(code="testers", free_months=6).kind == "free_months"
+            PromoCode.objects.create(code="bad", trial_days=days)
 
 
 class TestCheck:
@@ -169,14 +149,50 @@ class TestCheck:
             ctx_for(buyer), PromoCheckIn(code=" Canary_2026 ")
         ).model_dump()
 
-        assert answer == {"code": "canary_2026", "valid": True, "kind": "trial_days", "trial_days": 60, "free_months": 0}
+        assert answer == {"code": "canary_2026", "valid": True, "trial_days": 60, "discount": None}
 
-    def test_a_code_of_free_months_says_how_many(self, buyer):
-        PromoCode.objects.create(code="testers", free_months=6)
+    def test_a_code_of_a_discount_says_its_terms_and_where_they_apply(self, buyer, plans):
+        from billing.models import Discount
+        from hubs.models import Plan
+
+        given = Discount.objects.create(name="Testers", percent_off=100, duration="repeating", duration_in_months=6)
+        given.plans.set(Plan.objects.filter(slug__in=["standard", "starter"]))
+        PromoCode.objects.create(code="testers", discount=given)
 
         answer = queries.promo_check(ctx_for(buyer), PromoCheckIn(code="TESTERS")).model_dump()
 
-        assert answer == {"code": "testers", "valid": True, "kind": "free_months", "trial_days": 0, "free_months": 6}
+        assert answer == {
+            "code": "testers",
+            "valid": True,
+            "trial_days": 0,
+            "discount": {
+                "percent_off": 100,
+                "amount_off_cents": None,
+                "currency": "eur",
+                "duration": "repeating",
+                "duration_in_months": 6,
+                "applies_to": {"kind": "plans", "plans": ["standard", "starter"], "intervals": ["month"]},
+            },
+        }
+
+    def test_a_discount_on_every_plan_names_none(self, buyer):
+        from billing.models import Discount
+
+        given = Discount.objects.create(name="Ten", amount_off_cents=1000, duration="forever")
+        PromoCode.objects.create(code="ten", discount=given)
+
+        answer = queries.promo_check(ctx_for(buyer), PromoCheckIn(code="ten")).model_dump()
+
+        assert answer["discount"]["applies_to"] == {"kind": "plans", "plans": [], "intervals": ["month", "year"]}
+        assert (answer["discount"]["percent_off"], answer["discount"]["amount_off_cents"]) == (None, 1000)
+
+    def test_an_inactive_discount_makes_its_codes_invalid(self, buyer):
+        from billing.models import Discount
+
+        given = Discount.objects.create(name="Off", percent_off=10, duration="once", is_active=False)
+        PromoCode.objects.create(code="off", discount=given)
+
+        assert queries.promo_check(ctx_for(buyer), PromoCheckIn(code="off")).valid is False
 
     def test_an_invalid_code_is_an_answer_not_an_error(self, buyer):
         promo(is_active=False)
@@ -185,7 +201,7 @@ class TestCheck:
             ctx_for(buyer), PromoCheckIn(code="canary_2026")
         ).model_dump()
 
-        assert answer == {"code": "canary_2026", "valid": False, "kind": "trial_days", "trial_days": 0, "free_months": 0}
+        assert answer == {"code": "canary_2026", "valid": False, "trial_days": 0, "discount": None}
 
     def test_a_visitor_cannot_try_codes(self):
         response = Client().get("/api/billing/promo-check", {"code": "canary_2026"}, HTTP_HOST=HOST)
@@ -219,7 +235,6 @@ class TestCheck:
         assert response.json() == {
             "code": "canary_2026",
             "valid": True,
-            "kind": "trial_days",
             "trial_days": 30,
-            "free_months": 0,
+            "discount": None,
         }

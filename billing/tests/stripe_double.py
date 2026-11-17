@@ -49,7 +49,7 @@ class StripeDouble:
         self.tax_rates: list[dict] = []
         #: Each customer's tax ids (``customers.tax_ids.list``/``create``).
         self.customer_tax_ids: dict[str, list[dict]] = {}
-        #: The account's coupons by id (``coupons.create``): none until a code of free months makes one.
+        #: The account's coupons by id (``coupons.create``): none until a code's discount makes one.
         self.coupons: dict[str, dict] = {}
         self._answers.update({"coupons.create": [self._new_coupon]})
         self.v1 = _Node(self, "")
@@ -142,9 +142,7 @@ class StripeDouble:
             case "customers.tax_ids.list":
                 return listing(self.customer_tax_ids.get(call.args[0], []))
             case "customers.tax_ids.create":
-                tax_id = {"id": f"txi_{number}", "object": "tax_id", **params}
-                self.customer_tax_ids.setdefault(call.args[0], []).append(tax_id)
-                return tax_id
+                return self._create_tax_id(call.args[0], number, params)
             case "checkout.sessions.create":
                 return {
                     "id": f"cs_test_{number}",
@@ -169,6 +167,16 @@ class StripeDouble:
         raise AssertionError(
             f"Stripe {call.path} was called without an answer (params {params})"
         )
+
+    def _create_tax_id(self, customer: str, number: int, params: dict) -> dict | stripe.InvalidRequestError:
+        """As the API checks it: an ``eu_vat`` starts with its country's two letters (``ESB12345674``, never
+        ``B12345674``)."""
+        value = params.get("value") or ""
+        if params.get("type") == "eu_vat" and not value[:2].isalpha():
+            return tax_id_invalid("eu_vat")
+        tax_id = {"id": f"txi_{number}", "object": "tax_id", **params}
+        self.customer_tax_ids.setdefault(customer, []).append(tax_id)
+        return tax_id
 
 
 class _Node:
@@ -237,7 +245,7 @@ def subscription(
     return {
         "id": sub_id,
         "object": "subscription",
-        # Expanded, as ``retrieve_subscription`` asks for them: a promo code of free months is one.
+        # Expanded, as ``retrieve_subscription`` asks for them: a promo code's discount is one.
         "discounts": discounts or [],
         "status": status,
         "customer": customer,
@@ -523,3 +531,10 @@ def invalid_request(
     code: str = "resource_missing", message: str = "No such subscription"
 ) -> stripe.InvalidRequestError:
     return stripe.InvalidRequestError(message, param="id", code=code, http_status=404)
+
+
+def tax_id_invalid(tax_type: str) -> stripe.InvalidRequestError:
+    """What Stripe answers a tax id whose value does not have the form of its type."""
+    return stripe.InvalidRequestError(
+        f"Invalid value for {tax_type}.", param="value", code="tax_id_invalid", http_status=400
+    )

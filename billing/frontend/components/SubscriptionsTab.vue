@@ -23,6 +23,7 @@ import { BILLING, STORE } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import type { PlanOut, SubscriptionAction, SubscriptionRowOut } from '../../../frontend/sdk-types';
+import { carriedText } from '../discount-text';
 import { formatDate } from '../format';
 import { formatAmount } from '../invoices';
 import { isFree } from '../store';
@@ -274,10 +275,10 @@ async function keepPlan(row: Row, id: string): Promise<void> {
           data-testid="subscription-scheduled"
         >{{ $t('billing.subscriptions.scheduled', { plan: planName(row.scheduled_change.plan), date: day(row.scheduled_change.starts_at) }) }}</span>
         <span
-          v-if="row.free_until"
+          v-if="row.discount"
           class="cell-sub"
-          data-testid="subscription-free-until"
-        >{{ $t('billing.subscriptions.freeUntil', { date: day(row.free_until) }) }}</span>
+          data-testid="subscription-discount"
+        >{{ carriedText({ t, money }, row.discount, day) }}</span>
       </div>
     </template>
     <template #modules="{ row }">

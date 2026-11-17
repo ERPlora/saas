@@ -1,5 +1,5 @@
 // «Do you have a promo code?» in the Store: the code is checked with `billing.promo.check` before paying and the answer
-// is the model the Store hands to the checkout. A code grants trial days or free months; an invalid one is said and
+// is the model the Store hands to the checkout. A code grants trial days or a discount; an invalid one is said and
 // never blocks the sale; a refusal of the server (too many tries) is said as it comes.
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -11,9 +11,17 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-const SPRING: PromoCheckOut = { code: 'SPRING', valid: true, kind: 'trial_days', trial_days: 30, free_months: 0 };
-const TESTERS: PromoCheckOut = { code: 'TESTERS', valid: true, kind: 'free_months', trial_days: 0, free_months: 6 };
-const NOPE: PromoCheckOut = { code: 'NOPE', valid: false, kind: 'trial_days', trial_days: 0, free_months: 0 };
+const SPRING: PromoCheckOut = { code: 'SPRING', valid: true, trial_days: 30, discount: null };
+const FREE_6 = {
+  percent_off: 100,
+  amount_off_cents: null,
+  currency: 'eur',
+  duration: 'repeating' as const,
+  duration_in_months: 6,
+  applies_to: { kind: 'plans' as const, plans: [], intervals: ['month' as const] },
+};
+const TESTERS: PromoCheckOut = { code: 'TESTERS', valid: true, trial_days: 0, discount: FREE_6 };
+const NOPE: PromoCheckOut = { code: 'NOPE', valid: false, trial_days: 0, discount: null };
 
 async function setup(answer: () => Response, locale: 'en' | 'es' = 'en') {
   const emitted: Array<PromoCheckOut | null> = [];
@@ -54,17 +62,17 @@ describe('PromoCodeField', () => {
     expect(s.emitted).toEqual([SPRING]);
   });
 
-  it('a code of free months says how many, and that the regular price follows', async () => {
+  it('a code of a discount says what it takes off and for how long', async () => {
     const s = await setup(() => Response.json(TESTERS));
     await type(s, 'testers');
-    expect(s.el('store-promo-result').text()).toBe('Code TESTERS: 6 months free, then the plan’s regular price.');
+    expect(s.el('store-promo-result').text()).toBe('Code TESTERS: Free for 6 months.');
     expect(s.emitted).toEqual([TESTERS]);
   });
 
   it('says it in Spanish too', async () => {
     const s = await setup(() => Response.json(TESTERS), 'es');
     await type(s, 'testers');
-    expect(s.el('store-promo-result').text()).toBe('Código TESTERS: 6 meses gratis; después, el precio normal del plan.');
+    expect(s.el('store-promo-result').text()).toBe('Código TESTERS: Gratis durante 6 meses.');
   });
 
   it('an invalid code is said and never blocks the sale', async () => {
