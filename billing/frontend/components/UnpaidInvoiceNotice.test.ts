@@ -32,7 +32,7 @@ describe('UnpaidInvoiceNotice', () => {
     expect(s.q('unpaid-body').text()).toBe(
       'Invoice A1B2-0004 of Oct 10, 2026 could not be collected. Pay it before Oct 17, 2026 or the business is suspended; nothing is deleted.',
     );
-    expect(s.wrapper.attributes('role')).toBe('alert');
+    expect(s.wrapper.get('.box').attributes('role')).toBe('alert');
     expect(s.wrapper.attributes('data-tone')).toBe('danger');
   });
 
@@ -70,7 +70,7 @@ describe('UnpaidInvoiceNotice', () => {
   it('once the card changed, it says so and «Pay» is back', async () => {
     const s = await notice({ invoice: unpaidRow('i1'), business: { ...PLAZA, unpaid_reason: 'card_changed' } });
     expect(s.wrapper.attributes('data-tone')).toBe('success');
-    expect(s.wrapper.attributes('role')).toBe('status');
+    expect(s.wrapper.get('.box').attributes('role')).toBe('status');
     expect(s.wrapper.find('.heading').text()).toBe('Card changed');
     expect(s.q('unpaid-body').text()).toBe('You can now pay the invoice of Bar La Plaza (€36.29) with it.');
     expect((s.q('pay-invoice').element as HTMLElement & { disabled: boolean }).disabled).toBe(false);

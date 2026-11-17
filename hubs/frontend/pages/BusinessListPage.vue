@@ -201,9 +201,9 @@ function onAction({ actionId, row }: DataTableActionEvent<BusinessRowOut>): void
 async function recover(row: BusinessRowOut): Promise<void> {
   try {
     const business = await restore.run({ id: row.id });
-    void toastSuccess(t('hubs.list.restored', { name: business.name }));
+    toastSuccess(t('hubs.list.restored', { name: business.name }));
   } catch {
-    void toastError(text(restore.error.value));
+    toastError(text(restore.error.value));
   }
 }
 
@@ -219,9 +219,9 @@ async function answerOffer(offer: OwnershipOfferOut, yes: boolean): Promise<void
   const command = yes ? acceptOffer : declineOffer;
   try {
     await command.run({ id: offer.id });
-    void toastSuccess(yes ? t('hubs.list.ownership.accepted', { name: offer.hub.name }) : t('hubs.list.ownership.declined'));
+    toastSuccess(yes ? t('hubs.list.ownership.accepted', { name: offer.hub.name }) : t('hubs.list.ownership.declined'));
   } catch {
-    void toastError(text(command.error.value));
+    toastError(text(command.error.value));
   }
 }
 

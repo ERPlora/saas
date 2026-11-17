@@ -16,7 +16,7 @@ import { djangoPrintWarm } from './django';
 import { expect, seededAndSignedInWarm, test } from './fixtures';
 import { watchPageErrors } from './page-events';
 import { HUB_DOUBLE_PORT } from './project';
-import { repeatedTop, settled, shot, sidewaysScroll, toast, VIEWPORTS } from './screen';
+import { repeatedTop, settled, shot, sidewaysScroll, toast, toasts, VIEWPORTS } from './screen';
 import { apiPost } from './session';
 import { playStripePortal, STRIPE_PORTAL_URL } from './stripe';
 
@@ -31,15 +31,13 @@ const WIDTHS = [390, 834, 1024, 1180, 1280, 1440] as const;
 seededAndSignedInWarm('billing_seed.py', BILLING);
 
 /**
- * How far above the bottom of the window the toast's box ends (Ionic leaves it 10 px up). Read after `settled()`,
- * which waits for the toast to stop sliding in (Ionic animates it inside its shadow root).
+ * How far above the bottom of the window the newest toast ends (the shell's stack keeps 16 px, or sits above a bottom
+ * bar). Read after `settled()`, which waits for the toast to stop sliding in.
  */
 const toastGap = (page: Page) =>
-  page.locator('ion-toast').evaluate((element) => {
-    const box = element.shadowRoot?.querySelector('.toast-wrapper')?.getBoundingClientRect();
-    if (!box) throw new Error('ion-toast without its .toast-wrapper');
-    return Math.round(window.innerHeight - box.bottom);
-  });
+  toasts(page)
+    .first()
+    .evaluate((element) => Math.round(window.innerHeight - element.getBoundingClientRect().bottom));
 
 /** Stripe's pages, played: whatever the browser opens there is a placeholder page. */
 async function playStripePages(page: Page): Promise<void> {
@@ -248,7 +246,7 @@ test.describe('billing', () => {
       await expect(page.getByTestId('invoice-pdf')).toHaveText('Descargar PDF');
       await page.getByTestId('invoice-pdf').click();
       await expect(toast(page, offline)).toBeVisible();
-      await expect(page.locator('ion-toast')).not.toContainText('Network error');
+      await expect(toasts(page).filter({ hasText: 'Network error' })).toHaveCount(0);
       await settled(page);
       expect(await toastGap(page), `the toast stops whole on screen at ${viewport.width} px`).toBeGreaterThanOrEqual(8);
       await page.screenshot({ path: shot(`FIX-SAAS-BILLING-INVOICE-DOWNLOAD-NETWORK-ERROR-ENGLISH-${viewport.width}`) });

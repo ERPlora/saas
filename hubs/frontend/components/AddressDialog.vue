@@ -49,7 +49,7 @@ async function submit(): Promise<void> {
   if (!changed.value) return;
   try {
     const moved = await change.run({ id: props.business.id, slug: wanted.value });
-    void toastSuccess(t('hubs.addressDialog.changed', { host: moved.host }));
+    toastSuccess(t('hubs.addressDialog.changed', { host: moved.host }));
     open.value = false;
   } catch {
     // `change.error`: the dialog shows it (a 422 on the field).

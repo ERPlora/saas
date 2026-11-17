@@ -65,7 +65,7 @@ async function disconnect(): Promise<void> {
     if (!left) return;
     accounts.value = left;
     confirming.value = false;
-    void toastSuccess(t('accounts.account.google.disconnected'));
+    toastSuccess(t('accounts.account.google.disconnected'));
   } catch (error) {
     if (!reauthRequestOf(error)) failure.value = error instanceof ApiError ? error : new ApiError(0, 'client_error', String(error));
   } finally {

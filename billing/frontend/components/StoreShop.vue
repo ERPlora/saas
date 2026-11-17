@@ -304,7 +304,7 @@ function prorationDone(out: SubscriptionOut): void {
 }
 
 function stale(): void {
-  void toastInfo(t('billing.checkout.stale'));
+  toastInfo(t('billing.checkout.stale'));
   if (business.value) void loadCatalog(business.value.id);
 }
 
@@ -349,7 +349,7 @@ async function confirmCancel(): Promise<void> {
     apply(out);
     const plan = currentPlan.value?.name ?? out.plan;
     const date = formatDate(out.current_period_end, locale.value);
-    void toastSuccess(date ? t('billing.cancelPlan.done', { plan, date }) : t('billing.cancelPlan.doneNoDate', { plan }));
+    toastSuccess(date ? t('billing.cancelPlan.done', { plan, date }) : t('billing.cancelPlan.doneNoDate', { plan }));
     cancelOpen.value = false;
   } catch {
     // `cancelPlan.error`: the dialog says it.
@@ -362,9 +362,9 @@ async function keepThePlan(): Promise<void> {
   try {
     const out = await keepPlan.run({ hub_id: hub.id });
     apply(out);
-    void toastSuccess(t('billing.plans.kept', { plan: currentPlan.value?.name ?? out.plan, date: formatDate(out.current_period_end, locale.value) }));
+    toastSuccess(t('billing.plans.kept', { plan: currentPlan.value?.name ?? out.plan, date: formatDate(out.current_period_end, locale.value) }));
   } catch {
-    void toastInfo(text(keepPlan.error.value));
+    toastInfo(text(keepPlan.error.value));
   }
 }
 
@@ -407,7 +407,7 @@ async function confirmCancelModule(): Promise<void> {
     apply(out);
     const until = out.modules.find((item) => item.slug === module.slug)?.valid_until ?? out.current_period_end;
     const date = formatDate(until, locale.value);
-    void toastSuccess(
+    toastSuccess(
       date ? t('billing.cancelModule.done', { module: module.name, date }) : t('billing.cancelModule.doneNoDate', { module: module.name }),
     );
     moduleToCancel.value = null;
@@ -423,9 +423,9 @@ async function keepTheModule(module: SaleModule): Promise<void> {
     const out = await keepModule.run({ hub_id: hub.id, module: module.slug });
     apply(out);
     const date = formatDate(out.current_period_end, locale.value);
-    void toastSuccess(date ? t('billing.modules.kept', { module: module.name, date }) : t('billing.modules.keptNoDate', { module: module.name }));
+    toastSuccess(date ? t('billing.modules.kept', { module: module.name, date }) : t('billing.modules.keptNoDate', { module: module.name }));
   } catch {
-    void toastInfo(text(keepModule.error.value));
+    toastInfo(text(keepModule.error.value));
   }
 }
 </script>

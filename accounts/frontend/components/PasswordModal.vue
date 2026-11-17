@@ -69,7 +69,7 @@ async function submit(): Promise<void> {
       props.leave(LAUNCHER);
       return;
     }
-    void toastSuccess(t('accounts.account.password.changed'));
+    toastSuccess(t('accounts.account.password.changed'));
     open.value = false;
   } catch (error) {
     if (error instanceof ApiError && error.fields) {

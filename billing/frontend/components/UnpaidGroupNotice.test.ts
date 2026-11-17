@@ -46,7 +46,7 @@ async function setup(items: UnpaidItem[] = ITEMS, locale: 'en' | 'es' = 'en', ap
 describe('UnpaidGroupNotice', () => {
   it('one danger banner: how many and how much in all, then each business on its own line, the suspended first', async () => {
     const s = await setup();
-    expect(s.wrapper.attributes('role')).toBe('alert');
+    expect(s.wrapper.get('.box').attributes('role')).toBe('alert');
     expect(s.wrapper.attributes('data-tone')).toBe('danger');
     expect(s.wrapper.find('.heading').text()).toBe('2 unpaid invoices: €72.58');
     expect(s.lines().map((line) => line.get('[data-testid="unpaid-group-text"]').text())).toEqual([

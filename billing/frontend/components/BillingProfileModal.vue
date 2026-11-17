@@ -138,7 +138,7 @@ const fieldErrors = computed<Record<string, string>>(() => ({
 async function submit(): Promise<void> {
   try {
     const saved = await save.run({ hub_id: hubId.value, ...draft.value });
-    void toastSuccess(t('billing.payment.modal.saved'));
+    toastSuccess(t('billing.payment.modal.saved'));
     emit('saved', saved);
     open.value = false;
   } catch {

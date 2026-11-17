@@ -113,7 +113,7 @@ async function submit(): Promise<void> {
   const typeName = types.value.find((type) => type.code === businessType.value)?.name ?? null;
   try {
     const business = await create.run({ name: trimmed, country: country.value, business_type: businessType.value || null });
-    void toastSuccess(t('hubs.create.created', { name: business.name }));
+    toastSuccess(t('hubs.create.created', { name: business.name }));
     emit('created', business, { typeName });
   } catch {
     // `create.error` holds it: its fields go to the fields, anything else above the button.

@@ -29,10 +29,10 @@ export function useAcceptInvitation() {
       business = await command.run({ id: invitation.id });
     } catch {
       accepting.value = null;
-      void toastError(text(command.error.value));
+      toastError(text(command.error.value));
       return;
     }
-    void toastSuccess(t('hubs.invitation.accepted', { name: business.name }));
+    toastSuccess(t('hubs.invitation.accepted', { name: business.name }));
     if (business.can_open && (await open(business))) return;
     accepting.value = null;
     await router.push(BUSINESSES);

@@ -3,10 +3,7 @@
 // built here, named with the day. While it runs the button is off; a failure is said and the button comes back.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@erplora/ui/shell', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
-  toastError: vi.fn(() => Promise.resolve()),
-}));
+vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/frontend/__tests__/module-mocks')).shellWithToastSpies(original));
 
 import { toastError } from '@erplora/ui/shell';
 

@@ -39,7 +39,7 @@ async function confirm(): Promise<void> {
   } catch {
     return; // `decline.error` is shown in the dialog.
   }
-  void toastSuccess(t('hubs.invitation.declined'));
+  toastSuccess(t('hubs.invitation.declined'));
   open.value = false;
   emit('declined', invitation);
 }

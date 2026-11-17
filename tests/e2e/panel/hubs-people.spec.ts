@@ -20,7 +20,7 @@ import { type HubCall, type HubDouble, startHubDouble } from './hub';
 import { MAIL_LOGO_URL, mailPartsOf, onlyTheMailLogo, waitForMail } from './mail';
 import { watchPageErrors } from './page-events';
 import { PANEL_URL } from './project';
-import { captureAtEverySize, settled, shot, VIEWPORTS } from './screen';
+import { captureAtEverySize, settled, shot, toast, VIEWPORTS } from './screen';
 import { apiPost, signIn, signInAs } from './session';
 import { payInStripe, playStripe } from './stripe';
 
@@ -497,7 +497,7 @@ test('HUBS-F28: a business handed over on a paid plan: the new owner keeps it wi
   });
   expect(opened).toEqual([{ hub_id: id }]);
   await payInStripe(theirs);
-  await expect(theirs.locator('ion-toast').filter({ hasText: /^Bar Manolo keeps Starter: your card pays it from / })).toBeVisible();
+  await expect(toast(theirs, /^Bar Manolo keeps Starter: your card pays it from /)).toBeVisible();
   await expect(theirs).toHaveURL(new RegExp(`/dashboard/businesses/${id}/summary`));
 
   // Stripe tells the checkout completed (the webhook): the business moves to his card, Olga's subscription ends now.

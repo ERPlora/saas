@@ -121,7 +121,7 @@ async function confirm(): Promise<void> {
             promo_code: props.promoCode,
           });
     const waiting = subscription.scheduled_change;
-    void toastSuccess(
+    toastSuccess(
       item.kind === 'module'
         ? t('billing.modules.added', { module: item.name, business: props.business.name })
         : waiting

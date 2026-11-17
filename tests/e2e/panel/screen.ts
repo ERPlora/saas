@@ -56,8 +56,8 @@ const SETTLE_TIMEOUT_MS = 10_000;
 /**
  * What moves on the page now (run in the page, so self-contained): every finite animation running in the document
  * and in every open shadow root under it, however deep. `document.getAnimations()` leaves shadow roots out, and
- * Ionic animates its overlays (`ion-toast`, `ion-modal`, `ion-popover`) inside theirs. Endless ones (spinners)
- * never stop, so they never count.
+ * Ionic animates its overlays (`ion-modal`, `ion-popover`) inside theirs. Endless ones (spinners) never stop, so they
+ * never count.
  */
 function movingInPage(): string[] {
   const roots: Array<Document | ShadowRoot> = [document];
@@ -277,10 +277,17 @@ export function catalogueText(app: string, language: 'en' | 'es', key: string, p
 }
 
 /**
- * The toasts that say `text`, the newest last: `shell/toast.ts` closes the one on screen as it presents the next, so
- * for a moment both are in the page, the new one still hidden. `.last()` is the one just shown; `toHaveCount(0)`, that
- * none is left (never `getByText`, which strict mode refuses while there are two).
+ * The toasts on screen, the newest first, or only those of `tone` (`success`, `error`, `info`, `warning`). The shell
+ * paints them all in one stack: up to three on screen at a time, the rest waiting their turn.
+ */
+export function toasts(page: Page, tone?: string): Locator {
+  return page.locator(tone ? `[data-testid="toast"][data-tone="${tone}"]` : '[data-testid="toast"]');
+}
+
+/**
+ * The newest toast that says `text`: two that say the same can be on screen at once, and strict mode refuses a
+ * locator of two. `toHaveCount(0)`, that none on screen says it.
  */
 export function toast(page: Page, text: string | RegExp): Locator {
-  return page.locator('ion-toast').filter({ hasText: text });
+  return toasts(page).filter({ hasText: text }).first();
 }
