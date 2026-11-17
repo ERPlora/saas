@@ -2336,8 +2336,8 @@ msgid "Process transactions in milliseconds, with live updates on every device."
 msgstr "Procesa transacciones en milisegundos, con actualizaciones en vivo en todos los dispositivos."
 
 #: templates/public/legal/privacy.html
-msgid "November 5, 2026"
-msgstr "5 de noviembre de 2026"
+msgid "November 17, 2026"
+msgstr "17 de noviembre de 2026"
 
 #: templates/public/legal/terms.html
 msgid "November 14, 2026"
@@ -2376,12 +2376,12 @@ msgid "hosting, database, backups, storage, observability, network edge, DNS, an
 msgstr "alojamiento, base de datos, copias de seguridad, almacenamiento, observabilidad, perímetro de red, DNS y protección anti-DDoS. Datos alojados en centros de datos en Irlanda, dentro de la Unión Europea."
 
 #: templates/public/legal/privacy.html
-msgid "Amazon Web Services EMEA SARL (Luxembourg) — Amazon SES, Ireland region, eu-west-1:"
-msgstr "Amazon Web Services EMEA SARL (Luxemburgo) — Amazon SES, región de Irlanda, eu-west-1:"
+msgid "OVH Hispano S.L. (Spain) — OVHcloud email:"
+msgstr "OVH Hispano S.L. (España) — correo de OVHcloud:"
 
 #: templates/public/legal/privacy.html
-msgid "delivery of the service's transactional email. Processing takes place in the European Union."
-msgstr "envío del correo electrónico transaccional del servicio. El tratamiento se realiza en la Unión Europea."
+msgid "sending the service's email and hosting the erplora.com mailboxes. Processing takes place in the European Union."
+msgstr "envío del correo del servicio y alojamiento de los buzones de erplora.com. El tratamiento se realiza en la Unión Europea."
 
 #: templates/public/legal/privacy.html
 msgid "Some processors may process data outside the EEA: the provider of the voice and search fingerprint services of the assistant and, only if the European one is unavailable, the backup model providers. These transfers are carried out under Standard Contractual Clauses (SCCs) approved by the European Commission (EU Decision 2021/914) or, when possible, by keeping the data within the EU through regional configuration. The customer may request a copy of the SCCs at"
