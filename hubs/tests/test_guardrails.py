@@ -171,7 +171,7 @@ def test_the_scan_sees_the_files_that_matter():
         "emails.py",
         "live.py",
         "events.py",
-        "schemas.py",
+        "schemas/__init__.py",
         "management/commands/reconcile_hub_states.py",
         "management/commands/push_hub_snapshots.py",
     } <= names
