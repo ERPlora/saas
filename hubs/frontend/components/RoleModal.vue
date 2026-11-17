@@ -42,7 +42,7 @@ async function save(): Promise<void> {
   if (!member) return;
   try {
     const changed = await change.run({ id: member.id, role: role.value });
-    void toastSuccess(t('hubs.members.roleModal.changed', { name: changed.name, role: t(`hubs.roles.${changed.role}`) }));
+    toastSuccess(t('hubs.members.roleModal.changed', { name: changed.name, role: t(`hubs.roles.${changed.role}`) }));
     open.value = false;
   } catch {
     // `change.error`: the dialog shows it.

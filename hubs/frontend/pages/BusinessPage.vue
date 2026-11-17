@@ -112,9 +112,9 @@ const meta = computed(() => {
 async function recover(): Promise<void> {
   try {
     const recovered = await restore.run({ id: props.id });
-    void toastSuccess(t('hubs.list.restored', { name: recovered.name }));
+    toastSuccess(t('hubs.list.restored', { name: recovered.name }));
   } catch {
-    void toastError(text(restore.error.value));
+    toastError(text(restore.error.value));
   }
 }
 </script>

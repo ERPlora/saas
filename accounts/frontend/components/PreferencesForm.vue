@@ -67,7 +67,7 @@ async function save(change: PreferencesUpdateIn, undo: () => void): Promise<bool
     return true;
   } catch {
     undo();
-    void toastError(text(update.error.value));
+    toastError(text(update.error.value));
     return false;
   }
 }
@@ -77,7 +77,7 @@ async function chooseTheme(event: CustomEvent<{ value?: unknown }>): Promise<voi
   const before = themeMode.value;
   if (!THEMES.includes(mode) || mode === before) return;
   setThemeMode(mode);
-  if (await save({ theme_mode: mode }, () => setThemeMode(before))) void toastSuccess(t('accounts.account.preferences.saved'));
+  if (await save({ theme_mode: mode }, () => setThemeMode(before))) toastSuccess(t('accounts.account.preferences.saved'));
 }
 
 async function chooseLanguage(event: CustomEvent<{ value?: unknown }>): Promise<void> {
@@ -89,7 +89,7 @@ async function chooseLanguage(event: CustomEvent<{ value?: unknown }>): Promise<
   locale.value = chosen;
   document.documentElement.lang = chosen;
   sessionChanged();
-  void toastSuccess(t('accounts.account.preferences.saved'));
+  toastSuccess(t('accounts.account.preferences.saved'));
 }
 
 async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>): Promise<void> {
@@ -97,7 +97,7 @@ async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>):
   const checked = event.detail.checked === true;
   if (checked === before) return;
   hubAlerts.value = checked;
-  if (await save({ hub_alerts: checked }, () => (hubAlerts.value = before))) void toastSuccess(t('accounts.account.preferences.saved'));
+  if (await save({ hub_alerts: checked }, () => (hubAlerts.value = before))) toastSuccess(t('accounts.account.preferences.saved'));
 }
 </script>
 

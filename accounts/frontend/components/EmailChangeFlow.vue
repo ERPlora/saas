@@ -95,7 +95,7 @@ async function send(email: string): Promise<boolean> {
 }
 
 async function resend(): Promise<void> {
-  if (await send(sentTo.value)) void toastSuccess(t('accounts.account.email.resent', { email: sentTo.value }));
+  if (await send(sentTo.value)) toastSuccess(t('accounts.account.email.resent', { email: sentTo.value }));
 }
 
 async function confirm(): Promise<void> {
@@ -113,7 +113,7 @@ async function confirm(): Promise<void> {
     // The user menu shows the account's address: the entry reads the session again (saas#292).
     sessionChanged();
     const changed = answer.profile.email.toLowerCase() !== before;
-    void toastSuccess(changed ? t('accounts.account.email.changed', { email: answer.profile.email }) : t('accounts.account.email.verified'));
+    toastSuccess(changed ? t('accounts.account.email.changed', { email: answer.profile.email }) : t('accounts.account.email.verified'));
     open.value = false;
   } else if (answer.attempts_left > 0) {
     codeError.value = t('accounts.account.email.wrongCode', { left: answer.attempts_left });

@@ -1,13 +1,13 @@
 // flow: saas-e2e-settled
 // The harness's `settled()` (screen.ts), the wait every capture and measurement of the panel's specs takes: once it
-// returns, nothing on the screen moves any more. Ionic animates its overlays (`ion-toast`, `ion-modal`, `ion-popover`)
-// with Web Animations on elements of their shadow roots, which `document.getAnimations()` leaves out: a capture right
-// after it cut the toast at the bottom (saas#78). The checks
-// here read the page on their own, never through `settled()`'s code.
+// returns, nothing on the screen moves any more: the shell's toasts slide in, and Ionic animates its overlays
+// (`ion-modal`, `ion-popover`) with Web Animations on elements of their shadow roots, which `document.getAnimations()`
+// leaves out: a capture right after it cut the toast at the bottom (saas#78). The checks here read the page on their
+// own, never through `settled()`'s code.
 import type { Page } from '@playwright/test';
 
 import { expect, test } from './fixtures';
-import { repeatedTop, settled, shot, VIEWPORTS } from './screen';
+import { repeatedTop, settled, shot, toasts, VIEWPORTS } from './screen';
 
 /** The finite animations running in the document and in every open shadow root under it, however deep. */
 const stillMoving = (page: Page) =>
@@ -26,15 +26,16 @@ const stillMoving = (page: Page) =>
     return moving;
   });
 
-/** The box of the toast on screen (its `.toast-wrapper`, in its shadow root) and the window's size. */
+/** The box of the newest toast on screen and the window's size. */
 const toastBox = (page: Page) =>
-  page.locator('ion-toast').evaluate((toast) => {
-    const box = toast.shadowRoot?.querySelector('.toast-wrapper')?.getBoundingClientRect();
-    if (!box) throw new Error('ion-toast without its .toast-wrapper');
-    return { top: box.top, bottom: box.bottom, left: box.left, right: box.right, width: innerWidth, height: innerHeight };
-  });
+  toasts(page)
+    .first()
+    .evaluate((toast) => {
+      const box = toast.getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom, left: box.left, right: box.right, width: innerWidth, height: innerHeight };
+    });
 
-test('saas-e2e-settled: after `settled()` a toast of Ionic has stopped, whole on screen, in the three sizes', async ({ signedInPage: page }) => {
+test('saas-e2e-settled: after `settled()` the shell’s toast has stopped, whole on screen, in the three sizes', async ({ signedInPage: page }) => {
   // «Notices from my businesses» with the network down: the shell's error toast, and nothing is saved.
   await page.route(/\/api\/accounts\/preferences$/, (route) =>
     route.request().method() === 'GET' ? route.continue() : route.abort('internetdisconnected'),
@@ -45,7 +46,7 @@ test('saas-e2e-settled: after `settled()` a toast of Ionic has stopped, whole on
     await expect(page.getByTestId('preferences-hub-alerts')).toBeVisible();
     await settled(page);
     await page.getByTestId('preferences-hub-alerts').click();
-    await expect(page.locator('ion-toast')).toBeVisible();
+    await expect(toasts(page, 'error')).toBeVisible();
     await settled(page);
     expect(await stillMoving(page), `still moving after settled() at ${viewport.width} px`).toEqual([]);
     const box = await toastBox(page);

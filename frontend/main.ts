@@ -165,7 +165,7 @@ function loadSession(client: LiveClient, doc: Document) {
         console.error('saas: base.session.me failed', error);
         if (ask !== asked) return;
         const texts = { en, es }[shellLocale(doc.documentElement.lang)];
-        void toastError(texts.saas.session.notRefreshed);
+        toastError(texts.saas.session.notRefreshed);
       },
     );
   };
@@ -194,7 +194,7 @@ function keepThemeInAccount(client: LiveClient, session: Ref<SessionMeOut | unde
     client.api.call('accounts.preferences.update', { theme_mode: mode }).catch((error: unknown) => {
       console.error('saas: accounts.preferences.update failed', error);
       const texts = { en, es }[shellLocale(doc.documentElement.lang)];
-      void toastError(texts.saas.userMenu.themeNotSaved);
+      toastError(texts.saas.userMenu.themeNotSaved);
     });
   });
 }

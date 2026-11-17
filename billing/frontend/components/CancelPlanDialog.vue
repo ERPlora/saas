@@ -117,7 +117,7 @@ async function confirm(): Promise<void> {
     const out = await cancel.run({ hub_id: row.business.id });
     const until = formatDate(out.current_period_end, locale.value);
     const values = { business: row.business.name, plan: row.plan.name, date: until };
-    void toastSuccess(until ? t('billing.subscriptions.cancel.done', values) : t('billing.subscriptions.cancel.doneNoDate', values));
+    toastSuccess(until ? t('billing.subscriptions.cancel.done', values) : t('billing.subscriptions.cancel.doneNoDate', values));
     open.value = false;
     emit('done');
   } catch {

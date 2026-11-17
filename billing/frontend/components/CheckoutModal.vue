@@ -270,7 +270,7 @@ async function complete(): Promise<void> {
   await router.push(`${BUSINESSES}/${business.id}/summary`);
   attempt += 1;
   open.value = false;
-  void toastSuccess(done);
+  toastSuccess(done);
 }
 
 async function saveDetails(): Promise<void> {

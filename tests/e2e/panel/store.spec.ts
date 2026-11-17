@@ -129,7 +129,7 @@ test.describe('store', () => {
     await playStripe(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
     await answerCheckoutStart(page);
-    const notice = toast(page, 'Café Central is now on Starter').last();
+    const notice = toast(page, 'Café Central is now on Starter');
     const tabbar = page.locator('ion-footer.section-tabbar').filter({ has: page.getByTestId('tab-summary') });
     for (const size of [{ width: 375, height: 667 }, { width: 820, height: 1180 }, { width: 1440, height: 900 }]) {
       await page.setViewportSize(size);
@@ -142,9 +142,8 @@ test.describe('store', () => {
       await settled(page);
       await page.screenshot({ path: shot(`STORE-paid-notice-${size.width}`) });
       // Soft: every size is measured (and captured) even when one fails.
-      const wrapper = notice.locator('.toast-wrapper');
-      await expect.soft(wrapper, `the notice whole on screen at ${size.width}`).toBeInViewport({ ratio: 1 });
-      const [bar, box] = [await tabbar.boundingBox(), await wrapper.boundingBox()];
+      await expect.soft(notice, `the notice whole on screen at ${size.width}`).toBeInViewport({ ratio: 1 });
+      const [bar, box] = [await tabbar.boundingBox(), await notice.boundingBox()];
       expect.soft(bar && box && box.y + box.height <= bar.y, `the notice's bottom above the tabbar's top at ${size.width}: ${JSON.stringify({ bar, box })}`).toBe(true);
     }
     expect(errors).toEqual([]);

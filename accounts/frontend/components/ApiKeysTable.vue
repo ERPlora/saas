@@ -80,7 +80,7 @@ async function confirmRevoke(): Promise<void> {
   try {
     await revoke.run({ id: row.id });
     revoking.value = false;
-    void toastSuccess(t('accounts.account.keys.revoked', { name: row.name }));
+    toastSuccess(t('accounts.account.keys.revoked', { name: row.name }));
   } catch {
     // `revoke.error`: the dialog shows it.
   }

@@ -35,7 +35,7 @@ async function confirm(): Promise<void> {
   } catch {
     return; // The dialog shows the error.
   }
-  void toastSuccess(invitation.value ? t('hubs.members.cancelInvite.done') : t('hubs.members.remove.done', { name: member.name }));
+  toastSuccess(invitation.value ? t('hubs.members.cancelInvite.done') : t('hubs.members.remove.done', { name: member.name }));
   open.value = false;
 }
 </script>

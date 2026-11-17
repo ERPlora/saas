@@ -74,7 +74,7 @@ async function save(): Promise<void> {
   try {
     const answer = await update.run({ id: props.business.id, ...changes.value } as BusinessUpdateIn);
     Object.assign(form, { name: answer.name, country: answer.country, timezone: answer.timezone, language: answer.language });
-    void toastSuccess(t('hubs.settings.saved'));
+    toastSuccess(t('hubs.settings.saved'));
   } catch {
     // `update.error`: its fields on the fields, anything else above the button.
   }

@@ -100,9 +100,9 @@ async function closeOne(row: SessionRowOut): Promise<void> {
   try {
     await close.run({ id: row.id });
     confirmingApp.value = false;
-    void toastSuccess(t('accounts.account.sessions.closed', { device: device(row) }));
+    toastSuccess(t('accounts.account.sessions.closed', { device: device(row) }));
   } catch {
-    if (!confirmingApp.value) void toastError(text(close.error.value));
+    if (!confirmingApp.value) toastError(text(close.error.value));
   }
 }
 
@@ -115,7 +115,7 @@ async function closeTheOthers(): Promise<void> {
   try {
     const done = await closeOthers.run({});
     confirmingOthers.value = false;
-    void toastSuccess(t('accounts.account.sessions.othersClosed', { n: done.closed }));
+    toastSuccess(t('accounts.account.sessions.othersClosed', { n: done.closed }));
   } catch {
     // `closeOthers.error`: the dialog shows it.
   }

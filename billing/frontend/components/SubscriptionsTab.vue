@@ -211,9 +211,9 @@ async function keepPlan(row: Row, id: string): Promise<void> {
   keeping.value = row.id;
   try {
     await keep.run({ hub_id: id });
-    void toastSuccess(t('billing.subscriptions.kept', { business: row.name, plan: row.plan.name }));
+    toastSuccess(t('billing.subscriptions.kept', { business: row.name, plan: row.plan.name }));
   } catch {
-    void toastError(text(keep.error.value));
+    toastError(text(keep.error.value));
   } finally {
     keeping.value = null;
   }

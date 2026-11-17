@@ -38,7 +38,7 @@ async function download(): Promise<void> {
     save(await client.api.call('accounts.data.export'));
   } catch (error) {
     const failure = error instanceof ApiError ? error : new ApiError(0, 'client_error', String(error));
-    void toastError(text(failure));
+    toastError(text(failure));
   } finally {
     running.value = false;
   }
