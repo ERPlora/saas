@@ -11,7 +11,7 @@ const props = withDefaults(
     showFewerLabel: string;
     toggleTestid?: string;
   }>(),
-  { collapsedCount: 5 },
+  { collapsedCount: 5, toggleTestid: undefined },
 );
 const expanded = defineModel<boolean>('expanded', { default: false });
 const listId = `collapsible-checklist-${useId()}`;
