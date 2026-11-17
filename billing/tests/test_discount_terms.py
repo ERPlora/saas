@@ -6,9 +6,11 @@ on the plans it names (none named = every plan). A discount that lasts a number 
 it is only sold with monthly billing; once and forever go with either.
 """
 
+from datetime import UTC, datetime
+
 import pytest
 
-from billing.discount_terms import coupon_name, covers, intervals, off_cents
+from billing.discount_terms import coupon_name, covers, intervals, off_cents, whole_months
 from billing.models import Discount
 
 
@@ -67,3 +69,25 @@ class TestItsNameInStripe:
         longest = discount(amount_off_cents=99_999_999, duration="repeating", duration_in_months=36)
 
         assert len(coupon_name(longest)) <= 40
+
+
+class TestTheWholeMonthsLeft:
+    """What a discount for months still has when a business changes hands: whole months, rounded down."""
+
+    @pytest.mark.parametrize(
+        ("start", "end", "months"),
+        [
+            ("2027-03-10T12:00", "2027-07-01T09:00", 3),
+            ("2027-03-10T12:00", "2027-06-10T12:00", 3),
+            ("2027-03-10T12:00", "2027-06-10T11:59", 2),
+            ("2027-11-20T00:00", "2028-02-21T00:00", 3),
+            ("2027-03-10T12:00", "2027-04-09T12:00", 0),
+            ("2027-03-10T12:00", "2027-03-01T12:00", 0),
+        ],
+    )
+    def test_they_round_down(self, start, end, months):
+        assert whole_months(moment(start), moment(end)) == months
+
+
+def moment(text: str) -> datetime:
+    return datetime.fromisoformat(text).replace(tzinfo=UTC)

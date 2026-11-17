@@ -16,6 +16,8 @@ Stripe is the double at its boundary (``billing.tests.stripe_double``); the oper
 real ones.
 """
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from django.core import mail
 from django.utils import timezone, translation
@@ -23,9 +25,11 @@ from django.utils.formats import date_format
 from live.errors import NotFound, OperationError, PermissionDenied
 
 from billing import queries, services
-from billing.models import CheckoutAttempt
+from billing.models import CheckoutAttempt, PromoRedemption
 from billing.schemas import HubIn, SubscriptionListIn
-from billing.tests.conftest import ctx_for, pay
+from billing.stripe_coupons import coupon_id
+from billing.tests.conftest import code_of, ctx_for, pay
+from billing.tests.stripe_captured import captured
 from billing.tests.stripe_double import (
     MONTH_END,
     checkout_session,
@@ -40,6 +44,9 @@ from hubs.tests.conftest import add_member
 from hubs.tests.conftest import ctx_for as hub_ctx
 
 pytestmark = pytest.mark.django_db
+
+#: A discount of ours on a live subscription, as Stripe expands it.
+DISCOUNT = captured("repeating_100/subscription.json")["discounts"][0]
 
 
 @pytest.fixture(autouse=True)
@@ -327,10 +334,10 @@ def completed_takeover(hub, *, new="sub_2"):
     )
 
 
-def stripe_holds(stripe_double, *, old_status="active"):
+def stripe_holds(stripe_double, *, old_status="active", new_discounts=()):
     """Stripe's two subscriptions: the new one on the new owner's card, the previous one still running."""
     held = {
-        "sub_2": subscription("sub_2", customer="cus_new", items=lines()),
+        "sub_2": subscription("sub_2", customer="cus_new", items=lines(), discounts=list(new_discounts)),
         "sub_1": subscription("sub_1", status=old_status, items=lines(), cancel_at_period_end=True),
     }
     stripe_double.answer("subscriptions.retrieve", lambda call: held[call.args[0]])
@@ -439,3 +446,91 @@ class TestTheRow:
 
         assert row["actions"] == ["change_plan", "cancel_plan", "view_invoices"]
         assert row["paid_by_another_account"] is False
+
+
+# --- The discount of a promo code goes with the business ------------------------------------------------
+
+
+class TestItsDiscountGoesWithIt:
+    """The discount was given to the business: the new owner's subscription keeps what is left of it. A Checkout
+    Session takes a coupon, never a discount already running (Stripe answers ``parameter_unknown`` to
+    ``discounts[0][discount]``), so one forever goes on as it was, one for months as a coupon of the whole months left
+    (none under one, so it never runs past its end), and one spent on the first payment does not come back."""
+
+    def handed_over_with(self, shop, owner, heir, stripe_double, end=None, **terms):
+        paid = handed_over(shop, owner, heir, stripe_double)
+        promo = code_of(plans=["starter"], **terms)
+        PromoRedemption.objects.create(promo=promo, hub=paid, stripe_customer_id="cus_1",
+                                       stripe_subscription_id="sub_1", stripe_products=["prod_starter"])
+        running = [] if terms.get("duration") == "once" else [{**DISCOUNT, "end": end}]
+        stripe_double.answer(
+            "subscriptions.retrieve", subscription(items=lines(), cancel_at_period_end=True, discounts=running)
+        )
+        return paid, promo.discount
+
+    def carried(self, stripe_double):
+        return stripe_double.last("checkout.sessions.create").params.get("discounts")
+
+    def test_one_forever_goes_on_as_it_was(self, shop, owner, heir, stripe_double, sold_plans):
+        paid, discount = self.handed_over_with(shop, owner, heir, stripe_double, duration="forever",
+                                               duration_in_months=None, percent_off=None, amount_off_cents=1000)
+
+        take_over(heir, paid)
+
+        assert self.carried(stripe_double) == [{"coupon": coupon_id(discount, ["prod_starter"])}]
+        assert stripe_double.last("coupons.create").params["duration"] == "forever"
+
+    def test_one_for_months_goes_on_for_the_whole_months_left(self, shop, owner, heir, stripe_double, sold_plans):
+        end = timezone.now() + timedelta(days=100)
+        paid, discount = self.handed_over_with(shop, owner, heir, stripe_double, end=int(end.timestamp()))
+
+        take_over(heir, paid)
+
+        coupon = stripe_double.last("coupons.create").params
+        assert self.carried(stripe_double) == [{"coupon": coupon["id"]}]
+        assert (coupon["duration"], coupon["duration_in_months"]) == ("repeating", 3)
+        assert (coupon["percent_off"], coupon["applies_to"], coupon["name"]) == (
+            100, {"products": ["prod_starter"]}, "Free for 3 months")
+        assert coupon["id"] != coupon_id(discount, ["prod_starter"])
+
+    def test_less_than_a_month_left_goes_on_without_it(self, shop, owner, heir, stripe_double, sold_plans):
+        end = timezone.now() + timedelta(days=20)
+        paid, _discount = self.handed_over_with(shop, owner, heir, stripe_double, end=int(end.timestamp()))
+
+        take_over(heir, paid)
+
+        assert self.carried(stripe_double) is None
+
+    def test_one_spent_on_the_first_payment_does_not_come_back(self, shop, owner, heir, stripe_double, sold_plans):
+        paid, _discount = self.handed_over_with(shop, owner, heir, stripe_double, duration="once",
+                                                duration_in_months=None)
+
+        take_over(heir, paid)
+
+        assert self.carried(stripe_double) is None
+
+    def test_its_use_moves_to_the_new_subscription_with_when_it_ends(self, shop, owner, heir, stripe_double,
+                                                                    sold_plans):
+        end = timezone.now() + timedelta(days=100)
+        paid, _discount = self.handed_over_with(shop, owner, heir, stripe_double, end=int(end.timestamp()))
+        take_over(heir, paid)
+        new_end = int((timezone.now() + timedelta(days=91)).timestamp())
+        stripe_holds(stripe_double, new_discounts=[{**DISCOUNT, "id": "di_new", "end": new_end}])
+
+        services.checkout_completed(completed_takeover(paid))
+
+        moved = PromoRedemption.objects.get()
+        assert (moved.stripe_subscription_id, moved.stripe_customer_id) == ("sub_2", "cus_1")
+        assert moved.discount_ends_at == datetime.fromtimestamp(new_end, tz=UTC)
+        assert rows(heir, paid)[0]["discount"]["ends_at"] == moved.discount_ends_at
+
+    def test_with_nothing_left_the_new_subscription_shows_none(self, shop, owner, heir, stripe_double, sold_plans):
+        end = timezone.now() + timedelta(days=20)
+        paid, _discount = self.handed_over_with(shop, owner, heir, stripe_double, end=int(end.timestamp()))
+        take_over(heir, paid)
+        stripe_holds(stripe_double)
+
+        services.checkout_completed(completed_takeover(paid))
+
+        assert PromoRedemption.objects.get().stripe_subscription_id == "sub_2"
+        assert rows(heir, paid)[0]["discount"] is None

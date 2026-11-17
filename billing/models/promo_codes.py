@@ -113,8 +113,13 @@ class PromoCode(UUIDModel):
 
     @property
     def is_redeemable(self) -> bool:
+        return self.grants_now()
+
+    def grants_now(self, *, freed: int = 0) -> bool:
+        """Active (and its discount), not expired and with a use left once ``freed`` held ones are given back."""
         live = self.discount is None or self.discount.is_active
-        return self.is_active and live and not self.is_expired and not self.is_exhausted
+        left = self.max_redemptions is None or self.redemption_count - freed < self.max_redemptions
+        return self.is_active and live and not self.is_expired and left
 
 
 def normalise_promo_code(code: str | None) -> str:
@@ -123,13 +128,16 @@ def normalise_promo_code(code: str | None) -> str:
 
 
 class PromoRedemption(UUIDModel):
-    """A promo code used by a business: once per business and once per payer, so one
-    code does not give a year free to every business an account opens. Written when its checkout is paid
-    (or its plan change confirmed); ``PromoCode.redemption_count`` counts these."""
+    """A promo code used by a business: once per business and once per payer, so one code does not give a year free
+    to every business an account opens. Held by the checkout that offers it while its session can be paid
+    (``held_until``), and a use once paid (or its plan change confirmed); ``PromoCode.redemption_count`` counts both.
+    It keeps what the coupon of its discount covers (the Stripe products it was made with): a plan made later is
+    not discounted by Stripe, so it is not by the panel either."""
 
+    # A used code is turned off, never deleted: its uses would go with it.
     promo = models.ForeignKey(
         PromoCode,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="redemptions",
         verbose_name=_("promo code"),
     )
@@ -146,6 +154,19 @@ class PromoRedemption(UUIDModel):
     discount_ends_at = models.DateTimeField(
         _("discount ends at"), null=True, blank=True, help_text=_("When the discount of the code ends; empty = never")
     )
+    attempt = models.ForeignKey(
+        "billing.CheckoutAttempt",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="promo_holds",
+        verbose_name=_("checkout"),
+    )
+    held_until = models.DateTimeField(
+        _("held until"), null=True, blank=True, help_text=_("Held by an open checkout until then; empty once used")
+    )
+    stripe_coupon_id = models.CharField(max_length=255, blank=True, default="", db_default="")
+    stripe_products = models.JSONField(default=list, blank=True, db_default=[])
     created_at = models.DateTimeField(_("used at"), auto_now_add=True)
 
     class Meta:

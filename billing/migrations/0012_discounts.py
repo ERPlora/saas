@@ -95,5 +95,30 @@ class Migration(migrations.Migration):
             model_name='discount',
             constraint=models.CheckConstraint(condition=models.Q(('currency', 'eur')), name='billing_discount_currency_eur'),
         ),
+        migrations.AddField(
+            model_name='promoredemption',
+            name='attempt',
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='promo_holds', to='billing.checkoutattempt', verbose_name='checkout'),
+        ),
+        migrations.AddField(
+            model_name='promoredemption',
+            name='held_until',
+            field=models.DateTimeField(blank=True, help_text='Held by an open checkout until then; empty once used', null=True, verbose_name='held until'),
+        ),
+        migrations.AddField(
+            model_name='promoredemption',
+            name='stripe_coupon_id',
+            field=models.CharField(blank=True, db_default='', default='', max_length=255),
+        ),
+        migrations.AddField(
+            model_name='promoredemption',
+            name='stripe_products',
+            field=models.JSONField(blank=True, db_default=[], default=list),
+        ),
+        migrations.AlterField(
+            model_name='promoredemption',
+            name='promo',
+            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='redemptions', to='billing.promocode', verbose_name='promo code'),
+        ),
         migrations.RunPython(migrations.RunPython.noop, refuse_back_while_codes_give_a_discount),
     ]

@@ -77,3 +77,66 @@ def test_the_list_of_codes_says_what_each_gives(staff_client):
     page = staff_client.get("/admin/billing/promocode/").content.decode()
 
     assert "column-discount" in page and "Testers" in page
+
+
+class TestAUsedCodeIsTurnedOffNotDeleted:
+    """Deleting a used code would take its uses with it: the same business and payer could use it again, its discount's
+    terms would open up again and the subscriptions that carry it would stop showing it."""
+
+    def test_the_code_page_offers_no_deletion(self, staff_client, shop):
+        discount = Discount.objects.create(name="Testers", percent_off=100, duration="repeating", duration_in_months=6)
+        promo = used(discount, shop)
+
+        assert staff_client.get(f"/admin/billing/promocode/{promo.pk}/delete/").status_code == 403
+        assert PromoCode.objects.filter(pk=promo.pk).exists()
+
+    def test_an_unused_code_can_still_be_deleted(self, staff_client):
+        promo = PromoCode.objects.create(code="spare", trial_days=30)
+
+        response = staff_client.post(f"/admin/billing/promocode/{promo.pk}/delete/", {"post": "yes"})
+
+        assert response.status_code == 302
+        assert not PromoCode.objects.filter(pk=promo.pk).exists()
+
+    def test_the_discount_page_does_not_delete_a_used_code_among_its_codes(self, staff_client, shop):
+        discount = Discount.objects.create(name="Testers", percent_off=100, duration="repeating", duration_in_months=6)
+        promo = used(discount, shop)
+        spare = PromoCode.objects.create(code="spare", discount=discount)
+        rows = {
+            "codes-TOTAL_FORMS": "2", "codes-INITIAL_FORMS": "2", "codes-MIN_NUM_FORMS": "0",
+            "codes-MAX_NUM_FORMS": "1000",
+        }
+        for index, code in enumerate((promo, spare)):
+            rows |= {f"codes-{index}-id": str(code.pk), f"codes-{index}-discount": str(discount.pk),
+                     f"codes-{index}-is_active": "on", f"codes-{index}-DELETE": "on"}
+        rows["codes-1-code"] = "spare"
+
+        response = staff_client.post(
+            f"/admin/billing/discount/{discount.pk}/change/", {"name": "Testers", "is_active": "on", **rows}
+        )
+
+        assert response.status_code == 200, response.status_code
+        assert "would require deleting the following protected related objects" in response.content.decode()
+        assert set(PromoCode.objects.values_list("code", flat=True)) == {"testers", "spare"}
+
+    def test_its_uses_cannot_go_with_it_from_the_code(self, shop):
+        from django.db.models import ProtectedError
+
+        promo = used(Discount.objects.create(name="Testers", percent_off=100, duration="once"), shop)
+
+        with pytest.raises(ProtectedError):
+            promo.delete()
+        assert PromoRedemption.objects.filter(promo=promo).exists()
+
+
+def test_the_list_of_uses_says_which_are_only_held_by_an_open_checkout(staff_client, shop):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    promo = PromoCode.objects.create(code="canary", trial_days=30)
+    PromoRedemption.objects.create(promo=promo, hub=shop, held_until=timezone.now() + timedelta(hours=25))
+
+    page = staff_client.get("/admin/billing/promoredemption/").content.decode()
+
+    assert "column-held_until" in page

@@ -242,11 +242,12 @@ def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
 def with_discount(rows: list[dict], subscriptions: list) -> list[dict]:
     """The rows of ``billing.subscription.list`` (one per subscription, in order) with the discount of a promo code
     that subscription still carries (one once is spent; one for months, until it ends) on the plan it bills: the
-    next invoice takes it off the plan before VAT when it still runs then, as Stripe does. A plan the discount does
-    not name is charged whole, and the discount is not shown."""
+    next invoice takes it off the plan before VAT when it still runs then, as Stripe does. A plan whose product its
+    coupon was not made with (one it does not name, or made later) is charged whole, and the discount is not shown."""
     used = (
         PromoRedemption.objects.select_related("promo__discount")
         .filter(stripe_subscription_id__in=[subscription.stripe_subscription_id for subscription in subscriptions])
+        .filter(held_until__isnull=True)
         .exclude(promo__discount=None)
         .exclude(promo__discount__duration="once")
         .exclude(discount_ends_at__lte=timezone.now())
@@ -264,7 +265,7 @@ def _carried_discount(row: dict, subscription, redemption) -> dict | None:
     waiting = row["scheduled_change"]
     plan = Plan.objects.filter(slug=waiting["plan"]).first() if waiting else subscription.plan
     interval = waiting["interval"] if waiting else subscription.billing_interval
-    if plan is None or not discount_terms.covers(set(discount.plans.values_list("pk", flat=True)), plan.pk):
+    if plan is None or not plan.stripe_product_id or plan.stripe_product_id not in redemption.stripe_products:
         return None
     renewal = row["next_invoice"]
     ends_at = redemption.discount_ends_at

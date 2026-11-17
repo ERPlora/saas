@@ -18,9 +18,9 @@ from django.utils import timezone
 from live.errors import OperationError
 
 from billing import queries, services
-from billing.models import CheckoutAttempt, Discount, PlanChangeSchedule, PromoCode, PromoRedemption
+from billing.models import CheckoutAttempt, PlanChangeSchedule, PromoCode, PromoRedemption
 from billing.schemas import CheckoutConfirmIn, CheckoutStartIn, HubIn, PlanChangeIn, SubscriptionListIn
-from billing.tests.conftest import ctx_for, pay
+from billing.tests.conftest import code_of, ctx_for, pay
 from billing.tests.stripe_captured import captured
 from billing.tests.stripe_double import checkout_session, connection_error, item, preview, subscription
 from hubs.models import Plan
@@ -32,18 +32,8 @@ IN_FOUR_MONTHS = NOW_TS + 120 * 86_400
 
 
 @pytest.fixture(autouse=True)
-def _stripe(stripe_double, issuer_identity, plans):
-    for slug in ("starter", "standard", "pro", "max"):
-        Plan.objects.filter(slug=slug).update(stripe_product_id=f"prod_{slug}")
+def _stripe(stripe_double, issuer_identity, sold_plans):
     return stripe_double
-
-
-def code_of(code="testers", plans=(), **terms) -> PromoCode:
-    given = Discount.objects.create(
-        name=code, **{"percent_off": 100, "duration": "repeating", "duration_in_months": 6, **terms}
-    )
-    given.plans.set(Plan.objects.filter(slug__in=plans))
-    return PromoCode.objects.create(code=code, discount=given)
 
 
 def our_discount(end: int | None) -> dict:
@@ -300,9 +290,10 @@ class TestTheSubscriptionsList:
         [row] = queries.subscription_list(ctx_for(owner), SubscriptionListIn(hub_id=shop.id)).model_dump()["rows"]
         return row
 
-    def redeemed(self, shop, promo, ends_at, subscription_id="sub_1"):
+    def redeemed(self, shop, promo, ends_at, subscription_id="sub_1", products=("prod_starter", "prod_standard")):
         PromoRedemption.objects.create(promo=promo, hub=shop, stripe_customer_id="cus_1",
-                                       stripe_subscription_id=subscription_id, discount_ends_at=ends_at)
+                                       stripe_subscription_id=subscription_id, discount_ends_at=ends_at,
+                                       stripe_products=list(products))
 
     def test_a_discount_for_months_says_until_when_and_the_next_invoice_takes_it_off(self, shop, owner):
         paid = pay(shop)
@@ -352,9 +343,23 @@ class TestTheSubscriptionsList:
 
     def test_a_plan_outside_the_discount_is_charged_whole(self, shop, owner):
         paid = pay(shop)
-        self.redeemed(paid, code_of(plans=["standard"]), timezone.now() + timedelta(days=120))
+        ends = timezone.now() + timedelta(days=120)
+        self.redeemed(paid, code_of(plans=["standard"]), ends, products=["prod_standard"])
 
         row = self.row(owner, paid)
 
         assert row["discount"] is None
         assert row["next_invoice"]["total_cents"] == 3629
+
+    def test_a_plan_made_after_the_coupon_is_not_discounted_even_by_a_discount_on_every_plan(self, shop, owner):
+        """Stripe discounts the products the coupon was made with: the panel never promises less than it charges."""
+        newer = Plan.objects.get(slug="standard")
+        newer.pk, newer.slug, newer.stripe_product_id, newer.stripe_price_id = None, "growth", "prod_growth", "price_gr"
+        newer.save()
+        paid = pay(shop, plan="growth")
+        self.redeemed(paid, code_of(), timezone.now() + timedelta(days=120))
+
+        row = self.row(owner, paid)
+
+        assert row["discount"] is None
+        assert row["next_invoice"]["total_cents"] == 6654  # its price (Standard's, 54.99) + 21 % VAT, whole

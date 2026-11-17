@@ -102,7 +102,7 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 | `models/discounts.py`, `discount_terms.py`, `stripe_coupons.py` | `Discount`, las condiciones de un descuento (ver «Descuentos y códigos promocionales»): lo que quita de un importe, a qué planes y periodicidades se aplica, su nombre y su cupón espejo en Stripe |
 | `models/promo_codes.py`, `models/payments.py` | `PromoCode` (días de prueba, ADR-0107, o un `Discount`), `CheckoutAttempt` (un Embedded Checkout por intención; la misma selección reutiliza su sesión abierta), `WebhookEvent` (cada evento una vez) y `PaymentFailure` (por qué no se cobró una renovación) |
 | `webhooks.py` | `POST /webhooks/stripe/`: firma de Stripe → reclamo del evento → `services.process_stripe_event` |
-| `management/commands/sweep_unpaid.py` | `saas-cron`: impagos que Stripe dejó de reintentar, suscripciones de negocios eliminados y pagadores de cuentas eliminadas (`payers_forgotten`) |
+| `management/commands/sweep_unpaid.py` | `saas-cron`: impagos que Stripe dejó de reintentar, suscripciones de negocios eliminados, pagadores de cuentas eliminadas (`payers_forgotten`) y usos de códigos reservados por pagos que ya no se pueden completar (`promo_holds_released`) |
 | `management/commands/retax_subscriptions.py` | `saas-cron` (diaria): el tipo de hoy en cada suscripción viva y en las fases de su bajada programada (cambio de dirección no empujado, umbral OSS) y el reenvío de los avisos de la OSS que no salieron |
 | `management/commands/audit_tax_rules.py` | `saas-cron` (diaria) o a mano: la tabla de IVA cobra cada venta posible |
 | `management/commands/audit_stripe_webhooks.py` | `saas-cron` (diaria, 05:40 UTC, `ERPlora/aws#21`) o a mano (`--base-url` para otro entorno): Stripe manda a `/webhooks/stripe/` exactamente `STRIPE_WEBHOOK_EVENTS` (BILLING-F39) |
@@ -150,9 +150,12 @@ Dos piezas, con los nombres de Stripe:
   vigencia, su tope de usos y si está activo. Un descuento puede tener varios códigos; un código canjeable pide
   también que su descuento esté activo.
 
-En el admin, **Facturación › Descuentos** lleva sus códigos debajo. Usado un código, las condiciones del descuento
-(importe, duración, planes) y el código, su descuento y sus días quedan de solo lectura, y el descuento no se puede
-borrar (sí desactivar). La migración `0012_discounts` no se deshace mientras exista un código con descuento.
+En el admin, **Facturación › Descuentos** lleva sus códigos debajo. Usado un código (o reservado por un pago
+abierto), las condiciones del descuento (importe, duración, planes) y el código, su descuento y sus días quedan de
+solo lectura, y ni el descuento ni el código se borran: se desactivan. Lo protege también la base de datos
+(`PromoRedemption.promo` y `PromoCode.discount` son `PROTECT`): borrar un código usado se llevaría sus usos, y el mismo
+negocio y pagador podrían volver a usarlo. La migración `0012_discounts` no se deshace mientras exista un código con
+descuento.
 
 **El cupón de Stripe es un espejo** que no se guarda: id `erp-discount-<descuento>-<huella>` (12 hex del descuento y
 8 de la huella de sus condiciones y de los productos de Stripe de sus planes; `billing/stripe_coupons.py`), con un
@@ -167,11 +170,27 @@ productos, mismo cupón en test y en live; otros planes, otro cupón. Un plan si
   `billing.discount_monthly_only`; `once` y `forever` valen con las dos;
 - un plan que el descuento no nombra → 409 `billing.discount_plan_not_covered`;
 - en un cambio de plan de un negocio que ya paga, un código con descuento → 409
-  `billing.promo_discount_new_subscription_only` (los días de prueba sí se honran).
+  `billing.promo_discount_new_subscription_only` (los días de prueba sí se honran);
+- un código que el negocio ya no puede usar (agotado, usado por él o por su pagador, apagado o caducado desde que el
+  panel lo comprobó) → 409 `billing.promo_not_available` («quítalo para pagar sin él»): nunca se quita en silencio,
+  porque el panel ya prometió lo que da.
 
-El pago completado lo cuenta en `PromoRedemption` con la suscripción de Stripe que pagó y `discount_ends_at`, el fin
-del descuento en la suscripción viva (`retrieve_subscription` la lee con `expand=["discounts"]`; vacío en `once` y en
-`forever`).
+**El uso se reserva al abrir la sesión** (`services/promo_holds.py`), porque es entonces cuando el cupón entra en
+ella: una fila de `PromoRedemption` con `held_until` (25 h; Stripe cierra la sesión a las 24 h) y el pago que la
+abrió. El tope va en el `WHERE` del `UPDATE` que suma el uso, que además retiene la fila del código hasta el COMMIT;
+detrás de ese cerrojo se comprueba el «una vez por negocio y por pagador», así que dos pagos abiertos a la vez nunca
+se llevan el último uso ni dos negocios del mismo pagador el mismo código. El pago completado convierte la reserva en
+uso, con la suscripción de Stripe que pagó y `discount_ends_at`, el fin del descuento en la suscripción viva
+(`retrieve_subscription` la lee con `expand=["discounts"]`; vacío en `once` y en `forever`). Un pago que se cierra
+sin cobrar devuelve el uso: el aviso `checkout.session.expired` o `async_payment_failed`, otro pago del mismo negocio
+que lo sustituye (`_expire_other_sessions`), el cambio de dueño (`expire_open_checkouts`) o el reembolso de quien ya
+no era el dueño. Una reserva cuya sesión ya no se puede pagar la devuelve la siguiente reserva del mismo código o
+`sweep_unpaid` (cada hora), así que ninguna se queda para siempre; si aun así el pago llega después, cuenta como uso,
+porque Stripe ya dio el descuento.
+
+**Lo que cubre un descuento es lo que cubre su cupón**: el uso guarda el cupón y los productos de Stripe con los que
+se creó (`stripe_coupon_id`, `stripe_products`). Un plan creado después no lo descuenta Stripe, aunque el descuento
+sea para todos los planes, y el panel tampoco lo promete.
 
 **Mientras dura, el descuento sigue a la suscripción** (capturado de la cuenta de test con relojes de prueba en
 `tests/fixtures/discounts/`):
@@ -183,20 +202,22 @@ del descuento en la suscripción viva (`retrieve_subscription` la lee con `expan
 - comprar un módulo: el módulo se cobra entero (ni el prorrateo ni su renovación se descuentan);
 - pasar a anual con un descuento `repeating` vivo → 409 `billing.discount_blocks_annual` con la fecha; con uno
   `forever`, sí, y se descuenta cada año;
-- cancelar, siempre.
+- cancelar, siempre;
+- cambiar de dueño: el descuento se dio al negocio, así que sigue en la suscripción del nuevo dueño
+  (`billing.plan.take_over`). Una Checkout Session acepta un cupón, nunca un descuento que ya corre (Stripe contesta
+  `parameter_unknown` a `discounts[0][discount]`), así que no se puede fijar su fin: uno `forever` sigue con el mismo
+  cupón; uno `repeating`, con un cupón espejo de los meses enteros que le quedan, redondeando hacia abajo, y ninguno
+  si le queda menos de un mes (así nunca pasa de su fin); uno `once` ya gastado no vuelve. El uso pasa a la
+  suscripción nueva, con su fin (o ya terminado si no pasó nada).
 
-**Un plan que el descuento no nombra** no se bloquea: el cliente puede cambiar a él. Stripe deja de descontar (el
-cupón no se aplica a ese producto), la vista previa enseña el precio real y la próxima factura lo cobra entero;
+**Un plan que el cupón no cubre** (uno que el descuento no nombra, o creado después) no se bloquea: el cliente puede
+cambiar a él. Stripe deja de descontar, la vista previa enseña el precio real y la próxima factura lo cobra entero;
 `billing.subscription.list` no enseña el descuento.
 
 `billing.subscription.list` da `discount` (`{code, ends_at, terms}`) mientras la suscripción lo lleva (uno `once`,
-tras su pago, ya no; uno `repeating`, hasta su fin) en el plan que factura, el de una bajada que espera incluido; y
-resta de la próxima factura lo que quita del plan antes del IVA si sigue vivo en la renovación, como hace Stripe.
-
-El tope `max_redemptions` y el «una vez por pagador» se comprueban al abrir la sesión de pago (el uso se cuenta al
-completarse, con el tope en el `WHERE` del `UPDATE`): dos sesiones abiertas a la vez, la de dos probadores con un
-código de tope 1 o la de un mismo pagador para dos negocios, pueden llevarse las dos el descuento, como ya pasaba
-con los días de prueba. No se deshace ninguna suscripción; está en ERPlora/saas#492.
+tras su pago, ya no; uno `repeating`, hasta su fin) en el plan que factura, el de una bajada que espera incluido, si
+su cupón cubre el producto de ese plan; y resta de la próxima factura lo que quita del plan antes del IVA si sigue
+vivo en la renovación, como hace Stripe.
 
 **Las facturas.** La línea de Stripe trae su `amount` antes del descuento y `discount_amounts` con lo que quitó; el
 porcentaje se redondea al céntimo, la mitad hacia arriba (el 20 % de 29,99 € son 6,00 €) y un importe mayor que el precio deja

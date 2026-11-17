@@ -2,6 +2,7 @@
 
 from django.conf import settings
 from django.db.models import Q
+from django.utils import timezone
 from django.utils.translation import gettext as _
 from django_ratelimit.core import is_ratelimited
 from live.context import OperationContext
@@ -29,13 +30,20 @@ def redeemable_promo(
     if not normalised:
         return None
     promo = PromoCode.objects.select_related("discount").filter(code=normalised).first()
-    if promo is None or not promo.is_redeemable:
+    if promo is None:
+        return None
+    # Holds that go back before the next one is taken: those of sessions that can no longer be paid, and the
+    # business's own (a checkout it opens again replaces it).
+    stale = Q(held_until__lte=timezone.now())
+    going_back = stale | Q(hub=hub) if hub is not None else stale
+    freed = PromoRedemption.objects.filter(promo=promo, held_until__isnull=False).filter(going_back)
+    if not promo.grants_now(freed=freed.count()):
         return None
     if hub is not None:
         used_by = (
             Q(hub=hub) | Q(stripe_customer_id=customer) if customer else Q(hub=hub)
         )
-        if PromoRedemption.objects.filter(promo=promo).filter(used_by).exists():
+        if PromoRedemption.objects.filter(promo=promo).filter(used_by).exclude(pk__in=freed.values("pk")).exists():
             return None
     return promo
 

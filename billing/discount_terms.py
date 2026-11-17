@@ -2,6 +2,7 @@
 the coupon's name in Stripe share."""
 
 from collections.abc import Collection
+from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
 
 #: Stripe's limit on a coupon's name.
@@ -25,6 +26,14 @@ def covers(plan_ids: Collection, plan_id) -> bool:
 def intervals(discount) -> tuple[str, ...]:
     """The billings it is sold with: one that lasts a number of months runs on the clock, so monthly only."""
     return ("month",) if discount.duration == "repeating" else ("month", "year")
+
+
+def whole_months(start: datetime, end: datetime) -> int:
+    """The whole calendar months from ``start`` to ``end``, rounded down (0 when less than one is left)."""
+    months = (end.year - start.year) * 12 + end.month - start.month
+    if (end.day, end.timetz()) < (start.day, start.timetz()):
+        months -= 1
+    return max(months, 0)
 
 
 def coupon_name(discount) -> str:

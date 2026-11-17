@@ -2326,3 +2326,15 @@ msgstr "Este negocio tiene un descuento hasta el %(date)s: podrá pasar a la fac
 #: discounts
 msgid "This code gives a discount to a business that starts paying a plan, not to a change of plan."
 msgstr "Este código da un descuento a un negocio que empieza a pagar un plan, no a un cambio de plan."
+
+#: promo holds
+msgid "held until"
+msgstr "reservado hasta"
+
+#: promo holds
+msgid "Held by an open checkout until then; empty once used"
+msgstr "Reservado por un pago abierto hasta entonces; vacío una vez usado"
+
+#: promo holds
+msgid "This code is not valid or has already been used: remove it to pay without it."
+msgstr "Este código no es válido o ya se ha usado: quítalo para pagar sin él."

@@ -23,15 +23,18 @@ from datetime import timedelta
 from decimal import Decimal
 from django.utils import timezone
 from billing.models import Discount, Invoice, InvoiceLine, PromoCode, PromoRedemption
-from hubs.models import Hub
+from hubs.models import Hub, Plan
 Invoice.objects.filter(series="E2EFM").delete()
+PromoRedemption.objects.filter(promo__code="e2e_testers").delete()
 PromoCode.objects.filter(code="e2e_testers").delete()
 Discount.objects.filter(name="E2E testers").delete()
 bakery = Hub.objects.select_related("billing_profile").get(slug="e2e-store-panaderia")
 discount = Discount.objects.create(name="E2E testers", percent_off=100, duration="repeating", duration_in_months=6)
 promo = PromoCode.objects.create(code="e2e_testers", discount=discount)
+Plan.objects.filter(slug="starter", stripe_product_id="").update(stripe_product_id="prod_e2e_starter")
 PromoRedemption.objects.create(promo=promo, hub=bakery, stripe_customer_id="cus_panaderia",
-    stripe_subscription_id="sub_panaderia", discount_ends_at=timezone.now() + timedelta(days=150))
+    stripe_subscription_id="sub_panaderia", discount_ends_at=timezone.now() + timedelta(days=150),
+    stripe_products=[Plan.objects.get(slug="starter").stripe_product_id])
 today = timezone.localdate()
 invoice = Invoice.objects.create(hub=bakery, business_name=bakery.name, billing_profile=bakery.billing_profile,
     payer_account=bakery.billing_profile.owner, stripe_invoice_id="in_e2e_discounted_month", payment_status="paid",
@@ -49,8 +52,10 @@ test.beforeEach(async () => {
 });
 test.afterAll(() =>
   djangoPrintWarm(
-    'from billing.models import Discount, Invoice, PromoCode\nInvoice.objects.filter(series="E2EFM").delete()\n' +
-      'PromoCode.objects.filter(code="e2e_testers").delete()\nDiscount.objects.filter(name="E2E testers").delete()',
+    'from billing.models import Discount, Invoice, PromoCode, PromoRedemption\nfrom hubs.models import Plan\n' +
+      'Invoice.objects.filter(series="E2EFM").delete()\nPromoRedemption.objects.filter(promo__code="e2e_testers").delete()\n' +
+      'PromoCode.objects.filter(code="e2e_testers").delete()\nDiscount.objects.filter(name="E2E testers").delete()\n' +
+      'Plan.objects.filter(stripe_product_id="prod_e2e_starter").update(stripe_product_id="")',
   ),
 );
 

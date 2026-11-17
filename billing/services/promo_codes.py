@@ -1,5 +1,5 @@
-"""Promo codes at checkout: what a code grants a new subscription (trial days, or a discount as a Stripe coupon) and
-its use once the checkout is paid."""
+"""Promo codes at checkout: what a code grants a new subscription (trial days, or a discount as a Stripe coupon), the
+code a checkout brings, and its use on a plan change (a checkout holds its use: ``promo_holds``)."""
 
 from datetime import datetime, timedelta
 from typing import NamedTuple
@@ -11,8 +11,7 @@ from live.errors import Conflict
 
 from billing import queries
 from billing.models import PromoCode, PromoRedemption, normalise_promo_code
-from billing.services import discounts
-from billing.stripe_coupons import discount_end
+from billing.services import discounts, promo_holds
 from hubs.models import Hub, Subscription
 
 #: Stripe refuses a Checkout trial that ends in less than 48 hours: a shorter one is not carried.
@@ -21,20 +20,19 @@ MIN_TRIAL = timedelta(hours=48)
 
 class CheckoutTerms(NamedTuple):
     """What a promo code adds to a Checkout Session: its code, the session's ``subscription_data`` (a trial) and its
-    own parameters (the coupon of its discount)."""
+    own parameters (the coupon of its discount); the code and its coupon, for the hold of its use."""
 
     code: str
     subscription_data: dict
     params: dict
+    promo: PromoCode | None = None
+    coupon: discounts.Coupon | None = None
 
 
-def redeem_promo(
-    code: str | None, *, hub: Hub | None = None, customer: str = "", session: str = "", live: dict | None = None
-) -> bool:
-    """Count one redemption of ``code``; ``False`` when unknown, at its cap, or already used by ``hub`` (once
-    per business: the use is recorded, ``PromoRedemption``, with the ``live`` subscription it paid and when its
-    discount ends). The cap is in the UPDATE's WHERE, so two checkouts completing at once never pass it (the trial was
-    granted when each session opened: two people taking the last seat at once both get it, only one is counted)."""
+def redeem_promo(code: str | None, *, hub: Hub | None = None, customer: str = "") -> bool:
+    """Count one use of ``code`` on a confirmed plan change (its trial days); ``False`` when unknown, at its cap, or
+    already used by ``hub`` (once per business: the use is recorded, ``PromoRedemption``). The cap is in the UPDATE's
+    WHERE, so two changes confirmed at once never pass it. A checkout holds its use instead (``promo_holds``)."""
     normalised = normalise_promo_code(code)
     if not normalised:
         return False
@@ -43,14 +41,7 @@ def redeem_promo(
         return False
     if hub is not None:
         _use, created = PromoRedemption.objects.get_or_create(
-            promo=promo,
-            hub=hub,
-            defaults={
-                "stripe_customer_id": customer or "",
-                "stripe_session_id": session or "",
-                "stripe_subscription_id": (live or {}).get("id") or "",
-                "discount_ends_at": discount_end(live or {}),
-            },
+            promo=promo, hub=hub, defaults={"stripe_customer_id": customer or ""}
         )
         if not created:
             return False
@@ -84,9 +75,22 @@ def checkout_terms(sale, subscription: Subscription | None, promo: PromoCode | N
     if promo is not None and promo.discount is not None:
         discounts.require_sale(promo.discount, sale)
         coupon = discounts.coupon_for(promo.discount, sale)
-        return CheckoutTerms(code, {}, {"discounts": [{"coupon": coupon}], "payment_method_collection": "always"})
+        params = {"discounts": [{"coupon": coupon.id}], "payment_method_collection": "always"}
+        return CheckoutTerms(code, {}, params, promo, coupon)
     end = trial_end(subscription, promo, now) if sale.kind == "plan" else None
-    return CheckoutTerms(code, {"trial_end": end} if end is not None else {}, {})
+    return CheckoutTerms(code, {"trial_end": end} if end is not None else {}, {}, promo)
+
+
+def checkout_promo(code: str, *, hub: Hub, customer: str) -> PromoCode | None:
+    """The code a business starting to pay brings, or ``None`` without one. One it can no longer use (used up, used
+    by it or its payer since it was checked, turned off) is said, never dropped in silence: the panel already
+    promised what it gives."""
+    if not normalise_promo_code(code):
+        return None
+    promo = queries.redeemable_promo(code, hub=hub, customer=customer)
+    if promo is None:
+        raise promo_holds.not_available()
+    return promo
 
 
 def plan_change_promo(code: str, *, hub: Hub, customer: str) -> PromoCode | None:

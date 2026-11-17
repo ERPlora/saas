@@ -188,6 +188,29 @@ def marked(shop):
 
 
 @pytest.fixture
+def sold_plans(plans):
+    """The paid plans with their Stripe products, which a discount's coupon names."""
+    from hubs.models import Plan
+
+    for slug in ("starter", "standard", "pro", "max"):
+        Plan.objects.filter(slug=slug).update(stripe_product_id=f"prod_{slug}")
+
+
+def code_of(code="testers", plans=(), *, max_redemptions=None, redemption_count=0, **terms):
+    """A promo code of a discount (100 % for 6 months unless ``terms`` say otherwise) on ``plans`` (none: all)."""
+    from billing.models import Discount, PromoCode
+    from hubs.models import Plan
+
+    given = Discount.objects.create(
+        name=code, **{"percent_off": 100, "duration": "repeating", "duration_in_months": 6, **terms}
+    )
+    given.plans.set(Plan.objects.filter(slug__in=plans))
+    return PromoCode.objects.create(
+        code=code, discount=given, max_redemptions=max_redemptions, redemption_count=redemption_count
+    )
+
+
+@pytest.fixture
 def inventory(db):
     """A paid module on sale: 10 € a month, 100 € a year (net). Enterprise tier, so no plan the tests buy
     (Starter, Standard: basic) includes it (a plan includes the modules its level reaches)."""

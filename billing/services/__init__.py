@@ -27,7 +27,7 @@ from functools import partial
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, NamedTuple
 
 from django.conf import settings
 from django.core.cache import cache
@@ -85,7 +85,7 @@ from billing.schemas import (
     VatCheckIn,
     VatCheckOut,
 )
-from billing.services import discounts, invoice_discounts, promo_codes
+from billing.services import discounts, invoice_discounts, promo_codes, promo_holds
 from billing.stripe_checkout import (
     EMBEDDED_UI_MODE,
     KIND_METADATA_KEY,
@@ -1346,11 +1346,7 @@ def checkout_start(ctx: OperationContext, data: CheckoutStartIn) -> dict:
         return _preview(hub, subscription, sale, data.promo_code)
     tax_rates = price_sale(hub, sale, recurring_net=sale.net)
     customer = hub.billing_profile.stripe_customer_id
-    promo = (
-        queries.redeemable_promo(data.promo_code, hub=hub, customer=customer)
-        if sale.kind == "plan"
-        else None
-    )
+    promo = promo_codes.checkout_promo(data.promo_code, hub=hub, customer=customer) if sale.kind == "plan" else None
     with stripe_errors():
         terms = promo_codes.checkout_terms(sale, subscription, promo, timezone.now())
     attempt = _checkout_attempt(ctx, hub, sale, tax_rates, terms)
@@ -1386,6 +1382,7 @@ def _expire_other_sessions(hub: Hub, selection: str) -> None:
         CheckoutAttempt.objects.filter(pk=attempt.pk).update(
             status=CheckoutAttempt.Status.EXPIRED, updated_at=timezone.now()
         )
+        promo_holds.release(attempt=attempt)
 
 
 def _checkout_attempt(ctx, hub, sale: Sale, tax_rates, terms: promo_codes.CheckoutTerms) -> CheckoutAttempt:
@@ -1415,6 +1412,8 @@ def _checkout_attempt(ctx, hub, sale: Sale, tax_rates, terms: promo_codes.Checko
         promo_code=terms.code,
         selection=selection,
     )
+    if terms.promo is not None:
+        promo_holds.hold(terms.promo, attempt, customer=customer, coupon=terms.coupon)
     kind = (
         CheckoutKind.HUB_PLAN if sale.kind == "plan" else CheckoutKind.MODULE_PURCHASE
     )
@@ -2091,9 +2090,10 @@ def plan_take_over(ctx: OperationContext, data: HubIn) -> dict:
             )
         tax_rates = price_sale(hub, sale, recurring_net=_recurring_net(subscription, sale.interval))
         line_items.append({"price": sale.price_id, "quantity": line.get("quantity") or 1, "tax_rates": tax_rates})
+    carried = discounts.takeover_discounts(subscription.stripe_subscription_id, live)
     selection = f"takeover:{subscription.stripe_subscription_id}:" + ";".join(
         f"{line['price']}={','.join(line['tax_rates'])}" for line in line_items
-    )
+    ) + "".join(f":{held['coupon']}" for held in carried)
     selection = selection[:255]
     attempt = (
         CheckoutAttempt.objects.filter(
@@ -2107,7 +2107,7 @@ def plan_take_over(ctx: OperationContext, data: HubIn) -> dict:
         .first()
     )
     if attempt is None:
-        attempt = _open_takeover(ctx, hub, subscription, line_items, period_end, selection)
+        attempt = _open_takeover(ctx, hub, subscription, Takeover(line_items, period_end, selection, carried))
     return {
         "flow": "checkout",
         "session_id": attempt.stripe_session_id,
@@ -2117,8 +2117,18 @@ def plan_take_over(ctx: OperationContext, data: HubIn) -> dict:
     }
 
 
-def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[dict], period_end, selection: str):  # noqa: PLR0913, PLR0917
-    _expire_other_sessions(hub, selection)
+class Takeover(NamedTuple):
+    """The checkout of a new owner keeping the plan: its lines, the end of the paid period it bills from, its
+    selection and what it carries of the business's discount."""
+
+    line_items: list[dict]
+    period_end: int
+    selection: str
+    discounts: list[dict]
+
+
+def _open_takeover(ctx, hub: Hub, subscription: Subscription, takeover: Takeover):
+    _expire_other_sessions(hub, takeover.selection)
     customer = ensure_customer(hub)
     attempt = CheckoutAttempt.objects.create(
         hub=hub,
@@ -2126,7 +2136,7 @@ def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[d
         kind=CheckoutAttempt.Kind.TAKEOVER,
         plan_slug=subscription.plan.slug if subscription.plan else "",
         billing_interval=subscription.billing_interval,
-        selection=selection,
+        selection=takeover.selection,
     )
     base = hub_emails.base_url(ctx.request)
     params = {
@@ -2134,7 +2144,7 @@ def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[d
         "mode": "subscription",
         "customer": customer,
         "customer_update": {"name": "auto", "address": "auto"},
-        "line_items": line_items,
+        "line_items": takeover.line_items,
         "metadata": {
             KIND_METADATA_KEY: CheckoutKind.PLAN_TAKEOVER.value,
             "hub_id": str(hub.id),
@@ -2145,7 +2155,7 @@ def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[d
             "description": f"ERPlora — {hub.name}",
             "metadata": {"hub_id": str(hub.id)},
             # Billed from the day the paid period ends, nothing before it: the business uses what was paid.
-            "billing_cycle_anchor": period_end,
+            "billing_cycle_anchor": takeover.period_end,
             "proration_behavior": "none",
         },
         "redirect_on_completion": "if_required",
@@ -2155,6 +2165,8 @@ def _open_takeover(ctx, hub: Hub, subscription: Subscription, line_items: list[d
         "tax_id_collection": {"enabled": False},
         "integration_identifier": INTEGRATION_IDENTIFIER,
     }
+    if takeover.discounts:
+        params["discounts"] = takeover.discounts
     with stripe_errors():
         session = stripe_service.create_checkout_session(params, idempotency_key=f"checkout-{attempt.id}")
     attempt.stripe_session_id = session["id"]
@@ -2176,8 +2188,10 @@ def _takeover_completed(hub: Hub, session: dict, subscription_id: str, replaced:
     with holding(hub.id):
         local = Subscription.objects.filter(hub=hub).first()
         if local is None or local.stripe_subscription_id != subscription_id:
-            apply_live(hub.id, stripe_service.retrieve_subscription(subscription_id))
+            live = stripe_service.retrieve_subscription(subscription_id)
+            apply_live(hub.id, live)
             if replaced and replaced != subscription_id:
+                discounts.move_redemption(replaced, live)
                 previous = stripe_service.retrieve_subscription(replaced)
                 if (previous.get("status") or "") not in ENDED_STATUSES:
                     stripe_service.cancel_subscription(replaced)
@@ -2763,7 +2777,7 @@ def _complete_checkout(hub: Hub, session: dict, subscription_id: str) -> str:
     code = (session.get("metadata") or {}).get("promo_code")
     if completed and code:
         customer = live.get("customer")
-        promo_codes.redeem_promo(
+        promo_holds.use(
             code,
             hub=hub,
             customer=customer["id"] if isinstance(customer, dict) else customer or "",
@@ -2865,6 +2879,7 @@ def checkout_refund_record(ctx: OperationContext, data: CheckoutRefundRecordIn) 
     attempt.status = CheckoutAttempt.Status.REFUNDED
     attempt.completed_at = timezone.now()
     attempt.save(update_fields=["status", "completed_at", "updated_at"])
+    promo_holds.release(attempt=attempt)
     record_event(
         ctx,
         events.CHECKOUT_REFUNDED,
@@ -2923,6 +2938,7 @@ def expire_open_checkouts(hub_id) -> None:
             continue
         attempt.status = CheckoutAttempt.Status.EXPIRED
         attempt.save(update_fields=["status", "updated_at"])
+        promo_holds.release(attempt=attempt)
 
 
 def checkout_closed(session: dict, status: str) -> str:
@@ -2933,6 +2949,7 @@ def checkout_closed(session: dict, status: str) -> str:
     CheckoutAttempt.objects.filter(
         stripe_session_id=session.get("id"), status=CheckoutAttempt.Status.OPEN
     ).update(status=status, updated_at=timezone.now())
+    promo_holds.release(session=session.get("id") or "")
     return status
 
 
