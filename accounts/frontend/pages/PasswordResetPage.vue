@@ -1,7 +1,6 @@
 <script setup lang="ts">
-// `/password/reset` («Forgot your password?» of the sign-in), over allauth.headless: the pages of
-// ERPlora/saas's `account/password_reset.html` (the address) and `password_reset_done.html` (check
-// your email), same structure and texts, in the auth frame. allauth mails a link to
+// `/password/reset` («Forgot your password?» of the sign-in), over allauth.headless: the address, then
+// «check your email», in the auth frame. allauth mails a link to
 // `/password/reset/key/<key>` (PasswordResetKeyPage) and answers the same whether the address has an
 // account or not, so the page says the same in both cases and never echoes the address. «Try again»
 // goes back to the form with the address kept.

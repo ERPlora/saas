@@ -1,12 +1,11 @@
-"""Account → Preferences → «Mail notices» (ACCOUNTS-F23; old SAAS_DASHBOARD-F211, whose four switches were saved
-and read by no mail).
+"""Account → Preferences → «Mail notices» (ACCOUNTS-F23).
 
 Each switch governs mails the SaaS really sends, and only those: «Business notices» (``hub_alerts``) is the mail
 that a business is ready to open (``hubs.emails.send_ready``). What keeps the account safe or its businesses
 running has no switch, as GitHub's and Stripe's «you will always get important account mails»: the sign-in codes
 and security notices, ERPlora's invoices and failed payments, a deleted business and its recovery date, and
 anything that asks the person to act (connecting WhatsApp again). There is no «ERPlora news» switch: ERPlora sends
-no such mail, and a switch that governs nothing is the old bug again.
+no such mail, and a switch that governs nothing would mislead the person.
 """
 
 from datetime import date
@@ -18,7 +17,7 @@ from django.core import mail
 from accounts import queries
 from accounts.models import UserPreferences
 from accounts.tests.conftest import api_post
-from hubs import services as hub_services
+from hubs.services import deletion, hub_callbacks
 from hubs.schemas import BusinessDeleteIn, MarkReadyIn
 from hubs.tests.conftest import create_business, ctx_for, plans  # noqa: F401 - the plans fixture
 
@@ -32,7 +31,7 @@ def _business_notices_off(user) -> None:
 
 
 def _mark_ready(business) -> None:
-    hub_services.business_mark_ready(hub_services.system_ctx_for(business.id), MarkReadyIn(id=business.id))
+    hub_callbacks.business_mark_ready(hub_callbacks.system_ctx_for(business.id), MarkReadyIn(id=business.id))
 
 
 class TestBusinessNotices:
@@ -83,7 +82,7 @@ class TestWhatNoSwitchStops:
         mail.outbox.clear()
 
         with django_capture_on_commit_callbacks(execute=True):
-            hub_services.business_delete(ctx_for(ana), BusinessDeleteIn(id=business.id, confirm_name="Panadería López"))
+            deletion.business_delete(ctx_for(ana), BusinessDeleteIn(id=business.id, confirm_name="Panadería López"))
 
         assert [message.subject for message in mail.outbox] == ["Panadería López se ha eliminado"]
 

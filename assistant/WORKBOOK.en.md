@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:16aeeace94beecb09591dc328e99ba89d3c6a8f2cc424fc1f4f355e50efb6f1d -->
+<!-- generated from WORKBOOK.md sha256:6841a6f7eedfddb5e51ed9d7719bdab4397d6aa01e3db8b1e672ac478908876b -->
 
 ## What it is for and who uses it
 
@@ -33,9 +33,6 @@ Who uses it:
 - **The providers' consoles** (OpenAI, Anthropic, Google AI Studio, DeepSeek): the key is shown once when created
   and then only its end; the list of models comes from the provider's own API
   (https://platform.openai.com/docs/models, https://docs.anthropic.com/en/docs/about-claude/models).
-- **ERPlora's old product** (the SaaS's `apps/assistant`): providers with their key and models on one page, the
-  policy of which model answers and the tester with cost and latency; the Hub's turn through the gateway, with the
-  allowance per business, the attachments, the fingerprints and the voice.
 - **Assistants with an allowance** (ChatGPT, Claude, Gemini, Microsoft 365 Copilot, Shopify Magic): a number of
   messages per period by plan, which comes back when the next one starts; when it is spent the person is told and a
   plan up is offered; a message that fails before answering is not charged. The tools that are not the business's
@@ -153,7 +150,7 @@ offering it to someone else or cancelling its plan also ask to type "CONFIRM".
 | ASSISTANT-F11 | Know who calls and for which business | done |
 | ASSISTANT-F12 | Answer an assistant turn live | done |
 | ASSISTANT-F13 | Answer the same turn at once | done |
-| ASSISTANT-F14 | Use erplora.com's tools and the business's | partial |
+| ASSISTANT-F14 | Use erplora.com's tools and the business's | done |
 | ASSISTANT-F15 | Refuse a turn with its reason | done |
 | ASSISTANT-F16 | Stop a business that asks too much | done |
 | ASSISTANT-F17 | Do not keep the conversation | done |
@@ -350,7 +347,7 @@ If it fails: the refusals before the model, the same as live; if the provider fa
 Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F18 and, in the Hub, FLOW-F39
 
 ### ASSISTANT-F14 Use erplora.com's tools and the business's
-Status: partial — the business's tools, the date and time and the exchange rate between currencies work; the web search is done and the privacy policy already names its provider; it is not offered in production until the infrastructure hands it its key and it is really tested in `pre` (saas#277)
+Status: done
 Actor: the Hub's assistant of a business
 Screen: none
 Steps:
@@ -476,7 +473,7 @@ Actor: the Hub's assistant of a business
 Screen: none
 Steps:
 1. The person marks an answer of the assistant as incorrect, harmful, not doing what was asked or something else, and adds, if they want, a comment.
-2. The Hub sends erplora.com the report with the question, the answer and whether its turn brought pages from the web (erplora.com says so in the turn itself).
+2. The Hub —or erplora.com's panel, with its own assistant (ASSISTANT-F25)— sends erplora.com the report with the question, the answer and whether its turn brought pages from the web. erplora.com says so as it closes each round of the turn, and the chat keeps it with the answer in the tab, also after reloading it: one round that brought pages is enough, even if the continuation after the tools brought none. If the chat does not know (a conversation from before the mark, or a round that was writing when it was stopped), it does not say.
 3. erplora.com mails it to ERPlora's support mailbox with the business, the reason, the comment, the question and the answer (each text, at most 4,000 characters), and keeps nothing.
 4. If the turn brought pages from the web, or the Hub does not say where the answer came from while the search is on, the mail carries everything but the answer: in its place it says it was left out because it may quote the web, and to ask the question again to see it. Brave's terms do not allow keeping its results, not even in part, and a mailbox keeps; their address and title are part of them too, so the sources do not go either.
 5. If the same answer of the same business is reported again within 24 hours (a double tap, a retry), no other mail is sent.

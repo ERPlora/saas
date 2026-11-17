@@ -11,7 +11,7 @@ from uuid import UUID
 from ninja import Schema
 from pydantic import Field, SecretStr, StringConstraints, model_validator
 
-#: The Hub's ``hub``: the business's slug in phase 1 (its UUID in phase 2).
+#: The Hub's ``hub``: the business's slug or its UUID.
 HubRef = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
 #: An international number, with or without ``+`` (the Hub's ``INTERNATIONAL``).
 International = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^\+?[1-9]\d{6,14}$")]
@@ -312,7 +312,7 @@ class ReconnectOut(Schema):
     changed: bool
 
 
-# --- The renewal of Meta's permission (WHATSAPP-G12) ----------------------------------------------------------
+# --- The renewal of Meta's permission -------------------------------------------------------------------------
 
 
 class RenewalDueIn(Schema):
@@ -363,7 +363,7 @@ class AlertedOut(Schema):
     alerted: bool
 
 
-# --- Doors 10–12: connecting a number (WHATSAPP-G11, WHATSAPP-G01, WHATSAPP-G02) ---------------------------------
+# --- Doors 10–12: connecting a number ----------------------------------------------------------------------------
 
 MetaId = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^\d{1,50}$")]
 
@@ -429,7 +429,7 @@ class NumberDisconnectOut(Schema):
     account_in_use: bool = False
 
 
-# --- An attachment opened from the Hub (WHATSAPP-G07) -----------------------------------------------------------
+# --- An attachment opened from the Hub --------------------------------------------------------------------------
 
 
 class MediaIn(Schema):
@@ -447,7 +447,7 @@ class MediaOut(Schema):
     filename: str = ""
 
 
-# --- The staff's actions (WHATSAPP-G18) -------------------------------------------------------------------------
+# --- The staff's actions ----------------------------------------------------------------------------------------
 
 
 class DueNowIn(Schema):
@@ -460,7 +460,7 @@ class DueNowOut(Schema):
     count: int
 
 
-# --- The retention (WHATSAPP-G14) -----------------------------------------------------------------------------
+# --- The retention --------------------------------------------------------------------------------------------
 
 
 class PurgeIn(Schema):

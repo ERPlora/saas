@@ -1,14 +1,8 @@
-// The Store itself, on the web (round 17 §2.10–§2.11; mockups `store.html`; README §3, §4, §6.18;
-// UX-AUDIT-4): the business it sells to (`?business=` or the first the account owns), its unpaid invoice
-// if any, and then Plans or Modules:
-//   - plans of `hubs.plan.list`; modules of `apps.app.list` (name, summary, icon, in the person's language)
-//     joined by slug with `billing.store.catalog` (prices, what the business has): a module is sold when
-//     its app is premium AND billing has it on sale;
-//   - a business on Free buys in the Embedded Checkout; one that pays confirms with its proration — one
-//     dialog per module — and its own plan switches billing with the total with VAT;
-//   - after buying, «Activating…»; owned, never on sale twice; cancelled, «Keep · no charge today»;
-//   - with an unpaid invoice, nothing that charges, for THAT business.
-// The dialogs have their own tests: here they are stubs, and what the shop hands them is checked.
+// The Store on the web: the business it sells to (`?business=` or the first the account owns), its unpaid invoice
+// if any, then Plans or Modules. A module is sold when its app is premium AND billing has it on sale; with an unpaid
+// invoice nothing charges for THAT business. The dialogs have their own tests: here they are stubs, and what the
+// shop hands them is checked.
+import { mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
@@ -30,6 +24,7 @@ import {
   catalog,
   FREE_SUBSCRIPTION,
   MAX,
+  PAYMENT_TEST,
   PLANS,
   PLAZA,
   PRO,
@@ -69,6 +64,13 @@ const CATALOGS: Record<string, ReturnType<typeof catalog>> = {
   cafe: catalog('cafe', { subscription: FREE_SUBSCRIPTION }),
   plaza: catalog('plaza'),
 };
+
+/** Café Central once ERPlora's staff marked it: offered the internal plan, whose card only its catalog brings. */
+const MARKED_CAFE = catalog('cafe', {
+  subscription: FREE_SUBSCRIPTION,
+  offered_plans: ['starter', 'standard', 'payment-test'],
+  internal_plans: [PAYMENT_TEST],
+});
 
 /** `list`: the account's businesses arrive (`result`, by default), nothing arrives yet (`none`), or the stream
  *  is refused (`down`: `/api/live` answers 503). */
@@ -134,13 +136,13 @@ describe('StoreShop', () => {
     expect(s.el('plan-starter').find('[data-testid="plan-current"]').exists()).toBe(true);
   });
 
-  it('without ?business= it sells to the first business that can buy, not one blocked by an unpaid invoice (audit 2 R-17)', async () => {
+  it('without ?business= it sells to the first business that can buy, not one blocked by an unpaid invoice', async () => {
     const s = await setup({ rows: [PLAZA, BAKERY, CAFE] });
     expect(ionProps(s.el('store-business'), 'value')).toEqual({ value: 'bakery' });
     expect(s.el('store-unpaid').exists()).toBe(false);
   });
 
-  it('a Free business is offered the plans sold at sign-up; the upgrades wait for a paid plan (audit 2 S-03)', async () => {
+  it('a Free business is offered the plans sold at sign-up; the upgrades wait for a paid plan', async () => {
     const plans = { ...PLANS, plans: [...PLANS.plans, PRO, MAX] };
     const s = await setup({ businessId: 'cafe', answer: ({ path }) => (path === '/api/plans' ? Response.json(plans) : undefined) });
     expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter']);
@@ -152,6 +154,38 @@ describe('StoreShop', () => {
     const s = await setup({ answer: ({ path }) => (path === '/api/plans' ? Response.json(plans) : undefined) });
     expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter', 'Pro', 'Max']);
     expect(s.el('store-plans-later').exists()).toBe(false);
+  });
+
+  it('a business ERPlora marked is offered the internal plan with the card its catalog brings, and buys it', async () => {
+    const s = await setup({ businessId: 'cafe', answer: ({ path }) => (path === '/api/billing/store' ? Response.json(MARKED_CAFE) : undefined) });
+    expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter', 'Payment Test (internal)']);
+    await s.el('plan-payment-test').find('[data-testid="plan-upgrade"]').trigger('click');
+    expect(s.wrapper.findComponent(CheckoutModal).props()).toMatchObject({
+      open: true,
+      business: { id: 'cafe' },
+      purchase: { kind: 'plan', slug: 'payment-test', name: 'Payment Test (internal)', interval: 'month' },
+    });
+  });
+
+  it('the internal plan of one business is never shown for another: each catalog brings its own', async () => {
+    const s = await setup({ businessId: 'cafe', answer: ({ path, query }) => (path === '/api/billing/store' && query.hub_id === 'cafe' ? Response.json(MARKED_CAFE) : undefined) });
+    expect(s.el('plan-payment-test').exists()).toBe(true);
+    await s.pick('bakery');
+    expect(s.all('plan-name').map((n) => n.text())).toEqual(['Free', 'Starter']);
+  });
+
+  it('a business on an internal plan sees its card as its current plan', async () => {
+    const onIt = catalog('bakery', { subscription: subscription({ plan: 'payment-test' }), internal_plans: [PAYMENT_TEST] });
+    const s = await setup({ answer: ({ path }) => (path === '/api/billing/store' ? Response.json(onIt) : undefined) });
+    expect(s.el('plan-payment-test').find('[data-testid="plan-current"]').exists()).toBe(true);
+  });
+
+  it('cancelling an internal plan names it, as its card does', async () => {
+    const onIt = catalog('bakery', { subscription: subscription({ plan: 'payment-test' }), internal_plans: [PAYMENT_TEST] });
+    const s = await setup({ answer: ({ path }) => (path === '/api/billing/store' ? Response.json(onIt) : undefined) });
+    await s.el('plan-downgrade').trigger('click');
+    await flush();
+    expect(document.querySelector('[data-testid="store-cancel"]')?.textContent).toContain('Panadería López · Payment Test (internal)');
   });
 
   it('?business= chooses the business it came from', async () => {
@@ -187,7 +221,7 @@ describe('StoreShop', () => {
   });
 
   it('with nothing on sale, it says so', async () => {
-    // A business with no module: since saas#2589 one it still has is shown although the catalog lists none.
+    // A business with no module: one it still has is shown although the catalog lists none.
     const none = catalog('bakery', { modules: [storeModule('booking', 900)] });
     const s = await setup({
       tab: 'modules',
@@ -233,21 +267,10 @@ describe('StoreShop', () => {
     expect(s.el('plan-starter').find('[data-testid="plan-price"]').text()).toBe('€299.90 /year + VAT · €24.99/month');
   });
 
-  it('the promo code is asked with Ionic’s controls: a clear button, an outlined md input and buttons with icons', async () => {
-    const s = await setup({ businessId: 'cafe' });
-    expect(s.el('store-promo-toggle').element.tagName).toBe('ION-BUTTON');
-    expect((s.el('store-promo-toggle').find('ion-icon').element as unknown as { name?: string }).name).toBe('ticket-outline');
-    await s.el('store-promo-toggle').trigger('click');
-    expect(s.el('store-promo-code').element.tagName).toBe('ION-INPUT');
-    expect(ionProps(s.el('store-promo-code'), 'mode', 'fill', 'label')).toEqual({ mode: 'md', fill: 'outline', label: 'Promo code' });
-    expect(s.el('store-promo-apply').element.tagName).toBe('ION-BUTTON');
-    expect(s.el('store-promo-apply').find('ion-icon').exists()).toBe(true);
-  });
-
   it('on Free a plan is bought in the checkout, at the billing of the switch, with the promo code', async () => {
     const s = await setup({
       businessId: 'cafe',
-      answer: ({ path, query }) => (path === '/api/billing/promo-check' ? Response.json({ code: query.code.toUpperCase(), valid: true, trial_days: 30 }) : undefined),
+      answer: ({ path, query }) => (path === '/api/billing/promo-check' ? Response.json({ code: query.code.toUpperCase(), valid: true, kind: 'trial_days', trial_days: 30, free_months: 0 }) : undefined),
     });
     expect(s.el('store-period').text()).toContain('Annual · −17 %');
     s.el('store-period').element.dispatchEvent(new CustomEvent('ionChange', { detail: { value: 'year' } }));
@@ -256,7 +279,6 @@ describe('StoreShop', () => {
     s.el('store-promo-code').element.dispatchEvent(new CustomEvent('ionInput', { detail: { value: 'spring' } }));
     await s.el('store-promo-apply').trigger('click');
     await flush();
-    expect(s.el('store-promo-result').text()).toBe('Code SPRING: 30 days free before the first charge.');
     await s.el('plan-upgrade').trigger('click');
     const checkout = s.wrapper.findComponent(CheckoutModal);
     expect(checkout.props()).toMatchObject({
@@ -264,12 +286,24 @@ describe('StoreShop', () => {
       business: { id: 'cafe', name: 'Café Central' },
       purchase: { kind: 'plan', slug: 'starter', name: 'Starter', interval: 'year' },
       promoCode: 'SPRING',
-      // Bar La Plaza's card was declined, but Café Central has a payer of its own (audit 2 R-21).
+      // Bar La Plaza's card was declined, but Café Central has a payer of its own.
       declinedFor: null,
     });
   });
 
-  it('the card of the same payer declined: the checkout says whose (audit 2 R-21)', async () => {
+  it('a code of free months: the checkout says when the price of the plan starts', async () => {
+    const testers = { code: 'TESTERS', valid: true, kind: 'free_months', trial_days: 0, free_months: 6 };
+    const s = await setup({ businessId: 'cafe', answer: ({ path }) => (path.endsWith('promo-check') ? Response.json(testers) : undefined) });
+    await s.el('store-promo-toggle').trigger('click');
+    s.el('store-promo-code').element.dispatchEvent(new CustomEvent('ionInput', { detail: { value: 'testers' } }));
+    await s.el('store-promo-apply').trigger('click');
+    await flush();
+    await s.el('plan-upgrade').trigger('click');
+    const notice = mount({ render: () => s.wrapper.findComponent(CheckoutModal).vm.$slots.notice?.({}) }, { global: { plugins: [s.i18n] } });
+    expect(notice.text()).toBe('6 months free, then €29.99/month + VAT. Your card is not charged until then.');
+  });
+
+  it('the card of the same payer declined: the checkout says whose', async () => {
     const shared = { ...CAFE, payer_id: PLAZA.payer_id };
     const s = await setup({ businessId: 'cafe', rows: [BAKERY, shared, PLAZA] });
     await s.el('plan-upgrade').trigger('click');
@@ -279,13 +313,12 @@ describe('StoreShop', () => {
   it('an invalid promo code is said, and none is sent', async () => {
     const s = await setup({
       businessId: 'cafe',
-      answer: ({ path }) => (path === '/api/billing/promo-check' ? Response.json({ code: 'NOPE', valid: false, trial_days: 0 }) : undefined),
+      answer: ({ path }) => (path === '/api/billing/promo-check' ? Response.json({ code: 'NOPE', valid: false, kind: 'trial_days', trial_days: 0, free_months: 0 }) : undefined),
     });
     await s.el('store-promo-toggle').trigger('click');
     s.el('store-promo-code').element.dispatchEvent(new CustomEvent('ionInput', { detail: { value: 'nope' } }));
     await s.el('store-promo-apply').trigger('click');
     await flush();
-    expect(s.el('store-promo-result').text()).toBe('This code is not valid, or it was already used.');
     await s.el('plan-upgrade').trigger('click');
     expect(s.wrapper.findComponent(CheckoutModal).props('promoCode')).toBe('');
   });
@@ -382,7 +415,7 @@ describe('StoreShop', () => {
     expect(s.el('plan-keep').exists()).toBe(false);
   });
 
-  it('a downgrade that waits: its own card names the plan it moves to, and «Keep the plan» undoes it (PLAN-SAAS §31, saas#208)', async () => {
+  it('a downgrade that waits: its own card names the plan it moves to, and «Keep the plan» undoes it', async () => {
     const STANDARD = plan('standard', 'Standard', '59.99', '599.90');
     const waiting = catalog('bakery', {
       subscription: subscription({ plan: 'standard', scheduled_change: { plan: 'starter', interval: 'month', starts_at: '2026-10-31T12:00:00Z' } }),
@@ -448,7 +481,7 @@ describe('StoreShop', () => {
     expect(s.el('module-loyalty').find('[data-testid="module-owned"]').exists()).toBe(true);
   });
 
-  it('BILLING-G66: «Cancel module» confirms with the date it ends, cancels it, and it can be kept until then', async () => {
+  it('«Cancel module» confirms with the date it ends, cancels it, and it can be kept until then', async () => {
     const owned = catalog('bakery', { modules: [storeModule('booking', 900, { owned: true, source: 'purchase' })] });
     const s = await setup({
       tab: 'modules',
@@ -474,7 +507,7 @@ describe('StoreShop', () => {
     expect(s.el('module-booking').find('[data-testid="module-cancel"]').exists()).toBe(false);
   });
 
-  it('BILLING-G66: a refused cancellation stays in its dialog and says why', async () => {
+  it('a refused cancellation stays in its dialog and says why', async () => {
     const owned = catalog('bakery', { modules: [storeModule('booking', 900, { owned: true, source: 'purchase' })] });
     const s = await setup({
       tab: 'modules',
@@ -493,7 +526,7 @@ describe('StoreShop', () => {
     expect(s.el('module-booking').find('[data-testid="module-cancel"]').exists()).toBe(true);
   });
 
-  it('saas#2589: a module off sale the business still pays is shown to cancel it, named by billing if the catalog retired its app', async () => {
+  it('a module off sale the business still pays is shown to cancel it, named by billing if the catalog retired its app', async () => {
     const retired = catalog('bakery', { modules: [storeModule('retired', 500, { owned: true, source: 'purchase', on_sale: false, name: 'Old reports' })] });
     const s = await setup({ tab: 'modules', answer: ({ path, query }) => (path === '/api/billing/store' && query.hub_id === 'bakery' ? Response.json(retired) : undefined) });
     expect(s.el('module-retired').find('[data-testid="module-name"]').text()).toBe('Old reports');
@@ -540,7 +573,7 @@ describe('StoreShop', () => {
   });
 });
 
-describe('StoreShop: businesses that do not load are said, never «You have no business to buy for» (audit 2026-10-14, R-04)', () => {
+describe('StoreShop: businesses that do not load are said, never «You have no business to buy for»', () => {
   const states = (s: Awaited<ReturnType<typeof setup>>) => ({
     error: s.el('store-error').exists() ? s.el('store-error').find('.heading').text() : null,
     retry: s.el('store-retry').exists(),

@@ -1,16 +1,14 @@
-"""The payer's VAT id is what prices the sale, even when Stripe's session does not echo it (saas#1621).
+"""The payer's VAT id is what prices the sale, even when Stripe's session does not echo it.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_payer_vat_reaches_the_invoice.py``
-(origin/develop, 6 tests). The VAT id is typed in OUR form (``hubs.BillingProfile.tax_id``), contrasted
+The VAT id is typed in OUR form (``hubs.BillingProfile.tax_id``), contrasted
 against VIES, and only a cleared one reaches Stripe: the fact that survives is the payer's profile,
 which ``billing.queries.payer_of`` reads for every door that sells. The verdict is never seeded: only
 the network is faked.
 
-Adapted (no ``Invoice`` in this lot): the four cases are proved on what the sale door decides
-(``billing.services.sale_quote``) and on the clearance that carries the proof. Moved: «a UK business with
-no VAT number is named by its Companies House number» needs ``BillingProfile.uk_business_*`` (L2-B) and
-«the renewal invoice keeps the payer's VAT id» is ``test_invoice_recording`` (lot L3-C: the payer is sealed
-on the invoice the webhook records).
+Adapted: the four cases are proved on what the sale door decides (``billing.services.sale_quote``) and on
+the clearance that carries the proof. Moved: «a UK business with no VAT number is named by its Companies
+House number» needs ``BillingProfile.uk_business_*`` and «the renewal invoice keeps the payer's VAT id» is
+``test_invoice_recording`` (the payer is sealed on the invoice the webhook records).
 """
 
 from decimal import Decimal
@@ -41,6 +39,7 @@ def _quote(business):
     return services.sale_quote(business, category_key=PLAN, price=Decimal("100.00"))
 
 
+@pytest.mark.usefixtures("every_country_sold")
 class TestThePayerIsTheSource:
     def test_a_proved_vat_id_prices_the_sale_and_keeps_its_proof(
         self, business_paid_by

@@ -22,6 +22,7 @@ from django.utils import timezone
 from base import worker
 from base.listener import Listener
 from base.tests.conftest import other_session  # noqa: F401 - a second session, as another process
+from base.tests.test_listener import on_its_socket
 from hubs.tests.test_guardrails import database_touches
 from whatsapp import gateway, queries, services
 from whatsapp.models import Delivery
@@ -142,10 +143,10 @@ def test_the_two_reconciliations_run_every_quarter_of_an_hour_in_the_process(mon
 
 def test_the_real_reconciliations_are_the_ones_of_the_commands():
     from billing import services as billing_services
-    from hubs import services as hubs_services
+    from hubs.services import reconciliation
 
     assert [(task.name, task.run, task.failed) for task in worker.PERIODIC] == [
-        ("reconcile_hub_states", hubs_services.reconcile_exclusively, hubs_services.run_failed),
+        ("reconcile_hub_states", reconciliation.reconcile_exclusively, reconciliation.run_failed),
         (
             "reconcile_platform_invoices",
             billing_services.reconcile_platform_invoices_exclusively,
@@ -171,17 +172,20 @@ def test_the_next_round_is_the_next_quarter_of_an_hour_after_now(now, expected):
 
 
 @pytest.mark.parametrize(
-    ("due_in", "pushed", "expected"),
+    ("now", "due_in", "pushed", "expected"),
     [
-        (None, 0, 480.0),  # nothing waits: until the next round
-        (42.0, 0, 42.0),  # a retry in 42 s: then
-        (-3.0, 1, 0.0),  # due already, after a pass that pushed (its budget ran out): again at once
-        (-3.0, 0, worker.IDLE_FLOOR),  # due already, yet the pass took nothing (another holds it): soon, not at once
+        (TEN_O_SEVEN, None, 0, 480.0),  # nothing waits: until the next round
+        (TEN_O_SEVEN, 42.0, 0, 42.0),  # a retry in 42 s: then
+        (TEN_O_SEVEN, -3.0, 1, 0.0),  # due already, after a pass that pushed (its budget ran out): again at once
+        # due already, yet the pass took nothing (another holds it): soon, not at once
+        (TEN_O_SEVEN, -3.0, 0, worker.IDLE_FLOOR),
+        # the same, 0.862 s before the round: the round comes first, the floor never puts it off (saas#338)
+        (TEN_O_SEVEN.replace(minute=14, second=59, microsecond=138_000), -3.0, 0, 0.862),
     ],
 )
-def test_it_sleeps_until_the_next_delivery_due_or_the_next_round(monkeypatch, due_in, pushed, expected):
-    clock, stop = Clock(TEN_O_SEVEN), threading.Event()
-    due = None if due_in is None else TEN_O_SEVEN + timedelta(seconds=due_in)
+def test_it_sleeps_until_the_next_delivery_due_or_the_next_round(monkeypatch, now, due_in, pushed, expected):
+    clock, stop = Clock(now), threading.Event()
+    due = None if due_in is None else now + timedelta(seconds=due_in)
     monkeypatch.setattr(gateway, "deliver_pass", lambda stop=None: {**NOTHING, "delivered": pushed})
     monkeypatch.setattr(queries, "delivery_next_due", lambda ctx, data: NextDueOut(at=due))
     monkeypatch.setattr(worker, "PERIODIC", ())
@@ -385,6 +389,9 @@ def test_it_does_not_push_before_the_retry_time_and_pushes_once_it_came(
     number, hub_double, keep_the_connection, monkeypatch
 ):
     monkeypatch.setattr(worker, "PERIODIC", ())
+    # On the wall clock (the claim reads it: the retry has to come for real), with the round 15 minutes away whatever
+    # it reads: 0.5 s before a quarter, the worker would wake for that round before the retry is due (saas#338).
+    monkeypatch.setattr(worker, "next_round", lambda now: now + worker.ROUND)
     hub_double.answer("POST", INBOUND, 200, {"created": True})
     ingest(messages(text("wamid.1")))
     Delivery.objects.update(attempts=1, next_attempt_at=timezone.now() + timedelta(seconds=0.5))
@@ -396,7 +403,8 @@ def test_it_does_not_push_before_the_retry_time_and_pushes_once_it_came(
         if len(seen) == 2:
             stop.set()
             return False
-        return Listener.wait(ear, timeout)
+        # A second at most: a worker that sleeps past the retry fails the asserts below, not after its whole round.
+        return Listener.wait(ear, min(timeout, 1.0))
 
     ear.wait = wait
 
@@ -414,11 +422,15 @@ def test_while_another_run_holds_the_lock_it_looks_again_in_a_few_seconds_not_at
 ):
     monkeypatch.setattr(worker, "PERIODIC", ())
     ingest(messages(text("wamid.1")))
+    # Due on the worker's own clock, 8 minutes before its round, and on the wall clock too (a past day: the pass would
+    # push it, were the lock free). Never the wall clock as the worker's: read 0.86 s before a quarter, the worker
+    # wakes for that round instead of the floor (saas#338).
+    Delivery.objects.update(next_attempt_at=TEN_O_SEVEN)
     other_session.execute(f"SELECT pg_advisory_lock({DELIVER_LOCK})")
     stop = threading.Event()
     ear = Ear(stop, waits=1)
     try:
-        worker.run(stop, listener=ear)
+        worker.run(stop, listener=ear, clock=Clock(TEN_O_SEVEN))
     finally:
         other_session.execute(f"SELECT pg_advisory_unlock({DELIVER_LOCK})")
 
@@ -469,23 +481,35 @@ def test_it_delivers_a_parked_message_as_soon_as_its_notify_comes(number, hub_do
 @pytest.mark.django_db(transaction=True)
 def test_what_its_own_pass_notified_does_not_wake_it_again(number, offline_hub, monkeypatch):
     """The retry its own pass recorded notifies the channel after its COMMIT; it is taken before the read of the next
-    due (``drain``), so the worker sleeps until that retry instead of waking at once for an empty pass."""
+    due (``drain``), so the worker sleeps until that retry instead of waking at once for an empty pass.
+
+    Postgres hands a NOTIFY to the listening connection a moment after the COMMIT that sent it returned, later still on
+    a busy runner (saas#347, as saas#323): the drain waits until it reached the ear's socket, a few seconds at most,
+    and leaves the reading to it. A NOTIFY still on its way when the worker drains wakes it for one empty pass."""
     monkeypatch.setattr(worker, "PERIODIC", ())
+    # The round 15 minutes away whatever the wall clock reads: under 30 s before a quarter, a worker that slept until
+    # the round instead of the retry would pass the bound on the timeout below (saas#338).
+    monkeypatch.setattr(worker, "next_round", lambda now: now + worker.ROUND)
     ingest(messages(text("wamid.1")))
-    stop, seen = threading.Event(), []
+    stop, drained, seen = threading.Event(), [], []
     ear = Listener(services.DELIVERY_CHANNEL)
+
+    def drain():
+        drained.append((on_its_socket(ear, 5), Listener.drain(ear)))
+        return drained[-1][1]
 
     def wait(timeout):
         seen.append((timeout, Listener.wait(ear, min(timeout, 1.0))))
         stop.set()
         return False
 
-    ear.wait = wait
+    ear.drain, ear.wait = drain, wait
 
     assert worker.run(stop, listener=ear) == 0
 
     ((timeout, woke),) = seen
     assert Delivery.objects.get().attempts == 1
+    assert drained == [(True, True)]  # its own NOTIFY reached the ear, and the drain took it
     assert 0 < timeout <= services.FIRST_WAIT.total_seconds() + 0.5
     assert woke is False
 

@@ -1,11 +1,8 @@
 <script setup lang="ts">
-// What waits for a payment, on top of every tab of Billing (mockups `billing.html`; README §6.18): on
-// Invoices the banner of the invoice not collected (UnpaidInvoiceNotice), or ONE banner for two or more
-// (UnpaidGroupNotice; mockups «past-due-two», audit 2026-10-14 R-15); on Subscriptions and Payment details
-// the same warning in one line with a link to it (or to all of them). It also says «Invoice paid» when one
-// is paid (`unpaid.ts`). Nothing here sells: it shows on every surface, and the banners say off the web
-// how to pay. When the unpaid invoices could not be checked (audit 2026-10-14, R-04), off Invoices it says so
-// with «Retry» instead of keeping quiet; on Invoices the list itself shows them and says when it fails.
+// What waits for a payment, on top of every tab of Billing: on Invoices the banner of the invoice not collected,
+// or ONE banner for two or more; on the other tabs the same warning in one line with a link to it. Nothing here
+// sells, so it shows on every surface. When the unpaid invoices could not be checked, off Invoices it says so with
+// «Retry» instead of keeping quiet.
 import { HubIcon } from '@erplora/ui/shell';
 import { IonButton } from '@ionic/vue';
 import { computed } from 'vue';
@@ -150,7 +147,7 @@ const line = computed(() => {
   color: inherit;
   white-space: nowrap;
 }
-/* A real tap target on a phone or a touch screen (audit 2 R-13: «View the invoices» measured 104×22). */
+/* A real tap target on a phone or a touch screen. */
 @media (max-width: 640px), (pointer: coarse) {
   .billing-alert__link {
     display: inline-flex;

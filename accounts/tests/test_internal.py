@@ -1,4 +1,4 @@
-"""``POST /internal/auth/redeem``: the hub spends the one-time code, signed (PLAN-SAAS §3.1 step 6)."""
+"""``POST /internal/auth/redeem``: the hub spends the one-time code, signed."""
 
 import json
 import time
@@ -8,8 +8,8 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
-from accounts import services
 from accounts.models import AuthExchangeCode
+from accounts.services import hub_jump, platform_staff
 from accounts.signing import sign, signed_headers
 from accounts.tests.conftest import enter
 
@@ -27,7 +27,7 @@ def _secret(settings):
 @pytest.fixture
 def code(ana):
     enter(ana, "a", "hub_employee")
-    return services.issue_code(ana, "a")
+    return hub_jump.issue_code(ana, "a")
 
 
 def redeem(client, payload, *, timestamp=None, secret=SECRET, signature=None, raw=None):
@@ -59,8 +59,8 @@ def test_a_signed_valid_code_returns_who_signs_in(client, code, ana):
 def test_each_hub_receives_the_role_the_account_has_on_it(client, ana):
     enter(ana, "a", "hub_owner")
     enter(ana, "b", "hub_employee")
-    code_a = services.issue_code(ana, "a")
-    code_b = services.issue_code(ana, "b")
+    code_a = hub_jump.issue_code(ana, "a")
+    code_b = hub_jump.issue_code(ana, "b")
 
     assert redeem(client, {"code": code_a, "hub": "a"}).json()["role"] == "hub_owner"
     assert redeem(client, {"code": code_b, "hub": "b"}).json()["role"] == "hub_employee"
@@ -90,11 +90,11 @@ def test_a_code_for_another_hub_is_refused(client, code):
 
 
 def test_a_code_for_one_business_never_opens_another_of_the_same_account_nor_is_spent_there(client, ana):
-    """The code is tied to the business it was issued for (PLAN-SAAS §2): the account's role on another business does
+    """The code is tied to the business it was issued for: the account's role on another business does
     not make it valid there, and the refusal leaves it for its own business."""
     enter(ana, "a", "hub_owner")
     enter(ana, "b", "hub_employee")
-    code_a = services.issue_code(ana, "a")
+    code_a = hub_jump.issue_code(ana, "a")
 
     refused = redeem(client, {"code": code_a, "hub": "b"})
 
@@ -164,18 +164,18 @@ def test_only_post_is_allowed(client):
 
 
 class TestHubAdminAudience:
-    """``"audience": "hub-admin"`` (ronda 13, PLAN §18): the Hub at ``hubs.erplora.com`` spends the code
+    """``"audience": "hub-admin"``: the Hub at ``hubs.erplora.com`` spends the code
     of a staff jump and learns the platform role, never a ``hub_*`` one. Without ``audience``, the
     redeem is the member's ``hub-session``."""
 
     @pytest.fixture
     def platform_admin(self, password):
-        user, _ = services.create_platform_user("boss@erplora.com", "admin", password)
+        user, _ = platform_staff.create_platform_user("boss@erplora.com", "admin", password)
         return user
 
     @pytest.fixture
     def admin_code(self, platform_admin):
-        return services.issue_code(platform_admin, "a", audience="hub-admin")
+        return hub_jump.issue_code(platform_admin, "a", audience="hub-admin")
 
     def test_a_staff_code_returns_the_platform_admin_role(self, client, admin_code, platform_admin):
         response = redeem(client, {"code": admin_code, "hub": "a", "audience": "hub-admin"})
@@ -191,8 +191,8 @@ class TestHubAdminAudience:
         assert "no-store" in response["Cache-Control"]
 
     def test_support_gets_the_platform_support_role(self, client, password):
-        helper, _ = services.create_platform_user("help@erplora.com", "support", password)
-        code = services.issue_code(helper, "a", audience="hub-admin")
+        helper, _ = platform_staff.create_platform_user("help@erplora.com", "support", password)
+        code = hub_jump.issue_code(helper, "a", audience="hub-admin")
 
         response = redeem(client, {"code": code, "hub": "a", "audience": "hub-admin"})
 
@@ -247,7 +247,7 @@ class TestHubAdminAudience:
 
 
 class TestRotationAndTheSignatureV2:
-    """L1-A2 (PLAN-SAAS §2.1): two live secrets, and the signature that covers method and path."""
+    """Two live secrets, and the signature that covers method and path."""
 
     PREVIOUS = "the-secret-before-the-rotation"
 

@@ -5,20 +5,12 @@
 // reaches the top of the menu the same way (ACCOUNTS-F21).
 import { type Page } from '@playwright/test';
 
-import {
-  closeMenu,
-  djangoPrint,
-  expect,
-  openMenu,
-  provenAccount,
-  removeAccountsOf,
-  settled,
-  shot,
-  signIn,
-  test,
-  VIEWPORTS,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { closeMenu, openMenu, settled, shot, toast, VIEWPORTS } from './screen';
+import { signIn } from './session';
 
 const PREFIX = 'e2e-fix292-';
 const ACCOUNT = { email: `${PREFIX}menu@example.com`, password: 'e2e-fix292-password' };
@@ -30,20 +22,19 @@ const SWITCHES = [
   { lang: 'en', option: 'English', saved: 'Preferences saved' },
 ] as const;
 
-test.beforeAll(() => {
-  removeAccountsOf(PREFIX);
-  provenAccount(ACCOUNT.email, ACCOUNT.password, 'en');
+// By this worker's warm Django, as the beforeEach below: its boot here, on no test's clock.
+test.beforeAll(async () => {
+  await removeAccountsWarm(PREFIX);
+  await createAccountWarm(ACCOUNT.email, ACCOUNT.password, { language: 'en' });
 });
-test.afterAll(() => removeAccountsOf(PREFIX));
+test.afterAll(() => removeAccountsWarm(PREFIX));
 
 /** Every run starts from an account speaking English, whatever a failed one left. */
-test.beforeEach(() => {
-  djangoPrint(
+test.beforeEach(async () => {
+  await djangoPrintWarm(
     `from django.contrib.auth import get_user_model\nget_user_model().objects.filter(email=${JSON.stringify(ACCOUNT.email)}).update(language="en", first_name="", last_name="")`,
   );
 });
-
-const toast = (page: Page, text: string) => page.locator('ion-toast').filter({ hasText: text });
 
 /** Marks the page, so a spec can tell it was never reloaded (a reload starts a fresh window). */
 const markPage = (page: Page) => page.evaluate(() => Object.assign(window, { fix292SamePage: true }));

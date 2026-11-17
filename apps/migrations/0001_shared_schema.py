@@ -1,4 +1,4 @@
-# The `shared` schema of the `saas` database and its two tables (round 16, spec §3.2).
+# The `shared` schema of the `saas` database and its two tables.
 #
 # The schema is created IF NOT EXISTS and never dropped: in production `bootstrap_databases`
 # creates it first, with the default privileges that give the Hub's role (`hub_shared`) its

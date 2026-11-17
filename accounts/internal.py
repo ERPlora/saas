@@ -1,14 +1,12 @@
-"""``POST /internal/auth/redeem``: hub-next spends a one-time code (PLAN-SAAS §2.1, §3.1 step 6). ``POST
-/internal/support/report``: the Hub's «Report a problem» (its user menu; ACCOUNTS-F38), the panel's report for the
-account of the Hub's session.
+"""``POST /internal/auth/redeem``: the Hub spends a one-time code. ``POST /internal/support/report``: the Hub's
+«Report a problem» (its user menu), the panel's report for the account of the Hub's session.
 
 Server to server, signed with HMAC-SHA256 + timestamp (``accounts.signing``: v2 over method, path and
-body when the call carries it, else the body-only v1 hub-next sends today; current or previous secret),
+body when the call carries it, else the body-only v1; current or previous secret),
 so no CSRF token. Body ``{"code", "hub", "audience"?}``: without ``audience`` it is a member's ``hub-session``
 (``<slug>.erplora.com``); ``hub-admin`` is the staff's jump to the Hub's admin at
-``hubs.erplora.com`` (ronda 13, PLAN §18), and answers a ``platform_*`` role. Errors answer the
-single envelope ``{"error": {"code", "message"}}`` (PLAN §14.1). A plain Django view for phase 1;
-the ``/internal`` ninja router comes with block 1.
+``hubs.erplora.com``, and answers a ``platform_*`` role. Errors answer the
+single envelope ``{"error": {"code", "message"}}``.
 """
 
 import json
@@ -22,9 +20,9 @@ from django.views.decorators.csrf import csrf_exempt
 
 from live.errors import InvalidPayload, OperationError
 
-from accounts import services
 from accounts.models import AuthExchangeCode
 from accounts.schemas import SupportReportIn
+from accounts.services import hub_jump, problem_reports
 from accounts.signing import verify_request
 
 AUDIENCES = (AuthExchangeCode.HUB_SESSION_AUDIENCE, AuthExchangeCode.HUB_ADMIN_AUDIENCE)
@@ -56,8 +54,8 @@ def redeem(request: HttpRequest) -> JsonResponse:
     if audience not in AUDIENCES:
         return _error(400, "invalid_request", "The audience, if given, must be hub-session or hub-admin.")
     try:
-        identity = services.redeem_code(payload["code"], payload["hub"], audience=audience)
-    except services.InvalidCode:
+        identity = hub_jump.redeem_code(payload["code"], payload["hub"], audience=audience)
+    except hub_jump.InvalidCode:
         logger.info("internal.redeem.invalid_code hub=%s audience=%s", payload["hub"][:63], audience)
         return _error(400, "invalid_code", "The code is unknown, expired, used or for another hub.")
     return JsonResponse(
@@ -107,7 +105,7 @@ def support_report(request: HttpRequest) -> JsonResponse:
         failure = InvalidPayload("Invalid report.", fields=fields)
         return JsonResponse(failure.envelope(), status=failure.status)
     try:
-        sent = services.support_report_from_hub(
+        sent = problem_reports.support_report_from_hub(
             payload["account"],
             hub=payload["hub"],
             hub_id=payload["hub_id"],

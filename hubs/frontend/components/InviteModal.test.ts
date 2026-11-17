@@ -73,7 +73,7 @@ describe('InviteModal', () => {
     expect(s.open.value).toBe(false);
   });
 
-  it('«Send invitation» waits for an email that looks like one: empty or half-typed, it is off (audit 2 R-28)', async () => {
+  it('«Send invitation» waits for an email that looks like one: empty or half-typed, it is off', async () => {
     const s = await setup(() => Response.json(member('jorge')));
     expect(s.q('invite-modal-submit').disabled).toBe(true);
     await s.fire('invite-email', 'ionInput', 'nope');
@@ -86,7 +86,7 @@ describe('InviteModal', () => {
   });
 
   it('puts an email the server refuses on its field and keeps the dialog', async () => {
-    // The client only checks the shape (R-28): the server still decides, and says why on the field.
+    // The client only checks the shape: the server still decides, and says why on the field.
     const s = await setup(() => apiError(422, 'invalid_payload', 'Invalid payload', { email: 'Enter a valid email address.' }));
     await s.fire('invite-email', 'ionInput', 'jorge@example.con');
     s.q('invite-modal-submit').click();

@@ -1,4 +1,4 @@
-"""``python manage.py report_seal_expiry``: daily in ``saas-cron`` (07:00 UTC, aws-next ``scheduler.tf``).
+"""``python manage.py report_seal_expiry``: daily in ``saas-cron`` (07:00 UTC, ERPlora/aws ``scheduler.tf``).
 
 Publishes in CloudWatch ``ERPlora/Fiscal`` the metric ``SealDaysToExpiry``: the days until the fiscal
 seal of the slot that expires first, rounded down (expired = negative), without dimensions. The

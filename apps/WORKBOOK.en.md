@@ -82,7 +82,6 @@ change, with filters by tier and active and a search box. Each module's page: "A
 | APPS-F07 | Buy a paid app always on erplora.com, never inside the business | done |
 
 ### APPS-F01 Browse the app catalog
-<!-- origen: old-saas:SAAS_PUBLIC-F12 old-saas:SAAS_PUBLIC-F13 fi:saas/support/public-core-config#serializer-modulelistserializer-moduledetailserializer -->
 Status: done
 Actor: visitor, system
 Screen: none (the public app store and the panel's Store show it)
@@ -98,7 +97,6 @@ If it fails: an app that does not exist, or that ERPlora took out of the store, 
 Involved: the Hub (registers its apps with every version), public (the public app store), billing (the panel's Store)
 
 ### APPS-F02 Read an app's documentation
-<!-- origen: old-saas:SAAS_PUBLIC-F31 fi:saas/support/public-core-config#service-module_readme_api-api-py fi:saas/support/public-core-config#service-render_markdown-services-rendering-py fi:saas/support/public-core-config#service-s3_docs-services-s3_docs-py -->
 Status: done
 Actor: visitor, system
 Screen: none (the documentation tab of the public store's app page shows it)
@@ -113,7 +111,6 @@ If it fails: an app that does not exist, or that is out of the store, answers th
 Involved: the Hub (registers the manual), public (the documentation tab and the sitemap)
 
 ### APPS-F03 Put a paid app on sale
-<!-- origen: fi:saas/django-admin#admin-module fi:saas/support/public-core-config#modelo-module old-saas:SAAS_PUBLIC-F27 -->
 Status: done
 Actor: ERPlora staff
 Screen: Admin › Modules
@@ -128,7 +125,6 @@ If it fails: a label that is not in the catalog is not saved and says the Hub re
 Involved: billing (the Store and the charge), hubs (which apps each plan includes and how they reach each business, HUBS-F34)
 
 ### APPS-F04 Link a paid app to its Stripe product and prices
-<!-- origen: fi:saas/support/public-core-config#service-modulestripeservice-services-stripe-py -->
 Status: done
 Actor: ERPlora staff
 Screen: Admin › Modules
@@ -143,7 +139,6 @@ If it fails: a price that does not match is not saved and says why under its fie
 Involved: billing (the check in Stripe and the charge in the Store)
 
 ### APPS-F05 Take an app out of the store or off sale
-<!-- origen: old-saas:SAAS_PUBLIC-F22 -->
 Status: done
 Actor: ERPlora staff
 Screen: Admin › Modules
@@ -159,7 +154,6 @@ If it fails: deleting a module some business has, also from the action that dele
 Involved: billing (the Store and the subscriptions), the Hub (marks the app out of the store), public (the public store and the sitemap)
 
 ### APPS-F06 Classify an app by section and business type
-<!-- origen: old-saas:SAAS_PUBLIC-F26 -->
 Status: done
 Actor: system
 Screen: none
@@ -173,7 +167,6 @@ If it fails: a section this version of erplora.com does not know yet goes last, 
 Involved: the Hub (declares the classification), hubs (the business types of the sign-up), public (each sector's page)
 
 ### APPS-F07 Buy a paid app always on erplora.com, never inside the business
-<!-- origen: old-saas:SAAS_PUBLIC-F21 -->
 Status: done
 Actor: owner, system
 Screen: Store

@@ -1,5 +1,4 @@
-"""The modules a plan includes are rights of the business too: ``SubscriptionItem(source="plan")`` (PLAN-SAAS
-§2.2 and §2.6, ADR-0474).
+"""The modules a plan includes are rights of the business too: ``SubscriptionItem(source="plan")``.
 
 A plan includes every paid module (``apps.Module``) whose ``tier`` its ``included_level`` reaches, in the order
 free < basic < pro < enterprise. Those rows are recomputed whenever the plan of the business may change
@@ -17,7 +16,8 @@ import pytest
 from django.utils import timezone
 
 from apps.models import Module
-from hubs import queries, services
+from hubs.services import hub_callbacks, reconciliation, subscription_sync
+from hubs.queries import hub_sync
 from hubs.models import Hub, Subscription, SubscriptionItem
 from hubs.schemas import ModuleRightIn, SubscriptionApplyIn
 from hubs.tests.conftest import create_business
@@ -34,7 +34,7 @@ def catalog(db):
 
 
 def apply(hub, **fields):
-    return services.subscription_apply(services.system_ctx_for(hub.id), SubscriptionApplyIn(hub_id=hub.id, **fields))
+    return subscription_sync.subscription_apply(hub_callbacks.system_ctx_for(hub.id), SubscriptionApplyIn(hub_id=hub.id, **fields))
 
 
 NOW = timezone.now().replace(microsecond=0)
@@ -82,7 +82,7 @@ def test_a_paid_plan_includes_every_module_its_level_reaches(business, catalog, 
     apply(business, **paid(plan))
 
     assert plan_rights(business) == included
-    assert queries.hub_snapshot(business.id)["modules"] == [
+    assert hub_sync.hub_snapshot(business.id)["modules"] == [
         {"id": slug, "source": "plan", "valid_until": None} for slug in included
     ]
 
@@ -103,7 +103,7 @@ def test_a_bought_module_stays_bought_next_to_the_included_ones(business, catalo
         "kitchen": ("purchase", None),
         "loyalty": ("plan", None),
     }
-    assert [(m["id"], m["source"]) for m in queries.hub_snapshot(business.id)["modules"]] == [
+    assert [(m["id"], m["source"]) for m in hub_sync.hub_snapshot(business.id)["modules"]] == [
         ("inventory", "plan"),
         ("kitchen", "purchase"),
         ("loyalty", "plan"),
@@ -193,31 +193,31 @@ class TestBoughtAndIncluded:
         assert (item.source, item.stripe_item_id) == ("purchase", "si_inv")
 
 
-@pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+@pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one by default)
 class TestTheSignUpTrial:
     def test_the_sign_up_writes_them(self, catalog, owner, plans):
         business = create_business(owner, name="Bar Nuevo")
         trial_end = Subscription.objects.get(hub=business).trial_end
 
         assert rights(business) == {"inventory": ("plan", trial_end), "loyalty": ("plan", None)}
-        assert [(m["id"], m["valid_until"]) for m in queries.hub_snapshot(business.id)["modules"]] == [
+        assert [(m["id"], m["valid_until"]) for m in hub_sync.hub_snapshot(business.id)["modules"]] == [
             ("inventory", trial_end.isoformat()),
             ("loyalty", None),
         ]
 
     def test_paying_the_plan_makes_its_modules_open_ended(self, business, catalog):
-        services.sync_plan_modules(Subscription.objects.get(hub=business))
+        subscription_sync.sync_plan_modules(Subscription.objects.get(hub=business))
 
         apply(business, **paid("starter"))
 
         assert rights(business) == {"inventory": ("plan", None), "loyalty": ("plan", None)}
 
     def test_the_end_of_the_trial_takes_them_away(self, business, catalog, offline_hub):
-        services.sync_plan_modules(Subscription.objects.get(hub=business))
+        subscription_sync.sync_plan_modules(Subscription.objects.get(hub=business))
         Subscription.objects.filter(hub=business).update(trial_end=timezone.now() - timedelta(seconds=1))
         version = Hub.objects.get(pk=business.pk).state_version
 
-        counts = services.reconcile()
+        counts = reconciliation.reconcile()
 
         assert counts["trials_ended"] == 1
         assert rights(business) == {"loyalty": ("plan", None)}

@@ -1,12 +1,11 @@
 {% extends "public/public_base.html" %}
 {% load static i18n icons %}
 {% comment %}
-  /apps/ (public/store.py): the store. Port of modules/pages/index.html and modules/marketplace.html
-  (origin/develop): the hero with the count, the filter bar and the apps in sections, one per
-  category in the order of live.meta, each a grid of product cards (icon, category, name, summary
-  and access). The filters are links and a GET form (no htmx): ?q= and ?category=; no access filter,
-  every plan includes all the apps (ronda 2026-10-24b, PLAN §32). Empty states of spec §5.3: no
-  listed app at all (noindex), or filters that match nothing (with «Clear filters»).
+  /apps/ (public/store.py): the store: the hero with the count, the filter bar and the apps in
+  sections, one per category in the order of live.meta, each a grid of product cards (icon,
+  category, name, summary and access). The filters are links and a GET form: ?q= and ?category=; no
+  access filter, every plan includes all the apps. Empty states: no listed app at all (noindex), or
+  filters that match nothing (with «Clear filters»).
 {% endcomment %}
 
 {% block title %}{% trans "Apps" %} · ERPlora{% endblock %}

@@ -1,10 +1,9 @@
-"""Changing the key of the credentials without losing any (ASSISTANT-G03, G41; #1016 of the old product; PLAN-SAAS §7
-block 11: «rotar FERNET_KEY no pierde credenciales»).
+"""Changing the key of the credentials without losing any.
 
 The rotation: the new key goes in ``FERNET_KEY`` and the old one in ``FERNET_KEY_PREVIOUS`` (it only reads), then
 ``rotate_encryption_keys`` writes every value again with the new key; after that the old key can be dropped. Every
 column kept with ``FERNET_KEY`` is rotated: the providers' keys and WhatsApp's business tokens and PINs. The list
-is derived from the models (the old command's hand-written list left seven columns out, #1016), and a guard fails
+is derived from the models (a hand-written list leaves columns out), and a guard fails
 when an encrypted field appears that the rotation does not know. A value no key opens is never written: it is
 reported and the command ends in error, so the old key is not dropped while something still needs it.
 """
@@ -81,7 +80,7 @@ def test_every_column_kept_with_the_key_of_the_credentials_is_rotated():
 
 
 def test_no_encrypted_field_of_the_project_is_left_out_of_the_rotation():
-    """The guard of #1016: an encrypted field nobody added to the rotation would be lost the day the old key goes."""
+    """The guard: an encrypted field nobody added to the rotation would be lost the day the old key goes."""
     unknown = [
         f"{model._meta.label}.{field.name} ({type(field).__module__}.{type(field).__name__})"
         for model in apps.get_models()

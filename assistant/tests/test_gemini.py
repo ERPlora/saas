@@ -1,4 +1,4 @@
-"""The client of Google's Gemini API (``assistant.providers.gemini``, ASSISTANT-G36), against ``fake_provider``
+"""The client of Google's Gemini API (``assistant.providers.gemini``), against ``fake_provider``
 speaking ``streamGenerateContent`` over server-sent events."""
 
 import pytest

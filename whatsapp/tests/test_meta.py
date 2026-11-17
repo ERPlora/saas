@@ -1,8 +1,7 @@
-"""WHATSAPP-G06, WHATSAPP-G10 · erplora.com's client of Meta's Graph API.
+"""erplora.com's client of Meta's Graph API.
 
 Meta is replaced at the HTTP border only (``respx``), with bodies of Meta's documentation
-(https://developers.facebook.com/docs/graph-api/guides/error-handling). Cases of the old product's
-``services/meta.py`` and its tests, plus what it left open (WORKFLOW «Fuentes contrastadas»): the business token
+(https://developers.facebook.com/docs/graph-api/guides/error-handling). The business token
 travels in a header, never in the address, and no call follows a redirect.
 """
 
@@ -255,7 +254,7 @@ def test_a_refusal_longer_than_the_limit_is_meta_refused_without_metas_error(wha
     assert (refused.value.status, refused.value.code) == (401, None)
 
 
-# --- The server's trusted certificates (FIX-SAAS-WHATSAPP-HTTP-CALLS-CRASH-WHEN-SSL-CERT-FILE-MISSING) ---------------
+# --- The server's trusted certificates -------------------------------------------------------------------------------
 
 
 def logged_error_naming(caplog, path) -> bool:

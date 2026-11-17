@@ -1,22 +1,20 @@
 {% extends "public/public_base.html" %}
 {% load i18n %}
 {% comment %}
-  /industries/<slug>/ (public/industries.py, detail). Port of
-  apps/public/industries/templates/industries/detail.html (origin/develop) without ok-*:
-  - the H1 is the buyer's literal question and the lead its answer (saas#1692); the view computes
-    both so the title, the meta description and the JSON-LD say exactly the same;
+  /industries/<slug>/ (public/industries.py, detail):
+  - the H1 is the buyer's literal question and the lead its answer; the view computes both so the
+    title, the meta description and the JSON-LD say exactly the same;
   - the JSON-LD is serialised in the view (public/structured_data.py), never written here;
-  - ONE block of apps, the listed apps of the business type's vertical (spec §8.1, decision 13),
-    instead of «included» and «optional» modules. They are the apps made for that business, not
-    apps it comes with: every business is born with every app off (PLAN §33), so the block says how
-    they are turned on (public.industries.how_apps_turn_on, also the end of the FAQ's «start»).
-    A vertical with no listed app says they are on the way, as today's page did («In
-    preparation»); without a vertical, no block (spec §5.3);
+  - ONE block of apps, the listed apps of the business type's vertical. They are the apps made for
+    that business, not apps it comes with: every business is born with every app off, so the block
+    says how they are turned on (public.industries.how_apps_turn_on, also the end of the FAQ's
+    «start»). A vertical with no listed app says they are on the way («In preparation»); without a
+    vertical, no block;
   - the FAQ renders the same list as the FAQPage JSON-LD (public.industries.faq_items), with the
-    bare ion-accordion of /pricing/ (L8);
-  - the closing band names the business type as the taxonomy writes it, as today (L8);
-  - the onward links are /pricing/, /apps/ and /features/: /compliance/ is out of the port
-    (plan §7). The page is pan-European: it names no country's tax law.
+    bare ion-accordion of /pricing/;
+  - the closing band names the business type as the taxonomy writes it;
+  - the onward links are /pricing/, /apps/, /features/ and /compliance/. The page is pan-European:
+    it names no country's tax law.
 {% endcomment %}
 
 {% block title %}{{ industry.headline }} · ERPlora{% endblock %}

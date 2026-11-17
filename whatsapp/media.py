@@ -1,5 +1,5 @@
 """``GET /whatsapp/media/<id>``: a customer's photo, voice note, video or document, opened from the Hub's inbox
-(WHATSAPP-G07; door 1 carries this address in ``media.url``).
+(door 1 carries this address in ``media.url``).
 
 The browser opens it with the person's erplora.com session (``<slug>.erplora.com`` and ``erplora.com`` are one
 site, so the session travels); ``whatsapp.media.locate`` lets only an accepted member of the business through. The
@@ -83,7 +83,7 @@ def _filename(name: str) -> str:
 
 @never_cache
 @require_GET
-def media(request: HttpRequest, delivery_id: str) -> HttpResponse:
+def media(request: HttpRequest, delivery_id: str) -> HttpResponse:  # noqa: C901, PLR0911
     if not request.user.is_authenticated:
         return _error(401, "unauthorized", "Sign in to erplora.com to open this attachment.")
     try:

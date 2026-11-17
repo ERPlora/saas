@@ -1,7 +1,7 @@
 // `pnpm gen:public-icons` (scripts/gen-public-icons.mjs) bakes the icons the public templates cite,
 // and the sector and business type icons of hubs/data/taxonomy.json that the industries pages paint,
 // into frontend/generated/public-icons.json, which `{% icon %}` (public/templatetags/icons.py)
-// paints on the server (spec §8.4). The sources are the shell's own icon packages, resolved from
+// paints on the server. The sources are the shell's own icon packages, resolved from
 // @erplora/ui: `ionicons/icons` for `ion:` and `@iconify-json/{lucide,mdi,material-symbols}`.
 // Nothing reaches the network, at build time or at runtime.
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';

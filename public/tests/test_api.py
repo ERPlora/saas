@@ -1,6 +1,6 @@
 """``GET /api/v1/app/release/``: the public web's ninja route, bound to ``public.app.release``.
 
-Same address and same answer as the old view (``{"version": str | null}``, hub#400): the installed
+Same address and same answer as the old view (``{"version": str | null}``): the installed
 app's runtime asks it anonymously. The behaviour of the reading itself is in ``test_appdist.py``.
 """
 

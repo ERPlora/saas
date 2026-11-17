@@ -1,4 +1,4 @@
-"""The SaaS's calls to hub-next's ``/internal`` (PLAN-SAAS §2, §2.2, §3.1, §3.4; round 17 §2.14).
+"""The SaaS's calls to the Hub's ``/internal``.
 
 Plain HTTP, no ORM: callers hand in the payloads (``hubs.queries`` builds them) and record the
 answers (``hubs.services``). Every request is signed with the current ``INTERNAL_SHARED_SECRET``
@@ -8,29 +8,29 @@ verify v1 only, every body names the hub of its path (``id`` or ``hub_id``) and 
 
 - ``put_hub`` → ``PUT /internal/hubs/{id}``: the registry (slug, name, country, time zone, language,
   vertical); 202 while the Hub provisions it, 200 when it already knew it.
-- ``put_state`` → ``PUT /internal/hubs/{id}/state``: the snapshot of §2.2 with its monotonic version.
+- ``put_state`` → ``PUT /internal/hubs/{id}/state``: the snapshot of the business with its monotonic version.
 - ``get_hub`` → ``GET /internal/hubs/{id}``: the registry's status (``PREPARING_STATUSES``, ``ready``, ``failed``,
   ``ENDED_STATUSES``), to poll a sign-up stuck without its ``ready`` callback and a demo the door waits for.
 - ``get_dumps`` → ``GET /internal/hubs/{id}/dumps``: the copies of the hub's data, each with a link of 15 minutes
-  (the panel's «Download the data», asked on each click; PLAN-DB round 2026-10-30, proposal (k)).
+  (the panel's «Download the data», asked on each click).
 - ``delete_hub`` → ``DELETE /internal/hubs/{id}``; ``restore_hub`` → ``POST /internal/hubs/{id}/restore``.
-- ``revoke_sessions`` → ``POST /internal/sessions/revoke`` (``{user_id, hub_id?}``, §2.1).
+- ``revoke_sessions`` → ``POST /internal/sessions/revoke`` (``{user_id, hub_id?}``).
 - ``post_platform_invoice`` → ``POST /internal/platform/invoices``: an invoice of ERPlora to a customer, to
-  issue in ERPlora's platform hub (PLAN-SAAS §4; billing, lot L3-C), idempotent by its ``id``;
+  issue in ERPlora's platform hub (billing), idempotent by its ``id``;
   ``platform_invoicing_health`` → ``GET /internal/platform/invoices/health`` (the gate of live charging);
   ``get_platform_invoice`` → ``GET /internal/platform/invoices/{id}`` (its status and QR) and
-  ``get_platform_invoice_pdf`` → ``GET /internal/platform/invoices/{id}/pdf`` (the PDF's bytes, round 17
-  §2.14).
+  ``get_platform_invoice_pdf`` → ``GET /internal/platform/invoices/{id}/pdf`` (the PDF's bytes).
 - ``get_usage`` → ``GET /internal/usage?day=YYYY-MM-DD[&cursor=…]``: one page of what the Hub measured that
-  day of every business (PLAN-SAAS §5; ``collect_hub_usage``, lot L4-A). The cursor goes back as it came.
-- ``create_demo`` → ``POST /internal/demos``: a demo hub for one browser (PLAN-SAAS §3.5, round 2026-10-17;
-  ``public/demo.py``), 202 while the Hub prepares it; ``create_demo_code`` → ``POST /internal/demos/{slug}/codes``:
+  day of every business (``collect_hub_usage``). The cursor goes back as it came.
+- ``create_demo`` → ``POST /internal/demos``: a demo hub for one browser (``public/demo.py``),
+  202 while the Hub prepares it; ``create_demo_code`` → ``POST /internal/demos/{slug}/codes``:
   the one-time code that browser posts to the demo's ``/auth/callback``, once it is ready.
 
 A 4xx raises ``HubRefused`` (with the Hub's error code); a 5xx, a timeout or no connection raises
 ``HubUnavailable``. One 5xx is a refusal too: ``503 base.demo_full`` of ``create_demo``, the Hub's cap of live
-demos, which the visitor is told about («full») instead of «not available». Production reaches the Hub by its private name (``HUB_INTERNAL_URL``, aws-next
-Cloud Map: ``http://hub.erplora.internal:8000``); the ALB answers 404 to ``/internal`` from outside.
+demos, which the visitor is told about («full») instead of «not available». Production reaches the Hub by its
+private name (``HUB_INTERNAL_URL``, Cloud Map of the ``aws`` repo: ``http://hub.erplora.internal:8000``); the ALB
+answers 404 to ``/internal`` from outside.
 """
 
 import http.client
@@ -55,12 +55,12 @@ TIMEOUT_SECONDS = 5.0
 DEMO_REFUSALS = frozenset({"base.demo_full"})
 
 #: What ``GET /internal/hubs/{id}`` says of a hub (a business or a demo) the Hub is still preparing: the sign-up and the
-#: demo are asynchronous (202 ``requested``, then its database is cloned, migrated and seeded; PLAN-DB §6).
+#: demo are asynchronous (202 ``requested``, then its database is cloned, migrated and seeded).
 PREPARING_STATUSES = frozenset({"requested", "creating", "migrating", "seeding"})
 #: A hub the Hub could not prepare: it retries on its own (1 min, 5 min, 15 min, 1 h) and reports ``ready`` when it can.
 FAILED_STATUS = "failed"
 #: A hub that ended: deleted (``cancelled``), a demo past its hour (``expired``), on its way out (``archiving``: its copy
-#: being made; ``dropping``: its database going; hub#471), or its database dropped (``purged``).
+#: being made; ``dropping``: its database going), or its database dropped (``purged``).
 ENDED_STATUSES = frozenset({"cancelled", "archiving", "dropping", "expired", "purged"})
 
 

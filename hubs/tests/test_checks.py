@@ -18,7 +18,7 @@ pytestmark = pytest.mark.django_db
 
 
 class TestStaffOnABusiness:
-    """``hubs.W002`` (W11b): an account of ERPlora's staff (``is_staff`` or ``is_superuser``) that is also on a business,
+    """``hubs.W002``: an account of ERPlora's staff (``is_staff`` or ``is_superuser``) that is also on a business,
     as a member or with an invitation waiting, made before the doors refused it. Nothing is turned off by itself: the
     check names them and why, and ``hubs/README.md`` says how to put each right by hand."""
 
@@ -78,15 +78,16 @@ def test_it_skips_while_hubs_or_accounts_have_migrations_to_apply(owner):
     ``accounts/0011``, which depends on ``hubs/0024``, and ``migrate hubs`` does not bring it again."""
     from django.db import connection
 
-    from hubs import checks, queries
+    from hubs import checks
+    from hubs.queries import system_checks
 
     with connection.cursor() as cursor:
         cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
     call_command("migrate", "hubs", "0005", verbosity=0)
     try:
-        assert queries.tables_migrated() is False
+        assert system_checks.tables_migrated() is False
         assert checks.staff_on_a_business(None, databases=["default"]) == []
     finally:
         call_command("migrate", "hubs", verbosity=0)
         call_command("migrate", "accounts", verbosity=0)
-    assert queries.tables_migrated() is True
+    assert system_checks.tables_migrated() is True

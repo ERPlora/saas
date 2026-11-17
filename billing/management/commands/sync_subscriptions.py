@@ -1,11 +1,10 @@
 """``python manage.py sync_subscriptions [--dry-run]``: every live subscription read again from Stripe (BILLING-F38).
 
-Ported from ERPlora/saas ``apps/dashboard/hubs/subscriptions/management/commands/sync_subscriptions.py``. The
-webhook keeps each subscription as Stripe says (BILLING-F21); this pass puts right what an event that never
+The webhook keeps each subscription as Stripe says (BILLING-F21); this pass puts right what an event that never
 arrived left behind, reading each one as the webhook does (``billing.services.sync_subscriptions``).
 ``--dry-run`` only says what drifted.
 
-Under the advisory lock ``hashtext('erplora.saas.sync_subscriptions')`` (``hubs.services.run_exclusively``). One
+Under the advisory lock ``hashtext('erplora.saas.sync_subscriptions')`` (``hubs.services.exclusive_runs.run_exclusively``). One
 business never stops the pass; one Stripe could not read, or does not know, ends the run with an error after
 its pass (the ``task_failed`` alarm).
 """
@@ -15,7 +14,7 @@ import logging
 from django.core.management.base import BaseCommand, CommandError
 
 from billing import services
-from hubs.services import run_exclusively
+from hubs.services.exclusive_runs import run_exclusively
 
 logger = logging.getLogger(__name__)
 

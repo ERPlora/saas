@@ -1,19 +1,16 @@
-"""An invitation never hands a business to an account that never proved its email (saas#2541; L1-A2).
+"""An invitation never hands a business to an account that never proved its email.
 
-Ported from ERPlora/saas ``apps/dashboard/hubs/main/tests/test_invite_unverified_account.py``
-(origin/develop) to ``hubs.member.invite`` and ``hubs.invitation.accept``. Anybody who can sign up with
-somebody else's address and never confirm it would otherwise be the one invited: the membership is the
-access (ADR-0201) and the invitation finds the account by its email. The rule: **an email nobody proved
+Covers ``hubs.member.invite`` and ``hubs.invitation.accept``. Anybody who can sign up with somebody else's address
+and never confirm it would otherwise be the one invited: the membership is the access and the invitation finds
+the account by its email. The rule: **an email nobody proved
 reserves nothing** (``accounts.queries.email_is_proven``). Inviting it releases the account
-(``accounts.services.release_unproven_account``): its password, second factor and linked Google go, its
+(``accounts.services.mailbox_proof.release_unproven_account``): its password, second factor and linked Google go, its
 sessions in the SaaS end with the password and in every hub by a ``SessionRevocation``, and the mail
 says how to claim the account, so only whoever opens the mailbox gets in. Accepting needs the address
 proved (403 ``hubs.email_unverified``).
 
 Accounts that did prove their email, and accounts with nothing to prove (no address on record: made by
-an invitation, by the console or by staff), are left alone. Dropped with their reason: the API's JWT and
-refresh tokens (the SaaS signs in by session only) and the Hub's device door ``provision_hub_member``
-(no runtime pushes members up any more).
+an invitation, by the console or by staff), are left alone.
 """
 
 import pytest
@@ -22,7 +19,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from live.errors import Conflict, PermissionDenied
 
-from hubs import services
+from hubs.services import invitation_answers, member_management
 from hubs.models import HubMember, SessionRevocation
 from hubs.schemas import ByIdIn, MemberInviteIn
 from hubs.tests.conftest import ctx_for, member_of
@@ -51,13 +48,13 @@ def _reset_password(client, key, password):
 
 
 def invite(owner, hub, email=VICTIM, role="hub_employee"):
-    return services.member_invite(
+    return member_management.member_invite(
         ctx_for(owner), MemberInviteIn(hub_id=hub.id, email=email, role=role)
     )
 
 
 def accept(user, hub):
-    return services.invitation_accept(ctx_for(user), ByIdIn(id=member_of(hub, user).id))
+    return invitation_answers.invitation_accept(ctx_for(user), ByIdIn(id=member_of(hub, user).id))
 
 
 @pytest.fixture

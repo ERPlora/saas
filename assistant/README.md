@@ -7,7 +7,7 @@ APP-ASSISTANT-1) con los proveedores, las claves, los modelos, qué modelo conte
 auditoría y los comandos de claves; la 2 (APP-ASSISTANT-2) con las puertas del Hub (`/internal/assistant/*` y
 `/internal/speech/*`): el turno, sus herramientas y sus adjuntos, el cupo por plan y el uso, las huellas del índice,
 la voz y las denuncias. El contrato de esas puertas, en «Para quien lo mantiene» del WORKBOOK. Desde la ronda
-2026-10-30e (PLAN-SAAS §23, plan `docs/plans/2026-10-30-asistente-saas.md`) la pasarela contesta también, en
+2026-10-30e (PLAN-SAAS §23, plan `knowledge/raw/plans/2026-10-30-asistente-saas.md`) la pasarela contesta también, en
 proceso, al asistente del propio panel (`base/assistant.py`, `POST /api/assistant/turn`), con un cupo por cuenta y
 su propia documentación para buscar (`assistant.docs.search` sobre pgvector, ASSISTANT-F27), la misma que el Hub
 busca por `/internal/assistant/docs/search` (ASSISTANT-F28). El chat del panel
@@ -17,7 +17,7 @@ la acción que propone (SAAS_DASHBOARD-F221, hoy la tarjeta «¿Ejecutar esta ac
 Shopify, el Square Assistant, el asistente de Stripe y el Copilot de GitHub contestan en el panel de la cuenta. La
 búsqueda en la documentación viene de `search_cloud_docs`, una de las herramientas de aquel asistente
 (SAAS_DASHBOARD-F220), cuyo índice vivía en memoria y se rehacía en cada arranque; aquí es una herramienta del panel
-con su índice en la BD (plan `docs/plans/2026-10-30-asistente-saas.md` §5, PLAN-SAAS §23), porque el Sidekick de
+con su índice en la BD (plan `knowledge/raw/plans/2026-10-30-asistente-saas.md` §5, PLAN-SAAS §23), porque el Sidekick de
 Shopify, el Square Assistant y el asistente de Stripe contestan el «cómo se hace» con su propia ayuda y la citan.
 
 Completa desde el 2026-11-03. Lo que queda fuera, con su issue: `WORKBOOK.md`, «Lo que queda fuera».
@@ -36,7 +36,7 @@ Completa desde el 2026-11-03. Lo que queda fuera, con su issue: `WORKBOOK.md`, �
 | `routing.py` | El turno a través de su ruta: prueba los modelos en orden y pasa a la reserva si el proveedor falla antes de contestar. |
 | `internal.py` | Las puertas del Hub, vistas asíncronas firmadas (`door`: método, tamaño, firma, contrato, quién llama y freno por negocio): el turno en directo y de una vez, el cupo, las huellas, la búsqueda en la documentación, el dictado, la lectura en voz alta y la denuncia. |
 | `turn.py` | El turno: prepara la conversación, ofrece las herramientas, emite los frames, el token de continuación de un solo uso y lo gastado (`Outcome`); y el turno tal como lo sirve una puerta, sea la del Hub o la del panel (`start`, `frames`/`stream`, `settle`, `spend`, `Refused`). |
-| `server_tools.py` | Las herramientas que ejecuta erplora.com: la fecha y la hora, el tipo de cambio (Frankfurter) y la búsqueda en la web (Brave Search, solo con `BRAVE_SEARCH_API_KEY` y solo en el chat, nunca en una automatización; en producción aún no, saas#277). |
+| `server_tools.py` | Las herramientas que ejecuta erplora.com: la fecha y la hora, el tipo de cambio (Frankfurter) y la búsqueda en la web (Brave Search, solo con `BRAVE_SEARCH_API_KEY` y solo en el chat, nunca en una automatización; encendida en producción desde el 2026-11-05, saas#277). |
 | `attachments.py` | Los adjuntos: imágenes al modelo que ve, PDF/Word/Excel/texto a texto en memoria, con topes y el zip comprobado. El cuerpo de las puertas lo guarda en memoria el servidor (`config/asgi.py`, `BodiesInMemory`), nunca en el temporal en disco de Django. |
 | `media.py` | Huellas (`text-embedding-3-small`) y dictado (`whisper-1`) por la API de OpenAI del proveedor de servicios; la lectura en voz alta no tiene motor (`SPEECH_ENGINE`, PLAN-SAAS ronda 2026-11-04c). |
 | `knowledge.py` | La documentación del asistente del panel (ASSISTANT-F27): `chunk_markdown` (corte por `##`/`###`, ventana de 220 palabras con solape de 50) y sus cuatro fuentes (ayuda pública, documentación de las apps del Hub por `apps.doc.list`, parte de usuario de los WORKBOOK del panel y los planes en venta por `hubs.plan.list`); `en_header`, la primera línea de un `WORKBOOK.en.md` (los mismos bytes que `base.catalog` del Hub para los comentarios en línea propia fuera de un bloque de código), que `tests/test_knowledge.py` exige en todos los del repo; sin ORM. |

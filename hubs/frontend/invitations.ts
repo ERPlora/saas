@@ -1,4 +1,4 @@
-// «Accept and enter» an invitation (round 17 §2.8): `hubs.invitation.accept` gives the business as the
+// «Accept and enter» an invitation: `hubs.invitation.accept` gives the business as the
 // list shows it; then straight into it when it opens, or to Businesses when it does not open yet
 // (being prepared, suspended), where its row says why. A refusal (expired, already answered) is said in
 // an error toast.

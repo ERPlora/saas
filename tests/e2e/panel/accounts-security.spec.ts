@@ -1,61 +1,45 @@
-// The flows of «the second factor, the trusted browsers and the open sessions» (accounts/WORKBOOK.md, MIGRATION-TASK
-// APP-ACCOUNTS-2) on their screens, at the three sizes of the migration (390×844, 834×1112, 1440×900). The second
-// factor is off by default in phase 1 (ACCOUNTS_MFA_ENABLED): its flows play on the panel's twin with it on
-// (`PANEL_MFA_URL`, panel/project.ts), the sessions and the admin's «Close sessions» on the panel as production has it.
-// The codes of the authenticator app are computed here from the key the setup page shows (RFC 6238, as the phone
-// does); the mailed codes are read from the panel's mail folder: nothing is played. Each test names its flow by its
-// registry key; in accounts/WORKBOOK.md: G87=F14, G116=F15, G89=F16, G88=F05, G23=F17, G94=F18, G09=F19, G90=F20.
-// Accounts of this spec: `e2e-acc2-…@example.com`, removed before and after.
+// The flows of «the second factor, the trusted browsers and the open sessions» (accounts/WORKBOOK.md) on their
+// screens, at three sizes (390×844, 834×1112, 1440×900). The second factor is off by default (ACCOUNTS_MFA_ENABLED):
+// its flows play on the panel's twin with it on (`PANEL_MFA_URL`, panel/project.ts), the sessions and the admin's
+// «Close sessions» on the panel as production has it. The codes of the authenticator app are computed here from the
+// key the setup page shows (RFC 6238, as the phone does); the mailed codes are read from the panel's mail folder:
+// nothing is played. Each test names its flow of accounts/WORKBOOK.md in its title. Accounts of this spec:
+// `e2e-acc2-…@example.com`, removed before and after.
 import { createHmac } from 'node:crypto';
 
 import { type APIRequestContext, type Browser, type Page } from '@playwright/test';
 
-import {
-  djangoPrint,
-  expect,
-  sessionOf,
-  settled,
-  shot,
-  sidewaysScroll,
-  signIn,
-  signInThroughPage,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, type Credentials, removeAccountsWarm } from './accounts';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
 import { PANEL_MFA_URL, PANEL_URL } from './project';
+import { captureAtEverySize, sidewaysScroll } from './screen';
+import { sessionOf, signIn, signInThroughPage } from './session';
+
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-2');
 
 const PREFIX = 'e2e-acc2-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 const SIGN_OUT_API = '/_allauth/browser/v1/auth/session';
 
 /** A fresh address of this spec, never used before. */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
-function removeAccounts(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account with its address proven, as one that signed in before; `staff` makes it a platform administrator. */
-function createAccount(email: string, options: { staff?: boolean } = {}): { email: string; password: string } {
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.${options.staff ? 'create_superuser' : 'create_user'}(email="${email}", password="${PASSWORD}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
+const createAccount = (email: string, { staff = false } = {}) =>
+  createAccountWarm(email, PASSWORD, { role: staff ? 'superuser' : 'customer' });
+
+/** The row of `request`'s own session in Security's list, as the panel gives it (`GET /api/accounts/sessions`). */
+async function ownSessionRow(request: APIRequestContext): Promise<string> {
+  const response = await request.get('/api/accounts/sessions?limit=50&offset=0');
+  expect(response.status(), 'GET /api/accounts/sessions').toBe(200);
+  const own = ((await response.json()) as { rows: Array<{ id: number | string; is_current: boolean }> }).rows.find(
+    (row) => row.is_current,
   );
-  return { email, password: PASSWORD };
+  if (!own) throw new Error('GET /api/accounts/sessions: no row of this browser');
+  return String(own.id);
 }
 
 // ── The authenticator app, as the phone computes it (RFC 6238: SHA-1, 6 digits, 30 s) ─────────────
@@ -97,18 +81,6 @@ function freshCode(secret: string, used: Set<string>): string {
 
 // ── Pages ─────────────────────────────────────────────────────────────────────────────────────
 
-/** `ready` at each size: no sideways scroll and a capture `APP-ACCOUNTS-2-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-ACCOUNTS-2-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
-
 /** Signs `request`'s session out (allauth.headless), with Django's CSRF token from its cookies. */
 async function signOut(request: APIRequestContext): Promise<void> {
   const { cookies } = await request.storageState();
@@ -146,6 +118,15 @@ async function setUpTheApp(page: Page, used: Set<string>): Promise<string> {
   return secret;
 }
 
+/** A fresh account of this spec (`name`) signed in on `page`, with the authenticator app set up: it, its key and the codes given. */
+async function accountWithTheApp(page: Page, name: string): Promise<{ account: Credentials; secret: string; used: Set<string> }> {
+  const account = await createAccount(address(name));
+  const used = new Set<string>();
+  await signIn(page.request, account);
+  await page.goto('/2fa');
+  return { account, secret: await setUpTheApp(page, used), used };
+}
+
 async function newContextOn(browser: Browser, baseURL: string) {
   return browser.newContext({ baseURL, locale: 'en-US' });
 }
@@ -156,11 +137,11 @@ test.afterAll(removeAccounts);
 test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () => {
   test.use({ baseURL: PANEL_MFA_URL });
 
-  test('ACCOUNTS-G87 (F14): the authenticator app is set up from Security with its key, and the ten recovery codes are shown once and downloaded', async ({
+  test('ACCOUNTS-F14: the authenticator app is set up from Security with its key, and the ten recovery codes are shown once and downloaded', async ({
     page,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(address('setup'));
+    const account = await createAccount(address('setup'));
     const used = new Set<string>();
     await signIn(page.request, account);
     await page.goto('/dashboard/account/security');
@@ -186,9 +167,9 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
     expect(errors).toEqual([]);
   });
 
-  test('ACCOUNTS-G116 (F15): Security says whether the second factor is on, and «Manage» leads to it', async ({ page }) => {
+  test('ACCOUNTS-F15: Security says whether the second factor is on, and «Manage» leads to it', async ({ page }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(address('state'));
+    const account = await createAccount(address('state'));
     const used = new Set<string>();
     await signIn(page.request, account);
     await page.goto('/2fa');
@@ -205,16 +186,12 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
     expect(errors).toEqual([]);
   });
 
-  test('ACCOUNTS-G88 (F05): after the password and the mailed code, the app’s code; «Trust this browser» skips it next time, here only', async ({
+  test('ACCOUNTS-F05: after the password and the mailed code, the app’s code; «Trust this browser» skips it next time, here only', async ({
     page,
     browser,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(address('trust'));
-    const used = new Set<string>();
-    await signIn(page.request, account);
-    await page.goto('/2fa');
-    const secret = await setUpTheApp(page, used);
+    const { account, secret, used } = await accountWithTheApp(page, 'trust');
     await signOut(page.request);
 
     await page.goto('/launch');
@@ -256,15 +233,11 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
     expect(errors).toEqual([]);
   });
 
-  test('ACCOUNTS-G23 (F17): the settings say until when this browser is trusted, and «Stop trusting all browsers» asks for the app’s code again', async ({
+  test('ACCOUNTS-F17: the settings say until when this browser is trusted, and «Stop trusting all browsers» asks for the app’s code again', async ({
     page,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(address('forget'));
-    const used = new Set<string>();
-    await signIn(page.request, account);
-    await page.goto('/2fa');
-    const secret = await setUpTheApp(page, used);
+    const { account, secret, used } = await accountWithTheApp(page, 'forget');
     await signOut(page.request);
     await signInWithTheApp(page, account, secret, used, { trust: true });
 
@@ -289,15 +262,11 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
     expect(errors).toEqual([]);
   });
 
-  test('ACCOUNTS-G89 (F16): new recovery codes replace the old ones, and turning the app off leaves the mailed code', async ({
+  test('ACCOUNTS-F16: new recovery codes replace the old ones, and turning the app off leaves the mailed code', async ({
     page,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(address('off'));
-    const used = new Set<string>();
-    await signIn(page.request, account);
-    await page.goto('/2fa');
-    await setUpTheApp(page, used);
+    const { account } = await accountWithTheApp(page, 'off');
     const first = (await page.getByTestId('codes-list').textContent())?.trim();
     await page.getByTestId('codes-generate').click();
     await expect(page.getByTestId('regenerate-lead')).toHaveText('This replaces your 10 unused codes.');
@@ -322,11 +291,11 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
     expect(errors).toEqual([]);
   });
 
-  test('ACCOUNTS-G90 (F20): the staff without the app are taken from the admin to set it up, and «Continue» brings them back', async ({
+  test('ACCOUNTS-F20: the staff without the app are taken from the admin to set it up, and «Continue» brings them back', async ({
     page,
   }) => {
     const errors = watchPageErrors(page);
-    const staff = createAccount(address('staff'), { staff: true });
+    const staff = await createAccount(address('staff'), { staff: true });
     const used = new Set<string>();
     await signIn(page.request, staff);
 
@@ -348,12 +317,12 @@ test.describe('the second factor (the panel with ACCOUNTS_MFA_ENABLED on)', () =
 test.describe('the open sessions (the panel as production has it)', () => {
   test.use({ baseURL: PANEL_URL });
 
-  test('ACCOUNTS-G94 (F18): Security lists the open sessions, this one first; one is closed, then all the others', async ({
+  test('ACCOUNTS-F18: Security lists the open sessions, this one first; one is closed, then all the others', async ({
     page,
     browser,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(address('sessions'));
+    const account = await createAccount(address('sessions'));
     await signIn(page.request, account);
     const phone = await newContextOn(browser, PANEL_URL);
     const tablet = await newContextOn(browser, PANEL_URL);
@@ -369,10 +338,7 @@ test.describe('the open sessions (the panel as production has it)', () => {
       });
 
       // One: the phone, with its own button (a browser: no question asked).
-      const phoneKey = (await phone.storageState()).cookies.find((cookie) => cookie.name === 'sessionid')?.value;
-      const phoneRow = djangoPrint(
-        `from allauth.usersessions.models import UserSession;print(UserSession.objects.get(session_key="${phoneKey}").pk)`,
-      );
+      const phoneRow = await ownSessionRow(phone.request);
       await page.getByTestId(`sessions-row-${phoneRow}-close`).click();
       await expect(page.locator('ion-toast').filter({ hasText: 'Session closed on' })).toBeVisible();
       await expect(rows).toHaveCount(2);
@@ -393,10 +359,10 @@ test.describe('the open sessions (the panel as production has it)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('the sideways-scroll reader also catches a page that is no Ionic page: the admin, wider than the screen (the check of the check, ACCOUNTS-G09)', async ({
+  test('the sideways-scroll reader also catches a page that is no Ionic page: the admin, wider than the screen (the check of the check)', async ({
     page,
   }) => {
-    const staff = createAccount(address('reader'), { staff: true });
+    const staff = await createAccount(address('reader'), { staff: true });
     await signIn(page.request, staff);
     await page.setViewportSize({ width: 834, height: 1112 });
     await page.goto('/admin/accounts/user/');
@@ -411,10 +377,10 @@ test.describe('the open sessions (the panel as production has it)', () => {
     expect((await sidewaysScroll(page)).join()).toMatch(/^document \d+ > \d+$/);
   });
 
-  test('ACCOUNTS-G09 (F19): a superuser closes every session of an account from the admin', async ({ page, browser }) => {
+  test('ACCOUNTS-F19: a superuser closes every session of an account from the admin', async ({ page, browser }) => {
     const errors = watchPageErrors(page);
-    const staff = createAccount(address('root'), { staff: true });
-    const account = createAccount(address('incident'));
+    const staff = await createAccount(address('root'), { staff: true });
+    const account = await createAccount(address('incident'));
     const laptop = await newContextOn(browser, PANEL_URL);
     try {
       await signIn(laptop.request, account);

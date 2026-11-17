@@ -161,7 +161,7 @@ def _business():
 def _submit(hub_id) -> str:
     from fiscal import services
     from fiscal.schemas import RepresentationSubmitIn
-    from hubs.services import system_ctx_for
+    from hubs.services.hub_callbacks import system_ctx_for
 
     def encoded(text: str) -> str:
         return base64.b64encode(pdf(text)).decode()

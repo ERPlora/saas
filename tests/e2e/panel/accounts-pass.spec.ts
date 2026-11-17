@@ -7,59 +7,42 @@
 // Accounts of this spec: `e2e-pass-…@example.com`, removed before and after.
 import { type Browser, type Page } from '@playwright/test';
 
-import { djangoPrint, expect, settled, shot, sidewaysScroll, signInThroughPage, test, watchPageErrors } from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize } from './screen';
+import { signInThroughPage } from './session';
+
+const atEverySize = captureAtEverySize('ACCOUNTS-F29');
 
 const PREFIX = 'e2e-pass-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 
 /** A fresh address of this spec, never used before. */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
-function removeAccounts(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account with its address proven, as one that signed in before. */
-function createAccount(email: string): { email: string; password: string } {
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", first_name="Ana", last_name="García")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-  return { email, password: PASSWORD };
-}
+const createAccount = (email: string) => createAccountWarm(email, PASSWORD, { firstName: 'Ana', lastName: 'García' });
 
 /** A business of `email` made by its operation (its owner is `email`): its slug and its id. */
-function businessOf(email: string, name: string): { slug: string; id: string } {
-  const [slug, id] = djangoPrint(
+async function businessOf(email: string, name: string): Promise<{ slug: string; id: string }> {
+  const [slug, id] = (await djangoPrintWarm(
     [
       'from django.contrib.auth import get_user_model',
       'from hubs.tests.conftest import create_business',
       `hub = create_business(get_user_model().objects.get(email="${email}"), name="${name}")`,
       'print(hub.slug, hub.id)',
     ].join('\n'),
-  ).split(' ');
+  )).split(' ');
   return { slug, id };
 }
 
 /** The pass of `email` for `slug`, signed as the Hub signs it; `key` replaces the shared secret (a forged pass). */
-function pass(email: string, slug: string, next: 'plan' | 'business', key?: string): string {
-  return djangoPrint(
+function pass(email: string, slug: string, next: 'plan' | 'business', key?: string): Promise<string> {
+  return djangoPrintWarm(
     [
       'import uuid',
       'from django.conf import settings',
@@ -81,18 +64,6 @@ async function freshBrowser(browser: Browser, baseURL: string, locale = 'en-US')
   return context.newPage();
 }
 
-/** Each size: the page as `ready` leaves it, no sideways scroll, and its full-page shot. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`ACCOUNTS-F29-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
-
 test.beforeAll(() => removeAccounts());
 test.afterAll(() => removeAccounts());
 
@@ -100,12 +71,12 @@ test('ACCOUNTS-F29 · a pass of the business opens erplora.com signed in, on the
   browser,
   baseURL,
 }) => {
-  const ana = createAccount(address('owner'));
-  const bakery = businessOf(ana.email, 'Panadería Ana');
+  const ana = await createAccount(address('owner'));
+  const bakery = await businessOf(ana.email, 'Panadería Ana');
 
   const page = await freshBrowser(browser, baseURL!);
   const errors = watchPageErrors(page);
-  await page.goto(follow(pass(ana.email, bakery.slug, 'plan')));
+  await page.goto(follow(await pass(ana.email, bakery.slug, 'plan')));
   await atEverySize(page, 'plan', async () => {
     await expect(page).toHaveURL(planOf(bakery.id));
     await expect(page.getByTestId('store-plans')).toBeVisible();
@@ -114,7 +85,7 @@ test('ACCOUNTS-F29 · a pass of the business opens erplora.com signed in, on the
 
   const other = await freshBrowser(browser, baseURL!);
   const otherErrors = watchPageErrors(other);
-  await other.goto(follow(pass(ana.email, bakery.slug, 'business')));
+  await other.goto(follow(await pass(ana.email, bakery.slug, 'business')));
   await atEverySize(other, 'business', async () => {
     await expect(other).toHaveURL(new RegExp(`/dashboard/businesses/${bakery.id}(/[a-z-]+)?$`));
     await expect(other.getByTestId('business-header')).toContainText('Panadería Ana');
@@ -126,9 +97,9 @@ test('ACCOUNTS-F29 · a pass followed twice opens nothing the second time: signi
   browser,
   baseURL,
 }) => {
-  const ana = createAccount(address('twice'));
-  const bakery = businessOf(ana.email, 'Panadería Dos');
-  const token = pass(ana.email, bakery.slug, 'plan');
+  const ana = await createAccount(address('twice'));
+  const bakery = await businessOf(ana.email, 'Panadería Dos');
+  const token = await pass(ana.email, bakery.slug, 'plan');
   const first = await freshBrowser(browser, baseURL!);
   await first.goto(follow(token));
   await expect(first).toHaveURL(planOf(bakery.id));
@@ -152,9 +123,9 @@ test('ACCOUNTS-F29 · a pass not signed as the business signs it opens nothing, 
   browser,
   baseURL,
 }) => {
-  const ana = createAccount(address('forged'));
-  const bakery = businessOf(ana.email, 'Panadería Falsa');
-  const forged = pass(ana.email, bakery.slug, 'plan', 'not-the-shared-secret');
+  const ana = await createAccount(address('forged'));
+  const bakery = await businessOf(ana.email, 'Panadería Falsa');
+  const forged = await pass(ana.email, bakery.slug, 'plan', 'not-the-shared-secret');
 
   const page = await freshBrowser(browser, baseURL!);
   const errors = watchPageErrors(page);
@@ -181,13 +152,13 @@ test('ACCOUNTS-F29 · a pass not signed as the business signs it opens nothing, 
 });
 
 test('ACCOUNTS-F29 · a pass of an account that is no member of that business opens nothing', async ({ browser, baseURL }) => {
-  const ana = createAccount(address('member'));
-  const stranger = createAccount(address('stranger'));
-  const bakery = businessOf(ana.email, 'Panadería Ajena');
+  const ana = await createAccount(address('member'));
+  const stranger = await createAccount(address('stranger'));
+  const bakery = await businessOf(ana.email, 'Panadería Ajena');
 
   const page = await freshBrowser(browser, baseURL!);
   const errors = watchPageErrors(page);
-  await page.goto(follow(pass(stranger.email, bakery.slug, 'plan')));
+  await page.goto(follow(await pass(stranger.email, bakery.slug, 'plan')));
   await expect(page).toHaveURL(`/login/error?code=not_a_member&hub=${bakery.slug}`);
   await expect(page.getByRole('heading', { name: "You don't have access to this hub" })).toBeVisible();
   await page.goto('/dashboard/businesses');

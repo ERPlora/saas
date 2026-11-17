@@ -8,7 +8,7 @@ input, never in the path (one parameter per route, the operation's input), as in
 from live.ninja import bind, run_operation
 from ninja import Query, Router
 
-from accounts import queries, services
+from accounts import queries
 from accounts.schemas import (
     ApiKeyCreateIn,
     ApiKeyRevokeIn,
@@ -21,6 +21,17 @@ from accounts.schemas import (
     SessionListIn,
     SupportReportIn,
 )
+from accounts.services import (
+    account_deletion,
+    active_sessions,
+    api_keys,
+    email_address,
+    preferences,
+    problem_reports,
+    profile,
+    profile_photo,
+    trusted_browsers,
+)
 
 router = Router(tags=["accounts"])
 
@@ -31,7 +42,7 @@ async def hub_list(request):
     return await run_operation(request, queries.hub_list)
 
 
-# --- The Account page (plan 2026-10-13, L3-A) ---------------------------------------------------------------
+# --- The Account page ---------------------------------------------------------------
 
 
 @bind(router, "accounts.profile.get", "/accounts/profile")
@@ -41,12 +52,12 @@ async def profile_get(request):
 
 @bind(router, "accounts.profile.update", "/accounts/profile")
 async def profile_update(request, data: ProfileUpdateIn):
-    return await run_operation(request, services.profile_update, data)
+    return await run_operation(request, profile.profile_update, data)
 
 
 @bind(router, "accounts.profile.delete", "/accounts/profile/delete")
 async def profile_delete(request):
-    return await run_operation(request, services.profile_delete)
+    return await run_operation(request, account_deletion.profile_delete)
 
 
 @bind(router, "accounts.data.export", "/accounts/export")
@@ -56,22 +67,22 @@ async def data_export(request):
 
 @bind(router, "accounts.email.change", "/accounts/email/change")
 async def email_change(request, data: EmailChangeIn):
-    return await run_operation(request, services.email_change, data)
+    return await run_operation(request, email_address.email_change, data)
 
 
 @bind(router, "accounts.email.verify", "/accounts/email/verify")
 async def email_verify(request, data: EmailVerifyIn):
-    return await run_operation(request, services.email_verify, data)
+    return await run_operation(request, email_address.email_verify, data)
 
 
 @bind(router, "accounts.photo.upload", "/accounts/photo")
 async def photo_upload(request, data: PhotoUploadIn):
-    return await run_operation(request, services.photo_upload, data)
+    return await run_operation(request, profile_photo.photo_upload, data)
 
 
 @bind(router, "accounts.photo.remove", "/accounts/photo/remove")
 async def photo_remove(request):
-    return await run_operation(request, services.photo_remove)
+    return await run_operation(request, profile_photo.photo_remove)
 
 
 @bind(router, "accounts.preferences.get", "/accounts/preferences")
@@ -81,7 +92,7 @@ async def preferences_get(request):
 
 @bind(router, "accounts.preferences.update", "/accounts/preferences")
 async def preferences_update(request, data: PreferencesUpdateIn):
-    return await run_operation(request, services.preferences_update, data)
+    return await run_operation(request, preferences.preferences_update, data)
 
 
 @bind(router, "accounts.session.list", "/accounts/sessions")
@@ -91,12 +102,12 @@ async def session_list(request, params: Query[SessionListIn]):
 
 @bind(router, "accounts.session.close", "/accounts/sessions/close")
 async def session_close(request, data: SessionCloseIn):
-    return await run_operation(request, services.session_close, data)
+    return await run_operation(request, active_sessions.session_close, data)
 
 
 @bind(router, "accounts.session.close_others", "/accounts/sessions/close_others")
 async def session_close_others(request):
-    return await run_operation(request, services.session_close_others)
+    return await run_operation(request, active_sessions.session_close_others)
 
 
 @bind(router, "accounts.browser_trust.get", "/accounts/browser-trust")
@@ -106,7 +117,7 @@ async def browser_trust_get(request):
 
 @bind(router, "accounts.browser_trust.revoke", "/accounts/browser-trust/revoke")
 async def browser_trust_revoke(request):
-    return await run_operation(request, services.browser_trust_revoke)
+    return await run_operation(request, trusted_browsers.browser_trust_revoke)
 
 
 @bind(router, "accounts.apikey.list", "/accounts/api-keys")
@@ -116,14 +127,14 @@ async def apikey_list(request):
 
 @bind(router, "accounts.apikey.create", "/accounts/api-keys", status=201)
 async def apikey_create(request, data: ApiKeyCreateIn):
-    return await run_operation(request, services.apikey_create, data)
+    return await run_operation(request, api_keys.apikey_create, data)
 
 
 @bind(router, "accounts.apikey.revoke", "/accounts/api-keys/revoke")
 async def apikey_revoke(request, data: ApiKeyRevokeIn):
-    return await run_operation(request, services.apikey_revoke, data)
+    return await run_operation(request, api_keys.apikey_revoke, data)
 
 
 @bind(router, "accounts.support.report", "/accounts/support/report")
 async def support_report(request, data: SupportReportIn):
-    return await run_operation(request, services.support_report, data)
+    return await run_operation(request, problem_reports.support_report, data)

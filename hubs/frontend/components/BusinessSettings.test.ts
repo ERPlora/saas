@@ -119,7 +119,7 @@ describe('BusinessSettings', () => {
     expect(ionProps(s.get('settings-name'), 'value')).toEqual({ value: 'Nuevo nombre' });
   });
 
-  it('once ready the country is read-only text with why under it, not a disabled select (audit 2 R-31)', async () => {
+  it('once ready the country is read-only text with why under it, not a disabled select', async () => {
     const s = await setup(undefined, { ...BUSINESS, country_locked: true });
     const country = s.get('settings-country');
     expect(country.element.tagName).not.toBe('ION-SELECT');

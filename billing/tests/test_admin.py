@@ -1,4 +1,4 @@
-"""The Django admin shows every model of billing (PLAN-SAAS §6: «el Django admin, lo más completo posible»).
+"""The Django admin shows every model of billing.
 
 The two singletons (``FiscalPolicy``, ``CompanyConfig``) open straight on their one row and can be
 neither added twice nor deleted; the VIES log is read-only but for the manual override.
@@ -106,7 +106,7 @@ def test_erploras_identity_is_edited_in_the_admin(staff_client):
     assert CompanyConfig.objects.get().phone == "+34 600 000 000"
 
 
-# --- Stripe (lot L2-B) -------------------------------------------------------------------------------
+# --- Stripe -------------------------------------------------------------------------------------------
 
 
 def test_promo_codes_are_written_in_the_admin(staff_client):
@@ -120,6 +120,32 @@ def test_promo_codes_are_written_in_the_admin(staff_client):
 
     assert response.status_code == 302, response.content
     assert PromoCode.objects.get().code == "feria_2026"
+
+
+def test_a_promo_code_of_free_months_is_written_in_the_admin(staff_client):
+    from billing.models import PromoCode
+
+    response = staff_client.post(
+        "/admin/billing/promocode/add/",
+        {"code": "testers", "free_months": "6", "is_active": "on", "redemption_count": "0"},
+    )
+
+    assert response.status_code == 302, response.content
+    assert PromoCode.objects.values_list("code", "trial_days", "free_months").get() == ("testers", None, 6)
+    assert "free_months" in staff_client.get("/admin/billing/promocode/").content.decode()
+
+
+@pytest.mark.parametrize("granted", [{"trial_days": "30", "free_months": "6"}, {}])
+def test_a_promo_code_with_both_kinds_or_none_is_refused_in_the_form(staff_client, granted):
+    from billing.models import PromoCode
+
+    response = staff_client.post(
+        "/admin/billing/promocode/add/", {"code": "both", "redemption_count": "0", **granted}
+    )
+
+    assert response.status_code == 200
+    assert "either trial days or free months" in response.content.decode()
+    assert not PromoCode.objects.exists()
 
 
 def test_a_promo_code_with_more_than_a_year_is_refused_in_the_form(staff_client):
@@ -138,7 +164,7 @@ def test_what_stripe_did_is_read_only(staff_client, model_name):
 
 
 class TestTheRowsOnlyTheCodeWrites:
-    """BILLING-F27 (PLAN-SAAS §1.1, «Modelos sin ModelAdmin»): a promo code used, a series' counter and a downgrade
+    """A promo code used, a series' counter and a downgrade
     waiting for the end of the period are seen in the admin and never written there: the checkout, the invoice's
     numbering and the plan change are their only writers."""
 
@@ -189,7 +215,7 @@ def test_a_stripe_event_opens_read_only(staff_client):
 
 
 class TestAModuleSomeBusinessHas:
-    """BILLING-G66, saas#2568: deleting the row of a paid module some business still has would make Stripe bill a
+    """Deleting the row of a paid module some business still has would make Stripe bill a
     price nobody sells (the business loses the module and keeps paying it). Like a protected relation, the
     admin refuses and names the businesses; taking it off sale («active» off) is how it stops being sold."""
 

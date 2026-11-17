@@ -1,7 +1,7 @@
-"""The panel lives under ``/dashboard/`` (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX; HUBS-F10): Businesses, Store, Billing,
-Account and «Report a problem», as the old product's ``apps/dashboard/``. Its addresses at the root before the move
-lead there for good (301), with the page under them and the query (``?business=``, ``?surface=account``): bookmarks,
-the Hub's links and the mails already sent. The sign-in's pages, the invitations and the launcher stay at the root.
+"""The panel lives under ``/dashboard/`` (HUBS-F10): Businesses, Store, Billing, Account and «Report a problem». Its
+old addresses at the root lead there for good (301), with the page under them and the query (``?business=``,
+``?surface=account``): bookmarks, the Hub's links and the mails already sent. The sign-in's pages, the invitations and
+the launcher stay at the root.
 """
 
 import uuid

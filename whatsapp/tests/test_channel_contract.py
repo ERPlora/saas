@@ -1,7 +1,7 @@
-"""The ``whatsapp`` key of the snapshot against the Hub's own schema of it (door 4, WHATSAPP-G03, WHATSAPP-G05).
+"""The ``whatsapp`` key of the snapshot against the Hub's own schema of it (door 4).
 
-The Hub validates that block with its ``ChannelSyncIn`` (``apps/whatsapp_inbox/schemas.py``, the version merged in
-hub#127) after putting the snapshot's ``version`` in it, and a block out of contract makes it answer 422 to the
+The Hub validates that block with its ``ChannelSyncIn`` (``apps/whatsapp_inbox/schemas.py``, in the Hub's code)
+after putting the snapshot's ``version`` in it, and a block out of contract makes it answer 422 to the
 whole snapshot: the business's plan, modules and members stop reaching it too. ``HubChannelSyncIn`` below is that
 schema field for field (same names, types, bounds and whitespace stripping); every block erplora.com can build,
 with whatever its mirror of Meta holds, has to pass it. A change of the Hub's schema is a change of this copy.
@@ -13,7 +13,7 @@ import pytest
 from django.utils import timezone
 from pydantic import BaseModel, Field, StringConstraints
 
-from hubs import queries as hubs_queries
+from hubs.queries import hub_sync, plan_catalog
 from whatsapp import queries
 from whatsapp.models import PhoneNumber, Template
 
@@ -60,7 +60,7 @@ class HubChannelSyncIn(BaseModel):
 
 def as_the_hub_reads_it(business) -> HubChannelSyncIn:
     """The snapshot's block as the Hub's ``_sync_whatsapp`` validates it: the block, with the snapshot's version."""
-    snapshot = hubs_queries.hub_snapshot(business.id)
+    snapshot = hub_sync.hub_snapshot(business.id)
     return HubChannelSyncIn.model_validate({**snapshot["whatsapp"], "version": snapshot["version"]})
 
 
@@ -139,4 +139,4 @@ def test_the_month_and_the_allowance_pass_the_hubs_schema(connected, business):
     block = as_the_hub_reads_it(business)
 
     assert (block.usage_month, block.monthly_usage) == (timezone.now().strftime("%Y-%m"), 0)
-    assert block.monthly_limit == hubs_queries.effective_plan(business.id, timezone.now()).whatsapp_messages_per_month
+    assert block.monthly_limit == plan_catalog.effective_plan(business.id, timezone.now()).whatsapp_messages_per_month

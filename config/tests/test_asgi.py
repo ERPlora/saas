@@ -194,15 +194,14 @@ def test_the_forwarded_proto_alone_makes_it_secure(as_seen_by_django):
 
 
 def test_plain_http_without_the_header_is_not_secure(as_seen_by_django):
-    """hub-next calls /internal on the private name, straight to the task, over plain HTTP."""
+    """The Hub calls /internal on the private name, straight to the task, over plain HTTP."""
     seen = as_seen_by_django(daphne_scope([], proxy_headers=True))
 
     assert (seen["secure"], seen["scheme"]) == (False, "http")
 
 
-# ACCOUNTS-G72: erplora.com serves no WebSocket (no channels, PLAN-SAAS §1.1 point 2; the Hub's /ws/print is the
-# Hub's). The old SaaS closed any unknown socket (`DenyConsumer`); Django's handler raises on a non-HTTP scope, which
-# Daphne logs as an error on every attempt. The handshake is refused, nothing raises.
+# erplora.com serves no WebSocket (no channels; the Hub's /ws/print is the Hub's). Django's handler raises on a
+# non-HTTP scope, which Daphne logs as an error on every attempt. The handshake is refused, nothing raises.
 
 
 def websocket_scope(path: str) -> dict:

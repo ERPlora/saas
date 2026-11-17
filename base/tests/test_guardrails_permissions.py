@@ -1,5 +1,4 @@
-"""Guardrail of the permissions of the SaaS (W11b, phase 2; ARCHITECTURE.md §4 «Un solo camino»; Ioan, 2026-10-31).
-The Hub's twin is its ``tests/test_guardrails_permissions.py`` (hub#490).
+"""Guardrail of the permissions of the SaaS. The Hub's twin is its ``tests/test_guardrails_permissions.py``.
 
 ``live.operations.Operation`` checks ``ctx.has(op.permission)`` before it runs, and ``OperationContext.has(None)`` is
 ``True``: an ``@operation(..., permission=None)`` runs for every signed-in account and, on a route with ``auth=None``,
@@ -128,6 +127,7 @@ SYSTEM_ONLY = frozenset(
         "hubs.business.mark_ready",
         "hubs.business.notify_people",
         "hubs.business.record_hub_error",
+        "hubs.business.record_maintenance",
         "hubs.custom_domain.record",
         "hubs.subscription.apply",
         "hubs.usage.prune",
@@ -390,7 +390,9 @@ STAFF_FLAGS = frozenset({"is_staff", "is_superuser"})
 #: Where they may be set: ``createsuperuser`` and ``manage.py create_platform_user`` (the platform's ``admin`` and
 #: ``support``). The admin's user form writes them too (Django's own fields, for a superuser of the staff); what
 #: holds it is ``User.clean``, which the form runs: it never raises either flag of an account on a business.
-STAFF_DOORS = frozenset({("accounts/models.py", "create_superuser"), ("accounts/services.py", "create_platform_user")})
+STAFF_DOORS = frozenset(
+    {("accounts/models.py", "create_superuser"), ("accounts/services/platform_staff.py", "create_platform_user")}
+)
 #: Calls that read the flags (``filter(is_staff=True)``) rather than write them.
 READS = frozenset({"filter", "exclude", "get", "first", "exists", "count"})
 

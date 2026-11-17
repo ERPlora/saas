@@ -1,6 +1,6 @@
 // Account → Security (mockups `account.html` «security»): the card «Sign-in» — password, two-step verification and
 // Google, each a row — from the live `accounts.profile.get` (whether the account has a password), then the active
-// sessions (SessionsTable). A failure is said, never a skeleton for ever (audit 2026-10-14, R-08): an error of
+// sessions (SessionsTable). A failure is said, never a skeleton for ever: an error of
 // the query, or no answer in time.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -39,7 +39,7 @@ describe('SecurityTab', () => {
     expect(s.q('google-row')).not.toBeNull();
   });
 
-  it('is a `.panel-fill` stack: the sessions’ list takes the height the sign-in card leaves (Ioan, 2026-10-14)', async () => {
+  it('is a `.panel-fill` stack: the sessions’ list takes the height the sign-in card leaves', async () => {
     const s = await setup();
     await s.result(s.stream, 'accounts.profile.get', profile({ has_password: true }));
     expect(s.wrapper.element.classList.contains('panel-fill')).toBe(true);

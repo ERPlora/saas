@@ -1,8 +1,6 @@
-// «Change card» (mockups `billing.html`; README §6.18): Stripe's Customer Portal for the payer of a business
-// (`billing.portal.open`: cards and Stripe's receipts; the plan changes in the panel, which puts our own
-// tax rates), a top-level navigation that comes back to Billing. Web only: the pages render it in
-// `<WebOnly>`. One opening at a time (the business being opened); back through the browser's cache
-// (`pageshow` persisted), nothing is opening any more. A refusal is said in a toast.
+// «Change card»: Stripe's Customer Portal for the payer of a business (cards and Stripe's receipts; the plan changes
+// in the panel, which puts our own tax rates), a top-level navigation that comes back to Billing. One opening at a
+// time; back through the browser's cache (`pageshow` persisted), nothing is opening any more.
 import { toastError } from '@erplora/ui/shell';
 import { useCommand } from '@erplora/ui/sdk';
 import { onScopeDispose, readonly, shallowRef } from 'vue';

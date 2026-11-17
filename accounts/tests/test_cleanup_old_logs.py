@@ -1,10 +1,8 @@
-"""ACCOUNTS-F37 · ``manage.py cleanup_old_logs``: the audit log keeps 90 days (GDPR art. 5.1.e, storage limitation;
-ACCOUNTS-G08, G53, G62 and G28, its task). Daily in ``saas-cron``.
+"""ACCOUNTS-F37 · ``manage.py cleanup_old_logs``: the audit log keeps 90 days (GDPR art. 5.1.e, storage limitation).
+Daily in ``saas-cron``.
 
-Ported from ERPlora/saas ``apps/auth/users/management/commands/cleanup_old_logs.py`` and its tests
-(``tests/unit/test_gdpr_retention_policy.py``, ``test_gdpr_retention_noinput.py``): the entries older than
-``--retention-days`` (90) go, the younger stay, ``--dry-run`` only counts. Changed: no question is asked (the old
-``--no-input`` is the only way, #970: a prompt killed the scheduled run), one batch per transaction instead of one
+The entries older than ``--retention-days`` (90) go, the younger stay, ``--dry-run`` only counts. No question is
+asked (a prompt would kill the scheduled run), one batch per transaction instead of one
 transaction for the whole run, and the advisory lock of ``anonymize_old_users`` so two runs never overlap.
 """
 
@@ -19,7 +17,7 @@ from django.core.management import CommandError, call_command
 from django.db import connections
 from django.utils import timezone
 
-from accounts import services
+from accounts.services import audit_retention, exclusive_runs
 
 pytestmark = pytest.mark.django_db
 
@@ -102,7 +100,7 @@ def test_a_period_under_a_day_is_refused(entry):
 
 
 def test_it_deletes_batch_after_batch_until_none_is_left(entry, monkeypatch):
-    monkeypatch.setattr(services, "AUDIT_LOG_BATCH", 2)
+    monkeypatch.setattr(audit_retention, "AUDIT_LOG_BATCH", 2)
     old = [entry(100 + day) for day in range(5)]
     recent = entry(10)
 
@@ -113,7 +111,7 @@ def test_it_deletes_batch_after_batch_until_none_is_left(entry, monkeypatch):
 
 
 def test_it_never_asks(entry, monkeypatch):
-    """#970: under the scheduled task there is nobody to answer, and a question killed the run."""
+    """Under the scheduled task there is nobody to answer, and a question killed the run."""
     monkeypatch.setattr("builtins.input", lambda *args: pytest.fail("cleanup_old_logs asked a question"))
     old = entry(120)
 
@@ -125,7 +123,7 @@ def test_it_never_asks(entry, monkeypatch):
 def test_a_second_run_while_one_holds_the_lock_does_nothing(entry):
     old = entry(120)
     other = connections["default"].copy()
-    lock = [services.lock_name("cleanup_old_logs")]
+    lock = [exclusive_runs.lock_name("cleanup_old_logs")]
     try:
         with other.cursor() as cursor:
             cursor.execute("SELECT pg_advisory_lock(hashtext(%s))", lock)
@@ -139,8 +137,8 @@ def test_a_second_run_while_one_holds_the_lock_does_nothing(entry):
 
     assert "already running" in output
     # Given back: the pool keeps the other session open, and a lock left in it stopped every later run of the
-    # process ("already running"; the billing prune test after this one, 2026-10-22).
-    assert _lock_is_free(services.lock_name("cleanup_old_logs"))
+    # process ("already running").
+    assert _lock_is_free(exclusive_runs.lock_name("cleanup_old_logs"))
     assert _left(old) == [True]
 
 
@@ -218,7 +216,7 @@ class TestTheContentTypeOfTheRetiredCopy:
             yield False
 
         ContentType.objects.get_or_create(**self.KIND)
-        monkeypatch.setattr(services, "run_exclusively", taken)
+        monkeypatch.setattr(exclusive_runs, "run_exclusively", taken)
 
         assert "already running" in _run()
 

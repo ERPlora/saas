@@ -1,10 +1,6 @@
-// The Billing section's rules about an invoice, apart from the screen (mockups `billing.html`, README §3b and
-// §6.18; billing/README.md «Facturas de ERPlora (L3-C)»):
-//   - a paid invoice reads «Paid» once the platform hub issued it (its PDF exists) and «Issuing» until then;
-//     one Stripe could not charge reads «Not collected»; a cancelled one, the server's own word;
-//   - our number names it once paid; before, Stripe's reference;
-//   - an unpaid invoice leaves the business working 7 days, then it is suspended (PLAN-SAAS §3.3);
-//   - the account sees the invoices of the businesses it owns or pays.
+// The Billing section's rules about an invoice, apart from the screen. A paid invoice reads «Paid» once the
+// platform hub issued it (its PDF exists) and «Issuing» until then; our number names it once paid, Stripe's
+// reference before.
 import { formatMoney, invoiceStatusPill, type StatusPillSpec } from '@erplora/ui/components';
 
 import type { BusinessRowOut, InvoiceRowOut } from '../../frontend/sdk-types';

@@ -1,4 +1,4 @@
-"""«Download the data» of a business (PLAN-DB, round 2026-10-30, proposals (a), (k), (l) and (m); HUBS-F18, HUBS-F20).
+"""«Download the data» of a business (HUBS-F18, HUBS-F20).
 
 The Hub copies a business's database (``pg_dump -Fc``) when it is deleted (``offboarding``) and before a reset
 (``reset``), and keeps each copy 90 days. The panel lists them from ``GET /internal/hubs/{id}/dumps``
@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 import pytest
 from django.utils import timezone
 
-from hubs import queries
+from hubs.queries import businesses, data_copies
 from hubs.models import Hub
 from hubs.schemas import ByIdIn, DataCopyLinkIn, DataCopyListIn
 from hubs.tests.conftest import ctx_for
@@ -35,11 +35,11 @@ def deleted(hub):
 
 
 def listed(user, hub) -> dict:
-    return queries.data_copy_list(ctx_for(user), DataCopyListIn(business_id=hub.id)).model_dump()
+    return data_copies.data_copy_list(ctx_for(user), DataCopyListIn(business_id=hub.id)).model_dump()
 
 
 def link(user, hub, copy_id: str) -> dict:
-    return queries.data_copy_link(ctx_for(user), DataCopyLinkIn(business_id=hub.id, copy_id=copy_id)).model_dump()
+    return data_copies.data_copy_link(ctx_for(user), DataCopyLinkIn(business_id=hub.id, copy_id=copy_id)).model_dump()
 
 
 # --- hubs.data_copy.list ------------------------------------------------------------------------------------
@@ -81,7 +81,7 @@ def test_without_copies_yet_the_list_is_empty(business, owner, hub_double):
 
 
 def test_a_business_without_its_own_database_has_no_copy_and_never_will(business, owner, hub_double):
-    """``available: false`` (ruling 2026-10-30): the Hub never copies a business still on the shared database of
+    """``available: false``: the Hub never copies a business still on the shared database of
     control, so the page promises nothing."""
     hub = deleted(business)
     hub_double.dumps[str(hub.id)] = []
@@ -125,7 +125,7 @@ def test_a_hub_that_does_not_know_the_business_is_an_empty_list(business, owner,
 
 @pytest.mark.parametrize("refusal", [401, 403, 410])
 def test_any_other_refusal_of_the_hub_says_the_copy_could_not_be_checked(business, owner, hub_double, refusal, caplog):
-    """Review of saas#168: a cancelled business answers 200 at ``/internal`` (the 410 is the host's door), so any
+    """A cancelled business answers 200 at ``/internal`` (the 410 is the host's door), so any
     refusal but a 404 is a fault: the page says it could not check, never «we will let you know»."""
     from live.errors import OperationError
 
@@ -232,7 +232,7 @@ def test_a_link_that_is_no_web_address_is_never_given(business, owner, hub_doubl
 @pytest.mark.parametrize(("role", "may"), [("owner", True), ("admin", False)])
 def test_only_the_owner_is_offered_the_copy(business, team, role, may):
     """The page of a business (its owner and admins): only the owner gets «Download the data» (the rest: the matrix)."""
-    can = queries.business_get(ctx_for(team[role]), ByIdIn(id=business.id)).can
+    can = businesses.business_get(ctx_for(team[role]), ByIdIn(id=business.id)).can
 
     assert can.download_data is may
 

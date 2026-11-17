@@ -1,20 +1,19 @@
 """Django admin of hubs: the plans, the taxonomy of sectors and business types, and the account plane of
 every business.
 
-The plans and the taxonomy are ported from ERPlora/saas ``public/catalog/admin.py`` (origin/develop)
-without modeltranslation's tabs: each language is its own column. The guards of the Spanish copy and of
-duplicate names are the models' ``clean()``, which the admin form runs.
+Each language of the plans and the taxonomy is its own column. The guards of the Spanish copy and of duplicate
+names are the models' ``clean()``, which the admin form runs.
 
 The account plane (``Hub``, ``HubMember``, ``HubOwnershipTransfer``, ``BillingProfile``, ``Subscription``,
-``SubscriptionItem``, ``SessionRevocation``; L1-A2) is read-mostly: its writes are the operations of
+``SubscriptionItem``, ``SessionRevocation``) is read-mostly: its writes are the operations of
 ``hubs.services`` (state version, the push to the Hub), so the admin adds, changes and deletes nothing, not even for
-a superuser. Superusers get the platform's actions (``services.send_latest_state``, ``retry_owed``,
+a superuser. Superusers get the platform's actions (``services.platform_actions.send_latest_state``, ``retry_owed``,
 ``deliver_revocations``); ``support`` only sees (data migration ``0007``). A ``User``'s page lists the businesses of the
 account (``AccountMemberInline``), and «Hubs» (``hubs_view``, ``/admin/accounts/hubs/``, routed in ``config/urls.py``)
 has one row per business people enter, each with «Open in the Hub admin».
 
-``HubUsageDaily`` (L4-A) is what the Hub measured of each business every night (``collect_hub_usage``): read only,
-for superusers, with its sizes readable and the database's, which the customer never sees (PLAN-SAAS §5).
+``HubUsageDaily`` is what the Hub measured of each business every night (``collect_hub_usage``): read only, for
+superusers, with its sizes readable and the database's, which the customer never sees.
 """
 
 import functools
@@ -38,7 +37,8 @@ from accounts.admin import (
     UserAdmin,
     open_hub_admin_url,
 )
-from hubs import queries, services
+from hubs.services import platform_actions, subscription_sync
+from hubs.queries import hub_sync, membership
 from hubs.models import (
     CustomDomain,
     BillingProfile,
@@ -154,8 +154,8 @@ class PlanAdmin(admin.ModelAdmin):
         if getattr(form, "unchecked", ""):
             self.message_user(request, form.unchecked, messages.WARNING)
         # HUBS-F31: what the plan gives reaches its businesses within 15 minutes, not at night.
-        if change and set(queries.SNAPSHOT_PLAN_FIELDS) & set(form.changed_data):
-            owed = services.owe_plan_rights(obj)
+        if change and set(hub_sync.SNAPSHOT_PLAN_FIELDS) & set(form.changed_data):
+            owed = subscription_sync.owe_plan_rights(obj)
             if owed:
                 self.message_user(
                     request,
@@ -186,8 +186,8 @@ class ReadOnly:
 
 def traced(action):
     """An action of the platform leaves, on each row it ran on, who ran it and which in the admin's history
-    (HUBS-F23; ERPlora/saas SAAS_DASHBOARD-F41 lost that trace). Under ``@admin.action``, whose description it
-    names: the line is written whatever the action reported, since the attempt is what the staff did."""
+    (HUBS-F23). Under ``@admin.action``, whose description it names: the line is written whatever the action
+    reported, since the attempt is what the staff did."""
 
     @functools.wraps(action)
     def run(model_admin, request, queryset):
@@ -226,11 +226,19 @@ class HubAdmin(PlatformActions):
         "state_version",
         "pushed_state_version",
         "last_hub_error",
+        "can_buy_internal_plans",
     ]
-    list_filter = ["status", "pending_hub_call"]
+    list_filter = ["status", "pending_hub_call", "can_buy_internal_plans"]
     search_fields = ["slug", "name"]
     inlines = [HubMemberInline]
-    actions = ["send_latest_state", "retry_owed", "attach_test_clock", "advance_test_clock"]
+    actions = [
+        "send_latest_state",
+        "retry_owed",
+        "allow_internal_plans",
+        "stop_internal_plans",
+        "attach_test_clock",
+        "advance_test_clock",
+    ]
     #: BILLING-F29: offered only with Stripe's test keys (PRE, development); production never sees them.
     TEST_CLOCK_ACTIONS = ("attach_test_clock", "advance_test_clock")
 
@@ -276,15 +284,33 @@ class HubAdmin(PlatformActions):
                 % {"business": hub.slug, "date": reached.date().isoformat()},
             )
 
+    @admin.action(description=_("Let its owner buy the internal plans"), permissions=["sync"])
+    @traced
+    def allow_internal_plans(self, request, queryset):
+        changed = platform_actions.mark_for_internal_plans(list(queryset.values_list("id", flat=True)), allowed=True)
+        self.message_user(
+            request, _("%(count)d business(es): its owner now sees the internal plans in the Store.") % {"count": changed}
+        )
+
+    @admin.action(description=_("Stop selling it the internal plans"), permissions=["sync"])
+    @traced
+    def stop_internal_plans(self, request, queryset):
+        changed = platform_actions.mark_for_internal_plans(list(queryset.values_list("id", flat=True)), allowed=False)
+        self.message_user(
+            request,
+            _("%(count)d business(es): the Store no longer offers it the internal plans; a plan already bought stays.")
+            % {"count": changed},
+        )
+
     @admin.action(description=_("Send the latest state to the Hub"), permissions=["sync"])
     @traced
     def send_latest_state(self, request, queryset):
-        self._tell(request, services.send_latest_state(list(queryset.values_list("id", flat=True))))
+        self._tell(request, platform_actions.send_latest_state(list(queryset.values_list("id", flat=True))))
 
     @admin.action(description=_("Retry what the Hub still owes"), permissions=["sync"])
     @traced
     def retry_owed(self, request, queryset):
-        self._tell(request, services.retry_owed(list(queryset.values_list("id", flat=True))))
+        self._tell(request, platform_actions.retry_owed(list(queryset.values_list("id", flat=True))))
 
     def _tell(self, request, counts):
         if counts["delivered"]:
@@ -347,7 +373,7 @@ def hubs_view(request: HttpRequest) -> HttpResponse:
         messages.error(request, JUMP_FAILED.get(request.GET["error"], JUMP_FAILED_UNKNOWN))
     hubs = [
         {"slug": slug, "members": members, "url": open_hub_admin_url(slug)}
-        for slug, members in queries.hubs_with_members()
+        for slug, members in membership.hubs_with_members()
     ]
     context = {
         **admin.site.each_context(request),
@@ -403,7 +429,7 @@ class SessionRevocationAdmin(PlatformActions):
     @admin.action(description=_("End the sessions in the Hub now"), permissions=["sync"])
     @traced
     def deliver_now(self, request, queryset):
-        counts = services.deliver_revocations(list(queryset.values_list("id", flat=True)))
+        counts = platform_actions.deliver_revocations(list(queryset.values_list("id", flat=True)))
         if counts["delivered"]:
             self.message_user(request, _("%(count)d session end(s) delivered.") % {"count": counts["delivered"]})
         if counts["pending"]:
@@ -454,7 +480,7 @@ class HubUsageDailyAdmin(ReadOnly, admin.ModelAdmin):
     def database(self, obj):
         return filesizeformat(obj.db_bytes)
 
-    # hub#603: their first click says who is highest, with what the Hub did not measure last, not on top.
+    # Their first click says who is highest, with what the Hub did not measure last, not on top.
 
     @admin.display(description=_("requests"), ordering=F("requests").desc(nulls_last=True))
     def served(self, obj):

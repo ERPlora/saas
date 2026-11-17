@@ -1,7 +1,7 @@
 // @vitest-environment node
-// The probes of the assistant's QA with the real model, layer 2 (panel/assistant-probes.spec.ts; plan
-// 2026-10-31-asistente-conocimiento-y-qa §1.5 of erplora-next): their files, their checks against the exported
-// catalogue, the automatic verdict of what the panel showed, the redaction of keys and the report of a run.
+// The probes of the assistant's QA with the real model (panel/assistant-probes.spec.ts): their files, their checks
+// against the exported catalogue, the automatic verdict of what the panel showed, the redaction of keys and the
+// report of a run.
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -269,7 +269,7 @@ describe('refusalIn', () => {
     expect(refusalIn("I don't have any invoices yet.")).toBe(false);
     expect(refusalIn('No tengo facturas tuyas todavía.')).toBe(false);
     expect(refusalIn('Hecho: he cancelado el plan del bar.')).toBe(false);
-    // What the panel answered in the app to «¿me vale el cupón PRIMAVERA20?» (2026-11-01): the checkout explained.
+    // What the panel answered in the app to «¿me vale el cupón PRIMAVERA20?»: the checkout explained.
     expect(refusalIn('En el pago seguro, pulsa «¿Tienes un código promocional?». Si tu negocio ya paga, el cupón no se puede usar.')).toBe(false);
     expect(refusalIn('That code is not available for paid plans.')).toBe(false);
   });
@@ -424,7 +424,7 @@ describe('probeVerdict', () => {
 
   it('takes the title of a Hub app’s manual the search returned as a citation, not the first heading of the help', () => {
     const search = (citation: typeof HELP) => ({ ...NO_TURNS, tools: [ran('assistant.docs.search', 'query')], citations: [citation] });
-    // What the panel answered on 2026-11-01: the WhatsApp inbox's manual, named by its title.
+    // A real answer of the panel: the WhatsApp inbox's manual, named by its title.
     const manual = search({
       source: 'app_doc',
       path: 'app_doc:whatsapp_inbox',

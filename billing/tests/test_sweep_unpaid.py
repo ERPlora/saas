@@ -1,8 +1,6 @@
-"""``manage.py sweep_unpaid``: the safety net of unpaid plans and deleted businesses (``saas-cron``; lot L2-B).
+"""``manage.py sweep_unpaid``: the safety net of unpaid plans and deleted businesses (``saas-cron``).
 
-Ported from ERPlora/saas ``hubs/main/tests/test_unpaid_plan_sweep.py`` (12, saas#2594) with its recorded
-Stripe fixtures (``fixtures/stripe_unpaid_plan/``: a test-clock renewal that failed once) and the Stripe half
-of ``test_hub_delete_cancels_billing.py`` (9 × 5 paths):
+With recorded Stripe fixtures (``fixtures/stripe_unpaid_plan/``: a test-clock renewal that failed once):
 
 - The webhook only acts when Stripe sends an event, and how many retries Stripe makes (and what it does
   once they are spent) is set in its dashboard: retries that end before the 7 days leave the subscription
@@ -126,7 +124,7 @@ class TestStripeStopsRetryingBeforeTheGraceEnds:
         assert "suspended=1" in output
 
     def test_a_run_does_not_count_a_failure_stripe_did_not_have(self, shop, stripe_double):
-        """The sweep replays to decide; it is not a failed payment (review of L2-B)."""
+        """The sweep replays to decide; it is not a failed payment."""
         from billing.models import PaymentFailure
 
         owing(shop)
@@ -185,7 +183,7 @@ class TestStripeStopsRetryingBeforeTheGraceEnds:
 
 class TestTheSweepLeavesAloneWhoPaidOrOwesNothing:
     def test_a_plan_collected_meanwhile_is_brought_back(self, shop, stripe_double):
-        """Review of L2-B: the sweep applies the live subscription when it is no longer unpaid (a payment whose
+        """The sweep applies the live subscription when it is no longer unpaid (a payment whose
         event was lost), instead of leaving «payment pending» for ever."""
         business = owing(shop)
         stripe_double.answer("invoices.list", listing([open_invoice(10)]))
@@ -270,24 +268,24 @@ class TestTheSweepLeavesAloneWhoPaidOrOwesNothing:
 class TestADeletedBusinessStopsPaying:
     def deleted(self, hub, **paid):
         """Deleted through ``hubs.business.delete``, which asks for its Stripe subscription to end."""
-        from hubs import services as hub_services
+        from hubs.services import deletion
         from hubs.models import HubMember
         from hubs.schemas import BusinessDeleteIn
         from hubs.tests.conftest import ctx_for as hub_ctx
 
         business = pay(hub, **paid)
         owner = HubMember.objects.get(hub=business, role=HubMember.Role.OWNER).user
-        hub_services.business_delete(hub_ctx(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
+        deletion.business_delete(hub_ctx(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
         return business
 
     def test_a_business_restored_before_the_sweep_stops_paying_too(self, shop, owner, stripe_double):
-        """Review of L2-B: deleting asked for the end; recovering it (on Free) does not take that back."""
-        from hubs import services as hub_services
+        """Deleting asked for the end; recovering it (on Free) does not take that back."""
+        from hubs.services import deletion
         from hubs.schemas import ByIdIn
         from hubs.tests.conftest import ctx_for as hub_ctx
 
         business = self.deleted(shop)
-        hub_services.business_restore(hub_ctx(owner), ByIdIn(id=business.id))
+        deletion.business_restore(hub_ctx(owner), ByIdIn(id=business.id))
         stripe_double.answer("subscriptions.cancel", subscription(status="canceled"))
 
         run()

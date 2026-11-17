@@ -1,4 +1,4 @@
-// HUBS-F16 «Change address» (PLAN-SAAS §1.1, round 2026-10-15b): a FormModal for the owner with the new address,
+// HUBS-F16 «Change address»: a FormModal for the owner with the new address,
 // the host it gives under it, and what follows (the old address stops opening the business but stays the
 // business's own). It sends `hubs.business.change_address`; a refusal of the server stays in the dialog, a 422 on
 // the field.

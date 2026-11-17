@@ -1,20 +1,17 @@
-"""The home ``/`` and the contact page ``/contact/`` with its form ``/contact/submit/`` (spec §8.1).
+"""The home ``/`` and the contact page ``/contact/`` with its form ``/contact/submit/``.
 
-Port of ERPlora/saas ``apps/public/landing/views.py`` (origin/develop c5ca8ca); ``robots.txt`` and
-``llms.txt`` are ``public/seo.py``, ``/set-language/`` is ``public/language.py`` and ``/download/`` is
-``public/appdist.py``. What changed:
+``robots.txt`` and ``llms.txt`` are ``public/seo.py``, ``/set-language/`` is ``public/language.py``
+and ``/download/`` is ``public/appdist.py``.
 
 * no model: the plans come from ``hubs.plan.list`` (``public.pricing``) and the apps from
-  ``apps.app.list`` (plan §3.m, spec §5.1), with ``run_operation_sync`` as ``base/spa.py`` does;
+  ``apps.app.list``, with ``run_operation_sync`` as ``base/spa.py`` does;
 * the six featured apps and the twelve chips are the first ``listed`` apps by section and name (the
-  order of ``apps.app.list``; ``is_featured`` and the downloads do not exist any more), counted as one
-  catalogue: every plan includes all the apps (ronda 2026-10-24b, PLAN §32; before, decision 17 put
-  the premium apps in the paid plans), so the home sells no tier of apps. Without a listed app the
-  apps blocks are omitted (spec §5.3);
+  order of ``apps.app.list``), counted as one catalogue: every plan includes all the apps, so the
+  home sells no tier of apps. Without a listed app the apps blocks are omitted;
 * the contact mail is rendered from ``public/templates/public/email/`` and sent to ``SUPPORT_EMAIL``
-  (plan §3.o) with the visitor as «Reply-To»; its limit per address reads the address the load balancer saw;
-  a refused or failed message comes back typed (PUBLIC-G39), and a page that links the form may name its
-  topic (``?subject=``, PUBLIC-G40);
+  with the visitor as «Reply-To»; its limit per address reads the address the load balancer saw;
+  a refused or failed message comes back typed, and a page that links the form may name its
+  topic (``?subject=``);
 * the contact section states the real trial of the plans on sale, never a typed «15 days».
 """
 
@@ -50,7 +47,7 @@ from public.structured_data import json_ld, organization, software_application
 
 logger = logging.getLogger(__name__)
 
-#: The featured cards and the chips of the home (spec §8.1).
+#: The featured cards and the chips of the home.
 FEATURED_COUNT = 6
 CHIP_COUNT = 12
 #: The anchor of the contact section, on the home and on /contact/.
@@ -60,7 +57,7 @@ UNKNOWN_ADDRESS = "0.0.0.0"
 
 #: «One platform, one invoice» of the home: what each function costs in the tool a small business
 #: typically pays for it (public vendor pricing, May 2026), in euros a month. Only functions the apps of
-#: the Hub cover today (PUBLIC-F07: no accounting, payroll or support-ticket row); the total is their sum.
+#: the Hub cover today (no accounting, payroll or support-ticket row); the total is their sum.
 TYPICAL_STACK = (
     (gettext_lazy("Electronic invoicing"), "FacturaDirecta / Holded", 39),
     (gettext_lazy("Inventory"), "Zoho Inventory / Sortly", 89),
@@ -68,13 +65,13 @@ TYPICAL_STACK = (
     (gettext_lazy("E-commerce + POS"), "Shopify + Square", 112),
 )
 
-#: The topics another page may open the form on (``/contact/?subject=<key>``, PUBLIC-G40), and how the mail
+#: The topics another page may open the form on (``/contact/?subject=<key>``), and how the mail
 #: to support names them (internal, in English like the rest of the mail). Any other value is ignored.
 CONTACT_TOPICS = {
     "collaborate": "Collaborator program",
     "security": "Security",
 }
-#: What the visitor typed, kept in the session when the message is refused or fails (PUBLIC-G39) and shown once.
+#: What the visitor typed, kept in the session when the message is refused or fails and shown once.
 CONTACT_DRAFT_KEY = "public.contact_draft"
 #: The field of reCAPTCHA's token and the action it is made for (frontend/recaptcha.ts, ``data-recaptcha-action``).
 RECAPTCHA_FIELD = "recaptcha_token"
@@ -97,7 +94,7 @@ FORM_MESSAGES = {
 
 
 def sent_message() -> str:
-    """The answer to a sent message, with the reply time the web states everywhere (PUBLIC-G41)."""
+    """The answer to a sent message, with the reply time the web states everywhere."""
     hours = context_processors.SUPPORT_REPLY_HOURS
     return ngettext(
         "Thanks! We received your message and will reply within %(hours)d business hour.",
@@ -125,7 +122,7 @@ def _app_card(app) -> dict[str, Any]:
         "id": app.id,
         "name": app.name,
         "summary": app.summary,
-        # Cleaned with nh3 by apps.app.list (spec §8.4): safe to paint inline.
+        # Cleaned with nh3 by apps.app.list: safe to paint inline.
         "icon_svg": mark_safe(app.icon_svg),
         "category": app.category or "",
         "category_label": category.label if category else "",
@@ -139,7 +136,7 @@ def _app_card(app) -> dict[str, Any]:
 
 
 def contact_trial_note(days: pricing.TrialDays) -> str:
-    """The contact section's line on the trial, from the plans on sale (saas#2414)."""
+    """The contact section's line on the trial, from the plans on sale."""
     shortest, longest = days
     if not longest:
         return ""
@@ -247,7 +244,7 @@ def contact_submit(request: HttpRequest) -> HttpResponse:
 
     Bot protection: the form is limited per address (``CONTACT_FORM_RATELIMIT``), and a complete message is
     mailed only when reCAPTCHA Enterprise says a person sent it (``recaptcha_token``, action ``contact``;
-    ``live.recaptcha``; Ioan, 2026-10-22, over ADR-0154, which had retired it). A throttled, invalid or
+    ``live.recaptcha``). A throttled, invalid or
     unverified message is never mailed; a throttled or incomplete one never asks Google.
     """
     fields = {name: request.POST.get(name, "").strip() for name in CONTACT_FIELDS}

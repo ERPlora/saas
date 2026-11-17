@@ -30,8 +30,8 @@ def session_me(ctx: OperationContext, data: SessionMeIn) -> dict[str, Any]:
     """The account in front of the SPA, in the shape the shell reads.
 
     No permission: an anonymous visitor gets ``user: None`` and no menu, which tells the shell to
-    send it to the login. A signed-in account gets the panel's menu (``base/navigation.py``, round
-    17), translated; ``apps`` stays empty: the SaaS has no modules (PLAN §20.3.5). With it, what the
+    send it to the login. A signed-in account gets the panel's menu (``base/navigation.py``),
+    translated; ``apps`` stays empty: the SaaS has no modules. With it, what the
     shell paints with before any page asks: its theme mode (Cuenta → Preferencias, ``system`` until it
     chooses) and its own language (``User.language``, which wins over the cookie: ``base.language``).
     """
@@ -68,7 +68,7 @@ def _user(actor: Any) -> dict[str, str] | None:
     }
 
 
-# --- The maintenance mode (ACCOUNTS-G82; base.maintenance) ----------------------------------------------------------
+# --- The maintenance mode (base.maintenance) ------------------------------------------------------------------------
 
 #: Seconds a task keeps the switch before reading it again; a change in the admin drops it from the shared cache at
 #: once (``SiteSettings.save``), so this only bounds a cache that missed that.
@@ -93,9 +93,8 @@ def maintenance_state() -> dict[str, str] | None:
     """Whether erplora.com is in maintenance: ``None`` when it is not, its messages by language when it is.
 
     Read through the default cache (Valkey in AWS, shared by every task) and kept ``MAINTENANCE_KEEP_SECONDS``. When the
-    switch cannot be read, whatever the reason (the database down, or a failure nobody foresaw), the site stays open,
-    as the old SaaS did, and the log says why: a switch nobody can read must never close erplora.com, nor answer 500
-    on every page.
+    switch cannot be read, whatever the reason (the database down, or a failure nobody foresaw), the site stays open
+    and the log says why: a switch nobody can read must never close erplora.com, nor answer 500 on every page.
     """
     from django.core.cache import cache
 
@@ -113,7 +112,7 @@ def maintenance_state() -> dict[str, str] | None:
     return state
 
 
-# --- The panel's assistant (PLAN-SAAS §23) --------------------------------------------------------------------------
+# --- The panel's assistant ------------------------------------------------------------------------------------------
 
 
 @operation(

@@ -1,16 +1,14 @@
 """Second factor of saas-next: TOTP and recovery codes (``allauth.mfa``), behind ``ACCOUNTS_MFA_ENABLED``.
 
 ``allauth.mfa`` is always installed (its table always exists); the flag decides whether it is in use.
-Off (the phase-1 default): no login asks for a code, not even for an account with a TOTP row, and
+Off (the default): no login asks for a code, not even for an account with a TOTP row, and
 the 2FA endpoints answer 404 (JSON under ``/_allauth/``, which is how the Vue pages know). On: an
 account with an authenticator app is asked for the app's code after the password and the code mailed
 at every sign-in (or after Google), the jump to a hub needs that second factor in the session if the
 account has one and the staff's jump to the Hub admin (``hub-admin``) always needs it. Either way
 ``/admin/login/`` hands over to allauth's login (the launcher's).
 
-Cases ported from ERPlora/saas ``origin/develop``: ``test_mfa_login_flow.py``,
-``test_wrong_totp_code.py`` (a «wrong» code is chosen so it cannot be the live one, saas#2271),
-``test_admin_requires_second_factor.py`` and ``test_mfa_settings.py``.
+A «wrong» code is chosen so it cannot be the live one.
 """
 
 import asyncio
@@ -38,8 +36,9 @@ from django.http import HttpResponse
 from django.test import Client, RequestFactory, override_settings
 from django.utils import timezone
 
-from accounts import mfa, services
+from accounts import mfa
 from accounts.models import AuthExchangeCode
+from accounts.services import hub_jump, platform_staff
 from accounts.tests.conftest import enter, prove_address, take_mailed_code
 
 pytestmark = pytest.mark.django_db
@@ -92,7 +91,7 @@ def _live_code(secret: str) -> str:
 def _wrong_code(secret: str) -> str:
     """A six-digit code the authenticator rejects now and for the next periods the test may still run in.
 
-    Never a fixed literal: ``"000000"`` is the live code once every million periods (saas#2271).
+    Never a fixed literal: ``"000000"`` is the live code once every million periods.
     """
     live = {_code_at(secret, _counter() + n) for n in range(-3, 4)}
     return next(code for code in (str(digit) * 6 for digit in range(10)) if code not in live)
@@ -212,8 +211,8 @@ class TestSettings:
         assert "accounts.mfa.MFAFlagMiddleware" in django_settings.MIDDLEWARE
 
     def test_a_browser_is_trusted_for_14_days_and_only_by_erplora_com(self, settings):
-        """ACCOUNTS-F05: «Trust this browser» (old SAAS_AUTH-F06), allauth's own: a signed cookie, never sent to
-        the businesses' subdomains even if the session cookie one day is (ERPlora/saas test_shared_ip_budget)."""
+        """ACCOUNTS-F05: «Trust this browser», allauth's own: a signed cookie, never sent to the businesses'
+        subdomains even if the session cookie one day is."""
         settings.SESSION_COOKIE_DOMAIN = ".erplora.com"
 
         assert mfa_settings.TRUST_ENABLED is True
@@ -224,8 +223,6 @@ class TestSettings:
         assert account_settings.LOGIN_BY_CODE_TRUST_ENABLED is False
 
     def test_the_authenticator_table_exists(self):
-        from allauth.mfa.models import Authenticator
-
         assert Authenticator.objects.count() == 0
 
 
@@ -409,9 +406,8 @@ def _sign_out(client):
 
 
 class TestTrustThisBrowser:
-    """ACCOUNTS-F05 (old SAAS_AUTH-F06; ERPlora/saas ``test_mfa_login_flow.py`` and ``test_mfa_settings.py``): after
-    the app's code the login asks whether to trust this browser for 14 days; there, the next sign-ins skip the app's
-    code (never the mailed one) until the password or the authenticator app changes."""
+    """ACCOUNTS-F05: after the app's code the login asks whether to trust this browser for 14 days; there, the next
+    sign-ins skip the app's code (never the mailed one) until the password or the authenticator app changes."""
 
     def test_after_the_apps_code_the_login_waits_for_the_answer(self, mfa_on, browser, ana, secret, password):
         _sign_in(browser, ana.email, password)
@@ -531,8 +527,7 @@ class TestTrustWithTheFlagOff:
 
 
 class TestLoginWithTheFlagOn:
-    """Ported from ERPlora/saas ``test_mfa_login_flow.py``: the app's code comes after the password and the
-    code mailed to the account, in allauth's order of stages."""
+    """The app's code comes after the password and the code mailed to the account, in allauth's order of stages."""
 
     def test_an_account_with_an_authenticator_app_is_asked_for_its_code_and_not_signed_in_yet(
         self, mfa_on, browser, ana, secret, password
@@ -597,7 +592,7 @@ class TestLoginWithTheFlagOff:
     def test_an_account_with_an_authenticator_app_signs_in_without_the_apps_code(
         self, browser, ana, secret, password
     ):
-        # The phase-1 default: a TOTP row kept from a time the flag was on asks for nothing more than the
+        # The default: a TOTP row kept from a time the flag was on asks for nothing more than the
         # password and the mailed code.
         response = _first_factors(browser, "ana@example.com", password)
 
@@ -607,46 +602,46 @@ class TestLoginWithTheFlagOff:
 
 
 class TestIssueCode:
-    """``services.issue_code(…, second_factor=mfa.mfa_completed(request))``: only with the flag on."""
+    """``hub_jump.issue_code(…, second_factor=mfa.mfa_completed(request))``: only with the flag on."""
 
     def test_hub_admin_needs_the_second_factor(self, mfa_on, platform):
-        with pytest.raises(services.SecondFactorRequired):
-            services.issue_code(platform, "a", audience=AuthExchangeCode.HUB_ADMIN_AUDIENCE)
+        with pytest.raises(hub_jump.SecondFactorRequired):
+            hub_jump.issue_code(platform, "a", audience=AuthExchangeCode.HUB_ADMIN_AUDIENCE)
 
         assert not AuthExchangeCode.objects.exists()
 
     def test_hub_admin_with_the_second_factor_gets_its_code(self, mfa_on, platform):
         _activate_totp(platform)
 
-        services.issue_code(platform, "a", audience=AuthExchangeCode.HUB_ADMIN_AUDIENCE, second_factor=True)
+        hub_jump.issue_code(platform, "a", audience=AuthExchangeCode.HUB_ADMIN_AUDIENCE, second_factor=True)
 
         assert AuthExchangeCode.objects.get().audience == "hub-admin"
 
     def test_a_member_with_an_authenticator_app_needs_the_second_factor(self, mfa_on, member, secret):
-        with pytest.raises(services.SecondFactorRequired):
-            services.issue_code(member, "a")
+        with pytest.raises(hub_jump.SecondFactorRequired):
+            hub_jump.issue_code(member, "a")
 
         assert not AuthExchangeCode.objects.exists()
-        services.issue_code(member, "a", second_factor=True)
+        hub_jump.issue_code(member, "a", second_factor=True)
         assert AuthExchangeCode.objects.count() == 1
 
     def test_a_member_without_an_authenticator_app_jumps_as_today(self, mfa_on, member):
-        services.issue_code(member, "a")
+        hub_jump.issue_code(member, "a")
 
         assert AuthExchangeCode.objects.count() == 1
 
     def test_a_stranger_is_refused_as_a_stranger_before_any_second_factor(self, mfa_on, ana, secret):
-        with pytest.raises(services.HubAccessDenied) as refused:
-            services.issue_code(ana, "a")
+        with pytest.raises(hub_jump.HubAccessDenied) as refused:
+            hub_jump.issue_code(ana, "a")
 
-        assert not isinstance(refused.value, services.SecondFactorRequired)
+        assert not isinstance(refused.value, hub_jump.SecondFactorRequired)
 
     def test_a_missing_second_factor_is_an_access_denied_for_callers_that_do_not_know_it(self):
-        assert issubclass(services.SecondFactorRequired, services.HubAccessDenied)
+        assert issubclass(hub_jump.SecondFactorRequired, hub_jump.HubAccessDenied)
 
     def test_with_the_flag_off_nothing_changes(self, platform, member, secret):
-        services.issue_code(platform, "a", audience=AuthExchangeCode.HUB_ADMIN_AUDIENCE)
-        services.issue_code(member, "a")
+        hub_jump.issue_code(platform, "a", audience=AuthExchangeCode.HUB_ADMIN_AUDIENCE)
+        hub_jump.issue_code(member, "a")
 
         assert AuthExchangeCode.objects.count() == 2
 
@@ -790,7 +785,7 @@ class TestOpenInTheHubAdminWithTheFlagOn:
 
 
 class TestAdminLoginWithTheFlagOn:
-    """Ported from ERPlora/saas ``_admin_login``: Django's admin login skips allauth's stages (no code),
+    """Django's admin login skips allauth's stages (no code),
     so every way into the admin is the SaaS's sign-in (the launcher's, ``/launch``, allauth.headless)."""
 
     def test_it_hands_over_to_the_sign_in_keeping_where_the_staff_were_going(self, mfa_on, client):
@@ -855,11 +850,9 @@ class TestAdminLoginWithTheFlagOn:
 
 
 class TestTheAdminAsksTheStaffForTheApp:
-    """ACCOUNTS-F20 (old SAAS_AUTH-F08; ERPlora/saas ``test_admin_requires_second_factor.py``; PLAN-SAAS «2FA obligatorio
-    en el admin»: SE PORTA): with the second factor on, the staff enter the admin only with an authenticator app (the
-    sign-in then asks its code, or a browser they trust skips it); without one, the admin takes them to set it up,
-    keeping where they were going, never a 403. The account is what is checked, as in today's SaaS: the code was asked
-    at the sign-in."""
+    """With the second factor on, the staff enter the admin only with an authenticator app (the sign-in then asks its
+    code, or a browser they trust skips it); without one, the admin takes them to set it up, keeping where they were
+    going, never a 403. The account is what is checked: the code was asked at the sign-in."""
 
     def test_staff_without_the_app_are_taken_to_set_it_up_keeping_where_they_were_going(self, mfa_on, client, platform):
         client.force_login(platform)
@@ -871,7 +864,7 @@ class TestTheAdminAsksTheStaffForTheApp:
         assert (response.status_code, response.url) == (302, "/2fa?next=/admin/accounts/user/")
 
     def test_support_without_the_app_too(self, mfa_on, client, password):
-        support, _ = services.create_platform_user("help@erplora.com", "support", password)
+        support, _ = platform_staff.create_platform_user("help@erplora.com", "support", password)
         client.force_login(support)
 
         assert client.get("/admin/login/", {"next": "/admin/"}).url == "/2fa?next=/admin/"
@@ -946,7 +939,7 @@ def _until(response):
 
 
 class TestTheTrustOfThisBrowser:
-    """ACCOUNTS-F17 (old ``fi:saas/orgs-users#dispositivos-de-confianza-listar``: the current one marked): Security →
+    """ACCOUNTS-F17 (the current browser marked): Security →
     Two-factor authentication says whether this browser is trusted, and until when. erplora.com keeps no list of the
     trusted browsers (the trust lives in each one, signed, as allauth gives it), so only this one can be told."""
 
@@ -996,8 +989,7 @@ class TestTheTrustOfThisBrowser:
 
 
 class TestStopTrustingEveryBrowser:
-    """ACCOUNTS-F17 (old ``fi:saas/auth-services#revocar-dispositivo-de-confianza``; ERPlora/saas
-    ``_invalidate_mfa_trust``): «Stop trusting all browsers» ends the trust of every browser at once, as Google's and
+    """ACCOUNTS-F17: «Stop trusting all browsers» ends the trust of every browser at once, as Google's and
     Microsoft's «Revoke all trusted devices». allauth keeps no list to cut from: the trust is bound to the account's
     password and authenticators, so the authenticators get new ids with the same secret and codes (nobody sets the app
     up again, nor loses the codes written down)."""

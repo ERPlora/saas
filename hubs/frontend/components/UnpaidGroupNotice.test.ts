@@ -1,4 +1,4 @@
-// Several businesses with an unpaid invoice (audit 2026-10-14, R-15; mockups `businesses.html`): one notice,
+// Several businesses with an unpaid invoice: one notice,
 // not one per business — the suspended first, each line its own sentence (the day, never the minute) and,
 // on the web, its own way to pay (`UnpaidActions`); inside the apps, where to pay, without a button.
 // clock: data only — no code under test compares these dates with now.
@@ -64,7 +64,7 @@ describe('UnpaidGroupNotice', () => {
     );
   });
 
-  it('the most urgent first: the suspended, then the one suspended soonest, as Billing orders them (audit 2 S-07)', async () => {
+  it('the most urgent first: the suspended, then the one suspended soonest, as Billing orders them', async () => {
     const { wrapper } = await mountHubs(UnpaidGroupNotice, {
       props: {
         businesses: [
@@ -78,7 +78,7 @@ describe('UnpaidGroupNotice', () => {
     expect(names).toEqual(['Café Central', 'Bar La Plaza', 'Bar Norte']);
   });
 
-  it('only the most urgent business’s way out is filled; the others are outlined (audit 2 S-06)', async () => {
+  it('only the most urgent business’s way out is filled; the others are outlined', async () => {
     const { wrapper } = await mountHubs(UnpaidGroupNotice, {
       props: {
         businesses: [
@@ -92,7 +92,7 @@ describe('UnpaidGroupNotice', () => {
     expect(ionProps(lines[1].get('[data-testid="unpaid-pay"]'), 'fill')).toEqual({ fill: 'outline' });
   });
 
-  it('says how much each business owes and in all, from the unpaid invoices the account sees (audit 2 S-08)', async () => {
+  it('says how much each business owes and in all, from the unpaid invoices the account sees', async () => {
     const m = await mountHubs(UnpaidGroupNotice, {
       locale: 'es',
       props: {

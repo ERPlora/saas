@@ -1,4 +1,4 @@
-"""FIX-SAAS-WHATSAPP-E2E-SEED-TEMPLATES-AND-USAGE · erplora.com's side of WhatsApp's cross e2e with a real Hub
+"""erplora.com's side of WhatsApp's cross e2e with a real Hub
 (``tests/e2e/panel/whatsapp_hub_seed.py``, the one the Hub's ``tests/e2e/whatsapp-helpers.ts`` runs).
 
 Besides ``a``'s number, the seed keeps the templates erplora.com would hold after reading Meta's list (approved, in
@@ -19,7 +19,7 @@ import pytest
 import respx
 from django.utils import timezone
 
-from hubs import queries as hubs_queries
+from hubs.queries import plan_catalog
 from hubs.models import Hub
 from hubs.tests.conftest import create_business
 from whatsapp import queries
@@ -101,7 +101,7 @@ def test_the_snapshot_the_hub_takes_carries_the_templates_and_the_months_usage(r
     assert pushed["status"] == "connected"
     assert pushed["monthly_usage"] == 7
     assert pushed["usage_month"] == _month()
-    plan = hubs_queries.effective_plan(ids["a"], timezone.now())
+    plan = plan_catalog.effective_plan(ids["a"], timezone.now())
     assert pushed["monthly_limit"] == plan.whatsapp_messages_per_month
     seeded = {(row.name, row.language, row.status) for row in _templates(ids["a"])}
     assert {(t["name"], t["language"], t["status"]) for t in pushed["templates"]} == seeded
@@ -110,7 +110,7 @@ def test_the_snapshot_the_hub_takes_carries_the_templates_and_the_months_usage(r
 
 def test_used_at_the_plans_allowance_has_erplora_refuse_a_send_without_calling_meta(run, ids, client):
     run()
-    limit = hubs_queries.effective_plan(ids["a"], timezone.now()).whatsapp_messages_per_month
+    limit = plan_catalog.effective_plan(ids["a"], timezone.now()).whatsapp_messages_per_month
     run("--used", str(limit))
 
     with respx.mock:
@@ -137,10 +137,10 @@ def test_by_default_the_usage_is_zero_and_a_send_still_leaves(run, ids, client):
 def test_behind_sets_the_usage_without_telling_the_hub_until_a_send_is_refused(
     run, ids, client, hub_double, django_capture_on_commit_callbacks
 ):
-    """FIX-SAAS-WHATSAPP-CAP-REFUSAL-DOES-NOT-PUSH-USAGE (WHATSAPP-F05): ``--behind`` leaves the Hub with the figure it
+    """WHATSAPP-F05: ``--behind`` leaves the Hub with the figure it
     had (no newer snapshot), as after a send whose record never ran; the send erplora.com refuses at the cap tells it."""
     run()
-    limit = hubs_queries.effective_plan(ids["a"], timezone.now()).whatsapp_messages_per_month
+    limit = plan_catalog.effective_plan(ids["a"], timezone.now()).whatsapp_messages_per_month
     pushes = len(hub_double.calls_to("PUT", f"/internal/hubs/{ids['a']}/state"))
 
     printed = run("--used", str(limit), "--behind")

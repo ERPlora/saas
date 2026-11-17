@@ -1,4 +1,4 @@
-"""``python manage.py whatsapp_purge [--days N]``: once a day in ``saas-cron`` (WHATSAPP-G14).
+"""``python manage.py whatsapp_purge [--days N]``: once a day in ``saas-cron``.
 
 Forgets what erplora.com no longer keeps of the businesses' WhatsApp (``whatsapp.retention.purge``): what the Hub
 took more than N days ago, the delivery statuses older than that, what the Hub never took in that time and the keys

@@ -1,6 +1,6 @@
 """billing's live queries (``billing/live.py``): the Billing section re-runs after the COMMIT of what changes it.
 
-The scope is the account (PLAN-SAAS §6): the webhook records an invoice in its payer's channel (or its
+The scope is the account: the webhook records an invoice in its payer's channel (or its
 business owner's), so their Invoices list re-runs; Subscriptions re-runs with every change of a plan
 (``hubs.subscription.changed``, recorded by ``hubs.subscription.apply``) and with an invoice not collected
 (its «View the invoice»). The payment method is not live: it asks Stripe.
@@ -32,6 +32,6 @@ def test_the_payment_method_is_not_live():
 
 
 def test_an_invoice_page_reruns_with_every_invoice_event():
-    """BILLING-G05: the page of one invoice is live, so «Issuing» turns into its number and QR on screen."""
+    """The page of one invoice is live, so «Issuing» turns into its number and QR on screen."""
     for name in events.INVOICES:
         assert "billing.invoice.get" in live_registry.affected([name]), name

@@ -1,4 +1,4 @@
-"""FIX-SAAS-WHATSAPP-GATEWAY-DOORS · ``gateway.deliver``: what waits reaches the Hub's doors 1 and 2, and how each
+"""``gateway.deliver``: what waits reaches the Hub's doors 1 and 2, and how each
 answer of the Hub is read (contract: 200 taken; 422 the body does not hold, never retried; 404 ``app_inactive``, a
 404 of a Hub without the door, 5xx or no answer: kept and retried with a growing wait)."""
 
@@ -64,7 +64,7 @@ def test_no_hub_at_all_is_retried(number, offline_hub):
 
 
 def test_unreadable_trusted_certificates_keep_the_delivery_naming_the_file(number, hub_double, unreadable_ca):
-    """FIX-SAAS-WHATSAPP-HTTP-CALLS-CRASH-WHEN-SSL-CERT-FILE-MISSING · WHATSAPP-F07: the server that cannot load its
+    """WHATSAPP-F07: the server that cannot load its
     trusted certificates reaches no Hub; the run does not crash, and what Meta reported stays parked with the reason
     in view (the setting and its file), so it reaches the Hub once the server is fixed."""
     ingest(messages(text("wamid.1")))
@@ -114,7 +114,7 @@ def read(wamid="wamid.echo"):
 
 
 def test_the_status_of_the_owners_reply_from_the_phone_reaches_the_hub_without_a_key(number, hub_double):
-    """The Hub shows the owner's replies from the phone in the conversation («Sent», hub#127) and takes their status
+    """The Hub shows the owner's replies from the phone in the conversation («Sent») and takes their status
     without a key of its own (it never sent them): once erplora.com handed the echo over, its «read» follows."""
     hub_double.answer("POST", r"^/internal/whatsapp/inbound$", 200, {"created": True})
     hub_double.answer("POST", r"^/internal/whatsapp/status$", 200, {"updated": True, "status": "read"})

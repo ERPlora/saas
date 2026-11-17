@@ -8,19 +8,12 @@
 // Accounts of this spec: `e2e-signup-flash-…@example.com`, removed before and after.
 import { type Page } from '@playwright/test';
 
-import {
-  type Credentials,
-  expect,
-  provenAccount,
-  removeAccountsOf,
-  settled,
-  shot,
-  sidewaysScroll,
-  submitSignInForm,
-  test,
-  watchPageErrors,
-} from './fixtures';
-import { LANGUAGES, SIZES, t } from './language-review';
+import { type Credentials, provenAccount, removeAccountsOf } from './accounts';
+import { expect, test } from './fixtures';
+import { LANGUAGES, t } from './language-review';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize, settled, type Viewport, VIEWPORTS } from './screen';
+import { submitSignInForm } from './session';
 
 const PREFIX = 'e2e-signup-flash-';
 const PASSWORD = 'Signup-e2e-2026!';
@@ -59,41 +52,42 @@ async function recordForm(page: Page): Promise<void> {
   });
 }
 
+const walk = captureAtEverySize('SAAS-291');
+
 /**
- * At each size, from a fresh visit to `start`: submits `credentials(size)` and waits for the code page, on screen and
- * still. Returns, per size, what the form showed from the click on: the forms (`<tab> · <button>`, each once), the most
- * «Forgot your password?» links and the fewest notices at once. Every size leaves a capture of the code page.
+ * At each size (`captureAtEverySize`), from a fresh visit to `start`: submits `credentials(size)` and waits for the code
+ * page, on screen and still. Returns, per size, what the form showed from the click on: the forms (`<tab> · <button>`,
+ * each once), the most «Forgot your password?» links and the fewest notices at once. Every size leaves a capture of the
+ * code page, `SAAS-291-<name>-<size>`.
  */
 async function leaveForTheCode(page: Page, name: string, start: string, credentials: (size: string) => Credentials) {
   const seen: Record<string, { forms: string[]; forgot: number; notices: number }> = {};
-  for (const size of SIZES) {
+  const ready = async (size: Viewport) => {
     await page.context().clearCookies();
-    await page.setViewportSize({ width: size.width, height: size.height });
     await page.goto(start);
     await expect(page.getByTestId('login-form')).toBeVisible();
     await settled(page);
     await recordForm(page);
 
-    await submitSignInForm(page, credentials(size.name));
+    await submitSignInForm(page, credentials(String(size.width)));
     await expect(page).toHaveURL(/\/verify-email$/);
     await expect(page.getByTestId('verify-email-form')).toBeVisible();
-    await settled(page);
-
+  };
+  const checks = async (size: Viewport) => {
     const states = await page.evaluate(() => (window as unknown as { formStates: FormState[] }).formStates);
-    expect(states.some((state) => state.code), `the recorder saw the code page arrive at ${size.name}`).toBe(true);
-    seen[size.name] = {
+    expect(states.some((state) => state.code), `the recorder saw the code page arrive at ${size.width}`).toBe(true);
+    seen[size.width] = {
       forms: [...new Set(states.flatMap((state) => state.forms))],
       forgot: Math.max(...states.map((state) => state.forgot)),
       notices: Math.min(...states.map((state) => state.notices)),
     };
-    expect(await sidewaysScroll(page), `the code page scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`SAAS-291-${name}-${size.name}`), fullPage: true });
-  }
+  };
+  await walk(page, name, ready, { checks });
   return seen;
 }
 
-/** The same `value` at every size of the migration. */
-const atEverySize = <T>(value: T): Record<string, T> => Object.fromEntries(SIZES.map((size) => [size.name, value]));
+/** The same `value` at every size of the panel. */
+const atEverySize = <T>(value: T): Record<string, T> => Object.fromEntries(VIEWPORTS.map((size) => [size.width, value]));
 
 test.beforeAll(() => removeAccountsOf(PREFIX));
 test.afterAll(() => removeAccountsOf(PREFIX));

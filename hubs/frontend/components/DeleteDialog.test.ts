@@ -1,4 +1,4 @@
-// «Delete business» (PLAN-SAAS §3.4, round 17 §2.11; mockups `business.html` «settings-delete»): a
+// «Delete business»: a
 // ConfirmDialog that asks to type the business's name, says what follows (stops at once, 90 days to
 // recover it, the plan back to Free, an email with the data), runs `hubs.business.delete` with the
 // name typed and says until when it can be recovered.
@@ -54,7 +54,7 @@ describe('DeleteDialog', () => {
     expect(dialog.getAttribute('aria-label')).toBe('Delete Panadería López');
     expect(dialog.textContent).toContain('It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good.');
     expect(dialog.textContent).toContain('Its plan is cancelled now: if you recover it, it comes back on Free.');
-    // No download link yet: the export of a business's data comes with its own database (PLAN-DB «Exports», phase 2).
+    // No download link in the dialog: the deletion mail leads to the copy of the business's data.
     expect(dialog.textContent).toContain('We send you an email with the date until which you can recover it.');
     expect(dialog.textContent).not.toContain('download');
     expect(s.q('delete-dialog-submit').color).toBe('danger');

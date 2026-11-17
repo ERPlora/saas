@@ -1,51 +1,33 @@
-// The flows of «the people of a business» (hubs/WORKBOOK.md, MIGRATION-TASK APP-HUBS-3) on their screens, at the three
-// sizes of the migration (390×844, 834×1112, 1440×900). Each test names its flow by its registry key; in
-// hubs/WORKBOOK.md: G78=F24 (invite), G79=F25 (accept), G80=F26 (change the role), G81 and G64=F27 (remove, and the
-// end of their sessions in the Hub), G82=F28 (hand the business over), G83=F29 (the people of a business), G03=F30
-// (the accesses in the admin).
+// The flows of «the people of a business» (hubs/WORKBOOK.md) on their screens, at the three
+// sizes (390×844, 834×1112, 1440×900). Each test names its flow of hubs/WORKBOOK.md in its title: F24 (invite), F25
+// (accept), F26 (change the role), F27 (remove, and the end of their sessions in the Hub), F28 (hand the business
+// over), F29 (the people of a business), F30 (the accesses in the admin).
 //
 // The spec plays the Hub (`startHubDouble`, as panel/members.spec.ts): it sees the snapshot of each change and the
 // end of a person's sessions in the business; the jump into a business is answered here (no Hub runs). Stripe does not
 // run either (no keys in the e2e stack): what calls it runs in the server's own code with Stripe at its boundary
 // (`withStripe`, the double of the Python tests), and the page plays Stripe.js and the one call that opens a payment
-// (`playStripe`), as panel/store.spec.ts. Each test has
+// (`playStripe` of stripe.ts). Each test has
 // its own accounts (`e2e-hubs3-…@example.com`, their address proven) and its own business, created through the API as
 // the panel creates it; the people join it through the operations (invite, then accept), never written by hand.
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { type Browser, type Page } from '@playwright/test';
 
 import { horizontalOverflow } from '../horizontal-overflow';
-import {
-  apiPost,
-  djangoPrint,
-  expect,
-  freezeFrontend,
-  type HubCall,
-  type HubDouble,
-  settled,
-  shot,
-  sidewaysScroll,
-  signIn,
-  signInAs,
-  startHubDouble,
-  test,
-  waitForMail,
-  watchPageErrors,
-} from './fixtures';
-import { PANEL_MAIL_DIR, PANEL_URL } from './project';
+import { createAccountWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, freezeFrontend, test } from './fixtures';
+import { type HubCall, type HubDouble, startHubDouble } from './hub';
+import { MAIL_LOGO_URL, mailPartsOf, onlyTheMailLogo, waitForMail } from './mail';
+import { watchPageErrors } from './page-events';
+import { PANEL_URL } from './project';
+import { captureAtEverySize, settled, shot, VIEWPORTS } from './screen';
+import { apiPost, signIn, signInAs } from './session';
+import { payInStripe, playStripe } from './stripe';
+
+const atEverySize = captureAtEverySize('APP-HUBS-3');
 
 const PREFIX = 'e2e-hubs3-';
 const PASSWORD = 'Masa-madre-y-centeno-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
-/** The logo of the branded mails and the file it is (as panel/accounts-mails.spec.ts): nothing else is fetched. */
-const LOGO_URL = 'https://erplora.com/static/public/img/logo.png';
-const LOGO_FILE = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'public', 'static', 'public', 'img', 'logo.png');
 /** The panel's origin as a pattern: the mails link to the server that sent them, the run's (stack.ts). */
 const PANEL = PANEL_URL.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 
@@ -63,17 +45,10 @@ interface MemberRow {
   actions: string[];
 }
 
-/** A fresh account of this spec, its address proven, called `first last`. */
-function account(who: string, first: string, last: string): Account {
+/** A fresh account of this spec, its address proven, called `first last`, in English (written by the warm Django). */
+async function account(who: string, first: string, last: string): Promise<Account> {
   const email = `${PREFIX}${who}-${Date.now()}@example.com`;
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", language="en", first_name="${first}", last_name="${last}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
+  await createAccountWarm(email, PASSWORD, { firstName: first, lastName: last, language: 'en' });
   return { email, name: `${first} ${last}` };
 }
 
@@ -87,7 +62,7 @@ async function businessOf(page: Page, owner: Account, name: string): Promise<str
   const created = await apiPost(page.request, '/api/hubs/businesses', { name, country: 'ES' });
   expect(created.status(), 'POST /api/hubs/businesses').toBe(201);
   const { id } = (await created.json()) as { id: string };
-  djangoPrint(
+  await djangoPrintWarm(
     [
       'from django.utils import timezone',
       'from hubs.models import Hub',
@@ -130,51 +105,17 @@ async function rowOf(page: Page, id: string, email: string): Promise<MemberRow> 
   return row;
 }
 
-/** `ready` at each size: no sideways scroll and a capture `APP-HUBS-3-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-HUBS-3-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
-
 /**
  * The HTML part of the newest mail to `to` since `since` whose subject has `subject`, read from the panel's mail folder
  * as a mail client reads it (as panel/accounts-mails.spec.ts), painted at every size: text and HTML, the logo, every
- * line of the text, nothing fetched but the logo, no sideways scroll, and its capture `APP-HUBS-3-<key>-<size>`.
+ * line of the text, nothing fetched but the logo, no sideways scroll, and its capture.
  */
 async function paintMail(browser: Browser, key: string, to: string, since: number, subject: string, language: string): Promise<void> {
-  const read = [
-    'import email, json, pathlib',
-    'from email import policy',
-    `folder, to, since, subject = pathlib.Path(${JSON.stringify(PANEL_MAIL_DIR)}), ${JSON.stringify(to)}, ${since / 1000 - 0.05}, ${JSON.stringify(subject)}`,
-    'found = None',
-    'for path in sorted((p for p in folder.iterdir() if p.is_file() and p.stat().st_mtime >= since), key=lambda p: p.stat().st_mtime):',
-    '    for raw in path.read_text().split("\\n" + "-" * 79 + "\\n")[:-1]:',
-    '        message = email.message_from_string(raw, policy=policy.default)',
-    '        if to in str(message["To"]) and subject.lower() in str(message["Subject"]).lower():',
-    '            found = message',
-    'assert found is not None, f"no mail to {to} with {subject!r} in {folder}"',
-    'print(json.dumps({"parts": [part.get_content_type() for part in found.iter_parts()],',
-    '    "html": found.get_body(preferencelist=("html",)).get_content(), "text": found.get_body(preferencelist=("plain",)).get_content()}))',
-  ].join('\n');
-  const mail = JSON.parse(djangoPrint(read)) as { parts: string[]; html: string; text: string };
+  const mail = await mailPartsOf(to, since, subject);
   expect(mail.parts, `${key} is text and HTML`).toEqual(['text/plain', 'text/html']);
   const page = await browser.newPage();
-  const fetched: string[] = [];
-  await page.route('**/*', (route) => {
-    fetched.push(route.request().url());
-    return route.abort();
-  });
-  await page.route(LOGO_URL, (route) => {
-    fetched.push(route.request().url());
-    return route.fulfill({ path: LOGO_FILE, contentType: 'image/png' });
-  });
-  for (const size of SIZES) {
+  const fetched = await onlyTheMailLogo(page);
+  for (const size of VIEWPORTS) {
     await page.setViewportSize({ width: size.width, height: size.height });
     await page.setContent(mail.html, { waitUntil: 'load' });
     await settled(page);
@@ -183,12 +124,12 @@ async function paintMail(browser: Browser, key: string, to: string, since: numbe
     const shownText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
     for (const line of mail.text.split('\n')) {
       const words = line.replace(/\s+/g, ' ').trim();
-      if (words) expect(shownText, `${key} at ${size.name} shows «${words}»`).toContain(words);
+      if (words) expect(shownText, `${key} at ${size.width} shows «${words}»`).toContain(words);
     }
-    expect(await horizontalOverflow(page), `${key} scrolls sideways at ${size.name}`).toBeLessThanOrEqual(1);
-    await page.screenshot({ path: shot(`APP-HUBS-3-${key}-${size.name}`), fullPage: true });
+    expect(await horizontalOverflow(page), `${key} scrolls sideways at ${size.width}`).toBeLessThanOrEqual(1);
+    await page.screenshot({ path: shot(`APP-HUBS-3-${key}-${size.width}`), fullPage: true });
   }
-  expect([...new Set(fetched)], `${key} fetches only the logo`).toEqual([LOGO_URL]);
+  expect([...new Set(fetched)], `${key} fetches only the logo`).toEqual([MAIL_LOGO_URL]);
   await page.close();
 }
 
@@ -211,50 +152,26 @@ const revocations = (hub: HubDouble, id: string): HubCall[] =>
 
 /**
  * `code` run in the server's own code with Stripe at its boundary: `double` (billing/tests/stripe_double.py, as the Python
- * tests) answers what Stripe would; the operations of hubs and billing are the real ones, on this run's database.
+ * tests) answers what Stripe would; the operations of hubs and billing are the real ones, on this run's database. The
+ * warm Django runs it, and it outlives the snippet: Stripe's keys and client are put back as they were when it ends.
  */
-function withStripe(code: string[]): string {
-  return djangoPrint(
+async function withStripe(code: string[]): Promise<string> {
+  return djangoPrintWarm(
     [
-      'from django.conf import settings',
+      'from unittest import mock',
+      'from django.test import override_settings',
       'from billing import stripe_service',
       'from billing.tests.stripe_double import StripeDouble, item, subscription',
-      'settings.STRIPE_SECRET_KEY = "rk_test_double"',
-      'settings.STRIPE_PUBLISHABLE_KEY = "pk_test_double"',
       'double = StripeDouble()',
-      'stripe_service.client = lambda: double',
-      ...code,
+      'with override_settings(STRIPE_SECRET_KEY="rk_test_double", STRIPE_PUBLISHABLE_KEY="pk_test_double"), mock.patch.object(stripe_service, "client", lambda: double):',
+      ...code.map((line) => `    ${line}`),
     ].join('\n'),
   );
 }
 
-/** Stripe.js as the page would get it from js.stripe.com (as panel/store.spec.ts): a placeholder, and `onComplete` kept. */
-async function playStripe(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    type Options = { fetchClientSecret: () => Promise<string>; onComplete?: () => void };
-    const w = window as unknown as Record<string, unknown> & { __stripe: { secrets: string[]; complete?: () => void } };
-    w.__stripe = { secrets: [] };
-    w.Stripe = () => ({
-      async createEmbeddedCheckoutPage(options: Options) {
-        w.__stripe.secrets.push(await options.fetchClientSecret());
-        w.__stripe.complete = options.onComplete;
-        return {
-          mount(target: Element) {
-            const form = document.createElement('div');
-            form.setAttribute('data-testid', 'stripe-double');
-            form.textContent = 'Stripe Embedded Checkout (test double)';
-            form.style.cssText = 'padding:48px 16px;border:1px dashed #999;border-radius:8px;text-align:center';
-            target.append(form);
-          },
-          destroy() {},
-        };
-      },
-    });
-  });
-}
-
-function removeOwnRows(): void {
-  djangoPrint(
+/** What this spec leaves behind, written by the warm Django (its first call, in `beforeAll`, starts it). */
+async function removeOwnRows(): Promise<void> {
+  await djangoPrintWarm(
     [
       'from django.contrib.auth import get_user_model',
       'from hubs.models import Hub, SessionRevocation',
@@ -269,17 +186,17 @@ function removeOwnRows(): void {
 let hub: HubDouble;
 
 test.beforeAll(async () => {
-  removeOwnRows();
+  await removeOwnRows();
   hub = await startHubDouble();
 });
 test.afterAll(async () => {
   await hub?.close();
-  removeOwnRows();
+  await removeOwnRows();
 });
 
-test('HUBS-G78: an address the schema refuses says why on its field, and on top to look at it until it is corrected, in the language of the account', async ({ page }) => {
+test('HUBS-F24: an address the schema refuses says why on its field, and on top to look at it until it is corrected, in the language of the account', async ({ page }) => {
   const errors = watchPageErrors(page);
-  const id = await businessOf(page, account('invite-refused', 'Olga', 'Ruiz'), 'Bar Refused');
+  const id = await businessOf(page, await account('invite-refused', 'Olga', 'Ruiz'), 'Bar Refused');
   for (const { language, notice, reason } of [
     { language: 'en', notice: 'Check the highlighted details.', reason: 'Enter a valid email address.' },
     { language: 'es', notice: 'Revisa los datos marcados.', reason: 'Introduce un correo válido.' },
@@ -299,9 +216,9 @@ test('HUBS-G78: an address the schema refuses says why on its field, and on top 
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G78: the owner invites a person from «Team»; the invitation waits with «Resend» and «Cancel invitation»', async ({ page, browser }) => {
+test('HUBS-F24: the owner invites a person from «Team»; the invitation waits with «Resend» and «Cancel invitation»', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
-  const owner = account('invite-owner', 'Olga', 'Ruiz');
+  const owner = await account('invite-owner', 'Olga', 'Ruiz');
   const id = await businessOf(page, owner, 'Bar Manolo');
   const invitee = `${PREFIX}invitee-${Date.now()}@example.com`;
   await page.goto(`/dashboard/businesses/${id}/members`);
@@ -340,10 +257,10 @@ test('HUBS-G78: the owner invites a person from «Team»; the invitation waits w
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G79: the invited person accepts in «You have been invited» and goes into the business', async ({ page, browser }) => {
+test('HUBS-F25: the invited person accepts in «You have been invited» and goes into the business', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
-  const owner = account('accept-owner', 'Olga', 'Ruiz');
-  const ana = account('accept-ana', 'Ana', 'Gil');
+  const owner = await account('accept-owner', 'Olga', 'Ruiz');
+  const ana = await account('accept-ana', 'Ana', 'Gil');
   const id = await businessOf(page, owner, 'Bar Manolo');
   const invited = await apiPost(page.request, '/api/hubs/members/invite', {
     hub_id: id,
@@ -378,10 +295,10 @@ test('HUBS-G79: the invited person accepts in «You have been invited» and goes
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G80: the owner changes the role of a person; the Hub hears it and ends their session there', async ({ page, browser }) => {
+test('HUBS-F26: the owner changes the role of a person; the Hub hears it and ends their session there', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
-  const owner = account('role-owner', 'Olga', 'Ruiz');
-  const ana = account('role-ana', 'Ana', 'Gil');
+  const owner = await account('role-owner', 'Olga', 'Ruiz');
+  const ana = await account('role-ana', 'Ana', 'Gil');
   const id = await businessOf(page, owner, 'Bar Manolo');
   await joins(page, browser, id, ana, 'hub_employee');
   const member = await rowOf(page, id, ana.email);
@@ -416,13 +333,13 @@ test('HUBS-G80: the owner changes the role of a person; the Hub hears it and end
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G81 + HUBS-G64: the owner removes a person; the Hub gets a snapshot without them and the end of their sessions', async ({
+test('HUBS-F27: the owner removes a person; the Hub gets a snapshot without them and the end of their sessions', async ({
   page,
   browser,
 }) => {
   const errors = watchPageErrors(page);
-  const owner = account('remove-owner', 'Olga', 'Ruiz');
-  const ana = account('remove-ana', 'Ana', 'Gil');
+  const owner = await account('remove-owner', 'Olga', 'Ruiz');
+  const ana = await account('remove-ana', 'Ana', 'Gil');
   const id = await businessOf(page, owner, 'Bar Manolo');
   await joins(page, browser, id, ana, 'hub_employee');
   const member = await rowOf(page, id, ana.email);
@@ -440,12 +357,12 @@ test('HUBS-G81 + HUBS-G64: the owner removes a person; the Hub gets a snapshot w
   await expect(page.getByText('Ana Gil was removed from the business')).toBeVisible();
   await expect(shown(page).getByTestId('members-row').filter({ hasText: ana.email })).toHaveCount(0);
 
-  // HUBS-G64: the next snapshot no longer lists them, and the Hub is asked to end their sessions in this business.
+  // The next snapshot no longer lists them, and the Hub is asked to end their sessions in this business.
   await expect.poll(() => snapshots(hub, id).length > 0 && roleInLastSnapshot(hub, id, ana.email) === undefined).toBe(true);
   await expect
     .poll(() => revocations(hub, id).slice(revokedBefore).map((call) => ({ body: call.body, signed: call.signed })))
     .toEqual([{ body: { user_id: member.user_id, hub_id: id }, signed: true }]);
-  const owed = djangoPrint(
+  const owed = await djangoPrintWarm(
     `from hubs.models import SessionRevocation;print(SessionRevocation.objects.filter(user_id="${member.user_id}", hub_id="${id}", delivered_at__isnull=True).count())`,
   );
   expect(owed).toBe('0');
@@ -463,10 +380,10 @@ test('HUBS-G81 + HUBS-G64: the owner removes a person; the Hub gets a snapshot w
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G82: the owner offers the business to a member, who accepts it on Businesses from the mail’s link', async ({ page, browser }) => {
+test('HUBS-F28: the owner offers the business to a member, who accepts it on Businesses from the mail’s link', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
-  const owner = account('hand-owner', 'Olga', 'Ruiz');
-  const carlos = account('hand-carlos', 'Carlos', 'Mora');
+  const owner = await account('hand-owner', 'Olga', 'Ruiz');
+  const carlos = await account('hand-carlos', 'Carlos', 'Mora');
   const id = await businessOf(page, owner, 'Bar Manolo');
   await joins(page, browser, id, carlos, 'hub_admin');
   const member = await rowOf(page, id, carlos.email);
@@ -512,40 +429,40 @@ test('HUBS-G82: the owner offers the business to a member, who accepts it on Bus
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G82 (F28): a business handed over on a paid plan: the new owner keeps it with their card, nothing charged today', async ({
+test('HUBS-F28: a business handed over on a paid plan: the new owner keeps it with their card, nothing charged today', async ({
   page,
   browser,
 }) => {
   const errors = watchPageErrors(page);
-  const owner = account('paid-owner', 'Olga', 'Ruiz');
-  const carlos = account('paid-carlos', 'Carlos', 'Mora');
+  const owner = await account('paid-owner', 'Olga', 'Ruiz');
+  const carlos = await account('paid-carlos', 'Carlos', 'Mora');
   const id = await businessOf(page, owner, 'Bar Manolo');
   await joins(page, browser, id, carlos, 'hub_admin');
   const member = await rowOf(page, id, carlos.email);
   const stamp = Date.now();
   const [oldSub, oldCustomer, newSub, newCustomer] = [`sub_e2e_old_${stamp}`, `cus_e2e_olga_${stamp}`, `sub_e2e_new_${stamp}`, `cus_e2e_carlos_${stamp}`];
   // Olga pays Starter with her card, as the webhook of her checkout leaves it.
-  djangoPrint(
+  await djangoPrintWarm(
     [
       'from datetime import timedelta',
       'from django.utils import timezone',
-      'from hubs import services',
       'from hubs.schemas import SubscriptionApplyIn',
+      'from hubs.services import hub_callbacks, subscription_sync',
       'now = timezone.now()',
-      `services.subscription_apply(services.system_ctx_for("${id}"), SubscriptionApplyIn(hub_id="${id}", plan="starter", billing_interval="month", status="active", stripe_customer_id="${oldCustomer}", stripe_subscription_id="${oldSub}", current_period_start=now - timedelta(days=10), current_period_end=now + timedelta(days=20), cancel_at_period_end=False))`,
+      `subscription_sync.subscription_apply(hub_callbacks.system_ctx_for("${id}"), SubscriptionApplyIn(hub_id="${id}", plan="starter", billing_interval="month", status="active", stripe_customer_id="${oldCustomer}", stripe_subscription_id="${oldSub}", current_period_start=now - timedelta(days=10), current_period_end=now + timedelta(days=20), cancel_at_period_end=False))`,
     ].join('\n'),
   );
   // She offers it to Carlos; he accepts (`hubs.ownership.accept`, which stops her renewal in Stripe).
   const offered = await apiPost(page.request, '/api/hubs/ownership/transfer', { hub_id: id, member_id: member.id });
   expect(offered.status(), await offered.text()).toBe(200);
   const transfer = ((await offered.json()) as { id: string }).id;
-  withStripe([
+  await withStripe([
     'from django.contrib.auth import get_user_model',
-    'from hubs import services',
     'from hubs.schemas import ByIdIn',
+    'from hubs.services import ownership',
     'from hubs.tests.conftest import ctx_for',
     `double.answer("subscriptions.update", subscription("${oldSub}", customer="${oldCustomer}", items=[item("si_e2e_plan", "price_e2e_starter_month")], cancel_at_period_end=True))`,
-    `services.ownership_accept(ctx_for(get_user_model().objects.get(email="${carlos.email}")), ByIdIn(id="${transfer}"))`,
+    `ownership.ownership_accept(ctx_for(get_user_model().objects.get(email="${carlos.email}")), ByIdIn(id="${transfer}"))`,
     'assert [call.params for call in double.calls_to("subscriptions.update")] == [{"cancel_at_period_end": True}], double.paths()',
   ]);
 
@@ -579,12 +496,12 @@ test('HUBS-G82 (F28): a business handed over on a paid plan: the new owner keeps
     await expect(modal.getByTestId('stripe-double')).toBeVisible();
   });
   expect(opened).toEqual([{ hub_id: id }]);
-  await theirs.evaluate(() => (window as unknown as { __stripe: { complete?: () => void } }).__stripe.complete?.());
+  await payInStripe(theirs);
   await expect(theirs.locator('ion-toast').filter({ hasText: /^Bar Manolo keeps Starter: your card pays it from / })).toBeVisible();
   await expect(theirs).toHaveURL(new RegExp(`/dashboard/businesses/${id}/summary`));
 
   // Stripe tells the checkout completed (the webhook): the business moves to his card, Olga's subscription ends now.
-  withStripe([
+  await withStripe([
     'from billing import services',
     `held = {"${newSub}": subscription("${newSub}", customer="${newCustomer}", items=[item("si_e2e_new", "price_e2e_starter_month")]), "${oldSub}": subscription("${oldSub}", customer="${oldCustomer}", items=[item("si_e2e_plan", "price_e2e_starter_month")], cancel_at_period_end=True)}`,
     'double.answer("subscriptions.retrieve", lambda call: held[call.args[0]])',
@@ -604,24 +521,24 @@ test('HUBS-G82 (F28): a business handed over on a paid plan: the new owner keeps
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G82 (F28), in Spanish: «Mantenerlo con mi tarjeta» and the secure payment that charges nothing today', async ({ browser, page }) => {
+test('HUBS-F28, in Spanish: «Mantenerlo con mi tarjeta» and the secure payment that charges nothing today', async ({ browser, page }) => {
   const errors = watchPageErrors(page);
-  const owner = account('paid-es-owner', 'Olga', 'Ruiz');
-  const lucia = account('paid-es-lucia', 'Lucía', 'Gil');
+  const owner = await account('paid-es-owner', 'Olga', 'Ruiz');
+  const lucia = await account('paid-es-lucia', 'Lucía', 'Gil');
   const id = await businessOf(page, owner, 'Bar Manolo');
   await joins(page, browser, id, lucia, 'hub_admin');
   const member = await rowOf(page, id, lucia.email);
   const stamp = Date.now();
   const [oldSub, oldCustomer] = [`sub_e2e_es_${stamp}`, `cus_e2e_es_${stamp}`];
-  djangoPrint(
+  await djangoPrintWarm(
     [
       'from datetime import timedelta',
       'from django.contrib.auth import get_user_model',
       'from django.utils import timezone',
-      'from hubs import services',
       'from hubs.schemas import SubscriptionApplyIn',
+      'from hubs.services import hub_callbacks, subscription_sync',
       'now = timezone.now()',
-      `services.subscription_apply(services.system_ctx_for("${id}"), SubscriptionApplyIn(hub_id="${id}", plan="starter", billing_interval="month", status="active", stripe_customer_id="${oldCustomer}", stripe_subscription_id="${oldSub}", current_period_start=now - timedelta(days=10), current_period_end=now + timedelta(days=20), cancel_at_period_end=False))`,
+      `subscription_sync.subscription_apply(hub_callbacks.system_ctx_for("${id}"), SubscriptionApplyIn(hub_id="${id}", plan="starter", billing_interval="month", status="active", stripe_customer_id="${oldCustomer}", stripe_subscription_id="${oldSub}", current_period_start=now - timedelta(days=10), current_period_end=now + timedelta(days=20), cancel_at_period_end=False))`,
       `get_user_model().objects.filter(email="${lucia.email}").update(language="es")`,
     ].join('\n'),
   );
@@ -631,13 +548,13 @@ test('HUBS-G82 (F28), in Spanish: «Mantenerlo con mi tarjeta» and the secure p
   // The offer of a paid business says until when it is paid and where she keeps it: her mail, in Spanish.
   await waitForMail(lucia.email, offeredAt, new RegExp(`${PANEL}/dashboard/billing/subscriptions(?=\\s|$)`, 'm'));
   await paintMail(browser, 'HUBS-G82-offer-mail-es', lucia.email, offeredAt, 'quiere traspasarte Bar Manolo', 'es');
-  withStripe([
+  await withStripe([
     'from django.contrib.auth import get_user_model',
-    'from hubs import services',
     'from hubs.schemas import ByIdIn',
+    'from hubs.services import ownership',
     'from hubs.tests.conftest import ctx_for',
     `double.answer("subscriptions.update", subscription("${oldSub}", customer="${oldCustomer}", items=[item("si_e2e_plan", "price_e2e_starter_month")], cancel_at_period_end=True))`,
-    `services.ownership_accept(ctx_for(get_user_model().objects.get(email="${lucia.email}")), ByIdIn(id="${((await offered.json()) as { id: string }).id}"))`,
+    `ownership.ownership_accept(ctx_for(get_user_model().objects.get(email="${lucia.email}")), ByIdIn(id="${((await offered.json()) as { id: string }).id}"))`,
   ]);
 
   const context = await browser.newContext({ baseURL: PANEL_URL, locale: 'es-ES', viewport: { width: 1440, height: 900 } });
@@ -671,13 +588,13 @@ test('HUBS-G82 (F28), in Spanish: «Mantenerlo con mi tarjeta» and the secure p
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G83: «Team» lists the people of a business, with their role, status and places; a manager does not see it', async ({
+test('HUBS-F29: «Team» lists the people of a business, with their role, status and places; a manager does not see it', async ({
   page,
   browser,
 }) => {
   const errors = watchPageErrors(page);
-  const owner = account('list-owner', 'Olga', 'Ruiz');
-  const marta = account('list-marta', 'Marta', 'Gil');
+  const owner = await account('list-owner', 'Olga', 'Ruiz');
+  const marta = await account('list-marta', 'Marta', 'Gil');
   const id = await businessOf(page, owner, 'Bar Manolo');
   await joins(page, browser, id, marta, 'hub_manager');
   const pending = `${PREFIX}list-pending-${Date.now()}@example.com`;
@@ -708,29 +625,21 @@ test('HUBS-G83: «Team» lists the people of a business, with their role, status
   await context.close();
   expect(theirErrors).toEqual([]);
   // A stranger does not learn the business exists.
-  const stranger = account('list-stranger', 'Pepe', 'Sanz');
+  const stranger = await account('list-stranger', 'Pepe', 'Sanz');
   const { context: other, page: outsider } = await browserOf(browser, stranger);
   expect((await outsider.request.get(`/api/hubs/members?hub_id=${id}&limit=50&offset=0`)).status()).toBe(404);
   await other.close();
   expect(errors).toEqual([]);
 });
 
-test('HUBS-G03: the staff finds the accesses of a person in the admin, read only', async ({ page, browser }) => {
+test('HUBS-F30: the staff finds the accesses of a person in the admin, read only', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
-  const owner = account('admin-owner', 'Olga', 'Ruiz');
-  const ana = account('admin-ana', 'Ana', 'Gil');
+  const owner = await account('admin-owner', 'Olga', 'Ruiz');
+  const ana = await account('admin-ana', 'Ana', 'Gil');
   const id = await businessOf(page, owner, 'Bar Manolo');
   await joins(page, browser, id, ana, 'hub_manager');
-  const staff = `${PREFIX}staff-${Date.now()}@example.com`;
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_superuser(email="${staff}", password="${PASSWORD}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-  await signInAs(page, { email: staff, password: PASSWORD });
+  const staff = await createAccountWarm(`${PREFIX}staff-${Date.now()}@example.com`, PASSWORD, { role: 'superuser' });
+  await signInAs(page, staff);
   await page.goto(`/admin/hubs/hubmember/?q=${encodeURIComponent(ana.email)}`);
   const results = page.locator('#result_list tbody tr');
   await atEverySize(page, 'HUBS-G03', async () => {

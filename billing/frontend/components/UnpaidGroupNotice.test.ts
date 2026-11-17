@@ -1,5 +1,5 @@
 // Two or more invoices Stripe could not charge, on top of Invoices, in ONE banner (mockups `billing.html`
-// «past-due-two»; audit 2026-10-14, R-15: one banner per business took half the page at 1024 px): «2 unpaid
+// «past-due-two»; one banner per business would take half the page at 1024 px): «2 unpaid
 // invoices: €72.58», then each business on its own line — the suspended ones first — with what happens to it
 // and its amount, the dates as days (never the hour). On the web each line has its own action: «Pay the
 // invoice», or after a declined card «Change card» first and «Pay» waiting, said why. Another account paying
@@ -57,7 +57,7 @@ describe('UnpaidGroupNotice', () => {
     expect(s.wrapper.get('[data-testid="unpaid-group-footer"]').text()).toBe('Nothing is deleted: once an invoice is paid, its business works again at once.');
   });
 
-  it('the most urgent first, as Businesses orders them: the suspended, then the one suspended soonest (audit 2 S-07)', async () => {
+  it('the most urgent first, as Businesses orders them: the suspended, then the one suspended soonest', async () => {
     const norte = businessRow('norte', 'Bar Norte', { status: 'past_due', unpaid_reason: 'payment_failed', unpaid_since: '2026-10-12T08:00:00Z' });
     const plaza = { ...PLAZA, unpaid_reason: 'payment_failed' as const, unpaid_since: '2026-10-10T08:00:00Z' };
     // The invoices come newest first (Bar Norte's), the order of the list.
@@ -66,7 +66,7 @@ describe('UnpaidGroupNotice', () => {
       { invoice: OPEN_PLAZA, business: plaza },
     ]);
     expect(s.lines().map((line) => line.attributes('data-id'))).toEqual(['i1', 'i2']);
-    // Only the most urgent is filled (audit 2 S-06).
+    // Only the most urgent is filled.
     expect(s.line('i1').get('[data-testid="pay-invoice"]').attributes('fill')).toBe('solid');
     expect(s.line('i2').get('[data-testid="pay-invoice"]').attributes('fill')).toBe('outline');
   });
@@ -91,7 +91,7 @@ describe('UnpaidGroupNotice', () => {
     const s = await setup(ITEMS, 'en', (call) => (call.path === '/api/billing/invoices/pay' ? Response.json({ url: 'https://invoice.stripe.com/i/plaza' }) : Response.json({})));
     const pay = s.line('i1').get('[data-testid="pay-invoice"]');
     expect(pay.text()).toBe('Pay the invoice · €36.29');
-    // Bar La Plaza is not the most urgent (Bar Norte is suspended): its way out is outlined (audit 2 S-06).
+    // Bar La Plaza is not the most urgent (Bar Norte is suspended): its way out is outlined.
     expect(pay.attributes('fill')).toBe('outline');
     expect(s.line('i1').find('[data-testid="unpaid-group-change-card"]').exists()).toBe(false);
     await pay.trigger('click');
@@ -138,7 +138,7 @@ describe('UnpaidGroupNotice', () => {
     expect(s.wrapper.find('[data-testid="unpaid-group-why"]').exists()).toBe(false);
     expect(s.wrapper.findAll('[href]')).toEqual([]);
     if (surface === 'account') {
-      // Already in the browser (the account the app opens): why, not «go to erplora.com in your browser» (audit 2 S-09).
+      // Already in the browser (the account the app opens): why, not «go to erplora.com in your browser».
       expect(s.wrapper.get('[data-testid="unpaid-group-app"]').text()).toBe('This account was opened from the app: invoices are not paid from here.');
       return;
     }

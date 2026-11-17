@@ -1,4 +1,4 @@
-// `signInAs` (fixtures.ts): changing account with a page of the panel open, played without load or repetition.
+// `signInAs` (session.ts): changing account with a page of the panel open, played without load or repetition.
 //
 // The danger is the page that stays open. Once its cookies are gone its stream gets a 401, the SDK reloads it
 // (host-closed.ts) and the launcher asks `GET auth/session`. If that request leaves with the cookie of the sign-in in
@@ -11,7 +11,11 @@
 // why the held request is replayed by hand with the cookie it left with.
 import type { Page, Route } from '@playwright/test';
 
-import { CONFIRM_CODE_API, expect, panelAccount, seedPanel, sessionOf, settled, signIn, signInAs, test } from './fixtures';
+import { panelAccount } from './accounts';
+import { seedPanel } from './businesses';
+import { expect, test } from './fixtures';
+import { settled } from './screen';
+import { CONFIRM_CODE_API, sessionOf, signIn, signInAs } from './session';
 
 const STREAM = /\/api\/live\?/;
 const SESSION_API = /\/_allauth\/browser\/v1\/auth\/session$/;

@@ -2044,3 +2044,214 @@ msgstr "Factura sin pagar, sigue pendiente"
 #: queries.py
 msgid "and"
 msgstr "y"
+
+#: services.py
+msgid "For now ERPlora only sells to payers billed in Spain: change the billing details."
+msgstr "Por ahora ERPlora solo vende a pagadores con dirección de facturación en España: cambia los datos de facturación."
+
+#: services.py
+msgid ""
+"In the Canary Islands, Ceuta and Melilla we only sell to businesses and professionals: add the tax ID "
+"of the payer."
+msgstr "En Canarias, Ceuta y Melilla solo vendemos a empresas y profesionales: añade el NIF de quien paga."
+# The billing report of the admin.
+#: admin.py
+msgid "Year"
+msgstr "Año"
+
+#: admin.py
+msgid "Period"
+msgstr "Periodo"
+
+#: admin.py
+msgid "Whole year"
+msgstr "Año completo"
+
+#: admin.py
+msgid "First quarter"
+msgstr "Primer trimestre"
+
+#: admin.py
+msgid "Second quarter"
+msgstr "Segundo trimestre"
+
+#: admin.py
+msgid "Third quarter"
+msgstr "Tercer trimestre"
+
+#: admin.py
+msgid "Fourth quarter"
+msgstr "Cuarto trimestre"
+
+#: admin.py
+#, python-format
+msgid "Collected in this period but not issued yet, so not counted: %(invoices)s"
+msgstr "Cobradas en este periodo pero aún sin emitir, así que no se cuentan: %(invoices)s"
+
+#: admin.py templates/admin/billing/invoice/change_list.html
+msgid "Billing report"
+msgstr "Informe de facturación"
+
+#: queries.py
+msgid "Payer"
+msgstr "Pagador"
+
+#: queries.py
+msgid "Tax ID"
+msgstr "NIF"
+
+#: queries.py
+msgid "Country"
+msgstr "País"
+
+#: queries.py
+msgid "Tax treatment"
+msgstr "Tratamiento del IVA"
+
+#: queries.py
+msgid "VAT %"
+msgstr "% IVA"
+
+#: queries.py
+msgid "Company"
+msgstr "Empresa"
+
+#: queries.py
+msgid "Self-employed or individual with a Spanish tax ID"
+msgstr "Autónomo o particular con NIF español"
+
+#: queries.py
+msgid "Individual without a tax ID"
+msgstr "Particular sin NIF"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Tax treatment · country · VAT rate"
+msgstr "Tratamiento · país · tipo de IVA"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Show"
+msgstr "Ver"
+
+#: templates/admin/billing/invoice/report.html
+#, python-format
+msgid "Invoices collected and issued from %(start)s to %(end)s, by their issue date."
+msgstr "Facturas cobradas y emitidas del %(start)s al %(end)s, por su fecha de expedición."
+
+#: templates/admin/billing/invoice/report.html
+msgid "Download Excel"
+msgstr "Descargar Excel"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Totals per series"
+msgstr "Totales por serie"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Series"
+msgstr "Serie"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Invoices"
+msgstr "Facturas"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Tax base (€)"
+msgstr "Base imponible (€)"
+
+#: templates/admin/billing/invoice/report.html
+msgid "VAT (€)"
+msgstr "IVA (€)"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Total (€)"
+msgstr "Total (€)"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Invoices (ERP)"
+msgstr "Facturas (ERP)"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Credit notes (ERPR)"
+msgstr "Rectificativas (ERPR)"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Net"
+msgstr "Neto"
+
+#: templates/admin/billing/invoice/report.html
+msgid "By tax treatment, customer's country and VAT rate"
+msgstr "Por tratamiento del IVA, país del cliente y tipo de IVA"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Nothing was invoiced in this period."
+msgstr "No se facturó nada en este periodo."
+
+#: templates/admin/billing/invoice/report.html
+msgid "By kind of customer"
+msgstr "Por tipo de cliente"
+
+#: templates/admin/billing/invoice/report.html
+msgid "Customer"
+msgstr "Cliente"
+
+# The paying customers of the admin.
+#: models.py
+msgid "paying customer"
+msgstr "cliente de pago"
+
+#: models.py
+msgid "paying customers"
+msgstr "clientes de pago"
+
+#: admin.py queries.py
+msgid "Billing frequency"
+msgstr "Periodicidad"
+
+#: admin.py queries.py
+msgid "Monthly tax base (€)"
+msgstr "Base imponible mensual (€)"
+
+#: admin.py queries.py
+msgid "Customer since"
+msgstr "Cliente desde"
+
+#: models/promo_codes.py
+msgid "free months"
+msgstr "meses gratis"
+
+#: models/promo_codes.py
+msgid "Months of a monthly plan at no charge, invoiced at 0 € (1 to 12); instead of trial days"
+msgstr ""
+"Meses de un plan mensual sin cobrar, facturados a 0 € (de 1 a 12); en lugar de días de prueba"
+
+#: models/promo_codes.py
+msgid "free until"
+msgstr "gratis hasta"
+
+#: models/promo_codes.py
+msgid "When the free months of the code end"
+msgstr "Cuándo acaban los meses gratis del código"
+
+#: models/promo_codes.py
+msgid "A promo code grants either trial days or free months: fill in one of the two."
+msgstr "Un código promocional da días de prueba o meses gratis: rellena uno de los dos."
+
+#: models/invoices.py
+msgid "discount (cents)"
+msgstr "descuento (céntimos)"
+
+#: services/promo_codes.py
+msgid "This code gives free months of a monthly plan: choose monthly billing to use it."
+msgstr "Este código da meses gratis de un plan mensual: elige la facturación mensual para usarlo."
+
+#: services/promo_codes.py
+msgid "This code gives free months to a business that starts paying a plan, not to a change of plan."
+msgstr "Este código da meses gratis a un negocio que empieza a pagar un plan, no a un cambio de plan."
+
+#: services/promo_codes.py
+#, python-format
+msgid ""
+"This business has free months until %(date)s: until then its plan, its billing and its apps stay as "
+"they are. You can still cancel the plan."
+msgstr ""
+"Este negocio tiene meses gratis hasta el %(date)s: hasta entonces su plan, su facturación y sus "
+"aplicaciones no cambian. El plan se puede cancelar igualmente."

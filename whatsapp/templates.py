@@ -1,4 +1,4 @@
-"""A business's template as Meta takes it and as Meta gives it back (WHATSAPP-G15, WHATSAPP-G17).
+"""A business's template as Meta takes it and as Meta gives it back.
 
 Meta answers a malformed template with a generic error the business reads as «it did not work», so its rules
 are checked here before the call (``check``), each one refused with a sentence that names what is wrong; the
@@ -89,7 +89,7 @@ class Clean:
     sample: Sample | None = None
 
 
-def check(template: TemplateIn) -> Clean:
+def check(template: TemplateIn) -> Clean:  # noqa: C901, PLR0912, PLR0915
     """Refuse here everything Meta would refuse there, cheap identity checks first, so a template that breaks two
     rules is reported by the one the business can act on first."""
     name = template.name.strip()
@@ -211,7 +211,7 @@ def _file_name(name: str) -> str:
     return "".join(ch for ch in base if ch.isprintable())[:200] or "sample"
 
 
-def _buttons(raw: list[dict]) -> list[dict]:
+def _buttons(raw: list[dict]) -> list[dict]:  # noqa: C901
     if len(raw) > MAX_BUTTONS:
         raise Invalid(f"At most {MAX_BUTTONS} buttons.")
     buttons: list[dict] = []

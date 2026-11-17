@@ -1,8 +1,8 @@
-"""Who may do what with a business's signed authorisation, by role (plan 2026-10-15; round 17 §2.7 for the
-roles): the owner and the administrators read its state on the business's page; a manager or an employee
-does not; somebody without access (a stranger, or an invitation not answered yet) does not learn the business
-exists. Every other operation of fiscal belongs to the platform (the Hub's upload, the tell) or to the staff
-(the review in the admin): no role of a business runs them, whatever its rank.
+"""Who may do what with a business's signed authorisation, by role: the owner and the administrators read its
+state on the business's page; a manager or an employee does not; somebody without access (a stranger, or an
+invitation not answered yet) does not learn the business exists. Every other operation of fiscal belongs to the
+platform (the Hub's upload, the tell) or to the staff (the review in the admin): no role of a business runs them,
+whatever its rank.
 
 One table for every operation of fiscal, so a new operation cannot slip in without its row. Same reading as
 ``hubs/tests/test_permission_matrix.py``.

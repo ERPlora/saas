@@ -1,18 +1,16 @@
 """``push_hub_snapshots`` (``saas-cron``, nightly at 00:30 UTC, run without flags by ``scheduler.tf``):
-the safety net of PLAN-SAAS §2.2, every night for every business. By default it pushes the snapshot of
+the safety net of the push to the Hub, every night for every business. By default it pushes the snapshot of
 EVERY live business, each with a newer version (the Hub ignores an equal one), so a Hub that lost what
-it had acknowledged is put right overnight. ``--behind-only`` pushes only the snapshots the Hub is
-behind on. Under a Postgres advisory lock (a second run returns at once); a business that fails
-stays owed, never stops the batch, and makes the run end with an error after the pass.
-
-Review of L1-A, finding 3: the first version pushed only the businesses behind by default, so the
-nightly run the infra schedules never re-sent an acknowledged snapshot.
+it had acknowledged is put right overnight; pushing only the businesses behind would never re-send an
+acknowledged snapshot. ``--behind-only`` pushes only the snapshots the Hub is behind on. Under a Postgres
+advisory lock (a second run returns at once); a business that fails stays owed, never stops the batch, and
+makes the run end with an error after the pass.
 """
 
 import pytest
 from django.core.management.base import CommandError
 
-from hubs import services
+from hubs.services import hub_push
 from hubs.models import Hub, HubMember
 from hubs.tests.conftest import add_member, create_business
 from hubs.tests.test_reconcile_hub_states import fresh, run
@@ -26,7 +24,7 @@ LOCK_KEY = "hashtext('erplora.saas.push_hub_snapshots')"
 def test_by_default_every_live_business_is_pushed_again(
     business, owner, hub_double, make_user
 ):
-    services.sync_hub(business.id)
+    hub_push.sync_hub(business.id)
     deleted = create_business(make_user("lola@example.com"), name="Café Lola")
     Hub.objects.filter(pk=deleted.pk).update(
         status=Hub.Status.DELETING, pending_hub_call=""
@@ -53,9 +51,9 @@ def test_every_night_the_hub_applies_it_again(business, hub_double):
 
 
 def test_behind_only_pushes_what_the_hub_is_behind_on(business, team, hub_double):
-    services.sync_hub(business.id)
+    hub_push.sync_hub(business.id)
     add_member(business, team["stranger"], HubMember.Role.EMPLOYEE)
-    services.bump_state(business.id)
+    hub_push.bump_state(business.id)
     hub_double.calls.clear()
 
     output = run("push_hub_snapshots", "--behind-only")
@@ -92,7 +90,7 @@ def test_a_deleted_business_gets_no_snapshot(business, hub_double):
 def test_with_the_hub_away_the_pass_ends_and_the_run_fails(
     owner, plans, offline_hub, make_user
 ):
-    """Review of L1-A, finding 4: the cron fails loudly (``task_failed`` alarm), after the whole pass."""
+    """The cron fails loudly (``task_failed`` alarm), after the whole pass."""
     first = create_business(owner)
     second = create_business(make_user("lola@example.com"), name="Café Lola")
 

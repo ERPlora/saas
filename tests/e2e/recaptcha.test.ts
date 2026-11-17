@@ -71,7 +71,7 @@ describe('assessWithGoogle', () => {
 });
 
 describe('recaptchaServerEnv', () => {
-  it('leaves reCAPTCHA off by default, as production since 2026-10-23 (RECAPTCHA_ENABLED, whatever `.env` says)', () => {
+  it('leaves reCAPTCHA off by default, as in production (RECAPTCHA_ENABLED, whatever `.env` says)', () => {
     expect(recaptchaOn({})).toBe(false);
     expect(recaptchaServerEnv(SHARED, saasDir('RECAPTCHA_ENABLED=True\nRECAPTCHA_SITE_KEY=6Le-local\n'), {})).toEqual({
       RECAPTCHA_ENABLED: 'False',

@@ -1,13 +1,12 @@
 """``python manage.py retax_subscriptions``: every live subscription takes today's rates (BILLING-F02, F06).
 
-Ported from ERPlora/saas ``fiscal.retax_live_subscriptions`` (``oss_subscription_retax.py``, saas#2293; a daily
-Celery beat task there, a scheduled ECS task here). The owner's save of the billing details retaxes at once;
+A daily scheduled ECS task. The owner's save of the billing details retaxes at once;
 this pass catches what that push missed, the year crossing the OSS threshold (or back to origin) and a rate
 the table schedules (``billing.services.retax_live_subscriptions``). It also sends again the team's OSS notices
 whose mail could not leave (``send_pending_oss_notices``).
 
 Idempotent (a rate Stripe already holds is not sent again), under the advisory lock
-``hashtext('erplora.saas.retax_subscriptions')`` (``hubs.services.run_exclusively``). One business never stops
+``hashtext('erplora.saas.retax_subscriptions')`` (``hubs.services.exclusive_runs.run_exclusively``). One business never stops
 the pass; a refused place or an error ends the run with an error after it (the ``task_failed`` alarm).
 """
 
@@ -16,7 +15,7 @@ import logging
 from django.core.management.base import BaseCommand, CommandError
 
 from billing import services
-from hubs.services import run_exclusively
+from hubs.services.exclusive_runs import run_exclusively
 
 logger = logging.getLogger(__name__)
 

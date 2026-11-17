@@ -3,7 +3,7 @@
 App de plataforma (`kind = "platform"`, PLAN §20) que presenta a la AEAT los sobres VeriFactu que el Hub ya ha
 construido y validado (cadena, huella, XSD, QR). Sustituye al gateway en Rust (`erplora-old/verifactu-gateway`):
 la pasarela vive en el SaaS y el Hub la llama por `/internal` (PLAN-SAAS §4; contrato 3 del bloque fiscal,
-`docs/superpowers/plans/2026-10-15-bloque-fiscal-hub.md`). No tiene modelos ni operaciones: no guarda nada; solo
+`knowledge/raw/superpowers/plans/2026-10-15-bloque-fiscal-hub.md`). No tiene modelos ni operaciones: no guarda nada; solo
 lee el negocio y su otorgamiento (`queries.py`, el único fichero que toca la BD).
 
 | Fichero | Qué hace |
@@ -18,7 +18,7 @@ Los flujos (prefijo `FISCAL`, también los de la autorización firmada que viven
 [`WORKBOOK.md`](WORKBOOK.md): el sello (FISCAL-F01), la presentación (F02), el cifrado de los documentos (F03), la
 caducidad del sello (F04), los avisos de cada paso de la autorización (F05, `fiscal/emails.py`), el modelo del
 Anexo I con ERPlora, su sello y la hoja RGPD (F06, `fiscal/anexo.py` y la página «Sello del representante» del
-admin) y lo descartado (F07, los apoderamientos ZP01).
+admin).
 
 ## Contrato con el Hub
 
@@ -44,7 +44,7 @@ o su UUID en minúsculas (con guiones). Tiene que ser un negocio que el SaaS con
 | `409 no_seal` | `route = "erplora"` sin sello utilizable (también si TLS rechaza el sello configurado) |
 | `409 no_certificate` | `route = "own"` sin certificado |
 | `409 certificate_invalid` | No abre con su contraseña, no permite autenticación de cliente (EKU), ha caducado o TLS lo rechaza (la clave no es la del certificado o es demasiado débil, p. ej. RSA de 1024); no sale nada hacia la AEAT |
-| `409 environment_not_allowed` | `production` desde un despliegue que no es `prod` (`pre` solo presenta a pruebas) |
+| `409 environment_not_allowed` | `production` sin `AEAT_PRODUCTION_ENABLED` (apagada en `pre` y en desarrollo, que solo presentan a pruebas; PLAN-SAAS §43) |
 | `502 {"error": {"code": "aeat_unreachable", "sent"}}` | Sin respuesta de la AEAT; `sent = true` si la petición pudo llegar. También, con `sent = false`, si el servidor no puede cargar sus certificados de confianza (`SSL_CERT_FILE` a un fichero que no existe, a una carpeta o sin certificados): el mensaje nombra la variable y el fichero, y el Hub conserva el registro y lo reintenta |
 | `503 gateway_busy` | Semáforo lleno; el Hub reintenta |
 | `401 unauthorized` | Sin firma, firma caducada (±300 s) o que no casa. Sin marca de tiempo, sin firma o con la marca fuera de la ventana (o de más de 20 dígitos) se decide por las cabeceras, **sin leer** el cuerpo |

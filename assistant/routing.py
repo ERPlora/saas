@@ -1,4 +1,4 @@
-"""A turn through its route (ASSISTANT-G45): the models ``assistant.route.resolve`` gave, tried in order.
+"""A turn through its route: the models ``assistant.route.resolve`` gave, tried in order.
 
 Each attempt first says which model answers (``model``). A provider that fails before answering anything passes the
 turn to the next model (``fallback``, with the failure); once text or a tool call has come, a failure ends the turn

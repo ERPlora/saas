@@ -2,16 +2,16 @@
  * variables.css + palettes.css, which bring the brand --ion-* and the shared --ep-* radii and
  * shadows) and frontend/fonts.css (IBM Plex). Bundled by frontend/public.ts.
  *
- * What the old public base took from four sheets, ported here so the pages look the same:
- *   1. preflight.css: Tailwind 4's reset, verbatim and inside `@layer base` (unlayered it would
- *      beat every utility of ionic-utilities.css);
- *   2. erplora-theme.css: the type and spacing tokens, the module category colours and the
- *      .font-display / .font-mono helpers (the dashboard-only rules stay behind);
- *   3. ionic-theme.css: the semantic palette (secondary, success, warning, danger, light, dark and
- *      ERPlora's own info and accent), which @erplora/ui leaves to Ionic's defaults;
- *   4. outfitkit-theme.css: the public tokens, renamed to --ep-* (PLAN §16.11).
- * Dark mode is Ionic's `.ion-palette-dark` class on <html> (the old [data-theme="erplora-dark"]),
- * set as the panel sets it: the account's mode, or the system's (public_base.html, frontend/public.ts). */
+ * Its parts:
+ *   1. Tailwind 4's reset (preflight), verbatim and inside `@layer base` (unlayered it would beat
+ *      every utility of ionic-utilities.css);
+ *   2. the type and spacing tokens, the app category colours and the .font-display / .font-mono
+ *      helpers;
+ *   3. the semantic palette (secondary, success, warning, danger, light, dark and ERPlora's own
+ *      info and accent), which @erplora/ui leaves to Ionic's defaults;
+ *   4. the public tokens, --ep-*.
+ * Dark mode is Ionic's `.ion-palette-dark` class on <html>, set as the panel sets it: the account's
+ * mode, or the system's (public_base.html, frontend/public.ts). */
 
 @layer base {
   *, :after, :before, ::backdrop { box-sizing: border-box; border: 0 solid; margin: 0; padding: 0 }
@@ -47,7 +47,7 @@
 }
 
 :root {
-  /* ── Type and spacing (erplora-theme.css) ── */
+  /* ── Type and spacing ── */
   --font-display: var(--font-body, 'IBM Plex Sans', system-ui, -apple-system, sans-serif);
   --weight-regular: 400;
   --weight-medium: 500;
@@ -72,7 +72,7 @@
   --space-6: 1.5rem;
   --space-8: 2rem;
 
-  /* ── App category colours, and the logo's ink and brand (erplora-theme.css) ── */
+  /* ── App category colours, and the logo's ink and brand ── */
   --mod-orange: oklch(62% 0.18 35);
   --mod-blue: oklch(55% 0.17 250);
   --mod-green: oklch(58% 0.14 150);
@@ -83,7 +83,7 @@
   --ink: oklch(20% 0.012 250);
   --brand: oklch(55% 0.17 250);
 
-  /* ── Semantic palette (ionic-theme.css) ── */
+  /* ── Semantic palette ── */
   --ion-color-secondary: #6366f1;
   --ion-color-secondary-rgb: 99, 102, 241;
   --ion-color-secondary-contrast: #ffffff;
@@ -136,9 +136,8 @@
   --ion-color-accent-shade: #1ead53;
   --ion-color-accent-tint: #38cb6e;
 
-  /* ── Public tokens (outfitkit-theme.css, renamed to --ep-*), inherited from --ion-* so dark and the
-     palettes apply by themselves. --ep-radius*, --ep-shadow-* and --ep-surface-muted come from
-     @erplora/ui's variables.css with the same values. ── */
+  /* ── Public tokens, inherited from --ion-* so dark and the palettes apply by themselves.
+     --ep-radius*, --ep-shadow-* and --ep-surface-muted come from @erplora/ui's variables.css. ── */
   --ep-primary: var(--ion-color-primary);
   --ep-primary-contrast: var(--ion-color-primary-contrast);
   --ep-bg: var(--ion-background-color);
@@ -156,7 +155,7 @@
   --ep-transition: 160ms ease;
   /* The wash a soft band (a page hero) mixes over the surface: Ionic's light colour. Not
      --ion-color-light itself, which this sheet keeps light in dark too (the CTA band's
-     color="light" buttons stay white), so a band washed with it turned grey on a dark page. */
+     color="light" buttons stay white), so a band washed with it would turn grey on a dark page. */
   --ep-wash: var(--ion-color-light);
   /* Native scrollbars and controls follow the page's mode, not the system's. */
   color-scheme: light;
@@ -232,7 +231,7 @@
 
 html, body { font-family: var(--font-body); }
 
-/* Display headlines and monospace (erplora-theme.css). */
+/* Display headlines and monospace. */
 .font-display { font-family: var(--font-display); letter-spacing: var(--tracking-tighter); }
 .font-mono { font-family: var(--font-mono); }
 

@@ -1,34 +1,22 @@
-// Members (`/dashboard/businesses/<id>/members`, mockups `business.html` «members», round 17 §2.7–2.8) in Ioan's
-// Chrome, the «Hecho L1» flow of docs/plans/2026-10-13-panel-saas-unificado.md: the owner of Panadería
-// López invites an address with no account through «Invite»; the row is a pending invitation with
-// the actions the server allows; the invited person, in a browser of their own, follows the links of
-// the mails (set a password, then the invitation) and accepts; the owner changes their role and
-// removes them. The spec plays the Hub (`startHubDouble`): it sees the snapshot of each change and,
-// on the removal, the end of that person's sessions in the business. On Free, inviting past the
-// places of the plan is refused, in the dialog and by the server.
+// Members (`/dashboard/businesses/<id>/members`) in Chrome: the owner of Panadería López invites an
+// address with no account through «Invite»; the row is a pending invitation with the actions the server
+// allows; the invited person, in a browser of their own, follows the links of the mails (set a
+// password, then the invitation) and accepts; the owner changes their role and removes them. The spec
+// plays the Hub (`startHubDouble`): it sees the snapshot of each change and, on the removal, the end of
+// that person's sessions in the business. On Free, inviting past the places of the plan is refused, in
+// the dialog and by the server.
 import { type Browser, type Page } from '@playwright/test';
 
-import {
-  apiPost,
-  businessIdOf,
-  djangoPrint,
-  expect,
-  freezeFrontend,
-  type HubCall,
-  type HubDouble,
-  panelAccount,
-  seedPanel,
-  shot,
-  sidewaysScroll,
-  signIn,
-  signInThroughPage,
-  startHubDouble,
-  test,
-  waitForMail,
-  waitForPasswordResetLink,
-  watchPageErrors,
-} from './fixtures';
+import { panelAccount } from './accounts';
+import { businessIdOf, seedPanel } from './businesses';
+import { djangoPrintWarm, warmDjango } from './django';
+import { expect, freezeFrontend, test } from './fixtures';
+import { type HubCall, type HubDouble, startHubDouble } from './hub';
+import { waitForMail, waitForPasswordResetLink } from './mail';
+import { watchPageErrors } from './page-events';
 import { PANEL_URL } from './project';
+import { shot, sidewaysScroll } from './screen';
+import { apiPost, signIn, signInThroughPage } from './session';
 
 /** An address with no account: the invitation creates one, without a password. */
 const NEWCOMER = 'e2e-newcomer@example.com';
@@ -147,7 +135,8 @@ test.describe('members', () => {
 
   test.beforeAll(async () => {
     seedPanel();
-    hub = await startHubDouble();
+    // The test asks this worker's warm Django what only the SaaS knows: its boot here, on no test's clock.
+    [hub] = await Promise.all([startHubDouble(), warmDjango()]);
   });
   test.afterAll(async () => {
     await hub?.close();
@@ -210,7 +199,7 @@ test.describe('members', () => {
     expect(snapshots(hub, id).every((call) => call.signed)).toBe(true);
 
     // The owner's list: another account's write reaches it at the live safety re-run (300 s,
-    // packages/live) or on reload (live scope = the account, PLAN-SAAS §6 and §3 of the plan): reload.
+    // packages/live) or on reload (live scope = the account): reload.
     await page.reload();
     await expect(row).toContainText('Active');
     const active = await newcomerRow(page, id);
@@ -256,9 +245,9 @@ test.describe('members', () => {
     expect(theirs.status()).toBe(200);
     expect(((await theirs.json()) as { rows: Array<{ id: string }> }).rows.map((one) => one.id)).not.toContain(id);
 
-    // The revocations queued for them in this business (L1-A2's `SessionRevocation`, once it exists):
+    // The revocations queued for them in this business (`SessionRevocation`):
     // there, and all delivered, since the Hub took them.
-    const queued = djangoPrint(
+    const queued = await djangoPrintWarm(
       [
         'import json',
         'from django.apps import apps',
@@ -337,14 +326,14 @@ test.describe('members', () => {
     await expect(seats).toHaveText(`${limit - 1} of ${limit} places on the plan`);
     await page.getByTestId('members-add').click();
     await expect(page.getByTestId('invite-full')).toHaveCount(0);
-    // «Send invitation» waits for an address (audit 2 R-28), then works again.
+    // «Send invitation» waits for an address, then works again.
     await expect(page.getByTestId('invite-modal-submit')).toHaveAttribute('aria-disabled', 'true');
     await page.getByTestId('invite-email').locator('input').fill('e2e-seat-again@example.com');
     await expect(page.getByTestId('invite-modal-submit')).not.toHaveAttribute('aria-disabled', 'true');
     expect(errors).toEqual([]);
   });
 
-  test('after a hand-over, whoever still pays is not removed: «Remove» says what to do first (saas#2587)', async ({
+  test('after a hand-over, whoever still pays is not removed: «Remove» says what to do first', async ({
     page,
     browser,
   }) => {

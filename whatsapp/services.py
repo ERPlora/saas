@@ -6,7 +6,7 @@ Meta or to the Hub never happens inside one of these: ``gateway`` calls Meta or 
 lock waits for a third party.
 
 - ``whatsapp.webhook.ingest``: what Meta's webhook reported, parked once per message for each active number
-  (``Delivery``), the furthest status of each message, and Meta's verdicts on the templates (WHATSAPP-G07);
+  (``Delivery``), the furthest status of each message, and Meta's verdicts on the templates;
 - ``whatsapp.delivery.claim`` / ``whatsapp.delivery.record`` / ``whatsapp.delivery.hold``: the push of what is parked
   to the Hub's doors 1 and 2, leased so two processes never push the same thing at once, each business's messages in
   the order they arrived (``queries.behind_a_waiting_message``), retried with a growing wait, and given back unpushed
@@ -14,19 +14,18 @@ lock waits for a third party.
   due or moves its wait wakes the ``saas-worker`` after the COMMIT (``wake_the_worker``, saas#305);
 - ``whatsapp.message.claim`` / ``whatsapp.message.record``: door 5, a send by its ``Idempotency-Key``. The claim
   reserves the month's place atomically (``UPDATE … WHERE used < limit``) before Meta is called, so two sends at once
-  can never both pass the cap (saas#2652), and a key already sent answers its first id (saas#2633);
+  can never both pass the cap, and a key already sent answers its first id;
 - ``whatsapp.message.erase``: door 6, what is kept of a customer's number for a business is forgotten;
 - ``whatsapp.template.claim`` / ``whatsapp.template.record``: door 8, a template's registration at Meta by its
   ``Idempotency-Key``: a key Meta took answers what it said the first time, never registers again;
 - ``whatsapp.template.forget`` / ``whatsapp.template.sync``: the mirror of Meta's templates, after a deletion at
   Meta (door 9) and when Meta's list is read again; ``whatsapp.number.reconnect_needed``: Meta refused the token;
-- ``whatsapp.number.renewal`` / ``whatsapp.number.alerted``: the daily renewal of Meta's permission (WHATSAPP-G12),
+- ``whatsapp.number.renewal`` / ``whatsapp.number.alerted``: the daily renewal of Meta's permission,
   the mark «needs reconnecting» and the owner told once per incident;
 - ``whatsapp.number.connect`` / ``whatsapp.number.disconnect``: the number a business connected through Meta's
-  window (door 11, WHATSAPP-G01) and its disconnection (door 12, WHATSAPP-G02);
-- ``whatsapp.delivery.due_now``: the staff's «Push to the Hub now» (WHATSAPP-G18);
-- ``whatsapp.retention.purge``: the daily forgetting of what the Hub took, of what it never took and of the keys
-  (WHATSAPP-G14).
+  window (door 11) and its disconnection (door 12);
+- ``whatsapp.delivery.due_now``: the staff's «Push to the Hub now»;
+- ``whatsapp.retention.purge``: the daily forgetting of what the Hub took, of what it never took and of the keys.
 
 A refusal raises the envelope's error (``live.errors``): the transaction rolls back, the reservation with it. The
 cap's is the exception: ``whatsapp.message.claim`` returns it (``refused``) so the snapshot it announces leaves after
@@ -46,8 +45,8 @@ from live.errors import Conflict, NotFound, OperationError
 from live.operations import INTERNAL, on_commit, operation
 from live.outbox import record_event
 
-from hubs import queries as hubs_queries
-from hubs import services as hubs_services
+from hubs.queries import plan_catalog
+from hubs.services import hub_push
 from hubs.models import HubMember
 from whatsapp import events, parse, queries
 from whatsapp.models import Delivery, PhoneNumber, Send, Template, TemplateSubmission, Usage
@@ -140,8 +139,8 @@ def wake_the_worker() -> None:
 def announce_channel(hub_id: UUID) -> None:
     """The business's WhatsApp changed (its number, its month's usage, a template): its snapshot carries it under
     ``whatsapp`` (door 4) with a newer version, pushed after the COMMIT and retried by ``reconcile_hub_states``."""
-    hubs_services.bump_state(hub_id)
-    hubs_services.push_after_commit(hub_id)
+    hub_push.bump_state(hub_id)
+    hub_push.push_after_commit(hub_id)
 
 
 # --- Meta's webhook ---------------------------------------------------------------------------------------------
@@ -161,7 +160,7 @@ def webhook_ingest(ctx: OperationContext, data: IngestIn) -> IngestOut:
     # A number of a business that left (being deleted or purged) takes nothing any more.
     numbers = dict(
         PhoneNumber.objects.filter(
-            phone_number_id__in=named, is_active=True, hub__status__in=hubs_services.LIVE_STATUSES
+            phone_number_id__in=named, is_active=True, hub__status__in=hub_push.LIVE_STATUSES
         ).values_list("phone_number_id", "hub_id")
     )
     touched: set[UUID] = set()
@@ -565,7 +564,7 @@ def message_claim(ctx: OperationContext, data: SendClaimIn) -> SendClaimOut:
 def _reserve(hub_id: UUID, month: str, now) -> bool:
     """One more message of ``month`` if the plan's allowance has room: one ``UPDATE … WHERE used < limit``, which a
     concurrent send waits on and then evaluates again (0 = the plan includes none)."""
-    plan = hubs_queries.effective_plan(hub_id, now)
+    plan = plan_catalog.effective_plan(hub_id, now)
     limit = plan.whatsapp_messages_per_month if plan is not None else 0
     usage, _ = Usage.objects.get_or_create(hub_id=hub_id, month=month)
     return Usage.objects.filter(pk=usage.pk, used__lt=limit).update(used=F("used") + 1) == 1
@@ -802,7 +801,7 @@ def number_reconnect_needed(ctx: OperationContext, data: ReconnectIn) -> Reconne
     return ReconnectOut(changed=bool(changed))
 
 
-# --- The renewal of Meta's permission (WHATSAPP-G12) -------------------------------------------------------------
+# --- The renewal of Meta's permission ----------------------------------------------------------------------------
 
 #: Inside this many days (or past the deadline) the owner is told even without Meta's verdict.
 LAST_CALL = timedelta(days=3)
@@ -876,7 +875,7 @@ def number_alerted(ctx: OperationContext, data: AlertedIn) -> AlertedOut:
     return AlertedOut(alerted=bool(alerted))
 
 
-# --- Connecting a number (WHATSAPP-G01, WHATSAPP-G02) -----------------------------------------------------------
+# --- Connecting a number ----------------------------------------------------------------------------------------
 
 
 @operation(
@@ -972,7 +971,7 @@ def number_disconnect(ctx: OperationContext, data: DisconnectIn) -> NumberDiscon
     )
 
 
-# --- The retention (WHATSAPP-G14) --------------------------------------------------------------------------------
+# --- The retention -----------------------------------------------------------------------------------------------
 
 
 @operation(

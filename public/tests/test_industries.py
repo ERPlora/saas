@@ -1,23 +1,13 @@
-"""``/industries/`` and ``/industries/<slug>/``: the business types the product serves (spec §8.1).
+"""``/industries/`` and ``/industries/<slug>/``: the business types the product serves.
 
-Ported from ERPlora/saas ``apps/public/industries/tests/`` (origin/develop c5ca8ca):
-``test_detail_answers_the_buyer_question.py`` (18), ``test_sitemap.py`` (5) and ``test_views.py`` (2).
-What changed, and why:
+The pages read the taxonomy of ``hubs`` through ``hubs.sector.list`` and ``hubs.business_type.list``; the tests
+create the rows with the ORM of ``hubs``. The apps block reads ``apps.app.list`` with the business type's
+``vertical``: ONE list, «apps made for your <business>»; without a vertical there is no block. The onward links point
+at ``/pricing/``, ``/apps/`` (the store), ``/features/`` and ``/compliance/``. The cards are the ``ep-*`` partials,
+so the «real link, not an undeclared slot» check looks for the ``<a class="ep-feature-card">`` itself.
 
-* the taxonomy lives in ``hubs`` (plan §3.m) and the pages read it through ``hubs.sector.list`` and
-  ``hubs.business_type.list``; the tests still create the rows with the ORM of ``hubs``;
-* the apps block reads ``apps.app.list`` with the business type's ``vertical`` (spec §8.1, decision
-  13): ONE list, «apps made for your <business>», instead of «essential» (free) and «recommended»
-  (paid) modules matched by sector or business type. Without a vertical there is no block (§5.3);
-* the onward links point at ``/pricing/``, ``/apps/`` (the store, which replaces ``/modules/``,
-  decision 19) and ``/features/``. ``/compliance/`` was out of the port (plan §7) and is back with its card (PUBLIC-F09, test_compliance.py);
-* the cards are the ``ep-*`` partials (``ok-feature-card`` is gone, PLAN §16.11), so the «real link,
-  not an undeclared slot» check looks for the ``<a class="ep-feature-card">`` itself;
-* the footer control of ``test_the_link_check_ignores_the_footer`` reads ``/industries/``: it is the
-  footer link of every public page this lot owns (``/pricing/`` arrives with L7).
-
-The price of the entry plan comes from ``Plan`` through ``hubs.plan.list`` (``public`` imports no
-model, plan §3.m): the cheapest plan a visitor can sign up for (``cheapest_slug``).
+The price of the entry plan comes from ``Plan`` through ``hubs.plan.list`` (``public`` imports no model): the
+cheapest plan a visitor can sign up for (``cheapest_slug``).
 """
 
 from __future__ import annotations
@@ -288,7 +278,7 @@ def test_only_a_hex_colour_reaches_the_style_attribute(client, sector):
 
 
 def test_a_database_error_answers_the_public_500(client, monkeypatch, settings):
-    """No degraded mode (spec §5.3): the taxonomy lives in the database every page depends on."""
+    """No degraded mode: the taxonomy lives in the database every page depends on."""
     settings.DEBUG = False
 
     def broken(*args, **kwargs):
@@ -303,7 +293,7 @@ def test_a_database_error_answers_the_public_500(client, monkeypatch, settings):
     assert "Something went wrong" in response.content.decode()
 
 
-# --- The detail: the answer to the buyer's question (port of the 18) ---------------------------
+# --- The detail: the answer to the buyer's question --------------------------------------------
 
 
 def test_the_h1_asks_the_buyers_question_and_not_just_the_business_name(client, salon):
@@ -371,8 +361,7 @@ def test_a_second_price_in_the_plan_table_moves_the_page(no_plans, client, salon
 
 
 def test_with_no_listable_plan_the_page_advertises_no_price_at_all(no_plans, client, salon):
-    """Advertising a price we do not charge is worse than none: the old template emitted
-    ``"price": "0"`` unconditionally."""
+    """Advertising a price we do not charge is worse than none: never a ``"price": "0"`` by default."""
     block = _of_type(_page(client).content.decode(), "SoftwareApplication")
 
     assert "offers" not in block, (
@@ -439,7 +428,7 @@ def test_the_lead_and_the_faq_state_the_entry_price(no_plans, client, salon, ent
 def test_the_price_answer_puts_every_app_on_every_plan(
     no_plans, client, salon, entry_plan, language, answer, tokens_spelling
 ):
-    """Ronda 2026-10-24b (PLAN §32): it said «the premium apps are included in the paid plans»."""
+    """Every plan includes every app: the answer never keeps the premium apps for the paid plans."""
     tokens_spelling("premium")
     client.cookies[settings.LANGUAGE_COOKIE_NAME] = language
     response = _page(client)
@@ -534,8 +523,8 @@ def test_the_page_links_onward(client, salon, entry_plan, target):
 def test_each_onward_link_is_a_real_link_and_not_a_slot_that_does_not_exist(
     client, salon, entry_plan, target
 ):
-    """The old `ok-feature-card` declared no `footer` slot, so an `<a slot="footer">` was never
-    rendered. The port's card is the link itself: an `<a class="ep-feature-card">` around the tile."""
+    """The card is the link itself: an `<a class="ep-feature-card">` around the tile, not an `<a slot="footer">` that
+    a card without that slot never renders."""
     main = _main(_page(client).content.decode())
 
     assert f'<a class="ep-feature-card" href="{target}"' in main, (
@@ -593,7 +582,7 @@ def test_the_translation_check_is_looking_at_a_string_that_can_change(
 
 
 def test_a_retired_code_is_sent_on_for_good_to_its_replacement(client, salon):
-    """``peluqueria`` was folded into ``hair_salon`` (saas#2099): an indexed URL keeps working."""
+    """``peluqueria`` was folded into ``hair_salon``: an indexed URL keeps working."""
     response = client.get("/industries/peluqueria/", HTTP_HOST=HOST)
 
     assert response.status_code == 301
@@ -622,14 +611,12 @@ def test_the_url_names_resolve():
     )
 
 
-# --- The detail: the apps a business of its vertical comes with (port of test_views.py) ---------
+# --- The detail: the apps a business of its vertical comes with ---------------------------------
 
 
 def test_detail_lists_the_listed_apps_of_the_business_types_vertical(client):
-    """Port of ``test_detail_recommends_modules_from_business_type_and_sector``: the modules came
-    from M2M links to the sector and the business type, split into free and paid. The catalog now
-    says which verticals each app serves (``verticals``), and the page lists, in one block, the
-    listed apps of the business type's vertical (spec §8.1)."""
+    """The catalog says which verticals each app serves (``verticals``), and the page lists, in one block, the listed
+    apps of the business type's vertical."""
     hospitality = make_sector("hospitality", name_en="Hospitality")
     make_business_type(
         "pizzeria", name_en="Pizzeria", sector=hospitality, vertical="restaurant"
@@ -668,7 +655,7 @@ def test_each_app_card_links_to_the_store_and_paints_the_cleaned_icon(client):
         "the app's icon is painted inline, not escaped"
     )
     assert "&lt;svg" not in main
-    # Every plan includes all the apps (PLAN §32): the flagged one too, no «Free» against «paid».
+    # Every plan includes all the apps: the flagged one too, no «Free» against «paid».
     assert main.count('<span class="ep-product-card__price">Included in every plan</span>') == 2
     assert "Included in the paid plans" not in main
     assert '<span class="ep-product-card__price">Free</span>' not in main
@@ -692,13 +679,12 @@ def test_a_vertical_with_no_listed_app_shows_no_apps_block(client, sector):
     assert "Apps made for your" not in response.content.decode()
 
 
-# --- L8: the page looks like today's ------------------------------------------------------------
+# --- The page's look: an empty apps block, the closing band and the FAQ -------------------------
 
 
 def test_a_vertical_with_no_listed_app_says_its_apps_are_on_the_way(client, sector):
-    """The old page said «In preparation · Recommended modules are coming soon.» when it had
-    nothing to recommend; the port left a gap between the hero and the FAQ (L8). Only with a
-    vertical: without one there is nothing to prepare and no block at all (spec §5.3)."""
+    """With nothing to list, the block says the apps are on the way instead of leaving a gap between the hero and the
+    FAQ. Only with a vertical: without one there is nothing to prepare and no block at all."""
     make_business_type("barber_shop", sector=sector, vertical="hair_salon")
 
     main = _main(_page(client, "barber_shop").content.decode())
@@ -743,8 +729,8 @@ def test_with_apps_nothing_is_said_to_be_on_the_way(client):
 def test_the_closing_band_names_the_business_type_as_the_taxonomy_writes_it(
     client, salon, headers, heading
 ):
-    """L8: the old band said «Start your Hair Salon with ERPlora», the name as it is; the port
-    lower-cased it like the question of the H1 («… for your hair salon»)."""
+    """The band says «Start your Hair Salon with ERPlora», the name as it is, not lower-cased like the question of
+    the H1 («… for your hair salon»)."""
     band = _main(_page(client, headers=headers).content.decode())
     band = band[band.index('class="ep-cta-band') :]
 
@@ -752,8 +738,8 @@ def test_the_closing_band_names_the_business_type_as_the_taxonomy_writes_it(
 
 
 def test_the_faq_is_the_bare_accordion_of_the_pricing_page(client, salon, entry_plan):
-    """L8: the old FAQ was a bare ``ion-accordion``, the one /pricing/ still has and that looks as
-    it did; the port gave it the help centre's ``ep-accordion`` (a bold question in a padded card)."""
+    """The FAQ is a bare ``ion-accordion``, as on /pricing/, not the help centre's ``ep-accordion`` (a bold question
+    in a padded card)."""
     main = _main(_page(client).content.decode())
     faq = main[main.index('id="faq"') :]
     faq = faq[: faq.index("</section>")]
@@ -797,12 +783,11 @@ def test_the_detail_closes_with_sign_up_and_the_store(client, salon):
     assert "marketplace" not in main.lower()
 
 
-# --- Available is not turned on (PLAN §33, saas#298) --------------------------------------------
-# Every business is born with every app off, a demo too (round 2026-10-27, PLAN §33, PLAN-HUB §71):
-# the apps of a vertical are the ones made for it, included in every plan, and the business turns
-# them on with the template its Home suggests or one at a time. The pages said a business «comes
-# with» them «out of the box», «turned on from day one», and the FAQ said the point of sale,
-# the catalogue, customers and invoicing «come with every hub»: a new business opened with none.
+# --- Available is not turned on -----------------------------------------------------------------
+# Every business is born with every app off, a demo too: the apps of a vertical are the ones made for it, included in
+# every plan, and the business turns them on with the template its Home suggests or one at a time. So no page says a
+# business «comes with» them «out of the box» or «turned on from day one», nor that the point of sale, the catalogue,
+# customers and invoicing «come with every hub».
 
 OUT_OF_THE_BOX = (
     "comes with",
@@ -851,7 +836,7 @@ def _promises(html: str) -> list[str]:
 
 @LANGUAGES
 def test_the_index_promises_no_app_out_of_the_box(client, sector, salon, language):
-    """The hero, the meta description and the Open Graph description all said «comes with»."""
+    """The hero, the meta description and the Open Graph description: none says «comes with»."""
     html = without_tokens(
         client.get(INDEX, HTTP_HOST=HOST, headers={"accept-language": language}).content.decode()
     )
@@ -949,8 +934,8 @@ def test_with_apps_the_faq_names_the_apps_made_for_the_business_and_how_they_sta
 def test_without_apps_the_faq_promises_no_core_that_comes_with_every_hub(
     client, salon, entry_plan, language
 ):
-    """The branch without apps said the point of sale, the catalogue, customers and invoicing
-    «come with every hub» on «the same core»: they are apps too, off like every other."""
+    """Without apps, the FAQ never says the point of sale, the catalogue, customers and invoicing «come with every
+    hub» on «the same core»: they are apps too, off like every other."""
     response = _page(client, headers={"accept-language": language})
     answers = {item["key"]: str(item["answer"]) for item in response.context["faq_items"]}
 
@@ -959,7 +944,7 @@ def test_without_apps_the_faq_promises_no_core_that_comes_with_every_hub(
     assert _promises(without_tokens(response.content.decode())) == []
 
 
-# --- Sitemap, llms.txt and footer (port of test_sitemap.py) -------------------------------------
+# --- Sitemap, llms.txt and footer ---------------------------------------------------------------
 
 
 @pytest.fixture
@@ -1014,7 +999,7 @@ class TestOnlyWhatIsServed:
 
 class TestTheyStayPanEuropean:
     def test_the_detail_page_does_not_talk_about_verifactu(self, client, active_type):
-        """The industries are for ALL of Europe; VeriFactu is only Spanish (Ioan, 27/08)."""
+        """The industries are for ALL of Europe; VeriFactu is only Spanish."""
         body = (
             client.get("/industries/hair_salon/", HTTP_HOST=HOST)
             .content.decode()

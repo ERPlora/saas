@@ -1,4 +1,4 @@
-"""Euros ↔ integer cents, with the one rounding of the system: HALF_UP, explicit (ADR-0123 §4).
+"""Euros ↔ integer cents, with the one rounding of the system: HALF_UP, explicit.
 
 Every amount that is summed (the OSS threshold) or handed to Stripe is integer cents, so a sum is exact
 by construction. ``quantize()`` without a mode inherits ``ROUND_HALF_EVEN`` from the decimal context,

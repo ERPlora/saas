@@ -44,13 +44,14 @@ def test_the_list_names_the_flows_of_each_section_of_the_old_qa():
 
     assert {"PUBLIC-F01", "PUBLIC-F37", "HUBS-F21", "BILLING-F06", "ACCOUNTS-F32", "APPS-F07"} <= keys
     assert {"PRINTING-F13", "VERIFACTU-F19", "INVOICE-F01"} <= keys
-    assert len(keys) == 86
+    assert "PUBLIC-F36" not in keys
+    assert len(keys) == 85
 
 
 def test_every_flow_of_this_repo_it_rests_on_is_settled():
     states = {key: state_of(key) for key in master_qa_keys() if key.split("-")[0] in APPS_OF_THIS_REPO}
 
-    assert {key: state for key, state in states.items() if state not in {"hecho", "descartado"}} == {}
+    assert {key: state for key, state in states.items() if state != "hecho"} == {}
 
 
 def test_the_master_qa_is_done():

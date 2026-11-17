@@ -1,4 +1,4 @@
-"""The reads of whatsapp: which business a door names (its slug in phase 1, its UUID in phase 2)."""
+"""The reads of whatsapp: which business a door names (its slug or its UUID)."""
 
 import pytest
 
@@ -37,7 +37,7 @@ def test_a_business_being_deleted_can_still_be_forgotten(business):
     assert queries.known_hub("bar-manolo", live=False) is None
 
 
-# --- WHATSAPP-G03, WHATSAPP-G05 · the channel the Hub learns in its snapshot (door 4) --------------------------
+# --- The channel the Hub learns in its snapshot (door 4) -------------------------------------------------------
 
 
 @pytest.fixture
@@ -133,9 +133,9 @@ def test_the_templates_are_the_mirror_in_the_hubs_shape(connected, business):
 
 
 def test_the_snapshot_carries_the_channel_at_its_version(connected, business):
-    from hubs import queries as hubs_queries
+    from hubs.queries import hub_sync
 
-    snapshot = hubs_queries.hub_snapshot(business.id)
+    snapshot = hub_sync.hub_snapshot(business.id)
 
     assert snapshot["whatsapp"] == {**queries.channel_block(business.id), "version": snapshot["version"]}
     assert snapshot["whatsapp"]["status"] == "connected"

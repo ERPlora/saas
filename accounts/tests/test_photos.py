@@ -1,8 +1,7 @@
-"""ACCOUNTS-F21 · The account's photo: ``accounts.photos`` (what an upload may be, and what is kept of it) and the operations
-``accounts.photo.upload`` and ``accounts.photo.remove`` (plan 2026-10-13, L3-A; Account → Profile, «Change photo»).
+"""The account's photo: ``accounts.photos`` (what an upload may be, and what is kept of it) and the operations
+``accounts.photo.upload`` and ``accounts.photo.remove`` (Account → Profile, «Change photo»).
 
-Ported from ERPlora/saas ``apps/dashboard/profile`` (``TestAvatarViews`` of ``test_views.py``), with what the old
-upload did not check: only JPEG, PNG or WebP, recognised by their bytes (never by the name or the type the
+Only JPEG, PNG or WebP, recognised by their bytes (never by the name or the type the
 browser claims); at most ``MAX_PHOTO_BYTES`` and ``MAX_SIDE`` pixels; no animation; and nothing of what a phone
 writes inside a photo (the place it was taken, the camera, comments) is kept, except a JPEG's orientation, so it
 does not turn sideways. Kept in the database (no media storage in the SaaS) and shown as a data URL.
@@ -17,9 +16,10 @@ from django.db import connections
 from django.test import Client
 from live.live_registry import live_registry
 
-from accounts import events, photos, services
+from accounts import events, photos
 from accounts.models import ProfilePhoto
 from accounts.schemas import PhotoRemoveIn, PhotoUploadIn
+from accounts.services import profile_photo
 from accounts.tests import images
 from accounts.tests.conftest import HOST, api_get, api_post, ctx_for
 
@@ -262,34 +262,34 @@ class TestTheOperations:
     def test_uploading_keeps_the_cleaned_photo_and_the_profile_shows_it(self, ana):
         data = images.png(extra=[images.png_chunk(b"tEXt", b"Comment\x00at home")])
 
-        result = services.photo_upload(ctx_for(ana), PhotoUploadIn(image=_upload(data)))
+        result = profile_photo.photo_upload(ctx_for(ana), PhotoUploadIn(image=_upload(data)))
 
         photo = ProfilePhoto.objects.get(user=ana)
         assert (photo.content_type, bytes(photo.data)) == ("image/png", images.png())
         assert result.photo == photo.data_url()
 
     def test_a_new_photo_replaces_the_old_one(self, ana):
-        services.photo_upload(ctx_for(ana), PhotoUploadIn(image=_upload(images.png())))
-        services.photo_upload(ctx_for(ana), PhotoUploadIn(image=_upload(images.jpeg())))
+        profile_photo.photo_upload(ctx_for(ana), PhotoUploadIn(image=_upload(images.png())))
+        profile_photo.photo_upload(ctx_for(ana), PhotoUploadIn(image=_upload(images.jpeg())))
 
         assert list(ProfilePhoto.objects.values_list("content_type", flat=True)) == ["image/jpeg"]
 
     def test_removing_leaves_the_initials(self, ana):
-        services.photo_upload(ctx_for(ana), PhotoUploadIn(image=_upload(images.png())))
+        profile_photo.photo_upload(ctx_for(ana), PhotoUploadIn(image=_upload(images.png())))
 
-        result = services.photo_remove(ctx_for(ana), PhotoRemoveIn())
+        result = profile_photo.photo_remove(ctx_for(ana), PhotoRemoveIn())
 
         assert result.photo is None
         assert not ProfilePhoto.objects.exists()
 
     def test_removing_without_a_photo_is_no_error(self, ana):
-        assert services.photo_remove(ctx_for(ana), PhotoRemoveIn()).photo is None
+        assert profile_photo.photo_remove(ctx_for(ana), PhotoRemoveIn()).photo is None
 
     def test_both_re_run_the_live_profile(self, ana):
         from live.models import OutboxEvent
 
-        services.photo_upload(ctx_for(ana), PhotoUploadIn(image=_upload(images.png())))
-        services.photo_remove(ctx_for(ana), PhotoRemoveIn())
+        profile_photo.photo_upload(ctx_for(ana), PhotoUploadIn(image=_upload(images.png())))
+        profile_photo.photo_remove(ctx_for(ana), PhotoRemoveIn())
 
         assert list(OutboxEvent.objects.values_list("name", flat=True)) == [events.PROFILE_UPDATED] * 2
         assert "accounts.profile.get" in live_registry.affected([events.PROFILE_UPDATED])

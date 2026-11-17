@@ -4,7 +4,7 @@ In production the only way in is the ALB, which APPENDS the address of the peer 
 visitor) at the end of ``X-Forwarded-For``: anything before it the client may have typed. daphne's
 ``--proxy-headers`` takes the FIRST entry (forgeable), and the rate limits key on ``REMOTE_ADDR``
 (allauth's sign-in and the contact form): a forged header was a fresh budget per request, a missing
-rewrite one budget for the whole internet (saas#2154). ``TRUSTED_PROXY_HOPS`` says how many proxies
+rewrite one budget for the whole internet. ``TRUSTED_PROXY_HOPS`` says how many proxies
 of ours are in front: 0 locally, 1 in production (the ALB).
 """
 

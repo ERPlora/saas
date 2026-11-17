@@ -1,13 +1,13 @@
-"""Models of apps: the catalog the Hub registers and what the SaaS sells (round 16, PLAN §21).
+"""Models of apps: the catalog the Hub registers and what the SaaS sells.
 
 - ``App`` and ``AppDoc`` concrete ``live.shared_catalog`` in the ``shared`` schema of the ``saas``
-  database (spec §3.2). The SaaS owns the tables and their migrations, the Hub writes them with
+  database. The SaaS owns the tables and their migrations, the Hub writes them with
   each release (its mirror is ``managed = False``) and the SaaS only reads them: through
   ``apps/queries.py``, its read-only admin and its checks (``apps/tests/test_lint.py``).
-- ``Module`` is only commercial (spec decision 7, PLAN-SAAS §2.6): one row per paid app, written by
-  hand in the admin. Name, texts, icon and documentation come from ``App``. ``slug`` points at
-  ``App.id`` without a database FK (nothing crosses the ``shared`` schema): ``clean()`` and the
-  database check ``apps.E001`` keep it honest (spec §5.4).
+- ``Module`` is only commercial: one row per paid app, written by hand in the admin. Name, texts,
+  icon and documentation come from ``App``. ``slug`` points at ``App.id`` without a database FK
+  (nothing crosses the ``shared`` schema): ``clean()`` and the database check ``apps.E001`` keep it
+  honest.
 """
 
 from django.core.exceptions import ValidationError
@@ -17,7 +17,7 @@ from django.utils.translation import gettext_lazy as _
 from live.models import UUIDModel
 from live.shared_catalog import APP_DOC_TABLE, APP_TABLE, AbstractApp, AbstractAppDoc
 
-#: The label of an app = its folder in the Hub = ``shared.app.id`` (round 15, PLAN §20.2).
+#: The label of an app = its folder in the Hub = ``shared.app.id``.
 APP_ID_RE = r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$"
 
 
@@ -54,12 +54,12 @@ class AppDoc(AbstractAppDoc):
 class Module(UUIDModel):
     """What the SaaS sells of a paid app (``premium = True`` in the Hub): its tier, prices and Stripe.
 
-    A free app never has a row: it is always entitled (PLAN-SAAS §2.6). Prices are net (VAT
-    excluded) and in euro cents, the integer Stripe charges, so no amount is ever rounded here.
+    A free app never has a row: it is always entitled. Prices are net (VAT excluded) and in euro
+    cents, the integer Stripe charges, so no amount is ever rounded here.
     """
 
     class Tier(models.TextChoices):
-        """The lowest level of a hub plan that includes the module (ADR-0474; the same names as
+        """The lowest level of a hub plan that includes the module (the same names as
         ``Plan.included_level``): ``basic`` = every paid plan."""
 
         FREE = "free", _("Free")
@@ -119,7 +119,7 @@ class Module(UUIDModel):
 
     def clean(self) -> None:
         """The slug is an app of the catalog, and a paid one; a retired app (``listed = False``)
-        still exists, so its row is valid (spec §5.4)."""
+        still exists, so its row is valid."""
         super().clean()
         if not self.slug:
             return

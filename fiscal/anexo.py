@@ -1,5 +1,4 @@
-"""The Anexo I model the business downloads, signs and uploads (FISCAL-F06; PLAN-SAAS §4: «el PDF oficial
-pre-rellenado (Anexo I, p. 11, + hoja RGPD)»).
+"""The Anexo I model the business downloads, signs and uploads (FISCAL-F06).
 
 Page 1 is the AEAT's official page (p. 11 of agreement 017, ``OFFICIAL_MODEL``), whose text is never touched: «El
 texto de este documento normalizado no podrá ser modificado». What is drawn on it is what a person would write in
@@ -10,10 +9,8 @@ line, so a printed copy is still completed by hand. Page 2 is ERPlora's own: the
 13 RGPD) that the model's «TRATAMIENTO DE DATOS» obliges the social collaborator to give, which says on its face that
 it is not part of the model.
 
-Ported in behaviour from ERPlora/saas ``apps/dashboard/fiscal/services/anexo_model.py`` and ``anexo_i_text.py``
-(origin/develop), which printed an HTML copy of the model with WeasyPrint; here the official PDF itself is filled,
-so its wording can never drift. The texts of page 2 are the old product's, and they stay in Spanish: this is a
-document filed with the Spanish tax agency, not ERPlora's UI.
+The official PDF itself is filled in, never an HTML copy of it, so its wording can never drift.
+The texts of page 2 stay in Spanish: this is a document filed with the Spanish tax agency, not ERPlora's UI.
 
 The slots were measured on ``OFFICIAL_MODEL`` (``pdftotext -bbox``; ``OFFICIAL_SHA256`` pins the file): a value
 covers its dotted line with white and is written in Times-Roman (the metrics of the model's Times New Roman), at
@@ -31,7 +28,7 @@ from reportlab.pdfgen.canvas import Canvas
 
 from billing.nif import is_legal_person_nif
 
-#: The AEAT's official model, p. 11 of agreement 017 (copied from ``knowledge/company/aeat-agreement-017``).
+#: The AEAT's official model, p. 11 of agreement 017.
 OFFICIAL_MODEL = Path(__file__).resolve().parent / "static" / "fiscal" / "representation-model.pdf"
 #: The file the slots were measured on.
 OFFICIAL_SHA256 = "f91bedb37871493e1289550d009e7b4d8dd61fe1918f3637f5f7ffc87b024455"

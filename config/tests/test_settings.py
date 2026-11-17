@@ -1,4 +1,4 @@
-"""Settings of saas-next that a page relies on: the CSP and where the hub's callback lives."""
+"""Settings of the SaaS that a page relies on: the CSP and where the hub's callback lives."""
 
 import ast
 import os
@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from decouple import RepositoryEnv
 from django.apps import apps as django_apps
 from django.conf import settings
 from django.http.request import validate_host
@@ -16,7 +17,7 @@ from live.meta import LiveAppConfig
 from live.recaptcha import with_recaptcha
 from psycopg_pool import ConnectionPool
 
-from config.tests.test_production_settings import IGNORE_DOTENV
+from config.tests.test_production_settings import IGNORE_DOTENV, bare_environment
 
 
 def test_the_hub_origin_pattern_is_derived_from_the_callback_template():
@@ -26,7 +27,7 @@ def test_the_hub_origin_pattern_is_derived_from_the_callback_template():
     assert settings.HUB_ORIGIN_PATTERN == "http://*.localhost:8000"
 
 
-# Hosts (Ioan, 2026-10-13; ronda 13, PLAN §18): customers sign in at `erplora.com` (locally
+# Hosts: customers sign in at `erplora.com` (locally
 # `localhost:8001`); hubs are `<slug>.erplora.com` (locally `a.localhost:8000`) and `hubs.erplora.com`
 # (locally `hubs.localhost:8000`) is the Hub's staff admin host, served only by the Hub. No host of
 # a hub is the SaaS's.
@@ -53,7 +54,7 @@ def test_development_does_not_answer_on_a_hubs_host(host):
 
 
 def test_staff_jump_to_the_hub_admin_on_its_own_host():
-    """The `hub-admin` jump posts to the platform host's callback (ronda 13, PLAN §18), never a hub's."""
+    """The `hub-admin` jump posts to the platform host's callback, never a hub's."""
     assert settings.HUB_ADMIN_CALLBACK_URL == "http://hubs.localhost:8000/auth/callback"
 
 
@@ -72,9 +73,8 @@ def test_every_page_has_a_csp_with_a_nonce_and_form_action_to_the_hubs(client):
     assert re.search(r"'nonce-[^']+'", " ".join(directives["script-src"]))
     assert "'strict-dynamic'" in directives["script-src"]
     # Google: «Continue with Google» posts allauth.headless's provider redirect, which answers 302 to
-    # accounts.google.com, and `form-action` filters the whole redirect chain of a form post (ported
-    # from ERPlora/saas, saas#945).
-    # The hubs (`/hub-login/`) and the Hub admin of the staff (`hubs.localhost:8000`, ronda 13).
+    # accounts.google.com, and `form-action` filters the whole redirect chain of a form post.
+    # The hubs (`/hub-login/`) and the Hub admin of the staff (`hubs.localhost:8000`).
     assert directives["form-action"] == [
         "'self'",
         "https://accounts.google.com",
@@ -84,7 +84,7 @@ def test_every_page_has_a_csp_with_a_nonce_and_form_action_to_the_hubs(client):
     # The Tauri bridge; with DEBUG (the default of the tests) also the Vite dev server and its HMR socket.
     assert directives["connect-src"][:3] == ["'self'", "ipc:", "http://ipc.localhost"]
     assert "cdn.jsdelivr.net" not in policy
-    # reCAPTCHA Enterprise is off (the default since 2026-10-23, and the test run's): nothing of Google's reCAPTCHA,
+    # reCAPTCHA Enterprise is off (the default, and the test run's): nothing of Google's reCAPTCHA,
     # neither its sources nor the Trusted Types policy its script creates (production switched on, its own test).
     assert "recaptcha" not in policy
     assert "gstatic.com" not in policy
@@ -99,12 +99,15 @@ def test_no_page_may_create_the_policy_of_iconify():
 
 
 # Production settings are read in a fresh interpreter: `config.settings` is evaluated once per
-# process, from the environment and `saas-next/.env`. That interpreter ignores `saas-next/.env`
-# (IGNORE_DOTENV), so a developer's file never leaks in and these tests always run.
+# process, from the environment and the repo's `.env`. That interpreter ignores that `.env`
+# (IGNORE_DOTENV) and starts from a bare environment, so a developer's file never leaks in, read or
+# exported to the shell, and these tests always run.
 
 SAAS_NEXT = Path(__file__).resolve().parents[2]
 PRODUCTION_ENV = {
     "DEBUG": "False",
+    "CACHE_KEY_PREFIX": "saas",
+    "STRIPE_EXPECTED_MODE": "live",
     "SECRET_KEY": "a-production-secret-key",
     "INTERNAL_SHARED_SECRET": "a-production-internal-secret",
     "FISCAL_DOCUMENTS_KEY": "2EBDB2KSnvz5lBG1RHG5ldNq34ZjWvGZ_t5r4wl5Mpw=",
@@ -118,13 +121,6 @@ PRODUCTION_ENV = {
 def _settings_in_a_fresh_process(
     env: dict[str, str], expression: str, preamble: str = IGNORE_DOTENV
 ) -> subprocess.CompletedProcess:
-    # DEBUG and VITE_DEV_PORT too: the test run sets them (config/settings_pytest.py), the fresh process
-    # must not inherit them.
-    base = {
-        key: value
-        for key, value in os.environ.items()
-        if key not in ("DEBUG", "VITE_DEV_PORT") and not key.startswith(("GOOGLE_", "DJANGO_", "RECAPTCHA_"))
-    }
     return subprocess.run(
         [
             sys.executable,
@@ -132,16 +128,34 @@ def _settings_in_a_fresh_process(
             f"{preamble}\nimport config.settings as s; print({expression})",
         ],
         cwd=SAAS_NEXT,
-        env={**base, **env},
+        env={**bare_environment(), **env},
         capture_output=True,
         text=True,
         check=False,
     )
 
 
+def test_the_production_process_inherits_nothing_the_developers_shell_exports(monkeypatch):
+    """A developer may export their `.env` to the shell (`set -a; . .env`) before running the suite: none of it
+    reaches the fresh process, or a production value turns into the developer's (the staff were sent to
+    `hubs.localhost`). That process starts from what Python needs plus what the test passes."""
+    exported = RepositoryEnv(SAAS_NEXT / ".env.example").data
+    for key, value in exported.items():
+        monkeypatch.setenv(key, value)
+
+    result = _settings_in_a_fresh_process(
+        PRODUCTION_ENV, "(sorted(__import__('os').environ), s.HUB_ADMIN_CALLBACK_URL)"
+    )
+
+    assert result.returncode == 0, result.stderr
+    environment, callback = ast.literal_eval(result.stdout.strip())
+    assert [key for key in environment if key in exported and key not in PRODUCTION_ENV] == []
+    assert callback == "https://hubs.erplora.com/auth/callback"
+
+
 def test_debug_is_off_unless_the_environment_turns_it_on():
     """A deploy that forgets DEBUG must not serve debug pages nor fall back to the local secrets:
-    production is the default, development opts in (saas-next/.env, `DEBUG=True`)."""
+    production is the default, development opts in (the repo's .env, `DEBUG=True`)."""
     env = {key: value for key, value in PRODUCTION_ENV.items() if key != "DEBUG"}
 
     result = _settings_in_a_fresh_process(env, "s.DEBUG")
@@ -182,7 +196,7 @@ def test_production_answers_only_on_erplora_com_and_wants_three_letter_hubs():
 
 
 def test_production_sends_the_staff_to_hubs_erplora_com_without_serving_it():
-    """`hubs.erplora.com` is the Hub's alone (ronda 13, PLAN §18): the SaaS only posts there."""
+    """`hubs.erplora.com` is the Hub's alone: the SaaS only posts there."""
     result = _settings_in_a_fresh_process(
         PRODUCTION_ENV,
         "(s.HUB_ADMIN_CALLBACK_URL, [str(source) for source in s.SECURE_CSP['form-action']], s.ALLOWED_HOSTS)",
@@ -203,7 +217,7 @@ def test_production_sends_the_staff_to_hubs_erplora_com_without_serving_it():
 def test_the_test_database_name_comes_from_the_environment(environment, expected):
     """Several sessions run pytest at once against the same Postgres: each one names its own test
     database (``TEST_DB_NAME``) so they do not drop each other's. The environment wins over
-    saas-next/.env, so this runs in a fresh process even when that file exists."""
+    the repo's .env, so this runs in a fresh process even when that file exists."""
     base = {key: value for key, value in os.environ.items() if key != "TEST_DB_NAME"}
     result = subprocess.run(
         [
@@ -253,7 +267,7 @@ def test_live_precedes_daphne_so_its_runserver_starts_vite_too():
 
 
 def module_folders(path: Path) -> list[str]:
-    """The subfolders of ``path`` that hold an app of their own (an ``apps.py``), as hub-next's
+    """The subfolders of ``path`` that hold an app of their own (an ``apps.py``), as the Hub's
     ``apps/<id>/`` modules do; ``migrations`` and ``tests`` are never one."""
     return sorted(
         child.name
@@ -264,12 +278,11 @@ def module_folders(path: Path) -> list[str]:
     )
 
 
-def test_saas_next_apps_is_the_platform_app_of_the_catalog_not_a_folder_of_modules():
-    """``saas-next/apps/`` is the platform app of the app catalog (round 16, PLAN §21.1 point 10,
-    spec decision 18): the owner of the ``shared`` schema (``App``, ``AppDoc``) and of ``Module``,
-    with ``label = "apps"`` and ``kind = "platform"``. It is not a folder of modules as hub-next's
-    ``apps/<id>/`` (round 15, PLAN §20.2): the SaaS turns nothing on or off, so it has no modules
-    and no subfolder of ``apps/`` is an app of its own."""
+def test_the_apps_folder_is_the_platform_app_of_the_catalog_not_a_folder_of_modules():
+    """The SaaS's ``apps/`` is the platform app of the app catalog: the owner of the ``shared`` schema
+    (``App``, ``AppDoc``) and of ``Module``, with ``label = "apps"`` and ``kind = "platform"``. It is not
+    a folder of modules as the Hub's ``apps/<id>/``: the SaaS turns nothing on or off, so it has no
+    modules and no subfolder of ``apps/`` is an app of its own."""
     config = django_apps.get_app_config("apps")
 
     assert isinstance(config, LiveAppConfig)
@@ -290,7 +303,7 @@ def test_a_subfolder_with_its_own_apps_py_is_a_folder_of_modules(tmp_path):
 
 
 def test_the_debug_csp_lets_the_saas_vite_dev_server_in():
-    """Port 5174, not hub-next's 5173: both dev servers run at once (reCAPTCHA off: none of its sources)."""
+    """Port 5174, not the Hub's 5173: both dev servers run at once (reCAPTCHA off: none of its sources)."""
     expected = debug_policy(VITE_DEV_SERVER)
     for directive in ("connect-src", "style-src", "font-src", "img-src"):
         assert VITE_DEV_SERVER in settings.SECURE_CSP[directive]
@@ -322,7 +335,7 @@ def test_the_vite_port_comes_from_the_environment():
 
 
 def test_without_vite_dev_port_the_vite_port_stays_5174():
-    """Whoever does not export it keeps today's port."""
+    """Whoever does not export it keeps the default port."""
     result = _settings_in_a_fresh_process(DEVELOPMENT_ENV, "s.LIVE['spa']['dev_server']")
 
     assert result.returncode == 0, result.stderr
@@ -360,7 +373,7 @@ def test_the_test_run_keeps_the_default_vite_port_whatever_the_shell_exports():
 
 
 # A python-decouple repository standing for a `.env` that carries VITE_DEV_PORT=5224: whichever branch
-# config/settings.py takes (the file exists or not), the value comes from "the file", not the environment.
+# config/settings/core.py takes (the file exists or not), the value comes from "the file", not the environment.
 DOTENV_WITH_VITE_PORT_5224 = (
     "import decouple\n"
     "_dotenv = {'VITE_DEV_PORT': '5224'}\n"
@@ -412,6 +425,44 @@ def test_the_test_run_keeps_the_default_vite_port_whatever_the_dotenv_says():
     assert result.stdout.strip() == VITE_DEV_SERVER
 
 
+A_DEVELOPERS_BRAVE_KEY = "a-developers-brave-key"
+DOTENV_WITH_A_BRAVE_KEY = (
+    "import decouple\n"
+    f"_dotenv = {{'BRAVE_SEARCH_API_KEY': {A_DEVELOPERS_BRAVE_KEY!r}}}\n"
+    "decouple.RepositoryEnv = lambda *args, **kwargs: _dotenv\n"
+    "decouple.RepositoryEmpty = lambda *args, **kwargs: _dotenv"
+)
+
+
+@pytest.mark.parametrize(
+    ("exported", "preamble"),
+    [
+        pytest.param({"BRAVE_SEARCH_API_KEY": A_DEVELOPERS_BRAVE_KEY}, IGNORE_DOTENV, id="shell"),
+        pytest.param({}, DOTENV_WITH_A_BRAVE_KEY, id="dotenv"),
+    ],
+)
+def test_the_test_run_has_no_web_search_whatever_the_shell_or_the_dotenv_say(exported, preamble):
+    """The developer's .env carries the Brave Search key (their runserver searches the web): the suite still runs
+    without it, as the CI does, so the tests that expect the search off hold and none reaches Brave. A test that
+    needs it on sets ``settings.BRAVE_SEARCH_API_KEY``."""
+    inherited = {key: value for key, value in os.environ.items() if key != "BRAVE_SEARCH_API_KEY"}
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            f"{preamble}\nimport config.settings_pytest as s; print(repr(s.BRAVE_SEARCH_API_KEY))",
+        ],
+        cwd=SAAS_NEXT,
+        env={**inherited, **exported},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "''"
+
+
 def test_live_serves_the_spa_of_this_project():
     live = settings.LIVE
     assert live["context_builder"] == "base.operations.UserContextBuilder"
@@ -461,7 +512,7 @@ def test_production_with_recaptcha_switched_on_admits_its_sources():
     assert "goog#html" in policy["trusted-types"]
 
 
-# allauth.headless: the login API of the Vue pages, headless only (PLAN-SAAS §2).
+# allauth.headless: the login API of the Vue pages, headless only.
 
 
 def test_headless_serves_the_browser_client_only():
@@ -490,16 +541,16 @@ def test_the_mails_link_the_pages_of_the_spa():
     assert settings.HEADLESS_FRONTEND_URLS == {
         "account_reset_password": "/password/reset",
         "account_reset_password_from_key": "/password/reset/key/{key}",
-        # The launcher's «Create account» tab (FIX-LAUNCH-TABS).
+        # The launcher's «Create account» tab.
         "account_signup": "/launch?tab=signup",
     }
 
 
-# The public web (round 16, public/): its apps, middlewares and settings.
+# The public web (public/): its apps, middlewares and settings.
 
 
 def test_the_pool_checks_a_connection_before_handing_it_out():
-    """After a cut of the database the pool may still hold a dead connection (PLAN-DB, round 2026-11-04e, point 5)."""
+    """After a cut of the database the pool may still hold a dead connection."""
     pool = settings.DATABASES["default"]["OPTIONS"]["pool"]
     assert pool["check"] is ConnectionPool.check_connection
 
@@ -578,7 +629,7 @@ def test_the_app_downloads_and_the_stores_defaults():
     assert settings.DOWNLOAD_URL_TTL == 300
     assert settings.MICROSOFT_STORE_APP_ID == ""
     assert settings.GOOGLE_PLAY_APP_ID == ""
-    # The Google Play listing is live (2026-10-01): the default that does not lie.
+    # The Google Play listing is live: the default that does not lie.
     assert settings.GOOGLE_PLAY_LISTING_LIVE is True
     # A private S3 bucket on AWS, Ireland region; credentials from the task's role, never keys.
     assert settings.DOWNLOADS_REGION == "eu-west-1"

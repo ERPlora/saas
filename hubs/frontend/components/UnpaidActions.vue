@@ -1,9 +1,9 @@
 <script setup lang="ts">
-// The way out of an unpaid invoice wherever a business is listed (audit 2026-10-14, R-07 and R-09; mockups
-// `launch.html` «past-due», `businesses.html`): on the web, for whoever may pay it (`pay_url`, its owner),
+// The way out of an unpaid invoice wherever a business is listed: on the web, for whoever may pay it
+// (`pay_url`, its owner),
 // «Pay the invoice» goes to Stripe's page. After a declined card «Change card» (Stripe's Customer Portal,
 // `useCardPortal`, as on Billing) is the main action and «Pay» waits for it, as Billing does. Inside the apps
-// nothing at all (README §4): the notice says where to pay. In a list each button is named with its business.
+// nothing at all: the notice says where to pay. In a list each button is named with its business.
 import { HubIcon, WebOnly } from '@erplora/ui/shell';
 import { IonButton, IonSpinner } from '@ionic/vue';
 import { computed } from 'vue';
@@ -20,7 +20,7 @@ const props = withDefaults(
     size?: 'small' | 'default' | 'large';
     /** `block` in a card that stacks its actions. */
     expand?: 'block';
-    /** Not the most urgent of a list: every button outlined, so one business leads (audit 2 S-06). */
+    /** Not the most urgent of a list: every button outlined, so one business leads. */
     secondary?: boolean;
   }>(),
   { named: false, size: 'default', expand: undefined, secondary: false },

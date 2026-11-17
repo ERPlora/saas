@@ -14,7 +14,7 @@
   --background-hover: var(--ion-color-primary-tint, #2ca1da);
   --background-hover-opacity: 1;
   --border-color: currentColor;
-  --border-radius: 14px;
+  --border-radius: var(--ep-radius-sm);
   --border-style: none;
   --border-width: 0;
   --color: var(--ion-color-primary-contrast, #fff);
@@ -117,7 +117,7 @@
   --background-focused: var(--ion-color-primary, #1496d6);
   --background-focused-opacity: 0.1;
   --background-hover: transparent;
-  --color: var(--ion-color-primary, #1496d6);
+  --color: var(--ion-text-color);
   font-size: min(1.0625rem, 51px);
 }
 .ep-button--clear:active {
@@ -133,7 +133,7 @@
 
 /* The sizes come after the fills: they set the font size a clear button changes too. */
 .ep-button--small {
-  --border-radius: 6px;
+  --border-radius: var(--ep-radius-sm);
   --padding-bottom: 4px;
   --padding-end: 0.9em;
   --padding-start: 0.9em;
@@ -142,7 +142,7 @@
   font-size: min(0.8125rem, 39px);
 }
 .ep-button--large {
-  --border-radius: 16px;
+  --border-radius: var(--ep-radius-sm);
   --padding-bottom: 17px;
   --padding-top: 17px;
   font-size: min(1.25rem, 60px);

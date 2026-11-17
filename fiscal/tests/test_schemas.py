@@ -1,4 +1,4 @@
-"""The shapes of fiscal's contract (plan 2026-10-15, «Contrato»): what the Hub posts, what it gets back, what
+"""The shapes of fiscal's contract with the Hub: what the Hub posts, what it gets back, what
 the panel reads and the block of the snapshot. The rules of the documents are the service's
 (``test_services.py``): every field of the body is a string here, so a missing or wrong one answers its code."""
 

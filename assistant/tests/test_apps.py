@@ -1,8 +1,7 @@
 """The assistant app is a platform app of the SaaS: always on, no module fields; configuring it is the platform's and
 the staff's, asking the panel's assistant every account's.
 
-Its name in the admin goes through the catalog (saas#2489 of the old product: «Assistant (Hub ↔ Cloud ↔ LLM)» was a
-literal, so the Spanish admin showed it in English).
+Its name in the admin goes through the catalog: a literal would show in English in the Spanish admin.
 """
 
 from django.apps import apps
@@ -26,7 +25,7 @@ def test_no_account_configures_the_ai():
 
 
 def test_every_account_may_ask_the_panels_assistant():
-    """PLAN-SAAS §23: the assistant of erplora.com's own panel is every signed-in account's (``assistant.ask``)."""
+    """The assistant of erplora.com's own panel is every signed-in account's (``assistant.ask``)."""
     from live.meta import all_live_app_configs, permissions_for_role
 
     config = apps.get_app_config("assistant")

@@ -1,4 +1,4 @@
-"""The client of OpenAI's Chat Completions (``assistant.providers.openai``, ASSISTANT-G37), against
+"""The client of OpenAI's Chat Completions (``assistant.providers.openai``), against
 ``fake_provider``: the real HTTP of our client, to a server on ``127.0.0.1`` that answers in OpenAI's format."""
 
 import json

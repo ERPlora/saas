@@ -1,9 +1,6 @@
-// Billing (`/dashboard/billing/:tab`; round 17, PLAN-SAAS §3.6 points 1, 6, 7 and 11; mockups `billing.html`): the shell's
-// page with its three sections in the footer tabbar — Invoices · Subscriptions · Payment details — each at its
-// own address. A composition surface: on top, what waits for a payment (BillingNotices) and, on Invoices, what
-// this section is in one line (V-30); below, the section. Billing is not selling: it shows on every surface,
-// to look at invoices and subscriptions and edit the fiscal data (paying and changing plan are web only,
-// inside each section).
+// Billing (`/dashboard/billing/:tab`): the shell's page with its three sections in the footer tabbar, each at its
+// own address. Billing is not selling: it shows on every surface (paying and changing plan are web only, inside
+// each section).
 import { AppPage, applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -41,7 +38,7 @@ describe('BillingPage', () => {
     ['invoices', 'detail-fill', true],
     ['subscriptions', 'detail-fill', true],
     ['payment', 'detail', false],
-  ] as const)('on %s the page is `%s`: a list fills the space between the topbar and the tabbar (Ioan, 2026-10-14)', async (tab, layout, fills) => {
+  ] as const)('on %s the page is `%s`: a list fills the space between the topbar and the tabbar', async (tab, layout, fills) => {
     const s = await page(tab);
     expect(s.wrapper.findComponent(AppPage).props('contentLayout')).toBe(layout);
     expect(s.wrapper.get('.billing-stack').classes('panel-fill')).toBe(fills);

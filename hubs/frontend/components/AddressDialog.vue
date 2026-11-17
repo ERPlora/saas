@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// «Change address» (HUBS-F16; PLAN-SAAS §1.1, round 2026-10-15b): the owner gives the business another web
+// «Change address» (HUBS-F16): the owner gives the business another web
 // address. A FormModal (a form is a sheet, a confirmation a card) that starts from the current address, shows
 // the host it gives as the person types (lowercase, trimmed: what the server checks) and says what follows:
 // devices and erplora.com follow it, the old address stops opening the business, and nobody else can take

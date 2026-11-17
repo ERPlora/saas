@@ -1,4 +1,4 @@
-# Spanish translations of saas-next (ported from ERPlora/saas origin/develop).
+# Spanish translations of erplora.com.
 # Copyright (C) 2026 ERPlora
 # This file is distributed under the same license as ERPlora.
 #
@@ -837,6 +837,9 @@ msgstr "Tu cuenta aún no tiene contraseña: crea una con «¿Has olvidado tu co
 msgid "Too many attempts. Please try again in a few minutes."
 msgstr "Demasiados intentos. Vuelve a intentarlo en unos minutos."
 
+msgid "We could not send the email right now. Try again in a few minutes."
+msgstr "No hemos podido enviar el correo ahora mismo. Vuelve a intentarlo en unos minutos."
+
 msgid "That is already your email."
 msgstr "Ese ya es tu correo."
 
@@ -1226,7 +1229,7 @@ msgstr "Estamos mejorando ERPlora. Vuelve en unos minutos; tus datos están a sa
 msgid "Retry"
 msgstr "Reintentar"
 
-# Django 6.1.2 ships these with an empty Spanish translation, so the admin showed them in English (APP-ACCOUNTS-6).
+# Django 6.1.2 ships these with an empty Spanish translation, so the admin showed them in English.
 # base/tests/test_admin_django_catalog.py asks for every hole of Django's Spanish catalogues behind the admin.
 
 #: django/contrib/admin/sites.py

@@ -1,9 +1,6 @@
 <script setup lang="ts">
-// Billing → Payment details: the billing details of one payer (mockups `billing.html` «payment»; README §3 and
-// §4; `BillingProfile`): who the invoices of its businesses are made out to — name, tax ID, address, email —
-// and which businesses it pays. Read with `hubs.billing_profile.get` through the first of them (one payer,
-// one set of details) and edited in BillingProfileModal, on every surface: fiscal data is not selling. A
-// failure says why, with «Retry».
+// The billing details of one payer, read through the first business it pays (one payer, one set of details). Fiscal
+// data is not selling, so it is edited on every surface.
 import { InlineFeedback } from '@erplora/ui/components';
 import { HubIcon } from '@erplora/ui/shell';
 import { useLiveClient } from '@erplora/ui/sdk';

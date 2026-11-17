@@ -28,10 +28,12 @@
       "hub_employee": "Employee"
     },
     "status": {
-      "error": "Not prepared"
+      "error": "Not prepared",
+      "maintenance": "Paused for maintenance"
     },
     "reason": {
       "preparing": "We are preparing it. It opens by itself when it is ready.",
+      "maintenance": "Provisioning is paused for maintenance. It resumes automatically; you can check now.",
       "error": "We could not prepare it. We keep retrying; if it keeps failing, contact us.",
       "pastDue": "There is an unpaid invoice: pay it so the business is not suspended.",
       "pastDueApp": "There is an unpaid invoice. To pay it, go to erplora.com in your browser.",
@@ -113,7 +115,10 @@
       "setup": "Setting up your business",
       "setupType": "Setting up your business: {type}",
       "opensAlone": "It opens by itself when it finishes",
-      "ready": "Ready to open"
+      "ready": "Ready to open",
+      "maintenance": "Provisioning is paused for maintenance. Your business will be ready in a few minutes.",
+      "checkNow": "Check now",
+      "checkError": "We could not check the status. Try again."
     },
     "createModal": {
       "title": "Create business",

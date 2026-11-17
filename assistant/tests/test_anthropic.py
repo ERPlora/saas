@@ -1,4 +1,4 @@
-"""The client of Anthropic's Messages API (``assistant.providers.anthropic``, ASSISTANT-G32), against
+"""The client of Anthropic's Messages API (``assistant.providers.anthropic``), against
 ``fake_provider`` speaking Anthropic's streamed events."""
 
 import pytest

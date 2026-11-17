@@ -1,4 +1,4 @@
-// The panel's one «could not load» state (audit 2026-10-14, R-04/R-08): a danger notice that says what could
+// The panel's one «could not load» state: a danger notice that says what could
 // not be loaded and offers «Retry»; never an empty state, never a spinner for ever. Pages pass their own
 // sentence; without one it speaks of the page.
 import { createShellI18n } from '@erplora/ui/shell';
@@ -60,7 +60,7 @@ describe('LoadFailed', () => {
     expect(wrapper.find('[data-testid="launch-retry"]').exists()).toBe(true);
   });
 
-  it('a refusal for the role (403, `permission_denied`) says so, never «check your connection», and offers no «Retry» (audit 2 R-19)', () => {
+  it('a refusal for the role (403, `permission_denied`) says so, never «check your connection», and offers no «Retry»', () => {
     for (const error of [{ code: 'permission_denied', status: 0 }, { code: 'forbidden', status: 403 }]) {
       const wrapper = mountIt({ error, heading: 'We could not load this business', message: 'Maybe the connection dropped.' });
       expect(wrapper.text()).toContain('You do not have permission to see this');

@@ -12,6 +12,7 @@ wait is a ``select`` on the connection and on a pipe a stop request writes to.
 """
 
 import logging
+import select
 import threading
 import time
 
@@ -50,14 +51,23 @@ def test_a_notify_on_its_channel_wakes_it_before_its_time(listener, other_sessio
     assert listener.wait(0) is False
 
 
+def on_its_socket(listener, seconds):
+    """Wait, ``seconds`` at most, until something reached the listener's socket, leaving it there unread."""
+    ready, _, _ = select.select([listener._conn.fileno()], [], [], seconds)
+    return bool(ready)
+
+
 def test_drain_takes_what_was_notified_without_waiting(listener, other_session):
     listener.start()
-    other_session.execute(f"NOTIFY {CHANNEL}")
-    other_session.execute(f"NOTIFY {CHANNEL}, 'again'")
+    with other_session.transaction():  # one commit: both reach the listener in the same write, neither comes late
+        other_session.execute(f"NOTIFY {CHANNEL}")
+        other_session.execute(f"NOTIFY {CHANNEL}, 'again'")
+    assert on_its_socket(listener, 10)  # a NOTIFY takes its time to arrive (saas#323): wait for it, not for drain()
 
-    assert timed(lambda _: listener.drain(), None)[0] is True
-    assert timed(lambda _: listener.drain(), None)[1] < 0.5
-    assert listener.drain() is False
+    woke, took = timed(lambda _: listener.drain(), None)
+    assert woke is True and took < 0.5
+    woke, took = timed(lambda _: listener.drain(), None)
+    assert woke is False and took < 0.5
 
 
 def test_an_interrupt_after_the_close_is_harmless():
@@ -124,22 +134,37 @@ def test_a_lost_connection_wakes_it_and_the_next_wait_listens_again(listener, ot
 
 def test_a_database_it_cannot_reach_is_logged_and_tried_again_after_a_growing_pause(caplog):
     tries: list[float] = []
+    asked: list[float] = []
 
     def unreachable():
         tries.append(time.monotonic())
         raise psycopg.OperationalError("connection refused")
 
     ear = Listener(CHANNEL, connect=unreachable, backoff=(0.05, 0.2))
+
+    def sleep(seconds):
+        # The pause it asks for, noted; the real one still runs (as test_worker wraps ``ear.wait``).
+        asked.append(seconds)
+        Listener._sleep(ear, seconds)
+
+    ear._sleep = sleep
     try:
         with caplog.at_level(logging.ERROR, logger="base.listener"):
             assert ear.start() is False
-            pauses = [timed(ear.wait, 10)[1] for _ in range(4)]
+            waits = [timed(ear.wait, 10) for _ in range(4)]
     finally:
         ear.close()
 
     assert len(tries) == 5
     assert caplog.text.count("saas.worker.listen_failed") == 5
-    assert pauses[0] < pauses[1] < pauses[2] and pauses[3] < 1
+    # The pause doubles up to its cap: what it asks for, which a loaded machine cannot change.
+    assert asked == pytest.approx([0.05, 0.1, 0.2, 0.2])
+    # And it does sleep it: a select nobody wakes never returns before its time; load only makes it longer.
+    assert [woke for woke, _ in waits] == [False] * 4
+    assert all(took >= pause for (_, took), pause in zip(waits, asked, strict=True))
+    # Yet not much longer than its cap (0.2 s): a wide margin load stays under (0.55 s at most, measured in the
+    # background QoS under load), which a sleep longer than what it asked for does not.
+    assert waits[-1][1] < 1
     assert all(record.levelno == logging.ERROR for record in caplog.records)
 
 

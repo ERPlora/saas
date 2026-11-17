@@ -213,7 +213,7 @@ describe('TwoFactorAuthenticatePage: verifying', () => {
   });
 });
 
-// flow: ACCOUNTS-F05 — «Trust this browser for 14 days» (old SAAS_AUTH-F06): opt-in, under the code, answered with
+// flow: ACCOUNTS-F05 — «Trust this browser for 14 days»: opt-in, under the code, answered with
 // the same «Verify» (one screen, as Google's and Microsoft's «Don't ask again on this device»).
 describe('TwoFactorAuthenticatePage: «Trust this browser for 14 days»', () => {
   const answers = (trust: Answer | Answer[] = signedIn) => ({
@@ -359,7 +359,7 @@ describe('TwoFactorAuthenticatePage: «Back to sign in»', () => {
   });
 });
 
-describe('TwoFactorAuthenticatePage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
+describe('TwoFactorAuthenticatePage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts)', () => {
   afterEach(forgetRecaptcha);
 
   it('posts the app’s code with the token of `mfa_authenticate` and says reCAPTCHA protects the form', async () => {

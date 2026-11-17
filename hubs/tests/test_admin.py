@@ -1,4 +1,4 @@
-"""The Django admin shows every model of hubs (PLAN-SAAS §6: «el Django admin, lo más completo posible»)."""
+"""The Django admin shows every model of hubs."""
 
 import html
 import re
@@ -39,7 +39,7 @@ def test_changelist_add_and_change_pages_load(staff_client, rows, model):
 
 
 def test_staff_edit_the_monthly_messages_of_a_plan(staff_client, rows):
-    """The assistant and WhatsApp messages a plan includes are edited next to its limits (2026-10-15)."""
+    """The assistant and WhatsApp messages a plan includes are edited next to its limits."""
     page = staff_client.get(f"/admin/hubs/plan/{rows['plan'].pk}/change/").content.decode()
 
     assert 'name="assistant_messages_per_month"' in page
@@ -47,15 +47,15 @@ def test_staff_edit_the_monthly_messages_of_a_plan(staff_client, rows):
 
 
 def test_staff_edit_how_many_modules_a_plan_lets_a_business_turn_on(staff_client, rows):
-    """``max_apps`` (Ioan, 2026-10-24) is edited next to the plan's other limits."""
+    """``max_apps`` is edited next to the plan's other limits."""
     page = staff_client.get(f"/admin/hubs/plan/{rows['plan'].pk}/change/").content.decode()
 
     assert 'name="max_apps"' in page
 
 
 def test_staff_write_every_text_of_a_plan_in_english_and_in_spanish(staff_client, rows):
-    """HUBS-F05 (HUBS-G06, HUBS-G44: the old admin's translation tabs, ``PlanTranslationOptions``): the name,
-    the description, the card's features and its badge, one field per language, English the source."""
+    """HUBS-F05: the name, the description, the card's features and its badge, one field per language, English the
+    source."""
     page = staff_client.get(f"/admin/hubs/plan/{rows['plan'].pk}/change/").content.decode()
 
     for text in ("name", "description", "features", "featured_label"):
@@ -83,7 +83,7 @@ def test_the_admin_refuses_a_folded_spanish_name(staff_client, rows):
 
 
 def test_a_business_type_is_added_with_its_sector_and_vertical(staff_client, rows):
-    # The vertical is one an app of the catalog builds (BusinessType.clean, spec §5.4).
+    # The vertical is one an app of the catalog builds (BusinessType.clean).
     make_app("appointment", verticals=["hair_salon"])
     response = staff_client.post(
         "/admin/hubs/businesstype/add/",
@@ -103,7 +103,7 @@ def test_a_business_type_is_added_with_its_sector_and_vertical(staff_client, row
     assert (added.sector, added.vertical) == (rows["sector"], "hair_salon")
 
 
-# --- The account plane of a business (L1-A2): read-mostly, with the actions of the platform -------
+# --- The account plane of a business: read-mostly, with the actions of the platform -------------
 
 from django.contrib.auth.models import Group  # noqa: E402
 
@@ -272,8 +272,8 @@ class TestTheActions:
 
 
 class TestTheTrail:
-    """HUBS-F23 (trap of ERPlora/saas SAAS_DASHBOARD-F41: «las acciones del admin no dejan rastro»): every action of
-    the platform on a business leaves, on each row, who ran it and which, in the admin's history."""
+    """HUBS-F23: every action of the platform on a business leaves, on each row, who ran it and which, in the admin's
+    history."""
 
     def test_an_action_on_a_business_is_in_its_history(self, staff_client, business, hub_double):
         from django.contrib.admin.models import CHANGE, LogEntry
@@ -326,11 +326,11 @@ class TestThePlanPrices:
         return staff_client.post(f"/admin/hubs/plan/{plan.pk}/change/", data, follow=True)
 
     def test_a_price_stripe_refuses_keeps_the_plan_as_it_was(self, staff_client, plans, settings, monkeypatch):
-        from billing import services
+        from billing import services as billing_services
 
         settings.STRIPE_SECRET_KEY = "rk_test_51abc"
         monkeypatch.setattr(
-            services, "plan_price_problems", lambda **kwargs: {"stripe_price_id": "This price is not in euros."}
+            billing_services, "plan_price_problems", lambda **kwargs: {"stripe_price_id": "This price is not in euros."}
         )
         starter = Plan.objects.get(slug="starter")
 
@@ -341,12 +341,12 @@ class TestThePlanPrices:
 
     def test_stripe_not_answering_keeps_the_plan_as_it_was_and_asks_to_try_again(self, staff_client, plans, monkeypatch):
         """BILLING-F28 «Si Stripe no contesta, no se guarda y se pide repetir»: an unchecked price is never saved."""
-        from billing import services
+        from billing import services as billing_services
 
         def failed(**kwargs):
-            raise services.PriceCheckFailed("Stripe did not answer: the prices were not checked. Try again.")
+            raise billing_services.PriceCheckFailed("Stripe did not answer: the prices were not checked. Try again.")
 
-        monkeypatch.setattr(services, "plan_price_problems", failed)
+        monkeypatch.setattr(billing_services, "plan_price_problems", failed)
         starter = Plan.objects.get(slug="starter")
 
         page = self.save(staff_client, starter, stripe_price_id="price_new").content.decode()
@@ -355,12 +355,12 @@ class TestThePlanPrices:
         assert Plan.objects.get(slug="starter").stripe_price_id == starter.stripe_price_id
 
     def test_without_stripe_it_is_saved_and_says_it_was_not_checked(self, staff_client, plans, monkeypatch):
-        from billing import services
+        from billing import services as billing_services
 
         def unavailable(**kwargs):
-            raise services.PriceCheckSkipped("Stripe is not configured here: the prices were not checked.")
+            raise billing_services.PriceCheckSkipped("Stripe is not configured here: the prices were not checked.")
 
-        monkeypatch.setattr(services, "plan_price_problems", unavailable)
+        monkeypatch.setattr(billing_services, "plan_price_problems", unavailable)
         starter = Plan.objects.get(slug="starter")
 
         page = self.save(staff_client, starter, stripe_price_id="price_new").content.decode()
@@ -369,10 +369,10 @@ class TestThePlanPrices:
         assert Plan.objects.get(slug="starter").stripe_price_id == "price_new"
 
     def test_other_changes_ask_stripe_nothing(self, staff_client, plans, monkeypatch):
-        from billing import services
+        from billing import services as billing_services
 
         asked = []
-        monkeypatch.setattr(services, "plan_price_problems", lambda **kwargs: asked.append(kwargs) or {})
+        monkeypatch.setattr(billing_services, "plan_price_problems", lambda **kwargs: asked.append(kwargs) or {})
 
         self.save(staff_client, Plan.objects.get(slug="starter"), name_es="Inicio")
 
@@ -402,24 +402,102 @@ class TestTheTestClock:
         assert actions() == set()
 
     def test_attaching_says_which_clock_or_why_not(self, staff_client, business, settings, monkeypatch):
-        from billing import services
+        from billing import services as billing_services
 
         settings.STRIPE_SECRET_KEY = "rk_test_51abc"
-        monkeypatch.setattr(services, "attach_test_clock", lambda hub_id: "clock_qa")
+        monkeypatch.setattr(billing_services, "attach_test_clock", lambda hub_id: "clock_qa")
 
         assert "clock_qa" in _act(staff_client, "hub", "attach_test_clock", [business]).content.decode()
 
         def refused(hub_id):
-            raise services.TestClockRefused("Its payer is a Stripe customer already.")
+            raise billing_services.TestClockRefused("Its payer is a Stripe customer already.")
 
-        monkeypatch.setattr(services, "attach_test_clock", refused)
+        monkeypatch.setattr(billing_services, "attach_test_clock", refused)
         assert "Its payer is a Stripe customer already." in _act(
             staff_client, "hub", "attach_test_clock", [business]
         ).content.decode()
 
 
+class TestTheInternalPlansMark:
+    """A superuser lets the owner of one business buy the internal plans («Payment test», a real charge of
+    1 € + VAT) in the Store, and takes it back. Production too: that first real purchase is what it is for."""
+
+    @pytest.fixture
+    def actions(self, staff_client):
+        def offered():
+            page = staff_client.get("/admin/hubs/hub/").content.decode()
+            return {name for name in ("allow_internal_plans", "stop_internal_plans") if f'value="{name}"' in page}
+
+        return offered
+
+    def test_marking_lets_its_owner_buy_them_and_unmarking_takes_it_back(self, staff_client, business):
+        allowed = _act(staff_client, "hub", "allow_internal_plans", [business]).content.decode()
+
+        assert Hub.objects.get(pk=business.pk).can_buy_internal_plans is True
+        assert "1 business(es): its owner now sees the internal plans in the Store." in allowed
+
+        stopped = _act(staff_client, "hub", "stop_internal_plans", [business]).content.decode()
+
+        assert Hub.objects.get(pk=business.pk).can_buy_internal_plans is False
+        assert "1 business(es): the Store no longer offers it the internal plans" in stopped
+
+    def test_only_the_chosen_businesses_are_marked(self, staff_client, business, make_user):
+        other = create_business(make_user("other@example.com"), name="Otro Bar")
+
+        _act(staff_client, "hub", "allow_internal_plans", [business])
+
+        assert Hub.objects.get(pk=other.pk).can_buy_internal_plans is False
+
+    @pytest.mark.parametrize(
+        ("action", "named"),
+        [
+            ("allow_internal_plans", "Let its owner buy the internal plans"),
+            ("stop_internal_plans", "Stop selling it the internal plans"),
+        ],
+    )
+    def test_it_is_in_the_business_history(self, staff_client, business, action, named):
+        from django.contrib.admin.models import LogEntry
+
+        _act(staff_client, "hub", action, [business])
+
+        (entry,) = LogEntry.objects.filter(object_id=str(business.pk))
+        assert entry.user.email == "root@example.com"
+        assert named in entry.get_change_message()
+
+    def test_the_list_says_which_businesses_are_marked(self, staff_client, business):
+        Hub.objects.filter(pk=business.pk).update(can_buy_internal_plans=True)
+
+        page = staff_client.get("/admin/hubs/hub/", {"can_buy_internal_plans__exact": "1"}).content.decode()
+
+        assert "field-can_buy_internal_plans" in page
+        assert business.name in page
+
+    def test_the_list_says_it_in_spanish(self, staff_client, business):
+        page = staff_client.get("/admin/hubs/hub/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+
+        assert "Dejar a su propietario comprar los planes internos" in page
+        assert "Dejar de venderle los planes internos" in page
+        assert "planes internos" in re.findall(r'data-filter-title="([^"]*)"', page)
+
+    def test_the_action_reports_in_spanish(self, staff_client, business):
+        page = staff_client.post(
+            "/admin/hubs/hub/",
+            {"action": "allow_internal_plans", "_selected_action": [str(business.pk)]},
+            follow=True,
+            HTTP_ACCEPT_LANGUAGE="es",
+        ).content.decode()
+
+        assert "1 negocio(s): su propietario ya ve los planes internos en la Tienda." in page
+
+    @pytest.mark.parametrize("key", ["rk_live_51abc", "rk_test_51abc"])
+    def test_they_are_offered_with_live_keys_too(self, actions, business, settings, key):
+        settings.STRIPE_SECRET_KEY = key
+
+        assert actions() == {"allow_internal_plans", "stop_internal_plans"}
+
+
 class TestSupport:
-    """``support`` (staff, view only, PLAN-SAAS §2.1 round 11) sees the account plane and acts on nothing."""
+    """``support`` (staff, view only) sees the account plane and acts on nothing."""
 
     @pytest.fixture
     def support_client(self, client, make_user):
@@ -460,8 +538,20 @@ class TestSupport:
 
         assert hub_double.calls == []
 
+    def test_marks_no_business_for_the_internal_plans(self, support_client, business):
+        _act(support_client, "hub", "allow_internal_plans", [business])
 
-# --- The usage of each business, day by day (L4-A): read only, as the Hub measured it ---------------
+        assert Hub.objects.get(pk=business.pk).can_buy_internal_plans is False
+
+    def test_takes_the_mark_from_no_business(self, support_client, business):
+        Hub.objects.filter(pk=business.pk).update(can_buy_internal_plans=True)
+
+        _act(support_client, "hub", "stop_internal_plans", [business])
+
+        assert Hub.objects.get(pk=business.pk).can_buy_internal_plans is True
+
+
+# --- The usage of each business, day by day: read only, as the Hub measured it ---------------------
 
 
 class TestTheUsageAdmin:
@@ -504,7 +594,7 @@ class TestTheUsageAdmin:
 
 
 class TestTheFiguresOfTheDayInTheAdmin:
-    """hub#603, PLAN-SAAS §28: ERPlora's team sees what the Hub measures of each business; unmeasured is never a 0."""
+    """ERPlora's team sees what the Hub measures of each business; unmeasured is never a 0."""
 
     COLUMNS = ("served", "connections", "without_room")
 
@@ -598,9 +688,8 @@ def _headings(page: str) -> list[str]:
 
 @pytest.mark.parametrize("model", ["sector", "businesstype"])
 def test_the_taxonomy_lists_speak_spanish(staff_client, rows, model):
-    """HUBS-F36 (HUBS-G05, HUBS-G01): every column and filter of the list, in the staff's language: the old admin's
-    translation tabs became a column per language, and the rest of the row's fields had no Spanish («Code», «By is
-    active»)."""
+    """HUBS-F36: every column and filter of the list, in the staff's language: a name has a column per language, and
+    the other fields are translated too («Código», «Activo», the filter «Por activo»)."""
     page = staff_client.get(f"/admin/hubs/{model}/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
 
     assert _headings(page) == SPANISH_COLUMNS[model]
@@ -658,8 +747,8 @@ PLAN_FIELDS = [
 
 
 def test_the_plan_list_speaks_spanish(staff_client, rows):
-    """Its columns and filters said «PRICE MONTHLY», «TRIAL PERIOD DAYS» and «Por is active» in a Spanish admin (the
-    capture of HUBS-F31's notice, APP-HUBS-4)."""
+    """Its columns and filters once said «PRICE MONTHLY», «TRIAL PERIOD DAYS» and «Por is active» in a Spanish
+    admin."""
     page = staff_client.get("/admin/hubs/plan/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
 
     assert _headings(page) == PLAN_COLUMNS

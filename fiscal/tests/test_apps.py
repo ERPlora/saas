@@ -1,5 +1,5 @@
-"""fiscal is a platform app at the root of saas-next, next to ``hubs/`` (round 15, PLAN §20.2): the review of
-the documentation a hub sends so ERPlora can file its VeriFactu records (plan 2026-10-15)."""
+"""fiscal is a platform app at the root of the SaaS, next to ``hubs/``: the review of the documentation a hub
+sends so ERPlora can file its VeriFactu records."""
 
 from pathlib import Path
 

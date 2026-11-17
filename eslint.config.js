@@ -1,11 +1,20 @@
-// Lint of saas-next's TypeScript: the same presets as packages/ui (its config is not exported), and
-// the rule that keeps TypeScript thin: the entry and the apps reach the server only through the SDK.
+// Lint of the SaaS's TypeScript: the same presets as packages/ui (its config is not exported), the
+// rule that keeps TypeScript thin (the entry and the apps reach the server only through the SDK), and
+// the one that keeps an e2e from stopping Playwright's Node to read every mail of its stack.
 import pluginVue from 'eslint-plugin-vue';
 import tseslint from 'typescript-eslint';
 
 const restricted = ['fetch', 'EventSource', 'WebSocket', 'XMLHttpRequest'].map((name) => ({
   name,
   message: 'Network access goes through the SDK (@erplora/ui/sdk).',
+}));
+
+// `readMails` reads and parses every file of the mail folder with Node stopped, and a stack's folder keeps every
+// mail of every run (hundreds of ms each time, seconds on a busy machine: saas#363).
+const wholeMailFolder = ['@erplora/ui/testing/mail', '@erplora/ui/testing'].map((name) => ({
+  name,
+  importNames: ['readMails'],
+  message: 'It stops the e2e reading the whole mail folder: read the mails written from the action on with readMailsSince.',
 }));
 
 export default [
@@ -22,6 +31,9 @@ export default [
       '.venv/**',
     ],
   },
+  // No comment in the code switches a rule off: what breaks a limit today is frozen in eslint-suppressions.json.
+  // `noInlineConfig` covers scripts; `vue/comment-directive` is what reads those comments in a Vue template.
+  { linterOptions: { noInlineConfig: true } },
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
   {
@@ -29,14 +41,41 @@ export default [
     languageOptions: { parserOptions: { parser: tseslint.parser } },
   },
   {
+    // A page measured by blocks: the function limits see neither its template nor its style.
+    files: ['**/*.vue'],
+    rules: {
+      'vue/comment-directive': 'off',
+      'vue/max-lines-per-block': ['error', { template: 250, script: 300, style: 150 }],
+    },
+  },
+  {
     // `slot="start|end|icon-only"` on ion-* (and on HubIcon, whose root is an ion-icon) is the Web
-    // Components slot, not Vue 2 syntax. OutfitKit's ok-* are gone (PLAN §16.11).
+    // Components slot, not Vue 2 syntax.
     files: ['**/*.vue'],
     rules: { 'vue/no-deprecated-slot-attribute': ['error', { ignore: ['/^ion-/', 'HubIcon'] }] },
   },
   {
-    // The entry and the apps, at the project root next to `base/` (no `apps/`, PLAN §20.2).
+    // The entry and the apps, at the project root next to `base/` (there is no `apps/` folder).
     files: ['frontend/**/*.{ts,vue}', '*/frontend/**/*.{ts,vue}'],
     rules: { 'no-restricted-globals': ['error', ...restricted] },
+  },
+  {
+    files: ['tests/e2e/**/*.ts'],
+    rules: { 'no-restricted-imports': ['error', { paths: wholeMailFolder }] },
+  },
+  {
+    // A function a person can still follow. `complexity` also counts `?.` and default values. What breaks a
+    // limit today is listed in eslint-suppressions.json, and an entry that suppresses nothing fails the lint.
+    rules: {
+      complexity: ['error', 15],
+      'max-depth': ['error', 4],
+      'max-params': ['error', 3],
+      'max-lines-per-function': ['error', { max: 50, skipBlankLines: true, skipComments: true }],
+    },
+  },
+  {
+    // In a test every `describe` is one long function, and fixtures and helpers take many arguments.
+    files: ['**/*.{test,spec}.{ts,tsx,js,mjs,cjs,vue}', '**/tests/**', '**/__tests__/**', '**/e2e/**'],
+    rules: { 'max-params': 'off', 'max-lines-per-function': 'off' },
   },
 ];

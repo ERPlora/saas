@@ -1,5 +1,5 @@
 """Data: the platform's ``support`` group sees the daily usage of every business, and changes nothing
-(HUBS-F23: the staff sees its usage; PLAN-SAAS §2.1 round 11: superuser + ``support``, view only; hub#603).
+(HUBS-F23: the staff sees its usage; only superusers and ``support`` see it, and only to view).
 
 ``view_hubusagedaily``, as ``0007_support_views_the_account_plane`` gives it the account plane. Only the nightly
 collection writes these rows. Without the group (created by ``accounts``' ``0003_support_group``) there is nothing to

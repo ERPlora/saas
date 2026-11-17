@@ -1,59 +1,34 @@
-// Billing (`/dashboard/billing/:tab`, plan 2026-10-13 L3-C front; mockups `billing.html`) in Chrome, against the panel's
-// own Django (project.ts) and the rows of billing_seed.py. Stripe and the platform hub do not run here: the
-// spec plays Stripe's pages (the invoice page «Pay» goes to, the Customer Portal) and the platform hub's PDF at
-// their boundaries, and leaves everything else to the real server — the invoices, the subscriptions, «Pay»
-// (`billing.invoice.pay`), the 404 of a PDF not issued yet, the CSV, the billing details and their VIES check.
+// Billing (`/dashboard/billing/:tab`) in Chrome, against the panel's own Django (project.ts) and the rows of
+// billing_seed.py. Stripe and the platform hub do not run here: the spec plays Stripe's pages (the invoice page
+// «Pay» goes to, the Customer Portal) and the platform hub's PDF at their boundaries, and leaves everything else to
+// the real server — the invoices, the subscriptions, «Pay» (`billing.invoice.pay`), the 404 of a PDF not issued
+// yet, the CSV, the billing details and their VIES check.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 import type { Page, Request } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
-import {
-  apiPost,
-  businessIdOf,
-  djangoPrint,
-  expect,
-  panelAccount,
-  qaAccount,
-  repeatedTop,
-  settled,
-  shot,
-  sidewaysScroll,
-  signIn,
-  test,
-  VIEWPORTS,
-  watchPageErrors,
-} from './fixtures';
+import { panelAccount, qaAccount } from './accounts';
+import { businessIdOf } from './businesses';
+import { djangoPrintWarm } from './django';
+import { expect, seededAndSignedInWarm, test } from './fixtures';
+import { watchPageErrors } from './page-events';
 import { HUB_DOUBLE_PORT } from './project';
+import { repeatedTop, settled, shot, sidewaysScroll, toast, VIEWPORTS } from './screen';
+import { apiPost } from './session';
+import { playStripePortal, STRIPE_PORTAL_URL } from './stripe';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/l3b2-shots';
 mkdirSync(SHOTS_DIR, { recursive: true });
 
 const BILLING = qaAccount('BILLING', panelAccount('billing'));
-/** The widths of the mockups' screenshots (`billing-default-<width>-<theme>.png`). */
+/** The widths of the screenshots (`billing-default-<width>-<theme>.png`). */
 const WIDTHS = [390, 834, 1024, 1180, 1280, 1440] as const;
 
-function seedBilling(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/billing_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
-}
-
 // Every test starts from the same rows (some pay, edit or cancel), signed in again.
-test.beforeEach(async ({ page }) => {
-  seedBilling('seed');
-  await signIn(page.request, BILLING);
-});
-test.afterAll(() => seedBilling('clear'));
-
-const toast = (page: Page, text: string | RegExp) => page.locator('ion-toast').filter({ hasText: text });
+seededAndSignedInWarm('billing_seed.py', BILLING);
 
 /**
  * How far above the bottom of the window the toast's box ends (Ionic leaves it 10 px up). Read after `settled()`,
@@ -81,8 +56,18 @@ async function invoiceIds(page: Page): Promise<Record<string, string>> {
   return Object.fromEntries(rows.map((row) => [row.reference, row.id]));
 }
 
-/** What waits for a payment for business `name`: its line of the grouped notice (two or more unpaid, audit R-15). */
+/** What waits for a payment for business `name`: its line of the grouped notice (two or more unpaid). */
 const banner = (page: Page, name: string) => page.getByTestId('unpaid-group-item').filter({ hasText: name });
+
+/** The dialog on screen, as painted, at the desktop, tablet and low-phone sizes, each in its own `<name>-<W>x<H>.png`. */
+async function shootAtFleetSizes(page: Page, name: string): Promise<void> {
+  for (const [width, height] of [[1440, 900], [820, 1180], [375, 667]] as const) {
+    await page.setViewportSize({ width, height });
+    await settled(page);
+    const png = await page.screenshot({ path: shot(`${name}-${width}x${height}`) });
+    expect(await repeatedTop(page, png), `${name}-${width}x${height}.png repeats the top of the page at its bottom`).toBe(0);
+  }
+}
 
 /** Picks `option` in the `ion-select` hooked as `testid` (an Ionic popover). */
 async function pick(page: Page, testid: string, option: string): Promise<void> {
@@ -132,7 +117,7 @@ test.describe('billing', () => {
     const issuing = page.locator(`[data-testid="invoices-row"][data-id="${ids['E2EBAKERY_SEP-0001']}"]`);
     await expect(issuing).toContainText('Issuing');
     await expect(issuing.getByTestId(`invoices-row-${ids['E2EBAKERY_SEP-0001']}-pdf`)).toHaveCount(0);
-    // What waits for a payment: two invoices, one notice (audit R-15), each business on its line, days only.
+    // What waits for a payment: two invoices, one notice, each business on its line, days only.
     const group = page.getByTestId('billing-unpaid-group');
     await expect(group).toContainText('2 unpaid invoices: €72.58');
     await expect(banner(page, 'Bar La Plaza')).toContainText(/Bar La Plaza is suspended on \w{3} \d{1,2}, \d{4} if it is not paid \(€36\.29\)\./);
@@ -159,11 +144,11 @@ test.describe('billing', () => {
     await expect(page.getByTestId('invoices-empty')).toContainText('No invoice matches the search or the filters');
     await page.getByTestId('invoices-show-all').click();
     await expect(page.getByTestId('invoices-row')).toHaveCount(4);
-    // A business of the address that is not the account's: every invoice, saying so (W-F15).
+    // A business of the address that is not the account's: every invoice, saying so.
     await page.goto('/dashboard/billing/invoices?business=00000000-0000-7000-8000-000000000000');
     await expect(page.getByTestId('invoices-unknown-business')).toBeVisible();
     await expect(page.getByTestId('invoices-row')).toHaveCount(4);
-    // A business on Free has none (X-18).
+    // A business on Free has none.
     await page.goto(`/dashboard/billing/invoices?business=${await businessIdOf(page.request, 'Café Central')}`);
     await expect(page.getByTestId('invoices-empty')).toContainText('Café Central is on Free: it has no invoices.');
     expect(errors).toEqual([]);
@@ -194,7 +179,7 @@ test.describe('billing', () => {
       const notYet = await page.request.get(`/api/billing/invoices/pdf?id=${ids['E2EBAKERY_SEP-0001']}`);
       expect(notYet.status()).toBe(404);
       expect(((await notYet.json()) as { error: { code: string } }).error.code).toBe('billing.invoice_not_issued');
-      // Selected, it counts only the issued ones (audit 2 S-01): this one has no PDF yet, said above the list.
+      // Selected, it counts only the issued ones: this one has no PDF yet, said above the list.
       const selectRow = (id: string) => page.locator(`[data-testid="invoices-row"][data-id="${id}"] ion-checkbox`);
       await selectRow(ids['E2EBAKERY_SEP-0001']).click();
       await expect(page.getByTestId('invoices-pdf-selected')).toHaveText('Download PDF (0)');
@@ -211,7 +196,7 @@ test.describe('billing', () => {
     }
   });
 
-  test('PDF and CSV refused (R-05): a toast says why, the action waits, and no `.json` is ever saved', async ({ page }) => {
+  test('PDF and CSV refused: a toast says why, the action waits, and no `.json` is ever saved', async ({ page }) => {
     const saved: string[] = [];
     page.on('download', (download) => saved.push(download.suggestedFilename()));
     await page.goto('/dashboard/billing/invoices');
@@ -244,9 +229,8 @@ test.describe('billing', () => {
     expect(saved).toEqual([]);
   });
 
-  // flow: BILLING-F22 (FIX-SAAS-BILLING-INVOICE-DOWNLOAD-NETWORK-ERROR-ENGLISH). The network drops when the file is
-  // asked for (the page is already there): the toast says so in the account's language, never «Network error
-  // (Failed to fetch)», and nothing is saved.
+  // flow: BILLING-F22. The network drops when the file is asked for (the page is already there): the toast says so
+  // in the account's language, never «Network error (Failed to fetch)», and nothing is saved.
   test('BILLING-F22 without network: «Descargar PDF» and «Descargar Excel» say so in Spanish and save nothing', async ({ page }) => {
     const offline = 'No hemos podido conectar con ERPlora. Revisa tu conexión e inténtalo de nuevo.';
     const saved: string[] = [];
@@ -317,7 +301,7 @@ test.describe('billing', () => {
     expect(paid).toHaveLength(1);
     expect(paid[0].postDataJSON()).toEqual({ id: ids['E2ENORTE-0001'] });
     // Stripe charged it: the webhook numbers it (played here with the ORM) and, back in Billing, it says so.
-    djangoPrint(
+    await djangoPrintWarm(
       [
         'from django.utils import timezone',
         'from billing.models import Invoice',
@@ -331,16 +315,11 @@ test.describe('billing', () => {
   });
 
   test('«Change card» opens Stripe’s Customer Portal of that payer (web only)', async ({ page }) => {
-    await playStripePages(page);
-    const opened: unknown[] = [];
     // The Portal is Stripe's: the server's call to it is played (no Stripe keys here).
-    await page.route('**/api/billing/portal', async (route) => {
-      opened.push(route.request().postDataJSON());
-      await route.fulfill({ json: { url: 'https://billing.stripe.com/p/session/e2e' } });
-    });
+    const opened = await playStripePortal(page);
     await page.goto('/dashboard/billing/invoices');
     await banner(page, 'Bar La Plaza').getByTestId('unpaid-group-change-card').click();
-    await page.waitForURL('https://billing.stripe.com/p/session/e2e');
+    await page.waitForURL(STRIPE_PORTAL_URL);
     expect(opened).toEqual([{ hub_id: await businessIdOf(page.request, 'Bar La Plaza') }]);
   });
 
@@ -357,7 +336,7 @@ test.describe('billing', () => {
     // Each row leads with what the server put first: «Change plan», or «View the invoice» with an unpaid one.
     await expect(bakeryRow.getByTestId(`subscriptions-row-${bakery}-lead`)).toHaveText('Change plan');
     await expect(page.getByTestId(`subscriptions-row-${plaza}-lead`)).toHaveText('View the invoice');
-    // One button per row and its «⋮» (Ioan, 2026-10-14): «View invoices» lives in the menu, with «Cancel plan».
+    // One button per row and its «⋮»: «View invoices» lives in the menu, with «Cancel plan».
     await expect(bakeryRow.locator(`[data-testid^="subscriptions-row-${bakery}-"]`)).toHaveCount(2);
     await expect(bakeryRow.getByTestId(`subscriptions-row-${bakery}-view_invoices`)).toHaveCount(0);
     await settled(page);
@@ -396,6 +375,30 @@ test.describe('billing', () => {
     await page.screenshot({ path: shot('refused-postal-code-en') });
     await page.getByTestId('details-postal-code').locator('input').fill('35001');
     await expect(page.getByTestId('billing-profile-error')).toBeHidden();
+  });
+
+  test('BILLING-F01: only a payer in Spain is invoiced: «Country» offers Spain alone and a business outside Spain is not copied into the payer', async ({ page }) => {
+    const errors = watchPageErrors(page);
+    await page.goto('/dashboard/billing/payment');
+    await page.getByTestId('profile-edit').click();
+    await expect(page.getByTestId('details-country')).toContainText('For now ERPlora only invoices payers in Spain.');
+    await expect(page.getByTestId('details-tax-id')).toContainText('Required in the Canary Islands, Ceuta and Melilla, where we only sell to businesses and professionals.');
+    await shootAtFleetSizes(page, 'payer-country-spain-only');
+    await page.getByTestId('details-country').click();
+    await expect(page.locator('ion-popover ion-radio')).toHaveText(['Spain']);
+    await page.locator('ion-popover ion-radio').filter({ hasText: 'Spain' }).click();
+    const moveTo = (country: string) =>
+      djangoPrintWarm(['from hubs.models import Hub', `Hub.objects.filter(slug__startswith="e2e-billing-").update(country="${country}")`].join('\n'));
+    await moveTo('PT');
+    try {
+      await page.getByTestId('details-same').click();
+      await page.getByTestId('billing-profile-submit').click();
+      await expect(page.getByTestId('billing-profile-error')).toHaveText('For now ERPlora only invoices payers in Spain.');
+      await shootAtFleetSizes(page, 'payer-business-outside-spain');
+    } finally {
+      await moveTo('ES');
+    }
+    expect(errors).toEqual([]);
   });
 
   test('Payment details: the card (Stripe away says so) and the billing details, edited with their VIES check', async ({ page }) => {
@@ -447,10 +450,10 @@ test.describe('billing', () => {
     await expect(page.getByTestId('pay-invoice')).toHaveCount(0);
     await expect(page.locator('[data-testid$="-pay"]')).toHaveCount(0);
     await expect(page.getByTestId('unpaid-group-change-card')).toHaveCount(0);
-    // Already in the browser (the account the app opens): why, not «go to erplora.com in your browser» (audit 2 S-09).
+    // Already in the browser (the account the app opens): why, not «go to erplora.com in your browser».
     await expect(page.getByTestId('unpaid-group-app')).toHaveText('This account was opened from the app: invoices are not paid from here.');
     await page.setViewportSize({ width: 390, height: 844 });
-    // flow: ninguno — FIX tests/e2e. A capture right after a resize must be the page as painted at the new size.
+    // flow: none — test tooling. A capture right after a resize must be the page as painted at the new size.
     await settled(page);
     const png = await page.screenshot({ path: join(SHOTS_DIR, 'billing-default-mobile-390-light.png'), fullPage: true });
     expect(await repeatedTop(page, png), 'billing-default-mobile-390-light.png repeats the top of the page at its bottom').toBe(0);

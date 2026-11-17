@@ -1,7 +1,6 @@
 """Account → Profile → «Download my data»: ``accounts.data.export`` (ACCOUNTS-F26; GDPR art. 20).
 
-Ported from ERPlora/saas ``apps/dashboard/settings`` (``export_data``, origin/develop) and its flows
-SAAS_DASHBOARD-F207 and the feature «API — Exportar mis datos»: one machine-readable file (JSON) with what the
+One machine-readable file (JSON) with what the
 account is and what it did here — its details, preferences and photo, its addresses and the Google account
 linked to it, its open sessions and API keys (never their secret), the businesses it belongs to and ERPlora's
 invoices it sees, each with its recipient as on its issue date. Nothing of another account (the tenancy test).
@@ -61,7 +60,7 @@ class TestWhatTheFileCarries:
         assert data["photo"] is None
 
     def test_the_terms_it_accepted(self, ana):
-        from accounts.services import accept_legal_texts
+        from accounts.services.legal_acceptance import accept_legal_texts
 
         accept_legal_texts(sender=None, user=ana)
 

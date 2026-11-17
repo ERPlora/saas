@@ -1,8 +1,7 @@
-"""JSON-LD builders of the public web (spec §8.2).
+"""JSON-LD builders of the public web.
 
-Ported from ERPlora/saas ``apps/public/structured_data.py`` (origin/develop c5ca8ca), without the
-marketplace's imports: every builder takes its data (prices from ``Plan``, apps from ``apps.*``
-operations) and reads no model, so the pages that call them decide where the data comes from.
+Every builder takes its data (prices from ``Plan``, apps from ``apps.*`` operations) and reads no
+model, so the pages that call them decide where the data comes from.
 
 Schema.org blocks are what an answer engine parses to state what ERPlora is and what it costs, so
 they are built from live data, never hand-written into a template. Serialisation goes through
@@ -22,7 +21,7 @@ _SCRIPT_ESCAPES = {ord("<"): "\\u003C", ord(">"): "\\u003E", ord("&"): "\\u0026"
 
 
 #: What the product runs on: the browser, the app for Windows and Linux (public/appdist.py) and Android
-#: through Google Play. No macOS build nor iOS app is published (PUBLIC-F14, SAAS_PUBLIC-F75).
+#: through Google Play. No macOS build nor iOS app is published.
 OPERATING_SYSTEMS = "Web, Windows, Linux, Android"
 
 
@@ -144,11 +143,10 @@ def industry_software_application(
 
 
 def app_software_application(*, name: str, description: str, url: str) -> dict:
-    """``SoftwareApplication`` for one app page (``/apps/<id>/``, spec §8.2).
+    """``SoftwareApplication`` for one app page (``/apps/<id>/``).
 
     Every app is offered at ``0`` on its own page: every plan includes all the apps, the Free one
-    too (ronda 2026-10-24b, PLAN §32; before, decision 17 priced a premium app at the cheapest paid
-    plan). No ``aggregateRating``: there are no reviews.
+    too. No ``aggregateRating``: there are no reviews.
     """
     block = {
         "@context": "https://schema.org",

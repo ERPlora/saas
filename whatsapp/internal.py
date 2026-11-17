@@ -12,7 +12,7 @@ Every door: 401 ``unauthorized`` (unsigned, stale or another secret; decided by 
 read when they already rule it out), 405 ``method_not_allowed``, 413 ``payload_too_large`` (over
 ``MAX_BODY_BYTES``; doors 5 and 8, which carry a header's file, over ``MAX_TEMPLATE_BODY_BYTES``), 422
 ``invalid_payload`` (not JSON or not the contract, with the failing ``fields``), 404
-``hub_unknown`` (``hub`` names no business the SaaS knows, a demo included: saas#2599). The rest of each answer is
+``hub_unknown`` (``hub`` names no business the SaaS knows, a demo included). The rest of each answer is
 the door's (``gateway``).
 """
 

@@ -1,15 +1,15 @@
-"""Reading Meta's webhook (WHATSAPP-G07): what each change means for a business, before anything is stored.
+"""Reading Meta's webhook: what each change means for a business, before anything is stored.
 
 Pure: no database, no network. A webhook may carry changes of several numbers and businesses; each is read by its
 ``field`` (https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/components):
 
-- ``messages``: what a customer wrote (``messages``, with the profile name in ``contacts``, saas#2670) and the
+- ``messages``: what a customer wrote (``messages``, with the profile name in ``contacts``) and the
   delivery statuses of what the business sent (``statuses``);
-- ``smb_message_echoes``: what the owner answered from the WhatsApp Business app (coexistence, saas#1883): the
+- ``smb_message_echoes``: what the owner answered from the WhatsApp Business app (coexistence): the
   business speaking, filed under the customer (``to``);
 - ``history``: the 180 days the owner agreed to share when connecting (``history[].threads``: inside a thread,
   what the customer did not write is the business's), and the follow-up with the recent media of the backlog
-  (``messages`` with the id of an earlier ``media_placeholder``, saas#1913);
+  (``messages`` with the id of an earlier ``media_placeholder``);
 - ``message_template_status_update`` and ``template_category_update``: Meta's verdict on a template;
 - anything else (``smb_app_state_sync``: the contacts of the business app, account and quality notices) is not
   kept.
@@ -156,7 +156,7 @@ def _replace(message: Message, **changes) -> Message:
     return Message(**{**message.__dict__, **changes})
 
 
-def _message(
+def _message(  # noqa: PLR0913, PLR0917
     phone_number_id: str, raw, customer: str, direction: str, source: str, contact_name: str = ""
 ) -> Message | None:
     message = _dict(raw)

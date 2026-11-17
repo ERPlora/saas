@@ -1,8 +1,7 @@
-"""«Site settings» in the admin of erplora.com: the switch of the maintenance mode (ACCOUNTS-G33, G82).
+"""«Site settings» in the admin of erplora.com: the switch of the maintenance mode.
 
 One row (``base.models.SiteSettings``): the list opens it, creating it the first time; nothing to add or delete. Saving
 says what the switch now does. Only who holds its permissions (the superuser) sees it: the support group does not.
-Ported from ERPlora/saas ``SiteSettingsAdmin`` (origin/develop c5ca8cae8).
 """
 
 from django.contrib import admin, messages

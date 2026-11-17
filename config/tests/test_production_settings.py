@@ -1,7 +1,7 @@
-"""Production settings of saas-next, as ECS starts them (aws README, «Contrato app ↔ infra»).
+"""Production settings of the SaaS, as ECS starts them (aws README, «Contrato app ↔ infra»).
 
 ``config.settings`` is evaluated once per process from the environment, so every production value
-is read in a fresh interpreter. That interpreter never reads ``saas-next/.env`` (a developer's
+is read in a fresh interpreter. That interpreter never reads the repo's ``.env`` (a developer's
 ``DEBUG=True`` would leak in) and starts from an almost empty environment: only what each test
 passes, on top of the variables production must provide, reaches the settings.
 """
@@ -19,10 +19,12 @@ from django.core.cache.backends.redis import RedisCache
 from django.test import RequestFactory
 
 SAAS_NEXT = Path(__file__).resolve().parents[2]
-# What the task definition and Secrets Manager give every saas* task (aws-next/stacks/prod/apps.tf),
+# What the task definition and Secrets Manager give every saas* task (ERPlora/aws stacks/prod/apps.tf),
 # with dummies for the secrets. The key is long and varied enough for `check --deploy` (W009).
 PRODUCTION_ENV = {
     "DEBUG": "False",
+    "CACHE_KEY_PREFIX": "saas",
+    "STRIPE_EXPECTED_MODE": "live",
     "SECRET_KEY": "a-long-production-secret-key-with-enough-variety-0123456789-abcdefghij",
     "INTERNAL_SHARED_SECRET": "a-production-internal-secret",
     "GOOGLE_OAUTH_CLIENT_ID": "prod-client.apps.googleusercontent.com",
@@ -37,7 +39,7 @@ PRODUCTION_ENV = {
     "WHATSAPP_CONFIG_ID": "987654321",
     "FERNET_KEY": "yh5h4Yur2lIgWp9ZxkyLt1BrQfFVrwLH4WhIHCRwXXA=",
     # reCAPTCHA Enterprise (live.recaptcha): the site key and the assessments' API key, read only with
-    # RECAPTCHA_ENABLED=True (off by default since 2026-10-23).
+    # RECAPTCHA_ENABLED=True (off by default).
     "RECAPTCHA_SITE_KEY": "prod-recaptcha-site-key",
     "RECAPTCHA_API_KEY": "prod-recaptcha-api-key",
 }
@@ -50,19 +52,21 @@ AWS_ENV = {
     "SES_REGION": "eu-west-1",
     "DEFAULT_FROM_EMAIL": "noreply@erplora.com",
 }
-# The fresh interpreter ignores saas-next/.env: decouple's file repository is swapped for an empty
+# The fresh interpreter ignores the repo's .env: decouple's file repository is swapped for an empty
 # one before config.settings builds its Config.
 IGNORE_DOTENV = "import decouple; decouple.RepositoryEnv = lambda *args, **kwargs: decouple.RepositoryEmpty()"
 
 
+def bare_environment() -> dict[str, str]:
+    """What a fresh interpreter needs from the shell to start, and nothing else a developer exports."""
+    return {key: os.environ[key] for key in ("PATH", "HOME", "LANG") if key in os.environ}
+
+
 def _run(code: str, env: dict[str, str]) -> subprocess.CompletedProcess:
-    minimal = {
-        key: os.environ[key] for key in ("PATH", "HOME", "LANG") if key in os.environ
-    }
     return subprocess.run(
         [sys.executable, "-c", f"{IGNORE_DOTENV}\n{code}"],
         cwd=SAAS_NEXT,
-        env={**minimal, **env},
+        env={**bare_environment(), **env},
         capture_output=True,
         text=True,
         check=False,
@@ -81,9 +85,98 @@ def production(expression: str, **env: str):
 
 
 def development(expression: str, **env: str):
-    """The same with ``DEBUG=True`` alone, as saas-next/.env (.env.example) runs it. The test run
+    """The same with ``DEBUG=True`` alone, as the repo's .env (.env.example) runs it. The test run
     swaps some values (the mailers, for one), so development is read in a fresh process too."""
     return _settings(expression, {"DEBUG": "True", **env})
+
+
+def test_local_policy_defaults_are_safe_without_deployment_variables():
+    assert development(
+        "(s.CACHE_KEY_PREFIX, s.STRIPE_EXPECTED_MODE, s.PUBLIC_INDEXING_ENABLED, s.AEAT_PRODUCTION_ENABLED)"
+    ) == ("local-saas", "test", False, False)
+
+
+@pytest.mark.parametrize("valkey", ["", "redis://localhost:6379/0"])
+def test_cache_policy_applies_to_local_and_shared_backends(valkey):
+    assert development("s.CACHES['default']['KEY_PREFIX']", VALKEY_URL=valkey) == "local-saas"
+    assert development(
+        "s.CACHES['default']['KEY_PREFIX']", VALKEY_URL=valkey, CACHE_KEY_PREFIX="second-local-saas"
+    ) == "second-local-saas"
+
+
+@pytest.mark.parametrize("label", ["prod", "pre"])
+def test_explicit_policies_do_not_depend_on_the_deployment_label(label):
+    assert production(
+        "(s.CACHES['default']['KEY_PREFIX'], s.STRIPE_EXPECTED_MODE, s.PUBLIC_INDEXING_ENABLED, s.AEAT_PRODUCTION_ENABLED)",
+        ERPLORA_ENVIRONMENT=label,
+        CACHE_KEY_PREFIX="isolated-saas",
+        STRIPE_EXPECTED_MODE="test",
+        PUBLIC_INDEXING_ENABLED="true",
+        AEAT_PRODUCTION_ENABLED="true",
+        VALKEY_URL="redis://localhost:6379/0",
+    ) == ("isolated-saas", "test", True, True)
+
+
+@pytest.mark.parametrize("name", ["CACHE_KEY_PREFIX", "STRIPE_EXPECTED_MODE"])
+def test_deployed_policy_requires_explicit_critical_values(name):
+    environment = {key: value for key, value in PRODUCTION_ENV.items() if key != name}
+    result = _run("import config.settings", environment)
+    assert result.returncode != 0
+    assert name in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [("CACHE_KEY_PREFIX", " "), ("STRIPE_EXPECTED_MODE", "lve"),
+     ("STRIPE_EXPECTED_MODE", ""), ("PUBLIC_INDEXING_ENABLED", "tru"),
+     ("AEAT_PRODUCTION_ENABLED", "tru")],
+)
+def test_invalid_policy_values_refuse_to_start(name, value):
+    result = _run("import config.settings", {**PRODUCTION_ENV, name: value})
+    assert result.returncode != 0
+    assert name in result.stderr
+
+
+def _image_check_env() -> dict[str, str]:
+    """The ``-e NAME=value`` pairs of ``PROD_ENV`` in docker/image.test.sh, the environment the image is checked with."""
+    script = (SAAS_NEXT / "docker" / "image.test.sh").read_text()
+    block = re.search(r"^PROD_ENV=\((.*?)^\)", script, re.DOTALL | re.MULTILINE)
+    assert block is not None, "docker/image.test.sh has no PROD_ENV=( … ) block"
+    return dict(pair.split("=", 1) for pair in re.findall(r'-e "?([A-Z_][A-Z0-9_]*=[^"\s]*)"?', block.group(1)))
+
+
+def test_the_image_check_environment_is_one_the_settings_start_with():
+    """docker/image.test.sh runs ``manage.py check`` with DEBUG=False only in the deploy's build (deploy.yml): a variable
+    the settings start requiring outside DEBUG and missing there fails every deploy, while a PR's CI stays green."""
+    environment = _image_check_env()
+    assert environment["DEBUG"] == "False"
+    result = _run("import config.settings", environment)
+    assert result.returncode == 0, result.stderr
+
+
+def test_deployed_optional_policies_are_disabled_by_default():
+    assert production("(s.PUBLIC_INDEXING_ENABLED, s.AEAT_PRODUCTION_ENABLED)") == (False, False)
+
+
+def test_local_django_check_starts_without_policy_variables_or_external_services():
+    result = _run(
+        "import django\ndjango.setup()\nfrom django.core.management import call_command\ncall_command('check')",
+        {"DEBUG": "True", "DJANGO_SETTINGS_MODULE": "config.settings"},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("label", ["prod", "pre"])
+def test_explicit_deployed_policy_matrix(label):
+    live = label == "prod"
+    assert production(
+        "(s.CACHE_KEY_PREFIX, s.STRIPE_EXPECTED_MODE, s.PUBLIC_INDEXING_ENABLED, s.AEAT_PRODUCTION_ENABLED)",
+        ERPLORA_ENVIRONMENT=label,
+        CACHE_KEY_PREFIX="saas" if live else "pre-saas",
+        STRIPE_EXPECTED_MODE="live" if live else "test",
+        PUBLIC_INDEXING_ENABLED=str(live).lower(),
+        AEAT_PRODUCTION_ENABLED=str(live).lower(),
+    ) == ("saas" if live else "pre-saas", "live" if live else "test", live, live)
 
 
 # Database: TLS verify-full against Aurora with the RDS bundle the image ships.
@@ -116,9 +209,8 @@ def test_without_tls_variables_the_connection_options_are_only_the_pool_and_its_
 
 def test_a_burst_of_pooled_connections_is_given_back_within_minutes():
     """psycopg_pool closes one connection above min_size per max_idle, 600 s by default: after a
-    burst the idle SaaS kept up to 8 connections for over an hour (4 measured on 2026-10-18). With
-    60 s it is back to one within 7 minutes; that one stays open for the next request (PLAN-DB
-    «Conexiones», round 2026-10-18). As in the Hub."""
+    burst the idle SaaS would keep up to 8 connections for over an hour. With 60 s it is back to one
+    within 7 minutes; that one stays open for the next request. As in the Hub."""
     pool = production(f"{CONNECTION_OPTIONS}['pool']")
     assert (pool["min_size"], pool["max_size"], pool["max_idle"]) == (1, 8, 60)
 
@@ -134,15 +226,15 @@ def test_the_running_pool_closes_idle_connections_after_60_seconds():
 
 def test_a_dead_database_fails_within_db_connect_timeout_seconds():
     """psycopg waits 30 s for a connection from the pool and 130 s per connection attempt, so a
-    dead database made /readyz answer 503 after its probes had given up. Both waits are
-    DB_CONNECT_TIMEOUT seconds, 5 by default. As in hub-next."""
+    dead database would make /readyz answer 503 after its probes had given up. Both waits are
+    DB_CONNECT_TIMEOUT seconds, 5 by default. As in the Hub."""
     timeouts = "(s.DATABASES['default']['OPTIONS']['connect_timeout'], s.DATABASES['default']['OPTIONS']['pool']['timeout'])"
     assert production(timeouts) == (5, 5)
     assert production(timeouts, DB_CONNECT_TIMEOUT="2") == (2, 2)
 
 
 # HTTPS behind the ALB: it terminates TLS, redirects plain HTTP to HTTPS and forwards the request
-# to daphne with X-Forwarded-Proto. Same values as hub-next.
+# to daphne with X-Forwarded-Proto. Same values as the Hub.
 
 PRODUCTION_SECURITY = (
     "(s.SESSION_COOKIE_SECURE, s.CSRF_COOKIE_SECURE, s.SECURE_SSL_REDIRECT, s.SECURE_PROXY_SSL_HEADER,"
@@ -154,7 +246,7 @@ def test_production_cookies_are_secure_and_browsers_are_told_to_stay_on_https():
     assert production(PRODUCTION_SECURITY) == (
         True,
         True,
-        # The ALB redirects; Django must not, or hub-next's /internal calls over plain HTTP break.
+        # The ALB redirects; Django must not, or the Hub's /internal calls over plain HTTP break.
         False,
         ("HTTP_X_FORWARDED_PROTO", "https"),
         31536000,
@@ -257,7 +349,7 @@ def test_the_valkey_cache_is_built_from_the_environment():
 
 def test_with_valkey_down_the_rate_limits_let_requests_through():
     """django-ratelimit blocks a request whose count it cannot read unless told to fail open; the
-    WAF keeps limiting sign-in, sign-up and passwords per IP meanwhile (aws-next README, WAF)."""
+    WAF keeps limiting sign-in, sign-up and passwords per IP meanwhile (ERPlora/aws README, WAF)."""
     assert production("s.RATELIMIT_FAIL_OPEN", **AWS_ENV) is True
     assert development("s.RATELIMIT_FAIL_OPEN") is True
 
@@ -280,10 +372,10 @@ def test_the_log_level_comes_from_the_environment():
     assert logging["loggers"]["django"]["level"] == "WARNING"
 
 
-# Email: a file per mail in saas-next/.mail/ in development (the sign-in code is read there, also by
+# Email: a file per mail in .mail/ in development (the sign-in code is read there, also by
 # the Hub's e2e); in production the SES API signed by the task role when ECS passes SES_REGION, SMTP
 # configured by the environment otherwise, or any backend EMAIL_BACKEND names. Same variables and
-# order as hub-next.
+# order as the Hub.
 
 SMTP = "django.core.mail.backends.smtp.EmailBackend"
 SES = "django_ses.SESBackend"
@@ -358,8 +450,8 @@ def test_the_ses_backend_builds_from_the_settings_so_its_library_is_installed():
 
 
 def test_a_mail_to_ses_waits_seconds_never_minutes():
-    """ACCOUNTS-G79: a sign-in mails its code inside the request; with boto3's defaults (60 s to connect, 60 s to read,
-    retried) an SES that does not answer held the person there for minutes. As the SMTP mailer (10 s): 3 s to connect,
+    """A sign-in mails its code inside the request; with boto3's defaults (60 s to connect, 60 s to read, retried) an
+    SES that does not answer would hold the person there for minutes. As the SMTP mailer (10 s): 3 s to connect,
     10 s to read and one try more, so a failure reaches the page (and the log) within half a minute."""
     result = _run(
         "import django\ndjango.setup()\nfrom django.core.mail import mailers\n"
@@ -372,7 +464,7 @@ def test_a_mail_to_ses_waits_seconds_never_minutes():
     assert ast.literal_eval(result.stdout.strip()) == (3, 10, {"total_max_attempts": 2, "mode": "standard"})
 
 
-# The hubs' fiscal documents (plan 2026-10-15): encrypted with a Fernet key, required in production like
+# The hubs' fiscal documents: encrypted with a Fernet key, required in production like
 # INTERNAL_SHARED_SECRET (a deploy without it must not start and store documents it cannot read later).
 
 
@@ -515,7 +607,7 @@ def test_check_deploy_is_clean_in_production():
     assert "System check identified no issues" in result.stdout
 
 
-# Every saas* task as ECS starts it (aws-next/stacks/prod/apps.tf and secrets.tf): `base_env`,
+# Every saas* task as ECS starts it (ERPlora/aws stacks/prod/apps.tf and secrets.tf): `base_env`,
 # `saas_env` and the task's DB_APPLICATION_NAME, plus one variable per secret key. The Stripe and
 # Google keys are born empty and filled by hand (aws README, step 16), and so are the seal slots,
 # which only `saas` and `saas-cron` receive.
@@ -524,6 +616,10 @@ SAAS_TASK_ENV = {
     "AWS_REGION": "eu-west-1",
     "SES_REGION": "eu-west-1",
     "DEBUG": "False",
+    "CACHE_KEY_PREFIX": "saas",
+    "STRIPE_EXPECTED_MODE": "live",
+    "PUBLIC_INDEXING_ENABLED": "true",
+    "AEAT_PRODUCTION_ENABLED": "true",
     "DB_HOST": "erplora-prod.cluster-c0ffee.eu-west-1.rds.amazonaws.com",
     "DB_PORT": "5432",
     "DB_SSLMODE": "verify-full",
@@ -544,11 +640,11 @@ SAAS_TASK_ENV = {
     "GOOGLE_OAUTH_CLIENT_SECRET": "",
     # erplora/prod/internal, the same in both projects.
     "INTERNAL_SHARED_SECRET": "a-generated-internal-shared-secret",
-    # erplora/prod/saas: the Fernet key of the hubs' fiscal documents (fiscal/crypto.py; plan 2026-10-15).
-    # NEW: aws-next must add it to every saas* task before this deploys, or the tasks refuse to start.
+    # erplora/prod/saas: the Fernet key of the hubs' fiscal documents (fiscal/crypto.py). Every saas* task needs
+    # it, or the tasks refuse to start.
     "FISCAL_DOCUMENTS_KEY": "kX1Hq3xmJ2a6r0pN7yTbV4cZ8uW5sE9dL1fG2hJ3kM4=",
-    # erplora/<env>/saas: reCAPTCHA Enterprise's site key and API key (live.recaptcha), handed to every saas* task
-    # since 2026-10-22. Read only with RECAPTCHA_ENABLED=True (off by default since 2026-10-23).
+    # erplora/<env>/saas: reCAPTCHA Enterprise's site key and API key (live.recaptcha), handed to every saas* task.
+    # Read only with RECAPTCHA_ENABLED=True (off by default).
     "RECAPTCHA_SITE_KEY": "6Lprod-recaptcha-site-key",
     "RECAPTCHA_API_KEY": "prod-recaptcha-api-key",
 }
@@ -584,7 +680,7 @@ TASKS = {
 FILLED_BY_HAND = {
     "GOOGLE_OAUTH_CLIENT_ID": "prod-client.apps.googleusercontent.com",
     "GOOGLE_OAUTH_CLIENT_SECRET": "prod-secret",
-    # A RESTRICTED live key (PLAN-SAAS §4): the account's secret key fails the deploy check (billing.E001).
+    # A RESTRICTED live key: the account's secret key fails the deploy check (billing.E001).
     "STRIPE_SECRET_KEY": "rk_live_dummy",
     "STRIPE_PUBLISHABLE_KEY": "pk_live_dummy",
     "STRIPE_WEBHOOK_SECRET": "whsec_dummy",
@@ -680,10 +776,7 @@ def test_development_has_empty_seal_slots_and_the_platform_region():
     ) == ("eu-west-1", "", "")
 
 
-# The environment (plan 2026-10-14-entorno-pre): `prod` or `pre`, the team's pre-production in the same
-# cluster, ALB, Aurora and Valkey as prod. What differs in pre: the cache prefix in the shared Valkey,
-# no indexing (public/seo.py, public/crawlers.py, indexnow_submit) and Stripe in test mode only
-# (billing.E002). Anything else refuses to start.
+# The metric label retains the CloudWatch alarm's prod/pre contract; it controls no policies.
 
 
 def test_the_environment_defaults_to_prod_and_keeps_the_saas_cache_prefix():
@@ -704,12 +797,16 @@ def test_an_unknown_environment_refuses_to_start(environment):
     assert "ERPLORA_ENVIRONMENT" in result.stderr
 
 
-# Every saas* task of pre as ECS starts it (aws-next stacks/prod/pre_apps.tf, plan §2.2 A4): the prod
+# Every saas* task of pre as ECS starts it (ERPlora/aws stacks/prod/pre_apps.tf): the prod
 # task's variables with pre's hosts, database, roles, buckets and secrets (erplora/pre/app and
 # erplora/pre/db, Stripe in test mode, Google and the seal empty). No saas-cron in pre.
 
 PRE_TASK_ENV = {
     **SAAS_TASK_ENV,
+    "CACHE_KEY_PREFIX": "pre-saas",
+    "STRIPE_EXPECTED_MODE": "test",
+    "PUBLIC_INDEXING_ENABLED": "false",
+    "AEAT_PRODUCTION_ENABLED": "false",
     "ERPLORA_ENVIRONMENT": "pre",
     "DB_NAME": "pre_saas",
     "ALLOWED_HOSTS": "pre.erplora.com,saas-pre.erplora.internal",
@@ -725,7 +822,7 @@ PRE_TASK_ENV = {
     "SECRET_KEY": "Pq7wM3jKv6St1Yc8Gb2Hn5Rd9Lf0Xa4Ue7Zi3Ko6Vm2Tj8Wq1Nx5Bc9Ch3Dg7Fp0Es",
     "INTERNAL_SHARED_SECRET": "a-generated-pre-internal-shared-secret",
     "INTERNAL_SHARED_SECRET_PREVIOUS": "",
-    # erplora/pre/app: pre's own key of the hubs' fiscal documents (NEW, as prod's).
+    # erplora/pre/app: pre's own key of the hubs' fiscal documents (as prod's).
     "FISCAL_DOCUMENTS_KEY": "pR3eK9yW2xQ7mN4bV8cZ1aS6dF0gH5jL3kT7uY2iO9E=",
     "STRIPE_PORTAL_CONFIGURATION": "",
 }
@@ -857,7 +954,7 @@ def rate_limits(env: dict[str, str]) -> tuple[dict, dict]:
 )
 def test_the_sign_in_limits_are_written_out(env):
     """Production and development alike (the dev server with DEBUG=True alone): every limit written out
-    (config/settings.py), allauth's sign-in limit kept, and nothing of allauth's left unsaid."""
+    (config/settings/accounts.py), allauth's sign-in limit kept, and nothing of allauth's left unsaid."""
     effective, allauth = rate_limits(env)
 
     assert effective["login"] == allauth["login"]
@@ -937,9 +1034,9 @@ def test_the_whatsapp_return_page_may_be_given_by_the_environment():
     assert development("s.WHATSAPP_REDIRECT_URI", WHATSAPP_REDIRECT_URI=given) == given
 
 
-# reCAPTCHA Enterprise (live.recaptcha; Ioan, 2026-10-22), switched OFF by default since 2026-10-23 (Ioan: «quitamos
-# el reCAPTCHA y aplicamos el WAF»): the WAF on the ALB filters the suspicious traffic and the attempt limits stop the
-# brute force. RECAPTCHA_ENABLED=True switches it back on, in production as in development, and then both keys are
+# reCAPTCHA Enterprise (live.recaptcha), switched OFF by default: the WAF on the ALB filters the suspicious traffic and
+# the attempt limits stop the brute force. RECAPTCHA_ENABLED=True switches it back on, in production as in
+# development, and then both keys are
 # required (the process refuses to start without them). The test run never checks (config/settings_pytest.py). The
 # minimum score and the endpoint come from the environment.
 
@@ -993,7 +1090,7 @@ def test_production_switched_on_refuses_to_start_without_a_recaptcha_key(missing
     assert missing in result.stderr
 
 
-# A business's own domain (HUBS-F17): off unless the environment turns it on, as pre and development run it; on, what
+# A business's own domain: off unless the environment turns it on, as pre and development run it; on, what
 # `aws` stacks/prod/custom_domains.tf gives saas and saas-cron is required, so a half-made deployment does not start.
 
 CUSTOM_DOMAINS_ENV = {
@@ -1089,7 +1186,7 @@ def test_the_assessments_may_go_to_another_endpoint():
 
 # «Continue with Google»: where the code is exchanged. What comes back from that address is believed without
 # checking its signature (allauth trusts its own TLS call to Google), so only a development server may move it:
-# the e2e's double of Google (tests/e2e/panel/accounts-google.spec.ts, ACCOUNTS-F06).
+# the e2e's double of Google (tests/e2e/panel/accounts-google.spec.ts).
 GOOGLE_TOKEN_URL = "s.SOCIALACCOUNT_PROVIDERS['google'].get('ACCESS_TOKEN_URL')"
 GOOGLE_DOUBLE = "http://127.0.0.1:8015/token"
 

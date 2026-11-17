@@ -1,14 +1,7 @@
-"""``/documentation/`` (a 301 to the help center, PUBLIC-G07) and ``/support/`` (public/resources.py).
+"""``/documentation/`` (a 301 to the help center, PUBLIC-F15) and ``/support/`` (public/resources.py).
 
-Port of ``apps/public/resources`` (origin/develop c5ca8ca): ``resources/test_views.py`` (2; its help
-case lives in test_help.py, with the help) and the cases of ``tests/unit/test_public_pages.py`` for
-these pages. What changed, and why:
-
-* the URL names live in the ``public`` namespace;
-* OutfitKit is gone: ``ok-container``/``ok-grid-cards``/``<ok-feature-card>`` are the ``ep-*``
-  classes and the feature-card partial of L2;
-* the contact page comes with the landing (L7) at the address it has today, ``/contact/``: the
-  support page links that address (``landing:contact_page`` does not exist here).
+The URL names live in the ``public`` namespace, the cards are the ``ep-*`` classes and the feature-card
+partial, and the support page links the contact page at ``/contact/``.
 """
 
 import re
@@ -56,7 +49,7 @@ def test_the_url_names():
 
 @pytest.mark.parametrize("path", ["/documentation/", "/documentation/?q=print"])
 def test_documentation_leads_to_the_help_center_for_good(client, path):
-    """PUBLIC-G07: the documentation that exists is the help center's guides; never a «coming soon»."""
+    """PUBLIC-F15: the documentation that exists is the help center's guides; never a «coming soon»."""
     response = client.get(path)
 
     assert response.status_code == 301
@@ -82,7 +75,7 @@ def test_support_uses_shared_layout_and_real_contact_routes(client, settings):
 
 
 def test_the_support_routes_lead_to_the_guides_the_form_and_the_address(client, settings):
-    """PUBLIC-G19: each of the three cards of «Choose the right route» opens its own route."""
+    """PUBLIC-F15: each of the three cards of «Choose the right route» opens its own route."""
     settings.SUPPORT_EMAIL = "support@erplora.test"
     html = page(client, "/support/")
     cards = html[html.index('class="ep-grid-cards"') :]
@@ -98,7 +91,7 @@ def test_the_support_routes_lead_to_the_guides_the_form_and_the_address(client, 
 
 @pytest.mark.parametrize("language", ["en", "es"])
 def test_support_does_not_send_people_to_a_hub_screen_that_does_not_exist(client, language):
-    """PUBLIC-G19: the Hub has no «Help & Support › Report a Problem» (only what the product does, PUBLIC-F07)."""
+    """The Hub has no «Help & Support › Report a Problem» (only what the product does, PUBLIC-F07)."""
     html = page(client, "/support/", language)
 
     for claim in ("Report a Problem", "Reporting from your Hub", "Reportar un problema", "Reportar desde tu hub"):

@@ -1,13 +1,12 @@
 """The foundations of the public downloads: presign against the bucket and pick the store.
 
-Port of ``apps/public/tests/test_downloads.py`` (14, origin/develop c5ca8ca), same cases, against
-``public.downloads``. The downloads bucket is PRIVATE: the views presign a short-lived GET URL
+The downloads bucket is PRIVATE: the views presign a short-lived GET URL
 and redirect to it (nothing world-public). On top of that, ``store_url_for`` is the ONLY switch
 between «store» and «our own binary».
 
-What changed (Ioan, 2026-10-13; PLAN-AWS «s3_downloads.tf»): the installers no longer live in
-Hetzner's object storage but in a private S3 bucket on AWS, region ``eu-west-1`` (Ireland, the
-platform's region since 2026-10-14). The client takes
+What changed: the installers no longer live in Hetzner's object storage but in a private S3 bucket on
+AWS (``s3_downloads.tf`` of ``ERPlora/aws``), region ``eu-west-1`` (Ireland, the
+platform's region). The client takes
 no static keys: boto3 uses the ECS task's role (or the environment in development); only local
 development may point it at another endpoint (``DOWNLOADS_ENDPOINT_URL``).
 
@@ -135,12 +134,12 @@ class TestPresignedDownloadUrl:
 
 
 class TestStoreUrlFor:
-    """``store_url_for`` — the per-platform switch to the stores (saas#707, ADR-0160).
+    """``store_url_for`` — the per-platform switch to the stores.
 
     Windows → the Web Installer Direct of the single Microsoft Store listing, by its Store ID
     (assigned by Microsoft: without it, the web download is right). Android → the single Google
     Play listing; ``GOOGLE_PLAY_LISTING_LIVE`` says whether it EXISTS, ``GOOGLE_PLAY_APP_ID`` only
-    overrides the baked-in package (never a switch to the APK, hub#984). Linux never goes to a
+    overrides the baked-in package (never a switch to the APK). Linux never goes to a
     store.
     """
 
@@ -164,7 +163,7 @@ class TestStoreUrlFor:
         )
 
     def test_android_has_no_store_while_the_listing_is_not_live(self, settings):
-        """saas#1719: the URL of a listing that does not exist is Google's 404, not an answer."""
+        """The URL of a listing that does not exist is Google's 404, not an answer."""
         settings.GOOGLE_PLAY_LISTING_LIVE = False
         settings.GOOGLE_PLAY_APP_ID = "com.erplora.app"
         from public.downloads import store_url_for
@@ -178,7 +177,7 @@ class TestStoreUrlFor:
         assert store_url_for("windows", **STORE_SETTINGS) is None
 
     def test_android_still_goes_to_play_with_the_package_setting_empty(self, settings):
-        """hub#984: an empty package setting resolves to the baked-in package, never to the APK."""
+        """An empty package setting resolves to the baked-in package, never to the APK."""
         settings.GOOGLE_PLAY_LISTING_LIVE = True
         settings.GOOGLE_PLAY_APP_ID = ""
         from public.downloads import ANDROID_PLAY_PACKAGE, store_url_for
@@ -200,7 +199,7 @@ class TestStoreUrlFor:
 
 class TestGithubReleaseUrls:
     """``GITHUB_RELEASE_URLS`` — the platforms downloaded from the latest release of the public
-    repo ``ERPlora/app`` (Ioan, 2026-10-27): today only Linux, whose AppImage the bucket never had.
+    repo ``ERPlora/app``: today only Linux, whose AppImage the bucket never had.
 
     A contract with ``.github/workflows/tauri-release.yml`` of ``ERPlora/app``: it uploads the
     asset with this exact name and publishes the release with ``--latest``, and GitHub resolves
@@ -217,7 +216,7 @@ class TestGithubReleaseUrls:
 
 
 class TestStoreSettingsContract:
-    """The store settings (ADR-0160): one listing per store, no legacy aliases."""
+    """The store settings: one listing per store, no legacy aliases."""
 
     def test_google_play_app_id_exists_with_empty_default(self):
         from django.conf import settings as django_settings
@@ -225,7 +224,7 @@ class TestStoreSettingsContract:
         assert getattr(django_settings, "GOOGLE_PLAY_APP_ID", None) == ""
 
     def test_google_play_listing_is_declared_live_by_default(self):
-        """The listing is published since 2026-10-01: «live» is the truthful default."""
+        """The listing is published: «live» is the truthful default."""
         from django.conf import settings as django_settings
 
         assert getattr(django_settings, "GOOGLE_PLAY_LISTING_LIVE", None) is True

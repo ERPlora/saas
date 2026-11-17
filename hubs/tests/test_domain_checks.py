@@ -1,6 +1,5 @@
-"""What the DNS and the ALB say of a business's own domain (HUBS-F17; cases ported from ERPlora/saas
-``test_custom_domain_own_edge.py``, origin/develop): the CNAME chain of the customer and the Hub's probe, faked at the
-resolver and at the socket. No test here touches a real name."""
+"""What the DNS and the ALB say of a business's own domain (HUBS-F17): the CNAME chain of the customer and the Hub's
+probe, faked at the resolver and at the socket. No test here touches a real name."""
 
 import io
 import json
@@ -236,7 +235,7 @@ def test_the_probe_is_served_when_the_alb_answers_for_this_business(edge):
 
 
 def test_the_probe_dials_our_address_never_the_one_the_customers_dns_gives(edge):
-    """Their DNS must not be able to aim our servers anywhere else (saas#2160 of the old product)."""
+    """Their DNS must not be able to aim our servers anywhere else."""
     the_edge = edge(_hub_answers())
     domain_checks.probe(DOMAIN, TARGET, HUB_ID)
     assert CUSTOMERS_ADDRESS not in the_edge.dialled

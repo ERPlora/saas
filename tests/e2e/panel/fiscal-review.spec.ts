@@ -1,70 +1,53 @@
-// The review of a signed authorisation (MIGRATION-TASK APP-FISCAL_GATEWAY; fiscal_gateway/WORKBOOK.md), at the three
-// sizes of the migration (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
+// The review of a signed authorisation (fiscal_gateway/WORKBOOK.md), at the three
+// sizes (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
 // fiscal_seed.py, whose upload runs the operation the Hub's upload runs. Mails are read from the panel's mail folder.
 // flow: FISCAL-F05 — the review desk hears of the authorisation that waits, with the link to its review page and
 // no document, and the owner hears of the decision in their language.
 // flow: FISCAL-F03 — the documents are only decrypted on the review page, for the staff who decide.
 // flow: FISCAL-F06 — ERPlora's stamp and signature as representative: the queue warns while there is none, the
 // staff upload a PNG, see it, download the model a business receives with it, and remove it.
-import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import type { Page } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
-import { djangoPrint, expect, settled, shot, sidewaysScroll, signIn, test, waitForMail, watchPageErrors } from './fixtures';
-import { PANEL_MAIL_DIR } from './project';
+import { djangoPrintWarm, runSeedWarm } from './django';
+import { expect, test } from './fixtures';
+import { MAILING, waitForMail } from './mail';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize, shot } from './screen';
+import { signIn } from './session';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const atEverySize = captureAtEverySize('APP-FISCAL_GATEWAY');
+
 const PASSWORD = process.env.QA_PANEL_PASSWORD ?? 'e2e-panel';
 const REVIEWER = { email: 'e2e-fiscal-reviewer@example.com', password: PASSWORD };
 const OWNER = 'e2e-fiscal-owner@example.com';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 const REVIEW_PATH = /\/admin\/fiscal\/representationgrant\/[0-9a-f-]{36}\/review\//;
 
 /**
- * `fiscal_seed.py seed|clear`; `seed` files the authorisation and prints its id. Its mails land where the panel's
- * do (the panel's mail folder), as the upload's would on the server.
+ * `fiscal_seed.py seed|clear`, by this worker's warm Django of the panel's mail (no boot inside a test); `seed` files
+ * the authorisation and prints its id. Its mails land where the panel's do (the panel's mail folder), as the upload's
+ * would on the server.
  */
-function seed(action: 'seed' | 'clear'): string {
-  return execFileSync('uv', ['run', 'python', 'tests/e2e/panel/fiscal_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: { ...djangoEnv(true), EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend', EMAIL_FILE_PATH: PANEL_MAIL_DIR },
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-    .trim()
-    .split('\n')
-    .at(-1) as string;
-}
+const seed = (action: 'seed' | 'clear'): Promise<string> => runSeedWarm('fiscal_seed.py', action, MAILING);
+/** What Django of the panel's mail prints: by the same warm Django as `seed`. */
+const djangoPrintMailing = (code: string): Promise<string> => djangoPrintWarm(code, MAILING);
 
-test.afterAll(() => {
-  seed('clear');
+/** The review desk's address (`FISCAL_REVIEW_EMAIL`), read once: the read boots the warm Django, on no test's clock. */
+let desk = '';
+
+test.beforeAll(async () => {
+  desk = await djangoPrintMailing('from django.conf import settings;print(settings.FISCAL_REVIEW_EMAIL)');
 });
 
-/** `ready` at each size: no sideways scroll, a capture `APP-FISCAL_GATEWAY-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-FISCAL_GATEWAY-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
+test.afterAll(async () => {
+  await seed('clear');
+});
 
 test('FISCAL-F05: the review desk gets the link to review an authorisation and the owner hears of the decision', async ({ page }) => {
   const errors = watchPageErrors(page);
-  const desk = djangoPrint('from django.conf import settings;print(settings.FISCAL_REVIEW_EMAIL)');
   const submitted = Date.now();
-  const grant = seed('seed');
+  const grant = await seed('seed');
 
   // The desk's mail: the business, the link to the review page, and no document, tax ID nor name of a person.
   const link = await waitForMail(desk, submitted, REVIEW_PATH);
@@ -93,7 +76,7 @@ test('FISCAL-F05: the review desk gets the link to review an authorisation and t
 
 test('FISCAL-F03: the documents of an authorisation are decrypted on its review page only', async ({ page }) => {
   const errors = watchPageErrors(page);
-  const grant = seed('seed');
+  const grant = await seed('seed');
   await signIn(page.request, REVIEWER);
 
   await page.goto(`/admin/fiscal/representationgrant/${grant}/review/`);
@@ -115,8 +98,8 @@ test('FISCAL-F03: the documents of an authorisation are decrypted on its review 
 });
 
 /** A synthetic stamp (a ring and a text on a transparent background), as base64 PNG; never ERPlora's real one. */
-function syntheticStamp(): Buffer {
-  const encoded = djangoPrint(
+async function syntheticStamp(): Promise<Buffer> {
+  const encoded = await djangoPrintMailing(
     [
       'import base64, io',
       'from PIL import Image, ImageDraw',
@@ -139,7 +122,7 @@ async function modelShape(page: Page, href: string, name: string): Promise<{ pag
   expect(served.headers()['content-type']).toBe('application/pdf');
   const file = shot(name).replace(/\.png$/, '.pdf');
   writeFileSync(file, await served.body());
-  const read = djangoPrint(
+  const read = await djangoPrintMailing(
     [
       'import json',
       'from pypdf import PdfReader',
@@ -152,7 +135,7 @@ async function modelShape(page: Page, href: string, name: string): Promise<{ pag
 
 test('FISCAL-F06: the staff upload ERPlora\'s stamp, see it on the model a business receives, and remove it', async ({ page }) => {
   const errors = watchPageErrors(page);
-  seed('seed');
+  await seed('seed');
   await signIn(page.request, REVIEWER);
 
   // While there is none, the queue says so and leads to the stamp's page.
@@ -178,7 +161,7 @@ test('FISCAL-F06: the staff upload ERPlora\'s stamp, see it on the model a busin
   await expect(page.locator('.messagelist')).toContainText('The stamp must be a PNG image.');
   await expect(missing).toBeVisible();
 
-  await file.setInputFiles({ name: 'stamp.png', mimeType: 'image/png', buffer: syntheticStamp() });
+  await file.setInputFiles({ name: 'stamp.png', mimeType: 'image/png', buffer: await syntheticStamp() });
   await page.getByRole('button', { name: 'Upload', exact: true }).click();
   await expect(page.locator('.messagelist')).toContainText('Stamp uploaded: every model downloaded from now on carries it.');
   const preview = page.getByRole('img', { name: "ERPlora's stamp and signature" });

@@ -1,4 +1,4 @@
-# e2e del SaaS (`saas-next/tests/e2e/`)
+# e2e del SaaS (`saas/tests/e2e/`)
 
 Playwright con **un** `playwright.config.ts` y dos proyectos, cada uno contra su propio servidor:
 
@@ -9,7 +9,7 @@ Playwright con **un** `playwright.config.ts` y dos proyectos, cada uno contra su
 
 ## Cómo se corre
 
-Desde `saas-next/` (o con `pnpm --filter saas …` desde la raíz):
+Desde `saas/` (la raíz de `erplora-next` ya no es un workspace de pnpm: cada repo lleva el suyo):
 
 ```bash
 uv run python manage.py migrate      # la e2e no migra la BD local: la comparten las sesiones
@@ -38,7 +38,9 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
   - **En cada push**, dentro del check obligatorio `test / test` (job `e2e` de `test.yml`): `panel/assistant-gateway.spec.ts`,
     las puertas del asistente tal como las llama el Hub, que no toca ninguna pantalla y estuvo en rojo sin que se viera
     (saas#285), y cada spec que la rama añade, cambia o renombra desde que salió de `main` (`.github/scripts/e2e-specs.sh`).
-    Un cambio en un helper o una siembra no arrastra sus specs: eso lo ve la pasada de la noche.
+    Un cambio en un helper o una siembra no arrastra sus specs: eso lo ve la pasada de la noche. El job tiene media hora;
+    si la rama elige más de 10 specs (por ejemplo, al mover un helper que importan todas), tiene el mismo tope que la
+    pasada de la noche (`e2e-specs.sh --many`).
   - **Cada noche, sobre `main`** (`nightly.yml`, 03:17 UTC; a mano, «Run workflow»): todas las specs. No frena ninguna PR
     ni ningún despliegue; si sale en rojo abre una issue, «Pruebas de navegador del SaaS en rojo en la pasada nocturna»,
     con cada prueba en rojo y su error (`.github/scripts/e2e-report.sh`), o comenta en ella si ya está abierta, y la
@@ -75,7 +77,7 @@ Hub de las specs (por defecto `8010`: `:8011`, `:8012`, `:8013`, `:8015`, `:8016
   caído, y las specs hacen de Hub (su callback `ready` firmado). Así ni el `runserver` de `:8001` de otra
   sesión (que se reinicia con cada `.py` guardado) ni un Hub en `:8000` cambian el resultado, y la
   e2e no deja BD de hub huérfanas. Se arranca y se para en cada ejecución. Además sube los límites por
-  dirección de la entrada (`E2E_RELAX_LOGIN_RATE_LIMIT=True`, `config/settings.py`): cada spec entra desde
+  dirección de la entrada (`E2E_RELAX_LOGIN_RATE_LIMIT=True`, `config/settings/accounts.py`): cada spec entra desde
   `127.0.0.1` con contraseña y código, y una spec repetida (`--repeat-each=6`) pasaba de los 30 por minuto (429 en
   el login); desde 2026-10-22 también las contraseñas falladas (5 en 5 minutos por dirección) y los códigos
   rechazados (10 en 5 minutos por dirección, `code_attempts`), y desde 2026-10-28 las altas (10 por hora por
@@ -119,11 +121,11 @@ Hub de las specs (por defecto `8010`: `:8011`, `:8012`, `:8013`, `:8015`, `:8016
   lo da por válido y de su acción (la puntuación de un Chrome sin ventana no se mira). El servidor público sube el
   límite de demos por dirección (`DEMO_SPAWN_RATELIMIT=30/h`): la ejecución pulsa «Prueba la demo» más de 3 veces.
 - **Correo**: el Django del panel usa el backend de ficheros de Django (`EMAIL_BACKEND` +
-  `EMAIL_FILE_PATH`, que `config/settings.py` pasa a `MAILERS`) y escribe cada correo en
+  `EMAIL_FILE_PATH`, que `config/settings/mail.py` pasa a `MAILERS`) y escribe cada correo en
   `.artifacts/panel/mail/` (en una pila propia, `.artifacts/panel/mail-<E2E_SAAS_PORT>/`); `waitForMail(destinatario, desde, enlace)` espera el que llega tras una
   acción y devuelve su enlace (invitación, contraseña). Los de ejecuciones anteriores se quedan y se
   saltan por fecha.
-- **`:5174` (Vite)**, o el puerto de `VITE_DEV_PORT` si se exporta (lo leen igual `config/settings.py`,
+- **`:5174` (Vite)**, o el puerto de `VITE_DEV_PORT` si se exporta (lo leen igual `config/settings/core.py`,
   `vite.config.ts` y `panel/project.ts`; el Django de `:8012` lo recibe también): si ya hay uno levantado,
   la e2e **lo reutiliza** y no lo para, **pero solo si es de este árbol** (y solo en la pila compartida: una
   pila propia arranca el suyo). Cada respuesta del Vite de
@@ -135,7 +137,7 @@ Hub de las specs (por defecto `8010`: `:8011`, `:8012`, `:8013`, `:8015`, `:8016
 - **`:8011`**: el servidor de producción de `public`, siempre propio (`reuseExistingServer: false`):
   si el puerto está ocupado, la ejecución no arranca. Se levanta en toda ejecución, también con
   `--project=panel` (Playwright arranca todos los `webServer`).
-- **La e2e de la PoC del Hub** (`hub-next/tests/e2e/`) usa el SaaS de `:8001`; la del panel ya no lo
+- **La e2e del Hub** (`hub/tests/e2e/`) usa el SaaS de `:8001`; la del panel ya no lo
   toca.
 
 ## Dos SaaS a la vez
@@ -165,7 +167,7 @@ resultados y **su BD**. Con una BD compartida, las dos siembran y borran las mis
 | Variable | Qué aísla | Quién la lee |
 |---|---|---|
 | `E2E_SAAS_PORT` | los tres puertos (`+1` público, `+2` panel, `+9` Hub de las specs) y, con ellos, la BD `saas_e2e_<puerto>`, la carpeta de correo `mail-<puerto>/` y la de resultados `…-<puerto>` | `stack.ts` (y, por él, `playwright.config.ts`, `panel/project.ts`, `django-env.ts`, `database.ts`) |
-| `VITE_DEV_PORT` | el Vite del panel | `panel/project.ts`, `vite.config.ts`, `config/settings.py` (ver arriba) |
+| `VITE_DEV_PORT` | el Vite del panel | `panel/project.ts`, `vite.config.ts`, `config/settings/core.py` (ver arriba) |
 
 Reglas que la e2e hace cumplir antes de arrancar ningún servidor (`stack.ts`):
 
@@ -215,14 +217,16 @@ Las specs del panel mandan las llamadas al Hub (`HUB_INTERNAL_URL`) al puerto `+
 salvo un doble (`startHubDouble`) mientras una spec lo pide: el negocio recién creado se queda «Preparando». Para
 ver el salto de verdad (el Hub recibe el registro, avisa de que está listo y la ventana entra), una spec puede
 correr contra **un Hub de verdad** en ese mismo puerto, con `E2E_REAL_HUB=1` (hoy, el bloque «against the real Hub»
-de `panel/hubs-flows.spec.ts` y el de `panel/signup-language.spec.ts`). Sin la variable, esos tests salen saltados y lo dicen; con ella, los que necesitan
+de `panel/hubs-flows.spec.ts`, el de `panel/hubs-settings.spec.ts` y el de `panel/signup-language.spec.ts`). Sin la variable, esos tests salen saltados y lo dicen; con ella, los que necesitan
 el negocio «Preparando» se saltan a su vez. Así la spec corre dos veces: una sin la variable y otra con ella.
 
 El Hub sale de un worktree del Hub (`HUB_DIR`) con su BD e2e (`HUB_DB_NAME`) y escucha en el puerto `+9`, con el
 mismo `INTERNAL_SHARED_SECRET` que el SaaS y su `SAAS_URL` apuntando al panel de la pila. A su lado corre
 `manage.py run_worker --databases-only`: es quien hace la BD del negocio y avisa de que está listo; sin él el Hub
 contesta `202` y el negocio se queda «Preparando». El Hub recuerda la dirección de cada pasada aunque el SaaS borre
-sus filas (un `409` a la siguiente): una spec que repita tiene que usar un nombre nuevo o una BD del Hub nueva. El panel lleva
+sus filas (un `409` a la siguiente): una spec que repita tiene que usar un nombre nuevo o una BD del Hub nueva. Lo que una
+spec lee o cambia en el Hub lo pide con `realHubPrint(código)` de `panel/hub.ts` (su `manage.py shell` en `HUB_DIR`
+contra `HUB_DB_NAME`): asíncrono, para que el arranque de ese Django no bloquee Node ni el tope de la prueba (saas#354). El panel lleva
 `HUB_CALLBACK_TEMPLATE` y `HUB_ADMIN_CALLBACK_URL` hacia ese Hub. Receta para la pila `8080` (`:8082` panel, `:8089`
 Hub; Vites `5480` y `5750`), con el Hub levantado antes y parado después por su PID:
 
@@ -290,7 +294,7 @@ env -u DB_NAME E2E_SAAS_PORT=8180 VITE_DEV_PORT=5580 E2E_DEMO_HUB=http://localho
 ## El asistente con el modelo de verdad
 
 La batería de QA del asistente del panel (`panel/assistant-battery.spec.ts`; plan
-`docs/plans/2026-10-31-qa-asistente.md` de erplora-next: bloque A y las comprobaciones C35, C36 y C38) habla con el
+`knowledge/raw/plans/2026-10-31-qa-asistente.md` de erplora-next: bloque A y las comprobaciones C35, C36 y C38) habla con el
 **modelo de verdad** y con el **índice de verdad** de la documentación. Es una herramienta de QA local, **nunca de la
 CI**: sin `QA_REAL_PROVIDER=1` sus tests se saltan, y con él en GitHub Actions (`GITHUB_ACTIONS=true`) la ejecución se
 niega a arrancar (`realProviderMode`, `assistant-battery.ts`). Coste orientativo: unos 30 turnos de Qwen más las
@@ -335,7 +339,7 @@ búsqueda, los recibos, los avisos, los fallos y los mensajes del mes. El veredi
 
 ## Sondas del asistente (capa 2)
 
-La capa 2 de la QA del asistente (plan `docs/plans/2026-10-31-asistente-conocimiento-y-qa.md` de erplora-next, §1.5):
+La capa 2 de la QA del asistente (plan `knowledge/raw/plans/2026-10-31-asistente-conocimiento-y-qa.md` de erplora-next, §1.5):
 frases **nuevas**, escritas por quien hace la QA, para las herramientas del catálogo exportado, mandadas al chat real del
 panel con el **modelo de verdad**. Mide que el modelo generaliza más allá de las `asks` de cada operación (la capa 1,
 `base/tests/test_assistant_asks.py`, ya prueba que esas llegan). Mismas reglas que la batería: solo con
@@ -384,7 +388,14 @@ QA_PROBES=tests/e2e/qa/probes/es-app-2026-11-01.json QA_REAL_PROVIDER=1 … pnpm
 
 ## Escribir una spec del panel
 
-Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/test`:
+Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/test`. Cada ayudante vive en el
+módulo de `panel/` de lo que hace y la spec lo importa de allí: `accounts.ts` (las cuentas: las sembradas, las de una
+spec, su alta y su baja), `session.ts` (la entrada, `GET /api/me` y los POST con CSRF), `mail.ts` (los correos),
+`screen.ts` (los tres tamaños, `settled`, el desplazamiento lateral, las capturas, el menú, los avisos y los textos
+del catálogo), `page-events.ts` (los errores de la página y sus `/api/live`), `django.ts` (el Django del SaaS, en
+frío o caliente, y las siembras), `businesses.ts` (los negocios de una spec), `hub.ts` (el Hub: su doble, su aviso
+firmado, el de verdad y las BD de su pila) y `stripe.ts` (Stripe de mentira). `fixtures.ts` lleva `test`, con
+estas fixtures, y las siembras por prueba (`seededAndSignedIn`, `seededAndSignedInWarm`):
 
 - `owner`: las credenciales del dueño sembrado.
 - `signedInPage`: una página con la sesión del dueño abierta por la API de `allauth.headless`
@@ -397,8 +408,39 @@ Va en `panel/` e importa `test` y `expect` de `./fixtures`, no de `@playwright/t
 - `VIEWPORTS` (390, 834 y 1440 px), `watchPageErrors(page)` y `shot(nombre)`.
 - `apiPost(request, ruta, datos)`: un POST a la API con el token CSRF de la sesión.
 - `waitForMail(…)` y `startHubDouble()`: el correo y el Hub (ver «Puertos y servidores»).
+- **Stripe, de mentira** (en la pila e2e no hay claves ni red hacia Stripe): `playStripe(page)` es el doble de
+  Stripe.js (monta un marcador `stripe-double` donde iría el Embedded Checkout y anota lo que la página le da, que
+  devuelve `stripeState(page)`), `payInStripe(page)` es Stripe diciendo que el pago ha ido bien (corre su
+  `onComplete`) y `answerCheckoutStart(page, respuesta?)` responde a `billing.checkout.start` y devuelve lo que
+  la página pidió, en orden. Encima, `gotoWithCheckout(page, ruta)` (un negocio en Gratis paga en el checkout),
+  `addAppInCheckout(page, negocio, app)` (su «Add» de una app de pago), `gotoWithCharge(page, ruta, importe, IVA)`
+  (un negocio que ya paga, en el diálogo del panel) y `playStripePortal(page)` (el portal de Stripe,
+  `STRIPE_PORTAL_URL`). Ninguna spec lleva su propia copia.
 - `djangoPrint(código)`: lo que imprime un trozo de Python con Django montado contra la BD local, para
-  lo que ninguna página enseña.
+  lo que ninguna página enseña. Cada llamada arranca Django en frío y bloquea el proceso de Node hasta que
+  termina (~1 s en reposo, 57–88 s con la máquina cargada, saas#346): dentro de una prueba, lo que enseña el
+  panel se lee por su API y lo que solo sabe Django, una vez por spec en un `beforeAll` con `djangoPrintAsync`.
+  `internalSecret()` ya lo hace así: asíncrono y leído una vez por worker; quien firma dentro de una prueba lo
+  pide antes en un `beforeAll`.
+- `djangoPrintWarm(código, env?)`: el mismo trozo de Python, contestado por **un Django caliente por worker**
+  (`panel/django_warm.py`, una línea JSON por llamada por stdin/stdout, la receta del doble de Stripe de
+  saas#328; su cliente es `django-warm.ts`): arranca una vez y se queda, así que una prueba no paga arranques
+  ni bloquea Node (saas#352). Para lo que hay que escribir o leer en Django en mitad de un flujo y la API no
+  enseña (crear una cuenta, marcar un estado, contar filas). Cada trozo corre como con `python -c`: sin los
+  nombres del anterior, y los ajustes (`settings.X = …`), el idioma, la zona horaria y la caché en memoria que
+  tocó vuelven a como estaban al terminar. Lo que parchee en un módulo (`stripe_service.client = …`) sí se
+  queda para los siguientes: se parchea dentro de un `with` (`mock.patch.object`, `override_settings`). Otro
+  `env` (`MAILING`) es otro proceso. `warmDjango(env?)` lo arranca: la spec cuya primera llamada cae dentro
+  de una prueba lo pide antes en un `beforeAll`.
+- `runSeedWarm(script, args, env)` y `seededAndSignedInWarm(script, cuenta)`: `runSeed` y `seededAndSignedIn` por
+  el Django caliente del worker (`warmDjango`, saas#352), para la siembra que va dentro de una prueba o en su
+  `beforeEach`: sin arranque de Django ni bloqueo de Node (saas#355). `localAssistant().seed` ya siembra así y
+  devuelve una promesa (`await seed(…)`).
+- `hubStackSql(puerto, consulta, hub?)` y `hubStackIds(puerto)`: lo que una spec con un Hub de verdad al lado (la
+  pila cruzada de la cabecera de `panel/whatsapp-hub.spec.ts`) lee en las BD de ese Hub, por `psql` en el Postgres
+  de `compose.yaml` y sin bloquear Node (saas#370). Sin `hub`, la BD de control (`hub_e2e_<puerto>`: `base_hub`);
+  con `hub` (`'a'`), la BD propia de ese negocio (su `db_name`), que es donde viven las tablas de las apps desde la
+  BD por negocio. `hubStackIds` devuelve los ids de `a` y `b` y cae por aserción si no son dos UUID.
 - **Sin recarga en caliente**: el `context` de toda spec responde él mismo al WebSocket de Vite
   (`freezeFrontend`), así que lo que otra sesión guarda a mitad de una ejecución no remonta
   componentes bajo la spec (un diálogo abierto se quedaba huérfano); cada carga de página sí trae los
@@ -423,8 +465,12 @@ a medir el documento a mano, ni por un nombre dado a su raíz (`const root = doc
 `then()`, ni desestructurando su ancho (`const { scrollWidth } = document.documentElement`, también anidado), ni
 con un localizador del raíz (`page.locator('html').evaluate(…)`, `page.$eval('body', …)`), ni partida en varias líneas,
 ni un solo `ion-content` (su `getScrollElement()`, `.inner-scroll` o `part="scroll"` y su `scrollWidth`); su scroll
-vertical (`scrollTop`, `scrollHeight`) sigue libre. Sus reglas son las del guardarraíl del Hub, línea por línea. `sidewaysScroll(page)` de `panel/fixtures.ts` nombra lo que se desplaza de
-lado con la misma medida (`overflowingBoxes(page, 1)`: `document N > M`, `ion-content N > M`) y, además, las tablas.
+vertical (`scrollTop`, `scrollHeight`) sigue libre. Sus reglas son las del guardarraíl del Hub, línea por línea. `sidewaysScroll(page)` de `panel/screen.ts` nombra lo que se desplaza de
+lado con la misma medida (`overflowingBoxes(page, 1)`: `document N > M`, `ion-content N > M`) y, además, las tablas. Tras cambiar el
+tamaño de la ventana (o acoplarse el asistente), una spec comprueba con `expectNoSidewaysScroll(page, '<qué>')`, que repite
+la medida hasta que la página se asienta: una DataTable se reacomoda en varios fotogramas (pliega sus acciones y pasa a
+tarjetas) y una sola medida al instante puede verla a medias (saas#319); en una spec cruzada, el menú lateral del Hub de
+verdad (`ion-split-pane`) sigue fijado un fotograma tras encoger la ventana por debajo de `lg` (saas#380).
 
 ## Tipos
 

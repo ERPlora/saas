@@ -1,9 +1,8 @@
-"""ASSISTANT-F23 (ASSISTANT-G58) · Receive the report of an answer of the assistant: the person marks an answer as
-wrong, harmful, not what was asked or other, and the Hub sends it (``POST /internal/assistant/report``) with the
-question and the answer. erplora.com mails it to the support mailbox, as «Report a problem» (ACCOUNTS-F38), and keeps
-nothing: the old product kept the report (question, answer and comment) for ever, fused reports of different
-businesses whose answers began alike and opened an issue on GitHub (SAAS_ASSISTANT-F21, «parcial»). The same answer
-reported twice in a day mails once. Each business has its own budget of reports.
+"""Receive the report of an answer of the assistant: the person marks an answer as wrong, harmful, not what was asked
+or other, and the Hub sends it (``POST /internal/assistant/report``) with the question and the answer. erplora.com
+mails it to the support mailbox, as «Report a problem», and keeps nothing: no report, no issue opened anywhere, and
+reports of different businesses are never fused. The same answer reported twice in a day mails once. Each business
+has its own budget of reports.
 """
 
 import io
@@ -212,8 +211,8 @@ def test_the_reports_have_their_own_budget(client, internal, business, settings)
 
 
 
-# --- An answer from the web (saas#287): Brave's terms, §3(b)(i), forbid keeping its results, in whole or in part, and a
-# mailbox keeps; the address and the title are part of them too (PLAN-SAAS §38).
+# --- An answer from the web (saas#287): section 3(b)(i) of Brave Search's terms forbids keeping its results, in whole
+# or in part, and a mailbox keeps; the address and the title are part of them too.
 
 
 def without_the_answer(body: str) -> bool:

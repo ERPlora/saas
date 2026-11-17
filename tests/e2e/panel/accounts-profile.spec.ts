@@ -1,66 +1,42 @@
 // The flows of «the profile, the preferences, the user menu, downloading the data and deleting the account»
-// (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-3) on their screens, at the three sizes of the migration
+// (accounts/WORKBOOK.md) on their screens, at the three sizes
 // (390×844, 834×1112, 1440×900), against the real hubs and billing (no mocks): the business is created by its
-// operation, ERPlora's invoice is a row billing reads. Each test names its flow by its registry key; in
-// accounts/WORKBOOK.md: G108=F21, G114=F22, G115=F23, G127=F24, G128=F25, G111=F26, G112=F27, G35=F13.
+// operation, ERPlora's invoice is a row billing reads. Each test names its flow of accounts/WORKBOOK.md in its title.
 // Accounts of this spec: `e2e-acc3-…@example.com`, removed before and after.
 import { readFile } from "node:fs/promises";
 
-import { type Page } from "@playwright/test";
+import { type APIRequestContext, type Page } from "@playwright/test";
 
-import {
-  djangoPrint,
-  expect,
-  settled,
-  shot,
-  sidewaysScroll,
-  signIn,
-  test,
-  watchPageErrors,
-} from "./fixtures";
+import { createAccountWarm, removeAccountsWarm } from "./accounts";
+import { djangoPrintWarm } from "./django";
+import { expect, test } from "./fixtures";
+import { watchPageErrors } from "./page-events";
+import { captureAtEverySize, settled, toast } from "./screen";
+import { sessionOf, signIn } from "./session";
+
+const atEverySize = captureAtEverySize("APP-ACCOUNTS-3");
 
 const PREFIX = "e2e-acc3-";
 const PASSWORD = "Centeno-y-masa-madre-26";
-const SIZES = [
-  { name: "390", width: 390, height: 844 },
-  { name: "834", width: 834, height: 1112 },
-  { name: "1440", width: 1440, height: 900 },
-] as const;
 
 /** A fresh address of this spec, never used before. */
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
-function removeAccounts(): void {
-  djangoPrint(
-    [
-      "from django.contrib.auth import get_user_model",
-      "from hubs.models import Hub",
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join("\n"),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account with its address proven, as one that signed in before; `staff` makes it a platform administrator. */
-function createAccount(
-  email: string,
-  options: { staff?: boolean; firstName?: string } = {},
-): { email: string; password: string } {
-  djangoPrint(
-    [
-      "from allauth.account.models import EmailAddress",
-      "from django.contrib.auth import get_user_model",
-      `user = get_user_model().objects.${options.staff ? "create_superuser" : "create_user"}(email="${email}", password="${PASSWORD}", first_name="${options.firstName ?? "Ana"}", last_name="García", language="en")`,
-      "EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)",
-    ].join("\n"),
-  );
-  return { email, password: PASSWORD };
-}
+const createAccount = (email: string, options: { staff?: boolean; firstName?: string } = {}) =>
+  createAccountWarm(email, PASSWORD, {
+    role: options.staff ? "superuser" : "customer",
+    firstName: options.firstName ?? "Ana",
+    lastName: "García",
+    language: "en",
+  });
 
 let lastSequence = 0;
 
 /** The sequence of this spec's next ERPlora invoice, never given before, as `address()` gives a fresh address: an
- *  invoice is never deleted (ACCOUNTS-G112 checks that the deleted account's stays), so a fixed one met the previous
+ *  invoice is never deleted (ACCOUNTS-F27 checks that the deleted account's stays), so a fixed one met the previous
  *  run's on the same e2e database (saas#227). The clock in seconds, since the field is a 32-bit integer too small for
  *  `Date.now()`; one more than the last when two fall in the same second. */
 function nextSequence(): number {
@@ -69,10 +45,10 @@ function nextSequence(): number {
 }
 
 /** A business of `email` made by its operation, with one ERPlora invoice it paid; the invoice's number. */
-function businessWithInvoice(email: string, name: string): string {
+async function businessWithInvoice(email: string, name: string): Promise<string> {
   const sequence = nextSequence();
   const number = `ERP-2026-${sequence}`;
-  djangoPrint(
+  await djangoPrintWarm(
     [
       "from datetime import date",
       "from django.contrib.auth import get_user_model",
@@ -93,39 +69,23 @@ function businessWithInvoice(email: string, name: string): string {
   return number;
 }
 
-/** The value Django reads back for `expression` of the account `email` (`user`), printed. */
+/** The value Django reads back for `expression` of the account `email` (`user`), printed: for what no page shows. */
 const readBack = (email: string, expression: string) =>
-  djangoPrint(
+  djangoPrintWarm(
     [
       "from django.contrib.auth import get_user_model",
       `user = get_user_model().objects.filter(email="${email}").first()`,
       `print(${expression})`,
     ].join("\n"),
-  ).trim();
+  );
 
-/** Each size of the migration: the page as `ready` leaves it, no sideways scroll, and its full-page shot; `after`
- *  undoes what `ready` opened (a menu) before the next size. */
-async function atEverySize(
-  page: Page,
-  key: string,
-  ready: () => Promise<void>,
-  after?: () => Promise<void>,
-): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(
-      await sidewaysScroll(page),
-      `${key} scrolls sideways at ${size.name}`,
-    ).toEqual([]);
-    await page.screenshot({
-      path: shot(`APP-ACCOUNTS-3-${key}-${size.name}`),
-      fullPage: true,
-    });
-    await after?.();
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
+/** Account › Preferences of `request`'s account, as the panel reads it (`GET /api/accounts/preferences`). */
+async function preferencesOf(
+  request: APIRequestContext,
+): Promise<{ theme_mode: string; language: string; hub_alerts: boolean }> {
+  const response = await request.get("/api/accounts/preferences");
+  expect(response.status(), "GET /api/accounts/preferences").toBe(200);
+  return (await response.json()) as { theme_mode: string; language: string; hub_alerts: boolean };
 }
 
 /** The user menu (`UserMenuPopover`): in the side menu, a drawer behind the topbar's menu button below `lg`. */
@@ -166,17 +126,14 @@ async function closeUserMenu(page: Page): Promise<void> {
   });
 }
 
-const toast = (page: Page, text: string) =>
-  page.locator("ion-toast").filter({ hasText: text });
-
 test.beforeAll(removeAccounts);
 test.afterAll(removeAccounts);
 
-test("ACCOUNTS-G108 (F21): Profile shows the account and keeps the names after a reload", async ({
+test("ACCOUNTS-F21: Profile shows the account and keeps the names after a reload", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const account = createAccount(address("profile"));
+  const account = await createAccount(address("profile"));
   await signIn(page.request, account);
 
   await page.goto("/dashboard/account/profile");
@@ -189,18 +146,18 @@ test("ACCOUNTS-G108 (F21): Profile shows the account and keeps the names after a
   await expect(
     page.getByTestId("profile-first-name").locator("input"),
   ).toHaveValue("Lucía");
-  expect(readBack(account.email, "user.get_full_name()")).toBe("Lucía Martín");
+  expect((await sessionOf(page.request)).user?.label).toBe("Lucía Martín");
   await atEverySize(page, "G108", async () => {
     await expect(page.getByTestId("profile-card")).toBeVisible();
   });
   expect(errors).toEqual([]);
 });
 
-test("ACCOUNTS-G114 (F22): Preferences saves the appearance and the language on their own, kept after a reload", async ({
+test("ACCOUNTS-F22: Preferences saves the appearance and the language on their own, kept after a reload", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const account = createAccount(address("preferences"));
+  const account = await createAccount(address("preferences"));
   await signIn(page.request, account);
 
   await page.goto("/dashboard/account/preferences");
@@ -218,20 +175,21 @@ test("ACCOUNTS-G114 (F22): Preferences saves the appearance and the language on 
     "Apariencia",
   );
   await expect(page.locator("html")).toHaveClass(/ion-palette-dark/);
-  expect(
-    readBack(account.email, "user.language, user.preferences.theme_mode"),
-  ).toBe("es dark");
+  expect(await preferencesOf(page.request)).toMatchObject({
+    language: "es",
+    theme_mode: "dark",
+  });
   await atEverySize(page, "G114", async () => {
     await expect(page.getByTestId("preferences-language-card")).toBeVisible();
   });
   expect(errors).toEqual([]);
 });
 
-test("ACCOUNTS-G115 (F23): «Business notices» is the one switch, kept after a reload; the mails that always go say so", async ({
+test("ACCOUNTS-F23: «Business notices» is the one switch, kept after a reload; the mails that always go say so", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const account = createAccount(address("notices"));
+  const account = await createAccount(address("notices"));
   await signIn(page.request, account);
 
   await page.goto("/dashboard/account/preferences");
@@ -256,7 +214,7 @@ test("ACCOUNTS-G115 (F23): «Business notices» is the one switch, kept after a 
     "checked",
     false,
   );
-  expect(readBack(account.email, "user.preferences.hub_alerts")).toBe("False");
+  expect((await preferencesOf(page.request)).hub_alerts).toBe(false);
   await atEverySize(page, "G115", async () => {
     await mails.scrollIntoViewIfNeeded();
     await expect(mails).toBeVisible();
@@ -278,11 +236,11 @@ test("ACCOUNTS-G115 (F23): «Business notices» is the one switch, kept after a 
   expect(errors).toEqual([]);
 });
 
-test("ACCOUNTS-G127 (F24): the theme of the user menu is painted at once and kept in the account", async ({
+test("ACCOUNTS-F24: the theme of the user menu is painted at once and kept in the account", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const account = createAccount(address("theme"));
+  const account = await createAccount(address("theme"));
   await signIn(page.request, account);
 
   await page.goto("/dashboard/businesses");
@@ -296,7 +254,7 @@ test("ACCOUNTS-G127 (F24): the theme of the user menu is painted at once and kep
   await dark.click();
   await expect(page.locator("html")).toHaveClass(/ion-palette-dark/);
   await expect
-    .poll(() => readBack(account.email, "user.preferences.theme_mode"))
+    .poll(async () => (await preferencesOf(page.request)).theme_mode)
     .toBe("dark");
   await closeUserMenu(page);
   await page.reload();
@@ -310,16 +268,16 @@ test("ACCOUNTS-G127 (F24): the theme of the user menu is painted at once and kep
         page.getByTestId("user-menu-theme").locator("ion-segment"),
       ).toHaveJSProperty("value", "dark");
     },
-    () => closeUserMenu(page),
+    { after: () => closeUserMenu(page) },
   );
   expect(errors).toEqual([]);
 });
 
-test("ACCOUNTS-G128 (F25): the user menu has «Account», «Report a problem», «Help», the theme and «Sign out»; «Account» opens the profile", async ({
+test("ACCOUNTS-F25: the user menu has «Account», «Report a problem», «Help», the theme and «Sign out»; «Account» opens the profile", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const account = createAccount(address("menu"), { firstName: "Marta" });
+  const account = await createAccount(address("menu"), { firstName: "Marta" });
   await signIn(page.request, account);
 
   await page.goto("/dashboard/businesses");
@@ -337,7 +295,7 @@ test("ACCOUNTS-G128 (F25): the user menu has «Account», «Report a problem», 
         "Sign out",
       ]);
     },
-    () => closeUserMenu(page),
+    { after: () => closeUserMenu(page) },
   );
   await openUserMenu(page);
   await page.getByTestId("user-menu-account").click();
@@ -346,14 +304,14 @@ test("ACCOUNTS-G128 (F25): the user menu has «Account», «Report a problem», 
   expect(errors).toEqual([]);
 });
 
-test("ACCOUNTS-G111 (F26): «Download my data» saves a JSON with the account, its business and its ERPlora invoice, nothing of another account", async ({
+test("ACCOUNTS-F26: «Download my data» saves a JSON with the account, its business and its ERPlora invoice, nothing of another account", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const account = createAccount(address("export"));
-  const other = createAccount(address("export-other"), { firstName: "Bea" });
-  const number = businessWithInvoice(account.email, "Panadería de Ana");
-  businessWithInvoice(other.email, "Bodega de Bea");
+  const account = await createAccount(address("export"));
+  const other = await createAccount(address("export-other"), { firstName: "Bea" });
+  const number = await businessWithInvoice(account.email, "Panadería de Ana");
+  await businessWithInvoice(other.email, "Bodega de Bea");
   await signIn(page.request, account);
 
   await page.goto("/dashboard/account/profile");
@@ -387,12 +345,12 @@ test("ACCOUNTS-G111 (F26): «Download my data» saves a JSON with the account, i
   expect(errors).toEqual([]);
 });
 
-test("ACCOUNTS-G112 (F27): an owner is told to hand over its business first; without one, the account goes and its invoice stays", async ({
+test("ACCOUNTS-F27: an owner is told to hand over its business first; without one, the account goes and its invoice stays", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const account = createAccount(address("delete"));
-  const number = businessWithInvoice(account.email, "Café de Ana");
+  const account = await createAccount(address("delete"));
+  const number = await businessWithInvoice(account.email, "Café de Ana");
   await signIn(page.request, account);
 
   await page.goto("/dashboard/account/profile");
@@ -413,7 +371,7 @@ test("ACCOUNTS-G112 (F27): an owner is told to hand over its business first; wit
   });
 
   // The business deleted (its own flow, 90 days of recovery): it holds the account no more.
-  djangoPrint(
+  await djangoPrintWarm(
     [
       "from django.utils import timezone",
       "from hubs.models import Hub",
@@ -439,29 +397,29 @@ test("ACCOUNTS-G112 (F27): an owner is told to hand over its business first; wit
     .fill(account.email);
   await page.getByTestId("delete-account-submit").click();
   await expect(page).not.toHaveURL(/\/dashboard\/account/);
-  expect(readBack(account.email, "user is None")).toBe("True");
+  expect(await readBack(account.email, "user is None")).toBe("True");
   expect(
-    djangoPrint(
+    await djangoPrintWarm(
       `from billing.models import Invoice;print(Invoice.objects.filter(number="${number}", payer_account=None).count())`,
-    ).trim(),
+    ),
   ).toBe("1");
   expect(errors).toEqual([]);
 });
 
-test("ACCOUNTS-G35 (F13): the admin shows an account with its preferences and its photo, only to read", async ({
+test("ACCOUNTS-F13: the admin shows an account with its preferences and its photo, only to read", async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const staff = createAccount(address("root"), { staff: true });
-  const account = createAccount(address("seen"));
-  djangoPrint(
+  const staff = await createAccount(address("root"), { staff: true });
+  const account = await createAccount(address("seen"));
+  await djangoPrintWarm(
     [
       "from accounts.models import UserPreferences",
       "from django.contrib.auth import get_user_model",
       `UserPreferences.objects.create(user=get_user_model().objects.get(email="${account.email}"), theme_mode="dark", hub_alerts=False)`,
     ].join("\n"),
   );
-  const id = readBack(account.email, "user.pk");
+  const id = await readBack(account.email, "user.pk");
   await signIn(page.request, staff);
 
   await page.goto(`/admin/accounts/user/${id}/change/`);

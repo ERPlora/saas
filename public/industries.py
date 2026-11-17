@@ -1,24 +1,19 @@
-"""``/industries/`` and ``/industries/<slug>/``: ERPlora for each business type (spec §8.1).
-
-Ported from ERPlora/saas ``apps/public/industries/views.py`` (origin/develop c5ca8ca). What changed:
+"""``/industries/`` and ``/industries/<slug>/``: ERPlora for each business type.
 
 * no model: the taxonomy and the plans are read through the operations of ``hubs``
   (``hubs.sector.list``, ``hubs.business_type.list``, ``hubs.plan.list``) and the apps through
-  ``apps.app.list``, with ``run_operation_sync`` as ``base/spa.py`` does (plan §3.m, spec §5.1);
+  ``apps.app.list``, with ``run_operation_sync`` as ``base/spa.py`` does;
 * a page's apps are the listed apps of its business type's ``vertical``, in one list: the apps made
-  for a business of that vertical (decision 13). Without a vertical, no block (spec §5.3);
-* available is not turned on: every business is born with every app off (round 2026-10-27, PLAN §33)
-  and turns them on with the template its Home suggests or one at a time, so no copy says a business
-  «comes with» its apps (saas#298);
-* the copy says «apps» and «catalogue» where it said «modules» and «marketplace», and every app is
-  «included in every plan» (ronda 2026-10-24b, PLAN §32; before, decision 17 put the premium apps in
-  the paid plans): there is no fee per app and no tier of apps;
-* the taxonomy has no catch-all «Other» row any more, so every page names its business type;
+  for a business of that vertical. Without a vertical, no block;
+* available is not turned on: every business is born with every app off and turns them on with the
+  template its Home suggests or one at a time, so no copy says a business «comes with» its apps;
+* every app is «included in every plan»: there is no fee per app and no tier of apps;
+* the taxonomy has no catch-all «Other» row, so every page names its business type;
 * the taxonomy's icons are data: one that is not baked into the public icons paints the default.
 
-The structure is the one the eight market references converge on (saas#1692): the buyer's literal
-question as the ``<h1>``, the answer in the lead, the live price, an FAQ marked up from the same
-list it renders, and links onward.
+The structure is the one market references converge on: the buyer's literal question as the
+``<h1>``, the answer in the lead, the live price, an FAQ marked up from the same list it renders,
+and links onward.
 
 Pan-European by contract: these pages describe the sector, never one country's tax law.
 """
@@ -50,7 +45,7 @@ from public.templatetags import icons
 
 logger = logging.getLogger(__name__)
 
-#: What a sector or business type without a usable icon paints (the old page's default).
+#: What a sector or business type without a usable icon paints.
 DEFAULT_ICON = "ion:business-outline"
 #: How many sibling business types the detail offers.
 RELATED_LIMIT = 8
@@ -139,7 +134,7 @@ def index(request: HttpRequest) -> HttpResponse:
 
 
 def _headline(subject: str) -> str:
-    """H1 = the phrase the buyer types into a search box, not the taxonomy label (saas#1692)."""
+    """H1 = the phrase the buyer types into a search box, not the taxonomy label."""
     return _("POS and ERP software for your %(business)s") % {"business": subject}
 
 
@@ -185,7 +180,7 @@ def _examples(apps: list[dict[str, Any]]) -> str:
 def how_apps_turn_on() -> str:
     """How a new business gets its apps, in ONE place: the apps block and the FAQ both say it.
 
-    Every business is born with every app off (PLAN §33): its Home suggests a template that turns on
+    Every business is born with every app off: its Home suggests a template that turns on
     the apps of a business like it, or the owner turns them on one at a time in Apps.
     """
     return _(
@@ -311,16 +306,16 @@ def _app_card(app) -> dict[str, Any]:
         "id": app.id,
         "name": app.name,
         "summary": app.summary,
-        # Cleaned with nh3 by apps.app.list (spec §8.4): safe to paint inline.
+        # Cleaned with nh3 by apps.app.list: safe to paint inline.
         "icon_svg": mark_safe(app.icon_svg),
         "category": Category(app.category).label if app.category else "",
-        # Every plan includes all the apps (PLAN §32): the flag ``premium`` is reserved, unused today.
+        # Every plan includes all the apps: the flag ``premium`` is reserved, unused today.
         "access_label": _("Included in every plan"),
     }
 
 
 def _vertical_apps(request: HttpRequest, vertical: str) -> list[dict[str, Any]]:
-    """The listed apps made for a business of ``vertical``; none without a vertical (§5.3)."""
+    """The listed apps made for a business of ``vertical``; none without a vertical."""
     if not vertical:
         return []
     listed = run_operation_sync(
@@ -333,7 +328,7 @@ def _vertical_apps(request: HttpRequest, vertical: str) -> list[dict[str, Any]]:
 def detail(request: HttpRequest, slug: str) -> HttpResponse:
     """One business type: the buyer's question, its answer, the apps made for it and an FAQ."""
     requested = slug.lower()
-    # A folded code is an indexed URL: send it on for good instead of dropping it (saas#2099).
+    # A folded code is an indexed URL: send it on for good instead of dropping it.
     if (current := current_business_type_code(requested)) != requested:
         return redirect("public:industries_detail", slug=current, permanent=True)
 
@@ -388,7 +383,7 @@ def detail(request: HttpRequest, slug: str) -> HttpResponse:
             "related": related,
             "faq_items": faq,
             # Serialised here, never interpolated into the template: a name carrying a quote
-            # reached the old block HTML-escaped, and its offer was a hardcoded "0".
+            # would reach the JSON-LD HTML-escaped.
             "json_ld_application": json_ld(
                 industry_software_application(
                     base,

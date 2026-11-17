@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// «Report a problem» (`/dashboard/report-a-problem`, the user menu; ACCOUNTS-F38, PLAN-SAAS §1.1): «Subject» and «What
+// «Report a problem» (`/dashboard/report-a-problem`, the user menu): «Subject» and «What
 // happened?» go to the support mailbox (`accounts.support.report`) with the account, its businesses, the page the
 // person came from and the browser, which the screen says; «Report sent» names the address support answers to. A
 // refusal keeps what was typed: a field's (422) under it, the rest (the limit, a mail that could not leave, no

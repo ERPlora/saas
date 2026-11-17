@@ -1,4 +1,4 @@
-"""``collect_hub_usage`` (``saas-cron``, nightly; lot L4-A, PLAN-SAAS §5): one day's usage of every business.
+"""``collect_hub_usage`` (``saas-cron``, nightly): one day's usage of every business.
 
 The Hub measures each business every night (the bytes of its files in S3 and of its database, the people
 active that day and in the 30 days up to it) and serves it at ``GET /internal/usage?day=``, in pages. The
@@ -22,7 +22,9 @@ from live.errors import PermissionDenied
 from live.live_registry import live_registry
 from live.models import OutboxEvent
 
-from hubs import events, queries, services
+from hubs import events
+from hubs.services import usage_collection
+from hubs.queries import hub_usage
 from hubs.models import HubUsageDaily
 from hubs.schemas import UsagePruneIn, UsageRecordIn, UsageSeriesIn
 from hubs.tests.conftest import create_business, ctx_for
@@ -155,7 +157,7 @@ class TestCollect:
     def test_a_business_the_hub_did_not_measure_is_left_out_and_the_run_passes(
         self, business, owner, make_user, hub_double
     ):
-        """HUBS-F21/F22 (PLAN-DB round 2026-10-30, proposal (j)): the nightly measure skips a hub still on the shared
+        """HUBS-F21/F22: the nightly measure skips a hub still on the shared
         database of control, so its row is not in the answer. The pass records the rest and ends well; the business
         left out keeps «no data yet» (or its last day), never the size of the control database."""
         measured = create_business(make_user("lola@example.com"), name="Café Lola")
@@ -287,7 +289,7 @@ class TestCollect:
         other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
 
 
-#: What the Hub measures during the day and adds to each row (hub#603, PLAN-SAAS §28, BASE-F40); for the admin only.
+#: What the Hub measures during the day and adds to each row; for the admin only.
 DAY_FIGURES = ("requests", "peak_connections", "busy_requests")
 
 
@@ -514,7 +516,7 @@ class TestTheyHearOfIt:
 class TestOnlyThePlatformRecordsIt:
     def test_an_account_cannot_record_usage(self, business, owner):
         with pytest.raises(PermissionDenied) as refused:
-            services.usage_record(
+            usage_collection.usage_record(
                 ctx_for(owner),
                 UsageRecordIn(
                     id=business.id,
@@ -556,11 +558,11 @@ def prune_breaks(monkeypatch) -> None:
     def broken(ctx, data):
         raise RuntimeError("the database went away")
 
-    monkeypatch.setattr(services, "usage_prune", broken)
+    monkeypatch.setattr(usage_collection, "usage_prune", broken)
 
 
 class TestAPassForgetsWhatIsPastTheRetention:
-    """HUBS-F22; PLAN-SAAS §1.1, «Limpiezas y podas diarias», and §27: 400 days, as the old product."""
+    """HUBS-F22: 400 days of usage are kept, as the old product kept them."""
 
     def test_the_day_400_stays_and_the_day_401_goes(self, business, hub_double):
         keep_day(business, days_ago(30))
@@ -588,18 +590,18 @@ class TestAPassForgetsWhatIsPastTheRetention:
         keep_day(business, first_read)
         keep_day(business, days_ago(1))
         window = UsageSeriesIn(business_id=business.id, days=365)
-        before = [point.day for point in queries.usage_series(ctx_for(owner), window).points]
+        before = [point.day for point in hub_usage.usage_series(ctx_for(owner), window).points]
 
         collect()
 
         assert before == [first_read, days_ago(1)]
-        assert [point.day for point in queries.usage_series(ctx_for(owner), window).points] == before
+        assert [point.day for point in hub_usage.usage_series(ctx_for(owner), window).points] == before
 
     def test_the_retention_outlasts_whatever_a_series_may_read(self):
         """Holds the two numbers together: a longer window has to raise the retention with it."""
         longest = UsageSeriesIn.model_json_schema()["properties"]["days"]["maximum"]
 
-        assert services.USAGE_RETENTION_DAYS > longest
+        assert usage_collection.USAGE_RETENTION_DAYS > longest
 
     def test_a_day_collected_by_hand_past_the_retention_goes_at_the_end_of_its_pass(self, business, hub_double):
         old = days_ago(401)
@@ -628,7 +630,7 @@ class TestAPruneThatFailsNeverEatsTheCollection:
         hub_double.usage[DAY.isoformat()] = [row(business.id, s3_bytes=7)]
         prune_breaks(monkeypatch)
 
-        with caplog.at_level(logging.ERROR, logger="hubs.services"):
+        with caplog.at_level(logging.ERROR, logger="hubs.services.usage_collection"):
             failed, said = collect_saying()
 
         assert figures(business)[0] == 7
@@ -659,7 +661,7 @@ class TestThePruneOperation:
         keep_day(business, days_ago(401))
 
         with pytest.raises(PermissionDenied) as refused:
-            services.usage_prune(ctx_for(owner), UsagePruneIn())
+            usage_collection.usage_prune(ctx_for(owner), UsagePruneIn())
 
         assert refused.value.code == "internal_command"
         assert days_kept(business) == {days_ago(401)}

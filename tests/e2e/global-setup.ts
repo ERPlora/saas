@@ -2,7 +2,7 @@
 // or reuses its servers before globalSetup; panel/project.ts): the specs would test that tree's frontend.
 // Then it refuses a local database with unapplied migrations: the specs read what the migrations seed
 // (hubs.0013's plans), the run never migrates the database other sessions share, and one left behind
-// by another branch failed specs on correct code (audit2.spec.ts, 2026-10-16). Then it
+// by another branch fails specs on correct code. Then it
 // seeds the app the store's specs open (store_docs_seed.py) and returns the teardown that removes it,
 // so the local database is left as it was even when a spec fails.
 import { execFileSync, spawnSync } from 'node:child_process';

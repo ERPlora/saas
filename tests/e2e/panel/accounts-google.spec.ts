@@ -1,5 +1,5 @@
 // flow: ACCOUNTS-F06
-// «Continue with Google» (accounts/WORKBOOK.md, ACCOUNTS-F06) at the three sizes of the migration, on the panel's
+// «Continue with Google» (accounts/WORKBOOK.md, ACCOUNTS-F06) at the three sizes, on the panel's
 // twin with a made-up Google app (`GOOGLE_E2E`, panel/project.ts), because the flow hands over to the second factor.
 // Everything of ours is the real thing: the button, the form post, allauth.headless's redirect with its state and
 // its PKCE, the page's `form-action` over that redirect, the way back, allauth's exchange of the code, the account,
@@ -18,30 +18,24 @@ import { createServer, type Server } from 'node:http';
 
 import { type Page } from '@playwright/test';
 
-import { djangoPrint, expect, sessionOf, settled, shot, sidewaysScroll, test, waitForMail, watchPageErrors } from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { waitForMail } from './mail';
+import { watchPageErrors } from './page-events';
 import { GOOGLE_E2E, PANEL_MFA_URL } from './project';
+import { settled, shot, sidewaysScroll, VIEWPORTS } from './screen';
+import { sessionOf } from './session';
 import { STACK } from '../stack';
 
 const PREFIX = 'e2e-google-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
 const SECURITY = '/dashboard/account/security';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 
 /** A fresh address of this spec, never used before. */
-const address = (name: string, size: string): string => `${PREFIX}${name}-${size}-${Date.now()}@example.com`;
+const address = (name: string, size: number): string => `${PREFIX}${name}-${size}-${Date.now()}@example.com`;
 
-function removeAccounts(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      `get_user_model().objects.filter(email__startswith=${JSON.stringify(PREFIX)}, email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 // ── Google's token endpoint, as the panel's Django calls it ───────────────────────────────────
 
@@ -148,8 +142,8 @@ interface AccountState {
   termsAccepted: boolean;
 }
 
-function accountOf(email: string): AccountState | null {
-  const state = djangoPrint(
+async function accountOf(email: string): Promise<AccountState | null> {
+  const state = await djangoPrintWarm(
     [
       'import json',
       'from allauth.account.models import EmailAddress',
@@ -170,20 +164,11 @@ function accountOf(email: string): AccountState | null {
 }
 
 /** An account of erplora.com with `email` confirmed and a password, not linked to any Google. */
-function createAccount(email: string): void {
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email=${JSON.stringify(email)}, password=${JSON.stringify(PASSWORD)})`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-}
+const createAccount = (email: string) => createAccountWarm(email, PASSWORD);
 
 /** That account with the authenticator app on: its key. */
-function turnOnTheApp(email: string): string {
-  return djangoPrint(
+function turnOnTheApp(email: string): Promise<string> {
+  return djangoPrintWarm(
     [
       'from allauth.mfa.totp.internal.auth import TOTP, generate_totp_secret',
       'from django.contrib.auth import get_user_model',
@@ -195,8 +180,8 @@ function turnOnTheApp(email: string): string {
 }
 
 /** The code the app shows now for `secret`. */
-function appCode(secret: string): string {
-  return djangoPrint(
+function appCode(secret: string): Promise<string> {
+  return djangoPrintWarm(
     [
       'import time',
       'from allauth.mfa import app_settings',
@@ -223,7 +208,7 @@ async function expectFirstBusinessForm(page: Page): Promise<void> {
 test.use({ baseURL: PANEL_MFA_URL });
 
 test.beforeAll(async () => {
-  removeAccounts();
+  await removeAccounts();
   await startTokenEndpoint();
 });
 
@@ -232,11 +217,11 @@ test.afterAll(async () => {
     tokenEndpoint.closeAllConnections();
     tokenEndpoint.close(() => closed());
   });
-  removeAccounts();
+  await removeAccounts();
 });
 
-for (const size of SIZES) {
-  test.describe(`at ${size.name}`, () => {
+for (const size of VIEWPORTS) {
+  test.describe(`at ${size.width}`, () => {
     test.use({ viewport: { width: size.width, height: size.height } });
 
     /** The button on the sign-in, no sideways scroll, and the click that leaves for Google. */
@@ -244,18 +229,18 @@ for (const size of SIZES) {
       const form = page.getByTestId('login-google');
       await expect(form).toContainText('Continue with Google');
       await settled(page);
-      expect(await sidewaysScroll(page), `the sign-in scrolls sideways at ${size.name}`).toEqual([]);
-      if (capture) await page.screenshot({ path: shot(`CLOSE-ACCOUNTS-F06-${capture}-${size.name}`), fullPage: true });
+      expect(await sidewaysScroll(page), `the sign-in scrolls sideways at ${size.width}`).toEqual([]);
+      if (capture) await page.screenshot({ path: shot(`CLOSE-ACCOUNTS-F06-${capture}-${size.width}`), fullPage: true });
       await form.locator('ion-button').click();
       await expect(page).toHaveTitle(PLAYED_GOOGLE);
     }
 
-    test(`ACCOUNTS-F06 an address with no account gets one, confirmed and with no form, and lands on the launcher (${size.name})`, async ({
+    test(`ACCOUNTS-F06 an address with no account gets one, confirmed and with no form, and lands on the launcher (${size.width})`, async ({
       page,
     }) => {
       const errors = watchPageErrors(page);
-      const email = address('new', size.name);
-      const account = { sub: `new-${size.name}-${Date.now()}`, email, email_verified: true };
+      const email = address('new', size.width);
+      const account = { sub: `new-${size.width}-${Date.now()}`, email, email_verified: true };
       const google = await playGoogle(page, account);
 
       await page.goto('/launch');
@@ -266,10 +251,10 @@ for (const size of SIZES) {
       await expect(page.getByTestId('login-google')).toHaveCount(0);
       await expectFirstBusinessForm(page);
       await settled(page);
-      expect(await sidewaysScroll(page), `the launcher scrolls sideways at ${size.name}`).toEqual([]);
-      await page.screenshot({ path: shot(`CLOSE-ACCOUNTS-F06-new-account-${size.name}`), fullPage: true });
+      expect(await sidewaysScroll(page), `the launcher scrolls sideways at ${size.width}`).toEqual([]);
+      await page.screenshot({ path: shot(`CLOSE-ACCOUNTS-F06-new-account-${size.width}`), fullPage: true });
 
-      const created = accountOf(email);
+      const created = await accountOf(email);
       expect(created).toMatchObject({
         usablePassword: false,
         addressVerified: true,
@@ -289,14 +274,14 @@ for (const size of SIZES) {
       expect(errors).toEqual([]);
     });
 
-    test(`ACCOUNTS-F06 the address of an account signs in to it, links Google, tells the owner and goes where it was going (${size.name})`, async ({
+    test(`ACCOUNTS-F06 the address of an account signs in to it, links Google, tells the owner and goes where it was going (${size.width})`, async ({
       page,
     }) => {
       const errors = watchPageErrors(page);
-      const email = address('known', size.name);
-      createAccount(email);
-      const before = accountOf(email);
-      const account = { sub: `known-${size.name}-${Date.now()}`, email, email_verified: true };
+      const email = address('known', size.width);
+      await createAccount(email);
+      const before = await accountOf(email);
+      const account = { sub: `known-${size.width}-${Date.now()}`, email, email_verified: true };
       await playGoogle(page, account);
       const since = Date.now();
 
@@ -307,10 +292,10 @@ for (const size of SIZES) {
       await expect(page).toHaveURL(new RegExp(`${SECURITY}$`));
       await expect(page.getByTestId('google-row')).toContainText(email);
       await settled(page);
-      expect(await sidewaysScroll(page), `Security scrolls sideways at ${size.name}`).toEqual([]);
-      await page.screenshot({ path: shot(`CLOSE-ACCOUNTS-F06-linked-${size.name}`), fullPage: true });
+      expect(await sidewaysScroll(page), `Security scrolls sideways at ${size.width}`).toEqual([]);
+      await page.screenshot({ path: shot(`CLOSE-ACCOUNTS-F06-linked-${size.width}`), fullPage: true });
 
-      const linked = accountOf(email);
+      const linked = await accountOf(email);
       expect(linked).toEqual({ ...before, googleUid: account.sub, termsAccepted: true });
       expect(linked?.usablePassword).toBe(true);
       expect((await sessionOf(page.request)).user?.id).toBe(before?.id);
@@ -318,14 +303,14 @@ for (const size of SIZES) {
       expect(errors).toEqual([]);
     });
 
-    test(`ACCOUNTS-F06 with the authenticator app, the code comes first, and only then the session (${size.name})`, async ({
+    test(`ACCOUNTS-F06 with the authenticator app, the code comes first, and only then the session (${size.width})`, async ({
       page,
     }) => {
       const errors = watchPageErrors(page);
-      const email = address('app', size.name);
-      createAccount(email);
-      const secret = turnOnTheApp(email);
-      await playGoogle(page, { sub: `app-${size.name}-${Date.now()}`, email, email_verified: true });
+      const email = address('app', size.width);
+      await createAccount(email);
+      const secret = await turnOnTheApp(email);
+      await playGoogle(page, { sub: `app-${size.width}-${Date.now()}`, email, email_verified: true });
 
       await page.goto('/launch');
       await continueWithGoogle(page);
@@ -334,25 +319,25 @@ for (const size of SIZES) {
       await expect(page).toHaveURL(/\/2fa\/authenticate(\?|$)/);
       await expect(page.getByTestId('mfa-form')).toBeVisible();
       await settled(page);
-      expect(await sidewaysScroll(page), `the code scrolls sideways at ${size.name}`).toEqual([]);
-      await page.screenshot({ path: shot(`CLOSE-ACCOUNTS-F06-authenticator-${size.name}`), fullPage: true });
+      expect(await sidewaysScroll(page), `the code scrolls sideways at ${size.width}`).toEqual([]);
+      await page.screenshot({ path: shot(`CLOSE-ACCOUNTS-F06-authenticator-${size.width}`), fullPage: true });
       expect((await sessionOf(page.request)).user).toBeNull();
 
-      await page.getByTestId('code').locator('input').fill(appCode(secret));
+      await page.getByTestId('code').locator('input').fill(await appCode(secret));
       await page.getByTestId('mfa-submit').click();
 
       await expect(page).toHaveURL(/\/launch$/);
       await expectFirstBusinessForm(page);
-      expect((await sessionOf(page.request)).user?.id).toBe(accountOf(email)?.id);
+      expect((await sessionOf(page.request)).user?.id).toBe((await accountOf(email))?.id);
       expect(errors).toEqual([]);
     });
 
-    test(`ACCOUNTS-F06 «Cancel» at Google goes back to the sign-in, keeping where it was going, with nothing created (${size.name})`, async ({
+    test(`ACCOUNTS-F06 «Cancel» at Google goes back to the sign-in, keeping where it was going, with nothing created (${size.width})`, async ({
       page,
     }) => {
       const errors = watchPageErrors(page);
-      const email = address('cancel', size.name);
-      await playGoogle(page, { sub: `cancel-${size.name}`, email, email_verified: true });
+      const email = address('cancel', size.width);
+      await playGoogle(page, { sub: `cancel-${size.width}`, email, email_verified: true });
 
       await page.goto(`/launch?next=${encodeURIComponent(SECURITY)}`);
       await continueWithGoogle(page);
@@ -361,23 +346,23 @@ for (const size of SIZES) {
       await expect(page).toHaveURL(new RegExp(`/launch\\?next=${SECURITY}$`));
       await expect(page.getByTestId('login-google')).toBeVisible();
       await settled(page);
-      expect(await sidewaysScroll(page), `the sign-in scrolls sideways at ${size.name}`).toEqual([]);
+      expect(await sidewaysScroll(page), `the sign-in scrolls sideways at ${size.width}`).toEqual([]);
       expect((await sessionOf(page.request)).user).toBeNull();
-      expect(accountOf(email)).toBeNull();
+      expect(await accountOf(email)).toBeNull();
       expect(errors).toEqual([]);
     });
 
-    test(`ACCOUNTS-F06 an address Google does not vouch for ends on the error page, with nothing created nor linked (${size.name})`, async ({
+    test(`ACCOUNTS-F06 an address Google does not vouch for ends on the error page, with nothing created nor linked (${size.width})`, async ({
       page,
     }) => {
       const errors = watchPageErrors(page);
-      const stranger = address('unverified', size.name);
-      const owner = address('owner', size.name);
-      createAccount(owner);
+      const stranger = address('unverified', size.width);
+      const owner = address('owner', size.width);
+      await createAccount(owner);
 
       for (const email of [stranger, owner]) {
         await page.context().clearCookies();
-        const google = await playGoogle(page, { sub: `unverified-${size.name}-${Date.now()}`, email, email_verified: false });
+        const google = await playGoogle(page, { sub: `unverified-${size.width}-${Date.now()}`, email, email_verified: false });
 
         await page.goto('/launch');
         await continueWithGoogle(page);
@@ -386,14 +371,14 @@ for (const size of SIZES) {
         await expect(page).toHaveURL(/\/login\/error\?code=authentication_error/);
         await expect(page.getByRole('heading', { name: 'We could not sign you in with Google' })).toBeVisible();
         await settled(page);
-        expect(await sidewaysScroll(page), `the error page scrolls sideways at ${size.name}`).toEqual([]);
+        expect(await sidewaysScroll(page), `the error page scrolls sideways at ${size.width}`).toEqual([]);
         expect((await sessionOf(page.request)).user).toBeNull();
         await google.stop();
       }
-      await page.screenshot({ path: shot(`CLOSE-ACCOUNTS-F06-error-${size.name}`), fullPage: true });
+      await page.screenshot({ path: shot(`CLOSE-ACCOUNTS-F06-error-${size.width}`), fullPage: true });
 
-      expect(accountOf(stranger)).toBeNull();
-      expect(accountOf(owner)?.googleUid).toBeNull();
+      expect(await accountOf(stranger)).toBeNull();
+      expect((await accountOf(owner))?.googleUid).toBeNull();
 
       await page.getByTestId('login-error-action').click();
       await expect(page).toHaveURL(/\/launch(\?|$)/);

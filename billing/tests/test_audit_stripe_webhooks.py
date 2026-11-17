@@ -1,9 +1,8 @@
-"""``python manage.py audit_stripe_webhooks``: does Stripe send our webhook every event it handles? (BILLING-F39)
+"""``python manage.py audit_stripe_webhooks``: does Stripe send our webhook every event it handles?
 
-Ported from ERPlora/saas ``apps/core/stripe_webhooks.py`` and its command (origin/develop, saas#2402: PRE's module
-endpoint pointed at a route that never existed, every delivery got a 404 and Stripe disabled it). The rules kept: only
-an ENABLED endpoint counts, one on our host to a route we do not serve and one to another environment are problems,
-and so is our route without an enabled endpoint. Added (PLAN-SAAS §1.1): the events of our endpoint are compared with
+An endpoint pointed at a route that does not exist gets a 404 on every delivery until Stripe disables it. Only an
+ENABLED endpoint counts, one on our host to a route we do not serve and one to another environment are problems, and
+so is our route without an enabled endpoint. The events of our endpoint are compared with
 ``billing.services.STRIPE_WEBHOOK_EVENTS``, the one list the webhook handles; what is missing and what is extra are
 named. Without a usable Stripe key there is nothing to audit: it says so and exits 0. Stripe is the double: no network.
 """

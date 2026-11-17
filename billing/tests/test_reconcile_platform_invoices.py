@@ -1,4 +1,4 @@
-"""``manage.py reconcile_platform_invoices``: what the platform hub still owes, retried (lot L3-C; ``saas-cron``).
+"""``manage.py reconcile_platform_invoices``: what the platform hub still owes, retried (``saas-cron``).
 
 The post after the COMMIT is the fast path; this is the net (the same pattern as ``reconcile_hub_states``):
 every «issuing» invoice whose wait passed is posted again (idempotent on the Hub by its id), every issued or
@@ -269,7 +269,7 @@ class TestTheRun:
 
 
 class TestTheMailOfAnIssuedInvoice:
-    """Review of L3-C: the payer's mail that failed when the invoice was issued is sent again by the run, until
+    """The payer's mail that failed when the invoice was issued is sent again by the run, until
     it leaves; one with nobody to send it to is done (nothing to retry)."""
 
     def test_a_mail_that_failed_is_sent_again(self, hub_double):

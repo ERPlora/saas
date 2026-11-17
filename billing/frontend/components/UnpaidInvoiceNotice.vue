@@ -1,13 +1,8 @@
 <script setup lang="ts">
-// The banner of an invoice Stripe could not charge, on top of Invoices (mockups `billing.html` «past-due»,
-// «suspended-norte», «card-updated»; README §4, §6.18 and §6.20; PLAN-SAAS §3.3 and §3.6 point 11):
-//   - how much, of which business, which invoice and of when; until when the business still works (7 days
-//     of grace from the invoice) or that it is suspended and nothing is deleted;
-//   - on the web, «Pay the invoice» is the main action (PayInvoiceButton). After a declined card «Change
-//     card» is (Stripe's Customer Portal) and «Pay» waits, described by why; once the card changed
-//     (`unpaid_reason = card_changed`), the banner says so and «Pay» is back. Another account paying the
-//     business: only why;
-//   - inside the apps, how to pay it, without a button nor a link (README §4).
+// The banner of an invoice Stripe could not charge, on top of Invoices: how much, of which business, and until
+// when the business still works (7 days of grace from the invoice) or that it is suspended and nothing is deleted.
+// On the web «Pay the invoice» is the main action; after a declined card «Change card» is and «Pay» waits,
+// described by why, until the card changes. Inside the apps, how to pay it, without a button nor a link.
 import { InlineFeedback } from '@erplora/ui/components';
 import { HubIcon, useSurface, WebOnly } from '@erplora/ui/shell';
 import { IonButton, IonSpinner } from '@ionic/vue';
@@ -28,7 +23,7 @@ const props = defineProps<{
 
 const { t, locale } = useI18n();
 const portal = useCardPortal();
-/** The account the app opens in the browser says why it pays nothing, not where (audit 2 S-09). */
+/** The account the app opens in the browser says why it pays nothing, not where. */
 const { isWeb, surface } = useSurface();
 const whyId = `unpaid-why-${useId()}`;
 
@@ -80,7 +75,7 @@ const body = computed(() => {
         >{{ surface === 'account' ? $t('billing.notice.account') : declined ? $t('billing.notice.appDeclined') : $t('billing.notice.app') }}</span>
       </template>
     </WebOnly>
-    <!-- Web only (README §4): inside the apps the actions are not even there. -->
+    <!-- Web only: inside the apps the actions are not even there. -->
     <template
       v-if="isWeb && !payerElsewhere"
       #actions

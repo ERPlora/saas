@@ -1,5 +1,5 @@
-"""ASSISTANT-F27 · What the panel's assistant knows of ERPlora (``assistant.knowledge``): the documentation cut into
-the excerpts its search returns (plan 2026-10-30-asistente-saas §5).
+"""What the panel's assistant knows of ERPlora (``assistant.knowledge``): the documentation cut into
+the excerpts its search returns.
 
 ``chunk_markdown`` cuts a document at its ``##`` and ``###`` headings (a FAQ's questions are ``###``), names each
 excerpt by its path of headings («Title > Section > Question») and windows a long section into excerpts of
@@ -295,7 +295,7 @@ Pasos:
 
 - `hubs/services.py` crea el negocio.
 """
-#: What the Hub's own ``base.catalog`` prints for it (``en_header(source_hash(user_part(…)))``, hub origin/main@b128e6e8).
+#: What the Hub's own ``base.catalog`` prints for it (``en_header(source_hash(user_part(…)))``).
 COMMENTED_WORKBOOK_HEADER = (
     "<!-- generated from WORKBOOK.md sha256:a0e1874be64c5a435d434a10c04365c9766ff69e0ba0ad3f607d87fe11b46149 -->"
 )

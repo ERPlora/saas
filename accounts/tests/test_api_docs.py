@@ -1,7 +1,7 @@
-"""``/api/docs``: the documentation of the SaaS's API, for signed-in accounts (ACCOUNTS-G105, ACCOUNTS-G13; ACCOUNTS-F34).
+"""``/api/docs``: the documentation of the SaaS's API, for signed-in accounts.
 
-The reference is django-ninja's ReDoc, read only (the old Swagger's «Try it out» changed real data without a word,
-SAAS_DASHBOARD-F197), served from our own static files with the response's nonce: nothing from a CDN (PLAN §14). Its
+The reference is django-ninja's ReDoc, read only (a «Try it out» would change real data without a word),
+served from our own static files with the response's nonce: nothing from a CDN. Its
 script writes HTML from strings, so this page alone goes without Trusted Types, and its search runs in a ``blob:``
 worker. Signed out, the sign-in, which comes back here. The schema (``/api/openapi.json``) stays open, as Stripe's and
 GitHub's are: Postman imports it and every app's suite reads it.

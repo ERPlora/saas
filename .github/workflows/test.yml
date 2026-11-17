@@ -6,8 +6,7 @@ name: test
 # (e2e.yml: the spec of the assistant's doors and the e2e specs the branch changes; every spec runs
 # every night, nightly.yml). Called by deploy.yml (pushes to main and pre) and ci.yml (every
 # other branch) as the job `test`: the job `test` below waits for the four, and its check,
-# `test / test`, is the one main and pre require
-# (plan 2026-10-14-entorno-pre, §7.5).
+# `test / test`, is the one main and pre require.
 
 on:
   workflow_call:
@@ -37,7 +36,7 @@ jobs:
           --health-timeout 3s
           --health-retries 30
     env:
-      # The defaults of config/settings.py, spelled out; pytest creates test_saas_next_gw<N>, one per
+      # The defaults of config/settings/backends.py, spelled out; pytest creates test_saas_next_gw<N>, one per
       # xdist worker.
       DB_HOST: 127.0.0.1
       DB_PORT: "5432"
@@ -45,10 +44,12 @@ jobs:
       DB_USER: hub
       DB_PASSWORD: hub
     steps:
-      # packages/live and packages/ui are submodules (ERPlora/live, ERPlora/ui) over HTTPS.
+      # packages/live and packages/ui are submodules (ERPlora/live, ERPlora/ui) over HTTPS. The whole history
+      # brings origin/main, whose .file-size-allow the size test compares the branch's with.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
+          fetch-depth: 0
           persist-credentials: false
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:

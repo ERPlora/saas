@@ -82,7 +82,11 @@ negocio»; en **Negocios**, en el diálogo «Crear negocio», bajo «¿Cómo se 
 
 ### Preparando
 La barra en marcha y tres pasos: «Negocio creado», «Preparando tu negocio» (o «Preparando tu negocio: …», con el tipo elegido) y
-«Se abre solo al terminar» en la Entrada o «Listo para abrir» en el diálogo.
+«Se abre solo al terminar» en la Entrada o «Listo para abrir» en el diálogo. Mientras el personal tiene la plataforma
+congelada para una subida de la base, el aviso «Alta en pausa por mantenimiento: tu negocio estará listo en unos
+minutos.» explica la espera, con «Comprobar ahora», y no se lee «Suele tardar unos segundos.»; el aviso desaparece solo al
+descongelar (y la frase vuelve) o cuando el negocio queda listo.
+Si la comprobación no puede hacerse, otro aviso lo dice y deja reintentar.
 
 ### Negocios
 La portada del panel: la lista de los negocios de la cuenta con «Negocio», «Dirección web», «Estado», «Plan»,
@@ -203,7 +207,6 @@ con buscador por negocio o por correo y filtro por rol; solo se consulta.
 | HUBS-F37 | Leer los sectores y los tipos de negocio | hecho |
 
 ### HUBS-F01 Crear el negocio gratuito con una sola pregunta
-<!-- origen: old-saas:SAAS_DASHBOARD-F01 fi:saas/support/hubs#modelo-hub -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Entrada › Crear negocio
@@ -217,7 +220,6 @@ Si falla: sin nombre, «Escribe el nombre de tu negocio.» y no se manda nada; u
 Implicados: accounts (la cuenta y la Entrada), el negocio (recibe su alta; BASE-F38: propone la plantilla en su Inicio), el asistente del panel (ASSISTANT-F25)
 
 ### HUBS-F02 Crear el negocio gratuito desde la aplicación instalada
-<!-- origen: old-saas:SAAS_DASHBOARD-F02 -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Entrada (en la aplicación instalada) › Crear negocio
@@ -226,12 +228,11 @@ Pasos:
 2. Sin ningún negocio, la Entrada enseña «Crea tu negocio» con el mismo formulario de HUBS-F01 (nombre, país y tipo opcional, con la dirección propuesta mientras escribe).
 3. Pulsa «Crear mi negocio»: la tarjeta pasa a **Preparando** y, cuando el negocio está listo, la aplicación entra sola en él y se queda unida a ese negocio (HUBS-F12).
 Entra: lo mismo que HUBS-F01.
-Sale: lo mismo que HUBS-F01, con el país y el tipo de negocio que la persona elige (la aplicación vieja no los preguntaba).
+Sale: lo mismo que HUBS-F01, con el país y el tipo de negocio que la persona elige.
 Si falla: los mismos avisos que HUBS-F01. Dentro de la aplicación no se vende nada: para cambiar de plan dice «Para cambiar de plan o añadir módulos, entra en erplora.com desde el navegador.».
 Implicados: accounts (la Entrada), la aplicación instalada (arranca en la Entrada y se une al negocio)
 
 ### HUBS-F03 Contratar un negocio de pago
-<!-- origen: old-saas:SAAS_DASHBOARD-F03 fi:saas/hubs#alta-de-terminal-crear-hub-checkout-stripe fi:saas/hubs#alta-de-terminal-por-api-checkout fi:saas/support/hubs#service-lifecycle-create_hub -->
 Estado: hecho
 Actor: propietario, integración
 Pantalla: Negocios › Crear negocio, Resumen del negocio, Tienda
@@ -246,22 +247,20 @@ Si falla: los mismos avisos que HUBS-F01 al crear y los de BILLING-F08 al pagar;
 Implicados: billing (el pago y el plan), el negocio (recibe su plan)
 
 ### HUBS-F04 Esperar a que el negocio esté listo y entrar solo
-<!-- origen: old-saas:SAAS_DASHBOARD-F04 -->
 Estado: hecho
 Actor: propietario
 Pantalla: Preparando
 Pasos:
-1. Tras «Crear mi negocio», la Entrada enseña «Preparando …» («Suele tardar unos segundos.») con la barra y los tres pasos; en **Negocios**, el diálogo enseña lo mismo y la fila dice «Preparando».
+1. Tras «Crear mi negocio», la Entrada enseña «Preparando …» («Suele tardar unos segundos.», salvo en una pausa por mantenimiento: ver «Si falla») con la barra y los tres pasos; en **Negocios**, el diálogo enseña lo mismo y la fila dice «Preparando».
 2. La pantalla se actualiza sola: no hace falta recargar ni quedarse («Ir al panel mientras tanto»).
 3. Cuando el negocio está listo, la Entrada lleva a la persona dentro del negocio sin volver a pedir la contraseña; el diálogo de **Negocios** dice «Tu negocio está listo» con «Abrir negocio».
 4. Al propietario le llega además el correo «… ya está listo» con el enlace para abrirlo y el de su página en el panel.
 Entra: el aviso de que el negocio está listo (HUBS-F07).
 Sale: la entrada en el negocio con un pase de un solo uso, que nunca viaja en la dirección; el correo «ya está listo», una sola vez.
-Si falla: si el negocio no se pudo preparar, la pantalla dice «No se ha podido preparar» y «Hemos guardado …, pero no se ha podido preparar. Seguimos reintentándolo; si sigue fallando, avísanos.», y entra sola si el reintento (HUBS-F08) lo arregla. Con varios negocios no entra sola en ninguno: la persona elige.
+Si falla: si el negocio no se pudo preparar, la pantalla dice «No se ha podido preparar» y «Hemos guardado …, pero no se ha podido preparar. Seguimos reintentándolo; si sigue fallando, avísanos.», y entra sola si el reintento (HUBS-F08) lo arregla. Mientras el personal tiene la plataforma congelada para una subida de la base, la tarjeta y la fila dicen «Alta en pausa por mantenimiento: tu negocio estará listo en unos minutos.», con «Comprobar ahora», y ni la Entrada ni el diálogo de **Negocios** dicen «Suele tardar unos segundos.» hasta que se levanta; es una pausa, nunca un fallo de preparación, y desaparece sola al descongelar o cuando el negocio queda listo. Si la comprobación no puede hacerse, un aviso lo dice y deja reintentar. Con varios negocios no entra sola en ninguno: la persona elige.
 Implicados: accounts (el salto al negocio), el negocio (avisa de que está listo)
 
 ### HUBS-F05 Mantener los planes en el admin
-<!-- origen: fi:saas/support/hubs#modelo-plan-alias-hubplan fi:saas/django-admin#admin-plan fi:saas/hubs#admin-django-plan-hub-plans-con-traduccion fi:saas/hubs#plans-rest-crud-admin-only fi:saas/support/hubs#otro-plantranslationoptions-translation-py -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: admin › Negocios › Planes
@@ -270,12 +269,11 @@ Pasos:
 2. En la ficha de un plan escribe su nombre, su descripción, las líneas de su tarjeta y su distintivo en inglés y en español, su precio mensual y anual, qué incluye (nivel de módulos, soporte, dominio propio, negocios, dispositivos y personas), los límites de su base de datos, los mensajes del asistente y de WhatsApp al mes y sus precios de Stripe.
 3. Guarda: el cliente ve los textos en su idioma (el inglés cuando falta el español) en la Tienda y en la web de precios.
 Entra: lo que escribe el personal.
-Sale: el plan, con cada texto en inglés y en español. Gratis se ofrece al darse de alta y sin prueba; Pro, Enterprise y Max solo como mejora; un plan interno nunca se ofrece a los clientes.
+Sale: el plan, con cada texto en inglés y en español. Gratis se ofrece al darse de alta y sin prueba; Pro, Enterprise y Max solo como mejora; un plan interno solo se ofrece al negocio que el personal marca en el admin (HUBS-F23).
 Si falla: un precio que Stripe rechaza no se guarda y el plan se queda como estaba; sin Stripe, se guarda y avisa de que no se ha comprobado. Una cuenta sin la marca de personal no entra en el admin.
 Implicados: billing (los precios en Stripe, BILLING-F28), public (la web de precios)
 
 ### HUBS-F06 Ver «tu negocio se está preparando»
-<!-- origen: old-saas:SAAS_DASHBOARD-F44 -->
 Estado: hecho
 Actor: cualquiera
 Pantalla: Tu negocio se está preparando
@@ -288,7 +286,6 @@ Si falla: una dirección que no es de ningún negocio dice que no existe; la de 
 Implicados: el negocio (sirve la página)
 
 ### HUBS-F07 Dar el negocio por listo
-<!-- origen: old-saas:SAAS_DASHBOARD-F29 fi:saas/support/hubs#task-send_welcome_email_task fi:saas/support/hubs#signal-track_hub_status_change-purge_org_if_last_hub-send_welcome_email_on_activation-sync_hub_plan_to_stripe -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -302,21 +299,19 @@ Si falla: un aviso sin firma válida, de otro negocio o de un negocio desconocid
 Implicados: el negocio (manda el aviso)
 
 ### HUBS-F08 Reintentar lo que el negocio no recibió
-<!-- origen: old-saas:SAAS_DASHBOARD-F30 gh:saas#2533 old-saas:SAAS_DASHBOARD-F74 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. Cada 15 minutos, erplora.com busca lo que el servicio de los negocios aún no ha recibido: un alta, una baja, una recuperación o el estado más reciente de un negocio.
-2. Se lo vuelve a mandar y, a un alta que lleva más de 2 minutos sin el aviso de «listo», le pregunta cómo va: si ya está listo, la da por lista; si el servicio no la conoce, la manda otra vez.
-3. Apunta en el registro cuánto entregó, cuánto quedó pendiente y cuánto rechazó el negocio.
+2. Se lo vuelve a mandar y, a un alta que lleva más de 2 minutos sin el aviso de «listo», le pregunta cómo va: si ya está listo, la da por lista; si el servicio no la conoce, la manda otra vez. Si la plataforma está congelada, guarda esa pausa real y la publica en la lista y en la ficha; al descongelar la borra, sin cambiar la versión de la foto del negocio.
+3. Apunta en el registro cuánto entregó, cuánto quedó pendiente y cuánto rechazó el negocio. La acción «Comprobar ahora» de HUBS-F04 hace esta misma consulta y recuperación al momento.
 Entra: los negocios con algo pendiente.
 Sale: lo entregado, marcado como entregado; lo que falla queda pendiente para la siguiente pasada.
 Si falla: un negocio que falla no para la pasada; la pasada termina con error si algo quedó pendiente, sin conexión o rechazado, y ese error salta como alarma. Dos pasadas a la vez no se pisan: la segunda sale sin hacer nada.
 Implicados: el negocio (recibe lo pendiente)
 
 ### HUBS-F09 Ver la lista de negocios
-<!-- origen: old-saas:SAAS_DASHBOARD-F05 fi:saas/hubs#listado-de-terminales-activos fi:saas/hubs#listado-de-terminales-inactivos pc:cloud/dashboard/hubs-active pc:cloud/dashboard/hubs-inactive -->
 Estado: hecho
 Actor: propietario, administrador, encargado, empleado
 Pantalla: Negocios
@@ -331,7 +326,6 @@ Si falla: sin negocios, «Crea tu primer negocio» con el formulario del alta; u
 Implicados: billing (el plan y las facturas sin pagar de cada fila)
 
 ### HUBS-F10 Ver la portada del panel
-<!-- origen: old-saas:SAAS_DASHBOARD-F200 fi:saas/hubs#dashboard-de-hubs-resumen pc:cloud/dashboard/overview -->
 Estado: hecho
 Actor: propietario, administrador, encargado, empleado
 Pantalla: Negocios
@@ -345,7 +339,6 @@ Si falla: los estados de la lista de negocios (HUBS-F09).
 Implicados: billing (Facturación), accounts (Cuenta)
 
 ### HUBS-F11 Entrar en un negocio desde erplora.com
-<!-- origen: old-saas:SAAS_DASHBOARD-F06 -->
 Estado: hecho
 Actor: propietario, administrador, encargado, empleado
 Pantalla: Entrada, Negocios
@@ -360,7 +353,6 @@ Si falla: un negocio que se prepara, suspendido o eliminado no se abre y la fila
 Implicados: accounts (el pase de entrada), el negocio (abre su sesión)
 
 ### HUBS-F12 Elegir el negocio en la aplicación instalada
-<!-- origen: old-saas:SAAS_DASHBOARD-F07 -->
 Estado: hecho
 Actor: propietario, administrador, encargado, empleado
 Pantalla: Entrada (en la aplicación instalada)
@@ -375,7 +367,6 @@ Si falla: un negocio de otra cuenta no se encuentra; uno que no abre ahora (se p
 Implicados: accounts (el pase de entrada), la aplicación instalada (se une al negocio), el negocio
 
 ### HUBS-F13 Abrir el negocio en otro dispositivo
-<!-- origen: old-saas:SAAS_DASHBOARD-F08 fi:saas/hubs#codigo-qr-del-terminal-bridge -->
 Estado: hecho
 Actor: propietario, administrador
 Pantalla: Resumen del negocio › En tus dispositivos
@@ -389,7 +380,6 @@ Si falla: si el navegador no deja copiar, «No se ha podido copiar la dirección
 Implicados: public (las descargas de las aplicaciones)
 
 ### HUBS-F14 Ver los negocios por la API
-<!-- origen: fi:saas/hubs#listado-detalle-de-hubs-por-api-user-jwt -->
 Estado: hecho
 Actor: propietario, integración
 Pantalla: ninguna
@@ -402,7 +392,6 @@ Si falla: sin sesión ni clave, la petición se rechaza; una clave sin permiso d
 Implicados: accounts (las claves de API)
 
 ### HUBS-F15 Cambiar el nombre, el idioma y la zona horaria del negocio
-<!-- origen: fi:saas/hubs#ajustes-del-terminal old-saas:SAAS_DASHBOARD-F09 -->
 Estado: hecho
 Actor: propietario, administrador
 Pantalla: Ajustes del negocio
@@ -416,7 +405,6 @@ Si falla: un nombre vacío no se guarda y se dice en el campo; un país distinto
 Implicados: el negocio (recibe el nombre, el idioma y la zona horaria)
 
 ### HUBS-F16 Cambiar la dirección web del negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F10 -->
 Estado: hecho
 Actor: propietario
 Pantalla: Ajustes del negocio › Cambiar la dirección web
@@ -430,7 +418,6 @@ Si falla: una dirección reservada, «Esta dirección está reservada. Elige otr
 Implicados: el negocio (recibe su nueva dirección), accounts (la entrada a la nueva dirección)
 
 ### HUBS-F17 Conectar un dominio propio a la web del negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F11 old-saas:SAAS_DASHBOARD-F12 fi:saas/hubs#configuracion-de-dominios-subdominio-dominios-personalizados fi:saas/support/hubs#modelo-hubcustomdomain pc:cloud/dashboard/hubs-domains fi:saas/support/hubs#task-check_domain_validation old-saas:SAAS_DASHBOARD-F39 -->
 Estado: hecho
 Actor: propietario
 Pantalla: Ajustes del negocio › Dominio propio
@@ -446,7 +433,6 @@ Si falla: lo que erplora.com no acepta del nombre se dice en el propio campo («
 Implicados: website (la web pública del negocio), el negocio (BASE-F110: sirve la web por su dominio), public (PUBLIC-F02, PUBLIC-F07: Planes y precios y los términos lo anuncian en los planes que lo incluyen), billing (la Tienda lo dice en esos planes)
 
 ### HUBS-F18 Eliminar un negocio
-<!-- origen: fi:saas/hubs#borrado-cancelacion-del-terminal old-saas:SAAS_DASHBOARD-F22 old-saas:SAAS_DASHBOARD-F23 old-saas:SAAS_DASHBOARD-F24 -->
 Estado: hecho
 Actor: propietario, integración
 Pantalla: Ajustes del negocio › Zona de peligro
@@ -461,7 +447,6 @@ Si falla: un nombre que no coincide no elimina nada (da igual en mayúsculas o c
 Implicados: billing (cancela lo que se cobraba), el negocio (deja de abrirse y lo guarda 90 días)
 
 ### HUBS-F19 Recuperar un negocio eliminado
-<!-- origen: fi:saas/hubs#reactivar-terminal-inactivo -->
 Estado: hecho
 Actor: propietario
 Pantalla: Negocios, Resumen del negocio
@@ -474,7 +459,6 @@ Si falla: pasados los 90 días, «Este negocio se borró para siempre y no se pu
 Implicados: el negocio (lo vuelve a abrir)
 
 ### HUBS-F20 Avisar y dar de baja un negocio suspendido por impago
-<!-- origen: old-saas:SAAS_DASHBOARD-F35 fi:saas/support/hubs#task-cleanup_inactive_hubs fi:saas/support/hubs#task-send_hub_suspended_email_task -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -489,21 +473,19 @@ Si falla: un aviso que no pudo salir se vuelve a mandar en la pasada siguiente, 
 Implicados: billing (suspende, avisa de la suspensión y hace la pasada), el negocio (deja de abrirse)
 
 ### HUBS-F21 Ver el estado y el uso de un negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F26 -->
 Estado: hecho
 Actor: propietario, administrador
 Pantalla: Resumen del negocio
 Pasos:
-1. En la página del negocio, la cabecera dice su estado («Activo», «Preparando», «Pago pendiente», «Suspendido» o eliminado) y el Resumen, su plan con los dispositivos, las apps que puede tener activadas a la vez y las personas frente a las plazas.
+1. En la página del negocio, la cabecera dice su estado («Activo», «Preparando», «Pago pendiente», «Suspendido» o eliminado) y el Resumen, su plan con los dispositivos, las apps que puede tener activadas a la vez y las personas frente a las plazas. Es lo que cubre el plan que tiene el negocio, también un plan interno que no está a la venta, como «Prueba de pago (interno)» (BILLING-F27).
 2. La tarjeta «Uso» («Cómo va tu negocio en ERPlora») enseña el «Almacenamiento» usado del espacio de su plan, con aviso al acercarse al tope, y las personas «Activos ayer» y de los «Últimos 30 días», con «Datos de ayer: se actualizan cada noche.».
 3. Esta tarjeta no enseña las peticiones de cada día, el pico de conexiones ni las peticiones sin hueco: son para el equipo de ERPlora, en su admin (HUBS-F22), y para quien lleva el negocio, en Sistema · Recursos de su hub (BASE-F40).
 Entra: el negocio y lo que midió la última noche.
 Sale: nada se guarda; la página cambia sola cuando llega una noche nueva.
-Si falla: sin ninguna noche medida, «Sin datos todavía. Las cifras llegan cada noche, desde la primera tras crear el negocio.»; con datos de un día anterior a ayer, «Datos del …: se actualizan cada noche.». Un gerente o un empleado no ven la página del negocio, solo «Abrir».
-Implicados: el negocio (BASE-F40: mide su uso y enseña esas cifras a quien lo lleva)
+Si falla: un negocio sin plan dice «—» en los dispositivos y en las apps. Sin ninguna noche medida, «Sin datos todavía. Las cifras llegan cada noche, desde la primera tras crear el negocio.»; con datos de un día anterior a ayer, «Datos del …: se actualizan cada noche.». Un gerente o un empleado no ven la página del negocio, solo «Abrir».
+Implicados: el negocio (BASE-F40: mide su uso y enseña esas cifras a quien lo lleva), billing (BILLING-F27: el plan interno que el personal deja comprar)
 
 ### HUBS-F22 Recoger cada noche el uso de cada negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F57 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -519,22 +501,19 @@ Si falla: si el servicio no contesta o se niega, la pasada termina con error y a
 Implicados: el negocio (BASE-F40: mide su uso y lo sirve)
 
 ### HUBS-F23 Actuar el personal de ERPlora sobre un negocio desde el admin
-<!-- origen: fi:saas/django-admin#admin-hub fi:saas/hubs#administracion-de-hubs-django-admin old-saas:SAAS_DASHBOARD-F41 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: admin › Negocios
 Pasos:
 1. El personal entra en el admin de erplora.com y busca el negocio por su dirección o su nombre; ve su ficha con sus miembros, su plan, quién paga, su uso y lo que el negocio aún no ha recibido.
-2. Elige el negocio y una acción: «Enviar al Hub el estado más reciente», «Reintentar lo que el Hub tiene pendiente» o, en la ficha de los cierres de sesión, «Cerrar ya las sesiones en el Hub»; el admin dice cuántos quedaron al día y cuántos siguen pendientes.
+2. Elige el negocio y una acción: «Enviar al Hub el estado más reciente», «Reintentar lo que el Hub tiene pendiente» o, en la ficha de los cierres de sesión, «Cerrar ya las sesiones en el Hub»; el admin dice cuántos quedaron al día y cuántos siguen pendientes. Un superusuario también puede «Dejar a su propietario comprar los planes internos» o «Dejar de venderle los planes internos» (BILLING-F27).
 3. Cada acción queda en el historial de ese negocio: quién la hizo, cuándo y cuál.
 Entra: la cuenta del personal con su segundo factor.
 Sale: lo que la acción manda al negocio y la línea del historial.
-Si falla: el admin no crea, no cambia ni borra negocios, miembros ni planes de pago: eso solo lo hacen sus propias pantallas, así nadie del personal se hace propietario de un negocio ni lo borra sin su baja. El personal de soporte lo ve todo y no ejecuta acciones. Para los datos de dentro del negocio está el admin de los negocios (en el servicio de los negocios).
+Si falla: el admin no crea, no cambia ni borra negocios, miembros ni planes de pago: eso solo lo hacen sus propias pantallas, así nadie del personal se hace propietario de un negocio ni lo borra sin su baja. La marca de los planes internos no compra nada: el propietario, si quiere, lo compra él en la Tienda. El personal de soporte lo ve todo y no ejecuta acciones. Para los datos de dentro del negocio está el admin de los negocios (en el servicio de los negocios).
 Implicados: el negocio (recibe lo que se le reenvía), accounts (la cuenta del personal)
 
 ### HUBS-F24 Invitar a una persona a un negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F13 fi:saas/orgs-users#invitar-miembro-a-la-organizacion fi:saas/orgs-users#invitar-usuario-formulario fi:saas/orgs-users#invitar-usuario-submit-a-hub-u-organizacion fi:saas/orgs-users#api-invitar-a-organizacion-o-a-hub-concreto-rest fi:saas/orgs-users#api-miembros-listar-invitar-rest -->
-<!-- origen: fi:saas/support/orgs-users#service-invite_user_to_organization-invite_user_to_hub-invitations fi:saas/support/orgs-users#serializer-organizationmemberserializer-invitememberserializer-updatememberroleserializer-userserializer fi:saas/support/orgs-users#service-send_org_invitation_email-emails fi:saas/support/hubs#task-send_invitation_email_task gh:saas#2565 -->
 Estado: hecho
 Actor: propietario, administrador, integración
 Pantalla: Miembros › Invitar
@@ -549,7 +528,6 @@ Si falla: una dirección que no vale (demasiado larga, por ejemplo), el error en
 Implicados: accounts (la cuenta de la persona invitada y, si nunca confirmó su dirección, su liberación), el negocio (recibe a la persona cuando acepta)
 
 ### HUBS-F25 Aceptar o rechazar una invitación a un negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F14 -->
 Estado: hecho
 Actor: administrador, encargado, empleado
 Pantalla: Te han invitado, Negocios
@@ -563,7 +541,6 @@ Si falla: una invitación caducada, «Esta invitación ha caducado. Pide a quien
 Implicados: accounts (la sesión y el salto al negocio), el negocio (recibe a la persona)
 
 ### HUBS-F26 Cambiar el rol de una persona en un negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F15 fi:saas/orgs-users#cambiar-rol-de-un-miembro fi:saas/orgs-users#api-miembro-detalle-cambiar-rol-eliminar-rest fi:saas/support/orgs-users#service-user_can_access_hub-get_user_hub_role-funciones-modulo-nivel -->
 Estado: hecho
 Actor: propietario, administrador, integración
 Pantalla: Miembros › Cambiar rol
@@ -577,7 +554,6 @@ Si falla: el propio rol, «No puedes cambiar tu propia pertenencia.»; alguien d
 Implicados: el negocio (BASE-F13: recibe el rol nuevo y cierra la sesión), accounts (la sesión)
 
 ### HUBS-F27 Quitar a una persona de un negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F16 old-saas:SAAS_AUTH-F22 fi:saas/orgs-users#eliminar-un-miembro fi:saas/orgs-users#quitar-acceso-de-un-usuario-a-un-hub gh:saas#2569 -->
 Estado: hecho
 Actor: propietario, administrador, integración
 Pantalla: Miembros › Quitar
@@ -591,7 +567,6 @@ Si falla: a uno mismo, «No puedes cambiar tu propia pertenencia.»; a alguien d
 Implicados: el negocio (BASE-F13: recibe la lista sin ella y cierra sus sesiones), billing (quién paga el negocio)
 
 ### HUBS-F28 Traspasar la propiedad de un negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F17 -->
 Estado: hecho
 Actor: propietario
 Pantalla: Miembros › Transferir la propiedad, Negocios, Facturación › Suscripciones
@@ -608,7 +583,6 @@ Si falla: a quien aún no está en el negocio, «Invita antes a esta persona al 
 Implicados: billing (quién paga el negocio: el plan deja de renovarse en la tarjeta anterior y pasa a la del nuevo propietario), el negocio (BASE-F13: recibe los roles nuevos y cierra las sesiones de los dos)
 
 ### HUBS-F29 Ver las personas de un negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F18 old-saas:SAAS_DASHBOARD-F214 fi:saas/hubs#usuarios-del-terminal fi:saas/orgs-users#api-miembros-de-un-hub-concreto-rest fi:saas/orgs-users#listar-usuarios-global-por-organizaciones-gestionadas pc:cloud/dashboard/users-list fi:saas/support/orgs-users#serializer-hubaccessserializer -->
 Estado: hecho
 Actor: propietario, administrador, integración
 Pantalla: Miembros
@@ -622,7 +596,6 @@ Si falla: «No hemos podido cargar los miembros» con «Reintentar». Un encarga
 Implicados: accounts (la sesión), billing (las plazas del plan)
 
 ### HUBS-F30 Consultar los accesos de las personas en el admin
-<!-- origen: fi:saas/django-admin#admin-hubaccess fi:saas/support/orgs-users#modelo-hubaccess -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: admin › Negocios › Miembros
@@ -635,7 +608,6 @@ Si falla: el admin no invita, no cambia ni quita a nadie: eso solo lo hacen el p
 Implicados: accounts (la cuenta del personal)
 
 ### HUBS-F31 Mandar a cada negocio su plan, sus aplicaciones y sus personas
-<!-- origen: old-saas:SAAS_DASHBOARD-F116 old-saas:SAAS_DASHBOARD-F40 old-saas:SAAS_DASHBOARD-F54 old-saas:SAAS_DASHBOARD-F53 fi:saas/hubs#entitlement-de-modulos-firmado-rs256 fi:saas/support/public-core-config#service-is_module_entitled-build_signed_entitlement-entitlement-py -->
 Estado: hecho
 Actor: sistema, personal de ERPlora
 Pantalla: ninguna; para el personal, admin › Negocios › Planes
@@ -650,7 +622,6 @@ Si falla: si el negocio no responde o rechaza la foto, queda pendiente y se le r
 Implicados: billing (el pago y el plan), fiscal (la autorización de VeriFactu), el negocio (guarda la foto y aplica su estado, sus personas, VeriFactu y WhatsApp; los topes y las aplicaciones, HUBS-F32 y HUBS-F34)
 
 ### HUBS-F32 Aplicar los topes de personas y de dispositivos del plan
-<!-- origen: old-saas:SAAS_DASHBOARD-F58 old-saas:SAAS_DASHBOARD-F59 -->
 Estado: hecho
 Actor: sistema, propietario, administrador
 Pantalla: Miembros › Invitar
@@ -664,7 +635,6 @@ Si falla: aceptar una invitación cuando el plan ya no tiene sitio se frena al a
 Implicados: billing (el plan), el negocio (cierra la sesión de los dispositivos que sobran y enseña las plazas ocupadas)
 
 ### HUBS-F33 Dar al negocio los mensajes del asistente de su plan
-<!-- origen: old-saas:SAAS_ASSISTANT-F12 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -678,7 +648,6 @@ Si falla: un plan con 0 mensajes deja el asistente sin uso. No se venden paquete
 Implicados: assistant (el turno de cada mensaje y su cuenta, ASSISTANT-F18), el negocio (enseña lo que queda y avisa al 80 %)
 
 ### HUBS-F34 Decir al negocio qué aplicaciones de pago puede usar y por qué
-<!-- origen: old-saas:SAAS_DASHBOARD-F62 old-saas:SAAS_PUBLIC-F20 fi:saas/hubs#estado-de-suscripcion-de-modulo-bouncer fi:saas/hubs#modulos-del-terminal -->
 Estado: hecho
 Actor: sistema, propietario
 Pantalla: ninguna; las de cada negocio se ven en Tienda › Módulos (BILLING-F31)
@@ -693,7 +662,6 @@ Si falla: una compra es de un solo negocio: nunca da la aplicación a otro, tamp
 Implicados: billing (las compras), apps (qué aplicación es de pago y su nivel), el negocio (enciende o frena cada aplicación)
 
 ### HUBS-F35 Reconocer al servicio de los negocios cuando llama a erplora.com
-<!-- origen: old-saas:SAAS-F03 old-saas:SAAS_DASHBOARD-F50 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -707,7 +675,6 @@ Si falla: sin firma, con la firma de otro secreto o con una hora de hace más de
 Implicados: accounts (la firma y la entrada de cada persona), fiscal y fiscal_gateway (VeriFactu), whatsapp (los mensajes), el negocio (llama)
 
 ### HUBS-F36 Mantener los sectores y los tipos de negocio en el admin
-<!-- origen: fi:saas/django-admin#admin-businesstype fi:saas/django-admin#admin-sector fi:saas/support/developer-commerce#command-seed_taxonomy fi:saas/support/public-core-config#command-seed_taxonomy fi:saas/support/developer-commerce#modelo-businesstype fi:saas/support/developer-commerce#modelo-sector fi:saas/support/public-core-config#modelo-sector-functionalunit-businesstype fi:saas/support/developer-commerce#task-translation-py-modeltranslation fi:saas/support/public-core-config#translation-py-catalog -->
 Estado: hecho
 Actor: personal de ERPlora, sistema
 Pantalla: admin › Negocios › Sectores y Tipos de negocio
@@ -722,7 +689,6 @@ Si falla: un nombre o una descripción en español sin sus tildes o copiados del
 Implicados: public (las páginas de cada sector), apps (las plantillas que construye cada aplicación), accounts (el alta del negocio)
 
 ### HUBS-F37 Leer los sectores y los tipos de negocio
-<!-- origen: old-saas:SAAS_PUBLIC-F28 fi:saas/support/developer-commerce#serializer-sectorserializer-functionalunitserializer-businesstypeserializer-functionalunitdetailserializer-catalogmoduleserializer-categoryserializer-subcategoryserializer fi:saas/support/public-core-config#serializers-catalog-sector-functionalunit-businesstype-catalogmodule-category-subcategory -->
 Estado: hecho
 Actor: cualquiera, integración
 Pantalla: ninguna; las usan Crear negocio y las páginas de cada sector
@@ -740,56 +706,37 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - Anatomía, operaciones y decisiones: `hubs/README.md` (negocios, salto al Hub, foto y registro empujados al Hub,
   `reconcile_hub_states`, miembros, uso y demo).
 - HUBS-F08 (`reconcile_hub_states`) corre cada 15 minutos (:00, :15, :30, :45 UTC) dentro del proceso `saas-worker`
-  (`manage.py run_worker`, `base/worker.py`, saas#305), ya no como tarea de `saas-cron`; la pasada es
-  `services.reconcile_exclusively`, la misma del comando, que queda para lanzarla a mano. Lo que deja pendiente, sin
+  (`manage.py run_worker`, `base/worker.py`); la pasada es
+  `services.reconciliation.reconcile_exclusively`, la misma del comando, que queda para lanzarla a mano. Lo que deja pendiente, sin
   conexión o rechazado escribe la línea ERROR `saas.worker.pass_failed task=reconcile_hub_states left work owed: …`,
-  que es lo que avisa la alarma (antes, el código de salida de la tarea). En el worker la pasada tiene 50 s y oye la
-  parada entre dos negocios (`go_on`): lo que no entra queda pendiente para la ronda siguiente (`cut_short=1`).
-- Partes del porte (MIGRATION-TASK APP-HUBS-1…5): este WORKBOOK nace en la parte 1 (F01–F14); la parte 2 añade
-  F15–F23 (ajustes, dirección web y dominio propio, eliminar y recuperar, los suspendidos, estado y uso, admin del
-  negocio); la parte 3, F24–F30 (las personas de cada negocio); la parte 4, F31–F37 (plan, derechos, contrato con el
-  Hub y taxonomía). La revisión flujo a flujo de los `hecho` la hace la parte 5. Completa el 2026-11-01 (CLOSE-HUBS):
-  F18, F20, F21 y F22 llegaron con la tenencia S2b (hub#580, saas#168); F32 y F34 ya los aplicaba el Hub (APP-BASE-3,
-  -4 y -5); F17 se descartó entonces y llegó entero el 2026-11-05 (saas#195). Lo decidido durante la migración está en la ronda de PLAN-SAAS
-  de ese día.
-- Equivalencia de claves del registro: G65 y G41 = F01; G66 = F02; G67, G09, G10 y G45 = F03; G68 = F04; G43,
-  G04, G06, G21 y G44 = F05; G98 = F06; G91 = F07; G92 = F08; G69, G17, G18, G111 y G113 = F09; G14, G84 y
-  G114 = F10; G70 = F11; G71 = F12; G72 y G12 = F13; G19 = F14. Parte 2: G08 y G73 = F15; G74 = F16; G75, G77,
-  G13, G42, G112, G47 y G95 = F17; G11, G87, G88 y G89 = F18; G22 = F19; G94, G48 y G49 = F20; G90 = F21;
-  G102 = F22; G02, G07 y G97 = F23; G46 y G51 = F07; G108 = F08. G93 y G85 (pausar y despertar el gratuito que
-  nadie usa) se descartan: «Lo que NO hace». Parte 3: G78, G31, G32, G33, G55, G25, G28, G54, G56 y G50 = F24;
-  G79 = F25; G80, G29, G26 y G57 = F26; G81, G30, G35 y G64 = F27; G82 = F28; G83, G27, G115, G86, G34, G24 y
-  G53 = F29; G03 y G52 = F30. G24 («Usuarios del Terminal») era la página del SaaS viejo con los accesos, la
-  actividad y los activos de un negocio (la misma que G83), no los empleados con PIN, que viven en el negocio.
-  Parte 4: G76, G96, G101, G100, G15 y G60 = F31; G103 y G104 = F32; G63 = F33; G107, G109, G16 y G20 = F34; G62 y
-  G99 = F35; G01, G05, G36, G37, G38, G58, G40 y G61 = F36; G110, G39 y G59 = F37. G23, G105 y G106 (el Hub da de alta,
-  comprueba o quita en el SaaS a las personas que añade) se descartan: «Lo que NO hace».
+  que es lo que avisa la alarma. En el worker la pasada tiene 50 s y oye la
+  parada entre dos negocios (`go_on`): lo que no entra queda pendiente para la pasada siguiente (`cut_short=1`).
 - Alta (F01–F03): `hubs.business.create` (una transacción: `BillingProfile`, `Hub`, `HubMember` propietario y
-  `Subscription` Gratis) y el empuje tras el COMMIT (`services.sync_hub`). El pago es de `billing`
+  `Subscription` Gratis) y el empuje tras el COMMIT (`services.hub_push.sync_hub`). El pago es de `billing`
   (`billing.checkout.start`). El país sugerido sale de `navigator.languages` (`regions.suggestedCountry`, con
   `Intl.Locale.maximize`): la primera región que ERPlora vende; si no, España.
 - Listo (F04, F07): `POST /internal/hubs/{id}/ready` (`hubs/internal.py`) → `hubs.business.mark_ready`; el correo
   `emails.send_ready` sale tras el COMMIT y solo cuando esa llamada pasa el negocio de `preparing` a `active`.
 - F06 lo sirve el Hub (`base/middleware.py`, plantilla `base/hub_preparing.html`, 503 con `Retry-After`; tests
   en `base/tests/test_middleware.py` del Hub).
-- Aplicación instalada (F02, F12; PLAN-SAAS bloque 3, PLAN-HUB ronda 18): `ERPlora/app` arranca en `/shell/` y
+- Aplicación instalada (F02, F12): `ERPlora/app` arranca en `/shell/` y
   nunca lo cambia, y solo se une a un hub cuando una navegación con `?shell=1` sale de una página del SaaS
   (`hub_link.rs`). `/shell` es un alias del lanzador (`frontend/routes.ts`); «Abrir» dentro de la app
   (superficies `desktop` y `mobile`, no `account`) pide `hubs.business.open` con `shell: true`, y
   `/shell/open/<id>/` (`hubs/shell.py`) hace lo mismo para un enlace: 302 al inicio del salto del Hub con
   `&shell=1`; sin sesión, `/shell/?next=…`; un negocio ajeno, 404; uno que no abre, vuelta a `/shell/`.
-- El panel vive bajo `/dashboard/` (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX, como `apps/dashboard/` del viejo): Negocios
+- El panel vive bajo `/dashboard/`: Negocios
   en `/dashboard/businesses`, Tienda, Facturación, Cuenta y «Reportar un problema» igual, nombrados una vez en
   `base/navigation.py` (`PANEL`, menú, correos, vuelta de Stripe) y `accounts/frontend/paths.ts` (páginas; guardarraíl
   `paths.test.ts`). La Entrada (`/launch`, `/shell`), las invitaciones y las páginas de la entrada se quedan en la raíz.
   `/dashboard` y `/dashboard/` → `/dashboard/businesses`.
-- Direcciones viejas (F03, F09, F10, F13): `hubs/redirects.py`, 301 directo (un salto) de `/dashboard/`,
+- Direcciones anteriores (F03, F09, F10, F13): `hubs/redirects.py`, 301 directo (un salto) de `/dashboard/`,
   `/dashboard/hubs/`, `…/active/`, `…/inactive/`, `…/create/` (`/dashboard/businesses?create=1`) y `…/<id>/qr/` (el
-  Resumen). El resto de `/dashboard/*` viejo es de sus apps. Las del panel en la raíz antes del prefijo (`/businesses`,
+  Resumen). El resto de esas direcciones bajo `/dashboard/` las redirige cada app. Las del panel en la raíz (`/businesses`,
   `/account`, `/billing`, `/store`, `/report-a-problem` y sus hijas, a las que enlaza el Hub) son 301 de
   `config/urls.py` (`MovedToPanel`) a la misma página bajo `/dashboard/`, con su consulta (`config/tests/test_panel_prefix.py`).
-- Quitar a quien aún paga (trampa saas#2587 y saas#2569; HUBS-F27): `hubs.member.remove`
-  no saca del negocio a quien aún lo paga (`queries.still_pays`: es dueño de su pagador, o tras un traspaso el plan
+- Quitar a quien aún paga (HUBS-F27): `hubs.member.remove`
+  no saca del negocio a quien aún lo paga (`queries.payers.still_pays`: es dueño de su pagador, o tras un traspaso el plan
   se sigue cobrando al cliente de Stripe de uno de sus pagadores). 409 `hubs.member_pays` con qué hacer: que el
   propietario ponga sus datos de pago (se piden al pagar un plan o un módulo) o, si el plan sigue en la tarjeta
   anterior, que lo mantenga con la suya en Facturación (`billing.plan.take_over`, HUBS-F28; hasta entonces
@@ -799,40 +746,38 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - Planes (F05): `Plan` con columnas por idioma (`TranslatedFields`, `<campo>_en` y `<campo>_es`), sembrados por la
   migración `0013`; el admin (`hubs/admin.py`) es la única escritura. La lista pública es `hubs.plan.list`. La
   `0020` quita de las fichas de Pro, Enterprise y Max (descripción y características) lo que prometía
-  infraestructura, sin tocar planes, precios ni límites (PLAN-SAAS §9). La `0021` quita de las características de
-  Starter y Standard «todos sus locales» y «varios locales» (la multitienda va desde Pro y se cobra por ubicación,
-  PLAN §32) y de Gratis y Starter los niveles de apps («All free apps included», «free and premium» → «All apps
+  infraestructura, sin tocar planes, precios ni límites. La `0021` quita de las características de
+  Starter y Standard «todos sus locales» y «varios locales» (la multitienda va desde Pro y se cobra por ubicación)
+  y de Gratis y Starter los niveles de apps («All free apps included», «free and premium» → «All apps
   included»: todos los planes incluyen todas las apps), con la misma guarda: solo si la columna sigue con el texto de
   la `0013`, y reverse simétrico. `included_level` se queda en el modelo, sin uso en la web pública.
 - Dirección web (F16): `hubs.business.change_address` (solo el propietario; `can.change_address` en la página),
   validada como la valida el Hub (`live.slugs`, `_chosen_slug`); sube `registry_version` y `state_version`, debe
   `put` y empuja tras el COMMIT; el salto sigue al negocio porque lee a sus miembros. La antigua queda en
-  `Hub.previous_slug` y `queries.slug_taken`/`free_slug` la cuentan como cogida para los demás (migración `0015`).
+  `Hub.previous_slug` y `queries.addresses.slug_taken`/`free_slug` la cuentan como cogida para los demás (migración `0015`).
   El Hub acepta el cambio en su registro (`hub/base/tests/test_services_hub.py`,
   `test_registering_again_updates_it_without_another_ready`). Tests: `hubs/tests/test_change_address.py`,
   `hubs/frontend/components/AddressDialog.test.ts`.
 - Suspendidos (F20): `Hub.suspended_at`, `suspension_warned_at` y `suspension_final_notice_at` (migración `0016`,
   que pone en marcha el reloj de los que ya estaban suspendidos el día del despliegue);
-  `_apply_standing` fecha la suspensión y la olvida al pagar; `services.age_suspended()` (lo llama
+  `_apply_standing` fecha la suspensión y la olvida al pagar; `services.suspensions.age_suspended()` (lo llama
   `billing.services.sweep_unpaid`, cada hora) corre por negocio `hubs.business.age_suspension` (solo el sistema):
   aviso a los 30 días, último a los 150 y baja a los 180 por `_delete_business`, el mismo camino que
   `hubs.business.delete`; un aviso solo se marca si su correo salió (`emails.send_suspension_notice`). Tests:
   `hubs/tests/test_suspended_lifecycle.py` y `hubs/tests/test_migrations.py`.
 - Admin (F23): las acciones de plataforma llevan `@traced` (`hubs/admin.py`), que escribe en el historial del admin
   («Ejecutó «…»») cada fila sobre la que corrieron. Tests: `hubs/tests/test_admin.py::TestTheTrail`.
-- Uso (F21, F22): el Hub sirve `GET /internal/usage` desde la tenencia S2b (hub#580; contrato en `hubs/README.md`):
-  `db_bytes` es el tamaño de la BD propia de cada negocio. `collect_hub_usage` lo recoge cada noche (`hub-usage-daily`,
-  encendida en prod el 2026-11-03 a las 07:08 UTC, aws#35; su estado en vivo y su primera pasada no se han leído, porque la
-  sesión de AWS está caducada);
+- Uso (F21, F22): el Hub sirve `GET /internal/usage` (contrato en `hubs/README.md`):
+  `db_bytes` es el tamaño de la BD propia de cada negocio. `collect_hub_usage` lo recoge cada noche (`hub-usage-daily`);
   sin ninguna noche medida, la tarjeta dice «Sin datos todavía…». Esa pasada termina con `hubs.usage.prune`
-  (`services.USAGE_RETENTION_DAYS`, 400 días; el motivo, junto a la constante y en PLAN-SAAS §27), sin programación
-  propia y sin que su fallo se coma la recogida (`services.prune_usage`). La copia de los datos de F18 y F20 la hace el Hub al
-  recibir la baja (hub#580) y el SaaS la enseña y la descarga con `GET /internal/hubs/{id}/dumps` (saas#168).
-- Dominio propio (F17, saas#195; decisión de mercado de APP-HUBS-2, PLAN-SAAS §8 y §37 punto 2; ADR-0502): solo la web
+  (`services.usage_collection.USAGE_RETENTION_DAYS`, 400 días; el motivo, junto a la constante), sin programación
+  propia y sin que su fallo se coma la recogida (`services.usage_collection.prune_usage`). La copia de los datos de F18 y F20 la hace el Hub al
+  recibir la baja, y el SaaS la enseña y la descarga con `GET /internal/hubs/{id}/dumps`.
+- Dominio propio (F17): solo la web
   pública (`website`) y en planes con `includes_custom_domain`. El contrato con AWS está en el README de `aws` («Dominio
   propio de un negocio») y el del Hub, en BASE-F110. Aquí, `CustomDomain` (uno por negocio), las operaciones
   `hubs.custom_domain.{request,get,remove}` y el comando `check_custom_domains`, cada hora en `saas-cron`
-  (`services.check_custom_domains`). `hubs/domain_names.py` valida el nombre: el Hub rechaza la foto entera (422) por un
+  (`services.custom_domain_checks.check_custom_domains`). `hubs/domain_names.py` valida el nombre: el Hub rechaza la foto entera (422) por un
   dominio malo, así que nada de lo que él rechaza llega a una fila. `hubs/edge_client.py` son las llamadas a ACM, al ALB y
   a CloudWatch, y `hubs/domain_checks.py`, el DNS y la sonda. La pantalla es `CustomDomainCard` en Ajustes: la consulta
   viva `hubs.custom_domain.get` va en el primer flujo de la página, con el negocio, y solo el propietario ve el
@@ -840,7 +785,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   panel conecta dominios y manda AWS al puerto del doble del Hub, donde la spec juega ACM y los acuses del Hub.
   - **Estados**: `pending` → (certificado, en el listener, CNAME de este negocio, foto, sonda) → `active` → (tres fallos
     seguidos) → `lapsed` → (vuelve el CNAME) → `pending`; `removing`, cuando lo quita su dueño. La fila se borra la última,
-    y eso libera el nombre (ADR-0496). Una pasada que encuentra otro estado del que leyó no escribe nada: gana el dueño.
+    y eso libera el nombre. Una pasada que encuentra otro estado del que leyó no escribe nada: gana el dueño.
   - **Un nombre no es de nadie hasta que su CNAME lo prueba** (`proven_at`, único por `hostname` entre los probados): pedir
     un dominio ajeno no se lo quita a su dueño. El CNAME de validación no prueba nada porque ACM lo reutiliza para quien lo
     pida después desde esta cuenta; el segundo apunta a `hub-<id>`, de ese negocio y para siempre (un slug se puede volver
@@ -859,14 +804,16 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
     CertificatesAttached`, que lee la alarma del 80 %.
   - **Un certificado rechazado no se vuelve a pedir solo** (`CustomDomain.RETURNS_BY_ITSELF`): cada hora, un solo CAA
     gastaría los certificados del año de ACM.
-  - Hasta la pantalla nada lo vende: `hubs/0026` quitó la línea y la descripción de Standard, el guardia es
-    `test_plan_catalogue.py::test_no_plan_sells_a_custom_domain_nobody_can_connect` (y sus gemelos de `/pricing/` y de
-    los términos en `public/tests`).
-- Pruebas de la parte 2: e2e en `tests/e2e/panel/hubs-settings.spec.ts` (clave `HUBS-Gnn` en el título).
+  - **Lo vende solo el plan que lo incluye**: las tarjetas de la Tienda y de «Planes y precios» y los términos
+    pintan la línea desde `Plan.includes_custom_domain`, la misma marca que lee HUBS-F17. El guardia es
+    `test_plan_catalogue.py::test_only_the_plans_that_include_a_custom_domain_sell_one`, con su control
+    `test_a_plan_that_does_not_include_a_custom_domain_and_sells_one_is_caught` (y sus gemelos de `/pricing/` y de los
+    términos en `public/tests`).
+- e2e de F15–F23: `tests/e2e/panel/hubs-settings.spec.ts` (F17, en `hubs-domain.spec.ts`).
 - Personas (F24–F30): `hubs.member.{list,invite,change_role,remove,resend,cancel}`,
   `hubs.invitation.{list_mine,accept,decline}` y `hubs.ownership.{transfer,accept,decline,cancel}` (`api.py`, bajo
   `/api/hubs/members`, `/api/hubs/invitations` y `/api/hubs/ownership`). Cada fila de `hubs.member.list` trae sus
-  `actions`, calculadas con las mismas reglas que las escrituras (`queries.member_actions`, `services._managed`).
+  `actions`, calculadas con las mismas reglas que las escrituras (`queries.membership.member_actions`, `services.member_management._managed`).
   Quitar, cambiar el rol de alguien que ya respondió y aceptar un traspaso encolan `SessionRevocation`
   (`POST /internal/sessions/revoke`, `{user_id, hub_id}`), que el Hub sirve desde BASE-F13 (`base/internal.py`) y
   que se reintenta con espera creciente y en `reconcile_hub_states` si el negocio no contesta. Correos (`emails.py`,
@@ -877,28 +824,26 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   (enlaza a `/dashboard/businesses/<id>` y, con un plan de pago, dice que la tarjeta del saliente ya no lo renueva). Tests:
   `hubs/tests/test_members.py`, `test_members_api.py`,
   `test_ownership.py`, `test_session_revocations.py`, `test_invite_unverified_account.py`, `test_emails.py`,
-  `test_permission_matrix.py` y `test_admin.py`; e2e en `tests/e2e/panel/hubs-people.spec.ts` (clave `HUBS-Gnn` en el
-  título), con `members.spec.ts` e `invitation.spec.ts`.
-- Pruebas: cada test cita su clave en el nombre o el docstring; los e2e de esta parte están en
-  `tests/e2e/panel/hubs-flows.spec.ts` (con la clave del registro, `HUBS-Gnn`, en el título).
-- La foto (F31; PLAN-SAAS §2.2): `queries.hub_snapshot` (`PUT /internal/hubs/{id}/state`), con `plan` = los campos de
-  `queries.SNAPSHOT_PLAN_FIELDS`; sube `state_version` y se empuja tras el COMMIT (`services.sync_hub`), la reintenta
+  `test_permission_matrix.py` y `test_admin.py`; e2e en `tests/e2e/panel/hubs-people.spec.ts`, con `members.spec.ts` e `invitation.spec.ts`.
+- Pruebas: cada test cita su clave en el nombre o el docstring, y cada e2e la de su flujo en el título; los de F01–F14
+  están en `tests/e2e/panel/hubs-flows.spec.ts`.
+- La foto (F31): `queries.hub_sync.hub_snapshot` (`PUT /internal/hubs/{id}/state`), con `plan` = los campos de
+  `queries.hub_sync.SNAPSHOT_PLAN_FIELDS`; sube `state_version` y se empuja tras el COMMIT (`services.hub_push.sync_hub`), la reintenta
   `reconcile_hub_states` y la repite `push_hub_snapshots` cada noche. Un cambio en el admin de uno de esos campos de un
-  `Plan` (`PlanAdmin.save_model` → `services.owe_plan_rights`) reescribe los módulos de su nivel (`sync_plan_modules`) y
-  sube la versión de cada negocio vivo con ese plan o con su prueba; la entrega la siguiente pasada (trampa de
-  SAAS_DASHBOARD-F53/F54: el cambio del admin no llegaba al Hub). VeriFactu en todos los planes (PLAN §30, ronda
-  2026-10-22b): el bloque `verifactu` lleva solo `representation`; `live_paid` se quitó de la foto cuando el Hub retiró
-  esa condición (FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID). Tests: `hubs/tests/test_hub_sync.py`, `test_plan_rights_reach_businesses.py`,
-  `test_contract_hub.py`, `fiscal/tests/test_snapshot.py`; e2e `tests/e2e/panel/hubs-rights.spec.ts` («HUBS-G101»).
-- Lo que el Hub aplica de la foto (F32 y F34; APP-BASE-3, -4 y -5 del Hub, hub#232, hub#229 y hub#244): `plan.max_devices`
+  `Plan` (`PlanAdmin.save_model` → `services.subscription_sync.owe_plan_rights`) reescribe los módulos de su nivel (`sync_plan_modules`) y
+  sube la versión de cada negocio vivo con ese plan o con su prueba; la entrega la siguiente pasada, así que el
+  cambio del admin llega al Hub. VeriFactu va en todos los planes: el bloque `verifactu` de la foto lleva solo
+  `representation`. Tests: `hubs/tests/test_hub_sync.py`, `test_plan_rights_reach_businesses.py`,
+  `test_contract_hub.py`, `fiscal/tests/test_snapshot.py`; e2e `tests/e2e/panel/hubs-rights.spec.ts` («HUBS-F31»).
+- Lo que el Hub aplica de la foto (F32 y F34): `plan.max_devices`
   al entrar (`_end_other_devices`, BASE-F57), las plazas de `plan.max_users` en su personal (BASE-F77; las personas del
   Hub son las `members` de la foto, así que el tope lo aplica el SaaS al invitar) y el derecho de cada módulo `premium`
   (`base/entitlement.py`: 402 `app_entitlement_blocked`, fuera del menú y del relevo; su página de apps dice `plan`,
   `purchase` o la app que la trae, BASE-F14, F20 y F27). Los mensajes del asistente (F33) no los cuenta el Hub: los cuenta y los
   frena en cada turno la pasarela de `assistant` (ASSISTANT-F18, `assistant.message.claim`), con el cupo del plan
-  (`Plan.assistant_messages_per_month`), y el Hub enseña las cifras de su puerta `usage` y del frame `usage`. El SaaS ya aplica `max_users` al invitar (`hubs/tests/test_seats.py`). Tests de la parte 4:
+  (`Plan.assistant_messages_per_month`), y el Hub enseña las cifras de su puerta `usage` y del frame `usage`. El SaaS aplica `max_users` al invitar (`hubs/tests/test_seats.py`). Tests de F31–F37:
   `test_snapshot_rights.py` (una compra o el plan de otro negocio nunca llegan a este; bajar a Gratis no saca a nadie).
-  Un `Module` nuevo, o con otro `tier`, en el admin de `apps` (`ModuleAdmin.save_model` → `services.owe_module_rights`)
+  Un `Module` nuevo, o con otro `tier`, en el admin de `apps` (`ModuleAdmin.save_model` → `services.subscription_sync.owe_module_rights`)
   reescribe los módulos del plan de cada negocio vivo cuyo plan (o prueba) alcanza el nivel nuevo o el anterior, y sube
   su versión si cambian; lo entrega `reconcile_hub_states`. Tests: `test_plan_rights_reach_businesses.py` (HUBS-F34).
 - Admin de Planes (pantalla de F05, vista en F31): nombres traducibles en los campos de `Plan` (migración `0018`, solo
@@ -912,18 +857,13 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   `saas-migrate` de cada despliegue; crea lo que falta, `--update` lo reescribe) y su admin, con los nombres de sus campos
   traducidos (migración `0017`, solo de estado). Lectura pública: `hubs.sector.list` y `hubs.business_type.list`
   (`/api/catalog/sectors`, `/api/catalog/business-types`). Sin unidades funcionales, categorías ni subcategorías
-  (ronda 16, PLAN §21: la sección de una app la declara su `LiveAppConfig`). Tests: `test_api.py`,
+  (la sección de una app la declara su `LiveAppConfig`). Tests: `test_api.py`,
   `test_seed_taxonomy.py`, `test_taxonomy_*.py` y `test_admin.py` («speak Spanish»); e2e `hubs-rights.spec.ts`
-  («HUBS-G05 + HUBS-G01»).
-
-## Lo que queda fuera
-
-- **La vuelta del dominio propio a los planes, a «Planes y precios» y a los términos** (PUBLIC-F07, HUBS-F17): ya se
-  puede conectar, pero nada lo anuncia todavía — saas#301.
+  («HUBS-F36»).
 
 ## Lo que NO hace, a propósito
 
-- No tiene una «Vista general» con cifras ni actividad: la portada del panel es Negocios (ronda 17).
+- No tiene una «Vista general» con cifras ni actividad: la portada del panel es Negocios.
 - No separa los negocios en pestañas de activos e inactivos ni filtra por estado o plan: una sola lista con
   buscador, y los eliminados en ella con «Recuperar» mientras se pueden recuperar.
 - No cobra al crear: todo negocio nace en Gratis y el plan de pago se elige después en la Tienda.
@@ -935,8 +875,8 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - No conecta un dominio raíz (minegocio.es): ni admite CNAME ni la entrada de ERPlora tiene una IP fija que dar.
 - No sirve la aplicación ni la entrada por el dominio propio: la cookie de sesión no llega a otro dominio.
 - No entra sola en un negocio ya existente al abrir la Entrada, tampoco con uno solo: elige la persona.
-- No tiene una página con las personas de todos los negocios: cada negocio enseña las suyas en «Miembros» (ronda 17:
-  el panel es Negocios, Tienda, Facturación y Cuenta).
+- No tiene una página con las personas de todos los negocios: cada negocio enseña las suyas en «Miembros» (el
+  panel es Negocios, Tienda, Facturación y Cuenta).
 - No enseña la actividad reciente de las personas ni cuántas están conectadas: la actividad vive dentro del negocio.
 - Nadie se sale solo de un negocio: lo quitan el propietario o un administrador, como en Square, Toast o Shopify.
 - No da de alta a empleados que solo usen un PIN en la caja: toda persona entra en el negocio por «Miembros», con su

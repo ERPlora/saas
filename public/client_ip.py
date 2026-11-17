@@ -4,8 +4,7 @@ In production the only way in is the ALB, which APPENDS the address of the peer 
 visitor) at the end of ``X-Forwarded-For``: anything before it the client may have typed. daphne's
 ``--proxy-headers`` puts the FIRST entry in ``REMOTE_ADDR`` (forgeable), and the rate limits key on
 ``REMOTE_ADDR`` (allauth's sign-in, the contact form): a forged header was a fresh budget per
-request, and without the header's address the whole internet would share the balancer's
-(saas#2154).
+request, and without the header's address the whole internet would share the balancer's.
 
 ``TRUSTED_PROXY_HOPS`` says how many proxies of ours sit in front: 0 locally (``REMOTE_ADDR`` is
 the peer and anyone may send the header), 1 in production (the ALB). With N, the visitor is the

@@ -1,4 +1,4 @@
-// The «Google» row of Account → Security, «Sign-in» (mockups `account.html` «security»; U-63): the Google account the
+// The «Google» row of Account → Security, «Sign-in» (mockups `account.html` «security»): the Google account the
 // person can sign in with (allauth.headless `account/providers`) and «Disconnect», confirmed; unlinked, how it gets
 // linked (signing in with the Google of the account's email: the server refuses allauth's `process=connect`), with no
 // button. Google being the only way in (no password) keeps «Disconnect» off and says why. Without Google on the server

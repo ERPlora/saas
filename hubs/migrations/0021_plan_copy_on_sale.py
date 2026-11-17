@@ -1,4 +1,4 @@
-"""Data: the cards on sale say what every plan gives (Ioan, 2026-10-24; PLAN-SAAS §9, round 2026-10-24b, PLAN §32).
+"""Data: the cards on sale say what every plan gives.
 
 0013 seeded Starter and Standard with «Priced per business — every location, device and user included», and Standard
 with «… for busy counters and several locations». Multi-location comes from Pro and is charged per location, so those
@@ -8,8 +8,8 @@ location.
 
 0013 also sold tiers of apps: Free «All free apps included», Starter «All apps included, free and premium». Every plan
 includes every module now (``included_level`` stays, dormant, for a future ``premium`` module), so both say «All
-apps included», the word the public web uses for them (decision 19 of the catalog spec). Standard, Pro, Enterprise and Max say «Everything in …» and never named a tier. The plans, their
-prices and their limits do not move.
+apps included», the word the public web uses for them. Standard, Pro, Enterprise and Max say «Everything in …» and
+never named a tier. The plans, their prices and their limits do not move.
 
 Only the columns of ``COPY`` are written, each only while it still reads 0013's words: what staff wrote in the admin
 is theirs. Reverse: each goes back to 0013's words while it still reads this migration's. Idempotent; a database

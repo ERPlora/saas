@@ -1,10 +1,10 @@
 """``POST /internal/hubs/{id}/representation`` and ``GET /internal/representation/model``: the Hub sends a
-business's signed authorisation, and fetches the blank model the customer signs (plan 2026-10-15, «Contrato»).
+business's signed authorisation, and fetches the blank model the customer signs.
 
 Server to server, signed as the other ``/internal`` calls (``accounts.signing``: v1 over the body, v2 over the
 method, the path and the body), so no CSRF token. The upload runs ``fiscal.representation.submit`` as the
 platform, in the owner's channel; every refusal answers the single envelope ``{"error": {"code", "message",
-"fields"?}}`` (PLAN §14.1) and nothing is ever cached.
+"fields"?}}`` and nothing is ever cached.
 """
 
 import base64
@@ -426,7 +426,7 @@ def model_pages(response):
 
 
 def test_the_model_is_the_official_page_filled_in_with_erplora_and_the_rgpd_page(client, synthetic_company):
-    """FISCAL-F06 (PLAN-SAAS §4: «el PDF oficial pre-rellenado (Anexo I, p. 11, + hoja RGPD)»)."""
+    """FISCAL-F06: the official page (Anexo I, p. 11) filled in, followed by the RGPD page."""
     response = get_model(client)
 
     assert response.status_code == 200

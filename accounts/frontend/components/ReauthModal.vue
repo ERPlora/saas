@@ -129,7 +129,6 @@ async function submit(): Promise<void> {
 <template>
   <FormModal
     v-model:open="open"
-    class="ep-reauth-modal"
     testid="reauth-modal"
     size="sm"
     :title="$t('accounts.reauthenticate.title')"
@@ -201,15 +200,6 @@ async function submit(): Promise<void> {
   </form>
 </template>
 
-<style>
-/* It opens on top of the dialog that needed it (a new key, a new email): Ionic strips the backdrop and the shadow
-   of a second default modal (`core.css`, `.show-modal ~ ion-modal.modal-default`), which left this one glued onto
-   the first, both alike. It keeps its own: the first dims behind it. */
-ion-modal.modal-default.show-modal ~ ion-modal.modal-default.ep-reauth-modal {
-  --backdrop-opacity: var(--ion-backdrop-opacity, 0.4);
-  --box-shadow: var(--ep-shadow-modal, 0 18px 50px rgba(0, 0, 0, 0.25));
-}
-</style>
 <style scoped>
 .reauth-lead {
   margin: 0 0 16px;

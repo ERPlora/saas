@@ -1,42 +1,50 @@
 # Usuarios, roles y acceso con PIN
 
-ERPlora separa la cuenta Cloud de los usuarios que trabajan dentro de un Hub:
+En ERPlora, las personas de un negocio son las de erplora.com:
 
-- La **cuenta Cloud** utiliza email y contraseña, más un segundo factor opcional (TOTP) cuando el titular lo enrola.
-- Un **usuario del Hub** es local a un Hub y recibe un rol, permisos y, opcionalmente, un PIN de 4 dígitos para acceder desde un dispositivo de confianza.
+- La **cuenta de erplora.com** es de cada persona: entra con su email y su contraseña, con Google o con el código de verificación que le llega por correo. Con ella entra en todos los negocios a los que la han invitado.
+- Dentro de cada negocio, la persona tiene un **rol** («Propietario», «Administrador», «Encargado» o «Empleado») y, si quiere, un **PIN** y una **placa** para entrar en las cajas compartidas.
 
-## Cómo funciona el acceso con PIN
+## Invitar, cambiar el rol y quitar a una persona
 
-El PIN es un método rápido para volver a entrar, no la primera credencial de un dispositivo desconocido.
+Las personas se invitan, se les cambia el rol y se quitan en erplora.com, en «Miembros» del negocio. Desde el Hub se llega con:
 
-1. Inicia sesión con email y contraseña en el dispositivo nuevo.
-2. Selecciona **Confiar en este dispositivo**.
-3. Elige y confirma un PIN de 4 dígitos.
-4. En accesos posteriores, selecciona tu usuario e introduce el PIN.
+- «Invitar en erplora.com», en **Empleados › Personal**;
+- «Cambiar roles en erplora.com», en **Empleados › Roles**;
+- «Abrir en erplora.com», en la ficha de una persona.
 
-Si el dispositivo deja de ser de confianza, no aparecerá la entrada por PIN. Usa la pestaña **Email**, vuelve a iniciar sesión y crea de nuevo la confianza del dispositivo. No compartas un PIN entre empleados.
+La invitación llega por correo y, cuando la persona la acepta, aparece en **Empleados › Personal** con su rol. Quien se quita del negocio deja de poder entrar. Para que vuelva, se la invita otra vez: su PIN y su placa siguen valiendo. Encima de la tabla de **Empleados › Personal** se ve cuántas plazas del plan están ocupadas.
 
-## Empleados y usuarios de acceso
+## Cómo entra cada persona
 
-Una ficha de empleado o personal no concede automáticamente acceso al Hub. La persona que necesite entrar debe tener también un usuario del Hub con un rol asignado. Así se separan los datos operativos del personal de la autenticación y los permisos.
+En **Empleados › Personal**, la columna «Acceso» dice cómo entra cada una: «Cuenta» siempre y, si los tiene, «PIN» y «Placa». Quien administra el negocio toca una fila para abrir la ficha de la persona, con «Sus datos», «PIN» y «Placa»:
 
-Los administradores gestionan el acceso desde **Empleados**:
+- **PIN**: lo elige la propia persona, la primera vez que entra en una caja o en **Mi perfil**. Desde la ficha solo se retira, con «Retirar el PIN»; con su cuenta, la persona sigue entrando.
+- **Placa**: se pasa la tarjeta por el lector (o se teclea su número) y se pulsa «Guardar placa». Nadie da de alta su propia placa.
 
-- Crear o actualizar usuarios del Hub.
-- Asignar roles.
-- Revisar los permisos aportados por las apps instaladas.
-- Desactivar el acceso cuando una persona ya no deba entrar.
-- Gestionar claves API cuando esa función esté disponible.
+Una ficha de la app Personal no da acceso al Hub: quien tiene que entrar necesita que lo inviten en erplora.com. Un rol de esa app («estilista», «camarero») es una etiqueta y no da permisos.
+
+## Cómo funciona el PIN
+
+El PIN es una forma rápida de entrar en una caja compartida, no la primera entrada de un dispositivo:
+
+- Un dispositivo solo ofrece el PIN después de que alguien haya entrado en él una vez con su cuenta.
+- En **Ajustes › General**, «Este dispositivo» dice si el dispositivo es «Compartido» (pide PIN al entrar y lo olvida al acabar el turno) o «Personal» (la sesión se queda abierta y nunca pide PIN).
+- En **Ajustes › General**, «Pinpad», el negocio decide si las cajas preguntan quién está («Mostrar pinpad»), cuántos dígitos tiene el PIN («4 dígitos» o «6 dígitos») y si se vuelve a preguntar tras unos minutos sin tocar la pantalla («Volver a preguntar tras inactividad»).
+- Cada persona cambia su PIN en **Mi perfil**, en la tarjeta «PIN». Dos personas activas no pueden tener el mismo, y los fáciles de adivinar (1111, 1234) se rechazan. No compartas tu PIN.
+- En una caja compartida, «Cambiar de usuario», en el menú de usuario, deja entrar a otra persona con su PIN o su placa sin perder la venta abierta.
 
 ## Roles y permisos
 
-Los roles son locales al Hub. Sus permisos proceden del núcleo y de las apps instaladas, por lo que la lista disponible cambia con las capacidades del Hub.
+En **Empleados › Roles** están los cuatro roles del negocio, con cuántas personas tiene cada uno y cuántos permisos da. El rol se da al invitar y se cambia en erplora.com; lo que la persona puede hacer cambia al momento.
 
-Concede únicamente el acceso necesario para el trabajo. Solo los roles propietario o administrador deberían modificar ajustes globales, usuarios, permisos de apps o credenciales fiscales.
+Da a cada persona el rol que necesita para su trabajo, no más. Solo el propietario y los administradores cambian los ajustes del negocio, las apps, los dispositivos y las API keys.
 
-## Si un usuario no puede entrar
+## Si alguien no puede entrar
 
-- **No aparece la pantalla de PIN:** el dispositivo no es de confianza o no hay usuarios del Hub con PIN disponibles.
-- **El PIN se rechaza:** confirma el usuario seleccionado; después usa el acceso por email si hay que restablecerlo.
-- **Falta una página:** revisa el rol del usuario y los permisos de la app correspondiente.
-- **El usuario ya no existe:** un administrador debe recrear o reactivar el usuario del Hub; los datos guardados en el navegador no pueden restaurarlo.
+- **No sale el teclado del PIN:** el dispositivo es personal, el negocio no muestra el pinpad o todavía nadie ha entrado en él con su cuenta. Entra con la pestaña «Cuenta».
+- **«En este dispositivo todavía no funciona el PIN»:** nadie ha entrado aquí con su cuenta, o un administrador quitó el dispositivo. Entra una vez con tu cuenta y a partir de entonces funcionará.
+- **«PIN incorrecto.»:** comprueba que has elegido tu nombre. Tras varios PIN erróneos seguidos sale «Demasiados intentos fallidos.» con los minutos que hay que esperar. Si no recuerdas tu PIN, pide a quien administra el negocio que lo retire y elige uno nuevo en **Mi perfil**.
+- **«Sesión abierta en otro dispositivo»:** el plan cubre un número de dispositivos a la vez y, al entrar en otro, se cerró la sesión de este. Vuelve a entrar o amplía el plan.
+- **Falta una pantalla o una app:** depende del rol de la persona y de las apps que tiene encendidas el negocio.
+- **La persona ya no está en Personal:** se quitó del negocio en erplora.com; invítala otra vez con «Invitar en erplora.com».

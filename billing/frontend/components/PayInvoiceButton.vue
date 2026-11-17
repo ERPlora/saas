@@ -1,9 +1,7 @@
 <script setup lang="ts">
-// «Pay the invoice · 36,29 €» (mockups `billing.html` «past-due» → «paying»; README §6.18 and §6.20): blue,
-// not red — paying is the good action. Disabled while the server says «Pay» waits (a declined card to
-// change first, or another account pays the business), described by the reason the page shows next to it
-// (`describedBy`), and while any payment of the page runs; «Paying…» from the press until the page leaves
-// for Stripe (`pay.ts`). Web only: the page renders it in `<WebOnly>`.
+// «Pay the invoice · 36,29 €»: blue, not red — paying is the good action. Disabled while the server says «Pay»
+// waits (a declined card to change first, or another account pays the business), described by the reason the page
+// shows next to it, and while any payment of the page runs. Web only: the page renders it in `<WebOnly>`.
 import { HubIcon } from '@erplora/ui/shell';
 import { IonButton, IonSpinner } from '@ionic/vue';
 import { computed } from 'vue';

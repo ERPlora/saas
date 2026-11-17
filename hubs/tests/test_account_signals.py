@@ -1,4 +1,4 @@
-"""What an account's own changes mean to its businesses (``accounts.signals``; PLAN-SAAS §2.1 and §2.2).
+"""What an account's own changes mean to its businesses (``accounts.signals``).
 
 accounts never imports hubs (``accounts ← hubs ← billing``): it sends signals and hubs, connected in
 ``HubsConfig.ready()``, turns them into what the Hub must learn:
@@ -24,7 +24,7 @@ from django.test import Client
 from django.utils import timezone
 from live.models import OutboxEvent
 
-from accounts import services as account_services
+from accounts.services import active_sessions
 from accounts import signals
 from hubs import events
 from hubs.models import Hub, HubMember, HubOwnershipTransfer, SessionRevocation
@@ -82,14 +82,14 @@ class TestSessionsEnded:
         assert (revocation.delivered_at, revocation.attempts) == (None, 1)
 
     def test_closing_sessions_in_the_account_ends_them_in_the_businesses(self, team):
-        """Cuenta → Seguridad (``accounts.services.end_sessions``), even with no session left in the SaaS."""
-        account_services.end_sessions([], user=team["manager"])
+        """Cuenta → Seguridad (``active_sessions.end_sessions``), even with no session left in the SaaS."""
+        active_sessions.end_sessions([], user=team["manager"])
 
         assert list(SessionRevocation.objects.values_list("user_id", "hub_id")) == [(team["manager"].pk, None)]
 
     def test_a_new_password_ends_them_too(self, team):
         """accounts' receiver of allauth's ``password_changed`` (its own tests send that signal with a request)."""
-        account_services.password_changed_ends_sessions(get_user_model(), user=team["admin"])
+        active_sessions.password_changed_ends_sessions(get_user_model(), user=team["admin"])
 
         assert list(SessionRevocation.objects.values_list("user_id", "hub_id")) == [(team["admin"].pk, None)]
 

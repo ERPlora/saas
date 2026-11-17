@@ -1,11 +1,8 @@
 <script setup lang="ts">
-// «Edit details» of the billing details (mockups `billing.html` «modal-profile», «profile-invalid»; README §3b
-// and §4; PLAN-SAAS §3.1): who ERPlora invoices for the businesses this payer pays — the Store's
-// BillingDetailsForm in a FormModal, plus which business «use the business’s name and country» copies from
-// when it pays several. The tax ID is checked in VIES as it is typed, after a pause (`billing.vat_check.run`;
-// a current proof is reused, so asking costs nothing): the verdict says what the invoice will do, and a
-// malformed one is the field's error. Saved with `hubs.billing_profile.update` (VIES again on the server);
-// a 422 puts each message under its field. Fiscal data is not selling: it shows on every surface (README §4).
+// «Edit details» of the billing details: the Store's BillingDetailsForm in a FormModal, plus which business «use the
+// business’s name and country» copies from when the payer pays several. The tax ID is checked in VIES as it is
+// typed, after a pause (a current proof is reused, so asking costs nothing). Fiscal data is not selling: it shows
+// on every surface.
 import { FormModal } from '@erplora/ui/components';
 import { toastSuccess } from '@erplora/ui/shell';
 import { ApiError, useCommand, useLiveClient } from '@erplora/ui/sdk';
@@ -106,7 +103,10 @@ const viesText = computed(() => {
   const now = vies.value;
   if (!now) return '';
   if (now.state === 'checking') return t('billing.payment.vies.checking');
-  const { status, name } = now.verdict;
+  const { status, name, reverse_charge: reverseCharge } = now.verdict;
+  if (status === 'verified' && !reverseCharge) {
+    return name ? t('billing.payment.vies.verifiedTaxed', { name }) : t('billing.payment.vies.verifiedTaxedNoName');
+  }
   if (status === 'verified') return name ? t('billing.payment.vies.verified', { name }) : t('billing.payment.vies.verifiedNoName');
   return t(`billing.payment.vies.${status}`);
 });

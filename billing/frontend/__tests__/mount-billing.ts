@@ -3,8 +3,8 @@
 // billing's, hubs' for the shared error sentences (`useErrorText`, `hubs/frontend/error-text.ts`) and the
 // entry's (`LoadFailed.vue`'s «could not load», merged by main.ts at runtime).
 //
-// `liveDown` makes `/api/live` refuse the stream (503, as with the SSE down in the audit of 2026-10-14,
-// R-04) until it is set back to `false`: the API still answers, and a stream opened after that is served.
+// `liveDown` makes `/api/live` refuse the stream (503, as with the SSE down) until it is set back to `false`:
+// the API still answers, and a stream opened after that is served.
 //
 // A test that opens a dialog mocks Ionic's overlay with the ui's stub, in its own file (hoisted):
 //   vi.mock('@ionic/vue', async (importOriginal) => ({

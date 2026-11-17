@@ -1,9 +1,9 @@
 """The shared Valkey as a cache that fails soft: Valkey down is a cache that forgets, never a 500.
 
-The cache is only a cache (PLAN §16: no sessions, no PIN in it), yet a request reads it on every
+The cache is only a cache (no sessions, no PIN in it), yet a request reads it on every
 public page (django-cookie-consent's groups, through the banner), on every sign-in (allauth's
 limits) and on the contact form (django-ratelimit). With Django's ``RedisCache`` alone, Valkey down
-was the site down.
+would take the site down.
 
 ``FailSoftRedisCache`` is ``RedisCache`` that answers a call failing on the connection
 (``RedisError``, or the socket's ``OSError``) as Django's ``DummyCache`` would: a cache that keeps

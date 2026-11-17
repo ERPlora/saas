@@ -1,24 +1,19 @@
-"""The launcher's sign-in (``/launch``): two tabs over one form, «Sign in» (the default) and «Create account»
-(FIX-LAUNCH-TABS, PLAN-SAAS §3.7, 2026-10-15), each on its own allauth.headless call.
+"""The launcher's sign-in (``/launch``): two tabs over one form, «Sign in» (the default) and «Create account»,
+each on its own allauth.headless call.
 
 - «Sign in» posts ``{email, password}`` to ``POST /_allauth/browser/v1/auth/login``, allauth's login: it never
-  creates an account. An email no account holds answers exactly as a wrong password does (gh:saas#1018: no
-  account oracle, neither in the answer nor in the throttle), and a known one then waits for the code mailed to
-  the account (``login_by_code``, the second factor by email of ``test_sign_in_code``), or for the code that
-  proves an address never proven (``verify_email``, gh:saas#2541).
+  creates an account. An email no account holds answers exactly as a wrong password does (no account oracle,
+  neither in the answer nor in the throttle), and a known one then waits for the code mailed to the account
+  (``login_by_code``, the second factor by email of ``test_sign_in_code``), or for the code that proves an
+  address never proven (``verify_email``).
 - «Create account» posts it to ``POST …/auth/signup``, allauth's signup: it never signs in. A new address gets
-  its account and a 6-digit code that proves the address (``POST …/auth/email/verify``, ADR-0159; gh:saas#2536:
-  nobody holds an address they never proved); one an account already holds gets the same answer and a mail to
-  its holder instead (allauth's enumeration prevention), and no session.
+  its account and a 6-digit code that proves the address (``POST …/auth/email/verify``: nobody holds an address
+  they never proved); one an account already holds gets the same answer and a mail to its holder instead
+  (allauth's enumeration prevention), and no session.
 
 The answers are allauth's own: 200 with the session, 401 with the pending flow, 400 with
 ``errors[{param, code, message}]``, 429 when the sign-ups of an address run out (10 an hour,
-``UNIFIED_SIGNUP_RATELIMIT`` of today's SaaS). The old sign-up addresses open the «Create account» tab.
-
-Ported from ERPlora/saas ``apps/auth/users/tests/test_unified_auth.py`` (``TestUnifiedRegisterOrLogin``,
-``TestImplicitSignupRateLimit``, ``TestWeakPasswordRejected``), ``test_signup_api.py`` and
-``test_login_throttle_oracle.py``, on the headless API instead of the template page, with the implicit
-sign-up of ADR-0154 split into its own tab.
+``UNIFIED_SIGNUP_RATELIMIT``). The old sign-up addresses open the «Create account» tab.
 """
 
 import re
@@ -47,7 +42,7 @@ VERIFY_EMAIL = f"{BROWSER}/auth/email/verify"
 RESEND_CODE = f"{BROWSER}/auth/email/verify/resend"
 CONFIRM_CODE = f"{BROWSER}/auth/code/confirm"
 NEWCOMER = "new@example.com"
-#: The sign-ups one address may start in an hour (ERPlora/saas ``UNIFIED_SIGNUP_RATELIMIT``).
+#: The sign-ups one address may start in an hour (``UNIFIED_SIGNUP_RATELIMIT``).
 SIGNUPS_AN_HOUR = 10
 
 User = get_user_model()
@@ -165,14 +160,14 @@ class TestSignInNeverCreatesAnAccount:
         assert _signed_in_email(browser) is None
 
     def test_an_unknown_email_answers_exactly_as_a_wrong_password(self, browser, verified):
-        """gh:saas#1018: the answer says nothing about whether the address has an account."""
+        """The answer says nothing about whether the address has an account."""
         unknown = _sign_in(browser, NEWCOMER)
         wrong = _sign_in(browser, verified.email, password="not her password")
 
         assert (unknown.status_code, unknown.json()) == (wrong.status_code, wrong.json())
 
     def test_the_throttle_stops_an_unknown_email_at_the_same_attempt_as_a_known_one(self, verified):
-        """gh:saas#1018: a 429 (or allauth's «too many attempts») that only a known address ever reached told
+        """A 429 (or allauth's «too many attempts») that only a known address ever reached would tell
         whether the account exists. From a new address each time, as an attacker rotating IPs."""
         ips = count(1)
 
@@ -260,8 +255,7 @@ class TestAKnownEmailSignsIn:
         assert _signed_in_email(browser) == verified.email
 
     def test_a_fullwidth_look_alike_of_an_accounts_email_signs_in_to_it(self, browser, verified):
-        """ACCOUNTS-G83 (ERPlora/saas#1018): the compatibility forms of the letters (NFKC) are the account's
-        own address, as in today's SaaS, not an unknown one."""
+        """The compatibility forms of the letters (NFKC) are the account's own address, not an unknown one."""
         response = _sign_in(browser, "ana@\uff45xample.com")
 
         assert (response.status_code, _pending(response)) == (401, ["login_by_code"])
@@ -269,7 +263,7 @@ class TestAKnownEmailSignsIn:
         assert _signed_in_email(browser) == verified.email
 
     def test_an_address_never_proven_asks_for_the_code_first(self, browser, unverified):
-        """gh:saas#2541. Not a dead end: the right password mails a code and the same screen asks for it."""
+        """An unproven address is not a dead end: the right password mails a code and the same screen asks for it."""
         response = _sign_in(browser, unverified.email)
 
         assert response.status_code == 401
@@ -323,7 +317,7 @@ class TestCreateAccountCreatesTheAccount:
     def test_the_account_is_created_with_the_password_and_its_address_unproven(
         self, browser
     ):
-        """gh:saas#2536: the address is not the account's until its code comes back."""
+        """The address is not the account's until its code comes back."""
         _create_account(browser, NEWCOMER)
 
         user = User.objects.get(email=NEWCOMER)
@@ -382,7 +376,7 @@ class TestCreateAccountCreatesTheAccount:
 
 
 class TestCreateAccountNeverSignsIn:
-    """An address an account already holds: the same answer as a new one (gh:saas#1018), no second account,
+    """An address an account already holds: the same answer as a new one, no second account,
     no session, and a mail to the holder (allauth's «an account using that email address already exists»)."""
 
     def test_a_held_address_answers_as_a_new_one(self, verified):
@@ -418,7 +412,7 @@ class TestCreateAccountNeverSignsIn:
         assert _signed_in_email(browser) is None
 
     def test_a_fullwidth_look_alike_creates_no_second_account(self, browser, verified):
-        """ACCOUNTS-G83 (ERPlora/saas#1018): «ana@ｅxample.com» reads as Ana's address, so it never becomes a
+        """«ana@ｅxample.com» reads as Ana's address, so it never becomes a
         second account that looks the same; her mailbox is told, as for her own address."""
         response = _create_account(browser, "ana@\uff45xample.com")
 
@@ -435,7 +429,7 @@ class TestCreateAccountNeverSignsIn:
         assert list(EmailAddress.objects.values_list("email", flat=True)) == [NEWCOMER]
 
     def test_an_address_never_proven_is_not_taken_over(self, browser, unverified):
-        """gh:saas#2541 from the other side: typing a held, unproven address again gives nobody its account."""
+        """Typing a held, unproven address again gives nobody its account."""
         response = _create_account(browser, unverified.email, password="another long password 2026")
 
         assert response.status_code == 401
@@ -454,7 +448,7 @@ class TestCreateAccountNeverSignsIn:
         assert _signed_in_email(browser) is None
 
     def test_an_invited_person_is_mailed_the_way_to_set_a_password(self, browser, invited):
-        """ERPlora/saas#2560: the invited person who types their address on «Create account» gets, in their own
+        """The invited person who types their address on «Create account» gets, in their own
         mailbox, the link that sets the password their account does not have yet."""
         _create_account(browser, invited.email)
 
@@ -483,7 +477,7 @@ class TestAnInvalidSignUpCreatesNothing:
         ],
     )
     def test_each_rule_of_the_old_sign_up_refuses_its_password(self, browser, email, password, code):
-        """ACCOUNTS-G22 (ERPlora/saas#2542): the API of the sign-up keeps every rule of the screen: «12345678»,
+        """The API of the sign-up keeps every rule of the screen: «12345678»,
         «password» or one like the address create nothing."""
         response = _create_account(browser, email, password=password)
 
@@ -499,7 +493,7 @@ class TestAnInvalidSignUpCreatesNothing:
         assert not User.objects.exists()
 
     def test_fullwidth_letters_before_the_at_are_400_on_the_email(self, browser, verified):
-        """ACCOUNTS-G83: Django's address rules take only plain letters before the @, so «ａna@example.com» is an
+        """Django's address rules take only plain letters before the @, so «ａna@example.com» is an
         invalid address, never a second Ana."""
         response = _create_account(browser, "ａna@example.com")
 
@@ -564,7 +558,7 @@ class TestTheSignUpsOfAnAddressAreLimited:
 
 
 class TestTheWaysToTheSignUpOpenTheCreateAccountTab:
-    """gh:saas#943 and gh:saas#894: the sign-up has an address, and the old ones reach it in one hop."""
+    """The sign-up has an address, and the old ones reach it in one hop."""
 
     def test_the_old_signup_page_leads_to_the_create_account_tab_for_good_keeping_next(self, client):
         response = client.get("/accounts/signup/?next=/launch", HTTP_HOST=HOST)
@@ -625,7 +619,7 @@ class TestTheSessionIsRemembered:
 
 class TestTheCodeMail:
     """allauth names the host the address was given on from the ``Site`` row (``example.com``): the first mail
-    ERPlora sends would read like phishing. It names ``PUBLIC_HOST``, as ERPlora/saas ``brand_context``."""
+    ERPlora sends would read like phishing. It names ``PUBLIC_HOST``."""
 
     def test_it_names_erplora_com_not_the_site_row(self, browser):
         _create_account(browser, NEWCOMER)

@@ -1,4 +1,4 @@
-"""Models of apps: the shared catalog and ``Module`` (spec §3.2, §5.4 and §5.5; PLAN-SAAS §2.6).
+"""Models of apps: the shared catalog and ``Module``.
 
 ``App`` and ``AppDoc`` concrete ``live.shared_catalog`` in the ``shared`` schema, written by the
 Hub; ``Module`` is only what the SaaS sells of a paid app, tied to its app by ``slug`` without a
@@ -59,7 +59,7 @@ def test_one_doc_per_app_and_language():
 
 
 def test_module_holds_only_what_the_saas_sells():
-    """Name, texts, icon, category and documentation come from shared.app (spec decision 7)."""
+    """Name, texts, icon, category and documentation come from shared.app."""
     assert {field.name for field in Module._meta.get_fields()} == {
         "id",
         "slug",
@@ -99,12 +99,12 @@ def test_prices_are_whole_cents_never_negative():
 
 
 def test_tier_is_the_lowest_plan_level_that_includes_the_module():
-    """The levels of ADR-0474, the same names as ``Plan.included_level``; by default every paid plan."""
+    """The same levels as ``Plan.included_level``; by default every paid plan."""
     assert Module.Tier.values == ["free", "basic", "pro", "enterprise"]
     assert Module().tier == Module.Tier.BASIC
 
 
-# --- Module.clean(): the slug is a premium app of shared.app (spec §5.4) -------------------------
+# --- Module.clean(): the slug is a premium app of shared.app -------------------------------------
 
 
 def slug_errors(module: Module) -> list[str]:
@@ -118,7 +118,7 @@ def test_clean_refuses_a_slug_that_is_not_in_the_catalog():
 
 
 def test_clean_refuses_a_free_app():
-    """A free app (premium = False) is always entitled: it never has a Module row (PLAN-SAAS §2.6)."""
+    """A free app (premium = False) is always entitled: it never has a Module row."""
     make_app("inventory", premium=False)
 
     assert slug_errors(Module(slug="inventory")) == ["free_app"]
@@ -138,7 +138,7 @@ def test_clean_accepts_a_retired_premium_app():
 
 
 def test_clean_refuses_a_slug_that_is_not_an_app_label():
-    """The slug is the label of the app (= its folder in the Hub, spec §3.1)."""
+    """The slug is the label of the app (= its folder in the Hub)."""
     assert "invalid" in slug_errors(Module(slug="WhatsApp-Inbox"))
 
 
@@ -160,7 +160,7 @@ def test_clean_speaks_the_language_of_the_admin():
         ]
 
 
-# --- Check apps.E001: every Module.slug exists in shared.app (spec §5.4) -------------------------
+# --- Check apps.E001: every Module.slug exists in shared.app -------------------------------------
 
 
 def test_e001_reports_a_module_whose_app_does_not_exist():
@@ -209,7 +209,7 @@ def test_e001_runs_with_check_database_default():
     assert "apps.E001" in [error.id for error in errors]
 
 
-# --- Admin: the catalog read-only, Module with its validation (spec §5.5) -------------------------
+# --- Admin: the catalog read-only, Module with its validation -------------------------------------
 
 
 @pytest.fixture

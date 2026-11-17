@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The filters of Billing → Invoices in one control of the table's toolbar (Ioan, 2026-10-14: a clean SaaS, the
+// The filters of Billing → Invoices in one control of the table's toolbar (a clean SaaS, the
 // toolbar on one line at 1440 px and two on a phone): a «Filters» button that counts the ones on, and a popover
 // with the business (a popover select), the status (a segment: three visible options), the year (a popover
 // select) and «Clear filters» while any is on. Nothing slides up from the bottom. It keeps no state: the page
@@ -182,8 +182,7 @@ function pick(key: InvoiceFilterKey, value: unknown): void {
 </template>
 
 <style scoped>
-/* As tall as the toolbar's other controls (DataTable's 36–38 px); 44 px to tap on a phone or a touch screen
-   (audit 2026-10-14, R-13). */
+/* As tall as the toolbar's other controls (DataTable's 36–38 px); 44 px to tap on a phone or a touch screen. */
 .invoice-filters {
   min-height: 36px;
   margin: 0;

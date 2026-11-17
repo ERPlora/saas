@@ -1,77 +1,32 @@
-// The Store (`/dashboard/store/:tab`, plan 2026-10-13 L2-D; mockups `store.html`) in Chrome, against the panel's own
-// Django (project.ts) and the rows of store_seed.py. Stripe cannot run here: no keys, no network to it. The
-// spec plays Stripe at the browser's boundary — a `Stripe` global that records the publishable key and the
-// client secret and mounts a placeholder where the Embedded Checkout would be, and the answers of the
-// operations that call Stripe (`billing.checkout.start` and `.confirm`, `billing.module.keep`) — so it
-// proves the page up to the `client_secret` request and the modal's mount, not Stripe's own form, the
-// webhook nor a real charge (`store-checkout.spec.ts` with `stripe listen` does, «Hecho L2»).
+// The Store (`/dashboard/store/:tab`) in Chrome, against the panel's own Django (project.ts) and the rows of
+// store_seed.py. Stripe cannot run here: no keys, no network to it. The spec plays Stripe at the browser's boundary
+// with stripe.ts — its Stripe.js (`playStripe`, which records the publishable key and the client secret and
+// mounts a placeholder where the Embedded Checkout would be) and the answers of the operations that call Stripe
+// (`answerCheckoutStart`; `billing.checkout.confirm` and `billing.module.keep` here) — so it proves the page up to
+// the `client_secret` request and the modal's mount, not Stripe's own form, the webhook nor a real charge
+// (`store-checkout.spec.ts` with `stripe listen` does).
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { Page, Request } from '@playwright/test';
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-import { djangoEnv } from '../django-env';
 import { overflowingBoxes } from '../horizontal-overflow';
-import { businessIdOf, expect, panelAccount, qaAccount, repeatedTop, settled, shot, signIn, test, VIEWPORTS, watchPageErrors } from './fixtures';
+import { panelAccount, qaAccount } from './accounts';
+import { businessIdOf } from './businesses';
+import { djangoPrint, runSeed } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { repeatedTop, settled, shot, toast, VIEWPORTS } from './screen';
+import { signIn } from './session';
+import { answerCheckoutStart, gotoWithCharge, gotoWithCheckout, payInStripe, playStripe, stripeState } from './stripe';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/l2d-shots';
 mkdirSync(SHOTS_DIR, { recursive: true });
 
-function seedStore(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/store_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
-}
-
-test.beforeAll(() => seedStore('seed'));
-test.afterAll(() => seedStore('clear'));
+test.beforeAll(() => runSeed('store_seed.py', 'seed'));
+test.afterAll(() => runSeed('store_seed.py', 'clear'));
 
 const STORE = qaAccount('STORE', panelAccount('store'));
-
-/** Stripe.js as the page would get it from js.stripe.com: records what the page hands it. */
-async function playStripe(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    type Options = { fetchClientSecret: () => Promise<string>; onComplete?: () => void };
-    const w = window as unknown as Record<string, unknown> & { __stripe: { keys: string[]; secrets: string[]; mountedIn: string[]; destroyed: number; complete?: () => void } };
-    w.__stripe = { keys: [], secrets: [], mountedIn: [], destroyed: 0 };
-    w.Stripe = (key: string) => {
-      w.__stripe.keys.push(key);
-      return {
-        async createEmbeddedCheckoutPage(options: Options) {
-          w.__stripe.secrets.push(await options.fetchClientSecret());
-          w.__stripe.complete = options.onComplete;
-          return {
-            mount(target: Element) {
-              w.__stripe.mountedIn.push(target.getAttribute('data-testid') ?? '');
-              const form = document.createElement('div');
-              form.setAttribute('data-testid', 'stripe-double');
-              form.textContent = 'Stripe Embedded Checkout (test double)';
-              form.style.cssText = 'padding:48px 16px;border:1px dashed #999;border-radius:8px;text-align:center';
-              target.append(form);
-            },
-            destroy() {
-              w.__stripe.destroyed += 1;
-            },
-          };
-        },
-      };
-    };
-  });
-}
-
-const stripeState = (page: Page) =>
-  page.evaluate(() => {
-    const s = (window as unknown as { __stripe: { keys: string[]; secrets: string[]; mountedIn: string[]; destroyed: number } }).__stripe;
-    return { keys: s.keys, secrets: s.secrets, mountedIn: s.mountedIn, destroyed: s.destroyed };
-  });
-
-const toast = (page: Page, text: string | RegExp) => page.locator('ion-toast').filter({ hasText: text });
 
 /** Every request the page makes to Stripe's origins (none is expected: the double plays Stripe.js). */
 function watchStripeRequests(page: Page): string[] {
@@ -80,6 +35,16 @@ function watchStripeRequests(page: Page): string[] {
     if (/stripe\.com/.test(request.url())) seen.push(request.url());
   });
   return seen;
+}
+
+/** Leaves the seeded business `name` on the plan `slug`, as a paid purchase would (nothing reaches Stripe nor the Hub). */
+function putOnPlan(name: string, slug: string): void {
+  djangoPrint(
+    [
+      'from hubs.models import Plan, Subscription',
+      `Subscription.objects.filter(hub__name="${name}", hub__slug__startswith="e2e-store-").update(plan=Plan.objects.get(slug="${slug}"))`,
+    ].join('\n'),
+  );
 }
 
 /** The sideways scroll of the page on screen, read where Ionic scrolls (the one measure, `overflowingBoxes`). */
@@ -105,14 +70,8 @@ test.describe('store', () => {
 
   test('it sells to the business it came from; on Free, «Upgrade» opens the Embedded Checkout from the client_secret', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await playStripe(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
-    const started: unknown[] = [];
-    await page.route('**/api/billing/checkout/start', async (route) => {
-      started.push(route.request().postDataJSON());
-      await route.fulfill({ json: { flow: 'checkout', session_id: 'cs_test_e2e', client_secret: 'cs_test_e2e_secret', publishable_key: 'pk_test_e2e', preview: null } });
-    });
-    await page.goto(`/dashboard/store/plans?business=${cafe}`);
+    const started = await gotoWithCheckout(page, `/dashboard/store/plans?business=${cafe}`);
     await expect(page.getByTestId('store-business')).toHaveJSProperty('value', cafe);
     await expect(page.getByTestId('plan-free').getByTestId('plan-current')).toBeVisible();
     await page.getByTestId('store-period-year').click();
@@ -125,18 +84,99 @@ test.describe('store', () => {
     expect(await stripeState(page)).toMatchObject({ keys: ['pk_test_e2e'], secrets: ['cs_test_e2e_secret'], mountedIn: ['checkout-stripe'] });
     await page.screenshot({ path: join(SHOTS_DIR, 'store-checkout-1440.png') });
     // Stripe says the payment went through: the page goes to the business and says so.
-    await page.evaluate(() => (window as unknown as { __stripe: { complete: () => void } }).__stripe.complete());
+    await payInStripe(page);
     await expect(page).toHaveURL(new RegExp(`/dashboard/businesses/${cafe}/summary$`));
     await expect(toast(page, 'Café Central is now on Starter')).toBeVisible();
     expect((await stripeState(page)).destroyed).toBe(1);
     expect(errors).toEqual([]);
   });
 
+  // saas#344 (BILLING-F09): the notice of what was paid for sits above the business's section tabbar, as every notice
+  // of the panel does, at the three sizes. It is asked while the payment dialog closes over the business's page:
+  // where it goes is the bar of the screen on view when it shows, not of the one under the dialog.
+  test('back from paying a plan, its notice sits above the business’s section tabbar, never over it (saas#344)', async ({ page }) => {
+    const errors = watchPageErrors(page);
+    await playStripe(page);
+    const cafe = await businessIdOf(page.request, 'Café Central');
+    await answerCheckoutStart(page);
+    const notice = toast(page, 'Café Central is now on Starter').last();
+    const tabbar = page.locator('ion-footer.section-tabbar').filter({ has: page.getByTestId('tab-summary') });
+    for (const size of [{ width: 375, height: 667 }, { width: 820, height: 1180 }, { width: 1440, height: 900 }]) {
+      await page.setViewportSize(size);
+      await page.goto(`/dashboard/store/plans?business=${cafe}`);
+      await page.getByTestId('plan-starter').getByTestId('plan-upgrade').click();
+      await expect(page.getByTestId('checkout-modal').getByTestId('stripe-double')).toBeVisible();
+      await payInStripe(page);
+      await expect(page).toHaveURL(new RegExp(`/dashboard/businesses/${cafe}/summary$`));
+      await expect(notice).toBeVisible();
+      await settled(page);
+      await page.screenshot({ path: shot(`STORE-paid-notice-${size.width}`) });
+      // Soft: every size is measured (and captured) even when one fails.
+      const wrapper = notice.locator('.toast-wrapper');
+      await expect.soft(wrapper, `the notice whole on screen at ${size.width}`).toBeInViewport({ ratio: 1 });
+      const [bar, box] = [await tabbar.boundingBox(), await wrapper.boundingBox()];
+      expect.soft(bar && box && box.y + box.height <= bar.y, `the notice's bottom above the tabbar's top at ${size.width}: ${JSON.stringify({ bar, box })}`).toBe(true);
+    }
+    expect(errors).toEqual([]);
+  });
+
+  // saas#434 (BILLING-F07, F08, F27): the internal plan is offered only to the business ERPlora's staff marked in the
+  // admin, and it is bought like any plan; the catalog of every other business leaves it out.
+  test('only the business ERPlora marked is offered «Payment Test», and it pays it like any plan (saas#434)', async ({ page }) => {
+    const errors = watchPageErrors(page);
+    const cafe = await businessIdOf(page.request, 'Café Central');
+    const marked = await businessIdOf(page.request, 'Prueba ERPlora');
+    const started = await gotoWithCheckout(page, `/dashboard/store/plans?business=${cafe}`);
+    await expect(page.getByTestId('plan-free').getByTestId('plan-current')).toBeVisible();
+    await expect(page.getByTestId('plan-payment-test')).toHaveCount(0);
+    await page.goto(`/dashboard/store/plans?business=${marked}`);
+    const internal = page.getByTestId('plan-payment-test');
+    await expect(internal.getByTestId('plan-name')).toHaveText('Payment Test (internal)');
+    await internal.getByTestId('plan-upgrade').click();
+    await expect(page.getByTestId('checkout-modal').getByTestId('stripe-double')).toBeVisible();
+    expect(started).toEqual([{ hub_id: marked, plan: 'payment-test', interval: 'month', promo_code: '' }]);
+    expect(errors).toEqual([]);
+  });
+
+  // saas#436 (HUBS-F21): the page of a business on the internal plan said «—» in what the plan covers, for it looked
+  // the plan up among the plans on sale, which leave the internal ones out.
+  test('a business on «Payment Test» reads on its page what that plan covers (saas#436)', async ({ page }) => {
+    const errors = watchPageErrors(page);
+    const marked = await businessIdOf(page.request, 'Prueba ERPlora');
+    putOnPlan('Prueba ERPlora', 'payment-test');
+    try {
+      for (const size of [{ width: 375, height: 667 }, { width: 820, height: 1180 }, { width: 1440, height: 900 }]) {
+        await page.setViewportSize(size);
+        await page.goto(`/dashboard/businesses/${marked}/summary`);
+        await expect(page.getByTestId('summary-plan').locator('.card-title')).toHaveText('Payment Test (internal)');
+        await expect(page.getByTestId('summary-plan-devices').locator('dd')).toHaveText('Unlimited');
+        await expect(page.getByTestId('summary-plan-apps').locator('dd')).toHaveText('40');
+        await expect(page.getByTestId('summary-plan-store')).toHaveText('Change plan');
+        await settled(page);
+        await page.screenshot({ path: shot(`STORE-internal-plan-summary-${size.width}`) });
+      }
+    } finally {
+      putOnPlan('Prueba ERPlora', 'free');
+    }
+    expect(errors).toEqual([]);
+  });
+
+  test('Stripe.js that cannot load is said in the dialog, with «Retry»: waiting for its place hides no real failure (saas#326)', async ({ page }) => {
+    await page.route(/^https:\/\/js\.stripe\.com\//, (route) => route.abort());
+    const cafe = await businessIdOf(page.request, 'Café Central');
+    await answerCheckoutStart(page);
+    await page.goto(`/dashboard/store/plans?business=${cafe}`);
+    await expect(page.getByTestId('plan-free').getByTestId('plan-current')).toBeVisible();
+    await page.getByTestId('plan-starter').getByTestId('plan-upgrade').click();
+    const dialog = page.getByTestId('checkout-modal');
+    await expect(dialog.getByTestId('checkout-error')).toContainText('We could not open the secure payment');
+    await expect(dialog.getByTestId('checkout-retry')).toBeVisible();
+    await expect(dialog.getByTestId('checkout-stripe')).toBeHidden();
+  });
+
   test('a paying business adds a module in its own dialog, with its proration, and then it is «Activating…»', async ({ page }) => {
     const bakery = await businessIdOf(page.request, 'Panadería López');
-    await page.route('**/api/billing/checkout/start', (route) =>
-      route.fulfill({ json: { flow: 'confirm', session_id: null, client_secret: null, publishable_key: null, preview: { amount_due_cents: 653, tax_cents: 113, currency: 'eur', proration_date: Math.floor(Date.now() / 1000), charge_starts_at: null } } }),
-    );
+    await gotoWithCharge(page, `/dashboard/store/modules?business=${bakery}`, 653, 113);
     const confirmed: unknown[] = [];
     await page.route('**/api/billing/checkout/confirm', async (route) => {
       confirmed.push(route.request().postDataJSON());
@@ -144,7 +184,6 @@ test.describe('store', () => {
         json: { hub_id: bakery, plan: 'starter', billing_interval: 'month', status: 'active', cancel_at_period_end: false, current_period_end: null, trial_end: null, modules: [{ slug: 'e2e_bookings', source: 'purchase', valid_until: null }] },
       });
     });
-    await page.goto(`/dashboard/store/modules?business=${bakery}`);
     const bookings = page.getByTestId('module-e2e_bookings');
     await expect(bookings.getByTestId('module-name')).toHaveText('E2E Bookings');
     await expect(page.getByTestId('module-e2e_free_app')).toHaveCount(0);
@@ -189,13 +228,13 @@ test.describe('store', () => {
     const stripe = watchStripeRequests(page);
     await page.goto('/dashboard/store/plans?surface=account');
     const notice = page.getByTestId('store-in-app');
-    // Already in the browser: why nothing is bought here, not «go to erplora.com in your browser» (audit 2 S-09).
+    // Already in the browser: why nothing is bought here, not «go to erplora.com in your browser».
     await expect(notice).toContainText('Nothing is bought from here');
     await expect(notice).toContainText('This account was opened from the app, and the app does not sell');
     await expect(page.getByTestId('plan-starter')).toHaveCount(0);
     expect(await page.locator('ion-router-outlet').innerText()).not.toMatch(/€/);
     await page.setViewportSize({ width: 390, height: 844 });
-    // flow: ninguno — FIX tests/e2e. Taken before a frame at the new size, it repeated the top at its bottom.
+    // flow: none — test tooling. Taken before a frame at the new size, it repeated the top at its bottom.
     await settled(page);
     const png = await page.screenshot({ path: join(SHOTS_DIR, 'store-app-390.png') });
     expect(await repeatedTop(page, png), 'store-app-390.png repeats the top of the page at its bottom').toBe(0);
@@ -212,7 +251,7 @@ test.describe('store', () => {
     expect(stripe).toEqual([]);
   });
 
-  // flow: ninguno — FIX tests/e2e. Resized under the spec, the Store is shot as painted at each size: a capture
+  // flow: none — test tooling. Resized under the spec, the Store is shot as painted at each size: a capture
   // taken before a frame at the new size repeated the top of the page at its bottom (87 rows, 3 in 6 at 390 px).
   test('a screenshot right after a resize is the Store as painted, never its top repeated at the bottom', async ({ page }) => {
     const bakery = await businessIdOf(page.request, 'Panadería López');

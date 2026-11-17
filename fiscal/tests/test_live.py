@@ -1,4 +1,4 @@
-"""The live query of fiscal and the events that re-run it (plan 2026-10-15; the panel's card of a business).
+"""The live query of fiscal and the events that re-run it (the panel's card of a business).
 
 ``fiscal.representation.status`` re-runs on the channel that changed the authorisation (the owner's for the
 Hub's upload, the reviewer's for a decision) and on the channel of each owner and admin of the business, told

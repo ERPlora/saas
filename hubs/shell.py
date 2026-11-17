@@ -1,4 +1,4 @@
-"""The installed app's door into a business: ``GET /shell/open/<id>/`` (PLAN-SAAS bloque 3; PLAN-HUB round 18).
+"""The installed app's door into a business: ``GET /shell/open/<id>/``.
 
 ``ERPlora/app`` boots on ``{SaaS}/shell/`` (the SPA's launcher under the app's address, ``hubs/frontend/routes.ts``)
 and links the till to a hub only when a navigation with ``?shell=1`` leaves an entry page of the SaaS
@@ -21,10 +21,10 @@ from django.views.decorators.http import require_GET
 from live.context import get_builder
 from live.errors import Conflict, NotFound
 
-from hubs import services
+from hubs.services import opening
 from hubs.schemas import BusinessOpenIn
 
-#: The app's start: ``ERPlora/app`` boots there and it never changes (working-rules §12).
+#: The app's start: ``ERPlora/app`` boots there, so it never changes.
 SHELL = "/shell/"
 
 
@@ -34,7 +34,7 @@ def open_business(request: HttpRequest, hub_id: UUID) -> HttpResponse:
     if not request.user.is_authenticated:
         return redirect_to_login(request.get_full_path(), login_url=SHELL)
     try:
-        opened = services.business_open(
+        opened = opening.business_open(
             get_builder().from_request(request), BusinessOpenIn(id=hub_id, shell=True)
         )
     except NotFound as missing:

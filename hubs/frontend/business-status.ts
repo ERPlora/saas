@@ -1,20 +1,21 @@
 // How a business's status reads everywhere (the launcher, Businesses, a business's page): the ui's pill
 // (`businessStatusPill`), a danger pill of our own when the Hub refused to prepare the business, and
 // the catalogue key of the sentence that says why «Open» does not work or what to do. Inside the apps
-// the sentence never invites to pay (README §4): it says to go to erplora.com, without a link. An unpaid
-// invoice says its real deadline (audit 2026-10-14, R-06): the server suspends the business 7 days after the
-// invoice went unpaid (`billing.services.UNPAID_PLAN_GRACE`), so the date is `unpaid_since` + 7 days, said as
-// a day (never «7 more days», never the minute).
+// the sentence never invites to pay: it says to go to erplora.com, without a link. An unpaid invoice
+// says its real deadline: the server suspends the business 7 days after the invoice went unpaid
+// (`billing.services.UNPAID_PLAN_GRACE`), so the date is `unpaid_since` + 7 days, said as a day (never
+// «7 more days», never the minute).
 import { businessStatusPill, type BusinessStatus, formatDateTime, type StatusPillSpec } from '@erplora/ui/components';
 
 import { formatDate } from '../../billing/frontend/format';
-import type { BusinessStatusCode, OpenBlockedReason } from '../../frontend/sdk-types';
+import type { BusinessStatusCode, HubMaintenanceOut, OpenBlockedReason } from '../../frontend/sdk-types';
 
 /** What both a row of the list and a business's detail carry. */
 export interface BusinessState {
   status: BusinessStatusCode;
   open_blocked_reason?: OpenBlockedReason | null;
   hub_error?: string | null;
+  maintenance?: HubMaintenanceOut | null;
   /** Since when its invoice is unpaid (past due or suspended). */
   unpaid_since?: string | null;
   /** Deleted: until when it can be recovered. */
@@ -39,12 +40,21 @@ export function preparationFailed(business: BusinessState): boolean {
 /** The pill of the business's status; `t` translates the panel's own «Not prepared». */
 export function statusPill(business: BusinessState, t: (key: string) => string, locale: string): StatusPillSpec {
   if (preparationFailed(business)) return { tone: 'danger', label: t('hubs.status.error'), busy: false };
+  if (business.maintenance?.frozen) return { tone: 'warning', label: t('hubs.status.maintenance'), busy: true };
   return businessStatusPill(business.status as BusinessStatus, locale);
+}
+
+/** The catalogue key of the sentence over the preparation of a business just created (the launcher's lead
+ *  and the «Create business» dialog); `null` during a platform pause, which promises no seconds: the
+ *  preparation's own notice says the pause, and the sentence comes back by itself when it lifts. */
+export function preparingLeadKey(maintenance: HubMaintenanceOut | null | undefined): string | null {
+  return maintenance?.frozen ? null : 'hubs.launch.preparing.lead';
 }
 
 /** The catalogue key of the sentence under a business that is not simply active; `null` if it is. */
 export function reasonKey(business: BusinessState, inApp: boolean): string | null {
   if (preparationFailed(business)) return 'hubs.reason.error';
+  if (business.maintenance?.frozen) return 'hubs.reason.maintenance';
   switch (business.status) {
     case 'preparing':
       return 'hubs.reason.preparing';
@@ -76,7 +86,7 @@ export function reasonDate(business: BusinessState, locale: string): string {
   }
 }
 
-/** Suspended or deleted, «Open» is not offered at all (README §5.3); otherwise it is, disabled while it
+/** Suspended or deleted, «Open» is not offered at all; otherwise it is, disabled while it
  *  does not serve (`can.open`). */
 export function opensAtAll(business: { status: BusinessStatusCode }): boolean {
   return business.status !== 'suspended' && business.status !== 'deleting';

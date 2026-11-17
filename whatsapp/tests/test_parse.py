@@ -1,9 +1,8 @@
-"""WHATSAPP-G07 · Reading Meta's webhook: what each change means for a business, before anything is stored.
+"""Reading Meta's webhook: what each change means for a business, before anything is stored.
 
 Bodies from Meta's reference (https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/components and
-the Embedded Signup «coexistence» webhooks) and the old product's tests (``test_webhook_echo_ingest.py``,
-``test_webhook_history_ingest.py``, ``test_inbox_reply_to.py``, ``test_inbox_reply_id.py``,
-``test_delivery_status.py``). The result is the body of the Hub's door 1 (``POST /internal/whatsapp/inbound``)
+the Embedded Signup «coexistence» webhooks).
+The result is the body of the Hub's door 1 (``POST /internal/whatsapp/inbound``)
 and door 2 (``/status``) without ``hub`` and the attachment's address, and the verdicts of Meta on templates.
 """
 
@@ -48,7 +47,7 @@ class TestACustomersMessage:
         assert message.body == {
             "wa_message_id": "wamid.A",
             "from": CUSTOMER,
-            # saas#2670: the profile name Meta sends next to the message reaches the inbox.
+            # The profile name Meta sends next to the message reaches the inbox.
             "contact_name": "Ana",
             "direction": "inbound",
             "source": "live",
@@ -91,7 +90,7 @@ class TestACustomersMessage:
         assert message.body["media"] == {"mime_type": "application/pdf", "filename": "factura.pdf", "caption": ""}
 
     def test_a_reply_says_which_message_it_answers(self):
-        """saas#1919: two questions in a row, the answer says which."""
+        """Two questions in a row, the answer says which."""
         message = only_message(messages(text(context={"from": BUSINESS, "id": "wamid.Q2"})))
 
         assert message.body["reply_to"] == "wamid.Q2"
@@ -159,7 +158,7 @@ class TestACustomersMessage:
 
 class TestTheOwnersReplyFromThePhone:
     def test_an_echo_is_the_business_speaking_under_the_customer(self):
-        """saas#1883: Meta's ``from`` of an echo is the business; the conversation is the customer's (``to``)."""
+        """Meta's ``from`` of an echo is the business; the conversation is the customer's (``to``)."""
         echo = {"from": BUSINESS, "to": CUSTOMER, "id": "wamid.E", "timestamp": "1760522400", "type": "text", "text": {"body": "Sí"}}
         payload = webhook(
             "smb_message_echoes",
@@ -213,7 +212,7 @@ class TestTheHistoryOfTheConnection:
         assert message.placeholder is True and message.media_id == ""
 
     def test_the_media_follow_up_completes_by_its_id(self):
-        """saas#1913: the backlog's recent media come again, with the same id, in a ``history`` change with
+        """The backlog's recent media come again, with the same id, in a ``history`` change with
         ``messages`` and no threads."""
         follow_up = {
             "from": CUSTOMER,

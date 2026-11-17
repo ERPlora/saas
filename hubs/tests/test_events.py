@@ -1,4 +1,4 @@
-"""The events of hubs (``<app>.<entity>.<fact>``): recorded by services.py, cited by live.py.
+"""The events of hubs (``<app>.<entity>.<fact>``): recorded by ``services``, cited by live.py.
 
 hubs reacts to no event of another app: ``events.py`` only names its own, and every one of them is
 recorded by some command (none is dead weight in ``live.py``).
@@ -13,11 +13,12 @@ from live.models import OutboxEvent
 from live.operations import NAME_RE
 
 from hubs import events, services
+from hubs.services import deletion, invitation_answers, member_management, opening, ownership
 from hubs.models import Hub, HubOwnershipTransfer
 from hubs.schemas import BusinessDeleteIn, BusinessOpenIn, ByIdIn, MemberInviteIn, MemberRoleIn, OwnershipTransferIn
 from hubs.tests.conftest import ctx_for, member_of
 
-SERVICES_SOURCE = (Path(events.__file__).parent / "services.py").read_text()
+SERVICES_SOURCE = "".join(path.read_text() for path in sorted(Path(services.__file__).parent.glob("*.py")))
 
 
 def test_every_event_is_named_app_entity_fact_and_belongs_to_hubs():
@@ -45,12 +46,12 @@ def test_every_event_is_recorded_by_a_command():
 
 def _open(team, business):
     Hub.objects.filter(pk=business.pk).update(status=Hub.Status.ACTIVE, ready_at=timezone.now())
-    services.business_open(ctx_for(team["owner"]), BusinessOpenIn(id=business.id))
+    opening.business_open(ctx_for(team["owner"]), BusinessOpenIn(id=business.id))
 
 
 def _restore(team, business):
-    services.business_delete(ctx_for(team["owner"]), BusinessDeleteIn(id=business.id, confirm_name=business.name))
-    services.business_restore(ctx_for(team["owner"]), ByIdIn(id=business.id))
+    deletion.business_delete(ctx_for(team["owner"]), BusinessDeleteIn(id=business.id, confirm_name=business.name))
+    deletion.business_restore(ctx_for(team["owner"]), ByIdIn(id=business.id))
 
 
 def _invitee(business, team):
@@ -58,7 +59,7 @@ def _invitee(business, team):
 
 
 def _offer(team, business):
-    services.ownership_transfer(
+    ownership.ownership_transfer(
         ctx_for(team["owner"]), OwnershipTransferIn(hub_id=business.id, member_id=member_of(business, team["admin"]).id)
     )
     return HubOwnershipTransfer.objects.get(hub=business).id
@@ -70,39 +71,39 @@ WRITES = {
     # HUBS-F19
     events.BUSINESS_RESTORED: _restore,
     # HUBS-F24
-    events.MEMBER_INVITED: lambda team, business: services.member_invite(
+    events.MEMBER_INVITED: lambda team, business: member_management.member_invite(
         ctx_for(team["owner"]), MemberInviteIn(hub_id=business.id, email="new@example.com")
     ),
-    events.MEMBER_INVITATION_RESENT: lambda team, business: services.member_resend(
+    events.MEMBER_INVITATION_RESENT: lambda team, business: member_management.member_resend(
         ctx_for(team["owner"]), ByIdIn(id=_invitee(business, team))
     ),
-    events.MEMBER_INVITATION_CANCELLED: lambda team, business: services.member_cancel(
+    events.MEMBER_INVITATION_CANCELLED: lambda team, business: member_management.member_cancel(
         ctx_for(team["owner"]), ByIdIn(id=_invitee(business, team))
     ),
     # HUBS-F25
-    events.INVITATION_ACCEPTED: lambda team, business: services.invitation_accept(
+    events.INVITATION_ACCEPTED: lambda team, business: invitation_answers.invitation_accept(
         ctx_for(team["invitee"]), ByIdIn(id=_invitee(business, team))
     ),
-    events.INVITATION_DECLINED: lambda team, business: services.invitation_decline(
+    events.INVITATION_DECLINED: lambda team, business: invitation_answers.invitation_decline(
         ctx_for(team["invitee"]), ByIdIn(id=_invitee(business, team))
     ),
     # HUBS-F26
-    events.MEMBER_ROLE_CHANGED: lambda team, business: services.member_change_role(
+    events.MEMBER_ROLE_CHANGED: lambda team, business: member_management.member_change_role(
         ctx_for(team["owner"]), MemberRoleIn(id=member_of(business, team["employee"]).id, role="hub_manager")
     ),
     # HUBS-F27
-    events.MEMBER_REMOVED: lambda team, business: services.member_remove(
+    events.MEMBER_REMOVED: lambda team, business: member_management.member_remove(
         ctx_for(team["owner"]), ByIdIn(id=member_of(business, team["employee"]).id)
     ),
     # HUBS-F28
     events.OWNERSHIP_REQUESTED: _offer,
-    events.OWNERSHIP_ACCEPTED: lambda team, business: services.ownership_accept(
+    events.OWNERSHIP_ACCEPTED: lambda team, business: ownership.ownership_accept(
         ctx_for(team["admin"]), ByIdIn(id=_offer(team, business))
     ),
-    events.OWNERSHIP_DECLINED: lambda team, business: services.ownership_decline(
+    events.OWNERSHIP_DECLINED: lambda team, business: ownership.ownership_decline(
         ctx_for(team["admin"]), ByIdIn(id=_offer(team, business))
     ),
-    events.OWNERSHIP_CANCELLED: lambda team, business: services.ownership_cancel(
+    events.OWNERSHIP_CANCELLED: lambda team, business: ownership.ownership_cancel(
         ctx_for(team["owner"]), ByIdIn(id=_offer(team, business))
     ),
 }

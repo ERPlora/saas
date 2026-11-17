@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 
-#: The VAT regimes were stored with Spanish values; the table has no external contract (review of L2-A).
+#: The VAT regimes were stored with Spanish values; the table has no external contract.
 REGIMES = {"simplificado": "simplified", "recargo": "equivalence_surcharge", "exento": "exempt"}
 
 

@@ -11,8 +11,13 @@ import { join } from 'node:path';
 
 import { type Page } from '@playwright/test';
 
-import { expect, panelAccount, seedPanel, shot, sidewaysScroll, signIn, test, VIEWPORTS, watchPageErrors } from './fixtures';
+import { panelAccount } from './accounts';
+import { seedPanel } from './businesses';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
 import { PANEL_URL } from './project';
+import { shot, sidewaysScroll, VIEWPORTS } from './screen';
+import { signIn } from './session';
 
 const SHOTS_DIR = process.env.SHOTS_DIR ?? join(shot('account-dir'), '..', 'account');
 mkdirSync(SHOTS_DIR, { recursive: true });

@@ -1,5 +1,5 @@
-# Module, only commercial (round 16, spec decision 7; PLAN-SAAS §2.6): in the SaaS's own schema
-# (public), tied to `shared.app` by `slug` without a database FK (plan §3.l).
+# Module, only commercial: in the SaaS's own schema (public), tied to `shared.app` by `slug` without a
+# database FK (nothing crosses the `shared` schema).
 
 import uuid
 

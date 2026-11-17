@@ -1,10 +1,5 @@
-// Adding a module to, or changing the plan of, a business Stripe bills already (PLAN-SAAS §3.2; mockups
-// `store.html` «modal-confirm»; UX-AUDIT-4 W-F4: one dialog per module, with ITS proration): no checkout,
-// an item of the business's subscription, charged now and prorated. The dialog asks Stripe's preview first
-// (`billing.checkout.start`) and says it to the cent — today without VAT, the VAT, the total, and what it
-// costs from the renewal — then confirms with the preview's proration date (`billing.checkout.confirm` for
-// a module, `billing.plan.change` for a plan). A refusal stays in the dialog; an out-of-date price is asked
-// again and said.
+// Adding a module to, or changing the plan of, a business Stripe bills already: the dialog asks Stripe's preview,
+// says it to the cent and confirms with the preview's proration date. An out-of-date price is asked again and said.
 // clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';

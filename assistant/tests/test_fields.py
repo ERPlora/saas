@@ -1,4 +1,4 @@
-"""The encrypted column of a provider's key (``assistant.fields.EncryptedTextField``; saas#528 of the old product:
+"""The encrypted column of a provider's key (``assistant.fields.EncryptedTextField``; in the old product
 the keys lived in the clear in Aurora and in every ``pg_dump``).
 
 The model reads the key, the column holds its Fernet token; a token no live key opens reads as empty (the key is

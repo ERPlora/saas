@@ -1,4 +1,4 @@
-// Businesses (`/dashboard/businesses`, round 17 §2.3; mockups `businesses.html`, README §3b): the account's
+// Businesses (`/dashboard/businesses`): the account's
 // businesses in a server-side DataTable (list or cards; cards up to 900 px), with their status, plan,
 // role and last use; per row «Open», «Manage», «Recover», «Delete» by what the role allows; above it
 // the pending invitations and ownership offers and the unpaid invoices; «Create business» opens the
@@ -143,7 +143,7 @@ describe('BusinessListPage: the list', () => {
     expect(s.testid('businesses-lead').text()).toBe('Here you manage your businesses. Press «Open» to work in one.');
   });
 
-  it('gives the table its row actions to fold (README §3b, W-19): «Open» pinned, «Manage» and «Recover» inline', async () => {
+  it('gives the table its row actions to fold: «Open» pinned, «Manage» and «Recover» inline', async () => {
     const s = await setup();
     await s.show(page(ROWS));
     expect(s.prop<Array<Record<string, unknown>>>('actions').map((a) => [a.id, a.icon, !!a.pinned, !!a.menuOnly])).toEqual([
@@ -184,7 +184,7 @@ describe('BusinessListPage: the list', () => {
     expect(salon.get('[data-testid="business-role"]').text()).toContain('Manager');
     expect(salon.get('[data-testid="business-role"]').text()).toContain('Managed by the owner');
     expect(bakery.get('[data-testid="business-host"]').text()).toBe('bakery.localhost:8000');
-    // Audit 2 R-25: the address is not cut with «…» (DataTable clips a cell's span): it may take a second line,
+    // The address is not cut with «…» (DataTable clips a cell's span): it may take a second line,
     // breaking only after a dot.
     expect(bakery.get('[data-testid="business-host"]').element.tagName).toBe('DIV');
     expect(bakery.find('[data-testid="business-host"] .host-name').exists()).toBe(true);
@@ -216,7 +216,7 @@ describe('BusinessListPage: the list', () => {
   });
 });
 
-describe('BusinessListPage: a clean page (Ioan, 2026-10-14)', () => {
+describe('BusinessListPage: a clean page', () => {
   it('the list fills the page between the topbar and the footer: rows scroll inside, toolbar and footer stay', async () => {
     const s = await setup();
     await s.show(page(ROWS));
@@ -225,7 +225,7 @@ describe('BusinessListPage: a clean page (Ioan, 2026-10-14)', () => {
     expect(s.table().element.parentElement?.classList.contains('panel-fill')).toBe(true);
   });
 
-  it('asks for rows per page only when there are more businesses than the shortest page (mockups README §3b)', async () => {
+  it('asks for rows per page only when there are more businesses than the shortest page', async () => {
     const s = await setup();
     await s.show(page(ROWS));
     expect(s.prop('pageSizeChooser')).toBe(false);
@@ -272,7 +272,7 @@ describe('BusinessListPage: row actions', () => {
     expect(s.router.currentRoute.value.path).toBe('/dashboard/businesses/admin/summary');
   });
 
-  it('«Delete» is not on the row (README §3b): it lives in the business’s Settings, with its confirmation', async () => {
+  it('«Delete» is not on the row: it lives in the business’s Settings, with its confirmation', async () => {
     const s = await setup();
     await s.show(page(ROWS));
     expect(s.wrapper.find('[data-testid$="-delete"]').exists()).toBe(false);
@@ -354,7 +354,7 @@ describe('BusinessListPage: what waits above the list', () => {
   });
 });
 
-describe('BusinessListPage: unpaid invoices of several businesses, grouped (audit 2026-10-14, R-15)', () => {
+describe('BusinessListPage: unpaid invoices of several businesses, grouped', () => {
   const NORTE = row('norte', 'Bar Norte', {
     status: 'suspended',
     status_label: 'Suspended',
@@ -450,7 +450,7 @@ describe('BusinessListPage: states', () => {
     expect(toastError).toHaveBeenCalledWith('No hemos podido conectar con ERPlora. Revisa tu conexión e inténtalo de nuevo.');
   });
 
-  it('the stream gone before any answer (no network, /api/live down): loading, then an error with «Retry», never the sign-up form (R-04)', async () => {
+  it('the stream gone before any answer (no network, /api/live down): loading, then an error with «Retry», never the sign-up form', async () => {
     const s = await setup();
     s.call.push(BYE);
     await flush();
@@ -505,6 +505,15 @@ describe('BusinessListPage: «Create business»', () => {
     return s;
   }
 
+  async function submitDulce(s: Awaited<ReturnType<typeof openCreate>>): Promise<void> {
+    const name = s.q('create-name') as HTMLElement & { value?: string };
+    name.value = 'Pastelería Dulce';
+    name.dispatchEvent(new CustomEvent('ionInput', { detail: { value: 'Pastelería Dulce' } }));
+    await flush();
+    s.q('create-modal-submit')!.click();
+    await flush();
+  }
+
   it('opens the dialog with the form, the dialog’s button creating', async () => {
     const s = await openCreate();
     expect(s.q('create-modal')?.getAttribute('aria-label')).toBe('Create business');
@@ -512,7 +521,7 @@ describe('BusinessListPage: «Create business»', () => {
     expect(s.q('create-modal-submit')?.textContent).toContain('Create my business');
   });
 
-  describe('with the account’s Free business filling its quota (audit 2 S-02)', () => {
+  describe('with the account’s Free business filling its quota', () => {
     const FULL = { free_business: { id: 'cafe', slug: 'cafe', name: 'Café Central' } };
 
     it('says so before the form, names the business and offers to change its plan in the Store', async () => {
@@ -582,7 +591,7 @@ describe('BusinessListPage: «Create business»', () => {
     s.q('create-modal-submit')!.click();
     await flush();
     expect(s.client.stream.subscriptions('hubs.business.get').map((sub) => sub.params)).toEqual([{ id: 'dulce' }]);
-    // The focus moves to the step's own button (V-19).
+    // The focus moves to the step's own button.
     expect(focus.mock.contexts).toContain(s.q('create-modal-close-list'));
     await s.clock.advance(150);
     await s.result(s.net.lastStream(), 'hubs.business.get', { id: 'dulce', name: 'Pastelería Dulce', host: 'dulce.localhost:8000', status: 'active', hub_error: null, can: { open: true } });
@@ -609,6 +618,37 @@ describe('BusinessListPage: «Create business»', () => {
     s.q('create-modal-open')!.click();
     await flush();
     expect(s.calls().find((c) => c.path === '/api/hubs/businesses/open')?.body).toEqual({ id: 'dulce', next: '/' });
+  });
+
+  it('maintenance reaches the dialog and the row without becoming an error', async () => {
+    const maintenance = { frozen: true, reason: 'Aurora upgrade', since: '2026-11-09T20:00:00Z' };
+    const s = await openCreate();
+    await submitDulce(s);
+    await s.show(page([row('dulce', 'Pastelería Dulce', { ...PREPARING, maintenance }), ...ROWS]), 2);
+    await s.clock.advance(150);
+    await s.result(s.net.lastStream(), 'hubs.business.get', { id: 'dulce', name: 'Pastelería Dulce', host: 'dulce.localhost:8000', status: 'preparing', maintenance, hub_error: null, can: { open: false } });
+
+    expect(s.q('create-modal')?.querySelector('[data-testid="preparing-maintenance"]')).not.toBeNull();
+    expect(s.q('create-modal')?.querySelector('ion-title')?.textContent).toContain('Preparing Pastelería Dulce');
+    expect(s.rows()[0].get('.status-pill').text()).toBe('Paused for maintenance');
+    expect(s.rows()[0].text()).toContain('Provisioning is paused for maintenance. It resumes automatically; you can check now.');
+  });
+
+  it('the dialog promises no seconds while the pause lasts, and says «a few seconds» again once it lifts', async () => {
+    const maintenance = { frozen: true, reason: 'Aurora upgrade', since: '2026-11-09T20:00:00Z' };
+    const business = { id: 'dulce', name: 'Pastelería Dulce', host: 'dulce.localhost:8000', status: 'preparing', hub_error: null, can: { open: false } };
+    const s = await openCreate();
+    await submitDulce(s);
+    const lead = () => s.q('create-modal')?.querySelector('.create-lead')?.textContent?.trim();
+    expect(lead()).toBe('It usually takes a few seconds.');
+    await s.show(page([row('dulce', 'Pastelería Dulce', { ...PREPARING, maintenance }), ...ROWS]), 2);
+    await s.clock.advance(150);
+    await s.result(s.net.lastStream(), 'hubs.business.get', { ...business, maintenance }, 2);
+    expect(s.q('create-modal')?.querySelector('[data-testid="preparing-maintenance"]')).not.toBeNull();
+    expect(lead()).toBeUndefined();
+    await s.result(s.net.lastStream(), 'hubs.business.get', { ...business, maintenance: null }, 3);
+    expect(s.q('create-modal')?.querySelector('[data-testid="preparing-maintenance"]')).toBeNull();
+    expect(lead()).toBe('It usually takes a few seconds.');
   });
 
   it('a preparation the Hub refused says so in the dialog', async () => {

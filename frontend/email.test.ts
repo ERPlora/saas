@@ -1,4 +1,4 @@
-// Whether what was typed looks like an email address, before a form sends it (audit 2 R-28, R-32): only the
+// Whether what was typed looks like an email address, before a form sends it: only the
 // shape — one «@», something before it, a domain with a dot after it, no spaces — so a button waits for an address;
 // the server still decides whether it is valid and says why on the field.
 import { describe, expect, it } from 'vitest';

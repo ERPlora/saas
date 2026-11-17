@@ -1,4 +1,4 @@
-"""WHATSAPP-G04 · The Meta credentials of a number are encrypted at rest (Fernet), with a key rotation."""
+"""The Meta credentials of a number are encrypted at rest (Fernet), with a key rotation."""
 
 import pytest
 

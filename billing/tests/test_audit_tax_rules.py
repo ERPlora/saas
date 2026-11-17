@@ -1,6 +1,5 @@
-"""The audit of the table that prices every sale (BILLING-F04, saas#1968, saas#1995).
+"""The audit of the table that prices every sale (BILLING-F04).
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_audit_tax_rules.py`` (origin/develop, 12 cases).
 The rate a sale is charged comes from ``billing.TaxRule``; the table can break without anything shouting —
 the issuer's rule deleted (the backstop in ``vat.py`` keeps charging, but the rate stops being editable),
 a territory outside VAT unticked from the admin list (Las Palmas would take the mainland 21 %, so the sale is
@@ -92,7 +91,7 @@ class TestTheTerritoriesOutsideVat:
 
     @pytest.mark.parametrize("region", ["IC", "CE", "ML"])
     def test_unticking_active_from_the_list_fails(self, region):
-        """The break that really happens: one click on the list's checkbox (saas#1995). The message says the
+        """The break that really happens: one click on the list's checkbox. The message says the
         rule is there but does not answer, so nobody creates a duplicate."""
         TaxRule.objects.filter(country_code="ES", region_code=region).update(is_active=False)
 

@@ -31,7 +31,7 @@ def pdf_b64(marker: str = "") -> str:
 
 
 def submission(**overrides) -> dict:
-    """The body the Hub posts for a natural person with a DNI (the contract of plan 2026-10-15)."""
+    """The body the Hub posts for a natural person with a DNI."""
     documents = overrides.pop("documents", None)
     return {
         "taxpayer_tax_id": "12345678Z",

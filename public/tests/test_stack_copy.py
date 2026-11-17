@@ -1,4 +1,4 @@
-"""The public web says what ERPlora does, never what it is built with (Ioan, 2026-10-14).
+"""The public web says what ERPlora does, never what it is built with.
 
 «We don't need to say which technology we use»: ``/features/`` loses its «Built with modern
 technology.» section (the stack cards: Ionic, Vue, Django, PostgreSQL) and its «Cloud-native» cell,

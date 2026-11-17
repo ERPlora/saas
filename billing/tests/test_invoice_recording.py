@@ -1,13 +1,8 @@
-"""What Stripe collects becomes ERPlora's invoice, in the webhook's transaction (lot L3-C; PLAN-SAAS §4).
+"""What Stripe collects becomes ERPlora's invoice, in the webhook's transaction.
 
-Ported from ERPlora/saas (origin/develop) ``billing/tests/test_hub_invoices.py`` (``create_hub_invoice``),
-``test_invoice_line_tax.py`` (each line its own fiscal snapshot; the header is the sum of the lines),
-``test_invoice_vat_breakdown.py``, ``test_invoice_fiscal_treatment.py`` and ``test_renewal_charged_issuer_rate.py``
-(the qualification sealed on the invoice), ``fiscal/tests/test_vies_contract.py`` «7. The issued invoice keeps
-the consultation number» and ``test_reverse_charge_switch.TestTheInvoiceKeepsTheEvidence``, and the
-renewal half of ``test_payer_vat_reaches_the_invoice``, all through the door that writes the invoice now:
-Stripe's webhook (``invoice.paid`` / ``invoice.payment_succeeded``, ``invoice.payment_failed``,
-``invoice.voided``, ``invoice.marked_uncollectible`` and ``credit_note.created``).
+Everything goes through the door that writes the invoice: Stripe's webhook (``invoice.paid`` /
+``invoice.payment_succeeded``, ``invoice.payment_failed``, ``invoice.voided``, ``invoice.marked_uncollectible``
+and ``credit_note.created``).
 
 Rules:
 - A paid Stripe invoice is ONE invoice, however many deliveries (``invoice.paid`` and
@@ -17,10 +12,9 @@ Rules:
 - The payer is sealed as it was that day; the qualification, rate, base and quota of every line too.
 - An unpaid one is listed without a number; paying it numbers that same row.
 - A credit note is a rectifying invoice of its own series, with negative amounts, pointing at the invoice.
-
-Changed from the old SaaS: one line per Stripe line (plan, modules, prorations), not one per invoice; the
-header is the sum of the lines; the queue to the AEAT is the platform hub (``test_platform_invoices``).
-Dropped: ``invoice_type`` (one kind of sale) and the module-purchase webhook (one subscription per business).
+- One line per Stripe line (plan, modules, prorations), each with its own fiscal snapshot, and the header is the
+  sum of the lines; the issued invoice keeps the VIES consultation number. The queue to the AEAT is the platform
+  hub's (``test_platform_invoices``).
 """
 
 import threading
@@ -55,7 +49,7 @@ YEAR = timezone.localdate().year
 @pytest.fixture(autouse=True)
 def _stripe(stripe_double, issuer_identity):
     stripe_double.answer("subscriptions.retrieve", subscription())
-    # A credit note is read LIVE before it becomes a rectifying invoice (a voided one never does, BILLING-F26).
+    # A credit note is read LIVE before it becomes a rectifying invoice (a voided one never does).
     stripe_double.answer("credit_notes.retrieve", lambda call: {"id": call.args[0], "object": "credit_note", "status": "issued"})
     return stripe_double
 
@@ -388,7 +382,7 @@ class TestTheVatOfEachSale:
 
 
 class TestVies_atInvoicing:
-    """At invoicing, the VAT number is judged as of the day it was charged (review of L3-C): the last proof VIES
+    """At invoicing, the VAT number is judged as of the day it was charged: the last proof VIES
     gave until then, even older than the 30 days a SALE trusts; VIES being down never puts Spanish VAT on an
     intra-EU B2B sale. Without any proof and with VIES down, the invoice waits: 500, Stripe retries."""
 
@@ -524,7 +518,7 @@ class TestAnUnpaidInvoiceIsListed:
 
 
 class TestEveryPaymentIsInvoiced:
-    """A paid Stripe invoice is never forgotten (review of L3-C): one of a business ERPlora knows is invoiced to
+    """A paid Stripe invoice is never forgotten: one of a business ERPlora knows is invoiced to
     it even when it is not its current subscription (the first invoice of a duplicate checkout, which is
     cancelled with its unused time as credit); one nobody can place is a 500 that Stripe retries, logged."""
 
@@ -551,7 +545,7 @@ class TestEveryPaymentIsInvoiced:
 
     def test_lines_that_do_not_add_up_to_the_charge_are_never_invoiced(self, running):
         """The invoice says what was charged or nothing: a 500 for Stripe's retry and support's eyes, no
-        number spent (review of L3-C)."""
+        number spent."""
         odd = invoice("in_odd", status="paid", lines=[invoice_line()])
         odd["total"] = 4000
 
@@ -614,7 +608,7 @@ class TestCreditNotes:
 
     def test_a_credit_note_ahead_of_its_invoice_waits_for_it(self, running):
         """Stripe does not order events: a credit note whose invoice is not recorded yet is a 500, retried
-        after ``invoice.paid`` (review of L3-C: never «unknown» and forgotten)."""
+        after ``invoice.paid`` (never «unknown» and forgotten)."""
         deliver(event("credit_note.created", credit_note()), status=500)
         assert not Invoice.objects.exists()
 
@@ -642,7 +636,7 @@ class TestCreditNotes:
 
 
 class TestAVoidedCreditNote:
-    """BILLING-F26, ``credit_note.voided`` (market-decision in PLAN-SAAS §13). Stripe voids a credit note only while its
+    """``credit_note.voided``. Stripe voids a credit note only while its
     invoice is OPEN, and a rectifying invoice is only recorded here for a PAID one: so the voided note is normally one
     whose ``credit_note.created`` is still waiting for its invoice. It must never become a rectifying invoice later:
     the note is read live before recording. A rectifying invoice already recorded (against Stripe's rule) is never
@@ -771,7 +765,7 @@ def test_two_businesses_paid_at_once_take_consecutive_numbers(
 
 def test_the_payer_and_the_owner_both_hear_of_a_new_invoice(running, owner, make_user, monkeypatch,
                                                            django_capture_on_commit_callbacks):
-    """Review of L3-C: an invoice is seen by its payer and by the owner of its business; when they are two
+    """An invoice is seen by its payer and by the owner of its business; when they are two
     accounts, both their Billing lists re-run after the COMMIT."""
     from live import operations
 

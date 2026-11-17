@@ -1,16 +1,15 @@
 {% load i18n %}
 {% comment %}
-  saas#1955: the axes that really change from plan to plan, in one partial (two hand-kept copies of
-  these cells is how a table whose rows all say the same thing comes back). Devices and users are
-  `_plan_limits.html`, shared with /download/. Port of apps/public/pricing/templates/pricing/_plan_compare_cells.html
-  (origin/develop) without its «Apps included» column: every plan includes every module (ronda 2026-10-24b, PLAN
-  §32) and `included_level` stays dormant off the public web; «Database throughput» is the plan's
-  `resources_label` (Ioan, 2026-10-15: the «resources» that grow from plan to plan are the database's input/output
-  capacity, in words; never an engine, a connection count nor a number). «AI assistant» and «WhatsApp» are
-  the messages a month the plan includes (PLAN-SAAS §3.6, 2026-10-15); 0 = «Not included». «Apps turned on at once» is
-  the plan's `max_apps`, the cap the Hub applies (hub#256): `apps_label`, the number or «Unlimited» for 0. «Own domain»
-  is `includes_custom_domain` (HUBS-F17, saas#301): only the business's public website, never the app; the column is
-  there while a plan on sale includes one (`custom_domain_column`, public/pricing.py).
+  The axes that really change from plan to plan, in one partial (two hand-kept copies of these cells
+  is how a table whose rows all say the same thing comes back). Devices and users are
+  `_plan_limits.html`, shared with /download/. No «Apps included» column: every plan includes every
+  module and `included_level` stays dormant off the public web. «Database throughput» is the plan's
+  `resources_label`: the «resources» that grow from plan to plan are the database's input/output
+  capacity, in words; never an engine, a connection count nor a number. «AI assistant» and
+  «WhatsApp» are the messages a month the plan includes; 0 = «Not included». «Apps turned on at once»
+  is the plan's `max_apps`, the cap the Hub applies: `apps_label`, the number or «Unlimited» for 0.
+  «Own domain» is `includes_custom_domain`: only the business's public website, never the app; the
+  column is there while a plan on sale includes one (`custom_domain_column`, public/pricing.py).
 {% endcomment %}
 <td data-title="{% trans 'Devices and users' %}">{% include "public/pricing/_plan_limits.html" %}</td>
 <td data-title="{% trans 'Apps turned on at once' %}">{{ plan.apps_label }}</td>

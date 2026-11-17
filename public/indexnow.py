@@ -1,13 +1,12 @@
-"""IndexNow: push the public URLs to Bing the day they change (spec §8.2).
+"""IndexNow: push the public URLs to Bing the day they change.
 
-Ported from ERPlora/saas ``apps/public/landing/indexnow.py`` (origin/develop c5ca8ca). Being allowed
-to crawl is not being crawled: a young domain waits weeks for a spontaneous recrawl, and IndexNow is
+Being allowed to crawl is not being crawled: a young domain waits weeks for a spontaneous recrawl, and IndexNow is
 one HTTP call that gets the page fetched in hours. ChatGPT search leans on Bing's index, so this is
 the shortest path from «we published a page» to «an assistant can cite it».
 
 Two halves, both mandatory: the key file at ``/<key>.txt`` (proof we control the domain) and the
 submission carrying the same key. With ``INDEXNOW_KEY`` empty the whole thing is inert on purpose.
-The daily run is the ``indexnow_submit`` command in a scheduled ECS task (PLAN §16.5).
+The daily run is the ``indexnow_submit`` command in a scheduled ECS task.
 """
 
 from __future__ import annotations
@@ -68,7 +67,7 @@ def submit_sitemap_urls(host: str) -> int:
 
     0 when there is nothing to do (no key, the legitimate state in development, or no URLs),
     logged. A rejected or unanswered submission raises ``SubmissionFailed`` after logging it: the
-    daily command turns it into a failed exit, the only thing its alarm sees (PUBLIC-F14)."""
+    daily command turns it into a failed exit, the only thing its alarm sees."""
     api_key = key()
     if not api_key:
         logger.info("indexnow: INDEXNOW_KEY is not set, nothing submitted")

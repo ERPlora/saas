@@ -1,11 +1,11 @@
 <script setup lang="ts">
 // The invitation (`/invitation`, where the invitation email leads; `/invitations/:id` from the banners
-// of the launcher and Businesses): mockups `invitation.html`, round 17 §2.8. A centred card, as the
+// of the launcher and Businesses). A centred card, as the
 // launcher, with every invitation waiting for the account's answer (the one asked for first): who
 // invites and as what, «Accept and enter» (into the business at once) and «Decline» (confirmed). None
 // waiting, or not the one asked for (expired after 7 days, already answered, sent to another email):
 // «This invitation is no longer valid», with the panel and «Create my own business».
-// Live data: `hubs.invitation.list_mine`, its states truthful (`useLiveState`, audit 2026-10-14 R-08): no answer
+// Live data: `hubs.invitation.list_mine`, its states truthful (`useLiveState`): no answer
 // in time is an error with «Retry», never a spinner for ever nor «no longer valid».
 import { HubIcon, useSession } from '@erplora/ui/shell';
 import { useLive } from '@erplora/ui/sdk';

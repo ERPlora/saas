@@ -1,4 +1,4 @@
-"""Only ``queries.py`` and ``services.py`` touch the ORM (plan §6, spec §5.1): the public web's
+"""Only ``queries.py`` and ``services.py`` touch the ORM: the public web's
 views, middlewares, helpers, template tags and commands read and write through operations.
 
 The scan walks every ``.py`` of ``public/`` (tests left out) and fails on a module that names a model:

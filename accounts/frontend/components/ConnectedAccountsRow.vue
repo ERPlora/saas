@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The «Google» row of Account → Security, «Sign-in» (mockups `account.html` «security»; U-63): the Google account
+// The «Google» row of Account → Security, «Sign-in» (mockups `account.html` «security»): the Google account
 // the person can sign in with (allauth.headless `account/providers`) and «Disconnect», confirmed with what changes;
 // or, unlinked, how it gets linked, with no button: Google is linked by signing in once with the Google of the
 // account's email, and the server refuses allauth's `process=connect` (`SocialAccountAdapter.pre_social_login`).

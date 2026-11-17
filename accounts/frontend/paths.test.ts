@@ -1,7 +1,7 @@
-// The panel's paths, named once (`paths.ts`). The launcher's: the sign-in lives there (round 19, PLAN-SAAS §3.7), so
+// The panel's paths, named once (`paths.ts`). The launcher's: the sign-in lives there, so
 // every page, component and the entry that sends a visitor to it imports `LAUNCHER` instead of spelling the path
-// under a name of its own (`LOGIN`, `SIGN_IN`, `HERE`…). The panel's pages live under `PANEL`, `/dashboard`
-// (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX): every page shown with the panel's menu, and nothing else (the launcher, the
+// under a name of its own (`LOGIN`, `SIGN_IN`, `HERE`…). The panel's pages live under `PANEL`, `/dashboard`:
+// every page shown with the panel's menu, and nothing else (the launcher, the
 // sign-in's pages and the invitations stay at the root). Only the `routes.ts` files spell the paths: they import types
 // only (main.test.ts), so they cannot import a value.
 import { readdirSync, readFileSync } from 'node:fs';
@@ -53,10 +53,10 @@ const withoutComments = (text: string) =>
 let code: ReadonlyArray<{ readonly file: string; readonly text: string }> = [];
 
 // Reads every file of the panel's frontends from the disk, so its time is the machine's: read again inside each
-// guardrail, it went past Vitest's 5 s (5.3 s) in `pnpm test` beside 20 busy cores (load ~70, 2026-10-28). Read once
-// here, with the limit of the guardrails that read the whole tree (60 s, vite.config.test.ts and
-// eslint.config.test.ts); each guardrail only searches it in memory (~1 ms) and keeps Vitest's 5 s. Starved (load ~65,
-// 2026-10-29) the two old reads took 85 s and 29 s and this one over 60 s: no limit holds that.
+// guardrail, it went past Vitest's 5 s in `pnpm test` on a busy machine. Read once here, with the limit of the
+// guardrails that read the whole tree (60 s, vite.config.test.ts and eslint.config.test.ts); each guardrail only
+// searches it in memory (~1 ms) and keeps Vitest's 5 s. On a starved machine even the one read goes over 60 s: no
+// limit holds that.
 beforeAll(() => {
   code = DIRS.flatMap(sources).map((path) => ({
     file: relative(SAAS_DIR, path),

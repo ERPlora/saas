@@ -1,7 +1,6 @@
 """Seed the cookie groups of the consent banner and of ``/cookies/`` (django-cookie-consent).
 
-Ported from ERPlora/saas ``apps/dashboard/core/management/commands/init_cookie_groups.py``
-(origin/develop c5ca8ca). The cookie policy is rendered from these rows, nothing is auto-discovered:
+The cookie policy is rendered from these rows, nothing is auto-discovered:
 a tracker gated by a group must declare its cookies here. Safe to run on every start (idempotent).
 
 Names and descriptions are stored in English, the source (``gettext_noop`` puts them in the
@@ -118,7 +117,7 @@ class Command(BaseCommand):
                     "description": description,
                     "is_required": is_required,
                     # The essential group is never deletable: `CleanCookiesMiddleware` reads only
-                    # `is_deletable`, and deleting the session cookie signs the person out (saas#975).
+                    # `is_deletable`, and deleting the session cookie signs the person out.
                     "is_deletable": not is_required,
                     "ordering": ordering,
                 },

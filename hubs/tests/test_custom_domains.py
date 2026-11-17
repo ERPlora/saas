@@ -1,6 +1,5 @@
-"""A business's own domain, its operations and its snapshot (HUBS-F17; PLAN-SAAS §37 point 2; ``aws`` README, «Dominio
-propio de un negocio»; hub#812). The hourly check that moves a domain between its states is
-``test_check_custom_domains.py``.
+"""A business's own domain, its operations and its snapshot (HUBS-F17; ``aws`` README, «Dominio propio de un
+negocio»). The hourly check that moves a domain between its states is ``test_check_custom_domains.py``.
 
 AWS is botocore's Stubber (``hubs/tests/conftest.py``): a call the test did not expect fails, so a test that expects none
 proves nothing reached AWS.
@@ -18,7 +17,9 @@ from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
 from live.models import OutboxEvent
 from live.operations import AI, INTERNAL, registry
 
-from hubs import domain_checks, events, queries, services
+from hubs import domain_checks, events
+from hubs.services import custom_domain_checks, custom_domain_requests, hub_push
+from hubs.queries import custom_domains, hub_sync
 from hubs.models import CustomDomain, Hub, HubMember, Plan, Subscription
 from hubs.schemas import ByIdIn, CustomDomainRequestIn
 from hubs.tests.conftest import DOMAIN, add_member, certificate_arn, create_business, ctx_for
@@ -29,7 +30,7 @@ HOST = "localhost:8001"
 
 
 def ask(user, hub, domain=DOMAIN):
-    return services.custom_domain_request(ctx_for(user), CustomDomainRequestIn(id=hub.id, domain=domain))
+    return custom_domain_requests.custom_domain_request(ctx_for(user), CustomDomainRequestIn(id=hub.id, domain=domain))
 
 
 def row_of(hub):
@@ -96,11 +97,11 @@ def test_a_renamed_business_keeps_the_name_its_cname_points_at(owner, standard_b
     """By its id, which is never taken again; a slug can be, and a CNAME left behind would prove it for a stranger."""
     settings.CUSTOM_DOMAINS_TARGET_TEMPLATE = "hub-{hub_id}.erplora.com"
     make_row(standard_business, validation_name="_a", validation_value="_b")
-    before = queries.custom_domain_get(ctx_for(owner), ByIdIn(id=standard_business.id)).domain.traffic.value
+    before = custom_domains.custom_domain_get(ctx_for(owner), ByIdIn(id=standard_business.id)).domain.traffic.value
 
     Hub.objects.filter(pk=standard_business.pk).update(slug="otra-direccion")
 
-    assert queries.custom_domain_get(ctx_for(owner), ByIdIn(id=standard_business.id)).domain.traffic.value == before
+    assert custom_domains.custom_domain_get(ctx_for(owner), ByIdIn(id=standard_business.id)).domain.traffic.value == before
 
 
 def test_asking_takes_the_row_of_the_business_so_two_requests_never_interleave(owner, standard_business, custom_domains_on):
@@ -132,7 +133,7 @@ def test_an_international_domain_goes_to_acm_in_its_ascii_form(owner, standard_b
 def test_the_validation_record_can_arrive_after_the_answer(owner, standard_business, custom_domains_on):
     """ACM takes some seconds: the wait is bounded, the row keeps the certificate and the record comes with the next read."""
     custom_domains_on.expect_request()
-    for _ in range(services.VALIDATION_RECORD_TRIES):
+    for _ in range(custom_domain_requests.VALIDATION_RECORD_TRIES):
         custom_domains_on.expect_describe(record=False)
 
     answer = ask(owner, standard_business)
@@ -416,7 +417,7 @@ def test_asking_records_its_event(owner, standard_business, custom_domains_on):
 
 
 def read(user, hub):
-    return queries.custom_domain_get(ctx_for(user), ByIdIn(id=hub.id))
+    return custom_domains.custom_domain_get(ctx_for(user), ByIdIn(id=hub.id))
 
 
 def test_reading_a_business_without_a_domain_says_it_can_ask(owner, standard_business, settings):
@@ -517,11 +518,11 @@ def test_two_businesses_read_their_own_domain(owner, standard_business, make_use
 
 
 def remove(user, hub):
-    return services.custom_domain_remove(ctx_for(user), ByIdIn(id=hub.id))
+    return custom_domain_requests.custom_domain_remove(ctx_for(user), ByIdIn(id=hub.id))
 
 
 def snapshot_domain(hub):
-    return queries.hub_snapshot(hub.id).get("custom_domain", "absent")
+    return hub_sync.hub_snapshot(hub.id).get("custom_domain", "absent")
 
 
 def test_removing_takes_it_out_of_the_snapshot_before_anything_else(
@@ -565,7 +566,7 @@ def test_removing_what_is_already_being_removed_says_nothing_new(
 def test_a_certificate_the_alb_holds_stays_for_the_next_check_and_the_row_with_it(
     owner, standard_business, custom_domains_on, hub_double, django_capture_on_commit_callbacks
 ):
-    """The row goes last, and that is what frees the name (ADR-0496)."""
+    """The row goes last, and that is what frees the name."""
     active_row(standard_business)
     custom_domains_on.expect_detach()
     custom_domains_on.acm.add_client_error("delete_certificate", "ResourceInUseException", "in use")
@@ -667,7 +668,7 @@ def test_removing_records_its_event(owner, standard_business, custom_domains_on)
 
 
 def test_a_business_without_a_domain_sends_a_snapshot_without_the_key(standard_business):
-    assert "custom_domain" not in queries.hub_snapshot(standard_business.id)
+    assert "custom_domain" not in hub_sync.hub_snapshot(standard_business.id)
 
 
 @pytest.mark.parametrize(
@@ -695,17 +696,17 @@ def test_a_snapshot_with_the_domain_is_what_the_hub_takes(standard_business, hub
     active_row(standard_business)
     Hub.objects.filter(pk=standard_business.pk).update(state_version=7, pushed_state_version=6)
 
-    assert services.sync_hub(standard_business.id) is True
+    assert hub_push.sync_hub(standard_business.id) is True
 
     assert hub_double.calls_to("PUT", "/state")[-1].body["custom_domain"] == DOMAIN
 
 
 def test_the_hub_refusing_a_domain_refuses_the_whole_snapshot(standard_business, hub_double):
-    """Why nothing it refuses may ever reach a row: this business would get no more snapshots at all (the double as hub#812)."""
+    """Why nothing it refuses may ever reach a row: this business would get no more snapshots at all."""
     make_row(standard_business, hostname="www.erplora.com", proven_at=timezone.now())
     Hub.objects.filter(pk=standard_business.pk).update(state_version=7, pushed_state_version=6)
 
-    assert services.sync_hub(standard_business.id) is False
+    assert hub_push.sync_hub(standard_business.id) is False
     assert Hub.objects.get(pk=standard_business.pk).pushed_state_version == 6
 
 
@@ -713,7 +714,7 @@ def test_the_snapshot_of_one_business_never_names_anothers_domain(standard_busin
     other = create_business(make_user("otra@example.com"), name="Otro")
     Subscription.objects.filter(hub=other).update(plan=Plan.objects.get(slug="standard"))
     active_row(standard_business)
-    assert "custom_domain" not in queries.hub_snapshot(other.id)
+    assert "custom_domain" not in hub_sync.hub_snapshot(other.id)
 
 
 # --- The doors --------------------------------------------------------------------------------------
@@ -749,7 +750,7 @@ def test_a_write_of_the_check_is_only_the_platforms(owner, standard_business):
 
     row = make_row(standard_business)
     with pytest.raises(PermissionDenied):
-        services.custom_domain_record(ctx_for(owner), CustomDomainRecordIn(id=row.id, expected_state="pending", reason=""))
+        custom_domain_checks.custom_domain_record(ctx_for(owner), CustomDomainRecordIn(id=row.id, expected_state="pending", reason=""))
 
 
 @pytest.mark.parametrize(

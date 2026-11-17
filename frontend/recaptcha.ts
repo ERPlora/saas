@@ -1,7 +1,7 @@
-// reCAPTCHA Enterprise in the browser, score-based and invisible (Ioan, 2026-10-22: «no se vea en la pantalla»): no
-// checkbox, no puzzle. Google's `enterprise.js` watches the page; on submit a form asks it for a token of its own
-// action (`grecaptcha.enterprise.execute(siteKey, {action})`) and sends it as `recaptcha_token`; the server asks
-// Google about it (live.recaptcha) and refuses a bot, a token of another form or none at all.
+// reCAPTCHA Enterprise in the browser, score-based and invisible: no checkbox, no puzzle. Google's `enterprise.js`
+// watches the page; on submit a form asks it for a token of its own action
+// (`grecaptcha.enterprise.execute(siteKey, {action})`) and sends it as `recaptcha_token`; the server asks Google
+// about it (live.recaptcha) and refuses a bot, a token of another form or none at all.
 //   - Our code inserts the script (CSP `'strict-dynamic'` trusts what a nonced script inserts) with the page's nonce
 //     too, for the public web, whose policy names Google's `/recaptcha/` paths instead (public/csp.py). On the SPA,
 //     Trusted Types: a script's address is a sink, and the page's `default` policy admits Google's two origins
@@ -9,7 +9,7 @@
 //     policy (CSP `trusted-types`, live.recaptcha.with_recaptcha).
 //   - The badge Google paints is hidden, which Google allows only with its notice near the form (the public web's
 //     public/partials/recaptcha_notice.html, the SPA's accounts/frontend/components/RecaptchaNotice.vue). The rule
-//     that hides it goes in with Google's script (`hideBadge`): reCAPTCHA off (the default since 2026-10-23) emits
+//     that hides it goes in with Google's script (`hideBadge`): reCAPTCHA off (the default) emits
 //     no CSS of it. Both CSPs admit inline styles (`style-src 'unsafe-inline'`, live.csp and public/csp.py).
 //   - A token that cannot be had (Google blocked by an extension, down, slower than `TOKEN_TIMEOUT_MS`) is no token:
 //     the form still goes, the server refuses it and says why («We could not check that you are a person»).

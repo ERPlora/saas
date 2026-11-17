@@ -1,4 +1,4 @@
-// reCAPTCHA Enterprise in the browser, score-based and invisible (Ioan, 2026-10-22: no checkbox, no puzzle): Google's
+// reCAPTCHA Enterprise in the browser, score-based and invisible (no checkbox, no puzzle): Google's
 // enterprise.js, inserted by our code with the page's nonce, and a token per form's action; the server asks Google
 // about it (live.recaptcha). The public web's forms say which action they are (`data-recaptcha-action`) and get the
 // token in `recaptcha_token` before their own checks run. A token that cannot be had (Google blocked, slow) leaves

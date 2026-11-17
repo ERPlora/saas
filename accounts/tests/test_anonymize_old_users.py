@@ -1,15 +1,14 @@
 """ACCOUNTS-F35 · ``manage.py anonymize_old_users``: the accounts unused for two years go (GDPR art. 5.1.e, storage
-limitation; ACCOUNTS-G97, G07, G52, G61). Weekly in ``saas-cron``.
+limitation). Weekly in ``saas-cron``.
 
-Ported from ERPlora/saas ``apps/auth/users/management/commands/anonymize_old_users.py`` and its test
-``test_anonymize_skips_hub_owners.py`` (saas#2567), with what the old one left behind (SAAS_AUTH-F15: the real email in
-the addresses, the names, the linked Google account and the sessions' addresses): an account goes as its owner deletes
-it (ACCOUNTS-F27), with all of that, and ERPlora's invoices stay with their recipient as issued.
+An account goes as its owner deletes
+it (ACCOUNTS-F27), with its addresses, its names, its linked Google account and its sessions' addresses, and
+ERPlora's invoices stay with their recipient as issued.
 
 Which: active, not staff, and its last sign-in (or, never signed in, its creation) more than ``--inactive-days`` (730)
 ago. Never one that belongs to a business that is not deleted, owner, payer or member: ``last_login`` only moves when
 signing in on erplora.com, so whoever works in a business every day (its session, its PIN) looks unused here, and
-erasing them would take them out of the business (the old SaaS spared only the owners). Google's policy for inactive
+erasing them would take them out of the business. Google's policy for inactive
 accounts spares the accounts of organisations the same way.
 """
 
@@ -22,8 +21,9 @@ from django.core.management import CommandError, call_command
 from django.db import connections
 from django.utils import timezone
 
-from accounts import events, services, signals
+from accounts import events, signals
 from accounts.models import ApiKey, UserPreferences
+from accounts.services import exclusive_runs, inactive_accounts
 from hubs.tests.conftest import add_member, create_business, plans  # noqa: F401 - the plans fixture
 
 pytestmark = pytest.mark.django_db
@@ -105,7 +105,7 @@ class TestWhichAccountsGo:
 
 
 class TestWhoeverBelongsToABusinessStays:
-    def test_the_owner_of_a_business_stays(self, plans):  # noqa: F811 - saas#2567
+    def test_the_owner_of_a_business_stays(self, plans):  # noqa: F811
         owner = _account("owner@example.com", last_login_days=900)
         create_business(owner, name="Panadería López")
 
@@ -180,14 +180,14 @@ class TestItGoesAsItsOwnerWouldDeleteIt:
     def test_a_sign_in_after_it_was_picked_keeps_it(self, monkeypatch):
         """The account is read again under its lock: a sign-in between the pick and the erasure saves it."""
         user = _account("back@example.com", last_login_days=900)
-        picked = services.inactive_account_ids
+        picked = inactive_accounts.inactive_account_ids
 
         def pick_then_sign_in(*args, **kwargs):
             ids = picked(*args, **kwargs)
             User.objects.filter(pk=user.pk).update(last_login=timezone.now())
             return ids
 
-        monkeypatch.setattr(services, "inactive_account_ids", pick_then_sign_in)
+        monkeypatch.setattr(inactive_accounts, "inactive_account_ids", pick_then_sign_in)
 
         assert "skipped_active=1" in _run()
         assert _exists(user)
@@ -206,14 +206,14 @@ class TestTheRun:
     def test_one_account_that_fails_never_stops_the_others_and_the_run_ends_in_error(self, monkeypatch):
         first = _account("first@example.com", last_login_days=900, joined_days=2000)
         second = _account("second@example.com", last_login_days=900, joined_days=1500)
-        erase = services.erase_inactive_account
+        erase = inactive_accounts.erase_inactive_account
 
         def failing(user_id, **options):
             if user_id == first.pk:
                 raise RuntimeError("boom")
             return erase(user_id, **options)
 
-        monkeypatch.setattr(services, "erase_inactive_account", failing)
+        monkeypatch.setattr(inactive_accounts, "erase_inactive_account", failing)
 
         with pytest.raises(CommandError, match="failed=1"):
             _run()
@@ -222,7 +222,7 @@ class TestTheRun:
     def test_a_second_run_while_one_holds_the_lock_does_nothing(self):
         user = _account("old@example.com", last_login_days=900)
         other = connections["default"].copy()
-        lock = [services.lock_name("anonymize_old_users")]
+        lock = [exclusive_runs.lock_name("anonymize_old_users")]
         try:
             with other.cursor() as cursor:
                 cursor.execute("SELECT pg_advisory_lock(hashtext(%s))", lock)
@@ -237,8 +237,8 @@ class TestTheRun:
         assert "already running" in output
         assert _exists(user)
         # Given back: the pool keeps the other session open, and a lock left in it stopped every later run of
-        # the process ("already running"; the billing prune test after the cleanup's twin, 2026-10-22).
-        assert _lock_is_free(services.lock_name("anonymize_old_users"))
+        # the process ("already running").
+        assert _lock_is_free(exclusive_runs.lock_name("anonymize_old_users"))
 
 
 def _lock_is_free(name: str) -> bool:

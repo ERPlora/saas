@@ -350,7 +350,7 @@ class ReportFields(Schema):
     question: str = Field(default="", max_length=200_000)
     answer: str = Field(min_length=1, max_length=200_000)
     #: Whether the answer's turn brought pages from the web (the ``web`` of its ``response`` frame); none, a caller
-    #: that does not say. Its text is then not mailed (Brave's terms, §3(b)(i)).
+    #: that does not say. Its text is then not mailed (section 3(b)(i) of Brave Search's terms).
     web: bool | None = None
 
 
@@ -370,7 +370,7 @@ class ReportOut(Schema):
     duplicate: bool
 
 
-# --- The documentation of the panel's assistant (ASSISTANT-F27) -------------------------------------------------
+# --- The documentation of the panel's assistant -------------------------------------------------
 
 DocSource = Literal["help", "app_doc", "workbook", "plans"]
 DocLanguage = Literal["en", "es"]
@@ -451,7 +451,7 @@ class DocsSearchIn(Schema):
 
 
 class DocsSearchDoorIn(DocsSearchIn, CallerIn):
-    """A search of the Hub's assistant (``POST /internal/assistant/docs/search``, ASSISTANT-F28): the business or the
+    """A search of the Hub's assistant (``POST /internal/assistant/docs/search``): the business or the
     demo in ``hub``, the person's question and the language of the documentation they read."""
 
     language: DocLanguage

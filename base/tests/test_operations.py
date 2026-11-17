@@ -1,4 +1,4 @@
-"""The context builder of saas-next: the scope is the signed-in user (PLAN §14.1, «SaaS → usuario»).
+"""The context builder of the SaaS: the scope is the signed-in user.
 
 Built from the request, never from the payload; refreshed before every live re-run, so a deleted or
 deactivated account, or a session that ended (a sign-out, «Close the other sessions», a new password),
@@ -172,7 +172,7 @@ def test_refresh_of_an_anonymous_context():
 @pytest.mark.django_db
 class TestASessionThatEnded:
     """A stream lives on the session it opened with; once that session ends, its next re-run ends it (``bye``,
-    401 ``base.session_ended``, the Hub's code, hub#190), and ``@erplora/ui`` takes the tab to the sign-in (ui#25)."""
+    401 ``base.session_ended``, the Hub's code), and ``@erplora/ui`` takes the tab to the sign-in."""
 
     @pytest.fixture
     def browser(self, ana, password):

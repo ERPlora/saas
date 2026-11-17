@@ -1,18 +1,18 @@
 """HUBS-F16: the owner changes the web address of a business (``hubs.business.change_address``).
 
-PLAN-SAAS §1.1, round 2026-10-15b: «Cambiar el subdominio … SE PORTA: Ajustes del negocio (dueño), validado contra
-``packages/live/live/slugs.py``; el Hub lo recibe en la foto». Cases from ERPlora/saas ``apps/dashboard/hubs/main``
-(origin/develop) ``change-subdomain`` and its flow SAAS_DASHBOARD-F10, whose trap this closes: the old door rewrote
-the address without moving the business, so it kept answering on the old one while erplora.com linked to the new.
-Here the address the Hub registers (``PUT /internal/hubs/{id}``) and the photo both carry the new one, and the old
-address stays the business's own: nobody else can take it and land the old links and QR codes.
+An old door rewrote the address without moving the business, so it kept answering on the old one while
+erplora.com linked to the new. Here the address the Hub registers (``PUT /internal/hubs/{id}``) and the snapshot
+both carry the new one, validated against ``live.slugs``, and the old address stays the business's own: nobody
+else can take it and land the old links and QR codes.
 """
 
 import pytest
 from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
 from live.models import OutboxEvent
 
-from hubs import events, queries, services
+from hubs import events
+from hubs.services import business_settings
+from hubs.queries import access_control, addresses, businesses, hub_sync
 from hubs.models import Hub
 from hubs.schemas import BusinessAddressIn, ByIdIn
 from hubs.tests.conftest import create_business, ctx_for, role_on
@@ -21,7 +21,7 @@ pytestmark = pytest.mark.django_db
 
 
 def change(user, hub, slug):
-    return services.business_change_address(ctx_for(user), BusinessAddressIn(id=hub.id, slug=slug))
+    return business_settings.business_change_address(ctx_for(user), BusinessAddressIn(id=hub.id, slug=slug))
 
 
 class TestChangeTheAddress:
@@ -33,12 +33,12 @@ class TestChangeTheAddress:
         business.refresh_from_db()
 
         assert (business.slug, business.previous_slug) == ("casa-manolo", "bar-manolo")
-        assert detail.host == queries.host_of("casa-manolo")
+        assert detail.host == access_control.host_of("casa-manolo")
         # The Hub registers it (the registry) and the photo carries it: both owed and pushed after the COMMIT.
         assert business.pending_hub_call == "put"
         assert business.registry_version == before["registry_version"] + 1
         assert business.state_version == before["state_version"] + 1
-        assert queries.hub_registry(business.id)["slug"] == "casa-manolo"
+        assert hub_sync.hub_registry(business.id)["slug"] == "casa-manolo"
 
     def test_it_records_its_event(self, business, owner):
         change(owner, business, "casa-manolo")
@@ -75,7 +75,7 @@ class TestTheOldAddressStaysTheBusinesss:
             change(other.members.get().user, other, "bar-manolo")
 
         assert refused.value.code == "hubs.slug_taken"
-        assert queries.free_slug("Bar Manolo") == "bar-manolo-2"
+        assert addresses.free_slug("Bar Manolo") == "bar-manolo-2"
 
     def test_the_business_can_go_back_to_it(self, business, owner):
         change(owner, business, "casa-manolo")
@@ -136,7 +136,7 @@ class TestRefusals:
 
 class TestThePageSaysWhoMay:
     def test_only_the_owner_gets_the_button(self, business, team):
-        get = queries.business_get
+        get = businesses.business_get
 
         assert get(ctx_for(team["owner"]), ByIdIn(id=business.id)).can.change_address is True
         assert get(ctx_for(team["admin"]), ByIdIn(id=business.id)).can.change_address is False
@@ -144,4 +144,4 @@ class TestThePageSaysWhoMay:
     def test_not_on_a_deleted_business(self, business, owner):
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
 
-        assert queries.business_get(ctx_for(owner), ByIdIn(id=business.id)).can.change_address is False
+        assert businesses.business_get(ctx_for(owner), ByIdIn(id=business.id)).can.change_address is False

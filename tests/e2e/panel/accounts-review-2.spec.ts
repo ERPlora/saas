@@ -2,15 +2,20 @@
 // flow: ACCOUNTS-F34 ACCOUNTS-F36 ACCOUNTS-F38 ACCOUNTS-F43 ACCOUNTS-F47
 // The review of the `hecho` flows of «the user menu, the data and the deletion of the account, the jump to a business
 // and back, the API keys and their documentation, the audit log, reporting a problem and the panel's platform»
-// (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-7, the second half of the review after accounts-review): every
-// screen of those flows in English AND in Spanish, at the three sizes of the migration (language-review.ts). The flows
+// (accounts/WORKBOOK.md, the second half of the review after accounts-review): every
+// screen of those flows in English AND in Spanish, at the three sizes (language-review.ts). The flows
 // themselves are played by accounts-profile, accounts-jump, accounts-keys, accounts-report and accounts-platform (in
 // English); here each screen is checked in the language the person reads. The flows without a screen (F32, F35,
 // F37, F39–F41, F45, F46) have their integration tests; F42's pages and F43's maintenance page and F46's mails are
 // painted in both languages by public-errors, accounts-platform and accounts-mails.
 // Accounts of this spec: `e2e-acc7-…@example.com`, removed before and after, with their businesses.
-import { djangoPrint, expect, openMenu, signIn, signInThroughPage, test, watchPageErrors } from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
 import { closeOverlays, LANGUAGES, type Lang, openUserMenu, reviewOf, t } from './language-review';
+import { watchPageErrors } from './page-events';
+import { openMenu } from './screen';
+import { signIn, signInThroughPage } from './session';
 
 const PREFIX = 'e2e-acc7-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
@@ -46,46 +51,24 @@ const ADMIN: Record<Lang, Record<string, string>> = {
 
 const address = (name: string, lang: Lang) => `${PREFIX}${name}-${lang}-${Date.now()}@example.com`;
 
-function removeAccounts(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from base.models import SiteSettings',
-      'from hubs.models import Hub',
-      'SiteSettings.objects.update(maintenance_mode=False, maintenance_message_en="", maintenance_message_es="")',
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
+async function removeAccounts(): Promise<void> {
+  await djangoPrintWarm('from base.models import SiteSettings\nSiteSettings.objects.update(maintenance_mode=False, maintenance_message_en="", maintenance_message_es="")');
+  await removeAccountsWarm(PREFIX);
 }
 
 /** An account speaking `lang`, its address proven; `superuser` and `team` make it ERPlora's admin or a team account. */
-function createAccount(
-  email: string,
-  lang: Lang,
-  role: 'customer' | 'superuser' | 'team' = 'customer',
-): { email: string; password: string } {
-  const create = {
-    customer: `get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", first_name="Lucía", last_name="Fernández", language="${lang}")`,
-    superuser: `services.create_platform_user("${email}", services.PLATFORM_ADMIN, "${PASSWORD}")[0]`,
-    team: `services.create_platform_user("${email}", services.PLATFORM_SUPPORT, "${PASSWORD}")[0]`,
-  }[role];
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      'from accounts import services',
-      `user = ${create}`,
-      `user.language = "${lang}"; user.save(update_fields=["language"])`,
-      'EmailAddress.objects.update_or_create(user=user, email=user.email, defaults={"verified": True, "primary": True})',
-    ].join('\n'),
+const createAccount = (email: string, lang: Lang, role: 'customer' | 'superuser' | 'team' = 'customer') =>
+  createAccountWarm(
+    email,
+    PASSWORD,
+    role === 'customer'
+      ? { firstName: 'Lucía', lastName: 'Fernández', language: lang }
+      : { role: role === 'superuser' ? 'platform-admin' : 'platform-support', language: lang },
   );
-  return { email, password: PASSWORD };
-}
 
 /** A business `email` owns (hubs' own fixture, as accounts-profile builds it). */
-function ownBusiness(email: string, name: string): void {
-  djangoPrint(
+async function ownBusiness(email: string, name: string): Promise<void> {
+  await djangoPrintWarm(
     [
       'from django.contrib.auth import get_user_model',
       'from hubs.tests.conftest import create_business',
@@ -107,8 +90,8 @@ for (const { lang, locale } of LANGUAGES) {
       page,
     }) => {
       const errors = watchPageErrors(page);
-      const account = createAccount(address('panel', lang), lang);
-      ownBusiness(account.email, 'Panadería de Lucía');
+      const account = await createAccount(address('panel', lang), lang);
+      await ownBusiness(account.email, 'Panadería de Lucía');
       await signIn(page.request, account);
 
       await page.goto('/dashboard/businesses');
@@ -141,7 +124,7 @@ for (const { lang, locale } of LANGUAGES) {
       });
 
       // Its business deleted (90 days to recover it): nothing holds it, and the dialog says what goes.
-      djangoPrint(
+      await djangoPrintWarm(
         [
           'from django.utils import timezone',
           'from hubs.models import Hub',
@@ -173,7 +156,7 @@ for (const { lang, locale } of LANGUAGES) {
       page,
     }) => {
       const errors = watchPageErrors(page);
-      const account = createAccount(address('keys', lang), lang);
+      const account = await createAccount(address('keys', lang), lang);
       await signIn(page.request, account);
 
       await page.goto('/dashboard/account/api-keys');
@@ -237,8 +220,8 @@ for (const { lang, locale } of LANGUAGES) {
       page,
     }) => {
       const errors = watchPageErrors(page);
-      const root = createAccount(address('root', lang), lang, 'superuser');
-      const teammate = createAccount(address('team', lang), lang, 'team');
+      const root = await createAccount(address('root', lang), lang, 'superuser');
+      const teammate = await createAccount(address('team', lang), lang, 'team');
       await signIn(page.request, root);
 
       await page.goto('/admin/accounts/apikey/add/');
@@ -298,7 +281,7 @@ for (const { lang, locale } of LANGUAGES) {
           await expect(page.locator('.messagelist')).toContainText(ADMIN[lang].maintenanceOff);
         });
       } finally {
-        djangoPrint('from base.models import SiteSettings\nSiteSettings.objects.update(maintenance_mode=False)');
+        await djangoPrintWarm('from base.models import SiteSettings\nSiteSettings.objects.update(maintenance_mode=False)');
       }
       expect(errors).toEqual([]);
     });
@@ -309,7 +292,7 @@ for (const { lang, locale } of LANGUAGES) {
       baseURL,
     }) => {
       const errors = watchPageErrors(page);
-      const stranger = createAccount(address('stranger', lang), lang);
+      const stranger = await createAccount(address('stranger', lang), lang);
       await signIn(page.request, stranger);
       const hub = `${PREFIX}not-mine`;
 
@@ -357,7 +340,7 @@ for (const { lang, locale } of LANGUAGES) {
 
     test(`ACCOUNTS-F38 (${lang}): «Report a problem» from the user menu, sent, and back`, async ({ page }) => {
       const errors = watchPageErrors(page);
-      const account = createAccount(address('report', lang), lang);
+      const account = await createAccount(address('report', lang), lang);
       await signIn(page.request, account);
 
       await page.goto('/dashboard/account/security');

@@ -1,6 +1,6 @@
 """The account, businesses, subscriptions and invoices Billing's spec opens (billing.spec.ts).
 
-``uv run python tests/e2e/panel/billing_seed.py seed|clear`` from saas-next/, against the local database of
+``uv run python tests/e2e/panel/billing_seed.py seed|clear`` from the repo, against the local database of
 ``.env`` (development only: a known password, refused without ``DEBUG``). ``seed`` starts from ``clear``.
 Rows are written with the ORM (nothing is pushed to the Hub, nothing reaches Stripe): the spec plays Stripe's
 pages and the platform hub at their boundaries.

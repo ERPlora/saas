@@ -1,6 +1,6 @@
 """Keep the AI providers' keys of the environment encrypted in the database (ASSISTANT-F09).
 
-Reads ``OPENAI_API_KEY``, ``ANTHROPIC_API_KEY``, ``GEMINI_API_KEY`` and ``DEEPSEEK_API_KEY`` (``config/settings.py``) and
+Reads ``OPENAI_API_KEY``, ``ANTHROPIC_API_KEY``, ``GEMINI_API_KEY`` and ``DEEPSEEK_API_KEY`` (``config/settings/assistant.py``) and
 keeps each one in its provider through ``assistant.credential.import`` as the platform, adding the provider if missing. A
 key already kept with the label stays unless ``--force``. It never prints a key, only its last four characters.
 

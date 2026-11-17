@@ -1,10 +1,8 @@
 """``/about/``, ``/collaborate/`` and the «coming soon» pages ``/blog/``, ``/careers/`` and ``/press/``
 (not indexed).
 
-Port of ``apps/public/company/views.py`` (origin/develop c5ca8ca). ``/company/`` is a permanent
-redirect to ``/about/`` in ``public/urls.py`` (external and cached links, issue #547);
-``/developers/`` is gone with the third-party marketplace (spec §8.3). ``/collaborate/`` reads the
-plans and the taxonomy through the operations of ``hubs`` (plan §3.m, L7).
+``/company/`` is a permanent redirect to ``/about/`` in ``public/urls.py``, for external and cached
+links. ``/collaborate/`` reads the plans and the taxonomy through the operations of ``hubs``.
 """
 
 from django.http import HttpRequest, HttpResponse
@@ -39,11 +37,9 @@ def press(request: HttpRequest) -> HttpResponse:
 def collaborate(request: HttpRequest) -> HttpResponse:
     """The collaborator programme: a year free on a paid plan for the experts who shape the apps.
 
-    The old view read ``Plan.objects.filter(slug="starter")``: a plan off sale or internal would
-    still be offered (WORKFLOW F63). The year is now valued at the cheapest PAID plan a visitor can
-    sign up for, from the plans on sale; the cheapest of all is the Free plan, and «valued at €0» says
-    nothing. Without a paid plan on sale, no value is stated. The year is what a year of it costs: its annual
-    price, or twelve monthly payments when it has none (PUBLIC-F10).
+    The year is valued at the cheapest PAID plan a visitor can sign up for, from the plans on sale, so
+    a plan off sale or internal is never offered; the cheapest of all is the Free plan, and «valued at
+    €0» says nothing. Without a paid plan on sale, no value is stated.
     """
     plans = pricing.plans_on_sale(request)
     price = pricing.cheapest_paid_price(plans)

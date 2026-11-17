@@ -1,6 +1,6 @@
 """A business handed over with a paid plan (HUBS-F28, «mover el pagador»): who pays from the hand-over.
 
-The market's way (Wix, Shopify, Lightspeed, Squarespace, Fresha; round proposed in APP-HUBS-3): the plan is the
+The market's way (Wix, Shopify, Lightspeed, Squarespace, Fresha): the plan is the
 business's and goes with it; the payment method does not. So:
 
 - accepting the hand-over stops the renewal on the previous payer's card (Stripe ``cancel_at_period_end``): the
@@ -33,7 +33,7 @@ from billing.tests.stripe_double import (
     item,
     subscription,
 )
-from hubs import services as hub_services
+from hubs.services import billing_profiles, ownership
 from hubs.models import Hub, HubMember, HubOwnershipTransfer, Subscription
 from hubs.schemas import BillingProfileIn, ByIdIn, OwnershipTransferIn
 from hubs.tests.conftest import add_member
@@ -57,12 +57,12 @@ def hand_over(hub, owner, heir):
     if not HubMember.objects.filter(hub=hub, user=heir).exists():
         add_member(hub, heir, HubMember.Role.ADMIN)
     member = HubMember.objects.get(hub=hub, user=heir)
-    offer = hub_services.ownership_transfer(hub_ctx(owner), OwnershipTransferIn(hub_id=hub.id, member_id=member.id))
-    return hub_services.ownership_accept(hub_ctx(heir), ByIdIn(id=offer.id))
+    offer = ownership.ownership_transfer(hub_ctx(owner), OwnershipTransferIn(hub_id=hub.id, member_id=member.id))
+    return ownership.ownership_accept(hub_ctx(heir), ByIdIn(id=offer.id))
 
 
 def says_who_pays(heir, hub, name="Hugo SL"):
-    hub_services.billing_profile_update(
+    billing_profiles.billing_profile_update(
         hub_ctx(heir),
         BillingProfileIn(hub_id=hub.id, billing_name=name, billing_country="ES", billing_postal_code="28002"),
     )

@@ -1,5 +1,4 @@
-"""The audit trail of the billing models (django-auditlog; ACCOUNTS-F36, PLAN-SAAS §1.1). Registered from
-``BillingConfig.ready``.
+"""The audit trail of the billing models (django-auditlog), registered from ``BillingConfig.ready``.
 
 Who changed what ERPlora charges and how (the VAT rules and their categories, the fiscal policy, ERPlora's company data
 on the invoices, the promo codes) and what Stripe did to a business's money (a checkout, a promo code used, an unpaid

@@ -1,14 +1,14 @@
 """Queries of fiscal: the business's authorisation as its page shows it (``fiscal.representation.status``) and
-as its snapshot tells the Hub (``snapshot_block``; plan 2026-10-15, «Contrato»).
+as its snapshot tells the Hub (``snapshot_block``).
 
 Both read the same state (``_current``): the authorisation in force if there is one (a newer upload waiting or
-returned never takes it away, as in the old product); else the one waiting for review (what happens next,
+returned never takes it away); else the one waiting for review (what happens next,
 even after a later withdrawal of an older one); else the version that changed last (sent, reviewed or
 withdrawn; on a tie, the newer version), so a withdrawal after a newer version was returned reads
 «withdrawn»; «none» without any. Neither reads the documents (a live query re-runs after every change, and the encrypted megabytes are the
 admin's alone).
 
-``hubs.queries.hub_snapshot`` imports this module, so this one never imports ``hubs.queries`` at its top (that
+``hubs.queries.hub_sync`` imports this module, so this one never imports ``hubs.queries`` at its top (that
 would be a cycle): it reads ``hubs.models`` only, and ``access``/``account_of`` inside the operation.
 """
 
@@ -98,8 +98,8 @@ def representation_status(
 ) -> dict[str, Any]:
     """The business's authorisation, for its owner and admins (as ``hubs.business.get``: 404 without access,
     403 below admin)."""
-    # Inside: hubs.queries imports this module for the snapshot (see the module's docstring).
-    from hubs.queries import access, account_of
+    # Inside: hubs.queries.hub_sync imports this module for the snapshot (see the module's docstring).
+    from hubs.queries.access_control import access, account_of
 
     access(account_of(ctx), data.id, HubMember.Role.ADMIN)
     rows = _rows(data.id)
@@ -157,7 +157,7 @@ def representation_status(
 
 
 def snapshot_block(hub_id: UUID) -> dict[str, Any]:
-    """``verifactu.representation`` of the business's snapshot (``hubs.queries.hub_snapshot``): its state,
+    """``verifactu.representation`` of the business's snapshot (``hubs.queries.hub_sync.hub_snapshot``): its state,
     when it last changed (ISO 8601) and the staff's note of a returned or withdrawn one. Never a document, a
     name nor a tax ID."""
     rows = _rows(hub_id)

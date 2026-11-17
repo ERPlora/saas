@@ -1,15 +1,14 @@
-"""The public web's Content Security Policy (spec §8.2).
+"""The public web's Content Security Policy.
 
-Ported from ERPlora/saas ``apps/public/csp.py`` (origin/develop c5ca8ca). The account panel (the
-SPA) and the sign-in pages keep the global policy of ``live.csp`` (``settings.SECURE_CSP``, with
+The account panel (the SPA) and the sign-in pages keep the global policy of ``live.csp`` (``settings.SECURE_CSP``, with
 ``'strict-dynamic'`` and Trusted Types). The public web's pages are server templates that load one
 Vite entry (``frontend/public.ts``) by nonce from this origin and swap no script in at runtime, so
 they need neither: ``'strict-dynamic'`` disables host allowlisting (it blocked the script an edge
-injects with no nonce, saas#1559) and Trusted Types blocks Ionic's ``ion-icon`` SVG sink (saas#1560).
+injects with no nonce) and Trusted Types blocks Ionic's ``ion-icon`` SVG sink.
 
 ``PublicCSPMiddleware`` sets ``response._csp_config``, the override Django's
 ``ContentSecurityPolicyMiddleware`` reads, so it sits after that one in ``MIDDLEWARE``. The policy
-is always enforced: saas-next has no report-only toggle. A public view that set its own override keeps
+is always enforced: there is no report-only toggle. A public view that set its own override keeps
 it: ``/demo/`` and ``/demo/enter/`` (public/demo.py) widen ``form-action`` to the hubs' origin, where their
 form (or the redirect that answers it) goes.
 """
@@ -58,11 +57,11 @@ def _origin(url: str) -> str:
 def public_policy() -> dict[str, list[str]]:
     """The public web's policy, a fresh dict on every call, read from the settings of the moment.
 
-    No CDN (OutfitKit and Iconify's API are gone) and no Stripe (the public web no longer charges).
-    Google Analytics and Clarity, which the templates load only after the analytical consent. The
+    No CDN and no Stripe (the public web charges nothing). Google Analytics and Clarity, which the
+    templates load only after the analytical consent. The
     Hub's static origin (``HUB_STATIC_BASE_URL``) serves the apps' documentation images; locally it
     is ``http://``, which ``https:`` does not cover. ``ipc:`` keeps the Tauri app's hardware bridge.
-    Switched on (``RECAPTCHA_ENABLED``; off by default since 2026-10-23), reCAPTCHA Enterprise's scripts, frames and
+    Switched on (``RECAPTCHA_ENABLED``, off by default), reCAPTCHA Enterprise's scripts, frames and
     connection (``live.recaptcha.with_recaptcha``): the contact form and the demo ask Google whether a person sent
     them. Off, nothing of it.
     """
@@ -99,7 +98,7 @@ def is_public(request: HttpRequest, response: HttpResponse | None = None) -> boo
     """Whether ``response`` answers a page of the public web.
 
     By the ``public`` namespace, by the URL name of a namespace-less public route, or any 404 that
-    matched no pattern at all (Django sets no ``resolver_match`` then, saas#1827): the 404 page is
+    matched no pattern at all (Django sets no ``resolver_match`` then): the 404 page is
     the public web's. A non-404 without ``resolver_match`` is an early middleware short-circuit and
     stays out.
     """

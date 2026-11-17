@@ -1,9 +1,9 @@
-"""Data: Standard's card stops selling a custom domain nobody can connect (saas#233; PLAN-SAAS §8, round 2026-10-22).
+"""Data: Standard's card stops selling a custom domain nobody can connect.
 
 0013 seeded Standard with «For growing businesses: your own domain, …» and the line «Custom domain
-(erp.yourbusiness.com)», which 0021 kept. No business can connect a domain: HUBS-F17 is ``descartado`` until saas#195
-brings its three pieces at once (the check in erplora.com, the certificate on the load balancer and the Hub serving the
-business's public website on it), and then only for the public website, never the app. The public web, the plan's
+(erp.yourbusiness.com)», which 0021 kept. No business could connect a domain then: that needs three pieces at once (the
+check in erplora.com, the certificate on the load balancer and the Hub serving the business's public website on it),
+and then only for the public website, never the app. The public web, the plan's
 detail page and the Store paint these columns, so from here they say only what Standard gives. The gate
 (``includes_custom_domain``), the plans, their prices and their limits do not move.
 

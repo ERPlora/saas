@@ -1,11 +1,11 @@
-// The public web of erplora.com, flow by flow (APP-PUBLIC-1, public/WORKBOOK.md PUBLIC-F01…F14), in a real
+// The public web of erplora.com, flow by flow (public/WORKBOOK.md PUBLIC-F01…F14), in a real
 // Chrome under the production CSP with zero violations: the home, the plans and the price painted against the
 // price of each plan's page, the industries, the product pages, what the web promises, /compliance/, the
 // company pages, every «Start free» down to the sign-in, the «coming soon» pages and the retired addresses,
 // the footer's language switcher, and robots, the sitemap, llms.txt and the structured data. Each screen is
-// captured at 390×844, 834×1112 and 1440×900 as `APP-PUBLIC-1-<key>-<width>.png` in `.artifacts/`.
-// flow: PUBLIC-G30 PUBLIC-G31 PUBLIC-G32 PUBLIC-G33 PUBLIC-G34 PUBLIC-G35 PUBLIC-G36 PUBLIC-G37 PUBLIC-G42
-// flow: PUBLIC-G48 PUBLIC-G49 PUBLIC-G50 PUBLIC-G51 PUBLIC-G52
+// captured at 390×844, 834×1112 and 1440×900 in `.artifacts/`.
+// flow: PUBLIC-F01 PUBLIC-F02 PUBLIC-F03 PUBLIC-F04 PUBLIC-F05 PUBLIC-F06 PUBLIC-F07 PUBLIC-F08 PUBLIC-F09
+// flow: PUBLIC-F10 PUBLIC-F11 PUBLIC-F12 PUBLIC-F13 PUBLIC-F14
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -56,7 +56,7 @@ async function watch(page: Page) {
   };
 }
 
-/** The page at the three viewports, each loaded afresh, captured whole as `APP-PUBLIC-1-<key>-<width>.png`. */
+/** The page at the three viewports, each loaded afresh and captured whole. */
 async function captureEverywhere(page: Page, path: string, key: string, ready: (page: Page) => Promise<void>) {
   mkdirSync(ARTIFACTS, { recursive: true });
   for (const viewport of VIEWPORTS) {
@@ -79,7 +79,7 @@ test.beforeAll(() => {
 // Reduced motion paints every revealed block at once, so a full-page capture shows the whole page (as public-dark.spec.ts).
 test.use({ locale: 'en-GB', reducedMotion: 'reduce' });
 
-test('PUBLIC-G30 the home shows the product, its apps, its plans and its three doors', async ({ page }) => {
+test('PUBLIC-F01 the home shows the product, its apps, its plans and its three doors', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/', 'PUBLIC-G30', async (p) => {
@@ -93,7 +93,7 @@ test('PUBLIC-G30 the home shows the product, its apps, its plans and its three d
   await clean('/');
 });
 
-test('PUBLIC-G49 the home and the plans promise only what the product does', async ({ page }) => {
+test('PUBLIC-F07 the home and the plans promise only what the product does', async ({ page }) => {
   const clean = await watch(page);
   await page.goto('/');
 
@@ -106,7 +106,7 @@ test('PUBLIC-G49 the home and the plans promise only what the product does', asy
   for (const claim of ['v3.4', 'QuickBooks', 'HR and payroll', 'Support tickets', 'Healthcare']) {
     await expect(page.getByText(claim, { exact: false })).toHaveCount(0);
   }
-  // Every plan includes all the apps (ronda 2026-10-24b, PLAN §32): the home sells no tier of apps.
+  // Every plan includes all the apps: the home sells no tier of apps.
   await expect(page.locator('#planes .ep-section-sub')).toHaveText(
     'Every plan includes all the apps. Paid plans add unlimited devices, more capacity and higher AI and WhatsApp quotas.',
   );
@@ -122,20 +122,20 @@ test('PUBLIC-G49 the home and the plans promise only what the product does', asy
   await clean('/ and /pricing/');
 });
 
-test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under More capacity, the annual saving worked out and the storage answer', async ({ page }) => {
+test('PUBLIC-F02 the plans: a card per plan on sale, the upgrade-only ones under More capacity, the annual saving worked out and the storage answer', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/pricing/', 'PUBLIC-G31', async (p) => {
-    // Three plans to sign up on, then the three upgrade-only ones under «More capacity» (Ioan, 2026-10-24).
+    // Three plans to sign up on, then the three upgrade-only ones under «More capacity».
     await expect(p.locator('.ep-pricing-card')).toHaveCount(6);
     await expect(p.locator('#more-capacity .ep-pricing-card')).toHaveCount(3);
     await expect(p.locator('#more-capacity a.ep-button[href="/launch"]')).toBeVisible();
-    // The table gained a column (the apps turned on at once, hub#256): it still fits its surface at every width.
+    // With its column of the apps turned on at once, the table still fits its surface at every width.
     const spill = await p.locator('#plan-compare').evaluate((table) => table.scrollWidth - (table.parentElement?.clientWidth ?? 0));
     expect(spill, `the plan table spills out of its surface at ${p.viewportSize()?.width}px`).toBeLessThanOrEqual(0);
   });
 
-  // More capacity (PLAN-SAAS §9): Pro, Enterprise and Max from their rows, each saying when it opens instead of a
+  // More capacity: Pro, Enterprise and Max from their rows, each saying when it opens instead of a
   // sign-up button, and one call to action to start free.
   const more = page.locator('#more-capacity');
   await expect(more.getByRole('heading', { level: 2 })).toHaveText('More capacity');
@@ -149,7 +149,7 @@ test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under
   await expect(table.locator('tbody strong')).toHaveText(['Free', 'Starter', 'Standard', 'Pro', 'Enterprise', 'Max']);
   await expect(table.getByText('Available once you are on Starter')).toHaveCount(3);
   await expect(page.getByText('all your locations', { exact: false })).toHaveCount(0);
-  // Every plan includes all the apps (PLAN §32): no tier of apps on the page, no «Apps included» column.
+  // Every plan includes all the apps: no tier of apps on the page, no «Apps included» column.
   await expect(page.getByText('Every plan includes all the apps. Paid plans add unlimited devices', { exact: false })).toBeVisible();
   await expect(table.locator('thead th')).toHaveCount(10);
   await expect(table.locator('thead th', { hasText: 'Apps included' })).toHaveCount(0);
@@ -158,7 +158,7 @@ test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under
   const starter = page.locator('.ep-pricing-card', { has: page.locator('.ep-pricing-card__name', { hasText: 'Starter' }) });
   await expect(starter).toContainText('€29.99');
   await expect(starter).toContainText('≈ €299.90/year · 2 months free');
-  // The apps a business may turn on at once, the cap the Hub applies (hub#256), read from each plan's row: a column
+  // The apps a business may turn on at once, the cap the Hub applies, read from each plan's row: a column
   // next to the devices and users, and a line of every card right after what the plan includes.
   await expect(table.locator('thead th').nth(3)).toHaveText('Apps turned on at once');
   await expect(table.locator('thead th').nth(2)).toHaveText('Devices and users');
@@ -177,14 +177,15 @@ test('PUBLIC-G31 the plans: a card per plan on sale, the upgrade-only ones under
   await page.locator('ion-accordion[value="storage"] ion-item').click();
   const storage = page.locator('ion-accordion[value="storage"] [slot="content"]');
   await expect(storage).toContainText('if its European provider is unavailable');
-  // The assistant's voice provider is a transfer too (privacy policy §6): «the one exception» no longer holds.
+  // The assistant's voice provider is a transfer too (section 6 of the privacy policy): «the one exception» no longer
+  // holds.
   await expect(storage).toContainText('transcribing a voice dictation');
   await expect(storage).not.toContainText('The one exception');
   await expect(storage.getByRole('link', { name: 'Read the privacy policy' })).toHaveAttribute('href', '/legal/privacy/');
   await clean('/pricing/');
 });
 
-test('PUBLIC-G32 PUBLIC-G33 a plan page paints the price of its card', async ({ page }) => {
+test('PUBLIC-F03 PUBLIC-F04 a plan page paints the price of its card', async ({ page }) => {
   const clean = await watch(page);
   await page.goto('/pricing/');
   const painted = await page
@@ -204,7 +205,7 @@ test('PUBLIC-G32 PUBLIC-G33 a plan page paints the price of its card', async ({ 
   await clean('/pricing/standard/');
 });
 
-test('PUBLIC-G34 the industries: the list, one business type and its links', async ({ page }) => {
+test('PUBLIC-F05 the industries: the list, one business type and its links', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/industries/', 'PUBLIC-G34', async (p) => {
@@ -220,7 +221,7 @@ test('PUBLIC-G34 the industries: the list, one business type and its links', asy
   await clean('/industries/');
 });
 
-test('PUBLIC-G35 PUBLIC-G50 features, security and updates say what runs', async ({ page }) => {
+test('PUBLIC-F06 PUBLIC-F08 features, security and updates say what runs', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/features/', 'PUBLIC-G35', async (p) => {
@@ -236,13 +237,13 @@ test('PUBLIC-G35 PUBLIC-G50 features, security and updates say what runs', async
     await expect(page.getByText(claim, { exact: false })).toHaveCount(0);
   }
   await page.locator('a.ep-button', { hasText: 'Contact Security Team' }).click();
-  // The form opens on the security topic (PUBLIC-G40, APP-PUBLIC-2).
+  // The form opens on the security topic (PUBLIC-F17).
   await expect(page).toHaveURL(/\/contact\/\?subject=security$/);
   await expect(page.locator('form[action="/contact/submit/"]')).toBeVisible();
   await clean('/security/ → /contact/');
 });
 
-test('PUBLIC-G36 compliance: the countries, the one connected and the rest, from the footer', async ({ page }) => {
+test('PUBLIC-F09 compliance: the countries, the one connected and the rest, from the footer', async ({ page }) => {
   const clean = await watch(page);
   await page.goto('/');
   await page.locator('footer a[href="/compliance/"]').click();
@@ -259,7 +260,7 @@ test('PUBLIC-G36 compliance: the countries, the one connected and the rest, from
   await clean('/compliance/');
 });
 
-test('PUBLIC-G37 the company: about, collaborate, the old address and the coming-soon pages', async ({ page }) => {
+test('PUBLIC-F10 the company: about, collaborate, the old address and the coming-soon pages', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/about/', 'PUBLIC-G37', async (p) => {
@@ -273,7 +274,7 @@ test('PUBLIC-G37 the company: about, collaborate, the old address and the coming
   await clean('/about/, /collaborate/, /company/');
 });
 
-test('PUBLIC-G51 every «Start free» and «Get started» ends at the sign-in, which also signs up', async ({ page }) => {
+test('PUBLIC-F11 every «Start free» and «Get started» ends at the sign-in, which also signs up', async ({ page }) => {
   const doors: Array<[string, string]> = [
     ['/', 'section.hero-bg a.ep-button[href="/launch"]'],
     ['/', '#planes a.ep-button[href="/launch"] >> nth=1'],
@@ -299,7 +300,7 @@ test('PUBLIC-G51 every «Start free» and «Get started» ends at the sign-in, w
   await expect(page.locator('#planes .ep-pricing-card').nth(1)).toContainText('Get started');
 });
 
-test('PUBLIC-G51 on a slow device, the buttons of the public web lead on even pressed before the page script has run', async ({
+test('PUBLIC-F11 on a slow device, the buttons of the public web lead on even pressed before the page script has run', async ({
   page,
 }) => {
   // The page's scripts have not arrived when the person presses (saas#238): held until the end. The stylesheet has,
@@ -342,14 +343,14 @@ test('PUBLIC-G51 on a slow device, the buttons of the public web lead on even pr
 
   // Before the script it already looks like a button, and not like a text link: the stylesheet is enough.
   await page.goto('/', { waitUntil: 'commit' });
-  await expect(page.locator('section.hero-bg a.ep-button--large >> nth=0')).toHaveCSS('border-top-left-radius', '16px');
+  await expect(page.locator('section.hero-bg a.ep-button--large >> nth=0')).toHaveCSS('border-top-left-radius', '10px');
   expect(await page.evaluate(() => customElements.get('ion-button') === undefined)).toBe(true);
 
   await page.unrouteAll({ behavior: 'ignoreErrors' });
   await Promise.all(held.map((route) => route.continue().catch(() => undefined)));
 });
 
-test('PUBLIC-G51 a button that is a real link looks and reacts exactly like an ion-button', async ({ page }) => {
+test('PUBLIC-F11 a button that is a real link looks and reacts exactly like an ion-button', async ({ page }) => {
   /** One of each the public web uses: the attributes of the ion-button and the classes of the link it became. */
   const looks = (where: string, variants: Array<[Record<string, string>, string[]]>) => ({ where, variants });
   const scenes = [
@@ -450,7 +451,7 @@ test('PUBLIC-G51 a button that is a real link looks and reacts exactly like an i
   }
 });
 
-test('PUBLIC-G52 the coming-soon pages are not indexed and the retired addresses answer for good', async ({ page }) => {
+test('PUBLIC-F12 the coming-soon pages are not indexed and the retired addresses answer for good', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/blog/', 'PUBLIC-G52', async (p) => {
@@ -471,7 +472,7 @@ test('PUBLIC-G52 the coming-soon pages are not indexed and the retired addresses
   await clean('coming soon and retired');
 });
 
-test('PUBLIC-G42 a visitor switches the language from the footer and it stays', async ({ page, context }) => {
+test('PUBLIC-F13 a visitor switches the language from the footer and it stays', async ({ page, context }) => {
   const clean = await watch(page);
   await page.goto('/pricing/');
   await expect(heading(page)).toContainText('Start free.');
@@ -495,7 +496,7 @@ test('PUBLIC-G42 a visitor switches the language from the footer and it stays', 
   await clean('language switch');
 });
 
-test('PUBLIC-G48 robots, the sitemap, llms.txt and the structured data', async ({ page, request }) => {
+test('PUBLIC-F14 robots, the sitemap, llms.txt and the structured data', async ({ page, request }) => {
   const robots = await request.get('/robots.txt');
   expect(robots.status()).toBe(200);
   expect(await robots.text()).toContain('User-agent: *');
@@ -540,7 +541,7 @@ function mobileMenu(page: Page) {
   };
 }
 
-test('PUBLIC-G51 on a slow device, the mobile menu opens and closes even pressed before the page script has run', async ({
+test('PUBLIC-F11 on a slow device, the mobile menu opens and closes even pressed before the page script has run', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 375, height: 667 });
@@ -621,10 +622,11 @@ test('PUBLIC-G51 on a slow device, the mobile menu opens and closes even pressed
   await Promise.all(held.map((route) => route.continue().catch(() => undefined)));
 });
 
-test('PUBLIC-G51 on a slow phone, the buttons of the menu lead on even pressed before the page script has run', async ({
+test('PUBLIC-F11 on a slow phone, the buttons of the menu lead on even pressed before the page script has run', async ({
   page,
 }) => {
-  // The steps of saas#238 on a phone, where the header's buttons live in the menu (saas#243 opens it without the script).
+  // Pressing before the page's scripts arrive, on a phone, where the header's buttons live in the menu (which opens
+  // without the script, saas#243).
   await page.setViewportSize({ width: 375, height: 667 });
   const held: Route[] = [];
   await page.route('**/static/spa/**/*.js', (route) => {
@@ -650,7 +652,7 @@ test('PUBLIC-G51 on a slow phone, the buttons of the menu lead on even pressed b
   await Promise.all(held.map((route) => route.continue().catch(() => undefined)));
 });
 
-test('PUBLIC-G51 once the page script has run, one press opens the mobile menu and one closes it', async ({ page }) => {
+test('PUBLIC-F11 once the page script has run, one press opens the mobile menu and one closes it', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   const clean = await watch(page);
   const menu = mobileMenu(page);
@@ -692,7 +694,7 @@ async function pressThrough(page: Page, key: 'Tab' | 'Shift+Tab', stops: string[
   }
 }
 
-test('PUBLIC-G51 with the mobile menu open, Tab goes round inside it and the page behind waits until it closes', async ({ page }) => {
+test('PUBLIC-F11 with the mobile menu open, Tab goes round inside it and the page behind waits until it closes', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   const clean = await watch(page);
   const menu = mobileMenu(page);

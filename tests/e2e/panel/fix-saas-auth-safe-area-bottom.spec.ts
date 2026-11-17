@@ -13,7 +13,9 @@
 // that the page sees the inset, so a browser that ignored the override could not pass for a fixed page.
 import type { Locator, Page } from '@playwright/test';
 
-import { expect, settled, shot, submitSignInForm, test } from './fixtures';
+import { expect, test } from './fixtures';
+import { settled, shot } from './screen';
+import { submitSignInForm } from './session';
 
 /** An Android window: its width and the height of the system's bar at the bottom, in CSS px. */
 interface AppWindow {

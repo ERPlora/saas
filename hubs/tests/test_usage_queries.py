@@ -1,12 +1,12 @@
-"""What a business's page says of its usage (lot L4-A, PLAN-SAAS §5; mockups ``business.html``, «Uso»).
+"""What a business's page says of its usage (mockups ``business.html``, «Uso»).
 
 ``hubs.usage.get`` is the last day the Hub measured: the storage of its files against what its plan includes
 (the customer sees a percentage, never the database), the people active that day and in the 30 days up to it,
 and whether that day is behind (``stale``: not yesterday's). ``hubs.business.get`` carries the same as
 ``usage`` (``null`` until the first night). ``hubs.usage.series`` is the days of a window, for a chart.
 
-The space a plan includes follows its module tier (``Plan.included_level``), a decision of L4-A flagged for
-Ioan (``hubs/README.md``): Free 1 GiB, Basic 5 GiB, Pro 20 GiB, Enterprise 50 GiB.
+The space a plan includes follows its module tier (``Plan.included_level``, ``hubs/README.md``): Free 1 GiB,
+Basic 5 GiB, Pro 20 GiB, Enterprise 50 GiB.
 """
 
 import json
@@ -16,7 +16,7 @@ import pytest
 from live.errors import NotFound, PermissionDenied
 from pydantic import ValidationError
 
-from hubs import queries
+from hubs.queries import businesses, hub_usage
 from hubs.models import HubUsageDaily, Plan, Subscription
 from hubs.schemas import (
     ActiveUsersOut,
@@ -59,7 +59,7 @@ def on_plan(hub, slug):
 
 
 def usage(user, hub):
-    return queries.usage_get(ctx_for(user), UsageGetIn(business_id=hub.id)).model_dump()
+    return hub_usage.usage_get(ctx_for(user), UsageGetIn(business_id=hub.id)).model_dump()
 
 
 def keys_of(answer) -> set[str]:
@@ -87,7 +87,7 @@ class TestUsageGet:
         }
 
     def test_the_storage_is_the_files_never_the_database(self, business, owner):
-        """PLAN-SAAS §5: the customer sees the S3 bytes as a percentage; ``db_bytes`` is the admin's."""
+        """The customer sees the S3 bytes as a percentage; ``db_bytes`` is the admin's."""
         on_plan(business, "free")
         sample(business, s3=0, db=10 * GIB)
 
@@ -120,7 +120,7 @@ class TestUsageGet:
             "percent": 10,
         }
 
-    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one by default)
     def test_during_the_trial_the_space_is_the_trial_plans(self, business, owner):
         """Born on Free trying Starter: Starter's space while the trial lasts, as its seats."""
         sample(business, s3=GIB)
@@ -179,13 +179,13 @@ class TestUsageGet:
 class TestTheBusinessPageCarriesIt:
     def test_usage_is_null_until_the_first_night(self, business, owner):
         assert (
-            queries.business_get(ctx_for(owner), ByIdIn(id=business.id)).usage is None
+            businesses.business_get(ctx_for(owner), ByIdIn(id=business.id)).usage is None
         )
 
     def test_usage_is_what_hubs_usage_get_says(self, business, owner):
         sample(business, s3=GIB, on_day=2, last_30=5)
 
-        page = queries.business_get(ctx_for(owner), ByIdIn(id=business.id))
+        page = businesses.business_get(ctx_for(owner), ByIdIn(id=business.id))
 
         assert page.usage.model_dump() == usage(owner, business)
 
@@ -196,7 +196,7 @@ class TestSeries:
         for days_ago, s3 in ((41, 1), (30, 2), (11, 3), (1, GIB // 2)):
             sample(business, days_ago, s3=s3, on_day=days_ago, last_30=days_ago)
 
-        out = queries.usage_series(
+        out = hub_usage.usage_series(
             ctx_for(owner), UsageSeriesIn(business_id=business.id, days=30)
         ).model_dump()
 
@@ -223,7 +223,7 @@ class TestSeries:
                 )
 
     def test_without_a_day_measured_the_window_is_empty(self, business, owner):
-        out = queries.usage_series(
+        out = hub_usage.usage_series(
             ctx_for(owner), UsageSeriesIn(business_id=business.id)
         )
 
@@ -231,14 +231,14 @@ class TestSeries:
 
     def test_only_the_owner_and_the_admins_read_it(self, business, team):
         with pytest.raises(PermissionDenied):
-            queries.usage_series(
+            hub_usage.usage_series(
                 ctx_for(team["employee"]), UsageSeriesIn(business_id=business.id)
             )
 
 
 class TestTheCustomerNeverSeesTheFiguresOfTheDay:
-    """PLAN-SAAS §28: requests, peak connections and requests without room are for ERPlora's admin only: the panel
-    of erplora.com keeps its «Usage» card, and whoever runs the business reads them in its Hub (BASE-F40)."""
+    """Requests, peak connections and requests without room are for ERPlora's admin only: the panel
+    of erplora.com keeps its «Usage» card, and whoever runs the business reads them in its Hub."""
 
     NAMES = {"requests", "peak_connections", "busy_requests"}
     #: Figures nothing else on these pages can be by chance.

@@ -1,6 +1,6 @@
 // `pnpm gen:public-icons`: bakes the icons the public pages paint into
 // frontend/generated/public-icons.json, which `{% icon %}` (public/templatetags/icons.py) paints
-// inline on the server (spec §8.4). Commit the result: it is versioned, and
+// inline on the server. Commit the result: it is versioned, and
 // frontend/gen-public-icons.test.ts fails when it falls out of step with public/templates or
 // hubs/data/taxonomy.json.
 //

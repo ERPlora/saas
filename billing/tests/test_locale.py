@@ -1,6 +1,6 @@
 """billing's Spanish catalog (``billing/locale/es/LC_MESSAGES/django.mo``) covers every message of billing.
 
-UI in ``en`` + ``es`` (PLAN §5): a ``gettext`` literal without its Spanish entry reaches a Spanish account
+UI in ``en`` + ``es``: a ``gettext`` literal without its Spanish entry reaches a Spanish account
 in English. This reads the compiled catalog, so a ``.po`` edited without ``compilemessages`` fails too.
 Same scan as ``base/tests/test_locale.py``, over billing's own catalog.
 """

@@ -1,16 +1,16 @@
-"""``python manage.py collect_hub_usage [--day YYYY-MM-DD]``: nightly in ``saas-cron`` (lot L4-A, PLAN-SAAS §5).
+"""``python manage.py collect_hub_usage [--day YYYY-MM-DD]``: nightly in ``saas-cron``.
 
 Asks the Hub for one day's usage of every business (``GET /internal/usage?day=``, page by page; contract in
 ``hubs/README.md``, «Uso») and keeps it as ``HubUsageDaily``, one row per business and day
-(``services.collect_usage``). By default the day is yesterday in UTC, the last one the Hub's nightly
+(``services.usage_collection.collect_usage``). By default the day is yesterday in UTC, the last one the Hub's nightly
 measure closed; ``--day`` collects another (a backfill), never one not over yet. Idempotent: a day collected
 again replaces its figures and tells nobody when they are the same. Under the advisory lock
-``hashtext('erplora.saas.collect_hub_usage')`` (``services.run_exclusively``; a second run returns at once).
+``hashtext('erplora.saas.collect_hub_usage')`` (``services.exclusive_runs.run_exclusively``; a second run returns at once).
 A row that fails never stops the pass; the run ends with an error after it when the Hub was away or refused,
 or answered off the contract (the ``task_failed`` alarm).
 
 At the end of its pass, Hub away or not, it forgets the days of every business past their retention
-(``services.prune_usage``, ``hubs.usage.prune``; HUBS-F22), a day collected by hand past it included. A prune that
+(``services.usage_collection.prune_usage``, ``hubs.usage.prune``; HUBS-F22), a day collected by hand past it included. A prune that
 fails never eats the collection: what was collected stays and is said, and the run ends with an error after it.
 """
 
@@ -20,7 +20,8 @@ from datetime import UTC, date
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
-from hubs import queries, services
+from hubs.services import exclusive_runs, usage_collection
+from hubs.queries import hub_usage
 
 logger = logging.getLogger(__name__)
 
@@ -44,22 +45,22 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         now = timezone.now()
-        day = options["day"] or queries.last_measured_day(now)
+        day = options["day"] or hub_usage.last_measured_day(now)
         if day >= now.astimezone(UTC).date():
             raise CommandError(
                 f"collect_hub_usage: {day} is not over yet in UTC; the Hub has not measured it."
             )
-        with services.run_exclusively("collect_hub_usage") as mine:
+        with exclusive_runs.run_exclusively("collect_hub_usage") as mine:
             if not mine:
                 self.stdout.write("collect_hub_usage: already running, nothing done.")
                 return
-            counts = services.collect_usage(day)
+            counts = usage_collection.collect_usage(day)
             summary = " ".join(f"{key}={value}" for key, value in counts.items())
             logger.info("hubs.collect_usage day=%s %s", day, summary)
             self.stdout.write(f"collect_hub_usage {day}: {summary}")
-            pruned = services.prune_usage()
+            pruned = usage_collection.prune_usage()
         failures = []
-        if services.usage_run_failed(counts):
+        if usage_collection.usage_run_failed(counts):
             failures.append(f"{day} did not get every business: {summary}")
         if pruned is None:
             failures.append("did not forget the usage past its retention (hubs.usage.prune_failed in the log)")

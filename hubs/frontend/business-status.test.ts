@@ -4,7 +4,7 @@
 // clock: data only — no code under test compares these dates with now.
 import { describe, expect, it } from 'vitest';
 
-import { reasonDate, reasonKey, statusPill, unpaidDeadline } from './business-status';
+import { preparationFailed, preparingLeadKey, reasonDate, reasonKey, statusPill, unpaidDeadline } from './business-status';
 
 const t = (key: string) => `t:${key}`;
 
@@ -17,12 +17,35 @@ describe('statusPill', () => {
     expect(statusPill({ status: 'deleting', open_blocked_reason: 'deleting' }, t, 'en').tone).toBe('danger');
   });
 
+  it('maintenance is a paused preparation, never a failure', () => {
+    const business = {
+      status: 'preparing',
+      open_blocked_reason: 'preparing',
+      maintenance: { frozen: true, reason: 'Aurora upgrade', since: null },
+    } as const;
+    expect(statusPill(business, t, 'en')).toEqual({ tone: 'warning', label: 't:hubs.status.maintenance', busy: true });
+    expect(reasonKey(business, false)).toBe('hubs.reason.maintenance');
+    expect(preparationFailed(business)).toBe(false);
+  });
+
   it('is a danger pill of its own when the Hub refused to prepare the business', () => {
     expect(statusPill({ status: 'preparing', open_blocked_reason: 'error' }, t, 'en')).toEqual({
       tone: 'danger',
       label: 't:hubs.status.error',
       busy: false,
     });
+  });
+});
+
+describe('preparingLeadKey', () => {
+  it('promises a few seconds while nothing holds the preparation back, the pause unknown included', () => {
+    expect(preparingLeadKey(undefined)).toBe('hubs.launch.preparing.lead');
+    expect(preparingLeadKey(null)).toBe('hubs.launch.preparing.lead');
+    expect(preparingLeadKey({ frozen: false, reason: '', since: null })).toBe('hubs.launch.preparing.lead');
+  });
+
+  it('promises nothing during a platform pause: the card says the pause', () => {
+    expect(preparingLeadKey({ frozen: true, reason: 'Aurora upgrade', since: '2026-11-09T20:00:00Z' })).toBeNull();
   });
 });
 
@@ -42,7 +65,7 @@ describe('reasonKey', () => {
   });
 });
 
-describe('the real deadline of an unpaid invoice (audit 2026-10-14, R-06)', () => {
+describe('the real deadline of an unpaid invoice', () => {
   it('is 7 days after the invoice went unpaid, as the server suspends it (billing UNPAID_PLAN_GRACE)', () => {
     expect(unpaidDeadline('2026-10-10T14:23:00Z')).toBe('2026-10-17T14:23:00.000Z');
   });

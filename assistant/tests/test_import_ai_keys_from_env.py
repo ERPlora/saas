@@ -1,9 +1,9 @@
-"""Loading the providers' keys from the environment (ASSISTANT-G02, G21; the old ``import_ai_keys_from_env``): the
+"""Loading the providers' keys from the environment (``import_ai_keys_from_env``): the
 command reads ``OPENAI_API_KEY``, ``ANTHROPIC_API_KEY``, ``GEMINI_API_KEY`` and ``DEEPSEEK_API_KEY`` and keeps each
 one encrypted in its provider, which it adds if missing, through ``assistant.credential.import`` as the platform.
 
 A key already kept stays as it is unless ``--force``; ``--dry-run`` writes nothing. Nothing it prints holds a key:
-only its last four characters (the old command printed the same).
+only its last four characters.
 """
 
 from io import StringIO
@@ -31,7 +31,7 @@ NEWER = "sk-test-openai-999999999999999999999999zz99"
 
 @pytest.fixture
 def env(settings):
-    """The four keys in the environment, as ``config/settings.py`` reads them."""
+    """The four keys in the environment, as ``config/settings/assistant.py`` reads them."""
     settings.OPENAI_API_KEY = OPENAI
     settings.ANTHROPIC_API_KEY = ANTHROPIC
     settings.GEMINI_API_KEY = GEMINI

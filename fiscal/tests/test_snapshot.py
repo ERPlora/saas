@@ -1,12 +1,10 @@
-"""The block ``verifactu`` of a business's snapshot (``PUT /internal/hubs/{id}/state``, PLAN-SAAS §2.2; plan
-2026-10-15 «Contrato», agreed with the Hub's session):
+"""The block ``verifactu`` of a business's snapshot (``PUT /internal/hubs/{id}/state``):
 
     "verifactu": {"representation": {"status", "updated_at", "reason"}}
 
-``representation`` is the authorisation as the staff left it (``none`` without rows): VeriFactu goes in every plan
-(PLAN §30, round 2026-10-22b), so the validated authorisation alone opens «live» through ERPlora. ``live_paid``
-left the block once the Hub stopped reading it (FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID). It travels with the snapshot's
-``version``; never a document nor a name.
+``representation`` is the authorisation as the staff left it (``none`` without rows): VeriFactu goes in every plan,
+so the validated authorisation alone opens «live» through ERPlora. It travels with the snapshot's ``version``; never
+a document nor a name.
 """
 
 from datetime import timedelta
@@ -17,8 +15,8 @@ from django.utils import timezone
 from fiscal import queries, services
 from fiscal.schemas import RepresentationSubmitIn, ReviewIn, WithdrawIn
 from fiscal.tests.conftest import make_grant, pdf_b64, staff_ctx, submission
-from hubs import queries as hub_queries
-from hubs import services as hub_services
+from hubs.queries import hub_sync
+from hubs.services import hub_callbacks, hub_push, reconciliation, subscription_sync
 from hubs.models import Hub, Subscription, SubscriptionItem
 from hubs.schemas import SubscriptionApplyIn
 
@@ -26,7 +24,7 @@ pytestmark = pytest.mark.django_db
 
 
 def block(hub):
-    return hub_queries.hub_snapshot(hub.id)["verifactu"]
+    return hub_sync.hub_snapshot(hub.id)["verifactu"]
 
 
 def version_of(hub):
@@ -108,7 +106,7 @@ class TestTheRepresentation:
         }
 
     def test_the_approval_in_force_holds_while_a_newer_upload_waits(self, business):
-        """The old product: a customer who signs again keeps filing while the new document waits."""
+        """A customer who signs again keeps filing while the new document waits."""
         reviewed = timezone.now() - timedelta(days=5)
         make_grant(business, version=1, status="approved", reviewed_at=reviewed)
         make_grant(business, version=2, status="submitted")
@@ -196,13 +194,12 @@ class TestTheRepresentation:
         assert queries.snapshot_block(business.id)["representation"]["reason"] == ""
 
 
-# --- VeriFactu in every plan (PLAN §30, round 2026-10-22b) ----------------------------------------------
+# --- VeriFactu in every plan -----------------------------------------------------------------------------
 
 
 class TestVerifactuInEveryPlan:
     """HUBS-F31: VeriFactu goes in every plan, Free included, so the validated authorisation alone opens the live
-    sending through ERPlora: the block carries no plan fact (``live_paid`` left it with the Hub's condition,
-    FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID)."""
+    sending through ERPlora: the block carries no plan fact."""
 
     def test_free_carries_only_the_authorisation(self, business):
         assert set(block(on_free(business))) == {"representation"}
@@ -215,12 +212,12 @@ class TestVerifactuInEveryPlan:
             plan=Plan.objects.get(slug=slug), trial_plan=None, trial_end=None
         )
 
-        assert hub_queries.hub_snapshot(business.id)["plan"]["slug"] == slug
+        assert hub_sync.hub_snapshot(business.id)["plan"]["slug"] == slug
         assert set(block(business)) == {"representation"}
 
     def test_no_module_is_needed_for_it(self, business):
-        """The old ``verifactu`` module paid the live sending on Free: neither a live one nor one that ended
-        changes anything now."""
+        """A ``verifactu`` module on Free, live or ended, adds nothing to the block: the live sending needs no
+        module."""
         on_free(business)
         SubscriptionItem.objects.create(
             subscription=business.subscription,
@@ -245,7 +242,7 @@ class TestVerifactuInEveryPlan:
 def test_two_businesses_each_carry_their_own_state(business, other_business, reviewer):
     approved = make_grant(business, status="approved", reviewed_at=timezone.now())
     services.representation_submit(
-        hub_services.system_ctx_for(other_business.id),
+        hub_callbacks.system_ctx_for(other_business.id),
         RepresentationSubmitIn(hub_id=other_business.id, **submission()),
     )
 
@@ -261,7 +258,7 @@ def test_what_happens_in_one_business_never_bumps_another(
     before = version_of(business)
 
     services.representation_submit(
-        hub_services.system_ctx_for(other_business.id),
+        hub_callbacks.system_ctx_for(other_business.id),
         RepresentationSubmitIn(hub_id=other_business.id, **submission()),
     )
     waiting = make_grant(other_business, version=2, status="submitted")
@@ -278,7 +275,7 @@ def test_what_happens_in_one_business_never_bumps_another(
 def test_a_withdrawal_reaches_the_hub_after_the_commit(
     business, reviewer, hub_double, django_capture_on_commit_callbacks
 ):
-    hub_services.sync_hub(business.id)
+    hub_push.sync_hub(business.id)
     approved = make_grant(business, status="approved", reviewed_at=timezone.now())
     before = version_of(business)
 
@@ -305,14 +302,14 @@ def test_a_module_that_stops_being_live_leaves_modules_and_keeps_the_approval(bu
         subscription=business.subscription, module_slug="verifactu"
     )
     assert "verifactu" in [
-        module["id"] for module in hub_queries.hub_snapshot(business.id)["modules"]
+        module["id"] for module in hub_sync.hub_snapshot(business.id)["modules"]
     ]
 
     SubscriptionItem.objects.filter(pk=item.pk).update(
         valid_until=timezone.now() - timedelta(seconds=1)
     )
 
-    snapshot = hub_queries.hub_snapshot(business.id)
+    snapshot = hub_sync.hub_snapshot(business.id)
     assert "verifactu" not in [module["id"] for module in snapshot["modules"]]
     assert snapshot["verifactu"]["representation"]["status"] == "approved"
     assert set(snapshot["verifactu"]) == {"representation"}
@@ -322,18 +319,18 @@ def test_dropping_to_free_keeps_the_approval_with_a_newer_version(
     business, hub_double, django_capture_on_commit_callbacks
 ):
     """What Stripe says (``hubs.subscription.apply``) changes the plan the Hub sees, so the snapshot is bumped
-    and pushed: the plan is Free, and VeriFactu and its approval stay (PLAN §30)."""
+    and pushed: the plan is Free, and VeriFactu and its approval stay."""
     Subscription.objects.filter(hub=business).update(trial_plan=None, trial_end=None)
-    hub_services.subscription_apply(
-        hub_services.system_ctx_for(business.id),
+    subscription_sync.subscription_apply(
+        hub_callbacks.system_ctx_for(business.id),
         SubscriptionApplyIn(hub_id=business.id, plan="starter"),
     )
     make_grant(business, status="approved", reviewed_at=timezone.now())
     before = version_of(business)
 
     with django_capture_on_commit_callbacks(execute=True):
-        hub_services.subscription_apply(
-            hub_services.system_ctx_for(business.id),
+        subscription_sync.subscription_apply(
+            hub_callbacks.system_ctx_for(business.id),
             SubscriptionApplyIn(hub_id=business.id, plan="free"),
         )
 
@@ -362,7 +359,7 @@ def test_reconcile_pushes_an_owed_state_with_its_block(
     try:
         settings.INTERNAL_SHARED_SECRET = SECRET
         settings.HUB_INTERNAL_URL = double.url
-        hub_services.reconcile()
+        reconciliation.reconcile()
     finally:
         double.stop()
 
@@ -384,7 +381,7 @@ def test_the_hub_never_receives_a_document(
     }
     with django_capture_on_commit_callbacks(execute=True):
         services.representation_submit(
-            hub_services.system_ctx_for(business.id),
+            hub_callbacks.system_ctx_for(business.id),
             RepresentationSubmitIn(
                 hub_id=business.id, **submission(documents=documents)
             ),
@@ -414,7 +411,7 @@ def test_the_hub_never_receives_a_document(
 
 
 def test_the_snapshot_names_the_business_by_its_address(business):
-    snapshot = hub_queries.hub_snapshot(business.id)
+    snapshot = hub_sync.hub_snapshot(business.id)
 
     assert (snapshot["hub_id"], snapshot["slug"]) == (str(business.id), "bar-manolo")
     assert set(snapshot["verifactu"]) == {"representation"}

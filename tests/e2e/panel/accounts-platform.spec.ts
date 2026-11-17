@@ -1,74 +1,36 @@
-// The platform of erplora.com (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-5), at the three sizes of the
-// migration (390×844, 834×1112, 1440×900):
-//   - ACCOUNTS-G106 · G73 (moving around the panel): the menu has «Businesses», «Store», «Billing» and «Account», in the
+// The platform of erplora.com (accounts/WORKBOOK.md), at the three sizes
+// (390×844, 834×1112, 1440×900):
+//   - ACCOUNTS-F47 (moving around the panel): the menu has «Businesses», «Store», «Billing» and «Account», in the
 //     side menu from 1440 px and in its drawer below; each entry opens its page and is marked as the current one;
 //     in Spanish, «Negocios», «Tienda», «Facturación» and «Cuenta».
-//   - ACCOUNTS-G82 · G33 · G64 (maintenance): the staff turns on «Maintenance mode» in the admin's «Site settings» with
+//   - ACCOUNTS-F43 (maintenance): the staff turns on «Maintenance mode» in the admin's «Site settings» with
 //     its message; a visitor gets the maintenance page (503) in English and in Spanish; the staff keeps using the panel
 //     and signs in again through the launcher on its way to the admin; turned off, everyone enters.
 // Accounts of this spec: `e2e-acc5-…`.
 import { type Browser, type Page } from '@playwright/test';
 
-import {
-  closeMenu,
-  djangoPrint,
-  expect,
-  openMenu,
-  settled,
-  shot,
-  sidewaysScroll,
-  signIn,
-  signInThroughPage,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize, closeMenu, openMenu } from './screen';
+import { signIn, signInThroughPage } from './session';
+
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-5');
 
 const PREFIX = 'e2e-acc5-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 const SITE_SETTINGS = '/admin/base/sitesettings/';
 
-function removeAccounts(): void {
-  djangoPrint(
-    `from django.contrib.auth import get_user_model\nget_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account with its address proven; `staff` makes it a superuser of the admin. */
-function createAccount(name: string, { staff = false, language = 'en' } = {}): { email: string; password: string } {
-  const email = `${PREFIX}${name}-${Date.now()}@example.com`;
-  const create = staff ? 'create_superuser' : 'create_user';
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.${create}(email="${email}", password="${PASSWORD}", language="${language}")`,
-      'EmailAddress.objects.update_or_create(user=user, email=user.email, defaults={"verified": True, "primary": True})',
-    ].join('\n'),
-  );
-  return { email, password: PASSWORD };
-}
+const createAccount = (name: string, { staff = false, language = 'en' as 'en' | 'es' } = {}) =>
+  createAccountWarm(`${PREFIX}${name}-${Date.now()}@example.com`, PASSWORD, { role: staff ? 'superuser' : 'customer', language });
 
 /** The switch as the database has it, for a run that died half-way: off. */
-function maintenanceOffInTheDatabase(): void {
-  djangoPrint('from base.models import SiteSettings\nSiteSettings.objects.update(maintenance_mode=False, maintenance_message_en="", maintenance_message_es="")');
-}
-
-/** Each size: the page as `ready` leaves it, no sideways scroll, and its shot. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>, after?: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-ACCOUNTS-5-${key}-${size.name}`), fullPage: true });
-    await after?.();
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
+async function maintenanceOffInTheDatabase(): Promise<void> {
+  await djangoPrintWarm('from base.models import SiteSettings\nSiteSettings.objects.update(maintenance_mode=False, maintenance_message_en="", maintenance_message_es="")');
 }
 
 /** A visitor of its own, without a session, in `locale`. */
@@ -89,16 +51,16 @@ async function setMaintenance(page: Page, on: boolean, message = ''): Promise<st
 }
 
 test.beforeAll(() => removeAccounts());
-test.afterAll(() => {
-  maintenanceOffInTheDatabase();
-  removeAccounts();
+test.afterAll(async () => {
+  await maintenanceOffInTheDatabase();
+  await removeAccounts();
 });
 
-test('ACCOUNTS-G106 · G73 · the menu opens Businesses, Store, Billing and Account at every size, in English and in Spanish', async ({
+test('ACCOUNTS-F47 · the menu opens Businesses, Store, Billing and Account at every size, in English and in Spanish', async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
-  await signIn(page.request, createAccount('nav'));
+  await signIn(page.request, await createAccount('nav'));
 
   await page.goto('/dashboard/businesses');
   await atEverySize(
@@ -109,7 +71,7 @@ test('ACCOUNTS-G106 · G73 · the menu opens Businesses, Store, Billing and Acco
       await expect(page.locator('ion-menu .nav-item')).toHaveText(['Businesses', 'Store', 'Billing', 'Account']);
       await expect(page.locator('ion-menu .nav-item[aria-current="page"]')).toHaveText('Businesses');
     },
-    () => closeMenu(page),
+    { after: () => closeMenu(page) },
   );
 
   for (const [label, path] of [
@@ -126,9 +88,9 @@ test('ACCOUNTS-G106 · G73 · the menu opens Businesses, Store, Billing and Acco
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G106 · the menu speaks Spanish', async ({ page }) => {
+test('ACCOUNTS-F47 · the menu speaks Spanish', async ({ page }) => {
   const errors = watchPageErrors(page);
-  await signIn(page.request, createAccount('nav-es', { language: 'es' }));
+  await signIn(page.request, await createAccount('nav-es', { language: 'es' }));
 
   await page.goto('/dashboard/businesses');
   await atEverySize(
@@ -138,18 +100,18 @@ test('ACCOUNTS-G106 · the menu speaks Spanish', async ({ page }) => {
       await openMenu(page);
       await expect(page.locator('ion-menu .nav-item')).toHaveText(['Negocios', 'Tienda', 'Facturación', 'Cuenta']);
     },
-    () => closeMenu(page),
+    { after: () => closeMenu(page) },
   );
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G82 · G33 · G64 · the staff turns maintenance on in the admin: visitors get the 503 page, the staff keeps working and signs in again', async ({
+test('ACCOUNTS-F43 · the staff turns maintenance on in the admin: visitors get the 503 page, the staff keeps working and signs in again', async ({
   page,
   browser,
   baseURL,
 }) => {
   test.setTimeout(180_000);
-  const staff = createAccount('staff', { staff: true });
+  const staff = await createAccount('staff', { staff: true });
   await signIn(page.request, staff);
 
   try {
@@ -203,6 +165,6 @@ test('ACCOUNTS-G82 · G33 · G64 · the staff turns maintenance on in the admin:
     await spanish.context().close();
   } finally {
     if (page.url().startsWith(baseURL!)) await setMaintenance(page, false).catch(() => undefined);
-    maintenanceOffInTheDatabase();
+    await maintenanceOffInTheDatabase();
   }
 });

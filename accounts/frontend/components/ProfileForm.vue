@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Account → Profile, «Your details» (mockups `account.html` «profile»): the avatar with «Change photo»
 // (PhotoPicker), first and last name (`accounts.profile.update`, «Save changes» waits for a change and says
-// «Changes saved»; the first name is required, audit 2 S-10), and the email the account signs in with, read here and changed only with its code
+// «Changes saved»; the first name is required), and the email the account signs in with, read here and changed only with its code
 // (EmailChangeFlow): «Change»; «Verify» for an address never proven; and, while a change waits for its code,
 // a notice to type it. The names follow the account when it changes elsewhere, unless the person is typing.
 import { InlineFeedback, StatusPill, UserAvatar } from '@erplora/ui/components';
@@ -28,7 +28,7 @@ const update = useCommand('accounts.profile.update');
 const firstName = shallowRef(props.profile.first_name);
 const lastName = shallowRef(props.profile.last_name);
 const dirty = computed(() => firstName.value !== props.profile.first_name || lastName.value !== props.profile.last_name);
-/** The first name is required (audit 2 S-10); the last name may be cleared. */
+/** The first name is required; the last name may be cleared. */
 const firstMissing = computed(() => !firstName.value.trim());
 /** Whether the person has typed in the first name, left it or tried to save: never on opening the page. */
 const firstTouched = shallowRef(false);

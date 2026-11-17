@@ -1,4 +1,4 @@
-"""The factory of clients (``assistant.providers.factory``, ASSISTANT-G35): the API of a provider picks its client;
+"""The factory of clients (``assistant.providers.factory``): the API of a provider picks its client;
 an unknown API or a missing key is a provider that cannot answer, never a crash."""
 
 import pytest

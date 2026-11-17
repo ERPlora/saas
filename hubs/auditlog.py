@@ -1,5 +1,5 @@
-"""The audit trail of who enters a business, what it pays and who pays it (django-auditlog; ACCOUNTS-F36, PLAN-SAAS
-§1.1). Registered from ``HubsConfig.ready``.
+"""The audit trail of who enters a business, what it pays and who pays it (django-auditlog; ACCOUNTS-F36).
+Registered from ``HubsConfig.ready``.
 
 Its people, the plans' prices the staff keep, a business's payer details, its subscription and the paid apps it carries.
 Never logged: the text of an invitation (the inviter's own words) and when a person last opened it, which moves on every

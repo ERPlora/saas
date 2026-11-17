@@ -1,8 +1,6 @@
-"""ACCOUNTS-F21 · Account → Profile → «Change» the email: ``accounts.email.change`` and ``accounts.email.verify`` (plan
-2026-10-13, L3-A).
+"""ACCOUNTS-F21 · Account → Profile → «Change» the email: ``accounts.email.change`` and ``accounts.email.verify``.
 
-Ported from ERPlora/saas ``apps/dashboard/profile/tests/test_change_email.py`` (24; saas#2536,
-SAAS_DASHBOARD-F204). Two locks, as Google, GitHub, Shopify and Stripe do it:
+Two locks, as Google, GitHub, Shopify and Stripe do it:
 
 1. a recent sign-in (allauth's reauthentication: the password typed again, not just an open session);
 2. the new address only counts once the code mailed to it is typed, in the same session: until then the account
@@ -12,7 +10,7 @@ SAAS_DASHBOARD-F204). Two locks, as Google, GitHub, Shopify and Stripe do it:
    racing request could save back older. The old SaaS used allauth's verification by code for the change too;
    here allauth's mandatory verification by code (``ACCOUNT_EMAIL_VERIFICATION = "mandatory"``) proves the
    address of a sign-up, while allauth's own email API is closed (``accounts.doors.closed``, 404) and the change's
-   code is accounts' own (``services.email_change``), with the locks above.
+   code is accounts' own (``email_address.email_change``), with the locks above.
 
 Dropped, with their reason: the template pages and their htmx (the SPA's) and the account surface's mark on
 the way (``base.surface`` keeps it in the session). «Use a different email» lives on the sign-up's code page
@@ -202,9 +200,9 @@ class TestTheNewAddressCountsOnlyOnceProven:
         assert answers == [2, 1, 0]
 
     def test_an_account_has_a_budget_of_tries(self, signed_in, ana, monkeypatch):
-        from accounts import services
+        from accounts.services import email_address
 
-        monkeypatch.setattr(services, "EMAIL_CODE_TRIES_PER_MINUTE", "2/m")
+        monkeypatch.setattr(email_address, "EMAIL_CODE_TRIES_PER_MINUTE", "2/m")
         api_post(signed_in, CHANGE, {"email": NEW})
         _verify(signed_in, "000000")
         _verify(signed_in, "000001")
@@ -252,11 +250,11 @@ class TestTheNewAddressCountsOnlyOnceProven:
         """The second to finish meets the database's unique address, not a 500."""
         from django.contrib.auth import get_user_model
 
-        from accounts import services
+        from accounts.services import email_address
 
         api_post(signed_in, CHANGE, {"email": NEW})
         get_user_model().objects.create_user(email=NEW, password=None)
-        monkeypatch.setattr(services, "email_belongs_to_another_account", lambda user, email: False)
+        monkeypatch.setattr(email_address, "email_belongs_to_another_account", lambda user, email: False)
 
         response = _verify(signed_in, _code_in(mail.outbox[0]))
 

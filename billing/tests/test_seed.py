@@ -3,9 +3,7 @@
 The general rates of the EU-27 in force in 2026 (Estonia 24 % since Jul-2025, Romania 21 % since
 Aug-2025, Slovakia 23 % since Jan-2025, Finland 25.5 % since Sep-2024), the three Spanish territories
 outside the scope of VAT, the UK as a third country since the end of the Brexit transition, the
-categories of what ERPlora sells, the fiscal policy and ERPlora's identity (Modelo 036). Ported from
-ERPlora/saas ``fiscal/migrations/0006_seed_tax_rules.py``, ``0020_seed_united_kingdom_tax_rule.py`` and
-``management/commands/seed_company_036.py`` (origin/develop).
+categories of what ERPlora sells, the fiscal policy and ERPlora's identity (Modelo 036).
 
 The seed never overwrites: the admin is where rates are edited, and a seed run after an edit (or the
 migration on a database that already has its rules) must not undo what somebody decided there.

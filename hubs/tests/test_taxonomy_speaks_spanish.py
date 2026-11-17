@@ -1,7 +1,6 @@
-"""The Spanish copy of the taxonomy is written in Spanish, not copied from English (saas#2027).
+"""The Spanish copy of the taxonomy is written in Spanish, not copied from English.
 
-Ported from ERPlora/saas ``public/catalog/tests/test_taxonomy_speaks_spanish.py`` (origin/develop).
-Six business types served their ``name_es`` / ``description_es`` straight out of the English
+Six business types once served their ``name_es`` / ``description_es`` straight out of the English
 column: «Restaurant — Full-service restaurant with kitchen…», under «Pizzería». An accent guard
 cannot see it («Tapas Bar» carries no diacritic), so language needs two guards of its own:
 
@@ -9,10 +8,8 @@ cannot see it («Tapas Bar» carries no diacritic), so language needs two guards
   list for the words Spanish spells the same («Bar», «Pub», «Hotel»);
 - an English function word («with», «and», «or»…) reaches the DESCRIPTIONS.
 
-Changed from the original: no functional units (round 16, PLAN §21); no tests of migration
-``catalog.0008``, which translated the rows already in production (saas-next starts empty and the
-seed ships the Spanish); its captured English strings stay as the positive control of the guards;
-the list is read through ``GET /api/catalog/business-types`` (ninja, PLAN §21.4).
+Its captured English strings stay as the positive control of the guards; the list is read through
+``GET /api/catalog/business-types``.
 """
 
 import json
@@ -93,7 +90,7 @@ def test_every_row_carries_the_spanish_columns_the_guards_measure(collection):
     assert missing == []
 
 
-# ── positive control: what production served before saas#2027 ──────────────────────────────
+# ── positive control: what production once served ──────────────────────────────────────────────
 
 AS_PRODUCTION_SERVED = {
     "activities:bar:description_es": (

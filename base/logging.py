@@ -1,14 +1,14 @@
-"""The log keeps the event and loses the personal data and the secrets (ACCOUNTS-G14, ACCOUNTS-G76; GDPR art. 5.1.c).
+"""The log keeps the event and loses the personal data and the secrets (GDPR art. 5.1.c).
 
-Ported from ERPlora/saas ``apps/core/logging.py`` (origin/develop c5ca8cae8). Every line of every logger is written by
+Every line of every logger is written by
 the console handler (CloudWatch Logs in production) through :class:`GDPRSafeFormatter`, tracebacks included
 (``settings.LOGGING``): an address, a phone, a NIF, an IBAN, a card, a JWT, a password, a key or a token that someone
 logs by mistake reaches the log as a label (``[EMAIL_REDACTED]``…), never as written.
 
-The rule is: **redact values, never drop records** (#969). The old ``SensitiveDataFilter`` dropped every record that
-merely said "token", "password" or "secret", the shape of every authentication-failure line ("invalid token for
-hub=…", "Invalid webhook secret"): it prevented no leak, because those lines never carried the value, and deleted the
-only evidence of a brute-force run or a stolen credential. It is not ported.
+The rule is: **redact values, never drop records**. A filter that dropped every record that merely said "token",
+"password" or "secret", the shape of every authentication-failure line ("invalid token for hub=…", "Invalid webhook
+secret"), would prevent no leak, because those lines never carry the value, and would delete the only evidence of a
+brute-force run or a stolen credential.
 """
 
 import logging
@@ -31,7 +31,7 @@ class GDPRSafeFormatter(logging.Formatter):
     # This rule and the e-mail one match their first run even when the rest is missing, and the
     # match without ``rest``/``domain`` is given back as written (``_keep_unless``): otherwise
     # each later ``eyJ``/word boundary of the same run rescans it to the end and fails the same
-    # way, quadratic on a long line (saas#2472). Same edges as a plain pattern: it still starts
+    # way, quadratic on a long line. Same edges as a plain pattern: it still starts
     # at ``\b``, and a failed run could not have held a match anyway — its end is the same.
     JWT_PATTERN = re.compile(r"\beyJ[A-Za-z0-9_-]+(?P<rest>\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b)?")
     CC_PATTERN = re.compile(r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b")
@@ -42,7 +42,7 @@ class GDPRSafeFormatter(logging.Formatter):
     # Digit lookarounds rather than `\b`: in `+34612345678` there is no word
     # boundary between the prefix and the number, so `\b` would never match it.
     PHONE_PATTERN = re.compile(r"(?<![\d\w])(?:\+34[\s.-]?)?[6789]\d{2}[\s.-]?\d{3}[\s.-]?\d{3}(?!\d)")
-    # The password inside a connection url, ``scheme://user:password@host`` (saas#2458): no key
+    # The password inside a connection url, ``scheme://user:password@host``: no key
     # names it (the key is ``dsn`` or ``url``) and it is often under the token length. Only the
     # password goes — user, host, port and database say which connection failed. Anchored on
     # ``://`` with no scheme run in front, and neither part crosses a ``/``, so each url is
@@ -54,7 +54,7 @@ class GDPRSafeFormatter(logging.Formatter):
     # under a quoted key as JSON and ``repr`` print it (`{"password": "…"}`, `{'password': ['…']}`)
     # or under a field name that ends in one of the words (`cloud_api_token`, `client_secret`).
     # A quoted value goes whole, spaces included; an auth scheme (`Bearer`, `Basic`) stays and the
-    # credential after it goes, however short (saas#2445).
+    # credential after it goes, however short.
     ASSIGNED_SECRET_PATTERN = re.compile(
         r"\b(?:[a-z0-9]+_)*(?:password|passwd|secret_key|secret|api_key|apikey|token|authorization|bearer)\b"
         r"['\"]?\s*[:=]\s*\[?\s*['\"]?(?:(?:bearer|basic|token)\s+)?"
@@ -66,26 +66,25 @@ class GDPRSafeFormatter(logging.Formatter):
     # Opaque credentials: base64url / Fernet-shaped runs. Deliberately AFTER the
     # structured ones, and 24+ so ordinary ids and slugs survive. Bounded by the
     # run's own alphabet, not ``\b``: ``-`` is not a word character, so a token
-    # starting or ending in one lost it to the boundary and fell to 23 (saas#2445).
+    # starting or ending in one would lose it to the boundary and fall to 23.
     TOKEN_PATTERN = re.compile(r"(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{24,}(?![A-Za-z0-9_-])")
 
-    #: A run of only ``-``/``_`` is a separator line, not a token. There is no hex keep-list any
-    #: more: a sha256 and ``secrets.token_hex(32)`` (the old SaaS's ``Hub.cloud_api_token``) are the same 64
+    #: A run of only ``-``/``_`` is a separator line, not a token. There is no hex keep-list: a
+    #: sha256 and ``secrets.token_hex(32)`` are the same 64
     #: characters, as are a signed S3 url's ``X-Amz-Signature`` and the custom-domain token's 32.
     #: The code prints hashes truncated (``sha[:8]``, ``sha256[:12]``), under the 24 that redact.
     _SEPARATOR = re.compile(r"^[-_]+$")
     #: Our own event keys — ``period_ended_while_row_says_active`` — are what the alerts grep
-    #: for, and they are lowercase words joined by underscores (saas#2140). A credential is not:
+    #: for, and they are lowercase words joined by underscores. A credential is not:
     #: the Hub's (``erpk_<env>_`` + base62), ours (``erps_live_`` + base62), Stripe's and any base64url/hex run carry digits or
     #: capitals, or a blob longer than any word. Case-sensitive on purpose, and no bare
     #: "snake_case" rule: that would let ``erpk_live_…`` through.
     #: Known limit: the rule reads shape, not meaning. Anything else spelled as lowercase words
     #: joined by underscores — a passphrase, a person's name in a file name — survives as well.
-    #: So those are covered where they enter, not by shape (saas#2445): a passphrase goes by its
+    #: So those are covered where they enter, not by shape: a passphrase goes by its
     #: key (``ASSIGNED_SECRET_PATTERN``), and the assistant's document reader logs the mime type
-    #: and the failure, never the file name. A closed list of event keys was the alternative, and
-    #: it fails the way saas#2140 did: a new key nobody registers is silently eaten and its
-    #: alert never fires.
+    #: and the failure, never the file name. A closed list of event keys would fail the other way:
+    #: a new key nobody registers is silently eaten and its alert never fires.
     _EVENT_KEY = re.compile(r"^[a-z]{1,20}(?:_[a-z]{1,20})*$")
     #: An id as Python prints a UUID: every key of this project is a ``uuid.uuid7()`` and no credential is UUID-shaped
     #: (no ``UUIDField`` but primary keys), so ``user=<id>`` stays for the team to follow (ACCOUNTS-F40). Only this
@@ -105,7 +104,7 @@ class GDPRSafeFormatter(logging.Formatter):
         message = self.EMAIL_PATTERN.sub(self._keep_unless("domain", "[EMAIL_REDACTED]"), message)
         message = self.ASSIGNED_SECRET_PATTERN.sub(self._redact_assigned, message)
         # Tokens before the phone pattern: its digit lookarounds let it bite the first nine
-        # digits off a hex token (``612345678a…``) and leave the rest in clear (saas#2445).
+        # digits off a hex token (``612345678a…``) and leave the rest in clear.
         message = self.TOKEN_PATTERN.sub(self._redact_token, message)
         message = self.NIF_PATTERN.sub("[ID_REDACTED]", message)
         message = self.PHONE_PATTERN.sub("[PHONE_REDACTED]", message)

@@ -1,15 +1,14 @@
 """allauth adapters of saas-next.
 
-Sign-up is open, as in today's SaaS (ADR-0154): an email without an account creates one on the «Create
+Sign-up is open: an email without an account creates one on the «Create
 account» tab of the launcher (allauth's own sign-up; the sign-in tab never creates one), and a Google email
 without one creates it on the way back from Google. Every sign-in with a password also asks for the code mailed to the account
 (``ACCOUNT_LOGIN_BY_CODE_REQUIRED``, ``AccountAdapter.is_login_by_code_required``), except the store review account's
 (ACCOUNTS-F49). Every way back from
 Google that does not sign in lands on a Vue page: «Cancel» on the sign-in (``/launch``), any refusal or
 failure on ``/login/error?code=…``, both keeping ``next``.
-Google links to an account only by signing in with a Google that proves the account's own address;
-``SocialAccountAdapter`` is ported from ERPlora/saas ``ERPloraSocialAccountAdapter``
-(``apps/auth/users/adapters.py``, saas#2552).
+Google links to an account only by signing in with a Google that proves the account's own address
+(``SocialAccountAdapter``).
 """
 
 import logging
@@ -35,6 +34,7 @@ from django.utils import timezone, translation
 from django.utils.translation import gettext
 
 from accounts.handoff import login_error_url
+from accounts.mail_outage import MailNotSent
 from base import emails as branded_mail
 
 logger = logging.getLogger(__name__)
@@ -58,12 +58,12 @@ def _with_next(next_url: str | None) -> dict[str, str]:
 def folded_email(email: str) -> str:
     """An address with the compatibility forms of its letters folded (NFKC), trimmed and in lower case: the form
     an account keeps, so «Ana@EXAMPLE.com» and «ana@ｅxample.com» are Ana's address (also when inviting it,
-    ``hubs.schemas``; ERPlora/saas#2562)."""
+    ``hubs.schemas``)."""
     return unicodedata.normalize("NFKC", email).strip().lower()
 
 
 def plain_email(email: str) -> str:
-    """An address in its plain form (``folded_email``), as today's SaaS (ERPlora/saas#1018). «ana@ｅxample.com»
+    """An address in its plain form (``folded_email``), as today's SaaS. «ana@ｅxample.com»
     is Ana's address, never a second account that looks the same, and a look-alike spends the account's budget
     of failed sign-ins, never one of its own. What the folding turns into an invalid address is refused as one."""
     email = folded_email(email)
@@ -114,7 +114,7 @@ class AccountAdapter(DefaultAccountAdapter):
         return super().clean_email(plain_email(email))
 
     def clean_password(self, password, user=None):
-        """A new password is never the account's current one (ERPlora/saas#2612): «Change password» and the key
+        """A new password is never the account's current one: «Change password» and the key
         of «Forgot your password?» both ask for a new one. A new account has no password to compare."""
         if user is not None and user.check_password(password):
             raise ValidationError(gettext("Your new password must be different from the current one."), code="password_unchanged")
@@ -123,14 +123,14 @@ class AccountAdapter(DefaultAccountAdapter):
     def logout(self, request) -> None:
         """Sign out (allauth.headless ``DELETE auth/session``, ACCOUNTS-F09), then wake the account's live streams: this
         browser's other tabs leave for the sign-in by themselves. Here and not on Django's ``user_logged_out``, which
-        comes before the session is gone (``services.announce_ended_sessions``)."""
-        from accounts import services
+        comes before the session is gone (``active_sessions.announce_ended_sessions``)."""
+        from accounts.services import active_sessions
 
         user = getattr(request, "user", None)
         signed_in = user is not None and user.is_authenticated
         super().logout(request)
         if signed_in:
-            services.announce_ended_sessions(user.pk)
+            active_sessions.announce_ended_sessions(user.pk)
 
     def format_email_subject(self, subject):
         """No ``[site.name]`` prefix: allauth takes it from the ``Site`` row (``example.com``)."""
@@ -141,18 +141,21 @@ class AccountAdapter(DefaultAccountAdapter):
 
         allauth puts the ``Site`` row in every mail as ``current_site`` («… to register an account on
         example.com»). The brand is written, not looked up (``templates/account/email/base_message.txt``):
-        a misconfigured row must not make the first mail of an account read like phishing. As ERPlora/saas
-        ``apps/core/emails.py`` (``brand_context``).
+        a misconfigured row must not make the first mail of an account read like phishing.
         """
         brand = SimpleNamespace(name="ERPlora", domain=settings.PUBLIC_HOST)
-        return super().send_mail(template_prefix, email, {**context, "current_site": brand, **branded_mail.brand()})
+        try:
+            return super().send_mail(template_prefix, email, {**context, "current_site": brand, **branded_mail.brand()})
+        except Exception as exc:  # noqa: BLE001 - any failure of the mail backend is reported, not left as a 500
+            logger.exception("accounts.mail_failed kind=%s", template_prefix)
+            raise MailNotSent from exc
 
     def render_mail(self, template_prefix, email, context, headers=None):
         """Every allauth mail leaves as text and as HTML on the common template (ACCOUNTS-F46).
 
         A notice ERPlora wrote has its own ``<prefix>_message.html`` (``templates/socialaccount/email/``); the
         mails allauth ships come only as text, so their text is shown on the common template, escaped, with the
-        code boxed (``base.emails``): one wrapper for all, as ERPlora/saas ``emails/_fallback.html``, instead of
+        code boxed (``base.emails``): one wrapper for all instead of
         a copy of each of allauth's texts and translations.
         """
         message = super().render_mail(template_prefix, email, context, headers=headers)
@@ -181,7 +184,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         """Refuse allauth's «connect» process: it attached ANY Google to the open session's account.
 
         ERPlora has no screen that connects a provider. The way Google gets linked is signing in
-        with a Google that vouches for the account's own address (SAAS_AUTH-F04). allauth's
+        with a Google that vouches for the account's own address. allauth's
         re-authentication is no guard here: it waves through an account that has no password.
         A connect posted anyway lands on the Vue error page, which says how Google gets linked
         (``google_link_refused``), keeping ``next``.

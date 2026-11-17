@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:63244a46a0841abebdbf2fb327f38c6ac6d36b8e3d86c0c69b103ee328e31d86 -->
+<!-- generated from WORKBOOK.md sha256:c963aee71ad407edfe7a2d6b669b6a52257aa263b1350213ddb20bef65ab94f1 -->
 
 ## What it is for and who it is for
 
@@ -71,7 +71,7 @@ card; in **Businesses**, in the "Create business" dialog, under "What is your bu
 
 ### Preparing
 The running bar and three steps: "Business created", "Setting up your business" (or "Setting up your business: …", with the type picked)
-and "It opens by itself when it finishes" on the Entrance or "Ready to open" in the dialog.
+and "It opens by itself when it finishes" on the Entrance or "Ready to open" in the dialog. While ERPlora's staff keeps the platform frozen for a database upgrade, the notice "Provisioning paused for maintenance: your business will be ready in a few minutes." explains the wait, with "Check now", and "It usually takes a few seconds." is not shown; the notice clears by itself after the lift (and the sentence comes back) or when the business is ready. If the check cannot run, another notice says so and offers a retry.
 
 ### Businesses
 The panel's home: the list of the account's businesses with "Business", "Web address", "Status", "Plan", "Role"
@@ -212,7 +212,7 @@ Steps:
 2. Without any business, the Entrance shows "Create your business" with the same form as HUBS-F01 (name, country and optional type, with the address proposed while typing).
 3. They press "Create my business": the card moves to **Preparing** and, when the business is ready, the app goes into it by itself and stays linked to that business (HUBS-F12).
 In: the same as HUBS-F01.
-Out: the same as HUBS-F01, with the country and the business type the person chooses (the old app did not ask for them).
+Out: the same as HUBS-F01, with the country and the business type the person chooses.
 If it fails: the same notices as HUBS-F01. Inside the app nothing is sold: to change the plan it says "To change your plan or add modules, go to erplora.com in your browser.".
 Involved: accounts (the Entrance), the installed app (starts on the Entrance and links to the business)
 
@@ -235,13 +235,13 @@ Status: done
 Actor: owner
 Screen: Preparing
 Steps:
-1. After "Create my business", the Entrance shows "Preparing …" ("It usually takes a few seconds.") with the bar and the three steps; in **Businesses**, the dialog shows the same and the row says "Preparing".
+1. After "Create my business", the Entrance shows "Preparing …" ("It usually takes a few seconds.", except during a maintenance pause: see "If it fails") with the bar and the three steps; in **Businesses**, the dialog shows the same and the row says "Preparing".
 2. The screen updates by itself: there is no need to reload or to stay ("Go to the panel meanwhile").
 3. When the business is ready, the Entrance takes the person into the business without asking for the password again; the dialog of **Businesses** says "Your business is ready" with "Open business".
 4. The owner also gets the email "… is ready" with the link to open it and the one to its page in the panel.
 In: the notice that the business is ready (HUBS-F07).
 Out: the entry into the business with a one-time pass, which never travels in the address; the "is ready" email, only once.
-If it fails: if the business could not be prepared, the screen says "It could not be prepared" and "We saved …, but it could not be prepared. We keep retrying; if it keeps failing, contact us.", and goes in by itself if the retry (HUBS-F08) fixes it. With several businesses it goes into none by itself: the person chooses.
+If it fails: if the business could not be prepared, the screen says "It could not be prepared" and "We saved …, but it could not be prepared. We keep retrying; if it keeps failing, contact us.", and goes in by itself if the retry (HUBS-F08) fixes it. While ERPlora's staff keeps the platform frozen for a database upgrade, the card and the row instead say "Provisioning paused for maintenance: your business will be ready in a few minutes.", with "Check now", and neither the Entrance nor the dialog of **Businesses** says "It usually takes a few seconds." until it lifts; this is a pause, never a preparation failure, and it clears by itself after the lift or when the business is ready. If the check cannot run, an error says so and can be retried. With several businesses it goes into none by itself: the person chooses.
 Involved: accounts (the jump into the business), the business (reports it is ready)
 
 ### HUBS-F05 Keep the plans in the admin
@@ -253,7 +253,7 @@ Steps:
 2. In a plan's form they write its name, its description, the lines of its card and its badge in English and in Spanish, its monthly and annual price, what it includes (module level, support, own domain, businesses, devices and people), the limits of its database, the assistant and WhatsApp messages per month and its Stripe prices.
 3. They save: the customer sees the texts in their language (English when the Spanish is missing) in the Store and on the pricing web page.
 In: what the staff type.
-Out: the plan, with each text in English and in Spanish. Free is offered at sign-up and without a trial; Pro, Enterprise and Max only as an upgrade; an internal plan is never offered to customers.
+Out: the plan, with each text in English and in Spanish. Free is offered at sign-up and without a trial; Pro, Enterprise and Max only as an upgrade; an internal plan is only offered to the business the staff mark in the admin (HUBS-F23).
 If it fails: a price Stripe refuses is not saved and the plan stays as it was; without Stripe, it is saved and warns that it was not checked. An account without the staff mark does not get into the admin.
 Involved: billing (the prices in Stripe, BILLING-F28), public (the pricing web page)
 
@@ -288,8 +288,8 @@ Actor: system
 Screen: none
 Steps:
 1. Every 15 minutes, erplora.com looks for what the businesses' service has not received yet: a sign-up, a deletion, a recovery or the latest state of a business.
-2. It sends it again and, for a sign-up that has been more than 2 minutes without the "ready" notice, it asks how it is going: if it is already ready, it marks it ready; if the service does not know it, it sends it again.
-3. It notes in the log how much it delivered, how much stayed pending and how much the business refused.
+2. It sends it again and, for a sign-up that has been more than 2 minutes without the "ready" notice, it asks how it is going: if it is already ready, it marks it ready; if the service does not know it, it sends it again. If the platform is frozen, it saves that real pause and publishes it in the list and the page; after the lift it clears it, without changing the business snapshot's version.
+3. It notes in the log how much it delivered, how much stayed pending and how much the business refused. "Check now" in HUBS-F04 runs this same query and recovery immediately.
 In: the businesses with something pending.
 Out: what was delivered, marked as delivered; what fails stays pending for the next pass.
 If it fails: a business that fails does not stop the pass; the pass ends with an error if something stayed pending, unreachable or refused, and that error raises an alarm. Two passes at once do not step on each other: the second leaves without doing anything.
@@ -461,13 +461,13 @@ Status: done
 Actor: owner, administrator
 Screen: Business summary
 Steps:
-1. On the business's page, the header says its status ("Active", "Preparing", "Payment due", "Suspended" or deleted) and the Summary, its plan with the devices, the apps it can have turned on at once and the people against the seats.
+1. On the business's page, the header says its status ("Active", "Preparing", "Payment due", "Suspended" or deleted) and the Summary, its plan with the devices, the apps it can have turned on at once and the people against the seats. It is what the business's own plan covers, also an internal plan that is not on sale, such as "Payment Test (internal)" (BILLING-F27).
 2. The "Usage" card ("How your business is doing in ERPlora") shows the "Storage" used of its plan's space, with a warning when it nears the limit, and the people "Active yesterday" and over the "Last 30 days", with "Yesterday's data: updated every night.".
 3. This card does not show each day's requests, the peak connections or the requests with no room: those are for ERPlora's team, in its admin (HUBS-F22), and for whoever runs the business, in System · Resources of its hub (BASE-F40).
 In: the business and what it measured last night.
 Out: nothing is saved; the page changes by itself when a new night arrives.
-If it fails: without any night measured, "No data yet. The figures arrive every night, from the first one after the business is created."; with data of a day before yesterday, "Data from …: updated every night.". A manager or an employee do not see the business's page, only "Open".
-Involved: the business (BASE-F40: measures its usage and shows those figures to whoever runs it)
+If it fails: a business without a plan reads "—" in the devices and the apps. Without any night measured, "No data yet. The figures arrive every night, from the first one after the business is created."; with data of a day before yesterday, "Data from …: updated every night.". A manager or an employee do not see the business's page, only "Open".
+Involved: the business (BASE-F40: measures its usage and shows those figures to whoever runs it), billing (BILLING-F27: the internal plan the staff lets a business buy)
 
 ### HUBS-F22 Collect every night the usage of each business
 Status: done
@@ -490,11 +490,11 @@ Actor: ERPlora's staff
 Screen: admin › Businesses
 Steps:
 1. The staff enter erplora.com's admin and look for the business by its address or its name; they see its record with its members, its plan, who pays, its usage and what the business still has to receive.
-2. They choose the business and an action: "Send the latest state to the Hub", "Retry what the Hub still owes" or, in the record of the session ends, "End the sessions in the Hub now"; the admin says how many are up to date and how many are still owed.
+2. They choose the business and an action: "Send the latest state to the Hub", "Retry what the Hub still owes" or, in the record of the session ends, "End the sessions in the Hub now"; the admin says how many are up to date and how many are still owed. A superuser can also "Let its owner buy the internal plans" or "Stop selling it the internal plans" (BILLING-F27).
 3. Each action stays in that business's history: who did it, when and which.
 In: the staff account with its second factor.
 Out: what the action sends to the business and the line of the history.
-If it fails: the admin does not create, change or delete businesses, members or paid plans: only their own screens do, so nobody of the staff makes themselves owner of a business or deletes it without its deletion. Support staff see everything and run no action. For the data inside the business there is the businesses' admin (in the businesses' service).
+If it fails: the admin does not create, change or delete businesses, members or paid plans: only their own screens do, so nobody of the staff makes themselves owner of a business or deletes it without its deletion. The mark of the internal plans buys nothing: the owner, if they want, buys it in the Store. Support staff see everything and run no action. For the data inside the business there is the businesses' admin (in the businesses' service).
 Involved: the business (receives what is sent again), accounts (the staff account)
 
 ### HUBS-F24 Invite a person to a business

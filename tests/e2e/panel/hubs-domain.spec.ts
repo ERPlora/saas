@@ -1,10 +1,11 @@
-// HUBS-F17, «Own domain» in a business's Settings (saas#195), in a real browser, in English and in Spanish, at the three
-// sizes of the migration (fixtures' VIEWPORTS: 390×844, 834×1112, 1440×900): the owner writes a domain, what the server
-// refuses of it goes on its field, and asking for it gives the two CNAME records to create, each copied with «Copy»; the
-// page reads what the server keeps through the real API, and removing it lets the name go. A connected domain counts the
-// checks that failed against the three that stop it; one that is not connected says why and is asked for again; a plan
-// without it leads to the plans. Each screen: no sideways scroll, no field's label cut, no page error, its texts the
-// catalogue's (hubs/frontend/locale/<language>.json) and a capture `HUBS-F17-<screen>-<size>-<language>`.
+// HUBS-F17, «Own domain» in a business's Settings (saas#195), in a real browser, in English and in Spanish, at
+// three sizes (fixtures' VIEWPORTS: 390×844, 834×1112, 1440×900): the owner writes a domain, what the server
+// refuses of it goes on its field, and asking for it gives the two CNAME records to create, each copied with
+// «Copy»; the page reads what the server keeps through the real API, and removing it lets the name go. A connected
+// domain counts the checks that failed against the three that stop it; one that is not connected says why and is
+// asked for again; a plan without it leads to the plans. Each screen: no sideways scroll, no field's label cut, no
+// page error, its texts the catalogue's (hubs/frontend/locale/<language>.json) and a capture
+// `HUBS-F17-<screen>-<size>-<language>`.
 //
 // The panel's Django connects domains here (project.ts) and sends AWS to the Hub double's port: this spec plays ACM
 // there (its certificate and its validation record, then its deletion) and the Hub's acknowledgements, as the hourly
@@ -14,22 +15,16 @@ import { createServer, type Server } from 'node:http';
 
 import { type Locator, type Page } from '@playwright/test';
 
-import {
-  catalogueText,
-  djangoPrint,
-  expect,
-  provenAccount,
-  readyBusinessOn,
-  removeAccountsOf,
-  settled,
-  shot,
-  sidewaysScroll,
-  signIn,
-  test,
-  VIEWPORTS,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { readyBusinessOn } from './businesses';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
 import { HUB_DOUBLE_PORT } from './project';
+import { captureAtEverySize, catalogueText } from './screen';
+import { signIn } from './session';
+
+const capture = captureAtEverySize('HUBS-F17');
 
 const PREFIX = 'e2e-domain-';
 const PASSWORD = 'Dominio-propio-de-la-web-26';
@@ -128,13 +123,13 @@ function startDouble(): Promise<Server> {
   });
 }
 
+// Django's boot on no test's clock (saas#354): the warm Django starts here.
 test.beforeAll(async () => {
-  removeAccountsOf(PREFIX);
-  double = await startDouble();
+  [double] = await Promise.all([startDouble(), removeAccountsWarm(PREFIX)]);
 });
 test.afterAll(async () => {
   await new Promise((closed) => double.close(closed));
-  removeAccountsOf(PREFIX);
+  await removeAccountsWarm(PREFIX);
 });
 test.beforeEach(() => {
   aws.length = 0;
@@ -145,7 +140,7 @@ test.beforeEach(() => {
 /** A fresh owner speaking `language`, signed in on `page`, of a business ready as the Hub leaves it, on `plan`. */
 async function ownerOn(page: Page, language: Language, plan: string): Promise<string> {
   const email = `${PREFIX}${plan}-${language}-${Date.now()}@example.com`;
-  provenAccount(email, PASSWORD, language);
+  await createAccountWarm(email, PASSWORD, { language });
   await signIn(page.request, { email, password: PASSWORD });
   return readyBusinessOn(page.request, 'Peluquería Aurora', plan);
 }
@@ -167,16 +162,12 @@ function cutLabels(page: Page): Promise<string[]> {
  * `ready` at each size: no sideways scroll, no label cut, and the card «Own domain» whole in a capture
  * `HUBS-F17-<screen>-<size>-<language>` (the page scrolls inside its content, so a page capture would cut it).
  */
-async function atEverySize(page: Page, screen: string, language: Language, ready: () => Promise<void>): Promise<void> {
-  for (const size of VIEWPORTS) {
-    await page.setViewportSize(size);
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${screen} scrolls sideways at ${size.width}`).toEqual([]);
-    expect(await cutLabels(page), `${screen}: a label cut at ${size.width}`).toEqual([]);
-    await card(page).screenshot({ path: shot(`HUBS-F17-${screen}-${size.width}-${language}`) });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
+function atEverySize(page: Page, screen: string, language: Language, ready: () => Promise<void>): Promise<void> {
+  return capture(page, screen, ready, {
+    of: card(page),
+    suffix: language,
+    checks: async (size) => expect(await cutLabels(page), `${screen}: a label cut at ${size.width}`).toEqual([]),
+  });
 }
 
 /** What the server keeps of the business's domain, through the panel's own API. */
@@ -255,7 +246,8 @@ for (const { language, locale, domain } of RUNS) {
     test(`HUBS-F17 (${language}): a connected domain counts the checks that failed, and one that stopped is asked for again`, async ({ page }) => {
       const errors = watchPageErrors(page);
       const id = await ownerOn(page, language, 'standard');
-      djangoPrint(
+      // A domain connected two days ago with one failed check: only the hourly check writes one.
+      await djangoPrintWarm(
         [
           'from datetime import timedelta',
           'from django.utils import timezone',
@@ -278,7 +270,7 @@ for (const { language, locale, domain } of RUNS) {
       });
 
       // Three in a row: the hourly check took it down, as `check_custom_domains` leaves it; the page reads it again.
-      djangoPrint(
+      await djangoPrintWarm(
         `from hubs.models import CustomDomain\nCustomDomain.objects.filter(hub_id="${id}").update(state="lapsed", reason="checks_failed", failures=0, proven_at=None, activated_at=None)`,
       );
       await page.reload();

@@ -1,6 +1,6 @@
-"""Context builder of saas-next (``settings.LIVE["context_builder"]``): the scope is the user.
+"""Context builder of the SaaS (``settings.LIVE["context_builder"]``): the scope is the user.
 
-PLAN §14.1, «SaaS → usuario»: every operation runs for the signed-in account and its live
+Every operation runs for the signed-in account and its live
 notifications go to that account's channel. The context comes from the session, never from the
 payload. A signed-in account has the role ``account``, which the panel's apps grant their permissions
 in ``role_permissions``; who may act on a business is decided inside each operation. A live stream ends
@@ -40,7 +40,7 @@ def _permissions(actor: Any) -> frozenset[str]:
 
 class SessionEnded(Unauthorized):
     """The session a live stream was opened with ended: the stream ends (``bye``) and its reconnection, without that
-    session, is anonymous. The Hub's code (hub#190), with which ``@erplora/ui`` takes the tab to the sign-in (ui#25)."""
+    session, is anonymous. The Hub's code, with which ``@erplora/ui`` takes the tab to the sign-in."""
 
     code = "base.session_ended"
 

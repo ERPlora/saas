@@ -1,4 +1,4 @@
-"""Choosing a provider's models in the admin (ASSISTANT-G24, G14): «Choose models from the provider» asks the
+"""Choosing a provider's models in the admin: «Choose models from the provider» asks the
 provider's API (here ``fake_provider``, a real HTTP server on ``127.0.0.1``) for its chat models; the staff tick the
 ones to keep and the provider's page lists them, with their prices to correct by hand."""
 

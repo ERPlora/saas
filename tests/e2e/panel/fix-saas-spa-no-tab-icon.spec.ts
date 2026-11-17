@@ -1,10 +1,14 @@
-// FIX-SAAS-SPA-NO-TAB-ICON in Chrome: the panel (the SPA of erplora.com) declares the public web's icons for the tab
+// In Chrome: the panel (the SPA of erplora.com) declares the public web's icons for the tab
 // and the home screen, static files of the SaaS, and the page's own CSP lets them load. Headless Chrome paints no
 // tab, so the icon is checked in the <head>, fetched (200, an image) and drawn in the page under its CSP. The launcher
 // without a session and Businesses with one; accounts of panel_seed.py; at 390, 834 and 1440 px.
 // flow: saas-spa-icon
 import type { Page } from '@playwright/test';
-import { expect, panelAccount, seedPanel, settled, shot, signIn, test, VIEWPORTS } from './fixtures';
+import { panelAccount } from './accounts';
+import { seedPanel } from './businesses';
+import { expect, test } from './fixtures';
+import { settled, shot, VIEWPORTS } from './screen';
+import { signIn } from './session';
 
 const KEY = 'FIX-SAAS-SPA-NO-TAB-ICON';
 const ICONS = [

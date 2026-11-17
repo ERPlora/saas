@@ -1,86 +1,42 @@
-// The API keys of the SaaS from the admin (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-4), at the three sizes of
-// the migration (390×844, 834×1112, 1440×900): a superuser issues a key for a team account and sees it once (G101), the
-// key opens what its permission opens and nothing else (G102), and revoking it cuts it at once (G103). In
-// accounts/WORKBOOK.md: G101 = F31, G102 = F32, G103 = F33. The person's own keys (Account › API keys: create with
+// The API keys of the SaaS from the admin (accounts/WORKBOOK.md), at the three sizes
+// (390×844, 834×1112, 1440×900): a superuser issues a key for a team account and sees it once (F31), the
+// key opens what its permission opens and nothing else (F32), and revoking it cuts it at once (F33), each a flow of
+// accounts/WORKBOOK.md. The person's own keys (Account › API keys: create with
 // «Confirm it's you», use, revoke) are account.spec.ts's. Accounts of this spec: `e2e-acc4k-…@example.com`.
-import { type Page } from '@playwright/test';
 
-import {
-  djangoPrint,
-  expect,
-  settled,
-  shot,
-  sidewaysScroll,
-  signIn,
-  signInThroughPage,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { type AccountRole, createAccountWarm, removeAccountsWarm } from './accounts';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize } from './screen';
+import { signIn, signInThroughPage } from './session';
+
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-4');
 
 const PREFIX = 'e2e-acc4k-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 
 const address = (name: string) => `${PREFIX}${name}-${Date.now()}@example.com`;
 
-function removeAccounts(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account with its address proven; `role` makes it a superuser or a team account of support. */
-function createAccount(email: string, role: 'superuser' | 'support' | 'customer'): { email: string; password: string } {
-  const create =
-    role === 'customer'
-      ? `get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", language="en")`
-      : `services.create_platform_user("${email}", ${role === 'superuser' ? 'services.PLATFORM_ADMIN' : 'services.PLATFORM_SUPPORT'}, "${PASSWORD}")[0]`;
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      'from accounts import services',
-      `user = ${create}`,
-      'user.language = "en"; user.save(update_fields=["language"])',
-      'EmailAddress.objects.update_or_create(user=user, email=user.email, defaults={"verified": True, "primary": True})',
-    ].join('\n'),
-  );
-  return { email, password: PASSWORD };
-}
-
-/** Each size: the page as `ready` leaves it, no sideways scroll, and its shot (`fullPage` off for a page as long as the
- *  API's reference, whose full shot is tens of thousands of pixels tall). */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>, fullPage = true): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-ACCOUNTS-4-${key}-${size.name}`), fullPage });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
+const createAccount = (email: string, role: 'superuser' | 'support' | 'customer') =>
+  createAccountWarm(email, PASSWORD, {
+    role: { superuser: 'platform-admin', support: 'platform-support', customer: 'customer' }[role] as AccountRole,
+    language: 'en',
+  });
 
 test.beforeAll(() => removeAccounts());
 test.afterAll(() => removeAccounts());
 
-test('ACCOUNTS-G101 · G102 · G103 · a superuser issues a key for a team account: shown once, opens its permission, cut by revoking', async ({
+test('ACCOUNTS-F31 · ACCOUNTS-F32 · ACCOUNTS-F33 · a superuser issues a key for a team account: shown once, opens its permission, cut by revoking', async ({
   page,
   playwright,
 }) => {
   const errors = watchPageErrors(page);
-  const root = createAccount(address('root'), 'superuser');
-  const teammate = createAccount(address('qa'), 'support');
-  createAccount(address('customer'), 'customer');
+  const root = await createAccount(address('root'), 'superuser');
+  const teammate = await createAccount(address('qa'), 'support');
+  await createAccount(address('customer'), 'customer');
   await signIn(page.request, root);
 
   await page.goto('/admin/accounts/apikey/add/');
@@ -133,7 +89,7 @@ test('ACCOUNTS-G101 · G102 · G103 · a superuser issues a key for a team accou
   expect(errors).toEqual([]);
 });
 
-test('ACCOUNTS-G105 · G13 · the API documentation: for signed-in accounts, from Account › API keys, nothing from outside', async ({
+test('ACCOUNTS-F34 · the API documentation: for signed-in accounts, from Account › API keys, nothing from outside', async ({
   page,
   context,
 }) => {
@@ -145,7 +101,7 @@ test('ACCOUNTS-G105 · G13 · the API documentation: for signed-in accounts, fro
     const url = new URL(request.url());
     if (url.protocol !== 'blob:' && !['localhost', '127.0.0.1'].includes(url.hostname)) outside.push(request.url());
   });
-  const ana = createAccount(address('docs'), 'customer');
+  const ana = await createAccount(address('docs'), 'customer');
 
   // Signed out: the sign-in, then back to the documentation.
   await page.goto('/api/docs');

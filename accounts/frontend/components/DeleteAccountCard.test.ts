@@ -5,7 +5,7 @@
 // server decides in the end (409 with the same businesses, DeleteAccountDialog). Read from `hubs.business.list`, the
 // operation the server reads too (`can.delete`: the owner; `is_payer`: it pays for it). While that list is not known
 // (loading, failed, or no answer in time) nothing says the account is free to go: deletion stays off, and a failure
-// is said with «Retry» (audit 2026-10-14, R-04/R-08).
+// is said with «Retry».
 // clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -63,7 +63,7 @@ describe('DeleteAccountCard', () => {
   it('names the businesses the account owns in one line, each linked to its Settings, and keeps deletion off', async () => {
     const s = await setup([business('b1', 'Panadería López'), business('b2', 'Café Central'), business('b6', 'Bar La Plaza')]);
     expect(s.q('profile-danger')?.textContent).toContain('You own 3 businesses: transfer or delete them before deleting your account.');
-    // One line, not a stack of links (Ioan, 2026-10-14: a clean page).
+    // One line, not a stack of links: the page stays clean.
     expect(s.q('profile-danger-businesses')?.textContent?.trim()).toBe('Panadería López, Café Central, and Bar La Plaza');
     expect(s.q('profile-danger')?.querySelector('ul, li')).toBeNull();
     const links = [...document.querySelectorAll('[data-testid="profile-danger-business"]')];

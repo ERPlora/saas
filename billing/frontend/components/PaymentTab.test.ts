@@ -1,7 +1,5 @@
-// Billing → Payment details (mockups `billing.html` «payment», «empty», «loading», «error»; README §4): per
-// payer of the account (`billing.payment_method.get`, asked to Stripe when the tab opens, not live), its card
-// (PaymentMethodCard) next to its billing details (BillingProfileCard). Without any payment yet, what is asked
-// on the first one. Loading and failing say so, with «Retry».
+// Billing → Payment details: per payer of the account, its card next to its billing details, asked to Stripe when
+// the tab opens (not live).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({

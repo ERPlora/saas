@@ -1,8 +1,6 @@
-"""``/compliance/``: where ERPlora meets each country's invoicing rules (PUBLIC-F09).
+"""``/compliance/``: where ERPlora meets each country's invoicing rules.
 
-The old page read ``CountryCompliance``, rows a person flipped to «Covered» in the admin, seeded with
-mandates «pending human legal review» (SAAS_PUBLIC-F62); the port left it out (spec §11.1). It comes back
-as a fixed list in the code, released with the apps it describes, as Odoo lists its fiscal localizations and
+A fixed list in the code, released with the apps it describes, as Odoo lists its fiscal localizations and
 Business Central its countries:
 
 * the countries are the ones a business can be created in, ``hubs.schemas.COUNTRIES``, by the names their field
@@ -10,7 +8,7 @@ Business Central its countries:
 * for each, the fiscal systems the apps connect to TODAY: Spain's VeriFactu (the ``verifactu`` app of the
   Hub), and nothing else. The Spanish regions with their own system (the Basque Country's TicketBAI,
   Navarre) are said to be out, and no foreign mandate is named: nobody here has checked one, and a page
-  that quotes a law it does not meet is the old page's mistake.
+  that quotes a law it does not meet misleads the buyer.
 """
 
 from __future__ import annotations

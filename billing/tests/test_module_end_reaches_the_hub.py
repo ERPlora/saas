@@ -1,7 +1,7 @@
 """BILLING-F33, F34 and F35 as the Hub receives them: the photo each moment of a paid app's end owes the business.
 
 The Hub decides what a business may use from the last photo the SaaS pushed to it (``PUT /internal/hubs/{id}/state``;
-the Hub's ``base/entitlement.py``, BASE-G12): a paid app runs while that photo names it, and one with ``valid_until``
+the Hub's ``base/entitlement.py``): a paid app runs while that photo names it, and one with ``valid_until``
 until that instant, read against the Hub's clock (nobody pushes a photo when a cancelled module's period ends). The Hub
 only takes a photo newer than the one it has. So each moment owes it a newer photo with the app's ``id``, ``source``
 and ``valid_until`` as they stand:
@@ -23,7 +23,7 @@ from billing import services
 from billing.schemas import CheckoutConfirmIn, ModuleIn
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import MONTH_END, item, subscription
-from hubs import services as hub_services
+from hubs.services import hub_push
 from hubs.models import SubscriptionItem
 from hubs.tests.conftest import create_business
 
@@ -143,8 +143,8 @@ class TestTheEndReachesTheBusiness:
             stripe_item_id="", valid_until=timezone.now() - timedelta(minutes=1)
         )
         # Whatever pushes the next photo (a member, the plan…): it no longer names it.
-        hub_services.bump_state(paid.id)
-        committed(lambda: hub_services.sync_hub(paid.id))
+        hub_push.bump_state(paid.id)
+        committed(lambda: hub_push.sync_hub(paid.id))
         ended = photo(hub_double, paid)
         assert ended["modules"] == []
         stripe_double.answer(

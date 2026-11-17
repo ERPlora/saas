@@ -1,4 +1,4 @@
-// «Transfer ownership» (mockups `business.html` «members-transfer», round 17 §2.7): delicate, so the
+// «Transfer ownership»: delicate, so the
 // name of the business is typed to confirm; `hubs.ownership.transfer` offers the business to that
 // member (7 days to accept) and says so.
 import { afterEach, describe, expect, it, vi } from 'vitest';

@@ -1,4 +1,4 @@
-"""The Django admin shows every model of accounts (PLAN-SAAS §6: «el Django admin, lo más completo posible»)."""
+"""The Django admin shows every model of accounts."""
 
 import re
 from html import escape, unescape
@@ -10,9 +10,9 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management import call_command
 from django.test import override_settings
 
-from accounts import services
 from accounts.admin import open_hub_admin_url
 from accounts.models import AuthExchangeCode
+from accounts.services import active_sessions, api_keys, hub_jump, platform_staff
 from accounts.tests.conftest import enter
 from hubs.models import HubMember
 
@@ -23,7 +23,7 @@ pytestmark = pytest.mark.django_db
 def staff_client(client):
     admin = get_user_model().objects.create_superuser(email="root@example.com", password="x")
     enter(admin, "a", "hub_admin")
-    services.issue_code(admin, "a")
+    hub_jump.issue_code(admin, "a")
     client.force_login(admin)
     return client, admin
 
@@ -57,7 +57,7 @@ def test_a_user_can_be_added_with_email_and_password(staff_client):
 
 @pytest.mark.parametrize("query", ["lp@example", "Lucía", "Pérez"])
 def test_the_staff_find_an_account_by_its_email_or_its_names(staff_client, query):
-    """ACCOUNTS-F13: «El personal busca una cuenta por correo o nombre»; the names are not in the address."""
+    """The staff find an account by its email or its name; the names are not in the address."""
     client, _ = staff_client
     get_user_model().objects.create_user(email="lp@example.com", password="x", first_name="Lucía", last_name="Pérez")
 
@@ -75,7 +75,7 @@ def test_the_staff_find_an_account_by_its_email_or_its_names(staff_client, query
     ],
 )
 def test_the_staff_filter_the_accounts_by_active_staff_and_language(staff_client, ana, filters, found):
-    """ACCOUNTS-F13: «… o filtra por activa, personal e idioma»."""
+    """The staff filter the accounts by active, staff and language."""
     client, _ = staff_client
 
     response = client.get("/admin/accounts/user/", filters)
@@ -152,7 +152,7 @@ def _hidden(html: str, name: str) -> str:
 
 
 class TestOpenInTheHubAdmin:
-    """«Open in the Hub admin» (ronda 13, PLAN §18.1.6): from ``erplora.com/admin`` the staff jump to
+    """«Open in the Hub admin»: from ``erplora.com/admin`` the staff jump to
     ``hubs.erplora.com/admin/hub/<slug>/``. The jump STARTS at the Hub (``/auth/login``), which binds it
     to the browser with its ``state`` cookie and sends it to ``/hub-login/?audience=hub-admin`` (tested
     in ``test_handoff.py``). The staff never type ``hubs.erplora.com``."""
@@ -180,7 +180,7 @@ class TestOpenInTheHubAdmin:
 
     @pytest.fixture
     def support(self, client, password):
-        user, _ = services.create_platform_user("help@erplora.com", "support", password)
+        user, _ = platform_staff.create_platform_user("help@erplora.com", "support", password)
         client.force_login(user)
         return user
 
@@ -241,7 +241,7 @@ class TestOpenInTheHubAdmin:
             assert html.count('href="http://hubs.localhost:8000/auth/login?') == buttons
 
     def test_the_hubs_page_says_when_there_is_no_hub(self, client, password):
-        user, _ = services.create_platform_user("boss@erplora.com", "admin", password)
+        user, _ = platform_staff.create_platform_user("boss@erplora.com", "admin", password)
         client.force_login(user)
 
         response = client.get(self.HUBS)
@@ -272,8 +272,8 @@ class TestOpenInTheHubAdmin:
 
         assert "Abrir en el admin del Hub" in response.content.decode()
 
-    # A failed jump comes back from the Hub as ``/admin/accounts/hubs/?error=<code>`` (ERPlora/saas#1):
-    # the codes of ``hub-next/base/auth.py`` and ``auth_views.py``, and those the SaaS's
+    # A failed jump comes back from the Hub as ``/admin/accounts/hubs/?error=<code>``:
+    # the codes of the Hub's ``base/auth.py`` and ``auth_views.py``, and those the SaaS's
     # ``/internal/auth/redeem`` answers with a 400, which the Hub forwards as they are.
     @pytest.mark.parametrize(
         ("code", "text"),
@@ -345,7 +345,7 @@ class TestOpenInTheHubAdmin:
         assert '<li class="error">No se pudo abrir el admin del Hub. Vuelve a intentarlo desde esta página.</li>' in html
 
 
-# --- The Account page (plan 2026-10-13, L3-A) ---------------------------------------------------------------
+# --- The Account page ---------------------------------------------------------------
 
 
 def _key(user, **fields):
@@ -358,7 +358,7 @@ def _key(user, **fields):
 class TestApiKeys:
     """An account issues its keys in the Account page; the admin sees who has which key, its scopes and its last use, a
     superuser can cut one («revoke») and issue one for a team account (``TestTheSuperuserIssuesAKey``). Never the hash,
-    never a delete: revoking is the audit trail (ported from ERPlora/saas ``apps/auth/apikeys/admin.py``)."""
+    never a delete: revoking is the audit trail."""
 
     def test_the_list_and_the_key_load_without_its_hash(self, staff_client, ana):
         client, _ = staff_client
@@ -379,7 +379,7 @@ class TestApiKeys:
         ],
     )
     def test_the_permissions_are_named_as_the_panel_names_them(self, staff_client, ana, language, heading, labels):
-        """ACCOUNTS-F33: the list and the key's page say what a key may open in words, never the raw scope list."""
+        """The list and the key's page say what a key may open in words, never the raw scope list."""
         client, _ = staff_client
         key = _key(ana)
         key.scopes = ["hubs.read", "billing.read"]
@@ -432,7 +432,7 @@ class TestApiKeys:
     def test_support_sees_the_keys_and_cannot_revoke(self, client, ana):
         from accounts.models import ApiKey
 
-        supporter, _ = services.create_platform_user("support@example.com", services.PLATFORM_SUPPORT, "x")
+        supporter, _ = platform_staff.create_platform_user("support@example.com", platform_staff.PLATFORM_SUPPORT, "x")
         client.force_login(supporter)
         key = _key(ana)
 
@@ -442,16 +442,15 @@ class TestApiKeys:
 
 
 class TestTheSuperuserIssuesAKey:
-    """ACCOUNTS-G101 (ACCOUNTS-F31; PLAN-SAAS §1.1, ronda 2026-10-15b: «Admin de ApiKey … SE PORTA «Emitir» para el
-    superusuario (la clave se enseña una vez)»): a superuser issues a key for a TEAM account (the old SaaS's
-    ``user_not_staff``: a customer's key is only the customer's), and the key is shown on the answer once, never kept
+    """A superuser issues a key for a TEAM account (a customer's key is only the customer's), and the key is shown
+    on the answer once, never kept
     in clear, in the session or in a message. The owner is told by mail and its live list refreshes."""
 
     ADD = "/admin/accounts/apikey/add/"
 
     @pytest.fixture
     def teammate(self, password):
-        user, _ = services.create_platform_user("qa@erplora.com", services.PLATFORM_SUPPORT, password)
+        user, _ = platform_staff.create_platform_user("qa@erplora.com", platform_staff.PLATFORM_SUPPORT, password)
         return user
 
     def _issue(self, client, user, **fields):
@@ -465,7 +464,7 @@ class TestTheSuperuserIssuesAKey:
 
         _, root = staff_client
         with pytest.raises(NotFound):
-            services.issue_api_key(ana, name="Monitor", scopes=["hubs.read"], expires_in_days=30, by=root)
+            api_keys.issue_api_key(ana, name="Monitor", scopes=["hubs.read"], expires_in_days=30, by=root)
         assert not ana.api_keys.exists()
 
     @pytest.mark.parametrize(
@@ -556,7 +555,7 @@ class TestTheSuperuserIssuesAKey:
         assert "no-store" in response.headers["Cache-Control"]
 
     def test_support_cannot_issue(self, client, teammate):
-        supporter, _ = services.create_platform_user("support@example.com", services.PLATFORM_SUPPORT, "x")
+        supporter, _ = platform_staff.create_platform_user("support@example.com", platform_staff.PLATFORM_SUPPORT, "x")
         client.force_login(supporter)
 
         assert client.get(self.ADD).status_code == 403
@@ -578,7 +577,7 @@ def test_the_user_page_shows_the_preferences_and_the_photo(staff_client, ana):
 
 
 def test_the_user_page_hides_the_preferences_and_the_photo_it_never_saved(staff_client, ana):
-    """ACCOUNTS-G35/G36: an account on the defaults has no row there; an empty read-only box says nothing."""
+    """An account on the defaults has no row there; an empty read-only box says nothing."""
     from accounts.models import ProfilePhoto, UserPreferences
 
     client, _ = staff_client
@@ -600,7 +599,7 @@ def test_the_user_page_hides_the_preferences_and_the_photo_it_never_saved(staff_
 
 
 def test_the_user_page_shows_the_terms_it_accepted_read_only(staff_client, ana):
-    """ACCOUNTS-G119: what the account accepted and when, as evidence; nobody edits it."""
+    """What the account accepted and when, as evidence; nobody edits it."""
     from datetime import UTC, date, datetime
 
     client, _ = staff_client
@@ -649,7 +648,7 @@ def _mark_for_store_review(user):
 
 
 class TestTheStoreReviewMark:
-    """ACCOUNTS-F49: on the account's page only a superuser sets and clears «Store review account»; ``support`` sees
+    """On the account's page only a superuser sets and clears «Store review account»; ``support`` sees
     it; an account of the staff never carries it."""
 
     @pytest.fixture
@@ -759,7 +758,7 @@ ON_A_BUSINESS = "This account is on a business: ERPlora's staff and the customer
 
 
 class TestACustomerIsNoStaff:
-    """W11b: the account's page never makes ERPlora's staff of somebody on a business (``User.clean``; the businesses
+    """The account's page never makes ERPlora's staff of somebody on a business (``User.clean``; the businesses
     the mirror does not show, an invitation waiting or one in recovery, are ``hubs/tests/test_members.py``'s)."""
 
     @pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
@@ -840,7 +839,7 @@ def _signed_in_browser(email: str, password: str):
 
 
 class TestTheSessionsSpeakTheStaffsLanguage:
-    """ACCOUNTS-F19: «Sesiones de usuario» in the staff's language. allauth.usersessions gives its model and its columns
+    """«User sessions» in the staff's language. allauth.usersessions gives its model and its columns
     no names of their own (Django's «user session», «created at», «user agent»…, English in every language), so the
     admin names them; only the live names: allauth's migrations stay as they are."""
 
@@ -910,15 +909,14 @@ def ended():
 
 
 class TestCloseSessions:
-    """ACCOUNTS-F19 (old ``revoke_user_sessions`` and the «revoke» of the sessions' admin, ERPlora/saas
-    ``test_revoke_user_sessions.py``; PLAN-SAAS: «SE PORTA como acción del admin, «Cerrar sesiones»»): for an incident,
-    a superuser ends every session of an account (here and in its businesses) and the trust of its browsers, or only
-    the sessions they pick. Through the operation, so the owner's live list of sessions refreshes. Support only looks."""
+    """For an incident, a superuser ends every session of an account (here and in its businesses) and the trust of its
+    browsers, or only the sessions they pick. Through the operation, so the owner's live list of sessions refreshes.
+    Support only looks."""
 
     @pytest.mark.parametrize("language", ["en", "es"])
     def test_its_actions_are_named_as_briefly_as_djangos_own(self, language):
         """The «Action» select is as wide as its longest option: a label longer than Django's own «Delete selected
-        users» pushed the changelist past the screen at 834 px (seen in the e2e of ACCOUNTS-G09)."""
+        users» pushed the changelist past the screen at 834 px."""
         from django.contrib import admin
         from django.contrib.admin.actions import delete_selected
         from django.contrib.auth import get_user_model
@@ -1025,7 +1023,7 @@ class TestCloseSessions:
     def test_support_sees_the_sessions_and_cannot_close_them(self, client, ana, password):
         from allauth.usersessions.models import UserSession
 
-        supporter, _ = services.create_platform_user("support@example.com", services.PLATFORM_SUPPORT, "x")
+        supporter, _ = platform_staff.create_platform_user("support@example.com", platform_staff.PLATFORM_SUPPORT, "x")
         client.force_login(supporter)
         _signed_in_browser(ana.email, password)
 
@@ -1056,7 +1054,7 @@ class TestCloseSessions:
         from accounts.schemas import SessionCloseAnyIn
 
         with pytest.raises(LiveMisuse):
-            services.session_close_any(system_context(Scope("user", "someone-else")), SessionCloseAnyIn(user_id=ana.pk))
+            active_sessions.session_close_any(system_context(Scope("user", "someone-else")), SessionCloseAnyIn(user_id=ana.pk))
 
     def test_an_account_that_is_gone_is_not_found(self):
         from uuid import uuid7
@@ -1068,11 +1066,11 @@ class TestCloseSessions:
 
         gone = uuid7()
         with pytest.raises(NotFound):
-            services.session_close_any(system_context(Scope("user", str(gone))), SessionCloseAnyIn(user_id=gone))
+            active_sessions.session_close_any(system_context(Scope("user", str(gone))), SessionCloseAnyIn(user_id=gone))
 
     def test_no_role_may_close_any_accounts_sessions(self):
         from live.meta import all_live_app_configs, permissions_for_role
 
         from base.operations import ACCOUNT_ROLE
 
-        assert services.CLOSE_ANY_SESSIONS not in permissions_for_role(all_live_app_configs(), ACCOUNT_ROLE)
+        assert active_sessions.CLOSE_ANY_SESSIONS not in permissions_for_role(all_live_app_configs(), ACCOUNT_ROLE)

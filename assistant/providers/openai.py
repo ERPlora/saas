@@ -1,4 +1,4 @@
-"""The client of OpenAI's Chat Completions API (ASSISTANT-G37), and the base of every API compatible with it
+"""The client of OpenAI's Chat Completions API, and the base of every API compatible with it
 (DeepSeek, a proxy): ``POST {base}/chat/completions`` streamed, ``GET {base}/models`` to list.
 
 One tool per answer (``parallel_tool_calls: false``) and at most ``max_tokens`` of output: the models released after
@@ -68,7 +68,7 @@ class OpenAIProvider(Provider):
                 body["parallel_tool_calls"] = False
         return f"{self.base_url}/chat/completions", self.headers(), body
 
-    async def parse_stream(self, response: httpx.Response, req: TurnRequest) -> AsyncIterator[ProviderEvent]:
+    async def parse_stream(self, response: httpx.Response, req: TurnRequest) -> AsyncIterator[ProviderEvent]:  # noqa: C901
         fragments: dict[int, dict[str, str]] = {}
         usage: dict[str, int] = {}
         reason = "stop"

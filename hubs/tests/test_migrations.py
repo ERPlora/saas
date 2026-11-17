@@ -24,7 +24,7 @@ HUBS_TABLES = {
     "hubs_hubownershiptransfer",
     "hubs_subscription",
     "hubs_subscriptionitem",
-    # The usage of each business, day by day (0010, L4-A).
+    # The usage of each business, day by day (0010).
     "hubs_hubusagedaily",
 }
 
@@ -55,7 +55,7 @@ def test_the_models_and_the_migrations_agree():
     call_command("makemigrations", "hubs", "--check", "--dry-run", verbosity=0)
 
 
-# --- 0006: the hubs of the phase-1 seed become businesses (plan 2026-10-13, L1-A2) -----------------
+# --- 0006: the hubs of the Hub's seed become businesses ------------------------------------------
 
 from datetime import timedelta  # noqa: E402
 from importlib import import_module  # noqa: E402
@@ -196,7 +196,7 @@ class TestTheSeedHubsBecomeBusinesses:
         assert not _copy().objects.exists()
 
     def test_a_business_of_the_panel_has_its_mirror_put_right(self, business, owner, people):
-        """A row of somebody who is no member (``demo_seed`` before L1-A2) is dropped, a missing one is added."""
+        """A row of somebody who is no member (an older ``demo_seed``) is dropped, a missing one is added."""
         self._membership(people["ana"], business.slug, "hub_admin")
 
         _adopt()
@@ -360,7 +360,7 @@ def test_0024_without_the_group_gives_nothing_and_does_not_fail():
     assert Permission.objects.filter(content_type__app_label="hubs", codename="view_hubusagedaily").exists()
 
 
-# --- 0011: three plans on sale at sign-up, their copy and ladder (Ioan, 2026-10-15) -------------------
+# --- 0011: three plans on sale at sign-up, their copy and ladder -----------------------------------
 
 THREE_PLANS = "0011_three_plans_on_sale"
 #: The database line the old seed carried and production still showed on 2026-10-15.
@@ -392,7 +392,7 @@ class TestTheCardsReadTheNewCopy:
         return Plan
 
     def test_the_upgrade_only_tiers_stay_on_sale_as_they_were(self, old_catalogue):
-        """Ioan, 2026-10-15: Pro, Enterprise and Max are kept, active and upgrade-only."""
+        """Pro, Enterprise and Max are kept, active and upgrade-only."""
         before = list(old_catalogue.objects.filter(slug__in=("pro", "enterprise", "max")).order_by("slug").values())
 
         _three_plans().refresh_the_copy(global_apps, _SchemaEditor())
@@ -417,7 +417,7 @@ class TestTheCardsReadTheNewCopy:
         assert old_catalogue.objects.get(slug="starter").price_monthly == 1
 
     def test_standard_gets_twice_the_resources_of_starter(self, old_catalogue):
-        """Ioan, 2026-10-15: the rows seeded before carried the flat paid ladder (3 and 15 s)."""
+        """The rows seeded before carried the flat paid ladder (3 and 15 s)."""
         old_catalogue.objects.filter(slug="standard").update(max_db_connections=3)
 
         _three_plans().refresh_the_copy(global_apps, _SchemaEditor())
@@ -472,12 +472,12 @@ def test_0011_is_frozen_and_reads_nothing_of_the_seed():
     assert [name for name in _imported_modules(_three_plans()) if name.startswith("hubs")] == []
 
 
-# --- 0012: the monthly messages of each plan, assistant and WhatsApp (Ioan, 2026-10-15) -----------------
+# --- 0012: the monthly messages of each plan, assistant and WhatsApp --------------------------------
 
 MONTHLY_MESSAGES = "0012_plan_monthly_messages"
 #: What 0012 writes, by slug: (assistant, WhatsApp) messages a month. Standard doubles Starter.
 MESSAGES_0012 = {"free": (30, 30), "starter": (300, 150), "standard": (600, 300), "payment-test": (300, 150)}
-#: The upgrade-only tiers get the figures of the old stack (ADR-0474, levels pro/enterprise), so a customer on one
+#: The upgrade-only tiers get the figures of the old stack (levels pro/enterprise), so a customer on one
 #: never has fewer than Free.
 UPGRADE_ONLY_0012 = {"pro": (1000, 500), "enterprise": (3000, 800), "max": (3000, 800)}
 
@@ -564,7 +564,7 @@ def test_hubs_migrates_back_before_the_monthly_messages_and_forward_again(plans)
     assert _messages_of(Plan) == {**MESSAGES_0012, **UPGRADE_ONLY_0012}
 
 
-# --- 0013: the plans live in the database; no trial (Ioan, 2026-10-15) ---------------------------------------
+# --- 0013: the plans live in the database; no trial -----------------------------------------------
 
 from decimal import Decimal  # noqa: E402
 
@@ -699,9 +699,10 @@ def _assert_the_catalogue_of_0013(Plan):
 
 def _assert_the_catalogue_the_migrations_leave(Plan):
     """0013's catalogue as the later data migrations leave it: the cards of Pro, Enterprise and Max of 0020, the
-    features of Free, Starter and Standard of 0021 and Standard's card without the custom domain of 0026."""
+    features of Free, Starter and Standard of 0021, Standard's card without the custom domain of 0026 and the database
+    line of Free and Starter that says what a recovery keeps of 0029."""
     expected = _expected_0013()
-    for slug, fields in (*COPY_0020.items(), *COPY_0021.items(), *COPY_0026.items()):
+    for slug, fields in (*COPY_0020.items(), *COPY_0021.items(), *COPY_0026.items(), *COPY_0029.items()):
         expected[slug] = {**expected[slug], **fields}
     for slug, fields in expected.items():
         assert _row(Plan.objects.get(slug=slug), fields) == fields, slug
@@ -745,7 +746,7 @@ def _snapshot(Plan) -> dict[str, dict]:
 
 @pytest.mark.django_db
 class TestThePlansLiveInTheDatabase:
-    """Ioan, 2026-10-15: the plans live only in the database and staff keep them in the admin; 0013 is the seed
+    """The plans live only in the database and staff keep them in the admin; 0013 is the seed
     of a new database and puts production's rows right once. There is no trial any more: Starter and Standard
     carry 0 days (the Free plan is the way in); the mechanism stays, dormant. Pro, Enterprise and Max are kept,
     active and upgrade-only."""
@@ -867,7 +868,7 @@ class TestThePlansLiveInTheDatabase:
     @pytest.mark.parametrize("args", [(), ("--update",)])
     def test_the_seed_command_seeds_nothing(self, args):
         """The plans are kept in the admin. ``sync_hub_plans`` stays only as an empty command, because the deploy's
-        ``saas-migrate`` still calls it until aws#4 is applied: it writes nothing, ``--update`` included."""
+        ``saas-migrate`` still calls it: it writes nothing, ``--update`` included."""
         from hubs.models import Plan
 
         before = sorted(Plan.objects.values_list("slug", "updated_at"))
@@ -958,7 +959,7 @@ def test_hubs_migrates_back_before_the_clock_and_forward_again_dating_the_suspen
     assert Hub.objects.get(pk=business.pk).suspended_at is not None
 
 
-# --- 0019: how many modules a business may choose to turn on (Ioan, 2026-10-24) -----------------------------------
+# --- 0019: how many modules a business may choose to turn on ---------------------------------------
 
 
 MODULE_CAP = "0019_plan_max_apps"
@@ -1055,11 +1056,11 @@ def test_hubs_migrates_back_before_the_module_cap_and_forward_again():
     assert _caps_of(Plan) == {**MAX_APPS_0019, **UPGRADE_ONLY_0019, "old-code": 0}
 
 
-# --- 0020: the paid cards stop promising infrastructure (Ioan, 2026-10-24, PLAN-SAAS §9) ------------------------------
+# --- 0020: the paid cards stop promising infrastructure --------------------------------------------
 
 
 PLAN_COPY = "0020_paid_plan_copy"
-#: The words of a paid card that promise infrastructure the plans no longer sell (round 6) and nobody runs, in both
+#: The words of a paid card that promise infrastructure the plans no longer sell and nobody runs, in both
 #: languages; the support «agreed in contract» is Enterprise's and Max's real ``support_level`` and stays.
 INFRASTRUCTURE_WORDS = (
     "dedicated", "isolated", "autoscal", "disaster", "monitoring", "single-node", "infrastructure",
@@ -1272,7 +1273,7 @@ def test_putting_the_catalogue_back_leaves_what_the_migrations_leave():
     _assert_the_catalogue_the_migrations_leave(Plan)
 
 
-# --- 0021: the cards on sale say what every plan gives (Ioan, 2026-10-24, PLAN-SAAS §9; PLAN §32) -----------------
+# --- 0021: the cards on sale say what every plan gives ---------------------------------------------
 
 
 CARDS_ON_SALE = "0021_plan_copy_on_sale"
@@ -1471,16 +1472,17 @@ def test_hubs_migrates_back_before_the_cards_on_sale_and_forward_again():
     assert _cards_on_sale_of(Plan) == CARDS_0013
 
     call_command("migrate", "hubs", verbosity=0)
-    # 0026 runs too: Standard's features end without the custom domain (saas#233).
-    assert _cards_on_sale_of(Plan) == {**COPY_0021, "standard": {**COPY_0021["standard"], **FEATURES_0026}}
+    # 0026 and 0029 run too: Standard's features end without the custom domain (saas#233), and the database line of
+    # Free and Starter says what a recovery keeps (saas#408).
+    assert _cards_on_sale_of(Plan) == {**COPY_0021, "standard": {**COPY_0021["standard"], **FEATURES_0026}, **COPY_0029}
 
 
-# --- 0026: no card sells a custom domain nobody can connect (saas#233; PLAN-SAAS §8, round 2026-10-22) ---------------
+# --- 0026: no card sells a custom domain nobody can connect ----------------------------------------
 
 
 NO_CUSTOM_DOMAIN = "0026_no_custom_domain_on_sale"
 #: Standard's card as 0013 and 0021 leave it: its description sold «your own domain» and its features «Custom domain
-#: (erp.yourbusiness.com)», which no business can connect (HUBS-F17 ``descartado``, saas#195 deferred).
+#: (erp.yourbusiness.com)». 0026 takes both off; the cards show that line from ``Plan.includes_custom_domain``.
 CARD_0021 = {
     "description_en": "For growing businesses: your own domain, twice the resources and priority support.",
     "description_es": "Para negocios en crecimiento: dominio propio, el doble de recursos y soporte prioritario.",
@@ -1520,10 +1522,10 @@ def _standard_card(Plan) -> dict:
 
 @pytest.mark.django_db
 class TestNoCardSellsACustomDomainNobodyCanConnect:
-    """Standard's card (the public web, its detail page and the Store) sold a custom domain; HUBS-F17 is
-    ``descartado`` until saas#195 brings it with its three pieces, so from 0026 the card says only what the plan gives.
-    ``includes_custom_domain`` stays: it is the gate saas#195 will read. Each column moves only while it still reads
-    0021's words: what staff wrote in the admin is theirs."""
+    """Standard's card (the public web, its detail page and the Store) sold a custom domain in its own words; from
+    0026 the card says only what the plan gives, and the custom-domain line comes from ``includes_custom_domain``, the
+    gate HUBS-F17 reads. Each column moves only while it still reads 0021's words: what staff wrote in the admin is
+    theirs."""
 
     @pytest.fixture
     def seeded_card(self, plans):
@@ -1551,7 +1553,7 @@ class TestNoCardSellsACustomDomainNobodyCanConnect:
             assert len(card[column]) == len(CARD_0021[column]) - 1, column
         assert [text for text in [card["description_en"], card["description_es"]] if CUSTOM_DOMAIN_WORDS.search(text)] == []
 
-    def test_the_gate_stays_for_saas_195(self, seeded_card):
+    def test_the_custom_domain_gate_stays(self, seeded_card):
         _forward_0026()
 
         gates = dict(seeded_card.objects.values_list("slug", "includes_custom_domain"))
@@ -1623,3 +1625,167 @@ def test_hubs_migrates_back_before_0026_and_forward_again():
 
     call_command("migrate", "hubs", verbosity=0)
     assert _standard_card(Plan) == COPY_0026["standard"]
+
+
+# --- 0029: the database line says what a recovery keeps --------------------------------------------
+
+from hubs.tests.test_plan_catalogue import MANAGED_DATABASE, promises_a_recovery_without_what_it_keeps  # noqa: E402
+
+BACKUPS_KEEP = "0029_backups_keep_what_was_sent"
+#: The database line 0013 seeded on Free and Starter and 0021 kept: the window alone, a whole return to any moment that
+#: a business invoicing with VeriFactu never gets (what it sent to the tax agency stays; the Hub's BASE-F114).
+LINES_0013 = {
+    "features_en": (
+        "Managed database, replicated across several European data centres, with continuous backups and "
+        "point-in-time recovery for 14 days"
+    ),
+    "features_es": (
+        "Base de datos gestionada, replicada en varios centros de datos europeos, con copias de seguridad "
+        "continuas y recuperación a cualquier momento de los últimos 14 días"
+    ),
+}
+#: The line 0029 writes in its place, in each language: the window and what a recovery keeps.
+LINES_0029 = {"features_en": MANAGED_DATABASE["en"], "features_es": MANAGED_DATABASE["es"]}
+#: The plans whose cards carry the database line (Standard, Pro, Enterprise and Max say «Everything in …»).
+DATABASE_LINE_PLANS = ("free", "starter")
+#: What 0029 writes: the features of Free and Starter as 0021 leaves them, the database line rewritten in its place.
+COPY_0029 = {
+    slug: {
+        column: [LINES_0029[column] if line == LINES_0013[column] else line for line in COPY_0021[slug][column]]
+        for column in LINES_0013
+    }
+    for slug in DATABASE_LINE_PLANS
+}
+DATABASE_LINE_COLUMNS = [(slug, column) for slug in DATABASE_LINE_PLANS for column in LINES_0013]
+
+
+def _backups_keep():
+    return import_module(f"hubs.migrations.{BACKUPS_KEEP}")
+
+
+def _forward_0029():
+    _backups_keep().say_what_a_recovery_keeps(global_apps, _SchemaEditor())
+
+
+def _backward_0029():
+    _backups_keep().give_back_the_line_of_0013(global_apps, _SchemaEditor())
+
+
+def _database_line_cards(Plan) -> dict[str, dict]:
+    return {slug: _row(Plan.objects.get(slug=slug), LINES_0013) for slug in DATABASE_LINE_PLANS}
+
+
+def _cards_of_0021() -> dict[str, dict]:
+    return {slug: {column: COPY_0021[slug][column] for column in LINES_0013} for slug in DATABASE_LINE_PLANS}
+
+
+@pytest.mark.django_db
+class TestTheDatabaseLineSaysWhatARecoveryKeeps:
+    """The cards of Free and Starter (the public web, the plan's page, the panel's Store and the assistant) promised a
+    return to any moment of the last 14 days; a business that invoices with VeriFactu in production gets back what it
+    lost from a copy of that moment, and what it sent to the tax agency stays. From 0029 the line says both. Only that
+    line moves, wherever it still reads 0013's words: every other line, and a line staff rewrote, stay theirs."""
+
+    @pytest.fixture
+    def seeded_cards(self, plans):
+        from hubs.models import Plan
+
+        for slug, columns in _cards_of_0021().items():
+            Plan.objects.filter(slug=slug).update(**columns)
+        return Plan
+
+    def test_the_old_line_promised_a_recovery_without_what_it_keeps_on_both_cards(self):
+        for column, line in LINES_0013.items():
+            assert promises_a_recovery_without_what_it_keeps(line), column
+            for slug in DATABASE_LINE_PLANS:
+                assert line in COPY_0021[slug][column], (slug, column)
+
+    def test_the_line_says_what_a_recovery_keeps_in_its_place_and_nothing_else_moves(self, seeded_cards):
+        _forward_0029()
+
+        cards = _database_line_cards(seeded_cards)
+        assert cards == COPY_0029
+        for slug, columns in cards.items():
+            for column, lines in columns.items():
+                old = COPY_0021[slug][column]
+                assert [(a, b) for a, b in zip(old, lines) if a != b] == [(LINES_0013[column], LINES_0029[column])]
+                assert [line for line in lines if promises_a_recovery_without_what_it_keeps(line)] == [], (slug, column)
+
+    def test_nothing_but_the_database_line_moves(self, seeded_cards):
+        before = _snapshot(seeded_cards)
+
+        _forward_0029()
+
+        after = _snapshot(seeded_cards)
+        assert {slug: row for slug, row in after.items() if slug not in DATABASE_LINE_PLANS} == {
+            slug: row for slug, row in before.items() if slug not in DATABASE_LINE_PLANS
+        }
+        for slug in DATABASE_LINE_PLANS:
+            assert after[slug] == {**before[slug], **COPY_0029[slug]}, slug
+
+    @pytest.mark.parametrize(("slug", "column"), DATABASE_LINE_COLUMNS)
+    def test_a_line_staff_rewrote_is_theirs(self, seeded_cards, slug, column):
+        """Staff's words for the same line, which start as 0013's: only the exact line moves."""
+        rewritten = f"{LINES_0013[column][:24]} — edited by staff"
+        edited = [rewritten if line == LINES_0013[column] else line for line in COPY_0021[slug][column]]
+        seeded_cards.objects.filter(slug=slug).update(**{column: edited})
+
+        _forward_0029()
+
+        assert _database_line_cards(seeded_cards)[slug][column] == edited
+
+    @pytest.mark.parametrize(("slug", "column"), DATABASE_LINE_COLUMNS)
+    def test_a_card_staff_edited_elsewhere_still_says_what_a_recovery_keeps(self, seeded_cards, slug, column):
+        """The line is the unit, not the card: a line staff added does not keep the promise on sale."""
+        seeded_cards.objects.filter(slug=slug).update(**{column: [*COPY_0021[slug][column], "Edited by staff"]})
+
+        _forward_0029()
+
+        assert _database_line_cards(seeded_cards)[slug][column] == [*COPY_0029[slug][column], "Edited by staff"]
+
+    def test_reversing_gives_back_the_line_of_0013(self, seeded_cards):
+        _forward_0029()
+        _backward_0029()
+
+        assert _database_line_cards(seeded_cards) == _cards_of_0021()
+
+    @pytest.mark.parametrize(("slug", "column"), DATABASE_LINE_COLUMNS)
+    def test_reversing_keeps_what_staff_wrote_after_it(self, seeded_cards, slug, column):
+        _forward_0029()
+        edited = ["Edited by staff" if line == LINES_0029[column] else line for line in COPY_0029[slug][column]]
+        seeded_cards.objects.filter(slug=slug).update(**{column: edited})
+
+        _backward_0029()
+
+        assert _database_line_cards(seeded_cards)[slug][column] == edited
+
+    def test_it_is_idempotent_and_survives_a_database_without_the_rows(self, seeded_cards):
+        _forward_0029()
+        _forward_0029()
+        assert _database_line_cards(seeded_cards) == COPY_0029
+
+        seeded_cards.objects.filter(slug__in=DATABASE_LINE_PLANS).delete()
+        for _ in range(2):
+            _forward_0029()
+            _backward_0029()
+
+        assert not seeded_cards.objects.filter(slug__in=DATABASE_LINE_PLANS).exists()
+
+    def test_it_is_frozen_and_reads_nothing_of_the_code(self):
+        lines = _backups_keep().LINES
+
+        assert [name for name in _imported_modules(_backups_keep()) if name.startswith("hubs")] == []
+        assert {column: old for column, (old, _) in lines.items()} == LINES_0013
+        assert {column: new for column, (_, new) in lines.items()} == LINES_0029
+
+
+@pytest.mark.django_db
+def test_hubs_migrates_back_before_0029_and_forward_again():
+    """``migrate hubs 0028`` and back: Free and Starter promise the window alone again, then say what it keeps."""
+    from hubs.models import Plan
+
+    call_command("migrate", "hubs", "0028", verbosity=0)
+    assert _database_line_cards(Plan) == _cards_of_0021()
+
+    call_command("migrate", "hubs", verbosity=0)
+    assert _database_line_cards(Plan) == COPY_0029

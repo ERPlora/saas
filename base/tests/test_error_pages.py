@@ -1,6 +1,6 @@
 """The error pages Django and allauth render by name are ours: ``templates/<code>.html``, each
-extending ``errors/base.html``. Ported from ERPlora/saas (origin/develop) without OutfitKit: plain
-HTML and our CSS, a way home and a way to support, in English and Spanish.
+extending ``errors/base.html``: plain HTML and our CSS, a way home and a way to support, in English
+and Spanish.
 
 - ``400.html``: ``django.views.defaults.bad_request`` (a SuspiciousOperation).
 - ``403.html``: ``django.views.defaults.permission_denied``: the admin for a signed-in account that

@@ -1,4 +1,4 @@
-// The door of the demo hubs (/demo/, public/demo.py; PLAN-SAAS §3.5, round 2026-10-17) in a real browser,
+// The door of the demo hubs (/demo/, public/demo.py) in a real browser,
 // under the public web's CSP with zero violations: the home's «Try the demo» leads to it, it offers a demo
 // in English and in Spanish at the three viewports, and its button (an ion-button inside a POST form) really
 // submits. Nobody plays its Hub here (`HUB_INTERNAL_URL` is the stack's port for it, which only demo-wait.spec.ts

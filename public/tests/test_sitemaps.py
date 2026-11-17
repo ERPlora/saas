@@ -1,7 +1,5 @@
-"""``/sitemap.xml`` (spec §8.2), ported from ERPlora/saas ``landing/sitemaps.py`` (origin/develop
-c5ca8ca). It lists only pages that exist: each batch of the port adds its own to
-``StaticPagesSitemap.pages`` (and the store its sitemaps to ``SITEMAPS``), and the guard below
-fails the day an entry points to a page that does not answer 200.
+"""``/sitemap.xml``: it lists only pages that exist (``StaticPagesSitemap.pages``, and the store's sitemaps in
+``SITEMAPS``), and the guard below fails the day an entry points to a page that does not answer 200.
 """
 
 import re
@@ -75,7 +73,7 @@ def test_no_listed_page_is_private():
 
 
 def test_the_sitemap_is_built_from_the_registry():
-    # Each batch registers its section; the store's (L6) are tested in test_store.py.
+    # The store's sections are tested in test_store.py.
     assert SITEMAPS["static"] is StaticPagesSitemap
     assert reverse("public:sitemap") == "/sitemap.xml"
 
@@ -93,7 +91,7 @@ def _lastmods(body: str) -> dict[str, str | None]:
 
 @pytest.mark.django_db
 def test_an_apps_pages_are_dated_by_its_spanish_documentation(client):
-    """Spec §8.2: ``lastmod`` of ``/apps/<id>/`` and its ``docs/`` = ``updated_at`` of the app's
+    """``lastmod`` of ``/apps/<id>/`` and its ``docs/`` = ``updated_at`` of the app's
     Spanish ``app_doc``; an app without documentation goes in undated."""
     invoice = make_app("invoice")
     make_doc(invoice, "es", updated_at=datetime(2026, 10, 1, 9, 30, tzinfo=UTC))

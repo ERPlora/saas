@@ -1,9 +1,8 @@
-"""ASSISTANT-F17 (ASSISTANT-G49) · Do not keep the conversation: erplora.com uses it for the call and forgets it.
+"""Do not keep the conversation: erplora.com uses it for the call and forgets it.
 
 No table, log, audit entry nor event of the outbox keeps what a person wrote or what the model answered: only
-numbers (messages, tokens, cost). The old product kept the first 50 characters of a dictation in its log and the
-provider's error words could carry them (SAAS_ASSISTANT-F09, «parcial»): here the provider's words of a failure never
-reach a log either. Checked by dumping the whole database and reading every log record of every logger.
+numbers (messages, tokens, cost). The provider's words of a failure never reach a log either: they could quote what was
+dictated. Checked by dumping the whole database and reading every log record of every logger.
 """
 
 import io
@@ -110,8 +109,8 @@ def test_a_search_leaves_nothing_of_what_was_searched(internal, business, answer
 
 
 def test_a_search_tells_brave_what_is_looked_for_and_nothing_of_who_asks(internal, business, answering, a_search):
-    """The privacy policy (§5) says so: the request leaves from our servers with the query, where to look and our key;
-    no name, no address, nothing of the hub or of the person's browser."""
+    """Section 5 of the privacy policy says so: the request leaves from our servers with the query, where to look and
+    our key; no name, no address, nothing of the hub or of the person's browser."""
     the_turn_asks(business, Client(headers={"x-forwarded-for": "203.0.113.7"}))
 
     seen = the_search(a_search)
@@ -127,8 +126,8 @@ def test_a_search_tells_brave_what_is_looked_for_and_nothing_of_who_asks(interna
 
 
 def test_what_a_search_returned_goes_to_the_model_and_no_further_in_a_live_turn(internal, business, answering, a_search):
-    """Brave's terms allow no keeping of its results (§3(b)(i)): the caller keeps the conversation, so what it gets is all
-    that can be kept. Its answer and where it comes from, never the page."""
+    """Brave Search's terms allow no keeping of its results (section 3(b)(i)): the caller keeps the conversation, so
+    what it gets is all that can be kept. Its answer and where it comes from, never the page."""
     got = frames(door(Client(), "/internal/assistant/chat/stream", {"hub": business.slug, "messages": [{"role": "user", "content": SECRET_QUESTION}]}))
 
     second = [seen for seen in a_search.requests if seen.path == COMPLETIONS][1]
@@ -139,7 +138,7 @@ def test_what_a_search_returned_goes_to_the_model_and_no_further_in_a_live_turn(
 
 
 def test_a_turn_at_once_sends_nothing_to_the_search_so_nothing_of_it_can_be_kept(internal, business, answering, a_search, every_log):
-    """The Hub keeps what this door answers (ASSISTANT-F13), so this door never searches, even if the model asks: the
+    """The Hub keeps what this door answers, so this door never searches, even if the model asks: the
     question does not leave for Brave and no page or address of its comes back."""
     response = door(Client(), "/internal/assistant/chat", {"hub": business.slug, "messages": [{"role": "user", "content": SECRET_QUESTION}]})
 
@@ -199,7 +198,7 @@ def test_the_providers_words_of_a_failure_reach_no_log(internal, business, answe
 def test_a_turn_of_the_panels_assistant_leaves_nothing_of_what_was_said(
     client, owner, plans, answering, fake_provider, every_log
 ):
-    """The panel's own assistant (``POST /api/assistant/turn``, PLAN-SAAS §23): the account's conversation is forgotten
+    """The panel's own assistant (``POST /api/assistant/turn``): the account's conversation is forgotten
     as the Hub's is, its tool's results too."""
     from hubs.tests.conftest import create_business
 

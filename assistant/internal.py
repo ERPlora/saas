@@ -1,4 +1,4 @@
-"""The assistant's doors erplora.com serves to the Hub (PLAN-SAAS §1.1): ``POST /internal/assistant/…`` (the turn,
+"""The assistant's doors erplora.com serves to the Hub: ``POST /internal/assistant/…`` (the turn,
 live or at once, the allowance, the search in ERPlora's documentation, the report of an answer) and
 ``POST /internal/speech/…`` (the dictation and the reading aloud). The Hub never speaks to a provider: it calls these,
 and erplora.com keeps the provider's key, chooses the model, counts the plan's messages and forgets the conversation.
@@ -6,15 +6,15 @@ The Hub keeps no index of its own: the embeddings door stays open for one that w
 
 Server to server, signed as every ``/internal`` call (``accounts.signing``: v1 over the body or v2 over the method,
 the path and the body; ±300 s; the current or the previous secret), so no CSRF token. Plain Django views, as
-``whatsapp.internal`` and ``fiscal_gateway.internal``, until the ``/internal`` ninja API; async, so a turn that waits
+``whatsapp.internal`` and ``fiscal_gateway.internal``; async, so a turn that waits
 for its model holds no thread. Each one names the business in ``hub`` (its address or its id; a demo, its ``demo-…``
 address).
 
 Every door, before its own answer: 405 ``method_not_allowed``, 413 ``payload_too_large`` (a declared body over its
 limit, before it is parsed; the server keeps none of it, ``config.asgi.BodiesInMemory``), 401 ``unauthorized`` (unsigned, stale or another secret), 422 ``invalid_payload`` (not JSON
 or not the contract, with the failing ``fields``), 404 ``hub_unknown``, 403 ``hub_inactive`` and 429 ``rate_limited``
-(with ``Retry-After``; the business's budget of the door, spent only once the signature and the business passed,
-saas#2531). An operation's refusal is its envelope ``{"error": {"code", "message"}}``.
+(with ``Retry-After``; the business's budget of the door, spent only once the signature and the business
+passed). An operation's refusal is its envelope ``{"error": {"code", "message"}}``.
 """
 
 from __future__ import annotations
@@ -157,7 +157,7 @@ async def usage(call: Call) -> HttpResponse:
     return JsonResponse(shown.model_dump(mode="json"))
 
 
-# --- The turn (ASSISTANT-G43, G44, G47) --------------------------------------------------------------------------
+# --- The turn --------------------------------------------------------------------------
 
 @door(TurnIn, bucket="turn", rate="ASSISTANT_TURN_RATELIMIT", max_bytes=TURN_BODY_BYTES)
 async def chat_stream(call: Call) -> HttpResponse:
@@ -194,7 +194,7 @@ async def chat(call: Call) -> HttpResponse:
     return JsonResponse({**body, "quota": usage})
 
 
-# --- Embeddings and voice (ASSISTANT-G54, G56, G57) --------------------------------------------------------------
+# --- Embeddings and voice --------------------------------------------------------------
 
 #: The body of a batch of texts to embed (256 descriptions of the Hub's modules fit many times over).
 EMBED_BODY_BYTES = 2 * 1024 * 1024
@@ -289,7 +289,7 @@ async def synthesize(call: Call) -> HttpResponse:
     return HttpResponse(await speech(call.caller, call.data), content_type="audio/mpeg")
 
 
-# --- ERPlora's documentation (ASSISTANT-F28) --------------------------------------------------------------------
+# --- ERPlora's documentation --------------------------------------------------------------------
 
 
 @door(DocsSearchDoorIn, bucket="docs", rate="ASSISTANT_DOCS_RATELIMIT")
@@ -307,7 +307,7 @@ async def docs_search(call: Call) -> HttpResponse:
     return JsonResponse(found.model_dump(mode="json"))
 
 
-# --- The report of an answer (ASSISTANT-G58) ----------------------------------------------------------------------
+# --- The report of an answer ----------------------------------------------------------------------
 
 
 @door(ReportIn, bucket="report", rate="ASSISTANT_REPORT_RATELIMIT")

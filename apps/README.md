@@ -5,7 +5,7 @@ punto 10). `hubs`, `billing` y `public` la leen; ella solo llama a otras desde e
 comprobar los precios y nombrar a quien lo tiene, `hubs` para avisar a los negocios de su plan) y a `accounts` para el
 registro de cambios. El manual y los flujos están en `WORKBOOK.md` (APPS-F01 a APPS-F07, app completa desde el
 2026-10-27); el contrato, en PLAN §21 y PLAN-SAAS §2.6 y §9, con el detalle en
-`docs/superpowers/specs/2026-10-13-saas-public-web-and-app-catalog-design.md`; el cierre, en PLAN-SAAS §12.
+`knowledge/raw/superpowers/specs/2026-10-13-saas-public-web-and-app-catalog-design.md`; el cierre, en PLAN-SAAS §12.
 
 ## Qué hay
 
@@ -17,7 +17,7 @@ registro de cambios. El manual y los flujos están en `WORKBOOK.md` (APPS-F01 a 
 | `api.py` | `GET /api/apps`, `/api/apps/get`, `/api/apps/doc` y `/api/apps/sitemap`, cada una ligada a su operación |
 | `icons.py` | Limpieza del `icon_svg` que manda el Hub (nh3, solo formas) y el icono de respaldo |
 | `checks.py` | `apps.E001`: un `Module.slug` sin app en `shared.app`; corre con `manage.py check --database default` |
-| `admin.py` | `App` y `AppDoc` de solo lectura para todos; `Module` editable con `ModuleForm`, que comprueba en Stripe los precios pegados (APPS-F04, `billing.services.module_price_problems`), que al guardar uno nuevo o con otro `tier` lo hace llegar a los negocios de su plan (HUBS-F34, `hubs.services.owe_module_rights`), y con el borrado de un módulo que algún negocio tiene rechazado (saas#2568) |
+| `admin.py` | `App` y `AppDoc` de solo lectura para todos; `Module` editable con `ModuleForm`, que comprueba en Stripe los precios pegados (APPS-F04, `billing.services.module_price_problems`), que al guardar uno nuevo o con otro `tier` lo hace llegar a los negocios de su plan (HUBS-F34, `hubs.services.subscription_sync.owe_module_rights`), y con el borrado de un módulo que algún negocio tiene rechazado (erplora-old/saas#2568) |
 | `auditlog.py` | Registro de cambios de `Module` con django-auditlog (ACCOUNTS-F36, sin `updated_at`); `App` y `AppDoc` no se registran |
 
 ## Reglas

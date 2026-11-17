@@ -1,11 +1,9 @@
-"""Every mail of erplora.com leaves branded, as HTML and as text, in its recipient's language (ACCOUNTS-F46; PLAN-SAAS
-§7, block 13; the old saas#1044: 11 of 14 account mails left without the brand and without HTML).
+"""ACCOUNTS-F46 · Every mail of erplora.com leaves branded, as HTML and as text, in its recipient's language.
 
-Ported in structure from ERPlora/saas ``apps/core/tests/test_branded_emails.py`` (origin/develop): each family is
-sent by its own sender, never rendered by hand, and each mail must be an ``EmailMultiAlternatives`` with one
-``text/html`` part on the common template (the logo served by erplora.com, the brand's colour, the footer, CSS
+Each family is sent by its own sender, never rendered by hand, and each mail must be an ``EmailMultiAlternatives``
+with one ``text/html`` part on the common template (the logo served by erplora.com, the brand's colour, the footer, CSS
 inline and no other resource from the network) and a text part that says the same, in English and in Spanish.
-allauth's mails are found on disk, as the old test did: a template allauth adds is checked the day it ships.
+allauth's mails are found on disk: a template allauth adds is checked the day it ships.
 The mails of hubs (``hubs/emails.py``) still leave as plain text and are not in this list.
 """
 

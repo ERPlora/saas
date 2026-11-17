@@ -1,4 +1,4 @@
-// «New key» (mockups `account.html` «keys», README §3b and §6.17): a name (required, X-17), the permissions the
+// «New key»: a name (required), the permissions the
 // server offers (at least one) and when it expires (30 or 90 days, 90 by default, or never). Creating access asks
 // «Confirm it's you» when the server wants it. The whole key is shown once, with «Copy», until «I have saved it».
 // clock: data only — no code under test compares these dates with now.
@@ -78,7 +78,7 @@ describe('NewKeyModal', () => {
     expect(s.q('new-key')?.textContent).toContain('You will see the whole key only once');
   });
 
-  it('waits for a name and at least one permission (X-17)', async () => {
+  it('waits for a name and at least one permission', async () => {
     const s = await setup();
     expect(ionProps(s.q('new-key-submit'), 'disabled')).toEqual({ disabled: true });
     await typeInto(s.q('new-key-name'), '   ');
@@ -101,7 +101,7 @@ describe('NewKeyModal', () => {
     expect(s.calls().map((c) => [c.method, c.path, c.body])).toEqual([
       ['POST', '/api/accounts/api-keys', { name: 'Gestoría Martínez', scopes: ['billing.read'], expires_in_days: null }],
     ]);
-    // No toast while the key is on screen: on a phone it would cover the key, shown this once (ACCOUNTS-F31).
+    // No toast while the key is on screen: on a phone it would cover the key, shown this once.
     expect(toastSuccess).not.toHaveBeenCalledWith('Key created: «Gestoría Martínez»');
     expect(s.q('new-key-secret')?.textContent).toContain(SECRET);
     expect(s.q('new-key')?.textContent).toContain('you will not see it again');

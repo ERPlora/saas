@@ -131,7 +131,7 @@ def test_a_refusal_is_the_error_envelope(owner, shop, stripe_double):
     assert response.json()["error"]["code"] == "billing.billing_location_required"
 
 
-#: The Billing section (lot L3-C).
+#: The Billing section.
 BILLING_SECTION_ROUTES = {
     "/api/billing/invoices": ("get", "billing.invoice.list"),
     "/api/billing/invoices/detail": ("get", "billing.invoice.get"),

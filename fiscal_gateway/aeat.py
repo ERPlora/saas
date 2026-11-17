@@ -32,13 +32,12 @@ refuse it, and probe it, without presenting). The server's trusted certificates 
 presentation: when they cannot be loaded (a file that is not there, a folder, or one that holds none),
 ``tls_context`` raises ``TrustStoreUnreadable``, an ``AeatUnreachable`` with ``sent=False`` whose message names the
 setting and its file, logged by ``base.tls``; it is checked on every call, never on start (the e2e stack of the Hub
-starts the SaaS before its CA exists), and no attempt of the gateway clears it. Headers as the proven client of the gateway
-this one replaces: ``Content-Type: text/xml;charset=UTF-8`` and ``SOAPAction: ""`` (the WSDL's, for both
-operations).
+starts the SaaS before its CA exists), and no attempt of the gateway clears it. Headers:
+``Content-Type: text/xml;charset=UTF-8`` and ``SOAPAction: ""`` (the WSDL's, for both operations).
 
-Time: 5 s to connect and 30 s to read (PLAN-SAAS §4, round 2026-10-15c; PLAN §28), 5 s to write the envelope
-and 1 s to wait for a connection (each submission opens its own client): httpx would give every phase it is
-not told otherwise the same figure. Those are per operation (the read one, per chunk received), so no sum of
+Time: 5 s to connect and 30 s to read, 5 s to write the envelope and 1 s to wait for a connection (each
+submission opens its own client): httpx would give every phase it is not told otherwise the same figure.
+Those are per operation (the read one, per chunk received), so no sum of
 them bounds a submission: ``DEADLINE_SECONDS`` (41 s) does, cancelling the exchange wherever it is
 (``asyncio.timeout`` around httpx's async client, the way httpx bounds a whole request). An exchange that
 takes every phase's whole time still fits in it, and connecting can never reach it, so a submission the

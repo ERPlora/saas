@@ -1,24 +1,12 @@
-// Buying for a business Stripe does not bill yet (PLAN-SAAS §3.2 and §4; mockups `store.html`
-// «modal-checkout»; UX-AUDIT-4 W-06/X-02/X-09): Stripe's Embedded Checkout inside our dialog.
-//   - First who pays (`hubs.billing_profile.get`): without a name, a country and a postal code, the form
-//     comes first and is saved (`hubs.billing_profile.update`); otherwise «Invoice to … · Change».
-//   - Then `billing.checkout.start` (the plan at the billing chosen, with the promo code; or the module,
-//     named in the title) gives a Checkout Session's `client_secret`; Stripe.js (web only) mounts it with
-//     `createEmbeddedCheckoutPage({ fetchClientSecret })` inside the dialog.
-//   - Stripe's `onComplete` → «Paying…», the checkout is destroyed and the page goes to the business,
-//     saying what happened. A failure is always said, with «Retry» (saas#1565: never a silent spinner).
-//   - Closing destroys the checkout. The declined card is never offered: Stripe asks for a card, and the
-//     dialog says why when the account's card was declined.
+// Buying for a business Stripe does not bill yet: Stripe's Embedded Checkout inside our dialog, after the payer's
+// details. A failure is always said, with «Retry», never a silent spinner.
 // Stripe cannot run here: `window.Stripe` is a double (`__tests__/stripe-double.ts`).
 // clock: data only — no code under test compares these dates with now.
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { h, ref } from 'vue';
+import { h, reactive, ref } from 'vue';
+import type { Router } from 'vue-router';
 
-vi.mock('@ionic/vue', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@ionic/vue')>()),
-  IonModal: (await import('../../../hubs/frontend/__tests__/ion-modal-stub')).IonModalStub,
-}));
 vi.mock('@erplora/ui/shell', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
   toastSuccess: vi.fn(() => Promise.resolve()),
@@ -27,6 +15,34 @@ vi.mock('../stripe-js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../stripe-js')>()),
   loadStripeJs: vi.fn(),
 }));
+
+/** Ionic renders an inline modal's content only once it presents it (`ionMount`), and that can come after the
+ *  answers the dialog waits for. With `held`, the dialog's content comes when the test calls `present()`. */
+const presentation = vi.hoisted(() => {
+  const waiting: Array<() => void> = [];
+  return {
+    held: false,
+    waiting,
+    present: () => waiting.splice(0).forEach((show) => show()),
+  };
+});
+
+vi.mock('@ionic/vue', async (importOriginal) => {
+  const { IonModalStub } = await import('../../../hubs/frontend/__tests__/ion-modal-stub');
+  const { defineComponent, h: render, shallowRef } = await import('vue');
+  const IonModal = defineComponent({
+    name: 'IonModalPresentedLate',
+    inheritAttrs: false,
+    props: { isOpen: { type: Boolean, default: false }, backdropDismiss: { type: Boolean, default: true } },
+    setup(props, { attrs, slots }) {
+      const presented = shallowRef(!presentation.held);
+      if (!presented.value) presentation.waiting.push(() => (presented.value = true));
+      return () =>
+        render(IonModalStub, { ...attrs, isOpen: props.isOpen && presented.value, backdropDismiss: props.backdropDismiss }, slots);
+    },
+  });
+  return { ...(await importOriginal<typeof import('@ionic/vue')>()), IonModal };
+});
 
 import { toastSuccess } from '@erplora/ui/shell';
 
@@ -43,6 +59,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  presentation.held = false;
+  presentation.waiting.length = 0;
   vi.mocked(toastSuccess).mockClear();
   vi.mocked(loadStripeJs).mockReset();
   applySurface('web');
@@ -65,7 +83,7 @@ const EMPTY_PROFILE = { ...PROFILE, billing_name: '', tax_id: '', billing_addres
 const SESSION = { flow: 'checkout', session_id: 'cs_test_1', client_secret: 'cs_test_1_secret_x', publishable_key: 'pk_test_double', preview: null };
 const PLAN: CheckoutPurchase = { kind: 'plan', slug: 'starter', name: 'Starter', interval: 'year' };
 const MODULE: CheckoutPurchase = { kind: 'module', slug: 'booking', name: 'Bookings', interval: 'month' };
-/** The plan of a handed-over business, kept with the new owner's card from the end of the paid period (HUBS-F28). */
+/** The plan of a handed-over business, kept with the new owner's card from the end of the paid period. */
 const TAKE_OVER: CheckoutPurchase = { kind: 'takeover', slug: 'starter', name: 'Starter', interval: 'month', from: '2026-11-01T10:00:00Z' };
 const takeOver: Handler = ({ path }) => {
   if (path === '/api/hubs/billing-profile') return Response.json(PROFILE);
@@ -81,7 +99,7 @@ const happy: Handler = ({ path }) => {
   return Response.json({});
 };
 
-async function setup(api: Handler = happy, purchase: CheckoutPurchase = PLAN, extra: Record<string, unknown> = {}, locale: 'en' | 'es' = 'en') {
+async function setup(api: Handler = happy, purchase: CheckoutPurchase = PLAN, extra: Record<string, unknown> = {}, locale: 'en' | 'es' = 'en', slots = {}) {
   const open = ref(true);
   const stale = vi.fn();
   const Host = {
@@ -95,7 +113,7 @@ async function setup(api: Handler = happy, purchase: CheckoutPurchase = PLAN, ex
         open: open.value,
         'onUpdate:open': (v: boolean) => (open.value = v),
         onStale: stale,
-      }),
+      }, slots),
   };
   const m = await mountBilling(Host, {
     locale,
@@ -108,6 +126,21 @@ async function setup(api: Handler = happy, purchase: CheckoutPurchase = PLAN, ex
   await flush();
   await flush();
   return { ...m, open, stale };
+}
+
+/**
+ * Stripe completes the payment while the business's page is still on its way: the navigation it starts waits until
+ * the returned `arrive()` lets it through.
+ */
+async function completeWhileThePageIsOnItsWay(router: Router): Promise<() => Promise<void>> {
+  let letThrough = (): void => undefined;
+  router.beforeResolve(() => new Promise<void>((resolve) => (letThrough = resolve)));
+  stripe.complete();
+  await flush();
+  return async () => {
+    letThrough();
+    await flush();
+  };
 }
 
 describe('CheckoutModal', () => {
@@ -146,7 +179,30 @@ describe('CheckoutModal', () => {
     expect(s.open.value).toBe(false);
   });
 
-  it('keeping a handed-over plan: its own checkout, nothing charged today, paid from the end of the paid period (HUBS-F28)', async () => {
+  it('says what happened once the business’s page has taken over, never while that page is still on its way', async () => {
+    const s = await setup();
+    const arrive = await completeWhileThePageIsOnItsWay(s.router);
+    expect(s.q('checkout-paying')?.textContent?.trim()).toBe('Paying…');
+    expect(toastSuccess).not.toHaveBeenCalled();
+    await arrive();
+    expect(s.router.currentRoute.value.fullPath).toBe('/dashboard/businesses/cafe/summary');
+    expect(s.open.value).toBe(false);
+    expect(toastSuccess).toHaveBeenCalledWith('Café Central is now on Starter');
+  });
+
+  it('names the business paid for, though the Store behind moves to another one while that business’s page is on its way', async () => {
+    // Left behind in the stack, the Store loses its `?business=` and picks another business for its dialog.
+    const shown = reactive({ business: { id: 'cafe', name: 'Café Central' } });
+    const s = await setup(happy, PLAN, shown);
+    const arrive = await completeWhileThePageIsOnItsWay(s.router);
+    shown.business = { id: 'norte', name: 'Bar Norte' };
+    await flush();
+    await arrive();
+    expect(s.router.currentRoute.value.fullPath).toBe('/dashboard/businesses/cafe/summary');
+    expect(toastSuccess).toHaveBeenCalledWith('Café Central is now on Starter');
+  });
+
+  it('keeping a handed-over plan: its own checkout, nothing charged today, paid from the end of the paid period', async () => {
     const s = await setup(takeOver, TAKE_OVER);
     expect(s.calls().map((c) => [c.method, c.path, c.body ?? c.query])).toEqual([
       ['GET', '/api/hubs/billing-profile', { hub_id: 'cafe' }],
@@ -266,12 +322,34 @@ describe('CheckoutModal', () => {
     expect(stripe.checkouts).toEqual([]);
   });
 
+  it.each([
+    ['billing.country_not_sold', 'For now ERPlora only sells to payers billed in Spain: change the billing details.'],
+    ['billing.business_required', 'In the Canary Islands, Ceuta and Melilla we only sell to businesses and professionals: add the tax ID of the payer.'],
+  ])('a payer the server does not sell to (%s) is sent back to the details, with its reason', async (code, reason) => {
+    const s = await setup(({ path }) => (path === '/api/hubs/billing-profile' ? Response.json(PROFILE) : apiError(409, code, reason)));
+    expect(s.q('details-country')).not.toBeNull();
+    expect(s.q('checkout-modal-error')?.textContent).toContain(reason);
+    expect(stripe.checkouts).toEqual([]);
+  });
+
   it('«Change» goes back to the details and lets the checkout go', async () => {
     const s = await setup();
     s.q('checkout-change-details')?.click();
     await flush();
     expect(stripe.checkouts[0].destroyed).toBe(true);
     expect(s.q('details-name')).not.toBeNull();
+  });
+
+  it('while Stripe.js loads, its place waits in the dialog and nothing says «could not open»', async () => {
+    let loaded: (factory: never) => void = () => undefined;
+    vi.mocked(loadStripeJs).mockImplementationOnce(() => new Promise((resolve) => (loaded = resolve)));
+    const s = await setup();
+    expect(s.q('checkout-stripe')).not.toBeNull();
+    expect(s.q('checkout-error')).toBeNull();
+    loaded(stripe.factory as never);
+    await flush();
+    expect(s.q('checkout-error')).toBeNull();
+    expect(stripe.checkouts[0].mountedOn).toBe(s.q('checkout-stripe'));
   });
 
   it('Stripe.js that does not load is said, and «Retry» tries again (never a silent spinner)', async () => {
@@ -307,6 +385,47 @@ describe('CheckoutModal', () => {
     expect(stripe.checkouts).toEqual([]);
   });
 
+  describe('when Stripe answers before Ionic has rendered the dialog’s content', () => {
+    beforeEach(() => {
+      presentation.held = true;
+    });
+
+    it('the checkout waits for its place and mounts there as soon as the dialog shows it: never «could not open»', async () => {
+      const s = await setup();
+      expect(stripe.secrets).toEqual(['cs_test_1_secret_x']);
+      expect(s.q('checkout-stripe')).toBeNull();
+      presentation.present();
+      await flush();
+      expect(s.q('checkout-error')).toBeNull();
+      expect(stripe.checkouts).toHaveLength(1);
+      expect(stripe.checkouts[0].mountedOn).toBe(s.q('checkout-stripe'));
+      expect(stripe.checkouts[0].destroyed).toBe(false);
+    });
+
+    it.each([
+      ['Stripe.js that does not load', () => vi.mocked(loadStripeJs).mockImplementationOnce(() => Promise.reject(new Error('Stripe.js could not be loaded')))],
+      ['a checkout Stripe refuses', () => stripe.failNext(new Error('Invalid client secret'))],
+    ])('%s is still said, with «Retry», once the dialog shows it', async (_failure, fail) => {
+      fail();
+      const s = await setup();
+      presentation.present();
+      await flush();
+      expect(s.q('checkout-error')?.textContent).toContain('We could not open the secure payment');
+      expect(s.q('checkout-retry')).not.toBeNull();
+      expect(stripe.checkouts).toEqual([]);
+    });
+
+    it('closed before its content came, the checkout is let go and nothing is mounted later', async () => {
+      const s = await setup();
+      s.open.value = false;
+      await flush();
+      presentation.present();
+      await flush();
+      expect(stripe.checkouts[0].destroyed).toBe(true);
+      expect(stripe.checkouts[0].mountedOn).toBeNull();
+    });
+  });
+
   it('closing the dialog lets the checkout go', async () => {
     const s = await setup();
     s.open.value = false;
@@ -314,9 +433,15 @@ describe('CheckoutModal', () => {
     expect(stripe.checkouts[0].destroyed).toBe(true);
   });
 
-  it('when the card of the same payer was declined, says whose and to pay with another (audit 2 R-21)', async () => {
+  it('when the card of the same payer was declined, says whose and to pay with another', async () => {
     const s = await setup(happy, PLAN, { declinedFor: 'Bar La Plaza' });
     expect(s.q('checkout-declined')?.textContent).toContain('The card that pays for Bar La Plaza was declined: pay with another one.');
+  });
+
+  it('shows the notice the Store gives it next to the card it asks for (free months of a promo code)', async () => {
+    const s = await setup(happy, PLAN, {}, 'en', { notice: () => h('p', { 'data-testid': 'store-notice' }, '6 months free') });
+    expect(s.q('store-notice')?.textContent).toBe('6 months free');
+    expect(s.q('checkout-invoice-to')).not.toBeNull();
   });
 
   it('without a declined card of that payer, it says nothing about cards', async () => {

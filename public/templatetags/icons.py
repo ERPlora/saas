@@ -1,14 +1,13 @@
-"""``{% icon %}``: an inline SVG painted on the server from the baked icon JSON (spec §8.4).
+"""``{% icon %}``: an inline SVG painted on the server from the baked icon JSON.
 
-Port of ``apps/core/templatetags/icons.py`` of the old SaaS, same call shape::
+Usage::
 
     {% load icons %}
     {% icon "construct-outline" %}                       {# no set = Ionicons (ion:) #}
     {% icon "lucide:check" size=20 css_class="text-primary" %}
     {% icon icon %}                                      {# a component partial's variable #}
 
-The old tag emitted an empty ``<span class="iconify">`` that Iconify filled in the browser from
-``api.iconify.design``. Here the SVG comes from ``frontend/generated/public-icons.json``, which
+The SVG comes from ``frontend/generated/public-icons.json``, which
 ``pnpm gen:public-icons`` (``scripts/gen-public-icons.mjs``) writes from the icon packages of the
 shell (``ionicons``, ``@iconify-json/*``) with only the icons ``public/templates`` cite. Nothing is
 fetched, ever. An icon that is not baked is a clear error with DEBUG and, in production, a warning
@@ -33,7 +32,7 @@ register = template.Library()
 
 #: The baked icons: ``{"<set>:<name>": {"body": "<path …/>", "viewBox": "0 0 512 512"}}``.
 ICONS_FILE = Path(settings.BASE_DIR) / "frontend" / "generated" / "public-icons.json"
-#: The set of a name without a prefix, as in the old tag and in the shell's ``HubIcon``.
+#: The set of a name without a prefix, as in the shell's ``HubIcon``.
 DEFAULT_SET = "ion"
 #: What a missing icon paints in production: a rounded square in the text colour.
 FALLBACK_BODY = '<rect x="3" y="3" width="18" height="18" rx="4" fill="none" stroke="currentColor" stroke-width="2"/>'

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-// The panel's one «could not load» state (audit 2026-10-14, R-04/R-08; `live-state.ts`): a danger notice that
+// The panel's one «could not load» state (`live-state.ts`): a danger notice that
 // says what could not be loaded and offers «Retry» (the page reopens its live data). Pages pass their own
 // heading; without one it speaks of the page. Never an empty state on a failure, never a spinner for ever.
 // A refusal for the person's role (403 or the live `permission_denied`) is not a connection problem: it says so
-// and offers no «Retry», which would only be refused again (audit 2 R-19).
+// and offers no «Retry», which would only be refused again.
 import { InlineFeedback } from '@erplora/ui/components';
 import { HubIcon } from '@erplora/ui/shell';
 import { IonButton } from '@ionic/vue';
@@ -78,7 +78,7 @@ const forbidden = computed(() => props.error?.code === 'permission_denied' || pr
 <style scoped>
 .load-failed__retry {
   min-height: 44px;
-  /* On the notice's pink the primary is 3.94:1 (audit 2 R-10): the accessible primary text reads ≥ 4.5:1. */
+  /* On the notice's pink the primary is 3.94:1; the accessible primary text reads ≥ 4.5:1. */
   --color: var(--ep-primary-text, var(--ion-color-primary));
   --border-color: var(--ep-primary-text, var(--ion-color-primary));
 }

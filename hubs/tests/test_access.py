@@ -1,8 +1,9 @@
 """Who enters a hub is read in one place: the answered members of the businesses that still open.
 
-The jump (``accounts.services.issue_code``/``redeem_code``) reads them through ``hubs.member.list_mine``, by its name:
-accounts never imports hubs. ``accounts.HubMembership``, the copy the jump read until saas#199, left the code
-(``accounts/0011``) and its table the database (``accounts/0012``, saas#220), and the guardrail below keeps it out.
+The jump (``accounts.services.hub_jump.issue_code``/``redeem_code``) reads them through ``hubs.member.list_mine``, by
+its name: accounts never imports hubs. ``accounts.HubMembership``, the copy the jump read until saas#199, left the
+code (``accounts/0011``) and its table the database (``accounts/0012``, saas#220), and the guardrail below keeps it
+out.
 """
 
 import ast
@@ -14,8 +15,9 @@ from live import operations
 from live.context import OperationContext, Scope
 from live.errors import PermissionDenied, Unauthorized
 
-from accounts import services as account_services
-from hubs import queries, services
+from accounts.services import hub_jump
+from hubs.services import deletion, demo_businesses, invitation_answers, member_management, ownership
+from hubs.queries import membership
 from hubs.models import Hub, HubMember
 from hubs.schemas import ByIdIn, MemberListMineIn, MemberRoleIn, OwnershipTransferIn
 from hubs.tests.conftest import add_member, create_business, ctx_for, member_of, role_on
@@ -26,7 +28,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def mine(user):
-    return [(row.slug, row.role) for row in queries.member_list_mine(ctx_for(user), MemberListMineIn()).rows]
+    return [(row.slug, row.role) for row in membership.member_list_mine(ctx_for(user), MemberListMineIn()).rows]
 
 
 class TestMemberListMine:
@@ -82,14 +84,14 @@ class TestMemberListMine:
 
     def test_a_visitor_without_an_account_is_refused(self):
         with pytest.raises(PermissionDenied):
-            queries.member_list_mine(ctx_for(None), MemberListMineIn())
+            membership.member_list_mine(ctx_for(None), MemberListMineIn())
 
     def test_a_caller_with_the_permission_but_no_account_is_refused(self):
         """A system context: the permission is not the account, and it has no businesses of its own."""
         system = OperationContext(scope=Scope("user", "system"), actor="system", permissions=["*"])
 
         with pytest.raises(Unauthorized):
-            queries.member_list_mine(system, MemberListMineIn())
+            membership.member_list_mine(system, MemberListMineIn())
 
     def test_it_is_reachable_by_name_as_a_read_without_a_route(self):
         operation = operations.get("hubs.member.list_mine")
@@ -108,25 +110,25 @@ class TestTheAccessFollowsTheMembersAtOnce:
             team["employee"],
             team["invitee"],
         )
-        services.member_change_role(
+        member_management.member_change_role(
             ctx_for(owner), MemberRoleIn(id=member_of(business, manager).id, role="hub_employee")
         )
         assert role_on(manager, business.slug) == "hub_employee"
 
-        services.member_remove(ctx_for(admin), ByIdIn(id=member_of(business, employee).id))
+        member_management.member_remove(ctx_for(admin), ByIdIn(id=member_of(business, employee).id))
         assert role_on(employee, business.slug) is None
 
-        services.invitation_accept(ctx_for(invitee), ByIdIn(id=member_of(business, invitee).id))
+        invitation_answers.invitation_accept(ctx_for(invitee), ByIdIn(id=member_of(business, invitee).id))
         assert role_on(invitee, business.slug) is not None
 
-        offer = services.ownership_transfer(
+        offer = ownership.ownership_transfer(
             ctx_for(owner), OwnershipTransferIn(hub_id=business.id, member_id=member_of(business, admin).id)
         )
-        services.ownership_accept(ctx_for(admin), ByIdIn(id=offer.id))
+        ownership.ownership_accept(ctx_for(admin), ByIdIn(id=offer.id))
         assert role_on(admin, business.slug) == "hub_owner"
         assert role_on(owner, business.slug) == "hub_admin"
 
-        services.business_delete(ctx_for(admin), _delete_in(business))
+        deletion.business_delete(ctx_for(admin), _delete_in(business))
         assert role_on(admin, business.slug) is None
 
 
@@ -143,12 +145,12 @@ class TestHubsWithMembers:
         other = create_business(make_user("lola@example.com"), name="Aaa Café")
 
         # The invitee has not answered: four people enter ``business``.
-        assert queries.hubs_with_members() == sorted([(business.slug, 4), (other.slug, 1)])
+        assert membership.hubs_with_members() == sorted([(business.slug, 4), (other.slug, 1)])
 
     def test_a_deleted_business_is_not_listed(self, business, owner):
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
 
-        assert queries.hubs_with_members() == []
+        assert membership.hubs_with_members() == []
 
 
 # --- Guardrail: the retired copy stays out of the code ------------------------------------------------
@@ -211,13 +213,13 @@ def test_the_model_is_gone_from_the_app_registry():
 
 
 class TestSeedDemoBusiness:
-    """``hubs.services.seed_demo_business``: a hub that already runs in the local Hub (``a``, ``b``) becomes
+    """``hubs.services.demo_businesses.seed_demo_business``: a hub that already runs in the local Hub (``a``, ``b``) becomes
     a business the SaaS knows, with its people, without provisioning it again."""
 
     def test_adopts_the_hub_as_an_active_ready_business_that_owes_the_hub_nothing(self, owner, make_user, plans):
         employee = make_user("employee@example.com")
 
-        hub = services.seed_demo_business("a", {owner: "hub_owner", employee: "hub_employee"})
+        hub = demo_businesses.seed_demo_business("a", {owner: "hub_owner", employee: "hub_employee"})
 
         assert (hub.slug, hub.name, hub.country, hub.status) == ("a", "a", "ES", "active")
         assert hub.ready_at is not None and hub.provision_requested_at is None
@@ -230,8 +232,8 @@ class TestSeedDemoBusiness:
         assert hub.subscription.plan.slug == "free"
 
     def test_running_it_again_changes_nothing(self, owner, plans):
-        first = services.seed_demo_business("a", {owner: "hub_owner"})
-        again = services.seed_demo_business("a", {owner: "hub_owner"})
+        first = demo_businesses.seed_demo_business("a", {owner: "hub_owner"})
+        again = demo_businesses.seed_demo_business("a", {owner: "hub_owner"})
 
         assert again.pk == first.pk
         assert (Hub.objects.count(), HubMember.objects.count()) == (1, 1)
@@ -239,23 +241,23 @@ class TestSeedDemoBusiness:
     def test_a_business_the_panel_created_keeps_its_people(self, business, owner, make_user):
         ana = make_user("ana@example.com")
 
-        services.seed_demo_business(business.slug, {ana: "hub_employee"})
+        demo_businesses.seed_demo_business(business.slug, {ana: "hub_employee"})
 
         assert member_of(business, ana).role == "hub_employee"
         assert member_of(business, owner).role == "hub_owner"
 
     def test_a_customer_role_only(self, owner, plans):
         with pytest.raises(ValueError):
-            services.seed_demo_business("a", {owner: "platform_admin"})
+            demo_businesses.seed_demo_business("a", {owner: "platform_admin"})
 
         assert not Hub.objects.exists()
 
 
 def test_the_seeded_member_enters_through_the_jump(owner, plans):
     """The members are what the jump reads: a seeded owner gets a code for its hub."""
-    services.seed_demo_business("a", {owner: "hub_owner"})
+    demo_businesses.seed_demo_business("a", {owner: "hub_owner"})
 
-    identity = account_services.redeem_code(account_services.issue_code(owner, "a"), "a")
+    identity = hub_jump.redeem_code(hub_jump.issue_code(owner, "a"), "a")
 
     assert identity.role == "hub_owner"
 
@@ -264,38 +266,38 @@ class TestTheJumpReadsTheMembers:
     """The jump end to end, through the name of the operation."""
 
     def test_a_stranger_gets_no_code(self, business, team):
-        with pytest.raises(account_services.HubAccessDenied):
-            account_services.issue_code(team["stranger"], business.slug)
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(team["stranger"], business.slug)
 
     def test_an_invitee_gets_no_code(self, business, team):
-        with pytest.raises(account_services.HubAccessDenied):
-            account_services.issue_code(team["invitee"], business.slug)
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(team["invitee"], business.slug)
 
     def test_a_member_of_another_business_gets_no_code(self, business, owner, make_user):
         lola = make_user("lola@example.com")
         create_business(lola, name="Café Lola")
 
-        with pytest.raises(account_services.HubAccessDenied):
-            account_services.issue_code(lola, business.slug)
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(lola, business.slug)
 
     def test_a_code_does_not_outlive_the_member(self, business, team):
-        code = account_services.issue_code(team["employee"], business.slug)
-        services.member_remove(ctx_for(team["admin"]), ByIdIn(id=member_of(business, team["employee"]).id))
+        code = hub_jump.issue_code(team["employee"], business.slug)
+        member_management.member_remove(ctx_for(team["admin"]), ByIdIn(id=member_of(business, team["employee"]).id))
 
-        with pytest.raises(account_services.InvalidCode):
-            account_services.redeem_code(code, business.slug)
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, business.slug)
 
     def test_a_code_does_not_outlive_the_business(self, business, owner):
-        code = account_services.issue_code(owner, business.slug)
+        code = hub_jump.issue_code(owner, business.slug)
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
 
-        with pytest.raises(account_services.InvalidCode):
-            account_services.redeem_code(code, business.slug)
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, business.slug)
 
     def test_the_old_address_gets_no_code_after_a_move(self, business, owner):
         old = business.slug
         Hub.objects.filter(pk=business.pk).update(slug="casa-manolo", previous_slug=old)
 
-        with pytest.raises(account_services.HubAccessDenied):
-            account_services.issue_code(owner, old)
-        assert account_services.issue_code(owner, "casa-manolo")
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(owner, old)
+        assert hub_jump.issue_code(owner, "casa-manolo")

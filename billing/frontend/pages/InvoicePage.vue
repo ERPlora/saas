@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// The page of one ERPlora invoice (`/dashboard/billing/invoices/:id`; BILLING-G05, the old «Detalle de factura», and the
-// «View» of `/dashboard/billing/invoices/`, BILLING-G92): `billing.invoice.get`, live, so «Issuing» turns into
+// The page of one ERPlora invoice (`/dashboard/billing/invoices/:id`, opened by «View invoice» on Invoices):
+// `billing.invoice.get`, live, so «Issuing» turns into
 // its fiscal status while it is on screen. Back returns to Invoices. A reading page (`detail`):
 //   - its number (Stripe's reference while it is not collected), date, business, status and fiscal status;
 //   - what it charges, line by line (the period, «Prorated», net, VAT and total), and the totals;
@@ -225,6 +225,10 @@ async function downloadPdf(): Promise<void> {
                   <span v-if="period(line)">{{ period(line) }}</span>
                   <span v-if="line.proration">{{ $t('billing.invoicePage.prorated') }}</span>
                   <span>{{ $t('billing.invoicePage.lineAmounts', { net: money(line.net_cents), rate: percent(line.tax_rate), tax: money(line.tax_cents) }) }}</span>
+                  <span
+                    v-if="line.discount_cents"
+                    data-testid="invoice-line-discount"
+                  >{{ $t('billing.invoicePage.discount', { amount: money(-line.discount_cents) }) }}</span>
                 </p>
               </li>
             </ul>

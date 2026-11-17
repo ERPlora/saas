@@ -1,26 +1,29 @@
-// The panel's assistant (MIGRATION-TASK T4 of plan 2026-10-30-asistente-saas; assistant/WORKBOOK.md, ASSISTANT-F25
-// and F26), in a browser against the panel's own Django: the sparkles «Assistant» at the end of the topbar opens the
-// shared chat's panel, docked beside the screen from 768 px (pushing it) and over a veil on a phone; its empty
-// conversation says the panel's sentence with three shortcuts; a read the model asks for runs alone and the answer
-// names the account's business; a write stops at its card, which asks to type the word, and a «Cancel» changes
-// nothing; the account's month (2 messages in this run, panel/project.ts) ends with the allowance spent and no
-// «Upgrade plan». In Spanish and in English, at 390, 834 and 1440 (screenshots under `.artifacts/panel/`). Signed out,
-// the panel sends to the sign-in and nobody sees the assistant; a session that ends in the middle of the conversation
-// asks to sign in again. The panel closes with ×, Escape, the veil or its own button, and the device remembers it open.
-// The model is assistant-provider.ts, a real HTTP server on 127.0.0.1 that speaks OpenAI's API, set to answer by
-// assistant_seed.py «panel» (with `e2e-assistant-owner`, an account like any other with one business): no test reaches
-// a real provider and no real key is ever typed.
+// The panel's assistant (assistant/WORKBOOK.md, ASSISTANT-F25 and F26), in a browser against the panel's own Django:
+// the sparkles «Assistant» at the end of the topbar opens the shared chat's panel, docked beside the screen from 768 px
+// (pushing it) and over a veil on a phone; its empty conversation says the panel's sentence with three shortcuts; a
+// read the model asks for runs alone and the answer names the account's business; a write stops at its card, which asks
+// to type the word, and a «Cancel» changes nothing; the account's month (2 messages in this run, panel/project.ts) ends
+// with the allowance spent and no «Upgrade plan». In Spanish and in English, at 390, 834 and 1440 (screenshots under
+// `.artifacts/panel/`). Signed out, the panel sends to the sign-in and nobody sees the assistant; a session that ends
+// in the middle of the conversation asks to sign in again. The panel closes with ×, Escape, the veil or its own button,
+// and the device remembers it open. The model is assistant-provider.ts, a real HTTP server on 127.0.0.1 that speaks
+// OpenAI's API, set to answer by assistant_seed.py «panel» (with `e2e-assistant-owner`, an account like any other with
+// one business): no test reaches a real provider and no real key is ever typed.
 // flow: ASSISTANT-F25 — the account asks the panel's assistant: reads alone, writes after the card.
 // flow: ASSISTANT-F26 — the account's messages of the month, spent without a plan to upgrade.
 // flow: BILLING-F13 — cancelling the plan: its card first says what Billing's dialog says (seed `paying`, no Stripe).
-import { readMails } from '@erplora/ui/testing/mail';
+import { readMailsSince } from '@erplora/ui/testing/mail';
 import type { Locator, Page } from '@playwright/test';
 
 import { NEW_BUSINESS } from '../assistant-provider';
 
-import { ask, localAssistant, OWNER, SIZES } from './assistant-chat';
-import { expect, settled, shot, sidewaysScroll, signIn, test, waitForMail, watchPageErrors } from './fixtures';
+import { ask, DESKTOP_FIRST, localAssistant, OWNER } from './assistant-chat';
+import { expect, test } from './fixtures';
+import { waitForMail } from './mail';
+import { watchPageErrors } from './page-events';
 import { PANEL_MAIL_DIR } from './project';
+import { expectNoSidewaysScroll, settled, shot } from './screen';
+import { signIn } from './session';
 
 const BUSINESS = 'E2E Asistente Panel';
 
@@ -102,7 +105,7 @@ async function docking(page: Page): Promise<{ panel: number; pushed: number }> {
  *  docked beside the screen from 768 px, over a veil on a phone, nothing scrolling sideways. Ends back at 1440. */
 async function atEachSize(page: Page, name: string, language: string, visible: Locator): Promise<void> {
   const panel = page.getByTestId('assistant-panel');
-  for (const size of SIZES) {
+  for (const size of DESKTOP_FIRST) {
     await page.setViewportSize({ width: size.width, height: size.height });
     if (size.width >= 768) {
       await expect(page.locator('html')).toHaveClass(/assistant-docked/);
@@ -116,9 +119,9 @@ async function atEachSize(page: Page, name: string, language: string, visible: L
       expect((await docking(page)).panel).toBe(size.width);
     }
     await expect(visible).toBeVisible();
-    expect(await sidewaysScroll(page), `${size.name}: nothing scrolls sideways`).toEqual([]);
+    await expectNoSidewaysScroll(page, `${size.width}: nothing scrolls sideways`);
     await settled(page);
-    await page.screenshot({ path: shot(`assistant-panel-${name}-${size.name}-${language}`) });
+    await page.screenshot({ path: shot(`assistant-panel-${name}-${size.width}-${language}`) });
   }
   await page.setViewportSize({ width: 1440, height: 900 });
 }
@@ -137,7 +140,7 @@ for (const language of ['es', 'en'] as const) {
   test(`the account asks the panel's assistant, a write waits for its card, and the month ends spent (${language})`, async ({
     page,
   }) => {
-    seed('panel', language);
+    await seed('panel', language);
     await signIn(page.request, OWNER);
     // From here on (the sign-in mails its code before), the only mail to the account is the month's last message's.
     const since = Date.now();
@@ -190,7 +193,7 @@ for (const language of ['es', 'en'] as const) {
     await expect(card).toBeHidden();
     await expect(page.getByTestId('assistant-bubble-assistant').last()).toContainText(words.notCreated);
     await expect(page.getByTestId('assistant-receipt').last()).toHaveText(words.receipt);
-    // Saying it did not create it is no claim of a change (ui#47): no «the assistant said it made a change» under it.
+    // Saying it did not create it is no claim of a change: no «the assistant said it made a change» under it.
     await expect(page.getByTestId('assistant-notice-claimed_change')).toHaveCount(0);
     const listed = (await (await page.request.get('/api/hubs/businesses')).json()) as { rows: { name: string }[] };
     expect(listed.rows.map((row) => row.name)).toEqual([BUSINESS]);
@@ -208,7 +211,9 @@ for (const language of ['es', 'en'] as const) {
     // ASSISTANT-F29: the month's last message mailed the account, in its language, once: the refused third one
     // mails nothing more (at 1 of 2 there was no «messages left» mail: under 80 %).
     await waitForMail(OWNER.email, since, words.spentMail);
-    const mailed = readMails(PANEL_MAIL_DIR).filter((mail) => mail.writtenAt >= since && mail.to.includes(OWNER.email));
+    const mailed = (await readMailsSince({ dir: PANEL_MAIL_DIR, since })).filter(
+      (mail) => mail.writtenAt >= since && mail.to.includes(OWNER.email),
+    );
     expect(mailed.map((mail) => mail.subject)).toEqual([words.spentSubject]);
 
     // The same conversation at the three sizes: docked from 768 px, over a veil on a phone.
@@ -224,7 +229,7 @@ for (const language of ['es', 'en'] as const) {
   test(`cancelling the plan from the assistant says first what will happen, and «Cancel» changes nothing (${language})`, async ({
     page,
   }) => {
-    seed('paying', language);
+    await seed('paying', language);
     await openBusinesses(page);
     const errors = watchPageErrors(page);
     await page.getByTestId('assistant-button').click();
@@ -248,7 +253,7 @@ for (const language of ['es', 'en'] as const) {
 }
 
 test('the panel closes with Escape, its own button or the veil, and the device remembers it open', async ({ page }) => {
-  seed('panel');
+  await seed('panel');
   await openBusinesses(page);
   const errors = watchPageErrors(page);
   const button = page.getByTestId('assistant-button');
@@ -299,7 +304,7 @@ test('the panel closes with Escape, its own button or the veil, and the device r
 test('a session that ends in the middle of the conversation asks to sign in again, and the sign-in follows', async ({
   page,
 }) => {
-  seed('panel');
+  await seed('panel');
   await openBusinesses(page);
   await page.getByTestId('assistant-button').click();
   await expect(page.getByTestId('assistant-panel')).toHaveAttribute('data-open', 'true');

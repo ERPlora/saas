@@ -1,7 +1,7 @@
-"""``GET /api/fiscal/representation``: the authorisation of a business on its page (plan 2026-10-15, the panel's
-card), bound to ``fiscal.representation.status`` with the single error envelope (PLAN §14.1): 401 without an
-account, 404 for a business one has no access to, 403 below admin. The Hub's upload and the staff's decisions
-have no route here: ``/internal`` (signed) and the admin."""
+"""``GET /api/fiscal/representation``: the authorisation of a business on its page (the panel's card), bound to
+``fiscal.representation.status`` with the single error envelope: 401 without an account, 404 for a business one
+has no access to, 403 below admin. The Hub's upload and the staff's decisions have no route here: ``/internal``
+(signed) and the admin."""
 
 import pytest
 from live.ninja import ensure_api_parity

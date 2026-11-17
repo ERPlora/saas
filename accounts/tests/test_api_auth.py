@@ -1,12 +1,10 @@
-"""An account's API key opens ``/api/`` (``accounts.api_auth``; plan 2026-10-13, L3-A; PLAN-SAAS §2.4).
+"""An account's API key opens ``/api/`` (``accounts.api_auth``).
 
-Ported from ERPlora/saas ``apps/auth/apikeys/tests`` (``test_authentication``, ``test_permissions``,
-``test_apps``) onto ninja. A key makes the request act as its account, bounded by its scopes, and only on the
-operations declared with ``expose_api=True`` (opt-in, as in hub-next): ``<app>.read`` opens the app's queries,
+A key makes the request act as its account, bounded by its scopes, and only on the
+operations declared with ``expose_api=True`` (opt-in, as in the Hub): ``<app>.read`` opens the app's queries,
 ``<app>.write`` its commands. Everything else of the API answers a key with 403 ``api_key_not_allowed``: a key
 never manages the account nor mints keys. ``Authorization: Bearer erps_live_…`` (the convention of Stripe,
-GitHub and OpenAI) and ``X-Api-Key`` (the hubs' header and the old SaaS's) are both read. Dropped: the hubs'
-keys and ``X-Hub-Id`` (hub-next's, PLAN-SAAS §2.4), the environment check (one production).
+GitHub and OpenAI) and ``X-Api-Key`` (the hubs' header) are both read. A hub's keys and ``X-Hub-Id`` are the Hub's.
 """
 
 import logging
@@ -24,8 +22,9 @@ from live.ninja import bind, run_operation
 from live.operations import operation, registry
 from ninja import Router
 
-from accounts import api_auth, queries, services
+from accounts import api_auth, queries
 from accounts.models import ApiKey
+from accounts.services import api_keys
 from accounts.tests.conftest import HOST
 from accounts.tests.probe import queries as probe_queries
 from accounts.tests.probe import services as probe_services
@@ -153,7 +152,7 @@ class TestAKeyOfAnAccount:
         [
             "erps_live_" + "A" * 48,  # well-formed, nobody's
             "erps_live_short",
-            "erpk_live_" + "A" * 48,  # a hub's key belongs to hub-next
+            "erpk_live_" + "A" * 48,  # a hub's key belongs to the Hub
             "not-a-key",
         ],
     )
@@ -234,7 +233,7 @@ class TestUse:
         assert ApiKey.objects.get(pk=key.pk).last_used_at == first
 
     def test_after_the_resolution_it_moves(self, probe, ana):
-        key, secret = _key(ana, last_used_at=timezone.now() - services.API_KEY_LAST_USED_RESOLUTION)
+        key, secret = _key(ana, last_used_at=timezone.now() - api_keys.API_KEY_LAST_USED_RESOLUTION)
 
         _call("get", "/api/hubs", secret=secret)
 

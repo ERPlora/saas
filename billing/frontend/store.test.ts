@@ -1,10 +1,4 @@
-// The Store's rules, apart from the screen (round 17 §2.9–§2.11; mockups `store.html`, README §6.18 and
-// UX-AUDIT-4: «the block for an unpaid invoice goes by business»):
-//   - a module is sold when the catalog lists its app as premium AND billing has it on sale (`apps.Module`),
-//     joined by `slug == app.id`: name, summary and icon from the catalog, prices from billing;
-//   - only the owner buys for a business, and a deleted one buys nothing;
-//   - a business with an unpaid invoice buys nothing more until it pays it, and says why;
-//   - a module follows the business's billing; a free business buys it monthly.
+// The Store's rules, apart from the screen.
 import { describe, expect, it } from 'vitest';
 
 import { APPS, app, BAKERY, CAFE, PLAZA, SALON, STARTER, FREE, businessRow, plan, storeModule, subscription, FREE_SUBSCRIPTION } from './__tests__/fixtures';
@@ -50,14 +44,14 @@ describe('saleModules', () => {
     expect(saleModules(APPS.apps, [storeModule('retired', 500)])).toEqual([]);
   });
 
-  it('BILLING-G61, saas#2589: keeps, after the catalog’s ones, a module the business still has whose app is no longer listed, with billing’s name for it', () => {
+  it('keeps, after the catalog’s ones, a module the business still has whose app is no longer listed, with billing’s name for it', () => {
     const retired = storeModule('retired', 500, { owned: true, source: 'purchase', on_sale: false, name: 'Old reports', summary: 'Gone.', icon_svg: '<svg/>' });
     const modules = saleModules(APPS.apps, [retired, storeModule('booking', 900)]);
     expect(modules.map((module) => module.slug)).toEqual(['booking', 'retired']);
     expect(modules[1]).toMatchObject({ name: 'Old reports', summary: 'Gone.', iconSvg: '<svg/>', owned: true, onSale: false });
   });
 
-  it('BILLING-G61, saas#2589: says whether each module is still sold; one off sale the business does not have is not shown', () => {
+  it('says whether each module is still sold; one off sale the business does not have is not shown', () => {
     const modules = saleModules(APPS.apps, [
       storeModule('booking', 900, { owned: true, source: 'purchase', on_sale: false }),
       storeModule('loyalty', 600, { on_sale: false }),
@@ -102,7 +96,7 @@ describe('declinedCard', () => {
     expect(declinedCard([BAKERY, { ...PLAZA, is_payer: false, payer_id: null }, shared], shared)).toBeNull();
   });
 
-  it('another payer’s declined card is not this business’s (audit 2 R-21: each business has its own payer)', () => {
+  it('another payer’s declined card is not this business’s (each business has its own payer)', () => {
     expect(declinedCard([BAKERY, PLAZA, CAFE], CAFE)).toBeNull();
     expect(declinedCard([BAKERY, CAFE], CAFE)).toBeNull();
   });

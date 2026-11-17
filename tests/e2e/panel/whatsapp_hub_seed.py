@@ -119,7 +119,7 @@ def seed(ids: dict[str, UUID], used: int = 0, behind: bool = False) -> dict:
     from django.db import transaction
     from django.utils import timezone
 
-    from hubs import services
+    from hubs.services import hub_push
     from hubs.models import Hub
     from whatsapp import services as whatsapp_services
     from whatsapp import templates
@@ -171,8 +171,8 @@ def seed(ids: dict[str, UUID], used: int = 0, behind: bool = False) -> dict:
         usage.full_clean()
         usage.save(update_fields=["used", "cap_announced_usage", "updated_at"])
         if not behind:
-            services.bump_state(hub.id)
-    delivered = services.sync_hub(hub.id)
+            hub_push.bump_state(hub.id)
+    delivered = hub_push.sync_hub(hub.id)
     return {"delivered": delivered, "hub_error": Hub.objects.get(pk=hub.id).last_hub_error}
 
 

@@ -1,9 +1,5 @@
-// «Edit details» of the billing details (mockups `billing.html` «modal-profile», «profile-invalid»; README §3b
-// and §4; PLAN-SAAS §3.1): the Store's BillingDetailsForm in a FormModal — legal name, tax ID, address, city,
-// postal code, country and invoice email, or «use the business’s name and country» (of which business, when it
-// pays several). The tax ID is checked in VIES as it is typed (`billing.vat_check.run`, after a pause): the
-// verdict says what the invoice will do, and a malformed one is the field's error. Saved with
-// `hubs.billing_profile.update`: a 422 puts each message under its field. It is not selling: every surface.
+// «Edit details» of the billing details: the tax ID is checked in VIES as it is typed, after a pause, and a 422
+// puts each message under its field. It is not selling: every surface.
 import { FormModal } from '@erplora/ui/components';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Component } from 'vue';
@@ -106,6 +102,14 @@ describe('BillingProfileModal', () => {
       { vat_number: 'DE812871812', country: 'ES' },
     ]);
     expect(s.q('vies-status')?.textContent?.trim()).toBe('Checked in VIES: ACME GMBH. The invoice goes without VAT (reverse charge).');
+  });
+
+  it.each([
+    [{ name: 'ACME GMBH' }, 'Checked in VIES: ACME GMBH. Billed in Spain, the invoice carries VAT.'],
+    [{}, 'Checked in VIES. Billed in Spain, the invoice carries VAT.'],
+  ])('a number VIES knows that does not take the VAT off (%o) says the invoice carries VAT', async (extra, sentence) => {
+    const s = await setup(() => verdict('verified', { ...extra, reverse_charge: false }));
+    expect(s.q('vies-status')?.textContent?.trim()).toBe(sentence);
   });
 
   it.each([

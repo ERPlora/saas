@@ -1,8 +1,8 @@
 """billing's write side outside the routes: the clearance of a VAT number and the hook hubs will call.
 
-``clear_tax_id_for_stripe`` is the seller's door (contract §9, saas#1621): whoever puts a tax id on a
+``clear_tax_id_for_stripe`` is the seller's door: whoever puts a tax id on a
 Stripe customer or prices a sale asks it, never ``VatCheck`` raw. ``validate_vat_for_profile`` is what
-``hubs.billing_profile.update`` calls in lot L2-B instead of its form-only ``validate_tax_id``: the
+``hubs.billing_profile.update`` calls instead of its form-only ``validate_tax_id``: the
 number written as ERPlora invoices it, plus its VIES verdict. Both never block: without a proven
 verdict the customer pays the VAT, which is recoverable.
 """
@@ -177,7 +177,7 @@ class TestTheProfileHook:
 
 
 class TestTheAdminOverrideDoor:
-    """The override needs a door for a person, with its reason (ported from test_vies.TestTheAdminDoor)."""
+    """The override needs a door for a person, with its reason."""
 
     @pytest.fixture
     def vat_admin(self):
@@ -237,7 +237,7 @@ class TestTheOperationNeedsAnAccount:
         vies.assert_not_called()
 
 
-# --- BILLING-F28: the Stripe prices pasted on a plan are the plan's -----------------------------------
+# --- The Stripe prices pasted on a plan are the plan's -----------------------------------
 
 
 def stripe_price(price_id="price_month", **fields):
@@ -317,7 +317,7 @@ class TestThePricesOfAPlan:
         assert stripe_double.calls == []
 
     def test_stripe_not_answering_and_stripe_not_configured_are_told_apart(self, stripe_double, settings):
-        """Not configured (development) is saved with a warning; not answering is not saved (BILLING-F28)."""
+        """Not configured (development) is saved with a warning; not answering is not saved."""
         stripe_double.answer("prices.retrieve", connection_error())
         with pytest.raises(services.PriceCheckFailed):
             self.check(stripe_double, stripe_price_id="price_month")
@@ -329,7 +329,7 @@ class TestThePricesOfAPlan:
 
 @pytest.mark.django_db
 class TestThePricesOfAModule:
-    """APPS-F04: the Stripe prices pasted on a paid module pass the same checks as a plan's (BILLING-F28), against
+    """The Stripe prices pasted on a paid module pass the same checks as a plan's, against
     the module's own fields and its amounts in cents, so the Store never paints one price while Stripe charges
     another."""
 

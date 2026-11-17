@@ -1,30 +1,26 @@
 # Usar ERPlora en tus dispositivos
 
-ERPlora es **Hub Cloud**: una aplicación web que abres en el navegador y cuya base de datos vive en el entorno Cloud gestionado por ERPlora. No hay que instalar nada más para usar el ERP. Existe una única **aplicación de ERPlora** instalable, para escritorio y Android —el mismo Hub, empaquetado—, y es la que llega al hardware de punto de venta.
+ERPlora es una aplicación web: tu Hub se abre en el navegador y su base de datos vive en la nube que gestiona ERPlora. No hay que instalar nada más para usar el ERP. Existe una única **aplicación de ERPlora** instalable, para escritorio y Android —el mismo Hub, empaquetado—, y es la que llega al hardware de punto de venta.
 
-## Hub Cloud en el navegador
+## El Hub en el navegador
 
-Hub Cloud funciona en un navegador actual de escritorio o móvil y necesita conexión a internet. Abre la URL asignada a tu negocio y completa el flujo descrito en **Primer acceso y navegación**.
+El Hub funciona en un navegador actual de escritorio o móvil y necesita conexión a internet. Abre la dirección de tu negocio, o ábrelo desde erplora.com, y entra como se explica en **Primer acceso y navegación**.
 
-Para una experiencia estable, mantén el navegador actualizado y permite que el Hub guarde datos del sitio. La navegación privada y la eliminación automática de datos pueden borrar el estado de dispositivo de confianza.
+Para una experiencia estable, mantén el navegador actualizado y permite que el Hub guarde datos del sitio. La navegación privada y la eliminación automática de datos hacen que el navegador deje de ser un dispositivo del negocio: tendrás que volver a entrar una vez con tu cuenta de erplora.com.
 
-## Instalar Hub Cloud como aplicación (PWA)
+## Tener el Hub en la pantalla de inicio del móvil
 
-Después del login, ERPlora puede ofrecer una vista instalada similar a una aplicación nativa. Es el mismo Hub, pero se abre desde su propio icono y sin las barras normales del navegador.
-
-- **Chrome o Edge:** usa **Instalar aplicación** desde la barra de direcciones o el menú del navegador.
-- **Android:** usa **Instalar aplicación** o **Añadir a pantalla de inicio**.
-- **iPhone o iPad:** abre el menú Compartir y elige **Añadir a pantalla de inicio**.
-
-Instalar la PWA no convierte automáticamente el equipo en dispositivo de confianza. La confianza se crea mediante el acceso con email.
+Al pie del menú lateral, el código QR «Ábrelo en el móvil» abre el negocio en el teléfono. Para dejarlo fijo, añádelo a la pantalla de inicio desde el menú del navegador. Es el mismo Hub: la primera vez se entra con la cuenta de erplora.com, como en cualquier dispositivo nuevo.
 
 ## Hardware: la aplicación instalada
 
-Para imprimir tickets térmicos o abrir el cajón portamonedas, instala la **aplicación de ERPlora** en el equipo que alcanza la impresora. No hay ningún agente aparte ni nada que emparejar: es el mismo Hub, y funciona en la red local. Consulta [la app de ERPlora](/app/) para ver el hardware compatible.
+Para imprimir tiques térmicos o abrir el cajón portamonedas, instala la **aplicación de ERPlora** en el dispositivo que está junto a la impresora: en su red, con su cable USB o emparejada por Bluetooth. Desde un navegador no se llega a las impresoras. No hay ningún programa aparte: es el mismo Hub.
+
+Después, en la app Impresión (desde **Ajustes › Impresión**, «Impresoras y tique»), da de alta la impresora en «Impresoras» y, desde ese mismo dispositivo, pulsa «Imprimir desde este dispositivo» en «Dispositivos». Consulta [la app de ERPlora](/app/) para ver el hardware compatible.
 
 ## Usar varios dispositivos
 
-Hub Cloud admite varios dispositivos conectados al mismo Hub; confía cada equipo de trabajo por separado. Todos comparten la misma base de datos del Hub en el entorno Cloud, así que no hay que copiar ni sincronizar datos entre equipos.
+Varios dispositivos pueden trabajar en el mismo negocio, y todos comparten su base de datos en la nube, así que no hay que copiar ni sincronizar nada entre ellos. En cada uno, alguien tiene que entrar una vez con su cuenta. El plan dice cuántos dispositivos pueden tener la sesión abierta a la vez: al entrar en uno más, se cierra la sesión del que lleva más tiempo sin entrar.
 
 ## Empezar
 

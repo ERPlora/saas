@@ -1,36 +1,28 @@
-// flow: FIX-DATATABLE-SAAS
-// The panel's lists after DataTable part 3 (ui#4, 070e74f): the `.panel-fill` height chain, the toolbar of
-// R-14 and the phone's heading come from the shell's theme (`polish.css`, loaded by createShell); the SaaS
-// keeps no sheet of its own (frontend/main.test.ts). Invoices, in Chrome at 390, 834 and 1440 px, against
-// the rows of billing_seed.py: the list fills the page between the topbar and the tabbar, its search and
-// its heading are as before, and its «Filters» popover (InvoiceFilters.vue: the SaaS keeps it,
-// PLAN-MIGRATIONS §13; DataTable's own funnel stays off) still filters. One scroll at every width: the page
-// never scrolls at 834 and 1440 (the rows scroll inside), and on a phone nothing inside the list scrolls (the
-// page does). Screenshots: `FIX-DATATABLE-SAAS-<width>.png` in the artifacts, the viewport as a person sees it
-// (not `fullPage`), so a second scrollbar or a cut list shows, and `-filters` with the popover open.
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+// flow: none — regression test of the panel's lists
+// The panel's lists take the `.panel-fill` height chain, the toolbar and the phone's heading from the shell's
+// theme (`polish.css`, loaded by createShell); the SaaS keeps no sheet of its own (frontend/main.test.ts).
+// Invoices, in Chrome at 390, 834 and 1440 px, against the rows of billing_seed.py: the list fills the page
+// between the topbar and the tabbar, its search and its heading stay, and its «Filters» popover
+// (InvoiceFilters.vue: the SaaS keeps its own; DataTable's own funnel stays off) still filters. One scroll at
+// every width: the page never scrolls at 834 and 1440 (the rows scroll inside), and on a phone nothing inside
+// the list scrolls (the page does). Screenshots: one per width in the artifacts, the
+// viewport as a person sees it (not `fullPage`), so a second scrollbar or a cut list shows, and `-filters` with
+// the popover open.
 
 import type { Page } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
-import { expect, panelAccount, qaAccount, settled, shot, signIn, test, VIEWPORTS, watchPageErrors } from './fixtures';
+import { panelAccount, qaAccount } from './accounts';
+import { runSeed } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { settled, shot, VIEWPORTS } from './screen';
+import { signIn } from './session';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const BILLING = qaAccount('BILLING', panelAccount('billing'));
 
-function seedBilling(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/billing_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
-}
-
 // Nothing here writes: the filters live in the address.
-test.beforeAll(() => seedBilling('seed'));
-test.afterAll(() => seedBilling('clear'));
+test.beforeAll(() => runSeed('billing_seed.py', 'seed'));
+test.afterAll(() => runSeed('billing_seed.py', 'clear'));
 test.beforeEach(async ({ page }) => {
   await signIn(page.request, BILLING);
 });

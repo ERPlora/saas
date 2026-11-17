@@ -1,11 +1,9 @@
-// What waits for a payment in the Billing section (mockups `billing.html`; README §6.18; PLAN-SAAS §3.3):
-// the account's invoices Stripe could not charge (`billing.invoice.list` with `status=open`, live), each
-// with its business as the account's list has it (`hubs.business.list`, live: whether it is suspended,
-// since when, whether the card changed). A credit note is no debt.
+// What waits for a payment in the Billing section: the account's invoices Stripe could not charge, live, each with
+// its business as the account's list has it. A credit note is no debt.
 //
 // Its `state` (`live-state.ts`) tells «nothing owed» (a real answer without invoices: `empty`) from «could not
-// check» (`error`: the query or the stream failed, or nothing came in time; audit 2026-10-14, R-04): an empty
-// `items` alone never means there is no debt.
+// check» (`error`: the query or the stream failed, or nothing came in time): an empty `items` alone never means
+// there is no debt.
 //
 // «Invoice paid»: when an invoice leaves that list — paid here, in another tab, or at Stripe's page — it is
 // asked again (`billing.invoice.get`) and, paid, a toast says its business is up to date. The invoice the

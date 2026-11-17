@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// The Danger zone of a business's Settings (mockups `business.html` «settings», PLAN-SAAS §3.4, round
-// 17 §2.11): «Delete business» with its 90-day notice, only for the owner (DeleteDialog asks for the
-// name); anybody else reads that only the owner can. Deleted and within its 90 days, the owner gets
+// The Danger zone of a business's Settings: «Delete business» with its 90-day notice, only for the owner
+// (DeleteDialog asks for the name); anybody else reads that only the owner can. Deleted and within its
+// 90 days, the owner gets
 // «Recover business» (`hubs.business.restore`; it comes back on Free). Both follow the server's `can`
 // (`delete`, `restore`): a deleted business takes no `delete`.
 import { HubIcon, toastError, toastSuccess } from '@erplora/ui/shell';

@@ -1,4 +1,4 @@
-"""Every public door of allauth.headless asks reCAPTCHA first (accounts/bot_check.py; Ioan, 2026-10-22).
+"""Every public door of allauth.headless asks reCAPTCHA first (accounts/bot_check.py).
 
 The launcher's sign-in and sign-up, «Forgot your password?» and its link, the mailed codes (the one that proves the
 address, its «Send another code», and the sign-in's) and the authenticator app's code: a POST to any of them carries
@@ -202,7 +202,7 @@ def test_the_csrf_check_comes_first_and_google_is_not_asked(recaptcha):
     assert recaptcha.asked == []
 
 
-# Switched off (RECAPTCHA_ENABLED, the default since 2026-10-23; Ioan: the WAF on the ALB, the attempt limits): every
+# Switched off (RECAPTCHA_ENABLED, off by default: the WAF on the ALB and the attempt limits stop the bots): every
 # door goes on to allauth's own answer without a token and Google is never asked. The limits per address stay
 # (accounts/tests/test_throttle.py runs with reCAPTCHA off).
 

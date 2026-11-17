@@ -1,10 +1,10 @@
-"""WHATSAPP-G08, WHATSAPP-G18 · What ERPlora's staff can do with the businesses' WhatsApp in the Django admin
+"""What ERPlora's staff can do with the businesses' WhatsApp in the Django admin
 (``erplora.com/admin``).
 
 Each business's number (its business, Meta's ids, whether it comes from the WhatsApp Business app, when its permission
 expires, whether it needs reconnecting), the mirror of its templates, what waits for its Hub, its sends and its
-month's count: seen, never written by hand. Cases of the old product's ``test_admin.py`` and what its WORKFLOW left
-``parcial`` (F20): the business of a number is not changed nor activated by hand (only Meta's window connects one),
+month's count: seen, never written by hand.
+The business of a number is not changed nor activated by hand (only Meta's window connects one),
 the permission and the PIN are never shown, nobody reads what a customer wrote, and the pages are translated. The
 platform's actions are superusers' (``support`` only sees): disconnect a number, push to the Hub now what waits,
 read Meta's templates again.

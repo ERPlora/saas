@@ -1,13 +1,9 @@
 """Account → API keys: ``accounts.apikey.list``, ``accounts.apikey.create`` and ``accounts.apikey.revoke``
-(plan 2026-10-13, L3-A; PLAN-SAAS §2.4: the SaaS keeps the account's keys, the hubs' are hub-next's).
+(the SaaS keeps the account's keys; a hub's keys are the Hub's).
 
-Ported from ERPlora/saas ``apps/auth/apikeys/tests`` (80): the key shown once and kept as a hash, its scopes,
-its expiry and last use, revoking as the audit trail. Changed: the account issues its own keys from the panel
-(the original issued them only from the console, a superuser for a staff account), with a recent sign-in, as
-GitHub, Stripe and Shopify do; the expiry is 30 or 90 days or never (90 by default, the mockup's). Dropped,
-with their reason: the hubs' keys and their grace (hub-next's, PLAN-SAAS §2.4), the ``pre`` environment (one
-production), the vendor and fleet scopes (the developer part left, PLAN-SAAS §3.6 point 2) and the mint script.
-How a key opens the API is ``test_api_auth.py``.
+The key is shown once and kept as a hash, with its scopes, its expiry and last use; revoking is the audit trail.
+The account issues its own keys from the panel, with a recent sign-in, as GitHub, Stripe and Shopify do; the expiry
+is 30 or 90 days or never (90 by default). How a key opens the API is ``test_api_auth.py``.
 """
 
 import logging
@@ -18,8 +14,9 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from live.live_registry import live_registry
 
-from accounts import events, services
+from accounts import events
 from accounts.models import API_KEY_PREFIX, ApiKey
+from accounts.services import api_keys, reauthentication
 from accounts.tests.conftest import HOST, api_get, api_post
 
 pytestmark = pytest.mark.django_db
@@ -120,12 +117,12 @@ class TestCreating:
         request.auth = key
 
         with pytest.raises(OperationError) as refused:
-            services.require_recent_authentication(ctx_for(ana, request=request))
+            reauthentication.require_recent_authentication(ctx_for(ana, request=request))
 
         assert (refused.value.status, refused.value.code) == (403, "api_key_not_allowed")
 
     def test_an_account_has_a_ceiling_of_live_keys(self, signed_in, monkeypatch):
-        monkeypatch.setattr(services, "MAX_ACTIVE_API_KEYS", 2)
+        monkeypatch.setattr(api_keys, "MAX_ACTIVE_API_KEYS", 2)
         _create(signed_in, name="a")
         _create(signed_in, name="b")
 
@@ -134,7 +131,7 @@ class TestCreating:
         assert (response.status_code, response.json()["error"]["code"]) == (409, "accounts.api_key_limit")
 
     def test_a_revoked_or_expired_key_does_not_count(self, signed_in, ana, monkeypatch):
-        monkeypatch.setattr(services, "MAX_ACTIVE_API_KEYS", 1)
+        monkeypatch.setattr(api_keys, "MAX_ACTIVE_API_KEYS", 1)
         _create(signed_in, name="a")
         ApiKey.objects.update(revoked_at=timezone.now())
 

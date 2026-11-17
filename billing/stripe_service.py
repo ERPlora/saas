@@ -1,7 +1,5 @@
-"""The one door to Stripe (lot L2-B; PLAN-SAAS §4): the only module of the SaaS that imports ``stripe``.
-
-Ported from ERPlora/saas ``hubs/subscriptions/services/stripe.py`` (``StripeService``) and the Stripe half of
-``fiscal/services/stripe_tax_rates.py`` (origin/develop), as plain functions over one ``StripeClient``:
+"""The one door to Stripe: the only module of the SaaS that imports ``stripe``, as plain functions over one
+``StripeClient``:
 
 - ``client()`` builds it from ``STRIPE_SECRET_KEY`` (a restricted ``rk_live_`` key in production, test keys
   locally; never a key in code), with a short timeout and one retry: a command waits for Stripe inside its
@@ -88,24 +86,20 @@ def client() -> stripe.StripeClient:
 def key_mode() -> StripeKeyMode:
     """Whether the configured key charges real money (``LIVE``), test money, or is not usable (``UNKNOWN``).
 
-    Live money only through a RESTRICTED key (``rk_live_``, PLAN-SAAS §4): the account's live secret key
-    (``sk_live_``) can do everything a stolen key could, so it is refused like no key at all. And only in
-    prod: outside it (``ERPLORA_ENVIRONMENT=pre``) any live key is refused the same way (``billing.E002``
-    stops the deploy first). Production itself (DEBUG off) refuses a test key (``billing.E003``,
-    ``settings.STRIPE_TEST_KEYS_ALLOWED``): development runs as prod with DEBUG on and keeps its test keys."""
+    Live money requires a restricted key. Both configured keys must match
+    STRIPE_EXPECTED_MODE, regardless of DEBUG or the deployment's metric label."""
     key = settings.STRIPE_SECRET_KEY or ""
     mode = stripe_key_mode(key)
+    if mode is StripeKeyMode.UNKNOWN:
+        return mode
     if mode is StripeKeyMode.LIVE and not key.startswith("rk_"):
         logger.error("[STRIPE] STRIPE_SECRET_KEY is a live SECRET key: use a restricted rk_live_ key")
         return StripeKeyMode.UNKNOWN
-    if mode is StripeKeyMode.LIVE and settings.ERPLORA_ENVIRONMENT != "prod":
-        logger.error(
-            "[STRIPE] STRIPE_SECRET_KEY is a live key outside prod (%s): use a test key", settings.ERPLORA_ENVIRONMENT
-        )
-        return StripeKeyMode.UNKNOWN
-    if mode is StripeKeyMode.TEST and not settings.STRIPE_TEST_KEYS_ALLOWED:
-        # Production (DEBUG off) with a test key would let anybody pay a plan with a test card (billing.E003).
-        logger.error("[STRIPE] STRIPE_SECRET_KEY is a test key in production: use the restricted rk_live_ key")
+    expected_mode = settings.STRIPE_EXPECTED_MODE
+    publishable = settings.STRIPE_PUBLISHABLE_KEY or ""
+    opposite_mode = "live" if expected_mode == "test" else "test"
+    if mode.value != expected_mode or publishable.startswith(f"pk_{opposite_mode}_"):
+        logger.error("[STRIPE] Configured keys do not match STRIPE_EXPECTED_MODE=%s", expected_mode)
         return StripeKeyMode.UNKNOWN
     return mode
 
@@ -252,8 +246,8 @@ def create_checkout_session(params: dict, *, idempotency_key: str) -> dict:
 
 
 def retrieve_subscription(subscription_id: str) -> dict:
-    """The live subscription with ALL its items: Stripe embeds the first 10, the rest are listed."""
-    live = _call(client().v1.subscriptions.retrieve, subscription_id)
+    """The live subscription with ALL its items (Stripe embeds the first 10, the rest are listed) and its discounts."""
+    live = _call(client().v1.subscriptions.retrieve, subscription_id, params={"expand": ["discounts"]})
     items = live.get("items") or {}
     if items.get("has_more"):
         live["items"] = {**items, "data": subscription_items(subscription_id), "has_more": False}
@@ -371,7 +365,7 @@ def _every(method: Callable, parent_id: str) -> list[dict]:
 
 
 def webhook_endpoints() -> list[dict]:
-    """Every webhook endpoint of the account behind the key, page after page (``audit_stripe_webhooks``, BILLING-F39)."""
+    """Every webhook endpoint of the account behind the key, page after page (``audit_stripe_webhooks``)."""
     params: dict = {"limit": 100}
     found: list[dict] = []
     while True:

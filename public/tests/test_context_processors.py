@@ -1,5 +1,4 @@
-"""What every template of the public web knows (ported from ERPlora/saas ``site_settings``,
-``config/context_processors.py``, origin/develop c5ca8ca; only the public part)."""
+"""What every template of the public web knows."""
 
 import pytest
 from django.contrib.auth.models import AnonymousUser
@@ -35,6 +34,24 @@ def test_analytics_is_off_unless_configured(rf):
 
 
 @pytest.mark.parametrize(
+    ("ga", "clarity", "measures"),
+    [
+        ("", "", False),
+        ("G-TEST123", "", True),
+        ("", "clarity-test", True),
+        ("G-TEST123", "clarity-test", True),
+    ],
+)
+def test_the_site_measures_visits_only_with_an_optional_tracker(rf, settings, ga, clarity, measures):
+    """One answer for the cookie banner and the cookie policy (PUBLIC-F19): an optional tracker is the
+    only thing there is to consent to."""
+    settings.GA_MEASUREMENT_ID = ga
+    settings.CLARITY_PROJECT_ID = clarity
+
+    assert _context(rf, "/")["measures_visits"] is measures
+
+
+@pytest.mark.parametrize(
     "path", ["/", "/pricing/", "/legal/privacy/", "/apps/inventory/"]
 )
 def test_an_anonymous_visitor_on_the_public_web_is_on_a_public_page(rf, path):
@@ -43,7 +60,7 @@ def test_an_anonymous_visitor_on_the_public_web_is_on_a_public_page(rf, path):
 
 @pytest.mark.django_db
 def test_a_signed_in_person_is_never_on_a_public_page(rf, ana):
-    """Clarity records the screen: the boundary is the session, not the URL (saas#958)."""
+    """Clarity records the screen: the boundary is the session, not the URL."""
     assert _context(rf, "/pricing/", user=ana)["is_public_page"] is False
 
 
@@ -68,7 +85,7 @@ def test_the_private_half_is_never_a_public_page(rf, path):
     ],
 )
 def test_the_pages_that_show_credentials_are_flagged(rf, path):
-    """Passwords and one-time codes: no analytics there, whatever the consent (saas#958)."""
+    """Passwords and one-time codes: no analytics there, whatever the consent."""
     assert _context(rf, path)["is_credentials_page"] is True
 
 
@@ -85,7 +102,7 @@ def test_the_addresses_that_render_no_credentials_page_are_not_flagged(rf, path)
 
 
 def test_an_error_page_without_the_auth_middleware_still_renders(rf):
-    """A 404 raised before AuthenticationMiddleware has no ``request.user`` (saas#1631)."""
+    """A 404 raised before AuthenticationMiddleware has no ``request.user``."""
     request = rf.get("/missing/")
 
     assert public_site(request)["is_public_page"] is True

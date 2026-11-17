@@ -1,13 +1,12 @@
-// The public web of erplora.com, part 2 (APP-PUBLIC-2, public/WORKBOOK.md PUBLIC-F15…F28), in a real Chrome under
+// The public web of erplora.com, part 2 (public/WORKBOOK.md PUBLIC-F15…F28), in a real Chrome under
 // the production CSP with zero violations: the help center and its search, the support routes, the contact form
 // (its topic, what reaches support and what comes back when a message is refused), the cookie notice that only
 // asks when there is something to ask, the legal texts and the responsible declaration, the documentation's old
 // address, the app store with its filters and an app's page, the free hub on /download/ with the Free plan's
 // limits, the app's page, the published version and the retired Bridge. Each screen is captured at 390×844,
-// 834×1112 and 1440×900 as `APP-PUBLIC-2-<key>-<width>.png` in `.artifacts/`.
-// flow: PUBLIC-G01 PUBLIC-G02 PUBLIC-G03 PUBLIC-G21 PUBLIC-G25 PUBLIC-G38 PUBLIC-G19 PUBLIC-G39 PUBLIC-G40
-// flow: PUBLIC-G41 PUBLIC-G24 PUBLIC-G43 PUBLIC-G44 PUBLIC-G20 PUBLIC-G45 PUBLIC-G17 PUBLIC-G46 PUBLIC-G07
-// flow: PUBLIC-G26 PUBLIC-G10 PUBLIC-G11 PUBLIC-G27 PUBLIC-G08 PUBLIC-G28 PUBLIC-G29 PUBLIC-G04 PUBLIC-G47
+// 834×1112 and 1440×900 in `.artifacts/`.
+// flow: PUBLIC-F15 PUBLIC-F16 PUBLIC-F17 PUBLIC-F18 PUBLIC-F19 PUBLIC-F20
+// flow: PUBLIC-F21 PUBLIC-F22 PUBLIC-F23 PUBLIC-F24 PUBLIC-F25 PUBLIC-F26
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -61,7 +60,7 @@ async function watch(page: Page) {
   };
 }
 
-/** The page at the three viewports, each loaded afresh, captured whole as `APP-PUBLIC-2-<key>-<width>.png`. */
+/** The page at the three viewports, each loaded afresh and captured whole. */
 async function captureEverywhere(page: Page, path: string, key: string, ready: (page: Page) => Promise<void>) {
   mkdirSync(ARTIFACTS, { recursive: true });
   for (const viewport of VIEWPORTS) {
@@ -100,7 +99,7 @@ test.beforeAll(() => {
 // Reduced motion paints every revealed block at once, so a full-page capture shows the whole page.
 test.use({ locale: 'en-GB', reducedMotion: 'reduce' });
 
-test('PUBLIC-G01 G02 G03 G21 G25 G38 the help center lists the guides, opens one and finds by search', async ({ page }) => {
+test('PUBLIC-F15 the help center lists the guides, opens one and finds by search', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/help/', 'PUBLIC-G01', async (p) => {
@@ -124,7 +123,7 @@ test('PUBLIC-G01 G02 G03 G21 G25 G38 the help center lists the guides, opens one
   await clean('/help/');
 });
 
-test('PUBLIC-G19 the support page offers the guides, the form and the address', async ({ page }) => {
+test('PUBLIC-F15 the support page offers the guides, the form and the address', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/support/', 'PUBLIC-G19', async (p) => {
@@ -138,7 +137,7 @@ test('PUBLIC-G19 the support page offers the guides, the form and the address', 
   await clean('/support/');
 });
 
-test('PUBLIC-G39 G40 G41 a message from Collaborate reaches support on its topic, answerable by «Reply»', async ({ page }) => {
+test('PUBLIC-F16 PUBLIC-F17 PUBLIC-F18 a message from Collaborate reaches support on its topic, answerable by «Reply»', async ({ page }) => {
   const clean = await watch(page);
   rmSync(PUBLIC_MAIL_DIR, { recursive: true, force: true });
 
@@ -146,12 +145,12 @@ test('PUBLIC-G39 G40 G41 a message from Collaborate reaches support on its topic
     await expect(heading(p)).toContainText('Get in Touch');
     await expect(p.locator('#contact-form input[name="subject"]')).toHaveValue('collaborate');
   });
-  // One address, one chat and one reply time (G41).
+  // One address, one chat and one reply time (PUBLIC-F18).
   await expect(page.getByText('Within 4 business hours', { exact: true })).toBeVisible();
   await expect(page.locator('a[href^="https://wa.me/"]')).toHaveCount(1);
   await expect(page.locator('a[href="mailto:info@erplora.com"]')).toHaveCount(0);
 
-  // From Collaborate, its button opens the form on its topic (G40).
+  // From Collaborate, its button opens the form on its topic (PUBLIC-F17).
   await page.goto('/collaborate/');
   await page.locator('a.ep-button[href="/contact/?subject=collaborate"]').first().click();
   await expect(page).toHaveURL(/\/contact\/\?subject=collaborate$/);
@@ -171,7 +170,7 @@ test('PUBLIC-G39 G40 G41 a message from Collaborate reaches support on its topic
   await clean('/contact/');
 });
 
-test('PUBLIC-G39 a refused message comes back with what was typed', async ({ page }) => {
+test('PUBLIC-F16 a refused message comes back with what was typed', async ({ page }) => {
   const clean = await watch(page);
   rmSync(PUBLIC_MAIL_DIR, { recursive: true, force: true });
   await page.goto('/contact/');
@@ -191,7 +190,7 @@ test('PUBLIC-G39 a refused message comes back with what was typed', async ({ pag
   await clean('/contact/ refused');
 });
 
-test('PUBLIC-G24 G43 G44 G20 no tracker configured: no notice, only technical cookies, and the choice per group', async ({
+test('PUBLIC-F19 no tracker configured: no notice, only technical cookies, and the choice per group', async ({
   page,
   context,
 }) => {
@@ -213,7 +212,7 @@ test('PUBLIC-G24 G43 G44 G20 no tracker configured: no notice, only technical co
   await clean('/cookies/');
 });
 
-test('PUBLIC-G45 G17 the legal texts read, each with its own page', async ({ page }) => {
+test('PUBLIC-F20 the legal texts read, each with its own page', async ({ page }) => {
   const clean = await watch(page);
   for (const [path, key] of [
     ['/legal/privacy/', 'PUBLIC-G45-privacy'],
@@ -232,7 +231,7 @@ test('PUBLIC-G45 G17 the legal texts read, each with its own page', async ({ pag
 test.describe('in Spanish', () => {
   test.use({ locale: 'es-ES' });
 
-  // flow: PUBLIC-F20 PUBLIC-F08 (FIX-SAAS-PRIVACY-POLICY-OMITS-DICTATION-AUDIO-TO-TRANSCRIPTION)
+  // flow: PUBLIC-F20 PUBLIC-F08
   test('PUBLIC-F20 the privacy policy names where the audio of a dictation goes', async ({ page }) => {
     const clean = await watch(page);
     mkdirSync(ARTIFACTS, { recursive: true });
@@ -261,7 +260,7 @@ test.describe('in Spanish', () => {
   });
 });
 
-test('PUBLIC-G46 the responsible declaration in force, with its archive', async ({ page }) => {
+test('PUBLIC-F21 the responsible declaration in force, with its archive', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/legal/declaracion-responsable/', 'PUBLIC-G46', async (p) => {
@@ -271,20 +270,20 @@ test('PUBLIC-G46 the responsible declaration in force, with its archive', async 
   await clean('/legal/declaracion-responsable/');
 });
 
-test('PUBLIC-G07 the documentation address leads to the help center', async ({ page }) => {
+test('PUBLIC-F15 the documentation address leads to the help center', async ({ page }) => {
   const response = await page.goto('/documentation/');
 
   expect(response?.url()).toMatch(/\/help\/$/);
   await expect(heading(page)).toContainText('Help center.');
 });
 
-test('PUBLIC-G26 G10 G11 the store lists the apps by section, filters them and takes the old addresses', async ({ page }) => {
+test('PUBLIC-F22 the store lists the apps by section, filters them and takes the old addresses', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, '/apps/', 'PUBLIC-G26', async (p) => {
     await expect(p.locator(`a[href="/apps/${APP}/"]`).first()).toBeVisible();
   });
-  // Every plan includes all the apps (ronda 2026-10-24b, PLAN §32): no «Free» / «Premium» filter, every card says so.
+  // Every plan includes all the apps: no «Free» / «Premium» filter, every card says so.
   await expect(page.locator('nav[aria-label="Filter by access"]')).toHaveCount(0);
   await expect(page.locator(`a[href="/apps/${APP}/"] .ep-product-card__price`).first()).toHaveText('Included in every plan');
   expect(await page.evaluate(() => document.body.innerText)).not.toMatch(/premium/i);
@@ -300,7 +299,7 @@ test('PUBLIC-G26 G10 G11 the store lists the apps by section, filters them and t
   await clean('/apps/');
 });
 
-test('PUBLIC-G27 G08 an app page: overview, required apps and its documentation', async ({ page }) => {
+test('PUBLIC-F23 an app page: overview, required apps and its documentation', async ({ page }) => {
   const clean = await watch(page);
 
   await captureEverywhere(page, `/apps/${APP}/`, 'PUBLIC-G27', async (p) => {
@@ -314,7 +313,7 @@ test('PUBLIC-G27 G08 an app page: overview, required apps and its documentation'
   await clean(`/apps/${APP}/`);
 });
 
-test('PUBLIC-G28 G04 G29 the ways to get the app, the Free plan on /download/ and the version published', async ({
+test('PUBLIC-F24 PUBLIC-F25 the ways to get the app, the Free plan on /download/ and the version published', async ({
   page,
   request,
 }) => {
@@ -338,7 +337,7 @@ test('PUBLIC-G28 G04 G29 the ways to get the app, the Free plan on /download/ an
   await clean('/download/ and /app/');
 });
 
-test('PUBLIC-G47 from the installed app, the terms open in app mode and «Back» returns to the sign-in', async ({ page }) => {
+test('PUBLIC-F26 from the installed app, the terms open in app mode and «Back» returns to the sign-in', async ({ page }) => {
   const clean = await watch(page);
 
   // The app simulated as the panel's specs do (`?surface=desktop`, packages/ui surface.ts): its sign-in links the
@@ -370,7 +369,7 @@ test('PUBLIC-G47 from the installed app, the terms open in app mode and «Back»
   await clean('in-app legal texts');
 });
 
-test('PUBLIC-G47 on a slow device, «Back» returns to the sign-in even pressed before the page script has run', async ({
+test('PUBLIC-F26 on a slow device, «Back» returns to the sign-in even pressed before the page script has run', async ({
   page,
 }) => {
   await page.goto('/shell/?surface=desktop');

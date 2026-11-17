@@ -1,9 +1,8 @@
 """``manage.py init_cookie_groups``: the cookie groups of the consent banner and of ``/cookies/``.
 
-Ported from ERPlora/saas ``apps/dashboard/core/management/commands/init_cookie_groups.py`` and
-``tests/unit/test_cookie_consent_seed.py`` (origin/develop c5ca8ca). The cookie policy is rendered
+The cookie policy is rendered
 from these rows (nothing is auto-discovered), so every tracker gated by a group must declare its
-cookies here. Adapted: the essential cookies are the ones saas-next really sets (Django's default
+cookies here. The essential cookies are the ones erplora.com really sets (Django's default
 session and CSRF names, the ``_lang`` language cookie, the consent cookie and the shell's palette),
 and names and descriptions are stored in English, the source, and translated when rendered.
 """
@@ -46,7 +45,7 @@ def test_the_three_groups_in_order():
 
 def test_the_essential_group_is_required_and_never_deleted():
     """``CleanCookiesMiddleware`` reads only ``is_deletable``: a deletable essential group made
-    «Decline» delete the session cookie and sign the person out (saas#975)."""
+    «Decline» delete the session cookie and sign the person out."""
     _seed()
 
     essential = CookieGroup.objects.get(varname="essential")

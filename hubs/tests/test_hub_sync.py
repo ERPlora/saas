@@ -1,10 +1,9 @@
-"""What the SaaS tells the Hub after each COMMIT, against the Hub double (PLAN-SAAS §2.2, §3.1, §3.4).
+"""What the SaaS tells the Hub after each COMMIT, against the Hub double.
 
-New with this lot (plan 2026-10-13 §3, the push to the Hub): ``services.sync_hub`` brings the Hub to what
-the SaaS knows (the registry, the deletion or the restoration it owes, then the snapshot), records
-each acknowledgement and leaves the rest pending when the Hub is away; ``reconcile_hub_states`` retries it.
-Ported from ``test_entitlement_push`` (origin/develop): a push is delivered only when the Hub
-acknowledged it; anything else is «not delivered», and nothing breaks.
+``services.hub_push.sync_hub`` brings the Hub to what the SaaS knows (the registry, the deletion or the restoration it owes,
+then the snapshot), records each acknowledgement and leaves the rest pending when the Hub is away;
+``reconcile_hub_states`` retries it. A push is delivered only when the Hub acknowledged it; anything else is «not
+delivered», and nothing breaks.
 """
 
 from datetime import timedelta
@@ -13,7 +12,9 @@ import pytest
 from django.utils import timezone
 
 from apps.tests.factories import make_app
-from hubs import hub_client, queries, services
+from hubs import hub_client
+from hubs.services import business_settings, deletion, hub_callbacks, hub_push, session_revocations
+from hubs.queries import businesses, hub_sync
 from hubs.models import (
     BusinessType,
     Hub,
@@ -37,7 +38,7 @@ def fresh(hub):
 
 class TestTheRegistry:
     def test_it_carries_what_the_hub_needs_to_provision(self, business):
-        assert queries.hub_registry(business.id) == {
+        assert hub_sync.hub_registry(business.id) == {
             "id": str(business.id),
             "slug": "bar-manolo",
             "name": "Bar Manolo",
@@ -55,19 +56,19 @@ class TestTheRegistry:
 
         hub = create_business(owner, business_type="restaurant")
 
-        assert queries.hub_registry(hub.id)["vertical"] == "restaurant"
+        assert hub_sync.hub_registry(hub.id)["vertical"] == "restaurant"
 
     def test_a_type_without_vertical_sends_none(self, owner, plans):
         BusinessType.objects.create(code="bar", name_en="Bar", vertical="")
 
         hub = create_business(owner, business_type="bar")
 
-        assert queries.hub_registry(hub.id)["vertical"] is None
+        assert hub_sync.hub_registry(hub.id)["vertical"] is None
 
 
 class TestTheSnapshot:
     def test_it_is_the_shape_of_section_2_2(self, business, team):
-        snapshot = queries.hub_snapshot(business.id)
+        snapshot = hub_sync.hub_snapshot(business.id)
 
         assert set(snapshot) == {
             "hub_id",
@@ -77,7 +78,7 @@ class TestTheSnapshot:
             "plan",
             "modules",
             "members",
-            # The documentation for VeriFactu and its live sending (plan 2026-10-15, agreed with the Hub).
+            # The documentation for VeriFactu and its live sending (agreed with the Hub).
             "verifactu",
             # The business's WhatsApp channel (door 4 of hub/apps/whatsapp_inbox/WORKBOOK.md): whatsapp/tests.
             "whatsapp",
@@ -91,26 +92,26 @@ class TestTheSnapshot:
 
     def test_it_carries_the_verifactu_block(self, business):
         """``fiscal.queries.snapshot_block`` (the authorisation) and nothing of the plan, Free included: VeriFactu goes
-        in every plan (PLAN §30; a new business is on Free), so ``live_paid`` left the block with the Hub's condition
-        (FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID). The rest is ``fiscal/tests/test_snapshot.py``."""
-        assert queries.hub_snapshot(business.id)["verifactu"] == {
+        in every plan (a new business is on Free), so the block carries no ``live_paid``. The rest is
+        ``fiscal/tests/test_snapshot.py``."""
+        assert hub_sync.hub_snapshot(business.id)["verifactu"] == {
             "representation": {"status": "none", "updated_at": None, "reason": ""},
         }
 
-    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one by default)
     def test_the_plan_is_the_trials_while_it_lasts(self, business):
         """Free is born with 15 days of Starter: the Hub applies Starter's rights meanwhile."""
-        assert queries.hub_snapshot(business.id)["plan"] == {
+        assert hub_sync.hub_snapshot(business.id)["plan"] == {
             "slug": "starter",
             "included_level": "basic",
             "max_devices": 0,
             "max_users": 0,
             "max_db_connections": 3,
             "statement_timeout_seconds": 15,
-            # The monthly messages the Hub counts and blocks at (PLAN-SAAS §3.6, 2026-10-15): 0 = none.
+            # The monthly messages the Hub counts and blocks at: 0 = none.
             "assistant_messages_per_month": 300,
             "whatsapp_messages_per_month": 150,
-            # The modules a business may choose to turn on (2026-10-24; what they require does not count): Starter's 40.
+            # The modules a business may choose to turn on (what they require does not count): Starter's 40.
             "max_apps": 40,
             # The space for the business's files its tier includes, the Hub's «Space» (BASE-F72, F73): 5 GiB.
             "max_storage_bytes": 5 * 1024**3,
@@ -121,7 +122,7 @@ class TestTheSnapshot:
             trial_end=timezone.now() - timedelta(seconds=1)
         )
 
-        plan = queries.hub_snapshot(business.id)["plan"]
+        plan = hub_sync.hub_snapshot(business.id)["plan"]
 
         assert (
             plan["slug"],
@@ -146,7 +147,7 @@ class TestTheSnapshot:
         )
 
     def test_the_members_are_those_who_answered(self, business, team):
-        members = queries.hub_snapshot(business.id)["members"]
+        members = hub_sync.hub_snapshot(business.id)["members"]
 
         assert [(m["email"], m["role"]) for m in members] == [
             ("owner@example.com", "hub_owner"),
@@ -163,13 +164,13 @@ class TestTheSnapshot:
 
     def test_a_member_without_a_name_is_named_by_email(self, business, team):
         names = {
-            m["email"]: m["name"] for m in queries.hub_snapshot(business.id)["members"]
+            m["email"]: m["name"] for m in hub_sync.hub_snapshot(business.id)["members"]
         }
 
         assert names["admin@example.com"] == "Adela"
         add_member(business, team["stranger"], HubMember.Role.EMPLOYEE)
         names = {
-            m["email"]: m["name"] for m in queries.hub_snapshot(business.id)["members"]
+            m["email"]: m["name"] for m in hub_sync.hub_snapshot(business.id)["members"]
         }
         assert names["stranger@example.com"] == "stranger@example.com"
 
@@ -192,7 +193,7 @@ class TestTheSnapshot:
             valid_until=timezone.now() - timedelta(days=1),
         )
 
-        assert queries.hub_snapshot(business.id)["modules"] == [
+        assert hub_sync.hub_snapshot(business.id)["modules"] == [
             {"id": "inventory", "source": "purchase", "valid_until": until.isoformat()},
             {"id": "loyalty", "source": "plan", "valid_until": None},
         ]
@@ -209,7 +210,7 @@ class TestTheSnapshot:
     def test_the_status_is_the_commercial_one(self, business, status, sent):
         Hub.objects.filter(pk=business.pk).update(status=status)
 
-        assert queries.hub_snapshot(business.id)["status"] == sent
+        assert hub_sync.hub_snapshot(business.id)["status"] == sent
 
 
 # --- Pushing after the COMMIT ---------------------------------------------------------------------
@@ -231,7 +232,7 @@ class TestTheSignUp:
             "",
             hub.state_version,
         )
-        assert hub_double.calls[0].body == queries.hub_registry(hub.id)
+        assert hub_double.calls[0].body == hub_sync.hub_registry(hub.id)
 
     def test_nothing_leaves_before_the_commit(
         self, owner, plans, hub_double, django_capture_on_commit_callbacks
@@ -275,12 +276,12 @@ class TestChanges:
     def test_a_new_member_reaches_the_hub_with_a_newer_version(
         self, business, owner, hub_double, make_user
     ):
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
         first = hub_double.calls_to("PUT", "/state")[-1].body["version"]
 
         add_member(business, make_user("new@example.com"), HubMember.Role.EMPLOYEE)
-        services.bump_state(business.id)  # what the member operations do in their transaction
-        services.sync_hub(business.id)
+        hub_push.bump_state(business.id)  # what the member operations do in their transaction
+        hub_push.sync_hub(business.id)
 
         last = hub_double.calls_to("PUT", "/state")[-1].body
         assert last["version"] > first
@@ -288,22 +289,22 @@ class TestChanges:
         assert fresh(business).pushed_state_version == last["version"]
 
     def test_an_up_to_date_hub_gets_no_snapshot(self, business, hub_double):
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
         sent = len(hub_double.calls)
 
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
 
         assert len(hub_double.calls) == sent
 
     def test_an_acknowledgement_never_moves_the_pushed_version_back(
         self, business, hub_double
     ):
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
         Hub.objects.filter(pk=business.pk).update(
             state_version=9, pushed_state_version=9
         )
 
-        services.record_state_pushed(business.id, 3)
+        hub_push.record_state_pushed(business.id, 3)
 
         assert fresh(business).pushed_state_version == 9
 
@@ -311,7 +312,7 @@ class TestChanges:
         self, business, hub_double
     ):
         """Cleared only if still the call that was made: a newer one stays owed."""
-        services.record_call_answered(business.id, "delete")
+        hub_push.record_call_answered(business.id, "delete")
 
         assert fresh(business).pending_hub_call == "put"
 
@@ -320,16 +321,16 @@ class TestDeleteAndRestore:
     def test_the_hub_gets_the_deletion_and_no_snapshot(
         self, business, owner, hub_double, django_capture_on_commit_callbacks
     ):
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
         hub_double.calls.clear()
 
         with django_capture_on_commit_callbacks(execute=True):
-            services.business_delete(
+            deletion.business_delete(
                 ctx_for(owner),
                 BusinessDeleteIn(id=business.id, confirm_name="Bar Manolo"),
             )
 
-        # The deletion, and after it the deletion mail's read of whether a copy will come (ruling of 2026-10-30).
+        # The deletion, and after it the deletion mail's read of whether a copy will come.
         assert [(c.method, c.path, c.body) for c in hub_double.calls] == [
             ("DELETE", f"/internal/hubs/{business.id}", {"id": str(business.id)}),
             ("GET", f"/internal/hubs/{business.id}/dumps", None),
@@ -339,14 +340,14 @@ class TestDeleteAndRestore:
     def test_the_hub_gets_the_restoration_then_the_free_snapshot(
         self, business, owner, hub_double, django_capture_on_commit_callbacks
     ):
-        services.business_delete(
+        deletion.business_delete(
             ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name="Bar Manolo")
         )
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
         hub_double.calls.clear()
 
         with django_capture_on_commit_callbacks(execute=True):
-            services.business_restore(ctx_for(owner), ByIdIn(id=business.id))
+            deletion.business_restore(ctx_for(owner), ByIdIn(id=business.id))
 
         assert [(c.method, c.path) for c in hub_double.calls] == [
             ("POST", f"/internal/hubs/{business.id}/restore"),
@@ -358,11 +359,11 @@ class TestDeleteAndRestore:
     def test_a_business_the_hub_already_purged_is_marked_so(
         self, business, owner, hub_double
     ):
-        services.business_delete(
+        deletion.business_delete(
             ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name="Bar Manolo")
         )
-        services.sync_hub(business.id)
-        services.business_restore(ctx_for(owner), ByIdIn(id=business.id))
+        hub_push.sync_hub(business.id)
+        deletion.business_restore(ctx_for(owner), ByIdIn(id=business.id))
         hub_double.answer(
             "POST",
             "/restore$",
@@ -370,7 +371,7 @@ class TestDeleteAndRestore:
             {"error": {"code": "hub_purged", "message": "Gone."}},
         )
 
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
 
         hub = fresh(business)
         assert (hub.status, hub.pending_hub_call) == ("deleted", "")
@@ -380,7 +381,7 @@ class TestDeleteAndRestore:
             status=Hub.Status.DELETING, pending_hub_call="", state_version=5
         )
 
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
 
         assert hub_double.calls == []
 
@@ -389,7 +390,7 @@ def test_revocation_reaches_the_hub_after_the_commit(
     business, team, hub_double, django_capture_on_commit_callbacks
 ):
     with django_capture_on_commit_callbacks(execute=True):
-        services.revoke_after_commit(team["admin"].pk, business.id)
+        session_revocations.revoke_after_commit(team["admin"].pk, business.id)
 
     (call,) = hub_double.calls_to("POST", "/internal/sessions/revoke")
     assert call.body == {"user_id": str(team["admin"].pk), "hub_id": str(business.id)}
@@ -399,13 +400,13 @@ def test_a_lost_revocation_breaks_nothing(
     business, team, offline_hub, django_capture_on_commit_callbacks
 ):
     with django_capture_on_commit_callbacks(execute=True):
-        services.revoke_after_commit(team["admin"].pk, business.id)
+        session_revocations.revoke_after_commit(team["admin"].pk, business.id)
 
 
 def test_a_sync_of_an_unknown_business_does_nothing(hub_double):
     import uuid
 
-    assert services.sync_hub(uuid.uuid7()) is False
+    assert hub_push.sync_hub(uuid.uuid7()) is False
     assert hub_double.calls == []
 
 
@@ -415,29 +416,29 @@ def test_a_plan_change_is_a_new_version(business):
         plan=Plan.objects.get(slug="standard")
     )
 
-    services.bump_state(business.id)
+    hub_push.bump_state(business.id)
 
     assert fresh(business).state_version == version + 1
 
 
-# --- Review of L1-A, finding 4: permanent refusals are visible, transient ones stay owed ----------
+# --- Permanent refusals are visible, transient ones stay owed --------------------------------------
 
 
 class TestRefusals:
     def test_a_deletion_the_hub_never_had_is_confirmed(self, business, owner, hub_double):
-        services.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name="Bar Manolo"))
+        deletion.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name="Bar Manolo"))
         hub_double.answer("DELETE", r"/internal/hubs/[^/]+$", 404, {"error": {"code": "not_found"}})
 
-        assert services.sync_hub(business.id) is True
+        assert hub_push.sync_hub(business.id) is True
         assert fresh(business).pending_hub_call == ""
 
     def test_restoring_before_the_hub_got_the_deletion_registers_it_again(self, business, owner, hub_double):
         """The Hub never stopped serving it: there is nothing to restore, only the registry to be sure of."""
-        services.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name="Bar Manolo"))
+        deletion.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name="Bar Manolo"))
 
-        services.business_restore(ctx_for(owner), ByIdIn(id=business.id))
+        deletion.business_restore(ctx_for(owner), ByIdIn(id=business.id))
         assert fresh(business).pending_hub_call == "put"
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
 
         assert [(c.method, c.path.rsplit("/", 1)[-1]) for c in hub_double.calls] == [
             ("PUT", str(business.id)),
@@ -447,16 +448,16 @@ class TestRefusals:
     def test_a_refused_registry_is_visible_on_the_business(self, business, owner, hub_double):
         hub_double.answer("PUT", r"/internal/hubs/[^/]+$", 422, {"error": {"code": "unknown_vertical", "message": "No."}})
 
-        assert services.sync_hub(business.id) is False
+        assert hub_push.sync_hub(business.id) is False
 
         hub = fresh(business)
         assert (hub.last_hub_error, hub.hub_error_at is not None, hub.pending_hub_call) == ("unknown_vertical", True, "put")
-        row = queries.business_list(ctx_for(owner), BusinessListIn()).rows[0]
+        row = businesses.business_list(ctx_for(owner), BusinessListIn()).rows[0]
         assert (row.hub_error, row.open_blocked_reason) == ("unknown_vertical", "error")
-        assert queries.business_get(ctx_for(owner), ByIdIn(id=business.id)).hub_error == "unknown_vertical"
+        assert businesses.business_get(ctx_for(owner), ByIdIn(id=business.id)).hub_error == "unknown_vertical"
 
     def test_a_refused_snapshot_is_an_error_in_the_log_with_the_hubs_reason(self, business, hub_double, caplog):
-        """hub#127: a ``whatsapp`` block out of the Hub's schema makes it refuse the whole snapshot (422): the
+        """A ``whatsapp`` block out of the Hub's schema makes it refuse the whole snapshot (422): the
         business stops receiving its plan, modules and members, so the push says it as an ERROR, with the Hub's code
         and reason, and the snapshot stays owed."""
         reason = "The whatsapp block is out of contract: templates.0.name: String should have at least 1 character"
@@ -464,9 +465,9 @@ class TestRefusals:
             "PUT", r"/internal/hubs/[^/]+/state$", 422, {"error": {"code": "internal.payload_invalid", "message": reason}}
         )
 
-        assert services.sync_hub(business.id) is False
+        assert hub_push.sync_hub(business.id) is False
 
-        [refusal] = [record for record in caplog.records if record.name == "hubs.services" and "refused" in record.msg]
+        [refusal] = [record for record in caplog.records if record.name == "hubs.services.hub_push" and "refused" in record.msg]
         assert refusal.levelname == "ERROR"
         assert all(part in refusal.getMessage() for part in (str(business.id), "state", "422", "internal.payload_invalid", reason))
         hub = fresh(business)
@@ -475,7 +476,7 @@ class TestRefusals:
     def test_a_later_acknowledgement_clears_the_error(self, business, hub_double):
         Hub.objects.filter(pk=business.pk).update(last_hub_error="unknown_vertical", hub_error_at=timezone.now())
 
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
 
         assert (fresh(business).last_hub_error, fresh(business).hub_error_at) == ("", None)
 
@@ -494,7 +495,7 @@ class TestRefusals:
         hub_double.answer("PUT", r"/internal/hubs/[^/]+$", 422, {"error": {"code": "unknown_vertical"}})
 
         with django_capture_on_commit_callbacks(execute=True):
-            services.sync_hub(business.id)
+            hub_push.sync_hub(business.id)
 
         event = OutboxEvent.objects.get(name="hubs.business.hub_error_changed")
         assert (event.scope_kind, event.scope_key, event.actor) == ("user", str(owner.pk), "system")
@@ -507,7 +508,7 @@ class TestRefusals:
 
         Hub.objects.filter(pk=business.pk).update(last_hub_error="unknown_vertical", hub_error_at=timezone.now())
 
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
 
         (event,) = OutboxEvent.objects.filter(name="hubs.business.hub_error_changed")
         assert (event.scope_key, event.payload) == (str(owner.pk), {"id": str(business.id), "hub_error": None})
@@ -518,15 +519,15 @@ class TestRefusals:
 
         hub_double.answer("PUT", r"/internal/hubs/[^/]+$", 422, {"error": {"code": "unknown_vertical"}})
 
-        services.sync_hub(business.id)
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
 
         assert OutboxEvent.objects.filter(name="hubs.business.hub_error_changed").count() == 1
 
     def test_a_push_without_a_refusal_records_nothing(self, business, hub_double):
         from live.models import OutboxEvent
 
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
 
         assert not OutboxEvent.objects.filter(name="hubs.business.hub_error_changed").exists()
 
@@ -536,12 +537,12 @@ class TestRefusals:
         from hubs.schemas import HubErrorIn
 
         with pytest.raises(PermissionDenied):
-            services.business_record_hub_error(ctx_for(owner), HubErrorIn(id=business.id, hub_error="nope"))
+            hub_callbacks.business_record_hub_error(ctx_for(owner), HubErrorIn(id=business.id, hub_error="nope"))
 
         assert fresh(business).last_hub_error == ""
 
     def test_a_hub_that_is_away_is_no_error_of_the_business(self, business, offline_hub):
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
 
         assert fresh(business).last_hub_error == ""
 
@@ -551,27 +552,27 @@ class TestRefusals:
 
         def renamed_meanwhile(registry):
             answer = real(registry)
-            services.business_update(ctx_for(owner), BusinessUpdateIn(id=business.id, name="Bar Manolo 2"))
+            business_settings.business_update(ctx_for(owner), BusinessUpdateIn(id=business.id, name="Bar Manolo 2"))
             return answer
 
         monkeypatch.setattr(hub_client, "put_hub", renamed_meanwhile)
 
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
 
         assert fresh(business).pending_hub_call == "put"
         monkeypatch.setattr(hub_client, "put_hub", real)
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
         assert hub_double.calls_to("PUT", str(business.id))[-1].body["name"] == "Bar Manolo 2"
         assert fresh(business).pending_hub_call == ""
 
 
 def test_falling_to_free_the_modules_of_the_paid_plan_leave_the_snapshot(business, owner):
-    """Review of L1-A: deleting drops the plan at once; what came with it goes, what was bought stays."""
+    """Deleting drops the plan at once; what came with it goes, what was bought stays."""
     subscription = Subscription.objects.get(hub=business)
     SubscriptionItem.objects.create(subscription=subscription, module_slug="loyalty", source="plan")
     SubscriptionItem.objects.create(subscription=subscription, module_slug="inventory", source="purchase")
 
-    services.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name="Bar Manolo"))
+    deletion.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name="Bar Manolo"))
 
     assert list(SubscriptionItem.objects.values_list("module_slug", flat=True)) == ["inventory"]
-    assert [module["id"] for module in queries.hub_snapshot(business.id)["modules"]] == ["inventory"]
+    assert [module["id"] for module in hub_sync.hub_snapshot(business.id)["modules"]] == ["inventory"]

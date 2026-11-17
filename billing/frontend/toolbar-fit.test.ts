@@ -1,6 +1,6 @@
-// The invoices' toolbar on ONE line from 641 px (audit 2026-10-14, R-14: «Download Excel» alone on a second
+// The invoices' toolbar on ONE line from 641 px (not «Download Excel» alone on a second
 // line at 834, 1024 and 1180 px). DataTable lays its bar out as one flex row that wraps item by item; what fits
-// is measured on that row's own box (as DataTable fits its columns, W-19), never on the viewport: when the
+// is measured on that row's own box (as DataTable fits its columns), never on the viewport: when the
 // watched item falls below the first line the toolbar folds; folded, it tries the full one again only when the
 // row grows wider than when it folded (no back and forth), or when asked (what sits in it changed).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

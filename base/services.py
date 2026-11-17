@@ -1,6 +1,6 @@
-"""Write operations of base: the turn and the report of the panel's own assistant (plan 2026-10-30-asistente-saas
-§4, PLAN-SAAS §23), with the Hub's names (``base.assistant.turn``, ``base.assistant.report``) so the shared panel of
-``@erplora/ui`` is configured the same in both.
+"""Write operations of base: the turn and the report of the panel's own assistant, with the Hub's names
+(``base.assistant.turn``, ``base.assistant.report``) so the shared panel of ``@erplora/ui`` is configured the same in
+both.
 
 Neither touches the ORM here: the tools run as the account, each by its own operation; the report and the allowance
 are the gateway's (``assistant.services``), called as the platform for the session's account.
@@ -88,9 +88,9 @@ def _declined_before(messages: list[dict], call_id: str) -> set[str]:
     return declined
 
 
-def _answer(ctx: OperationContext, tools: dict, call, decision, *, stopped: bool):
+def _answer(ctx: OperationContext, tools: dict, call, decision, *, stopped: bool):  # noqa: C901, PLR0911
     """Run one pending ``call`` (a read alone; a write with the person's yes) → ``(outcome, card)``: the card when the
-    write still waits for its answer. None for data the write would refuse (live#17): the model hears which
+    write still waits for its answer. None for data the write would refuse: the model hears which
     (``invalid_payload``) and asks again with them corrected, in the same turn."""
     op = assistant.shared.operation_of(call.name, tools)
     if op is None:

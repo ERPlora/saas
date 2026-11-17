@@ -1,22 +1,14 @@
-// Businesses (`/dashboard/businesses`, mockups `businesses.html`) in Ioan's Chrome: the account's businesses in
+// Businesses (`/dashboard/businesses`, mockups `businesses.html`) in Chrome: the account's businesses in
 // the DataTable with their statuses, the banners of what waits (an invitation, an unpaid invoice), the
 // cards on a phone, «Manage» into a business's page and its four sections, and «Delete» → «Recover».
 import { type Page } from '@playwright/test';
 
-import {
-  businessIdOf,
-  expect,
-  panelAccount,
-  QUIET_MS,
-  seedPanel,
-  settled,
-  shot,
-  signIn,
-  test,
-  VIEWPORTS,
-  watchLiveStreams,
-  watchPageErrors,
-} from './fixtures';
+import { panelAccount } from './accounts';
+import { businessIdOf, seedPanel } from './businesses';
+import { expect, test } from './fixtures';
+import { QUIET_MS, watchLiveStreams, watchPageErrors } from './page-events';
+import { settled, shot, VIEWPORTS } from './screen';
+import { signIn } from './session';
 
 /** A section of the business: each has its address, so Ionic slides the next page in over the last
  *  one, which it then drops; the tabbar is clicked once only one page is left. */
@@ -105,9 +97,9 @@ test('«Delete» lives in the business’s Settings and asks for the name; delet
   expect(errors).toEqual([]);
 });
 
-// flow: ninguno — FIX hubs (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN). A page declares its live data when it
+// flow: ninguno — regression test of Businesses. A page declares its live data when it
 // mounts, so its stream (`GET /api/live?s=…`) opens once; a second subscription arriving after the first
-// open makes the SDK reopen it, and the first request ends `ERR_ABORTED` (`watchLiveStreams`, fixtures.ts).
+// open makes the SDK reopen it, and the first request ends `ERR_ABORTED` (`watchLiveStreams`, page-events.ts).
 
 test('Businesses opens its live stream once, with everything the page shows', async ({ page }) => {
   const streams = watchLiveStreams(page);

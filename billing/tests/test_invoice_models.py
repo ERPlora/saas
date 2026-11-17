@@ -1,9 +1,7 @@
-"""ERPlora's invoices to its customers, as rows (lot L3-C): ``billing.Invoice`` and ``billing.InvoiceLine``.
+"""ERPlora's invoices to its customers, as rows: ``billing.Invoice`` and ``billing.InvoiceLine``.
 
-Ported from ERPlora/saas ``apps/dashboard/billing/tests/`` (origin/develop): ``test_invoice_money_cents``
-(integer cents, the euro is a read-only view, the header is the exact sum of the lines),
-``test_invoice_dedup`` (one invoice per Stripe invoice, enforced by the database), ``test_money_contract``
-(EUR by default) and ``test_hub_invoices.TestInvoiceModel``; and from ``fiscal/tests/test_vies_contract.py``
+Integer cents (the euro is a read-only view, the header is the exact sum of the lines), one invoice per
+Stripe invoice (enforced by the database), EUR by default and
 the decision half of «The note never lies» (the sentence itself is printed by the platform hub's PDF).
 
 Dropped, with their reason: the admin typing euros into an editable invoice (an invoice here is never
@@ -168,7 +166,7 @@ class TestTheDatabaseKeepsTheBooks:
 class TestTheSealsAreReadNotGuessed:
     def test_reverse_charge_is_what_was_sealed(self):
         assert make_invoice(tax_treatment="reverse_charge").is_reverse_charge is True
-        # A Spanish S.L. with a tax id is a domestic sale, whatever type Stripe gives its number (saas#1063).
+        # A Spanish S.L. with a tax id is a domestic sale, whatever type Stripe gives its number.
         assert (
             make_invoice(
                 stripe_invoice_id="in_2",
@@ -183,7 +181,7 @@ class TestTheSealsAreReadNotGuessed:
 
 class TestTheNoteNeverLies:
     """``vat_included_because_unverified``: whether the document must explain that the VAT came out of what
-    was charged (saas#1479, saas#1633). The platform hub prints the sentence; the decision is sealed here."""
+    was charged. The platform hub prints the sentence; the decision is sealed here."""
 
     def note(self, **fields) -> bool:
         defaults = {

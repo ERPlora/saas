@@ -1,5 +1,5 @@
 // The countries a business may be created in and the time zones its settings offer: the server's lists
-// (hubs/schemas.py `COUNTRIES`, hubs/services.py `TIME_ZONES`), named in the person's language by Intl,
+// (hubs/schemas.py `COUNTRIES`, hubs/services/creation.py `TIME_ZONES`), named in the person's language by Intl,
 // never by a catalogue of ours.
 // clock: data only — no code under test compares these dates with now.
 import { readFileSync } from 'node:fs';
@@ -43,6 +43,13 @@ describe('countries', () => {
     expect(countryOptions('en')[0]).toEqual({ value: 'AT', label: 'Austria' });
   });
 
+  it('can be offered from a shorter list, in the same order of names', () => {
+    expect(countryOptions('es', ['PT', 'ES'])).toEqual([
+      { value: 'ES', label: 'España' },
+      { value: 'PT', label: 'Portugal' },
+    ]);
+  });
+
   it('keep an unknown code as it came, never an empty label', () => {
     expect(countryName('XX', 'en')).toBe('XX');
   });
@@ -59,7 +66,7 @@ describe('countries', () => {
   });
 });
 
-// flow: HUBS-F01 (HUBS-G65, old saas SAAS_DASHBOARD-F01): «the country comes suggested by the browser's language».
+// flow: HUBS-F01: «the country comes suggested by the browser's language».
 describe('the country the browser suggests', () => {
   it("is the region of the first language whose country ERPlora serves", () => {
     expect(suggestedCountry(['fr-BE', 'fr'])).toBe('BE');
@@ -79,8 +86,8 @@ describe('the country the browser suggests', () => {
 });
 
 describe('time zones', () => {
-  it("offer every country's starting zone (hubs/services.py TIME_ZONES) and the Spanish and Portuguese islands", () => {
-    const services = readFileSync(join(HUBS, 'services.py'), 'utf8');
+  it("offer every country's starting zone (hubs/services/creation.py TIME_ZONES) and the Spanish and Portuguese islands", () => {
+    const services = readFileSync(join(HUBS, 'services', 'creation.py'), 'utf8');
     const block = /TIME_ZONES = \{([^}]+)\}/.exec(services)?.[1] ?? '';
     const zones = [...block.matchAll(/"[A-Z]{2}": "([^"]+)"/g)].map((m) => m[1]);
     expect(zones.length).toBe(27);
@@ -90,7 +97,7 @@ describe('time zones', () => {
     }
   });
 
-  it('name a zone by its city and its time, true all year (audit 2 R-31: «Madrid (GMT+2)» stopped being true on Oct 25)', () => {
+  it('name a zone by its city and its time, true all year («Madrid (GMT+2)» stops being true when the clocks change)', () => {
     const winter = new Date('2026-01-15T12:00:00Z');
     const summer = new Date('2026-07-15T12:00:00Z');
     expect(timeZoneLabel('Europe/Madrid', 'en', winter)).toBe('Madrid (Central European Time)');

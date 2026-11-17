@@ -1,10 +1,10 @@
-"""System checks of apps: ``Module.slug`` points at an app of the catalog (spec §5.4).
+"""System checks of apps: ``Module.slug`` points at an app of the catalog.
 
 ``Module.slug`` has no database FK to ``shared.app`` (nothing crosses the ``shared`` schema), so
 what an FK would do elsewhere is done by ``Module.clean()`` (the admin) and by ``apps.E001``,
 which looks at the data: it catches what skipped ``clean()``, a data load or a script. It is a
 database check, so it runs only when the database is named: ``manage.py check --database
-default``, which the ``saas-migrate`` task runs after ``migrate`` (spec §11).
+default``, which the ``saas-migrate`` task runs after ``migrate``.
 """
 
 from django.core import checks

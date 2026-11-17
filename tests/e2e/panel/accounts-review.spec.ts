@@ -3,29 +3,24 @@
 // flow: ACCOUNTS-F18 ACCOUNTS-F19 ACCOUNTS-F20 ACCOUNTS-F21 ACCOUNTS-F22 ACCOUNTS-F23 ACCOUNTS-F24
 // (ACCOUNTS-F06 aside: it plays on the panel's twin, in English, in accounts-google.spec.ts.)
 // The review of the `hecho` flows of «create the account, sign in, the second factor, the sessions, the profile and the
-// preferences» (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-6): every screen of those flows in English AND in
-// Spanish, at the three sizes of the migration (390×844, 834×1112, 1440×900). The flows themselves are played by
+// preferences» (accounts/WORKBOOK.md): every screen of those flows in English AND in
+// Spanish, at the three sizes (390×844, 834×1112, 1440×900). The flows themselves are played by
 // accounts-flows, accounts-security and accounts-profile (in English); here each screen is checked in the language
 // the person reads: the page says it (`<html lang>`), its title is the catalogue's text of that language, no text of
 // the other language is left on screen (every catalogue of the panel, `accounts`, `hubs`, the shell and @erplora/ui),
-// nothing scrolls sideways, and a capture `APP-ACCOUNTS-6-<flow>-<size>-<lang>` stays for the eye. Without a session
+// nothing scrolls sideways, and a capture per flow, size and language stays for the eye. Without a session
 // the language is the browser's (`Accept-Language`); with one, the account's own (ACCOUNTS-F22).
 // Accounts of this spec: `e2e-acc6-…@example.com`, removed before and after.
 import { createHmac } from 'node:crypto';
 
-import {
-  djangoPrint,
-  expect,
-  signIn,
-  signInThroughPage,
-  submitSignInForm,
-  test,
-  waitForMailCode,
-  waitForPasswordResetLink,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
 import { closeOverlays, LANGUAGES, type Lang, openUserMenu, reviewOf, t } from './language-review';
+import { waitForMailCode, waitForPasswordResetLink } from './mail';
+import { watchPageErrors } from './page-events';
 import { PANEL_MFA_URL } from './project';
+import { sessionOf, signIn, signInThroughPage, submitSignInForm } from './session';
 
 const PREFIX = 'e2e-acc6-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
@@ -35,27 +30,11 @@ const review = reviewOf('APP-ACCOUNTS-6');
 
 const address = (name: string, lang: Lang) => `${PREFIX}${name}-${lang}-${Date.now()}@example.com`;
 
-function removeAccounts(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
+const removeAccounts = () => removeAccountsWarm(PREFIX);
 
 /** An account speaking `lang`, its address proven, as one that signed in before; `staff` makes it a superuser. */
-function createAccount(email: string, lang: Lang, options: { staff?: boolean } = {}): { email: string; password: string } {
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.${options.staff ? 'create_superuser' : 'create_user'}(email="${email}", password="${PASSWORD}", first_name="Lucía", last_name="Fernández", language="${lang}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-  return { email, password: PASSWORD };
-}
+const createAccount = (email: string, lang: Lang, { staff = false } = {}) =>
+  createAccountWarm(email, PASSWORD, { role: staff ? 'superuser' : 'customer', firstName: 'Lucía', lastName: 'Fernández', language: lang });
 
 // ── The authenticator app, as the phone computes it (RFC 6238: SHA-1, 6 digits, 30 s) ─────────────
 
@@ -129,8 +108,8 @@ for (const { lang, locale } of LANGUAGES) {
     test(`ACCOUNTS-F03 (${lang}): an address never proven asks for its code on the way to the panel`, async ({ page }) => {
       const errors = watchPageErrors(page);
       const email = address('unproven', lang);
-      createAccount(email, lang);
-      djangoPrint(`from allauth.account.models import EmailAddress\nEmailAddress.objects.filter(email="${email}").update(verified=False)`);
+      await createAccount(email, lang);
+      await djangoPrintWarm(`from allauth.account.models import EmailAddress\nEmailAddress.objects.filter(email="${email}").update(verified=False)`);
 
       await page.goto('/dashboard/account/profile');
       await expect(page).toHaveURL(/\/launch\?next=/);
@@ -144,7 +123,7 @@ for (const { lang, locale } of LANGUAGES) {
 
     test(`ACCOUNTS-F04 · ACCOUNTS-F11 (${lang}): a wrong password says so, and five stop the account`, async ({ page }) => {
       const errors = watchPageErrors(page);
-      const account = createAccount(address('brake', lang), lang);
+      const account = await createAccount(address('brake', lang), lang);
 
       await page.goto('/launch');
       await submitSignInForm(page, { email: account.email, password: 'not-the-password-26' });
@@ -164,7 +143,7 @@ for (const { lang, locale } of LANGUAGES) {
 
     test(`ACCOUNTS-F07 (${lang}): «Reset your password», the mail sent, the new password and a dead link`, async ({ page }) => {
       const errors = watchPageErrors(page);
-      const account = createAccount(address('reset', lang), lang);
+      const account = await createAccount(address('reset', lang), lang);
 
       await page.goto('/password/reset');
       await review(page, lang, 'ACCOUNTS-F07-request', async () => {
@@ -199,7 +178,7 @@ for (const { lang, locale } of LANGUAGES) {
       browser,
     }) => {
       const errors = watchPageErrors(page);
-      const account = createAccount(address('panel', lang), lang);
+      const account = await createAccount(address('panel', lang), lang);
       await signIn(page.request, account);
       const phone = await browser.newContext({ baseURL: test.info().project.use.baseURL, locale });
       try {
@@ -254,11 +233,9 @@ for (const { lang, locale } of LANGUAGES) {
       page,
     }) => {
       const errors = watchPageErrors(page);
-      const staff = createAccount(address('admin', lang), lang, { staff: true });
+      const staff = await createAccount(address('admin', lang), lang, { staff: true });
       await signIn(page.request, staff);
-      const id = djangoPrint(
-        `from django.contrib.auth import get_user_model\nprint(get_user_model().objects.get(email="${staff.email}").pk)`,
-      );
+      const id = (await sessionOf(page.request)).user?.id;
 
       await page.goto(`/admin/accounts/user/?q=${encodeURIComponent(PREFIX)}`);
       await review(page, lang, 'ACCOUNTS-F13', async () => {
@@ -293,7 +270,7 @@ for (const { lang, locale } of LANGUAGES) {
         page,
       }) => {
         const errors = watchPageErrors(page);
-        const account = createAccount(address('mfa', lang), lang);
+        const account = await createAccount(address('mfa', lang), lang);
         const used = new Set<string>();
         await signIn(page.request, account);
 
@@ -362,7 +339,7 @@ for (const { lang, locale } of LANGUAGES) {
 
       test(`ACCOUNTS-F20 (${lang}): the staff without the app are taken from the admin to set it up`, async ({ page }) => {
         const errors = watchPageErrors(page);
-        const staff = createAccount(address('staff', lang), lang, { staff: true });
+        const staff = await createAccount(address('staff', lang), lang, { staff: true });
         await page.goto('/launch');
         await signInThroughPage(page, staff);
 

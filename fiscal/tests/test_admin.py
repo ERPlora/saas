@@ -1,4 +1,4 @@
-"""The staff's review of a signed authorisation in the Django admin (plan 2026-10-15, «Diseño en el SaaS»).
+"""The staff's review of a signed authorisation in the Django admin.
 
 The list is the queue (business, version, taxpayer, signer, state, when it came, who reviewed it, «Review»).
 Nothing is added, deleted nor edited by hand: the normal form shows every field read-only and saving it

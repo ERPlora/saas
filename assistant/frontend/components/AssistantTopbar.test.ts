@@ -1,5 +1,5 @@
 // ASSISTANT-F25: the panel's piece at the end of the topbar (`createShell({ chrome: { topbar } })`) is the shared chat's
-// sparkles «Assistant» (BASE-G110 in the Hub): it opens and closes the panel, only to an account that may ask the
+// sparkles «Assistant», the same as the Hub's: it opens and closes the panel, only to an account that may ask the
 // assistant (`assistant.ask`).
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 

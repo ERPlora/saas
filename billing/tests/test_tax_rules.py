@@ -1,19 +1,16 @@
-"""Tax rates are editable DATA, not a constant of the code (saas#1063).
+"""Tax rates are editable DATA, not a constant of the code.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_tax_rules.py`` (origin/develop, 20 tests).
 The rates change (Estonia 22→24 in Jul-2025, Romania 19→21 in Aug-2025, Slovakia 20→23 in Jan-2025,
 Finland 24→25.5): each change was a deploy, and what is sold decides the rate. The category is the
-linkable entity and the % lives in a rule ``(country, region, category, validity)``, as in the Hub
-(ADR-0085). The resolution moved from ``TaxRule.resolve`` to ``billing.queries.tax_rule`` (only
-``services.py`` and ``queries.py`` touch the ORM) and the policy's threshold to
-``billing.queries.uses_destination_rate``.
+linkable entity and the % lives in a rule ``(country, region, category, validity)``, as in the Hub.
+The resolution is ``billing.queries.tax_rule`` (only ``billing.services`` and ``billing.queries`` touch the ORM) and
+the policy's threshold ``billing.queries.uses_destination_rate``.
 
 The two tests that sum real invoices into the OSS threshold
 (``test_crossing_the_threshold_switches_to_destination_rates``,
-``test_domestic_and_b2b_sales_do_not_count_towards_the_threshold``) waited for ``billing.Invoice`` (lot
-L3-C) behind a tripwire; they are ported now, with what this SaaS adds: the amounts carried from the old
-SaaS, unpaid invoices and credit notes. The failing threshold query raises ``DatabaseError`` (the only
-failure it may swallow) instead of a bare ``RuntimeError``.
+``test_domestic_and_b2b_sales_do_not_count_towards_the_threshold``) count what this SaaS adds too: the
+amounts carried from the old SaaS, unpaid invoices and credit notes. The failing threshold query raises
+``DatabaseError`` (the only failure it may swallow) instead of a bare ``RuntimeError``.
 """
 
 from datetime import date
@@ -230,7 +227,7 @@ class TestFiscalPolicy:
         assert queries.uses_destination_rate(queries.fiscal_policy()) is True
 
     def test_the_sale_being_priced_counts_towards_the_threshold(self):
-        """The sale that crosses already goes to destination (art. 59c(2), saas#1969)."""
+        """The sale that crosses already goes to destination (art. 59c(2))."""
         policy = queries.fiscal_policy()
 
         assert queries.uses_destination_rate(policy, pending_cents=1_000_001) is True
@@ -244,7 +241,7 @@ class TestFiscalPolicy:
         def _boom(policy, year):
             raise DatabaseError("database went away")
 
-        monkeypatch.setattr(queries, "cross_border_b2c_cents", _boom)
+        monkeypatch.setattr(queries.tax, "cross_border_b2c_cents", _boom)
 
         assert queries.uses_destination_rate(queries.fiscal_policy()) is False
         assert any(
@@ -260,7 +257,7 @@ class TestFiscalPolicy:
         def _boom(policy, year):
             raise DatabaseError("database went away")
 
-        monkeypatch.setattr(queries, "cross_border_b2c_cents", _boom)
+        monkeypatch.setattr(queries.tax, "cross_border_b2c_cents", _boom)
 
         with pytest.raises(DatabaseError):
             queries.destination_rate_applies(queries.fiscal_policy())
@@ -274,8 +271,8 @@ class TestFiscalPolicy:
         return policy
 
     def test_the_amount_carried_from_the_old_saas_counts_this_year(self):
-        """Until the invoices live here (L3-C) the year's cross-border B2C base comes from the old SaaS,
-        typed in the admin (review of L2-A, finding 2)."""
+        """What the old SaaS sold this year, typed in the admin, counts towards the year's cross-border B2C
+        base."""
         year = date.today().year
         policy = self._carry(year, current=1_000_001)
 
@@ -297,7 +294,7 @@ class TestFiscalPolicy:
         assert queries.cross_border_b2c_cents(policy, year - 1) == 0
 
     def test_after_the_carried_year_the_total_is_this_saas_invoices(self):
-        """Year rollover (review of L3-C): from the carried year on, the old SaaS sells nothing more, so the
+        """Year rollover: from the carried year on, the old SaaS sells nothing more, so the
         total is known without anybody editing the policy; the carried «this year» becomes «last year»."""
         year = date.today().year
         policy = self._carry(year, current=1_200_000, previous=300_000)

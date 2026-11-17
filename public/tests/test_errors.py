@@ -1,8 +1,6 @@
 """The site's 404 and 500 pages (``handler404``/``handler500``).
 
-Ported from ERPlora/saas ``apps/dashboard/core/views.py`` (``custom_404_handler``,
-``custom_500_handler``) and ``apps/dashboard/core/tests/test_error_page_db_connection.py``
-(origin/develop c5ca8ca). Each half keeps its own look: the public web answers its templates
+Each half keeps its own look: the public web answers its templates
 (``public/404.html``, ``public/500.html``) and the private half (sign-in, the jump to a hub, the
 panel, the API) Django's default pages (``templates/404.html``, ``templates/500.html``, with the
 error layout of the sign-in pages; ``base/tests/test_error_pages.py``). These tests stand in a
@@ -149,8 +147,8 @@ def test_the_minimal_500_speaks_the_visitors_language(rf):
     assert "Algo ha fallado por nuestra parte" in html
 
 
-# An error page rendered off the request thread must not reuse nor leak a database connection
-# (saas#2244). Under ASGI (daphne) Django renders it with `sync_to_async(response_for_exception,
+# An error page rendered off the request thread must not reuse nor leak a database connection.
+# Under ASGI (daphne) Django renders it with `sync_to_async(response_for_exception,
 # thread_sensitive=False)`, in a pooled worker thread the request signals never reach: a connection
 # opened there was never closed (with Django's pool, a slot held forever) and, once the server
 # dropped it while idle, the next error page on that thread died with «connection already closed».

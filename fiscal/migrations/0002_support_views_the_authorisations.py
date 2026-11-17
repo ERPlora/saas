@@ -1,5 +1,4 @@
-"""Data: the platform's ``support`` group sees the signed authorisations of every business, and decides
-nothing (PLAN-SAAS §2.1 round 11: superuser + ``support``, view only; plan 2026-10-15).
+"""Data: the platform's ``support`` group sees the signed authorisations of every business, and decides nothing.
 
 ``view_representationgrant``, as ``hubs``' ``0007_support_views_the_account_plane`` gives it the account plane.
 Approving, returning or withdrawing needs ``change_representationgrant``, which only a member of the staff

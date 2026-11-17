@@ -1,6 +1,6 @@
 """The app the store's e2e opens (store-docs.spec.ts): seeded before the run, removed after it.
 
-``uv run python tests/e2e/store_docs_seed.py seed|clear`` from saas-next/, against the local
+``uv run python tests/e2e/store_docs_seed.py seed|clear`` from the repo, against the local
 database of ``.env``. The rows are the ones the Hub's ``register_apps`` would write
 (``apps/tests/factories.py``): a listed app whose Spanish documentation holds a Mermaid diagram, and
 no English one, so the page also shows the «only in Spanish» notice; it requires a premium app, so

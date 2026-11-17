@@ -1,7 +1,6 @@
-"""Rates are edited in the admin, not in the code (saas#1063).
+"""Rates are edited in the admin, not in the code.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_tax_admin.py`` (origin/develop, 6 tests): a
-new rate, a country raising its VAT or a service with its own rate are solved by editing data, without
+A new rate, a country raising its VAT or a service with its own rate are solved by editing data, without
 touching ``billing/vat.py`` nor deploying.
 """
 
@@ -69,7 +68,7 @@ class TestPolicyAdmin:
         assert policy_admin.has_delete_permission(None) is False
 
     def test_it_says_the_total_is_unknown_until_somebody_carries_it(self):
-        """A 0 shown as a fact would hide a threshold already crossed in the old SaaS (finding 2)."""
+        """A 0 shown as a fact would hide a threshold already crossed in the old SaaS."""
         from django.utils import translation
 
         policy_admin = site._registry[FiscalPolicy]

@@ -1,15 +1,15 @@
-"""The icon of an app of the catalog, safe to paint inline (spec decision 11, §8.4 and §5.3).
+"""The icon of an app of the catalog, safe to paint inline.
 
-The Hub bakes each app's icon into ``shared.app.icon_svg`` (spec §4.6) from the shell's packages:
+The Hub bakes each app's icon into ``shared.app.icon_svg`` from the shell's packages:
 ``ionicons/icons`` for ``ion:``, whose outline icons are styled by the classes ``ionicon-fill-none``
 and ``ionicon-stroke-width``, and ``@iconify-json/*`` for the other sets. The SaaS learns about the
 apps at run time, so it cannot bake them into its build and fetches nothing: it cleans the SVG it
 reads with ``nh3`` and paints it inline. One that is empty, or that has nothing left to draw once
 cleaned, is replaced by ``ion:apps-outline``, baked here.
 
-Allowed: the shape elements of spec §8.4 plus ``ellipse``, a shape too (ionicons draws 25 icons with
-it, lucide 16), their geometry and presentation attributes, and only the ionicons classes. Never a
-script, a style, an ``on*`` attribute, a link or an external image.
+Allowed: the shape elements of ``ICON_TAGS``, ``ellipse`` among them (ionicons draws 25 icons with it,
+lucide 16), their geometry and presentation attributes, and only the ionicons classes. Never a script,
+a style, an ``on*`` attribute, a link or an external image.
 """
 
 import re

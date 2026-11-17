@@ -1,24 +1,24 @@
 <script setup lang="ts">
-// A business's page (`/dashboard/businesses/:id/:tab`, round 17 §2.3; mockups `business.html`): the live
+// A business's page (`/dashboard/businesses/:id/:tab`): the live
 // `hubs.business.get` (owner and admins; anybody else gets the server's 403/404 as an error), a header
 // with the business's name, address, status, plan and role and «Open» (solid on the Summary, outlined
-// elsewhere, V-23; gone while suspended or deleted), and four sections in the footer tabbar, each at
+// elsewhere; gone while suspended or deleted), and four sections in the footer tabbar, each at
 // its own address: Summary · Members · Modules · Settings. Deleted, a banner says until when it can be
 // recovered (the owner recovers it there); a payment pending or a suspension is said under the header. The Summary
 // ends, for its owner, with «Download the data» (DataCopyCard): always on a deleted business, where its deletion
 // mail leads; on a live one, once its data was reset.
 // The Summary of a Spanish business ends with the authorisation for ERPlora to file its invoices (fiscal's
 // RepresentationCard), whose «Manage in your business» opens the business as «Open» does.
-// Modules: turning apps on and off is the Hub's (PLAN §20.4), so the tab says so and the header's «Open»,
-// solid there as on the Summary, is its one action (no second «Open» in the card: Ioan, 2026-10-14).
+// Modules: turning apps on and off is the Hub's, so the tab says so and the header's «Open»,
+// solid there as on the Summary, is its one action (no second «Open» in the card).
 // Settings: «General», the own domain of its public website (CustomDomainCard, HUBS-F17) and the danger zone, last.
 // Members fills the page between the topbar and the tabbar (`detail-fill` + `.panel-fill`). Its states are
-// truthful (`useLiveState`, audit 2026-10-14 R-08): no answer in time is an error with «Retry», never a skeleton
-// for ever; an error or a deleted business has no tabbar (W-18, W-B3: its sections would only repeat it), and a
+// truthful (`useLiveState`): no answer in time is an error with «Retry», never a skeleton
+// for ever; an error or a deleted business has no tabbar (its sections would only repeat it), and a
 // deleted one shows its Summary whatever the address. Members only needs the business's id (the address's), so
 // it mounts with the page and its list goes in the page's first `/api/live` stream with `hubs.business.get`; it
-// shows once the business is there. Waiting for the business to mount it made the SDK reopen the stream, and the
-// first request ended aborted (FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN). The Summary's authorisation card goes the same
+// shows once the business is there. Waiting for the business to mount it would make the SDK reopen the stream, and
+// the first request end aborted. The Summary's authorisation card goes the same
 // way: it asks with the page and shows only for a Spanish business that lives (`files`); hidden otherwise, so the
 // business's answer never takes a subscription out of the stream. Settings' own domain too: it asks with the page and
 // shows once the business is there, for its owner and its administrators only (the role below lets it go).
@@ -85,7 +85,7 @@ const tabs = computed<ShellTab[]>(() =>
 );
 /** The section on screen: a deleted business only has its Summary (with the way to recover it). */
 const section = computed<Tab>(() => (deleted.value ? 'summary' : props.tab));
-/** Members is a list: it fills the page between the topbar and the tabbar (Ioan, 2026-10-14). */
+/** Members is a list: it fills the page between the topbar and the tabbar. */
 const fills = computed(() => section.value === 'members');
 const opensAtAll = computed(() => !!business.value && business.value.status !== 'suspended' && !deleted.value);
 /** The authorisation for ERPlora to file its invoices with the AEAT (VeriFactu): a Spanish business's, while it lives. */
@@ -407,7 +407,7 @@ async function recover(): Promise<void> {
   gap: 8px;
   flex: 0 0 auto;
 }
-/* Outside the Summary the header is compact: the name and its status (mockups, V-23). */
+/* Outside the Summary the header is compact: the name and its status. */
 .biz-header.is-compact {
   flex-wrap: nowrap;
 }

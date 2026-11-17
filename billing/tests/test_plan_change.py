@@ -1,31 +1,25 @@
 """Changing, cancelling and keeping the plan of a paying business: ``billing.plan.{change,cancel,keep}``.
 
-Ported from ERPlora/saas ``hubs/main/tests/test_plan_change.py`` (14), ``test_plan_change_needs_tax_id_over_the_simplified_limit.py``
-(6), the cancel and resume cases of ``hubs/subscriptions/tests/test_subscription_viewset_permissions.py``
-and ``hubs/main/tests/test_stripe_service.py``, and ``TestResumeDoesNotGiveThePlanBackWithoutPaying`` of
-``test_unpaid_hub_is_suspended.py`` (origin/develop). In the new design the plan is ONE item of the
-business's subscription, beside its modules:
+The plan is ONE item of the business's subscription, beside its modules:
 
 - the change swaps the price of the plan item (and, on a change of billing, every module's price: Stripe
   bills one interval per subscription), charged at once or not at all (``always_invoice`` +
   ``error_if_incomplete``), at the proration the preview showed;
-- Free is not a plan to change to: cancelling ends the plan with its period (PLAN-SAAS §3.3) and the
+- Free is not a plan to change to: cancelling ends the plan with its period and the
   business goes back to Free then; a cancelled plan is kept before it changes;
 - keeping an unpaid plan is refused without calling Stripe (it would hand the plan back without paying);
-- only the owner (round 17 §2.7): an employee does not learn more than a 404/403.
-
-Dropped with reason: the Django view, its template, messages and HTMX redirects; the container resize
-after a change (no container per business, PLAN §14).
+- only the owner: an employee does not learn more than a 404/403.
 """
 
 import pytest
 from django.utils import timezone
-from live.errors import NotFound, OperationError, PermissionDenied
+from live.errors import InvalidPayload, NotFound, OperationError, PermissionDenied
 
 from billing import services
 from billing.schemas import HubIn, PlanChangeIn
 from billing.tests.conftest import ctx_for, pay
-from billing.tests.stripe_double import card_error, item, subscription
+from billing.models import PlanChangeSchedule
+from billing.tests.stripe_double import card_error, item, schedule, subscription
 from hubs.models import Hub, HubMember, Subscription, SubscriptionItem
 from hubs.tests.conftest import add_member
 
@@ -74,6 +68,37 @@ def on_starter(shop, stripe_double, *modules, **live):
     ]
     stripe_double.answer("subscriptions.retrieve", subscription(items=lines, **live))
     return paid
+
+
+class TestTheInternalPlan:
+    """A paying business moves to ``payment-test`` only if ERPlora's staff marked it; the refusal comes before Stripe
+    changes anything."""
+
+    def test_a_business_nobody_marked_cannot_move_to_it(self, shop, owner, stripe_double):
+        from hubs.models import Plan
+
+        Plan.objects.filter(slug="payment-test").update(stripe_price_id="price_payment-test_month")
+        paid = on_starter(shop, stripe_double)
+
+        with pytest.raises(InvalidPayload) as error:
+            change(owner, paid, plan="payment-test")
+
+        assert set(error.value.fields) == {"plan"}
+        assert stripe_double.calls_to("subscriptions.update") == []
+        assert local(paid).plan.slug == "starter"
+
+    def test_a_marked_business_moves_to_it_at_the_end_of_its_period(self, marked, owner, stripe_double):
+        """1 € is below any paid plan: the move waits for the end of the period, as every downgrade does."""
+        paid = on_starter(marked, stripe_double)
+        stripe_double.answer("subscription_schedules.create", schedule())
+        stripe_double.answer("subscription_schedules.update", schedule())
+
+        change(owner, paid, plan="payment-test")
+
+        sent = stripe_double.last("subscription_schedules.update")
+        following = sent.params["phases"][-1]
+        assert [line["price"] for line in following["items"]] == ["price_payment-test_month"]
+        assert PlanChangeSchedule.objects.get(hub=paid).plan_slug == "payment-test"
 
 
 class TestChangingThePlan:
@@ -407,10 +432,11 @@ def test_a_change_of_billing_puts_our_tax_on_every_item(shop, owner, inventory, 
 
 
 def test_a_payer_not_subject_to_vat_loses_the_old_rate_on_the_change(shop, owner, inventory, stripe_double):
-    """BILLING-F11: a payer now in Las Palmas whose items still hold the Spanish 21 % changes plan. An empty
+    """A business now in Las Palmas whose items still hold the Spanish 21 % changes plan. An empty
     list of rates is dropped by the SDK and Stripe keeps the old rate on the item: the update has to say
     «none» with an empty string, on the plan and on every module it moves."""
     shop.billing_profile.billing_postal_code = "35001"
+    shop.billing_profile.tax_id = "ESB27593136"
     shop.billing_profile.save()
     paid = pay(shop, modules=("inventory",))
     stripe_double.answer("subscriptions.retrieve", subscription(items=[

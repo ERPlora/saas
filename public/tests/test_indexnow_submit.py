@@ -1,5 +1,4 @@
-"""``manage.py indexnow_submit``: the daily push to IndexNow (ported from ERPlora/saas
-``landing/management/commands/indexnow_submit.py`` and its test, origin/develop c5ca8ca).
+"""``manage.py indexnow_submit``: the daily push to IndexNow.
 
 It runs every day in a scheduled ECS task whose only alarm is a non-zero exit (aws ``task_failed``),
 so its three endings are part of the contract (PUBLIC-F14): submitted (0), no key configured (0, a
@@ -18,7 +17,7 @@ from public.sitemaps import StaticPagesSitemap
 
 KEY = "0123456789abcdef0123456789abcdef"
 
-# The submission reads the sitemaps, and the store's read the catalog from the database (L6).
+# The submission reads the sitemaps, and the store's read the catalog from the database.
 pytestmark = pytest.mark.django_db
 
 
@@ -63,16 +62,25 @@ def test_it_never_looks_like_success_when_nothing_was_sent(settings):
     assert "nothing submitted" in out.getvalue()
 
 
-def test_indexnow_refuses_to_submit_outside_prod(settings, sent):
-    """pre.erplora.com (plan 2026-10-14-entorno-pre) is never announced to a search engine."""
+def test_indexnow_refuses_to_submit_when_indexing_is_disabled(settings, sent):
+    """A disabled policy prevents all submissions, even with the prod metric label."""
     settings.INDEXNOW_KEY = KEY
-    settings.ERPLORA_ENVIRONMENT = "pre"
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.PUBLIC_INDEXING_ENABLED = False
     settings.PUBLIC_HOST = "pre.erplora.com"
 
-    with pytest.raises(CommandError, match="pre"):
+    with pytest.raises(CommandError, match="PUBLIC_INDEXING_ENABLED"):
         call_command("indexnow_submit", stdout=StringIO())
 
     assert sent == []
+
+
+def test_indexnow_enabled_policy_does_not_depend_on_the_label(settings, sent):
+    settings.ERPLORA_ENVIRONMENT = "pre"
+    settings.PUBLIC_INDEXING_ENABLED = True
+    settings.INDEXNOW_KEY = KEY
+    call_command("indexnow_submit", stdout=StringIO())
+    assert len(sent) == 1
 
 
 @pytest.fixture

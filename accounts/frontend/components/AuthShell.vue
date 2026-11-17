@@ -1,9 +1,8 @@
 <script setup lang="ts">
-// The frame of every account screen (sign-in, its errors, the launcher), ported from ERPlora/saas's
-// partials `account/_auth_header.html` + `_auth_shell_top.html` + `_auth_shell_bottom.html`: the
-// back arrow home (Lucide's, as the template had it), the logo with «ERPlora Cloud» and a subtitle,
-// a glass card holding the screen (default slot) and an optional foot under the card (`foot`).
-// `.auth-title` and `.auth-lead` in the card are styled here, as `_auth_styles.html` did.
+// The frame of every account screen (sign-in, its errors, the launcher): the back arrow home (Lucide's), the
+// logo with «ERPlora Cloud» and a subtitle, a glass card holding the screen (default slot) and an optional foot
+// under the card (`foot`).
+// `.auth-title` and `.auth-lead` in the card are styled here.
 import { ionIconSrc } from '@erplora/ui/shell';
 import { IonButton, IonButtons, IonCard, IonCardContent, IonContent, IonHeader, IonIcon, IonPage, IonToolbar } from '@ionic/vue';
 

@@ -5,11 +5,11 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 (`HubOwnershipTransfer`), quién paga (`BillingProfile`), qué plan y módulos tienen (`Subscription`,
 `SubscriptionItem`), los planes (`Plan`) y la taxonomía (`Sector`, `BusinessType`).
 
-- Operaciones en `queries.py` (lecturas) y `services.py` (escrituras), rutas en `api.py` bajo `/api/hubs/`
+- Operaciones en `queries/` (lecturas) y `services/` (escrituras), rutas en `api.py` bajo `/api/hubs/`
   (y `/api/plans`, `/api/catalog/*`, públicas); consultas vivas en `live.py`.
-- Hacia el Hub: `hub_client.py` (llamadas firmadas a `/internal/*` de hub-next), empuje tras el COMMIT
-  (`services.sync_hub`), `reconcile_hub_states` (cada 15 min en el proceso `saas-worker`,
-  `services.reconcile_exclusively`, saas#305; el comando, a mano) y `push_hub_snapshots` (cada noche en `saas-cron`,
+- Hacia el Hub: `hub_client.py` (llamadas firmadas a `/internal/*` del Hub), empuje tras el COMMIT
+  (`services.hub_push.sync_hub`), `reconcile_hub_states` (cada 15 min en el proceso `saas-worker`,
+  `services.reconciliation.reconcile_exclusively`, saas#305; el comando, a mano) y `push_hub_snapshots` (cada noche en `saas-cron`,
   todos los negocios; `--behind-only`, solo los atrasados).
 - Del Hub: `POST /internal/hubs/{id}/ready` (`internal.py`).
 - «Abrir» (`hubs.business.open`) ya no emite el código: comprueba el miembro y el estado del negocio, sella
@@ -33,10 +33,10 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   global (sin agrupar por sector), como el `catalog` de origen; `?sector=` filtra.
 - Los comandos de `saas-cron` toman el advisory lock `hashtext('erplora.saas.<comando>')` (el espacio de
   nombres de `base`), de sesión: la pasada abarca muchas transacciones y llamadas al Hub (ver
-  `services.run_exclusively`).
+  `services.exclusive_runs.run_exclusively`).
 - Personas en vivo (L1-A2): toda escritura de miembros, invitaciones o traspasos, además de su evento en el canal de
   quien la hace, anota `hubs.member.changed` u `hubs.ownership.changed` (`{business_id}`) en el canal del
-  propietario, de cada administrador y de la cuenta afectada (`services.notify_people` → la operación de sistema
+  propietario, de cada administrador y de la cuenta afectada (`services.people_notices.notify_people` → la operación de sistema
   `hubs.business.notify_people`, una por canal, tras el COMMIT; nunca el del actor). `hubs.member.list`,
   `hubs.business.get`, `hubs.business.list` y `hubs.invitation.list_mine` se re-ejecutan con ellos: el propietario
   ve al momento que otro acepta, sin esperar los 300 s.
@@ -44,7 +44,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 ## Lo que añadió L1-A2 (2026-10-14)
 
 - **El acceso son los miembros** (saas#199): el salto (`issue_code`/`redeem_code`) entra a quien es miembro respondido
-  de un negocio que aún abre (`queries.access_of`, fuera `deleting` y `deleted`). `accounts` nunca importa `hubs`: lo
+  de un negocio que aún abre (`queries.membership.access_of`, fuera `deleting` y `deleted`). `accounts` nunca importa `hubs`: lo
   pregunta por su nombre, `hubs.member.list_mine` (`accounts.queries.hub_roles_of`), sin ruta ni herramienta del
   asistente. La copia que leía antes (`accounts.HubMembership`) salió del código en `accounts/0011` y su tabla, de la
   base de datos en `accounts/0012` (saas#220). El salto se queda en `accounts`: moverlo (`/hub-login/`,
@@ -53,7 +53,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   nunca comparten cuenta. Las puertas lo impiden (`hubs.business.create`, `hubs.member.invite`/`resend` e
   `hubs.invitation.accept` responden 409 `hubs.platform_account`; `create_platform_user` y `User.clean`, es decir el
   formulario del admin, no hacen personal a quien está en un negocio). Lo que quede de antes lo nombra el check
-  `hubs.W002` (`queries.staff_on_businesses`: miembro de un negocio no borrado, también en recuperación, o con una
+  `hubs.W002` (`queries.system_checks.staff_on_businesses`: miembro de un negocio no borrado, también en recuperación, o con una
   invitación pendiente), de base de datos y aviso (`manage.py check --database default` y `migrate`; calla mientras
   falten migraciones), para no parar `migrate` ni el despliegue
   (`--fail-level WARNING` lo vuelve fallo). Nada se apaga solo; se arregla a mano, cuenta por cuenta: si es del
@@ -68,9 +68,9 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   demás pasan a `hub_admin`) o, si no hay, la pertenencia más antigua, ascendida. Un slug que no es de hub
   (`live.slugs`) no abría nada: sus filas se borran. Después, la copia de todos los negocios quedaba igual a sus
   miembros. Idempotente; la vuelta atrás conserva los negocios (son filas válidas del esquema anterior).
-- **`demo_seed` vive en `hubs`** (`management/commands/demo_seed.py`): crea las cuentas (`accounts.services.
-  seed_demo_customer`, `seed_demo_platform_admin`) y adopta `a` y `b` con `services.seed_demo_business`, igual que
-  la migración.
+- **`demo_seed` vive en `hubs`** (`management/commands/demo_seed.py`): crea las cuentas
+  (`accounts.services.demo_accounts.seed_demo_customer`, `seed_demo_platform_admin`) y adopta `a` y `b` con
+  `services.demo_businesses.seed_demo_business`, igual que la migración.
 - **`SessionRevocation`** (`models.py`, migración `0005`): quitar a un miembro, cambiarle el rol (el rol viaja en la
   sesión del Hub), aceptar un traspaso (los dos lados) o liberar una cuenta no verificada (todos sus negocios) la
   encola en la transacción; se entrega tras el COMMIT (`POST /internal/sessions/revoke`) y, si el Hub no está o la
@@ -80,7 +80,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   La siguiente foto ya no lista al miembro quitado.
 - **Firma de `/internal`** (`accounts/signing.py`): dos secretos vivos (`INTERNAL_SHARED_SECRET` e
   `INTERNAL_SHARED_SECRET_PREVIOUS`, vacío fuera de una rotación; se firma con el actual) y, además de la v1 de solo
-  cuerpo (`X-Erplora-Signature`, la que firma hoy el Hub), la v2 `X-Erplora-Signature-V2`, HMAC de
+  cuerpo (`X-Erplora-Signature`), la v2 `X-Erplora-Signature-V2`, HMAC de
   `v2\n{ts}\n{MÉTODO}\n{ruta?query}\n{cuerpo}`. El SaaS firma toda llamada con las dos; al verificar, una llamada
   con v2 se juzga solo por v2 (sin degradar a v1) y una sin v2, por v1. Rotación en tres pasos y paso a solo v2:
   docstring de `accounts/signing.py`.
@@ -88,13 +88,13 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   `SubscriptionItem` y `SessionRevocation`: de solo lectura (las escrituras son las operaciones), con las acciones
   de superusuario «Enviar al Hub el estado más reciente», «Reintentar lo que el Hub tiene pendiente» y «Cerrar ya
   las sesiones en el Hub»; `support` los ve (migración `0007`) y no actúa.
-- **Invitar una cuenta que nunca verificó su correo** (saas#2541, `tests/test_invite_unverified_account.py`):
-  `accounts.queries.email_is_proven` decide; si no, `accounts.services.release_unproven_account` le quita
+- **Invitar una cuenta que nunca verificó su correo** (erplora-old/saas#2541, `tests/test_invite_unverified_account.py`):
+  `accounts.queries.email_is_proven` decide; si no, `accounts.services.mailbox_proof.release_unproven_account` le quita
   contraseña (y con ella las sesiones del SaaS), segundo factor y Google, y se encolan los cierres de sesión de
   todos sus negocios; el correo de la invitación lleva el camino para reclamar la cuenta
   (`accounts.queries.has_no_way_in`). Aceptar exige el correo verificado: 403 `hubs.email_unverified`.
 
-Plan: `docs/plans/2026-10-13-panel-saas-unificado.md` (lotes L1-A, L1-B y L1-A2).
+Plan: `knowledge/raw/plans/2026-10-13-panel-saas-unificado.md` (lotes L1-A, L1-B y L1-A2).
 
 - Panel (`frontend/`, L1-C): las acciones de fila de Negocios y Miembros son solo icono, con nombre accesible y `title` que incluyen la fila («Abrir Panadería López», «Quitar a Marta Gil»), como pide la regla de la DataTable de SaaS y Hub (2026-10-14); las maquetas, que las pintan con texto, no obligan en esto.
 
@@ -136,13 +136,13 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
   (`POST /api/hubs/businesses/address`, solo el propietario, `can.change_address`), validada como la valida el Hub
   (`live.slugs`). Sube `registry_version` (el Hub la registra con `PUT /internal/hubs/{id}`) y `state_version` (la
   foto lleva el `slug`); el salto sigue al negocio porque lee a sus miembros. La dirección que deja queda
-  en `Hub.previous_slug` (migración `0015`): `queries.slug_taken`/`free_slug` la dan por cogida para los demás, así
+  en `Hub.previous_slug` (migración `0015`): `queries.addresses.slug_taken`/`free_slug` la dan por cogida para los demás, así
   que nadie recibe los enlaces y QR viejos; se libera cuando la dirección vuelve a cambiar. Evento
   `hubs.business.address_changed`. Panel: «Cambiar dirección» en Ajustes (`AddressDialog.vue`).
 - **Suspendidos por impago** (F20; PLAN-SAAS §1.1, «dentro de `sweep_unpaid`»): `Hub.suspended_at`,
   `suspension_warned_at`, `suspension_final_notice_at` (migración `0016`, que pone en marcha el reloj de los que
   ya estaban suspendidos el día del despliegue). `_apply_standing` fecha la suspensión y la
-  olvida al pagar. `services.age_suspended()` (lo llama `billing.services.sweep_unpaid`, cada hora; sus cuentas
+  olvida al pagar. `services.suspensions.age_suspended()` (lo llama `billing.services.sweep_unpaid`, cada hora; sus cuentas
   `warned`, `final_notice`, `expired`, `undated` se suman a las de la pasada) corre por negocio la operación de
   sistema `hubs.business.age_suspension`: aviso a los 30 días, último a los 150 (`emails.send_suspension_notice`, al
   propietario, solo marcado si el correo salió) y, con el último enviado, la baja a los 180 por `_delete_business`,
@@ -153,8 +153,7 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
 - **Eliminar** (F18): el texto ya no promete el enlace de descarga de los datos, que el correo no lleva: llega con
   el export por negocio de la fase 2 (PLAN-DB «Exports»). → **Tenencia (2026-10-30):** el correo de la baja ya lleva
   el camino a la copia de los datos (abajo, «Lo que añadió la tenencia»).
-- **Dominio propio** (F17): no se porta en la fase 1; decisión de mercado y ronda propuesta en la PR de APP-HUBS-2.
-  → **CLOSE-HUBS (2026-11-01):** `descartado` en esta versión, con su issue (saas#195).
+- **Dominio propio** (F17): `hecho`; abajo, «Lo que añadió saas#195».
 
 ## Lo que añadió APP-HUBS-3 (2026-10-23): las personas de cada negocio
 
@@ -182,7 +181,7 @@ lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.s
   y sin prorrateo); el webhook pasa el negocio a la suscripción nueva y termina la anterior sin reembolso. Un cliente de
   Stripe enviado sin su suscripción ya no pisa el de una suscripción viva (`hubs.subscription.apply`), y
   `retax_subscription` no recalcula el impuesto de un plan que cobra otra cuenta. Tests:
-  `billing/tests/test_plan_take_over.py`; e2e: `tests/e2e/panel/hubs-people.spec.ts` («HUBS-G82 (F28)»).
+  `billing/tests/test_plan_take_over.py`; e2e: `tests/e2e/panel/hubs-people.spec.ts` («HUBS-F28»).
 - **Sin página global de personas** (G86, G34, G115 del SaaS viejo): ronda 17, cada negocio enseña las suyas en
   «Miembros». «Usuarios del Terminal» (G24) era esa misma página del SaaS viejo, no los empleados con PIN del Hub.
 
@@ -195,21 +194,22 @@ Flujos `HUBS-F31`…`HUBS-F37` del `WORKBOOK.md` (parte 4 de 5; la revisión flu
   retiró esa condición (FIX-HUB-VERIFACTU-RETIRE-LIVE-PAID: sin 409 `verifactu.live_option_unpaid`); el Hub acepta y
   no lee el campo si aún le llega de un SaaS anterior.
 - **Lo que da un plan, cambiado en el admin** (F31; trampa de SAAS_DASHBOARD-F53/F54): los campos de `plan` de la foto
-  son `queries.SNAPSHOT_PLAN_FIELDS` (una sola lista para la foto y el admin). Al guardar un `Plan` con alguno cambiado,
-  `PlanAdmin.save_model` llama a `services.owe_plan_rights(plan)`: por cada negocio vivo con ese plan o con su prueba,
+  son `queries.hub_sync.SNAPSHOT_PLAN_FIELDS` (una sola lista para la foto y el admin). Al guardar un `Plan` con alguno cambiado,
+  `PlanAdmin.save_model` llama a `services.subscription_sync.owe_plan_rights(plan)`: por cada negocio vivo con ese plan o con su prueba,
   `sync_plan_modules` y, si su foto cambia, `bump_state`. No empuja en la petición (un plan puede tener miles de
   negocios): lo entrega la siguiente pasada de `reconcile_hub_states` (15 min), y el admin dice cuántos negocios lo
   reciben («… negocios con este plan reciben el cambio en los próximos 15 minutos.»). Textos, orden o precio no deben
   nada. Tests: `tests/test_plan_rights_reach_businesses.py`.
 - **Guardarraíl de `/internal`** (F35): `tests/test_internal_doors.py` recorre el resolver de URLs y comprueba que cada
-  puerta `internal/…` (hoy 14, de `accounts`, `hubs`, `fiscal`, `fiscal_gateway` y `whatsapp`) contesta 401 o 405 sin
+  puerta `internal/…` (entonces 14, de `accounts`, `hubs`, `fiscal`, `fiscal_gateway` y `whatsapp`; el 2026-11-11, 23,
+  con las de `assistant`) contesta 401 o 405 sin
   firma, con la firma de otro secreto, con una marca de hace 10 minutos o con la sesión de un superusuario. Una puerta
   nueva que se salte `accounts.signing` lo rompe.
 - **Taxonomía en el admin, en el idioma del personal** (F36): los campos de `Sector` y `BusinessType` (`code`, `icon`,
   `color`, `display_order`, `is_active`, `created_at`, `updated_at`, `sector`, `vertical`) tienen nombre traducible
   (migración `0017`, solo de estado, sin SQL); antes la lista decía «Code» y «Por is active».
 - **Un módulo nuevo, o que cambia de nivel, en el admin** (F34; era una línea FIX de esta parte): `apps.admin.ModuleAdmin.
-  save_model` llama a `services.owe_module_rights(tier, previous_tier)`: `sync_plan_modules` de cada negocio vivo cuyo plan
+  save_model` llama a `services.subscription_sync.owe_module_rights(tier, previous_tier)`: `sync_plan_modules` de cada negocio vivo cuyo plan
   o prueba alcanza el nivel nuevo o el anterior y `bump_state` si cambian; el admin dice cuántos lo reciben. Antes no
   llegaba a nadie hasta el siguiente aviso de Stripe de cada negocio.
 - **El admin de Planes en el idioma del personal** (F31, pantalla de F05; era una línea FIX de esta parte): nombres
@@ -249,7 +249,7 @@ Parte 5 de 5: cada flujo `hecho` contra su código, con mutantes ejecutados; los
   tenencia S2b del Hub (hub#580, en prod el 2026-11-01) sobre lo que ya hacía el SaaS (saas#168). La pasada
   nocturna del SaaS (`hub-usage-daily`) quedó encendida en prod el 2026-11-03 (aws#35, ver «Pendiente tras L4-A»).
 - **F32 y F34**, `hecho`: lo que les faltaba era del Hub y ya lo aplicaba (APP-BASE-3, -4 y -5; arriba, en APP-HUBS-4).
-- **F17**, `descartado` en esta versión (saas#195): fuera de la fase 1, llega con sus tres piezas.
+- **F17**, `hecho`: abajo, «Lo que añadió saas#195».
 - **La poda de `HubUsageDaily`** que PLAN-SAAS §1.1 dejaba a `hubs` y no existía: `hubs.usage.prune`, al final de
   `collect_hub_usage` (arriba, en L4-A, y PLAN-SAAS §27).
 - Lo que queda fuera, con su issue: `WORKBOOK.md`, «Lo que queda fuera».
@@ -262,7 +262,7 @@ Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»)
   `.record`, sin herramienta, lo único por donde escribe la comprobación. Rutas: `GET`/`POST /api/hubs/businesses/custom-domain`
   y `POST …/custom-domain/remove`. Códigos: `hubs.custom_domains_off`, `hubs.custom_domain_not_in_plan` y
   `_exists`/`_taken` (409); `_invalid`, `_ours`, `_apex`, `_unregistered` (422, con el campo `domain`).
-- **Variables** (`config/settings.py`; las da `aws`, `custom_domains.tf`): `CUSTOM_DOMAINS_ENABLED`, `CUSTOM_DOMAINS_LISTENER_ARN`,
+- **Variables** (`config/settings/aws.py`; las da `aws`, `custom_domains.tf`): `CUSTOM_DOMAINS_ENABLED`, `CUSTOM_DOMAINS_LISTENER_ARN`,
   `CUSTOM_DOMAINS_TARGET_TEMPLATE` y `CUSTOM_DOMAINS_MAX_CERTIFICATES`. Ausente o en `false`: ninguna llamada a AWS ni al
   DNS, sin métrica, y un dominio que hubiera se queda como está; encendida sin las otras, no arranca.
 - **`check_custom_domains`** corre cada hora en `saas-cron`. Sale con error solo si un dominio rompe o la métrica no se
@@ -292,10 +292,12 @@ Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»)
 
 - El Hub (carril Hub): verificar la v2 y los dos secretos en su `/internal`, firmar con v2 su canje, y adoptar por
   `id` los negocios que le llegan en la foto (los `a`/`b` adoptados aquí traen un UUID nuevo). Cuando los dos lados
-  firmen v2, dejar de aceptar llamadas solo v1. `aws-next`: añadir `INTERNAL_SHARED_SECRET_PREVIOUS` (vacío) al
+  firmen v2, dejar de aceptar llamadas solo v1. `ERPlora/aws`: añadir `INTERNAL_SHARED_SECRET_PREVIOUS` (vacío) al
   secreto `erplora/prod/internal` y a las tres tareas para poder rotar sin despliegue de código.
   → Hechos los dos secretos en `erplora/prod/internal` (2026-10-14) y la v2 con los dos secretos en el `/internal` del
   Hub (`base/signing.py`); dejar de aceptar solo v1 sigue para cuando los dos lados firmen v2.
+  → Leído el 2026-11-11: los dos lados ya firman con v1 y v2 (el Hub, `base/signing.signed_headers`). Dejar de
+  aceptar las llamadas solo v1 sigue sin hacer y sin issue.
 - El SDK (`@erplora/ui`, `ApiError`) solo conserva `code`, `message` y `fields` del sobre de error: para pintar
   `limit` y `used` de `hubs.seat_limit` el panel (L1-D) necesita que los conserve; hoy los tiene en `seats` de la
   lista y en el mensaje. → Hecho: `ApiError.details` conserva el resto del sobre (`@erplora/ui`, `src/sdk/errors.ts`).
@@ -314,7 +316,8 @@ Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»)
   comercial y `modules[]`) sube `state_version` y se empuja tras el COMMIT; cualquier cambio anota
   `hubs.subscription.changed`, que re-ejecuta la lista y la página. `standing` mueve el negocio (`good` →
   `active`, `grace` → `past_due`, `suspended`); uno eliminado no se mueve. Pagar un plan acaba con la prueba de
-  Starter del alta; comprar solo módulos la conserva.
+  Starter del alta; comprar solo módulos la conserva. → Desde el 2026-10-15 ningún plan trae prueba
+  (`hubs/0013_plans_in_the_database`): el mecanismo queda dormido.
 - `Subscription.unpaid_reason` / `unpaid_since` / `unpaid_invoice_url` (migración `0008`): la fila de
   Negocios y la página dan `unpaid_reason`, `unpaid_since` y `pay_url` (este, solo al propietario).
 - `hubs.billing_profile.update` escribe el NIF con la puerta de `billing` (`validate_vat_for_profile`: forma
@@ -333,12 +336,12 @@ Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»)
 - **`manage.py collect_hub_usage [--day AAAA-MM-DD]`** (`saas-cron`, cada noche): por defecto, el día de **ayer en
   UTC**; `--day` recoge otro (relleno), nunca uno que no ha acabado en UTC. Lee todas las páginas de
   `GET /internal/usage`; una fila rota o que falla no para la pasada. Termina, con el Hub caído o sin él, olvidando los
-  días de más de `services.USAGE_RETENTION_DAYS` (400, unos 13 meses: el reloj del producto viejo y el rango del mercado;
+  días de más de `services.usage_collection.USAGE_RETENTION_DAYS` (400, unos 13 meses: el reloj del producto viejo y el rango del mercado;
   más que los 365 que lee `hubs.usage.series`, y un test los ata) con la operación de sistema `hubs.usage.prune`, que
   conserva el día justo en el corte y anota `hubs.usage.pruned` si borró algo. Sin programación propia en `aws`; si falla
-  (`services.prune_usage`, log `hubs.usage.prune_failed`), lo recogido se queda y se dice, y la pasada termina con error.
+  (`services.usage_collection.prune_usage`, log `hubs.usage.prune_failed`), lo recogido se queda y se dice, y la pasada termina con error.
   Lock `hashtext('erplora.saas.collect_hub_usage')`
-  (`services.run_exclusively`: una segunda pasada sale al momento). Sale con error **después** de la pasada si el
+  (`services.exclusive_runs.run_exclusively`: una segunda pasada sale al momento). Sale con error **después** de la pasada si el
   Hub no contestó o se negó (`unreachable`, `refused`), si respondió fuera del contrato (`invalid`: fila, página,
   otro día o un cursor repetido) o si una fila reventó (`failed`). Un hub que el SaaS no vendió (el de plataforma,
   las plantillas) cuenta como `unknown`, en el log, sin error.
@@ -373,7 +376,7 @@ Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»)
 PLAN-SAAS §1 quitó de `Plan` los límites de tamaño (`max_database_size_gb`) y §5 enseña al cliente un
 porcentaje «del espacio de su plan» sin decir de cuánto. Para no reabrir §1 (y su guardarraíl
 `test_a_plan_sizes_no_infrastructure`), el espacio sale del **nivel de módulos del plan** (`Plan.included_level`,
-`queries.STORAGE_LIMIT_GIB`): Gratis 1 GiB, Básico 5 GiB (Starter y Standard), Pro 20 GiB, Enterprise 50 GiB
+`queries.hub_usage.STORAGE_LIMIT_GIB`): Gratis 1 GiB, Básico 5 GiB (Starter y Standard), Pro 20 GiB, Enterprise 50 GiB
 (también Max, que en el SaaS antiguo no tenía tope de BD). Solo cuentan los ficheros (S3), no la BD. No se aplica
 ningún tope: es un aviso. Un espacio por plan editable en el admin sería una columna `Plan.storage_limit_gb` (y una
 nota que corrija PLAN-SAAS §1); la ronda de cierre de `hubs` (PLAN-SAAS, 2026-11-01) deja la decisión como está.
@@ -415,13 +418,14 @@ X-Erplora-Timestamp, X-Erplora-Signature (v1) y X-Erplora-Signature-V2 (cubre m�
 - **`aws`**: `collect_hub_usage` está programado en `stacks/prod/scheduler.tf` (`hub-usage-daily`, 01:15 UTC). Estuvo
   apagado en prod desde el 2026-10-15 (`schedules_disabled`, mientras el Hub no servía su medición) hasta el 2026-11-03
   a las 07:08 UTC, cuando pasó de `DISABLED` a `ENABLED` (aws#35; `terraform.yml`, plan 41594080235 y apply 41594250082).
-  Falta leer su estado en vivo y su primera pasada: no se ha hecho, porque la sesión de AWS está caducada.
+  Leído el 2026-11-11: la programación `hub-usage-daily` (grupo `erplora-prod`) está `ENABLED`, y las pasadas del
+  9, 10 y 11 de noviembre en `/ecs/erplora-prod-saas-cron` registraron 4 negocios, 1 `unknown` y ningún fallo.
 - La gráfica del panel con `hubs.usage.series` (bloque 8 de PLAN-SAAS; no está en la maqueta): fuera de esta versión,
   ningún flujo la pide (HUBS-F21 enseña la última noche medida).
 
 ## Lo que añadió la tenencia (2026-10-30): alta y demo asíncronas, y las copias de los datos
 
-Plan: `docs/plans/2026-10-22-fase-2-tenencia.md`; PLAN-DB, ronda 2026-10-30 (propuestas (a), (e), (j), (k), (l) y (m),
+Plan: `knowledge/raw/plans/2026-10-22-fase-2-tenencia.md`; PLAN-DB, ronda 2026-10-30 (propuestas (a), (e), (j), (k), (l) y (m),
 decididas). Cada negocio nace con su BD propia, clonada de la plantilla de su vertical: el Hub ya no tiene el negocio
 listo al responder, y lo dice.
 
@@ -429,9 +433,13 @@ listo al responder, y lo dice.
   así el SaaS) y el Hub avisa después con `POST /internal/hubs/{id}/ready`. El sondeo de las altas atascadas
   (`reconcile_hub_states`, más de 2 minutos sin el aviso) entiende cada estado: `requested`, `creating`, `migrating` y
   `seeding` siguen «preparando» (`preparing`); `ready` lo abre; `failed` graba el error `hubs.provision_failed`
-  (`services.PROVISION_FAILED`, por `hubs.business.record_hub_error`, con su evento) y el panel dice «No hemos podido
+  (`services.hub_callbacks.PROVISION_FAILED`, por `hubs.business.record_hub_error`, con su evento) y el panel dice «No hemos podido
   prepararlo. Seguimos reintentándolo; si sigue fallando, avísanos.» en vez de «preparando» para siempre (el Hub lo
-  reintenta solo: 1 min, 5 min, 15 min, 1 h); `cancelled`, `archiving`, `dropping`, `expired`, `purged` o un estado fuera del contrato se
+  reintenta solo: 1 min, 5 min, 15 min, 1 h). La misma respuesta trae `maintenance`: durante `control.freeze.set` el SaaS guarda
+  `{frozen, reason, since}` en `Hub.maintenance` y lo muestra como pausa, nunca como fallo; al descongelar llega `null` y se borra.
+  La operación `hubs.business.record_maintenance` emite `hubs.business.maintenance_changed` en el canal del propietario para actualizar
+  la lista y la ficha, sin cambiar `state_version` ni la foto monótona. `hubs.business.check` (POST `/api/hubs/businesses/check`)
+  ejecuta el mismo sondeo al momento para la acción «Comprobar ahora», con los permisos de cualquier miembro. `cancelled`, `archiving`, `dropping`, `expired`, `purged` o un estado fuera del contrato se
   registran (`hubs.reconcile.unexpected_status`) y hacen fallar la pasada (`unexpected`), igual que `failed`
   (`provision_failed`). El aviso `ready` (o el sondeo que lo oye) borra ese error; una llamada entregada después no
   lo borra (la preparación sigue debida). Los estados viven en `hub_client` (`PREPARING_STATUSES`, `FAILED_STATUS`,
@@ -470,7 +478,7 @@ listo al responder, y lo dice.
   (`available: false`), «Este negocio no tiene copia de datos.», sin prometer nada; un error del panel, con
   «Reintentar». En uno vivo, solo si tiene alguna copia (lo restablecieron).
 - **Correos**: el de la baja (`send_deletion`, F18 y el del día 180 de F20) añade «Descarga una copia completa de
-  sus datos: <página del negocio>», salvo que el Hub diga `available: false` al enviarlo (`services._send_deletion`
+  sus datos: <página del negocio>», salvo que el Hub diga `available: false` al enviarlo (`services.deletion._send_deletion`
   pregunta `/dumps` antes; con el Hub caído o rechazando, el párrafo se queda) (el panel, nunca el fichero: así el enlace del correo no caduca). «Te avisaremos»
   se cumple en `reconcile_hub_states`: por cada negocio eliminado sin avisar, pregunta las copias y, con la de esta
   baja (`offboarding` no anterior a `deletion_requested_at`, un minuto de holgura entre relojes), manda
@@ -481,7 +489,7 @@ listo al responder, y lo dice.
   pasada) y se reintenta en las pasadas siguientes hasta `DATA_COPY_MAIL_ATTEMPTS` (6) veces
   (`Hub.data_copy_mail_attempts`, a 0 en cada baja; al rendirse, log `hubs.data_copy.mail_given_up`).
 - **Uso nocturno** (F21, F22; propuesta (j)): sin cambios en el SaaS. Un hub que aún comparte la BD de control no se
-  mide y no sale en `GET /internal/usage`: la pasada guarda el resto y termina bien (test de contrato en
+  mide y no sale en `GET /internal/usage` (desde el corte de la tenencia del 2026-11-01 el Hub ya no tiene modo compartido): la pasada guarda el resto y termina bien (test de contrato en
   `tests/test_collect_hub_usage.py`).
 
 ### Contrato para el Hub (carril Hub): alta, demo y copias
@@ -518,7 +526,7 @@ GET  /internal/hubs/{id}/dumps      → 200 {"available": true | false,
 
 ## Demo (ronda 2026-10-17; PLAN-SAAS §3.5)
 
-Plan: `docs/plans/2026-10-17-demo-hubs-fase-1.md` (§1.6 y §1.8). Una demo es un hub **vacío** del Hub
+Plan: `knowledge/raw/plans/2026-10-17-demo-hubs-fase-1.md` (§1.6 y §1.8). Una demo es un hub **vacío** del Hub
 (`demo-<8 hex>`, 60 minutos); el SaaS **no guarda ninguna fila**: solo la sesión del navegador sabe cuál es
 (`session["demo"] = {slug, expires_at}`). El código vive en `public/demo.py` (sin ORM) y en dos llamadas de
 `hub_client.py`.
@@ -570,7 +578,7 @@ Plan: `docs/plans/2026-10-17-demo-hubs-fase-1.md` (§1.6 y §1.8). Una demo es u
 - **SEO**: `/demo/` está en el sitemap (0.6) y es indexable (su GET no crea nada); `/demo/enter/` lleva `noindex`
   (meta y `X-Robots-Tag`) y `no-store`.
 - **Direcciones `demo-`**: `live.slugs` (≥ `cc36065`) reserva el prefijo para los clientes, así que un slug elegido
-  `demo-…` es 409 `hubs.slug_reserved`, y `queries.base_slug` quita el guion del prefijo al proponer
+  `demo-…` es 409 `hubs.slug_reserved`, y `queries.addresses.base_slug` quita el guion del prefijo al proponer
   (`Demo Bar` → `demobar`, `Demo` → `demostore`) en vez de caer en `my-business`.
 - **CTA**: «Try the demo» en el hero, en la banda final de la portada y en la barra para el visitante sin sesión.
 

@@ -1,11 +1,8 @@
-"""Handing a business over: ``hubs.ownership.{transfer,accept,decline,cancel}`` (saas#1670; round 17 §2.7).
+"""Handing a business over: ``hubs.ownership.{transfer,accept,decline,cancel}``.
 
-Ported from ERPlora/saas (origin/develop) ``hubs/main/tests/test_ownership_transfer.py`` and
-``dashboard/users/tests/test_ownership_transfer_views.py``, from services and views to operations:
-only the owner offers, only to somebody already on the business, the named recipient answers within 7
+Only the owner offers, only to somebody already on the business, the named recipient answers within 7
 days, one offer at a time, the outgoing owner stays as admin, nobody is removed, the payer does not
-move and the trail survives the accounts. Dropped with their reason: the machine credential (no
-runtime acts for the owner any more) and the confirmation page (SPA, lot L1-D).
+move and the trail survives the accounts.
 """
 
 from datetime import timedelta
@@ -15,7 +12,8 @@ from django.core import mail
 from django.utils import timezone
 from live.errors import Conflict, NotFound, PermissionDenied
 
-from hubs import queries, services
+from hubs.services import billing_profiles, member_management, ownership
+from hubs.queries import businesses, membership, payers
 from hubs.models import BillingProfile, Hub, HubMember, HubOwnershipTransfer
 from hubs.schemas import (
     BillingProfileGetIn,
@@ -33,13 +31,13 @@ pytestmark = pytest.mark.django_db
 def offer(actor, hub, to_user):
     member = HubMember.objects.filter(hub=hub, user=to_user).first()
     member_id = member.id if member else HubMember.objects.first().id
-    return services.ownership_transfer(
+    return ownership.ownership_transfer(
         ctx_for(actor), OwnershipTransferIn(hub_id=hub.id, member_id=member_id)
     )
 
 
 def accept(user, transfer_id):
-    return services.ownership_accept(ctx_for(user), ByIdIn(id=transfer_id))
+    return ownership.ownership_accept(ctx_for(user), ByIdIn(id=transfer_id))
 
 
 def roles(hub):
@@ -102,7 +100,7 @@ class TestTheRecipientIsAlreadyOnTheBusiness:
         add_member(other, team["stranger"], HubMember.Role.EMPLOYEE)
 
         with pytest.raises(Conflict) as refused:
-            services.ownership_transfer(
+            ownership.ownership_transfer(
                 ctx_for(team["owner"]),
                 OwnershipTransferIn(
                     hub_id=business.id, member_id=member_of(other, team["stranger"]).id
@@ -246,7 +244,7 @@ class TestOnlyTheNamedRecipientAnswers:
 
     def test_a_recipient_who_left_cannot_accept(self, business, team):
         transfer = offer(team["owner"], business, team["admin"])
-        services.member_remove(
+        member_management.member_remove(
             ctx_for(team["owner"]), ByIdIn(id=member_of(business, team["admin"]).id)
         )
 
@@ -259,7 +257,7 @@ class TestOnlyTheNamedRecipientAnswers:
         """HUBS-F27 «Sale»: the offer pending to the person removed is withdrawn, so the owner may offer the
         business to somebody else at once (and the members page stops saying it is offered)."""
         transfer = offer(team["owner"], business, team["admin"])
-        services.member_remove(ctx_for(team["owner"]), ByIdIn(id=member_of(business, team["admin"]).id))
+        member_management.member_remove(ctx_for(team["owner"]), ByIdIn(id=member_of(business, team["admin"]).id))
 
         withdrawn = HubOwnershipTransfer.objects.get(pk=transfer.id)
         assert (withdrawn.status, withdrawn.resolved_at is not None) == ("cancelled", True)
@@ -288,7 +286,7 @@ class TestDeclineAndCancelLeaveEverythingWhereItWas:
         transfer = offer(team["owner"], business, team["admin"])
 
         assert (
-            services.ownership_decline(
+            ownership.ownership_decline(
                 ctx_for(team["admin"]), ByIdIn(id=transfer.id)
             ).status
             == "declined"
@@ -299,7 +297,7 @@ class TestDeclineAndCancelLeaveEverythingWhereItWas:
         transfer = offer(team["owner"], business, team["admin"])
 
         assert (
-            services.ownership_cancel(
+            ownership.ownership_cancel(
                 ctx_for(team["owner"]), ByIdIn(id=transfer.id)
             ).status
             == "cancelled"
@@ -311,12 +309,12 @@ class TestDeclineAndCancelLeaveEverythingWhereItWas:
         transfer = offer(team["owner"], business, team["admin"])
 
         with pytest.raises(NotFound):
-            services.ownership_cancel(ctx_for(team["admin"]), ByIdIn(id=transfer.id))
+            ownership.ownership_cancel(ctx_for(team["admin"]), ByIdIn(id=transfer.id))
         with pytest.raises(NotFound):
-            services.ownership_decline(ctx_for(team["owner"]), ByIdIn(id=transfer.id))
+            ownership.ownership_decline(ctx_for(team["owner"]), ByIdIn(id=transfer.id))
 
     def test_after_a_decline_a_new_offer_is_possible(self, business, team):
-        services.ownership_decline(
+        ownership.ownership_decline(
             ctx_for(team["admin"]),
             ByIdIn(id=offer(team["owner"], business, team["admin"]).id),
         )
@@ -328,7 +326,7 @@ class TestDeclineAndCancelLeaveEverythingWhereItWas:
         accept(team["admin"], transfer.id)
 
         with pytest.raises(Conflict) as refused:
-            services.ownership_cancel(ctx_for(team["owner"]), ByIdIn(id=transfer.id))
+            ownership.ownership_cancel(ctx_for(team["owner"]), ByIdIn(id=transfer.id))
 
         assert refused.value.code == "hubs.transfer_answered"
 
@@ -337,7 +335,7 @@ class TestWhatTheScreensRead:
     def test_the_recipient_sees_the_offer_with_its_businesses(self, business, team):
         offer(team["owner"], business, team["admin"])
 
-        offers = queries.business_list(
+        offers = businesses.business_list(
             ctx_for(team["admin"]), BusinessListIn()
         ).model_dump(mode="json")["ownership_offers"]
 
@@ -350,7 +348,7 @@ class TestWhatTheScreensRead:
         HubOwnershipTransfer.objects.update(expires_at=timezone.now())
 
         assert (
-            queries.business_list(
+            businesses.business_list(
                 ctx_for(team["admin"]), BusinessListIn()
             ).ownership_offers
             == []
@@ -359,7 +357,7 @@ class TestWhatTheScreensRead:
     def test_the_row_action_disappears_while_an_offer_waits(self, business, team):
         offer(team["owner"], business, team["admin"])
 
-        rows = queries.member_list(
+        rows = membership.member_list(
             ctx_for(team["owner"]), MemberListIn(hub_id=business.id)
         ).rows
 
@@ -368,7 +366,7 @@ class TestWhatTheScreensRead:
     def test_the_owner_sees_the_offer_waiting_on_the_business(self, business, team):
         transfer = offer(team["owner"], business, team["admin"])
 
-        detail = queries.business_get(ctx_for(team["owner"]), ByIdIn(id=business.id))
+        detail = businesses.business_get(ctx_for(team["owner"]), ByIdIn(id=business.id))
 
         assert (detail.pending_transfer.id, detail.pending_transfer.to_email) == (
             transfer.id,
@@ -377,7 +375,7 @@ class TestWhatTheScreensRead:
 
     def test_the_trail_survives_the_accounts_it_names(self, business, team):
         transfer = offer(team["owner"], business, team["admin"])
-        services.ownership_decline(ctx_for(team["admin"]), ByIdIn(id=transfer.id))
+        ownership.ownership_decline(ctx_for(team["admin"]), ByIdIn(id=transfer.id))
         team["admin"].delete()
 
         row = HubOwnershipTransfer.objects.get()
@@ -388,16 +386,16 @@ class TestWhatTheScreensRead:
         )
 
 
-# --- Review of L1-A: the payer and the quota of the new owner -------------------------------------
+# --- The payer and the quota of the new owner -----------------------------------------------------
 
 
 class TestTheNewOwnersPayer:
-    """PLAN-SAAS §3.1: a payer is somebody's (``BillingProfile.owner``). The business keeps being paid
+    """A payer is somebody's (``BillingProfile.owner``). The business keeps being paid
     by its payer after the hand-over, but the new owner neither reads nor edits the old owner's data:
     saving a payer gives the business one of their own."""
 
     def handed_over(self, business, team):
-        services.billing_profile_update(
+        billing_profiles.billing_profile_update(
             ctx_for(team["owner"]), BillingProfileIn(hub_id=business.id, billing_name="Olga SL", tax_id="B12345678")
         )
         accept(team["admin"], offer(team["owner"], business, team["admin"]).id)
@@ -405,7 +403,7 @@ class TestTheNewOwnersPayer:
     def test_the_new_owner_does_not_read_the_old_owners_payer(self, business, team):
         self.handed_over(business, team)
 
-        payer = queries.billing_profile_get(ctx_for(team["admin"]), BillingProfileGetIn(hub_id=business.id))
+        payer = payers.billing_profile_get(ctx_for(team["admin"]), BillingProfileGetIn(hub_id=business.id))
 
         assert (payer.billing_name, payer.tax_id, payer.paid_by_another_account) == ("", "", True)
         assert Hub.objects.get(pk=business.pk).billing_profile.billing_name == "Olga SL"  # still paying
@@ -414,7 +412,7 @@ class TestTheNewOwnersPayer:
         self.handed_over(business, team)
         old = Hub.objects.get(pk=business.pk).billing_profile_id
 
-        saved = services.billing_profile_update(ctx_for(team["admin"]), BillingProfileIn(hub_id=business.id, billing_name="Adela SL"))
+        saved = billing_profiles.billing_profile_update(ctx_for(team["admin"]), BillingProfileIn(hub_id=business.id, billing_name="Adela SL"))
 
         hub = Hub.objects.get(pk=business.pk)
         assert (saved.billing_name, saved.paid_by_another_account) == ("Adela SL", False)

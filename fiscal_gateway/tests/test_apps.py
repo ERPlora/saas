@@ -1,4 +1,4 @@
-"""``fiscal_gateway`` is a platform app (round 15, PLAN §20): always on, at the project root, no module."""
+"""``fiscal_gateway`` is a platform app: always on, at the project root, no module."""
 
 from django.apps import apps
 from django.conf import settings

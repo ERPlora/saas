@@ -1,7 +1,7 @@
 """ASSISTANT-F22 · The panel of erplora.com reads an answer aloud: ``POST /api/assistant/speak`` (``base.assistant.speak``),
 for the signed-in account.
 
-No engine reads aloud (PLAN-SAAS round 2026-11-04c): the panel does not ask, and whoever asks all the same gets the 503
+No engine reads aloud: the panel does not ask, and whoever asks all the same gets the 503
 ``assistant.speech_unavailable`` that sends the reading to the device. What the route keeps for an engine is held here
 with a stand-in: the gateway in process, with no ``/internal`` and no signature, the same cut of the text, the budget of
 readings aloud per hour per account (``ASSISTANT_SYNTHESIZE_RATELIMIT``), and the characters read counted in the
@@ -123,7 +123,7 @@ class TestWithoutAnEngine:
 
 
 class TestTheContractOfTheRoute:
-    """What an engine finds when it comes (PLAN-SAAS §35): the stand-in in its place."""
+    """What an engine finds when it comes: the stand-in in its place."""
 
     def test_the_answer_comes_back_as_an_mp3_in_the_accounts_language(self, signed_in, speech_engine):  # noqa: F811
         response = post(signed_in, {"text": "You have two bookings today."})

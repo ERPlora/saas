@@ -1,5 +1,5 @@
-"""The assistant of erplora.com's own panel (plan 2026-10-30-asistente-saas §4; PLAN-SAAS §23, PLAN §36): the same
-assistant as the Hub's, with the SaaS's own operations as its tools, for the signed-in account.
+"""The assistant of erplora.com's own panel: the same assistant as the Hub's, with the SaaS's own operations as its
+tools, for the signed-in account.
 
 The mechanics are ``live.assistant``'s, shared with the Hub (its catalogue by ``ai=``, the relevance, the card of a
 write and its word, the tool run as the person); this module gives them the panel's own:
@@ -54,15 +54,19 @@ logger = logging.getLogger(__name__)
 
 #: Always offered when the account may read them: its businesses (the first thing asked of the panel) and the search in
 #: ERPlora's documentation, which the instructions send every how-to question to and whose words a question rarely
-#: shares (ASSISTANT-F27).
+#: shares.
 ALWAYS = ("hubs.business.list", "assistant.docs.search")
 #: What a word names in the panel and nowhere else (``live.assistant.relevant``'s ``synonyms``), for a turn and the
 #: assistant's QA. A person's own, other, new or old «tienda» is one of their businesses, as a «shop» is: the panel's
 #: Store is one and is «la tienda» alone (its screen's name, ``app_words``), and the English panel calls it «Store».
-#: «Cuenta» needs no group here: it is the Account screen's name, so it already names the person's account.
+#: «Cuenta» needs no group here: it is the Account screen's name, so it already names the person's account. Rejecting a
+#: business or an invitation offered to the person is declining it: no tool of the panel has a «reject» action.
+#: Withdrawing an invitation or an offer the person sent is cancelling it: none has a «withdraw» action either.
 SYNONYMS = (
     ("negocio", "business", "shop", "mi tienda", "mis tiendas", "nuestra tienda", "otra tienda", "nueva tienda",
      "tienda nueva", "tienda vieja"),
+    ("decline", "reject", "rechazar"),
+    ("cancel", "withdraw", "retirar"),
 )
 #: The tool a how-to question («how do I…?», «¿cómo invito…?») is for (``relevant``'s ``howto``): the search in
 #: ERPlora's documentation, which then reaches it on being such a question, not only on being always offered.
@@ -73,9 +77,8 @@ SCREEN_OF_APP = {"hubs": "businesses", "accounts": "account", "billing": "billin
 #: on sale with their prices.
 STORE_APPS = frozenset({"billing", "hubs"})
 STORE_ENTITIES = frozenset({"store", "promo", "plan"})
-#: The panel's roles, as the assistant's QA names them (docs plan 2026-10-31 §4): every signed-in account has the one
-#: role ``account``. Who may act on a business is decided inside each operation, so an owner's tools and an
-#: employee's are the same.
+#: The panel's roles, as the assistant's QA names them: every signed-in account has the one role ``account``. Who may
+#: act on a business is decided inside each operation, so an owner's tools and an employee's are the same.
 ROLES = (ACCOUNT_ROLE,)
 #: Where the panel is used: the web, and the app's account surface, which sells nothing (``sells_nothing``).
 SURFACES = ("web", "app")
@@ -209,7 +212,7 @@ def screens(ctx: OperationContext, request: HttpRequest | None = None) -> dict[s
 
 
 def nothing_sold_here(language: str) -> str:
-    """The rule of a turn where nothing is sold (PLAN-SAAS §3.6 point 6), with the sentences the panel paints there."""
+    """The rule of a turn where nothing is sold, with the sentences the panel paints there."""
     with translation.override(language):
         buy = gettext("To change your plan or add modules, go to erplora.com in your browser.")
         pay = gettext("To pay it, go to erplora.com in your browser.")
@@ -264,7 +267,7 @@ ERPlora and its account. Answer in {language_name}, short and plain. Use Markdow
 # ── What the tools wait on the network for, before the turn's transaction ───────────────────────────────────────
 
 
-#: The documentation search: the fingerprint of its question comes from the provider (ASSISTANT-F27).
+#: The documentation search: the fingerprint of its question comes from the provider.
 DOCS_SEARCH = "assistant.docs.search"
 
 
@@ -329,7 +332,7 @@ def _assistant_message(text: str, calls: list[dict]) -> dict:
     return message
 
 
-async def gateway_frames(request: HttpRequest, caller: Caller, plan: dict) -> AsyncIterator[dict]:
+async def gateway_frames(request: HttpRequest, caller: Caller, plan: dict) -> AsyncIterator[dict]:  # noqa: C901
     """A turn through the gateway, as the panel's frames: ``text`` piece by piece, ``usage``, an ``error``, and
     ``done`` with what the browser keeps (``append``), the tools the model asked for (``pending``), their
     ``continuation`` and whether the answer brought pages from the web (``web``: the browser sends it back with a report

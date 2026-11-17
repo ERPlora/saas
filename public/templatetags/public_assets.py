@@ -1,6 +1,6 @@
 """``{% public_assets %}``: the ``<link>`` and ``<script>`` tags of the public web's Vite entry.
 
-``frontend/public.ts`` (spec §8.4) registers the ``ion-*`` the templates use and brings Ionic's CSS,
+``frontend/public.ts`` registers the ``ion-*`` the templates use and brings Ionic's CSS,
 the ``@erplora/ui`` tokens and the public stylesheets. The files come from ``live.spa.spa_assets``
 (the build's manifest, or the dev server with DEBUG); every script and modulepreload carries the
 response's CSP nonce, as ``'strict-dynamic'`` requires. Used once, in ``public/public_base.html``.

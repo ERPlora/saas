@@ -1,8 +1,7 @@
-"""Promo codes: extra trial days at checkout (ADR-0107), and ``billing.promo.check``.
+"""Promo codes: trial days or free months at checkout, and ``billing.promo.check``.
 
-Ported from ERPlora/saas ``hubs/subscriptions/tests/test_promo_codes.py`` (origin/develop, 23 tests): a code
-grants free TIME, never a lower price (a Stripe coupon burns during the trial, and a discount turns the
-renewal into a price hike). It is case-insensitive and trimmed; an unknown, inactive, expired or exhausted
+A code grants exactly one of the two: trial days, or 1 to 12 free months (``test_free_months.py``). It is
+case-insensitive and trimmed; an unknown, inactive, expired or exhausted
 code resolves to nothing and never blocks a sale; the counter goes up once per completed checkout and
 never past its cap, even under races (the cap is in the UPDATE's WHERE).
 
@@ -15,13 +14,15 @@ from datetime import timedelta
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.test import Client
 from django.utils import timezone
 from live.errors import OperationError
 
-from billing import queries, services
+from billing import queries
+from billing.services import promo_codes
 from billing.models import PromoCode
-from billing.schemas import PromoCheckIn
+from billing.schemas.promo_codes import PromoCheckIn
 from billing.tests.conftest import ctx_for
 
 pytestmark = pytest.mark.django_db
@@ -94,24 +95,24 @@ class TestRedeem:
     def test_redeeming_counts_one(self):
         made = promo()
 
-        assert services.redeem_promo("canary_2026") is True
+        assert promo_codes.redeem_promo("canary_2026") is True
         made.refresh_from_db()
         assert made.redemption_count == 1
 
     def test_redeeming_is_case_insensitive(self):
         promo()
 
-        assert services.redeem_promo("CANARY_2026") is True
+        assert promo_codes.redeem_promo("CANARY_2026") is True
 
     def test_an_unknown_code_counts_nothing(self):
-        assert services.redeem_promo("nope") is False
-        assert services.redeem_promo("") is False
+        assert promo_codes.redeem_promo("nope") is False
+        assert promo_codes.redeem_promo("") is False
 
     def test_the_cap_is_never_passed(self):
         made = promo(max_redemptions=1)
 
-        assert services.redeem_promo("canary_2026") is True
-        assert services.redeem_promo("canary_2026") is False
+        assert promo_codes.redeem_promo("canary_2026") is True
+        assert promo_codes.redeem_promo("canary_2026") is False
         made.refresh_from_db()
         assert made.redemption_count == 1
 
@@ -119,13 +120,13 @@ class TestRedeem:
         made = promo()
 
         for _ in range(3):
-            services.redeem_promo("canary_2026")
+            promo_codes.redeem_promo("canary_2026")
 
         made.refresh_from_db()
         assert made.redemption_count == 3
 
 
-class TestTrialDaysCeiling:
+class TestKinds:
     def test_a_year_is_allowed(self):
         PromoCode(code="year", trial_days=365).full_clean()
 
@@ -133,6 +134,31 @@ class TestTrialDaysCeiling:
     def test_no_days_or_more_than_a_year_is_refused(self, days):
         with pytest.raises(ValidationError):
             PromoCode(code="bad", trial_days=days).full_clean()
+
+    @pytest.mark.parametrize("months", [1, 6, 12])
+    def test_one_to_twelve_free_months_are_allowed(self, months):
+        PromoCode(code="testers", free_months=months).full_clean()
+
+    @pytest.mark.parametrize("months", [0, 13])
+    def test_no_months_or_more_than_twelve_are_refused(self, months):
+        with pytest.raises(ValidationError):
+            PromoCode(code="bad", free_months=months).full_clean()
+
+    @pytest.mark.parametrize(("days", "months"), [(30, 6), (None, None)])
+    def test_a_code_grants_trial_days_or_free_months_never_both(self, days, months):
+        with pytest.raises(ValidationError) as refused:
+            PromoCode(code="bad", trial_days=days, free_months=months).full_clean()
+
+        assert "either trial days or free months" in str(refused.value)
+
+    @pytest.mark.parametrize(("days", "months"), [(30, 6), (None, None), (None, 13), (366, None)])
+    def test_the_database_refuses_a_code_that_is_not_one_kind_in_range(self, days, months):
+        with pytest.raises(IntegrityError), transaction.atomic():
+            PromoCode.objects.create(code="bad", trial_days=days, free_months=months)
+
+    def test_each_code_says_its_kind(self):
+        assert promo(trial_days=30).kind == "trial_days"
+        assert PromoCode.objects.create(code="testers", free_months=6).kind == "free_months"
 
 
 class TestCheck:
@@ -143,7 +169,14 @@ class TestCheck:
             ctx_for(buyer), PromoCheckIn(code=" Canary_2026 ")
         ).model_dump()
 
-        assert answer == {"code": "canary_2026", "valid": True, "trial_days": 60}
+        assert answer == {"code": "canary_2026", "valid": True, "kind": "trial_days", "trial_days": 60, "free_months": 0}
+
+    def test_a_code_of_free_months_says_how_many(self, buyer):
+        PromoCode.objects.create(code="testers", free_months=6)
+
+        answer = queries.promo_check(ctx_for(buyer), PromoCheckIn(code="TESTERS")).model_dump()
+
+        assert answer == {"code": "testers", "valid": True, "kind": "free_months", "trial_days": 0, "free_months": 6}
 
     def test_an_invalid_code_is_an_answer_not_an_error(self, buyer):
         promo(is_active=False)
@@ -152,7 +185,7 @@ class TestCheck:
             ctx_for(buyer), PromoCheckIn(code="canary_2026")
         ).model_dump()
 
-        assert answer == {"code": "canary_2026", "valid": False, "trial_days": 0}
+        assert answer == {"code": "canary_2026", "valid": False, "kind": "trial_days", "trial_days": 0, "free_months": 0}
 
     def test_a_visitor_cannot_try_codes(self):
         response = Client().get("/api/billing/promo-check", {"code": "canary_2026"}, HTTP_HOST=HOST)
@@ -186,5 +219,7 @@ class TestCheck:
         assert response.json() == {
             "code": "canary_2026",
             "valid": True,
+            "kind": "trial_days",
             "trial_days": 30,
+            "free_months": 0,
         }

@@ -1,9 +1,6 @@
-// «Pay» of an invoice Stripe could not charge (mockups `billing.html`; README §6.18 and §6.20; UX-AUDIT-4 R2):
-// `billing.invoice.pay` answers Stripe's page for the invoice (its payer's card, 3-D Secure included) and the
-// page goes there, a top-level navigation. One payment at a time on the page — whichever «Pay» started it,
-// the banner's or the row's — until the page leaves: no double charge. The page remembers the invoice across
-// Stripe's page (`sessionStorage`), so back here it can say «Invoice paid» for it (`unpaid.ts`). Back through
-// the browser's cache (`pageshow` persisted), nothing is being paid any more.
+// «Pay» of an invoice Stripe could not charge: `billing.invoice.pay` answers Stripe's page for it and the page goes
+// there, a top-level navigation. One payment at a time on the page until it leaves: no double charge. The invoice
+// is remembered across Stripe's page (`sessionStorage`), so back here «Invoice paid» can be said for it.
 import { toastError } from '@erplora/ui/shell';
 import { useCommand } from '@erplora/ui/sdk';
 import { inject, type InjectionKey, onScopeDispose, provide, readonly, shallowRef, type ShallowRef } from 'vue';

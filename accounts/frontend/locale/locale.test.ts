@@ -1,7 +1,7 @@
-// The account pages' UI texts: English source + Spanish (PLAN §5), kept by hand next to the pages
-// until Django's catalogues are exported to JSON (as the demo of hub-next does). The texts of a page
-// ported from a template keep that template's EXACT msgids, and their Spanish is the msgstr of
-// `saas-next/locale/es/LC_MESSAGES/django.po`, so the export finds them already translated. Only
+// The account pages' UI texts: English source + Spanish, kept by hand next to the pages
+// until Django's catalogues are exported to JSON. The texts of a page that replaced a Django
+// template keep that template's EXACT msgids, and their Spanish is the msgstr of
+// `locale/es/LC_MESSAGES/django.po`, so the export finds them already translated. Only
 // what the Vue page adds is new, and listed here. A msgid's `%(name)s` is written `{name}` here
 // (vue-i18n's named interpolation), and a plural (`msgid` + `msgid_plural`) is vue-i18n's
 // `singular | plural`: the same message, in the other syntax.
@@ -31,12 +31,12 @@ const NEW_IN_THE_VUE_PAGES = new Set([
   'accounts.reauthenticate.usePassword',
   // The refused «connect» of Google had only a Django message (its msgid is the page's message), no heading.
   'accounts.loginError.googleLinkRefused.heading',
-  // The code mailed at every password sign-in (2026-10-15) is new: its expiry sends the visitor back here.
+  // The code mailed at every password sign-in is new: its expiry sends the visitor back here.
   'accounts.login.codeExpired',
-  // reCAPTCHA's notice under the sign-in's forms (2026-10-22), new with the bots' check; «Privacy Policy» is django.po's.
+  // reCAPTCHA's notice under the sign-in's forms, new with the bots' check; «Privacy Policy» is django.po's.
   'accounts.recaptcha.notice',
   'accounts.recaptcha.terms',
-  // The tabs «Sign in» and «Create account» of the launcher (FIX-LAUNCH-TABS): the template had one form.
+  // The tabs «Sign in» and «Create account» of the launcher: the template had one form.
   'accounts.login.tabsLabel',
   'accounts.login.signIn',
   'accounts.login.signUp',
@@ -47,14 +47,14 @@ const NEW_IN_THE_VUE_PAGES = new Set([
   'accounts.login.haveAccount',
   'accounts.login.signInInstead',
   'accounts.login.signUpFailed',
-  // «Trust this browser for 14 days» (ACCOUNTS-F05) and the trusted browsers (ACCOUNTS-F17): allauth's `mfa/trust.html`
+  // «Trust this browser for 14 days» and the trusted browsers: allauth's `mfa/trust.html`
   // asked on a page of its own; here it is a box under the code, and the browsers have their section.
   'accounts.twoFactor.trust',
   'accounts.twoFactor.trustHint',
   'accounts.twoFactor.trustLead',
-  // Turning the app off leaves the code mailed at every sign-in (2026-10-15), not «your password only» (ACCOUNTS-F16).
+  // Turning the app off leaves the code mailed at every sign-in, not «your password only».
   'accounts.twoFactor.deactivate.lead',
-  // The staff the admin keeps out without the app land on /2fa to set it up (ACCOUNTS-F20).
+  // The staff the admin keeps out without the app land on /2fa to set it up.
   'accounts.twoFactor.requiredToContinue',
   'accounts.twoFactor.trusted.title',
   'accounts.twoFactor.trusted.lead',
@@ -63,12 +63,12 @@ const NEW_IN_THE_VUE_PAGES = new Set([
   'accounts.twoFactor.trusted.unknown',
   'accounts.twoFactor.trusted.revoke',
   'accounts.twoFactor.trusted.revoked',
-  // The brake of the jumps to a hub (ACCOUNTS-F28, handoff.hub_login past HUB_LOGIN_RATELIMIT) had no template.
+  // The brake of the jumps to a hub (handoff.hub_login past HUB_LOGIN_RATELIMIT) had no template.
   'accounts.loginError.tooMany.title',
   'accounts.loginError.tooMany.badge',
   'accounts.loginError.tooMany.heading',
   'accounts.loginError.tooMany.message',
-  // The pass back from a business (ACCOUNTS-F29, hub_pass.follow; saas#190) is new: the old SaaS had no page for it.
+  // The pass back from a business (hub_pass.follow) had no template.
   // Its «400 · Invalid link» badge is django.po's own (the invalid sign-in link), translated as it does.
   'accounts.loginError.signIn',
   'accounts.loginError.invalidPass.title',
@@ -81,24 +81,24 @@ const NEW_IN_THE_VUE_PAGES = new Set([
 ]);
 
 /**
- * The Account page (`/dashboard/account/:tab`, plan 2026-10-13 L3-B) had no template: its texts, under `accounts.account`, are
+ * The Account page (`/dashboard/account/:tab`) had no template: its texts, under `accounts.account`, are
  * new. One that happens to be a msgid of django.po («API keys») is translated as django.po translates it, its
  * first letter capitalised as the page needs (django.po writes «claves de API» for the middle of a sentence).
  */
 const ACCOUNT_PAGE = 'accounts.account.';
 
-/** «Report a problem» (`/dashboard/report-a-problem`, ACCOUNTS-F38) had no template in saas-next either: its texts are new. */
+/** «Report a problem» (`/dashboard/report-a-problem`) had no template either: its texts are new. */
 const REPORT_PAGE = 'accounts.report.';
 
-/** «Sign out of erplora.com?» (`/logout`, ACCOUNTS-F09), where the Hub's «Sign out» lands, asks in words of its own: the old
+/** «Sign out of erplora.com?» (`/logout`), where the Hub's «Sign out» lands, asks in words of its own: the old
  *  allauth page («Are you sure you want to sign out?») came after nothing, this one after the Hub's own sign-out. */
 const SIGN_OUT_PAGE = 'accounts.signOut.';
 
 /**
- * Pages whose templates ERPlora/saas had and saas-next never ported (the sign-up's code,
+ * Pages of allauth's templates this project never had (the sign-up's code,
  * `account/confirm_email_verification_code.html`; the password reset, `account/password_reset*.html`):
- * their texts keep those templates' msgids, translated as ERPlora/saas's django.po did, and are new to
- * saas-next's django.po. One that it does have is translated as it translates it, as on the Account page.
+ * their texts keep those templates' msgids and their usual Spanish, and are new to this project's
+ * django.po. One that it does have is translated as it translates it, as on the Account page.
  */
 const UNPORTED_TEMPLATE_PAGES = ['accounts.verifyEmail.', 'accounts.passwordReset.'];
 const newPage = (key: string) =>

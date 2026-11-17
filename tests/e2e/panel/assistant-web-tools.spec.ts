@@ -9,8 +9,10 @@
 import { LONG_ADDRESS } from '../assistant-provider';
 import { STACK } from '../stack';
 
-import { ask, localAssistant, openPanel, SIZES } from './assistant-chat';
-import { expect, settled, shot, sidewaysScroll, test, watchPageErrors } from './fixtures';
+import { ask, DESKTOP_FIRST, localAssistant, openPanel } from './assistant-chat';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { expectNoSidewaysScroll, settled, shot } from './screen';
 
 const RATE_SOURCE = 'https://frankfurter.dev';
 const WORDS = {
@@ -24,7 +26,7 @@ for (const language of ['es', 'en'] as const) {
   const words = WORDS[language];
 
   test(`the panel's assistant says a rate and searches the web, its source in sight (${language})`, async ({ page }) => {
-    seed('panel', language);
+    await seed('panel', language);
     const errors = watchPageErrors(page);
     const panel = await openPanel(page);
 
@@ -46,15 +48,15 @@ for (const language of ['es', 'en'] as const) {
     expect(new URLSearchParams(search?.query).get('search_lang')).toBe(language);
     expect(new URLSearchParams(search?.query).get('country')).toBe(language === 'es' ? 'ES' : 'ALL');
 
-    for (const size of SIZES) {
+    for (const size of DESKTOP_FIRST) {
       await page.setViewportSize({ width: size.width, height: size.height });
       await expect(law).toContainText(LONG_ADDRESS);
-      await expect.poll(() => sidewaysScroll(page), `${size.name}: nothing scrolls sideways`).toEqual([]);
+      await expectNoSidewaysScroll(page, `${size.width}: nothing scrolls sideways`);
       const bubble = await law.boundingBox();
       const pane = await panel.boundingBox();
-      expect(bubble!.x + bubble!.width, `${size.name}: the address stays inside the panel`).toBeLessThanOrEqual(pane!.x + pane!.width);
+      expect(bubble!.x + bubble!.width, `${size.width}: the address stays inside the panel`).toBeLessThanOrEqual(pane!.x + pane!.width);
       await settled(page);
-      await page.screenshot({ path: shot(`assistant-web-tools-${size.name}-${language}`) });
+      await page.screenshot({ path: shot(`assistant-web-tools-${size.width}-${language}`) });
     }
     expect(errors).toEqual([]);
   });

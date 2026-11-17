@@ -1,11 +1,10 @@
-"""What the panel's assistant knows of ERPlora (ASSISTANT-F27; plan 2026-10-30-asistente-saas §5): the documentation,
+"""What the panel's assistant knows of ERPlora: the documentation,
 cut into the excerpts ``assistant.docs.search`` returns and ``index_docs`` keeps with their fingerprints.
 
 - ``chunk_markdown`` cuts a document at its ``##`` and ``###`` headings (a FAQ's questions are ``###``), names each
   excerpt by its path of headings («FAQ > Access > Why…?») and windows a long section into excerpts of ``MAX_WORDS``
   words that overlap by ``OVERLAP_WORDS``: a sentence cut at the edge of one is whole in the next. HTML comments go;
-  a heading inside a code block is text. The idea of the old product's in-memory index (``apps/dashboard/assistant/
-  knowledge.py``), without its store: the excerpts live in ``assistant.DocChunk``.
+  a heading inside a code block is text. The excerpts live in ``assistant.DocChunk``.
 - The four sources (``SOURCES``), each in English and Spanish: the public help (``docs/<lang>/help/*.md``; a guide
   still waiting for its translation is only its ``<!-- pending translation from en -->``, with no excerpt); the user documentation of the Hub's apps
   (``apps.doc.list``, what the Hub registers with each release); the customer's part of the WORKBOOKs of the panel's
@@ -31,7 +30,7 @@ from apps import queries as apps_queries
 from apps.schemas import AppDocListIn
 from assistant.models import content_hash
 from assistant.services import platform_context
-from hubs import queries as hubs_queries
+from hubs.queries import plan_catalog
 from hubs.schemas import PlanListIn
 from public import help as public_help
 
@@ -282,7 +281,7 @@ def plans_chunks() -> list[Chunk]:
     """The plans on sale, one document per language, each plan a section of its own."""
     chunks = []
     for lang in LANGUAGES:
-        plans = hubs_queries.plan_list(replace(platform_context(), language=lang), PlanListIn())
+        plans = plan_catalog.plan_list(replace(platform_context(), language=lang), PlanListIn())
         with translation.override(lang):
             title = _("ERPlora plans")
             document = [_("The plans a business can have on ERPlora, with their prices and what each one includes.")]

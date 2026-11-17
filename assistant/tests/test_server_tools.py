@@ -1,4 +1,4 @@
-"""ASSISTANT-F14 (ASSISTANT-G46) · Tell the tools erplora.com runs from the Hub's: ``current_datetime``,
+"""ASSISTANT-F14 · Tell the tools erplora.com runs from the Hub's: ``current_datetime``,
 ``currency_rate`` and ``web_search`` are run here and their result goes back to the model, which is asked again (at
 most ``MAX_ROUNDS`` times, the last one without them, so it answers); a tool of the Hub ends the turn as a
 ``function_call`` for the Hub to run. A tool of ours that fails gives the model an error to answer with, never a failed
@@ -32,7 +32,7 @@ RATES = "/v1/latest"
 SEARCH = "/res/v1/web/search"
 USD_EUR = {"amount": 1.0, "base": "USD", "date": "2026-11-04", "rates": {"EUR": 0.88755}}
 KEY = "made-up-brave-key"
-#: What Brave really answers a key it does not know: a 422 (a real call, 2026-11-04).
+#: What Brave really answers a key it does not know: a 422 (recorded from a real call).
 KEY_REFUSED = {
     "error": {
         "code": "SUBSCRIPTION_TOKEN_INVALID",

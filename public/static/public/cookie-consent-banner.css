@@ -1,4 +1,4 @@
-/* Cookie-consent banner (issue #958): cookie_consent/cookielaw_banner.html.
+/* Cookie-consent banner: cookie_consent/cookielaw_banner.html.
  * Port of static/css/cookie-consent-banner.css of the old SaaS; the icon is the SVG of
  * {% icon %} (it was <iconify-icon>). Only --ion-* tokens.
  *

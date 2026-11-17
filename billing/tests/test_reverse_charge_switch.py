@@ -1,12 +1,11 @@
 """Invoicing without VAT needs the ROI registration AND the VAT number checked in VIES.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_reverse_charge_switch.py`` (origin/develop,
-9 tests). The path is closed by default and fails closed: when in doubt, the VAT is charged.
+The path is closed by default and fails closed: when in doubt, the VAT is charged.
 
-Adapted: ``TestTheWebhookAsksVies`` (2) drove Stripe's ``checkout.session.completed`` webhook, which is
-lot L2-B; what it proved —the sale door asks the VIES verdict and believes it— is proved here through
-that door, ``billing.services.sale_tax_rates``, which the L2-B checkout and webhook call. Its third class,
-``TestTheInvoiceKeepsTheEvidence`` (1), is ``test_invoice_recording.TestTheVatOfEachSale`` (lot L3-C).
+Adapted: ``TestTheWebhookAsksVies`` (2) drove Stripe's ``checkout.session.completed`` webhook; what it
+proved —the sale door asks the VIES verdict and believes it— is proved here through that door,
+``billing.services.sale_tax_rates``, which Stripe's checkout and webhook call. Its third class,
+``TestTheInvoiceKeepsTheEvidence`` (1), is ``test_invoice_recording.TestTheVatOfEachSale``.
 """
 
 from decimal import Decimal
@@ -45,7 +44,7 @@ def _switch_reverse_charge(on: bool):
 
 class TestTheSwitch:
     def test_it_is_on_because_the_roi_registration_is_granted(self):
-        """ERPlora is in the ROI since 08-08-2026 (ESB27593136) (saas#1479)."""
+        """ERPlora is in the ROI since 08-08-2026 (ESB27593136)."""
         assert queries.fiscal_policy().intra_eu_reverse_charge is True
 
     def test_off_means_a_french_business_pays_spanish_vat(self):
@@ -99,6 +98,7 @@ class TestItFailsClosed:
         assert result.tax == Decimal("21.00")
 
 
+@pytest.mark.usefixtures("every_country_sold")
 class TestTheSaleDoorAsksVies:
     """The switch is worth nothing if the door that prices a sale does not ask the verdict."""
 

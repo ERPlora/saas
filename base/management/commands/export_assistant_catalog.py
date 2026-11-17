@@ -1,6 +1,6 @@
 """``python manage.py export_assistant_catalog --language <en|es> [--role account] [--surface web|app] [--apps a,b]``:
 the panel assistant's catalogue of a role as JSON (``live.assistant_qa.export_catalog``), for the QA with the real
-model (layer 2, docs plan 2026-10-31 §1.5). The tools are those a turn of that role offers on that surface
+model. The tools are those a turn of that role offers on that surface
 (``base.assistant.role_catalog``), each with its kind, permission, risk, description, input and the asks in the
 language asked; ``--apps`` keeps only those apps' (one without tools there is refused by its name).
 """

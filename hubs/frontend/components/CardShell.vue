@@ -1,8 +1,7 @@
 <script setup lang="ts">
-// The centred-card frame of the launcher (`/launch`) and the invitation (`/invitation`): mockups
-// `launch.html` and `invitation.html`, the old SaaS's `_shell_styles.html`. A route with
-// `meta.chrome: false`, so no menu: the ERPlora lockup INSIDE the card above the title of every
-// state (README §5), the state's icon and title (the page's one heading), its lead, the content
+// The centred-card frame of the launcher (`/launch`) and the invitation (`/invitation`). A route with
+// `meta.chrome: false`, so no menu: the ERPlora lockup INSIDE the card above the title of every state, the
+// state's icon and title (the page's one heading), its lead, the content
 // (default slot) and, under the card, «Signed in as … · Sign out». Signing out is the user menu's
 // (`frontend/main.ts`): allauth.headless ends the session, then the launcher's sign-in, as a full load; a
 // failure says so and stays.
@@ -50,7 +49,7 @@ async function signOut(): Promise<void> {
     <ion-content class="card-shell-content">
       <div class="shell-page ion-padding">
         <div class="shell-wrap">
-          <ion-card class="shell-card">
+          <ion-card class="shell-card ep-surface">
             <div class="shell-logo">
               <span
                 class="erp-lockup md"
@@ -132,7 +131,7 @@ ion-router-outlet#main.split-pane-main > .ion-page > ion-content.card-shell-cont
 ion-router-outlet#main.split-pane-main > .ion-page > ion-content.card-shell-content::part(scroll) {
   border-radius: 0;
 }
-/* As the sign-in's AuthShell (saas#166): the scroll area ends where the Android app's system bar begins (the
+/* As the sign-in's AuthShell: the scroll area ends where the Android app's system bar begins (the
    bottom safe area), so «Sign out» never lies under it; the background still runs to the edge. */
 .card-shell-content::part(scroll) {
   bottom: var(--ion-safe-area-bottom, 0px);
@@ -151,10 +150,7 @@ ion-router-outlet#main.split-pane-main > .ion-page > ion-content.card-shell-cont
 }
 .shell-card {
   margin: 0;
-  border-radius: 16px;
-  --background: var(--ion-card-background, var(--ion-item-background, #fff));
-  border: 1px solid var(--ion-border-color);
-  box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.25);
+  --background: var(--ion-card-background);
 }
 .shell-logo {
   display: flex;

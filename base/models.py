@@ -1,7 +1,6 @@
-"""The site's switches: one row, edited by the staff in the admin («Site settings»; ACCOUNTS-G33, G64).
+"""The site's switches: one row, edited by the staff in the admin («Site settings»).
 
-Ported from ERPlora/saas ``SiteSettings`` (``apps/dashboard/core/models.py``, origin/develop c5ca8cae8): the maintenance
-mode and its message in English and Spanish (ACCOUNTS-G82, ``base.maintenance``). One row by a constraint, not by
+The maintenance mode and its message in English and Spanish (``base.maintenance``). One row by a constraint, not by
 forcing ``pk = 1``: every key is a UUIDv7 here. Its state is read through ``base.queries.maintenance_state``, kept a
 minute in the shared cache and dropped from it once a change commits, so every task sees the switch at once.
 """

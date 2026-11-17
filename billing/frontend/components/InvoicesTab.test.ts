@@ -1,9 +1,5 @@
-// Billing → Invoices (mockups `billing.html` «default», «selected», «empty», «loading», «error»; README §3b;
-// UX-AUDIT-4 W-F9, W-F15, V-34): ERPlora's invoices of all the account's businesses in a server-side
-// DataTable (live `billing.invoice.list`), cards up to 1100 px — invoice, date, business, amount, status —
-// with filters by business (also `?business=`), status and year, a search by number, «Pay» on the web for
-// one not collected (fixed, labelled; disabled while «Pay» waits), its PDF once issued (until then it reads
-// «Issuing»), a selection with «Download PDF (n)», and «Download Excel» with what the filters show.
+// Billing → Invoices: ERPlora's invoices of all the account's businesses in a server-side DataTable, cards up to
+// 1100 px, with filters, a search by number, «Pay» for one not collected, its PDF once issued and «Download Excel».
 import { DataTable } from '@erplora/ui/components';
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -91,7 +87,7 @@ async function setup(path = '/dashboard/billing/invoices', api: (call: ReturnTyp
 }
 
 describe('InvoicesTab: the list', () => {
-  // BILLING-F22 (the trap of saas#58): one page of `billing.invoice.list` holds 100 rows at most; on a phone
+  // One page of `billing.invoice.list` holds 100 rows at most; on a phone
   // «Load more» never asks for more, and past them the table pages instead (`maxWindow`).
   it('on a phone «Load more» grows one window from the first row, never past the server’s 100 rows', async () => {
     const s = await setup();
@@ -119,7 +115,7 @@ describe('InvoicesTab: the list', () => {
       searchable: true,
       searchPlaceholder: 'Search by number',
       testid: 'invoices',
-      // A card's title is its number: the body does not repeat it («Invoice ERP-2026-00123», audit 2 R-30).
+      // A card's title is its number: the body does not repeat it («Invoice ERP-2026-00123»).
       cardTitleColumn: 'number',
     });
     expect(s.prop<Array<{ label: string }>>('columns').map((c) => c.label)).toEqual(['Invoice', 'Date', 'Business', 'Amount', 'Status']);
@@ -195,7 +191,7 @@ describe('InvoicesTab: the list', () => {
     expect(cell(es, 'c1').get('[data-testid="invoice-rectifies"]').text()).toBe('Rectifica ERP-2026-00123');
   });
 
-  it('per row, «Pay» (fixed and labelled) for one not collected, the PDF once issued and «View invoice» (BILLING-G92)', async () => {
+  it('per row, «Pay» (fixed and labelled) for one not collected, the PDF once issued and «View invoice»', async () => {
     const s = await setup();
     await s.show();
     const actions = s.prop<Array<Record<string, unknown>>>('actions');
@@ -211,7 +207,7 @@ describe('InvoicesTab: the list', () => {
     expect(s.testid('invoices-row-i9-pay').text()).toBe('Pay');
   });
 
-  it('BILLING-G05: «View invoice» opens the page of that invoice', async () => {
+  it('«View invoice» opens the page of that invoice', async () => {
     const s = await setup();
     await s.show();
     await s.testid('invoices-row-00123-view').trigger('click');
@@ -262,7 +258,7 @@ describe('InvoicesTab: the list', () => {
   });
 });
 
-describe('InvoicesTab: a list that does not load says so, never «No invoices yet» (audit 2026-10-14, R-04)', () => {
+describe('InvoicesTab: a list that does not load says so, never «No invoices yet»', () => {
   const failed = (s: Awaited<ReturnType<typeof setup>>) => ({
     error: s.prop<string | undefined>('error'),
     loading: s.prop<boolean>('loading'),
@@ -331,7 +327,7 @@ describe('InvoicesTab: a list that does not load says so, never «No invoices ye
   });
 });
 
-describe('InvoicesTab: a clean page (Ioan, 2026-10-14)', () => {
+describe('InvoicesTab: a clean page', () => {
   it('the list fills the page between the topbar and the tabbar: a `.panel-fill` stack, the table with `fill`', async () => {
     const s = await setup();
     await s.show();
@@ -355,7 +351,7 @@ describe('InvoicesTab: filters and search', () => {
   it('filters by business (the ones the account owns or pays), status and year, from one «Filters» control', async () => {
     const s = await setup();
     await s.show();
-    // One control in the toolbar (Ioan, 2026-10-14): the filters live in its popover.
+    // One control in the toolbar: the filters live in its popover.
     expect(s.testid('invoices-business').exists()).toBe(false);
     await s.openFilters();
     expect(s.testid('invoices-business').findAll('ion-select-option').map((o) => [optionValue(o), o.text()])).toEqual([
@@ -431,7 +427,7 @@ describe('InvoicesTab: filters and search', () => {
   });
 });
 
-describe('InvoicesTab: the toolbar on one line from 641 px (audit 2026-10-14, R-14)', () => {
+describe('InvoicesTab: the toolbar on one line from 641 px', () => {
   /** A fake layout of the toolbar: the first item on line 1; «Download Excel» on line `csvLine`. */
   function layOut(csvLine: () => 1 | 2) {
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
@@ -479,7 +475,7 @@ describe('InvoicesTab: the toolbar on one line from 641 px (audit 2026-10-14, R-
 });
 
 describe('InvoicesTab: selection', () => {
-  // Audit 2 S-01: «Download PDF (n)» counts only the issued ones; what has no PDF yet is said above the list,
+  // «Download PDF (n)» counts only the issued ones; what has no PDF yet is said above the list,
   // unpaid apart («still being issued» was false for an invoice that is not paid).
   it('«Download PDF (n)» counts and downloads the selected ones issued; the others are said above the list', async () => {
     const download = vi.spyOn(browser, 'download').mockResolvedValue();
@@ -497,7 +493,7 @@ describe('InvoicesTab: selection', () => {
     expect(toastInfo).not.toHaveBeenCalled();
   });
 
-  it('unpaid invoices have no PDF: they are not counted, and the note says why (audit 2 S-01)', async () => {
+  it('unpaid invoices have no PDF: they are not counted, and the note says why', async () => {
     const download = vi.spyOn(browser, 'download').mockResolvedValue();
     const s = await setup();
     await s.show([OPEN, unpaidRow('i10'), PAID]);
@@ -554,7 +550,7 @@ describe('InvoicesTab: selection', () => {
   });
 });
 
-describe('InvoicesTab: a file is saved only when it is the file (audit 2026-10-14, R-05)', () => {
+describe('InvoicesTab: a file is saved only when it is the file', () => {
   /** The browser's network for the files: one answer per path; what was asked, kept. */
   function serveFiles(answer: (url: string) => Response) {
     const asked: string[] = [];

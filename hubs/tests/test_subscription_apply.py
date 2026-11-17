@@ -1,16 +1,16 @@
-"""``hubs.subscription.apply``: what Stripe says of a business's plan, written where hubs keeps it (lot L2-B).
+"""``hubs.subscription.apply``: what Stripe says of a business's plan, written where hubs keeps it.
 
-billing reads the LIVE Stripe subscription (webhook, checkout, sweep) and hubs writes it: an app writes
-in another only through its operations (plan 2026-10-13 §3). Only the platform runs it, as the hub's
+billing reads the live Stripe subscription (webhook, checkout, sweep) and hubs writes it: an app writes
+in another only through its operations. Only the platform runs it, as the hub's
 other system operations (``hubs.business.mark_ready``). A field left out is left as it is, so billing can
 link a Stripe customer without restating the plan.
 
-What the Hub must learn (PLAN-SAAS §2.2: the effective plan, the commercial status and ``modules[]``)
+What the Hub must learn (the effective plan, the commercial status and ``modules[]``)
 bumps ``state_version`` and is pushed after the COMMIT; the rest (period, Stripe ids, why it is unpaid)
 only records the event, so the owner's list and page re-run. The standing moves the business:
 ``good`` brings a business with a payment pending or suspended back, ``grace`` shows «payment pending»
-(«Open» still works, round 17 §2.10), ``suspended`` stops it; a deleted business never moves. Why it is
-unpaid travels to the Businesses row (mockups README §6.18: «Pay» stays disabled while the card was
+(«Open» still works), ``suspended`` stops it; a deleted business never moves. Why it is unpaid travels to the
+Businesses row («Pay» stays disabled while the card was
 declined), and the invoice to pay only to the owner.
 """
 
@@ -22,9 +22,11 @@ from live.context import Scope, system_context
 from live.errors import InvalidPayload, NotFound, PermissionDenied
 from live.models import OutboxEvent
 
-from hubs import events, queries, services
+from hubs import events
+from hubs.services import deletion, hub_callbacks, subscription_sync
+from hubs.queries import businesses, hub_sync
 from hubs.models import Hub, HubMember, Subscription, SubscriptionItem
-from hubs.schemas import BusinessListIn, ModuleRightIn, SubscriptionApplyIn
+from hubs.schemas import BusinessListIn, ByIdIn, ModuleRightIn, SubscriptionApplyIn
 from hubs.tests.conftest import add_member, ctx_for
 
 pytestmark = pytest.mark.django_db
@@ -34,8 +36,8 @@ PERIOD_END = PERIOD_START + timedelta(days=30)
 
 
 def apply(hub, **fields):
-    return services.subscription_apply(
-        services.system_ctx_for(hub.id), SubscriptionApplyIn(hub_id=hub.id, **fields)
+    return subscription_sync.subscription_apply(
+        hub_callbacks.system_ctx_for(hub.id), SubscriptionApplyIn(hub_id=hub.id, **fields)
     )
 
 
@@ -75,7 +77,7 @@ def ready(hub, status=Hub.Status.ACTIVE):
 
 def test_only_the_platform_applies_what_stripe_says(business, owner):
     with pytest.raises(PermissionDenied) as refused:
-        services.subscription_apply(
+        subscription_sync.subscription_apply(
             ctx_for(owner), SubscriptionApplyIn(hub_id=business.id, plan="starter")
         )
 
@@ -86,7 +88,7 @@ def test_an_unknown_business_is_not_found(plans):
     import uuid
 
     with pytest.raises(NotFound):
-        services.subscription_apply(
+        subscription_sync.subscription_apply(
             system_context(Scope("user", "system")),
             SubscriptionApplyIn(hub_id=uuid.uuid7(), plan="starter"),
         )
@@ -123,9 +125,9 @@ def test_a_paid_plan_is_written_with_its_stripe_ids_and_period(business):
     )
 
 
-@pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+@pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one by default)
 def test_paying_ends_the_free_trial_of_the_sign_up(business):
-    """Free is born with Starter's trial (ADR-0474); a paid plan carries its own trial in Stripe, so the
+    """Free is born with Starter's trial when staff give it one; a paid plan carries its own trial in Stripe, so the
     trial plan of the sign-up no longer decides the rights (it would hide a paid Standard behind Starter)."""
     assert subscription_of(business).trial_plan is not None
 
@@ -258,7 +260,7 @@ def test_the_bought_modules_are_the_ones_stripe_bills(
 ):
     from apps.models import Module
 
-    # Starter includes the basic tier (hubs.services.sync_plan_modules, test_plan_modules.py).
+    # Starter includes the basic tier (hubs.services.subscription_sync.sync_plan_modules, test_plan_modules.py).
     Module.objects.create(slug="loyalty", tier=Module.Tier.BASIC)
     business = ready(business)
     subscription = subscription_of(business)
@@ -297,7 +299,7 @@ def test_a_cancelled_module_lasts_until_its_end_and_then_leaves_the_snapshot(bus
         modules=[ModuleRightIn(module_slug="inventory", valid_until=until)],
     )
 
-    assert queries.hub_snapshot(business.id)["modules"] == [
+    assert hub_sync.hub_snapshot(business.id)["modules"] == [
         {"id": "inventory", "source": "purchase", "valid_until": until.isoformat()}
     ]
 
@@ -311,7 +313,7 @@ def test_a_cancelled_module_lasts_until_its_end_and_then_leaves_the_snapshot(bus
         ],
     )
 
-    assert queries.hub_snapshot(business.id)["modules"] == []
+    assert hub_sync.hub_snapshot(business.id)["modules"] == []
 
 
 def test_the_end_of_a_subscription_takes_the_business_back_to_free(business):
@@ -335,8 +337,8 @@ def test_the_end_of_a_subscription_takes_the_business_back_to_free(business):
 
     subscription = subscription_of(business)
     assert (subscription.plan.slug, subscription.stripe_subscription_id) == ("free", "")
-    assert queries.hub_snapshot(business.id)["plan"]["slug"] == "free"
-    assert queries.hub_snapshot(business.id)["modules"] == []
+    assert hub_sync.hub_snapshot(business.id)["plan"]["slug"] == "free"
+    assert hub_sync.hub_snapshot(business.id)["modules"] == []
 
 
 # --- The standing ------------------------------------------------------------------------------------
@@ -424,7 +426,7 @@ def unpaid(business, reason="card_declined"):
 
 
 def row_of(user, business):
-    rows = queries.business_list(ctx_for(user), BusinessListIn()).model_dump()["rows"]
+    rows = businesses.business_list(ctx_for(user), BusinessListIn()).model_dump()["rows"]
     return next(row for row in rows if row["id"] == business.id)
 
 
@@ -488,8 +490,8 @@ def test_the_page_of_the_business_says_it_too(business, owner):
     business = ready(business)
     since = unpaid(business, "card_changed")
 
-    detail = queries.business_get(
-        ctx_for(owner), queries.ByIdIn(id=business.id)
+    detail = businesses.business_get(
+        ctx_for(owner), ByIdIn(id=business.id)
     ).model_dump()
 
     assert (detail["unpaid_reason"], detail["unpaid_since"], detail["pay_url"]) == (
@@ -500,7 +502,7 @@ def test_the_page_of_the_business_says_it_too(business, owner):
 
 
 def test_the_invoice_to_pay_goes_to_the_payer_not_to_the_role(business, owner, make_user):
-    """Review of L2-B: after a transfer the new owner is not the payer; the invoice (and its page, with the
+    """After a transfer the new owner is not the payer; the invoice (and its page, with the
     payer's card) stays with whoever pays."""
     business = ready(business)
     unpaid(business)
@@ -514,15 +516,15 @@ def test_the_invoice_to_pay_goes_to_the_payer_not_to_the_role(business, owner, m
 
 
 def test_deleting_a_paying_business_asks_for_its_stripe_subscription_to_end(business, owner):
-    """Review of L2-B: the ask is durable (billing's sweep ends it), so recovering the business before the
+    """The ask is durable (billing's sweep ends it), so recovering the business before the
     sweep does not leave it charging while the panel says Free."""
     from hubs.schemas import BusinessDeleteIn, ByIdIn
 
     apply(business, **paid_starter())
-    services.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
+    deletion.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
     asked = subscription_of(business).cancel_requested_at
 
-    services.business_restore(ctx_for(owner), ByIdIn(id=business.id))
+    deletion.business_restore(ctx_for(owner), ByIdIn(id=business.id))
 
     assert asked is not None
     assert subscription_of(business).cancel_requested_at == asked
@@ -532,7 +534,7 @@ def test_the_end_of_the_stripe_subscription_clears_the_ask(business, owner):
     from hubs.schemas import BusinessDeleteIn
 
     apply(business, **paid_starter())
-    services.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
+    deletion.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
 
     apply(business, stripe_subscription_id="", cancel_requested_at=None)
 
@@ -542,6 +544,6 @@ def test_the_end_of_the_stripe_subscription_clears_the_ask(business, owner):
 def test_deleting_a_free_business_asks_nothing_of_stripe(business, owner):
     from hubs.schemas import BusinessDeleteIn
 
-    services.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
+    deletion.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
 
     assert subscription_of(business).cancel_requested_at is None

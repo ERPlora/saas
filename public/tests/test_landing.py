@@ -1,36 +1,21 @@
 """The home ``/``, the contact page ``/contact/`` and its form ``/contact/submit/`` (public/landing.py).
 
-Port of ERPlora/saas (origin/develop c5ca8ca): ``apps/public/landing/tests/test_views.py`` (the home,
-the contact and the static pages; its ``set_language`` cases are test_language.py and its
-``/download/`` cases test_appdist.py), ``test_home_plan_trial.py`` (5), ``test_comparison_section.py``
-(3), ``test_ai_data_residency.py`` (3), the home cases of ``test_structured_data.py`` (8), the home
-case of ``apps/public/pricing/tests/test_internal_plans_are_never_public.py``, the home and contact
-cases of ``tests/unit/test_public_pages.py`` (the company, product, resources, help and legal ones
-live with their pages), the landing half of ``tests/unit/billing/test_net_price_display.py`` and
-the home/contact contracts of ``apps/public/landing/tests/test_ui_stack_contract.py``.
-What changed, and why:
-
-* ``/`` is the landing (plan §3.c): it no longer redirects to the launcher. The project-wide URL name
-  ``home`` still reverses to ``/`` (allauth's templates and the error pages use it);
-* the demo is back (round 2026-10-17, PLAN-SAAS §3.5): «Try the demo» in the hero and the closing band,
-  as in the old landing, leads to ``/demo/`` (public/demo.py); the hero has three doors, sign-up, the
-  demo and downloads;
-* the modules are apps (decision 19): the six featured cards and the twelve chips are the first
-  ``listed`` apps by section and name (``apps.app.list``, spec §8.1; ``is_featured`` and downloads do
-  not exist any more), counted as one catalogue; without any listed app the apps blocks are
-  omitted (spec §5.3). The chips link to the store filtered by section (``/apps/?category=``);
-* the ecosystem section is our own catalogue, there is no marketplace and no third party, and every
-  plan includes all the apps (ronda 2026-10-24b, PLAN §32; before, decision 17 split them into free
-  and premium): the home sells no tier of apps, the paid plans add devices, capacity and quotas;
-* the plans come from ``hubs.plan.list`` (plan §3.m): the cards end with the plan's real trial and
-  carry the ex-VAT note instead of the «with 21 % Spanish VAT» line (WORKFLOW F55; the landing was
-  frozen in ``pm/LOCKED.md``, the xfail that waited for it is a plain test now);
-* the plan cards are ``public/components/pricing_card.html`` and the contact page uses the ``ep-*``
-  classes (PLAN §16.11);
-* the contact mail is rendered from ``public/templates/public/email/`` and sent branded, as text and as HTML
-  (``base.emails``, ACCOUNTS-F46), to ``SUPPORT_EMAIL`` (plan §3.o); the limit per address reads the address the load balancer saw
-  (the last hop of ``X-Forwarded-For``), never the balancer's own;
-* no page names Hetzner as the host any more (Ioan, 2026-10-13: AWS; Ireland region, 2026-10-14).
+* ``/`` is the landing; the project-wide URL name ``home`` reverses to ``/`` (allauth's templates and the error pages
+  use it).
+* «Try the demo» in the hero and the closing band leads to ``/demo/`` (public/demo.py); the hero has three doors:
+  sign-up, the demo and downloads.
+* The six featured cards and the twelve chips are the first ``listed`` apps by section and name (``apps.app.list``),
+  counted as one catalogue; without any listed app the apps blocks are omitted. The chips link to the store filtered
+  by section (``/apps/?category=``).
+* The ecosystem section is our own catalogue, with no marketplace and no third party, and every plan includes all the
+  apps: the home sells no tier of apps, the paid plans add devices, capacity and quotas.
+* The plans come from ``hubs.plan.list``: the cards end with the plan's real trial and carry the ex-VAT note, never a
+  «with 21 % Spanish VAT» line.
+* The plan cards are ``public/components/pricing_card.html`` and the contact page uses the ``ep-*`` classes.
+* The contact mail is rendered from ``public/templates/public/email/`` and sent branded, as text and as HTML
+  (``base.emails``), to ``SUPPORT_EMAIL``; the limit per address reads the address the load balancer saw (the last
+  hop of ``X-Forwarded-For``), never the balancer's own.
+* No page names Hetzner as the host: the servers are on AWS, Ireland region.
 """
 
 from __future__ import annotations
@@ -167,7 +152,7 @@ def test_the_pages_only_answer_safe_methods(client, path):
     assert client.post(path).status_code == 405
 
 
-# --- The hero, the navbar and the closing band: their doors, the demo's included (round 2026-10-17) --
+# --- The hero, the navbar and the closing band: their doors, the demo's included ---------------------
 
 
 def test_the_hero_keeps_the_sign_up_and_the_downloads(client):
@@ -179,7 +164,7 @@ def test_the_hero_keeps_the_sign_up_and_the_downloads(client):
 
 
 def test_the_home_offers_the_demo_in_the_hero_and_the_closing_band(client):
-    """As the old landing: the hero's third door and the closing band's second, both to ``/demo/``."""
+    """The hero's third door and the closing band's second, both to ``/demo/``."""
     html = html_of(client)
     hero = html.split("</section>")[0]
     closing = html.split("Start today")[-1]
@@ -200,8 +185,8 @@ MOCKUP_URL = re.compile(r'<span class="url">([^<]*)</span>')
 
 @pytest.mark.parametrize("language", ["en", "es"])
 def test_the_browser_mockups_show_a_business_address_not_the_staff_host(client, language):
-    """The hero and the bento dashboard paint a made-up hub address (Ioan, 2026-11-05):
-    ``hub.erplora.com`` read as a real host, so they show ``my-erp.erplora.com``."""
+    """The hero and the bento dashboard paint a made-up hub address, ``my-erp.erplora.com``: ``hub.erplora.com``
+    would read as a real host."""
     html = html_of(client, language=language)
     addresses = MOCKUP_URL.findall(html)
 
@@ -220,9 +205,9 @@ def test_a_plan_card_of_the_home_starts_at_the_sign_in(no_plans, client):
 
 
 def test_a_paid_plan_card_of_the_home_says_get_started_not_start_free(no_plans, client):
-    """PUBLIC-F11: every business starts on Free and is upgraded later, so a paid card does not promise a
-    free start of ITS price (SAAS_PUBLIC-F78): it says «Get started», as on /pricing/; the free one keeps
-    «Start free». Both lead to the sign-in, which also signs up."""
+    """Every business starts on Free and is upgraded later, so a paid card does not promise a free start of ITS
+    price: it says «Get started», as on /pricing/; the free one keeps «Start free». Both lead to the sign-in, which
+    also signs up."""
     make_plan("free", price_monthly=Decimal("0"))
     make_plan("starter")
 
@@ -234,13 +219,13 @@ def test_a_paid_plan_card_of_the_home_says_get_started_not_start_free(no_plans, 
     assert free.count('href="/launch"') == starter.count('href="/launch"') == 1
 
 
-# --- The apps blocks (antes _modules.html, _build_to_fit.html) --------------------------------
+# --- The apps blocks --------------------------------------------------------------------------
 
 
 @pytest.fixture
 def catalogue():
-    """Fourteen listed apps over three sections, two flagged ``premium`` (reserved, unused today:
-    PLAN §32), and one that is not listed."""
+    """Fourteen listed apps over three sections, two flagged ``premium`` (reserved, unused
+    today), and one that is not listed."""
     apps = [
         make_app(f"sales_{n:02d}", category="sales", name_en=f"Sales {n:02d}")
         for n in range(1, 6)
@@ -290,7 +275,7 @@ def test_the_twelve_chips_link_to_the_store_by_section(client, catalogue):
 
 
 def test_the_count_is_every_listed_app_without_a_tier(client, catalogue):
-    """Every plan includes all the apps (PLAN §32): the home counts them, never free apart from premium."""
+    """Every plan includes all the apps: the home counts them, never free apart from premium."""
     context = page(client).context
 
     assert context["total_apps"] == 14
@@ -309,7 +294,7 @@ def test_the_apps_section_points_to_the_store(client, catalogue):
 
 
 def test_without_listed_apps_the_apps_blocks_are_omitted(client):
-    """Spec §5.3: a page that reads apps omits its apps block, never «0 apps»."""
+    """A page that reads apps omits its apps block, never «0 apps»."""
     make_app("hidden", listed=False)
     html = html_of(client)
 
@@ -359,15 +344,15 @@ def test_the_ecosystem_is_our_catalogue_not_a_marketplace(client, catalogue):
     ],
 )
 def test_the_ecosystem_puts_every_app_on_every_plan(client, catalogue, language, sentences):
-    """Ronda 2026-10-24b (PLAN §32): the two cells were «Free forever» and «Premium apps», with real
-    premium names; now every app comes with every plan and the paid plans add room, not apps."""
+    """Every app comes with every plan and the paid plans add room, not apps: no «Free forever» cell against a
+    «Premium apps» one."""
     ecosystem = section(html_of(client, language=language), "ecosystem")
 
     assert [sentence for sentence in sentences if sentence not in ecosystem] == []
     assert "People 01" not in ecosystem, "no app is quoted as the example of a tier"
 
 
-# --- The plans (test_views.py, test_internal_plans_are_never_public.py) -----------------------
+# --- The plans --------------------------------------------------------------------------------
 
 
 def test_the_home_shows_the_plans_a_visitor_can_sign_up_for(no_plans, client):
@@ -410,7 +395,7 @@ def test_without_plans_on_sale_the_plans_section_is_omitted(no_plans, client):
     assert "vs. ERPlora from" not in html
 
 
-# --- test_home_plan_trial.py ------------------------------------------------------------------
+# --- The plan cards: their trial and the apps they turn on ------------------------------------
 
 
 def test_the_home_card_ends_with_the_trial_the_plan_grants(no_plans, client):
@@ -448,7 +433,7 @@ def test_a_plan_without_trial_shows_no_trial_line_on_the_home(no_plans, client):
 
 
 def test_the_home_card_says_the_apps_the_plan_turns_on_at_once_after_what_it_includes(no_plans, client):
-    """The same card as /pricing/ (public.pricing.plan_card): the cap the Hub applies (hub#256), from the row."""
+    """The same card as /pricing/ (public.pricing.plan_card): the cap the Hub applies, from the row."""
     make_plan("starter", features_en=["All apps included", "Unlimited users"], max_apps=40)
 
     assert card_items(html_of(client), "Starter") == [
@@ -470,7 +455,7 @@ def test_painting_the_trial_never_writes_it_into_the_plan(no_plans, client):
 
 
 def test_the_contact_section_states_the_real_trial_never_a_typed_one(no_plans, client):
-    """The old section said «a 15-day free trial» by hand (the saas#2414 class of bug)."""
+    """The trial comes from the plan, never typed by hand (such as «a 15-day free trial»)."""
     make_plan("starter", trial_days=30)
 
     contact = section(html_of(client), "contacto")
@@ -479,7 +464,7 @@ def test_the_contact_section_states_the_real_trial_never_a_typed_one(no_plans, c
     assert "15-day" not in contact
 
 
-# --- The ex-VAT note (test_net_price_display.py, the landing half; WORKFLOW F55) --------------
+# --- The ex-VAT note --------------------------------------------------------------------------
 
 
 def test_the_home_shows_the_net_price_with_the_ex_vat_note_and_no_vat_figure(client):
@@ -494,7 +479,7 @@ def test_the_home_shows_the_net_price_with_the_ex_vat_note_and_no_vat_figure(cli
     assert f'href="{reverse("public:terms")}"' in plans
 
 
-# --- test_comparison_section.py ---------------------------------------------------------------
+# --- The comparison section -------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -511,7 +496,7 @@ def four_apps_one_flagged_premium():
 def test_the_comparison_cell_counts_every_app_on_every_plan(
     client, four_apps_one_flagged_premium, language, cell
 ):
-    """Every plan includes all the apps (PLAN §32): the cell said «3 free + 1 premium»."""
+    """Every plan includes all the apps: the cell counts them, never «3 free + 1 premium»."""
     comparison = section(html_of(client, language=language), "comparativa")
 
     assert f'<td data-title="ERPlora" class="text-primary font-semibold">{cell}</td>' in comparison
@@ -534,7 +519,6 @@ def test_the_comparison_cell_counts_every_app_on_every_plan(
     ],
 )
 def test_the_comparison_note_says_what_the_paid_plans_add(client, language, sentence):
-    """It said «paid tiers add capacity, multi-device and the premium apps»."""
     comparison = section(html_of(client, language=language), "comparativa")
 
     assert sentence in comparison
@@ -556,14 +540,14 @@ def test_the_comparison_note_says_what_the_paid_plans_add(client, language, sent
     ],
 )
 def test_the_plans_section_says_every_plan_includes_all_the_apps(client, language, sentence):
-    """The same promise as the head of /pricing/ (saas#119); it said «all the free apps, and the
-    paid plans include the premium apps too»."""
+    """The same promise as the head of /pricing/, never «all the free apps, and the paid plans include the premium
+    apps too»."""
     plans = section(html_of(client, language=language), "planes")
 
     assert f'<p class="ep-section-sub">{sentence}</p>' in plans
 
 
-# --- test_ai_data_residency.py ----------------------------------------------------------------
+# --- Where the assistant's data is processed --------------------------------------------------
 
 
 def test_the_landing_states_the_ai_runs_on_european_servers(client):
@@ -595,7 +579,7 @@ def test_the_landing_says_the_assistant_data_stays_in_the_eu(client):
 )
 def test_the_landing_puts_in_the_eu_the_language_model_not_the_whole_assistant(client, language, claim, whole_assistant):
     """Frankfurt serves the language model; a dictation is transcribed by the voice provider, which may process it
-    outside the EEA (privacy policy §5 and §6, FIX-SAAS-PRIVACY-POLICY-OMITS-DICTATION-AUDIO-TO-TRANSCRIPTION)."""
+    outside the EEA (sections 5 and 6 of the privacy policy)."""
     html = html_of(client, language=language)
 
     assert claim in html
@@ -607,7 +591,7 @@ def test_the_landing_links_the_residency_claim_to_the_privacy_policy(client):
 
 
 def test_no_page_of_this_lot_names_hetzner_as_the_host(client):
-    """Ioan, 2026-10-13: the servers are on AWS (Ireland region); the AI stays in Frankfurt."""
+    """The servers are on AWS (Ireland region); the AI stays in Frankfurt."""
     for path in (HOME, CONTACT):
         for language in ("en", "es"):
             html = html_of(client, path, language)
@@ -615,7 +599,7 @@ def test_no_page_of_this_lot_names_hetzner_as_the_host(client):
             assert "Falkenstein" not in html, (path, language)
 
 
-# --- JSON-LD of the home (test_structured_data.py) --------------------------------------------
+# --- JSON-LD of the home ----------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -685,7 +669,7 @@ def test_the_contact_page_has_the_form_posting_to_the_submit_route(client):
 
 
 def test_the_contact_page_gives_the_other_ways_to_reach_us(client):
-    """PUBLIC-G41: the support address of the footer (no more «info@»), and the support chat."""
+    """The support address of the footer (never «info@»), and the support chat."""
     html = html_of(client, CONTACT)
 
     assert f"mailto:{settings.SUPPORT_EMAIL}" in html
@@ -714,7 +698,7 @@ def hero(html: str) -> str:
 def test_the_hero_promises_what_we_do_not_an_sla_or_round_the_clock_support(
     client, language, availability, reply
 ):
-    """L8: no «Uptime 99.95%» (there is no SLA) and no «Support 24/7»: the form's 4 business hours."""
+    """No «Uptime 99.95%» (there is no SLA) and no «Support 24/7»: the form's 4 business hours."""
     stats = hero(html_of(client, language=language))
 
     assert availability in stats
@@ -738,7 +722,7 @@ def test_the_platform_bento_says_high_availability_on_aws(client, language, cell
     ],
 )
 def test_the_contact_page_promises_the_reply_time_of_the_form(client, language, heading, reply):
-    """L8: «Available 24/7/365» was not true; the form already promised 4 business hours."""
+    """No «Available 24/7/365»: the reply time is the form's 4 business hours."""
     html = html_of(client, CONTACT, language=language)
     other_ways = html[html.index('<h2 class="font-display') :]
 
@@ -753,7 +737,7 @@ def test_the_home_carries_the_contact_form_too(client):
     assert '<input type="hidden" name="next" value="/">' in contact
 
 
-# --- The contact form: /contact/submit/ (test_views.py, test_public_pages.py) -----------------
+# --- The contact form: /contact/submit/ -------------------------------------------------------
 
 VALID = {
     "first_name": "John",
@@ -899,7 +883,7 @@ def test_the_messages_are_translated(client):
 
 @override_settings(RATELIMIT_ENABLE=True, CONTACT_FORM_RATELIMIT="2/h")
 def test_the_form_is_limited_per_address(client):
-    """reCAPTCHA is gone (ADR-0154): the form is protected by a limit per address."""
+    """The form is protected by a limit per address."""
     for _ in range(2):
         assert submit(client).status_code == 302
     assert len(mail.outbox) == 2
@@ -961,7 +945,7 @@ def test_without_a_real_address_the_visitor_shares_the_unknown_bucket(rf, addres
     assert landing.visitor_address(None, request) == landing.UNKNOWN_ADDRESS
 
 
-# --- Smoke of the pages of this lot (tests/unit/test_public_pages.py) -------------------------
+# --- Smoke of the pages of this file ----------------------------------------------------------
 
 
 @pytest.mark.parametrize("path", [HOME, CONTACT])
@@ -1032,12 +1016,10 @@ def test_a_page_that_does_not_exist_is_a_404(client, path):
     ],
 )
 def test_every_public_page_answers(client, path):
-    """The static pages of the old ``TestStaticPages`` (skipped there for importing views that had
-    moved), rewritten as it asked: the live URL answers 200."""
     assert client.get(path).status_code == 200
 
 
-# --- The shared patterns (test_ui_stack_contract.py, home and contact) ------------------------
+# --- The shared UI patterns of the home and the contact page ----------------------------------
 
 
 def landing_source(*parts: str) -> str:
@@ -1056,7 +1038,7 @@ def test_the_contact_form_uses_ionic_validation_without_native_browser_feedback(
         in form
     )
     assert '<script nonce="{{ csp_nonce }}">' in form
-    # mode="md": an outline field does not paint in ios mode (working-rules §2).
+    # mode="md": an outline field does not paint in ios mode.
     assert form.count('fill="outline"') == form.count('mode="md"') == 5
 
 
@@ -1159,7 +1141,7 @@ def test_the_feature_card_paints_an_inline_icon_svg():
     assert '<span class="ep-feature-card__icon"><svg' in html
 
 
-# --- The sitemap and llms.txt (origin's StaticPagesSitemap and llms_txt) ----------------------
+# --- The sitemap and llms.txt -----------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -1196,14 +1178,13 @@ def test_llms_txt_offers_the_terms_and_the_contact_page_as_optional_reading(clie
 
 
 def test_the_home_points_to_the_app_page(client):
-    """test_installable_app_page.py asked the home; test_appdist.py asked the footer until L7."""
     app_section = section(html_of(client), "app")
 
     assert f'href="{reverse("public:app")}"' in app_section
     assert "/bridge/" not in app_section
 
 
-# --- PUBLIC-G39: the message reaches support with the visitor to answer, and nothing typed is lost ---
+# --- The message reaches support with the visitor to answer, and nothing typed is lost ---
 
 
 def form_of(html: str) -> str:
@@ -1261,7 +1242,7 @@ def test_what_was_typed_is_escaped_when_it_comes_back(client):
     assert "&quot;&gt;&lt;script&gt;" in form
 
 
-# --- PUBLIC-G40: arriving from another page keeps what the visitor came for ----------------------------
+# --- Arriving from another page keeps what the visitor came for ----------------------------
 
 
 def test_the_collaborate_button_opens_the_form_on_its_topic(client):
@@ -1295,7 +1276,7 @@ def test_an_unknown_topic_is_ignored(client, subject):
     assert mail.outbox[0].subject == "Contact Form: John Doe"
 
 
-# --- PUBLIC-G41: one support address, one chat and one reply time, from one place ------------------------
+# --- One support address, one chat and one reply time, from one place ------------------------
 
 
 def test_the_contact_page_email_is_the_support_address(client, settings):
@@ -1335,10 +1316,10 @@ def test_the_chat_is_written_once(client, monkeypatch):
         assert "34643759040" not in html
 
 
-# --- reCAPTCHA on the contact form (Ioan, 2026-10-22: every public form; live.recaptcha) ------------------------
-# ADR-0154 had retired it for the limit per address alone; both stand now: the limit first (a throttled message never
-# costs an assessment), then the fields, then Google's verdict on `recaptcha_token` (made for `contact` by
-# frontend/recaptcha.ts), right before the mail. Google is played by `FakeGoogleRecaptcha` (conftest.py).
+# --- reCAPTCHA on the contact form (live.recaptcha) -------------------------------------------------------------
+# Both protections stand, in this order: the limit per address first (a throttled message never costs an assessment),
+# then the fields, then Google's verdict on `recaptcha_token` (made for `contact` by frontend/recaptcha.ts), right
+# before the mail. Google is played by `FakeGoogleRecaptcha` (conftest.py).
 
 UNVERIFIED = "We could not check that you are a person. Try again."
 

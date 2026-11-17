@@ -10,18 +10,25 @@ here="$(cd "$(dirname "$0")" && pwd)"
 failures=0
 
 # A task definition as `describe-task-definition --include TAGS` returns it, with the roles Terraform
-# gives it (aws-next modules/ecs-service: <family>-task and <family>-execution) and the Environment
+# gives it (ERPlora/aws modules/ecs-service: <family>-task and <family>-execution) and the Environment
 # tag of its family's environment (erplora-<environment>-<name>).
+# A container of the saas image with no `environment` of its own gets the four policies Terraform gives every saas
+# task (ERPlora/aws stacks/prod/apps.tf).
+POLICIES='["CACHE_KEY_PREFIX", "STRIPE_EXPECTED_MODE", "PUBLIC_INDEXING_ENABLED", "AEAT_PRODUCTION_ENABLED"]'
 # task_definition <family> <containers JSON> [<Environment tag; empty = none> [<role prefix>]]
 task_definition() {
   local environment="${1#erplora-}"
   environment="${environment%%-*}"
   jq -n --arg family "$1" --argjson containers "$2" --arg environment "${3-$environment}" \
-    --arg role "arn:aws:iam::123456789012:role/${4:-$1}" '{
+    --arg role "arn:aws:iam::123456789012:role/${4:-$1}" --argjson policies "$POLICIES" '{
     taskDefinition: {
       family: $family, taskDefinitionArn: "arn:td/\($family):1", revision: 1, status: "ACTIVE",
       requiresAttributes: [], compatibilities: ["FARGATE"], registeredAt: "t", registeredBy: "u",
-      taskRoleArn: "\($role)-task", executionRoleArn: "\($role)-execution", containerDefinitions: $containers
+      taskRoleArn: "\($role)-task", executionRoleArn: "\($role)-execution",
+      containerDefinitions: ($containers | map(
+        if has("environment") or ((.image // "") | test("/erplora/saas(-pre)?:") | not) then .
+        else . + {environment: ($policies | map({name: ., value: "x"}))}
+        end))
     },
     tags: ([{key: "Project", value: "erplora"}, {key: "ManagedBy", value: "terraform"}]
       + if $environment == "" then [] else [{key: "Environment", value: $environment}] end)
@@ -53,7 +60,7 @@ setup() {
     task_definition "erplora-prod-$family" "[{\"name\": \"$family\", \"image\": \"reg.example/erplora/hub:bootstrap\"}]" \
       > "$FIXTURES/erplora-prod-$family.json"
   done
-  # pre (plan 2026-10-14-entorno-pre): its own cluster (erplora-pre), its own families on its own
+  # pre: its own cluster (erplora-pre), its own families on its own
   # ECR repository (erplora/saas-pre) and no saas-cron. The containers keep the short names.
   task_definition erplora-pre-saas '[
     {"name": "saas", "image": "reg.example/erplora/saas-pre:bootstrap"},
@@ -257,13 +264,13 @@ check "the worker service is neither queried nor updated" '! grep -Eq -- "--serv
 check "nothing of the hub is touched" \
   '! grep -Eq -- "erplora-prod-(hub|worker|db-bootstrap)|/erplora/prod/hub/|--services? hub( |$)" "$CALLS_LOG"'
 
-# --- the saas-worker service (saas#305) ----------------------------------------
+# --- the saas-worker service ---------------------------------------------------
 # ERPlora/aws creates it once the image with run_worker is out: until its family exists the deploy
 # goes on without it and says so; from then on it is deployed with the saas service.
 setup
 run_deploy && status=0 || status=$?
 check "saas-worker: before it exists, the deploy succeeds without it and says so" \
-  '[ "$status" -eq 0 ] && grep -q "::warning::erplora-prod-saas-worker does not exist yet (aws#59 not applied): skipped" "$work/out.log"'
+  '[ "$status" -eq 0 ] && grep -q "::warning::erplora-prod-saas-worker does not exist yet: skipped" "$work/out.log"'
 check "saas-worker: before it exists, it is only looked for, by its family" \
   'grep -q "^ecs list-task-definitions --family-prefix erplora-prod-saas-worker --status ACTIVE" "$CALLS_LOG" &&
    ! grep -Eq -- "--task-definition erplora-prod-saas-worker|--services? saas-worker" "$CALLS_LOG"'
@@ -319,7 +326,7 @@ check "pre: saas-worker-pre is deployed on pre's image and woken with saas-pre" 
 setup
 run_deploy ENVIRONMENT=pre && status=0 || status=$?
 check "pre: before saas-worker-pre exists, the deploy succeeds without it and says so" \
-  '[ "$status" -eq 0 ] && grep -q "::warning::erplora-pre-saas-worker does not exist yet (aws#59 not applied): skipped" "$work/out.log"'
+  '[ "$status" -eq 0 ] && grep -q "::warning::erplora-pre-saas-worker does not exist yet: skipped" "$work/out.log"'
 
 # --- polling the migration ----------------------------------------------------
 setup
@@ -384,6 +391,39 @@ run_deploy && status=0 || status=$?
 check "a family on the hub image fails before the migration" \
   '[ "$status" -ne 0 ] && ! grep -Eq "run-task|update-service|put-parameter" "$CALLS_LOG" && grep -q "::error::erplora-prod-saas-migrate " "$work/out.log"'
 
+# --- a revision still without the policies of the saas image --------------------
+# Outside DEBUG the saas refuses to start without a cache prefix or a Stripe mode (config/settings/core.py):
+# a revision Terraform has not given them yet would register saas-cron's, the one the
+# Scheduler runs, and only then fail at the migration. Without either boolean it starts, and quietly: no
+# AEAT_PRODUCTION_ENABLED in prod refuses every hub's records for the AEAT's production (409 environment_not_allowed),
+# no PUBLIC_INDEXING_ENABLED takes erplora.com out of the search engines. Each one is refused before anything is
+# registered.
+for policy in CACHE_KEY_PREFIX STRIPE_EXPECTED_MODE PUBLIC_INDEXING_ENABLED AEAT_PRODUCTION_ENABLED; do
+  setup
+  other="$(jq -cn --arg policy "$policy" --argjson policies "$POLICIES" '$policies - [$policy] | map({name: ., value: "x"})')"
+  task_definition erplora-prod-saas-cron \
+    "[{\"name\": \"saas-cron\", \"image\": \"reg.example/erplora/saas:bootstrap\", \"environment\": $other}]" \
+    > "$FIXTURES/erplora-prod-saas-cron.json"
+  run_deploy && status=0 || status=$?
+  check "a revision without $policy fails before anything is registered" \
+    '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && ! grep -Eq "register-task-definition|run-task|update-service|put-parameter" "$CALLS_LOG"'
+  check "its error names the family and $policy" 'grep -q "::error::erplora-prod-saas-cron .*$policy" "$work/out.log"'
+done
+# One given through `secrets` (Secrets Manager) is given too.
+setup
+task_definition erplora-prod-saas-cron '[{"name": "saas-cron", "image": "reg.example/erplora/saas:bootstrap",
+  "environment": [{"name": "CACHE_KEY_PREFIX", "value": "saas"}, {"name": "PUBLIC_INDEXING_ENABLED", "value": "true"},
+    {"name": "AEAT_PRODUCTION_ENABLED", "value": "true"}],
+  "secrets": [{"name": "STRIPE_EXPECTED_MODE", "valueFrom": "arn:secret:x"}]}]' > "$FIXTURES/erplora-prod-saas-cron.json"
+run_deploy && status=0 || status=$?
+check "a policy given as a secret counts as given" '[ "$status" -eq 0 ]'
+setup
+task_definition erplora-pre-saas '[{"name": "saas", "image": "reg.example/erplora/saas-pre:bootstrap", "environment": []}]' \
+  > "$FIXTURES/erplora-pre-saas.json"
+run_deploy ENVIRONMENT=pre && status=0 || status=$?
+check "pre: a revision without the policies fails before anything is registered, naming the four" \
+  '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && grep -q "::error::erplora-pre-saas has no AEAT_PRODUCTION_ENABLED CACHE_KEY_PREFIX PUBLIC_INDEXING_ENABLED STRIPE_EXPECTED_MODE " "$work/out.log"'
+
 # --- the rollout after services-stable ----------------------------------------
 # services-stable can return while the PRIMARY deployment is still IN_PROGRESS: ECS marks it
 # COMPLETED once the old tasks have drained from the ALB, seconds to a minute later.
@@ -444,7 +484,7 @@ run_deploy ROLLOUT_TIMEOUT_SECONDS=soon && status=0 || status=$?
 check "a ROLLOUT_TIMEOUT_SECONDS that is not a number fails before any aws call" \
   '[ "$status" -ne 0 ] && [ ! -s "$CALLS_LOG" ] && grep -q ROLLOUT_TIMEOUT_SECONDS "$work/out.log"'
 
-# --- pre (plan 2026-10-14-entorno-pre) ---------------------------------------------
+# --- pre ---------------------------------------------------------------------------
 setup
 run_deploy ENVIRONMENT=pre && status=0 || status=$?
 check "pre: the deploy succeeds" '[ "$status" -eq 0 ]'
@@ -484,7 +524,7 @@ check "pre: a failed migration names pre's log group and changes nothing" \
 # --- the guard: only revisions of the deploy's own environment are copied -----------------
 # The pre deploy role can register a revision in any family (ecs:RegisterTaskDefinition takes no
 # resource), so a base revision without the Environment tag of this run, or with another
-# environment's roles, is refused before anything is registered (plan 2026-10-14-entorno-pre, A3).
+# environment's roles, is refused before anything is registered.
 setup
 task_definition erplora-prod-saas-cron '[{"name": "saas-cron", "image": "reg.example/erplora/saas:bootstrap"}]' "" \
   > "$FIXTURES/erplora-prod-saas-cron.json"

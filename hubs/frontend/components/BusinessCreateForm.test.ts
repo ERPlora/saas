@@ -1,4 +1,4 @@
-// The sign-up of a business (round 17 §2.3; mockups `launch.html` «first», `businesses.html` «create»):
+// The sign-up of a business:
 // name, country and an optional business type, the address the name proposes as it is typed
 // (`hubs.address.propose`), and `hubs.business.create`. Shared by the launcher, the empty Businesses
 // and the «Create business» dialog: in the dialog the dialog's own button submits (`submit()`).
@@ -76,7 +76,7 @@ async function setup(options: { props?: Record<string, unknown>; api?: Handler; 
 const props = ionProps;
 
 describe('BusinessCreateForm: the fields', () => {
-  // flow: HUBS-F01 (HUBS-G65): the country comes suggested by the browser's languages.
+  // flow: HUBS-F01: the country comes suggested by the browser's languages.
   it("picks the country the browser's languages suggest", async () => {
     vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['fr-BE', 'fr']);
     try {
@@ -115,7 +115,7 @@ describe('BusinessCreateForm: the fields', () => {
     expect(s.get('create-type-hint').text()).toBe("We'll suggest a template on your business's Home; the type helps us choose it. You can leave it blank.");
   });
 
-  // A business is born with every app off (PLAN §33): the type only orders the templates its Home proposes.
+  // A business is born with every app off: the type only orders the templates its Home proposes.
   it.each([
     ['en', "We'll suggest a template on your business's Home; the type helps us choose it. You can leave it blank."],
     ['es', 'Te propondremos una plantilla en el Inicio de tu negocio; el tipo nos ayuda a elegirla. Puedes dejarlo en blanco.'],
@@ -159,9 +159,9 @@ describe('BusinessCreateForm: the address it proposes', () => {
     expect(s.get('create-address').text()).toBe('Your address will be pasteleria-dulce.localhost:8000');
   });
 
-  // saas#293: on a phone the proposed address broke at the hyphen («pasteleria- / dulce.…»), as if it were two
-  // addresses. Like the launcher's (HostName, audit 2 R-25), it may break only after a dot, and it is one box: when it
-  // does not fit after «Your address will be» it moves whole to the next line instead of leaving its first part behind.
+  // On a phone the proposed address once broke at the hyphen («pasteleria- / dulce.…»), as if it were two
+  // addresses. Like the launcher's (HostName), it may break only after a dot, and it is one box: when it does
+  // not fit after «Your address will be» it moves whole to the next line instead of leaving its first part behind.
   it('paints the address whole, breaking only after a dot and never at a hyphen', async () => {
     const s = await setup();
     await s.type('create-name', 'Pastelería Dulce');

@@ -1,28 +1,18 @@
-"""The plan's seat cap (``Plan.max_users``), applied where a seat is spent (saas#2022; plan 2026-10-13, L1-B).
-
-Ported from ERPlora/saas (origin/develop) ``hubs/main/tests/test_hub_seat_limit.py`` and the service it
-exercises (``services/members.py``: ``hub_seat_cap``, ``hub_seats_taken``, ``assert_hub_has_a_free_seat``).
-
-What the old code decided and this keeps:
+"""The plan's seat cap (``Plan.max_users``), applied where a seat is spent.
 
 * the seat is spent when somebody is ADDED, i.e. at the invitation (Shopify, Odoo and Business Central
-  refuse it there, never when the person walks in), and an unanswered invitation holds its seat:
-  ``hub_seats_taken`` counted every ``HubMember`` row, answered or not («the seat is spoken for the
-  moment it is granted»). Here an invitation expires after 7 days, and an expired one frees its seat;
+  refuse it there, never when the person walks in), and an unanswered invitation holds its seat («the seat
+  is spoken for the moment it is granted»). An invitation expires after 7 days, and an expired one frees
+  its seat;
 * ``0`` caps nothing (every paid plan), and neither does a business without a subscription;
 * moving somebody already inside spends no seat, and each business counts only its own people;
-* the refusal carries a stable code a client branches on, and its message reads in Spanish.
+* the refusal is the 409 ``hubs.seat_limit`` with ``limit`` and ``used`` in its envelope (the panel offers
+  the plan change with the numbers), and its message reads in Spanish;
+* the members page and the business page say ``seats: {used, limit}`` (``limit: null`` = unlimited);
+* accepting is refused when the business has no seat left for the people already inside (invitations sent
+  during the Starter trial, answered after it ended on Free).
 
-New here: the refusal is the 409 ``hubs.seat_limit`` with ``limit`` and ``used`` in its envelope (the
-panel offers the plan change with the numbers), the members page and the business page say
-``seats: {used, limit}`` (``limit: null`` = unlimited), and accepting is refused when the business has
-no seat left for the people already inside (invitations sent during the Starter trial, answered after
-it ended on Free).
-
-Dropped with their reason: the Hub's reported count of active users and its heartbeat (the Hub reports
-nothing on a beat any more: it gets ``max_users`` in the snapshot and gates its own PIN users), the
-hub's machine credential (no runtime pushes members up), the htmx fragment with the plan link (SPA: the
-link is the panel's, lot L1-D) and the OpenAPI field of the beat.
+The Hub gets ``max_users`` in the snapshot and gates its own PIN users.
 """
 
 import json
@@ -33,7 +23,8 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone, translation
 from live.errors import Conflict
 
-from hubs import queries, services
+from hubs.services import invitation_answers, member_management
+from hubs.queries import membership
 from hubs.models import HubMember, Plan, Subscription
 from hubs.schemas import ByIdIn, MemberInviteIn, MemberListIn, MemberRoleIn
 from hubs.tests.conftest import add_member, create_business, ctx_for
@@ -45,7 +36,7 @@ HOST = "localhost:8001"
 
 
 def invite(actor, hub, email, role="hub_employee"):
-    return services.member_invite(
+    return member_management.member_invite(
         ctx_for(actor), MemberInviteIn(hub_id=hub.id, email=email, role=role)
     )
 
@@ -65,7 +56,7 @@ def full(business, owner):
 
 
 def seats(actor, hub):
-    return queries.member_list(ctx_for(actor), MemberListIn(hub_id=hub.id)).model_dump(
+    return membership.member_list(ctx_for(actor), MemberListIn(hub_id=hub.id)).model_dump(
         mode="json"
     )["seats"]
 
@@ -116,7 +107,7 @@ class TestTheInvitationSpendsTheSeat:
         two = HubMember.objects.get(user__email="two@example.com")
 
         with pytest.raises(Conflict) as resend:
-            services.member_resend(ctx_for(owner), ByIdIn(id=two.id))
+            member_management.member_resend(ctx_for(owner), ByIdIn(id=two.id))
         with pytest.raises(Conflict) as again:
             invite(owner, business, "two@example.com")
 
@@ -125,7 +116,7 @@ class TestTheInvitationSpendsTheSeat:
             "hubs.seat_limit",
         )
 
-    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one by default)
     def test_the_trial_plan_caps_nobody(self, business, owner):
         for n in range(5):
             invite(owner, business, f"p{n}@example.com")
@@ -154,7 +145,7 @@ class TestTheInvitationSpendsTheSeat:
         two = HubMember.objects.get(user__email="two@example.com")
 
         assert (
-            services.member_change_role(
+            member_management.member_change_role(
                 ctx_for(owner), MemberRoleIn(id=two.id, role="hub_admin")
             ).role
             == "hub_admin"
@@ -178,12 +169,12 @@ class TestAcceptingNeedsASeatForThePeopleInside:
         full(business, owner)
         one = HubMember.objects.get(user__email="one@example.com")
 
-        row = services.invitation_accept(ctx_for(one.user), ByIdIn(id=one.id))
+        row = invitation_answers.invitation_accept(ctx_for(one.user), ByIdIn(id=one.id))
 
         assert row.slug == business.slug
         assert seats(owner, business) == {"used": 3, "limit": 3}
 
-    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one by default)
     def test_invitations_from_the_trial_are_answered_first_come_first_served(
         self, business, owner
     ):
@@ -198,9 +189,9 @@ class TestAcceptingNeedsASeatForThePeopleInside:
         )
 
         for member in invited[:2]:
-            services.invitation_accept(ctx_for(member.user), ByIdIn(id=member.id))
+            invitation_answers.invitation_accept(ctx_for(member.user), ByIdIn(id=member.id))
         with pytest.raises(Conflict) as refused:
-            services.invitation_accept(
+            invitation_answers.invitation_accept(
                 ctx_for(invited[2].user), ByIdIn(id=invited[2].id)
             )
 
@@ -248,7 +239,7 @@ class TestTheRefusal:
         assert members["seats"] == detail["seats"] == {"used": 3, "limit": 3}
 
     def test_the_refusal_speaks_the_owners_language(self, business, owner):
-        """ADR-0199: English is the source and the owner reads Spanish (saas#1425)."""
+        """English is the source and the owner reads Spanish."""
         full(business, owner)
 
         with translation.override("es"), pytest.raises(Conflict) as refused:
@@ -260,7 +251,7 @@ class TestTheRefusal:
         )
         assert "3" in message, f"the cap stopped being interpolated: {message!r}"
 
-    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one by default)
     def test_a_refused_invitee_is_told_who_can_fix_it(self, business, owner):
         for n in range(4):
             invite(owner, business, f"p{n}@example.com")
@@ -271,10 +262,10 @@ class TestTheRefusal:
             )
         )
         for member in invited[:2]:
-            services.invitation_accept(ctx_for(member.user), ByIdIn(id=member.id))
+            invitation_answers.invitation_accept(ctx_for(member.user), ByIdIn(id=member.id))
 
         with translation.override("es"), pytest.raises(Conflict) as refused:
-            services.invitation_accept(
+            invitation_answers.invitation_accept(
                 ctx_for(invited[2].user), ByIdIn(id=invited[2].id)
             )
 

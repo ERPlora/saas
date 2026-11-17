@@ -1,9 +1,9 @@
-"""WHATSAPP-G07 · ``manage.py whatsapp_deliver``: one pass, by hand, of what the ``saas-worker`` delivers as soon as it
+"""``manage.py whatsapp_deliver``: one pass, by hand, of what the ``saas-worker`` delivers as soon as it
 is due (``gateway.deliver_pass``, saas#305): what still waits for the Hub (it was off, without the inbox, or answered
 5xx) is pushed again once its growing wait passed (``gateway.deliver``), so a message Meta reported is never lost
 while the Hub is away.
 
-One pass at a time (FIX-SAAS-WHATSAPP-DELIVER-OVERLAP): under the advisory lock of its name, the worker's passes
+One pass at a time: under the advisory lock of its name, the worker's passes
 included, and each pass pushes only what fits in its time, inside the lease of what it claimed. A slow Hub is played by a clock moved by hand (``Clock``):
 its slowness costs the tests no real time.
 """
@@ -26,7 +26,7 @@ from whatsapp.tests.test_services import ingest
 
 pytestmark = pytest.mark.django_db
 
-#: The advisory lock a pass holds (``hubs.services.run_exclusively``, as ``whatsapp_refresh_tokens``).
+#: The advisory lock a pass holds (``hubs.services.exclusive_runs.run_exclusively``, as ``whatsapp_refresh_tokens``).
 LOCK_KEY = "hashtext('erplora.saas.whatsapp_deliver')"
 INBOUND = r"^/internal/whatsapp/inbound$"
 MINUTE = timedelta(minutes=1)

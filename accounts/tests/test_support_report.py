@@ -1,10 +1,8 @@
-"""ACCOUNTS-F38 · «Report a problem»: ``accounts.support.report`` mails the support mailbox (ACCOUNTS-G117, G01).
+"""«Report a problem»: ``accounts.support.report`` mails the support mailbox.
 
-Ported from the old SaaS's «Ayuda y soporte › Reportar un problema» (SAAS_DASHBOARD-F219, ``/api/v1/admin/report-issue/``
-gone, PLAN-SAAS §6) as PLAN-SAAS §1.1 simplifies it: a form that mails the support mailbox with the account, its
-businesses, the browser and where it came from, limited like the contact form, with no issue opened anywhere and
-nothing kept. What the old one left behind (its state said so): the account's businesses now go with it, and the mail
-carries «Reply-To» the account, so support answers with «Reply».
+A form that mails the support mailbox with the account, its businesses, the browser and where it came from, limited
+like the contact form, with no issue opened anywhere and nothing kept. The mail carries «Reply-To» the account, so
+support answers with «Reply».
 """
 
 import pytest

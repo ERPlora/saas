@@ -1,20 +1,20 @@
-// Entry of the SaaS SPA (`LIVE["spa"]["entry"]`), the same as hub-next's: app routes and catalogues →
+// Entry of the SaaS SPA (`LIVE["spa"]["entry"]`), the same as the Hub's: app routes and catalogues →
 // shell, live client, session (`base.session.me`, a plain query: embedded by `base/spa.py`, else
 // `GET /api/me`), mount. The SaaS has its own login: the auth gate sends to the launcher, `/launch`,
 // where the sign-in form is.
-// 🔴 Import order (hub#1060): the shell barrel goes first so its boot hooks wrap `customElements.define`
+// 🔴 Import order: the shell barrel goes first so its boot hooks wrap `customElements.define`
 // before anything loads `@ionic/vue` (the SDK does). Vite hoists eager globs above everything, so an
 // app's `routes.ts` only imports types; its pages load with `() => import(…)`. Guards: main.test.ts.
-// The apps live at the project root, next to `base/` (no `apps/`, PLAN §20.2); a glob takes literal
+// The apps live at the project root, next to `base/` (there is no `apps/` folder); a glob takes literal
 // strings only, so every app with a `frontend/` is named in both globs (guard: main.test.ts).
-// Round 17 (PLAN-SAAS §3.6): the menu comes from the server (`base/navigation.py`); the entry adds
-// the user menu (Account, Help, Sign out) and the surface the server keeps in the session. What the
-// account chose (Account → Preferences, in `base.session.me`) is painted before the first paint: its
-// theme mode and its own language; the user menu's theme is kept in the account.
-// The panel's assistant (plan 2026-10-30-asistente-saas §6, ASSISTANT-F25): the shared chat configured as the panel's
-// (`panelAssistant`, with the server's voice only when there is one), its sparkles at the end of the topbar and its
-// panel beside the pane (`CHROME`), its words merged under the apps' (`appMessages`), and the tab's conversation
-// forgotten when the account signs out.
+// The menu comes from the server (`base/navigation.py`); the entry adds the user menu (Account, Help,
+// Sign out) and the surface the server keeps in the session. What the account chose (Account →
+// Preferences, in `base.session.me`) is painted before the first paint: its theme mode and its own
+// language; the user menu's theme is kept in the account.
+// The panel's assistant (ASSISTANT-F25): the shared chat configured as the panel's (`panelAssistant`, with the
+// server's voice only when there is one), its sparkles at the end of the topbar and its panel beside the pane
+// (`CHROME`), its words merged under the apps' (`appMessages`), and the tab's conversation forgotten when the
+// account signs out.
 import {
   createShell,
   type CreateShellOptions,
@@ -37,7 +37,7 @@ import {
 } from '@erplora/ui/sdk';
 // After the shell's theme, so the SaaS's typeface (IBM Plex) wins the cascade.
 import './fonts.css';
-// The panel's chrome: «Skip to content», touch targets of 44 px, Back without ☰ in a detail page (audit 2026-10-14).
+// The panel's chrome: «Skip to content», touch targets of 44 px, Back without ☰ in a detail page.
 import './panel-chrome.css';
 import { defineAsyncComponent, type Ref, ref } from 'vue';
 import { isNavigationFailure, type RouteRecordRaw } from 'vue-router';
@@ -55,9 +55,9 @@ import { installSkipLink } from './skip-link';
 /** «Help» of the user menu. */
 const HELP_PATH = '/help';
 /** The panel's home (the shell's Home: the menu's brand, «not found», «not in the app»): `/` is the public web,
- *  a Django page the SPA does not have (audit 2 R-18). Businesses, under `/dashboard` with the rest of the panel. */
+ *  a Django page the SPA does not have. Businesses, under `/dashboard` with the rest of the panel. */
 const HOME_PATH = BUSINESSES;
-/** The SaaS's entries of the user menu, before Help and Sign out (mockups README §3). */
+/** The SaaS's entries of the user menu, before Help and Sign out. */
 const USER_MENU_ITEMS: ShellUserMenuItem[] = [
   { id: 'account', labelKey: 'saas.userMenu.account', icon: 'ion:person-outline', to: ACCOUNT },
   // «Report a problem» (ACCOUNTS-F38): sells nothing, so the app surfaces keep it.
@@ -71,13 +71,13 @@ const USER_MENU_ITEMS: ShellUserMenuItem[] = [
 const TRUSTED_SCRIPT_ORIGINS = ['https://js.stripe.com'] as const;
 /**
  * reCAPTCHA Enterprise on the sign-in's pages, only while it is switched on (`spa-config.recaptchaSiteKey`; off by
- * default since 2026-10-23): our code sets `www.google.com/recaptcha/enterprise.js` as a string and that loader sets
- * its release from `www.gstatic.com/recaptcha/` the same way (frontend/recaptcha.ts): those two paths only, nothing
- * else of Google's origins.
+ * default): our code sets `www.google.com/recaptcha/enterprise.js` as a string and that loader sets its release from
+ * `www.gstatic.com/recaptcha/` the same way (frontend/recaptcha.ts): those two paths only, nothing else of Google's
+ * origins.
  */
 const RECAPTCHA_SCRIPT_ORIGINS = ['https://www.google.com/recaptcha/', 'https://www.gstatic.com/recaptcha/'] as const;
 /** The entry's own texts (the user menu), merged with the apps' catalogues under `saas`; and, at the top, the shell's
- *  texts the panel says otherwise (`notFound`: the panel, not a hub; audit 2 R-18). */
+ *  texts the panel says otherwise (`notFound`: the panel, not a hub). */
 const ENTRY_CATALOGUES = { 'frontend/locale/en.json': en, 'frontend/locale/es.json': es };
 
 /**
@@ -237,8 +237,8 @@ export async function boot(
     trustedScriptOrigins: recaptchaSiteKey(doc)
       ? [...TRUSTED_SCRIPT_ORIGINS, ...RECAPTCHA_SCRIPT_ORIGINS]
       : [...TRUSTED_SCRIPT_ORIGINS],
-    // AA contrast (audit 2 §5.1, option A): the primary solid at 4.87:1 with white, and dark text on the
-    // dark theme's (`data-ep-contrast="aa"`, packages/ui theme/variables.css).
+    // AA contrast: the primary solid at 4.87:1 with white, and dark text on the dark theme's
+    // (`data-ep-contrast="aa"`, packages/ui theme/variables.css).
     contrast: 'aa',
     chrome: CHROME,
   });

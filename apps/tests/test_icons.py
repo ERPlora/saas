@@ -1,6 +1,6 @@
-"""The icon of an app, safe to paint inline (spec decision 11, §8.4 and §5.3).
+"""The icon of an app, safe to paint inline.
 
-The Hub bakes each app's icon into ``shared.app.icon_svg`` from the shell's packages (spec §4.6):
+The Hub bakes each app's icon into ``shared.app.icon_svg`` from the shell's packages:
 ``ionicons/icons`` for ``ion:`` (outline icons styled by the classes ``ionicon-fill-none`` and
 ``ionicon-stroke-width``) and ``@iconify-json/*`` for the other sets. The SaaS paints it inline, so
 it cleans it with ``nh3`` first: only shape elements, no script, no style, no ``on*`` attribute.
@@ -29,7 +29,7 @@ LUCIDE_DATABASE = (
 
 
 def test_the_allowed_elements_are_shapes():
-    """Spec §8.4's list plus ``ellipse``, a shape that ionicons (25 icons) and lucide (16) draw with."""
+    """The shape elements plus ``ellipse``, a shape that ionicons (25 icons) and lucide (16) draw with."""
     assert ICON_TAGS == {
         "svg",
         "path",
@@ -95,8 +95,8 @@ def test_an_empty_or_unusable_icon_does_not_pass(svg):
 
 
 def test_the_fallback_is_ionicons_apps_outline_and_is_clean():
-    """Baked in the SaaS (no network for icons, PLAN §16.4), in the attributes form of ionicons'
-    ``dist/svg``: it paints the same with or without the ``ion-icon`` classes."""
+    """Baked in the SaaS (no network for icons), in the attributes form of ionicons' ``dist/svg``: it
+    paints the same with or without the ``ion-icon`` classes."""
     assert FALLBACK_ICON == "ion:apps-outline"
     assert clean_icon_svg(FALLBACK_ICON_SVG) == FALLBACK_ICON_SVG
     assert len(re.findall(r"<rect ", FALLBACK_ICON_SVG)) == 9

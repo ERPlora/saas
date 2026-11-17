@@ -1,8 +1,8 @@
-// The SaaS SPA entry (mirror of hub-next's): app routes → shell, live client from spa-config,
+// The SaaS SPA entry (mirror of the Hub's): app routes → shell, live client from spa-config,
 // session from the `session-me` JSON Django embeds (or GET /api/me), mount only once the router is
-// ready. The SaaS has a login of its own: the auth gate sends to the SPA route `/launch`. Round 17
-// (PLAN-SAAS §3.6): the user menu (Account, Help, Sign out) and the surface the server keeps; what the
-// account chose (theme mode, language) painted at boot, and the user menu's theme kept in the account.
+// ready. The SaaS has a login of its own: the auth gate sends to the SPA route `/launch`. The panel:
+// the user menu (Account, Help, Sign out) and the surface the server keeps; what the account chose
+// (theme mode, language) painted at boot, and the user menu's theme kept in the account.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -51,7 +51,7 @@ type Main = typeof import('./main');
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SAAS_DIR = join(HERE, '..');
 
-/** The apps of saas-next with a frontend: root directories next to `base/` holding a `frontend/` (no `apps/`, PLAN §20.2). */
+/** The apps with a frontend: root directories next to `base/` holding a `frontend/` (there is no `apps/` folder). */
 function rootAppsWithFrontend(): string[] {
   return readdirSync(SAAS_DIR, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name !== 'node_modules' && !entry.name.startsWith('.'))
@@ -260,7 +260,7 @@ describe('main.ts', () => {
   });
 });
 
-describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
+describe('the panel', () => {
   /** The user menu's «Sign out», as the shell's App.vue calls it. */
   async function signOut(): Promise<void> {
     await shellOptions().userMenu!.logout!();
@@ -311,7 +311,7 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
     await main.boot({});
     // The `default` Trusted Types policy admits these origins' script URLs and no other; the CSP's
     // `script-src` still decides page by page (the account surface's names no Stripe). reCAPTCHA is off by
-    // default since 2026-10-23 (Ioan: the WAF on the ALB, the attempt limits): nothing of Google's.
+    // default (the WAF on the load balancer and the attempt limits keep bots out): nothing of Google's.
     expect(shellOptions().trustedScriptOrigins).toEqual(['https://js.stripe.com']);
   });
 
@@ -344,7 +344,7 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
     expect(shellOptions().surface).toBeUndefined();
   });
 
-  it("paints the AA contrast (audit 2 §5.1, option A: primary #0e78ad with white, dark text on the dark one) and has no Home of the shell (the SaaS's landing is its own)", async () => {
+  it("paints the AA contrast (primary #0e78ad with white, dark text on the dark one) and has no Home of the shell (the SaaS's landing is its own)", async () => {
     fakeShell();
     await main.boot({});
     expect(shellOptions().contrast).toBe('aa');
@@ -374,13 +374,13 @@ describe('the panel (round 17, PLAN-SAAS §3.6)', () => {
     expect(overrides.filter((key) => !keys(shell).includes(key))).toEqual([]);
   });
 
-  it("the panel's home is Businesses: the menu's brand, «not found» and «not in the app» lead there, never to the public `/` the SPA does not have (audit 2 R-18)", async () => {
+  it("the panel's home is Businesses: the menu's brand, «not found» and «not in the app» lead there, never to the public `/` the SPA does not have", async () => {
     fakeShell();
     await main.boot({});
     expect(shellOptions().homePath).toBe('/dashboard/businesses');
   });
 
-  it('a page that does not exist speaks of the panel, not of a hub (audit 2 R-18)', () => {
+  it('a page that does not exist speaks of the panel, not of a hub', () => {
     const messages = importBoot.messages as Record<string, { notFound: { body: string; action: string }; notInApp: { action: string } }>;
     expect(messages.en.notFound.body).toBe(
       'The address you opened is not part of the panel. It may be an old or mistyped link: your businesses, billing and account are in the menu.',
@@ -613,7 +613,7 @@ describe("the user menu's theme, kept in the account (accounts.preferences.updat
   });
 });
 
-describe("the panel's assistant (plan 2026-10-30-asistente-saas §6, ASSISTANT-F25)", () => {
+describe("the panel's assistant (ASSISTANT-F25)", () => {
   /** What an async component of the chrome loads (`defineAsyncComponent`). */
   async function loaded(component: Component | undefined): Promise<unknown> {
     const module = (await (component as { __asyncLoader: () => Promise<unknown> }).__asyncLoader()) as
@@ -647,7 +647,7 @@ describe("the panel's assistant (plan 2026-10-30-asistente-saas §6, ASSISTANT-F
     };
 
     expect((await configuredWith({ assistantSpeech: true }))?.speak).toBeTypeOf('function');
-    // None (2026-11-04): no choice of voice, and «Read aloud» never asks the server.
+    // None: no choice of voice, and «Read aloud» never asks the server.
     expect((await configuredWith({ assistantSpeech: false }))?.speak).toBeUndefined();
     renderShellHtml();
   });
@@ -677,7 +677,7 @@ describe("the panel's assistant (plan 2026-10-30-asistente-saas §6, ASSISTANT-F
   it('under a spent allowance says where to keep asking, never to ask whoever runs the business for a plan', () => {
     // The account's 30 messages are no plan's (ASSISTANT-F26): the chat's «Ask whoever runs the business to upgrade
     // the plan» under «Upgrade plan», which nobody is offered here, would send the person after a plan that gives none.
-    // The panel gives its own line (`spentNoteKey`, ui#49), which the real catalogues say in en and es.
+    // The panel gives its own line (`spentNoteKey`), which the real catalogues say in en and es.
     const messages = importBoot.messages as Record<string, unknown>;
     const say = (language: string) =>
       SAAS_ASSISTANT.spentNoteKey!.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown>)?.[part], messages[language]);
@@ -706,14 +706,14 @@ describe("the panel's assistant (plan 2026-10-30-asistente-saas §6, ASSISTANT-F
   });
 });
 
-describe('import order guards (hub#1060)', () => {
+describe('import order guards', () => {
   it('imports the shell before anything that loads @ionic/vue (the SDK, the generated routes)', () => {
     const source = readFileSync(join(HERE, 'main.ts'), 'utf8');
     const runtimeImports = [...source.matchAll(/^import\s+(?!type\b)[^;]*?from\s+'([^']+)';/gms)].map((m) => m[1]);
     expect(runtimeImports[0]).toBe('@erplora/ui/shell');
   });
 
-  it('puts «Skip to content» first in the page, in the language of the page (audit 2026-10-14, R-11)', async () => {
+  it('puts «Skip to content» first in the page, in the language of the page', async () => {
     fakeShell();
     document.documentElement.lang = 'es';
     await main.boot({});
@@ -741,7 +741,7 @@ describe('import order guards (hub#1060)', () => {
   });
 
   it("takes the panel's fill layout from the shell's theme, with no sheet of its own (the `.panel-fill` chain)", () => {
-    // The `.panel-fill` height chain moved to @erplora/ui (polish.css, loaded by createShell; guarded there by
+    // The `.panel-fill` height chain lives in @erplora/ui (polish.css, loaded by createShell; guarded there by
     // AppPage.test.ts): the SaaS keeps no copy that could drift from it.
     const source = readFileSync(join(HERE, 'main.ts'), 'utf8');
     expect(source).not.toContain('panel-fill.css');
@@ -763,14 +763,14 @@ describe('import order guards (hub#1060)', () => {
   });
 });
 
-describe('root app guards (saas-next has no apps/: its apps live next to base/, PLAN §20.2)', () => {
+describe('root app guards (the SaaS has no apps/ folder: its apps live next to base/)', () => {
   it('globs the routes and the catalogues of the same apps', () => {
     const globs = globbedApps();
     expect(globs.map(([rest]) => rest)).toEqual(['routes.ts', 'locale/*.json']);
     expect(globs[1][1]).toEqual(globs[0][1]);
   });
 
-  it("globs the apps with a frontend: accounts, hubs, billing, fiscal and the panel's assistant (round 16: no marketplace; apps and public have none)", () => {
+  it("globs the apps with a frontend: accounts, hubs, billing, fiscal and the panel's assistant (no marketplace; apps and public have none)", () => {
     const [[, globbed]] = globbedApps();
     expect(globbed).toEqual(['accounts', 'hubs', 'billing', 'fiscal', 'assistant']);
   });

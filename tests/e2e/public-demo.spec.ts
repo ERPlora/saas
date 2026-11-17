@@ -1,14 +1,14 @@
-// The demo's door on erplora.com, part 3 (APP-PUBLIC-3, public/WORKBOOK.md PUBLIC-F27…F37), in a real Chrome under
+// The demo's door on erplora.com, part 3 (public/WORKBOOK.md PUBLIC-F27…F37), in a real Chrome under
 // the production CSP with zero violations: the home, the menu and the short address (/try/) lead to it; its card in
 // every state a visitor can meet without a Hub behind it (offered, not available, could not open, full, too many from
 // the connection, ended), each with its way out to «Start free»; and a press that finds no Hub is said, not kept.
-// Each screen is captured at 390×844, 834×1112 and 1440×900 as `APP-PUBLIC-3-<key>-<width>.png` in `.artifacts/`.
+// Each screen is captured at 390×844, 834×1112 and 1440×900 in `.artifacts/`.
 //
 // What needs a Hub is not here: nobody plays it for these specs (the waiting door is demo-wait.spec.ts). The walk
 // into a demo — created, «Opening your demo…», the shell as «Demo», «Back to my demo», ended → 410 → the door — is
-// the Hub's tests/e2e/demo.spec.ts, run with this SaaS as its SaaS. The switched-off door (PUBLIC-G58) needs a server
+// the Hub's tests/e2e/demo.spec.ts, run with this SaaS as its SaaS. The switched-off door (PUBLIC-F30) needs a server
 // with DEMO_ENABLED off: public/tests/test_demo.py renders it.
-// flow: PUBLIC-G53 PUBLIC-G57 PUBLIC-G59 PUBLIC-G60 PUBLIC-G61 PUBLIC-G63
+// flow: PUBLIC-F27 PUBLIC-F29 PUBLIC-F31 PUBLIC-F32 PUBLIC-F33 PUBLIC-F35
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -68,7 +68,7 @@ const startFree = (page: Page, state: string) =>
     [...element.querySelectorAll('[href="/launch"]')].map((link) => (link.textContent ?? '').trim()),
   );
 
-/** `path` at the three viewports, each loaded afresh, captured whole as `APP-PUBLIC-3-<key>-<width>.png`. */
+/** `path` at the three viewports, each loaded afresh and captured whole. */
 async function captureEverywhere(page: Page, path: string, key: string, state: string) {
   mkdirSync(ARTIFACTS, { recursive: true });
   for (const viewport of VIEWPORTS) {
@@ -85,7 +85,7 @@ async function captureEverywhere(page: Page, path: string, key: string, state: s
 test.describe('in English', () => {
   test.use({ locale: 'en-GB' });
 
-  test('PUBLIC-G53 the home, the menu and the short address lead to the door, which only offers a demo', async ({
+  test('PUBLIC-F27 the home, the menu and the short address lead to the door, which only offers a demo', async ({
     page,
   }) => {
     const clean = await watch(page);
@@ -113,7 +113,7 @@ test.describe('in English', () => {
     await clean('the door');
   });
 
-  test('PUBLIC-G57 a press that finds no Hub says the demo is not available, and pressing again asks again', async ({
+  test('PUBLIC-F29 a press that finds no Hub says the demo is not available, and pressing again asks again', async ({
     page,
   }) => {
     const clean = await watch(page);
@@ -137,7 +137,7 @@ test.describe('in English', () => {
     await clean('the door that could not open a demo');
   });
 
-  test('PUBLIC-G59 every demo taken: try again, or start free', async ({ page }) => {
+  test('PUBLIC-F31 every demo taken: try again, or start free', async ({ page }) => {
     const clean = await watch(page);
 
     await page.goto(`${DOOR}?state=full`);
@@ -149,7 +149,7 @@ test.describe('in English', () => {
     await clean('the full door');
   });
 
-  test('PUBLIC-G60 too many from the connection: no retry, only start free', async ({ page }) => {
+  test('PUBLIC-F32 too many from the connection: no retry, only start free', async ({ page }) => {
     const clean = await watch(page);
 
     await page.goto(`${DOOR}?state=throttled`);
@@ -163,7 +163,7 @@ test.describe('in English', () => {
     await clean('the throttled door');
   });
 
-  test('PUBLIC-G61 an ended demo is said, and another one is offered without starting by itself', async ({ page }) => {
+  test('PUBLIC-F33 an ended demo is said, and another one is offered without starting by itself', async ({ page }) => {
     const clean = await watch(page);
 
     await page.goto(`${DOOR}?state=expired`);
@@ -175,7 +175,7 @@ test.describe('in English', () => {
     await clean('the door of an ended demo');
   });
 
-  test('PUBLIC-G63 «Start free» from the door leads to the same entrance as every other one', async ({ page }) => {
+  test('PUBLIC-F35 «Start free» from the door leads to the same entrance as every other one', async ({ page }) => {
     for (const state of ['idle', 'unavailable', 'failed', 'full', 'throttled', 'expired']) {
       await page.goto(state === 'idle' ? DOOR : `${DOOR}?state=${state}`);
       expect(await startFree(page, state), state).toEqual(['Start free']);
@@ -189,7 +189,7 @@ test.describe('in English', () => {
 test.describe('in Spanish', () => {
   test.use({ locale: 'es-ES' });
 
-  test('PUBLIC-G53 PUBLIC-G59 PUBLIC-G60 PUBLIC-G61 the door speaks Spanish in every state', async ({ page }) => {
+  test('PUBLIC-F27 PUBLIC-F31 PUBLIC-F32 PUBLIC-F33 the door speaks Spanish in every state', async ({ page }) => {
     const clean = await watch(page);
     const says: [string, string][] = [
       ['idle', 'Prueba la demo'],

@@ -1,27 +1,14 @@
-"""The declaración responsable of the Hub (art. 13 RRSIF, RD 1007/2023), its archive and its signed
-PDF: ``/legal/declaracion-responsable/``, ``<version>/`` and ``<version>/pdf/`` (spec §8.1, plan §3.e).
+"""The declaración responsable of the Hub (art. 13 RRSIF, RD 1007/2023), its archive and its signed PDF:
+``/legal/declaracion-responsable/``, ``<version>/`` and ``<version>/pdf/``.
 
-The route is Spanish on purpose: it is the legal term the customer, the reseller and the AEAT
-inspector look up.
+The route is Spanish on purpose: it is the legal term the customer, the reseller and the AEAT inspector look up.
 
-Ported from ERPlora/saas (origin/develop c5ca8ca):
-
-* ``apps/public/legal/tests/test_declaracion_responsable_page.py`` (7) — art. 13.2: the declaration
-  has to be *available* to the customer and the reseller at acquisition, so the page is public; and
-  art. 13.3 (*"deberá guardar y conservar las declaraciones responsables de todas las versiones"*)
-  makes it an **archive** in which every version is reachable;
-* ``apps/public/legal/tests/test_declaracion_responsable_pdf.py`` (20) — the signed copy is served
-  **byte for byte**, or the PAdES signature over its ``/ByteRange`` stops being valid (and the
-  document keeps opening, so nobody notices); inline by default, ``?download=1`` to save it (a
-  browser's PDF viewer does not check signatures); a 404 when there is no signed copy;
-* the archive half of ``apps/dashboard/fiscal/tests/test_declaracion_responsable.py`` (the loader,
-  the archive, the modality, the text quoting what the JSON declares, the composition).
-
-Not ported, with the reason: the contract against ``producer_facts`` (what the SaaS serves to the
-fleet in ``SistemaInformatico``: it does not exist in saas-next yet) and the coverage per Hub version
-with ``declaration_reference`` (the heartbeat that tells a hub which declaration covers it: it comes
-with the Hub ↔ SaaS fiscal contract). Nor the two checks on v2's architecture (``verifactu-gateway``
-in the composition, the certificate no longer distributed): they pin the old fleet, not the archive.
+* Art. 13.2: the declaration has to be *available* to the customer and the reseller at acquisition, so the page is
+  public; art. 13.3 (*"deberá guardar y conservar las declaraciones responsables de todas las versiones"*) makes it
+  an **archive** in which every version is reachable.
+* The signed copy is served **byte for byte**, or the PAdES signature over its ``/ByteRange`` stops being valid (and
+  the document keeps opening, so nobody notices); inline by default, ``?download=1`` to save it (a browser's PDF
+  viewer does not check signatures); a 404 when there is no signed copy.
 """
 
 import dataclasses
@@ -52,9 +39,8 @@ URL = "/legal/declaracion-responsable/"
 #: i18n and changes language, the guarantee does not.
 #: The NOTE that the version in force is not signed yet…
 PENDING_MARKER = 'data-note="pending-signature"'
-#: …and, apart, how the date-and-place row of the summary is labelled. Two markers on purpose: with
-#: one, a test looking for the note was satisfied by the row's label, and the false sentence could
-#: come back without anything catching it.
+#: …and, apart, how the date-and-place row of the summary is labelled. Two markers on purpose: with one, a test looking
+#: for the note would be satisfied by the row's label, and the false sentence could come back unnoticed.
 SIGNED_ROW_MARKER = 'data-state="signed"'
 
 
@@ -107,7 +93,7 @@ def test_the_pages_only_answer_safe_methods(client):
     assert client.post(f"{URL}v1/pdf/").status_code == 405
 
 
-# --- The page (test_declaracion_responsable_page.py) -------------------------------------------
+# --- The page ----------------------------------------------------------------------------------
 
 
 def test_the_page_is_public(client):
@@ -136,7 +122,7 @@ def test_the_signed_text_is_rendered_not_just_linked(client):
 
 
 def test_the_page_has_one_h1_and_the_deed_keeps_its_title(client):
-    """L8: the hero is the page's ``<h1>``; the deed's ``# title`` is published, as an ``<h2>``."""
+    """The hero is the page's ``<h1>``; the deed's ``# title`` is published, as an ``<h2>``."""
     html = client.get(URL).content.decode()
 
     assert len(re.findall(r"<h1[\s>]", html)) == 1
@@ -146,9 +132,8 @@ def test_the_page_has_one_h1_and_the_deed_keeps_its_title(client):
 
 
 def test_the_deed_title_keeps_the_size_of_a_page_title(client):
-    """L8: as a bare ``<h2>`` the title looked like «1. Declarante»; ``ep-deed-title`` (layout.css)
-    gives it back the size it had as the old page's ``<h1>``. Only the title carries it, next to
-    the ``id`` of its anchor."""
+    """As a bare ``<h2>`` the title would look like «1. Declarante»; ``ep-deed-title`` (layout.css) gives it the size
+    of a page title. Only the title carries it, next to the ``id`` of its anchor."""
     html = client.get(URL).content.decode()
 
     assert re.search(
@@ -221,7 +206,7 @@ def test_the_page_uses_the_shared_public_reading_pattern():
     assert "<style" not in source
 
 
-# --- 1. Byte for byte, or the signature is worthless (test_declaracion_responsable_pdf.py) ----
+# --- 1. Byte for byte, or the signature is worthless ------------------------------------------
 
 
 class TestTheSignatureSurvives:
@@ -271,7 +256,7 @@ class TestOpenAndDownload:
     def test_any_download_other_than_1_opens_it(
         self, client, signed_declaration, value
     ):
-        """Only ``?download=1`` saves it: ``?download=0`` asking for a download was a surprise."""
+        """Only ``?download=1`` saves it: ``?download=0`` asking for a download would be a surprise."""
         response = client.get(
             f"{URL}{signed_declaration.version}/pdf/?download={value}"
         )
@@ -366,10 +351,9 @@ def _pending_note(html: str) -> str:
 class TestWhenTheOneInForceIsNotSignedYet:
     """A new declaration is published as text and signed later, not both at once.
 
-    In between, the page has to say exactly that. The note that used to sit on this branch said
-    *«the signed copy is delivered to the customer and the reseller at the moment of acquisition»*
-    — true while the version in force was signed, and **false** as soon as it has no signed copy.
-    """
+    In between, the page has to say exactly that, and never that *«the signed copy is delivered to the customer and
+    the reseller at the moment of acquisition»*: true while the version in force is signed, **false** as soon as it
+    has no signed copy."""
 
     @pytest.fixture
     def unsigned_page(self, client, monkeypatch):
@@ -439,7 +423,7 @@ def test_every_unsigned_version_answers_404_for_its_pdf(client):
             assert client.get(f"{URL}{declaration.version}/pdf/").status_code == 404
 
 
-# --- The archive (test_declaracion_responsable.py, without producer_facts) ---------------------
+# --- The archive -------------------------------------------------------------------------------
 
 
 class TestArchive:
@@ -493,7 +477,7 @@ class TestArchive:
 
 class TestModality:
     def test_no_version_has_ever_declared_anything_but_solo_verifactu(self):
-        """Declaring DUAL would make the *registro de eventos* mandatory (developer FAQ §15)."""
+        """Declaring DUAL would make the *registro de eventos* mandatory (section 15 of the AEAT developer FAQ)."""
         assert {d.modality for d in declarations()} == {MODALITY_SOLO_VERIFACTU}
 
     def test_solo_verifactu_comes_with_the_flag_every_record_carries(self):

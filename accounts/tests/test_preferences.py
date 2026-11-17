@@ -1,24 +1,19 @@
-"""Account → Preferences: ``accounts.preferences.get`` and ``accounts.preferences.update`` (plan 2026-10-13,
-L3-A).
+"""Account → Preferences: ``accounts.preferences.get`` and ``accounts.preferences.update``: the theme mode, the
+language and the «Business notices» switch.
 
-Ported from ERPlora/saas ``apps/dashboard/settings/tests``: ``test_api`` (17) and ``test_views`` (33, the
-form → the API) for what survives the single panel (the theme mode, the language and the «Business notices»
-switch; ACCOUNTS-F22, F23). Dropped, with their reason: the palette (``test_theme_palette``, 18 → only the mode: the SaaS
-paints one palette), currency, menu order and developer mode (gone with the panel of round 17); the cached
-language (``test_language_cache``, 5: there is no cache, the language is a column of the account row the
-session already loads); «unset until chosen» (``test_language_unset_until_chosen``, 9: ``User.language``
-always holds one, because the mails and the jump to a hub need one; how the panel applies it is the shell's,
-see accounts/README.md); the password change (allauth.headless ``account/password/change``, rate-limited by
-allauth itself).
+There is one palette, so only the mode is chosen. The language is a column of the account row the session already
+loads, never cached, and ``User.language`` always holds one, because the mails and the jump to a hub need one. The
+password change is allauth.headless's ``account/password/change``.
 """
 
 import pytest
 from django.utils import translation
 from live.live_registry import live_registry
 
-from accounts import events, queries, services
+from accounts import events, queries
 from accounts.models import UserPreferences
 from accounts.schemas import PreferencesGetIn, PreferencesUpdateIn
+from accounts.services import preferences
 from accounts.tests.conftest import api_get, api_post, ctx_for
 
 pytestmark = pytest.mark.django_db
@@ -59,7 +54,7 @@ class TestReading:
 
 class TestUpdating:
     def test_the_first_change_creates_the_row(self, ana):
-        result = services.preferences_update(ctx_for(ana), PreferencesUpdateIn(theme_mode="dark"))
+        result = preferences.preferences_update(ctx_for(ana), PreferencesUpdateIn(theme_mode="dark"))
 
         assert result.theme_mode == "dark"
         assert UserPreferences.objects.get(user=ana).theme_mode == "dark"
@@ -67,7 +62,7 @@ class TestUpdating:
     def test_only_what_is_sent_changes(self, ana):
         UserPreferences.objects.create(user=ana, theme_mode="light", hub_alerts=True)
 
-        result = services.preferences_update(ctx_for(ana), PreferencesUpdateIn(hub_alerts=False))
+        result = preferences.preferences_update(ctx_for(ana), PreferencesUpdateIn(hub_alerts=False))
 
         assert result.model_dump() == {
             "theme_mode": "light",
@@ -77,7 +72,7 @@ class TestUpdating:
 
     def test_the_language_is_the_accounts_own(self, ana):
         """``User.language``: the one the mails, the hubs' invitations and the jump to a hub read."""
-        services.preferences_update(ctx_for(ana), PreferencesUpdateIn(language="en"))
+        preferences.preferences_update(ctx_for(ana), PreferencesUpdateIn(language="en"))
 
         ana.refresh_from_db()
         assert ana.language == "en"
@@ -89,7 +84,7 @@ class TestUpdating:
     def test_a_change_is_recorded_as_an_event(self, ana):
         from live.models import OutboxEvent
 
-        services.preferences_update(ctx_for(ana), PreferencesUpdateIn(hub_alerts=False))
+        preferences.preferences_update(ctx_for(ana), PreferencesUpdateIn(hub_alerts=False))
 
         assert list(OutboxEvent.objects.values_list("name", "scope_key")) == [
             (events.PREFERENCES_UPDATED, str(ana.pk))

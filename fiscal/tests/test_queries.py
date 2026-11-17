@@ -1,5 +1,5 @@
 """``fiscal.representation.status``: the business's authorisation as its page shows it (the owner and the
-admins; plan 2026-10-15). The one in force if there is one, else the newest; which documents it carries
+admins). The one in force if there is one, else the newest; which documents it carries
 (never the documents); and the versions sent, newest first."""
 
 from datetime import timedelta

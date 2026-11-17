@@ -1,4 +1,4 @@
-"""``POST /internal/support/report``: «Report a problem» from the Hub's user menu (ACCOUNTS-F38, FIX-HUB-BASE-REPORT-PROBLEM-MODAL).
+"""``POST /internal/support/report``: «Report a problem» from the Hub's user menu (ACCOUNTS-F38).
 
 The Hub sends, signed v1 + v2 with ``INTERNAL_SHARED_SECRET`` like ``/internal/auth/redeem``, what the person wrote and
 who and where they are: the account of their session, the business and the screen, and their browser. It is the panel's

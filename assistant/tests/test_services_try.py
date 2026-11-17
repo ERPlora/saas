@@ -1,5 +1,5 @@
-"""Recording a try of a model (``assistant.model.try``, ASSISTANT-G61): who tried which model, how long the message
-was and how many tools it offered, never the message (the old product's tester kept a summary of it)."""
+"""Recording a try of a model (``assistant.model.try``): who tried which model, how long the message
+was and how many tools it offered, never the message."""
 
 import pytest
 from auditlog.models import LogEntry

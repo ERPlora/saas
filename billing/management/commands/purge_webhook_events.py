@@ -1,7 +1,6 @@
 """``python manage.py purge_webhook_events``: forget the Stripe events received more than 30 days ago (BILLING-F37).
 
-Ported from ERPlora/saas ``cleanup_old_webhook_events`` (``apps/dashboard/billing``; a weekly Celery beat task
-there, an ECS scheduled task here). Each row only guards a delivery against being processed twice, and Stripe
+A weekly ECS scheduled task. Each row only guards a delivery against being processed twice, and Stripe
 resends an event for 3 days at most (``billing.services.purge_webhook_events``). One ``DELETE``: idempotent, two
 runs at once delete each row once.
 """

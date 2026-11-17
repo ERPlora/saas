@@ -1,11 +1,11 @@
-"""URLconf of saas-next: Django's own prefixes first, then the SPA for every other path.
+"""URLconf of the SaaS: Django's own prefixes first, then the SPA for every other path.
 
 Django keeps the sign-in's API (allauth.headless at ``/_allauth/``, headless only: allauth serves no
 page; Google comes back to the redirect URI registered with it), the old addresses of the sign-in, the
 jump to a hub and its redeem, the API, the live stream, the admin, the CSP reports and ``/readyz``.
 ``/healthz`` is answered by ``base.health.HealthCheckMiddleware`` before the Host is validated, so it has
 no route here.
-``/webhooks/stripe/`` is Stripe's single webhook (``billing.webhooks``, lot L2-B); anything else under
+``/webhooks/stripe/`` is Stripe's single webhook (``billing.webhooks``); anything else under
 ``/webhooks/`` is a 404 of Django's, never the SPA. Every other path is the Ionic Vue SPA (``base.spa``):
 the launcher with its sign-in (``/launch``) and the sign-in's errors (``/login/error``) among them, and the panel
 under ``/dashboard/`` (its old addresses at the root lead there for good). Save a path that names a file and has no
@@ -42,9 +42,9 @@ from whatsapp import signup_return as whatsapp_signup_return
 from whatsapp import webhooks as whatsapp_webhooks
 from public.urls import PUBLIC_PREFIXES
 
-# Prefixes of saas-next on top of the shared ones: allauth.headless's API, the old addresses of the
+# Prefixes of the SaaS on top of the shared ones: allauth.headless's API, the old addresses of the
 # sign-in (`/accounts/`), Google's redirect URI, the jump to a hub and Stripe's webhook
-# (`/webhooks/stripe/`, PLAN-SAAS §4). Not `launch`: `/launch` is the SPA's launcher, and only the
+# (`/webhooks/stripe/`). Not `launch`: `/launch` is the SPA's launcher, and only the
 # exact `/launch/` (its old address) is a Django route, matched before the SPA's catch-all.
 NON_SPA_PREFIXES = (
     *BASE_NON_SPA_PREFIXES,
@@ -61,7 +61,7 @@ NON_SPA_PREFIXES = (
 #: The launcher's «Create account» tab (`SignInForm.vue`; «Sign in», the default, is `SPA_LOGIN` alone).
 SPA_SIGN_UP = f"{SPA_LOGIN}?tab=signup"
 
-#: The panel's pages at the root before it moved under `PANEL` (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX), each with the
+#: The panel's pages at the root before it moved under `PANEL`, each with the
 #: pages under it. Not `accounts`: allauth's old prefix, matched whole above.
 MOVED_PANEL_PAGES = r"^(?:businesses|account|billing|store|report-a-problem)(?:/.*)?$"
 
@@ -93,9 +93,9 @@ class MovedToPanel(RedirectView):
 # The admin's login is the SaaS's sign-in (it asks for the mailed code and the authenticator app).
 # Assigned before `admin.site.urls` is read below: `AdminSite.get_urls` binds `self.login` then.
 admin.site.login = accounts_admin.admin_login
-# Who enters: active staff, and with ACCOUNTS_MFA_ENABLED only with an authenticator app (ACCOUNTS-F20).
+# Who enters: active staff, and with ACCOUNTS_MFA_ENABLED only with an authenticator app.
 admin.site.has_permission = accounts_admin.admin_has_permission
-# ERPlora's name on every page of the admin, never «Django administration» (the old SaaS's ADMIN_SITE_*; ACCOUNTS-G30).
+# ERPlora's name on every page of the admin, never «Django administration».
 admin.site.site_header = "ERPlora Cloud"
 admin.site.site_title = "ERPlora Admin"
 admin.site.index_title = gettext_lazy("Administration")
@@ -109,33 +109,33 @@ urlpatterns = [
     path("accounts/login/", RedirectView.as_view(url=SPA_LOGIN, query_string=True, permanent=True)),
     path("accounts/signup/", SignUpRedirect.as_view()),
     path("login", RedirectView.as_view(url=SPA_LOGIN, query_string=True, permanent=True)),
-    # The account's addresses change only through Cuenta's code, and an account without a password gets
-    # one only through «Forgot your password?» (accounts/doors.py, plan 2026-10-13 L3-A).
+    # The account's addresses change only through the Account page's code, and an account without a password gets
+    # one only through «Forgot your password?» (accounts/doors.py).
     path("_allauth/browser/v1/account/email", doors.closed),
     path("_allauth/browser/v1/account/password/change", doors.password_change),
-    # The sign-in's address folded as the sign-up's (ERPlora/saas#1018), and the sign-up's password checked
-    # against its address (ERPlora/saas#2542): accounts/doors.py.
+    # The sign-in's address folded as the sign-up's, and the sign-up's password checked against its address:
+    # accounts/doors.py.
     path("_allauth/browser/v1/auth/login", doors.login, name="login"),
     path("_allauth/browser/v1/auth/signup", doors.signup, name="signup"),
     # «Continue with Google» on the launcher posts here; without Google's credentials it is not served.
     path("_allauth/browser/v1/auth/provider/redirect", google.provider_redirect, name="redirect_to_provider"),
     path("_allauth/", include("allauth.headless.urls")),
-    # Google comes back to the redirect URI registered with it (/auth/google/callback/, PLAN-SAAS §6),
+    # Google comes back to the redirect URI registered with it (/auth/google/callback/),
     # under allauth's name: allauth builds the redirect_uri of the authorization and of the token
     # exchange from `reverse("google_callback")`.
     path("auth/google/callback/", google.callback, name="google_callback"),
     path("launch/", handoff.launch, name="launch"),
     path("hub-login/", handoff.hub_login, name="hub_login"),
-    # The way back from a business (ACCOUNTS-F29): a pass the Hub signed opens the session and lands on the plan.
+    # The way back from a business: a pass the Hub signed opens the session and lands on the plan.
     path("hub-pass/", hub_pass.follow, name="hub_pass"),
-    # The installed app's «Open» (PLAN-SAAS bloque 3); its start, /shell/, is the SPA's launcher.
+    # The installed app's «Open»; its start, /shell/, is the SPA's launcher.
     path("shell/open/<uuid:hub_id>/", hubs_shell.open_business, name="shell_open"),
-    # The old panel's addresses of the businesses, for good, to the new panel (PLAN-SAAS §1).
+    # The old panel's addresses of the businesses, for good, to the new panel.
     path("", include("hubs.redirects")),
     path("", include("accounts.redirects")),
     # The panel's old addresses at the root, before the SPA's catch-all would answer them.
     re_path(MOVED_PANEL_PAGES, MovedToPanel.as_view()),
-    # ReDoc for /api/docs without its one outside address (ACCOUNTS-F34), before ninja's /api/.
+    # ReDoc for /api/docs without its one outside address, before ninja's /api/.
     path("", include("accounts.api_docs")),
     path("internal/auth/redeem", internal.redeem, name="internal_auth_redeem"),
     path("internal/support/report", internal.support_report, name="internal_support_report"),
@@ -154,7 +154,7 @@ urlpatterns = [
         fiscal_internal.representation_model,
         name="internal_representation_model",
     ),
-    # The fiscal gateway (PLAN-SAAS §4): the Hub's VeriFactu envelopes, presented to the AEAT.
+    # The fiscal gateway: the Hub's VeriFactu envelopes, presented to the AEAT.
     path(
         "internal/verifactu/submit",
         fiscal_gateway_internal.submit,
@@ -183,7 +183,7 @@ urlpatterns = [
     path("internal/whatsapp/config", whatsapp_internal.config, name="internal_whatsapp_config"),
     path("internal/whatsapp/connect", whatsapp_internal.connect, name="internal_whatsapp_connect"),
     path("internal/whatsapp/disconnect", whatsapp_internal.disconnect, name="internal_whatsapp_disconnect"),
-    # The AI gateway (assistant/internal.py, PLAN-SAAS §1.1): the Hub's turn, its allowance, embeddings and voice.
+    # The AI gateway (assistant/internal.py): the Hub's turn, its allowance, embeddings and voice.
     path("internal/assistant/chat/stream", assistant_internal.chat_stream, name="internal_assistant_chat_stream"),
     path("internal/assistant/chat", assistant_internal.chat, name="internal_assistant_chat"),
     path("internal/assistant/usage", assistant_internal.usage, name="internal_assistant_usage"),
@@ -192,7 +192,7 @@ urlpatterns = [
     path("internal/assistant/report", assistant_internal.report, name="internal_assistant_report"),
     path("internal/speech/transcribe", assistant_internal.transcribe, name="internal_speech_transcribe"),
     path("internal/speech/synthesize", assistant_internal.synthesize, name="internal_speech_synthesize"),
-    # Stripe's single webhook (PLAN-SAAS §4): signed by Stripe, no session nor CSRF.
+    # Stripe's single webhook: signed by Stripe, no session nor CSRF.
     path("webhooks/stripe/", billing_webhooks.stripe_webhook, name="stripe_webhook"),
     # Meta's single WhatsApp webhook (whatsapp/webhooks.py): its verification (GET) and its signed notices.
     path("webhooks/whatsapp/", whatsapp_webhooks.whatsapp_webhook, name="whatsapp_webhook"),
@@ -206,7 +206,7 @@ urlpatterns = [
     path("api/", api.urls),
     path("csp-report/", csp_report, name="csp-report"),
     path("readyz", readyz, name="readyz"),
-    # The admin's «Hubs» page (ronda 13): before the admin's own URLs, whose catch-all would take it.
+    # The admin's «Hubs» page: before the admin's own URLs, whose catch-all would take it.
     path(
         "admin/accounts/hubs/",
         admin.site.admin_view(hubs_admin.hubs_view),
@@ -218,7 +218,7 @@ urlpatterns = [
     path("cookies/", include("cookie_consent.urls")),
     path("", include("public.urls")),
     # `home` is the project-wide name of `/` (the public web's navbar, footer and error pages): the landing,
-    # `public:home`, answers `/` from the include above, so this line only names it (plan §3.c).
+    # `public:home`, answers `/` from the include above, so this line only names it.
     path("", landing.home, name="home"),
     # Last: every other path, save one that names a file (/favicon.ico, /wp-login.php), which is a plain 404.
     re_path(spa_route(NON_SPA_PREFIXES), spa, name="spa"),

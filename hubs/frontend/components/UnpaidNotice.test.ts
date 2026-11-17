@@ -1,5 +1,5 @@
-// The notice of an unpaid invoice (mockups `businesses.html`, `business.html` «past-due»; README §4 and
-// §6.18): since when it is unpaid and until when the business keeps working; on the web, «Pay the
+// The notice of an unpaid invoice: since when it is unpaid and until when the business keeps working; on the
+// web, «Pay the
 // invoice» (Stripe's page, `pay_url`) when the account may pay it — waiting for another card when the
 // bank declined it — and inside the apps how to settle it, without a link.
 // clock: data only — no code under test compares these dates with now.
@@ -30,7 +30,7 @@ describe('UnpaidNotice', () => {
   it('says since when and until when it keeps working, and offers to pay on Stripe', async () => {
     const { wrapper } = await mountNotice({});
     expect(wrapper.text()).toContain('Bar La Plaza has an unpaid invoice');
-    // The day, never the minute (audit 2026-10-14, R-15).
+    // The day, never the minute.
     expect(wrapper.get('[data-testid="unpaid-body"]').text()).toBe(
       'Unpaid since Oct 10, 2026. It keeps working until Oct 17, 2026; if it is not paid by then, the business is suspended. Nothing is deleted.',
     );
@@ -44,7 +44,7 @@ describe('UnpaidNotice', () => {
     expect(wrapper.find('[data-testid="unpaid-pay"]').exists()).toBe(false);
   });
 
-  it('a declined card: «Change card» is the way out (R-09), «Pay» waits for another card, and says so', async () => {
+  it('a declined card: «Change card» is the way out, «Pay» waits for another card, and says so', async () => {
     const { wrapper } = await mountNotice({ unpaid_reason: 'card_declined' });
     expect(ionProps(wrapper.get('[data-testid="unpaid-pay"]'), 'disabled')).toEqual({ disabled: true });
     expect(wrapper.get('[data-testid="unpaid-change-card"]').text()).toContain('Change card');
@@ -69,7 +69,7 @@ describe('UnpaidNotice', () => {
     expect(wrapper.find('a').exists()).toBe(false);
   });
 
-  it('without a date of its own, the general sentence: no number of days it cannot know (audit R-06)', async () => {
+  it('without a date of its own, the general sentence: no number of days it cannot know', async () => {
     const { wrapper } = await mountNotice({ unpaid_since: null });
     expect(wrapper.get('[data-testid="unpaid-body"]').text()).toBe(
       'If it is not paid soon, the business is suspended. Nothing is deleted.',

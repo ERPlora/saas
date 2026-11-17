@@ -1,8 +1,6 @@
-// Stripe.js for the Embedded Checkout (PLAN-SAAS §3.6 point 17; plan §7 point 5): the one script that
-// comes from another origin (PCI: never served by us), loaded only when a payment opens and only on the
-// web. It is inserted by our own code, with the page's CSP nonce. Its address is a plain string: the
-// page's `default` Trusted Types policy admits the script URLs of `https://js.stripe.com` and no other
-// (`createShell({ trustedScriptOrigins })` in frontend/main.ts), the same door Stripe.js's own chunks use.
+// Stripe.js for the Embedded Checkout: the one script from another origin (PCI: never served by us), loaded only
+// when a payment opens and only on the web, inserted by our own code with the page's CSP nonce. The page's
+// `default` Trusted Types policy admits the script URLs of `https://js.stripe.com` and no other.
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

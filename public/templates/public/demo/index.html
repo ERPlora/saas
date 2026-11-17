@@ -1,7 +1,7 @@
 {% extends "public/public_base.html" %}
 {% load buttons i18n icons %}
 {% comment %}
-  /demo/ — the door to a demo hub (public/demo.py; PLAN-SAAS §3.5, round 2026-10-17). One page, one state
+  /demo/ — the door to a demo hub (public/demo.py). One page, one state
   (`demo_state`), always 200; `data-testid="demo-state-<state>"` is the contract the tests and the e2e read,
   so the copy can change without breaking them:
 
@@ -25,7 +25,7 @@
 {% endcomment %}
 
 {% block title %}{% trans "Try the demo" %} · ERPlora{% endblock %}
-{% comment %} /try/ serves this same page (PUBLIC-F27): both name /demo/ as the one to index. {% endcomment %}
+{% comment %} /try/ serves this same page: both name /demo/ as the one to index. {% endcomment %}
 {% block canonical_url %}https://{{ request.get_host }}{% url 'public:demo' %}{% endblock %}
 {% block meta_description %}{% trans "Open a real ERPlora hub in your browser for 60 minutes: no account, no card, nothing to install." %}{% endblock %}
 
@@ -42,13 +42,14 @@
           <ion-card-content class="p-6 flex flex-col gap-5">
 
             {% if demo_state == "preparing" %}
-              <div class="flex items-start gap-4" role="status" data-demo-wait data-demo-status-url="{{ wait.status_url }}" data-demo-timeout-url="{{ wait.timeout_url }}">
+              <div class="flex items-start gap-4" role="status" data-demo-wait data-demo-state="preparing" data-demo-status-url="{{ wait.status_url }}" data-demo-timeout-url="{{ wait.timeout_url }}" data-demo-preparing-title="{% trans "Preparing your demo…" %}" data-demo-preparing-body="{% trans "It takes a few seconds and opens by itself when it is ready." %}" data-demo-maintenance-title="{% trans "Provisioning paused for maintenance" %}" data-demo-maintenance-body="{% trans "Your demo will be ready in a few minutes. We will keep checking automatically." %}">
                 <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
-                  <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+                  <span data-demo-preparing-icon>{% icon "lucide:clock" size=26 %}</span>
+                  <span data-demo-maintenance-icon hidden>{% icon "lucide:pause" size=26 %}</span>
                 </div>
                 <div>
-                  <ion-card-title class="mb-2">{% trans "Preparing your demo…" %}</ion-card-title>
-                  <p class="text-fg/65 m-0">{% trans "It takes a few seconds and opens by itself when it is ready." %}</p>
+                  <ion-card-title class="mb-2" data-demo-title>{% trans "Preparing your demo…" %}</ion-card-title>
+                  <p class="text-fg/65 m-0" data-demo-body>{% trans "It takes a few seconds and opens by itself when it is ready." %}</p>
                 </div>
               </div>
 

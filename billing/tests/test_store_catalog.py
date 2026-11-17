@@ -1,11 +1,11 @@
-"""What the Store sells a business and what that business already has: ``billing.store.catalog`` (lot L2-D).
+"""What the Store sells a business and what that business already has: ``billing.store.catalog``.
 
-The Store (``billing/frontend/pages/StorePage.vue``, mockups ``store.html``) paints the plans of
+The Store (``billing/frontend/pages/StorePage.vue``) paints the plans of
 ``hubs.plan.list`` and the modules of ``apps.app.list`` (name, summary, icon) joined by slug with this
 query: every paid module on sale (``apps.Module``: net prices in cents, as Stripe charges them) and, for
 the business chosen above, its plan and billing, whether Stripe already bills it (a change is confirmed
 with its proration; otherwise the Embedded Checkout) and which modules it has, bought or included in its
-plan, cancelled ones with the date they end. Only the owner buys for a business (round 17 §2.7), so only
+plan, cancelled ones with the date they end. Only the owner buys for a business, so only
 the owner reads it. A read: nothing here asks Stripe.
 """
 
@@ -21,7 +21,7 @@ from billing import queries
 from billing.models import PlanChangeSchedule
 from billing.schemas import StoreCatalogIn
 from billing.tests.conftest import ctx_for, pay
-from hubs.models import HubMember, SubscriptionItem
+from hubs.models import Hub, HubMember, Plan, SubscriptionItem
 from hubs.tests.conftest import add_member, create_business
 
 pytestmark = pytest.mark.django_db
@@ -96,7 +96,7 @@ class TestWhatIsOnSale:
     def test_a_module_off_sale_the_business_still_pays_is_listed_to_cancel_it(
         self, shop, owner, inventory, reports
     ):
-        """BILLING-G61, saas#2589: taking a module off sale stops new purchases, never the charge of the
+        """Taking a module off sale stops new purchases, never the charge of the
         businesses that have it, so the Store still shows it to them (not on sale) to cancel it."""
         paid = pay(shop, modules=["reports"])
         reports.is_active = False
@@ -111,7 +111,7 @@ class TestWhatIsOnSale:
     def test_each_module_says_its_apps_name_summary_and_icon_in_the_persons_language(
         self, shop, owner, inventory
     ):
-        """BILLING-G61, saas#2589: the catalog's own texts, also for an app the Hub retired from the store
+        """The catalog's own texts, also for an app the Hub retired from the store
         (not listed), whose module a business may still have."""
         make_app("inventory", name_es="Inventario", summary_es="El stock al día.", premium=True, listed=False)
 
@@ -129,12 +129,12 @@ class TestWhatIsOnSale:
         assert subscription["billing_interval"] == "month"
         assert subscription["paying"] is False
         assert subscription["cancel_at_period_end"] is False
-        # No trial since 2026-10-15 (the Free plan is the way in).
+        # No seeded plan carries a trial (the Free plan is the way in).
         assert (subscription["trial_plan"], subscription["trial_end"]) == (None, None)
 
 
 class TestWhichPlansAreOffered:
-    """Audit 2 S-03 (Ioan's decision through the coordinator, 2026-10-14): a business Stripe does not bill
+    """A business Stripe does not bill
     (Free) is offered the plans sold at sign-up only; the ``upgrade_only`` ones (Pro, Enterprise, Max) are
     an upgrade of a business that already pays (the catalogue, ``hubs/0013``)."""
 
@@ -169,6 +169,45 @@ class TestWhichPlansAreOffered:
         assert "standard" not in offered
         assert "payment-test" not in offered
         assert "free" not in offered
+
+
+class TestTheInternalPlans:
+    """An internal plan (``payment-test``, 1 € + VAT) is offered only to the owner of a business ERPlora's staff
+    marked in the admin. ``hubs.plan.list`` lists only the public plans, so the Store gets its card here."""
+
+    def test_a_business_nobody_marked_is_offered_none_and_gets_no_card(self, shop, owner):
+        Plan.objects.filter(slug="payment-test").update(stripe_price_id="price_payment-test_month")
+
+        answer = catalog(owner, shop)
+
+        assert "payment-test" not in answer["offered_plans"]
+        assert answer["internal_plans"] == []
+
+    def test_a_marked_business_is_offered_them_with_their_card(self, marked, owner):
+        answer = catalog(owner, marked)
+
+        assert answer["offered_plans"] == ["starter", "standard", "payment-test"]
+        (card,) = answer["internal_plans"]
+        assert (card["slug"], card["name"], card["internal_only"]) == ("payment-test", "Payment Test (internal)", True)
+        assert (card["price_monthly"], card["price_annual"]) == ("1.00", "0.00")
+
+    def test_the_mark_is_of_the_business_not_of_its_owner(self, marked, owner):
+        pay(marked)
+        other = create_business(owner, name="Otro Bar")
+
+        answer = catalog(owner, other)
+
+        assert "payment-test" not in answer["offered_plans"]
+        assert answer["internal_plans"] == []
+
+    def test_a_business_on_an_internal_plan_keeps_its_card_once_unmarked(self, marked, owner):
+        paid = pay(marked, plan="payment-test")
+        Hub.objects.filter(pk=paid.pk).update(can_buy_internal_plans=False)
+
+        answer = catalog(owner, paid)
+
+        assert "payment-test" not in answer["offered_plans"]
+        assert [card["slug"] for card in answer["internal_plans"]] == ["payment-test"]
 
 
 class TestWhatTheBusinessHas:
@@ -246,7 +285,7 @@ class TestWhatTheBusinessHas:
         assert catalog(owner, paid)["subscription"]["cancel_at_period_end"] is True
 
     def test_a_downgrade_that_waits_says_to_what_and_when(self, shop, owner, inventory):
-        """PLAN-SAAS §31 point 2 (saas#208): the card of the current plan says the downgrade that waits and offers
+        """The card of the current plan says the downgrade that waits and offers
         «Keep the plan»; the Store reads it here."""
         paid = pay(shop, plan="standard", interval="year")
         starts = timezone.now() + timedelta(days=30)

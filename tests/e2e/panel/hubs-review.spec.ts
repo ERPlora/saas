@@ -1,9 +1,9 @@
-// The review of the hubs flows marked «hecho» (MIGRATION-TASK APP-HUBS-5): each screen of hubs/WORKBOOK.md, in
-// English and in Spanish, at the three sizes of the migration (390×844, 834×1112, 1440×900). The account speaks the
+// The review of the hubs flows marked «hecho» : each screen of hubs/WORKBOOK.md, in
+// English and in Spanish, at the three sizes (390×844, 834×1112, 1440×900). The account speaks the
 // run's language (User.language wins on the panel) and each screen is checked with its catalogue's own words
 // (hubs/frontend/locale/<language>.json), so an untranslated text or one that drifted from the catalogue fails here;
 // in Spanish the English words of the same screen must not show. Each screen: no sideways scroll, no field's label
-// cut with «…», no page error, and a capture `APP-HUBS-5-<flow>-<size>-<language>`. The flows' own behaviour is in hubs-flows, hubs-settings,
+// cut with «…», no page error, and a capture per flow, size and language. The flows' own behaviour is in hubs-flows, hubs-settings,
 // hubs-people and hubs-rights (English captures there); this spec only looks at the screens.
 // Accounts of this spec: `e2e-hubs5-…@example.com` (panel_seed.py's `clear` removes every `e2e-…@example.com`).
 import { readFileSync } from 'node:fs';
@@ -12,30 +12,20 @@ import { fileURLToPath } from 'node:url';
 
 import { type Browser, type Locator, type Page } from '@playwright/test';
 
-import {
-  apiPost,
-  djangoPrint,
-  expect,
-  readyBusinessOn,
-  seedPanel,
-  settled,
-  shot,
-  sidewaysScroll,
-  signIn,
-  signInAs,
-  test,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { readyBusinessOn } from './businesses';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
 import { PANEL_URL } from './project';
+import { captureAtEverySize } from './screen';
+import { apiPost, signIn, signInAs } from './session';
+
+const capture = captureAtEverySize('APP-HUBS-5');
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const PREFIX = 'e2e-hubs5-';
 const PASSWORD = 'Masa-madre-y-centeno-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 const LANGUAGES = [
   { language: 'en', locale: 'en-US' },
   { language: 'es', locale: 'es-ES' },
@@ -66,16 +56,9 @@ interface Account {
 }
 
 /** A fresh account of this spec speaking `language`, its address proven. */
-function account(who: string, first: string, last: string, language: Language): Account {
+async function account(who: string, first: string, last: string, language: Language): Promise<Account> {
   const email = `${PREFIX}${who}-${language}-${Date.now()}@example.com`;
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", language="${language}", first_name="${first}", last_name="${last}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
+  await createAccountWarm(email, PASSWORD, { language, firstName: first, lastName: last });
   return { email, first, name: `${first} ${last}` };
 }
 
@@ -109,48 +92,35 @@ async function cutLabels(page: Page): Promise<string[]> {
 }
 
 /**
- * `ready` at each size: no sideways scroll, a capture `APP-HUBS-5-<key>-<size>-<language>`, and in Spanish none of
+ * `ready` at each size: no sideways scroll, a capture per key, size and language, and in Spanish none of
  * `english` (the same screen's English words) on `where`; back at 1440 after.
  */
-async function atEverySize(
+function atEverySize(
   page: Page,
   key: string,
   language: Language,
   ready: () => Promise<void>,
   { where, english = [] }: { where?: Locator; english?: string[] } = {},
 ): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    expect(await cutLabels(page), `${key}: a field's label cut at ${size.name}`).toEqual([]);
-    if (language === 'es' && where) {
-      for (const text of english) await expect(where, `${key}: English left in Spanish`).not.toContainText(text);
-    }
-    await page.screenshot({ path: shot(`APP-HUBS-5-${key}-${size.name}-${language}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
+  return capture(page, key, ready, {
+    suffix: language,
+    checks: async (size) => {
+      expect(await cutLabels(page), `${key}: a field's label cut at ${size.width}`).toEqual([]);
+      if (language === 'es' && where) {
+        for (const text of english) await expect(where, `${key}: English left in Spanish`).not.toContainText(text);
+      }
+    },
+  });
 }
 
-function removeOwnRows(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}").delete()`,
-    ].join('\n'),
-  );
-}
-
-test.beforeAll(() => {
-  removeOwnRows();
-  seedPanel();
+// Django's boots on no test's clock (saas#354): the warm Django starts here, with the taxonomy every deploy seeds (the
+// type HUBS-F01 picks is named by the preparation's step).
+test.beforeAll(async () => {
+  await removeAccountsWarm(PREFIX);
+  await djangoPrintWarm('from django.core.management import call_command\ncall_command("seed_taxonomy")');
 });
-test.afterAll(() => {
-  removeOwnRows();
-  seedPanel('clear');
+test.afterAll(async () => {
+  await removeAccountsWarm(PREFIX);
 });
 
 for (const { language, locale } of LANGUAGES) {
@@ -159,10 +129,8 @@ for (const { language, locale } of LANGUAGES) {
 
     test(`HUBS-F01 + HUBS-F02 + HUBS-F04 (${language}): the sign-up from erplora.com and from the app, then «Preparing»`, async ({ page }) => {
       const errors = watchPageErrors(page);
-      // The taxonomy every deploy seeds: the type picked below is named by the preparation's step.
-      djangoPrint('from django.core.management import call_command\ncall_command("seed_taxonomy")');
       const typeName = language === 'es' ? 'Restaurante' : 'Restaurant';
-      const owner = account('first', 'Olga', 'Ruiz', language);
+      const owner = await account('first', 'Olga', 'Ruiz', language);
       await signIn(page.request, { email: owner.email, password: PASSWORD });
 
       await page.goto('/shell/');
@@ -203,7 +171,7 @@ for (const { language, locale } of LANGUAGES) {
 
     test(`HUBS-F11 + HUBS-F12 (${language}): the start with one business, then the app's start with several`, async ({ page }) => {
       const errors = watchPageErrors(page);
-      const owner = account('enter', 'Olga', 'Ruiz', language);
+      const owner = await account('enter', 'Olga', 'Ruiz', language);
       await signIn(page.request, { email: owner.email, password: PASSWORD });
       await businessOf(page, 'Bar Manolo', { paid: true });
 
@@ -235,7 +203,7 @@ for (const { language, locale } of LANGUAGES) {
 
     test(`HUBS-F03 + HUBS-F09 + HUBS-F10 + HUBS-F19 (${language}): Businesses with a deleted one, «Create business» and «Recover»`, async ({ page }) => {
       const errors = watchPageErrors(page);
-      const owner = account('list', 'Olga', 'Ruiz', language);
+      const owner = await account('list', 'Olga', 'Ruiz', language);
       await signIn(page.request, { email: owner.email, password: PASSWORD });
       await businessOf(page, 'Bar Manolo', { paid: true });
       const gone = await businessOf(page, 'Café Lola');
@@ -287,7 +255,7 @@ for (const { language, locale } of LANGUAGES) {
 
     test(`HUBS-F13 + HUBS-F15 + HUBS-F16 (${language}): the Summary's devices card, «General» and «Change address»`, async ({ page }) => {
       const errors = watchPageErrors(page);
-      const owner = account('settings', 'Olga', 'Ruiz', language);
+      const owner = await account('settings', 'Olga', 'Ruiz', language);
       await signIn(page.request, { email: owner.email, password: PASSWORD });
       const id = await businessOf(page, 'Bar Manolo');
 
@@ -349,8 +317,8 @@ for (const { language, locale } of LANGUAGES) {
 
     test(`HUBS-F24 + HUBS-F26 + HUBS-F27 + HUBS-F28 + HUBS-F29 (${language}): «Team» and its dialogs`, async ({ page, browser }) => {
       const errors = watchPageErrors(page);
-      const owner = account('team', 'Olga', 'Ruiz', language);
-      const ana = account('team-ana', 'Ana', 'Gil', language);
+      const owner = await account('team', 'Olga', 'Ruiz', language);
+      const ana = await account('team-ana', 'Ana', 'Gil', language);
       await signIn(page.request, { email: owner.email, password: PASSWORD });
       const id = await businessOf(page, 'Bar Manolo', { paid: true });
       const member = await invite(page, browser, id, ana, true);
@@ -406,8 +374,8 @@ for (const { language, locale } of LANGUAGES) {
 
     test(`HUBS-F25 (${language}): «You have been invited» for whoever has an invitation waiting`, async ({ page, browser }) => {
       const errors = watchPageErrors(page);
-      const owner = account('invites', 'Olga', 'Ruiz', language);
-      const lucia = account('invited', 'Lucía', 'Pérez', language);
+      const owner = await account('invites', 'Olga', 'Ruiz', language);
+      const lucia = await account('invited', 'Lucía', 'Pérez', language);
       await signIn(page.request, { email: owner.email, password: PASSWORD });
       const id = await businessOf(page, 'Bar Manolo');
       await invite(page, browser, id, lucia, false);
@@ -430,18 +398,11 @@ for (const { language, locale } of LANGUAGES) {
 
     test(`HUBS-F23 + HUBS-F30 (${language}): the staff's page of a business and the accesses list in the admin`, async ({ page }) => {
       const errors = watchPageErrors(page);
-      const owner = account('admin', 'Olga', 'Ruiz', language);
+      const owner = await account('admin', 'Olga', 'Ruiz', language);
       await signIn(page.request, { email: owner.email, password: PASSWORD });
       const id = await businessOf(page, 'Bar Manolo');
       const staff = `${PREFIX}staff-${language}-${Date.now()}@example.com`;
-      djangoPrint(
-        [
-          'from allauth.account.models import EmailAddress',
-          'from django.contrib.auth import get_user_model',
-          `user = get_user_model().objects.create_superuser(email="${staff}", password="${PASSWORD}", language="${language}")`,
-          'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-        ].join('\n'),
-      );
+      await createAccountWarm(staff, PASSWORD, { language, role: 'superuser' });
       await signInAs(page, { email: staff, password: PASSWORD });
 
       await page.goto(`/admin/hubs/hub/${id}/change/`);

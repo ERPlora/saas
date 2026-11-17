@@ -1,4 +1,4 @@
-"""ACCOUNTS-G10: the Content Security Policy of erplora.com, one directive at a time (CLAUDE.md, «Frontend y admin»).
+"""ACCOUNTS-F39 · The Content Security Policy of erplora.com, one directive at a time.
 
 Two policies: the panel's (the SPA and the sign-in, ``settings.SECURE_CSP`` on ``live.csp.base_policy``, read here as
 production builds it, in a fresh process) and the public web's (``public.csp.public_policy``, served by
@@ -22,7 +22,7 @@ from django.utils.csp import CSP
 from config.tests.test_settings import PRODUCTION_ENV, _settings_in_a_fresh_process
 from public.csp import public_policy
 
-#: Public CDNs of JavaScript and icons that the old SaaS loaded (OutfitKit, Iconify): never again (PLAN §16.11).
+#: Public CDNs of JavaScript and icons (OutfitKit's, Iconify's): nothing is ever loaded from them.
 LIBRARY_CDNS = ("cdn.jsdelivr.net", "unpkg.com", "cdnjs.cloudflare.com", "api.iconify.design", "esm.sh")
 #: Sources that open a directive to any origin, or to every script of one scheme.
 WILDCARDS = ("*", "https:", "http:", "data:", "blob:")
@@ -156,7 +156,7 @@ class TestTheServedPages:
         assert "require-trusted-types-for" in response.headers[ENFORCE_HEADER]
 
     def test_the_admin_runs_djangos_own_scripts_without_trusted_types(self, admin_client, settings, panel_policy):
-        """saas#1828 of the old SaaS: Django's admin creates no Trusted Types policy, and its jQuery assigns
+        """Django's admin creates no Trusted Types policy, and its jQuery assigns
         ``innerHTML`` while it loads, so with ``require-trusted-types-for`` it dies and every admin widget with it.
         The admin keeps the panel's policy (nonce, ``'strict-dynamic'``, no framing) without Trusted Types."""
         settings.DEBUG = False

@@ -8,9 +8,10 @@
   no hub.
 
 ``a`` and ``b`` already run in the local Hub: they become businesses of the SaaS adopted as they are
-(``hubs.services.seed_demo_business``: active, ready, nothing owed to the Hub), and the jump reads their
-members. In ``hubs`` since L1-A2: it seeds businesses, which ``accounts`` does not know. Their addresses come proven,
-so they never owe the code a new account is mailed, only the sign-in code every password sign-in mails. Development only: known passwords, so it refuses to run without ``DEBUG``.
+(``hubs.services.demo_businesses.seed_demo_business``: active, ready, nothing owed to the Hub), and the jump reads their
+members. It lives in ``hubs`` because it seeds businesses, which ``accounts`` does not know. Their addresses come
+proven, so they never owe the code a new account is mailed, only the sign-in code every password sign-in mails.
+Development only: known passwords, so it refuses to run without ``DEBUG``.
 Running it again changes nothing (an account seeded before the code existed gets its address proven).
 
 They are the QA users of the root ``.env`` (README «Usuarios QA»): ``QA_OWNER_*``, ``QA_EMPLOYEE_*`` and
@@ -23,8 +24,8 @@ import os
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from accounts import services as account_services
-from hubs import services
+from accounts.services import demo_accounts
+from hubs.services import demo_businesses
 from hubs.models import HubMember
 
 OWNER_EMAIL = "owner@example.com"
@@ -54,13 +55,13 @@ class Command(BaseCommand):
         owner_email, owner_password = qa_user("OWNER", OWNER_EMAIL, OWNER_PASSWORD)
         employee_email, employee_password = qa_user("EMPLOYEE", EMPLOYEE_EMAIL, EMPLOYEE_PASSWORD)
         platform_email, platform_password = qa_user("PLATFORM", PLATFORM_EMAIL, PLATFORM_PASSWORD)
-        owner = account_services.seed_demo_customer(owner_email, owner_password)
-        employee = account_services.seed_demo_customer(employee_email, employee_password)
+        owner = demo_accounts.seed_demo_customer(owner_email, owner_password)
+        employee = demo_accounts.seed_demo_customer(employee_email, employee_password)
         for slug in HUB_SLUGS:
-            services.seed_demo_business(
+            demo_businesses.seed_demo_business(
                 slug, {owner: HubMember.Role.OWNER, employee: HubMember.Role.EMPLOYEE}
             )
-        account_services.seed_demo_platform_admin(platform_email, platform_password)
+        demo_accounts.seed_demo_platform_admin(platform_email, platform_password)
         self.stdout.write(
             f"{owner_email} / {owner_password}: owner of {', '.join(HUB_SLUGS)} (customer, no admin)"
         )

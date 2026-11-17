@@ -63,7 +63,7 @@ describe('ProfileForm', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Changes saved');
   });
 
-  it('the first name is required: blank, it is said under the field and nothing is saved (audit 2 S-10)', async () => {
+  it('the first name is required: blank, it is said under the field and nothing is saved', async () => {
     const s = await setup();
     await typeInto(s.q('profile-first-name'), '   ');
     expect(ionProps(s.q('profile-save'), 'disabled')).toEqual({ disabled: true });

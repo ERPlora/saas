@@ -1,5 +1,5 @@
-// «Recover business» wherever a deleted business is listed (audit 2 R-07: the launch card had only «Go to the
-// panel»): its owner recovers it within its 90 days (`can.restore`, the server's) with `hubs.business.restore`, and
+// «Recover business» wherever a deleted business is listed: its owner recovers it within its 90 days
+// (`can.restore`, the server's) with `hubs.business.restore`, and
 // the result is said; a refusal (the Free quota taken meanwhile…) says the server's sentence. Anybody else sees
 // nothing. In a list the button is named with its business.
 import { afterEach, describe, expect, it, vi } from 'vitest';

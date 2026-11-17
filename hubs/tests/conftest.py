@@ -19,7 +19,7 @@ SECRET = "test-internal-secret"
 
 @pytest.fixture
 def hub_double(settings):
-    """hub-next's ``/internal`` on a free local port; the SaaS's client points at it."""
+    """The Hub's ``/internal`` on a free local port; the SaaS's client points at it."""
     settings.INTERNAL_SHARED_SECRET = SECRET
     double = HubDouble(SECRET).start()
     settings.HUB_INTERNAL_URL = double.url
@@ -58,8 +58,8 @@ def make_user(db):
 
 def put_the_catalogue_back():
     """The plans the migrations leave (``hubs/0013``, the module caps of ``hubs/0019``, the paid cards of
-    ``hubs/0020``, the cards on sale of ``hubs/0021`` and Standard's card without the custom domain of ``hubs/0026``;
-    pytest builds its database by running them). A
+    ``hubs/0020``, the cards on sale of ``hubs/0021``, Standard's card without the custom domain of ``hubs/0026`` and
+    the database line that says what a recovery keeps of ``hubs/0029``; pytest builds its database by running them). A
     transactional test starts from a database the one before flushed: there the data migrations that write them run
     again, in their order."""
     from importlib import import_module
@@ -74,11 +74,12 @@ def put_the_catalogue_back():
         import_module("hubs.migrations.0020_paid_plan_copy").describe_what_the_plans_give(apps, None)
         import_module("hubs.migrations.0021_plan_copy_on_sale").describe_the_cards_on_sale(apps, None)
         import_module("hubs.migrations.0026_no_custom_domain_on_sale").stop_selling_the_custom_domain(apps, None)
+        import_module("hubs.migrations.0029_backups_keep_what_was_sent").say_what_a_recovery_keeps(apps, None)
 
 
 @pytest.fixture
 def plans(db):
-    """The catalogue (``put_the_catalogue_back``), none with a trial since 2026-10-15."""
+    """The catalogue (``put_the_catalogue_back``), none with a trial."""
     put_the_catalogue_back()
 
 
@@ -92,8 +93,8 @@ def no_plans(db):
 
 @pytest.fixture
 def signup_trial(plans):
-    """Starter with a 15-day trial, as staff would give it in the admin. No plan carries one since 2026-10-15 (the
-    Free plan is the way in), but the mechanism stays, dormant, and these tests exercise it."""
+    """Starter with a 15-day trial, as staff would give it in the admin. No plan carries one (the Free plan is the
+    way in), but the mechanism stays, dormant, and these tests exercise it."""
     from hubs.models import Plan
 
     Plan.objects.filter(slug="starter").update(trial_period_days=15)
@@ -117,11 +118,11 @@ def free_plan(db):
 
 def create_business(user, **data):
     """A business created through ``hubs.business.create``, as the panel creates it."""
-    from hubs import services
+    from hubs.services import creation
     from hubs.models import Hub
     from hubs.schemas import BusinessCreateIn
 
-    created = services.business_create(ctx_for(user), BusinessCreateIn(**{"name": "Bar Manolo", "country": "ES", **data}))
+    created = creation.business_create(ctx_for(user), BusinessCreateIn(**{"name": "Bar Manolo", "country": "ES", **data}))
     return Hub.objects.get(pk=created.id)
 
 
@@ -149,9 +150,9 @@ def add_member(hub, user, role, *, accepted=True, invited_by=None, invited_days_
 
 def role_on(user, slug: str) -> str | None:
     """What ``user`` is on the business at ``slug`` for the jump to a hub; ``None``: it does not enter."""
-    from hubs import queries
+    from hubs.queries import membership
 
-    return dict(queries.access_of(user.pk)).get(slug)
+    return dict(membership.access_of(user.pk)).get(slug)
 
 
 @pytest.fixture
@@ -167,7 +168,7 @@ def business(owner, plans):
 @pytest.fixture
 def team(business, owner, make_user):
     """The business with one person per role, a pending invitee and a stranger. Five people do not fit in Free
-    (three), so the business is on Starter, as one that pays (no plan lends a trial since 2026-10-15)."""
+    (three), so the business is on Starter, as one that pays (no plan lends a trial)."""
     from hubs.models import HubMember, Plan, Subscription
 
     Subscription.objects.filter(hub=business).update(plan=Plan.objects.get(slug="starter"))
@@ -357,7 +358,7 @@ def custom_domains_on(settings, aws_edge, dns_world, monkeypatch):
     settings.ERPLORA_ENVIRONMENT = "prod"
     monkeypatch.setattr(domain_checks, "zone_of", lambda domain: domain_checks.Zone.SUBDOMAIN)
     # The wait for ACM's validation record is a test's to time, never a second of the run.
-    monkeypatch.setattr("hubs.services.sleep", lambda seconds: None)
+    monkeypatch.setattr("hubs.services.custom_domain_requests.sleep", lambda seconds: None)
     return aws_edge
 
 

@@ -1,4 +1,4 @@
-"""The client of DeepSeek (ASSISTANT-G34): OpenAI's Chat Completions format at DeepSeek's address
+"""The client of DeepSeek: OpenAI's Chat Completions format at DeepSeek's address
 (``https://api.deepseek.com``), without ``parallel_tool_calls`` (DeepSeek's API does not document it), and every
 model it lists is a chat model."""
 

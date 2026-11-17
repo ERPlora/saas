@@ -1,8 +1,7 @@
-"""ACCOUNTS-F36 · The audit trail of what ERPlora sells of a paid app (django-auditlog; PLAN-SAAS §1.1: «en los
-modelos de cuenta, cobro y fiscal»).
+"""ACCOUNTS-F36 · The audit trail of what ERPlora sells of a paid app (django-auditlog).
 
 A ``Module`` row is a price the staff keep in the admin (its tier, its monthly and annual price, its Stripe prices):
-who changed it and from what is logged, with only the logged fields serialized (#957) and without ``updated_at``. The
+who changed it and from what is logged, with only the logged fields serialized and without ``updated_at``. The
 catalog of apps the Hub writes (``App``, ``AppDoc``, schema ``shared``) is not money and the Hub's worker rewrites it
 on every start: not audited.
 """

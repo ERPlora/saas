@@ -1,6 +1,5 @@
-// Browser checks of the public web (spec §6 and §9, `tests/e2e/`): Ioan's Chrome, headless by default
-// (Ioan, 2026-10-14); a visible, slowed-down window only when a run asks for it (`E2E_HEADED=1`,
-// `pnpm e2e:headed`), never in CI.
+// Browser checks of the public web (`tests/e2e/`): Chrome, headless by default; a visible, slowed-down
+// window only when a run asks for it (`E2E_HEADED=1`, `pnpm e2e:headed`), never in CI.
 //
 // It drives a production-like SaaS of its own: DEBUG off (the public CSP as production serves it,
 // no Vite dev server), the build of `pnpm build` (run it first: the manifest must hold
@@ -27,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, type PlaywrightTestConfig } from '@playwright/test';
 
 import { DATABASE_READY } from './database';
-import { djangoEnv } from './django-env';
+import { djangoEnv, productionPolicies } from './django-env';
 import { panelProject, panelServers } from './panel/project';
 import { recaptchaServerEnv } from './recaptcha';
 import { STACK, type Stack } from './stack';
@@ -37,7 +36,7 @@ const SAAS_DIR = resolve(HERE, '..', '..');
 export const BASE_URL = `http://127.0.0.1:${STACK.publicPort}`;
 
 /**
- * Where the public server of `stack` writes the mails it sends (the contact form, PUBLIC-G39), as files: never SMTP.
+ * Where the public server of `stack` writes the mails it sends (the contact form), as files: never SMTP.
  * `tests/e2e/.artifacts/public/mail/` (ignored by git), `mail-<E2E_SAAS_PORT>/` beside the shared stack.
  */
 export function publicMailDir(stack: Stack): string {
@@ -63,7 +62,7 @@ process.env.PW_RUN_ID ??= runId(STACK, new Date());
 const SLOW_MO = 150;
 
 /**
- * The browser's window for a run with `env`: headless and at full speed by default (Ioan, 2026-10-14);
+ * The browser's window for a run with `env`: headless and at full speed by default;
  * a visible Chrome, slowed down, only with `E2E_HEADED=1`. CI never opens one, whatever it asks.
  */
 export function browserWindow(env: Record<string, string | undefined>): { headless: boolean; slowMo: number } {
@@ -112,12 +111,14 @@ export function publicServer(saasDir: string, stack: Stack = STACK, env: Record<
       {
         // Production refuses to start without a key; this one only signs this local, throwaway server.
         SECRET_KEY: 'e2e-local-only-not-a-secret',
+        // And without its cache prefix and Stripe mode, which ECS gives production explicitly (django-env.ts).
+        ...productionPolicies(stack),
         // Production refuses to start without it either (fiscal/): a valid Fernet key that encrypts nothing here.
         FISCAL_DOCUMENTS_KEY: 'ZTJlLWxvY2FsLW9ubHktbm90LWEtc2VjcmV0LWtleSE=',
         ALLOWED_HOSTS: '127.0.0.1,localhost',
         EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
         EMAIL_FILE_PATH: publicMailDir(stack),
-        // reCAPTCHA off, as production since 2026-10-23; with `E2E_RECAPTCHA=1`, on: its assessments go to the
+        // reCAPTCHA off, as in production; with `E2E_RECAPTCHA=1`, on: its assessments go to the
         // run's double, never to Google, and its pages get a fake enterprise.js (recaptcha.ts).
         ...recaptchaServerEnv(stack, saasDir, env),
         // The run presses «Try the demo» from 127.0.0.1 more than production's 3 an hour (demo-door, public-demo,

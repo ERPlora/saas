@@ -1,8 +1,6 @@
-// What confirming a change charges NOW, before the owner confirms it (PLAN-SAAS §3.2): for a business
-// Stripe bills already, `billing.checkout.start` answers `flow: "confirm"` with Stripe's prorated
-// preview — the amount with VAT, the VAT, and the proration date the confirmation sends back so the
-// charge is the preview's to the cent. A business that does not pay yet answers `flow: "checkout"`
-// (`state: 'checkout'`): the Store opens the Embedded Checkout instead.
+// What confirming a change charges now. For a business Stripe bills already, `billing.checkout.start` answers
+// `flow: "confirm"` with Stripe's prorated preview and the proration date the confirmation sends back, so the
+// charge is the preview's to the cent; a business that does not pay yet answers `flow: "checkout"`.
 import { type ApiError, useCommand } from '@erplora/ui/sdk';
 import { computed, shallowRef } from 'vue';
 

@@ -1,13 +1,7 @@
 <script setup lang="ts">
-// «Cancel plan» of a row of Subscriptions (mockups `billing.html` «modal-cancel»; README §3b; UX-AUDIT-4 W-F1,
-// X-08, X-31; PLAN-SAAS §3.3): a ConfirmDialog that speaks of THAT business and its own dates:
-//   - it stays on its plan until the end of the period, then goes to Free without another charge;
-//   - its paid modules turn off then, and nothing is deleted;
-//   - what Free covers, against the people it has now (`hubs.business.get` seats: members and invitations);
-//   - an unpaid invoice stays pending: cancelling does not cancel it (said even when its details did not load);
-//   - «Keep the plan» undoes it until then.
-// Confirmed, `billing.plan.cancel` (the whole subscription, at the end of the period) and a toast that says
-// until when; a refusal stays in the dialog. Web only: Subscriptions renders it in `<WebOnly>`.
+// «Cancel plan» of a row of Subscriptions: a ConfirmDialog that speaks of THAT business and its own dates. An unpaid
+// invoice stays pending (cancelling does not cancel it), and that is said even when its details did not load. Web
+// only: Subscriptions renders it in `<WebOnly>`.
 import { type ConfirmConsequence, ConfirmDialog } from '@erplora/ui/components';
 import { toastSuccess } from '@erplora/ui/shell';
 import { useCommand, useLiveClient } from '@erplora/ui/sdk';

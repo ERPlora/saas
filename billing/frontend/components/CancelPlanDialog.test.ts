@@ -1,9 +1,5 @@
-// «Cancel plan» of a row of Subscriptions (mockups `billing.html` «modal-cancel»; README §3b; UX-AUDIT-4 W-F1,
-// X-08, X-31; PLAN-SAAS §3.3): the confirmation speaks of THAT business and its own dates — until when it
-// stays on its plan and that it then goes to Free without another charge, which of its modules turn off
-// (nothing is deleted), what Free covers against the people it has now (`hubs.business.get` seats), that an
-// unpaid invoice stays pending, and that «Keep the plan» undoes it until then. Confirmed, `billing.plan.cancel`
-// and a toast that says until when.
+// «Cancel plan» of a row of Subscriptions: the confirmation speaks of THAT business and its own dates; confirmed,
+// `billing.plan.cancel` and a toast that says until when.
 // clock: data only — no code under test compares these dates with now.
 import { ConfirmDialog } from '@erplora/ui/components';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -88,7 +84,7 @@ describe('CancelPlanDialog', () => {
     ]);
   });
 
-  it('one person is said without a plural pronoun, in Spanish too (audit 2 R-26: «1 persona… para ellas»)', async () => {
+  it('one person is said without a plural pronoun, in Spanish too', async () => {
     const row = subscriptionRow('plaza', 'Bar La Plaza');
     const s = await setup({ row }, () => seats(1), 'es');
     expect(s.lines()).toContain('En Gratis caben 3 usuarios y 1 dispositivo a la vez. Bar La Plaza tiene 1 persona, dentro de ese límite: no cambia nada en el equipo.');

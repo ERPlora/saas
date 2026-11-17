@@ -1,11 +1,9 @@
-"""Account → Security → «Change password» is allauth.headless's ``account/password/change`` (PLAN-SAAS §6).
+"""Account → Security → «Change password» is allauth.headless's ``account/password/change``.
 
-Ported from ERPlora/saas ``apps/dashboard/profile/tests/test_change_password_rate_limit.py`` (10; saas#2545)
-and the password cases of ``test_views`` (profile and settings): the current password is asked, the same
-validators as everywhere, and one budget of attempts per account (allauth's ``change_password``, 5 a minute), so
-an open session is no password-guessing oracle. Added (PLAN-SAAS §2.1): a new password also asks every business
-to end the account's sessions there (``signals.sessions_ended``), as Django ends the other sessions here.
-Dropped: the three doors of the original (profile page, settings page, DRF view) are one now.
+The current password is asked, the same validators as everywhere, and one budget of attempts per account
+(allauth's ``change_password``, 5 a minute), so an open session is no password-guessing oracle. A new password
+also asks every business to end the account's sessions there (``signals.sessions_ended``), as Django ends the
+other sessions here.
 """
 
 import pytest
@@ -70,7 +68,7 @@ def test_a_weak_new_password_is_refused_as_everywhere(signed_in, password):
 
 
 def test_the_current_password_is_not_a_new_one(signed_in, ana, password, received):
-    """ERPlora/saas#2612 (ACCOUNTS-G42): «new» means new, as the old profile page said and its API did not."""
+    """«New» means new: the new password is never the current one."""
     response = _change(signed_in, password, new=password)
 
     assert response.status_code == 400
@@ -92,7 +90,7 @@ def test_a_reset_to_the_current_password_is_refused_too(client, ana, password):
 
 
 def test_the_errors_speak_the_accounts_language(signed_in, ana):
-    """ERPlora/saas#2614 (ACCOUNTS-G46): Ana reads Spanish, and so do the errors of «Change password»."""
+    """Ana reads Spanish, and so do the errors of «Change password»."""
     response = _change(signed_in, "not my password")
 
     with translation.override("es"):

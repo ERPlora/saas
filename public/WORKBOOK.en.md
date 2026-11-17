@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:d5b0744ac9ed20b8e8cbd2ced68a08de766b810d940dda3e32d95840b0b504bb -->
+<!-- generated from WORKBOOK.md sha256:f64de241a20aca329919a8113415a686a4e486b6444d62abb4de4dfdf19e0e9c -->
 
 ## What it is for and who it is for
 
@@ -172,7 +172,6 @@ many from the connection, not available, ended) with what can be done. There is 
 | PUBLIC-F33 | The demo ended | done |
 | PUBLIC-F34 | Retire the demos that run out | done |
 | PUBLIC-F35 | From the demo to a real account | done |
-| PUBLIC-F36 | Ask for a demo from another application | discarded |
 | PUBLIC-F37 | The demo does not count as a business | done |
 
 ### PUBLIC-F01 See the home page
@@ -196,11 +195,11 @@ Steps:
 1. The person opens "Pricing" and sees "Start free. Scale when you need it.", that every plan includes all the apps, and one card per plan one can start with (Free, Starter and Standard), with the monthly price per hub, its features, how many apps can be turned on at once ("Up to 20 apps turned on at once"; with no cap, "All the apps turned on at once"), the assistant and WhatsApp messages a month and, on the plans that include it, "Your own domain for your website (www.yourbusiness.com)".
 2. If the plan has an annual price, the card states the year's price and the months it saves ("≈ €299.90/year · 2 months free"), worked out from the two prices; if every paid plan saves the same, the header says it once ("Pay for the year and get 2 months free.").
 3. Further down, "More capacity": the upgrade plans (today Pro, Enterprise and Max), each with its monthly and annual price, its description and its features, and "Available once you are on Starter" instead of the sign-up button; one button, "Start free and upgrade whenever you want", leads to the sign-in screen.
-4. Then the table of what each plan includes (the upgrade plans too), with the apps each one can have turned on at once, the same cap the Hub applies ("Unlimited" with no cap), and its "Own domain" ("For your website" or "Not included"); the comparisons with other ERPs and the frequently asked questions, where the one on switching plans explains that moving down turns no app off: with more apps turned on than the new cap, they stay on and no more can be turned on until under it. Nothing is offered by contact.
+4. Then the table of what each plan includes (the upgrade plans too), with the apps each one can have turned on at once, the same cap the Hub applies ("Unlimited" with no cap), and its "Own domain" ("For your website" or "Not included"); the comparisons with other ERPs and the frequently asked questions, where the one on switching plans explains that moving down turns no app off: with more apps turned on than the new cap, they stay on and no more can be turned on until under it, and the one on VAT ("Is VAT included in these prices?") says that prices exclude VAT and that, for now, ERPlora only sells to payers billed in Spain: the VAT comes from the billing address; the mainland and the Balearic Islands add 21%; the Canary Islands, Ceuta and Melilla go without VAT and only to businesses and professionals, who give their tax ID and account for the IGIC or the IPSI themselves. Nothing is offered by contact.
 In: the plans on sale, the upgrade plans too (active and not internal), in the order staff give them.
 Out: nothing saved; the structured data of the frequently asked questions, taken from the same list as the accordion.
-If it fails: without plans on sale, the page says so and paints neither tables nor "More capacity"; without upgrade plans, there is no "More capacity". If the annual price saves no whole month, the card states only the year's price, without "months free". A plan without assistant or WhatsApp messages does not name them; one without an own domain does not name it either, and if no plan on sale includes one, the table has no such column.
-Involved: hubs (the plans), billing (the charge, PUBLIC-F04)
+If it fails: without plans on sale, the page says so and paints neither tables nor "More capacity"; without upgrade plans, there is no "More capacity". If the annual price saves no whole month, the card states only the year's price, without "months free". A plan without assistant or WhatsApp messages does not name them; one without an own domain does not name it either, and if no plan on sale includes one, the table has no such column. Neither the VAT question nor the note under the prices says that ERPlora sells to a country the payment does not sell to (VIES, the reverse charge, the United Kingdom).
+Involved: hubs (the plans), billing (the charge, PUBLIC-F04; who is sold to, BILLING-F02)
 
 ### PUBLIC-F03 See the detail of a plan
 Status: done
@@ -212,7 +211,7 @@ Steps:
 3. They press "Get Started" and reach the sign-in screen, where the account is also created (PUBLIC-F11); "Other plans" leads to the other plans on sale.
 In: the plan by its identifier.
 Out: nothing saved.
-If it fails: an internal, retired, upgrade or non-existent plan gives "Page not found". "What's included" is the plan's list without the inherited separators.
+If it fails: an internal, retired, upgrade or non-existent plan gives "Page not found". "What's included" is the plan's list without the rows that are only a separator line.
 Involved: hubs (the plans), accounts (the entrance)
 
 ### PUBLIC-F04 The price painted is the price charged
@@ -222,7 +221,7 @@ Screen: none
 Steps:
 1. A plan's price (monthly and annual) lives in a single place, without VAT; the home, Plans and prices, the plan detail and Collaborate read it from there.
 2. Charging a plan uses that same amount and the Stripe price pasted on the plan; staff cannot save a Stripe price that charges another amount, in another currency or with VAT included.
-3. VAT is worked out at checkout, from the buyer's tax ID or VAT number, and the web says so next to every price.
+3. VAT is worked out at checkout, from the buyer's billing address, and the web says so next to every price.
 In: each plan's monthly and annual price and its Stripe prices.
 Out: nothing saved.
 If it fails: a Stripe price that does not match the plan's is refused when saving it in the admin, with the reason; if Stripe does not answer, it is not taken as valid. So the web cannot show one price and the payment charge another.
@@ -234,7 +233,7 @@ Actor: visitor
 Screen: Industries
 Steps:
 1. The person opens "Industries" and sees "ERPlora for your business." with the business types, which they can filter by sector.
-2. They open one and see the headline with the question they would type into a search engine ("POS and ERP software for your hair salon"), an opening with the entry price and how many apps there are, the apps made for that business type, with how they are turned on (the template the business's Home suggests, or one at a time), and its frequently asked questions. It never says the business comes with them out of the box: every business is born with every app off (PLAN §33).
+2. They open one and see the headline with the question they would type into a search engine ("POS and ERP software for your hair salon"), an opening with the entry price and how many apps there are, the apps made for that business type, with how they are turned on (the template the business's Home suggests, or one at a time), and its frequently asked questions. It never says the business comes with them out of the box: every business is born with every app off.
 3. At the bottom they have the links to pricing, the app store, the product and compliance, and "Get started free" and "Browse apps".
 In: the active sectors and business types and the published apps of their sector.
 Out: nothing saved; the structured data of the application and of the frequently asked questions.
@@ -273,12 +272,12 @@ Actor: visitor
 Screen: Security, Plans and prices, Home, About us
 Steps:
 1. The person reads what Security, the pricing FAQ, the home and About us say about access, data and availability.
-2. They read what works today: server sessions in secure cookies, a one-time code to enter the business, sign-in with Google, salted password hashing, encryption in transit and at rest, HTTPS only with TLS 1.2 or 1.3, AWS in Ireland with its web firewall, continuous backups recoverable to any moment of the last 14 days and high availability.
+2. They read what works today: server sessions in secure cookies, a one-time code to enter the business, sign-in with Google, salted password hashing, encryption in transit and at rest, HTTPS only with TLS 1.2 or 1.3, AWS in Ireland with its web firewall, continuous backups from which the data of any moment of the last 14 days is recovered, keeping what was already sent to the tax agency, and high availability.
 3. To "Where is my data stored?" the answer is the European Union, with the exceptions of the assistant: its voice and its search fingerprints, such as transcribing a voice dictation, its backup provider if the European one is unavailable and what it searches the web for, which goes to Brave Search, in the United States; and the link "Read the privacy policy". The home says that the assistant's language model is served from the European Union, not the whole assistant.
 In: nothing; the pages' text, checked against the infrastructure and the privacy policy.
 Out: nothing saved.
-If it fails: no availability agreement with a percentage, 24/7 support, regular audits, penetration test reports, end-to-end encryption or sign-in with GitHub is promised, and never "your data never leaves the EU", which would contradict the privacy policy.
-Involved: none
+If it fails: no availability agreement with a percentage, 24/7 support, regular audits, penetration test reports, end-to-end encryption or sign-in with GitHub is promised, and never "your data never leaves the EU", which would contradict the privacy policy. No page or plan promises going back to a moment of the last 14 days without saying that what was already sent to the tax agency is kept: a business that invoices with VeriFactu is not given back whole, it gets back what it lost from a copy of that moment.
+Involved: hubs (the database line of the plans' cards, with the same promise)
 
 ### PUBLIC-F09 See compliance by country
 Status: done
@@ -416,13 +415,13 @@ Status: done
 Actor: visitor
 Screen: Cookie notice and Cookie preferences
 Steps:
-1. While the web does not measure visits, it only sets the technical cookies (the session, the forms' protection, the language, the theme and the cookie choice) and shows no notice: there is nothing to consent to.
-2. If measuring visits is turned on, every page shows the notice until the person chooses "Accept All", "Decline" or "Customize". The phone menu, when opened, lies over the notice, so its buttons show and can be pressed; when it closes, the notice is still there.
+1. While the web does not measure visits, it only sets the technical cookies (the session, the forms' protection, the language, the theme and the cookie choice) and shows no notice: there is nothing to consent to. The cookie policy says so: no analytical cookies and no notice.
+2. If measuring visits is turned on, every page shows the notice until the person chooses "Accept All", "Decline" or "Customize", and the cookie policy says the notice shows until a choice and names the cookies of that measuring. The phone menu, when opened, lies over the notice, so its buttons show and can be pressed; when it closes, the notice is still there.
 3. "Cookies" in the footer opens "Cookie preferences": the "Essential cookies", "Always active", and each optional category ("Analytical cookies", "Marketing cookies") with its cookies and its switch; the choice lasts a year.
 4. Without accepting the analytical ones no measurement loads, and on the password and code screens it never does.
 In: the person's choice.
 Out: the choice, kept in the browser; the cookies of a declined category are deleted.
-If it fails: the essential cookies are never deleted (they would sign the person out); if the server's fast memory does not answer, the page goes out anyway and the cleaning happens on the next one.
+If it fails: the essential cookies are never deleted (they would sign the person out); if the server's fast memory does not answer, the page goes out anyway and the cleaning happens on the next one; the cookie policy never promises a notice the web does not show.
 Involved: accounts (the sign-in screens)
 
 ### PUBLIC-F20 Read the legal texts
@@ -432,11 +431,11 @@ Screen: Legal texts
 Steps:
 1. In the footer, "Legal Notice", "Privacy" and "Terms" open each text on its own page; the cookie policy opens from the privacy policy.
 2. The privacy policy names who the data is entrusted to: Amazon Web Services in the Ireland region for hosting and email, the assistant's language model in Frankfurt, without training on it, and OpenAI for the assistant's voice and search fingerprints: it transcribes the audio of a dictation, which neither the hub nor ERPlora keeps, and may process it outside the European Economic Area. Apart from those processors, it names Brave Search, in the United States, which receives the queries of the assistant's web search and keeps them for up to 90 days: its data processing addendum leaves them out and the Standard Contractual Clauses do not cover them. An answer is read aloud by the device's own voice (the browser's or the system's): its text never leaves it.
-3. The terms give the numbers the product keeps: the days of the exit package, the days a suspended business waits before it is deleted and the trial of the plans on sale (none if none has one); and they name the plans on sale that include an own domain for the business's public website (none if none includes one), with the app and the way into the business on erplora.com. Their acceptable use forbids keeping, redistributing or training on the web results the assistant brings, as its provider's terms ask.
+3. The terms give the numbers the product keeps: the days of the exit package, the days a suspended business waits before it is deleted and the trial of the plans on sale (none if none has one); and they name the plans on sale that include an own domain for the business's public website (none if none includes one), with the app and the way into the business on erplora.com. Their section 3.1 says where ERPlora sells its paid plans, the same as the payment does: for now, only to customers whose billing address is in Spain; on the mainland and in the Balearic Islands, with Spanish VAT; in the Canary Islands, Ceuta and Melilla, only to businesses and professionals, with their tax ID and without Spanish VAT (the customer accounts for the IGIC or the IPSI); the free plan is not affected. Their acceptable use forbids keeping, redistributing or training on the web results the assistant brings, as its provider's terms ask.
 In: the plans on sale (the terms).
 Out: nothing saved.
-If it fails: no text names a provider no longer used or another hosting, nor keeps quiet about where the audio of a dictation goes, nor promises EU residency or a retention period for it, nor promises that a web query never carries personal data (that is a rule given to the model, not a guarantee), nor a consent or a switch for the assistant that the hub does not have (the assistant is used when someone writes or dictates to it: in the hub, with the messages the plan gives; in erplora.com's panel, with the account's), and no link between texts leads to a page that does not exist.
-Involved: hubs (the plans), ASSISTANT-F14
+If it fails: no text names a provider no longer used or another hosting, nor keeps quiet about where the audio of a dictation goes, nor promises EU residency or a retention period for it, nor promises that a web query never carries personal data (that is a rule given to the model, not a guarantee), nor a consent or a switch for the assistant that the hub does not have (the assistant is used when someone writes or dictates to it: in the hub, with the messages the plan gives; in erplora.com's panel, with the account's), and no link between texts leads to a page that does not exist. The terms neither sell to a country the payment does not sell to nor leave out one it sells to: selling outside Spain again changes section 3.1 and the version of the terms.
+Involved: hubs (the plans), billing (who is sold to, BILLING-F02), ASSISTANT-F14
 
 ### PUBLIC-F21 Check the responsible declaration of the invoicing system
 Status: done
@@ -487,7 +486,7 @@ Steps:
 3. The app's page tells what it does at the counter and that a hub comes first: "You need a hub before you need the app.".
 In: the Free plan on sale and the stores' listings.
 Out: nothing saved.
-If it fails: without a Free plan on sale, the card states no limit; a platform without a published version (macOS) is not offered, and the old local bridge no longer exists and gives "Page not found".
+If it fails: without a Free plan on sale, the card states no limit; a platform without a published version (macOS) is not offered, and the local bridge's address gives "Page not found".
 Involved: hubs (the Free plan)
 
 ### PUBLIC-F25 Know which version of the app is published
@@ -534,7 +533,7 @@ Actor: visitor, system
 Screen: Demo
 Steps:
 1. The person presses "Try the demo".
-2. An empty hub is created for that browser, with its own random address starting with "demo-", and it lasts 60 minutes from that moment. It takes a few seconds to be ready: the demo screen says "Preparing your demo…" and "It takes a few seconds and opens by itself when it is ready.", and checks every second whether it is.
+2. An empty hub is created for that browser, with its own random address starting with "demo-", and it lasts 60 minutes from that moment. It takes a few seconds to be ready: the demo screen says "Preparing your demo…" and "It takes a few seconds and opens by itself when it is ready.", and checks every second whether it is. While ERPlora's staff keeps the platform frozen for a database upgrade, it changes to "Provisioning paused for maintenance" and says it will keep checking automatically; it is neither a failure nor the 30-second timeout, and after the lift it returns to "Preparing your demo…" or opens if it is ready.
 3. Once the demo is ready, the screen says "Opening your demo…" and the browser goes into it by itself, as the user "Demo", with no account, password or PIN; without JavaScript, the "Continue" button does the same.
 4. If they come back to the demo screen while it lasts, they see "Your demo is running", "It ends in 12 minutes." (whatever is left) and "Back to my demo", which takes them back to the same demo.
 5. Pressing again, reloading or opening another tab of the same browser gives back the same demo, and signing in to their erplora.com account afterwards does not lose it.
@@ -633,18 +632,6 @@ In: nothing.
 Out: nothing of the demo goes to the account: the business is born empty, as the screen warns: "The demo hub is yours for 60 minutes; no account, no card. Everything you type disappears when it ends.".
 If it fails: their demo keeps running until it ends, even once they have an account.
 Involved: accounts (the entrance), hubs (the business sign-up)
-
-### PUBLIC-F36 Ask for a demo from another application
-Status: discarded — today's demo is created and opened in the same browser that asks for it, with a one-time code tied to it, so a door without a screen could not open it; no ERPlora application called it, and round 2026-10-17 (PLAN-SAAS §3.5) left the screen as the only door
-Actor: system
-Screen: none
-Steps:
-1. Whoever wants a demo asks for it from the demo screen (PUBLIC-F28).
-2. The refusals show on that screen (PUBLIC-F29 to PUBLIC-F32).
-In: nothing.
-Out: nothing.
-If it fails: does not apply.
-Involved: none
 
 ### PUBLIC-F37 The demo does not count as a business
 Status: done

@@ -1,31 +1,20 @@
-// flow: WHATSAPP-G13, WHATSAPP-G07 — Meta's webhook on the panel's real Django, end to end over HTTP: Meta's
+// flow: WHATSAPP-F13, WHATSAPP-F07 — Meta's webhook on the panel's real Django, end to end over HTTP: Meta's
 // verification of the address (its token and its challenge), then a customer's message, signed as Meta signs it,
 // handed to the Hub through door 1 (`POST /internal/whatsapp/inbound`), signed as every internal call, with the
 // contract's body. The spec plays Meta (it signs with the e2e app's secret, project.ts `WHATSAPP_E2E`) and the Hub
-// (`startHubDouble`); Meta itself is never called. No screen: erplora.com has no WhatsApp page (PLAN-SAAS block 12).
+// (`startHubDouble`); Meta itself is never called. No screen: erplora.com has no WhatsApp page.
 // The cross e2e with the real Hub's inbox (Meta → erplora.com → the Hub's «WhatsApp inbox») is whatsapp-hub.spec.ts.
-import { execFileSync } from 'node:child_process';
 import { createHmac } from 'node:crypto';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-import { djangoEnv } from '../django-env';
-import { expect, type HubCall, startHubDouble, test } from './fixtures';
+import { runSeed } from './django';
+import { expect, test } from './fixtures';
+import { type HubCall, startHubDouble } from './hub';
 import { WHATSAPP_E2E } from './project';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const WEBHOOK = '/webhooks/whatsapp/';
 /** whatsapp_seed.py's business and number. */
 const SLUG = 'e2e-whatsapp-bar';
 const NUMBER_ID = '880000000000001';
-
-function seedWhatsapp(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/whatsapp_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
-}
 
 /** A text message of a customer, as Meta's webhook carries it. */
 function customerWrites(wamid: string, text: string): string {
@@ -57,10 +46,10 @@ function metaSignature(body: string, secret: string = WHATSAPP_E2E.appSecret): s
 }
 
 test.describe('WhatsApp: Meta’s webhook reaches the Hub', () => {
-  test.beforeAll(() => seedWhatsapp('seed'));
-  test.afterAll(() => seedWhatsapp('clear'));
+  test.beforeAll(() => runSeed('whatsapp_seed.py', 'seed'));
+  test.afterAll(() => runSeed('whatsapp_seed.py', 'clear'));
 
-  test('WHATSAPP-G13: Meta confirms the address with our token, never with another', async ({ request }) => {
+  test('WHATSAPP-F13: Meta confirms the address with our token, never with another', async ({ request }) => {
     const ok = await request.get(WEBHOOK, {
       params: { 'hub.mode': 'subscribe', 'hub.verify_token': WHATSAPP_E2E.verifyToken, 'hub.challenge': '1158201444' },
     });
@@ -73,7 +62,7 @@ test.describe('WhatsApp: Meta’s webhook reaches the Hub', () => {
     expect(wrong.status()).toBe(403);
   });
 
-  test('WHATSAPP-G07: a customer’s message, signed by Meta, is handed to the Hub signed and as the contract says', async ({
+  test('WHATSAPP-F07: a customer’s message, signed by Meta, is handed to the Hub signed and as the contract says', async ({
     request,
   }) => {
     const hub = await startHubDouble();

@@ -1,20 +1,20 @@
-// The panel assistant's QA with the REAL model, layer 2 (plan docs/plans/2026-10-31-asistente-conocimiento-y-qa.md of
-// erplora-next, §1.5 and §4 T3): every probe of the corpus (tests/e2e/qa/probes/, or the files and folders of
-// `QA_PROBES`, comma-separated) is a NEW natural phrase for one tool of the exported catalogue, typed in the real panel
-// chat, and its automatic verdict (assistant-probes.ts, `probeVerdict`): «read» → its tool is the first the model runs
-// (past the always offered ones and the probe's `lookups`), no card; «card» → the first card is its tool's and no other
-// shows, cancelled (nothing in the outbox) or confirmed (it ran); «refused» → no card nor write, its tool not run, and
-// the answer says why it cannot (a permission, a role, the app, erplora.com in the browser); «docs» → the documentation
-// search returned excerpts the answer names, and no tool of the account ran. Before it is asked, a probe is checked
-// against the catalogues (`probeProblems`): a phrase equal to one of the tool's asks in any language (case, accents and
-// punctuation aside), or an expectation the catalogue of its surface contradicts, is not asked (n.a.) and fails.
+// The panel assistant's QA with the REAL model: every probe of the corpus (tests/e2e/qa/probes/, or the files and
+// folders of `QA_PROBES`, comma-separated) is a NEW natural phrase for one tool of the exported catalogue, typed in the
+// real panel chat, and its automatic verdict (assistant-probes.ts, `probeVerdict`): «read» → its tool is the first the
+// model runs (past the always offered ones and the probe's `lookups`), no card; «card» → the first card is its tool's
+// and no other shows, cancelled (nothing in the outbox) or confirmed (it ran); «refused» → no card nor write, its tool
+// not run, and the answer says why it cannot (a permission, a role, the app, erplora.com in the browser); «docs» → the
+// documentation search returned excerpts the answer names, and no tool of the account ran. Before it is asked, a probe
+// is checked against the catalogues (`probeProblems`): a phrase equal to one of the tool's asks in any language (case,
+// accents and punctuation aside), or an expectation the catalogue of its surface contradicts, is not asked (n.a.) and
+// fails.
 //
 // Only with `QA_REAL_PROVIDER=1` (never in the CI), on a stack and e2e database of its own, from the same seed as the
 // battery (`assistant_seed.py real`: the real providers, «QA Base» on the Free plan, the documentation index), in every
 // worker, and every worker ends with `assistant_seed.py forget` (also after a failure): no real key stays behind. The
-// account's language follows each probe's (Cuenta → Preferencias) and its surface too: `?surface=account` is the app's
+// account's language follows each probe's (Account → Preferences) and its surface too: `?surface=account` is the app's
 // account surface, which sells nothing; `?surface=web` the web. The month's messages are reset when spent (the probes
-// do not check the quota; the battery's C35 does). Each probe in a new conversation; what it showed goes to
+// do not check the quota; the battery does). Each probe in a new conversation; what it showed goes to
 // `.artifacts/qa/probes/<run>/` (its JSON and screenshots) and the run's report, `report.md` there, is written after
 // each probe, keys redacted. Recipe: tests/e2e/README.md, «Sondas del asistente».
 // flow: ASSISTANT-F25 — the account asks the panel's assistant: reads alone, writes after the card.
@@ -39,9 +39,10 @@ import {
   redact,
   renderProbeReport,
 } from '../assistant-probes';
-import { AssistantChat, forgetRealAssistant, type RealSeed, seedRealAssistant, TURN_MS, uvRun } from './assistant-chat';
-import { apiPost, djangoPrint, expect, signIn, test } from './fixtures';
-import { PANEL_URL } from './project';
+import { type AssistantChat, forgetRealAssistant, qaChat, type RealSeed, seedRealAssistant, TURN_MS, uvRun } from './assistant-chat';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { apiPost } from './session';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SAAS_DIR = resolve(HERE, '..', '..', '..');
@@ -89,8 +90,8 @@ function seed(): Seeded {
 }
 
 /** What every turn offers (`base.assistant.ALWAYS`): a read may run them before its own tool. */
-const alwaysOffered = (): string[] =>
-  JSON.parse(djangoPrint('import json\nfrom base.assistant import ALWAYS\nprint(json.dumps(list(ALWAYS)))')) as string[];
+const alwaysOffered = async (): Promise<string[]> =>
+  JSON.parse(await djangoPrintWarm('import json\nfrom base.assistant import ALWAYS\nprint(json.dumps(list(ALWAYS)))')) as string[];
 
 /** The catalogue the panel offers the account on `surface` in `language` (`manage.py export_assistant_catalog`). */
 function catalog(language: string, surface: string): CatalogTool[] {
@@ -139,12 +140,13 @@ function record(result: ProbeResult): void {
   writeReport();
 }
 
-/** How many outbox events there are: what a probe recorded comes after. */
-const outboxMark = (): number => Number(djangoPrint('from live.models import OutboxEvent\nprint(OutboxEvent.objects.count())'));
+/** How many outbox events there are: what a probe recorded comes after. Asked of the warm Django: no boot in a probe. */
+const outboxMark = async (): Promise<number> =>
+  Number(await djangoPrintWarm('from live.models import OutboxEvent\nprint(OutboxEvent.objects.count())'));
 
 /** The outbox events recorded after `mark`, but the assistant's own (each turn records its message and usage). */
-function outboxSince(mark: number): string[] {
-  const names = djangoPrint(
+async function outboxSince(mark: number): Promise<string[]> {
+  const names = await djangoPrintWarm(
     [
       'import json',
       'from live.models import OutboxEvent',
@@ -172,7 +174,7 @@ async function placeFor(probe: Probe): Promise<void> {
 async function keepMessages(): Promise<void> {
   const { used, limit } = await chat.usage();
   if (used === null || limit === null || used < limit) return;
-  djangoPrint(
+  await djangoPrintWarm(
     `from assistant.models import AssistantUsage\nAssistantUsage.objects.filter(user__email=${JSON.stringify(OWNER.email)}).delete()`,
   );
   resets += 1;
@@ -183,7 +185,7 @@ async function ask(probe: Probe): Promise<ProbeObserved> {
   await placeFor(probe);
   await keepMessages();
   await chat.newConversation();
-  const mark = outboxMark();
+  const mark = await outboxMark();
   await chat.send(probe.phrase);
   await chat.settle(probe.id, async (card) => {
     await page.screenshot({ path: fileOf(probe, '-card.png') });
@@ -198,7 +200,7 @@ async function ask(probe: Probe): Promise<ProbeObserved> {
     notices: shown.notices,
     failures: shown.failures,
     turns: await chat.turns(),
-    events: outboxSince(mark),
+    events: await outboxSince(mark),
     screenshot: relative(SAAS_DIR, screenshot),
   };
 }
@@ -207,11 +209,12 @@ test.beforeAll(async ({ browser }) => {
   test.setTimeout(900_000);
   if (!REAL) return;
   seeded = seed();
-  always = alwaysOffered();
-  context = await browser.newContext({ baseURL: PANEL_URL, locale: 'es-ES', viewport: { width: 1440, height: 900 } });
-  page = await context.newPage();
-  chat = new AssistantChat(page);
-  await signIn(page.request, OWNER);
+  // The first call boots this worker's warm Django (the probes ask it for the outbox): here, on no test's clock.
+  always = await alwaysOffered();
+  // Every catalogue a probe reads (`manage.py export_assistant_catalog`, a Django boot each): here, not in a probe.
+  for (const language of ['en', 'es']) catalog(language, 'web');
+  for (const { probe } of PROBES) catalog(probe.language, probe.surface);
+  ({ context, page, chat } = await qaChat(browser, OWNER));
 });
 
 test.afterAll(async () => {

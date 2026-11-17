@@ -1,103 +1,22 @@
-// Part 3 of billing (MIGRATION-TASK APP-BILLING-3): the screens of the old SaaS's pricing, payment result, retry,
-// billing details, portal and app purchase, which part 3 joins to the flows parts 1 and 2 built, at the three sizes
-// of the migration (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
+// Part 3 of billing: the screens of the Store's prices, the payment's result, its retry, the billing details, the
+// portal and the purchase of an app, beside the flows of parts 1 and 2, at the three sizes
+// (390×844, 834×1112, 1440×900), against the panel's own Django and the rows of
 // billing_apps_seed.py. As billing-apps.spec.ts, Stripe does not run here: the operations that call it
 // (`billing.checkout.start` and `.confirm`, `billing.portal.open`, `billing.payment_method.get`) are played at the
-// API's edge, and Stripe.js is a double that mounts a placeholder; everything else (the billing details saved
-// included) is the real server. Each test names its flow by its registry key (BILLING-Gnn); in
-// billing/WORKBOOK.md: G19=F08, G20=F09, G21=F10, G26=F01, G27=F24, G28=F32.
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+// API's edge, and Stripe.js is the double of stripe.ts (`playStripe`); everything else (the billing details saved
+// included) is the real server. Each test names its flow of billing/WORKBOOK.md in its title.
+import { panelAccount, qaAccount } from './accounts';
+import { businessIdOf } from './businesses';
+import { expect, seededAndSignedIn, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize, dialogInPlace, toast } from './screen';
+import { addAppInCheckout, gotoWithCheckout, payInStripe, playStripePortal, STRIPE_PORTAL_URL } from './stripe';
 
-import type { Page } from '@playwright/test';
-
-import { djangoEnv } from '../django-env';
-import { businessIdOf, expect, panelAccount, qaAccount, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
-
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const ACCOUNT = qaAccount('BILLING_APPS', panelAccount('billing-apps'));
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
-
-function seed(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/billing_apps_seed.py', action], { cwd: SAAS_DIR, env: djangoEnv(true), stdio: 'pipe' });
-}
-
-test.beforeEach(async ({ page }) => {
-  seed('seed');
-  await signIn(page.request, ACCOUNT);
-});
-test.afterAll(() => seed('clear'));
-
-const toast = (page: Page, text: string | RegExp) => page.locator('ion-toast').filter({ hasText: text });
-
-/** `ready` at each size: no sideways scroll, a capture `APP-BILLING-3-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>, fullPage = true): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-BILLING-3-${key}-${size.name}`), fullPage });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
-
-/** A dialog that slides in again at a new size is in place once its button `testid` is whole on screen and still. */
-async function dialogInPlace(page: Page, testid: string): Promise<void> {
-  const button = page.getByTestId(testid);
-  await expect(button).toBeInViewport({ ratio: 1 });
-  await button.evaluate(
-    (element) =>
-      new Promise<void>((still) => {
-        let last = '';
-        const frame = () => {
-          const { top, left, width, height } = element.getBoundingClientRect();
-          const now = `${top},${left},${width},${height}`;
-          if (now === last) still();
-          else {
-            last = now;
-            requestAnimationFrame(frame);
-          }
-        };
-        requestAnimationFrame(frame);
-      }),
-  );
-}
-
-/** Stripe.js as the page would get it from js.stripe.com: mounts a placeholder and keeps `onComplete`. */
-async function playStripe(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    type Options = { fetchClientSecret: () => Promise<string>; onComplete?: () => void };
-    const w = window as unknown as Record<string, unknown> & { __stripe: { complete?: () => void } };
-    w.__stripe = {};
-    w.Stripe = () => ({
-      async createEmbeddedCheckoutPage(options: Options) {
-        await options.fetchClientSecret();
-        w.__stripe.complete = options.onComplete;
-        return {
-          mount(target: Element) {
-            const form = document.createElement('div');
-            form.setAttribute('data-testid', 'stripe-double');
-            form.textContent = 'Stripe Embedded Checkout (test double)';
-            form.style.cssText = 'padding:48px 16px;border:1px dashed #999;border-radius:8px;text-align:center';
-            target.append(form);
-          },
-          destroy() {},
-        };
-      },
-    });
-  });
-}
-
-const CHECKOUT = { flow: 'checkout', session_id: 'cs_test_e2e_support', client_secret: 'cs_test_e2e_support_secret', publishable_key: 'pk_test_e2e', preview: null };
+seededAndSignedIn('billing_apps_seed.py', qaAccount('BILLING_APPS', panelAccount('billing-apps')));
+const atEverySize = captureAtEverySize('APP-BILLING-3');
 
 test.describe('billing part 3: the screens of the old pricing, payment, billing details and purchase', () => {
-  test('BILLING-G19: the plans of the Store, with their monthly and their annual price', async ({ page }) => {
+  test('BILLING-F08: the plans of the Store, with their monthly and their annual price', async ({ page }) => {
     const errors = watchPageErrors(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
     await page.goto(`/dashboard/store/plans?business=${cafe}`);
@@ -113,16 +32,25 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G20: back from paying a plan, the business says it is on it', async ({ page }) => {
+  test('BILLING-F09: back from paying a plan, the business says it is on it', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await playStripe(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
-    await page.route('**/api/billing/checkout/start', (route) => route.fulfill({ json: CHECKOUT }));
-    await page.goto(`/dashboard/store/plans?business=${cafe}`);
+    await gotoWithCheckout(page, `/dashboard/store/plans?business=${cafe}`);
     await page.getByTestId('plan-starter').getByTestId('plan-upgrade').click();
     await expect(page.getByTestId('checkout-modal').getByTestId('stripe-double')).toBeVisible();
-    await page.evaluate(() => (window as unknown as { __stripe: { complete: () => void } }).__stripe.complete());
+    // The business's page comes late, as on a slow machine (saas#341): its module is held until the dialog says
+    // «Paying…» and no notice is left. A notice said before the page is there (its element is in the page by then)
+    // has run out when the page arrives; one said on the page is not there yet, and the hold lets it come at once.
+    let held = 0;
+    await page.route(/\/hubs\/frontend\/pages\/BusinessPage\.vue$/, async (route) => {
+      held += 1;
+      await expect(page.getByTestId('checkout-paying')).toBeVisible();
+      await expect(page.locator('ion-toast')).toHaveCount(0);
+      await route.continue();
+    });
+    await payInStripe(page);
     await expect(page).toHaveURL(new RegExp(`/dashboard/businesses/${cafe}/summary$`));
+    expect(held).toBe(1);
     await expect(toast(page, 'Café Central is now on Starter')).toBeVisible();
     await atEverySize(page, 'BILLING-G20', async () => {
       await expect(page.getByTestId('summary-plan')).toBeVisible();
@@ -130,16 +58,10 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G21: a payment closed before paying opens again with the same choice', async ({ page }) => {
+  test('BILLING-F10: a payment closed before paying opens again with the same choice', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await playStripe(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
-    const started: unknown[] = [];
-    await page.route('**/api/billing/checkout/start', async (route) => {
-      started.push(route.request().postDataJSON());
-      await route.fulfill({ json: CHECKOUT });
-    });
-    await page.goto(`/dashboard/store/plans?business=${cafe}`);
+    const started = await gotoWithCheckout(page, `/dashboard/store/plans?business=${cafe}`);
     const upgrade = page.getByTestId('plan-starter').getByTestId('plan-upgrade');
     const dialog = page.getByTestId('checkout-modal');
     await upgrade.click();
@@ -164,7 +86,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G26: the billing details are edited and saved, for the next invoices', async ({ page }) => {
+  test('BILLING-F01: the billing details are edited and saved, for the next invoices', async ({ page }) => {
     const errors = watchPageErrors(page);
     await page.goto('/dashboard/billing/payment');
     await expect(page.getByTestId('profile-name')).toHaveText('Panadería López S.L.');
@@ -184,7 +106,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G27: «Change card» opens Stripe’s page of that payer', async ({ page }) => {
+  test('BILLING-F24: «Change card» opens Stripe’s page of that payer', async ({ page }) => {
     const errors = watchPageErrors(page);
     const bakery = await businessIdOf(page.request, 'Panadería López');
     await page.route('**/api/billing/payment-method', (route) =>
@@ -201,14 +123,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
         },
       }),
     );
-    await page.route(/^https:\/\/billing\.stripe\.com\//, (route) =>
-      route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Stripe (test double)</title><p>Stripe (test double)</p>' }),
-    );
-    const opened: unknown[] = [];
-    await page.route('**/api/billing/portal', async (route) => {
-      opened.push(route.request().postDataJSON());
-      await route.fulfill({ json: { url: 'https://billing.stripe.com/p/session/e2e' } });
-    });
+    const opened = await playStripePortal(page);
     await page.goto('/dashboard/billing/payment');
     const change = page.getByTestId('payment-change');
     await atEverySize(page, 'BILLING-G27', async () => {
@@ -216,22 +131,15 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
       await expect(change).toHaveText('Change card');
     });
     await change.click();
-    await page.waitForURL('https://billing.stripe.com/p/session/e2e');
+    await page.waitForURL(STRIPE_PORTAL_URL);
     expect(opened).toEqual([{ hub_id: bakery }]);
     expect(errors).toEqual([]);
   });
 
-  test('BILLING-G28: a business on Free buys a paid app in the secure checkout', async ({ page }) => {
+  test('BILLING-F32: a business on Free buys a paid app in the secure checkout', async ({ page }) => {
     const errors = watchPageErrors(page);
-    await playStripe(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
-    const started: unknown[] = [];
-    await page.route('**/api/billing/checkout/start', async (route) => {
-      started.push(route.request().postDataJSON());
-      await route.fulfill({ json: CHECKOUT });
-    });
-    await page.goto(`/dashboard/store/modules?business=${cafe}`);
-    await page.getByTestId('module-e2e_apps_bookings').getByTestId('module-add').click();
+    const started = await addAppInCheckout(page, cafe, 'e2e_apps_bookings');
     const dialog = page.getByTestId('checkout-modal');
     await atEverySize(
       page,

@@ -1,7 +1,7 @@
-// `sdk-types.d.ts` is written by hand from the schemas of the API (until it is generated from
-// `/api/openapi.json`): this guard reads both and fails when a field of a hubs schema the panel uses is
-// missing from its TypeScript twin, the twin carries one the server no longer sends, or a field's type
-// differs (pydantic's annotation translated to what its JSON is in TypeScript).
+// `sdk-types.d.ts` is written by hand from the schemas of the API: this guard reads both and fails when a
+// field of a hubs schema the panel uses is missing from its TypeScript twin, the twin carries one the
+// server no longer sends, or a field's type differs (pydantic's annotation translated to what its JSON is
+// in TypeScript).
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +9,8 @@ import { describe, expect, it } from 'vitest';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PYTHON = readFileSync(join(HERE, '..', 'hubs', 'schemas.py'), 'utf8');
-const TYPES = readFileSync(join(HERE, 'sdk-types.d.ts'), 'utf8');
+// The types of a promo code live in their own file, next to the Store that uses them.
+const TYPES = ['sdk-types.d.ts', '../billing/frontend/promo-types.d.ts'].map((file) => readFileSync(join(HERE, file), 'utf8')).join('\n');
 
 const PAGE = ['rows', 'total', 'limit', 'offset'];
 const PAGE_IN = ['limit', 'offset'];
@@ -74,13 +75,14 @@ const SCALARS: Record<string, string> = {
   TimeZone: 'string',
   // Same values, the TypeScript name.
   Role: 'HubRole',
-  // billing/schemas.py and apps/schemas.py (the Store, L2-D).
+  // billing/schemas/ and apps/schemas.py (the Store).
   Interval: 'BillingInterval',
+  PromoKind: 'PromoKind',
   ModuleSlug: 'string',
   Category: 'string',
   // hubs/schemas.py `BillingProfileIn.billing_postal_code`: a stripped string.
   'Annotated[str, StringConstraints(strip_whitespace=True)]': 'string',
-  // billing/schemas.py, the Billing section (L3-C): a day travels as `YYYY-MM-DD`; the literal aliases keep
+  // billing/schemas/, the Billing section: a day travels as `YYYY-MM-DD`; the literal aliases keep
   // their name in TypeScript.
   date: 'string',
   InvoicePaymentStatus: 'InvoicePaymentStatus',
@@ -117,7 +119,7 @@ const NARROWED: Record<string, string> = {
   // `Country | Literal[""]`, `Email | Literal[""]`: the empty string is a string.
   'BillingProfileIn.billing_country': 'string',
   'BillingProfileIn.billing_email': 'string',
-  // `CountryCode | Literal[""]` (billing/schemas.py `VatCheckIn.country`): a string.
+  // `CountryCode | Literal[""]` (billing/schemas/ `VatCheckIn.country`): a string.
   'VatCheckIn.country': 'string',
   // `list[Literal[…]]` of the row's actions: named in TypeScript (checked below against the literal).
   'InvoiceRowOut.actions': 'InvoiceAction[]',
@@ -186,14 +188,12 @@ describe('sdk-types.d.ts follows hubs/schemas.py', () => {
   });
 });
 
-/** The Store's schemas (L2-D), by their file: the same guard as hubs'. */
+/** The Store's schemas, by their file: the same guard as hubs'. */
 const STORE_SCHEMAS: Array<[file: string, names: string[]]> = [
   ['hubs/schemas.py', ['BillingProfileGetIn', 'BillingProfileIn', 'BillingProfileOut']],
   [
-    'billing/schemas.py',
+    'billing/schemas/__init__.py',
     [
-      'PromoCheckIn',
-      'PromoCheckOut',
       'CheckoutStartIn',
       'ChargePreviewOut',
       'CheckoutStartOut',
@@ -209,11 +209,12 @@ const STORE_SCHEMAS: Array<[file: string, names: string[]]> = [
       'StoreCatalogOut',
     ],
   ],
+  ['billing/schemas/promo_codes.py', ['PromoCheckIn', 'PromoCheckOut']],
   ['apps/schemas.py', ['AppListIn', 'AppSummaryOut', 'AppListOut', 'AppByIdIn', 'RequiredAppOut', 'AppOut']],
 ];
 const STORE_CASES = STORE_SCHEMAS.flatMap(([file, names]) => names.map((name) => [file, name] as const));
 
-describe('sdk-types.d.ts follows billing/schemas.py, apps/schemas.py and the payer of hubs (the Store)', () => {
+describe('sdk-types.d.ts follows billing/schemas/, apps/schemas.py and the payer of hubs (the Store)', () => {
   const sources = new Map(STORE_SCHEMAS.map(([file]) => [file, readFileSync(join(HERE, '..', file), 'utf8')]));
 
   it.each(STORE_CASES)('%s %s has the same fields on both sides', (file, name) => {
@@ -233,15 +234,20 @@ describe('sdk-types.d.ts follows billing/schemas.py, apps/schemas.py and the pay
   });
 
   it('types the billing of a subscription as the server names it', () => {
-    expect(/^Interval = Literal\[([^\]]+)\]/m.exec(sources.get('billing/schemas.py') ?? '')?.[1]).toBe('"month", "year"');
+    expect(/^Interval = Literal\[([^\]]+)\]/m.exec(sources.get('billing/schemas/__init__.py') ?? '')?.[1]).toBe('"month", "year"');
     expect(/^export type BillingInterval = (.+);$/m.exec(TYPES)?.[1]).toBe("'month' | 'year'");
+  });
+
+  it('types what a promo code grants as the server names it', () => {
+    expect(/^PromoKind = Literal\[([^\]]+)\]/m.exec(sources.get('billing/schemas/promo_codes.py') ?? '')?.[1]).toBe('"trial_days", "free_months"');
+    expect(/^export type PromoKind = (.+);$/m.exec(TYPES)?.[1]).toBe("'trial_days' | 'free_months'");
   });
 });
 
-/** The Billing section's schemas (L3-C front: invoices, subscriptions, payment details), by their file. */
+/** The Billing section's schemas (invoices, subscriptions, payment details), by their file. */
 const BILLING_SCHEMAS: Array<[file: string, names: string[]]> = [
   [
-    'billing/schemas.py',
+    'billing/schemas/__init__.py',
     [
       'InvoiceFilterIn',
       'InvoiceListIn',
@@ -279,7 +285,7 @@ const BILLING_SCHEMAS: Array<[file: string, names: string[]]> = [
 ];
 const BILLING_CASES = BILLING_SCHEMAS.flatMap(([file, names]) => names.map((name) => [file, name] as const));
 
-describe('sdk-types.d.ts follows billing/schemas.py (the Billing section)', () => {
+describe('sdk-types.d.ts follows billing/schemas/ (the Billing section)', () => {
   const sources = new Map(BILLING_SCHEMAS.map(([file]) => [file, readFileSync(join(HERE, '..', file), 'utf8')]));
 
   it.each(BILLING_CASES)('%s %s has the same fields on both sides', (file, name) => {
@@ -308,7 +314,7 @@ describe('sdk-types.d.ts follows billing/schemas.py (the Billing section)', () =
     ['VatStatus', '"verified", "invalid", "unavailable", "national", "outside_vies"', "'verified' | 'invalid' | 'unavailable' | 'national' | 'outside_vies'"],
     ['InvoiceRectificationType', '"R1", "R2", "R3", "R4"', "'R1' | 'R2' | 'R3' | 'R4'"],
   ])('types %s as the server names its values', (alias, python, typescript) => {
-    const source = sources.get('billing/schemas.py') ?? '';
+    const source = sources.get('billing/schemas/__init__.py') ?? '';
     expect(new RegExp(`^${alias} = Literal\\[([^\\]]+)\\]`, 'm').exec(source)?.[1]).toBe(python);
     expect(new RegExp(`^export type ${alias} = (.+);$`, 'm').exec(TYPES)?.[1]).toBe(typescript);
   });
@@ -322,13 +328,13 @@ describe('sdk-types.d.ts follows billing/schemas.py (the Billing section)', () =
       "'take_over' | 'change_plan' | 'keep_plan' | 'view_invoice' | 'cancel_plan' | 'view_invoices'",
     ],
   ])('types the actions of a %s row (%s) as the server names them, in its order', (schema, alias, python, typescript) => {
-    const annotation = pythonTypes(schema, sources.get('billing/schemas.py')).actions;
+    const annotation = pythonTypes(schema, sources.get('billing/schemas/__init__.py')).actions;
     expect(annotation).toBe(`list[Literal[${python}]]`);
     expect(new RegExp(`^export type ${alias} = (.+);$`, 'm').exec(TYPES)?.[1]).toBe(typescript);
   });
 });
 
-/** The usage of a business (lot L4-A): `hubs.usage.get`, `hubs.usage.series` and `usage` of the business's page. */
+/** The usage of a business: `hubs.usage.get`, `hubs.usage.series` and `usage` of the business's page. */
 const USAGE_SCHEMAS = ['StorageUsageOut', 'ActiveUsersOut', 'UsageOut', 'UsageGetIn', 'UsageSeriesIn', 'UsagePointOut', 'UsageSeriesOut'];
 
 describe('sdk-types.d.ts follows the usage schemas of hubs/schemas.py', () => {
@@ -353,7 +359,7 @@ describe('sdk-types.d.ts follows the usage schemas of hubs/schemas.py', () => {
   });
 });
 
-/** The signed authorisation of a business (plan 2026-10-15): `fiscal.representation.status`, its card on the business's page. */
+/** The signed authorisation of a business: `fiscal.representation.status`, its card on the business's page. */
 const FISCAL_SCHEMAS = ['RepresentationStatusIn', 'RepresentationDocumentsOut', 'RepresentationHistoryOut', 'RepresentationStatusOut'];
 
 describe('sdk-types.d.ts follows the schemas of fiscal/schemas.py', () => {

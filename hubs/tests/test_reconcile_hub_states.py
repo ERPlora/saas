@@ -1,12 +1,11 @@
-"""The ``saas-cron`` commands that keep the Hub equal to the SaaS (aws-next README, the app ↔ infra contract;
-plan 2026-10-13 §3, the push to the Hub):
+"""The ``saas-cron`` commands that keep the Hub equal to the SaaS (the app ↔ infra contract of the ``aws`` README):
 
 - ``reconcile_hub_states`` (every 15 minutes): retries what the Hub still owes an answer to (the
-  registry, a deletion, a restoration, a snapshot), asks the Hub about an sign-up stuck without its
+  registry, a deletion, a restoration, a snapshot), asks the Hub about a sign-up stuck without its
   ``ready`` callback (``GET /internal/hubs/{id}``), ends the trials that ran out and marks purged the
   businesses past their 90 days;
 - ``push_hub_snapshots`` (nightly): pushes every snapshot the Hub is behind on; ``--all`` pushes every
-  business's (the safety net of PLAN-SAAS §2.2).
+  business's.
 
 Both are idempotent (a second run with nothing new does nothing) and hold a Postgres advisory lock, so
 two runs never overlap: the second returns at once. A business that fails never stops the batch.
@@ -21,7 +20,9 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.utils import timezone
 
-from hubs import hub_client, queries, services
+from hubs import emails, hub_client
+from hubs.services import deletion, exclusive_runs, hub_callbacks, hub_push, reconciliation
+from hubs.queries import access_control, businesses, membership
 from hubs.models import Hub, Subscription
 from hubs.tests.conftest import create_business, role_on
 
@@ -43,7 +44,7 @@ def fresh(hub):
 
 def stuck(hub):
     """A sign-up the Hub took (202) and has not reported ready for longer than the threshold."""
-    services.sync_hub(hub.id)
+    hub_push.sync_hub(hub.id)
     Hub.objects.filter(pk=hub.pk).update(provision_requested_at=timezone.now() - timedelta(minutes=5))
 
 
@@ -73,7 +74,7 @@ class TestReconcile:
         assert "delivered=0" in output
 
     def test_with_the_hub_away_it_stays_owed_and_the_run_fails_after_the_pass(self, owner, plans, offline_hub, make_user):
-        """Review of L1-A, finding 4: an unreachable Hub fails the run (exit ≠ 0, the ``task_failed``
+        """An unreachable Hub fails the run (exit ≠ 0, the ``task_failed``
         alarm), but only after every business was tried."""
         first = create_business(owner)
         second = create_business(make_user("lola@example.com"), name="Café Lola")
@@ -96,7 +97,7 @@ class TestReconcile:
         first = create_business(owner)
         second = create_business(make_user("lola@example.com"), name="Café Lola")
         for hub in (first, second):
-            services.sync_hub(hub.id)
+            hub_push.sync_hub(hub.id)
             hub_double.registry[str(hub.id)]["status"] = "ready"
         Hub.objects.update(provision_requested_at=timezone.now() - timedelta(minutes=5))
         real = hub_client.get_hub
@@ -118,14 +119,14 @@ class TestReconcile:
     ):
         first = create_business(owner)
         second = create_business(make_user("lola@example.com"), name="Café Lola")
-        real = services.sync_outcome  # what the pass calls for each business (``_sync_counted``)
+        real = hub_push.sync_outcome  # what the pass calls for each business (``_sync_counted``)
 
         def flaky(hub_id):
             if hub_id == first.id:
                 raise RuntimeError("boom")
             return real(hub_id)
 
-        monkeypatch.setattr(services, "sync_outcome", flaky)
+        monkeypatch.setattr(reconciliation, "sync_outcome", flaky)
 
         with pytest.raises(CommandError):
             run("reconcile_hub_states")
@@ -134,7 +135,7 @@ class TestReconcile:
         assert fresh(first).pending_hub_call == "put"
 
     def test_a_stuck_sign_up_the_hub_finished_is_marked_ready(self, business, hub_double):
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
         Hub.objects.filter(pk=business.pk).update(
             provision_requested_at=timezone.now() - timedelta(minutes=5)
         )
@@ -150,7 +151,7 @@ class TestReconcile:
 
     @pytest.mark.parametrize("status", ["requested", "creating", "migrating", "seeding"])
     def test_a_stuck_sign_up_the_hub_is_still_preparing_keeps_waiting(self, business, hub_double, status):
-        """The asynchronous sign-up (202 «requested», PLAN-SAAS §3.1): each step the Hub reports is «still preparing»."""
+        """The asynchronous sign-up (202 «requested»): each step the Hub reports is «still preparing»."""
         stuck(business)
         hub_double.registry[str(business.id)]["status"] = status
 
@@ -168,8 +169,8 @@ class TestReconcile:
             run("reconcile_hub_states")
 
         assert "provision_failed=1" in str(failed.value)
-        assert (fresh(business).status, fresh(business).last_hub_error) == ("preparing", services.PROVISION_FAILED)
-        assert queries.open_blocked_reason(fresh(business)) == "error"
+        assert (fresh(business).status, fresh(business).last_hub_error) == ("preparing", hub_callbacks.PROVISION_FAILED)
+        assert access_control.open_blocked_reason(fresh(business)) == "error"
 
     def test_a_failed_sign_up_the_hub_prepares_later_opens_without_the_error(self, business, hub_double):
         stuck(business)
@@ -183,21 +184,119 @@ class TestReconcile:
         assert (fresh(business).status, fresh(business).last_hub_error) == ("active", "")
         assert "ready=1" in output
 
+    def test_maintenance_is_saved_and_cleared_without_moving_the_state_version(self, business, owner, hub_double):
+        """HUBS-F04: the signed poll reports a real freeze and its lift; the monotonic snapshot is untouched."""
+        from hubs.schemas import BusinessListIn, ByIdIn
+
+        stuck(business)
+        hub_double.registry[str(business.id)]["maintenance"] = {
+            "frozen": True,
+            "reason": "Aurora upgrade",
+            "since": "2026-11-09T20:00:00+00:00",
+        }
+        version = fresh(business).state_version
+
+        assert "preparing=1" in run("reconcile_hub_states")
+
+        from django.utils.dateparse import parse_datetime
+        from hubs.tests.conftest import ctx_for
+
+        maintained = fresh(business)
+        assert maintained.maintenance["frozen"] is True
+        assert maintained.maintenance["reason"] == "Aurora upgrade"
+        assert parse_datetime(maintained.maintenance["since"]) == parse_datetime("2026-11-09T20:00:00+00:00")
+        assert maintained.state_version == version
+        assert businesses.business_list(ctx_for(owner), BusinessListIn()).rows[0].maintenance.frozen is True
+        assert businesses.business_get(ctx_for(owner), ByIdIn(id=business.id)).maintenance.reason == "Aurora upgrade"
+
+        hub_double.registry[str(business.id)]["maintenance"] = None
+        assert "preparing=1" in run("reconcile_hub_states")
+        assert fresh(business).maintenance is None
+        assert fresh(business).state_version == version
+        assert businesses.business_list(ctx_for(owner), BusinessListIn()).rows[0].maintenance is None
+
+    def test_check_now_recovers_maintenance_and_ready_without_waiting_for_reconcile(self, business, owner, hub_double):
+        """HUBS-F04: «Check now» runs the same recovery as the scheduled poll."""
+        from hubs.schemas import ByIdIn
+        from hubs.tests.conftest import ctx_for
+
+        stuck(business)
+        hub_double.registry[str(business.id)]["maintenance"] = {
+            "frozen": True,
+            "reason": "Aurora upgrade",
+            "since": "2026-11-09T20:00:00+00:00",
+        }
+        checked = reconciliation.business_check(ctx_for(owner), ByIdIn(id=business.id))
+        assert checked.maintenance.frozen is True
+
+        hub_double.registry[str(business.id)]["maintenance"] = None
+        checked = reconciliation.business_check(ctx_for(owner), ByIdIn(id=business.id))
+        assert checked.maintenance is None
+
+        hub_double.registry[str(business.id)]["status"] = "ready"
+        checked = reconciliation.business_check(ctx_for(owner), ByIdIn(id=business.id))
+        assert (checked.status, fresh(business).ready_at is not None) == ("active", True)
+
+    @pytest.mark.parametrize("status", [Hub.Status.ACTIVE, Hub.Status.DELETING])
+    def test_a_business_no_longer_being_prepared_never_shows_a_stale_maintenance(self, business, owner, status):
+        """HUBS-F04: the pause belongs to a sign-up being prepared; ready or deleted meanwhile, its pill says that."""
+        from hubs.schemas import BusinessListIn, ByIdIn
+        from hubs.tests.conftest import ctx_for
+
+        Hub.objects.filter(pk=business.pk).update(
+            maintenance={"frozen": True, "reason": "Aurora upgrade", "since": "2026-11-09T20:00:00+00:00"},
+            status=status,
+            deletion_requested_at=timezone.now() if status == Hub.Status.DELETING else None,
+        )
+
+        assert businesses.business_list(ctx_for(owner), BusinessListIn()).rows[0].maintenance is None
+        assert businesses.business_get(ctx_for(owner), ByIdIn(id=business.id)).maintenance is None
+
+    def test_the_poll_reads_the_hub_body_as_the_hub_writes_it_and_tolerates_an_older_hub(
+        self, business, hub_double, monkeypatch
+    ):
+        """Contract with the Hub's ``base.schemas.HubGetOut`` of ``GET /internal/hubs/{id}``: ``maintenance``
+        is ``null`` or exactly ``{frozen, reason, since}``, ``since`` an ISO 8601 UTC instant; a Hub deployed before it
+        sends no key at all, which is no pause."""
+        stuck(business)
+        hub_body = {
+            "id": str(business.id),
+            "slug": business.slug,
+            "status": "requested",
+            "is_demo": False,
+            "expires_at": None,
+            "ready_at": None,
+            "state_version": 7,
+            "maintenance": {"frozen": True, "reason": "Aurora upgrade", "since": "2026-11-09T20:00:00.123456Z"},
+        }
+        monkeypatch.setattr(hub_client, "get_hub", lambda hub_id: hub_client.HubAnswer(200, hub_body))
+        version = fresh(business).state_version
+
+        assert "preparing=1" in run("reconcile_hub_states")
+        assert fresh(business).maintenance == hub_body["maintenance"]
+        assert fresh(business).state_version == version
+
+        older_hub = {key: value for key, value in hub_body.items() if key != "maintenance"}
+        monkeypatch.setattr(hub_client, "get_hub", lambda hub_id: hub_client.HubAnswer(200, older_hub))
+
+        assert "preparing=1" in run("reconcile_hub_states")
+        assert fresh(business).maintenance is None
+
     def test_a_snapshot_delivered_meanwhile_does_not_hide_the_failed_preparation(self, business, hub_double):
         """A delivered push clears the Hub's last refusal, not the preparation it still owes."""
         stuck(business)
         hub_double.registry[str(business.id)]["status"] = "failed"
         with pytest.raises(CommandError):
             run("reconcile_hub_states")
-        services.bump_state(business.id)
+        hub_push.bump_state(business.id)
 
-        assert services.sync_outcome(business.id) == services.DELIVERED
-        assert fresh(business).last_hub_error == services.PROVISION_FAILED
+        assert hub_push.sync_outcome(business.id) == hub_push.DELIVERED
+        assert fresh(business).last_hub_error == hub_callbacks.PROVISION_FAILED
 
     @pytest.mark.parametrize("status", ["cancelled", "archiving", "dropping", "expired", "purged", "dropped", None])
     def test_a_status_the_sign_up_cannot_have_is_logged_and_fails_the_run(self, business, hub_double, status, caplog):
         """A business the SaaS is preparing that the Hub calls ended (``cancelled``, or on its way out: ``archiving``,
-        ``dropping``, hub#471), or anything off the contract, is a person's job."""
+        ``dropping``), or anything off the contract, is a person's job."""
         stuck(business)
         hub_double.registry[str(business.id)]["status"] = status
 
@@ -226,7 +325,7 @@ class TestReconcile:
     def test_a_sign_up_younger_than_the_threshold_is_left_alone(
         self, business, hub_double
     ):
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
         hub_double.calls.clear()
 
         run("reconcile_hub_states")
@@ -234,7 +333,7 @@ class TestReconcile:
         assert hub_double.calls == []
 
     def test_the_threshold_is_an_option(self, business, hub_double):
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
         Hub.objects.filter(pk=business.pk).update(
             provision_requested_at=timezone.now() - timedelta(minutes=5)
         )
@@ -244,9 +343,9 @@ class TestReconcile:
 
         assert hub_double.calls == []
 
-    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one since 2026-10-15)
+    @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no plan carries one by default)
     def test_a_trial_that_ran_out_reaches_the_hub_as_free(self, business, hub_double):
-        services.sync_hub(business.id)
+        hub_push.sync_hub(business.id)
         Subscription.objects.filter(hub=business).update(
             trial_end=timezone.now() - timedelta(minutes=1)
         )
@@ -303,18 +402,18 @@ class TestReconcile:
         other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
 
     def test_the_saas_worker_runs_the_same_pass_under_the_same_lock(self, business, hub_double, other_session):
-        """``services.reconcile_exclusively`` is what the command and the ``saas-worker`` (every 15 minutes, saas#305)
+        """``services.reconciliation.reconcile_exclusively`` is what the command and the ``saas-worker`` (every 15 minutes, saas#305)
         both run: the pass's counts, or ``None`` while another run holds the lock."""
         other_session.execute(f"SELECT pg_advisory_lock({LOCK_KEY})")
         try:
-            assert services.reconcile_exclusively() is None
+            assert reconciliation.reconcile_exclusively() is None
         finally:
             other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
         assert hub_double.calls == []
 
-        counts = services.reconcile_exclusively()
+        counts = reconciliation.reconcile_exclusively()
 
-        assert counts is not None and not services.run_failed(counts)
+        assert counts is not None and not reconciliation.run_failed(counts)
         assert other_session.execute(f"SELECT pg_try_advisory_lock({LOCK_KEY})").fetchone()[0] is True
         other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
 
@@ -333,12 +432,12 @@ class TestReconcile:
             asked.append(1)
             return len(asked) == 1
 
-        counts = services.reconcile_exclusively(go_on=go_on)
+        counts = reconciliation.reconcile_exclusively(go_on=go_on)
 
         assert (counts["delivered"], counts["owed"], counts["cut_short"]) == (1, 0, 1)
-        assert not services.run_failed(counts)
+        assert not reconciliation.run_failed(counts)
         assert sorted(fresh(hub).pending_hub_call for hub in hubs) == ["", "put", "put"]
-        again = services.reconcile_exclusively()
+        again = reconciliation.reconcile_exclusively()
         assert (again["delivered"], again["cut_short"]) == (2, 0)
 
     def test_the_lock_is_released_when_a_run_fails(
@@ -351,7 +450,7 @@ class TestReconcile:
         other_session.execute(f"SELECT pg_advisory_unlock({LOCK_KEY})")
 
 
-# --- «We'll let you know»: the copy of a deleted business's data is ready (PLAN-DB round 2026-10-30, (a), (k)) -----
+# --- «We'll let you know»: the copy of a deleted business's data is ready -------------------------
 
 
 def deleted_at(hub, moment):
@@ -436,9 +535,9 @@ class TestDataCopyReady:
         moment = timezone.now()
         hub = deleted_at(business, moment)
         hub_double.dumps[str(hub.id)] = [offboarding_copy(hub, moment)]
-        monkeypatch.setattr(services.emails, "send_data_copy_ready", lambda *args, **kwargs: False)
+        monkeypatch.setattr(emails, "send_data_copy_ready", lambda *args, **kwargs: False)
 
-        for attempt in range(1, services.DATA_COPY_MAIL_ATTEMPTS + 1):
+        for attempt in range(1, reconciliation.DATA_COPY_MAIL_ATTEMPTS + 1):
             output = run("reconcile_hub_states")
             assert "data_copy_unsent=1" in output
             assert fresh(hub).data_copy_mail_attempts == attempt
@@ -450,7 +549,7 @@ class TestDataCopyReady:
         assert caplog.text.count(f"hubs.data_copy.mail_given_up hub={hub.id}") == 1
 
     def test_a_deleted_business_whose_owner_left_is_not_asked_and_the_pass_passes(self, business, owner, hub_double):
-        """Review of saas#168: the owner deletes their account after deleting the business (``HubMember.user``
+        """The owner deletes their account after deleting the business (``HubMember.user``
         cascades); nobody is left to tell, so the Hub is not asked and no pass fails for it."""
         moment = timezone.now()
         hub = deleted_at(business, moment)
@@ -467,15 +566,15 @@ class TestDataCopyReady:
         from hubs.schemas import BusinessDeleteIn
         from hubs.tests.conftest import ctx_for
 
-        Hub.objects.filter(pk=business.pk).update(data_copy_mail_attempts=services.DATA_COPY_MAIL_ATTEMPTS)
+        Hub.objects.filter(pk=business.pk).update(data_copy_mail_attempts=reconciliation.DATA_COPY_MAIL_ATTEMPTS)
 
-        services.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
+        deletion.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
 
         assert fresh(business).data_copy_mail_attempts == 0
 
     @pytest.mark.parametrize("refusal", [401, 403, 410])
     def test_a_refusal_of_the_hub_fails_the_run_and_tells_nobody(self, business, hub_double, refusal):
-        """Review of saas#168: only a 404 is «no copy»; any other refusal is a fault, as in ``_settle_stuck``."""
+        """Only a 404 is «no copy»; any other refusal is a fault, as in ``_settle_stuck``."""
         deleted_at(business, timezone.now())
         hub_double.answer("GET", r"/dumps$", refusal, {"error": {"code": "refused"}})
 
@@ -506,8 +605,8 @@ class TestDataCopyReady:
 def test_the_lock_follows_the_saas_convention_and_is_its_own():
     """``hashtext('erplora.saas.<command>')``, the key ``base``'s commands take (``migrate``,
     ``report_seal_expiry``): one namespace for every lock of the SaaS's database."""
-    assert services.lock_name("reconcile_hub_states") == "erplora.saas.reconcile_hub_states"
-    assert services.lock_name("push_hub_snapshots") != services.lock_name("reconcile_hub_states")
+    assert exclusive_runs.lock_name("reconcile_hub_states") == "erplora.saas.reconcile_hub_states"
+    assert exclusive_runs.lock_name("push_hub_snapshots") != exclusive_runs.lock_name("reconcile_hub_states")
 
 
 def test_nobody_enters_a_purged_business(business, owner):
@@ -519,12 +618,12 @@ def test_nobody_enters_a_purged_business(business, owner):
 
     run("reconcile_hub_states")
 
-    assert queries.hubs_with_members() == []
+    assert membership.hubs_with_members() == []
 
 
 def test_a_business_restored_while_the_purge_runs_keeps_its_people(business, owner, hub_double, monkeypatch):
-    """Review of L1-A: the purge re-checks the row it updates; one restored meanwhile is left alone."""
-    monkeypatch.setattr(services, "expired_deletions", lambda cutoff: [business.id])  # read before the restore
+    """The purge re-checks the row it updates; one restored meanwhile is left alone."""
+    monkeypatch.setattr(businesses, "expired_deletions", lambda cutoff: [business.id])  # read before the restore
 
     run("reconcile_hub_states")
 

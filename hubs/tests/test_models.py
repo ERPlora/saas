@@ -1,22 +1,19 @@
-"""Models of hubs: ``Plan`` (PLAN-SAAS §1, without infrastructure) and the taxonomy (PLAN §21.4).
+"""Models of hubs: ``Plan``, without infrastructure, and the taxonomy.
 
-Ported from ERPlora/saas (origin/develop): the pure-model halves of
-``public/pricing/tests/test_internal_plans_are_never_public.py``,
-``hubs/main/tests/test_internal_plan_gate_after_alta.py`` (``TestOfferedTo``),
-``hubs/subscriptions/tests/test_payment_test_plan.py`` and ``test_plan_trial_label.py``. The
-pages, forms and Stripe halves stay with the lots that port those doors.
+The pure-model halves: internal plans are never public, who may buy which plan, the payment-test plan and the
+trial label. Their pages, forms and Stripe halves are tested with those doors.
 """
 
+import re
 import uuid
 from decimal import Decimal
 
 import pytest
-from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
 from django.utils import translation
 
 from apps.tests.factories import make_app
-from hubs.models import Plan
+from hubs.models import Hub, Plan
 
 INTERNAL = "payment-test"
 
@@ -39,11 +36,6 @@ def customer(django_user_model):
     return django_user_model.objects.create_user(email="client@example.com", password="x")
 
 
-@pytest.fixture
-def staff(django_user_model):
-    return django_user_model.objects.create_user(email="staff@example.com", password="x", is_staff=True)
-
-
 # --- Identity ------------------------------------------------------------------------------------
 
 
@@ -56,7 +48,7 @@ def test_a_plan_has_a_uuid7_primary_key():
 
 
 def test_a_plan_reads_as_its_name_and_monthly_price():
-    """In the active language since APP-HUBS-4 (it read «Starter - EUR 29.99/month» in a Spanish admin too):
+    """In the active language (it once read «Starter - EUR 29.99/month» in a Spanish admin too):
     ``test_admin.py::test_a_plan_is_named_in_the_staff_language`` has the Spanish."""
     from django.utils import translation
 
@@ -68,7 +60,7 @@ def test_plans_are_listed_by_display_order_then_price():
     assert Plan._meta.ordering == ["display_order", "price_monthly"]
 
 
-# --- Public plans (saas#1950) and who may buy which (saas#1052, saas#2388) -----------------------
+# --- Public plans and who may buy which -----------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -83,59 +75,63 @@ def test_public_queryset_keeps_active_customer_plans_only(plans):
 
 
 class TestOfferedTo:
-    """``Plan.objects.offered_to(user)``: the one rule every logged-in door lists plans through."""
+    """``Plan.objects.offered_to(hub)``: the one rule the Store lists and sells plans through. An internal plan
+    (``payment-test``) is only for a business ERPlora's staff marked in the admin (``Hub.can_buy_internal_plans``);
+    the staff never own a business, so its owner is a customer account like any other."""
 
-    def _slugs(self, user):
-        return set(Plan.objects.offered_to(user).values_list("slug", flat=True))
+    @pytest.fixture
+    def business(self, plans, customer):
+        from hubs.tests.conftest import create_business
 
-    def test_nobody_and_anonymous_get_only_public_plans(self, plans):
-        assert INTERNAL not in self._slugs(None)
-        assert INTERNAL not in self._slugs(AnonymousUser())
+        return create_business(customer)
 
-    def test_staff_gets_every_active_plan(self, plans, staff):
-        assert self._slugs(staff) == set(Plan.objects.filter(is_active=True).values_list("slug", flat=True))
+    @pytest.fixture
+    def marked(self, business):
+        Hub.objects.filter(pk=business.pk).update(can_buy_internal_plans=True)
+        return Hub.objects.get(pk=business.pk)
 
-    def test_a_customer_gets_exactly_the_public_plans(self, plans, customer):
-        assert self._slugs(customer) == set(Plan.objects.public().values_list("slug", flat=True))
+    def _slugs(self, hub):
+        return set(Plan.objects.offered_to(hub).values_list("slug", flat=True))
 
-    def test_an_inactive_plan_is_offered_to_nobody(self, plans, staff):
+    def test_without_a_business_only_the_public_plans(self, plans):
+        assert self._slugs(None) == set(Plan.objects.public().values_list("slug", flat=True))
+
+    def test_a_business_nobody_marked_gets_exactly_the_public_plans(self, business):
+        assert self._slugs(business) == set(Plan.objects.public().values_list("slug", flat=True))
+        assert INTERNAL not in self._slugs(business)
+
+    def test_a_marked_business_gets_every_active_plan(self, marked):
+        assert self._slugs(marked) == set(Plan.objects.filter(is_active=True).values_list("slug", flat=True))
+        assert INTERNAL in self._slugs(marked)
+
+    def test_an_inactive_plan_is_offered_to_nobody(self, marked):
         Plan.objects.filter(slug=INTERNAL).update(is_active=False)
 
-        assert INTERNAL not in self._slugs(staff)
+        assert INTERNAL not in self._slugs(marked)
 
 
-class TestOnlyStaffCanBuyTheInternalPlan:
+class TestTheMarkIsOffByDefault:
     """Purchasable, but not by anyone: it is a whole hub for 1.21 €."""
 
     def test_internal_defaults_to_false_so_real_plans_are_unaffected(self):
         assert Plan._meta.get_field("internal_only").default is False
 
-    def test_is_available_to_rejects_a_regular_user(self, plans, customer):
-        assert Plan.objects.get(slug=INTERNAL).is_available_to(customer) is False
-
-    def test_is_available_to_rejects_an_anonymous_visitor(self, plans):
-        assert Plan.objects.get(slug=INTERNAL).is_available_to(AnonymousUser()) is False
-        assert Plan.objects.get(slug=INTERNAL).is_available_to(None) is False
-
-    def test_is_available_to_accepts_staff(self, plans, staff):
-        assert Plan.objects.get(slug=INTERNAL).is_available_to(staff) is True
-
-    def test_a_normal_plan_is_available_to_everyone(self, plans, customer):
-        assert Plan.objects.get(slug="starter").is_available_to(customer) is True
+    def test_no_business_is_marked_until_the_staff_mark_it(self):
+        assert Hub._meta.get_field("can_buy_internal_plans").default is False
 
 
-# --- The trial a visitor gets (saas#2414, saas#2424) ---------------------------------------------
+# --- The trial a visitor gets ---------------------------------------------------------------------
 
 
 class TestSignupTrialDays:
     """``Plan.objects.signup_trial_days()``: every public page that states the trial reads it here."""
 
     def test_the_catalogue_offers_no_trial(self, plans):
-        """Ioan, 2026-10-15: the Free plan is the way in; no plan on sale carries a trial."""
+        """The Free plan is the way in; no plan on sale carries a trial."""
         assert Plan.objects.signup_trial_days() == {"trial_days_min": None, "trial_days_max": None}
 
     def test_only_public_plans_bought_at_sign_up_count(self, signup_trial):
-        """An upgrade grants no trial (#809), an internal plan is no offer, a retired one neither."""
+        """An upgrade grants no trial, an internal plan is no offer, a retired one neither."""
         _create("long-upgrade", trial_period_days=90, upgrade_only=True)
         _create("long-internal", trial_period_days=60, internal_only=True)
         _create("long-retired", trial_period_days=45, is_active=False)
@@ -167,7 +163,7 @@ class TestTrialLabel:
         assert _plan(trial_days=0).has_trial() is False
 
 
-# --- The commercial ladder, translated (ADR-0474, ADR-0426) ---------------------------------------
+# --- The commercial ladder, translated ------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -198,7 +194,7 @@ def test_the_level_labels_are_read_in_the_active_language(included, support, eng
     ],
 )
 def test_the_resources_label_reads_the_database_ladder_in_plain_words(max_devices, connections, english, spanish):
-    """Ioan, 2026-10-15: a buyer reads how much database throughput a plan has relative to the plan below, never a
+    """A buyer reads how much database throughput a plan has relative to the plan below, never a
     connection count. Free is sized for one device; a paid plan has the full tier; Standard twice it."""
     plan = _plan(max_devices=max_devices, max_db_connections=connections)
 
@@ -247,7 +243,7 @@ class TestPlanCopyInALanguage:
             assert plan.translated("name") == "Starter"
 
 
-# --- The taxonomy: sectors and business types (PLAN §21.4) ----------------------------------------
+# --- The taxonomy: sectors and business types -----------------------------------------------------
 
 
 @pytest.fixture
@@ -296,7 +292,7 @@ class TestTaxonomyInALanguage:
 
 @pytest.mark.django_db
 def test_two_business_types_never_share_a_name_in_one_language():
-    """HUBS-F36 «Si falla» (saas#2099): the sign-up lists them by name, so a second «Peluquería» is refused, folded
+    """HUBS-F36 «Si falla»: the sign-up lists them by name, so a second «Peluquería» is refused, folded
     and trimmed; a blank (untranslated) name is never compared."""
     from hubs.models import BusinessType
 
@@ -311,7 +307,7 @@ def test_two_business_types_never_share_a_name_in_one_language():
 
 
 class TestVertical:
-    """``BusinessType.vertical``: the template a new hub of that type is cloned from (PLAN §15.2).
+    """``BusinessType.vertical``: the template a new hub of that type is cloned from.
 
     Blank is «no vertical» (the hub starts from ``hub_template``, only ``base``). The Hub names the
     template database after it (``hub_template_<vertical>``), so it is an identifier.
@@ -335,7 +331,7 @@ class TestVertical:
 
     @pytest.mark.django_db
     def test_a_vertical_some_app_of_the_catalog_declares_is_accepted(self):
-        """``apps.queries.known_verticals()``: the verticals the Hub registered with its apps (spec §5.4)."""
+        """``apps.queries.known_verticals()``: the verticals the Hub registered with its apps."""
         from hubs.models import BusinessType
 
         make_app("appointment", verticals=["hair_salon"])
@@ -370,3 +366,34 @@ class TestVertical:
         from hubs.models import BusinessType
 
         BusinessType(code="bar", name_en="Bar", vertical="").full_clean()
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_help_texts_never_point_at_a_plan_section(language):
+    """The admin shows these texts to staff who have never read the planning documents."""
+    from django.apps import apps
+
+    section_sign = "\N{SECTION SIGN}"
+    with translation.override(language):
+        cited = [
+            f"{model.__name__}.{field.name}: {field.help_text}"
+            for model in apps.get_app_config("hubs").get_models()
+            for field in model._meta.get_fields()
+            if section_sign in str(getattr(field, "help_text", ""))
+        ]
+    assert not cited, "\n".join(cited)
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_help_texts_never_cite_an_issue(language):
+    """Staff read these texts in the admin, where an issue number of any tracker says nothing."""
+    from django.apps import apps
+
+    with translation.override(language):
+        cited = [
+            f"{model.__name__}.{field.name}: {field.help_text}"
+            for model in apps.get_app_config("hubs").get_models()
+            for field in model._meta.get_fields()
+            if re.search(r"#[0-9]+", str(getattr(field, "help_text", "")))
+        ]
+    assert not cited, "\n".join(cited)

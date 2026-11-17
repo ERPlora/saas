@@ -1,10 +1,10 @@
-"""ACCOUNTS-G82 (and G33, G64): erplora.com in maintenance mode.
+"""ACCOUNTS-F43 · erplora.com in maintenance mode.
 
 The staff turns it on in the admin («Site settings»); from then every visitor gets the maintenance page, 503 with
 ``Retry-After`` (what Google, Shopify and Stripe answer while a site is down on purpose), and a program the JSON
 envelope. The staff with its session keeps using everything, and what must keep working stays out: the health checks
 (the load balancer and the deploy would take the tasks out), the static files, the admin and the staff's sign-in, the
-Hub's ``/internal`` calls, Stripe's and Meta's webhooks and the CSP reports (PLAN-SAAS §1.1, «Modo mantenimiento»).
+Hub's ``/internal`` calls, Stripe's and Meta's webhooks and the CSP reports.
 """
 
 import json

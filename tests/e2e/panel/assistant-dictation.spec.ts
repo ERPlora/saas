@@ -9,8 +9,11 @@
 // flow: ASSISTANT-F21 — dictate to the assistant: the words land in the box, nothing is sent.
 import { DICTATION } from '../assistant-provider';
 
-import { localAssistant, openPanel, OWNER, SIZES } from './assistant-chat';
-import { expect, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
+import { DESKTOP_FIRST, localAssistant, openPanel, OWNER } from './assistant-chat';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { expectNoSidewaysScroll, settled, shot } from './screen';
+import { signIn } from './session';
 
 /** What the person sees, in each language (the package's words, `assistant.voice.*`). */
 const WORDS = {
@@ -32,7 +35,7 @@ for (const language of ['es', 'en'] as const) {
   test(`the account dictates to the panel's assistant: the words land in the box, nothing is sent (${language})`, async ({
     page,
   }) => {
-    seed('panel', language);
+    await seed('panel', language);
     const errors = watchPageErrors(page);
     const panel = await openPanel(page);
 
@@ -59,15 +62,13 @@ for (const language of ['es', 'en'] as const) {
     const usage = await page.request.get('/api/assistant/usage');
     expect((await usage.json()).used).toBe(0);
 
-    for (const size of SIZES) {
+    for (const size of DESKTOP_FIRST) {
       await page.setViewportSize({ width: size.width, height: size.height });
       await expect(box).toHaveValue(DICTATION);
       await expect(mic).toBeVisible();
-      // The page re-lays out after the resize (the businesses list turns into cards): measured until it has, else a
-      // list half-way to cards reads as a table scrolling sideways (seen once at 834 in this review).
-      await expect.poll(() => sidewaysScroll(page), { message: `${size.name}: nothing scrolls sideways` }).toEqual([]);
+      await expectNoSidewaysScroll(page, `${size.width}: nothing scrolls sideways`);
       await settled(page);
-      await page.screenshot({ path: shot(`assistant-dictation-${size.name}-${language}`) });
+      await page.screenshot({ path: shot(`assistant-dictation-${size.width}-${language}`) });
     }
     expect(errors).toEqual([]);
   });
@@ -75,7 +76,7 @@ for (const language of ['es', 'en'] as const) {
   test(`a dictation the server could not transcribe is said under the box, which stays as it was (${language})`, async ({
     page,
   }) => {
-    seed('panel', language);
+    await seed('panel', language);
     await signIn(page.request, OWNER);
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.route('**/api/assistant/transcribe', (route) =>

@@ -2,6 +2,6 @@
 {% comment %}
   A card of the store (public/store/list.html), from a card of public/store.py (`_card`): the
   app's icon (inline, cleaned by apps.app.list), its category, name, summary and access («Included
-  in every plan»: every plan includes all the apps, ronda 2026-10-24b, PLAN §32), linking its page.
+  in every plan»: every plan includes all the apps), linking its page.
 {% endcomment %}
 {% include "public/components/product_card.html" with icon_svg=app.icon_svg category=app.category_label name=app.name price=app.access_label href=app.href body=app.summary %}

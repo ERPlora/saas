@@ -1,4 +1,4 @@
-"""Events of hubs (``<app>.<entity>.<fact>``): recorded by services.py in the outbox, cited by live.py.
+"""Events of hubs (``<app>.<entity>.<fact>``): recorded by ``services`` in the outbox, cited by live.py.
 
 hubs reacts to no event of another app, so this module only names its own.
 """
@@ -12,8 +12,10 @@ BUSINESS_DELETED = "hubs.business.deleted"
 BUSINESS_RESTORED = "hubs.business.restored"
 #: The Hub refused a call about the business, or a later one succeeded: «Preparing» ↔ «Error».
 BUSINESS_HUB_ERROR_CHANGED = "hubs.business.hub_error_changed"
+#: The Hub's signed poll reported a platform-wide provisioning pause, or its recovery.
+BUSINESS_MAINTENANCE_CHANGED = "hubs.business.maintenance_changed"
 #: A day of the business's usage was measured, or measured again with other figures (``collect_hub_usage``,
-#: nightly; lot L4-A): recorded on the channel of its owner and of each admin (``notify_people``), who see
+#: nightly): recorded on the channel of its owner and of each admin (``notify_people``), who see
 #: its page. Payload ``{"business_id"}``.
 BUSINESS_USAGE_COLLECTED = "hubs.business.usage_collected"
 #: Days of usage past their retention were forgotten, of every business (``hubs.usage.prune``, at the end of
@@ -29,6 +31,7 @@ BUSINESS = [
     BUSINESS_DELETED,
     BUSINESS_RESTORED,
     BUSINESS_HUB_ERROR_CHANGED,
+    BUSINESS_MAINTENANCE_CHANGED,
 ]
 
 MEMBER_INVITED = "hubs.member.invited"
@@ -59,7 +62,7 @@ SUBSCRIPTION_CHANGED = "hubs.subscription.changed"
 
 #: The people of a business changed (an invitation, its answer, a role, a removal): recorded on the channel
 #: of every owner and admin of the business and of the account it touched, not only the actor's
-#: (``services.notify_people``), so their lists re-run at once. Payload ``{"business_id"}``.
+#: (``services.people_notices.notify_people``), so their lists re-run at once. Payload ``{"business_id"}``.
 MEMBER_CHANGED = "hubs.member.changed"
 #: An ownership offer was made, accepted, declined or cancelled: same channels as ``MEMBER_CHANGED``.
 OWNERSHIP_CHANGED = "hubs.ownership.changed"

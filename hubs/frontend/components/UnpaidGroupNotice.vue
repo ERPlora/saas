@@ -1,12 +1,10 @@
 <script setup lang="ts">
-// Several businesses with an unpaid invoice (audit 2026-10-14, R-15; mockups `businesses.html`, «2 negocios
-// tienen facturas sin pagar»): ONE notice instead of one per business, so two of them no longer take half the
-// page. The most urgent first (audit 2 S-07, as Billing orders them): the suspended, then the one suspended
-// soonest. Each line says its business and its date (the day, never the minute: since when it is suspended, or
-// when it will be), what it owes (audit 2 S-08: from the unpaid invoices the account sees, `billing.invoice.list`;
-// without them, no amounts) and, on the web, its own way to pay (`UnpaidActions`: «Pay the invoice», or «Change
-// card» after a declined card), filled only for the first one (audit 2 S-06). Inside the apps, where to pay,
-// without a button (README §4).
+// Several businesses with an unpaid invoice: ONE notice instead of one per business, so two of them do not take
+// half the page. The most urgent first, as Billing orders them: the suspended, then the one suspended soonest.
+// Each line says its business and its date (the day, never the minute: since when it is suspended, or when it
+// will be), what it owes (from the unpaid invoices the account sees, `billing.invoice.list`; without them, no
+// amounts) and, on the web, its own way to pay (`UnpaidActions`: «Pay the invoice», or «Change card» after a
+// declined card), filled only for the first one. Inside the apps, where to pay, without a button.
 import { InlineFeedback } from '@erplora/ui/components';
 import { WebOnly } from '@erplora/ui/shell';
 import { useLive } from '@erplora/ui/sdk';

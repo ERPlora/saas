@@ -86,6 +86,19 @@ describe('answerTo', () => {
     expect(answer).not.toContain('https://');
   });
 
+  it('asked about a law and the businesses, searches the web first and then reads the businesses: a turn that goes on after the web', () => {
+    const found = JSON.stringify({ results: [{ url: LONG_ADDRESS }] });
+    const rows = JSON.stringify({ rows: [{ name: 'E2E Asistente Panel' }], total: 1 });
+    for (const [system, question, answer] of [
+      [SPANISH, '¿Qué dice la nueva ley de mis negocios?', 'Tienes 1 negocio: **E2E Asistente Panel**. Los ves en [Negocios](/dashboard/businesses).'],
+      [ENGLISH, 'What does the new law say about my businesses?', 'You have 1 business: **E2E Asistente Panel**. See them in [Businesses](/dashboard/businesses).'],
+    ] as const) {
+      expect(asked(answerTo([system, { role: 'user', content: question }]).frames)?.name).toBe('web_search');
+      expect(asked(answerTo(answered(system, question, 'web_search', found)).frames)).toEqual({ name: 'hubs__business__list', arguments: '{}' });
+      expect(said(answerTo(answered(system, question, 'hubs__business__list', rows)).frames)).toBe(answer);
+    }
+  });
+
   it('asks to create the business it is told to create, by its name', () => {
 
     const answer = answerTo([SPANISH, { role: 'user', content: `Crea un negocio llamado ${NEW_BUSINESS}` }]);

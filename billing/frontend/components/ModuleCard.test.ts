@@ -1,12 +1,6 @@
-// A module of the Store (mockups `store.html` «Módulos»; round 17 §2.10; UX-AUDIT-4 W-F4/X-14): name,
-// summary and icon from the app catalog, net price at the business's billing, and what the business can do:
-//   - «Add · €9.00/month» (one dialog per module, with its own proration, or the checkout on Free);
-//   - just bought: «Activating… in <business>», never on sale twice;
-//   - owned: «You have it» (or «Included in your plan»), disabled;
-//   - bought: «Cancel» (BILLING-G66), the page confirms it;
-//   - cancelled but still working: until when, and «Keep · no charge today»;
-//   - off sale but still had (saas#2589): it says so, can be cancelled, never kept nor bought again;
-//   - with an unpaid invoice nothing that charges, with the reason.
+// A module of the Store and the one thing the business can do with it: add it, see it activating, cancel or keep
+// it, or nothing that charges with an unpaid invoice. One off sale but still had is cancelled, never kept nor bought
+// again.
 // clock: data only — no code under test compares these dates with now.
 import { describe, expect, it } from 'vitest';
 
@@ -103,7 +97,7 @@ describe('ModuleCard', () => {
     expect(keep.disabled('module-keep')).toBe(true);
   });
 
-  it('BILLING-G66: a bought module is cancelled from its card, never one the plan includes nor one just bought', async () => {
+  it('a bought module is cancelled from its card, never one the plan includes nor one just bought', async () => {
     const s = await card({ owned: true, source: 'purchase' });
     expect(s.el('module-cancel').text()).toBe('Cancel module');
     await s.el('module-cancel').trigger('click');
@@ -114,12 +108,12 @@ describe('ModuleCard', () => {
     expect((await card()).el('module-cancel').exists()).toBe(false);
   });
 
-  it('BILLING-G66: an unpaid invoice does not stop the cancellation (it stops what charges)', async () => {
+  it('an unpaid invoice does not stop the cancellation (it stops what charges)', async () => {
     const s = await card({ owned: true, source: 'purchase' }, { block: 'unpaid' });
     expect(s.disabled('module-cancel')).toBe(false);
   });
 
-  it('saas#2589: off sale but still had, it says so and is cancelled; cancelled, it is not kept', async () => {
+  it('off sale but still had, it says so and is cancelled; cancelled, it is not kept', async () => {
     const s = await card({ owned: true, source: 'purchase', onSale: false });
     expect(s.el('module-off-sale').text()).toBe('No longer sold: you keep it while you pay it, and can cancel it whenever you want.');
     expect(s.el('module-cancel').exists()).toBe(true);

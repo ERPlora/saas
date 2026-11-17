@@ -1,4 +1,4 @@
-"""WHATSAPP-G15, WHATSAPP-F16, WHATSAPP-G17 · Door 8, ``POST /internal/whatsapp/templates``, and door 9,
+"""WHATSAPP-F16 · Door 8, ``POST /internal/whatsapp/templates``, and door 9,
 ``POST /internal/whatsapp/templates/delete`` (the Hub's WORKBOOK ``whatsapp_inbox``, «Contrato con el SaaS»), and the
 mirror of Meta's templates the Hub's snapshot carries.
 
@@ -8,8 +8,7 @@ meta_rate_limited | not_connected | reconnect_needed`` with Meta's reason = not 
 the number marked «needs reconnecting»). Door 9 deletes that one template in that language: 200 ``{"deleted": true}``,
 or 404 ``whatsapp.template_not_found`` when Meta no longer has it; anything else keeps it.
 
-Meta is replaced at the HTTP border only (``respx``), with Meta's documented bodies. Cases of the old product's
-``test_templates.py`` and ``test_whatsapp_templates_door.py``.
+Meta is replaced at the HTTP border only (``respx``), with Meta's documented bodies.
 """
 
 import base64
@@ -680,7 +679,7 @@ class TestHeaderSample:
     @pytest.mark.parametrize("failure", [httpx.ConnectError("refused"), httpx.ReadTimeout("slow")])
     @respx.mock
     def test_meta_unreachable_while_uploading_registers_nothing_and_frees_the_key(self, client, number, failure):
-        """gh:hub#2731: Meta not answering is said as Meta's, never as ERPlora's, and nothing is kept."""
+        """Meta not answering is said as Meta's, never as ERPlora's, and nothing is kept."""
         respx.post(UPLOADS).mock(return_value=httpx.Response(200, json={"id": UPLOAD_ID}))
         respx.post(UPLOAD).mock(side_effect=failure)
         meta = respx.post(TEMPLATES)

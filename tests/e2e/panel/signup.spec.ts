@@ -1,36 +1,28 @@
-// flow: FIX-LAUNCH-TABS
-// The sign-up and the password reset of the panel, end to end. The launcher's form has two strict tabs
-// (FIX-LAUNCH-TABS): «Create account» creates the account of a new address, allauth mails a 6-digit code,
-// /verify-email takes it and the launcher opens signed in: one code, never a second one (gh:hub#858);
-// «Sign in» never creates one (gh:saas#1018). «Forgot your password?» mails a link, its key sets a new password on /password/reset/key/<key>, the
+// flow: none — regression test of the launcher's two tabs
+// The sign-up and the password reset of the panel, end to end. The launcher's form has two strict tabs:
+// «Create account» creates the account of a new address, allauth mails a 6-digit code, /verify-email takes
+// it and the launcher opens signed in: one code, never a second one; «Sign in» never creates one.
+// «Forgot your password?» mails a link, its key sets a new password on /password/reset/key/<key>, the
 // sign-in says so and the account signs in with the new password and the code mailed at every sign-in.
 // The mails are read from the panel's file backend (project.ts). Accounts of this spec: `e2e-signup-<time>`
 // and `e2e-reset` at example.com, removed before and after (panel_seed.py's `clear` removes every
 // `e2e-…@example.com` too).
 import { type Page } from '@playwright/test';
 
-import {
-  djangoPrint,
-  expect,
-  sessionOf,
-  settled,
-  shot,
-  sidewaysScroll,
-  signInThroughPage,
-  submitSignInForm,
-  test,
-  VIEWPORTS,
-  waitForMailCode,
-  waitForPasswordResetLink,
-  watchPageErrors,
-} from './fixtures';
+import { createAccountWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { waitForMailCode, waitForPasswordResetLink } from './mail';
+import { watchPageErrors } from './page-events';
+import { settled, shot, sidewaysScroll, VIEWPORTS } from './screen';
+import { sessionOf, signInThroughPage, submitSignInForm } from './session';
 
 /** A verified account whose password the reset changes (never the seeded owner's: other specs sign in with it). */
 const RESET = { email: 'e2e-reset@example.com', password: 'e2e-panel' };
 const NEW_PASSWORD = 'Reset-e2e-2026!';
 
-function removeAccounts(): void {
-  djangoPrint(
+async function removeAccounts(): Promise<void> {
+  await djangoPrintWarm(
     [
       'from django.contrib.auth import get_user_model',
       'users = get_user_model().objects',
@@ -40,20 +32,8 @@ function removeAccounts(): void {
   );
 }
 
-/** `RESET` with its address verified, as an account that already signed in once. */
-function createResetAccount(): void {
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email="${RESET.email}", password="${RESET.password}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-}
-
 /**
- * The page on screen at 390, 834 and 1440 px (working rules §2.4), back at Playwright's size after: no
+ * The page on screen at 390, 834 and 1440 px, back at Playwright's size after: no
  * sideways scroll, and a screenshot of each (`<name>-<width>.png`). For the screens only a flow reaches
  * (a sign-up waiting for its code, a real reset key); the rest are in viewports.spec.ts.
  */
@@ -68,6 +48,7 @@ async function atEveryViewport(page: Page, name: string): Promise<void> {
   if (size) await page.setViewportSize(size);
 }
 
+// The first call boots this worker's warm Django: here, on no test's clock.
 test.beforeAll(removeAccounts);
 test.afterAll(removeAccounts);
 
@@ -82,7 +63,7 @@ test('«Sign in» with an unknown address creates nothing: the error of a wrong 
   await expect(page.getByTestId('login-password')).toContainText('The email address and/or password you specified are not correct.');
   await expect(page.getByTestId('login-error-signup')).toHaveText('First time here? Create your account');
   await expect(page).toHaveURL(/\/launch\?next=\/account$/);
-  expect(hasAccount(email)).toBe(false);
+  expect(await hasAccount(email)).toBe(false);
 
   await page.getByTestId('login-error-signup').getByRole('button').click();
   await expect(page).toHaveURL(/\/launch\?next=(%2F|\/)account&tab=signup$/);
@@ -91,15 +72,12 @@ test('«Sign in» with an unknown address creates nothing: the error of a wrong 
   expect(errors).toEqual([]);
 });
 
-/** Whether an account holds `email` (the SaaS's side: no page shows it to a visitor). */
-function hasAccount(email: string): boolean {
-  return (
-    djangoPrint(
-      ['from django.contrib.auth import get_user_model', `print(get_user_model().objects.filter(email__iexact="${email}").exists())`].join(
-        '\n',
-      ),
-    ) === 'True'
+/** Whether an account holds `email` (the SaaS's side: no page shows it to a visitor), asked of the warm Django. */
+async function hasAccount(email: string): Promise<boolean> {
+  const exists = await djangoPrintWarm(
+    ['from django.contrib.auth import get_user_model', `print(get_user_model().objects.filter(email__iexact="${email}").exists())`].join('\n'),
   );
+  return exists === 'True';
 }
 
 /** The launcher's «Create account» tab, from its default «Sign in». */
@@ -175,7 +153,8 @@ test('a mistyped address is left with «Use a different email»: the right accou
 
 test('«Forgot your password?»: the mailed link sets a new password, and the account signs in with it', async ({ page }) => {
   const errors = watchPageErrors(page);
-  createResetAccount();
+  // `RESET` with its address verified, as an account that already signed in once.
+  await createAccountWarm(RESET.email, RESET.password);
 
   await page.goto('/launch');
   await page.getByTestId('login-forgot').click();

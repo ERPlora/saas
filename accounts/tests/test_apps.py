@@ -1,4 +1,4 @@
-"""accounts is a platform app at the root of saas-next, next to ``base/`` (round 15, PLAN §20.2)."""
+"""accounts is a platform app at the root of the SaaS, next to ``base/``."""
 
 from pathlib import Path
 
@@ -30,7 +30,7 @@ def test_its_name_is_translated():
 
 
 def test_every_account_reads_and_manages_its_own_account():
-    """The Account page (plan 2026-10-13, L3-A): the role ``account`` of every signed-in person (``base.operations``)
+    """The Account page: the role ``account`` of every signed-in person (``base.operations``)
     gets ``accounts.view`` (its live queries need a permission, live.E004) and ``accounts.manage``."""
     from live.meta import permissions_for_role
 

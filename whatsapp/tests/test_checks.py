@@ -2,7 +2,7 @@
 
 WhatsApp missing a setting fails visibly where it is used (503 at the webhook, ``whatsapp.not_configured`` at
 the doors); ``check`` says it before, as information, so it never stops a deploy of everything else (the deploy
-fails at WARNING; the secrets live in the infrastructure's repo, PLAN-SAAS «Secretos en AWS»), as
+fails at WARNING; the secrets live in the infrastructure's repo), as
 ``accounts.I001`` does for Google.
 """
 

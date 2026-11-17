@@ -1,5 +1,4 @@
-// The filters of Billing → Invoices in one control of the toolbar (Ioan, 2026-10-14: a clean SaaS, one line of
-// toolbar at 1440 px): a «Filters» button that says how many are on, and a popover with the business (a select),
+// The filters of Billing → Invoices in one control of the toolbar (a clean SaaS, one line of toolbar at 1440 px): a «Filters» button that says how many are on, and a popover with the business (a select),
 // the status (a segment: three visible options) and the year (a select), plus «Clear filters» while any is on.
 // It keeps no state: the page holds the filters (in the address) and hears `change` and `clear`.
 import { afterEach, describe, expect, it } from 'vitest';

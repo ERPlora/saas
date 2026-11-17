@@ -1,8 +1,7 @@
-// «Download the data» of a business (HUBS-F18, HUBS-F20; PLAN-DB round 2026-10-30, proposals (a), (k), (l)) in a real
-// browser, at the three sizes of the migration (390×844, 834×1112, 1440×900), in English and in Spanish: the page of a
-// deleted business, where its deletion mail leads, lists the copies the Hub keeps of its data (when, which, how big) and
-// each «Download» asks the Hub for a fresh link and the browser downloads the file. Without a copy yet it says so and
-// that we will tell; a live business without copies has no card.
+// «Download the data» of a business (HUBS-F18, HUBS-F20) in a real browser, at three sizes (390×844, 834×1112,
+// 1440×900), in English and in Spanish: the page of a deleted business, where its deletion mail leads, lists the copies
+// the Hub keeps of its data (when, which, how big) and each «Download» asks the Hub for a fresh link and the browser
+// downloads the file. Without a copy yet it says so and that we will tell; a live business without copies has no card.
 //
 // The spec plays the Hub on this stack's Hub port (`HUB_DOUBLE_PORT`, where the panel's Django calls it): it answers
 // `GET /internal/hubs/{id}/dumps` with the copies the test sets, each with a link to itself that serves the file as an
@@ -11,16 +10,18 @@ import { createServer, type Server } from 'node:http';
 
 import { type Page } from '@playwright/test';
 
-import { djangoPrint, expect, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
+import { removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
 import { HUB_DOUBLE_PORT } from './project';
+import { captureAtEverySize, settled } from './screen';
+import { apiPost, signIn } from './session';
+
+const atEverySize = captureAtEverySize('HUBS-F18');
 
 const PREFIX = 'e2e-copy-';
 const PASSWORD = 'Masa-madre-y-centeno-26';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 const DUMPS = /^\/internal\/hubs\/([0-9a-f-]{36})\/dumps$/;
 const FILES = /^\/files\/([^?]+)/;
 
@@ -62,21 +63,14 @@ function startHub(): Promise<Server> {
   });
 }
 
-function removeOwnRows(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(members__user__email__startswith="${PREFIX}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}").delete()`,
-    ].join('\n'),
-  );
-}
-
-/** A fresh owner (address proven) of a business called `name` in `status`; its email and the business's id. */
-function ownerOf(name: string, status: 'deleting' | 'active'): { email: string; id: string } {
+/**
+ * A fresh owner (address proven) of a business called `name` in `status`, made by the warm Django (no screen makes a
+ * business deleted two days ago); its email and the business's id.
+ */
+async function ownerOf(name: string, status: 'deleting' | 'active'): Promise<{ email: string; id: string }> {
   const email = `${PREFIX}${status}-${Date.now()}@example.com`;
-  const id = djangoPrint(
+  const id = (
+    await djangoPrintWarm(
     [
       'from datetime import timedelta',
       'from allauth.account.models import EmailAddress',
@@ -94,14 +88,17 @@ function ownerOf(name: string, status: 'deleting' | 'active'): { email: string; 
       'HubMember.objects.create(hub=hub, user=user, role="hub_owner", joined_at=now, accepted_at=now)',
       'print(hub.id)',
     ].join('\n'),
+    )
   )
     .split('\n')
     .at(-1) as string;
   return { email, id };
 }
 
-function speak(email: string, language: 'en' | 'es'): void {
-  djangoPrint(`from django.contrib.auth import get_user_model;get_user_model().objects.filter(email="${email}").update(language="${language}")`);
+/** The signed-in account of `page` speaks `language` from now on, as «Language» in its preferences saves it. */
+async function speak(page: Page, language: 'en' | 'es'): Promise<void> {
+  const saved = await apiPost(page.request, '/api/accounts/preferences', { language });
+  expect(saved.status(), await saved.text()).toBe(200);
 }
 
 function copyOf(id: string, kind: 'offboarding' | 'reset', when: string, bytes: number): Record<string, unknown> {
@@ -109,33 +106,21 @@ function copyOf(id: string, kind: 'offboarding' | 'reset', when: string, bytes: 
   return { id: `${id.replaceAll('-', '')}/${stamp}-${kind}.dump`, kind, created_at: when, bytes };
 }
 
-/** `ready` at each size: no sideways scroll and a capture `HUBS-F18-<key>-<size>`; back at 1440 after. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`HUBS-F18-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
-
+// Django's boot on no test's clock (saas#354): the warm Django starts here.
 test.beforeAll(async () => {
-  removeOwnRows();
-  hub = await startHub();
+  [hub] = await Promise.all([startHub(), removeAccountsWarm(PREFIX)]);
 });
 test.afterAll(async () => {
   await new Promise<void>((closed) => {
     hub.closeAllConnections();
     hub.close(() => closed());
   });
-  removeOwnRows();
+  await removeAccountsWarm(PREFIX);
 });
 
 test('HUBS-F18: the owner of a deleted business downloads the copy of its data, in English and in Spanish', async ({ page }) => {
   const errors = watchPageErrors(page);
-  const { email, id } = ownerOf('Bar Antiguo', 'deleting');
+  const { email, id } = await ownerOf('Bar Antiguo', 'deleting');
   copies.set(id, [copyOf(id, 'reset', '2026-10-20T08:00:00Z', 1_536), copyOf(id, 'offboarding', '2026-10-28T10:15:00Z', 48_213_504)]);
   await signIn(page.request, { email, password: PASSWORD });
 
@@ -157,7 +142,7 @@ test('HUBS-F18: the owner of a deleted business downloads the copy of its data, 
   // The link was asked on the click (a second list of the Hub), never kept from the page's.
   expect(asked.filter((call) => call.endsWith('/dumps')).length).toBe(before + 1);
 
-  speak(email, 'es');
+  await speak(page, 'es');
   await page.goto(`/dashboard/businesses/${id}`);
   await atEverySize(page, 'es', async () => {
     await expect(card.getByText('Descargar los datos')).toBeVisible();
@@ -169,7 +154,7 @@ test('HUBS-F18: the owner of a deleted business downloads the copy of its data, 
 
 test('HUBS-F18: without its copy yet, the page says it is not ready and that we will tell', async ({ page }) => {
   const errors = watchPageErrors(page);
-  const { email, id } = ownerOf('Café Viejo', 'deleting');
+  const { email, id } = await ownerOf('Café Viejo', 'deleting');
   copies.set(id, []);
   await signIn(page.request, { email, password: PASSWORD });
 
@@ -184,7 +169,7 @@ test('HUBS-F18: without its copy yet, the page says it is not ready and that we 
 
 test('a live business without copies has no «Download the data»', async ({ page }) => {
   const errors = watchPageErrors(page);
-  const { email, id } = ownerOf('Panadería Nueva', 'active');
+  const { email, id } = await ownerOf('Panadería Nueva', 'active');
   copies.set(id, []);
   await signIn(page.request, { email, password: PASSWORD });
 

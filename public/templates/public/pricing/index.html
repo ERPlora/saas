@@ -1,22 +1,19 @@
 {% extends "public/public_base.html" %}
 {% load buttons i18n icons static %}
 {% comment %}
-  /pricing/ — port of apps/public/pricing/templates/pricing/index.html (origin/develop): the hero,
-  the plan cards with the ex-VAT note and the trial note, the plan-by-plan table, the two competitor
-  tables, the FAQ and the closing band, with the same texts. What changed:
-  the ok-* are the component partials and ep-* classes (PLAN §16.11); the style block of the old page is
-  public/static/public/pricing.css; every plan includes every module (ronda 2026-10-24b, PLAN §32), so the copy
-  sells no tier of apps (no «premium», no «Apps included» column: `included_level` stays dormant off the public web)
-  nor prices «per module», and the competitor table says «app catalogue», not «marketplace»; the counter hardware is the ERPlora app, not the retired
-  Bridge (ADR-0196). Without any plan on sale the page says so instead of painting empty tables.
-  The ronda 2026-10-24b (PLAN-SAAS §9) took away the infrastructure offer by contact: no band, no row, no FAQ entry.
-  Since 2026-10-24 (Ioan, PLAN-SAAS §9; corrects 2026-10-15) the upgrade-only plans are shown again, read from the
-  database, under «More capacity» and in the table, each marked «Available once you are on Starter» instead of a
-  sign-up button, with one call to action to start free. The surfaces alternate whatever the catalogue shows
-  (`soft`, public.pricing.section_surfaces). The copy sells what the customer gets, never how we run it, and
-  includes no location: multi-location comes from Pro and is charged per location (PLAN §32). The apps each plan lets a
-  business turn on at once (`max_apps`, the cap the Hub applies since hub#256) are a column next to the devices and users
-  and a line of every card (public.pricing.apps_at_once), read from the row.
+  /pricing/: the hero, the plan cards with the ex-VAT note and the trial note, the plan-by-plan
+  table, the two competitor tables, the FAQ and the closing band; the styles are
+  public/static/public/pricing.css. Every plan includes every module, so the copy sells no tier of
+  apps (no «premium», no «Apps included» column: `included_level` stays dormant off the public web)
+  nor prices «per module», and the competitor table says «app catalogue», not «marketplace»; the
+  counter hardware is the ERPlora app. Without any plan on sale the page says so instead of painting
+  empty tables. The upgrade-only plans are shown, read from the database, under «More capacity» and
+  in the table, each marked «Available once you are on Starter» instead of a sign-up button, with
+  one call to action to start free. The surfaces alternate whatever the catalogue shows (`soft`,
+  public.pricing.section_surfaces). The copy sells what the customer gets, never how we run it, and
+  includes no location: multi-location comes from Pro and is charged per location. The apps each
+  plan lets a business turn on at once (`max_apps`, the cap the Hub applies) are a column next to
+  the devices and users and a line of every card (public.pricing.apps_at_once), read from the row.
   Data: public/pricing.py (hubs.plan.list). Contract: public/tests/test_pricing.py.
 {% endcomment %}
 
@@ -64,7 +61,6 @@
     </div>
   </section>
 
-  <!-- MORE CAPACITY: the upgrade-only plans, shown and never signed up on (Ioan, 2026-10-24, PLAN-SAAS §9) -->
   {% if plans_upgrade %}
   <section id="more-capacity" class="ep-section--compact{% if soft.upgrades %} ep-section--soft{% endif %} ep-section--divider">
     <div class="ep-container ep-section-content">
@@ -86,7 +82,6 @@
   </section>
   {% endif %}
 
-  <!-- FEATURE COMPARISON TABLE (PLAN VS PLAN) -->
   {% if plans_main %}
   <section class="ep-section--compact{% if soft.compare %} ep-section--soft{% endif %} ep-section--divider">
     <div class="ep-container ep-section-content">
@@ -155,7 +150,6 @@
   </section>
   {% endif %}
 
-  <!-- COMPARISON VS COMPETITORS -->
   <section id="comparativa" class="ep-section--compact{% if soft.competitors %} ep-section--soft{% endif %} ep-section--divider">
     <div class="ep-container ep-section-content">
       <div class="text-center mb-12 max-w-2xl mx-auto">
@@ -164,7 +158,6 @@
         <p class="mt-3 text-fg/65">{% trans "We're not the cheapest tool on the market and we're not pretending to be. Here's the honest read on where we win — and against whom." %}</p>
       </div>
 
-      <!-- BLOCK A: vs. enterprise ERPs (SAP, Odoo) -->
       <div class="mb-14">
         <div class="flex items-baseline gap-3 mb-2">
           <span class="kbd-pill">{% trans "block 1" %}</span>
@@ -203,7 +196,6 @@
         <p class="text-sm text-fg/70 mt-3 italic">{% trans "Bottom line: if your team is under 50 people, SAP and Odoo are selling you complexity you don't need yet, and charging you to implement it." %}</p>
       </div>
 
-      <!-- BLOCK B: vs. vertical SaaS (Holded, Factorial, Zoho) -->
       <div>
         <div class="flex items-baseline gap-3 mb-2">
           <span class="kbd-pill">{% trans "block 2" %}</span>
@@ -256,7 +248,7 @@
 
       {% comment %} One source: public.pricing.faq_items(). The same list feeds the FAQPage
          JSON-LD of extra_seo, so the accordion and the markup cannot drift apart. The storage answer adds
-         the link to the privacy policy whose §6 it quotes (PUBLIC-F08). {% endcomment %}
+         the link to the privacy policy whose section 6 it quotes. {% endcomment %}
       <ion-accordion-group value="{{ faq_items.0.key }}">
         {% for item in faq_items %}
         <ion-accordion value="{{ item.key }}">

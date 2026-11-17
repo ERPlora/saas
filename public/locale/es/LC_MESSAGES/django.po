@@ -1,4 +1,4 @@
-# Spanish translations of the public web of saas-next (public/, round 16).
+# Spanish translations of the public web of erplora.com (public/).
 # Copyright (C) 2026 ERPlora
 # This file is distributed under the same license as ERPlora.
 #
@@ -255,14 +255,6 @@ msgstr "Algo ha fallado"
 #: templates/public/components/pricing_card.html:15
 msgid "Popular"
 msgstr "Popular"
-
-#: templates/public/partials/dev_banner.html:10
-msgid "Pre-launch"
-msgstr "Prelanzamiento"
-
-#: templates/public/partials/dev_banner.html:12
-msgid "ERPlora is in active development. You're viewing a product preview."
-msgstr "ERPlora está en pleno desarrollo. Estás viendo una vista previa del producto."
 
 #: templates/public/partials/footer.html:18
 msgid "One ERP. Infinite configurations. Yours."
@@ -993,8 +985,8 @@ msgstr ""
 "gestionar tus preferencias."
 
 #: templates/public/legal/cookies.html
-msgid "May 26, 2026"
-msgstr "26 de mayo de 2026"
+msgid "November 11, 2026"
+msgstr "11 de noviembre de 2026"
 
 #: templates/public/legal/cookies.html
 msgid ""
@@ -1049,6 +1041,10 @@ msgid "your preferred language."
 msgstr "tu idioma preferido."
 
 #: templates/public/legal/cookies.html
+msgid "the panel's colour palette, so it paints without a flash."
+msgstr "la paleta de colores del panel, para pintarla sin parpadeos."
+
+#: templates/public/legal/cookies.html
 msgid "b) Analytics"
 msgstr "b) Analíticas"
 
@@ -1057,10 +1053,24 @@ msgid "(require your consent):"
 msgstr "(requieren tu consentimiento):"
 
 #: templates/public/legal/cookies.html
+msgid "(Google Analytics): aggregated and anonymized usage analysis."
+msgstr "(Google Analytics): análisis de uso agregado y anonimizado."
+
+#: templates/public/legal/cookies.html
 msgid ""
-"(Google Analytics, if active): aggregated and anonymized usage analysis."
+"(Microsoft Clarity): how visitors use the public pages (clicks and "
+"scrolling), to improve them."
 msgstr ""
-"(Google Analytics, si está activo): análisis de uso agregado y anonimizado."
+"(Microsoft Clarity): cómo se usan las páginas públicas (clics y "
+"desplazamiento), para mejorarlas."
+
+#: templates/public/legal/cookies.html
+msgid ""
+"We currently do <strong>NOT</strong> use cookies of this type: erplora.com "
+"does not measure visits."
+msgstr ""
+"Actualmente <strong>NO</strong> usamos cookies de este tipo: erplora.com no "
+"mide las visitas."
 
 #: templates/public/legal/cookies.html
 msgid "c) Advertising / marketing"
@@ -1081,13 +1091,35 @@ msgstr "3. Gestión de tus preferencias"
 
 #: templates/public/legal/cookies.html
 msgid ""
-"The first time you visit erplora.com we show you a banner to accept, reject, "
-"or configure non-technical cookies. You can change your choice at any time "
-"from the \"Cookies\" link in the footer."
+"Until you choose, every public page of erplora.com shows a banner to accept, "
+"reject, or configure non-technical cookies, and none of them is set before "
+"you accept."
 msgstr ""
-"Al entrar por primera vez en erplora.com te mostramos un banner para "
-"aceptar, rechazar o configurar las cookies no técnicas. Puedes cambiar tu "
-"elección en cualquier momento desde el enlace \"Cookies\" en el footer."
+"Hasta que elijas, cada página pública de erplora.com muestra un aviso para "
+"aceptar, rechazar o configurar las cookies no técnicas, y ninguna se instala "
+"antes de que las aceptes."
+
+#: templates/public/legal/cookies.html
+msgid ""
+"erplora.com currently sets only technical cookies, which are exempt from "
+"consent, so we show no cookie banner: there is nothing to accept or reject. "
+"If we add optional cookies, every public page will show a banner to accept, "
+"reject, or configure them until you choose, and none of them will be set "
+"before you accept."
+msgstr ""
+"Hoy erplora.com solo instala cookies técnicas, que no necesitan "
+"consentimiento, por eso no mostramos ningún aviso de cookies: "
+"no hay nada que aceptar ni rechazar. Si añadimos cookies opcionales, cada "
+"página pública mostrará un aviso para aceptarlas, rechazarlas o configurarlas hasta "
+"que elijas, y ninguna se instalará antes de que las aceptes."
+
+#: templates/public/legal/cookies.html
+msgid ""
+"You can see every cookie group and change your choice at any time from the "
+"\"Cookies\" link in the footer."
+msgstr ""
+"Puedes ver cada grupo de cookies y cambiar tu elección en cualquier momento "
+"desde el enlace «Cookies» del pie de página."
 
 #: templates/public/legal/cookies.html
 msgid "Your browser also lets you block or delete cookies; see:"
@@ -1239,7 +1271,7 @@ msgstr "en vigor"
 msgid "Privacy"
 msgstr "Privacidad"
 
-# --- The app store (L6): store.py, templates/public/store/, the menu and the footer ---
+# --- The app store: store.py, templates/public/store/, the menu and the footer ---
 
 #: store.py
 msgid "Included in every plan"
@@ -1384,7 +1416,7 @@ msgstr "Documentación de %(name)s"
 msgid "This documentation is only available in Spanish."
 msgstr "Esta documentación solo está disponible en español."
 
-# --- The industries (L4): industries.py, templates/public/industries/ and the footer ---
+# --- The industries: industries.py, templates/public/industries/ and the footer ---
 
 #: industries.py
 #, python-format
@@ -1631,7 +1663,7 @@ msgstr "Empieza gratis"
 msgid "Company"
 msgstr "Empresa"
 
-# --- L3a: product, company, resources, help, the app and /download/ (origin/develop .po) ---
+# --- Product, company, resources, help, the app and /download/ ---
 
 msgid "ERPlora for Android"
 msgstr "ERPlora para Android"
@@ -1972,8 +2004,8 @@ msgstr "Instala solo las apps que necesitas y añade más a medida que creces."
 msgid "Always available"
 msgstr "Siempre disponible"
 
-msgid "Continuous backups with point-in-time recovery for 14 days, TLS and high availability on AWS. Access from anywhere."
-msgstr "Copias de seguridad continuas con recuperación a cualquier momento de los últimos 14 días, TLS y alta disponibilidad en AWS. Accede desde cualquier lugar."
+msgid "Continuous backups: recover your data from any moment of the last 14 days, and what was already sent to the tax agency is kept. TLS and high availability on AWS. Access from anywhere."
+msgstr "Copias de seguridad continuas: recuperas los datos de cualquier momento de los últimos 14 días, y lo ya enviado a Hacienda se conserva. TLS y alta disponibilidad en AWS. Accede desde cualquier lugar."
 
 msgid "Multi-platform"
 msgstr "Multiplataforma"
@@ -2014,8 +2046,8 @@ msgstr "Contraseñas guardadas con hash y sal (PBKDF2)"
 msgid "Amazon Web Services, Ireland region (eu-west-1)"
 msgstr "Amazon Web Services, región de Irlanda (eu-west-1)"
 
-msgid "Continuous backups, point-in-time recovery for 14 days"
-msgstr "Copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días"
+msgid "Continuous backups: recover your data from any moment of the last 14 days, and what was already sent to the tax agency is kept"
+msgstr "Copias de seguridad continuas: recuperas los datos de cualquier momento de los últimos 14 días, y lo ya enviado a Hacienda se conserva"
 
 msgid "DDoS protection and WAF on AWS"
 msgstr "Protección anti-DDoS y WAF en AWS"
@@ -2288,8 +2320,8 @@ msgstr "No compartas credenciales"
 msgid "Never send passwords, PINs, recovery codes, signing keys, or complete payment details in a support message."
 msgstr "No mandes nunca contraseñas, PIN, códigos de recuperación, claves de firma ni datos de pago completos en un mensaje de soporte."
 
-msgid "Your data lives in its own database, isolated from every other business, with continuous backups, point-in-time recovery for 14 days and high availability in Europe to keep your business running."
-msgstr "Tus datos viven en su propia base de datos, aislada de la de cualquier otro negocio, con copias de seguridad continuas, recuperación a cualquier momento de los últimos 14 días y alta disponibilidad en Europa para que tu negocio no se detenga."
+msgid "Your data lives in its own database, isolated from every other business, with continuous backups and high availability in Europe to keep your business running. You can recover your data from any moment of the last 14 days, and what was already sent to the tax agency is kept."
+msgstr "Tus datos viven en su propia base de datos, aislada de la de cualquier otro negocio, con copias de seguridad continuas y alta disponibilidad en Europa para que tu negocio no se detenga: recuperas los datos de cualquier momento de los últimos 14 días, y lo ya enviado a Hacienda se conserva."
 
 msgid "Our Apps"
 msgstr "Nuestras apps"
@@ -2303,9 +2335,13 @@ msgstr "Todas las apps incluidas, listo para VeriFactu"
 msgid "Process transactions in milliseconds, with live updates on every device."
 msgstr "Procesa transacciones en milisegundos, con actualizaciones en vivo en todos los dispositivos."
 
-#: templates/public/legal/privacy.html templates/public/legal/terms.html
+#: templates/public/legal/privacy.html
 msgid "November 5, 2026"
 msgstr "5 de noviembre de 2026"
+
+#: templates/public/legal/terms.html
+msgid "November 14, 2026"
+msgstr "14 de noviembre de 2026"
 
 #: templates/public/legal/privacy.html
 msgid "Another recipient: the web search of the AI assistant"
@@ -2351,7 +2387,7 @@ msgstr "envío del correo electrónico transaccional del servicio. El tratamient
 msgid "Some processors may process data outside the EEA: the provider of the voice and search fingerprint services of the assistant and, only if the European one is unavailable, the backup model providers. These transfers are carried out under Standard Contractual Clauses (SCCs) approved by the European Commission (EU Decision 2021/914) or, when possible, by keeping the data within the EU through regional configuration. The customer may request a copy of the SCCs at"
 msgstr "Algunos encargados pueden tratar datos fuera del EEE: el proveedor de los servicios de voz y de huellas de búsqueda del asistente y, solo si el europeo no está disponible, los proveedores de modelos de respaldo. Estas transferencias se realizan amparadas en Cláusulas Contractuales Tipo (CCT) aprobadas por la Comisión Europea (Decisión UE 2021/914) o, cuando es posible, manteniendo el dato dentro de la UE mediante configuración regional. El cliente puede solicitar copia de las CCT en"
 
-# --- L7: the home, /contact/, /pricing/, /legal/terms/ and /collaborate/ (landing.py, pricing.py, legal.py, company.py and their templates; origin/develop .po where the copy is the same) ---
+# --- The home, /contact/, /pricing/, /legal/terms/ and /collaborate/ (landing.py, pricing.py, legal.py, company.py and their templates) ---
 
 msgid "All fields are required except the phone number."
 msgstr "Todos los campos son obligatorios excepto el teléfono."
@@ -2411,8 +2447,8 @@ msgstr "Sí, lo hace por ti nuestro equipo de soporte. Solo tienes que ponerte e
 msgid "Where is my data stored?"
 msgstr "¿Dónde se almacenan mis datos?"
 
-msgid "No — every price on this page is net. The VAT that applies to you is worked out at checkout from the tax ID you enter, and you see the exact amount before you pay. A Spanish NIF/CIF/NIE pays 21%. A company in another EU member state with a VAT number we validate against VIES pays 0% under the reverse charge, and accounts for the tax itself. The Canary Islands, Ceuta and Melilla, and customers outside the EU are outside the scope of Spanish VAT, which is not the same as a 0% rate."
-msgstr "No: todos los precios de esta página son sin IVA. El IVA que te corresponde se calcula en el checkout a partir del identificador fiscal que introduzcas, y ves el importe exacto antes de pagar. Un NIF/CIF/NIE español paga el 21 %. Una empresa de otro Estado miembro con un NIF-IVA que validamos contra VIES paga el 0 % por inversión del sujeto pasivo, y liquida ella el impuesto. Canarias, Ceuta y Melilla y los clientes de fuera de la UE quedan no sujetos al IVA español, que no es lo mismo que un tipo del 0 %."
+msgid "No — every price on this page is net. For now ERPlora only sells its paid plans to payers billed in Spain, and the VAT is worked out at checkout from your billing address: you see the exact amount before you pay. On the mainland and in the Balearic Islands, Spanish VAT of 21% is added. The Canary Islands, Ceuta and Melilla are outside the scope of Spanish VAT, which is not the same as a 0% rate: there we only sell to businesses and professionals, who give their tax ID and account for any IGIC or IPSI themselves."
+msgstr "No: todos los precios de esta página son sin IVA. Por ahora ERPlora solo vende sus planes de pago a pagadores que se facturan en España, y el IVA se calcula en el pago a partir de tu dirección de facturación: ves el importe exacto antes de pagar. En la península y en Baleares se suma el IVA español del 21 %. Canarias, Ceuta y Melilla quedan fuera del IVA español, que no es lo mismo que un tipo del 0 %: allí solo vendemos a empresas y profesionales, que dan su NIF y declaran ellas el IGIC o el IPSI que corresponda."
 
 msgid "Apply Now"
 msgstr "Solicitar Ahora"
@@ -2929,26 +2965,23 @@ msgstr "El impago a vencimiento dará lugar a la suspensión del servicio tras 7
 msgid "A Hub that remains suspended for %(days)s days is deleted, together with its data. The account holder is notified beforehand, by email and with a specific date, and receives the copy described in section 5.1."
 msgstr "Un Hub que permanezca suspendido %(days)s días se elimina, junto con sus datos. Se avisa antes al titular, por correo electrónico y con fecha concreta, y se le entrega la copia descrita en el apartado 5.1."
 
-msgid "3.1 Customers in the United Kingdom"
-msgstr "3.1 Clientes en Reino Unido"
+msgid "3.1 Where ERPlora sells its paid plans"
+msgstr "3.1 Dónde vende ERPlora sus planes de pago"
 
-msgid "In the United Kingdom, ERPlora sells its paid plans only to businesses, for use in the course of their business. By subscribing to a paid service with a billing address in the United Kingdom, the customer declares that it acts as a business and not as a consumer."
-msgstr "En Reino Unido, ERPlora vende sus planes de pago solo a empresas y profesionales, para el ejercicio de su actividad. Al contratar un servicio de pago con dirección de facturación en Reino Unido, el cliente declara que actúa como empresa o profesional y no como consumidor."
+msgid "For now, ERPlora sells its paid plans only to customers whose billing address is in Spain. The customer gives that address before paying, and ERPlora refuses a paid subscription billed to another country."
+msgstr "Por ahora, ERPlora vende sus planes de pago solo a clientes con la dirección de facturación en España. El cliente da esa dirección antes de pagar, y ERPlora rechaza una suscripción de pago que se facture a otro país."
 
-msgid "A customer registered for VAT in the United Kingdom must provide its UK VAT registration number (for example GB123456782) before paying. ERPlora may check it against the register of HM Revenue &amp; Customs (HMRC)."
-msgstr "El cliente registrado a efectos del IVA en el Reino Unido debe indicar su número de IVA británico (por ejemplo, GB123456782) antes de pagar. ERPlora puede comprobarlo en el registro de la administración tributaria británica (HMRC)."
+msgid "On the mainland and in the Balearic Islands, Spanish VAT is added to the price at the rate in force."
+msgstr "En la península y en Baleares, al precio se le suma el IVA español al tipo vigente."
 
-msgid "A business that is not registered for VAT in the United Kingdom, for example because it is below the registration threshold, may instead give its business website and declare that it buys for its business. ERPlora keeps that evidence with the subscription and may ask for other commercial documents."
-msgstr "Un negocio que no está dado de alta en el IVA británico, por ejemplo porque no alcanza el umbral de registro, puede dar en su lugar la web de su negocio y declarar que compra para su actividad. ERPlora conserva esa prueba con la suscripción y puede pedir otros documentos comerciales."
+msgid "In the Canary Islands, Ceuta and Melilla, ERPlora sells its paid plans only to businesses and professionals, for use in the course of their business, and asks for their tax ID before paying. By subscribing with a billing address there, the customer declares that it acts as a business or professional and not as a consumer."
+msgstr "En Canarias, Ceuta y Melilla, ERPlora vende sus planes de pago solo a empresas y profesionales, para el ejercicio de su actividad, y pide su NIF antes de pagar. Al suscribirse con una dirección de facturación allí, el cliente declara que actúa como empresa o profesional y no como consumidor."
 
-msgid "ERPlora may refuse a paid subscription, or decline to renew it, when neither the number nor that evidence is given, or when HMRC does not have the number on its register."
-msgstr "ERPlora puede rechazar una suscripción de pago, o no renovarla, cuando no se da ni el número ni esa prueba, o cuando HMRC no tiene el número en su registro."
+msgid "Those sales are invoiced without Spanish VAT. The customer accounts for any IGIC or IPSI that is due."
+msgstr "Esas ventas se facturan sin IVA español. El cliente declara el IGIC o el IPSI que corresponda."
 
-msgid "These sales are invoiced without Spanish VAT. The customer accounts for any UK VAT that is due under the reverse charge."
-msgstr "Estas ventas se facturan sin IVA español. El cliente liquida el IVA británico que corresponda por inversión del sujeto pasivo."
-
-msgid "The free plan is not affected: it charges nothing and asks for no VAT number."
-msgstr "El plan gratuito no cambia: no cobra nada y no pide número de IVA."
+msgid "The free plan is not affected: it charges nothing."
+msgstr "El plan gratuito no cambia: no cobra nada."
 
 msgid "4. Trial period and cancellation"
 msgstr "4. Periodo de prueba y cancelación"
@@ -3167,8 +3200,8 @@ msgid "Due to insolvency, bankruptcy, or cessation of activity of the other part
 msgstr "Por insolvencia, concurso o cese de actividad de la otra parte."
 
 #, python-format
-msgid "All prices exclude VAT. The VAT that applies to you is worked out at checkout from the tax ID you enter, and you see it before you pay. Our <a href=\"%(terms_url)s\">terms and conditions</a> apply."
-msgstr "Todos los precios sin IVA. El IVA que te corresponde se calcula en el checkout a partir del NIF/CIF/NIE o NIF-IVA que introduzcas, y lo ves antes de pagar. Se aplican nuestros <a href=\"%(terms_url)s\">términos y condiciones</a>."
+msgid "All prices exclude VAT. The VAT that applies to you is worked out at checkout from your billing address, and you see it before you pay. Our <a href=\"%(terms_url)s\">terms and conditions</a> apply."
+msgstr "Todos los precios sin IVA. El IVA que te corresponde se calcula en el pago a partir de tu dirección de facturación, y lo ves antes de pagar. Se aplican nuestros <a href=\"%(terms_url)s\">términos y condiciones</a>."
 
 msgid "Terms"
 msgstr "Términos"
@@ -3782,8 +3815,8 @@ msgstr "Espacio para crecer"
 msgid "app catalogue, 1 click"
 msgstr "catálogo de apps, 1 clic"
 
-msgid "Managed database, replicated across several European data centres, with continuous backups and point-in-time recovery for 14 days"
-msgstr "Base de datos gestionada, replicada en varios centros de datos europeos, con copias de seguridad continuas y recuperación a cualquier momento de los últimos 14 días"
+msgid "Managed database, replicated across several European data centres, with continuous backups: recover your data from any moment of the last 14 days, and what was already sent to the tax agency is kept"
+msgstr "Base de datos gestionada, replicada en varios centros de datos europeos, con copias de seguridad continuas: recuperas los datos de cualquier momento de los últimos 14 días, y lo ya enviado a Hacienda se conserva"
 
 msgid "Every plan is priced per hub, and one hub covers all your devices and users. You start on the plan that fits you today and move up in one click when you need more capacity — no migration and no downtime."
 msgstr "Cada plan se cobra por hub, y un hub cubre todos tus dispositivos y usuarios. Empiezas con el plan que te encaja hoy y subes en un clic cuando necesites más capacidad, sin migración y sin paradas."
@@ -3976,7 +4009,7 @@ msgstr "Volver a intentarlo"
 msgid "Want to keep what you do? Start free: it takes the same minute."
 msgstr "¿Quieres conservar lo que hagas? Empieza gratis: se tarda lo mismo."
 
-# --- APP-PUBLIC-1: the promises (PUBLIC-F07, PUBLIC-F08), the plans and the language switcher ---
+# --- The promises (PUBLIC-F07, PUBLIC-F08), the plans and the language switcher ---
 msgid "Hair and beauty"
 msgstr "Peluquería y estética"
 
@@ -4060,3 +4093,11 @@ msgstr ""
 "Este sitio está protegido por reCAPTCHA y se aplican la <a href=\"%(privacy)s\" "
 "target=\"_blank\" rel=\"noopener\">Política de Privacidad</a> y las <a href=\"%(terms)s"
 "\" target=\"_blank\" rel=\"noopener\">Condiciones del Servicio</a> de Google."
+
+#: templates/public/demo/index.html
+msgid "Provisioning paused for maintenance"
+msgstr "Alta en pausa por mantenimiento"
+
+#: templates/public/demo/index.html
+msgid "Your demo will be ready in a few minutes. We will keep checking automatically."
+msgstr "Tu demo estará lista en unos minutos. Seguiremos comprobándolo automáticamente."

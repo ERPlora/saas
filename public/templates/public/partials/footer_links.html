@@ -1,13 +1,12 @@
 {% load i18n %}
 {% comment %}
   The footer's page columns, each a <div class="ep-footer__column"> with an
-  <h2 class="ep-footer__heading"> and its <a> links. In the order of the old footer:
+  <h2 class="ep-footer__heading"> and its <a> links:
 
     Product: Features, Pricing, Security, Updates, Downloads, The ERPlora app, Apps (the store).
     Company: About Us, Collaborate, Industries, Compliance.
 
-  A column exists only with at least one link to a route that exists: the lot that ports a page
-  adds its link (and, for the first link of a column, the column) in its turn (plan §3.i), with
+  A column exists only with at least one link to a route that exists, linked with
   {% templatetag openblock %} url {% templatetag closeblock %}.
 {% endcomment %}
 <div class="ep-footer__column">

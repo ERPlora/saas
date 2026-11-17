@@ -1,10 +1,9 @@
 """The tools a turn of the panel's assistant offers for what an account asks (``live.assistant.relevant`` over the
 SaaS's real catalogue).
 
-Block A of the QA battery of the assistant with the real model (2026-10-31, docs/plans/2026-10-31-qa-asistente.md of
-erplora-next), in order: each question with the operations its turn must offer. A1 asks how something is done (the
-documentation search); A2 asks to do it (the operation that does it). The Hub's twin is block B
-(``base/tests/test_assistant_relevance.py`` of ERPlora/hub).
+Block A holds the questions the assistant's QA asks the real model, in order, each with the operations its turn must
+offer: some ask how something is done (the documentation search), others ask to do it (the operation that does it).
+The Hub's twin is ``base/tests/test_assistant_relevance.py`` of ERPlora/hub.
 """
 
 import pytest
@@ -39,13 +38,22 @@ BLOCK_A = [
     ("¿Cuántas ventas hice ayer en mi negocio?", {"hubs.business.list", DOCS}),
 ]
 #: What the panel's words name (``base.assistant.SYNONYMS``), right after what is always offered: a «tienda» that is
-#: the person's, another, new or old is one of their businesses; «la tienda» alone is the panel's Store.
+#: the person's, another, new or old is one of their businesses; «la tienda» alone is the panel's Store. Rejecting a
+#: business or an invitation offered to the person is declining it; withdrawing one the person sent is cancelling it.
 PANEL_WORDS = [
-    ("borra mi tienda de pruebas", "hubs.business.delete"),
-    ("quiero abrir otra tienda", "hubs.business.create"),
-    ("cambia el nombre de mi tienda", "hubs.business.update"),
-    ("¿qué vende la tienda?", "billing.store.catalog"),
-    ("¿qué módulos hay en la tienda?", "apps.app.list"),
+    ("es", "borra mi tienda de pruebas", "hubs.business.delete"),
+    ("es", "quiero abrir otra tienda", "hubs.business.create"),
+    ("es", "cambia el nombre de mi tienda", "hubs.business.update"),
+    ("es", "¿qué vende la tienda?", "billing.store.catalog"),
+    ("es", "¿qué módulos hay en la tienda?", "apps.app.list"),
+    ("en", "reject the ownership offer from Luis", "hubs.ownership.decline"),
+    ("en", "reject Luis's invitation", "hubs.invitation.decline"),
+    ("es", "rechaza el traspaso de Marta", "hubs.ownership.decline"),
+    ("es", "rechaza la invitación de Luis", "hubs.invitation.decline"),
+    ("es", "retira la invitación que le mandé a Ana", "hubs.member.cancel"),
+    ("es", "retira el traspaso de la peluquería", "hubs.ownership.cancel"),
+    ("en", "withdraw the invitation to Ana", "hubs.member.cancel"),
+    ("en", "withdraw the offer to give the salon to Luis", "hubs.ownership.cancel"),
 ]
 #: How-to questions that name what other tools do (the team, the language, the plan): they reach the documentation
 #: search as how-to questions (``base.assistant.HOWTO``), not only because it is always offered.
@@ -81,9 +89,9 @@ def test_no_tool_hands_an_api_key_out(account):
     assert "accounts.apikey.create" not in assistant.catalog(ctx_for(account, "es"))
 
 
-@pytest.mark.parametrize(("asked", "expected"), PANEL_WORDS)
-def test_the_panels_words_name_what_they_mean_there(account, asked, expected):
-    assert offered(ctx_for(account, "es"), asked)[len(assistant.ALWAYS)] == expected
+@pytest.mark.parametrize(("language", "asked", "expected"), PANEL_WORDS)
+def test_the_panels_words_name_what_they_mean_there(account, language, asked, expected):
+    assert offered(ctx_for(account, language), asked)[len(assistant.ALWAYS)] == expected
 
 
 @pytest.mark.parametrize(("language", "asked"), HOW_TO)

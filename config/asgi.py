@@ -1,22 +1,21 @@
-"""ASGI entry point of saas-next: the ``application`` that Daphne serves.
+"""ASGI entry point of the SaaS: the ``application`` that Daphne serves.
 
 ``ignore_root_path`` wraps it because Daphne trusts its client's own ``Daphne-Root-Path`` header:
 it copies it into ``scope["root_path"]``, which Django takes as the script prefix, stripped from the
 path it resolves and put in front of every URL it builds. The project is served at the root of its
 host, so that prefix is always empty and a request is answered for its real path (ERPlora/saas#2).
 
-``refuse_websockets`` wraps that: erplora.com serves no WebSocket (no channels, PLAN-SAAS §1.1; the Hub's
-``/ws/print`` is the Hub's). Django's handler raises on a non-HTTP scope, an error in the log on every attempt; the
-handshake is refused instead (``websocket.close``, which Daphne answers with 403), as the old SaaS's catch-all
-``DenyConsumer`` did (ACCOUNTS-G72).
+``refuse_websockets`` wraps that: erplora.com serves no WebSocket (no channels; the Hub's ``/ws/print`` is the
+Hub's). Django's handler raises on a non-HTTP scope, an error in the log on every attempt; the handshake is refused
+instead (``websocket.close``, which Daphne answers with 403).
 
 ``BodiesInMemory`` is Django's handler with one change: the body of the Hub's doors that carry documents or audio
 (``IN_MEMORY_PATHS``) stays in memory. Django reads every body into a file that moves to disk past
-``FILE_UPLOAD_MAX_MEMORY_SIZE`` (2.5 MB), before any view; a turn with its attachments, a dictation (ASSISTANT-F19,
-F21) or the customer's signed authorisation with its identity documents (FISCAL-F03) is larger, and none of them
+``FILE_UPLOAD_MAX_MEMORY_SIZE`` (2.5 MB), before any view; a turn with its attachments, a dictation or the customer's
+signed authorisation with its identity documents is larger, and none of them
 touches the disk. Each door up to its own ceiling; what passes it, or a declared length over it, is received and
 dropped, never kept, and the door answers 413. Those doors are under ``/internal``, not published on the ALB: only
-the Hub reaches them; but for the turn of the panel's own assistant (``/api/assistant/turn``, PLAN-SAAS §23), the
+the Hub reaches them; but for the turn of the panel's own assistant (``/api/assistant/turn``), the
 same conversation and attachments for the signed-in account, and its dictation (``/api/assistant/transcribe``).
 
 https://docs.djangoproject.com/en/6.1/howto/deployment/asgi/
@@ -38,9 +37,9 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 #: The paths whose body stays in memory, each with the setting of its door's ceiling (``module.NAME``).
 IN_MEMORY_PATHS = (
     (re.compile(r"/internal/(?:assistant|speech)/"), "assistant.internal.TURN_BODY_BYTES"),
-    # The turn of the panel's own assistant (PLAN-SAAS §23): the same conversation and attachments.
+    # The turn of the panel's own assistant: the same conversation and attachments.
     (re.compile(r"/api/assistant/turn\Z"), "assistant.internal.TURN_BODY_BYTES"),
-    # The panel's own dictation (ASSISTANT-F21).
+    # The panel's own dictation.
     (re.compile(r"/api/assistant/transcribe\Z"), "assistant.internal.TRANSCRIBE_BODY_BYTES"),
     (re.compile(r"/internal/hubs/[^/]+/representation\Z"), "fiscal.internal.MAX_BODY_BYTES"),
 )

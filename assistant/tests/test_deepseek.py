@@ -1,4 +1,4 @@
-"""The client of DeepSeek (``assistant.providers.deepseek``, ASSISTANT-G34): OpenAI's format at DeepSeek's address,
+"""The client of DeepSeek (``assistant.providers.deepseek``): OpenAI's format at DeepSeek's address,
 against ``fake_provider``. DeepSeek does not take ``parallel_tool_calls`` and every model it lists is a chat model."""
 
 import pytest

@@ -1,4 +1,4 @@
-"""``{% public_assets %}``: the public pages load the Vite entry ``frontend/public.ts`` (spec §8.4).
+"""``{% public_assets %}``: the public pages load the Vite entry ``frontend/public.ts``.
 
 The same contract as the SPA's HTML (``live/templates/live/spa.html``): the build's files under
 ``{STATIC_URL}spa/`` from the manifest, every ``<script>`` and ``modulepreload`` with the response's

@@ -1,5 +1,5 @@
-// The page of one ERPlora invoice (`/dashboard/billing/invoices/:id`, BILLING-G05; the old «Detalle de factura» and the
-// «View» of `/dashboard/billing/invoices/`, BILLING-G92): live (`billing.invoice.get`), with Back to Invoices:
+// The page of one ERPlora invoice (`/dashboard/billing/invoices/:id`, opened by «View invoice» on Invoices): live
+// (`billing.invoice.get`), with Back to Invoices:
 //   - its number (or Stripe's reference while it is not collected), date, business, status and fiscal status;
 //   - its lines (what it charges, the period, net, VAT and total) and the totals;
 //   - who it is made out to, as on the day it was issued;
@@ -50,6 +50,7 @@ function detail(extra: Partial<InvoiceDetailOut> = {}): InvoiceDetailOut {
         net_cents: 1999,
         tax_cents: 420,
         total_cents: 2419,
+        discount_cents: 0,
       },
       {
         position: 2,
@@ -64,6 +65,7 @@ function detail(extra: Partial<InvoiceDetailOut> = {}): InvoiceDetailOut {
         net_cents: 1000,
         tax_cents: 210,
         total_cents: 1210,
+        discount_cents: 0,
       },
     ],
     rectifies: null,
@@ -83,7 +85,7 @@ async function setup(invoice: InvoiceDetailOut | null, options: { locale?: 'en' 
   return { ...m, stream, el, all };
 }
 
-describe('InvoicePage (BILLING-G05)', () => {
+describe('InvoicePage', () => {
   it('asks the server for that invoice, live, and goes back to Invoices', async () => {
     const s = await setup(detail());
     expect(s.client.stream.subscriptions('billing.invoice.get')[0].params).toEqual({ id: '00042' });
@@ -116,6 +118,25 @@ describe('InvoicePage (BILLING-G05)', () => {
     expect(totals).toContain('€29.99');
     expect(totals).toContain('€6.30');
     expect(totals).toContain('€36.29');
+  });
+
+  it('a month free with a promo code: the line says its discount, and the invoice is 0', async () => {
+    const free = { ...detail().lines[0], net_cents: 0, tax_cents: 0, total_cents: 0, discount_cents: 2999 };
+    const s = await setup(detail({ lines: [free], net_cents: 0, tax_cents: 0, total_cents: 0 }));
+    expect(s.el('invoice-line-discount').text()).toBe('Discount -€29.99');
+    expect(s.el('invoice-totals').text()).toContain('€0.00');
+    expect(s.all('invoice-line-discount')).toHaveLength(1);
+  });
+
+  it('a line without a discount says none', async () => {
+    const s = await setup(detail());
+    expect(s.all('invoice-line-discount')).toHaveLength(0);
+  });
+
+  it('says the discount in Spanish too', async () => {
+    const free = { ...detail().lines[0], discount_cents: 2999 };
+    const s = await setup(detail({ lines: [free] }), { locale: 'es' });
+    expect(s.el('invoice-line-discount').text()).toBe('Descuento -29,99\u00a0€');
   });
 
   it('says who it is made out to', async () => {

@@ -1,22 +1,13 @@
 """Members and invitations of a business: ``hubs.member.{list,invite,change_role,remove,resend,cancel}``
-and ``hubs.invitation.{list_mine,accept,decline}`` (plan 2026-10-13, L1-A and L1-B; round 17 §2.7–2.8).
+and ``hubs.invitation.{list_mine,accept,decline}``, on the four ``hub_*`` roles.
 
-Cases ported from ERPlora/saas (origin/develop), from services, views and DRF to operations, on the four
-``hub_*`` roles of round 11 instead of owner/admin/member: ``hubs/main/tests/`` ``test_member_service``
-(per-hub writes, the hierarchy: nobody acts on a peer or a superior, nor on themselves, nor grants
-their own rank), ``test_hub_member_access``, ``test_members_invite_permission`` and
-``test_members_role_escalation`` (a role below admin manages nobody; a re-invite is no free pass; an
-owner elsewhere is a stranger here), ``test_invitation_accept`` (only the caller's own pending row is
-stamped; nothing is ever granted by a poked id, a replay, a cancelled or a stale invitation; accepting
-never changes the role), ``test_account_roles``; ``dashboard/users/tests/`` ``test_account_role_choices``
-(least privilege by default, owner is never grantable), ``test_members_per_hub``,
-``test_pending_invitation_status`` and ``test_remove_user``. Their HTTP halves and the row actions
-(``test_users_row_actions``, ``test_users_list_shows_self``) are in ``test_members_api.py``; the seats
-(``test_hub_seat_limit``), in ``test_seats.py``. New: the invitation expires after 7 days, «Resend»
-renews it and «Decline» deletes the row. Dropped with their reason: the machine credential and the
-hub's mirror door (no runtime pushes members up any more), retired role keys (the four roles are new),
-htmx fragments and pages (SPA), and ``test_invite_unverified_account`` (releasing an unproven account
-belongs to ``accounts``, L1-A2).
+Per-hub writes and the hierarchy: nobody acts on a peer or a superior, nor on themselves, nor grants their own
+rank; a role below admin manages nobody; a re-invite is no free pass; an owner elsewhere is a stranger here. Only
+the caller's own pending row is answered: nothing is ever granted by a poked id, a replay, a cancelled or a stale
+invitation, and accepting never changes the role. Least privilege by default, and owner is never grantable. The
+invitation expires after 7 days, «Resend» renews it and «Decline» deletes the row. The HTTP halves and the row
+actions are in ``test_members_api.py``; the seats, in ``test_seats.py``; releasing an unproven account belongs to
+``accounts`` (``test_invite_unverified_account.py``).
 """
 
 from datetime import timedelta
@@ -29,8 +20,9 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone, translation
 from live.errors import Conflict, NotFound, PermissionDenied
 
-from accounts.services import PlatformRoleRefused, create_platform_user
-from hubs import queries, services
+from accounts.services.platform_staff import PlatformRoleRefused, create_platform_user
+from hubs.services import billing_profiles, invitation_answers, member_management
+from hubs.queries import invitations, membership
 from hubs.models import BillingProfile, Hub, HubMember, Subscription
 from hubs.schemas import (
     BillingProfileIn,
@@ -48,14 +40,14 @@ User = get_user_model()
 
 
 def invite(actor, hub, email, role="hub_employee", message=""):
-    return services.member_invite(
+    return member_management.member_invite(
         ctx_for(actor),
         MemberInviteIn(hub_id=hub.id, email=email, role=role, message=message),
     )
 
 
 def members(actor, hub, **params):
-    return queries.member_list(
+    return membership.member_list(
         ctx_for(actor), MemberListIn(hub_id=hub.id, **params)
     ).model_dump(mode="json")
 
@@ -90,7 +82,7 @@ class TestInvite:
 
     def test_the_least_privilege_by_default(self, business, owner):
         assert (
-            services.member_invite(
+            member_management.member_invite(
                 ctx_for(owner),
                 MemberInviteIn(hub_id=business.id, email="x@example.com"),
             ).role
@@ -163,7 +155,7 @@ class TestInvite:
 
     @pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
     def test_an_expired_invitation_of_an_account_made_staff_is_not_renewed(self, business, team, flag):
-        """Renewing is inviting again: ERPlora's staff is refused as a new invitation is (W11b)."""
+        """Renewing is inviting again: ERPlora's staff is refused as a new invitation is."""
         invitee = team["invitee"]
         HubMember.objects.filter(user=invitee).update(invitation_expires_at=timezone.now() - timedelta(days=1))
         type(invitee).objects.filter(pk=invitee.pk).update(**{flag: True})
@@ -214,9 +206,8 @@ class TestInvite:
 
     @pytest.mark.parametrize("target", ["admin", "owner"])
     def test_re_inviting_somebody_inside_changes_nothing(self, business, team, target):
-        """test_members_role_escalation (same-role re-provisioning is no free pass) and test_member_service
-        (a re-invite with another role used to move the role in place): an invitation never touches
-        somebody who answered, a peer, a superior or oneself; a role moves only by «Change role»."""
+        """An invitation never touches somebody who answered, a peer, a superior or oneself, whatever the role it
+        asks for; a role moves only by «Change role»."""
         with pytest.raises(Conflict) as refused:
             invite(team["admin"], business, f"{target}@example.com", "hub_employee")
 
@@ -224,7 +215,7 @@ class TestInvite:
         assert member_of(business, team[target]).role == f"hub_{target}"
 
     def test_the_owner_of_another_business_is_a_stranger_here(self, business, team, make_user):
-        """test_members_role_escalation: authority stops at one's own business (ADR-0201)."""
+        """Authority stops at one's own business."""
         lola = make_user("lola@example.com")
         create_business(lola, name="Café Lola")
 
@@ -241,14 +232,14 @@ class TestInvite:
     def test_an_accounts_address_in_another_form_invites_that_account_and_it_accepts(
         self, business, owner, make_user, written
     ):
-        """saas#2562 (ACCOUNTS-F01): an address is the account's in its plain form, folded as
+        """An address is the account's in its plain form (ACCOUNTS-F01), folded as
         ``accounts.adapters.plain_email`` folds it (NFKC, trimmed, lower case), so another case or look-alike
         full-width letters never make a second account that looks the same and never gets the access."""
         ana = make_user("ana.lopez@example.com")
         EmailAddress.objects.create(user=ana, email=ana.email, verified=True, primary=True)
 
         invite(owner, business, written)
-        services.invitation_accept(ctx_for(ana), ByIdIn(id=member_of(business, ana).id))
+        invitation_answers.invitation_accept(ctx_for(ana), ByIdIn(id=member_of(business, ana).id))
 
         assert list(User.objects.exclude(pk=owner.pk).values_list("email", flat=True)) == ["ana.lopez@example.com"]
         assert member_of(business, ana).accepted_at is not None
@@ -260,7 +251,7 @@ class TestInvite:
 
 class TestChangeRole:
     def change(self, actor, member, role):
-        return services.member_change_role(
+        return member_management.member_change_role(
             ctx_for(actor), MemberRoleIn(id=member.id, role=role)
         )
 
@@ -335,7 +326,7 @@ class TestChangeRole:
         import uuid
 
         with pytest.raises(NotFound):
-            services.member_change_role(
+            member_management.member_change_role(
                 ctx_for(team["owner"]),
                 MemberRoleIn(id=uuid.uuid7(), role="hub_employee"),
             )
@@ -355,8 +346,8 @@ class TestChangeRole:
 @pytest.mark.parametrize(
     "write",
     [
-        lambda ctx, member: services.member_change_role(ctx, MemberRoleIn(id=member.id, role="hub_employee")),
-        lambda ctx, member: services.member_remove(ctx, ByIdIn(id=member.id)),
+        lambda ctx, member: member_management.member_change_role(ctx, MemberRoleIn(id=member.id, role="hub_employee")),
+        lambda ctx, member: member_management.member_remove(ctx, ByIdIn(id=member.id)),
     ],
     ids=["change_role", "remove"],
 )
@@ -372,7 +363,7 @@ def test_ones_own_membership_is_refused_with_its_own_code(business, team, write)
 
 class TestRemove:
     def remove(self, actor, member):
-        return services.member_remove(ctx_for(actor), ByIdIn(id=member.id))
+        return member_management.member_remove(ctx_for(actor), ByIdIn(id=member.id))
 
     def test_removing_revokes_exactly_that_business(
         self, business, team, make_user, hub_double, django_capture_on_commit_callbacks
@@ -424,7 +415,7 @@ class TestRemove:
 
 
 class TestRemoveThePayer:
-    """saas#2587: after a hand-over the old owner stays as an admin and keeps paying (its payer and card) until the
+    """After a hand-over the old owner stays as an admin and keeps paying (its payer and card) until the
     new owner says who pays from now on. Taking it out of the business would leave it paying for a business it no
     longer sees, and free to delete its account with Stripe charging a card nobody can stop."""
 
@@ -436,7 +427,7 @@ class TestRemoveThePayer:
         return business
 
     def remove(self, actor, member):
-        return services.member_remove(ctx_for(actor), ByIdIn(id=member.id))
+        return member_management.member_remove(ctx_for(actor), ByIdIn(id=member.id))
 
     def test_the_new_owner_cannot_take_out_the_one_who_pays(self, handed_over, team):
         with pytest.raises(Conflict) as refused:
@@ -455,7 +446,7 @@ class TestRemoveThePayer:
         assert spanish.value.message and spanish.value.message != english.value.message
 
     def test_once_the_new_owner_pays_the_old_one_can_go(self, handed_over, team):
-        services.billing_profile_update(
+        billing_profiles.billing_profile_update(
             ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
         )
 
@@ -473,7 +464,7 @@ class TestRemoveThePayer:
         pay(handed_over, customer="cus_olga")
         with pytest.raises(Conflict) as by_its_payer:
             self.remove(team["admin"], member_of(handed_over, team["owner"]))
-        services.billing_profile_update(
+        billing_profiles.billing_profile_update(
             ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
         )
 
@@ -488,7 +479,7 @@ class TestRemoveThePayer:
         old_payer = HubMember.objects.get(hub=handed_over, user=team["owner"]).hub.billing_profile
         BillingProfile.objects.filter(pk=old_payer.pk).update(stripe_customer_id="cus_olga")
         Subscription.objects.filter(hub=handed_over).update(stripe_customer_id="cus_olga", status="active")
-        services.billing_profile_update(
+        billing_profiles.billing_profile_update(
             ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
         )
 
@@ -499,7 +490,7 @@ class TestRemoveThePayer:
     def test_a_plan_without_a_stripe_customer_is_on_nobodys_card(self, handed_over, team):
         """Neither the old payer nor the plan has a Stripe customer yet: an empty one matches nobody."""
         Subscription.objects.filter(hub=handed_over).update(stripe_subscription_id="sub_1", status="active")
-        services.billing_profile_update(
+        billing_profiles.billing_profile_update(
             ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
         )
 
@@ -513,7 +504,7 @@ class TestRemoveThePayer:
         old_payer = HubMember.objects.get(hub=handed_over, user=team["owner"]).hub.billing_profile
         BillingProfile.objects.filter(pk=old_payer.pk).update(stripe_customer_id="cus_olga")
         pay(handed_over, customer="cus_olga", status="canceled")
-        services.billing_profile_update(
+        billing_profiles.billing_profile_update(
             ctx_for(team["admin"]), BillingProfileIn(hub_id=handed_over.id, billing_name="Adela SL")
         )
 
@@ -535,7 +526,7 @@ class TestResendAndCancel:
         )
 
         with django_capture_on_commit_callbacks(execute=True):
-            row = services.member_resend(
+            row = member_management.member_resend(
                 ctx_for(team["owner"]),
                 ByIdIn(id=member_of(business, team["invitee"]).id),
             )
@@ -547,19 +538,19 @@ class TestResendAndCancel:
 
     @pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
     def test_an_invitee_made_staff_meanwhile_gets_no_invitation_again(self, business, team, flag):
-        """As ``member_invite`` refuses ERPlora's staff, so does sending it again (W11b)."""
+        """As ``member_invite`` refuses ERPlora's staff, so does sending it again."""
         invitee = team["invitee"]
         type(invitee).objects.filter(pk=invitee.pk).update(**{flag: True})
 
         with pytest.raises(Conflict) as refused:
-            services.member_resend(ctx_for(team["owner"]), ByIdIn(id=member_of(business, invitee).id))
+            member_management.member_resend(ctx_for(team["owner"]), ByIdIn(id=member_of(business, invitee).id))
 
         assert refused.value.code == "hubs.platform_account"
         assert mail.outbox == []
 
     def test_an_answered_member_has_nothing_to_resend(self, business, team):
         with pytest.raises(Conflict) as refused:
-            services.member_resend(
+            member_management.member_resend(
                 ctx_for(team["owner"]),
                 ByIdIn(id=member_of(business, team["employee"]).id),
             )
@@ -567,7 +558,7 @@ class TestResendAndCancel:
         assert refused.value.code == "hubs.member_not_pending"
 
     def test_cancel_deletes_the_invitation(self, business, team):
-        services.member_cancel(
+        member_management.member_cancel(
             ctx_for(team["admin"]), ByIdIn(id=member_of(business, team["invitee"]).id)
         )
 
@@ -575,7 +566,7 @@ class TestResendAndCancel:
 
     def test_an_answered_member_is_removed_not_cancelled(self, business, team):
         with pytest.raises(Conflict) as refused:
-            services.member_cancel(
+            member_management.member_cancel(
                 ctx_for(team["owner"]),
                 ByIdIn(id=member_of(business, team["employee"]).id),
             )
@@ -584,7 +575,7 @@ class TestResendAndCancel:
 
     def test_a_manager_cancels_nothing(self, business, team):
         with pytest.raises(PermissionDenied):
-            services.member_cancel(
+            member_management.member_cancel(
                 ctx_for(team["manager"]),
                 ByIdIn(id=member_of(business, team["invitee"]).id),
             )
@@ -600,7 +591,7 @@ class TestResendAndCancel:
         )
 
         with pytest.raises(PermissionDenied):
-            services.member_cancel(
+            member_management.member_cancel(
                 ctx_for(team["admin"]),
                 ByIdIn(
                     id=HubMember.objects.get(user__email="future-admin@example.com").id
@@ -616,8 +607,7 @@ ON_A_BUSINESS = "This account is on a business: ERPlora's staff and the customer
 
 class TestThePlatformsDoor:
     """``manage.py create_platform_user`` makes no staff of anybody on a business, also where the jump would not let
-    them in: an invitation still waiting, or a business in its 90 days of recovery, which a restore gives back
-    (W11b)."""
+    them in: an invitation still waiting, or a business in its 90 days of recovery, which a restore gives back."""
 
     def test_an_invitee_is_never_made_staff(self, business, team):
         invitee = team["invitee"]
@@ -665,7 +655,7 @@ class TestThePlatformsDoor:
 
 class TestAccept:
     def accept(self, user, member_id):
-        return services.invitation_accept(ctx_for(user), ByIdIn(id=member_id))
+        return invitation_answers.invitation_accept(ctx_for(user), ByIdIn(id=member_id))
 
     def test_accepting_lets_the_invitee_in_with_the_role_it_says(self, business, team):
         before = version(business)
@@ -735,7 +725,7 @@ class TestAccept:
         """The platform's staff and the customers never share an account (``test_a_staff_account_creates_no_business``):
         an account raised to staff while its invitation waited (in the admin, by a superuser: ``create_platform_user``
         refuses an invitee, ``TestThePlatformsDoor``) does not enter with it, as the invitation itself would have
-        refused it (W11b)."""
+        refused it."""
         invitee = team["invitee"]
         type(invitee).objects.filter(pk=invitee.pk).update(is_staff=True)
         invitee.refresh_from_db()
@@ -758,7 +748,7 @@ class TestAccept:
         assert member_of(other, team["invitee"]).is_pending
 
     def test_declining_deletes_the_invitation(self, business, team):
-        services.invitation_decline(
+        invitation_answers.invitation_decline(
             ctx_for(team["invitee"]), ByIdIn(id=member_of(business, team["invitee"]).id)
         )
 
@@ -766,15 +756,15 @@ class TestAccept:
 
     def test_declining_somebody_elses_is_not_found(self, business, team):
         with pytest.raises(NotFound):
-            services.invitation_decline(
+            invitation_answers.invitation_decline(
                 ctx_for(team["stranger"]),
                 ByIdIn(id=member_of(business, team["invitee"]).id),
             )
 
     def test_a_cancelled_invitation_is_not_resurrected(self, business, team):
-        """test_invitation_accept: the inviter changed their mind before the answer."""
+        """The inviter changed their mind before the answer."""
         member_id = member_of(business, team["invitee"]).id
-        services.member_cancel(ctx_for(team["owner"]), ByIdIn(id=member_id))
+        member_management.member_cancel(ctx_for(team["owner"]), ByIdIn(id=member_id))
 
         with pytest.raises(NotFound):
             self.accept(team["invitee"], member_id)
@@ -782,7 +772,7 @@ class TestAccept:
         assert not HubMember.objects.filter(hub=business, user=team["invitee"]).exists()
 
     def test_an_id_that_is_no_invitation_of_mine_grants_nothing(self, business, team):
-        """test_invitation_accept: a business I was never invited to (or any id at all)."""
+        """A business I was never invited to (or any id at all)."""
         import uuid
 
         for poked in (business.id, uuid.uuid7()):
@@ -793,7 +783,7 @@ class TestAccept:
 
     @pytest.mark.parametrize("status", [Hub.Status.PREPARING, Hub.Status.SUSPENDED, Hub.Status.PAST_DUE])
     def test_a_business_that_cannot_open_now_can_still_be_answered(self, business, team, status):
-        """test_invitation_accept (a sleeping business still works): answering is not entering; «Open»
+        """A sleeping business still works: answering is not entering; «Open»
         says why it does not open yet."""
         Hub.objects.filter(pk=business.pk).update(status=status)
 
@@ -804,7 +794,7 @@ class TestAccept:
 
 class TestMyInvitations:
     def mine(self, user):
-        return queries.invitation_list_mine(
+        return invitations.invitation_list_mine(
             ctx_for(user), InvitationListIn()
         ).model_dump(mode="json")["invitations"]
 
@@ -926,7 +916,7 @@ class TestMemberList:
         assert (page["total"], page["limit"], page["offset"]) == (5, 2, 2)
 
     def test_the_role_reads_in_the_callers_language(self, business, team):
-        page = queries.member_list(
+        page = membership.member_list(
             ctx_for(team["owner"], language="es"), MemberListIn(hub_id=business.id)
         ).model_dump()
 

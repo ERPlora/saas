@@ -1,4 +1,4 @@
-"""The messages L1-A2 added to hubs reach a Spanish account in Spanish (UI in ``en`` + ``es``, PLAN §5).
+"""The messages of hubs reach a Spanish account in Spanish.
 
 Read through Django's catalog of the app (``hubs/locale/es/LC_MESSAGES/django.mo``), so a ``.po`` edited
 without compiling it fails too.
@@ -9,7 +9,7 @@ from django.utils import translation
 from django.utils.translation import gettext, ngettext
 
 NEW_MESSAGES = [
-    # services.py
+    # services/
     "Confirm your email address before accepting the invitation.",
     "Only the platform tells the people of a business.",
     # models.py: SessionRevocation
@@ -31,7 +31,7 @@ NEW_MESSAGES = [
     "End the sessions in the Hub now",
     "%(count)d session end(s) delivered.",
     "%(count)d session end(s) still pending: the Hub is away or refused it; reconcile_hub_states retries it.",
-    # L2-B: what Stripe says of the plan (hubs.subscription.apply) and the payer's postal code.
+    # What Stripe says of the plan (hubs.subscription.apply) and the payer's postal code.
     "Only the platform applies what Stripe says.",
     "There is no plan with this identifier.",
     "A Spanish postal code has five digits, e.g. 28001.",
@@ -43,13 +43,13 @@ NEW_MESSAGES = [
     "why it is unpaid",
     "unpaid since",
     "invoice to pay",
-    # L4-A: the usage of a business (HubUsageDaily, hubs.usage.*) and its admin.
+    # The usage of a business (HubUsageDaily, hubs.usage.*) and its admin.
     "day",
     "files (bytes)",
     "database (bytes)",
     "active that day",
     "active in the 30 days",
-    # hub#603: what the Hub measures during the day, in the admin.
+    # What the Hub measures during the day, in the admin.
     "requests",
     "peak connections",
     "requests with no room",
@@ -60,16 +60,16 @@ NEW_MESSAGES = [
     "No usage of this business has been measured yet: the first figures arrive the night after it is created.",
     "Files",
     "Database",
-    # 2026-10-15: the monthly messages of a plan (Plan and its admin).
+    # The monthly messages of a plan (Plan and its admin).
     "AI assistant messages a month",
     "WhatsApp messages a month",
     "Requests to the AI assistant a business may make each month (0 = none).",
     "WhatsApp messages a business may send each month (0 = none).",
     "AI assistant and WhatsApp per month",
-    # models.py: Plan.max_apps (2026-10-24)
+    # models.py: Plan.max_apps
     "modules turned on",
     "Modules a business may choose to turn on; the ones they require do not count (0 = unlimited).",
-    # HUBS-F01 (HUBS-G65): the refusals of the sign-up of a business, which a Spanish account reads.
+    # HUBS-F01: the refusals of the sign-up of a business, which a Spanish account reads.
     "Businesses cannot be created right now. Try again in a few minutes.",
     "You already have a free business. Change its plan to create another one.",
     "This address belongs to ERPlora's staff and cannot join a business.",
@@ -78,8 +78,8 @@ NEW_MESSAGES = [
     "%(business)s is ready: open it and start selling.",
     "Open it: %(url)s",
     "Manage it from the panel: %(url)s",
-    # The copies of a business's data (PLAN-DB round 2026-10-30, (k)): the deletion's way to them, the mail when one
-    # is ready (emails.py) and the refusals of a download (queries.data_copy_link).
+    # The copies of a business's data: the deletion's way to them, the mail when one
+    # is ready (emails.py) and the refusals of a download (queries.data_copies.data_copy_link).
     "Download a full copy of its data: %(url)s",
     "The copy of the data of %(business)s is ready",
     "The full copy of the data of %(business)s is ready.",
@@ -178,7 +178,7 @@ def test_the_unconfirmed_refusal_is_said_in_spanish(business, owner):
     from django.contrib.auth import get_user_model
     from live.errors import PermissionDenied
 
-    from hubs import services
+    from hubs.services import invitation_answers
     from hubs.models import HubMember
     from hubs.schemas import ByIdIn
     from hubs.tests.conftest import ctx_for
@@ -188,7 +188,7 @@ def test_the_unconfirmed_refusal_is_said_in_spanish(business, owner):
     member = HubMember.objects.create(hub=business, user=ana, role="hub_employee")
 
     with translation.override("es"), pytest.raises(PermissionDenied) as refused:
-        services.invitation_accept(ctx_for(ana, language="es"), ByIdIn(id=member.id))
+        invitation_answers.invitation_accept(ctx_for(ana, language="es"), ByIdIn(id=member.id))
 
     assert refused.value.message == "Confirma tu correo electrónico antes de aceptar la invitación."
 

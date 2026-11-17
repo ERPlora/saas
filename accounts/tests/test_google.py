@@ -1,11 +1,8 @@
-"""«Continue with Google»: the round trip to Google and back (ported from ERPlora/saas ADR-0154).
+"""«Continue with Google»: the round trip to Google and back.
 
-Ported from ERPlora/saas origin/develop: ``apps/auth/users/views.py`` (``google_login`` and
-``google_callback`` at the paths registered with Google), ``tests/test_unified_auth.py``
-(``TestGoogleConfig``), ``tests/test_google_login_csp.py`` and ``tests/test_google_login_next.py``.
-Changes of saas-next: the authorization carries PKCE, and Google's own ``email_verified`` claim
+The authorization carries PKCE, and Google's own ``email_verified`` claim
 decides whether the address is proven (no ``VERIFIED_EMAIL`` override): an unknown email creates its
-account only when Google vouches for it. allauth runs headless only (PLAN-SAAS §2): the Vue sign-in
+account only when Google vouches for it. allauth runs headless only: the Vue sign-in
 posts allauth.headless's provider redirect with the page to come back to (``callback_url``: its
 ``next``, else the launcher), and Google comes back to ``/auth/google/callback/``, the URI registered
 with it.
@@ -197,7 +194,7 @@ class TestStartingTheSignIn:
 
     @pytest.mark.usefixtures("spa_manifest")
     def test_the_csp_lets_the_form_leave_for_the_host_it_redirects_to(self, client, google):
-        """`form-action` filters the whole redirect chain of a form post (saas#945): the sign-in's."""
+        """`form-action` filters the whole redirect chain of a form post: the sign-in's."""
         page = client.get("/launch", HTTP_HOST=HOST)
         google_host = urlsplit(_start(client)["Location"]).netloc
 
@@ -278,7 +275,7 @@ class TestComingBackFromGoogle:
         assert list(SocialAccount.objects.filter(user=ana).values_list("provider", "uid")) == [("google", ANA_UID)]
 
     def test_an_unknown_email_creates_the_account_and_lands_on_the_launcher(self, client, google, ana):
-        """Sign-up is open (ADR-0154): Google vouches for the address, so no code is asked for."""
+        """Sign-up is open: Google vouches for the address, so no code is asked for."""
         response, _, _ = _sign_in_with_google(client, _claims(STRANGER_UID, "stranger@gmail.com"))
 
         stranger = get_user_model().objects.get(email="stranger@gmail.com")
@@ -294,7 +291,7 @@ class TestComingBackFromGoogle:
 
     @pytest.mark.parametrize(("accept_language", "language"), [("es-ES,es;q=0.9", "es"), ("en-GB,en;q=0.9", "en")])
     def test_a_new_account_speaks_the_language_of_the_page(self, client, google, accept_language, language):
-        """ACCOUNTS-F06, as the sign-up with a password (ACCOUNTS-F01): the language of this browser's way back."""
+        """As the sign-up with a password: the language of this browser's way back."""
         _sign_in_with_google(client, _claims(STRANGER_UID, "stranger@gmail.com"), HTTP_ACCEPT_LANGUAGE=accept_language)
 
         assert get_user_model().objects.get(email="stranger@gmail.com").language == language

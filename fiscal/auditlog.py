@@ -1,5 +1,4 @@
-"""The audit trail of the fiscal documentation (django-auditlog; ACCOUNTS-F36, PLAN-SAAS §1.1). Registered from
-``FiscalConfig.ready``.
+"""The audit trail of the fiscal documentation (django-auditlog). Registered from ``FiscalConfig.ready``.
 
 Who sent, approved, returned or withdrew a business's signed authorisation (Anexo I) and who replaced ERPlora's stamp.
 Never logged: the documents of an authorisation and the stamp, encrypted files (``fiscal.crypto``) a copy in the trail

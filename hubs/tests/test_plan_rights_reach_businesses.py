@@ -1,11 +1,9 @@
-"""HUBS-F31 (HUBS-G101, HUBS-G96): what a plan includes, changed by the staff in the admin, reaches every business on
-that plan without waiting for the night.
+"""HUBS-F31: what a plan includes, changed by the staff in the admin, reaches every business on that plan without
+waiting for the night.
 
-The trap of ERPlora/saas SAAS_DASHBOARD-F53 and F54: «un cambio de plan o de topes hecho en el admin de Django cambia
-lo que se firma sin empujarlo al hub». Here, saving a change to the rights a plan gives (its limits, its level of
-modules, its monthly messages) leaves each business on it owing the Hub a newer snapshot, with the modules of the new
-level already written, and the next pass of ``reconcile_hub_states`` (every 15 minutes) delivers it. A change that
-only touches texts or prices owes nothing.
+Saving a change to the rights a plan gives (its limits, its level of modules, its monthly messages) leaves each
+business on it owing the Hub a newer snapshot, with the modules of the new level already written, and the next pass
+of ``reconcile_hub_states`` (every 15 minutes) delivers it. A change that only touches texts or prices owes nothing.
 """
 
 import json
@@ -16,7 +14,7 @@ from django.contrib.messages import get_messages
 from django.forms.models import model_to_dict
 
 from apps.models import Module
-from hubs import services
+from hubs.services import reconciliation
 from hubs.models import Hub, Plan, Subscription, SubscriptionItem
 from hubs.tests.conftest import create_business
 
@@ -74,10 +72,10 @@ def test_a_new_limit_leaves_every_business_on_the_plan_owing_the_hub(staff_clien
 
 
 def test_the_next_pass_delivers_it(staff_client, on_starter, hub_double):
-    services.reconcile()
+    reconciliation.reconcile()
     edit(staff_client, "starter", max_devices=2, assistant_messages_per_month=400)
 
-    counts = services.reconcile()
+    counts = reconciliation.reconcile()
 
     state = hub_double.calls_to("PUT", f"/internal/hubs/{on_starter.id}/state")[-1].body
     assert (state["plan"]["slug"], state["plan"]["max_devices"], state["plan"]["assistant_messages_per_month"]) == (
@@ -89,15 +87,15 @@ def test_the_next_pass_delivers_it(staff_client, on_starter, hub_double):
 
 
 def test_a_new_module_cap_reaches_the_hub_in_the_snapshot(staff_client, business, on_starter, hub_double):
-    """``max_apps`` (Ioan, 2026-10-24) is a right of the plan like its other limits: changing it owes every business
+    """``max_apps`` is a right of the plan like its other limits: changing it owes every business
     on the plan a newer snapshot, and the next pass takes it to the Hub, which checks it when a module is turned on."""
-    services.reconcile()
+    reconciliation.reconcile()
     before = versions(business, on_starter)
 
     edit(staff_client, "starter", max_apps=3)
 
     assert versions(business, on_starter) == [before[0], before[1] + 1]
-    services.reconcile()
+    reconciliation.reconcile()
     state = hub_double.calls_to("PUT", f"/internal/hubs/{on_starter.id}/state")[-1].body
     assert (state["plan"]["slug"], state["plan"]["max_apps"]) == ("starter", 3)
 
@@ -137,7 +135,7 @@ def test_a_deleted_business_is_left_alone(staff_client, on_starter, owner):
     assert versions(on_starter) == before
 
 
-@pytest.mark.usefixtures("signup_trial")  # the dormant sign-up trial of Starter, on (no plan lends one since 2026-10-15)
+@pytest.mark.usefixtures("signup_trial")  # the dormant sign-up trial of Starter, on (no plan lends one by default)
 def test_a_business_trying_the_plan_owes_it_too(staff_client, business):
     """Free with Starter's trial in force: Starter's rights are the ones its snapshot carries."""
     before = versions(business)
@@ -148,7 +146,7 @@ def test_a_business_trying_the_plan_owes_it_too(staff_client, business):
 
 
 # --- HUBS-F34: a paid module added in the admin, or moved to another level -------------------------------------------
-# What the plans include is every module their level reaches (``queries.modules_included_in``), written per business by
+# What the plans include is every module their level reaches (``queries.plan_catalog.modules_included_in``), written per business by
 # ``sync_plan_modules``: a module saved in the admin reached nobody until Stripe next spoke of each business.
 
 
@@ -195,10 +193,10 @@ def test_a_new_module_of_a_plans_level_reaches_its_businesses(staff_client, busi
 
 
 def test_the_next_pass_takes_the_module_to_the_hub(staff_client, on_starter, whatsapp, hub_double):
-    services.reconcile()
+    reconciliation.reconcile()
     staff_client.post("/admin/apps/module/add/", module_form())
 
-    services.reconcile()
+    reconciliation.reconcile()
 
     state = hub_double.calls_to("PUT", f"/internal/hubs/{on_starter.id}/state")[-1].body
     assert {"id": "whatsapp_inbox", "source": "plan", "valid_until": None} in state["modules"]

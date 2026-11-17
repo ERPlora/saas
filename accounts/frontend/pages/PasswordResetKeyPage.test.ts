@@ -1,7 +1,6 @@
 // `/password/reset/key/:resetKey`: the page the reset link of the mail opens (allauth's
-// `HEADLESS_FRONTEND_URLS`), over allauth.headless: ERPlora/saas's `account/password_reset_from_key.html`,
-// same structure and texts. It checks the key first (an expired or used link says so and offers a new
-// one), then asks for the new password; the password rules are allauth's (Django's validators), whose
+// `HEADLESS_FRONTEND_URLS`), over allauth.headless. It checks the key first (an expired or used link says so
+// and offers a new one), then asks for the new password; the password rules are allauth's (Django's validators), whose
 // messages paint under the input. Done → the sign-in with «Your password has been changed», or on at
 // once when the server signs the person in.
 import { IonButton, IonInput } from '@ionic/vue';
@@ -93,8 +92,8 @@ describe('PasswordResetKeyPage: the page of the template', () => {
     expect(document.title).toBe('Set New Password - ERPlora Cloud');
   });
 
-  // ACCOUNTS-G121: the rules in sight, as the template's page and Account's «Change password» (one hint, the
-  // same words): only a hint, the server's validators decide and say which one failed under the input.
+  // The rules in sight, as Account's «Change password» shows them (one hint, the same words): only a hint, the
+  // server's validators decide and say which one failed under the input.
   it('says the rules under the new password and how strong it looks while it is typed, against its email', async () => {
     fakeAllauth({ 'GET /auth/password/reset': validKey });
     const { input } = await mountPage();
@@ -257,7 +256,7 @@ describe('PasswordResetKeyPage: changing the password', () => {
   });
 });
 
-describe('PasswordResetKeyPage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
+describe('PasswordResetKeyPage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts)', () => {
   afterEach(forgetRecaptcha);
 
   it('sets the password with the token of `password_reset_confirm` and says reCAPTCHA protects the form', async () => {

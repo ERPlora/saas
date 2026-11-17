@@ -1,6 +1,5 @@
-"""The mail of billing: an invoice of ERPlora was issued (lot L3-C; ported from ERPlora/saas
-``apps/dashboard/billing/emails.py``, saas#1061), and a renewal could not be collected or the business was
-suspended for it (BILLING-F16, saas#2593).
+"""The mail of billing: an invoice of ERPlora was issued, and a renewal could not be collected or the business
+was suspended for it (BILLING-F16).
 
 Branded, as text and as HTML (``base.emails``, ACCOUNTS-F46), in the language of the invoice (its payer's). It
 LINKS to the panel's Billing page instead of attaching the PDF: the PDF is the platform hub's, asked on demand,
@@ -99,7 +98,7 @@ def _send_notice(notice: str, subject: str, lines: list[str], to: str, *, langua
     logger.info("[EMAIL] %s sent to %s", notice, to)
 
 
-def send_payment_failed(hub, *, to: str, language: str, amount, declined: bool, suspends_on) -> None:
+def send_payment_failed(hub, *, to: str, language: str, amount, declined: bool, suspends_on) -> None:  # noqa: PLR0913
     """Tell the payer that the renewal of ``hub`` could not be collected: how much, until when it keeps working
     (``suspends_on``) and where to pay it. ``MailNotSent`` when the mail could not leave."""
     language = language or settings.LANGUAGE_CODE

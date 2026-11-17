@@ -1,5 +1,5 @@
-// A business's web address that breaks only after a dot (audit 2 R-25; W-14 of the mockups): at 390 px the launcher
-// split «e2e-billing- / plaza.localhost:8000» at the hyphen, as if it were two addresses, and the tables cut it with
+// A business's web address that breaks only after a dot: at 390 px the launcher once split
+// «e2e-billing- / plaza.localhost:8000» at the hyphen, as if it were two addresses, and the tables cut it with
 // «…». Each part between dots stays whole; a line may end only after a dot.
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';

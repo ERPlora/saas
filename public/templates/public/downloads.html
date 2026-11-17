@@ -1,12 +1,11 @@
 {% extends "public/public_base.html" %}
 {% load buttons i18n icons %}
 {% comment %}
-  /download/ — port of apps/public/landing/templates/landing/downloads.html (origin/develop): the
-  two free ways to try ERPlora, both through the free sign-up. A: create a free cloud hub
+  /download/: the two free ways to try ERPlora, both through the free sign-up. A: create a free cloud hub
   (recommended). B: install the app on the device at the counter; its per-platform buttons go to
   public:app_download, which picks store or installer. The demo (/demo/) is the home's and the navbar's
   door, not one of these two: both of these end with your own hub.
-  Every plan includes all the apps, the free one too (ronda 2026-10-24b, PLAN §32).
+  Every plan includes all the apps, the free one too.
 {% endcomment %}
 
 {% block title %}{% trans "Ways to try ERPlora" %} · ERPlora{% endblock %}
@@ -39,7 +38,7 @@
               <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "No credit card required" %}</span></li>
               {% if free_plan %}<li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% include "public/pricing/_plan_limits.html" with plan=free_plan only %}</span></li>{% endif %}
               <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "All apps included, VeriFactu ready" %}</span></li>
-              <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "Managed database, replicated across several European data centres, with continuous backups and point-in-time recovery for 14 days" %}</span></li>
+              <li class="flex gap-2 items-start"><span class="text-success mt-1">{% icon "lucide:check" size=14 %}</span><span>{% trans "Managed database, replicated across several European data centres, with continuous backups: recover your data from any moment of the last 14 days, and what was already sent to the tax agency is kept" %}</span></li>
             </ul>
             {% button href="/launch" label=_("Start free") block=True end_icon="lucide:arrow-right" icon_size=15 extra_class="mt-auto" %}
           </ion-card-content>

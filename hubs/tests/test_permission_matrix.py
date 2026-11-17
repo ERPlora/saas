@@ -1,17 +1,25 @@
-"""Who may do what on a business, by role (round 17 §2.7): the owner everything (plan, billing, transfer,
+"""Who may do what on a business, by role: the owner everything (plan, billing, transfer,
 delete), an administrator the team and the settings, a manager or an employee only «Open»; somebody
 without access (a stranger, or an invitation not answered yet) does not learn the business exists.
 
-One table for every operation on a business, so a new operation cannot slip in without its row.
-Ported in spirit from ERPlora/saas ``hubs/main/tests/test_permissions.py`` (``IsHubMember``,
-``IsHubAdmin``: the part of the account plane) and ``test_member_cannot_act_as_admin.py`` (a member
-reaches neither the payer nor the plan).
+One table for every operation on a business, so a new operation cannot slip in without its row; a member
+reaches neither the payer nor the plan.
 """
 
 import pytest
 from live.errors import NotFound, OperationError, PermissionDenied
 
-from hubs import queries, services
+from hubs.services import (
+    billing_profiles,
+    business_settings,
+    custom_domain_requests,
+    deletion,
+    member_management,
+    opening,
+    ownership,
+    reconciliation,
+)
+from hubs.queries import businesses, custom_domains, data_copies, hub_usage, membership, payers
 from hubs.schemas import (
     BillingProfileGetIn,
     BusinessAddressIn,
@@ -44,56 +52,57 @@ def call(name, hub, team):
     admin = member_of(hub, team["admin"]).id
     invitation = member_of(hub, team["invitee"]).id
     return {
-        "business.get": (queries.business_get, ByIdIn(id=hub.id)),
+        "business.get": (businesses.business_get, ByIdIn(id=hub.id)),
+        "business.check": (reconciliation.business_check, ByIdIn(id=hub.id)),
         "business.update": (
-            services.business_update,
+            business_settings.business_update,
             BusinessUpdateIn(id=hub.id, name="Renamed"),
         ),
         "business.change_address": (
-            services.business_change_address,
+            business_settings.business_change_address,
             BusinessAddressIn(id=hub.id, slug="casa-manolo"),
         ),
         "business.delete": (
-            services.business_delete,
+            deletion.business_delete,
             BusinessDeleteIn(id=hub.id, confirm_name="not the name"),
         ),
-        "business.restore": (services.business_restore, ByIdIn(id=hub.id)),
-        "business.open": (services.business_open, BusinessOpenIn(id=hub.id)),
-        "member.list": (queries.member_list, MemberListIn(hub_id=hub.id)),
+        "business.restore": (deletion.business_restore, ByIdIn(id=hub.id)),
+        "business.open": (opening.business_open, BusinessOpenIn(id=hub.id)),
+        "member.list": (membership.member_list, MemberListIn(hub_id=hub.id)),
         "member.invite": (
-            services.member_invite,
+            member_management.member_invite,
             MemberInviteIn(hub_id=hub.id, email="new@example.com"),
         ),
         "member.change_role": (
-            services.member_change_role,
+            member_management.member_change_role,
             MemberRoleIn(id=employee, role="hub_manager"),
         ),
-        "member.remove": (services.member_remove, ByIdIn(id=employee)),
-        "member.resend": (services.member_resend, ByIdIn(id=invitation)),
-        "member.cancel": (services.member_cancel, ByIdIn(id=invitation)),
+        "member.remove": (member_management.member_remove, ByIdIn(id=employee)),
+        "member.resend": (member_management.member_resend, ByIdIn(id=invitation)),
+        "member.cancel": (member_management.member_cancel, ByIdIn(id=invitation)),
         "ownership.transfer": (
-            services.ownership_transfer,
+            ownership.ownership_transfer,
             OwnershipTransferIn(hub_id=hub.id, member_id=admin),
         ),
         "billing_profile.get": (
-            queries.billing_profile_get,
+            payers.billing_profile_get,
             BillingProfileGetIn(hub_id=hub.id),
         ),
         "billing_profile.update": (
-            services.billing_profile_update,
+            billing_profiles.billing_profile_update,
             BillingProfileIn(hub_id=hub.id, billing_name="Me"),
         ),
         # A night measured, so «nothing yet» (also a 404) never hides what the role decides.
-        "usage.get": (queries.usage_get, UsageGetIn(business_id=measured(hub).id)),
-        "usage.series": (queries.usage_series, UsageSeriesIn(business_id=hub.id)),
-        # The copies of its data (PLAN-DB round 2026-10-30, (k)): with the Hub away, past the role is an empty list or
+        "usage.get": (hub_usage.usage_get, UsageGetIn(business_id=measured(hub).id)),
+        "usage.series": (hub_usage.usage_series, UsageSeriesIn(business_id=hub.id)),
+        # The copies of its data: with the Hub away, past the role is an empty list or
         # a 503, never the role's answer.
-        "data_copy.list": (queries.data_copy_list, DataCopyListIn(business_id=hub.id)),
-        "data_copy.link": (queries.data_copy_link, DataCopyLinkIn(business_id=hub.id, copy_id="any.dump")),
+        "data_copy.list": (data_copies.data_copy_list, DataCopyListIn(business_id=hub.id)),
+        "data_copy.link": (data_copies.data_copy_link, DataCopyLinkIn(business_id=hub.id, copy_id="any.dump")),
         # A business's own domain (HUBS-F17): with the variable off, past the role is its 409, never the role's answer.
-        "custom_domain.get": (queries.custom_domain_get, ByIdIn(id=hub.id)),
-        "custom_domain.request": (services.custom_domain_request, CustomDomainRequestIn(id=hub.id, domain="www.minegocio.es")),
-        "custom_domain.remove": (services.custom_domain_remove, ByIdIn(id=hub.id)),
+        "custom_domain.get": (custom_domains.custom_domain_get, ByIdIn(id=hub.id)),
+        "custom_domain.request": (custom_domain_requests.custom_domain_request, CustomDomainRequestIn(id=hub.id, domain="www.minegocio.es")),
+        "custom_domain.remove": (custom_domain_requests.custom_domain_remove, ByIdIn(id=hub.id)),
     }[name]
 
 
@@ -113,6 +122,7 @@ def measured(hub):
 MATRIX = {
     #                          owner admin   manager employee invitee stranger
     "business.get": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
+    "business.check": (OK, OK, OK, OK, HIDDEN, HIDDEN),
     "business.update": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
     "business.change_address": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
     "business.delete": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
@@ -127,7 +137,7 @@ MATRIX = {
     "ownership.transfer": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
     "billing_profile.get": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
     "billing_profile.update": (OK, DENIED, DENIED, DENIED, HIDDEN, HIDDEN),
-    # The usage of the business (L4-A): who sees its page.
+    # The usage of the business: who sees its page.
     "usage.get": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
     "usage.series": (OK, OK, DENIED, DENIED, HIDDEN, HIDDEN),
     # A full copy of the business's data: only its owner, as deleting it.
@@ -173,6 +183,7 @@ def test_every_operation_on_a_business_has_its_row():
         "hubs.business.create_check",
         "hubs.business.mark_ready",
         "hubs.business.record_hub_error",
+        "hubs.business.record_maintenance",
         "hubs.business.notify_people",
         # The platform's (billing writes what Stripe says): ``test_subscription_apply.py``.
         "hubs.subscription.apply",

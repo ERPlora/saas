@@ -1,9 +1,9 @@
-"""``/api/docs``: the reference of the SaaS's API for signed-in accounts (ACCOUNTS-F34; PLAN-SAAS bloque 15).
+"""``/api/docs``: the reference of the SaaS's API for signed-in accounts.
 
-django-ninja's ReDoc, read only: the old Swagger's «Try it out» changed real data without a word (SAAS_DASHBOARD-F197);
-an integration tries the API with Postman, whose collection comes from the same schema. Its own template
-(``accounts/api_docs.html``) loads ninja's ReDoc with the response's nonce, nothing from a CDN: ``redoc_script`` serves
-ninja's bundle without the one outside address it has, Redocly's logo, which its side menu loaded on every page.
+django-ninja's ReDoc, read only: a «Try it out» would change real data without a word; an integration tries the API with
+Postman, whose collection comes from the same schema. Its own template (``accounts/api_docs.html``) loads ninja's ReDoc
+with the response's nonce, nothing from a CDN: ``redoc_script`` serves ninja's bundle without the one outside address it
+has, Redocly's logo, which its side menu loaded on every page.
 
 The SPA's policy stays, but for two directives of this page alone (``docs_policy``): ReDoc writes HTML from strings, which
 Trusted Types refuses, and runs its search in a ``blob:`` worker. Signed out, the sign-in (``LOGIN_URL``), which comes

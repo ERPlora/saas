@@ -1,4 +1,4 @@
-"""The account's sessions as ``allauth.usersessions`` keeps them (Account → Security; PLAN-SAAS §6).
+"""The account's sessions as ``allauth.usersessions`` keeps them (Account → Security).
 
 allauth records a session when it signs in. ``SessionActivityMiddleware`` records it again (its address,
 browser and last use) at most once every ``TOUCH_EVERY`` seconds of use: a session opened some other way
@@ -12,15 +12,15 @@ Only the session's own account is recorded: a request acting with an API key (``
 else than the account the session signed in, never moves a session to another account.
 
 ``UserSessionsAdapter`` (``USERSESSIONS_ADAPTER``): however a session is ended, by the Account page's operations or by
-allauth.headless ``auth/sessions``, the account's businesses are asked to end theirs (``services.end_sessions``).
+allauth.headless ``auth/sessions``, the account's businesses are asked to end theirs (``active_sessions.end_sessions``).
 """
 
 from allauth.usersessions.adapter import DefaultUserSessionsAdapter
 from django.contrib.auth import SESSION_KEY
 from django.core.cache import cache
 
-from accounts import services
 from accounts.models import ApiKey
+from accounts.services import active_sessions
 
 #: Seconds between two records of the same session's use.
 TOUCH_EVERY = 300
@@ -33,7 +33,7 @@ def _seen_key(session_key: str) -> str:
 class SessionActivityMiddleware:
     """After ``AuthenticationMiddleware`` (it reads ``request.user``). It looks once the view answered, and only at
     a session the request already used: loading one nobody asked for would make Django drop a cookie it cannot
-    read, and the public web never signs anybody out (saas#975)."""
+    read, and the public web never signs anybody out."""
 
     def __init__(self, get_response) -> None:
         self.get_response = get_response
@@ -50,7 +50,7 @@ class SessionActivityMiddleware:
             and session.get(SESSION_KEY) == str(request.user.pk)
             and _mark(session_key)
         ):
-            services.track_session(request)
+            active_sessions.track_session(request)
         return response
 
 
@@ -63,10 +63,10 @@ def _mark(session_key: str) -> bool:
 class UserSessionsAdapter(DefaultUserSessionsAdapter):
     def end_sessions(self, sessions) -> None:
         """allauth's ``auth/sessions`` (and its Google sign-in that ends the others): the sessions end, the businesses
-        are asked to end theirs and the accounts' live streams wake (``services.announce_ended_sessions``), as the
-        Account page's «Close» records its event. Ending this browser's own session also signs it out, which wakes
+        are asked to end theirs and the accounts' live streams wake (``active_sessions.announce_ended_sessions``), as
+        the Account page's «Close» records its event. Ending this browser's own session also signs it out, which wakes
         them once more (``AccountAdapter.logout``)."""
         sessions = list(sessions)
-        services.end_sessions(sessions)
+        active_sessions.end_sessions(sessions)
         for user_id in dict.fromkeys(session.user_id for session in sessions):
-            services.announce_ended_sessions(user_id)
+            active_sessions.announce_ended_sessions(user_id)

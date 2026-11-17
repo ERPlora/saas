@@ -1,4 +1,4 @@
-// «Accept and enter» an invitation (round 17 §2.8): `hubs.invitation.accept`, a success toast, and
+// «Accept and enter» an invitation: `hubs.invitation.accept`, a success toast, and
 // straight into the business when it opens; a business that does not open yet (being prepared,
 // suspended) lands on Businesses instead, where it is listed with its reason.
 import { afterEach, describe, expect, it, vi } from 'vitest';

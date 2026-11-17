@@ -1,11 +1,9 @@
 {% load i18n icons %}
 {% comment %}
-  The Cloud Hub plans: port of landing/home/sections/_plans.html (origin/develop) with
-  public/components/pricing_card.html. Free first (ADR-0154), every plan from the database; each
-  card ends with the plan's real trial (saas#2424). The «X/month with 21 % Spanish VAT» line is gone
-  (WORKFLOW F55): a selling screen shows the net price and the ex-VAT note, never a VAT figure.
-  Without any plan on sale the section is omitted. The head says what /pricing/ says: every plan
-  includes all the apps (ronda 2026-10-24b, PLAN §32).
+  The Cloud Hub plans, with public/components/pricing_card.html. Free first, every plan from the
+  database; each card ends with the plan's real trial. A selling screen shows the net price and the
+  ex-VAT note, never a VAT figure. Without any plan on sale the section is omitted. The head says
+  what /pricing/ says: every plan includes all the apps.
 {% endcomment %}
 {% if plans %}
   <section id="planes" class="ep-section--soft">

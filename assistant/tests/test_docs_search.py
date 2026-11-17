@@ -1,5 +1,5 @@
-"""ASSISTANT-F27 · The panel's assistant searches ERPlora's documentation (``assistant.docs.search``; plan
-2026-10-30-asistente-saas §5): a tool of every account (``assistant.ask``), for how-to questions.
+"""The panel's assistant searches ERPlora's documentation (``assistant.docs.search``): a tool of every account
+(``assistant.ask``), for how-to questions.
 
 The question is embedded by the services' provider before the search runs and outside any transaction
 (``queries.prepare_questions``, which the panel's turn calls for every search the model asked for, so no connection
@@ -251,7 +251,7 @@ class TestTheIndexLosesNothing:
 
 
 class TestWhereNothingIsSold:
-    """The account the app opens sells nothing (PLAN-SAAS §3.6 point 6): the documentation is not a side door to how to
+    """The account the app opens sells nothing: the documentation is not a side door to how to
     pay, what a plan costs or the store. The rest of the documentation is still read."""
 
     def unsold(self, account, rf, language="es"):

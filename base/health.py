@@ -2,13 +2,13 @@
 
 The load balancer probes each task by its IP, a Host that ``ALLOWED_HOSTS`` rejects, so the
 answer comes from a middleware placed before anything that validates the Host
-(``CommonMiddleware``, ``CsrfViewMiddleware``…). Same as hub-next's ``base.health``.
+(``CommonMiddleware``, ``CsrfViewMiddleware``…). Same as the Hub's ``base.health``.
 
 ``/readyz`` is the deploy pipeline's gate and Route 53's probe (aws README, «Endpoints»): 200 with the
 database reachable and every migration of this code applied, 503 otherwise. It is a route
 (``config/urls.py``) on the real host (``https://erplora.com/readyz``). Cheap: one connection from
 the pool and the read of ``django_migrations``; the reason of a 503 is logged, never sent. Same as
-hub-next's. Route 53 probes it about 30 times a minute, so its answer, 200 or 503, is kept
+the Hub's. Route 53 probes it about 30 times a minute, so its answer, 200 or 503, is kept
 ``READYZ_KEEP_SECONDS`` in the process (``time.monotonic``): never in Valkey, so a Valkey outage never
 takes ``/readyz`` down with it. The Host is still validated on every request (the answer is kept in
 the view, after the middleware).

@@ -1,7 +1,7 @@
-// The public web follows the visitor's colour mode, as the panel does (Ioan, 2026-10-14): light on a
-// light system, dark on a dark one, with no flash and live when the system changes. A signed-in
-// account's own choice (Account → Preferences) is written by the server and covered by
-// public/tests/test_templates.py; here, the system's, in Ioan's visible Chrome.
+// The public web follows the visitor's colour mode, as the panel does: light on a light system, dark
+// on a dark one, with no flash and live when the system changes. A signed-in account's own choice
+// (Account → Preferences) is written by the server and covered by public/tests/test_templates.py;
+// here, the system's, in Chrome.
 //
 // Every page is checked at 390 and 1440 px in both schemes: the canvas (<html>), the text and the
 // page hero (a soft band that turned grey in dark) must be dark or light as the scheme says, under the
@@ -62,7 +62,7 @@ async function luminances(page: Page) {
       return 0.2126 * r + 0.7152 * g + 0.0722 * b;
     };
     const hero = document.querySelector('.ep-hero');
-    // The soft band of /pricing/'s upgrade-only plans («More capacity», PLAN-SAAS §9): a soft surface that must follow
+    // The soft band of /pricing/'s upgrade-only plans («More capacity»): a soft surface that must follow
     // the scheme as the hero does.
     const more = document.querySelector('#more-capacity');
     return {

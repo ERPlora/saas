@@ -1,6 +1,6 @@
-// The admin pages of our own in erplora.com's admin wear Django 6.1's breadcrumbs (MIGRATION-TASK APP-ASSISTANT-1):
+// The admin pages of our own in erplora.com's admin wear Django 6.1's breadcrumbs:
 // «Hubs» and the API key just issued (accounts), the review of a signed authorisation and ERPlora's stamp as
-// representative (fiscal), at the three sizes of the migration (390×844, 834×1112, 1440×900), in English and in
+// representative (fiscal), at the three sizes (390×844, 834×1112, 1440×900), in English and in
 // Spanish. They kept the older `<div class="breadcrumbs">`, which Django 6.1 no longer styles: a bare line of links
 // above the title. config/tests/test_admin_templates.py keeps the markup of every page of our own; this spec looks at
 // the four on screen. Rows: fiscal_seed.py (a business with its member and a signed authorisation) and the accounts
@@ -11,39 +11,21 @@
 // flow: ACCOUNTS-F31 — the key just issued, shown once.
 // flow: FISCAL-F03 — the review page of a signed authorisation.
 // flow: FISCAL-F06 — ERPlora's stamp as representative.
-import { execFileSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import type { Page } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
-import { djangoPrint, expect, settled, shot, sidewaysScroll, signIn, test, watchPageErrors } from './fixtures';
-import { PANEL_MAIL_DIR } from './project';
+import { djangoPrint, runSeed } from './django';
+import { expect, test } from './fixtures';
+import { MAILING } from './mail';
+import { watchPageErrors } from './page-events';
+import { captureAtEverySize } from './screen';
+import { signIn } from './session';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const atEverySize = captureAtEverySize('APP-ASSISTANT-1');
+
 const PREFIX = 'e2e-admpages-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
 const ROOT = { email: `${PREFIX}root@example.com`, password: PASSWORD };
 const TEAMMATE = `${PREFIX}qa@example.com`;
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
-
-/** `fiscal_seed.py seed|clear`; `seed` files the authorisation and prints its id. */
-function fiscalSeed(action: 'seed' | 'clear'): string {
-  return execFileSync('uv', ['run', 'python', 'tests/e2e/panel/fiscal_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: { ...djangoEnv(true), EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend', EMAIL_FILE_PATH: PANEL_MAIL_DIR },
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-    .trim()
-    .split('\n')
-    .at(-1) as string;
-}
 
 function removeAccounts(): void {
   djangoPrint(
@@ -59,9 +41,9 @@ function createAccounts(): void {
   djangoPrint(
     [
       'from allauth.account.models import EmailAddress',
-      'from accounts import services',
-      `for email, group in (("${ROOT.email}", services.PLATFORM_ADMIN), ("${TEAMMATE}", services.PLATFORM_SUPPORT)):`,
-      `    user = services.create_platform_user(email, group, "${PASSWORD}")[0]`,
+      'from accounts.services.platform_staff import PLATFORM_ADMIN, PLATFORM_SUPPORT, create_platform_user',
+      `for email, group in (("${ROOT.email}", PLATFORM_ADMIN), ("${TEAMMATE}", PLATFORM_SUPPORT)):`,
+      `    user = create_platform_user(email, group, "${PASSWORD}")[0]`,
       '    user.language = "en"; user.save(update_fields=["language"])',
       '    EmailAddress.objects.update_or_create(user=user, email=user.email, defaults={"verified": True, "primary": True})',
     ].join('\n'),
@@ -72,25 +54,25 @@ let grant = '';
 
 test.beforeAll(() => {
   removeAccounts();
-  grant = fiscalSeed('seed');
+  // `fiscal_seed.py seed` files the authorisation and prints its id.
+  grant = runSeed('fiscal_seed.py', 'seed', MAILING);
   expect(grant).toMatch(/^[0-9a-f-]{36}$/);
   createAccounts();
 });
 
 test.afterAll(() => {
-  fiscalSeed('clear');
+  runSeed('fiscal_seed.py', 'clear', MAILING);
   removeAccounts();
 });
 
 /**
  * At each size: the page's breadcrumbs are Django 6.1's list (from «Home» to the page itself, `count` crumbs, the last
  * one the current page and no link), painted on the admin's band (a bare line of links has no background), on one line
- * at 1440; no sideways scroll; a capture `APP-ASSISTANT-1-<key>-<size>`. Back at 1440 after.
+ * at 1440; no sideways scroll; a capture per key and size. Back at 1440 after.
  */
 async function crumbsAtEverySize(page: Page, key: string, home: string, current: string, count: number): Promise<void> {
   const crumbs = page.locator('nav[aria-label] ol.breadcrumbs > li');
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
+  await atEverySize(page, key, async (size) => {
     await expect(page.locator('div.breadcrumbs')).toHaveCount(0);
     await expect(crumbs).toHaveCount(count);
     await expect(crumbs.first()).toHaveText(home);
@@ -98,15 +80,11 @@ async function crumbsAtEverySize(page: Page, key: string, home: string, current:
     await expect(crumbs.last()).toHaveAttribute('aria-current', 'page');
     await expect(crumbs.last().locator('a')).toHaveCount(0);
     await expect(page.locator('ol.breadcrumbs')).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-    if (size.name === '1440') {
+    if (size.width === 1440) {
       const tops = await crumbs.evaluateAll((items) => items.map((item) => Math.round(item.getBoundingClientRect().top)));
       expect(new Set(tops).size, `${key}: the crumbs on one line`).toBe(1);
     }
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-ASSISTANT-1-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
+  });
 }
 
 type IndexNames = Record<
@@ -116,15 +94,14 @@ type IndexNames = Record<
 
 /**
  * The admin's index at each size: no two sections share a name, the four that did or spoke English say `names`, no
- * sideways scroll, a capture `APP-ASSISTANT-1-admin-index<suffix>-<size>`. Back at 1440 after.
+ * sideways scroll, a capture per size. Back at 1440 after.
  */
 async function indexAtEverySize(page: Page, names: IndexNames, suffix: string): Promise<void> {
   const errors = watchPageErrors(page);
   await signIn(page.request, ROOT);
   await page.goto('/admin/');
   const main = page.locator('#content-main');
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
+  await atEverySize(page, `admin-index${suffix}`, async () => {
     const sections = (await main.locator('caption a.section').allTextContents()).map((name) => name.trim());
     expect(sections.length).toBeGreaterThan(10);
     expect(sections.filter((name, at) => sections.indexOf(name) !== at), 'sections sharing a name').toEqual([]);
@@ -137,11 +114,7 @@ async function indexAtEverySize(page: Page, names: IndexNames, suffix: string): 
     await expect(main.locator('.app-usersessions .model-usersession th')).toHaveText(names.sessions);
     await expect(main.locator('.app-live caption')).toHaveText(names.live);
     await expect(main.locator('.app-live .model-outboxevent th')).toHaveText(names.outbox);
-    await settled(page);
-    expect(await sidewaysScroll(page), `admin-index${suffix} at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-ASSISTANT-1-admin-index${suffix}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
+  });
   expect(errors).toEqual([]);
 }
 

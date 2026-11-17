@@ -93,7 +93,7 @@ describe('PasswordModal', () => {
     expect(s.open.value).toBe(true);
   });
 
-  it('a wrong current password is said in the panel’s words, not allauth’s «Por favor, escriba…» (audit 2 R-26)', async () => {
+  it('a wrong current password is said in the panel’s words, not allauth’s «Por favor, escriba…»', async () => {
     const s = await setup([rejected('Por favor, escriba su contraseña actual.', 'current_password', 'enter_current_password')], 'es');
     await fill(s);
     s.q('password-change-submit')?.click();

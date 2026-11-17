@@ -1,5 +1,5 @@
-"""``manage.py check_custom_domains``: the hourly pass that moves each domain between its states (HUBS-F17; ``aws`` README,
-«Dominio propio de un negocio»; hub#812). Every transition has its row here:
+"""``manage.py check_custom_domains``: the hourly pass that moves each domain between its states (HUBS-F17; ``aws``
+README, «Dominio propio de un negocio»). Every transition has its row here:
 
     pending  → certificate requested → ISSUED → on the listener → CNAME → in the snapshot → probe → active
     active   → three failures in a row → lapsed (out of the snapshot, certificate gone), and the owner is told
@@ -63,7 +63,7 @@ def world(custom_domains_on, hub_double, probe_says, dns_world):
 def run_pass(world, *, attached=0):
     """One pass, with the metric it publishes at its end."""
     world.expect_metric(attached)
-    counts = services.check_custom_domains()
+    counts = services.custom_domain_checks.check_custom_domains()
     return counts
 
 
@@ -128,7 +128,7 @@ def test_pending_at_the_quota_asks_for_no_certificate(standard_business, world, 
     )
     row = pending(standard_business)
 
-    services._check_custom_domain(row.id)
+    services.custom_domain_checks._check_custom_domain(row.id)
 
     row.refresh_from_db()
     assert row.certificate_arn == ""
@@ -169,7 +169,7 @@ def test_an_issued_certificate_at_the_quota_stays_off_the_listener(standard_busi
     row = certificate_issued(standard_business)
     world.expect_describe("ISSUED")
 
-    services._check_custom_domain(row.id)
+    services.custom_domain_checks._check_custom_domain(row.id)
 
     row.refresh_from_db()
     assert row.attached_at is None
@@ -246,7 +246,7 @@ def test_the_whole_way_from_pending_to_active_in_one_pass(standard_business, wor
     ids=["its slug or anything else", "another business's name"],
 )
 def test_a_cname_onto_another_name_proves_nothing(standard_business, world, dns_world, hub_double, probe_says, record):
-    """Why a validation CNAME left behind cannot hand the domain to whoever asks next (ADR-0502)."""
+    """Why a validation CNAME left behind cannot hand the domain to whoever asks next."""
     attached(standard_business)
     dns_world[(DOMAIN, "CNAME")] = [record]
     world.expect_describe("ISSUED")
@@ -426,7 +426,7 @@ def test_three_failures_in_a_row_take_it_down_and_tell_the_owner_once(standard_b
 
     run_pass(world, attached=1)
     assert (row_of(standard_business).state, row_of(standard_business).failures) == (State.ACTIVE, 1)
-    assert queries.hub_snapshot(standard_business.id)["custom_domain"] == DOMAIN
+    assert queries.hub_sync.hub_snapshot(standard_business.id)["custom_domain"] == DOMAIN
 
     run_pass(world, attached=1)
     assert (row_of(standard_business).state, row_of(standard_business).failures) == (State.ACTIVE, 2)
@@ -808,17 +808,17 @@ def test_a_certificate_attached_by_a_pass_that_lost_to_its_owner_is_still_taken_
         CustomDomain.objects.filter(pk=row.pk).update(state=State.REMOVING)
 
     monkeypatch.setattr(edge_client, "attach", the_owner_removes_meanwhile)
-    assert services._check_custom_domain(row.id) == "moved_on"
+    assert services.custom_domain_checks._check_custom_domain(row.id) == "moved_on"
     row.refresh_from_db()
     assert (row.state, row.attached_at) == (State.REMOVING, None)
 
     world.acm.add_client_error("delete_certificate", "ResourceInUseException", "in use")
     world.expect_detach()
-    assert services._check_custom_domain(row.id) == "certificates_in_use"
+    assert services.custom_domain_checks._check_custom_domain(row.id) == "certificates_in_use"
     world.alb.assert_no_pending_responses()
 
     world.expect_delete()
-    assert services._check_custom_domain(row.id) == "removed"
+    assert services.custom_domain_checks._check_custom_domain(row.id) == "removed"
     assert not CustomDomain.objects.exists()
 
 
@@ -841,14 +841,14 @@ def test_a_removal_with_nothing_on_aws_only_goes(standard_business, world):
 
 
 def test_while_a_removal_is_held_up_the_name_stays_taken(owner, standard_business, world, make_user):
-    """Its row goes last: that is what frees the name, once the Hub and the ALB have let go (ADR-0496)."""
+    """Its row goes last: that is what frees the name, once the Hub and the ALB have let go."""
     removing(standard_business, certificate_arn=ARN, proven_at=timezone.now())
     other_owner = make_user("otra@example.com")
     other = create_business(other_owner, name="Otro")
     Subscription.objects.filter(hub=other).update(plan=Plan.objects.get(slug="standard"))
 
     with pytest.raises(Conflict) as refused:
-        services.custom_domain_request(ctx_for(other_owner), CustomDomainRequestIn(id=other.id, domain=DOMAIN))
+        services.custom_domain_requests.custom_domain_request(ctx_for(other_owner), CustomDomainRequestIn(id=other.id, domain=DOMAIN))
 
     assert refused.value.code == "hubs.custom_domain_taken"
 
@@ -904,7 +904,7 @@ def test_a_second_proof_while_the_first_stands_says_it_is_taken(standard_busines
     pointing(dns_world, theirs)
     world.expect_describe("ISSUED", arn=certificate_arn(2))
 
-    services._check_custom_domain(other.id)
+    services.custom_domain_checks._check_custom_domain(other.id)
 
     assert row_of(theirs).state == State.PENDING
     assert row_of(theirs).reason == Reason.TAKEN
@@ -924,7 +924,7 @@ def test_the_owner_removing_it_during_the_pass_wins(standard_business, world, dn
 
     monkeypatch.setattr(domain_checks, "points_at", the_owner_removes_meanwhile)
 
-    services._check_custom_domain(row.id)
+    services.custom_domain_checks._check_custom_domain(row.id)
 
     row.refresh_from_db()
     assert row.state == State.REMOVING

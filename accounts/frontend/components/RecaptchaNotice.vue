@@ -3,7 +3,7 @@
 // (accounts/frontend/recaptcha.ts): the badge Google paints is hidden (the style frontend/recaptcha.ts puts in with
 // Google's script), which its terms allow only with this text where the person is (reCAPTCHA FAQ). Showing it also
 // loads Google's script, so it watches the page before the submit and the token comes at once. Nothing without a
-// site key (reCAPTCHA off, the default since 2026-10-23).
+// site key (reCAPTCHA off, the default).
 import { onMounted } from 'vue';
 
 import { loadRecaptcha } from '../../../frontend/recaptcha';

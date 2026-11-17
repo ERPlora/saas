@@ -1,9 +1,9 @@
-// Spec §6: the documentation tab of an app (/apps/<id>/docs/) paints its ```mermaid``` diagram under
-// the public web's CSP with ZERO violations. Mermaid writes its SVG with inline styles, and
+// The documentation tab of an app (/apps/<id>/docs/) paints its ```mermaid``` diagram under the
+// public web's CSP with ZERO violations. Mermaid writes its SVG with inline styles, and
 // frontend/public.ts loads it only when the page has a `pre.mermaid`. Violations are caught three
 // ways: the `securitypolicyviolation` event, the console and the reports the browser would POST to
-// /csp-report/. If this fails, the rule of spec §6 applies: the narrowest change (one directive, only
-// on the documentation pages) in public/csp.py, written down in the plan.
+// /csp-report/. If this fails, make the narrowest change (one directive, only on the documentation
+// pages) in public/csp.py.
 //
 // The second spec drives the store's search in a real browser: `ion-searchbar` inside a GET form,
 // which no server test can submit.
@@ -69,7 +69,7 @@ test('the documentation tab paints its Mermaid diagram with no CSP violation', a
   await expect(diagram).toBeVisible();
   await expect(page.locator('pre.mermaid')).toContainText('Ticket abierto');
   await expect(page.locator('pre.mermaid')).toContainText('Factura VeriFactu');
-  // The English page serves the Spanish document with its notice (spec §5.3).
+  // The English page serves the Spanish document with its notice.
   await expect(page.getByText('This documentation is only available in Spanish.')).toBeVisible();
   await expect(page.locator('article.ep-store-docs[lang="es"]')).toBeVisible();
 
@@ -106,12 +106,12 @@ test('the store searches from its searchbar and opens the app', async ({ page })
   expect(csp.pageErrors).toEqual([]);
 });
 
-// Phone, tablet and desktop (working rules §2.4): nothing wider than the screen, in English and Spanish.
+// Phone, tablet and desktop: nothing wider than the screen, in English and Spanish.
 for (const width of [390, 834, 1440]) {
   test(`the store's pages fit ${width} px`, async ({ page, context }) => {
     await page.setViewportSize({ width, height: 900 });
     for (const language of ['en', 'es']) {
-      // The language cookie of the public web (plan §3.a).
+      // The language cookie of the public web.
       await context.addCookies([{ name: '_lang', value: language, url: test.info().project.use.baseURL as string }]);
       for (const [name, path] of [
         ['list', '/apps/'],

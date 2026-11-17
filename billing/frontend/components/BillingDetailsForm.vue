@@ -10,14 +10,15 @@ export interface BillingDetailsDraft {
   billing_email: string;
   same_as_business: boolean;
 }
+
+/** The countries a payer may be billed in: billing/vat.py `SOLD_TO_COUNTRIES` (guard: BillingDetailsForm.test.ts). */
+export const SOLD_TO_COUNTRIES = ['ES'] as const;
 </script>
 
 <script setup lang="ts">
-// Who ERPlora invoices for a business (PLAN-SAAS §3.1; mockups `store.html`, the checkout's note): asked
-// once, before the first payment, inside the checkout dialog — legal name, tax ID (the server checks it in
-// VIES), address, city, postal code (five digits in Spain: it decides the tax) and country, or «use the
-// business’s name and country» (the server copies them). Only the fields; the dialog saves them with
-// `hubs.billing_profile.update`, and a 422 puts each message under its field. Country is an `ion-select`.
+// Who ERPlora invoices for a business, asked once before the first payment inside the checkout dialog. The postal
+// code decides the tax (five digits in Spain), and only a payer in Spain is invoiced. Only the fields: the dialog saves
+// them with `hubs.billing_profile.update`, and a 422 puts each message under its field.
 import { IonCheckbox, IonInput, IonSelect, IonSelectOption } from '@ionic/vue';
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -32,7 +33,7 @@ defineProps<{
 const draft = defineModel<BillingDetailsDraft>({ required: true });
 
 const { locale } = useI18n();
-const countries = computed(() => countryOptions(locale.value));
+const countries = computed(() => countryOptions(locale.value, SOLD_TO_COUNTRIES));
 
 /** What is typed, ahead of the parent's copy: two fields changed in one tick both count. */
 const local = shallowRef<BillingDetailsDraft>({ ...draft.value });
@@ -133,6 +134,7 @@ const text = (value: unknown): string => (value === null || value === undefined 
       interface="popover"
       label-placement="floating"
       :label="$t('billing.details.country')"
+      :helper-text="$t('billing.details.countryHint')"
       :value="local.billing_country"
       :error-text="fieldErrors.billing_country"
       :class="{ 'ion-invalid ion-touched': !!fieldErrors.billing_country }"

@@ -1,4 +1,4 @@
-"""Fixtures shared by every saas-next test."""
+"""Fixtures shared by every test of the SaaS."""
 
 import json
 import logging
@@ -11,10 +11,17 @@ from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
 from django.utils import translation
 
+from config import testing
+
 PASSWORD = "correct horse battery staple"
 GOOGLE_CLIENT_ID = "test-client.apps.googleusercontent.com"
 SPA_ENTRY = "frontend/main.ts"
 PUBLIC_ENTRY = "frontend/public.ts"
+
+# Fails the test that leaves a database connection with its own ensure_connection, which hides
+# pytest-django's block from the tests without the database after it, once its fixtures are torn
+# down (config/testing.py, saas#324).
+pytest_runtest_teardown = testing.database_block_left_as_found
 
 
 @pytest.fixture(autouse=True)
@@ -45,7 +52,7 @@ def _log_stays_on_its_stream():
 
     Rebuilding the logging (``dictConfig``, ``django.setup()``, a ``LOGGING`` override) inside a capture ties the
     console handler to that capture's stream, which pytest closes when the test ends: every later line of every
-    test comes out as a logging error on a closed file (FIX-SAAS-LOGGING-TEST-LEAVES-CLOSED-STREAM).
+    test comes out as a logging error on a closed file.
     """
     before = _log_streams()
     yield

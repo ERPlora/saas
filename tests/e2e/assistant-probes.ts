@@ -1,7 +1,6 @@
-// The probes of the panel assistant's QA with the real model, layer 2 (panel/assistant-probes.spec.ts; plan
-// docs/plans/2026-10-31-asistente-conocimiento-y-qa.md of erplora-next, §1.5 and §4 T3): a probe is a NEW natural phrase
-// the QA writes for one tool of the exported catalogue (`manage.py export_assistant_catalog`), never one of its
-// asks, and what the panel has to do with it. The Hub's probes share this format, so both QAs speak the same
+// The probes of the panel assistant's QA with the real model (panel/assistant-probes.spec.ts): a probe is a NEW
+// natural phrase the QA writes for one tool of the exported catalogue (`manage.py export_assistant_catalog`), never
+// one of its asks, and what the panel has to do with it. The Hub's probes share this format, so both QAs speak the same
 // vocabulary. Here: the probe files and their checks against the catalogue, the decision at a card, the automatic
 // verdict of what the panel showed (tools, cards, notices, the outbox; the model's wording only for a refusal), the
 // redaction of keys and the Markdown report of a run. Run by Node itself too (qa-probes.ts): imports say their `.ts`.
@@ -244,7 +243,7 @@ const BECAUSE = [
   /\b(?:permisos?|rol|propietari[oa]s?|dueñ[oa]s?|administrador(?:a|es)?|navegador|erplora\.com|la web|(?:en|desde) (?:la|esta) app)\b/i,
   /\b(?:permissions?|roles?|owners?|admins?|administrators?|browser|erplora\.com|the web|(?:in|from) (?:the|this) app)\b/i,
 ];
-/** The account surface's own words (PLAN-SAAS §3.6, point 6): go to erplora.com from the browser. */
+/** The account surface's own words: go to erplora.com from the browser. */
 const REDIRECT = /\berplora\.com\b.*\b(?:navegador|browser)\b|\b(?:navegador|browser)\b.*\berplora\.com\b/i;
 
 /** Whether the answer refuses and says why, in one sentence (Spanish or English): it cannot because of a permission,

@@ -1,7 +1,6 @@
-"""Every country the forms offer has to be sellable with the seeded table (saas#2110).
+"""Every country the forms offer has to be sellable with the seeded table.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_every_billing_country_resolves.py``
-(origin/develop, 5 tests). The form's list and the table that prices the sale were two lists nobody kept
+The form's list and the table that prices the sale were two lists nobody kept
 in step: a country added to a form without its rule fails here, before it refuses a customer's checkout.
 
 Adapted: the lists are ``billing.vat.BILLING_COUNTRIES`` and the countries a business may be created in
@@ -24,7 +23,7 @@ PLAN = "service.saas_subscription"
 
 def _quote(country: str, postal_code: str = "", **kwargs):
     """A Spanish sale is priced with its 5-digit postal code (Madrid by default): without it the place is
-    unknown and the sale is not priced (review of L2-A, finding 1)."""
+    unknown and the sale is not priced."""
     postal_code = postal_code or ("28001" if country == "ES" else "")
     return quote_vat(
         Decimal("100.00"),
@@ -45,6 +44,7 @@ def test_every_country_a_business_may_be_created_in_resolves_a_rate():
     assert sorted(country for country in COUNTRIES if _quote(country) is None) == []
 
 
+@pytest.mark.usefixtures("every_country_sold")
 class TestUnitedKingdom:
     """Post-Brexit the UK is a third country: a service supplied there from Spain is outside the scope
     of Spanish VAT (art. 69.Uno.1º LIVA for a business, art. 69.Dos for a private customer). Net price,
@@ -64,7 +64,7 @@ class TestUnitedKingdom:
 
     def test_a_uk_consumer_is_not_sold_to(self, business_paid_by):
         """A UK consumer owes 20 % UK VAT that only a supplier registered with HMRC may charge, so the
-        terms sell to UK businesses only: without the payer's UK VAT number the sale is refused (saas#2205)."""
+        terms sell to UK businesses only: without the payer's UK VAT number the sale is refused."""
         from live.errors import Conflict
 
         consumer = business_paid_by("GB", "SW1A 1AA")

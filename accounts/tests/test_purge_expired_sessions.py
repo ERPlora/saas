@@ -1,10 +1,8 @@
-"""ACCOUNTS-G71 · ``manage.py purge_expired_sessions``: the daily sweep of what a sign-in leaves behind.
+"""``manage.py purge_expired_sessions``: the daily sweep of what a sign-in leaves behind.
 
-The old SaaS ran ``clearsessions_task`` (Django's expired sessions) and ``flush_expired_tokens_task`` (its JWT
-blacklist) every day (``apps/core/tasks.py``, origin/develop c5ca8cae8). Here there is no JWT (PLAN-SAAS §1.1 point 2);
-what a sign-in leaves is the session, the row «Active sessions» shows for it (allauth.usersessions, with the address and
-the browser), the one-time code of each jump to a business (60 s) and the code of a change of email (15 min).
-PLAN-SAAS §1.1, «Limpiezas y podas diarias»: ``clearsessions`` and the expired jump codes. Once a day in ``saas-cron``.
+What a sign-in leaves is the session, the row «Active sessions» shows for it (allauth.usersessions, with the address
+and the browser), the one-time code of each jump to a business (60 s) and the code of a change of email (15 min).
+Once a day in ``saas-cron``.
 """
 
 from datetime import timedelta
@@ -18,8 +16,8 @@ from django.core.management import call_command
 from django.db import connections
 from django.utils import timezone
 
-from accounts import services
 from accounts.models import AuthExchangeCode, EmailChangeRequest
+from accounts.services import exclusive_runs
 
 pytestmark = pytest.mark.django_db
 
@@ -134,7 +132,7 @@ class TestTheRun:
     def test_a_second_run_while_one_holds_the_lock_does_nothing(self, ana):
         code = _code(ana, seconds_left=-1)
         other = connections["default"].copy()
-        lock = [services.lock_name("purge_expired_sessions")]
+        lock = [exclusive_runs.lock_name("purge_expired_sessions")]
         try:
             with other.cursor() as cursor:
                 cursor.execute("SELECT pg_advisory_lock(hashtext(%s))", lock)
@@ -150,7 +148,7 @@ class TestTheRun:
         assert AuthExchangeCode.objects.filter(pk=code.pk).exists()
 
     def test_the_sweep_writes_nothing_in_the_audit_log(self, ana):
-        """The audit log says who changed an account (ACCOUNTS-F36); a row that ended by itself is no change, and one
+        """The audit log says who changed an account; a row that ended by itself is no change, and one
         entry per row would bury the real ones."""
         from auditlog.models import LogEntry
 

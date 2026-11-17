@@ -1,4 +1,4 @@
-"""The tools erplora.com runs itself in a turn (ASSISTANT-G46): their result goes back to the model and the Hub never
+"""The tools erplora.com runs itself in a turn: their result goes back to the model and the Hub never
 sees the call; every other tool of the turn is the Hub's, which runs it.
 
 - ``current_datetime``: today's date, time and weekday in UTC. Always offered.
@@ -7,8 +7,8 @@ sees the call; every other tool of the turn is the Hub's, which runs it.
 - ``web_search``: the public web (Brave Search; its key, ``BRAVE_SEARCH_API_KEY``, comes from the environment). Without
   the key it is not offered, and the server starts as usual. It looks in the language the model says the person writes
   in (``SEARCH_LANGUAGES``): neither door of a turn carries it, and a wrong one only leans the results. A turn whose
-  answer its caller keeps (``answer_kept``: an automation's) never searches, even if the model asks: Brave's terms,
-  §3(b)(i), forbid keeping its results.
+  answer its caller keeps (``answer_kept``: an automation's) never searches, even if the model asks: section 3(b)(i)
+  of Brave Search's terms forbids keeping its results.
 
 ``run`` never raises: a tool that fails gives the model an error to answer with (``{"error": …, "code": …}``) and no
 figure, so a turn never fails because of one of these and the model has nothing to quote but the failure. They spend no
@@ -18,12 +18,12 @@ and what a search asks for and gives back is bounded (``MAX_RESULTS``, ``MAX_RES
 
 A result names its ``sources``. An answer built on them shows where it comes from: ``rules`` asks the model to write the
 address, and ``source_line`` writes it when the model did not, since the chat's Markdown drops the address of a link to
-another site. Nothing here keeps or logs what was searched (ASSISTANT-F17): a log line says the tool and the status.
+another site. Nothing here keeps or logs what was searched: a log line says the tool and the status.
 
 Two of Brave's conditions shape the search. Its terms allow no storing nor caching of its results, in whole or in part,
-beyond the transient (§3(b)(i)): a result lives in this turn's memory, reaches the model and nobody else, and there is no
-cache. Its privacy notice leaves the queries out of its data processing addendum: the model is told to search for what is
-looked for and nothing of anybody (``_SEARCH_QUERY_RULE``), a rule to a model and no guarantee.
+beyond the transient (section 3(b)(i)): a result lives in this turn's memory, reaches the model and nobody else, and
+there is no cache. Its privacy notice leaves the queries out of its data processing addendum: the model is told to
+search for what is looked for and nothing of anybody (``_SEARCH_QUERY_RULE``), a rule to a model and no guarantee.
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ from base import tls
 
 logger = logging.getLogger(__name__)
 
-#: The rounds of our tools a turn may take before the model must answer (the old product's safety cap).
+#: The rounds of our tools a turn may take before the model must answer.
 MAX_ROUNDS = 5
 #: A provider's call waits this long: the person is waiting for the answer.
 TIMEOUT = httpx.Timeout(connect=5.0, read=15.0, write=5.0, pool=5.0)

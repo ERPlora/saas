@@ -28,10 +28,12 @@
       "hub_employee": "Empleado"
     },
     "status": {
-      "error": "Sin preparar"
+      "error": "Sin preparar",
+      "maintenance": "En pausa por mantenimiento"
     },
     "reason": {
       "preparing": "Lo estamos preparando. Se abre solo cuando esté listo.",
+      "maintenance": "Alta en pausa por mantenimiento. Se reanuda solo; puedes comprobarlo ahora.",
       "error": "No hemos podido prepararlo. Seguimos reintentándolo; si sigue fallando, avísanos.",
       "pastDue": "Hay una factura sin pagar: págala para que el negocio no se suspenda.",
       "pastDueApp": "Hay una factura sin pagar. Para pagarla, entra en erplora.com desde el navegador.",
@@ -113,7 +115,10 @@
       "setup": "Preparando tu negocio",
       "setupType": "Preparando tu negocio: {type}",
       "opensAlone": "Se abre solo al terminar",
-      "ready": "Listo para abrir"
+      "ready": "Listo para abrir",
+      "maintenance": "Alta en pausa por mantenimiento: tu negocio estará listo en unos minutos.",
+      "checkNow": "Comprobar ahora",
+      "checkError": "No hemos podido comprobar el estado. Inténtalo otra vez."
     },
     "createModal": {
       "title": "Crear negocio",

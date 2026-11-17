@@ -1,12 +1,10 @@
-"""erplora.com in maintenance mode (ACCOUNTS-G82; PLAN-SAAS §1.1, «Modo mantenimiento»).
+"""erplora.com in maintenance mode.
 
 The staff turns it on in the admin («Site settings», ``base.models.SiteSettings``), never by ssh nor by a variable of
-the deploy (working rules §4). From then every visitor gets the maintenance page, 503 with ``Retry-After``, the answer
-search engines read as «down on purpose, come back» (Google, Shopify, Stripe), and a program (``/api/``) the JSON
-envelope with the code ``maintenance``. Ported from ERPlora/saas ``MaintenanceModeMiddleware``
-(``apps/dashboard/core/middleware/maintenance_middleware.py``, origin/develop c5ca8cae8) with its two gaps closed: the
-health checks stay out (the old one answered 503 there and the containers were marked sick), and so does every step of
-the staff's sign-in on the way to the admin (the old one cut it at the second factor).
+the deploy. From then every visitor gets the maintenance page, 503 with ``Retry-After``, the answer search engines read
+as «down on purpose, come back» (Google, Shopify, Stripe), and a program (``/api/``) the JSON envelope with the code
+``maintenance``. The health checks stay out, or the containers would be marked sick, and so does every step of the
+staff's sign-in on the way to the admin, the second factor included.
 
 Who keeps using everything: an active staff account with its browser session. What stays out for everyone: the
 health checks, the static files, the admin and the staff's sign-in (allauth's API, Google's return and the sign-in

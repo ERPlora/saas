@@ -1,12 +1,15 @@
-// Who ERPlora invoices (PLAN-SAAS §3.1; mockups `store.html` checkout note): asked once, before the first
-// payment, in the checkout dialog — legal name, tax ID (checked in VIES by the server), address, city,
-// postal code and country, or «use the business’s name and country». Ionic fields, outlined in `md`, each
-// with the server's message under it (`fieldErrors`, a 422). Country is an `ion-select`, never native.
+// Who ERPlora invoices, asked once before the first payment: Ionic fields outlined in `md`, each with the server's
+// message under it (a 422); the country is an `ion-select`, never native.
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { h, ref } from 'vue';
 
 import { ionProps, mountBilling, optionValue } from '../__tests__/mount-billing';
-import BillingDetailsForm, { type BillingDetailsDraft } from './BillingDetailsForm.vue';
+import BillingDetailsForm, { SOLD_TO_COUNTRIES, type BillingDetailsDraft } from './BillingDetailsForm.vue';
+
+const BILLING = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const EMPTY: BillingDetailsDraft = {
   billing_name: '',
@@ -49,9 +52,26 @@ describe('BillingDetailsForm', () => {
       { mode: 'md', fill: 'outline', label: 'Invoice email (optional)' },
     ]);
     expect(ionProps(s.field('country'), 'mode', 'fill', 'label', 'interface')).toEqual({ mode: 'md', fill: 'outline', label: 'Country', interface: 'popover' });
-    const countries = s.field('country').findAll('ion-select-option').map(optionValue);
-    expect(countries).toHaveLength(27);
-    expect(countries).toContain('ES');
+  });
+
+  it('offers only Spain as the billing country, and says so', async () => {
+    const s = await setup();
+    expect(s.field('country').findAll('ion-select-option').map(optionValue)).toEqual(['ES']);
+    expect(ionProps(s.field('country'), 'helperText')).toEqual({ helperText: 'For now ERPlora only invoices payers in Spain.' });
+  });
+
+  it('offers exactly the countries the server sells to (billing/vat.py SOLD_TO_COUNTRIES)', () => {
+    const vat = readFileSync(join(BILLING, 'vat.py'), 'utf8');
+    const listed = /SOLD_TO_COUNTRIES = frozenset\(\{([^}]*)\}\)/.exec(vat)?.[1].match(/[A-Z]{2}/g) ?? [];
+    expect(listed.length).toBeGreaterThan(0);
+    expect([...SOLD_TO_COUNTRIES].sort()).toEqual(listed.sort());
+  });
+
+  it('says where the tax ID is required, never that a VAT number takes the VAT off', async () => {
+    const s = await setup();
+    expect(ionProps(s.field('tax-id'), 'helperText')).toEqual({
+      helperText: 'Required in the Canary Islands, Ceuta and Melilla, where we only sell to businesses and professionals.',
+    });
   });
 
   it('writes what is typed into the draft', async () => {
@@ -80,5 +100,9 @@ describe('BillingDetailsForm', () => {
   it('speaks Spanish', async () => {
     const s = await setup({}, {}, 'es');
     expect(ionProps(s.field('name'), 'label')).toEqual({ label: 'Razón social' });
+    expect(ionProps(s.field('country'), 'helperText')).toEqual({ helperText: 'Por ahora ERPlora solo factura a pagadores en España.' });
+    expect(ionProps(s.field('tax-id'), 'helperText')).toEqual({
+      helperText: 'Obligatorio en Canarias, Ceuta y Melilla, donde solo vendemos a empresas y profesionales.',
+    });
   });
 });

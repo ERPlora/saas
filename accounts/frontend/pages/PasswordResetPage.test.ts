@@ -1,6 +1,5 @@
-// `/password/reset` («Forgot your password?»), over allauth.headless: the pages of ERPlora/saas's
-// templates `account/password_reset.html` (the address) and `password_reset_done.html` (check your
-// email), same structure and texts. allauth mails the link (to `/password/reset/key/<key>`) and
+// `/password/reset` («Forgot your password?»), over allauth.headless: the address, then «check your
+// email». allauth mails the link (to `/password/reset/key/<key>`) and
 // answers the same whether the address has an account or not, and so does the page: it never says
 // which.
 import { IonButton, IonInput } from '@ionic/vue';
@@ -152,7 +151,7 @@ describe('PasswordResetPage: sending the link', () => {
   });
 });
 
-describe('PasswordResetPage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts; Ioan, 2026-10-22)', () => {
+describe('PasswordResetPage: reCAPTCHA, invisible (accounts/frontend/recaptcha.ts)', () => {
   afterEach(forgetRecaptcha);
 
   it('asks the link with the token of `password_reset` and says reCAPTCHA protects the form', async () => {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Picks the environment a deploy or rollback run goes to (plan 2026-10-14-entorno-pre): a run of main
+# Picks the environment a deploy or rollback run goes to: a run of main
 # goes to prod, a run of pre goes to pre, and nothing else deploys. A manual run must name the
 # environment of its branch, and releases are prod's (pre deploys the branch's head only). Each
 # environment has its own deploy role (gha-deploy-<project> trusts main, gha-deploy-<project>-pre
@@ -56,7 +56,7 @@ else
 fi
 role_arn="${!role_variable:-}"
 if [ -z "$role_arn" ]; then
-  fail "$role_variable is empty: the $environment deploy role of $PROJECT (aws-next README)"
+  fail "$role_variable is empty: the $environment deploy role of $PROJECT (ERPlora/aws README)"
 fi
 if [ "$PROJECT" = hub ]; then
   readyz_host="hubs.$domain"

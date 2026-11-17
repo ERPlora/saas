@@ -1,9 +1,6 @@
-// The banner of an invoice Stripe could not charge, on top of Invoices (mockups `billing.html` «past-due»,
-// «suspended-norte», «card-updated»; README §4, §6.18 and §6.20; UX-AUDIT-4 R2, X-34): how much, of which
-// business, which invoice and since when; until when the business still works (7 days of grace) or that it
-// is suspended and nothing is deleted. On the web «Pay the invoice» is the main action; after a declined card
-// «Change card» is, and «Pay» waits with the reason next to it. Once the card changed, the banner says so and
-// «Pay» is back. Inside the apps, how to pay it, without a button nor a link.
+// The banner of an invoice Stripe could not charge, on top of Invoices. On the web «Pay the invoice» is the main
+// action; after a declined card «Change card» is, and «Pay» waits with the reason next to it. Inside the apps, how
+// to pay it, without a button nor a link.
 // clock: data only — no code under test compares these dates with now.
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -39,7 +36,7 @@ describe('UnpaidInvoiceNotice', () => {
     expect(s.wrapper.attributes('data-tone')).toBe('danger');
   });
 
-  it('dates are days, never the hour (audit 2026-10-14, R-15)', async () => {
+  it('dates are days, never the hour', async () => {
     const s = await notice({ invoice: unpaidRow('i1', { date: '2026-10-10T14:23:00Z' }), business: { ...PLAZA, unpaid_reason: 'payment_failed' } });
     expect(s.q('unpaid-body').text()).toBe(
       'Invoice REF-i1 of Oct 10, 2026 could not be collected. Pay it before Oct 17, 2026 or the business is suspended; nothing is deleted.',
@@ -102,7 +99,7 @@ describe('UnpaidInvoiceNotice', () => {
     expect(s.q('unpaid-change-card').exists()).toBe(false);
     expect(s.wrapper.findAll('[href]')).toEqual([]);
     if (surface === 'account') {
-      // Already in the browser (the account the app opens): why, not where (audit 2 S-09).
+      // Already in the browser (the account the app opens): why, not where.
       expect(s.q('unpaid-app').text()).toBe('This account was opened from the app: invoices are not paid from here.');
       return;
     }

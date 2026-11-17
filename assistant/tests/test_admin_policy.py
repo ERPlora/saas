@@ -1,4 +1,4 @@
-"""«Model that answers» in the admin (ASSISTANT-G17, G10, G60): one page for the one policy, with the model that
+"""«Model that answers» in the admin: one page for the one policy, with the model that
 answers and the fallback one, saved through ``assistant.policy.update`` as the member of the staff who clicks."""
 
 import pytest

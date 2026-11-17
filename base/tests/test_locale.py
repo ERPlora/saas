@@ -1,6 +1,6 @@
 """The Spanish catalog (``locale/es/LC_MESSAGES/django.mo``) covers every message of ``base`` and ``accounts``.
 
-UI in ``en`` + ``es`` (PLAN §5): a ``gettext`` literal without its Spanish entry reaches a Spanish
+UI in ``en`` + ``es``: a ``gettext`` literal without its Spanish entry reaches a Spanish
 visitor in English, and nothing else notices. This reads the compiled catalog, so a ``.po`` edited
 without ``compilemessages`` (``msgfmt``) fails too. Django's and allauth's catalogs do not count: a
 message of ours that only happens to match one of theirs would change meaning with their next

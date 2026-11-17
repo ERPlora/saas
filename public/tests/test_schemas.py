@@ -12,7 +12,7 @@ def test_the_release_takes_no_input():
 
 @pytest.mark.parametrize("version", ["1.4.0", None])
 def test_the_release_is_a_version_or_null(version):
-    """The Hub's contract (hub#400): ``{"version": str | null}``, never a number."""
+    """The Hub's contract: ``{"version": str | null}``, never a number."""
     assert AppReleaseOut(version=version).model_dump() == {"version": version}
 
 

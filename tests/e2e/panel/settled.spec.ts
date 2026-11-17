@@ -1,12 +1,13 @@
 // flow: saas-e2e-settled
-// The harness's `settled()` (fixtures.ts), the wait every capture and measurement of the panel's specs takes: once it
+// The harness's `settled()` (screen.ts), the wait every capture and measurement of the panel's specs takes: once it
 // returns, nothing on the screen moves any more. Ionic animates its overlays (`ion-toast`, `ion-modal`, `ion-popover`)
 // with Web Animations on elements of their shadow roots, which `document.getAnimations()` leaves out: a capture right
-// after it cut the toast at the bottom (FIX-SAAS-BILLING-INVOICE-DOWNLOAD-NETWORK-ERROR-ENGLISH, saas#78). The checks
+// after it cut the toast at the bottom (saas#78). The checks
 // here read the page on their own, never through `settled()`'s code.
 import type { Page } from '@playwright/test';
 
-import { expect, repeatedTop, settled, shot, test, VIEWPORTS } from './fixtures';
+import { expect, test } from './fixtures';
+import { repeatedTop, settled, shot, VIEWPORTS } from './screen';
 
 /** The finite animations running in the document and in every open shadow root under it, however deep. */
 const stillMoving = (page: Page) =>

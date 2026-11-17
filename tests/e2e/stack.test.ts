@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { DATABASE_READY } from './database';
+import { productionPolicies } from './django-env';
 import { GOOGLE_E2E, panelMailDir, panelServers } from './panel/project';
 import { databaseStep, publicNoticeServer, publicServer, recaptchaDoubleServer, runId, stackServers } from './playwright.config';
 import { E2E_RECAPTCHA_API_KEY } from './recaptcha';
@@ -123,6 +124,14 @@ describe("the stack's servers", () => {
     expect(server.env).not.toHaveProperty('DB_NAME');
   });
 
+  // DEBUG off refuses to start without them (config/settings/core.py; saas#395).
+  it('give both public servers the policies production is given explicitly', () => {
+    for (const stack of [SHARED, OWN]) {
+      expect(publicServer(SAAS_DIR, stack).env).toMatchObject(productionPolicies(stack));
+      expect(publicNoticeServer(SAAS_DIR, stack).env).toMatchObject(productionPolicies(stack));
+    }
+  });
+
   it("start an own stack's public server on its port and its database, with no migration in its two minutes", () => {
     const server = publicServer(SAAS_DIR, OWN);
     expect(server.command).toBe('uv run python manage.py runserver 127.0.0.1:8031 --novite --insecure --noreload');
@@ -175,7 +184,7 @@ describe("the stack's servers", () => {
     expect(publicServer(SAAS_DIR, OWN).env).not.toHaveProperty('CLARITY_PROJECT_ID');
   });
 
-  it('run the public server with reCAPTCHA off by default, as production since 2026-10-23', () => {
+  it('run the public server with reCAPTCHA off by default, as in production', () => {
     const env = publicServer(SAAS_DIR, SHARED, {}).env;
     expect(env).toMatchObject({ RECAPTCHA_ENABLED: 'False' });
     expect(env).not.toHaveProperty('RECAPTCHA_ENDPOINT');
@@ -221,7 +230,7 @@ describe("the stack's servers", () => {
     expect(panel()['panel-mfa-django'].env).toMatchObject({ RECAPTCHA_ENABLED: 'False' });
   });
 
-  it('send the public mails (the contact form, PUBLIC-G39) to a folder of the stack, never through SMTP', () => {
+  it('send the public mails (the contact form) to a folder of the stack, never through SMTP', () => {
     expect(publicServer(SAAS_DIR, SHARED).env).toMatchObject({
       EMAIL_BACKEND: 'django.core.mail.backends.filebased.EmailBackend',
       EMAIL_FILE_PATH: join(SAAS_DIR, 'tests', 'e2e', '.artifacts', 'public', 'mail'),
@@ -269,8 +278,8 @@ describe("the stack's servers", () => {
     expect(runId(stackFrom({ E2E_SAAS_PORT: '8040' }), now)).not.toBe(runId(OWN, now));
   });
 
-  // The second factor is off by default (ACCOUNTS_MFA_ENABLED, phase 1): the panel the specs play on is production's.
-  // Its flows (accounts/WORKBOOK.md, APP-ACCOUNTS-2) play on a twin with it on, a port above, on the same database,
+  // The second factor is off by default (ACCOUNTS_MFA_ENABLED): the panel the specs play on is production's.
+  // Its flows (accounts/WORKBOOK.md) play on a twin with it on, a port above, on the same database,
   // Vite, mail folder and Hub double, so a spec signs in on either with the same helpers. «Continue with Google»
   // (ACCOUNTS-F06) plays there too, because it hands over to that second factor: with a made-up Google app whose code
   // is exchanged with the stack's double, so no run needs a credential of Google or calls it.

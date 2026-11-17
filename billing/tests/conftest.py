@@ -2,6 +2,7 @@
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from live.context import OperationContext, Scope
 from live.meta import all_live_app_configs, permissions_for_role
 
@@ -89,6 +90,16 @@ def business_paid_by(db):
     return make
 
 
+@pytest.fixture
+def every_country_sold(monkeypatch):
+    """The engine as it sells once ``billing.vat.SOLD_TO_COUNTRIES`` reopens every country it already prices
+    (``BILLING_COUNTRIES``): for the tests of the engine itself. What is on sale today is
+    ``test_sold_to_spain_only.py``."""
+    from billing import vat
+
+    monkeypatch.setattr(vat, "SOLD_TO_COUNTRIES", frozenset(vat.BILLING_COUNTRIES))
+
+
 # --- Stripe ------------------------------------------------------------------------------------------
 
 
@@ -154,9 +165,20 @@ def shop(owner, plans):
 
 
 @pytest.fixture
+def marked(shop):
+    """``shop`` once ERPlora's staff marked it in the admin: its owner is offered the internal plans. ``payment-test``
+    gets its monthly Stripe price, as the admin fills it in (it has no annual one)."""
+    from hubs.models import Hub, Plan
+
+    Plan.objects.filter(slug="payment-test").update(stripe_price_id="price_payment-test_month")
+    Hub.objects.filter(pk=shop.pk).update(can_buy_internal_plans=True)
+    return Hub.objects.select_related("billing_profile").get(pk=shop.pk)
+
+
+@pytest.fixture
 def inventory(db):
     """A paid module on sale: 10 € a month, 100 € a year (net). Enterprise tier, so no plan the tests buy
-    (Starter, Standard: basic) includes it (lot L2-C: a plan includes the modules its level reaches)."""
+    (Starter, Standard: basic) includes it (a plan includes the modules its level reaches)."""
     from apps.models import Module
 
     return Module.objects.create(
@@ -176,13 +198,13 @@ def pay(hub, *, plan="starter", interval="month", modules=(), status="active", c
 
     from django.utils import timezone
 
-    from hubs import services as hub_services
+    from hubs.services import hub_callbacks, subscription_sync
     from hubs.models import Hub
     from hubs.schemas import ModuleRightIn, SubscriptionApplyIn
 
     now = timezone.now()
-    hub_services.subscription_apply(
-        hub_services.system_ctx_for(hub.id),
+    subscription_sync.subscription_apply(
+        hub_callbacks.system_ctx_for(hub.id),
         SubscriptionApplyIn(
             hub_id=hub.id,
             plan=plan,
@@ -198,3 +220,18 @@ def pay(hub, *, plan="starter", interval="month", modules=(), status="active", c
         ),
     )
     return Hub.objects.select_related("billing_profile").get(pk=hub.pk)
+
+
+@pytest.fixture
+def staff_client(client):
+    """The client signed in as a superuser of the admin."""
+    client.force_login(get_user_model().objects.create_superuser(email="root@example.com", password="x"))
+    return client
+
+
+def staff_with(*codenames):
+    """A member of the staff with only these permissions of the admin."""
+    user = get_user_model().objects.create_user(email=f"{'-'.join(codenames) or 'none'}@example.com", password="x",
+                                                is_staff=True)
+    user.user_permissions.add(*Permission.objects.filter(codename__in=codenames))
+    return user

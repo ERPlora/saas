@@ -1,17 +1,20 @@
-// flow: ninguno — contexto vivo del panel del SaaS (hermana de hub#190)
-// flow: ACCOUNTS-F09 — signing out in another tab of the same browser (FIX-SAAS-ACCOUNTS-SIGNOUT-AND-PASSWORD-DO-NOT-WAKE-STREAMS)
-// flow: ACCOUNTS-F08 — a new password from another browser (FIX-SAAS-ACCOUNTS-SIGNOUT-AND-PASSWORD-DO-NOT-WAKE-STREAMS)
-// FIX-SAAS-LIVE-ENDED-SESSION-KEEPS-RECEIVING (saas-live-session): a tab of the panel whose session ended stops
-// receiving live results and leaves for the sign-in by itself. Two browsers of the same account on Account → Security
-// (its live list of open sessions); the second one «Close the other sessions». The first one's next live re-run is the
-// stream's end (`bye`, 401 `base.session_ended`, `base/operations.py`), its reopening without a session is a 401 and
-// `@erplora/ui` reloads the page (ui#25), which ends at /launch. Before the fix, its list just lost a row and stayed.
-// At the three sizes of the migration (390×844, 834×1112, 1440×900). Accounts of this spec: `e2e-liveend-…@example.com`,
-// removed before and after.
-import { type Browser, type Page } from '@playwright/test';
+// flow: none — the live context of the SaaS panel
+// flow: ACCOUNTS-F09 — signing out in another tab of the same browser
+// flow: ACCOUNTS-F08 — a new password from another browser
+// saas-live-session: a tab of the panel whose session ended stops receiving live results and leaves for the sign-in by
+// itself. Two browsers of the same account on Account → Security (its live list of open sessions); the second one
+// «Close the other sessions». The first one's next live re-run is the stream's end (`bye`, 401 `base.session_ended`,
+// `base/operations.py`), its reopening without a session is a 401 and `@erplora/ui` reloads the page, which ends at
+// /launch. Without that, its list would just lose a row and stay. At three sizes (390×844, 834×1112, 1440×900).
+// Accounts of this spec: `e2e-liveend-…@example.com`, removed before and after.
+import { type Browser, type BrowserContext, type Page } from '@playwright/test';
 
-import { VIEWPORTS, djangoPrint, expect, sessionOf, settled, shot, signIn, test, watchPageErrors } from './fixtures';
+import { createAccountWarm, type Credentials, removeAccountsWarm } from './accounts';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
 import { PANEL_URL } from './project';
+import { settled, shot, type Viewport, VIEWPORTS } from './screen';
+import { sessionOf, signIn } from './session';
 
 const PREFIX = 'e2e-liveend-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
@@ -21,35 +24,41 @@ const NEW_PASSWORD = 'Pan-de-espelta-y-sal-2026';
 /** Account → Security, left for the sign-in that brings it back there. */
 const LEFT_FOR_SIGN_IN = /\/launch\?next=(%2F|\/)dashboard(%2F|\/)account(%2F|\/)security$/;
 
-function removeAccounts(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
-}
-
-/** An account with its address proven, as one that signed in before. */
-function createAccount(name: string): { email: string; password: string } {
-  const email = `${PREFIX}${name}-${Date.now()}@example.com`;
-  djangoPrint(
-    [
-      'from allauth.account.models import EmailAddress',
-      'from django.contrib.auth import get_user_model',
-      `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}")`,
-      'EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)',
-    ].join('\n'),
-  );
-  return { email, password: PASSWORD };
-}
+/** An account with its address proven, as one that signed in before (by the warm Django: no boot inside the test). */
+const createAccount = (name: string): Promise<Credentials> => createAccountWarm(`${PREFIX}${name}-${Date.now()}@example.com`, PASSWORD);
 
 async function newContextOn(browser: Browser, baseURL: string) {
   return browser.newContext({ baseURL, locale: 'en-US' });
 }
 
-test.beforeAll(removeAccounts);
-test.afterAll(removeAccounts);
+/**
+ * A new account (`createAccount(name)`) signed in on `page` at `size` and in another browser, `page` on Account →
+ * Security listing both sessions: how each test of a session ended from another browser starts. That browser, to close.
+ */
+async function signedInTwice(
+  page: Page,
+  browser: Browser,
+  size: Viewport,
+  name: string,
+): Promise<{ account: Credentials; other: BrowserContext }> {
+  const account = await createAccount(name);
+  await page.setViewportSize(size);
+  await signIn(page.request, account);
+  const other = await newContextOn(browser, PANEL_URL);
+  try {
+    await signIn(other.request, account);
+    await page.goto('/dashboard/account/security');
+    await expect(page.getByTestId('sessions-row')).toHaveCount(2);
+  } catch (error) {
+    await other.close();
+    throw error;
+  }
+  return { account, other };
+}
+
+// The first call boots this worker's warm Django: here, on no test's clock.
+test.beforeAll(() => removeAccountsWarm(PREFIX));
+test.afterAll(() => removeAccountsWarm(PREFIX));
 
 for (const size of VIEWPORTS) {
   test(`saas-live-session: a tab whose session was closed from another browser stops receiving live results and leaves for the sign-in (${size.width})`, async ({
@@ -57,16 +66,9 @@ for (const size of VIEWPORTS) {
     browser,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(String(size.width));
-    await page.setViewportSize(size);
-    await signIn(page.request, account);
-    const other = await newContextOn(browser, PANEL_URL);
+    const { account, other } = await signedInTwice(page, browser, size, String(size.width));
     try {
-      await signIn(other.request, account);
-      await page.goto('/dashboard/account/security');
-      const rows = page.getByTestId('sessions-row');
-      await expect(rows).toHaveCount(2);
-      await expect(rows.first()).toContainText('This session');
+      await expect(page.getByTestId('sessions-row').first()).toContainText('This session');
 
       // The other browser closes every session but its own: this tab's among them.
       const otherPage = await other.newPage();
@@ -103,24 +105,18 @@ async function signOutFromUserMenu(page: Page): Promise<void> {
   await page.getByTestId('user-menu-logout').click();
 }
 
-// FIX-SAAS-ACCOUNTS-SIGNOUT-AND-PASSWORD-DO-NOT-WAKE-STREAMS: signing out (allauth.headless `DELETE auth/session`) and a
-// new password (`account/password/change`) record `accounts.session.closed` on the account's channel, as «Close the other
-// sessions» does: the tabs whose session ended leave for the sign-in by themselves, without reloading and without waiting
-// for another event. Before the fix the outbox stayed empty and the tab stayed on screen with what it last saw.
+// Signing out (allauth.headless `DELETE auth/session`) and a new password (`account/password/change`) record
+// `accounts.session.closed` on the account's channel, as «Close the other sessions» does: the tabs whose session ended
+// leave for the sign-in by themselves, without reloading and without waiting for another event. Without it the outbox
+// would stay empty and the tab would stay on screen with what it last saw.
 for (const size of VIEWPORTS) {
   test(`ACCOUNTS-F09: signing out in another tab of the same browser takes this tab to the sign-in, and the other browser's list loses that session (${size.width})`, async ({
     page,
     browser,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(`${size.width}-signout`);
-    await page.setViewportSize(size);
-    await signIn(page.request, account);
-    const other = await newContextOn(browser, PANEL_URL);
+    const { account, other } = await signedInTwice(page, browser, size, `${size.width}-signout`);
     try {
-      await signIn(other.request, account);
-      await page.goto('/dashboard/account/security');
-      await expect(page.getByTestId('sessions-row')).toHaveCount(2);
       const otherPage = await other.newPage();
       await otherPage.goto('/dashboard/account/security');
       await expect(otherPage.getByTestId('sessions-row')).toHaveCount(2);
@@ -153,14 +149,8 @@ for (const size of VIEWPORTS) {
     browser,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(`${size.width}-password`);
-    await page.setViewportSize(size);
-    await signIn(page.request, account);
-    const other = await newContextOn(browser, PANEL_URL);
+    const { account, other } = await signedInTwice(page, browser, size, `${size.width}-password`);
     try {
-      await signIn(other.request, account);
-      await page.goto('/dashboard/account/security');
-      await expect(page.getByTestId('sessions-row')).toHaveCount(2);
 
       // The other browser changes the password on Account → Security.
       const otherPage = await other.newPage();
@@ -187,11 +177,11 @@ for (const size of VIEWPORTS) {
   });
 }
 
-// flow: live-session-events — FIX-LIVE-SESSION-CLOSED-WAKES-ONLY-SESSION-LIST: a tab on a page without the live list of
-// sessions (Businesses, Profile) also leaves for the sign-in when its session ends elsewhere. `accounts.session.closed`
-// is the session event of `LIVE["session_events"]` (config/settings.py): every stream of the account re-reads its
-// context and the one whose session ended says `bye`, whatever its page subscribes to; a tab whose session lives
-// stays. Before the fix only the live list of sessions heard the event: Businesses and Profile stayed on screen.
+// flow: live-session-events — a tab on a page without the live list of sessions (Businesses, Profile) also leaves for
+// the sign-in when its session ends elsewhere. `accounts.session.closed` is the session event of
+// `LIVE["session_events"]` (config/settings/web.py): every stream of the account re-reads its context and the one whose
+// session ended says `bye`, whatever its page subscribes to; a tab whose session lives stays. If only the live list of
+// sessions heard the event, Businesses and Profile would stay on screen.
 const SESSION_KEY = 'FIX-LIVE-SESSION-CLOSED-WAKES-ONLY-SESSION-LIST';
 /** Two pages whose live queries never listen to `accounts.session.closed`, and what shows each one loaded. */
 const PAGES = [
@@ -205,7 +195,7 @@ for (const size of VIEWPORTS) {
       page,
     }) => {
       const errors = watchPageErrors(page);
-      const account = createAccount(`${size.width}-${target.name}`);
+      const account = await createAccount(`${size.width}-${target.name}`);
       await page.setViewportSize(size);
       await signIn(page.request, account);
       await page.goto(target.path);
@@ -234,7 +224,7 @@ for (const size of VIEWPORTS) {
     browser,
   }) => {
     const errors = watchPageErrors(page);
-    const account = createAccount(`${size.width}-close-others`);
+    const account = await createAccount(`${size.width}-close-others`);
     const [businesses, profile] = PAGES;
     await page.setViewportSize(size);
     await signIn(page.request, account);

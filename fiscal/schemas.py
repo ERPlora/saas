@@ -1,4 +1,4 @@
-"""Schemas of fiscal: the contract with the Hub (plan 2026-10-15, «Contrato»), the panel's state of the
+"""Schemas of fiscal: the contract with the Hub, the panel's state of the
 authorisation and the reviews of the staff.
 
 What the Hub posts is read leniently (every field a string, empty when left out): the rules are the service's

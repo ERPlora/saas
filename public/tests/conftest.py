@@ -18,6 +18,11 @@ RESPONSE_TOKEN = re.compile(
 )
 
 
+@pytest.fixture(autouse=True)
+def public_indexing(settings):
+    settings.PUBLIC_INDEXING_ENABLED = True
+
+
 def without_tokens(html: str) -> str:
     """The page without its per-response tokens: random strings, not what the page says."""
     return RESPONSE_TOKEN.sub(r"\1", html)

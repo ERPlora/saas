@@ -1,8 +1,8 @@
 """base.session.me: who is in front of the SaaS SPA, in the shape the shell reads.
 
-A signed-in account gets the panel's menu of ``base/navigation.py`` (round 17, PLAN-SAAS §3.6
-point 1), translated into its language, with the Store marked ``webOnly``; ``apps`` stays empty (the
-SaaS has no modules, PLAN §20.3.5). An anonymous visitor gets ``user: None`` and no menu, which tells
+A signed-in account gets the panel's menu of ``base/navigation.py``, translated into its language,
+with the Store marked ``webOnly``; ``apps`` stays empty (the SaaS has no modules). An anonymous
+visitor gets ``user: None`` and no menu, which tells
 the shell's auth gate to send it to the login.
 """
 

@@ -4,9 +4,9 @@ at Meta its templates live in.
 ``known_hub`` and ``channel_block`` are plain functions called inside the commands of ``services`` (in their
 transaction) and by ``hubs.queries`` for the snapshot (the Hub reads the channel only there).
 ``whatsapp.template.account`` is the read ``gateway`` makes before it calls Meta for a business's templates, and
-``whatsapp.number.renewal_due`` the numbers whose permission is renewed today (WHATSAPP-G12);
+``whatsapp.number.renewal_due`` the numbers whose permission is renewed today;
 ``whatsapp.number.connecting`` the business a connection is for and the PIN its number already has (doors 10, 11);
-``whatsapp.media.locate`` the attachment a person of the business opens (WHATSAPP-G07);
+``whatsapp.media.locate`` the attachment a person of the business opens;
 ``whatsapp.delivery.next_due`` when the next delivery to the Hub is due: the ``saas-worker`` sleeps until then
 (saas#305). ``behind_a_waiting_message`` is the rule of the order of each business's messages, shared with
 ``services.delivery_claim``.
@@ -24,7 +24,7 @@ from live.errors import Conflict, NotFound
 from live.operations import INTERNAL, operation
 
 from hubs.models import Hub, HubMember
-from hubs.services import LIVE_STATUSES
+from hubs.services.hub_push import LIVE_STATUSES
 from whatsapp.models import Delivery, PhoneNumber, Template, Usage
 from whatsapp.schemas import (
     ConnectingIn,
@@ -94,20 +94,20 @@ def known_hub(ref: str, *, live: bool = True) -> Hub | None:
 
 
 def channel_block(hub_id: UUID, *, version: int | None = None) -> dict[str, Any]:
-    """The business's WhatsApp as the Hub keeps it: door 3's body without ``hub`` (WHATSAPP-G03, WHATSAPP-G05), the
+    """The business's WhatsApp as the Hub keeps it: door 3's body without ``hub``, the
     ``whatsapp`` key of its snapshot (door 4) at ``version`` (the snapshot's; its state version when missing).
 
     ``templates`` is ``None`` without a connected number (nothing is known of an account at Meta: the Hub keeps its
     own) and the mirror of Meta's otherwise. ``monthly_limit`` is the plan's ``whatsapp_messages_per_month`` (0: the
     plan includes none, and erplora.com refuses every send), ``monthly_usage`` this calendar month's (UTC) sends.
     """
-    from hubs import queries as hubs_queries
+    from hubs.queries import plan_catalog
 
     now = timezone.now()
     month = now.strftime("%Y-%m")
     if version is None:
         version = Hub.objects.filter(pk=hub_id).values_list("state_version", flat=True).get()
-    plan = hubs_queries.effective_plan(hub_id, now)
+    plan = plan_catalog.effective_plan(hub_id, now)
     number = PhoneNumber.objects.filter(hub_id=hub_id, is_active=True).first()
     used = Usage.objects.filter(hub_id=hub_id, month=month).values_list("used", flat=True).first() or 0
     status = "not_connected" if number is None else "reconnect_needed" if number.needs_reconnect else "connected"

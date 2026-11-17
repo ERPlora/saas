@@ -1,9 +1,6 @@
-// «Pay the invoice» of an invoice Stripe could not charge (mockups `billing.html` «past-due» → «paying» →
-// «paid»; README §6.18 and §6.20; UX-AUDIT-4 R2): `billing.invoice.pay` answers Stripe's page for it and
-// the page goes there. One press pays once: from the press until the page leaves it says «Paying…» and
-// every «Pay» of the page waits (no double charge). A card the bank declined, or another account paying
-// the business, keeps it disabled with the reason next to it (`aria-describedby`). Back from Stripe
-// through the browser's cache, nothing is being paid any more.
+// «Pay the invoice»: `billing.invoice.pay` answers Stripe's page and the page goes there. One press pays once: until
+// the page leaves every «Pay» of the page waits (no double charge). Back from Stripe through the browser's cache,
+// nothing is being paid any more.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 

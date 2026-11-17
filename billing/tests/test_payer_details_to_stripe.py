@@ -1,12 +1,10 @@
-"""The payer's Stripe customer takes the billing details the owner saves (BILLING-F01; registry BILLING-G26).
+"""The payer's Stripe customer takes the billing details the owner saves (BILLING-F01).
 
-Ported from ERPlora/saas ``apps/dashboard/organizations`` (``update_billing`` → ``OrganizationStripeService
-.sync_billing_info``; fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar, origin/develop):
-saving the billing card updated the Stripe Customer when it existed. Without it the customer keeps the old name,
+Saving the billing card updates the Stripe Customer when it exists. Without it the customer keeps the old name,
 address and e-mail until the next checkout, so what Stripe itself sends (the page to confirm a renewal the bank
 wants authenticated, its receipts) and what the Customer Portal shows go on with the old ones.
 
-Adapted: ERPlora's invoices take the details from erplora.com, never from Stripe (BILLING-F25); the push only keeps
+ERPlora's invoices take the details from erplora.com, never from Stripe (BILLING-F25); the push only keeps
 the customer in step, after the COMMIT, and a payer Stripe never saw gets no customer for it (the first checkout
 creates it, BILLING-F07/F08). The same parameters as the checkout's ``ensure_customer``.
 """
@@ -37,7 +35,7 @@ def paying(shop, stripe_double):
 
 
 def save(owner, hub, **details):
-    from hubs import services as hub_services
+    from hubs.services import billing_profiles
     from hubs.schemas import BillingProfileIn
 
     values = {
@@ -49,14 +47,14 @@ def save(owner, hub, **details):
         "billing_email": "facturas@panaderialopez.es",
         **details,
     }
-    return hub_services.billing_profile_update(ctx_for(owner), BillingProfileIn(hub_id=hub.id, **values))
+    return billing_profiles.billing_profile_update(ctx_for(owner), BillingProfileIn(hub_id=hub.id, **values))
 
 
 class TestSavingTheBillingDetails:
     def test_the_stripe_customer_takes_them_after_the_commit(
         self, shop, owner, stripe_double, django_capture_on_commit_callbacks
     ):
-        """BILLING-G26: name, address, e-mail and language reach the payer's customer, once committed."""
+        """Name, address, e-mail and language reach the payer's customer, once committed."""
         paid = paying(shop, stripe_double)
 
         with django_capture_on_commit_callbacks(execute=False) as callbacks:

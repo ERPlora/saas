@@ -1,4 +1,4 @@
-"""Every euro given back is a rectifying invoice of ERPlora's (review of L3-C; RD 1619/2012 art. 15).
+"""Every euro given back is a rectifying invoice of ERPlora's (RD 1619/2012 art. 15).
 
 An issued invoice is never modified (CLAUDE.md, «Fiscal»): what corrects it is a rectifying invoice of its own
 series (``ERPR``), with negative amounts, the qualification and the recipient of the one it rectifies and its

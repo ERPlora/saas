@@ -1,12 +1,13 @@
-// reCAPTCHA Enterprise in the e2e. The public server is production-like (DEBUG off), so reCAPTCHA is off there, as
-// in production since 2026-10-23 (Ioan: the WAF on the ALB, the attempt limits), unless the run asks for it with
+// reCAPTCHA Enterprise in the e2e. The public server is production-like (DEBUG off), so reCAPTCHA is off there, as in
+// production (the WAF on the load balancer and the attempt limits keep bots out), unless the run asks for it with
 // `E2E_RECAPTCHA=1` (`recaptchaOn`): then it asks the double of recaptcha-double.ts for its assessments
 // (`RECAPTCHA_ENDPOINT`), with an API key that is not Google's, and its pages get a fake enterprise.js
-// (`fakeGoogleRecaptcha`) whose tokens the double reads (`e2e-human:<action>`, `e2e-bot:<action>`). The fake works as Google's does where the page's
-// policies are concerned: our code inserts www.google.com/recaptcha/enterprise.js, which inserts its release from
-// www.gstatic.com by a plain string with the page's nonce, and the release creates the `goog#html` Trusted Types
-// policy and paints the badge. So a CSP or a Trusted Types policy that would block Google blocks the fake too.
-// The panel's servers run with reCAPTCHA off (panel/project.ts): their specs sign in through the API.
+// (`fakeGoogleRecaptcha`) whose tokens the double reads (`e2e-human:<action>`, `e2e-bot:<action>`). The fake works as
+// Google's does where the page's policies are concerned: our code inserts www.google.com/recaptcha/enterprise.js, which
+// inserts its release from www.gstatic.com by a plain string with the page's nonce, and the release creates the
+// `goog#html` Trusted Types policy and paints the badge. So a CSP or a Trusted Types policy that would block Google
+// blocks the fake too. The panel's servers run with reCAPTCHA off (panel/project.ts): their specs sign in through the
+// API.
 //
 // The site key the public server hands its pages is the checkout's own (`.env`, localhost) when there is one, so
 // recaptcha.spec.ts can also load Google's real script on `localhost` (its token is checked against nothing).

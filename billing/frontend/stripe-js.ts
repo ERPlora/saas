@@ -1,7 +1,6 @@
-// Stripe.js for the Embedded Checkout (PLAN-SAAS §3.6 point 17; plan §7 point 5). The one script the SaaS
-// takes from another origin — PCI: Stripe.js is never served by us — loaded only when a payment opens,
-// and only on the web: the apps and the account surface sell nothing (round 17 §2.6), so off the web it
-// refuses before touching the page.
+// Stripe.js for the Embedded Checkout. The one script the SaaS takes from another origin — PCI: Stripe.js is never
+// served by us — loaded only when a payment opens, and only on the web: the apps and the account surface sell
+// nothing, so off the web it refuses before touching the page.
 //   - Our code inserts it (CSP `'strict-dynamic'` trusts what a nonced script inserts) and gives it the
 //     page's nonce as well, for a browser without `'strict-dynamic'`.
 //   - Production enforces Trusted Types (`require-trusted-types-for 'script'`): a script's address is a

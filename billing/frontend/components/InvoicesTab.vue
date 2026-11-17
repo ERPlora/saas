@@ -1,24 +1,15 @@
 <script setup lang="ts">
-// Billing → Invoices (mockups `billing.html`; README §3b, §4 and §6.18; UX-AUDIT-4 W-F9, W-F15, V-34, X-18):
-// ERPlora's invoices of every business the account owns or pays, live (`billing.invoice.list`), in a
-// server-side DataTable that turns into cards up to 1100 px:
-//   - invoice (our number; Stripe's reference until it is paid; under a credit note, «Credit note» and the
-//     invoice it rectifies, which finds it; with its VeriFactu type and reason, «Credit note R1 · reason»), date,
-//     business, amount and status («Not collected», «Issuing» until the platform hub issues it, «Paid»);
-//   - filters by business — also `?business=` (an unknown one shows every invoice, saying so) —, status and
-//     year, kept in the address (Subscriptions links here with them), in ONE «Filters» control of the toolbar
-//     (InvoiceFilters: a popover; Ioan 2026-10-14, the toolbar on one line at 1440 px); a search by number;
-//   - the list fills the page between the topbar and the tabbar (`fill`, a `.panel-fill` stack); rows per page
-//     only past the shortest page (README §3b);
-//   - per row, «Pay» (fixed and labelled; web only; disabled while it waits for another card), the PDF
-//     once issued and «View invoice», its page (BILLING-G05); a selection with «Download PDF (n)», n the
-//     issued ones, and a note above the list for the ones without a PDF: unpaid (none until it is paid) or still being issued (audit 2 S-01);
-//   - «Download Excel»: the CSV of everything the filters show, for the accountant. The toolbar stays on one
-//     line from 641 px (audit 2026-10-14, R-14): when the button falls to a second line it folds to its icon
-//     (named by its label) and the search narrows (`toolbar-fit.ts`); on a phone it reads «Excel».
-// Files are asked for and saved only when the answer is the file (`browser.ts`; audit 2026-10-14, R-05): one
-// still being issued (404) says so and its PDF waits, the invoice service down (503) says it, and nothing is
-// ever saved as `pdf.json`. Empty, it says why (Free charges nothing); failing, it says it could not load.
+// Billing → Invoices: ERPlora's invoices of every business the account owns or pays, live, in a server-side
+// DataTable that turns into cards up to 1100 px.
+//   - A credit note shows «Credit note» and the invoice it rectifies, with its VeriFactu type and reason.
+//   - The filters (business, status, year) live in the address, so Subscriptions links here with them; an unknown
+//     `?business=` shows every invoice, saying so. They sit in ONE «Filters» control so the toolbar keeps one line.
+//   - «Download PDF (n)» counts only the issued ones; a note above the list names the ones without a PDF: unpaid
+//     (none until it is paid) or still being issued.
+//   - «Download Excel» is the CSV of everything the filters show. When it falls to a second line it folds to its
+//     icon and the search narrows (`toolbar-fit.ts`); on a phone it reads «Excel».
+// Files are saved only when the answer is the file (`browser.ts`): one still being issued (404) says so, the
+// invoice service down (503) says it, and nothing is ever saved as `pdf.json`.
 import { DataTable, type DataTableAction, type DataTableActionEvent, type DataTableColumn, InlineFeedback, StatusPill } from '@erplora/ui/components';
 import { HubIcon, toastError, toastInfo, useSurface, WebOnly } from '@erplora/ui/shell';
 import { type ApiError, useLive, useLiveClient } from '@erplora/ui/sdk';
@@ -41,7 +32,7 @@ import InvoiceFilters from './InvoiceFilters.vue';
 const PAGE_SIZES = [10, 25, 50];
 /** The most rows one page of `billing.invoice.list` holds (its `limit`, 100): past it a phone pages (`maxWindow`). */
 const PAGE_MAX = 100;
-/** README §3b: the invoices' list is wide; cards up to 1100 px. */
+/** The invoices' list is wide: cards up to 1100 px. */
 const CARD_BREAKPOINT = 1100;
 const STATUSES: InvoicePaymentStatus[] = ['paid', 'open'];
 
@@ -145,7 +136,7 @@ const live = useLive('billing.invoice.list', () => ({
 }));
 const rows = computed<InvoiceRowOut[]>(() => live.data.value?.rows ?? []);
 /** Loading, failed (the query, the stream, or nothing in time) or a real answer: never «No invoices yet» on a
- *  failure (audit 2026-10-14, R-04). The businesses only feed the filter: their failure blocks nothing. */
+ *  failure. The businesses only feed the filter: their failure blocks nothing. */
 const state = useLiveState(live, { isEmpty: (data) => data.total === 0 });
 const loadError = computed(() => (state.failed.value ? text(state.error.value) || t('billing.load.reason') : undefined));
 
@@ -183,7 +174,7 @@ const columns = computed(() => [
 const labels = computed(() => ({ loadError: t('billing.invoices.loadError'), retry: t('billing.invoices.retry') }));
 const entityLabel = (count: number) => t('billing.invoices.entity', count);
 
-/** Per row, what the server says (`actions`): «Pay» stays when the others fold (README §3b). */
+/** Per row, what the server says (`actions`): «Pay» stays when the others fold. */
 const actions = computed<DataTableAction<InvoiceRowOut>[]>(() => [
   {
     id: 'pay',
@@ -206,7 +197,7 @@ const actions = computed<DataTableAction<InvoiceRowOut>[]>(() => [
     loading: (row) => fetching.value.has(row.id),
   },
   {
-    // Its page: lines, totals and who it is made out to (BILLING-G05, the «View» of BILLING-G92).
+    // Its page: lines, totals and who it is made out to.
     id: 'view',
     label: t('billing.invoicePage.view'),
     icon: 'ion:receipt-outline',
@@ -343,7 +334,7 @@ async function downloadPdfs(invoices: InvoiceRowOut[]): Promise<void> {
 }
 
 /** The selected invoices that have their PDF, and how many have none yet: unpaid (an unpaid invoice has no PDF
- *  until it is paid) or paid and still being issued (audit 2 S-01: «still being issued» was false for an unpaid one). */
+ *  until it is paid) or paid and still being issued. */
 const selection = computed(() => {
   void rows.value; // `seen` follows the list
   const hasPdf = (row: InvoiceRowOut) => row.can.pdf && !notIssued.value.has(row.id);
@@ -387,7 +378,7 @@ async function downloadCsv(): Promise<void> {
 }
 
 // ── Empty ───────────────────────────────────────────────────────────────────────────────────────
-/** Only a business on Free is filtered: it has no invoices, and says so (X-18). */
+/** Only a business on Free is filtered: it has no invoices, and says so. */
 const freeBusiness = computed(() => {
   if (!hubId.value || status.value || year.value || search.value.trim()) return null;
   const row = options.value.find((business) => business.id === hubId.value);
@@ -593,7 +584,7 @@ const freeBusiness = computed(() => {
   display: none;
 }
 /* Folded (`toolbar-fit.ts`): «Download Excel» is its icon, named by its aria-label, and the search narrows
-   (DataTable's own box: 22rem, at least 12rem), so the toolbar keeps one line from 641 px (R-14). */
+   (DataTable's own box: 22rem, at least 12rem), so the toolbar keeps one line from 641 px. */
 @media (min-width: 641px) {
   .invoices--compact .csv-label--long {
     display: none;
@@ -612,7 +603,7 @@ const freeBusiness = computed(() => {
   .csv-label--short {
     display: inline;
   }
-  /* A real tap target on a phone (audit 2026-10-14, R-13). */
+  /* A real tap target on a phone. */
   .invoices-tool {
     min-height: 44px;
   }

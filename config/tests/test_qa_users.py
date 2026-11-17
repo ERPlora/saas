@@ -2,7 +2,7 @@
 
 The root ``.env`` of erplora-next lists them (``QA_*``, README «Usuarios QA»), with the same values the seeds
 fall back to, so both agree by construction; exported (``set -a; . ../.env; set +a``), they are the ones the
-seeds create and the specs sign in with (``tests/e2e/panel/fixtures.ts``). ``demo_seed``'s are
+seeds create and the specs sign in with (``tests/e2e/panel/accounts.ts``). ``demo_seed``'s are
 ``hubs/tests/test_demo_seed.py``'s.
 """
 

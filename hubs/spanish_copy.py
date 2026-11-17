@@ -1,7 +1,6 @@
-"""Is this Spanish column written in Spanish, with its accents? (saas#2017, saas#2027)
+"""Is this Spanish column written in Spanish, with its accents?
 
-Ported from ERPlora/saas ``public/blueprints/diacritics.py`` and ``public/catalog/spanish_copy.py``
-(origin/develop). Two closed lists measure the ``_es`` columns of the taxonomy, never the ``_en``
+Two closed lists measure the ``_es`` columns of the taxonomy, never the ``_en``
 ones («salon», «menu» and «cafe» are ordinary English words):
 
 - **Folded Spanish** (``find_stripped_diacritics``): every key of ``SPANISH_WITHOUT_DIACRITICS`` is
@@ -172,7 +171,7 @@ SPANISH_WITHOUT_DIACRITICS: dict[str, str] = {
     "unica": "única",
     "unicos": "únicos",
     "unicas": "únicas",
-    # ── the taxonomy of sectors and activities (saas#2017) ──
+    # ── the taxonomy of sectors and activities ──
     # 189 of its 190 Spanish strings reached production folded: «Barberia», «Panaderia /
     # Pasteleria», «Asesoria Fiscal», «Servicios de Automocion».
     "administracion": "administración",

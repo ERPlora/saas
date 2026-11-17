@@ -1,0 +1,88 @@
+{
+  "accounts/frontend/pages/TwoFactorSettingsPage.vue": {
+    "vue/max-lines-per-block": {
+      "count": 2
+    }
+  },
+  "billing/frontend/components/CheckoutModal.vue": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "vue/max-lines-per-block": {
+      "count": 1
+    }
+  },
+  "billing/frontend/components/InvoicesTab.vue": {
+    "vue/max-lines-per-block": {
+      "count": 1
+    }
+  },
+  "billing/frontend/components/PlanCard.vue": {
+    "complexity": {
+      "count": 2
+    }
+  },
+  "billing/frontend/components/StoreShop.vue": {
+    "vue/max-lines-per-block": {
+      "count": 2
+    }
+  },
+  "frontend/live-state.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "hubs/frontend/components/CustomDomainCard.vue": {
+    "vue/max-lines-per-block": {
+      "count": 1
+    }
+  },
+  "hubs/frontend/pages/BusinessListPage.vue": {
+    "vue/max-lines-per-block": {
+      "count": 2
+    }
+  },
+  "hubs/frontend/pages/LaunchPage.vue": {
+    "vue/max-lines-per-block": {
+      "count": 1
+    }
+  },
+  "scripts/gen-public-icons.mjs": {
+    "max-params": {
+      "count": 1
+    }
+  },
+  "tests/e2e/assistant-battery.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "tests/e2e/assistant-probes.ts": {
+    "complexity": {
+      "count": 3
+    }
+  },
+  "tests/e2e/assistant-provider.ts": {
+    "complexity": {
+      "count": 2
+    }
+  },
+  "tests/e2e/panel/assistant-battery.spec.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "tests/e2e/panel/chrome.spec.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "tests/e2e/qa-probes.ts": {
+    "complexity": {
+      "count": 1
+    }
+  }
+}

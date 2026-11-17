@@ -1,36 +1,20 @@
-"""The app store of the public web: ``/apps/``, ``/apps/<id>/`` and ``/apps/<id>/docs/`` (spec §5,
-§8.1–§8.3, decisions 17 and 19).
+"""The app store of the public web: ``/apps/``, ``/apps/<id>/`` and ``/apps/<id>/docs/``.
 
-The store reads the catalog the Hub registers in ``shared.app`` through the operations of apps
-(``apps.app.list``, ``apps.app.get``, ``apps.app.doc``): the rows below are set up with
-``apps/tests/factories.py``, as the Hub's ``register_apps`` would write them.
+The store reads the catalog the Hub registers in ``shared.app`` through the operations of apps (``apps.app.list``,
+``apps.app.get``, ``apps.app.doc``): the rows below are set up with ``apps/tests/factories.py``, as the Hub's
+``register_apps`` would write them.
 
-Ported and adapted from ERPlora/saas (origin/develop c5ca8ca):
-
-- ``modules/tests/test_detail_docs_from_db.py`` (3): the documentation is the markdown of
-  ``shared.app_doc``, rendered by ``apps.app.doc`` (it was README/CHANGELOG on the Module row). There
-  is no changelog any more (spec §8.1), so that case became «no changelog, reviews, tiers or payment».
-- ``modules/tests/test_detail_install_cta.py`` (16): the button follows who is looking. The three
-  audiences are two now: the SaaS no longer links a hub's own apps page (the Hub turns apps on, the
-  panel picks the hub), so a visitor is offered «Start free» (the sign-in, where the account is
-  created) and a customer «Go to dashboard» (the launcher). The tombstone cases are gone with the
-  publication states: an unlisted app is a 404 (spec §9, ``test_module_detail_serves_a_tombstone_
-  not_a_hole.py`` is not ported).
-- ``tests/unit/modules/test_module_detail_structured_data.py`` (18), to the JSON-LD of spec §8.2:
-  every app at ``0``, the one flagged ``premium`` too: every plan includes all the apps, the Free one
-  as well (ronda 2026-10-24b, PLAN §32; before, decision 17 priced a premium app at the cheapest paid
-  plan, L7);
-  tiers, intervals, one-time and pay-as-you-go prices are gone with ``ModuleTier``; the author is
-  always ERPlora (every app is ours); the block stays valid JSON.
-- ``tests/unit/modules/test_required_modules_card.py`` (4): the «Required apps» card, one linked
-  ``ion-item`` per listed app with its icon and its translated access pill.
-- The store sells no tier of apps (PLAN §32): every card and page says «Included in every plan», with
-  no «Premium» badge and no access filter (``?premium=`` is ignored like any filter it does not
-  understand); the ``premium`` flag stays reserved, unused today, for the panel's Store.
-- ``tests/unit/modules/test_marketplace_and_solutions_es_titles.py`` (5): without the solutions
-  half (``/solutions/`` is a 301 now). There is no «Related Modules» section any more, so the title
-  is checked against its own Spanish, not against that one.
-- ``landing/tests/test_llms_txt.py``: the apps section of ``llms.txt``, from the listed apps.
+- The documentation is the markdown of ``shared.app_doc``, rendered by ``apps.app.doc``; there is no changelog, no
+  reviews, no tiers and no payment.
+- The button follows who is looking: a visitor is offered «Start free» (the sign-in, where the account is created)
+  and a customer «Go to dashboard» (the launcher). An unlisted app is a 404.
+- The JSON-LD offers every app at ``0``, the one flagged ``premium`` too: every plan includes all the apps, the Free
+  one as well. The author is always ERPlora (every app is ours); the block stays valid JSON.
+- The «Required apps» card: one linked ``ion-item`` per listed app with its icon and its translated access pill.
+- The store sells no tier of apps: every card and page says «Included in every plan», with no «Premium» badge and no
+  access filter (``?premium=`` is ignored like any filter it does not understand); the ``premium`` flag stays
+  reserved, unused today, for the panel's Store.
+- The apps section of ``llms.txt`` comes from the listed apps.
 """
 
 import ast
@@ -163,7 +147,7 @@ def test_the_store_lists_each_listed_app_as_a_card(client, catalog):
 
 
 def test_an_app_flagged_premium_is_shown_like_any_other(client, catalog):
-    """Every plan includes all the apps (PLAN §32): no «Premium» badge, no «Included in the paid
+    """Every plan includes all the apps: no «Premium» badge, no «Included in the paid
     plans»; the flag is reserved, unused today."""
     card = card_of(get_html(client, "/apps/"), "whatsapp_inbox")
 
@@ -220,7 +204,7 @@ def test_the_category_filter(client, catalog):
 
 
 def test_there_is_no_access_filter(client, catalog, tokens_spelling):
-    """The chips «Free» and «Premium» sold a tier of apps (PLAN §32): only the sections filter."""
+    """No «Free» nor «Premium» chips, which would sell a tier of apps: only the sections filter."""
     tokens_spelling("premium")
     html = without_tokens(get_html(client, "/apps/"))
 
@@ -246,7 +230,7 @@ def test_the_filters_combine(client, catalog):
     ],
 )
 def test_a_filter_it_does_not_understand_is_ignored(client, catalog, query):
-    """Spec §5.1: an old or mistyped link still lists the apps, never a 422 or an empty page."""
+    """An old or mistyped link still lists the apps, never a 422 or an empty page."""
     assert card_ids(get_html(client, f"/apps/{query}")) == [
         "invoice",
         "inventory",
@@ -287,7 +271,7 @@ def test_the_active_filters_are_marked_and_the_search_keeps_its_text(client, cat
 def test_an_app_of_a_category_this_saas_does_not_know_is_listed_without_a_section(
     client, catalog, caplog
 ):
-    """Spec §5.3: the Hub went ahead of this SaaS's live.meta; the app is not lost."""
+    """The Hub went ahead of this SaaS's live.meta; the app is not lost."""
     make_app("kitchen_display", name_en="Kitchen Display", category="kitchen")
 
     with caplog.at_level(logging.WARNING, logger="apps.queries"):
@@ -329,7 +313,7 @@ def test_the_page_title_and_hero_count_the_apps(client, catalog):
 
 
 def test_without_any_listed_app_the_store_says_so_and_is_not_indexed(client):
-    """Spec §5.3: a new database, before any release of the Hub is registered."""
+    """A new database, before any release of the Hub is registered."""
     make_app("retired", listed=False)
 
     response = client.get("/apps/?q=anything")
@@ -386,7 +370,7 @@ def test_the_app_page_shows_its_overview(client, catalog):
 
 
 def test_an_app_flagged_premium_has_the_page_of_any_other(client, catalog, tokens_spelling):
-    """Every plan includes all the apps (PLAN §32): no «Premium» pill, no «Included in the paid plans»."""
+    """Every plan includes all the apps: no «Premium» pill, no «Included in the paid plans»."""
     tokens_spelling("premium")
     html = without_tokens(get_html(client, "/apps/whatsapp_inbox/"))
 
@@ -431,7 +415,7 @@ def test_an_unknown_app_is_a_404_of_the_public_web(client, catalog):
 
 
 def test_the_app_page_has_no_reviews_changelog_tiers_nor_payment(client, catalog):
-    """Spec §8.1: what the marketplace had and the store does not."""
+    """What a marketplace has and the store does not."""
     html = get_html(client, "/apps/whatsapp_inbox/")
     visible = text_of(re.sub(r"<script\b.*?</script>", "", html, flags=re.S)).lower()
 
@@ -439,7 +423,7 @@ def test_the_app_page_has_no_reviews_changelog_tiers_nor_payment(client, catalog
         assert not re.search(rf"\b{re.escape(gone)}", visible), gone
 
 
-# The button (port of test_detail_install_cta.py)
+# The button
 
 
 def test_a_visitor_is_offered_to_start_free(client, catalog):
@@ -465,7 +449,7 @@ def test_a_customer_with_a_session_goes_to_the_dashboard(client, catalog, ana):
 
 
 def test_the_button_on_a_free_app_too(client, catalog, ana):
-    """The old page left a signed-in visitor of a free module with no action at all."""
+    """A signed-in visitor of a free app is offered an action too."""
     client.force_login(ana)
 
     assert '<a class="ep-button' in hero_of(get_html(client, "/apps/inventory/"))
@@ -480,7 +464,7 @@ def test_the_button_is_translated(client, catalog, ana):
     assert "Ir al panel" in hero_of(get_html(client, "/apps/invoice/", **SPANISH))
 
 
-# The «Required apps» card (port of test_required_modules_card.py)
+# The «Required apps» card
 
 
 def required_card(html: str) -> str:
@@ -534,13 +518,13 @@ def test_an_app_without_requirements_has_no_required_card(client, catalog):
 
 @pytest.mark.parametrize("language", ["en", "es"])
 def test_the_required_apps_title_is_its_own(language):
-    """Port of saas#2635: the title said «related», and a visitor installed without them."""
+    """Required, not «related»: a visitor must not install the app without them."""
     with translation.override(language):
         title = gettext("Required apps")
     assert title == ("Apps necesarias" if language == "es" else "Required apps")
 
 
-# JSON-LD (port of test_module_detail_structured_data.py, to spec §8.2)
+# JSON-LD
 
 
 def application(client, app_id: str) -> dict:
@@ -572,8 +556,8 @@ def test_a_free_app_is_offered_at_zero_on_its_page(client, catalog):
 
 
 def test_an_app_flagged_premium_is_offered_at_zero_too(no_plans, client, catalog):
-    """Every plan includes all the apps, the Free one too (PLAN §32): the offer was the monthly price
-    of the cheapest paid plan (decision 17, L7), as if the app were sold with it."""
+    """Every plan includes all the apps, the Free one too: the offer is never the monthly price of the cheapest paid
+    plan, as if the app were sold with it."""
     from decimal import Decimal
 
     from hubs.models import Plan
@@ -611,7 +595,7 @@ def test_the_block_stays_valid_json_with_quotes_line_breaks_and_a_script_tag(cli
 
 
 def test_the_documentation_comes_from_shared_app_doc(client, catalog):
-    """Port of test_detail_docs_from_db.py: the markdown of the row, rendered (spec §5.2)."""
+    """The markdown of the row, rendered."""
     make_doc(
         catalog["invoice"],
         "en",
@@ -673,7 +657,7 @@ def test_an_app_with_documentation_links_its_docs_tab(client, catalog):
 
 
 def test_a_diagram_reaches_the_page_as_a_mermaid_block(client, catalog):
-    """Spec §6: frontend/public.ts paints `pre.mermaid` in the browser (tests/e2e/store-docs.spec.ts)."""
+    """frontend/public.ts paints `pre.mermaid` in the browser (tests/e2e/store-docs.spec.ts)."""
     make_doc(catalog["invoice"], "es", "```mermaid\ngraph TD; A-->B;\n```\n")
 
     html = get_html(client, "/apps/invoice/docs/")
@@ -684,7 +668,7 @@ def test_a_diagram_reaches_the_page_as_a_mermaid_block(client, catalog):
 def test_the_documentation_may_show_images_of_the_hubs_static_origin(
     client, catalog, settings
 ):
-    """Spec §9 (test_csp): the documentation's images live on the Hub's static origin."""
+    """The documentation's images live on the Hub's static origin (see test_csp)."""
     settings.HUB_STATIC_BASE_URL = "https://hubs.erplora.com/static/"
     make_doc(catalog["invoice"], "es", "![Cash](docs/img/cash.png)\n")
 
@@ -697,7 +681,7 @@ def test_the_documentation_may_show_images_of_the_hubs_static_origin(
     assert "https://hubs.erplora.com" in img_src.group(1)
 
 
-# --- The old addresses (decision 19) -------------------------------------------------------------
+# --- The old addresses ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -754,7 +738,7 @@ def test_the_old_addresses_are_never_in_the_sitemap(client, catalog):
 
 
 def test_without_listed_apps_the_sitemap_has_no_store_entries(client):
-    """Spec §5.3: the store is `noindex` then, and a sitemap never lists a page it hides."""
+    """The store is `noindex` then, and a sitemap never lists a page it hides."""
     make_app("retired", listed=False)
 
     assert not [
@@ -793,7 +777,7 @@ def test_llms_txt_lists_the_listed_apps_in_english(client, catalog):
 def test_llms_txt_puts_the_apps_between_start_here_and_optional(
     client, catalog, monkeypatch
 ):
-    """The order of the original: what ERPlora is, the catalog, then the optional reading."""
+    """What ERPlora is, the catalog, then the optional reading."""
     monkeypatch.setattr(
         seo,
         "LLMS_SECTIONS",
@@ -830,7 +814,7 @@ def test_every_app_linked_by_llms_txt_answers_200(client, catalog):
 
 @pytest.mark.parametrize("headers", [{}, SPANISH])
 def test_the_menu_and_the_footer_link_the_store_as_apps(client, catalog, headers):
-    """Decision 19: «Apps» in English and in Spanish."""
+    """«Apps» in English and in Spanish."""
     html = get_html(client, "/apps/", **headers)
     navbar = html[html.index('<nav class="ep-navbar"') : html.index("</nav>")]
     footer = html[html.index('<footer class="ep-footer"') :]
@@ -843,7 +827,7 @@ def test_the_menu_and_the_footer_link_the_store_as_apps(client, catalog, headers
 
 
 def test_the_store_imports_no_model():
-    """Spec §5.1 and plan §6: only queries.py and services.py touch the ORM."""
+    """Only queries.py and services.py touch the ORM."""
     tree = ast.parse(STORE_PY.read_text(encoding="utf-8"))
     imported = set()
     for node in ast.walk(tree):

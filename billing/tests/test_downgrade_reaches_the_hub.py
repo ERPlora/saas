@@ -1,4 +1,4 @@
-"""BILLING-F11, HUBS-F32 and HUBS-F34 when the paid period ends: a downgrade arrives (PLAN-SAAS §31).
+"""When the paid period ends, a downgrade arrives in the Hub.
 
 ``test_downgrade_at_period_end.py`` proves the downgrade while it waits. This is its other end, over Stripe's signed
 webhook and with the Hub double taking the push each COMMIT queues, as in production:
@@ -24,8 +24,8 @@ from billing.models import PlanChangeSchedule
 from billing.schemas import PlanChangeIn
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import event, item, schedule, signed, subscription
-from hubs import queries as hub_queries
-from hubs import services as hub_services
+from hubs.queries import hub_sync
+from hubs.services import member_management
 from hubs.models import Hub, HubMember, Plan, Subscription, SubscriptionItem
 from hubs.schemas import ByIdIn, MemberInviteIn
 from hubs.tests.conftest import add_member, create_business
@@ -118,7 +118,7 @@ def people_of(hub) -> set:
 
 
 def invite(owner, hub, email="one.more@example.com"):
-    return hub_services.member_invite(hub_ctx_for(owner), MemberInviteIn(hub_id=hub.id, email=email))
+    return member_management.member_invite(hub_ctx_for(owner), MemberInviteIn(hub_id=hub.id, email=email))
 
 
 class TestTheArrival:
@@ -202,7 +202,7 @@ class TestTheArrival:
         hub = Hub.objects.get(pk=paid.pk)
         assert hub.pushed_state_version < hub.state_version
         assert Subscription.objects.get(hub=paid).plan.slug == "starter"
-        assert hub_queries.hub_snapshot(paid.id)["plan"]["slug"] == "starter"
+        assert hub_sync.hub_snapshot(paid.id)["plan"]["slug"] == "starter"
 
     def test_what_only_the_old_level_reached_leaves_the_photo_and_nothing_else_goes(
         self, waiting, hub_double, inventory, stripe_says
@@ -266,7 +266,7 @@ class TestOverTheNewLimits:
 
         for email in ("ana@example.com", "berta@example.com"):
             member = HubMember.objects.get(hub=paid, user__email=email)
-            hub_services.member_remove(hub_ctx_for(owner), ByIdIn(hub_id=paid.id, id=member.pk))
+            member_management.member_remove(hub_ctx_for(owner), ByIdIn(hub_id=paid.id, id=member.pk))
         invite(owner, paid)
 
         assert len(people_of(paid)) == 4

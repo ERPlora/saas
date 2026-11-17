@@ -1,48 +1,43 @@
-// «Report a problem» of the user menu (accounts/WORKBOOK.md, MIGRATION-TASK APP-ACCOUNTS-4), at the three sizes of the
-// migration (390×844, 834×1112, 1440×900): the person writes «Subject» and «What happened?», the report reaches the
+// «Report a problem» of the user menu (accounts/WORKBOOK.md), at the three sizes
+// (390×844, 834×1112, 1440×900): the person writes «Subject» and «What happened?», the report reaches the
 // support mailbox with the account, its business, the page it came from and the browser, «Reply-To» the account, and
-// the page says «Report sent». In accounts/WORKBOOK.md: G117 = G01 = F38. Accounts of this spec: `e2e-acc4r-…`.
-import { readMails } from '@erplora/ui/testing/mail';
+// the page says «Report sent» (accounts/WORKBOOK.md, F38). Accounts of this spec: `e2e-acc4r-…`.
+import { readMailsSince } from '@erplora/ui/testing/mail';
 import { type Page } from '@playwright/test';
 
-import { djangoPrint, expect, settled, shot, sidewaysScroll, signIn, test, waitForMail, watchPageErrors } from './fixtures';
+import { createAccountWarm, type Credentials, removeAccountsWarm } from './accounts';
+import { djangoPrintWarm } from './django';
+import { expect, test } from './fixtures';
+import { waitForMail } from './mail';
+import { watchPageErrors } from './page-events';
 import { PANEL_MAIL_DIR } from './project';
+import { captureAtEverySize, settled } from './screen';
+import { signIn } from './session';
+
+const atEverySize = captureAtEverySize('APP-ACCOUNTS-4');
 
 const PREFIX = 'e2e-acc4r-';
 const PASSWORD = 'Centeno-y-masa-madre-26';
 const BUSINESS = 'e2e-acc4r-bar';
-const SIZES = [
-  { name: '390', width: 390, height: 844 },
-  { name: '834', width: 834, height: 1112 },
-  { name: '1440', width: 1440, height: 900 },
-] as const;
 
-function removeAccounts(): void {
-  djangoPrint(
-    [
-      'from django.contrib.auth import get_user_model',
-      'from hubs.models import Hub',
-      `Hub.objects.filter(slug="${BUSINESS}").delete()`,
-      `get_user_model().objects.filter(email__startswith="${PREFIX}", email__endswith="@example.com").delete()`,
-    ].join('\n'),
-  );
+async function removeAccounts(): Promise<void> {
+  await djangoPrintWarm(`from hubs.models import Hub\nHub.objects.filter(slug="${BUSINESS}").delete()`);
+  await removeAccountsWarm(PREFIX);
 }
 
 /** An account in English with its address proven, admin of one business. */
-function createAccount(email: string): { email: string; password: string } {
-  djangoPrint(
+async function createAccount(email: string): Promise<Credentials> {
+  const account = await createAccountWarm(email, PASSWORD, { language: 'en' });
+  await djangoPrintWarm(
     [
-      'from allauth.account.models import EmailAddress',
       'from django.contrib.auth import get_user_model',
       'from django.utils import timezone',
       'from hubs.models import Hub, HubMember',
-      `user = get_user_model().objects.create_user(email="${email}", password="${PASSWORD}", language="en")`,
-      'EmailAddress.objects.update_or_create(user=user, email=user.email, defaults={"verified": True, "primary": True})',
       `hub, _ = Hub.objects.get_or_create(slug="${BUSINESS}", defaults={"name": "${BUSINESS}", "country": "ES"})`,
-      'HubMember.objects.create(hub=hub, user=user, role=HubMember.Role.ADMIN, accepted_at=timezone.now())',
+      `HubMember.objects.create(hub=hub, user=get_user_model().objects.get(email="${email}"), role=HubMember.Role.ADMIN, accepted_at=timezone.now())`,
     ].join('\n'),
   );
-  return { email, password: PASSWORD };
+  return account;
 }
 
 /** The user menu: in the side menu, a drawer behind the topbar's menu button below `lg`. */
@@ -58,27 +53,20 @@ async function openUserMenu(page: Page): Promise<void> {
   await expect(page.getByTestId('user-menu-report')).toBeVisible();
 }
 
-/** Each size: the page as `ready` leaves it, no sideways scroll, and its shot. */
-async function atEverySize(page: Page, key: string, ready: () => Promise<void>): Promise<void> {
-  for (const size of SIZES) {
-    await page.setViewportSize({ width: size.width, height: size.height });
-    await ready();
-    await settled(page);
-    expect(await sidewaysScroll(page), `${key} scrolls sideways at ${size.name}`).toEqual([]);
-    await page.screenshot({ path: shot(`APP-ACCOUNTS-4-${key}-${size.name}`), fullPage: true });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-}
+/** Where the reports go (`SUPPORT_EMAIL`): only Django knows it, read once before the tests. */
+let support: string;
 
 test.beforeAll(() => removeAccounts());
+test.beforeAll(async () => {
+  support = await djangoPrintWarm('from django.conf import settings\nprint(settings.SUPPORT_EMAIL)');
+});
 test.afterAll(() => removeAccounts());
 
-test('ACCOUNTS-G117 · G01 · report a problem from the user menu: support gets it with the account and its business, «Report sent»', async ({
+test('ACCOUNTS-F38 · report a problem from the user menu: support gets it with the account and its business, «Report sent»', async ({
   page,
 }) => {
   const errors = watchPageErrors(page);
-  const support = djangoPrint('from django.conf import settings\nprint(settings.SUPPORT_EMAIL)');
-  const me = createAccount(`${PREFIX}owner-${Date.now()}@example.com`);
+  const me = await createAccount(`${PREFIX}owner-${Date.now()}@example.com`);
   await signIn(page.request, me);
 
   await page.goto('/dashboard/account/profile');
@@ -103,7 +91,9 @@ test('ACCOUNTS-G117 · G01 · report a problem from the user menu: support gets 
   await expect(sent).toContainText(`will reply to ${me.email} as soon as possible`);
   // The text, and under it what goes on its own (Reply-To, a header, is test_support_report.py's).
   expect(await waitForMail(support, since, /(I sell a ticket and nothing prints\.)/)).toBeTruthy();
-  const mail = readMails(PANEL_MAIL_DIR).filter((one) => one.to.includes(support.toLowerCase()) && one.body.includes(me.email));
+  const mail = (await readMailsSince({ dir: PANEL_MAIL_DIR, since })).filter(
+    (one) => one.to.includes(support.toLowerCase()) && one.body.includes(me.email),
+  );
   expect(mail.map((one) => one.subject)).toEqual(['[Support] The printer stops']);
   expect(await waitForMail(support, since, /^Account: (\S+)/m)).toBe(me.email);
   expect(await waitForMail(support, since, /^Businesses: (.+)$/m)).toBe(`${BUSINESS} (hub_admin)`);

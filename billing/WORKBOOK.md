@@ -15,7 +15,8 @@ Estado de la app: completa (2026-11-03)
 Facturación es lo que una cuenta paga a ERPlora por sus negocios. Cada negocio empieza en **Gratis** y,
 cuando lo necesita, su propietario lo pasa a un plan de pago desde la **Tienda**. ERPlora cobra con
 tarjeta a través de Stripe, pone el IVA que toca según dónde está quien paga y emite su propia factura
-legal por cada cobro, que se ve y se descarga en **Facturación**.
+legal por cada cobro, que se ve y se descarga en **Facturación**. Por ahora solo vende a quien paga con dirección
+de facturación en España; en Canarias, Ceuta y Melilla, solo a empresas y profesionales.
 
 - Una sola suscripción por negocio: el plan y los módulos que se compren van juntos y se cobran en una
   sola factura al mes (o al año).
@@ -24,7 +25,7 @@ legal por cada cobro, que se ve y se descarga en **Facturación**.
 - Si un cobro falla, el negocio sigue funcionando 7 días mientras se reintenta; después se suspende
   hasta que se pague, sin perder ningún dato.
 
-Hoy ninguna aplicación es de pago: todas van en todos los planes (ronda 2026-10-24b, PLAN §32 y PLAN-SAAS §9).
+Hoy ninguna aplicación es de pago: todas van en todos los planes.
 Lo que este manual cuenta de las aplicaciones de pago (la pantalla **Tienda › Módulos** y contratar, cancelar,
 terminar y llevar una a otro negocio, BILLING-F31 a BILLING-F35) funciona y está probado, pero no se usa hasta que
 vuelva a haber una.
@@ -74,7 +75,8 @@ periodo («Mensual» o «Anual · −n %»), sus líneas como en /pricing/ (tras
 del plan …», «Hasta 40 apps activadas a la vez», o «Todas las apps activadas a la vez» si el plan no tiene tope;
 después los mensajes al mes, «Dominio propio para tu web (www.tunegocio.com)» en los planes que lo incluyen y, al final, la prueba), «Tu plan actual» en el que se tiene y el botón de cada uno:
 «Mejorar a …», «Cambiar a …», «Cambiar a anual · …» o «Bajar a Gratis»; con el plan cancelado o una bajada
-programada, «Mantener el plan». Si el negocio tiene una factura sin pagar, arriba sale el aviso con «Pagar la factura» y no se
+programada, «Mantener el plan». Un negocio que el personal de ERPlora marcó en el admin (BILLING-F27) ve también,
+al final, el plan interno «Prueba de pago (interno)»; ningún otro negocio lo ve. Si el negocio tiene una factura sin pagar, arriba sale el aviso con «Pagar la factura» y no se
 vende nada a ese negocio.
 
 **Módulos** enseña cada aplicación de pago con su icono, su nombre, su resumen y su precio sin IVA al
@@ -104,8 +106,8 @@ factura con IVA y estado; «Cambiar plan», «Mantener el plan», «Ver la factu
 
 ### Factura
 Página de una factura, que se abre con «Ver la factura»: su número (o «no cobrada»), la fecha, el negocio,
-el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, su base y su
-IVA; la base imponible, el IVA y el total; y «A nombre de», los datos de quien paga tal como estaban ese
+el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, su base, su
+IVA y su descuento si lo tiene; la base imponible, el IVA y el total; y «A nombre de», los datos de quien paga tal como estaban ese
 día. Arriba, «Descargar PDF» cuando ya está emitida y «Pagar» si no se cobró; una rectificativa enlaza la
 factura que rectifica. La flecha de arriba vuelve a Facturas.
 
@@ -141,7 +143,7 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F09 | Volver del pago: confirmado, pendiente o cerrado | hecho |
 | BILLING-F10 | Reintentar un pago que no se terminó | hecho |
 | BILLING-F11 | Cambiar de plan entre planes de pago | hecho |
-| BILLING-F12 | Dar días de prueba con un código promocional | hecho |
+| BILLING-F12 | Dar días de prueba o meses gratis con un código promocional | hecho |
 | BILLING-F13 | Cancelar el plan al final del periodo | hecho |
 | BILLING-F14 | Deshacer una cancelación o una bajada pendiente | hecho |
 | BILLING-F15 | Terminar la suscripción: el negocio vuelve a Gratis | hecho |
@@ -169,46 +171,45 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F37 | Olvidar los avisos de Stripe de más de 30 días | hecho |
 | BILLING-F38 | Releer cada noche las suscripciones en Stripe y corregir lo que se desvió | hecho |
 | BILLING-F39 | Comprobar cada día que Stripe avisa de todo lo que erplora.com trata | hecho |
+| BILLING-F40 | Sacar el informe de facturación de un periodo para la gestoría | hecho |
+| BILLING-F41 | Ver qué clientes pagan, con qué plan, desde cuándo y cuánto | hecho |
 
 ### BILLING-F01 Decir dónde se factura el negocio y con qué identificación fiscal
-<!-- origen: old-saas:SAAS_DASHBOARD-F90 fi:saas/orgs-users#informacion-de-facturacion-de-la-organizacion-ver-editar -->
 Estado: hecho
 Actor: propietario, cuenta que paga
 Pantalla: Pago seguro, Facturación › Datos de pago
 Pasos:
-1. La primera vez que se paga un plan o un módulo, el diálogo de pago pregunta «¿A nombre de quién facturamos?»: «Razón social», «NIF (opcional)», «Dirección», «Ciudad», «Código postal», «País» y «Correo para las facturas (opcional)», o «Usar el nombre y el país del negocio».
+1. La primera vez que se paga un plan o un módulo, el diálogo de pago pregunta «¿A nombre de quién facturamos?»: «Razón social», «NIF (opcional)», «Dirección», «Ciudad», «Código postal», «País» y «Correo para las facturas (opcional)», o «Usar el nombre y el país del negocio». «País» solo ofrece España y dice debajo «Por ahora ERPlora solo factura a pagadores en España.»; el NIF dice «Obligatorio en Canarias, Ceuta y Melilla, donde solo vendemos a empresas y profesionales.».
 2. Pulsa «Continuar al pago»: los datos se guardan y sigue el pago. Las veces siguientes el diálogo solo dice «Factura a nombre de …» con «Cambiar».
 3. En cualquier momento, en **Facturación › Datos de pago**, la tarjeta «Datos de facturación» enseña razón social, NIF, dirección, correo y qué negocios paga, con «Editar datos».
-4. Al escribir un NIF-IVA de otro país de la UE, la ventana lo comprueba en VIES y dice «Comprobado en VIES: … La factura va sin IVA», «VIES no reconoce este número: la factura llevará IVA» o «VIES no responde ahora: lo volvemos a comprobar al facturar».
+4. Al escribir el NIF, la ventana dice «NIF válido.». Un NIF-IVA de otro país de la UE se comprueba en VIES y dice «Comprobado en VIES: …. Se factura en España, así que la factura lleva IVA.», «VIES no reconoce este número: la factura llevará IVA» o «VIES no responde ahora: lo volvemos a comprobar al facturar». «Comprobado en VIES: … La factura va sin IVA» solo sale cuando la venta va con inversión del sujeto pasivo, que hoy no ocurre: solo se factura en España.
 5. Pulsa «Guardar datos»: «Datos de facturación guardados». Valen para las próximas facturas y para lo que manda Stripe (la página para confirmar un cobro que el banco quiere autenticar, sus recibos y su portal de pagos); las facturas ya emitidas no cambian.
 Entra: lo que escribe la persona; el país y el nombre del negocio si elige usarlos.
 Sale: los datos de facturación del negocio (los comparten los negocios que paga la misma cuenta), la comprobación de VIES anotada y, si quien paga ya pagó alguna vez, su ficha de cliente en Stripe al día; se avisa del cambio (`hubs.billing_profile.updated`).
-Si falla: un código postal español que no tiene cinco dígitos, un país que falta o un NIF que no vale para su país salen debajo de su campo, con «Revisa los datos marcados.» arriba hasta que corriges algo, y no se guarda nada. Tras un traspaso, si el negocio lo pagaba otra cuenta, el diálogo dice «Hasta ahora pagaba este negocio otra cuenta: di quién paga a partir de ahora». Si Stripe no contesta, los datos se guardan igual y Stripe los recibe en el siguiente pago desde el panel.
+Si falla: un código postal español que no tiene cinco dígitos, un país que falta o un NIF que no vale para su país salen debajo de su campo, con «Revisa los datos marcados.» arriba hasta que corriges algo, y no se guarda nada. Un país que no sea España sale debajo de «País» y arriba con «Por ahora ERPlora solo factura a pagadores en España.», también al «Usar el nombre y el país del negocio» de un negocio de fuera de España (que puede existir: el negocio se crea en cualquier país de la UE), y no se guarda nada. Tras un traspaso, si el negocio lo pagaba otra cuenta, el diálogo dice «Hasta ahora pagaba este negocio otra cuenta: di quién paga a partir de ahora». Si Stripe no contesta, los datos se guardan igual y Stripe los recibe en el siguiente pago desde el panel.
 Implicados: hubs (los datos del negocio y de quien paga)
 
 ### BILLING-F02 Calcular el impuesto de una venta según dónde está el pagador
-<!-- origen: old-saas:SAAS_DASHBOARD-F91 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
-1. Antes de abrir cualquier pago (un plan, un cambio de plan o un módulo), erplora.com lee el país y el código postal de quien paga. Sin los dos, el pago no empieza y se piden los datos de facturación.
-2. Califica la venta con la misma regla que luego usa la factura: península y Baleares, IVA español; Canarias, Ceuta y Melilla, sin IVA (se cobra el precio sin nada encima); otro país de la UE con NIF-IVA comprobado en VIES, inversión del sujeto pasivo, sin IVA; un particular de otro país de la UE, IVA español hasta superar el umbral de ventas a distancia y después el de su país; Reino Unido, solo a empresas y sin IVA.
+1. Antes de abrir cualquier pago (un plan, un cambio de plan, un módulo, mantener el plan tras un traspaso o recuperar un módulo cancelado), erplora.com lee el país y el código postal de quien paga. Sin los dos, el pago no empieza y se piden los datos de facturación. Por ahora solo se vende a quien paga en España: con otro país, el pago no empieza y el diálogo vuelve a los datos con «Por ahora ERPlora solo vende a pagadores con dirección de facturación en España: cambia los datos de facturación.» (`billing.country_not_sold`), también a una empresa con NIF-IVA comprobado en VIES.
+2. Califica la venta con la misma regla que luego usa la factura: península y Baleares, IVA español; Canarias, Ceuta y Melilla, sin IVA (se cobra el precio sin nada encima) y solo a empresas y profesionales, que declaran ellas el IGIC o el IPSI: sin NIF, el pago no empieza y el diálogo vuelve a los datos con «En Canarias, Ceuta y Melilla solo vendemos a empresas y profesionales: añade el NIF de quien paga.» (`billing.business_required`). El motor conserva las reglas de fuera de España (inversión del sujeto pasivo con NIF-IVA comprobado en VIES; un particular de otro país de la UE, IVA español hasta superar el umbral de ventas a distancia y después el de su país; Reino Unido, solo a empresas y sin IVA) para lo que ya se cobra y para cuando se vuelva a vender fuera, que es añadir el país a la lista de los que se venden.
 3. Si el total con IVA pasa de 400 € y quien paga no tiene NIF, la venta se niega y se pide (una factura simplificada no puede pasar de ahí).
 4. El tipo resultante viaja a Stripe con cada línea de la suscripción; Stripe solo suma lo que se le da.
-5. Al guardar los **datos de facturación**, la suscripción que ya se cobra toma el tipo del lugar nuevo desde la siguiente factura, sin tocar lo ya pagado (por ejemplo, quien se muda de Madrid a Las Palmas deja de pagar IVA). Con un cambio a un plan menor ya programado, también cambia el tipo de lo que se cobrará al cambiar, así la primera factura del plan nuevo ya lleva el tipo de hoy. Una revisión diaria repite lo mismo con todas las suscripciones vivas por si un cambio no llegó.
+5. Al guardar los **datos de facturación**, la suscripción que ya se cobra toma el tipo del lugar nuevo desde la siguiente factura, sin tocar lo ya pagado (por ejemplo, quien se muda de Madrid a Las Palmas deja de pagar IVA). Lo que ya se cobra no se niega por el país ni por ser un consumidor de Canarias, Ceuta o Melilla: quien ya pagaba desde otro país sigue renovándose con el motor y solo deja de poder comprar nada nuevo; cancelar siempre se puede. Con un cambio a un plan menor ya programado, también cambia el tipo de lo que se cobrará al cambiar, así la primera factura del plan nuevo ya lleva el tipo de hoy. Una revisión diaria repite lo mismo con todas las suscripciones vivas por si un cambio no llegó.
 Entra: país, código postal y NIF de quien paga, la última comprobación de VIES, el precio sin IVA y qué se vende (plan o módulo).
 Sale: el tipo de cada línea en Stripe, o la negativa con su motivo.
-Si falla: «Faltan los datos de facturación» lleva al formulario; un territorio sin regla en la tabla no se vende; un consumidor del Reino Unido no compra; más de 400 € sin NIF pide el NIF. Un precio de 0 € nunca se niega. Si al guardar los datos Stripe no contesta, los datos se guardan igual y la revisión diaria aplica el tipo; si el lugar nuevo no se vende, la suscripción sigue con su tipo y la revisión diaria se pone en rojo para el equipo.
+Si falla: «Faltan los datos de facturación» lleva al formulario; quien paga fuera de España o un consumidor de Canarias, Ceuta o Melilla vuelve al formulario con su motivo; un territorio sin regla en la tabla no se vende; un consumidor del Reino Unido no compra; más de 400 € sin NIF pide el NIF. Un precio de 0 € nunca se niega. Si al guardar los datos Stripe no contesta, los datos se guardan igual y la revisión diaria aplica el tipo; si el lugar nuevo no se vende, la suscripción sigue con su tipo y la revisión diaria se pone en rojo para el equipo.
 Implicados: hubs (los datos de quien paga)
 
 ### BILLING-F03 Decidir el IVA de cada cobro
-<!-- origen: old-saas:SAAS_DASHBOARD-F142 gh:saas#2528 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
-1. Al poner precio (antes de cobrar) y al facturar (después), el mismo motor califica la venta: nacional, no sujeta (Canarias, Ceuta, Melilla, Reino Unido), inversión del sujeto pasivo o IVA del país del cliente (ventas a distancia por encima del umbral).
+1. Al poner precio (antes de cobrar) y al facturar (después), el mismo motor califica la venta: nacional, no sujeta (Canarias, Ceuta, Melilla, Reino Unido), inversión del sujeto pasivo o IVA del país del cliente (ventas a distancia por encima del umbral). Como hoy solo se vende en España (BILLING-F02), las dos últimas solo salen en lo que ya se cobraba a quien paga desde otro país.
 2. Al facturar, reparte lo que Stripe cobró en base y cuota y sella en la factura el tipo nominal de la tabla (21 %, nunca un 21,01 % que salga de dividir céntimos).
 3. Si Stripe no cobró impuesto en una venta sujeta, la factura saca el IVA de lo cobrado y deja una alarma para el equipo: el IVA nunca se deja de declarar.
 Entra: país, código postal y NIF de quien paga, su comprobación de VIES a la fecha del cobro, la política fiscal y la tabla de tipos.
@@ -217,7 +218,6 @@ Si falla: si VIES no contesta y no hay ninguna comprobación anterior, la factur
 Implicados: ninguno
 
 ### BILLING-F04 Mantener la tabla de tipos de IVA y no vender con ella rota
-<!-- origen: old-saas:SAAS_DASHBOARD-F143 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin › Reglas fiscales
@@ -232,12 +232,11 @@ Si falla: desactivar la regla de un territorio hace que toda venta a él se nieg
 Implicados: ninguno
 
 ### BILLING-F05 Comprobar en VIES el NIF-IVA de quien paga
-<!-- origen: old-saas:SAAS_DASHBOARD-F144 gh:saas#2665 -->
 Estado: hecho
 Actor: sistema, personal de ERPlora
 Pantalla: Facturación › Datos de pago, Admin › Comprobaciones de IVA
 Pasos:
-1. Al escribir un NIF-IVA de otro país de la UE en los datos de facturación, y al cobrar, erplora.com pregunta a VIES identificándose con el NIF de ERPlora, así VIES devuelve el número de consulta, que es la prueba. Un NIF español no se consulta; uno británico no es de VIES.
+1. Al escribir un NIF-IVA de otro país de la UE en los datos de facturación, y al cobrar, erplora.com pregunta a VIES identificándose con el NIF de ERPlora, así VIES devuelve el número de consulta, que es la prueba. Un NIF español no se consulta; uno británico no es de VIES. Como hoy solo se factura en España, la prueba solo quita el IVA en lo que ya se cobraba a una empresa de otro país de la UE.
 2. Cada respuesta es una fila nueva que nunca se reescribe (comprobado, no válido, no disponible). Solo un «comprobado» vigente con número de consulta (o el forzado manual) permite facturar sin IVA.
 3. El personal puede volver a preguntar con la acción «Comprobar ahora en VIES» de **Comprobaciones de IVA**, o dejar a mano un «comprobado» con su motivo, que guarda quién y cuándo.
 4. Cada persona tiene 20 consultas por minuto y hay un tope global; una sola consulta a la vez por persona.
@@ -247,12 +246,11 @@ Si falla: VIES sin contestar es «no disponible» y la venta lleva IVA; pasado e
 Implicados: ninguno
 
 ### BILLING-F06 Seguir el umbral de ventas a distancia en la UE (OSS)
-<!-- origen: old-saas:SAAS_DASHBOARD-F145 -->
 Estado: hecho
 Actor: sistema, personal de ERPlora
 Pantalla: Admin › Política fiscal, Admin › Avisos de la OSS
 Pasos:
-1. Cada factura a un particular de otro país de la UE suma su base al total del año (las rectificativas restan); el total de lo vendido por el SaaS anterior se carga una vez a mano en **Política fiscal**.
+1. Cada factura a un particular de otro país de la UE suma su base al total del año (las rectificativas restan); el total facturado fuera de erplora.com se carga una vez a mano en **Política fiscal**. Como hoy solo se vende en España (BILLING-F02), el total solo crece con lo que ya se cobraba a particulares de otro país.
 2. **Política fiscal** enseña el total del año contra el umbral (10.000 € por defecto) y los interruptores del alta en OSS y en el ROI.
 3. Por encima del umbral (o con el alta voluntaria en OSS, o si el año anterior cerró por encima) las ventas nuevas a particulares de la UE llevan el IVA del país del cliente.
 4. La venta cobrada que lleva el total del año por encima del 80 % del umbral manda un aviso al buzón del equipo para empezar ya el alta en la OSS, que tarda días; la que lo cruza (o la primera del año si el anterior cerró por encima) manda otro: desde ella esas ventas llevan el IVA del país del cliente. Cada aviso sale una sola vez al año y queda en **Admin › Avisos de la OSS**, de solo lectura.
@@ -263,7 +261,6 @@ Si falla: un negocio que Stripe no deja cambiar no para la revisión: se reinten
 Implicados: ninguno
 
 ### BILLING-F07 Pagar el plan de un negocio recién creado
-<!-- origen: old-saas:SAAS_DASHBOARD-F92 gh:saas#2527 -->
 Estado: hecho
 Actor: propietario
 Pantalla: Resumen del negocio, Tienda, Pago seguro
@@ -271,13 +268,12 @@ Pasos:
 1. El negocio nace siempre en Gratis (el alta solo pide nombre, país y tipo de negocio).
 2. En el Resumen del negocio, la tarjeta Plan dice «Gratis» y ofrece «Mejorar plan» (en un plan de pago, «Cambiar plan»), que abre la Tienda con ese negocio elegido. Solo lo ve quien gestiona la facturación del negocio, y solo en la web: en las apps dice que se entre en erplora.com desde el navegador.
 3. Elige el plan y el periodo y pulsa «Mejorar a …»: el pago sigue como en BILLING-F08.
-Entra: el negocio recién creado y los planes que se ofrecen a esa persona (los internos, solo al personal).
+Entra: el negocio recién creado y los planes que se ofrecen a ese negocio (los internos, solo si el personal de ERPlora lo marcó en el admin, BILLING-F27).
 Sale: lo mismo que BILLING-F08.
 Si falla: los mismos rechazos que BILLING-F08.
 Implicados: hubs (el alta y la página del negocio)
 
 ### BILLING-F08 Pasar un negocio gratuito a un plan de pago
-<!-- origen: old-saas:SAAS_DASHBOARD-F95 gh:saas#2527 pc:cloud/dashboard/hubs-pricing fi:saas/hubs#pagina-de-planes-precios fi:saas/hubs#stripe-gestion-de-suscripciones-servicio-interno fi:saas/support/hubs#service-stripeservice -->
 Estado: hecho
 Actor: propietario
 Pantalla: Tienda, Pago seguro
@@ -285,19 +281,18 @@ Pasos:
 1. En **Tienda › Planes**, con el negocio elegido arriba, el propietario ve cada plan con su precio sin IVA, sus usuarios, sus dispositivos y las apps que puede tener activadas a la vez, elige «Mensual» o «Anual» (que dice cuánto se ahorra) y pulsa «Mejorar a …».
 2. Se abre el pago seguro: los datos de facturación si faltan y después el formulario de tarjeta de Stripe dentro del diálogo, titulado «Mejorar a …» con «Para … · se renueva cada mes» (o cada año).
 3. Mete la tarjeta; si el banco pide autenticación, la muestra Stripe en el mismo formulario.
-4. Al terminar, «Pagando…», el aviso «… ya está en …» y la página del negocio, cuya tarjeta Plan cambia en cuanto Stripe lo confirma. El negocio sigue funcionando todo el tiempo.
-Entra: el plan elegido (solo los que se ofrecen a esa persona), el periodo, los datos de facturación y el código promocional si lo hay.
+4. Al terminar, «Pagando…» hasta que llega la página del negocio, que avisa «… ya está en …» y cuya tarjeta Plan cambia en cuanto Stripe lo confirma. El negocio sigue funcionando todo el tiempo.
+Entra: el plan elegido (solo los que se ofrecen a ese negocio; los internos, solo a uno que el personal marcó), el periodo, los datos de facturación y el código promocional si lo hay.
 Sale: el negocio en el plan nuevo, su suscripción y su cliente en Stripe, el plan nuevo enviado al negocio (`hubs.subscription.changed`) y la factura de ERPlora del primer cobro (BILLING-F25), llegue antes o después el aviso del pago.
-Si falla: si el pago no se puede abrir, «No hemos podido abrir el pago seguro» y «No se ha cobrado nada» con «Reintentar»; un plan sin precio en Stripe, «no está a la venta»; sin datos de facturación, el formulario; con una factura sin pagar, no se vende nada a ese negocio. Si la persona cierra el diálogo, no se cobra nada y el negocio sigue en Gratis.
+Si falla: si el pago no se puede abrir, «No hemos podido abrir el pago seguro» y «No se ha cobrado nada» con «Reintentar»; un plan sin precio en Stripe, «no está a la venta»; un plan que no se ofrece a ese negocio (uno interno sin la marca, aunque se pida por la API) se rechaza antes de abrir el pago, «No hay ningún plan con este identificador»; sin datos de facturación, el formulario; con una factura sin pagar, no se vende nada a ese negocio. Si la persona cierra el diálogo, no se cobra nada y el negocio sigue en Gratis.
 Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
 
 ### BILLING-F09 Volver del pago: confirmado, pendiente o cerrado
-<!-- origen: old-saas:SAAS_DASHBOARD-F93 old-saas:SAAS_DASHBOARD-F109 gh:saas#2566 fi:saas/hubs#paginas-de-resultado-de-pago-success-cancel fi:saas/public#paginas-de-resultado-de-pago-success-cancel -->
 Estado: hecho
 Actor: propietario
 Pantalla: Pago seguro, Resumen del negocio
 Pasos:
-1. Al terminar el pago en el formulario de Stripe, el diálogo dice «Pagando…», cierra el formulario, avisa «… ya está en …» (o «… añadido a …: se enciende en unos segundos» para un módulo) y abre la página del negocio.
+1. Al terminar el pago en el formulario de Stripe, el diálogo dice «Pagando…», cierra el formulario y abre la página del negocio; cuando esa página ha llegado, el diálogo se va y el aviso «… ya está en …» (o «… añadido a …: se enciende en unos segundos» para un módulo) sale en ella, con el negocio que se pagó, justo encima de su barra de secciones y sin taparla, aunque la página tarde en llegar.
 2. El plan del negocio (o la aplicación comprada) cambia cuando Stripe confirma el cobro: si el medio de pago tarda en confirmarse, como un adeudo SEPA, el negocio sigue como estaba hasta entonces y cambia solo, sin recargar.
 3. Si la persona cierra el diálogo antes de pagar, no se cobra nada y puede volver a abrirlo (BILLING-F10); el negocio sigue como estaba y no se borra nada.
 Entra: el pago que Stripe da por terminado.
@@ -306,7 +301,6 @@ Si falla: un pago que Stripe da por fallido después cierra ese intento sin camb
 Implicados: el negocio (recibe su plan)
 
 ### BILLING-F10 Reintentar un pago que no se terminó
-<!-- origen: old-saas:SAAS_DASHBOARD-F94 gh:saas#2527 fi:saas/hubs#reintento-de-pago-retry-payment -->
 Estado: hecho
 Actor: propietario
 Pantalla: Tienda, Pago seguro
@@ -320,7 +314,6 @@ Si falla: si por un descuido se llegasen a pagar dos (dos pestañas a la vez), e
 Implicados: ninguno
 
 ### BILLING-F11 Cambiar de plan entre planes de pago
-<!-- origen: old-saas:SAAS_DASHBOARD-F96 fi:saas/hubs#cambio-de-plan-upgrade -->
 Estado: hecho
 Actor: propietario que paga
 Pantalla: Tienda, Cambiar de plan
@@ -334,22 +327,22 @@ Sale: el plan cambiado (`billing.plan.changed`) o la bajada programada (`billing
 Si falla: «El precio estaba desactualizado: aquí lo tienes de nuevo, revísalo antes de confirmar» si pasó demasiado tiempo; la tarjeta rechazada no cambia nada; el mismo plan y periodo no es un cambio; bajar a Gratis es cancelar (BILLING-F13); con una cancelación pendiente, «Mantén antes el plan para cambiarlo»; con una factura sin pagar, «Antes, paga la factura pendiente»; más de 400 € sin NIF pide el NIF.
 Implicados: el negocio (recibe su plan), ASSISTANT-F25 (pedido al asistente del panel, que manda aquí)
 
-### BILLING-F12 Dar días de prueba con un código promocional
-<!-- origen: old-saas:SAAS_DASHBOARD-F122 -->
+### BILLING-F12 Dar días de prueba o meses gratis con un código promocional
 Estado: hecho
 Actor: personal de ERPlora, propietario
-Pantalla: Admin › Códigos promocionales, Pago seguro
+Pantalla: Admin › Códigos promocionales, Pago seguro, Facturación › Suscripciones
 Pasos:
-1. Una persona de ERPlora crea un código en el admin: el código, los días de prueba (de 1 a 365), si está activo, hasta cuándo vale, cuántos usos y una nota.
-2. El propietario, en el pago seguro de un negocio que aún no paga, pulsa «¿Tienes un código promocional?», lo escribe y pulsa «Aplicar»: «Código …: n días gratis antes del primer cobro».
-3. Paga: el primer cobro llega al acabar esos días.
+1. Una persona de ERPlora crea un código en el admin: el código, los días de prueba (de 1 a 365) o los meses gratis (de 1 a 12), uno de los dos, si está activo, hasta cuándo vale, cuántos usos y una nota.
+2. El propietario, en el pago seguro de un negocio que aún no paga, pulsa «¿Tienes un código promocional?», lo escribe y pulsa «Aplicar». Con días de prueba: «Código …: n días gratis antes del primer cobro». Con meses gratis: «Código …: n meses gratis; después, el precio normal del plan».
+3. Con días de prueba, paga: el primer cobro llega al acabar esos días.
+4. Con meses gratis, elige el plan mensual y el pago seguro avisa «n meses gratis; después, … €/mes + IVA. No se carga nada en tu tarjeta hasta entonces.»; da su tarjeta y el plan empieza ya. Cada mes llega su factura de 0 € (el precio del plan con todo su descuento), numerada y registrada en VeriFactu como cualquier otra, y el mes siguiente al último gratis se cobra el precio normal sin hacer nada.
+5. Mientras duran, **Facturación › Suscripciones** dice «Gratis hasta el …» y la próxima factura a 0 €; cada factura dice su descuento en la línea.
 Entra: el código (sin distinguir mayúsculas ni espacios).
-Sale: los días de prueba en la suscripción y el uso contado una vez por negocio y por quien paga.
-Si falla: un código desconocido, inactivo, caducado o agotado dice «Este código no es válido o ya se ha usado» y no impide pagar sin él; probar códigos tiene un tope por persona. Un código nunca rebaja el precio y nunca pasa de su número de usos.
-Implicados: ninguno
+Sale: los días de prueba en la suscripción, o el descuento del 100 % de esos meses en Stripe y cuándo acaban; el uso contado una vez por negocio y por quien paga.
+Si falla: un código desconocido, inactivo, caducado o agotado dice «Este código no es válido o ya se ha usado» y no impide pagar sin él; probar códigos tiene un tope por persona; un código nunca pasa de su número de usos. Los meses gratis son solo para empezar a pagar un plan mensual: con el anual, el pago no empieza y dice «Este código da meses gratis de un plan mensual: elige la facturación mensual para usarlo.», y en un cambio de plan, «Este código da meses gratis a un negocio que empieza a pagar un plan, no a un cambio de plan.». Mientras duran, cambiar de plan, pasar a anual o comprar una aplicación dice «Este negocio tiene meses gratis hasta el …» y no cambia nada; cancelar sí se puede, y el plan acaba al final del periodo.
+Implicados: el negocio de plataforma de ERPlora (emite las facturas de 0 €, BILLING-F25)
 
 ### BILLING-F13 Cancelar el plan al final del periodo
-<!-- origen: old-saas:SAAS_DASHBOARD-F101 gh:saas#2530 -->
 Estado: hecho
 Actor: propietario que paga
 Pantalla: Facturación › Suscripciones, Tienda
@@ -363,7 +356,6 @@ Si falla: si Stripe la rechaza o no contesta, nada cambia y se dice. Cancelar co
 Implicados: el negocio (recibe la fecha de fin), ASSISTANT-F25 (pedido desde el asistente del panel, su tarjeta enseña lo mismo que el diálogo)
 
 ### BILLING-F14 Deshacer una cancelación o una bajada pendiente
-<!-- origen: old-saas:SAAS_DASHBOARD-F102 gh:saas#2529 gh:saas#2574 -->
 Estado: hecho
 Actor: propietario que paga
 Pantalla: Facturación › Suscripciones, Tienda
@@ -376,7 +368,6 @@ Si falla: con una factura sin pagar, un plan cancelado no se mantiene: primero s
 Implicados: ninguno
 
 ### BILLING-F15 Terminar la suscripción: el negocio vuelve a Gratis
-<!-- origen: old-saas:SAAS_DASHBOARD-F103 gh:saas#2575 gh:saas#2527 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -390,7 +381,6 @@ Si falla: un aviso de una suscripción desconocida se da por recibido sin tocar 
 Implicados: el negocio (recibe Gratis)
 
 ### BILLING-F16 Impago del plan: reintentos, suspensión y vuelta
-<!-- origen: old-saas:SAAS_DASHBOARD-F100 old-saas:SAAS_DASHBOARD-F111 gh:saas#2529 gh:saas#2574 gh:saas#2593 gh:saas#2594 -->
 Estado: hecho
 Actor: sistema, propietario, cuenta que paga
 Pantalla: Facturación, Negocios, el propio negocio
@@ -407,7 +397,6 @@ Si falla: si Stripe no contesta al releer la suscripción, no se aplica nada y S
 Implicados: hubs (el estado del negocio), el negocio (recibe el estado)
 
 ### BILLING-F17 Reactivar un negocio suspendido pagando su factura
-<!-- origen: old-saas:SAAS_DASHBOARD-F104 gh:saas#2575 gh:saas#2527 gh:saas#2529 -->
 Estado: hecho
 Actor: cuenta que paga
 Pantalla: Facturación › Facturas, Negocios
@@ -421,7 +410,6 @@ Si falla: «Pagando…» bloquea un segundo clic; solo la cuenta que paga el neg
 Implicados: hubs (el estado del negocio), el negocio (vuelve a abrirse)
 
 ### BILLING-F18 Ver, cancelar o mantener el plan del negocio por la API
-<!-- origen: old-saas:SAAS_DASHBOARD-F64 fi:saas/billing#api-rest-de-suscripciones-drf gh:saas#2529 gh:saas#2574 fi:saas/hubs#subscriptions-cancelar-reanudar-estado-stripe fi:saas/hubs#subscriptions-rest-listado-detalle-scoped-por-usuario fi:saas/support/billing-fiscal#serializer-subscriptionlistserializer-subscriptiondetailserializer -->
 Estado: hecho
 Actor: propietario, integración
 Pantalla: ninguna
@@ -434,7 +422,6 @@ Si falla: un negocio que no es de esa cuenta no se encuentra (filtrar por él da
 Implicados: ninguno
 
 ### BILLING-F19 Recibir y validar un aviso de Stripe
-<!-- origen: old-saas:SAAS_DASHBOARD-F97 gh:saas#2530 gh:saas#2539 fi:saas/hubs#webhook-de-stripe-pagos-suscripciones fi:saas/support/billing-fiscal#modelo-webhookevent fi:saas/support/public-core-config#service-stripe_webhook-handlers-webhooks-py -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -450,7 +437,6 @@ Si falla: un error al procesarlo se apunta y se contesta con error, para que Str
 Implicados: ninguno
 
 ### BILLING-F20 Renovar el plan cada periodo
-<!-- origen: old-saas:SAAS_DASHBOARD-F98 old-saas:SAAS_DASHBOARD-F110 gh:saas#2527 gh:saas#2529 gh:saas#2530 gh:saas#2540 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -465,7 +451,6 @@ Si falla: si Stripe no contesta al releer la suscripción, no se aplica nada y S
 Implicados: el negocio (recibe su estado)
 
 ### BILLING-F21 Mantener el plan al día con lo que dice Stripe
-<!-- origen: old-saas:SAAS_DASHBOARD-F99 gh:saas#2530 gh:saas#2540 fi:saas/support/hubs#modelo-subscription-alias-hubsubscription -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -479,7 +464,6 @@ Si falla: un precio que no vende ningún plan deja el plan como estaba, pero el 
 Implicados: el negocio (recibe su plan)
 
 ### BILLING-F22 Ver las facturas y descargarlas
-<!-- origen: old-saas:SAAS_DASHBOARD-F117 fi:saas/billing#api-rest-de-facturas-drf fi:saas/billing#descarga-de-pdf-de-factura fi:saas/billing#exportar-facturas-a-csv fi:saas/billing#historial-de-compras-pagos fi:saas/billing#listado-de-facturas-invoices fi:saas/billing#redireccion-raiz-de-billing fi:saas/hubs#facturas-del-hub pc:cloud/dashboard/billing-invoices fi:saas/support/billing-fiscal#serializer-hubbasicserializer fi:saas/support/billing-fiscal#serializer-invoiceitemserializer fi:saas/support/billing-fiscal#serializer-invoicelistserializer-invoicedetailserializer fi:saas/support/billing-fiscal#service-invoicepdfgenerator-generate_invoice_pdf -->
 Estado: hecho
 Actor: propietario, cuenta que paga
 Pantalla: Facturación › Facturas
@@ -496,7 +480,6 @@ Si falla: una factura que aún se emite dice «Emitiéndose» y no ofrece PDF; s
 Implicados: ninguno
 
 ### BILLING-F23 Ver las suscripciones de cada negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F118 fi:saas/billing#compras-de-modulos-purchases fi:saas/billing#suscripciones pc:cloud/dashboard/billing-purchases pc:cloud/dashboard/billing-subscriptions fi:saas/support/billing-fiscal#serializer-modulebasicserializer -->
 Estado: hecho
 Actor: propietario, cuenta que paga
 Pantalla: Facturación › Suscripciones
@@ -509,7 +492,6 @@ Si falla: sin negocios de pago, «Todos tus negocios están en Gratis» con «Ve
 Implicados: hubs (HUBS-F28: el plan de un negocio traspasado)
 
 ### BILLING-F24 Abrir el portal de pagos de Stripe para cambiar la tarjeta
-<!-- origen: old-saas:SAAS_DASHBOARD-F120 gh:saas#2554 fi:saas/orgs-users#portal-de-facturacion-stripe fi:saas/support/orgs-users#service-organizationstripeservice -->
 Estado: hecho
 Actor: cuenta que paga
 Pantalla: Facturación › Datos de pago
@@ -523,7 +505,6 @@ Si falla: antes del primer pago no hay nada que cambiar; si Stripe no contesta, 
 Implicados: ninguno
 
 ### BILLING-F25 Emitir la factura de ERPlora por un cobro
-<!-- origen: old-saas:SAAS_DASHBOARD-F130 gh:saas#2527 gh:saas#2528 fi:saas/support/billing-fiscal#modelo-invoice fi:saas/support/billing-fiscal#modelo-invoiceitem fi:saas/support/billing-fiscal#service-create_hub_invoice fi:saas/support/billing-fiscal#task-generate_invoice_pdf_async-regenerate_all_invoice_pdfs -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -533,11 +514,10 @@ Pasos:
 3. La manda al negocio de plataforma de ERPlora, que la registra con VeriFactu y devuelve su estado y su QR; cuando la emite, se avisa por correo a quien paga.
 Entra: el cobro de Stripe con sus líneas y los datos de quien paga.
 Sale: la factura y sus líneas (`billing.invoice.recorded`), su estado fiscal y el correo.
-Si falla: si el negocio de plataforma no responde, la factura queda «emitiéndose» y se reintenta (a los 15 minutos, después el doble cada vez, como mucho 6 horas); si lo rechaza, se guarda el motivo y se reintenta. Una renovación sin cobrar se lista «No cobrada», sin número, y se numera al pagarla. Un cobro de 0 € no hace factura, y el mismo cobro avisado varias veces hace una sola. Con claves reales, sin ruta de emisión no se cobra.
+Si falla: si el negocio de plataforma no responde, la factura queda «emitiéndose» y se reintenta (a los 15 minutos, después el doble cada vez, como mucho 6 horas); si lo rechaza, se guarda el motivo y se reintenta. Una renovación sin cobrar se lista «No cobrada», sin número, y se numera al pagarla. Un cobro de 0 € de una prueba no hace factura; el de un mes gratis de un código sí (BILLING-F12), con el descuento en cada línea. El mismo cobro avisado varias veces hace una sola. Con claves reales, sin ruta de emisión no se cobra.
 Implicados: el negocio de plataforma de ERPlora (emite la factura)
 
 ### BILLING-F26 Devolver un cobro
-<!-- origen: old-saas:SAAS_DASHBOARD-F121 gh:saas#2527 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: ninguna
@@ -551,23 +531,21 @@ Si falla: una devolución de una factura que aún no existe espera y Stripe vuel
 Implicados: el negocio de plataforma de ERPlora (emite la rectificativa)
 
 ### BILLING-F27 Lo que el personal de ERPlora puede hacer sobre el cobro de un cliente
-<!-- origen: old-saas:SAAS_DASHBOARD-F123 fi:saas/django-admin#admin-companyconfig-singleton fi:saas/django-admin#admin-invoice fi:saas/django-admin#admin-invoiceitem fi:saas/django-admin#admin-modulepurchase fi:saas/django-admin#admin-subscription fi:saas/django-admin#admin-subscription-2 fi:saas/hubs#admin-django-subscription-hub-subscriptions gh:saas#2529 gh:saas#2575 fi:saas/support/billing-fiscal#command-seed_company_036 fi:saas/support/billing-fiscal#modelo-companyconfig -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin
 Pasos:
 1. Una persona de ERPlora entra en el admin con la cuenta del SaaS (código por correo y app de autenticación).
 2. Ve, solo para leer, las suscripciones y sus líneas, los avisos de Stripe, los intentos de pago, los códigos promocionales usados, los contadores de cada serie de facturas y los cambios de plan que esperan al final del periodo: lo que dice Stripe no se edita aquí, se cambia en Stripe y llega por su aviso.
-3. En los negocios puede «Enviar el último estado al negocio» y «Reintentar lo que el negocio aún debe»; en las facturas, con sus líneas, «Reenviar al negocio de plataforma», «Reenviar el correo de la factura», «Descargar el PDF» de cualquier factura ya emitida y, eligiendo varias en la lista, «Descargar los PDF (ZIP)».
+3. En los negocios puede «Enviar el último estado al negocio» y «Reintentar lo que el negocio aún debe» y, solo un superusuario, «Dejar a su propietario comprar los planes internos» y «Dejar de venderle los planes internos»: con la marca, el propietario de ese negocio ve «Prueba de pago (interno)» (1 € + IVA) en la Tienda y lo compra como cualquier plan, también en producción, para hacer una compra real y ver su factura con el QR; la columna «planes internos» de la lista dice qué negocios la tienen. En las facturas, con sus líneas, «Reenviar al negocio de plataforma», «Reenviar el correo de la factura», «Descargar el PDF» de cualquier factura ya emitida y, eligiendo varias en la lista, «Descargar los PDF (ZIP)»; desde la lista, el «Informe de facturación» de un mes, un trimestre o un año (BILLING-F40). En **Clientes de pago**, qué negocios pagan, con qué plan, desde cuándo y cuánto, con su Excel (BILLING-F41).
 4. Mantiene los códigos promocionales, la tabla de IVA, la política fiscal y los datos de ERPlora (nacen con los del Modelo 036 y son los que VIES ve de quien pregunta); las devoluciones y las cancelaciones al momento se hacen en el panel de Stripe.
 5. Una aplicación de pago que algún negocio tiene no se borra del catálogo: el admin dice qué negocio la tiene y que se quite de la venta.
 Entra: la cuenta del personal con su papel.
-Sale: lo que hacen sus acciones; nada de lo que es de Stripe cambia desde el admin.
+Sale: lo que hacen sus acciones; nada de lo que es de Stripe cambia desde el admin. Quitar la marca no cancela un plan interno ya comprado: el negocio lo sigue viendo como su plan y deja de poder comprarlo.
 Si falla: sin el papel, el admin no se abre; el grupo de soporte solo mira, no lanza acciones. El PDF de una factura que aún no se ha emitido no existe: el admin lo dice («Aún no se ha emitido»), y si el negocio de plataforma no responde, vuelve a la factura diciendo por qué. En el ZIP, las facturas sin PDF (aún emitiéndose o que el negocio de plataforma no devuelve) quedan fuera con su motivo, en un aviso del admin y en `not-included.txt` dentro del ZIP; si ninguna tiene PDF, no se descarga nada y el aviso lo dice.
 Implicados: hubs (el estado de los negocios)
 
 ### BILLING-F28 Mantener en Stripe los precios de los planes
-<!-- origen: old-saas:SAAS_DASHBOARD-F124 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin › Planes
@@ -582,7 +560,6 @@ Si falla: un precio que no cuadra no se guarda y dice por qué debajo de su camp
 Implicados: hubs (el admin de los planes)
 
 ### BILLING-F29 Probar el cobro real en PRE con un reloj de prueba de Stripe
-<!-- origen: old-saas:SAAS_DASHBOARD-F105 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin › Negocios
@@ -597,7 +574,6 @@ Si falla: con claves reales las dos acciones ni se ofrecen y, si se llegan a ped
 Implicados: hubs (el admin de los negocios)
 
 ### BILLING-F30 Usar claves reales de Stripe solo en producción y de prueba fuera de ella
-<!-- origen: old-saas:SAAS_DASHBOARD-F106 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -612,7 +588,6 @@ Si falla: sin clave, ningún pago empieza y se dice que los pagos no están disp
 Implicados: ninguno
 
 ### BILLING-F31 Ver las aplicaciones de pago y su estado en cada negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F107 gh:saas#2504 gh:saas#2535 -->
 Estado: hecho
 Actor: propietario
 Pantalla: Tienda
@@ -626,7 +601,6 @@ Si falla: «No hemos podido cargar los precios» con «Reintentar»; sin aplicac
 Implicados: apps (el nombre, el resumen y el icono de cada aplicación)
 
 ### BILLING-F32 Contratar una aplicación de pago para un negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F108 gh:saas#2566 gh:saas#2629 gh:saas#2639 gh:saas#2640 fi:saas/public#compra-de-un-modulo-stripe-embedded-checkout fi:saas/public#webhook-de-stripe-compras-de-modulos fi:saas/support/billing-fiscal#modelo-subscription fi:saas/support/public-core-config#modelo-modulepurchase fi:saas/support/public-core-config#service-send_module_purchase_email-send_vendor_sale_email-emails-py fi:saas/support/public-core-config#task-send_module_purchase_email_task-send_vendor_sale_email_task-tasks-py -->
 Estado: hecho
 Actor: propietario
 Pantalla: Tienda, Cambiar de plan, Pago seguro
@@ -641,7 +615,6 @@ Si falla: una aplicación que el negocio ya tiene no se vende dos veces; una ret
 Implicados: hubs (la suscripción del negocio), el negocio (recibe la aplicación)
 
 ### BILLING-F33 Cancelar una aplicación de pago
-<!-- origen: old-saas:SAAS_DASHBOARD-F112 gh:saas#2535 gh:saas#2568 gh:saas#2589 -->
 Estado: hecho
 Actor: propietario que paga
 Pantalla: Tienda
@@ -656,7 +629,6 @@ Si falla: una aplicación que viene con el plan se quita cambiando de plan; una 
 Implicados: hubs (la suscripción del negocio), el negocio (recibe hasta cuándo la tiene)
 
 ### BILLING-F34 Terminar una aplicación de pago al final de su periodo
-<!-- origen: old-saas:SAAS_DASHBOARD-F113 -->
 Estado: hecho
 Actor: sistema
 Pantalla: Tienda, Facturación › Suscripciones
@@ -670,7 +642,6 @@ Si falla: si se cancela el plan, sus aplicaciones terminan con él (BILLING-F15)
 Implicados: el negocio (deja de recibir la aplicación)
 
 ### BILLING-F35 Llevar una aplicación de pago a otro negocio
-<!-- origen: old-saas:SAAS_DASHBOARD-F114 gh:saas#2589 -->
 Estado: hecho
 Actor: propietario
 Pantalla: Tienda
@@ -684,13 +655,12 @@ Si falla: los rechazos de BILLING-F33 y BILLING-F32.
 Implicados: hubs (las suscripciones de los dos negocios)
 
 ### BILLING-F36 Ver una factura
-<!-- origen: fi:saas/billing#detalle-de-factura -->
 Estado: hecho
 Actor: propietario, cuenta que paga
 Pantalla: Factura
 Pasos:
 1. En **Facturación › Facturas**, la persona pulsa «Ver la factura» en una fila.
-2. La página dice su número (o «Factura … (no cobrada)»), la fecha, el negocio, el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, «Prorrateado» si lo es, su base y su IVA; la base imponible, el IVA y el total; y «A nombre de», con los datos de quien paga tal como estaban ese día.
+2. La página dice su número (o «Factura … (no cobrada)»), la fecha, el negocio, el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, «Prorrateado» si lo es, su base y su IVA, y su «Descuento» si un código lo rebajó; la base imponible, el IVA y el total; y «A nombre de», con los datos de quien paga tal como estaban ese día.
 3. Desde ella descarga el PDF de una factura emitida, paga una no cobrada o, en una rectificativa, abre la factura que rectifica. Mientras se emite, la página pasa sola a su número y su QR.
 4. La flecha de arriba vuelve a Facturas.
 Entra: una factura de la cuenta.
@@ -699,7 +669,6 @@ Si falla: una factura de otra cuenta no se encuentra; si no carga, «No hemos po
 Implicados: ninguno
 
 ### BILLING-F37 Olvidar los avisos de Stripe de más de 30 días
-<!-- origen: fi:saas/support/billing-fiscal#task-cleanup_old_webhook_events -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -712,7 +681,6 @@ Si falla: la noche siguiente borra lo que quedó. Stripe solo reenvía un aviso 
 Implicados: ninguno
 
 ### BILLING-F38 Releer cada noche las suscripciones en Stripe y corregir lo que se desvió
-<!-- origen: fi:saas/support/hubs#command-sync_subscriptions -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -726,7 +694,6 @@ Si falla: una suscripción que Stripe no conoce, o que no se pudo leer, no se to
 Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
 
 ### BILLING-F39 Comprobar cada día que Stripe avisa de todo lo que erplora.com trata
-<!-- origen: gh:saas#2402 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -739,33 +706,53 @@ Sale: nada que cambie: lo que se vio y, si algo no cuadra, el aviso al equipo.
 Si falla: ningún destino activo hacia la dirección, uno que apunta a una ruta que erplora.com no sirve o a otro entorno, más de uno hacia la dirección, o uno que manda todos los avisos (`*`) o le falta o le sobra alguno, termina con error y lo nombra. Si Stripe no contesta, también. Sin clave de Stripe (en desarrollo) no hay nada que comprobar: lo dice y termina bien.
 Implicados: ninguno
 
+### BILLING-F40 Sacar el informe de facturación de un periodo para la gestoría
+Estado: hecho
+Actor: personal de ERPlora
+Pantalla: Admin › Facturas › Informe de facturación
+Pasos:
+1. En el admin, en la lista de **Facturas**, pulsa «Informe de facturación».
+2. Se abre en el trimestre en curso; elige el año y el periodo (el año completo, un trimestre o un mes) y pulsa «Ver».
+3. Lee los totales del periodo: base imponible, IVA y total de las facturas (serie ERP), de las rectificativas (serie ERPR, en negativo) y el neto de las dos.
+4. Debajo, el desglose por tratamiento del IVA, país del cliente y tipo de IVA, sacado de las líneas tal como llegaron a VeriFactu (lo nacional va al modelo 303, la inversión del sujeto pasivo al 349 y la ventanilla única, OSS, al 369), y el desglose por tipo de cliente: empresa (NIF español de una sociedad o un NIF de fuera de España), autónomo o particular con NIF español, y particular sin NIF.
+5. Pulsa «Descargar Excel»: una fila por factura del periodo con su número, fecha, negocio, pagador, NIF, país, tratamiento del IVA, % de IVA, base, IVA, total, moneda, cobro y estado, en el formato del Excel del panel (BILLING-F22).
+Entra: el año y el periodo.
+Sale: los totales en pantalla y la hoja de cálculo para la gestoría; nada cambia.
+Si falla: solo cuentan las facturas cobradas y ya emitidas por el negocio de plataforma, por su fecha de expedición; las cobradas del periodo que aún se emiten o que el negocio de plataforma rechazó no suman, y un aviso las nombra («Cobradas en este periodo pero aún sin emitir, así que no se cuentan: …»). Un periodo que no existe dice el error junto al campo, y su Excel vuelve al informe. Sin facturas en el periodo, los totales salen a cero y el desglose dice «No se facturó nada en este periodo». Quien no puede ver las facturas en el admin no lo abre.
+Implicados: ninguno
+
+### BILLING-F41 Ver qué clientes pagan, con qué plan, desde cuándo y cuánto
+Estado: hecho
+Actor: personal de ERPlora
+Pantalla: Admin › Facturación › Clientes de pago
+Pasos:
+1. En el admin, abre **Facturación › Clientes de pago**: una fila por negocio que Stripe cobra hoy (también si está en prueba, con un cobro pendiente o en pausa), por orden de negocio.
+2. Cada fila dice el negocio, quién lo paga (el nombre fiscal de su pagador), su país, el tipo de cliente (empresa, autónomo o particular con NIF español, o particular sin NIF, como en el informe de facturación, BILLING-F40), el plan, si paga al mes o al año, el importe mensual sin IVA, desde cuándo es cliente y el estado de su suscripción.
+3. El importe mensual es la base de su última factura cobrada por un periodo entero, con sus aplicaciones de pago y sin los prorrateos de un cambio a mitad de periodo; la de un pago anual, entre 12. «Cliente desde» es la fecha de su primera factura cobrada.
+4. Filtra por plan, estado o país (cada filtro ofrece solo lo que tiene algún cliente de pago) o busca por negocio, pagador o NIF.
+5. Pulsa «Descargar Excel»: una fila por cliente de lo que enseña la lista (con sus filtros y su búsqueda) y las mismas columnas, en el formato del Excel del informe de facturación (BILLING-F40).
+Entra: los filtros y la búsqueda.
+Sale: la lista en pantalla y la hoja de cálculo; nada cambia.
+Si falla: un negocio sin ninguna factura cobrada todavía (en prueba con un código promocional) sale con el importe y «cliente desde» vacíos («-»). Una suscripción que terminó (cancelada, o caducada sin llegar a pagarse) ya no es un cliente de pago y no sale. Sin clientes de pago, la lista dice «0 clientes de pago». Quien no puede ver las suscripciones en el admin no la ve ni la descarga.
+Implicados: hubs (las suscripciones y los pagadores de los negocios)
+
 ## Para quien lo mantiene
 
 - Anatomía y operaciones: `billing/README.md` (IVA, Stripe, facturas, impago y la Tienda).
-- Partes del porte (MIGRATION-TASK APP-BILLING-1/2/3): este WORKBOOK nace en la parte 1 con los flujos del
-  plan y su dinero; la parte 2 añade las aplicaciones de pago (BILLING-F31 a BILLING-F35), la página de una
-  factura (BILLING-F36) y amplía los flujos de la API y del admin; la parte 3 une a los flujos que ya
-  existían el soporte de Stripe del SaaS viejo (precios, vuelta del pago, servicio de Stripe, modelos,
-  serializadores y tareas) y añade BILLING-F37 y BILLING-F38. Lo que allí eran tareas de Celery aquí son
-  tareas programadas o se hace tras el COMMIT (el correo de la factura).
+- Sin colas de tareas: lo periódico son tareas programadas o pasadas del `saas-worker`, y el correo de la factura
+  sale tras el COMMIT.
 - Las aplicaciones de pago (BILLING-F31 a BILLING-F35) están hechas y probadas con los dobles de Stripe y del Hub
   (`billing/tests/test_module_end_reaches_the_hub.py`; en el Hub, `base/tests/test_entitlement.py`), pero hoy no se
-  usan: desde la ronda 2026-10-24b (PLAN §32 punto 1, PLAN-SAAS §9) todos los módulos van en todos los planes y
-  ninguno es `premium`, así que no hay fila `Module` a la venta. Vuelven a usarse en cuanto la haya.
-- Fuera del modelo viejo, a propósito: sin cuota de mantenimiento del 25 % al terminar un plan (PLAN-SAAS
-  §3.3: vuelve a Gratis), sin estado «pendiente de pago» en el alta (el negocio nace en Gratis) y sin
-  sincronización automática de productos de Stripe (los identificadores se pegan en el admin).
+  usan: todos los módulos van en todos los planes y ninguno es `premium`, así que no hay fila `Module` a la venta. Vuelven a usarse en cuanto la haya.
 - Los tests de cada flujo citan su clave en el nombre o en el docstring; los e2e, en el título o en
-  `// flow: …`. Los e2e de la parte 1 (`tests/e2e/panel/billing-flows.spec.ts` y, en el Hub,
-  `tests/e2e/hub-suspended.spec.ts`) citan la clave del registro (`BILLING-Gnn`) y llevan en su cabecera la
-  equivalencia con la de este WORKBOOK. Igual los de la parte 2 (`tests/e2e/panel/billing-apps.spec.ts`) y
-  los de la parte 3 (`tests/e2e/panel/billing-support.spec.ts`).
+  `// flow: …`. Los e2e `tests/e2e/panel/billing-flows.spec.ts`, `billing-apps.spec.ts` y `billing-support.spec.ts`
+  (y, en el Hub, `tests/e2e/hub-suspended.spec.ts`) citan la clave `BILLING-Gnn` y llevan en su cabecera la
+  equivalencia con la de este WORKBOOK.
 - BILLING-F25, el reintento de la factura de ERPlora (`reconcile_platform_invoices`), corre cada 15 minutos (:00, :15,
-  :30, :45 UTC) dentro del proceso `saas-worker` (`manage.py run_worker`, `base/worker.py`, saas#305), ya no como tarea
-  de `saas-cron`; la pasada es `services.reconcile_platform_invoices_exclusively`, la misma del comando, que queda para
+  :30, :45 UTC) dentro del proceso `saas-worker` (`manage.py run_worker`, `base/worker.py`); la pasada es `services.reconcile_platform_invoices_exclusively`, la misma del comando, que queda para
   lanzarla a mano. Lo que deja pendiente escribe la línea ERROR `saas.worker.pass_failed task=reconcile_platform_invoices
-  left work owed: …`, que es lo que avisa la alarma (antes, el código de salida de la tarea). En el worker la pasada
-  tiene 50 s y oye la parada entre dos facturas (`go_on`): lo que no entra va en la ronda siguiente (`cut_short=1`).
+  left work owed: …`, que es lo que avisa la alarma. En el worker la pasada
+  tiene 50 s y oye la parada entre dos facturas (`go_on`): lo que no entra va en la pasada siguiente (`cut_short=1`).
 - Tareas programadas (ECS, `saas-cron`): `manage.py audit_tax_rules` (BILLING-F04),
   `manage.py retax_subscriptions` (BILLING-F02, BILLING-F06) y `manage.py sync_subscriptions` (BILLING-F38;
   `--dry-run` solo informa) salen con error si dejan algo por hacer, que es lo que la alarma `task_failed`
@@ -773,37 +760,32 @@ Implicados: ninguno
   infraestructura (`stacks/prod/scheduler.tf` de `ERPlora/aws`): `sync_subscriptions` cada noche a las 00:10 UTC
   (antes de la foto de las 00:30 y de la re-tarificación), `purge_webhook_events` a las 00:50 UTC,
   `audit_tax_rules` cada día a las 05:10 UTC, `retax_subscriptions` a las 05:20 UTC y `audit_stripe_webhooks`
-  (BILLING-F39) a las 05:40 UTC (`audit-stripe-webhooks-daily`, `ERPlora/aws#21`, aplicada el 2026-10-28 tras
-  suscribir `credit_note.voided` en los destinos de Stripe live y pre). Solo cuenta un endpoint activo: los tres del
-  stack viejo en `erplora.com` (`we_1UIyXWG5mOoM2dqitS8TFImp` a `/marketplace/webhooks/stripe/`,
-  `we_1UIyXVG5mOoM2dqidg2Ai6WD` a `/dashboard/billing/webhooks/stripe-connect/` y `we_1UIyXUG5mOoM2dqiftLTSFdL` a
-  `/assistant/stripe/webhook/`) están `disabled` desde el 2026-10-28, sin borrar, y las ejecuciones del 29, 30 y 31 de
-  octubre terminaron en `OK` (CloudWatch `/ecs/erplora-prod-saas-cron`, leído el 2026-11-01). Si uno de esos tres volviera
-  a activarse, `endpoint_problems` lo contaría y la tarea saldría con error, que `task_failed` avisa. Los avisos que trata el webhook son una
+  (BILLING-F39) a las 05:40 UTC (`audit-stripe-webhooks-daily`). Solo cuenta un endpoint activo: la cuenta de Stripe
+  tiene otros tres en `erplora.com`, `disabled` y sin borrar (`we_1UIyXWG5mOoM2dqitS8TFImp` a
+  `/marketplace/webhooks/stripe/`, `we_1UIyXVG5mOoM2dqidg2Ai6WD` a `/dashboard/billing/webhooks/stripe-connect/` y
+  `we_1UIyXUG5mOoM2dqiftLTSFdL` a `/assistant/stripe/webhook/`); si uno de esos tres volviera a activarse,
+  `endpoint_problems` lo contaría y la tarea saldría con error, que `task_failed` avisa. Los avisos que trata el webhook son una
   sola lista, `billing.services.STRIPE_WEBHOOK_EVENTS`, que el comando compara con el destino de Stripe.
-- Cierre (CLOSE-BILLING, 2026-10-27): ronda en PLAN-SAAS §13, con lo que PLAN-SAAS §1.1 aún pedía portar: el admin
-  de solo lectura de los códigos usados, los contadores y las bajadas programadas, y el ZIP de los PDF (BILLING-F27),
-  `audit_stripe_webhooks` (BILLING-F39) y la nota de crédito anulada (BILLING-F26). Las facturas de ERPlora las emite el Hub desde
-  `ERPlora/hub#133`, pero en producción no se cobra con clave live mientras `PLATFORM_INVOICING_ENABLED` siga en
-  `false` (reglas de trabajo §15: la transmisión real queda bajo la supervisión de Ioan). La compra suelta de BILLING-F32
-  frente a PLAN §32 punto 1 es la contradicción ya señalada en PLAN-SAAS §12, que esa ronda cita sin elegir.
-- Segundo cierre (CLOSE-BILLING, 2026-11-03): ronda 2026-11-03 de PLAN-SAAS §28. BILLING-F39, el único `parcial` que
-  quedaba, pasa a `hecho` porque se cumplió su condición (los tres endpoints viejos desactivados y una ejecución buena), y
-  la app queda `completa`.
+- Las facturas de ERPlora las emite el Hub, pero en producción no se cobra con clave live mientras
+  `PLATFORM_INVOICING_ENABLED` siga en `false` (reglas de trabajo §15: la transmisión real queda bajo la supervisión de
+  Ioan). La compra suelta de BILLING-F32 choca con `PLAN.md` (nuestros módulos no se venden sueltos): la contradicción
+  está señalada en los planes.
 
 ## Lo que NO hace, a propósito
 
 - No vende en las apps ni desde la cuenta abierta en la app (reglas de las tiendas de apps).
 - No usa Stripe Tax ni deja que Stripe recoja el NIF: el IVA y el NIF son de erplora.com.
 - No cobra una cuota por conservar un negocio que ya no paga: vuelve a Gratis.
+- No tiene un estado «pendiente de pago» en el alta: el negocio nace en Gratis.
+- No sincroniza solo los productos de Stripe: sus identificadores se pegan en el admin.
 - No cambia el plan desde el portal de Stripe: allí solo se cambia la tarjeta y se ven los recibos.
 - No traspasa una aplicación contratada de un negocio a otro: se cancela en uno y se contrata en el otro
   (BILLING-F35).
 - No vende aplicaciones sueltas fuera de la suscripción del negocio: no hay compras aparte; lo pagado por
   una aplicación es una línea de la factura de su negocio.
 - No hace facturas a mano desde el admin: cada factura sale de un cobro de Stripe.
+- No presenta los modelos 303, 349 ni 369: el informe de facturación (BILLING-F40) da sus totales a la gestoría.
 - No cobra por uso ni por excesos (sin medidores ni plan «Flex»): quien necesita más sube de plan.
-- No pide ni guarda una moneda: ERPlora cobra siempre en euros, y la preferencia de moneda de la cuenta del
-  panel viejo no se porta (el panel único la quitó).
+- No pide ni guarda una moneda: ERPlora cobra siempre en euros.
 - No manda un correo aparte por cada compra ni al «vendedor» de una aplicación: todas son de ERPlora, y la
   confirmación de una compra es el correo de su factura (BILLING-F25).

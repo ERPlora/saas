@@ -1,8 +1,7 @@
-"""The Spanish taxonomy of sectors and business types keeps its diacritics (saas#2017).
+"""The Spanish taxonomy of sectors and business types keeps its diacritics.
 
-Ported from ERPlora/saas ``public/catalog/tests/test_taxonomy_diacritics.py`` (origin/develop). The
-seed is the list a Spanish shop owner reads to say what their business does (sign-up, industry
-pages, ``/api/catalog/business-types``). It reached production ASCII-folded end to end:
+The seed is the list a Spanish shop owner reads to say what their business does (sign-up, industry
+pages, ``/api/catalog/business-types``). It once reached production ASCII-folded end to end:
 «Barberia», «Panaderia / Pasteleria», «Servicios de Automocion».
 
 Two guards, because one of them cannot be complete:
@@ -13,10 +12,7 @@ Two guards, because one of them cannot be complete:
 - ``test_only_the_pinned_entries_carry_no_accent`` closes that hole for the seed: the entries whose
   Spanish text is pure ASCII are pinned by name, so folding any string back fails.
 
-Changed from the original: no functional units (round 16, PLAN §21), and no tests of migration
-``catalog.0007``, which repaired the rows already in production: saas-next starts from an empty
-database and the seed ships the corrected copy. The eight strings captured from production stay,
-as the positive control of the two guards.
+The eight strings captured from production stay, as the positive control of the two guards.
 """
 
 import json
@@ -177,7 +173,7 @@ def test_the_seed_never_writes_the_same_word_both_ways():
     assert both_ways == {}
 
 
-# ── positive control: what production served before saas#2017 ──────────────────────────────
+# ── positive control: what production once served ──────────────────────────────────────────────
 #
 # Rows captured from production on 2026-09-11 (the eighth was a functional unit, now gone). Put
 # back into the seed, each one has to turn one of the two guards above red: either the closed list

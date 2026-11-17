@@ -1,5 +1,5 @@
 """The panel's routes under ``/api/hubs/``: each bound to its operation, over HTTP with the single error
-envelope (PLAN §14.1): 401 without an account, 404 for a business one has no access to, 403 for a role
+envelope: 401 without an account, 404 for a business one has no access to, 403 for a role
 below the one needed, 409 with the domain code, 422 with ``fields``.
 
 Django's sync test client (it sees the test's transaction); the session client of pytest-django
@@ -123,7 +123,7 @@ def test_a_reserved_or_taken_address_is_409_with_its_code(
             client, "/hubs/businesses", {"name": "Hub", "country": "ES", "slug": "hubs"}
         )
     ) == (409, "hubs.slug_reserved")
-    # The prefix of the demo hubs (round 2026-10-17): no customer takes ``demo-…``.
+    # The prefix of the demo hubs: no customer takes ``demo-…``.
     assert error(
         post(
             client, "/hubs/businesses", {"name": "Demo Bar", "country": "ES", "slug": "demo-bar"}
@@ -253,3 +253,24 @@ def test_the_proposed_address_over_http(signed_in, owner, plans):
         get(signed_in(owner), "/hubs/address", name="Peluquería Ana").json()["slug"]
         == "peluqueria-ana"
     )
+
+
+def test_the_check_route_returns_the_real_maintenance_and_clears_it(client, business, owner, hub_double):
+    from hubs.services import hub_push
+
+    hub_push.sync_hub(business.id)
+    hub_double.registry[str(business.id)]["maintenance"] = {
+        "frozen": True,
+        "reason": "Aurora upgrade",
+        "since": "2026-11-09T20:00:00+00:00",
+    }
+    client.force_login(owner)
+
+    maintained = post(client, "/hubs/businesses/check", {"id": str(business.id)})
+    assert maintained.status_code == 200, maintained.content
+    assert maintained.json()["maintenance"]["reason"] == "Aurora upgrade"
+
+    hub_double.registry[str(business.id)]["maintenance"] = None
+    recovered = post(client, "/hubs/businesses/check", {"id": str(business.id)})
+    assert recovered.status_code == 200, recovered.content
+    assert recovered.json()["maintenance"] is None

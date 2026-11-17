@@ -2,7 +2,7 @@
 
 The SPA's modes are ``system``, ``light`` and ``dark``, and ``system`` (follow the OS) when nothing
 says otherwise (``packages/ui/src/shell/theme.ts``). The template pages (errors, the public web) read
-the same mode from the ``theme`` cookie (ERPlora/saas ``apps/core/context_processors.py``):
+the same mode from the ``theme`` cookie:
 ``dark`` adds ``ion-palette-dark`` to ``<html>`` on the server, and ``system`` lets a nonce'd script
 follow ``prefers-color-scheme``. Without the processor ``theme`` was empty, so ``system`` never applied.
 
@@ -10,7 +10,7 @@ A signed-in account's own mode (Account → Preferences, ``accounts.UserPreferen
 the panel paints) wins over the cookie: the public web and the error pages look like the panel.
 TEMPLATES loads the processor on every render, so it reaches ``accounts`` lazily, inside the function,
 and falls back to the cookie if ``accounts.queries.preferences_of`` is missing: a top-level import of a
-symbol that was not on main took the whole site down in CI (2026-10-14, hotfix cfc4adb).
+missing symbol takes the whole site down.
 """
 
 import ast
@@ -54,7 +54,7 @@ def test_the_cookie_chooses_the_mode(mode):
 
 @pytest.mark.parametrize("cookie", ["", "DARK", "orange-dark", "dark; x", "</script>"])
 def test_an_unknown_cookie_follows_the_system(cookie):
-    """Only a known mode reaches the template (``orange-*`` were ERPlora/saas legacy palettes)."""
+    """Only a known mode reaches the template; anything else, an old palette's name included, follows the system."""
     assert _theme(cookie) == "system"
 
 
@@ -86,7 +86,7 @@ def test_the_account_dependency_is_declared_and_present():
 
 def test_the_processor_reaches_accounts_only_lazily():
     """No module-level import of ``accounts``: TEMPLATES loads this module on every render, and a
-    top-level import of a symbol missing on main took the whole site down in CI (2026-10-14)."""
+    top-level import of a missing symbol takes the whole site down."""
     with open(processors_module.__file__, encoding="utf-8") as source:
         tree = ast.parse(source.read())
 

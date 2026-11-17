@@ -1,5 +1,5 @@
 """Data: the platform's ``support`` group sees what an account chose in Cuenta (preferences, photo, API keys) and
-its sessions (``allauth.usersessions``), and changes nothing (plan 2026-10-13, L3-A; as ``0003_support_group`` and
+its sessions (``allauth.usersessions``), and changes nothing (as ``0003_support_group`` and
 hubs' ``0007``). Without the group there is nothing to give. Reverse: the permissions leave the group.
 """
 

@@ -1,13 +1,11 @@
 """Seed of the taxonomy: ``python manage.py seed_taxonomy [--update] [--dry-run]``.
 
-Ported from ERPlora/saas ``public/catalog/management/commands/seed_taxonomy.py`` (origin/develop):
 12 sectors and 70 business types (each under its sector, some with a ``vertical``) from
 ``hubs/data/taxonomy.json``. It runs in the ``saas-migrate`` task on every deploy, so by default it
 only creates the rows missing by their stable ``code`` and keeps what staff edited in the admin (names,
 icons…); ``--update`` refreshes every field of the existing rows from the file. Idempotent; the file is
 checked before the first write and each row is its own short transaction, so it is safe next to the
-running web. Business types are never deleted: hubs may reference them. Without functional units,
-categories nor subcategories (round 16, PLAN §21), there is no reorg tree to delete.
+running web. Business types are never deleted: hubs may reference them.
 """
 
 import json

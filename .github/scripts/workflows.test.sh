@@ -115,6 +115,10 @@ python_runs, frontend_runs, scripts_runs = (runs(tjobs.get(name, {})) for name i
 check("python runs pytest over a Postgres service",
       "pytest" in python_runs and "postgres" in (tjobs.get("python", {}).get("services") or {}))
 check("pytest runs in parallel (pytest-xdist)", "pytest" in python_runs and " -n " in python_runs)
+python_checkout = next((step.get("with") or {} for step in steps(tjobs.get("python", {}))
+                        if "actions/checkout" in str(step.get("uses", ""))), {})
+check("python checks out the whole history (the size test compares .file-size-allow with main's)",
+      python_checkout.get("fetch-depth") == 0)
 check("frontend runs lint, typecheck, Vitest and the build",
       all(f"pnpm {task}" in frontend_runs for task in ("lint", "typecheck", "test", "build")))
 check("scripts runs actionlint, shellcheck and the script tests",
@@ -130,8 +134,8 @@ e2e_input = ((e2e_on.get("workflow_call") or {}).get("inputs") or {}).get("specs
 check("e2e.yml asks which specs to run", e2e_input.get("required") is True and e2e_input.get("type") == "string")
 check("e2e.yml only reads", e2e.get("permissions") == {"contents": "read"})
 ejobs = e2e.get("jobs", {})
-check("e2e.yml has one job, e2e", list(ejobs) == ["e2e"])
-ejob = ejobs.get("e2e", {})
+check("e2e.yml has the jobs pick and e2e", list(ejobs) == ["pick", "e2e"])
+ejob, pick = ejobs.get("e2e", {}), ejobs.get("pick", {})
 ejob_runs = runs(ejob)
 check("e2e runs over a Postgres service", "postgres" in (ejob.get("services") or {}))
 checkout = next((step.get("with") or {} for step in steps(ejob) if "actions/checkout" in str(step.get("uses", ""))), {})
@@ -157,8 +161,19 @@ check("e2e keeps the JSON report and the traces of a red run",
 check("e2e uploads the traces from under tests/e2e/.artifacts/, a hidden folder, saying so",
       any((step.get("with") or {}).get("name") == "e2e-test-results"
           and (step.get("with") or {}).get("include-hidden-files") is True for step in uploads))
-check("e2e gives every spec more time than the changed ones",
-      "inputs.specs" in str(ejob.get("timeout-minutes", "")))
+
+# A job's timeout is fixed before it starts: pick counts the specs in a job before e2e.
+check("e2e waits for pick", needs(ejob) == ["pick"])
+check("pick only reads", pick.get("permissions") == {"contents": "read"})
+pick_checkout = next((step.get("with") or {} for step in steps(pick)
+                      if "actions/checkout" in str(step.get("uses", ""))), {})
+check("pick checks out the whole history (the specs a branch changes since main)", pick_checkout.get("fetch-depth") == 0)
+count_step = next((step for step in steps(pick) if "e2e-specs.sh" in str(step.get("run", ""))), {})
+check("pick tells whether the branch picks many specs with e2e-specs.sh --many against main",
+      'e2e-specs.sh --many origin/main >> "$GITHUB_OUTPUT"' in str(count_step.get("run", ""))
+      and (pick.get("outputs") or {}).get("many") == f"${{{{ steps.{count_step.get('id')}.outputs.many }}}}")
+check("a branch that picks many specs gets the timeout of every spec; a few specs keep the short one",
+      ejob.get("timeout-minutes") == "${{ (inputs.specs == 'all' || needs.pick.outputs.many == 'true') && 120 || 30 }}")
 
 # --- nightly.yml: every spec, every night on main, with an issue for what comes out red ---------
 nightly_on = nightly.get(True) or {}

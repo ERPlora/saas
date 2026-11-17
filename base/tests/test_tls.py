@@ -1,4 +1,4 @@
-"""FIX-SAAS-WHATSAPP-HTTP-CALLS-CRASH-WHEN-SSL-CERT-FILE-MISSING · ``base.tls``: the server's trusted certificates for
+"""``base.tls``: the server's trusted certificates for
 its outgoing calls, read where ``httpx`` reads them (``SSL_CERT_FILE`` when it is set, certifi's bundle otherwise).
 
 Unreadable (``SSL_CERT_FILE`` naming a file that is not there, or one that holds no certificate) is

@@ -1,8 +1,7 @@
-// The assistant's QA battery with the real model (panel/assistant-battery.spec.ts; plan
-// docs/plans/2026-10-31-qa-asistente.md of erplora-next, block A and the checks C35, C36 and C38): the questions in
-// their order, what each one showed (read from the turn's frames, `base.assistant.turn_frames`), its automatic verdict
-// on what is objective (never the model's wording) and the report the supervising chat reads question by question to
-// judge «invented: yes/no».
+// The assistant's QA battery with the real model (panel/assistant-battery.spec.ts): block A and the checks C35, C36
+// and C38, the questions in their order, what each one showed (read from the turn's frames,
+// `base.assistant.turn_frames`), its automatic verdict on what is objective (never the model's wording) and the
+// report a reviewer reads question by question to judge «invented: yes/no».
 
 /** A frame of the panel's turn (`data: {…}` of its text/event-stream). */
 export interface Frame {
@@ -459,7 +458,7 @@ function usageCell(observed: Observed): string {
 const verdictLine = (result: ItemResult): string =>
   `${result.verdict}${result.reasons.length ? ` — ${result.reasons.join('; ')}` : ''}`;
 
-/** The report the supervising chat reads: the models, the index, one line per verdict, then one table per item. */
+/** The report a reviewer reads: the models, the index, one line per verdict, then one table per item. */
 export function renderReport(meta: ReportMeta, results: ItemResult[]): string {
   const lines = [
     '# Assistant QA battery with the real model — block A, C35, C36, C38 (SaaS panel)',

@@ -1,5 +1,5 @@
 """The tax data of 2026-10-14: the EU-27 general rates in force in 2026, the Spanish territories outside the
-scope of VAT, the UK as a third country since 2021-01-01, the categories of what ERPlora sells, the fiscal
+scope of VAT, the UK as a third country since Brexit, the categories of what ERPlora sells, the fiscal
 policy and ERPlora's identity (Modelo 036). Only what is missing is created.
 
 The data is COPIED here, never imported from ``billing.seed``: a migration describes a date, and must not

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// «Download the data» on a business's Summary (PLAN-DB round 2026-10-30, proposals (a), (k), (l); HUBS-F18, HUBS-F20):
+// «Download the data» on a business's Summary (HUBS-F18, HUBS-F20):
 // the copies the Hub keeps of the business's data, newest first (`hubs.data_copy.list`: when, which, how big), each
 // downloaded with a fresh link of the Hub's asked on the click (`hubs.data_copy.link`; it lasts 15 minutes, so a page
 // left open still downloads and the mail's link, which leads here, never expires). Only its owner

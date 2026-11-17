@@ -1,4 +1,4 @@
-"""The branded mail of erplora.com (ACCOUNTS-F46; PLAN-SAAS §7, block 13): every mail leaves as text AND as HTML,
+"""The branded mail of erplora.com: every mail leaves as text AND as HTML,
 the HTML on the common template ``templates/emails/base.html`` (the logo, a header and a footer of the brand, CSS
 inline, and nothing fetched from the network but the logo, which erplora.com serves itself).
 
@@ -7,8 +7,7 @@ those lines as they are, and the HTML part shows the same lines, escaped and wit
 language is the recipient's, given explicitly: the senders build their lines in it and send outside it. Sending
 stays the sender's, with its own ``try``/``except`` and log: a failure here is raised, never swallowed.
 
-Ported in structure from ERPlora/saas ``apps/core/emails.py`` (``send_branded_email`` and its ``_fallback.html``,
-origin/develop). allauth's mails get the same HTML through ``accounts.adapters.AccountAdapter.render_mail``.
+allauth's mails get the same HTML through ``accounts.adapters.AccountAdapter.render_mail``.
 """
 
 from django.conf import settings
@@ -50,7 +49,7 @@ def branded_html(lines: list[str], *, language: str, subject: str = "", code: st
         return render_to_string(TEMPLATE, {"subject": subject, "paragraphs": _paragraphs(lines, code), **brand()})
 
 
-def branded_message(
+def branded_message(  # noqa: PLR0913
     subject: str,
     lines: list[str],
     to: list[str],

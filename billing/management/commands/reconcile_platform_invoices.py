@@ -1,15 +1,15 @@
 """``python manage.py reconcile_platform_invoices``: what ERPlora's platform hub still owes, one pass by hand; the
 ``saas-worker`` runs the same one every 15 minutes (``services.reconcile_platform_invoices_exclusively``,
-``base.worker``, saas#305).
+``base.worker``).
 
-The legal invoice is issued by ERPlora's platform hub in hub-next (PLAN-SAAS §4; lot L3-C). After the webhook's
+The legal invoice is issued by ERPlora's platform hub. After the webhook's
 COMMIT the SaaS posts each invoice once (``billing.services.post_platform_invoice``); this is the net, every
 15 minutes: it posts again every «issuing» invoice whose wait passed (idempotent on the Hub by its id), asks
 the Hub about every issued or rejected one until the AEAT accepts it, and counts the ones «issuing» for more
 than an hour (``billing.services.reconcile_platform_invoices``).
 
 Idempotent, under the advisory lock ``hashtext('erplora.saas.reconcile_platform_invoices')``
-(``hubs.services.run_exclusively``, the SaaS's convention: a second run returns at once). One invoice never
+(``hubs.services.exclusive_runs.run_exclusively``, the SaaS's convention: a second run returns at once). One invoice never
 stops the pass; the counts go to the log, and the run ends with an error after its pass when anything stayed
 owed, was refused, rejected, stuck or crashed (in the worker, its line ``saas.worker.pass_failed``, which the alarm
 of the infra reads).

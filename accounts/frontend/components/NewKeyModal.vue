@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// «New key» of Account → API keys (mockups `account.html` «keys», README §3b and §6.17): a FormModal with a name
-// (required: no placeholder becomes a name, X-17), the permissions the server offers (`ApiKeyListOut.scopes`, at
+// «New key» of Account → API keys: a FormModal with a name
+// (required: no placeholder becomes a name), the permissions the server offers (`ApiKeyListOut.scopes`, at
 // least one; none ticked to start, so a key gets only what it needs) and its expiry (30 or 90 days, 90 by default,
 // or never). `accounts.apikey.create` asks «Confirm it's you» when the server wants it (ReauthModal), then the
 // dialog shows the whole key once (`erps_live_…`) with «Copy» until «I have saved it»; meanwhile a tap outside
@@ -46,8 +46,8 @@ const created = shallowRef<ApiKeyCreatedOut | null>(null);
 
 watch(open, (isOpen) => {
   if (!isOpen) {
-    // Said once the sheet goes («I have saved it» or its ✕), never over the key: on a phone the toast covered it,
-    // shown this once (ACCOUNTS-F31).
+    // Said once the sheet goes («I have saved it» or its ✕), never over the key: on a phone the toast would cover
+    // it, shown this once.
     if (created.value) void toastSuccess(t('accounts.account.keys.created', { name: created.value.key.name }));
     return;
   }

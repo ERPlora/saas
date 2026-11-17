@@ -1,5 +1,5 @@
-// «Switch to annual» (or back to monthly) on the business's own plan (mockups `store.html` «modal-annual»;
-// UX-AUDIT-4 W-F2/X-03/V-37): for THAT business, with what it charges today WITH VAT — Stripe's prorated
+// «Switch to annual» (or back to monthly) on the business's own plan (mockups `store.html` «modal-annual»):
+// for THAT business, with what it charges today WITH VAT — Stripe's prorated
 // preview — the new price, what it is a month, and that its modules follow the billing. Confirmed with
 // `billing.plan.change` at the preview's proration date.
 // clock: data only — no code under test compares these dates with now.

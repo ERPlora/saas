@@ -1,7 +1,7 @@
-"""Splitting and qualifying the VAT of a sale (saas#1051, saas#1063).
+"""Splitting and qualifying the VAT of a sale.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_vat.py`` (origin/develop, 21 tests), plus the
-public helpers of ``billing.vat`` the panel and L2-B read (``BILLING_COUNTRIES``, ``tax_id_type_for``).
+It also covers the public helpers of ``billing.vat`` the panel and the billing services read
+(``BILLING_COUNTRIES``, ``tax_id_type_for``).
 The rates come from ``TaxRule``, editable in the admin, so these tests touch the database.
 """
 
@@ -43,7 +43,7 @@ class TestDomesticSale:
             assert result.base + result.tax == Decimal(gross), gross
 
     def test_rounding_is_half_up(self):
-        """ADR-0123: explicit HALF_UP; a bare quantize() inherits HALF_EVEN."""
+        """Explicit HALF_UP; a bare quantize() inherits HALF_EVEN."""
         # 29.99 / 1.21 = 24.7851... → 24.79 (not 24.78)
         result = _resolve("29.99", customer_country="ES")
 
@@ -60,7 +60,7 @@ class TestDomesticSale:
 
 
 class TestOtherEuCountries:
-    """The One-Stop Shop threshold rules (saas#1063): below €10,000 a year of cross-border B2C sales
+    """The One-Stop Shop threshold rules: below €10,000 a year of cross-border B2C sales
     (and without the voluntary OSS registration) the ISSUER's VAT is charged, not the customer's."""
 
     def test_b2c_in_another_member_state_pays_the_issuer_rate_below_the_threshold(self):
@@ -88,7 +88,7 @@ class TestOtherEuCountries:
 
 
 class TestSpanishTerritoriesOutsideTheVatArea:
-    """The Canary Islands, Ceuta and Melilla are outside the scope of VAT (saas#1063)."""
+    """The Canary Islands, Ceuta and Melilla are outside the scope of VAT."""
 
     def test_the_canary_islands_are_not_subject(self):
         result = _resolve("100.00", customer_country="ES", customer_postal_code="35001")
@@ -281,7 +281,7 @@ class TestTheCountriesErploraInvoices:
 
 class TestASpanishPostalCodeIsFiveDigits:
     """The first two digits of a Spanish postal code are its province, but only of a real code: «3500»
-    (Benidorm typed without its leading 0) is not Las Palmas (review of L2-A, finding 1)."""
+    (Benidorm typed without its leading 0) is not Las Palmas."""
 
     @pytest.mark.parametrize(
         "postal_code, region",
@@ -341,7 +341,7 @@ class TestTheOssIsEuropean:
 
 
 class TestTheReverseChargeRule:
-    """One rule for the engine and for the panel's answer (review of L2-A, finding 4)."""
+    """One rule for the engine and for the panel's answer."""
 
     def test_it_needs_the_roi_a_member_state_that_is_not_ours_and_a_proof(self):
         from billing.vat import reverse_charge_applies

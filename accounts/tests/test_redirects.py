@@ -1,11 +1,11 @@
-"""The old panel's addresses of the account, for good (301), to Account in the new panel (ACCOUNTS-G113, ACCOUNTS-F30).
+"""The old panel's addresses of the account, for good (301), to Account in the new panel.
 
-The installed app (``ERPlora/app``, copied as it is: working rules §12) opens the account on its own at
-``/dashboard/profile/?surface=account`` (``navigation.rs``: ``ACCOUNT_PAGES``), the old SaaS's address; the person's
+The installed app (``ERPlora/app``) opens the account on its own at
+``/dashboard/profile/?surface=account`` (``navigation.rs``: ``ACCOUNT_PAGES``); the person's
 bookmarks and old mails hold the same ones. Each lands on its tab of Account, keeping the query: ``?surface=account``
 is what paints the account without what sells (``base.surface``), and the sign-in that a signed-out visitor meets on
-the way keeps it in ``next``. Account lives under ``/dashboard/`` with the rest of the panel
-(FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX): one hop, never through its old address at the root.
+the way keeps it in ``next``. Account lives under ``/dashboard/`` with the rest of the panel:
+one hop, never through its old address at the root.
 """
 
 import json

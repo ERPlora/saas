@@ -1,38 +1,31 @@
-// Account (`/dashboard/account/:tab`, round 17: PLAN-SAAS §3.6 point 1; mockups `account.html`) in Ioan's Chrome, the «Hecho
-// L3» flows of docs/plans/2026-10-13-panel-saas-unificado.md that L3-B covers: editing the profile; the theme and
-// the language, kept after a reload; the password, changed with the current one; the sessions (a second browser signed in as the same account, «Close other
-// sessions» ends it here and asks the Hub to end it in the businesses); an API key created after «Confirm it's you»
-// with the password, opening the API once (`X-Api-Key`) and refused after «Revoke»; and the change of the email
-// with the code read from the mail. Each tab at the three viewports: account-tabs.spec.ts.
+// Account (`/dashboard/account/:tab`) in Chrome: editing the profile; the theme and the language, kept after a
+// reload; the password, changed with the current one; the sessions (a second browser signed in as the same account,
+// «Close other sessions» ends it here and asks the Hub to end it in the businesses); an API key created after
+// «Confirm it's you» with the password, opening the API once (`X-Api-Key`) and refused after «Revoke»; and the change
+// of the email with the code read from the mail. Each tab at the three viewports: account-tabs.spec.ts.
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { type APIRequestContext, type Page, request as playwrightRequest } from '@playwright/test';
 
-import {
-  djangoPrint,
-  expect,
-  panelAccount,
-  seedPanel,
-  settled,
-  shot,
-  signIn,
-  startHubDouble,
-  test,
-  VIEWPORTS,
-  waitForMail,
-  watchPageErrors,
-} from './fixtures';
+import { panelAccount } from './accounts';
+import { seedPanel } from './businesses';
+import { djangoPrintWarm, warmDjango } from './django';
+import { expect, test } from './fixtures';
+import { startHubDouble } from './hub';
+import { waitForMail } from './mail';
+import { watchPageErrors } from './page-events';
 import { PANEL_URL } from './project';
+import { settled, shot, toast, VIEWPORTS } from './screen';
+import { signIn } from './session';
 
 const SHOTS_DIR = process.env.SHOTS_DIR ?? join(shot('account-dir'), '..', 'account');
 mkdirSync(SHOTS_DIR, { recursive: true });
 
 test.beforeAll(() => seedPanel());
+// The Django the tests ask (ageSignIn, moreSessions), booted here and not on a test's clock.
+test.beforeAll(() => warmDjango());
 test.afterAll(() => seedPanel('clear'));
-
-/** A toast of the shell (`ion-toast`) saying `text`. */
-const toast = (page: Page, text: string | RegExp) => page.locator('ion-toast').filter({ hasText: text });
 
 /** The value of an Ionic field (its native `input` inside). */
 const fieldValue = (page: Page, testid: string) => page.getByTestId(testid).locator('input');
@@ -45,7 +38,7 @@ async function ageSignIn(request: APIRequestContext): Promise<void> {
   const { cookies } = await request.storageState();
   const key = cookies.find((cookie) => cookie.name === 'sessionid')?.value;
   if (!key) throw new Error('no sessionid cookie (sign in first)');
-  const aged = djangoPrint(
+  const aged = await djangoPrintWarm(
     [
       'from importlib import import_module',
       'from django.conf import settings',
@@ -76,7 +69,7 @@ test('editing the profile keeps the names after a reload', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-// flow: ninguno — FIX accounts
+// flow: none — regression test of the Account page
 test('opening the profile with no first name says nothing; leaving the empty field says it', async ({ page }) => {
   const errors = watchPageErrors(page);
   // e2e-jorge: the seeded account with no names yet. Nothing is saved: the account stays as seeded.
@@ -104,7 +97,7 @@ test('opening the profile with no first name says nothing; leaving the empty fie
   expect(errors).toEqual([]);
 });
 
-// flow: ninguno — FIX accounts
+// flow: none — regression test of the Account page
 test('changing only the last name with no first name says why «Save changes» stays off', async ({ page }) => {
   const errors = watchPageErrors(page);
   // e2e-jorge: no names yet. Nothing is saved: the account stays as seeded.
@@ -163,7 +156,7 @@ test('«Close other sessions» ends the other browser here and in the businesses
     await expect(rows).toHaveCount(1);
     const me = await other.request.get('/api/me');
     expect(((await me.json()) as { user: unknown }).user).toBeNull();
-    // The Hub is asked to end the account's sessions in its businesses too (PLAN-SAAS §2.1).
+    // The Hub is asked to end the account's sessions in its businesses too.
     await expect.poll(() => hub.calls.filter((call) => call.path === '/internal/sessions/revoke' && call.signed).length).toBeGreaterThan(0);
   } finally {
     await hub.close();
@@ -176,8 +169,8 @@ test('«Close other sessions» ends the other browser here and in the businesses
 const MANY_SESSIONS = 1800;
 
 /** `count` more sessions that still sign `email` in, used a minute apart before now, as as many sign-ins elsewhere. */
-function moreSessions(email: string, count: number): number {
-  const made = djangoPrint(
+async function moreSessions(email: string, count: number): Promise<number> {
+  const made = await djangoPrintWarm(
     [
       'from datetime import timedelta',
       'from importlib import import_module',
@@ -201,12 +194,12 @@ function moreSessions(email: string, count: number): number {
   return Number(made);
 }
 
-// flow: ninguno — FIX accounts (FIX-SAAS-SESSIONS-RESULT-TOO-BIG): the list said «The result exceeds 262144 bytes».
+// flow: none — regression test: with too many sessions the list said «The result exceeds 262144 bytes».
 test('with more sessions than a page, «Active sessions» loads, this one first, and pages', async ({ page }) => {
   const errors = watchPageErrors(page);
   const account = panelAccount('carlos');
   await signIn(page.request, account);
-  expect(moreSessions(account.email, MANY_SESSIONS)).toBe(MANY_SESSIONS);
+  expect(await moreSessions(account.email, MANY_SESSIONS)).toBe(MANY_SESSIONS);
   const rows = page.getByTestId('sessions-row');
   const pager = page.locator('.data-table__pager');
   for (const viewport of VIEWPORTS) {
@@ -283,35 +276,44 @@ test('the password changes with the current one, and only the new one signs in a
   expect(errors).toEqual([]);
 });
 
+/**
+ * On «API keys» with a sign-in older than allauth's window (`ageSignIn`): fills «New key» and creates it, and waits for
+ * «Confirm it's you» to be in place over it (its sheet slides in after its text is there: a capture waits for it).
+ */
+async function askReauthOverNewKey(page: Page): Promise<void> {
+  await page.getByTestId('api-keys-empty-new').click();
+  await page.getByTestId('new-key-name').locator('input').fill('Gestoría Martínez');
+  await page.getByTestId('new-key-scope-hubs.read').click();
+  const presented = page.evaluate(
+    () =>
+      new Promise<void>((done) => {
+        document.addEventListener('ionModalDidPresent', function seen(event) {
+          if ((event.target as HTMLElement).dataset.testid !== 'reauth-modal') return;
+          document.removeEventListener('ionModalDidPresent', seen);
+          done();
+        });
+      }),
+  );
+  await page.getByTestId('new-key-submit').click();
+  // A dialog that never opens fails here, naming it, instead of at the spec's timeout waiting for its event.
+  await expect(page.getByTestId('reauth-modal')).toBeVisible();
+  await presented;
+}
+
 test('ACCOUNTS-F31 · «New key» with an old sign-in asks «Confirm it’s you» in a dialog and the page stays, at 390, 834 and 1440 px', async ({
   page,
 }) => {
-  // The server answers the command with a 401 that asks for a recent sign-in: the panel asks for it over the page,
-  // never reloads it (the SDK took every 401 for a session that ended, FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX).
+  // The server answers the command with a 401 that asks for a recent sign-in: the panel asks for it over the page and
+  // never reloads it, as it would for a session that ended.
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('one'));
   for (const size of VIEWPORTS) {
     await ageSignIn(page.request);
     await page.setViewportSize(size);
     await page.goto('/dashboard/account/api-keys');
-    await page.getByTestId('api-keys-empty-new').click();
-    await page.getByTestId('new-key-name').locator('input').fill('Gestoría Martínez');
-    await page.getByTestId('new-key-scope-hubs.read').click();
     // A mark on this page's window: a reload would take it away.
     await page.evaluate(() => Object.assign(window, { reauthE2ePage: 'same' }));
-    // The capture waits for the dialog to be in place: its sheet slides in after its text is there.
-    const presented = page.evaluate(
-      () =>
-        new Promise<void>((done) => {
-          document.addEventListener('ionModalDidPresent', function seen(event) {
-            if ((event.target as HTMLElement).dataset.testid !== 'reauth-modal') return;
-            document.removeEventListener('ionModalDidPresent', seen);
-            done();
-          });
-        }),
-    );
-    await page.getByTestId('new-key-submit').click();
-    await presented;
+    await askReauthOverNewKey(page);
     await expect(page.getByTestId('reauth-modal')).toContainText("Confirm it's you");
     expect(await page.evaluate(() => (window as { reauthE2ePage?: string }).reauthE2ePage), `reloaded at ${size.width}`).toBe(
       'same',
@@ -325,16 +327,52 @@ test('ACCOUNTS-F31 · «New key» with an old sign-in asks «Confirm it’s you�
   expect(errors).toEqual([]);
 });
 
+test('ACCOUNTS-F31 · «Confirm it’s you» over «New key» dims it and keeps its shadow, light and dark, at 390, 768 and 1280 px', async ({
+  page,
+}) => {
+  // Ionic drops the backdrop and the shadow of a modal opened over another one (its core.css). FormModal gives both
+  // back, 0.4 in light and 0.6 in dark, and it is the only rule: one of this dialog's own said 0.4 in dark too, and the
+  // bundle's order chose (saas#379). Read in the browser, with the bundle's stylesheets in their order.
+  const errors = watchPageErrors(page);
+  await signIn(page.request, panelAccount('one'));
+  const sizes = [
+    { width: 390, height: 844 },
+    { width: 768, height: 1024 },
+    { width: 1280, height: 800 },
+  ];
+  for (const scheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    for (const size of sizes) {
+      await ageSignIn(page.request);
+      await page.setViewportSize(size);
+      await page.goto('/dashboard/account/api-keys');
+      await expect(page.locator('html')).toHaveClass(scheme === 'dark' ? /ion-palette-dark/ : /^(?!.*ion-palette-dark)/);
+      await askReauthOverNewKey(page);
+      // Over «New key», still open behind it.
+      await expect(page.getByTestId('new-key')).toHaveClass(/show-modal/);
+      const look = await page.getByTestId('reauth-modal').evaluate((modal) => {
+        const style = getComputedStyle(modal);
+        return { backdrop: style.getPropertyValue('--backdrop-opacity').trim(), shadow: style.getPropertyValue('--box-shadow').trim() };
+      });
+      const at = `${scheme} at ${size.width}`;
+      expect(look.backdrop, at).toBe(scheme === 'dark' ? '0.6' : '0.4');
+      expect(look.shadow, at).not.toMatch(/^(none)?$/);
+      await settled(page);
+      await page.screenshot({ path: shot(`SAAS-379-reauth-over-new-key-${size.width}-${scheme}`) });
+      await page.getByTestId('reauth-modal-cancel').click();
+      await expect(page.getByTestId('reauth-modal')).toBeHidden();
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
 test('an API key asks «Confirm it’s you», opens the API once and is refused once revoked', async ({ page }) => {
   const errors = watchPageErrors(page);
   await signIn(page.request, panelAccount('one'));
   await ageSignIn(page.request);
   await page.goto('/dashboard/account/api-keys');
   await expect(page.getByTestId('api-keys-empty')).toBeVisible();
-  await page.getByTestId('api-keys-empty-new').click();
-  await page.getByTestId('new-key-name').locator('input').fill('Gestoría Martínez');
-  await page.getByTestId('new-key-scope-hubs.read').click();
-  await page.getByTestId('new-key-submit').click();
+  await askReauthOverNewKey(page);
   // The sign-in is older than 5 minutes: the password again.
   await expect(page.getByTestId('reauth-modal')).toContainText("Confirm it's you");
   await page.screenshot({ path: join(SHOTS_DIR, 'account-api-keys-reauth-1280-light.png') });
@@ -392,6 +430,15 @@ test('the email changes with the code mailed to the new address', async ({ page 
   await signIn(page.request, panelAccount('first'));
   await page.goto('/dashboard/account/profile');
   await expect(page.getByTestId('profile-email')).toContainText('e2e-first@example.com');
+  // The answer to the code waits until the live profile shows the new address, the order a few runs in ten took
+  // on their own and that said «Your email is verified» instead (saas#366).
+  let answerTheCode = (): void => undefined;
+  const codeAnswered = new Promise<void>((resolve) => (answerTheCode = resolve));
+  await page.route('**/api/accounts/email/verify', async (route) => {
+    const answer = await route.fetch();
+    await codeAnswered;
+    await route.fulfill({ response: answer });
+  });
   await page.getByTestId('profile-email-change').click();
   await page.getByTestId('email-change-address').locator('input').fill(next);
   const since = Date.now();
@@ -400,6 +447,8 @@ test('the email changes with the code mailed to the new address', async ({ page 
   const code = await waitForMail(next, since, /\b\d{6}\b/);
   await page.getByTestId('code').locator('input').fill(code);
   await page.getByTestId('email-change-submit').click();
+  await expect(page.getByTestId('profile-email')).toContainText(next);
+  answerTheCode();
   await expect(toast(page, `Your email is now ${next}`)).toBeVisible();
   await expect(page.getByTestId('profile-email')).toContainText(next);
   expect(errors).toEqual([]);

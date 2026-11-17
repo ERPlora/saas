@@ -7,8 +7,7 @@
 // business in its 90 days of deletion holds nobody. Read from `hubs.business.list`, the operation the server reads
 // for the same rule (`accounts.services.businesses_holding`); the server decides in the end
 // (DeleteAccountDialog shows its 409 too). Until that list is known — loading, failed, or no answer in time —
-// nothing says the account is free to go: «Delete account» stays off, and a failure is said with «Retry» (audit
-// 2026-10-14 R-04/R-08).
+// nothing says the account is free to go: «Delete account» stays off, and a failure is said with «Retry».
 import { HubIcon } from '@erplora/ui/shell';
 import { useLive } from '@erplora/ui/sdk';
 import { IonButton, IonCard, IonCardContent } from '@ionic/vue';
@@ -40,7 +39,7 @@ const held = computed(() => owned.value.length > 0 || paid.value.length > 0);
 
 /**
  * The businesses that hold the account, named in ONE line as the person's language joins them («A, B y C»),
- * each name a link to its Settings: not a stack of links (Ioan, 2026-10-14). The sentence above says what to do.
+ * each name a link to its Settings: not a stack of links, so the page stays clean. The sentence above says what to do.
  */
 const heldParts = computed<Array<{ business?: BusinessRowOut; text?: string }>>(() => {
   const list = owned.value.length ? owned.value : paid.value;

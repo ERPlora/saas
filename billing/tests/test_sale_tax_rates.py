@@ -1,15 +1,14 @@
-"""The TWO doors that sell charge the same tax to the same buyer (saas#1992).
+"""The TWO doors that sell charge the same tax to the same buyer.
 
-Ported from ERPlora/saas ``apps/dashboard/fiscal/tests/test_sale_tax_rates.py`` (origin/develop, 6 tests).
 The SaaS sells a business's plan and a paid module, and each door used to decide the tax on its own:
 the same customer in Las Palmas got a right plan invoice and a module overcharged by 21 %. The decision
 lives in ONE place, ``billing.services.sale_tax_rates``, and is tested here.
 
 Adapted: it answers with the rates Stripe must charge as ``TaxRateSpec`` (``billing.stripe_tax_rates``),
-which lot L2-B mirrors into Stripe ``TaxRate`` ids; a sale that cannot be priced raises the 409
-``billing.tax_engine_missing`` / ``billing.billing_location_required`` instead of returning a refusal
-dict. The old ``test_si_el_espejo_de_stripe_falla_se_niega_la_venta`` (the Stripe mirror down) moves
-to L2-B with the mirror.
+which ``billing.stripe_service`` mirrors into Stripe ``TaxRate`` ids; a sale that cannot be priced raises
+the 409 ``billing.tax_engine_missing`` / ``billing.billing_location_required`` instead of returning a
+refusal dict. The old ``test_si_el_espejo_de_stripe_falla_se_niega_la_venta`` (the Stripe mirror down)
+goes with the mirror: ``test_stripe_service`` tests its failures.
 """
 
 from decimal import Decimal
@@ -33,6 +32,14 @@ def _percentages(specs) -> list[Decimal]:
     return [spec.percentage for spec in specs]
 
 
+def _canary_business_without_its_rule(business_paid_by):
+    """A place ERPlora sells to whose rule the admin removed: the territory has no rate to charge."""
+    from billing.models import TaxRule
+
+    TaxRule.objects.filter(country_code="ES", region_code="IC").delete()
+    return business_paid_by("ES", LAS_PALMAS, tax_id="ESB27593136")
+
+
 class TestBothDoorsChargeTheSame:
     def test_the_mainland_pays_21_percent_whatever_it_buys(self, business_paid_by):
         business = business_paid_by("ES", MADRID)
@@ -48,7 +55,7 @@ class TestBothDoorsChargeTheSame:
 
     def test_the_canaries_pay_none_whatever_they_buy(self, business_paid_by):
         """An EMPTY list is an answer, not a failure: outside the scope of VAT."""
-        business = business_paid_by("ES", LAS_PALMAS)
+        business = business_paid_by("ES", LAS_PALMAS, tax_id="ESB27593136")
 
         assert (
             services.sale_tax_rates(business, category_key=PLAN, price=Decimal("29.99"))
@@ -63,7 +70,7 @@ class TestBothDoorsChargeTheSame:
 
 
 class TestWhatIsFreeIsNeverRefused:
-    """21 % of nothing is nothing, and the Free plan is the only way in (ADR-0154)."""
+    """21 % of nothing is nothing, and the Free plan is the only way in."""
 
     def test_a_zero_amount_needs_neither_rate_nor_address(self, business_paid_by):
         nowhere = business_paid_by(None)
@@ -77,7 +84,7 @@ class TestWhatIsFreeIsNeverRefused:
 
 class TestWithoutKnowingWhereThePayerIsNothingIsSold:
     def test_without_country_and_postal_code_it_is_refused(self, business_paid_by):
-        """saas#1972: the postal code is the ONLY thing that tells Las Palmas from Madrid."""
+        """The postal code is the ONLY thing that tells Las Palmas from Madrid."""
         nowhere = business_paid_by(None)
 
         with pytest.raises(Conflict) as refused:
@@ -104,7 +111,7 @@ class TestWithoutKnowingWhereThePayerIsNothingIsSold:
 
 
 class TestASpanishPostalCodeHasFiveDigits:
-    """«3500» is Benidorm without its leading 0, not Las Palmas (review of L2-A, finding 1)."""
+    """«3500» is Benidorm without its leading 0, not Las Palmas."""
 
     def test_benidorm_without_its_zero_is_asked_for_its_address(self, business_paid_by):
         business = business_paid_by("ES", "3500")
@@ -127,7 +134,7 @@ class TestASaleThatCannotKnowItsRateIsNotMade:
         self, business_paid_by
     ):
         """The rate would be a guess and the price is net: refusing is loud and reversible."""
-        abroad = business_paid_by("US", "10001")
+        abroad = _canary_business_without_its_rule(business_paid_by)
 
         with pytest.raises(Conflict) as refused:
             services.sale_tax_rates(
@@ -141,7 +148,7 @@ class TestASaleThatCannotKnowItsRateIsNotMade:
         """No noun glued into a sentence: each thing sold has its own translated sentence."""
         from django.utils import translation
 
-        abroad = business_paid_by("US", "10001")
+        abroad = _canary_business_without_its_rule(business_paid_by)
 
         with translation.override("es"), pytest.raises(Conflict) as refused:
             services.sale_tax_rates(abroad, category_key=PLAN, price=Decimal("29.99"), what="plan")

@@ -1,12 +1,9 @@
 """The authorisation a business signs so ERPlora files its VeriFactu records, as each version arrived and was
-reviewed (plan 2026-10-15; PLAN-SAAS §4, round 2026-10-15).
+reviewed.
 
-Ported in behaviour from ERPlora/saas ``apps/dashboard/fiscal/models.py`` (origin/develop,
-``RepresentationGrant``), reduced to what the review needs: keyed by the business (``hub``) instead of the
-taxpayer's NIF, because the Hub reads «validated or not» per business in its snapshot; no review tokens,
-mail, S3 archive nor signature detection (plan, «Fuera de alcance»). The figure is the «otorgamiento de la
-representación directa» of the Anexo I of the AEAT's agreement 017 (collaboration social): in code,
-``representation``, the Hub's word.
+Keyed by the business (``hub``) instead of the taxpayer's NIF, because the Hub reads «validated or not» per
+business in its snapshot. The figure is the «otorgamiento de la representación directa» of the Anexo I of the
+AEAT's agreement 017 (collaboration social): in code, ``representation``, the Hub's word.
 
 - ``version`` grows per business and is never reused (``UniqueConstraint``): it names one document for ever.
 - ``status``: ``submitted`` (waiting for the staff), ``approved`` (ERPlora may file for it), ``returned`` (the
@@ -38,10 +35,10 @@ class RepresentationGrant(models.Model):
         DNI = "dni", _("DNI")
         NIE = "nie", _("NIE")
 
-    #: ``reason`` of a submission a newer one replaced before anybody reviewed it: a code, not a sentence
-    #: (the old product's ``SUPERSEDED_REASON``), never shown to the customer as a reason.
+    #: ``reason`` of a submission a newer one replaced before anybody reviewed it: a code, not a sentence,
+    #: never shown to the customer as a reason.
     SUPERSEDED = "superseded_by_new_upload"
-    #: ``reason`` of an approval a newer approval replaced (the old product's «Superseded by a new grant.»).
+    #: ``reason`` of an approval a newer approval replaced.
     REPLACED_BY_APPROVAL = "Superseded by a new approval."
     #: The four documents, by field: the signed Anexo I, the signer's identity document, a sample of the
     #: signature (with a NIE) and the proof that the signer represents a company.

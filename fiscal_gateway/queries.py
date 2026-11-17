@@ -1,5 +1,5 @@
-"""What the gateway reads before it presents (PLAN-SAAS §4, round 2026-10-15): the business a call names and
-the taxpayer ERPlora may present for on its behalf.
+"""What the gateway reads before it presents: the business a call names and the taxpayer ERPlora may present
+for on its behalf.
 
 The only module of the gateway that reads the database; ``internal`` calls it. Plain functions, not
 operations: the caller is the Hub, server to server, signed (no user, no session). Neither reads a document

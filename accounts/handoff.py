@@ -1,10 +1,9 @@
-"""The jump from the SaaS to a hub (PLAN-SAAS §3.1 steps 4-5).
+"""The jump from the SaaS to a hub.
 
 ``/hub-login/?hub=<slug>&next=<path>&state=<token>`` mints a one-time code and answers an
 auto-submitted form that POSTs it (with ``next`` and ``state``) to the hub's callback (OIDC ``response_mode=form_post``: the code never sits in a
-URL, the history or a log). Ported from ERPlora/saas ``hub_oauth_bridge``
-(``apps/auth/users/views.py``), where the callback was a query parameter checked by
-``is_allowed_callback_url``; here it is built from the slug, so it can only ever be a hub's.
+URL, the history or a log). The callback is built from the slug, never taken from the request, so it can only ever
+be a hub's.
 
 Every other answer is a Vue page of the SPA: a refused jump goes to ``/login/error?code=…``, and a jump
 without a session to the sign-in, the launcher ``/launch?next=…`` (``LOGIN_URL``: the entry of
@@ -33,7 +32,7 @@ come back to this same path and query (``next``), so the state survives both.
 Each account starts at most ``HUB_LOGIN_RATELIMIT`` jumps (20 in 5 minutes, counted per account and refused
 ones included): past it, ``/login/error?code=too_many`` asks to wait, and no code is minted.
 
-``audience=hub-admin`` is the staff's «Open in the Hub admin» (ronda 13, PLAN §18): the SaaS admin's
+``audience=hub-admin`` is the staff's «Open in the Hub admin»: the SaaS admin's
 button opens ``hubs.erplora.com/auth/login?hub=<slug>&next=/admin/hub/<slug>/`` (``accounts.admin``),
 whose ``state`` brings the browser back here. It mints a ``hub-admin`` code (a platform role, no
 membership) and posts it to ``HUB_ADMIN_CALLBACK_URL``. Without that role: 403, never a login. With
@@ -55,8 +54,9 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 from django_ratelimit.core import is_ratelimited
 
-from accounts import mfa, queries, services
+from accounts import mfa, queries
 from accounts.models import AuthExchangeCode
+from accounts.services import hub_jump
 
 logger = logging.getLogger(__name__)
 
@@ -101,13 +101,13 @@ def reauthenticate_url(next_path: str) -> str:
 
 @require_GET
 @never_cache
-def hub_login(request: HttpRequest) -> HttpResponse:
+def hub_login(request: HttpRequest) -> HttpResponse:  # noqa: PLR0911
     slug = request.GET.get("hub", "")
     audience = request.GET.get("audience", AuthExchangeCode.HUB_SESSION_AUDIENCE)
     state = request.GET.get("state", "")
-    # The rule shared with hub-next: a reserved name (``hub``, ``www``…) is no hub either, nor the
-    # platform host ``hubs`` (ronda 13).
-    if not services.is_hub_slug(slug):
+    # The rule shared with the Hub: a reserved name (``hub``, ``www``…) is no hub either, nor the
+    # platform host ``hubs``.
+    if not hub_jump.is_hub_slug(slug):
         # Nothing that came from outside is echoed back: it was no hub slug.
         logger.warning("hub_login.invalid_hub")
         return HttpResponseRedirect(login_error_url("invalid_hub"))
@@ -122,17 +122,17 @@ def hub_login(request: HttpRequest) -> HttpResponse:
         return HttpResponseRedirect(login_error_url("too_many"))
     staff_jump = audience == AuthExchangeCode.HUB_ADMIN_AUDIENCE
     try:
-        code = services.issue_code(request.user, slug, audience=audience, second_factor=mfa.mfa_completed(request))
-    except services.SecondFactorRequired:
+        code = hub_jump.issue_code(request.user, slug, audience=audience, second_factor=mfa.mfa_completed(request))
+    except hub_jump.SecondFactorRequired:
         if staff_jump:
             logger.info("hub_login.hub_admin.second_factor_required user=%s hub=%s", request.user.pk, slug)
             messages.error(request, REFUSED_WITHOUT_SECOND_FACTOR)
             return redirect("accounts_hubs")
         logger.info("hub_login.second_factor_required hub=%s", slug)
         return HttpResponseRedirect(reauthenticate_url(request.get_full_path()))
-    except services.HubAccessDenied:
+    except hub_jump.HubAccessDenied:
         if staff_jump:
-            # Signed in without a platform role: 403, never a login (PLAN §17-§18).
+            # Signed in without a platform role: 403, never a login.
             logger.warning("hub_login.hub_admin.denied user=%s", request.user.pk)
             raise PermissionDenied from None
         # The page names only the hub's HOST (the person came from it), never its business name.
@@ -156,5 +156,5 @@ def hub_login(request: HttpRequest) -> HttpResponse:
 
 @require_GET
 def launch(request: HttpRequest) -> HttpResponse:
-    """The old address of the launcher: the SPA's route, where the sign-in form is (round 19)."""
+    """The old address of the launcher: the SPA's route, where the sign-in form is."""
     return HttpResponseRedirect(LAUNCHER)

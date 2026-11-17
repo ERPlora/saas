@@ -7,7 +7,7 @@ certificate) failed every call with a bare ``FileNotFoundError`` or ``ssl.SSLErr
 ``TrustStoreUnreadable`` instead, whose message names the setting and its file, and logs it as one ERROR line with
 the caller: each caller turns it into its own failure, and the client takes the context (``verify=``), so nothing
 reads the certificates twice. It is the server's configuration: no attempt clears it until it is fixed. Nothing is
-checked at start, on purpose: the e2e stack of the Hub starts the SaaS before its CA exists (hub#415), and every call
+checked at start, on purpose: the e2e stack of the Hub starts the SaaS before its CA exists, and every call
 reads the file again, so the next one after the fix goes out.
 """
 

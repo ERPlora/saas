@@ -5,7 +5,7 @@ erplora.com tells it by its first bytes, never by its name, within Meta's limits
 (``POST /<PHONE_NUMBER_ID>/media``) and sends the template with the header's parameter naming that upload's id. The
 upload never sends a message: whatever happens to it, the place and the key are free and nothing left. The same key
 never uploads nor sends twice. Meta is replaced at the HTTP border only (``respx``). A failure of Meta is said as
-Meta's (gh:hub#2731).
+Meta's.
 """
 
 import base64

@@ -1,9 +1,11 @@
 // Types of the SaaS's operations for the SDK (`useLive`, `useCommand`, `client.api.call`).
-// WRITTEN BY HAND for now from base/schemas.py, accounts/schemas.py and hubs/schemas.py (generated from
-// `/api/openapi.json` later, as in hub-next). Keep it in step with `./generated/operations.json`.
+// Written by hand from base/schemas.py, accounts/schemas.py and hubs/schemas.py. Keep it in step with
+// `./generated/operations.json`.
 // Dates and UUIDs travel as strings (ISO 8601). Sign-in is not an operation: the
 // SDK reaches allauth.headless through `createAllauthClient`.
 import type { SessionMe } from '@erplora/ui/shell';
+
+import type { PromoCheckIn, PromoCheckOut } from '../billing/frontend/promo-types';
 
 /** `base.SessionMeIn`: no parameters. */
 export type SessionMeIn = Record<string, never>;
@@ -52,6 +54,13 @@ export type BusinessStatusCode = 'preparing' | 'active' | 'past_due' | 'suspende
 /** Why «Open» does not work now (`BusinessRowOut.open_blocked_reason`). */
 export type OpenBlockedReason = 'preparing' | 'error' | 'suspended' | 'deleting';
 
+/** `hubs.HubMaintenanceOut`: the real platform-wide pause from the Hub's signed status poll. */
+export interface HubMaintenanceOut {
+  frozen: boolean;
+  reason: string;
+  since: string | null;
+}
+
 /** `hubs.UnpaidReason`: why a renewal is not paid. `card_declined`: «Pay» waits for another card. */
 export type UnpaidReason = 'card_declined' | 'card_changed' | 'authentication_required' | 'payment_failed';
 
@@ -81,10 +90,16 @@ export interface HubRefOut {
   name: string;
 }
 
-/** `hubs.PlanRefOut`. */
+/** `hubs.PlanRefOut`: the plan a business has (internal ones too), with what it covers. */
 export interface PlanRefOut {
   slug: string;
   name: string;
+  /** 0 is Free. */
+  price_monthly: string;
+  /** 0 = unlimited. */
+  max_devices: number;
+  /** 0 = unlimited. */
+  max_apps: number;
 }
 
 /** `hubs.BusinessTypeListIn`. */
@@ -138,7 +153,7 @@ export interface PlanOut {
   assistant_messages_per_month: number;
   /** WhatsApp messages the plan includes each month; 0 = none. */
   whatsapp_messages_per_month: number;
-  /** Apps the business may choose to turn on at once, the ones they require aside (hub#256); 0 = no limit. */
+  /** Apps the business may choose to turn on at once, the ones they require aside; 0 = no limit. */
   max_apps: number;
   /** Whether the business's public website may go on a domain of its own (HUBS-F17); never the app. */
   includes_custom_domain: boolean;
@@ -185,6 +200,7 @@ export interface BusinessRowOut {
   can_open: boolean;
   open_blocked_reason: OpenBlockedReason | null;
   hub_error: string | null;
+  maintenance?: HubMaintenanceOut | null;
   deletion_requested_at: string | null;
   purge_after: string | null;
   created_at: string;
@@ -197,7 +213,7 @@ export interface BusinessRowOut {
   pay_url: string | null;
   /** The account owns the business's payer: it pays for it, whatever its role. */
   is_payer: boolean;
-  /** That payer (its Stripe customer), only to whoever owns it (audit 2 R-21). */
+  /** That payer (its Stripe customer), only to whoever owns it. */
   payer_id: string | null;
 }
 
@@ -225,7 +241,7 @@ export interface OwnershipOfferOut {
 export interface BusinessListOut extends Page<BusinessRowOut> {
   invitations: InvitationOut[];
   ownership_offers: OwnershipOfferOut[];
-  /** The account's Free business when its Free ones fill the quota: «Create business» says so (audit 2 S-02). */
+  /** The account's Free business when its Free ones fill the quota: «Create business» says so. */
   free_business: HubRefOut | null;
 }
 
@@ -279,6 +295,7 @@ export interface BusinessDetailOut {
   status: BusinessStatusCode;
   status_label: string;
   hub_error: string | null;
+  maintenance?: HubMaintenanceOut | null;
   ready_at: string | null;
   created_at: string;
   deletion_requested_at: string | null;
@@ -299,7 +316,7 @@ export interface BusinessDetailOut {
   pay_url: string | null;
   /** The account owns the business's payer: it pays for it, whatever its role. */
   is_payer: boolean;
-  /** The last day the Hub measured (`hubs.usage.get`); `null` until the first night (lot L4-A). */
+  /** The last day the Hub measured (`hubs.usage.get`); `null` until the first night. */
   usage: UsageOut | null;
 }
 
@@ -701,6 +718,7 @@ declare module '@erplora/ui/sdk' {
     'hubs.business.list': { input: BusinessListIn; output: BusinessListOut };
     'hubs.business.create': { input: BusinessCreateIn; output: BusinessDetailOut };
     'hubs.business.get': { input: ByIdIn; output: BusinessDetailOut };
+    'hubs.business.check': { input: ByIdIn; output: BusinessDetailOut };
     'hubs.business.update': { input: BusinessUpdateIn; output: BusinessDetailOut };
     'hubs.business.change_address': { input: BusinessAddressIn; output: BusinessDetailOut };
     'hubs.business.delete': { input: BusinessDeleteIn; output: BusinessDetailOut };
@@ -742,24 +760,12 @@ declare module '@erplora/ui/sdk' {
   }
 }
 
-// --- The Store (lot L2-D): billing (billing/schemas.py), the app catalog (apps/schemas.py) and the payer of
-// a business (hubs/schemas.py `BillingProfile*`). Appended as its own block, with its own augmentation of
-// `Operations` below (interfaces merge), so the lots that edit this file never touch the same lines. -----
+// --- The Store: billing (billing/schemas/), the app catalog (apps/schemas.py) and the payer of a
+// business (hubs/schemas.py `BillingProfile*`). Appended as its own block, with its own augmentation of
+// `Operations` below (interfaces merge). -----------------------------------------------------------------
 
 /** `billing.Interval`: how a subscription is billed. */
 export type BillingInterval = 'month' | 'year';
-
-/** `billing.PromoCheckIn`. */
-export interface PromoCheckIn {
-  code: string;
-}
-
-/** `billing.PromoCheckOut`: whether the code grants a trial now, and how many days (0 when it does not). */
-export interface PromoCheckOut {
-  code: string;
-  valid: boolean;
-  trial_days: number;
-}
 
 /** `billing.CheckoutStartIn`: a plan (with its billing) OR a module, one at a time. */
 export interface CheckoutStartIn {
@@ -854,7 +860,7 @@ export interface StoreModuleOut {
   owned: boolean;
   source: 'plan' | 'purchase' | null;
   valid_until: string | null;
-  /** Sold to new buyers; off sale it is only listed to the business that still has it (saas#2589). */
+  /** Sold to new buyers; off sale it is only listed to the business that still has it. */
   on_sale: boolean;
   /** The catalog's name, summary and icon of its app (listed or retired); the slug without its app. */
   name: string;
@@ -882,8 +888,11 @@ export interface StoreCatalogOut {
   hub_id: string;
   subscription: StoreSubscriptionOut | null;
   modules: StoreModuleOut[];
-  /** The paid plans the business may move to: no upgrade-only plan while Stripe does not bill it (audit 2 S-03). */
+  /** The paid plans the business may move to: no upgrade-only plan while Stripe does not bill it; the internal ones
+   *  only to a business ERPlora's staff marked. */
   offered_plans: string[];
+  /** The internal plans the business is offered, and the one it has: `hubs.plan.list` lists only the public ones. */
+  internal_plans: PlanOut[];
 }
 
 /** `apps.AppListIn`: every filter optional and lenient. */
@@ -980,8 +989,8 @@ declare module '@erplora/ui/sdk' {
   }
 }
 
-// --- The Billing section (lot L3-C front): ERPlora's invoices, the subscriptions and the payment details
-// (billing/schemas.py). Its own block and its own augmentation of `Operations` below, as the Store's. --------
+// --- The Billing section: ERPlora's invoices, the subscriptions and the payment details
+// (billing/schemas/). Its own block and its own augmentation of `Operations` below, as the Store's. --------
 
 /** `billing.InvoicePaymentStatus`: not collected yet, paid, or cancelled in Stripe. */
 export type InvoicePaymentStatus = 'open' | 'paid' | 'void';
@@ -1097,6 +1106,8 @@ export interface InvoiceLineOut {
   net_cents: number;
   tax_cents: number;
   total_cents: number;
+  /** What a promo code took off the line, without VAT: `net_cents` is the base after it. */
+  discount_cents: number;
 }
 
 /** `billing.InvoiceRecipientOut`: the payer as it was on the issue date. */
@@ -1143,7 +1154,7 @@ export interface InvoicePayOut {
 export interface SubscriptionListIn {
   limit?: number;
   offset?: number;
-  /** One business's subscription (BILLING-G02). */
+  /** One business's subscription; only among the account's. */
   hub_id?: string | null;
   status?: 'active' | 'trialing' | 'past_due' | 'unpaid' | 'incomplete' | 'paused' | null;
 }
@@ -1201,6 +1212,8 @@ export interface SubscriptionRowOut {
   scheduled_change: ScheduledChangeOut | null;
   /** The plan is charged to the card of another account (the payer before a hand-over, HUBS-F28). */
   paid_by_another_account: boolean;
+  /** While the free months of a promo code last: when they end (the renewals before it are 0 €). */
+  free_until: string | null;
   actions: SubscriptionAction[];
   can: SubscriptionCanOut;
 }
@@ -1291,7 +1304,7 @@ declare module '@erplora/ui/sdk' {
   }
 }
 
-// --- The usage of a business (lot L4-A, PLAN-SAAS §5): hubs/schemas.py `*Usage*`, appended as its own block
+// --- The usage of a business: hubs/schemas.py `*Usage*`, appended as its own block
 // with its own augmentation of `Operations` (interfaces merge). A day travels as `YYYY-MM-DD` (UTC). -------
 
 /** `hubs.StorageUsageOut`: the files (S3) against the space of the plan; `null` limit and percent without a plan. */
@@ -1348,7 +1361,7 @@ declare module '@erplora/ui/sdk' {
   }
 }
 
-/** `hubs.DataCopyListIn` / `hubs.DataCopyLinkIn`: the copies of a business's data (PLAN-DB round 2026-10-30, (k)). */
+/** `hubs.DataCopyListIn` / `hubs.DataCopyLinkIn`: the copies of a business's data. */
 export interface DataCopyListIn {
   business_id: string;
 }
@@ -1452,8 +1465,7 @@ declare module '@erplora/ui/sdk' {
 }
 
 /**
- * `fiscal.RepresentationState`: the state of a business's signed authorisation (plan 2026-10-15); `none` when it
- * never sent one.
+ * `fiscal.RepresentationState`: the state of a business's signed authorisation; `none` when it never sent one.
  */
 export type RepresentationState = 'none' | 'submitted' | 'approved' | 'returned' | 'revoked';
 

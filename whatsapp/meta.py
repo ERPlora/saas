@@ -1,4 +1,4 @@
-"""erplora.com's client of Meta's Graph API (WHATSAPP-G06, WHATSAPP-G10).
+"""erplora.com's client of Meta's Graph API.
 
 Every call goes to ``https://graph.facebook.com/<WHATSAPP_GRAPH_VERSION>/…`` with the business token in the
 ``Authorization`` header (never in the address; only Meta's token exchange and ``debug_token`` carry the app's
@@ -113,7 +113,7 @@ def get(path: str, *, token: str, params: dict | None = None) -> dict:
     return _request("GET", path, token=token, params=params)
 
 
-def post(
+def post(  # noqa: PLR0913
     path: str,
     *,
     token: str,
@@ -215,7 +215,7 @@ def token_expiry(token: str) -> datetime | None:
     return datetime.fromtimestamp(seconds, tz=UTC) if seconds and seconds > 0 else None
 
 
-def _request(
+def _request(  # noqa: PLR0913
     method: str,
     path: str,
     *,

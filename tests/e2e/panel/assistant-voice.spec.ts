@@ -1,5 +1,5 @@
 // «Read aloud» of the panel's assistant (assistant/WORKBOOK.md, ASSISTANT-F22), in a browser against the panel's own Django.
-// erplora.com has no voice of its own (PLAN-SAAS round 2026-11-04c): the page says so (`spa-config.assistantSpeech`,
+// erplora.com has no voice of its own: the page says so (`spa-config.assistantSpeech`,
 // base/spa.py), so the chat offers no choice of voice and reads each answer in the device's, with no request to
 // `/api/assistant/speak`. A page told otherwise (the flag turned on at the edge, everything behind it real) asks the
 // server, whose door answers 503 `assistant.speech_unavailable`, and the device reads it, with no error on the page.
@@ -10,8 +10,10 @@
 // flow: ASSISTANT-F22 — read an answer aloud: the device's voice, and the door shut without an engine.
 import type { Locator, Page } from '@playwright/test';
 
-import { localAssistant, openPanel, SIZES } from './assistant-chat';
-import { expect, settled, shot, test, watchPageErrors } from './fixtures';
+import { DESKTOP_FIRST, localAssistant, openPanel } from './assistant-chat';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { settled, shot } from './screen';
 
 /** What the person sees and hears, in each language (the package's words, `assistant.speech.*`). */
 const WORDS = {
@@ -75,11 +77,11 @@ async function answerAndListen(page: Page, panel: Locator, words: (typeof WORDS)
   // Under the answer, beside «Report a problem» (outside its bubble).
   const listen = panel.getByTestId('assistant-listen').last();
   await expect(listen).toContainText(words.listen);
-  for (const size of SIZES) {
+  for (const size of DESKTOP_FIRST) {
     await page.setViewportSize({ width: size.width, height: size.height });
     await expect(listen).toBeVisible();
     await settled(page);
-    await page.screenshot({ path: shot(`${shotName}-${size.name}`) });
+    await page.screenshot({ path: shot(`${shotName}-${size.width}`) });
   }
   await page.setViewportSize({ width: 1440, height: 900 });
   return listen;
@@ -91,7 +93,7 @@ for (const language of ['es', 'en'] as const) {
   test(`without a voice of the server the chat offers none and reads in the device's, never asking the server (${language})`, async ({
     page,
   }) => {
-    seed('panel', language);
+    await seed('panel', language);
     const errors = watchPageErrors(page);
     const consoleErrors = watchConsoleErrors(page);
     const asked = speakRequests(page);
@@ -115,7 +117,7 @@ for (const language of ['es', 'en'] as const) {
   });
 
   test(`a page told there is a voice asks the server, whose door is shut, and the device reads (${language})`, async ({ page }) => {
-    seed('panel', language);
+    await seed('panel', language);
     // The shell as an engine would leave it: the real page with its flag turned on as it is parsed, before the SPA's
     // module runs, and everything behind it real. Not with `route.fulfill`: Chrome gives a page served that way no
     // address, and refuses it the Vite server's scripts.

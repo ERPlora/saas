@@ -1,13 +1,10 @@
 <script setup lang="ts">
-// A module of the Store (mockups `store.html` «Módulos»; round 17 §2.10; UX-AUDIT-4 W-F4, X-14): the
-// catalog's name, summary and icon, billing's net price at the business's billing, and the one thing the
-// business can do with it. What each button does is the page's: the card emits it.
+// A module of the Store: the catalog's name, summary and icon, billing's net price at the business's billing, and
+// the one thing the business can do with it. What each button does is the page's: the card emits it.
 //   - «Add · €9.00/month»: one dialog per module with its own proration (or the checkout on Free).
-//   - Just bought: «Activating… in <business>» (the Hub turns it on by itself) and «You have it».
-//   - Owned: «You have it» (or «Included in your plan»), disabled: never on sale twice.
-//   - Bought: «Cancel module» (BILLING-G66); the page confirms it with its dates.
+//   - Just bought: «Activating… in <business>» (the Hub turns it on by itself), never on sale twice.
 //   - Cancelled but still working: until when, and «Keep · no charge today».
-//   - Off sale but still had (saas#2589): it says so; it is cancelled, never kept nor bought again.
+//   - Off sale but still had: it says so; it is cancelled, never kept nor bought again.
 //   - An unpaid invoice disables what charges, with the reason under the button.
 import { StatusPill } from '@erplora/ui/components';
 import { HubIcon } from '@erplora/ui/shell';

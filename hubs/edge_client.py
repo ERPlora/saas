@@ -9,7 +9,7 @@ tag ``Purpose=custom-domain``, ``DescribeCertificate`` and ``DeleteCertificate``
 Three answers mean something: ``TooManyCertificates`` (the listener at its quota: the domain waits, and is tried again in
 the next check), ``CertificateInUse`` (the ALB has not let go of it yet: the deletion is tried again) and a certificate
 that is already gone, which is what was asked for. Anything else, ``EdgeUnavailable``, names AWS's code: an
-``AccessDenied`` on the first real domain is the policy's (aws#46), and the log has to say so.
+``AccessDenied`` on the first real domain is the policy's, and the log has to say so.
 """
 
 from dataclasses import dataclass

@@ -10,11 +10,11 @@
 // :8000, whose answers (a refusal, a database provisioned for a throwaway business) are not the
 // specs'. Here it runs without the autoreloader and with `HUB_INTERNAL_URL` at a port nobody listens
 // on: every call to the Hub stays pending, as when the Hub is away, and the specs play the Hub (its
-// signed `ready` callback; `startHubDouble` of fixtures.ts listens there while a spec needs to see
+// signed `ready` callback; `startHubDouble` of hub.ts listens there while a spec needs to see
 // what the SaaS sends). Every mail it sends lands in a file of `PANEL_MAIL_DIR` (Django's file
 // backend), where the specs read the links (`waitForMail`). Vite is reused when it is up (it only
 // serves the files), but only when it serves this checkout: globalSetup checks it (`assertViteOfThisTree`),
-// since another tree's Vite on the port (a worker's SaaS of main) would have the specs test its frontend.
+// since another tree's Vite on the port (another checkout of the SaaS) would have the specs test its frontend.
 // Playwright stops what it started at the end, never what it reused. A stack beside the shared one never
 // reuses it: a second run of the same checkout on the same port would lose it when the first one ends.
 import { dirname, join } from 'node:path';
@@ -29,9 +29,9 @@ import { STACK, type Stack } from '../stack';
 export const PANEL_URL = `http://localhost:${STACK.panelPort}`;
 
 /**
- * The panel's twin with the second factor on (`ACCOUNTS_MFA_ENABLED`, off by default in phase 1): the same Django on
+ * The panel's twin with the second factor on (`ACCOUNTS_MFA_ENABLED`, off by default): the same Django on
  * `stack`'s next port, with the same database, Vite, mail folder and Hub double, for the specs of the authenticator
- * app, the trusted browsers and the staff's second factor (accounts/WORKBOOK.md, APP-ACCOUNTS-2), and of «Continue with
+ * app, the trusted browsers and the staff's second factor (accounts/WORKBOOK.md), and of «Continue with
  * Google», which hands over to that second factor (`GOOGLE_E2E`, ACCOUNTS-F06). Its pages are `localhost` too: a spec
  * keeps each browser context on one of the two panels, whose cookies would otherwise mix.
  */
@@ -58,8 +58,8 @@ export const PANEL_MAIL_DIR = panelMailDir(STACK);
 export const HUB_DOUBLE_PORT = STACK.hubDoublePort;
 
 /**
- * Meta's app as the panel's Django sees it in the e2e (WHATSAPP-G13, WHATSAPP-G07): made-up ids and secrets, so the
- * specs can sign Meta's webhook as Meta does. Meta itself is never called: nothing here is a real credential.
+ * Meta's app as the panel's Django sees it in the e2e: made-up ids and secrets, so the specs can sign
+ * Meta's webhook as Meta does. Meta itself is never called: nothing here is a real credential.
  */
 export const WHATSAPP_E2E = {
   appId: '1234567890',
@@ -80,7 +80,7 @@ export const GOOGLE_E2E = {
 type WebServer = Exclude<NonNullable<PlaywrightTestConfig['webServer']>, unknown[]>;
 
 /**
- * Vite's port for a run with `env`: `VITE_DEV_PORT` (config/settings.py and vite.config.ts read it
+ * Vite's port for a run with `env`: `VITE_DEV_PORT` (config/settings/core.py and vite.config.ts read it
  * too), 5174 when it is not exported.
  */
 export function vitePort(env: Record<string, string | undefined>): number {
@@ -96,7 +96,7 @@ export const VITE_PORT = vitePort(process.env);
 /** The header with which vite.config.ts says which checkout it serves (`server.headers`, URI-encoded). */
 export const VITE_ROOT_HEADER = 'x-erplora-vite-root';
 
-/** What the dev shell loads first from Vite (`live.spa`, LIVE["spa"] in config/settings.py). */
+/** What the dev shell loads first from Vite (`live.spa`, LIVE["spa"] in config/settings/web.py). */
 function viteClientUrl(port: number, host = 'localhost'): string {
   return `http://${host}:${port}/static/spa/@vite/client`;
 }
@@ -111,7 +111,7 @@ const ANOTHER_PORT = 'Export VITE_DEV_PORT=<a free port> and retry (README.md, �
 
 /**
  * Throws unless the Vite on `port` serves `saasDir`. Playwright reuses whatever answers on the port, and
- * a Vite of another checkout (a worker's SaaS of main on 5174) would have the specs test its frontend.
+ * a Vite of another checkout (another checkout of the SaaS on 5174) would have the specs test its frontend.
  */
 export async function assertViteOfThisTree(saasDir: string, port: number, host = 'localhost'): Promise<void> {
   const url = viteClientUrl(port, host);
@@ -162,7 +162,7 @@ function panelDjangoEnv(vitePort: number, stack: Stack, real: boolean): Record<s
       // Its dev shell and CSP point at this run's Vite.
       VITE_DEV_PORT: String(vitePort),
       // Every spec signs in from 127.0.0.1, password and code, and signs its accounts up from there, past the
-      // limits per address when repeated (config/settings.py): only this server raises them (sign-ins, failed
+      // limits per address when repeated (config/settings/accounts.py): only this server raises them (sign-ins, failed
       // passwords, typed codes, sign-ups).
       E2E_RELAX_LOGIN_RATE_LIMIT: 'True',
       // reCAPTCHA off, whatever `.env` holds: the specs sign in through allauth's API, with no browser to ask

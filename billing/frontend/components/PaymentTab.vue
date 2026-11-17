@@ -1,9 +1,6 @@
 <script setup lang="ts">
-// Billing → Payment details (mockups `billing.html` «payment», «empty», «loading», «error»; README §3 and §4):
-// per payer of the account (`billing.payment_method.get`: asked to Stripe when the tab opens, kept a few
-// minutes by the server; not live), its card (PaymentMethodCard: «Change card» on the web) next to its
-// billing details (BillingProfileCard: editable everywhere). Without any payment yet, what the first one
-// asks for. Loading and failing say so; «Retry» asks again.
+// Billing → Payment details: per payer of the account, its card next to its billing details. The card is asked to
+// Stripe when the tab opens and kept a few minutes by the server: it is not live.
 import { InlineFeedback } from '@erplora/ui/components';
 import { HubIcon } from '@erplora/ui/shell';
 import { useLiveClient } from '@erplora/ui/sdk';

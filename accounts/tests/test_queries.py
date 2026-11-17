@@ -30,7 +30,7 @@ def test_a_user_without_memberships_has_no_hubs(ana):
 
 @pytest.mark.parametrize(("slug", "link"), [("a", "/admin/hub/a/"), ("0day", "/admin/hub/0day/")])
 def test_the_deep_link_of_a_hub_in_the_hub_admin(slug, link):
-    """``hubs.erplora.com/admin/hub/<slug>/`` fixes that hub in the Hub admin's session (PLAN §18.1.5)."""
+    """``hubs.erplora.com/admin/hub/<slug>/`` fixes that hub in the Hub admin's session."""
     assert queries.hub_admin_path(slug) == link
 
 
@@ -184,11 +184,11 @@ def test_owns_authenticator_not_without_ids(ana):
     assert queries.owns_authenticator(ana, {None}) is False
 
 
-# --- Who proved their email, and who has a way in (saas#2541; L1-A2) ----------------------------
+# --- Who proved their email, and who has a way in ----------------------------
 
 
 class TestEmailIsProven:
-    """``email_is_proven``: an account holds an address by proof, not by having typed it first (saas#2541).
+    """``email_is_proven``: an account holds an address by proof, not by having typed it first.
 
     Proven = a **verified** ``EmailAddress`` for that address. Nothing to prove (so proven): staff, and
     an account with **no** address on record (made by an invitation, by the console or by staff, never

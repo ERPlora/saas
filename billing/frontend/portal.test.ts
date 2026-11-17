@@ -1,6 +1,5 @@
-// «Change card» (mockups `billing.html`; README §6.18): Stripe's Customer Portal for the payer of a business
-// (`billing.portal.open`, cards and Stripe's receipts), a top-level navigation; it comes back to Billing.
-// One opening at a time; a refusal (no payment yet, the Portal not configured) is said in a toast.
+// «Change card»: Stripe's Customer Portal for the payer of a business, a top-level navigation; one opening at a
+// time, and a refusal is said in a toast.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent } from 'vue';
 

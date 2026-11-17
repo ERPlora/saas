@@ -1,10 +1,10 @@
 """What erplora.com keeps of a business's WhatsApp (README.md «Datos»).
 
-A business's number and its Meta credentials (``PhoneNumber``, WHATSAPP-G04), the mirror of its templates at
+A business's number and its Meta credentials (``PhoneNumber``), the mirror of its templates at
 Meta (``Template``) and the registrations the Hub asked for (``TemplateSubmission``), what the Hub asked to send,
 by its ``Idempotency-Key`` (``Send``), the month's counter (``Usage``) and what waits to reach the Hub: a message
 of Meta's webhook or a delivery status (``Delivery``). Neither the text of a sent message nor its recipient is kept;
-a received message lives here only until the Hub took it and the retention passed (WHATSAPP-G14). Keys are UUIDv7.
+a received message lives here only until the Hub took it and the retention passed. Keys are UUIDv7.
 """
 
 import uuid

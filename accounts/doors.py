@@ -1,8 +1,8 @@
 """allauth.headless's doors around an account's addresses and password that the SaaS keeps closed
 (``config/urls.py`` mounts these before allauth's own routes; headless only, allauth has no page to close).
 
-- The sign-in email changes only through ``accounts.email.change`` and the code mailed to the new address
-  (saas#2536): allauth's API ``/_allauth/browser/v1/account/email`` answers 404, whatever the method (add, make
+- The sign-in email changes only through ``accounts.email.change`` and the code mailed to the new address:
+  allauth's API ``/_allauth/browser/v1/account/email`` answers 404, whatever the method (add, make
   primary, remove, resend).
 - An account without a password does not get one with the session alone: ``account/password/change`` answers
   403 to it, and «Forgot your password?» (which proves the mailbox) gives it one; an account with a password
@@ -11,7 +11,7 @@
 allauth's own sign-up (``auth/signup``) and sign-in (``auth/login``) are not closed: they are the launcher's two
 tabs. Each is served here with one rule allauth.headless leaves out: the sign-in's address in the plain form of the
 sign-up's (``adapters.plain_email``; allauth folds the sign-up's in the adapter, the sign-in's only here), and the
-sign-up's password checked against its own address, as allauth's template sign-up did (ERPlora/saas#2542: no
+sign-up's password checked against its own address, as allauth's template sign-up did (no
 password like the email; headless checks it without the account, so Django's similarity rule saw nothing).
 """
 

@@ -94,7 +94,7 @@ Quién la usa:
   que se pague o se anule, 90 días como mucho (los que se guarda un negocio eliminado), porque la factura tiene que
   identificar a quién se emite (RGPD art. 17.3.b; Código de Comercio art. 30, Ley General Tributaria art. 66).
 - **GitHub («Export account data»)**: descargar los datos de la cuenta está junto a eliminarla, en la misma página.
-- **Cuenta de revisión de tienda** (13 referencias, saas#132): las tiendas piden un acceso que el revisor pueda usar
+- **Cuenta de revisión de tienda** (13 referencias): las tiendas piden un acceso que el revisor pueda usar
   siempre, sin un código de un solo uso, y el mercado lo resuelve eximiendo del segundo paso a esa cuenta concreta,
   desde la administración y sin tocar a las demás. Google Play pide credenciales reutilizables que salten la
   verificación en dos pasos o el código de un solo uso (https://support.google.com/googleplay/android-developer/answer/15748846);
@@ -291,7 +291,6 @@ inglés» y el «mensaje en español» (vacío, quien visita en español lee el 
 | ACCOUNTS-F49 | Entrar como cuenta de revisión de tienda sin el código por correo | hecho |
 
 ### ACCOUNTS-F01 Crear la cuenta
-<!-- origen: old-saas:SAAS_AUTH-F01 pc:cloud/auth/signup fi:saas/auth-services#registro-de-usuario-por-api-signup fi:saas/support/auth-services#service-create_user gh:saas#2542 gh:saas#2536 gh:saas#2560 gh:saas#2562 -->
 Estado: hecho
 Actor: cualquiera
 Pantalla: Entrada › «Crear cuenta»
@@ -302,11 +301,10 @@ Pasos:
 4. La pantalla pasa a **Revisa tu correo** (ACCOUNTS-F02); con el código bueno entra sola y llega a «Crea tu negocio», en el idioma en el que se dio de alta.
 Entra: el correo (sin espacios, en minúsculas y con las letras de ancho completo pasadas a las normales, para que una dirección que se parece a otra no cree una segunda cuenta; igual al invitarla a un negocio, que invita a esa cuenta), la contraseña y adónde iba (solo páginas de erplora.com).
 Sale: la cuenta, activa, con su correo aún sin confirmar, el idioma de la página en la que se dio de alta (el que eligió en la web pública o, si no eligió, el de su navegador) y los términos aceptados (ACCOUNTS-F10). No se crea ningún negocio. La aplicación que pinta esta pantalla es la misma puerta que cualquier otro programa: las mismas reglas valen para todos.
-Si falla: una contraseña que no pasa las reglas sale debajo de la contraseña y no se crea nada; un correo no válido (también con letras de ancho completo antes de la arroba), debajo del correo. Un correo que ya tiene cuenta responde igual que uno nuevo y a su buzón le llega «ya existe una cuenta con esa dirección de correo electrónico» con el enlace para poner contraseña, sin código: así pone la suya también la persona invitada, cuya cuenta aún no tiene contraseña, y nadie se queda con una cuenta ajena. Más de 10 altas en una hora desde la misma dirección de red: «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.».
+Si falla: una contraseña que no pasa las reglas sale debajo de la contraseña y no se crea nada; un correo no válido (también con letras de ancho completo antes de la arroba), debajo del correo. Un correo que ya tiene cuenta responde igual que uno nuevo y a su buzón le llega «ya existe una cuenta con esa dirección de correo electrónico» con el enlace para poner contraseña, sin código: así pone la suya también la persona invitada, cuya cuenta aún no tiene contraseña, y nadie se queda con una cuenta ajena. Más de 10 altas en una hora desde la misma dirección de red: «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.». Si el correo con el código no puede salir (el proveedor lo rechaza), responde 503 con el código `mail_unavailable` y la pantalla dice «No hemos podido enviar el correo ahora mismo. Vuelve a intentarlo en unos minutos.»; la cuenta queda sin confirmar y se vuelve a intentar pasados unos minutos.
 Implicados: hubs (la **Entrada** y «Crea tu negocio»)
 
 ### ACCOUNTS-F02 Confirmar el correo con el código
-<!-- origen: old-saas:SAAS_AUTH-F02 fi:saas/auth-services#reenviar-email-de-verificacion -->
 Estado: hecho
 Actor: cualquiera
 Pantalla: Revisa tu correo
@@ -321,7 +319,6 @@ Si falla: un código equivocado sale debajo del campo y se puede volver a escrib
 Implicados: ninguno
 
 ### ACCOUNTS-F03 Confirmar el correo antes de usar el panel
-<!-- origen: old-saas:SAAS_DASHBOARD-F203 gh:saas#2541 gh:saas#2561 -->
 Estado: hecho
 Actor: sistema
 Pantalla: Revisa tu correo
@@ -335,7 +332,6 @@ Si falla: sin el código no hay sesión, tampoco para la cuenta de revisión de 
 Implicados: hubs (las invitaciones solo valen para correos confirmados)
 
 ### ACCOUNTS-F04 Entrar con el correo y la contraseña
-<!-- origen: old-saas:SAAS_AUTH-F03 fi:saas/auth-services#login-html-con-redireccion-a-subdominios-dispositivo-de-confianza fi:saas/support/auth-services#signal-create_email_otp_device -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Entrada › «Entrar», Revisa tu correo
@@ -350,7 +346,6 @@ Si falla: un correo o una contraseña que no casan, «La dirección de correo el
 Implicados: hubs (la **Entrada** con los negocios y el salto a un negocio)
 
 ### ACCOUNTS-F05 Entrar con el código de la app autenticadora o uno de recuperación
-<!-- origen: pc:cloud/auth/two_factor_login old-saas:SAAS_AUTH-F06 fi:saas/auth-services#crear-dispositivo-de-confianza fi:saas/auth-services#modelo-trusteddevice-admin fi:saas/support/auth-services#modelo-trusteddevice fi:saas/support/auth-services#serializer-trusteddeviceserializer-createtrusteddeviceserializer-verifytrusteddeviceserializer -->
 Estado: hecho
 Actor: cualquier persona con cuenta y app autenticadora
 Pantalla: Verificación en dos pasos
@@ -365,7 +360,6 @@ Si falla: un código equivocado sale debajo del campo y la entrada sigue esperan
 Implicados: hubs (el salto a un negocio)
 
 ### ACCOUNTS-F06 Entrar o crear la cuenta con Google
-<!-- origen: old-saas:SAAS_AUTH-F04 gh:saas#2552 -->
 Estado: hecho
 Actor: cualquiera
 Pantalla: Entrada
@@ -380,7 +374,6 @@ Si falla: «Cancelar» en Google vuelve a la **Entrada**; un error de Google o u
 Implicados: ninguno
 
 ### ACCOUNTS-F07 Recuperar la contraseña olvidada
-<!-- origen: old-saas:SAAS_AUTH-F09 pc:cloud/auth/password_reset_request pc:cloud/auth/password_reset_done pc:cloud/auth/password_reset_from_key pc:cloud/auth/password_reset_from_key_done -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Restablece tu contraseña, Establece una nueva contraseña, Entrada
@@ -395,7 +388,6 @@ Si falla: la pantalla y el correo enviado son iguales exista o no la cuenta (a u
 Implicados: hubs (los negocios cierran las sesiones de la cuenta)
 
 ### ACCOUNTS-F08 Cambiar la contraseña y cerrar con ella las demás sesiones
-<!-- origen: old-saas:SAAS_AUTH-F10 old-saas:SAAS_DASHBOARD-F205 fi:saas/orgs-users#api-rest-cambiar-contrasena-settings fi:saas/orgs-users#cambiar-contrasena-perfil fi:saas/orgs-users#cambiar-contrasena-settings gh:saas#2612 gh:saas#2614 gh:saas#2545 gh:saas#2668 -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Seguridad › Cambiar tu contraseña
@@ -410,7 +402,6 @@ Si falla: una contraseña actual equivocada, debajo de su campo, y la nueva no s
 Implicados: hubs (cada negocio cierra las sesiones de la cuenta)
 
 ### ACCOUNTS-F09 Cerrar la sesión
-<!-- origen: old-saas:SAAS_AUTH-F11 -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Menú de usuario, Entrada, Cerrar la sesión de erplora.com
@@ -425,7 +416,6 @@ Si falla: si no se pudo cerrar, «No se ha podido cerrar la sesión. Inténtalo 
 Implicados: ninguno
 
 ### ACCOUNTS-F10 Aceptar los términos y la política de privacidad
-<!-- origen: old-saas:SAAS_PUBLIC-F72 -->
 Estado: hecho
 Actor: cualquiera
 Pantalla: Entrada, Revisa tu correo, admin › ficha de la cuenta
@@ -440,7 +430,6 @@ Si falla: una contraseña equivocada no acepta nada. Una cuenta creada por una i
 Implicados: public (las páginas de los términos y de la privacidad)
 
 ### ACCOUNTS-F11 Frenar a quien prueba contraseñas, códigos o enlaces
-<!-- origen: old-saas:SAAS_AUTH-F14 -->
 Estado: hecho
 Actor: sistema
 Pantalla: Entrada, Revisa tu correo, Restablece tu contraseña, Establece una nueva contraseña, Verificación en dos pasos
@@ -456,7 +445,6 @@ Si falla: si la memoria compartida de los contadores no responde, el freno se ab
 Implicados: ninguno
 
 ### ACCOUNTS-F12 Saber quién ha entrado
-<!-- origen: fi:saas/auth-services#perfil-del-usuario-actual-me fi:saas/support/auth-services#serializer-userserializer old-saas:SAAS_AUTH-F29 -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Menú de usuario, Cuenta › Perfil
@@ -470,7 +458,6 @@ Si falla: sin sesión, el panel lleva a la **Entrada**.
 Implicados: hubs (el salto a un negocio)
 
 ### ACCOUNTS-F13 Gestionar las cuentas desde el admin
-<!-- origen: fi:saas/auth-services#modelo-de-usuario-user-usermanager-admin fi:saas/support/auth-services#modelo-user fi:saas/django-admin#admin-profile fi:saas/django-admin#admin-user fi:saas/django-admin#admin-userpreferences -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: admin › Cuentas › Usuarios
@@ -484,7 +471,6 @@ Si falla: un correo que ya tiene cuenta no se guarda. El soporte ve las cuentas 
 Implicados: hubs (los negocios de la cuenta)
 
 ### ACCOUNTS-F14 Activar la app autenticadora y guardar los códigos de recuperación
-<!-- origen: old-saas:SAAS_AUTH-F05 fi:saas/auth-services#2fa-alta-de-totp-setup pc:cloud/auth/two_factor_setup -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Seguridad, Ajustes de la verificación en dos pasos
@@ -499,7 +485,6 @@ Si falla: un número equivocado sale debajo del campo y la app no se activa; «C
 Implicados: ninguno
 
 ### ACCOUNTS-F15 Ver si la verificación en dos pasos está activa
-<!-- origen: old-saas:SAAS_DASHBOARD-F213 fi:saas/auth-services#2fa-perfil-estado -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Seguridad, Ajustes de la verificación en dos pasos
@@ -512,7 +497,6 @@ Si falla: si no se puede leer, la fila no dice ni activada ni desactivada y sigu
 Implicados: ninguno
 
 ### ACCOUNTS-F16 Desactivar la app autenticadora o generar códigos nuevos
-<!-- origen: old-saas:SAAS_AUTH-F07 fi:saas/auth-services#2fa-desactivar-totp-re-activa-email-otp -->
 Estado: hecho
 Actor: cualquier persona con cuenta y app autenticadora
 Pantalla: Ajustes de la verificación en dos pasos
@@ -527,7 +511,6 @@ Si falla: un fallo de red, «Algo ha ido mal. Inténtalo de nuevo.» y no cambia
 Implicados: ninguno
 
 ### ACCOUNTS-F17 Ver si este navegador es de confianza y dejar de confiar en todos
-<!-- origen: fi:saas/auth-services#revocar-dispositivo-de-confianza fi:saas/orgs-users#revocar-dispositivo-de-confianza fi:saas/auth-services#listar-dispositivos-de-confianza fi:saas/orgs-users#dispositivos-de-confianza-listar -->
 Estado: hecho
 Actor: cualquier persona con cuenta y app autenticadora
 Pantalla: Ajustes de la verificación en dos pasos
@@ -541,7 +524,6 @@ Si falla: si no se puede comprobar este navegador, «No hemos podido comprobar e
 Implicados: ninguno
 
 ### ACCOUNTS-F18 Ver y cerrar las sesiones abiertas
-<!-- origen: old-saas:SAAS_AUTH-F12 old-saas:SAAS_DASHBOARD-F206 fi:saas/auth-services#listado-de-sesiones-activas fi:saas/orgs-users#sesiones-activas-listar-revocar fi:saas/auth-services#revocar-las-demas-sesiones-logout-del-resto-de-dispositivos fi:saas/auth-services#revocar-una-sesion-concreta -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Seguridad › Sesiones activas
@@ -555,7 +537,6 @@ Si falla: la lista que no carga dice «No hemos podido cargar tus sesiones» con
 Implicados: hubs (cada negocio cierra las sesiones de la cuenta)
 
 ### ACCOUNTS-F19 Cerrar las sesiones de una cuenta desde el admin
-<!-- origen: fi:saas/auth-services#comando-revocar-sesiones-de-un-usuario fi:saas/support/auth-services#command-revoke_user_sessions fi:saas/django-admin#admin-usersession fi:saas/django-admin#admin-trusteddevice -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: admin › Cuentas › Usuarios y Sesiones de usuario
@@ -569,7 +550,6 @@ Si falla: el soporte ve las sesiones sin poder cerrarlas; nadie cambia ni borra 
 Implicados: hubs (cada negocio cierra las sesiones de la cuenta)
 
 ### ACCOUNTS-F20 Exigir la app autenticadora al personal en el admin
-<!-- origen: old-saas:SAAS_AUTH-F08 gh:saas#2543 gh:saas#2618 gh:saas#2627 gh:saas#2659 -->
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: admin, Ajustes de la verificación en dos pasos
@@ -584,7 +564,6 @@ Si falla: los códigos de recuperación solos no bastan; una cuenta sin la marca
 Implicados: hubs (el salto al admin de los negocios)
 
 ### ACCOUNTS-F21 Ver y cambiar mi perfil
-<!-- origen: old-saas:SAAS_DASHBOARD-F204 fi:saas/orgs-users#mi-perfil-ver-actualizar-datos-billing-avatar fi:saas/orgs-users#api-rest-perfil-retrieveupdate fi:saas/support/orgs-users#modelo-profile fi:saas/support/orgs-users#serializer-profileserializer-billingaddressserializer fi:saas/support/orgs-users#service-signals-create_user_profile-save_user_profile fi:saas/support/orgs-users#service-user_profile-context-processor old-saas:SAAS_DASHBOARD-F222 gh:saas#2553 -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Perfil
@@ -593,14 +572,13 @@ Pasos:
 2. La persona cambia su nombre o sus apellidos: «Guardar cambios» se activa al tocar algo («Se activa al cambiar algo.»).
 3. Pulsa «Guardar cambios»: «Cambios guardados», y el menú de usuario y los negocios en los que entre la nombran así.
 4. «Cambiar foto» sube una foto (JPEG, PNG o WebP), que se guarda limpia de los datos ocultos de la cámara; «Quitar foto» vuelve a las iniciales.
-5. El correo se cambia con «Cambiar»: le llega un código a la dirección nueva y, al escribirlo, esa pasa a ser la de entrar; a la antigua le llega un aviso del cambio.
+5. El correo se cambia con «Cambiar»: si su última entrada no es reciente, antes confirma que es ella con su contraseña («Confirma que eres tú», sobre la ventana del correo); le llega un código a la dirección nueva y, al escribirlo, esa pasa a ser la de entrar y la página lo dice («Tu correo ahora es …», aunque el perfil ya enseñe la dirección nueva antes de la respuesta); a la antigua le llega un aviso del cambio. Confirmar con su código la dirección que ya tenía dice «Tu correo está verificado».
 Entra: nombre y apellidos, la foto o el correo nuevo y su código.
 Sale: el perfil cambiado, en el panel y en cada negocio en el que entre después. Toda cuenta tiene su perfil desde que nace, sin rellenar nada. Lo mismo se lee y se guarda desde cualquier programa con la sesión de la persona.
 Si falla: un nombre vacío no se guarda («Escribe tu nombre.»); una foto que no es imagen o es demasiado grande dice por qué y no cambia la que había; un correo nuevo que no vale o que ya usa otra cuenta sale debajo del campo, con «Revisa los datos marcados.» arriba hasta que lo corriges; un fallo de red, «No hemos podido conectar con ERPlora…» y no cambia nada. Los datos de facturación no están aquí: son de **Facturación**.
 Implicados: hubs (los negocios reciben el nombre al entrar)
 
 ### ACCOUNTS-F22 Elegir el idioma y la apariencia
-<!-- origen: old-saas:SAAS_DASHBOARD-F210 fi:saas/orgs-users#ajustes-preferencias-del-usuario fi:saas/orgs-users#actualizar-preferencias-auto-save-htmx fi:saas/orgs-users#api-rest-preferencias-del-usuario-retrieveupdate fi:saas/support/orgs-users#modelo-userpreferences fi:saas/support/orgs-users#serializer-userpreferencesserializer-changepasswordserializer -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Preferencias
@@ -615,7 +593,6 @@ Si falla: si no se puede guardar, el control vuelve a lo que había y un aviso d
 Implicados: hubs (el idioma al entrar en un negocio)
 
 ### ACCOUNTS-F23 Elegir qué avisos recibir por correo
-<!-- origen: old-saas:SAAS_DASHBOARD-F211 -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Preferencias
@@ -630,7 +607,6 @@ Si falla: si no se puede guardar, el interruptor vuelve a como estaba y un aviso
 Implicados: hubs (el correo de un negocio listo), billing (las facturas y los pagos, siempre), assistant (ASSISTANT-F29: los avisos de los mensajes del panel, siempre)
 
 ### ACCOUNTS-F24 Cambiar el tema desde el menú de usuario
-<!-- origen: fi:saas/auth-services#toggle-de-tema-server-side-sin-js fi:saas/auth-services#context-processor-de-tema fi:saas/support/public-core-config#context_processors-py-theme-apps-py-coreconfig pc:cloud/dashboard/theme_picker -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Menú de usuario
@@ -645,7 +621,6 @@ Si falla: si no se puede guardar, el panel se queda con el tema elegido y un avi
 Implicados: ninguno
 
 ### ACCOUNTS-F25 Abrir el menú de usuario
-<!-- origen: pc:cloud/dashboard/user_dropdown -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Menú de usuario
@@ -659,7 +634,6 @@ Si falla: sin sesión no hay menú: el panel lleva a la **Entrada**.
 Implicados: ninguno
 
 ### ACCOUNTS-F26 Descargar mis datos
-<!-- origen: old-saas:SAAS_DASHBOARD-F207 fi:saas/orgs-users#api-exportar-mis-datos-gdpr-art-20 -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Perfil
@@ -673,7 +647,6 @@ Si falla: si no se puede preparar, un aviso dice por qué y el botón vuelve; si
 Implicados: hubs (sus negocios), billing (sus facturas de ERPlora)
 
 ### ACCOUNTS-F27 Eliminar mi cuenta
-<!-- origen: old-saas:SAAS_DASHBOARD-F208 old-saas:SAAS_AUTH-F13 fi:saas/orgs-users#api-borrar-mi-cuenta-gdpr-art-17 fi:saas/orgs-users#confirmar-borrado-de-cuenta-gdpr gh:saas#2567 gh:saas#2583 gh:saas#2584 gh:saas#2587 gh:saas#2664 -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Perfil
@@ -688,7 +661,6 @@ Si falla: un negocio propio o pagado la retiene (el diálogo lo dice igual si ca
 Implicados: hubs (los negocios que la retienen y los que deja), billing (las facturas que se conservan y los datos de pagador que se borran)
 
 ### ACCOUNTS-F28 Entrar en mi negocio desde erplora.com
-<!-- origen: old-saas:SAAS_AUTH-F19 old-saas:SAAS_AUTH-F20 gh:saas#2544 -->
 Estado: hecho
 Actor: cualquier persona con cuenta y miembro de un negocio
 Pantalla: Entrada, el negocio, Entrada › error de entrada
@@ -703,22 +675,20 @@ Si falla: si no es miembro de ese negocio, «No tienes acceso a este hub», que 
 Implicados: hubs (los negocios de la persona y «Abrir»)
 
 ### ACCOUNTS-F29 Volver a erplora.com desde mi negocio
-<!-- origen: old-saas:SAAS_AUTH-F21 -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Entrada, Cuenta, Negocios, Tienda
 Pasos:
-1. Dentro de su negocio, la persona que entró con su cuenta pulsa «Mejorar plan» o «Gestionar en erplora.com» (BASE-F11 del Hub). El negocio firma en ese momento un pase y lo abre en erplora.com, en una pestaña nueva; en la aplicación instalada, en el navegador del dispositivo.
+1. Dentro de su negocio, la persona que entró con su cuenta pulsa «Mejorar plan» (también el del asistente y el de la Bandeja de WhatsApp) o «Gestionar en erplora.com» (BASE-F11 del Hub). El negocio firma en ese momento un pase y lo abre en erplora.com, en una pestaña nueva; en la aplicación instalada, en el navegador del dispositivo.
 2. erplora.com comprueba el pase y que esa cuenta sigue siendo de ese negocio, y abre su sesión sin pedirle nada, aunque ese navegador no la tuviera: la lleva a la página del plan de ese negocio en la **Tienda** («Mejorar plan») o a ese negocio en **Negocios** («Gestionar en erplora.com»).
 3. Si ese navegador ya tenía abierta su sesión, sigue con ella hasta el mismo sitio, aunque el pase haya caducado o ya se usara (al recargar o al volver atrás). Si tenía la de otra cuenta y el pase es bueno, entra en su lugar quien pulsó el botón.
-4. Los demás enlaces a erplora.com no llevan pase: gestionar su cuenta, «Invitar en erplora.com», «Mejorar plan» de una app de pago (abre la **Tienda** de ese negocio) y el del asistente y la Bandeja de WhatsApp, entre otros. Esos enlaces y un pase que no llega abren la dirección de siempre: si ese navegador tiene su sesión de erplora.com, la página se abre sin pedirle nada; si no, la **Entrada** le pide entrar y, ya dentro, la lleva a esa misma página.
+4. Los demás enlaces a erplora.com no llevan pase: gestionar su cuenta, «Invitar en erplora.com» y «Mejorar plan» de una app de pago (abre la **Tienda** de ese negocio), entre otros. Esos enlaces y un pase que no llega abren la dirección de siempre: si ese navegador tiene su sesión de erplora.com, la página se abre sin pedirle nada; si no, la **Entrada** le pide entrar y, ya dentro, la lleva a esa misma página.
 Entra: el pase del negocio (de qué cuenta, de qué negocio y a dónde va: el plan o el negocio) o, sin pase, la página de erplora.com a la que va (solo páginas de erplora.com).
 Sale: la página abierta con su sesión de erplora.com; el negocio y erplora.com guardan cada uno la suya. El pase vale un minuto y sirve una sola vez, y solo para esa cuenta y ese negocio; viaja en la dirección, así que la respuesta no se guarda ni se cuenta a otras webs. La sesión que abre no cuenta como entrada con contraseña, código ni segundo factor (lo que los exija los vuelve a pedir), no acepta los términos por nadie y sale en **Cuenta › Seguridad › Sesiones activas**, desde donde se puede cerrar.
 Si falla: un pase que el negocio no firmó, o que no dice lo que debe, no abre nada: «Este enlace de tu negocio no es válido», con «Iniciar sesión» y «Contactar Soporte». Una cuenta que no es miembro de ese negocio, desactivada o del personal de ERPlora no entra: «No tienes acceso a este hub», que nombra solo la dirección del negocio, con «Inicio», «Volver al hub» y «Contactar Soporte». Un pase pasado su minuto o ya usado no abre nada: «Este enlace de tu negocio ha caducado», e «Iniciar sesión» sigue hasta donde iba, con «Contactar Soporte». Ninguno de los tres toca la sesión que ya hubiera en ese navegador; con ella, «Iniciar sesión» dice «Inicio». Sin pase, una dirección que no es de erplora.com no se sigue después de entrar: lleva a la **Entrada** con su sesión. Cerrar la sesión de erplora.com no cierra la del negocio (ACCOUNTS-F09).
 Implicados: hubs (el negocio en el panel), billing (el plan en la **Tienda**), el hub (firma el pase y pinta los botones, BASE-F11)
 
 ### ACCOUNTS-F30 Abrir mi cuenta sola desde la aplicación
-<!-- origen: old-saas:SAAS_DASHBOARD-F209 -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Perfil
@@ -733,7 +703,6 @@ Si falla: sin la marca, la misma dirección abre la cuenta del panel de siempre,
 Implicados: ninguno
 
 ### ACCOUNTS-F31 Crear una clave de API
-<!-- origen: old-saas:SAAS_AUTH-F23 -->
 Estado: hecho
 Actor: cualquier persona con cuenta; un superusuario del personal, para una cuenta del equipo
 Pantalla: Cuenta › Claves de API, admin › Cuentas › Claves de API
@@ -748,7 +717,6 @@ Si falla: sin nombre, «Ponle un nombre: es como distinguirás tus claves.»; un
 Implicados: ninguno
 
 ### ACCOUNTS-F32 Usar una clave de API: qué abre y qué no
-<!-- origen: old-saas:SAAS_AUTH-F24 -->
 Estado: hecho
 Actor: un programa con la clave de una cuenta
 Pantalla: ninguna (la API de erplora.com)
@@ -763,7 +731,6 @@ Si falla: una clave que no existe, revocada, caducada o de una cuenta desactivad
 Implicados: hubs (sus negocios), billing (sus facturas)
 
 ### ACCOUNTS-F33 Revocar una clave de API
-<!-- origen: old-saas:SAAS_AUTH-F25 -->
 Estado: hecho
 Actor: cualquier persona con cuenta; un superusuario del personal
 Pantalla: Cuenta › Claves de API, admin › Cuentas › Claves de API
@@ -777,7 +744,6 @@ Si falla: revocarla dos veces no cambia nada; la clave de otra cuenta no se encu
 Implicados: ninguno
 
 ### ACCOUNTS-F34 Consultar la documentación de la API
-<!-- origen: old-saas:SAAS_DASHBOARD-F197 fi:saas/auth-services#docs-de-api-swagger-openapi-redoc-gated -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Claves de API, Documentación de la API
@@ -791,7 +757,6 @@ Si falla: sin sesión, la **Entrada** le pide entrar y después vuelve a la docu
 Implicados: ninguno
 
 ### ACCOUNTS-F35 Borrar las cuentas sin uso en dos años
-<!-- origen: old-saas:SAAS_AUTH-F15 fi:saas/auth-services#comando-anonimizar-usuarios-inactivos-gdpr fi:saas/support/auth-services#command-anonymize_old_users fi:saas/support/auth-services#task-anonymize_old_users_task -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna (una tarea semanal de erplora.com)
@@ -806,7 +771,6 @@ Si falla: una cuenta que no se puede borrar queda en el registro (por su identif
 Implicados: hubs (los negocios que retienen la cuenta), billing (las facturas que se quedan)
 
 ### ACCOUNTS-F36 Ver quién cambió una cuenta
-<!-- origen: fi:saas/support/auth-services#auditlog-registro-user fi:saas/support/orgs-users#service-auditlog-registro-gdpr -->
 Estado: hecho
 Actor: superusuario de ERPlora (o alguien del equipo con permiso para ver el registro)
 Pantalla: el admin de erplora.com › «Registro de auditoría»
@@ -820,7 +784,6 @@ Si falla: nunca se anota un secreto (ni la contraseña, ni la clave de API, ni l
 Implicados: ninguno
 
 ### ACCOUNTS-F37 Borrar el registro de auditoría de más de 90 días
-<!-- origen: fi:saas/auth-services#comando-limpiar-logs-antiguos-gdpr fi:saas/support/auth-services#command-cleanup_old_logs fi:saas/support/auth-services#task-cleanup_old_logs_task fi:saas/auth-services#tareas-gdpr-retencion-de-datos -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna (una tarea diaria de erplora.com)
@@ -834,7 +797,6 @@ Si falla: si una tanda no se puede borrar, la tarea termina con error para que e
 Implicados: ninguno
 
 ### ACCOUNTS-F38 Reportar un problema a soporte
-<!-- origen: old-saas:SAAS_DASHBOARD-F219 fi:saas/assistant-help#reportar-un-problema-contacto-de-soporte -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Reportar un problema
@@ -849,7 +811,6 @@ Si falla: «Añade un asunto.» o «Describe el problema, por favor.» bajo su c
 Implicados: el hub (su menú de usuario, BASE-F108)
 
 ### ACCOUNTS-F39 Dejar cargar en cada página solo lo de erplora.com
-<!-- origen: fi:saas/auth-services#content-security-policy-estricta-sin-unsafe-eval -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna (cada página del panel y de la web pública)
@@ -865,7 +826,6 @@ Si falla: lo que no está en la lista no se carga ni se ejecuta, aunque alguien 
 Implicados: public (la web pública)
 
 ### ACCOUNTS-F40 Guardar en el registro lo que pasa, sin datos personales ni secretos
-<!-- origen: fi:saas/auth-services#formatter-de-logging-gdpr-safe fi:saas/support/public-core-config#service-logging-py-gdprsafeformatter-sensitivedatafilter -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna (el registro de erplora.com que lee el equipo)
@@ -879,7 +839,6 @@ Si falla: ninguna línea se tira por llevar un secreto: se tapa y se escribe. Un
 Implicados: ninguno
 
 ### ACCOUNTS-F41 Arrancar erplora.com y atender cada petición
-<!-- origen: fi:saas/auth-services#settings-asgi-wsgi-y-monedas fi:saas/support/public-core-config#asgi-py-wsgi-py fi:saas/support/public-core-config#settings-py -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -894,7 +853,6 @@ Si falla: sin una clave obligatoria (la de los documentos fiscales en producció
 Implicados: ninguno
 
 ### ACCOUNTS-F42 Enseñar una página de error
-<!-- origen: fi:saas/auth-services#urlconf-raiz-handlers-de-error-branding-admin old-saas:SAAS-F09 -->
 Estado: hecho
 Actor: cualquiera
 Pantalla: Página de error, el admin de erplora.com
@@ -909,7 +867,6 @@ Si falla: la página del fallo se pinta aunque la base de datos esté caída: no
 Implicados: public (sus páginas de error)
 
 ### ACCOUNTS-F43 Poner erplora.com en mantenimiento
-<!-- origen: fi:saas/django-admin#admin-sitesettings-singleton fi:saas/support/orgs-users#modelo-sitesettings old-saas:SAAS-F11 -->
 Estado: hecho
 Actor: superusuario de ERPlora; cualquier visitante
 Pantalla: admin › Ajustes del sitio, Página de mantenimiento
@@ -925,7 +882,6 @@ Si falla: si el interruptor no se puede leer (la base de datos caída), erplora.
 Implicados: hubs (sus llamadas siguen), billing (los avisos de Stripe siguen), whatsapp (los avisos de Meta siguen)
 
 ### ACCOUNTS-F44 Limpiar cada día las sesiones caducadas y los códigos vencidos
-<!-- origen: fi:saas/support/orgs-users#task-clearsessions_task-flush_expired_tokens_task-backup_database_task-rotate_backups_task-triage_error_report_task old-saas:SAAS-F08 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna (una tarea diaria de erplora.com)
@@ -939,7 +895,6 @@ Si falla: si ya hay una pasada en marcha, la segunda no hace nada; un fallo term
 Implicados: ninguno
 
 ### ACCOUNTS-F45 Frenar el exceso de peticiones
-<!-- origen: old-saas:SAAS-F05 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -953,7 +908,6 @@ Si falla: con la caché caída, los frenos dejan pasar y erplora.com sigue funci
 Implicados: public (el formulario de contacto)
 
 ### ACCOUNTS-F46 Mandar los correos de erplora.com
-<!-- origen: old-saas:SAAS-F07 -->
 Estado: hecho
 Actor: sistema
 Pantalla: ninguna
@@ -970,7 +924,6 @@ Si falla: un correo que no sale lo trata quien lo pide (por ejemplo, reportar un
 Implicados: billing, fiscal, whatsapp y hubs (sus correos ya salen con la marca)
 
 ### ACCOUNTS-F47 Moverse por el panel
-<!-- origen: old-saas:SAAS_DASHBOARD-F201 fi:saas/support/public-core-config#context_processors-py-config -->
 Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Menú del panel
@@ -985,7 +938,6 @@ Si falla: sin sesión, la **Entrada**, que vuelve a la página tras entrar.
 Implicados: hubs («Negocios»), billing («Tienda» y «Facturación»)
 
 ### ACCOUNTS-F48 Pasar la QA maestra de erplora.com
-<!-- origen: qa:shared/qa-saas -->
 Estado: hecho
 Actor: el equipo de QA de ERPlora
 Pantalla: todas las de erplora.com
@@ -1000,7 +952,6 @@ Si falla: un punto que ningún flujo cubre es un fallo de la QA y se apunta en l
 Implicados: hubs, billing, public, apps y fiscal; del Hub, verifactu, invoice y printing
 
 ### ACCOUNTS-F49 Entrar como cuenta de revisión de tienda sin el código por correo
-<!-- origen: nuevo (Google Play y la App Store piden un acceso reutilizable sin código de un solo uso; Auth0, Microsoft Entra, Google Workspace, Odoo y WooCommerce eximen por cuenta desde la administración; ver «Referencia adoptada») gh:saas#132 gh:app#7 -->
 Estado: hecho
 Actor: personal de ERPlora y el revisor de una tienda de apps
 Pantalla: admin › Cuentas › Usuarios, Entrada › «Entrar»
@@ -1013,10 +964,9 @@ Pasos:
 Entra: la marca, que solo pone y quita el personal, y el correo y la contraseña de la cuenta.
 Sale: la sesión de ese navegador, como en ACCOUNTS-F04 pero sin el código por correo; la sesión sale entre las abiertas de la cuenta como cualquier otra (ACCOUNTS-F18 y ACCOUNTS-F19), y el registro de auditoría anota quién puso o quitó la marca, cuándo y desde qué dirección (ACCOUNTS-F36).
 Si falla: una cuenta sin la marca sigue pidiendo el código en cada entrada con contraseña (ACCOUNTS-F04). La persona no ve ni cambia la marca desde su cuenta, el soporte la ve en el admin sin poder cambiarla, y una cuenta del personal no puede llevarla: «Una cuenta del personal no puede ser cuenta de revisión de tienda.», y no se guarda. La marca no salta nada más: un correo sin confirmar pide su código (ACCOUNTS-F03), la app autenticadora, si la cuenta la tiene, pide el suyo (ACCOUNTS-F05), y una contraseña equivocada, los límites de intentos (ACCOUNTS-F11) y la respuesta igual exista o no la cuenta siguen como en cualquier otra.
-Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de auditoría); la app de ERPlora (repositorio ERPlora/app), cuya comprobación de Google Play entra con esta cuenta antes de cada publicación; saas#132 y app#7
+Implicados: el admin de erplora.com (la ficha de la cuenta y el registro de auditoría); la app de ERPlora (repositorio ERPlora/app), cuya comprobación de Google Play entra con esta cuenta antes de cada publicación
 
 ### ACCOUNTS-F50 Esperar a la base de datos cuando se corta un momento
-<!-- origen: nuevo (PLAN-DB, ronda 2026-11-04e, punto 5: un reinicio, un mantenimiento de AWS o el cambio de versión cortan la base unos segundos) gh:saas#284 gh:saas#288 gh:saas#314 gh:hub#831 -->
 Estado: hecho
 Actor: cualquier visitante de erplora.com, cualquier persona en el panel y cualquier programa conectado por la API
 Pantalla: cualquiera de erplora.com y del panel, Página de mantenimiento
@@ -1028,45 +978,22 @@ Pasos:
 Entra: nada: la persona no hace nada distinto.
 Sale: la misma respuesta de siempre, con unos segundos de retraso; o, pasado el tiempo, una respuesta 503 con `Retry-After` y nunca una página de error del servidor. Un programa recibe el código `database_unavailable`. Los buscadores entienden que la web vuelve pronto.
 Si falla: lo que pudo aplicarse no se repite nunca a ciegas, y cada resultado dice el suyo. Si el guardado ya se había confirmado y el corte se llevó solo la respuesta, la persona lee «Se ha guardado, pero la conexión se ha perdido antes de llegar la respuesta. Recarga la página en unos segundos para verlo.» y un programa, el código `database_answer_lost`: no hay nada que comprobar. Un corte mientras se confirmaba un guardado deja el resultado sin saberse, y cualquier otro cambio pudo haber hecho algo fuera de la base (un cobro de Stripe, una factura, un correo, la consulta a VIES o el certificado de un dominio propio): la persona lee «Se ha perdido la conexión mientras se guardaba. Comprueba si se ha guardado antes de volver a intentarlo.» y un programa, el código `database_outcome_unknown`. Lo que no es un corte (una consulta que tarda demasiado, un fallo del programa) sigue siendo el error de siempre. Las llamadas de los negocios a `/internal`, los avisos de Stripe y de Meta y `/readyz` reciben su 503 al momento, sin esperar: los dos primeros reintentan por su cuenta, y `/readyz` tiene que decir que la base no está antes de que sus sondas se cansen.
-Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos de Stripe reciben el 503 y reintentan), whatsapp (los avisos de Meta, igual), ACCOUNTS-F43 (la misma página), ACCOUNTS-F21 y ACCOUNTS-F22 (Perfil y Preferencias, que se pueden repetir, como los cambios del paso 3), hubs (los cambios de un negocio y de su gente del paso 3); saas#284, saas#288 y su gemela del Hub, hub#831
+Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos de Stripe reciben el 503 y reintentan), whatsapp (los avisos de Meta, igual), ACCOUNTS-F43 (la misma página), ACCOUNTS-F21 y ACCOUNTS-F22 (Perfil y Preferencias, que se pueden repetir, como los cambios del paso 3), hubs (los cambios de un negocio y de su gente del paso 3)
 
 ## Para quien lo mantiene
 
 - Anatomía, operaciones y decisiones: `accounts/README.md` (allauth headless, puertas cerradas, sesiones,
   reautenticación, correo por código propio, foto, preferencias y llaves de API).
-- Partes del porte (MIGRATION-TASK APP-ACCOUNTS-1…5): este WORKBOOK nace en la parte 1 (F01–F13); la parte 2
-  (segundo factor, navegadores de confianza y sesiones) cierra F05 y añade F14–F20; la parte 3 (perfil,
-  preferencias, avisos, menú de usuario, exportar y borrar la cuenta) añade F21–F27 y amplía F13; la parte 4
-  (salto al Hub, llaves de API y su documentación, retención GDPR, auditlog y reportar un problema) añade F28–F38
-  y amplía F12 y F25; la parte 5 (plataforma del SaaS) añade F39–F48; saas#284 añade F50 y saas#288 y saas#314 amplían su paso 3. El cierre (CLOSE-ACCOUNTS, 2026-11-03) pasa F06
-  y F48 a `hecho` (PLAN-SAAS, ronda de `accounts`).
-- Equivalencia de claves del registro: G83, G124, G22 y G59 = F01; G84 y G21 = F02; G107 = F03; G85 y G17 =
-  F04; G125 = F05; G86 = F06; G91, G123, G120, G121 y G122 = F07; G109, G92, G42, G45 y G46 = F08; G93 = F09;
-  G119 = F10; G96 = F11; G20 y G58 = F12; G18 y G56 = F13. Parte 2: G60 = F04; G88, G12, G19, G55 y G57 =
-  F05; G87, G02 y G126 = F14; G116 y G05 = F15; G89 y G03 = F16; G23, G16 y G48 = F17; G94, G110, G15, G50,
-  G24 y G25 = F18; G09, G54, G37 y G34 = F19; G90 = F20. Parte 3: G108, G49, G43, G63, G66, G69, G70 y G118 =
-  F21; G114, G39, G38, G44, G65 y G67 = F22; G115 = F23; G29, G11, G74 y G127 = F24; G128 = F25; G111 y G41 =
-  F26; G112, G95, G40 y G47 = F27; G32, G35 y G36 = F13. Parte 4: G98 y G99 = F28; G104 = F12; G100 = F29;
-  G113 = F30; G101 = F31; G102 = F32; G103 = F33; G105 y G13 = F34; G97, G07, G52 y G61 = F35; G51 y G68 = F36;
-  G08, G53, G62 y G28 = F37; G117 y G01 = F38. Parte 5: G10 = F39; G14 y G76 = F40; G26, G72 y G77 = F41; G30 y
-  G81 = F42; G33, G64 y G82 = F43; G71 y G80 = F44; G78 = F45; G79 = F46; G106 y G73 = F47; G129 = F48.
-  Descartadas: G04 (activar o apagar el código por
-  correo: se pide en toda entrada con contraseña y no se apaga, PLAN-SAAS ronda 19, §3.7 punto 3) y G31
-  (el Hub verificaba en el SaaS un dispositivo de confianza: el Hub nunca consulta al SaaS por petición y
-  sus dispositivos y su PIN son suyos, PLAN-SAAS §2). De la parte 5: G06 y G75 (el circuit breaker del viejo,
-  `apps/core/circuit_breaker.py`: estado en memoria de cada proceso, solo alrededor de las llamadas a Stripe de sus
-  webhooks; aquí cada llamada de fuera lleva su tiempo de espera corto y su error visible, Stripe con 10 s y un
-  reintento (`billing/stripe_service.py`), VIES 3 + 5 s, Meta 5 + 15 s, la AEAT 5 + 30 s, el Hub 5 s, S3 2 + 3 s,
-  IndexNow 15 s y SES 3 + 10 s, y un aviso de Stripe que falla lo reintenta Stripe; un breaker por proceso no se
-  comparte entre tareas y no añade nada: simplicidad primero) y G27 (la etiqueta `{% card %}` del panel viejo: el
-  panel es la SPA, con sus componentes de `@erplora/ui`, y la web pública pinta sus tarjetas con sus parciales de
-  `public/templates/public/components/`, ronda 16). Las dos chocan con PLAN-SAAS §6 («Utilidades», casi tal cual):
-  ronda propuesta en la PR de la parte 5. De G71, `backup_database` y `rotate_backups` no siguen (las copias las
-  hace Aurora, PLAN-DB y PLAN-AWS) y `triage_error_report` tampoco: el embudo de errores es una línea de registro que
-  CloudWatch cuenta (PLAN-SAAS §1.1) y lo que cuenta una persona es ACCOUNTS-F38.
-- ACCOUNTS-F49 nace fuera del porte (saas#132; PLAN-SAAS, ronda 2026-10-27 de la cuenta de revisión de tienda):
-  es la única excepción al código de cada entrada que G04 y PLAN-SAAS §3.7 punto 3 dejan siempre encendido, y la
-  pone el personal, nunca la persona. La marca es `User.is_store_review_account` (migración 0010, con `db_default`);
+- Sin circuit breaker: cada llamada de fuera lleva su tiempo de espera corto y su error visible: Stripe, 10 s y un
+  reintento (`billing/stripe_service.py`); VIES, 3 + 5 s; Meta, 5 + 15 s; la AEAT, 5 + 30 s; el Hub, 5 s; S3, 2 + 3 s;
+  IndexNow, 15 s, y el correo, 10 s por SMTP (3 + 10 s por SES). Un aviso de Stripe que falla lo reintenta Stripe, y un
+  breaker por proceso no se compartiría entre tareas.
+- El panel es la SPA, con los componentes de `@erplora/ui`, y la web pública pinta sus tarjetas con los parciales de
+  `public/templates/public/components/`.
+- Sin tareas de copias: las hace Aurora. Los errores son líneas de registro que CloudWatch cuenta; lo que cuenta una
+  persona es ACCOUNTS-F38.
+- ACCOUNTS-F49 es la única excepción al código de cada entrada, que no se apaga, y la pone el personal, nunca la
+  persona. La marca es `User.is_store_review_account` (migración 0010, con `db_default`);
   `AccountAdapter.is_login_by_code_required` la lee después de la regla de un solo código, así que una dirección sin
   probar sigue recibiendo el que la prueba, y la app autenticadora sigue en su etapa de allauth. Solo la cambia un
   superusuario (`UserAdmin.get_readonly_fields`; `support` solo ve la ficha); `User.clean` la rechaza en una cuenta
@@ -1076,29 +1003,27 @@ Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos
   `test_sign_in_code.py` (`TestAStoreReviewAccount`), `test_admin.py` (`TestTheStoreReviewMark`), `test_models.py`,
   `test_auditlog.py`, `test_throttle.py`, `test_profile.py` y `test_create_platform_user.py`.
 - Puertas propias sobre allauth.headless (`accounts/doors.py`, montadas en `config/urls.py` antes de las de
-  allauth): la entrada pliega el correo como el alta (NFKC, `adapters.plain_email`; trampa del SaaS viejo
-  #1018) y el alta comprueba la contraseña contra su propio correo (headless la validaba sin cuenta y el
-  validador de parecido no veía nada; saas#2542). `AccountAdapter.clean_password` rechaza la contraseña
-  actual como nueva (saas#2612), en el cambio y en el restablecimiento.
+  allauth): la entrada pliega el correo como el alta (NFKC, `adapters.plain_email`)
+  y el alta comprueba la contraseña contra su propio correo (headless la valida sin cuenta y el validador de
+  parecido no vería nada). `AccountAdapter.clean_password` rechaza la contraseña actual como nueva, en el cambio y
+  en el restablecimiento.
 - Términos (ACCOUNTS-F10): `TERMS_VERSION` y `PRIVACY_VERSION` en `accounts/models.py` son la fecha de
   «Last updated» de `/legal/terms/` y `/legal/privacy/`; `tests/test_terms.py` falla si una página cambia
   su fecha sin la versión. `services.accept_legal_texts` escucha `user_signed_up` de allauth y
   `user_logged_in` de Django.
-- Freno (ACCOUNTS-F11): todos los límites escritos en `ACCOUNT_RATE_LIMITS` de `config/settings.py` (saas#88:
-  `login_failed` 5/5m por dirección y por cuenta, `reset_password` 10/h por dirección y 5/h por cuenta y
+- Freno (ACCOUNTS-F11): todos los límites escritos en `ACCOUNT_RATE_LIMITS` de `config/settings/accounts.py`
+  (`login_failed` 5/5m por dirección y por cuenta, `reset_password` 10/h por dirección y 5/h por cuenta y
   `code_attempts`, nuestro, 10 códigos rechazados en 5 minutos por dirección) sobre la caché de Django (Valkey en
   AWS, `base.cache.FailSoftRedisCache`); `tests/test_throttle.py`. reCAPTCHA Enterprise por puntuación, **apagado
-  por defecto desde el 2026-10-23** (Ioan: el WAF del ALB y estos límites; `RECAPTCHA_ENABLED=true` más las dos
+  por defecto** (protegen el WAF del ALB y estos límites; `RECAPTCHA_ENABLED=true` más las dos
   claves lo encienden sin tocar código; apagado, ni token, ni script, ni aviso, ni Google en la CSP)
   (`live.recaptcha`, mínimo `RECAPTCHA_MIN_SCORE` 0.5) delante de las puertas de allauth.headless en
   `accounts/bot_check.py` (400 `recaptcha_failed`; abre sin Google solo en `login`, `login_code` y
   `mfa_authenticate`), aviso en `components/RecaptchaNotice.vue`; `tests/test_bot_check.py`. Detalle y runbook,
-  README de la raíz, «Protección contra bots»; PLAN-SAAS §3.7, ronda 2026-10-23.
+  README de la raíz, «Protección contra bots».
   Los pases del salto a un negocio tienen su propio freno: 20 en 5 minutos por cuenta (`HUB_LOGIN_RATELIMIT`, F28).
-- Lo que no sigue del viejo, a propósito: el asistente de `two_factor` (retirado en el viejo, ADR-0417), el
-  `EmailDevice` creado a cada cuenta (lo sustituye el código por correo de cada entrada), el par de
-  credenciales que devolvía el alta por la API (hoy la sesión del navegador; el Hub recibe al usuario con el
-  canje del código de un solo uso) y la organización personal al crear la cuenta (ADR-0201).
+- El alta abre la sesión del navegador y no devuelve credenciales por la API (el Hub recibe al usuario con el
+  canje del código de un solo uso); crear la cuenta no crea ninguna organización.
 - Segundo factor (F05, F14–F17, F20): `allauth.mfa` sobre headless (TOTP y códigos de recuperación, sin
   passkeys), detrás de `ACCOUNTS_MFA_ENABLED` (apagado por defecto en la fase 1: sus rutas responden 404 y
   `mfa.mfa_completed` es falso). La confianza de 14 días es `MFA_TRUST_ENABLED` de allauth, con la cookie
@@ -1107,38 +1032,33 @@ Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos
   `forget_trusted_browsers` vuelve a crear los autenticadores con otro id (el mismo secreto: la app y los
   códigos siguen valiendo) y esta sesión sigue sus ids nuevos (`_follow_new_authenticator_ids`). La página de la
   entrada responde la etapa con `mfaTrust` del cliente de allauth de `@erplora/ui`.
-- Sesiones (F18, F19): las de `allauth.usersessions`, sin `UserSession` propio ni JWT (PLAN-SAAS: nadie
+- Sesiones (F18, F19): las de `allauth.usersessions`, sin `UserSession` propio ni JWT (nadie
   consume tokens). Cerrar una pide a sus negocios que cierren las suyas (`signals.sessions_ended`). El
   admin cierra por `accounts.session.close_any` (sin ruta: solo el admin, por el canal de la cuenta); sus
-  dos acciones solo las ve el superusuario y el soporte solo lee. La «revocación del comando»
-  `revoke_user_sessions` del viejo es esa acción del admin (working-rules §4: todo por la UI o la API).
+  dos acciones solo las ve el superusuario y el soporte solo lee.
   allauth no nombra su modelo ni sus campos (salían en inglés en todo idioma): `UserSessionAdmin` nombra columnas
   y etiquetas con `admin.display`, y `AccountsConfig.ready()` el modelo con su `_meta` en vivo; las migraciones
   leen las opciones propias del modelo (`_meta.original_attrs`), así que allauth no gana ninguna
   (`makemigrations --check` en `tests/test_admin.py` lo vigila).
 - Personal (F20): `admin_has_permission` (instalado en `config/urls.py`) exige, con el interruptor
-  encendido, un autenticador TOTP; `admin_login` lleva al personal sin él a `/2fa?next=…`. En el SaaS nuevo
-  el personal no tiene API propia: sus poderes viven en el admin y en el salto `hub-admin`, que ya exige el
-  segundo factor con el interruptor encendido. Las trampas del viejo (saas#2543, #2618, #2627: puertas del
-  personal abiertas con la contraseña sola) quedan cubiertas por esas dos puertas; saas#2659 (marketplace)
-  no aplica: no hay marketplace.
-- Parte 3 (F21–F27): el perfil del viejo (`Profile`, su señal y su procesador de contexto) es la propia cuenta,
-  con su foto y unas preferencias que no necesitan fila (`queries.preferences_of`), y el panel la lee de
-  `base.session.me`; sus DRF son las operaciones `accounts.profile.*` y `accounts.preferences.*`; su
-  `ChangePasswordSerializer` es F08. El tema de las plantillas es `base.context_processors.theme` (cuenta, o la
-  cookie `theme` del viejo, o el sistema) y el del panel, el del shell de `@erplora/ui`, que pinta el de la sesión
+  encendido, un autenticador TOTP; `admin_login` lleva al personal sin él a `/2fa?next=…`. El personal
+  no tiene API propia: sus poderes viven en el admin y en el salto `hub-admin`, que ya exige el
+  segundo factor con el interruptor encendido: ninguna puerta del personal se abre con la contraseña sola.
+- Perfil y preferencias (F21–F27): el perfil es la propia cuenta, con su foto y unas preferencias que no necesitan
+  fila (`queries.preferences_of`), y el panel la lee de `base.session.me`; sus operaciones son `accounts.profile.*` y
+  `accounts.preferences.*`, y el cambio de contraseña es F08. El tema de las plantillas es `base.context_processors.theme` (cuenta, o la
+  cookie `theme`, o el sistema) y el del panel, el del shell de `@erplora/ui`, que pinta el de la sesión
   embebida antes de arrancar. Avisos (F23): `hub_alerts` gobierna `hubs.emails.send_ready` por
-  `queries.receives_business_notices`; «Novedades de ERPlora» no gobernaba ningún correo y sale (accounts 0009:
-  fuera del modelo, columna con valor por defecto hasta su `DROP COLUMN`, el paso de contrato). Descargar mis datos
+  `queries.receives_business_notices`; no hay aviso de «Novedades de ERPlora»: su columna queda en la base de
+  datos, fuera del modelo y con valor por defecto, hasta su `DROP COLUMN` (accounts 0009). Descargar mis datos
   (F26): `accounts.data.export`, que lee los negocios y las facturas por sus operaciones (`hubs.business.list`,
   `billing.invoice.list` y `.get`), sin importar esas apps. Eliminar (F27): ver accounts/README.md; las facturas
-  conservan el destinatario porque su enlace a la cuenta es `SET_NULL` (`test_delete_account`). La moneda del viejo
-  no sigue: ERPlora cobra en euros y ninguna pantalla ni correo la leía (SAAS_DASHBOARD-F210).
-- Parte 4 (F28–F38): el salto es el contrato de PLAN-SAAS §2 (`accounts/handoff.py`, `internal.py` con
+  conservan el destinatario porque su enlace a la cuenta es `SET_NULL` (`test_delete_account`).
+- Salto, claves, retención y auditoría (F28–F38): el salto es el contrato de PLAN-SAAS §2 (`accounts/handoff.py`, `internal.py` con
   `/internal/auth/redeem`, `signing.py`): código de un solo uso atado al negocio y al `state` del navegador, enviado
-  por `form_post` sin `Referer`. Las direcciones viejas de la cuenta (`/dashboard/profile/…`) son 301 de
+  por `form_post` sin `Referer`. Las direcciones anteriores de la cuenta (`/dashboard/profile/…`) son 301 de
   `accounts/redirects.py` a Cuenta bajo `/dashboard/account/…` en un salto, que conservan `?surface=account` (la app
-  nativa no cambia; FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX). Las claves de API del SaaS
+  nativa no cambia). Las claves de API del SaaS
   (`erps_live_…`, `accounts/api_auth.py`) solo abren las operaciones con `expose_api=True` de su permiso; el
   superusuario emite las de una cuenta del equipo desde el admin (`ApiKeyAdmin`, `services.issue_api_key`).
   `/api/docs` es ReDoc con nonce y solo con sesión (`accounts/api_docs.py`); `/api/openapi.json` sigue abierto (lo
@@ -1157,68 +1077,62 @@ Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos
   consultarse entre ellos (PLAN-SAAS §2). Lo que no abre nada cae en `/login/error?code=…`: `invalid_pass` (no firmado
   como firma el Hub, o no dice lo que debe), `not_a_member&hub=<slug>` y `pass_expired&next=<a dónde iba>` (pasado su
   minuto o ya usado). Tests: `accounts/tests/test_hub_pass.py`; e2e `tests/e2e/panel/accounts-pass.spec.ts`.
-- Parte 5 (F39–F48): la política de contenido del panel es `settings.SECURE_CSP` sobre `live.csp.base_policy` (más
+- Plataforma (F39–F48): la política de contenido del panel es `settings.SECURE_CSP` sobre `live.csp.base_policy` (más
   lo que añade `base/csp.py` en una página que cobra), con nonce, `strict-dynamic` y Trusted Types en producción; la
   de la web pública es `public/csp.py`, sin `strict-dynamic` ni Trusted Types a propósito, y la del admin,
   `base.csp.admin_policy` (la del panel sin Trusted Types, por `AdminCSPMiddleware`): su jQuery escribe `innerHTML` al
-  cargar y moría con ellos, y con él todos los controles del admin (trampa saas#1828 del viejo, vista de nuevo con
-  `ui-clip-sweep.sh` en la parte 5). Las tres llevan `connect-src`
+  cargar y moriría con ellos, y con él todos los controles del admin. Las tres llevan `connect-src`
   con `ipc:` y `http://ipc.localhost` (la app Tauri), y `config/tests/test_csp_policy.py` las lee directiva a
   directiva en un proceso con los ajustes de producción. Los
   informes del navegador van a `base/csp_report.py`, frenados por `CSP_REPORT_RATELIMIT` (60/h por dirección,
-  `public.client_ip`). El registro pasa por `base.logging.GDPRSafeFormatter` (portado de `apps/core/logging.py` con
-  sus casos), puesto en `LOGGING` con `"()"`. `config/asgi.py` cierra con 1008 el saludo de un WebSocket
+  `public.client_ip`). El registro pasa por `base.logging.GDPRSafeFormatter`, puesto en `LOGGING` con `"()"`. `config/asgi.py` cierra con 1008 el saludo de un WebSocket
   (`refuse_websockets`; el SaaS no sirve `/ws`) y `config/wsgi.py` sirve el mismo proyecto. La marca del admin está
   en `config/urls.py`. El mantenimiento es `base.models.SiteSettings` (fila única, `base/0001`),
   `base.queries.maintenance_state` (caché compartida 60 s, borrada tras el COMMIT de un cambio; falla abierta con
   `base.maintenance_unreadable`) y `base.maintenance.MaintenanceModeMiddleware` (503, `Retry-After: 300`, `no-store`,
   el sobre con el código `maintenance` en la API), que lee el interruptor antes que la sesión y deja fuera salud,
   estáticos, admin, `/internal`, webhooks, informes de CSP, la API de allauth, la vuelta de Google y las páginas de la
-  entrada con `next=/admin/…` (las dos trampas del viejo: la salud en 503 y el segundo factor cortado). Se enciende
+  entrada con `next=/admin/…` (así la salud no da 503 ni se corta el segundo factor). Se enciende
   solo desde el admin (working-rules §4). `purge_expired_sessions` (F44) es diaria, con candado propio
   (`services.run_exclusively`), y la lanza `saas-cron` a las 00:20 UTC (`purge-expired-sessions-nightly` de
-  `aws/stacks/prod/scheduler.tf`, que por eso no programa `clearsessions` aparte); suelta a mano el candado de su conexión copiada del pool. Los correos (F46) salen por `django-ses` con
-  `AWS_SES_CONFIG` (3 s para conectar, 10 s para leer, dos intentos), cada uno en texto y en HTML sobre la plantilla
-  común `templates/emails/base.html` (PLAN-SAAS §7, bloque 13; la vieja saas#1044): `base/emails.py`
+  `aws/stacks/prod/scheduler.tf`, que por eso no programa `clearsessions` aparte); suelta a mano el candado de su conexión copiada del pool. Los correos (F46) salen, en
+  producción y en `pre`, por el SMTP de OVH: sin `SES_REGION`, `config/settings/mail.py` usa el
+  `EmailBackend` SMTP de Django con `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` y
+  `EMAIL_USE_TLS` (10 s de espera) y el remitente de `DEFAULT_FROM_EMAIL`; en local, un fichero por correo en `.mail/`.
+  `django-ses` sigue en el código como vuelta atrás: con `SES_REGION` puesto, la API de SES firmada por el rol de la
+  tarea, con `AWS_SES_CONFIG` (3 s para conectar, 10 s para leer, dos intentos). Cada uno va en texto y en HTML sobre la plantilla
+  común `templates/emails/base.html`: `base/emails.py`
   (`branded_message`, con el idioma del destinatario explícito, porque cada remitente envía fuera de su
   `translation.override`) en `accounts`, `billing`, `fiscal`, `whatsapp` y el contacto de `public`; los de allauth, por
   `AccountAdapter.render_mail`, que pone su texto en la plantilla (allauth solo trae `.txt`) salvo los avisos propios,
   que tienen su `_message.html` junto al `.txt`. `URLIZE_ASSUME_HTTPS` abre por HTTPS un enlace sin esquema. Los de
   `hubs/emails.py` salen por la misma plantilla. La navegación (F47) es `base/navigation.py` y el shell de `@erplora/ui`; el procesador de contexto que queda es
-  `base.context_processors.theme`. La QA maestra (F48) es `flows/shared/qa-saas.md` del repo `qa` viejo: §3 →
-  PUBLIC-F01–F37; §4.1 → HUBS-F04, F06, F09, F21 y F22; §4.2 → HUBS-F03, BILLING-F07, F08, F10 y F11; §4.4 →
+  `base.context_processors.theme`. La QA maestra (F48) es `flows/shared/qa-saas.md` del repo `qa`: §3 →
+  PUBLIC-F01–F35 y F37; §4.1 → HUBS-F04, F06, F09, F21 y F22; §4.2 → HUBS-F03, BILLING-F07, F08, F10 y F11; §4.4 →
   HUBS-F18 y F19; §5 → APPS-F01–F07 y BILLING-F31–F35; §6 → BILLING-F02–F06, F12, F13, F15–F17 y F25,
   ACCOUNTS-F28 y F32; §7 → ACCOUNTS-F01–F03, HUBS-F01 y F11, BILLING-F08 y F29, y en el Hub PRINTING-F07 y F13;
   §8 → VERIFACTU-F13, F15 y F19 e INVOICE-F01 del Hub. No siguen, por la plataforma de ahora: arrancar, parar,
   reiniciar y actualizar el contenedor de cada negocio y el inventario de servidores (un solo servicio para todos los
-  hubs en ECS y una Aurora, PLAN-AWS), la descarga de módulos y el portal de desarrolladores (todos los módulos son
-  nuestros y van en la imagen del Hub, PLAN §13–§15), OutfitKit (PLAN §16.11), la suspensión al 25 % (al terminar se
-  vuelve a Gratis, BILLING-F15) y los 15 días de prueba de los planes de pago (sin prueba desde 2026-10-15).
-  `accounts/tests/test_master_qa.py` lee esta lista y falla si un flujo de este repositorio deja de estar `hecho` o
-  `descartado`; los del Hub (PRINTING, VERIFACTU e INVOICE) se comprueban en el registro. Medido el 2026-11-03 sobre las
-  86 claves: 85 `hecho` y PUBLIC-F36 `descartado` con su motivo. 20 de las `hecho` no tienen prueba en el navegador en el
-  registro, solo de servidor: PUBLIC-F30, F34 y F37, HUBS-F22, APPS-F01–F06, BILLING-F02–F06, F12, F15, F25 y F29, y
+  hubs en ECS y una Aurora), la descarga de módulos y el portal de desarrolladores (todos los módulos son nuestros y
+  van en la imagen del Hub), OutfitKit (los componentes son los de `@erplora/ui`), la suspensión al 25 % (al terminar
+  se vuelve a Gratis, BILLING-F15) y los 15 días de prueba de los planes de pago (no tienen prueba).
+  `accounts/tests/test_master_qa.py` lee esta lista y falla si un flujo de este repositorio deja de estar `hecho`;
+  los del Hub (PRINTING, VERIFACTU e INVOICE) se comprueban en el suyo. Son 85 claves. Medido el 2026-11-03, 20 no
+  tienen prueba en el navegador, solo de servidor: PUBLIC-F30, F34 y F37, HUBS-F22, APPS-F01–F06, BILLING-F02–F06, F12, F15, F25 y F29, y
   VERIFACTU-F15.
 - Google (F06) se juega en el navegador sin credenciales de Google y sin llamarle (`tests/e2e/panel/accounts-google.spec.ts`,
   en el gemelo del panel con una app inventada, `GOOGLE_E2E`): el navegador ve a Google por el protocolo de DevTools, no por
   `page.route`, que solo intercepta la primera dirección de una redirección y dejaría llegar al Google real; el servidor
   canjea el código en un doble, `GOOGLE_OAUTH_TOKEN_URL`, que solo un servidor con `DEBUG` puede mover, porque allauth cree
   lo que contesta esa dirección sin comprobar su firma. Lo demás es lo de verdad, también el `form-action` de la página.
-- Pruebas: cada test cita su clave en el nombre o el docstring. Los e2e de la parte 1 están en
-  `tests/e2e/panel/accounts-flows.spec.ts`, los de la parte 2 en `tests/e2e/panel/accounts-security.spec.ts`
-  los de la parte 3 en `tests/e2e/panel/accounts-profile.spec.ts` y los de la parte 4 en
-  `tests/e2e/panel/accounts-jump.spec.ts`, `accounts-keys.spec.ts` y `accounts-report.spec.ts`, los de la parte 5 en
-  `tests/e2e/panel/accounts-platform.spec.ts` (menú y mantenimiento), `tests/e2e/public-errors.spec.ts` (404 y 500) y
-  `tests/e2e/panel/accounts-mails.spec.ts` (F46: tres correos leídos de la carpeta de correo y pintados a tres tamaños),
-  con la clave del registro (`ACCOUNTS-Gnn`) en el título y la equivalencia con este WORKBOOK en su cabecera;
-  el segundo factor se juega en el gemelo del panel con el interruptor encendido (`PANEL_MFA_URL`).
+- Pruebas: cada test cita su clave en el nombre o el docstring, y cada e2e su flujo. Los e2e: F01–F13 en
+  `tests/e2e/panel/accounts-flows.spec.ts`; F14–F20 en `tests/e2e/panel/accounts-security.spec.ts`; F21–F27 en
+  `tests/e2e/panel/accounts-profile.spec.ts`; F28–F38 en `tests/e2e/panel/accounts-jump.spec.ts`,
+  `accounts-keys.spec.ts` y `accounts-report.spec.ts`, y F39–F48 en `tests/e2e/panel/accounts-platform.spec.ts` (menú
+  y mantenimiento), `tests/e2e/public-errors.spec.ts` (404 y 500) y `tests/e2e/panel/accounts-mails.spec.ts` (F46:
+  tres correos leídos de la carpeta de correo y pintados a tres tamaños); el segundo factor se juega en el gemelo del panel con el interruptor encendido (`PANEL_MFA_URL`).
   `signup.spec.ts` y `login.spec.ts` siguen cubriendo las pestañas de la entrada; `login.spec.ts` juega también
   F49 con la cuenta `e2e-store-review` de `panel_seed.py`.
-
-## Lo que queda fuera
-
-- **«Mejorar plan» del asistente y de la Bandeja de WhatsApp del Hub aún no llevan el pase** (ACCOUNTS-F29, BASE-F11 del
-  Hub): abren la dirección de siempre, que pide entrar si ese navegador no tiene la sesión — ERPlora/hub#723.
 
 ## Lo que NO hace, a propósito
 
@@ -1238,7 +1152,7 @@ Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos
   pagos no se pueden apagar.
 - No deja eliminar la cuenta a quien es propietario de un negocio o paga el de otra persona, ni borra con ella
   sus facturas de ERPlora.
-- No avisa antes de borrar una cuenta sin uso en dos años (el SaaS viejo tampoco avisaba), ni borra nunca una
+- No avisa antes de borrar una cuenta sin uso en dos años, ni borra nunca una
   cuenta que pertenece a un negocio vivo.
 - No borra el registro de auditoría de una cuenta al eliminarla: ese registro se borra entero a los 90 días.
 - No abre una incidencia con cada informe de «Reportar un problema» ni lo guarda: llega por correo a soporte, que

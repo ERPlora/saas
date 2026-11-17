@@ -1,5 +1,4 @@
-"""Who may crawl what: the private half of erplora.com is never indexable (ported from ERPlora/saas
-``apps/public/crawlers.py`` and ``landing/tests/test_ai_crawlers.py``, origin/develop c5ca8ca).
+"""Who may crawl what: the private half of erplora.com is never indexable.
 
 robots.txt (``public/seo.py``, ``test_seo.py``) is only a polite request; the ``X-Robots-Tag``
 header is the enforcement. In saas-next the private half is the account and sign-in flows (allauth,
@@ -74,7 +73,7 @@ def test_the_answer_engines_are_named_one_by_one():
         "/api/nope",
         "/_allauth/nope",
         "/webhooks/stripe/",
-        # The panel's old addresses, now 301s to it (FIX-SAAS-PANEL-UNDER-DASHBOARD-PREFIX): a redirect to the
+        # The panel's old addresses, now 301s to it: a redirect to the
         # panel is still a URL a crawler can index, as it was when the SPA answered them.
         "/businesses",
         "/account/profile?surface=account",
@@ -128,9 +127,10 @@ def test_is_private_needs_the_path_or_the_spa_route(rf):
 @pytest.mark.parametrize(
     "path", ["/", "/features/", "/robots.txt", "/llms.txt", "/sitemap.xml", "/login", "/accounts/login/"]
 )
-def test_outside_prod_every_response_is_noindex(client, settings, path):
-    """pre.erplora.com (plan 2026-10-14-entorno-pre) is the team's: not even its public web is indexed."""
-    settings.ERPLORA_ENVIRONMENT = "pre"
+def test_disabled_indexing_marks_every_response_noindex(client, settings, path):
+    """Disabling indexing protects even public pages, regardless of the metric label."""
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.PUBLIC_INDEXING_ENABLED = False
 
     response = client.get(path, HTTP_HOST=HOST)
 

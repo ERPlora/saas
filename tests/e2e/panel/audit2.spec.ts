@@ -1,47 +1,40 @@
-// The third fix pass of the panel, after the second audit of the real product
-// (docs/plans/2026-10-14-auditoria-ux-panel-real-2.md), in Chrome without a window:
-//   - R-01/R-10: the AA theme (`createShell({ contrast: 'aa' })`): the primary, «Retry» on its pink, the links and
+// What the second audit of the real panel found, checked in Chrome without a window:
+//   - the AA theme (`createShell({ contrast: 'aa' })`): the primary, «Retry» on its pink, the links and
 //     the hints read ≥ 4.5:1, light and dark (text colour against the colours painted under it);
-//   - S-05: «Skip to content» inside a landmark of its own, pointing at an element that exists;
-//   - R-20: at 390 px a business's title is not cut; R-19: a manager's deep link says it has no permission;
-//     R-18: an address that does not exist speaks of the panel and leads to Businesses;
-//   - S-02: the one-Free-business limit before the form; S-03/R-17: a Free business is offered the plans sold at
-//     sign-up, and the Store opens on a business that can buy; S-01: unpaid invoices have no PDF;
-//   - S-07/S-08: the grouped notice of Businesses in Billing's order, with amounts; R-07: a deleted business is
-//     recovered from the launcher; R-13: «View the invoices» is a 44 px target on a phone.
+//   - «Skip to content» inside a landmark of its own, pointing at an element that exists;
+//   - at 390 px a business's title is not cut; a manager's deep link says it has no permission;
+//     an address that does not exist speaks of the panel and leads to Businesses;
+//   - the one-Free-business limit before the form; a Free business is offered the plans sold at
+//     sign-up, and the Store opens on a business that can buy; unpaid invoices have no PDF;
+//   - the grouped notice of Businesses in Billing's order, with amounts; a deleted business is
+//     recovered from the launcher; «View the invoices» is a 44 px target on a phone.
 // Screenshots at 390, 834 and 1440 px, light and dark, go to `$SHOTS_DIR` (/tmp/panel-fix3 by default).
-import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 import type { Locator, Page } from '@playwright/test';
 
-import { djangoEnv } from '../django-env';
-import { apiPost, businessIdOf, expect, panelAccount, seedPanel, settled, signIn, signInAs, test, watchPageErrors } from './fixtures';
+import { panelAccount } from './accounts';
+import { businessIdOf, seedPanel } from './businesses';
+import { runSeed } from './django';
+import { expect, test } from './fixtures';
+import { watchPageErrors } from './page-events';
+import { settled } from './screen';
+import { apiPost, signIn, signInAs } from './session';
 
-const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/panel-fix3';
 mkdirSync(SHOTS_DIR, { recursive: true });
 
 /** WCAG 2.x AA for normal text. */
 const AA = 4.5;
 
-function seedBilling(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/panel/billing_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'pipe',
-  });
-}
-
 test.beforeAll(() => {
   seedPanel();
-  seedBilling('seed');
+  runSeed('billing_seed.py', 'seed');
 });
 test.afterAll(() => {
   seedPanel('clear');
-  seedBilling('clear');
+  runSeed('billing_seed.py', 'clear');
 });
 
 /** The page on screen (Ionic keeps the ones it left in the outlet, hidden). */
@@ -91,7 +84,7 @@ async function contrastOf(target: Locator): Promise<number> {
   });
 }
 
-test.describe('R-01/R-10: the AA theme', () => {
+test.describe('the AA theme', () => {
   for (const scheme of ['light', 'dark'] as const) {
     test(`the primary, «Retry», the links and the hints read ≥ 4.5:1 (${scheme})`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: scheme });
@@ -143,7 +136,7 @@ test.describe('R-01/R-10: the AA theme', () => {
 });
 
 test.describe('the chrome', () => {
-  test('S-05: «Skip to content» lives in a landmark of its own and points at an element that exists', async ({ page }) => {
+  test('«Skip to content» lives in a landmark of its own and points at an element that exists', async ({ page }) => {
     await signIn(page.request, panelAccount('several'));
     await page.goto('/dashboard/businesses');
     await expect(shown(page).getByTestId('businesses-row').first()).toBeVisible();
@@ -158,7 +151,7 @@ test.describe('the chrome', () => {
     await expect(page.locator('#skip-to-content')).toBeFocused();
   });
 
-  test('R-20: at 390 px a business’s title is whole; R-19: a manager’s deep link says it has no permission', async ({ page }) => {
+  test('at 390 px a business’s title is whole; a manager’s deep link says it has no permission', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await signIn(page.request, panelAccount('several'));
     const bakery = await businessIdOf(page.request, 'Panadería López');
@@ -185,7 +178,7 @@ test.describe('the chrome', () => {
     await page.screenshot({ path: join(SHOTS_DIR, 'business-forbidden-390-light.png') });
   });
 
-  test('R-18: an address that does not exist speaks of the panel and leads to Businesses', async ({ page }) => {
+  test('an address that does not exist speaks of the panel and leads to Businesses', async ({ page }) => {
     await signIn(page.request, panelAccount('several'));
     await page.goto('/no-such-page');
     const notFound = shown(page).getByTestId('not-found');
@@ -197,7 +190,7 @@ test.describe('the chrome', () => {
 });
 
 test.describe('creating and buying', () => {
-  test('S-02: with its Free business taken, «Create business» says so before any form and leads to its plan', async ({ page }) => {
+  test('with its Free business taken, «Create business» says so before any form and leads to its plan', async ({ page }) => {
     const errors = watchPageErrors(page);
     await signIn(page.request, panelAccount('several'));
     await page.goto('/dashboard/businesses');
@@ -214,7 +207,7 @@ test.describe('creating and buying', () => {
     expect(errors).toEqual([]);
   });
 
-  test('S-03/R-17: a Free business is offered the plans sold at sign-up; the Store opens on one that can buy', async ({ page }) => {
+  test('a Free business is offered the plans sold at sign-up; the Store opens on one that can buy', async ({ page }) => {
     await signIn(page.request, panelAccount('billing'));
     await page.goto('/dashboard/store/plans');
     await expect(shown(page).getByTestId('store-plans')).toBeVisible();
@@ -230,7 +223,7 @@ test.describe('creating and buying', () => {
     expect(((await refused.json()) as { error: { code: string } }).error.code).toBe('billing.plan_upgrade_only');
   });
 
-  test('S-01: unpaid invoices have no PDF; S-07/S-08: the grouped notices, the most urgent first, with amounts', async ({ page }) => {
+  test('unpaid invoices have no PDF; the grouped notices, the most urgent first, with amounts', async ({ page }) => {
     await signIn(page.request, panelAccount('billing'));
     await page.goto('/dashboard/billing/invoices');
     await expect(shown(page).getByTestId('invoices-row').first()).toBeVisible();
@@ -252,7 +245,7 @@ test.describe('creating and buying', () => {
     );
   });
 
-  test('R-07: a deleted business is recovered from the launcher', async ({ page }) => {
+  test('a deleted business is recovered from the launcher', async ({ page }) => {
     const errors = watchPageErrors(page);
     await signIn(page.request, panelAccount('one'));
     const bakery = await businessIdOf(page.request, 'Panadería López');
@@ -269,7 +262,7 @@ test.describe('creating and buying', () => {
     expect(errors).toEqual([]);
   });
 
-  test('R-13: «View the invoices» is a 44 px target on a phone', async ({ page }) => {
+  test('«View the invoices» is a 44 px target on a phone', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await signIn(page.request, panelAccount('billing'));
     await page.goto('/dashboard/billing/subscriptions');

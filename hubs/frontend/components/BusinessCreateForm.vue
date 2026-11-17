@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The sign-up of a business (round 17 §2.3; mockups `launch.html` «first», `businesses.html` «create»):
+// The sign-up of a business:
 // the name, the country (the one the browser's languages suggest) and, if the person knows it, the
 // business type; under the name, the address the name proposes (`hubs.address.propose`, 300 ms after it
 // stops changing). «Create my business»

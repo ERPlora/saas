@@ -1,7 +1,6 @@
 """What every template of the public web knows.
 
-Ported from ERPlora/saas ``config/context_processors.py`` (``site_settings``, origin/develop
-c5ca8ca), only its public part: the analytics ids, the support address, chat and reply time, and the two
+The analytics ids, the support address, chat and reply time, and the two
 flags the analytics partial reads.
 """
 
@@ -31,9 +30,9 @@ CREDENTIALS_SPA_PAGES = (
 
 
 #: How soon support answers, in business hours: the contact form, the contact page and the home state this number
-#: and no other (PUBLIC-G41). The address is ``SUPPORT_EMAIL`` (settings).
+#: and no other. The address is ``SUPPORT_EMAIL`` (settings).
 SUPPORT_REPLY_HOURS = 4
-#: The support chat (WhatsApp), the only place the web writes it (PUBLIC-G41).
+#: The support chat (WhatsApp), the only place the web writes it.
 SUPPORT_WHATSAPP_URL = "https://wa.me/34643759040"
 
 
@@ -61,7 +60,7 @@ def app_surface(request: HttpRequest) -> str | None:
 
 def _is_authenticated(request: HttpRequest) -> bool:
     """An error page may render a request that never reached ``AuthenticationMiddleware`` (a 404
-    raised before it): ``request.user`` is not guaranteed (saas#1631)."""
+    raised before it): ``request.user`` is not guaranteed."""
     user = getattr(request, "user", None)
     return bool(user is not None and user.is_authenticated)
 
@@ -79,16 +78,19 @@ def public_site(request: HttpRequest) -> dict:
     return {
         "GA_MEASUREMENT_ID": settings.GA_MEASUREMENT_ID,
         "CLARITY_PROJECT_ID": settings.CLARITY_PROJECT_ID,
-        # The visible support contact (footer, help, landing): one source each (PUBLIC-G41).
+        # An optional tracker is the only thing to consent to: the cookie banner shows, and the cookie policy
+        # promises it, only with one configured (PUBLIC-F19).
+        "measures_visits": bool(settings.GA_MEASUREMENT_ID or settings.CLARITY_PROJECT_ID),
+        # The visible support contact (footer, help, landing): one source each.
         "SUPPORT_EMAIL": settings.SUPPORT_EMAIL,
         "SUPPORT_REPLY_HOURS": SUPPORT_REPLY_HOURS,
         "SUPPORT_WHATSAPP_URL": SUPPORT_WHATSAPP_URL,
         # Opened from the installed app: no menu, footer, cookie notice nor measurement, and a way back (PUBLIC-F26).
         "app_surface": app_surface(request),
         # Clarity records the screen: only an anonymous visitor on the public half. The boundary
-        # is the session, not the URL, so a private page added later is covered (saas#958).
+        # is the session, not the URL, so a private page added later is covered.
         "is_public_page": not _is_authenticated(request) and not is_private(request),
-        # Passwords and one-time codes: no analytics there, whatever the consent (saas#958).
+        # Passwords and one-time codes: no analytics there, whatever the consent.
         "is_credentials_page": _is_credentials_page(path),
         # reCAPTCHA Enterprise's public key: a form with it asks Google for a token (frontend/recaptcha.ts) and says
         # so (public/partials/recaptcha_notice.html); empty when reCAPTCHA is off.

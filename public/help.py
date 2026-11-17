@@ -1,13 +1,9 @@
 """The help center: ``/help/`` and the guides it renders, ``docs/<lang>/help/*.md``.
 
-Port of ``apps/dashboard/core/help_docs.py`` and of the ``help_center`` view of
-``apps/public/resources`` (origin/develop c5ca8ca). The guides live in the repository, one markdown
-file per guide and language, ordered by their numeric prefix; this module lists and renders them
-with ``live.markdown.render_markdown`` (markdown + nh3, ids on the headings). Only ``en`` and ``es``
-ship (spec §7, §12); a language without guides, or a guide still marked
-``<!-- pending translation from en -->``, falls back to English, so the help is never empty.
-
-The in-app help of the Hub and of the panel is out of scope (spec §12): this is the public page.
+The guides live in the repository, one markdown file per guide and language, ordered by their
+numeric prefix; this module lists and renders them with ``live.markdown.render_markdown`` (markdown +
+nh3, ids on the headings). Only ``en`` and ``es`` ship; a language without guides, or a guide still
+marked ``<!-- pending translation from en -->``, falls back to English, so the help is never empty.
 """
 
 from __future__ import annotations

@@ -1,10 +1,10 @@
-"""ASSISTANT-F20 (ASSISTANT-G54, G09, G30) · Compute the fingerprints of some texts for the Hub's index: the Hub
+"""ASSISTANT-F20 · Compute the fingerprints of some texts for the Hub's index: the Hub
 never runs a model, so it sends ``texts`` (1 to 256) to ``POST /internal/assistant/embeddings`` and gets a vector per
 text, in the same order. erplora.com uses the key of the services' provider (``ASSISTANT_SERVICE_PROVIDER``, of
-OpenAI's API) and always its model (``EMBEDDING_MODEL``): the Hub no longer chooses it (the old product let the
-caller pick any model, of very different price, SAAS_ASSISTANT-F17 «parcial»). It does not look at the allowance
-(indexing is not a message) and adds the tokens and their cost to the business's month. Cases of the old
-``test_embeddings_endpoint.py``; OpenAI is the local fake.
+OpenAI's API) and always its model (``EMBEDDING_MODEL``): the Hub never chooses it (models differ widely in
+price). It does not look at the allowance
+(indexing is not a message) and adds the tokens and their cost to the business's month. OpenAI is the local
+fake.
 """
 
 import logging
@@ -120,9 +120,8 @@ def test_a_failure_of_the_provider_is_a_502_with_its_code_never_the_key(client, 
 
 
 def test_a_server_without_its_trusted_certificates_is_a_final_502_the_log_explains(client, internal, business, answering, fake_provider, unreadable_ca, caplog):
-    """FIX-SAAS-ASSISTANT-GATEWAY-502-WHEN-SSL-CERT-FILE-MISSING: ``SSL_CERT_FILE`` naming a file that is not there, or
-    one that holds no certificate, is the server's configuration, not the provider's: final, and the log names the
-    setting and its file. FIX-SAAS-ASSISTANT-OWN-TRUST-STORE-COPY-INSTEAD-OF-BASE-TLS: in ``base.tls``'s one ERROR
+    """``SSL_CERT_FILE`` naming a file that is not there, or one that holds no certificate, is the server's
+    configuration, not the provider's: final, and the log names the setting and its file in ``base.tls``'s one ERROR
     line, naming the caller, never in a copy of the assistant's own."""
     with caplog.at_level(logging.ERROR):
         response = door(client, EMBEDDINGS, {"hub": business.slug, "texts": ["x"]})

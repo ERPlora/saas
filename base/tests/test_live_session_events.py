@@ -1,9 +1,9 @@
-"""A session that ends closes the tab of the panel it was open in, on any page (FIX-LIVE-SESSION-CLOSED-WAKES-ONLY-SESSION-LIST).
+"""A session that ends closes the tab of the panel it was open in, on any page.
 
 ``LIVE["session_events"]`` lists ``accounts.session.closed``, which signing out, a new password and «Close the other
 sessions» record on the account's channel (saas#144). Only ``accounts.session.list`` declares it in a ``live.py``, so
 ``live`` re-reads the context of every stream it reaches: the one whose session ended says ``bye`` (``base.operations``,
-saas#142) and ``@erplora/ui`` takes its tab to the sign-in (ui#25); the others go on without re-running a query.
+saas#142) and ``@erplora/ui`` takes its tab to the sign-in; the others go on without re-running a query.
 """
 
 import asyncio

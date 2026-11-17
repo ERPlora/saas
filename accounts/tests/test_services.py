@@ -1,4 +1,4 @@
-"""Issuing and redeeming the one-time code of the jump to a hub (PLAN-SAAS §3.1 steps 5-6)."""
+"""Issuing and redeeming the one-time code of the jump to a hub."""
 
 from datetime import timedelta
 
@@ -6,8 +6,8 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from accounts import services
 from accounts.models import AuthExchangeCode
+from accounts.services import demo_accounts, hub_jump, mailbox_proof, platform_staff
 from accounts.tests.conftest import enter
 from hubs.models import HubMember
 
@@ -23,13 +23,13 @@ def member(ana):
 def _later(monkeypatch, seconds):
     """Move ``timezone.now`` as the services see it ``seconds`` into the future."""
     moment = timezone.now() + timedelta(seconds=seconds)
-    monkeypatch.setattr(services.timezone, "now", lambda: moment)
+    monkeypatch.setattr(timezone, "now", lambda: moment)
 
 
 class TestIssueCode:
     def test_a_member_gets_a_random_urlsafe_code(self, member):
-        code = services.issue_code(member, "a")
-        other = services.issue_code(member, "a")
+        code = hub_jump.issue_code(member, "a")
+        other = hub_jump.issue_code(member, "a")
 
         assert len(code) >= 43
         assert code != other
@@ -38,14 +38,14 @@ class TestIssueCode:
         )
 
     def test_only_the_sha256_of_the_code_is_stored(self, member):
-        code = services.issue_code(member, "a")
+        code = hub_jump.issue_code(member, "a")
 
         row = AuthExchangeCode.objects.get()
         assert row.code_hash == AuthExchangeCode.hash_code(code)
         assert not AuthExchangeCode.objects.filter(code_hash=code).exists()
 
     def test_the_code_is_bound_to_the_user_the_hub_and_the_hub_session(self, member):
-        services.issue_code(member, "a")
+        hub_jump.issue_code(member, "a")
 
         row = AuthExchangeCode.objects.get()
         assert (row.user, row.hub_slug, row.audience, row.used_at) == (
@@ -56,15 +56,15 @@ class TestIssueCode:
         )
 
     def test_the_code_expires_60_seconds_after_it_is_issued(self, member):
-        services.issue_code(member, "a")
+        hub_jump.issue_code(member, "a")
 
         row = AuthExchangeCode.objects.get()
         assert row.expires_at - row.created_at == timedelta(seconds=60)
         assert abs(row.created_at - timezone.now()) < timedelta(seconds=5)
 
     def test_someone_who_is_no_member_of_the_hub_gets_no_code(self, member):
-        with pytest.raises(services.HubAccessDenied):
-            services.issue_code(member, "b")
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(member, "b")
 
         assert not AuthExchangeCode.objects.exists()
 
@@ -75,19 +75,19 @@ class TestIssueCode:
         # A row saved without validation (``objects.create`` skips validators) opens nothing.
         enter(member, slug, "hub_owner")
 
-        with pytest.raises(services.HubAccessDenied):
-            services.issue_code(member, slug)
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(member, slug)
 
         assert not AuthExchangeCode.objects.exists()
 
 
 class TestRedeemCode:
     def test_returns_who_signs_in_and_their_role_in_the_hub(self, member):
-        code = services.issue_code(member, "a")
+        code = hub_jump.issue_code(member, "a")
 
-        identity = services.redeem_code(code, "a")
+        identity = hub_jump.redeem_code(code, "a")
 
-        assert identity == services.HubIdentity(
+        assert identity == hub_jump.HubIdentity(
             user_id=str(member.pk),
             email="ana@example.com",
             name="Ana García",
@@ -96,69 +96,69 @@ class TestRedeemCode:
         )
 
     def test_marks_the_code_used(self, member):
-        services.redeem_code(services.issue_code(member, "a"), "a")
+        hub_jump.redeem_code(hub_jump.issue_code(member, "a"), "a")
 
         assert AuthExchangeCode.objects.get().used_at is not None
 
     def test_a_code_works_only_once(self, member):
-        code = services.issue_code(member, "a")
-        services.redeem_code(code, "a")
+        code = hub_jump.issue_code(member, "a")
+        hub_jump.redeem_code(code, "a")
 
-        with pytest.raises(services.InvalidCode):
-            services.redeem_code(code, "a")
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, "a")
 
     def test_a_code_for_another_hub_is_refused_and_stays_usable_by_its_hub(
         self, member
     ):
-        code = services.issue_code(member, "a")
+        code = hub_jump.issue_code(member, "a")
 
-        with pytest.raises(services.InvalidCode):
-            services.redeem_code(code, "b")
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, "b")
 
-        assert services.redeem_code(code, "a").email == "ana@example.com"
+        assert hub_jump.redeem_code(code, "a").email == "ana@example.com"
 
     def test_an_expired_code_is_refused(self, member, monkeypatch):
-        code = services.issue_code(member, "a")
+        code = hub_jump.issue_code(member, "a")
         _later(monkeypatch, 61)
 
-        with pytest.raises(services.InvalidCode):
-            services.redeem_code(code, "a")
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, "a")
 
     @pytest.mark.parametrize("code", ["", "not-a-code-we-issued"])
     def test_an_unknown_code_is_refused(self, member, code):
-        services.issue_code(member, "a")
+        hub_jump.issue_code(member, "a")
 
-        with pytest.raises(services.InvalidCode):
-            services.redeem_code(code, "a")
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, "a")
 
     def test_a_deactivated_account_cannot_redeem(self, member):
-        code = services.issue_code(member, "a")
+        code = hub_jump.issue_code(member, "a")
         get_user_model().objects.filter(pk=member.pk).update(is_active=False)
 
-        with pytest.raises(services.InvalidCode):
-            services.redeem_code(code, "a")
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, "a")
 
     def test_a_membership_removed_after_issuing_cannot_redeem(self, member):
-        code = services.issue_code(member, "a")
+        code = hub_jump.issue_code(member, "a")
         HubMember.objects.filter(user=member).delete()
 
-        with pytest.raises(services.InvalidCode):
-            services.redeem_code(code, "a")
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, "a")
 
     def test_the_role_is_the_one_at_redemption(self, member):
-        code = services.issue_code(member, "a")
+        code = hub_jump.issue_code(member, "a")
         HubMember.objects.filter(user=member).update(role=HubMember.Role.ADMIN)
 
-        assert services.redeem_code(code, "a").role == "hub_admin"
+        assert hub_jump.redeem_code(code, "a").role == "hub_admin"
 
     def test_one_account_carries_a_different_role_to_each_hub(self, member):
         HubMember.objects.filter(user=member, hub__slug="a").update(role=HubMember.Role.OWNER)
         enter(member, "b", "hub_employee")
-        code_a = services.issue_code(member, "a")
-        code_b = services.issue_code(member, "b")
+        code_a = hub_jump.issue_code(member, "a")
+        code_b = hub_jump.issue_code(member, "b")
 
-        assert services.redeem_code(code_b, "b").role == "hub_employee"
-        assert services.redeem_code(code_a, "a").role == "hub_owner"
+        assert hub_jump.redeem_code(code_b, "b").role == "hub_employee"
+        assert hub_jump.redeem_code(code_a, "a").role == "hub_owner"
 
     @pytest.mark.parametrize("slug", ["admin", "www", "ab", "A"])
     def test_a_reserved_or_invalid_hub_is_refused_without_spending_the_code(
@@ -175,15 +175,15 @@ class TestRedeemCode:
             expires_at=now + timedelta(seconds=60),
         )
 
-        with pytest.raises(services.InvalidCode):
-            services.redeem_code("a-code", slug)
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code("a-code", slug)
 
         assert AuthExchangeCode.objects.get().used_at is None
 
     @pytest.mark.parametrize("slug", [None, 42])
     def test_a_hub_that_is_no_string_is_refused(self, member, slug):
-        with pytest.raises(services.InvalidCode):
-            services.redeem_code(services.issue_code(member, "a"), slug)
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(hub_jump.issue_code(member, "a"), slug)
 
     def test_without_a_full_name_the_name_is_the_email(self, member):
         get_user_model().objects.filter(pk=member.pk).update(
@@ -191,17 +191,17 @@ class TestRedeemCode:
         )
 
         assert (
-            services.redeem_code(services.issue_code(member, "a"), "a").name
+            hub_jump.redeem_code(hub_jump.issue_code(member, "a"), "a").name
             == "ana@example.com"
         )
 
 
 class TestSeedDemoCustomer:
-    """A customer account of ``demo_seed``: its businesses and roles are ``hubs.services.seed_demo_business``'s
+    """A customer account of ``demo_seed``: its businesses and roles are ``hubs.services.demo_businesses.seed_demo_business``'s
     (the jump reads the members of the business)."""
 
     def test_creates_a_customer_that_is_no_staff_and_belongs_to_no_hub_yet(self):
-        user = services.seed_demo_customer("owner@example.com", "owner")
+        user = demo_accounts.seed_demo_customer("owner@example.com", "owner")
 
         assert user.check_password("owner")
         assert (user.is_staff, user.is_superuser) == (False, False)
@@ -209,8 +209,8 @@ class TestSeedDemoCustomer:
         assert not HubMember.objects.exists()
 
     def test_running_it_again_changes_nothing(self):
-        first = services.seed_demo_customer("owner@example.com", "owner")
-        again = services.seed_demo_customer("owner@example.com", "owner")
+        first = demo_accounts.seed_demo_customer("owner@example.com", "owner")
+        again = demo_accounts.seed_demo_customer("owner@example.com", "owner")
 
         assert again.pk == first.pk
         assert get_user_model().objects.count() == 1
@@ -219,7 +219,7 @@ class TestSeedDemoCustomer:
         """Every account proves its address before its first session; the local ones come proven."""
         from allauth.account.models import EmailAddress
 
-        user = services.seed_demo_customer("owner@example.com", "owner")
+        user = demo_accounts.seed_demo_customer("owner@example.com", "owner")
 
         assert list(EmailAddress.objects.filter(user=user).values_list("email", "verified", "primary")) == [
             ("owner@example.com", True, True)
@@ -232,18 +232,18 @@ class TestSeedDemoCustomer:
         existing = get_user_model().objects.create_user(email="owner@example.com", password="owner")
         EmailAddress.objects.create(user=existing, email="owner@example.com", verified=False, primary=True)
 
-        services.seed_demo_customer("owner@example.com", "owner")
+        demo_accounts.seed_demo_customer("owner@example.com", "owner")
 
         assert list(EmailAddress.objects.filter(user=existing).values_list("verified", "primary")) == [(True, True)]
 
     def test_the_old_seeds_that_wrote_the_mirror_are_gone(self):
-        assert not hasattr(services, "seed_demo_owner")
-        assert not hasattr(services, "seed_demo_member")
+        assert not hasattr(demo_accounts, "seed_demo_owner")
+        assert not hasattr(demo_accounts, "seed_demo_member")
 
 
 class TestSeedDemoPlatformAdmin:
     def test_creates_a_superuser_of_the_platform_with_no_hub(self):
-        user = services.seed_demo_platform_admin("platform@example.com", "platform")
+        user = demo_accounts.seed_demo_platform_admin("platform@example.com", "platform")
 
         assert user.check_password("platform")
         assert (user.is_staff, user.is_superuser) == (True, True)
@@ -252,28 +252,28 @@ class TestSeedDemoPlatformAdmin:
     def test_its_address_is_proven_so_it_signs_in_without_a_code(self):
         from allauth.account.models import EmailAddress
 
-        user = services.seed_demo_platform_admin("platform@example.com", "platform")
+        user = demo_accounts.seed_demo_platform_admin("platform@example.com", "platform")
 
         assert list(EmailAddress.objects.filter(user=user).values_list("email", "verified", "primary")) == [
             ("platform@example.com", True, True)
         ]
 
     def test_a_platform_role_never_travels_to_a_hub(self):
-        user = services.seed_demo_platform_admin("platform@example.com", "platform")
+        user = demo_accounts.seed_demo_platform_admin("platform@example.com", "platform")
 
-        with pytest.raises(services.HubAccessDenied):
-            services.issue_code(user, "a")
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(user, "a")
 
     def test_running_it_again_changes_nothing(self):
-        first = services.seed_demo_platform_admin("platform@example.com", "platform")
-        again = services.seed_demo_platform_admin("platform@example.com", "platform")
+        first = demo_accounts.seed_demo_platform_admin("platform@example.com", "platform")
+        again = demo_accounts.seed_demo_platform_admin("platform@example.com", "platform")
 
         assert again.pk == first.pk
         assert get_user_model().objects.count() == 1
 
 
 class TestHubAdminCode:
-    """Audience ``hub-admin`` (ronda 13, PLAN §18): the platform's staff jump to the Hub's Django admin
+    """Audience ``hub-admin``: the platform's staff jump to the Hub's Django admin
     at ``hubs.erplora.com/admin/hub/<slug>/``. Staff need no membership; customers never get one."""
 
     # The wire value the Hub sends back in ``/internal/auth/redeem``.
@@ -281,19 +281,19 @@ class TestHubAdminCode:
 
     @pytest.fixture
     def platform_admin(self, password):
-        user, _ = services.create_platform_user("boss@erplora.com", "admin", password)
+        user, _ = platform_staff.create_platform_user("boss@erplora.com", "admin", password)
         return user
 
     @pytest.fixture
     def platform_support(self, password):
-        user, _ = services.create_platform_user("help@erplora.com", "support", password)
+        user, _ = platform_staff.create_platform_user("help@erplora.com", "support", password)
         return user
 
     def test_the_audience_is_a_constant_of_the_code(self):
         assert AuthExchangeCode.HUB_ADMIN_AUDIENCE == "hub-admin"
 
     def test_a_platform_admin_mints_a_code_for_any_hub_without_being_a_member(self, platform_admin):
-        code = services.issue_code(platform_admin, "a", audience=self.HUB_ADMIN)
+        code = hub_jump.issue_code(platform_admin, "a", audience=self.HUB_ADMIN)
 
         row = AuthExchangeCode.objects.get()
         assert row.code_hash == AuthExchangeCode.hash_code(code)
@@ -301,7 +301,7 @@ class TestHubAdminCode:
         assert row.expires_at - row.created_at == timedelta(seconds=60)
 
     def test_support_mints_one_too(self, platform_support):
-        services.issue_code(platform_support, "a", audience=self.HUB_ADMIN)
+        hub_jump.issue_code(platform_support, "a", audience=self.HUB_ADMIN)
 
         assert AuthExchangeCode.objects.get().audience == "hub-admin"
 
@@ -309,16 +309,16 @@ class TestHubAdminCode:
     def test_a_customer_gets_no_hub_admin_code_not_even_for_their_own_hub(self, ana, role):
         enter(ana, "a", role)
 
-        with pytest.raises(services.HubAccessDenied):
-            services.issue_code(ana, "a", audience=self.HUB_ADMIN)
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(ana, "a", audience=self.HUB_ADMIN)
 
         assert not AuthExchangeCode.objects.exists()
 
     def test_an_inactive_staff_account_gets_no_code(self, platform_admin):
         platform_admin.is_active = False
 
-        with pytest.raises(services.HubAccessDenied):
-            services.issue_code(platform_admin, "a", audience=self.HUB_ADMIN)
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(platform_admin, "a", audience=self.HUB_ADMIN)
 
         assert not AuthExchangeCode.objects.exists()
 
@@ -327,32 +327,32 @@ class TestHubAdminCode:
         ana.is_staff = True
         ana.save()
 
-        with pytest.raises(services.HubAccessDenied):
-            services.issue_code(ana, "a", audience=self.HUB_ADMIN)
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(ana, "a", audience=self.HUB_ADMIN)
 
         assert not AuthExchangeCode.objects.exists()
 
     @pytest.mark.parametrize("slug", ["hubs", "hub", "www", "admin", "support", "ab", "A", "-a", "a.b", ""])
     def test_the_platform_host_and_reserved_or_invalid_slugs_are_no_target(self, platform_admin, slug):
-        with pytest.raises(services.HubAccessDenied):
-            services.issue_code(platform_admin, slug, audience=self.HUB_ADMIN)
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(platform_admin, slug, audience=self.HUB_ADMIN)
 
         assert not AuthExchangeCode.objects.exists()
 
     def test_an_unknown_audience_is_a_programming_error(self, platform_admin):
         with pytest.raises(ValueError, match="audience"):
-            services.issue_code(platform_admin, "a", audience="hub-everything")
+            hub_jump.issue_code(platform_admin, "a", audience="hub-everything")
 
         assert not AuthExchangeCode.objects.exists()
 
     def test_redeeming_returns_the_platform_admin_role(self, platform_admin):
         platform_admin.first_name, platform_admin.last_name = "Bo", "Ss"
         platform_admin.save()
-        code = services.issue_code(platform_admin, "a", audience=self.HUB_ADMIN)
+        code = hub_jump.issue_code(platform_admin, "a", audience=self.HUB_ADMIN)
 
-        identity = services.redeem_code(code, "a", audience=self.HUB_ADMIN)
+        identity = hub_jump.redeem_code(code, "a", audience=self.HUB_ADMIN)
 
-        assert identity == services.HubIdentity(
+        assert identity == hub_jump.HubIdentity(
             user_id=str(platform_admin.pk),
             email="boss@erplora.com",
             name="Bo Ss",
@@ -362,39 +362,39 @@ class TestHubAdminCode:
         assert AuthExchangeCode.objects.get().used_at is not None
 
     def test_redeeming_returns_the_platform_support_role(self, platform_support):
-        code = services.issue_code(platform_support, "a", audience=self.HUB_ADMIN)
+        code = hub_jump.issue_code(platform_support, "a", audience=self.HUB_ADMIN)
 
-        assert services.redeem_code(code, "a", audience=self.HUB_ADMIN).role == "platform_support"
+        assert hub_jump.redeem_code(code, "a", audience=self.HUB_ADMIN).role == "platform_support"
 
     def test_a_hub_admin_code_works_only_once(self, platform_admin):
-        code = services.issue_code(platform_admin, "a", audience=self.HUB_ADMIN)
-        services.redeem_code(code, "a", audience=self.HUB_ADMIN)
+        code = hub_jump.issue_code(platform_admin, "a", audience=self.HUB_ADMIN)
+        hub_jump.redeem_code(code, "a", audience=self.HUB_ADMIN)
 
-        with pytest.raises(services.InvalidCode):
-            services.redeem_code(code, "a", audience=self.HUB_ADMIN)
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, "a", audience=self.HUB_ADMIN)
 
     def test_a_hub_admin_code_opens_no_hub_session_and_stays_usable(self, platform_admin):
-        code = services.issue_code(platform_admin, "a", audience=self.HUB_ADMIN)
+        code = hub_jump.issue_code(platform_admin, "a", audience=self.HUB_ADMIN)
 
-        with pytest.raises(services.InvalidCode):
-            services.redeem_code(code, "a")
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, "a")
 
         assert AuthExchangeCode.objects.get().used_at is None
-        assert services.redeem_code(code, "a", audience=self.HUB_ADMIN).role == "platform_admin"
+        assert hub_jump.redeem_code(code, "a", audience=self.HUB_ADMIN).role == "platform_admin"
 
     def test_a_hub_session_code_opens_no_hub_admin(self, member):
-        code = services.issue_code(member, "a")
+        code = hub_jump.issue_code(member, "a")
 
-        with pytest.raises(services.InvalidCode):
-            services.redeem_code(code, "a", audience=self.HUB_ADMIN)
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, "a", audience=self.HUB_ADMIN)
 
         assert AuthExchangeCode.objects.get().used_at is None
 
     def test_a_hub_admin_code_for_another_hub_is_refused(self, platform_admin):
-        code = services.issue_code(platform_admin, "a", audience=self.HUB_ADMIN)
+        code = hub_jump.issue_code(platform_admin, "a", audience=self.HUB_ADMIN)
 
-        with pytest.raises(services.InvalidCode):
-            services.redeem_code(code, "b", audience=self.HUB_ADMIN)
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, "b", audience=self.HUB_ADMIN)
 
     @pytest.mark.parametrize(
         "demote",
@@ -405,22 +405,22 @@ class TestHubAdminCode:
         ],
     )
     def test_an_account_that_lost_the_platform_role_after_issuing_cannot_redeem(self, platform_admin, demote):
-        code = services.issue_code(platform_admin, "a", audience=self.HUB_ADMIN)
+        code = hub_jump.issue_code(platform_admin, "a", audience=self.HUB_ADMIN)
         get_user_model().objects.filter(pk=platform_admin.pk).update(**demote)
 
-        with pytest.raises(services.InvalidCode):
-            services.redeem_code(code, "a", audience=self.HUB_ADMIN)
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, "a", audience=self.HUB_ADMIN)
 
     def test_support_removed_from_its_group_after_issuing_cannot_redeem(self, platform_support):
-        code = services.issue_code(platform_support, "a", audience=self.HUB_ADMIN)
+        code = hub_jump.issue_code(platform_support, "a", audience=self.HUB_ADMIN)
         platform_support.groups.clear()
 
-        with pytest.raises(services.InvalidCode):
-            services.redeem_code(code, "a", audience=self.HUB_ADMIN)
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code(code, "a", audience=self.HUB_ADMIN)
 
     @pytest.mark.parametrize("slug", ["hubs", "hub"])
     def test_a_code_bound_to_the_platform_host_is_refused_without_spending_it(self, platform_admin, slug):
-        # A row saved without validation, as if it predated ronda 13.
+        # A row saved without validation, as if it predated the platform host.
         now = timezone.now()
         AuthExchangeCode.objects.create(
             code_hash=AuthExchangeCode.hash_code("a-code"),
@@ -431,24 +431,24 @@ class TestHubAdminCode:
             expires_at=now + timedelta(seconds=60),
         )
 
-        with pytest.raises(services.InvalidCode):
-            services.redeem_code("a-code", slug, audience=self.HUB_ADMIN)
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code("a-code", slug, audience=self.HUB_ADMIN)
 
         assert AuthExchangeCode.objects.get().used_at is None
 
 
 def test_the_platform_host_is_no_customer_hub_either(member):
-    """``hubs`` is the Hub admin's host (ronda 13): a membership row naming it opens nothing."""
+    """``hubs`` is the Hub admin's host: a membership row naming it opens nothing."""
     enter(member, "hubs", "hub_owner")
 
-    with pytest.raises(services.HubAccessDenied):
-        services.issue_code(member, "hubs")
+    with pytest.raises(hub_jump.HubAccessDenied):
+        hub_jump.issue_code(member, "hubs")
 
     assert not AuthExchangeCode.objects.exists()
 
 
 class TestReleaseUnprovenAccount:
-    """``release_unproven_account`` (saas#2541): every credential of an account whose holder never proved its
+    """``release_unproven_account``: every credential of an account whose holder never proved its
     email goes, so only whoever opens that mailbox gets in («Forgot your password?», or Google, which
     proves the address). The account, its addresses and what hangs from it stay."""
 
@@ -460,7 +460,7 @@ class TestReleaseUnprovenAccount:
         return ana
 
     def test_the_password_goes(self, squatter, password):
-        services.release_unproven_account(squatter, reason="invited_while_unverified")
+        mailbox_proof.release_unproven_account(squatter, reason="invited_while_unverified")
 
         squatter.refresh_from_db()
         assert not squatter.check_password(password)
@@ -470,7 +470,7 @@ class TestReleaseUnprovenAccount:
         client.force_login(squatter)
         assert client.get("/api/me").json()["user"] is not None
 
-        services.release_unproven_account(squatter, reason="invited_while_unverified")
+        mailbox_proof.release_unproven_account(squatter, reason="invited_while_unverified")
 
         assert client.get("/api/me").json()["user"] is None
 
@@ -481,7 +481,7 @@ class TestReleaseUnprovenAccount:
         Authenticator.objects.create(user=squatter, type=Authenticator.Type.TOTP, data={"secret": "x"})
         SocialAccount.objects.create(user=squatter, provider="google", uid="squatter-google-uid")
 
-        services.release_unproven_account(squatter, reason="invited_while_unverified")
+        mailbox_proof.release_unproven_account(squatter, reason="invited_while_unverified")
 
         assert not Authenticator.objects.filter(user=squatter).exists()
         assert not SocialAccount.objects.filter(user=squatter).exists()
@@ -489,7 +489,7 @@ class TestReleaseUnprovenAccount:
     def test_the_account_and_its_address_stay(self, squatter):
         from allauth.account.models import EmailAddress
 
-        services.release_unproven_account(squatter, reason="invited_while_unverified")
+        mailbox_proof.release_unproven_account(squatter, reason="invited_while_unverified")
 
         assert get_user_model().objects.filter(pk=squatter.pk, is_active=True).exists()
         assert EmailAddress.objects.filter(user=squatter, email=squatter.email, verified=False).exists()
@@ -497,7 +497,7 @@ class TestReleaseUnprovenAccount:
 
 class TestTheResetLinkProvesTheMailbox:
     """A password set from the key mailed by «Forgot your password?» (allauth's ``password_reset`` signal)
-    proves the mailbox it went to: the account's address becomes verified and primary (L1-A2). Only when
+    proves the mailbox it went to: the account's address becomes verified and primary. Only when
     that address is the only one on record, since the key may have gone to any address of the account."""
 
     def _reset(self, client, email, password):

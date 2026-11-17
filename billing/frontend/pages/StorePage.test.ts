@@ -1,8 +1,7 @@
-// The Store (`/dashboard/store/:tab`, round 17 §2.10; mockups `store.html`): the shell's page with its two sections in
-// the footer tabbar, Plans · Modules, each at its own address, carrying the business it sells to
-// (`?business=`). It sells, so it is the web's only (PLAN-SAAS §3.6 point 6, README §4): inside the apps
-// and on the account surface — also through a deep link — it says «The store is not in the app» and how
-// to buy from a browser, WITHOUT a link out, and loads nothing (no prices, no Stripe).
+// The Store (`/dashboard/store/:tab`): two sections in the footer tabbar, each at its own address, carrying the
+// business it sells to. It sells, so it is the web's only: inside the apps and on the account surface — also
+// through a deep link — it says «The store is not in the app» and how to buy from a browser, WITHOUT a link out,
+// and loads nothing.
 import { AppPage, applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -50,7 +49,7 @@ describe('StorePage', () => {
     expect(s.wrapper.findComponent(StoreShop).exists()).toBe(false);
     const notice = s.wrapper.find('[data-testid="store-in-app"]');
     if (surface === 'account') {
-      // Already in the browser (the account the app opens): no «go to erplora.com in your browser» (audit 2 S-09).
+      // Already in the browser (the account the app opens): no «go to erplora.com in your browser».
       expect(notice.text()).toContain('Nothing is bought from here');
       expect(notice.text()).toContain('This account was opened from the app, and the app does not sell: plans and modules are not bought from here.');
       expect(notice.text()).not.toContain('browser');

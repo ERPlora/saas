@@ -1,11 +1,9 @@
 <script setup lang="ts">
-// The Store (`/dashboard/store/:tab`, round 17 §2.10; mockups `store.html`): the shell's page, with its two sections
-// in the footer tabbar, Plans · Modules, each at its own address and carrying the business it sells to
-// (`?business=`, which the shop writes back when the owner picks another).
-// It sells, so it is the web's only (PLAN-SAAS §3.6 point 6; README §4): inside the apps and on the
-// account surface — a deep link too — it says «The store is not in the app» and how to buy from a
-// browser (on the account surface, already a browser, why nothing is bought there: audit 2 S-09), WITHOUT a link out (what Google Play admits of a consumption-only app), and nothing of the
-// shop loads: no prices, no Stripe. `<WebOnly>` follows the surface live (a late Tauri bridge).
+// The Store (`/dashboard/store/:tab`): two sections in the footer tabbar, each at its own address and carrying the
+// business it sells to (`?business=`, which the shop writes back when the owner picks another). It sells, so it is
+// the web's only: inside the apps and on the account surface it says «The store is not in the app» and how to buy
+// from a browser, WITHOUT a link out (what Google Play admits of a consumption-only app), and nothing of the shop
+// loads. `<WebOnly>` follows the surface live (a late Tauri bridge).
 import { EmptyState } from '@erplora/ui/components';
 import { AppPage, type ShellTab, useSurface, WebOnly } from '@erplora/ui/shell';
 import { IonButton } from '@ionic/vue';
@@ -57,7 +55,7 @@ function choose(id: string): void {
   void router.replace({ path: route.path, query: { ...route.query, business: id } });
 }
 
-/** The account the app opens in the browser: already in a browser, so it says why, not where (audit 2 S-09). */
+/** The account the app opens in the browser: already in a browser, so it says why, not where. */
 const inAccount = computed(() => surface.value === 'account');
 </script>
 

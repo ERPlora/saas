@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 CODE_MINUTES = 15
 
 
-def _send(subject: str, lines: list[str], to: str, kind: str, *, language: str, code: str | None = None) -> bool:
+def _send(subject: str, lines: list[str], to: str, kind: str, *, language: str, code: str | None = None) -> bool:  # noqa: PLR0913
     try:
         branded_message(subject, lines, [to], language=language, code=code).send()
     except Exception:  # noqa: BLE001 - any failure of the mail backend is reported, not raised
