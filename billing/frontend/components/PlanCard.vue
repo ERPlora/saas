@@ -358,11 +358,23 @@ function run(): void {
 }
 .plan-card__actions {
   grid-row: 4;
-  min-block-size: 44px;
 }
 .plan-card__actions ion-button {
   min-block-size: 44px;
   margin: 0;
+}
+@media (max-width: 639px) {
+  .plan-card {
+    display: block;
+  }
+  .plan-card__content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .plan-card__actions:empty {
+    display: none;
+  }
 }
 .plan-card__hint {
   display: block;
