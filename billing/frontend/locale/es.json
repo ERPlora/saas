@@ -49,6 +49,8 @@
       "annual": "Anual",
       "annualSaving": "Anual · −{percent} %",
       "current": "Tu plan actual",
+      "showAll": "Ver todas las características",
+      "showFewer": "Ver menos",
       "forever": "para siempre",
       "perMonth": "/mes + IVA",
       "perYear": "/año + IVA · {monthly}/mes",

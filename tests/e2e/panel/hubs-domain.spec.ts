@@ -304,6 +304,10 @@ for (const { language, locale, domain } of RUNS) {
       expect(await kept(page, id)).toMatchObject({ available: true, in_plan: false, domain: null });
       await own.getByTestId('domain-plans').click();
       await expect(page).toHaveURL(new RegExp(`/dashboard/store/plans\\?business=${id}$`));
+      // A card shows its first five lines; the line of the domain sits below them.
+      await page.getByTestId('plan-features-toggle').first().click();
+      const showFewer = catalogueText('billing', language, 'billing.plans.showFewer');
+      await expect(page.getByRole('button', { name: showFewer, expanded: true }).first()).toBeVisible();
       // The Store says it on the card of each plan that includes one, and only there.
       const line = catalogueText('billing', language, 'billing.plans.customDomain');
       await expect(page.getByTestId(`plan-${withIt!.slug}`).getByTestId('plan-domain')).toHaveText(line);

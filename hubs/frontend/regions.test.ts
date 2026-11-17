@@ -21,7 +21,7 @@ const HUBS = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('countries', () => {
   it('are exactly the markets the server accepts (hubs/schemas.py COUNTRIES)', () => {
-    const schemas = readFileSync(join(HUBS, 'schemas.py'), 'utf8');
+    const schemas = readFileSync(join(HUBS, 'schemas', '__init__.py'), 'utf8');
     const listed = /COUNTRIES = frozenset\(\s*"([A-Z ]+)"\.split\(\)/.exec(schemas)?.[1].split(' ') ?? [];
     expect(listed.length).toBe(27);
     expect([...COUNTRIES].sort()).toEqual(listed.sort());

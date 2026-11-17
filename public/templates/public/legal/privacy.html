@@ -22,7 +22,7 @@
   {% include "public/partials/page_hero.html" with hero_compact=True %}
 {% endblock %}
 
-{% block updated %}{% trans "November 5, 2026" %}{% endblock %}
+{% block updated %}{% trans "November 17, 2026" %}{% endblock %}
 
 {% block legal_text %}
 
@@ -75,7 +75,7 @@
         <p>{% trans "To provide the service, we engage the following PROCESSORS, with whom we have signed Art. 28 GDPR agreements:" %}</p>
         <ul>
           <li><strong>{% trans "Amazon Web Services EMEA SARL (Luxembourg) — Ireland region, eu-west-1:" %}</strong> {% trans "hosting, database, backups, storage, observability, network edge, DNS, and DDoS protection. Data hosted in data centers in Ireland, within the European Union." %}</li>
-          <li><strong>{% trans "Amazon Web Services EMEA SARL (Luxembourg) — Amazon SES, Ireland region, eu-west-1:" %}</strong> {% trans "delivery of the service's transactional email. Processing takes place in the European Union." %}</li>
+          <li><strong>{% trans "OVH Hispano S.L. (Spain) — OVHcloud email:" %}</strong> {% trans "sending the service's email and hosting the erplora.com mailboxes. Processing takes place in the European Union." %}</li>
           <li><strong>{% trans "Stripe Payments Europe Ltd. (Irish):" %}</strong> {% trans "payment processing. Does NOT receive the customer's ERP data, only billing data." %}</li>
           <li><strong>{% trans "Alibaba (Netherlands) B.V. (Netherlands) — Alibaba Cloud Model Studio, Germany (Frankfurt) region:" %}</strong> {% trans "provider of the language model the AI assistant uses BY DEFAULT. Processing takes place in the European Union. Used ONLY when someone uses the assistant of your hub or of your account's panel on erplora.com, to provide the contracted service (Art. 6.1.b GDPR), under a Data Processing Addendum incorporating EU Standard Contractual Clauses." %}</li>
           <li><strong>{% trans "OpenAI Ireland Ltd. (Ireland) — OpenAI API:" %}</strong> {% blocktrans trimmed %}provider of the voice and search fingerprint services the AI assistant uses BY DEFAULT. It transcribes voice dictation into text (it receives the audio of the recording) and, when your hub asks for them, it computes the search fingerprints, or embeddings, of your hub's index (it receives the texts to index). Used ONLY when someone in your hub, or in the assistant of your account's panel on erplora.com, uses one of these functions. Processing may take place outside the European Economic Area (section 6). Under its own DPA.{% endblocktrans %}</li>
