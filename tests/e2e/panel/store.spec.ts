@@ -304,7 +304,7 @@ test.describe('store', () => {
     const toggles = cards.getByTestId('plan-features-toggle');
     expect(await toggles.count()).toBeGreaterThan(0);
     const collapsed = await cards.evaluateAll((items) => items.map((item) => item.querySelectorAll('ion-item').length));
-    await toggles.first().focus();
+    await toggles.first().locator('button').focus();
     await page.keyboard.press('Enter');
     for (const toggle of await toggles.all()) await expect(toggle).toHaveAttribute('aria-expanded', 'true');
     const expanded = await cards.evaluateAll((items) => items.map((item) => item.querySelectorAll('ion-item').length));

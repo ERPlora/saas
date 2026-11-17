@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FREE, FREE_SUBSCRIPTION, PAYMENT_TEST, STARTER, plan, subscription } from '../__tests__/fixtures';
-import { mountBilling } from '../__tests__/mount-billing';
+import { ionProps, mountBilling } from '../__tests__/mount-billing';
 import type { Block } from '../store';
 import PlanCard from './PlanCard.vue';
 
@@ -419,6 +419,8 @@ describe('PlanCard', () => {
     const s = await card({ plan: long, subscription: FREE_SUBSCRIPTION });
     const toggle = s.text('plan-features-toggle');
     expect(s.wrapper.findAll('ion-item')).toHaveLength(5);
+    expect(toggle.element.tagName).toBe('ION-BUTTON');
+    expect(ionProps(toggle, 'fill', 'size')).toEqual({ fill: 'clear', size: 'small' });
     expect(toggle.attributes('aria-expanded')).toBe('false');
     expect(toggle.attributes('aria-controls')).toBe(s.wrapper.get('ion-list').attributes('id'));
     await toggle.trigger('click');

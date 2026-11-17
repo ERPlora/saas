@@ -17,7 +17,7 @@ import { useI18n } from 'vue-i18n';
 import type { BillingInterval, PlanOut, StoreSubscriptionOut } from '../../../frontend/sdk-types';
 import { formatDate, formatEuros } from '../format';
 import { type Block, isFree } from '../store';
-import PlanFeatures from './PlanFeatures.vue';
+import CollapsibleChecklist from './CollapsibleChecklist.vue';
 
 const props = defineProps<{
   plan: PlanOut;
@@ -156,6 +156,7 @@ const lines = computed<Line[]>(() => {
   if (plan.includes_custom_domain) result.push({ kind: 'domain', text: t('billing.plans.customDomain') });
   return [...result, ...trial.map(feature)];
 });
+const checklistItems = computed(() => lines.value.map((line) => ({ text: line.text, testid: `plan-${line.kind}` })));
 
 /** What the card says under the features: a cancellation or a downgrade that waits, Free's date, a trial's days. */
 const note = computed(() => {
@@ -265,9 +266,13 @@ function run(): void {
           </ion-note>
         </template>
       </div>
-      <PlanFeatures
+      <CollapsibleChecklist
         v-model:expanded="expanded"
-        :lines="lines"
+        class="plan-card__features"
+        :items="checklistItems"
+        :show-all-label="$t('billing.plans.showAll')"
+        :show-fewer-label="$t('billing.plans.showFewer')"
+        toggle-testid="plan-features-toggle"
       />
       <p
         v-if="note"
@@ -363,6 +368,12 @@ function run(): void {
   min-block-size: 44px;
   margin: 0;
 }
+.plan-card__features {
+  grid-row: 5 / span 2;
+  display: grid;
+  grid-template-rows: repeat(2, auto);
+  grid-template-rows: subgrid;
+}
 @media (max-width: 639px) {
   .plan-card {
     display: block;
@@ -374,6 +385,11 @@ function run(): void {
   }
   .plan-card__actions:empty {
     display: none;
+  }
+  .plan-card__features {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 }
 .plan-card__hint {
