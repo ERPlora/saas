@@ -646,7 +646,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
     >
       <template #notice>
         <InlineFeedback
-          v-if="purchase?.kind === 'plan' && freeMonths"
+          v-if="purchase?.kind === 'plan' && purchase.interval === 'month' && freeMonths"
           icon="ion:ticket-outline"
           data-testid="checkout-free-months"
         >
