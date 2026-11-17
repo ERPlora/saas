@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { HubIcon } from '@erplora/ui/shell';
 import { IonButton, IonItem, IonLabel, IonList } from '@ionic/vue';
-import { computed, nextTick, onMounted, onUpdated, useId, useTemplateRef } from 'vue';
+import { computed, nextTick, onMounted, onUpdated, useId, useTemplateRef, watch } from 'vue';
 
 const props = withDefaults(
   defineProps<{
@@ -18,20 +18,19 @@ const listId = `collapsible-checklist-${useId()}`;
 const visibleItems = computed(() => (expanded.value ? props.items : props.items.slice(0, props.collapsedCount)));
 const toggle = useTemplateRef<{ $el: HTMLElement }>('toggle');
 
-// Ionic Vue drops disclosure ARIA from the host; keep it and the native button in sync.
+// ion-button copies ARIA to its native button only at load; keep the expanded state in sync.
 async function syncAria(): Promise<void> {
   await nextTick();
   await customElements.whenDefined('ion-button');
   const host = toggle.value?.$el as (HTMLElement & { componentOnReady?: () => Promise<void> }) | undefined;
   await host?.componentOnReady?.();
   const native = host?.shadowRoot?.querySelector('button');
-  for (const element of [host, native]) {
-    element?.setAttribute('aria-expanded', String(expanded.value));
-    element?.setAttribute('aria-controls', listId);
-  }
+  native?.setAttribute('aria-expanded', String(expanded.value));
+  native?.removeAttribute('aria-controls');
 }
 onMounted(syncAria);
 onUpdated(syncAria);
+watch(expanded, syncAria, { flush: 'post' });
 </script>
 
 <template>
@@ -63,8 +62,6 @@ onUpdated(syncAria);
         class="collapsible-checklist__toggle"
         fill="clear"
         size="small"
-        :aria-expanded="expanded ? 'true' : 'false'"
-        :aria-controls="listId"
         :data-testid="toggleTestid"
         @click="expanded = !expanded"
       >

@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FREE, FREE_SUBSCRIPTION, PAYMENT_TEST, STARTER, plan, subscription } from '../__tests__/fixtures';
-import { ionProps, mountBilling } from '../__tests__/mount-billing';
+import { flush, ionProps, mountBilling } from '../__tests__/mount-billing';
 import type { Block } from '../store';
 import PlanCard from './PlanCard.vue';
 
@@ -161,6 +161,8 @@ describe('PlanCard', () => {
     it('says until when it lasts and offers to keep it', async () => {
       const s = await card({ subscription: cancelled });
       expect(s.text('plan-note').text()).toBe('Cancelled: Starter until Oct 31, 2026, then Free.');
+      expect(s.text('plan-note').element.parentElement).toBe(s.text('plan-keep').element.parentElement);
+      expect(s.text('plan-note').element.nextElementSibling).toBe(s.text('plan-keep').element);
       await s.text('plan-keep').trigger('click');
       expect(s.wrapper.emitted('keep')).toHaveLength(1);
     });
@@ -421,10 +423,16 @@ describe('PlanCard', () => {
     expect(s.wrapper.findAll('ion-item')).toHaveLength(5);
     expect(toggle.element.tagName).toBe('ION-BUTTON');
     expect(ionProps(toggle, 'fill', 'size')).toEqual({ fill: 'clear', size: 'small' });
-    expect(toggle.attributes('aria-expanded')).toBe('false');
-    expect(toggle.attributes('aria-controls')).toBe(s.wrapper.get('ion-list').attributes('id'));
+    const native = () => toggle.element.shadowRoot?.querySelector('button');
+    await flush();
+    expect(native()?.getAttribute('aria-expanded')).toBe('false');
+    expect(native()?.getAttribute('aria-controls')).toBeNull();
+    expect(toggle.attributes('aria-expanded')).toBeUndefined();
+    expect(toggle.attributes('aria-controls')).toBeUndefined();
     await toggle.trigger('click');
+    await flush();
     expect(s.wrapper.findAll('ion-item')).toHaveLength(8);
+    expect(native()?.getAttribute('aria-expanded')).toBe('true');
     expect(toggle.text()).toBe('Show fewer');
   });
 

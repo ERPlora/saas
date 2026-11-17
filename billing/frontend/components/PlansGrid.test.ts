@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { FREE_SUBSCRIPTION, STARTER, plan } from '../__tests__/fixtures';
-import { mountBilling } from '../__tests__/mount-billing';
+import { flush, mountBilling } from '../__tests__/mount-billing';
 import PlansGrid from './PlansGrid.vue';
 
 const longPlan = (slug: string, name: string) =>
@@ -30,11 +30,15 @@ describe('PlansGrid', () => {
     expect(wrapper.findAll('ion-card').map((card) => card.findAll('ion-item').length)).toEqual([5, 5, 5]);
 
     await wrapper.findAll('[data-testid="plan-features-toggle"]')[1].trigger('click');
+    await flush();
     const toggles = wrapper.findAll('[data-testid="plan-features-toggle"]');
-    expect(toggles.map((toggle) => toggle.attributes('aria-expanded'))).toEqual(['true', 'true', 'true']);
+    const states = () => toggles.map((toggle) => toggle.element.shadowRoot?.querySelector('button')?.getAttribute('aria-expanded'));
+    expect(states()).toEqual(['true', 'true', 'true']);
     expect(wrapper.findAll('ion-card').map((card) => card.findAll('ion-item').length)).toEqual([8, 8, 8]);
 
     await toggles[0].trigger('click');
+    await flush();
+    expect(states()).toEqual(['false', 'false', 'false']);
     expect(wrapper.findAll('ion-card').map((card) => card.findAll('ion-item').length)).toEqual([5, 5, 5]);
   });
 

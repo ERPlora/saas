@@ -38,11 +38,11 @@ function watchStripeRequests(page: Page): string[] {
 }
 
 /** Leaves the seeded business `name` on the plan `slug`, as a paid purchase would (nothing reaches Stripe nor the Hub). */
-function putOnPlan(name: string, slug: string): void {
+function putOnPlan(name: string, slug: string, cancelling = false): void {
   djangoPrint(
     [
       'from hubs.models import Plan, Subscription',
-      `Subscription.objects.filter(hub__name="${name}", hub__slug__startswith="e2e-store-").update(plan=Plan.objects.get(slug="${slug}"))`,
+      `Subscription.objects.filter(hub__name="${name}", hub__slug__startswith="e2e-store-").update(plan=Plan.objects.get(slug="${slug}"), cancel_at_period_end=${cancelling ? 'True' : 'False'})`,
     ].join('\n'),
   );
 }
@@ -50,6 +50,16 @@ function putOnPlan(name: string, slug: string): void {
 /** The sideways scroll of the page on screen, read where Ionic scrolls (the one measure, `overflowingBoxes`). */
 async function sidewaysScroll(page: Page): Promise<string[]> {
   return overflowingBoxes(page, 1);
+}
+
+async function checkPayingPlans(page: Page, businessId: string, width: number): Promise<void> {
+  await page.goto(`/dashboard/store/plans?business=${businessId}`);
+  await expect(page.getByTestId('store-plans')).toBeVisible();
+  await expect(page.locator('.plans-grid > ion-card')).toHaveCount(6);
+  await expect(page.getByTestId('plan-free').getByTestId('plan-downgrade')).toBeVisible();
+  await expect(page.getByTestId('plan-standard').getByTestId('plan-change')).toBeVisible();
+  await settled(page);
+  expect(await sidewaysScroll(page), `paying plans at ${width}`).toEqual([]);
 }
 
 /** Ionic scrolls inside the viewport: enlarge that viewport to capture the whole plan page, then restore its size. */
@@ -296,6 +306,7 @@ test.describe('store', () => {
     await page.goto(`/dashboard/store/plans?business=${cafe}`);
     const cards = page.locator('.plans-grid > ion-card');
     await expect(cards).toHaveCount(3);
+    await expect(cards.first()).toHaveCSS('overflow', 'clip');
     const priceTops = await cards.getByTestId('plan-price').evaluateAll((prices) => prices.map((price) => Math.round(price.getBoundingClientRect().top)));
     const actionTops = await cards.locator('.plan-card__actions').evaluateAll((actions) => actions.map((action) => Math.round(action.getBoundingClientRect().top)));
     expect(new Set(priceTops).size, `price tops: ${priceTops}`).toBe(1);
@@ -306,14 +317,34 @@ test.describe('store', () => {
     const collapsed = await cards.evaluateAll((items) => items.map((item) => item.querySelectorAll('ion-item').length));
     await toggles.first().locator('button').focus();
     await page.keyboard.press('Enter');
-    for (const toggle of await toggles.all()) await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByRole('button', { name: 'Show fewer', expanded: true })).toHaveCount(3);
     const expanded = await cards.evaluateAll((items) => items.map((item) => item.querySelectorAll('ion-item').length));
     expect(expanded.some((count, index) => count > collapsed[index])).toBe(true);
     await toggles.first().click();
-    for (const toggle of await toggles.all()) await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByRole('button', { name: 'Show all features', expanded: false })).toHaveCount(3);
   });
 
-  for (const { width, height } of [VIEWPORTS[0], { width: 768, height: 1024 }, VIEWPORTS[2]]) {
+  test('a cancelled plan explains Keep next to its action at desktop and phone', async ({ page }) => {
+    putOnPlan('Panadería López', 'starter', true);
+    try {
+      const bakery = await businessIdOf(page.request, 'Panadería López');
+      await page.emulateMedia({ colorScheme: 'light' });
+      for (const size of [VIEWPORTS[2], VIEWPORTS[0]]) {
+        await page.setViewportSize(size);
+        await page.goto(`/dashboard/store/plans?business=${bakery}`);
+        const current = page.getByTestId('plan-starter');
+        const note = current.getByTestId('plan-note');
+        await expect(note).toContainText('Cancelled: Starter until');
+        expect(await note.evaluate((element) => element.nextElementSibling?.getAttribute('data-testid'))).toBe('plan-keep');
+        await expect(current.getByTestId('plan-keep')).toBeVisible();
+        await planShot(page, `store-plans-cancelled-${size.width}-light.png`);
+      }
+    } finally {
+      putOnPlan('Panadería López', 'starter', false);
+    }
+  });
+
+  for (const { width, height } of [VIEWPORTS[0], { width: 768, height: 1024 }, VIEWPORTS[1], VIEWPORTS[2]]) {
     for (const theme of ['light', 'dark'] as const) {
       test(`Plans and Modules at ${width} px (${theme}): no sideways scroll, no error`, async ({ page }) => {
         const errors = watchPageErrors(page);
@@ -330,27 +361,29 @@ test.describe('store', () => {
             await page.screenshot({ path: join(SHOTS_DIR, `store-modules-${width}-${theme}.png`), fullPage: true });
           }
           if (tab === 'plans') {
-            await planShot(page, `store-plans-${width}-${theme}.png`);
+            if (width !== 834) await planShot(page, `store-plans-${width}-${theme}.png`);
             const toggle = page.getByTestId('plan-features-toggle').first();
-            await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-            const controls = await toggle.getAttribute('aria-controls');
-            expect(controls).toBeTruthy();
-            await expect(page.locator(`#${controls}`)).toBeVisible();
+            await expect(page.getByRole('button', { name: 'Show all features', expanded: false }).first()).toBeVisible();
             if (width === 390) {
+              const emptyAction = page.getByTestId('plan-free').locator('.plan-card__actions');
+              await expect(emptyAction).toHaveCSS('display', 'none');
+              expect(await emptyAction.evaluate((element) => element.getBoundingClientRect().height)).toBe(0);
               expect((await toggle.boundingBox())?.height).toBeGreaterThanOrEqual(44);
               const gap = await page.getByTestId('plan-free').evaluate((card) => {
                 const price = card.querySelector('[data-testid="plan-price"]')!.getBoundingClientRect();
                 const feature = card.querySelector('ion-item')!.getBoundingClientRect();
                 return feature.top - price.bottom;
               });
-              expect(gap, 'Free has no empty action slot on a phone').toBeLessThanOrEqual(32);
+              expect(gap, 'Free has no empty action slot on a phone').toBeLessThanOrEqual(16);
             }
             await toggle.click();
-            await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+            await expect(page.getByRole('button', { name: 'Show fewer', expanded: true }).first()).toBeVisible();
             await settled(page);
             expect(await sidewaysScroll(page), `expanded plans at ${width}`).toEqual([]);
-            await planShot(page, `store-plans-${width}-${theme}-expanded.png`);
+            if (width !== 834) await planShot(page, `store-plans-${width}-${theme}-expanded.png`);
             await toggle.click();
+            await expect(page.getByRole('button', { name: 'Show all features', expanded: false }).first()).toBeVisible();
+            await checkPayingPlans(page, bakery, width);
           }
         }
         expect(errors).toEqual([]);

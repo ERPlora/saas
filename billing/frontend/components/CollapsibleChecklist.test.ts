@@ -23,24 +23,30 @@ async function checklist(extra: Record<string, unknown> = {}) {
 describe('CollapsibleChecklist', () => {
   it('shows five items by default and expands with an Ionic disclosure button', async () => {
     const { wrapper } = await checklist();
-    const list = wrapper.get('ion-list');
     const toggle = wrapper.get('[data-testid="details-toggle"]');
     expect(wrapper.findAll('ion-item')).toHaveLength(5);
     expect((wrapper.get('[data-testid="detail-1"]').element as HTMLElement).innerText.trim()).toBe('Detail 1');
     expect(toggle.element.tagName).toBe('ION-BUTTON');
     expect(ionProps(toggle, 'fill', 'size')).toEqual({ fill: 'clear', size: 'small' });
     expect(toggle.text()).toBe('All details');
-    expect(toggle.attributes('aria-expanded')).toBe('false');
-    expect(toggle.attributes('aria-controls')).toBe(list.attributes('id'));
+    const native = () => toggle.element.shadowRoot?.querySelector('button');
+    expect(native()).not.toBeNull();
+    expect(native()?.getAttribute('aria-expanded')).toBe('false');
+    expect(native()?.getAttribute('aria-controls')).toBeNull();
+    expect(toggle.attributes('aria-expanded')).toBeUndefined();
+    expect(toggle.attributes('aria-controls')).toBeUndefined();
     expect(toggle.get('ion-icon').attributes('slot')).toBe('start');
 
     await toggle.trigger('click');
+    await flush();
     expect(wrapper.findAll('ion-item')).toHaveLength(7);
-    expect(toggle.attributes('aria-expanded')).toBe('true');
+    expect(native()?.getAttribute('aria-expanded')).toBe('true');
     expect(toggle.text()).toBe('Less detail');
 
     await toggle.trigger('click');
+    await flush();
     expect(wrapper.findAll('ion-item')).toHaveLength(5);
+    expect(native()?.getAttribute('aria-expanded')).toBe('false');
     expect(wrapper.text()).not.toContain('Detail 6');
   });
 
