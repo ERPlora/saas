@@ -16,7 +16,7 @@ import { businessIdOf } from './businesses';
 import { djangoPrint, runSeed } from './django';
 import { expect, test } from './fixtures';
 import { watchPageErrors } from './page-events';
-import { repeatedTop, settled, shot, toast, VIEWPORTS } from './screen';
+import { repeatedTop, settled, shot, stripedAfterResize, toast, VIEWPORTS } from './screen';
 import { signIn } from './session';
 import { answerCheckoutStart, gotoWithCharge, gotoWithCheckout, payInStripe, playStripe, stripeState } from './stripe';
 
@@ -287,17 +287,7 @@ test.describe('store', () => {
     const bakery = await businessIdOf(page.request, 'Panadería López');
     await page.goto(`/dashboard/store/plans?business=${bakery}`);
     await expect(page.getByTestId('store-plans')).toBeVisible();
-    const striped: string[] = [];
-    for (let round = 0; round < 4; round++) {
-      for (const size of VIEWPORTS) {
-        await page.setViewportSize(size);
-        await settled(page);
-        const png = await page.screenshot({ path: shot(`FIX-SAAS-E2E-STORE-SHOT-STRIPE-${size.width}`) });
-        const rows = await repeatedTop(page, png);
-        if (rows) striped.push(`round ${round} at ${size.width}: ${rows} rows`);
-      }
-    }
-    expect(striped).toEqual([]);
+    expect(await stripedAfterResize(page, VIEWPORTS, 'FIX-SAAS-E2E-STORE-SHOT-STRIPE')).toEqual([]);
   });
 
   test('plan price and action rows align at desktop, and features expand together from the keyboard', async ({ page }) => {

@@ -1,3 +1,4 @@
+import { AlignedCardGrid } from '@erplora/ui/components';
 import { describe, expect, it } from 'vitest';
 
 import { FREE_SUBSCRIPTION, STARTER, plan } from '../__tests__/fixtures';
@@ -40,6 +41,14 @@ describe('PlansGrid', () => {
     await flush();
     expect(states()).toEqual(['false', 'false', 'false']);
     expect(wrapper.findAll('ion-card').map((card) => card.findAll('ion-item').length)).toEqual([5, 5, 5]);
+  });
+
+  it('lays the plans on the shared aligned grid, seven rows per card', async () => {
+    const { wrapper } = await grid();
+    const aligned = wrapper.findComponent(AlignedCardGrid);
+    expect(aligned.exists()).toBe(true);
+    expect(aligned.props('rows')).toBe(7);
+    expect(aligned.findAll('ion-card')).toHaveLength(3);
   });
 
   it('keeps the card actions and their plan context', async () => {

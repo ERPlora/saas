@@ -8,7 +8,7 @@
 //     charges nothing, so an unpaid invoice does not stop it).
 //   - An unpaid invoice disables what charges, with the reason under the button. Cancelling is never blocked: it
 //     only stops the next charges.
-import { StatusPill } from '@erplora/ui/components';
+import { CollapsibleChecklist, StatusPill } from '@erplora/ui/components';
 import { HubIcon } from '@erplora/ui/shell';
 import { IonButton, IonCard, IonCardContent, IonNote } from '@ionic/vue';
 import { computed, useId } from 'vue';
@@ -17,7 +17,6 @@ import { useI18n } from 'vue-i18n';
 import type { BillingInterval, PlanOut, StoreSubscriptionOut } from '../../../frontend/sdk-types';
 import { formatDate, formatEuros } from '../format';
 import { type Block, isFree } from '../store';
-import CollapsibleChecklist from './CollapsibleChecklist.vue';
 
 const props = defineProps<{
   plan: PlanOut;

@@ -17,7 +17,7 @@ import { businessIdOf, seedPanel } from './businesses';
 import { runSeed } from './django';
 import { expect, test } from './fixtures';
 import { watchPageErrors } from './page-events';
-import { repeatedTop, settled, shot } from './screen';
+import { repeatedTop, settled, stripedAfterResize } from './screen';
 import { signIn } from './session';
 
 const SHOTS_DIR = process.env.SHOTS_DIR ?? '/tmp/panel-fix2';
@@ -165,17 +165,7 @@ test.describe('the way to pay outside Billing', () => {
   test('a screenshot right after a resize is the page as painted, never its top repeated at the bottom', async ({ page }) => {
     await page.goto('/launch');
     await expect(page.getByTestId('launch-business').filter({ hasText: 'Bar Norte' })).toBeVisible();
-    const striped: string[] = [];
-    for (let round = 0; round < 4; round++) {
-      for (const size of SHOT_SIZES) {
-        await page.setViewportSize(size);
-        await settled(page);
-        const png = await page.screenshot({ path: shot(`FIX-SAAS-E2E-CHROME-SHOT-STRIPE-${size.width}`) });
-        const rows = await repeatedTop(page, png);
-        if (rows) striped.push(`round ${round} at ${size.width}: ${rows} rows`);
-      }
-    }
-    expect(striped).toEqual([]);
+    expect(await stripedAfterResize(page, SHOT_SIZES, 'FIX-SAAS-E2E-CHROME-SHOT-STRIPE')).toEqual([]);
   });
 
   test('Businesses groups the unpaid invoices in one notice, each business with its way out, days without the time', async ({ page }) => {

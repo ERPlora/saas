@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { AlignedCardGrid } from '@erplora/ui/components';
 import { shallowRef } from 'vue';
 
 import type { BillingInterval, PlanOut, StoreSubscriptionOut } from '../../../frontend/sdk-types';
@@ -25,7 +26,10 @@ const expanded = shallowRef(false);
 </script>
 
 <template>
-  <div class="plans-grid">
+  <AlignedCardGrid
+    class="plans-grid"
+    :rows="7"
+  >
     <PlanCard
       v-for="plan in plans"
       :key="plan.slug"
@@ -41,38 +45,5 @@ const expanded = shallowRef(false);
       @downgrade="emit('downgrade')"
       @keep="emit('keep')"
     />
-  </div>
+  </AlignedCardGrid>
 </template>
-
-<style scoped>
-.plans-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  column-gap: 20px;
-  row-gap: 12px;
-  align-items: stretch;
-  inline-size: 100%;
-  max-inline-size: 1120px;
-  margin-inline: auto;
-}
-.plans-grid > * {
-  min-inline-size: 0;
-}
-@media (min-width: 640px) {
-  .plans-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (min-width: 640px) and (max-width: 1099px) {
-  .plans-grid:has(> :nth-child(2)) > :last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-    justify-self: center;
-    inline-size: calc((100% - 20px) / 2);
-  }
-}
-@media (min-width: 1100px) {
-  .plans-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-</style>

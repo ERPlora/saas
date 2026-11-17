@@ -1,5 +1,6 @@
 // A plan of the Store and the ONE thing the chosen business can do with it now: upgrade, change, switch billing,
 // downgrade to Free, keep a cancelled plan, or nothing that charges with an unpaid invoice.
+import { CollapsibleChecklist } from '@erplora/ui/components';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FREE, FREE_SUBSCRIPTION, PAYMENT_TEST, STARTER, plan, subscription } from '../__tests__/fixtures';
@@ -434,6 +435,11 @@ describe('PlanCard', () => {
     expect(s.wrapper.findAll('ion-item')).toHaveLength(8);
     expect(native()?.getAttribute('aria-expanded')).toBe('true');
     expect(toggle.text()).toBe('Show fewer');
+  });
+
+  it('lists its features with the shared collapsible checklist', async () => {
+    const s = await card({ plan: STARTER });
+    expect(s.wrapper.findComponent(CollapsibleChecklist).exists()).toBe(true);
   });
 
   it('speaks Spanish', async () => {
