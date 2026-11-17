@@ -142,9 +142,7 @@ class StripeDouble:
             case "customers.tax_ids.list":
                 return listing(self.customer_tax_ids.get(call.args[0], []))
             case "customers.tax_ids.create":
-                tax_id = {"id": f"txi_{number}", "object": "tax_id", **params}
-                self.customer_tax_ids.setdefault(call.args[0], []).append(tax_id)
-                return tax_id
+                return self._create_tax_id(call.args[0], number, params)
             case "checkout.sessions.create":
                 return {
                     "id": f"cs_test_{number}",
@@ -169,6 +167,16 @@ class StripeDouble:
         raise AssertionError(
             f"Stripe {call.path} was called without an answer (params {params})"
         )
+
+    def _create_tax_id(self, customer: str, number: int, params: dict) -> dict | stripe.InvalidRequestError:
+        """As the API checks it: an ``eu_vat`` starts with its country's two letters (``ESB12345674``, never
+        ``B12345674``)."""
+        value = params.get("value") or ""
+        if params.get("type") == "eu_vat" and not value[:2].isalpha():
+            return tax_id_invalid("eu_vat")
+        tax_id = {"id": f"txi_{number}", "object": "tax_id", **params}
+        self.customer_tax_ids.setdefault(customer, []).append(tax_id)
+        return tax_id
 
 
 class _Node:
@@ -523,3 +531,10 @@ def invalid_request(
     code: str = "resource_missing", message: str = "No such subscription"
 ) -> stripe.InvalidRequestError:
     return stripe.InvalidRequestError(message, param="id", code=code, http_status=404)
+
+
+def tax_id_invalid(tax_type: str) -> stripe.InvalidRequestError:
+    """What Stripe answers a tax id whose value does not have the form of its type."""
+    return stripe.InvalidRequestError(
+        f"Invalid value for {tax_type}.", param="value", code="tax_id_invalid", http_status=400
+    )

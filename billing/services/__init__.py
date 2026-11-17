@@ -48,7 +48,7 @@ from live.outbox import notify, record_event
 from apps.models import Module
 from base.navigation import BILLING, BUSINESSES
 from base.refusals import fields_refused
-from billing import events, queries, stripe_service, stripe_test_clocks, vat, vies
+from billing import events, queries, stripe_service, stripe_tax_ids, stripe_test_clocks, vat, vies
 from billing.models import (
     CheckoutAttempt,
     Invoice,
@@ -1306,13 +1306,8 @@ def _attach_cleared_tax_id(customer: str, profile) -> None:
     tax_type = vat.tax_id_type_for(profile.billing_country)
     if not clearance.may_travel_to_stripe or not tax_type:
         return
-    if any(
-        existing.get("value") == clearance.vat_number
-        for existing in stripe_service.customer_tax_ids(customer)
-    ):
-        return
-    stripe_service.add_customer_tax_id(
-        customer, tax_type=tax_type, value=clearance.vat_number
+    stripe_tax_ids.attach(
+        customer, tax_type=tax_type, number=clearance.vat_number, country=profile.billing_country
     )
 
 
