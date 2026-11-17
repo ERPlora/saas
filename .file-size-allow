@@ -42,7 +42,7 @@
 1186 public/tests/test_demo.py saas#462
 1033 public/tests/test_industries.py saas#462
 1415 public/tests/test_landing.py saas#462
-1384 public/tests/test_legal.py saas#462
+1371 public/tests/test_legal.py saas#462
 1779 public/tests/test_pricing.py saas#462
 1613 public/tests/test_templates.py saas#462
 726 scripts/build_ionic_utilities.py saas#462

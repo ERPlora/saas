@@ -5,7 +5,7 @@ its own file, ``test_declaracion.py``.
 The cookie policy names the cookies this site really sets (the language cookie is ``_lang``); the footer, the sitemap
 and ``llms.txt`` link the pages; no internal link of a legal page is dead; every message of the legal templates has
 its Spanish entry in ``public``'s compiled catalog; and the privacy policy names AWS as the host, in its Ireland
-region, eu-west-1, the one of SES too.
+region, eu-west-1 (who handles the email is in ``test_privacy_mail_processor.py``).
 """
 
 import ast
@@ -388,19 +388,6 @@ def test_privacy_names_aws_in_its_ireland_region_as_the_hosting_processor(client
     for html in (english, es):
         assert "eu-south-2" not in html
         assert "Aragón" not in html
-
-
-@pytest.mark.django_db
-def test_privacy_names_amazon_ses_in_ireland_for_transactional_email(client):
-    """The transactional email goes out from Amazon SES in eu-west-1, the platform's region."""
-    [email] = list_items_naming(
-        client.get("/legal/privacy/").content.decode(), "Amazon SES"
-    )
-    [correo] = list_items_naming(spanish(client, "/legal/privacy/"), "Amazon SES")
-
-    assert "eu-west-1" in email
-    assert "Ireland" in email
-    assert "Irlanda" in correo
 
 
 @pytest.mark.django_db
