@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:6d8487ff8538a50211ef166d6d6cf209a2852d0b5a16a715d8014d863ac0c089 -->
+<!-- generated from WORKBOOK.md sha256:3975cf3260851a24f06cf443e6bc2c6afd3b4b6384925f9290137c4b9d3945c1 -->
 
 ## What it is for and who it is for
 
@@ -61,7 +61,8 @@ the businesses one owns). Plans shows each plan with its price without VAT, the 
 turned on at once", or "All the apps turned on at once" when the plan has no cap; then the messages a month, "Your own domain for your website (www.yourbusiness.com)" on the plans that include it and,
 last, the trial), "Your current plan" on the one it has and each plan's button: "Upgrade to …",
 "Change to …", "Change to annual · …" or "Downgrade to Free"; with the plan cancelled or a downgrade scheduled,
-"Keep the plan". A business ERPlora staff marked in the admin (BILLING-F27) also sees, last, the internal plan
+"Keep the plan". Each card shows its first five lines, with the button right under the price; "Show all
+features" unfolds the rest in every card at once and "Show fewer" folds them again. A business ERPlora staff marked in the admin (BILLING-F27) also sees, last, the internal plan
 "Payment Test (internal)"; no other business sees it. If the
 business has an unpaid invoice, the notice with "Pay the invoice" comes at the top and nothing is sold to that
 business.
@@ -264,7 +265,7 @@ Status: done
 Actor: owner
 Screen: Store, Secure payment
 Steps:
-1. In **Store › Plans**, with the business chosen at the top, the owner sees each plan with its price without VAT, its users, its devices and the apps it can have turned on at once, picks "Monthly" or "Annual" (which says how much is saved) and taps "Upgrade to …".
+1. In **Store › Plans**, with the business chosen at the top, the owner sees each plan with its price without VAT and its first features, such as its users and its devices; "Show all features" unfolds the rest, among them, when they fall beyond the fifth line, the apps it can have turned on at once and its own domain. The owner picks "Monthly" or "Annual" (which says how much is saved) and taps "Upgrade to …".
 2. The secure payment opens: the billing details if they are missing and then Stripe's card form inside the dialog, titled "Upgrade to …" with "For … · renews every month" (or every year).
 3. Enter the card; if the bank asks for authentication, Stripe shows it in the same form.
 4. When done, "Paying…" until the business's page arrives, which says "… is now on …" and whose Plan card changes as soon as Stripe confirms it. The business keeps working all the time.
