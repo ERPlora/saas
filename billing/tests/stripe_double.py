@@ -49,7 +49,7 @@ class StripeDouble:
         self.tax_rates: list[dict] = []
         #: Each customer's tax ids (``customers.tax_ids.list``/``create``).
         self.customer_tax_ids: dict[str, list[dict]] = {}
-        #: The account's coupons by id (``coupons.create``): none until a code of free months makes one.
+        #: The account's coupons by id (``coupons.create``): none until a code's discount makes one.
         self.coupons: dict[str, dict] = {}
         self._answers.update({"coupons.create": [self._new_coupon]})
         self.v1 = _Node(self, "")
@@ -245,7 +245,7 @@ def subscription(
     return {
         "id": sub_id,
         "object": "subscription",
-        # Expanded, as ``retrieve_subscription`` asks for them: a promo code of free months is one.
+        # Expanded, as ``retrieve_subscription`` asks for them: a promo code's discount is one.
         "discounts": discounts or [],
         "status": status,
         "customer": customer,

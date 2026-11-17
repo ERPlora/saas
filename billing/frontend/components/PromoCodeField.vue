@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // «Do you have a promo code?» of the Store: the code is checked with `billing.promo.check` before paying and the
 // answer is the model (`v-model`), which the Store hands to the checkout when it is valid. A code grants trial days
-// or free months; an invalid one is said and never blocks the sale. Its styles are the Store's (`.store-promo`).
+// or a discount; an invalid one is said and never blocks the sale. Its styles are the Store's (`.store-promo`).
 import { HubIcon } from '@erplora/ui/shell';
 import { useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, IonInput } from '@ionic/vue';
@@ -9,11 +9,13 @@ import { computed, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useErrorText } from '../../../hubs/frontend/error-text';
+import { discountText } from '../discount-text';
+import { formatCents } from '../format';
 import type { PromoCheckOut } from '../promo-types';
 
 const promo = defineModel<PromoCheckOut | null>({ default: null });
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const { forDialog } = useErrorText();
 const client = useLiveClient();
 
@@ -26,9 +28,9 @@ const result = computed(() => {
   if (promoError.value) return promoError.value;
   const answer = promo.value;
   if (!answer?.valid) return t('billing.promo.invalid');
-  return answer.kind === 'free_months'
-    ? t('billing.promo.validMonths', { code: answer.code, months: answer.free_months }, answer.free_months)
-    : t('billing.promo.valid', { code: answer.code, days: answer.trial_days });
+  if (answer.discount === null) return t('billing.promo.valid', { code: answer.code, days: answer.trial_days });
+  const said = discountText({ t, money: (cents) => formatCents(cents, locale.value) }, answer.discount);
+  return t('billing.promo.validDiscount', { code: answer.code, discount: said });
 });
 
 async function applyPromo(): Promise<void> {

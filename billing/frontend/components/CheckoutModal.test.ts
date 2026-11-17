@@ -438,9 +438,9 @@ describe('CheckoutModal', () => {
     expect(s.q('checkout-declined')?.textContent).toContain('The card that pays for Bar La Plaza was declined: pay with another one.');
   });
 
-  it('shows the notice the Store gives it next to the card it asks for (free months of a promo code)', async () => {
-    const s = await setup(happy, PLAN, {}, 'en', { notice: () => h('p', { 'data-testid': 'store-notice' }, '6 months free') });
-    expect(s.q('store-notice')?.textContent).toBe('6 months free');
+  it('shows the notice the Store gives it next to the card it asks for (the discount of a promo code)', async () => {
+    const s = await setup(happy, PLAN, {}, 'en', { notice: () => h('p', { 'data-testid': 'store-notice' }, 'Free for 6 months') });
+    expect(s.q('store-notice')?.textContent).toBe('Free for 6 months');
     expect(s.q('checkout-invoice-to')).not.toBeNull();
   });
 

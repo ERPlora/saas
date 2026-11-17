@@ -1,4 +1,4 @@
-"""Promo codes: trial days or free months at checkout, and ``billing.promo.check``.
+"""Promo codes: trial days or a discount at checkout, and ``billing.promo.check``.
 
 A code grants exactly one of the two: trial days, or a discount (``test_discounts.py``). It is
 case-insensitive and trimmed; an unknown, inactive, expired or exhausted

@@ -2740,7 +2740,7 @@ def checkout_completed(session: dict) -> str:
 
 def _complete_checkout(hub: Hub, session: dict, subscription_id: str) -> str:
     """The subscription the checkout paid for, applied (unless the business pays another one), the attempt
-    completed and its promo code counted, with when its free months end."""
+    completed and its promo code counted, with when its discount ends."""
     local = Subscription.objects.filter(hub=hub).first()
     if (
         local is not None

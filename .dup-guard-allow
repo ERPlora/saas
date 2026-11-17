@@ -35,5 +35,3 @@ duplicados billing/services/__init__.py:4869-4884 already alike in billing/servi
 duplicados billing/services/__init__.py:1454-1466 the creation of the Checkout Session was already alike with _open_takeover on main; this change only adds the promo code's parameters to its dict
 duplicados billing/services/__init__.py:2755-2760 the completion of the attempt was already alike with _takeover_completed on main; this change moves it out of checkout_completed into _complete_checkout
 duplicados billing/frontend/components/CheckoutModal.test.ts:116-123 the mount of setup was already alike with ProrationDialog.test.ts on main; this change only hands the checkout its slots
-duplicados billing/services/__init__.py:4815-4830 the payer and the lines of the platform hub's body were already alike with billing.invoice.get on main (one is the hub's contract, the other the panel's); this change writes the period of a line as days
-duplicados billing/queries/invoices.py:232-247 the payer and the lines of billing.invoice.get were already alike with the platform hub's body on main (one is the panel's, the other the hub's contract); this change adds each line's discount

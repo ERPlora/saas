@@ -20,7 +20,6 @@ from django.test import Client
 from django.utils import timezone
 
 from accounts.tests.conftest import AUTHENTICATION_RECORDS, HOST
-from billing.tests.conftest import pay
 from billing.tests.stripe_double import connection_error, event, invalid_request, invoice, listing, signed, subscription
 from hubs.models import BillingProfile, Hub, HubMember
 
@@ -40,14 +39,12 @@ def _stripe(stripe_double, issuer_identity):
 
 
 @pytest.fixture
-def running(shop):
+def running(running):
     """The business of ``owner`` paying Starter monthly (``sub_1``), its payer with a tax ID and a customer."""
-    BillingProfile.objects.filter(pk=shop.billing_profile_id).update(
+    BillingProfile.objects.filter(pk=running.billing_profile_id).update(
         tax_id=TAX_ID, billing_email="cuentas@panaderia.example", stripe_customer_id="cus_1"
     )
-    paid = pay(shop)
-    Hub.objects.filter(pk=paid.pk).update(status=Hub.Status.ACTIVE, ready_at=timezone.now(), pending_hub_call="")
-    return Hub.objects.select_related("billing_profile").get(pk=paid.pk)
+    return Hub.objects.select_related("billing_profile").get(pk=running.pk)
 
 
 def deliver(payload):

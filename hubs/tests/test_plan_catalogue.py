@@ -46,8 +46,9 @@ PLAN_FIELDS = {
     "statement_timeout_seconds", "included_level", "support_level", "includes_custom_domain",
     "assistant_messages_per_month", "whatsapp_messages_per_month", "max_apps",
     "created_at", "updated_at",
-    # The reverse relation of Subscription.plan (the hubs on the plan), not a column of the plan.
-    "subscriptions",
+    # The reverse relations of Subscription.plan (the hubs on the plan) and of billing's Discount.plans (the
+    # discounts that name it), not columns of the plan.
+    "subscriptions", "discounts",
 }  # fmt: skip
 
 PAYMENT_TEST = "payment-test"

@@ -270,7 +270,7 @@ describe('StoreShop', () => {
   it('on Free a plan is bought in the checkout, at the billing of the switch, with the promo code', async () => {
     const s = await setup({
       businessId: 'cafe',
-      answer: ({ path, query }) => (path === '/api/billing/promo-check' ? Response.json({ code: query.code.toUpperCase(), valid: true, kind: 'trial_days', trial_days: 30, free_months: 0 }) : undefined),
+      answer: ({ path, query }) => (path === '/api/billing/promo-check' ? Response.json({ code: query.code.toUpperCase(), valid: true, trial_days: 30, discount: null }) : undefined),
     });
     expect(s.el('store-period').text()).toContain('Annual · −17 %');
     s.el('store-period').element.dispatchEvent(new CustomEvent('ionChange', { detail: { value: 'year' } }));
@@ -291,8 +291,8 @@ describe('StoreShop', () => {
     });
   });
 
-  it('a code of free months: the checkout says when the price of the plan starts', async () => {
-    const testers = { code: 'TESTERS', valid: true, kind: 'free_months', trial_days: 0, free_months: 6 };
+  it('a code of a discount: the checkout says it, when the plan’s price starts and that nothing is charged today', async () => {
+    const testers = { code: 'TESTERS', valid: true, trial_days: 0, discount: { percent_off: 100, amount_off_cents: null, currency: 'eur', duration: 'repeating', duration_in_months: 6, applies_to: { kind: 'plans', plans: [], intervals: ['month'] } } };
     const s = await setup({ businessId: 'cafe', answer: ({ path }) => (path.endsWith('promo-check') ? Response.json(testers) : undefined) });
     await s.el('store-promo-toggle').trigger('click');
     s.el('store-promo-code').element.dispatchEvent(new CustomEvent('ionInput', { detail: { value: 'testers' } }));
@@ -300,7 +300,7 @@ describe('StoreShop', () => {
     await flush();
     await s.el('plan-upgrade').trigger('click');
     const notice = mount({ render: () => s.wrapper.findComponent(CheckoutModal).vm.$slots.notice?.({}) }, { global: { plugins: [s.i18n] } });
-    expect(notice.text()).toBe('6 months free, then €29.99/month + VAT. Your card is not charged until then.');
+    expect(notice.text()).toBe('Free for 6 months. Then €29.99/month + VAT. Your card is not charged today.');
   });
 
   it('the card of the same payer declined: the checkout says whose', async () => {
@@ -313,7 +313,7 @@ describe('StoreShop', () => {
   it('an invalid promo code is said, and none is sent', async () => {
     const s = await setup({
       businessId: 'cafe',
-      answer: ({ path }) => (path === '/api/billing/promo-check' ? Response.json({ code: 'NOPE', valid: false, kind: 'trial_days', trial_days: 0, free_months: 0 }) : undefined),
+      answer: ({ path }) => (path === '/api/billing/promo-check' ? Response.json({ code: 'NOPE', valid: false, trial_days: 0, discount: null }) : undefined),
     });
     await s.el('store-promo-toggle').trigger('click');
     s.el('store-promo-code').element.dispatchEvent(new CustomEvent('ionInput', { detail: { value: 'nope' } }));

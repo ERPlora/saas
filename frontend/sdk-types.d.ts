@@ -5,6 +5,7 @@
 // SDK reaches allauth.headless through `createAllauthClient`.
 import type { SessionMe } from '@erplora/ui/shell';
 
+import type { SubscriptionDiscountOut } from '../billing/frontend/discount-types';
 import type { PromoCheckIn, PromoCheckOut } from '../billing/frontend/promo-types';
 
 /** `base.SessionMeIn`: no parameters. */
@@ -1212,8 +1213,8 @@ export interface SubscriptionRowOut {
   scheduled_change: ScheduledChangeOut | null;
   /** The plan is charged to the card of another account (the payer before a hand-over, HUBS-F28). */
   paid_by_another_account: boolean;
-  /** While the free months of a promo code last: when they end (the renewals before it are 0 €). */
-  free_until: string | null;
+  /** The discount of a promo code it carries while it applies to the renewal. */
+  discount: SubscriptionDiscountOut | null;
   actions: SubscriptionAction[];
   can: SubscriptionCanOut;
 }
