@@ -167,6 +167,24 @@ export function shot(name: string): string {
   return join(ARTIFACTS, `${name}.png`);
 }
 
+/**
+ * Shoots `page` right after each resize to `sizes`, four rounds, as `<name>-<width>`: the captures whose bottom repeats
+ * the top of the page (`repeatedTop`), one line each; none when every capture is the page as painted.
+ */
+export async function stripedAfterResize(page: Page, sizes: readonly { width: number; height: number }[], name: string): Promise<string[]> {
+  const striped: string[] = [];
+  for (let round = 0; round < 4; round++) {
+    for (const size of sizes) {
+      await page.setViewportSize(size);
+      await settled(page);
+      const png = await page.screenshot({ path: shot(`${name}-${size.width}`) });
+      const rows = await repeatedTop(page, png);
+      if (rows) striped.push(`round ${round} at ${size.width}: ${rows} rows`);
+    }
+  }
+  return striped;
+}
+
 /** One of `VIEWPORTS`. */
 export type Viewport = (typeof VIEWPORTS)[number];
 

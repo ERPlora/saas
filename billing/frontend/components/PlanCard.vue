@@ -8,7 +8,7 @@
 //     charges nothing, so an unpaid invoice does not stop it).
 //   - An unpaid invoice disables what charges, with the reason under the button. Cancelling is never blocked: it
 //     only stops the next charges.
-import { StatusPill } from '@erplora/ui/components';
+import { CollapsibleChecklist, StatusPill } from '@erplora/ui/components';
 import { HubIcon } from '@erplora/ui/shell';
 import { IonButton, IonCard, IonCardContent, IonNote } from '@ionic/vue';
 import { computed, useId } from 'vue';
@@ -17,7 +17,6 @@ import { useI18n } from 'vue-i18n';
 import type { BillingInterval, PlanOut, StoreSubscriptionOut } from '../../../frontend/sdk-types';
 import { formatDate, formatEuros } from '../format';
 import { type Block, isFree } from '../store';
-import CollapsibleChecklist from './CollapsibleChecklist.vue';
 
 const props = defineProps<{
   plan: PlanOut;
@@ -239,6 +238,13 @@ function run(): void {
         {{ price.amount }} <small>{{ price.suffix }}</small>
       </div>
       <div class="plan-card__actions">
+        <p
+          v-if="note"
+          class="card-text plan-card__note"
+          data-testid="plan-note"
+        >
+          {{ note }}
+        </p>
         <template v-if="action">
           <ion-button
             expand="block"
@@ -274,13 +280,6 @@ function run(): void {
         :show-fewer-label="$t('billing.plans.showFewer')"
         toggle-testid="plan-features-toggle"
       />
-      <p
-        v-if="note"
-        class="card-text plan-card__note"
-        data-testid="plan-note"
-      >
-        {{ note }}
-      </p>
     </ion-card-content>
   </ion-card>
 </template>
@@ -297,6 +296,8 @@ function run(): void {
   margin: 0;
   border: 1px solid var(--ep-border, var(--ion-border-color));
   border-radius: 18px;
+  overflow: hidden;
+  overflow: clip;
 }
 .plan-card.is-current {
   border-color: color-mix(in oklab, var(--ion-color-primary) 55%, var(--ion-border-color));
@@ -316,6 +317,14 @@ function run(): void {
   grid-template-rows: repeat(7, auto);
   grid-template-rows: subgrid;
   min-inline-size: 0;
+}
+@supports not (grid-template-rows: subgrid) {
+  .plan-card,
+  .plan-card__content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
 }
 .plan-card__head {
   grid-row: 1;
@@ -400,7 +409,7 @@ function run(): void {
   --color: color-mix(in oklab, var(--ion-text-color) 72%, transparent);
 }
 .plan-card__note {
-  grid-row: 7;
+  margin-block-end: 6px;
   color: var(--ion-text-color);
 }
 .btn-neutral {
