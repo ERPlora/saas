@@ -2,14 +2,14 @@
 
 from django.conf import settings
 from django.db.models import Q
-from django.utils import timezone
 from django.utils.translation import gettext as _
 from django_ratelimit.core import is_ratelimited
 from live.context import OperationContext
 from live.errors import OperationError, Unauthorized
 from live.operations import AI, operation
 
-from billing.models import PromoCode, PromoRedemption, normalise_promo_code
+from billing import discount_terms
+from billing.models import Discount, PromoCode, PromoRedemption, normalise_promo_code
 from billing.schemas.promo_codes import PromoCheckIn, PromoCheckOut
 
 
@@ -22,13 +22,13 @@ PROMO_CHECK_GROUP = "billing.promo-check"
 def redeemable_promo(
     code: str | None, *, hub=None, customer: str = ""
 ) -> PromoCode | None:
-    """The promo code that grants a trial now, or ``None``: unknown, inactive, expired and exhausted are all
+    """The promo code that grants something now, or ``None``: unknown, inactive (or its discount), expired and exhausted are all
     ``None``, because none of them may block a sale (a bad code is simply not applied). With ``hub`` (and its
     payer's Stripe ``customer``), also ``None`` once that business or that payer used it."""
     normalised = normalise_promo_code(code)
     if not normalised:
         return None
-    promo = PromoCode.objects.filter(code=normalised).first()
+    promo = PromoCode.objects.select_related("discount").filter(code=normalised).first()
     if promo is None or not promo.is_redeemable:
         return None
     if hub is not None:
@@ -47,7 +47,7 @@ def redeemable_promo(
     input=PromoCheckIn,
     output=PromoCheckOut,
     ai=AI(
-        description="Whether a promo code is valid now and what it grants: trial days or free months.",
+        description="Whether a promo code is valid now and what it grants: trial days or a discount.",
         asks={
             "en": (
                 "is the code SUMMER26 valid?",
@@ -81,24 +81,22 @@ def promo_check(ctx: OperationContext, params: PromoCheckIn) -> dict:
     return {
         "code": code,
         "valid": promo is not None,
-        "kind": promo.kind if promo else "trial_days",
         "trial_days": (promo.trial_days if promo else None) or 0,
-        "free_months": (promo.free_months if promo else None) or 0,
+        "discount": discount_out(promo.discount) if promo is not None and promo.discount is not None else None,
     }
 
 
-def with_free_months(rows: list[dict], subscriptions: list) -> list[dict]:
-    """The rows of ``billing.subscription.list`` (one per subscription, in order) with when the free months of a
-    promo code end (``None`` without them or once they ended): while they cover the renewal, the next invoice is 0."""
-    until = dict(
-        PromoRedemption.objects.filter(
-            stripe_subscription_id__in=[subscription.stripe_subscription_id for subscription in subscriptions],
-            free_until__gt=timezone.now(),
-        ).values_list("stripe_subscription_id", "free_until")
-    )
-    for row, subscription in zip(rows, subscriptions, strict=True):
-        row["free_until"] = until.get(subscription.stripe_subscription_id)
-        renewal = row["next_invoice"]
-        if row["free_until"] and renewal and renewal["date"] and row["free_until"] > renewal["date"]:
-            renewal["total_cents"] = 0
-    return rows
+def discount_out(discount: Discount) -> dict:
+    """``DiscountOut``: its terms and what it applies to, as the panel says them."""
+    return {
+        "percent_off": discount.percent_off,
+        "amount_off_cents": discount.amount_off_cents,
+        "currency": discount.currency,
+        "duration": discount.duration,
+        "duration_in_months": discount.duration_in_months,
+        "applies_to": {
+            "kind": discount.applies_to,
+            "plans": sorted(discount.plans.values_list("slug", flat=True)),
+            "intervals": list(discount_terms.intervals(discount)),
+        },
+    }

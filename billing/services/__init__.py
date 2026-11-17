@@ -85,7 +85,7 @@ from billing.schemas import (
     VatCheckIn,
     VatCheckOut,
 )
-from billing.services import invoice_discounts, promo_codes
+from billing.services import discounts, invoice_discounts, promo_codes
 from billing.stripe_checkout import (
     EMBEDDED_UI_MODE,
     KIND_METADATA_KEY,
@@ -1580,11 +1580,13 @@ def _schedule_downgrade(hub: Hub, subscription: Subscription, live: dict, sale: 
                         "start_date": phase.get("start_date"),
                         "end_date": period_end,
                         "proration_behavior": "none",
+                        "discounts": discounts.phase_discounts(live),
                     },
                     {
                         "items": _phase_items(live, {item["id"]: item for item in items if item.get("id")}),
                         "proration_behavior": "none",
                         "duration": {"interval": sale.interval, "interval_count": 1},
+                        "discounts": discounts.phase_discounts(live),
                     },
                 ],
             },
@@ -1631,8 +1633,9 @@ def _plan_change(
     """The items of a plan change: the plan item gets the new price; on a change of billing, every module
     item its price of the new billing (Stripe bills one interval per subscription), each with our tax. A
     subscription of modules alone (a Free business) gets its plan item, keeping the days left of the sign-up
-    trial or a promo code's, as the checkout does. Never while free months last, nor with a code of free months."""
-    promo_codes.require_no_free_months(live)
+    trial or a promo code's, as the checkout does. Never with a code of a discount; yearly billing waits for a discount
+    for months to end."""
+    discounts.require_annual_allowed(live, subscription, sale)
     if (
         sale.plan.pk == subscription.plan_id
         and sale.interval == subscription.billing_interval
@@ -1716,7 +1719,6 @@ def _preview(
                 "trial_end": change.trial_end,
             }
     else:
-        promo_codes.require_no_free_months(live)
         _require_room(live)
         recurring = _recurring_net(subscription, sale.interval, adding=sale)
         details["items"] = [
@@ -1814,9 +1816,7 @@ def checkout_confirm(ctx: OperationContext, data: CheckoutConfirmIn) -> dict:
     _require_fresh_preview(data.proration_date)
     _require_paid_up(hub, subscription)
     _require_module_not_owned(subscription, sale.slug)
-    live = _live(subscription)
-    promo_codes.require_no_free_months(live)
-    _require_room(live)
+    _require_room(_live(subscription))
     tax_rates = price_sale(
         hub,
         sale,
@@ -3488,49 +3488,63 @@ def _retax_refused(hub: Hub, kind: str, refused: Conflict) -> str:
 def _retax_schedule(hub: Hub, subscription: Subscription, schedule_id: str) -> str:
     """A downgrade waiting in a Stripe schedule: the first invoice of the new plan is billed by its next phase,
     whose items carry the rates fixed when it was scheduled. Every phase still to run is re-stated with
-    today's rates (a phase over is left out; the current one keeps its start). Phases are re-stated whole, so
-    no rate is an empty list there, and changing the current phase changes the subscription at once (checked
-    against Stripe's test API). A price no plan nor module has keeps its rates."""
+    today's rates (a phase over is left out; the current one keeps its start) and its discounts. Phases are
+    re-stated whole, so no rate is an empty list there, and changing the current phase changes the subscription
+    at once (checked against Stripe's test API). A price no plan nor module has keeps its rates."""
     with stripe_errors():
         schedule = stripe_service.retrieve_schedule(schedule_id)
     now = int(timezone.now().timestamp())
     phases = []
     changed = False
     for phase in schedule.get("phases") or []:
-        end = phase.get("end_date")
-        if end is not None and end <= now:
+        if phase.get("end_date") is not None and phase["end_date"] <= now:
             continue
-        sales = []
-        for item in phase.get("items") or []:
-            price = item["price"] if isinstance(item["price"], str) else item["price"]["id"]
-            held = [rate["id"] if isinstance(rate, dict) else rate for rate in item.get("tax_rates") or []]
-            sales.append((price, item.get("quantity") or 1, held, _item_sale(subscription, {"price": {"id": price}})))
-        # What a renewal of that phase charges, net: the 400 € of the simplified invoice is on the whole of it.
-        recurring = sum((sale.net for _price, _quantity, _held, sale in sales if sale is not None), Decimal("0"))
-        items = []
-        for price, quantity, held, sale in sales:
-            if sale is None:
-                due = held
-            else:
-                try:
-                    due = price_sale(hub, sale, recurring_net=recurring, renewing=True)
-                except Conflict as refused:
-                    return _retax_refused(hub, sale.kind, refused)
-            changed = changed or sorted(held) != sorted(due)
-            items.append({"price": price, "quantity": quantity, "tax_rates": due})
-        restated = {"items": items, "start_date": phase["start_date"]}
-        if end is not None:
-            restated["end_date"] = end
-        if phase.get("trial_end"):
-            restated["trial_end"] = phase["trial_end"]
-        restated["proration_behavior"] = "none"
-        phases.append(restated)
+        restated = _restated_items(hub, subscription, phase)
+        if restated is None:
+            return "refused"
+        items, retaxed = restated
+        changed = changed or retaxed
+        phases.append(_restated_phase(phase, items))
     if not changed:
         return "unchanged"
     with stripe_errors():
         stripe_service.update_schedule(schedule_id, {"end_behavior": "release", "phases": phases})
     logger.info("[BILLING] Hub %s retaxed the phases of schedule %s", hub.id, schedule_id)
     return "retaxed"
+
+
+def _restated_items(hub: Hub, subscription: Subscription, phase: dict) -> tuple[list[dict], bool] | None:
+    """The items of a phase with today's rates, and whether any changed; ``None`` when one cannot be retaxed."""
+    sales = []
+    for item in phase.get("items") or []:
+        price = item["price"] if isinstance(item["price"], str) else item["price"]["id"]
+        held = [rate["id"] if isinstance(rate, dict) else rate for rate in item.get("tax_rates") or []]
+        sales.append((price, item.get("quantity") or 1, held, _item_sale(subscription, {"price": {"id": price}})))
+    # What a renewal of that phase charges, net: the 400 € of the simplified invoice is on the whole of it.
+    recurring = sum((sale.net for _price, _quantity, _held, sale in sales if sale is not None), Decimal("0"))
+    items = []
+    changed = False
+    for price, quantity, held, sale in sales:
+        due = held
+        if sale is not None:
+            try:
+                due = price_sale(hub, sale, recurring_net=recurring, renewing=True)
+            except Conflict as refused:
+                _retax_refused(hub, sale.kind, refused)
+                return None
+        changed = changed or sorted(held) != sorted(due)
+        items.append({"price": price, "quantity": quantity, "tax_rates": due})
+    return items, changed
+
+
+def _restated_phase(phase: dict, items: list[dict]) -> dict:
+    restated = {"items": items, "start_date": phase["start_date"], "proration_behavior": "none"}
+    if phase.get("end_date") is not None:
+        restated["end_date"] = phase["end_date"]
+    if phase.get("trial_end"):
+        restated["trial_end"] = phase["trial_end"]
+    restated["discounts"] = discounts.held_discounts(phase)
+    return restated
 
 
 def retax_payer(profile_id) -> None:

@@ -14,7 +14,7 @@
     "provider": null,
     "status": null
   },
-  "billing_address_collection": "required",
+  "billing_address_collection": null,
   "branding_settings": {
     "background_color": "#ffffff",
     "border_style": "rounded",
@@ -34,7 +34,7 @@
   },
   "consent": null,
   "consent_collection": null,
-  "created": 1794867982,
+  "created": 1794906804,
   "currency": "eur",
   "currency_conversion": null,
   "custom_fields": [],
@@ -44,7 +44,7 @@
     "submit": null,
     "terms_of_service_acceptance": null
   },
-  "customer": "cus_Vdq23DiQO9M7wB",
+  "customer": "cus_Ve0TYT3eDtc7yU",
   "customer_account": null,
   "customer_creation": null,
   "customer_details": {
@@ -60,12 +60,12 @@
   "customer_email": null,
   "discounts": [
     {
-      "coupon": "free-months-6",
+      "coupon": "erp-discount-fixture-r100",
       "promotion_code": null
     }
   ],
-  "expires_at": 1794954382,
-  "id": "cs_test_a0lsqMINN8rjc0Z4JuzAoqFllpgdSyeqaGOpSFSYs5GluXCGwBYX1B8j81",
+  "expires_at": 1794993203,
+  "id": "cs_test_a0RM6lGrwmc6CCt9Sf7JxgDZ9VvNhWnVd5pmkNJ1u1CVrgGXmf8TOlI8fK",
   "integration_identifier": null,
   "invoice": null,
   "invoice_creation": null,
@@ -75,12 +75,7 @@
     "enabled": false
   },
   "marketing_attributions": null,
-  "metadata": {
-    "billing_interval": "month",
-    "hub_id": "00000000-0000-7000-8000-000000000001",
-    "plan": "starter",
-    "promo_code": "testers"
-  },
+  "metadata": {},
   "mode": "subscription",
   "object": "checkout.session",
   "origin_context": null,
@@ -107,7 +102,7 @@
   },
   "recovered_from": null,
   "redirect_on_completion": "if_required",
-  "return_url": "https://example.com/return?checkout={CHECKOUT_SESSION_ID}",
+  "return_url": "https://example.com/r?c={CHECKOUT_SESSION_ID}",
   "saved_payment_method_options": {
     "allow_redisplay_filters": [
       "always"

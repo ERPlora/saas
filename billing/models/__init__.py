@@ -14,6 +14,7 @@ from billing.models.tax import (
     country_code_validator,
     region_code_validator,
 )
+from billing.models.discounts import MAX_DISCOUNT_MONTHS, Discount
 from billing.models.promo_codes import MAX_PROMO_TRIAL_DAYS, PromoCode, PromoRedemption, normalise_promo_code
 from billing.models.payments import CheckoutAttempt, PaymentFailure, WebhookEvent
 from billing.models.invoices import TAX_TREATMENTS, Invoice, InvoiceCounter, InvoiceLine

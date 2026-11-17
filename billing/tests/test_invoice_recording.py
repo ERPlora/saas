@@ -39,7 +39,7 @@ from billing.tests.stripe_double import (
     subscription,
 )
 from billing.tests.vies_double import NOT_REGISTERED, VALID, no_network, vies_says
-from hubs.models import BillingProfile, Hub
+from hubs.models import BillingProfile
 
 pytestmark = pytest.mark.django_db
 
@@ -52,16 +52,6 @@ def _stripe(stripe_double, issuer_identity):
     # A credit note is read LIVE before it becomes a rectifying invoice (a voided one never does).
     stripe_double.answer("credit_notes.retrieve", lambda call: {"id": call.args[0], "object": "credit_note", "status": "issued"})
     return stripe_double
-
-
-@pytest.fixture
-def running(shop):
-    """A ready business paying Starter monthly (``sub_1``), its payer in Madrid."""
-    paid = pay(shop)
-    Hub.objects.filter(pk=paid.pk).update(
-        status=Hub.Status.ACTIVE, ready_at=timezone.now(), pending_hub_call=""
-    )
-    return Hub.objects.select_related("billing_profile").get(pk=paid.pk)
 
 
 def deliver(payload, *, status=200):

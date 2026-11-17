@@ -165,6 +165,18 @@ def shop(owner, plans):
 
 
 @pytest.fixture
+def running(shop):
+    """``shop`` ready and paying Starter monthly (``sub_1``), its payer in Madrid."""
+    from django.utils import timezone
+
+    from hubs.models import Hub
+
+    paid = pay(shop)
+    Hub.objects.filter(pk=paid.pk).update(status=Hub.Status.ACTIVE, ready_at=timezone.now(), pending_hub_call="")
+    return Hub.objects.select_related("billing_profile").get(pk=paid.pk)
+
+
+@pytest.fixture
 def marked(shop):
     """``shop`` once ERPlora's staff marked it in the admin: its owner is offered the internal plans. ``payment-test``
     gets its monthly Stripe price, as the admin fills it in (it has no annual one)."""

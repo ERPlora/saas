@@ -32,6 +32,7 @@ from billing.models import (
     PayingCustomer,
     PaymentFailure,
     PlanChangeSchedule,
+    Discount,
     PromoCode,
     PromoRedemption,
     TaxCategory,
@@ -43,6 +44,7 @@ from billing.models import (
 pytestmark = pytest.mark.django_db
 
 AUDITED = {
+    Discount,
     TaxCategory,
     TaxRule,
     FiscalPolicy,
@@ -165,6 +167,15 @@ class TestWhatIsWritten:
         assert list(_entries_for(promo).values_list("action", flat=True)) == [LogEntry.Action.CREATE]
         assert not {"redemption_count", "updated_at"} & _fields_written(_entries_for(promo).get())
         assert _entries_for(redemption).get().changes_dict["hub"][1] == str(shop.pk)
+
+    def test_a_discount_is_logged_with_its_plans(self, plans):
+        from hubs.models import Plan
+
+        discount = Discount.objects.create(name="Testers", percent_off=100, duration="repeating", duration_in_months=6)
+        discount.plans.set(Plan.objects.filter(slug="starter"))
+
+        assert LogEntry.Action.CREATE in set(_entries_for(discount).values_list("action", flat=True))
+        assert "plans" in _entries_for(discount).latest("timestamp").changes_dict
 
     def test_a_checkout_is_logged_without_its_client_secret(self, shop):
         attempt = CheckoutAttempt.objects.create(

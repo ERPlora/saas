@@ -1,10 +1,8 @@
 """The schemas of ``billing.promo.check``: a promo code typed in the store, and what it grants."""
 
-from typing import Literal
-
 from ninja import Field, Schema
 
-PromoKind = Literal["trial_days", "free_months"]
+from billing.schemas.discounts import DiscountOut
 
 
 class PromoCheckIn(Schema):
@@ -14,11 +12,10 @@ class PromoCheckIn(Schema):
 
 
 class PromoCheckOut(Schema):
-    """Whether the code is valid now and what it grants: trial days or free months (``0`` for the other, and for both
-    when it is not valid)."""
+    """Whether the code is valid now and what it grants: trial days (``0`` without them) or a discount (``None``
+    without one, and both when the code is not valid)."""
 
     code: str
     valid: bool
-    kind: PromoKind
     trial_days: int
-    free_months: int
+    discount: DiscountOut | None
