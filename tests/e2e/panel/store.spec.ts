@@ -52,6 +52,26 @@ async function sidewaysScroll(page: Page): Promise<string[]> {
   return overflowingBoxes(page, 1);
 }
 
+/** Ionic scrolls inside the viewport: enlarge that viewport to capture the whole plan page, then restore its size. */
+async function planShot(page: Page, name: string): Promise<void> {
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error('The plan screenshot needs a viewport');
+  const fullHeight = await page.evaluate(() => {
+    const shown = [...document.querySelectorAll('ion-router-outlet > .ion-page:not(.ion-page-hidden)')].at(-1);
+    const content = shown?.querySelector('ion-content');
+    const scroller = content?.shadowRoot?.querySelector<HTMLElement>('[part="scroll"]');
+    if (!content || !scroller) return window.innerHeight;
+    scroller.scrollTop = 0;
+    const box = content.getBoundingClientRect();
+    return Math.ceil(scroller.scrollHeight + box.top + window.innerHeight - box.bottom);
+  });
+  await page.setViewportSize({ width: viewport.width, height: Math.max(viewport.height, fullHeight) });
+  await settled(page);
+  await page.screenshot({ path: join(SHOTS_DIR, name), fullPage: true });
+  await page.setViewportSize(viewport);
+  await settled(page);
+}
+
 test.describe('store', () => {
   test.beforeEach(async ({ page }) => {
     await signIn(page.request, STORE);
@@ -270,19 +290,68 @@ test.describe('store', () => {
     expect(striped).toEqual([]);
   });
 
-  for (const { width, height } of VIEWPORTS) {
+  test('plan price and action rows align at desktop, and features expand together from the keyboard', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const cafe = await businessIdOf(page.request, 'Café Central');
+    await page.goto(`/dashboard/store/plans?business=${cafe}`);
+    const cards = page.locator('.plans-grid > ion-card');
+    await expect(cards).toHaveCount(3);
+    const priceTops = await cards.getByTestId('plan-price').evaluateAll((prices) => prices.map((price) => Math.round(price.getBoundingClientRect().top)));
+    const actionTops = await cards.locator('.plan-card__actions').evaluateAll((actions) => actions.map((action) => Math.round(action.getBoundingClientRect().top)));
+    expect(new Set(priceTops).size, `price tops: ${priceTops}`).toBe(1);
+    expect(new Set(actionTops).size, `action tops: ${actionTops}`).toBe(1);
+
+    const toggles = cards.getByTestId('plan-features-toggle');
+    expect(await toggles.count()).toBeGreaterThan(0);
+    const collapsed = await cards.evaluateAll((items) => items.map((item) => item.querySelectorAll('ion-item').length));
+    await toggles.first().locator('button').focus();
+    await page.keyboard.press('Enter');
+    for (const toggle of await toggles.all()) await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const expanded = await cards.evaluateAll((items) => items.map((item) => item.querySelectorAll('ion-item').length));
+    expect(expanded.some((count, index) => count > collapsed[index])).toBe(true);
+    await toggles.first().click();
+    for (const toggle of await toggles.all()) await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  for (const { width, height } of [VIEWPORTS[0], { width: 768, height: 1024 }, VIEWPORTS[2]]) {
     for (const theme of ['light', 'dark'] as const) {
       test(`Plans and Modules at ${width} px (${theme}): no sideways scroll, no error`, async ({ page }) => {
         const errors = watchPageErrors(page);
         await page.emulateMedia({ colorScheme: theme });
         await page.setViewportSize({ width, height });
         const bakery = await businessIdOf(page.request, 'Panadería López');
+        const cafe = await businessIdOf(page.request, 'Café Central');
         for (const tab of ['plans', 'modules'] as const) {
-          await page.goto(`/dashboard/store/${tab}?business=${bakery}`);
+          await page.goto(`/dashboard/store/${tab}?business=${tab === 'plans' ? cafe : bakery}`);
           await expect(page.getByTestId(`store-${tab}`)).toBeVisible();
           await settled(page);
           expect(await sidewaysScroll(page), `${tab} at ${width}`).toEqual([]);
-          await page.screenshot({ path: join(SHOTS_DIR, `store-${tab}-${width}-${theme}.png`), fullPage: true });
+          if (tab === 'modules') {
+            await page.screenshot({ path: join(SHOTS_DIR, `store-modules-${width}-${theme}.png`), fullPage: true });
+          }
+          if (tab === 'plans') {
+            await planShot(page, `store-plans-${width}-${theme}.png`);
+            const toggle = page.getByTestId('plan-features-toggle').first();
+            await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+            const controls = await toggle.getAttribute('aria-controls');
+            expect(controls).toBeTruthy();
+            await expect(page.locator(`#${controls}`)).toBeVisible();
+            if (width === 390) {
+              expect((await toggle.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+              const gap = await page.getByTestId('plan-free').evaluate((card) => {
+                const price = card.querySelector('[data-testid="plan-price"]')!.getBoundingClientRect();
+                const feature = card.querySelector('ion-item')!.getBoundingClientRect();
+                return feature.top - price.bottom;
+              });
+              expect(gap, 'Free has no empty action slot on a phone').toBeLessThanOrEqual(32);
+            }
+            await toggle.click();
+            await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+            await settled(page);
+            expect(await sidewaysScroll(page), `expanded plans at ${width}`).toEqual([]);
+            await planShot(page, `store-plans-${width}-${theme}-expanded.png`);
+            await toggle.click();
+          }
         }
         expect(errors).toEqual([]);
       });

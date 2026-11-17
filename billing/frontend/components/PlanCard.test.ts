@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FREE, FREE_SUBSCRIPTION, PAYMENT_TEST, STARTER, plan, subscription } from '../__tests__/fixtures';
-import { mountBilling } from '../__tests__/mount-billing';
+import { ionProps, mountBilling } from '../__tests__/mount-billing';
 import type { Block } from '../store';
 import PlanCard from './PlanCard.vue';
 
@@ -410,6 +410,22 @@ describe('PlanCard', () => {
       const s = await card({ plan: withApps(40, ['All apps included']) });
       expect((s.text('plan-apps').find('ion-icon').element as unknown as { name?: string }).name).toBe('checkmark-outline');
     });
+  });
+
+  it('collapses a long feature list and expands it accessibly', async () => {
+    const long = plan('standard', 'Standard', '59.99', '599.90', {
+      features: Array.from({ length: 7 }, (_, index) => `Feature ${index + 1}`),
+    });
+    const s = await card({ plan: long, subscription: FREE_SUBSCRIPTION });
+    const toggle = s.text('plan-features-toggle');
+    expect(s.wrapper.findAll('ion-item')).toHaveLength(5);
+    expect(toggle.element.tagName).toBe('ION-BUTTON');
+    expect(ionProps(toggle, 'fill', 'size')).toEqual({ fill: 'clear', size: 'small' });
+    expect(toggle.attributes('aria-expanded')).toBe('false');
+    expect(toggle.attributes('aria-controls')).toBe(s.wrapper.get('ion-list').attributes('id'));
+    await toggle.trigger('click');
+    expect(s.wrapper.findAll('ion-item')).toHaveLength(8);
+    expect(toggle.text()).toBe('Show fewer');
   });
 
   it('speaks Spanish', async () => {
