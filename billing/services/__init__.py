@@ -4776,7 +4776,11 @@ def platform_backoff(attempts: int) -> timedelta:
     return min(PLATFORM_FIRST_WAIT * 2 ** max(attempts - 1, 0), PLATFORM_LONGEST_WAIT)
 
 
-def _iso(value) -> str | None:
+def _day(value) -> str | None:
+    """A day of the platform hub's contract, ``YYYY-MM-DD``: a moment (a period of Stripe) is the day it falls on in
+    Spain, never the moment itself, which the hub refuses."""
+    if isinstance(value, datetime):
+        value = timezone.localdate(value, timezone.get_default_timezone())
     return value.isoformat() if value is not None else None
 
 
@@ -4789,7 +4793,7 @@ def platform_payload(invoice: Invoice) -> dict:
         "kind": invoice.kind,
         "series": invoice.series,
         "number": invoice.number,
-        "issued_on": _iso(invoice.issued_on),
+        "issued_on": _day(invoice.issued_on),
         "stripe_invoice_id": invoice.stripe_invoice_id,
         "stripe_source_id": invoice.stripe_source_id,
         "rectification": (
@@ -4828,8 +4832,8 @@ def platform_payload(invoice: Invoice) -> dict:
                 "item_slug": line.item_slug,
                 "quantity": line.quantity,
                 "proration": line.proration,
-                "period_start": _iso(line.period_start),
-                "period_end": _iso(line.period_end),
+                "period_start": _day(line.period_start),
+                "period_end": _day(line.period_end),
                 "tax_category": line.tax_category_id,
                 "tax_treatment": line.tax_treatment or invoice.tax_treatment,
                 "tax_rate": str(line.tax_rate),
@@ -4841,7 +4845,7 @@ def platform_payload(invoice: Invoice) -> dict:
             for line in invoice.lines.order_by("position")
         ],
         "rectifies": (
-            {"id": str(rectified.id), "number": rectified.number, "issued_on": _iso(rectified.issued_on)}
+            {"id": str(rectified.id), "number": rectified.number, "issued_on": _day(rectified.issued_on)}
             if rectified is not None
             else None
         ),
