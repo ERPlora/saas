@@ -64,9 +64,9 @@ async function save(): Promise<void> {
     lastName.value = saved.last_name;
     // The side menu shows the person by these names: the entry reads the session again (saas#292).
     sessionChanged();
-    void toastSuccess(t('accounts.account.profile.saved'));
+    toastSuccess(t('accounts.account.profile.saved'));
   } catch {
-    if (update.error.value?.status !== 422) void toastError(text(update.error.value));
+    if (update.error.value?.status !== 422) toastError(text(update.error.value));
   }
 }
 

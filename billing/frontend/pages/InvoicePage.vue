@@ -85,11 +85,11 @@ async function downloadPdf(): Promise<void> {
     await browser.download(operationUrl('billing.invoice.pdf', { id: now.id }), 'application/pdf');
   } catch (error) {
     const failure = error as ApiError;
-    if (failure.code === 'billing.invoice_not_issued') void toastInfo(t('billing.invoices.pdfIssuing'));
-    else if (failure.code === 'billing.platform_unavailable') void toastError(t('billing.invoices.pdfUnavailable'));
+    if (failure.code === 'billing.invoice_not_issued') toastInfo(t('billing.invoices.pdfIssuing'));
+    else if (failure.code === 'billing.platform_unavailable') toastError(t('billing.invoices.pdfUnavailable'));
     else {
       console.error('billing: the invoice PDF could not be downloaded', error);
-      void toastError(text(failure));
+      toastError(text(failure));
     }
   } finally {
     fetching.value = false;

@@ -39,7 +39,7 @@ async function confirm(): Promise<void> {
   } catch {
     return; // `remove.error` is shown in the dialog.
   }
-  void toastSuccess(t('hubs.list.deleted', { name: deleted.name, date: formatDateTime(deleted.purge_after, locale.value) }));
+  toastSuccess(t('hubs.list.deleted', { name: deleted.name, date: formatDateTime(deleted.purge_after, locale.value) }));
   open.value = false;
   emit('deleted', deleted);
 }

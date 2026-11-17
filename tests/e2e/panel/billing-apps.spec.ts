@@ -227,6 +227,9 @@ test.describe('billing part 2: paid apps and the pages of Billing', () => {
     const errors = watchPageErrors(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
     await page.goto(`/dashboard/store/plans?business=${cafe}`);
+    // A card shows its first five lines; the line of the apps can sit below them.
+    await page.getByTestId('plan-features-toggle').first().click();
+    await expect(page.getByRole('button', { name: 'Show fewer', expanded: true }).first()).toBeVisible();
     await atEverySize(page, 'BILLING-G95', async () => {
       await expect(page.getByTestId('plan-free').getByTestId('plan-current')).toBeVisible();
       await expect(page.getByTestId('plan-starter').getByTestId('plan-upgrade')).toBeVisible();

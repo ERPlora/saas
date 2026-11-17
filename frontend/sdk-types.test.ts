@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const PYTHON = readFileSync(join(HERE, '..', 'hubs', 'schemas.py'), 'utf8');
+const PYTHON = readFileSync(join(HERE, '..', 'hubs', 'schemas', '__init__.py'), 'utf8');
 // The types of a promo code live in their own file, next to the Store that uses them.
 const TYPES = ['sdk-types.d.ts', '../billing/frontend/promo-types.d.ts', '../billing/frontend/discount-types.d.ts']
   .map((file) => readFileSync(join(HERE, file), 'utf8'))
@@ -193,7 +193,7 @@ describe('sdk-types.d.ts follows hubs/schemas.py', () => {
 
 /** The Store's schemas, by their file: the same guard as hubs'. */
 const STORE_SCHEMAS: Array<[file: string, names: string[]]> = [
-  ['hubs/schemas.py', ['BillingProfileGetIn', 'BillingProfileIn', 'BillingProfileOut']],
+  ['hubs/schemas/__init__.py', ['BillingProfileGetIn', 'BillingProfileIn', 'BillingProfileOut']],
   [
     'billing/schemas/__init__.py',
     [

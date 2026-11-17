@@ -328,9 +328,9 @@ async function downloadPdfs(invoices: InvoiceRowOut[]): Promise<void> {
     : alone
       ? t('billing.invoices.pdfIssuing')
       : t('billing.invoices.pdfNotReady', { count: waiting }, waiting);
-  // One notice for the download (a second one would close the first): what failed, then what is still being issued.
-  if (failure) void toastError(sentences([failure, issuing]));
-  else if (issuing) void toastInfo(issuing);
+  // One press, one notice: what failed, then what is still being issued, never two notices for one download.
+  if (failure) toastError(sentences([failure, issuing]));
+  else if (issuing) toastInfo(issuing);
 }
 
 /** The selected invoices that have their PDF, and how many have none yet: unpaid (an unpaid invoice has no PDF
@@ -373,7 +373,7 @@ async function downloadCsv(): Promise<void> {
     await browser.download(operationUrl('billing.invoice.csv', filters.value), 'text/csv');
   } catch (error) {
     console.error('billing: the invoices CSV could not be downloaded', error);
-    void toastError(text(error as ApiError));
+    toastError(text(error as ApiError));
   }
 }
 

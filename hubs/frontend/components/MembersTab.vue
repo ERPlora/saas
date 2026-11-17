@@ -154,18 +154,18 @@ async function act(action: MemberAction, row: MemberRowOut): Promise<void> {
 async function sendAgain(row: MemberRowOut): Promise<void> {
   try {
     const sent = await resend.run({ id: row.id });
-    void toastSuccess(t('hubs.members.resent', { email: sent.email }));
+    toastSuccess(t('hubs.members.resent', { email: sent.email }));
   } catch {
-    void toastError(text(resend.error.value));
+    toastError(text(resend.error.value));
   }
 }
 
 async function withdrawOffer(id: string): Promise<void> {
   try {
     await withdraw.run({ id });
-    void toastSuccess(t('hubs.members.pendingTransfer.cancelled'));
+    toastSuccess(t('hubs.members.pendingTransfer.cancelled'));
   } catch {
-    void toastError(text(withdraw.error.value));
+    toastError(text(withdraw.error.value));
   }
 }
 </script>

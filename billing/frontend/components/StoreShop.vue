@@ -44,7 +44,7 @@ import AnnualSwitchDialog from './AnnualSwitchDialog.vue';
 import BusinessPicker from './BusinessPicker.vue';
 import CheckoutModal, { type CheckoutPurchase } from './CheckoutModal.vue';
 import ModuleCard from './ModuleCard.vue';
-import PlanCard from './PlanCard.vue';
+import PlansGrid from './PlansGrid.vue';
 import PromoCodeField from './PromoCodeField.vue';
 import ProrationDialog, { type ProrationItem } from './ProrationDialog.vue';
 
@@ -296,7 +296,7 @@ function prorationDone(out: SubscriptionOut): void {
 }
 
 function stale(): void {
-  void toastInfo(t('billing.checkout.stale'));
+  toastInfo(t('billing.checkout.stale'));
   if (business.value) void loadCatalog(business.value.id);
 }
 
@@ -341,7 +341,7 @@ async function confirmCancel(): Promise<void> {
     apply(out);
     const plan = currentPlan.value?.name ?? out.plan;
     const date = formatDate(out.current_period_end, locale.value);
-    void toastSuccess(date ? t('billing.cancelPlan.done', { plan, date }) : t('billing.cancelPlan.doneNoDate', { plan }));
+    toastSuccess(date ? t('billing.cancelPlan.done', { plan, date }) : t('billing.cancelPlan.doneNoDate', { plan }));
     cancelOpen.value = false;
   } catch {
     // `cancelPlan.error`: the dialog says it.
@@ -354,9 +354,9 @@ async function keepThePlan(): Promise<void> {
   try {
     const out = await keepPlan.run({ hub_id: hub.id });
     apply(out);
-    void toastSuccess(t('billing.plans.kept', { plan: currentPlan.value?.name ?? out.plan, date: formatDate(out.current_period_end, locale.value) }));
+    toastSuccess(t('billing.plans.kept', { plan: currentPlan.value?.name ?? out.plan, date: formatDate(out.current_period_end, locale.value) }));
   } catch {
-    void toastInfo(text(keepPlan.error.value));
+    toastInfo(text(keepPlan.error.value));
   }
 }
 
@@ -399,7 +399,7 @@ async function confirmCancelModule(): Promise<void> {
     apply(out);
     const until = out.modules.find((item) => item.slug === module.slug)?.valid_until ?? out.current_period_end;
     const date = formatDate(until, locale.value);
-    void toastSuccess(
+    toastSuccess(
       date ? t('billing.cancelModule.done', { module: module.name, date }) : t('billing.cancelModule.doneNoDate', { module: module.name }),
     );
     moduleToCancel.value = null;
@@ -415,9 +415,9 @@ async function keepTheModule(module: SaleModule): Promise<void> {
     const out = await keepModule.run({ hub_id: hub.id, module: module.slug });
     apply(out);
     const date = formatDate(out.current_period_end, locale.value);
-    void toastSuccess(date ? t('billing.modules.kept', { module: module.name, date }) : t('billing.modules.keptNoDate', { module: module.name }));
+    toastSuccess(date ? t('billing.modules.kept', { module: module.name, date }) : t('billing.modules.keptNoDate', { module: module.name }));
   } catch {
-    void toastInfo(text(keepModule.error.value));
+    toastInfo(text(keepModule.error.value));
   }
 }
 </script>
@@ -576,22 +576,18 @@ async function keepTheModule(module: SaleModule): Promise<void> {
             <ion-label>{{ saving ? $t('billing.plans.annualSaving', { percent: saving }) : $t('billing.plans.annual') }}</ion-label>
           </ion-segment-button>
         </ion-segment>
-        <div class="card-grid">
-          <PlanCard
-            v-for="plan in shownPlans"
-            :key="plan.slug"
-            :plan="plan"
-            :period="period"
-            :subscription="subscription"
-            :block="block"
-            :scheduled-plan-name="scheduledPlanName"
-            @upgrade="upgrade(plan, $event)"
-            @change="change(plan, $event)"
-            @switch="switchBilling($event)"
-            @downgrade="cancelOpen = true"
-            @keep="keepThePlan"
-          />
-        </div>
+        <PlansGrid
+          :plans="shownPlans"
+          :period="period"
+          :subscription="subscription"
+          :block="block"
+          :scheduled-plan-name="scheduledPlanName"
+          @upgrade="upgrade"
+          @change="change"
+          @switch="switchBilling"
+          @downgrade="cancelOpen = true"
+          @keep="keepThePlan"
+        />
         <p
           v-if="later"
           class="section-intro"
