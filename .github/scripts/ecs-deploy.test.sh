@@ -586,16 +586,35 @@ run_deploy && status=0 || status=$?
 check "settings: an app_env that is no object of families deploys nothing" \
   'nothing_registered && grep -q "::error::/erplora/prod/saas/app_env is no JSON object of families" "$work/out.log"'
 
-# One owner per variable: a setting the revision has and the app_env in force does not is Terraform's.
-setup
-task_definition erplora-prod-saas '[{"name": "saas", "image": "reg.example/erplora/saas:bootstrap", "environment": [
-  {"name": "CACHE_KEY_PREFIX", "value": "saas"}, {"name": "MICROSOFT_STORE_APP_ID", "value": "9P5C0XP1GS69"}]}]' \
-  > "$FIXTURES/erplora-prod-saas.json"
-jq -c 'del(.saas.MICROSOFT_STORE_APP_ID)' "$FIXTURES/app_env.prod.json" > "$work/app_env.json"
-mv "$work/app_env.json" "$FIXTURES/app_env.prod.json"
+# One owner per variable. ERPlora/aws passes the settings on from app_env and never sets them itself, so one the latest
+# revision has and the app_env in force lacks was left by a rollback, or by a deploy that failed after registering.
+# after_rollback: the latest saas revision has the Store ID and the app_env in force does not.
+after_rollback() {
+  setup
+  task_definition erplora-prod-saas '[{"name": "saas", "image": "reg.example/erplora/saas:bootstrap", "environment": [
+    {"name": "CACHE_KEY_PREFIX", "value": "saas"}, {"name": "MICROSOFT_STORE_APP_ID", "value": "9P5C0XP1GS69"}]}]' \
+    > "$FIXTURES/erplora-prod-saas.json"
+  jq -c 'del(.saas.MICROSOFT_STORE_APP_ID)' "$FIXTURES/app_env.prod.json" > "$work/app_env.json"
+  mv "$work/app_env.json" "$FIXTURES/app_env.prod.json"
+}
+after_rollback
 run_deploy && status=0 || status=$?
-check "one owner: a setting ERPlora/aws sets in a family deploys nothing" \
-  'nothing_registered && grep -q "::error::erplora-prod-saas: ERPlora/aws sets MICROSOFT_STORE_APP_ID in this family" "$work/out.log"'
+check "one owner: after a rollback took a setting out of the app_env, the file that has it deploys and records it" \
+  '[ "$status" -eq 0 ] && [ "$(env_of erplora-prod-saas saas | jq -r .MICROSOFT_STORE_APP_ID)" = 9P5C0XP1GS69 ] &&
+   [ "$(recorded prod | jq -r .saas.MICROSOFT_STORE_APP_ID)" = 9P5C0XP1GS69 ]'
+after_rollback
+settings 'del(.prod.saas.MICROSOFT_STORE_APP_ID)'
+run_deploy && status=0 || status=$?
+check "one owner: after that rollback, a file without the setting takes it out of the revision" \
+  '[ "$status" -eq 0 ] && [ "$(env_of erplora-prod-saas saas | jq "has(\"MICROSOFT_STORE_APP_ID\")")" = false ] &&
+   [ "$(recorded prod | jq ".saas | has(\"MICROSOFT_STORE_APP_ID\")")" = false ]'
+setup
+task_definition erplora-prod-saas '[{"name": "saas", "image": "reg.example/erplora/saas:bootstrap",
+  "environment": [{"name": "CACHE_KEY_PREFIX", "value": "saas"}],
+  "secrets": [{"name": "MICROSOFT_STORE_APP_ID", "valueFrom": "arn:secret:store"}]}]' > "$FIXTURES/erplora-prod-saas.json"
+run_deploy && status=0 || status=$?
+check "one owner: a setting ERPlora/aws gives a family as a secret deploys nothing" \
+  'nothing_registered && grep -q "::error::erplora-prod-saas: ERPlora/aws sets MICROSOFT_STORE_APP_ID" "$work/out.log"'
 setup
 task_definition erplora-prod-saas '[{"name": "saas", "image": "reg.example/erplora/saas:bootstrap", "environment": [
   {"name": "CACHE_KEY_PREFIX", "value": "saas"}, {"name": "MICROSOFT_STORE_APP_ID", "value": "9P5C0XP1GS69"}]}]' \

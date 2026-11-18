@@ -375,16 +375,18 @@ fichero **del commit que despliega** y, antes de registrar nada, rechaza:
   con pinta de secreto (ningún mensaje repite el valor: el repositorio es público);
 - en `pre`, cualquier cosa que no sea `STRIPE_EXPECTED_MODE=test` y las otras tres en `false`, y Analytics fuera
   de la web de prod; las cuatro, explícitas en cada familia y con el mismo valor en todas las de un entorno;
-- una variable que la revisión vigente lleva y el `app_env` vigente (`/erplora/<entorno>/saas/app_env`) no: es
-  de `ERPlora/aws` (un solo dueño por variable);
+- una variable del fichero que `ERPlora/aws` da como secreto a esa familia (un solo dueño por variable: fuera de los
+  secretos, `ERPlora/aws` no fija ninguno de estos ajustes, solo pasa a sus revisiones los del `app_env` vigente,
+  `/erplora/<entorno>/saas/app_env`);
 - en prod, cambiar `PLATFORM_INVOICING_ENABLED`, `AEAT_PRODUCTION_ENABLED` o `STRIPE_EXPECTED_MODE` respecto al
   `app_env` vigente sin confirmarlo: un push así no despliega, y se despliega a mano (`deploy.yml`,
   `workflow_dispatch`) con `confirm_protected` = `VAR=valor` de cada cambio, separados por comas;
 - en prod, cobrar de verdad (`PLATFORM_INVOICING_ENABLED=true`) si la última revisión de `erplora-prod-hub` o de
   `erplora-prod-worker` no lleva `VERIFACTU_PRODUCTION_ENABLED=true`.
 
-Después aplica a cada familia los ajustes del fichero (quita los que el `app_env` anterior tenía y el fichero ya
-no) y, cuando los servicios corren las revisiones nuevas, escribe los ajustes en `app_env` y la imagen en
+Después aplica a cada familia los ajustes del fichero (quita de la revisión todo ajuste que el fichero ya no trae,
+también uno que el `app_env` vigente no nombra porque lo dejó una vuelta atrás o un despliegue que falló después de
+registrar) y, cuando los servicios corren las revisiones nuevas, escribe los ajustes en `app_env` y la imagen en
 `image_tag`: Terraform relee los dos, así que sus revisiones, y con ellas las tareas programadas, los conservan.
 Un commit anterior al fichero (una release antigua que se vuelve a desplegar) se despliega con los ajustes vigentes, y
 el despliegue lo avisa.
