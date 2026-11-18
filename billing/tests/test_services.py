@@ -15,6 +15,7 @@ from django.db import DatabaseError
 
 from billing import queries, services
 from billing.models import VatCheck
+from billing.services import payer_vat_numbers, vat_clearance
 from billing.tests.stripe_double import connection_error, invalid_request
 from billing.tests.vies_double import (
     FAKE_VAT,
@@ -36,7 +37,7 @@ def _issuer(issuer_identity):
 class TestTheClearance:
     def test_no_number_is_absent(self):
         with no_network() as vies:
-            clearance = services.clear_tax_id_for_stripe("  ")
+            clearance = vat_clearance.clear_tax_id_for_stripe("  ")
 
         vies.assert_not_called()
         assert (
@@ -47,7 +48,7 @@ class TestTheClearance:
 
     def test_a_proved_number_travels_and_grants_reverse_charge(self):
         with vies_says(**VALID):
-            clearance = services.clear_tax_id_for_stripe(
+            clearance = vat_clearance.clear_tax_id_for_stripe(
                 REAL_VAT, customer_country="DE"
             )
 
@@ -60,7 +61,7 @@ class TestTheClearance:
 
     def test_a_number_vies_does_not_know_stays_here(self):
         with vies_says(**NOT_REGISTERED):
-            clearance = services.clear_tax_id_for_stripe(
+            clearance = vat_clearance.clear_tax_id_for_stripe(
                 FAKE_VAT, customer_country="DE"
             )
 
@@ -68,7 +69,7 @@ class TestTheClearance:
 
     def test_a_national_number_travels_without_asking(self):
         with no_network() as vies:
-            clearance = services.clear_tax_id_for_stripe(
+            clearance = vat_clearance.clear_tax_id_for_stripe(
                 "ESB12345678", customer_country="ES"
             )
 
@@ -81,7 +82,7 @@ class TestTheClearance:
 
     def test_a_uk_number_travels_as_identification(self):
         with no_network() as vies:
-            clearance = services.clear_tax_id_for_stripe("GB123456789")
+            clearance = vat_clearance.clear_tax_id_for_stripe("GB123456789")
 
         vies.assert_not_called()
         assert (
@@ -96,7 +97,7 @@ class TestTheClearance:
             vies_says(**VALID),
             patch.object(VatCheck, "save", side_effect=DatabaseError("db down")),
         ):
-            clearance = services.clear_tax_id_for_stripe(
+            clearance = vat_clearance.clear_tax_id_for_stripe(
                 REAL_VAT, customer_country="DE"
             )
 
@@ -113,7 +114,7 @@ class TestTheClearance:
 class TestTheProfileHook:
     def test_a_european_number_is_written_with_its_prefix_and_verdict(self):
         with vies_says(**VALID) as vies:
-            result = services.validate_vat_for_profile("DE", " 812 871 812 ")
+            result = payer_vat_numbers.validate_vat_for_profile("DE", " 812 871 812 ")
 
         assert vies.call_args.kwargs["json"]["countryCode"] == "DE"
         assert result.vat_number == "DE812871812"
@@ -125,7 +126,7 @@ class TestTheProfileHook:
     def test_greece_gets_its_vies_prefix(self):
         with vies_says(**VALID) as vies:
             assert (
-                services.validate_vat_for_profile("GR", "094014201").vat_number
+                payer_vat_numbers.validate_vat_for_profile("GR", "094014201").vat_number
                 == "EL094014201"
             )
 
@@ -133,7 +134,7 @@ class TestTheProfileHook:
 
     def test_a_spanish_nif_stays_as_typed_and_is_not_asked_about(self):
         with no_network() as vies:
-            result = services.validate_vat_for_profile("ES", "b-2759.3136")
+            result = payer_vat_numbers.validate_vat_for_profile("ES", "b-2759.3136")
 
         vies.assert_not_called()
         assert (result.vat_number, result.status, result.reverse_charge) == (
@@ -144,7 +145,7 @@ class TestTheProfileHook:
 
     def test_no_number_is_a_consumer(self):
         with no_network() as vies:
-            result = services.validate_vat_for_profile("FR", "")
+            result = payer_vat_numbers.validate_vat_for_profile("FR", "")
 
         vies.assert_not_called()
         assert (result.vat_number, result.status) == ("", "absent")
@@ -169,8 +170,8 @@ class TestTheProfileHook:
     def test_a_shape_that_cannot_be_a_vat_number_is_refused_before_asking(
         self, country, vat_number
     ):
-        with no_network() as vies, pytest.raises(services.MalformedVatNumber):
-            services.validate_vat_for_profile(country, vat_number)
+        with no_network() as vies, pytest.raises(payer_vat_numbers.MalformedVatNumber):
+            payer_vat_numbers.validate_vat_for_profile(country, vat_number)
 
         vies.assert_not_called()
         assert VatCheck.objects.count() == 0
@@ -232,7 +233,7 @@ class TestTheOperationNeedsAnAccount:
         from billing.schemas import VatCheckIn
 
         with no_network() as vies, pytest.raises(Unauthorized):
-            services.vat_check_run(system_context(Scope("user", "system")), VatCheckIn(vat_number=REAL_VAT))
+            payer_vat_numbers.vat_check_run(system_context(Scope("user", "system")), VatCheckIn(vat_number=REAL_VAT))
 
         vies.assert_not_called()
 

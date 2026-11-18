@@ -5,7 +5,7 @@ Here, the piece: the query identifies the requester, each answer of the Commissi
 verdict and NOTHING that can go wrong (network down, HTTP 500, unintelligible JSON) ends in
 ``verified``: when in doubt the VAT is charged, which is the recoverable outcome.
 
-``billing.vies`` is the HTTP client (no ORM) and ``billing.services.check_vat_number`` asks it as the
+``billing.vies`` is the HTTP client (no ORM) and ``billing.services.vat_clearance.check_vat_number`` asks it as the
 identified requester and logs the answer as a ``VatCheck``. The endpoint and the timeout come from the
 settings, a timeout is an answer
 (``unavailable``), and a log that cannot be written is never reported as checked.
@@ -17,8 +17,9 @@ import pytest
 import requests
 from django.db import DatabaseError
 
-from billing import queries, services, vies
+from billing import queries, vies
 from billing.models import VatCheck
+from billing.services import vat_clearance
 from billing.tests.vies_double import (
     MEMBER_STATE_DOWN,
     NOT_REGISTERED,
@@ -40,7 +41,7 @@ def _issuer(issuer_identity):
 
 
 def _check(vat_number=VAT):
-    return services.check_vat_number(vat_number)
+    return vat_clearance.check_vat_number(vat_number)
 
 
 class TestNormalising:
@@ -291,23 +292,23 @@ class TestEveryQueryIsLogged:
             vies_says(**VALID),
             patch.object(VatCheck, "save", side_effect=DatabaseError("db down")),
         ):
-            with pytest.raises(services.VatCheckNotRecorded):
+            with pytest.raises(vat_clearance.VatCheckNotRecorded):
                 _check()
 
 
 class TestTheDoor:
     def test_nothing_to_verify(self):
         with no_network() as post:
-            assert services.verify_customer_vat("") is None
+            assert vat_clearance.verify_customer_vat("") is None
 
         post.assert_not_called()
 
     def test_a_current_verdict_is_reused(self):
         with vies_answers(VALID, requestIdentifier="WAPIAAAAX5"):
-            services.verify_customer_vat(VAT)
+            vat_clearance.verify_customer_vat(VAT)
 
         with no_network() as post:
-            again = services.verify_customer_vat(VAT)
+            again = vat_clearance.verify_customer_vat(VAT)
 
         post.assert_not_called()
         assert again.consultation_number == "WAPIAAAAX5"
@@ -316,9 +317,9 @@ class TestTheDoor:
         """There is no queue to revalidate in the background: the next
         need asks the Commission again, so an ``unavailable`` does not stick for thirty days."""
         with vies_is_down():
-            first = services.verify_customer_vat(VAT)
+            first = vat_clearance.verify_customer_vat(VAT)
         with vies_says(**VALID) as post:
-            second = services.verify_customer_vat(VAT)
+            second = vat_clearance.verify_customer_vat(VAT)
 
         assert (first.status, second.status) == ("unavailable", "verified")
         post.assert_called_once()
@@ -326,8 +327,8 @@ class TestTheDoor:
     def test_a_uk_number_is_hmrcs_not_vies(self):
         """VIES answers INVALID_INPUT to a GB prefix since Brexit: nothing is asked."""
         with no_network() as post:
-            assert services.verify_customer_vat("GB123456789") is None
-            assert services.verify_customer_vat("XI123456789") is None
+            assert vat_clearance.verify_customer_vat("GB123456789") is None
+            assert vat_clearance.verify_customer_vat("XI123456789") is None
 
         post.assert_not_called()
 

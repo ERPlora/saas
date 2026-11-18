@@ -321,10 +321,10 @@ class TestTheSharedRateLimit:
 
     def test_the_panel_and_the_admin_spend_the_same_budget(self, buyer, rate_limited):
         """Two doors, one counter: otherwise the limit is whatever the doors add up to."""
-        from billing import services
+        from billing.services import vat_clearance
 
         with vies_says(**VALID):
-            services.check_vat_number(VAT, spender=buyer)
+            vat_clearance.check_vat_number(VAT, spender=buyer)
         browser = Client()
         browser.force_login(buyer)
         with no_network() as vies:
@@ -367,9 +367,9 @@ class TestTheSharedRateLimit:
         """A double click or two tabs do not hold two connections waiting on VIES."""
         from django.core.cache import cache
 
-        from billing import services
+        from billing.services import payer_vat_numbers
 
-        cache.add(services.in_flight_key(buyer), 1, timeout=30)
+        cache.add(payer_vat_numbers.in_flight_key(buyer), 1, timeout=30)
         with no_network() as vies:
             response = _ask(signed_in, vat_number=VAT, country="DE")
 
@@ -379,14 +379,14 @@ class TestTheSharedRateLimit:
     def test_the_lock_is_given_back_whatever_the_answer(self, signed_in, buyer):
         from django.core.cache import cache
 
-        from billing import services
+        from billing.services import payer_vat_numbers
 
         with vies_is_down():
             _ask(signed_in, vat_number=VAT, country="DE")
         with patch.object(VatCheck, "save", side_effect=DatabaseError("db down")), vies_says(**VALID):
             _ask(signed_in, vat_number=VAT, country="DE")
 
-        assert cache.get(services.in_flight_key(buyer)) is None
+        assert cache.get(payer_vat_numbers.in_flight_key(buyer)) is None
 
 
 class TestTheAnswerSaysWhatTheSaleWillDo:

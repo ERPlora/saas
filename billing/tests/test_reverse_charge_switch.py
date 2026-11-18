@@ -4,7 +4,7 @@ The path is closed by default and fails closed: when in doubt, the VAT is charge
 
 Adapted: ``TestTheWebhookAsksVies`` (2) drove Stripe's ``checkout.session.completed`` webhook; what it
 proved —the sale door asks the VIES verdict and believes it— is proved here through that door,
-``billing.services.sale_tax_rates``, which Stripe's checkout and webhook call. Its third class,
+``billing.services.sale_tax.sale_tax_rates``, which Stripe's checkout and webhook call. Its third class,
 ``TestTheInvoiceKeepsTheEvidence`` (1), is ``test_invoice_recording.TestTheVatOfEachSale``.
 """
 
@@ -13,8 +13,9 @@ from unittest.mock import patch
 
 import pytest
 
-from billing import queries, services
+from billing import queries
 from billing.models import VatCheck
+from billing.services import sale_tax
 from billing.vat import resolve_vat
 
 pytestmark = pytest.mark.django_db
@@ -108,8 +109,8 @@ class TestTheSaleDoorAsksVies:
             status=VatCheck.VERIFIED if verified else VatCheck.INVALID,
             consultation_number="WAPIAAAAXswitch",
         )
-        with patch("billing.services.verify_customer_vat", return_value=check) as asked:
-            specs = services.sale_tax_rates(
+        with patch("billing.services.vat_clearance.verify_customer_vat", return_value=check) as asked:
+            specs = sale_tax.sale_tax_rates(
                 business, category_key=PLAN, price=Decimal("100.00")
             )
         return specs, asked

@@ -7,7 +7,7 @@
 
 Adapted: the old test that compared the helper with ``RepresentationGrant`` (not in the SaaS any more:
 the representation is the Hub's) compares it with the payer's door (``hubs.billing_profile.update``, which
-spells a tax id with ``billing.services.vat_number_for``).
+spells a tax id with ``billing.services.payer_vat_numbers.vat_number_for``).
 """
 
 import pytest
@@ -35,7 +35,7 @@ class TestNormaliseNif:
     @pytest.mark.django_db
     def test_it_spells_a_spanish_nif_as_the_payers_door_stores_it(self):
         """A helper that disagreed with what the payer's form stores would look up ghosts."""
-        from billing.services import vat_number_for
+        from billing.services.payer_vat_numbers import vat_number_for
 
         for raw in (" b-1234 5678 ", "x-1234567l", "12345678z", "b-12.345.678"):
             assert normalise_nif(raw) == vat_number_for("ES", raw)
