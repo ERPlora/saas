@@ -43,9 +43,10 @@ describe('panel-chrome.css', () => {
     expect(rule(".app-topbar ion-buttons[slot='start']:has(> [data-testid='topbar-back']) > ion-menu-button")).toBe('display: none;');
   });
 
-  it('on a phone the topbar title takes the row its buttons leave, not a third of it («Panadería Ló…»)', () => {
-    const phone = media('(max-width: 640px)');
-    expect(rule("ion-header.app-topbar ion-toolbar.ios > ion-buttons[slot]", phone)).toBe('flex: 0 0 auto;');
+  // The shell lays the bar out on a phone: the title's box takes its text and the two groups share the rest alike, so
+  // it stays centred beside the bell's pill. Groups sized to their buttons here pushed it 45 px off at 390.
+  it('leaves the topbar’s button groups to the shell, which keeps the title centred on a phone', () => {
+    expect(CSS).not.toContain('ion-toolbar.ios > ion-buttons');
   });
 
   it('an outlined button on a table’s grey bar uses the accessible primary text («Download Excel» at 4.19:1)', () => {
