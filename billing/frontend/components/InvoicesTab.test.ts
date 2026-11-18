@@ -84,8 +84,8 @@ async function setup(path = '/dashboard/billing/invoices', api: (call: ReturnTyp
 
 describe('InvoicesTab: the list', () => {
   // One page of `billing.invoice.list` holds 100 rows at most; on a phone
-  // «Load more» never asks for more, and past them the table pages instead (`maxWindow`).
-  it('on a phone «Load more» grows one window from the first row, never past the server’s 100 rows', async () => {
+  // the end of the scroll never asks for more, and past them the table pages instead (`maxWindow`).
+  it('on a phone the end of the scroll grows one window from the first row, never past the server’s 100 rows', async () => {
     const s = await setup();
     await s.show(ROWS, undefined, 1, { total: 260 });
     expect(s.prop('maxWindow')).toBe(100);

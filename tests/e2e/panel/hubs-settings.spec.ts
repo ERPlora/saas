@@ -270,7 +270,7 @@ test.describe('against the real Hub', () => {
     await shown(page)
       .getByTestId('businesses-row')
       .filter({ hasText: 'Bodegon Hub Real E2E' })
-      .getByRole('button', { name: 'Open Bodegon Hub Real E2E' })
+      .getByRole('button', { name: 'Open', exact: true })
       .click();
     await page.waitForURL(new RegExp(`^http://${wanted}\\.localhost:${HUB_DOUBLE_PORT}/(?!auth)`), { timeout: 30_000 });
     const old = await page.request.get(`http://${slug}.localhost:${HUB_DOUBLE_PORT}/`, { maxRedirects: 0 });

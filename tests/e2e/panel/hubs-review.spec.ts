@@ -221,7 +221,7 @@ for (const { language, locale } of LANGUAGES) {
         async () => {
           await expect(list.getByText(say(language, 'hubs.list.title'), { exact: true }).first()).toBeVisible();
           await expect(list.getByTestId('businesses-row')).toHaveCount(2);
-          await expect(list.getByRole('button', { name: say(language, 'hubs.list.actions.restoreName', { name: 'Café Lola' }) })).toBeVisible();
+          await expect(list.getByTestId('businesses-row').filter({ hasText: 'Café Lola' }).getByRole('button', { name: say(language, 'hubs.list.actions.restore'), exact: true })).toBeVisible();
         },
         { where: list, english: [say('en', 'hubs.list.create')] },
       );
