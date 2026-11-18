@@ -21,7 +21,6 @@ from django.utils import timezone
 
 from billing import services
 from billing.models import Invoice
-from billing.tests.conftest import pay
 from billing.tests.stripe_double import (
     credit_note,
     event,
@@ -29,7 +28,6 @@ from billing.tests.stripe_double import (
     signed,
     subscription,
 )
-from hubs.models import Hub
 
 pytestmark = pytest.mark.django_db
 
@@ -43,15 +41,6 @@ def _stripe(stripe_double, issuer_identity):
     # A credit note is read LIVE before it becomes a rectifying invoice (a voided one never does).
     stripe_double.answer("credit_notes.retrieve", lambda call: {"id": call.args[0], "object": "credit_note", "status": "issued"})
     return stripe_double
-
-
-@pytest.fixture
-def running(shop):
-    paid = pay(shop)
-    Hub.objects.filter(pk=paid.pk).update(
-        status=Hub.Status.ACTIVE, ready_at=timezone.now(), pending_hub_call=""
-    )
-    return Hub.objects.get(pk=paid.pk)
 
 
 def deliver(payload, capture):
@@ -169,6 +158,7 @@ class TestTheInvoiceReachesThePlatformHub:
                 "net_cents",
                 "tax_cents",
                 "total_cents",
+                "discount_cents",
             )
         } == {
             "position": 1,
@@ -182,6 +172,7 @@ class TestTheInvoiceReachesThePlatformHub:
             "net_cents": 2999,
             "tax_cents": 630,
             "total_cents": 3629,
+            "discount_cents": 0,
         }
         assert line["description"] and line["period_start"] and line["period_end"]
 

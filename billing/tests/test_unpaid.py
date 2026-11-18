@@ -64,16 +64,6 @@ def deliver(payload):
     return response.json()["status"]
 
 
-@pytest.fixture
-def running(shop):
-    """A ready business paying Starter monthly (``sub_1``), active."""
-    paid = pay(shop)
-    Hub.objects.filter(pk=paid.pk).update(
-        status=Hub.Status.ACTIVE, ready_at=timezone.now(), pending_hub_call=""
-    )
-    return Hub.objects.get(pk=paid.pk)
-
-
 def days_ago(days):
     return int(time.time()) - int(days * DAY)
 

@@ -28,11 +28,11 @@ from billing.schemas import (
     ModuleIn,
     PlanChangeIn,
     PortalOpenIn,
-    PromoCheckIn,
     StoreCatalogIn,
     TaxPreviewIn,
     VatCheckIn,
 )
+from billing.schemas.promo_codes import PromoCheckIn
 
 router = Router(tags=["billing"])
 

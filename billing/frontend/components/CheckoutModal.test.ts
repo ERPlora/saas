@@ -96,7 +96,7 @@ const happy: Handler = ({ path }) => {
   return Response.json({});
 };
 
-async function setup(api: Handler = happy, purchase: CheckoutPurchase = PLAN, extra: Record<string, unknown> = {}, locale: 'en' | 'es' = 'en') {
+async function setup(api: Handler = happy, purchase: CheckoutPurchase = PLAN, extra: Record<string, unknown> = {}, locale: 'en' | 'es' = 'en', slots = {}) {
   const open = ref(true);
   const stale = vi.fn();
   const Host = {
@@ -110,7 +110,7 @@ async function setup(api: Handler = happy, purchase: CheckoutPurchase = PLAN, ex
         open: open.value,
         'onUpdate:open': (v: boolean) => (open.value = v),
         onStale: stale,
-      }),
+      }, slots),
   };
   const m = await mountBilling(Host, {
     locale,
@@ -433,6 +433,12 @@ describe('CheckoutModal', () => {
   it('when the card of the same payer was declined, says whose and to pay with another', async () => {
     const s = await setup(happy, PLAN, { declinedFor: 'Bar La Plaza' });
     expect(s.q('checkout-declined')?.textContent).toContain('The card that pays for Bar La Plaza was declined: pay with another one.');
+  });
+
+  it('shows the notice the Store gives it next to the card it asks for (the discount of a promo code)', async () => {
+    const s = await setup(happy, PLAN, {}, 'en', { notice: () => h('p', { 'data-testid': 'store-notice' }, 'Free for 6 months') });
+    expect(s.q('store-notice')?.textContent).toBe('Free for 6 months');
+    expect(s.q('checkout-invoice-to')).not.toBeNull();
   });
 
   it('without a declined card of that payer, it says nothing about cards', async () => {

@@ -50,6 +50,7 @@ function detail(extra: Partial<InvoiceDetailOut> = {}): InvoiceDetailOut {
         net_cents: 1999,
         tax_cents: 420,
         total_cents: 2419,
+        discount_cents: 0,
       },
       {
         position: 2,
@@ -64,6 +65,7 @@ function detail(extra: Partial<InvoiceDetailOut> = {}): InvoiceDetailOut {
         net_cents: 1000,
         tax_cents: 210,
         total_cents: 1210,
+        discount_cents: 0,
       },
     ],
     rectifies: null,
@@ -116,6 +118,25 @@ describe('InvoicePage', () => {
     expect(totals).toContain('€29.99');
     expect(totals).toContain('€6.30');
     expect(totals).toContain('€36.29');
+  });
+
+  it('a month free with a promo code: the line says its discount, and the invoice is 0', async () => {
+    const free = { ...detail().lines[0], net_cents: 0, tax_cents: 0, total_cents: 0, discount_cents: 2999 };
+    const s = await setup(detail({ lines: [free], net_cents: 0, tax_cents: 0, total_cents: 0 }));
+    expect(s.el('invoice-line-discount').text()).toBe('Discount -€29.99');
+    expect(s.el('invoice-totals').text()).toContain('€0.00');
+    expect(s.all('invoice-line-discount')).toHaveLength(1);
+  });
+
+  it('a line without a discount says none', async () => {
+    const s = await setup(detail());
+    expect(s.all('invoice-line-discount')).toHaveLength(0);
+  });
+
+  it('says the discount in Spanish too', async () => {
+    const free = { ...detail().lines[0], discount_cents: 2999 };
+    const s = await setup(detail({ lines: [free] }), { locale: 'es' });
+    expect(s.el('invoice-line-discount').text()).toBe('Descuento -29,99\u00a0€');
   });
 
   it('says who it is made out to', async () => {

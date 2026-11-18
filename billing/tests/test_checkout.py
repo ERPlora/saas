@@ -575,18 +575,16 @@ class TestTheTrial:
             trial_end.timestamp()
         )
 
-    def test_an_invalid_promo_code_never_blocks_the_sale(
-        self, shop, owner, stripe_double
-    ):
+    def test_an_invalid_promo_code_is_said_and_the_sale_goes_on_without_it(self, shop, owner, stripe_double):
         Subscription.objects.filter(hub=shop).update(trial_end=None)
         PromoCode.objects.create(code="gone", trial_days=30, is_active=False)
 
-        answer = start(owner, shop, plan="starter", promo_code="gone")
+        with pytest.raises(OperationError, match="remove it to pay without it"):
+            start(owner, shop, plan="starter", promo_code="gone")
 
-        assert answer["flow"] == "checkout"
+        assert start(owner, shop, plan="starter")["flow"] == "checkout"
         params = session_params(stripe_double)
-        assert "promo_code" not in params["metadata"]
-        assert "trial_end" not in params["subscription_data"]
+        assert "promo_code" not in params["metadata"] and "trial_end" not in params["subscription_data"]
 
 
 # --- Who may, and what -------------------------------------------------------------------------------
@@ -1267,11 +1265,8 @@ class TestAPromoCodeOncePerBusinessAndPayer:
         Subscription.objects.filter(hub=shop).update(trial_end=None)
         self.redeemed(shop)
 
-        start(owner, shop, plan="starter", promo_code="canary_2026")
-
-        params = session_params(stripe_double)
-        assert "promo_code" not in params["metadata"]
-        assert "trial_end" not in params["subscription_data"]
+        with pytest.raises(OperationError, match="remove it to pay without it"):
+            start(owner, shop, plan="starter", promo_code="canary_2026")
 
     def test_the_same_payer_does_not_use_it_for_another_business(self, shop, owner, stripe_double, plans):
         from hubs.tests.conftest import create_business
@@ -1281,9 +1276,8 @@ class TestAPromoCodeOncePerBusinessAndPayer:
         other = pay(create_business(make_free_owner(), name="Otro"), sub_id="sub_x")
         self.redeemed(other, customer="cus_1")
 
-        start(owner, shop, plan="starter", promo_code="canary_2026")
-
-        assert "promo_code" not in session_params(stripe_double)["metadata"]
+        with pytest.raises(OperationError, match="remove it to pay without it"):
+            start(owner, shop, plan="starter", promo_code="canary_2026")
 
 
 def make_free_owner():

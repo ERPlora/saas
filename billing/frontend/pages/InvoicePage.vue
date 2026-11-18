@@ -225,6 +225,10 @@ async function downloadPdf(): Promise<void> {
                   <span v-if="period(line)">{{ period(line) }}</span>
                   <span v-if="line.proration">{{ $t('billing.invoicePage.prorated') }}</span>
                   <span>{{ $t('billing.invoicePage.lineAmounts', { net: money(line.net_cents), rate: percent(line.tax_rate), tax: money(line.tax_cents) }) }}</span>
+                  <span
+                    v-if="line.discount_cents"
+                    data-testid="invoice-line-discount"
+                  >{{ $t('billing.invoicePage.discount', { amount: money(-line.discount_cents) }) }}</span>
                 </p>
               </li>
             </ul>

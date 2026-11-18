@@ -5,6 +5,9 @@
 // SDK reaches allauth.headless through `createAllauthClient`.
 import type { SessionMe } from '@erplora/ui/shell';
 
+import type { SubscriptionDiscountOut } from '../billing/frontend/discount-types';
+import type { PromoCheckIn, PromoCheckOut } from '../billing/frontend/promo-types';
+
 /** `base.SessionMeIn`: no parameters. */
 export type SessionMeIn = Record<string, never>;
 
@@ -764,18 +767,6 @@ declare module '@erplora/ui/sdk' {
 /** `billing.Interval`: how a subscription is billed. */
 export type BillingInterval = 'month' | 'year';
 
-/** `billing.PromoCheckIn`. */
-export interface PromoCheckIn {
-  code: string;
-}
-
-/** `billing.PromoCheckOut`: whether the code grants a trial now, and how many days (0 when it does not). */
-export interface PromoCheckOut {
-  code: string;
-  valid: boolean;
-  trial_days: number;
-}
-
 /** `billing.CheckoutStartIn`: a plan (with its billing) OR a module, one at a time. */
 export interface CheckoutStartIn {
   hub_id: string;
@@ -1115,6 +1106,8 @@ export interface InvoiceLineOut {
   net_cents: number;
   tax_cents: number;
   total_cents: number;
+  /** What a promo code took off the line, without VAT: `net_cents` is the base after it. */
+  discount_cents: number;
 }
 
 /** `billing.InvoiceRecipientOut`: the payer as it was on the issue date. */
@@ -1219,6 +1212,8 @@ export interface SubscriptionRowOut {
   scheduled_change: ScheduledChangeOut | null;
   /** The plan is charged to the card of another account (the payer before a hand-over, HUBS-F28). */
   paid_by_another_account: boolean;
+  /** The discount of a promo code it carries while it applies to the renewal. */
+  discount: SubscriptionDiscountOut | null;
   actions: SubscriptionAction[];
   can: SubscriptionCanOut;
 }

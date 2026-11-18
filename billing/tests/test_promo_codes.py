@@ -1,7 +1,7 @@
-"""Promo codes: extra trial days at checkout, and ``billing.promo.check``.
+"""Promo codes: trial days or a discount at checkout, and ``billing.promo.check``.
 
-A code grants free TIME, never a lower price (a Stripe coupon burns during the trial, and a discount turns the
-renewal into a price hike). It is case-insensitive and trimmed; an unknown, inactive, expired or exhausted
+A code grants exactly one of the two: trial days, or a discount (``test_discounts.py``). It is
+case-insensitive and trimmed; an unknown, inactive, expired or exhausted
 code resolves to nothing and never blocks a sale; the counter goes up once per completed checkout and
 never past its cap, even under races (the cap is in the UPDATE's WHERE).
 
@@ -14,13 +14,15 @@ from datetime import timedelta
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.test import Client
 from django.utils import timezone
 from live.errors import OperationError
 
-from billing import queries, services
+from billing import queries
+from billing.services import promo_codes
 from billing.models import PromoCode
-from billing.schemas import PromoCheckIn
+from billing.schemas.promo_codes import PromoCheckIn
 from billing.tests.conftest import ctx_for
 
 pytestmark = pytest.mark.django_db
@@ -93,24 +95,24 @@ class TestRedeem:
     def test_redeeming_counts_one(self):
         made = promo()
 
-        assert services.redeem_promo("canary_2026") is True
+        assert promo_codes.redeem_promo("canary_2026") is True
         made.refresh_from_db()
         assert made.redemption_count == 1
 
     def test_redeeming_is_case_insensitive(self):
         promo()
 
-        assert services.redeem_promo("CANARY_2026") is True
+        assert promo_codes.redeem_promo("CANARY_2026") is True
 
     def test_an_unknown_code_counts_nothing(self):
-        assert services.redeem_promo("nope") is False
-        assert services.redeem_promo("") is False
+        assert promo_codes.redeem_promo("nope") is False
+        assert promo_codes.redeem_promo("") is False
 
     def test_the_cap_is_never_passed(self):
         made = promo(max_redemptions=1)
 
-        assert services.redeem_promo("canary_2026") is True
-        assert services.redeem_promo("canary_2026") is False
+        assert promo_codes.redeem_promo("canary_2026") is True
+        assert promo_codes.redeem_promo("canary_2026") is False
         made.refresh_from_db()
         assert made.redemption_count == 1
 
@@ -118,13 +120,13 @@ class TestRedeem:
         made = promo()
 
         for _ in range(3):
-            services.redeem_promo("canary_2026")
+            promo_codes.redeem_promo("canary_2026")
 
         made.refresh_from_db()
         assert made.redemption_count == 3
 
 
-class TestTrialDaysCeiling:
+class TestTrialDays:
     def test_a_year_is_allowed(self):
         PromoCode(code="year", trial_days=365).full_clean()
 
@@ -132,6 +134,11 @@ class TestTrialDaysCeiling:
     def test_no_days_or_more_than_a_year_is_refused(self, days):
         with pytest.raises(ValidationError):
             PromoCode(code="bad", trial_days=days).full_clean()
+
+    @pytest.mark.parametrize("days", [0, 366])
+    def test_the_database_refuses_them_too(self, days):
+        with pytest.raises(IntegrityError), transaction.atomic():
+            PromoCode.objects.create(code="bad", trial_days=days)
 
 
 class TestCheck:
@@ -142,7 +149,50 @@ class TestCheck:
             ctx_for(buyer), PromoCheckIn(code=" Canary_2026 ")
         ).model_dump()
 
-        assert answer == {"code": "canary_2026", "valid": True, "trial_days": 60}
+        assert answer == {"code": "canary_2026", "valid": True, "trial_days": 60, "discount": None}
+
+    def test_a_code_of_a_discount_says_its_terms_and_where_they_apply(self, buyer, plans):
+        from billing.models import Discount
+        from hubs.models import Plan
+
+        given = Discount.objects.create(name="Testers", percent_off=100, duration="repeating", duration_in_months=6)
+        given.plans.set(Plan.objects.filter(slug__in=["standard", "starter"]))
+        PromoCode.objects.create(code="testers", discount=given)
+
+        answer = queries.promo_check(ctx_for(buyer), PromoCheckIn(code="TESTERS")).model_dump()
+
+        assert answer == {
+            "code": "testers",
+            "valid": True,
+            "trial_days": 0,
+            "discount": {
+                "percent_off": 100,
+                "amount_off_cents": None,
+                "currency": "eur",
+                "duration": "repeating",
+                "duration_in_months": 6,
+                "applies_to": {"kind": "plans", "plans": ["standard", "starter"], "intervals": ["month"]},
+            },
+        }
+
+    def test_a_discount_on_every_plan_names_none(self, buyer):
+        from billing.models import Discount
+
+        given = Discount.objects.create(name="Ten", amount_off_cents=1000, duration="forever")
+        PromoCode.objects.create(code="ten", discount=given)
+
+        answer = queries.promo_check(ctx_for(buyer), PromoCheckIn(code="ten")).model_dump()
+
+        assert answer["discount"]["applies_to"] == {"kind": "plans", "plans": [], "intervals": ["month", "year"]}
+        assert (answer["discount"]["percent_off"], answer["discount"]["amount_off_cents"]) == (None, 1000)
+
+    def test_an_inactive_discount_makes_its_codes_invalid(self, buyer):
+        from billing.models import Discount
+
+        given = Discount.objects.create(name="Off", percent_off=10, duration="once", is_active=False)
+        PromoCode.objects.create(code="off", discount=given)
+
+        assert queries.promo_check(ctx_for(buyer), PromoCheckIn(code="off")).valid is False
 
     def test_an_invalid_code_is_an_answer_not_an_error(self, buyer):
         promo(is_active=False)
@@ -151,7 +201,7 @@ class TestCheck:
             ctx_for(buyer), PromoCheckIn(code="canary_2026")
         ).model_dump()
 
-        assert answer == {"code": "canary_2026", "valid": False, "trial_days": 0}
+        assert answer == {"code": "canary_2026", "valid": False, "trial_days": 0, "discount": None}
 
     def test_a_visitor_cannot_try_codes(self):
         response = Client().get("/api/billing/promo-check", {"code": "canary_2026"}, HTTP_HOST=HOST)
@@ -186,4 +236,5 @@ class TestCheck:
             "code": "canary_2026",
             "valid": True,
             "trial_days": 30,
+            "discount": None,
         }

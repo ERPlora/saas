@@ -24,7 +24,7 @@ from django.utils import timezone
 
 from billing import emails
 from billing.models import FiscalPolicy, Invoice, OssNotice
-from billing.tests.test_invoice_recording import deliver, paid, payer, running  # noqa: F401 - fixtures
+from billing.tests.test_invoice_recording import deliver, paid, payer
 from billing.tests.stripe_double import invoice_line, subscription
 
 pytestmark = pytest.mark.django_db

@@ -91,7 +91,8 @@
       "apply": "Apply",
       "valid": "Code {code}: {days} days free before the first charge.",
       "invalid": "This code is not valid, or it was already used.",
-      "remove": "Remove the code"
+      "remove": "Remove the code",
+      "validDiscount": "Code {code}: {discount}."
     },
     "modules": {
       "heading": "Modules",
@@ -174,7 +175,11 @@
       "stale": "This business already pays: the price changed, check it again.",
       "plan": "{business} is now on {plan}",
       "module": "{module} added to {business}: it turns on in a few seconds",
-      "takenOver": "{business} keeps {plan}: your card pays it from {date}"
+      "takenOver": "{business} keeps {plan}: your card pays it from {date}",
+      "discountThenMonth": "{discount}. Then {price}/month + VAT.",
+      "discountThenYear": "{discount}. Then {price}/year + VAT.",
+      "discountOnly": "{discount}.",
+      "nothingDueToday": "Your card is not charged today."
     },
     "details": {
       "intro": "Who do we invoice? We ask it once, before the first payment.",
@@ -310,6 +315,7 @@
       "period": "{start} – {end}",
       "prorated": "Prorated",
       "lineAmounts": "Net {net} · VAT {rate} {tax}",
+      "discount": "Discount {amount}",
       "net": "Taxable base",
       "vat": "VAT",
       "total": "Total",
@@ -363,7 +369,8 @@
         "unpaid": "The unpaid invoice of {date} ({amount}) stays pending: cancelling does not cancel it.",
         "done": "Plan cancelled: {business} stays on {plan} until {date}",
         "doneNoDate": "Plan cancelled: {business} stays on {plan} until the end of the period"
-      }
+      },
+      "discountUntil": "{off} until {date}"
     },
     "payment": {
       "loadError": "We could not load your payment details",
@@ -415,6 +422,18 @@
     },
     "load": {
       "reason": "Check your connection and try again."
+    },
+    "discount": {
+      "off": {
+        "free": "Free",
+        "percent": "{percent}% off",
+        "amount": "{amount} off"
+      },
+      "duration": {
+        "once": "{off} on the first payment",
+        "repeating": "{off} for 1 month | {off} for {months} months",
+        "forever": "{off} forever"
+      }
     }
   }
 }

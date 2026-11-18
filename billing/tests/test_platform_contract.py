@@ -7,7 +7,8 @@ bounds and whitespace stripping, a key it does not know ignored); every invoice 
 A change of the Hub's schema is a change of this copy.
 
 The period of a line travels as days: the Hub reads ``dt.date`` and refuses a moment of Stripe
-(«2026-11-16T22:26:22+00:00») with 422, whatever the invoice.
+(«2026-11-16T22:26:22+00:00») with 422, whatever the invoice. A discount travels on each line as ``discount_cents``,
+never negative, with the base already discounted (``fixtures/discounts/``).
 """
 
 import datetime as dt
@@ -23,7 +24,8 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 from billing import platform_contract, services
 from billing.models import Invoice, InvoiceCounter
 from billing.tests.stripe_double import credit_note, event, invoice, subscription
-from billing.tests.test_invoice_recording import deliver, running  # noqa: F401 - a ready business paying Starter monthly
+from billing.tests.stripe_captured import paid
+from billing.tests.test_invoice_recording import deliver
 from hubs.models import BillingProfile
 
 pytestmark = pytest.mark.django_db
@@ -152,6 +154,22 @@ class TestTheHubTakesIt:
 
         assert (body.total_cents, body.recipient.tax_id) == (3629, tax_id)
         assert body.lines[0].period_start is not None and body.lines[0].period_end is not None
+
+    @pytest.mark.parametrize(
+        ("name", "line"),
+        [("repeating_100/invoice_paid_1.json", (0, 2999, 0)), ("once_percent/invoice_paid_1.json", (2399, 600, 2903))],
+        ids=["all of it discounted", "part of it discounted"],
+    )
+    def test_an_invoice_with_a_discount(self, running, tax_id, name, line):
+        self.payer(running, tax_id)
+        event_paid = paid(name)
+        deliver(event_paid)
+
+        body = HubPlatformInvoiceIn.model_validate(body_of(event_paid["data"]["object"]["id"]))
+
+        [sent] = body.lines
+        assert (sent.net_cents, sent.discount_cents, body.total_cents) == line
+        assert sent.period_start is not None
 
     def test_its_credit_note(self, running, tax_id):
         self.payer(running, tax_id)
