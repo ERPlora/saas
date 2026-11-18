@@ -4,8 +4,8 @@
 // cards up to 900 px so names are not cut on a tablet) with their status (and why), plan, role and
 // last use; per row what the server says it allows (`can`): «Open» (not while suspended or deleted),
 // «Manage» and «Recover». «Delete» is not on the row: it lives in the business's Settings.
-// Above the table, what waits for an answer: invitations, ownership offers and unpaid invoices (inside
-// the apps without a way to pay). «Create business» opens a dialog: the form, then the
+// Above the table, what waits for an answer: invitations and ownership offers (an unpaid invoice is said by the
+// shell's bell, not here). «Create business» opens a dialog: the form, then the
 // preparation, then «ready» or why not, following the new business with its own `hubs.business.get`
 // (the list may not show it: a search, another page); meanwhile the list shows it «Preparing». Empty,
 // the table holds the sign-up form itself. With the account's Free business filling its quota, the dialog says so
@@ -13,8 +13,7 @@
 // page: `?create=1` (the launcher's «Create another business») is read each time it comes on screen. The list
 // fills the page between the topbar and the footer (`detail-fill` + `.panel-fill`), and asks for rows per page
 // only when there are more businesses than the shortest page. Its states are truthful (`useLiveState`): the
-// stream down or no answer in time is an error with «Retry», never «Create your first business»; unpaid invoices
-// of two or more businesses are one notice.
+// stream down or no answer in time is an error with «Retry», never «Create your first business».
 import {
   DataTable,
   type DataTableAction,
@@ -52,8 +51,6 @@ import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessPreparing from '../components/BusinessPreparing.vue';
 import DeclineDialog from '../components/DeclineDialog.vue';
 import HostName from '../components/HostName.vue';
-import UnpaidGroupNotice from '../components/UnpaidGroupNotice.vue';
-import UnpaidNotice from '../components/UnpaidNotice.vue';
 import { useErrorText } from '../error-text';
 import { useAcceptInvitation } from '../invitations';
 import { useOpenBusiness } from '../open-business';
@@ -109,7 +106,6 @@ const loadError = computed(() => (state.failed.value ? text(state.error.value) |
 const rows = computed<BusinessRowOut[]>(() => live.data.value?.rows ?? []);
 const invitations = computed<InvitationOut[]>(() => live.data.value?.invitations ?? []);
 const offers = computed<OwnershipOfferOut[]>(() => live.data.value?.ownership_offers ?? []);
-const unpaid = computed(() => rows.value.filter((row) => row.status === 'past_due' || row.status === 'suspended'));
 const searching = computed(() => search.value.trim() !== '');
 
 // A page emptied elsewhere steps back to the last page that still has rows.
@@ -154,7 +150,7 @@ const pill = (row: BusinessRowOut) => statusPill(row, t, locale.value);
 
 function why(row: BusinessRowOut): string {
   const key = reasonKey(row, inApp.value);
-  // A payment pending is said by the notice above the list, with its way to pay.
+  // A payment pending is said by the bell of the topbar, with its way to pay.
   if (!key || row.status === 'past_due') return '';
   if (key === 'hubs.reason.preparing') return t('hubs.reason.preparingSoon');
   return t(key, { date: reasonDate(row, locale.value) });
@@ -408,17 +404,6 @@ onIonViewWillEnter(entered);
           </ion-button>
         </template>
       </InlineFeedback>
-
-      <UnpaidNotice
-        v-if="unpaid.length === 1"
-        :business="unpaid[0]"
-        :data-testid="`businesses-unpaid-${unpaid[0].id}`"
-      />
-      <UnpaidGroupNotice
-        v-else-if="unpaid.length > 1"
-        :businesses="unpaid"
-        data-testid="businesses-unpaid"
-      />
 
       <p
         v-if="rows.length"

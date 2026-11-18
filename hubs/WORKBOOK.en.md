@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:c963aee71ad407edfe7a2d6b669b6a52257aa263b1350213ddb20bef65ab94f1 -->
+<!-- generated from WORKBOOK.md sha256:d4496b5514e2a2c98aec6d8aef6673face6b23309044a04292f4d684448a0327 -->
 
 ## What it is for and who it is for
 
@@ -76,7 +76,8 @@ and "It opens by itself when it finishes" on the Entrance or "Ready to open" in 
 ### Businesses
 The panel's home: the list of the account's businesses with "Business", "Web address", "Status", "Plan", "Role"
 and "Last used", the search box, "Create business" and, per row, "Open", "Manage" and "Recover". On the phone
-they are cards. Above, the invitations, the ownership offers and the unpaid invoices.
+they are cards. Above, the invitations and the ownership offers. An unpaid invoice is not on the list: it is
+announced in the bell of the top bar (BILLING-F16).
 
 ### Business summary
 Each business's page opens on its Summary: the plan (with "Upgrade plan" or "Change plan"), the usage and the "On
@@ -307,7 +308,7 @@ Steps:
 In: the businesses the person is a member of with the invitation accepted.
 Out: nothing; the list keeps itself up to date.
 If it fails: without businesses, "Create your first business" with the sign-up form; a search without results, "Nothing matches the search" with "Show all"; offline, the error with "Retry", never an empty list. A purged business no longer shows.
-Involved: billing (the plan and the unpaid invoices of each row)
+Involved: billing (the plan of each row and whether its payment is pending)
 
 ### HUBS-F10 See the panel's home
 Status: done
@@ -315,7 +316,7 @@ Actor: owner, administrator, manager, employee
 Screen: Businesses
 Steps:
 1. From the Entrance, "Go to the panel" opens **Businesses**, the panel's home, with the menu "Businesses", "Store", "Billing" and "Account".
-2. Above, they see what waits for an answer (invitations, ownership offers, unpaid invoices) and below all their businesses with their plan, their status and their last use (HUBS-F09).
+2. Above, they see what waits for an answer (invitations and ownership offers) and below all their businesses with their plan, their status and their last use (HUBS-F09). An unpaid invoice is announced in the bell of the top bar, on every screen of the panel (BILLING-F16).
 3. Without businesses, the home is "Create your first business"; the old address of the overview leads here.
 In: the account's businesses.
 Out: nothing.

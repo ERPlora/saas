@@ -1,7 +1,7 @@
 // Businesses (`/dashboard/businesses`): the account's
 // businesses in a server-side DataTable (list or cards; cards up to 900 px), with their status, plan,
 // role and last use; per row «Open», «Manage», «Recover», «Delete» by what the role allows; above it
-// the pending invitations and ownership offers and the unpaid invoices; «Create business» opens the
+// the pending invitations and ownership offers (an unpaid invoice is the bell's); «Create business» opens the
 // dialog (form → preparing → ready) and the new row appears «Preparing» through the live list; empty,
 // the sign-up form itself.
 // clock: data only — no code under test compares these dates with now.
@@ -186,7 +186,7 @@ describe('BusinessListPage: the list', () => {
     expect(bakery.find('[data-testid="business-host"] .host-name').exists()).toBe(true);
   });
 
-  it('under the status, why: never a payment the notice above already says, a suspension with its day', async () => {
+  it('under the status, why: never a payment the bell already says, a suspension with its day', async () => {
     const s = await setup();
     await s.show(
       page([
@@ -297,25 +297,14 @@ describe('BusinessListPage: row actions', () => {
 });
 
 describe('BusinessListPage: what waits above the list', () => {
-  it('an unpaid invoice is said above the list; inside the app, how to pay without a link', async () => {
-    applySurface('desktop');
-    const s = await setup();
-    await s.show(page(ROWS));
-    const unpaid = s.testid('businesses-unpaid-plaza');
-    expect(unpaid.text()).toContain('Bar La Plaza has an unpaid invoice');
-    expect(unpaid.text()).toContain('Settle it from erplora.com, in your browser.');
-    expect(unpaid.find('a').exists()).toBe(false);
-    expect(unpaid.find('[data-testid="unpaid-pay"]').exists()).toBe(false);
-  });
-
-  it('on the web, the owner pays the invoice from the notice (Stripe’s page), since when it is unpaid said', async () => {
+  it('an unpaid invoice is no box above the list: its row says it, and paying is the bell’s', async () => {
     const s = await setup();
     await s.show(
       page([row('plaza', 'Bar La Plaza', { status: 'past_due', unpaid_reason: 'payment_failed', unpaid_since: '2026-10-10T10:00:00Z', pay_url: 'https://invoice.stripe.com/i/abc' })]),
     );
-    const unpaid = s.testid('businesses-unpaid-plaza');
-    expect(unpaid.get('[data-testid="unpaid-body"]').text()).toMatch(/^Unpaid since Oct 10, 2026/);
-    expect((unpaid.get('[data-testid="unpaid-pay"]').element as HTMLElement & { href?: string }).href).toBe('https://invoice.stripe.com/i/abc');
+    expect(s.wrapper.find('[data-testid^="businesses-unpaid"]').exists()).toBe(false);
+    expect(s.wrapper.find('[href^="https://invoice.stripe.com"]').exists()).toBe(false);
+    expect(s.rows()[0].text()).toContain('Payment due');
   });
 
   it('a pending invitation: accept and enter, or decline with a confirmation', async () => {
@@ -347,63 +336,6 @@ describe('BusinessListPage: what waits above the list', () => {
     await banner.get('[data-testid="offer-decline"]').trigger('click');
     await flush();
     expect(s.calls().find((c) => c.path === '/api/hubs/ownership/decline')?.body).toEqual({ id: 't1' });
-  });
-});
-
-describe('BusinessListPage: unpaid invoices of several businesses, grouped', () => {
-  const NORTE = row('norte', 'Bar Norte', {
-    status: 'suspended',
-    status_label: 'Suspended',
-    can_open: false,
-    open_blocked_reason: 'suspended',
-    unpaid_reason: 'payment_failed',
-    unpaid_since: '2026-10-09T08:00:00Z',
-    pay_url: 'https://invoice.stripe.com/i/norte',
-  });
-  const PLAZA = row('plaza', 'Bar La Plaza', {
-    status: 'past_due',
-    status_label: 'Payment pending',
-    unpaid_reason: 'card_declined',
-    unpaid_since: '2026-10-10T14:23:00Z',
-    pay_url: 'https://invoice.stripe.com/i/plaza',
-  });
-
-  it('one notice lists every business, the suspended first, each with its own way to pay', async () => {
-    const s = await setup();
-    await s.show(page([ROWS[0], PLAZA, NORTE]));
-    expect(s.testid('businesses-unpaid-plaza').exists()).toBe(false);
-    expect(s.testid('businesses-unpaid-norte').exists()).toBe(false);
-    const group = s.testid('businesses-unpaid');
-    expect(group.text()).toContain('2 businesses have unpaid invoices');
-    const lines = group.findAll('[data-testid="businesses-unpaid-line"]');
-    expect(lines.map((line) => line.text())).toEqual([
-      expect.stringMatching(/^Bar Norte is suspended since Oct 9, 2026\./),
-      expect.stringMatching(/^Bar La Plaza is suspended on Oct 17, 2026 if it is not paid\. The bank declined the card\./),
-    ]);
-    expect(group.text()).toContain('Nothing is deleted.');
-    // Days, never the minute.
-    expect(group.text()).not.toMatch(/\d{1,2}:\d{2}/);
-    expect((lines[0].get('[data-testid="unpaid-pay"]').element as HTMLElement & { href?: string }).href).toBe('https://invoice.stripe.com/i/norte');
-    expect(lines[1].find('[data-testid="unpaid-change-card"]').exists()).toBe(true);
-  });
-
-  it('inside the apps: the same list, how to pay, no button', async () => {
-    applySurface('desktop');
-    const s = await setup();
-    await s.show(page([PLAZA, NORTE]));
-    const group = s.testid('businesses-unpaid');
-    expect(group.find('ion-button').exists()).toBe(false);
-    expect(group.text()).toContain('Settle it from erplora.com, in your browser.');
-  });
-
-  it('speaks Spanish', async () => {
-    const s = await setup({ locale: 'es' });
-    await s.show(page([PLAZA, NORTE]));
-    const group = s.testid('businesses-unpaid');
-    expect(group.text()).toContain('2 negocios tienen facturas sin pagar');
-    expect(group.text()).toContain('Bar Norte está suspendido desde el 9 oct 2026.');
-    expect(group.text()).toContain('Bar La Plaza se suspende el 17 oct 2026 si no se paga.');
-    expect(group.text()).toContain('No se borra nada.');
   });
 });
 

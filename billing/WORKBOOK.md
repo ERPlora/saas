@@ -104,7 +104,19 @@ Estado; filtros por negocio, estado y año; buscador por número; «Descargar PD
 «Descargar Excel» y «Pagar» en las no cobradas), **Suscripciones** (una fila por negocio que paga: plan, módulos, próxima
 factura con IVA y estado; «Cambiar plan», «Mantener el plan», «Ver la factura», «Ver facturas» y
 «Cancelar plan») y **Datos de pago** (la tarjeta con «Cambiar tarjeta» y los datos de facturación con
-«Editar datos»). Arriba, en las tres, los avisos de facturas sin pagar.
+«Editar datos»). Las facturas sin pagar no se avisan dentro de las pestañas: se avisan en la campana de la barra
+superior (Avisos de la campana).
+
+### Avisos de la campana
+La campana de la barra superior del panel, en todas las pantallas. Con una factura sin pagar se vuelve una píldora
+roja con el número de negocios que la tienen. Un aviso nuevo llega como tarjeta arriba a la derecha (a lo ancho en el
+móvil) y a los pocos segundos se recoge en la campana. Al pulsarla se abre el panel «Avisos», con el negocio más
+urgente arriba: «… tiene una factura sin pagar», el importe, «quedan … días» (o «suspendido»), lo que pasa si no se
+paga («Si no se paga antes del …, el negocio se suspende. No se borra nada.») y «Pagar la factura · …» con «Cambiar
+tarjeta» al lado; si el banco rechazó la tarjeta, solo «Cambiar tarjeta». Los demás negocios, en filas debajo. Un
+aviso no se descarta: desaparece cuando se paga la factura. Quien no paga el negocio ve el aviso sin botones y «Solo
+la cuenta que paga este negocio puede pagar sus facturas.»; en la app, «Para pagarla, entra en erplora.com desde el
+navegador.»
 
 ### Factura
 Página de una factura, que se abre con «Ver la factura»: su número (o «no cobrada»), la fecha, el negocio,
@@ -124,9 +136,9 @@ al propietario, el botón para mejorarlo o cambiarlo.
 |---|---|
 | Cargando | «Cargando…» o el esqueleto de la tabla mientras llegan los datos; «Calculando lo que se cobra hoy…» en un cambio de plan. |
 | Vacío | Facturas: «Aún no hay facturas» y «Ver planes»; Suscripciones: «Todos tus negocios están en Gratis»; Datos de pago: «Aún no hay ninguna tarjeta guardada». |
-| Error | «No hemos podido cargar …» con «Reintentar»; un pago que no se abre dice «No se ha cobrado nada» con «Reintentar». |
+| Error | «No hemos podido cargar …» con «Reintentar»; un pago que no se abre dice «No se ha cobrado nada» con «Reintentar». Si no se pudo comprobar si hay facturas sin pagar, el panel de la campana dice «No se pudieron cargar los avisos» con «Reintentar». |
 | Stripe no responde | La tarjeta: «Ahora no podemos enseñarte la tarjeta: inténtalo en unos minutos»; un pago: el aviso de que no se ha cobrado nada. |
-| Factura sin pagar | Aviso arriba con el importe, el negocio y hasta cuándo funciona, y «Pagar la factura»; con la tarjeta rechazada, primero «Cambiar tarjeta». |
+| Factura sin pagar | La campana de la barra superior, en rojo con su número; en su panel, el aviso de cada negocio con el importe, hasta cuándo funciona y «Pagar la factura · …»; con la tarjeta rechazada, «Cambiar tarjeta». |
 | En la app | Se ve todo lo que no cobra; donde habría un botón de pago, «entra en erplora.com desde el navegador», sin enlace. |
 | Sin permiso | Un negocio que no es tuyo no aparece; por la API, «No encontrado». |
 
@@ -385,14 +397,14 @@ Implicados: el negocio (recibe Gratis)
 ### BILLING-F16 Impago del plan: reintentos, suspensión y vuelta
 Estado: hecho
 Actor: sistema, propietario, cuenta que paga
-Pantalla: Facturación, Negocios, el propio negocio
+Pantalla: Avisos de la campana, el propio negocio
 Pasos:
 1. Falla el cobro de una renovación. Stripe lo reintenta durante unos días y avisa de cada fallo. Las aplicaciones de pago van en la misma factura que el plan: su impago es el del negocio entero, y al pagar vuelve todo.
 2. erplora.com relee la suscripción en Stripe: si el reintento ya cobró, no hace nada; si no, apunta la factura como «No cobrada», con por qué no se cobró (tarjeta rechazada, autenticación o fallo).
-3. **Gracia**: durante 7 días desde la factura que falló, el negocio sigue funcionando con todo su plan. La cuenta que paga recibe un correo, una vez por factura: cuánto no se pudo cobrar, hasta qué día sigue funcionando y el enlace a Facturación para pagarla (si el banco rechazó la tarjeta, que la cambie antes). En **Negocios** y en **Facturación** sale el aviso «No pudimos cobrar … de …»: «Págala antes del … o el negocio se suspende; no se borra nada», con «Pagar la factura» (o «Cambiar tarjeta» primero si el banco la rechazó).
-4. **Suspensión**: pasados los 7 días, o si Stripe agota sus reintentos, el negocio se suspende y la cuenta que paga recibe otro correo, una sola vez. El negocio no se abre: ni desde el panel ni desde su propia dirección, tampoco en los dispositivos que ya tenían la sesión abierta, que enseñan «Este negocio está suspendido» con el camino a ERPlora. El aviso del panel dice «… está suspendido: … sin pagar» y que los datos están a salvo.
+3. **Gracia**: durante 7 días desde la factura que falló, el negocio sigue funcionando con todo su plan. La cuenta que paga recibe un correo, una vez por factura: cuánto no se pudo cobrar, hasta qué día sigue funcionando y el enlace a Facturación para pagarla (si el banco rechazó la tarjeta, que la cambie antes). En la barra superior del panel, la campana se vuelve roja y llega el aviso «… tiene una factura sin pagar»: el importe, «quedan … días» y «Si no se paga antes del …, el negocio se suspende. No se borra nada.», con «Pagar la factura · …» y «Cambiar tarjeta» (solo «Cambiar tarjeta» si el banco la rechazó). Es un solo aviso por negocio, el mismo en todas las pantallas.
+4. **Suspensión**: pasados los 7 días, o si Stripe agota sus reintentos, el negocio se suspende y la cuenta que paga recibe otro correo, una sola vez. El negocio no se abre: ni desde el panel ni desde su propia dirección, tampoco en los dispositivos que ya tenían la sesión abierta, que enseñan «Este negocio está suspendido» con el camino a ERPlora. El aviso de la campana dice «suspendido» y «Se suspendió por una factura sin pagar. No se borra nada: en cuanto se pague vuelve a funcionar.»
 5. **Red de seguridad**: cada hora se repasan los negocios con el plan en impago y se mira su factura abierta más antigua, por si Stripe dejó de reintentar sin volver a avisar.
-6. **Vuelta**: al pagar la factura (con «Pagar la factura», o porque un reintento la cobra), el negocio vuelve a estar activo en el acto: «Factura pagada: … vuelve a estar al día».
+6. **Vuelta**: al pagar la factura (con «Pagar la factura», o porque un reintento la cobra), el negocio vuelve a estar activo en el acto: «Factura pagada: … vuelve a estar al día», y su aviso se va de la campana.
 Entra: los avisos de Stripe del cobro fallido y de la suscripción, y la suscripción viva.
 Sale: la factura «No cobrada», los correos a quien paga y el estado del negocio (pago pendiente, suspendido o al día) enviados al negocio (`hubs.subscription.changed`).
 Si falla: si Stripe no contesta al releer la suscripción, no se aplica nada y Stripe vuelve a avisar. Un aviso repetido de una factura ya pagada no la reabre. Un fallo posterior del mismo impago no mueve la fecha de la gracia ni repite el correo. Un correo que no pudo salir se vuelve a mandar en el repaso de cada hora, que avisa al equipo mientras quede alguno.
@@ -401,9 +413,9 @@ Implicados: hubs (el estado del negocio), el negocio (recibe el estado)
 ### BILLING-F17 Reactivar un negocio suspendido pagando su factura
 Estado: hecho
 Actor: cuenta que paga
-Pantalla: Facturación › Facturas, Negocios
+Pantalla: Avisos de la campana, Facturación › Facturas
 Pasos:
-1. En el aviso del negocio suspendido (en **Negocios** o en **Facturación**), la cuenta que paga pulsa «Pagar la factura · …» (si el banco rechazó la tarjeta, antes «Cambiar tarjeta»).
+1. En el aviso del negocio suspendido, en la campana de la barra superior, la cuenta que paga pulsa «Pagar la factura · …» (si el banco rechazó la tarjeta, antes «Cambiar tarjeta»); también puede pagarla desde la factura, en **Facturación › Facturas**.
 2. Se abre la página de pago de Stripe de esa factura; paga.
 3. Al volver, «Factura pagada: … vuelve a estar al día» y el negocio funciona otra vez con sus datos y su plan, sin abrir otra suscripción.
 Entra: la factura sin pagar y su página de pago en Stripe.
@@ -496,11 +508,11 @@ Implicados: hubs (HUBS-F28: el plan de un negocio traspasado)
 ### BILLING-F24 Abrir el portal de pagos de Stripe para cambiar la tarjeta
 Estado: hecho
 Actor: cuenta que paga
-Pantalla: Facturación › Datos de pago
+Pantalla: Facturación › Datos de pago, Avisos de la campana
 Pasos:
 1. En **Facturación › Datos de pago**, la tarjeta «Método de pago» dice qué tarjeta paga qué negocios y, si el último cobro falló, cuándo y de qué negocio.
-2. Pulsa «Cambiar tarjeta»: se abre la página segura de Stripe de esa cuenta, que solo permite cambiar la tarjeta y ver los recibos.
-3. Al volver, el panel vuelve a Facturación y, si había una factura rechazada, el aviso dice «Tarjeta cambiada» y «Pagar» vuelve.
+2. Pulsa «Cambiar tarjeta» (ahí o en el aviso de la campana de un negocio con la factura sin pagar): se abre la página segura de Stripe de esa cuenta, que solo permite cambiar la tarjeta y ver los recibos.
+3. Al volver, el panel vuelve a Facturación y, si había una factura rechazada, su aviso de la campana dice «Tarjeta cambiada: ya puedes pagarla.» y «Pagar la factura · …» vuelve.
 Entra: la cuenta que paga el negocio.
 Sale: la tarjeta nueva en Stripe; los cambios de plan nunca se hacen allí.
 Si falla: antes del primer pago no hay nada que cambiar; si Stripe no contesta, se dice; solo la cuenta que paga lo abre, nunca otro propietario.
