@@ -206,16 +206,18 @@ def names_of(container: dict) -> set[str]:
 
 
 def merged(family: str, container: dict, wanted: dict, current: dict) -> list[dict]:
-    """The container's environment with the family's settings: those of the app_env in force go, the file's come."""
-    secrets = {secret["name"] for secret in container.get("secrets", [])}
-    terraform = (names_of(container) - set(current)) | secrets
-    theirs = sorted(set(wanted) & terraform)
+    """The container's environment with the family's settings: every known setting and those of the app_env in force
+    go, the file's come.
+
+    ERPlora/aws never sets a known setting in the environment, it only passes on app_env: one the revision has and
+    app_env lacks was left by a rollback or by a deploy that failed after registering. Only a secret is ERPlora/aws's.
+    """
+    theirs = sorted(set(wanted) & {secret["name"] for secret in container.get("secrets", [])})
     if theirs:
-        raise Refused(f"{family}: ERPlora/aws sets {', '.join(theirs)} in this family (its revision has it and the "
-                      f"app_env in force does not): one owner per variable, so take it out of {FILE} or out of "
-                      "ERPlora/aws first")
-    kept = [variable for variable in container.get("environment", [])
-            if variable["name"] not in current and variable["name"] not in wanted]
+        raise Refused(f"{family}: ERPlora/aws sets {', '.join(theirs)} as a secret in this family: one owner per "
+                      f"variable, so take it out of {FILE} or out of ERPlora/aws first")
+    ours = set(SETTINGS) | set(current) | set(wanted)
+    kept = [variable for variable in container.get("environment", []) if variable["name"] not in ours]
     added = [{"name": name, "value": value} for name, value in wanted.items()]
     return sorted(kept + added, key=lambda variable: variable["name"])
 

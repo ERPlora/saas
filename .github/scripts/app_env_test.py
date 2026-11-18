@@ -382,12 +382,15 @@ class TheRevision(unittest.TestCase):
         self.assertEqual(new["tags"], [{"key": "Environment", "value": "prod"}])
         self.assertEqual(new["taskRoleArn"], "arn:aws:iam::123456789012:role/x-task")
 
-    def test_a_setting_terraform_sets_is_refused(self):
-        base = self.base({"CACHE_KEY_PREFIX": "saas", **POLICIES_PROD, "MICROSOFT_STORE_APP_ID": "9P5C0XP1GS69"})
-        with self.assertRaises(app_env.Refused) as refused:
-            self.revision(base)
-        self.assertIn("erplora-prod-saas", str(refused.exception))
-        self.assertIn("MICROSOFT_STORE_APP_ID", str(refused.exception))
+    def test_a_setting_the_latest_revision_has_and_the_app_env_lacks_follows_the_file(self):
+        base = self.base({"CACHE_KEY_PREFIX": "saas", **POLICIES_PROD, "GA_MEASUREMENT_ID": "G-0LD0000001"})
+        self.assertEqual(environment_of(self.revision(base, current=dict(POLICIES_PROD)), "saas")["GA_MEASUREMENT_ID"],
+                         "G-CHB9NM1C74")
+
+    def test_a_setting_neither_the_file_nor_the_app_env_names_leaves_the_revision(self):
+        base = self.base({"CACHE_KEY_PREFIX": "saas", **POLICIES_PROD, "GA_MEASUREMENT_ID": "G-CHB9NM1C74"})
+        new = self.revision(base, wanted=dict(POLICIES_PROD), current=dict(POLICIES_PROD))
+        self.assertEqual(environment_of(new, "saas"), {"CACHE_KEY_PREFIX": "saas", **POLICIES_PROD})
 
     def test_a_setting_that_is_a_secret_of_terraform_is_refused(self):
         environment = {"CACHE_KEY_PREFIX": "saas", **POLICIES_PROD}
