@@ -1,6 +1,7 @@
 // The Members of a business: the live
 // `hubs.member.list` in a server-side DataTable (cards up to 900 px) with name, email, role, status and
-// last access; per row ONLY the actions the server computed (`actions`, in its order); «Invite» when the
+// last access; per row ONLY the actions the server computed (`actions`): a member's «Change role» and «Remove», an
+// invitation's «Resend» and «Cancel invitation», and the rest in «⋮»; «Invite» when the
 // account may invite; the places of the plan, a pending ownership offer with «Withdraw», and what
 // each role may do.
 // clock: data only — no code under test compares these dates with now.
@@ -20,6 +21,10 @@ import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
 import { accessibleName, apiError, BYE, describeCall, errorFrame, flush, mountHubs, subId } from '../__tests__/mount-hubs';
 import { member } from '../__tests__/members';
 import MembersTab from './MembersTab.vue';
+
+// The DataTable's test helpers: a row's actions wherever they are, and a phone's viewport.
+import { offeredRowActions } from '@erplora/ui/testing/data-table';
+import { viewport } from '../../../packages/ui/src/components/DataTable/__tests__/harness';
 
 const BUSINESS = {
   id: 'h1',
@@ -112,14 +117,14 @@ describe('MembersTab: the list', () => {
     expect(rows[2].get('[data-testid="member-last"]').element.tagName).toBe('DIV');
   });
 
-  it('gives the table the actions to fold: the server’s, in its order, «Transfer ownership» only in «⋮»', async () => {
+  it('gives the table the actions to fold: an invitation’s own two first, «Transfer ownership» only in «⋮»', async () => {
     const s = await setup();
     await s.show(page());
     expect(s.prop<Array<Record<string, unknown>>>('actions').map((a) => [a.id, !!a.menuOnly])).toEqual([
-      ['change_role', false],
-      ['remove', false],
       ['resend', false],
       ['cancel', false],
+      ['change_role', false],
+      ['remove', false],
       ['transfer', true],
     ]);
     expect(s.prop<Array<{ key: string; priority?: string }>>('columns').map((c) => [c.key, c.priority ?? 'normal'])).toEqual([
@@ -133,12 +138,15 @@ describe('MembersTab: the list', () => {
     expect(s.wrapper.find('.row-action').exists()).toBe(false);
   });
 
-  it('renders only the actions the server computed, in its order', async () => {
+  it('offers only the actions the server computed: a member «Change role» and «Remove», an invitation «Resend» and «Cancel invitation», the rest in «⋮»', async () => {
     const s = await setup();
     await s.show(page());
+    expect(offeredRowActions(s.wrapper, 'laura')).toEqual([]);
+    expect(offeredRowActions(s.wrapper, 'carlos')).toEqual(['change_role', 'remove', 'transfer']);
+    expect(offeredRowActions(s.wrapper, 'jorge')).toEqual(['resend', 'cancel', 'change_role']);
     expect(s.actionsOf('laura')).toEqual([]);
     expect(s.actionsOf('carlos')).toEqual(['change_role', 'remove', 'menu']);
-    expect(s.actionsOf('jorge')).toEqual(['change_role', 'resend', 'cancel']);
+    expect(s.actionsOf('jorge')).toEqual(['resend', 'cancel', 'menu']);
     await s.testid('members-row-carlos-menu').trigger('click');
     await flush();
     expect(s.wrapper.find('[data-testid="members-row-carlos-transfer"]').element.tagName).toBe('ION-ITEM');
@@ -202,7 +210,7 @@ describe('MembersTab: a clean page', () => {
 });
 
 describe('MembersTab: actions', () => {
-  it('every row button is named with its member for a screen reader', async () => {
+  it('every row action is named with its member for a screen reader, also inside «⋮»', async () => {
     const s = await setup();
     await s.show(page());
     const label = (id: string) => accessibleName(s.testid(id));
@@ -210,6 +218,9 @@ describe('MembersTab: actions', () => {
     expect(label('members-row-carlos-remove')).toBe('Remove Carlos Ruiz');
     expect(label('members-row-jorge-resend')).toBe('Send the invitation again to jorge@example.com');
     expect(label('members-row-jorge-cancel')).toBe('Cancel the invitation to jorge@example.com');
+    await s.testid('members-row-jorge-menu').trigger('click');
+    await flush();
+    expect(s.testid('members-row-jorge-change_role').text()).toBe('Change the role of jorge@example.com');
   });
 
   it('a lost connection on «Resend» is said in the person’s language', async () => {
@@ -283,5 +294,36 @@ describe('MembersTab: actions', () => {
     await s.result(call, 'hubs.member.list', page());
     expect(accessibleName(s.wrapper.get('[data-testid="members-row-carlos-change_role"]'))).toBe('Cambiar el rol de Carlos Ruiz');
     expect(s.wrapper.find('[data-testid="members-seats"]').text()).toBe('3 de 5 plazas del plan');
+  });
+});
+
+describe('MembersTab: on a phone', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('each person is a card of the table: the name (with «You») heading it, the status, then email, role and last access with their icons', async () => {
+    viewport(true);
+    const s = await setup();
+    await s.show(page());
+    const cards = s.wrapper.findAll('.data-table__card');
+    expect(cards.map((card) => card.get('.data-table__card-title').text())).toEqual(['Laura MartínYou', 'Carlos Ruiz', 'jorge@example.com']);
+    expect(cards.map((card) => card.get('.data-table__card-status').text())).toEqual(['Active', 'Active', 'Pending']);
+    const lines = cards[2].findAll('.data-table__card-meta');
+    expect(lines.map((line) => line.attributes('data-column'))).toEqual(['email', 'role_label', 'last_opened_at']);
+    expect(lines.map((line) => line.get('.data-table__card-meta-value').text())).toEqual([
+      'jorge@example.com',
+      'Employee',
+      expect.stringMatching(/^Invited on Oct 11, 2026/),
+    ]);
+    expect(lines.every((line) => line.find('.data-table__card-meta-icon').exists())).toBe(true);
+    expect(s.wrapper.find('.card-line').exists()).toBe(false);
+  });
+
+  it('a card’s main button is its first action, and «⋮» holds the rest', async () => {
+    viewport(true);
+    const s = await setup();
+    await s.show(page());
+    expect(s.actionsOf('carlos')).toEqual(['change_role', 'menu']);
+    expect(s.actionsOf('jorge')).toEqual(['resend', 'menu']);
+    expect(offeredRowActions(s.wrapper, 'jorge')).toEqual(['resend', 'cancel', 'change_role']);
   });
 });

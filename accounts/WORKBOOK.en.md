@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:31add383c1fbec12a4d1aa68bde8500288bd7ddbaeb36c0990613d24c852a559 -->
+<!-- generated from WORKBOOK.md sha256:12768b8f612782b7d48227c4bdae920ca9ea5ae8d7edadce60cc5e8d6f877c67 -->
 
 ## What it is for and who it is for
 
@@ -153,7 +153,8 @@ on, with "Set up" or "Manage".
 ### Account › Security › Active sessions
 A full-height table with "Device", "Browser", "IP address" and "Last used"; this browser's goes first,
 marked "This session", and each other one carries "Close session". On top, "Close other sessions"; below,
-"Closing a session also closes it in your businesses.". On a phone, "Load more" instead of pages.
+"Closing a session also closes it in your businesses.". On a phone, the next ones arrive on scrolling to the end,
+instead of pages.
 
 ### admin › Accounts › Users and User sessions
 The list of accounts carries the action "Close all their sessions", which also ends the trust of their

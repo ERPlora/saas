@@ -213,9 +213,10 @@ test('with more sessions than a page, «Active sessions» loads, this one first,
     await settled(page);
     await page.screenshot({ path: shot(`FIX-SAAS-SESSIONS-RESULT-TOO-BIG-${viewport.width}`) });
     if (viewport.width < 640) {
-      // More sessions than one page of the server holds (100): the phone pages too, never a «Load more» that
-      // brings nothing, and every session stays reachable — here past the 100th.
-      await expect(page.getByTestId('sessions-load-more')).toHaveCount(0);
+      // More sessions than one page of the server holds (100): the phone pages too, the end of its scroll never asks
+      // for rows that would not come, and every session stays reachable — here past the 100th.
+      const table = page.locator('.data-table').filter({ has: rows.first() });
+      await expect(table.locator('ion-infinite-scroll')).toHaveJSProperty('disabled', true);
       await expect(pager.locator('.data-table__page-of')).toHaveText('1 / 73');
       for (let n = 0; n < 4; n += 1) await page.getByTestId('sessions-page-next').click();
       await expect(pager).toContainText('Showing 101–125 of');

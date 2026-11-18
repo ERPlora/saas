@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:d4496b5514e2a2c98aec6d8aef6673face6b23309044a04292f4d684448a0327 -->
+<!-- generated from WORKBOOK.md sha256:215887339e45a59ef1f270096c50a9dc032b61741013bbd16bdee6b072e2eea2 -->
 
 ## What it is for and who it is for
 
@@ -114,8 +114,8 @@ a business type, also its sector and its template ("Vertical").
 ### Members
 The "Members" tab of each business, for the owner and the administrators: the "Team" table with "Name" (one's own
 row marked "You"), "Email", "Role", "Status" and "Last access", the owner first; per row, only what the person may
-do with it ("Change role", "Remove", "Resend", "Cancel invitation" and, in the row's menu, "Transfer ownership").
-Below, the places of the plan and "What can each one do?"; above, the ownership offered and waiting for an answer,
+do with it: a member, "Change role" and "Remove"; an invitation, "Resend" and "Cancel invitation"; and in the row's
+menu, the rest ("Transfer ownership" and, on an invitation, "Change role"). Below, the places of the plan and "What can each one do?"; above, the ownership offered and waiting for an answer,
 with "Withdraw the offer". On a phone they are cards.
 
 ### Invite

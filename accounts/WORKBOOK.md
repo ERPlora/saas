@@ -176,8 +176,8 @@ está activada, con «Activar» o «Gestionar».
 ### Cuenta › Seguridad › Sesiones activas
 Una tabla a toda la altura con «Dispositivo», «Navegador», «Dirección IP» y «Último uso»; la de este
 navegador va la primera, marcada «Esta sesión», y cada otra lleva «Cerrar sesión». Arriba, «Cerrar las
-demás sesiones»; debajo, «Al cerrar una sesión también se cierra en tus negocios.». En el móvil, «Cargar
-más» en vez de páginas.
+demás sesiones»; debajo, «Al cerrar una sesión también se cierra en tus negocios.». En el móvil, las siguientes
+llegan al desplazarse hasta el final, en vez de páginas.
 
 ### admin › Cuentas › Usuarios y Sesiones de usuario
 La lista de cuentas lleva la acción «Cerrar todas sus sesiones», que también acaba la confianza de sus

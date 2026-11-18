@@ -1,13 +1,13 @@
 <script setup lang="ts">
 // Account → Security, «Active sessions»: the live `accounts.session.list` (this session first) in a server-side
 // DataTable — device, browser or app, IP address (the location is the IP: no GeoIP) and last use. The server pages it:
-// an account signed in on more browsers than one live result carries still sees its list; on a phone «Load more» grows
-// one window from the first row while every session fits one page of the server, and past it the phone pages too. Each
-// row but this one closes on its own (`accounts.session.close`); an app's session asks first, since it may be charging
-// at a till. «Close other sessions» (toolbar) is confirmed with how many go, every page's, the apps too. Closing a
-// session in the SaaS also ends it in the businesses (the server asks the Hub). Every close ends in a toast naming
-// where. A failed load (an error, or no answer in time) is said with «Retry», never as «no results · 0 sessions». The
-// list fills what the «Sign-in» card leaves of the page (`fill`).
+// an account signed in on more browsers than one live result carries still sees its list; on a phone the end of the
+// scroll grows one window from the first row while every session fits one page of the server, and past it the phone
+// pages too. Each row but this one closes on its own (`accounts.session.close`); an app's session asks first, since it
+// may be charging at a till. «Close other sessions» (toolbar) is confirmed with how many go, every page's, the apps
+// too. Closing a session in the SaaS also ends it in the businesses (the server asks the Hub). Every close ends in a
+// toast naming where. A failed load (an error, or no answer in time) is said with «Retry», never as «no results · 0
+// sessions». The list fills what the «Sign-in» card leaves of the page (`fill`).
 import {
   ConfirmDialog,
   DataTable,
@@ -35,7 +35,7 @@ const PAGE_MAX = 100;
 const { t, locale } = useI18n();
 const { text, forDialog } = useErrorText();
 const page = shallowRef(0);
-/** Pages the live window holds from `page` on: 1 on a desk; each «Load more» on a phone adds one. */
+/** Pages the live window holds from `page` on: 1 on a desk; each end of the scroll on a phone adds one. */
 const windowPages = shallowRef(1);
 function goToPage(n: number): void {
   page.value = n;
