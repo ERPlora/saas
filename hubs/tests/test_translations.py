@@ -12,7 +12,7 @@ NEW_MESSAGES = [
     # services/
     "Confirm your email address before accepting the invitation.",
     "Only the platform tells the people of a business.",
-    # models.py: SessionRevocation
+    # models/session_revocations.py: SessionRevocation
     "account",
     "Empty: every business of the account.",
     "requested at",
@@ -66,7 +66,7 @@ NEW_MESSAGES = [
     "Requests to the AI assistant a business may make each month (0 = none).",
     "WhatsApp messages a business may send each month (0 = none).",
     "AI assistant and WhatsApp per month",
-    # models.py: Plan.max_apps
+    # models/plan_catalog.py: Plan.max_apps
     "modules turned on",
     "Modules a business may choose to turn on; the ones they require do not count (0 = unlimited).",
     # HUBS-F01: the refusals of the sign-up of a business, which a Spanish account reads.

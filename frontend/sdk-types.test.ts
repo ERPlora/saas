@@ -134,7 +134,7 @@ const NARROWED: Record<string, string> = {
   // `list[Literal[…]]` of the row's actions: named in TypeScript (checked below against the literal).
   'InvoiceRowOut.actions': 'InvoiceAction[]',
   'SubscriptionRowOut.actions': 'SubscriptionAction[]',
-  // `CustomDomain.State` / `CustomDomain.Reason` of hubs/models.py (checked below against the model).
+  // `CustomDomain.State` / `CustomDomain.Reason` of hubs/models/custom_domains.py (checked below against the model).
   'CustomDomainOut.state': 'CustomDomainState',
   'CustomDomainOut.reason': 'CustomDomainReason',
 };
@@ -434,16 +434,16 @@ describe("frontend/sdk-types follows the panel's assistant schemas of base/schem
   });
 });
 
-/** The values of a `TextChoices` class of `CustomDomain` (hubs/models.py), as the API sends them. */
+/** The values of a `TextChoices` class of `CustomDomain` (hubs/models/custom_domains.py), as the API sends them. */
 function customDomainChoices(name: 'State' | 'Reason'): string {
-  const models = readFileSync(join(HERE, '..', 'hubs', 'models.py'), 'utf8');
+  const models = readFileSync(join(HERE, '..', 'hubs', 'models', 'custom_domains.py'), 'utf8');
   const model = models.slice(models.indexOf('class CustomDomain(models.Model):'));
   const block = new RegExp(`^ {4}class ${name}\\(models\\.TextChoices\\):\\n((?: {8}.*\\n)+)`, 'm').exec(model)?.[1] ?? '';
   return [...block.matchAll(/^ {8}[A-Z_]+ = "([^"]*)"/gm)].map((m) => `'${m[1]}'`).join(' | ');
 }
 
 describe('frontend/sdk-types follows the own domain of a business (HUBS-F17)', () => {
-  it('names its states and the reasons it is stuck as hubs/models.py does', () => {
+  it('names its states and the reasons it is stuck as hubs/models/custom_domains.py does', () => {
     expect(customDomainChoices('State')).toBe("'pending' | 'active' | 'lapsed' | 'removing'");
     expect(/^export type CustomDomainState = (.+);$/m.exec(TYPES)?.[1]).toBe(customDomainChoices('State'));
     expect(customDomainChoices('Reason').split(' | ')).toHaveLength(13);

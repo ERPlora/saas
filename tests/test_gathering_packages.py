@@ -2,8 +2,8 @@
 code of its own there, but takes each of its modules whole all the same.
 
 A name re-exported from the ``__init__`` would give every operation two import paths again, and a patch through the
-package would no longer reach the module that reads the name. A package that re-exports on purpose (``billing``) is
-not listed here.
+package would no longer reach the module that reads the name. A package that re-exports on purpose (``billing``'s, and
+an app's ``models``, whose migrations name ``<app>.models.<name>``) is not listed here.
 """
 
 import ast
