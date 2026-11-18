@@ -109,6 +109,9 @@ jobs:
         run: shellcheck .github/scripts/*.sh
       - name: Script tests
         run: for t in .github/scripts/*.test.sh; do bash "$t"; done
+      # With the runner's python3, the one the deploy runs them with: the standard library only.
+      - name: Python script tests
+        run: python3 -m unittest discover -s .github/scripts -p '*_test.py'
 
   # The e2e a push touches (e2e.yml): the doors' spec, which no screen covers (saas#285), and the specs the branch
   # adds, changes or renames. The rest run every night (nightly.yml, saas#296).

@@ -5,7 +5,7 @@
 # size and leaves the list once it fits its cap. A services.py, queries.py or schemas.py moved whole to
 # <name>/__init__.py takes its entry along, with the same ceiling.
 121 .github/scripts/e2e-report.sh saas#462
-278 .github/scripts/ecs-deploy.sh saas#462
+265 .github/scripts/ecs-deploy.sh saas#462
 234 .github/scripts/ecs-rollback.sh saas#462
 523 accounts/admin.py saas#462
 722 accounts/frontend/components/SignInForm.test.ts saas#462
