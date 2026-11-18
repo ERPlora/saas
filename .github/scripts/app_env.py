@@ -62,7 +62,7 @@ PRE_POLICIES = {
     "PUBLIC_INDEXING_ENABLED": "false",
     "STRIPE_EXPECTED_MODE": "test",
 }
-# In prod, changing one of these needs CONFIRM_PROTECTED (the deploy workflow's confirm_protected).
+# In prod, changing one of these needs CONFIRM_PROTECTED (confirm_protected of the deploy and rollback workflows).
 PROTECTED = ("AEAT_PRODUCTION_ENABLED", "PLATFORM_INVOICING_ENABLED", "STRIPE_EXPECTED_MODE")
 # What every container of the saas image has once merged: without a cache prefix or a Stripe mode the saas refuses to
 # start outside DEBUG (config/settings/core.py). CACHE_KEY_PREFIX comes from ERPlora/aws.
@@ -112,8 +112,8 @@ def environment_errors(environment: str, families: object) -> list[str]:
     return problems + agreement_errors(environment, families)
 
 
-def family_errors(environment: str, family: str, variables: object) -> list[str]:
-    where = f"{FILE}: {environment}.{family}"
+def family_errors(environment: str, family: str, variables: object, source: str = FILE) -> list[str]:
+    where = f"{source}: {environment}.{family}"
     if not isinstance(variables, dict):
         return [f"{where} must be an object of variables"]
     problems = [f"{where} has no {policy}: the four policies are explicit in every family"
@@ -153,7 +153,7 @@ def valid(name: str, value: object) -> bool:
     return isinstance(value, str) and name in SETTINGS and SETTINGS[name][0].fullmatch(value) is not None
 
 
-def agreement_errors(environment: str, families: dict) -> list[str]:
+def agreement_errors(environment: str, families: dict, source: str = FILE) -> list[str]:
     """A policy takes one value in every family of an environment (its valid values only: they are known words)."""
     problems = []
     for policy in POLICIES:
@@ -164,7 +164,7 @@ def agreement_errors(environment: str, families: dict) -> list[str]:
                 found.setdefault(value, []).append(family)
         if len(found) > 1:
             where = "; ".join(f"{value} in {', '.join(names)}" for value, names in sorted(found.items()))
-            problems.append(f"{FILE}: {environment} sets {policy} to {where}: every family takes the same value")
+            problems.append(f"{source}: {environment} sets {policy} to {where}: every family takes the same value")
     return problems
 
 
@@ -179,8 +179,8 @@ def protected_changes(wanted: dict, current: dict) -> dict[str, str]:
             if any(current.get(family, {}).get(name) != value for family in wanted)}
 
 
-def confirmation_errors(environment: str, wanted: dict, current: dict, confirm: str) -> list[str]:
-    """CONFIRM_PROTECTED: VAR=value pairs, by commas or spaces, each one a protected setting at the file's value."""
+def confirmation_errors(environment: str, wanted: dict, current: dict, confirm: str, source: str = FILE) -> list[str]:
+    """CONFIRM_PROTECTED: VAR=value pairs, by commas or spaces, each one a protected setting at the wanted value."""
     setting = protected_settings(wanted)
     confirmed = {}
     problems = []
@@ -191,12 +191,12 @@ def confirmation_errors(environment: str, wanted: dict, current: dict, confirm: 
         elif pair[1] not in PROTECTED:
             problems.append(f"CONFIRM_PROTECTED names {pair[1]}, which is no protected setting ({', '.join(PROTECTED)})")
         elif pair[2] != setting.get(pair[1]):
-            problems.append(f"CONFIRM_PROTECTED does not match {FILE}, which sets {pair[1]}={setting.get(pair[1])}")
+            problems.append(f"CONFIRM_PROTECTED does not match {source}, which sets {pair[1]}={setting.get(pair[1])}")
         else:
             confirmed[pair[1]] = pair[2]
     if environment == "prod":
         problems += [f"prod changes {name} to {value}: confirm it with CONFIRM_PROTECTED {name}={value} "
-                     "(the deploy workflow's confirm_protected)"
+                     "(the workflow's confirm_protected)"
                      for name, value in protected_changes(wanted, current).items() if confirmed.get(name) != value]
     return problems
 
@@ -341,12 +341,16 @@ def revise(arguments: argparse.Namespace) -> None:
     json.dump(new, sys.stdout)
 
 
+def put_settings(region: str, parameter: str, wanted: dict) -> None:
+    """Writes <wanted> to app_env as ERPlora/aws reads it: compact JSON with its keys sorted."""
+    value = json.dumps(wanted, sort_keys=True, separators=(",", ":"))
+    aws(region, "ssm", "put-parameter", "--name", parameter, "--value", value, "--type", "String", "--overwrite")
+
+
 def record(arguments: argparse.Namespace) -> None:
     parameter = parameter_of(arguments.environment)
-    value = json.dumps(checked(arguments.workdir)["wanted"], sort_keys=True, separators=(",", ":"))
     try:
-        aws(arguments.region, "ssm", "put-parameter", "--name", parameter, "--value", value, "--type", "String",
-            "--overwrite")
+        put_settings(arguments.region, parameter, checked(arguments.workdir)["wanted"])
     except Refused as refusal:
         raise Refused(f"the services run the new revisions, but {parameter} was not written ({refusal}): run the "
                       "deploy again, or the revisions ERPlora/aws registers keep the settings in force before") from None
@@ -373,8 +377,9 @@ def parser() -> argparse.ArgumentParser:
     return main_parser
 
 
-def main(argv: list[str] | None = None) -> int:
-    arguments = parser().parse_args(argv)
+def run(main_parser: argparse.ArgumentParser, argv: list[str] | None) -> int:
+    """Runs the command of <argv>: a refusal prints its ::error:: lines, each with the command's suffix."""
+    arguments = main_parser.parse_args(argv)
     try:
         arguments.command(arguments)
     except Refused as refusal:
@@ -382,6 +387,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"::error::{problem}{arguments.suffix}", file=sys.stderr)
         return 1
     return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    return run(parser(), argv)
 
 
 if __name__ == "__main__":
