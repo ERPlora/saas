@@ -519,12 +519,29 @@ check "settings: a setting that is not protected changes without a confirmation"
   '[ "$status" -eq 0 ] && [ "$(env_of erplora-prod-saas saas | jq -r .PUBLIC_INDEXING_ENABLED)" = false ] &&
    [ "$(recorded prod | jq -r ".saas.PUBLIC_INDEXING_ENABLED")" = false ]'
 
+# A commit from before the file (an older release, deployed again) keeps the settings in force.
 setup
 git -C "$work/repo" rm -q deploy/app-env.json
 commit_settings
+jq -c 'map_values(.PUBLIC_INDEXING_ENABLED = "false")' "$FIXTURES/app_env.prod.json" > "$work/app_env.json"
+mv "$work/app_env.json" "$FIXTURES/app_env.prod.json"
 run_deploy && status=0 || status=$?
-check "settings: a commit without deploy/app-env.json deploys nothing" \
-  'nothing_registered && grep -q "::error::the commit abc123 has no deploy/app-env.json; nothing was registered" "$work/out.log"'
+check "settings: a commit from before deploy/app-env.json deploys with the settings in force, and says so" \
+  '[ "$status" -eq 0 ] && [ "$(env_of erplora-prod-saas saas | jq -r .PUBLIC_INDEXING_ENABLED)" = false ] &&
+   [ "$(recorded prod)" = "$(jq -cS . "$FIXTURES/app_env.prod.json")" ] &&
+   grep -q "::warning::abc123 has no deploy/app-env.json: the deploy keeps the settings in force" "$work/out.log"'
+setup
+git -C "$work/repo" rm -q deploy/app-env.json
+commit_settings
+jq -c 'del(.["saas-cron"])' "$FIXTURES/app_env.prod.json" > "$work/app_env.json"
+mv "$work/app_env.json" "$FIXTURES/app_env.prod.json"
+run_deploy && status=0 || status=$?
+check "settings: a commit from before the file deploys nothing when the settings in force break a rule" \
+  'nothing_registered && grep -q "::error::abc123 has no deploy/app-env.json and the settings in force (/erplora/prod/saas/app_env) do not pass its checks" "$work/out.log"'
+setup
+run_deploy IMAGE_TAG=fedcba9 && status=0 || status=$?
+check "settings: a commit the checkout does not have deploys nothing" \
+  'nothing_registered && grep -q "::error::fedcba9 is no commit of this checkout; nothing was registered" "$work/out.log"'
 setup
 printf '{"prod": ' > "$work/repo/deploy/app-env.json"
 commit_settings

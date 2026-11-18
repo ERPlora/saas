@@ -386,7 +386,8 @@ fichero **del commit que despliega** y, antes de registrar nada, rechaza:
 Después aplica a cada familia los ajustes del fichero (quita los que el `app_env` anterior tenía y el fichero ya
 no) y, cuando los servicios corren las revisiones nuevas, escribe los ajustes en `app_env` y la imagen en
 `image_tag`: Terraform relee los dos, así que sus revisiones, y con ellas las tareas programadas, los conservan.
-Volver atrás con `rollback.yml` aún no reescribe `app_env` ni pide la confirmación (saas#521).
+Un commit anterior al fichero (una release antigua que se vuelve a desplegar) se despliega con los ajustes vigentes, y
+el despliegue lo avisa. Volver atrás con `rollback.yml` aún no reescribe `app_env` ni pide la confirmación (saas#521).
 
 En `pre` (`pre.erplora.com`, cluster `erplora-pre`, mismo ALB, Aurora y Valkey que prod):
 

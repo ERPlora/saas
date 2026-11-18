@@ -15,8 +15,12 @@ and its revisions read back what the last deploy wrote to /erplora/<environment>
 A refusal exits 1 with ::error:: lines. No message repeats a value of the file: only names, and values a check has
 already found to be one of a few known words.
 
-Only the standard library: the deploy runs it with the runner's python3.
+A commit from before the file (an older release, deployed again) keeps the settings in force.
+
+Only the standard library: the deploy runs it with the runner's python3, or with the one of the machine that deploys.
 """
+
+from __future__ import annotations
 
 import argparse
 import copy
@@ -265,10 +269,14 @@ def aws(region: str, *arguments: str) -> str:
     return result.stdout
 
 
-def read_file(commit: str) -> dict:
+def read_file(commit: str) -> dict | None:
+    """The checked file of the commit; None when the commit is from before the file."""
     result = subprocess.run(["git", "cat-file", "blob", f"{commit}:{FILE}"], capture_output=True, text=True, check=False)
     if result.returncode != 0:
-        raise Refused(f"the commit {commit} has no {FILE}")
+        known = subprocess.run(["git", "cat-file", "-e", f"{commit}^{{commit}}"], capture_output=True, check=False)
+        if known.returncode != 0:
+            raise Refused(f"{commit} is no commit of this checkout")
+        return None
     try:
         settings = json.loads(result.stdout)
     except ValueError as error:
@@ -299,10 +307,16 @@ def parameter_of(environment: str) -> str:
 
 def check(arguments: argparse.Namespace) -> None:
     environment = arguments.environment
-    wanted = read_file(arguments.commit)[environment]
+    settings = read_file(arguments.commit)
     parameter = parameter_of(environment)
     current = parse_current(aws(arguments.region, "ssm", "get-parameter", "--name", parameter,
                                 "--query", "Parameter.Value", "--output", "text"), parameter)
+    if settings is None:
+        if environment_errors(environment, current):
+            raise Refused(f"{arguments.commit} has no {FILE} and the settings in force ({parameter}) do not pass its "
+                          "checks: deploy a commit that has the file")
+        print(f"::warning::{arguments.commit} has no {FILE}: the deploy keeps the settings in force", file=sys.stderr)
+    wanted = settings[environment] if settings else current
     problems = confirmation_errors(environment, wanted, current, os.environ.get("CONFIRM_PROTECTED", ""))
     if problems:
         raise Refused(*problems)
