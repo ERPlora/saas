@@ -85,7 +85,7 @@
           <li>{% blocktrans trimmed with days=suspended_hub_delete_days %}A Hub that remains suspended for {{ days }} days is deleted, together with its data. The account holder is notified beforehand, by email and with a specific date, and receives the copy described in section 5.1.{% endblocktrans %}</li>
         </ul>
 
-        {% comment %} The written basis of what checkout enforces (billing.services.require_sold_to):
+        {% comment %} The written basis of what checkout enforces (billing.services.sale_tax.require_sold_to):
              a paid sale needs a billing address in Spain, and in the Canary Islands, Ceuta and
              Melilla a tax ID. Contract: public/tests/test_where_we_sell.py. {% endcomment %}
         <section id="where-we-sell">

@@ -33,13 +33,14 @@ from billing.schemas import (
     VatCheckIn,
 )
 from billing.schemas.promo_codes import PromoCheckIn
+from billing.services import payer_vat_numbers
 
 router = Router(tags=["billing"])
 
 
 @bind(router, "billing.vat_check.run", "/billing/vat-check")
 async def vat_check_run(request, data: VatCheckIn):
-    return await run_operation(request, services.vat_check_run, data)
+    return await run_operation(request, payer_vat_numbers.vat_check_run, data)
 
 
 @bind(router, "billing.tax.preview", "/billing/tax-preview")

@@ -12,7 +12,7 @@ from pydantic import AfterValidator, model_validator
 from billing.schemas.discounts import SubscriptionDiscountOut
 from hubs.schemas import PlanOut
 
-#: The verdict a VAT number gets (``billing.services.clear_tax_id_for_stripe``):
+#: The verdict a VAT number gets (``billing.services.vat_clearance.clear_tax_id_for_stripe``):
 #: ``verified`` (VIES confirmed it, with proof: reverse charge), ``invalid`` (not in VIES),
 #: ``unavailable`` (VIES could not answer, or answered without proof), ``national`` (ERPlora's own
 #: country: nothing to prove, never reverse charge), ``outside_vies`` (a UK number, HMRC's register).
