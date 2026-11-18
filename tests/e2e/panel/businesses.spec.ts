@@ -1,11 +1,12 @@
 // Businesses (`/dashboard/businesses`, mockups `businesses.html`) in Chrome: the account's businesses in
-// the DataTable with their statuses, the banners of what waits (an invitation, an unpaid invoice), the
+// the DataTable with their statuses, the banner of what waits (an invitation; an unpaid invoice is the bell's), the
 // cards on a phone, «Manage» into a business's page and its four sections, and «Delete» → «Recover».
 import { type Page } from '@playwright/test';
 
 import { panelAccount } from './accounts';
 import { businessIdOf, seedPanel } from './businesses';
 import { expect, test } from './fixtures';
+import { BELL_SUBSCRIPTIONS, expectBell } from './notices';
 import { QUIET_MS, watchLiveStreams, watchPageErrors } from './page-events';
 import { settled, shot, VIEWPORTS } from './screen';
 import { signIn } from './session';
@@ -33,7 +34,8 @@ test('lists the businesses with their status, plan and role, and what waits abov
   await expect(rows.filter({ hasText: 'Bar La Plaza' })).toContainText('Payment due');
   await expect(rows.filter({ hasText: 'Peluquería Ana' })).toContainText('Managed by the owner');
   await expect(page.getByTestId('businesses-pager').or(page.locator('.data-table__pager'))).toContainText('4');
-  await expect(page.locator('[data-testid^="businesses-unpaid-"]')).toContainText('Bar La Plaza has an unpaid invoice');
+  await expect(page.locator('[data-testid^="businesses-unpaid"]')).toHaveCount(0);
+  await expectBell(page, 1);
   await expect(page.locator('[data-testid^="businesses-invitation-"]')).toContainText('You have been invited to Bar Norte');
   // A manager may open the business but not manage it.
   await expect(page.locator('[data-testid$="-manage"]')).toHaveCount(3);
@@ -98,8 +100,9 @@ test('«Delete» lives in the business’s Settings and asks for the name; delet
 });
 
 // flow: ninguno — regression test of Businesses. A page declares its live data when it
-// mounts, so its stream (`GET /api/live?s=…`) opens once; a second subscription arriving after the first
-// open makes the SDK reopen it, and the first request ends `ERR_ABORTED` (`watchLiveStreams`, page-events.ts).
+// mounts, so its stream (`GET /api/live?s=…`) opens once, with what the bell of the topbar follows; a second
+// subscription arriving after the first open makes the SDK reopen it, and the first request ends `ERR_ABORTED`
+// (`watchLiveStreams`, page-events.ts).
 
 test('Businesses opens its live stream once, with everything the page shows', async ({ page }) => {
   const streams = watchLiveStreams(page);
@@ -108,7 +111,7 @@ test('Businesses opens its live stream once, with everything the page shows', as
   await expect(page.getByTestId('businesses-row')).toHaveCount(4);
   await page.waitForTimeout(QUIET_MS);
   expect({ opened: streams.opened, failed: [...streams.failed] }).toEqual({
-    opened: [[expect.stringMatching(/^hubs\.business\.list /)]],
+    opened: [[expect.stringMatching(/^hubs\.business\.list /), ...BELL_SUBSCRIPTIONS]],
     failed: [],
   });
 });
@@ -126,10 +129,10 @@ for (const { width, height } of VIEWPORTS) {
     await expect(page.getByTestId('business-header')).toContainText('Panadería López');
     await page.waitForTimeout(QUIET_MS);
     expect({ opened: streams.opened, failed: [...streams.failed] }).toEqual({
-      opened: [expect.arrayContaining([expect.stringMatching(/^hubs\.business\.get /), expect.stringMatching(/^hubs\.member\.list /)])],
+      opened: [expect.arrayContaining([expect.stringMatching(/^hubs\.business\.get /), expect.stringMatching(/^hubs\.member\.list /), ...BELL_SUBSCRIPTIONS])],
       failed: [],
     });
-    expect(streams.opened[0]).toHaveLength(2);
+    expect(streams.opened[0]).toHaveLength(4);
     expect(errors).toEqual([]);
     await settled(page);
     await page.screenshot({ path: shot(`FIX-SAAS-BUSINESSES-LIVE-DOUBLE-OPEN-${width}`) });

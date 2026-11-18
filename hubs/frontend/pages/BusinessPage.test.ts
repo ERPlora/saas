@@ -83,6 +83,13 @@ async function setup(tab = 'summary', business: Record<string, unknown> | null =
   return { ...m, call, testid, page: () => m.wrapper.getComponent(AppPage) };
 }
 
+/** «Open» asks the server to open the business at its start. */
+async function expectOpens(s: Awaited<ReturnType<typeof setup>>): Promise<void> {
+  await s.testid('business-open').trigger('click');
+  await flush();
+  expect(s.calls().find((c) => c.path === '/api/hubs/businesses/open')?.body).toEqual({ id: 'h1', next: '/' });
+}
+
 describe('BusinessPage: the frame', () => {
   it('follows hubs.business.get of the business, titled by its name, back to Businesses', async () => {
     const s = await setup();
@@ -108,14 +115,11 @@ describe('BusinessPage: the frame', () => {
     expect(header.find('.biz-header__url .host-name').exists()).toBe(true);
     expect(header.get('.status-pill').text()).toBe('Active');
     expect(header.get('.biz-header__meta').text()).toBe('Plan Starter · Owner');
-    const open = s.testid('business-open');
-    expect(ionProps(open, 'fill')).toEqual({ fill: 'solid' });
-    await open.trigger('click');
-    await flush();
-    expect(s.calls().find((c) => c.path === '/api/hubs/businesses/open')?.body).toEqual({ id: 'h1', next: '/' });
+    expect(ionProps(s.testid('business-open'), 'fill')).toEqual({ fill: 'solid' });
+    await expectOpens(s);
   });
 
-  it('a suspended business has no «Open», and says why, with the way to pay', async () => {
+  it('a suspended business has no «Open», and says why and since when under the header; paying is the bell’s', async () => {
     const s = await setup('summary', {
       status: 'suspended',
       can: { ...BUSINESS.can, open: false },
@@ -124,15 +128,15 @@ describe('BusinessPage: the frame', () => {
       pay_url: 'https://invoice.stripe.com/i/abc',
     });
     expect(s.testid('business-open').exists()).toBe(false);
-    expect(s.testid('business-state').exists()).toBe(false);
-    const unpaid = s.testid('business-unpaid');
-    expect(unpaid.text()).toContain('Panadería López is suspended');
-    expect(unpaid.get('[data-testid="unpaid-card"]').text()).toBe('The bank declined the card: change it before paying.');
+    expect(s.testid('business-state').text()).toBe(
+      'Suspended because of an unpaid invoice since Oct 1, 2026. Your data is safe: pay the invoice and it works again at once.',
+    );
+    expect(s.wrapper.find('[href^="https://invoice.stripe.com"]').exists()).toBe(false);
   });
 
-  it('a payment pending is said with the way to pay; the business still opens', async () => {
+  it('a payment pending is said under the header with its deadline; the business still opens', async () => {
     const s = await setup('summary', { status: 'past_due', unpaid_reason: 'payment_failed', unpaid_since: '2026-10-10T10:00:00Z', pay_url: 'https://invoice.stripe.com/i/abc' });
-    expect(s.testid('business-unpaid').find('[data-testid="unpaid-pay"]').exists()).toBe(true);
+    expect(s.testid('business-state').text()).toBe('There is an unpaid invoice. Pay it before Oct 17, 2026 or the business is suspended.');
     expect(s.testid('business-open').exists()).toBe(true);
   });
 
@@ -221,9 +225,7 @@ describe('BusinessPage: the sections', () => {
     // One «Open» per screen: the card does not repeat the header's.
     expect(s.wrapper.findAll('[data-testid="business-modules-open"]')).toHaveLength(0);
     expect(ionProps(s.testid('business-open'), 'fill')).toEqual({ fill: 'solid' });
-    await s.testid('business-open').trigger('click');
-    await flush();
-    expect(s.calls().find((c) => c.path === '/api/hubs/businesses/open')?.body).toEqual({ id: 'h1', next: '/' });
+    await expectOpens(s);
   });
 
   it('Members fills the page between the topbar and the tabbar; the other sections read as a page', async () => {

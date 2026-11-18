@@ -16,6 +16,7 @@ import { panelAccount } from './accounts';
 import { businessIdOf, seedPanel } from './businesses';
 import { runSeed } from './django';
 import { expect, test } from './fixtures';
+import { expectBell, featureNotice, primary } from './notices';
 import { watchPageErrors } from './page-events';
 import { repeatedTop, settled, stripedAfterResize } from './screen';
 import { signIn } from './session';
@@ -168,19 +169,18 @@ test.describe('the way to pay outside Billing', () => {
     expect(await stripedAfterResize(page, SHOT_SIZES, 'FIX-SAAS-E2E-CHROME-SHOT-STRIPE')).toEqual([]);
   });
 
-  test('Businesses groups the unpaid invoices in one notice, each business with its way out, days without the time', async ({ page }) => {
+  test('Businesses has no box for the unpaid invoices: the bell has them, each business with its way out, days without the time', async ({ page }) => {
     await page.goto('/dashboard/businesses');
-    const group = page.getByTestId('businesses-unpaid');
-    await expect(group).toContainText('2 businesses have unpaid invoices');
-    const lines = group.getByTestId('businesses-unpaid-line');
-    await expect(lines).toHaveCount(2);
-    await expect(lines.filter({ hasText: 'Bar La Plaza' }).getByTestId('unpaid-change-card')).toBeVisible();
-    expect(await hrefOf(lines.filter({ hasText: 'Bar Norte' }).getByTestId('unpaid-pay'))).toBe('https://invoice.stripe.com/i/e2e-billing-norte');
-    expect(await group.innerText()).not.toMatch(/\d{1,2}:\d{2}/);
-    await expect(page.locator('[data-testid^="businesses-unpaid-e2e"]')).toHaveCount(0);
+    await expectBell(page, 2);
+    await expect(page.locator('[data-testid^="businesses-unpaid"]')).toHaveCount(0);
+    const plaza = await featureNotice(page, 'Bar La Plaza');
+    await expect(primary(plaza)).toHaveText('Change card');
+    expect(await plaza.innerText()).not.toMatch(/\d{1,2}:\d{2}/);
+    const norte = await featureNotice(page, 'Bar Norte');
+    await expect(primary(norte)).toHaveText('Pay the invoice · €36.29');
     for (const size of SHOT_SIZES) {
       await page.setViewportSize(size);
-      await snap(page, `businesses-unpaid-grouped-${size.width}`);
+      await snap(page, `businesses-unpaid-bell-${size.width}`);
     }
   });
 });
