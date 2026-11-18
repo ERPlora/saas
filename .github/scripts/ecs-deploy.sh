@@ -23,7 +23,7 @@
 #      revision in this family;
 #   1. registers a new revision of each family from that one, with its tags, changing only the image and
 #      the family's settings of the containers that run the saas image (one per task: the app; app_env.py
-#      revision): a setting ERPlora/aws sets in that family (one owner per variable), or a container left
+#      revision): a setting ERPlora/aws gives it as a secret (one owner per variable), or a container left
 #      without CACHE_KEY_PREFIX or one of the four policies, registers nothing. Terraform owns the rest of
 #      the definition; saas-cron is only registered (the Scheduler runs its latest);
 #   2. runs the migration (saas-migrate) on the new revision and polls it until it is STOPPED; if it
