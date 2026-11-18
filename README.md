@@ -387,7 +387,17 @@ Después aplica a cada familia los ajustes del fichero (quita los que el `app_en
 no) y, cuando los servicios corren las revisiones nuevas, escribe los ajustes en `app_env` y la imagen en
 `image_tag`: Terraform relee los dos, así que sus revisiones, y con ellas las tareas programadas, los conservan.
 Un commit anterior al fichero (una release antigua que se vuelve a desplegar) se despliega con los ajustes vigentes, y
-el despliegue lo avisa. Volver atrás con `rollback.yml` aún no reescribe `app_env` ni pide la confirmación (saas#521).
+el despliegue lo avisa.
+
+**Volver atrás** (`rollback.yml`, `ecs-rollback.sh` con `.github/scripts/app_env_rollback.py`) pone `saas` y
+`saas-worker` en su revisión anterior, que corre con los ajustes con los que se registró, no con el fichero. Por eso,
+antes de mover nada, lee esos ajustes del contenedor de la app de cada revisión de destino y les pasa las mismas
+comprobaciones que el despliegue al fichero: las de `pre`, Analytics solo en la web de prod, el mismo valor de cada
+política en las familias que vuelven y, en prod, cobrar de verdad solo con el Hub registrando en producción y
+`confirm_protected` para cada protegido que cambie respecto al `app_env` vigente. Si algo no pasa, no cambia nada.
+Cuando los servicios corren las revisiones anteriores, escribe en `app_env` los ajustes de las familias que volvieron
+(las demás, `saas-cron` y `saas-migrate`, siguen en su revisión y conservan los suyos) y después la imagen en
+`image_tag`.
 
 En `pre` (`pre.erplora.com`, cluster `erplora-pre`, mismo ALB, Aurora y Valkey que prod):
 
@@ -419,7 +429,8 @@ En `pre` (`pre.erplora.com`, cluster `erplora-pre`, mismo ALB, Aurora y Valkey q
 
 Relanzar pre: `gh workflow run deploy.yml --repo ERPlora/saas --ref pre -f environment=pre`. Volver a la revisión
 anterior: `gh workflow run rollback.yml --repo ERPlora/saas --ref pre -f environment=pre -f confirm=ROLLBACK`
-(en prod, `--ref main -f environment=prod`). Una ejecución manual tiene que nombrar el entorno de su rama, y
+(en prod, `--ref main -f environment=prod` y, si la vuelta atrás cambia un protegido,
+`-f confirm_protected=PLATFORM_INVOICING_ENABLED=false`, por ejemplo). Una ejecución manual tiene que nombrar el entorno de su rama, y
 las releases solo se redespliegan en prod (`.github/scripts/deploy-env.sh`). prod y pre no se esperan entre
 sí: el grupo de concurrencia es por rama.
 

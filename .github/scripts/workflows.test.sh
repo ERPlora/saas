@@ -67,6 +67,14 @@ lock = deploy_job.get("concurrency") or {}
 check("the deploy job holds the deploy lock of its branch", lock.get("group") == GROUP)
 check("a deploy in progress is never cancelled", lock.get("cancel-in-progress") is False)
 check("rollback.yml shares the deploy lock", (rollback.get("concurrency") or {}).get("group") == GROUP)
+rollback_confirm = (((rollback.get(True) or {}).get("workflow_dispatch") or {}).get("inputs") or {}).get("confirm_protected") or {}
+check("a rollback may confirm the protected settings it changes, empty by default",
+      rollback_confirm.get("type") == "string" and rollback_confirm.get("required") is False
+      and rollback_confirm.get("default") == "")
+ecs_rollback_env = next((step.get("env") or {} for step in steps((rollback.get("jobs") or {}).get("rollback") or {})
+                         if "ecs-rollback.sh" in str(step.get("run", ""))), {})
+check("ecs-rollback.sh gets that confirmation as CONFIRM_PROTECTED",
+      ecs_rollback_env.get("CONFIRM_PROTECTED") == "${{ inputs.confirm_protected }}")
 
 # --- deploy.yml: the environment first, then tests and image build side by side -----------------
 check("deploy.yml has the jobs environment, test, build and deploy",
