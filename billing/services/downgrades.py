@@ -8,11 +8,9 @@ from django.utils.translation import gettext as _
 from live.errors import Conflict, OperationError
 
 from billing import queries, stripe_service
-# Code still in this package's __init__, read through it when called: importing its names here would be a loop.
-from billing import services
 from billing.models import PlanChangeSchedule
 from billing.money import to_cents
-from billing.services import discounts, payment_gates, stripe_sales
+from billing.services import discounts, payment_gates, stripe_sales, stripe_sync
 from billing.stripe_period import subscription_period
 from hubs.models import Hub, Plan, Subscription
 
@@ -118,7 +116,7 @@ def _schedule_downgrade(hub: Hub, subscription: Subscription, live: dict, sale: 
             "stripe_schedule_id": made["id"],
             "plan_slug": sale.slug,
             "interval": sale.interval,
-            "starts_at": services._moment(period_end) or subscription.current_period_end or timezone.now(),
+            "starts_at": stripe_sync._moment(period_end) or subscription.current_period_end or timezone.now(),
         },
     )
 

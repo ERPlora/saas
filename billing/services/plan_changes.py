@@ -13,11 +13,17 @@ from live.operations import AI, INTERNAL, operation
 from live.outbox import record_event
 
 from billing import events, queries, stripe_service
-# Code still in this package's __init__, read through it when called: importing its names here would be a loop.
-from billing import services
 from billing.models import PromoCode
 from billing.schemas import CheckoutConfirmIn, HubIn, PlanChangeIn, SubscriptionOut
-from billing.services import discounts, downgrades, payment_gates, promo_codes, stripe_sales
+from billing.services import (
+    discounts,
+    downgrades,
+    live_subscriptions,
+    payment_gates,
+    promo_codes,
+    stripe_sales,
+    stripe_sync,
+)
 from billing.stripe_period import subscription_period
 from hubs.models import Hub, Subscription
 
@@ -62,7 +68,7 @@ def _plan_change(
     if current is None:
         stripe_sales._require_room(live)
     items = [
-        {"id": current["id"], **plan_line, "tax_rates": services._rates_param(tax_rates)}
+        {"id": current["id"], **plan_line, "tax_rates": stripe_sync._rates_param(tax_rates)}
         if current
         else {**plan_line, "quantity": 1}
     ]
@@ -76,7 +82,7 @@ def _plan_change(
                 {
                     "id": item["id"],
                     "price": module_line.price_id,
-                    "tax_rates": services._rates_param(
+                    "tax_rates": stripe_sync._rates_param(
                         stripe_sales.price_sale(hub, module_line, recurring_net=recurring)
                     ),
                 }
@@ -182,7 +188,7 @@ def _require_fresh_preview(proration_date: int) -> None:
     """The proration date the confirmation sends is the preview's, and the preview is recent: a date in the
     future would charge less, an old one another price."""
     now = timezone.now()
-    moment = services._moment(proration_date)
+    moment = stripe_sync._moment(proration_date)
     if (
         moment is None
         or moment < now - PREVIEW_VALID_FOR
@@ -244,11 +250,11 @@ def checkout_confirm(ctx: OperationContext, data: CheckoutConfirmIn) -> dict:
             idempotency_key=f"module-{hub.id}-{sale.slug}-{uuid.uuid4().hex}",
         )
     # Charged: a read-back that fails is not «nothing was charged»; the webhook applies it then.
-    live = services._read_live(subscription.stripe_subscription_id)
+    live = stripe_sync._read_live(subscription.stripe_subscription_id)
     if live is not None:
-        services.apply_live(hub.id, live)
+        live_subscriptions.apply_live(hub.id, live)
     record_event(ctx, events.MODULE_ADDED, {"hub_id": str(hub.id), "module": sale.slug})
-    return services.subscription_out(hub.id)
+    return live_subscriptions.subscription_out(hub.id)
 
 
 @operation(
@@ -282,7 +288,7 @@ def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
             events.PLAN_CHANGE_SCHEDULED,
             {"hub_id": str(hub.id), "plan": sale.slug, "interval": sale.interval},
         )
-        return services.subscription_out(hub.id)
+        return live_subscriptions.subscription_out(hub.id)
     downgrades._release_pending(hub, live)
     params = {"items": change.items, "payment_behavior": "error_if_incomplete"}
     if change.trial_end is not None:
@@ -297,7 +303,7 @@ def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
             params,
             idempotency_key=f"plan-{hub.id}-{sale.slug}-{sale.interval}-{uuid.uuid4().hex}",
         )
-    services.apply_live(hub.id, updated)
+    live_subscriptions.apply_live(hub.id, updated)
     if change.promo is not None:
         promo_codes.redeem_promo(change.promo.code, hub=hub, customer=subscription.stripe_customer_id)
     record_event(
@@ -305,7 +311,7 @@ def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
         events.PLAN_CHANGED,
         {"hub_id": str(hub.id), "plan": sale.slug, "interval": sale.interval},
     )
-    return services.subscription_out(hub.id)
+    return live_subscriptions.subscription_out(hub.id)
 
 
 @operation(
@@ -353,9 +359,9 @@ def plan_cancel(ctx: OperationContext, data: HubIn) -> dict:
             updated = stripe_service.update_subscription(
                 subscription.stripe_subscription_id, {"cancel_at_period_end": True}
             )
-        services.apply_live(hub.id, updated)
+        live_subscriptions.apply_live(hub.id, updated)
         record_event(ctx, events.PLAN_CANCELLED, {"hub_id": str(hub.id)})
-    return services.subscription_out(hub.id)
+    return live_subscriptions.subscription_out(hub.id)
 
 
 @operation(
@@ -396,11 +402,11 @@ def plan_keep(ctx: OperationContext, data: HubIn) -> dict:
             updated = stripe_service.update_subscription(
                 subscription.stripe_subscription_id, {"cancel_at_period_end": False}
             )
-        services.apply_live(hub.id, updated)
+        live_subscriptions.apply_live(hub.id, updated)
         record_event(ctx, events.PLAN_KEPT, {"hub_id": str(hub.id)})
     elif downgrades.pending_change(hub) is not None:
         # A downgrade that waits for the end of the period is undone: the plan renews as it is.
         payment_gates.require_stripe()
         downgrades._release_pending(hub)
         record_event(ctx, events.PLAN_KEPT, {"hub_id": str(hub.id)})
-    return services.subscription_out(hub.id)
+    return live_subscriptions.subscription_out(hub.id)

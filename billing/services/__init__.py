@@ -6,9 +6,8 @@ import logging
 import uuid
 from collections import Counter
 from collections.abc import Callable
-from contextlib import contextmanager
 from functools import partial
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import NamedTuple
 
@@ -16,8 +15,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, connection, transaction
-from django.db.models import F, Q, Value
-from django.db.models.functions import Coalesce
+from django.db.models import F, Q
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from live.context import OperationContext, Scope, system_context
@@ -63,6 +61,7 @@ from billing.services import (
     discounts,
     downgrades,
     invoice_discounts,
+    live_subscriptions,
     payer_vat_numbers,
     payment_gates,
     plan_changes,
@@ -73,6 +72,8 @@ from billing.services import (
     staff_test_clocks,
     stripe_customers,
     stripe_sales,
+    stripe_sync,
+    unpaid_notices,
     vat_clearance,
 )
 from billing.stripe_checkout import (
@@ -85,11 +86,10 @@ from billing.stripe_keys import StripeKeyMode
 from billing.stripe_period import subscription_period
 from hubs import emails as hub_emails
 from hubs import hub_client
-from hubs.queries import access_control, membership, payers, plan_catalog
-from hubs.services import exclusive_runs, hub_callbacks, refusals, subscription_sync, suspensions
+from hubs.queries import access_control, membership, payers
+from hubs.services import exclusive_runs, hub_callbacks, refusals, suspensions
 from hubs.models import BillingProfile, Hub, HubMember, Subscription, SubscriptionItem
 from hubs.hub_client import HubRefused, HubUnavailable
-from hubs.schemas.subscriptions import ModuleRightIn, SubscriptionApplyIn
 
 logger = logging.getLogger("billing.services")
 
@@ -119,7 +119,7 @@ def end_renewal_after_hand_over(hub: Hub, new_owner) -> datetime | None:
         updated = stripe_service.update_subscription(
             subscription.stripe_subscription_id, {"cancel_at_period_end": True}
         )
-    apply_live(hub.id, updated)
+    live_subscriptions.apply_live(hub.id, updated)
     logger.info("[BILLING] Hub %s handed over: its plan stops renewing on its previous payer's card", hub.id)
     return Subscription.objects.get(hub=hub).current_period_end
 
@@ -281,11 +281,11 @@ def _takeover_completed(hub: Hub, session: dict, subscription_id: str, replaced:
     previous one, on the previous payer's card, ends now without a refund (the business is using the period it
     paid; the new one bills from its end). Stripe not answering raises: nothing moves and Stripe delivers it
     again. A redelivery finds the business moved and ends nothing twice."""
-    with holding(hub.id):
+    with stripe_sync.holding(hub.id):
         local = Subscription.objects.filter(hub=hub).first()
         if local is None or local.stripe_subscription_id != subscription_id:
             live = stripe_service.retrieve_subscription(subscription_id)
-            apply_live(hub.id, live)
+            live_subscriptions.apply_live(hub.id, live)
             if replaced and replaced != subscription_id:
                 discounts.move_redemption(replaced, live)
                 previous = stripe_service.retrieve_subscription(replaced)
@@ -332,7 +332,7 @@ def module_cancel(ctx: OperationContext, data: ModuleIn) -> dict:
     downgrades._require_no_pending_change(hub)
     item = _bought_item(subscription, data.module)
     if item.valid_until is not None:
-        return subscription_out(hub.id)
+        return live_subscriptions.subscription_out(hub.id)
     payment_gates.require_stripe()
     live = stripe_sales._live(subscription)
     others = [line for line in stripe_sales._live_items(live) if line["id"] != item.stripe_item_id]
@@ -349,11 +349,11 @@ def module_cancel(ctx: OperationContext, data: ModuleIn) -> dict:
             updated = stripe_service.update_subscription(
                 subscription.stripe_subscription_id, {"cancel_at_period_end": True}
             )
-    apply_live(hub.id, updated)
+    live_subscriptions.apply_live(hub.id, updated)
     record_event(
         ctx, events.MODULE_CANCELLED, {"hub_id": str(hub.id), "module": data.module}
     )
-    return subscription_out(hub.id)
+    return live_subscriptions.subscription_out(hub.id)
 
 
 @operation(
@@ -372,7 +372,7 @@ def module_keep(ctx: OperationContext, data: ModuleIn) -> dict:
     downgrades._require_no_pending_change(hub)
     item = _bought_item(subscription, data.module)
     if item.valid_until is None:
-        return subscription_out(hub.id)
+        return live_subscriptions.subscription_out(hub.id)
     if item.valid_until <= timezone.now():
         raise Conflict(
             _("This module has ended: buy it again in the store."),
@@ -448,11 +448,11 @@ def module_keep(ctx: OperationContext, data: ModuleIn) -> dict:
                     code="billing.not_confirmed",
                     status=502,
                 )
-    apply_live(hub.id, live)
+    live_subscriptions.apply_live(hub.id, live)
     record_event(
         ctx, events.MODULE_KEPT, {"hub_id": str(hub.id), "module": data.module}
     )
-    return subscription_out(hub.id)
+    return live_subscriptions.subscription_out(hub.id)
 
 
 @operation(
@@ -491,197 +491,6 @@ def portal_open(ctx: OperationContext, data: PortalOpenIn) -> dict:
         )
     record_event(ctx, events.PORTAL_OPENED, {"hub_id": str(hub.id)})
     return {"url": session["url"]}
-
-
-def subscription_out(hub_id) -> dict:
-    subscription = Subscription.objects.select_related("plan").get(hub_id=hub_id)
-    return {
-        "hub_id": hub_id,
-        "plan": subscription.plan.slug,
-        "billing_interval": subscription.billing_interval,
-        "status": subscription.status,
-        "cancel_at_period_end": subscription.cancel_at_period_end,
-        "current_period_end": subscription.current_period_end,
-        "trial_end": subscription.trial_end,
-        "modules": [
-            {
-                "slug": item.module_slug,
-                "source": item.source,
-                "valid_until": item.valid_until,
-            }
-            for item in subscription.items.order_by("module_slug")
-        ],
-        "scheduled_change": queries.scheduled_change_of(hub_id),
-    }
-
-
-# --- What the live subscription says, applied (webhook, operations, sweep) ---------------------------
-
-
-def _moment(timestamp: int | None) -> datetime | None:
-    return datetime.fromtimestamp(timestamp, tz=UTC) if timestamp else None
-
-
-def unpaid_state(hub: Hub, live_status: str, now: datetime | None = None) -> dict:
-    """The standing and the «why unpaid» of a business whose live subscription is ``live_status``: paid →
-    good (its failures resolved); in dunning → grace for 7 days from the oldest unpaid invoice, then
-    suspended (Stripe's ``unpaid`` at once); anything else leaves both as they are."""
-    now = now or timezone.now()
-    open_failures = PaymentFailure.objects.filter(hub=hub, resolved_at__isnull=True)
-    if live_status in stripe_sales.PAID_STATUSES or live_status in stripe_sales.ENDED_STATUSES:
-        open_failures.update(resolved_at=now)
-        return {
-            "standing": "good",
-            "unpaid_reason": None,
-            "unpaid_since": None,
-            "unpaid_invoice_url": None,
-        }
-    if live_status not in stripe_sales.DUNNING_STATUSES:
-        return {}
-    oldest = open_failures.order_by("invoice_created_at").first()
-    latest = open_failures.order_by("-failed_at").first()
-    since = oldest.invoice_created_at if oldest else None
-    overdue = since is not None and now - since > stripe_sales.UNPAID_PLAN_GRACE
-    suspended = live_status == "unpaid" or overdue or hub.status == Hub.Status.SUSPENDED
-    reason = PaymentFailure.Reason.PAYMENT_FAILED.value
-    if latest is not None:
-        reason = (
-            "card_changed"
-            if latest.reason == PaymentFailure.Reason.CARD_DECLINED
-            and latest.card_changed_at
-            else latest.reason
-        )
-    return {
-        "standing": "suspended" if suspended else "grace",
-        "unpaid_reason": reason,
-        "unpaid_since": since,
-        "unpaid_invoice_url": (latest.hosted_invoice_url or None) if latest else None,
-    }
-
-
-def live_state(hub: Hub, live: dict, now: datetime | None = None) -> dict:  # noqa: C901
-    """``hubs.subscription.apply``'s fields for what the live subscription ``live`` says of ``hub``."""
-    now = now or timezone.now()
-    status = live.get("status") or ""
-    if status in stripe_sales.ENDED_STATUSES:
-        return ended_state(hub, now)
-    start, end = subscription_period(live)
-    period_end = _moment(end)
-    cancelling = bool(live.get("cancel_at_period_end") or live.get("cancel_at"))
-    plan, interval, rights, unknown = None, None, {}, False
-    for line in stripe_sales._live_items(live):
-        price_id = (line.get("price") or {}).get("id", "")
-        if (found := queries.plan_for_price(price_id)) is not None:
-            plan, interval = found
-        elif (found := queries.module_for_price(price_id)) is not None:
-            module, interval = found[0], interval or found[1]
-            rights[module.slug] = ModuleRightIn(
-                module_slug=module.slug,
-                stripe_item_id=line["id"],
-                valid_until=period_end if cancelling else None,
-            )
-        else:
-            unknown = True
-            logger.error(
-                "[BILLING] Stripe bills hub %s a price nobody sells: %s",
-                hub.id,
-                price_id,
-            )
-    subscription = Subscription.objects.filter(hub=hub).first()
-    for item in SubscriptionItem.objects.filter(
-        subscription=subscription, source=SubscriptionItem.Source.PURCHASE
-    ):
-        if item.module_slug in rights or not item.is_live(now):
-            continue
-        # Cancelled (it left Stripe without proration) and paid until the end of its period.
-        rights[item.module_slug] = ModuleRightIn(
-            module_slug=item.module_slug,
-            stripe_item_id="",
-            valid_until=item.valid_until or period_end or now,
-        )
-    method = live.get("default_payment_method")
-    if isinstance(method, dict):
-        method = method.get("id")
-    if method:
-        # A card put on the subscription (the Customer Portal) after a decline: «Pay» works again.
-        mark_card_changed(hub=hub, method=method)
-    customer = live.get("customer")
-    state = {
-        "status": status,
-        "stripe_customer_id": customer["id"]
-        if isinstance(customer, dict)
-        else customer or "",
-        "stripe_subscription_id": live["id"],
-        "current_period_start": _moment(start),
-        "current_period_end": period_end,
-        "cancel_at_period_end": cancelling,
-        "modules": list(rights.values()),
-        **unpaid_state(hub, status, now),
-    }
-    if plan is not None or not unknown:
-        # Only modules: the business is on Free with them. A price nobody sells leaves the plan as it is.
-        state["plan"] = plan.slug if plan else _free_slug()
-    if interval:
-        state["billing_interval"] = interval
-    if plan is not None:
-        # A module bought alone on Free keeps the sign-up trial; a paid plan carries its own.
-        state["trial_start"] = _moment(live.get("trial_start"))
-        state["trial_end"] = _moment(live.get("trial_end"))
-    return state
-
-
-def _free_slug() -> str:
-    plan = plan_catalog.free_plan()
-    return plan.slug if plan else "free"
-
-
-def ended_state(hub: Hub, now: datetime | None = None) -> dict:
-    """A subscription that ended: back to Free, its bought modules over now, nothing owed."""
-    now = now or timezone.now()
-    subscription = Subscription.objects.filter(hub=hub).first()
-    rights = [
-        ModuleRightIn(
-            module_slug=item.module_slug,
-            stripe_item_id="",
-            valid_until=min(item.valid_until or now, now),
-        )
-        for item in SubscriptionItem.objects.filter(
-            subscription=subscription, source=SubscriptionItem.Source.PURCHASE
-        )
-    ]
-    return {
-        "plan": _free_slug(),
-        "status": Subscription.Status.ACTIVE.value,
-        "stripe_subscription_id": "",
-        "current_period_start": None,
-        "current_period_end": None,
-        "cancel_at_period_end": False,
-        "trial_start": None,
-        "trial_end": None,
-        "modules": rights,
-        "cancel_requested_at": None,
-        **unpaid_state(hub, "canceled", now),
-    }
-
-
-def apply_live(hub_id, live: dict) -> None:
-    """Write what the live subscription says of the business (``hubs.subscription.apply``); a downgrade Stripe
-    has just applied is forgotten."""
-    hub = Hub.objects.get(pk=hub_id)
-    apply_state(hub, live_state(hub, live))
-    downgrades._forget_applied_change(hub_id, live)
-
-
-def apply_state(hub: Hub, state: dict) -> bool:
-    """Write ``state`` through ``hubs.subscription.apply``; whether anything changed."""
-    applied = subscription_sync.subscription_apply(
-        hub_callbacks.system_ctx_for(hub.id), SubscriptionApplyIn(hub_id=hub.id, **state)
-    )
-    if state.get("standing") in ("grace", "suspended"):
-        # Whatever put the business in dunning (a failure, Stripe's ``unpaid``, the sweep), its payer is told
-        # once, after the COMMIT; a mail that cannot leave is sent by the next ``sweep_unpaid``.
-        transaction.on_commit(partial(_notify_quietly, hub.id), robust=True)
-    return applied.changed
 
 
 # --- The webhook: each Stripe event once, the live subscription applied ------------------------------
@@ -833,7 +642,7 @@ def checkout_completed(session: dict) -> str:
     subscription_id = session["subscription"]
     if isinstance(subscription_id, dict):
         subscription_id = subscription_id["id"]
-    with holding(hub.id):
+    with stripe_sync.holding(hub.id):
         attempt = CheckoutAttempt.objects.select_related("owner").filter(stripe_session_id=session.get("id")).first()
         # One already applied is a redelivery, whoever owns the business now: it is left to the paths below.
         if (
@@ -860,7 +669,7 @@ def _complete_checkout(hub: Hub, session: dict, subscription_id: str) -> str:
     ):
         return _end_duplicate(hub, local, session, subscription_id)
     live = stripe_service.retrieve_subscription(subscription_id)
-    apply_live(hub.id, live)
+    live_subscriptions.apply_live(hub.id, live)
     completed = (
         CheckoutAttempt.objects.filter(stripe_session_id=session.get("id"))
         .exclude(status=CheckoutAttempt.Status.COMPLETED)
@@ -881,15 +690,6 @@ def _complete_checkout(hub: Hub, session: dict, subscription_id: str) -> str:
             live=live,
         )
     return "completed"
-
-
-@contextmanager
-def holding(hub_id):
-    """A transaction holding the business's row: what a webhook reads from Stripe inside it is applied before
-    any operation on the business can change it (operations take the same lock)."""
-    with transaction.atomic():
-        Hub.objects.select_for_update().filter(pk=hub_id).first()
-        yield
 
 
 def _end_duplicate(
@@ -1071,18 +871,6 @@ def _local_subscription(subscription_id: str) -> Subscription | None:
     )
 
 
-def _read_live(subscription_id: str) -> dict | None:
-    """The live subscription, or ``None`` when Stripe does not answer (the caller decides what that means)."""
-    try:
-        return stripe_service.retrieve_subscription(subscription_id)
-    except stripe_service.StripeUnavailable, stripe_service.StripeNotConfigured:
-        logger.warning(
-            "[STRIPE WEBHOOK] Could not read %s from Stripe: the event is applied as it came",
-            subscription_id,
-        )
-        return None
-
-
 def _invoice_business(invoice: dict) -> tuple[Hub | None, str]:
     """The business an invoice bills, and its Stripe subscription. Known by the subscription, or — when the
     invoice comes ahead of its ``checkout.session.completed`` (Stripe does not order events) — by the
@@ -1119,14 +907,14 @@ def invoice_paid(invoice: dict) -> str:
     invoice = _with_all_lines(invoice)
     charged_at = _moment_or_none((invoice.get("status_transitions") or {}).get("paid_at")) or timezone.now()
     verified, consultation = _payer_clearance(hub, charged_at)
-    with holding(hub.id):
+    with stripe_sync.holding(hub.id):
         # Stripe not answering raises: its retry reads the truth (a paid invoice may be a proration or an
         # older one, and guessing «active» woke businesses still in dunning).
         live = stripe_service.retrieve_subscription(subscription_id)
         PaymentFailure.objects.filter(
             stripe_invoice_id=invoice.get("id"), resolved_at__isnull=True
         ).update(resolved_at=timezone.now())
-        apply_live(hub.id, live)
+        live_subscriptions.apply_live(hub.id, live)
         invoice_record(
             hub_callbacks.system_ctx_for(hub.id),
             InvoiceRecordIn(
@@ -1162,7 +950,7 @@ def _invoice_paid_elsewhere(invoice: dict, subscription_id: str) -> str:
     invoice = _with_all_lines(invoice)
     charged_at = _moment_or_none((invoice.get("status_transitions") or {}).get("paid_at")) or timezone.now()
     verified, consultation = _payer_clearance(named, charged_at)
-    with holding(named.id):
+    with stripe_sync.holding(named.id):
         invoice_record(
             hub_callbacks.system_ctx_for(named.id),
             InvoiceRecordIn(
@@ -1212,7 +1000,7 @@ def invoice_payment_failed(invoice: dict, *, replay: bool = False) -> str:
     hub, subscription_id = _invoice_business(invoice)
     if hub is None:
         return "unknown" if subscription_id else "ignored"
-    with holding(hub.id):
+    with stripe_sync.holding(hub.id):
         return _record_failure(hub, subscription_id, invoice, replay=replay)
 
 
@@ -1230,7 +1018,7 @@ def _record_failure(
             invoice.get("id"),
             live_status,
         )
-        apply_live(hub.id, live)
+        live_subscriptions.apply_live(hub.id, live)
         return "ignored"
     try:
         why = stripe_service.payment_failure_of(invoice["id"])
@@ -1238,7 +1026,7 @@ def _record_failure(
         why = None
     now = timezone.now()
     reason = _failure_reason(why)
-    issued = _moment(invoice.get("created")) or now
+    issued = stripe_sync._moment(invoice.get("created")) or now
     failure, created = PaymentFailure.objects.select_for_update().get_or_create(
         stripe_invoice_id=invoice["id"],
         defaults={
@@ -1280,7 +1068,7 @@ def _record_failure(
             # Another failed attempt of Stripe's; the sweep only replays to decide, it is not one.
             known.update(failed_at=now, attempts=F("attempts") + 1)
         PaymentFailure.objects.filter(pk=failure.pk).update(**known)
-    apply_live(hub.id, live)
+    live_subscriptions.apply_live(hub.id, live)
     # Listed in Billing as «not collected», with «Pay»; numbered once it is paid.
     invoice_record(
         hub_callbacks.system_ctx_for(hub.id), InvoiceRecordIn(hub_id=hub.id, invoice=invoice, status="open")
@@ -1306,12 +1094,12 @@ def subscription_updated(obj: dict) -> str:
             hub = named
     if hub is None:
         return "unknown"
-    with holding(hub.id):
+    with stripe_sync.holding(hub.id):
         # Stripe not answering raises: the event's snapshot may be stale, and Stripe retries it.
         live = stripe_service.retrieve_subscription(subscription_id)
         if live.get("status") in ("incomplete", ""):
             return "pending"
-        apply_live(hub.id, live)
+        live_subscriptions.apply_live(hub.id, live)
     return "processed"
 
 
@@ -1322,8 +1110,8 @@ def subscription_deleted(obj: dict) -> str:
     subscription = _local_subscription(obj.get("id") or "")
     if subscription is None:
         return "unknown"
-    with holding(subscription.hub_id):
-        apply_state(subscription.hub, ended_state(subscription.hub))
+    with stripe_sync.holding(subscription.hub_id):
+        live_subscriptions.apply_state(subscription.hub, live_subscriptions.ended_state(subscription.hub))
     return "processed"
 
 
@@ -1366,7 +1154,7 @@ def sync_subscription(subscription: Subscription, *, apply: bool = True) -> str:
     not done) · ``missing`` (Stripe does not know it: left as it is, for the team). Stripe not answering raises
     (``stripe_service.StripeUnavailable``)."""
     hub = subscription.hub
-    with holding(hub.id):
+    with stripe_sync.holding(hub.id):
         # Read inside the lock, as the webhook does: nothing changes the business between reading and writing.
         try:
             live = stripe_service.retrieve_subscription(subscription.stripe_subscription_id)
@@ -1383,9 +1171,9 @@ def sync_subscription(subscription: Subscription, *, apply: bool = True) -> str:
         if live.get("status") in ("incomplete", ""):
             return "pending"
         held = Subscription.objects.select_related("plan").get(pk=subscription.pk)
-        state = live_state(hub, live)
+        state = live_subscriptions.live_state(hub, live)
         fields = _drift(held, state)
-        changed = apply_state(hub, state)
+        changed = live_subscriptions.apply_state(hub, state)
         if not apply:
             # Everything the reading wrote (a card noted as changed included) goes back.
             transaction.set_rollback(True)
@@ -1434,53 +1222,9 @@ def customer_updated(customer: dict) -> str:
     return (
         "processed"
         if method
-        and mark_card_changed(stripe_customer_id=customer.get("id"), method=method)
+        and live_subscriptions.mark_card_changed(stripe_customer_id=customer.get("id"), method=method)
         else "ignored"
     )
-
-
-def mark_card_changed(
-    *, method: str, stripe_customer_id: str | None = None, hub: Hub | None = None
-) -> bool:
-    """Note that the card of the unresolved declined failures (of a customer, or of a business) is not
-    ``method`` any more; ``True`` when one was noted. Each business is locked before its failures (the one
-    lock order of every writer: Hub, then PaymentFailure)."""
-
-    def changeable(business_id):
-        return (
-            PaymentFailure.objects.filter(
-                hub_id=business_id,
-                resolved_at__isnull=True,
-                reason=PaymentFailure.Reason.CARD_DECLINED,
-                card_changed_at__isnull=True,
-            )
-            .exclude(payment_method_id=method)
-            # The card that failed is unknown: no card can be said to be another one.
-            .exclude(payment_method_id="")
-        )
-
-    if hub is not None:
-        # Called with the business already held (``live_state``, inside its lock).
-        return changeable(hub.id).update(card_changed_at=timezone.now()) > 0
-    hub_ids = set(
-        PaymentFailure.objects.filter(
-            stripe_customer_id=stripe_customer_id,
-            resolved_at__isnull=True,
-            reason=PaymentFailure.Reason.CARD_DECLINED,
-            card_changed_at__isnull=True,
-        ).values_list("hub_id", flat=True)
-    )
-    noted = False
-    for business in Hub.objects.filter(pk__in=hub_ids).order_by("pk"):
-        with holding(business.id):
-            now = timezone.now()
-            if not changeable(business.id).update(card_changed_at=now):
-                continue
-            noted = True
-            local = Subscription.objects.filter(hub=business).first()
-            if local is not None and local.status in stripe_sales.DUNNING_STATUSES:
-                apply_state(business, unpaid_state(business, local.status, now))
-    return noted
 
 
 # --- The rate of a live subscription ------------------------------------------------------------------
@@ -1489,12 +1233,6 @@ def mark_card_changed(
 RETAX_STATUSES = ("active", "trialing", "past_due")
 #: The counts of a daily pass; ``refused`` and ``errors`` make the run fail after its pass (``task_failed``).
 RETAX_COUNTS = ("retaxed", "unchanged", "skipped", "refused", "errors")
-
-
-def _rates_param(rates: list[str]) -> list[str] | str:
-    """``tax_rates`` of an item UPDATE: an empty list is dropped by the SDK (Stripe keeps the old rate), an
-    empty string is what removes it."""
-    return rates or ""
 
 
 def _item_sale(subscription: Subscription, line: dict) -> stripe_sales.Sale | None:
@@ -1575,7 +1313,7 @@ def retax_subscription(hub: Hub) -> str:
             return _retax_refused(hub, sale.kind, refused)
         held = [rate["id"] if isinstance(rate, dict) else rate for rate in line.get("tax_rates") or []]
         if sorted(held) != sorted(due):
-            changes.append({"id": line["id"], "tax_rates": _rates_param(due)})
+            changes.append({"id": line["id"], "tax_rates": stripe_sync._rates_param(due)})
     if not changes:
         return "unchanged"
     with payment_gates.stripe_errors():
@@ -1823,86 +1561,15 @@ def sweep_unpaid() -> Counter:  # noqa: C901, PLR0912, PLR0915
     )
     for hub_id in sorted(set(untold)):
         try:
-            outcome = notify_unpaid(hub_id)
+            outcome = unpaid_notices.notify_unpaid(hub_id)
         except Exception:  # noqa: BLE001 - one business never stops the pass
             logger.exception("[UNPAID SWEEP] The payer of hub %s could not be told", hub_id)
-            outcome = MAIL_NOT_SENT
-        if outcome == NOTIFIED:
+            outcome = unpaid_notices.MAIL_NOT_SENT
+        if outcome == unpaid_notices.NOTIFIED:
             counts["notified"] += 1
-        elif outcome == MAIL_NOT_SENT:
+        elif outcome == unpaid_notices.MAIL_NOT_SENT:
             counts["mail_failed"] += 1
     return counts
-
-
-NOTIFIED, NOTHING_TO_TELL, MAIL_NOT_SENT = "notified", "nothing", "mail_failed"
-
-
-def notify_unpaid(hub_id) -> str:
-    """Tell the payer of ``hub_id`` what its unpaid episode owes them: each unpaid
-    invoice once, while the business still works (how much, until when, where to pay); the suspension once,
-    which also stands for the invoices not told yet. The business is locked, so two deliveries never send the
-    same mail twice. Nobody to tell is done too; a mail that cannot leave stays owed (``MAIL_NOT_SENT``)."""
-    from billing import emails
-
-    with holding(hub_id):
-        hub = Hub.objects.select_related("billing_profile__owner").get(pk=hub_id)
-        owed = list(PaymentFailure.objects.filter(hub=hub, resolved_at__isnull=True).order_by("invoice_created_at"))
-        suspended = hub.status == Hub.Status.SUSPENDED
-        if suspended:
-            to_tell = [] if any(f.suspension_notified_at for f in owed) else owed
-        else:
-            to_tell = [f for f in owed if f.notified_at is None] if hub.status == Hub.Status.PAST_DUE else []
-        if not to_tell:
-            return NOTHING_TO_TELL
-        to, language = _unpaid_recipient(hub)
-        now = timezone.now()
-        try:
-            if to and suspended:
-                emails.send_business_suspended(
-                    hub, to=to, language=language, amount=sum((_owed_amount(f) for f in owed), Decimal(0))
-                )
-            elif to:
-                for failure in to_tell:
-                    emails.send_payment_failed(
-                        hub,
-                        to=to,
-                        language=language,
-                        amount=_owed_amount(failure),
-                        declined=failure.reason == PaymentFailure.Reason.CARD_DECLINED,
-                        suspends_on=failure.invoice_created_at + stripe_sales.UNPAID_PLAN_GRACE,
-                    )
-                    PaymentFailure.objects.filter(pk=failure.pk).update(notified_at=now)
-        except emails.MailNotSent:
-            return MAIL_NOT_SENT
-        if not to:
-            logger.warning("[UNPAID] Hub %s owes an invoice and has nobody to tell", hub.id)
-        if suspended:
-            PaymentFailure.objects.filter(pk__in=[f.pk for f in owed]).update(
-                suspension_notified_at=now, notified_at=Coalesce("notified_at", Value(now))
-            )
-        return NOTIFIED
-
-
-def _unpaid_recipient(hub: Hub) -> tuple[str, str]:
-    """Who hears of the unpaid invoice: the payer's address for invoices, else the payer's own (the owner's
-    when the business has no payer yet), in the payer's language."""
-    profile = hub.billing_profile
-    account = (profile.owner if profile is not None else None) or stripe_customers._owner_of(hub)
-    to = (profile.billing_email if profile is not None else "") or (account.email if account else "")
-    return to, getattr(account, "language", "") or hub.language or settings.LANGUAGE_CODE
-
-
-def _owed_amount(failure: PaymentFailure) -> Decimal:
-    """What the unpaid invoice asks for, as Billing lists it («Not collected»)."""
-    listed = Invoice.objects.filter(stripe_invoice_id=failure.stripe_invoice_id).first()
-    return listed.total if listed is not None else Decimal(0)
-
-
-def _notify_quietly(hub_id) -> None:
-    try:
-        notify_unpaid(hub_id)
-    except Exception:  # noqa: BLE001 - a mail never undoes the dunning; sweep_unpaid sends it again
-        logger.exception("[UNPAID] The payer of hub %s could not be told", hub_id)
 
 
 def _end_billing_of_deleted(subscription: Subscription) -> None:
@@ -1919,7 +1586,7 @@ def _end_billing_of_deleted(subscription: Subscription) -> None:
         subscription.hub_id,
     )
     with transaction.atomic():
-        apply_state(subscription.hub, ended_state(subscription.hub))
+        live_subscriptions.apply_state(subscription.hub, live_subscriptions.ended_state(subscription.hub))
 
 
 # --- The payer of an account that deleted itself ------------------------------------------------------
@@ -2094,7 +1761,7 @@ def _payer_clearance(hub: Hub, charged_at: datetime) -> tuple[bool, str]:
 
 
 def _moment_or_none(value) -> datetime | None:
-    return _moment(int(value)) if value else None
+    return stripe_sync._moment(int(value)) if value else None
 
 
 def _price_of(line: dict) -> str:
