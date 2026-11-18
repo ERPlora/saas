@@ -3,8 +3,8 @@
 Every paid plan
 carries a trial and Stripe charges nothing during it, so the chain after a payment never ran in a test. A
 clock removes the need for an internal 1 € plan: the customer is created attached to it
-(``billing.services.ensure_customer(hub, test_clock=…)``), subscribes to a NORMAL plan with its NORMAL trial,
-and the clock is advanced past the trial: Stripe issues a real invoice.
+(``billing.services.stripe_customers.ensure_customer(hub, test_clock=…)``), subscribes to a NORMAL plan with its
+NORMAL trial, and the clock is advanced past the trial: Stripe issues a real invoice.
 
 Two refusals, because both failures are silent and would turn a QA run green while proving nothing:
 

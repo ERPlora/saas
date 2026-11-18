@@ -714,7 +714,7 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   cubre en la CI, que no corre los e2e, y PUBLIC-F11 lo recorre en el navegador, en esos mismos dos estados.
 - Precios (F02–F04): los planes se leen con `hubs.plan.list`; el ahorro anual es `annual_months_free` (12 menos los
   meses que paga el precio anual, redondeado hacia abajo) y la cabecera usa `common_months_free`. El cobro es
-  `billing.services.plan_sale` y la comprobación de los precios de Stripe al guardar un plan, `plan_price_problems`
+  `billing.services.stripe_sales.plan_sale` y la comprobación de los precios de Stripe al guardar un plan, `plan_price_problems`
   (BILLING-F28). Por encima de Standard la página solo pinta los planes `upgrade_only` (`upgrade_cards`: tarjetas en
   «Más capacidad» y filas de la tabla, sin botón de alta ni página de detalle). Las superficies de las secciones alternan según lo que se
   pinta (`section_surfaces`). Ni la tabla ni las fichas de Gratis, Starter y Standard dicen que el plan incluya los

@@ -28,9 +28,9 @@ import pytest
 from django.utils import timezone
 from live.errors import InvalidPayload, NotFound, OperationError, PermissionDenied
 
-from billing import services
 from billing.models import CheckoutAttempt, FiscalPolicy, PromoCode, TaxRule
 from billing.schemas import CheckoutConfirmIn, CheckoutStartIn
+from billing.services import checkouts, payment_gates, plan_changes, stripe_customers
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import (
     card_error,
@@ -62,13 +62,13 @@ def _stripe(stripe_double, issuer_identity):
 
 
 def start(user, hub, **selection):
-    return services.checkout_start(
+    return checkouts.checkout_start(
         ctx_for(user), CheckoutStartIn(hub_id=hub.id, **selection)
     ).model_dump()
 
 
 def confirm(user, hub, **selection):
-    return services.checkout_confirm(
+    return plan_changes.checkout_confirm(
         ctx_for(user), CheckoutConfirmIn(hub_id=hub.id, **selection)
     ).model_dump()
 
@@ -172,7 +172,7 @@ class TestTheEmbeddedCheckout:
 
         assert (
             session_params(stripe_double)["integration_identifier"]
-            == services.INTEGRATION_IDENTIFIER
+            == checkouts.INTEGRATION_IDENTIFIER
         )
 
     def test_the_same_selection_reuses_its_open_session(
@@ -280,7 +280,7 @@ class TestTheCustomer:
         assert session_params(stripe_double)["customer"] == "cus_known"
 
     def test_a_test_clock_travels_to_the_new_customer(self, shop, stripe_double):
-        services.ensure_customer(shop, test_clock="clock_123")
+        stripe_customers.ensure_customer(shop, test_clock="clock_123")
 
         assert (
             stripe_double.last("customers.create").params["test_clock"] == "clock_123"
@@ -289,7 +289,7 @@ class TestTheCustomer:
     def test_without_a_clock_the_customer_does_not_mention_one(
         self, shop, stripe_double
     ):
-        services.ensure_customer(shop)
+        stripe_customers.ensure_customer(shop)
 
         assert "test_clock" not in stripe_double.last("customers.create").params
 
@@ -779,8 +779,8 @@ class TestNoMoneyMovesWhen:
         settings.PLATFORM_INVOICING_ENABLED = True
         hub_double.answer("GET", r"^/internal/platform/invoices/health$", 200, {"status": "ok"})
 
-        services.require_payments()
-        services.require_payments()
+        payment_gates.require_payments()
+        payment_gates.require_payments()
 
         assert len(hub_double.calls_to("GET", "/health")) == 1
 
@@ -790,10 +790,10 @@ class TestNoMoneyMovesWhen:
         cache.clear()
         settings.PLATFORM_INVOICING_ENABLED = True
         hub_double.answer("GET", r"^/internal/platform/invoices/health$", 503, {})
-        assert services.invoicing_available() is False
+        assert payment_gates.invoicing_available() is False
         hub_double.answer("GET", r"^/internal/platform/invoices/health$", 200, {"status": "ok"})
 
-        assert services.invoicing_available() is True
+        assert payment_gates.invoicing_available() is True
 
     def test_a_test_key_is_never_held_for_invoicing(self, shop, owner, settings, stripe_double, offline_hub):
         settings.PLATFORM_INVOICING_ENABLED = False
@@ -1215,7 +1215,7 @@ class TestAPlanOnTopOfModules:
 
     @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no seeded plan carries one)
     def test_the_preview_and_the_change_carry_the_trial_left(self, shop, owner, inventory, stripe_double):
-        from billing import services as billing_services
+        from billing.services import plan_changes
         from billing.schemas import PlanChangeIn
 
         trial_end = Subscription.objects.get(hub=shop).trial_end
@@ -1225,7 +1225,7 @@ class TestAPlanOnTopOfModules:
                                                                          item("si_plan", "price_starter_month")]))
 
         start(owner, paid, plan="starter")
-        billing_services.plan_change(
+        plan_changes.plan_change(
             ctx_for(owner), PlanChangeIn(hub_id=paid.id, plan="starter", proration_date=NOW_TS)
         )
 
@@ -1235,7 +1235,7 @@ class TestAPlanOnTopOfModules:
         assert details["proration_behavior"] == sent["proration_behavior"] == "none"
 
     def test_a_promo_code_is_honoured(self, shop, owner, inventory, stripe_double):
-        from billing import services as billing_services
+        from billing.services import plan_changes
         from billing.schemas import PlanChangeIn
 
         Subscription.objects.filter(hub=shop).update(trial_end=timezone.now() - timedelta(days=1))
@@ -1243,7 +1243,7 @@ class TestAPlanOnTopOfModules:
         paid = self.modules_only(shop, stripe_double, inventory)
         stripe_double.answer("subscriptions.update", subscription())
 
-        billing_services.plan_change(
+        plan_changes.plan_change(
             ctx_for(owner),
             PlanChangeIn(hub_id=paid.id, plan="starter", proration_date=NOW_TS, promo_code="Canary_2026"),
         )

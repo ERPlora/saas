@@ -21,6 +21,7 @@ from live.errors import OperationError
 from billing import services
 from billing.models import PlanChangeSchedule
 from billing.schemas import CheckoutConfirmIn, CheckoutStartIn, HubIn, ModuleIn, PlanChangeIn
+from billing.services import checkouts, plan_changes
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import MONTH_END, event, item, schedule, signed, subscription
 from hubs.models import Subscription
@@ -48,7 +49,7 @@ def on(shop, stripe_double, plan="standard", interval="month", modules=(), **liv
 
 
 def change(user, hub, plan="starter", interval="month"):
-    return services.plan_change(
+    return plan_changes.plan_change(
         ctx_for(user), PlanChangeIn(hub_id=hub.id, plan=plan, interval=interval, proration_date=PRORATION)
     ).model_dump(mode="json")
 
@@ -99,7 +100,7 @@ class TestADowngradeWaits:
     def test_its_preview_charges_nothing_now(self, shop, owner, stripe_double):
         paid = on(shop, stripe_double)
 
-        answer = services.checkout_start(
+        answer = checkouts.checkout_start(
             ctx_for(owner), CheckoutStartIn(hub_id=paid.id, plan="starter", interval="month")
         ).model_dump()
 
@@ -130,7 +131,7 @@ class TestWhilePending:
     def test_keeping_the_plan_undoes_it(self, shop, owner, stripe_double):
         paid = self.pending(shop, owner, stripe_double)
 
-        answer = services.plan_keep(ctx_for(owner), HubIn(hub_id=paid.id)).model_dump()
+        answer = plan_changes.plan_keep(ctx_for(owner), HubIn(hub_id=paid.id)).model_dump()
 
         assert stripe_double.last("subscription_schedules.release").args == ("sub_sched_1",)
         assert answer["scheduled_change"] is None
@@ -140,7 +141,7 @@ class TestWhilePending:
         paid = self.pending(shop, owner, stripe_double)
         stripe_double.answer("subscriptions.update", subscription(cancel_at_period_end=True))
 
-        services.plan_cancel(ctx_for(owner), HubIn(hub_id=paid.id))
+        plan_changes.plan_cancel(ctx_for(owner), HubIn(hub_id=paid.id))
 
         paths = stripe_double.paths()
         assert paths.index("subscription_schedules.release") < paths.index("subscriptions.update")
@@ -151,7 +152,7 @@ class TestWhilePending:
 
         refused(
             "billing.plan_change_pending",
-            lambda: services.checkout_confirm(
+            lambda: plan_changes.checkout_confirm(
                 ctx_for(owner), CheckoutConfirmIn(hub_id=paid.id, module="inventory", proration_date=PRORATION)
             ),
         )

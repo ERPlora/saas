@@ -1703,11 +1703,11 @@ def test_without_an_annual_saving_the_hero_promises_none(no_plans, client):
 
 # --- The price painted is the price charged ---------------------------------------------------------
 # One field, one amount: what /pricing/ and the detail page paint is the net ``Plan`` price, the checkout
-# charges that same amount (``billing.services.plan_sale``) and the Stripe price the plan sells with
+# charges that same amount (``billing.services.stripe_sales.plan_sale``) and the Stripe price the plan sells with
 # must charge it to the cent, or the admin refuses it. Stripe is the double of billing's
 # tests: no call leaves the machine.
 
-from billing import services as billing_services  # noqa: E402
+from billing.services import price_checks, stripe_sales  # noqa: E402
 from billing.money import to_cents  # noqa: E402
 from billing.tests.conftest import plans, stripe_double, stripe_keys  # noqa: E402,F401
 from billing.tests.test_services import stripe_price  # noqa: E402
@@ -1729,7 +1729,7 @@ def test_every_card_paints_the_price_the_checkout_charges(client, plans):
 
     assert paid, "no paid plan on sale to compare"
     for plan in paid:
-        charged = billing_services.plan_sale(None, plan.slug, "month")
+        charged = stripe_sales.plan_sale(None, plan.slug, "month")
         assert painted[plan.name_en] == charged.net, plan.slug
         assert charged.price_id == plan.stripe_price_id
 
@@ -1738,7 +1738,7 @@ def test_the_year_painted_is_the_year_charged(client, plans):
     html = " ".join(html_of(client).split())
 
     for plan in Plan.objects.public().filter(upgrade_only=False, price_annual__gt=0):
-        charged = billing_services.plan_sale(None, plan.slug, "year")
+        charged = stripe_sales.plan_sale(None, plan.slug, "year")
         assert f"≈ €{charged.net.normalize():f}/year" in html or f"≈ €{charged.net:.2f}/year" in html, plan.slug
 
 
@@ -1747,7 +1747,7 @@ def test_the_detail_page_paints_the_price_the_checkout_charges(client, plans):
 
     html = html_of(client, f"/pricing/{starter.slug}/")
 
-    assert f"{billing_services.plan_sale(None, 'starter', 'month').net:.2f} &euro;" in html
+    assert f"{stripe_sales.plan_sale(None, 'starter', 'month').net:.2f} &euro;" in html
 
 
 def test_a_stripe_price_that_charges_the_painted_amount_is_accepted(client, plans, stripe_double):
@@ -1755,7 +1755,7 @@ def test_a_stripe_price_that_charges_the_painted_amount_is_accepted(client, plan
     cents = to_cents(painted_prices(html_of(client))[starter.name_en])
     stripe_double.answer("prices.retrieve", stripe_price(starter.stripe_price_id, unit_amount=cents, product=""))
 
-    problems = billing_services.plan_price_problems(
+    problems = price_checks.plan_price_problems(
         prices={"stripe_price_id": starter.stripe_price_id, "stripe_price_id_annual": ""},
         amounts={"price_monthly": starter.price_monthly, "price_annual": starter.price_annual},
         product="",
@@ -1770,7 +1770,7 @@ def test_a_stripe_price_a_cent_off_the_painted_amount_is_refused(client, plans, 
     cents = to_cents(painted_prices(html_of(client))[starter.name_en]) + 1
     stripe_double.answer("prices.retrieve", stripe_price(starter.stripe_price_id, unit_amount=cents, product=""))
 
-    problems = billing_services.plan_price_problems(
+    problems = price_checks.plan_price_problems(
         prices={"stripe_price_id": starter.stripe_price_id, "stripe_price_id_annual": ""},
         amounts={"price_monthly": starter.price_monthly, "price_annual": starter.price_annual},
         product="",

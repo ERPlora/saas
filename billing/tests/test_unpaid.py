@@ -594,15 +594,15 @@ def test_a_declined_card_on_a_change_never_marks_the_business_unpaid(
     running, owner, inventory, stripe_double
 ):
     """``error_if_incomplete``: a change whose payment fails leaves no invoice behind to chase."""
-    from billing import services
     from billing.schemas import CheckoutConfirmIn
+    from billing.services import plan_changes
     from billing.tests.conftest import ctx_for as billing_ctx
 
     stripe_double.answer("subscriptions.retrieve", subscription())
     stripe_double.answer("subscription_items.create", card_error())
 
     with pytest.raises(Exception):
-        services.checkout_confirm(
+        plan_changes.checkout_confirm(
             billing_ctx(owner),
             CheckoutConfirmIn(hub_id=running.id, module="inventory", proration_date=1),
         )
