@@ -10,8 +10,8 @@ import pytest
 from django.core.management import call_command
 from django.utils import timezone
 
-from billing import services
 from billing.models import WebhookEvent
+from billing.services import webhook_events
 
 pytestmark = pytest.mark.django_db
 
@@ -30,7 +30,7 @@ class TestForgettingOldEvents:
         received("evt_recent", 29, success=True, outcome="processed")
         received("evt_today", 0)
 
-        deleted = services.purge_webhook_events()
+        deleted = webhook_events.purge_webhook_events()
 
         assert deleted == 2
         assert sorted(WebhookEvent.objects.values_list("event_id", flat=True)) == ["evt_recent", "evt_today"]
@@ -38,11 +38,11 @@ class TestForgettingOldEvents:
     def test_nothing_old_deletes_nothing(self):
         received("evt_recent", 1)
 
-        assert services.purge_webhook_events() == 0
+        assert webhook_events.purge_webhook_events() == 0
         assert WebhookEvent.objects.count() == 1
 
     def test_the_window_is_30_days(self):
-        assert services.WEBHOOK_EVENT_RETENTION == timedelta(days=30)
+        assert webhook_events.WEBHOOK_EVENT_RETENTION == timedelta(days=30)
 
 
 class TestTheCommand:

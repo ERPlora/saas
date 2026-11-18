@@ -17,10 +17,10 @@ import pytest
 from django.utils import timezone
 from live.errors import OperationError
 
-from billing import queries, services
+from billing import queries
 from billing.models import CheckoutAttempt, PlanChangeSchedule, PromoCode, PromoRedemption
 from billing.schemas import CheckoutConfirmIn, CheckoutStartIn, HubIn, PlanChangeIn, SubscriptionListIn
-from billing.services import checkouts, plan_changes
+from billing.services import checkout_webhooks, checkouts, plan_changes
 from billing.tests.conftest import code_of, ctx_for, pay
 from billing.tests.stripe_captured import captured
 from billing.tests.stripe_double import checkout_session, connection_error, item, preview, subscription
@@ -177,7 +177,7 @@ class TestTheCompletedCheckout:
         )
         metadata = {"kind": "hub_plan", "hub_id": str(shop.id), "plan": "starter", "billing_interval": "month",
                     "promo_code": "testers"}
-        return services.checkout_completed(checkout_session(subscription_id="sub_new", metadata=metadata))
+        return checkout_webhooks.checkout_completed(checkout_session(subscription_id="sub_new", metadata=metadata))
 
     def test_the_code_is_counted_with_its_subscription_and_when_its_discount_ends(self, shop, stripe_double):
         promo = code_of()

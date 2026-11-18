@@ -22,7 +22,7 @@ from django.core import mail
 from billing import services
 from billing.models import CheckoutAttempt
 from billing.schemas import CheckoutStartIn, HubIn
-from billing.services import checkouts
+from billing.services import checkout_webhooks, checkouts
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import (
     checkout_session,
@@ -118,7 +118,7 @@ class TestAPaymentOfSomebodyWhoNoLongerOwnsIt:
         stripe_charged(stripe_double)
 
         with django_capture_on_commit_callbacks(execute=True):
-            outcome = services.checkout_completed(completed(attempt, stripe_double))
+            outcome = checkout_webhooks.checkout_completed(completed(attempt, stripe_double))
 
         assert outcome == "not_owner"
         assert (local(shop).plan.slug, local(shop).stripe_subscription_id) == ("free", "")
@@ -138,7 +138,7 @@ class TestAPaymentOfSomebodyWhoNoLongerOwnsIt:
         mail.outbox.clear()
 
         with django_capture_on_commit_callbacks(execute=True):
-            services.checkout_completed(completed(attempt, stripe_double))
+            checkout_webhooks.checkout_completed(completed(attempt, stripe_double))
 
         (message,) = [message for message in mail.outbox if message.to == [owner.email]]
         assert shop.name in message.subject
@@ -151,9 +151,9 @@ class TestAPaymentOfSomebodyWhoNoLongerOwnsIt:
         hand_over(shop, owner, heir)
         stripe_charged(stripe_double)
         session = completed(attempt, stripe_double)
-        services.checkout_completed(session)
+        checkout_webhooks.checkout_completed(session)
 
-        assert services.checkout_completed(session) == "not_owner"
+        assert checkout_webhooks.checkout_completed(session) == "not_owner"
 
         assert len(stripe_double.calls_to("subscriptions.cancel")) == 1
         assert len(stripe_double.calls_to("refunds.create")) == 1
@@ -167,7 +167,7 @@ class TestAPaymentOfSomebodyWhoNoLongerOwnsIt:
             {**subscription("sub_new", status="canceled", customer="cus_new"), "latest_invoice": "in_sub_new"},
         )
 
-        assert services.checkout_completed(completed(attempt, stripe_double)) == "not_owner"
+        assert checkout_webhooks.checkout_completed(completed(attempt, stripe_double)) == "not_owner"
 
         assert stripe_double.calls_to("subscriptions.cancel") == []
         assert len(stripe_double.calls_to("refunds.create")) == 1
@@ -177,7 +177,7 @@ class TestAPaymentOfSomebodyWhoNoLongerOwnsIt:
         hand_over(shop, owner, heir)
         stripe_charged(stripe_double, amount=0)
 
-        assert services.checkout_completed(completed(attempt, stripe_double)) == "not_owner"
+        assert checkout_webhooks.checkout_completed(completed(attempt, stripe_double)) == "not_owner"
 
         assert len(stripe_double.calls_to("subscriptions.cancel")) == 1
         assert stripe_double.calls_to("refunds.create") == []
@@ -190,7 +190,7 @@ class TestAPaymentOfSomebodyWhoNoLongerOwnsIt:
         stripe_double.answer("refunds.create", connection_error())
 
         with pytest.raises(Exception):  # noqa: B017, PT011 - the webhook answers 500 and Stripe delivers it again
-            services.checkout_completed(completed(attempt, stripe_double))
+            checkout_webhooks.checkout_completed(completed(attempt, stripe_double))
 
         assert local(shop).stripe_subscription_id == ""
         assert status(attempt) != CheckoutAttempt.Status.REFUNDED
@@ -199,7 +199,7 @@ class TestAPaymentOfSomebodyWhoNoLongerOwnsIt:
         attempt = opened_by(owner, shop)
         stripe_charged(stripe_double)
 
-        assert services.checkout_completed(completed(attempt, stripe_double)) == "completed"
+        assert checkout_webhooks.checkout_completed(completed(attempt, stripe_double)) == "completed"
 
         assert (local(shop).plan.slug, local(shop).stripe_subscription_id) == ("starter", "sub_new")
         assert stripe_double.calls_to("refunds.create") == []
@@ -225,7 +225,7 @@ class TestAKeptPlanOfSomebodyWhoHandedItOnAgain:
         hand_over(Hub.objects.get(pk=paid.pk), heir, third)
         stripe_charged(stripe_double, new="sub_2", amount=0)
 
-        assert services.checkout_completed(completed(attempt, stripe_double, new="sub_2")) == "not_owner"
+        assert checkout_webhooks.checkout_completed(completed(attempt, stripe_double, new="sub_2")) == "not_owner"
 
         assert local(paid).stripe_subscription_id == "sub_1"
         assert [call.args for call in stripe_double.calls_to("subscriptions.cancel")] == [("sub_2",)]
@@ -304,7 +304,7 @@ class TestTheHandOverExpiresTheOpenCheckouts:
 
         assert status(attempt) == CheckoutAttempt.Status.OPEN
         stripe_charged(stripe_double)
-        assert services.checkout_completed(completed(attempt, stripe_double)) == "not_owner"
+        assert checkout_webhooks.checkout_completed(completed(attempt, stripe_double)) == "not_owner"
 
 
 class TestARedeliveryOfAPaymentAppliedBeforeTheHandOver:
@@ -317,14 +317,14 @@ class TestARedeliveryOfAPaymentAppliedBeforeTheHandOver:
         attempt = opened_by(owner, shop)
         stripe_charged(stripe_double)
         session = completed(attempt, stripe_double)
-        assert services.checkout_completed(session) == "completed"
+        assert checkout_webhooks.checkout_completed(session) == "completed"
         paying = {**subscription("sub_new", customer="cus_new", items=[item("si_plan", "price_starter_month")],
                                  cancel_at_period_end=True), "latest_invoice": "in_sub_new"}
         stripe_double.answer("subscriptions.update", paying)
         with django_capture_on_commit_callbacks(execute=True):
             hand_over(shop, owner, heir)
 
-        assert services.checkout_completed(session) == "completed"
+        assert checkout_webhooks.checkout_completed(session) == "completed"
 
         assert (local(shop).plan.slug, local(shop).stripe_subscription_id) == ("starter", "sub_new")
         assert stripe_double.calls_to("subscriptions.cancel") == []

@@ -15,7 +15,7 @@ from django.utils import timezone
 from live.errors import Conflict, OperationError
 
 from billing import services
-from billing.services import checkouts, promo_holds
+from billing.services import checkout_webhooks, checkouts, promo_holds, webhook_dispatch
 from billing.models import CheckoutAttempt, PromoCode, PromoRedemption
 from billing.schemas import CheckoutStartIn
 from billing.tests.conftest import code_of, ctx_for
@@ -61,7 +61,7 @@ def paid(stripe_double, hub, attempt: CheckoutAttempt) -> str:
     )
     metadata = {"kind": "hub_plan", "hub_id": str(hub.id), "plan": "starter", "billing_interval": "month",
                 "promo_code": attempt.promo_code}
-    return services.checkout_completed(
+    return checkout_webhooks.checkout_completed(
         checkout_session(attempt.stripe_session_id, subscription_id="sub_new", metadata=metadata)
     )
 
@@ -172,7 +172,7 @@ class TestItIsGivenBack:
         start(owner, shop, plan="starter", promo_code="testers")
         attempt = CheckoutAttempt.objects.get()
 
-        services.process_stripe_event(
+        webhook_dispatch.process_stripe_event(
             event("checkout.session.expired", checkout_session(
                 attempt.stripe_session_id, subscription_id=None, status="expired", payment_status="unpaid",
                 metadata={"kind": "hub_plan", "hub_id": str(shop.id)},

@@ -502,11 +502,11 @@ test('HUBS-F28: a business handed over on a paid plan: the new owner keeps it wi
 
   // Stripe tells the checkout completed (the webhook): the business moves to his card, Olga's subscription ends now.
   await withStripe([
-    'from billing import services',
+    'from billing.services import checkout_webhooks',
     `held = {"${newSub}": subscription("${newSub}", customer="${newCustomer}", items=[item("si_e2e_new", "price_e2e_starter_month")]), "${oldSub}": subscription("${oldSub}", customer="${oldCustomer}", items=[item("si_e2e_plan", "price_e2e_starter_month")], cancel_at_period_end=True)}`,
     'double.answer("subscriptions.retrieve", lambda call: held[call.args[0]])',
     'double.answer("subscriptions.cancel", lambda call: {**held[call.args[0]], "status": "canceled"})',
-    `assert services.checkout_completed({"id": "cs_test_e2e_keep", "mode": "subscription", "payment_status": "no_payment_required", "status": "complete", "subscription": "${newSub}", "customer": "${newCustomer}", "metadata": {"kind": "plan_takeover", "hub_id": "${id}", "replaces": "${oldSub}"}}) == "completed"`,
+    `assert checkout_webhooks.checkout_completed({"id": "cs_test_e2e_keep", "mode": "subscription", "payment_status": "no_payment_required", "status": "complete", "subscription": "${newSub}", "customer": "${newCustomer}", "metadata": {"kind": "plan_takeover", "hub_id": "${id}", "replaces": "${oldSub}"}}) == "completed"`,
     `assert [call.args for call in double.calls_to("subscriptions.cancel")] == [("${oldSub}",)], double.paths()`,
   ]);
   await theirs.goto('/dashboard/billing/subscriptions');

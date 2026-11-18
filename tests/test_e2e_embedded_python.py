@@ -69,8 +69,8 @@ def test_what_a_script_imports_and_reads_is_found():
     text = """
       'from hubs import services',
       `services.reconcile(ctx_for("${id}"))`,
-      'from billing import services',
-      'assert services.checkout_completed({})',
+      'from billing.services import checkout_webhooks',
+      'assert checkout_webhooks.checkout_completed({})',
       'from hubs.queries import businesses, no_such_module',
       'from hubs.gone import anything',
     """
