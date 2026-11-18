@@ -26,7 +26,8 @@ from live.errors import Conflict
 from hubs.services import invitation_answers, member_management
 from hubs.queries import membership
 from hubs.models import HubMember, Plan, Subscription
-from hubs.schemas import ByIdIn, MemberInviteIn, MemberListIn, MemberRoleIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.membership import MemberInviteIn, MemberListIn, MemberRoleIn
 from hubs.tests.conftest import add_member, create_business, ctx_for
 
 pytestmark = pytest.mark.django_db

@@ -20,7 +20,8 @@ from hubs import domain_checks, domain_names, edge_client, events
 from hubs.models import CustomDomain, Hub, new_certificate_token
 from hubs.queries import access_control, custom_domains, plan_catalog
 from hubs.queries.access_control import Role
-from hubs.schemas import CustomDomainOut, CustomDomainRequestIn, CustomDomainStatusOut, ByIdIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.custom_domains import CustomDomainOut, CustomDomainRequestIn, CustomDomainStatusOut
 from hubs.services.custom_domain_checks import _check_custom_domain
 from hubs.services.hub_push import bump_state
 from hubs.services.refusals import business_deleted

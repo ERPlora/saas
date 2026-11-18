@@ -19,7 +19,7 @@ from django.utils import timezone
 
 from hubs.services import ownership
 from hubs.models import Hub, HubMember, HubOwnershipTransfer
-from hubs.schemas import OwnershipTransferIn
+from hubs.schemas.ownership import OwnershipTransferIn
 from hubs.tests.conftest import add_member, create_business, ctx_for, member_of
 
 pytestmark = pytest.mark.django_db

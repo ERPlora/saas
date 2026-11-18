@@ -18,7 +18,8 @@ from accounts import queries
 from accounts.models import UserPreferences
 from accounts.tests.conftest import api_post
 from hubs.services import deletion, hub_callbacks
-from hubs.schemas import BusinessDeleteIn, MarkReadyIn
+from hubs.schemas.businesses import BusinessDeleteIn
+from hubs.schemas.hub_callbacks import MarkReadyIn
 from hubs.tests.conftest import create_business, ctx_for, plans  # noqa: F401 - the plans fixture
 
 pytestmark = pytest.mark.django_db

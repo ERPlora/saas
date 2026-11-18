@@ -18,7 +18,9 @@ from hubs.hub_client import HubRefused, HubUnavailable
 from hubs.models import Hub, HubMember, SessionRevocation, Subscription
 from hubs.queries import access_control, businesses, data_copies
 from hubs.queries.access_control import Role
-from hubs.schemas import BusinessDetailOut, ByIdIn, HubMaintenanceIn, MarkReadyIn
+from hubs.schemas.businesses import BusinessDetailOut
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.hub_callbacks import HubMaintenanceIn, MarkReadyIn
 from hubs.services.exclusive_runs import run_exclusively
 from hubs.services.hub_callbacks import (
     PROVISION_FAILED,

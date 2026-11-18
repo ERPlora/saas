@@ -9,7 +9,7 @@ from live.operations import INTERNAL, operation
 from live.outbox import record_event
 
 from hubs.queries import membership
-from hubs.schemas import NotifyPeopleIn, NotifyPeopleOut
+from hubs.schemas.membership import NotifyPeopleIn, NotifyPeopleOut
 
 
 @operation(

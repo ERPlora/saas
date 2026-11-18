@@ -3,7 +3,7 @@
 A fixed list in the code, released with the apps it describes, as Odoo lists its fiscal localizations and
 Business Central its countries:
 
-* the countries are the ones a business can be created in, ``hubs.schemas.COUNTRIES``, by the names their field
+* the countries are the ones a business can be created in, ``hubs.schemas.common.COUNTRIES``, by the names their field
   gives them (``hubs.countries.COUNTRY_NAMES``: one list, and a market without a name fails ``test_compliance.py``);
 * for each, the fiscal systems the apps connect to TODAY: Spain's VeriFactu (the ``verifactu`` app of the
   Hub), and nothing else. The Spanish regions with their own system (the Basque Country's TicketBAI,
@@ -21,7 +21,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_safe
 
 from hubs.countries import COUNTRY_NAMES
-from hubs.schemas import COUNTRIES
+from hubs.schemas.common import COUNTRIES
 
 #: Where the customers are: first on the page, whatever the reading language.
 HOME_MARKET = "ES"

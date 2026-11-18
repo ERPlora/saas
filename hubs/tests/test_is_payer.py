@@ -11,7 +11,8 @@ import pytest
 
 from hubs.queries import businesses
 from hubs.models import BillingProfile, Hub, HubMember
-from hubs.schemas import BusinessListIn, ByIdIn
+from hubs.schemas.businesses import BusinessListIn
+from hubs.schemas.common import ByIdIn
 from hubs.tests.conftest import ctx_for
 
 pytestmark = pytest.mark.django_db
@@ -70,7 +71,7 @@ def test_the_card_that_still_pays_the_plan_after_a_hand_over_pays(business, team
     on the page, so it can neither be taken out nor delete its account."""
     from billing.tests.conftest import pay
     from hubs.services import billing_profiles
-    from hubs.schemas import BillingProfileIn
+    from hubs.schemas.payers import BillingProfileIn
 
     BillingProfile.objects.filter(pk=business.billing_profile_id).update(stripe_customer_id="cus_old")
     pay(business, customer="cus_old")

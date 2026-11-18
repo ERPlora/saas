@@ -4,7 +4,7 @@ The form's list and the table that prices the sale were two lists nobody kept
 in step: a country added to a form without its rule fails here, before it refuses a customer's checkout.
 
 Adapted: the lists are ``billing.vat.BILLING_COUNTRIES`` and the countries a business may be created in
-(``hubs.schemas.COUNTRIES``). The old ``test_a_uk_payer_on_file_keeps_the_audit_green`` drove the
+(``hubs.schemas.common.COUNTRIES``). The old ``test_a_uk_payer_on_file_keeps_the_audit_green`` drove the
 tax-rule audit (``audit_tax_rules``), which is not ported in this lot; its fact —a UK payer on file
 prices— is the first test of ``TestUnitedKingdom`` through the sale door.
 """
@@ -40,7 +40,7 @@ def test_every_country_the_billing_form_offers_resolves_a_rate():
 
 
 def test_every_country_a_business_may_be_created_in_resolves_a_rate():
-    from hubs.schemas import COUNTRIES
+    from hubs.schemas.common import COUNTRIES
 
     assert sorted(country for country in COUNTRIES if _quote(country) is None) == []
 

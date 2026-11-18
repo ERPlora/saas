@@ -1,10 +1,10 @@
 // The countries a business may be created in and the time zones its settings offer. Both lists are the
-// server's: `COUNTRIES` mirrors hubs/schemas/__init__.py (the EU-27 ERPlora serves) and the zones are each
+// server's: `COUNTRIES` mirrors hubs/schemas/common.py (the EU-27 ERPlora serves) and the zones are each
 // country's starting zone of hubs/services/creation.py `TIME_ZONES` plus the Atlantic islands of Spain and
 // Portugal (guard: regions.test.ts). Names come from Intl in the person's language, never from a
 // catalogue of ours.
 
-/** The markets ERPlora serves (hubs/schemas/__init__.py `COUNTRIES`). */
+/** The markets ERPlora serves (hubs/schemas/common.py `COUNTRIES`). */
 export const COUNTRIES = [
   'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE',
   'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE',

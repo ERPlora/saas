@@ -36,29 +36,23 @@ from hubs.queries import (
     plan_catalog,
     taxonomy,
 )
-from hubs.schemas import (
-    AddressProposeIn,
-    BillingProfileGetIn,
-    BillingProfileIn,
-    BusinessCreateIn,
+from hubs.schemas.businesses import (
     BusinessAddressIn,
     BusinessDeleteIn,
     BusinessListIn,
     BusinessOpenIn,
-    BusinessTypeListIn,
     BusinessUpdateIn,
-    ByIdIn,
-    CustomDomainRequestIn,
-    DataCopyLinkIn,
-    DataCopyListIn,
-    InvitationListIn,
-    MemberInviteIn,
-    MemberListIn,
-    MemberRoleIn,
-    OwnershipTransferIn,
-    UsageGetIn,
-    UsageSeriesIn,
 )
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.custom_domains import CustomDomainRequestIn
+from hubs.schemas.data_copies import DataCopyLinkIn, DataCopyListIn
+from hubs.schemas.hub_usage import UsageGetIn, UsageSeriesIn
+from hubs.schemas.invitations import InvitationListIn
+from hubs.schemas.membership import MemberInviteIn, MemberListIn, MemberRoleIn
+from hubs.schemas.ownership import OwnershipTransferIn
+from hubs.schemas.payers import BillingProfileGetIn, BillingProfileIn
+from hubs.schemas.signup import AddressProposeIn, BusinessCreateIn
+from hubs.schemas.taxonomy import BusinessTypeListIn
 
 router = Router(tags=["hubs"])
 

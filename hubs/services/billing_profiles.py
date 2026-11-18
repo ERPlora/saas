@@ -14,7 +14,7 @@ from hubs import events
 from hubs.models import BillingProfile
 from hubs.queries import access_control, payers
 from hubs.queries.access_control import Role
-from hubs.schemas import BillingProfileIn, BillingProfileOut, postal_code_problem
+from hubs.schemas.payers import BillingProfileIn, BillingProfileOut, postal_code_problem
 
 
 @operation(

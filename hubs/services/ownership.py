@@ -15,7 +15,8 @@ from hubs import emails, events
 from hubs.models import Hub, HubMember, HubOwnershipTransfer, Subscription
 from hubs.queries import access_control, payers
 from hubs.queries.access_control import Role
-from hubs.schemas import ByIdIn, OwnershipTransferIn, OwnershipTransferOut
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.ownership import OwnershipTransferIn, OwnershipTransferOut
 from hubs.services.creation import check_free_quota
 from hubs.services.hub_push import bump_state, push_after_commit
 from hubs.services.people_notices import notify_people

@@ -28,14 +28,10 @@ from live.errors import (
 from accounts.models import AuthExchangeCode
 from hubs import events, queries, services
 from hubs.models import BillingProfile, BusinessType, Hub, HubMember, Plan, Subscription
-from hubs.schemas import (
-    BusinessCreateIn,
-    BusinessDeleteIn,
-    BusinessOpenIn,
-    BusinessUpdateIn,
-    ByIdIn,
-    MarkReadyIn,
-)
+from hubs.schemas.businesses import BusinessDeleteIn, BusinessOpenIn, BusinessUpdateIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.hub_callbacks import MarkReadyIn
+from hubs.schemas.signup import BusinessCreateIn
 from hubs.tests.conftest import add_member, create_business, ctx_for, role_on
 
 pytestmark = pytest.mark.django_db

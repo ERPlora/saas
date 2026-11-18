@@ -21,7 +21,8 @@ from hubs import domain_checks, events
 from hubs.services import custom_domain_checks, custom_domain_requests, hub_push
 from hubs.queries import custom_domains, hub_sync
 from hubs.models import CustomDomain, Hub, HubMember, Plan, Subscription
-from hubs.schemas import ByIdIn, CustomDomainRequestIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.custom_domains import CustomDomainRequestIn
 from hubs.tests.conftest import DOMAIN, add_member, certificate_arn, create_business, ctx_for
 
 pytestmark = pytest.mark.django_db
@@ -746,7 +747,7 @@ def test_what_only_the_check_writes_is_no_tool():
 
 
 def test_a_write_of_the_check_is_only_the_platforms(owner, standard_business):
-    from hubs.schemas import CustomDomainRecordIn
+    from hubs.schemas.custom_domains import CustomDomainRecordIn
 
     row = make_row(standard_business)
     with pytest.raises(PermissionDenied):

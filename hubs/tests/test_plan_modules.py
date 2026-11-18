@@ -19,7 +19,7 @@ from apps.models import Module
 from hubs.services import hub_callbacks, reconciliation, subscription_sync
 from hubs.queries import hub_sync
 from hubs.models import Hub, Subscription, SubscriptionItem
-from hubs.schemas import ModuleRightIn, SubscriptionApplyIn
+from hubs.schemas.subscriptions import ModuleRightIn, SubscriptionApplyIn
 from hubs.tests.conftest import create_business
 
 pytestmark = pytest.mark.django_db

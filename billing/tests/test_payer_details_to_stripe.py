@@ -36,7 +36,7 @@ def paying(shop, stripe_double):
 
 def save(owner, hub, **details):
     from hubs.services import billing_profiles
-    from hubs.schemas import BillingProfileIn
+    from hubs.schemas.payers import BillingProfileIn
 
     values = {
         "billing_name": "Panadería López SL",

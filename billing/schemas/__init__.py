@@ -10,7 +10,7 @@ from ninja import Field, Schema
 from pydantic import AfterValidator, model_validator
 
 from billing.schemas.discounts import SubscriptionDiscountOut
-from hubs.schemas import PlanOut
+from hubs.schemas.plan_catalog import PlanOut
 
 #: The verdict a VAT number gets (``billing.services.vat_clearance.clear_tax_id_for_stripe``):
 #: ``verified`` (VIES confirmed it, with proof: reverse charge), ``invalid`` (not in VIES),

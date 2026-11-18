@@ -1119,7 +1119,7 @@ class TestThePayerPays:
 
     def test_once_the_new_owner_says_who_pays_a_free_business_is_bought(self, shop, owner, make_user, stripe_double):
         from hubs.services import billing_profiles
-        from hubs.schemas import BillingProfileIn
+        from hubs.schemas.payers import BillingProfileIn
         from hubs.tests.conftest import ctx_for as hub_ctx
 
         new_owner = transferred(shop, owner, make_user)
@@ -1134,7 +1134,7 @@ class TestThePayerPays:
     def test_a_subscription_still_paid_by_the_previous_owner_is_not_touched(self, shop, owner, make_user,
                                                                            inventory, stripe_double):
         from hubs.services import billing_profiles
-        from hubs.schemas import BillingProfileIn
+        from hubs.schemas.payers import BillingProfileIn
         from hubs.tests.conftest import ctx_for as hub_ctx
 
         paid = pay(shop)

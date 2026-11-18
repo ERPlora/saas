@@ -77,7 +77,7 @@ def late_payment(hub, invoice_id):
 
 def delete_business(hub):
     from hubs.services import deletion
-    from hubs.schemas import BusinessDeleteIn
+    from hubs.schemas.businesses import BusinessDeleteIn
     from hubs.tests.conftest import ctx_for as hub_ctx
 
     owner = HubMember.objects.get(hub=hub, role=HubMember.Role.OWNER).user

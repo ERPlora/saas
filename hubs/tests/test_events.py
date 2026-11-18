@@ -15,7 +15,10 @@ from live.operations import NAME_RE
 from hubs import events, services
 from hubs.services import deletion, invitation_answers, member_management, opening, ownership
 from hubs.models import Hub, HubOwnershipTransfer
-from hubs.schemas import BusinessDeleteIn, BusinessOpenIn, ByIdIn, MemberInviteIn, MemberRoleIn, OwnershipTransferIn
+from hubs.schemas.businesses import BusinessDeleteIn, BusinessOpenIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.membership import MemberInviteIn, MemberRoleIn
+from hubs.schemas.ownership import OwnershipTransferIn
 from hubs.tests.conftest import ctx_for, member_of
 
 SERVICES_SOURCE = "".join(path.read_text() for path in sorted(Path(services.__file__).parent.glob("*.py")))

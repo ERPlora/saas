@@ -22,7 +22,7 @@ from live.context import get_builder
 from live.errors import Conflict, NotFound
 
 from hubs.services import opening
-from hubs.schemas import BusinessOpenIn
+from hubs.schemas.businesses import BusinessOpenIn
 
 #: The app's start: ``ERPlora/app`` boots there, so it never changes.
 SHELL = "/shell/"

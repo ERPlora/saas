@@ -15,7 +15,7 @@ from hubs import emails, events
 from hubs.models import Hub, HubMember
 from hubs.queries import access_control, membership
 from hubs.queries.access_control import Role
-from hubs.schemas import HubErrorIn, HubMaintenanceIn, HubStatusOut, MarkReadyIn
+from hubs.schemas.hub_callbacks import HubErrorIn, HubMaintenanceIn, HubStatusOut, MarkReadyIn
 
 
 #: The Hub's last error recorded on a business it says it could not prepare (``failed``): the panel shows «We could not

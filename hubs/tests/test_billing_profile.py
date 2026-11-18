@@ -16,7 +16,7 @@ from live.errors import InvalidPayload, NotFound, PermissionDenied
 from hubs.services import billing_profiles
 from hubs.queries import payers
 from hubs.models import BillingProfile, Hub
-from hubs.schemas import BillingProfileGetIn, BillingProfileIn
+from hubs.schemas.payers import BillingProfileGetIn, BillingProfileIn
 from hubs.tests.conftest import ctx_for
 
 pytestmark = pytest.mark.django_db

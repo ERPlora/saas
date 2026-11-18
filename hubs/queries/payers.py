@@ -7,7 +7,7 @@ from live.operations import AI, operation
 
 from hubs.models import BillingProfile, Hub, HubMember, Subscription
 from hubs.queries.access_control import Role, access, account_of
-from hubs.schemas import BillingProfileGetIn, BillingProfileOut
+from hubs.schemas.payers import BillingProfileGetIn, BillingProfileOut
 
 
 def is_payer(member: HubMember) -> bool:

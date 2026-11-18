@@ -12,7 +12,7 @@ from hubs import events
 from hubs.models import Hub
 from hubs.queries import access_control, businesses
 from hubs.queries.access_control import Role
-from hubs.schemas import BusinessAddressIn, BusinessDetailOut, BusinessUpdateIn
+from hubs.schemas.businesses import BusinessAddressIn, BusinessDetailOut, BusinessUpdateIn
 from hubs.services.creation import _chosen_slug, _slug_taken
 from hubs.services.hub_push import Call, push_after_commit
 from hubs.services.refusals import business_deleted

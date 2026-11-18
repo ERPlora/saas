@@ -180,7 +180,7 @@ def test_the_unconfirmed_refusal_is_said_in_spanish(business, owner):
 
     from hubs.services import invitation_answers
     from hubs.models import HubMember
-    from hubs.schemas import ByIdIn
+    from hubs.schemas.common import ByIdIn
     from hubs.tests.conftest import ctx_for
 
     ana = get_user_model().objects.create_user(email="ana@example.com", password=None)

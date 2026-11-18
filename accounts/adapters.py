@@ -58,7 +58,7 @@ def _with_next(next_url: str | None) -> dict[str, str]:
 def folded_email(email: str) -> str:
     """An address with the compatibility forms of its letters folded (NFKC), trimmed and in lower case: the form
     an account keeps, so «Ana@EXAMPLE.com» and «ana@ｅxample.com» are Ana's address (also when inviting it,
-    ``hubs.schemas``)."""
+    ``hubs.schemas.common``)."""
     return unicodedata.normalize("NFKC", email).strip().lower()
 
 

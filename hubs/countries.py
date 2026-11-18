@@ -8,8 +8,8 @@ without touching a model. The screens name a country with ``Intl`` (``frontend/r
 
 from django.utils.translation import gettext_lazy as _
 
-#: The markets ERPlora serves, a business may be created in (``hubs.schemas.COUNTRIES``; a market added there without a
-#: name here fails ``tests/test_countries.py``).
+#: The markets ERPlora serves, a business may be created in (``hubs.schemas.common.COUNTRIES``; a market added there
+#: without a name here fails ``tests/test_countries.py``).
 COUNTRY_NAMES = {
     "AT": _("Austria"),
     "BE": _("Belgium"),
