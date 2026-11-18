@@ -169,6 +169,12 @@ class TheChecks(unittest.TestCase):
         self.assertRefused(self.problems({"saas-worker": settings()["prod"]["saas-worker"]}, current=current),
                            "confirm it with CONFIRM_PROTECTED")
 
+    def test_a_protected_setting_the_app_env_does_not_name_is_a_change(self):
+        current = settings()["prod"]
+        del current["saas"]["STRIPE_EXPECTED_MODE"]
+        [problem] = self.problems({"saas": settings()["prod"]["saas"]}, current=current)
+        self.assertIn("CONFIRM_PROTECTED STRIPE_EXPECTED_MODE=live", problem)
+
     def test_pre_needs_no_confirmation(self):
         current = settings()["pre"]
         current["saas"]["PUBLIC_INDEXING_ENABLED"] = "true"
