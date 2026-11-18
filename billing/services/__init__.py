@@ -1,24 +1,22 @@
-"""Writes of billing in Stripe: a business handed over with a paid plan, the webhook and the sweeps that apply the live
-subscription, the payer of an account that deleted itself, and «Pay» on an invoice not collected. Buying, changing and
-cancelling, the VAT number of a payer, its VIES verdict, the tax of a sale, ERPlora's invoices and rectifying invoices,
-their issue by the platform hub and the OSS notices live in their own modules of this package."""
+"""Writes of billing in Stripe: a business handed over with a paid plan, the sweeps that apply the live subscription,
+the payer of an account that deleted itself, and «Pay» on an invoice not collected. Buying, changing and cancelling,
+Stripe's webhook, the VAT number of a payer, its VIES verdict, the tax of a sale, ERPlora's invoices and rectifying
+invoices, their issue by the platform hub and the OSS notices live in their own modules of this package."""
 
 import logging
 import uuid
 from collections import Counter
 from functools import partial
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 from typing import NamedTuple
 
 from django.conf import settings
-from django.core.cache import cache
-from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
-from django.db.models import F, Q
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.translation import gettext as _
-from live.context import OperationContext, Scope, system_context
+from live.context import OperationContext
 from live.errors import Conflict, OperationError
 from live.errors import NotFound as NotFoundError
 from live.operations import INTERNAL, operation
@@ -31,15 +29,10 @@ from billing.models import (
     CheckoutAttempt,
     Invoice,
     PaymentFailure,
-    WebhookEvent,
 )
-from billing.money import from_cents
 from billing.schemas import (
-    CheckoutRefundRecordIn,
-    CheckoutRefundRecordOut,
     InvoicePayIn,
     InvoicePayOut,
-    InvoiceRecordIn,
     CheckoutStartOut,
     HubIn,
     ModuleIn,
@@ -48,6 +41,7 @@ from billing.schemas import (
     SubscriptionOut,
 )
 from billing.services import (
+    checkout_webhooks,
     checkouts,
     discounts,
     downgrades,
@@ -56,6 +50,7 @@ from billing.services import (
     invoice_numbering,
     invoice_recording,
     invoice_sealing,
+    invoice_webhooks,
     live_subscriptions,
     oss_notices,
     payer_vat_numbers,
@@ -71,20 +66,23 @@ from billing.services import (
     stripe_customers,
     stripe_sales,
     stripe_sync,
+    subscription_webhooks,
     unpaid_notices,
     vat_clearance,
+    webhook_dispatch,
+    webhook_events,
+    webhook_targets,
 )
 from billing.stripe_checkout import (
     EMBEDDED_UI_MODE,
     KIND_METADATA_KEY,
     CheckoutKind,
-    checkout_session_kind,
 )
 from billing.stripe_keys import StripeKeyMode
 from billing.stripe_period import subscription_period
 from hubs import emails as hub_emails
-from hubs.queries import access_control, membership, payers
-from hubs.services import hub_callbacks, refusals, suspensions
+from hubs.queries import access_control, payers
+from hubs.services import refusals, suspensions
 from hubs.models import BillingProfile, Hub, HubMember, Subscription, SubscriptionItem
 
 logger = logging.getLogger("billing.services")
@@ -270,28 +268,6 @@ def _open_takeover(ctx, hub: Hub, subscription: Subscription, takeover: Takeover
         {"hub_id": str(hub.id), "kind": "takeover", "attempt": str(attempt.id)},
     )
     return attempt
-
-
-def _takeover_completed(hub: Hub, session: dict, subscription_id: str, replaced: str) -> str:
-    """The new owner kept the plan with their card: the business moves to the new subscription and the
-    previous one, on the previous payer's card, ends now without a refund (the business is using the period it
-    paid; the new one bills from its end). Stripe not answering raises: nothing moves and Stripe delivers it
-    again. A redelivery finds the business moved and ends nothing twice."""
-    with stripe_sync.holding(hub.id):
-        local = Subscription.objects.filter(hub=hub).first()
-        if local is None or local.stripe_subscription_id != subscription_id:
-            live = stripe_service.retrieve_subscription(subscription_id)
-            live_subscriptions.apply_live(hub.id, live)
-            if replaced and replaced != subscription_id:
-                discounts.move_redemption(replaced, live)
-                previous = stripe_service.retrieve_subscription(replaced)
-                if (previous.get("status") or "") not in stripe_sales.ENDED_STATUSES:
-                    stripe_service.cancel_subscription(replaced)
-            logger.info("[BILLING] Hub %s kept its plan with its new owner's card: %s ends", hub.id, replaced)
-        CheckoutAttempt.objects.filter(stripe_session_id=session.get("id")).exclude(
-            status=CheckoutAttempt.Status.COMPLETED
-        ).update(status=CheckoutAttempt.Status.COMPLETED, completed_at=timezone.now(), updated_at=timezone.now())
-    return "completed"
 
 
 def _bought_item(subscription: Subscription | None, slug: str) -> SubscriptionItem:
@@ -489,317 +465,6 @@ def portal_open(ctx: OperationContext, data: PortalOpenIn) -> dict:
     return {"url": session["url"]}
 
 
-# --- The webhook: each Stripe event once, the live subscription applied ------------------------------
-
-CLAIMED, DUPLICATE, IN_PROGRESS = "claimed", "duplicate", "in_progress"
-
-
-def claim_event(event_id: str, event_type: str) -> str:
-    """Decide whether this delivery processes the event: ``CLAIMED`` (process it, then ``finish_event``),
-    ``DUPLICATE`` (processed already) or ``IN_PROGRESS`` (another delivery holds it; Stripe retries). The
-    row is created or locked in one transaction, so of two simultaneous deliveries only one claims it; a
-    claim older than ``CLAIM_LEASE`` (a process that died) is taken over."""
-    now = timezone.now()
-    with transaction.atomic():
-        row, created = WebhookEvent.objects.select_for_update().get_or_create(
-            event_id=event_id,
-            defaults={"event_type": event_type, "processing_since": now, "attempts": 1},
-        )
-        if created:
-            return CLAIMED
-        if row.success:
-            return DUPLICATE
-        if (
-            row.processing_since is not None
-            and row.processing_since > now - WebhookEvent.CLAIM_LEASE
-        ):
-            return IN_PROGRESS
-        WebhookEvent.objects.filter(pk=row.pk).update(
-            processing_since=now, attempts=F("attempts") + 1
-        )
-        return CLAIMED
-
-
-def finish_event(
-    event_id: str, *, success: bool, outcome: str, error: str = ""
-) -> None:
-    """Release the claim with how the processing ended; a failure stays claimable for Stripe's retry."""
-    WebhookEvent.objects.filter(event_id=event_id).update(
-        success=success,
-        outcome=outcome[:32],
-        error_message=error,
-        processing_since=None,
-        processed_at=timezone.now(),
-    )
-
-
-#: How long an event's row is kept: Stripe resends an event for 3 days at most and keeps it 30, so
-#: an older row never guards a delivery again.
-WEBHOOK_EVENT_RETENTION = timedelta(days=30)
-
-
-def purge_webhook_events() -> int:
-    """saas-cron, ``manage.py purge_webhook_events``: forget the events received more than
-    ``WEBHOOK_EVENT_RETENTION`` ago, processed or not. How many were deleted."""
-    deleted, _ = WebhookEvent.objects.filter(received_at__lt=timezone.now() - WEBHOOK_EVENT_RETENTION).delete()
-    return deleted
-
-
-#: The events ERPlora's Stripe endpoint sends to ``/webhooks/stripe/``: what ``process_stripe_event``
-#: handles, and the one list ``audit_stripe_webhooks`` compares the endpoint with every day;
-#: ``billing/README.md`` and ``billing/webhooks.py`` cite it instead of repeating it. ``invoice.payment_succeeded`` is
-#: handled as ``invoice.paid`` but not subscribed: one notice per payment is enough.
-STRIPE_WEBHOOK_EVENTS = (
-    "checkout.session.completed",
-    "checkout.session.async_payment_succeeded",
-    "checkout.session.async_payment_failed",
-    "checkout.session.expired",
-    "invoice.paid",
-    "invoice.payment_failed",
-    "invoice.voided",
-    "invoice.marked_uncollectible",
-    "credit_note.created",
-    "credit_note.voided",
-    "charge.refunded",
-    "customer.subscription.created",
-    "customer.subscription.updated",
-    "customer.subscription.deleted",
-    "customer.updated",
-)
-
-
-def process_stripe_event(event: dict) -> str:  # noqa: C901, PLR0911
-    """Process one signed Stripe event; its outcome (``completed``, ``processed``, ``ignored``, ``unknown``,
-    ``invalid``, ``pending``…). Raises when it must be retried (Stripe did not answer a read the event needs)."""
-    obj = (event.get("data") or {}).get("object") or {}
-    match event.get("type"):
-        case "checkout.session.completed" | "checkout.session.async_payment_succeeded":
-            return checkout_completed(obj)
-        case "checkout.session.async_payment_failed":
-            return checkout_closed(obj, CheckoutAttempt.Status.FAILED)
-        case "checkout.session.expired":
-            return checkout_closed(obj, CheckoutAttempt.Status.EXPIRED)
-        case "invoice.paid" | "invoice.payment_succeeded":
-            return invoice_paid(obj)
-        case "invoice.payment_failed":
-            return invoice_payment_failed(obj)
-        case "invoice.voided" | "invoice.marked_uncollectible":
-            return invoice_recording.invoice_voided(obj)
-        case "credit_note.created":
-            return rectifying_invoices.credit_note_created(obj)
-        case "credit_note.voided":
-            return rectifying_invoices.credit_note_voided(obj)
-        case "charge.refunded":
-            return rectifying_invoices.charge_refunded(obj)
-        case "customer.subscription.created" | "customer.subscription.updated":
-            return subscription_updated(obj)
-        case "customer.subscription.deleted":
-            return subscription_deleted(obj)
-        case "customer.updated":
-            return customer_updated(obj)
-    return "ignored"
-
-
-def _hub_named(hub_id) -> Hub | None:
-    try:
-        return Hub.objects.filter(pk=hub_id).first() if hub_id else None
-    except ValueError, TypeError, DjangoValidationError:
-        return None
-
-
-def _checkout_paid(session: dict) -> bool:
-    """A complete checkout is not always a settled payment: ``paid``, or nothing to pay now (a trial)."""
-    status = session.get("payment_status")
-    if status == "paid":
-        return True
-    return (
-        status == "no_payment_required"
-        and session.get("mode") == "subscription"
-        and bool(session.get("subscription"))
-    )
-
-
-def checkout_completed(session: dict) -> str:
-    """A business paid in the Embedded Checkout: its subscription, read LIVE, is applied, the attempt is
-    completed and its promo code counted, once whatever the redeliveries."""
-    metadata = session.get("metadata") or {}
-    if checkout_session_kind(metadata) is CheckoutKind.UNKNOWN:
-        return "ignored"
-    hub = _hub_named(metadata.get("hub_id"))
-    if hub is None or not session.get("subscription"):
-        logger.error(
-            "[STRIPE WEBHOOK] Checkout %s names no business of ours: %s",
-            session.get("id"),
-            metadata,
-        )
-        return "invalid"
-    if not _checkout_paid(session):
-        return "pending"
-    subscription_id = session["subscription"]
-    if isinstance(subscription_id, dict):
-        subscription_id = subscription_id["id"]
-    with stripe_sync.holding(hub.id):
-        attempt = CheckoutAttempt.objects.select_related("owner").filter(stripe_session_id=session.get("id")).first()
-        # One already applied is a redelivery, whoever owns the business now: it is left to the paths below.
-        if (
-            attempt is not None
-            and attempt.owner_id is not None
-            and attempt.status != CheckoutAttempt.Status.COMPLETED
-            and attempt.owner_id != membership.owner_id(hub.id)
-        ):
-            return _end_not_owner(hub, attempt, session, subscription_id)
-        if checkout_session_kind(metadata) is CheckoutKind.PLAN_TAKEOVER:
-            return _takeover_completed(hub, session, subscription_id, metadata.get("replaces") or "")
-        return _complete_checkout(hub, session, subscription_id)
-
-
-def _complete_checkout(hub: Hub, session: dict, subscription_id: str) -> str:
-    """The subscription the checkout paid for, applied (unless the business pays another one), the attempt
-    completed and its promo code counted, with when its discount ends."""
-    local = Subscription.objects.filter(hub=hub).first()
-    if (
-        local is not None
-        and local.stripe_subscription_id
-        and local.stripe_subscription_id != subscription_id
-        and local.status not in stripe_sales.ENDED_STATUSES
-    ):
-        return _end_duplicate(hub, local, session, subscription_id)
-    live = stripe_service.retrieve_subscription(subscription_id)
-    live_subscriptions.apply_live(hub.id, live)
-    completed = (
-        CheckoutAttempt.objects.filter(stripe_session_id=session.get("id"))
-        .exclude(status=CheckoutAttempt.Status.COMPLETED)
-        .update(
-            status=CheckoutAttempt.Status.COMPLETED,
-            completed_at=timezone.now(),
-            updated_at=timezone.now(),
-        )
-    )
-    code = (session.get("metadata") or {}).get("promo_code")
-    if completed and code:
-        customer = live.get("customer")
-        promo_holds.use(
-            code,
-            hub=hub,
-            customer=customer["id"] if isinstance(customer, dict) else customer or "",
-            session=session.get("id") or "",
-            live=live,
-        )
-    return "completed"
-
-
-def _end_duplicate(
-    hub: Hub, local: Subscription, session: dict, subscription_id: str
-) -> str:
-    """A second checkout paid for a business that pays already: the subscription it has stays; the new one
-    ends now, its unused time credited to the customer, and support is told (the refund is theirs)."""
-    logger.error(
-        "[BILLING] Hub %s paid checkout %s while it already pays %s: the new subscription %s is ended now with "
-        "its unused time as credit. Refund it if the customer asks",
-        hub.id,
-        session.get("id"),
-        local.stripe_subscription_id,
-        subscription_id,
-        extra={"event": "billing.duplicate_subscription", "hub_id": str(hub.id)},
-    )
-    stripe_service.cancel_subscription(subscription_id, credit_unused=True)
-    CheckoutAttempt.objects.filter(stripe_session_id=session.get("id")).update(
-        status=CheckoutAttempt.Status.COMPLETED,
-        completed_at=timezone.now(),
-        updated_at=timezone.now(),
-    )
-    return "duplicate_subscription"
-
-
-#: The webhook's outcome of a checkout paid by somebody who no longer owns the business.
-NOT_OWNER = "not_owner"
-
-
-def _end_not_owner(hub: Hub, attempt: CheckoutAttempt, session: dict, subscription_id: str) -> str:
-    """A checkout paid by somebody who no longer owns the business (handed over while it was open): it
-    is not applied. Its subscription ends now and what it charged is refunded in full (Stripe's
-    «Cancel + refund»; ``charge.refunded`` makes the rectifying invoice), the attempt says ``refunded`` (its audit
-    trail keeps when) and its payer is told after the COMMIT. Once: a redelivery finds it refunded. Stripe not
-    answering raises, so nothing is marked and Stripe delivers it again (the refund is idempotent)."""
-    if attempt.status == CheckoutAttempt.Status.REFUNDED:
-        return NOT_OWNER
-    live = stripe_service.retrieve_subscription(subscription_id)
-    if (live.get("status") or "") not in stripe_sales.ENDED_STATUSES:
-        stripe_service.cancel_subscription(subscription_id)
-    invoice = live.get("latest_invoice") or ""
-    if isinstance(invoice, dict):
-        invoice = invoice.get("id") or ""
-    refunded = (
-        stripe_service.refund_invoice(
-            invoice,
-            key=f"refund-{session.get('id')}",
-            metadata={"hub_id": str(hub.id), "checkout_session": session.get("id") or "", "reason": NOT_OWNER},
-        )
-        if invoice
-        else 0
-    )
-    checkout_refund_record(
-        system_context(Scope("user", str(attempt.owner_id))),
-        CheckoutRefundRecordIn(attempt_id=attempt.id, refunded=refunded),
-    )
-    logger.error(
-        "[BILLING] Hub %s: checkout %s was paid by account %s, which no longer owns it. Subscription %s ended and "
-        "%s cents refunded",
-        hub.id,
-        session.get("id"),
-        attempt.owner_id,
-        subscription_id,
-        refunded,
-        extra={"event": "billing.checkout_not_owner", "hub_id": str(hub.id)},
-    )
-    return NOT_OWNER
-
-
-@operation(
-    "billing.checkout.refund_record",
-    kind="command",
-    permission="billing.manage",
-    input=CheckoutRefundRecordIn,
-    output=CheckoutRefundRecordOut,
-    ai=INTERNAL,  # platform
-)
-def checkout_refund_record(ctx: OperationContext, data: CheckoutRefundRecordIn) -> dict:
-    """A checkout already ended and refunded in Stripe because its payer no longer owned the business (the platform
-    only, from the webhook; no route): the attempt says ``refunded`` (its audit trail keeps when), the event goes
-    to the payer's channel and the payer is told by mail after the COMMIT."""
-    attempt = CheckoutAttempt.objects.select_for_update().get(pk=data.attempt_id)
-    attempt.status = CheckoutAttempt.Status.REFUNDED
-    attempt.completed_at = timezone.now()
-    attempt.save(update_fields=["status", "completed_at", "updated_at"])
-    promo_holds.release(attempt=attempt)
-    record_event(
-        ctx,
-        events.CHECKOUT_REFUNDED,
-        {"hub_id": str(attempt.hub_id), "attempt": str(attempt.id), "refunded": data.refunded},
-    )
-    transaction.on_commit(partial(_tell_refunded, attempt.owner_id, attempt.hub_id, data.refunded), robust=True)
-    return {"attempt_id": attempt.id, "status": attempt.status}
-
-
-def _tell_refunded(account_id, hub_id, cents: int) -> None:
-    """The mail to the payer of a checkout ended because they no longer owned the business (after the COMMIT).
-    One that cannot leave is logged (``billing.emails``): the refund and its rectifying invoice in Billing are
-    the record."""
-    from django.contrib.auth import get_user_model
-
-    from billing import emails
-
-    account = get_user_model().objects.filter(pk=account_id).first()
-    hub = Hub.objects.filter(pk=hub_id).first()
-    if account is None or hub is None:
-        logger.error("[BILLING] Nobody to tell of the refund of hub %s to account %s", hub_id, account_id)
-        return
-    try:
-        emails.send_checkout_refunded(hub, to=account.email, language=account.language, amount=from_cents(cents))
-    except emails.MailNotSent:
-        return
-
-
 def expire_open_checkouts(hub_id) -> None:
     """After a hand-over's COMMIT (``hubs.ownership.accept``): the Checkout Sessions the business had open (its
     previous owner's) can no longer be paid (Stripe's ``expire``). One Stripe no longer lets expire (paid meanwhile)
@@ -831,284 +496,6 @@ def expire_open_checkouts(hub_id) -> None:
         attempt.status = CheckoutAttempt.Status.EXPIRED
         attempt.save(update_fields=["status", "updated_at"])
         promo_holds.release(attempt=attempt)
-
-
-def checkout_closed(session: dict, status: str) -> str:
-    """A checkout whose delayed payment failed, or that expired unpaid: its attempt is closed (the next
-    start opens a new session); the business does not change."""
-    if checkout_session_kind(session.get("metadata")) is CheckoutKind.UNKNOWN:
-        return "ignored"
-    CheckoutAttempt.objects.filter(
-        stripe_session_id=session.get("id"), status=CheckoutAttempt.Status.OPEN
-    ).update(status=status, updated_at=timezone.now())
-    promo_holds.release(session=session.get("id") or "")
-    return status
-
-
-def invoice_subscription(invoice: dict) -> str:
-    """The subscription an invoice bills: under ``parent.subscription_details`` since the 2025 API, at the
-    root before (events of an older endpoint)."""
-    parent = invoice.get("parent") or {}
-    found = (
-        (parent.get("subscription_details") or {}).get("subscription")
-        or invoice.get("subscription")
-        or ""
-    )
-    return found["id"] if isinstance(found, dict) else found
-
-
-def _local_subscription(subscription_id: str) -> Subscription | None:
-    if not subscription_id:
-        return None
-    return (
-        Subscription.objects.select_related("hub", "plan")
-        .filter(stripe_subscription_id=subscription_id)
-        .first()
-    )
-
-
-def _invoice_business(invoice: dict) -> tuple[Hub | None, str]:
-    """The business an invoice bills, and its Stripe subscription. Known by the subscription, or — when the
-    invoice comes ahead of its ``checkout.session.completed`` (Stripe does not order events) — by the
-    ``hub_id`` its subscription's metadata carries, for a business that has no other subscription."""
-    subscription_id = invoice_subscription(invoice)
-    local = _local_subscription(subscription_id)
-    if local is not None:
-        return local.hub, subscription_id
-    details = (invoice.get("parent") or {}).get("subscription_details") or {}
-    named = _hub_named((details.get("metadata") or {}).get("hub_id"))
-    if (
-        subscription_id
-        and named is not None
-        and not Subscription.objects.filter(hub=named)
-        .exclude(stripe_subscription_id="")
-        .exists()
-    ):
-        return named, subscription_id
-    return None, subscription_id
-
-
-def invoice_paid(invoice: dict) -> str:
-    """A renewal (or any invoice of the subscription) was paid: its failure is resolved and the LIVE
-    subscription applied, which takes a business with a payment pending or suspended back once Stripe says
-    it is paid. A late success of an older invoice while the subscription is still in dunning
-    changes nothing. Stripe not answering is retried by Stripe (500), never guessed.
-
-    In the same transaction ERPlora's invoice is recorded and numbered (``billing.invoice.record``):
-    when anything fails, neither the subscription nor the invoice nor its number is written. Its lines and the
-    payer's VIES verdict are read before the business is locked (they may ask Stripe and VIES)."""
-    hub, subscription_id = _invoice_business(invoice)
-    if hub is None:
-        return _invoice_paid_elsewhere(invoice, subscription_id)
-    invoice = invoice_recording._with_all_lines(invoice)
-    charged_at = invoice_sealing._moment_or_none((invoice.get("status_transitions") or {}).get("paid_at")) or timezone.now()
-    verified, consultation = invoice_recording._payer_clearance(hub, charged_at)
-    with stripe_sync.holding(hub.id):
-        # Stripe not answering raises: its retry reads the truth (a paid invoice may be a proration or an
-        # older one, and guessing «active» woke businesses still in dunning).
-        live = stripe_service.retrieve_subscription(subscription_id)
-        PaymentFailure.objects.filter(
-            stripe_invoice_id=invoice.get("id"), resolved_at__isnull=True
-        ).update(resolved_at=timezone.now())
-        live_subscriptions.apply_live(hub.id, live)
-        invoice_recording.invoice_record(
-            hub_callbacks.system_ctx_for(hub.id),
-            InvoiceRecordIn(
-                hub_id=hub.id,
-                invoice=invoice,
-                status="paid",
-                tax_id_verified=verified,
-                vat_consultation_number=consultation,
-            ),
-        )
-    return "processed"
-
-
-class UnplacedPayment(Exception):
-    """Stripe collected money on an invoice no business of ERPlora's can be found for: never forgotten, the
-    webhook answers 500 (Stripe retries for three days) and the ERROR tells support."""
-
-
-def _invoice_paid_elsewhere(invoice: dict, subscription_id: str) -> str:
-    """A paid invoice that is not of a business's current subscription: the first invoice of
-    a duplicate checkout (cancelled with its unused time as credit, ``_end_duplicate``) is still money of that
-    business, invoiced to it without touching its plan. One nobody can place raises."""
-    named = _hub_named(((invoice.get("parent") or {}).get("subscription_details") or {}).get("metadata", {}).get("hub_id")
-                       or (invoice.get("metadata") or {}).get("hub_id"))
-    if named is None:
-        if int(invoice.get("total") or 0) == 0:
-            return "unknown" if subscription_id else "ignored"
-        logger.error(
-            "[INVOICE] Stripe invoice %s (subscription %s) was paid and no business of ours is known for it",
-            invoice.get("id"), subscription_id or "-", extra={"event": "billing.unplaced_payment"},
-        )
-        raise UnplacedPayment(invoice.get("id"))
-    invoice = invoice_recording._with_all_lines(invoice)
-    charged_at = invoice_sealing._moment_or_none((invoice.get("status_transitions") or {}).get("paid_at")) or timezone.now()
-    verified, consultation = invoice_recording._payer_clearance(named, charged_at)
-    with stripe_sync.holding(named.id):
-        invoice_recording.invoice_record(
-            hub_callbacks.system_ctx_for(named.id),
-            InvoiceRecordIn(
-                hub_id=named.id, invoice=invoice, status="paid", tax_id_verified=verified,
-                vat_consultation_number=consultation,
-            ),
-        )
-    return "processed"
-
-
-#: Declines the same card may pass on a retry (the bank said «not now», not «never»): «Pay» stays enabled.
-SOFT_DECLINES = frozenset(
-    {
-        "insufficient_funds",
-        "try_again_later",
-        "processing_error",
-        "approve_with_id",
-        "reenter_transaction",
-        "issuer_not_available",
-        "card_velocity_exceeded",
-        "withdrawal_count_limit_exceeded",
-        "duplicate_transaction",
-    }
-)
-
-
-def _failure_reason(why: dict | None) -> str:
-    """Why a renewal failed, as the panel needs it: ``card_declined`` only when the card will not pay as it
-    is (a true decline, an expired or mistyped card: «Pay» waits for another card), ``authentication_required``
-    (the customer confirms it), ``payment_failed`` otherwise."""
-    if why is None:
-        return PaymentFailure.Reason.PAYMENT_FAILED
-    code, decline = why.get("code"), why.get("decline_code")
-    if "authentication_required" in (code, decline):
-        return PaymentFailure.Reason.AUTHENTICATION_REQUIRED
-    if code in stripe_sales.CARD_REFUSED_CODES and decline not in SOFT_DECLINES:
-        return PaymentFailure.Reason.CARD_DECLINED
-    return PaymentFailure.Reason.PAYMENT_FAILED
-
-
-def invoice_payment_failed(invoice: dict, *, replay: bool = False) -> str:
-    """A renewal could not be collected: why (``PaymentFailure``) and the business in dunning. The LIVE
-    subscription decides: outside ``past_due``/``unpaid`` what Stripe says now is written and the
-    event is ignored; inside, 7 days of grace from the failed invoice, then suspended (``unpaid``: at once).
-    Stripe not answering raises: Stripe retries the event, the sweep its next pass.
-    ``replay``: the sweep deciding again, not another failed attempt."""
-    hub, subscription_id = _invoice_business(invoice)
-    if hub is None:
-        return "unknown" if subscription_id else "ignored"
-    with stripe_sync.holding(hub.id):
-        return _record_failure(hub, subscription_id, invoice, replay=replay)
-
-
-def _record_failure(
-    hub: Hub, subscription_id: str, invoice: dict, *, replay: bool
-) -> str:
-    # Stripe not answering raises (Stripe retries the event; the sweep, its next pass): a failure is never
-    # applied «as it came», which suspended businesses on stale events.
-    live = stripe_service.retrieve_subscription(subscription_id)
-    live_status = live.get("status")
-    if live_status not in stripe_sales.DUNNING_STATUSES:
-        # Paid (or ended) meanwhile: what Stripe says now is written, whatever this event said.
-        logger.info(
-            "[STRIPE WEBHOOK] Failure of %s ignored: the subscription is %s now",
-            invoice.get("id"),
-            live_status,
-        )
-        live_subscriptions.apply_live(hub.id, live)
-        return "ignored"
-    try:
-        why = stripe_service.payment_failure_of(invoice["id"])
-    except stripe_service.StripeUnavailable, stripe_service.StripeRefused:
-        why = None
-    now = timezone.now()
-    reason = _failure_reason(why)
-    issued = stripe_sync._moment(invoice.get("created")) or now
-    failure, created = PaymentFailure.objects.select_for_update().get_or_create(
-        stripe_invoice_id=invoice["id"],
-        defaults={
-            "hub": hub,
-            "stripe_subscription_id": subscription_id,
-            "stripe_customer_id": invoice.get("customer") or live.get("customer") or "",
-            "reason": reason,
-            "failure_code": (why or {}).get("code", "")[:64],
-            "decline_code": (why or {}).get("decline_code", "")[:64],
-            "payment_method_id": (why or {}).get("payment_method", ""),
-            "hosted_invoice_url": invoice.get("hosted_invoice_url") or "",
-            "invoice_created_at": issued,
-            "failed_at": now,
-        },
-    )
-    if not created and failure.resolved_at is not None:
-        # Paid already: a redelivered failure of it never reopens it.
-        pass
-    elif not created:
-        known = {
-            "hosted_invoice_url": invoice.get("hosted_invoice_url")
-            or failure.hosted_invoice_url
-        }
-        if why is not None:
-            # What Stripe says now; a lookup that failed never erases what was known.
-            changed_card = (
-                why.get("payment_method")
-                and why["payment_method"] != failure.payment_method_id
-            )
-            known.update(
-                reason=reason,
-                failure_code=why.get("code", "")[:64],
-                decline_code=why.get("decline_code", "")[:64],
-                payment_method_id=why.get("payment_method", "")
-                or failure.payment_method_id,
-                card_changed_at=None if changed_card else failure.card_changed_at,
-            )
-        if not replay:
-            # Another failed attempt of Stripe's; the sweep only replays to decide, it is not one.
-            known.update(failed_at=now, attempts=F("attempts") + 1)
-        PaymentFailure.objects.filter(pk=failure.pk).update(**known)
-    live_subscriptions.apply_live(hub.id, live)
-    # Listed in Billing as «not collected», with «Pay»; numbered once it is paid.
-    invoice_recording.invoice_record(
-        hub_callbacks.system_ctx_for(hub.id), InvoiceRecordIn(hub_id=hub.id, invoice=invoice, status="open")
-    )
-    return "processed"
-
-
-def subscription_updated(obj: dict) -> str:
-    """A subscription changed (plan, items, status, period, cancellation): the LIVE one is applied;
-    Stripe not answering → the event as it came. The first event of a new subscription finds its business
-    by the ``hub_id`` of its metadata, only if that business has no other subscription."""
-    subscription_id = obj.get("id") or ""
-    subscription = _local_subscription(subscription_id)
-    hub = subscription.hub if subscription is not None else None
-    if hub is None:
-        named = _hub_named((obj.get("metadata") or {}).get("hub_id"))
-        if (
-            named is not None
-            and not Subscription.objects.filter(hub=named)
-            .exclude(stripe_subscription_id="")
-            .exists()
-        ):
-            hub = named
-    if hub is None:
-        return "unknown"
-    with stripe_sync.holding(hub.id):
-        # Stripe not answering raises: the event's snapshot may be stale, and Stripe retries it.
-        live = stripe_service.retrieve_subscription(subscription_id)
-        if live.get("status") in ("incomplete", ""):
-            return "pending"
-        live_subscriptions.apply_live(hub.id, live)
-    return "processed"
-
-
-def subscription_deleted(obj: dict) -> str:
-    """The subscription ended (a cancelled plan at its period's end, Stripe giving up, a deleted business):
-    the business goes back to Free, its bought modules end, nothing is owed. Nothing new is
-    opened in Stripe (no «maintenance» subscription any more)."""
-    subscription = _local_subscription(obj.get("id") or "")
-    if subscription is None:
-        return "unknown"
-    with stripe_sync.holding(subscription.hub_id):
-        live_subscriptions.apply_state(subscription.hub, live_subscriptions.ended_state(subscription.hub))
-    return "processed"
 
 
 # --- saas-cron: manage.py sync_subscriptions ----------------------------------------------------------
@@ -1205,22 +592,6 @@ def sync_subscriptions(*, apply: bool = True) -> Counter:
             )
             counts["errors"] += 1
     return counts
-
-
-def customer_updated(customer: dict) -> str:
-    """The payer's default card changed (the Customer Portal): a declined card's failure becomes
-    ``card_changed``, and «Pay» works again. The card Billing shows
-    (``billing.payment_method.get``) is read again from Stripe."""
-    cache.delete(queries.card_cache_key(customer.get("id") or ""))
-    method = (customer.get("invoice_settings") or {}).get("default_payment_method")
-    if isinstance(method, dict):
-        method = method.get("id")
-    return (
-        "processed"
-        if method
-        and live_subscriptions.mark_card_changed(stripe_customer_id=customer.get("id"), method=method)
-        else "ignored"
-    )
 
 
 # --- The rate of a live subscription ------------------------------------------------------------------
@@ -1491,7 +862,7 @@ def sweep_unpaid() -> Counter:  # noqa: C901, PLR0912, PLR0915
         try:
             invoices = stripe_service.open_invoices(subscription.stripe_subscription_id)
             if invoices:
-                invoice_payment_failed(
+                invoice_webhooks.invoice_payment_failed(
                     min(invoices, key=lambda invoice: invoice.get("created") or 0),
                     replay=True,
                 )

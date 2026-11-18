@@ -639,9 +639,9 @@ class TestAVoidedCreditNote:
         return event("credit_note.voided", {**credit_note(), "status": "void"}, event_id="evt_void_1")
 
     def test_the_endpoint_sends_it(self):
-        from billing import services
+        from billing.services import webhook_dispatch
 
-        assert "credit_note.voided" in services.STRIPE_WEBHOOK_EVENTS
+        assert "credit_note.voided" in webhook_dispatch.STRIPE_WEBHOOK_EVENTS
 
     def test_one_voided_while_waiting_for_its_invoice_never_becomes_a_rectifying_invoice(
         self, running, stripe_double, mailoutbox

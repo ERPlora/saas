@@ -779,7 +779,7 @@ Implicados: hubs (las suscripciones y los pagadores de los negocios)
   `/marketplace/webhooks/stripe/`, `we_1UIyXVG5mOoM2dqidg2Ai6WD` a `/dashboard/billing/webhooks/stripe-connect/` y
   `we_1UIyXUG5mOoM2dqiftLTSFdL` a `/assistant/stripe/webhook/`); si uno de esos tres volviera a activarse,
   `endpoint_problems` lo contaría y la tarea saldría con error, que `task_failed` avisa. Los avisos que trata el webhook son una
-  sola lista, `billing.services.STRIPE_WEBHOOK_EVENTS`, que el comando compara con el destino de Stripe.
+  sola lista, `billing.services.webhook_dispatch.STRIPE_WEBHOOK_EVENTS`, que el comando compara con el destino de Stripe.
 - Las facturas de ERPlora las emite el Hub, pero en producción no se cobra con clave live mientras
   `PLATFORM_INVOICING_ENABLED` siga en `false` (reglas de trabajo §15: la transmisión real queda bajo la supervisión de
   Ioan). La compra suelta de BILLING-F32 choca con `PLAN.md` (nuestros módulos no se venden sueltos): la contradicción

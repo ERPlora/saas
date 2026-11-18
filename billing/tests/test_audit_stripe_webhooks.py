@@ -3,7 +3,7 @@
 An endpoint pointed at a route that does not exist gets a 404 on every delivery until Stripe disables it. Only an
 ENABLED endpoint counts, one on our host to a route we do not serve and one to another environment are problems, and
 so is our route without an enabled endpoint. The events of our endpoint are compared with
-``billing.services.STRIPE_WEBHOOK_EVENTS``, the one list the webhook handles; what is missing and what is extra are
+``billing.services.webhook_dispatch.STRIPE_WEBHOOK_EVENTS``, the one list the webhook handles; what is missing and what is extra are
 named. Without a usable Stripe key there is nothing to audit: it says so and exits 0. Stripe is the double: no network.
 """
 
@@ -14,8 +14,14 @@ import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
-from billing import services
-from billing.services import invoice_recording, rectifying_invoices
+from billing.services import (
+    checkout_webhooks,
+    invoice_recording,
+    invoice_webhooks,
+    rectifying_invoices,
+    subscription_webhooks,
+    webhook_dispatch,
+)
 from billing.tests.stripe_double import connection_error, listing
 
 pytestmark = pytest.mark.django_db
@@ -34,7 +40,7 @@ def endpoint(url=OURS, *, endpoint_id="we_1", status="enabled", events=None):
         "object": "webhook_endpoint",
         "url": url,
         "status": status,
-        "enabled_events": list(services.STRIPE_WEBHOOK_EVENTS if events is None else events),
+        "enabled_events": list(webhook_dispatch.STRIPE_WEBHOOK_EVENTS if events is None else events),
     }
 
 
@@ -54,10 +60,11 @@ def refused(*args) -> str:
 
 class TestTheOneList:
     HANDLERS = (
-        (services, ("checkout_completed", "checkout_closed", "invoice_paid", "invoice_payment_failed")),
+        (checkout_webhooks, ("checkout_completed", "checkout_closed")),
+        (invoice_webhooks, ("invoice_paid", "invoice_payment_failed")),
         (invoice_recording, ("invoice_voided",)),
         (rectifying_invoices, ("credit_note_created", "credit_note_voided", "charge_refunded")),
-        (services, ("subscription_updated", "subscription_deleted", "customer_updated")),
+        (subscription_webhooks, ("subscription_updated", "subscription_deleted", "customer_updated")),
     )
 
     def test_every_event_of_the_list_reaches_a_handler(self, monkeypatch):
@@ -65,23 +72,23 @@ class TestTheOneList:
             for name in names:
                 monkeypatch.setattr(module, name, lambda *args, **kwargs: "handled")
 
-        for event_type in services.STRIPE_WEBHOOK_EVENTS:
-            assert services.process_stripe_event({"type": event_type, "data": {"object": {}}}) == "handled", event_type
-        assert services.process_stripe_event({"type": "payment_intent.created", "data": {"object": {}}}) == "ignored"
+        for event_type in webhook_dispatch.STRIPE_WEBHOOK_EVENTS:
+            assert webhook_dispatch.process_stripe_event({"type": event_type, "data": {"object": {}}}) == "handled", event_type
+        assert webhook_dispatch.process_stripe_event({"type": "payment_intent.created", "data": {"object": {}}}) == "ignored"
 
     def test_it_names_every_event_the_webhook_handles(self):
         """The other direction: an event handled but off the list passes the audit with the endpoint not sending it.
         ``invoice.payment_succeeded`` is the one handled on purpose without being subscribed (see the list)."""
         handled = {
             node.value.value
-            for node in ast.walk(ast.parse(inspect.getsource(services.process_stripe_event)))
+            for node in ast.walk(ast.parse(inspect.getsource(webhook_dispatch.process_stripe_event)))
             if isinstance(node, ast.MatchValue)
         }
 
-        assert handled - {"invoice.payment_succeeded"} == set(services.STRIPE_WEBHOOK_EVENTS)
+        assert handled - {"invoice.payment_succeeded"} == set(webhook_dispatch.STRIPE_WEBHOOK_EVENTS)
 
     def test_it_names_each_event_once(self):
-        assert len(services.STRIPE_WEBHOOK_EVENTS) == len(set(services.STRIPE_WEBHOOK_EVENTS))
+        assert len(webhook_dispatch.STRIPE_WEBHOOK_EVENTS) == len(set(webhook_dispatch.STRIPE_WEBHOOK_EVENTS))
 
 
 class TestOurEndpoint:
@@ -91,10 +98,10 @@ class TestOurEndpoint:
         out = audit()
 
         assert "we_1" in out and OURS in out
-        assert out.rstrip().endswith(f"OK — {OURS} receives exactly the {len(services.STRIPE_WEBHOOK_EVENTS)} events the webhook handles.")
+        assert out.rstrip().endswith(f"OK — {OURS} receives exactly the {len(webhook_dispatch.STRIPE_WEBHOOK_EVENTS)} events the webhook handles.")
 
     def test_a_missing_and_an_extra_event_are_named(self, stripe_double):
-        events = [e for e in services.STRIPE_WEBHOOK_EVENTS if e != "charge.refunded"] + ["payment_intent.succeeded"]
+        events = [e for e in webhook_dispatch.STRIPE_WEBHOOK_EVENTS if e != "charge.refunded"] + ["payment_intent.succeeded"]
         stripe_double.answer("webhook_endpoints.list", listing([endpoint(events=events)]))
 
         problem = refused()
