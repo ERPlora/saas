@@ -10,7 +10,11 @@ from live.live_registry import live_registry
 from live.operations import get
 
 from hubs import events
-from hubs.schemas import BusinessListIn, ByIdIn, InvitationListIn, MemberListIn, UsageGetIn, UsageSeriesIn
+from hubs.schemas.businesses import BusinessListIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.hub_usage import UsageGetIn, UsageSeriesIn
+from hubs.schemas.invitations import InvitationListIn
+from hubs.schemas.membership import MemberListIn
 from hubs.tests.conftest import ctx_for
 
 LIVE = {
@@ -127,7 +131,8 @@ def test_a_subscription_follows_the_role_at_each_run(business, team):
 # safety re-run.
 
 from hubs.services import invitation_answers, member_management, ownership, people_notices  # noqa: E402
-from hubs.schemas import MemberInviteIn, MemberRoleIn, OwnershipTransferIn  # noqa: E402
+from hubs.schemas.membership import MemberInviteIn, MemberRoleIn  # noqa: E402
+from hubs.schemas.ownership import OwnershipTransferIn  # noqa: E402
 from hubs.tests.conftest import member_of  # noqa: E402
 
 PEOPLE_LISTS = {"hubs.member.list", "hubs.business.get", "hubs.business.list", "hubs.invitation.list_mine"}
@@ -264,7 +269,7 @@ class TestOwnershipChangesAreHeard:
 
 @pytest.mark.django_db
 def test_only_the_platform_notifies_people(business, owner):
-    from hubs.schemas import NotifyPeopleIn
+    from hubs.schemas.membership import NotifyPeopleIn
 
     with pytest.raises(PermissionDenied):
         people_notices.business_notify_people(ctx_for(owner), NotifyPeopleIn(id=business.id, event=events.MEMBER_CHANGED))

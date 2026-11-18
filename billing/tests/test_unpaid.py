@@ -40,7 +40,7 @@ from billing.tests.stripe_double import (
 )
 from hubs.queries import businesses
 from hubs.models import Hub, Subscription
-from hubs.schemas import BusinessListIn
+from hubs.schemas.businesses import BusinessListIn
 from hubs.tests.conftest import ctx_for
 
 pytestmark = pytest.mark.django_db

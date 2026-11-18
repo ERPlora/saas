@@ -12,7 +12,7 @@ from live.slugs import is_demo_slug, is_reserved_hub_slug, validate_hub_slug
 
 from hubs.models import Hub
 from hubs.queries.access_control import account_of, host_of
-from hubs.schemas import AddressProposeIn, AddressProposeOut
+from hubs.schemas.signup import AddressProposeIn, AddressProposeOut
 
 
 #: The address of a business whose name slugifies to nothing (emoji, other scripts).

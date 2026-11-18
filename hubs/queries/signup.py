@@ -11,7 +11,7 @@ from live.operations import INTERNAL, operation
 from hubs.models import Hub, Plan
 from hubs.queries.access_control import Role, account_of
 from hubs.queries.plan_catalog import free_plan
-from hubs.schemas import BusinessCreateCheckIn, BusinessCreateCheckOut
+from hubs.schemas.signup import BusinessCreateCheckIn, BusinessCreateCheckOut
 
 
 def _free_hubs(user):

@@ -19,7 +19,9 @@ from django.utils import timezone
 
 from hubs.services import member_management, ownership, session_revocations
 from hubs.models import Hub, HubMember, SessionRevocation
-from hubs.schemas import ByIdIn, MemberRoleIn, OwnershipTransferIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.membership import MemberRoleIn
+from hubs.schemas.ownership import OwnershipTransferIn
 from hubs.tests.conftest import ctx_for, member_of
 
 pytestmark = pytest.mark.django_db

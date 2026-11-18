@@ -11,7 +11,7 @@ from live.operations import get
 
 from hubs.queries import taxonomy
 from hubs.models import BusinessType, Sector
-from hubs.schemas import BusinessTypeListIn, SectorListIn
+from hubs.schemas.taxonomy import BusinessTypeListIn, SectorListIn
 
 pytestmark = pytest.mark.django_db
 

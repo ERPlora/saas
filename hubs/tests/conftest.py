@@ -120,7 +120,7 @@ def create_business(user, **data):
     """A business created through ``hubs.business.create``, as the panel creates it."""
     from hubs.services import creation
     from hubs.models import Hub
-    from hubs.schemas import BusinessCreateIn
+    from hubs.schemas.signup import BusinessCreateIn
 
     created = creation.business_create(ctx_for(user), BusinessCreateIn(**{"name": "Bar Manolo", "country": "ES", **data}))
     return Hub.objects.get(pk=created.id)

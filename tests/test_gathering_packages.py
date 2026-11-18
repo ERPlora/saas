@@ -13,7 +13,7 @@ import pytest
 from django.conf import settings
 
 #: The packages nothing is re-exported from: a name is imported from its own module.
-GATHERING_PACKAGES = ("accounts.services", "hubs.queries", "hubs.services")
+GATHERING_PACKAGES = ("accounts.services", "hubs.queries", "hubs.schemas", "hubs.services")
 #: The packages still being split: their ``__init__`` holds code of its own, but re-exports nothing either.
 SPLITTING_PACKAGES = ("billing.services",)
 

@@ -11,7 +11,7 @@ from live.operations import AI, operation
 
 from hubs.models import Hub, HubUsageDaily, Plan, Subscription
 from hubs.queries.access_control import Role, access, account_of
-from hubs.schemas import UsageGetIn, UsageOut, UsageSeriesIn, UsageSeriesOut
+from hubs.schemas.hub_usage import UsageGetIn, UsageOut, UsageSeriesIn, UsageSeriesOut
 
 
 GIB = 1024**3

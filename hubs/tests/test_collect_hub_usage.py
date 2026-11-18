@@ -26,7 +26,7 @@ from hubs import events
 from hubs.services import usage_collection
 from hubs.queries import hub_usage
 from hubs.models import HubUsageDaily
-from hubs.schemas import UsagePruneIn, UsageRecordIn, UsageSeriesIn
+from hubs.schemas.hub_usage import UsagePruneIn, UsageRecordIn, UsageSeriesIn
 from hubs.tests.conftest import create_business, ctx_for
 from hubs.tests.test_live import channels, notified  # noqa: F401 - the fixture of the notifications
 from hubs.tests.test_reconcile_hub_states import run

@@ -270,7 +270,7 @@ class TestADeletedBusinessStopsPaying:
         """Deleted through ``hubs.business.delete``, which asks for its Stripe subscription to end."""
         from hubs.services import deletion
         from hubs.models import HubMember
-        from hubs.schemas import BusinessDeleteIn
+        from hubs.schemas.businesses import BusinessDeleteIn
         from hubs.tests.conftest import ctx_for as hub_ctx
 
         business = pay(hub, **paid)
@@ -281,7 +281,7 @@ class TestADeletedBusinessStopsPaying:
     def test_a_business_restored_before_the_sweep_stops_paying_too(self, shop, owner, stripe_double):
         """Deleting asked for the end; recovering it (on Free) does not take that back."""
         from hubs.services import deletion
-        from hubs.schemas import ByIdIn
+        from hubs.schemas.common import ByIdIn
         from hubs.tests.conftest import ctx_for as hub_ctx
 
         business = self.deleted(shop)

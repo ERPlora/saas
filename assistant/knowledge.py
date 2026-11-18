@@ -31,7 +31,7 @@ from apps.schemas import AppDocListIn
 from assistant.models import content_hash
 from assistant.services import platform_context
 from hubs.queries import plan_catalog
-from hubs.schemas import PlanListIn
+from hubs.schemas.plan_catalog import PlanListIn
 from public import help as public_help
 
 #: The words of an excerpt, and how many of them the next one repeats.

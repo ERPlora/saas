@@ -29,7 +29,8 @@ from hubs import events
 from hubs.models import BillingProfile, Hub, HubMember, Subscription
 from hubs.queries import access_control, addresses, businesses, plan_catalog, signup, taxonomy
 from hubs.queries.access_control import Role
-from hubs.schemas import BusinessCreateIn, BusinessDetailOut
+from hubs.schemas.businesses import BusinessDetailOut
+from hubs.schemas.signup import BusinessCreateIn
 from hubs.services.hub_push import Call, push_after_commit
 from hubs.services.subscription_sync import sync_plan_modules
 

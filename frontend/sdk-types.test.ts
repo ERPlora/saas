@@ -2,7 +2,7 @@
 // field of a hubs schema the panel uses is missing from its TypeScript twin, the twin carries one the
 // server no longer sends, or a field's type differs (pydantic's annotation translated to what its JSON is
 // in TypeScript).
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -10,7 +10,13 @@ import { describe, expect, it } from 'vitest';
 import { readSdkTypes } from './__tests__/sdk-types-source';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const PYTHON = readFileSync(join(HERE, '..', 'hubs', 'schemas', '__init__.py'), 'utf8');
+const HUBS_SCHEMAS = join(HERE, '..', 'hubs', 'schemas');
+// One module per entity: the guard reads them all as one source.
+const PYTHON = readdirSync(HUBS_SCHEMAS)
+  .filter((file) => file.endsWith('.py'))
+  .sort()
+  .map((file) => readFileSync(join(HUBS_SCHEMAS, file), 'utf8'))
+  .join('\n');
 // The types of a promo code live in their own file, next to the Store that uses them.
 const PROMO_TYPES = ['../billing/frontend/promo-types.d.ts', '../billing/frontend/discount-types.d.ts'];
 const TYPES = [readSdkTypes(), ...PROMO_TYPES.map((file) => readFileSync(join(HERE, file), 'utf8'))].join('\n');
@@ -18,7 +24,7 @@ const TYPES = [readSdkTypes(), ...PROMO_TYPES.map((file) => readFileSync(join(HE
 const PAGE = ['rows', 'total', 'limit', 'offset'];
 const PAGE_IN = ['limit', 'offset'];
 
-/** The fields of a pydantic schema of hubs/schemas.py (or `source`), with what its base class adds (a schema of
+/** The fields of a pydantic schema of hubs/schemas/ (or `source`), with what its base class adds (a schema of
  *  `parents` when it is one of them, as `base.AssistantReportIn` is the gateway's `ReportFields`). */
 function pythonFields(name: string, source = PYTHON, parents = ''): string[] {
   const match = new RegExp(`^class ${name}\\(([^)]*)\\):\\n((?:(?:    .*)?\\n)*)`, 'm').exec(source);
@@ -70,7 +76,7 @@ const SCALARS: Record<string, string> = {
   Decimal: 'string',
   int: 'number',
   bool: 'boolean',
-  // The constrained strings of hubs/schemas.py.
+  // The constrained strings of hubs/schemas/common.py.
   Name: 'string',
   Country: 'string',
   Email: 'string',
@@ -84,7 +90,7 @@ const SCALARS: Record<string, string> = {
   DiscountAppliesTo: 'DiscountAppliesTo',
   ModuleSlug: 'string',
   Category: 'string',
-  // hubs/schemas.py `BillingProfileIn.billing_postal_code`: a stripped string.
+  // hubs/schemas/payers.py `BillingProfileIn.billing_postal_code`: a stripped string.
   'Annotated[str, StringConstraints(strip_whitespace=True)]': 'string',
   // billing/schemas/, the Billing section: a day travels as `YYYY-MM-DD`; the literal aliases keep
   // their name in TypeScript.
@@ -168,7 +174,7 @@ const SCHEMAS = [
   'CustomDomainStatusOut',
 ];
 
-describe('frontend/sdk-types follows hubs/schemas.py', () => {
+describe('frontend/sdk-types follows hubs/schemas/', () => {
   it.each(SCHEMAS)('%s has the same fields on both sides', (name) => {
     expect(typeFields(name)).toEqual(pythonFields(name));
   });
@@ -194,7 +200,7 @@ describe('frontend/sdk-types follows hubs/schemas.py', () => {
 
 /** The Store's schemas, by their file: the same guard as hubs'. */
 const STORE_SCHEMAS: Array<[file: string, names: string[]]> = [
-  ['hubs/schemas/__init__.py', ['BillingProfileGetIn', 'BillingProfileIn', 'BillingProfileOut']],
+  ['hubs/schemas/payers.py', ['BillingProfileGetIn', 'BillingProfileIn', 'BillingProfileOut']],
   [
     'billing/schemas/__init__.py',
     [
@@ -342,7 +348,7 @@ describe('frontend/sdk-types follows billing/schemas/ (the Billing section)', ()
 /** The usage of a business: `hubs.usage.get`, `hubs.usage.series` and `usage` of the business's page. */
 const USAGE_SCHEMAS = ['StorageUsageOut', 'ActiveUsersOut', 'UsageOut', 'UsageGetIn', 'UsageSeriesIn', 'UsagePointOut', 'UsageSeriesOut'];
 
-describe('frontend/sdk-types follows the usage schemas of hubs/schemas.py', () => {
+describe('frontend/sdk-types follows the usage schemas of hubs/schemas/hub_usage.py', () => {
   it.each(USAGE_SCHEMAS)('%s has the same fields on both sides', (name) => {
     expect(typeFields(name)).toEqual(pythonFields(name));
   });

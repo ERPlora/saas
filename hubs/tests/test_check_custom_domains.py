@@ -25,7 +25,7 @@ from accounts.models import UserPreferences
 from hubs import domain_checks, edge_client, events, queries, services
 from hubs.domain_checks import Probe
 from hubs.models import CustomDomain, Hub, HubMember, Plan, Subscription
-from hubs.schemas import CustomDomainRequestIn
+from hubs.schemas.custom_domains import CustomDomainRequestIn
 from hubs.tests.conftest import DOMAIN, certificate_arn, create_business, ctx_for, pointing
 
 pytestmark = pytest.mark.django_db

@@ -33,13 +33,13 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `knowledge/raw/superpowers/specs/2
   usa el mismo (`billing.services.plan_sale`); el admin rechaza un precio de Stripe que no case (BILLING-F28).
 - **Promesas (PUBLIC-F07, F08):** solo lo que hacen hoy las apps del Hub y la infraestructura de ERPlora/aws; las
   listas de frases vetadas viven en `tests/test_product.py`.
-- **Cumplimiento (PUBLIC-F09, APP-PUBLIC-1, 2026-10-21):** vuelve `/compliance/`, que la spec aplazó (§11.1).
-  Decidido con el mercado (Odoo y Business Central publican su lista de países con el producto; Lightspeed, Holded,
-  fiskaly y Mollie dicen el sistema fiscal concreto de cada país; Shopify POS y Zettle limitan por país): una lista
-  fija en el código, que se publica con las apps que describe. Los países son los del alta (`hubs.schemas.COUNTRIES`)
-  y el sistema conectado, hoy solo VeriFactu en España; el País Vasco (TicketBAI) y Navarra se dicen fuera y no se
-  nombran normativas extranjeras que nadie ha comprobado. Sustituye al `CountryCompliance` del SaaS viejo, que una
-  persona marcaba «Cubierto» en el admin.
+- **Cumplimiento (PUBLIC-F09, APP-PUBLIC-1, 2026-10-21):** vuelve `/compliance/`, que la spec aplazó (§11.1). Decidido
+  con el mercado (Odoo y Business Central publican su lista de países con el producto; Lightspeed, Holded, fiskaly y
+  Mollie dicen el sistema fiscal concreto de cada país; Shopify POS y Zettle limitan por país): una lista fija en el
+  código, que se publica con las apps que describe. Los países son los del alta (`hubs.schemas.common.COUNTRIES`) y el
+  sistema conectado, hoy solo VeriFactu en España; el País Vasco (TicketBAI) y Navarra se dicen fuera y no se nombran
+  normativas extranjeras que nadie ha comprobado. Sustituye al `CountryCompliance` del SaaS viejo, que una persona
+  marcaba «Cubierto» en el admin.
 - **Idioma (PUBLIC-F13):** selector en el pie de todas las páginas, un formulario POST por idioma a
   `/set-language/` (como Stripe, Shopify o Square).
 - **Datos estructurados (PUBLIC-F14):** `OPERATING_SYSTEMS` = los sistemas que se distribuyen (web, Windows, Linux y

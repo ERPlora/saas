@@ -13,7 +13,8 @@ from live.operations import INTERNAL, operation
 from hubs import emails
 from hubs.models import Hub, HubMember
 from hubs.queries.access_control import Role
-from hubs.schemas import ByIdIn, SuspensionStepOut
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.subscriptions import SuspensionStepOut
 from hubs.services.deletion import _delete_business
 from hubs.services.hub_callbacks import system_ctx_for
 

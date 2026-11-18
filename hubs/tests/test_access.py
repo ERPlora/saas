@@ -19,7 +19,9 @@ from accounts.services import hub_jump
 from hubs.services import deletion, demo_businesses, invitation_answers, member_management, ownership
 from hubs.queries import membership
 from hubs.models import Hub, HubMember
-from hubs.schemas import ByIdIn, MemberListMineIn, MemberRoleIn, OwnershipTransferIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.membership import MemberListMineIn, MemberRoleIn
+from hubs.schemas.ownership import OwnershipTransferIn
 from hubs.tests.conftest import add_member, create_business, ctx_for, member_of, role_on
 
 pytestmark = pytest.mark.django_db
@@ -133,7 +135,7 @@ class TestTheAccessFollowsTheMembersAtOnce:
 
 
 def _delete_in(hub):
-    from hubs.schemas import BusinessDeleteIn
+    from hubs.schemas.businesses import BusinessDeleteIn
 
     return BusinessDeleteIn(id=hub.id, confirm_name=hub.name)
 

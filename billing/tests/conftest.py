@@ -235,7 +235,7 @@ def pay(hub, *, plan="starter", interval="month", modules=(), status="active", c
 
     from hubs.services import hub_callbacks, subscription_sync
     from hubs.models import Hub
-    from hubs.schemas import ModuleRightIn, SubscriptionApplyIn
+    from hubs.schemas.subscriptions import ModuleRightIn, SubscriptionApplyIn
 
     now = timezone.now()
     subscription_sync.subscription_apply(

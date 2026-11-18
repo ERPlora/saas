@@ -747,9 +747,9 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   fuera de las cláusulas de §6, porque su DPA deja fuera las consultas. Otro proveedor es otro destinatario:
   `test_legal.py` cae si `ASSISTANT_SEARCH_URL` deja de ser de Brave. Sus términos, §4(c), piden atar por escrito a cada
   usuario a lo que dice su §3(b): es la línea de «Uso aceptable» de los términos (§8).
-- Cumplimiento (F09): `hubs.countries.COUNTRY_NAMES` tiene que casar con `hubs.schemas.COUNTRIES` (lo exige un test);
-  `FISCAL_SYSTEMS` dice qué sistema fiscal conecta cada país, hoy solo VeriFactu en España. Un país nuevo conectado
-  se añade ahí con su app, en la misma entrega.
+- Cumplimiento (F09): `hubs.countries.COUNTRY_NAMES` tiene que casar con `hubs.schemas.common.COUNTRIES` (lo exige un
+  test); `FISCAL_SYSTEMS` dice qué sistema fiscal conecta cada país, hoy solo VeriFactu en España. Un país nuevo
+  conectado se añade ahí con su app, en la misma entrega.
 - Idioma (F13): el pie lleva un formulario por idioma que envía a `/set-language/`; Ionic mueve `aria-current` a la
   sombra del botón, así que el estilo del idioma activo va por `data-current`.
 - Pruebas: cada test cita su flujo en el nombre o en el docstring, y cada e2e en su título. Los e2e son

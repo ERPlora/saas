@@ -18,7 +18,7 @@ from hubs import hub_client
 from hubs.services import hub_push, invitation_answers, reconciliation
 from hubs.queries import hub_sync
 from hubs.models import BusinessType, Hub
-from hubs.schemas import ByIdIn
+from hubs.schemas.common import ByIdIn
 from hubs.tests.conftest import SECRET, ctx_for
 
 pytestmark = pytest.mark.django_db

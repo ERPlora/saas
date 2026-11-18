@@ -18,7 +18,8 @@ from hubs import emails, events
 from hubs.models import Hub, HubMember, HubOwnershipTransfer
 from hubs.queries import access_control, membership, payers, signup
 from hubs.queries.access_control import Role
-from hubs.schemas import ByIdIn, MemberInviteIn, MemberRoleIn, MemberRowOut, RemovedOut
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.membership import MemberInviteIn, MemberRoleIn, MemberRowOut, RemovedOut
 from hubs.services.hub_push import bump_state, push_after_commit
 from hubs.services.people_notices import notify_people
 from hubs.services.refusals import SeatLimitReached, business_deleted

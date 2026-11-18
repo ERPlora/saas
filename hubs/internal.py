@@ -19,7 +19,7 @@ from live.errors import OperationError
 
 from accounts.signing import verify_request
 from hubs.services import hub_callbacks
-from hubs.schemas import MarkReadyIn
+from hubs.schemas.hub_callbacks import MarkReadyIn
 
 logger = logging.getLogger(__name__)
 

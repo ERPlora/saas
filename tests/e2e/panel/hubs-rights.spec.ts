@@ -38,7 +38,7 @@ async function businessOnStarter(): Promise<string> {
       'from django.db.models import F',
       'from django.utils import timezone',
       'from hubs.models import Hub, Plan, Subscription',
-      'from hubs.schemas import BusinessCreateIn',
+      'from hubs.schemas.signup import BusinessCreateIn',
       'from hubs.services import creation',
       'from hubs.tests.conftest import ctx_for',
       `owner = get_user_model().objects.create_user(email="${PREFIX}owner-${Date.now()}@example.com", password="${PASSWORD}")`,

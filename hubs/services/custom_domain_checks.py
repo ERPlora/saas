@@ -17,7 +17,7 @@ from hubs import domain_checks, edge_client, emails, events
 from hubs.models import CustomDomain, Hub, HubMember, new_certificate_token
 from hubs.queries import custom_domains, plan_catalog
 from hubs.queries.access_control import Role
-from hubs.schemas import CustomDomainRecordIn, CustomDomainRecordOut
+from hubs.schemas.custom_domains import CustomDomainRecordIn, CustomDomainRecordOut
 from hubs.services.hub_callbacks import system_ctx_for
 from hubs.services.hub_push import bump_state, sync_hub
 

@@ -24,14 +24,10 @@ from accounts.services.platform_staff import PlatformRoleRefused, create_platfor
 from hubs.services import billing_profiles, invitation_answers, member_management
 from hubs.queries import invitations, membership
 from hubs.models import BillingProfile, Hub, HubMember, Subscription
-from hubs.schemas import (
-    BillingProfileIn,
-    ByIdIn,
-    InvitationListIn,
-    MemberInviteIn,
-    MemberListIn,
-    MemberRoleIn,
-)
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.invitations import InvitationListIn
+from hubs.schemas.membership import MemberInviteIn, MemberListIn, MemberRoleIn
+from hubs.schemas.payers import BillingProfileIn
 from hubs.tests.conftest import add_member, create_business, ctx_for, member_of, role_on
 
 pytestmark = pytest.mark.django_db

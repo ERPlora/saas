@@ -17,7 +17,7 @@ from live.operations import get
 
 from hubs.queries import plan_catalog
 from hubs.models import Plan
-from hubs.schemas import PlanListIn
+from hubs.schemas.plan_catalog import PlanListIn
 
 pytestmark = pytest.mark.django_db
 

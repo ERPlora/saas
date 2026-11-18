@@ -325,7 +325,7 @@ class TestSavingTheBillingDetails:
         self, shop, owner, stripe_double, django_capture_on_commit_callbacks
     ):
         from hubs.services import billing_profiles
-        from hubs.schemas import BillingProfileIn
+        from hubs.schemas.payers import BillingProfileIn
 
         rate = spanish_rate(stripe_double, shop)
         paid = on_starter(shop, stripe_double, rates=[rate])
@@ -357,7 +357,7 @@ class TestSavingTheBillingDetails:
         from billing.tests.stripe_double import connection_error
         from hubs.services import billing_profiles
         from hubs.models import BillingProfile
-        from hubs.schemas import BillingProfileIn
+        from hubs.schemas.payers import BillingProfileIn
 
         paid = on_starter(shop, stripe_double)
         stripe_double.answer("subscriptions.retrieve", connection_error())

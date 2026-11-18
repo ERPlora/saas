@@ -90,7 +90,7 @@ from hubs.queries import access_control, membership, payers, plan_catalog
 from hubs.services import exclusive_runs, hub_callbacks, refusals, subscription_sync, suspensions
 from hubs.models import BillingProfile, Hub, HubMember, Plan, Subscription, SubscriptionItem
 from hubs.hub_client import HubRefused, HubUnavailable
-from hubs.schemas import ModuleRightIn, SubscriptionApplyIn
+from hubs.schemas.subscriptions import ModuleRightIn, SubscriptionApplyIn
 
 logger = logging.getLogger("billing.services")
 

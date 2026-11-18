@@ -7,7 +7,7 @@ from live.operations import AI, operation
 
 from hubs.models import BusinessType, Sector
 from hubs.retired_codes import current_business_type_code
-from hubs.schemas import BusinessTypeListIn, BusinessTypeListOut, SectorListIn, SectorListOut
+from hubs.schemas.taxonomy import BusinessTypeListIn, BusinessTypeListOut, SectorListIn, SectorListOut
 
 
 def _entry(row: Sector | BusinessType, language: str) -> dict[str, Any]:

@@ -17,7 +17,7 @@ from base import assistant
 from billing.vat import BILLING_COUNTRIES
 from hubs.countries import COUNTRY_NAMES, PAYER_COUNTRY_NAMES
 from hubs.models import BillingProfile, Hub
-from hubs.schemas import COUNTRIES
+from hubs.schemas.common import COUNTRIES
 from hubs.tests.conftest import create_business, ctx_for
 
 pytestmark = pytest.mark.django_db

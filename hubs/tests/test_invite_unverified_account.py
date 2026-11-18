@@ -21,7 +21,8 @@ from live.errors import Conflict, PermissionDenied
 
 from hubs.services import invitation_answers, member_management
 from hubs.models import HubMember, SessionRevocation
-from hubs.schemas import ByIdIn, MemberInviteIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.membership import MemberInviteIn
 from hubs.tests.conftest import ctx_for, member_of
 
 pytestmark = pytest.mark.django_db
