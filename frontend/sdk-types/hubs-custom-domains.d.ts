@@ -13,10 +13,10 @@ export interface DnsRecordOut {
   value: string;
 }
 
-/** `CustomDomain.State` of hubs/models.py: on its way, served, not served, or being removed by its owner. */
+/** `CustomDomain.State` of hubs/models/custom_domains.py: on its way, served, not served, or being removed by its owner. */
 export type CustomDomainState = 'pending' | 'active' | 'lapsed' | 'removing';
 
-/** `CustomDomain.Reason` of hubs/models.py: where a domain is stuck; empty when nothing is missing. */
+/** `CustomDomain.Reason` of hubs/models/custom_domains.py: where a domain is stuck; empty when nothing is missing. */
 export type CustomDomainReason =
   | ''
   | 'certificate_pending'

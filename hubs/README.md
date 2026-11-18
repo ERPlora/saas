@@ -71,10 +71,10 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 - **`demo_seed` vive en `hubs`** (`management/commands/demo_seed.py`): crea las cuentas
   (`accounts.services.demo_accounts.seed_demo_customer`, `seed_demo_platform_admin`) y adopta `a` y `b` con
   `services.demo_businesses.seed_demo_business`, igual que la migración.
-- **`SessionRevocation`** (`models.py`, migración `0005`): quitar a un miembro, cambiarle el rol (el rol viaja en la
-  sesión del Hub), aceptar un traspaso (los dos lados) o liberar una cuenta no verificada (todos sus negocios) la
-  encola en la transacción; se entrega tras el COMMIT (`POST /internal/sessions/revoke`) y, si el Hub no está o la
-  rechaza, `reconcile_hub_states` la reintenta cuando vence su espera (15 min, doblando, tope 6 h;
+- **`SessionRevocation`** (`models/session_revocations.py`, migración `0005`): quitar a un miembro, cambiarle el rol
+  (el rol viaja en la sesión del Hub), aceptar un traspaso (los dos lados) o liberar una cuenta no verificada (todos
+  sus negocios) la encola en la transacción; se entrega tras el COMMIT (`POST /internal/sessions/revoke`) y, si el Hub
+  no está o la rechaza, `reconcile_hub_states` la reintenta cuando vence su espera (15 min, doblando, tope 6 h;
   `sessions_ended`/`sessions_pending`, y la pasada falla con alguna pendiente). Una entregada no se reenvía; la de un
   negocio purgado se da por entregada sin llamar. Sobrevive al borrado de la cuenta (`user` sin restricción de BD).
   La siguiente foto ya no lista al miembro quitado.
