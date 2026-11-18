@@ -46,11 +46,12 @@ class PreferencesGetIn(StrictIn):
 
 
 class PreferencesOut(Schema):
-    """Account → Preferences: the theme mode (``ThemeMode`` of the shell), the account's language and the
-    «Business notices» switch (the mail that a business is ready; security, invoices and payments have none:
-    they are always sent, ACCOUNTS-F23)."""
+    """Account → Preferences: the theme mode (``ThemeMode`` of the shell), its transparency effects (off, the glass
+    surfaces are painted opaque), the account's language and the «Business notices» switch (the mail that a business
+    is ready; security, invoices and payments have none: they are always sent, ACCOUNTS-F23)."""
 
     theme_mode: ThemeMode
+    transparency: bool
     language: Language
     hub_alerts: bool
 
@@ -59,6 +60,7 @@ class PreferencesUpdateIn(StrictIn):
     """Only what is sent changes (the page saves each control on its own)."""
 
     theme_mode: ThemeMode | None = None
+    transparency: bool | None = None
     language: Language | None = None
     hub_alerts: bool | None = None
 
@@ -134,6 +136,7 @@ class ExportAccountOut(Schema):
 
 class ExportPreferencesOut(Schema):
     theme_mode: ThemeMode
+    transparency: bool
     language: str
     hub_alerts: bool
 

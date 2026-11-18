@@ -192,8 +192,9 @@ revisión de tienda» (ACCOUNTS-F49): un superusuario la pone y la quita; el res
 cuenta». Abajo, las pestañas de **Cuenta**: «Perfil», «Seguridad», «Preferencias» y «Claves de API».
 
 ### Cuenta › Preferencias
-Tres tarjetas que se guardan solas: «Apariencia» («Sistema», «Claro», «Oscuro»), «Idioma» («English»,
-«Español») y «Avisos por correo» («Seguridad, facturas y pagos», siempre encendido, y «Avisos de mis negocios»).
+Tres tarjetas que se guardan solas: «Apariencia» («Sistema», «Claro», «Oscuro» y el interruptor
+«Efectos de transparencia»), «Idioma» («English», «Español») y «Avisos por correo»
+(«Seguridad, facturas y pagos», siempre encendido, y «Avisos de mis negocios»).
 
 ### Menú de usuario
 El nombre y el correo arriba del menú lateral (en el móvil, dentro del menú): «Cuenta», «Ayuda», el tema y
@@ -227,7 +228,7 @@ inglés» y el «mensaje en español» (vacío, quien visita en español lee el 
 
 | Estado | Qué ve la persona |
 |---|---|
-| Cargando | El botón de enviar se apaga mientras va la petición, también «Descargar mis datos» mientras prepara el fichero; el perfil y las preferencias, sus tarjetas cargando; el enlace del correo dice «Comprobando tu enlace…»; los ajustes de la verificación en dos pasos, «Cargando…»; las sesiones, la tabla cargando. |
+| Cargando | El botón de enviar se apaga mientras va la petición, también «Descargar mis datos» mientras prepara el fichero; el perfil y las preferencias, sus tarjetas cargando, y «Efectos de transparencia» no se puede pulsar mientras se guarda; el enlace del correo dice «Comprobando tu enlace…»; los ajustes de la verificación en dos pasos, «Cargando…»; las sesiones, la tabla cargando. |
 | Vacío | Sin sesión, toda página del panel lleva a la **Entrada**, que vuelve a ella tras entrar. Con esta sesión sola, «Cerrar las demás sesiones» está apagado; sin códigos de recuperación, «Sin ellos, perder tu autenticador te bloquea el acceso a tu cuenta.» con «Generar códigos de recuperación». |
 | Error | Cada error sale debajo de su campo, con las palabras de la regla que falla («La contraseña nueva tiene que ser distinta de la actual.»); un fallo de red, «No hemos podido iniciar tu sesión. Vuelve a intentarlo.» o «Algo ha ido mal. Inténtalo de nuevo.». Los ajustes que no cargan, «No hemos podido cargar tu configuración de seguridad. Vuelve a intentarlo.» con «Reintentar»; las sesiones, «No hemos podido cargar tus sesiones» con «Reintentar»; el perfil, «No hemos podido cargar tu cuenta», y las preferencias, «No hemos podido cargar tus preferencias», con «Reintentar». Un cambio de preferencias que no se guarda vuelve a como estaba. |
 | Freno | «Demasiados intentos fallidos. Inténtelo más tarde.» o «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.», igual exista o no la cuenta; si Google no ve una persona, «No hemos podido comprobar que eres una persona. Vuelve a intentarlo.». |
@@ -585,10 +586,11 @@ Pantalla: Cuenta › Preferencias
 Pasos:
 1. En **Cuenta › Preferencias**, «Apariencia» ofrece «Sistema», «Claro» y «Oscuro» («Sistema» sigue el modo de su dispositivo).
 2. La persona elige uno: el panel se pinta así al momento y sale «Preferencias guardadas»; no hay botón de guardar.
-3. En «Idioma» elige «English» o «Español»: el panel cambia de idioma al momento, también los correos que le enviamos.
-4. En otro navegador o tras recargar, el panel abre con la apariencia y el idioma de la cuenta.
-Entra: la apariencia y el idioma.
-Sale: la apariencia y el idioma de la cuenta, iguales en todos sus dispositivos; el idioma es también el de sus correos y el que reciben sus negocios al entrar. La cuenta nace con el idioma de la página en la que se dio de alta (ACCOUNTS-F01, ACCOUNTS-F06), o con el del negocio que la invita; desde entonces lo decide esta pantalla. En el panel manda el idioma de la cuenta; la web pública sigue el que se elige en ella o el del navegador.
+3. Debajo, «Efectos de transparencia» («Fondos translúcidos en paneles y avisos»), encendido de entrada: lo que flota sobre la pantalla, como el panel de la campana, la tarjeta de un aviso que llega y los avisos breves, deja ver lo que hay detrás, desenfocado. La persona lo apaga: al momento se ven opacos, con el mismo diseño, y sale «Preferencias guardadas». Si su dispositivo pide menos transparencia, o el navegador no sabe desenfocar, ya se ven opacos aunque esté encendido.
+4. En «Idioma» elige «English» o «Español»: el panel cambia de idioma al momento, también los correos que le enviamos.
+5. En otro navegador o tras recargar, el panel abre con la apariencia, los efectos de transparencia y el idioma de la cuenta, sin pintarse antes de otra forma.
+Entra: la apariencia, los efectos de transparencia y el idioma.
+Sale: la apariencia, los efectos de transparencia y el idioma de la cuenta, iguales en todos sus dispositivos; el idioma es también el de sus correos y el que reciben sus negocios al entrar. La cuenta nace con el idioma de la página en la que se dio de alta (ACCOUNTS-F01, ACCOUNTS-F06), o con el del negocio que la invita; desde entonces lo decide esta pantalla. En el panel manda el idioma de la cuenta; la web pública sigue el que se elige en ella o el del navegador.
 Si falla: si no se puede guardar, el control vuelve a lo que había y un aviso dice por qué; si las preferencias no cargan, «No hemos podido cargar tus preferencias» con «Reintentar». La moneda no se elige: ERPlora cobra en euros.
 Implicados: hubs (el idioma al entrar en un negocio)
 
@@ -1048,8 +1050,10 @@ Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos
   fila (`queries.preferences_of`), y el panel la lee de `base.session.me`; sus operaciones son `accounts.profile.*` y
   `accounts.preferences.*`, y el cambio de contraseña es F08. El tema de las plantillas es `base.context_processors.theme` (cuenta, o la
   cookie `theme`, o el sistema) y el del panel, el del shell de `@erplora/ui`, que pinta el de la sesión
-  embebida antes de arrancar. Avisos (F23): `hub_alerts` gobierna `hubs.emails.send_ready` por
-  `queries.receives_business_notices`; no hay aviso de «Novedades de ERPlora»: su columna queda en la base de
+  embebida antes de arrancar. Los efectos de transparencia (`UserPreferences.transparency`) van por el mismo camino:
+  la sesión los lleva, la entrada llama a `setThemeTransparency` antes de montar el shell (apagados, `<html>` lleva
+  `ep-opaque`) y la web pública no los usa, porque no tiene superficies de cristal. Avisos (F23): `hub_alerts`
+  gobierna `hubs.emails.send_ready` por `queries.receives_business_notices`; no hay aviso de «Novedades de ERPlora»: su columna queda en la base de
   datos, fuera del modelo y con valor por defecto, hasta su `DROP COLUMN` (accounts 0009). Descargar mis datos
   (F26): `accounts.data.export`, que lee los negocios y las facturas por sus operaciones (`hubs.business.list`,
   `billing.invoice.list` y `.get`), sin importar esas apps. Eliminar (F27): ver accounts/README.md; las facturas

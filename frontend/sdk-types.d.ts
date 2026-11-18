@@ -9,14 +9,10 @@ import type { SessionMe } from '@erplora/ui/shell';
 export type SessionMeIn = Record<string, never>;
 
 /** `base.SessionPreferences`: what the account chose in Account → Preferences that the shell paints with. */
-export interface SessionPreferences {
-  theme_mode: AccountThemeMode;
-}
+export type SessionPreferences = Pick<PreferencesOut, 'theme_mode' | 'transparency'>;
 
-/**
- * `base.SessionMeOut`: what the shell reads (`SessionMe`) plus the scope it was resolved for (the user) and
- * what the account chose (`null` without an account): its theme mode and its own language (`User.language`).
- */
+/** `base.SessionMeOut`: what the shell reads (`SessionMe`), the scope it was resolved for (the user) and what the
+ *  account chose (`null` without one): its theme mode, its transparency effects and its language (`User.language`). */
 export interface SessionMeOut extends SessionMe {
   scope: { kind: string; key: string };
   preferences: SessionPreferences | null;
@@ -464,6 +460,7 @@ export type AccountLanguage = 'en' | 'es';
 /** `accounts.PreferencesOut`: Account → Preferences. */
 export interface PreferencesOut {
   theme_mode: AccountThemeMode;
+  transparency: boolean;
   language: AccountLanguage;
   hub_alerts: boolean;
 }
@@ -471,6 +468,7 @@ export interface PreferencesOut {
 /** `accounts.PreferencesUpdateIn`: only what is sent changes (each control saves on its own). */
 export interface PreferencesUpdateIn {
   theme_mode?: AccountThemeMode;
+  transparency?: boolean;
   language?: AccountLanguage;
   hub_alerts?: boolean;
 }
@@ -525,6 +523,7 @@ export interface ExportAccountOut {
 /** `accounts.ExportPreferencesOut`. */
 export interface ExportPreferencesOut {
   theme_mode: AccountThemeMode;
+  transparency: boolean;
   language: string;
   hub_alerts: boolean;
 }

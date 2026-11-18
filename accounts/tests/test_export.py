@@ -39,7 +39,7 @@ def bea(django_user_model, password):
 
 class TestWhatTheFileCarries:
     def test_the_account_its_preferences_and_its_photo(self, ana):
-        UserPreferences.objects.create(user=ana, theme_mode="dark", hub_alerts=False)
+        UserPreferences.objects.create(user=ana, theme_mode="dark", transparency=False, hub_alerts=False)
         ProfilePhoto.objects.create(user=ana, content_type="image/png", data=b"\x89PNG")
 
         data = _export(ana)
@@ -50,13 +50,13 @@ class TestWhatTheFileCarries:
         assert (data["account"]["first_name"], data["account"]["last_name"]) == ("Ana", "García")
         assert data["account"]["language"] == "es"
         assert data["account"]["has_password"] is True
-        assert data["preferences"] == {"theme_mode": "dark", "language": "es", "hub_alerts": False}
+        assert data["preferences"] == {"theme_mode": "dark", "transparency": False, "language": "es", "hub_alerts": False}
         assert data["photo"].startswith("data:image/png;base64,")
 
     def test_an_account_that_never_chose_carries_the_defaults_and_no_photo(self, ana):
         data = _export(ana)
 
-        assert data["preferences"] == {"theme_mode": "system", "language": "es", "hub_alerts": True}
+        assert data["preferences"] == {"theme_mode": "system", "transparency": True, "language": "es", "hub_alerts": True}
         assert data["photo"] is None
 
     def test_the_terms_it_accepted(self, ana):

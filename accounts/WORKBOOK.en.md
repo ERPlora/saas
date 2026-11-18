@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:302801bd3657dcc2bd41336a60894b87b00df612085b102e026e77d8063d9305 -->
+<!-- generated from WORKBOOK.md sha256:31add383c1fbec12a4d1aa68bde8500288bd7ddbaeb36c0990613d24c852a559 -->
 
 ## What it is for and who it is for
 
@@ -168,8 +168,9 @@ with" with "Change" and "Save changes"), "Export your data" to download ("Downlo
 your account". At the bottom, the tabs of **Account**: "Profile", "Security", "Preferences" and "API keys".
 
 ### Account › Preferences
-Three cards that save on their own: "Appearance" ("System", "Light", "Dark"), "Language" ("English",
-"Español") and "Email notices" ("Security, invoices and payments", always on, and "Business notices").
+Three cards that save on their own: "Appearance" ("System", "Light", "Dark" and the switch
+"Transparency effects"), "Language" ("English", "Español") and "Email notices"
+("Security, invoices and payments", always on, and "Business notices").
 
 ### User menu
 The name and the email at the top of the side menu (on a phone, inside the menu): "Account", "Help", the
@@ -203,7 +204,7 @@ the "message in Spanish" (empty, Spanish visitors read the English one), and the
 
 | State | What the person sees |
 |---|---|
-| Loading | The submit button is off while the request is on its way, and so is "Download my data" while it prepares the file; the profile and the preferences, their cards loading; the email's link says "Checking your link…"; the two-step verification settings, "Loading…"; the sessions, the table loading. |
+| Loading | The submit button is off while the request is on its way, and so is "Download my data" while it prepares the file; the profile and the preferences, their cards loading, and "Transparency effects" cannot be tapped while it saves; the email's link says "Checking your link…"; the two-step verification settings, "Loading…"; the sessions, the table loading. |
 | Empty | Without a session, every page of the panel leads to the **Entrance**, which goes back to it after signing in. With this session alone, "Close other sessions" is off; without recovery codes, "Without them, losing your authenticator locks you out of your account." with "Generate recovery codes". |
 | Error | Each error appears under its field, with the words of the rule that fails ("Your new password must be different from the current one."); a network failure, "We could not sign you in. Please try again." or "Something went wrong. Please try again.". Settings that do not load, "We could not load your security settings. Please try again." with "Try again"; the sessions, "We could not load your sessions" with "Try again"; the profile, "We could not load your account", and the preferences, "We could not load your preferences", with "Try again". A change of preferences that is not saved goes back to how it was. |
 | Throttle | "Too many failed login attempts. Try again later." or "Too many attempts. Please wait a few minutes and try again.", the same whether the account exists or not; if Google does not see a person, "We could not check that you are a person. Try again.". |
@@ -561,10 +562,11 @@ Screen: Account › Preferences
 Steps:
 1. In **Account › Preferences**, "Appearance" offers "System", "Light" and "Dark" ("System" follows the mode of their device).
 2. The person picks one: the panel is painted that way at once and "Preferences saved" appears; there is no save button.
-3. In "Language" they pick "English" or "Español": the panel changes language at once, and so do the mails we send them.
-4. In another browser or after reloading, the panel opens with the account's appearance and language.
-In: the appearance and the language.
-Out: the account's appearance and language, the same on all its devices; the language is also the one of its mails and the one its businesses get at sign-in. The account is born with the language of the page it signed up on (ACCOUNTS-F01, ACCOUNTS-F06), or with that of the business that invites it; from then on this screen decides it. In the panel the account's language rules; the public website follows the one chosen on it or the browser's.
+3. Below, "Transparency effects" ("Translucent backgrounds on panels and notices"), on from the start: what floats over the screen, such as the bell's panel, the card of a notice that arrives and the brief notices, lets what is behind show through, blurred. The person turns it off: at once they look opaque, with the same design, and "Preferences saved" appears. If their device asks for less transparency, or the browser cannot blur, they already look opaque even with it on.
+4. In "Language" they pick "English" or "Español": the panel changes language at once, and so do the mails we send them.
+5. In another browser or after reloading, the panel opens with the account's appearance, transparency effects and language, without being painted another way first.
+In: the appearance, the transparency effects and the language.
+Out: the account's appearance, transparency effects and language, the same on all its devices; the language is also the one of its mails and the one its businesses get at sign-in. The account is born with the language of the page it signed up on (ACCOUNTS-F01, ACCOUNTS-F06), or with that of the business that invites it; from then on this screen decides it. In the panel the account's language rules; the public website follows the one chosen on it or the browser's.
 If it fails: if it cannot be saved, the control goes back to what it was and a notice says why; if the preferences do not load, "We could not load your preferences" with "Try again". No currency is chosen: ERPlora charges in euros.
 Involved: hubs (the language when entering a business)
 
