@@ -89,16 +89,11 @@ def record(arguments: argparse.Namespace) -> None:
 
 
 def parser() -> argparse.ArgumentParser:
-    main_parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    commands = main_parser.add_subparsers(required=True)
-    for name, command, suffix in (("check", check, "; nothing was changed"), ("record", record, "")):
-        sub = commands.add_parser(name)
-        sub.set_defaults(command=command, suffix=suffix)
-        sub.add_argument("--workdir", required=True)
-        sub.add_argument("--environment", required=True, choices=sorted(app_env.FAMILIES))
-        sub.add_argument("--region", required=True)
-        if name == "check":
-            sub.add_argument("targets", nargs="+", metavar="ARN")
+    main_parser, subs = app_env.command_parser(__doc__, (("check", check, "; nothing was changed"),
+                                                         ("record", record, "")))
+    for sub in subs.values():
+        app_env.add_target(sub)
+    subs["check"].add_argument("targets", nargs="+", metavar="ARN")
     return main_parser
 
 

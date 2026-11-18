@@ -357,23 +357,33 @@ def record(arguments: argparse.Namespace) -> None:
     print(f"recorded the {arguments.environment} settings of {FILE} in {parameter}")
 
 
+def command_parser(doc: str, commands: tuple) -> tuple[argparse.ArgumentParser, dict]:
+    """A command line of subcommands, from (name, function, suffix of its errors): each takes --workdir."""
+    main_parser = argparse.ArgumentParser(description=doc.splitlines()[0])
+    subparsers = main_parser.add_subparsers(required=True)
+    subs = {}
+    for name, command, suffix in commands:
+        subs[name] = subparsers.add_parser(name)
+        subs[name].set_defaults(command=command, suffix=suffix)
+        subs[name].add_argument("--workdir", required=True)
+    return main_parser, subs
+
+
+def add_target(sub: argparse.ArgumentParser) -> None:
+    """The environment and the region a subcommand reads or writes."""
+    sub.add_argument("--environment", required=True, choices=sorted(FAMILIES))
+    sub.add_argument("--region", required=True)
+
+
 def parser() -> argparse.ArgumentParser:
-    main_parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    commands = main_parser.add_subparsers(required=True)
-    for name, command, suffix in (("check", check, "; nothing was registered"),
-                                  ("revision", revise, "; nothing was registered"), ("record", record, "")):
-        sub = commands.add_parser(name)
-        sub.set_defaults(command=command, suffix=suffix)
-        sub.add_argument("--workdir", required=True)
-        if name == "revision":
-            sub.add_argument("--family", required=True)
-            sub.add_argument("--image", required=True)
-            sub.add_argument("--project-image", required=True)
-        else:
-            sub.add_argument("--environment", required=True, choices=sorted(FAMILIES))
-            sub.add_argument("--region", required=True)
-        if name == "check":
-            sub.add_argument("--commit", required=True)
+    main_parser, subs = command_parser(__doc__, (("check", check, "; nothing was registered"),
+                                                 ("revision", revise, "; nothing was registered"),
+                                                 ("record", record, "")))
+    for name in ("family", "image", "project-image"):
+        subs["revision"].add_argument(f"--{name}", required=True)
+    add_target(subs["check"])
+    add_target(subs["record"])
+    subs["check"].add_argument("--commit", required=True)
     return main_parser
 
 
