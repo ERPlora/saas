@@ -33,7 +33,7 @@ import { BUSINESSES } from '../../../accounts/frontend/paths';
 import RepresentationCard from '../../../fiscal/frontend/components/RepresentationCard.vue';
 import { useLiveState } from '../../../frontend/live-state';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
-import { reasonKey, statusPill } from '../business-status';
+import { reasonDate, reasonKey, statusPill } from '../business-status';
 import BusinessSettings from '../components/BusinessSettings.vue';
 import BusinessSummary from '../components/BusinessSummary.vue';
 import CustomDomainCard from '../components/CustomDomainCard.vue';
@@ -41,7 +41,6 @@ import DataCopyCard from '../components/DataCopyCard.vue';
 import DangerZone from '../components/DangerZone.vue';
 import HostName from '../components/HostName.vue';
 import MembersTab from '../components/MembersTab.vue';
-import UnpaidNotice from '../components/UnpaidNotice.vue';
 import { useErrorText } from '../error-text';
 import { useOpenBusiness } from '../open-business';
 
@@ -101,7 +100,7 @@ const state = computed(() => {
   const key = reasonKey(now, inApp.value);
   // Only the launcher opens a business by itself when it is ready: here it says it will be soon.
   if (key === 'hubs.reason.preparing') return t('hubs.reason.preparingSoon');
-  return key ? t(key) : '';
+  return key ? t(key, { date: reasonDate(now, locale.value) }) : '';
 });
 const meta = computed(() => {
   const now = business.value;
@@ -268,13 +267,8 @@ async function recover(): Promise<void> {
           </div>
         </div>
 
-        <UnpaidNotice
-          v-if="business.status === 'past_due' || business.status === 'suspended'"
-          :business="business"
-          data-testid="business-unpaid"
-        />
         <p
-          v-else-if="state"
+          v-if="state"
           class="business-state"
           :class="{ 'is-danger': statusPill(business, t, locale).tone === 'danger' }"
           data-testid="business-state"

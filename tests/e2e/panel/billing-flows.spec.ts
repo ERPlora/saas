@@ -7,6 +7,7 @@ import { panelAccount, qaAccount } from './accounts';
 import { businessIdOf } from './businesses';
 import { djangoPrintWarm } from './django';
 import { expect, seededAndSignedInWarm, test } from './fixtures';
+import { featureNotice, primary, secondary } from './notices';
 import { watchPageErrors } from './page-events';
 import { captureAtEverySize, shot, toast } from './screen';
 import { gotoWithCharge, playStripePortal, STRIPE_PORTAL_URL } from './stripe';
@@ -110,19 +111,20 @@ test.describe('billing flows', () => {
   });
 
   // Paying it (the invoice page at Stripe, «Invoice paid» back) is billing.spec.ts's «Pay» test.
-  test('BILLING-F16 and BILLING-F17: an unpaid plan is said on Invoices business by business, with its way to pay', async ({ page }) => {
+  test('BILLING-F16 and BILLING-F17: an unpaid plan is said in the bell business by business, with its way to pay', async ({ page }) => {
     const errors = watchPageErrors(page);
     await page.goto('/dashboard/billing/invoices');
-    const declined = page.getByTestId('unpaid-group-item').filter({ hasText: 'Bar La Plaza' });
-    const soft = page.getByTestId('unpaid-group-item').filter({ hasText: 'Bar Norte' });
     await atEverySize(page, 'BILLING-G54', async () => {
-      // The bank declined the card: change it first, «Pay» waits.
-      await expect(declined.getByTestId('unpaid-group-change-card')).toBeVisible();
-      await expect(declined.getByTestId('pay-invoice').locator('button')).toBeDisabled();
+      // The bank declined the card: «Change card» is the way out, «Pay» waits for another card.
+      const declined = await featureNotice(page, 'Bar La Plaza');
+      await expect(primary(declined)).toHaveText('Change card');
+      await expect(secondary(declined)).toHaveCount(0);
     });
     await atEverySize(page, 'BILLING-G58', async () => {
       // A soft failure: «Pay» pays it again, and the business works again.
-      await expect(soft.getByTestId('pay-invoice').locator('button')).toBeEnabled();
+      const soft = await featureNotice(page, 'Bar Norte');
+      await expect(primary(soft)).toHaveText('Pay the invoice · €36.29');
+      await expect(primary(soft)).toBeEnabled();
     });
     expect(errors).toEqual([]);
   });
@@ -149,11 +151,10 @@ test.describe('billing flows', () => {
     const errors = watchPageErrors(page);
     const opened = await playStripePortal(page);
     await page.goto('/dashboard/billing/invoices');
-    const change = page.getByTestId('unpaid-group-item').filter({ hasText: 'Bar La Plaza' }).getByTestId('unpaid-group-change-card');
     await atEverySize(page, 'BILLING-G71', async () => {
-      await expect(change).toBeVisible();
+      await expect(primary(await featureNotice(page, 'Bar La Plaza'))).toHaveText('Change card');
     });
-    await change.click();
+    await primary(await featureNotice(page, 'Bar La Plaza')).click();
     await page.waitForURL(STRIPE_PORTAL_URL);
     expect(opened).toEqual([{ hub_id: await businessIdOf(page.request, 'Bar La Plaza') }]);
     expect(errors).toEqual([]);

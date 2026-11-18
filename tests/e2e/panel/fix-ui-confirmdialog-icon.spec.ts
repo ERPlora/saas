@@ -2,15 +2,15 @@
 // (saas#54). The panel already set its own gap, on one side only
 // (`hubs/frontend/components/buttons.css`, `InvoiceFilters.vue`: `margin-inline-end`), so a ui rule that brought
 // back ALL of Ionic's slotted margin (`margin: revert-layer`) also brought its `-0.3em` on the outer side: the icon
-// sank 4.5–5.3 px into the button's padding («Change card», «Pay the invoice», «Download Excel», «Filters»).
-// Measured in the page on `/dashboard/billing/invoices` (rows of billing_seed.py) at 390×844, 834×1112 and 1440×900: the
-// icon's outer margin is `0px` and the icon sits as far from the button's left padding as the label ends from
-// its right one, as on main.
+// sank 4.5–5.3 px into the button's padding («Pay the invoice», «Download Excel», «Filters»).
+// Measured on `/dashboard/billing/invoices` and on the page of an unpaid invoice (rows of billing_seed.py) at 390×844,
+// 834×1112 and 1440×900: the icon's outer margin is `0px` and the icon sits as far from the button's left padding as
+// the label ends from its right one, as on main.
 // flow: ui:ConfirmDialog
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { panelAccount, qaAccount } from './accounts';
 import { expect, seededAndSignedInWarm, test } from './fixtures';
@@ -21,8 +21,8 @@ const SHOTS = join(SAAS_DIR, 'tests', 'e2e', '.artifacts', 'fix-ui-confirmdialog
 
 const BILLING = qaAccount('BILLING', panelAccount('billing'));
 
-/** The panel's buttons on `/dashboard/billing/invoices` with an icon in `slot="start"` and their own gap rule. */
-const BUTTONS = ['unpaid-group-change-card', 'pay-invoice', 'invoices-csv', 'invoices-filters'] as const;
+/** The panel's buttons with an icon in `slot="start"` and their own gap rule, by the page they are on. */
+const BUTTONS = { list: ['invoices-csv', 'invoices-filters'], invoice: ['pay-invoice'] } as const;
 
 seededAndSignedInWarm('billing_seed.py', BILLING);
 
@@ -61,18 +61,34 @@ function startSide(button: Locator): Promise<StartSide> {
   });
 }
 
+/** The page of an invoice Stripe could not charge, with its «Pay the invoice». */
+async function unpaidInvoicePath(page: Page): Promise<string> {
+  const response = await page.request.get('/api/billing/invoices?status=open&limit=1');
+  expect(response.status()).toBe(200);
+  const [invoice] = ((await response.json()) as { rows: Array<{ id: string }> }).rows;
+  return `/dashboard/billing/invoices/${invoice.id}`;
+}
+
+/** Each button on the page on screen keeps its start icon off the edge, at `width`. */
+async function expectIconsInPlace(page: Page, testids: readonly string[], width: number): Promise<void> {
+  for (const testid of testids) await expect(page.getByTestId(testid).first()).toBeVisible();
+  await settled(page);
+  for (const testid of testids) {
+    const what = `«${testid}» ${width}`;
+    const side = await startSide(page.getByTestId(testid).first());
+    expect(side.outer, `${what}: ${JSON.stringify(side)}`).toBe('0px');
+    expect(Math.abs(side.left - side.right), `${what}: ${JSON.stringify(side)}`).toBeLessThanOrEqual(0.75);
+  }
+}
+
 test('ui:ConfirmDialog — the panel’s buttons keep their icon off the button’s edge, as on main', async ({ page }) => {
+  const invoice = await unpaidInvoicePath(page);
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize(viewport);
     await page.goto('/dashboard/billing/invoices');
-    for (const testid of BUTTONS) await expect(page.getByTestId(testid).first()).toBeVisible();
-    await settled(page);
-    for (const testid of BUTTONS) {
-      const what = `«${testid}» ${viewport.width}`;
-      const side = await startSide(page.getByTestId(testid).first());
-      expect(side.outer, `${what}: ${JSON.stringify(side)}`).toBe('0px');
-      expect(Math.abs(side.left - side.right), `${what}: ${JSON.stringify(side)}`).toBeLessThanOrEqual(0.75);
-    }
+    await expectIconsInPlace(page, BUTTONS.list, viewport.width);
     await page.screenshot({ path: join(SHOTS, `FIX-UI-CONFIRMDIALOG-ICON-GAP-saas-${viewport.width}.png`) });
+    await page.goto(invoice);
+    await expectIconsInPlace(page, BUTTONS.invoice, viewport.width);
   }
 });

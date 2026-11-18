@@ -15,6 +15,7 @@
 // server's voice only when there is one), its sparkles at the end of the topbar and its panel beside the pane
 // (`CHROME`), its words merged under the apps' (`appMessages`), and the tab's conversation forgotten when the
 // account signs out.
+// The bell of the topbar is the shell's action center; the panel hands it its notices, the unpaid invoices.
 import {
   createShell,
   type CreateShellOptions,
@@ -45,6 +46,7 @@ import { isNavigationFailure, type RouteRecordRaw } from 'vue-router';
 import { ACCOUNT, BUSINESSES, LAUNCHER, REPORT_PROBLEM } from '../accounts/frontend/paths';
 import { recaptchaSiteKey } from '../accounts/frontend/recaptcha';
 import { panelAssistant } from '../assistant/frontend/options';
+import { useUnpaidNotices } from '../billing/frontend/notices';
 import { OPERATION_ROUTES } from './generated/operation-routes';
 import en from './locale/en.json';
 import es from './locale/es.json';
@@ -241,6 +243,7 @@ export async function boot(
     // (`data-ep-contrast="aa"`, packages/ui theme/variables.css).
     contrast: 'aa',
     chrome: CHROME,
+    actionNotices: useUnpaidNotices,
   });
   provideLiveClient(client, app);
   try {

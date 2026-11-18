@@ -18,6 +18,7 @@ import { panelAccount } from './accounts';
 import { businessIdOf, seedPanel } from './businesses';
 import { runSeed } from './django';
 import { expect, test } from './fixtures';
+import { bell, expectBell, featureNotice } from './notices';
 import { watchPageErrors } from './page-events';
 import { settled } from './screen';
 import { apiPost, signIn, signInAs } from './session';
@@ -86,7 +87,7 @@ async function contrastOf(target: Locator): Promise<number> {
 
 test.describe('the AA theme', () => {
   for (const scheme of ['light', 'dark'] as const) {
-    test(`the primary, «Retry», the links and the hints read ≥ 4.5:1 (${scheme})`, async ({ page }) => {
+    test(`the primary, «Retry», the outlined buttons and the hints read ≥ 4.5:1 (${scheme})`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: scheme });
       const measured: Record<string, number> = {};
       await signIn(page.request, panelAccount('several'));
@@ -112,11 +113,6 @@ test.describe('the AA theme', () => {
       await page.unroute(/\/api\/live\?/);
 
       await signInAs(page, panelAccount('billing'));
-      await page.goto('/dashboard/billing/subscriptions');
-      const link = shown(page).locator('.billing-alert__link');
-      await expect(link).toBeVisible();
-      await settled(page);
-      measured['link «View the invoices»'] = await contrastOf(link);
       await page.goto('/dashboard/billing/invoices');
       await expect(shown(page).getByTestId('invoices-row').first()).toBeVisible();
       await settled(page);
@@ -223,7 +219,7 @@ test.describe('creating and buying', () => {
     expect(((await refused.json()) as { error: { code: string } }).error.code).toBe('billing.plan_upgrade_only');
   });
 
-  test('unpaid invoices have no PDF; the grouped notices, the most urgent first, with amounts', async ({ page }) => {
+  test('unpaid invoices have no PDF; the bell has them, the most urgent first, with its amount', async ({ page }) => {
     await signIn(page.request, panelAccount('billing'));
     await page.goto('/dashboard/billing/invoices');
     await expect(shown(page).getByTestId('invoices-row').first()).toBeVisible();
@@ -234,15 +230,10 @@ test.describe('creating and buying', () => {
     await expect(shown(page).getByTestId('invoices-selection-note')).toHaveText(
       '2 selected invoices are unpaid: an unpaid invoice has no PDF until it is paid.',
     );
-    const billingOrder = await shown(page).getByTestId('unpaid-group-text').allInnerTexts();
-    await page.goto('/dashboard/businesses');
-    const group = shown(page).getByTestId('businesses-unpaid');
-    await expect(group).toContainText('2 businesses have unpaid invoices: €');
-    await expect(group.getByTestId('businesses-unpaid-amount')).toHaveCount(2);
-    const businessOrder = await group.locator('.unpaid-line__text').allInnerTexts();
-    expect(businessOrder.map((line) => line.split(' ')[0] + line.split(' ')[1])).toEqual(
-      billingOrder.map((line) => line.split(' ')[0] + line.split(' ')[1]),
-    );
+    // Bar La Plaza's grace ends first: it leads, with what it owes; Bar Norte follows in a row.
+    const first = await featureNotice(page, 'Bar La Plaza');
+    await expect(first.locator('.action-featured__figure')).toHaveText('€36.29');
+    await expect(page.getByTestId('action-row')).toHaveText([/^Bar Norte has an unpaid invoice/]);
   });
 
   test('a deleted business is recovered from the launcher', async ({ page }) => {
@@ -262,14 +253,13 @@ test.describe('creating and buying', () => {
     expect(errors).toEqual([]);
   });
 
-  test('«View the invoices» is a 44 px target on a phone', async ({ page }) => {
+  test('the bell with the unpaid invoices is a 44 px target on a phone', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await signIn(page.request, panelAccount('billing'));
     await page.goto('/dashboard/billing/subscriptions');
-    const link = shown(page).locator('.billing-alert__link');
-    await expect(link).toBeVisible();
-    const box = await link.boundingBox();
-    expect(box && box.height >= 44).toBe(true);
+    await expectBell(page, 2);
+    const box = await bell(page).boundingBox();
+    expect(box && box.height >= 44 && box.width >= 44).toBe(true);
   });
 });
 

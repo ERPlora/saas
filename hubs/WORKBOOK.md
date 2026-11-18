@@ -91,7 +91,8 @@ Si la comprobación no puede hacerse, otro aviso lo dice y deja reintentar.
 ### Negocios
 La portada del panel: la lista de los negocios de la cuenta con «Negocio», «Dirección web», «Estado», «Plan»,
 «Rol» y «Último uso», el buscador, «Crear negocio» y, por fila, «Abrir», «Gestionar» y «Recuperar». En el móvil
-son tarjetas. Encima, las invitaciones, las ofertas de propiedad y las facturas sin pagar.
+son tarjetas. Encima, las invitaciones y las ofertas de propiedad. Una factura sin pagar no sale en la lista: se
+avisa en la campana de la barra superior (BILLING-F16).
 
 ### Resumen del negocio
 La página de cada negocio abre en su Resumen: el plan (con «Mejorar plan» o «Cambiar plan»), el uso y la tarjeta
@@ -323,7 +324,7 @@ Pasos:
 Entra: los negocios de los que la persona es miembro con la invitación aceptada.
 Sale: nada; la lista se mantiene al día sola.
 Si falla: sin negocios, «Crea tu primer negocio» con el formulario del alta; una búsqueda sin resultados, «Nada coincide con la búsqueda» con «Mostrar todo»; sin conexión, el error con «Reintentar», nunca una lista vacía. Un negocio purgado ya no sale.
-Implicados: billing (el plan y las facturas sin pagar de cada fila)
+Implicados: billing (el plan de cada fila y si tiene el pago pendiente)
 
 ### HUBS-F10 Ver la portada del panel
 Estado: hecho
@@ -331,7 +332,7 @@ Actor: propietario, administrador, encargado, empleado
 Pantalla: Negocios
 Pasos:
 1. Desde la Entrada, «Ir al panel» abre **Negocios**, la portada del panel, con el menú «Negocios», «Tienda», «Facturación» y «Cuenta».
-2. Arriba ve lo que espera respuesta (invitaciones, ofertas de propiedad, facturas sin pagar) y debajo todos sus negocios con su plan, su estado y su último uso (HUBS-F09).
+2. Arriba ve lo que espera respuesta (invitaciones y ofertas de propiedad) y debajo todos sus negocios con su plan, su estado y su último uso (HUBS-F09). Una factura sin pagar se avisa en la campana de la barra superior, en todas las pantallas del panel (BILLING-F16).
 3. Sin negocios, la portada es «Crea tu primer negocio»; la dirección vieja de la vista general lleva aquí.
 Entra: los negocios de la cuenta.
 Sale: nada.
