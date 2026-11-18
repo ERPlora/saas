@@ -320,6 +320,8 @@
           "light": "Light",
           "dark": "Dark"
         },
+        "transparency": "Transparency effects",
+        "transparencyHint": "Translucent backgrounds on panels and notices",
         "languageHeading": "Language",
         "language": "Language",
         "languageHint": "Also the language of the mails we send you.",

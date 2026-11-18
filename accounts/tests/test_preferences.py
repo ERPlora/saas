@@ -1,5 +1,5 @@
 """Account → Preferences: ``accounts.preferences.get`` and ``accounts.preferences.update``: the theme mode, the
-language and the «Business notices» switch.
+transparency effects, the language and the «Business notices» switch.
 
 There is one palette, so only the mode is chosen. The language is a column of the account row the session already
 loads, never cached, and ``User.language`` always holds one, because the mails and the jump to a hub need one. The
@@ -27,6 +27,7 @@ class TestReading:
 
         assert result.model_dump() == {
             "theme_mode": "system",
+            "transparency": True,
             "language": "es",
             "hub_alerts": True,
         }
@@ -38,11 +39,11 @@ class TestReading:
         assert not UserPreferences.objects.exists()
 
     def test_what_was_chosen_is_read_back(self, ana):
-        UserPreferences.objects.create(user=ana, theme_mode="dark", hub_alerts=False)
+        UserPreferences.objects.create(user=ana, theme_mode="dark", transparency=False, hub_alerts=False)
 
         result = queries.preferences_get(ctx_for(ana), PreferencesGetIn())
 
-        assert (result.theme_mode, result.hub_alerts) == ("dark", False)
+        assert (result.theme_mode, result.transparency, result.hub_alerts) == ("dark", False, False)
 
     def test_an_anonymous_visitor_is_refused(self, db):
         """Without an account there is no role ``account`` and so no ``accounts.view`` (``base.operations``)."""
@@ -66,9 +67,43 @@ class TestUpdating:
 
         assert result.model_dump() == {
             "theme_mode": "light",
+            "transparency": True,
             "language": "es",
             "hub_alerts": False,
         }
+
+    def test_the_transparency_effects_turn_off_and_back_on(self, ana):
+        """On until the person turns them off; the row is born with the first change, like any other."""
+        off = preferences.preferences_update(ctx_for(ana), PreferencesUpdateIn(transparency=False))
+
+        assert (off.transparency, UserPreferences.objects.get(user=ana).transparency) == (False, False)
+
+        on = preferences.preferences_update(ctx_for(ana), PreferencesUpdateIn(transparency=True))
+
+        assert (on.transparency, UserPreferences.objects.get(user=ana).transparency) == (True, True)
+
+    def test_turning_them_off_leaves_the_rest_and_other_accounts_as_they_were(self, ana, django_user_model):
+        bea = django_user_model.objects.create_user(email="bea@example.com", password="x", language="en")
+        UserPreferences.objects.create(user=ana, theme_mode="dark", hub_alerts=False)
+        UserPreferences.objects.create(user=bea, theme_mode="light")
+
+        result = preferences.preferences_update(ctx_for(ana), PreferencesUpdateIn(transparency=False))
+
+        assert (result.theme_mode, result.hub_alerts, result.transparency) == ("dark", False, False)
+        assert queries.preferences_get(ctx_for(bea), PreferencesGetIn()).model_dump() == {
+            "theme_mode": "light",
+            "transparency": True,
+            "language": "en",
+            "hub_alerts": True,
+        }
+
+    def test_an_anonymous_visitor_cannot_change_them(self, db):
+        """No account, no ``accounts.manage``: nothing is written."""
+        from live.errors import PermissionDenied
+
+        with pytest.raises(PermissionDenied):
+            preferences.preferences_update(ctx_for(None), PreferencesUpdateIn(transparency=False))
+        assert not UserPreferences.objects.exists()
 
     def test_the_language_is_the_accounts_own(self, ana):
         """``User.language``: the one the mails, the hubs' invitations and the jump to a hub read."""
@@ -100,14 +135,17 @@ class TestOverHttp:
         client.force_login(ana)
 
         assert api_get(client, PREFERENCES).json()["theme_mode"] == "system"
-        response = api_post(client, PREFERENCES, {"theme_mode": "dark", "hub_alerts": False})
+        assert api_get(client, PREFERENCES).json()["transparency"] is True
+        response = api_post(client, PREFERENCES, {"theme_mode": "dark", "hub_alerts": False, "transparency": False})
 
         assert response.status_code == 200
         assert response.json() == {
             "theme_mode": "dark",
+            "transparency": False,
             "language": "es",
             "hub_alerts": False,
         }
+        assert api_get(client, PREFERENCES).json()["transparency"] is False
 
     @pytest.mark.parametrize(
         "body, field",
@@ -115,6 +153,7 @@ class TestOverHttp:
             ({"theme_mode": "auto"}, "theme_mode"),
             ({"language": "fr"}, "language"),
             ({"hub_alerts": "maybe"}, "hub_alerts"),
+            ({"transparency": "maybe"}, "transparency"),
             ({"currency": "EUR"}, "currency"),
             # No mail of «ERPlora news» exists: no switch for it (ACCOUNTS-F23).
             ({"marketing_emails": True}, "marketing_emails"),

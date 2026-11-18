@@ -320,6 +320,8 @@
           "light": "Claro",
           "dark": "Oscuro"
         },
+        "transparency": "Efectos de transparencia",
+        "transparencyHint": "Fondos translúcidos en paneles y avisos",
         "languageHeading": "Idioma",
         "language": "Idioma",
         "languageHint": "También el idioma de los correos que te enviamos.",

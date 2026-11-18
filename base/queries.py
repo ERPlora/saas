@@ -52,8 +52,9 @@ def session_me(ctx: OperationContext, data: SessionMeIn) -> dict[str, Any]:
 def _account(actor: Any) -> dict[str, Any]:
     if actor is None:
         return {"preferences": None, "account_language": None}
+    preferences = preferences_of(actor)
     return {
-        "preferences": {"theme_mode": preferences_of(actor)["theme_mode"]},
+        "preferences": {key: preferences[key] for key in ("theme_mode", "transparency")},
         "account_language": actor.language,
     }
 

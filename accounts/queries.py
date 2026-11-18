@@ -220,6 +220,7 @@ def preferences_of(user) -> dict[str, Any]:
     preferences = UserPreferences.objects.filter(user=user).first() or UserPreferences(user=user)
     return {
         "theme_mode": preferences.theme_mode,
+        "transparency": preferences.transparency,
         "language": user.language,
         "hub_alerts": preferences.hub_alerts,
     }
@@ -240,7 +241,7 @@ def receives_business_notices(user) -> bool:
     input=PreferencesGetIn,
     output=PreferencesOut,
     ai=AI(
-        description="The account's preferences: theme, language and alerts of its businesses.",
+        description="The account's preferences: theme, transparency effects, language and alerts of its businesses.",
         asks={
             "en": ("what language is my account in?", "do I get alerts from my businesses?", "show my preferences"),
             "es": (
@@ -580,7 +581,6 @@ def data_export(ctx: OperationContext, data: DataExportIn) -> dict[str, Any]:
     from live import operations
 
     user = account_of(ctx)
-    preferences = preferences_of(user)
     photo = ProfilePhoto.objects.filter(user=user).first()
     invoice_get = operations.get(INVOICE_GET)
     invoices = [
@@ -592,7 +592,7 @@ def data_export(ctx: OperationContext, data: DataExportIn) -> dict[str, Any]:
         "version": 1,
         "exported_at": timezone.now(),
         "account": _export_account(user),
-        "preferences": {key: preferences[key] for key in ("theme_mode", "language", "hub_alerts")},
+        "preferences": preferences_of(user),
         "photo": photo.data_url() if photo is not None else None,
         "email_addresses": list(
             EmailAddress.objects.filter(user=user).order_by("-primary", "email").values("email", "verified", "primary")

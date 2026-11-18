@@ -127,7 +127,7 @@ class ReadOnlyInline(admin.StackedInline):
 
 class UserPreferencesInline(ReadOnlyInline):
     model = UserPreferences
-    fields = ("theme_mode", "hub_alerts", "updated_at")
+    fields = ("theme_mode", "transparency", "hub_alerts", "updated_at")
     readonly_fields = fields
 
 
