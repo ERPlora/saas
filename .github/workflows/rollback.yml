@@ -2,10 +2,12 @@ name: rollback
 
 # Manual: puts the saas services of the branch's environment (main -> prod: saas and saas-worker;
 # pre -> pre: saas-pre and saas-worker-pre; saas-worker once ERPlora/aws creates it) back on the
-# ACTIVE revision right before the one each runs and records their
-# image tag (ecs-rollback.sh). Migrations are not undone. Scheduled saas tasks (prod
-# only) run the latest ACTIVE saas-cron revision, so they keep the newer image: to go back
-# everywhere, run deploy with the previous release instead.
+# ACTIVE revision right before the one each runs and records their settings (app_env) and
+# image tag (ecs-rollback.sh). Those settings pass the deploy's checks first: in prod, going back
+# to another real charge, AEAT's production or Stripe mode names each change in confirm_protected.
+# Migrations are not undone. Scheduled saas tasks (prod only) run the latest ACTIVE saas-cron
+# revision, so they keep the newer image: to go back everywhere, run deploy with the previous
+# release instead.
 
 on:
   workflow_dispatch:
@@ -19,6 +21,13 @@ on:
         description: Type ROLLBACK to put saas back on its previous revision (migrations are not undone)
         type: string
         required: true
+      confirm_protected:
+        description: >-
+          Prod only: VAR=value of each protected setting the previous revisions change
+          (PLATFORM_INVOICING_ENABLED, AEAT_PRODUCTION_ENABLED, STRIPE_EXPECTED_MODE), separated by commas
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -71,4 +80,5 @@ jobs:
       - name: Roll saas back
         env:
           ENVIRONMENT: ${{ steps.env.outputs.environment }}
+          CONFIRM_PROTECTED: ${{ inputs.confirm_protected }}
         run: bash .github/scripts/ecs-rollback.sh

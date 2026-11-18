@@ -1,5 +1,5 @@
 // The countries a business may be created in and the time zones its settings offer: the server's lists
-// (hubs/schemas.py `COUNTRIES`, hubs/services/creation.py `TIME_ZONES`), named in the person's language by Intl,
+// (hubs/schemas/__init__.py `COUNTRIES`, hubs/services/creation.py `TIME_ZONES`), named in the person's language by Intl,
 // never by a catalogue of ours.
 // clock: data only — no code under test compares these dates with now.
 import { readFileSync } from 'node:fs';
@@ -20,7 +20,7 @@ import {
 const HUBS = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('countries', () => {
-  it('are exactly the markets the server accepts (hubs/schemas.py COUNTRIES)', () => {
+  it('are exactly the markets the server accepts (hubs/schemas/__init__.py COUNTRIES)', () => {
     const schemas = readFileSync(join(HUBS, 'schemas', '__init__.py'), 'utf8');
     const listed = /COUNTRIES = frozenset\(\s*"([A-Z ]+)"\.split\(\)/.exec(schemas)?.[1].split(' ') ?? [];
     expect(listed.length).toBe(27);
