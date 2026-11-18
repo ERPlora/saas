@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:36cb3b26473617c26885a78ae7cb6fa0bf4ec64c72608ad950d3fe011b5e51fc -->
+<!-- generated from WORKBOOK.md sha256:5b8ba8433b416d98d68eaae7225f6be3ce887e098a7601d5525e749cfa6661c4 -->
 
 ## What it is for and who it is for
 
@@ -88,8 +88,18 @@ Menu **Billing**, with three tabs: **Invoices** (table with Invoice, Date, Busin
 filters by business, status and year; search by number; "Download PDF", "View invoice", "Download Excel"
 and "Pay" on the uncollected ones), **Subscriptions** (one row per paying business: plan, modules, next invoice with VAT and
 status; "Change plan", "Keep the plan", "View the invoice", "View invoices" and "Cancel plan") and **Payment
-details** (the card with "Change card" and the billing details with "Edit details"). At the top of all three,
-the notices of unpaid invoices.
+details** (the card with "Change card" and the billing details with "Edit details"). Unpaid invoices are not
+announced inside the tabs: they are announced in the bell of the top bar (Bell notices).
+
+### Bell notices
+The bell of the panel's top bar, on every screen. With an unpaid invoice it turns into a red pill with the number of
+businesses that have one. A new notice arrives as a card at the top right (full width on a phone) and a few seconds
+later settles in the bell. Tapping it opens the "Notifications" panel, with the most urgent business on top: "… has an
+unpaid invoice", the amount, "… days left" (or "suspended"), what happens if it is not paid ("If it is not paid by …,
+the business is suspended. Nothing is deleted.") and "Pay the invoice · …" with "Change card" beside it; if the bank
+declined the card, only "Change card". The other businesses, in rows below. A notice cannot be dismissed: it goes away
+when the invoice is paid. Whoever does not pay the business sees the notice without buttons and "Only the account that
+pays this business can pay its invoices."; in the app, "To pay it, go to erplora.com in your browser."
 
 ### Invoice
 Page of one invoice, opened with "View invoice": its number (or "not collected"), the date, the business, the
@@ -109,9 +119,9 @@ to upgrade or change it.
 |---|---|
 | Loading | "Loading…" or the table's skeleton while the data arrives; "Working out what is charged today…" in a plan change. |
 | Empty | Invoices: "No invoices yet" and "See plans"; Subscriptions: "All your businesses are on Free"; Payment details: "No card saved yet". |
-| Error | "We could not load …" with "Retry"; a payment that does not open says "Nothing has been charged" with "Retry". |
+| Error | "We could not load …" with "Retry"; a payment that does not open says "Nothing has been charged" with "Retry". If it could not be checked whether there are unpaid invoices, the bell's panel says "Could not load notifications" with "Retry". |
 | Stripe not answering | The card: "We cannot show you the card right now: try again in a few minutes"; a payment: the notice that nothing has been charged. |
-| Unpaid invoice | Notice at the top with the amount, the business and until when it works, and "Pay the invoice"; with the card declined, "Change card" first. |
+| Unpaid invoice | The bell of the top bar, red with its number; in its panel, the notice of each business with the amount, until when it works and "Pay the invoice · …"; with the card declined, "Change card". |
 | In the app | Everything that does not charge is shown; where a payment button would be, "go to erplora.com in the browser", without a link. |
 | No permission | A business that is not yours does not appear; through the API, "Not found". |
 
@@ -370,14 +380,14 @@ Involved: the business (receives Free)
 ### BILLING-F16 Unpaid plan: retries, suspension and return
 Status: done
 Actor: system, owner, paying account
-Screen: Billing, Businesses, the business itself
+Screen: Bell notices, the business itself
 Steps:
 1. The charge of a renewal fails. Stripe retries it for some days and sends a notice of each failure. The paid apps go on the same invoice as the plan: their non-payment is that of the whole business, and paying brings everything back.
 2. erplora.com reads the subscription again in Stripe: if the retry already charged, it does nothing; if not, it records the invoice as "Not collected", with why it was not collected (card declined, authentication or failure).
-3. **Grace**: for 7 days from the invoice that failed, the business keeps working with all its plan. The paying account receives an email, once per invoice: how much could not be charged, until what day it keeps working and the link to Billing to pay it (if the bank declined the card, to change it first). In **Businesses** and in **Billing** the notice "We could not charge … for …" appears: "Pay it before … or the business is suspended; nothing is deleted", with "Pay the invoice" (or "Change card" first if the bank declined it).
-4. **Suspension**: after the 7 days, or if Stripe runs out of retries, the business is suspended and the paying account receives another email, only once. The business does not open: neither from the panel nor from its own address, not even on the devices that already had the session open, which show "This business is suspended" with the way to ERPlora. The panel's notice says "… is suspended: … unpaid" and that the data is safe.
+3. **Grace**: for 7 days from the invoice that failed, the business keeps working with all its plan. The paying account receives an email, once per invoice: how much could not be charged, until what day it keeps working and the link to Billing to pay it (if the bank declined the card, to change it first). In the panel's top bar, the bell turns red and the notice "… has an unpaid invoice" arrives: the amount, "… days left" and "If it is not paid by …, the business is suspended. Nothing is deleted.", with "Pay the invoice · …" and "Change card" (only "Change card" if the bank declined it). It is one notice per business, the same on every screen.
+4. **Suspension**: after the 7 days, or if Stripe runs out of retries, the business is suspended and the paying account receives another email, only once. The business does not open: neither from the panel nor from its own address, not even on the devices that already had the session open, which show "This business is suspended" with the way to ERPlora. The bell's notice says "suspended" and "It was suspended because of an unpaid invoice. Nothing is deleted: once it is paid it works again at once."
 5. **Safety net**: every hour the businesses with their plan unpaid are gone over and their oldest open invoice is looked at, in case Stripe stopped retrying without sending another notice.
-6. **Return**: when the invoice is paid (with "Pay the invoice", or because a retry collects it), the business is active again at once: "Invoice paid: … is up to date again".
+6. **Return**: when the invoice is paid (with "Pay the invoice", or because a retry collects it), the business is active again at once: "Invoice paid: … is up to date again", and its notice leaves the bell.
 In: Stripe's notices of the failed charge and of the subscription, and the live subscription.
 Out: the "Not collected" invoice, the emails to the payer and the business's status (payment pending, suspended or up to date) sent to the business (`hubs.subscription.changed`).
 If it fails: if Stripe does not answer when reading the subscription again, nothing is applied and Stripe sends the notice again. A repeated notice of an invoice already paid does not reopen it. A later failure of the same unpaid episode does not move the grace date nor repeat the email. An email that could not go out is sent again in the hourly pass, which warns the team while any is left.
@@ -386,9 +396,9 @@ Involved: hubs (the business's status), the business (receives the status)
 ### BILLING-F17 Reactivate a suspended business by paying its invoice
 Status: done
 Actor: paying account
-Screen: Billing › Invoices, Businesses
+Screen: Bell notices, Billing › Invoices
 Steps:
-1. On the notice of the suspended business (in **Businesses** or in **Billing**), the paying account taps "Pay the invoice · …" (if the bank declined the card, "Change card" first).
+1. On the notice of the suspended business, in the bell of the top bar, the paying account taps "Pay the invoice · …" (if the bank declined the card, "Change card" first); it can also pay it from the invoice, in **Billing › Invoices**.
 2. Stripe's payment page of that invoice opens; pay.
 3. Back, "Invoice paid: … is up to date again" and the business works again with its data and its plan, without opening another subscription.
 In: the unpaid invoice and its payment page in Stripe.
@@ -481,11 +491,11 @@ Involved: hubs (HUBS-F28: the plan of a business handed over)
 ### BILLING-F24 Open Stripe's payment portal to change the card
 Status: done
 Actor: paying account
-Screen: Billing › Payment details
+Screen: Billing › Payment details, Bell notices
 Steps:
 1. In **Billing › Payment details**, the "Payment method" card says which card pays which businesses and, if the last charge failed, when and for which business.
-2. Tap "Change card": Stripe's secure page of that account opens, which only allows changing the card and seeing the receipts.
-3. Back, the panel returns to Billing and, if there was a declined invoice, the notice says "Card changed" and "Pay" comes back.
+2. Tap "Change card" (there or on the bell's notice of a business with an unpaid invoice): Stripe's secure page of that account opens, which only allows changing the card and seeing the receipts.
+3. Back, the panel returns to Billing and, if there was a declined invoice, its bell notice says "Card changed: you can pay it now." and "Pay the invoice · …" comes back.
 In: the paying account of the business.
 Out: the new card in Stripe; plan changes are never made there.
 If it fails: before the first payment there is nothing to change; if Stripe does not answer, it is said; only the paying account opens it, never another owner.

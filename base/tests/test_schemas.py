@@ -25,7 +25,7 @@ FULL = {
     ],
     "apps": [],
     "language": "es",
-    "preferences": {"theme_mode": "dark"},
+    "preferences": {"theme_mode": "dark", "transparency": False},
     "account_language": "es",
 }
 
@@ -47,7 +47,13 @@ def test_anonymous_output():
 def test_the_theme_mode_is_one_the_shell_knows():
     """``ThemeMode`` of packages/ui (shell/theme.ts), as ``accounts.UserPreferences.ThemeMode``."""
     with pytest.raises(pydantic.ValidationError):
-        SessionMeOut.model_validate({**FULL, "preferences": {"theme_mode": "sepia"}})
+        SessionMeOut.model_validate({**FULL, "preferences": {"theme_mode": "sepia", "transparency": True}})
+
+
+def test_the_session_always_says_whether_the_transparency_effects_are_on():
+    """The shell needs it before its first paint: a session without it is refused, never read as «on»."""
+    with pytest.raises(pydantic.ValidationError):
+        SessionMeOut.model_validate({**FULL, "preferences": {"theme_mode": "dark"}})
 
 
 @pytest.mark.parametrize(

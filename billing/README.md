@@ -554,16 +554,19 @@ No vende, así que está en todas las superficies: en las apps y con `?surface=a
 suscripciones y se editan los datos fiscales; pagar, cambiar la tarjeta y cambiar, mantener o cancelar el plan
 son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegador.
 
-- **Arriba, en las tres pestañas** (`BillingNotices` + `unpaid.ts`): las facturas no cobradas (`billing.invoice.list`
-  con `status=open`, viva) con el estado de su negocio (`hubs.business.list`). En Facturas, un aviso por factura
-  (`UnpaidInvoiceNotice`): importe, negocio, factura y fecha, hasta cuándo funciona (7 días) o que está suspendido;
-  en la web «Pagar la factura» es el principal y, con `pay_blocked_reason = card_change_required`, «Cambiar tarjeta»
-  (Customer Portal) pasa a principal y «Pagar» espera con el motivo (`aria-describedby`); con la tarjeta cambiada
-  (`unpaid_reason = card_changed`) el aviso lo dice y «Pagar» vuelve. En las otras pestañas, una línea con enlace.
+- **El impago, en la campana** (`notices.ts` sobre `unpaid.ts`; `frontend/main.ts` lo pasa a `createShell` como
+  `actionNotices`): un aviso del centro de avisos de `@erplora/ui` por negocio en `past_due` o `suspended`
+  (`hubs.business.list`), con el importe de su factura no cobrada (`billing.invoice.list` con `status=open`, viva),
+  «quedan N días» o «suspendido» y el plazo de 7 días (`graceEnd`). En la web, a quien paga el negocio (lo dice su
+  factura, `payer_required`, o sin ella `is_payer`): «Pagar la factura · …» (`usePayInvoice`, solo con `pay_url` y
+  `can.pay`) y «Cambiar tarjeta» (Customer Portal); con `card_change_required` solo «Cambiar tarjeta», porque el
+  servidor no deja pagar hasta cambiarla, y con `card_changed` el aviso lo dice y «Pagar» vuelve. A quien no paga,
+  sin botones y el porqué; en las apps, cómo pagar desde el navegador. Si una de las dos consultas
+  falla, el panel de la campana lo dice con «Reintentar». Ninguna pantalla pinta un aviso de impago propio.
 - **Pagar** (`pay.ts`, `PayInvoiceButton`): `billing.invoice.pay` → la página de Stripe, navegación de primer nivel.
-  Un pago a la vez en toda la página (aviso y fila comparten el estado): «Pagando…» desde el clic hasta salir, sin
-  doble cobro. La factura se recuerda en `sessionStorage` y, cuando sale de las no cobradas (aquí, en otra pestaña o
-  al volver de Stripe), se pregunta `billing.invoice.get` y, pagada, «Factura pagada: … vuelve a estar al día».
+  Un pago a la vez en Facturación (`providePaying`): «Pagando…» desde el clic hasta salir, sin doble cobro. La
+  factura se recuerda en `sessionStorage` y, cuando sale de las no cobradas (en cualquier pantalla del panel, en otra
+  pestaña o al volver de Stripe), se pregunta `billing.invoice.get` y, pagada, «Factura pagada: … vuelve a estar al día».
 - **Facturas** (`InvoicesTab`): `DataTable` de servidor (tarjetas hasta 1100 px), filtros negocio (también
   `?business=`; uno ajeno enseña todas y lo dice; uno en Gratis dice que no tiene), estado y año, guardados en la
   dirección; búsqueda por número; «Pagar» fija (solo web) y PDF si `can.pdf`; si no, «Emitiéndose». Una

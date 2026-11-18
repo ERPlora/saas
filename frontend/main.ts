@@ -9,18 +9,20 @@
 // strings only, so every app with a `frontend/` is named in both globs (guard: main.test.ts).
 // The menu comes from the server (`base/navigation.py`); the entry adds the user menu (Account, Help,
 // Sign out) and the surface the server keeps in the session. What the account chose (Account →
-// Preferences, in `base.session.me`) is painted before the first paint: its theme mode and its own
-// language; the user menu's theme is kept in the account.
+// Preferences, in `base.session.me`) is painted before the first paint: its theme mode, its transparency
+// effects and its own language; the user menu's theme is kept in the account.
 // The panel's assistant (ASSISTANT-F25): the shared chat configured as the panel's (`panelAssistant`, with the
 // server's voice only when there is one), its sparkles at the end of the topbar and its panel beside the pane
 // (`CHROME`), its words merged under the apps' (`appMessages`), and the tab's conversation forgotten when the
 // account signs out.
+// The bell of the topbar is the shell's action center; the panel hands it its notices, the unpaid invoices.
 import {
   createShell,
   type CreateShellOptions,
   type SessionStatus,
   setThemeMode,
   setThemePersister,
+  setThemeTransparency,
   shellLocale,
   type ShellUserMenuItem,
   type Surface,
@@ -45,6 +47,7 @@ import { isNavigationFailure, type RouteRecordRaw } from 'vue-router';
 import { ACCOUNT, BUSINESSES, LAUNCHER, REPORT_PROBLEM } from '../accounts/frontend/paths';
 import { recaptchaSiteKey } from '../accounts/frontend/recaptcha';
 import { panelAssistant } from '../assistant/frontend/options';
+import { useUnpaidNotices } from '../billing/frontend/notices';
 import { OPERATION_ROUTES } from './generated/operation-routes';
 import en from './locale/en.json';
 import es from './locale/es.json';
@@ -116,12 +119,16 @@ export function appMessages(catalogues: Record<string, AppCatalogue>): CreateShe
 
 /**
  * What the account chose, painted before the shell's first paint: its theme mode (an anonymous visitor
- * keeps this device's) and its own language, which the shell's i18n and `<html lang>` follow
- * (`createShell` watches `session.language`). On the panel the server already answers in it
- * (`base.language`); when the session still speaks another one, the account's wins.
+ * keeps this device's), its transparency effects (off, the glass surfaces are opaque) and its own language,
+ * which the shell's i18n and `<html lang>` follow (`createShell` watches `session.language`). On the panel
+ * the server already answers in it (`base.language`); when the session still speaks another one, the
+ * account's wins.
  */
 function applyAccount(me: SessionMeOut): SessionMeOut {
-  if (me.preferences) setThemeMode(me.preferences.theme_mode);
+  if (me.preferences) {
+    setThemeMode(me.preferences.theme_mode);
+    setThemeTransparency(me.preferences.transparency);
+  }
   return inAccountLanguage(me);
 }
 
@@ -241,6 +248,7 @@ export async function boot(
     // (`data-ep-contrast="aa"`, packages/ui theme/variables.css).
     contrast: 'aa',
     chrome: CHROME,
+    actionNotices: useUnpaidNotices,
   });
   provideLiveClient(client, app);
   try {

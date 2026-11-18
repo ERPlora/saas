@@ -4,7 +4,9 @@
 //   - the way to pay outside Billing — the launcher's real deadline and «Pay the invoice» /
 //     «Change card», and one grouped notice on Businesses with each business's way out;
 //   - «Skip to content», 44 px targets at 390, Back without ☰ in a business, the
-//     table's toolbar in one row from 834 to 1180 px.
+//     table's toolbar in one row from 834 to 1180 px;
+//   - the end of the bar at 390, 834 and 1440: the assistant's sparkles and the bell, nothing folded into «⋮», and the
+//     title centred.
 // Screenshots at 390, 834 and 1440 go to `$SHOTS_DIR` (/tmp/panel-fix2 by default) for the supervisor, each one
 // refused when it repeats the top of the page at its bottom (taken before the page was painted at its size).
 import { mkdirSync } from 'node:fs';
@@ -16,6 +18,7 @@ import { panelAccount } from './accounts';
 import { businessIdOf, seedPanel } from './businesses';
 import { runSeed } from './django';
 import { expect, test } from './fixtures';
+import { expectBell, featureNotice, primary } from './notices';
 import { watchPageErrors } from './page-events';
 import { repeatedTop, settled, stripedAfterResize } from './screen';
 import { signIn } from './session';
@@ -168,19 +171,18 @@ test.describe('the way to pay outside Billing', () => {
     expect(await stripedAfterResize(page, SHOT_SIZES, 'FIX-SAAS-E2E-CHROME-SHOT-STRIPE')).toEqual([]);
   });
 
-  test('Businesses groups the unpaid invoices in one notice, each business with its way out, days without the time', async ({ page }) => {
+  test('Businesses has no box for the unpaid invoices: the bell has them, each business with its way out, days without the time', async ({ page }) => {
     await page.goto('/dashboard/businesses');
-    const group = page.getByTestId('businesses-unpaid');
-    await expect(group).toContainText('2 businesses have unpaid invoices');
-    const lines = group.getByTestId('businesses-unpaid-line');
-    await expect(lines).toHaveCount(2);
-    await expect(lines.filter({ hasText: 'Bar La Plaza' }).getByTestId('unpaid-change-card')).toBeVisible();
-    expect(await hrefOf(lines.filter({ hasText: 'Bar Norte' }).getByTestId('unpaid-pay'))).toBe('https://invoice.stripe.com/i/e2e-billing-norte');
-    expect(await group.innerText()).not.toMatch(/\d{1,2}:\d{2}/);
-    await expect(page.locator('[data-testid^="businesses-unpaid-e2e"]')).toHaveCount(0);
+    await expectBell(page, 2);
+    await expect(page.locator('[data-testid^="businesses-unpaid"]')).toHaveCount(0);
+    const plaza = await featureNotice(page, 'Bar La Plaza');
+    await expect(primary(plaza)).toHaveText('Change card');
+    expect(await plaza.innerText()).not.toMatch(/\d{1,2}:\d{2}/);
+    const norte = await featureNotice(page, 'Bar Norte');
+    await expect(primary(norte)).toHaveText('Pay the invoice · €36.29');
     for (const size of SHOT_SIZES) {
       await page.setViewportSize(size);
-      await snap(page, `businesses-unpaid-grouped-${size.width}`);
+      await snap(page, `businesses-unpaid-bell-${size.width}`);
     }
   });
 });
@@ -204,7 +206,47 @@ async function smallTargets(page: Page, inDialog = false): Promise<string[]> {
   }, inDialog);
 }
 
+/** The buttons at the end of the bar of the page on screen, as `data-testid`s. */
+function endOfTheBar(page: Page): Promise<(string | null)[]> {
+  return shown(page)
+    .locator('.app-topbar ion-buttons[slot=end]')
+    .evaluate((group) =>
+      [...group.querySelectorAll('ion-button')]
+        .filter((button) => !button.closest('ion-popover') && button.getBoundingClientRect().width > 0)
+        .map((button) => button.getAttribute('data-testid')),
+    );
+}
+
+/** How far, in px, the title's text is from the centre of its bar. */
+function titleOffCentre(page: Page): Promise<number> {
+  return shown(page)
+    .locator('.app-topbar ion-toolbar')
+    .evaluate((toolbar) => {
+      const title = toolbar.querySelector('ion-title');
+      const inner = title?.shadowRoot?.querySelector('.toolbar-title') ?? title;
+      if (!inner) return Infinity;
+      const range = document.createRange();
+      range.selectNodeContents(inner);
+      const text = (range.getClientRects().length ? range : inner).getBoundingClientRect();
+      const bar = toolbar.getBoundingClientRect();
+      return Math.abs(text.left + text.width / 2 - (bar.left + bar.width / 2));
+    });
+}
+
 test.describe('the chrome of every page', () => {
+  test('the end of the bar holds the sparkles and the bell at every width, with nothing folded into «⋮», and the title stays centred', async ({ page }) => {
+    await signIn(page.request, panelAccount('several'));
+    for (const size of SHOT_SIZES) {
+      await page.setViewportSize(size);
+      await page.goto('/dashboard/businesses');
+      await expect(page.getByTestId('businesses-row').first()).toBeVisible();
+      await settled(page);
+      expect(await endOfTheBar(page), `the end of the bar at ${size.width}`).toEqual(['assistant-button', 'action-bell']);
+      expect(await titleOffCentre(page), `the title off its centre at ${size.width}`).toBeLessThanOrEqual(4);
+      await snap(page, `topbar-${size.width}`);
+    }
+  });
+
   test('«Skip to content» is the first stop of the keyboard and takes it to the page', async ({ page }) => {
     await signIn(page.request, panelAccount('several'));
     await page.goto('/dashboard/businesses');

@@ -64,7 +64,7 @@ const years = yearOptions();
 const search = shallowRef('');
 const page = shallowRef(0);
 const pageSize = shallowRef(25);
-/** Pages the live window holds: 1 on a desk; each «Load more» on a phone adds one. */
+/** Pages the live window holds: 1 on a desk; each end of the scroll on a phone adds one. */
 const windowPages = shallowRef(1);
 
 function goToPage(n: number): void {

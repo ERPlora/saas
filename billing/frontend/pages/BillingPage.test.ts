@@ -1,11 +1,10 @@
 // Billing (`/dashboard/billing/:tab`): the shell's page with its three sections in the footer tabbar, each at its
 // own address. Billing is not selling: it shows on every surface (paying and changing plan are web only, inside
-// each section).
+// each section). An unpaid invoice is not said here: the bell of the topbar says it on every screen.
 import { AppPage, applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { mountBilling } from '../__tests__/mount-billing';
-import BillingNotices from '../components/BillingNotices.vue';
 import InvoicesTab from '../components/InvoicesTab.vue';
 import PaymentTab from '../components/PaymentTab.vue';
 import SubscriptionsTab from '../components/SubscriptionsTab.vue';
@@ -16,7 +15,7 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-const STUBS = { BillingNotices: true, InvoicesTab: true, SubscriptionsTab: true, PaymentTab: true };
+const STUBS = { InvoicesTab: true, SubscriptionsTab: true, PaymentTab: true };
 
 async function page(tab: 'invoices' | 'subscriptions' | 'payment' = 'invoices', locale: 'en' | 'es' = 'en') {
   return mountBilling(BillingPage, { path: `/dashboard/billing/${tab}`, locale, props: { tab }, stubs: STUBS });
@@ -44,12 +43,12 @@ describe('BillingPage', () => {
     expect(s.wrapper.get('.billing-stack').classes('panel-fill')).toBe(fills);
   });
 
-  it('on Invoices: what this section is, what waits for a payment, and the invoices', async () => {
+  it('on Invoices: what this section is and the invoices, no notice of its own', async () => {
     const s = await page('invoices');
     expect(s.wrapper.get('[data-testid="billing-lead"]').text()).toBe(
       'What you pay ERPlora for all your businesses. The invoices of your sales are inside each business.',
     );
-    expect(s.wrapper.findComponent(BillingNotices).props('tab')).toBe('invoices');
+    expect(s.wrapper.get('.billing-stack').element.children).toHaveLength(2);
     expect(s.wrapper.findComponent(InvoicesTab).exists()).toBe(true);
     expect(s.wrapper.findComponent(SubscriptionsTab).exists()).toBe(false);
   });
@@ -57,10 +56,10 @@ describe('BillingPage', () => {
   it.each([
     ['subscriptions', SubscriptionsTab],
     ['payment', PaymentTab],
-  ] as const)('on %s: the notices in one line and that section, without the lead', async (tab, section) => {
+  ] as const)('on %s: that section alone, without the lead', async (tab, section) => {
     const s = await page(tab);
     expect(s.wrapper.find('[data-testid="billing-lead"]').exists()).toBe(false);
-    expect(s.wrapper.findComponent(BillingNotices).props('tab')).toBe(tab);
+    expect(s.wrapper.get('.billing-stack').element.children).toHaveLength(1);
     expect(s.wrapper.findComponent(section as never).exists()).toBe(true);
     expect(s.wrapper.findComponent(InvoicesTab).exists()).toBe(false);
   });

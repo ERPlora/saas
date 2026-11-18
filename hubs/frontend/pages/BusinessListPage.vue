@@ -4,8 +4,8 @@
 // cards up to 900 px so names are not cut on a tablet) with their status (and why), plan, role and
 // last use; per row what the server says it allows (`can`): «Open» (not while suspended or deleted),
 // «Manage» and «Recover». «Delete» is not on the row: it lives in the business's Settings.
-// Above the table, what waits for an answer: invitations, ownership offers and unpaid invoices (inside
-// the apps without a way to pay). «Create business» opens a dialog: the form, then the
+// Above the table, what waits for an answer: invitations and ownership offers (an unpaid invoice is said by the
+// shell's bell, not here). «Create business» opens a dialog: the form, then the
 // preparation, then «ready» or why not, following the new business with its own `hubs.business.get`
 // (the list may not show it: a search, another page); meanwhile the list shows it «Preparing». Empty,
 // the table holds the sign-up form itself. With the account's Free business filling its quota, the dialog says so
@@ -13,8 +13,7 @@
 // page: `?create=1` (the launcher's «Create another business») is read each time it comes on screen. The list
 // fills the page between the topbar and the footer (`detail-fill` + `.panel-fill`), and asks for rows per page
 // only when there are more businesses than the shortest page. Its states are truthful (`useLiveState`): the
-// stream down or no answer in time is an error with «Retry», never «Create your first business»; unpaid invoices
-// of two or more businesses are one notice.
+// stream down or no answer in time is an error with «Retry», never «Create your first business».
 import {
   DataTable,
   type DataTableAction,
@@ -52,8 +51,6 @@ import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessPreparing from '../components/BusinessPreparing.vue';
 import DeclineDialog from '../components/DeclineDialog.vue';
 import HostName from '../components/HostName.vue';
-import UnpaidGroupNotice from '../components/UnpaidGroupNotice.vue';
-import UnpaidNotice from '../components/UnpaidNotice.vue';
 import { useErrorText } from '../error-text';
 import { useAcceptInvitation } from '../invitations';
 import { useOpenBusiness } from '../open-business';
@@ -77,7 +74,7 @@ const declineOffer = useCommand('hubs.ownership.decline');
 const search = shallowRef('');
 const page = shallowRef(0);
 const pageSize = shallowRef(50);
-/** Pages the live window holds: 1 on a desk; each «Load more» on a phone adds one. */
+/** Pages the live window holds: 1 on a desk; each end of the scroll on a phone adds one. */
 const windowPages = shallowRef(1);
 
 function goToPage(n: number): void {
@@ -109,7 +106,6 @@ const loadError = computed(() => (state.failed.value ? text(state.error.value) |
 const rows = computed<BusinessRowOut[]>(() => live.data.value?.rows ?? []);
 const invitations = computed<InvitationOut[]>(() => live.data.value?.invitations ?? []);
 const offers = computed<OwnershipOfferOut[]>(() => live.data.value?.ownership_offers ?? []);
-const unpaid = computed(() => rows.value.filter((row) => row.status === 'past_due' || row.status === 'suspended'));
 const searching = computed(() => search.value.trim() !== '');
 
 // A page emptied elsewhere steps back to the last page that still has rows.
@@ -121,21 +117,21 @@ watch(live.data, (now) => {
 
 const columns = computed(() => [
   { key: 'name', label: t('hubs.list.columns.name'), cell: 'name', width: 'minmax(10rem,1.6fr)', priority: 'high' },
-  { key: 'host', label: t('hubs.list.columns.host'), cell: 'host', width: 'minmax(9rem,1.4fr)', priority: 'low' },
+  { key: 'host', label: t('hubs.list.columns.host'), cell: 'host', width: 'minmax(9rem,1.4fr)', priority: 'low', cardIcon: 'ion:globe-outline' },
   { key: 'status', label: t('hubs.list.columns.status'), cell: 'status', width: 'minmax(8rem,1.2fr)', priority: 'high' },
   {
     key: 'plan',
     label: t('hubs.list.columns.plan'),
-    width: 'minmax(5.5rem,0.8fr)',
     format: (_: unknown, row: BusinessRowOut) => row.plan?.name ?? '—',
+    cardIcon: 'ion:receipt-outline',
   },
-  { key: 'role', label: t('hubs.list.columns.role'), cell: 'role', width: 'minmax(7rem,1fr)' },
+  { key: 'role', label: t('hubs.list.columns.role'), cell: 'role', width: 'minmax(7rem,1fr)', cardIcon: 'ion:person-outline' },
   {
     key: 'last_opened_at',
     label: t('hubs.list.columns.lastOpened'),
-    width: 'minmax(7rem,1fr)',
     priority: 'low',
     format: (value: unknown) => (value ? formatDateTime(value as string, locale.value) : '—'),
+    cardIcon: 'ion:time-outline',
   },
 ] satisfies DataTableColumn<BusinessRowOut>[]);
 
@@ -154,7 +150,7 @@ const pill = (row: BusinessRowOut) => statusPill(row, t, locale.value);
 
 function why(row: BusinessRowOut): string {
   const key = reasonKey(row, inApp.value);
-  // A payment pending is said by the notice above the list, with its way to pay.
+  // A payment pending is said by the bell of the topbar, with its way to pay.
   if (!key || row.status === 'past_due') return '';
   if (key === 'hubs.reason.preparing') return t('hubs.reason.preparingSoon');
   return t(key, { date: reasonDate(row, locale.value) });
@@ -163,11 +159,11 @@ function why(row: BusinessRowOut): string {
 const pageOf = (row: { id: string }) => `${BUSINESSES}/${row.id}/summary`;
 
 /** The row's buttons, as the table folds them when its box narrows: «Open» stays,
- *  «Manage» and «Recover» go into «⋮» first. Each is named with its business for a screen reader. */
+ *  «Manage» and «Recover» go into «⋮» first. Each says its action in short words, its text and its name alike. */
 const actions = computed<DataTableAction<BusinessRowOut>[]>(() => [
   {
     id: 'open',
-    label: (row) => t('hubs.common.openName', { name: row.name }),
+    label: t('hubs.common.open'),
     icon: 'ion:log-in-outline',
     color: 'primary',
     pinned: true,
@@ -177,14 +173,14 @@ const actions = computed<DataTableAction<BusinessRowOut>[]>(() => [
   },
   {
     id: 'manage',
-    label: (row) => t('hubs.list.actions.manageName', { name: row.name }),
+    label: t('hubs.list.actions.manage'),
     icon: 'ion:settings-outline',
     color: 'primary',
     hidden: (row) => !row.can.manage,
   },
   {
     id: 'restore',
-    label: (row) => t('hubs.list.actions.restoreName', { name: row.name }),
+    label: t('hubs.list.actions.restore'),
     icon: 'ion:refresh-outline',
     color: 'primary',
     hidden: (row) => !row.can.restore,
@@ -409,17 +405,6 @@ onIonViewWillEnter(entered);
         </template>
       </InlineFeedback>
 
-      <UnpaidNotice
-        v-if="unpaid.length === 1"
-        :business="unpaid[0]"
-        :data-testid="`businesses-unpaid-${unpaid[0].id}`"
-      />
-      <UnpaidGroupNotice
-        v-else-if="unpaid.length > 1"
-        :businesses="unpaid"
-        data-testid="businesses-unpaid"
-      />
-
       <p
         v-if="rows.length"
         class="list-lead"
@@ -451,6 +436,7 @@ onIonViewWillEnter(entered);
         :columns="columns"
         :actions="actions"
         :card-title="(row: BusinessRowOut) => row.name"
+        card-title-column="name"
         :card-icon="() => 'ion:storefront-outline'"
         @page-change="goToPage"
         @load-more="windowPages += 1"
@@ -515,47 +501,6 @@ onIonViewWillEnter(entered);
             >{{ $t('hubs.common.managedByOwner') }}</small>
           </span>
         </template>
-
-        <template #card="{ row }">
-          <p
-            class="mono card-host"
-            data-testid="business-host"
-          >
-            <HostName :host="row.host" />
-          </p>
-          <p class="card-pills">
-            <StatusPill v-bind="pill(row)" />
-            <span
-              v-if="row.plan"
-              class="card-meta"
-            ><HubIcon
-              name="ion:receipt-outline"
-              aria-hidden="true"
-            />{{ $t('hubs.common.plan', { name: row.plan.name }) }}</span>
-            <span
-              class="card-meta"
-              data-testid="business-role"
-            ><HubIcon
-              name="ion:person-outline"
-              aria-hidden="true"
-            />{{ row.role_label }}</span>
-            <StatusPill
-              v-if="row.last_opened_at && row.id === rows[0]?.id"
-              class="tag-recent"
-              tone="info"
-              :dot="false"
-              :label="$t('hubs.common.lastOpened')"
-            />
-          </p>
-          <p
-            v-if="why(row) || managedByOwner(row)"
-            class="card-why"
-            data-testid="business-status-why"
-          >
-            {{ why(row) || $t('hubs.common.managedByOwner') }}
-          </p>
-        </template>
-
 
         <template #empty>
           <EmptyState
@@ -804,32 +749,6 @@ a.business-name:hover {
   white-space: normal;
   font-size: 0.75rem;
   color: color-mix(in oklab, var(--ion-text-color) 62%, transparent);
-}
-.card-host {
-  margin: 0 0 8px;
-  font-size: 0.82rem;
-  overflow-wrap: anywhere;
-  color: color-mix(in oklab, var(--ion-text-color) 75%, transparent);
-}
-.card-pills {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  margin: 0;
-}
-.card-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.82rem;
-  color: color-mix(in oklab, var(--ion-text-color) 70%, transparent);
-}
-.card-why {
-  margin: 8px 0 0;
-  font-size: 0.85rem;
-  line-height: 1.4;
-  color: color-mix(in oklab, var(--ion-text-color) 75%, transparent);
 }
 .empty-create {
   display: flex;

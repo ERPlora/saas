@@ -163,20 +163,6 @@
         "message": "Try another name or web address.",
         "showAll": "Show all"
       },
-      "unpaid": {
-        "pastDueHeading": "{name} has an unpaid invoice",
-        "pastDueBody": "If it is not paid soon, the business is suspended. Nothing is deleted.",
-        "suspendedHeading": "{name} is suspended",
-        "suspendedBody": "It was suspended because of an unpaid invoice. Nothing is deleted: once it is paid it works again at once.",
-        "groupHeading": "{count} businesses have unpaid invoices",
-        "groupHeadingAmount": "{count} businesses have unpaid invoices: {amount}",
-        "lineSuspendedSince": "{name} is suspended since {date}.",
-        "lineSuspended": "{name} is suspended.",
-        "linePastDueUntil": "{name} is suspended on {date} if it is not paid.",
-        "linePastDue": "{name} has an unpaid invoice.",
-        "lineDeclined": "The bank declined the card.",
-        "nothingDeleted": "Nothing is deleted."
-      },
       "invitation": {
         "heading": "You have been invited to {name}",
         "body": "{inviter} gives you access as {role}. Accept to see it in your list.",
@@ -460,11 +446,7 @@
       "unexpected": "Something went wrong in ERPlora. Try again in a few minutes."
     },
     "unpaid": {
-      "pastDueSince": "Unpaid since {since}. It keeps working until {until}; if it is not paid by then, the business is suspended. Nothing is deleted.",
-      "suspendedSince": "Unpaid since {since}, and suspended until it is paid. Nothing is deleted: once it is paid it works again at once.",
       "pay": "Pay the invoice",
-      "cardDeclined": "The bank declined the card: change it before paying.",
-      "app": "Settle it from erplora.com, in your browser.",
       "payer": "You pay",
       "changeCard": "Change card",
       "changeCardName": "Change the card of {name}",

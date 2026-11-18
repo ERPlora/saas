@@ -2,7 +2,7 @@
 // session from the `session-me` JSON Django embeds (or GET /api/me), mount only once the router is
 // ready. The SaaS has a login of its own: the auth gate sends to the SPA route `/launch`. The panel:
 // the user menu (Account, Help, Sign out) and the surface the server keeps; what the account chose
-// (theme mode, language) painted at boot, and the user menu's theme kept in the account.
+// (theme mode, transparency effects, language) painted at boot, and the user menu's theme kept in the account.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,7 +32,7 @@ vi.mock('@erplora/ui/sdk', async (importOriginal) => ({
   provideLiveClient: vi.fn(),
 }));
 
-import { chooseThemeMode, createShell, setThemeMode, setThemePersister, themeMode, toastError } from '@erplora/ui/shell';
+import { chooseThemeMode, createShell, resetUserThemePreferences, setThemeMode, setThemePersister, themeMode, themeTransparency, toastError } from '@erplora/ui/shell';
 import { ApiError, createAllauthClient, createLiveClient, provideLiveClient } from '@erplora/ui/sdk';
 import { assistantConfig, type AssistantConfig, assistantMessages, configureAssistant, forgetAssistant } from '@erplora/ui/components';
 import type { Component } from 'vue';
@@ -75,7 +75,7 @@ const ME = {
   menu: [],
   apps: [],
   language: 'es',
-  preferences: { theme_mode: 'system' },
+  preferences: { theme_mode: 'system', transparency: true },
   account_language: 'es',
 };
 /** `base.session.me` without an account: no preferences, no language of its own. */
@@ -118,7 +118,7 @@ let assign: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   vi.clearAllMocks();
   setThemePersister(undefined);
-  setThemeMode('system');
+  resetUserThemePreferences();
   document.documentElement.lang = '';
   sdk.client.api.call = vi.fn();
   sdk.auth.logout = vi.fn();
@@ -397,31 +397,31 @@ describe('the panel', () => {
 describe("what the account chose, painted at boot (Account → Preferences; base.session.me)", () => {
   const dark = () => document.documentElement.classList.contains('ion-palette-dark');
 
-  it('paints the theme mode of the embedded session before the shell boots (no flash of the system one)', async () => {
-    renderShellHtml({ ...ME, preferences: { theme_mode: 'dark' } });
-    let modeAtShell: string | undefined;
+  it('paints the theme mode and the transparency of the embedded session before the shell boots (no flash)', async () => {
+    renderShellHtml({ ...ME, preferences: { theme_mode: 'dark', transparency: false } });
+    let lookAtShell: [string, boolean, boolean] | undefined;
     const { app, router } = fakeShell();
     vi.mocked(createShell).mockImplementation(async () => {
-      modeAtShell = themeMode.value;
+      lookAtShell = [themeMode.value, themeTransparency.value, document.documentElement.classList.contains('ep-opaque')];
       return { app, router } as never;
     });
     await main.boot({});
-    expect(modeAtShell).toBe('dark');
+    expect(lookAtShell).toEqual(['dark', false, true]);
     expect([themeMode.value, dark()]).toEqual(['dark', true]);
   });
 
   it('or the one /api/me answers, before the session goes live (the gate mounts after that)', async () => {
     renderShellHtml(null);
-    vi.mocked(sdk.client.api.call).mockResolvedValue({ ...ME, preferences: { theme_mode: 'dark' } });
+    vi.mocked(sdk.client.api.call).mockResolvedValue({ ...ME, preferences: { theme_mode: 'dark', transparency: false } });
     fakeShell();
     await main.boot({});
     const { status } = shellOptions();
-    let modeWhenLive: string | undefined;
+    let lookWhenLive: [string, boolean] | undefined;
     await vi.waitFor(() => {
       expect(status.value).toBe('live');
-      modeWhenLive = themeMode.value;
+      lookWhenLive = [themeMode.value, themeTransparency.value];
     });
-    expect(modeWhenLive).toBe('dark');
+    expect(lookWhenLive).toEqual(['dark', false]);
     expect(dark()).toBe(true);
   });
 
@@ -500,7 +500,7 @@ describe('the session read again once an Account page changes what it says (saas
     await main.boot({});
     const { session } = shellOptions();
     setThemeMode('dark');
-    vi.mocked(sdk.client.api.call).mockResolvedValue({ ...IN_ENGLISH, preferences: { theme_mode: 'light' }, menu: menuIn('es') });
+    vi.mocked(sdk.client.api.call).mockResolvedValue({ ...IN_ENGLISH, preferences: { theme_mode: 'light', transparency: true }, menu: menuIn('es') });
     sessionChanged();
     await vi.waitFor(() => expect(session.value?.menu).toEqual(menuIn('es')));
     expect(themeMode.value).toBe('dark');

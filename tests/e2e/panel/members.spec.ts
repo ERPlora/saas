@@ -15,6 +15,7 @@ import { type HubCall, type HubDouble, startHubDouble } from './hub';
 import { waitForMail, waitForPasswordResetLink } from './mail';
 import { watchPageErrors } from './page-events';
 import { PANEL_URL } from './project';
+import { rowAction } from './row-actions';
 import { shot, sidewaysScroll } from './screen';
 import { apiPost, signIn, signInThroughPage } from './session';
 
@@ -55,15 +56,21 @@ async function newcomerRow(page: Page, hubId: string): Promise<MemberRow> {
 
 /** The actions that only live in a row's «⋮» (DataTable `menuOnly`: delicate, and confirmed). */
 const MENU_ONLY = ['transfer'];
+/** The order the page hands the table the actions in: an invitation's «Resend» and «Cancel invitation» first. */
+const PAGE_ORDER = ['resend', 'cancel', 'change_role', 'remove', 'transfer'];
+/** The most buttons a DataTable row shows; the rest of what applies is in its «⋮». */
+const ROW_BUTTONS = 2;
 
 /**
- * A row offers exactly the actions the server computed for it, in its order: a button each, except
- * «Transfer ownership», which only «⋮» offers (opened here, checked and closed). No «⋮» without it.
+ * A row offers exactly the actions the server computed for it: its first two as buttons (a member «Change role» and
+ * «Remove», an invitation «Resend» and «Cancel invitation») and the rest only in «⋮» (opened here, checked and closed),
+ * «Transfer ownership» always there. No «⋮» when nothing is left for it.
  */
 async function expectActions(page: Page, row: MemberRow): Promise<void> {
   const hook = (action: string) => `members-row-${row.id}-${action}`;
-  const inline = row.actions.filter((action) => !MENU_ONLY.includes(action));
-  const menu = row.actions.filter((action) => MENU_ONLY.includes(action));
+  const offered = PAGE_ORDER.filter((action) => row.actions.includes(action));
+  const inline = offered.filter((action) => !MENU_ONLY.includes(action)).slice(0, ROW_BUTTONS);
+  const menu = offered.filter((action) => !inline.includes(action));
   const buttons = page.getByTestId('members-row').filter({ hasText: row.email }).locator(`[data-testid^="members-row-${row.id}-"]`);
   const expected = [...inline, ...(menu.length ? ['menu'] : [])].map(hook);
   await expect(buttons).toHaveCount(expected.length);
@@ -370,7 +377,8 @@ test.describe('members', () => {
       { name: '1440', width: 1440, height: 900 },
     ]) {
       await carlos.setViewportSize({ width: size.width, height: size.height });
-      await carlos.getByTestId(`members-row-${oldOwner.id}-remove`).click();
+      // A card shows «Change role» and keeps «Remove» in its «⋮»; the list shows both.
+      await rowAction(carlos, 'members', oldOwner.id, 'remove');
       await expect(dialog).toBeVisible();
       await carlos.getByTestId('remove-dialog-submit').click();
       await expect(refusal).toContainText('Laura Martín still pays for this business. Say who pays from now on first');

@@ -7,7 +7,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxLengthValidator
-from django.db import IntegrityError
+from django.db import IntegrityError, connection
 from django.utils import translation
 from live.slugs import hub_slug_validator
 
@@ -167,14 +167,26 @@ def test_the_hub_slug_of_a_code_uses_the_shared_validator():
 
 
 class TestUserPreferences:
-    """Account → Preferences: the theme mode and the mails; the language is the
+    """Account → Preferences: the theme mode, the transparency effects and the mails; the language is the
     account's own column (``User.language``), which the mails and the jump to a hub already read."""
 
-    def test_defaults_follow_the_system_and_send_business_notices(self, ana):
+    def test_defaults_follow_the_system_keep_the_transparency_effects_and_send_business_notices(self, ana):
         preferences = UserPreferences.objects.create(user=ana)
 
-        assert (preferences.theme_mode, preferences.hub_alerts) == ("system", True)
+        assert (preferences.theme_mode, preferences.transparency, preferences.hub_alerts) == ("system", True, True)
         assert preferences.pk.version == 7
+
+    def test_a_row_written_without_the_transparency_column_keeps_the_effects_on(self, ana):
+        """The code of the previous release, alive while a deploy migrates, inserts rows without the column: the
+        database default turns the effects on for them too."""
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO accounts_userpreferences (id, user_id, theme_mode, hub_alerts, updated_at)"
+                " VALUES (%s, %s, 'dark', true, now())",
+                [uuid.uuid7(), ana.pk],
+            )
+
+        assert UserPreferences.objects.get(user=ana).transparency is True
 
     def test_no_switch_for_mails_erplora_never_sends(self):
         """«ERPlora news» governed no mail. Its column stays until the contract step (accounts 0009

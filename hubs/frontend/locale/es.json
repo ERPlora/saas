@@ -163,20 +163,6 @@
         "message": "Prueba con otro nombre o dirección web.",
         "showAll": "Mostrar todo"
       },
-      "unpaid": {
-        "pastDueHeading": "{name} tiene una factura sin pagar",
-        "pastDueBody": "Si no se paga pronto, el negocio se suspende. No se borra nada.",
-        "suspendedHeading": "{name} está suspendido",
-        "suspendedBody": "Se suspendió por una factura sin pagar. No se borra nada: en cuanto se pague vuelve a funcionar.",
-        "groupHeading": "{count} negocios tienen facturas sin pagar",
-        "groupHeadingAmount": "{count} negocios tienen facturas sin pagar: {amount}",
-        "lineSuspendedSince": "{name} está suspendido desde el {date}.",
-        "lineSuspended": "{name} está suspendido.",
-        "linePastDueUntil": "{name} se suspende el {date} si no se paga.",
-        "linePastDue": "{name} tiene una factura sin pagar.",
-        "lineDeclined": "El banco rechazó la tarjeta.",
-        "nothingDeleted": "No se borra nada."
-      },
       "invitation": {
         "heading": "Te han invitado a {name}",
         "body": "{inviter} te da acceso como {role}. Acepta para verlo en tu lista.",
@@ -460,11 +446,7 @@
       "unexpected": "Algo ha fallado en ERPlora. Inténtalo de nuevo en unos minutos."
     },
     "unpaid": {
-      "pastDueSince": "Sin pagar desde el {since}. Sigue funcionando hasta el {until}; si no se paga antes, el negocio se suspende. No se borra nada.",
-      "suspendedSince": "Sin pagar desde el {since} y suspendido hasta que se pague. No se borra nada: en cuanto se pague vuelve a funcionar.",
       "pay": "Pagar la factura",
-      "cardDeclined": "El banco rechazó la tarjeta: cámbiala antes de pagar.",
-      "app": "Resuélvelo desde erplora.com, en el navegador.",
       "payer": "Pagas tú",
       "changeCard": "Cambiar tarjeta",
       "changeCardName": "Cambiar la tarjeta de {name}",

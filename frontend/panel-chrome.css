@@ -33,16 +33,6 @@
   display: none;
 }
 
-/* On a phone the title of a detail page («Panadería López», Back without ☰) would get a third of the row:
-   AppTopbar gives both button groups the same share as the title so it stays centred. There the groups take
-   only what their buttons need and the title the rest; a name too long for it still ends in «…», and the page's
-   header says it whole. */
-@media (max-width: 640px) {
-  ion-header.app-topbar ion-toolbar.ios > ion-buttons[slot] {
-    flex: 0 0 auto;
-  }
-}
-
 /* An outlined button on a table's grey bar («Download Excel», «Filters», «Close the other sessions»):
    the primary is 4.19:1 there, the accessible primary text (`--ep-primary-text`) reads ≥ 4.5:1 on it, light and
    dark. A button with its own colour keeps it. */
