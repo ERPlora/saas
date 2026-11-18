@@ -214,15 +214,17 @@ class TestTheCrossing:
     ):
         """Two charges at once: the other wrote the year's row first (the unique constraint), so this one
         neither writes nor mails."""
-        from billing import services
+        from billing.services import oss_notices
 
         carried(this_year=7100)
         winner = charge("in_winner", commit=django_capture_on_commit_callbacks)
         mailoutbox.clear()
-        real = services._oss_noticed
+        real = oss_notices._oss_noticed
         # The loser read «not crossed yet» before the winner committed; the 80 % check sees the crossing.
         monkeypatch.setattr(
-            services, "_oss_noticed", lambda year, kinds: False if list(kinds) == [OssNotice.Kind.CROSSED] else real(year, kinds)
+            oss_notices,
+            "_oss_noticed",
+            lambda year, kinds: False if list(kinds) == [OssNotice.Kind.CROSSED] else real(year, kinds),
         )
 
         caplog.clear()

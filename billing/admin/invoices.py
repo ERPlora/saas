@@ -2,10 +2,11 @@
 
 ERPlora's invoices are read-only: recorded from what Stripe charged and issued by the platform hub, and a
 record sent to the AEAT is never modified (a credit note corrects it). Their one action, «Send again to the
-platform hub», posts them through ``billing.services.post_platform_invoice`` (idempotent on the Hub) and says
-what the Hub answered. Its page links the PDF the platform hub issued, asked when the staff downloads it, as
-the account's «Download PDF». From the list, «Billing report» shows what was invoiced in a month, a quarter or a
-year for the accountant, and downloads it as an Excel; it is read for whoever may read invoices.
+platform hub», posts them through ``billing.services.platform_invoices.post_platform_invoice`` (idempotent on
+the Hub) and says what the Hub answered. Its page links the PDF the platform hub issued, asked when the staff
+downloads it, as the account's «Download PDF». From the list, «Billing report» shows what was invoiced in a
+month, a quarter or a year for the accountant, and downloads it as an Excel; it is read for whoever may read
+invoices.
 """
 
 import io
@@ -27,10 +28,11 @@ from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 from live.errors import OperationError
 
-from billing import queries, services
+from billing import queries
 from billing.admin.payment_records import ReadOnlyAdmin
 from billing.models import Invoice, InvoiceLine
 from billing.money import from_cents
+from billing.services import platform_invoices
 
 
 class InvoiceLineInline(admin.TabularInline):
@@ -215,18 +217,18 @@ class InvoiceAdmin(ReadOnlyAdmin):
         """Post the selected invoices to ERPlora's platform hub now and say what it answered: the lever for one
         «issuing» for too long or rejected and corrected in the Hub."""
         for invoice in queryset.order_by("series", "sequence"):
-            outcome = services.post_platform_invoice(invoice.pk)
+            outcome = platform_invoices.post_platform_invoice(invoice.pk)
             invoice.refresh_from_db()
             label = invoice.number or invoice.stripe_invoice_id
-            if outcome == services.POSTED:
+            if outcome == platform_invoices.POSTED:
                 messages.success(
                     request,
                     _("%(invoice)s: the platform hub says «%(status)s».")
                     % {"invoice": label, "status": invoice.get_fiscal_status_display()},
                 )
-            elif outcome == services.NOTHING_TO_POST:
+            elif outcome == platform_invoices.NOTHING_TO_POST:
                 messages.warning(request, _("%(invoice)s: not paid, so there is nothing to issue.") % {"invoice": label})
-            elif outcome == services.REFUSED:
+            elif outcome == platform_invoices.REFUSED:
                 messages.error(
                     request,
                     _("%(invoice)s: the platform hub refused it (%(code)s). It stays «issuing».")
@@ -245,13 +247,13 @@ class InvoiceAdmin(ReadOnlyAdmin):
         the ones the platform hub issued."""
         for invoice in queryset.order_by("series", "sequence"):
             label = invoice.number or invoice.stripe_invoice_id
-            if invoice.fiscal_status not in services.ISSUED_STATUSES:
+            if invoice.fiscal_status not in platform_invoices.ISSUED_STATUSES:
                 messages.warning(request, _("%(invoice)s: not issued yet, so it has no mail.") % {"invoice": label})
                 continue
-            outcome = services.send_invoice_mail(invoice.pk)
-            if outcome == services.MAILED:
+            outcome = platform_invoices.send_invoice_mail(invoice.pk)
+            if outcome == platform_invoices.MAILED:
                 messages.success(request, _("%(invoice)s: the mail was sent.") % {"invoice": label})
-            elif outcome == services.MAIL_SKIPPED:
+            elif outcome == platform_invoices.MAIL_SKIPPED:
                 messages.warning(request, _("%(invoice)s: it has nobody to send it to.") % {"invoice": label})
             else:
                 messages.error(request, _("%(invoice)s: the mail could not leave; it is sent again later.")

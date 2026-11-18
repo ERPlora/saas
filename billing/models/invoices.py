@@ -34,10 +34,10 @@ def _euros(cents: int):
 class InvoiceCounter(UUIDModel):
     """The year and the last number of a series: ``fiscal_counter``.
 
-    ``billing.services.issue_number`` locks the series' row in the transaction that records the invoice, reads
-    the issue date once it holds the lock (a later number never carries an earlier date) and moves it: a new
-    year starts again at 1, a ROLLBACK gives the number back. No gap, no duplicate; never a Postgres sequence,
-    which leaves holes.
+    ``billing.services.invoice_numbering.issue_number`` locks the series' row in the transaction that records the
+    invoice, reads the issue date once it holds the lock (a later number never carries an earlier date) and moves
+    it: a new year starts again at 1, a ROLLBACK gives the number back. No gap, no duplicate; never a Postgres
+    sequence, which leaves holes.
     """
 
     series = models.CharField(_("series"), max_length=16, unique=True)

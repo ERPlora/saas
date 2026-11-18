@@ -243,7 +243,7 @@ class TestARefundWithoutACreditNote:
 def test_the_payload_carries_the_rectification(
     invoiced, hub_double, django_capture_on_commit_callbacks
 ):
-    from billing import services
+    from billing.services import platform_invoices
 
     hub_double.answer(
         "POST", r"^/internal/platform/invoices$", 201, {"status": "issued", "qr": "x"}
@@ -251,7 +251,7 @@ def test_the_payload_carries_the_rectification(
     deliver(event("credit_note.created", credit_note(reason="duplicate")))
     credit = rectifying().get()
 
-    services.post_platform_invoice(credit.id)
+    platform_invoices.post_platform_invoice(credit.id)
 
     body = hub_double.calls_to("POST")[-1].body
     assert body["rectification"] == {"type": "R1", "reason": "duplicate"}

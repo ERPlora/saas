@@ -19,8 +19,8 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
-from billing import services
 from billing.models import Invoice
+from billing.services import platform_invoices
 from billing.tests.stripe_double import (
     credit_note,
     event,
@@ -278,7 +278,7 @@ class TestTheHubAwayIsNeverSimulated:
         recorded = Invoice.objects.get()
         hub_double.answer("POST", PLATFORM, 200, {"status": "accepted", "qr": QR})
 
-        assert services.post_platform_invoice(recorded.id) == services.POSTED
+        assert platform_invoices.post_platform_invoice(recorded.id) == platform_invoices.POSTED
 
         bodies = [call.body for call in posts(hub_double)]
         assert bodies[0]["id"] == bodies[1]["id"]
@@ -294,7 +294,7 @@ class TestTheHubAwayIsNeverSimulated:
             total_cents=3629,
         )
 
-        assert services.post_platform_invoice(unpaid.id) == services.NOTHING_TO_POST
+        assert platform_invoices.post_platform_invoice(unpaid.id) == platform_invoices.NOTHING_TO_POST
         assert posts(hub_double) == []
 
 
@@ -315,7 +315,7 @@ class TestTheAnswerIsAskedUntilTheAeatSpeaks:
             {"status": "accepted", "qr": QR},
         )
 
-        assert services.refresh_platform_invoice(recorded.id) == "accepted"
+        assert platform_invoices.refresh_platform_invoice(recorded.id) == "accepted"
 
         assert Invoice.objects.get().fiscal_status == "accepted"
 
@@ -334,7 +334,7 @@ class TestTheAnswerIsAskedUntilTheAeatSpeaks:
             },
         )
 
-        services.refresh_platform_invoice(recorded.id)
+        platform_invoices.refresh_platform_invoice(recorded.id)
 
         recorded.refresh_from_db()
         assert (
@@ -354,15 +354,15 @@ class TestTheAnswerIsAskedUntilTheAeatSpeaks:
             {"status": "lost"},
         )
 
-        services.refresh_platform_invoice(recorded.id)
+        platform_invoices.refresh_platform_invoice(recorded.id)
 
         assert Invoice.objects.get().fiscal_status == "issued"
 
 
 def test_the_backoff_doubles_and_has_a_ceiling():
-    assert services.platform_backoff(1) == timedelta(minutes=15)
-    assert services.platform_backoff(2) == timedelta(minutes=30)
-    assert services.platform_backoff(20) == timedelta(hours=6)
+    assert platform_invoices.platform_backoff(1) == timedelta(minutes=15)
+    assert platform_invoices.platform_backoff(2) == timedelta(minutes=30)
+    assert platform_invoices.platform_backoff(20) == timedelta(hours=6)
 
 
 def test_the_hub_client_signs_the_pdf_request(hub_double):
@@ -398,7 +398,7 @@ def test_the_payer_is_told_once_the_platform_hub_issues_it(running, hub_double, 
     recorded = Invoice.objects.get()
     hub_double.answer("POST", PLATFORM, 200, {"status": "accepted", "qr": QR})
     with django_capture_on_commit_callbacks(execute=True):
-        services.post_platform_invoice(recorded.id)
+        platform_invoices.post_platform_invoice(recorded.id)
 
     assert [message.subject for message in mail.outbox] == [f"Factura {recorded.number} de ERPlora"]
     assert Invoice.objects.get().emailed_at is not None

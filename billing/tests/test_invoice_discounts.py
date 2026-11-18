@@ -14,8 +14,9 @@ from decimal import Decimal
 
 import pytest
 
-from billing import services, vat
+from billing import vat
 from billing.models import Invoice, InvoiceCounter
+from billing.services import platform_invoices
 from billing.services.invoice_discounts import is_fully_discounted, line_amounts
 from billing.tests.stripe_captured import paid
 from billing.tests.stripe_double import event, invoice, subscription
@@ -203,5 +204,5 @@ def test_a_subject_sale_charged_without_tax_is_still_reported(caplog):
 def test_the_payload_of_every_line_carries_its_discount():
     deliver(paid("repeating_100/invoice_paid_7.json"))
 
-    [line] = services.platform_payload(Invoice.objects.get())["lines"]
+    [line] = platform_invoices.platform_payload(Invoice.objects.get())["lines"]
     assert line["discount_cents"] == 0
