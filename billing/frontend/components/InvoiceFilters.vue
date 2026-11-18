@@ -10,7 +10,7 @@ import { IonButton, IonContent, IonLabel, IonPopover, IonSegment, IonSegmentButt
 import { computed, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { InvoicePaymentStatus } from '../../../frontend/sdk-types';
+import type { InvoicePaymentStatus } from '../../../frontend/sdk-types/billing-invoices';
 
 export type InvoiceFilterKey = 'business' | 'status' | 'year';
 

@@ -14,7 +14,8 @@ import { IonButton, IonCard, IonCardContent, IonNote } from '@ionic/vue';
 import { computed, useId } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { BillingInterval, PlanOut, StoreSubscriptionOut } from '../../../frontend/sdk-types';
+import type { PlanOut } from '../../../frontend/sdk-types/hubs-catalog';
+import type { BillingInterval, StoreSubscriptionOut } from '../../../frontend/sdk-types/store';
 import { formatDate, formatEuros } from '../format';
 import { type Block, isFree } from '../store';
 

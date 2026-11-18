@@ -1,5 +1,5 @@
 // Rows of `hubs.member.list` for the members tests.
-import type { MemberRowOut } from '../../../frontend/sdk-types';
+import type { MemberRowOut } from '../../../frontend/sdk-types/hubs-members';
 
 export const member = (id: string, extra: Record<string, unknown> = {}): MemberRowOut =>
   ({

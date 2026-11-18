@@ -12,7 +12,7 @@ import { IonButton, IonCheckbox, IonInput, IonSelect, IonSelectOption } from '@i
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { ApiKeyCreatedOut, ApiKeyScopeOut } from '../../../frontend/sdk-types';
+import type { ApiKeyCreatedOut, ApiKeyScopeOut } from '../../../frontend/sdk-types/accounts-security';
 import { useErrorText } from '../error-text';
 import { reauthRequestOf, useReauthentication } from '../reauth';
 import ReauthModal from './ReauthModal.vue';

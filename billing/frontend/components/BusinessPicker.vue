@@ -4,7 +4,7 @@
 // outlined in `md` (`fill="outline"` paints nothing in `ios`), each option the business and its plan.
 import { IonCard, IonCardContent, IonSelect, IonSelectOption } from '@ionic/vue';
 
-import type { BusinessRowOut } from '../../../frontend/sdk-types';
+import type { BusinessRowOut } from '../../../frontend/sdk-types/hubs';
 
 defineProps<{
   /** The businesses the account buys for (it owns them). */

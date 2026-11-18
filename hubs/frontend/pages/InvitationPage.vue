@@ -17,7 +17,7 @@ import { useRouter } from 'vue-router';
 import { BUSINESSES, LAUNCHER } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
-import type { InvitationOut } from '../../../frontend/sdk-types';
+import type { InvitationOut } from '../../../frontend/sdk-types/hubs';
 import CardShell from '../components/CardShell.vue';
 import DeclineDialog from '../components/DeclineDialog.vue';
 import { useAcceptInvitation } from '../invitations';

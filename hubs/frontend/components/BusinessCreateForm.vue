@@ -13,7 +13,8 @@ import { IonButton, IonInput, IonSelect, IonSelectOption, IonSpinner } from '@io
 import { computed, onBeforeUnmount, onMounted, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { BusinessDetailOut, BusinessTypeOut } from '../../../frontend/sdk-types';
+import type { BusinessDetailOut } from '../../../frontend/sdk-types/hubs';
+import type { BusinessTypeOut } from '../../../frontend/sdk-types/hubs-catalog';
 import { useErrorText } from '../error-text';
 import { countryOptions, DEFAULT_COUNTRY, suggestedCountry } from '../regions';
 import HostName from './HostName.vue';

@@ -1,4 +1,4 @@
-// `sdk-types.d.ts` is written by hand from the schemas of the API: this guard reads both and fails when a
+// `frontend/sdk-types` is written by hand from the schemas of the API: this guard reads both and fails when a
 // field of a hubs schema the panel uses is missing from its TypeScript twin, the twin carries one the
 // server no longer sends, or a field's type differs (pydantic's annotation translated to what its JSON is
 // in TypeScript).
@@ -7,12 +7,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { readSdkTypes } from './__tests__/sdk-types-source';
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PYTHON = readFileSync(join(HERE, '..', 'hubs', 'schemas', '__init__.py'), 'utf8');
 // The types of a promo code live in their own file, next to the Store that uses them.
-const TYPES = ['sdk-types.d.ts', '../billing/frontend/promo-types.d.ts', '../billing/frontend/discount-types.d.ts']
-  .map((file) => readFileSync(join(HERE, file), 'utf8'))
-  .join('\n');
+const PROMO_TYPES = ['../billing/frontend/promo-types.d.ts', '../billing/frontend/discount-types.d.ts'];
+const TYPES = [readSdkTypes(), ...PROMO_TYPES.map((file) => readFileSync(join(HERE, file), 'utf8'))].join('\n');
 
 const PAGE = ['rows', 'total', 'limit', 'offset'];
 const PAGE_IN = ['limit', 'offset'];
@@ -34,10 +35,10 @@ function pythonFields(name: string, source = PYTHON, parents = ''): string[] {
   return [...inherited, ...own].sort();
 }
 
-/** The fields of an interface of sdk-types.d.ts, with what `extends Page<…>`/`PageIn` adds. */
+/** The fields of an interface of frontend/sdk-types, with what `extends Page<…>`/`PageIn` adds. */
 function typeFields(name: string): string[] {
   const match = new RegExp(`^export interface ${name}(?: extends ([\\w<>]+))? \\{\\n([\\s\\S]*?)^\\}`, 'm').exec(TYPES);
-  if (!match) throw new Error(`sdk-types.d.ts has no interface ${name}`);
+  if (!match) throw new Error(`frontend/sdk-types has no interface ${name}`);
   const [, base = '', body] = match;
   const own = [...body.matchAll(/^ {2}(\w+)\??: /gm)].map((m) => m[1]);
   const inherited = base.startsWith('Page<') ? PAGE : base === 'PageIn' ? PAGE_IN : [];
@@ -57,7 +58,7 @@ function pythonTypes(name: string, source = PYTHON, parents = ''): Record<string
 /** `name: type` of an interface, with `?` kept on the name's side (`name?`). */
 function typeTypes(name: string): Record<string, string> {
   const match = new RegExp(`^export interface ${name}(?: extends [\\w<>]+)? \\{\\n([\\s\\S]*?)^\\}`, 'm').exec(TYPES);
-  if (!match) throw new Error(`sdk-types.d.ts has no interface ${name}`);
+  if (!match) throw new Error(`frontend/sdk-types has no interface ${name}`);
   return Object.fromEntries([...match[1].matchAll(/^ {2}(\w+\??): (.+);$/gm)].map((m) => [m[1], m[2].trim()]));
 }
 
@@ -167,7 +168,7 @@ const SCHEMAS = [
   'CustomDomainStatusOut',
 ];
 
-describe('sdk-types.d.ts follows hubs/schemas.py', () => {
+describe('frontend/sdk-types follows hubs/schemas.py', () => {
   it.each(SCHEMAS)('%s has the same fields on both sides', (name) => {
     expect(typeFields(name)).toEqual(pythonFields(name));
   });
@@ -218,7 +219,7 @@ const STORE_SCHEMAS: Array<[file: string, names: string[]]> = [
 ];
 const STORE_CASES = STORE_SCHEMAS.flatMap(([file, names]) => names.map((name) => [file, name] as const));
 
-describe('sdk-types.d.ts follows billing/schemas/, apps/schemas.py and the payer of hubs (the Store)', () => {
+describe('frontend/sdk-types follows billing/schemas/, apps/schemas.py and the payer of hubs (the Store)', () => {
   const sources = new Map(STORE_SCHEMAS.map(([file]) => [file, readFileSync(join(HERE, '..', file), 'utf8')]));
 
   it.each(STORE_CASES)('%s %s has the same fields on both sides', (file, name) => {
@@ -289,7 +290,7 @@ const BILLING_SCHEMAS: Array<[file: string, names: string[]]> = [
 ];
 const BILLING_CASES = BILLING_SCHEMAS.flatMap(([file, names]) => names.map((name) => [file, name] as const));
 
-describe('sdk-types.d.ts follows billing/schemas/ (the Billing section)', () => {
+describe('frontend/sdk-types follows billing/schemas/ (the Billing section)', () => {
   const sources = new Map(BILLING_SCHEMAS.map(([file]) => [file, readFileSync(join(HERE, '..', file), 'utf8')]));
 
   it.each(BILLING_CASES)('%s %s has the same fields on both sides', (file, name) => {
@@ -341,7 +342,7 @@ describe('sdk-types.d.ts follows billing/schemas/ (the Billing section)', () => 
 /** The usage of a business: `hubs.usage.get`, `hubs.usage.series` and `usage` of the business's page. */
 const USAGE_SCHEMAS = ['StorageUsageOut', 'ActiveUsersOut', 'UsageOut', 'UsageGetIn', 'UsageSeriesIn', 'UsagePointOut', 'UsageSeriesOut'];
 
-describe('sdk-types.d.ts follows the usage schemas of hubs/schemas.py', () => {
+describe('frontend/sdk-types follows the usage schemas of hubs/schemas.py', () => {
   it.each(USAGE_SCHEMAS)('%s has the same fields on both sides', (name) => {
     expect(typeFields(name)).toEqual(pythonFields(name));
   });
@@ -366,7 +367,7 @@ describe('sdk-types.d.ts follows the usage schemas of hubs/schemas.py', () => {
 /** The signed authorisation of a business: `fiscal.representation.status`, its card on the business's page. */
 const FISCAL_SCHEMAS = ['RepresentationStatusIn', 'RepresentationDocumentsOut', 'RepresentationHistoryOut', 'RepresentationStatusOut'];
 
-describe('sdk-types.d.ts follows the schemas of fiscal/schemas.py', () => {
+describe('frontend/sdk-types follows the schemas of fiscal/schemas.py', () => {
   const source = readFileSync(join(HERE, '..', 'fiscal', 'schemas.py'), 'utf8');
 
   it.each(FISCAL_SCHEMAS)('%s has the same fields on both sides', (name) => {
@@ -394,7 +395,7 @@ describe('sdk-types.d.ts follows the schemas of fiscal/schemas.py', () => {
   });
 });
 
-describe("sdk-types.d.ts follows the panel's assistant schemas of base/schemas.py", () => {
+describe("frontend/sdk-types follows the panel's assistant schemas of base/schemas.py", () => {
   const source = readFileSync(join(HERE, '..', 'base', 'schemas.py'), 'utf8');
   const gateway = readFileSync(join(HERE, '..', 'assistant', 'schemas.py'), 'utf8');
   const ASSISTANT_SCHEMAS = ['AssistantUsageOut', 'AssistantReportIn', 'AssistantReportOut'];
@@ -435,7 +436,7 @@ function customDomainChoices(name: 'State' | 'Reason'): string {
   return [...block.matchAll(/^ {8}[A-Z_]+ = "([^"]*)"/gm)].map((m) => `'${m[1]}'`).join(' | ');
 }
 
-describe('sdk-types.d.ts follows the own domain of a business (HUBS-F17)', () => {
+describe('frontend/sdk-types follows the own domain of a business (HUBS-F17)', () => {
   it('names its states and the reasons it is stuck as hubs/models.py does', () => {
     expect(customDomainChoices('State')).toBe("'pending' | 'active' | 'lapsed' | 'removing'");
     expect(/^export type CustomDomainState = (.+);$/m.exec(TYPES)?.[1]).toBe(customDomainChoices('State'));

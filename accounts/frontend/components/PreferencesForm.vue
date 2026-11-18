@@ -33,7 +33,7 @@ import { useI18n } from 'vue-i18n';
 
 import LoadFailed from '../../../frontend/LoadFailed.vue';
 import { useLiveState } from '../../../frontend/live-state';
-import type { AccountLanguage, AccountThemeMode, PreferencesOut, PreferencesUpdateIn } from '../../../frontend/sdk-types';
+import type { AccountLanguage, AccountThemeMode, PreferencesOut, PreferencesUpdateIn } from '../../../frontend/sdk-types/accounts';
 import { sessionChanged } from '../../../frontend/session-changed';
 import { useErrorText } from '../error-text';
 

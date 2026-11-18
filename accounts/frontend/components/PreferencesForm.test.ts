@@ -28,7 +28,7 @@ import {
   preferences,
   subId,
 } from '../__tests__/mount-panel';
-import type { PreferencesOut } from '../../../frontend/sdk-types';
+import type { PreferencesOut } from '../../../frontend/sdk-types/accounts';
 import { onSessionChanged } from '../../../frontend/session-changed';
 import PreferencesForm from './PreferencesForm.vue';
 

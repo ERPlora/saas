@@ -333,7 +333,7 @@ def test_a_last_line_without_its_newline_counts():
         ("billing/tests/helpers.py", 1000),
         ("conftest.py", 1000),
         ("hubs/test_rules.py", 1000),
-        ("frontend/sdk-types.d.ts", 300),
+        ("frontend/sdk-types/hubs.d.ts", 300),
         ("billing/frontend/latest.ts", 300),
         ("scripts/gen-public-icons.mjs", 300),
         ("frontend/main.test.ts", 500),

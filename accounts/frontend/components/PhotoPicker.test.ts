@@ -12,7 +12,7 @@ vi.mock('../photo', async (importOriginal) => ({
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
 import { apiError, flush, mountPanel, profile } from '../__tests__/mount-panel';
-import type { ProfileOut } from '../../../frontend/sdk-types';
+import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import { PhotoError, preparePhoto } from '../photo';
 import PhotoPicker from './PhotoPicker.vue';
 

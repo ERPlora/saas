@@ -7,7 +7,7 @@ import { IonButton, IonSpinner } from '@ionic/vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { InvoiceRowOut } from '../../../frontend/sdk-types';
+import type { InvoiceRowOut } from '../../../frontend/sdk-types/billing-invoices';
 import { formatAmount } from '../invoices';
 import { usePayInvoice } from '../pay';
 

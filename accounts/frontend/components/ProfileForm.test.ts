@@ -13,7 +13,7 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/fr
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
 import { apiError, flush, ionProps, mountPanel, profile, typeInto } from '../__tests__/mount-panel';
-import type { ProfileOut } from '../../../frontend/sdk-types';
+import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import { onSessionChanged } from '../../../frontend/session-changed';
 import ProfileForm from './ProfileForm.vue';
 

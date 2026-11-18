@@ -19,14 +19,14 @@ import { useI18n } from 'vue-i18n';
 import { BILLING, BUSINESSES } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import { useErrorText } from '../../../hubs/frontend/error-text';
+import type { PlanOut } from '../../../frontend/sdk-types/hubs-catalog';
 import type {
   AppSummaryOut,
   BillingInterval,
-  PlanOut,
   SubscriptionModuleOut,
   StoreCatalogOut,
   SubscriptionOut,
-} from '../../../frontend/sdk-types';
+} from '../../../frontend/sdk-types/store';
 import { checkoutNotice } from '../discount-text';
 import { formatCents, formatDate } from '../format';
 import type { PromoCheckOut } from '../promo-types';

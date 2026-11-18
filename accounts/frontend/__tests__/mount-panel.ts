@@ -19,7 +19,8 @@ import {
   TEST_CONFIG,
 } from '../../../packages/ui/src/sdk/__tests__/live-harness';
 import { OPERATION_ROUTES } from '../../../frontend/generated/operation-routes';
-import type { ApiKeyListOut, PreferencesOut, ProfileOut, SessionRowOut } from '../../../frontend/sdk-types';
+import type { PreferencesOut, ProfileOut } from '../../../frontend/sdk-types/accounts';
+import type { ApiKeyListOut, SessionRowOut } from '../../../frontend/sdk-types/accounts-security';
 import saasEn from '../../../frontend/locale/en.json';
 import saasEs from '../../../frontend/locale/es.json';
 import accountsEn from '../locale/en.json';

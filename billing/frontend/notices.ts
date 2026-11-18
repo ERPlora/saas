@@ -7,7 +7,7 @@ import { useLiveClient } from '@erplora/ui/sdk';
 import { computed, onScopeDispose, type Ref, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { InvoiceRowOut } from '../../frontend/sdk-types';
+import type { InvoiceRowOut } from '../../frontend/sdk-types/billing-invoices';
 import { formatDate } from './format';
 import { formatAmount, graceEnd } from './invoices';
 import { usePayInvoice } from './pay';

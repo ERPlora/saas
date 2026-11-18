@@ -1,5 +1,5 @@
-// Types of a discount as the panel reads it (billing/schemas/discounts.py), written by hand as frontend/sdk-types.d.ts.
-import type { BillingInterval } from '../../frontend/sdk-types';
+// Types of a discount as the panel reads it (billing/schemas/discounts.py), written by hand as frontend/sdk-types/.
+import type { BillingInterval } from '../../frontend/sdk-types/store';
 
 /** `billing.DiscountDuration`: once, for some months or forever. */
 export type DiscountDuration = 'once' | 'repeating' | 'forever';

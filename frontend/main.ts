@@ -51,7 +51,7 @@ import { useUnpaidNotices } from '../billing/frontend/notices';
 import { OPERATION_ROUTES } from './generated/operation-routes';
 import en from './locale/en.json';
 import es from './locale/es.json';
-import type { SessionMeOut } from './sdk-types';
+import type { SessionMeOut } from './sdk-types/base';
 import { onSessionChanged } from './session-changed';
 import { installSkipLink } from './skip-link';
 

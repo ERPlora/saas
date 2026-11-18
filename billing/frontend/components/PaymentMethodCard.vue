@@ -8,7 +8,7 @@ import { IonButton, IonCard, IonCardContent, IonSpinner } from '@ionic/vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { PaymentMethodRowOut } from '../../../frontend/sdk-types';
+import type { PaymentMethodRowOut } from '../../../frontend/sdk-types/billing-subscriptions';
 import { formatDate } from '../format';
 import { cardBrand } from '../invoices';
 import { useCardPortal } from '../portal';

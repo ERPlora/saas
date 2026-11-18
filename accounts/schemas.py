@@ -1,4 +1,4 @@
-"""Schemas of the accounts operations. ``HubListOut`` is typed by hand in ``frontend/sdk-types.d.ts``.
+"""Schemas of the accounts operations. ``HubListOut`` is typed by hand in ``frontend/sdk-types/accounts.d.ts``.
 
 The inputs of the Account page refuse a field they do not know (``extra="forbid"``): a 422 on it, never a silent
 no-op (a client sending ``currency`` learns the panel has none).

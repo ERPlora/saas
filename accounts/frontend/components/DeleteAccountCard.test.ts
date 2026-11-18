@@ -15,7 +15,7 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
 }));
 
 import { errorFrame, flush, HELLO, ionProps, LIVE_TIMEOUT_MS, mountPanel, profile, subId } from '../__tests__/mount-panel';
-import type { BusinessRowOut } from '../../../frontend/sdk-types';
+import type { BusinessRowOut } from '../../../frontend/sdk-types/hubs';
 import DeleteAccountCard from './DeleteAccountCard.vue';
 
 function business(id: string, name: string, overrides: Partial<BusinessRowOut> = {}): BusinessRowOut {

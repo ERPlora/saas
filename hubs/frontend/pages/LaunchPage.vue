@@ -34,7 +34,7 @@ import { useRouter } from 'vue-router';
 
 import { useLiveState } from '../../../frontend/live-state';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
-import type { BusinessRowOut, InvitationOut } from '../../../frontend/sdk-types';
+import type { BusinessRowOut, InvitationOut } from '../../../frontend/sdk-types/hubs';
 import { preparationFailed, preparingLeadKey, reasonDate, reasonKey, statusPill } from '../business-status';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessPreparing from '../components/BusinessPreparing.vue';
