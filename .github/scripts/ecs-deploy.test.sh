@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests for ecs-deploy.sh with a fake aws CLI that records every call and answers from fixtures,
-# and a fake sleep that records the pauses (no test waits for real).
+# and a fake sleep that records the pauses (no test waits for real). The deploy runs in a git
+# repository of its own whose commit abc123 (a tag) carries the repository's deploy/app-env.json.
 #   bash .github/scripts/ecs-deploy.test.sh
 # Conditions are single-quoted on purpose: check() evaluates them later.
 # shellcheck disable=SC2016,SC2034
@@ -55,10 +56,11 @@ setup() {
     {"name": "saas-migrate", "image": "reg.example/erplora/saas:bootstrap"}]' > "$FIXTURES/erplora-prod-saas-migrate.json"
   task_definition erplora-prod-saas-cron '[
     {"name": "saas-cron", "image": "reg.example/erplora/saas:bootstrap"}]' > "$FIXTURES/erplora-prod-saas-cron.json"
-  # The hub's families live in the same cluster: this repo must never read them.
+  # The hub's families live in the same cluster: this repo only reads hub's and worker's, which file
+  # in the AEAT's production (VERIFACTU_PRODUCTION_ENABLED), before prod charges real money.
   for family in hub worker hub-migrate db-bootstrap; do
-    task_definition "erplora-prod-$family" "[{\"name\": \"$family\", \"image\": \"reg.example/erplora/hub:bootstrap\"}]" \
-      > "$FIXTURES/erplora-prod-$family.json"
+    task_definition "erplora-prod-$family" "[{\"name\": \"$family\", \"image\": \"reg.example/erplora/hub:bootstrap\",
+      \"environment\": [{\"name\": \"VERIFACTU_PRODUCTION_ENABLED\", \"value\": \"true\"}]}]" > "$FIXTURES/erplora-prod-$family.json"
   done
   # pre: its own cluster (erplora-pre), its own families on its own
   # ECR repository (erplora/saas-pre) and no saas-cron. The containers keep the short names.
@@ -67,6 +69,17 @@ setup() {
     {"name": "prod-image", "image": "reg.example/erplora/saas:bootstrap"}]' > "$FIXTURES/erplora-pre-saas.json"
   task_definition erplora-pre-saas-migrate '[
     {"name": "saas-migrate", "image": "reg.example/erplora/saas-pre:bootstrap"}]' > "$FIXTURES/erplora-pre-saas-migrate.json"
+
+  # The checkout: abc123 carries the repository's deploy/app-env.json, and the app_env in force of each
+  # environment holds the same settings, so a deploy changes none.
+  mkdir -p "$work/repo/deploy"
+  cp "$here/../../deploy/app-env.json" "$work/repo/deploy/app-env.json"
+  git -C "$work/repo" init -q
+  commit_settings
+  local in_force
+  for in_force in prod pre; do
+    jq -c ".$in_force" "$work/repo/deploy/app-env.json" > "$FIXTURES/app_env.$in_force.json"
+  done
 
   # Fails after 500 pauses: a migration loop that never times out fails its test instead of hanging.
   cat > "$work/bin/sleep" <<'FAKE'
@@ -120,6 +133,23 @@ case "$1 $2" in
       echo "arn:td/$family-longer:3"
     else
       echo None
+    fi
+    ;;
+  "ssm get-parameter")
+    # The app_env in force of the parameter's environment; FAKE_APP_ENV_FAILURE: the call fails.
+    environment="$(value --name)"
+    environment="${environment#/erplora/}"
+    if [ -n "${FAKE_APP_ENV_FAILURE:-}" ] || [ ! -f "$FIXTURES/app_env.${environment%%/*}.json" ]; then
+      echo "An error occurred (${FAKE_APP_ENV_FAILURE:-ParameterNotFound}) when calling the GetParameter operation" >&2
+      exit 254
+    fi
+    cat "$FIXTURES/app_env.${environment%%/*}.json"
+    ;;
+  "ssm put-parameter")
+    # FAKE_PUT_FAILURE: writing a parameter whose name ends so fails.
+    if [ -n "${FAKE_PUT_FAILURE:-}" ] && [[ "$(value --name)" == *"$FAKE_PUT_FAILURE" ]]; then
+      echo "An error occurred (AccessDeniedException) when calling the PutParameter operation" >&2
+      exit 254
     fi
     ;;
   "ecs register-task-definition")
@@ -177,18 +207,35 @@ FAKE
   chmod +x "$work/bin/aws" "$work/bin/sleep"
 }
 
-# run_deploy [VAR=value...]: deploys abc123 to prod with the fakes; the arguments override the
-# environment (ENVIRONMENT=pre deploys to pre).
+# commit_settings: commits the checkout's deploy/app-env.json and points abc123 at that commit.
+commit_settings() {
+  git -C "$work/repo" add -A
+  git -C "$work/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false \
+    commit -q --allow-empty -m settings
+  git -C "$work/repo" tag -f abc123 > /dev/null
+}
+
+# settings <jq filter>: deploy/app-env.json of abc123, changed by the filter.
+settings() {
+  jq "$1" "$work/repo/deploy/app-env.json" > "$work/settings.json"
+  mv "$work/settings.json" "$work/repo/deploy/app-env.json"
+  commit_settings
+}
+
+# run_deploy [VAR=value...]: deploys abc123 to prod with the fakes, in the checkout; the arguments
+# override the environment (ENVIRONMENT=pre deploys to pre).
 run_deploy() {
-  env -u CLUSTER -u PROJECT -u POLL_SECONDS -u MIGRATE_TIMEOUT_SECONDS -u ROLLOUT_TIMEOUT_SECONDS \
-    PATH="$work/bin:$PATH" AWS_REGION=eu-south-2 REGISTRY=reg.example IMAGE_TAG=abc123 ENVIRONMENT=prod "$@" \
-    bash "$here/ecs-deploy.sh" > "$work/out.log" 2>&1
+  (cd "$work/repo" &&
+    env -u CLUSTER -u PROJECT -u POLL_SECONDS -u MIGRATE_TIMEOUT_SECONDS -u ROLLOUT_TIMEOUT_SECONDS -u CONFIRM_PROTECTED \
+      PATH="$work/bin:$PATH" AWS_REGION=eu-south-2 REGISTRY=reg.example IMAGE_TAG=abc123 ENVIRONMENT=prod "$@" \
+      bash "$here/ecs-deploy.sh") > "$work/out.log" 2>&1
 }
 
 # run_deploy_without <VAR>: the same with <VAR> unset.
 run_deploy_without() {
-  env PATH="$work/bin:$PATH" AWS_REGION=eu-south-2 REGISTRY=reg.example IMAGE_TAG=abc123 ENVIRONMENT=prod \
-    env -u "$1" bash "$here/ecs-deploy.sh" > "$work/out.log" 2>&1
+  (cd "$work/repo" &&
+    env PATH="$work/bin:$PATH" AWS_REGION=eu-south-2 REGISTRY=reg.example IMAGE_TAG=abc123 ENVIRONMENT=prod \
+      env -u "$1" bash "$here/ecs-deploy.sh") > "$work/out.log" 2>&1
 }
 
 check() {
@@ -221,8 +268,9 @@ run_deploy && status=0 || status=$?
 check "deploy succeeds" '[ "$status" -eq 0 ]'
 check "registers a new revision of saas, saas-cron and saas-migrate, and nothing else" \
   '[ "$(jq -r .family "$REGISTERED_LOG" | sort | paste -sd " " -)" = "erplora-prod-saas erplora-prod-saas-cron erplora-prod-saas-migrate" ]'
-check "no hub family (hub, worker, hub-migrate, db-bootstrap) is read nor registered" \
-  '! grep -Eq -- "--task-definition erplora-prod-(hub|worker|db-bootstrap)" "$CALLS_LOG"'
+check "of the hub's families only hub and worker are read, and none is registered" \
+  '[ "$(grep -Eo -- "--task-definition erplora-prod-(hub|worker|hub-migrate|db-bootstrap)( |$)" "$CALLS_LOG" | sort | paste -sd " " -)" = "--task-definition erplora-prod-hub  --task-definition erplora-prod-worker " ] &&
+   ! jq -r .family "$REGISTERED_LOG" | grep -Eq "erplora-prod-(hub|worker)"'
 check "every container of the saas image gets the new image: saas, saas-migrate and saas-cron" \
   'registered erplora-prod-saas "[.containerDefinitions[] | select(.name == \"saas\") | .image] == [\"reg.example/erplora/saas:abc123\"]" &&
    registered erplora-prod-saas-migrate "[.containerDefinitions[].image] == [\"reg.example/erplora/saas:abc123\"]" &&
@@ -261,8 +309,8 @@ check "the tag is recorded only after the services are checked" \
 check "every aws call names the region" '[ -s "$CALLS_LOG" ] && ! grep -qv -- "--region eu-south-2" "$CALLS_LOG"'
 check "prod: every cluster-scoped ecs call names prod's cluster erplora-prod" 'cluster_is erplora-prod'
 check "the worker service is neither queried nor updated" '! grep -Eq -- "--services? worker( |$)" "$CALLS_LOG"'
-check "nothing of the hub is touched" \
-  '! grep -Eq -- "erplora-prod-(hub|worker|db-bootstrap)|/erplora/prod/hub/|--services? hub( |$)" "$CALLS_LOG"'
+check "nothing of the hub is touched: it is only read" \
+  '! grep -v "^ecs describe-task-definition " "$CALLS_LOG" | grep -Eq -- "erplora-prod-(hub|worker|db-bootstrap)|/erplora/prod/hub/|--services? hub( |$)"'
 
 # --- the saas-worker service ---------------------------------------------------
 # ERPlora/aws creates it once the image with run_worker is out: until its family exists the deploy
@@ -391,38 +439,226 @@ run_deploy && status=0 || status=$?
 check "a family on the hub image fails before the migration" \
   '[ "$status" -ne 0 ] && ! grep -Eq "run-task|update-service|put-parameter" "$CALLS_LOG" && grep -q "::error::erplora-prod-saas-migrate " "$work/out.log"'
 
-# --- a revision still without the policies of the saas image --------------------
-# Outside DEBUG the saas refuses to start without a cache prefix or a Stripe mode (config/settings/core.py):
-# a revision Terraform has not given them yet would register saas-cron's, the one the
-# Scheduler runs, and only then fail at the migration. Without either boolean it starts, and quietly: no
-# AEAT_PRODUCTION_ENABLED in prod refuses every hub's records for the AEAT's production (409 environment_not_allowed),
-# no PUBLIC_INDEXING_ENABLED takes erplora.com out of the search engines. Each one is refused before anything is
-# registered.
-for policy in CACHE_KEY_PREFIX STRIPE_EXPECTED_MODE PUBLIC_INDEXING_ENABLED AEAT_PRODUCTION_ENABLED; do
-  setup
-  other="$(jq -cn --arg policy "$policy" --argjson policies "$POLICIES" '$policies - [$policy] | map({name: ., value: "x"})')"
-  task_definition erplora-prod-saas-cron \
-    "[{\"name\": \"saas-cron\", \"image\": \"reg.example/erplora/saas:bootstrap\", \"environment\": $other}]" \
-    > "$FIXTURES/erplora-prod-saas-cron.json"
-  run_deploy && status=0 || status=$?
-  check "a revision without $policy fails before anything is registered" \
-    '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && ! grep -Eq "register-task-definition|run-task|update-service|put-parameter" "$CALLS_LOG"'
-  check "its error names the family and $policy" 'grep -q "::error::erplora-prod-saas-cron .*$policy" "$work/out.log"'
-done
-# One given through `secrets` (Secrets Manager) is given too.
+# --- a revision still without the cache prefix of the saas image -----------------
+# Outside DEBUG the saas refuses to start without a cache prefix or a Stripe mode (config/settings/core.py),
+# and without either boolean it starts, quietly: no AEAT_PRODUCTION_ENABLED in prod refuses every hub's records for
+# the AEAT's production (409 environment_not_allowed), no PUBLIC_INDEXING_ENABLED takes erplora.com out of the
+# search engines. The four policies come from deploy/app-env.json; CACHE_KEY_PREFIX from ERPlora/aws: a revision
+# Terraform has not given it would register saas-cron's, the one the Scheduler runs, and only then fail at the
+# migration, so it is refused before anything is registered.
 setup
 task_definition erplora-prod-saas-cron '[{"name": "saas-cron", "image": "reg.example/erplora/saas:bootstrap",
-  "environment": [{"name": "CACHE_KEY_PREFIX", "value": "saas"}, {"name": "PUBLIC_INDEXING_ENABLED", "value": "true"},
-    {"name": "AEAT_PRODUCTION_ENABLED", "value": "true"}],
-  "secrets": [{"name": "STRIPE_EXPECTED_MODE", "valueFrom": "arn:secret:x"}]}]' > "$FIXTURES/erplora-prod-saas-cron.json"
+  "environment": [{"name": "STRIPE_EXPECTED_MODE", "value": "live"}]}]' > "$FIXTURES/erplora-prod-saas-cron.json"
 run_deploy && status=0 || status=$?
-check "a policy given as a secret counts as given" '[ "$status" -eq 0 ]'
+check "a revision without CACHE_KEY_PREFIX fails before anything is registered" \
+  '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && ! grep -Eq "register-task-definition|run-task|update-service|put-parameter" "$CALLS_LOG"'
+check "its error names the family and CACHE_KEY_PREFIX alone: the file gives the policies" \
+  'grep -q "::error::erplora-prod-saas-cron has no CACHE_KEY_PREFIX in the environment or secrets of its saas container (apply ERPlora/aws first); nothing was registered" "$work/out.log"'
+# Given through `secrets` (Secrets Manager) it is given too.
+setup
+task_definition erplora-prod-saas-cron '[{"name": "saas-cron", "image": "reg.example/erplora/saas:bootstrap",
+  "environment": [], "secrets": [{"name": "CACHE_KEY_PREFIX", "valueFrom": "arn:secret:x"}]}]' > "$FIXTURES/erplora-prod-saas-cron.json"
+run_deploy && status=0 || status=$?
+check "a cache prefix given as a secret counts as given, and the policies come from the file" \
+  '[ "$status" -eq 0 ] && registered erplora-prod-saas-cron "[.containerDefinitions[0].environment[].name] == [\"AEAT_PRODUCTION_ENABLED\", \"PLATFORM_INVOICING_ENABLED\", \"PUBLIC_INDEXING_ENABLED\", \"STRIPE_EXPECTED_MODE\"]"'
 setup
 task_definition erplora-pre-saas '[{"name": "saas", "image": "reg.example/erplora/saas-pre:bootstrap", "environment": []}]' \
   > "$FIXTURES/erplora-pre-saas.json"
 run_deploy ENVIRONMENT=pre && status=0 || status=$?
-check "pre: a revision without the policies fails before anything is registered, naming the four" \
-  '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && grep -q "::error::erplora-pre-saas has no AEAT_PRODUCTION_ENABLED CACHE_KEY_PREFIX PUBLIC_INDEXING_ENABLED STRIPE_EXPECTED_MODE " "$work/out.log"'
+check "pre: a revision without CACHE_KEY_PREFIX fails before anything is registered, naming it" \
+  '[ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && grep -q "::error::erplora-pre-saas has no CACHE_KEY_PREFIX " "$work/out.log"'
+
+# --- the settings of deploy/app-env.json -------------------------------------------
+# env_of <family> <container>: the environment registered for that container, as a sorted JSON object.
+env_of() {
+  jq -cS --arg family "$1" --arg name "$2" \
+    'select(.family == $family) | .containerDefinitions[] | select(.name == $name) | .environment | from_entries' \
+    "$REGISTERED_LOG"
+}
+# file_env <environment> <family>: the file's settings of that family, with the cache prefix the fixtures give.
+file_env() { jq -cS --arg e "$1" --arg f "$2" '.[$e][$f] + {CACHE_KEY_PREFIX: "x"}' "$work/repo/deploy/app-env.json"; }
+# recorded <environment>: the app_env a deploy wrote, or nothing.
+recorded() {
+  grep -F "ssm put-parameter --name /erplora/$1/saas/app_env --value " "$CALLS_LOG" | sed 's/.* --value \([^ ]*\) .*/\1/'
+}
+nothing_registered() {
+  [ "$status" -ne 0 ] && [ ! -s "$REGISTERED_LOG" ] && ! grep -Eq "register-task-definition|run-task|update-service|put-parameter" "$CALLS_LOG"
+}
+
+setup
+run_deploy && status=0 || status=$?
+check "settings: the app_env in force is read before anything is registered" \
+  'grep -q "^ssm get-parameter --name /erplora/prod/saas/app_env --query Parameter.Value --output text --region eu-south-2$" "$CALLS_LOG" &&
+   [ "$(line_of "ssm get-parameter")" -lt "$(line_of "register-task-definition")" ]'
+check "settings: each family's saas container gets the file's settings of its family and keeps ERPlora/aws's" \
+  '[ "$status" -eq 0 ] && [ "$(env_of erplora-prod-saas saas)" = "$(file_env prod saas)" ] &&
+   [ "$(env_of erplora-prod-saas-cron saas-cron)" = "$(file_env prod saas-cron)" ] &&
+   [ "$(env_of erplora-prod-saas-migrate saas-migrate)" = "$(file_env prod saas-migrate)" ]'
+check "settings: Analytics and the Store reach the saas web only" \
+  '[ "$(env_of erplora-prod-saas saas | jq -r .GA_MEASUREMENT_ID)" = G-CHB9NM1C74 ] &&
+   [ "$(env_of erplora-prod-saas-cron saas-cron | jq "has(\"GA_MEASUREMENT_ID\") or has(\"MICROSOFT_STORE_APP_ID\")")" = false ]'
+check "settings: containers of another image get none" \
+  'registered erplora-prod-saas "[.containerDefinitions[] | select(.name != \"saas\") | has(\"environment\")] == [false, false, false]"'
+check "settings: the prod settings are recorded in app_env once the services are checked, before the tag" \
+  '[ "$(recorded prod)" = "$(jq -cS .prod "$work/repo/deploy/app-env.json")" ] &&
+   [ "$(line_of "/erplora/prod/saas/app_env --value")" -gt "$(last_line_of "describe-services .*deployments")" ] &&
+   [ "$(line_of "/erplora/prod/saas/app_env --value")" -lt "$(line_of "/erplora/prod/saas/image_tag")" ] &&
+   grep -q "recorded the prod settings of deploy/app-env.json in /erplora/prod/saas/app_env" "$work/out.log"'
+
+setup
+settings '.prod |= map_values(.PUBLIC_INDEXING_ENABLED = "false")'
+git -C "$work/repo" tag -f abc123 HEAD~1 > /dev/null
+run_deploy && status=0 || status=$?
+check "settings: the file is the deployed commit's, not the checkout's head" \
+  '[ "$status" -eq 0 ] && [ "$(env_of erplora-prod-saas-cron saas-cron | jq -r .PUBLIC_INDEXING_ENABLED)" = true ]'
+
+setup
+settings '.prod |= map_values(.PUBLIC_INDEXING_ENABLED = "false")'
+run_deploy && status=0 || status=$?
+check "settings: a setting that is not protected changes without a confirmation" \
+  '[ "$status" -eq 0 ] && [ "$(env_of erplora-prod-saas saas | jq -r .PUBLIC_INDEXING_ENABLED)" = false ] &&
+   [ "$(recorded prod | jq -r ".saas.PUBLIC_INDEXING_ENABLED")" = false ]'
+
+# A commit from before the file (an older release, deployed again) keeps the settings in force.
+setup
+git -C "$work/repo" rm -q deploy/app-env.json
+commit_settings
+jq -c 'map_values(.PUBLIC_INDEXING_ENABLED = "false")' "$FIXTURES/app_env.prod.json" > "$work/app_env.json"
+mv "$work/app_env.json" "$FIXTURES/app_env.prod.json"
+run_deploy && status=0 || status=$?
+check "settings: a commit from before deploy/app-env.json deploys with the settings in force, and says so" \
+  '[ "$status" -eq 0 ] && [ "$(env_of erplora-prod-saas saas | jq -r .PUBLIC_INDEXING_ENABLED)" = false ] &&
+   [ "$(recorded prod)" = "$(jq -cS . "$FIXTURES/app_env.prod.json")" ] &&
+   grep -q "::warning::abc123 has no deploy/app-env.json: the deploy keeps the settings in force" "$work/out.log"'
+setup
+git -C "$work/repo" rm -q deploy/app-env.json
+commit_settings
+jq -c 'del(.["saas-cron"])' "$FIXTURES/app_env.prod.json" > "$work/app_env.json"
+mv "$work/app_env.json" "$FIXTURES/app_env.prod.json"
+run_deploy && status=0 || status=$?
+check "settings: a commit from before the file deploys nothing when the settings in force break a rule" \
+  'nothing_registered && grep -q "::error::abc123 has no deploy/app-env.json and the settings in force (/erplora/prod/saas/app_env) do not pass its checks" "$work/out.log"'
+setup
+run_deploy IMAGE_TAG=fedcba9 && status=0 || status=$?
+check "settings: a commit the checkout does not have deploys nothing" \
+  'nothing_registered && grep -q "::error::fedcba9 is no commit of this checkout; nothing was registered" "$work/out.log"'
+setup
+printf '{"prod": ' > "$work/repo/deploy/app-env.json"
+commit_settings
+run_deploy && status=0 || status=$?
+check "settings: a file that is no JSON deploys nothing" \
+  'nothing_registered && grep -q "::error::deploy/app-env.json of abc123 is no JSON" "$work/out.log"'
+
+setup
+settings '.pre.saas.GA_MEASUREMENT_ID = "G-CHB9NM1C74"'
+run_deploy && status=0 || status=$?
+check "settings: a prod deploy checks pre's settings too, and Analytics in pre deploys nothing" \
+  'nothing_registered && grep -q "::error::deploy/app-env.json: pre.saas.GA_MEASUREMENT_ID only goes in prod.saas; nothing was registered" "$work/out.log"'
+setup
+settings '.pre.saas.STRIPE_EXPECTED_MODE = "live"'
+run_deploy ENVIRONMENT=pre && status=0 || status=$?
+check "settings: pre on Stripe's live mode deploys nothing" \
+  'nothing_registered && grep -q "::error::deploy/app-env.json: pre.saas.STRIPE_EXPECTED_MODE must be test in pre" "$work/out.log"'
+setup
+settings '.prod.saas.STRIPE_SECRET_KEY = "never-print-this-value-0451"'
+run_deploy && status=0 || status=$?
+check "settings: a secret deploys nothing, and its value is never printed" \
+  'nothing_registered && grep -q "::error::deploy/app-env.json: prod.saas.STRIPE_SECRET_KEY looks like a secret" "$work/out.log" &&
+   ! grep -q never-print-this-value-0451 "$work/out.log"'
+setup
+settings '.prod["saas-cron"].PUBLIC_INDEXING_ENABLED = true'
+run_deploy && status=0 || status=$?
+check "settings: a value that is no text deploys nothing" \
+  'nothing_registered && grep -q "::error::deploy/app-env.json: prod.saas-cron.PUBLIC_INDEXING_ENABLED must be text" "$work/out.log"'
+setup
+settings '.prod.hub = .prod["saas-cron"]'
+run_deploy && status=0 || status=$?
+check "settings: a family prod does not deploy deploys nothing" \
+  'nothing_registered && grep -q "::error::deploy/app-env.json: prod.hub is no family prod deploys" "$work/out.log"'
+
+setup
+run_deploy FAKE_APP_ENV_FAILURE=AccessDeniedException && status=0 || status=$?
+check "settings: an app_env that cannot be read deploys nothing" \
+  'nothing_registered && grep -q "::error::aws ssm get-parameter failed: .*AccessDeniedException.*; nothing was registered" "$work/out.log"'
+setup
+echo '[]' > "$FIXTURES/app_env.prod.json"
+run_deploy && status=0 || status=$?
+check "settings: an app_env that is no object of families deploys nothing" \
+  'nothing_registered && grep -q "::error::/erplora/prod/saas/app_env is no JSON object of families" "$work/out.log"'
+
+# One owner per variable: a setting the revision has and the app_env in force does not is Terraform's.
+setup
+task_definition erplora-prod-saas '[{"name": "saas", "image": "reg.example/erplora/saas:bootstrap", "environment": [
+  {"name": "CACHE_KEY_PREFIX", "value": "saas"}, {"name": "MICROSOFT_STORE_APP_ID", "value": "9P5C0XP1GS69"}]}]' \
+  > "$FIXTURES/erplora-prod-saas.json"
+jq -c 'del(.saas.MICROSOFT_STORE_APP_ID)' "$FIXTURES/app_env.prod.json" > "$work/app_env.json"
+mv "$work/app_env.json" "$FIXTURES/app_env.prod.json"
+run_deploy && status=0 || status=$?
+check "one owner: a setting ERPlora/aws sets in a family deploys nothing" \
+  'nothing_registered && grep -q "::error::erplora-prod-saas: ERPlora/aws sets MICROSOFT_STORE_APP_ID in this family" "$work/out.log"'
+setup
+task_definition erplora-prod-saas '[{"name": "saas", "image": "reg.example/erplora/saas:bootstrap", "environment": [
+  {"name": "CACHE_KEY_PREFIX", "value": "saas"}, {"name": "MICROSOFT_STORE_APP_ID", "value": "9P5C0XP1GS69"}]}]' \
+  > "$FIXTURES/erplora-prod-saas.json"
+settings 'del(.prod.saas.MICROSOFT_STORE_APP_ID)'
+run_deploy && status=0 || status=$?
+check "settings: one the file drops leaves the revision and the app_env" \
+  '[ "$status" -eq 0 ] && [ "$(env_of erplora-prod-saas saas | jq "has(\"MICROSOFT_STORE_APP_ID\")")" = false ] &&
+   [ "$(recorded prod | jq ".saas | has(\"MICROSOFT_STORE_APP_ID\")")" = false ]'
+
+setup
+run_deploy FAKE_PUT_FAILURE=/app_env && status=0 || status=$?
+check "settings: an app_env that cannot be written fails the deploy, says so and records no tag" \
+  '[ "$status" -ne 0 ] && ! grep -q "image_tag" "$CALLS_LOG" &&
+   grep -q "::error::the services run the new revisions, but /erplora/prod/saas/app_env was not written" "$work/out.log"'
+
+setup
+run_deploy ENVIRONMENT=pre && status=0 || status=$?
+check "pre: the settings in force are pre's and the pre settings are recorded there" \
+  '[ "$status" -eq 0 ] && grep -q "^ssm get-parameter --name /erplora/pre/saas/app_env " "$CALLS_LOG" &&
+   [ "$(recorded pre)" = "$(jq -cS .pre "$work/repo/deploy/app-env.json")" ] &&
+   [ "$(env_of erplora-pre-saas saas)" = "$(file_env pre saas)" ]'
+
+# --- the protected settings of prod --------------------------------------------------
+# Changing the real charge, the AEAT's production or Stripe's mode in prod needs CONFIRM_PROTECTED (the
+# deploy workflow's confirm_protected), the exact VAR=value of the file; without it nothing is registered.
+for change in PLATFORM_INVOICING_ENABLED=false AEAT_PRODUCTION_ENABLED=false STRIPE_EXPECTED_MODE=test; do
+  variable="${change%=*}" new="${change#*=}"
+  setup
+  settings ".prod |= map_values(.$variable = \"$new\")"
+  run_deploy && status=0 || status=$?
+  check "protected: $change in prod without CONFIRM_PROTECTED deploys nothing" \
+    'nothing_registered && grep -q "::error::prod changes $variable to $new: confirm it with CONFIRM_PROTECTED $change " "$work/out.log"'
+  : > "$CALLS_LOG"
+  run_deploy CONFIRM_PROTECTED="$change" && status=0 || status=$?
+  check "protected: $change in prod with CONFIRM_PROTECTED=$change deploys it and records it" \
+    '[ "$status" -eq 0 ] && grep -q "prod changes $variable to $new, as confirmed" "$work/out.log" &&
+     [ "$(env_of erplora-prod-saas-cron saas-cron | jq -r ".$variable")" = "$new" ] &&
+     [ "$(recorded prod | jq -r ".\"saas-cron\".$variable")" = "$new" ]'
+done
+setup
+settings '.prod |= map_values(.PLATFORM_INVOICING_ENABLED = "false")'
+run_deploy CONFIRM_PROTECTED=PLATFORM_INVOICING_ENABLED=true && status=0 || status=$?
+check "protected: a confirmation of another value than the file's deploys nothing" \
+  'nothing_registered && grep -q "::error::CONFIRM_PROTECTED does not match deploy/app-env.json, which sets PLATFORM_INVOICING_ENABLED=false" "$work/out.log"'
+setup
+settings '.prod |= map_values(.PLATFORM_INVOICING_ENABLED = "false")'
+run_deploy CONFIRM_PROTECTED=PLATFORM_INVOICING_ENABLED=false && status=0 || status=$?
+check "protected: with the real charge off, the Hub is not read" '[ "$status" -eq 0 ] && ! grep -q "erplora-prod-hub" "$CALLS_LOG"'
+
+# --- real charge only with the Hub filing in the AEAT's production ---------------------
+for hub_family in hub worker; do
+  setup
+  task_definition "erplora-prod-$hub_family" "[{\"name\": \"$hub_family\", \"image\": \"reg.example/erplora/hub:bootstrap\",
+    \"environment\": [{\"name\": \"VERIFACTU_PRODUCTION_ENABLED\", \"value\": \"false\"}]}]" > "$FIXTURES/erplora-prod-$hub_family.json"
+  run_deploy && status=0 || status=$?
+  check "real charge: prod deploys nothing while erplora-prod-$hub_family does not file in the AEAT's production" \
+    'nothing_registered && grep -q "::error::prod charges real money .*the latest revision of erplora-prod-$hub_family has no VERIFACTU_PRODUCTION_ENABLED=true in its $hub_family container" "$work/out.log"'
+done
+setup
+run_deploy FAKE_DESCRIBE_DENIED=erplora-prod-hub && status=0 || status=$?
+check "real charge: a Hub revision that cannot be read deploys nothing" \
+  'nothing_registered && grep -q "::error::aws ecs describe-task-definition failed: .*AccessDeniedException.*; nothing was registered" "$work/out.log"'
 
 # --- the rollout after services-stable ----------------------------------------
 # services-stable can return while the PRIMARY deployment is still IN_PROGRESS: ECS marks it

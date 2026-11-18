@@ -2,14 +2,16 @@
 
 from django.conf import settings
 from django.db.models import Q
+from django.utils import timezone
 from django.utils.translation import gettext as _
 from django_ratelimit.core import is_ratelimited
 from live.context import OperationContext
 from live.errors import OperationError, Unauthorized
 from live.operations import AI, operation
 
-from billing.models import PromoCode, PromoRedemption, normalise_promo_code
-from billing.schemas import PromoCheckIn, PromoCheckOut
+from billing import discount_terms
+from billing.models import Discount, PromoCode, PromoRedemption, normalise_promo_code
+from billing.schemas.promo_codes import PromoCheckIn, PromoCheckOut
 
 
 # --- Promo codes --------------------------------------------------------------------------------------
@@ -21,20 +23,27 @@ PROMO_CHECK_GROUP = "billing.promo-check"
 def redeemable_promo(
     code: str | None, *, hub=None, customer: str = ""
 ) -> PromoCode | None:
-    """The promo code that grants a trial now, or ``None``: unknown, inactive, expired and exhausted are all
+    """The promo code that grants something now, or ``None``: unknown, inactive (or its discount), expired and exhausted are all
     ``None``, because none of them may block a sale (a bad code is simply not applied). With ``hub`` (and its
     payer's Stripe ``customer``), also ``None`` once that business or that payer used it."""
     normalised = normalise_promo_code(code)
     if not normalised:
         return None
-    promo = PromoCode.objects.filter(code=normalised).first()
-    if promo is None or not promo.is_redeemable:
+    promo = PromoCode.objects.select_related("discount").filter(code=normalised).first()
+    if promo is None:
+        return None
+    # Holds that go back before the next one is taken: those of sessions that can no longer be paid, and the
+    # business's own (a checkout it opens again replaces it).
+    stale = Q(held_until__lte=timezone.now())
+    going_back = stale | Q(hub=hub) if hub is not None else stale
+    freed = PromoRedemption.objects.filter(promo=promo, held_until__isnull=False).filter(going_back)
+    if not promo.grants_now(freed=freed.count()):
         return None
     if hub is not None:
         used_by = (
             Q(hub=hub) | Q(stripe_customer_id=customer) if customer else Q(hub=hub)
         )
-        if PromoRedemption.objects.filter(promo=promo).filter(used_by).exists():
+        if PromoRedemption.objects.filter(promo=promo).filter(used_by).exclude(pk__in=freed.values("pk")).exists():
             return None
     return promo
 
@@ -46,7 +55,7 @@ def redeemable_promo(
     input=PromoCheckIn,
     output=PromoCheckOut,
     ai=AI(
-        description="Whether a promo code is valid now and the trial it grants.",
+        description="Whether a promo code is valid now and what it grants: trial days or a discount.",
         asks={
             "en": (
                 "is the code SUMMER26 valid?",
@@ -80,5 +89,22 @@ def promo_check(ctx: OperationContext, params: PromoCheckIn) -> dict:
     return {
         "code": code,
         "valid": promo is not None,
-        "trial_days": promo.trial_days if promo else 0,
+        "trial_days": (promo.trial_days if promo else None) or 0,
+        "discount": discount_out(promo.discount) if promo is not None and promo.discount is not None else None,
+    }
+
+
+def discount_out(discount: Discount) -> dict:
+    """``DiscountOut``: its terms and what it applies to, as the panel says them."""
+    return {
+        "percent_off": discount.percent_off,
+        "amount_off_cents": discount.amount_off_cents,
+        "currency": discount.currency,
+        "duration": discount.duration,
+        "duration_in_months": discount.duration_in_months,
+        "applies_to": {
+            "kind": discount.applies_to,
+            "plans": sorted(discount.plans.values_list("slug", flat=True)),
+            "intervals": list(discount_terms.intervals(discount)),
+        },
     }

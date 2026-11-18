@@ -30,13 +30,13 @@ import { useI18n } from 'vue-i18n';
 import { STORE } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
+import type { BusinessDetailOut } from '../../../frontend/sdk-types/hubs';
 import type {
-  BusinessDetailOut,
   CustomDomainReason,
   CustomDomainState,
   CustomDomainStatusOut,
   DnsRecordOut,
-} from '../../../frontend/sdk-types';
+} from '../../../frontend/sdk-types/hubs-custom-domains';
 import { useErrorText } from '../error-text';
 import CopyField from './CopyField.vue';
 
@@ -157,7 +157,7 @@ async function connect(): Promise<void> {
     const answer = await request.run({ id: props.id, domain: name });
     answered.value = { available: true, in_plan: true, ...status.value, domain: answer };
     typed.value = '';
-    void toastSuccess(t('hubs.domain.connected', { domain: answer.domain }));
+    toastSuccess(t('hubs.domain.connected', { domain: answer.domain }));
   } catch {
     // `request.error`: on the field what the server refused of the name, anything else above the button.
   }
@@ -177,7 +177,7 @@ async function confirmRemove(): Promise<void> {
     return; // The dialog shows the error.
   }
   confirming.value = false;
-  void toastSuccess(t('hubs.domain.removed', { domain: now.domain }));
+  toastSuccess(t('hubs.domain.removed', { domain: now.domain }));
 }
 </script>
 

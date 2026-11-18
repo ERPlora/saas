@@ -22,7 +22,7 @@ import { useRouter } from 'vue-router';
 
 import { BUSINESSES } from '../../../accounts/frontend/paths';
 import { useErrorText } from '../../../hubs/frontend/error-text';
-import type { BillingInterval, BillingProfileOut } from '../../../frontend/sdk-types';
+import type { BillingInterval, BillingProfileOut } from '../../../frontend/sdk-types/store';
 import { formatDate } from '../format';
 import { type EmbeddedCheckout, loadStripeJs } from '../stripe-js';
 import BillingDetailsForm, { type BillingDetailsDraft } from './BillingDetailsForm.vue';
@@ -270,7 +270,7 @@ async function complete(): Promise<void> {
   await router.push(`${BUSINESSES}/${business.id}/summary`);
   attempt += 1;
   open.value = false;
-  void toastSuccess(done);
+  toastSuccess(done);
 }
 
 async function saveDetails(): Promise<void> {
@@ -392,6 +392,7 @@ onBeforeUnmount(() => {
       >
         {{ $t('billing.checkout.declined', { name: declinedFor }) }}
       </InlineFeedback>
+      <slot name="notice" />
       <div class="checkout-stripe">
         <span class="checkout-secure">
           <HubIcon

@@ -22,7 +22,7 @@ import { computed, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useLiveState } from '../../../frontend/live-state';
-import type { ApiKeyRowOut } from '../../../frontend/sdk-types';
+import type { ApiKeyRowOut } from '../../../frontend/sdk-types/accounts-security';
 import { useErrorText } from '../error-text';
 import NewKeyModal from './NewKeyModal.vue';
 
@@ -80,7 +80,7 @@ async function confirmRevoke(): Promise<void> {
   try {
     await revoke.run({ id: row.id });
     revoking.value = false;
-    void toastSuccess(t('accounts.account.keys.revoked', { name: row.name }));
+    toastSuccess(t('accounts.account.keys.revoked', { name: row.name }));
   } catch {
     // `revoke.error`: the dialog shows it.
   }

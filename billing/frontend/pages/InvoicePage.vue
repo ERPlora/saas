@@ -20,7 +20,7 @@ import { RouterLink } from 'vue-router';
 import { BILLING } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
-import type { InvoiceDetailOut, InvoiceLineOut } from '../../../frontend/sdk-types';
+import type { InvoiceDetailOut, InvoiceLineOut } from '../../../frontend/sdk-types/billing-invoices';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import { browser, operationUrl } from '../browser';
 import PayInvoiceButton from '../components/PayInvoiceButton.vue';
@@ -85,11 +85,11 @@ async function downloadPdf(): Promise<void> {
     await browser.download(operationUrl('billing.invoice.pdf', { id: now.id }), 'application/pdf');
   } catch (error) {
     const failure = error as ApiError;
-    if (failure.code === 'billing.invoice_not_issued') void toastInfo(t('billing.invoices.pdfIssuing'));
-    else if (failure.code === 'billing.platform_unavailable') void toastError(t('billing.invoices.pdfUnavailable'));
+    if (failure.code === 'billing.invoice_not_issued') toastInfo(t('billing.invoices.pdfIssuing'));
+    else if (failure.code === 'billing.platform_unavailable') toastError(t('billing.invoices.pdfUnavailable'));
     else {
       console.error('billing: the invoice PDF could not be downloaded', error);
-      void toastError(text(failure));
+      toastError(text(failure));
     }
   } finally {
     fetching.value = false;
@@ -225,6 +225,10 @@ async function downloadPdf(): Promise<void> {
                   <span v-if="period(line)">{{ period(line) }}</span>
                   <span v-if="line.proration">{{ $t('billing.invoicePage.prorated') }}</span>
                   <span>{{ $t('billing.invoicePage.lineAmounts', { net: money(line.net_cents), rate: percent(line.tax_rate), tax: money(line.tax_cents) }) }}</span>
+                  <span
+                    v-if="line.discount_cents"
+                    data-testid="invoice-line-discount"
+                  >{{ $t('billing.invoicePage.discount', { amount: money(-line.discount_cents) }) }}</span>
                 </p>
               </li>
             </ul>

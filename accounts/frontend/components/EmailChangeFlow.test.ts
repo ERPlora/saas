@@ -9,16 +9,13 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
   IonModal: (await import('../__tests__/ion-modal-stub')).IonModalStub,
 }));
-vi.mock('@erplora/ui/shell', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
-  toastSuccess: vi.fn(() => Promise.resolve()),
-}));
+vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/frontend/__tests__/module-mocks')).shellWithToastSpies(original));
 
 import { toastSuccess } from '@erplora/ui/shell';
 
 import { fakeAllauth, ok } from '../__tests__/allauth-server';
 import { type ApiCall, apiError, describeCall, flush, ionProps, mountDialog, profile, reauthRequired, typeInto } from '../__tests__/mount-panel';
-import type { ProfileOut } from '../../../frontend/sdk-types';
+import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import { onSessionChanged } from '../../../frontend/session-changed';
 import EmailChangeFlow from './EmailChangeFlow.vue';
 

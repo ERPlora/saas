@@ -3,7 +3,9 @@
 // `accounts.preferences.get` and three cards whose controls save on their own
 // (`accounts.preferences.update`, only what changed), each ending in «Preferences saved»:
 //   - Appearance: system, light or dark, the shell's theme (`setThemeMode`), painted at once and kept in the
-//     account; the account's mode is painted when the preferences arrive (also when another tab changes it);
+//     account; the account's mode is painted when the preferences arrive (also when another tab changes it). The
+//     transparency effects of the glass surfaces (`setThemeTransparency`) are a switch that works the same way and
+//     cannot be pressed again until its save answers;
 //   - Language: the account's (`User.language`, which the mails and the jump to a business read): the panel
 //     switches to it at once (`<html lang>` too), and the entry reads the session again for the side menu the
 //     server translates (`sessionChanged`);
@@ -11,7 +13,7 @@
 //     is a switch. No «ERPlora news»: ERPlora sends no such mail.
 // A refusal puts the control back and says why. A failed load is said with «Retry», also when no answer comes in
 // time: never a skeleton for ever.
-import { setThemeMode, themeMode, toastError, toastSuccess } from '@erplora/ui/shell';
+import { setThemeMode, setThemeTransparency, themeMode, themeTransparency, toastError, toastSuccess } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
 import {
   IonCard,
@@ -31,7 +33,7 @@ import { useI18n } from 'vue-i18n';
 
 import LoadFailed from '../../../frontend/LoadFailed.vue';
 import { useLiveState } from '../../../frontend/live-state';
-import type { AccountLanguage, AccountThemeMode, PreferencesOut, PreferencesUpdateIn } from '../../../frontend/sdk-types';
+import type { AccountLanguage, AccountThemeMode, PreferencesOut, PreferencesUpdateIn } from '../../../frontend/sdk-types/accounts';
 import { sessionChanged } from '../../../frontend/session-changed';
 import { useErrorText } from '../error-text';
 
@@ -50,10 +52,12 @@ const update = useCommand('accounts.preferences.update');
 
 const language = shallowRef<AccountLanguage>('en');
 const hubAlerts = shallowRef(false);
+const transparencySaving = shallowRef(false);
 const loaded = computed(() => live.data.value);
 
 function take(now: PreferencesOut): void {
   if (themeMode.value !== now.theme_mode) setThemeMode(now.theme_mode);
+  if (themeTransparency.value !== now.transparency) setThemeTransparency(now.transparency);
   language.value = now.language;
   hubAlerts.value = now.hub_alerts;
 }
@@ -67,7 +71,7 @@ async function save(change: PreferencesUpdateIn, undo: () => void): Promise<bool
     return true;
   } catch {
     undo();
-    void toastError(text(update.error.value));
+    toastError(text(update.error.value));
     return false;
   }
 }
@@ -77,7 +81,18 @@ async function chooseTheme(event: CustomEvent<{ value?: unknown }>): Promise<voi
   const before = themeMode.value;
   if (!THEMES.includes(mode) || mode === before) return;
   setThemeMode(mode);
-  if (await save({ theme_mode: mode }, () => setThemeMode(before))) void toastSuccess(t('accounts.account.preferences.saved'));
+  if (await save({ theme_mode: mode }, () => setThemeMode(before))) toastSuccess(t('accounts.account.preferences.saved'));
+}
+
+async function toggleTransparency(event: CustomEvent<{ checked?: boolean }>): Promise<void> {
+  const before = themeTransparency.value;
+  const checked = event.detail.checked === true;
+  if (checked === before) return;
+  setThemeTransparency(checked);
+  transparencySaving.value = true;
+  const saved = await save({ transparency: checked }, () => setThemeTransparency(before));
+  transparencySaving.value = false;
+  if (saved) toastSuccess(t('accounts.account.preferences.saved'));
 }
 
 async function chooseLanguage(event: CustomEvent<{ value?: unknown }>): Promise<void> {
@@ -89,7 +104,7 @@ async function chooseLanguage(event: CustomEvent<{ value?: unknown }>): Promise<
   locale.value = chosen;
   document.documentElement.lang = chosen;
   sessionChanged();
-  void toastSuccess(t('accounts.account.preferences.saved'));
+  toastSuccess(t('accounts.account.preferences.saved'));
 }
 
 async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>): Promise<void> {
@@ -97,7 +112,7 @@ async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>):
   const checked = event.detail.checked === true;
   if (checked === before) return;
   hubAlerts.value = checked;
-  if (await save({ hub_alerts: checked }, () => (hubAlerts.value = before))) void toastSuccess(t('accounts.account.preferences.saved'));
+  if (await save({ hub_alerts: checked }, () => (hubAlerts.value = before))) toastSuccess(t('accounts.account.preferences.saved'));
 }
 </script>
 
@@ -156,6 +171,22 @@ async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>):
             </ion-segment-button>
           </ion-segment>
         </div>
+        <ion-list
+          lines="none"
+          class="toggle-list appearance-switch"
+        >
+          <ion-item>
+            <ion-toggle
+              data-testid="preferences-transparency"
+              :checked="themeTransparency"
+              :disabled="transparencySaving"
+              @ion-change="toggleTransparency"
+            >
+              <span class="toggle-title">{{ $t('accounts.account.preferences.transparency') }}</span>
+              <span class="toggle-hint">{{ $t('accounts.account.preferences.transparencyHint') }}</span>
+            </ion-toggle>
+          </ion-item>
+        </ion-list>
       </ion-card>
 
       <ion-card data-testid="preferences-language-card">
@@ -195,7 +226,7 @@ async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>):
           </h2>
           <ion-list
             lines="full"
-            class="mail-list"
+            class="toggle-list mail-list"
           >
             <ion-item>
               <ion-toggle
@@ -254,17 +285,23 @@ async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>):
   background: var(--ion-card-background, #fff);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
-.mail-list {
-  margin-top: 8px;
+.toggle-list {
   padding: 0;
   background: transparent;
 }
-.mail-list ion-item {
+.mail-list {
+  margin-top: 8px;
+}
+/* Under the segment, aligned with the card's text (16px, as `segment-pad`). */
+.appearance-switch {
+  padding: 0 16px 8px;
+}
+.toggle-list ion-item {
   --padding-start: 0;
   --inner-padding-end: 0;
   --background: transparent;
 }
-.mail-list ion-toggle {
+.toggle-list ion-toggle {
   white-space: normal;
 }
 /* Ionic's toggle label is one line with «…»: a title or a hint wraps instead of being cut (the always-on row's hint
@@ -277,13 +314,14 @@ async function toggleBusinessNotices(event: CustomEvent<{ checked?: boolean }>):
   display: block;
   color: var(--ion-text-color);
 }
-/* «Security, invoices and payments» cannot be turned off, yet the mails it names must read as any text: Ionic dims a
-   disabled toggle whole (0.3 in ios, 0.38 in md), its words included; only its switch stays dimmed. */
-.mail-list ion-toggle.toggle-disabled {
+/* A disabled toggle must still read as any text («Security, invoices and payments», always on, or «Transparency
+   effects» while it saves): Ionic dims a disabled toggle whole (0.3 in ios, 0.38 in md), its words included; only its
+   switch stays dimmed. */
+.toggle-list ion-toggle.toggle-disabled {
   opacity: 1;
 }
-.mail-list ion-toggle.toggle-disabled::part(track),
-.mail-list ion-toggle.toggle-disabled::part(handle) {
+.toggle-list ion-toggle.toggle-disabled::part(track),
+.toggle-list ion-toggle.toggle-disabled::part(handle) {
   opacity: 0.5;
 }
 .toggle-hint {

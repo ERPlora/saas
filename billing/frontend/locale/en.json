@@ -49,6 +49,8 @@
       "annual": "Annual",
       "annualSaving": "Annual · −{percent} %",
       "current": "Your current plan",
+      "showAll": "Show all features",
+      "showFewer": "Show fewer",
       "forever": "forever",
       "perMonth": "/month + VAT",
       "perYear": "/year + VAT · {monthly}/month",
@@ -89,7 +91,8 @@
       "apply": "Apply",
       "valid": "Code {code}: {days} days free before the first charge.",
       "invalid": "This code is not valid, or it was already used.",
-      "remove": "Remove the code"
+      "remove": "Remove the code",
+      "validDiscount": "Code {code}: {discount}."
     },
     "modules": {
       "heading": "Modules",
@@ -172,7 +175,11 @@
       "stale": "This business already pays: the price changed, check it again.",
       "plan": "{business} is now on {plan}",
       "module": "{module} added to {business}: it turns on in a few seconds",
-      "takenOver": "{business} keeps {plan}: your card pays it from {date}"
+      "takenOver": "{business} keeps {plan}: your card pays it from {date}",
+      "discountThenMonth": "{discount}. Then {price}/month + VAT.",
+      "discountThenYear": "{discount}. Then {price}/year + VAT.",
+      "discountOnly": "{discount}.",
+      "nothingDueToday": "Your card is not charged today."
     },
     "details": {
       "intro": "Who do we invoice? We ask it once, before the first payment.",
@@ -227,36 +234,23 @@
       "lead": "What you pay ERPlora for all your businesses. The invoices of your sales are inside each business."
     },
     "notice": {
-      "pastDueHeading": "We could not collect {amount} from {name}",
-      "suspendedHeading": "{name} is suspended: {amount} unpaid",
-      "cardChangedHeading": "Card changed",
-      "cardChangedBody": "You can now pay the invoice of {name} ({amount}) with it.",
       "declined": "The bank declined the card.",
-      "pastDueBody": "Invoice {invoice} of {date} could not be collected. Pay it before {until} or the business is suspended; nothing is deleted.",
-      "pastDueBodyNoDate": "Invoice {invoice} of {date} could not be collected. Pay it soon or the business is suspended; nothing is deleted.",
-      "suspendedBody": "Invoice {invoice} of {date} could not be collected and the business was suspended. Your data is safe: once it is paid, the business works again at once.",
+      "pastDueBody": "If it is not paid by {until}, the business is suspended. Nothing is deleted.",
+      "pastDueBodyNoDate": "If it is not paid soon, the business is suspended. Nothing is deleted.",
+      "suspendedBody": "It was suspended because of an unpaid invoice. Nothing is deleted: once it is paid it works again at once.",
       "app": "To pay it, go to erplora.com in your browser.",
       "appDeclined": "To change the card and pay it, go to erplora.com in your browser.",
       "account": "This account was opened from the app: invoices are not paid from here.",
       "changeCard": "Change card",
       "pay": "Pay the invoice · {amount}",
       "paying": "Paying…",
-      "changeFirst": "Change the card first: we do not charge the card the bank declined again.",
       "payerRequired": "Only the account that pays this business can pay its invoices.",
-      "lineOne": "{name} has an unpaid invoice: {amount}.",
-      "lineMany": "{count} unpaid invoices: {amount}.",
-      "viewOne": "View the invoice",
-      "viewMany": "View the invoices",
       "paid": "Invoice paid: {name} is up to date again",
-      "unknown": "We could not check whether you have unpaid invoices.",
-      "retry": "Retry",
-      "groupHeading": "{count} unpaid invoice: {amount} | {count} unpaid invoices: {amount}",
-      "groupSuspended": "{name} is suspended until it is paid ({amount}).",
-      "groupPastDue": "{name} is suspended on {date} if it is not paid ({amount}).",
-      "groupPastDueNoDate": "{name} is suspended if it is not paid soon ({amount}).",
-      "groupFooter": "Nothing is deleted: once an invoice is paid, its business works again at once.",
-      "appMany": "To pay them, go to erplora.com in your browser.",
-      "appDeclinedMany": "To change the card and pay them, go to erplora.com in your browser."
+      "title": "{name} has an unpaid invoice",
+      "daysLeft": "{count} days left",
+      "lastDay": "last day",
+      "suspended": "suspended",
+      "cardChanged": "Card changed: you can pay it now."
     },
     "invoices": {
       "title": "ERPlora invoices",
@@ -321,6 +315,7 @@
       "period": "{start} – {end}",
       "prorated": "Prorated",
       "lineAmounts": "Net {net} · VAT {rate} {tax}",
+      "discount": "Discount {amount}",
       "net": "Taxable base",
       "vat": "VAT",
       "total": "Total",
@@ -374,7 +369,8 @@
         "unpaid": "The unpaid invoice of {date} ({amount}) stays pending: cancelling does not cancel it.",
         "done": "Plan cancelled: {business} stays on {plan} until {date}",
         "doneNoDate": "Plan cancelled: {business} stays on {plan} until the end of the period"
-      }
+      },
+      "discountUntil": "{off} until {date}"
     },
     "payment": {
       "loadError": "We could not load your payment details",
@@ -426,6 +422,18 @@
     },
     "load": {
       "reason": "Check your connection and try again."
+    },
+    "discount": {
+      "off": {
+        "free": "Free",
+        "percent": "{percent}% off",
+        "amount": "{amount} off"
+      },
+      "duration": {
+        "once": "{off} on the first payment",
+        "repeating": "{off} for 1 month | {off} for {months} months",
+        "forever": "{off} forever"
+      }
     }
   }
 }

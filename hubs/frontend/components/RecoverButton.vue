@@ -8,7 +8,7 @@ import { useCommand } from '@erplora/ui/sdk';
 import { IonButton, IonSpinner } from '@ionic/vue';
 import { useI18n } from 'vue-i18n';
 
-import type { BusinessRowOut } from '../../../frontend/sdk-types';
+import type { BusinessRowOut } from '../../../frontend/sdk-types/hubs';
 import { useErrorText } from '../error-text';
 
 const props = withDefaults(
@@ -30,9 +30,9 @@ const restore = useCommand('hubs.business.restore');
 async function recover(): Promise<void> {
   try {
     const recovered = await restore.run({ id: props.business.id });
-    void toastSuccess(t('hubs.list.restored', { name: recovered.name }));
+    toastSuccess(t('hubs.list.restored', { name: recovered.name }));
   } catch {
-    void toastError(text(restore.error.value));
+    toastError(text(restore.error.value));
   }
 }
 </script>

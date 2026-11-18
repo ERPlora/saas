@@ -9,6 +9,7 @@ from django.utils.translation import gettext_noop
 from ninja import Field, Schema
 from pydantic import AfterValidator, model_validator
 
+from billing.schemas.discounts import SubscriptionDiscountOut
 from hubs.schemas import PlanOut
 
 #: The verdict a VAT number gets (``billing.services.clear_tax_id_for_stripe``):
@@ -98,20 +99,6 @@ class TaxPreviewOut(Schema):
 
 
 # --- Stripe ------------------------------------------------------------------------------------------
-
-
-class PromoCheckIn(Schema):
-    """A promo code typed in the store, before paying."""
-
-    code: str = Field(max_length=64)
-
-
-class PromoCheckOut(Schema):
-    """Whether the code grants a trial now, and how many days (``0`` when it does not)."""
-
-    code: str
-    valid: bool
-    trial_days: int
 
 
 Interval = Literal["month", "year"]
@@ -488,6 +475,7 @@ class InvoiceLineOut(Schema):
     net_cents: int
     tax_cents: int
     total_cents: int
+    discount_cents: int
 
 
 class InvoiceRecipientOut(Schema):
@@ -598,6 +586,8 @@ class SubscriptionRowOut(Schema):
     scheduled_change: ScheduledChangeOut | None = None
     #: The plan is charged to the card of another account (the payer before a hand-over, HUBS-F28).
     paid_by_another_account: bool
+    #: The discount of a promo code it carries while it applies to the renewal.
+    discount: SubscriptionDiscountOut | None
     actions: list[Literal["take_over", "change_plan", "keep_plan", "view_invoice", "cancel_plan", "view_invoices"]]
     can: SubscriptionCanOut
 

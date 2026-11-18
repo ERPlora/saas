@@ -9,17 +9,13 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
   IonModal: (await import('../__tests__/ion-modal-stub')).IonModalStub,
 }));
-vi.mock('@erplora/ui/shell', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
-  toastSuccess: vi.fn(() => Promise.resolve()),
-  toastError: vi.fn(() => Promise.resolve()),
-}));
+vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/frontend/__tests__/module-mocks')).shellWithToastSpies(original));
 
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
 import { fakeAllauth, ok } from '../__tests__/allauth-server';
 import { type ApiCall, choose, flush, ionProps, mountPanel, reauthRequired, SCOPES, typeInto } from '../__tests__/mount-panel';
-import type { ApiKeyRowOut } from '../../../frontend/sdk-types';
+import type { ApiKeyRowOut } from '../../../frontend/sdk-types/accounts-security';
 import NewKeyModal from './NewKeyModal.vue';
 
 const SECRET = 'erps_live_Rt5wJ3nV8qP2xM6kZ4yH0aB1cD2eF3gH4iJ5kL6mN7oP8qR9';

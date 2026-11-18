@@ -14,7 +14,7 @@ import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { looksLikeEmail } from '../../../frontend/email';
-import type { InvitableRole, SeatsOut } from '../../../frontend/sdk-types';
+import type { InvitableRole, SeatsOut } from '../../../frontend/sdk-types/hubs';
 import { useErrorText } from '../error-text';
 
 const props = defineProps<{
@@ -51,7 +51,7 @@ watch(open, (isOpen) => {
 async function send(): Promise<void> {
   try {
     const invited = await invite.run({ hub_id: props.business.id, email: email.value.trim(), role: role.value, message: message.value.trim() });
-    void toastSuccess(t('hubs.members.inviteModal.sent', { email: invited.email }));
+    toastSuccess(t('hubs.members.inviteModal.sent', { email: invited.email }));
     open.value = false;
   } catch {
     // `invite.error`: the dialog shows it.

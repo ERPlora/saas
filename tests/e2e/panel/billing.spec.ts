@@ -15,8 +15,9 @@ import { businessIdOf } from './businesses';
 import { djangoPrintWarm } from './django';
 import { expect, seededAndSignedInWarm, test } from './fixtures';
 import { watchPageErrors } from './page-events';
+import { expectBell, featureNotice, primary } from './notices';
 import { HUB_DOUBLE_PORT } from './project';
-import { repeatedTop, settled, shot, sidewaysScroll, toast, VIEWPORTS } from './screen';
+import { repeatedTop, settled, shot, sidewaysScroll, toast, toasts, VIEWPORTS } from './screen';
 import { apiPost } from './session';
 import { playStripePortal, STRIPE_PORTAL_URL } from './stripe';
 
@@ -31,15 +32,13 @@ const WIDTHS = [390, 834, 1024, 1180, 1280, 1440] as const;
 seededAndSignedInWarm('billing_seed.py', BILLING);
 
 /**
- * How far above the bottom of the window the toast's box ends (Ionic leaves it 10 px up). Read after `settled()`,
- * which waits for the toast to stop sliding in (Ionic animates it inside its shadow root).
+ * How far above the bottom of the window the newest toast ends (the shell's stack keeps 16 px, or sits above a bottom
+ * bar). Read after `settled()`, which waits for the toast to stop sliding in.
  */
 const toastGap = (page: Page) =>
-  page.locator('ion-toast').evaluate((element) => {
-    const box = element.shadowRoot?.querySelector('.toast-wrapper')?.getBoundingClientRect();
-    if (!box) throw new Error('ion-toast without its .toast-wrapper');
-    return Math.round(window.innerHeight - box.bottom);
-  });
+  toasts(page)
+    .first()
+    .evaluate((element) => Math.round(window.innerHeight - element.getBoundingClientRect().bottom));
 
 /** Stripe's pages, played: whatever the browser opens there is a placeholder page. */
 async function playStripePages(page: Page): Promise<void> {
@@ -55,9 +54,6 @@ async function invoiceIds(page: Page): Promise<Record<string, string>> {
   const rows = ((await response.json()) as { rows: Array<{ id: string; reference: string }> }).rows;
   return Object.fromEntries(rows.map((row) => [row.reference, row.id]));
 }
-
-/** What waits for a payment for business `name`: its line of the grouped notice (two or more unpaid). */
-const banner = (page: Page, name: string) => page.getByTestId('unpaid-group-item').filter({ hasText: name });
 
 /** The dialog on screen, as painted, at the desktop, tablet and low-phone sizes, each in its own `<name>-<W>x<H>.png`. */
 async function shootAtFleetSizes(page: Page, name: string): Promise<void> {
@@ -117,13 +113,9 @@ test.describe('billing', () => {
     const issuing = page.locator(`[data-testid="invoices-row"][data-id="${ids['E2EBAKERY_SEP-0001']}"]`);
     await expect(issuing).toContainText('Issuing');
     await expect(issuing.getByTestId(`invoices-row-${ids['E2EBAKERY_SEP-0001']}-pdf`)).toHaveCount(0);
-    // What waits for a payment: two invoices, one notice, each business on its line, days only.
-    const group = page.getByTestId('billing-unpaid-group');
-    await expect(group).toContainText('2 unpaid invoices: €72.58');
-    await expect(banner(page, 'Bar La Plaza')).toContainText(/Bar La Plaza is suspended on \w{3} \d{1,2}, \d{4} if it is not paid \(€36\.29\)\./);
-    await expect(banner(page, 'Bar La Plaza')).toContainText('The bank declined the card.');
-    await expect(banner(page, 'Bar Norte')).toContainText('Bar Norte is suspended on');
-    expect(await group.innerText()).not.toMatch(/\d{1,2}:\d{2}/);
+    // What waits for a payment is the bell's (billing-notices.spec.ts): no notice of Billing's own.
+    await expectBell(page, 2);
+    await expect(page.locator('[data-testid^="billing-unpaid"], [data-testid^="unpaid-group"]')).toHaveCount(0);
     await page.screenshot({ path: join(SHOTS_DIR, 'billing-past-due-1280-light.png'), fullPage: true });
     // Filters: one «Filters» control of the toolbar (a popover, nothing from the bottom): the business in a
     // popover select, the status in a segment; kept in the address and counted on the button.
@@ -248,7 +240,7 @@ test.describe('billing', () => {
       await expect(page.getByTestId('invoice-pdf')).toHaveText('Descargar PDF');
       await page.getByTestId('invoice-pdf').click();
       await expect(toast(page, offline)).toBeVisible();
-      await expect(page.locator('ion-toast')).not.toContainText('Network error');
+      await expect(toasts(page).filter({ hasText: 'Network error' })).toHaveCount(0);
       await settled(page);
       expect(await toastGap(page), `the toast stops whole on screen at ${viewport.width} px`).toBeGreaterThanOrEqual(8);
       await page.screenshot({ path: shot(`FIX-SAAS-BILLING-INVOICE-DOWNLOAD-NETWORK-ERROR-ENGLISH-${viewport.width}`) });
@@ -274,7 +266,7 @@ test.describe('billing', () => {
     expect(lines.slice(1).map((line) => line.split(',')[0]).sort()).toEqual(['ERP-2026-90071', 'ERP-2026-90098']);
   });
 
-  test('«Pay»: after a declined card it waits for another; otherwise it pays once at Stripe and, back, «Invoice paid»', async ({ page }) => {
+  test('«Pay»: after a declined card it waits for another; otherwise the bell pays once at Stripe and, back, «Invoice paid»', async ({ page }) => {
     await playStripePages(page);
     const paid: Request[] = [];
     await page.route('**/api/billing/invoices/pay', async (route) => {
@@ -284,18 +276,14 @@ test.describe('billing', () => {
     });
     await page.goto('/dashboard/billing/invoices');
     const ids = await invoiceIds(page);
-    // Bar La Plaza: the bank declined the card — «Change card» first, «Pay» waits, saying why.
-    const plaza = banner(page, 'Bar La Plaza');
-    await expect(plaza.getByTestId('unpaid-group-change-card')).toBeVisible();
-    await expect(plaza.getByTestId('pay-invoice').locator('button')).toBeDisabled();
-    await expect(plaza.getByTestId('unpaid-group-why')).toHaveText('Change the card first: we do not charge the card the bank declined again.');
+    // Bar La Plaza: the bank declined the card — its row's «Pay» waits, and the bell offers «Change card» alone.
     await expect(page.getByTestId(`invoices-row-${ids['E2EPLAZA-0001']}-pay`).locator('button')).toBeDisabled();
-    // Bar Norte: «Pay» → «Paying…» (every «Pay» waits) → Stripe's page of that invoice, asked once.
-    const pay = banner(page, 'Bar Norte').getByTestId('pay-invoice');
+    await expect(primary(await featureNotice(page, 'Bar La Plaza'))).toHaveText('Change card');
+    // Bar Norte: the bell's «Pay» → «Working…» → Stripe's page of that invoice, asked once.
+    const pay = primary(await featureNotice(page, 'Bar Norte'));
     await expect(pay).toHaveText('Pay the invoice · €36.29');
     await pay.click();
-    await expect(pay).toHaveText('Paying…');
-    await expect(pay.locator('button')).toBeDisabled();
+    await expect(pay).toHaveText('Working…');
     await page.screenshot({ path: join(SHOTS_DIR, 'billing-paying-1280-light.png') });
     await page.waitForURL('https://invoice.stripe.com/i/e2e-billing-norte');
     expect(paid).toHaveLength(1);
@@ -310,7 +298,6 @@ test.describe('billing', () => {
     );
     await page.goto('/dashboard/billing/invoices');
     await expect(toast(page, 'Invoice paid: Bar Norte is up to date again')).toBeVisible();
-    await expect(banner(page, 'Bar Norte')).toHaveCount(0);
     await page.screenshot({ path: join(SHOTS_DIR, 'billing-paid-1280-light.png') });
   });
 
@@ -318,7 +305,7 @@ test.describe('billing', () => {
     // The Portal is Stripe's: the server's call to it is played (no Stripe keys here).
     const opened = await playStripePortal(page);
     await page.goto('/dashboard/billing/invoices');
-    await banner(page, 'Bar La Plaza').getByTestId('unpaid-group-change-card').click();
+    await primary(await featureNotice(page, 'Bar La Plaza')).click();
     await page.waitForURL(STRIPE_PORTAL_URL);
     expect(opened).toEqual([{ hub_id: await businessIdOf(page.request, 'Bar La Plaza') }]);
   });
@@ -327,7 +314,6 @@ test.describe('billing', () => {
     const errors = watchPageErrors(page);
     await page.goto('/dashboard/billing/subscriptions');
     await expect(page.getByTestId('subscriptions-row')).toHaveCount(3);
-    await expect(page.getByTestId('billing-unpaid-text')).toHaveText('2 unpaid invoices: €72.58.');
     const bakery = await businessIdOf(page.request, 'Panadería López');
     const plaza = await businessIdOf(page.request, 'Bar La Plaza');
     const bakeryRow = page.locator(`[data-testid="subscriptions-row"][data-id="${bakery}"]`);
@@ -447,11 +433,12 @@ test.describe('billing', () => {
     });
     await page.goto('/dashboard/billing/invoices?surface=account');
     await expect(page.getByTestId('invoices-row')).toHaveCount(4);
-    await expect(page.getByTestId('pay-invoice')).toHaveCount(0);
     await expect(page.locator('[data-testid$="-pay"]')).toHaveCount(0);
-    await expect(page.getByTestId('unpaid-group-change-card')).toHaveCount(0);
     // Already in the browser (the account the app opens): why, not «go to erplora.com in your browser».
-    await expect(page.getByTestId('unpaid-group-app')).toHaveText('This account was opened from the app: invoices are not paid from here.');
+    const notice = await featureNotice(page, 'Bar La Plaza');
+    await expect(notice).toContainText('This account was opened from the app: invoices are not paid from here.');
+    await expect(primary(notice)).toHaveCount(0);
+    await page.getByTestId('action-panel-close').click();
     await page.setViewportSize({ width: 390, height: 844 });
     // flow: none — test tooling. A capture right after a resize must be the page as painted at the new size.
     await settled(page);
@@ -470,13 +457,13 @@ test.describe('billing', () => {
     expect(await page.locator('ion-router-outlet a[href*="stripe"]').count()).toBe(0);
     // Back to the web for the rest of the session; then the Tauri bridge (the installed apps).
     await page.goto('/dashboard/billing/invoices?surface=web');
-    await expect(page.getByTestId('pay-invoice').first()).toBeVisible();
+    await expect(page.locator('[data-testid$="-pay"]').first()).toBeVisible();
     await page.addInitScript(() => {
       (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {};
     });
     await page.goto('/dashboard/billing/invoices');
     await expect(page.getByTestId('invoices-row')).toHaveCount(4);
-    await expect(page.getByTestId('pay-invoice')).toHaveCount(0);
+    await expect(page.locator('[data-testid$="-pay"]')).toHaveCount(0);
     expect(stripe).toEqual([]);
   });
 
@@ -491,8 +478,8 @@ test.describe('billing', () => {
         for (const [tab, hook] of Object.entries(ready)) {
           await page.goto(`/dashboard/billing/${tab}`);
           await expect(page.getByTestId(hook).first()).toBeVisible();
-          // What waits for a payment is live: on top of every tab once the stream answers.
-          await expect(page.getByTestId(tab === 'invoices' ? 'billing-unpaid-group' : 'billing-unpaid-text').first()).toBeVisible();
+          // What waits for a payment is live: in the bell of every tab once the stream answers.
+          await expectBell(page, 2);
           await settled(page);
           expect(await sidewaysScroll(page), `${tab} at ${width}`).toEqual([]);
           expect(await actionsOverflow(page), `${tab} at ${width}: actions over the previous column`).toEqual([]);

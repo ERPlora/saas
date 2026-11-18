@@ -11,7 +11,7 @@ import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useErrorText } from '../../../hubs/frontend/error-text';
-import type { BillingInterval, SubscriptionOut } from '../../../frontend/sdk-types';
+import type { BillingInterval, SubscriptionOut } from '../../../frontend/sdk-types/store';
 import { useChargePreview } from '../charge-preview';
 import { formatCents, formatDate } from '../format';
 
@@ -121,7 +121,7 @@ async function confirm(): Promise<void> {
             promo_code: props.promoCode,
           });
     const waiting = subscription.scheduled_change;
-    void toastSuccess(
+    toastSuccess(
       item.kind === 'module'
         ? t('billing.modules.added', { module: item.name, business: props.business.name })
         : waiting

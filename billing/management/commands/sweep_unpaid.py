@@ -2,7 +2,8 @@
 
 An ECS scheduled task. The webhook acts when Stripe sends an event; this replays
 every business in dunning with its oldest open invoice (7 days of grace, then suspended; ``unpaid`` at
-once) and cancels the Stripe subscription of every deleted business (``billing.services.sweep_unpaid``).
+once) and cancels the Stripe subscription of every deleted business (``billing.services.sweep_unpaid``). It also
+gives back the promo code uses held by checkouts that can no longer be paid (``billing.services.promo_holds``).
 
 Idempotent, under the advisory lock ``hashtext('erplora.saas.sweep_unpaid')`` (``hubs.services.exclusive_runs.run_exclusively``,
 the SaaS's convention: a second run returns at once). One business never stops the pass; the counts go to
@@ -29,6 +30,7 @@ class Command(BaseCommand):
                 self.stdout.write("sweep_unpaid: already running, nothing done.")
                 return
             counts = services.sweep_unpaid()
+            counts["promo_holds_released"] = services.promo_holds.release_stale()
         summary = " ".join(f"{key}={value}" for key, value in counts.items())
         logger.info("billing.sweep_unpaid %s", summary)
         self.stdout.write(f"sweep_unpaid: {summary}")

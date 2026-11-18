@@ -2,17 +2,14 @@
 // if any, then Plans or Modules. A module is sold when its app is premium AND billing has it on sale; with an unpaid
 // invoice nothing charges for THAT business. The dialogs have their own tests: here they are stubs, and what the
 // shop hands them is checked.
+import { mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
   IonModal: (await import('../../../hubs/frontend/__tests__/ion-modal-stub')).IonModalStub,
 }));
-vi.mock('@erplora/ui/shell', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
-  toastSuccess: vi.fn(() => Promise.resolve()),
-  toastInfo: vi.fn(() => Promise.resolve()),
-}));
+vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/frontend/__tests__/module-mocks')).shellWithToastSpies(original));
 
 import { toastInfo, toastSuccess } from '@erplora/ui/shell';
 
@@ -266,21 +263,10 @@ describe('StoreShop', () => {
     expect(s.el('plan-starter').find('[data-testid="plan-price"]').text()).toBe('€299.90 /year + VAT · €24.99/month');
   });
 
-  it('the promo code is asked with Ionic’s controls: a clear button, an outlined md input and buttons with icons', async () => {
-    const s = await setup({ businessId: 'cafe' });
-    expect(s.el('store-promo-toggle').element.tagName).toBe('ION-BUTTON');
-    expect((s.el('store-promo-toggle').find('ion-icon').element as unknown as { name?: string }).name).toBe('ticket-outline');
-    await s.el('store-promo-toggle').trigger('click');
-    expect(s.el('store-promo-code').element.tagName).toBe('ION-INPUT');
-    expect(ionProps(s.el('store-promo-code'), 'mode', 'fill', 'label')).toEqual({ mode: 'md', fill: 'outline', label: 'Promo code' });
-    expect(s.el('store-promo-apply').element.tagName).toBe('ION-BUTTON');
-    expect(s.el('store-promo-apply').find('ion-icon').exists()).toBe(true);
-  });
-
   it('on Free a plan is bought in the checkout, at the billing of the switch, with the promo code', async () => {
     const s = await setup({
       businessId: 'cafe',
-      answer: ({ path, query }) => (path === '/api/billing/promo-check' ? Response.json({ code: query.code.toUpperCase(), valid: true, trial_days: 30 }) : undefined),
+      answer: ({ path, query }) => (path === '/api/billing/promo-check' ? Response.json({ code: query.code.toUpperCase(), valid: true, trial_days: 30, discount: null }) : undefined),
     });
     expect(s.el('store-period').text()).toContain('Annual · −17 %');
     s.el('store-period').element.dispatchEvent(new CustomEvent('ionChange', { detail: { value: 'year' } }));
@@ -289,7 +275,6 @@ describe('StoreShop', () => {
     s.el('store-promo-code').element.dispatchEvent(new CustomEvent('ionInput', { detail: { value: 'spring' } }));
     await s.el('store-promo-apply').trigger('click');
     await flush();
-    expect(s.el('store-promo-result').text()).toBe('Code SPRING: 30 days free before the first charge.');
     await s.el('plan-upgrade').trigger('click');
     const checkout = s.wrapper.findComponent(CheckoutModal);
     expect(checkout.props()).toMatchObject({
@@ -302,6 +287,18 @@ describe('StoreShop', () => {
     });
   });
 
+  it('a code of a discount: the checkout says it, when the plan’s price starts and that nothing is charged today', async () => {
+    const testers = { code: 'TESTERS', valid: true, trial_days: 0, discount: { percent_off: 100, amount_off_cents: null, currency: 'eur', duration: 'repeating', duration_in_months: 6, applies_to: { kind: 'plans', plans: [], intervals: ['month'] } } };
+    const s = await setup({ businessId: 'cafe', answer: ({ path }) => (path.endsWith('promo-check') ? Response.json(testers) : undefined) });
+    await s.el('store-promo-toggle').trigger('click');
+    s.el('store-promo-code').element.dispatchEvent(new CustomEvent('ionInput', { detail: { value: 'testers' } }));
+    await s.el('store-promo-apply').trigger('click');
+    await flush();
+    await s.el('plan-upgrade').trigger('click');
+    const notice = mount({ render: () => s.wrapper.findComponent(CheckoutModal).vm.$slots.notice?.({}) }, { global: { plugins: [s.i18n] } });
+    expect(notice.text()).toBe('Free for 6 months. Then €29.99/month + VAT. Your card is not charged today.');
+  });
+
   it('the card of the same payer declined: the checkout says whose', async () => {
     const shared = { ...CAFE, payer_id: PLAZA.payer_id };
     const s = await setup({ businessId: 'cafe', rows: [BAKERY, shared, PLAZA] });
@@ -312,13 +309,12 @@ describe('StoreShop', () => {
   it('an invalid promo code is said, and none is sent', async () => {
     const s = await setup({
       businessId: 'cafe',
-      answer: ({ path }) => (path === '/api/billing/promo-check' ? Response.json({ code: 'NOPE', valid: false, trial_days: 0 }) : undefined),
+      answer: ({ path }) => (path === '/api/billing/promo-check' ? Response.json({ code: 'NOPE', valid: false, trial_days: 0, discount: null }) : undefined),
     });
     await s.el('store-promo-toggle').trigger('click');
     s.el('store-promo-code').element.dispatchEvent(new CustomEvent('ionInput', { detail: { value: 'nope' } }));
     await s.el('store-promo-apply').trigger('click');
     await flush();
-    expect(s.el('store-promo-result').text()).toBe('This code is not valid, or it was already used.');
     await s.el('plan-upgrade').trigger('click');
     expect(s.wrapper.findComponent(CheckoutModal).props('promoCode')).toBe('');
   });

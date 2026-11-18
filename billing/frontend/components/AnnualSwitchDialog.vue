@@ -12,7 +12,8 @@ import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useErrorText } from '../../../hubs/frontend/error-text';
-import type { BillingInterval, PlanOut, SubscriptionOut } from '../../../frontend/sdk-types';
+import type { PlanOut } from '../../../frontend/sdk-types/hubs-catalog';
+import type { BillingInterval, SubscriptionOut } from '../../../frontend/sdk-types/store';
 import { useChargePreview } from '../charge-preview';
 import { formatCents, formatDate, formatEuros } from '../format';
 
@@ -76,7 +77,7 @@ async function confirm(): Promise<void> {
     });
     const params = { business: props.business.name, plan: plan.name, period: periodName.value };
     const waiting = subscription.scheduled_change;
-    void toastSuccess(
+    toastSuccess(
       waiting
         ? t('billing.plans.switchScheduled', { ...params, date: formatDate(waiting.starts_at, locale.value) })
         : t('billing.plans.switched', params),

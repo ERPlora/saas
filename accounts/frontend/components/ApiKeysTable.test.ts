@@ -12,11 +12,7 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
   IonModal: (await import('../__tests__/ion-modal-stub')).IonModalStub,
 }));
-vi.mock('@erplora/ui/shell', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
-  toastSuccess: vi.fn(() => Promise.resolve()),
-  toastError: vi.fn(() => Promise.resolve()),
-}));
+vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/frontend/__tests__/module-mocks')).shellWithToastSpies(original));
 
 import { toastSuccess } from '@erplora/ui/shell';
 
@@ -31,7 +27,7 @@ import {
   mountPanel,
   subId,
 } from '../__tests__/mount-panel';
-import type { ApiKeyRowOut } from '../../../frontend/sdk-types';
+import type { ApiKeyRowOut } from '../../../frontend/sdk-types/accounts-security';
 import ApiKeysTable from './ApiKeysTable.vue';
 
 function key(id: string, overrides: Partial<ApiKeyRowOut> = {}): ApiKeyRowOut {

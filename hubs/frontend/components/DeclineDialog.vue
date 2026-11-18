@@ -8,7 +8,7 @@ import { useCommand } from '@erplora/ui/sdk';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { InvitationOut } from '../../../frontend/sdk-types';
+import type { InvitationOut } from '../../../frontend/sdk-types/hubs';
 import { useErrorText } from '../error-text';
 
 const props = defineProps<{
@@ -39,7 +39,7 @@ async function confirm(): Promise<void> {
   } catch {
     return; // `decline.error` is shown in the dialog.
   }
-  void toastSuccess(t('hubs.invitation.declined'));
+  toastSuccess(t('hubs.invitation.declined'));
   open.value = false;
   emit('declined', invitation);
 }

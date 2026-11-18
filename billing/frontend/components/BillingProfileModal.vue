@@ -11,7 +11,9 @@ import { computed, onScopeDispose, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useErrorText } from '../../../hubs/frontend/error-text';
-import type { BillingProfileOut, InvoiceBusinessOut, VatCheckOut } from '../../../frontend/sdk-types';
+import type { InvoiceBusinessOut } from '../../../frontend/sdk-types/billing-invoices';
+import type { VatCheckOut } from '../../../frontend/sdk-types/billing-subscriptions';
+import type { BillingProfileOut } from '../../../frontend/sdk-types/store';
 import BillingDetailsForm, { type BillingDetailsDraft } from './BillingDetailsForm.vue';
 
 const props = defineProps<{
@@ -138,7 +140,7 @@ const fieldErrors = computed<Record<string, string>>(() => ({
 async function submit(): Promise<void> {
   try {
     const saved = await save.run({ hub_id: hubId.value, ...draft.value });
-    void toastSuccess(t('billing.payment.modal.saved'));
+    toastSuccess(t('billing.payment.modal.saved'));
     emit('saved', saved);
     open.value = false;
   } catch {

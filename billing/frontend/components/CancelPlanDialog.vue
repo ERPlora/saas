@@ -9,7 +9,9 @@ import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useErrorText } from '../../../hubs/frontend/error-text';
-import type { InvoiceRowOut, PlanOut, SubscriptionRowOut } from '../../../frontend/sdk-types';
+import type { InvoiceRowOut } from '../../../frontend/sdk-types/billing-invoices';
+import type { SubscriptionRowOut } from '../../../frontend/sdk-types/billing-subscriptions';
+import type { PlanOut } from '../../../frontend/sdk-types/hubs-catalog';
 import { formatDate } from '../format';
 import { formatAmount } from '../invoices';
 
@@ -117,7 +119,7 @@ async function confirm(): Promise<void> {
     const out = await cancel.run({ hub_id: row.business.id });
     const until = formatDate(out.current_period_end, locale.value);
     const values = { business: row.business.name, plan: row.plan.name, date: until };
-    void toastSuccess(until ? t('billing.subscriptions.cancel.done', values) : t('billing.subscriptions.cancel.doneNoDate', values));
+    toastSuccess(until ? t('billing.subscriptions.cancel.done', values) : t('billing.subscriptions.cancel.doneNoDate', values));
     open.value = false;
     emit('done');
   } catch {

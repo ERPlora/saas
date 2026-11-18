@@ -5,11 +5,7 @@ import { applySurface } from '@erplora/ui/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Component } from 'vue';
 
-vi.mock('@erplora/ui/shell', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
-  toastInfo: vi.fn(() => Promise.resolve()),
-  toastError: vi.fn(() => Promise.resolve()),
-}));
+vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/frontend/__tests__/module-mocks')).shellWithToastSpies(original));
 
 import { toastError, toastInfo } from '@erplora/ui/shell';
 
@@ -88,8 +84,8 @@ async function setup(path = '/dashboard/billing/invoices', api: (call: ReturnTyp
 
 describe('InvoicesTab: the list', () => {
   // One page of `billing.invoice.list` holds 100 rows at most; on a phone
-  // «Load more» never asks for more, and past them the table pages instead (`maxWindow`).
-  it('on a phone «Load more» grows one window from the first row, never past the server’s 100 rows', async () => {
+  // the end of the scroll never asks for more, and past them the table pages instead (`maxWindow`).
+  it('on a phone the end of the scroll grows one window from the first row, never past the server’s 100 rows', async () => {
     const s = await setup();
     await s.show(ROWS, undefined, 1, { total: 260 });
     expect(s.prop('maxWindow')).toBe(100);
@@ -685,8 +681,8 @@ describe('InvoicesTab: a file is saved only when it is the file', () => {
     expect(toastError).toHaveBeenCalledExactlyOnceWith('The invoice service is not answering. Try again in a moment.');
   });
 
-  // One notice at a time (a new one closes the one on screen, as Material's snackbar): a failure and invoices still
-  // being issued in the same download are said together, in the error, or the second notice would close the error.
+  // One press, one notice: a failure and invoices still being issued in the same download are said together, in the
+  // error, never as two notices for one download.
   it('«Download PDF (n)» with one failing and others still being issued: one error notice that says both', async () => {
     serveFiles((url) =>
       url.endsWith('00123')

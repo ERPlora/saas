@@ -8,7 +8,6 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { BILLING } from '../../../accounts/frontend/paths';
-import BillingNotices from '../components/BillingNotices.vue';
 import InvoicesTab from '../components/InvoicesTab.vue';
 import PaymentTab from '../components/PaymentTab.vue';
 import SubscriptionsTab from '../components/SubscriptionsTab.vue';
@@ -61,7 +60,6 @@ const tabs = computed<ShellTab[]>(() =>
         />
         <span>{{ $t('billing.page.lead') }}</span>
       </p>
-      <BillingNotices :tab="tab" />
       <InvoicesTab v-if="tab === 'invoices'" />
       <SubscriptionsTab v-else-if="tab === 'subscriptions'" />
       <PaymentTab v-else />

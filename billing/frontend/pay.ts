@@ -69,7 +69,7 @@ export function usePayInvoice() {
       return true;
     } catch {
       paying.value = null;
-      void toastError(text(command.error.value));
+      toastError(text(command.error.value));
       return false;
     }
   }

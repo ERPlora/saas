@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:6a7e789f19b20ba5ccb98aebf993e90b220d6781d4bd900c4586a4a9b4225045 -->
+<!-- generated from WORKBOOK.md sha256:5b8ba8433b416d98d68eaae7225f6be3ce887e098a7601d5525e749cfa6661c4 -->
 
 ## What it is for and who it is for
 
@@ -61,7 +61,8 @@ the businesses one owns). Plans shows each plan with its price without VAT, the 
 turned on at once", or "All the apps turned on at once" when the plan has no cap; then the messages a month, "Your own domain for your website (www.yourbusiness.com)" on the plans that include it and,
 last, the trial), "Your current plan" on the one it has and each plan's button: "Upgrade to …",
 "Change to …", "Change to annual · …" or "Downgrade to Free"; with the plan cancelled or a downgrade scheduled,
-"Keep the plan". A business ERPlora staff marked in the admin (BILLING-F27) also sees, last, the internal plan
+"Keep the plan". Each card shows its first five lines, with the button right under the price; "Show all
+features" unfolds the rest in every card at once and "Show fewer" folds them again. A business ERPlora staff marked in the admin (BILLING-F27) also sees, last, the internal plan
 "Payment Test (internal)"; no other business sees it. If the
 business has an unpaid invoice, the notice with "Pay the invoice" comes at the top and nothing is sold to that
 business.
@@ -87,12 +88,22 @@ Menu **Billing**, with three tabs: **Invoices** (table with Invoice, Date, Busin
 filters by business, status and year; search by number; "Download PDF", "View invoice", "Download Excel"
 and "Pay" on the uncollected ones), **Subscriptions** (one row per paying business: plan, modules, next invoice with VAT and
 status; "Change plan", "Keep the plan", "View the invoice", "View invoices" and "Cancel plan") and **Payment
-details** (the card with "Change card" and the billing details with "Edit details"). At the top of all three,
-the notices of unpaid invoices.
+details** (the card with "Change card" and the billing details with "Edit details"). Unpaid invoices are not
+announced inside the tabs: they are announced in the bell of the top bar (Bell notices).
+
+### Bell notices
+The bell of the panel's top bar, on every screen. With an unpaid invoice it turns into a red pill with the number of
+businesses that have one. A new notice arrives as a card at the top right (full width on a phone) and a few seconds
+later settles in the bell. Tapping it opens the "Notifications" panel, with the most urgent business on top: "… has an
+unpaid invoice", the amount, "… days left" (or "suspended"), what happens if it is not paid ("If it is not paid by …,
+the business is suspended. Nothing is deleted.") and "Pay the invoice · …" with "Change card" beside it; if the bank
+declined the card, only "Change card". The other businesses, in rows below. A notice cannot be dismissed: it goes away
+when the invoice is paid. Whoever does not pay the business sees the notice without buttons and "Only the account that
+pays this business can pay its invoices."; in the app, "To pay it, go to erplora.com in your browser."
 
 ### Invoice
 Page of one invoice, opened with "View invoice": its number (or "not collected"), the date, the business, the
-charge and its VeriFactu status; "What it charges", one line per item with its period, its base and its VAT;
+charge and its VeriFactu status; "What it charges", one line per item with its period, its base, its VAT and its discount if it has one;
 the taxable base, the VAT and the total; and "Made out to", the payer's details as they were that day. At the
 top, "Download PDF" once it is issued and "Pay" if it was not collected; a credit note links the invoice it
 corrects. The arrow at the top goes back to Invoices.
@@ -108,9 +119,9 @@ to upgrade or change it.
 |---|---|
 | Loading | "Loading…" or the table's skeleton while the data arrives; "Working out what is charged today…" in a plan change. |
 | Empty | Invoices: "No invoices yet" and "See plans"; Subscriptions: "All your businesses are on Free"; Payment details: "No card saved yet". |
-| Error | "We could not load …" with "Retry"; a payment that does not open says "Nothing has been charged" with "Retry". |
+| Error | "We could not load …" with "Retry"; a payment that does not open says "Nothing has been charged" with "Retry". If it could not be checked whether there are unpaid invoices, the bell's panel says "Could not load notifications" with "Retry". |
 | Stripe not answering | The card: "We cannot show you the card right now: try again in a few minutes"; a payment: the notice that nothing has been charged. |
-| Unpaid invoice | Notice at the top with the amount, the business and until when it works, and "Pay the invoice"; with the card declined, "Change card" first. |
+| Unpaid invoice | The bell of the top bar, red with its number; in its panel, the notice of each business with the amount, until when it works and "Pay the invoice · …"; with the card declined, "Change card". |
 | In the app | Everything that does not charge is shown; where a payment button would be, "go to erplora.com in the browser", without a link. |
 | No permission | A business that is not yours does not appear; through the API, "Not found". |
 
@@ -129,7 +140,7 @@ to upgrade or change it.
 | BILLING-F09 | Come back from the payment: confirmed, pending or closed | done |
 | BILLING-F10 | Retry a payment that was not finished | done |
 | BILLING-F11 | Change between paid plans | done |
-| BILLING-F12 | Give trial days with a promo code | done |
+| BILLING-F12 | Give trial days or a discount with a promo code | done |
 | BILLING-F13 | Cancel the plan at the end of the period | done |
 | BILLING-F14 | Undo a pending cancellation or downgrade | done |
 | BILLING-F15 | End the subscription: the business goes back to Free | done |
@@ -264,7 +275,7 @@ Status: done
 Actor: owner
 Screen: Store, Secure payment
 Steps:
-1. In **Store › Plans**, with the business chosen at the top, the owner sees each plan with its price without VAT, its users, its devices and the apps it can have turned on at once, picks "Monthly" or "Annual" (which says how much is saved) and taps "Upgrade to …".
+1. In **Store › Plans**, with the business chosen at the top, the owner sees each plan with its price without VAT and its first features, such as its users and its devices; "Show all features" unfolds the rest, among them, when they fall beyond the fifth line, the apps it can have turned on at once and its own domain. The owner picks "Monthly" or "Annual" (which says how much is saved) and taps "Upgrade to …".
 2. The secure payment opens: the billing details if they are missing and then Stripe's card form inside the dialog, titled "Upgrade to …" with "For … · renews every month" (or every year).
 3. Enter the card; if the bank asks for authentication, Stripe shows it in the same form.
 4. When done, "Paying…" until the business's page arrives, which says "… is now on …" and whose Plan card changes as soon as Stripe confirms it. The business keeps working all the time.
@@ -313,18 +324,20 @@ Out: the plan changed (`billing.plan.changed`) or the downgrade scheduled (`bill
 If it fails: "The price was out of date: here it is again, check it before confirming" if too much time went by; a declined card changes nothing; the same plan and period is no change; downgrading to Free is cancelling (BILLING-F13); with a pending cancellation, "Keep the plan first to change it"; with an unpaid invoice, "First, pay the pending invoice"; over €400 without a tax ID asks for it.
 Involved: the business (receives its plan), ASSISTANT-F25 (asked of the panel's assistant, which sends it here)
 
-### BILLING-F12 Give trial days with a promo code
+### BILLING-F12 Give trial days or a discount with a promo code
 Status: done
 Actor: ERPlora staff, owner
-Screen: Admin › Promo codes, Secure payment
+Screen: Admin › Discounts, Admin › Promo codes, Secure payment, Billing › Subscriptions
 Steps:
-1. A person of ERPlora creates a code in the admin: the code, the trial days (1 to 365), whether it is active, until when it is valid, how many uses and a note.
-2. The owner, in the secure payment of a business that does not pay yet, taps "Have a promo code?", types it and taps "Apply": "Code …: n free days before the first charge".
-3. Pay: the first charge comes when those days end.
+1. A person of ERPlora creates a discount in the admin: a percentage (1 to 100) or an amount in euros, one of the two; how long it lasts (the first payment, a number of months, 1 to 36, or forever); the plans it applies to (none = every paid plan; never an app), whether it is active and a note. Below, its codes: the code, whether it is active, until when it is valid, how many uses and a note. A code can also give trial days (1 to 365) instead of a discount.
+2. The owner, in the secure payment of a business that does not pay yet, taps "Have a promo code?", types it and taps "Apply". With trial days: "Code …: n days free before the first charge.". With a discount: "Code …: Free for 6 months.", "Code …: 20% off on the first payment." or "Code …: €10.00 off forever.".
+3. With trial days, pay: the first charge comes when those days end.
+4. With a discount, the secure payment warns, next to the card, "Free for 6 months. Then €29.99/month + VAT. Your card is not charged today." (without "Then" if it is forever, and without the last sentence if something is charged today); give the card and the plan starts now. Each invoice carries its discount on the plan's line, also the €0 one, numbered and registered in VeriFactu as any other; when the discount ends the regular price is charged without doing anything.
+5. While it lasts, **Billing › Subscriptions** says "Free until …" (or "€10.00 off forever") and the next invoice with the discount. Moving up a plan keeps it; moving down too, on the renewal; an app is charged in full. If the business changes hands and the new owner keeps the plan with their card, the discount goes on: one forever, as it was; one for a number of months, for the whole months it has left (none if less than one); one on the first payment, already spent, does not come back.
 In: the code (case and spaces do not matter).
-Out: the trial days on the subscription and the use counted once per business and per payer.
-If it fails: an unknown, inactive, expired or used-up code says "This code is not valid or has already been used" and does not stop paying without it; trying codes has a cap per person. A code never lowers the price and never goes past its number of uses.
-Involved: none
+Out: the trial days on the subscription, or the discount in Stripe and when it ends; the use counted once per business and per payer.
+If it fails: an unknown, inactive, expired or used-up code (or one whose discount is turned off) says "This code is not valid or has already been used" and does not stop paying without it; trying codes has a cap per person; a code never goes past its number of uses: the use is held when the secure payment opens and given back if that payment is not completed. If the code stops being valid between checking it and paying, the payment does not start and says "This code is not valid or has already been used: remove it to pay without it.". A discount for a number of months only goes with monthly billing: with yearly, the payment does not start and says "This code’s discount lasts a number of months: choose monthly billing to use it."; a plan the discount does not name says "This code does not apply to the plan chosen."; in a change of plan, "This code gives a discount to a business that starts paying a plan, not to a change of plan.". While one for months lasts, moving to yearly says "This business has a discount until …: it can move to yearly billing after that date." and changes nothing. Moving to a plan the discount does not cover (it does not name it, or it was made after the code) is allowed: that plan is charged in full and Subscriptions no longer shows the discount. Cancelling is always allowed, and the plan ends at the end of the period. In the admin, once a code is used, its discount no longer changes its terms, and neither the discount nor the code can be deleted (they are turned off).
+Involved: ERPlora's platform business (issues the discounted invoices, also the €0 ones, BILLING-F25)
 
 ### BILLING-F13 Cancel the plan at the end of the period
 Status: done
@@ -367,14 +380,14 @@ Involved: the business (receives Free)
 ### BILLING-F16 Unpaid plan: retries, suspension and return
 Status: done
 Actor: system, owner, paying account
-Screen: Billing, Businesses, the business itself
+Screen: Bell notices, the business itself
 Steps:
 1. The charge of a renewal fails. Stripe retries it for some days and sends a notice of each failure. The paid apps go on the same invoice as the plan: their non-payment is that of the whole business, and paying brings everything back.
 2. erplora.com reads the subscription again in Stripe: if the retry already charged, it does nothing; if not, it records the invoice as "Not collected", with why it was not collected (card declined, authentication or failure).
-3. **Grace**: for 7 days from the invoice that failed, the business keeps working with all its plan. The paying account receives an email, once per invoice: how much could not be charged, until what day it keeps working and the link to Billing to pay it (if the bank declined the card, to change it first). In **Businesses** and in **Billing** the notice "We could not charge … for …" appears: "Pay it before … or the business is suspended; nothing is deleted", with "Pay the invoice" (or "Change card" first if the bank declined it).
-4. **Suspension**: after the 7 days, or if Stripe runs out of retries, the business is suspended and the paying account receives another email, only once. The business does not open: neither from the panel nor from its own address, not even on the devices that already had the session open, which show "This business is suspended" with the way to ERPlora. The panel's notice says "… is suspended: … unpaid" and that the data is safe.
+3. **Grace**: for 7 days from the invoice that failed, the business keeps working with all its plan. The paying account receives an email, once per invoice: how much could not be charged, until what day it keeps working and the link to Billing to pay it (if the bank declined the card, to change it first). In the panel's top bar, the bell turns red and the notice "… has an unpaid invoice" arrives: the amount, "… days left" and "If it is not paid by …, the business is suspended. Nothing is deleted.", with "Pay the invoice · …" and "Change card" (only "Change card" if the bank declined it). It is one notice per business, the same on every screen.
+4. **Suspension**: after the 7 days, or if Stripe runs out of retries, the business is suspended and the paying account receives another email, only once. The business does not open: neither from the panel nor from its own address, not even on the devices that already had the session open, which show "This business is suspended" with the way to ERPlora. The bell's notice says "suspended" and "It was suspended because of an unpaid invoice. Nothing is deleted: once it is paid it works again at once."
 5. **Safety net**: every hour the businesses with their plan unpaid are gone over and their oldest open invoice is looked at, in case Stripe stopped retrying without sending another notice.
-6. **Return**: when the invoice is paid (with "Pay the invoice", or because a retry collects it), the business is active again at once: "Invoice paid: … is up to date again".
+6. **Return**: when the invoice is paid (with "Pay the invoice", or because a retry collects it), the business is active again at once: "Invoice paid: … is up to date again", and its notice leaves the bell.
 In: Stripe's notices of the failed charge and of the subscription, and the live subscription.
 Out: the "Not collected" invoice, the emails to the payer and the business's status (payment pending, suspended or up to date) sent to the business (`hubs.subscription.changed`).
 If it fails: if Stripe does not answer when reading the subscription again, nothing is applied and Stripe sends the notice again. A repeated notice of an invoice already paid does not reopen it. A later failure of the same unpaid episode does not move the grace date nor repeat the email. An email that could not go out is sent again in the hourly pass, which warns the team while any is left.
@@ -383,9 +396,9 @@ Involved: hubs (the business's status), the business (receives the status)
 ### BILLING-F17 Reactivate a suspended business by paying its invoice
 Status: done
 Actor: paying account
-Screen: Billing › Invoices, Businesses
+Screen: Bell notices, Billing › Invoices
 Steps:
-1. On the notice of the suspended business (in **Businesses** or in **Billing**), the paying account taps "Pay the invoice · …" (if the bank declined the card, "Change card" first).
+1. On the notice of the suspended business, in the bell of the top bar, the paying account taps "Pay the invoice · …" (if the bank declined the card, "Change card" first); it can also pay it from the invoice, in **Billing › Invoices**.
 2. Stripe's payment page of that invoice opens; pay.
 3. Back, "Invoice paid: … is up to date again" and the business works again with its data and its plan, without opening another subscription.
 In: the unpaid invoice and its payment page in Stripe.
@@ -460,7 +473,7 @@ Steps:
 6. An integration of the account, with a Billing read key, reads the same list with the same filters, each invoice with its business, its lines, its VAT and who it is made out to, its PDF and the spreadsheet.
 In: the invoices the account paid and those of the businesses it owns.
 Out: the PDF of the issued invoice, which ERPlora's platform business makes on each download with its VeriFactu QR (BILLING-F25), and the spreadsheet of what is filtered.
-If it fails: an invoice still being issued says "Issuing" and offers no PDF; if the invoice service does not answer, "The invoice service is not answering. Try again in a moment"; if in "Download PDF (n)" some fail and others are still being issued, a single notice says both (one notice shows at a time: a new one closes the one before); without invoices, "No invoices yet". An invoice of another account is not found.
+If it fails: an invoice still being issued says "Issuing" and offers no PDF; if the invoice service does not answer, "The invoice service is not answering. Try again in a moment"; if in "Download PDF (n)" some fail and others are still being issued, a single notice says both (one download, one notice); without invoices, "No invoices yet". An invoice of another account is not found.
 Involved: none
 
 ### BILLING-F23 See the subscriptions of each business
@@ -478,11 +491,11 @@ Involved: hubs (HUBS-F28: the plan of a business handed over)
 ### BILLING-F24 Open Stripe's payment portal to change the card
 Status: done
 Actor: paying account
-Screen: Billing › Payment details
+Screen: Billing › Payment details, Bell notices
 Steps:
 1. In **Billing › Payment details**, the "Payment method" card says which card pays which businesses and, if the last charge failed, when and for which business.
-2. Tap "Change card": Stripe's secure page of that account opens, which only allows changing the card and seeing the receipts.
-3. Back, the panel returns to Billing and, if there was a declined invoice, the notice says "Card changed" and "Pay" comes back.
+2. Tap "Change card" (there or on the bell's notice of a business with an unpaid invoice): Stripe's secure page of that account opens, which only allows changing the card and seeing the receipts.
+3. Back, the panel returns to Billing and, if there was a declined invoice, its bell notice says "Card changed: you can pay it now." and "Pay the invoice · …" comes back.
 In: the paying account of the business.
 Out: the new card in Stripe; plan changes are never made there.
 If it fails: before the first payment there is nothing to change; if Stripe does not answer, it is said; only the paying account opens it, never another owner.
@@ -498,7 +511,7 @@ Steps:
 3. It sends it to ERPlora's platform business, which records it with VeriFactu and returns its status and its QR; when it issues it, the payer is told by email.
 In: Stripe's charge with its lines and the payer's details.
 Out: the invoice and its lines (`billing.invoice.recorded`), its tax status and the email.
-If it fails: if the platform business does not answer, the invoice stays "issuing" and is retried (after 15 minutes, then double each time, at most 6 hours); if it refuses it, the reason is saved and it is retried. An uncollected renewal is listed "Not collected", without a number, and is numbered when paid. A €0 charge makes no invoice, and the same charge notified several times makes only one. With live keys, without a way to issue, nothing is charged.
+If it fails: if the platform business does not answer, the invoice stays "issuing" and is retried (after 15 minutes, then double each time, at most 6 hours); if it refuses it, the reason is saved and it is retried. An uncollected renewal is listed "Not collected", without a number, and is numbered when paid. A €0 charge of a trial makes no invoice; the one of a code's discount does (BILLING-F12), with the discount on each line. The same charge notified several times makes only one. With live keys, without a way to issue, nothing is charged.
 Involved: ERPlora's platform business (issues the invoice)
 
 ### BILLING-F26 Refund a charge
@@ -644,7 +657,7 @@ Actor: owner, paying account
 Screen: Invoice
 Steps:
 1. In **Billing › Invoices**, the person taps "View invoice" on a row.
-2. The page says its number (or "Invoice … (not collected)"), the date, the business, the charge and its VeriFactu status; "What it charges", one line per item with its period, "Prorated" if it is, its base and its VAT; the taxable base, the VAT and the total; and "Made out to", with the payer's details as they were that day.
+2. The page says its number (or "Invoice … (not collected)"), the date, the business, the charge and its VeriFactu status; "What it charges", one line per item with its period, "Prorated" if it is, its base and its VAT, and its "Discount" if a code lowered it; the taxable base, the VAT and the total; and "Made out to", with the payer's details as they were that day.
 3. From it they download the PDF of an issued invoice, pay an uncollected one or, on a credit note, open the invoice it corrects. While it is being issued, the page turns by itself into its number and its QR.
 4. The arrow at the top goes back to Invoices.
 In: an invoice of the account.

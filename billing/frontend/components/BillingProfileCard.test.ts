@@ -8,7 +8,7 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
   IonModal: (await import('../../../hubs/frontend/__tests__/ion-modal-stub')).IonModalStub,
 }));
 
-import type { BillingProfileOut } from '../../../frontend/sdk-types';
+import type { BillingProfileOut } from '../../../frontend/sdk-types/store';
 import { apiError, describeCall, flush, mountBilling } from '../__tests__/mount-billing';
 import BillingProfileCard from './BillingProfileCard.vue';
 import BillingProfileModal from './BillingProfileModal.vue';

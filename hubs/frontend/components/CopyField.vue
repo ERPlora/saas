@@ -24,9 +24,9 @@ const { t } = useI18n();
 async function copy(): Promise<void> {
   try {
     await navigator.clipboard.writeText(props.value);
-    void toastSuccess(props.copiedText ?? t('hubs.common.copied'));
+    toastSuccess(props.copiedText ?? t('hubs.common.copied'));
   } catch {
-    void toastError(props.failedText ?? t('hubs.common.copyFailed'));
+    toastError(props.failedText ?? t('hubs.common.copyFailed'));
   }
 }
 </script>

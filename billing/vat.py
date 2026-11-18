@@ -7,7 +7,7 @@ how the price is announced:
 
 * **Plans — NET price**. Stripe's ``Price`` is the base and OUR engine resolves the rate, sent
   with the sale (``default_tax_rates``). Stripe adds it on top and the invoice only collects it
-  (``tax_included=False``) — **except a ZERO on a sale we qualified as subject**: that is reconciled as
+  (``tax_included=False``) — **except a ZERO tax on a charge we qualified as subject**: reconciled as
   VAT-inclusive and reported, because a zero there is a misconfiguration (the rate
   mirrored in Stripe is not ours, or a VAT id Stripe accepted by its format and VIES did not confirm).
 * **Modules — price with the VAT inside** (``tax_included=True``, the default): the quota is split out.
@@ -626,7 +626,7 @@ def _breakdown(  # noqa: PLR0913
         )
 
     reconciled = False
-    if not tax_included and not tax_cents:
+    if not tax_included and not tax_cents and gross:
         # NET price and Stripe charged no tax on a sale OUR qualification says is SUBJECT: reconcile.
         # A Spanish domestic sale at 0 % does not exist; what was charged becomes
         # VAT-inclusive, as the tax office does when VAT was not charged (TJUE C-249/12 and C-250/12,

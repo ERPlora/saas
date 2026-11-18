@@ -13,7 +13,7 @@ import { expect, test } from './fixtures';
 import { waitForMailCode, waitForPasswordResetLink } from './mail';
 import { watchPageErrors } from './page-events';
 import { PANEL_URL } from './project';
-import { captureAtEverySize, settled, shot, VIEWPORTS } from './screen';
+import { captureAtEverySize, settled, shot, toast, VIEWPORTS } from './screen';
 import { sessionOf, signIn, signInThroughPage, submitSignInForm } from './session';
 
 const atEverySize = captureAtEverySize('APP-ACCOUNTS-1');
@@ -276,7 +276,7 @@ test('ACCOUNTS-F08: «Change password» asks for the current one, refuses it as 
     await expect(page.getByTestId('password-new')).toContainText('Your new password must be different from the current one.');
     await page.getByTestId('password-new').locator('input').fill('Pan-de-centeno-y-sal-2026');
     await page.getByTestId('password-change-submit').click();
-    await expect(page.locator('ion-toast').filter({ hasText: 'Password changed' })).toBeVisible();
+    await expect(toast(page, 'Password changed')).toBeVisible();
 
     // This browser stays signed in; the other one is signed out.
     expect((await sessionOf(page.request)).user).toMatchObject({ label: email });

@@ -1,5 +1,5 @@
 // Account → Preferences (mockups `account.html` «preferences»): appearance (system, light, dark: the shell's theme,
-// painted at once and kept in the account), language (the account's, which the mails and the jump to a business
+// painted at once and kept in the account, and the transparency effects of its glass surfaces, a switch), language (the account's, which the mails and the jump to a business
 // read too) and the mail notices: «Security, invoices and payments» always on, «Business notices» a switch (the
 // mail that a business is ready); no «ERPlora news», a mail ERPlora never sends (ACCOUNTS-F23). Each control saves on its own
 // (`accounts.preferences.update`, only what changed) and says so; a refusal puts the control back. A failed load
@@ -8,14 +8,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { setThemeMode, themeMode } from '@erplora/ui/shell';
+import { setThemeMode, setThemeTransparency, themeMode, themeTransparency } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@erplora/ui/shell', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
-  toastSuccess: vi.fn(() => Promise.resolve()),
-  toastError: vi.fn(() => Promise.resolve()),
-}));
+vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/frontend/__tests__/module-mocks')).shellWithToastSpies(original));
 
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
@@ -32,7 +28,7 @@ import {
   preferences,
   subId,
 } from '../__tests__/mount-panel';
-import type { PreferencesOut } from '../../../frontend/sdk-types';
+import type { PreferencesOut } from '../../../frontend/sdk-types/accounts';
 import { onSessionChanged } from '../../../frontend/session-changed';
 import PreferencesForm from './PreferencesForm.vue';
 
@@ -40,9 +36,12 @@ afterEach(() => {
   vi.mocked(toastSuccess).mockClear();
   vi.mocked(toastError).mockClear();
   setThemeMode('system');
+  setThemeTransparency(true);
   document.documentElement.lang = '';
   document.body.innerHTML = '';
 });
+
+const opaque = () => document.documentElement.classList.contains('ep-opaque');
 
 async function setup(
   now: PreferencesOut = preferences(),
@@ -106,6 +105,57 @@ describe('PreferencesForm', () => {
     expect(toastError).toHaveBeenCalledWith('We could not reach ERPlora. Check your connection and try again.');
   });
 
+  it('offers «Transparency effects» in Appearance and paints what the account chose', async () => {
+    const s = await setup(preferences({ transparency: false }));
+    expect(s.q('preferences-appearance')?.textContent).toContain('Transparency effects');
+    expect(s.q('preferences-appearance')?.textContent).toContain('Translucent backgrounds on panels and notices');
+    expect(ionProps(s.q('preferences-transparency'), 'checked', 'disabled')).toEqual({ checked: false, disabled: false });
+    expect([themeTransparency.value, opaque()]).toEqual([false, true]);
+  });
+
+  it('names the switch in Spanish', async () => {
+    const s = await setup(preferences(), undefined, 'es');
+    expect(s.q('preferences-appearance')?.textContent).toContain('Efectos de transparencia');
+    expect(s.q('preferences-appearance')?.textContent).toContain('Fondos translúcidos en paneles y avisos');
+    expect(ionProps(s.q('preferences-transparency'), 'checked')).toEqual({ checked: true });
+  });
+
+  it('turns the glass off at once and keeps it in the account', async () => {
+    const s = await setup(preferences(), () => Response.json(preferences({ transparency: false })));
+    await choose(s.q('preferences-transparency'), { checked: false });
+    expect([themeTransparency.value, opaque()]).toEqual([false, true]);
+    expect(s.calls().map((c) => [c.path, c.body])).toEqual([['/api/accounts/preferences', { transparency: false }]]);
+    expect(toastSuccess).toHaveBeenCalledWith('Preferences saved');
+  });
+
+  it('cannot be pressed again while it saves, and is back once the account answers', async () => {
+    let answer: (response: Response) => void = () => {};
+    const s = await setup(preferences(), () => new Promise<Response>((resolve) => (answer = resolve)));
+    await choose(s.q('preferences-transparency'), { checked: false });
+    expect(opaque()).toBe(true);
+    expect(ionProps(s.q('preferences-transparency'), 'disabled')).toEqual({ disabled: true });
+    answer(Response.json(preferences({ transparency: false })));
+    await flush();
+    expect(ionProps(s.q('preferences-transparency'), 'checked', 'disabled')).toEqual({ checked: false, disabled: false });
+    expect(toastSuccess).toHaveBeenCalledWith('Preferences saved');
+  });
+
+  it('puts the glass back and says why when the account refuses it', async () => {
+    const s = await setup(preferences(), () => Promise.reject(new TypeError('Failed to fetch')) as never);
+    await choose(s.q('preferences-transparency'), { checked: false });
+    expect([themeTransparency.value, opaque()]).toEqual([true, false]);
+    expect(ionProps(s.q('preferences-transparency'), 'checked', 'disabled')).toEqual({ checked: true, disabled: false });
+    expect(toastError).toHaveBeenCalledWith('We could not reach ERPlora. Check your connection and try again.');
+    expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it('paints what another tab chose when the preferences arrive again', async () => {
+    const s = await setup(preferences());
+    await s.result(s.stream, 'accounts.preferences.get', preferences({ transparency: false }));
+    expect([themeTransparency.value, opaque()]).toEqual([false, true]);
+    expect(ionProps(s.q('preferences-transparency'), 'checked')).toEqual({ checked: false });
+  });
+
   it('switches the language of the panel with the account’s', async () => {
     const s = await setup(preferences(), () => Response.json(preferences({ language: 'es' })));
     await choose(s.q('preferences-language'), { value: 'es' });
@@ -135,13 +185,14 @@ describe('PreferencesForm', () => {
     stop();
   });
 
-  it('neither the theme nor «Business notices» change what the session says of the menu', async () => {
+  it('neither the theme, the transparency effects nor «Business notices» change what the session says of the menu', async () => {
     const heard = vi.fn();
     const stop = onSessionChanged(heard);
     const s = await setup(preferences(), () => Response.json(preferences()));
     await choose(s.q('preferences-theme'), { value: 'dark' });
+    await choose(s.q('preferences-transparency'), { checked: false });
     await choose(s.q('preferences-hub-alerts'), { checked: false });
-    expect(s.calls().map((c) => c.body)).toEqual([{ theme_mode: 'dark' }, { hub_alerts: false }]);
+    expect(s.calls().map((c) => c.body)).toEqual([{ theme_mode: 'dark' }, { transparency: false }, { hub_alerts: false }]);
     expect(heard).not.toHaveBeenCalled();
     stop();
   });

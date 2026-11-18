@@ -23,8 +23,9 @@ from django.utils.functional import LazyObject
 from accounts.models import ApiKey
 from accounts.services import account_deletion
 
-def audit(model, *, exclude: Iterable[str] = ()) -> None:
-    """Register ``model`` in the audit trail: its serialized copy keeps only the logged fields, never ``exclude``.
+def audit(model, *, exclude: Iterable[str] = (), m2m_fields: Iterable[str] = ()) -> None:
+    """Register ``model`` in the audit trail: its serialized copy keeps only the logged fields, never ``exclude``;
+    a change of one of its ``m2m_fields`` is an entry of its own.
 
     Nor the rows of other models that point at it (``api_keys``, ``billing_profiles``…): auditlog drops only the
     many-to-many relations, so a new account listed the managers of those rows («accounts.ApiKey.None») among its
@@ -33,6 +34,7 @@ def audit(model, *, exclude: Iterable[str] = ()) -> None:
     auditlog.register(
         model,
         exclude_fields=[*exclude, *pointing_at_it],
+        m2m_fields=set(m2m_fields),
         serialize_data=True,
         serialize_auditlog_fields_only=True,
     )

@@ -12,23 +12,24 @@
 import { ConfirmDialog, type ConfirmConsequence, EmptyState, InlineFeedback } from '@erplora/ui/components';
 import { HubIcon, toastInfo, toastSuccess } from '@erplora/ui/shell';
 import { useCommand, useLive, useLiveClient } from '@erplora/ui/sdk';
-import { IonButton, IonCard, IonCardContent, IonInput, IonLabel, IonSegment, IonSegmentButton, IonSkeletonText } from '@ionic/vue';
+import { IonButton, IonCard, IonCardContent, IonLabel, IonSegment, IonSegmentButton, IonSkeletonText } from '@ionic/vue';
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { BILLING, BUSINESSES } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import { useErrorText } from '../../../hubs/frontend/error-text';
+import type { PlanOut } from '../../../frontend/sdk-types/hubs-catalog';
 import type {
   AppSummaryOut,
   BillingInterval,
-  PlanOut,
-  PromoCheckOut,
   SubscriptionModuleOut,
   StoreCatalogOut,
   SubscriptionOut,
-} from '../../../frontend/sdk-types';
-import { formatDate } from '../format';
+} from '../../../frontend/sdk-types/store';
+import { checkoutNotice } from '../discount-text';
+import { formatCents, formatDate } from '../format';
+import type { PromoCheckOut } from '../promo-types';
 import {
   annualSaving,
   blockOf,
@@ -43,7 +44,8 @@ import AnnualSwitchDialog from './AnnualSwitchDialog.vue';
 import BusinessPicker from './BusinessPicker.vue';
 import CheckoutModal, { type CheckoutPurchase } from './CheckoutModal.vue';
 import ModuleCard from './ModuleCard.vue';
-import PlanCard from './PlanCard.vue';
+import PlansGrid from './PlansGrid.vue';
+import PromoCodeField from './PromoCodeField.vue';
 import ProrationDialog, { type ProrationItem } from './ProrationDialog.vue';
 
 const props = defineProps<{
@@ -188,33 +190,9 @@ watch(subscription, (now, before) => {
 
 // --- Promo code (a plan bought on Free) -------------------------------------------------------------
 
-const promoOpen = shallowRef(false);
-const promoTyped = shallowRef('');
 const promo = shallowRef<PromoCheckOut | null>(null);
-const promoPending = shallowRef(false);
-const promoError = shallowRef('');
 const promoCode = computed(() => (promo.value?.valid ? promo.value.code : ''));
 const offersPromo = computed(() => !subscription.value?.paying || subscription.value.plan === freePlan.value?.slug);
-
-async function applyPromo(): Promise<void> {
-  const code = promoTyped.value.trim();
-  if (!code) return;
-  promoPending.value = true;
-  promoError.value = '';
-  try {
-    promo.value = await client.api.call('billing.promo.check', { code });
-  } catch (error) {
-    promo.value = null;
-    promoError.value = forDialog(error as never)?.message ?? '';
-  } finally {
-    promoPending.value = false;
-  }
-}
-
-function removePromo(): void {
-  promo.value = null;
-  promoTyped.value = '';
-}
 
 // --- Buying ----------------------------------------------------------------------------------------
 
@@ -227,10 +205,24 @@ const annualInterval = shallowRef<BillingInterval>('year');
 
 const cents = (euros: string) => Math.round(Number(euros) * 100);
 
+const planCents = shallowRef(0);
+
 function upgrade(plan: PlanOut, chosen: BillingInterval): void {
   purchase.value = { kind: 'plan', slug: plan.slug, name: plan.name, interval: chosen };
+  planCents.value = cents(chosen === 'year' ? plan.price_annual : plan.price_monthly);
   checkoutOpen.value = true;
 }
+
+// A code's discount on the plan the checkout sells (one it names, with that billing): the checkout says it.
+const discountNotice = computed(() => {
+  const discount = promo.value?.valid ? promo.value.discount : null;
+  const sale = purchase.value;
+  if (!discount || sale?.kind !== 'plan') return '';
+  const { plans, intervals } = discount.applies_to;
+  if (!intervals.includes(sale.interval) || (plans.length > 0 && !plans.includes(sale.slug))) return '';
+  const money = (amount: number) => formatCents(amount, locale.value);
+  return checkoutNotice({ t, money }, discount, { cents: planCents.value, interval: sale.interval });
+});
 
 function change(plan: PlanOut, chosen: BillingInterval): void {
   prorationItem.value = {
@@ -304,7 +296,7 @@ function prorationDone(out: SubscriptionOut): void {
 }
 
 function stale(): void {
-  void toastInfo(t('billing.checkout.stale'));
+  toastInfo(t('billing.checkout.stale'));
   if (business.value) void loadCatalog(business.value.id);
 }
 
@@ -349,7 +341,7 @@ async function confirmCancel(): Promise<void> {
     apply(out);
     const plan = currentPlan.value?.name ?? out.plan;
     const date = formatDate(out.current_period_end, locale.value);
-    void toastSuccess(date ? t('billing.cancelPlan.done', { plan, date }) : t('billing.cancelPlan.doneNoDate', { plan }));
+    toastSuccess(date ? t('billing.cancelPlan.done', { plan, date }) : t('billing.cancelPlan.doneNoDate', { plan }));
     cancelOpen.value = false;
   } catch {
     // `cancelPlan.error`: the dialog says it.
@@ -362,9 +354,9 @@ async function keepThePlan(): Promise<void> {
   try {
     const out = await keepPlan.run({ hub_id: hub.id });
     apply(out);
-    void toastSuccess(t('billing.plans.kept', { plan: currentPlan.value?.name ?? out.plan, date: formatDate(out.current_period_end, locale.value) }));
+    toastSuccess(t('billing.plans.kept', { plan: currentPlan.value?.name ?? out.plan, date: formatDate(out.current_period_end, locale.value) }));
   } catch {
-    void toastInfo(text(keepPlan.error.value));
+    toastInfo(text(keepPlan.error.value));
   }
 }
 
@@ -407,7 +399,7 @@ async function confirmCancelModule(): Promise<void> {
     apply(out);
     const until = out.modules.find((item) => item.slug === module.slug)?.valid_until ?? out.current_period_end;
     const date = formatDate(until, locale.value);
-    void toastSuccess(
+    toastSuccess(
       date ? t('billing.cancelModule.done', { module: module.name, date }) : t('billing.cancelModule.doneNoDate', { module: module.name }),
     );
     moduleToCancel.value = null;
@@ -423,9 +415,9 @@ async function keepTheModule(module: SaleModule): Promise<void> {
     const out = await keepModule.run({ hub_id: hub.id, module: module.slug });
     apply(out);
     const date = formatDate(out.current_period_end, locale.value);
-    void toastSuccess(date ? t('billing.modules.kept', { module: module.name, date }) : t('billing.modules.keptNoDate', { module: module.name }));
+    toastSuccess(date ? t('billing.modules.kept', { module: module.name, date }) : t('billing.modules.keptNoDate', { module: module.name }));
   } catch {
-    void toastInfo(text(keepModule.error.value));
+    toastInfo(text(keepModule.error.value));
   }
 }
 </script>
@@ -584,22 +576,18 @@ async function keepTheModule(module: SaleModule): Promise<void> {
             <ion-label>{{ saving ? $t('billing.plans.annualSaving', { percent: saving }) : $t('billing.plans.annual') }}</ion-label>
           </ion-segment-button>
         </ion-segment>
-        <div class="card-grid">
-          <PlanCard
-            v-for="plan in shownPlans"
-            :key="plan.slug"
-            :plan="plan"
-            :period="period"
-            :subscription="subscription"
-            :block="block"
-            :scheduled-plan-name="scheduledPlanName"
-            @upgrade="upgrade(plan, $event)"
-            @change="change(plan, $event)"
-            @switch="switchBilling($event)"
-            @downgrade="cancelOpen = true"
-            @keep="keepThePlan"
-          />
-        </div>
+        <PlansGrid
+          :plans="shownPlans"
+          :period="period"
+          :subscription="subscription"
+          :block="block"
+          :scheduled-plan-name="scheduledPlanName"
+          @upgrade="upgrade"
+          @change="change"
+          @switch="switchBilling"
+          @downgrade="cancelOpen = true"
+          @keep="keepThePlan"
+        />
         <p
           v-if="later"
           class="section-intro"
@@ -607,78 +595,10 @@ async function keepTheModule(module: SaleModule): Promise<void> {
         >
           {{ later }}
         </p>
-        <div
+        <PromoCodeField
           v-if="offersPromo"
-          class="store-promo"
-        >
-          <ion-button
-            v-if="!promoOpen"
-            fill="clear"
-            class="link-button"
-            data-testid="store-promo-toggle"
-            @click="promoOpen = true"
-          >
-            <HubIcon
-              slot="start"
-              name="ion:ticket-outline"
-              aria-hidden="true"
-            />
-            {{ $t('billing.promo.ask') }}
-          </ion-button>
-          <form
-            v-else
-            class="store-promo__form"
-            novalidate
-            @submit.prevent="applyPromo"
-          >
-            <ion-input
-              mode="md"
-              fill="outline"
-              label-placement="floating"
-              autocapitalize="characters"
-              :label="$t('billing.promo.label')"
-              :value="promoTyped"
-              data-testid="store-promo-code"
-              @ion-input="promoTyped = String($event.detail.value ?? '')"
-            />
-            <ion-button
-              fill="outline"
-              :disabled="promoPending || !promoTyped.trim()"
-              data-testid="store-promo-apply"
-              @click="applyPromo"
-            >
-              <HubIcon
-                slot="start"
-                name="ion:checkmark-outline"
-                aria-hidden="true"
-              />
-              {{ $t('billing.promo.apply') }}
-            </ion-button>
-            <ion-button
-              v-if="promo"
-              fill="clear"
-              class="btn-neutral"
-              data-testid="store-promo-remove"
-              @click="removePromo"
-            >
-              <HubIcon
-                slot="start"
-                name="ion:close-outline"
-                aria-hidden="true"
-              />
-              {{ $t('billing.promo.remove') }}
-            </ion-button>
-          </form>
-          <p
-            v-if="promo || promoError"
-            class="store-promo__result"
-            :class="{ 'is-invalid': !promo?.valid }"
-            role="status"
-            data-testid="store-promo-result"
-          >
-            {{ promoError || (promo?.valid ? $t('billing.promo.valid', { code: promo.code, days: promo.trial_days }) : $t('billing.promo.invalid')) }}
-          </p>
-        </div>
+          v-model="promo"
+        />
       </section>
 
       <section
@@ -729,7 +649,17 @@ async function keepTheModule(module: SaleModule): Promise<void> {
       :promo-code="purchase?.kind === 'plan' ? promoCode : ''"
       :declined-for="declinedFor"
       @stale="stale"
-    />
+    >
+      <template #notice>
+        <InlineFeedback
+          v-if="discountNotice"
+          icon="ion:ticket-outline"
+          data-testid="checkout-discount"
+        >
+          {{ discountNotice }}
+        </InlineFeedback>
+      </template>
+    </CheckoutModal>
     <ProrationDialog
       v-if="business"
       v-model:open="prorationOpen"
@@ -852,7 +782,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
   align-items: center;
   gap: 8px;
 }
-.store-promo__form {
+.store-promo :deep(.store-promo__form) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -860,21 +790,27 @@ async function keepTheModule(module: SaleModule): Promise<void> {
   width: 100%;
   max-width: 480px;
 }
-.store-promo__form ion-input {
+.store-promo :deep(.store-promo__form ion-input) {
   flex: 1 1 200px;
 }
-.store-promo__result {
+.store-promo :deep(.store-promo__result) {
   margin: 0;
   font-size: 0.88rem;
   color: var(--ep-success-text, var(--ion-color-success));
 }
-.store-promo__result.is-invalid {
+.store-promo :deep(.store-promo__result.is-invalid) {
   color: var(--ep-danger-text, var(--ion-color-danger));
 }
-.link-button {
-  margin: 0;
+/* The field is its own component: the buttons' rules of buttons.css reach inside it from here. */
+.store-promo :deep(ion-button > ion-icon[slot='start']) {
+  margin-inline-end: 0.45em;
+  font-size: 1.15em;
 }
-.btn-neutral {
+.store-promo :deep(ion-button.link-button) {
+  margin: 0;
+  --color: var(--ion-color-primary);
+}
+.store-promo :deep(.btn-neutral) {
   --color: var(--ion-text-color);
 }
 </style>

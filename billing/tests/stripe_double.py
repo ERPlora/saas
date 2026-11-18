@@ -6,7 +6,7 @@ built in the shapes of the API version the SDK pins (2026-09-30: the period on t
 invoice's subscription under ``parent.subscription_details``), so the gateway's conversion to plain dicts is
 exercised too. An exception given as an answer is raised, as the SDK raises it.
 
-Boring calls have a default answer (the account's tax rates, a new customer, a checkout session, a portal
+Boring calls have a default answer (the account's tax rates and coupons, a new customer, a checkout session, a portal
 session); everything that decides money (a subscription, an invoice, a preview) must be answered by the
 test, or the call fails loudly. ``signed_event`` signs a webhook payload exactly as Stripe does, so the
 webhook's signature check is the real one.
@@ -49,7 +49,20 @@ class StripeDouble:
         self.tax_rates: list[dict] = []
         #: Each customer's tax ids (``customers.tax_ids.list``/``create``).
         self.customer_tax_ids: dict[str, list[dict]] = {}
+        #: The account's coupons by id (``coupons.create``): none until a code's discount makes one.
+        self.coupons: dict[str, dict] = {}
+        self._answers.update({"coupons.create": [self._new_coupon]})
         self.v1 = _Node(self, "")
+
+    def _new_coupon(self, call: Call) -> dict | BaseException:
+        """A new coupon, or Stripe's refusal of an id the account already has (what it answers, captured)."""
+        if call.params["id"] in self.coupons:
+            return stripe.InvalidRequestError(
+                "Coupon already exists.", param="id", code="resource_already_exists", http_status=400
+            )
+        coupon = {"object": "coupon", "valid": True, **call.params}
+        self.coupons[coupon["id"]] = coupon
+        return coupon
 
     # --- Arranging -----------------------------------------------------------------------------
 
@@ -227,10 +240,13 @@ def subscription(
     trial: tuple[int | None, int | None] = (None, None),
     metadata: dict | None = None,
     default_payment_method: str | None = None,
+    discounts: list[dict] | None = None,
 ) -> dict:
     return {
         "id": sub_id,
         "object": "subscription",
+        # Expanded, as ``retrieve_subscription`` asks for them: a promo code's discount is one.
+        "discounts": discounts or [],
         "status": status,
         "customer": customer,
         "cancel_at_period_end": cancel_at_period_end,

@@ -355,6 +355,9 @@ class InvoiceLine(UUIDModel):
     net_cents = models.BigIntegerField(_("tax base (cents)"), default=0)
     tax_cents = models.BigIntegerField(_("VAT (cents)"), default=0)
     total_cents = models.BigIntegerField(_("total (cents)"), default=0)
+    # What a promo code took off the price, without VAT; ``net_cents`` is the base after it.
+    # ``db_default``: the release before it still writes lines during a deploy, without this column.
+    discount_cents = models.BigIntegerField(_("discount (cents)"), default=0, db_default=0)
     stripe_line_id = models.CharField(_("Stripe line"), max_length=255, blank=True)
 
     class Meta:

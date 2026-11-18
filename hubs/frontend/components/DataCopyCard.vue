@@ -15,7 +15,7 @@ import { computed, onMounted, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { browser } from '../../../billing/frontend/browser';
-import type { DataCopyOut } from '../../../frontend/sdk-types';
+import type { DataCopyOut } from '../../../frontend/sdk-types/hubs-data-copies';
 import { formatBytes } from '../data-copy';
 import { useErrorText } from '../error-text';
 
@@ -60,7 +60,7 @@ async function download(copy: DataCopyOut): Promise<void> {
     const { url } = await link.run({ business_id: props.business.id, copy_id: copy.id });
     browser.assign(url);
   } catch {
-    void toastError(text(link.error.value));
+    toastError(text(link.error.value));
   } finally {
     opening.value = null;
   }

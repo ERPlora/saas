@@ -75,7 +75,9 @@ periodo («Mensual» o «Anual · −n %»), sus líneas como en /pricing/ (tras
 del plan …», «Hasta 40 apps activadas a la vez», o «Todas las apps activadas a la vez» si el plan no tiene tope;
 después los mensajes al mes, «Dominio propio para tu web (www.tunegocio.com)» en los planes que lo incluyen y, al final, la prueba), «Tu plan actual» en el que se tiene y el botón de cada uno:
 «Mejorar a …», «Cambiar a …», «Cambiar a anual · …» o «Bajar a Gratis»; con el plan cancelado o una bajada
-programada, «Mantener el plan». Un negocio que el personal de ERPlora marcó en el admin (BILLING-F27) ve también,
+programada, «Mantener el plan». Cada tarjeta enseña sus cinco primeras líneas, con el botón justo debajo del
+precio; «Ver todas las características» despliega las demás en todas las tarjetas a la vez y «Ver menos» las
+recoge. Un negocio que el personal de ERPlora marcó en el admin (BILLING-F27) ve también,
 al final, el plan interno «Prueba de pago (interno)»; ningún otro negocio lo ve. Si el negocio tiene una factura sin pagar, arriba sale el aviso con «Pagar la factura» y no se
 vende nada a ese negocio.
 
@@ -102,12 +104,24 @@ Estado; filtros por negocio, estado y año; buscador por número; «Descargar PD
 «Descargar Excel» y «Pagar» en las no cobradas), **Suscripciones** (una fila por negocio que paga: plan, módulos, próxima
 factura con IVA y estado; «Cambiar plan», «Mantener el plan», «Ver la factura», «Ver facturas» y
 «Cancelar plan») y **Datos de pago** (la tarjeta con «Cambiar tarjeta» y los datos de facturación con
-«Editar datos»). Arriba, en las tres, los avisos de facturas sin pagar.
+«Editar datos»). Las facturas sin pagar no se avisan dentro de las pestañas: se avisan en la campana de la barra
+superior (Avisos de la campana).
+
+### Avisos de la campana
+La campana de la barra superior del panel, en todas las pantallas. Con una factura sin pagar se vuelve una píldora
+roja con el número de negocios que la tienen. Un aviso nuevo llega como tarjeta arriba a la derecha (a lo ancho en el
+móvil) y a los pocos segundos se recoge en la campana. Al pulsarla se abre el panel «Avisos», con el negocio más
+urgente arriba: «… tiene una factura sin pagar», el importe, «quedan … días» (o «suspendido»), lo que pasa si no se
+paga («Si no se paga antes del …, el negocio se suspende. No se borra nada.») y «Pagar la factura · …» con «Cambiar
+tarjeta» al lado; si el banco rechazó la tarjeta, solo «Cambiar tarjeta». Los demás negocios, en filas debajo. Un
+aviso no se descarta: desaparece cuando se paga la factura. Quien no paga el negocio ve el aviso sin botones y «Solo
+la cuenta que paga este negocio puede pagar sus facturas.»; en la app, «Para pagarla, entra en erplora.com desde el
+navegador.»
 
 ### Factura
 Página de una factura, que se abre con «Ver la factura»: su número (o «no cobrada»), la fecha, el negocio,
-el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, su base y su
-IVA; la base imponible, el IVA y el total; y «A nombre de», los datos de quien paga tal como estaban ese
+el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, su base, su
+IVA y su descuento si lo tiene; la base imponible, el IVA y el total; y «A nombre de», los datos de quien paga tal como estaban ese
 día. Arriba, «Descargar PDF» cuando ya está emitida y «Pagar» si no se cobró; una rectificativa enlaza la
 factura que rectifica. La flecha de arriba vuelve a Facturas.
 
@@ -122,9 +136,9 @@ al propietario, el botón para mejorarlo o cambiarlo.
 |---|---|
 | Cargando | «Cargando…» o el esqueleto de la tabla mientras llegan los datos; «Calculando lo que se cobra hoy…» en un cambio de plan. |
 | Vacío | Facturas: «Aún no hay facturas» y «Ver planes»; Suscripciones: «Todos tus negocios están en Gratis»; Datos de pago: «Aún no hay ninguna tarjeta guardada». |
-| Error | «No hemos podido cargar …» con «Reintentar»; un pago que no se abre dice «No se ha cobrado nada» con «Reintentar». |
+| Error | «No hemos podido cargar …» con «Reintentar»; un pago que no se abre dice «No se ha cobrado nada» con «Reintentar». Si no se pudo comprobar si hay facturas sin pagar, el panel de la campana dice «No se pudieron cargar los avisos» con «Reintentar». |
 | Stripe no responde | La tarjeta: «Ahora no podemos enseñarte la tarjeta: inténtalo en unos minutos»; un pago: el aviso de que no se ha cobrado nada. |
-| Factura sin pagar | Aviso arriba con el importe, el negocio y hasta cuándo funciona, y «Pagar la factura»; con la tarjeta rechazada, primero «Cambiar tarjeta». |
+| Factura sin pagar | La campana de la barra superior, en rojo con su número; en su panel, el aviso de cada negocio con el importe, hasta cuándo funciona y «Pagar la factura · …»; con la tarjeta rechazada, «Cambiar tarjeta». |
 | En la app | Se ve todo lo que no cobra; donde habría un botón de pago, «entra en erplora.com desde el navegador», sin enlace. |
 | Sin permiso | Un negocio que no es tuyo no aparece; por la API, «No encontrado». |
 
@@ -143,7 +157,7 @@ al propietario, el botón para mejorarlo o cambiarlo.
 | BILLING-F09 | Volver del pago: confirmado, pendiente o cerrado | hecho |
 | BILLING-F10 | Reintentar un pago que no se terminó | hecho |
 | BILLING-F11 | Cambiar de plan entre planes de pago | hecho |
-| BILLING-F12 | Dar días de prueba con un código promocional | hecho |
+| BILLING-F12 | Dar días de prueba o un descuento con un código promocional | hecho |
 | BILLING-F13 | Cancelar el plan al final del periodo | hecho |
 | BILLING-F14 | Deshacer una cancelación o una bajada pendiente | hecho |
 | BILLING-F15 | Terminar la suscripción: el negocio vuelve a Gratis | hecho |
@@ -278,7 +292,7 @@ Estado: hecho
 Actor: propietario
 Pantalla: Tienda, Pago seguro
 Pasos:
-1. En **Tienda › Planes**, con el negocio elegido arriba, el propietario ve cada plan con su precio sin IVA, sus usuarios, sus dispositivos y las apps que puede tener activadas a la vez, elige «Mensual» o «Anual» (que dice cuánto se ahorra) y pulsa «Mejorar a …».
+1. En **Tienda › Planes**, con el negocio elegido arriba, el propietario ve cada plan con su precio sin IVA y sus primeras características, como sus usuarios y sus dispositivos; «Ver todas las características» despliega el resto, entre ellas, cuando caen más allá de la quinta línea, las apps que puede tener activadas a la vez y el dominio propio. Elige «Mensual» o «Anual» (que dice cuánto se ahorra) y pulsa «Mejorar a …».
 2. Se abre el pago seguro: los datos de facturación si faltan y después el formulario de tarjeta de Stripe dentro del diálogo, titulado «Mejorar a …» con «Para … · se renueva cada mes» (o cada año).
 3. Mete la tarjeta; si el banco pide autenticación, la muestra Stripe en el mismo formulario.
 4. Al terminar, «Pagando…» hasta que llega la página del negocio, que avisa «… ya está en …» y cuya tarjeta Plan cambia en cuanto Stripe lo confirma. El negocio sigue funcionando todo el tiempo.
@@ -327,18 +341,20 @@ Sale: el plan cambiado (`billing.plan.changed`) o la bajada programada (`billing
 Si falla: «El precio estaba desactualizado: aquí lo tienes de nuevo, revísalo antes de confirmar» si pasó demasiado tiempo; la tarjeta rechazada no cambia nada; el mismo plan y periodo no es un cambio; bajar a Gratis es cancelar (BILLING-F13); con una cancelación pendiente, «Mantén antes el plan para cambiarlo»; con una factura sin pagar, «Antes, paga la factura pendiente»; más de 400 € sin NIF pide el NIF.
 Implicados: el negocio (recibe su plan), ASSISTANT-F25 (pedido al asistente del panel, que manda aquí)
 
-### BILLING-F12 Dar días de prueba con un código promocional
+### BILLING-F12 Dar días de prueba o un descuento con un código promocional
 Estado: hecho
 Actor: personal de ERPlora, propietario
-Pantalla: Admin › Códigos promocionales, Pago seguro
+Pantalla: Admin › Descuentos, Admin › Códigos promocionales, Pago seguro, Facturación › Suscripciones
 Pasos:
-1. Una persona de ERPlora crea un código en el admin: el código, los días de prueba (de 1 a 365), si está activo, hasta cuándo vale, cuántos usos y una nota.
-2. El propietario, en el pago seguro de un negocio que aún no paga, pulsa «¿Tienes un código promocional?», lo escribe y pulsa «Aplicar»: «Código …: n días gratis antes del primer cobro».
-3. Paga: el primer cobro llega al acabar esos días.
+1. Una persona de ERPlora crea un descuento en el admin: un porcentaje (de 1 a 100) o un importe en euros, uno de los dos; cuánto dura (el primer pago, unos meses, de 1 a 36, o para siempre); los planes a los que se aplica (ninguno = todos los de pago; nunca a una aplicación), si está activo y una nota. Debajo, sus códigos: el código, si está activo, hasta cuándo vale, cuántos usos y una nota. Un código también puede dar días de prueba (de 1 a 365) en lugar de un descuento.
+2. El propietario, en el pago seguro de un negocio que aún no paga, pulsa «¿Tienes un código promocional?», lo escribe y pulsa «Aplicar». Con días de prueba: «Código …: n días gratis antes del primer cobro.». Con un descuento: «Código …: Gratis durante 6 meses.», «Código …: 20 % de descuento en el primer pago.» o «Código …: 10,00 € de descuento para siempre.».
+3. Con días de prueba, paga: el primer cobro llega al acabar esos días.
+4. Con un descuento, el pago seguro avisa, junto a la tarjeta, «Gratis durante 6 meses. Después, 29,99 €/mes + IVA. Hoy no se carga nada en tu tarjeta.» (sin «Después» si es para siempre, y sin la última frase si hoy se cobra algo); da su tarjeta y el plan empieza ya. Cada factura lleva su descuento en la línea del plan, también la de 0 €, numerada y registrada en VeriFactu como cualquier otra; al acabar el descuento se cobra el precio normal sin hacer nada.
+5. Mientras dura, **Facturación › Suscripciones** dice «Gratis hasta el …» (o «10,00 € de descuento para siempre») y la próxima factura con el descuento. Subir de plan lo conserva; bajar de plan también, en la renovación; una aplicación se cobra entera. Si el negocio cambia de dueño y el nuevo mantiene el plan con su tarjeta, el descuento sigue: uno para siempre, igual; uno de unos meses, durante los meses enteros que le quedan (ninguno si le queda menos de uno); uno del primer pago, ya gastado, no vuelve.
 Entra: el código (sin distinguir mayúsculas ni espacios).
-Sale: los días de prueba en la suscripción y el uso contado una vez por negocio y por quien paga.
-Si falla: un código desconocido, inactivo, caducado o agotado dice «Este código no es válido o ya se ha usado» y no impide pagar sin él; probar códigos tiene un tope por persona. Un código nunca rebaja el precio y nunca pasa de su número de usos.
-Implicados: ninguno
+Sale: los días de prueba en la suscripción, o el descuento en Stripe y cuándo acaba; el uso contado una vez por negocio y por quien paga.
+Si falla: un código desconocido, inactivo, caducado o agotado (o cuyo descuento está apagado) dice «Este código no es válido o ya se ha usado» y no impide pagar sin él; probar códigos tiene un tope por persona; un código nunca pasa de su número de usos: el uso se reserva al abrir el pago seguro y se devuelve si ese pago no se completa. Si el código deja de valer entre comprobarlo y pagar, el pago no empieza y dice «Este código no es válido o ya se ha usado: quítalo para pagar sin él.». Un descuento de unos meses solo va con la facturación mensual: con la anual, el pago no empieza y dice «El descuento de este código dura unos meses: elige la facturación mensual para usarlo.»; un plan que el descuento no nombra dice «Este código no se aplica al plan elegido.»; en un cambio de plan, «Este código da un descuento a un negocio que empieza a pagar un plan, no a un cambio de plan.». Mientras dura uno de unos meses, pasar a anual dice «Este negocio tiene un descuento hasta el …: podrá pasar a la facturación anual después.» y no cambia nada. Cambiar a un plan que el descuento no cubre (no lo nombra, o se creó después del código) sí se puede: ese plan se cobra entero y Suscripciones ya no enseña el descuento. Cancelar siempre se puede, y el plan acaba al final del periodo. En el admin, usado un código, su descuento ya no cambia de condiciones, y ni el descuento ni el código se borran (se desactivan).
+Implicados: el negocio de plataforma de ERPlora (emite las facturas con descuento, también las de 0 €, BILLING-F25)
 
 ### BILLING-F13 Cancelar el plan al final del periodo
 Estado: hecho
@@ -381,14 +397,14 @@ Implicados: el negocio (recibe Gratis)
 ### BILLING-F16 Impago del plan: reintentos, suspensión y vuelta
 Estado: hecho
 Actor: sistema, propietario, cuenta que paga
-Pantalla: Facturación, Negocios, el propio negocio
+Pantalla: Avisos de la campana, el propio negocio
 Pasos:
 1. Falla el cobro de una renovación. Stripe lo reintenta durante unos días y avisa de cada fallo. Las aplicaciones de pago van en la misma factura que el plan: su impago es el del negocio entero, y al pagar vuelve todo.
 2. erplora.com relee la suscripción en Stripe: si el reintento ya cobró, no hace nada; si no, apunta la factura como «No cobrada», con por qué no se cobró (tarjeta rechazada, autenticación o fallo).
-3. **Gracia**: durante 7 días desde la factura que falló, el negocio sigue funcionando con todo su plan. La cuenta que paga recibe un correo, una vez por factura: cuánto no se pudo cobrar, hasta qué día sigue funcionando y el enlace a Facturación para pagarla (si el banco rechazó la tarjeta, que la cambie antes). En **Negocios** y en **Facturación** sale el aviso «No pudimos cobrar … de …»: «Págala antes del … o el negocio se suspende; no se borra nada», con «Pagar la factura» (o «Cambiar tarjeta» primero si el banco la rechazó).
-4. **Suspensión**: pasados los 7 días, o si Stripe agota sus reintentos, el negocio se suspende y la cuenta que paga recibe otro correo, una sola vez. El negocio no se abre: ni desde el panel ni desde su propia dirección, tampoco en los dispositivos que ya tenían la sesión abierta, que enseñan «Este negocio está suspendido» con el camino a ERPlora. El aviso del panel dice «… está suspendido: … sin pagar» y que los datos están a salvo.
+3. **Gracia**: durante 7 días desde la factura que falló, el negocio sigue funcionando con todo su plan. La cuenta que paga recibe un correo, una vez por factura: cuánto no se pudo cobrar, hasta qué día sigue funcionando y el enlace a Facturación para pagarla (si el banco rechazó la tarjeta, que la cambie antes). En la barra superior del panel, la campana se vuelve roja y llega el aviso «… tiene una factura sin pagar»: el importe, «quedan … días» y «Si no se paga antes del …, el negocio se suspende. No se borra nada.», con «Pagar la factura · …» y «Cambiar tarjeta» (solo «Cambiar tarjeta» si el banco la rechazó). Es un solo aviso por negocio, el mismo en todas las pantallas.
+4. **Suspensión**: pasados los 7 días, o si Stripe agota sus reintentos, el negocio se suspende y la cuenta que paga recibe otro correo, una sola vez. El negocio no se abre: ni desde el panel ni desde su propia dirección, tampoco en los dispositivos que ya tenían la sesión abierta, que enseñan «Este negocio está suspendido» con el camino a ERPlora. El aviso de la campana dice «suspendido» y «Se suspendió por una factura sin pagar. No se borra nada: en cuanto se pague vuelve a funcionar.»
 5. **Red de seguridad**: cada hora se repasan los negocios con el plan en impago y se mira su factura abierta más antigua, por si Stripe dejó de reintentar sin volver a avisar.
-6. **Vuelta**: al pagar la factura (con «Pagar la factura», o porque un reintento la cobra), el negocio vuelve a estar activo en el acto: «Factura pagada: … vuelve a estar al día».
+6. **Vuelta**: al pagar la factura (con «Pagar la factura», o porque un reintento la cobra), el negocio vuelve a estar activo en el acto: «Factura pagada: … vuelve a estar al día», y su aviso se va de la campana.
 Entra: los avisos de Stripe del cobro fallido y de la suscripción, y la suscripción viva.
 Sale: la factura «No cobrada», los correos a quien paga y el estado del negocio (pago pendiente, suspendido o al día) enviados al negocio (`hubs.subscription.changed`).
 Si falla: si Stripe no contesta al releer la suscripción, no se aplica nada y Stripe vuelve a avisar. Un aviso repetido de una factura ya pagada no la reabre. Un fallo posterior del mismo impago no mueve la fecha de la gracia ni repite el correo. Un correo que no pudo salir se vuelve a mandar en el repaso de cada hora, que avisa al equipo mientras quede alguno.
@@ -397,9 +413,9 @@ Implicados: hubs (el estado del negocio), el negocio (recibe el estado)
 ### BILLING-F17 Reactivar un negocio suspendido pagando su factura
 Estado: hecho
 Actor: cuenta que paga
-Pantalla: Facturación › Facturas, Negocios
+Pantalla: Avisos de la campana, Facturación › Facturas
 Pasos:
-1. En el aviso del negocio suspendido (en **Negocios** o en **Facturación**), la cuenta que paga pulsa «Pagar la factura · …» (si el banco rechazó la tarjeta, antes «Cambiar tarjeta»).
+1. En el aviso del negocio suspendido, en la campana de la barra superior, la cuenta que paga pulsa «Pagar la factura · …» (si el banco rechazó la tarjeta, antes «Cambiar tarjeta»); también puede pagarla desde la factura, en **Facturación › Facturas**.
 2. Se abre la página de pago de Stripe de esa factura; paga.
 3. Al volver, «Factura pagada: … vuelve a estar al día» y el negocio funciona otra vez con sus datos y su plan, sin abrir otra suscripción.
 Entra: la factura sin pagar y su página de pago en Stripe.
@@ -474,7 +490,7 @@ Pasos:
 6. Una integración de la cuenta, con una clave de lectura de Facturación, lee la misma lista con los mismos filtros, cada factura con su negocio, sus líneas, su IVA y a quién va, su PDF y la hoja de cálculo.
 Entra: las facturas que pagó la cuenta y las de los negocios de los que es propietaria.
 Sale: el PDF de la factura emitida, que hace en cada descarga el negocio de plataforma de ERPlora con su QR de VeriFactu (BILLING-F25), y la hoja de cálculo de lo filtrado.
-Si falla: una factura que aún se emite dice «Emitiéndose» y no ofrece PDF; si el servicio de facturas no responde, «El servicio de facturas no responde. Prueba de nuevo en un momento»; si en «Descargar PDF (n)» unas fallan y otras aún se emiten, un solo aviso dice las dos cosas (se ve un aviso a la vez: uno nuevo cierra el anterior); sin facturas, «Aún no hay facturas». Una factura de otra cuenta no se encuentra.
+Si falla: una factura que aún se emite dice «Emitiéndose» y no ofrece PDF; si el servicio de facturas no responde, «El servicio de facturas no responde. Prueba de nuevo en un momento»; si en «Descargar PDF (n)» unas fallan y otras aún se emiten, un solo aviso dice las dos cosas (una descarga, un aviso); sin facturas, «Aún no hay facturas». Una factura de otra cuenta no se encuentra.
 Implicados: ninguno
 
 ### BILLING-F23 Ver las suscripciones de cada negocio
@@ -492,11 +508,11 @@ Implicados: hubs (HUBS-F28: el plan de un negocio traspasado)
 ### BILLING-F24 Abrir el portal de pagos de Stripe para cambiar la tarjeta
 Estado: hecho
 Actor: cuenta que paga
-Pantalla: Facturación › Datos de pago
+Pantalla: Facturación › Datos de pago, Avisos de la campana
 Pasos:
 1. En **Facturación › Datos de pago**, la tarjeta «Método de pago» dice qué tarjeta paga qué negocios y, si el último cobro falló, cuándo y de qué negocio.
-2. Pulsa «Cambiar tarjeta»: se abre la página segura de Stripe de esa cuenta, que solo permite cambiar la tarjeta y ver los recibos.
-3. Al volver, el panel vuelve a Facturación y, si había una factura rechazada, el aviso dice «Tarjeta cambiada» y «Pagar» vuelve.
+2. Pulsa «Cambiar tarjeta» (ahí o en el aviso de la campana de un negocio con la factura sin pagar): se abre la página segura de Stripe de esa cuenta, que solo permite cambiar la tarjeta y ver los recibos.
+3. Al volver, el panel vuelve a Facturación y, si había una factura rechazada, su aviso de la campana dice «Tarjeta cambiada: ya puedes pagarla.» y «Pagar la factura · …» vuelve.
 Entra: la cuenta que paga el negocio.
 Sale: la tarjeta nueva en Stripe; los cambios de plan nunca se hacen allí.
 Si falla: antes del primer pago no hay nada que cambiar; si Stripe no contesta, se dice; solo la cuenta que paga lo abre, nunca otro propietario.
@@ -512,7 +528,7 @@ Pasos:
 3. La manda al negocio de plataforma de ERPlora, que la registra con VeriFactu y devuelve su estado y su QR; cuando la emite, se avisa por correo a quien paga.
 Entra: el cobro de Stripe con sus líneas y los datos de quien paga.
 Sale: la factura y sus líneas (`billing.invoice.recorded`), su estado fiscal y el correo.
-Si falla: si el negocio de plataforma no responde, la factura queda «emitiéndose» y se reintenta (a los 15 minutos, después el doble cada vez, como mucho 6 horas); si lo rechaza, se guarda el motivo y se reintenta. Una renovación sin cobrar se lista «No cobrada», sin número, y se numera al pagarla. Un cobro de 0 € no hace factura, y el mismo cobro avisado varias veces hace una sola. Con claves reales, sin ruta de emisión no se cobra.
+Si falla: si el negocio de plataforma no responde, la factura queda «emitiéndose» y se reintenta (a los 15 minutos, después el doble cada vez, como mucho 6 horas); si lo rechaza, se guarda el motivo y se reintenta. Una renovación sin cobrar se lista «No cobrada», sin número, y se numera al pagarla. Un cobro de 0 € de una prueba no hace factura; el de un descuento de un código sí (BILLING-F12), con el descuento en cada línea. El mismo cobro avisado varias veces hace una sola. Con claves reales, sin ruta de emisión no se cobra.
 Implicados: el negocio de plataforma de ERPlora (emite la factura)
 
 ### BILLING-F26 Devolver un cobro
@@ -658,7 +674,7 @@ Actor: propietario, cuenta que paga
 Pantalla: Factura
 Pasos:
 1. En **Facturación › Facturas**, la persona pulsa «Ver la factura» en una fila.
-2. La página dice su número (o «Factura … (no cobrada)»), la fecha, el negocio, el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, «Prorrateado» si lo es, su base y su IVA; la base imponible, el IVA y el total; y «A nombre de», con los datos de quien paga tal como estaban ese día.
+2. La página dice su número (o «Factura … (no cobrada)»), la fecha, el negocio, el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, «Prorrateado» si lo es, su base y su IVA, y su «Descuento» si un código lo rebajó; la base imponible, el IVA y el total; y «A nombre de», con los datos de quien paga tal como estaban ese día.
 3. Desde ella descarga el PDF de una factura emitida, paga una no cobrada o, en una rectificativa, abre la factura que rectifica. Mientras se emite, la página pasa sola a su número y su QR.
 4. La flecha de arriba vuelve a Facturas.
 Entra: una factura de la cuenta.

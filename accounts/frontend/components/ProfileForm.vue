@@ -11,7 +11,7 @@ import { IonButton, IonCard, IonCardContent, IonInput, IonSpinner } from '@ionic
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { ProfileOut } from '../../../frontend/sdk-types';
+import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import { sessionChanged } from '../../../frontend/session-changed';
 import { useErrorText } from '../error-text';
 import EmailChangeFlow from './EmailChangeFlow.vue';
@@ -64,9 +64,9 @@ async function save(): Promise<void> {
     lastName.value = saved.last_name;
     // The side menu shows the person by these names: the entry reads the session again (saas#292).
     sessionChanged();
-    void toastSuccess(t('accounts.account.profile.saved'));
+    toastSuccess(t('accounts.account.profile.saved'));
   } catch {
-    if (update.error.value?.status !== 422) void toastError(text(update.error.value));
+    if (update.error.value?.status !== 422) toastError(text(update.error.value));
   }
 }
 

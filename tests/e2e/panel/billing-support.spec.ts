@@ -9,7 +9,7 @@ import { panelAccount, qaAccount } from './accounts';
 import { businessIdOf } from './businesses';
 import { expect, seededAndSignedIn, test } from './fixtures';
 import { watchPageErrors } from './page-events';
-import { captureAtEverySize, dialogInPlace, toast } from './screen';
+import { captureAtEverySize, dialogInPlace, toast, toasts } from './screen';
 import { addAppInCheckout, gotoWithCheckout, payInStripe, playStripePortal, STRIPE_PORTAL_URL } from './stripe';
 
 seededAndSignedIn('billing_apps_seed.py', qaAccount('BILLING_APPS', panelAccount('billing-apps')));
@@ -45,7 +45,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
     await page.route(/\/hubs\/frontend\/pages\/BusinessPage\.vue$/, async (route) => {
       held += 1;
       await expect(page.getByTestId('checkout-paying')).toBeVisible();
-      await expect(page.locator('ion-toast')).toHaveCount(0);
+      await expect(toasts(page)).toHaveCount(0);
       await route.continue();
     });
     await payInStripe(page);

@@ -8,14 +8,11 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
   IonModal: (await import('../../../hubs/frontend/__tests__/ion-modal-stub')).IonModalStub,
 }));
-vi.mock('@erplora/ui/shell', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
-  toastSuccess: vi.fn(() => Promise.resolve()),
-}));
+vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/frontend/__tests__/module-mocks')).shellWithToastSpies(original));
 
 import { toastSuccess } from '@erplora/ui/shell';
 
-import type { BillingProfileOut } from '../../../frontend/sdk-types';
+import type { BillingProfileOut } from '../../../frontend/sdk-types/store';
 import { apiError, describeCall, flush, mountBilling, optionValue } from '../__tests__/mount-billing';
 import BillingDetailsForm from './BillingDetailsForm.vue';
 import BillingProfileModal from './BillingProfileModal.vue';

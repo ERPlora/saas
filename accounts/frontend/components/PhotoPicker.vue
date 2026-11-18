@@ -9,7 +9,7 @@ import { IonButton, IonSpinner } from '@ionic/vue';
 import { computed, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { ProfileOut } from '../../../frontend/sdk-types';
+import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import { useErrorText } from '../error-text';
 import { PHOTO_TYPES, PhotoError, preparePhoto } from '../photo';
 
@@ -39,9 +39,9 @@ async function onPicked(event: Event): Promise<void> {
   try {
     const image = await preparePhoto(file);
     await upload.run({ image });
-    void toastSuccess(t('accounts.account.photo.updated'));
+    toastSuccess(t('accounts.account.photo.updated'));
   } catch (error) {
-    void toastError(failure(error));
+    toastError(failure(error));
   } finally {
     // The same file picked again is a new pick.
     field.value = '';
@@ -51,9 +51,9 @@ async function onPicked(event: Event): Promise<void> {
 async function clear(): Promise<void> {
   try {
     await remove.run({});
-    void toastSuccess(t('accounts.account.photo.removed'));
+    toastSuccess(t('accounts.account.photo.removed'));
   } catch (error) {
-    void toastError(failure(error));
+    toastError(failure(error));
   }
 }
 </script>

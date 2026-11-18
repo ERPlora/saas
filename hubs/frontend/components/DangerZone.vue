@@ -10,7 +10,7 @@ import { IonButton, IonCard, IonCardContent, IonSpinner } from '@ionic/vue';
 import { shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { BusinessDetailOut } from '../../../frontend/sdk-types';
+import type { BusinessDetailOut } from '../../../frontend/sdk-types/hubs';
 import { useErrorText } from '../error-text';
 import DeleteDialog from './DeleteDialog.vue';
 
@@ -28,9 +28,9 @@ const deleting = shallowRef(false);
 async function recover(): Promise<void> {
   try {
     const business = await restore.run({ id: props.business.id });
-    void toastSuccess(t('hubs.list.restored', { name: business.name }));
+    toastSuccess(t('hubs.list.restored', { name: business.name }));
   } catch {
-    void toastError(text(restore.error.value));
+    toastError(text(restore.error.value));
   }
 }
 </script>

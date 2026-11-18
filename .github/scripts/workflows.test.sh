@@ -93,6 +93,15 @@ check("build caches its layers in GitHub's cache",
 check("build tests the image before it pushes it", before(build, "docker/image.test.sh", "docker push"))
 check("the deploy never moves the environment back to an older commit",
       before(deploy_job, "deploy-order.sh", "ecs-deploy.sh"))
+confirm_input = (((deploy.get(True) or {}).get("workflow_dispatch") or {}).get("inputs") or {}).get("confirm_protected") or {}
+check("a manual run may confirm the protected settings it changes, empty by default",
+      confirm_input.get("type") == "string" and confirm_input.get("required") is False and confirm_input.get("default") == "")
+ecs_deploy_env = next((step.get("env") or {} for step in steps(deploy_job) if "ecs-deploy.sh" in str(step.get("run", ""))), {})
+check("ecs-deploy.sh gets that confirmation as CONFIRM_PROTECTED",
+      ecs_deploy_env.get("CONFIRM_PROTECTED") == "${{ inputs.confirm_protected }}")
+deploy_checkout = next((step.get("with") or {} for step in steps(deploy_job) if "actions/checkout" in str(step.get("uses", ""))), {})
+check("the deploy checks out the whole history: it reads deploy/app-env.json of the commit it deploys",
+      deploy_checkout.get("fetch-depth") == 0)
 check("the workflow only reads", deploy.get("permissions") == {"contents": "read"})
 check("only build and deploy get an OIDC token",
       sorted(name for name, job in jobs.items() if (job.get("permissions") or {}).get("id-token") == "write")
@@ -123,6 +132,8 @@ check("frontend runs lint, typecheck, Vitest and the build",
       all(f"pnpm {task}" in frontend_runs for task in ("lint", "typecheck", "test", "build")))
 check("scripts runs actionlint, shellcheck and the script tests",
       all(needle in scripts_runs for needle in ("actionlint", "shellcheck", ".test.sh")))
+check("scripts runs the tests of the Python scripts with the runner's python3, as the deploy does",
+      "python3 -m unittest discover -s .github/scripts -p '*_test.py'" in scripts_runs)
 check("e2e runs e2e.yml on the specs the branch changes (and the doors' spec)",
       tjobs.get("e2e", {}).get("uses") == "./.github/workflows/e2e.yml"
       and (tjobs.get("e2e", {}).get("with") or {}).get("specs") == "changed")

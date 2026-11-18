@@ -13,7 +13,8 @@ import { IonButton, IonInput, IonSelect, IonSelectOption, IonSpinner } from '@io
 import { computed, onBeforeUnmount, onMounted, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { BusinessDetailOut, BusinessTypeOut } from '../../../frontend/sdk-types';
+import type { BusinessDetailOut } from '../../../frontend/sdk-types/hubs';
+import type { BusinessTypeOut } from '../../../frontend/sdk-types/hubs-catalog';
 import { useErrorText } from '../error-text';
 import { countryOptions, DEFAULT_COUNTRY, suggestedCountry } from '../regions';
 import HostName from './HostName.vue';
@@ -113,7 +114,7 @@ async function submit(): Promise<void> {
   const typeName = types.value.find((type) => type.code === businessType.value)?.name ?? null;
   try {
     const business = await create.run({ name: trimmed, country: country.value, business_type: businessType.value || null });
-    void toastSuccess(t('hubs.create.created', { name: business.name }));
+    toastSuccess(t('hubs.create.created', { name: business.name }));
     emit('created', business, { typeName });
   } catch {
     // `create.error` holds it: its fields go to the fields, anything else above the button.

@@ -566,13 +566,13 @@ def test_the_user_page_shows_the_preferences_and_the_photo(staff_client, ana):
     from accounts.models import ProfilePhoto, UserPreferences
 
     client, _ = staff_client
-    UserPreferences.objects.create(user=ana, theme_mode="dark")
+    UserPreferences.objects.create(user=ana, theme_mode="dark", transparency=False)
     ProfilePhoto.objects.create(user=ana, content_type="image/png", data=b"\x89PNG")
 
     page = client.get(f"/admin/accounts/user/{ana.pk}/change/")
 
     assert page.status_code == 200
-    assert "Dark" in page.text
+    assert ("Dark" in page.text, "Transparency effects" in page.text) == (True, True)
     assert "data:image/png;base64,iVBORw==" in page.text
 
 

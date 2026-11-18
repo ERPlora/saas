@@ -12,7 +12,7 @@ import { IonButton, IonCheckbox, IonInput, IonSelect, IonSelectOption } from '@i
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { ApiKeyCreatedOut, ApiKeyScopeOut } from '../../../frontend/sdk-types';
+import type { ApiKeyCreatedOut, ApiKeyScopeOut } from '../../../frontend/sdk-types/accounts-security';
 import { useErrorText } from '../error-text';
 import { reauthRequestOf, useReauthentication } from '../reauth';
 import ReauthModal from './ReauthModal.vue';
@@ -48,7 +48,7 @@ watch(open, (isOpen) => {
   if (!isOpen) {
     // Said once the sheet goes («I have saved it» or its ✕), never over the key: on a phone the toast would cover
     // it, shown this once.
-    if (created.value) void toastSuccess(t('accounts.account.keys.created', { name: created.value.key.name }));
+    if (created.value) toastSuccess(t('accounts.account.keys.created', { name: created.value.key.name }));
     return;
   }
   name.value = '';
@@ -83,9 +83,9 @@ async function copy(): Promise<void> {
   if (!secret) return;
   try {
     await navigator.clipboard.writeText(secret);
-    void toastSuccess(t('accounts.account.keys.copied'));
+    toastSuccess(t('accounts.account.keys.copied'));
   } catch {
-    void toastError(t('accounts.account.keys.copyFailed'));
+    toastError(t('accounts.account.keys.copyFailed'));
   }
 }
 </script>

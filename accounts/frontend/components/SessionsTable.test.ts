@@ -12,11 +12,7 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
   IonModal: (await import('../__tests__/ion-modal-stub')).IonModalStub,
 }));
-vi.mock('@erplora/ui/shell', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
-  toastSuccess: vi.fn(() => Promise.resolve()),
-  toastError: vi.fn(() => Promise.resolve()),
-}));
+vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/frontend/__tests__/module-mocks')).shellWithToastSpies(original));
 
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
@@ -31,7 +27,7 @@ import {
   session,
   subId,
 } from '../__tests__/mount-panel';
-import type { SessionListOut, SessionRowOut } from '../../../frontend/sdk-types';
+import type { SessionListOut, SessionRowOut } from '../../../frontend/sdk-types/accounts-security';
 import SessionsTable from './SessionsTable.vue';
 
 const THIS = session(1, { is_current: true, device: 'mac', browser: 'Chrome', browser_version: '130' });
@@ -194,7 +190,7 @@ describe('SessionsTable: more sessions than a page', () => {
     const s = await mountPanel(SessionsTable);
     expect(params(s)).toEqual([{ limit: 25, offset: 0 }]);
     await s.result(await s.live(), 'accounts.session.list', sessionPage(FIRST_PAGE, { total: 60, others: 59 }));
-    // On a phone, past the 100 rows one page of the server holds, the table pages instead of «Load more».
+    // On a phone, past the 100 rows one page of the server holds, the table pages instead of growing at the end of the scroll.
     expect(table(s).props()).toMatchObject({ serverSide: true, total: 60, page: 0, pageSize: 25, maxWindow: 100 });
     expect(cells('session-device')).toHaveLength(25);
     expect(cells('session-device')[0]).toBe('Mac (macOS)This session');
@@ -229,7 +225,7 @@ describe('SessionsTable: more sessions than a page', () => {
     expect(s.q('sessions-close-others-dialog')?.textContent).toContain('59 sessions will be closed, also the apps');
   });
 
-  it('on a phone «Load more» grows one window from the first row, never past the server’s 100 rows', async () => {
+  it('on a phone the end of the scroll grows one window from the first row, never past the server’s 100 rows', async () => {
     const s = await long();
     table(s).vm.$emit('loadMore');
     await flush();

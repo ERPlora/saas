@@ -2,8 +2,8 @@
 // The Members of a business: the
 // live `hubs.member.list` in a server-side DataTable (cards up to 900 px) — name (the account's own row
 // marked), email, role, status and last access — and, per row, ONLY the actions the server computed
-// for the account (`actions`, in its fixed order: change role, remove, resend, cancel the invitation,
-// transfer the ownership). «Invite» when the account may invite (`invitable_roles`). Under the table,
+// for the account (`actions`: change role, remove, resend, cancel the invitation, transfer the ownership), two
+// as buttons and the rest in «⋮». «Invite» when the account may invite (`invitable_roles`). Under the table,
 // the places of the plan and what each role may do; above it, a pending ownership offer the owner can
 // withdraw. Each action is a dialog of its own; «Resend» needs none. The list fills the section (a nested
 // `.panel-fill` of the business's page); rows per page only when there are more members than the shortest
@@ -28,7 +28,8 @@ import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useLiveState } from '../../../frontend/live-state';
-import type { BusinessDetailOut, MemberAction, MemberRowOut } from '../../../frontend/sdk-types';
+import type { BusinessDetailOut } from '../../../frontend/sdk-types/hubs';
+import type { MemberAction, MemberRowOut } from '../../../frontend/sdk-types/hubs-members';
 import { useErrorText } from '../error-text';
 import InviteModal from './InviteModal.vue';
 import RemoveDialog from './RemoveDialog.vue';
@@ -45,22 +46,19 @@ const props = defineProps<{
 const PAGE_SIZES = [10, 25, 50, 100];
 const CARD_BREAKPOINT = 900;
 
-/** How each server action is painted: its icon, its text and its tone. */
-const ACTIONS: Record<MemberAction, { icon: string; label: string; named: string; danger?: boolean }> = {
-  change_role: { icon: 'ion:create-outline', label: 'hubs.members.actions.changeRole', named: 'hubs.members.actions.changeRoleOf' },
-  remove: { icon: 'ion:trash-outline', label: 'hubs.members.actions.remove', named: 'hubs.members.actions.removeName', danger: true },
-  resend: { icon: 'ion:mail-outline', label: 'hubs.members.actions.resend', named: 'hubs.members.actions.resendTo' },
-  cancel: { icon: 'ion:close-outline', label: 'hubs.members.actions.cancel', named: 'hubs.members.actions.cancelTo', danger: true },
-  transfer: { icon: 'ion:swap-vertical-outline', label: 'hubs.members.actions.transfer', named: 'hubs.members.actions.transferTo' },
+/** How each server action is painted: its icon, its short text (also its name for a screen reader) and its tone. */
+const ACTIONS: Record<MemberAction, { icon: string; label: string; danger?: boolean }> = {
+  change_role: { icon: 'ion:create-outline', label: 'hubs.members.actions.changeRole' },
+  remove: { icon: 'ion:trash-outline', label: 'hubs.members.actions.remove', danger: true },
+  resend: { icon: 'ion:mail-outline', label: 'hubs.members.actions.resend' },
+  cancel: { icon: 'ion:close-outline', label: 'hubs.members.actions.cancel', danger: true },
+  transfer: { icon: 'ion:swap-vertical-outline', label: 'hubs.members.actions.transfer' },
 };
 
 const { t, locale } = useI18n();
 const resend = useCommand('hubs.member.resend');
 const withdraw = useCommand('hubs.ownership.cancel');
 const { text } = useErrorText();
-/** A row button's name for a screen reader: an invitation is named by its email (no answer, no name). */
-const named = (action: MemberAction, row: MemberRowOut) =>
-  t(ACTIONS[action].named, { name: action === 'resend' || action === 'cancel' ? row.email : row.name });
 
 const page = shallowRef(0);
 const pageSize = shallowRef(50);
@@ -94,10 +92,17 @@ watch(live.data, (now) => {
 
 const columns = computed(() => [
   { key: 'name', label: t('hubs.members.columns.name'), cell: 'name', width: 'minmax(10rem,1.4fr)', priority: 'high' },
-  { key: 'email', label: t('hubs.members.columns.email'), cell: 'email', width: 'minmax(10rem,1.4fr)' },
-  { key: 'role_label', label: t('hubs.members.columns.role'), width: 'minmax(6rem,0.9fr)' },
+  { key: 'email', label: t('hubs.members.columns.email'), cell: 'email', width: 'minmax(10rem,1.4fr)', cardIcon: 'ion:mail-outline' },
+  { key: 'role_label', label: t('hubs.members.columns.role'), width: 'minmax(6rem,0.9fr)', cardIcon: 'ion:shield-outline' },
   { key: 'status', label: t('hubs.members.columns.status'), cell: 'status', width: 'minmax(6rem,0.8fr)' },
-  { key: 'last_opened_at', label: t('hubs.members.columns.lastAccess'), cell: 'last', width: 'minmax(8rem,1fr)', priority: 'low' },
+  {
+    key: 'last_opened_at',
+    label: t('hubs.members.columns.lastAccess'),
+    cell: 'last',
+    width: 'minmax(8rem,1fr)',
+    priority: 'low',
+    cardIcon: 'ion:time-outline',
+  },
 ] satisfies DataTableColumn<MemberRowOut>[]);
 const labels = computed(() => ({
   add: t('hubs.members.invite'),
@@ -106,13 +111,14 @@ const labels = computed(() => ({
 }));
 const entityLabel = computed(() => ({ one: t('hubs.members.recordSingular'), many: t('hubs.members.recordPlural') }));
 
-/** The server's actions of each row (`row.actions`), in its order, for the table to fold: «Transfer
- *  ownership» lives only in «⋮» (delicate, and confirmed). Named with the member. */
-const ORDER: MemberAction[] = ['change_role', 'remove', 'resend', 'cancel', 'transfer'];
+/** The server's actions of each row (`row.actions`), for the table to fold: its first two are the row's buttons, so an
+ *  invitation shows «Resend» and «Cancel invitation» and keeps «Change role» in «⋮», and a member shows «Change role»
+ *  and «Remove». «Transfer ownership» lives only in «⋮» (delicate, and confirmed). */
+const ORDER: MemberAction[] = ['resend', 'cancel', 'change_role', 'remove', 'transfer'];
 const actions = computed<DataTableAction<MemberRowOut>[]>(() =>
   ORDER.map((id) => ({
     id,
-    label: (row: MemberRowOut) => named(id, row),
+    label: t(ACTIONS[id].label),
     icon: ACTIONS[id].icon,
     color: ACTIONS[id].danger ? 'danger' : 'primary',
     menuOnly: id === 'transfer',
@@ -154,18 +160,18 @@ async function act(action: MemberAction, row: MemberRowOut): Promise<void> {
 async function sendAgain(row: MemberRowOut): Promise<void> {
   try {
     const sent = await resend.run({ id: row.id });
-    void toastSuccess(t('hubs.members.resent', { email: sent.email }));
+    toastSuccess(t('hubs.members.resent', { email: sent.email }));
   } catch {
-    void toastError(text(resend.error.value));
+    toastError(text(resend.error.value));
   }
 }
 
 async function withdrawOffer(id: string): Promise<void> {
   try {
     await withdraw.run({ id });
-    void toastSuccess(t('hubs.members.pendingTransfer.cancelled'));
+    toastSuccess(t('hubs.members.pendingTransfer.cancelled'));
   } catch {
-    void toastError(text(withdraw.error.value));
+    toastError(text(withdraw.error.value));
   }
 }
 </script>
@@ -222,6 +228,7 @@ async function withdrawOffer(id: string): Promise<void> {
       :columns="columns"
       :actions="actions"
       :card-title="(row: MemberRowOut) => row.name"
+      card-title-column="name"
       :card-icon="() => 'ion:person-outline'"
       @page-change="goToPage"
       @load-more="windowPages += 1"
@@ -254,27 +261,6 @@ async function withdrawOffer(id: string): Promise<void> {
         >
           {{ lastAccess(row) }}
         </div>
-      </template>
-
-      <template #card="{ row }">
-        <p class="card-line member-email">
-          {{ row.email }}
-          <span
-            v-if="row.is_me"
-            class="member-you"
-            data-testid="member-you"
-          >{{ $t('hubs.members.you') }}</span>
-        </p>
-        <p class="card-line">
-          <StatusPill v-bind="pill(row)" />
-          <span class="card-meta">{{ row.role_label }}</span>
-        </p>
-        <p
-          class="card-line card-meta"
-          data-testid="member-last"
-        >
-          {{ lastAccess(row) }}
-        </p>
       </template>
     </DataTable>
 
@@ -353,17 +339,6 @@ async function withdrawOffer(id: string): Promise<void> {
 }
 .row-action.is-danger {
   --color: var(--ion-color-danger);
-}
-.card-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  margin: 0 0 6px;
-}
-.card-meta {
-  font-size: 0.85rem;
-  color: color-mix(in oklab, var(--ion-text-color) 70%, transparent);
 }
 .members-seats {
   margin: -6px 0 0;

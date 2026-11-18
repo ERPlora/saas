@@ -22,7 +22,9 @@ import { useRouter } from 'vue-router';
 import { BILLING, STORE } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import { useErrorText } from '../../../hubs/frontend/error-text';
-import type { PlanOut, SubscriptionAction, SubscriptionRowOut } from '../../../frontend/sdk-types';
+import type { SubscriptionAction, SubscriptionRowOut } from '../../../frontend/sdk-types/billing-subscriptions';
+import type { PlanOut } from '../../../frontend/sdk-types/hubs-catalog';
+import { carriedText } from '../discount-text';
 import { formatDate } from '../format';
 import { formatAmount } from '../invoices';
 import { isFree } from '../store';
@@ -210,9 +212,9 @@ async function keepPlan(row: Row, id: string): Promise<void> {
   keeping.value = row.id;
   try {
     await keep.run({ hub_id: id });
-    void toastSuccess(t('billing.subscriptions.kept', { business: row.name, plan: row.plan.name }));
+    toastSuccess(t('billing.subscriptions.kept', { business: row.name, plan: row.plan.name }));
   } catch {
-    void toastError(text(keep.error.value));
+    toastError(text(keep.error.value));
   } finally {
     keeping.value = null;
   }
@@ -273,6 +275,11 @@ async function keepPlan(row: Row, id: string): Promise<void> {
           class="cell-sub"
           data-testid="subscription-scheduled"
         >{{ $t('billing.subscriptions.scheduled', { plan: planName(row.scheduled_change.plan), date: day(row.scheduled_change.starts_at) }) }}</span>
+        <span
+          v-if="row.discount"
+          class="cell-sub"
+          data-testid="subscription-discount"
+        >{{ carriedText({ t, money }, row.discount, day) }}</span>
       </div>
     </template>
     <template #modules="{ row }">

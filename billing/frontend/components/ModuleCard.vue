@@ -12,7 +12,7 @@ import { IonButton, IonCard, IonCardContent, IonNote } from '@ionic/vue';
 import { computed, useId } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { BillingInterval } from '../../../frontend/sdk-types';
+import type { BillingInterval } from '../../../frontend/sdk-types/store';
 import { formatCents, formatDate } from '../format';
 import type { Block, SaleModule } from '../store';
 import AppIcon from './AppIcon.vue';

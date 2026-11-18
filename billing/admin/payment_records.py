@@ -74,9 +74,10 @@ class OssNoticeAdmin(ReadOnlyAdmin):
 
 @admin.register(PromoRedemption)
 class PromoRedemptionAdmin(ReadOnlyAdmin):
-    """A promo code used by a business (once per business and per payer): written when its checkout is paid."""
+    """A promo code used by a business (once per business and per payer): held while its checkout is open
+    (``held_until``), a use once paid."""
 
-    list_display = ("created_at", "promo", "hub", "stripe_customer_id")
+    list_display = ("created_at", "promo", "hub", "stripe_customer_id", "held_until")
     list_select_related = ("promo", "hub")
     search_fields = ("promo__code", "hub__slug", "hub__name", "stripe_customer_id")
 

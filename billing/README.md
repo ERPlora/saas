@@ -99,9 +99,10 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 |---|---|
 | `stripe_service.py` | La única puerta a Stripe (el único módulo que importa `stripe`): `client()` con la clave del entorno (restringida `rk_live_` en prod; sin clave no se llama a nada), 1 reintento y `STRIPE_TIMEOUT_SECONDS`; devuelve dicts; errores `StripeUnavailable` (red, 429, 5xx) y `StripeRefused` (tarjeta, objeto inexistente, configuración); espejo de `TaxRate` (`tax_rate_ids`: reutiliza uno exacto y exclusivo, crea el que falta, 24 h en caché, nunca crea a ciegas si el listado falla); firma del webhook |
 | `stripe_keys.py`, `stripe_period.py`, `stripe_checkout.py`, `stripe_test_clocks.py` | Modo de una clave (`sk_`/`rk_`), periodo de la suscripción (en el item desde la API de 2025), `ui_mode = embedded_page` y `metadata.kind`, relojes de prueba (rechaza una clave live) |
-| `models/promo_codes.py`, `models/payments.py` | `PromoCode` (días de prueba, ADR-0107), `CheckoutAttempt` (un Embedded Checkout por intención; la misma selección reutiliza su sesión abierta), `WebhookEvent` (cada evento una vez) y `PaymentFailure` (por qué no se cobró una renovación) |
+| `models/discounts.py`, `discount_terms.py`, `stripe_coupons.py` | `Discount`, las condiciones de un descuento (ver «Descuentos y códigos promocionales»): lo que quita de un importe, a qué planes y periodicidades se aplica, su nombre y su cupón espejo en Stripe |
+| `models/promo_codes.py`, `models/payments.py` | `PromoCode` (días de prueba, ADR-0107, o un `Discount`), `CheckoutAttempt` (un Embedded Checkout por intención; la misma selección reutiliza su sesión abierta), `WebhookEvent` (cada evento una vez) y `PaymentFailure` (por qué no se cobró una renovación) |
 | `webhooks.py` | `POST /webhooks/stripe/`: firma de Stripe → reclamo del evento → `services.process_stripe_event` |
-| `management/commands/sweep_unpaid.py` | `saas-cron`: impagos que Stripe dejó de reintentar, suscripciones de negocios eliminados y pagadores de cuentas eliminadas (`payers_forgotten`) |
+| `management/commands/sweep_unpaid.py` | `saas-cron`: impagos que Stripe dejó de reintentar, suscripciones de negocios eliminados, pagadores de cuentas eliminadas (`payers_forgotten`) y usos de códigos reservados por pagos que ya no se pueden completar (`promo_holds_released`) |
 | `management/commands/retax_subscriptions.py` | `saas-cron` (diaria): el tipo de hoy en cada suscripción viva y en las fases de su bajada programada (cambio de dirección no empujado, umbral OSS) y el reenvío de los avisos de la OSS que no salieron |
 | `management/commands/audit_tax_rules.py` | `saas-cron` (diaria) o a mano: la tabla de IVA cobra cada venta posible |
 | `management/commands/audit_stripe_webhooks.py` | `saas-cron` (diaria, 05:40 UTC, `ERPlora/aws#21`) o a mano (`--base-url` para otro entorno): Stripe manda a `/webhooks/stripe/` exactamente `STRIPE_WEBHOOK_EVENTS` (BILLING-F39) |
@@ -114,7 +115,9 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
   proration_date}}` (`invoices.create_preview`). Un plan comprado durante una prueba conserva los días que le
   quedan (`trial_end`); un código promocional los sustituye si da más; menos de 48 h no se arrastran. Desde el
   2026-10-15 ningún plan trae prueba (el plan Gratis es la entrada): el mecanismo queda dormido hasta que el staff
-  dé días de prueba a un plan en el admin.
+  dé días de prueba a un plan en el admin. Un código con **descuento** (ver «Descuentos y códigos promocionales»)
+  abre la sesión con el cupón del descuento en `discounts` y `payment_method_collection="always"`, sin `trial_end`
+  (ni el de la prueba del alta). Un código solo vale al comprar un plan: en la compra de un módulo no se lee.
 - `billing.checkout.confirm` — añade un módulo a la suscripción con el prorrateo de la vista previa: se cobra ya
   (`always_invoice`) o no se añade (`error_if_incomplete`; tarjeta rechazada → 409 `billing.card_declined`).
 - `billing.plan.change` — cambia el precio del item del plan (y, si cambia la periodicidad, el de cada módulo),
@@ -128,8 +131,103 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
   (`valid_until` pasado) ya no sale en la foto, en `billing.subscription.list` ni en la Tienda, que lo vuelve a
   vender; el aviso de Stripe de la renovación que ya no lo cobra borra su fila (BILLING-F34).
 - `billing.portal.open` — sesión del Customer Portal (tarjetas y recibos de Stripe); `{url}`.
-- `billing.promo.check` — `GET /api/billing/promo-check?code=` → `{code, valid, trial_days}`; presupuesto por
-  persona `PROMO_CHECK_RATE` (429 `billing.promo_check_throttled`).
+- `billing.promo.check` — `GET /api/billing/promo-check?code=` → `{code, valid, trial_days, discount}`: los días
+  de prueba, o las condiciones del descuento (`DiscountOut`: `percent_off` o `amount_off_cents` con `currency`,
+  `duration`, `duration_in_months` y `applies_to` con los planes y las periodicidades); presupuesto por persona
+  `PROMO_CHECK_RATE` (429 `billing.promo_check_throttled`). El texto («Gratis durante 6 meses», «20 % de
+  descuento en el primer pago») y el precio «después» los pone el panel (`frontend/discount-text.ts`) desde las
+  condiciones y el catálogo.
+
+### Descuentos y códigos promocionales
+
+Dos piezas, con los nombres de Stripe:
+
+- **`Discount`** (el cupón): quita un porcentaje (`percent_off`, 1–100) **o** un importe (`amount_off_cents`, en
+  `eur`), durante `once` (el primer pago), `repeating` (`duration_in_months`, 1–36, solo con esa duración) o
+  `forever`, y se aplica a los planes que nombra (`plans`; ninguno = todos los de pago), nunca a un módulo. Todo lo
+  comprueba la base de datos y el admin.
+- **`PromoCode`** (lo que escribe el cliente): da `trial_days` (1–365) **o** un `Discount`, nunca los dos; con su
+  vigencia, su tope de usos y si está activo. Un descuento puede tener varios códigos; un código canjeable pide
+  también que su descuento esté activo.
+
+En el admin, **Facturación › Descuentos** lleva sus códigos debajo. Usado un código (o reservado por un pago
+abierto), las condiciones del descuento (importe, duración, planes) y el código, su descuento y sus días quedan de
+solo lectura, y ni el descuento ni el código se borran: se desactivan. Lo protege también la base de datos
+(`PromoRedemption.promo` y `PromoCode.discount` son `PROTECT`): borrar un código usado se llevaría sus usos, y el mismo
+negocio y pagador podrían volver a usarlo. La migración `0012_discounts` no se deshace mientras exista un código con
+descuento.
+
+**El cupón de Stripe es un espejo** que no se guarda: id `erp-discount-<descuento>-<huella>` (12 hex del descuento y
+8 de la huella de sus condiciones y de los productos de Stripe de sus planes; `billing/stripe_coupons.py`), con un
+nombre de hasta 40 caracteres («Free for 6 months»). Cada pago con un código lo pide a Stripe: el primero lo crea y
+a los demás Stripe les dice que ya existe (`resource_already_exists`), que no es un error. Mismas condiciones y
+productos, mismo cupón en test y en live; otros planes, otro cupón. Un plan sin `stripe_product_id` → 503
+`billing.payments_unavailable` y un ERROR en el log. La clave restringida `rk_live_` necesita escribir cupones.
+
+**Al empezar a pagar** (`billing.checkout.start`), antes de llamar a Stripe:
+
+- un descuento `repeating` solo con la facturación mensual (Stripe descontaría el año entero) → 409
+  `billing.discount_monthly_only`; `once` y `forever` valen con las dos;
+- un plan que el descuento no nombra → 409 `billing.discount_plan_not_covered`;
+- en un cambio de plan de un negocio que ya paga, un código con descuento → 409
+  `billing.promo_discount_new_subscription_only` (los días de prueba sí se honran);
+- un código que el negocio ya no puede usar (agotado, usado por él o por su pagador, apagado o caducado desde que el
+  panel lo comprobó) → 409 `billing.promo_not_available` («quítalo para pagar sin él»): nunca se quita en silencio,
+  porque el panel ya prometió lo que da.
+
+**El uso se reserva al abrir la sesión** (`services/promo_holds.py`), porque es entonces cuando el cupón entra en
+ella: una fila de `PromoRedemption` con `held_until` (25 h; Stripe cierra la sesión a las 24 h) y el pago que la
+abrió. El tope va en el `WHERE` del `UPDATE` que suma el uso, que además retiene la fila del código hasta el COMMIT;
+detrás de ese cerrojo se comprueba el «una vez por negocio y por pagador», así que dos pagos abiertos a la vez nunca
+se llevan el último uso ni dos negocios del mismo pagador el mismo código. El pago completado convierte la reserva en
+uso, con la suscripción de Stripe que pagó y `discount_ends_at`, el fin del descuento en la suscripción viva
+(`retrieve_subscription` la lee con `expand=["discounts"]`; vacío en `once` y en `forever`). Un pago que se cierra
+sin cobrar devuelve el uso: el aviso `checkout.session.expired` o `async_payment_failed`, otro pago del mismo negocio
+que lo sustituye (`_expire_other_sessions`), el cambio de dueño (`expire_open_checkouts`) o el reembolso de quien ya
+no era el dueño. Una reserva cuya sesión ya no se puede pagar la devuelve la siguiente reserva del mismo código o
+`sweep_unpaid` (cada hora), así que ninguna se queda para siempre; si aun así el pago llega después, cuenta como uso,
+porque Stripe ya dio el descuento.
+
+**Lo que cubre un descuento es lo que cubre su cupón**: el uso guarda el cupón y los productos de Stripe con los que
+se creó (`stripe_coupon_id`, `stripe_products`). Un plan creado después no lo descuenta Stripe, aunque el descuento
+sea para todos los planes, y el panel tampoco lo promete.
+
+**Mientras dura, el descuento sigue a la suscripción** (capturado de la cuenta de test con relojes de prueba en
+`tests/fixtures/discounts/`):
+
+- subir de plan: el prorrateo llega ya descontado y la renovación sigue con el descuento;
+- bajar de plan (al final del periodo, con un schedule): cada fase lleva los mismos `discounts`
+  (`{"discount": "di_…"}`), así que el descuento conserva su fin; `retax_subscriptions` los mantiene al rehacer las
+  fases (`services/discounts.py`);
+- comprar un módulo: el módulo se cobra entero (ni el prorrateo ni su renovación se descuentan);
+- pasar a anual con un descuento `repeating` vivo → 409 `billing.discount_blocks_annual` con la fecha; con uno
+  `forever`, sí, y se descuenta cada año;
+- cancelar, siempre;
+- cambiar de dueño: el descuento se dio al negocio, así que sigue en la suscripción del nuevo dueño
+  (`billing.plan.take_over`). Una Checkout Session acepta un cupón, nunca un descuento que ya corre (Stripe contesta
+  `parameter_unknown` a `discounts[0][discount]`), así que no se puede fijar su fin: uno `forever` sigue con el mismo
+  cupón; uno `repeating`, con un cupón espejo de los meses enteros que le quedan, redondeando hacia abajo, y ninguno
+  si le queda menos de un mes (así nunca pasa de su fin); uno `once` ya gastado no vuelve. El uso pasa a la
+  suscripción nueva, con su fin (o ya terminado si no pasó nada).
+
+**Un plan que el cupón no cubre** (uno que el descuento no nombra, o creado después) no se bloquea: el cliente puede
+cambiar a él. Stripe deja de descontar, la vista previa enseña el precio real y la próxima factura lo cobra entero;
+`billing.subscription.list` no enseña el descuento.
+
+`billing.subscription.list` da `discount` (`{code, ends_at, terms}`) mientras la suscripción lo lleva (uno `once`,
+tras su pago, ya no; uno `repeating`, hasta su fin) en el plan que factura, el de una bajada que espera incluido, si
+su cupón cubre el producto de ese plan; y resta de la próxima factura lo que quita del plan antes del IVA si sigue
+vivo en la renovación, como hace Stripe.
+
+**Las facturas.** La línea de Stripe trae su `amount` antes del descuento y `discount_amounts` con lo que quitó; el
+porcentaje se redondea al céntimo, la mitad hacia arriba (el 20 % de 29,99 € son 6,00 €) y un importe mayor que el precio deja
+la línea a 0. `billing.invoice.record` registra también la de total 0 con subtotal mayor que 0
+(`services/invoice_discounts.py`); la de una prueba (subtotal 0) sigue sin factura. `InvoiceLine.discount_cents`
+guarda el descuento sin IVA y `net_cents` la base ya descontada; `vat._breakdown` no concilia ni avisa de «cobrado
+sin IVA» cuando no se cobró nada. La factura con descuento, también la de 0 €, se numera, se manda al hub de
+plataforma (cada línea lleva `discount_cents`, siempre positivo y sin IVA: el hub le pone el signo de la línea y, en
+una línea OSS, su tipo) y sale en la lista, la ficha, el PDF, el CSV, el admin, el ZIP de PDF, el correo y el
+informe para la gestoría. Al acabar el descuento se cobra el precio normal sin hacer nada.
 
 Lo que cambia la suscripción se lee de vuelta de Stripe y lo escribe `hubs.subscription.apply` (una app escribe
 en otra solo por sus operaciones), que sube `state_version` y empuja la foto al Hub tras el COMMIT.
@@ -456,16 +554,19 @@ No vende, así que está en todas las superficies: en las apps y con `?surface=a
 suscripciones y se editan los datos fiscales; pagar, cambiar la tarjeta y cambiar, mantener o cancelar el plan
 son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegador.
 
-- **Arriba, en las tres pestañas** (`BillingNotices` + `unpaid.ts`): las facturas no cobradas (`billing.invoice.list`
-  con `status=open`, viva) con el estado de su negocio (`hubs.business.list`). En Facturas, un aviso por factura
-  (`UnpaidInvoiceNotice`): importe, negocio, factura y fecha, hasta cuándo funciona (7 días) o que está suspendido;
-  en la web «Pagar la factura» es el principal y, con `pay_blocked_reason = card_change_required`, «Cambiar tarjeta»
-  (Customer Portal) pasa a principal y «Pagar» espera con el motivo (`aria-describedby`); con la tarjeta cambiada
-  (`unpaid_reason = card_changed`) el aviso lo dice y «Pagar» vuelve. En las otras pestañas, una línea con enlace.
+- **El impago, en la campana** (`notices.ts` sobre `unpaid.ts`; `frontend/main.ts` lo pasa a `createShell` como
+  `actionNotices`): un aviso del centro de avisos de `@erplora/ui` por negocio en `past_due` o `suspended`
+  (`hubs.business.list`), con el importe de su factura no cobrada (`billing.invoice.list` con `status=open`, viva),
+  «quedan N días» o «suspendido» y el plazo de 7 días (`graceEnd`). En la web, a quien paga el negocio (lo dice su
+  factura, `payer_required`, o sin ella `is_payer`): «Pagar la factura · …» (`usePayInvoice`, solo con `pay_url` y
+  `can.pay`) y «Cambiar tarjeta» (Customer Portal); con `card_change_required` solo «Cambiar tarjeta», porque el
+  servidor no deja pagar hasta cambiarla, y con `card_changed` el aviso lo dice y «Pagar» vuelve. A quien no paga,
+  sin botones y el porqué; en las apps, cómo pagar desde el navegador. Si una de las dos consultas
+  falla, el panel de la campana lo dice con «Reintentar». Ninguna pantalla pinta un aviso de impago propio.
 - **Pagar** (`pay.ts`, `PayInvoiceButton`): `billing.invoice.pay` → la página de Stripe, navegación de primer nivel.
-  Un pago a la vez en toda la página (aviso y fila comparten el estado): «Pagando…» desde el clic hasta salir, sin
-  doble cobro. La factura se recuerda en `sessionStorage` y, cuando sale de las no cobradas (aquí, en otra pestaña o
-  al volver de Stripe), se pregunta `billing.invoice.get` y, pagada, «Factura pagada: … vuelve a estar al día».
+  Un pago a la vez en Facturación (`providePaying`): «Pagando…» desde el clic hasta salir, sin doble cobro. La
+  factura se recuerda en `sessionStorage` y, cuando sale de las no cobradas (en cualquier pantalla del panel, en otra
+  pestaña o al volver de Stripe), se pregunta `billing.invoice.get` y, pagada, «Factura pagada: … vuelve a estar al día».
 - **Facturas** (`InvoicesTab`): `DataTable` de servidor (tarjetas hasta 1100 px), filtros negocio (también
   `?business=`; uno ajeno enseña todas y lo dice; uno en Gratis dice que no tiene), estado y año, guardados en la
   dirección; búsqueda por número; «Pagar» fija (solo web) y PDF si `can.pdf`; si no, «Emitiéndose». Una
@@ -485,6 +586,9 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
   que el Hub no devuelve) se nombran con su motivo en el aviso del admin y en `not-included.txt` dentro del ZIP, y
   sin ningún PDF no hay ZIP, solo el aviso. `PromoRedemption`, `InvoiceCounter` y `PlanChangeSchedule` se ven en el
   admin de solo lectura (`ReadOnlyAdmin`): los escriben el cobro, la numeración y el cambio de plan.
+- **Descuentos y códigos** (BILLING-F12; `billing/admin/discounts.py`, `DiscountAdmin`, con sus códigos debajo, y
+  `billing/admin/promo_codes.py`, `PromoCodeAdmin`): lo que queda fijo tras el primer uso, en «Descuentos y códigos
+  promocionales». Cada cambio de un descuento, también el de sus planes, queda en el historial (`billing/auditlog.py`).
 - **Clientes de pago** (BILLING-F41; `billing/admin/paying_customers.py`, `PayingCustomerAdmin`): lista de solo
   lectura de los negocios que Stripe cobra hoy, con filtros por plan, estado y país y «Descargar Excel» de lo que
   enseña; la ve quien puede ver las suscripciones. La lectura vive en `billing/queries/paying_customers.py` y el
@@ -524,10 +628,10 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
   `invoice`; las facturas del hub de plataforma, VERIFACTU-G10…G14, `ERPlora/hub#133`). `Hub.is_platform` no hace
   falta en el SaaS: la ruta no lleva negocio.
 - **aws**: `reconcile_platform_invoices` corre cada 15 minutos en el servicio `saas-worker` (aws#59, saas#305).
-  `PLATFORM_INVOICING_ENABLED` sigue en `false` en prod y en pre (`stacks/prod/apps.tf` y `pre_apps.tf`, fijado por
-  `stacks/prod/tests/compute.tftest.hcl`): encenderlo es la transmisión real de las facturas de ERPlora a la AEAT, que
-  queda bajo la supervisión de Ioan (reglas de trabajo §15). Hasta entonces, una clave live no cobra (409
-  `billing.invoicing_unavailable`).
+  En el código de `aws`, `PLATFORM_INVOICING_ENABLED` está en `true` en prod (`stacks/prod/apps.tf`, desde aws#90,
+  fijado por `stacks/prod/tests/deploy.tftest.hcl`) y en `false` en pre (`pre_apps.tf`): en prod una clave live cobra
+  mientras el hub de plataforma conteste `GET /internal/platform/invoices/health`; en pre, 409
+  `billing.invoicing_unavailable`.
 - **PLAN-SAAS**: las decisiones fiscales de arriba (número del SaaS, bajadas al final del periodo, VIES al facturar)
   están en PLAN-SAAS §4, «Decidido (2026-10-14, L3-C)»; el cierre de la app, en PLAN-SAAS §13.
 - Una nota de crédito anulada en Stripe (`credit_note.voided`) se trata como dice «Webhook» (BILLING-F26): nunca se

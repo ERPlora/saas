@@ -246,8 +246,8 @@ def create_checkout_session(params: dict, *, idempotency_key: str) -> dict:
 
 
 def retrieve_subscription(subscription_id: str) -> dict:
-    """The live subscription with ALL its items: Stripe embeds the first 10, the rest are listed."""
-    live = _call(client().v1.subscriptions.retrieve, subscription_id)
+    """The live subscription with ALL its items (Stripe embeds the first 10, the rest are listed) and its discounts."""
+    live = _call(client().v1.subscriptions.retrieve, subscription_id, params={"expand": ["discounts"]})
     items = live.get("items") or {}
     if items.get("has_more"):
         live["items"] = {**items, "data": subscription_items(subscription_id), "has_more": False}

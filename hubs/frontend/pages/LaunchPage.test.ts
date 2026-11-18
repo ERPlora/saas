@@ -12,38 +12,17 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
   IonModal: (await import('../__tests__/ion-modal-stub')).IonModalStub,
 }));
-vi.mock('@erplora/ui/shell', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
-  toastSuccess: vi.fn(() => Promise.resolve()),
-  toastError: vi.fn(() => Promise.resolve()),
-}));
+vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/module-mocks')).shellWithToastSpies(original));
 
 import { accessibleName, ANONYMOUS, apiError, BYE, describeCall, enterView, errorFrame, flush, ionProps, type MountOptions, mountHubs, subId } from '../__tests__/mount-hubs';
 import { anonymous, fakeAllauth, pendingEmailVerification, pendingLoginCode, signedIn } from '../../../accounts/frontend/__tests__/allauth-server';
 import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
+import { business } from '../__tests__/businesses';
 import LaunchPage from './LaunchPage.vue';
 import { navigation } from '../open-business';
 
-const row = (id: string, name: string, extra: Record<string, unknown> = {}) => ({
-  id,
-  slug: id,
-  name,
-  host: `${id}.localhost:8000`,
-  status: 'active',
-  status_label: 'Active',
-  plan: { slug: 'starter', name: 'Starter' },
-  role: 'hub_owner',
-  role_label: 'Owner',
-  last_opened_at: null,
-  can_open: true,
-  open_blocked_reason: null,
-  hub_error: null,
-  deletion_requested_at: null,
-  purge_after: null,
-  created_at: '2026-03-02T10:00:00Z',
-  ...extra,
-});
+const row = business;
 const PREPARING = { status: 'preparing', status_label: 'Preparing', can_open: false, open_blocked_reason: 'preparing' };
 const INVITATION = {
   id: 'm1',

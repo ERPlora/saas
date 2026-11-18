@@ -198,6 +198,18 @@ class TestADowngradeWaiting:
     are re-stated whole, so an empty list of rates is none, and the current phase changes the subscription at
     once)."""
 
+    def test_the_discount_of_each_phase_stays(self, shop, stripe_double):
+        rate = spanish_rate(stripe_double, shop)
+        paid = on_starter(move(shop, "ES", "35001"), stripe_double, rates=[rate])
+        schedule = waiting(paid, stripe_double, current=[rate], following=[rate])
+        for phase in schedule["phases"]:
+            phase["discounts"] = [{"coupon": None, "discount": "di_testers", "promotion_code": None}]
+
+        services.retax_subscription(paid)
+
+        phases = stripe_double.last("subscription_schedules.update").params["phases"]
+        assert [phase["discounts"] for phase in phases] == [[{"discount": "di_testers"}]] * 2
+
     def test_every_phase_still_to_run_takes_todays_rate(self, shop, stripe_double):
         from billing.tests.stripe_double import DAY, MONTH_END, MONTH_START
 
@@ -214,9 +226,10 @@ class TestADowngradeWaiting:
             "end_behavior": "release",
             "phases": [
                 {"items": [{"price": "price_standard_month", "quantity": 1, "tax_rates": []}],
-                 "start_date": MONTH_START, "end_date": MONTH_END, "proration_behavior": "none"},
+                 "start_date": MONTH_START, "end_date": MONTH_END, "proration_behavior": "none", "discounts": []},
                 {"items": [{"price": "price_starter_month", "quantity": 1, "tax_rates": []}],
-                 "start_date": MONTH_END, "end_date": MONTH_END + 30 * DAY, "proration_behavior": "none"},
+                 "start_date": MONTH_END, "end_date": MONTH_END + 30 * DAY, "proration_behavior": "none",
+                 "discounts": []},
             ],
         }
 

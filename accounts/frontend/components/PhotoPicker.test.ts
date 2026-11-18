@@ -3,11 +3,7 @@
 // (`accounts.photo.remove`). What cannot be the photo is said in a toast, in the person's language.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@erplora/ui/shell', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@erplora/ui/shell')>()),
-  toastSuccess: vi.fn(() => Promise.resolve()),
-  toastError: vi.fn(() => Promise.resolve()),
-}));
+vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/frontend/__tests__/module-mocks')).shellWithToastSpies(original));
 vi.mock('../photo', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../photo')>()),
   preparePhoto: vi.fn(),
@@ -16,7 +12,7 @@ vi.mock('../photo', async (importOriginal) => ({
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
 import { apiError, flush, mountPanel, profile } from '../__tests__/mount-panel';
-import type { ProfileOut } from '../../../frontend/sdk-types';
+import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import { PhotoError, preparePhoto } from '../photo';
 import PhotoPicker from './PhotoPicker.vue';
 

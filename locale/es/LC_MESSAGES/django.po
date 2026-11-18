@@ -765,6 +765,12 @@ msgstr "Oscuro"
 msgid "appearance"
 msgstr "apariencia"
 
+msgid "transparency effects"
+msgstr "efectos de transparencia"
+
+msgid "Translucent backgrounds on panels and notices."
+msgstr "Fondos translúcidos en paneles y avisos."
+
 msgid "business notices"
 msgstr "avisos de mis negocios"
 

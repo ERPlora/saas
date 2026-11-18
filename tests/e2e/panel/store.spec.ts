@@ -16,7 +16,7 @@ import { businessIdOf } from './businesses';
 import { djangoPrint, runSeed } from './django';
 import { expect, test } from './fixtures';
 import { watchPageErrors } from './page-events';
-import { repeatedTop, settled, shot, toast, VIEWPORTS } from './screen';
+import { repeatedTop, settled, shot, stripedAfterResize, toast, VIEWPORTS } from './screen';
 import { signIn } from './session';
 import { answerCheckoutStart, gotoWithCharge, gotoWithCheckout, payInStripe, playStripe, stripeState } from './stripe';
 
@@ -38,11 +38,11 @@ function watchStripeRequests(page: Page): string[] {
 }
 
 /** Leaves the seeded business `name` on the plan `slug`, as a paid purchase would (nothing reaches Stripe nor the Hub). */
-function putOnPlan(name: string, slug: string): void {
+function putOnPlan(name: string, slug: string, cancelling = false): void {
   djangoPrint(
     [
       'from hubs.models import Plan, Subscription',
-      `Subscription.objects.filter(hub__name="${name}", hub__slug__startswith="e2e-store-").update(plan=Plan.objects.get(slug="${slug}"))`,
+      `Subscription.objects.filter(hub__name="${name}", hub__slug__startswith="e2e-store-").update(plan=Plan.objects.get(slug="${slug}"), cancel_at_period_end=${cancelling ? 'True' : 'False'})`,
     ].join('\n'),
   );
 }
@@ -50,6 +50,36 @@ function putOnPlan(name: string, slug: string): void {
 /** The sideways scroll of the page on screen, read where Ionic scrolls (the one measure, `overflowingBoxes`). */
 async function sidewaysScroll(page: Page): Promise<string[]> {
   return overflowingBoxes(page, 1);
+}
+
+async function checkPayingPlans(page: Page, businessId: string, width: number): Promise<void> {
+  await page.goto(`/dashboard/store/plans?business=${businessId}`);
+  await expect(page.getByTestId('store-plans')).toBeVisible();
+  await expect(page.locator('.plans-grid > ion-card')).toHaveCount(6);
+  await expect(page.getByTestId('plan-free').getByTestId('plan-downgrade')).toBeVisible();
+  await expect(page.getByTestId('plan-standard').getByTestId('plan-change')).toBeVisible();
+  await settled(page);
+  expect(await sidewaysScroll(page), `paying plans at ${width}`).toEqual([]);
+}
+
+/** Ionic scrolls inside the viewport: enlarge that viewport to capture the whole plan page, then restore its size. */
+async function planShot(page: Page, name: string): Promise<void> {
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error('The plan screenshot needs a viewport');
+  const fullHeight = await page.evaluate(() => {
+    const shown = [...document.querySelectorAll('ion-router-outlet > .ion-page:not(.ion-page-hidden)')].at(-1);
+    const content = shown?.querySelector('ion-content');
+    const scroller = content?.shadowRoot?.querySelector<HTMLElement>('[part="scroll"]');
+    if (!content || !scroller) return window.innerHeight;
+    scroller.scrollTop = 0;
+    const box = content.getBoundingClientRect();
+    return Math.ceil(scroller.scrollHeight + box.top + window.innerHeight - box.bottom);
+  });
+  await page.setViewportSize({ width: viewport.width, height: Math.max(viewport.height, fullHeight) });
+  await settled(page);
+  await page.screenshot({ path: join(SHOTS_DIR, name), fullPage: true });
+  await page.setViewportSize(viewport);
+  await settled(page);
 }
 
 test.describe('store', () => {
@@ -99,7 +129,7 @@ test.describe('store', () => {
     await playStripe(page);
     const cafe = await businessIdOf(page.request, 'Café Central');
     await answerCheckoutStart(page);
-    const notice = toast(page, 'Café Central is now on Starter').last();
+    const notice = toast(page, 'Café Central is now on Starter');
     const tabbar = page.locator('ion-footer.section-tabbar').filter({ has: page.getByTestId('tab-summary') });
     for (const size of [{ width: 375, height: 667 }, { width: 820, height: 1180 }, { width: 1440, height: 900 }]) {
       await page.setViewportSize(size);
@@ -112,9 +142,8 @@ test.describe('store', () => {
       await settled(page);
       await page.screenshot({ path: shot(`STORE-paid-notice-${size.width}`) });
       // Soft: every size is measured (and captured) even when one fails.
-      const wrapper = notice.locator('.toast-wrapper');
-      await expect.soft(wrapper, `the notice whole on screen at ${size.width}`).toBeInViewport({ ratio: 1 });
-      const [bar, box] = [await tabbar.boundingBox(), await wrapper.boundingBox()];
+      await expect.soft(notice, `the notice whole on screen at ${size.width}`).toBeInViewport({ ratio: 1 });
+      const [bar, box] = [await tabbar.boundingBox(), await notice.boundingBox()];
       expect.soft(bar && box && box.y + box.height <= bar.y, `the notice's bottom above the tabbar's top at ${size.width}: ${JSON.stringify({ bar, box })}`).toBe(true);
     }
     expect(errors).toEqual([]);
@@ -257,32 +286,94 @@ test.describe('store', () => {
     const bakery = await businessIdOf(page.request, 'Panadería López');
     await page.goto(`/dashboard/store/plans?business=${bakery}`);
     await expect(page.getByTestId('store-plans')).toBeVisible();
-    const striped: string[] = [];
-    for (let round = 0; round < 4; round++) {
-      for (const size of VIEWPORTS) {
-        await page.setViewportSize(size);
-        await settled(page);
-        const png = await page.screenshot({ path: shot(`FIX-SAAS-E2E-STORE-SHOT-STRIPE-${size.width}`) });
-        const rows = await repeatedTop(page, png);
-        if (rows) striped.push(`round ${round} at ${size.width}: ${rows} rows`);
-      }
-    }
-    expect(striped).toEqual([]);
+    expect(await stripedAfterResize(page, VIEWPORTS, 'FIX-SAAS-E2E-STORE-SHOT-STRIPE')).toEqual([]);
   });
 
-  for (const { width, height } of VIEWPORTS) {
+  test('plan price and action rows align at desktop, and features expand together from the keyboard', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const cafe = await businessIdOf(page.request, 'Café Central');
+    await page.goto(`/dashboard/store/plans?business=${cafe}`);
+    const cards = page.locator('.plans-grid > ion-card');
+    await expect(cards).toHaveCount(3);
+    await expect(cards.first()).toHaveCSS('overflow', 'clip');
+    const priceTops = await cards.getByTestId('plan-price').evaluateAll((prices) => prices.map((price) => Math.round(price.getBoundingClientRect().top)));
+    const actionTops = await cards.locator('.plan-card__actions').evaluateAll((actions) => actions.map((action) => Math.round(action.getBoundingClientRect().top)));
+    expect(new Set(priceTops).size, `price tops: ${priceTops}`).toBe(1);
+    expect(new Set(actionTops).size, `action tops: ${actionTops}`).toBe(1);
+
+    const toggles = cards.getByTestId('plan-features-toggle');
+    expect(await toggles.count()).toBeGreaterThan(0);
+    const collapsed = await cards.evaluateAll((items) => items.map((item) => item.querySelectorAll('ion-item').length));
+    await toggles.first().locator('button').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('button', { name: 'Show fewer', expanded: true })).toHaveCount(3);
+    const expanded = await cards.evaluateAll((items) => items.map((item) => item.querySelectorAll('ion-item').length));
+    expect(expanded.some((count, index) => count > collapsed[index])).toBe(true);
+    await toggles.first().click();
+    await expect(page.getByRole('button', { name: 'Show all features', expanded: false })).toHaveCount(3);
+  });
+
+  test('a cancelled plan explains Keep next to its action at desktop and phone', async ({ page }) => {
+    putOnPlan('Panadería López', 'starter', true);
+    try {
+      const bakery = await businessIdOf(page.request, 'Panadería López');
+      await page.emulateMedia({ colorScheme: 'light' });
+      for (const size of [VIEWPORTS[2], VIEWPORTS[0]]) {
+        await page.setViewportSize(size);
+        await page.goto(`/dashboard/store/plans?business=${bakery}`);
+        const current = page.getByTestId('plan-starter');
+        const note = current.getByTestId('plan-note');
+        await expect(note).toContainText('Cancelled: Starter until');
+        expect(await note.evaluate((element) => element.nextElementSibling?.getAttribute('data-testid'))).toBe('plan-keep');
+        await expect(current.getByTestId('plan-keep')).toBeVisible();
+        await planShot(page, `store-plans-cancelled-${size.width}-light.png`);
+      }
+    } finally {
+      putOnPlan('Panadería López', 'starter', false);
+    }
+  });
+
+  for (const { width, height } of [VIEWPORTS[0], { width: 768, height: 1024 }, VIEWPORTS[1], VIEWPORTS[2]]) {
     for (const theme of ['light', 'dark'] as const) {
       test(`Plans and Modules at ${width} px (${theme}): no sideways scroll, no error`, async ({ page }) => {
         const errors = watchPageErrors(page);
         await page.emulateMedia({ colorScheme: theme });
         await page.setViewportSize({ width, height });
         const bakery = await businessIdOf(page.request, 'Panadería López');
+        const cafe = await businessIdOf(page.request, 'Café Central');
         for (const tab of ['plans', 'modules'] as const) {
-          await page.goto(`/dashboard/store/${tab}?business=${bakery}`);
+          await page.goto(`/dashboard/store/${tab}?business=${tab === 'plans' ? cafe : bakery}`);
           await expect(page.getByTestId(`store-${tab}`)).toBeVisible();
           await settled(page);
           expect(await sidewaysScroll(page), `${tab} at ${width}`).toEqual([]);
-          await page.screenshot({ path: join(SHOTS_DIR, `store-${tab}-${width}-${theme}.png`), fullPage: true });
+          if (tab === 'modules') {
+            await page.screenshot({ path: join(SHOTS_DIR, `store-modules-${width}-${theme}.png`), fullPage: true });
+          }
+          if (tab === 'plans') {
+            if (width !== 834) await planShot(page, `store-plans-${width}-${theme}.png`);
+            const toggle = page.getByTestId('plan-features-toggle').first();
+            await expect(page.getByRole('button', { name: 'Show all features', expanded: false }).first()).toBeVisible();
+            if (width === 390) {
+              const emptyAction = page.getByTestId('plan-free').locator('.plan-card__actions');
+              await expect(emptyAction).toHaveCSS('display', 'none');
+              expect(await emptyAction.evaluate((element) => element.getBoundingClientRect().height)).toBe(0);
+              expect((await toggle.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+              const gap = await page.getByTestId('plan-free').evaluate((card) => {
+                const price = card.querySelector('[data-testid="plan-price"]')!.getBoundingClientRect();
+                const feature = card.querySelector('ion-item')!.getBoundingClientRect();
+                return feature.top - price.bottom;
+              });
+              expect(gap, 'Free has no empty action slot on a phone').toBeLessThanOrEqual(16);
+            }
+            await toggle.click();
+            await expect(page.getByRole('button', { name: 'Show fewer', expanded: true }).first()).toBeVisible();
+            await settled(page);
+            expect(await sidewaysScroll(page), `expanded plans at ${width}`).toEqual([]);
+            if (width !== 834) await planShot(page, `store-plans-${width}-${theme}-expanded.png`);
+            await toggle.click();
+            await expect(page.getByRole('button', { name: 'Show all features', expanded: false }).first()).toBeVisible();
+            await checkPayingPlans(page, bakery, width);
+          }
         }
         expect(errors).toEqual([]);
       });

@@ -9,7 +9,7 @@ import { useCommand } from '@erplora/ui/sdk';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { MemberRowOut } from '../../../frontend/sdk-types';
+import type { MemberRowOut } from '../../../frontend/sdk-types/hubs-members';
 import { useErrorText } from '../error-text';
 
 const props = defineProps<{
@@ -35,7 +35,7 @@ async function confirm(): Promise<void> {
   } catch {
     return; // The dialog shows the error.
   }
-  void toastSuccess(invitation.value ? t('hubs.members.cancelInvite.done') : t('hubs.members.remove.done', { name: member.name }));
+  toastSuccess(invitation.value ? t('hubs.members.cancelInvite.done') : t('hubs.members.remove.done', { name: member.name }));
   open.value = false;
 }
 </script>

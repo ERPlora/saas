@@ -9,7 +9,7 @@ import { useCommand } from '@erplora/ui/sdk';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { MemberRowOut } from '../../../frontend/sdk-types';
+import type { MemberRowOut } from '../../../frontend/sdk-types/hubs-members';
 import { useErrorText } from '../error-text';
 
 const props = defineProps<{
@@ -33,7 +33,7 @@ async function confirm(): Promise<void> {
   if (!member) return;
   try {
     const offer = await transfer.run({ hub_id: props.business.id, member_id: member.id });
-    void toastSuccess(t('hubs.members.transfer.done', { email: offer.to_email }));
+    toastSuccess(t('hubs.members.transfer.done', { email: offer.to_email }));
     open.value = false;
   } catch {
     // The dialog shows the error.

@@ -30,7 +30,7 @@ export function useCardPortal() {
       return true;
     } catch {
       opening.value = null;
-      void toastError(text(command.error.value));
+      toastError(text(command.error.value));
       return false;
     }
   }
