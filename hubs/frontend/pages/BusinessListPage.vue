@@ -159,11 +159,11 @@ function why(row: BusinessRowOut): string {
 const pageOf = (row: { id: string }) => `${BUSINESSES}/${row.id}/summary`;
 
 /** The row's buttons, as the table folds them when its box narrows: «Open» stays,
- *  «Manage» and «Recover» go into «⋮» first. Each is named with its business for a screen reader. */
+ *  «Manage» and «Recover» go into «⋮» first. Each says its action in short words, its text and its name alike. */
 const actions = computed<DataTableAction<BusinessRowOut>[]>(() => [
   {
     id: 'open',
-    label: (row) => t('hubs.common.openName', { name: row.name }),
+    label: t('hubs.common.open'),
     icon: 'ion:log-in-outline',
     color: 'primary',
     pinned: true,
@@ -173,14 +173,14 @@ const actions = computed<DataTableAction<BusinessRowOut>[]>(() => [
   },
   {
     id: 'manage',
-    label: (row) => t('hubs.list.actions.manageName', { name: row.name }),
+    label: t('hubs.list.actions.manage'),
     icon: 'ion:settings-outline',
     color: 'primary',
     hidden: (row) => !row.can.manage,
   },
   {
     id: 'restore',
-    label: (row) => t('hubs.list.actions.restoreName', { name: row.name }),
+    label: t('hubs.list.actions.restore'),
     icon: 'ion:refresh-outline',
     color: 'primary',
     hidden: (row) => !row.can.restore,

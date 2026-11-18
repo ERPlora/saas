@@ -8,7 +8,7 @@ import type { Component } from 'vue';
 
 import { viewport } from '../../../packages/ui/src/components/DataTable/__tests__/harness';
 import { business } from '../__tests__/businesses';
-import { describeCall, mountHubs } from '../__tests__/mount-hubs';
+import { accessibleName, describeCall, mountHubs } from '../__tests__/mount-hubs';
 import BusinessListPage from './BusinessListPage.vue';
 
 const row = (id: string, name: string, extra: Record<string, unknown> = {}) =>
@@ -66,6 +66,12 @@ describe('BusinessListPage: on a phone', () => {
     ]);
     expect(lines.every((line) => line.find('.data-table__card-meta-icon').exists())).toBe(true);
     expect(s.wrapper.find('.card-pills').exists()).toBe(false);
+  });
+
+  it('a card’s main button says «Open» in short words, for the eye and for a screen reader', async () => {
+    const s = await setup();
+    const open = s.wrapper.get('[data-testid="businesses-row-bakery-open"]');
+    expect([open.text(), accessibleName(open)]).toEqual(['Open', 'Open']);
   });
 
   it('a business never used has no line for it', async () => {

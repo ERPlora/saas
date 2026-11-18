@@ -45,22 +45,19 @@ const props = defineProps<{
 const PAGE_SIZES = [10, 25, 50, 100];
 const CARD_BREAKPOINT = 900;
 
-/** How each server action is painted: its icon, its text and its tone. */
-const ACTIONS: Record<MemberAction, { icon: string; label: string; named: string; danger?: boolean }> = {
-  change_role: { icon: 'ion:create-outline', label: 'hubs.members.actions.changeRole', named: 'hubs.members.actions.changeRoleOf' },
-  remove: { icon: 'ion:trash-outline', label: 'hubs.members.actions.remove', named: 'hubs.members.actions.removeName', danger: true },
-  resend: { icon: 'ion:mail-outline', label: 'hubs.members.actions.resend', named: 'hubs.members.actions.resendTo' },
-  cancel: { icon: 'ion:close-outline', label: 'hubs.members.actions.cancel', named: 'hubs.members.actions.cancelTo', danger: true },
-  transfer: { icon: 'ion:swap-vertical-outline', label: 'hubs.members.actions.transfer', named: 'hubs.members.actions.transferTo' },
+/** How each server action is painted: its icon, its short text (also its name for a screen reader) and its tone. */
+const ACTIONS: Record<MemberAction, { icon: string; label: string; danger?: boolean }> = {
+  change_role: { icon: 'ion:create-outline', label: 'hubs.members.actions.changeRole' },
+  remove: { icon: 'ion:trash-outline', label: 'hubs.members.actions.remove', danger: true },
+  resend: { icon: 'ion:mail-outline', label: 'hubs.members.actions.resend' },
+  cancel: { icon: 'ion:close-outline', label: 'hubs.members.actions.cancel', danger: true },
+  transfer: { icon: 'ion:swap-vertical-outline', label: 'hubs.members.actions.transfer' },
 };
 
 const { t, locale } = useI18n();
 const resend = useCommand('hubs.member.resend');
 const withdraw = useCommand('hubs.ownership.cancel');
 const { text } = useErrorText();
-/** A row button's name for a screen reader: an invitation is named by its email (no answer, no name). */
-const named = (action: MemberAction, row: MemberRowOut) =>
-  t(ACTIONS[action].named, { name: action === 'resend' || action === 'cancel' ? row.email : row.name });
 
 const page = shallowRef(0);
 const pageSize = shallowRef(50);
@@ -115,12 +112,12 @@ const entityLabel = computed(() => ({ one: t('hubs.members.recordSingular'), man
 
 /** The server's actions of each row (`row.actions`), for the table to fold: its first two are the row's buttons, so an
  *  invitation shows «Resend» and «Cancel invitation» and keeps «Change role» in «⋮», and a member shows «Change role»
- *  and «Remove». «Transfer ownership» lives only in «⋮» (delicate, and confirmed). Named with the member. */
+ *  and «Remove». «Transfer ownership» lives only in «⋮» (delicate, and confirmed). */
 const ORDER: MemberAction[] = ['resend', 'cancel', 'change_role', 'remove', 'transfer'];
 const actions = computed<DataTableAction<MemberRowOut>[]>(() =>
   ORDER.map((id) => ({
     id,
-    label: (row: MemberRowOut) => named(id, row),
+    label: t(ACTIONS[id].label),
     icon: ACTIONS[id].icon,
     color: ACTIONS[id].danger ? 'danger' : 'primary',
     menuOnly: id === 'transfer',

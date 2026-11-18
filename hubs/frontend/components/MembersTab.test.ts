@@ -150,7 +150,7 @@ describe('MembersTab: the list', () => {
     await s.testid('members-row-carlos-menu').trigger('click');
     await flush();
     expect(s.wrapper.find('[data-testid="members-row-carlos-transfer"]').element.tagName).toBe('ION-ITEM');
-    expect(s.wrapper.find('[data-testid="members-row-carlos-transfer"]').text()).toBe('Transfer the ownership to Carlos Ruiz');
+    expect(s.wrapper.find('[data-testid="members-row-carlos-transfer"]').text()).toBe('Transfer ownership');
   });
 
   it('without the right to invite (no invitable roles) there is no «Invite»', async () => {
@@ -210,17 +210,17 @@ describe('MembersTab: a clean page', () => {
 });
 
 describe('MembersTab: actions', () => {
-  it('every row action is named with its member for a screen reader, also inside «⋮»', async () => {
+  it('every row action says what it does in its short words, for the eye and for a screen reader, also inside «⋮»', async () => {
     const s = await setup();
     await s.show(page());
     const label = (id: string) => accessibleName(s.testid(id));
-    expect(label('members-row-carlos-change_role')).toBe('Change the role of Carlos Ruiz');
-    expect(label('members-row-carlos-remove')).toBe('Remove Carlos Ruiz');
-    expect(label('members-row-jorge-resend')).toBe('Send the invitation again to jorge@example.com');
-    expect(label('members-row-jorge-cancel')).toBe('Cancel the invitation to jorge@example.com');
+    expect(label('members-row-carlos-change_role')).toBe('Change role');
+    expect(label('members-row-carlos-remove')).toBe('Remove');
+    expect(label('members-row-jorge-resend')).toBe('Resend');
+    expect(label('members-row-jorge-cancel')).toBe('Cancel invitation');
     await s.testid('members-row-jorge-menu').trigger('click');
     await flush();
-    expect(s.testid('members-row-jorge-change_role').text()).toBe('Change the role of jorge@example.com');
+    expect(s.testid('members-row-jorge-change_role').text()).toBe('Change role');
   });
 
   it('a lost connection on «Resend» is said in the person’s language', async () => {
@@ -292,7 +292,7 @@ describe('MembersTab: actions', () => {
     const s = await mountHubs(MembersTab, { props: { id: 'h1', business: BUSINESS }, locale: 'es' });
     const call = await s.live();
     await s.result(call, 'hubs.member.list', page());
-    expect(accessibleName(s.wrapper.get('[data-testid="members-row-carlos-change_role"]'))).toBe('Cambiar el rol de Carlos Ruiz');
+    expect(accessibleName(s.wrapper.get('[data-testid="members-row-carlos-change_role"]'))).toBe('Cambiar rol');
     expect(s.wrapper.find('[data-testid="members-seats"]').text()).toBe('3 de 5 plazas del plan');
   });
 });
@@ -325,5 +325,9 @@ describe('MembersTab: on a phone', () => {
     expect(s.actionsOf('carlos')).toEqual(['change_role', 'menu']);
     expect(s.actionsOf('jorge')).toEqual(['resend', 'menu']);
     expect(offeredRowActions(s.wrapper, 'jorge')).toEqual(['resend', 'cancel', 'change_role']);
+    // Its text is the action's short words, and so is its name for a screen reader.
+    const main = s.testid('members-row-carlos-change_role');
+    expect([main.text(), accessibleName(main)]).toEqual(['Change role', 'Change role']);
+    expect(s.testid('members-row-jorge-resend').text()).toBe('Resend');
   });
 });
