@@ -1,9 +1,9 @@
 """``/compliance/``: where ERPlora meets each country's invoicing rules (public/compliance.py).
 
 A fixed list in the code, released with the product: the countries a business can be created in
-(``hubs.schemas.COUNTRIES``) and, for each, the fiscal system the apps connect to today. Only Spain's VeriFactu is
-connected; the Basque Country (TicketBAI) and Navarre are said to be out, and no foreign mandate is named, because
-nobody here has checked one.
+(``hubs.schemas.common.COUNTRIES``) and, for each, the fiscal system the apps connect to today. Only Spain's
+VeriFactu is connected; the Basque Country (TicketBAI) and Navarre are said to be out, and no foreign mandate is
+named, because nobody here has checked one.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from django.conf import settings
 from django.urls import reverse
 from django.utils import translation
 
-from hubs.schemas import COUNTRIES
+from hubs.schemas.common import COUNTRIES
 from public import compliance
 from public.tests.conftest import without_tokens
 from public.tests.test_legal import template_messages

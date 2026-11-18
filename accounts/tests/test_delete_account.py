@@ -175,7 +175,7 @@ class TestPayersFirstHandThePaymentOver:
 
         from hubs.services import member_management
         from hubs.models import HubMember
-        from hubs.schemas import ByIdIn
+        from hubs.schemas.common import ByIdIn
         from hubs.tests.conftest import ctx_for
 
         with pytest.raises(Conflict) as kept:
@@ -197,7 +197,7 @@ class TestPayersFirstHandThePaymentOver:
         from billing.tests.conftest import pay
         from hubs.services import billing_profiles
         from hubs.models import BillingProfile
-        from hubs.schemas import BillingProfileIn
+        from hubs.schemas.payers import BillingProfileIn
         from hubs.tests.conftest import ctx_for
 
         BillingProfile.objects.filter(pk=handed_over.billing_profile_id).update(stripe_customer_id="cus_ana")

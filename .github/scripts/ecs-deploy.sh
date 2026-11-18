@@ -10,17 +10,21 @@
 #   created by ERPlora/aws once an image with run_worker is out: while its family does
 #   not exist the deploy goes on without it and says so (::warning::); any other error looking for
 #   it or reading it fails the deploy as for the other families.
-#   0. reads the latest ACTIVE revision of every family and refuses them all, registering nothing,
-#      unless each one carries the tag Environment=<ENVIRONMENT> and the task and execution roles of
-#      its environment (role/erplora-<ENVIRONMENT>-…): ecs:RegisterTaskDefinition takes no resource,
-#      so another environment's deploy role could have left a revision in this family; and unless the
-#      container of the saas image has the four policies ERPlora/aws gives it (REQUIRED_ENV,
-#      config/settings/core.py): without a cache prefix or a Stripe mode the saas refuses to
-#      start outside DEBUG, so a revision from before that apply would register saas-cron's (the
-#      Scheduler's latest) and only fail at step 2; without either boolean it starts with it false,
-#      silently: prod refusing every hub's records for the AEAT's production, or out of the search engines;
-#   1. registers a new revision of each family from that one, with its tags, changing only the image
-#      of the containers that run the saas image (one per task: the app); Terraform owns the rest of
+#   0. checks deploy/app-env.json of the commit it deploys (app_env.py check): the saas's settings that
+#      are no secret, by environment and family. It refuses an unknown environment, family or variable, a
+#      value that is no text or not of its kind, a name that looks like a secret, and pre or Analytics
+#      settings that break the safety rules; reads the settings in force (/erplora/<ENVIRONMENT>/saas/app_env)
+#      and, in prod, refuses to change PLATFORM_INVOICING_ENABLED, AEAT_PRODUCTION_ENABLED or
+#      STRIPE_EXPECTED_MODE without CONFIRM_PROTECTED, and to charge real money unless the Hub's hub and
+#      worker file in the AEAT's production. Then it reads the latest ACTIVE revision of every family and
+#      refuses them all, registering nothing, unless each one carries the tag Environment=<ENVIRONMENT> and
+#      the task and execution roles of its environment (role/erplora-<ENVIRONMENT>-…):
+#      ecs:RegisterTaskDefinition takes no resource, so another environment's deploy role could have left a
+#      revision in this family;
+#   1. registers a new revision of each family from that one, with its tags, changing only the image and
+#      the family's settings of the containers that run the saas image (one per task: the app; app_env.py
+#      revision): a setting ERPlora/aws gives it as a secret (one owner per variable), or a container left
+#      without CACHE_KEY_PREFIX or one of the four policies, registers nothing. Terraform owns the rest of
 #      the definition; saas-cron is only registered (the Scheduler runs its latest);
 #   2. runs the migration (saas-migrate) on the new revision and polls it until it is STOPPED; if it
 #      fails, never ran or outlasts MIGRATE_TIMEOUT_SECONDS (the task is left running), the deploy
@@ -32,15 +36,16 @@
 #      A FAILED rollout or another revision as PRIMARY (with rollback = true the circuit breaker
 #      puts the old one back and the wait still succeeds) fails at once; a rollout that outlasts
 #      ROLLOUT_TIMEOUT_SECONDS fails too;
-#   4. records the tag in /erplora/<ENVIRONMENT>/saas/image_tag, so the revisions Terraform
-#      registers, and with them the scheduled tasks, keep running it (ERPlora/aws README, "Imagen").
+#   4. records the settings in /erplora/<ENVIRONMENT>/saas/app_env and the tag in .../image_tag, so the
+#      revisions Terraform registers, and with them the scheduled tasks, keep both (ERPlora/aws README).
 # Never db-bootstrap: the deploy role cannot pass its roles (ERPlora/aws deploy_role.tf).
 # Rollback: the circuit breaker reverts a broken deploy; back to the previous revisions, the
 #   rollback workflow (ecs-rollback.sh); back to a release, the deploy workflow with that release.
 #
 # Env: AWS_REGION, REGISTRY (ECR registry host), IMAGE_TAG (image tag = commit SHA), ENVIRONMENT
 #      (prod|pre); optional CLUSTER (erplora-<ENVIRONMENT>: each environment has its own cluster),
-#      POLL_SECONDS (15), MIGRATE_TIMEOUT_SECONDS (3600), ROLLOUT_TIMEOUT_SECONDS (600).
+#      POLL_SECONDS (15), MIGRATE_TIMEOUT_SECONDS (3600), ROLLOUT_TIMEOUT_SECONDS (600), CONFIRM_PROTECTED
+#      (VAR=value of each protected setting a prod deploy changes). Runs in the checkout of the repository.
 set -euo pipefail
 
 for var in AWS_REGION REGISTRY IMAGE_TAG; do
@@ -67,8 +72,7 @@ done
 
 # This repo deploys the saas; the hub repo keeps its own copy of this script.
 PROJECT=saas
-# What every container of the saas image must be given, in its environment or its secrets (step 0).
-REQUIRED_ENV='["CACHE_KEY_PREFIX", "STRIPE_EXPECTED_MODE", "PUBLIC_INDEXING_ENABLED", "AEAT_PRODUCTION_ENABLED"]'
+app_env="$(dirname "$0")/app_env.py"
 migration=saas-migrate
 # Families that run as a service; the service of family <name> is <name><suffix>.
 services=(saas)
@@ -112,27 +116,8 @@ prepare() {
     echo "::error::$prefix-$name is not a $ENVIRONMENT revision (it needs the tag Environment=$ENVIRONMENT and the roles erplora-$ENVIRONMENT-*); nothing was registered" >&2
     exit 1
   fi
-  local missing
-  missing="$(jq -r --arg project_image "$project_image" --argjson required "$REQUIRED_ENV" '
-      [.taskDefinition.containerDefinitions[] | select((.image // "") | startswith($project_image))
-       | [.environment[]?.name, .secrets[]?.name] as $names | $required[] | select(. as $n | $names | index($n) | not)]
-      | unique | join(" ")' "$workdir/$name.base.json")"
-  if [ -n "$missing" ]; then
-    echo "::error::$prefix-$name has no $missing in the environment or secrets of its saas container (apply ERPlora/aws first); nothing was registered" >&2
-    exit 1
-  fi
-  jq --arg project_image "$project_image" --arg image "$image" '
-      (.tags // []) as $tags
-      | .taskDefinition
-      | .containerDefinitions |= map(if ((.image // "") | startswith($project_image)) then .image = $image else . end)
-      | del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
-            .compatibilities, .registeredAt, .registeredBy, .deregisteredAt)
-      | if ($tags | length) > 0 then .tags = $tags else . end' \
-    "$workdir/$name.base.json" > "$workdir/$name.json"
-  if ! jq -e --arg image "$image" 'any(.containerDefinitions[]; .image == $image)' "$workdir/$name.json" > /dev/null; then
-    echo "::error::$prefix-$name has no container of the image $project_image<tag>; nothing was registered" >&2
-    exit 1
-  fi
+  python3 "$app_env" revision --workdir "$workdir" --family "$name" --image "$image" \
+    --project-image "$project_image" < "$workdir/$name.base.json" > "$workdir/$name.json"
 }
 
 register() {
@@ -213,7 +198,8 @@ for name in "${not_yet[@]}"; do
   fi
 done
 
-# Every family is checked before any is registered.
+# The settings and every family are checked before any is registered.
+python3 "$app_env" check --workdir "$workdir" --environment "$ENVIRONMENT" --region "$AWS_REGION" --commit "$IMAGE_TAG"
 for name in "${families[@]}"; do
   prepare "$name"
 done
@@ -273,6 +259,7 @@ while :; do
 done
 echo "services stable on the new revisions"
 
+python3 "$app_env" record --workdir "$workdir" --environment "$ENVIRONMENT" --region "$AWS_REGION"
 aws ssm put-parameter --name "/erplora/$ENVIRONMENT/$PROJECT/image_tag" --value "$IMAGE_TAG" \
   --type String --overwrite --region "$AWS_REGION" > /dev/null
 echo "recorded $IMAGE_TAG in /erplora/$ENVIRONMENT/$PROJECT/image_tag"

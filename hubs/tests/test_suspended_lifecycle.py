@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from hubs.services import hub_callbacks, subscription_sync, suspensions
 from hubs.models import Hub, Plan, Subscription
-from hubs.schemas import SubscriptionApplyIn
+from hubs.schemas.subscriptions import SubscriptionApplyIn
 from hubs.services.suspensions import SUSPENDED_DELETE_DAYS, SUSPENDED_FINAL_NOTICE_DAYS, SUSPENDED_WARN_DAYS
 from hubs.tests.conftest import create_business
 
@@ -208,7 +208,7 @@ class TestTheEnd:
 def test_only_the_platform_runs_a_step(paid, owner):
     from live.errors import PermissionDenied
 
-    from hubs.schemas import ByIdIn
+    from hubs.schemas.common import ByIdIn
     from hubs.tests.conftest import ctx_for
 
     suspended_for(paid, SUSPENDED_DELETE_DAYS, suspension_final_notice_at=timezone.now())

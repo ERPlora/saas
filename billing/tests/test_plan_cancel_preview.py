@@ -261,7 +261,7 @@ class TestItRefusesWhatTheCancelRefuses:
         the cancel, it is kept with their card first («Keep it with my card»)."""
         from billing.tests.test_checkout import transferred
         from hubs.services import billing_profiles
-        from hubs.schemas import BillingProfileIn
+        from hubs.schemas.payers import BillingProfileIn
         from hubs.tests.conftest import ctx_for as hub_ctx
 
         paid = pay(shop)

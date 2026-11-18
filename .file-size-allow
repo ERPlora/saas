@@ -5,8 +5,8 @@
 # size and leaves the list once it fits its cap. A services.py, queries.py or schemas.py moved whole to
 # <name>/__init__.py takes its entry along, with the same ceiling.
 121 .github/scripts/e2e-report.sh saas#462
-278 .github/scripts/ecs-deploy.sh saas#462
-234 .github/scripts/ecs-rollback.sh saas#462
+265 .github/scripts/ecs-deploy.sh saas#462
+230 .github/scripts/ecs-rollback.sh saas#462
 523 accounts/admin.py saas#462
 722 accounts/frontend/components/SignInForm.test.ts saas#462
 775 accounts/frontend/pages/TwoFactorSettingsPage.test.ts saas#462
@@ -21,7 +21,7 @@
 811 billing/frontend/components/InvoicesTab.test.ts saas#462
 623 billing/frontend/components/StoreShop.test.ts saas#462
 629 billing/schemas/__init__.py saas#462
-5138 billing/services/__init__.py saas#462
+4562 billing/services/__init__.py saas#462
 549 billing/stripe_service.py saas#462
 1286 billing/tests/test_checkout.py saas#462
 664 billing/vat.py saas#462
@@ -30,15 +30,13 @@
 1124 fiscal_gateway/tests/test_internal.py saas#462
 811 frontend/main.test.ts saas#462
 629 frontend/public.test.ts saas#462
-1581 frontend/sdk-types.d.ts saas#462
 522 hubs/frontend/components/CustomDomainCard.test.ts saas#462
 591 hubs/frontend/pages/BusinessListPage.test.ts saas#462
 617 hubs/frontend/pages/LaunchPage.test.ts saas#462
 965 hubs/models.py saas#462
-932 hubs/schemas/__init__.py saas#462
 1053 hubs/tests/test_check_custom_domains.py saas#462
 1791 hubs/tests/test_migrations.py saas#462
-1074 hubs/tests/test_services.py saas#462
+1070 hubs/tests/test_services.py saas#462
 1186 public/tests/test_demo.py saas#462
 1033 public/tests/test_industries.py saas#462
 1415 public/tests/test_landing.py saas#462

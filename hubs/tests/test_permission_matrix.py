@@ -20,24 +20,14 @@ from hubs.services import (
     reconciliation,
 )
 from hubs.queries import businesses, custom_domains, data_copies, hub_usage, membership, payers
-from hubs.schemas import (
-    BillingProfileGetIn,
-    BusinessAddressIn,
-    BillingProfileIn,
-    BusinessDeleteIn,
-    BusinessOpenIn,
-    BusinessUpdateIn,
-    ByIdIn,
-    CustomDomainRequestIn,
-    DataCopyLinkIn,
-    DataCopyListIn,
-    MemberInviteIn,
-    MemberListIn,
-    MemberRoleIn,
-    OwnershipTransferIn,
-    UsageGetIn,
-    UsageSeriesIn,
-)
+from hubs.schemas.businesses import BusinessAddressIn, BusinessDeleteIn, BusinessOpenIn, BusinessUpdateIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.custom_domains import CustomDomainRequestIn
+from hubs.schemas.data_copies import DataCopyLinkIn, DataCopyListIn
+from hubs.schemas.hub_usage import UsageGetIn, UsageSeriesIn
+from hubs.schemas.membership import MemberInviteIn, MemberListIn, MemberRoleIn
+from hubs.schemas.ownership import OwnershipTransferIn
+from hubs.schemas.payers import BillingProfileGetIn, BillingProfileIn
 from hubs.tests.conftest import ctx_for, member_of
 
 pytestmark = pytest.mark.django_db

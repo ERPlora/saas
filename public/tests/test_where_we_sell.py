@@ -2,7 +2,7 @@
 
 The payment's rule is ``billing.vat.SOLD_TO_COUNTRIES`` (the payer's billing country) and
 ``billing.vat.BUSINESS_ONLY_REGIONS`` (the Spanish territories outside VAT, sold to businesses and professionals only),
-enforced by ``billing.services.require_sold_to``. Two texts describe it to a visitor: the answer «Is VAT included in
+enforced by ``billing.services.sale_tax.require_sold_to``. Two texts describe it to a visitor: the answer «Is VAT included in
 these prices?» of ``/pricing/`` and the clause of the terms with ``id="where-we-sell"``. Both name every country the
 payment sells to and no other; neither they nor the ex-VAT note under the prices describe a sale abroad (VIES, the
 reverse charge, HMRC) while the payment refuses it. Adding a country to the list, or a country to the texts, fails here

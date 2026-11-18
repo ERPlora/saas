@@ -16,7 +16,8 @@ import { computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useLiveState } from '../../frontend/live-state';
-import type { BusinessListOut, BusinessRowOut, InvoiceListOut, InvoiceRowOut } from '../../frontend/sdk-types';
+import type { InvoiceListOut, InvoiceRowOut } from '../../frontend/sdk-types/billing-invoices';
+import type { BusinessListOut, BusinessRowOut } from '../../frontend/sdk-types/hubs';
 import { forgetPayment, rememberedPayment } from './pay';
 
 export interface UnpaidItem {

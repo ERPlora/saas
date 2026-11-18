@@ -16,7 +16,7 @@ from hubs import events, hub_client
 from hubs.hub_client import HubRefused, HubUnavailable
 from hubs.models import Hub, HubUsageDaily
 from hubs.queries import access_control
-from hubs.schemas import (
+from hubs.schemas.hub_usage import (
     HubUsageIn,
     HubUsagePageIn,
     UsagePruneIn,

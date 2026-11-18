@@ -11,7 +11,7 @@ from hubs import hub_client
 from hubs.hub_client import HubRefused, HubUnavailable
 from hubs.models import Hub
 from hubs.queries import hub_sync
-from hubs.schemas import HubErrorIn
+from hubs.schemas.hub_callbacks import HubErrorIn
 from hubs.services.hub_callbacks import PROVISION_FAILED, business_record_hub_error, system_ctx_for
 
 logger = logging.getLogger(__name__)

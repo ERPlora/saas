@@ -39,7 +39,9 @@ from billing.tests.stripe_double import (
 )
 from hubs.services import billing_profiles, ownership
 from hubs.models import Hub, HubMember, HubOwnershipTransfer, Subscription
-from hubs.schemas import BillingProfileIn, ByIdIn, OwnershipTransferIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.ownership import OwnershipTransferIn
+from hubs.schemas.payers import BillingProfileIn
 from hubs.tests.conftest import add_member
 from hubs.tests.conftest import ctx_for as hub_ctx
 

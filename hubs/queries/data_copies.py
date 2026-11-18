@@ -15,7 +15,7 @@ from live.operations import AI, INTERNAL, operation
 from hubs import hub_client
 from hubs.hub_client import HubRefused, HubUnavailable
 from hubs.queries.access_control import Role, access, account_of
-from hubs.schemas import DataCopyLinkIn, DataCopyLinkOut, DataCopyListIn, DataCopyListOut
+from hubs.schemas.data_copies import DataCopyLinkIn, DataCopyLinkOut, DataCopyListIn, DataCopyListOut
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@
 // server sends a code (`accounts/devices.py`, `describe`) and the panel names it in the reader's language
 // («Mac (macOS)», «PC con Windows»), the browser as a proper noun with its version, and the ERPlora app as
 // «App ERPlora 4.0». A code the panel does not know reads «Unknown device», never blank nor raw.
-import type { SessionRowOut } from '../../frontend/sdk-types';
+import type { SessionRowOut } from '../../frontend/sdk-types/accounts-security';
 
 type Translate = (key: string, params?: Record<string, unknown>) => string;
 

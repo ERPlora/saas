@@ -9,7 +9,8 @@ import { computed, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useErrorText } from '../../../hubs/frontend/error-text';
-import type { BillingProfileOut, InvoiceBusinessOut } from '../../../frontend/sdk-types';
+import type { InvoiceBusinessOut } from '../../../frontend/sdk-types/billing-invoices';
+import type { BillingProfileOut } from '../../../frontend/sdk-types/store';
 import BillingProfileModal from './BillingProfileModal.vue';
 
 const props = defineProps<{

@@ -7,7 +7,7 @@ ours: a VIES answer with its consultation number.
 
 Every test goes through the door that decides —never by seeding the verdict it then asserts— with only
 the network faked (``billing.tests.vies_double``). The door is the one that prices a sale BEFORE it is charged,
-``billing.services.sale_quote`` / ``sale_tax_rates`` on the business's payer, which the checkout and the
+``billing.services.sale_tax.sale_quote`` / ``sale_tax_rates`` on the business's payer, which the checkout and the
 webhook call. So a refused verdict means the VAT is added on top of the net price (121 € charged), and the
 reconciliation of a sale Stripe already charged at 0 € (82.64 + 17.36) is proved on ``resolve_vat`` with the
 door's clearance, as the webhook uses it.
@@ -24,8 +24,9 @@ from decimal import Decimal
 import pytest
 from django.utils import timezone
 
-from billing import queries, services
+from billing import queries
 from billing.models import CompanyConfig, VatCheck
+from billing.services import sale_tax, vat_clearance
 from billing.tests.vies_double import (
     FAKE_VAT,
     MEMBER_STATE_DOWN,
@@ -62,7 +63,7 @@ def german_payer(business_paid_by):
 
 
 def _quote(business):
-    return services.sale_quote(business, category_key=PLAN, price=NET)
+    return sale_tax.sale_quote(business, category_key=PLAN, price=NET)
 
 
 # --------------------------------------------------------------------------
@@ -86,7 +87,7 @@ class TestAFakeVatNumberIsNotReverseCharge:
         with vies_says(**NOT_REGISTERED):
             business = german_payer(FAKE_VAT)
             quote = _quote(business)
-            specs = services.sale_tax_rates(business, category_key=PLAN, price=NET)
+            specs = sale_tax.sale_tax_rates(business, category_key=PLAN, price=NET)
 
         assert (quote.treatment, quote.tax_country, quote.rate) == (
             "domestic",
@@ -102,7 +103,7 @@ class TestAFakeVatNumberIsNotReverseCharge:
         """What the webhook does with a sale already charged: Stripe charged 100.00 € with no tax on
         a number never proved, so the collected amount is VAT-inclusive (TJUE C-249/12, Tulică)."""
         with vies_says(**NOT_REGISTERED):
-            clearance = services.clear_tax_id_for_stripe(
+            clearance = vat_clearance.clear_tax_id_for_stripe(
                 FAKE_VAT, customer_country="DE"
             )
 
@@ -244,7 +245,7 @@ class TestAnExpiredVerdictDoesNotBlockTheSale:
 class TestTheQueryIdentifiesTheRequester:
     def test_our_own_vat_number_travels_in_the_query(self):
         with vies_says(**VALID) as post:
-            services.check_vat_number(REAL_VAT)
+            vat_clearance.check_vat_number(REAL_VAT)
 
         body = post.call_args.kwargs["json"]
         assert (body["countryCode"], body["vatNumber"]) == ("DE", "812871812")
@@ -260,7 +261,7 @@ class TestTheQueryIdentifiesTheRequester:
             name="Hetzner",
             address="Industriestr. 25",
         ):
-            services.check_vat_number(REAL_VAT)
+            vat_clearance.check_vat_number(REAL_VAT)
 
         stored = VatCheck.objects.get(vat_number=REAL_VAT)
         assert stored.consultation_number == "WAPIAAAAXproof"
@@ -273,7 +274,7 @@ class TestTheQueryIdentifiesTheRequester:
         CompanyConfig.objects.all().delete()
 
         with no_network() as network:
-            check = services.check_vat_number(REAL_VAT)
+            check = vat_clearance.check_vat_number(REAL_VAT)
 
         network.assert_not_called()
         assert check.status == "unavailable"
@@ -290,14 +291,14 @@ class TestTheManualOverride:
 
     def test_it_demands_a_reason_and_an_author(self):
         with pytest.raises(ValueError):
-            services.record_manual_override(REAL_VAT, by="", reason="Brand new company")
+            vat_clearance.record_manual_override(REAL_VAT, by="", reason="Brand new company")
         with pytest.raises(ValueError):
-            services.record_manual_override(
+            vat_clearance.record_manual_override(
                 REAL_VAT, by="ioan@erplora.com", reason="  "
             )
 
     def test_it_is_recorded_with_who_and_why(self):
-        services.record_manual_override(
+        vat_clearance.record_manual_override(
             REAL_VAT,
             by="ioan@erplora.com",
             reason="Incorporated on 2026-08-20, not in VIES yet",
@@ -311,7 +312,7 @@ class TestTheManualOverride:
 
     @pytest.mark.usefixtures("every_country_sold")
     def test_an_override_does_invoice_without_vat(self, german_payer):
-        services.record_manual_override(
+        vat_clearance.record_manual_override(
             REAL_VAT, by="ioan@erplora.com", reason="Incorporated on 2026-08-20"
         )
 
@@ -345,7 +346,7 @@ class TestADomesticVatNumberIsNeverReverseCharge:
     def test_a_spanish_customer_is_not_even_queried(self):
         """No VIES query for a national customer: there is nothing to prove."""
         with no_network() as network:
-            check = services.verify_customer_vat("ESB27593136", customer_country="ES")
+            check = vat_clearance.verify_customer_vat("ESB27593136", customer_country="ES")
 
         network.assert_not_called()
         assert check is None

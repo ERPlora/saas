@@ -27,7 +27,7 @@ import {
   session,
   subId,
 } from '../__tests__/mount-panel';
-import type { SessionListOut, SessionRowOut } from '../../../frontend/sdk-types';
+import type { SessionListOut, SessionRowOut } from '../../../frontend/sdk-types/accounts-security';
 import SessionsTable from './SessionsTable.vue';
 
 const THIS = session(1, { is_current: true, device: 'mac', browser: 'Chrome', browser_version: '130' });

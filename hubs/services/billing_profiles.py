@@ -14,7 +14,7 @@ from hubs import events
 from hubs.models import BillingProfile
 from hubs.queries import access_control, payers
 from hubs.queries.access_control import Role
-from hubs.schemas import BillingProfileIn, BillingProfileOut, postal_code_problem
+from hubs.schemas.payers import BillingProfileIn, BillingProfileOut, postal_code_problem
 
 
 @operation(
@@ -44,11 +44,12 @@ def billing_profile_update(ctx: OperationContext, data: BillingProfileIn) -> dic
     """The owner says who ERPlora invoices for the business. «Use the business's data» copies its name
     and country into the payer: a copy, not a sync.
 
-    The tax ID goes through billing's VAT door (``billing.services.validate_vat_for_profile``): written
+    The tax ID goes through billing's VAT door (``billing.services.payer_vat_numbers.validate_vat_for_profile``): written
     as ERPlora invoices it and asked to VIES, whose verdict is logged; a malformed one is the field's 422,
     one VIES does not confirm is kept as identification (it buys no reverse charge)."""
     from billing import vat
-    from billing.services import MalformedVatNumber, retax_payer, validate_vat_for_profile
+    from billing.services import retax_payer
+    from billing.services.payer_vat_numbers import MalformedVatNumber, validate_vat_for_profile
 
     member = access_control.access(access_control.account_of(ctx), data.hub_id, Role.OWNER, lock=True)
     hub = member.hub

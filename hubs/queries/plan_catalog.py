@@ -10,7 +10,7 @@ from live.operations import AI, operation
 
 from apps.models import Module
 from hubs.models import Plan, Subscription
-from hubs.schemas import PlanListIn, PlanListOut
+from hubs.schemas.plan_catalog import PlanListIn, PlanListOut
 
 
 @operation(

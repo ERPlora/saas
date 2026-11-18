@@ -14,7 +14,7 @@ import { watchPageErrors } from './page-events';
 import { settled, shot, sidewaysScroll } from './screen';
 import { apiPost, signIn } from './session';
 
-/** As long as `hubs.schemas.Name` admits (120), in words a line can break at. */
+/** As long as `hubs.schemas.common.Name` admits (120), in words a line can break at. */
 const LONG_NAME = 'Panadería y Pastelería Artesana de la Plaza Mayor de Santa María del Campo y Alrededores, Obrador Tradicional de Masa de';
 const SIZES = [
   { width: 320, height: 568 },

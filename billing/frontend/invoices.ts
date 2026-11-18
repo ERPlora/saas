@@ -3,7 +3,8 @@
 // reference before.
 import { formatMoney, invoiceStatusPill, type StatusPillSpec } from '@erplora/ui/components';
 
-import type { BusinessRowOut, InvoiceRowOut } from '../../frontend/sdk-types';
+import type { InvoiceRowOut } from '../../frontend/sdk-types/billing-invoices';
+import type { BusinessRowOut } from '../../frontend/sdk-types/hubs';
 
 /** The grace of an unpaid invoice before the business is suspended. */
 const GRACE_MS = 7 * 24 * 60 * 60 * 1000;

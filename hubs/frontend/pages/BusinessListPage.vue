@@ -45,7 +45,7 @@ import { useRouter } from 'vue-router';
 
 import { BUSINESSES, STORE } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
-import type { BusinessDetailOut, BusinessRowOut, InvitationOut, OwnershipOfferOut } from '../../../frontend/sdk-types';
+import type { BusinessDetailOut, BusinessRowOut, InvitationOut, OwnershipOfferOut } from '../../../frontend/sdk-types/hubs';
 import { opensAtAll, preparationFailed, preparingLeadKey, reasonDate, reasonKey, statusPill } from '../business-status';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessPreparing from '../components/BusinessPreparing.vue';

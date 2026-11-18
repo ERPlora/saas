@@ -14,7 +14,7 @@ from live.outbox import record_event
 from hubs import events
 from hubs.models import BillingProfile, Hub, Plan, Subscription, SubscriptionItem
 from hubs.queries import access_control, hub_sync, plan_catalog
-from hubs.schemas import SubscriptionApplyIn, SubscriptionApplyOut
+from hubs.schemas.subscriptions import SubscriptionApplyIn, SubscriptionApplyOut
 from hubs.services.hub_push import LIVE_STATUSES, bump_state, push_after_commit
 
 logger = logging.getLogger(__name__)

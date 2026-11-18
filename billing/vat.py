@@ -467,7 +467,7 @@ def quote_vat(  # noqa: PLR0913
     )
     if qualification is None:
         # A WARNING: the place may be what a person typed in a form; the door that refuses a sale logs
-        # its own ERROR (``billing.services.sale_quote``).
+        # its own ERROR (``billing.services.sale_tax.sale_quote``).
         logger.warning(
             "[VAT] No tax rule for %s/%s (postal code %r): the sale cannot be priced",
             (customer_country or "?").strip().upper(),
@@ -520,7 +520,7 @@ def resolve_vat(  # noqa: PLR0913
 ) -> VatBreakdown:
     """Split base and quota of a CHARGED amount and qualify the sale.
 
-    ``customer_tax_id_verified``: the VAT number is proved in VIES (``services.clear_tax_id_for_stripe``);
+    ``customer_tax_id_verified``: the VAT number is proved in VIES (``services.vat_clearance.clear_tax_id_for_stripe``);
     without it there is no reverse charge, however ``eu_vat`` the type. ``tax_cents``: the quota Stripe
     already computed; it rules the amounts, never the qualification, which is ours. ``tax_included``: the
     tax is INSIDE ``gross`` (modules) or Stripe ADDED it to a net price (plans). ``on_date``: the date of

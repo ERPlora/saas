@@ -360,8 +360,46 @@ después el despliegue de este código. Fuera de `DEBUG`, sin prefijo o modo no 
 `docker/image.test.sh` comprueba la imagen con ellos y sin cada uno. Sin uno de los dos booleanos sí
 arranca, con él en `false` y sin avisar: en prod, cada registro de los hubs para la AEAT de producción
 recibiría el 409 `environment_not_allowed` y erplora.com saldría de los buscadores. Por eso
-`.github/scripts/ecs-deploy.sh` rechaza, sin registrar nada, una revisión cuyo contenedor del SaaS no
-lleve las cuatro, en `environment` o en `secrets`.
+`.github/scripts/ecs-deploy.sh` rechaza, sin registrar nada, una revisión cuyo contenedor del SaaS se quede
+sin `CACHE_KEY_PREFIX` o sin una de las otras tres, en `environment` o en `secrets`.
+
+**Los ajustes viajan con el código** (`deploy/app-env.json`). Los ajustes del SaaS que no son secretos van en
+ese fichero, por entorno y por familia de tareas (`saas`, `saas-cron`, `saas-migrate` y `saas-worker`; `pre` no
+tiene `saas-cron`): `STRIPE_EXPECTED_MODE`, `PUBLIC_INDEXING_ENABLED`, `AEAT_PRODUCTION_ENABLED` y
+`PLATFORM_INVOICING_ENABLED` en todas, y en la web (`saas`) `MICROSOFT_STORE_APP_ID` y, solo en prod,
+`GA_MEASUREMENT_ID`. Cambiar uno es cambiar el fichero y desplegar. `CACHE_KEY_PREFIX`, las direcciones y los
+secretos siguen en `ERPlora/aws`. El despliegue (`ecs-deploy.sh`, con `.github/scripts/app_env.py`) lee el
+fichero **del commit que despliega** y, antes de registrar nada, rechaza:
+
+- un entorno, una familia o una variable que no conoce, un valor que no es texto o no es de su tipo y un nombre
+  con pinta de secreto (ningún mensaje repite el valor: el repositorio es público);
+- en `pre`, cualquier cosa que no sea `STRIPE_EXPECTED_MODE=test` y las otras tres en `false`, y Analytics fuera
+  de la web de prod; las cuatro, explícitas en cada familia y con el mismo valor en todas las de un entorno;
+- una variable del fichero que `ERPlora/aws` da como secreto a esa familia (un solo dueño por variable: fuera de los
+  secretos, `ERPlora/aws` no fija ninguno de estos ajustes, solo pasa a sus revisiones los del `app_env` vigente,
+  `/erplora/<entorno>/saas/app_env`);
+- en prod, cambiar `PLATFORM_INVOICING_ENABLED`, `AEAT_PRODUCTION_ENABLED` o `STRIPE_EXPECTED_MODE` respecto al
+  `app_env` vigente sin confirmarlo: un push así no despliega, y se despliega a mano (`deploy.yml`,
+  `workflow_dispatch`) con `confirm_protected` = `VAR=valor` de cada cambio, separados por comas;
+- en prod, cobrar de verdad (`PLATFORM_INVOICING_ENABLED=true`) si la última revisión de `erplora-prod-hub` o de
+  `erplora-prod-worker` no lleva `VERIFACTU_PRODUCTION_ENABLED=true`.
+
+Después aplica a cada familia los ajustes del fichero (quita de la revisión todo ajuste que el fichero ya no trae,
+también uno que el `app_env` vigente no nombra porque lo dejó una vuelta atrás o un despliegue que falló después de
+registrar) y, cuando los servicios corren las revisiones nuevas, escribe los ajustes en `app_env` y la imagen en
+`image_tag`: Terraform relee los dos, así que sus revisiones, y con ellas las tareas programadas, los conservan.
+Un commit anterior al fichero (una release antigua que se vuelve a desplegar) se despliega con los ajustes vigentes, y
+el despliegue lo avisa.
+
+**Volver atrás** (`rollback.yml`, `ecs-rollback.sh` con `.github/scripts/app_env_rollback.py`) pone `saas` y
+`saas-worker` en su revisión anterior, que corre con los ajustes con los que se registró, no con el fichero. Por eso,
+antes de mover nada, lee esos ajustes del contenedor de la app de cada revisión de destino y les pasa las mismas
+comprobaciones que el despliegue al fichero: las de `pre`, Analytics solo en la web de prod, el mismo valor de cada
+política en las familias que vuelven y, en prod, cobrar de verdad solo con el Hub registrando en producción y
+`confirm_protected` para cada protegido que cambie respecto al `app_env` vigente. Si algo no pasa, no cambia nada.
+Cuando los servicios corren las revisiones anteriores, escribe en `app_env` los ajustes de las familias que volvieron
+(las demás, `saas-cron` y `saas-migrate`, siguen en su revisión y conservan los suyos) y después la imagen en
+`image_tag`.
 
 En `pre` (`pre.erplora.com`, cluster `erplora-pre`, mismo ALB, Aurora y Valkey que prod):
 
@@ -393,7 +431,8 @@ En `pre` (`pre.erplora.com`, cluster `erplora-pre`, mismo ALB, Aurora y Valkey q
 
 Relanzar pre: `gh workflow run deploy.yml --repo ERPlora/saas --ref pre -f environment=pre`. Volver a la revisión
 anterior: `gh workflow run rollback.yml --repo ERPlora/saas --ref pre -f environment=pre -f confirm=ROLLBACK`
-(en prod, `--ref main -f environment=prod`). Una ejecución manual tiene que nombrar el entorno de su rama, y
+(en prod, `--ref main -f environment=prod` y, si la vuelta atrás cambia un protegido,
+`-f confirm_protected=PLATFORM_INVOICING_ENABLED=false`, por ejemplo). Una ejecución manual tiene que nombrar el entorno de su rama, y
 las releases solo se redespliegan en prod (`.github/scripts/deploy-env.sh`). prod y pre no se esperan entre
 sí: el grupo de concurrencia es por rama.
 

@@ -8,6 +8,9 @@ name: deploy
 # release: releases are prod's.
 # Manual run -> the same for the branch it runs on, whose environment it must name (main -> prod,
 # pre -> pre); with a release (prod only), redeploy that release's image, without test nor build.
+# The settings that are no secret travel in deploy/app-env.json of the deployed commit (ecs-deploy.sh):
+# in prod, a push that changes the real charge, the AEAT's production or Stripe's mode deploys nothing,
+# and a manual run names each change in confirm_protected.
 # Only the deploy job waits for the one before it (its concurrency): the test and build of a newer
 # push run while an older one deploys. So an image whose tests failed may be in ECR, under its
 # commit, but nothing deploys it: deploy needs test and build to pass, a release is only cut by a
@@ -28,6 +31,13 @@ on:
         default: prod
       release:
         description: Release to redeploy to prod (e.g. saas-v2026.10.13.1); empty = test, build and deploy the branch
+        type: string
+        required: false
+        default: ""
+      confirm_protected:
+        description: >-
+          Prod only: VAR=value of each protected setting of deploy/app-env.json this deploy changes
+          (PLATFORM_INVOICING_ENABLED, AEAT_PRODUCTION_ENABLED, STRIPE_EXPECTED_MODE), separated by commas
         type: string
         required: false
         default: ""
@@ -293,12 +303,13 @@ jobs:
             exit 1
           fi
 
-      # ENVIRONMENT (job env) picks the families, the service and the parameter of prod or pre.
+      # ENVIRONMENT (job env) picks the families, the service and the parameters of prod or pre.
       - name: Register revisions, migrate, update the service
         if: steps.order.outputs.deploy == 'true'
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.commit.outputs.sha }}
+          CONFIRM_PROTECTED: ${{ inputs.confirm_protected }}
         run: bash .github/scripts/ecs-deploy.sh
 
       # Through the ALB by name, so it also works before the DNS cutover: erplora.com (prod) or

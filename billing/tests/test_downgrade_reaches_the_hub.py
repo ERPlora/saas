@@ -27,7 +27,8 @@ from billing.tests.stripe_double import event, item, schedule, signed, subscript
 from hubs.queries import hub_sync
 from hubs.services import member_management
 from hubs.models import Hub, HubMember, Plan, Subscription, SubscriptionItem
-from hubs.schemas import ByIdIn, MemberInviteIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.membership import MemberInviteIn
 from hubs.tests.conftest import add_member, create_business
 from hubs.tests.conftest import ctx_for as hub_ctx_for
 

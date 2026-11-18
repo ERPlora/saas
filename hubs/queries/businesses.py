@@ -29,7 +29,8 @@ from hubs.queries.membership import seats_of
 from hubs.queries.payers import is_payer, plans_charged_to, still_pays, unpaid_of
 from hubs.queries.plan_catalog import plan_ref
 from hubs.queries.signup import free_business_filling_quota
-from hubs.schemas import BusinessDetailOut, BusinessListIn, BusinessListOut, ByIdIn
+from hubs.schemas.businesses import BusinessDetailOut, BusinessListIn, BusinessListOut
+from hubs.schemas.common import ByIdIn
 
 
 @operation(

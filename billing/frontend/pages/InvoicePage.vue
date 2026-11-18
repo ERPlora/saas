@@ -20,7 +20,7 @@ import { RouterLink } from 'vue-router';
 import { BILLING } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
-import type { InvoiceDetailOut, InvoiceLineOut } from '../../../frontend/sdk-types';
+import type { InvoiceDetailOut, InvoiceLineOut } from '../../../frontend/sdk-types/billing-invoices';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import { browser, operationUrl } from '../browser';
 import PayInvoiceButton from '../components/PayInvoiceButton.vue';

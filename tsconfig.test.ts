@@ -152,9 +152,13 @@ describe('the type-check projects of pnpm typecheck (tsconfig.json)', () => {
     expect(project(join(SAAS_DIR, 'tsconfig.vitest.json')).options.types).toContain('node');
   });
 
-  it('is run by pnpm typecheck and before every pnpm build, with the e2e after it', () => {
+  it('is run by pnpm typecheck and before every pnpm build, with the e2e and the declaration files after it', () => {
     const steps = (script: string) => script.split('&&').map((step) => step.trim());
-    expect(steps(scripts().typecheck)).toEqual(['vue-tsc --build', 'tsc --noEmit -p tests/e2e']);
+    expect(steps(scripts().typecheck)).toEqual([
+      'vue-tsc --build',
+      'tsc --noEmit -p tests/e2e',
+      'node typecheck-declarations.ts tsconfig.app.json',
+    ]);
     expect(steps(scripts().build)[0]).toBe('vue-tsc --build');
   });
 });

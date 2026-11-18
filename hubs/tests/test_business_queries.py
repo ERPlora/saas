@@ -17,7 +17,9 @@ from live.errors import NotFound, OperationError, PermissionDenied
 
 from hubs.queries import addresses, businesses, signup
 from hubs.models import Hub, HubMember, Plan, Subscription
-from hubs.schemas import AddressProposeIn, BusinessCreateCheckIn, BusinessCreateCheckOut, BusinessListIn, ByIdIn
+from hubs.schemas.businesses import BusinessListIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.signup import AddressProposeIn, BusinessCreateCheckIn, BusinessCreateCheckOut
 from hubs.tests.conftest import add_member, create_business, ctx_for
 
 pytestmark = pytest.mark.django_db

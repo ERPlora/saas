@@ -10,7 +10,7 @@ from live.operations import AI, operation
 
 from hubs.models import Hub, HubMember, HubOwnershipTransfer
 from hubs.queries.access_control import LISTED, account_of
-from hubs.schemas import InvitationListIn, InvitationListOut
+from hubs.schemas.invitations import InvitationListIn, InvitationListOut
 
 
 def _waiting_invitations(now: datetime):

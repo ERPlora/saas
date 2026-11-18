@@ -1,0 +1,51 @@
+{
+  "prod": {
+    "saas": {
+      "AEAT_PRODUCTION_ENABLED": "true",
+      "GA_MEASUREMENT_ID": "G-CHB9NM1C74",
+      "MICROSOFT_STORE_APP_ID": "9P5C0XP1GS69",
+      "PLATFORM_INVOICING_ENABLED": "true",
+      "PUBLIC_INDEXING_ENABLED": "true",
+      "STRIPE_EXPECTED_MODE": "live"
+    },
+    "saas-cron": {
+      "AEAT_PRODUCTION_ENABLED": "true",
+      "PLATFORM_INVOICING_ENABLED": "true",
+      "PUBLIC_INDEXING_ENABLED": "true",
+      "STRIPE_EXPECTED_MODE": "live"
+    },
+    "saas-migrate": {
+      "AEAT_PRODUCTION_ENABLED": "true",
+      "PLATFORM_INVOICING_ENABLED": "true",
+      "PUBLIC_INDEXING_ENABLED": "true",
+      "STRIPE_EXPECTED_MODE": "live"
+    },
+    "saas-worker": {
+      "AEAT_PRODUCTION_ENABLED": "true",
+      "PLATFORM_INVOICING_ENABLED": "true",
+      "PUBLIC_INDEXING_ENABLED": "true",
+      "STRIPE_EXPECTED_MODE": "live"
+    }
+  },
+  "pre": {
+    "saas": {
+      "AEAT_PRODUCTION_ENABLED": "false",
+      "MICROSOFT_STORE_APP_ID": "9P5C0XP1GS69",
+      "PLATFORM_INVOICING_ENABLED": "false",
+      "PUBLIC_INDEXING_ENABLED": "false",
+      "STRIPE_EXPECTED_MODE": "test"
+    },
+    "saas-migrate": {
+      "AEAT_PRODUCTION_ENABLED": "false",
+      "PLATFORM_INVOICING_ENABLED": "false",
+      "PUBLIC_INDEXING_ENABLED": "false",
+      "STRIPE_EXPECTED_MODE": "test"
+    },
+    "saas-worker": {
+      "AEAT_PRODUCTION_ENABLED": "false",
+      "PLATFORM_INVOICING_ENABLED": "false",
+      "PUBLIC_INDEXING_ENABLED": "false",
+      "STRIPE_EXPECTED_MODE": "test"
+    }
+  }
+}

@@ -1,14 +1,14 @@
 // Data of the Store's tests, shaped as the server answers it: the account's businesses
 // (`hubs.business.list`), the plans on sale (`hubs.plan.list`), the app catalog (`apps.app.list`) and what
 // billing sells each business (`billing.store.catalog`).
+import type { BusinessRowOut } from '../../../frontend/sdk-types/hubs';
+import type { PlanOut } from '../../../frontend/sdk-types/hubs-catalog';
 import type {
   AppSummaryOut,
-  BusinessRowOut,
-  PlanOut,
   StoreCatalogOut,
   StoreModuleOut,
   StoreSubscriptionOut,
-} from '../../../frontend/sdk-types';
+} from '../../../frontend/sdk-types/store';
 
 export function businessRow(id: string, name: string, extra: Partial<BusinessRowOut> = {}): BusinessRowOut {
   return {

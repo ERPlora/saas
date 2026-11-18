@@ -10,7 +10,7 @@ import { ApiError, useCommand } from '@erplora/ui/sdk';
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { ProfileOut } from '../../../frontend/sdk-types';
+import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import { useErrorText } from '../error-text';
 import { BUSINESSES } from '../paths';
 import { reauthRequestOf, useReauthentication } from '../reauth';

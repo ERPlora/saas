@@ -446,7 +446,7 @@ test('HUBS-F28: a business handed over on a paid plan: the new owner keeps it wi
     [
       'from datetime import timedelta',
       'from django.utils import timezone',
-      'from hubs.schemas import SubscriptionApplyIn',
+      'from hubs.schemas.subscriptions import SubscriptionApplyIn',
       'from hubs.services import hub_callbacks, subscription_sync',
       'now = timezone.now()',
       `subscription_sync.subscription_apply(hub_callbacks.system_ctx_for("${id}"), SubscriptionApplyIn(hub_id="${id}", plan="starter", billing_interval="month", status="active", stripe_customer_id="${oldCustomer}", stripe_subscription_id="${oldSub}", current_period_start=now - timedelta(days=10), current_period_end=now + timedelta(days=20), cancel_at_period_end=False))`,
@@ -458,7 +458,7 @@ test('HUBS-F28: a business handed over on a paid plan: the new owner keeps it wi
   const transfer = ((await offered.json()) as { id: string }).id;
   await withStripe([
     'from django.contrib.auth import get_user_model',
-    'from hubs.schemas import ByIdIn',
+    'from hubs.schemas.common import ByIdIn',
     'from hubs.services import ownership',
     'from hubs.tests.conftest import ctx_for',
     `double.answer("subscriptions.update", subscription("${oldSub}", customer="${oldCustomer}", items=[item("si_e2e_plan", "price_e2e_starter_month")], cancel_at_period_end=True))`,
@@ -535,7 +535,7 @@ test('HUBS-F28, in Spanish: «Mantenerlo con mi tarjeta» and the secure payment
       'from datetime import timedelta',
       'from django.contrib.auth import get_user_model',
       'from django.utils import timezone',
-      'from hubs.schemas import SubscriptionApplyIn',
+      'from hubs.schemas.subscriptions import SubscriptionApplyIn',
       'from hubs.services import hub_callbacks, subscription_sync',
       'now = timezone.now()',
       `subscription_sync.subscription_apply(hub_callbacks.system_ctx_for("${id}"), SubscriptionApplyIn(hub_id="${id}", plan="starter", billing_interval="month", status="active", stripe_customer_id="${oldCustomer}", stripe_subscription_id="${oldSub}", current_period_start=now - timedelta(days=10), current_period_end=now + timedelta(days=20), cancel_at_period_end=False))`,
@@ -550,7 +550,7 @@ test('HUBS-F28, in Spanish: «Mantenerlo con mi tarjeta» and the secure payment
   await paintMail(browser, 'HUBS-G82-offer-mail-es', lucia.email, offeredAt, 'quiere traspasarte Bar Manolo', 'es');
   await withStripe([
     'from django.contrib.auth import get_user_model',
-    'from hubs.schemas import ByIdIn',
+    'from hubs.schemas.common import ByIdIn',
     'from hubs.services import ownership',
     'from hubs.tests.conftest import ctx_for',
     `double.answer("subscriptions.update", subscription("${oldSub}", customer="${oldCustomer}", items=[item("si_e2e_plan", "price_e2e_starter_month")], cancel_at_period_end=True))`,

@@ -15,7 +15,7 @@ import { toastSuccess } from '@erplora/ui/shell';
 
 import { fakeAllauth, ok } from '../__tests__/allauth-server';
 import { type ApiCall, apiError, describeCall, flush, ionProps, mountDialog, profile, reauthRequired, typeInto } from '../__tests__/mount-panel';
-import type { ProfileOut } from '../../../frontend/sdk-types';
+import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import { onSessionChanged } from '../../../frontend/session-changed';
 import EmailChangeFlow from './EmailChangeFlow.vue';
 

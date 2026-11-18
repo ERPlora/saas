@@ -23,7 +23,8 @@ from hubs.models import (
     Subscription,
     SubscriptionItem,
 )
-from hubs.schemas import BusinessDeleteIn, BusinessListIn, BusinessUpdateIn, ByIdIn
+from hubs.schemas.businesses import BusinessDeleteIn, BusinessListIn, BusinessUpdateIn
+from hubs.schemas.common import ByIdIn
 from hubs.tests.conftest import add_member, create_business, ctx_for
 
 pytestmark = pytest.mark.django_db
@@ -534,7 +535,7 @@ class TestRefusals:
     def test_only_the_platform_records_the_hubs_answer(self, business, owner):
         from live.errors import PermissionDenied
 
-        from hubs.schemas import HubErrorIn
+        from hubs.schemas.hub_callbacks import HubErrorIn
 
         with pytest.raises(PermissionDenied):
             hub_callbacks.business_record_hub_error(ctx_for(owner), HubErrorIn(id=business.id, hub_error="nope"))

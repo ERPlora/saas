@@ -80,7 +80,8 @@ def test_dropping_to_free_removes_nobody_and_only_stops_new_invitations(business
     from live.errors import Conflict
 
     from hubs.models import HubMember
-    from hubs.schemas import MemberInviteIn, SubscriptionApplyIn
+    from hubs.schemas.membership import MemberInviteIn
+    from hubs.schemas.subscriptions import SubscriptionApplyIn
     from hubs.tests.conftest import ctx_for
 
     inside = set(HubMember.objects.filter(hub=business).values_list("user_id", flat=True))

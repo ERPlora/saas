@@ -16,7 +16,8 @@ from hubs.hub_client import HubRefused, HubUnavailable
 from hubs.models import Hub, HubOwnershipTransfer, Subscription, SubscriptionItem
 from hubs.queries import access_control, businesses, data_copies, plan_catalog
 from hubs.queries.access_control import Role
-from hubs.schemas import BusinessDeleteIn, BusinessDetailOut, ByIdIn
+from hubs.schemas.businesses import BusinessDeleteIn, BusinessDetailOut
+from hubs.schemas.common import ByIdIn
 from hubs.services.creation import check_free_quota
 from hubs.services.hub_push import Call, push_after_commit
 from hubs.services.refusals import business_deleted

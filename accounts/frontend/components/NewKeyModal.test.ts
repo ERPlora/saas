@@ -15,7 +15,7 @@ import { toastError, toastSuccess } from '@erplora/ui/shell';
 
 import { fakeAllauth, ok } from '../__tests__/allauth-server';
 import { type ApiCall, choose, flush, ionProps, mountPanel, reauthRequired, SCOPES, typeInto } from '../__tests__/mount-panel';
-import type { ApiKeyRowOut } from '../../../frontend/sdk-types';
+import type { ApiKeyRowOut } from '../../../frontend/sdk-types/accounts-security';
 import NewKeyModal from './NewKeyModal.vue';
 
 const SECRET = 'erps_live_Rt5wJ3nV8qP2xM6kZ4yH0aB1cD2eF3gH4iJ5kL6mN7oP8qR9';

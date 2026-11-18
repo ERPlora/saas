@@ -13,7 +13,8 @@ import { IonButton, IonCard, IonCardContent, IonInput, IonSelect, IonSelectOptio
 import { computed, reactive, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { BusinessDetailOut, BusinessUpdateIn } from '../../../frontend/sdk-types';
+import type { BusinessDetailOut } from '../../../frontend/sdk-types/hubs';
+import type { BusinessUpdateIn } from '../../../frontend/sdk-types/hubs-business';
 import { useErrorText } from '../error-text';
 import { countryName, countryOptions, timeZoneOptions } from '../regions';
 import AddressDialog from './AddressDialog.vue';

@@ -13,7 +13,9 @@ from accounts import queries as account_queries
 from hubs import events
 from hubs.models import Hub, HubMember
 from hubs.queries import access_control, businesses, membership, signup
-from hubs.schemas import BusinessRowOut, ByIdIn, RemovedOut
+from hubs.schemas.businesses import BusinessRowOut
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.membership import RemovedOut
 from hubs.services.hub_push import bump_state, push_after_commit
 from hubs.services.people_notices import notify_people
 from hubs.services.refusals import SeatLimitReached

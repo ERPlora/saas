@@ -4,7 +4,7 @@
 import { type ApiError, useCommand } from '@erplora/ui/sdk';
 import { computed, shallowRef } from 'vue';
 
-import type { ChargePreviewOut, CheckoutStartIn } from '../../frontend/sdk-types';
+import type { ChargePreviewOut, CheckoutStartIn } from '../../frontend/sdk-types/store';
 
 export type ChargePreviewState = 'idle' | 'loading' | 'ready' | 'checkout' | 'error';
 

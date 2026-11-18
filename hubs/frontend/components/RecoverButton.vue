@@ -8,7 +8,7 @@ import { useCommand } from '@erplora/ui/sdk';
 import { IonButton, IonSpinner } from '@ionic/vue';
 import { useI18n } from 'vue-i18n';
 
-import type { BusinessRowOut } from '../../../frontend/sdk-types';
+import type { BusinessRowOut } from '../../../frontend/sdk-types/hubs';
 import { useErrorText } from '../error-text';
 
 const props = withDefaults(

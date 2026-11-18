@@ -9,7 +9,7 @@ import { IonButton, IonSpinner } from '@ionic/vue';
 import { computed, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { ProfileOut } from '../../../frontend/sdk-types';
+import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import { useErrorText } from '../error-text';
 import { PHOTO_TYPES, PhotoError, preparePhoto } from '../photo';
 

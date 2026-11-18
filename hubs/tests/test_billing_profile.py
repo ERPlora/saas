@@ -4,7 +4,7 @@ The owner reads and edits the payer; «use the business's data» copies what the
 name and country), a copy and not a sync. Only the owner, whose billing it is.
 
 For now ERPlora invoices payers in Spain only: another country is refused under its field before anything is
-saved or asked to VIES. The tax ID goes through billing's VAT door (``billing.services.validate_vat_for_profile``,
+saved or asked to VIES. The tax ID goes through billing's VAT door (``billing.services.payer_vat_numbers.validate_vat_for_profile``,
 whose foreign shapes and VIES verdicts ``billing/tests/test_services.py`` holds): it is written as ERPlora invoices
 it (``b-12.345.678`` is ``B12345678``) and a malformed one is the field's 422. A Spanish postal code has five
 digits («3500» is not Las Palmas): its province decides the tax.
@@ -16,7 +16,7 @@ from live.errors import InvalidPayload, NotFound, PermissionDenied
 from hubs.services import billing_profiles
 from hubs.queries import payers
 from hubs.models import BillingProfile, Hub
-from hubs.schemas import BillingProfileGetIn, BillingProfileIn
+from hubs.schemas.payers import BillingProfileGetIn, BillingProfileIn
 from hubs.tests.conftest import ctx_for
 
 pytestmark = pytest.mark.django_db

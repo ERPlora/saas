@@ -26,7 +26,9 @@ from hubs import events
 from hubs.services import deletion, hub_callbacks, subscription_sync
 from hubs.queries import businesses, hub_sync
 from hubs.models import Hub, HubMember, Subscription, SubscriptionItem
-from hubs.schemas import BusinessListIn, ByIdIn, ModuleRightIn, SubscriptionApplyIn
+from hubs.schemas.businesses import BusinessListIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.subscriptions import ModuleRightIn, SubscriptionApplyIn
 from hubs.tests.conftest import add_member, ctx_for
 
 pytestmark = pytest.mark.django_db
@@ -518,7 +520,8 @@ def test_the_invoice_to_pay_goes_to_the_payer_not_to_the_role(business, owner, m
 def test_deleting_a_paying_business_asks_for_its_stripe_subscription_to_end(business, owner):
     """The ask is durable (billing's sweep ends it), so recovering the business before the
     sweep does not leave it charging while the panel says Free."""
-    from hubs.schemas import BusinessDeleteIn, ByIdIn
+    from hubs.schemas.businesses import BusinessDeleteIn
+    from hubs.schemas.common import ByIdIn
 
     apply(business, **paid_starter())
     deletion.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
@@ -531,7 +534,7 @@ def test_deleting_a_paying_business_asks_for_its_stripe_subscription_to_end(busi
 
 
 def test_the_end_of_the_stripe_subscription_clears_the_ask(business, owner):
-    from hubs.schemas import BusinessDeleteIn
+    from hubs.schemas.businesses import BusinessDeleteIn
 
     apply(business, **paid_starter())
     deletion.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
@@ -542,7 +545,7 @@ def test_the_end_of_the_stripe_subscription_clears_the_ask(business, owner):
 
 
 def test_deleting_a_free_business_asks_nothing_of_stripe(business, owner):
-    from hubs.schemas import BusinessDeleteIn
+    from hubs.schemas.businesses import BusinessDeleteIn
 
     deletion.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
 

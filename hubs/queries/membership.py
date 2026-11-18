@@ -13,7 +13,7 @@ from live.operations import AI, INTERNAL, operation
 from hubs.models import Hub, HubMember, HubOwnershipTransfer, Subscription
 from hubs.queries.access_control import RANK, Role, access, account_of, is_writable
 from hubs.queries.invitations import _name_of
-from hubs.schemas import MemberListIn, MemberListMineIn, MemberListMineOut, MemberListOut
+from hubs.schemas.membership import MemberListIn, MemberListMineIn, MemberListMineOut, MemberListOut
 
 
 def seats_of(hub: Hub, now: datetime) -> dict[str, int | None]:

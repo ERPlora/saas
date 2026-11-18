@@ -12,7 +12,7 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/fr
 
 import { toastSuccess } from '@erplora/ui/shell';
 
-import type { BillingProfileOut } from '../../../frontend/sdk-types';
+import type { BillingProfileOut } from '../../../frontend/sdk-types/store';
 import { apiError, describeCall, flush, mountBilling, optionValue } from '../__tests__/mount-billing';
 import BillingDetailsForm from './BillingDetailsForm.vue';
 import BillingProfileModal from './BillingProfileModal.vue';

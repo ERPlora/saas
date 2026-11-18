@@ -5,7 +5,7 @@ against VIES, and only a cleared one reaches Stripe: the fact that survives is t
 which ``billing.queries.payer_of`` reads for every door that sells. The verdict is never seeded: only
 the network is faked.
 
-Adapted: the four cases are proved on what the sale door decides (``billing.services.sale_quote``) and on
+Adapted: the four cases are proved on what the sale door decides (``billing.services.sale_tax.sale_quote``) and on
 the clearance that carries the proof. Moved: «a UK business with no VAT number is named by its Companies
 House number» needs ``BillingProfile.uk_business_*`` and «the renewal invoice keeps the payer's VAT id» is
 ``test_invoice_recording`` (the payer is sealed on the invoice the webhook records).
@@ -15,7 +15,8 @@ from decimal import Decimal
 
 import pytest
 
-from billing import queries, services
+from billing import queries
+from billing.services import sale_tax, vat_clearance
 from billing.tests.vies_double import (
     FAKE_VAT,
     NOT_REGISTERED,
@@ -36,7 +37,7 @@ def _issuer(issuer_identity):
 
 
 def _quote(business):
-    return services.sale_quote(business, category_key=PLAN, price=Decimal("100.00"))
+    return sale_tax.sale_quote(business, category_key=PLAN, price=Decimal("100.00"))
 
 
 @pytest.mark.usefixtures("every_country_sold")
@@ -49,7 +50,7 @@ class TestThePayerIsTheSource:
         with vies_says(**VALID):
             quote = _quote(business)
             payer = queries.payer_of(business)
-            clearance = services.clear_tax_id_for_stripe(
+            clearance = vat_clearance.clear_tax_id_for_stripe(
                 payer.tax_id, customer_country=payer.country
             )
 

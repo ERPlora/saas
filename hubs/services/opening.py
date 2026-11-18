@@ -11,7 +11,7 @@ from accounts.queries import hub_start_url
 from hubs import events
 from hubs.models import Hub, HubMember
 from hubs.queries import access_control
-from hubs.schemas import BusinessOpenIn, BusinessOpenOut
+from hubs.schemas.businesses import BusinessOpenIn, BusinessOpenOut
 
 
 #: Why a business does not open, by status (a business with a payment pending still opens).

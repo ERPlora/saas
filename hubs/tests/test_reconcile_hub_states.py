@@ -186,7 +186,8 @@ class TestReconcile:
 
     def test_maintenance_is_saved_and_cleared_without_moving_the_state_version(self, business, owner, hub_double):
         """HUBS-F04: the signed poll reports a real freeze and its lift; the monotonic snapshot is untouched."""
-        from hubs.schemas import BusinessListIn, ByIdIn
+        from hubs.schemas.businesses import BusinessListIn
+        from hubs.schemas.common import ByIdIn
 
         stuck(business)
         hub_double.registry[str(business.id)]["maintenance"] = {
@@ -217,7 +218,7 @@ class TestReconcile:
 
     def test_check_now_recovers_maintenance_and_ready_without_waiting_for_reconcile(self, business, owner, hub_double):
         """HUBS-F04: «Check now» runs the same recovery as the scheduled poll."""
-        from hubs.schemas import ByIdIn
+        from hubs.schemas.common import ByIdIn
         from hubs.tests.conftest import ctx_for
 
         stuck(business)
@@ -240,7 +241,8 @@ class TestReconcile:
     @pytest.mark.parametrize("status", [Hub.Status.ACTIVE, Hub.Status.DELETING])
     def test_a_business_no_longer_being_prepared_never_shows_a_stale_maintenance(self, business, owner, status):
         """HUBS-F04: the pause belongs to a sign-up being prepared; ready or deleted meanwhile, its pill says that."""
-        from hubs.schemas import BusinessListIn, ByIdIn
+        from hubs.schemas.businesses import BusinessListIn
+        from hubs.schemas.common import ByIdIn
         from hubs.tests.conftest import ctx_for
 
         Hub.objects.filter(pk=business.pk).update(
@@ -563,7 +565,7 @@ class TestDataCopyReady:
         assert "data_copy_unsent=0" in output
 
     def test_deleting_it_again_tries_the_mail_again(self, business, owner, hub_double):
-        from hubs.schemas import BusinessDeleteIn
+        from hubs.schemas.businesses import BusinessDeleteIn
         from hubs.tests.conftest import ctx_for
 
         Hub.objects.filter(pk=business.pk).update(data_copy_mail_attempts=reconciliation.DATA_COPY_MAIL_ATTEMPTS)

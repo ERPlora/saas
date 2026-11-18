@@ -27,7 +27,7 @@ import {
   mountPanel,
   subId,
 } from '../__tests__/mount-panel';
-import type { ApiKeyRowOut } from '../../../frontend/sdk-types';
+import type { ApiKeyRowOut } from '../../../frontend/sdk-types/accounts-security';
 import ApiKeysTable from './ApiKeysTable.vue';
 
 function key(id: string, overrides: Partial<ApiKeyRowOut> = {}): ApiKeyRowOut {

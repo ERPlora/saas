@@ -1,6 +1,6 @@
 // What the panel says of a discount, derived from its terms (billing.promo.check, a subscription's discount): what
 // it takes off, for how long, when the plan's price starts and until when a subscription carries it.
-import type { BillingInterval } from '../../frontend/sdk-types';
+import type { BillingInterval } from '../../frontend/sdk-types/store';
 import type { DiscountOut, SubscriptionDiscountOut } from './discount-types';
 
 /** The translator of the panel and how it says an amount in cents. */

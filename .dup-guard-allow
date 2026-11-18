@@ -67,3 +67,16 @@ duplicados hubs/frontend/pages/InvitationPage.test.ts:5-14 the mock header of th
 duplicados hubs/frontend/pages/LaunchPage.test.ts:9-17 the mock header of the panel's tests was already alike in main; this change only swaps its toast spies for the shared shellWithToastSpies
 duplicados billing/frontend/components/InvoicesTab.vue:66-88 the paging state of a live server list was already alike in main; this change only rewords its comment from «Load more» to the end of the scroll
 duplicados hubs/frontend/pages/BusinessListPage.vue:76-97 the paging state of a live server list was already alike in main; this change only rewords its comment from «Load more» to the end of the scroll
+duplicados hubs/frontend/components/RemoveDialog.vue:6-17 the import block already repeated in TransferDialog.vue in main; this change only rewrites the import of its SDK types inside it
+duplicados hubs/frontend/components/TransferDialog.vue:6-17 the import block already repeated in RemoveDialog.vue in main; this change only rewrites the import of its SDK types inside it
+duplicados billing/frontend/components/BillingProfileModal.test.ts:3-15 the test imports already repeated in MembersTab.test.ts in main; this change only rewrites the import of its SDK types inside them
+duplicados billing/frontend/components/BillingProfileCard.test.ts:3-11 the test imports already repeated in BusinessPage.test.ts in main; this change only rewrites the import of its SDK types inside them
+duplicados accounts/frontend/sdk-types.test.ts:26-31 the interface reader already repeated in frontend/sdk-types.test.ts in main; this change only renames the types file in its error message
+duplicados frontend/sdk-types.test.ts:60-65 the interface reader already repeated in accounts/frontend/sdk-types.test.ts in main; this change only renames the types file in its error message
+duplicados accounts/frontend/components/SessionsTable.vue:18-27 the import block already repeated in MembersTab.vue in main; this change only rewrites the import of its SDK types inside it
+duplicados hubs/frontend/components/MembersTab.vue:22-31 the import block already repeated in SessionsTable.vue in main; this change only rewrites the import of its SDK types inside it
+duplicados accounts/frontend/components/DeleteAccountCard.test.ts:9-18 the test imports already repeated in DangerZone.test.ts in main; this change only rewrites the import of its SDK types inside them
+duplicados billing/tests/test_checkout_after_hand_over.py:36-45 the import block two hand-over test files share; this change only splits their import of hubs.schemas into the three modules that define its names
+duplicados billing/tests/test_plan_take_over.py:41-50 the import block two hand-over test files share; this change only splits their import of hubs.schemas into the three modules that define its names
+duplicados billing/tests/test_checkout.py:1136-1147 the update of the payer's billing details was already repeated on main; this change only names the module of hubs.schemas its input lives in
+duplicados billing/tests/test_plan_cancel_preview.py:263-274 the update of the payer's billing details was already repeated on main; this change only names the module of hubs.schemas its input lives in

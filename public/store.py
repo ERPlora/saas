@@ -41,7 +41,7 @@ from live.operations import get as get_operation
 from accounts.handoff import LAUNCHER
 from apps.schemas import AppByIdIn, AppListIn, AppOut, AppSummaryOut
 from base.operations import ANONYMOUS_KEY
-from hubs.schemas import BusinessTypeListIn
+from hubs.schemas.taxonomy import BusinessTypeListIn
 from public import structured_data
 
 #: The operations' «not here» codes: an unknown or unlisted app, an app without documentation.

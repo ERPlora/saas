@@ -41,6 +41,12 @@ setup() {
   # and its roles are erplora-<environment>-<name>-{task,execution} unless another prefix is listed.
   : > "$FIXTURES/environment-tags"
   : > "$FIXTURES/roles"
+  # The app_env in force of each environment holds the repository's deploy/app-env.json, and every revision's app
+  # container runs its family's settings in it unless runs() gives that revision others.
+  local in_force
+  for in_force in prod pre; do
+    jq -c ".$in_force" "$here/../../deploy/app-env.json" > "$FIXTURES/app_env.$in_force.json"
+  done
 
   # Fails after 500 pauses: a rollout loop that never times out fails its test instead of hanging.
   cat > "$work/bin/sleep" <<'FAKE'
@@ -112,13 +118,16 @@ case "$1 $2" in
     image="$(awk -v arn="$arn" '$1 == arn { print $2 }' "$FIXTURES/images")"
     tag="$(awk -v arn="$arn" '$1 == arn { print $2 }' "$FIXTURES/environment-tags")"
     role="$(awk -v arn="$arn" '$1 == arn { print $2 }' "$FIXTURES/roles")"
-    jq -n --arg name "$name" --arg image "${image:-reg.example/$repository:tag-${arn##*:}}" \
+    # The hub's hub and worker file in the AEAT's production unless FAKE_HUB_VERIFACTU says otherwise.
+    settings="$(cat "$FIXTURES/settings-${arn##*/}" 2> /dev/null || jq -c --arg name "$name" \
+      --arg on "${FAKE_HUB_VERIFACTU:-true}" '.[$name] // {VERIFACTU_PRODUCTION_ENABLED: $on}' "$FIXTURES/app_env.$environment.json")"
+    jq -n --arg name "$name" --arg image "${image:-reg.example/$repository:tag-${arn##*:}}" --argjson settings "$settings" \
       --arg tag "${tag:-$environment}" --arg role "arn:aws:iam::123456789012:role/${role:-$family}" '{
       taskDefinition: {
         taskRoleArn: "\($role)-task", executionRoleArn: "\($role)-execution",
         containerDefinitions: [
           {name: "log-router", image: "public.ecr.aws/aws-observability/aws-for-fluent-bit:stable"},
-          {name: $name, image: $image}]
+          {name: $name, image: $image, environment: ($settings | to_entries | map({name: .key, value: .value}))}]
       },
       tags: ([{key: "Project", value: "erplora"}]
         + if $tag == "none" then [] else [{key: "Environment", value: $tag}] end)
@@ -132,6 +141,23 @@ case "$1 $2" in
       value --task-definition > "$STATE/primary-$service"
     fi
     ;;
+  "ssm get-parameter")
+    # The app_env in force of the parameter's environment; FAKE_APP_ENV_FAILURE: the call fails.
+    if [ -n "${FAKE_APP_ENV_FAILURE:-}" ]; then
+      echo "An error occurred ($FAKE_APP_ENV_FAILURE) when calling the GetParameter operation" >&2
+      exit 254
+    fi
+    environment="$(value --name)"
+    environment="${environment#/erplora/}"
+    cat "$FIXTURES/app_env.${environment%%/*}.json"
+    ;;
+  "ssm put-parameter")
+    # FAKE_PUT_FAILURE: writing the parameter whose last segment it names fails.
+    if [ -n "${FAKE_PUT_FAILURE:-}" ] && [[ "$(value --name)" == */"$FAKE_PUT_FAILURE" ]]; then
+      echo "An error occurred (AccessDeniedException) when calling the PutParameter operation" >&2
+      exit 254
+    fi
+    ;;
   *) ;;
 esac
 FAKE
@@ -141,7 +167,7 @@ FAKE
 # run_rollback [VAR=value...]: rolls back prod with the fake and CONFIRM=ROLLBACK; the arguments
 # override (ENVIRONMENT=pre rolls back pre).
 run_rollback() {
-  env -u CLUSTER -u POLL_SECONDS -u ROLLOUT_TIMEOUT_SECONDS \
+  env -u CLUSTER -u POLL_SECONDS -u ROLLOUT_TIMEOUT_SECONDS -u CONFIRM_PROTECTED \
     PATH="$work/bin:$PATH" AWS_REGION=eu-south-2 CONFIRM=ROLLBACK ENVIRONMENT=prod "$@" \
     bash "$here/ecs-rollback.sh" > "$work/out.log" 2>&1
 }
@@ -216,9 +242,11 @@ check "the tag is recorded only after the services are checked" \
   '[ "$(line_of "ssm put-parameter")" -gt "$(last_line_of "describe-services")" ]'
 check "every aws call names the region" '[ -s "$CALLS_LOG" ] && ! grep -qv -- "--region eu-south-2" "$CALLS_LOG"'
 check "prod: every cluster-scoped ecs call names prod's cluster erplora-prod" 'cluster_is erplora-prod'
-check "the worker service is neither queried nor rolled back" '! grep -Eq -- "--services? worker( |$)|erplora-prod-worker" "$CALLS_LOG"'
-check "nothing of the hub is touched" \
-  '! grep -Eq -- "erplora-prod-hub|/erplora/prod/hub/|--services? hub( |$)" "$CALLS_LOG"'
+# The hub's families live in the same cluster: this repo only reads the latest revisions of hub and worker.
+check "the hub's worker service is neither queried nor rolled back" \
+  '! grep -v "^ecs describe-task-definition " "$CALLS_LOG" | grep -Eq -- "--services? worker( |$)|erplora-prod-worker"'
+check "nothing of the hub is touched: it is only read" \
+  '! grep -v "^ecs describe-task-definition " "$CALLS_LOG" | grep -Eq -- "erplora-prod-hub|/erplora/prod/hub/|--services? hub( |$)"'
 check "nothing of pre is touched" '! grep -Eq -- "erplora-pre-|/erplora/pre/|saas-pre" "$CALLS_LOG"'
 
 # --- the saas-worker service --------------------------------------------------------------
@@ -306,6 +334,97 @@ echo "$td/erplora-pre-saas:10 reg.example/erplora/saas:tag-10" > "$FIXTURES/imag
 run_rollback ENVIRONMENT=pre && status=0 || status=$?
 check "pre: a previous revision on prod's image fails without changing anything" \
   '[ "$status" -ne 0 ] && ! grep -Eq "update-service|put-parameter" "$CALLS_LOG" && grep -q "::error::.*erplora/saas-pre" "$work/out.log"'
+
+# --- the settings of the revisions it goes back to ------------------------------------------
+# runs <environment> <name> <jq filter>: revision 10 of erplora-<environment>-<name> runs its family's settings in
+# the app_env in force, changed by the filter.
+runs() {
+  jq -c --arg name "$2" ".[\$name] | $3" "$FIXTURES/app_env.$1.json" > "$FIXTURES/settings-erplora-$1-$2:10"
+}
+# recorded <environment>: the app_env the rollback wrote, or nothing.
+recorded() {
+  grep -F "ssm put-parameter --name /erplora/$1/saas/app_env --value " "$CALLS_LOG" | sed 's/.* --value \([^ ]*\) .*/\1/'
+}
+nothing_changed() { ! grep -Eq "update-service|put-parameter" "$CALLS_LOG"; }
+
+setup
+run_rollback && status=0 || status=$?
+check "settings: the app_env in force and the revision it goes back to are read before any service moves" \
+  '[ "$status" -eq 0 ] &&
+   grep -q "^ssm get-parameter --name /erplora/prod/saas/app_env --query Parameter.Value --output text --region eu-south-2$" "$CALLS_LOG" &&
+   [ "$(line_of "ssm get-parameter")" -lt "$(line_of "update-service")" ] &&
+   [ "$(line_of "describe-task-definition --task-definition $td/erplora-prod-saas:10 --output json")" -lt "$(line_of "update-service")" ]'
+check "settings: with the real charge on, only the latest revisions of the hub's hub and worker are read" \
+  '[ "$(grep -Eo -- "--task-definition [^ ]*erplora-prod-(hub|worker)[^ ]*" "$CALLS_LOG" | sort | paste -sd " " -)" = "--task-definition erplora-prod-hub --task-definition erplora-prod-worker" ]'
+check "settings: app_env is recorded once the rollout is checked, before the tag" \
+  '[ "$(recorded prod)" = "$(jq -cS . "$FIXTURES/app_env.prod.json")" ] &&
+   [ "$(line_of "/erplora/prod/saas/app_env --value")" -gt "$(last_line_of "describe-services")" ] &&
+   [ "$(line_of "/erplora/prod/saas/app_env --value")" -lt "$(line_of "/erplora/prod/saas/image_tag")" ] &&
+   grep -q "recorded the settings of the revisions it went back to in /erplora/prod/saas/app_env" "$work/out.log"'
+
+setup
+runs prod saas '.PLATFORM_INVOICING_ENABLED = "false"'
+run_rollback && status=0 || status=$?
+check "protected: prod does not go back to another real charge without CONFIRM_PROTECTED, and changes nothing" \
+  '[ "$status" -ne 0 ] && nothing_changed &&
+   grep -qF "::error::prod changes PLATFORM_INVOICING_ENABLED to false: confirm it with CONFIRM_PROTECTED PLATFORM_INVOICING_ENABLED=false (the workflow'"'"'s confirm_protected); nothing was changed" "$work/out.log"'
+setup
+runs prod saas '.PLATFORM_INVOICING_ENABLED = "false"'
+run_rollback CONFIRM_PROTECTED=PLATFORM_INVOICING_ENABLED=false && status=0 || status=$?
+check "protected: with the confirmation it goes back, and app_env takes the settings saas runs" \
+  '[ "$status" -eq 0 ] && grep -q "update-service .*--service saas --task-definition $td/erplora-prod-saas:10 " "$CALLS_LOG" &&
+   [ "$(recorded prod)" = "$(jq -cS ".saas.PLATFORM_INVOICING_ENABLED = \"false\"" "$FIXTURES/app_env.prod.json")" ] &&
+   grep -q "prod changes PLATFORM_INVOICING_ENABLED to false, as confirmed" "$work/out.log"'
+check "protected: without the real charge the Hub is not read" '! grep -q "erplora-prod-hub" "$CALLS_LOG"'
+setup
+with_worker prod
+runs prod saas '.AEAT_PRODUCTION_ENABLED = "false"'
+runs prod saas-worker '.AEAT_PRODUCTION_ENABLED = "false"'
+run_rollback CONFIRM_PROTECTED="AEAT_PRODUCTION_ENABLED=false" && status=0 || status=$?
+check "protected: saas and saas-worker go back together, and only they take the settings of their revisions" \
+  '[ "$status" -eq 0 ] && grep -q "update-service .*--service saas-worker --task-definition $td/erplora-prod-saas-worker:10 " "$CALLS_LOG" &&
+   [ "$(recorded prod)" = "$(jq -cS ".saas.AEAT_PRODUCTION_ENABLED = \"false\" | .[\"saas-worker\"].AEAT_PRODUCTION_ENABLED = \"false\"" "$FIXTURES/app_env.prod.json")" ]'
+setup
+with_worker prod
+runs prod saas-worker '.AEAT_PRODUCTION_ENABLED = "false"'
+run_rollback CONFIRM_PROTECTED="AEAT_PRODUCTION_ENABLED=false" && status=0 || status=$?
+check "protected: saas and saas-worker going back to different policies change nothing" \
+  '[ "$status" -ne 0 ] && nothing_changed &&
+   grep -q "::error::the revisions it goes back to: prod sets AEAT_PRODUCTION_ENABLED to false in saas-worker; true in saas" "$work/out.log"'
+setup
+with_worker prod
+echo "$td/erplora-prod-saas-worker:10 reg.example/erplora/saas:tag-other" > "$FIXTURES/images"
+runs prod saas-worker '.AEAT_PRODUCTION_ENABLED = "false"'
+run_rollback && status=0 || status=$?
+check "settings: a saas-worker that stays is not checked, and keeps its settings in force" \
+  '[ "$status" -eq 0 ] && ! grep -q "describe-task-definition --task-definition $td/erplora-prod-saas-worker:10 --output json" "$CALLS_LOG" &&
+   [ "$(recorded prod)" = "$(jq -cS . "$FIXTURES/app_env.prod.json")" ]'
+
+setup
+run_rollback FAKE_HUB_VERIFACTU=false && status=0 || status=$?
+check "real charge: prod does not go back to it while the Hub does not file in the AEAT's production" \
+  '[ "$status" -ne 0 ] && nothing_changed &&
+   grep -q "::error::prod charges real money .*erplora-prod-hub has no VERIFACTU_PRODUCTION_ENABLED=true in its hub container: deploy the Hub with it first; nothing was changed" "$work/out.log"'
+setup
+runs pre saas '.PLATFORM_INVOICING_ENABLED = "true"'
+run_rollback ENVIRONMENT=pre && status=0 || status=$?
+check "pre: a revision that would charge real money changes nothing" \
+  '[ "$status" -ne 0 ] && nothing_changed &&
+   grep -q "::error::the revisions it goes back to: pre.saas.PLATFORM_INVOICING_ENABLED must be false in pre" "$work/out.log"'
+setup
+run_rollback ENVIRONMENT=pre && status=0 || status=$?
+check "pre: app_env is recorded in pre's parameter, and the Hub is not read" \
+  '[ "$status" -eq 0 ] && [ "$(recorded pre)" = "$(jq -cS . "$FIXTURES/app_env.pre.json")" ] && ! grep -q "erplora-prod-" "$CALLS_LOG"'
+setup
+run_rollback FAKE_APP_ENV_FAILURE=AccessDeniedException && status=0 || status=$?
+check "settings: an app_env in force that cannot be read changes nothing" \
+  '[ "$status" -ne 0 ] && nothing_changed &&
+   grep -q "::error::aws ssm get-parameter failed: .*AccessDeniedException.*; nothing was changed" "$work/out.log"'
+setup
+run_rollback FAKE_PUT_FAILURE=app_env && status=0 || status=$?
+check "settings: an app_env that cannot be written fails the rollback and records no tag" \
+  '[ "$status" -ne 0 ] && grep -q "update-service" "$CALLS_LOG" && ! grep -q "/erplora/prod/saas/image_tag" "$CALLS_LOG" &&
+   grep -q "::error::the services run the previous revisions, but /erplora/prod/saas/app_env was not written" "$work/out.log"'
 
 # --- the guard: only revisions of the rollback's own environment are restored ---------------
 for case in "prod-tagged-pre:$td/erplora-prod-saas:10 pre:environment-tags:prod" \

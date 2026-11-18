@@ -15,14 +15,11 @@ from live.errors import Conflict, NotFound, PermissionDenied
 from hubs.services import billing_profiles, member_management, ownership
 from hubs.queries import businesses, membership, payers
 from hubs.models import BillingProfile, Hub, HubMember, HubOwnershipTransfer
-from hubs.schemas import (
-    BillingProfileGetIn,
-    BillingProfileIn,
-    BusinessListIn,
-    ByIdIn,
-    MemberListIn,
-    OwnershipTransferIn,
-)
+from hubs.schemas.businesses import BusinessListIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.membership import MemberListIn
+from hubs.schemas.ownership import OwnershipTransferIn
+from hubs.schemas.payers import BillingProfileGetIn, BillingProfileIn
 from hubs.tests.conftest import add_member, create_business, ctx_for, member_of, role_on
 
 pytestmark = pytest.mark.django_db

@@ -14,7 +14,8 @@ from hubs import events
 from hubs.services import business_settings
 from hubs.queries import access_control, addresses, businesses, hub_sync
 from hubs.models import Hub
-from hubs.schemas import BusinessAddressIn, ByIdIn
+from hubs.schemas.businesses import BusinessAddressIn
+from hubs.schemas.common import ByIdIn
 from hubs.tests.conftest import create_business, ctx_for, role_on
 
 pytestmark = pytest.mark.django_db

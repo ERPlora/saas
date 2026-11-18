@@ -18,9 +18,9 @@ from pydantic import ValidationError
 
 from hubs.queries import businesses, hub_usage
 from hubs.models import HubUsageDaily, Plan, Subscription
-from hubs.schemas import (
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.hub_usage import (
     ActiveUsersOut,
-    ByIdIn,
     StorageUsageOut,
     UsageGetIn,
     UsageOut,

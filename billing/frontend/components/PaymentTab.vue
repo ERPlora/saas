@@ -7,7 +7,7 @@ import { useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, IonCard, IonCardContent, IonSkeletonText } from '@ionic/vue';
 import { shallowRef } from 'vue';
 
-import type { PaymentMethodRowOut } from '../../../frontend/sdk-types';
+import type { PaymentMethodRowOut } from '../../../frontend/sdk-types/billing-subscriptions';
 import BillingProfileCard from './BillingProfileCard.vue';
 import PaymentMethodCard from './PaymentMethodCard.vue';
 

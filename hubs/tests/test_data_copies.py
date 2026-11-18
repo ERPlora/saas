@@ -15,7 +15,8 @@ from django.utils import timezone
 
 from hubs.queries import businesses, data_copies
 from hubs.models import Hub
-from hubs.schemas import ByIdIn, DataCopyLinkIn, DataCopyListIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.data_copies import DataCopyLinkIn, DataCopyListIn
 from hubs.tests.conftest import ctx_for
 
 pytestmark = pytest.mark.django_db

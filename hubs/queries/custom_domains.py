@@ -13,7 +13,8 @@ from hubs import domain_checks, edge_client
 from hubs.models import CustomDomain, Hub
 from hubs.queries.access_control import Role, access, account_of
 from hubs.queries.plan_catalog import effective_plan
-from hubs.schemas import CustomDomainStatusOut, ByIdIn
+from hubs.schemas.common import ByIdIn
+from hubs.schemas.custom_domains import CustomDomainStatusOut
 
 logger = logging.getLogger(__name__)
 

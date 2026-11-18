@@ -18,7 +18,7 @@ from fiscal.tests.conftest import make_grant, pdf_b64, staff_ctx, submission
 from hubs.queries import hub_sync
 from hubs.services import hub_callbacks, hub_push, reconciliation, subscription_sync
 from hubs.models import Hub, Subscription, SubscriptionItem
-from hubs.schemas import SubscriptionApplyIn
+from hubs.schemas.subscriptions import SubscriptionApplyIn
 
 pytestmark = pytest.mark.django_db
 
