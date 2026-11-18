@@ -15,7 +15,7 @@ import { computed, onMounted, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { browser } from '../../../billing/frontend/browser';
-import type { DataCopyOut } from '../../../frontend/sdk-types';
+import type { DataCopyOut } from '../../../frontend/sdk-types/hubs-data-copies';
 import { formatBytes } from '../data-copy';
 import { useErrorText } from '../error-text';
 

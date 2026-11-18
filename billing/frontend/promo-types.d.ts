@@ -1,4 +1,4 @@
-// Types of `billing.promo.check` (billing/schemas/promo_codes.py), written by hand as frontend/sdk-types.d.ts.
+// Types of `billing.promo.check` (billing/schemas/promo_codes.py), written by hand as frontend/sdk-types/.
 import type { DiscountOut } from './discount-types';
 
 /** `billing.PromoCheckIn`. */

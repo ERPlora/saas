@@ -2,7 +2,8 @@
 import { AlignedCardGrid } from '@erplora/ui/components';
 import { shallowRef } from 'vue';
 
-import type { BillingInterval, PlanOut, StoreSubscriptionOut } from '../../../frontend/sdk-types';
+import type { PlanOut } from '../../../frontend/sdk-types/hubs-catalog';
+import type { BillingInterval, StoreSubscriptionOut } from '../../../frontend/sdk-types/store';
 import type { Block } from '../store';
 import PlanCard from './PlanCard.vue';
 

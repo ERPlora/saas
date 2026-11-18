@@ -9,7 +9,7 @@ import { IonButton, IonSpinner } from '@ionic/vue';
 import { computed } from 'vue';
 
 import { useCardPortal } from '../../../billing/frontend/portal';
-import type { BusinessRowOut } from '../../../frontend/sdk-types';
+import type { BusinessRowOut } from '../../../frontend/sdk-types/hubs';
 
 const props = withDefaults(
   defineProps<{

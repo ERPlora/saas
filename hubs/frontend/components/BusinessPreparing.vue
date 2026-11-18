@@ -8,7 +8,7 @@ import { useCommand } from '@erplora/ui/sdk';
 import { IonButton, IonProgressBar, IonSpinner } from '@ionic/vue';
 import { onMounted, shallowRef } from 'vue';
 
-import type { HubMaintenanceOut } from '../../../frontend/sdk-types';
+import type { HubMaintenanceOut } from '../../../frontend/sdk-types/hubs';
 
 const props = defineProps<{
   /** The business id, when its server status can be checked. */

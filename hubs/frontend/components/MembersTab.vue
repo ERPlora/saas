@@ -28,7 +28,8 @@ import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useLiveState } from '../../../frontend/live-state';
-import type { BusinessDetailOut, MemberAction, MemberRowOut } from '../../../frontend/sdk-types';
+import type { BusinessDetailOut } from '../../../frontend/sdk-types/hubs';
+import type { MemberAction, MemberRowOut } from '../../../frontend/sdk-types/hubs-members';
 import { useErrorText } from '../error-text';
 import InviteModal from './InviteModal.vue';
 import RemoveDialog from './RemoveDialog.vue';

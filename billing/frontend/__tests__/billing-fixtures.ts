@@ -1,14 +1,13 @@
 // Data of the Billing section's tests, shaped as billing/queries/ answers it: ERPlora's invoices
 // (`billing.invoice.list`), the subscriptions (`billing.subscription.list`) and the payment method
 // (`billing.payment_method.get`).
+import type { InvoiceListOut, InvoiceRowOut } from '../../../frontend/sdk-types/billing-invoices';
 import type {
-  InvoiceListOut,
-  InvoiceRowOut,
   PaymentMethodOut,
   PaymentMethodRowOut,
   SubscriptionListOut,
   SubscriptionRowOut,
-} from '../../../frontend/sdk-types';
+} from '../../../frontend/sdk-types/billing-subscriptions';
 
 export function invoiceRow(id: string, extra: Partial<InvoiceRowOut> = {}): InvoiceRowOut {
   return {

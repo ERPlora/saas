@@ -8,7 +8,7 @@
 import { businessStatusPill, type BusinessStatus, formatDateTime, type StatusPillSpec } from '@erplora/ui/components';
 
 import { formatDate } from '../../billing/frontend/format';
-import type { BusinessStatusCode, HubMaintenanceOut, OpenBlockedReason } from '../../frontend/sdk-types';
+import type { BusinessStatusCode, HubMaintenanceOut, OpenBlockedReason } from '../../frontend/sdk-types/hubs';
 
 /** What both a row of the list and a business's detail carry. */
 export interface BusinessState {

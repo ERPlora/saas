@@ -24,7 +24,7 @@ import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useLiveState } from '../../../frontend/live-state';
-import type { SessionListOut, SessionRowOut } from '../../../frontend/sdk-types';
+import type { SessionListOut, SessionRowOut } from '../../../frontend/sdk-types/accounts-security';
 import { browserName, deviceIcon, deviceName, isAppSession } from '../devices';
 import { useErrorText } from '../error-text';
 

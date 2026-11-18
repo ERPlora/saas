@@ -2,14 +2,14 @@
 // has it on sale (`apps.Module`), joined by `slug == app.id`; one taken off sale is still shown to the business that
 // has it, to cancel it. A business with an unpaid invoice buys nothing more until it pays it (the server refuses it
 // too, 409 `billing.invoice_unpaid`).
+import type { BusinessRowOut } from '../../frontend/sdk-types/hubs';
+import type { PlanOut } from '../../frontend/sdk-types/hubs-catalog';
 import type {
   AppSummaryOut,
   BillingInterval,
-  BusinessRowOut,
-  PlanOut,
   StoreModuleOut,
   StoreSubscriptionOut,
-} from '../../frontend/sdk-types';
+} from '../../frontend/sdk-types/store';
 
 /** A module the Store sells the chosen business. */
 export interface SaleModule {

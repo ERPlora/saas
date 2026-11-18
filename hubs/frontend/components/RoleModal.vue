@@ -10,7 +10,8 @@ import { IonSelect, IonSelectOption } from '@ionic/vue';
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { InvitableRole, MemberRowOut } from '../../../frontend/sdk-types';
+import type { InvitableRole } from '../../../frontend/sdk-types/hubs';
+import type { MemberRowOut } from '../../../frontend/sdk-types/hubs-members';
 import { useErrorText } from '../error-text';
 
 const props = defineProps<{

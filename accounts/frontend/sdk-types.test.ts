@@ -1,4 +1,4 @@
-// The Account page's twins in `frontend/sdk-types.d.ts`, written by hand from accounts/schemas.py until they are
+// The Account page's twins in `frontend/sdk-types/`, written by hand from accounts/schemas.py until they are
 // generated from `/api/openapi.json`: this guard reads both and fails when a field the server sends or takes is
 // missing from its TypeScript twin, the twin carries one the server no longer has, or a field's type differs
 // (pydantic's annotation translated to what its JSON is in TypeScript).
@@ -7,9 +7,11 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { readSdkTypes } from '../../frontend/__tests__/sdk-types-source';
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PYTHON = readFileSync(join(HERE, '..', 'schemas.py'), 'utf8');
-const TYPES = readFileSync(join(HERE, '..', '..', 'frontend', 'sdk-types.d.ts'), 'utf8');
+const TYPES = readSdkTypes();
 
 /** `name: annotation` of a pydantic schema of accounts/schemas.py (a default is cut at ` = `). */
 function pythonTypes(name: string): Record<string, string> {
@@ -19,10 +21,10 @@ function pythonTypes(name: string): Record<string, string> {
   return Object.fromEntries(own);
 }
 
-/** `name: type` of an interface of sdk-types.d.ts, `?` kept on the name's side (`name?`). */
+/** `name: type` of an interface of frontend/sdk-types, `?` kept on the name's side (`name?`). */
 function typeTypes(name: string): Record<string, string> {
   const match = new RegExp(`^export interface ${name} \\{\\n([\\s\\S]*?)^\\}`, 'm').exec(TYPES);
-  if (!match) throw new Error(`sdk-types.d.ts has no interface ${name}`);
+  if (!match) throw new Error(`frontend/sdk-types has no interface ${name}`);
   return Object.fromEntries([...match[1].matchAll(/^ {2}(\w+\??): (.+);$/gm)].map((m) => [m[1], m[2].trim()]));
 }
 
@@ -95,7 +97,7 @@ const SCHEMAS = [
   'ApiKeyRevokeIn',
 ];
 
-describe('sdk-types.d.ts follows accounts/schemas.py (the Account page)', () => {
+describe('frontend/sdk-types follows accounts/schemas.py (the Account page)', () => {
   it.each(SCHEMAS)('%s has the same fields, each typed as its JSON is', (name) => {
     const python = pythonTypes(name);
     const types = typeTypes(name);

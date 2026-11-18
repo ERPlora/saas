@@ -20,7 +20,7 @@ import { useI18n } from 'vue-i18n';
 
 import { STORE } from '../../../accounts/frontend/paths';
 import { isFree } from '../../../billing/frontend/store';
-import type { BusinessDetailOut } from '../../../frontend/sdk-types';
+import type { BusinessDetailOut } from '../../../frontend/sdk-types/hubs';
 import { countryName } from '../regions';
 import { formatUsageDay, isYesterday } from '../usage-day';
 import DeviceAccessCard from './DeviceAccessCard.vue';

@@ -16,7 +16,8 @@ import { useI18n } from 'vue-i18n';
 
 import LoadFailed from '../../../frontend/LoadFailed.vue';
 import { useLiveState } from '../../../frontend/live-state';
-import type { BusinessRowOut, ProfileOut } from '../../../frontend/sdk-types';
+import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
+import type { BusinessRowOut } from '../../../frontend/sdk-types/hubs';
 import { BUSINESSES } from '../paths';
 import DeleteAccountDialog from './DeleteAccountDialog.vue';
 

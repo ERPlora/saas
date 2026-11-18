@@ -30,13 +30,13 @@ import { useI18n } from 'vue-i18n';
 import { STORE } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
+import type { BusinessDetailOut } from '../../../frontend/sdk-types/hubs';
 import type {
-  BusinessDetailOut,
   CustomDomainReason,
   CustomDomainState,
   CustomDomainStatusOut,
   DnsRecordOut,
-} from '../../../frontend/sdk-types';
+} from '../../../frontend/sdk-types/hubs-custom-domains';
 import { useErrorText } from '../error-text';
 import CopyField from './CopyField.vue';
 

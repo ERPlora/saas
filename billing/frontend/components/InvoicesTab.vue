@@ -21,7 +21,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { BILLING, STORE } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import { useErrorText } from '../../../hubs/frontend/error-text';
-import type { InvoiceFilterIn, InvoicePaymentStatus, InvoiceRowOut } from '../../../frontend/sdk-types';
+import type { InvoiceFilterIn, InvoicePaymentStatus, InvoiceRowOut } from '../../../frontend/sdk-types/billing-invoices';
 import { browser, operationUrl } from '../browser';
 import { formatDate } from '../format';
 import { formatAmount, invoiceBusinesses, invoiceName, invoicePill, yearOptions } from '../invoices';

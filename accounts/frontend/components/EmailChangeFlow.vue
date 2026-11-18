@@ -16,7 +16,7 @@ import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { looksLikeEmail } from '../../../frontend/email';
-import type { ProfileOut } from '../../../frontend/sdk-types';
+import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import { sessionChanged } from '../../../frontend/session-changed';
 import { useErrorText } from '../error-text';
 import { reauthRequestOf, useReauthentication } from '../reauth';

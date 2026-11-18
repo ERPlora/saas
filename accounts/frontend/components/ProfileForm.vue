@@ -11,7 +11,7 @@ import { IonButton, IonCard, IonCardContent, IonInput, IonSpinner } from '@ionic
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { ProfileOut } from '../../../frontend/sdk-types';
+import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import { sessionChanged } from '../../../frontend/session-changed';
 import { useErrorText } from '../error-text';
 import EmailChangeFlow from './EmailChangeFlow.vue';

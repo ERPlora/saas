@@ -15,7 +15,7 @@ import { useI18n } from 'vue-i18n';
 
 import { useLiveState } from '../../../frontend/live-state';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
-import type { RepresentationDocumentsOut, RepresentationState } from '../../../frontend/sdk-types';
+import type { RepresentationDocumentsOut, RepresentationState } from '../../../frontend/sdk-types/fiscal';
 
 type DocumentKey = keyof RepresentationDocumentsOut;
 
