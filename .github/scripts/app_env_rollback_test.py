@@ -263,6 +263,15 @@ class TheCheckCommand(CommandTestCase):
         self.assertFalse(self.checked().exists())
         self.assertIn("::error::prod charges real money", self.err.getvalue())
 
+    def test_going_back_to_the_real_charge_reads_the_hub_even_when_it_is_off_in_force(self):
+        current = settings()["prod"]
+        for family in current:
+            current[family]["PLATFORM_INVOICING_ENABLED"] = "false"
+        fake = FakeAws(current, {SAAS: revision("erplora-prod-saas", settings()["prod"]["saas"]), **hub("false")})
+        self.assertEqual(self.check(fake, SAAS, confirm="PLATFORM_INVOICING_ENABLED=true"), 1)
+        self.assertFalse(self.checked().exists())
+        self.assertIn("::error::prod charges real money", self.err.getvalue())
+
     def test_without_the_real_charge_the_hub_is_not_read(self):
         current = settings()["prod"]
         for family in current:
