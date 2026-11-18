@@ -1,4 +1,5 @@
-"""Account → Preferences: the theme, the language and the alerts of the account's businesses."""
+"""Account → Preferences: the theme, its transparency effects, the language and the alerts of the account's
+businesses."""
 
 from live.context import OperationContext
 from live.operations import AI, operation
@@ -17,19 +18,21 @@ from accounts.schemas import PreferencesOut, PreferencesUpdateIn
     output=PreferencesOut,
     repeatable=True,  # Only its database: a cut before the COMMIT runs it again (live.database_cut).
     ai=AI(
-        description="Changes the account's theme, language or alerts of its businesses.",
+        description="Changes the account's theme, transparency effects, language or alerts of its businesses.",
         asks={
             "en": (
                 "switch the panel to dark mode",
                 "change my language to English",
                 "I want the light theme back",
                 "turn off the alerts from my businesses",
+                "turn off the transparency effects",
             ),
             "es": (
                 "ponme el modo oscuro",
                 "cámbiame el idioma a inglés",
                 "desactiva los avisos",
                 "no quiero recibir avisos de los negocios",
+                "quita los efectos de transparencia",
             ),
         },
     ),

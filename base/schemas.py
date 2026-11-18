@@ -47,9 +47,10 @@ class AppState(Schema):
 
 class SessionPreferences(Schema):
     """What the account chose in Cuenta → Preferencias that the shell paints with (packages/ui
-    ``ThemeMode``, shell/theme.ts; ``accounts.UserPreferences``)."""
+    ``ThemeMode`` and ``setThemeTransparency``, shell/theme.ts; ``accounts.UserPreferences``)."""
 
     theme_mode: Literal["system", "light", "dark"]
+    transparency: bool
 
 
 class SessionMeOut(Schema):

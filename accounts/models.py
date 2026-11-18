@@ -184,7 +184,8 @@ class AuthExchangeCode(models.Model):
 
 
 class UserPreferences(models.Model):
-    """What the account chose in Account → Preferences: the theme mode and whether it gets business notices.
+    """What the account chose in Account → Preferences: the theme mode, the transparency effects and whether it
+    gets business notices.
 
     The language is ``User.language``,
     which the mails and the jump to a hub already read. ``hub_alerts`` governs the mail that a business is
@@ -204,6 +205,14 @@ class UserPreferences(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="preferences", verbose_name=_("user")
     )
     theme_mode = models.CharField(_("appearance"), max_length=8, choices=ThemeMode.choices, default=ThemeMode.SYSTEM)
+    # Off, the shell paints its glass surfaces opaque. ``db_default`` keeps a row the previous code writes during a
+    # deploy valid.
+    transparency = models.BooleanField(
+        _("transparency effects"),
+        default=True,
+        db_default=True,
+        help_text=_("Translucent backgrounds on panels and notices."),
+    )
     hub_alerts = models.BooleanField(
         _("business notices"), default=True, help_text=_("When a business is ready to open.")
     )
