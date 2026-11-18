@@ -20,6 +20,7 @@ import { toastError, toastSuccess } from '@erplora/ui/shell';
 
 import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
 import { accessibleName, BYE, describeCall, enterView, errorFrame, flush, type MountOptions, mountHubs, subId } from '../__tests__/mount-hubs';
+import { business } from '../__tests__/businesses';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessListPage from './BusinessListPage.vue';
 import { navigation } from '../open-business';
@@ -38,26 +39,7 @@ function canOf(extra: Record<string, unknown>) {
   };
 }
 
-const row = (id: string, name: string, extra: Record<string, unknown> = {}) => ({
-  id,
-  slug: id,
-  name,
-  host: `${id}.localhost:8000`,
-  status: 'active',
-  status_label: 'Active',
-  plan: { slug: 'starter', name: 'Starter' },
-  role: 'hub_owner',
-  role_label: 'Owner',
-  last_opened_at: null,
-  can_open: true,
-  open_blocked_reason: null,
-  hub_error: null,
-  deletion_requested_at: null,
-  purge_after: null,
-  created_at: '2026-03-02T10:00:00Z',
-  can: canOf(extra),
-  ...extra,
-});
+const row = (id: string, name: string, extra: Record<string, unknown> = {}) => business(id, name, { can: canOf(extra), ...extra });
 const PREPARING = { status: 'preparing', status_label: 'Preparing', can_open: false, open_blocked_reason: 'preparing' };
 const ROWS = [
   row('bakery', 'Panadería López', { last_opened_at: '2026-10-13T09:12:00Z' }),

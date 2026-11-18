@@ -117,21 +117,21 @@ watch(live.data, (now) => {
 
 const columns = computed(() => [
   { key: 'name', label: t('hubs.list.columns.name'), cell: 'name', width: 'minmax(10rem,1.6fr)', priority: 'high' },
-  { key: 'host', label: t('hubs.list.columns.host'), cell: 'host', width: 'minmax(9rem,1.4fr)', priority: 'low' },
+  { key: 'host', label: t('hubs.list.columns.host'), cell: 'host', width: 'minmax(9rem,1.4fr)', priority: 'low', cardIcon: 'ion:globe-outline' },
   { key: 'status', label: t('hubs.list.columns.status'), cell: 'status', width: 'minmax(8rem,1.2fr)', priority: 'high' },
   {
     key: 'plan',
     label: t('hubs.list.columns.plan'),
-    width: 'minmax(5.5rem,0.8fr)',
     format: (_: unknown, row: BusinessRowOut) => row.plan?.name ?? '—',
+    cardIcon: 'ion:receipt-outline',
   },
-  { key: 'role', label: t('hubs.list.columns.role'), cell: 'role', width: 'minmax(7rem,1fr)' },
+  { key: 'role', label: t('hubs.list.columns.role'), cell: 'role', width: 'minmax(7rem,1fr)', cardIcon: 'ion:person-outline' },
   {
     key: 'last_opened_at',
     label: t('hubs.list.columns.lastOpened'),
-    width: 'minmax(7rem,1fr)',
     priority: 'low',
     format: (value: unknown) => (value ? formatDateTime(value as string, locale.value) : '—'),
+    cardIcon: 'ion:time-outline',
   },
 ] satisfies DataTableColumn<BusinessRowOut>[]);
 
@@ -436,6 +436,7 @@ onIonViewWillEnter(entered);
         :columns="columns"
         :actions="actions"
         :card-title="(row: BusinessRowOut) => row.name"
+        card-title-column="name"
         :card-icon="() => 'ion:storefront-outline'"
         @page-change="goToPage"
         @load-more="windowPages += 1"
@@ -500,47 +501,6 @@ onIonViewWillEnter(entered);
             >{{ $t('hubs.common.managedByOwner') }}</small>
           </span>
         </template>
-
-        <template #card="{ row }">
-          <p
-            class="mono card-host"
-            data-testid="business-host"
-          >
-            <HostName :host="row.host" />
-          </p>
-          <p class="card-pills">
-            <StatusPill v-bind="pill(row)" />
-            <span
-              v-if="row.plan"
-              class="card-meta"
-            ><HubIcon
-              name="ion:receipt-outline"
-              aria-hidden="true"
-            />{{ $t('hubs.common.plan', { name: row.plan.name }) }}</span>
-            <span
-              class="card-meta"
-              data-testid="business-role"
-            ><HubIcon
-              name="ion:person-outline"
-              aria-hidden="true"
-            />{{ row.role_label }}</span>
-            <StatusPill
-              v-if="row.last_opened_at && row.id === rows[0]?.id"
-              class="tag-recent"
-              tone="info"
-              :dot="false"
-              :label="$t('hubs.common.lastOpened')"
-            />
-          </p>
-          <p
-            v-if="why(row) || managedByOwner(row)"
-            class="card-why"
-            data-testid="business-status-why"
-          >
-            {{ why(row) || $t('hubs.common.managedByOwner') }}
-          </p>
-        </template>
-
 
         <template #empty>
           <EmptyState
@@ -789,32 +749,6 @@ a.business-name:hover {
   white-space: normal;
   font-size: 0.75rem;
   color: color-mix(in oklab, var(--ion-text-color) 62%, transparent);
-}
-.card-host {
-  margin: 0 0 8px;
-  font-size: 0.82rem;
-  overflow-wrap: anywhere;
-  color: color-mix(in oklab, var(--ion-text-color) 75%, transparent);
-}
-.card-pills {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  margin: 0;
-}
-.card-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.82rem;
-  color: color-mix(in oklab, var(--ion-text-color) 70%, transparent);
-}
-.card-why {
-  margin: 8px 0 0;
-  font-size: 0.85rem;
-  line-height: 1.4;
-  color: color-mix(in oklab, var(--ion-text-color) 75%, transparent);
 }
 .empty-create {
   display: flex;
