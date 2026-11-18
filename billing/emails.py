@@ -206,7 +206,7 @@ def send_oss_notice(notice) -> None:
     threshold (register in the OSS now: form 035 takes days) or crossed it (destination VAT already applies:
     register at once).
     ``MailNotSent`` when the mail could not leave."""
-    from billing.services import OSS_WARNING_PERCENT
+    from billing.services.oss_notices import OSS_WARNING_PERCENT
 
     values = {
         "year": notice.year,

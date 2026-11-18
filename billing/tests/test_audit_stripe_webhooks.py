@@ -15,6 +15,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 
 from billing import services
+from billing.services import invoice_recording, rectifying_invoices
 from billing.tests.stripe_double import connection_error, listing
 
 pytestmark = pytest.mark.django_db
@@ -53,13 +54,16 @@ def refused(*args) -> str:
 
 class TestTheOneList:
     HANDLERS = (
-        "checkout_completed", "checkout_closed", "invoice_paid", "invoice_payment_failed", "invoice_voided",
-        "credit_note_created", "credit_note_voided", "charge_refunded", "subscription_updated", "subscription_deleted", "customer_updated",
+        (services, ("checkout_completed", "checkout_closed", "invoice_paid", "invoice_payment_failed")),
+        (invoice_recording, ("invoice_voided",)),
+        (rectifying_invoices, ("credit_note_created", "credit_note_voided", "charge_refunded")),
+        (services, ("subscription_updated", "subscription_deleted", "customer_updated")),
     )
 
     def test_every_event_of_the_list_reaches_a_handler(self, monkeypatch):
-        for name in self.HANDLERS:
-            monkeypatch.setattr(services, name, lambda *args, **kwargs: "handled")
+        for module, names in self.HANDLERS:
+            for name in names:
+                monkeypatch.setattr(module, name, lambda *args, **kwargs: "handled")
 
         for event_type in services.STRIPE_WEBHOOK_EVENTS:
             assert services.process_stripe_event({"type": event_type, "data": {"object": {}}}) == "handled", event_type

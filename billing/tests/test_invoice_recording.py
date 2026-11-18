@@ -759,13 +759,13 @@ def test_the_payer_and_the_owner_both_hear_of_a_new_invoice(running, owner, make
     accounts, both their Billing lists re-run after the COMMIT."""
     from live import operations
 
-    from billing import services
+    from billing.services import invoice_events
 
     payer_account = make_user("payer@example.com")
     BillingProfile.objects.filter(pk=running.billing_profile_id).update(owner=payer_account)
     heard = []
     monkeypatch.setattr(operations, "notify_hook", lambda scope, names: heard.append((scope.key, set(names))))
-    monkeypatch.setattr(services, "notify", lambda scope, names: heard.append((scope.key, set(names))))
+    monkeypatch.setattr(invoice_events, "notify", lambda scope, names: heard.append((scope.key, set(names))))
 
     with django_capture_on_commit_callbacks(execute=True):
         deliver(paid())

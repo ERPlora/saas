@@ -68,7 +68,7 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
   quita con `tax_rates: []` y cambiar la fase actual cambia la suscripción en el acto (comprobado contra la API
   de prueba); un precio que ningún plan ni módulo tiene conserva su tipo. Un lugar que no se vende queda
   `refused` y el comando sale con error.
-- **Avisos de la OSS** (`services.note_oss_threshold`, BILLING-F06, erplora-old/saas#2297/#2299): cada factura cobrada que
+- **Avisos de la OSS** (`services.oss_notices.note_oss_threshold`, BILLING-F06, erplora-old/saas#2297/#2299): cada factura cobrada que
   cuenta para el umbral (B2C a otro estado de la UE, sin NIF-IVA comprobado) mira el total del año; la que lo
   lleva por encima del 80 % (`OSS_WARNING_PERCENT`) anota un `OssNotice` `near` y la que lo cruza (o la primera
   del año si el anterior cerró por encima) uno `crossed`, cada uno una vez al año (único por `(year, kind)`;
@@ -474,11 +474,11 @@ PDF). Aquí nunca se simula VeriFactu: sin respuesta del Hub la factura sigue «
 | Pieza | Qué hace |
 |---|---|
 | `models/invoices.py`, `models/plan_changes.py` | `Invoice` (factura o rectificativa; pago `open`/`paid`/`void`; estado fiscal `issuing`/`issued`/`accepted`/`accepted_with_errors`/`rejected`, el del Hub; el pagador copiado el día de la emisión; importes en céntimos, `net + tax = total`; pagada ⇔ numerada, en la BD; `stripe_source_id`, `rectification_type`, `rectification_reason` en las rectificativas), `InvoiceLine` (una por línea de Stripe, con su categoría, tipo, base y cuota sellados; `item_kind`/`item_slug` dicen qué plan o módulo cobra), `InvoiceCounter` (año y último número por serie) y `PlanChangeSchedule` (la bajada que espera) |
-| `services.py` | `issue_number`, las operaciones internas `billing.invoice.record`, `billing.credit_note.record`, `billing.refund.record`, `billing.checkout.refund_record` (un pago de quien ya no es propietario, cancelado y devuelto por el webhook) y `billing.invoice.apply_fiscal_status`, `expire_open_checkouts` (tras el COMMIT de un traspaso), `post_platform_invoice`, `refresh_platform_invoice`, `send_invoice_mail`, `reconcile_platform_invoices`, `payment_gates.invoicing_available` y `billing.invoice.pay` |
+| `services/invoice_numbering.py`, `services/invoice_recording.py`, `services/rectifying_invoices.py`, `services/platform_invoices.py` (y lo que comparten: `services/invoice_sealing.py`, `services/invoice_events.py`) | `issue_number`; las operaciones internas `billing.invoice.record` (la factura desde Stripe), `billing.credit_note.record` y `billing.refund.record` (las rectificativas) y `billing.invoice.apply_fiscal_status`; `post_platform_invoice`, `refresh_platform_invoice`, `send_invoice_mail` y `reconcile_platform_invoices` (la emisión por el hub de plataforma). En `services/__init__.py` siguen `billing.checkout.refund_record` (un pago de quien ya no es propietario, cancelado y devuelto por el webhook), `expire_open_checkouts` (tras el COMMIT de un traspaso) y `billing.invoice.pay`; `invoicing_available` está en `services/payment_gates.py` |
 | `queries/invoices.py`, `queries/subscriptions.py` | `billing.invoice.list`, `.get`, `.pdf`, `.csv`, `billing.subscription.list`, `billing.payment_method.get` |
 | `live.py` | Facturas y Suscripciones son vivas; un evento de una factura llega al canal de su pagador y al del propietario de su negocio. La tarjeta no es viva (pregunta a Stripe) |
 | `emails.py` | El aviso al pagador cuando el Hub la emite (texto plano en su idioma, con enlace a Facturación) |
-| `management/commands/reconcile_platform_invoices.py` | La pasada a mano; el `saas-worker` corre la misma cada 15 min (`services.reconcile_platform_invoices_exclusively`): reintenta lo que el Hub debe y los correos que no salieron |
+| `management/commands/reconcile_platform_invoices.py` | La pasada a mano; el `saas-worker` corre la misma cada 15 min (`services.platform_invoices.reconcile_platform_invoices_exclusively`): reintenta lo que el Hub debe y los correos que no salieron |
 
 ### Contrato con el hub de plataforma (lo implementa el carril Hub; firma HMAC v1 + v2 como todo `/internal`)
 

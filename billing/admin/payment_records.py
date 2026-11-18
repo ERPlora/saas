@@ -84,7 +84,8 @@ class PromoRedemptionAdmin(ReadOnlyAdmin):
 
 @admin.register(InvoiceCounter)
 class InvoiceCounterAdmin(ReadOnlyAdmin):
-    """The last number of each series and year: only the invoice's numbering moves it (``services.issue_number``)."""
+    """The last number of each series and year: only the invoice's numbering moves it
+    (``services.invoice_numbering.issue_number``)."""
 
     list_display = ("series", "year", "last_number")
 

@@ -1,4 +1,5 @@
-"""The body of ``POST /internal/platform/invoices`` (``services.platform_payload``) against the Hub's own schema of it.
+"""The body of ``POST /internal/platform/invoices`` (``services.platform_invoices.platform_payload``) against the Hub's
+own schema of it.
 
 The platform hub validates the body with its ``PlatformInvoiceIn`` (``apps/invoice/schemas/platform.py``, in the
 Hub's code) and answers 422 ``internal.payload_invalid`` to one out of contract: the invoice is numbered here and stays
@@ -21,8 +22,9 @@ import pytest
 from django.utils import timezone
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from billing import platform_contract, services
+from billing import platform_contract
 from billing.models import Invoice, InvoiceCounter
+from billing.services import platform_invoices
 from billing.tests.stripe_double import credit_note, event, invoice, subscription
 from billing.tests.stripe_captured import paid
 from billing.tests.test_invoice_recording import deliver
@@ -137,7 +139,7 @@ def _stripe(stripe_double, issuer_identity):
 def body_of(stripe_invoice_id: str, kind: str = Invoice.Kind.INVOICE) -> dict:
     """What the platform hub receives, as JSON travels."""
     recorded = Invoice.objects.get(kind=kind, stripe_invoice_id=stripe_invoice_id)
-    return json.loads(json.dumps(services.platform_payload(recorded)))
+    return json.loads(json.dumps(platform_invoices.platform_payload(recorded)))
 
 
 @pytest.mark.usefixtures("running")

@@ -763,7 +763,7 @@ Implicados: hubs (las suscripciones y los pagadores de los negocios)
   (y, en el Hub, `tests/e2e/hub-suspended.spec.ts`) citan la clave `BILLING-Gnn` y llevan en su cabecera la
   equivalencia con la de este WORKBOOK.
 - BILLING-F25, el reintento de la factura de ERPlora (`reconcile_platform_invoices`), corre cada 15 minutos (:00, :15,
-  :30, :45 UTC) dentro del proceso `saas-worker` (`manage.py run_worker`, `base/worker.py`); la pasada es `services.reconcile_platform_invoices_exclusively`, la misma del comando, que queda para
+  :30, :45 UTC) dentro del proceso `saas-worker` (`manage.py run_worker`, `base/worker.py`); la pasada es `services.platform_invoices.reconcile_platform_invoices_exclusively`, la misma del comando, que queda para
   lanzarla a mano. Lo que deja pendiente escribe la línea ERROR `saas.worker.pass_failed task=reconcile_platform_invoices
   left work owed: …`, que es lo que avisa la alarma. En el worker la pasada
   tiene 50 s y oye la parada entre dos facturas (`go_on`): lo que no entra va en la pasada siguiente (`cut_short=1`).

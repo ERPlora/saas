@@ -181,7 +181,7 @@ def latest_vat_check(vat_number: str) -> VatCheck | None:
 def vat_verdict_as_of(vat_number: str, moment) -> VatCheck | None:
     """The last verdict VIES gave about a number until ``moment``, whatever its age: a verification WITH proof
     (consultation number or manual override) or a refusal. What it said then is what an invoice of then is
-    judged by (``services._payer_clearance``); «could not answer» says nothing."""
+    judged by (``services.invoice_recording._payer_clearance``); «could not answer» says nothing."""
     with_proof = Q(status=VatCheck.VERIFIED) & (~Q(consultation_number="") | Q(override_at__isnull=False))
     return (
         VatCheck.objects.filter(vat_number=vies.normalise(vat_number), requested_at__lte=moment)

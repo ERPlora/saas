@@ -15,6 +15,7 @@ import logging
 from django.core.management.base import BaseCommand, CommandError
 
 from billing import services
+from billing.services import oss_notices
 from hubs.services.exclusive_runs import run_exclusively
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ class Command(BaseCommand):
                 return
             counts = services.retax_live_subscriptions()
             # The team's OSS notices whose mail did not leave (BILLING-F06).
-            counts.update(services.send_pending_oss_notices())
+            counts.update(oss_notices.send_pending_oss_notices())
         summary = " ".join(f"{key}={value}" for key, value in counts.items())
         logger.info("billing.retax_subscriptions %s", summary)
         self.stdout.write(f"retax_subscriptions: {summary}")
