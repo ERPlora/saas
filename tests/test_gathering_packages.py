@@ -39,15 +39,31 @@ def statements_beyond_gathering(source: str, package: str, modules: set[str]) ->
     return found
 
 
+def _imports_from_its_package(node: ast.stmt, package: str) -> bool:
+    """An import of an ``__init__`` from its own package, spelled in full or relative (``from .module import name``)."""
+    return isinstance(node, ast.ImportFrom) and (
+        node.level > 0 or node.module == package or (node.module or "").startswith(f"{package}.")
+    )
+
+
+def _renames_a_name_of_a_module(node: ast.stmt, modules: set[str]) -> bool:
+    """``name = <module>.<name>``: the re-export that needs no import."""
+    value = node.value if isinstance(node, ast.Assign | ast.AnnAssign) else None
+    if not isinstance(value, ast.Attribute):
+        return False
+    while isinstance(value, ast.Attribute):
+        value = value.value
+    return isinstance(value, ast.Name) and value.id in modules
+
+
 def names_taken_from_its_modules(source: str, package: str, modules: set[str]) -> list[str]:
-    """The imports of an ``__init__`` that take from its own package anything but whole modules."""
+    """What gives a name of a module a second path in the ``__init__`` of its package: an import from the package that
+    takes anything but whole modules, and a name of a module assigned to a name of the ``__init__``."""
     return [
         f"line {node.lineno}: {ast.unparse(node)}"
         for node in ast.parse(source).body
-        if isinstance(node, ast.ImportFrom)
-        and node.level == 0
-        and (node.module == package or (node.module or "").startswith(f"{package}."))
-        and not _takes_whole_modules(node, package, modules)
+        if (_imports_from_its_package(node, package) and not _takes_whole_modules(node, package, modules))
+        or _renames_a_name_of_a_module(node, modules)
     ]
 
 
@@ -102,10 +118,19 @@ def test_the_scan_catches_a_name_taken_from_a_module_but_not_the_code_around_it(
         "from billing.services import sale_tax as taxes\n"
         "from hubs.services import refusals\n"
         "LIMIT = 3\n"
+        "from .sale_tax import sale_quote\n"
+        "from . import vat_clearance\n"
+        "sale_quote = sale_tax.sale_quote\n"
+        "INVALID: str = vat_clearance.CLEARANCE_INVALID\n"
+        "quote = sale_tax.sale_quote(None)\n"
     )
 
     assert names_taken_from_its_modules(source, "billing.services", {"sale_tax", "vat_clearance"}) == [
         "line 4: from billing.services.sale_tax import sale_quote",
         "line 5: from billing.services import clear_tax_id_for_stripe",
         "line 6: from billing.services import sale_tax as taxes",
+        "line 9: from .sale_tax import sale_quote",
+        "line 10: from . import vat_clearance",
+        "line 11: sale_quote = sale_tax.sale_quote",
+        "line 12: INVALID: str = vat_clearance.CLEARANCE_INVALID",
     ]
