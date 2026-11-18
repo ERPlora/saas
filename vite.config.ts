@@ -73,6 +73,7 @@ export default defineConfig({
       'vite.config.test.ts',
       'eslint.config.test.ts',
       'tsconfig.test.ts',
+      'typecheck-declarations.test.ts',
       // The e2e's helpers; its Playwright specs (`*.spec.ts`) run under Playwright only.
       'tests/e2e/*.test.ts',
     ],
