@@ -13,7 +13,8 @@ from decimal import Decimal
 
 import pytest
 
-from billing import queries, services
+from billing import queries
+from billing.services import sale_tax
 from billing.vat import BILLING_COUNTRIES, NOT_SUBJECT, quote_vat
 
 pytestmark = pytest.mark.django_db
@@ -53,12 +54,12 @@ class TestUnitedKingdom:
     def test_a_uk_business_on_file_is_sold_at_the_net_price(self, business_paid_by):
         uk = business_paid_by("GB", "SW1A 1AA", tax_id="GB123456789")
 
-        quote = services.sale_quote(uk, category_key=PLAN, price=Decimal("100.00"))
+        quote = sale_tax.sale_quote(uk, category_key=PLAN, price=Decimal("100.00"))
 
         assert quote.treatment == NOT_SUBJECT
         assert (quote.base, quote.tax) == (Decimal("100.00"), Decimal("0.00"))
         assert (
-            services.sale_tax_rates(uk, category_key=PLAN, price=Decimal("100.00"))
+            sale_tax.sale_tax_rates(uk, category_key=PLAN, price=Decimal("100.00"))
             == []
         )
 
@@ -70,10 +71,10 @@ class TestUnitedKingdom:
         consumer = business_paid_by("GB", "SW1A 1AA")
 
         with pytest.raises(Conflict) as refused:
-            services.sale_tax_rates(consumer, category_key=PLAN, price=Decimal("100.00"))
+            sale_tax.sale_tax_rates(consumer, category_key=PLAN, price=Decimal("100.00"))
 
         assert refused.value.code == "billing.uk_business_required"
-        assert services.sale_tax_rates(consumer, category_key=PLAN, price=Decimal("0.00")) == []
+        assert sale_tax.sale_tax_rates(consumer, category_key=PLAN, price=Decimal("0.00")) == []
 
     def test_a_uk_payer_is_not_subject(self):
         quote = _quote("GB", "SW1A 1AA")

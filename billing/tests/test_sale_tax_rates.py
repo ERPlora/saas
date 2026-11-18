@@ -2,7 +2,7 @@
 
 The SaaS sells a business's plan and a paid module, and each door used to decide the tax on its own:
 the same customer in Las Palmas got a right plan invoice and a module overcharged by 21 %. The decision
-lives in ONE place, ``billing.services.sale_tax_rates``, and is tested here.
+lives in ONE place, ``billing.services.sale_tax.sale_tax_rates``, and is tested here.
 
 Adapted: it answers with the rates Stripe must charge as ``TaxRateSpec`` (``billing.stripe_tax_rates``),
 which ``billing.stripe_service`` mirrors into Stripe ``TaxRate`` ids; a sale that cannot be priced raises
@@ -16,7 +16,7 @@ from decimal import Decimal
 import pytest
 from live.errors import Conflict
 
-from billing import services
+from billing.services import sale_tax
 
 pytestmark = pytest.mark.django_db
 
@@ -44,10 +44,10 @@ class TestBothDoorsChargeTheSame:
     def test_the_mainland_pays_21_percent_whatever_it_buys(self, business_paid_by):
         business = business_paid_by("ES", MADRID)
 
-        plan = services.sale_tax_rates(
+        plan = sale_tax.sale_tax_rates(
             business, category_key=PLAN, price=Decimal("29.99")
         )
-        module = services.sale_tax_rates(
+        module = sale_tax.sale_tax_rates(
             business, category_key=MODULE, price=Decimal("100.00")
         )
 
@@ -58,11 +58,11 @@ class TestBothDoorsChargeTheSame:
         business = business_paid_by("ES", LAS_PALMAS, tax_id="ESB27593136")
 
         assert (
-            services.sale_tax_rates(business, category_key=PLAN, price=Decimal("29.99"))
+            sale_tax.sale_tax_rates(business, category_key=PLAN, price=Decimal("29.99"))
             == []
         )
         assert (
-            services.sale_tax_rates(
+            sale_tax.sale_tax_rates(
                 business, category_key=MODULE, price=Decimal("100.00")
             )
             == []
@@ -76,10 +76,10 @@ class TestWhatIsFreeIsNeverRefused:
         nowhere = business_paid_by(None)
 
         assert (
-            services.sale_tax_rates(nowhere, category_key=MODULE, price=Decimal("0.00"))
+            sale_tax.sale_tax_rates(nowhere, category_key=MODULE, price=Decimal("0.00"))
             == []
         )
-        assert services.require_billing_location(nowhere, price=Decimal("0.00")) is None
+        assert sale_tax.require_billing_location(nowhere, price=Decimal("0.00")) is None
 
 
 class TestWithoutKnowingWhereThePayerIsNothingIsSold:
@@ -88,7 +88,7 @@ class TestWithoutKnowingWhereThePayerIsNothingIsSold:
         nowhere = business_paid_by(None)
 
         with pytest.raises(Conflict) as refused:
-            services.require_billing_location(
+            sale_tax.require_billing_location(
                 nowhere, price=Decimal("100.00"), what="module"
             )
 
@@ -97,13 +97,13 @@ class TestWithoutKnowingWhereThePayerIsNothingIsSold:
 
     def test_a_country_without_postal_code_is_not_a_location(self, business_paid_by):
         with pytest.raises(Conflict):
-            services.require_billing_location(
+            sale_tax.require_billing_location(
                 business_paid_by("ES", ""), price=Decimal("100.00")
             )
 
     def test_with_the_address_on_file_it_is_not_refused(self, business_paid_by):
         assert (
-            services.require_billing_location(
+            sale_tax.require_billing_location(
                 business_paid_by("ES", MADRID), price=Decimal("100.00")
             )
             is None
@@ -117,14 +117,14 @@ class TestASpanishPostalCodeHasFiveDigits:
         business = business_paid_by("ES", "3500")
 
         with pytest.raises(Conflict) as refused:
-            services.sale_tax_rates(business, category_key=PLAN, price=Decimal("29.99"))
+            sale_tax.sale_tax_rates(business, category_key=PLAN, price=Decimal("29.99"))
 
         assert refused.value.code == "billing.billing_location_required"
         with pytest.raises(Conflict):
-            services.require_billing_location(business, price=Decimal("29.99"))
+            sale_tax.require_billing_location(business, price=Decimal("29.99"))
 
     def test_benidorm_with_its_zero_pays_21_percent(self, business_paid_by):
-        assert _percentages(services.sale_tax_rates(business_paid_by("ES", "03500"), category_key=PLAN, price=Decimal("29.99"))) == [
+        assert _percentages(sale_tax.sale_tax_rates(business_paid_by("ES", "03500"), category_key=PLAN, price=Decimal("29.99"))) == [
             Decimal("21.00")
         ]
 
@@ -137,7 +137,7 @@ class TestASaleThatCannotKnowItsRateIsNotMade:
         abroad = _canary_business_without_its_rule(business_paid_by)
 
         with pytest.raises(Conflict) as refused:
-            services.sale_tax_rates(
+            sale_tax.sale_tax_rates(
                 abroad, category_key=MODULE, price=Decimal("100.00"), what="module"
             )
 
@@ -151,6 +151,6 @@ class TestASaleThatCannotKnowItsRateIsNotMade:
         abroad = _canary_business_without_its_rule(business_paid_by)
 
         with translation.override("es"), pytest.raises(Conflict) as refused:
-            services.sale_tax_rates(abroad, category_key=PLAN, price=Decimal("29.99"), what="plan")
+            sale_tax.sale_tax_rates(abroad, category_key=PLAN, price=Decimal("29.99"), what="plan")
 
         assert "este plan" in refused.value.message

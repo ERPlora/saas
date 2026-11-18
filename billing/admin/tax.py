@@ -14,7 +14,7 @@ from django.utils.html import format_html
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
-from billing import queries, services
+from billing import queries
 from billing.models import (
     CompanyConfig,
     FiscalPolicy,
@@ -23,6 +23,7 @@ from billing.models import (
     VatCheck,
 )
 from billing.money import from_cents
+from billing.services import vat_clearance
 from billing.vies import is_uk_vat_number
 
 
@@ -270,8 +271,8 @@ class VatCheckAdmin(admin.ModelAdmin):
                 )
                 continue
             try:
-                check = services.check_vat_number(number, spender=request.user)
-            except services.VatCheckThrottled:
+                check = vat_clearance.check_vat_number(number, spender=request.user)
+            except vat_clearance.VatCheckThrottled:
                 messages.error(
                     request,
                     _(
@@ -280,7 +281,7 @@ class VatCheckAdmin(admin.ModelAdmin):
                     % {"numbers": ", ".join(numbers[position:])},
                 )
                 return
-            except services.VatCheckNotRecorded:
+            except vat_clearance.VatCheckNotRecorded:
                 messages.error(
                     request,
                     _(
@@ -315,8 +316,8 @@ class VatCheckAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         """Adding by hand is exactly an override, written through the same door as the code
-        (``services.record_manual_override``), so the rule —author and reason— is one."""
-        check = services.record_manual_override(
+        (``vat_clearance.record_manual_override``), so the rule —author and reason— is one."""
+        check = vat_clearance.record_manual_override(
             obj.vat_number,
             by=request.user.email or request.user.get_username(),
             reason=form.cleaned_data.get("override_reason", ""),
