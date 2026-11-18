@@ -1,20 +1,20 @@
 """Writes of billing in Stripe: a business handed over with a paid plan, the webhook and the sweeps that apply the live
-subscription, and ERPlora's invoices, credit notes and OSS notices. Buying, changing and cancelling, the VAT number of a
-payer, its VIES verdict and the tax of a sale live in their own modules of this package."""
+subscription, the payer of an account that deleted itself, and «Pay» on an invoice not collected. Buying, changing and
+cancelling, the VAT number of a payer, its VIES verdict, the tax of a sale, ERPlora's invoices and rectifying invoices,
+their issue by the platform hub and the OSS notices live in their own modules of this package."""
 
 import logging
 import uuid
 from collections import Counter
-from collections.abc import Callable
 from functools import partial
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import NamedTuple
 
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db import IntegrityError, connection, transaction
+from django.db import transaction
 from django.db.models import F, Q
 from django.utils import timezone
 from django.utils.translation import gettext as _
@@ -22,33 +22,24 @@ from live.context import OperationContext, Scope, system_context
 from live.errors import Conflict, OperationError
 from live.errors import NotFound as NotFoundError
 from live.operations import INTERNAL, operation
-from live.outbox import notify, record_event
+from live.outbox import record_event
 
 from apps.models import Module
 from base.navigation import BILLING, BUSINESSES
-from billing import events, platform_contract, queries, stripe_service, vat, vies
+from billing import events, queries, stripe_service, vat
 from billing.models import (
     CheckoutAttempt,
     Invoice,
-    InvoiceCounter,
-    InvoiceLine,
-    OssNotice,
     PaymentFailure,
-    VatCheck,
     WebhookEvent,
 )
-from billing.money import from_cents, to_cents
+from billing.money import from_cents
 from billing.schemas import (
     CheckoutRefundRecordIn,
     CheckoutRefundRecordOut,
-    CreditNoteRecordIn,
-    FiscalAnswerIn,
-    FiscalAnswerOut,
     InvoicePayIn,
     InvoicePayOut,
     InvoiceRecordIn,
-    InvoiceRecordOut,
-    RefundRecordIn,
     CheckoutStartOut,
     HubIn,
     ModuleIn,
@@ -61,13 +52,20 @@ from billing.services import (
     discounts,
     downgrades,
     invoice_discounts,
+    invoice_events,
+    invoice_numbering,
+    invoice_recording,
+    invoice_sealing,
     live_subscriptions,
+    oss_notices,
     payer_vat_numbers,
     payment_gates,
     plan_changes,
+    platform_invoices,
     price_checks,
     promo_codes,
     promo_holds,
+    rectifying_invoices,
     sale_tax,
     staff_test_clocks,
     stripe_customers,
@@ -85,11 +83,9 @@ from billing.stripe_checkout import (
 from billing.stripe_keys import StripeKeyMode
 from billing.stripe_period import subscription_period
 from hubs import emails as hub_emails
-from hubs import hub_client
 from hubs.queries import access_control, membership, payers
-from hubs.services import exclusive_runs, hub_callbacks, refusals, suspensions
+from hubs.services import hub_callbacks, refusals, suspensions
 from hubs.models import BillingProfile, Hub, HubMember, Subscription, SubscriptionItem
-from hubs.hub_client import HubRefused, HubUnavailable
 
 logger = logging.getLogger("billing.services")
 
@@ -588,13 +584,13 @@ def process_stripe_event(event: dict) -> str:  # noqa: C901, PLR0911
         case "invoice.payment_failed":
             return invoice_payment_failed(obj)
         case "invoice.voided" | "invoice.marked_uncollectible":
-            return invoice_voided(obj)
+            return invoice_recording.invoice_voided(obj)
         case "credit_note.created":
-            return credit_note_created(obj)
+            return rectifying_invoices.credit_note_created(obj)
         case "credit_note.voided":
-            return credit_note_voided(obj)
+            return rectifying_invoices.credit_note_voided(obj)
         case "charge.refunded":
-            return charge_refunded(obj)
+            return rectifying_invoices.charge_refunded(obj)
         case "customer.subscription.created" | "customer.subscription.updated":
             return subscription_updated(obj)
         case "customer.subscription.deleted":
@@ -904,9 +900,9 @@ def invoice_paid(invoice: dict) -> str:
     hub, subscription_id = _invoice_business(invoice)
     if hub is None:
         return _invoice_paid_elsewhere(invoice, subscription_id)
-    invoice = _with_all_lines(invoice)
-    charged_at = _moment_or_none((invoice.get("status_transitions") or {}).get("paid_at")) or timezone.now()
-    verified, consultation = _payer_clearance(hub, charged_at)
+    invoice = invoice_recording._with_all_lines(invoice)
+    charged_at = invoice_sealing._moment_or_none((invoice.get("status_transitions") or {}).get("paid_at")) or timezone.now()
+    verified, consultation = invoice_recording._payer_clearance(hub, charged_at)
     with stripe_sync.holding(hub.id):
         # Stripe not answering raises: its retry reads the truth (a paid invoice may be a proration or an
         # older one, and guessing «active» woke businesses still in dunning).
@@ -915,7 +911,7 @@ def invoice_paid(invoice: dict) -> str:
             stripe_invoice_id=invoice.get("id"), resolved_at__isnull=True
         ).update(resolved_at=timezone.now())
         live_subscriptions.apply_live(hub.id, live)
-        invoice_record(
+        invoice_recording.invoice_record(
             hub_callbacks.system_ctx_for(hub.id),
             InvoiceRecordIn(
                 hub_id=hub.id,
@@ -947,11 +943,11 @@ def _invoice_paid_elsewhere(invoice: dict, subscription_id: str) -> str:
             invoice.get("id"), subscription_id or "-", extra={"event": "billing.unplaced_payment"},
         )
         raise UnplacedPayment(invoice.get("id"))
-    invoice = _with_all_lines(invoice)
-    charged_at = _moment_or_none((invoice.get("status_transitions") or {}).get("paid_at")) or timezone.now()
-    verified, consultation = _payer_clearance(named, charged_at)
+    invoice = invoice_recording._with_all_lines(invoice)
+    charged_at = invoice_sealing._moment_or_none((invoice.get("status_transitions") or {}).get("paid_at")) or timezone.now()
+    verified, consultation = invoice_recording._payer_clearance(named, charged_at)
     with stripe_sync.holding(named.id):
-        invoice_record(
+        invoice_recording.invoice_record(
             hub_callbacks.system_ctx_for(named.id),
             InvoiceRecordIn(
                 hub_id=named.id, invoice=invoice, status="paid", tax_id_verified=verified,
@@ -1070,7 +1066,7 @@ def _record_failure(
         PaymentFailure.objects.filter(pk=failure.pk).update(**known)
     live_subscriptions.apply_live(hub.id, live)
     # Listed in Billing as «not collected», with «Pay»; numbered once it is paid.
-    invoice_record(
+    invoice_recording.invoice_record(
         hub_callbacks.system_ctx_for(hub.id), InvoiceRecordIn(hub_id=hub.id, invoice=invoice, status="open")
     )
     return "processed"
@@ -1646,7 +1642,7 @@ def forget_departed_payer(profile_id, now: datetime | None = None) -> str:
         if now < profile.forget_after:
             return PAYER_HELD
         for stripe_invoice_id in list(unpaid.values_list("stripe_invoice_id", flat=True)):
-            invoice_voided(stripe_service.void_invoice(stripe_invoice_id))
+            invoice_recording.invoice_voided(stripe_service.void_invoice(stripe_invoice_id))
     if profile.stripe_customer_id:
         try:
             stripe_service.delete_customer(profile.stripe_customer_id)
@@ -1658,1213 +1654,6 @@ def forget_departed_payer(profile_id, now: datetime | None = None) -> str:
         profile.delete()
     logger.info("[PAYER] The payer %s of a deleted account is forgotten", profile_id)
     return PAYER_FORGOTTEN
-
-
-# --- ERPlora's invoices: the number -------------------------------------------------------------------
-
-#: The series of each kind of document: a rectifying invoice has its own (RD 1619/2012, art. 15.5).
-INVOICE_SERIES = {Invoice.Kind.INVOICE: "ERP", Invoice.Kind.CREDIT_NOTE: "ERPR"}
-
-
-def invoice_today() -> date:
-    """The issue date of an invoice numbered now (the tests set it)."""
-    return timezone.localdate()
-
-
-def issue_number(kind: str) -> tuple[str, int, str, date]:
-    """The next number of ``kind``'s series and its issue date: ``(series, sequence, "ERP-2026-00123", date)``.
-
-    ``fiscal_counter``: the series' row is locked in the transaction that records the
-    invoice, and only then the date is read, so a number that waited for another one never carries an earlier
-    date; a new year starts at 1. A second invoice waits for the first one's COMMIT, and a
-    ROLLBACK gives the number back: no gap, no duplicate (a Postgres sequence would leave a hole). Refused
-    outside a transaction: a number given alone is a hole the day its invoice fails.
-    """
-    if connection.get_autocommit():
-        raise RuntimeError("An invoice number is only given inside the transaction that records its invoice")
-    series = INVOICE_SERIES[kind]
-    table = InvoiceCounter._meta.db_table
-    with connection.cursor() as cursor:
-        cursor.execute(
-            f"INSERT INTO {table} (id, series, year, last_number) VALUES (%s, %s, 0, 0) ON CONFLICT (series) DO NOTHING",
-            [uuid.uuid7(), series],
-        )
-        cursor.execute(f"SELECT year, last_number FROM {table} WHERE series = %s FOR UPDATE", [series])
-        year, last_number = cursor.fetchone()
-        on = invoice_today()
-        sequence = last_number + 1 if year == on.year else 1
-        cursor.execute(
-            f"UPDATE {table} SET year = %s, last_number = %s WHERE series = %s RETURNING last_number",
-            [on.year, sequence, series],
-        )
-        sequence = cursor.fetchone()[0]
-    return series, sequence, f"{series}-{on.year}-{sequence:05d}", on
-
-
-# --- ERPlora's invoices: recorded from Stripe ---------------------------------------------------------
-#
-# The Stripe receipt is not the legal invoice. A paid Stripe invoice becomes ERPlora's ``Invoice`` in the
-# webhook's transaction (the row is what makes it durable), numbered here and issued by ERPlora's platform
-# hub, which chains it in VeriFactu (``post_platform_invoice``, after the COMMIT). An unpaid one is listed
-# without a number («Not collected», «Pay»); a credit note is a rectifying invoice of its own series.
-
-
-def _with_all_lines(invoice: dict) -> dict:
-    """The Stripe invoice with every line in ``lines.data`` (the event embeds only the first ones)."""
-    lines = stripe_service.invoice_lines(invoice)
-    return {**invoice, "lines": {"object": "list", "data": lines, "has_more": False}}
-
-
-class VatProofUnavailable(Exception):
-    """VIES could not answer and no verdict on file says how the payer's VAT number stood when it was charged:
-    the invoice waits (the webhook answers 500 and Stripe retries) rather than guess."""
-
-
-def _payer_clearance(hub: Hub, charged_at: datetime) -> tuple[bool, str]:
-    """Whether the payer's VAT number grants the reverse charge on a sale charged at ``charged_at``, and the
-    VIES consultation number that proves it. Asked before the business is locked (VIES may take seconds).
-
-    Judged as of the charge: the last verdict VIES gave until then decides, even one older
-    than the 30 days a SALE trusts (the proof travels with the invoice; a later outage of VIES cannot turn a
-    verified intra-EU B2B sale into a Spanish one). With no verdict before the charge, VIES is asked now; if it
-    cannot answer, ``VatProofUnavailable``: never Spanish VAT because VIES was down. Only a number of ANOTHER
-    member state is ever judged: a national or a non-EU one cannot be reverse charged."""
-    profile = hub.billing_profile
-    if profile is None or not profile.tax_id:
-        return False, ""
-    country = (profile.billing_country or "").strip().upper()
-    issuer = vat_clearance._issuer_country()
-    value = vies.with_country_prefix(profile.tax_id, country, issuer_country=issuer)
-    if (
-        not value
-        or country == issuer
-        or country not in vat.EU_VAT_RATES
-        or vies.is_uk_vat_number(value)
-        or vies.is_domestic_vat_number(value, issuer_country=issuer, customer_country=country)
-    ):
-        return False, ""
-    verdict = queries.vat_verdict_as_of(value, charged_at)
-    if verdict is not None:
-        if verdict.status == VatCheck.VERIFIED:
-            return True, verdict.consultation_number
-        return False, ""
-    clearance = vat_clearance.clear_tax_id_for_stripe(value, customer_country=country)
-    if clearance.verified:
-        return True, (clearance.check.consultation_number if clearance.check is not None else "")
-    if clearance.status == vat_clearance.CLEARANCE_INVALID:
-        return False, ""
-    logger.error(
-        "[INVOICE] VIES cannot answer about %s and nothing on file proves it: the invoice of hub %s waits",
-        value, hub.id, extra={"event": "billing.invoice_waits_for_vies"},
-    )
-    raise VatProofUnavailable(value)
-
-
-def _moment_or_none(value) -> datetime | None:
-    return stripe_sync._moment(int(value)) if value else None
-
-
-def _price_of(line: dict) -> str:
-    """The Stripe price a line bills: under ``pricing.price_details`` since the 2025 API, ``price`` before."""
-    price = ((line.get("pricing") or {}).get("price_details") or {}).get("price") or line.get("price") or ""
-    return price.get("id", "") if isinstance(price, dict) else price
-
-
-def _is_proration(line: dict) -> bool:
-    details = (line.get("parent") or {}).get("subscription_item_details") or {}
-    return bool(details.get("proration") or line.get("proration"))
-
-
-def _line_tax_cents(line: dict) -> int:
-    """The tax Stripe charged on a line (``taxes`` since the 2025 API, ``tax_amounts`` before)."""
-    taxes = line.get("taxes")
-    if taxes is None:
-        taxes = line.get("tax_amounts") or []
-    return sum(int(tax.get("amount") or 0) for tax in taxes)
-
-
-def _item_of(price_id: str) -> tuple[str, str, str]:
-    """What a line sells: ``(kind, slug, tax category)``."""
-    if (found := queries.plan_for_price(price_id)) is not None:
-        return InvoiceLine.ItemKind.PLAN, found[0].slug, vat.SAAS_SUBSCRIPTION_CATEGORY
-    if (found := queries.module_for_price(price_id)) is not None:
-        return InvoiceLine.ItemKind.MODULE, found[0].slug, vat.SOFTWARE_LICENSE_CATEGORY
-    return InvoiceLine.ItemKind.OTHER, "", vat.SAAS_SUBSCRIPTION_CATEGORY
-
-
-def _nominal_rate(breakdown: vat.VatBreakdown, category: str) -> Decimal:
-    """The rate of the rule in force for what is sold where the sale is taxed (the declared rate: Stripe's
-    effective one moves a hundredth with the rounding)."""
-    rate = vat.vat_rate_for(country=breakdown.tax_country, region=breakdown.tax_region, category_key=category)
-    return rate if rate is not None else breakdown.rate
-
-
-def _sealed_amounts(amount: int, tax: int, *, treatment: str, rate: Decimal, reconciled: bool) -> tuple[Decimal, int, int]:
-    """``(rate, net, tax)`` of a line in cents, by the qualification of the sale: without a rate (reverse
-    charge, not subject) all of it is base; reconciled (Stripe charged no tax on a subject sale) the VAT comes
-    out of the amount charged; otherwise Stripe's amounts rule."""
-    if treatment not in vat.TREATMENTS_WITH_RATE:
-        return Decimal("0.00"), amount + tax, 0
-    if reconciled:
-        base, _quota = vat.split_gross(from_cents(amount + tax), rate)
-        net = to_cents(base)
-        return rate, net, amount + tax - net
-    return rate, amount, tax
-
-
-def _payer_snapshot(hub: Hub, *, verified: bool, consultation: str) -> dict:
-    """The payer as it is today (``hubs.BillingProfile``), copied onto the invoice: an edit of the profile
-    never rewrites an issued invoice."""
-    profile = hub.billing_profile
-    if profile is None:
-        return {"payer_name": "", "language": hub.language or settings.LANGUAGE_CODE}
-    owner = profile.owner
-    country = (profile.billing_country or "").strip().upper()
-    tax_id = vies.normalise(profile.tax_id)
-    return {
-        "billing_profile": profile,
-        "payer_account": owner,
-        "payer_name": profile.billing_name or (owner.get_full_name() if owner else "") or "",
-        "payer_tax_id": tax_id,
-        "payer_tax_id_type": vat.tax_id_type_for(country) if tax_id else "",
-        "payer_tax_id_verified": verified,
-        "vat_consultation_number": consultation if verified else "",
-        "payer_address": profile.billing_address or "",
-        "payer_city": profile.billing_city or "",
-        "payer_postal_code": (profile.billing_postal_code or "").strip().upper(),
-        "payer_country": country,
-        "payer_email": profile.billing_email or (owner.email if owner else ""),
-        "language": (getattr(owner, "language", "") or hub.language or settings.LANGUAGE_CODE),
-    }
-
-
-@operation(
-    "billing.invoice.record",
-    kind="command",
-    permission="billing.manage",
-    input=InvoiceRecordIn,
-    output=InvoiceRecordOut,
-    ai=INTERNAL,  # platform
-)
-def invoice_record(ctx: OperationContext, data: InvoiceRecordIn) -> dict:
-    """The webhook's door to ERPlora's invoices (the platform only; no route): a Stripe invoice of a
-    business, ``open`` (listed, not collected), ``paid`` (numbered and issued) or ``void`` (Stripe gave up).
-    Idempotent by the Stripe invoice: a paid one is never recorded twice, nor reopened."""
-    hub = Hub.objects.select_related("billing_profile__owner").get(pk=data.hub_id)
-    stripe_invoice = data.invoice
-    existing = (
-        Invoice.objects.select_for_update()
-        .filter(kind=Invoice.Kind.INVOICE, stripe_invoice_id=stripe_invoice.get("id") or "")
-        .first()
-    )
-    if data.status == "void":
-        return _void(ctx, existing)
-    if existing is not None and existing.payment_status == Invoice.PaymentStatus.PAID:
-        return _record_out(existing, "duplicate")
-    total = int(stripe_invoice.get("total") or 0)
-    if total < 0 and data.status == "paid":
-        return _record_negative(ctx, hub, stripe_invoice)
-    if total <= 0 and not invoice_discounts.is_fully_discounted(stripe_invoice):
-        return _record_out(existing, "ignored")
-    if data.status == "open":
-        return _record_open(ctx, hub, stripe_invoice, existing)
-    return _record_paid(ctx, hub, data, existing)
-
-
-def _record_out(invoice: Invoice | None, outcome: str) -> dict:
-    return {
-        "id": invoice.id if invoice else None,
-        "number": invoice.number if invoice else "",
-        "payment_status": invoice.payment_status if invoice else "",
-        "outcome": outcome,
-    }
-
-
-def _stripe_fields(stripe_invoice: dict) -> dict:
-    return {
-        "stripe_number": (stripe_invoice.get("number") or "")[:64],
-        "hosted_invoice_url": stripe_invoice.get("hosted_invoice_url") or "",
-        "billed_at": _moment_or_none(stripe_invoice.get("created")),
-        "currency": (stripe_invoice.get("currency") or "eur").upper(),
-    }
-
-
-def _record_open(ctx, hub: Hub, stripe_invoice: dict, existing: Invoice | None) -> dict:
-    """An unpaid Stripe invoice, listed with what it asks (no number: one is given at the payment)."""
-    if existing is not None:
-        if existing.payment_status == Invoice.PaymentStatus.OPEN:
-            Invoice.objects.filter(pk=existing.pk).update(
-                hosted_invoice_url=stripe_invoice.get("hosted_invoice_url") or existing.hosted_invoice_url,
-                updated_at=timezone.now(),
-            )
-        return _record_out(existing, "duplicate")
-    total = int(stripe_invoice["total"])
-    tax = plan_changes.tax_cents_of(stripe_invoice)
-    profile = hub.billing_profile
-    listed = Invoice.objects.create(
-        kind=Invoice.Kind.INVOICE,
-        hub=hub,
-        business_name=hub.name,
-        billing_profile=profile,
-        payer_account=profile.owner if profile else None,
-        stripe_invoice_id=stripe_invoice["id"],
-        payment_status=Invoice.PaymentStatus.OPEN,
-        net_cents=total - tax,
-        tax_cents=tax,
-        total_cents=total,
-        **_stripe_fields(stripe_invoice),
-    )
-    _record_invoice_event(ctx, listed, events.INVOICE_RECORDED,
-                          {"id": str(listed.id), "hub_id": str(hub.id), "payment_status": "open"})
-    return _record_out(listed, "listed")
-
-
-def _void(ctx, existing: Invoice | None) -> dict:
-    """Stripe voided (or gave up on) an unpaid invoice: it leaves «not collected». A paid one never changes."""
-    if existing is None or existing.payment_status != Invoice.PaymentStatus.OPEN:
-        return _record_out(existing, "ignored")
-    Invoice.objects.filter(pk=existing.pk).update(payment_status=Invoice.PaymentStatus.VOID, updated_at=timezone.now())
-    _record_invoice_event(ctx, existing, events.INVOICE_VOIDED, {"id": str(existing.id), "hub_id": str(existing.hub_id)})
-    existing.payment_status = Invoice.PaymentStatus.VOID
-    return _record_out(existing, "voided")
-
-
-def _sealed_line(position: int, line: dict, breakdown: vat.VatBreakdown) -> InvoiceLine:
-    """A Stripe line as a line of ERPlora's invoice: what it sells, its discount and its base, rate and quota sealed."""
-    kind, slug, category = _item_of(_price_of(line))
-    amount, discount = invoice_discounts.line_amounts(line)
-    rate, net, tax = _sealed_amounts(
-        amount,
-        _line_tax_cents(line),
-        treatment=breakdown.treatment,
-        rate=_nominal_rate(breakdown, category) if breakdown.is_subject else Decimal("0.00"),
-        reconciled=breakdown.vat_included_reconciled,
-    )
-    period = line.get("period") or {}
-    return InvoiceLine(
-        position=position,
-        description=(line.get("description") or slug or _("Subscription"))[:255],
-        item_kind=kind,
-        item_slug=slug,
-        quantity=max(int(line.get("quantity") or 1), 1),
-        proration=_is_proration(line),
-        period_start=_moment_or_none(period.get("start")),
-        period_end=_moment_or_none(period.get("end")),
-        tax_category_id=category,
-        tax_treatment=breakdown.treatment,
-        tax_rate=rate,
-        net_cents=net,
-        tax_cents=tax,
-        total_cents=net + tax,
-        discount_cents=discount,
-        stripe_line_id=line.get("id") or "",
-    )
-
-
-def _record_paid(ctx, hub: Hub, data: InvoiceRecordIn, existing: Invoice | None) -> dict:
-    """A paid Stripe invoice becomes ERPlora's invoice: the payer sealed, the qualification of the sale and
-    each line's base, rate and quota sealed, the next number of the series; issued after the COMMIT."""
-    stripe_invoice = data.invoice
-    total = int(stripe_invoice["total"])
-    payer = queries.payer_of(hub)
-    breakdown = vat.resolve_vat(
-        from_cents(total),
-        customer_country=payer.country,
-        customer_postal_code=payer.postal_code,
-        customer_tax_id=payer.tax_id,
-        customer_tax_id_type=payer.tax_id_type,
-        customer_tax_id_verified=data.tax_id_verified,
-        category_key=vat.SAAS_SUBSCRIPTION_CATEGORY,
-        tax_cents=plan_changes.tax_cents_of(stripe_invoice),
-        tax_included=False,
-    )
-    lines = [
-        _sealed_line(position, line, breakdown)
-        for position, line in enumerate((stripe_invoice.get("lines") or {}).get("data") or [], start=1)
-    ]
-    if not lines:
-        # Stripe always bills a line; without one the whole amount is one line of the subscription.
-        lines.append(
-            InvoiceLine(
-                position=1,
-                description=_("Subscription"),
-                tax_category_id=vat.SAAS_SUBSCRIPTION_CATEGORY,
-                tax_treatment=breakdown.treatment,
-                tax_rate=breakdown.rate,
-                net_cents=to_cents(breakdown.base),
-                tax_cents=to_cents(breakdown.tax),
-                total_cents=total,
-            )
-        )
-    net_cents = sum(line.net_cents for line in lines)
-    tax_cents = sum(line.tax_cents for line in lines)
-    _require_adds_up(stripe_invoice.get("id"), net_cents + tax_cents, total, hub.id)
-    now = timezone.now()
-    series, sequence, number, today = issue_number(Invoice.Kind.INVOICE)
-    values = {
-        "kind": Invoice.Kind.INVOICE,
-        "hub": hub,
-        "business_name": hub.name,
-        "stripe_invoice_id": stripe_invoice["id"],
-        **_stripe_fields(stripe_invoice),
-        **_payer_snapshot(hub, verified=data.tax_id_verified, consultation=data.vat_consultation_number),
-        "series": series,
-        "sequence": sequence,
-        "number": number,
-        "issued_on": today,
-        "payment_status": Invoice.PaymentStatus.PAID,
-        "paid_at": _moment_or_none((stripe_invoice.get("status_transitions") or {}).get("paid_at")) or now,
-        "net_cents": net_cents,
-        "tax_cents": tax_cents,
-        "total_cents": net_cents + tax_cents,
-        "tax_treatment": breakdown.treatment,
-        "tax_country": breakdown.tax_country,
-        "tax_rate": _nominal_rate(breakdown, vat.SAAS_SUBSCRIPTION_CATEGORY) if breakdown.is_subject else Decimal("0.00"),
-        "vat_included_reconciled": breakdown.vat_included_reconciled,
-        "fiscal_status": Invoice.FiscalStatus.ISSUING,
-        "fiscal_status_at": now,
-        "next_post_at": now,
-    }
-    if existing is None:
-        invoice = Invoice.objects.create(**values)
-    else:
-        invoice = existing
-        for field, value in values.items():
-            setattr(invoice, field, value)
-        invoice.save()
-        invoice.lines.all().delete()
-    for line in lines:
-        line.invoice = invoice
-    InvoiceLine.objects.bulk_create(lines)
-    _record_invoice_event(ctx, invoice, events.INVOICE_RECORDED,
-                          {"id": str(invoice.id), "hub_id": str(hub.id), "payment_status": "paid"})
-    transaction.on_commit(partial(_post_quietly, invoice.id), robust=True)
-    _note_oss_threshold_quietly(invoice)
-    return _record_out(invoice, "numbered")
-
-
-# --- The team's notices of the OSS threshold ----------------------------------------------------------
-
-#: The share of the threshold whose passing tells the team to register in the OSS (it takes days).
-OSS_WARNING_PERCENT = 80
-
-
-def _counts_towards_oss(invoice: Invoice, issuer: str) -> bool:
-    """The rule of ``queries.cross_border_b2c_cents``: a paid invoice to a payer of another member state
-    without a VIES-verified VAT number."""
-    return (
-        invoice.kind == Invoice.Kind.INVOICE
-        and invoice.payment_status == Invoice.PaymentStatus.PAID
-        and invoice.payer_country in vat.EU_VAT_RATES
-        and invoice.payer_country != issuer
-        and not invoice.payer_tax_id_verified
-    )
-
-
-def _oss_noticed(year: int, kinds) -> bool:
-    return OssNotice.objects.filter(year=year, kind__in=kinds).exists()
-
-
-def _write_oss_notice(year: int, kind: str, invoice: Invoice, **values) -> OssNotice | None:
-    """The year's notice of ``kind``, or ``None`` when a concurrent charge wrote it first (it tells)."""
-    try:
-        with transaction.atomic():
-            return OssNotice.objects.create(year=year, kind=kind, invoice=invoice, **values)
-    except IntegrityError:
-        return None
-
-
-def note_oss_threshold(invoice: Invoice) -> list[OssNotice]:
-    """After charging ``invoice``: the year's crossing of the OSS threshold and its 80 % warning, each once per
-    year, mailed to the team after the COMMIT. The crossing first, so a sale that jumps past the threshold is
-    told once (``crossed``), never «80 %» after the fact. Nothing under a voluntary OSS registration (there is
-    nothing to prepare) nor for a sale that does not count towards the threshold."""
-    policy = queries.fiscal_policy()
-    issuer = (policy.issuer_country or vat.DEFAULT_ISSUER_COUNTRY).strip().upper()
-    if policy.oss_registered or not _counts_towards_oss(invoice, issuer):
-        return []
-    year = invoice.issued_on.year
-    threshold = to_cents(policy.oss_threshold)
-    written = []
-    if not _oss_noticed(year, [OssNotice.Kind.CROSSED]):
-        previous = queries.cross_border_b2c_cents(policy, year - 1)
-        if previous > threshold:
-            crossing = {
-                "reason": OssNotice.Reason.PREVIOUS_YEAR,
-                "accumulated_cents": previous,
-                "effective_from": date(year, 1, 1),
-            }
-        else:
-            # The invoice is saved as paid already: the sum includes it.
-            current = queries.cross_border_b2c_cents(policy, year)
-            crossing = (
-                {"reason": OssNotice.Reason.CURRENT_YEAR, "accumulated_cents": current, "effective_from": invoice.issued_on}
-                if current > threshold
-                else None
-            )
-        if crossing is not None:
-            written.append(
-                _write_oss_notice(year, OssNotice.Kind.CROSSED, invoice, threshold_cents=threshold, **crossing)
-            )
-    if not _oss_noticed(year, [OssNotice.Kind.NEAR, OssNotice.Kind.CROSSED]):
-        current = queries.cross_border_b2c_cents(policy, year)
-        if current * 100 > threshold * OSS_WARNING_PERCENT:
-            written.append(
-                _write_oss_notice(
-                    year, OssNotice.Kind.NEAR, invoice, accumulated_cents=current, threshold_cents=threshold
-                )
-            )
-    written = [notice for notice in written if notice is not None]
-    for notice in written:
-        logger.warning(
-            "[FISCAL] OSS %s %s: %s of %s cents (invoice %s)",
-            notice.kind,
-            notice.year,
-            notice.accumulated_cents,
-            notice.threshold_cents,
-            invoice.number,
-            extra={"event": f"billing.oss_{notice.kind}", "year": notice.year, "reason": notice.reason},
-        )
-        transaction.on_commit(partial(send_oss_notice, notice.id), robust=True)
-    return written
-
-
-def _note_oss_threshold_quietly(invoice: Invoice) -> None:
-    """Charging never breaks over the notice: a failure is an ERROR, and the next charged sale tries again."""
-    try:
-        with transaction.atomic():
-            note_oss_threshold(invoice)
-    except Exception:  # noqa: BLE001 - the invoice stands; the next counted charge notes the threshold again
-        logger.exception(
-            "[FISCAL] The OSS threshold could not be noted for invoice %s",
-            invoice.number,
-            extra={"event": "billing.oss_notice_failed", "invoice_id": str(invoice.id)},
-        )
-
-
-def send_oss_notice(notice_id) -> bool:
-    """Mail one notice to the team's mailbox (``SUPPORT_EMAIL``) and mark it sent; ``False`` when it could not
-    leave (it stays owed: the daily ``retax_subscriptions`` sends it again)."""
-    from billing import emails
-
-    notice = OssNotice.objects.select_related("invoice").filter(pk=notice_id, mailed_at__isnull=True).first()
-    if notice is None:
-        return True
-    try:
-        emails.send_oss_notice(notice)
-    except emails.MailNotSent:
-        return False
-    OssNotice.objects.filter(pk=notice.pk, mailed_at__isnull=True).update(mailed_at=timezone.now())
-    return True
-
-
-def send_pending_oss_notices() -> Counter:
-    """Every notice whose mail has not left yet, sent again: ``notices_sent`` and ``notices_failed``."""
-    counts = Counter({"notices_sent": 0, "notices_failed": 0})
-    for notice_id in OssNotice.objects.filter(mailed_at__isnull=True).order_by("recorded_at").values_list("pk", flat=True):
-        counts["notices_sent" if send_oss_notice(notice_id) else "notices_failed"] += 1
-    return counts
-
-
-class InvoiceDoesNotAddUp(Exception):
-    """The lines of a Stripe document do not add up to what it charged or credited: nothing is invoiced (a 500
-    for Stripe's retry and support's ERROR), never a different amount."""
-
-
-class RectifiedInvoiceMissing(Exception):
-    """A credit note, a refund or a negative invoice whose invoice ERPlora has not recorded (yet): Stripe does not
-    order its events, so the webhook answers 500 and Stripe retries."""
-
-
-def _require_adds_up(source, lines_total: int, stripe_total: int, hub_id) -> None:
-    if lines_total != stripe_total:
-        logger.error(
-            "[INVOICE] The lines of Stripe's %s add up to %s, Stripe charged %s: nothing is invoiced",
-            source, lines_total, stripe_total,
-            extra={"event": "fiscal.invoice.lines_do_not_add_up", "hub_id": str(hub_id)},
-        )
-        raise InvoiceDoesNotAddUp(source)
-
-
-def rectification_type(reason: str | None) -> str:
-    """VeriFactu's type of a rectifying invoice for Stripe's reason: a refund, a duplicate, a price change or an
-    order change modify the base (art. 80.1, 80.2 LIVA, or an error): R1; a fraudulent charge, R4 (other)."""
-    return Invoice.RectificationType.R4 if reason == "fraudulent" else Invoice.RectificationType.R1
-
-
-def _rectifying_lines(original: Invoice, items: list[dict]) -> list[InvoiceLine]:
-    """The lines of a rectifying invoice, negative where they give money back, sealed with the qualification of
-    the invoice they rectify (a rectifying invoice keeps it) and the rate of the line they correct. ``items``:
-    ``{amount, tax, description, quantity, price, stripe_line_id, split}``; ``split`` = the amount has the VAT
-    inside (a refund): it is taken out at that rate."""
-    sources = list(original.lines.all())
-    lines = []
-    for position, item in enumerate(items, start=1):
-        kind, slug, category = _item_of(item.get("price") or "")
-        source = next((line for line in sources if line.stripe_line_id and line.stripe_line_id == item.get("source_line")), None)
-        source = source or next((line for line in sources if slug and line.item_slug == slug), None)
-        rate, net, tax = _sealed_amounts(
-            item["amount"],
-            item["tax"],
-            treatment=original.tax_treatment,
-            rate=source.tax_rate if source is not None else original.tax_rate,
-            reconciled=item.get("split", False) or (original.vat_included_reconciled and not item["tax"]),
-        )
-        lines.append(
-            InvoiceLine(
-                position=position,
-                description=(item.get("description") or (source.description if source else "") or _("Credit"))[:255],
-                item_kind=source.item_kind if source else kind,
-                item_slug=source.item_slug if source else slug,
-                quantity=max(int(item.get("quantity") or 1), 1),
-                proration=bool(item.get("proration")),
-                period_start=item.get("period_start") or (source.period_start if source else None),
-                period_end=item.get("period_end") or (source.period_end if source else None),
-                tax_category_id=source.tax_category_id if source else category,
-                tax_treatment=original.tax_treatment,
-                tax_rate=rate,
-                net_cents=net,
-                tax_cents=tax,
-                total_cents=net + tax,
-                stripe_line_id=item.get("stripe_line_id") or "",
-            )
-        )
-    return lines
-
-
-def _rectify(ctx, original: Invoice, *, source_id: str, items: list[dict], expected_total: int, rtype: str,  # noqa: PLR0913
-             reason: str, stripe_number: str = "", billed_at: datetime | None = None) -> dict:
-    """A rectifying invoice of ``original`` (``ERPR`` series, its qualification and recipient), once per Stripe
-    ``source_id``; its lines must add up to what Stripe gave back, or nothing is invoiced. Issued after the
-    COMMIT."""
-    existing = Invoice.objects.filter(kind=Invoice.Kind.CREDIT_NOTE, stripe_source_id=source_id).first()
-    if existing is not None:
-        return _record_out(existing, "duplicate")
-    lines = _rectifying_lines(original, items)
-    net_cents = sum(line.net_cents for line in lines)
-    tax_cents = sum(line.tax_cents for line in lines)
-    _require_adds_up(source_id, net_cents + tax_cents, expected_total, original.hub_id)
-    now = timezone.now()
-    series, sequence, number, today = issue_number(Invoice.Kind.CREDIT_NOTE)
-    copied = {
-        field: getattr(original, field)
-        for field in (
-            "hub_id", "business_name", "billing_profile_id", "payer_account_id", "payer_name", "payer_tax_id",
-            "payer_tax_id_type", "payer_tax_id_verified", "vat_consultation_number", "payer_address", "payer_city",
-            "payer_postal_code", "payer_country", "payer_email", "language", "currency", "tax_treatment",
-            "tax_country", "tax_rate", "stripe_invoice_id",
-        )
-    }
-    rectifying = Invoice.objects.create(
-        kind=Invoice.Kind.CREDIT_NOTE,
-        rectifies=original,
-        stripe_source_id=source_id,
-        stripe_number=(stripe_number or "")[:64],
-        billed_at=billed_at,
-        rectification_type=rtype,
-        rectification_reason=(reason or "")[:255],
-        series=series,
-        sequence=sequence,
-        number=number,
-        issued_on=today,
-        payment_status=Invoice.PaymentStatus.PAID,
-        paid_at=now,
-        net_cents=net_cents,
-        tax_cents=tax_cents,
-        total_cents=net_cents + tax_cents,
-        fiscal_status=Invoice.FiscalStatus.ISSUING,
-        fiscal_status_at=now,
-        next_post_at=now,
-        **copied,
-    )
-    for line in lines:
-        line.invoice = rectifying
-    InvoiceLine.objects.bulk_create(lines)
-    _record_invoice_event(ctx, rectifying, events.CREDIT_NOTE_RECORDED, {"id": str(rectifying.id),
-                                                                         "rectifies": str(original.id)})
-    transaction.on_commit(partial(_post_quietly, rectifying.id), robust=True)
-    return _record_out(rectifying, "numbered")
-
-
-def _stripe_items(stripe_lines: list[dict], *, sign: int) -> list[dict]:
-    """Stripe's lines (of an invoice or a credit note) as the items of a rectifying invoice; ``sign`` -1 for a
-    credit note, whose amounts Stripe gives positive."""
-    items = []
-    for line in stripe_lines:
-        period = line.get("period") or {}
-        items.append(
-            {
-                "amount": sign * int(line.get("amount") or 0),
-                "tax": sign * _line_tax_cents(line),
-                "description": line.get("description") or "",
-                "quantity": line.get("quantity") or 1,
-                "price": _price_of(line),
-                "proration": _is_proration(line),
-                "period_start": _moment_or_none(period.get("start")),
-                "period_end": _moment_or_none(period.get("end")),
-                "source_line": line.get("invoice_line_item") or "",
-                "stripe_line_id": line.get("id") or "",
-            }
-        )
-    return items
-
-
-def _record_negative(ctx, hub: Hub, stripe_invoice: dict) -> dict:
-    """A Stripe invoice of a negative total (a proration credit larger than what it bills; legacy or manual:
-    downgrades wait for the end of the period) rectifies the invoice whose period its credited lines belong to
-    R1, a modification of the price (art. 80.2 LIVA)."""
-    lines = (stripe_invoice.get("lines") or {}).get("data") or []
-    credited = [
-        _moment_or_none((line.get("period") or {}).get("start"))
-        for line in lines
-        if int(line.get("amount") or 0) < 0
-    ]
-    moment = min((when for when in credited if when is not None), default=None)
-    found = (
-        InvoiceLine.objects.select_related("invoice")
-        .filter(
-            invoice__hub=hub,
-            invoice__kind=Invoice.Kind.INVOICE,
-            invoice__payment_status=Invoice.PaymentStatus.PAID,
-            period_start__lte=moment,
-            period_end__gt=moment,
-        )
-        .order_by("-invoice__issued_on", "-invoice__sequence")
-        .first()
-        if moment is not None
-        else None
-    )
-    if found is None:
-        logger.error(
-            "[INVOICE] Stripe invoice %s of hub %s credits a period ERPlora has not invoiced",
-            stripe_invoice.get("id"), hub.id, extra={"event": "fiscal.credit.unknown_invoice"},
-        )
-        raise RectifiedInvoiceMissing(stripe_invoice.get("id"))
-    return _rectify(
-        ctx,
-        found.invoice,
-        source_id=stripe_invoice["id"],
-        items=_stripe_items(lines, sign=1),
-        expected_total=int(stripe_invoice["total"]),
-        rtype=Invoice.RectificationType.R1,
-        reason=stripe_invoice.get("description") or "proration",
-        stripe_number=stripe_invoice.get("number") or "",
-        billed_at=_moment_or_none(stripe_invoice.get("created")),
-    )
-
-
-def invoice_voided(stripe_invoice: dict) -> str:
-    """Stripe voided an unpaid invoice, or gave up on it (``marked_uncollectible``): it leaves «not collected»
-    (it is no longer payable). An invoice ERPlora does not list is ignored."""
-    listed = (
-        Invoice.objects.filter(kind=Invoice.Kind.INVOICE, stripe_invoice_id=stripe_invoice.get("id") or "")
-        .values_list("hub_id", "payment_status")
-        .first()
-    )
-    if listed is None or listed[1] != Invoice.PaymentStatus.OPEN or listed[0] is None:
-        return "ignored"
-    out = invoice_record(
-        hub_callbacks.system_ctx_for(listed[0]), InvoiceRecordIn(hub_id=listed[0], invoice=stripe_invoice, status="void")
-    )
-    return "processed" if out.outcome == "voided" else "ignored"
-
-
-# --- Credit notes and refunds: rectifying invoices -------------------------------------------------------
-
-
-def _issued_invoice(stripe_invoice_id: str) -> Invoice | None:
-    return (
-        Invoice.objects.filter(
-            kind=Invoice.Kind.INVOICE, stripe_invoice_id=stripe_invoice_id, payment_status=Invoice.PaymentStatus.PAID
-        )
-        .only("id", "hub_id", "payer_account_id")
-        .first()
-    )
-
-
-def _missing_original(what: str, stripe_invoice_id: str):
-    logger.error(
-        "[INVOICE] %s rectifies Stripe invoice %s, which ERPlora has not invoiced (yet): Stripe retries",
-        what, stripe_invoice_id, extra={"event": "fiscal.credit.unknown_invoice"},
-    )
-    return RectifiedInvoiceMissing(stripe_invoice_id)
-
-
-def credit_note_created(credit_note: dict) -> str:
-    """A credit note of a paid invoice (``credit_note.created``) becomes a rectifying invoice of its own series.
-    Ahead of its invoice (Stripe does not order events) it raises: Stripe retries."""
-    rectified = credit_note.get("invoice") or ""
-    if isinstance(rectified, dict):
-        rectified = rectified.get("id") or ""
-    original = _issued_invoice(rectified)
-    if original is None:
-        raise _missing_original(f"Credit note {credit_note.get('id')}", rectified)
-    # The event is a snapshot of when it was created: a note voided since (``credit_note.voided``, possible while its
-    # invoice was open, when this event was still waiting for it) is no rectification, so it is read LIVE.
-    if stripe_service.retrieve_credit_note(credit_note["id"]).get("status") == "void":
-        logger.warning("[INVOICE] Credit note %s was voided in Stripe: no rectifying invoice", credit_note["id"])
-        return "ignored"
-    lines = stripe_service.credit_note_lines(credit_note)
-    credit_note_record(
-        _invoice_ctx(original),
-        CreditNoteRecordIn(credit_note={**credit_note, "lines": {"object": "list", "data": lines, "has_more": False}}),
-    )
-    return "processed"
-
-
-def credit_note_voided(credit_note: dict) -> str:
-    """A credit note voided in Stripe (``credit_note.voided``). Stripe voids one only while its invoice is
-    OPEN, and a rectifying invoice is recorded here only for a PAID one, so normally there is none: ``voided``, and its
-    ``credit_note.created`` never records it (read live there). Nothing fiscal is done on its own: a rectifying
-    invoice recorded anyway is never modified (a record sent to the AEAT is corrected with a new one) and the team is
-    told by mail to correct it by hand: ``needs_review``. A mail that cannot leave raises, so Stripe retries it."""
-    from billing import emails
-
-    rectifying = (
-        Invoice.objects.filter(kind=Invoice.Kind.CREDIT_NOTE, stripe_source_id=credit_note.get("id") or "")
-        .only("id", "number", "series", "sequence", "fiscal_status", "rectifies_id", "total_cents")
-        .first()
-    )
-    if rectifying is None:
-        logger.info("[INVOICE] Credit note %s voided in Stripe: it was never a rectifying invoice", credit_note.get("id"))
-        return "voided"
-    logger.error(
-        "[INVOICE] Credit note %s voided in Stripe after it became rectifying invoice %s: correct it by hand",
-        credit_note.get("id"), rectifying.number, extra={"event": "fiscal.credit.voided_after_rectifying"},
-    )
-    emails.send_credit_note_voided(rectifying, credit_note.get("id") or "")
-    return "needs_review"
-
-
-@operation(
-    "billing.credit_note.record",
-    kind="command",
-    permission="billing.manage",
-    input=CreditNoteRecordIn,
-    output=InvoiceRecordOut,
-    ai=INTERNAL,  # platform
-)
-def credit_note_record(ctx: OperationContext, data: CreditNoteRecordIn) -> dict:
-    """A Stripe credit note as a rectifying invoice (the platform only; no route): negative amounts, the
-    qualification and the payer of the invoice it rectifies, its type (``rectification_type``) and reason
-    (the memo, or Stripe's reason); issued after the COMMIT. Idempotent by the credit note."""
-    credit_note = data.credit_note
-    rectified = credit_note.get("invoice") or ""
-    if isinstance(rectified, dict):
-        rectified = rectified.get("id") or ""
-    original = (
-        Invoice.objects.select_for_update()
-        .filter(kind=Invoice.Kind.INVOICE, stripe_invoice_id=rectified, payment_status=Invoice.PaymentStatus.PAID)
-        .first()
-    )
-    if original is None:
-        raise _missing_original(f"Credit note {credit_note.get('id')}", rectified)
-    lines = (credit_note.get("lines") or {}).get("data") or []
-    items = _stripe_items(lines, sign=-1) or [
-        {"amount": -(int(credit_note.get("total") or 0) - plan_changes.tax_cents_of(credit_note)), "tax": -plan_changes.tax_cents_of(credit_note)}
-    ]
-    return _rectify(
-        ctx,
-        original,
-        source_id=credit_note["id"],
-        items=items,
-        expected_total=-int(credit_note.get("total") or 0),
-        rtype=rectification_type(credit_note.get("reason")),
-        reason=credit_note.get("memo") or credit_note.get("reason") or "credit_note",
-        stripe_number=credit_note.get("number") or "",
-        billed_at=_moment_or_none(credit_note.get("created")),
-    )
-
-
-def charge_refunded(charge: dict) -> str:
-    """Money given back without a credit note (``charge.refunded``; a refund in the Dashboard): each refund is a
-    rectifying invoice of the invoice the charge paid, its gross split at that invoice's rate.
-    A refund a credit note covers is that credit note's; one still pending waits for its next event; a charge
-    that paid no invoice of Stripe is not ours."""
-    intent = charge.get("payment_intent") or ""
-    if isinstance(intent, dict):
-        intent = intent.get("id") or ""
-    stripe_invoice_id = stripe_service.invoice_paid_by(intent) if intent else None
-    if not stripe_invoice_id:
-        return "ignored"
-    original = _issued_invoice(stripe_invoice_id)
-    if original is None:
-        raise _missing_original(f"Refund of charge {charge.get('id')}", stripe_invoice_id)
-    covered = stripe_service.credit_note_refund_ids(stripe_invoice_id)
-    for refund in stripe_service.charge_refunds(charge["id"]):
-        if refund.get("status") != "succeeded" or refund["id"] in covered:
-            continue
-        refund_record(_invoice_ctx(original), RefundRecordIn(invoice_id=original.id, refund=refund))
-    return "processed"
-
-
-@operation(
-    "billing.refund.record",
-    kind="command",
-    permission="billing.manage",
-    input=RefundRecordIn,
-    output=InvoiceRecordOut,
-    ai=INTERNAL,  # platform
-)
-def refund_record(ctx: OperationContext, data: RefundRecordIn) -> dict:
-    """A Stripe refund without a credit note as a rectifying invoice of ``invoice_id`` (the platform only; no
-    route): one line with the gross refunded, the VAT taken out at the invoice's rate. Idempotent by the refund."""
-    original = Invoice.objects.select_for_update().get(pk=data.invoice_id)
-    refund = data.refund
-    amount = int(refund.get("amount") or 0)
-    return _rectify(
-        ctx,
-        original,
-        source_id=refund["id"],
-        items=[{"amount": -amount, "tax": 0, "description": _("Refund"), "split": True}],
-        expected_total=-amount,
-        rtype=rectification_type(refund.get("reason")),
-        reason=refund.get("reason") or "refund",
-        billed_at=_moment_or_none(refund.get("created")),
-    )
-
-
-def _record_invoice_event(ctx: OperationContext, invoice: Invoice, name: str, payload: dict) -> None:
-    """Record an event of an invoice in the command's channel and tell, after the COMMIT, the other account that
-    sees it too (its payer and its business's owner): both their Billing lists re-run."""
-    record_event(ctx, name, payload)
-    owner = membership.owner_id(invoice.hub_id) if invoice.hub_id else None
-    viewers = {str(account) for account in (invoice.payer_account_id, owner) if account}
-    for key in sorted(viewers - {ctx.scope.key}):
-        transaction.on_commit(partial(notify, Scope("user", key), [name]), robust=True)
-
-
-def _invoice_ctx(invoice: Invoice) -> OperationContext:
-    """The platform acting on an invoice, in its payer's channel (its Billing lists re-run)."""
-    if invoice.payer_account_id:
-        return system_context(Scope("user", str(invoice.payer_account_id)))
-    if invoice.hub_id:
-        return hub_callbacks.system_ctx_for(invoice.hub_id)
-    return system_context(Scope("user", "system"))
-
-
-# --- The platform hub issues them ---------------------------------------------------------------------
-
-#: What one post of an invoice came to: answered (its status stored), the Hub away (retried), the Hub
-#: refusing it (kept with its code, retried: the run fails), or nothing to post (not paid).
-POSTED, UNREACHABLE, REFUSED, NOTHING_TO_POST = "posted", "unreachable", "refused", "nothing_to_post"
-#: The statuses the platform hub answers (``Invoice.FiscalStatus`` without «not issued»).
-PLATFORM_STATUSES = frozenset({"issuing", "issued", "accepted", "accepted_with_errors", "rejected"})
-#: Issued by the platform hub: it has the QR and the PDF.
-ISSUED_STATUSES = frozenset({"issued", "accepted", "accepted_with_errors"})
-#: The wait before posting again an invoice the Hub did not take: one ``reconcile_platform_invoices`` run
-#: (15 minutes) after the first failure, doubling, never more than 6 hours.
-PLATFORM_FIRST_WAIT = timedelta(minutes=15)
-PLATFORM_LONGEST_WAIT = timedelta(hours=6)
-#: An invoice still «issuing» after this long is stuck: the reconcile run fails (the ``task_failed`` alarm).
-PLATFORM_STUCK_AFTER = timedelta(hours=1)
-
-
-def platform_backoff(attempts: int) -> timedelta:
-    """How long an invoice waits after its ``attempts``-th failed post."""
-    return min(PLATFORM_FIRST_WAIT * 2 ** max(attempts - 1, 0), PLATFORM_LONGEST_WAIT)
-
-
-def platform_payload(invoice: Invoice) -> dict:
-    """The body of ``POST /internal/platform/invoices``: the whole invoice, so the platform hub issues it in
-    VeriFactu and prints its PDF without asking the SaaS anything. Keyed by ``id`` (idempotent)."""
-    rectified = invoice.rectifies
-    return {
-        "id": str(invoice.id),
-        "kind": invoice.kind,
-        "series": invoice.series,
-        "number": invoice.number,
-        "issued_on": platform_contract.day(invoice.issued_on),
-        "stripe_invoice_id": invoice.stripe_invoice_id,
-        "stripe_source_id": invoice.stripe_source_id,
-        "rectification": (
-            {"type": invoice.rectification_type, "reason": invoice.rectification_reason}
-            if invoice.kind == Invoice.Kind.CREDIT_NOTE
-            else None
-        ),
-        "currency": invoice.currency,
-        "language": invoice.language,
-        "net_cents": invoice.net_cents,
-        "tax_cents": invoice.tax_cents,
-        "total_cents": invoice.total_cents,
-        "tax_treatment": invoice.tax_treatment,
-        "tax_country": invoice.tax_country,
-        "tax_rate": str(invoice.tax_rate),
-        "vat_included_reconciled": invoice.vat_included_reconciled,
-        "vat_included_because_unverified": invoice.vat_included_because_unverified,
-        "business": {"id": str(invoice.hub_id) if invoice.hub_id else None, "name": invoice.business_name},
-        "recipient": {
-            "name": invoice.payer_name,
-            "tax_id": invoice.payer_tax_id,
-            "tax_id_type": invoice.payer_tax_id_type,
-            "tax_id_verified": invoice.payer_tax_id_verified,
-            "vat_consultation_number": invoice.vat_consultation_number,
-            "address": invoice.payer_address,
-            "city": invoice.payer_city,
-            "postal_code": invoice.payer_postal_code,
-            "country": invoice.payer_country,
-            "email": invoice.payer_email,
-        },
-        "lines": [
-            {
-                "position": line.position,
-                "description": line.description,
-                "item_kind": line.item_kind,
-                "item_slug": line.item_slug,
-                "quantity": line.quantity,
-                "proration": line.proration,
-                "period_start": platform_contract.day(line.period_start),
-                "period_end": platform_contract.day(line.period_end),
-                "tax_category": line.tax_category_id,
-                "tax_treatment": line.tax_treatment or invoice.tax_treatment,
-                "tax_rate": str(line.tax_rate),
-                "net_cents": line.net_cents,
-                "tax_cents": line.tax_cents,
-                "total_cents": line.total_cents,
-                "discount_cents": line.discount_cents,
-            }
-            for line in invoice.lines.order_by("position")
-        ],
-        "rectifies": (
-            {"id": str(rectified.id), "number": rectified.number, "issued_on": platform_contract.day(rectified.issued_on)}
-            if rectified is not None
-            else None
-        ),
-    }
-
-
-def _answer_of(body) -> dict | None:
-    """The platform hub's answer as ``FiscalAnswerIn``, or ``None`` for one the SaaS does not know."""
-    body = body if isinstance(body, dict) else {}
-    status = body.get("status")
-    if status not in PLATFORM_STATUSES:
-        return None
-    error = body.get("error") if isinstance(body.get("error"), dict) else {}
-    return {
-        "status": status,
-        "qr": str(body.get("qr") or ""),
-        "error_code": str(error.get("code") or "")[:64],
-        "error": str(error.get("message") or ""),
-    }
-
-
-def post_platform_invoice(invoice_id) -> str:
-    """Post a paid invoice to ERPlora's platform hub (``POST /internal/platform/invoices``) and store what
-    it answers. Outside any transaction (a call to the Hub never holds the database). Idempotent on the
-    Hub's side by the invoice's id: posting it again answers what it has."""
-    invoice = Invoice.objects.select_related("rectifies").filter(pk=invoice_id).first()
-    if invoice is None or invoice.payment_status != Invoice.PaymentStatus.PAID or not invoice.number:
-        return NOTHING_TO_POST
-    try:
-        answer = hub_client.post_platform_invoice(platform_payload(invoice))
-    except HubUnavailable as failed:
-        _post_failed(invoice, str(failed))
-        return UNREACHABLE
-    except HubRefused as refused:
-        logger.error(
-            "[INVOICE] The platform hub refused invoice %s: %s", invoice.number, refused,
-            extra={"event": "billing.platform_invoice_refused", "code": refused.code},
-        )
-        _post_failed(invoice, str(refused), code=refused.code, message=refused.message)
-        return REFUSED
-    known = _answer_of(answer.body)
-    if known is None:
-        logger.error("[INVOICE] The platform hub answered %r for invoice %s", answer.body, invoice.number)
-        _post_failed(invoice, f"unknown answer: {answer.body!r}"[:255])
-        return UNREACHABLE
-    Invoice.objects.filter(pk=invoice.pk).update(
-        post_attempts=F("post_attempts") + 1, next_post_at=None, last_post_error=""
-    )
-    invoice_apply_fiscal_status(_invoice_ctx(invoice), FiscalAnswerIn(id=invoice.id, **known))
-    return POSTED
-
-
-def _post_failed(invoice: Invoice, error: str, *, code: str = "", message: str = "") -> None:
-    attempts = invoice.post_attempts + 1
-    logger.warning("[INVOICE] Invoice %s owed to the platform hub (attempt %s): %s", invoice.number, attempts, error)
-    fields = {
-        "post_attempts": attempts,
-        "last_post_error": error[:255],
-        "next_post_at": timezone.now() + platform_backoff(attempts),
-        "updated_at": timezone.now(),
-    }
-    if code:
-        fields.update(fiscal_error_code=code[:64], fiscal_error=message)
-    Invoice.objects.filter(pk=invoice.pk).update(**fields)
-
-
-def refresh_platform_invoice(invoice_id) -> str:
-    """Ask the platform hub how an issued invoice stands (``GET /internal/platform/invoices/{id}``): the AEAT
-    accepts or rejects it after the Hub issued it. Returns its fiscal status now, or ``unreachable`` /
-    ``refused``."""
-    invoice = Invoice.objects.filter(pk=invoice_id).first()
-    if invoice is None:
-        return NOTHING_TO_POST
-    try:
-        answer = hub_client.get_platform_invoice(str(invoice.id))
-    except HubUnavailable:
-        return UNREACHABLE
-    except HubRefused as refused:
-        logger.error("[INVOICE] The platform hub does not know invoice %s: %s", invoice.number, refused)
-        return REFUSED
-    known = _answer_of(answer.body)
-    if known is None:
-        logger.warning("[INVOICE] The platform hub answered %r for invoice %s", answer.body, invoice.number)
-        return invoice.fiscal_status
-    return invoice_apply_fiscal_status(_invoice_ctx(invoice), FiscalAnswerIn(id=invoice.id, **known)).fiscal_status
-
-
-@operation(
-    "billing.invoice.apply_fiscal_status",
-    kind="command",
-    permission="billing.manage",
-    input=FiscalAnswerIn,
-    output=FiscalAnswerOut,
-    ai=INTERNAL,  # platform
-)
-def invoice_apply_fiscal_status(ctx: OperationContext, data: FiscalAnswerIn) -> dict:
-    """What the platform hub says of an invoice, stored as it says it (the platform only; no route). «Issuing»
-    never moves an invoice back; a rejection is an ERROR for support (the Hub corrects it with a new record,
-    and its next answer replaces this one). The first time it is issued, its payer gets an e-mail."""
-    invoice = Invoice.objects.select_for_update().get(pk=data.id)
-    status = invoice.fiscal_status if data.status == "issuing" else data.status
-    fields = {"fiscal_status": status, "qr": data.qr or invoice.qr, "fiscal_error_code": data.error_code,
-              "fiscal_error": data.error}
-    changed = any(getattr(invoice, field) != value for field, value in fields.items())
-    if not changed:
-        return {"id": invoice.id, "fiscal_status": invoice.fiscal_status, "changed": False}
-    first_issue = invoice.fiscal_status not in ISSUED_STATUSES and status in ISSUED_STATUSES
-    now = timezone.now()
-    Invoice.objects.filter(pk=invoice.pk).update(**fields, fiscal_status_at=now, updated_at=now)
-    if status == Invoice.FiscalStatus.REJECTED:
-        logger.error(
-            "[INVOICE] The AEAT rejected invoice %s: %s %s", invoice.number, data.error_code, data.error,
-            extra={"event": "billing.platform_invoice_rejected", "invoice": invoice.number},
-        )
-    _record_invoice_event(ctx, invoice, events.INVOICE_FISCAL_STATUS_CHANGED, {"id": str(invoice.id), "status": status})
-    if first_issue and invoice.emailed_at is None:
-        transaction.on_commit(partial(_email_quietly, invoice.id), robust=True)
-    return {"id": invoice.id, "fiscal_status": status, "changed": True}
-
-
-def _post_quietly(invoice_id) -> None:
-    try:
-        post_platform_invoice(invoice_id)
-    except Exception:  # noqa: BLE001 - after the COMMIT nothing may undo the invoice; it stays «issuing»
-        logger.exception("[INVOICE] Posting invoice %s to the platform hub crashed", invoice_id)
-
-
-#: What sending the payer's mail of an invoice came to.
-MAILED, MAIL_SKIPPED, MAIL_FAILED = "mailed", "mail_skipped", "mail_failed"
-
-
-def send_invoice_mail(invoice_id) -> str:
-    """Send the payer the mail of an issued invoice (``billing.emails``) and mark it sent. Nothing to send
-    (nobody to send it to) is done too; a mail that cannot leave stays owed for ``reconcile_platform_invoices``."""
-    from billing import emails
-
-    invoice = Invoice.objects.select_related("hub", "payer_account").get(pk=invoice_id)
-    try:
-        sent = emails.send_invoice_issued(invoice)
-    except emails.MailNotSent:
-        return MAIL_FAILED
-    Invoice.objects.filter(pk=invoice_id).update(emailed_at=timezone.now())
-    return MAILED if sent else MAIL_SKIPPED
-
-
-def _email_quietly(invoice_id) -> None:
-    try:
-        send_invoice_mail(invoice_id)
-    except Exception:  # noqa: BLE001 - a mail never undoes the invoice; the reconcile run sends it again
-        logger.exception("[INVOICE] The e-mail of invoice %s could not be sent", invoice_id)
-
-
-#: The counts of a ``reconcile_platform_invoices`` run; the failing ones make it exit with an error.
-PLATFORM_COUNTS = (
-    "posted", "accepted", "waiting", "mailed", "unreachable", "refused", "rejected", "stuck", "mail_failed", "errors",
-    "cut_short",
-)
-PLATFORM_FAILING = ("unreachable", "refused", "rejected", "stuck", "mail_failed", "errors")
-
-
-def reconcile_platform_invoices(now: datetime | None = None, go_on: Callable[[], bool] | None = None) -> Counter:  # noqa: C901, PLR0912
-    """One pass of ``reconcile_platform_invoices`` (the ``saas-worker``, every 15 minutes): post again every
-    «issuing» invoice whose wait passed, ask the platform hub about every issued (or rejected) one until the AEAT
-    accepts it, and count the ones «issuing» for longer than ``PLATFORM_STUCK_AFTER``. One invoice never stops the
-    others. ``go_on`` (the worker's stop request and the round's time budget) is asked before each call to the Hub
-    or mail: once it says no, the pass ends after the invoice in course (``cut_short`` 1, the rest in the next pass);
-    the count of the stuck ones is always made."""
-    now = now or timezone.now()
-    counts = Counter({key: 0 for key in PLATFORM_COUNTS})
-
-    def more() -> bool:
-        if not counts["cut_short"] and go_on is not None and not go_on():
-            counts["cut_short"] = 1
-        return not counts["cut_short"]
-
-    paid = Invoice.objects.filter(payment_status=Invoice.PaymentStatus.PAID).exclude(number="")
-    due = (
-        paid.filter(fiscal_status=Invoice.FiscalStatus.ISSUING)
-        .filter(Q(next_post_at__isnull=True) | Q(next_post_at__lte=now))
-        .order_by("series", "issued_on", "sequence")
-        .values_list("id", flat=True)
-    )
-    for invoice_id in () if counts["cut_short"] else list(due):
-        if not more():
-            break
-        try:
-            outcome = post_platform_invoice(invoice_id)
-        except Exception:  # noqa: BLE001 - one invoice never stops the pass; it stays owed
-            logger.exception("[INVOICE] Posting invoice %s crashed", invoice_id)
-            counts["errors"] += 1
-            continue
-        if outcome != NOTHING_TO_POST:
-            counts[outcome] += 1
-    asked = paid.filter(fiscal_status__in=[Invoice.FiscalStatus.ISSUED, Invoice.FiscalStatus.REJECTED]).values_list(
-        "id", flat=True
-    )
-    for invoice_id in () if counts["cut_short"] else list(asked):
-        if not more():
-            break
-        try:
-            status = refresh_platform_invoice(invoice_id)
-        except Exception:  # noqa: BLE001 - one invoice never stops the pass
-            logger.exception("[INVOICE] Asking about invoice %s crashed", invoice_id)
-            counts["errors"] += 1
-            continue
-        if status in (UNREACHABLE, REFUSED):
-            counts[status] += 1
-        elif status == Invoice.FiscalStatus.REJECTED:
-            counts["rejected"] += 1
-        elif status == Invoice.FiscalStatus.ISSUED:
-            counts["waiting"] += 1
-        else:
-            counts["accepted"] += 1
-    counts["stuck"] = paid.filter(
-        fiscal_status=Invoice.FiscalStatus.ISSUING, fiscal_status_at__lte=now - PLATFORM_STUCK_AFTER
-    ).count()
-    unmailed = paid.filter(fiscal_status__in=ISSUED_STATUSES, emailed_at__isnull=True).values_list("id", flat=True)
-    for invoice_id in () if counts["cut_short"] else list(unmailed):
-        if not more():
-            break
-        outcome = send_invoice_mail(invoice_id)
-        if outcome == MAIL_FAILED:
-            counts["mail_failed"] += 1
-        elif outcome == MAILED:
-            counts["mailed"] += 1
-    return counts
-
-
-def platform_run_failed(counts: Counter) -> bool:
-    return any(counts[key] for key in PLATFORM_FAILING)
-
-
-def reconcile_platform_invoices_exclusively(go_on: Callable[[], bool] | None = None) -> Counter | None:
-    """One pass of ``reconcile_platform_invoices`` under its lock: its counts, or ``None`` when another run holds the
-    lock (and this one did nothing). What the command and the ``saas-worker`` (every 15 minutes, ``base.worker``,
-    with its ``go_on``) both run."""
-    with exclusive_runs.run_exclusively("reconcile_platform_invoices") as mine:
-        return reconcile_platform_invoices(go_on=go_on) if mine else None
 
 
 # --- «Pay» an invoice not collected -----------------------------------------------------------------
