@@ -13,9 +13,9 @@ from unittest.mock import patch
 import pytest
 from django.db import DatabaseError
 
-from billing import queries, services
+from billing import queries
 from billing.models import VatCheck
-from billing.services import payer_vat_numbers, vat_clearance
+from billing.services import payer_vat_numbers, price_checks, vat_clearance
 from billing.tests.stripe_double import connection_error, invalid_request
 from billing.tests.vies_double import (
     FAKE_VAT,
@@ -262,7 +262,7 @@ class TestThePricesOfAPlan:
     the plan's amount, and NET (``exclusive``: our VAT goes on top). Nothing pasted, nothing asked."""
 
     def check(self, stripe_double, **pasted):
-        return services.plan_price_problems(
+        return price_checks.plan_price_problems(
             prices={"stripe_price_id": "", "stripe_price_id_annual": "", **pasted},
             amounts={"price_monthly": Decimal("29.99"), "price_annual": Decimal("299.90")},
             product="prod_starter",
@@ -307,24 +307,24 @@ class TestThePricesOfAPlan:
     def test_stripe_not_answering_is_said_not_taken_for_a_yes(self, stripe_double):
         stripe_double.answer("prices.retrieve", connection_error())
 
-        with pytest.raises(services.PriceCheckUnavailable):
+        with pytest.raises(price_checks.PriceCheckUnavailable):
             self.check(stripe_double, stripe_price_id="price_month")
 
     def test_without_stripe_the_prices_are_not_checked(self, stripe_double, settings):
         settings.STRIPE_SECRET_KEY = ""
 
-        with pytest.raises(services.PriceCheckUnavailable):
+        with pytest.raises(price_checks.PriceCheckUnavailable):
             self.check(stripe_double, stripe_price_id="price_month")
         assert stripe_double.calls == []
 
     def test_stripe_not_answering_and_stripe_not_configured_are_told_apart(self, stripe_double, settings):
         """Not configured (development) is saved with a warning; not answering is not saved."""
         stripe_double.answer("prices.retrieve", connection_error())
-        with pytest.raises(services.PriceCheckFailed):
+        with pytest.raises(price_checks.PriceCheckFailed):
             self.check(stripe_double, stripe_price_id="price_month")
 
         settings.STRIPE_SECRET_KEY = ""
-        with pytest.raises(services.PriceCheckSkipped):
+        with pytest.raises(price_checks.PriceCheckSkipped):
             self.check(stripe_double, stripe_price_id="price_month")
 
 
@@ -335,7 +335,7 @@ class TestThePricesOfAModule:
     another."""
 
     def check(self, stripe_double, **pasted):
-        return services.module_price_problems(
+        return price_checks.module_price_problems(
             prices={"stripe_price_id_monthly": "", "stripe_price_id_annual": "", **pasted},
             amounts={"price_monthly_cents": 2999, "price_annual_cents": 29990},
             product="prod_starter",
@@ -379,12 +379,12 @@ class TestThePricesOfAModule:
     def test_stripe_not_answering_is_said_not_taken_for_a_yes(self, stripe_double):
         stripe_double.answer("prices.retrieve", connection_error())
 
-        with pytest.raises(services.PriceCheckFailed):
+        with pytest.raises(price_checks.PriceCheckFailed):
             self.check(stripe_double, stripe_price_id_monthly="price_month")
 
     def test_without_stripe_the_prices_are_not_checked(self, stripe_double, settings):
         settings.STRIPE_SECRET_KEY = ""
 
-        with pytest.raises(services.PriceCheckSkipped):
+        with pytest.raises(price_checks.PriceCheckSkipped):
             self.check(stripe_double, stripe_price_id_monthly="price_month")
         assert stripe_double.calls == []

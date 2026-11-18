@@ -326,11 +326,11 @@ class TestThePlanPrices:
         return staff_client.post(f"/admin/hubs/plan/{plan.pk}/change/", data, follow=True)
 
     def test_a_price_stripe_refuses_keeps_the_plan_as_it_was(self, staff_client, plans, settings, monkeypatch):
-        from billing import services as billing_services
+        from billing.services import price_checks
 
         settings.STRIPE_SECRET_KEY = "rk_test_51abc"
         monkeypatch.setattr(
-            billing_services, "plan_price_problems", lambda **kwargs: {"stripe_price_id": "This price is not in euros."}
+            price_checks, "plan_price_problems", lambda **kwargs: {"stripe_price_id": "This price is not in euros."}
         )
         starter = Plan.objects.get(slug="starter")
 
@@ -341,12 +341,12 @@ class TestThePlanPrices:
 
     def test_stripe_not_answering_keeps_the_plan_as_it_was_and_asks_to_try_again(self, staff_client, plans, monkeypatch):
         """BILLING-F28 «Si Stripe no contesta, no se guarda y se pide repetir»: an unchecked price is never saved."""
-        from billing import services as billing_services
+        from billing.services import price_checks
 
         def failed(**kwargs):
-            raise billing_services.PriceCheckFailed("Stripe did not answer: the prices were not checked. Try again.")
+            raise price_checks.PriceCheckFailed("Stripe did not answer: the prices were not checked. Try again.")
 
-        monkeypatch.setattr(billing_services, "plan_price_problems", failed)
+        monkeypatch.setattr(price_checks, "plan_price_problems", failed)
         starter = Plan.objects.get(slug="starter")
 
         page = self.save(staff_client, starter, stripe_price_id="price_new").content.decode()
@@ -355,12 +355,12 @@ class TestThePlanPrices:
         assert Plan.objects.get(slug="starter").stripe_price_id == starter.stripe_price_id
 
     def test_without_stripe_it_is_saved_and_says_it_was_not_checked(self, staff_client, plans, monkeypatch):
-        from billing import services as billing_services
+        from billing.services import price_checks
 
         def unavailable(**kwargs):
-            raise billing_services.PriceCheckSkipped("Stripe is not configured here: the prices were not checked.")
+            raise price_checks.PriceCheckSkipped("Stripe is not configured here: the prices were not checked.")
 
-        monkeypatch.setattr(billing_services, "plan_price_problems", unavailable)
+        monkeypatch.setattr(price_checks, "plan_price_problems", unavailable)
         starter = Plan.objects.get(slug="starter")
 
         page = self.save(staff_client, starter, stripe_price_id="price_new").content.decode()
@@ -369,10 +369,10 @@ class TestThePlanPrices:
         assert Plan.objects.get(slug="starter").stripe_price_id == "price_new"
 
     def test_other_changes_ask_stripe_nothing(self, staff_client, plans, monkeypatch):
-        from billing import services as billing_services
+        from billing.services import price_checks
 
         asked = []
-        monkeypatch.setattr(billing_services, "plan_price_problems", lambda **kwargs: asked.append(kwargs) or {})
+        monkeypatch.setattr(price_checks, "plan_price_problems", lambda **kwargs: asked.append(kwargs) or {})
 
         self.save(staff_client, Plan.objects.get(slug="starter"), name_es="Inicio")
 
@@ -402,17 +402,17 @@ class TestTheTestClock:
         assert actions() == set()
 
     def test_attaching_says_which_clock_or_why_not(self, staff_client, business, settings, monkeypatch):
-        from billing import services as billing_services
+        from billing.services import staff_test_clocks
 
         settings.STRIPE_SECRET_KEY = "rk_test_51abc"
-        monkeypatch.setattr(billing_services, "attach_test_clock", lambda hub_id: "clock_qa")
+        monkeypatch.setattr(staff_test_clocks, "attach_test_clock", lambda hub_id: "clock_qa")
 
         assert "clock_qa" in _act(staff_client, "hub", "attach_test_clock", [business]).content.decode()
 
         def refused(hub_id):
-            raise billing_services.TestClockRefused("Its payer is a Stripe customer already.")
+            raise staff_test_clocks.TestClockRefused("Its payer is a Stripe customer already.")
 
-        monkeypatch.setattr(billing_services, "attach_test_clock", refused)
+        monkeypatch.setattr(staff_test_clocks, "attach_test_clock", refused)
         assert "Its payer is a Stripe customer already." in _act(
             staff_client, "hub", "attach_test_clock", [business]
         ).content.decode()

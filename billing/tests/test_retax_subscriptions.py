@@ -5,7 +5,7 @@ that same rate on every renewal, so without this a payer who moves from Madrid t
 21 %, and a consumer in Berlin keeps Spanish VAT after the year crosses the OSS threshold.
 
 Adapted to the new design: one subscription per business (the plan and its modules are items of it), the
-same engine as the sale (``services.price_sale``), the next invoice charges the new rate (no proration: the
+same engine as the sale (``services.stripe_sales.price_sale``), the next invoice charges the new rate (no proration: the
 paid period is not touched). Two doors: right after the owner saves the billing details, and the daily
 ``manage.py retax_subscriptions`` (an address change whose push failed, a crossing of the threshold, a rate
 the table schedules). Instead of a trail row per subscription (old ``OssSubscriptionRetax``), the rates

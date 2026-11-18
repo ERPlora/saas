@@ -22,6 +22,7 @@ from django.core import mail
 from billing import services
 from billing.models import CheckoutAttempt
 from billing.schemas import CheckoutStartIn, HubIn
+from billing.services import checkouts
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import (
     checkout_session,
@@ -66,7 +67,7 @@ def hand_over(hub, owner, heir):
 
 def opened_by(user, hub):
     """``user`` opens the Embedded Checkout of Starter for ``hub``: its attempt."""
-    services.checkout_start(ctx_for(user), CheckoutStartIn(hub_id=hub.id, plan="starter"))
+    checkouts.checkout_start(ctx_for(user), CheckoutStartIn(hub_id=hub.id, plan="starter"))
     return CheckoutAttempt.objects.filter(hub=hub, owner=user).latest("created_at")
 
 

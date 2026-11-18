@@ -30,7 +30,7 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `knowledge/raw/superpowers/specs/2
 
 - **Precios (PUBLIC-F02–F04):** el ahorro anual sale de los dos precios del plan (`annual_months_free`), nunca de un
   «2 meses gratis» escrito; el año de Colabora vale el precio anual. El precio pintado es el del `Plan` y el cobro
-  usa el mismo (`billing.services.plan_sale`); el admin rechaza un precio de Stripe que no case (BILLING-F28).
+  usa el mismo (`billing.services.stripe_sales.plan_sale`); el admin rechaza un precio de Stripe que no case (BILLING-F28).
 - **Promesas (PUBLIC-F07, F08):** solo lo que hacen hoy las apps del Hub y la infraestructura de ERPlora/aws; las
   listas de frases vetadas viven en `tests/test_product.py`.
 - **Cumplimiento (PUBLIC-F09, APP-PUBLIC-1, 2026-10-21):** vuelve `/compliance/`, que la spec aplazó (§11.1). Decidido

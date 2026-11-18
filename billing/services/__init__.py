@@ -1,17 +1,13 @@
-"""Writes of billing in Stripe: buying, changing and cancelling, the webhook and the sweeps that apply the live
-subscription, and ERPlora's invoices, credit notes and OSS notices. The VAT number of a payer, its VIES verdict and
-the tax of a sale live in their own modules of this package."""
+"""Writes of billing in Stripe: a business handed over with a paid plan, the webhook and the sweeps that apply the live
+subscription, and ERPlora's invoices, credit notes and OSS notices. Buying, changing and cancelling, the VAT number of a
+payer, its VIES verdict and the tax of a sale live in their own modules of this package."""
 
-import hashlib
-import json
 import logging
 import uuid
 from collections import Counter
 from collections.abc import Callable
-from contextlib import contextmanager
 from functools import partial
-from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import NamedTuple
 
@@ -19,19 +15,18 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, connection, transaction
-from django.db.models import F, Q, Value
-from django.db.models.functions import Coalesce
+from django.db.models import F, Q
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from live.context import OperationContext, Scope, system_context
-from live.errors import Conflict, InvalidPayload, OperationError
+from live.errors import Conflict, OperationError
 from live.errors import NotFound as NotFoundError
-from live.operations import AI, INTERNAL, operation
+from live.operations import INTERNAL, operation
 from live.outbox import notify, record_event
 
 from apps.models import Module
 from base.navigation import BILLING, BUSINESSES
-from billing import events, platform_contract, queries, stripe_service, stripe_tax_ids, stripe_test_clocks, vat, vies
+from billing import events, platform_contract, queries, stripe_service, vat, vies
 from billing.models import (
     CheckoutAttempt,
     Invoice,
@@ -39,14 +34,11 @@ from billing.models import (
     InvoiceLine,
     OssNotice,
     PaymentFailure,
-    PlanChangeSchedule,
-    PromoCode,
     VatCheck,
     WebhookEvent,
 )
 from billing.money import from_cents, to_cents
 from billing.schemas import (
-    CheckoutConfirmIn,
     CheckoutRefundRecordIn,
     CheckoutRefundRecordOut,
     CreditNoteRecordIn,
@@ -57,22 +49,31 @@ from billing.schemas import (
     InvoiceRecordIn,
     InvoiceRecordOut,
     RefundRecordIn,
-    CheckoutStartIn,
     CheckoutStartOut,
     HubIn,
     ModuleIn,
-    PlanChangeIn,
     PortalOpenIn,
     PortalOpenOut,
     SubscriptionOut,
 )
 from billing.services import (
+    checkouts,
     discounts,
+    downgrades,
     invoice_discounts,
+    live_subscriptions,
     payer_vat_numbers,
+    payment_gates,
+    plan_changes,
+    price_checks,
     promo_codes,
     promo_holds,
     sale_tax,
+    staff_test_clocks,
+    stripe_customers,
+    stripe_sales,
+    stripe_sync,
+    unpaid_notices,
     vat_clearance,
 )
 from billing.stripe_checkout import (
@@ -83,1343 +84,14 @@ from billing.stripe_checkout import (
 )
 from billing.stripe_keys import StripeKeyMode
 from billing.stripe_period import subscription_period
-from billing.stripe_tax_rates import tax_rate_specs_for
 from hubs import emails as hub_emails
 from hubs import hub_client
-from hubs.queries import access_control, membership, payers, plan_catalog
-from hubs.services import exclusive_runs, hub_callbacks, refusals, subscription_sync, suspensions
-from hubs.models import BillingProfile, Hub, HubMember, Plan, Subscription, SubscriptionItem
+from hubs.queries import access_control, membership, payers
+from hubs.services import exclusive_runs, hub_callbacks, refusals, suspensions
+from hubs.models import BillingProfile, Hub, HubMember, Subscription, SubscriptionItem
 from hubs.hub_client import HubRefused, HubUnavailable
-from hubs.schemas.subscriptions import ModuleRightIn, SubscriptionApplyIn
 
 logger = logging.getLogger("billing.services")
-
-
-# --- Stripe: buying, changing and cancelling ----------------------------------------------------------
-#
-# ONE Stripe subscription per business, whose items are its plan and its bought modules, at NET prices
-# plus OUR tax rates (one ``TaxRate`` per item, ``billing.TaxRule``; never ``automatic_tax``). A business
-# without one pays in an Embedded Checkout; one that has it previews the proration and confirms. Every
-# change is read back from Stripe and written by ``hubs.subscription.apply`` (an app writes in another
-# only through its operations), which pushes the snapshot to the Hub after the COMMIT.
-
-#: Stripe's tag of this checkout flow (Dashboard → Checkout), fixed with its 8-letter suffix.
-INTEGRATION_IDENTIFIER = "erplora_saas_billing_qmvhtkzd"
-#: A simplified invoice is allowed up to 400 € with VAT (RD 1619/2012, art. 4.1); above it the invoice
-#: names the buyer, so the sale needs the payer's tax id first.
-SIMPLIFIED_INVOICE_LIMIT = Decimal("400.00")
-#: How long a business whose renewal failed keeps its whole plan while Stripe retries, counted from the
-#: failed invoice (market: WooCommerce 7 days, Square 9, Lightspeed 21).
-UNPAID_PLAN_GRACE = timedelta(days=7)
-PAID_STATUSES = frozenset({"active", "trialing"})
-DUNNING_STATUSES = frozenset({"past_due", "unpaid"})
-ENDED_STATUSES = frozenset({"canceled", "incomplete_expired"})
-#: Stripe failure codes that mean the CARD will not pay again as it is (the bank refused it, or it is no
-#: longer valid): «Pay» waits until the card changes.
-CARD_REFUSED_CODES = frozenset(
-    {
-        "card_declined",
-        "expired_card",
-        "incorrect_cvc",
-        "incorrect_number",
-        "invalid_cvc",
-        "invalid_expiry_month",
-        "invalid_expiry_year",
-        "invalid_number",
-        "card_not_supported",
-    }
-)
-
-
-@dataclass(frozen=True)
-class Sale:
-    """What is sold, at which Stripe price and net amount, and as which tax category."""
-
-    kind: str  # "plan" | "module"
-    slug: str
-    interval: str
-    price_id: str
-    net: Decimal
-    category_key: str
-    plan: Plan | None = None
-    module: Module | None = None
-
-
-def _payments_unavailable() -> OperationError:
-    return OperationError(
-        _(
-            "Payments are not available right now. Nothing was charged; try again later."
-        ),
-        code="billing.payments_unavailable",
-        status=503,
-    )
-
-
-@contextmanager
-def stripe_errors(*, charging: bool = False):
-    """Stripe's failures as the panel's errors. ``charging``: the call may have charged when Stripe did not
-    answer (the request may have gone through), so the panel never hears «nothing was charged» then; a
-    refusal, a declined card included, charged nothing."""
-    try:
-        yield
-    except stripe_service.StripeNotConfigured:
-        raise _payments_unavailable() from None
-    except stripe_service.StripeUnavailable:
-        message = (
-            _(
-                "The payment service did not answer, so the charge is not confirmed. Check Billing before trying again."
-            )
-            if charging
-            else _(
-                "The payment service did not answer. Nothing was charged; try again in a moment."
-            )
-        )
-        raise OperationError(
-            message, code="billing.stripe_unavailable", status=503
-        ) from None
-    except stripe_service.StripeRefused as refused:
-        if refused.card:
-            raise Conflict(
-                _(
-                    "The bank declined the card. Nothing was charged: change the card and try again."
-                ),
-                code="billing.card_declined",
-            ) from None
-        raise OperationError(
-            _(
-                "The payment service refused the operation. Nothing was charged; contact support."
-            ),
-            code="billing.stripe_refused",
-            status=502,
-        ) from None
-
-
-def require_stripe() -> None:
-    """Stripe is configured (a secret or restricted key): 503 ``billing.payments_unavailable`` otherwise,
-    before anything is asked of it."""
-    if stripe_service.key_mode() is StripeKeyMode.UNKNOWN:
-        raise _payments_unavailable()
-
-
-#: How long a healthy answer of the platform hub opens live charging; a failed one is asked again next time.
-PLATFORM_HEALTH_SECONDS = 5 * 60
-PLATFORM_HEALTH_KEY = "billing.platform_invoicing.healthy"
-
-
-def invoicing_available() -> bool:
-    """Whether a route sends ERPlora's invoices now: the platform invoicing is switched on
-    (``PLATFORM_INVOICING_ENABLED``, off by default) AND the platform hub answers its health route
-    (``GET /internal/platform/invoices/health`` → 200 ``{"status": "ok"}``), kept ``PLATFORM_HEALTH_SECONDS``."""
-    if not settings.PLATFORM_INVOICING_ENABLED:
-        return False
-    if cache.get(PLATFORM_HEALTH_KEY):
-        return True
-    try:
-        answer = hub_client.platform_invoicing_health()
-    except (HubUnavailable, HubRefused) as failed:
-        logger.error("[BILLING] The platform hub does not issue invoices now: %s", failed)
-        return False
-    healthy = answer.status == 200 and isinstance(answer.body, dict) and answer.body.get("status") == "ok"
-    if healthy:
-        cache.set(PLATFORM_HEALTH_KEY, True, PLATFORM_HEALTH_SECONDS)
-    return healthy
-
-
-def require_payments() -> None:
-    """Stripe is configured, and a LIVE key moves real money only while a route sends ERPlora's invoice of
-    it (``invoicing_available``: in production nothing is charged without a route that sends its invoice)
-    and this year's OSS total is known.
-
-    The OSS threshold (10,000 € a year of cross-border B2C sales) decides between Spanish and destination
-    VAT, and part of the year was sold by the old SaaS (``FiscalPolicy.oss_carried_*``): until that sum is
-    on file for this year, a sale could cross the threshold unseen. A
-    test key moves no real money and is never held.
-    """
-    require_stripe()
-    if stripe_service.key_mode() is not StripeKeyMode.LIVE:
-        return
-    if not invoicing_available():
-        logger.error(
-            "[BILLING] A live sale was refused: no route sends ERPlora's invoice now (PLATFORM_INVOICING_ENABLED "
-            "and the platform hub's health)",
-            extra={"event": "billing.invoicing_unavailable"},
-        )
-        raise Conflict(
-            _(
-                "Payments open once ERPlora can invoice them. Nothing was charged; try again later."
-            ),
-            code="billing.invoicing_unavailable",
-        )
-    year = timezone.localdate().year
-    if not queries.oss_total_is_known(queries.fiscal_policy(), year):
-        logger.error(
-            "[BILLING] A live sale was refused: the OSS total of %s is not on file (FiscalPolicy.oss_carried_*)",
-            year,
-            extra={"event": "billing.oss_total_unknown", "year": year},
-        )
-        raise Conflict(
-            _(
-                "Payments are paused while this year's EU sales total is brought up to date. Nothing was "
-                "charged; try again later."
-            ),
-            code="billing.oss_total_unknown",
-        )
-
-
-def _owned(ctx: OperationContext, hub_id) -> tuple[Hub, Subscription | None]:
-    """The business ``hub_id`` if the account OWNS it (what a business pays is its owner's:
-    404 without access, 403 for another role), locked, and its subscription; a deleted one buys nothing.
-
-    And the account is its PAYER: an accepted transfer leaves the previous owner's payer, card
-    and Stripe customer on the business, and a new owner must not charge, read or cancel them (409
-    ``billing.payer_required``): they say who pays first (``hubs.billing_profile.update`` gives the business
-    a payer of theirs). A subscription still billed to the previous payer's customer is kept with the new owner's
-    card first («Keep it with my card», ``billing.plan.take_over``)."""
-    user = access_control.account_of(ctx)
-    member = access_control.access(user, hub_id, HubMember.Role.OWNER, lock=True)
-    if not access_control.is_writable(member.hub):
-        raise refusals.business_deleted()
-    hub = Hub.objects.select_related("billing_profile").get(pk=member.hub_id)
-    subscription = (
-        Subscription.objects.select_related("plan", "trial_plan")
-        .filter(hub=hub)
-        .first()
-    )
-    profile = hub.billing_profile
-    if profile is None or profile.owner_id != user.pk:
-        raise Conflict(
-            _(
-                "Say who pays for this business first: its billing details are another account's."
-            ),
-            code="billing.payer_required",
-        )
-    billed_to = subscription.stripe_customer_id if _paying(subscription) else ""
-    if billed_to and billed_to != profile.stripe_customer_id:
-        logger.warning(
-            "[BILLING] Hub %s is billed to customer %s, not to its payer's (%s)",
-            hub.id,
-            billed_to,
-            profile.stripe_customer_id or "none",
-        )
-        raise Conflict(
-            _(
-                "This business's plan is still paid with its previous owner's card: keep it with yours in Billing first."
-            ),
-            code="billing.payer_required",
-        )
-    return hub, subscription
-
-
-def _paying(subscription: Subscription | None) -> bool:
-    return (
-        bool(subscription and subscription.stripe_subscription_id)
-        and subscription.status not in ENDED_STATUSES
-    )
-
-
-def _require_paid_up(hub: Hub, subscription: Subscription | None) -> None:
-    """A business with an unpaid invoice buys nothing more until it pays it."""
-    unpaid = subscription is not None and subscription.status in DUNNING_STATUSES
-    if unpaid or hub.status == Hub.Status.SUSPENDED:
-        raise Conflict(
-            _(
-                "This business has an unpaid invoice: pay it before buying or changing anything."
-            ),
-            code="billing.invoice_unpaid",
-        )
-
-
-def _not_on_sale(what: str) -> Conflict:
-    logger.error(
-        "[BILLING] %s has no Stripe price for this billing: it cannot be sold", what
-    )
-    return Conflict(
-        _("This cannot be bought right now. Contact support."),
-        code="billing.not_on_sale",
-    )
-
-
-def _upgrade_only() -> Conflict:
-    """Pro, Enterprise and Max (``upgrade_only``) are an upgrade of a business that already pays;
-    the Store does not offer them to a Free one (``billing.store.catalog``'s ``offered_plans``)."""
-    return Conflict(
-        _(
-            "This plan is an upgrade of a paid plan: start with one of the plans sold at sign-up."
-        ),
-        code="billing.plan_upgrade_only",
-    )
-
-
-def plan_sale(hub: Hub | None, slug: str, interval: str) -> Sale:
-    """The plan ``slug`` as ``hub`` buys it; without a business, as any business nobody marked."""
-    plan = queries.plan_on_sale(slug, hub)
-    if plan is None:
-        reason = _("There is no plan with this identifier.")
-        raise InvalidPayload(reason, fields={"plan": reason})
-    if not to_cents(plan.price_monthly or 0):
-        raise Conflict(
-            _(
-                "Free is not bought: to go back to it, cancel the plan and it ends with its period."
-            ),
-            code="billing.plan_is_free",
-        )
-    price_id = (
-        plan.stripe_price_id_annual if interval == "year" else plan.stripe_price_id
-    )
-    net = plan.price_annual if interval == "year" else plan.price_monthly
-    if not price_id:
-        raise _not_on_sale(f"Plan {plan.slug} ({interval})")
-    return Sale(
-        "plan",
-        plan.slug,
-        interval,
-        price_id,
-        Decimal(net or 0),
-        vat.SAAS_SUBSCRIPTION_CATEGORY,
-        plan=plan,
-    )
-
-
-def module_sale(slug: str, interval: str, *, module: Module | None = None) -> Sale:
-    module = module or queries.module_on_sale(slug)
-    if module is None:
-        reason = _("There is no module with this identifier on sale.")
-        raise InvalidPayload(reason, fields={"module": reason})
-    price_id = (
-        module.stripe_price_id_annual
-        if interval == "year"
-        else module.stripe_price_id_monthly
-    )
-    cents = (
-        module.price_annual_cents if interval == "year" else module.price_monthly_cents
-    )
-    if not price_id:
-        raise _not_on_sale(f"Module {module.slug} ({interval})")
-    return Sale(
-        "module",
-        module.slug,
-        interval,
-        price_id,
-        Decimal(cents) / 100,
-        vat.SOFTWARE_LICENSE_CATEGORY,
-        module=module,
-    )
-
-
-def _owns_module(subscription: Subscription | None, slug: str) -> bool:
-    if subscription is None:
-        return False
-    item = SubscriptionItem.objects.filter(
-        subscription=subscription, module_slug=slug
-    ).first()
-    return item is not None and item.is_live(timezone.now())
-
-
-def _require_module_not_owned(subscription: Subscription | None, slug: str) -> None:
-    if _owns_module(subscription, slug):
-        raise Conflict(
-            _("This business already has this module."), code="billing.module_owned"
-        )
-
-
-def _recurring_net(
-    subscription: Subscription | None,
-    interval: str,
-    *,
-    plan: Plan | None = None,
-    adding: Sale | None = None,
-) -> Decimal:
-    """What a renewal of the business charges, net, once ``adding`` is in: the plan and its bought modules,
-    at ``interval``'s prices (the full invoice decides on the whole renewal, not one line of it)."""
-    total = Decimal("0")
-    plan = (
-        plan
-        if plan is not None
-        else (subscription.plan if _paying(subscription) else None)
-    )
-    if plan is not None:
-        total += Decimal(
-            (plan.price_annual if interval == "year" else plan.price_monthly) or 0
-        )
-    if subscription is not None:
-        now = timezone.now()
-        for item in SubscriptionItem.objects.filter(
-            subscription=subscription, source=SubscriptionItem.Source.PURCHASE
-        ):
-            if not item.is_live(now) or item.valid_until is not None:
-                continue
-            module = Module.objects.filter(slug=item.module_slug).first()
-            if module is not None:
-                total += (
-                    Decimal(
-                        module.price_annual_cents
-                        if interval == "year"
-                        else module.price_monthly_cents
-                    )
-                    / 100
-                )
-    if adding is not None and adding.kind == "module":
-        total += adding.net
-    return total
-
-
-def price_sale(hub: Hub, sale: Sale, *, recurring_net: Decimal, renewing: bool = False) -> list[str]:
-    """The Stripe ``TaxRate`` ids that charge OUR tax on ``sale``, after the guards that refuse it: no
-    location (409 ``billing.billing_location_required``), a payer ERPlora does not sell to (unless ``renewing``),
-    a UK consumer, a territory without a rule, and a renewal over the simplified-invoice limit without the payer's
-    tax id (409 ``billing.tax_id_required``)."""
-    quote = sale_tax.sale_quote(
-        hub, category_key=sale.category_key, price=sale.net, what=sale.kind, renewing=renewing
-    )
-    rate = Decimal(quote.rate or 0) if quote.is_subject else Decimal("0")
-    gross = vat.add_vat(recurring_net, rate) if rate else recurring_net
-    profile = hub.billing_profile
-    if gross > SIMPLIFIED_INVOICE_LIMIT and not (profile.tax_id or "").strip():
-        logger.info(
-            "[BILLING] %s of hub %s needs the payer's tax id: %s € with VAT",
-            sale.kind,
-            hub.id,
-            gross,
-        )
-        raise Conflict(
-            _(
-                "Above 400 € with VAT the invoice must name the buyer: add the payer's tax ID before paying."
-            ),
-            code="billing.tax_id_required",
-        )
-    with stripe_errors():
-        return stripe_service.tax_rate_ids(tax_rate_specs_for(quote))
-
-
-def ensure_customer(hub: Hub, *, test_clock: str | None = None) -> str:
-    """The payer of ``hub`` as a Stripe customer: created once (and remembered on the payer through
-    ``hubs.subscription.apply``), brought up to date otherwise. Its VAT number travels only when VIES
-    proved it, or it is national (Stripe reverse charges by the FORMAT of a number).
-    ``test_clock`` attaches a new customer to a Stripe test clock (``billing.stripe_test_clocks``)."""
-    profile = hub.billing_profile
-    params = _customer_params(hub, profile)
-    with stripe_errors():
-        if profile.stripe_customer_id:
-            customer = stripe_service.update_customer(
-                profile.stripe_customer_id, params
-            )["id"]
-        else:
-            # One that a failed checkout created (its id rolled back with it) is found, not created again.
-            found = stripe_service.find_customer(str(profile.id))
-            if found is not None:
-                customer = stripe_service.update_customer(found["id"], params)["id"]
-            else:
-                if test_clock:
-                    params["test_clock"] = test_clock
-                # Keyed by the payer AND what is sent: Stripe refuses the same key with other details.
-                digest = hashlib.sha256(
-                    json.dumps(params, sort_keys=True).encode()
-                ).hexdigest()[:16]
-                customer = stripe_service.create_customer(
-                    params, idempotency_key=f"customer-{profile.id}-{digest}"
-                )["id"]
-            subscription_sync.subscription_apply(
-                hub_callbacks.system_ctx_for(hub.id),
-                SubscriptionApplyIn(hub_id=hub.id, stripe_customer_id=customer),
-            )
-            profile.stripe_customer_id = customer
-        _attach_cleared_tax_id(customer, profile)
-    return customer
-
-
-def _customer_params(hub: Hub, profile) -> dict:
-    """What the payer's Stripe customer holds: the billing details, the language of its mails and the payer."""
-    owner = profile.owner or _owner_of(hub)
-    address = {
-        key: value
-        for key, value in (
-            ("line1", profile.billing_address),
-            ("city", profile.billing_city),
-            ("postal_code", profile.billing_postal_code),
-            ("country", profile.billing_country),
-        )
-        if value
-    }
-    return {
-        "name": profile.billing_name or hub.name,
-        "email": profile.billing_email or getattr(owner, "email", ""),
-        "address": address,
-        "preferred_locales": [getattr(owner, "language", "") or settings.LANGUAGE_CODE],
-        "metadata": {"billing_profile_id": str(profile.id)},
-    }
-
-
-def push_payer_to_stripe(profile_id) -> str:
-    """The billing details the owner saved, onto the payer's Stripe customer: what Stripe sends
-    (the page to authenticate a renewal, its receipts) and the Customer Portal show them, not the old ones.
-    ``updated`` · ``skipped`` (Stripe never saw this payer: the first checkout creates the customer with them,
-    ``ensure_customer``). Stripe failing raises (``stripe_errors``)."""
-    profile = BillingProfile.objects.select_related("owner").get(pk=profile_id)
-    hub = Hub.objects.filter(billing_profile=profile).order_by("pk").first()
-    if not profile.stripe_customer_id or hub is None:
-        return "skipped"
-    with stripe_errors():
-        stripe_service.update_customer(profile.stripe_customer_id, _customer_params(hub, profile))
-        _attach_cleared_tax_id(profile.stripe_customer_id, profile)
-    return "updated"
-
-
-# --- The Stripe prices pasted on a plan or a module are its own (the staff, in the admin) ----------------------
-
-#: Each Stripe price of a plan: its field, the plan's amount it must charge and how often.
-PLAN_PRICE_FIELDS = (("stripe_price_id", "price_monthly", "month"), ("stripe_price_id_annual", "price_annual", "year"))
-#: The same for a paid module (``apps.Module``), whose amounts are already euro cents.
-MODULE_PRICE_FIELDS = (
-    ("stripe_price_id_monthly", "price_monthly_cents", "month"),
-    ("stripe_price_id_annual", "price_annual_cents", "year"),
-)
-
-
-class PriceCheckUnavailable(Exception):
-    """The prices could not be checked: said, never taken for a yes. One of the two below."""
-
-
-class PriceCheckSkipped(PriceCheckUnavailable):
-    """No usable Stripe key here (development): the admin saves and warns that nothing was checked."""
-
-
-class PriceCheckFailed(PriceCheckUnavailable):
-    """Stripe did not answer: the admin saves nothing and asks to try again."""
-
-
-def plan_price_problems(*, prices: dict[str, str], amounts: dict[str, Decimal], product: str) -> dict[str, str]:
-    """Why each Stripe price pasted on a plan would not sell it as the plan says, by field (empty = they do).
-
-    A price must exist with this key's mode (a test id in production is not found), be active, in euros, charged
-    every month or every year as its field says, the plan's amount, NET (``tax_behavior = exclusive``: our VAT goes
-    on top, never Stripe's) and, when the plan names its product, of that product. Nothing pasted asks nothing."""
-    return _price_problems(
-        PLAN_PRICE_FIELDS,
-        prices,
-        {field: to_cents(amount or Decimal(0)) for field, amount in amounts.items()},
-        product,
-        lambda stripe, expected: _("Stripe charges %(stripe)s and the plan says %(plan)s.")
-        % {"stripe": stripe, "plan": expected},
-    )
-
-
-def module_price_problems(*, prices: dict[str, str], amounts: dict[str, int], product: str) -> dict[str, str]:
-    """The same checks as :func:`plan_price_problems`, for the Stripe prices pasted on a paid module, by the
-    module's own fields; ``amounts`` are its net prices in euro cents (``price_monthly_cents``, ``price_annual_cents``)."""
-    return _price_problems(
-        MODULE_PRICE_FIELDS,
-        prices,
-        {field: int(amount or 0) for field, amount in amounts.items()},
-        product,
-        lambda stripe, expected: _("Stripe charges %(stripe)s and the module says %(module)s.")
-        % {"stripe": stripe, "module": expected},
-    )
-
-
-def _price_problems(fields, prices: dict[str, str], cents: dict[str, int], product: str, other_amount) -> dict[str, str]:  # noqa: C901
-    """The checks of a pasted Stripe price; ``other_amount(stripe, expected)`` words an amount that differs."""
-    pasted = [(field, prices.get(field) or "", amount, interval) for field, amount, interval in fields]
-    pasted = [row for row in pasted if row[1]]
-    if not pasted:
-        return {}
-    if stripe_service.key_mode() is StripeKeyMode.UNKNOWN:
-        raise PriceCheckSkipped(_("Stripe is not configured here: the prices were not checked."))
-    problems: dict[str, str] = {}
-    for field, price_id, amount_field, interval in pasted:
-        try:
-            price = stripe_service.retrieve_price(price_id)
-        except stripe_service.StripeRefused:
-            problems[field] = _("Stripe has no price %(id)s with these keys.") % {"id": price_id}
-            continue
-        except stripe_service.StripeUnavailable as failed:
-            raise PriceCheckFailed(_("Stripe did not answer: the prices were not checked. Try again.")) from failed
-        expected = cents.get(amount_field) or 0
-        recurring = price.get("recurring") or {}
-        if not price.get("active"):
-            problems[field] = _("This price is archived in Stripe.")
-        elif (price.get("currency") or "").lower() != "eur":
-            problems[field] = _("This price is not in euros.")
-        elif recurring.get("interval") != interval or recurring.get("interval_count", 1) != 1:
-            problems[field] = (
-                _("This price is not charged every month.") if interval == "month" else _("This price is not charged every year.")
-            )
-        elif price.get("unit_amount") != expected:
-            problems[field] = other_amount(from_cents(price.get("unit_amount") or 0), from_cents(expected))
-        elif price.get("tax_behavior") != "exclusive":
-            problems[field] = _("This price includes the VAT or does not say: it must be net (tax behaviour «exclusive»).")
-        elif product and price.get("product") != product:
-            problems[field] = _("This price is of another Stripe product.")
-    return problems
-
-
-# --- A real charge in PRE with a Stripe test clock (the staff, from the admin) ------------
-
-#: How far «Advance the clock» moves it: past a monthly renewal.
-TEST_CLOCK_STEP = timedelta(days=31)
-
-
-class TestClockRefused(Exception):
-    """Why a test clock was not attached or advanced, said to the staff as it is."""
-
-
-def _require_test_mode() -> None:
-    if stripe_service.key_mode() is not StripeKeyMode.TEST:
-        raise TestClockRefused(_("Test clocks only exist with Stripe's test keys."))
-
-
-def attach_test_clock(hub_id) -> str:
-    """Create a Stripe test clock and the payer of ``hub_id`` as a NEW Stripe customer on it (Stripe attaches a
-    clock only when the customer is created); its id. Test keys only."""
-    _require_test_mode()
-    hub = Hub.objects.select_related("billing_profile").get(pk=hub_id)
-    profile = hub.billing_profile
-    if profile is None:
-        raise TestClockRefused(_("This business has no payer yet: fill in its billing details first."))
-    try:
-        known = profile.stripe_customer_id or stripe_service.find_customer(str(profile.id))
-        if known:
-            raise TestClockRefused(_("Its payer is a Stripe customer already: a clock only takes a new one."))
-        clock = stripe_test_clocks.create_test_clock(int(timezone.now().timestamp()), name=f"QA {hub.slug}")
-        ensure_customer(hub, test_clock=clock)
-    except (stripe_service.StripeUnavailable, stripe_service.StripeRefused) as failed:
-        raise TestClockRefused(_("Stripe did not take it: %(reason)s") % {"reason": failed}) from failed
-    return clock
-
-
-def advance_test_clock_of(hub_id) -> datetime:
-    """Move the test clock of the payer of ``hub_id`` one step (``TEST_CLOCK_STEP``) from its own time; when it
-    reaches. It does not wait: Stripe advances it and tells what happens (a renewal, a charge) by its events, as
-    in production. Test keys only; a clock still advancing is not pushed again."""
-    _require_test_mode()
-    hub = Hub.objects.select_related("billing_profile").get(pk=hub_id)
-    customer = hub.billing_profile.stripe_customer_id if hub.billing_profile is not None else ""
-    if not customer:
-        raise TestClockRefused(_("This business has no test clock: attach one first."))
-    try:
-        clock_id = stripe_service.retrieve_customer(customer).get("test_clock") or ""
-        if isinstance(clock_id, dict):
-            clock_id = clock_id.get("id", "")
-        if not clock_id:
-            raise TestClockRefused(_("This business has no test clock: attach one first."))
-        clock = stripe_service.retrieve_test_clock(clock_id)
-        if clock.get("status") != "ready":
-            raise TestClockRefused(_("Its clock is still advancing: try again in a minute."))
-        to = int(clock["frozen_time"] + TEST_CLOCK_STEP.total_seconds())
-        stripe_service.advance_test_clock(clock_id, {"frozen_time": to})
-    except (stripe_service.StripeUnavailable, stripe_service.StripeRefused) as failed:
-        raise TestClockRefused(_("Stripe did not take it: %(reason)s") % {"reason": failed}) from failed
-    logger.info("[TEST CLOCK] %s of hub %s advancing to %s", clock_id, hub.id, to)
-    return datetime.fromtimestamp(to, tz=UTC)
-
-
-def _owner_of(hub: Hub):
-    member = (
-        HubMember.objects.select_related("user")
-        .filter(hub=hub, role=HubMember.Role.OWNER)
-        .first()
-    )
-    return member.user if member else None
-
-
-def _attach_cleared_tax_id(customer: str, profile) -> None:
-    if not (profile.tax_id or "").strip():
-        return
-    clearance = vat_clearance.clear_tax_id_for_stripe(
-        profile.tax_id, customer_country=profile.billing_country
-    )
-    tax_type = vat.tax_id_type_for(profile.billing_country)
-    if not clearance.may_travel_to_stripe or not tax_type:
-        return
-    stripe_tax_ids.attach(
-        customer, tax_type=tax_type, number=clearance.vat_number, country=profile.billing_country
-    )
-
-
-@operation(
-    "billing.checkout.start",
-    kind="command",
-    permission="billing.pay",
-    input=CheckoutStartIn,
-    output=CheckoutStartOut,
-    ai=INTERNAL,  # stripe
-)
-def checkout_start(ctx: OperationContext, data: CheckoutStartIn) -> dict:
-    """The owner buys a plan or a module for a business. Without a Stripe subscription (Free): an Embedded
-    Checkout (``flow = checkout`` and its ``client_secret``; the same selection reuses its open session).
-    With one: the prorated charge of adding it (``flow = confirm`` and ``preview``), confirmed with
-    ``billing.checkout.confirm`` (a module) or ``billing.plan.change`` (a plan). Nothing is charged here."""
-    hub, subscription = _owned(ctx, data.hub_id)
-    if _paying(subscription):
-        interval = data.interval if data.plan else subscription.billing_interval
-    else:
-        interval = data.interval
-    if data.plan and not _paying(subscription):
-        asked = queries.plan_on_sale(data.plan, hub)
-        if asked is not None and asked.upgrade_only:
-            raise _upgrade_only()
-    sale = (
-        plan_sale(hub, data.plan, interval)
-        if data.plan
-        else module_sale(data.module, interval)
-    )
-    require_payments()
-    _require_paid_up(hub, subscription)
-    if sale.kind == "module":
-        _require_module_not_owned(subscription, sale.slug)
-    if _paying(subscription):
-        return _preview(hub, subscription, sale, data.promo_code)
-    tax_rates = price_sale(hub, sale, recurring_net=sale.net)
-    customer = hub.billing_profile.stripe_customer_id
-    promo = promo_codes.checkout_promo(data.promo_code, hub=hub, customer=customer) if sale.kind == "plan" else None
-    with stripe_errors():
-        terms = promo_codes.checkout_terms(sale, subscription, promo, timezone.now())
-    attempt = _checkout_attempt(ctx, hub, sale, tax_rates, terms)
-    return {
-        "flow": "checkout",
-        "session_id": attempt.stripe_session_id,
-        "client_secret": attempt.client_secret,
-        "publishable_key": settings.STRIPE_PUBLISHABLE_KEY,
-        "preview": None,
-    }
-
-
-def _expire_other_sessions(hub: Hub, selection: str) -> None:
-    """One open checkout per business: two open sessions could both be paid, and the business would end up
-    with two subscriptions. One Stripe no longer lets expire (paid meanwhile) is left to the webhook."""
-    others = CheckoutAttempt.objects.filter(
-        hub=hub, status=CheckoutAttempt.Status.OPEN
-    ).exclude(selection=selection)
-    for attempt in others.exclude(stripe_session_id=None):
-        try:
-            with stripe_errors():
-                stripe_service.expire_checkout_session(attempt.stripe_session_id)
-        except Conflict:
-            raise
-        except OperationError as refused:
-            if refused.code != "billing.stripe_refused":
-                raise
-            logger.info(
-                "[BILLING] Checkout %s could not be expired: it is not open any more",
-                attempt.stripe_session_id,
-            )
-            continue
-        CheckoutAttempt.objects.filter(pk=attempt.pk).update(
-            status=CheckoutAttempt.Status.EXPIRED, updated_at=timezone.now()
-        )
-        promo_holds.release(attempt=attempt)
-
-
-def _checkout_attempt(ctx, hub, sale: Sale, tax_rates, terms: promo_codes.CheckoutTerms) -> CheckoutAttempt:
-    """The open checkout of this selection, reused for a while, or a new Checkout Session."""
-    # The tax rates too: a payer whose place or VAT number changed is charged anew, never at the old rate.
-    selection = f"{sale.kind}:{sale.slug}:{sale.interval}:{terms.code}:{','.join(tax_rates)}"[:255]
-    reusable = CheckoutAttempt.objects.filter(
-        hub=hub,
-        selection=selection,
-        status=CheckoutAttempt.Status.OPEN,
-        created_at__gt=timezone.now() - CheckoutAttempt.REUSE_FOR,
-    ).exclude(client_secret="")
-    attempt = reusable.order_by("-created_at").first()
-    if attempt is not None:
-        return attempt
-    _expire_other_sessions(hub, selection)
-    customer = ensure_customer(hub)
-    attempt = CheckoutAttempt.objects.create(
-        hub=hub,
-        owner=access_control.account_of(ctx),
-        kind=CheckoutAttempt.Kind.PLAN
-        if sale.kind == "plan"
-        else CheckoutAttempt.Kind.MODULE,
-        plan_slug=sale.slug if sale.kind == "plan" else "",
-        module_slug=sale.slug if sale.kind == "module" else "",
-        billing_interval=sale.interval,
-        promo_code=terms.code,
-        selection=selection,
-    )
-    if terms.promo is not None:
-        promo_holds.hold(terms.promo, attempt, customer=customer, coupon=terms.coupon)
-    kind = (
-        CheckoutKind.HUB_PLAN if sale.kind == "plan" else CheckoutKind.MODULE_PURCHASE
-    )
-    metadata = {
-        KIND_METADATA_KEY: kind.value,
-        "hub_id": str(hub.id),
-        sale.kind: sale.slug,
-        "billing_interval": sale.interval,
-        "attempt": str(attempt.id),
-    }
-    if terms.code:
-        metadata["promo_code"] = terms.code
-    subscription_data = {
-        "description": f"ERPlora — {hub.name}",
-        "metadata": {"hub_id": str(hub.id)},
-        **terms.subscription_data,
-    }
-    base = hub_emails.base_url(ctx.request)
-    params = {
-        "ui_mode": EMBEDDED_UI_MODE,
-        "mode": "subscription",
-        "customer": customer,
-        # With a customer, what the buyer types in the checkout is saved on it.
-        "customer_update": {"name": "auto", "address": "auto"},
-        "line_items": [{"price": sale.price_id, "quantity": 1, "tax_rates": tax_rates}],
-        "metadata": metadata,
-        "subscription_data": subscription_data,
-        "redirect_on_completion": "if_required",
-        "return_url": f"{base}{BUSINESSES}/{hub.id}/summary?checkout={{CHECKOUT_SESSION_ID}}",
-        "locale": "auto",
-        # Without an address there is no country, and without it no tax jurisdiction.
-        "billing_address_collection": "required",
-        # Never: Stripe reverse charges by the FORMAT of a number. Ours is asked in our form and only a
-        # proved one reaches the customer (``ensure_customer``).
-        "tax_id_collection": {"enabled": False},
-        "integration_identifier": INTEGRATION_IDENTIFIER,
-        **terms.params,
-    }
-    with stripe_errors():
-        session = stripe_service.create_checkout_session(
-            params, idempotency_key=f"checkout-{attempt.id}"
-        )
-    attempt.stripe_session_id = session["id"]
-    attempt.client_secret = session.get("client_secret") or ""
-    attempt.save(update_fields=["stripe_session_id", "client_secret", "updated_at"])
-    record_event(
-        ctx,
-        events.CHECKOUT_STARTED,
-        {"hub_id": str(hub.id), "kind": sale.kind, "attempt": str(attempt.id)},
-    )
-    return attempt
-
-
-def _live(subscription: Subscription) -> dict:
-    with stripe_errors():
-        return stripe_service.retrieve_subscription(subscription.stripe_subscription_id)
-
-
-def _live_items(live: dict) -> list[dict]:
-    return list(((live.get("items") or {}).get("data")) or [])
-
-
-def _plan_item(live: dict) -> dict | None:
-    for item in _live_items(live):
-        if queries.plan_for_price(item["price"]["id"]) is not None:
-            return item
-    return None
-
-
-#: Stripe's cap of items per subscription (the plan and 19 modules).
-MAX_ITEMS = 20
-
-
-def _require_room(live: dict, adding: int = 1) -> None:
-    if len(_live_items(live)) + adding > MAX_ITEMS:
-        raise Conflict(
-            _(
-                "This business has as many modules as one subscription can bill. Contact support."
-            ),
-            code="billing.too_many_items",
-        )
-
-
-def is_downgrade(subscription: Subscription, sale: Sale) -> bool:
-    """Whether a plan change gives the business less for its money: annual → monthly, or a cheaper plan on the
-    same billing. It waits for the end of the paid period: charged now it would credit the
-    unused part of the dearer plan, a Stripe invoice with a negative total."""
-    if subscription.billing_interval == Subscription.Interval.YEAR and sale.interval == "month":
-        return True
-    if sale.interval != subscription.billing_interval:
-        return False
-
-    def price(plan: Plan) -> int:
-        return to_cents((plan.price_annual if sale.interval == "year" else plan.price_monthly) or 0)
-
-    return price(sale.plan) < price(subscription.plan)
-
-
-def pending_change(hub: Hub) -> PlanChangeSchedule | None:
-    return PlanChangeSchedule.objects.filter(hub=hub).first()
-
-
-def _require_no_pending_change(hub: Hub) -> None:
-    """A module bought or cancelled while a downgrade waits would be dropped by the schedule's next phase."""
-    if pending_change(hub) is not None:
-        raise Conflict(
-            _("The plan changes at the end of this period: keep the current plan first, then change the modules."),
-            code="billing.plan_change_pending",
-        )
-
-
-def _release_pending(hub: Hub, live: dict | None = None) -> None:
-    """Undo a downgrade that waits (or detach the schedule of one already applied): Stripe releases the
-    schedule, the subscription keeps its items. A schedule Stripe no longer holds counts as released."""
-    pending = pending_change(hub)
-    attached = (live or {}).get("schedule")
-    if isinstance(attached, dict):
-        attached = attached.get("id")
-    for schedule_id in dict.fromkeys(filter(None, [attached, pending.stripe_schedule_id if pending else None])):
-        try:
-            with stripe_errors():
-                stripe_service.release_schedule(schedule_id)
-        except OperationError as refused:
-            if refused.code != "billing.stripe_refused":
-                raise
-            logger.warning("[BILLING] Schedule %s of hub %s was released already", schedule_id, hub.id)
-    PlanChangeSchedule.objects.filter(hub=hub).delete()
-
-
-def _phase_items(live: dict, replaced: dict[str, dict]) -> list[dict]:
-    """The items of a schedule phase: the live ones, with ``replaced`` (item id → price and tax rates)."""
-    items = []
-    for line in _live_items(live):
-        rates = [rate["id"] if isinstance(rate, dict) else rate for rate in line.get("tax_rates") or []]
-        change = replaced.get(line["id"], {})
-        items.append(
-            {
-                "price": change.get("price") or line["price"]["id"],
-                "quantity": line.get("quantity") or 1,
-                # A phase lists its items whole: no rate is an empty list there (``_rates_param`` is for updates).
-                "tax_rates": change.get("tax_rates", rates) or [],
-            }
-        )
-    return items
-
-
-def _schedule_downgrade(hub: Hub, subscription: Subscription, live: dict, sale: Sale, items: list[dict]) -> None:
-    """Hold the downgrade in Stripe as a schedule: the current phase ends with the paid period, the next one
-    bills ``items`` without proration (so no negative invoice), and the schedule then lets the subscription go
-    on its own (``release``)."""
-    _release_pending(hub, live)
-    _start, period_end = subscription_period(live)
-    with stripe_errors():
-        made = stripe_service.create_schedule(subscription.stripe_subscription_id)
-        phase = (made.get("phases") or [{}])[0]
-        stripe_service.update_schedule(
-            made["id"],
-            {
-                "end_behavior": "release",
-                "phases": [
-                    {
-                        "items": _phase_items(live, {}),
-                        "start_date": phase.get("start_date"),
-                        "end_date": period_end,
-                        "proration_behavior": "none",
-                        "discounts": discounts.phase_discounts(live),
-                    },
-                    {
-                        "items": _phase_items(live, {item["id"]: item for item in items if item.get("id")}),
-                        "proration_behavior": "none",
-                        "duration": {"interval": sale.interval, "interval_count": 1},
-                        "discounts": discounts.phase_discounts(live),
-                    },
-                ],
-            },
-        )
-    PlanChangeSchedule.objects.update_or_create(
-        hub=hub,
-        defaults={
-            "stripe_schedule_id": made["id"],
-            "plan_slug": sale.slug,
-            "interval": sale.interval,
-            "starts_at": _moment(period_end) or subscription.current_period_end or timezone.now(),
-        },
-    )
-
-
-def _forget_applied_change(hub_id, live: dict) -> None:
-    """Stripe started the next phase of a downgrade: the pending change is done, and its schedule is detached
-    so the subscription takes any later change directly."""
-    pending = PlanChangeSchedule.objects.filter(hub_id=hub_id).first()
-    if pending is None:
-        return
-    item = _plan_item(live)
-    found = queries.plan_for_price(item["price"]["id"]) if item else None
-    if found is None or (found[0].slug, found[1]) != (pending.plan_slug, pending.interval):
-        return
-    _release_pending(Hub.objects.get(pk=hub_id), live)
-
-
-@dataclass(frozen=True)
-class PlanChange:
-    """What a plan change sends to Stripe: the items, and how it is charged."""
-
-    items: list
-    #: ``always_invoice`` (charged now) or ``none`` (a trial: nothing until it ends).
-    proration_behavior: str
-    #: The sign-up trial left, or a promo code's: the plan starts charging then.
-    trial_end: int | None = None
-    promo: PromoCode | None = None
-
-
-def _plan_change(
-    hub: Hub, subscription: Subscription, live: dict, sale: Sale, promo_code: str = ""
-) -> PlanChange:
-    """The items of a plan change: the plan item gets the new price; on a change of billing, every module
-    item its price of the new billing (Stripe bills one interval per subscription), each with our tax. A
-    subscription of modules alone (a Free business) gets its plan item, keeping the days left of the sign-up
-    trial or a promo code's, as the checkout does. Never with a code of a discount; yearly billing waits for a discount
-    for months to end."""
-    discounts.require_annual_allowed(live, subscription, sale)
-    if (
-        sale.plan.pk == subscription.plan_id
-        and sale.interval == subscription.billing_interval
-    ):
-        raise Conflict(
-            _("This business is already on this plan."), code="billing.same_plan"
-        )
-    if subscription.cancel_at_period_end:
-        raise Conflict(
-            _("The plan is cancelled: keep it first, then change it."),
-            code="billing.cancellation_pending",
-        )
-    recurring = _recurring_net(subscription, sale.interval, plan=sale.plan)
-    tax_rates = price_sale(hub, sale, recurring_net=recurring)
-    current = _plan_item(live)
-    plan_line = {"price": sale.price_id, "tax_rates": tax_rates}
-    if current is None:
-        _require_room(live)
-    items = [
-        {"id": current["id"], **plan_line, "tax_rates": _rates_param(tax_rates)}
-        if current
-        else {**plan_line, "quantity": 1}
-    ]
-    if sale.interval != subscription.billing_interval:
-        for item in _live_items(live):
-            found = queries.module_for_price(item["price"]["id"])
-            if found is None:
-                continue
-            module_line = module_sale(found[0].slug, sale.interval, module=found[0])
-            items.append(
-                {
-                    "id": item["id"],
-                    "price": module_line.price_id,
-                    "tax_rates": _rates_param(
-                        price_sale(hub, module_line, recurring_net=recurring)
-                    ),
-                }
-            )
-    if current is not None:
-        return PlanChange(items, "always_invoice")
-    promo = promo_codes.plan_change_promo(promo_code, hub=hub, customer=subscription.stripe_customer_id)
-    trial_end = promo_codes.trial_end(subscription, promo, timezone.now())
-    if trial_end is None:
-        return PlanChange(items, "always_invoice")
-    return PlanChange(items, "none", trial_end=trial_end, promo=promo)
-
-
-def _preview(
-    hub: Hub, subscription: Subscription, sale: Sale, promo_code: str = ""
-) -> dict:
-    live = _live(subscription)
-    proration_date = int(timezone.now().timestamp())
-    details: dict = {
-        "proration_behavior": "always_invoice",
-        "proration_date": proration_date,
-    }
-    if sale.kind == "plan":
-        change = _plan_change(hub, subscription, live, sale, promo_code)
-        if change.trial_end is None and _plan_item(live) is not None and is_downgrade(subscription, sale):
-            _start, period_end = subscription_period(live)
-            return {
-                "flow": "confirm",
-                "session_id": None,
-                "client_secret": None,
-                "publishable_key": None,
-                "preview": {
-                    "amount_due_cents": 0,
-                    "tax_cents": 0,
-                    "currency": "eur",
-                    "proration_date": proration_date,
-                    # The new price starts with the next period (a downgrade waits for it).
-                    "charge_starts_at": period_end,
-                },
-            }
-        details["items"] = change.items
-        if change.trial_end is not None:
-            # A trial charges nothing now: no proration (Stripe refuses a proration date without one).
-            details = {
-                "items": change.items,
-                "proration_behavior": "none",
-                "trial_end": change.trial_end,
-            }
-    else:
-        _require_room(live)
-        recurring = _recurring_net(subscription, sale.interval, adding=sale)
-        details["items"] = [
-            {
-                "price": sale.price_id,
-                "quantity": 1,
-                "tax_rates": price_sale(hub, sale, recurring_net=recurring),
-            }
-        ]
-    with stripe_errors():
-        preview = stripe_service.preview_invoice(
-            {
-                "customer": live.get("customer") or subscription.stripe_customer_id,
-                "subscription": subscription.stripe_subscription_id,
-                "subscription_details": details,
-            }
-        )
-    trial_end = live.get("trial_end")
-    trialing = (
-        live.get("status") == "trialing" and trial_end and trial_end > proration_date
-    )
-    return {
-        "flow": "confirm",
-        "session_id": None,
-        "client_secret": None,
-        "publishable_key": None,
-        "preview": {
-            "amount_due_cents": int(preview.get("amount_due") or 0),
-            "tax_cents": tax_cents_of(preview),
-            "currency": preview.get("currency") or "eur",
-            "proration_date": proration_date,
-            # A module added during the plan's trial is charged once the trial ends, with the plan.
-            "charge_starts_at": details.get("trial_end")
-            or (trial_end if trialing else None),
-        },
-    }
-
-
-def tax_cents_of(invoice: dict) -> int:
-    """The tax an invoice (or a preview) carries, in cents: ``total_taxes`` since the 2025 API, ``tax``
-    before."""
-    taxes = invoice.get("total_taxes")
-    if taxes is not None:
-        return sum(int(tax.get("amount") or 0) for tax in taxes)
-    return int(invoice.get("tax") or 0)
-
-
-#: How long a preview's price holds, and how far ahead of now a proration date may be (clock skew).
-PREVIEW_VALID_FOR = timedelta(hours=1)
-PREVIEW_SKEW = timedelta(seconds=60)
-
-
-def _require_fresh_preview(proration_date: int) -> None:
-    """The proration date the confirmation sends is the preview's, and the preview is recent: a date in the
-    future would charge less, an old one another price."""
-    now = timezone.now()
-    moment = _moment(proration_date)
-    if (
-        moment is None
-        or moment < now - PREVIEW_VALID_FOR
-        or moment > now + PREVIEW_SKEW
-    ):
-        raise Conflict(
-            _("The price shown is out of date: review it again."),
-            code="billing.preview_expired",
-        )
-
-
-def _checkout_required() -> Conflict:
-    return Conflict(
-        _("This business does not pay anything yet: buy it with the checkout."),
-        code="billing.checkout_required",
-    )
-
-
-@operation(
-    "billing.checkout.confirm",
-    kind="command",
-    permission="billing.pay",
-    input=CheckoutConfirmIn,
-    output=SubscriptionOut,
-    ai=INTERNAL,  # stripe
-)
-def checkout_confirm(ctx: OperationContext, data: CheckoutConfirmIn) -> dict:
-    """Add a module to the subscription of a business that pays already, at the previewed proration: the
-    prorated part is charged NOW (``always_invoice``) or the module is not added (``error_if_incomplete``:
-    a declined card is 409 ``billing.card_declined`` and nothing changes). Each confirmation is its own Stripe
-    request (a retry after changing the card must not replay the decline); the hub's lock serialises them."""
-    hub, subscription = _owned(ctx, data.hub_id)
-    _require_no_pending_change(hub)
-    if not _paying(subscription):
-        raise _checkout_required()
-    sale = module_sale(data.module, subscription.billing_interval)
-    require_payments()
-    _require_fresh_preview(data.proration_date)
-    _require_paid_up(hub, subscription)
-    _require_module_not_owned(subscription, sale.slug)
-    _require_room(_live(subscription))
-    tax_rates = price_sale(
-        hub,
-        sale,
-        recurring_net=_recurring_net(subscription, sale.interval, adding=sale),
-    )
-    with stripe_errors(charging=True):
-        stripe_service.create_subscription_item(
-            {
-                "subscription": subscription.stripe_subscription_id,
-                "price": sale.price_id,
-                "quantity": 1,
-                "tax_rates": tax_rates,
-                "proration_behavior": "always_invoice",
-                "proration_date": data.proration_date,
-                "payment_behavior": "error_if_incomplete",
-                "metadata": {"hub_id": str(hub.id), "module": sale.slug},
-            },
-            idempotency_key=f"module-{hub.id}-{sale.slug}-{uuid.uuid4().hex}",
-        )
-    # Charged: a read-back that fails is not «nothing was charged»; the webhook applies it then.
-    live = _read_live(subscription.stripe_subscription_id)
-    if live is not None:
-        apply_live(hub.id, live)
-    record_event(ctx, events.MODULE_ADDED, {"hub_id": str(hub.id), "module": sale.slug})
-    return subscription_out(hub.id)
-
-
-@operation(
-    "billing.plan.change",
-    kind="command",
-    permission="billing.pay",
-    input=PlanChangeIn,
-    output=SubscriptionOut,
-    # Not a tool of the chat, on purpose: it charges now, so it is done in the Store,
-    # whose dialog asks the server for the fresh preview (``proration_date``, ``_require_fresh_preview``) and shows it.
-    ai=INTERNAL,  # preview
-)
-def plan_change(ctx: OperationContext, data: PlanChangeIn) -> dict:
-    """Move a paying business to another plan or billing, at the previewed proration (``billing.checkout.start``
-    with the plan): charged NOW or not at all. A free business buys with the checkout; going back to Free is
-    cancelling; a cancelled plan is kept before it changes. A business paying modules alone gets its plan
-    with the trial it has left (or its promo code's), charging nothing until it ends."""
-    hub, subscription = _owned(ctx, data.hub_id)
-    if not _paying(subscription):
-        raise _checkout_required()
-    sale = plan_sale(hub, data.plan, data.interval)
-    require_payments()
-    _require_fresh_preview(data.proration_date)
-    _require_paid_up(hub, subscription)
-    live = _live(subscription)
-    change = _plan_change(hub, subscription, live, sale, data.promo_code)
-    if change.trial_end is None and _plan_item(live) is not None and is_downgrade(subscription, sale):
-        _schedule_downgrade(hub, subscription, live, sale, change.items)
-        record_event(
-            ctx,
-            events.PLAN_CHANGE_SCHEDULED,
-            {"hub_id": str(hub.id), "plan": sale.slug, "interval": sale.interval},
-        )
-        return subscription_out(hub.id)
-    _release_pending(hub, live)
-    params = {"items": change.items, "payment_behavior": "error_if_incomplete"}
-    if change.trial_end is not None:
-        params.update(proration_behavior="none", trial_end=change.trial_end)
-    else:
-        params.update(
-            proration_behavior="always_invoice", proration_date=data.proration_date
-        )
-    with stripe_errors(charging=True):
-        updated = stripe_service.update_subscription(
-            subscription.stripe_subscription_id,
-            params,
-            idempotency_key=f"plan-{hub.id}-{sale.slug}-{sale.interval}-{uuid.uuid4().hex}",
-        )
-    apply_live(hub.id, updated)
-    if change.promo is not None:
-        promo_codes.redeem_promo(change.promo.code, hub=hub, customer=subscription.stripe_customer_id)
-    record_event(
-        ctx,
-        events.PLAN_CHANGED,
-        {"hub_id": str(hub.id), "plan": sale.slug, "interval": sale.interval},
-    )
-    return subscription_out(hub.id)
-
-
-@operation(
-    "billing.plan.cancel",
-    kind="command",
-    permission="billing.pay",
-    input=HubIn,
-    output=SubscriptionOut,
-    ai=AI(
-        description="Cancels the plan of a business at the end of its period: then it goes back to Free with its data.",
-        risk="high",
-        # Its card first says what the «Cancel the plan» dialog of Billing says.
-        preview={
-            "operation": "billing.plan.cancel_preview",
-            "fields": ["plan", "paid_until", "then", "modules", "free_users", "free_devices", "people", "unpaid_cents"],
-        },
-        asks={
-            "en": (
-                "cancel the bar's plan",
-                "I don't want to pay for Starter anymore",
-                "stop charging me for the salon when the month ends",
-            ),
-            "es": (
-                "cancela el plan del bar",
-                "ya no quiero pagar el Starter",
-                "dejad de cobrarme la peluquería cuando acabe el mes",
-            ),
-        },
-    ),
-)
-def plan_cancel(ctx: OperationContext, data: HubIn) -> dict:
-    """Cancel the plan at the end of its period: it works until then and the business goes
-    back to Free, with its data. Cancelling again changes nothing."""
-    hub, subscription = _owned(ctx, data.hub_id)
-    if not _paying(subscription):
-        raise Conflict(
-            _("This business is on Free: there is nothing to cancel."),
-            code="billing.nothing_to_cancel",
-        )
-    if not subscription.cancel_at_period_end:
-        require_stripe()
-        # Free wins over a downgrade that waits (Stripe refuses to cancel a scheduled subscription).
-        _release_pending(hub)
-        with stripe_errors():
-            updated = stripe_service.update_subscription(
-                subscription.stripe_subscription_id, {"cancel_at_period_end": True}
-            )
-        apply_live(hub.id, updated)
-        record_event(ctx, events.PLAN_CANCELLED, {"hub_id": str(hub.id)})
-    return subscription_out(hub.id)
-
-
-@operation(
-    "billing.plan.keep",
-    kind="command",
-    permission="billing.pay",
-    input=HubIn,
-    output=SubscriptionOut,
-    ai=AI(
-        description="Undoes the cancellation of a business's plan before its period ends: it renews as before.",
-        asks={
-            "en": (
-                "actually, keep my plan",
-                "undo the cancellation of the salon's plan",
-                "don't cancel my subscription after all",
-            ),
-            "es": (
-                "al final no cancelo, mantén el plan",
-                "deshaz la cancelación de la peluquería",
-                "sigo con el Starter, no lo des de baja",
-            ),
-        },
-    ),
-)
-def plan_keep(ctx: OperationContext, data: HubIn) -> dict:
-    """Undo a cancellation before the period ends: the plan renews as before. Not with an unpaid invoice
-    (pay it first: keeping would hand the plan back without paying it)."""
-    hub, subscription = _owned(ctx, data.hub_id)
-    if not _paying(subscription):
-        raise Conflict(
-            _("This business is on Free: there is nothing to keep."),
-            code="billing.nothing_to_cancel",
-        )
-    if subscription.cancel_at_period_end:
-        _require_paid_up(hub, subscription)
-        require_stripe()
-        with stripe_errors():
-            updated = stripe_service.update_subscription(
-                subscription.stripe_subscription_id, {"cancel_at_period_end": False}
-            )
-        apply_live(hub.id, updated)
-        record_event(ctx, events.PLAN_KEPT, {"hub_id": str(hub.id)})
-    elif pending_change(hub) is not None:
-        # A downgrade that waits for the end of the period is undone: the plan renews as it is.
-        require_stripe()
-        _release_pending(hub)
-        record_event(ctx, events.PLAN_KEPT, {"hub_id": str(hub.id)})
-    return subscription_out(hub.id)
 
 
 # --- A business handed over with a paid plan ----------------------------------------------------------
@@ -1436,18 +108,18 @@ def end_renewal_after_hand_over(hub: Hub, new_owner) -> datetime | None:
     The end of that paid period, which the mail of the hand-over tells the previous payer; ``None`` on Free or when
     the new owner already pays it."""
     subscription = Subscription.objects.filter(hub=hub).first()
-    if not _paying(subscription) or payers.plans_charged_to(hub.id, new_owner.pk).exists():
+    if not stripe_sales._paying(subscription) or payers.plans_charged_to(hub.id, new_owner.pk).exists():
         return None
     if subscription.cancel_at_period_end:
         return subscription.current_period_end
-    require_stripe()
+    payment_gates.require_stripe()
     # Free wins over a downgrade that waits (Stripe refuses to cancel a scheduled subscription).
-    _release_pending(hub)
-    with stripe_errors():
+    downgrades._release_pending(hub)
+    with payment_gates.stripe_errors():
         updated = stripe_service.update_subscription(
             subscription.stripe_subscription_id, {"cancel_at_period_end": True}
         )
-    apply_live(hub.id, updated)
+    live_subscriptions.apply_live(hub.id, updated)
     logger.info("[BILLING] Hub %s handed over: its plan stops renewing on its previous payer's card", hub.id)
     return Subscription.objects.get(hub=hub).current_period_end
 
@@ -1455,7 +127,7 @@ def end_renewal_after_hand_over(hub: Hub, new_owner) -> datetime | None:
 def billed_to_another_account(subscription: Subscription | None, profile) -> bool:
     """Whether the live plan of a business is charged to a Stripe customer that is not its payer's (``profile``):
     the card of the payer before a hand-over."""
-    if not _paying(subscription):
+    if not stripe_sales._paying(subscription):
         return False
     return profile is None or subscription.stripe_customer_id != profile.stripe_customer_id
 
@@ -1490,7 +162,7 @@ def plan_take_over(ctx: OperationContext, data: HubIn) -> dict:
         raise refusals.business_deleted()
     hub = Hub.objects.select_related("billing_profile").get(pk=member.hub_id)
     subscription = Subscription.objects.select_related("plan").filter(hub=hub).first()
-    if not _paying(subscription) or payers.plans_charged_to(hub.id, user.pk).exists():
+    if not stripe_sales._paying(subscription) or payers.plans_charged_to(hub.id, user.pk).exists():
         raise _nothing_to_take_over()
     profile = hub.billing_profile
     if profile is None or profile.owner_id != user.pk:
@@ -1498,21 +170,21 @@ def plan_take_over(ctx: OperationContext, data: HubIn) -> dict:
             _("Say who pays for this business first: its billing details are another account's."),
             code="billing.payer_required",
         )
-    _require_paid_up(hub, subscription)
-    require_payments()
-    live = _live(subscription)
-    if (live.get("status") or "") in ENDED_STATUSES:
+    stripe_sales._require_paid_up(hub, subscription)
+    payment_gates.require_payments()
+    live = stripe_sales._live(subscription)
+    if (live.get("status") or "") in stripe_sales.ENDED_STATUSES:
         raise _nothing_to_take_over()
     _start, period_end = subscription_period(live)
     line_items = []
-    for line in _live_items(live):
+    for line in stripe_sales._live_items(live):
         sale = _item_sale(subscription, line)
         if sale is None:
             raise Conflict(
                 _("This business pays something we no longer sell: contact support to keep it."),
                 code="billing.unknown_price",
             )
-        tax_rates = price_sale(hub, sale, recurring_net=_recurring_net(subscription, sale.interval))
+        tax_rates = stripe_sales.price_sale(hub, sale, recurring_net=stripe_sales._recurring_net(subscription, sale.interval))
         line_items.append({"price": sale.price_id, "quantity": line.get("quantity") or 1, "tax_rates": tax_rates})
     carried = discounts.takeover_discounts(subscription.stripe_subscription_id, live)
     selection = f"takeover:{subscription.stripe_subscription_id}:" + ";".join(
@@ -1552,8 +224,8 @@ class Takeover(NamedTuple):
 
 
 def _open_takeover(ctx, hub: Hub, subscription: Subscription, takeover: Takeover):
-    _expire_other_sessions(hub, takeover.selection)
-    customer = ensure_customer(hub)
+    checkouts._expire_other_sessions(hub, takeover.selection)
+    customer = stripe_customers.ensure_customer(hub)
     attempt = CheckoutAttempt.objects.create(
         hub=hub,
         owner=access_control.account_of(ctx),
@@ -1587,11 +259,11 @@ def _open_takeover(ctx, hub: Hub, subscription: Subscription, takeover: Takeover
         "locale": "auto",
         "billing_address_collection": "required",
         "tax_id_collection": {"enabled": False},
-        "integration_identifier": INTEGRATION_IDENTIFIER,
+        "integration_identifier": checkouts.INTEGRATION_IDENTIFIER,
     }
     if takeover.discounts:
         params["discounts"] = takeover.discounts
-    with stripe_errors():
+    with payment_gates.stripe_errors():
         session = stripe_service.create_checkout_session(params, idempotency_key=f"checkout-{attempt.id}")
     attempt.stripe_session_id = session["id"]
     attempt.client_secret = session.get("client_secret") or ""
@@ -1609,15 +281,15 @@ def _takeover_completed(hub: Hub, session: dict, subscription_id: str, replaced:
     previous one, on the previous payer's card, ends now without a refund (the business is using the period it
     paid; the new one bills from its end). Stripe not answering raises: nothing moves and Stripe delivers it
     again. A redelivery finds the business moved and ends nothing twice."""
-    with holding(hub.id):
+    with stripe_sync.holding(hub.id):
         local = Subscription.objects.filter(hub=hub).first()
         if local is None or local.stripe_subscription_id != subscription_id:
             live = stripe_service.retrieve_subscription(subscription_id)
-            apply_live(hub.id, live)
+            live_subscriptions.apply_live(hub.id, live)
             if replaced and replaced != subscription_id:
                 discounts.move_redemption(replaced, live)
                 previous = stripe_service.retrieve_subscription(replaced)
-                if (previous.get("status") or "") not in ENDED_STATUSES:
+                if (previous.get("status") or "") not in stripe_sales.ENDED_STATUSES:
                     stripe_service.cancel_subscription(replaced)
             logger.info("[BILLING] Hub %s kept its plan with its new owner's card: %s ends", hub.id, replaced)
         CheckoutAttempt.objects.filter(stripe_session_id=session.get("id")).exclude(
@@ -1656,15 +328,15 @@ def module_cancel(ctx: OperationContext, data: ModuleIn) -> dict:
     """Cancel a bought module: it leaves the subscription without proration and works until the end of the
     period (``valid_until`` in the snapshot). The last thing a subscription bills ends the
     subscription at the end of the period instead (Stripe keeps at least one item)."""
-    hub, subscription = _owned(ctx, data.hub_id)
-    _require_no_pending_change(hub)
+    hub, subscription = stripe_sales._owned(ctx, data.hub_id)
+    downgrades._require_no_pending_change(hub)
     item = _bought_item(subscription, data.module)
     if item.valid_until is not None:
-        return subscription_out(hub.id)
-    require_stripe()
-    live = _live(subscription)
-    others = [line for line in _live_items(live) if line["id"] != item.stripe_item_id]
-    with stripe_errors():
+        return live_subscriptions.subscription_out(hub.id)
+    payment_gates.require_stripe()
+    live = stripe_sales._live(subscription)
+    others = [line for line in stripe_sales._live_items(live) if line["id"] != item.stripe_item_id]
+    with payment_gates.stripe_errors():
         if others:
             updated = stripe_service.update_subscription(
                 subscription.stripe_subscription_id,
@@ -1677,11 +349,11 @@ def module_cancel(ctx: OperationContext, data: ModuleIn) -> dict:
             updated = stripe_service.update_subscription(
                 subscription.stripe_subscription_id, {"cancel_at_period_end": True}
             )
-    apply_live(hub.id, updated)
+    live_subscriptions.apply_live(hub.id, updated)
     record_event(
         ctx, events.MODULE_CANCELLED, {"hub_id": str(hub.id), "module": data.module}
     )
-    return subscription_out(hub.id)
+    return live_subscriptions.subscription_out(hub.id)
 
 
 @operation(
@@ -1696,11 +368,11 @@ def module_keep(ctx: OperationContext, data: ModuleIn) -> dict:
     """Undo the cancellation of a module before it ends: it is billed again from the next renewal (nothing
     is charged now: the period was paid). Not with an unpaid invoice, nor once it ended (buy it again),
     nor while the plan itself is cancelled (keep the plan first)."""
-    hub, subscription = _owned(ctx, data.hub_id)
-    _require_no_pending_change(hub)
+    hub, subscription = stripe_sales._owned(ctx, data.hub_id)
+    downgrades._require_no_pending_change(hub)
     item = _bought_item(subscription, data.module)
     if item.valid_until is None:
-        return subscription_out(hub.id)
+        return live_subscriptions.subscription_out(hub.id)
     if item.valid_until <= timezone.now():
         raise Conflict(
             _("This module has ended: buy it again in the store."),
@@ -1712,13 +384,13 @@ def module_keep(ctx: OperationContext, data: ModuleIn) -> dict:
             _("This module is no longer sold: it works until its cancellation ends and cannot be kept."),
             code="billing.module_off_sale",
         )
-    _require_paid_up(hub, subscription)
-    require_stripe()
-    live = _live(subscription)
-    billed = {line["id"] for line in _live_items(live)}
-    with stripe_errors():
+    stripe_sales._require_paid_up(hub, subscription)
+    payment_gates.require_stripe()
+    live = stripe_sales._live(subscription)
+    billed = {line["id"] for line in stripe_sales._live_items(live)}
+    with payment_gates.stripe_errors():
         if item.stripe_item_id and item.stripe_item_id in billed:
-            if _plan_item(live) is not None:
+            if stripe_sales._plan_item(live) is not None:
                 raise Conflict(
                     _(
                         "The plan is cancelled, and its modules with it: keep the plan first."
@@ -1729,16 +401,16 @@ def module_keep(ctx: OperationContext, data: ModuleIn) -> dict:
                 subscription.stripe_subscription_id, {"cancel_at_period_end": False}
             )
         else:
-            _require_room(live)
-            sale = module_sale(
+            stripe_sales._require_room(live)
+            sale = stripe_sales.module_sale(
                 item.module_slug,
                 subscription.billing_interval,
                 module=Module.objects.filter(slug=item.module_slug).first(),
             )
-            tax_rates = price_sale(
+            tax_rates = stripe_sales.price_sale(
                 hub,
                 sale,
-                recurring_net=_recurring_net(subscription, sale.interval, adding=sale),
+                recurring_net=stripe_sales._recurring_net(subscription, sale.interval, adding=sale),
             )
             stripe_service.create_subscription_item(
                 {
@@ -1762,7 +434,7 @@ def module_keep(ctx: OperationContext, data: ModuleIn) -> dict:
                     )
                 )
                 and found[0].slug == sale.slug
-                for line in _live_items(live)
+                for line in stripe_sales._live_items(live)
             ):
                 logger.error(
                     "[BILLING] Hub %s kept %s but Stripe does not bill it back",
@@ -1776,11 +448,11 @@ def module_keep(ctx: OperationContext, data: ModuleIn) -> dict:
                     code="billing.not_confirmed",
                     status=502,
                 )
-    apply_live(hub.id, live)
+    live_subscriptions.apply_live(hub.id, live)
     record_event(
         ctx, events.MODULE_KEPT, {"hub_id": str(hub.id), "module": data.module}
     )
-    return subscription_out(hub.id)
+    return live_subscriptions.subscription_out(hub.id)
 
 
 @operation(
@@ -1794,8 +466,8 @@ def module_keep(ctx: OperationContext, data: ModuleIn) -> dict:
 def portal_open(ctx: OperationContext, data: PortalOpenIn) -> dict:
     """Stripe's Customer Portal for the payer of the business: cards and Stripe's receipts (the panel opens
     it only on the web; the apps sell nothing)."""
-    hub, _subscription = _owned(ctx, data.hub_id)
-    require_stripe()
+    hub, _subscription = stripe_sales._owned(ctx, data.hub_id)
+    payment_gates.require_stripe()
     if not settings.STRIPE_PORTAL_CONFIGURATION:
         logger.error(
             "[BILLING] STRIPE_PORTAL_CONFIGURATION is empty: the Customer Portal does not open"
@@ -1811,7 +483,7 @@ def portal_open(ctx: OperationContext, data: PortalOpenIn) -> dict:
             _("The payment details appear here after the first payment."),
             code="billing.no_customer",
         )
-    with stripe_errors():
+    with payment_gates.stripe_errors():
         session = stripe_service.create_portal_session(
             customer,
             return_url=f"{hub_emails.base_url(ctx.request)}{BILLING}",
@@ -1819,197 +491,6 @@ def portal_open(ctx: OperationContext, data: PortalOpenIn) -> dict:
         )
     record_event(ctx, events.PORTAL_OPENED, {"hub_id": str(hub.id)})
     return {"url": session["url"]}
-
-
-def subscription_out(hub_id) -> dict:
-    subscription = Subscription.objects.select_related("plan").get(hub_id=hub_id)
-    return {
-        "hub_id": hub_id,
-        "plan": subscription.plan.slug,
-        "billing_interval": subscription.billing_interval,
-        "status": subscription.status,
-        "cancel_at_period_end": subscription.cancel_at_period_end,
-        "current_period_end": subscription.current_period_end,
-        "trial_end": subscription.trial_end,
-        "modules": [
-            {
-                "slug": item.module_slug,
-                "source": item.source,
-                "valid_until": item.valid_until,
-            }
-            for item in subscription.items.order_by("module_slug")
-        ],
-        "scheduled_change": queries.scheduled_change_of(hub_id),
-    }
-
-
-# --- What the live subscription says, applied (webhook, operations, sweep) ---------------------------
-
-
-def _moment(timestamp: int | None) -> datetime | None:
-    return datetime.fromtimestamp(timestamp, tz=UTC) if timestamp else None
-
-
-def unpaid_state(hub: Hub, live_status: str, now: datetime | None = None) -> dict:
-    """The standing and the «why unpaid» of a business whose live subscription is ``live_status``: paid →
-    good (its failures resolved); in dunning → grace for 7 days from the oldest unpaid invoice, then
-    suspended (Stripe's ``unpaid`` at once); anything else leaves both as they are."""
-    now = now or timezone.now()
-    open_failures = PaymentFailure.objects.filter(hub=hub, resolved_at__isnull=True)
-    if live_status in PAID_STATUSES or live_status in ENDED_STATUSES:
-        open_failures.update(resolved_at=now)
-        return {
-            "standing": "good",
-            "unpaid_reason": None,
-            "unpaid_since": None,
-            "unpaid_invoice_url": None,
-        }
-    if live_status not in DUNNING_STATUSES:
-        return {}
-    oldest = open_failures.order_by("invoice_created_at").first()
-    latest = open_failures.order_by("-failed_at").first()
-    since = oldest.invoice_created_at if oldest else None
-    overdue = since is not None and now - since > UNPAID_PLAN_GRACE
-    suspended = live_status == "unpaid" or overdue or hub.status == Hub.Status.SUSPENDED
-    reason = PaymentFailure.Reason.PAYMENT_FAILED.value
-    if latest is not None:
-        reason = (
-            "card_changed"
-            if latest.reason == PaymentFailure.Reason.CARD_DECLINED
-            and latest.card_changed_at
-            else latest.reason
-        )
-    return {
-        "standing": "suspended" if suspended else "grace",
-        "unpaid_reason": reason,
-        "unpaid_since": since,
-        "unpaid_invoice_url": (latest.hosted_invoice_url or None) if latest else None,
-    }
-
-
-def live_state(hub: Hub, live: dict, now: datetime | None = None) -> dict:  # noqa: C901
-    """``hubs.subscription.apply``'s fields for what the live subscription ``live`` says of ``hub``."""
-    now = now or timezone.now()
-    status = live.get("status") or ""
-    if status in ENDED_STATUSES:
-        return ended_state(hub, now)
-    start, end = subscription_period(live)
-    period_end = _moment(end)
-    cancelling = bool(live.get("cancel_at_period_end") or live.get("cancel_at"))
-    plan, interval, rights, unknown = None, None, {}, False
-    for line in _live_items(live):
-        price_id = (line.get("price") or {}).get("id", "")
-        if (found := queries.plan_for_price(price_id)) is not None:
-            plan, interval = found
-        elif (found := queries.module_for_price(price_id)) is not None:
-            module, interval = found[0], interval or found[1]
-            rights[module.slug] = ModuleRightIn(
-                module_slug=module.slug,
-                stripe_item_id=line["id"],
-                valid_until=period_end if cancelling else None,
-            )
-        else:
-            unknown = True
-            logger.error(
-                "[BILLING] Stripe bills hub %s a price nobody sells: %s",
-                hub.id,
-                price_id,
-            )
-    subscription = Subscription.objects.filter(hub=hub).first()
-    for item in SubscriptionItem.objects.filter(
-        subscription=subscription, source=SubscriptionItem.Source.PURCHASE
-    ):
-        if item.module_slug in rights or not item.is_live(now):
-            continue
-        # Cancelled (it left Stripe without proration) and paid until the end of its period.
-        rights[item.module_slug] = ModuleRightIn(
-            module_slug=item.module_slug,
-            stripe_item_id="",
-            valid_until=item.valid_until or period_end or now,
-        )
-    method = live.get("default_payment_method")
-    if isinstance(method, dict):
-        method = method.get("id")
-    if method:
-        # A card put on the subscription (the Customer Portal) after a decline: «Pay» works again.
-        mark_card_changed(hub=hub, method=method)
-    customer = live.get("customer")
-    state = {
-        "status": status,
-        "stripe_customer_id": customer["id"]
-        if isinstance(customer, dict)
-        else customer or "",
-        "stripe_subscription_id": live["id"],
-        "current_period_start": _moment(start),
-        "current_period_end": period_end,
-        "cancel_at_period_end": cancelling,
-        "modules": list(rights.values()),
-        **unpaid_state(hub, status, now),
-    }
-    if plan is not None or not unknown:
-        # Only modules: the business is on Free with them. A price nobody sells leaves the plan as it is.
-        state["plan"] = plan.slug if plan else _free_slug()
-    if interval:
-        state["billing_interval"] = interval
-    if plan is not None:
-        # A module bought alone on Free keeps the sign-up trial; a paid plan carries its own.
-        state["trial_start"] = _moment(live.get("trial_start"))
-        state["trial_end"] = _moment(live.get("trial_end"))
-    return state
-
-
-def _free_slug() -> str:
-    plan = plan_catalog.free_plan()
-    return plan.slug if plan else "free"
-
-
-def ended_state(hub: Hub, now: datetime | None = None) -> dict:
-    """A subscription that ended: back to Free, its bought modules over now, nothing owed."""
-    now = now or timezone.now()
-    subscription = Subscription.objects.filter(hub=hub).first()
-    rights = [
-        ModuleRightIn(
-            module_slug=item.module_slug,
-            stripe_item_id="",
-            valid_until=min(item.valid_until or now, now),
-        )
-        for item in SubscriptionItem.objects.filter(
-            subscription=subscription, source=SubscriptionItem.Source.PURCHASE
-        )
-    ]
-    return {
-        "plan": _free_slug(),
-        "status": Subscription.Status.ACTIVE.value,
-        "stripe_subscription_id": "",
-        "current_period_start": None,
-        "current_period_end": None,
-        "cancel_at_period_end": False,
-        "trial_start": None,
-        "trial_end": None,
-        "modules": rights,
-        "cancel_requested_at": None,
-        **unpaid_state(hub, "canceled", now),
-    }
-
-
-def apply_live(hub_id, live: dict) -> None:
-    """Write what the live subscription says of the business (``hubs.subscription.apply``); a downgrade Stripe
-    has just applied is forgotten."""
-    hub = Hub.objects.get(pk=hub_id)
-    apply_state(hub, live_state(hub, live))
-    _forget_applied_change(hub_id, live)
-
-
-def apply_state(hub: Hub, state: dict) -> bool:
-    """Write ``state`` through ``hubs.subscription.apply``; whether anything changed."""
-    applied = subscription_sync.subscription_apply(
-        hub_callbacks.system_ctx_for(hub.id), SubscriptionApplyIn(hub_id=hub.id, **state)
-    )
-    if state.get("standing") in ("grace", "suspended"):
-        # Whatever put the business in dunning (a failure, Stripe's ``unpaid``, the sweep), its payer is told
-        # once, after the COMMIT; a mail that cannot leave is sent by the next ``sweep_unpaid``.
-        transaction.on_commit(partial(_notify_quietly, hub.id), robust=True)
-    return applied.changed
 
 
 # --- The webhook: each Stripe event once, the live subscription applied ------------------------------
@@ -2161,7 +642,7 @@ def checkout_completed(session: dict) -> str:
     subscription_id = session["subscription"]
     if isinstance(subscription_id, dict):
         subscription_id = subscription_id["id"]
-    with holding(hub.id):
+    with stripe_sync.holding(hub.id):
         attempt = CheckoutAttempt.objects.select_related("owner").filter(stripe_session_id=session.get("id")).first()
         # One already applied is a redelivery, whoever owns the business now: it is left to the paths below.
         if (
@@ -2184,11 +665,11 @@ def _complete_checkout(hub: Hub, session: dict, subscription_id: str) -> str:
         local is not None
         and local.stripe_subscription_id
         and local.stripe_subscription_id != subscription_id
-        and local.status not in ENDED_STATUSES
+        and local.status not in stripe_sales.ENDED_STATUSES
     ):
         return _end_duplicate(hub, local, session, subscription_id)
     live = stripe_service.retrieve_subscription(subscription_id)
-    apply_live(hub.id, live)
+    live_subscriptions.apply_live(hub.id, live)
     completed = (
         CheckoutAttempt.objects.filter(stripe_session_id=session.get("id"))
         .exclude(status=CheckoutAttempt.Status.COMPLETED)
@@ -2209,15 +690,6 @@ def _complete_checkout(hub: Hub, session: dict, subscription_id: str) -> str:
             live=live,
         )
     return "completed"
-
-
-@contextmanager
-def holding(hub_id):
-    """A transaction holding the business's row: what a webhook reads from Stripe inside it is applied before
-    any operation on the business can change it (operations take the same lock)."""
-    with transaction.atomic():
-        Hub.objects.select_for_update().filter(pk=hub_id).first()
-        yield
 
 
 def _end_duplicate(
@@ -2256,7 +728,7 @@ def _end_not_owner(hub: Hub, attempt: CheckoutAttempt, session: dict, subscripti
     if attempt.status == CheckoutAttempt.Status.REFUNDED:
         return NOT_OWNER
     live = stripe_service.retrieve_subscription(subscription_id)
-    if (live.get("status") or "") not in ENDED_STATUSES:
+    if (live.get("status") or "") not in stripe_sales.ENDED_STATUSES:
         stripe_service.cancel_subscription(subscription_id)
     invoice = live.get("latest_invoice") or ""
     if isinstance(invoice, dict):
@@ -2399,18 +871,6 @@ def _local_subscription(subscription_id: str) -> Subscription | None:
     )
 
 
-def _read_live(subscription_id: str) -> dict | None:
-    """The live subscription, or ``None`` when Stripe does not answer (the caller decides what that means)."""
-    try:
-        return stripe_service.retrieve_subscription(subscription_id)
-    except stripe_service.StripeUnavailable, stripe_service.StripeNotConfigured:
-        logger.warning(
-            "[STRIPE WEBHOOK] Could not read %s from Stripe: the event is applied as it came",
-            subscription_id,
-        )
-        return None
-
-
 def _invoice_business(invoice: dict) -> tuple[Hub | None, str]:
     """The business an invoice bills, and its Stripe subscription. Known by the subscription, or — when the
     invoice comes ahead of its ``checkout.session.completed`` (Stripe does not order events) — by the
@@ -2447,14 +907,14 @@ def invoice_paid(invoice: dict) -> str:
     invoice = _with_all_lines(invoice)
     charged_at = _moment_or_none((invoice.get("status_transitions") or {}).get("paid_at")) or timezone.now()
     verified, consultation = _payer_clearance(hub, charged_at)
-    with holding(hub.id):
+    with stripe_sync.holding(hub.id):
         # Stripe not answering raises: its retry reads the truth (a paid invoice may be a proration or an
         # older one, and guessing «active» woke businesses still in dunning).
         live = stripe_service.retrieve_subscription(subscription_id)
         PaymentFailure.objects.filter(
             stripe_invoice_id=invoice.get("id"), resolved_at__isnull=True
         ).update(resolved_at=timezone.now())
-        apply_live(hub.id, live)
+        live_subscriptions.apply_live(hub.id, live)
         invoice_record(
             hub_callbacks.system_ctx_for(hub.id),
             InvoiceRecordIn(
@@ -2490,7 +950,7 @@ def _invoice_paid_elsewhere(invoice: dict, subscription_id: str) -> str:
     invoice = _with_all_lines(invoice)
     charged_at = _moment_or_none((invoice.get("status_transitions") or {}).get("paid_at")) or timezone.now()
     verified, consultation = _payer_clearance(named, charged_at)
-    with holding(named.id):
+    with stripe_sync.holding(named.id):
         invoice_record(
             hub_callbacks.system_ctx_for(named.id),
             InvoiceRecordIn(
@@ -2526,7 +986,7 @@ def _failure_reason(why: dict | None) -> str:
     code, decline = why.get("code"), why.get("decline_code")
     if "authentication_required" in (code, decline):
         return PaymentFailure.Reason.AUTHENTICATION_REQUIRED
-    if code in CARD_REFUSED_CODES and decline not in SOFT_DECLINES:
+    if code in stripe_sales.CARD_REFUSED_CODES and decline not in SOFT_DECLINES:
         return PaymentFailure.Reason.CARD_DECLINED
     return PaymentFailure.Reason.PAYMENT_FAILED
 
@@ -2540,7 +1000,7 @@ def invoice_payment_failed(invoice: dict, *, replay: bool = False) -> str:
     hub, subscription_id = _invoice_business(invoice)
     if hub is None:
         return "unknown" if subscription_id else "ignored"
-    with holding(hub.id):
+    with stripe_sync.holding(hub.id):
         return _record_failure(hub, subscription_id, invoice, replay=replay)
 
 
@@ -2551,14 +1011,14 @@ def _record_failure(
     # applied «as it came», which suspended businesses on stale events.
     live = stripe_service.retrieve_subscription(subscription_id)
     live_status = live.get("status")
-    if live_status not in DUNNING_STATUSES:
+    if live_status not in stripe_sales.DUNNING_STATUSES:
         # Paid (or ended) meanwhile: what Stripe says now is written, whatever this event said.
         logger.info(
             "[STRIPE WEBHOOK] Failure of %s ignored: the subscription is %s now",
             invoice.get("id"),
             live_status,
         )
-        apply_live(hub.id, live)
+        live_subscriptions.apply_live(hub.id, live)
         return "ignored"
     try:
         why = stripe_service.payment_failure_of(invoice["id"])
@@ -2566,7 +1026,7 @@ def _record_failure(
         why = None
     now = timezone.now()
     reason = _failure_reason(why)
-    issued = _moment(invoice.get("created")) or now
+    issued = stripe_sync._moment(invoice.get("created")) or now
     failure, created = PaymentFailure.objects.select_for_update().get_or_create(
         stripe_invoice_id=invoice["id"],
         defaults={
@@ -2608,7 +1068,7 @@ def _record_failure(
             # Another failed attempt of Stripe's; the sweep only replays to decide, it is not one.
             known.update(failed_at=now, attempts=F("attempts") + 1)
         PaymentFailure.objects.filter(pk=failure.pk).update(**known)
-    apply_live(hub.id, live)
+    live_subscriptions.apply_live(hub.id, live)
     # Listed in Billing as «not collected», with «Pay»; numbered once it is paid.
     invoice_record(
         hub_callbacks.system_ctx_for(hub.id), InvoiceRecordIn(hub_id=hub.id, invoice=invoice, status="open")
@@ -2634,12 +1094,12 @@ def subscription_updated(obj: dict) -> str:
             hub = named
     if hub is None:
         return "unknown"
-    with holding(hub.id):
+    with stripe_sync.holding(hub.id):
         # Stripe not answering raises: the event's snapshot may be stale, and Stripe retries it.
         live = stripe_service.retrieve_subscription(subscription_id)
         if live.get("status") in ("incomplete", ""):
             return "pending"
-        apply_live(hub.id, live)
+        live_subscriptions.apply_live(hub.id, live)
     return "processed"
 
 
@@ -2650,8 +1110,8 @@ def subscription_deleted(obj: dict) -> str:
     subscription = _local_subscription(obj.get("id") or "")
     if subscription is None:
         return "unknown"
-    with holding(subscription.hub_id):
-        apply_state(subscription.hub, ended_state(subscription.hub))
+    with stripe_sync.holding(subscription.hub_id):
+        live_subscriptions.apply_state(subscription.hub, live_subscriptions.ended_state(subscription.hub))
     return "processed"
 
 
@@ -2694,7 +1154,7 @@ def sync_subscription(subscription: Subscription, *, apply: bool = True) -> str:
     not done) · ``missing`` (Stripe does not know it: left as it is, for the team). Stripe not answering raises
     (``stripe_service.StripeUnavailable``)."""
     hub = subscription.hub
-    with holding(hub.id):
+    with stripe_sync.holding(hub.id):
         # Read inside the lock, as the webhook does: nothing changes the business between reading and writing.
         try:
             live = stripe_service.retrieve_subscription(subscription.stripe_subscription_id)
@@ -2711,14 +1171,14 @@ def sync_subscription(subscription: Subscription, *, apply: bool = True) -> str:
         if live.get("status") in ("incomplete", ""):
             return "pending"
         held = Subscription.objects.select_related("plan").get(pk=subscription.pk)
-        state = live_state(hub, live)
+        state = live_subscriptions.live_state(hub, live)
         fields = _drift(held, state)
-        changed = apply_state(hub, state)
+        changed = live_subscriptions.apply_state(hub, state)
         if not apply:
             # Everything the reading wrote (a card noted as changed included) goes back.
             transaction.set_rollback(True)
         elif changed:
-            _forget_applied_change(hub.id, live)
+            downgrades._forget_applied_change(hub.id, live)
     if not changed:
         return "in_sync"
     logger.warning(
@@ -2762,53 +1222,9 @@ def customer_updated(customer: dict) -> str:
     return (
         "processed"
         if method
-        and mark_card_changed(stripe_customer_id=customer.get("id"), method=method)
+        and live_subscriptions.mark_card_changed(stripe_customer_id=customer.get("id"), method=method)
         else "ignored"
     )
-
-
-def mark_card_changed(
-    *, method: str, stripe_customer_id: str | None = None, hub: Hub | None = None
-) -> bool:
-    """Note that the card of the unresolved declined failures (of a customer, or of a business) is not
-    ``method`` any more; ``True`` when one was noted. Each business is locked before its failures (the one
-    lock order of every writer: Hub, then PaymentFailure)."""
-
-    def changeable(business_id):
-        return (
-            PaymentFailure.objects.filter(
-                hub_id=business_id,
-                resolved_at__isnull=True,
-                reason=PaymentFailure.Reason.CARD_DECLINED,
-                card_changed_at__isnull=True,
-            )
-            .exclude(payment_method_id=method)
-            # The card that failed is unknown: no card can be said to be another one.
-            .exclude(payment_method_id="")
-        )
-
-    if hub is not None:
-        # Called with the business already held (``live_state``, inside its lock).
-        return changeable(hub.id).update(card_changed_at=timezone.now()) > 0
-    hub_ids = set(
-        PaymentFailure.objects.filter(
-            stripe_customer_id=stripe_customer_id,
-            resolved_at__isnull=True,
-            reason=PaymentFailure.Reason.CARD_DECLINED,
-            card_changed_at__isnull=True,
-        ).values_list("hub_id", flat=True)
-    )
-    noted = False
-    for business in Hub.objects.filter(pk__in=hub_ids).order_by("pk"):
-        with holding(business.id):
-            now = timezone.now()
-            if not changeable(business.id).update(card_changed_at=now):
-                continue
-            noted = True
-            local = Subscription.objects.filter(hub=business).first()
-            if local is not None and local.status in DUNNING_STATUSES:
-                apply_state(business, unpaid_state(business, local.status, now))
-    return noted
 
 
 # --- The rate of a live subscription ------------------------------------------------------------------
@@ -2819,20 +1235,14 @@ RETAX_STATUSES = ("active", "trialing", "past_due")
 RETAX_COUNTS = ("retaxed", "unchanged", "skipped", "refused", "errors")
 
 
-def _rates_param(rates: list[str]) -> list[str] | str:
-    """``tax_rates`` of an item UPDATE: an empty list is dropped by the SDK (Stripe keeps the old rate), an
-    empty string is what removes it."""
-    return rates or ""
-
-
-def _item_sale(subscription: Subscription, line: dict) -> Sale | None:
+def _item_sale(subscription: Subscription, line: dict) -> stripe_sales.Sale | None:
     """What an item of the live subscription sells (its plan or its module, at its interval), or ``None`` for
     a price no plan nor module has."""
     price_id = (line.get("price") or {}).get("id", "")
     found = queries.plan_for_price(price_id)
     if found is not None:
         plan, interval = found
-        return Sale(
+        return stripe_sales.Sale(
             "plan",
             plan.slug,
             interval,
@@ -2845,7 +1255,7 @@ def _item_sale(subscription: Subscription, line: dict) -> Sale | None:
     if found is not None:
         module, interval = found
         cents = module.price_annual_cents if interval == "year" else module.price_monthly_cents
-        return Sale(
+        return stripe_sales.Sale(
             "module",
             module.slug,
             interval,
@@ -2885,28 +1295,28 @@ def retax_subscription(hub: Hub) -> str:
     hub = Hub.objects.select_related("billing_profile").get(pk=hub.pk)
     if billed_to_another_account(subscription, hub.billing_profile):
         return "skipped"
-    require_stripe()
-    pending = pending_change(hub)
+    payment_gates.require_stripe()
+    pending = downgrades.pending_change(hub)
     if pending is not None:
         return _retax_schedule(hub, subscription, pending.stripe_schedule_id)
-    live = _live(subscription)
+    live = stripe_sales._live(subscription)
     changes = []
-    for line in _live_items(live):
+    for line in stripe_sales._live_items(live):
         sale = _item_sale(subscription, line)
         if sale is None:
             continue
         try:
-            due = price_sale(
-                hub, sale, recurring_net=_recurring_net(subscription, sale.interval), renewing=True
+            due = stripe_sales.price_sale(
+                hub, sale, recurring_net=stripe_sales._recurring_net(subscription, sale.interval), renewing=True
             )
         except Conflict as refused:
             return _retax_refused(hub, sale.kind, refused)
         held = [rate["id"] if isinstance(rate, dict) else rate for rate in line.get("tax_rates") or []]
         if sorted(held) != sorted(due):
-            changes.append({"id": line["id"], "tax_rates": _rates_param(due)})
+            changes.append({"id": line["id"], "tax_rates": stripe_sync._rates_param(due)})
     if not changes:
         return "unchanged"
-    with stripe_errors():
+    with payment_gates.stripe_errors():
         stripe_service.update_subscription(
             subscription.stripe_subscription_id,
             {"items": changes, "proration_behavior": "none"},
@@ -2932,7 +1342,7 @@ def _retax_schedule(hub: Hub, subscription: Subscription, schedule_id: str) -> s
     today's rates (a phase over is left out; the current one keeps its start) and its discounts. Phases are
     re-stated whole, so no rate is an empty list there, and changing the current phase changes the subscription
     at once (checked against Stripe's test API). A price no plan nor module has keeps its rates."""
-    with stripe_errors():
+    with payment_gates.stripe_errors():
         schedule = stripe_service.retrieve_schedule(schedule_id)
     now = int(timezone.now().timestamp())
     phases = []
@@ -2948,7 +1358,7 @@ def _retax_schedule(hub: Hub, subscription: Subscription, schedule_id: str) -> s
         phases.append(_restated_phase(phase, items))
     if not changed:
         return "unchanged"
-    with stripe_errors():
+    with payment_gates.stripe_errors():
         stripe_service.update_schedule(schedule_id, {"end_behavior": "release", "phases": phases})
     logger.info("[BILLING] Hub %s retaxed the phases of schedule %s", hub.id, schedule_id)
     return "retaxed"
@@ -2969,7 +1379,7 @@ def _restated_items(hub: Hub, subscription: Subscription, phase: dict) -> tuple[
         due = held
         if sale is not None:
             try:
-                due = price_sale(hub, sale, recurring_net=recurring, renewing=True)
+                due = stripe_sales.price_sale(hub, sale, recurring_net=recurring, renewing=True)
             except Conflict as refused:
                 _retax_refused(hub, sale.kind, refused)
                 return None
@@ -2995,7 +1405,7 @@ def retax_payer(profile_id) -> None:
     (``retax_subscriptions``) retaxes again."""
     paid = list(Hub.objects.filter(billing_profile_id=profile_id).order_by("pk"))
     try:
-        push_payer_to_stripe(profile_id)
+        stripe_customers.push_payer_to_stripe(profile_id)
     except Exception:  # noqa: BLE001 - the save stands; the next checkout updates the customer
         logger.exception(
             "[BILLING] The Stripe customer of payer %s did not take the new billing details",
@@ -3067,7 +1477,7 @@ def sweep_unpaid() -> Counter:  # noqa: C901, PLR0912, PLR0915
     configured = stripe_service.key_mode() is not StripeKeyMode.UNKNOWN
     owed = (
         Subscription.objects.filter(
-            status__in=DUNNING_STATUSES, hub__status__in=SWEPT_STATUSES
+            status__in=stripe_sales.DUNNING_STATUSES, hub__status__in=SWEPT_STATUSES
         )
         .exclude(stripe_subscription_id="")
         .select_related("hub")
@@ -3151,86 +1561,15 @@ def sweep_unpaid() -> Counter:  # noqa: C901, PLR0912, PLR0915
     )
     for hub_id in sorted(set(untold)):
         try:
-            outcome = notify_unpaid(hub_id)
+            outcome = unpaid_notices.notify_unpaid(hub_id)
         except Exception:  # noqa: BLE001 - one business never stops the pass
             logger.exception("[UNPAID SWEEP] The payer of hub %s could not be told", hub_id)
-            outcome = MAIL_NOT_SENT
-        if outcome == NOTIFIED:
+            outcome = unpaid_notices.MAIL_NOT_SENT
+        if outcome == unpaid_notices.NOTIFIED:
             counts["notified"] += 1
-        elif outcome == MAIL_NOT_SENT:
+        elif outcome == unpaid_notices.MAIL_NOT_SENT:
             counts["mail_failed"] += 1
     return counts
-
-
-NOTIFIED, NOTHING_TO_TELL, MAIL_NOT_SENT = "notified", "nothing", "mail_failed"
-
-
-def notify_unpaid(hub_id) -> str:
-    """Tell the payer of ``hub_id`` what its unpaid episode owes them: each unpaid
-    invoice once, while the business still works (how much, until when, where to pay); the suspension once,
-    which also stands for the invoices not told yet. The business is locked, so two deliveries never send the
-    same mail twice. Nobody to tell is done too; a mail that cannot leave stays owed (``MAIL_NOT_SENT``)."""
-    from billing import emails
-
-    with holding(hub_id):
-        hub = Hub.objects.select_related("billing_profile__owner").get(pk=hub_id)
-        owed = list(PaymentFailure.objects.filter(hub=hub, resolved_at__isnull=True).order_by("invoice_created_at"))
-        suspended = hub.status == Hub.Status.SUSPENDED
-        if suspended:
-            to_tell = [] if any(f.suspension_notified_at for f in owed) else owed
-        else:
-            to_tell = [f for f in owed if f.notified_at is None] if hub.status == Hub.Status.PAST_DUE else []
-        if not to_tell:
-            return NOTHING_TO_TELL
-        to, language = _unpaid_recipient(hub)
-        now = timezone.now()
-        try:
-            if to and suspended:
-                emails.send_business_suspended(
-                    hub, to=to, language=language, amount=sum((_owed_amount(f) for f in owed), Decimal(0))
-                )
-            elif to:
-                for failure in to_tell:
-                    emails.send_payment_failed(
-                        hub,
-                        to=to,
-                        language=language,
-                        amount=_owed_amount(failure),
-                        declined=failure.reason == PaymentFailure.Reason.CARD_DECLINED,
-                        suspends_on=failure.invoice_created_at + UNPAID_PLAN_GRACE,
-                    )
-                    PaymentFailure.objects.filter(pk=failure.pk).update(notified_at=now)
-        except emails.MailNotSent:
-            return MAIL_NOT_SENT
-        if not to:
-            logger.warning("[UNPAID] Hub %s owes an invoice and has nobody to tell", hub.id)
-        if suspended:
-            PaymentFailure.objects.filter(pk__in=[f.pk for f in owed]).update(
-                suspension_notified_at=now, notified_at=Coalesce("notified_at", Value(now))
-            )
-        return NOTIFIED
-
-
-def _unpaid_recipient(hub: Hub) -> tuple[str, str]:
-    """Who hears of the unpaid invoice: the payer's address for invoices, else the payer's own (the owner's
-    when the business has no payer yet), in the payer's language."""
-    profile = hub.billing_profile
-    account = (profile.owner if profile is not None else None) or _owner_of(hub)
-    to = (profile.billing_email if profile is not None else "") or (account.email if account else "")
-    return to, getattr(account, "language", "") or hub.language or settings.LANGUAGE_CODE
-
-
-def _owed_amount(failure: PaymentFailure) -> Decimal:
-    """What the unpaid invoice asks for, as Billing lists it («Not collected»)."""
-    listed = Invoice.objects.filter(stripe_invoice_id=failure.stripe_invoice_id).first()
-    return listed.total if listed is not None else Decimal(0)
-
-
-def _notify_quietly(hub_id) -> None:
-    try:
-        notify_unpaid(hub_id)
-    except Exception:  # noqa: BLE001 - a mail never undoes the dunning; sweep_unpaid sends it again
-        logger.exception("[UNPAID] The payer of hub %s could not be told", hub_id)
 
 
 def _end_billing_of_deleted(subscription: Subscription) -> None:
@@ -3247,7 +1586,7 @@ def _end_billing_of_deleted(subscription: Subscription) -> None:
         subscription.hub_id,
     )
     with transaction.atomic():
-        apply_state(subscription.hub, ended_state(subscription.hub))
+        live_subscriptions.apply_state(subscription.hub, live_subscriptions.ended_state(subscription.hub))
 
 
 # --- The payer of an account that deleted itself ------------------------------------------------------
@@ -3422,7 +1761,7 @@ def _payer_clearance(hub: Hub, charged_at: datetime) -> tuple[bool, str]:
 
 
 def _moment_or_none(value) -> datetime | None:
-    return _moment(int(value)) if value else None
+    return stripe_sync._moment(int(value)) if value else None
 
 
 def _price_of(line: dict) -> str:
@@ -3560,7 +1899,7 @@ def _record_open(ctx, hub: Hub, stripe_invoice: dict, existing: Invoice | None) 
             )
         return _record_out(existing, "duplicate")
     total = int(stripe_invoice["total"])
-    tax = tax_cents_of(stripe_invoice)
+    tax = plan_changes.tax_cents_of(stripe_invoice)
     profile = hub.billing_profile
     listed = Invoice.objects.create(
         kind=Invoice.Kind.INVOICE,
@@ -3636,7 +1975,7 @@ def _record_paid(ctx, hub: Hub, data: InvoiceRecordIn, existing: Invoice | None)
         customer_tax_id_type=payer.tax_id_type,
         customer_tax_id_verified=data.tax_id_verified,
         category_key=vat.SAAS_SUBSCRIPTION_CATEGORY,
-        tax_cents=tax_cents_of(stripe_invoice),
+        tax_cents=plan_changes.tax_cents_of(stripe_invoice),
         tax_included=False,
     )
     lines = [
@@ -4122,7 +2461,7 @@ def credit_note_record(ctx: OperationContext, data: CreditNoteRecordIn) -> dict:
         raise _missing_original(f"Credit note {credit_note.get('id')}", rectified)
     lines = (credit_note.get("lines") or {}).get("data") or []
     items = _stripe_items(lines, sign=-1) or [
-        {"amount": -(int(credit_note.get("total") or 0) - tax_cents_of(credit_note)), "tax": -tax_cents_of(credit_note)}
+        {"amount": -(int(credit_note.get("total") or 0) - plan_changes.tax_cents_of(credit_note)), "tax": -plan_changes.tax_cents_of(credit_note)}
     ]
     return _rectify(
         ctx,

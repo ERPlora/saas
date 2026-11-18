@@ -1,8 +1,8 @@
 """APPS-F04: the Stripe prices pasted on a module in the admin are checked in Stripe before the module sells with them.
 
-The same checks as a plan's (BILLING-F28, ``billing.services.module_price_problems``), through the real admin form
-and Stripe's double at the boundary (``billing.stripe_service.client``): no network. Not configured (development)
-saves with a warning; Stripe not answering saves nothing and asks to try again.
+The same checks as a plan's (BILLING-F28, ``billing.services.price_checks.module_price_problems``), through the real
+admin form and Stripe's double at the boundary (``billing.stripe_service.client``): no network. Not configured
+(development) saves with a warning; Stripe not answering saves nothing and asks to try again.
 """
 
 import pytest

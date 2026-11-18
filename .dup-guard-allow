@@ -80,3 +80,11 @@ duplicados billing/tests/test_checkout_after_hand_over.py:36-45 the import block
 duplicados billing/tests/test_plan_take_over.py:41-50 the import block two hand-over test files share; this change only splits their import of hubs.schemas into the three modules that define its names
 duplicados billing/tests/test_checkout.py:1136-1147 the update of the payer's billing details was already repeated on main; this change only names the module of hubs.schemas its input lives in
 duplicados billing/tests/test_plan_cancel_preview.py:263-274 the update of the payer's billing details was already repeated on main; this change only names the module of hubs.schemas its input lives in
+duplicados public/tests/test_pricing.py:1756-1779 the two checks of a plan's Stripe prices were already alike on main; this change only names the module of billing.services each call now lives in
+duplicados billing/tests/test_stripe_test_clocks.py:151-177 the tests of advancing a clock were already alike on main; this change only names the module of billing.services each call now lives in
+duplicados billing/tests/test_plan_change.py:50-61 the helpers that keep and take over a plan were already alike on main; this change only names the module of billing.services each call now lives in
+duplicados billing/tests/test_plan_take_over.py:87-101 the helpers that keep and take over a plan were already alike on main; this change only names the module of billing.services each call now lives in
+duplicados billing/services/__init__.py:266-274 the Checkout Session of a take-over already repeated the one of a checkout in the same file on main; this change moves the checkout's literally to checkouts.py
+duplicados billing/services/checkouts.py:177-187 the Checkout Session of a checkout was already repeated by a take-over in the same file on main; this change moves it literally out of billing/services/__init__.py
+duplicados apps/admin.py:71-94 the Stripe price check of a module form was already the twin of a plan's in hubs/admin.py on main; this change only names the module of billing.services it now lives in
+duplicados hubs/admin.py:107-131 the Stripe price check of a plan form was already the twin of a module's in apps/admin.py on main; this change only names the module of billing.services it now lives in

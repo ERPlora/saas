@@ -21,9 +21,10 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
-from billing import queries, services
+from billing import queries
 from billing.models import Invoice, PaymentFailure, PlanChangeSchedule
 from billing.schemas import HubIn, PaymentMethodIn, SubscriptionListIn
+from billing.services import plan_changes
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import connection_error, event, schedule, signed
 from hubs.models import BillingProfile, HubMember, Subscription
@@ -574,7 +575,7 @@ class TestTheNextInvoiceOfADowngradeThatWaits:
         paid = pay(shop, plan="standard")
         self.waits(paid)
 
-        services.plan_keep(ctx_for(owner), HubIn(hub_id=paid.id))
+        plan_changes.plan_keep(ctx_for(owner), HubIn(hub_id=paid.id))
 
         [row] = subscriptions(owner)
         assert row["scheduled_change"] is None

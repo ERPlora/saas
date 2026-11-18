@@ -15,7 +15,7 @@ from django.utils import timezone
 from live.errors import Conflict, OperationError
 
 from billing import services
-from billing.services import promo_holds
+from billing.services import checkouts, promo_holds
 from billing.models import CheckoutAttempt, PromoCode, PromoRedemption
 from billing.schemas import CheckoutStartIn
 from billing.tests.conftest import code_of, ctx_for
@@ -25,7 +25,7 @@ pytestmark = [pytest.mark.django_db, pytest.mark.usefixtures("issuer_identity", 
 
 
 def start(user, hub, **selection):
-    return services.checkout_start(ctx_for(user), CheckoutStartIn(hub_id=hub.id, **selection)).model_dump()
+    return checkouts.checkout_start(ctx_for(user), CheckoutStartIn(hub_id=hub.id, **selection)).model_dump()
 
 
 def refused(call) -> OperationError:

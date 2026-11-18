@@ -16,6 +16,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 
 from billing import services
+from billing.services import live_subscriptions
 from billing.tests.conftest import pay
 from billing.tests.stripe_double import connection_error, invalid_request, item, subscription
 from hubs.models import Subscription
@@ -34,7 +35,7 @@ STARTER = [item("si_plan", "price_starter_month")]
 def in_step(hub, stripe_double, *, sub_id="sub_1", customer="cus_1"):
     """The business paying Starter exactly as Stripe has it (what the last webhook left)."""
     paid = pay(hub, sub_id=sub_id, customer=customer)
-    services.apply_live(paid.id, subscription(sub_id, customer=customer, items=STARTER))
+    live_subscriptions.apply_live(paid.id, subscription(sub_id, customer=customer, items=STARTER))
     return Subscription.objects.select_related("hub", "plan").get(hub=paid)
 
 

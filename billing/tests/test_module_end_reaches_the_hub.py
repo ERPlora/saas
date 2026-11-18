@@ -21,6 +21,7 @@ from django.utils import timezone
 
 from billing import services
 from billing.schemas import CheckoutConfirmIn, ModuleIn
+from billing.services import plan_changes
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import MONTH_END, item, subscription
 from hubs.services import hub_push
@@ -75,7 +76,7 @@ def keep(user, hub):
 
 def buy(user, hub):
     moment = int(timezone.now().timestamp())
-    return services.checkout_confirm(
+    return plan_changes.checkout_confirm(
         ctx_for(user), CheckoutConfirmIn(hub_id=hub.id, module="inventory", proration_date=moment)
     )
 

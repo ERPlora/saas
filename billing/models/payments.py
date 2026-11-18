@@ -120,7 +120,7 @@ class PaymentFailure(UUIDModel):
     with it fails, so «Pay» waits until the card changes, ``card_changed_at``) from an authentication the
     customer must complete or any other failure. ``invoice_created_at`` starts the 7 days of grace.
     ``resolved_at`` is set when the invoice is paid (or the subscription ends). ``notified_at`` and
-    ``suspension_notified_at`` keep the unpaid mails to one each (``services.notify_unpaid``).
+    ``suspension_notified_at`` keep the unpaid mails to one each (``services.unpaid_notices.notify_unpaid``).
     """
 
     class Reason(models.TextChoices):

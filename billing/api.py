@@ -33,7 +33,7 @@ from billing.schemas import (
     VatCheckIn,
 )
 from billing.schemas.promo_codes import PromoCheckIn
-from billing.services import payer_vat_numbers
+from billing.services import checkouts, payer_vat_numbers, plan_changes
 
 router = Router(tags=["billing"])
 
@@ -55,27 +55,27 @@ async def promo_check(request, params: Query[PromoCheckIn]):
 
 @bind(router, "billing.checkout.start", "/billing/checkout/start")
 async def checkout_start(request, data: CheckoutStartIn):
-    return await run_operation(request, services.checkout_start, data)
+    return await run_operation(request, checkouts.checkout_start, data)
 
 
 @bind(router, "billing.checkout.confirm", "/billing/checkout/confirm")
 async def checkout_confirm(request, data: CheckoutConfirmIn):
-    return await run_operation(request, services.checkout_confirm, data)
+    return await run_operation(request, plan_changes.checkout_confirm, data)
 
 
 @bind(router, "billing.plan.change", "/billing/plan/change")
 async def plan_change(request, data: PlanChangeIn):
-    return await run_operation(request, services.plan_change, data)
+    return await run_operation(request, plan_changes.plan_change, data)
 
 
 @bind(router, "billing.plan.cancel", "/billing/plan/cancel")
 async def plan_cancel(request, data: HubIn):
-    return await run_operation(request, services.plan_cancel, data)
+    return await run_operation(request, plan_changes.plan_cancel, data)
 
 
 @bind(router, "billing.plan.keep", "/billing/plan/keep")
 async def plan_keep(request, data: HubIn):
-    return await run_operation(request, services.plan_keep, data)
+    return await run_operation(request, plan_changes.plan_keep, data)
 
 
 @bind(router, "billing.plan.take_over", "/billing/plan/take-over")

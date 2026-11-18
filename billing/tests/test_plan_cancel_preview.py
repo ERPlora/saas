@@ -216,7 +216,8 @@ class TestItRefusesWhatTheCancelRefuses:
         refused("billing.nothing_to_cancel", lambda: preview(owner, shop))
 
     def test_a_deleted_business_shows_no_card_either(self, shop, owner):
-        """As the cancel (``services._owned``): a business deleted, still within its 90 days, takes no write."""
+        """As the cancel (``services.stripe_sales._owned``): a business deleted, still within its 90 days, takes no
+        write."""
         paid = pay(shop)
         Hub.objects.filter(pk=paid.pk).update(status=Hub.Status.DELETING, deletion_requested_at=timezone.now())
 

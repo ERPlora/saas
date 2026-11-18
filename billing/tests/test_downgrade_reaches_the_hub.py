@@ -22,6 +22,7 @@ from apps.models import Module
 from billing import services
 from billing.models import PlanChangeSchedule
 from billing.schemas import PlanChangeIn
+from billing.services import plan_changes
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import event, item, schedule, signed, subscription
 from hubs.queries import hub_sync
@@ -66,7 +67,7 @@ def waiting(shop, owner, stripe_double, committed):
         stripe_double.answer("subscriptions.retrieve", subscription(items=lines))
         moment = int(timezone.now().timestamp())
         committed(
-            lambda: services.plan_change(
+            lambda: plan_changes.plan_change(
                 ctx_for(owner), PlanChangeIn(hub_id=paid.id, plan="starter", interval="month", proration_date=moment)
             )
         )
