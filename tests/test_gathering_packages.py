@@ -1,4 +1,5 @@
-"""A door split into one module per entity only gathers its modules in its ``__init__``.
+"""A door split into one module per entity only gathers its modules in its ``__init__``; one still being split keeps
+code of its own there, but takes each of its modules whole all the same.
 
 A name re-exported from the ``__init__`` would give every operation two import paths again, and a patch through the
 package would no longer reach the module that reads the name. A package that re-exports on purpose (``billing``) is
@@ -13,6 +14,18 @@ from django.conf import settings
 
 #: The packages nothing is re-exported from: a name is imported from its own module.
 GATHERING_PACKAGES = ("accounts.services", "hubs.queries", "hubs.services")
+#: The packages still being split: their ``__init__`` holds code of its own, but re-exports nothing either.
+SPLITTING_PACKAGES = ("billing.services",)
+
+
+def _takes_whole_modules(node: ast.stmt, package: str, modules: set[str]) -> bool:
+    """``from <package> import <module>, …``: each module whole, under its own name."""
+    return (
+        isinstance(node, ast.ImportFrom)
+        and node.level == 0
+        and node.module == package
+        and all(alias.name in modules and alias.asname is None for alias in node.names)
+    )
 
 
 def statements_beyond_gathering(source: str, package: str, modules: set[str]) -> list[str]:
@@ -21,21 +34,31 @@ def statements_beyond_gathering(source: str, package: str, modules: set[str]) ->
     for node in ast.parse(source).body:
         if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
             continue
-        gathers = (
-            isinstance(node, ast.ImportFrom)
-            and node.level == 0
-            and node.module == package
-            and all(alias.name in modules and alias.asname is None for alias in node.names)
-        )
-        if not gathers:
+        if not _takes_whole_modules(node, package, modules):
             found.append(f"line {node.lineno}: {ast.unparse(node)}")
     return found
 
 
+def names_taken_from_its_modules(source: str, package: str, modules: set[str]) -> list[str]:
+    """The imports of an ``__init__`` that take from its own package anything but whole modules."""
+    return [
+        f"line {node.lineno}: {ast.unparse(node)}"
+        for node in ast.parse(source).body
+        if isinstance(node, ast.ImportFrom)
+        and node.level == 0
+        and (node.module == package or (node.module or "").startswith(f"{package}."))
+        and not _takes_whole_modules(node, package, modules)
+    ]
+
+
+def _modules_of(package: str) -> tuple[Path, set[str]]:
+    folder = Path(settings.BASE_DIR).joinpath(*package.split("."))
+    return folder, {path.stem for path in folder.glob("*.py")} - {"__init__"}
+
+
 @pytest.mark.parametrize("package", GATHERING_PACKAGES)
 def test_the_package_only_gathers_its_modules(package):
-    folder = Path(settings.BASE_DIR).joinpath(*package.split("."))
-    modules = {path.stem for path in folder.glob("*.py")} - {"__init__"}
+    folder, modules = _modules_of(package)
 
     assert modules, f"{package} has no modules"
     assert statements_beyond_gathering((folder / "__init__.py").read_text(), package, modules) == []
@@ -58,4 +81,31 @@ def test_the_scan_catches_a_re_exported_name_and_code_of_its_own():
         "line 5: from hubs.queries import taxonomy as groups",
         "line 6: from hubs.queries import missing",
         "line 7: LIMIT = 3",
+    ]
+
+
+@pytest.mark.parametrize("package", SPLITTING_PACKAGES)
+def test_a_package_still_being_split_takes_its_modules_whole(package):
+    folder, modules = _modules_of(package)
+
+    assert modules, f"{package} has no modules"
+    assert names_taken_from_its_modules((folder / "__init__.py").read_text(), package, modules) == []
+
+
+def test_the_scan_catches_a_name_taken_from_a_module_but_not_the_code_around_it():
+    source = (
+        '"""Docstring."""\n'
+        "from billing import queries, vat\n"
+        "from billing.services import sale_tax, vat_clearance\n"
+        "from billing.services.sale_tax import sale_quote\n"
+        "from billing.services import clear_tax_id_for_stripe\n"
+        "from billing.services import sale_tax as taxes\n"
+        "from hubs.services import refusals\n"
+        "LIMIT = 3\n"
+    )
+
+    assert names_taken_from_its_modules(source, "billing.services", {"sale_tax", "vat_clearance"}) == [
+        "line 4: from billing.services.sale_tax import sale_quote",
+        "line 5: from billing.services import clear_tax_id_for_stripe",
+        "line 6: from billing.services import sale_tax as taxes",
     ]
