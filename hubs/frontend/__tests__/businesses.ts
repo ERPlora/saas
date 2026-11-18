@@ -1,0 +1,20 @@
+// Rows of `hubs.business.list` for the businesses tests: an active business on Starter that its owner opens.
+export const business = (id: string, name: string, extra: Record<string, unknown> = {}) => ({
+  id,
+  slug: id,
+  name,
+  host: `${id}.localhost:8000`,
+  status: 'active',
+  status_label: 'Active',
+  plan: { slug: 'starter', name: 'Starter' },
+  role: 'hub_owner',
+  role_label: 'Owner',
+  last_opened_at: null,
+  can_open: true,
+  open_blocked_reason: null,
+  hub_error: null,
+  deletion_requested_at: null,
+  purge_after: null,
+  created_at: '2026-03-02T10:00:00Z',
+  ...extra,
+});

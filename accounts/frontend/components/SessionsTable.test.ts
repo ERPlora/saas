@@ -190,7 +190,7 @@ describe('SessionsTable: more sessions than a page', () => {
     const s = await mountPanel(SessionsTable);
     expect(params(s)).toEqual([{ limit: 25, offset: 0 }]);
     await s.result(await s.live(), 'accounts.session.list', sessionPage(FIRST_PAGE, { total: 60, others: 59 }));
-    // On a phone, past the 100 rows one page of the server holds, the table pages instead of «Load more».
+    // On a phone, past the 100 rows one page of the server holds, the table pages instead of growing at the end of the scroll.
     expect(table(s).props()).toMatchObject({ serverSide: true, total: 60, page: 0, pageSize: 25, maxWindow: 100 });
     expect(cells('session-device')).toHaveLength(25);
     expect(cells('session-device')[0]).toBe('Mac (macOS)This session');
@@ -225,7 +225,7 @@ describe('SessionsTable: more sessions than a page', () => {
     expect(s.q('sessions-close-others-dialog')?.textContent).toContain('59 sessions will be closed, also the apps');
   });
 
-  it('on a phone «Load more» grows one window from the first row, never past the server’s 100 rows', async () => {
+  it('on a phone the end of the scroll grows one window from the first row, never past the server’s 100 rows', async () => {
     const s = await long();
     table(s).vm.$emit('loadMore');
     await flush();

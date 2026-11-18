@@ -20,6 +20,7 @@ import { toastError, toastSuccess } from '@erplora/ui/shell';
 
 import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
 import { accessibleName, BYE, describeCall, enterView, errorFrame, flush, type MountOptions, mountHubs, subId } from '../__tests__/mount-hubs';
+import { business } from '../__tests__/businesses';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessListPage from './BusinessListPage.vue';
 import { navigation } from '../open-business';
@@ -38,26 +39,7 @@ function canOf(extra: Record<string, unknown>) {
   };
 }
 
-const row = (id: string, name: string, extra: Record<string, unknown> = {}) => ({
-  id,
-  slug: id,
-  name,
-  host: `${id}.localhost:8000`,
-  status: 'active',
-  status_label: 'Active',
-  plan: { slug: 'starter', name: 'Starter' },
-  role: 'hub_owner',
-  role_label: 'Owner',
-  last_opened_at: null,
-  can_open: true,
-  open_blocked_reason: null,
-  hub_error: null,
-  deletion_requested_at: null,
-  purge_after: null,
-  created_at: '2026-03-02T10:00:00Z',
-  can: canOf(extra),
-  ...extra,
-});
+const row = (id: string, name: string, extra: Record<string, unknown> = {}) => business(id, name, { can: canOf(extra), ...extra });
 const PREPARING = { status: 'preparing', status_label: 'Preparing', can_open: false, open_blocked_reason: 'preparing' };
 const ROWS = [
   row('bakery', 'Panadería López', { last_opened_at: '2026-10-13T09:12:00Z' }),
@@ -242,7 +224,7 @@ describe('BusinessListPage: row actions', () => {
         row('viejo', 'Bar Viejo', { status: 'deleting', can_open: false, open_blocked_reason: 'deleting', purge_after: '2027-01-11T10:00:00Z' }),
       ]),
     );
-    expect(accessibleName(action(s, 'bakery', 'open'))).toBe('Open Panadería López');
+    expect(accessibleName(action(s, 'bakery', 'open'))).toBe('Open');
     expect((action(s, 'cafe', 'open').element as HTMLElement & { disabled?: boolean }).disabled).toBe(true);
     expect(action(s, 'norte', 'open').exists()).toBe(false);
     expect(action(s, 'viejo', 'open').exists()).toBe(false);
@@ -274,12 +256,12 @@ describe('BusinessListPage: row actions', () => {
     expect(s.wrapper.find('[data-testid$="-delete"]').exists()).toBe(false);
   });
 
-  it('every row button is named with its business for a screen reader', async () => {
+  it('every row button says its action in short words, also to a screen reader', async () => {
     const s = await setup();
     await s.show(page([...ROWS, row('viejo', 'Bar Viejo', { status: 'deleting', can_open: false, open_blocked_reason: 'deleting', purge_after: '2027-01-11T10:00:00Z' })]));
-    expect(accessibleName(action(s, 'bakery', 'open'))).toBe('Open Panadería López');
-    expect(accessibleName(action(s, 'bakery', 'manage'))).toBe('Manage Panadería López');
-    expect(accessibleName(action(s, 'viejo', 'restore'))).toBe('Recover Bar Viejo');
+    expect(accessibleName(action(s, 'bakery', 'open'))).toBe('Open');
+    expect(accessibleName(action(s, 'bakery', 'manage'))).toBe('Manage');
+    expect(accessibleName(action(s, 'viejo', 'restore'))).toBe('Recover');
   });
 
   it('a deleted business offers «Recover» to its owner, which recovers it and says so', async () => {
@@ -603,7 +585,7 @@ describe('BusinessListPage: Spanish', () => {
     await s.show(page(ROWS));
     expect(s.wrapper.findComponent(AppPage).props('title')).toBe('Negocios');
     expect(s.prop<Array<{ label: string }>>('columns').map((c) => c.label)).toEqual(['Negocio', 'Dirección web', 'Estado', 'Plan', 'Rol', 'Último uso']);
-    expect(accessibleName(s.testid('businesses-row-bakery-open'))).toBe('Abrir Panadería López');
-    expect(accessibleName(s.testid('businesses-row-bakery-manage'))).toBe('Gestionar Panadería López');
+    expect(accessibleName(s.testid('businesses-row-bakery-open'))).toBe('Abrir');
+    expect(accessibleName(s.testid('businesses-row-bakery-manage'))).toBe('Gestionar');
   });
 });

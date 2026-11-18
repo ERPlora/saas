@@ -130,8 +130,9 @@ negocio, además, su sector y su plantilla («Vertical»).
 ### Miembros
 La pestaña «Miembros» de cada negocio, para el propietario y los administradores: la tabla «Equipo» con «Nombre»
 (la fila propia marcada «Tú»), «Correo», «Rol», «Estado» y «Último acceso», el propietario primero; por fila, solo
-lo que la persona puede hacer con ella («Cambiar rol», «Quitar», «Reenviar», «Cancelar invitación» y, en el menú
-de la fila, «Transferir propiedad»). Debajo, las plazas del plan y «¿Qué puede hacer cada uno?»; encima, la
+lo que la persona puede hacer con ella: un miembro, «Cambiar rol» y «Quitar»; una invitación, «Reenviar» y
+«Cancelar invitación»; y en el menú de la fila, lo demás («Transferir propiedad» y, en una invitación, «Cambiar
+rol»). Debajo, las plazas del plan y «¿Qué puede hacer cada uno?»; encima, la
 propiedad ofrecida que espera respuesta, con «Retirar la oferta». En el móvil son tarjetas.
 
 ### Invitar
