@@ -62,7 +62,7 @@ PRE_POLICIES = {
     "PUBLIC_INDEXING_ENABLED": "false",
     "STRIPE_EXPECTED_MODE": "test",
 }
-# In prod, changing one of these needs CONFIRM_PROTECTED (the deploy workflow's confirm_protected).
+# In prod, changing one of these needs CONFIRM_PROTECTED (confirm_protected of the deploy and rollback workflows).
 PROTECTED = ("AEAT_PRODUCTION_ENABLED", "PLATFORM_INVOICING_ENABLED", "STRIPE_EXPECTED_MODE")
 # What every container of the saas image has once merged: without a cache prefix or a Stripe mode the saas refuses to
 # start outside DEBUG (config/settings/core.py). CACHE_KEY_PREFIX comes from ERPlora/aws.
@@ -112,8 +112,8 @@ def environment_errors(environment: str, families: object) -> list[str]:
     return problems + agreement_errors(environment, families)
 
 
-def family_errors(environment: str, family: str, variables: object) -> list[str]:
-    where = f"{FILE}: {environment}.{family}"
+def family_errors(environment: str, family: str, variables: object, source: str = FILE) -> list[str]:
+    where = f"{source}: {environment}.{family}"
     if not isinstance(variables, dict):
         return [f"{where} must be an object of variables"]
     problems = [f"{where} has no {policy}: the four policies are explicit in every family"
@@ -153,7 +153,7 @@ def valid(name: str, value: object) -> bool:
     return isinstance(value, str) and name in SETTINGS and SETTINGS[name][0].fullmatch(value) is not None
 
 
-def agreement_errors(environment: str, families: dict) -> list[str]:
+def agreement_errors(environment: str, families: dict, source: str = FILE) -> list[str]:
     """A policy takes one value in every family of an environment (its valid values only: they are known words)."""
     problems = []
     for policy in POLICIES:
@@ -164,7 +164,7 @@ def agreement_errors(environment: str, families: dict) -> list[str]:
                 found.setdefault(value, []).append(family)
         if len(found) > 1:
             where = "; ".join(f"{value} in {', '.join(names)}" for value, names in sorted(found.items()))
-            problems.append(f"{FILE}: {environment} sets {policy} to {where}: every family takes the same value")
+            problems.append(f"{source}: {environment} sets {policy} to {where}: every family takes the same value")
     return problems
 
 
@@ -179,8 +179,8 @@ def protected_changes(wanted: dict, current: dict) -> dict[str, str]:
             if any(current.get(family, {}).get(name) != value for family in wanted)}
 
 
-def confirmation_errors(environment: str, wanted: dict, current: dict, confirm: str) -> list[str]:
-    """CONFIRM_PROTECTED: VAR=value pairs, by commas or spaces, each one a protected setting at the file's value."""
+def confirmation_errors(environment: str, wanted: dict, current: dict, confirm: str, source: str = FILE) -> list[str]:
+    """CONFIRM_PROTECTED: VAR=value pairs, by commas or spaces, each one a protected setting at the wanted value."""
     setting = protected_settings(wanted)
     confirmed = {}
     problems = []
@@ -191,12 +191,12 @@ def confirmation_errors(environment: str, wanted: dict, current: dict, confirm: 
         elif pair[1] not in PROTECTED:
             problems.append(f"CONFIRM_PROTECTED names {pair[1]}, which is no protected setting ({', '.join(PROTECTED)})")
         elif pair[2] != setting.get(pair[1]):
-            problems.append(f"CONFIRM_PROTECTED does not match {FILE}, which sets {pair[1]}={setting.get(pair[1])}")
+            problems.append(f"CONFIRM_PROTECTED does not match {source}, which sets {pair[1]}={setting.get(pair[1])}")
         else:
             confirmed[pair[1]] = pair[2]
     if environment == "prod":
         problems += [f"prod changes {name} to {value}: confirm it with CONFIRM_PROTECTED {name}={value} "
-                     "(the deploy workflow's confirm_protected)"
+                     "(the workflow's confirm_protected)"
                      for name, value in protected_changes(wanted, current).items() if confirmed.get(name) != value]
     return problems
 
@@ -341,40 +341,55 @@ def revise(arguments: argparse.Namespace) -> None:
     json.dump(new, sys.stdout)
 
 
+def put_settings(region: str, parameter: str, wanted: dict) -> None:
+    """Writes <wanted> to app_env as ERPlora/aws reads it: compact JSON with its keys sorted."""
+    value = json.dumps(wanted, sort_keys=True, separators=(",", ":"))
+    aws(region, "ssm", "put-parameter", "--name", parameter, "--value", value, "--type", "String", "--overwrite")
+
+
 def record(arguments: argparse.Namespace) -> None:
     parameter = parameter_of(arguments.environment)
-    value = json.dumps(checked(arguments.workdir)["wanted"], sort_keys=True, separators=(",", ":"))
     try:
-        aws(arguments.region, "ssm", "put-parameter", "--name", parameter, "--value", value, "--type", "String",
-            "--overwrite")
+        put_settings(arguments.region, parameter, checked(arguments.workdir)["wanted"])
     except Refused as refusal:
         raise Refused(f"the services run the new revisions, but {parameter} was not written ({refusal}): run the "
                       "deploy again, or the revisions ERPlora/aws registers keep the settings in force before") from None
     print(f"recorded the {arguments.environment} settings of {FILE} in {parameter}")
 
 
+def command_parser(doc: str, commands: tuple) -> tuple[argparse.ArgumentParser, dict]:
+    """A command line of subcommands, from (name, function, suffix of its errors): each takes --workdir."""
+    main_parser = argparse.ArgumentParser(description=doc.splitlines()[0])
+    subparsers = main_parser.add_subparsers(required=True)
+    subs = {}
+    for name, command, suffix in commands:
+        subs[name] = subparsers.add_parser(name)
+        subs[name].set_defaults(command=command, suffix=suffix)
+        subs[name].add_argument("--workdir", required=True)
+    return main_parser, subs
+
+
+def add_target(sub: argparse.ArgumentParser) -> None:
+    """The environment and the region a subcommand reads or writes."""
+    sub.add_argument("--environment", required=True, choices=sorted(FAMILIES))
+    sub.add_argument("--region", required=True)
+
+
 def parser() -> argparse.ArgumentParser:
-    main_parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    commands = main_parser.add_subparsers(required=True)
-    for name, command, suffix in (("check", check, "; nothing was registered"),
-                                  ("revision", revise, "; nothing was registered"), ("record", record, "")):
-        sub = commands.add_parser(name)
-        sub.set_defaults(command=command, suffix=suffix)
-        sub.add_argument("--workdir", required=True)
-        if name == "revision":
-            sub.add_argument("--family", required=True)
-            sub.add_argument("--image", required=True)
-            sub.add_argument("--project-image", required=True)
-        else:
-            sub.add_argument("--environment", required=True, choices=sorted(FAMILIES))
-            sub.add_argument("--region", required=True)
-        if name == "check":
-            sub.add_argument("--commit", required=True)
+    main_parser, subs = command_parser(__doc__, (("check", check, "; nothing was registered"),
+                                                 ("revision", revise, "; nothing was registered"),
+                                                 ("record", record, "")))
+    for name in ("family", "image", "project-image"):
+        subs["revision"].add_argument(f"--{name}", required=True)
+    add_target(subs["check"])
+    add_target(subs["record"])
+    subs["check"].add_argument("--commit", required=True)
     return main_parser
 
 
-def main(argv: list[str] | None = None) -> int:
-    arguments = parser().parse_args(argv)
+def run(main_parser: argparse.ArgumentParser, argv: list[str] | None) -> int:
+    """Runs the command of <argv>: a refusal prints its ::error:: lines, each with the command's suffix."""
+    arguments = main_parser.parse_args(argv)
     try:
         arguments.command(arguments)
     except Refused as refusal:
@@ -382,6 +397,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"::error::{problem}{arguments.suffix}", file=sys.stderr)
         return 1
     return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    return run(parser(), argv)
 
 
 if __name__ == "__main__":

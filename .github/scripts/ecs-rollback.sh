@@ -1,34 +1,28 @@
 #!/usr/bin/env bash
-# Puts the saas's services of one environment, in that environment's own ECS cluster (prod: cluster
-# erplora-prod, services saas and saas-worker, families erplora-prod-{saas,saas-worker}; pre: cluster
-# erplora-pre, services saas-pre and saas-worker-pre, families erplora-pre-{saas,saas-worker}) back on
-# the ACTIVE revision right before the one each PRIMARY deployment runs and records that revision's
-# image tag in /erplora/<ENVIRONMENT>/saas/image_tag (ERPlora/aws README, "Imagen"). saas-worker is
-# created by ERPlora/aws once an image with run_worker is out: while its family does
-# not exist the rollback goes on without it and says so (::warning::); any other error looking for it
-# fails before anything changes. The worker never blocks the rollback of saas: without an earlier
-# revision (the first rollback after the deploy that brought it) or with one of another tag than
-# saas's (an image without run_worker would crash-loop), it stays as it is, with a ::warning::; a
-# revision of another environment or image still fails:
-#   1. finds the service's previous revision; nothing changes unless every service has one, it is a
-#      revision of this environment (the tag Environment=<ENVIRONMENT> and the roles
-#      erplora-<ENVIRONMENT>-*: another environment's deploy role could have registered it) on this
-#      environment's image (erplora/saas or erplora/saas-pre), and they all run the same tag;
-#   2. moves the service to that revision, waits until it is stable and then polls its PRIMARY
-#      deployment until it is the previous revision, COMPLETED: ECS marks it COMPLETED seconds to
-#      a minute after services-stable returns, once the old tasks drain from the ALB. A FAILED
-#      rollout or another revision as PRIMARY (the circuit breaker puts back the one the service
-#      ran and the wait still succeeds) fails at once; a rollout that outlasts
-#      ROLLOUT_TIMEOUT_SECONDS fails too;
-#   3. records the tag only then, so a failed rollback leaves the parameter as it was.
-# Migrations are NOT undone: the previous code must work on the current schema (expand/contract).
-# Scheduled saas tasks run the latest ACTIVE saas-cron revision (ERPlora/aws scheduler.tf), so they
-# keep the newer image until the next deploy; to go back everywhere, deploy the previous release.
-# The saas-worker service goes back with saas, so its loop runs the same code as the web.
+# Puts the saas's services of one environment (prod: saas and saas-worker in cluster erplora-prod; pre: saas-pre
+# and saas-worker-pre in erplora-pre) back on the ACTIVE revision right before the one each PRIMARY deployment runs.
+# saas-worker never blocks saas: while its family does not exist, without an earlier revision or with one of another
+# tag than saas's (an image without run_worker would crash-loop), it stays as it is, with a ::warning::; any other
+# error looking for it, or a revision of another environment or image, still fails:
+#   1. finds each previous revision; nothing changes unless saas has one, each is a revision of this environment
+#      (the tag Environment=<ENVIRONMENT> and the roles erplora-<ENVIRONMENT>-*: another environment's deploy role
+#      could have registered it) on this environment's image (erplora/saas or erplora/saas-pre), and they all run
+#      the same tag;
+#   2. checks the settings those revisions run with, with the deploy's rules (app_env_rollback.py check): in prod a
+#      protected setting that changes needs CONFIRM_PROTECTED, and the real charge the Hub filing in production;
+#   3. moves the services, waits until they are stable and polls each PRIMARY deployment until it is the previous
+#      revision, COMPLETED (ECS marks it so once the old tasks drain from the ALB). A FAILED rollout or another
+#      revision as PRIMARY (the circuit breaker put back the one it ran) fails at once, and so does a rollout that
+#      outlasts ROLLOUT_TIMEOUT_SECONDS;
+#   4. only then records their settings in /erplora/<ENVIRONMENT>/saas/app_env and the tag in .../image_tag
+#      (ERPlora/aws README), so a failed rollback leaves both as they were.
+# Migrations are NOT undone: the previous code must work on the current schema (expand/contract). saas-cron (the
+# Scheduler runs its latest revision) and saas-migrate keep the newer image and their settings in app_env until the
+# next deploy; to go back everywhere, deploy the previous release.
 #
-# Env: CONFIRM (exactly ROLLBACK), AWS_REGION, ENVIRONMENT (prod|pre); optional CLUSTER
-#      (erplora-<ENVIRONMENT>: each environment has its own cluster), POLL_SECONDS (15),
-#      ROLLOUT_TIMEOUT_SECONDS (600).
+# Env: CONFIRM (exactly ROLLBACK), AWS_REGION, ENVIRONMENT (prod|pre); optional CLUSTER (erplora-<ENVIRONMENT>),
+#      POLL_SECONDS (15), ROLLOUT_TIMEOUT_SECONDS (600), CONFIRM_PROTECTED (VAR=value of each protected setting a
+#      prod rollback changes).
 set -euo pipefail
 
 if [ "${CONFIRM:-}" != ROLLBACK ]; then
@@ -56,15 +50,16 @@ done
 
 # This repo deploys the saas; the hub repo keeps its own copy of this script.
 PROJECT=saas
-# The families that run as a service; the service of family <name> is <name><suffix>, its container
-# <name>.
+app_env="$(dirname "$0")/app_env_rollback.py"
+workdir="$(mktemp -d)"
+trap 'rm -rf "$workdir"' EXIT
+# Families that run as a service: the service of family <name> is <name><suffix>, its container <name>.
 families=(saas)
 suffix=""
 if [ "$ENVIRONMENT" = pre ]; then
   suffix=-pre
 fi
-# Services that may not exist yet (saas-worker until ERPlora/aws creates it); a family prefix also lists
-# longer families: only a revision of <name>'s own family counts.
+# Families that may not exist yet; a family prefix also lists longer ones: only <name>'s own family counts.
 not_yet=(saas-worker)
 # The families of not_yet that exist: they never block the rollback of saas.
 optional=()
@@ -125,8 +120,7 @@ for i in "${!services[@]}"; do
     exit 1
   fi
 
-  # The family prefix also lists longer families (erplora-prod-saas-migrate): same family only,
-  # and the highest revision below the current one.
+  # Of its own family only (the prefix also lists erplora-prod-saas-migrate), the highest below the current one.
   arns="$(aws ecs list-task-definitions --family-prefix "$family" --status ACTIVE --sort DESC \
     --region "$AWS_REGION" --query taskDefinitionArns --output text)"
   read -ra listed <<< "$arns"
@@ -186,6 +180,8 @@ done
 services=("${kept_services[@]}")
 targets=("${kept_targets[@]}")
 
+python3 "$app_env" check --workdir "$workdir" --environment "$ENVIRONMENT" --region "$AWS_REGION" "${targets[@]}"
+
 for i in "${!services[@]}"; do
   aws ecs update-service --cluster "$CLUSTER" --service "${services[i]}" \
     --task-definition "${targets[i]}" --region "$AWS_REGION" > /dev/null
@@ -194,8 +190,7 @@ done
 
 aws ecs wait services-stable --cluster "$CLUSTER" --region "$AWS_REGION" --services "${services[@]}"
 
-# services-stable can return while a PRIMARY deployment is still IN_PROGRESS: poll the services
-# (by index) whose rollout has not completed yet, all of them on the same clock.
+# services-stable can return while a PRIMARY deployment is IN_PROGRESS: poll those not COMPLETED, on one clock.
 pending=("${!services[@]}")
 waited=0
 while :; do
@@ -229,6 +224,7 @@ while :; do
 done
 echo "services stable on the previous revisions"
 
+python3 "$app_env" record --workdir "$workdir" --environment "$ENVIRONMENT" --region "$AWS_REGION"
 aws ssm put-parameter --name "/erplora/$ENVIRONMENT/$PROJECT/image_tag" --value "${tags[0]}" \
   --type String --overwrite --region "$AWS_REGION" > /dev/null
 echo "recorded ${tags[0]} in /erplora/$ENVIRONMENT/$PROJECT/image_tag"
