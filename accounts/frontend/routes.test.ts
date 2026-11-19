@@ -50,7 +50,7 @@ describe('accounts routes.ts', () => {
       ['/dashboard/account/:tab(profile|security|preferences|api-keys)', { auth: true }],
       // «Report a problem» of the user menu: the account goes with the report.
       ['/dashboard/report-a-problem', { auth: true }],
-      // Where the Hub's «Sign out» lands (the Hub's `base/auth_views.py` SAAS_LOGOUT_PATH): erplora.com asks before
+      // Where the Hub's «Sign out» lands (`hub/base/auth_views.py` SAAS_LOGOUT_PATH): erplora.com asks before
       // closing its own session, in the auth card; open to a visitor, whom it sends to the launcher.
       ['/logout', { auth: false, chrome: false }],
     ]);
