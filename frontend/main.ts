@@ -4,9 +4,9 @@
 // where the sign-in form is.
 // 🔴 Import order: the shell barrel goes first so its boot hooks wrap `customElements.define`
 // before anything loads `@ionic/vue` (the SDK does). Vite hoists eager globs above everything, so an
-// app's `routes.ts` only imports types; its pages load with `() => import(…)`. Guards: main.test.ts.
+// app's `routes.ts` only imports types; its pages load with `() => import(…)`. Guards: main.guards.test.ts.
 // The apps live at the project root, next to `base/` (there is no `apps/` folder); a glob takes literal
-// strings only, so every app with a `frontend/` is named in both globs (guard: main.test.ts).
+// strings only, so every app with a `frontend/` is named in both globs (guard: main.guards.test.ts).
 // The menu comes from the server (`base/navigation.py`); the entry adds the user menu (Account, Help,
 // Sign out) and the surface the server keeps in the session. What the account chose (Account →
 // Preferences, in `base.session.me`) is painted before the first paint: its theme mode, its transparency
@@ -103,7 +103,7 @@ export function appRoutes(routeFiles: Record<string, AppRoutes>): RouteRecordRaw
     .map((route) => ({ ...route, meta: { auth: true, ...route.meta } }) as RouteRecordRaw);
 }
 
-/** An app's `frontend/locale/<lang>.json`, all under the app id (guard: main.test.ts). */
+/** An app's `frontend/locale/<lang>.json`, all under the app id (guard: main.guards.test.ts). */
 export type AppCatalogue = Record<string, unknown>;
 
 /** Every app catalogue, by the language in its file name, over the shared assistant's words (`assistant`); distinct

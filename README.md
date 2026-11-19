@@ -62,7 +62,7 @@ El SaaS es también una SPA Ionic Vue, igual que el Hub (`base/`, `frontend/main
 Tienda, Facturación y Stripe, `fiscal/` la documentación fiscal de VeriFactu, más `apps/`, el catálogo de
 módulos de la ronda 16, y `public/`, la web pública) viven en la raíz, junto a `base/`: el SaaS no tiene carpeta de módulos (PLAN §20.2), y cada app
 con `frontend/` se nombra en los globs de `frontend/main.ts` y en `FRONTEND_APPS` de `vite.config.ts`
-(guardarraíles en `frontend/main.test.ts` y `vite.config.test.ts`). Todas las páginas de cuenta son
+(guardarraíles en `frontend/main.guards.test.ts` y `vite.config.test.ts`). Todas las páginas de cuenta son
 Vue, sobre `allauth.headless` (cliente `browser`, `/_allauth/browser/v1/…`), en modo solo headless
 (`HEADLESS_ONLY = True`): el formulario de `/launch`, `/login/error`, `/verify-email`, `/password/reset`,
 `/password/reset/key/<clave>`, `/2fa/authenticate`, `/2fa` y `/reauthenticate`

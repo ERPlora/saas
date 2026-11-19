@@ -4,7 +4,13 @@ duplicados billing/frontend/components/StoreShop.test.ts:444-451 two module-canc
 duplicados billing/frontend/components/StoreShop.test.ts:470-476 two module-cancel tests already alike in main; this change only edits their names
 duplicados public/tests/test_product.py:21-31 clone already on main with test_resources.py; this change only edits a comment inside it
 duplicados public/static/public/theme.css:126-140 clone already on main with static/css/ionic-theme.css; this change only edits a comment inside it
-duplicados frontend/main.test.ts:52-60 rootAppsWithFrontend was already copied in three test files on main; only its doc comment changed here
+duplicados frontend/main.boot.test.ts:4-11 the vi.mock calls every test file of the SPA entry keeps, as vi.mock is hoisted per file (the factories are written once in frontend/__tests__/main-doubles.ts); this change splits frontend/main.test.ts into one file per topic
+duplicados frontend/main.panel.test.ts:2-13 the vi.mock calls every test file of the SPA entry keeps, as vi.mock is hoisted per file (the factories are written once in frontend/__tests__/main-doubles.ts); this change splits frontend/main.test.ts into one file per topic
+duplicados frontend/main.account.test.ts:3-9 the vi.mock calls every test file of the SPA entry keeps, as vi.mock is hoisted per file (the factories are written once in frontend/__tests__/main-doubles.ts); this change splits frontend/main.test.ts into one file per topic
+duplicados frontend/main.assistant.test.ts:1-8 the vi.mock calls every test file of the SPA entry keeps, as vi.mock is hoisted per file (the factories are written once in frontend/__tests__/main-doubles.ts); this change splits frontend/main.test.ts into one file per topic
+duplicados frontend/main.guards.test.ts:1-10 the vi.mock calls every test file of the SPA entry keeps, as vi.mock is hoisted per file (the factories are written once in frontend/__tests__/main-doubles.ts); this change splits frontend/main.test.ts into one file per topic
+duplicados frontend/main.assistant.test.ts:32-38 the two stand-in shells of the assistant configuration tests were already alike in frontend/main.test.ts on main; this change moves both literally to main.assistant.test.ts
+duplicados frontend/main.assistant.test.ts:45-51 the two stand-in shells of the assistant configuration tests were already alike in frontend/main.test.ts on main; this change moves both literally to main.assistant.test.ts
 duplicados vite.config.test.ts:34-40 rootAppsWithFrontend was already copied in three test files on main; only its doc comment changed here
 duplicados eslint.config.test.ts:15-25 rootAppsWithFrontend was already copied in three test files on main; only its doc comment changed here
 duplicados tests/e2e/public-web.spec.ts:30-68 captureEverywhere already shared this body with public-web-2 and public-demo on main; this change only edits its doc comment
