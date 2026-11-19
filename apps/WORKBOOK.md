@@ -201,7 +201,7 @@ Implicados: el Hub (su página de apps, BASE-F20), billing (la Tienda)
   iconos, consultas planas) y `apps/tests/test_api.py` (rutas, idioma y `Vary`); F02 `test_queries.py`
   (documentación, caché, imágenes) y `packages/live/tests/test_markdown.py`; F03 `apps/tests/test_models.py`
   (`clean()`, `apps.E001`, admin); F04 `apps/tests/test_admin.py` (el formulario del admin con el doble de Stripe)
-  y `billing/tests/test_services.py::TestThePricesOfAModule` (`module_price_problems`); F05 `test_queries.py` (no listadas), `billing/tests/test_store_catalog.py`,
+  y `billing/tests/test_services.py::TestThePricesOfAModule` (`module_price_problems`); F05 `test_queries.py` (no listadas), `billing/tests/test_queries_catalog.py`,
   `billing/tests/test_module_cancel.py` y `billing/tests/test_admin.py` (borrado protegido); F06
   `test_queries.py` (secciones, filtros, `known_verticals`) y `hubs/tests/test_models.py`; F07 el e2e
   `tests/e2e/panel/billing-support.spec.ts` (`/dashboard/store/modules?business=`), `billing/frontend/pages/StorePage.test.ts`
