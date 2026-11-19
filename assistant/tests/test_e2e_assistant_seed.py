@@ -6,6 +6,7 @@ asks for. ``clear`` leaves nothing of it behind: the account, its business, its 
 
 import importlib.util
 import sys
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -115,7 +116,7 @@ def _keyed(slug: str) -> None:
 def test_forget_takes_the_real_keys_away_and_keeps_the_others(seed):
     from assistant.models import AIProviderCredential
 
-    for slug in ("qwen", "openai", "mistral"):
+    for slug in ("qwen", "openai", "qa-answer", "mistral"):
         _keyed(slug)
 
     seed.forget()
@@ -175,3 +176,90 @@ def test_main_forget_on_an_e2e_database_removes_the_qa_accounts_their_businesses
     seed.main("forget", "", "es")
 
     assert _left() == ([], [], ["mistral"])
+
+
+KEYS = ("sk-answer-0000000000000000", "sk-openai-0000000000000000")
+COMPARED = {
+    "QA_ANSWER_KIND": "openai",
+    "QA_ANSWER_MODEL": "gpt-test-model",
+    "QA_ANSWER_BASE_URL": "https://models.example.com/v1",
+    "QA_ANSWER_KEY_ENV": "QA_TEST_ANSWER_KEY",
+    "QA_ANSWER_PRICE_IN": "0.4",
+    "QA_ANSWER_PRICE_OUT": "1.2",
+}
+
+
+def test_real_answers_with_qwen_and_its_openai_fallback_without_any_qa_answer_variable(seed):
+    made = seed.real(seed.answer_choice({}), KEYS)
+
+    policy = AIRoutingPolicy.solo()
+    assert (policy.active_model.provider.slug, policy.active_model.model_id) == ("qwen", "qwen3.7-plus")
+    assert policy.active_model.provider.base_url == seed.QWEN["base_url"]
+    assert (policy.fallback_model.provider.slug, policy.fallback_model.model_id) == ("openai", "gpt-5.4-mini")
+    assert policy.active_model.price_input_per_1m == Decimal("0")
+    assert (made["model"], made["fallback"]) == ("qwen3.7-plus (Qwen)", "gpt-5.4-mini (OpenAI)")
+    assert made["answer"] == {
+        "provider": "qwen",
+        "kind": "openai",
+        "model": "qwen3.7-plus",
+        "base_url": seed.QWEN["base_url"],
+        "price_in": None,
+        "price_out": None,
+        "fallback": "gpt-5.4-mini",
+    }
+
+
+def test_real_answers_with_the_model_under_test_alone_at_its_address_and_prices(seed):
+    made = seed.real(seed.answer_choice(COMPARED), KEYS)
+
+    policy = AIRoutingPolicy.solo()
+    answering = policy.active_model
+    assert (answering.provider.slug, answering.provider.kind, answering.model_id) == ("qa-answer", "openai", "gpt-test-model")
+    assert answering.provider.base_url == "https://models.example.com/v1"
+    assert (answering.price_input_per_1m, answering.price_output_per_1m) == (Decimal("0.4"), Decimal("1.2"))
+    assert policy.fallback_model is None
+    assert AIProviderCredential.objects.get(provider=answering.provider).api_key == KEYS[0]
+    assert made["fallback"] == "none"
+    assert made["answer"]["fallback"] is None
+    assert (made["answer"]["price_in"], made["answer"]["price_out"]) == (0.4, 1.2)
+
+
+def test_real_refuses_an_address_the_admin_would_refuse(seed):
+    with pytest.raises(Exception, match="https"):
+        seed.real(seed.answer_choice({**COMPARED, "QA_ANSWER_BASE_URL": "http://models.example.com/v1"}), KEYS)
+
+
+def test_a_model_under_test_names_every_variable_it_lacks(seed):
+    with pytest.raises(SystemExit, match="QA_ANSWER_KIND, QA_ANSWER_KEY_ENV, QA_ANSWER_PRICE_IN, QA_ANSWER_PRICE_OUT"):
+        seed.answer_choice({"QA_ANSWER_MODEL": "m"})
+
+
+def test_the_qa_answer_variables_without_a_model_are_refused_instead_of_answering_with_qwen(seed):
+    with pytest.raises(SystemExit, match="QA_ANSWER_KIND without QA_ANSWER_MODEL"):
+        seed.answer_choice({"QA_ANSWER_KIND": "openai"})
+
+
+@pytest.mark.parametrize(
+    ("name", "value", "said"),
+    [
+        ("QA_ANSWER_KIND", "mistral", "openai, anthropic, gemini, deepseek"),
+        ("QA_ANSWER_PRICE_IN", "cheap", "QA_ANSWER_PRICE_IN"),
+        ("QA_ANSWER_PRICE_OUT", "-1", "QA_ANSWER_PRICE_OUT"),
+        ("QA_ANSWER_KEY_ENV", "sk-a-real-key", "QA_ANSWER_KEY_ENV"),
+    ],
+)
+def test_a_model_under_test_with_a_wrong_value_is_refused(seed, name, value, said):
+    with pytest.raises(SystemExit, match=said):
+        seed.answer_choice({**COMPARED, name: value})
+
+
+@pytest.mark.filterwarnings("ignore:Overriding setting DATABASES:UserWarning")
+def test_the_keys_of_real_are_read_from_the_variable_the_choice_names(seed, settings, monkeypatch):
+    _named(settings, "saas_e2e_8630")
+    monkeypatch.setenv("QA_TEST_ANSWER_KEY", KEYS[0])
+    monkeypatch.setenv("QA_OPENAI_API_KEY", KEYS[1])
+
+    assert seed.real_keys(seed.answer_choice(COMPARED)) == KEYS
+    monkeypatch.delenv("QA_TEST_ANSWER_KEY")
+    with pytest.raises(SystemExit, match="real: export QA_TEST_ANSWER_KEY"):
+        seed.real_keys(seed.answer_choice(COMPARED))
