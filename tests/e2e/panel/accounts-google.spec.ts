@@ -9,7 +9,7 @@
 //     only called for the first address of a redirect: the browser would reach the real Google. Here the browser still
 //     checks the page's `form-action` over the redirect, before anything is answered;
 //   - what the server asks at its token endpoint: the double of this spec (`GOOGLE_OAUTH_TOKEN_URL`, which only a
-//     development server may move, config/tests/test_production_settings.py), which answers each code with the
+//     development server may move, config/tests/test_production_settings_accounts.py), which answers each code with the
 //     id_token of the account chosen.
 // No run needs a credential of Google or calls it. Accounts of this spec: `e2e-google-…@example.com`, removed before
 // and after (panel_seed.py's `clear` removes every `e2e-…@example.com` too).
