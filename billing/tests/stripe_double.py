@@ -120,7 +120,7 @@ class StripeDouble:
             value = self._default(call)
         return value
 
-    def _default(self, call: Call) -> Any:  # noqa: C901, PLR0911
+    def _default(self, call: Call) -> Any:  # noqa: PLR0911
         number = next(self._ids)
         params = call.params
         match call.path:

@@ -249,7 +249,10 @@ en otra solo por sus operaciones), que sube `state_version` y empuja la foto al 
 4. Renovación de más de 400 € con IVA sin NIF del pagador (factura completa, RD 1619/2012 art. 4): 409
    `billing.tax_id_required`.
 5. El NIF-IVA solo llega al cliente de Stripe si VIES lo probó (o es nacional); Stripe no lo recoge
-   (`tax_id_collection` apagado).
+   (`tax_id_collection` apagado). Queda como su único identificador fiscal (`stripe_tax_ids.keep_only`): los
+   anteriores, y uno que ya no puede viajar, se borran antes de añadir el actual, porque Stripe los imprime todos en
+   sus facturas y recibos y rechaza el sexto. Un rechazo al borrar se anota `billing.stripe_tax_id_not_removed` y
+   no para la venta; Stripe sin contestar pide reintentar el pago (al guardar los datos, `billing.customer_push_failed`).
 
 ### Webhook
 
