@@ -736,16 +736,16 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   `ASSISTANT_SERVICE_PROVIDER`, la API de OpenAI en `api.openai.com` por defecto, sin residencia en la UE por contrato.
   La lectura en voz alta es la del dispositivo: erplora.com no tiene voz propia (sin motor en
   `assistant.media.SPEECH_ENGINE`), así que §5 no nombra a ningún
-  encargado de esa lectura (`test_legal.py` prohíbe «Azure» y «Microsoft Ireland Operations»). Un motor que lleve el texto
+  encargado de esa lectura (`test_legal_privacy.py` prohíbe «Azure» y «Microsoft Ireland Operations»). Un motor que lleve el texto
   fuera de nuestros contenedores es volver a nombrar a su encargado en §5, con lo que recibe y dónde, en la misma entrega.
   Cambiarlo es cambiar en la misma entrega §5 y §6 de la privacidad, la respuesta «storage» de `/pricing/` y la celda
-  del asistente de la portada (`test_legal.py`, `test_product.py` y `test_landing.py`, en `en` y `es`). El Hub y el
+  del asistente de la portada (`test_legal_privacy_assistant.py`, `test_product.py` y `test_landing.py`, en `en` y `es`). El Hub y el
   panel usan el dictado (`base.assistant.transcribe`, cada uno el suyo); «Leer en voz alta» lee con la voz del
   dispositivo en los dos (el panel solo pediría `base.assistant.speak` con `spa-config.assistantSpeech`, que sin
   motor es falso).
   La búsqueda en la web (`assistant/server_tools.py`, ASSISTANT-F14) va a Brave Search: destinatario aparte en §5 y
   fuera de las cláusulas de §6, porque su DPA deja fuera las consultas. Otro proveedor es otro destinatario:
-  `test_legal.py` cae si `ASSISTANT_SEARCH_URL` deja de ser de Brave. Sus términos, §4(c), piden atar por escrito a cada
+  `test_legal_privacy_assistant.py` cae si `ASSISTANT_SEARCH_URL` deja de ser de Brave. Sus términos, §4(c), piden atar por escrito a cada
   usuario a lo que dice su §3(b): es la línea de «Uso aceptable» de los términos (§8).
 - Cumplimiento (F09): `hubs.countries.COUNTRY_NAMES` tiene que casar con `hubs.schemas.common.COUNTRIES` (lo exige un
   test); `FISCAL_SYSTEMS` dice qué sistema fiscal conecta cada país, hoy solo VeriFactu en España. Un país nuevo

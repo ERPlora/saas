@@ -11,7 +11,7 @@ from html import unescape
 import pytest
 
 from public.tests.conftest import without_tokens
-from public.tests.test_legal import PAGES, list_items_naming, spanish
+from public.tests.legal_pages import PAGES, list_items_naming, spanish
 
 LEGAL_PAGES = [*PAGES.values(), "/legal/declaracion-responsable/"]
 

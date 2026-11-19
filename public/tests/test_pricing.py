@@ -30,7 +30,7 @@ from hubs.models import Plan
 from hubs.tests.test_plan_catalogue import APP_ON_A_CUSTOM_DOMAIN, CUSTOM_DOMAIN_WORDS
 from public import pricing
 from public.tests.conftest import without_tokens
-from public.tests.test_legal import template_messages
+from public.tests.template_messages import template_messages
 
 pytestmark = [pytest.mark.django_db]
 

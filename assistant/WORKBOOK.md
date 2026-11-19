@@ -676,7 +676,7 @@ propio texto por `code`.
   secreto de su tarea `saas`. Una consulta sale tal como la
   escribe el modelo, con la regla de llevar solo lo que se busca: el aviso de privacidad de Brave deja las consultas fuera
   de su DPA, y una regla al modelo no es una garantía; por eso la política de privacidad lo nombra como destinatario
-  aparte, fuera de los encargados del art. 28 (§5) y de las cláusulas contractuales tipo (§6), `public/tests/test_legal.py`. No se guarda ni se registra. Sus términos no dejan guardar sus
+  aparte, fuera de los encargados del art. 28 (§5) y de las cláusulas contractuales tipo (§6), `public/tests/test_legal_privacy_assistant.py`. No se guarda ni se registra. Sus términos no dejan guardar sus
   resultados, ni en parte, más allá de lo transitorio (§3(b)(i)): el resultado vive en la memoria del turno, solo lo ve el
   modelo, y por eso no hay caché. Tope por llamante en la caché: `ASSISTANT_WEB_SEARCH_RATELIMIT` (20/d) y
   `ASSISTANT_CURRENCY_RATE_RATELIMIT` (60/h), con un solo presupuesto para todas las demos (`turn.tool_budget`); cinco

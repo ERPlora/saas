@@ -3,7 +3,7 @@
 UI in ``en`` + ``es``: a ``gettext`` literal or a ``{% translate %}`` of the review page without its
 Spanish entry reaches a Spanish member of the staff, or a Spanish customer, in English. This reads the compiled
 catalog, so a ``.po`` edited without ``compilemessages`` fails too. Same scans as ``billing/tests/test_locale.py``
-(Python) and ``public/tests/test_legal.py`` (templates), over fiscal's own catalog.
+(Python) and ``public/tests/test_legal_templates.py`` (templates), over fiscal's own catalog.
 """
 
 import gettext
@@ -12,7 +12,7 @@ import pytest
 from django.conf import settings
 
 from base.tests.test_locale import messages_of
-from public.tests.test_legal import template_messages
+from public.tests.template_messages import template_messages
 
 CATALOG = settings.BASE_DIR / "fiscal" / "locale" / "es" / "LC_MESSAGES" / "django.mo"
 TEMPLATES = sorted((settings.BASE_DIR / "fiscal" / "templates").rglob("*.html"))
