@@ -18,8 +18,8 @@
   allowance, tokens, dictations, characters read aloud and cost. Read only for everybody: rows are written by the
   gateway alone (``assistant.message.claim|release``, ``assistant.usage.record``).
 
-Only active staff enter the admin (``accounts.admin.admin_has_permission``) and each page asks the model permission
-of Django that backs it; ``support`` gets none of the assistant's (its keys are ERPlora's spend).
+Only active staff enter the admin (``accounts.admin.sign_in.admin_has_permission``) and each page asks the model
+permission of Django that backs it; ``support`` gets none of the assistant's (its keys are ERPlora's spend).
 """
 
 import json

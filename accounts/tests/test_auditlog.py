@@ -25,7 +25,7 @@ from django.utils.formats import date_format
 from accounts.auditlog import AuditActorMiddleware
 from accounts.models import ApiKey
 from accounts.tests.conftest import api_post, enter
-from accounts.tests.test_admin import _as_posted, _change_page
+from accounts.tests.admin_pages import _as_posted, _change_page
 from hubs.tests.conftest import plans  # noqa: F401 - the plans fixture
 
 pytestmark = pytest.mark.django_db

@@ -20,9 +20,9 @@ from django.views.generic import RedirectView
 from live.live_view import live_stream
 from live.spa import BASE_NON_SPA_PREFIXES
 
-from accounts import admin as accounts_admin
 from accounts import doors, google, handoff, hub_pass, internal
 from accounts.adapters import SPA_LOGIN
+from accounts.admin.sign_in import admin_has_permission, admin_login
 from assistant import internal as assistant_internal
 from base.csp_report import csp_report
 from base.health import readyz
@@ -92,9 +92,9 @@ class MovedToPanel(RedirectView):
 
 # The admin's login is the SaaS's sign-in (it asks for the mailed code and the authenticator app).
 # Assigned before `admin.site.urls` is read below: `AdminSite.get_urls` binds `self.login` then.
-admin.site.login = accounts_admin.admin_login
+admin.site.login = admin_login
 # Who enters: active staff, and with ACCOUNTS_MFA_ENABLED only with an authenticator app.
-admin.site.has_permission = accounts_admin.admin_has_permission
+admin.site.has_permission = admin_has_permission
 # ERPlora's name on every page of the admin, never «Django administration».
 admin.site.site_header = "ERPlora Cloud"
 admin.site.site_title = "ERPlora Admin"

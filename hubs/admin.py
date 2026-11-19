@@ -30,13 +30,8 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import ngettext
 
-from accounts.admin import (
-    JUMP_FAILED,
-    JUMP_FAILED_UNKNOWN,
-    OPEN_IN_HUB_ADMIN,
-    UserAdmin,
-    open_hub_admin_url,
-)
+from accounts.admin.hub_admin_jump import JUMP_FAILED, JUMP_FAILED_UNKNOWN, OPEN_IN_HUB_ADMIN, open_hub_admin_url
+from accounts.admin.users import UserAdmin
 from hubs.services import platform_actions, subscription_sync
 from hubs.queries import hub_sync, membership
 from hubs.models import (

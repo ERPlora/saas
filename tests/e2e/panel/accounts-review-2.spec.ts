@@ -256,7 +256,8 @@ for (const { lang, locale } of LANGUAGES) {
       const entries = page.locator('#result_list tbody tr');
       await review(page, lang, 'ACCOUNTS-F36-list', async () => {
         await expect(entries.first()).toBeVisible();
-        // auditlog writes these two in English whatever the language: ours says them in the staff's (accounts/admin.py).
+        // auditlog writes these two in English whatever the language: ours says them in the staff's
+        // (accounts/admin/audit_trail.py).
         await expect(page.locator('#result_list thead')).toContainText(lang === 'es' ? 'ID de correlación' : 'Correlation ID');
         await expect(entries.first()).toContainText(lang === 'es' ? /\d+ cambios?: / : /\d+ changes?: /);
       });
