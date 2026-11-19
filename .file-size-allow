@@ -30,7 +30,6 @@
 591 hubs/frontend/pages/BusinessListPage.test.ts saas#462
 617 hubs/frontend/pages/LaunchPage.test.ts saas#462
 1053 hubs/tests/test_check_custom_domains.py saas#462
-1070 hubs/tests/test_services.py saas#462
 1186 public/tests/test_demo.py saas#462
 1033 public/tests/test_industries.py saas#462
 1404 public/tests/test_landing.py saas#462

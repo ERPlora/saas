@@ -23,9 +23,9 @@ sign-up ignores them. Already pinned elsewhere, not repeated here:
   (``test_a_customer_of_a_hub_is_never_turned_into_platform_staff``), ``hubs/tests/test_members.py``
   (``TestThePlatformsDoor``: nor an invitee, nor a member of a business in recovery) and ``accounts/tests/test_models.py``
   (``TestUser::test_signs_in_with_the_email_and_has_a_uuid7_primary_key``: a new account is no staff);
-- a staff account never joins a business: ``hubs/tests/test_services.py`` (``test_a_staff_account_creates_no_business``),
-  ``hubs/tests/test_invite_unverified_account.py`` (``test_a_staff_account_is_never_invited_and_keeps_its_password``)
-  and ``hubs/tests/test_members.py``
+- a staff account never joins a business: ``hubs/tests/test_services_creation.py``
+  (``test_a_staff_account_creates_no_business``), ``hubs/tests/test_invite_unverified_account.py``
+  (``test_a_staff_account_is_never_invited_and_keeps_its_password``) and ``hubs/tests/test_members.py``
   (``TestAccept::test_an_account_made_staff_while_invited_cannot_enter_with_the_invitation``).
 """
 
