@@ -3,7 +3,8 @@
 The plans live only in the database: migration ``hubs/0013`` is the seed of a new database and puts production's
 rows right once; there is no command that seeds or overwrites them (``sync_hub_plans`` is an empty command until
 the deploy stops calling it). pytest builds its database by running every migration, so these tests read the
-catalogue a new database starts with; what the migrations write is pinned by ``hubs/tests/test_migrations.py``.
+catalogue a new database starts with; what the migrations write is pinned by
+``hubs/tests/test_migrations_plan_catalogue.py`` and ``hubs/tests/test_migrations_plan_cards.py``.
 
 The ``_en`` columns stay English and the ``_es`` mirror Spanish: a seed that put Spanish into the English
 (default-language) fields once showed an English visitor Spanish copy. Each language is its own column
