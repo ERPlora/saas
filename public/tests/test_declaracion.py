@@ -191,7 +191,7 @@ def test_only_the_version_in_force_is_not_marked_superseded(client):
 
 
 def test_the_page_uses_the_shared_public_reading_pattern():
-    from public.tests.test_legal import LEGAL_TEMPLATES
+    from public.tests.legal_pages import LEGAL_TEMPLATES
 
     source = (LEGAL_TEMPLATES / "declaracion_responsable.html").read_text(
         encoding="utf-8"

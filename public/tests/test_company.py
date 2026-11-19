@@ -355,7 +355,7 @@ def test_every_message_of_collaborate_has_its_spanish_entry():
     import gettext
     from pathlib import Path
 
-    from public.tests.test_legal import template_messages
+    from public.tests.template_messages import template_messages
 
     root = Path(settings.BASE_DIR) / "public"
     with (root / "locale" / "es" / "LC_MESSAGES" / "django.mo").open("rb") as compiled:

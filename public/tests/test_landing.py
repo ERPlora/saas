@@ -39,7 +39,7 @@ from apps.tests.factories import CUBE_SVG, make_app
 from hubs.models import Plan
 from public import context_processors, landing
 from public.tests.test_cookies import VALKEY_DOWN
-from public.tests.test_legal import template_messages
+from public.tests.template_messages import template_messages
 
 pytestmark = [pytest.mark.django_db]
 
