@@ -4,7 +4,7 @@ hubs."""
 from live import operations
 from live.context import OperationContext
 
-from accounts import queries
+from accounts.queries import account_hubs
 
 
 #: The businesses of an account, read through their operation (accounts never imports hubs).
@@ -43,7 +43,7 @@ def on_a_business(user) -> bool:
     imports hubs): a member, also of one in its days of recovery (a restore gives it back), or invited to one. Neither
     ``create_platform_user`` nor ``User.clean`` (the admin's form) makes such an account staff."""
     business_list = operations.get(BUSINESS_LIST)
-    page = business_list(queries.as_account(user), business_list.input(limit=1, offset=0))
+    page = business_list(account_hubs.as_account(user), business_list.input(limit=1, offset=0))
     return page.total > 0 or bool(page.invitations)
 
 
@@ -51,7 +51,7 @@ def belongs_to_a_business(user) -> bool:
     """Whether ``user`` is in a business that is not deleted (owner, payer or member), from ``hubs.business.list``
     (called by its name: accounts never imports hubs). A business in its 90 days of recovery holds nobody."""
     business_list = operations.get(BUSINESS_LIST)
-    as_account = queries.as_account(user)
+    as_account = account_hubs.as_account(user)
     offset = 0
     while True:
         page = business_list(as_account, business_list.input(limit=100, offset=offset))

@@ -9,8 +9,8 @@ follow ``prefers-color-scheme``. Without the processor ``theme`` was empty, so `
 A signed-in account's own mode (Account → Preferences, ``accounts.UserPreferences.theme_mode``, what
 the panel paints) wins over the cookie: the public web and the error pages look like the panel.
 TEMPLATES loads the processor on every render, so it reaches ``accounts`` lazily, inside the function,
-and falls back to the cookie if ``accounts.queries.preferences_of`` is missing: a top-level import of a
-missing symbol takes the whole site down.
+and falls back to the cookie if ``accounts.queries.account_preferences.preferences_of`` is missing: a top-level
+import of a missing symbol takes the whole site down.
 """
 
 import ast
@@ -79,7 +79,7 @@ def test_an_account_that_never_chose_follows_the_system(ana):
 
 def test_the_account_dependency_is_declared_and_present():
     """The processor names what it needs from ``accounts`` in one place, and it exists in the tree."""
-    assert PREFERENCES_OF == "accounts.queries.preferences_of"
+    assert PREFERENCES_OF == "accounts.queries.account_preferences.preferences_of"
     assert apps.is_installed("accounts")
     assert callable(import_string(PREFERENCES_OF))
 
@@ -106,10 +106,10 @@ def test_the_processor_reaches_accounts_only_lazily():
 def test_without_preferences_of_an_account_falls_back_to_the_cookie(ana, monkeypatch, caplog):
     """If ``accounts`` lacks the function (a partial deploy), the page still renders with the cookie,
     and the log says why."""
-    import accounts.queries
+    import accounts.queries.account_preferences
 
     UserPreferences.objects.create(user=ana, theme_mode="light")
-    monkeypatch.delattr(accounts.queries, "preferences_of")
+    monkeypatch.delattr(accounts.queries.account_preferences, "preferences_of")
 
     with caplog.at_level(logging.WARNING, logger="base.context_processors"):
         assert _theme("dark", user=ana) == "dark"

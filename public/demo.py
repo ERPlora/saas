@@ -10,8 +10,8 @@ A demo is an empty hub of the Hub's own
   202 «requested» and prepares its database afterwards: the browser
   goes back to the door, which says «Preparing your demo…» while its page asks ``status`` every second (for 30 seconds,
   ``frontend/demo-wait.ts``). A demo already ready (the live one given back, or an older Hub, which answers 201
-  without ``status``) jumps at once to its ``/auth/login`` (``accounts.queries.hub_start_url``), the same jump with
-  ``state`` as a business.
+  without ``status``) jumps at once to its ``/auth/login`` (``accounts.queries.hub_links.hub_start_url``), the same
+  jump with ``state`` as a business.
   New demos are limited per address (``DEMO_SPAWN_RATELIMIT``, as the contact form); a browser that already
   has a live one is not counted, and the Hub answers it the same demo. Then reCAPTCHA Enterprise
   (``recaptcha_token``, action ``demo_request``; ``live.recaptcha``): only a person gets a demo,
@@ -53,7 +53,7 @@ from live import recaptcha
 from live.slugs import is_demo_slug, validate_hub_slug
 
 from accounts.handoff import STATE_MAX_LENGTH
-from accounts.queries import hub_start_url, local_path
+from accounts.queries.hub_links import hub_start_url, local_path
 from hubs import hub_client
 from hubs.hub_client import HubRefused, HubUnavailable
 from public import landing

@@ -26,8 +26,8 @@ from live.operations import Operation, registry
 from ninja import NinjaAPI
 from ninja.security import APIKeyHeader, HttpBearer
 
-from accounts import queries
 from accounts.models import API_KEY_PREFIX, API_KEY_SCOPES
+from accounts.queries import account_api_keys
 from accounts.services import api_keys
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ def authenticate(request, raw: str, op: Operation):
     if is_ratelimited(None, group="accounts.api_key.invalid", key=wrong_keys, rate=INVALID_KEY_RATE, increment=False):
         raise _too_many()
     now = timezone.now()
-    key = queries.api_key_for(raw, now)
+    key = account_api_keys.api_key_for(raw, now)
     if key is None:
         logger.info("accounts.api_key_refused key=%s ip=%s", _redacted(raw), address)
         if is_ratelimited(None, group="accounts.api_key.invalid", key=wrong_keys, rate=INVALID_KEY_RATE, increment=True):

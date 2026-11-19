@@ -950,9 +950,9 @@ class TestOpen:
         before it mints the code; «Open» no longer refuses it on its own."""
         settings.ACCOUNTS_MFA_ENABLED = True
         self.ready(business)
-        from accounts import queries as account_queries
+        from accounts.queries import two_factor
 
-        monkeypatch.setattr(account_queries, "has_totp", lambda user: True)
+        monkeypatch.setattr(two_factor, "has_totp", lambda user: True)
 
         assert services.opening.business_open(ctx_for(owner), BusinessOpenIn(id=business.id)).url
         assert not AuthExchangeCode.objects.exists()

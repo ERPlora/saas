@@ -6,7 +6,8 @@ from live.context import OperationContext
 from live.operations import AI, operation
 from live.outbox import record_event
 
-from accounts import events, queries
+from accounts import events
+from accounts.queries import account_lookup
 from accounts.schemas import BrowserTrustOut, BrowserTrustRevokeIn
 
 logger = logging.getLogger("accounts.services")
@@ -80,7 +81,7 @@ def _follow_new_authenticator_ids(request, renamed: dict[int, int]) -> None:
 def browser_trust_revoke(ctx: OperationContext, data: BrowserTrustRevokeIn) -> dict:
     """«Stop trusting all browsers» (Security → Two-factor authentication): as Google's and Microsoft's
     «Revoke all trusted devices». This browser too: the answer says it is no longer trusted."""
-    user = queries.account_of(ctx)
+    user = account_lookup.account_of(ctx)
     renamed = forget_trusted_browsers(user)
     record_event(ctx, events.BROWSER_TRUST_REVOKED)
     # Last, once nothing is left to write: a try a cut rolls back must leave the session naming the ids the database

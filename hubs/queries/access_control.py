@@ -10,7 +10,7 @@ from django.utils.translation import gettext as _
 from live.context import OperationContext
 from live.errors import NotFound, PermissionDenied, Unauthorized
 
-from accounts.queries import hub_origin
+from accounts.queries.hub_links import hub_origin
 from hubs.models import Hub, HubMember
 
 

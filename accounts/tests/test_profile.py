@@ -9,7 +9,8 @@ from allauth.account.models import EmailAddress
 from live.errors import PermissionDenied
 from live.live_registry import live_registry
 
-from accounts import events, queries
+from accounts import events
+from accounts.queries import account_profile
 from accounts.schemas import ProfileGetIn, ProfileUpdateIn
 from accounts.services import profile
 from accounts.tests.conftest import api_get, api_post, ctx_for
@@ -21,7 +22,7 @@ PROFILE = "/api/accounts/profile"
 
 class TestReading:
     def test_the_account_as_cuenta_shows_it(self, ana):
-        result = queries.profile_get(ctx_for(ana), ProfileGetIn())
+        result = account_profile.profile_get(ctx_for(ana), ProfileGetIn())
 
         assert result.model_dump() == {
             "id": ana.pk,
@@ -37,13 +38,13 @@ class TestReading:
         }
 
     def test_an_address_on_record_counts_once_proven(self, ana):
-        """The same rule the invitations apply (``queries.email_is_proven``), so the panel can offer to
-        verify exactly when a business would refuse the account."""
+        """The same rule the invitations apply (``accounts.queries.ways_in.email_is_proven``), so the panel can offer
+        to verify exactly when a business would refuse the account."""
         EmailAddress.objects.create(user=ana, email=ana.email, verified=False, primary=True)
-        assert queries.profile_get(ctx_for(ana), ProfileGetIn()).email_verified is False
+        assert account_profile.profile_get(ctx_for(ana), ProfileGetIn()).email_verified is False
 
         EmailAddress.objects.filter(user=ana).update(verified=True)
-        assert queries.profile_get(ctx_for(ana), ProfileGetIn()).email_verified is True
+        assert account_profile.profile_get(ctx_for(ana), ProfileGetIn()).email_verified is True
 
     def test_the_pending_email_is_the_change_waiting_in_this_session_only(self, ana):
         """``accounts.email.change`` keeps it in the session that asked (``test_email_change``); an unproven
@@ -51,7 +52,7 @@ class TestReading:
         EmailAddress.objects.create(user=ana, email=ana.email, verified=True, primary=True)
         EmailAddress.objects.create(user=ana, email="ana@new.example", verified=False, primary=False)
 
-        result = queries.profile_get(ctx_for(ana), ProfileGetIn())
+        result = account_profile.profile_get(ctx_for(ana), ProfileGetIn())
 
         assert (result.email, result.pending_email) == ("ana@example.com", None)
 
@@ -59,17 +60,17 @@ class TestReading:
         ana.set_unusable_password()
         ana.save()
 
-        assert queries.profile_get(ctx_for(ana), ProfileGetIn()).has_password is False
+        assert account_profile.profile_get(ctx_for(ana), ProfileGetIn()).has_password is False
 
     def test_without_names_the_full_name_is_empty(self, ana):
         ana.first_name = ana.last_name = ""
         ana.save()
 
-        assert queries.profile_get(ctx_for(ana), ProfileGetIn()).full_name == ""
+        assert account_profile.profile_get(ctx_for(ana), ProfileGetIn()).full_name == ""
 
     def test_an_anonymous_visitor_is_refused(self, db):
         with pytest.raises(PermissionDenied):
-            queries.profile_get(ctx_for(None), ProfileGetIn())
+            account_profile.profile_get(ctx_for(None), ProfileGetIn())
 
 
 class TestUpdating:

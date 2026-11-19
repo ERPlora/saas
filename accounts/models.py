@@ -130,7 +130,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         if not (self.is_staff or self.is_superuser):
             return False
         # Here, not at the top: accounts.queries imports this module.
-        from accounts.queries import stored_staff_flags
+        from accounts.queries.account_lookup import stored_staff_flags
 
         stored = stored_staff_flags(self.pk)
         if stored is None:  # a new account is on no business yet

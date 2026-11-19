@@ -20,7 +20,7 @@ from django.template.loader import render_to_string
 from django.test import Client
 from django.urls import reverse
 
-from accounts.queries import hub_start_url
+from accounts.queries.hub_links import hub_start_url
 from hubs.tests.conftest import hub_double, offline_hub  # noqa: F401 - the Hub's /internal, or none
 from public.sitemaps import StaticPagesSitemap
 

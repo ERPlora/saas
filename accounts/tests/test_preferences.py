@@ -10,8 +10,9 @@ import pytest
 from django.utils import translation
 from live.live_registry import live_registry
 
-from accounts import events, queries
+from accounts import events
 from accounts.models import UserPreferences
+from accounts.queries import account_preferences
 from accounts.schemas import PreferencesGetIn, PreferencesUpdateIn
 from accounts.services import preferences
 from accounts.tests.conftest import api_get, api_post, ctx_for
@@ -23,7 +24,7 @@ PREFERENCES = "/api/accounts/preferences"
 
 class TestReading:
     def test_an_account_that_never_chose_gets_the_defaults_and_its_language(self, ana):
-        result = queries.preferences_get(ctx_for(ana), PreferencesGetIn())
+        result = account_preferences.preferences_get(ctx_for(ana), PreferencesGetIn())
 
         assert result.model_dump() == {
             "theme_mode": "system",
@@ -34,14 +35,14 @@ class TestReading:
 
     def test_reading_writes_nothing(self, ana):
         """A query runs READ ONLY: the row is born with the first change, not by opening the page."""
-        queries.preferences_get(ctx_for(ana), PreferencesGetIn())
+        account_preferences.preferences_get(ctx_for(ana), PreferencesGetIn())
 
         assert not UserPreferences.objects.exists()
 
     def test_what_was_chosen_is_read_back(self, ana):
         UserPreferences.objects.create(user=ana, theme_mode="dark", transparency=False, hub_alerts=False)
 
-        result = queries.preferences_get(ctx_for(ana), PreferencesGetIn())
+        result = account_preferences.preferences_get(ctx_for(ana), PreferencesGetIn())
 
         assert (result.theme_mode, result.transparency, result.hub_alerts) == ("dark", False, False)
 
@@ -50,7 +51,7 @@ class TestReading:
         from live.errors import PermissionDenied
 
         with pytest.raises(PermissionDenied):
-            queries.preferences_get(ctx_for(None), PreferencesGetIn())
+            account_preferences.preferences_get(ctx_for(None), PreferencesGetIn())
 
 
 class TestUpdating:
@@ -90,7 +91,7 @@ class TestUpdating:
         result = preferences.preferences_update(ctx_for(ana), PreferencesUpdateIn(transparency=False))
 
         assert (result.theme_mode, result.hub_alerts, result.transparency) == ("dark", False, False)
-        assert queries.preferences_get(ctx_for(bea), PreferencesGetIn()).model_dump() == {
+        assert account_preferences.preferences_get(ctx_for(bea), PreferencesGetIn()).model_dump() == {
             "theme_mode": "light",
             "transparency": True,
             "language": "en",

@@ -47,7 +47,6 @@ from auditlog.mixins import MAX as SUMMARY_MAX
 from auditlog.models import LogEntry
 from auditlog.render import get_field_verbose_name
 
-from accounts import queries
 from accounts.models import (
     API_KEY_SCOPES,
     ApiKey,
@@ -57,6 +56,7 @@ from accounts.models import (
     User,
     UserPreferences,
 )
+from accounts.queries import hub_links, two_factor
 from accounts.services import active_sessions, api_keys, hub_jump
 
 OPEN_IN_HUB_ADMIN = _("Open in the Hub admin")
@@ -93,8 +93,8 @@ def open_hub_admin_url(slug: str) -> str | None:
     """
     if not hub_jump.is_hub_slug(slug):
         return None
-    query = urlencode({"hub": slug, "next": queries.hub_admin_path(slug)}, safe="/")
-    return f"{settings.HUB_ADMIN_ORIGIN}{queries.HUB_START_PATH}?{query}"
+    query = urlencode({"hub": slug, "next": hub_links.hub_admin_path(slug)}, safe="/")
+    return f"{settings.HUB_ADMIN_ORIGIN}{hub_links.HUB_START_PATH}?{query}"
 
 
 class UserCreationForm(AdminUserCreationForm):
@@ -226,7 +226,7 @@ def admin_has_permission(request: HttpRequest) -> bool:
     user = request.user
     if not (user.is_active and user.is_staff):
         return False
-    return not settings.ACCOUNTS_MFA_ENABLED or queries.has_totp(user)
+    return not settings.ACCOUNTS_MFA_ENABLED or two_factor.has_totp(user)
 
 
 def _owes_the_app(request: HttpRequest) -> bool:

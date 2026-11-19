@@ -23,7 +23,7 @@ from django.conf import settings
 from django.http import HttpRequest, JsonResponse
 from django.http.response import HttpResponseBase
 
-from accounts import queries
+from accounts.queries import two_factor
 
 #: allauth's headless 2FA endpoints, of any client: managing the authenticators and giving a code.
 HEADLESS_2FA = re.compile(r"^/_allauth/[^/]+/v1/(account/authenticators|auth/2fa)(/|$)")
@@ -72,7 +72,7 @@ def mfa_completed(request: HttpRequest) -> bool:
 
     «MFA completed» means both:
 
-    1. the signed-in account has an authenticator app (``queries.has_totp``), and
+    1. the signed-in account has an authenticator app (``two_factor.has_totp``), and
     2. this session's authentication records (allauth's ``account_authentication_methods``) hold an
        entry ``method == "mfa"`` for one of that account's authenticators: a code of the app or a
        recovery code, given at the login stage (``/_allauth/browser/v1/auth/2fa/authenticate``) or
@@ -87,7 +87,7 @@ def mfa_completed(request: HttpRequest) -> bool:
     authenticators. Its sign-in skipped the app's code, so the jump to a business must not ask for it again.
     """
     user = request.user
-    if not queries.has_totp(user):
+    if not two_factor.has_totp(user):
         return False
     ids = {record.get("id") for record in get_authentication_records(request) if record.get("method") == "mfa"}
-    return queries.owns_authenticator(user, ids) or is_trusted_browser(request, user)
+    return two_factor.owns_authenticator(user, ids) or is_trusted_browser(request, user)

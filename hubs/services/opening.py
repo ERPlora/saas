@@ -7,7 +7,7 @@ from live.errors import Conflict
 from live.operations import INTERNAL, operation
 from live.outbox import record_event
 
-from accounts.queries import hub_start_url
+from accounts.queries.hub_links import hub_start_url
 from hubs import events
 from hubs.models import Hub, HubMember
 from hubs.queries import access_control

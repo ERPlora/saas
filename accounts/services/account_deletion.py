@@ -9,7 +9,8 @@ from live.errors import Conflict
 from live.operations import INTERNAL, operation
 from live.outbox import record_event
 
-from accounts import events, queries, signals
+from accounts import events, signals
+from accounts.queries import account_lookup
 from accounts.schemas import ProfileDeletedOut, ProfileDeleteIn
 from accounts.services.account_businesses import businesses_holding
 from accounts.services.reauthentication import require_recent_authentication
@@ -85,7 +86,7 @@ def profile_delete(ctx: OperationContext, data: ProfileDeleteIn) -> dict:
     one transaction, every business is asked to end its sessions (``signals``), every session of the SaaS
     ends (the caller's too: the answer signs it out) and the account goes, with what hangs from it.
     """
-    user = queries.account_of(ctx)
+    user = account_lookup.account_of(ctx)
     owned, paid = businesses_holding(ctx)
     if owned:
         raise HoldsBusinesses(
