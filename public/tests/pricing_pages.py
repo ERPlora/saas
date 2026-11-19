@@ -63,6 +63,16 @@ def card_items(html: str, plan_name: str) -> list[str]:
     return [" ".join(item.split()) for item in CARD_ITEM.findall(card)]
 
 
+VAT_NOTE = re.compile(r"<p\b[^>]*>(?:(?!</p>).)*?All prices exclude VAT.*?</p>", re.S)
+
+
+def vat_note(html: str) -> str:
+    """The ex-VAT note under the prices, so the footer's own terms link cannot make a test pass."""
+    notes = VAT_NOTE.findall(html)
+    assert len(notes) == 1, f"expected one ex-VAT note, found {len(notes)}"
+    return notes[0]
+
+
 def json_ld_blocks(html: str) -> list[dict]:
     marker = '<script type="application/ld+json">'
     blocks, cursor = [], 0
