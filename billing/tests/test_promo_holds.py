@@ -14,8 +14,7 @@ from django.core.management import call_command
 from django.utils import timezone
 from live.errors import Conflict, OperationError
 
-from billing import services
-from billing.services import checkout_webhooks, checkouts, promo_holds, webhook_dispatch
+from billing.services import checkout_webhooks, checkouts, hand_overs, promo_holds, webhook_dispatch
 from billing.models import CheckoutAttempt, PromoCode, PromoRedemption
 from billing.schemas import CheckoutStartIn
 from billing.tests.conftest import code_of, ctx_for
@@ -195,7 +194,7 @@ class TestItIsGivenBack:
         promo = code_of()
         start(owner, shop, plan="starter", promo_code="testers")
 
-        services.expire_open_checkouts(shop.id)
+        hand_overs.expire_open_checkouts(shop.id)
 
         assert not PromoRedemption.objects.exists()
         assert counted(promo) == 0

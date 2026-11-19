@@ -316,3 +316,41 @@ def _require_room(live: dict, adding: int = 1) -> None:
             ),
             code="billing.too_many_items",
         )
+
+
+def _item_sale(subscription: Subscription, line: dict) -> Sale | None:
+    """What an item of the live subscription sells (its plan or its module, at its interval), or ``None`` for
+    a price no plan nor module has."""
+    price_id = (line.get("price") or {}).get("id", "")
+    found = queries.plan_for_price(price_id)
+    if found is not None:
+        plan, interval = found
+        return Sale(
+            "plan",
+            plan.slug,
+            interval,
+            price_id,
+            Decimal((plan.price_annual if interval == "year" else plan.price_monthly) or 0),
+            vat.SAAS_SUBSCRIPTION_CATEGORY,
+            plan=plan,
+        )
+    found = queries.module_for_price(price_id)
+    if found is not None:
+        module, interval = found
+        cents = module.price_annual_cents if interval == "year" else module.price_monthly_cents
+        return Sale(
+            "module",
+            module.slug,
+            interval,
+            price_id,
+            Decimal(cents) / 100,
+            vat.SOFTWARE_LICENSE_CATEGORY,
+            module=module,
+        )
+    logger.warning(
+        "[BILLING] Item %s of %s bills price %s, which no plan nor module has: its rate is left alone",
+        line.get("id"),
+        subscription.stripe_subscription_id,
+        price_id,
+    )
+    return None

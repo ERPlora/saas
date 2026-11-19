@@ -14,7 +14,7 @@ from django.http import HttpResponse
 from live.ninja import bind, run_operation
 from ninja import Query, Router
 
-from billing import queries, services
+from billing import queries
 from billing.schemas import (
     CheckoutConfirmIn,
     CheckoutStartIn,
@@ -33,7 +33,7 @@ from billing.schemas import (
     VatCheckIn,
 )
 from billing.schemas.promo_codes import PromoCheckIn
-from billing.services import checkouts, payer_vat_numbers, plan_changes
+from billing.services import checkouts, hand_overs, module_cancellations, payer_vat_numbers, plan_changes, stripe_pages
 
 router = Router(tags=["billing"])
 
@@ -80,22 +80,22 @@ async def plan_keep(request, data: HubIn):
 
 @bind(router, "billing.plan.take_over", "/billing/plan/take-over")
 async def plan_take_over(request, data: HubIn):
-    return await run_operation(request, services.plan_take_over, data)
+    return await run_operation(request, hand_overs.plan_take_over, data)
 
 
 @bind(router, "billing.module.cancel", "/billing/module/cancel")
 async def module_cancel(request, data: ModuleIn):
-    return await run_operation(request, services.module_cancel, data)
+    return await run_operation(request, module_cancellations.module_cancel, data)
 
 
 @bind(router, "billing.module.keep", "/billing/module/keep")
 async def module_keep(request, data: ModuleIn):
-    return await run_operation(request, services.module_keep, data)
+    return await run_operation(request, module_cancellations.module_keep, data)
 
 
 @bind(router, "billing.portal.open", "/billing/portal")
 async def portal_open(request, data: PortalOpenIn):
-    return await run_operation(request, services.portal_open, data)
+    return await run_operation(request, stripe_pages.portal_open, data)
 
 
 @bind(router, "billing.store.catalog", "/billing/store")
@@ -141,7 +141,7 @@ async def invoice_csv(request, params: Query[InvoiceFilterIn]):
 
 @bind(router, "billing.invoice.pay", "/billing/invoices/pay")
 async def invoice_pay(request, data: InvoicePayIn):
-    return await run_operation(request, services.invoice_pay, data)
+    return await run_operation(request, stripe_pages.invoice_pay, data)
 
 
 @bind(router, "billing.subscription.list", "/billing/subscriptions")

@@ -1,9 +1,9 @@
 """HUBS-F20: a business suspended for an unpaid plan is warned and, at the end, deleted (``services.suspensions.age_suspended``).
 
 After ``suspended``, the notices of day 30 and day 150 go out and on day 180 the business is deleted the way its
-owner deletes it (90 days to recover it), inside ``billing.services.sweep_unpaid``. Suspending dates the clock and
-paying again stops it and forgets the notices; nothing before the first threshold; each notice goes out once and
-names the date; a suspension nobody dated is never deleted; one business that fails never stops the pass.
+owner deletes it (90 days to recover it), inside ``billing.services.unpaid_sweep.sweep_unpaid``. Suspending dates the
+clock and paying again stops it and forgets the notices; nothing before the first threshold; each notice goes out once
+and names the date; a suspension nobody dated is never deleted; one business that fails never stops the pass.
 """
 
 from datetime import timedelta
@@ -220,11 +220,11 @@ def test_only_the_platform_runs_a_step(paid, owner):
 
 
 def test_the_hourly_sweep_runs_the_clock(paid):
-    """``billing.services.sweep_unpaid`` (hourly, ``saas-cron``) runs it."""
-    from billing import services as billing_services
+    """``billing.services.unpaid_sweep.sweep_unpaid`` (hourly, ``saas-cron``) runs it."""
+    from billing.services import unpaid_sweep
 
     suspended_for(paid, SUSPENDED_WARN_DAYS)
 
-    counts = billing_services.sweep_unpaid()
+    counts = unpaid_sweep.sweep_unpaid()
 
     assert counts["warned"] == 1

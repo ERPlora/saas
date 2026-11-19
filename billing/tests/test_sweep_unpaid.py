@@ -393,10 +393,12 @@ class TestTheRun:
         """BILLING-F16: the run fails while a payer is still owed their mail, so the cron alarm says it."""
         from collections import Counter
 
-        from billing import services
+        from billing.services import unpaid_sweep
 
         monkeypatch.setattr(
-            services, "sweep_unpaid", lambda: Counter({key: 0 for key in services.SWEEP_COUNTS}) + Counter(mail_failed=1)
+            unpaid_sweep,
+            "sweep_unpaid",
+            lambda: Counter({key: 0 for key in unpaid_sweep.SWEEP_COUNTS}) + Counter(mail_failed=1),
         )
 
         with pytest.raises(CommandError):

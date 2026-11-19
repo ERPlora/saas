@@ -19,9 +19,10 @@ from django.test import Client
 from django.utils import timezone
 from live.errors import Conflict, NotFound, OperationError, Unauthorized
 
-from billing import queries, services
+from billing import queries
 from billing.models import Invoice, InvoiceLine, PaymentFailure
 from billing.schemas import InvoiceByIdIn, InvoiceFilterIn, InvoiceListIn, InvoicePayIn
+from billing.services import stripe_pages
 from billing.tests.conftest import ctx_for, pay
 from hubs.models import BillingProfile, HubMember
 from hubs.tests.conftest import add_member, create_business
@@ -625,7 +626,7 @@ class TestTheCsvIsNotAFormula:
 
 class TestPay:
     def pay(self, user, invoice):
-        return services.invoice_pay(ctx_for(user), InvoicePayIn(id=invoice.id))
+        return stripe_pages.invoice_pay(ctx_for(user), InvoicePayIn(id=invoice.id))
 
     def test_the_payer_gets_stripes_page(self, owner, business):
         invoice = issue(business, 1, status="open")

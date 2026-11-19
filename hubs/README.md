@@ -142,7 +142,7 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
 - **Suspendidos por impago** (F20; PLAN-SAAS §1.1, «dentro de `sweep_unpaid`»): `Hub.suspended_at`,
   `suspension_warned_at`, `suspension_final_notice_at` (migración `0016`, que pone en marcha el reloj de los que
   ya estaban suspendidos el día del despliegue). `_apply_standing` fecha la suspensión y la
-  olvida al pagar. `services.suspensions.age_suspended()` (lo llama `billing.services.sweep_unpaid`, cada hora; sus cuentas
+  olvida al pagar. `services.suspensions.age_suspended()` (lo llama `billing.services.unpaid_sweep.sweep_unpaid`, cada hora; sus cuentas
   `warned`, `final_notice`, `expired`, `undated` se suman a las de la pasada) corre por negocio la operación de
   sistema `hubs.business.age_suspension`: aviso a los 30 días, último a los 150 (`emails.send_suspension_notice`, al
   propietario, solo marcado si el correo salió) y, con el último enviado, la baja a los 180 por `_delete_business`,
