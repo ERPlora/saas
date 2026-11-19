@@ -766,7 +766,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   `billing.services.unpaid_sweep.sweep_unpaid`, cada hora) corre por negocio `hubs.business.age_suspension` (solo el sistema):
   aviso a los 30 días, último a los 150 y baja a los 180 por `_delete_business`, el mismo camino que
   `hubs.business.delete`; un aviso solo se marca si su correo salió (`emails.send_suspension_notice`). Tests:
-  `hubs/tests/test_suspended_lifecycle.py` y `hubs/tests/test_migrations.py`.
+  `hubs/tests/test_suspended_lifecycle.py` y `hubs/tests/test_migrations_businesses.py`.
 - Admin (F23): las acciones de plataforma llevan `@traced` (`hubs/admin.py`), que escribe en el historial del admin
   («Ejecutó «…»») cada fila sobre la que corrieron. Tests: `hubs/tests/test_admin.py::TestTheTrail`.
 - Uso (F21, F22): el Hub sirve `GET /internal/usage` (contrato en `hubs/README.md`):
