@@ -6,6 +6,7 @@ from the two prices; and the price painted being the price the checkout charges.
 
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 
 import pytest
@@ -16,7 +17,7 @@ from billing.services import price_checks, stripe_sales
 from billing.tests.conftest import plans, stripe_double, stripe_keys  # noqa: F401
 from billing.tests.test_services import stripe_price
 from hubs.models import Plan
-from public.tests.pricing_pages import html_of, make_plan, painted_prices
+from public.tests.pricing_pages import html_of, make_plan, painted_prices, vat_note
 
 pytestmark = [pytest.mark.django_db]
 
@@ -64,10 +65,9 @@ def test_a_selling_screen_shows_no_vat_figure(client, net_plan, path):
 def test_a_selling_screen_carries_the_ex_vat_note_with_its_terms_link(
     client, net_plan, path
 ):
-    html = html_of(client, path)
+    note = vat_note(html_of(client, path))
 
-    assert "All prices exclude VAT" in html
-    assert f'href="{reverse("public:terms")}"' in html
+    assert re.findall(r'href="([^"]*)"', note) == [reverse("public:terms")]
 
 
 def test_the_ex_vat_note_is_translated(client, net_plan):
