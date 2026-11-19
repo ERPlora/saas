@@ -37,7 +37,7 @@ def prove_mailbox_by_reset(sender, request=None, user=None, **kwargs) -> None:
     proves the mailbox, so the account's address becomes verified and primary.
 
     How an account made by an invitation is claimed (its mail links to the reset): allauth's reset leaves
-    its address on record unverified, and accepting needs it proved (``queries.email_is_proven``). Only
+    its address on record unverified, and accepting needs it proved (``queries.ways_in.email_is_proven``). Only
     when the login address is the only one on record: the key goes to the address typed, which may be any
     address of the account, so with another one (a squatter's own, verified) nothing is proven here.
     """

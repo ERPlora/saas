@@ -174,7 +174,7 @@ ningún rol tiene su permiso.
   leen los correos y el salto al Hub; siempre tiene valor.
 - **Avisos por correo** (ACCOUNTS-F23): cada interruptor gobierna un correo que el SaaS manda de verdad.
   `hub_alerts` es el correo «tu negocio está listo» (`hubs.emails.send_ready` pregunta a
-  `queries.receives_business_notices`). Sin interruptor, como GitHub y Stripe: códigos y avisos de seguridad,
+  `queries.account_preferences.receives_business_notices`). Sin interruptor, como GitHub y Stripe: códigos y avisos de seguridad,
   facturas y pagos fallidos (`billing.emails`), el negocio eliminado con su fecha de recuperación y lo que pide
   actuar (volver a conectar WhatsApp); las invitaciones y los traspasos van a quien los recibe. «Novedades de
   ERPlora» (`marketing_emails`) no gobernaba ningún correo y sale (como el SaaS viejo, SAAS_DASHBOARD-F211): la

@@ -15,7 +15,7 @@ def expired_sign_in_leftovers(now) -> dict[str, QuerySet]:
     from allauth.usersessions.models import UserSession
     from django.contrib.sessions.models import Session
 
-    from accounts.queries import EMAIL_CODE_LIFETIME
+    from accounts.queries.account_profile import EMAIL_CODE_LIFETIME
 
     return {
         "sessions": Session.objects.filter(expire_date__lt=now),

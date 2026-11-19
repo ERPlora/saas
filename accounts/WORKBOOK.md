@@ -1047,13 +1047,13 @@ Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos
   no tiene API propia: sus poderes viven en el admin y en el salto `hub-admin`, que ya exige el
   segundo factor con el interruptor encendido: ninguna puerta del personal se abre con la contraseña sola.
 - Perfil y preferencias (F21–F27): el perfil es la propia cuenta, con su foto y unas preferencias que no necesitan
-  fila (`queries.preferences_of`), y el panel la lee de `base.session.me`; sus operaciones son `accounts.profile.*` y
+  fila (`queries.account_preferences.preferences_of`), y el panel la lee de `base.session.me`; sus operaciones son `accounts.profile.*` y
   `accounts.preferences.*`, y el cambio de contraseña es F08. El tema de las plantillas es `base.context_processors.theme` (cuenta, o la
   cookie `theme`, o el sistema) y el del panel, el del shell de `@erplora/ui`, que pinta el de la sesión
   embebida antes de arrancar. Los efectos de transparencia (`UserPreferences.transparency`) van por el mismo camino:
   la sesión los lleva, la entrada llama a `setThemeTransparency` antes de montar el shell (apagados, `<html>` lleva
   `ep-opaque`) y la web pública no los usa, porque no tiene superficies de cristal. Avisos (F23): `hub_alerts`
-  gobierna `hubs.emails.send_ready` por `queries.receives_business_notices`; no hay aviso de «Novedades de ERPlora»: su columna queda en la base de
+  gobierna `hubs.emails.send_ready` por `queries.account_preferences.receives_business_notices`; no hay aviso de «Novedades de ERPlora»: su columna queda en la base de
   datos, fuera del modelo y con valor por defecto, hasta su `DROP COLUMN` (accounts 0009). Descargar mis datos
   (F26): `accounts.data.export`, que lee los negocios y las facturas por sus operaciones (`hubs.business.list`,
   `billing.invoice.list` y `.get`), sin importar esas apps. Eliminar (F27): ver accounts/README.md; las facturas

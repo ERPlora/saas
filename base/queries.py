@@ -9,7 +9,7 @@ from live.context import OperationContext
 from live.errors import Unauthorized
 from live.operations import INTERNAL, operation
 
-from accounts.queries import preferences_of
+from accounts.queries.account_preferences import preferences_of
 from assistant import queries as gateway_queries
 from assistant.schemas import Caller
 from base import navigation

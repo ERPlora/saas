@@ -24,7 +24,7 @@ THEMES = ("system", "light", "dark")
 DEFAULT_THEME = "system"
 THEME_COOKIE = "theme"
 #: What the processor needs from ``accounts``: the account's preferences (``theme_mode``).
-PREFERENCES_OF = "accounts.queries.preferences_of"
+PREFERENCES_OF = "accounts.queries.account_preferences.preferences_of"
 
 
 def _account(request: HttpRequest):

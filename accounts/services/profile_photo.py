@@ -5,8 +5,9 @@ from live.context import OperationContext
 from live.operations import INTERNAL, operation
 from live.outbox import record_event
 
-from accounts import events, photos, queries
+from accounts import events, photos
 from accounts.models import ProfilePhoto
+from accounts.queries import account_lookup, account_profile
 from accounts.schemas import PhotoRemoveIn, PhotoUploadIn, ProfileOut
 from accounts.services.attempt_limits import _spent, too_many_attempts
 from base.refusals import fields_refused
@@ -33,7 +34,7 @@ def _photo_refusal(code: str) -> str:
 )
 def photo_upload(ctx: OperationContext, data: PhotoUploadIn) -> dict:
     """Keep the account's photo, cleaned (``accounts.photos``), in place of the one it had."""
-    user = queries.account_of(ctx)
+    user = account_lookup.account_of(ctx)
     try:
         cleaned, content_type = photos.clean_photo(photos.decode_upload(data.image))
     except photos.PhotoRejected as refused:
@@ -42,7 +43,7 @@ def photo_upload(ctx: OperationContext, data: PhotoUploadIn) -> dict:
         raise too_many_attempts()
     ProfilePhoto.objects.update_or_create(user=user, defaults={"content_type": content_type, "data": cleaned})
     record_event(ctx, events.PROFILE_UPDATED)
-    return queries.profile_of(user, ctx.request)
+    return account_profile.profile_of(user, ctx.request)
 
 
 @operation(
@@ -56,7 +57,7 @@ def photo_upload(ctx: OperationContext, data: PhotoUploadIn) -> dict:
 )
 def photo_remove(ctx: OperationContext, data: PhotoRemoveIn) -> dict:
     """Remove the account's photo (the panel paints its initials). Without one, nothing changes."""
-    user = queries.account_of(ctx)
+    user = account_lookup.account_of(ctx)
     ProfilePhoto.objects.filter(user=user).delete()
     record_event(ctx, events.PROFILE_UPDATED)
-    return queries.profile_of(user, ctx.request)
+    return account_profile.profile_of(user, ctx.request)

@@ -9,7 +9,8 @@ from live.errors import LiveMisuse, NotFound
 from live.operations import AI, INTERNAL, operation
 from live.outbox import record_event
 
-from accounts import events, queries, signals
+from accounts import events, signals
+from accounts.queries import account_lookup, account_sessions
 from accounts.schemas import (
     SessionCloseAnyIn,
     SessionCloseIn,
@@ -25,17 +26,17 @@ logger = logging.getLogger("accounts.services")
 
 def record_sign_in(sender, request, user, **kwargs) -> None:
     """allauth's ``user_logged_in``, in place of ``allauth.usersessions``' own receiver: the account's sessions that
-    no longer sign it in go (``queries.live_sessions``: gone, expired, or opened with an old password) and this one
-    is recorded. allauth's ``purge_and_list`` asks about each session on its own, about three queries for every
-    open one on every sign-in, so an account with many sessions waited tens of seconds for the mailed code. Here it
-    is two queries and one delete, however many there are.
+    no longer sign it in go (``account_sessions.live_sessions``: gone, expired, or opened with an old password) and
+    this one is recorded. allauth's ``purge_and_list`` asks about each session on its own, about three queries for
+    every open one on every sign-in, so an account with many sessions waited tens of seconds for the mailed code.
+    Here it is two queries and one delete, however many there are.
 
     Only the sessions recorded before the live ones are told apart may go: one recorded meanwhile by another sign-in
     of the account is live (its session row comes first) but not among them yet, and it stays."""
     from allauth.usersessions.models import UserSession
 
     recorded = list(UserSession.objects.filter(user=user).values_list("pk", flat=True))
-    live = {pk for pk, _ in queries.live_sessions(user)}
+    live = {pk for pk, _ in account_sessions.live_sessions(user)}
     UserSession.objects.filter(pk__in=[pk for pk in recorded if pk not in live]).delete()
     UserSession.objects.create_from_request(request)
 
@@ -65,7 +66,7 @@ def end_sessions(sessions: list, *, user=None) -> None:
 
 
 def _end_and_sign_out(ctx: OperationContext, sessions: list, *, user=None) -> None:
-    current = queries.current_session_key(ctx.request)
+    current = account_sessions.current_session_key(ctx.request)
     end_sessions(sessions, user=user)
     if any(session.session_key == current for session in sessions):
         logout(ctx.request)
@@ -93,7 +94,7 @@ def session_close(ctx: OperationContext, data: SessionCloseIn) -> dict:
     """End one session of the account (this one too: the answer signs it out)."""
     from allauth.usersessions.models import UserSession
 
-    user = queries.account_of(ctx)
+    user = account_lookup.account_of(ctx)
     session = UserSession.objects.filter(user=user, pk=data.id).first()
     if session is None:
         raise NotFound(gettext("That session does not exist or has already ended."))
@@ -126,10 +127,10 @@ def session_close_others(ctx: OperationContext, data: SessionCloseOthersIn) -> d
     (the apps' sessions in them may outlive their session in the SaaS)."""
     from allauth.usersessions.models import UserSession
 
-    user = queries.account_of(ctx)
-    current = queries.current_session_key(ctx.request)
+    user = account_lookup.account_of(ctx)
+    current = account_sessions.current_session_key(ctx.request)
     others = [session for session in UserSession.objects.filter(user=user) if session.session_key != current]
-    closed = sum(1 for _, key in queries.live_sessions(user) if key != current)
+    closed = sum(1 for _, key in account_sessions.live_sessions(user) if key != current)
     _end_and_sign_out(ctx, others, user=user)
     record_event(ctx, events.SESSION_CLOSED)
     return {"closed": closed}

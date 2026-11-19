@@ -12,7 +12,14 @@ import pytest
 from django.conf import settings
 
 #: The packages nothing is re-exported from: a name is imported from its own module.
-GATHERING_PACKAGES = ("accounts.services", "billing.services", "hubs.queries", "hubs.schemas", "hubs.services")
+GATHERING_PACKAGES = (
+    "accounts.queries",
+    "accounts.services",
+    "billing.services",
+    "hubs.queries",
+    "hubs.schemas",
+    "hubs.services",
+)
 
 
 def _takes_whole_modules(node: ast.stmt, package: str, modules: set[str]) -> bool:

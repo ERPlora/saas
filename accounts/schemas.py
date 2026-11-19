@@ -73,7 +73,7 @@ class ProfileGetIn(StrictIn):
 
 
 class ProfileOut(Schema):
-    """Account → Profile. ``email_verified`` follows the invitations' rule (``queries.email_is_proven``);
+    """Account → Profile. ``email_verified`` follows the invitations' rule (``queries.ways_in.email_is_proven``);
     ``pending_email`` is the new address waiting for its link (``accounts.email.change``); ``photo`` is a data
     URL (``accounts.photo.upload``) or ``None`` (the panel paints the initials)."""
 

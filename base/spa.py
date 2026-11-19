@@ -35,7 +35,7 @@ from live import recaptcha
 from live.ninja import run_operation_sync
 from live.spa import render_spa, spa_path_pattern
 
-from accounts.queries import hub_origin
+from accounts.queries.hub_links import hub_origin
 from assistant import media as assistant_media
 from base import queries
 from base.csp import spa_policy

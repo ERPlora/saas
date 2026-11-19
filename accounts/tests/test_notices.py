@@ -14,8 +14,8 @@ from decimal import Decimal
 import pytest
 from django.core import mail
 
-from accounts import queries
 from accounts.models import UserPreferences
+from accounts.queries import account_preferences
 from accounts.tests.conftest import api_post
 from hubs.services import deletion, hub_callbacks
 from hubs.schemas.businesses import BusinessDeleteIn
@@ -37,7 +37,7 @@ def _mark_ready(business) -> None:
 
 class TestBusinessNotices:
     def test_an_account_that_never_chose_gets_them(self, ana):
-        assert queries.receives_business_notices(ana) is True
+        assert account_preferences.receives_business_notices(ana) is True
 
     def test_the_ready_mail_reaches_an_owner_who_keeps_them(self, ana, plans, django_capture_on_commit_callbacks):  # noqa: F811
         business = create_business(ana, name="Panadería López")
@@ -113,7 +113,7 @@ class TestWhatNoSwitchStops:
 
 class TestNoSwitchForMailsErploraNeverSends:
     def test_the_preferences_carry_no_news_switch(self, ana):
-        assert "marketing_emails" not in queries.preferences_of(ana)
+        assert "marketing_emails" not in account_preferences.preferences_of(ana)
 
     def test_sending_one_is_refused_on_its_field(self, client, ana):
         client.force_login(ana)

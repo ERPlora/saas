@@ -54,8 +54,9 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 from django_ratelimit.core import is_ratelimited
 
-from accounts import mfa, queries
+from accounts import mfa
 from accounts.models import AuthExchangeCode
+from accounts.queries import hub_links
 from accounts.services import hub_jump
 
 logger = logging.getLogger(__name__)
@@ -145,7 +146,7 @@ def hub_login(request: HttpRequest) -> HttpResponse:  # noqa: PLR0911
         if staff_jump
         else settings.HUB_CALLBACK_TEMPLATE.format(slug=slug),
         "code": code,
-        "next": queries.local_path(request.GET.get("next", "")),
+        "next": hub_links.local_path(request.GET.get("next", "")),
         "state": state,
         "staff_jump": staff_jump,
     }

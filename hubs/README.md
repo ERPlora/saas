@@ -16,7 +16,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   `last_opened_at` y devuelve `{url}`, el inicio del salto en el Hub (`https://<slug>.erplora.com/auth/login?next=/`;
   en local `http://<slug>.localhost:8000/…`). El Hub pone su `state` ligado al navegador y rebota a `/hub-login/`,
   que emite el código y pide el segundo factor si la cuenta lo tiene. La URL la arma
-  `accounts.queries.hub_start_url` (un solo sitio para el salto).
+  `accounts.queries.hub_links.hub_start_url` (un solo sitio para el salto).
 - Miembros (L1-B): `hubs.member.list` devuelve `seats: {used, limit}` (`limit: null` = sin tope) y, por fila,
   `is_me` y `actions` (lista en este orden: `change_role`, `remove`, `resend`, `cancel`, `transfer`), calculadas
   en el servidor con las mismas reglas que las escrituras: el panel no adivina. El tope de asientos es
@@ -45,7 +45,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 
 - **El acceso son los miembros** (saas#199): el salto (`issue_code`/`redeem_code`) entra a quien es miembro respondido
   de un negocio que aún abre (`queries.membership.access_of`, fuera `deleting` y `deleted`). `accounts` nunca importa `hubs`: lo
-  pregunta por su nombre, `hubs.member.list_mine` (`accounts.queries.hub_roles_of`), sin ruta ni herramienta del
+  pregunta por su nombre, `hubs.member.list_mine` (`accounts.queries.account_hubs.hub_roles_of`), sin ruta ni herramienta del
   asistente. La copia que leía antes (`accounts.HubMembership`) salió del código en `accounts/0011` y su tabla, de la
   base de datos en `accounts/0012` (saas#220). El salto se queda en `accounts`: moverlo (`/hub-login/`,
   `/internal/auth/redeem`, `AuthExchangeCode`) no quitaba ninguna copia. Guardarraíl AST: `tests/test_access.py`.
@@ -89,10 +89,10 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   de superusuario «Enviar al Hub el estado más reciente», «Reintentar lo que el Hub tiene pendiente» y «Cerrar ya
   las sesiones en el Hub»; `support` los ve (migración `0007`) y no actúa.
 - **Invitar una cuenta que nunca verificó su correo** (erplora-old/saas#2541, `tests/test_invite_unverified_account.py`):
-  `accounts.queries.email_is_proven` decide; si no, `accounts.services.mailbox_proof.release_unproven_account` le quita
+  `accounts.queries.ways_in.email_is_proven` decide; si no, `accounts.services.mailbox_proof.release_unproven_account` le quita
   contraseña (y con ella las sesiones del SaaS), segundo factor y Google, y se encolan los cierres de sesión de
   todos sus negocios; el correo de la invitación lleva el camino para reclamar la cuenta
-  (`accounts.queries.has_no_way_in`). Aceptar exige el correo verificado: 403 `hubs.email_unverified`.
+  (`accounts.queries.ways_in.has_no_way_in`). Aceptar exige el correo verificado: 403 `hubs.email_unverified`.
 
 Plan: `knowledge/raw/plans/2026-10-13-panel-saas-unificado.md` (lotes L1-A, L1-B y L1-A2).
 
@@ -104,7 +104,7 @@ Flujos en `WORKBOOK.md` (`HUBS-F01`…`HUBS-F14`, parte 1 de 4 de la migración;
 
 - **«… ya está listo»** (`emails.send_ready`): el aviso `POST /internal/hubs/{id}/ready` que pasa un negocio de
   preparándose a activo manda al propietario, una sola vez y tras el COMMIT, el correo con la entrada al negocio
-  (`accounts.queries.hub_start_url`) y su página en el panel.
+  (`accounts.queries.hub_links.hub_start_url`) y su página en el panel.
 - **La app instalada** (`ERPlora/app`) arranca en `/shell/`, que es el lanzador (alias de `/launch` en
   `frontend/routes.ts`); su «Abrir» pide `hubs.business.open` con `shell: true` y el salto lleva `&shell=1`, la marca
   con la que la app enlaza el terminal al negocio. `GET /shell/open/<id>/` (`shell.py`) es la misma puerta para un
@@ -533,7 +533,7 @@ Plan: `knowledge/raw/plans/2026-10-17-demo-hubs-fase-1.md` (§1.6 y §1.8). Una 
 
 - **Entrada**, el mismo salto con `state` que un negocio (§2.1), sin cuenta del SaaS: `/demo/` (GET, **nunca
   crea**) → botón → `/demo/start/` (POST con CSRF) → `hub_client.create_demo` → 302 a
-  `accounts.queries.hub_start_url(slug)` (`/auth/login?next=/` del hub demo) → el Hub pone su cookie de `state` y
+  `accounts.queries.hub_links.hub_start_url(slug)` (`/auth/login?next=/` del hub demo) → el Hub pone su cookie de `state` y
   vuelve a `/demo/enter/?hub&next&state` → si la sesión es dueña de esa demo, `hub_client.create_demo_code` →
   formulario auto-enviado `accounts/hub_login_form.html` («Opening your demo…», variable `demo_jump`) al
   `/auth/callback` de la demo (el código nunca va en una URL). Sin `state` → 302 a `hub_start_url` (empieza el baile); un `state` de más de 128 caracteres →

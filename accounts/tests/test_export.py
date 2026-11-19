@@ -14,8 +14,8 @@ import pytest
 from allauth.socialaccount.models import SocialAccount
 from django.test import Client
 
-from accounts import queries
 from accounts.models import ApiKey, ProfilePhoto, UserPreferences
+from accounts.queries import account_export
 from accounts.schemas import DataExportIn
 from accounts.tests.conftest import ctx_for, api_get, sign_in
 from billing.tests.test_invoice_queries import issue
@@ -27,7 +27,7 @@ EXPORT = "/api/accounts/export"
 
 
 def _export(user) -> dict:
-    return queries.data_export(ctx_for(user), DataExportIn()).model_dump(mode="json")
+    return account_export.data_export(ctx_for(user), DataExportIn()).model_dump(mode="json")
 
 
 @pytest.fixture

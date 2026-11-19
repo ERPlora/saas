@@ -19,7 +19,7 @@ from live.context import OperationContext, Scope
 from live.errors import Unauthorized
 from live.meta import all_live_app_configs, permissions_for_role
 
-from accounts import queries as account_queries
+from accounts.queries import account_lookup
 
 #: Scope key of a request without a session (a live stream refuses it before using it).
 ANONYMOUS_KEY = "anonymous"
@@ -48,9 +48,9 @@ class SessionEnded(Unauthorized):
 def _session_ended(request: HttpRequest | None, user: Any) -> bool:
     """Whether the session ``request`` came with no longer signs ``user`` in: gone from the store (a sign-out,
     «Close the other sessions»), expired, or opened with an old password (Django keeps that one's row and refuses it
-    at its next request; ``accounts.queries.live_sessions`` tells them apart the same way). One query, read only:
-    unlike ``django.contrib.auth.get_user`` it neither flushes nor cycles the session. A request without one (the
-    system's, a test's) has none to end."""
+    at its next request; ``accounts.queries.account_sessions.live_sessions`` tells them apart the same way). One
+    query, read only: unlike ``django.contrib.auth.get_user`` it neither flushes nor cycles the session. A request
+    without one (the system's, a test's) has none to end."""
     session = getattr(request, "session", None)
     key = getattr(session, "session_key", None)
     if key is None:
@@ -88,7 +88,7 @@ class UserContextBuilder:
         ``base.language``)."""
         if ctx.actor is None:
             return ctx
-        user = account_queries.active_user(ctx.actor.pk)
+        user = account_lookup.active_user(ctx.actor.pk)
         if user is None:
             raise Unauthorized(gettext("The account is no longer active."))
         if _session_ended(ctx.request, user):

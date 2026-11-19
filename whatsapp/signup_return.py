@@ -5,9 +5,10 @@ The Hub opens Meta's window without Facebook's SDK, with the ``redirect_uri`` th
 hands it, this page, and a ``state`` of its own, ``<slug>.<32 hex>``; Meta ends the window here with
 ``?code=…&state=…`` (or ``?error=…&error_description=…``). The page posts ``{"type": "erplora.whatsapp.signup",
 "state", "code" | "error", "error_description"}`` to the window that opened Meta's, only at the origin of the hub the
-``state`` names (``accounts.queries.hub_origin``), never ``"*"``, and closes itself; the Hub takes it only with its
-attempt's ``state`` and exchanges the code through the connect door (``internal.connect``). A ``state`` that names no
-hub, or nothing to hand back, posts nothing: the page says the window can be closed, as it does when nobody opened it.
+``state`` names (``accounts.queries.hub_links.hub_origin``), never ``"*"``, and closes itself; the Hub takes it only
+with its attempt's ``state`` and exchanges the code through the connect door (``internal.connect``). A ``state`` that
+names no hub, or nothing to hand back, posts nothing: the page says the window can be closed, as it does when nobody
+opened it.
 
 Public and without a session (Meta's window brings no cookie of the Hub's), never cached, and it reads no database.
 Its ``Cross-Origin-Opener-Policy`` is ``unsafe-none``, on this view only: Django's ``same-origin`` (every other page)
@@ -24,7 +25,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_safe
 from live.slugs import validate_hub_slug
 
-from accounts.queries import hub_origin
+from accounts.queries.hub_links import hub_origin
 
 #: The type of the message the Hub's page waits for (``RETURN_TYPE`` of its ``lib/metaSignup.ts``).
 MESSAGE_TYPE = "erplora.whatsapp.signup"

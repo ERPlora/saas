@@ -106,7 +106,8 @@ def hubs_with_members() -> list[tuple[str, int]]:
 )
 def member_list_mine(ctx: OperationContext, data: MemberListMineIn) -> dict[str, Any]:
     """The businesses the account enters with its role on each: what the jump to a hub reads. Called by its name
-    from ``accounts`` (``accounts.queries.hub_roles_of``), which never imports ``hubs``; it has no route."""
+    from ``accounts`` (``accounts.queries.account_hubs.hub_roles_of``), which never imports ``hubs``; it has no
+    route."""
     user = account_of(ctx)
     return {"rows": [{"slug": slug, "role": role} for slug, role in access_of(user.pk)]}
 
