@@ -70,7 +70,6 @@ duplicados hubs/frontend/open-business.test.ts:6-11 the mock header of the panel
 duplicados hubs/frontend/pages/BusinessListPage.test.ts:9-22 the mock header of the panel's tests was already alike in main; this change only swaps its toast spies for the shared shellWithToastSpies
 duplicados hubs/frontend/pages/BusinessPage.test.ts:7-16 the mock header of the panel's tests was already alike in main; this change only swaps its toast spies for the shared shellWithToastSpies
 duplicados hubs/frontend/pages/InvitationPage.test.ts:5-14 the mock header of the panel's tests was already alike in main; this change only swaps its toast spies for the shared shellWithToastSpies
-duplicados hubs/frontend/pages/LaunchPage.test.ts:9-17 the mock header of the panel's tests was already alike in main; this change only swaps its toast spies for the shared shellWithToastSpies
 duplicados billing/frontend/components/InvoicesTab.vue:66-88 the paging state of a live server list was already alike in main; this change only rewords its comment from «Load more» to the end of the scroll
 duplicados hubs/frontend/pages/BusinessListPage.vue:76-97 the paging state of a live server list was already alike in main; this change only rewords its comment from «Load more» to the end of the scroll
 duplicados hubs/frontend/components/RemoveDialog.vue:6-17 the import block already repeated in TransferDialog.vue in main; this change only rewrites the import of its SDK types inside it
