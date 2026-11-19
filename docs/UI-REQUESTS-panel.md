@@ -58,7 +58,7 @@ limpia posible… las tablas tienen que ocupar la altura de la página, el espac
   anidada) se queda el resto, con un suelo de `20rem` en escritorio y tableta (`--panel-list-min`) para que los
   avisos de arriba empujen la página antes que dejar la lista en nada. En el móvil sigue el `fill` propio de
   `DataTable` (crece con sus filas desde la altura de la página, un solo scroll). Guardias: `AppPage.test.ts` de
-  ui, `frontend/main.test.ts` (el panel no lleva copia propia), `tests/e2e/panel/viewports.spec.ts` (mide la
+  ui, `frontend/main.guards.test.ts` (el panel no lleva copia propia), `tests/e2e/panel/viewports.spec.ts` (mide la
   cadena a 390, 834 y 1440 px) y `tests/e2e/panel/fix-datatable.spec.ts` (Facturas: llena la página sin doble
   scroll y, sin la cadena, deja de llenar).
 

@@ -1,5 +1,5 @@
 // Paths of the panel named once, for every page and component that sends a visitor there. Pure values: the
-// `routes.ts` files import types only (main.test.ts), so they spell the path themselves (guard: paths.test.ts).
+// `routes.ts` files import types only (main.guards.test.ts), so they spell the path themselves (guard: paths.test.ts).
 
 /** The launcher: the sign-in and sign-up form, and the businesses of a session. */
 export const LAUNCHER = '/launch';

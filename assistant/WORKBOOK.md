@@ -791,7 +791,7 @@ propio texto por `code`.
 - **Tests**: `base/tests/test_assistant_turn.py`, `base/tests/test_api_assistant.py`,
   `assistant/tests/test_account_quota.py`, `test_emails.py` (ASSISTANT-F29, también por la ruta del panel y con dos
   turnos a la vez), `test_admin_usage.py` (la cuenta en el admin) y `test_privacy.py` (la ruta
-  del panel no guarda la conversación); Vitest de `assistant/frontend/` y `frontend/main.test.ts`; e2e
+  del panel no guarda la conversación); Vitest de `assistant/frontend/` y `frontend/main.assistant.test.ts`; e2e
   `tests/e2e/panel/assistant-panel.spec.ts` (proveedor `tests/e2e/assistant-provider.ts`, siembra
   `assistant_seed.py panel`, `ASSISTANT_ACCOUNT_MESSAGES=2` en `panel/project.ts`).
 - **QA**: capa 1, `base/tests/test_assistant_asks.py` (cada frase de `asks` llega a su herramienta, sin modelo ni red);
