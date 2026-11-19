@@ -10,7 +10,7 @@ from live.errors import PermissionDenied
 from live.live_registry import live_registry
 
 from accounts import events
-from accounts.queries import account_profile, ways_in
+from accounts.queries import account_profile
 from accounts.schemas import ProfileGetIn, ProfileUpdateIn
 from accounts.services import profile
 from accounts.tests.conftest import api_get, api_post, ctx_for
@@ -38,8 +38,8 @@ class TestReading:
         }
 
     def test_an_address_on_record_counts_once_proven(self, ana):
-        """The same rule the invitations apply (``ways_in.email_is_proven``), so the panel can offer to
-        verify exactly when a business would refuse the account."""
+        """The same rule the invitations apply (``accounts.queries.ways_in.email_is_proven``), so the panel can offer
+        to verify exactly when a business would refuse the account."""
         EmailAddress.objects.create(user=ana, email=ana.email, verified=False, primary=True)
         assert account_profile.profile_get(ctx_for(ana), ProfileGetIn()).email_verified is False
 
