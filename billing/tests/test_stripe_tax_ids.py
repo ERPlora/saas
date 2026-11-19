@@ -16,17 +16,27 @@ import pytest
 
 from billing.models import Invoice
 from billing.tests.conftest import pay
-from billing.tests.stripe_double import connection_error, event, invoice, subscription, tax_id_invalid
+from billing.tests.stripe_double import (
+    connection_error,
+    event,
+    invoice,
+    permission_denied,
+    subscription,
+    tax_id_invalid,
+)
 from billing.tests.test_checkout import payer, refused, session_params, start
 from billing.tests.test_invoice_recording import deliver
 from billing.tests.test_payer_details_to_stripe import paying, save
-from billing.tests.vies_double import NOT_REGISTERED, no_network, vies_is_down, vies_says
+from billing.tests.vies_double import FAKE_VAT, NOT_REGISTERED, no_network, vies_is_down, vies_says
 
 pytestmark = pytest.mark.django_db
 
 #: Made-up numbers with their right control character: a foreigner's NIE, a DNI and a company's CIF.
 NIE, DNI, CIF = "X1234567L", "12345678Z", "B12345674"
 REFUSED_EVENT = "billing.stripe_tax_id_refused"
+NOT_REMOVED_EVENT = "billing.stripe_tax_id_not_removed"
+#: The CIF the payer had before, still on its Stripe customer.
+OLD = {"id": "txi_old", "type": "eu_vat", "value": "ESB12345674"}
 
 
 @pytest.fixture(autouse=True)
@@ -41,6 +51,10 @@ def events(caplog, name):
 def save_in_madrid(owner, hub, tax_id, django_capture_on_commit_callbacks):
     with django_capture_on_commit_callbacks(execute=True):
         save(owner, hub, billing_postal_code="28001", billing_city="Madrid", tax_id=tax_id)
+
+
+def held(stripe_double, customer):
+    return [tax_id["value"] for tax_id in stripe_double.customer_tax_ids.get(customer, [])]
 
 
 def charged(hub, stripe_double):
@@ -182,3 +196,108 @@ class TestStripeRefusingTheTaxIdStopsNothing:
         refused("billing.stripe_unavailable", lambda: start(owner, shop, plan="starter"))
 
         assert stripe_double.calls_to("checkout.sessions.create") == []
+
+
+class TestOnlyTheCurrentTaxIdStaysOnTheCustomer:
+    """Stripe prints every tax id of a customer on its invoices and receipts, and refuses a sixth one."""
+
+    def test_saving_a_new_one_removes_the_old_one(self, shop, owner, stripe_double, django_capture_on_commit_callbacks):
+        paid = paying(shop, stripe_double)
+        stripe_double.customer_tax_ids["cus_1"] = [dict(OLD)]
+
+        with no_network():
+            save_in_madrid(owner, paid, NIE, django_capture_on_commit_callbacks)
+
+        assert held(stripe_double, "cus_1") == ["ESX1234567L"]
+        assert stripe_double.last("customers.tax_ids.delete").args == ("cus_1", "txi_old")
+
+    def test_opening_a_payment_removes_the_old_one_and_keeps_the_current_one(self, shop, owner, stripe_double):
+        payer(shop, tax_id=NIE, stripe_customer_id="cus_known")
+        current = {"id": "txi_current", "type": "eu_vat", "value": "ESX1234567L"}
+        stripe_double.customer_tax_ids["cus_known"] = [dict(OLD), current]
+
+        with no_network():
+            answer = start(owner, shop, plan="starter")
+
+        assert answer["flow"] == "checkout"
+        assert stripe_double.customer_tax_ids["cus_known"] == [current]
+        assert [call.args for call in stripe_double.calls_to("customers.tax_ids.delete")] == [("cus_known", "txi_old")]
+        assert stripe_double.calls_to("customers.tax_ids.create") == []
+
+    def test_a_customer_holding_stripe_s_five_takes_the_new_one(
+        self, shop, owner, stripe_double, django_capture_on_commit_callbacks
+    ):
+        paid = paying(shop, stripe_double)
+        stripe_double.customer_tax_ids["cus_1"] = [
+            {"id": f"txi_old_{n}", "type": "eu_vat", "value": f"ESB0000000{n}"} for n in range(5)
+        ]
+
+        with no_network():
+            save_in_madrid(owner, paid, NIE, django_capture_on_commit_callbacks)
+
+        assert held(stripe_double, "cus_1") == ["ESX1234567L"]
+
+    def test_taking_the_tax_id_away_leaves_the_customer_without_one(
+        self, shop, owner, stripe_double, django_capture_on_commit_callbacks
+    ):
+        paid = paying(shop, stripe_double)
+        stripe_double.customer_tax_ids["cus_1"] = [dict(OLD)]
+
+        save_in_madrid(owner, paid, "", django_capture_on_commit_callbacks)
+
+        assert held(stripe_double, "cus_1") == []
+
+    @pytest.mark.usefixtures("every_country_sold")
+    def test_a_number_vies_no_longer_confirms_is_removed(self, shop, owner, stripe_double):
+        payer(shop, billing_country="DE", billing_postal_code="10115", tax_id=FAKE_VAT, stripe_customer_id="cus_known")
+        stripe_double.customer_tax_ids["cus_known"] = [{"id": "txi_de", "type": "eu_vat", "value": FAKE_VAT}]
+
+        with vies_says(**NOT_REGISTERED):
+            answer = start(owner, shop, plan="starter")
+
+        assert answer["flow"] == "checkout"
+        assert held(stripe_double, "cus_known") == []
+
+
+class TestStripeFailingToRemoveAnOldTaxId:
+    def test_a_refusal_is_logged_and_the_new_one_still_arrives(
+        self, shop, owner, stripe_double, django_capture_on_commit_callbacks, caplog
+    ):
+        paid = paying(shop, stripe_double)
+        stripe_double.customer_tax_ids["cus_1"] = [dict(OLD)]
+        stripe_double.answer("customers.tax_ids.delete", permission_denied())
+
+        with caplog.at_level(logging.ERROR, logger="billing"), no_network():
+            save_in_madrid(owner, paid, NIE, django_capture_on_commit_callbacks)
+
+        assert held(stripe_double, "cus_1") == ["ESB12345674", "ESX1234567L"]
+        [logged] = events(caplog, NOT_REMOVED_EVENT)
+        assert logged.levelno == logging.ERROR
+        assert ("cus_1" in logged.getMessage(), "txi_old" in logged.getMessage()) == (True, True)
+        assert "ESB12345674" not in logged.getMessage()
+        assert stripe_double.last("customers.update").params["address"]["city"] == "Madrid"
+        assert events(caplog, "billing.customer_push_failed") == []
+
+    def test_stripe_not_answering_when_paying_asks_to_try_again(self, shop, owner, stripe_double):
+        payer(shop, tax_id=NIE, stripe_customer_id="cus_known")
+        stripe_double.customer_tax_ids["cus_known"] = [dict(OLD)]
+        stripe_double.answer("customers.tax_ids.delete", connection_error())
+
+        refused("billing.stripe_unavailable", lambda: start(owner, shop, plan="starter"))
+
+        assert stripe_double.calls_to("checkout.sessions.create") == []
+
+    def test_stripe_not_answering_when_saving_is_logged_and_the_save_stands(
+        self, shop, owner, stripe_double, django_capture_on_commit_callbacks, caplog
+    ):
+        from hubs.models import BillingProfile
+
+        paid = paying(shop, stripe_double)
+        stripe_double.customer_tax_ids["cus_1"] = [dict(OLD)]
+        stripe_double.answer("customers.tax_ids.delete", connection_error())
+
+        with caplog.at_level(logging.ERROR, logger="billing"), no_network():
+            save_in_madrid(owner, paid, NIE, django_capture_on_commit_callbacks)
+
+        assert len(events(caplog, "billing.customer_push_failed")) == 1
+        assert BillingProfile.objects.get(pk=paid.billing_profile_id).tax_id == NIE

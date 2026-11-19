@@ -45,7 +45,7 @@ def ensure_customer(hub: Hub, *, test_clock: str | None = None) -> str:
                 SubscriptionApplyIn(hub_id=hub.id, stripe_customer_id=customer),
             )
             profile.stripe_customer_id = customer
-        _attach_cleared_tax_id(customer, profile)
+        _keep_only_cleared_tax_id(customer, profile)
     return customer
 
 
@@ -82,7 +82,7 @@ def push_payer_to_stripe(profile_id) -> str:
         return "skipped"
     with payment_gates.stripe_errors():
         stripe_service.update_customer(profile.stripe_customer_id, _customer_params(hub, profile))
-        _attach_cleared_tax_id(profile.stripe_customer_id, profile)
+        _keep_only_cleared_tax_id(profile.stripe_customer_id, profile)
     return "updated"
 
 
@@ -95,15 +95,15 @@ def _owner_of(hub: Hub):
     return member.user if member else None
 
 
-def _attach_cleared_tax_id(customer: str, profile) -> None:
-    if not (profile.tax_id or "").strip():
-        return
-    clearance = vat_clearance.clear_tax_id_for_stripe(
-        profile.tax_id, customer_country=profile.billing_country
-    )
+def _keep_only_cleared_tax_id(customer: str, profile) -> None:
+    """The payer's tax id as the customer's only one, or none when it has none or it may not travel to Stripe."""
+    number = ""
+    if (profile.tax_id or "").strip():
+        clearance = vat_clearance.clear_tax_id_for_stripe(
+            profile.tax_id, customer_country=profile.billing_country
+        )
+        number = clearance.vat_number if clearance.may_travel_to_stripe else ""
     tax_type = vat.tax_id_type_for(profile.billing_country)
-    if not clearance.may_travel_to_stripe or not tax_type:
-        return
-    stripe_tax_ids.attach(
-        customer, tax_type=tax_type, number=clearance.vat_number, country=profile.billing_country
+    stripe_tax_ids.keep_only(
+        customer, tax_type=tax_type, number=number if tax_type else "", country=profile.billing_country
     )
