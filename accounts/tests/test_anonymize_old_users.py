@@ -164,7 +164,7 @@ class TestItGoesAsItsOwnerWouldDeleteIt:
 
     def test_erploras_invoices_stay_with_their_recipient_as_issued(self, plans):  # noqa: F811
         from billing.models import Invoice
-        from billing.tests.test_invoice_queries import issue
+        from billing.tests.test_queries_invoices import issue
         from hubs.models import Hub
 
         user = _account("old@example.com", last_login_days=900)
