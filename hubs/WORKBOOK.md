@@ -826,7 +826,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   (enlaza a `/dashboard/businesses/<id>` y, con un plan de pago, dice que la tarjeta del saliente ya no lo renueva). Tests:
   `hubs/tests/test_members.py`, `test_members_api.py`,
   `test_ownership.py`, `test_session_revocations.py`, `test_invite_unverified_account.py`, `test_emails.py`,
-  `test_permission_matrix.py` y `test_admin.py`; e2e en `tests/e2e/panel/hubs-people.spec.ts`, con `members.spec.ts` e `invitation.spec.ts`.
+  `test_permission_matrix.py` y `test_admin.py`; e2e en `tests/e2e/panel/hubs-people.spec.ts` (F28, en `hubs-people-ownership.spec.ts`), con `members.spec.ts` e `invitation.spec.ts`.
 - Pruebas: cada test cita su clave en el nombre o el docstring, y cada e2e la de su flujo en el título; los de F01–F14
   están en `tests/e2e/panel/hubs-flows.spec.ts`.
 - La foto (F31): `queries.hub_sync.hub_snapshot` (`PUT /internal/hubs/{id}/state`), con `plan` = los campos de
