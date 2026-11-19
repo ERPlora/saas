@@ -2,7 +2,7 @@
 // The e2e's panel server raises allauth's limits per address (E2E_RELAX_LOGIN_RATE_LIMIT, project.ts and
 // config/settings/accounts.py), the sign-up's included: every spec creates its accounts from 127.0.0.1, and with the real
 // 10 sign-ups an hour per address the eleventh «Create account» of a run got «Too many attempts» (429). Production
-// and the dev server keep the 10 (config/tests/test_production_settings.py). Accounts of this spec:
+// and the dev server keep the 10 (config/tests/test_production_settings_accounts.py). Accounts of this spec:
 // `e2e-signup-limit-<n>-<time>@example.com`, removed before and after.
 import { djangoPrintWarm } from './django';
 import { expect, test } from './fixtures';

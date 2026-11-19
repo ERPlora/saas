@@ -17,7 +17,7 @@ from live.meta import LiveAppConfig
 from live.recaptcha import with_recaptcha
 from psycopg_pool import ConnectionPool
 
-from config.tests.test_production_settings import IGNORE_DOTENV, bare_environment
+from config.tests.production_settings import IGNORE_DOTENV, bare_environment
 
 
 def test_the_hub_origin_pattern_is_derived_from_the_callback_template():
