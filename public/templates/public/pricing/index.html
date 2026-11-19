@@ -14,7 +14,7 @@
   includes no location: multi-location comes from Pro and is charged per location. The apps each
   plan lets a business turn on at once (`max_apps`, the cap the Hub applies) are a column next to
   the devices and users and a line of every card (public.pricing.apps_at_once), read from the row.
-  Data: public/pricing.py (hubs.plan.list). Contract: public/tests/test_pricing.py.
+  Data: public/pricing.py (hubs.plan.list). Contract: public/tests/test_pricing_*.py.
 {% endcomment %}
 
 {% block title %}{% trans "Plans" %} · ERPlora{% endblock %}
@@ -99,7 +99,7 @@
 
       <div class="ep-table-surface">
         {% comment %} The id is a contract: /pricing/ renders three `.compare-table`s and the guard
-           in public/tests/test_pricing.py anchors on it. {% endcomment %}
+           in public/tests/pricing_pages.py anchors on it. {% endcomment %}
         <table id="plan-compare" class="compare-table ep-table-stack">
           <thead>
             <tr>
