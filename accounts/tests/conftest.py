@@ -1,4 +1,5 @@
-"""Fixtures of the accounts tests: an operation context and a browser signed in through allauth."""
+"""Fixtures of the accounts tests: an operation context, a browser signed in through allauth and a superuser in the
+admin."""
 
 import re
 import time
@@ -11,6 +12,7 @@ from django.db import connections
 from live.context import OperationContext, Scope
 from live.meta import all_live_app_configs, permissions_for_role
 
+from accounts.services import hub_jump
 from base.operations import ACCOUNT_ROLE
 
 HOST = "localhost:8001"
@@ -159,3 +161,12 @@ def english(ana):
 @pytest.fixture
 def now():
     return time.time()
+
+
+@pytest.fixture
+def staff_client(client):
+    admin = get_user_model().objects.create_superuser(email="root@example.com", password="x")
+    enter(admin, "a", "hub_admin")
+    hub_jump.issue_code(admin, "a")
+    client.force_login(admin)
+    return client, admin

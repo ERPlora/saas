@@ -7,11 +7,9 @@
 121 .github/scripts/e2e-report.sh saas#462
 265 .github/scripts/ecs-deploy.sh saas#462
 230 .github/scripts/ecs-rollback.sh saas#462
-523 accounts/admin.py saas#462
 722 accounts/frontend/components/SignInForm.test.ts saas#462
 775 accounts/frontend/pages/TwoFactorSettingsPage.test.ts saas#462
 584 accounts/frontend/pages/VerifyEmailPage.test.ts saas#462
-1076 accounts/tests/test_admin.py saas#462
 1079 accounts/tests/test_mfa.py saas#462
 613 assistant/admin.py saas#462
 546 assistant/queries.py saas#462

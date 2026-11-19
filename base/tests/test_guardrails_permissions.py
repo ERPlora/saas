@@ -17,8 +17,8 @@ The last part pins that ERPlora's staff (``is_staff``/``is_superuser``: maintena
 ``erplora.com/admin``) is no customer: only the platform's own doors set those flags, no operation takes them and the
 sign-up ignores them. Already pinned elsewhere, not repeated here:
 
-- the admin is the staff's alone: ``accounts/tests/test_admin.py`` (``TestWhoEntersTheAdmin``: no customer role enters,
-  an owner is sent to the admin's login and cannot sign in there);
+- the admin is the staff's alone: ``accounts/tests/test_admin_sign_in.py`` (``TestWhoEntersTheAdmin``: no customer role
+  enters, an owner is sent to the admin's login and cannot sign in there);
 - a customer is never made staff: ``accounts/tests/test_create_platform_user.py``
   (``test_a_customer_of_a_hub_is_never_turned_into_platform_staff``), ``hubs/tests/test_members.py``
   (``TestThePlatformsDoor``: nor an invitee, nor a member of a business in recovery) and ``accounts/tests/test_models.py``

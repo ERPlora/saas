@@ -4,7 +4,7 @@ and Spanish.
 
 - ``400.html``: ``django.views.defaults.bad_request`` (a SuspiciousOperation).
 - ``403.html``: ``django.views.defaults.permission_denied``: the admin for a signed-in account that
-  is not staff, or its «Hubs» page without the permission (``accounts/admin.py``).
+  is not staff, or its «Hubs» page without the permission (``accounts/admin/sign_in.py``).
 - ``403_csrf.html``: ``django.views.csrf.csrf_failure``: a form posted with an expired session.
 - ``404.html`` and ``500.html``: ``django.views.defaults.page_not_found`` and ``server_error``, which
   the project's ``handler404``/``handler500`` (``public.errors``) call for every path outside the

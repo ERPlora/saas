@@ -13,6 +13,7 @@ from django.conf import settings
 
 #: The packages nothing is re-exported from: a name is imported from its own module.
 GATHERING_PACKAGES = (
+    "accounts.admin",
     "accounts.queries",
     "accounts.services",
     "billing.services",
