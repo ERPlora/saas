@@ -14,7 +14,7 @@ import pytest
 from django.conf import settings
 from django.urls import reverse
 from hubs.models import Plan
-from public.tests.test_pricing import PRICE_400, visible_text
+from public.tests.pricing_pages import PRICE_400, visible_text
 
 pytestmark = pytest.mark.django_db
 
