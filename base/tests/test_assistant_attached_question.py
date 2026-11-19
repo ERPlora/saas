@@ -32,6 +32,9 @@ def test_a_question_with_a_file_attached_is_offered_the_tools_its_words_ask_for(
 
 
 def test_a_file_sent_alone_keeps_the_tools_of_what_was_asked_before_it(account):
+    """An account holds fewer tools than a turn offers, so what counts is the rank: the invoices come as high as when
+    they are asked for alone, not where the alphabet puts them."""
+    plain = offered(account, {"role": "user", "content": WORDS})
     tools = offered(
         account,
         {"role": "user", "content": WORDS},
@@ -41,4 +44,4 @@ def test_a_file_sent_alone_keeps_the_tools_of_what_was_asked_before_it(account):
         {"role": "user", "content": [FILE]},
     )
 
-    assert "billing__invoice__list" in tools
+    assert tools.index("billing__invoice__list") == plain.index("billing__invoice__list")
