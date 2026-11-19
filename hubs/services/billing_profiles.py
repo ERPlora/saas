@@ -48,7 +48,7 @@ def billing_profile_update(ctx: OperationContext, data: BillingProfileIn) -> dic
     as ERPlora invoices it and asked to VIES, whose verdict is logged; a malformed one is the field's 422,
     one VIES does not confirm is kept as identification (it buys no reverse charge)."""
     from billing import vat
-    from billing.services import retax_payer
+    from billing.services.live_rates import retax_payer
     from billing.services.payer_vat_numbers import MalformedVatNumber, validate_vat_for_profile
 
     member = access_control.access(access_control.account_of(ctx), data.hub_id, Role.OWNER, lock=True)

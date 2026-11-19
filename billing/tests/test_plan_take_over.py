@@ -24,10 +24,10 @@ from django.utils import timezone, translation
 from django.utils.formats import date_format
 from live.errors import NotFound, OperationError, PermissionDenied
 
-from billing import queries, services
+from billing import queries
 from billing.models import CheckoutAttempt, PromoRedemption
 from billing.schemas import HubIn, SubscriptionListIn
-from billing.services import checkout_webhooks, subscription_webhooks
+from billing.services import checkout_webhooks, hand_overs, live_rates, subscription_webhooks
 from billing.stripe_coupons import coupon_id
 from billing.tests.conftest import code_of, ctx_for, pay
 from billing.tests.stripe_captured import captured
@@ -85,7 +85,7 @@ def day(moment, language):
 
 
 def take_over(user, hub):
-    return services.plan_take_over(ctx_for(user), HubIn(hub_id=hub.id)).model_dump()
+    return hand_overs.plan_take_over(ctx_for(user), HubIn(hub_id=hub.id)).model_dump()
 
 
 def refused(code, call):
@@ -195,7 +195,7 @@ class TestTheHandOverStopsThePreviousPayersRenewal:
         paid = handed_over(shop, owner, heir, stripe_double)
         asked = len(stripe_double.calls)
 
-        assert services.retax_subscription(paid) == "skipped"
+        assert live_rates.retax_subscription(paid) == "skipped"
 
         assert len(stripe_double.calls) == asked
 

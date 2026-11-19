@@ -19,10 +19,9 @@ real ones.
 import pytest
 from django.core import mail
 
-from billing import services
 from billing.models import CheckoutAttempt
 from billing.schemas import CheckoutStartIn, HubIn
-from billing.services import checkout_webhooks, checkouts
+from billing.services import checkout_webhooks, checkouts, hand_overs
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import (
     checkout_session,
@@ -219,7 +218,7 @@ class TestAKeptPlanOfSomebodyWhoHandedItOnAgain:
             hub_ctx(heir),
             BillingProfileIn(hub_id=paid.id, billing_name="Hugo SL", billing_country="ES", billing_postal_code="28002"),
         )
-        services.plan_take_over(ctx_for(heir), HubIn(hub_id=paid.id))
+        hand_overs.plan_take_over(ctx_for(heir), HubIn(hub_id=paid.id))
         attempt = CheckoutAttempt.objects.get(hub=paid, kind=CheckoutAttempt.Kind.TAKEOVER)
         third = make_user("third@example.com")
         hand_over(Hub.objects.get(pk=paid.pk), heir, third)
@@ -286,7 +285,7 @@ class TestTheHandOverExpiresTheOpenCheckouts:
             "checkout.sessions.expire", connection_error(), {"id": "cs_test_module", "status": "expired"}
         )
 
-        services.expire_open_checkouts(shop.id)
+        hand_overs.expire_open_checkouts(shop.id)
 
         assert (status(second), status(first)) == (CheckoutAttempt.Status.OPEN, CheckoutAttempt.Status.EXPIRED)
 

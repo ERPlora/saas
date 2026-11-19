@@ -11,8 +11,8 @@ the country.
 
 import pytest
 
-from billing import services
 from billing.models import CheckoutAttempt
+from billing.services import live_rates
 from billing.tests.conftest import pay
 from billing.tests.stripe_double import item, preview, subscription
 from billing.tests.test_checkout import payer, refused, session_params, start
@@ -104,7 +104,7 @@ class TestWhatIsAlreadyPaidKeepsRenewing:
         paid = paying(shop, stripe_double)
         payer(paid, billing_country="DE", billing_postal_code="10115")
 
-        assert services.retax_subscription(paid) == "retaxed"
+        assert live_rates.retax_subscription(paid) == "retaxed"
         rate = stripe_double.tax_rates[0]
         assert (rate["country"], rate["percentage"]) == ("ES", 21.0)
 
@@ -112,4 +112,4 @@ class TestWhatIsAlreadyPaidKeepsRenewing:
         paid = paying(shop, stripe_double)
         payer(paid, billing_postal_code="35001", tax_id="")
 
-        assert services.retax_subscription(paid) in {"retaxed", "unchanged"}
+        assert live_rates.retax_subscription(paid) in {"retaxed", "unchanged"}

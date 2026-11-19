@@ -19,10 +19,9 @@ from django.utils import timezone
 from live.errors import Conflict
 
 from apps.models import Module
-from billing import services
 from billing.models import PlanChangeSchedule
 from billing.schemas import PlanChangeIn
-from billing.services import plan_changes
+from billing.services import plan_changes, subscription_drift
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import event, item, schedule, signed, subscription
 from hubs.queries import hub_sync
@@ -189,7 +188,9 @@ class TestTheArrival:
         paid = waiting()
         stripe_double.answer("subscriptions.retrieve", attached(STARTER))
 
-        answer = committed(lambda: services.sync_subscription(Subscription.objects.select_related("hub").get(hub=paid)))
+        answer = committed(
+            lambda: subscription_drift.sync_subscription(Subscription.objects.select_related("hub").get(hub=paid))
+        )
 
         assert answer == "fixed"
         assert not PlanChangeSchedule.objects.exists()

@@ -18,10 +18,9 @@ from django.test import Client
 from django.utils import timezone
 from live.errors import OperationError
 
-from billing import services
 from billing.models import PlanChangeSchedule
 from billing.schemas import CheckoutConfirmIn, CheckoutStartIn, HubIn, ModuleIn, PlanChangeIn
-from billing.services import checkouts, plan_changes
+from billing.services import checkouts, module_cancellations, plan_changes
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import MONTH_END, event, item, schedule, signed, subscription
 from hubs.models import Subscription
@@ -162,7 +161,7 @@ class TestWhilePending:
 
         refused(
             "billing.plan_change_pending",
-            lambda: services.module_cancel(ctx_for(owner), ModuleIn(hub_id=paid.id, module="inventory")),
+            lambda: module_cancellations.module_cancel(ctx_for(owner), ModuleIn(hub_id=paid.id, module="inventory")),
         )
 
     def test_an_upgrade_releases_it_and_is_charged_now(self, shop, owner, stripe_double):

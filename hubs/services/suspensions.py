@@ -26,13 +26,14 @@ SUSPENDED_WARN_DAYS = 30
 SUSPENDED_FINAL_NOTICE_DAYS = 150
 SUSPENDED_DELETE_DAYS = 180
 
-#: What a pass of the clock counts (``billing.services.sweep_unpaid`` adds them to its own).
+#: What a pass of the clock counts (``billing.services.unpaid_sweep.sweep_unpaid`` adds them to its own).
 AGE_COUNTS = ("warned", "final_notice", "expired", "undated", "mail_failed", "errors")
 
 
 def age_suspended() -> Counter:
     """One pass of the clock over every suspended business (HUBS-F20), each in its own transaction: one that
-    fails is logged and counted, never stops the others. Run hourly by ``billing.services.sweep_unpaid``."""
+    fails is logged and counted, never stops the others. Run hourly by
+    ``billing.services.unpaid_sweep.sweep_unpaid``."""
     counts = Counter({key: 0 for key in AGE_COUNTS})
     suspended = Hub.objects.filter(status=Hub.Status.SUSPENDED).order_by("pk").values_list("pk", flat=True)
     for hub_id in list(suspended):

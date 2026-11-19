@@ -509,7 +509,7 @@ class TestThePayerIsTold:
     def test_a_mail_that_could_not_leave_is_sent_by_the_sweep(
         self, running, told, stripe_double, mailoutbox, monkeypatch, django_capture_on_commit_callbacks
     ):
-        from billing import services
+        from billing.services import unpaid_sweep
 
         def down(*args, **kwargs):
             raise OSError("smtp down")
@@ -521,13 +521,13 @@ class TestThePayerIsTold:
 
         stripe_double.answer("invoices.list", listing([]))
         with django_capture_on_commit_callbacks(execute=True):
-            counts = services.sweep_unpaid()
+            counts = unpaid_sweep.sweep_unpaid()
 
         assert [message.extra_headers["X-ERPlora-Notice"] for message in mailoutbox] == ["billing.payment_failed"]
         assert (counts["notified"], counts["mail_failed"]) == (1, 0)
 
     def test_a_mail_still_down_makes_the_sweep_fail(self, running, told, stripe_double, monkeypatch):
-        from billing import services
+        from billing.services import unpaid_sweep
 
         def down(*args, **kwargs):
             raise OSError("smtp down")
@@ -536,7 +536,7 @@ class TestThePayerIsTold:
         told(stripe_double, days=3)
         stripe_double.answer("invoices.list", listing([]))
 
-        assert services.sweep_unpaid()["mail_failed"] == 1
+        assert unpaid_sweep.sweep_unpaid()["mail_failed"] == 1
 
     def test_paying_closes_the_episode_and_a_later_one_is_told_again(
         self, running, told, stripe_double, django_capture_on_commit_callbacks
