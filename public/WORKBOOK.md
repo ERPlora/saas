@@ -698,8 +698,8 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   siguen siendo donde se componen. El aspecto es `components/button.css`. Un `ion-button` no es un enlace hasta que
   `frontend/public.ts` lo define, y pulsado antes no hace nada. Siguen siendo `ion-button` los que no
   navegan: envíos de formulario, Aceptar y Rechazar cookies, idioma del pie y «Probar la demo» de la puerta. Lo guardan
-  el barrido de `public/tests/test_templates.py` y dos e2e de `public-web.spec.ts` (PUBLIC-F11): pulsar con los scripts
-  retenidos y la paridad de estilos calculados frente a un `ion-button` real, en reposo y bajo el puntero.
+  el barrido de `public/tests/test_templates.py` y los dos e2e de `public-web-buttons.spec.ts` (PUBLIC-F11): pulsar con los
+  scripts retenidos y la paridad de estilos calculados frente a un `ion-button` real, en reposo y bajo el puntero.
 - Correo de soporte (F18): `SUPPORT_EMAIL` es la única fuente; las páginas de error lo leen con `{% support_email %}`
   (`public/templatetags/support.py`: la 500 se pinta sin contexto) y la SPA con el bloque JSON `support-email` de
   `base/spa.py` (`accounts/frontend/support.ts`).
@@ -707,7 +707,7 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   justo después de `</nav>`, no `frontend/public.ts`: ese módulo llega tarde, y en una conexión lenta el toque se
   perdería y, si no llegara, el menú no se abriría nunca. Las tres rayas, la cruz, el fondo, Esc, un enlace y ensanchar la
   ventana hasta la barra de escritorio siguen siendo el contrato, con `aria-expanded` y el foco. Vitest ejecuta el propio
-  script de la plantilla (`frontend/public.test.ts`) y dos e2e de `public-web.spec.ts` (PUBLIC-F11) pulsan con los scripts
+  script de la plantilla (`frontend/public.test.ts`) y los e2e de `public-web-menu.spec.ts` (PUBLIC-F11) pulsan con los scripts
   retenidos y con ellos ya cargados: un segundo enganche en el módulo cerraría lo que abre el botón. Con el panel abierto,
   el tabulador da la vuelta dentro de él y lo demás de la página queda `inert` hasta cerrarlo: también la marca y
   las tres rayas, que el panel y el fondo tapan, y lo que llegue con el panel ya abierto en una conexión lenta. Vitest lo
@@ -754,6 +754,7 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   sombra del botón, así que el estilo del idioma activo va por `data-current`.
 - Pruebas: cada test cita su flujo en el nombre o en el docstring, y cada e2e en su título. Los e2e son
   `tests/e2e/public-web.spec.ts` (F01–F14; capturas `APP-PUBLIC-1-<clave>-<ancho>.png` en `tests/e2e/.artifacts/`),
+  con los botones y el menú del móvil de F11 en `public-web-buttons.spec.ts` y `public-web-menu.spec.ts`,
   `tests/e2e/public-web-2.spec.ts` (F15–F28; capturas `APP-PUBLIC-2-<clave>-<ancho>.png`; el servidor público del e2e
   escribe los correos en `.artifacts/public/mail*/`, nunca por SMTP) y `tests/e2e/public-demo.spec.ts` (la demo;
   capturas `APP-PUBLIC-3-<clave>-<ancho>.png`), con `demo-door.spec.ts`. El recorrido entero de la demo contra un Hub de verdad

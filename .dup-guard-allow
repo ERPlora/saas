@@ -13,7 +13,6 @@ duplicados frontend/main.assistant.test.ts:32-38 the two stand-in shells of the 
 duplicados frontend/main.assistant.test.ts:45-51 the two stand-in shells of the assistant configuration tests were already alike in frontend/main.test.ts on main; this change moves both literally to main.assistant.test.ts
 duplicados vite.config.test.ts:34-40 rootAppsWithFrontend was already copied in three test files on main; only its doc comment changed here
 duplicados eslint.config.test.ts:15-25 rootAppsWithFrontend was already copied in three test files on main; only its doc comment changed here
-duplicados tests/e2e/public-web.spec.ts:30-68 captureEverywhere already shared this body with public-web-2 and public-demo on main; this change only edits its doc comment
 duplicados tests/e2e/public-web-2.spec.ts:35-73 captureEverywhere already shared this body with public-web on main; this change only edits its doc comment
 duplicados tests/e2e/panel/chrome.spec.ts:256-261 the 390 px target loop was already repeated at 290-295 on main; this change only joins the comment after it into one line
 duplicados billing/models/invoices.py:274-284 the net, tax and total properties of Invoice and InvoiceLine were already alike in billing/models.py on main; this change moves both literally into the package
@@ -120,3 +119,5 @@ duplicados hubs/frontend/pages/LaunchPage.sign-in.test.ts:5-13 the vi.mock calls
 duplicados hubs/frontend/pages/LaunchPage.businesses.test.ts:5-13 the vi.mock calls every test file of the panel's pages keeps, as vi.mock is hoisted per file (the factories are written once in hubs/frontend/__tests__/); this change splits hubs/frontend/pages/LaunchPage.test.ts into one file per topic
 duplicados hubs/frontend/pages/LaunchPage.businesses.test.ts:120-125 two tests of the way to pay were already alike in LaunchPage.test.ts on main; this change moves both literally to LaunchPage.businesses.test.ts
 duplicados hubs/frontend/pages/LaunchPage.businesses.test.ts:126-131 two tests of the way to pay were already alike in LaunchPage.test.ts on main; this change moves both literally to LaunchPage.businesses.test.ts
+duplicados tests/e2e/public-web.ts:14-41 watch already shared this body with public-web-2.spec.ts on main; this change moves it literally out of public-web.spec.ts into the helper its specs share
+duplicados tests/e2e/public-web-buttons.spec.ts:15-25 the taxonomy seed and the locale every spec of the public web sets for itself, as Playwright runs beforeAll and test.use per file; this change splits public-web.spec.ts into three specs
