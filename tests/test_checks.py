@@ -168,6 +168,21 @@ def test_fast_runs_eslint_the_typecheck_and_the_related_vitest_tests_of_the_touc
     assert missing == [], output[-8000:]
 
 
+@pytest.mark.skipif(
+    not (LENDER / "node_modules").is_dir() or not (LENDER / "packages/ui/package.json").is_file(),
+    reason="needs this checkout's node_modules and packages/ui (pnpm install, git submodule update --init)",
+)
+def test_a_sound_frontend_change_passes_with_the_borrowed_dependencies(head_tree):
+    """The workspace's own package resolves to the tree's packages/ui, never to the lender's: two copies of its types
+    would fail the typecheck of files the change never touched."""
+    commit(head_tree, {PROBE_TS: "export const answer = 42;\n", "hubs/frontend/probe.test.ts": PROBE_TS_TEST})
+    (head_tree / PROBE_TS).write_text("export const answer = 6 * 7;\n", encoding="utf-8")
+    done = checks(head_tree, "fast", "HEAD", CHECKS_DEPENDENCIES_FROM=str(LENDER))
+    output = done.stdout + done.stderr
+    assert done.returncode == 0, output[-8000:]
+    assert f"checks: pnpm exec vitest related --run --passWithNoTests {PROBE_TS}" in output, output[-4000:]
+
+
 FIXES = {"node_modules": "pnpm install", "packages/ui": "git submodule update --init"}
 
 
