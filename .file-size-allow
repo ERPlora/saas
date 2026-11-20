@@ -29,7 +29,6 @@
 1053 hubs/tests/test_check_custom_domains.py saas#462
 1186 public/tests/test_demo.py saas#462
 1033 public/tests/test_industries.py saas#462
-1404 public/tests/test_landing.py saas#462
 1613 public/tests/test_templates.py saas#462
 726 scripts/build_ionic_utilities.py saas#462
 510 tests/e2e/assistant-battery.ts saas#462

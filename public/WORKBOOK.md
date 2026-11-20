@@ -739,8 +739,8 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   encargado de esa lectura (`test_legal_privacy.py` prohíbe «Azure» y «Microsoft Ireland Operations»). Un motor que lleve el texto
   fuera de nuestros contenedores es volver a nombrar a su encargado en §5, con lo que recibe y dónde, en la misma entrega.
   Cambiarlo es cambiar en la misma entrega §5 y §6 de la privacidad, la respuesta «storage» de `/pricing/` y la celda
-  del asistente de la portada (`test_legal_privacy_assistant.py`, `test_product.py` y `test_landing.py`, en `en` y `es`). El Hub y el
-  panel usan el dictado (`base.assistant.transcribe`, cada uno el suyo); «Leer en voz alta» lee con la voz del
+  del asistente de la portada (`test_legal_privacy_assistant.py`, `test_product.py` y `test_landing_data_residency.py`,
+  en `en` y `es`). El Hub y el panel usan el dictado (`base.assistant.transcribe`, cada uno el suyo); «Leer en voz alta» lee con la voz del
   dispositivo en los dos (el panel solo pediría `base.assistant.speak` con `spa-config.assistantSpeech`, que sin
   motor es falso).
   La búsqueda en la web (`assistant/server_tools.py`, ASSISTANT-F14) va a Brave Search: destinatario aparte en §5 y
