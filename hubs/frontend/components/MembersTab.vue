@@ -20,7 +20,6 @@ import {
   InlineFeedback,
   StatusPill,
   type StatusPillSpec,
-  withRowNames,
 } from '@erplora/ui/components';
 import { HubIcon, toastError, toastSuccess } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
@@ -117,7 +116,7 @@ const entityLabel = computed(() => ({ one: t('hubs.members.recordSingular'), man
  *  and «Remove». «Transfer ownership» lives only in «⋮» (delicate, and confirmed). */
 const ORDER: MemberAction[] = ['resend', 'cancel', 'change_role', 'remove', 'transfer'];
 const actions = computed<DataTableAction<MemberRowOut>[]>(() =>
-  withRowNames((row: MemberRowOut) => row.name || row.email, ORDER.map((id) => ({
+  ORDER.map((id) => ({
     id,
     label: t(ACTIONS[id].label),
     icon: ACTIONS[id].icon,
@@ -125,7 +124,7 @@ const actions = computed<DataTableAction<MemberRowOut>[]>(() =>
     menuOnly: id === 'transfer',
     hidden: (row: MemberRowOut) => !row.actions.includes(id),
     loading: id === 'resend' ? (row: MemberRowOut) => resend.pending.value && target.value?.id === row.id : undefined,
-  }))),
+  })),
 );
 
 function pill(row: MemberRowOut): StatusPillSpec {

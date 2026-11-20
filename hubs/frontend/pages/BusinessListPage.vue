@@ -16,6 +16,7 @@
 // stream down or no answer in time is an error with «Retry», never «Create your first business».
 import {
   DataTable,
+  type DataTableAction,
   type DataTableActionEvent,
   type DataTableColumn,
   EmptyState,
@@ -23,7 +24,6 @@ import {
   FormModal,
   InlineFeedback,
   StatusPill,
-  withRowNames,
 } from '@erplora/ui/components';
 import { AppPage, HubIcon, toastError, toastSuccess, useSurface, WebOnly } from '@erplora/ui/shell';
 import { useCommand, useLive, useLiveClient } from '@erplora/ui/sdk';
@@ -160,7 +160,7 @@ const pageOf = (row: { id: string }) => `${BUSINESSES}/${row.id}/summary`;
 
 /** The row's buttons, as the table folds them when its box narrows: «Open» stays,
  *  «Manage» and «Recover» go into «⋮» first. Each says its action in short words; its name adds the business. */
-const actions = computed(() => withRowNames<BusinessRowOut>((row) => row.name, [
+const actions = computed<DataTableAction<BusinessRowOut>[]>(() => [
   {
     id: 'open',
     label: t('hubs.common.open'),
@@ -186,7 +186,7 @@ const actions = computed(() => withRowNames<BusinessRowOut>((row) => row.name, [
     hidden: (row) => !row.can.restore,
     loading: () => restore.pending.value,
   },
-]));
+]);
 
 function onAction({ actionId, row }: DataTableActionEvent<BusinessRowOut>): void {
   if (actionId === 'open') void open(row);

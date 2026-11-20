@@ -16,7 +16,6 @@ import {
   type DataTableColumn,
   formatDateTime,
   StatusPill,
-  withRowNames,
 } from '@erplora/ui/components';
 import { HubIcon, toastError, toastSuccess } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
@@ -74,7 +73,7 @@ const columns = computed(() => [
 ] satisfies DataTableColumn<SessionRowOut>[]);
 
 const target = shallowRef<SessionRowOut | null>(null);
-const actions = computed<DataTableAction<SessionRowOut>[]>(() => withRowNames(device, [
+const actions = computed<DataTableAction<SessionRowOut>[]>(() => [
   {
     id: 'close',
     label: t('accounts.account.sessions.close'),
@@ -85,7 +84,7 @@ const actions = computed<DataTableAction<SessionRowOut>[]>(() => withRowNames(de
     hidden: (row) => row.is_current,
     loading: (row) => close.pending.value && target.value?.id === row.id,
   },
-]));
+]);
 
 const confirmingApp = shallowRef(false);
 const confirmingOthers = shallowRef(false);

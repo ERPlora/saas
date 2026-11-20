@@ -11,7 +11,6 @@ import {
   type DataTableColumn,
   StatusPill,
   type StatusPillTone,
-  withRowNames,
 } from '@erplora/ui/components';
 import { HubIcon, toastError, toastSuccess, useSurface, WebOnly } from '@erplora/ui/shell';
 import { useCommand, useLive, useLiveClient } from '@erplora/ui/sdk';
@@ -139,7 +138,7 @@ const hasMenu = (row: Row) => offers(row, 'cancel_plan');
  * invoices» goes into that «⋮» when the row has one, so a row shows one button and its menu; without a «⋮»
  * (nothing to cancel, or inside the apps) it stays a button.
  */
-const actions = computed<DataTableAction<Row>[]>(() => withRowNames((row: Row) => row.name, [
+const actions = computed<DataTableAction<Row>[]>(() => [
   {
     id: 'lead',
     label: (row: Row) => {
@@ -178,7 +177,7 @@ const actions = computed<DataTableAction<Row>[]>(() => withRowNames((row: Row) =
     menuOnly: true,
     hidden: (row: Row) => !offers(row, 'cancel_plan'),
   },
-]));
+]);
 
 // ── Actions ─────────────────────────────────────────────────────────────────────────────────────
 const cancelling = shallowRef<Row | null>(null);

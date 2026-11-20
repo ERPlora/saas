@@ -14,7 +14,6 @@ import {
   type DataTableColumn,
   formatDateTime,
   StatusPill,
-  withRowNames,
 } from '@erplora/ui/components';
 import { HubIcon, toastSuccess } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
@@ -54,7 +53,7 @@ const columns = computed(() => [
   { key: 'expires_at', label: t('accounts.account.keys.columns.expires'), cell: 'expires' },
 ] satisfies DataTableColumn<ApiKeyRowOut>[]);
 
-const actions = computed<DataTableAction<ApiKeyRowOut>[]>(() => withRowNames((row: ApiKeyRowOut) => row.name, [
+const actions = computed<DataTableAction<ApiKeyRowOut>[]>(() => [
   {
     id: 'revoke',
     label: t('accounts.account.keys.revokeShort'),
@@ -63,7 +62,7 @@ const actions = computed<DataTableAction<ApiKeyRowOut>[]>(() => withRowNames((ro
     pinned: true,
     showLabel: true,
   },
-]));
+]);
 
 const creating = shallowRef(false);
 const target = shallowRef<ApiKeyRowOut | null>(null);
