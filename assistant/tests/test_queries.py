@@ -19,7 +19,7 @@ NEWER_KEY = "sk-test-2222222222222222222222222222newr"
 
 
 def connection(user, provider):
-    return queries.provider_connection(staff_ctx(user), ProviderRef(id=provider.pk))
+    return queries.provider_keys.provider_connection(staff_ctx(user), ProviderRef(id=provider.pk))
 
 
 def test_the_connection_has_the_api_the_address_and_the_newest_active_key(ai_admin, provider):
@@ -85,7 +85,7 @@ def routed(provider):
 
 
 def route(model=None):
-    return queries.route_resolve(platform_context(), RouteIn(model=model))
+    return queries.routing_policy.route_resolve(platform_context(), RouteIn(model=model))
 
 
 def test_a_turn_goes_to_the_model_that_answers_then_to_its_fallback(routed):
@@ -163,5 +163,5 @@ def test_the_staff_route_a_model_only_with_the_policy_permission(routed, make_us
     member = grant(make_user("member@erplora.com", is_staff=True), "view_airoutingpolicy")
 
     with pytest.raises(PermissionDenied):
-        queries.route_resolve(staff_ctx(member), RouteIn(model=routed["large"].pk))
-    assert queries.route_resolve(staff_ctx(ai_admin), RouteIn(model=routed["large"].pk)).candidates
+        queries.routing_policy.route_resolve(staff_ctx(member), RouteIn(model=routed["large"].pk))
+    assert queries.routing_policy.route_resolve(staff_ctx(ai_admin), RouteIn(model=routed["large"].pk)).candidates

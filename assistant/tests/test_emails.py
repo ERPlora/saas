@@ -33,13 +33,13 @@ EACH_BUSINESS_EN = "Each business has its own assistant, with its own messages: 
 
 
 def this_month() -> date:
-    return queries.month_of(timezone.now())
+    return queries.usage.month_of(timezone.now())
 
 
 def comes_back(month: date, language: str) -> str:
     """How the mail names the day the allowance of ``month`` comes back («1 de diciembre», «December 1»)."""
     with translation.override(language):
-        return date_format(queries.resets_at(month).date(), "MONTH_DAY_FORMAT")
+        return date_format(queries.usage.resets_at(month).date(), "MONTH_DAY_FORMAT")
 
 
 def spent(user, messages: int, *, month: date | None = None, **marks) -> AssistantUsage:

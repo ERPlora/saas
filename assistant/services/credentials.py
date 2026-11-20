@@ -16,7 +16,7 @@ from live.outbox import record_event
 
 from assistant import crypto, events
 from assistant.models import AIProvider, AIProviderCredential
-from assistant.queries import staff_with
+from assistant.queries.gates import staff_with
 from assistant.schemas import (
     CredentialDeleteIn,
     CredentialDeleteOut,

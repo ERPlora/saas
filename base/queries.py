@@ -129,5 +129,5 @@ def assistant_usage(ctx: OperationContext, data: AssistantUsageIn) -> dict[str, 
     of how many, and when they come back (the first of next month, UTC). Its businesses' are their own, in their Hub."""
     if ctx.actor is None:
         raise Unauthorized(gettext("Sign in to talk to the assistant."))
-    usage = gateway_queries.usage_of(Caller(user_id=ctx.actor.pk), timezone.now())
+    usage = gateway_queries.usage.usage_of(Caller(user_id=ctx.actor.pk), timezone.now())
     return {**usage, "resets_at": usage["resets_at"].isoformat().replace("+00:00", "Z") if usage["resets_at"] else None}

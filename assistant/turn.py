@@ -418,7 +418,7 @@ async def start(caller: Caller, data: Any, *, answer_kept: bool) -> Turn:
     except TurnRefused as refused:
         raise Refused(refused.status, refused.code, refused.message, fields=refused.fields, retriable=False) from None
     try:
-        route = await sync_to_async(queries.route_resolve)(platform_context(), RouteIn())
+        route = await sync_to_async(queries.routing_policy.route_resolve)(platform_context(), RouteIn())
     except OperationError as refused:
         if refused.code not in ROUTE_REFUSALS:
             raise
@@ -456,7 +456,7 @@ def settle(started: Turn, outcome: Outcome) -> dict:
                 cost_usd=outcome.cost,
             ),
         )
-    return queries.usage_show(platform_context(), started.caller).model_dump(mode="json")
+    return queries.usage.usage_show(platform_context(), started.caller).model_dump(mode="json")
 
 
 def response_frame(started: Turn, outcome: Outcome) -> dict:

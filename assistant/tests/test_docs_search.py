@@ -2,7 +2,7 @@
 (``assistant.ask``), for how-to questions.
 
 The question is embedded by the services' provider before the search runs and outside any transaction
-(``queries.prepare_questions``, which the panel's turn calls for every search the model asked for, so no connection
+(``queries.docs.prepare_questions``, which the panel's turn calls for every search the model asked for, so no connection
 waits on the provider inside a transaction), cached a day by the hash of the question as it was asked (spaces and case
 aside); the search itself never calls the provider. The excerpts of ``index_docs`` come back nearest first by the
 cosine of their fingerprints, in the person's language; when fewer than three of them are close (a distance under ``CLOSE``), the English ones join.
@@ -99,14 +99,14 @@ def excerpt(lang: str, text: str, embedding, *, source="help", path=None, headin
 def prepare(*questions: str) -> None:
     from asgiref.sync import async_to_sync
 
-    async_to_sync(queries.prepare_questions)(list(questions))
+    async_to_sync(queries.docs.prepare_questions)(list(questions))
 
 
 def search(account, query="¿Cómo invito a alguien a mi negocio?", language="es", *, prepared=True, **extra):
     """The search as the panel's turn runs it: the question's fingerprint first, outside the operation."""
     if prepared:
         prepare(query)
-    return queries.docs_search(ctx_for(account, language), DocsSearchIn(query=query, **extra)).results
+    return queries.docs.docs_search(ctx_for(account, language), DocsSearchIn(query=query, **extra)).results
 
 
 def texts(results) -> list[str]:
@@ -274,7 +274,7 @@ class TestWhereNothingIsSold:
         query = "¿Cómo pago con un cupón?"
         prepare(query)
 
-        results = queries.docs_search(self.unsold(account, rf), DocsSearchIn(query=query, limit=12)).results
+        results = queries.docs.docs_search(self.unsold(account, rf), DocsSearchIn(query=query, limit=12)).results
 
         assert sorted(texts(results)) == ["Abre la caja.", "Instala la app.", "Invita a alguien.", "Tu cuenta."]
 
@@ -283,7 +283,7 @@ class TestWhereNothingIsSold:
         query = "How do I pay with a coupon?"
         prepare(query)
 
-        results = queries.docs_search(self.unsold(account, rf, "en"), DocsSearchIn(query=query, limit=12)).results
+        results = queries.docs.docs_search(self.unsold(account, rf, "en"), DocsSearchIn(query=query, limit=12)).results
 
         assert texts(results) == ["Open the register."]
 
@@ -295,7 +295,7 @@ class TestWhereNothingIsSold:
         query = "¿Cómo pago?"
         prepare(query)
 
-        results = queries.docs_search(self.unsold(account, rf), DocsSearchIn(query=query, limit=12)).results
+        results = queries.docs.docs_search(self.unsold(account, rf), DocsSearchIn(query=query, limit=12)).results
 
         assert sorted(texts(results)) == ["Lejos.", "Open the register."]
 
@@ -307,7 +307,7 @@ class TestWhereNothingIsSold:
 
         indexed = {chunk.path for chunk in knowledge.workbook_chunks(Path(settings.BASE_DIR))}
 
-        assert set(queries.SELLING_WORKBOOKS) <= indexed
+        assert set(queries.docs.SELLING_WORKBOOKS) <= indexed
 
     def test_on_the_web_everything_is_found(self, account, embedder, everything):
         results = search(account, limit=12)
@@ -322,7 +322,7 @@ class TestWhereNothingIsSold:
         prepare(query)
         ctx = dataclasses.replace(ctx_for(account, "es"), request=request)
 
-        results = queries.docs_search(ctx, DocsSearchIn(query=query, limit=12)).results
+        results = queries.docs.docs_search(ctx, DocsSearchIn(query=query, limit=12)).results
 
         assert "plans" in {result.path for result in results}
 
@@ -454,7 +454,7 @@ class TestWhatItRefuses:
         from dataclasses import replace
 
         with pytest.raises(PermissionDenied):
-            queries.docs_search(replace(ctx_for(account), permissions=frozenset()), DocsSearchIn(query="x"))
+            queries.docs.docs_search(replace(ctx_for(account), permissions=frozenset()), DocsSearchIn(query="x"))
 
     @pytest.mark.parametrize("query", ["", "   ", "x" * 501])
     def test_a_question_that_is_empty_or_too_long_is_refused(self, query):

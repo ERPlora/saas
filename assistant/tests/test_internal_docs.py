@@ -4,7 +4,7 @@ call, the business or the demo in ``hub``) and gets the cited excerpts of the sa
 (``assistant.DocChunk``: the public help, the user part of every Hub app's WORKBOOK, the SaaS's WORKBOOKs and the
 plans).
 
-erplora.com computes the question's fingerprint with the services' provider (``queries.prepare_questions``, kept a
+erplora.com computes the question's fingerprint with the services' provider (``queries.docs.prepare_questions``, kept a
 day) and runs the very search of ``assistant.docs.search``: nearest first, in the ``language`` asked, with the English
 excerpts when fewer than three of those are close; at most 12. Its own budget per business
 (``ASSISTANT_DOCS_RATELIMIT``). Without the provider: 409 ``assistant.provider_not_configured``; the provider down:

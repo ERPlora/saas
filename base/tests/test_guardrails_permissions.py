@@ -136,7 +136,7 @@ SYSTEM_ONLY = frozenset(
 )
 
 #: What the platform runs, and the staff in the admin with one of its model permissions besides
-#: (``assistant.queries.staff_with``): ``name → the admin's permission``. A customer never holds it.
+#: (``assistant.queries.gates.staff_with``): ``name → the admin's permission``. A customer never holds it.
 SYSTEM_OR_STAFF = {
     "assistant.route.resolve": "assistant.change_airoutingpolicy",  # the staff try a model before choosing it
     "assistant.usage.show": "assistant.view_assistantusage",  # the staff read what a business spent
