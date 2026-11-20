@@ -681,6 +681,29 @@ def test_the_documentation_may_show_images_of_the_hubs_static_origin(
     assert "https://hubs.erplora.com" in img_src.group(1)
 
 
+def test_a_flow_shows_only_what_its_reader_can_use(client, catalog):
+    """Of each flow, its title, steps and what happens if it fails, without internal references."""
+    make_doc(
+        catalog["tables"],
+        "es",
+        "## Flujos\n\n### TABLE-F01 Crear una zona\nEstado: hecho\nActor: responsable\n"
+        "Pantalla: Zonas\nPasos:\n1. Pulsa «+» y colócala con las flechas (8 px).\n"
+        "2. Pulsa «Añadir zona».\nEntra: el nombre.\nSale: la zona (avisa: `table.zone.created`).\n"
+        "Si falla: un nombre repetido no se guarda (hub#888).\nImplicados: TABLE-F06\n",
+    )
+
+    html = get_html(client, "/apps/tables/docs/", **SPANISH)
+    page = text_of(html)
+
+    assert "<li>Pulsa «Añadir zona».</li>" in html
+    assert "Crear una zona Pasos: Pulsa «+» y colócala con las flechas. Pulsa «Añadir zona»." in page
+    assert "Si falla: un nombre repetido no se guarda." in page
+    for internal in ("TABLE-F", "Estado:", "Actor:", "Pantalla:", "Entra:", "Sale:", "Implicados:"):
+        assert internal not in page
+    for internal in ("hub#888", "8 px", "table.zone.created"):
+        assert internal not in page
+
+
 # --- The old addresses ---------------------------------------------------------------------------
 
 
