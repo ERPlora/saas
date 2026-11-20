@@ -16,7 +16,6 @@
 753 assistant/services.py saas#462
 508 assistant/turn.py saas#462
 811 billing/frontend/components/InvoicesTab.test.ts saas#462
-623 billing/frontend/components/StoreShop.test.ts saas#462
 629 billing/schemas/__init__.py saas#462
 549 billing/stripe_service.py saas#462
 664 billing/vat.py saas#462
