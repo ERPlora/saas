@@ -34,6 +34,7 @@ from assistant.tests.conftest import (  # noqa: F401 - the gateway's fixtures
     provider,
 )
 from assistant.tests.doors import frames
+from assistant.tests.test_attachments import b64, scanned_pdf
 from base import assistant
 from base.services import NOT_CONFIRMED_CODE
 from hubs.models import Hub, HubMember, Plan, Subscription
@@ -299,6 +300,16 @@ class TestARead:
 
         assert [frame["text"] for frame in got if frame["type"] == "text"] == ["You have ", "no business yet."]
         assert got[-1]["append"] == [{"role": "assistant", "content": "You have no business yet."}]
+
+    def test_a_scanned_pdf_attached_in_the_panel_reaches_a_model_that_sees_whole(self, signed_in, account, answering, fake_provider):
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Four lines."))
+        scan = b64(scanned_pdf())
+        attached = {"type": "input_file", "filename": "albaran.pdf", "mime_type": "application/pdf", "data": scan}
+
+        frames(post_turn(signed_in, {"messages": [{"role": "user", "content": [{"type": "text", "text": "Read it"}, attached]}]}))
+
+        question = model_requests(fake_provider)[0].body["messages"][-1]["content"]
+        assert question[1] == {"type": "file", "file": {"filename": "albaran.pdf", "file_data": f"data:application/pdf;base64,{scan}"}}
 
     def test_it_answers_in_the_language_of_the_person(self, client, make_user, plans, answering, fake_provider):
         client.force_login(make_user("sol@example.com", first_name="Sol", language="es"))

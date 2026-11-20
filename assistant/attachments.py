@@ -7,8 +7,10 @@ A user message's content may be a list of parts. Besides ``{"type": "text"}``:
   type), a note in its place. erplora.com downloads no image: a provider would fetch an address on its own.
 - ``{"type": "input_file", "filename", "mime_type", "data": "<base64>"}``: a PDF (pypdf), a Word document
   (python-docx), a spreadsheet (openpyxl, a section per sheet, cells joined by « | »), or plain text, CSV, Markdown or
-  JSON, turned into a ``text`` part ``[Attachment: <name>]`` with at most ``MAX_EXTRACTED_CHARS``. A document by
-  address (``file_url``) is not downloaded.
+  JSON, turned into a ``text`` part ``[Attachment: <name>]`` with at most ``MAX_EXTRACTED_CHARS``. A PDF that opens
+  goes as it is to a model that sees images (Chat Completions' ``file`` part, which each provider reads whole, the
+  pictures of a scanned page too); its text is only for a model that cannot see. A document by address
+  (``file_url``) is not downloaded.
 
 Everything happens in memory: nothing is written to disk. A Word document or a spreadsheet is a zip, checked before
 it is opened (``MAX_UNZIPPED_BYTES``, ``MAX_ZIP_ENTRIES``), so a small file cannot unfold into gigabytes. What cannot
@@ -107,8 +109,8 @@ def _dataless(part):
 
 
 def expand(messages: list[dict]) -> list[dict]:
-    """``messages`` with each document turned into its text and each image that is not one the model may see turned
-    into a note. Never raises."""
+    """``messages`` with each document turned into its text (a PDF that opens keeps its data beside it, for
+    ``for_model``) and each image that is not one the model may see turned into a note. Never raises."""
     expanded = []
     for message in messages:
         content = message.get("content")
@@ -132,27 +134,28 @@ def _expanded(part):
 
 
 def for_model(messages: list[dict], *, vision: bool) -> list[dict]:
-    """The conversation as a model sees it: a model that cannot see images gets a note in each one's place."""
-    if vision:
-        return messages
+    """The conversation, once ``expand``ed, as a model sees it: a model that sees images gets each PDF as it is, and
+    one that cannot gets the PDF's text and a note in each image's place."""
     seen = []
     for message in messages:
         content = message.get("content")
         if not isinstance(content, list):
             seen.append(message)
             continue
-        seen.append(
-            {
-                **message,
-                "content": [
-                    {"type": "text", "text": "[An image: this model cannot see images; tell the person so.]"}
-                    if isinstance(part, dict) and part.get("type") == "image_url"
-                    else part
-                    for part in content
-                ],
-            }
-        )
+        seen.append({**message, "content": [_seen(part, vision=vision) for part in content]})
     return seen
+
+
+def _seen(part, *, vision: bool):
+    if not isinstance(part, dict):
+        return part
+    if part.get("type") == "input_file":
+        if vision:
+            return {"type": "file", "file": {"filename": part["filename"], "file_data": f"data:application/pdf;base64,{part['data']}"}}
+        return {"type": "text", "text": part["text"]}
+    if part.get("type") == "image_url" and not vision:
+        return {"type": "text", "text": "[An image: this model cannot see images; tell the person so.]"}
+    return part
 
 
 def note(name: str, reason: str) -> dict:
@@ -164,14 +167,19 @@ def _data_type(url: str) -> str:
     return head.split(";")[0].strip().lower()
 
 
-def _decoded(data: str) -> bytes:
+def _payload(data: str) -> str:
+    """The base64 of an attachment's data, sent bare or as a data address."""
     text = data.strip()
     if text.startswith("data:"):
         if "," not in text:
             raise Unreadable("malformed data address")
         text = text[text.find(",") + 1 :]
+    return text
+
+
+def _decoded(payload: str) -> bytes:
     try:
-        return base64.b64decode(text, validate=True)
+        return base64.b64decode(payload, validate=True)
     except (binascii.Error, ValueError):
         raise Unreadable("not valid base64") from None
 
@@ -184,13 +192,22 @@ def _document(part: dict) -> dict:
         reason = "documents are read only inside the message" if part.get("file_url") or part.get("url") else "empty"
         return note(name, reason)
     try:
-        text = extract(_decoded(data), mime, name)
+        payload = _payload(data)
+        text = extract(_decoded(payload), mime, name)
     except Unreadable as problem:
         logger.info("assistant.attachments.unreadable type=%s reason=%s", _kind(mime, name), problem)
         return note(name, str(problem))
     except Exception as problem:  # noqa: BLE001 - a broken file of any library is a note, never a failed turn
         logger.info("assistant.attachments.unreadable type=%s reason=%s", _kind(mime, name), type(problem).__name__)
         return note(name, "the file is damaged")
+    read = _read(name, text)
+    if _is_pdf(mime, name):
+        return {"type": "input_file", "filename": name, "mime_type": "application/pdf", "data": payload, "text": read["text"]}
+    return read
+
+
+def _read(name: str, text: str) -> dict:
+    """The ``text`` part of a document's text."""
     text = text.strip()
     if not text:
         return {
@@ -202,6 +219,10 @@ def _document(part: dict) -> dict:
     return {"type": "text", "text": f"[Attachment: {name}]\n{text}"}
 
 
+def _is_pdf(mime: str, name: str) -> bool:
+    return mime == "application/pdf" or name.lower().endswith(".pdf")
+
+
 def _kind(mime: str, name: str) -> str:
     """What a log may say of a file: its type or its extension, never its name."""
     return mime or os.path.splitext(name)[1].lower() or "unknown"
@@ -209,7 +230,7 @@ def _kind(mime: str, name: str) -> str:
 
 def extract(raw: bytes, mime: str, name: str) -> str:
     lowered = name.lower()
-    if mime == "application/pdf" or lowered.endswith(".pdf"):
+    if _is_pdf(mime, name):
         return _pdf(raw)
     if mime == WORD or lowered.endswith(".docx"):
         return _docx(raw)

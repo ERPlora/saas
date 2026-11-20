@@ -1,5 +1,6 @@
 """ASSISTANT-F19 · Read what a question attaches: an image goes to the model as it is (a model that
-cannot see gets a note instead), a document (PDF, Word, Excel, text, CSV, Markdown, JSON) is turned into its text.
+cannot see gets a note instead), and so does a PDF, which the provider reads whole, a scanned one too (a model that
+cannot see gets its text instead); any other document (Word, Excel, text, CSV, Markdown, JSON) is turned into its text.
 
 The Hub sends each file inside the message, in base64: erplora.com downloads nothing (no address of a document or an
 image is fetched, so there is no door to the internal network) and writes nothing to disk. Each attachment has a
@@ -51,6 +52,19 @@ def blank_pdf() -> bytes:
     return out.getvalue()
 
 
+def scanned_pdf() -> bytes:
+    """A delivery note as a scanner or a phone makes it: one page that is only a picture, with no text in it."""
+    from PIL import Image, ImageDraw
+
+    page = Image.new("RGB", (400, 200), "white")
+    draw = ImageDraw.Draw(page)
+    for row, line in enumerate(["ALBARAN 0042", "Harina 25 kg x 4", "Aceite 5 L x 2", "Total 128,40"]):
+        draw.text((20, 20 + 40 * row), line, fill="black")
+    out = io.BytesIO()
+    page.save(out, "PDF")
+    return out.getvalue()
+
+
 def docx_with(*paragraphs: str) -> bytes:
     from docx import Document
 
@@ -88,9 +102,14 @@ def expanded_parts(*parts) -> list[dict]:
     return prepare(asking(*parts), "")[1]["content"]
 
 
+def seen_parts(*parts, vision: bool) -> list[dict]:
+    """What the model receives of the question, after ``prepare``."""
+    return attachments.for_model(prepare(asking(*parts), ""), vision=vision)[1]["content"]
+
+
 class TestDocumentsBecomeText:
-    def test_a_pdf_becomes_its_text(self):
-        part = expanded_parts(document(pdf_with("Carta de vinos 2026"), "application/pdf", "carta.pdf"))[1]
+    def test_a_model_that_cannot_see_reads_a_pdfs_text(self):
+        part = seen_parts(document(pdf_with("Carta de vinos 2026"), "application/pdf", "carta.pdf"), vision=False)[1]
 
         assert part["type"] == "text"
         assert part["text"].startswith("[Attachment: carta.pdf]")
@@ -126,8 +145,8 @@ class TestDocumentsBecomeText:
         assert text.endswith("[…cut…]")
         assert len(text) < attachments.MAX_EXTRACTED_CHARS + 100
 
-    def test_a_scanned_pdf_says_it_has_no_text(self):
-        text = expanded_parts(document(blank_pdf(), "application/pdf", "escaneo.pdf"))[1]["text"]
+    def test_a_model_that_cannot_see_is_told_a_scanned_pdf_has_no_text(self):
+        text = seen_parts(document(blank_pdf(), "application/pdf", "escaneo.pdf"), vision=False)[1]["text"]
 
         assert "no text" in text and "escaneo.pdf" in text
 
@@ -141,10 +160,11 @@ class TestDocumentsBecomeText:
         mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
         with files_written() as written:
-            parts = expanded_parts(
+            parts = seen_parts(
                 document(pdf, "application/pdf", "a.pdf"),
                 document(docx, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "b.docx"),
                 document(xlsx, mime, "c.xlsx"),
+                vision=False,
             )
 
         assert written == []
@@ -156,6 +176,43 @@ class TestDocumentsBecomeText:
             xlsx_with({"S": [["a"]]})
 
         assert written
+
+
+class TestAPdfGoesWholeToAModelThatSees:
+    @pytest.mark.parametrize(("mime", "name"), [("application/pdf", "albaran.pdf"), ("", "albaran.PDF")])
+    def test_a_scanned_pdf_goes_whole_to_a_model_that_sees_images(self, mime, name):
+        scan = scanned_pdf()
+
+        part = seen_parts(document(scan, mime, name), vision=True)[1]
+
+        assert part == {"type": "file", "file": {"filename": name, "file_data": f"data:application/pdf;base64,{b64(scan)}"}}
+
+    def test_a_pdf_with_text_goes_whole_too(self):
+        data = pdf_with("Carta de vinos 2026")
+
+        part = seen_parts(document(data, "application/pdf", "carta.pdf"), vision=True)[1]
+
+        assert part["file"]["file_data"] == f"data:application/pdf;base64,{b64(data)}"
+
+    def test_a_pdf_sent_as_a_data_address_carries_its_data_once(self):
+        scan = scanned_pdf()
+        part = {"type": "input_file", "filename": "a.pdf", "mime_type": "application/pdf", "data": f"data:application/pdf;base64,{b64(scan)}"}
+
+        assert seen_parts(part, vision=True)[1]["file"]["file_data"] == f"data:application/pdf;base64,{b64(scan)}"
+
+    def test_a_broken_pdf_is_a_note_even_for_a_model_that_sees(self):
+        part = seen_parts(document(b"%PDF-1.4 broken", "application/pdf", "rota.pdf"), vision=True)[1]
+
+        assert part["type"] == "text"
+        assert part["text"].startswith("[Attachment rota.pdf: could not be read")
+
+    def test_any_other_document_is_still_its_text_for_a_model_that_sees(self):
+        mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+        part = seen_parts(document(docx_with("Menú del día"), mime, "menu.docx"), vision=True)[1]
+
+        assert part["type"] == "text"
+        assert "Menú del día" in part["text"]
 
 
 class TestWhatCannotBeReadIsANote:
@@ -259,19 +316,42 @@ class TestLimits:
 
 @pytest.mark.django_db
 class TestInTheTurn:
-    def test_the_model_reads_the_documents_text_and_sees_the_image(self, internal, business, answering, fake_provider):
+    def sent_parts(self, business, fake_provider, *parts) -> list[dict]:
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))
-        conversation = asking(
-            document(pdf_with("Factura 42"), "application/pdf", "factura.pdf"),
+
+        frames(door(Client(), "/internal/assistant/chat/stream", {"hub": business.slug, "messages": asking(*parts)}))
+
+        [sent] = [seen for seen in fake_provider.requests if seen.path.endswith("/chat/completions")]
+        return sent.body["messages"][1]["content"]
+
+    def test_the_model_reads_the_documents_text_and_sees_the_image(self, internal, business, answering, fake_provider):
+        mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+        parts = self.sent_parts(
+            business,
+            fake_provider,
+            document(docx_with("Factura 42"), mime, "factura.docx"),
             {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{PNG}"}},
         )
 
-        frames(door(Client(), "/internal/assistant/chat/stream", {"hub": business.slug, "messages": conversation}))
-
-        [sent] = [seen for seen in fake_provider.requests if seen.path.endswith("/chat/completions")]
-        parts = sent.body["messages"][1]["content"]
         assert "Factura 42" in parts[1]["text"]
         assert parts[2]["type"] == "image_url"
+
+    def test_a_scanned_delivery_note_reaches_a_model_that_sees_whole(self, internal, business, answering, fake_provider):
+        scan = scanned_pdf()
+
+        parts = self.sent_parts(business, fake_provider, document(scan, "application/pdf", "albaran.pdf"))
+
+        assert parts[1] == {"type": "file", "file": {"filename": "albaran.pdf", "file_data": f"data:application/pdf;base64,{b64(scan)}"}}
+
+    def test_a_model_that_cannot_see_reads_the_pdfs_text_instead(self, internal, business, answering, fake_provider):
+        answering.supports_vision = False
+        answering.save(update_fields=["supports_vision"])
+
+        parts = self.sent_parts(business, fake_provider, document(pdf_with("Factura 42"), "application/pdf", "factura.pdf"))
+
+        assert parts[1]["type"] == "text"
+        assert "Factura 42" in parts[1]["text"]
 
     def test_an_attachment_too_big_is_a_413_before_the_model(self, internal, business, answering, fake_provider):
         big = {"type": "input_file", "filename": "big.txt", "mime_type": "text/plain", "data": "A" * (attachments.MAX_ATTACHMENT_BYTES + 4)}

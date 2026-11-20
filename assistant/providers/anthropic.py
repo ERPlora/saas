@@ -2,7 +2,7 @@
 {base}/v1/models`` page by page to list.
 
 The instructions go apart (``system``), tool results are ``tool_result`` blocks of a user turn, the assistant's tool
-calls ``tool_use`` blocks, images ``image`` blocks; user and assistant alternate (consecutive turns of one role are
+calls ``tool_use`` blocks, images ``image`` blocks and PDFs ``document`` blocks; user and assistant alternate (consecutive turns of one role are
 merged). One tool per answer (``disable_parallel_tool_use``).
 """
 
@@ -22,6 +22,7 @@ from assistant.providers.base import (
     TurnRequest,
     error_event,
     finish_event,
+    inline_data,
     is_retriable_status,
     redact,
     sse_events,
@@ -39,7 +40,19 @@ class AnthropicProvider(Provider):
     def headers(self) -> dict[str, str]:
         return {"x-api-key": self.api_key, "anthropic-version": API_VERSION, "content-type": "application/json"}
 
-    def to_messages(self, messages: list[dict]) -> tuple[str, list[dict]]:  # noqa: C901, PLR0912
+    @staticmethod
+    def user_block(part: dict) -> dict | None:
+        """A part of a person's message as Anthropic's block: its text, an image or a PDF; ``None`` for any other."""
+        if part.get("type") == "text":
+            return {"type": "text", "text": part.get("text", "")}
+        inline = inline_data(part)
+        if inline is None:
+            return None
+        media_type, data = inline
+        kind = "document" if part.get("type") == "file" else "image"
+        return {"type": kind, "source": {"type": "base64", "media_type": media_type, "data": data}}
+
+    def to_messages(self, messages: list[dict]) -> tuple[str, list[dict]]:
         system, rest = self.split_system_messages(messages)
         translated: list[dict] = []
         for message in rest:
@@ -47,17 +60,7 @@ class AnthropicProvider(Provider):
             content = message.get("content", "")
             if role == "user":
                 if isinstance(content, list):
-                    blocks: list[dict] = []
-                    for part in content:
-                        if part.get("type") == "text":
-                            blocks.append({"type": "text", "text": part.get("text", "")})
-                        elif part.get("type") == "image_url":
-                            url = (part.get("image_url") or {}).get("url", "")
-                            if url.startswith("data:") and "," in url:
-                                media_type = url.split(";")[0].split(":", 1)[1]
-                                blocks.append(
-                                    {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": url.split(",", 1)[1]}}
-                                )
+                    blocks = [block for block in map(self.user_block, content) if block is not None]
                     translated.append({"role": "user", "content": blocks or content})
                 else:
                     translated.append({"role": "user", "content": content})

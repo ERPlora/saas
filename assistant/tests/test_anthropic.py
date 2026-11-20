@@ -110,6 +110,17 @@ async def test_the_conversation_is_translated_to_anthropic_blocks(fake_provider)
     ]
 
 
+async def test_a_pdf_goes_as_a_document_block(fake_provider):
+    fake_provider.reply("POST", "/v1/messages", sse=stream({"type": "message_stop"}))
+    pdf = {"type": "file", "file": {"filename": "albaran.pdf", "file_data": "data:application/pdf;base64,JVBERi0x"}}
+
+    await collect(client(fake_provider), TurnRequest(model_id="claude-sonnet-4-6", messages=[{"role": "user", "content": [{"type": "text", "text": "Read"}, pdf]}]))
+
+    assert fake_provider.requests[0].body["messages"] == [
+        {"role": "user", "content": [{"type": "text", "text": "Read"}, {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": "JVBERi0x"}}]},
+    ]
+
+
 @pytest.mark.parametrize(("raw", "reason"), [("max_tokens", "length"), ("stop_sequence", "stop"), ("refusal", "content_filter"), ("end_turn", "stop")])
 async def test_the_end_of_the_answer_is_named_alike(fake_provider, raw, reason):
     fake_provider.reply("POST", "/v1/messages", sse=stream({"type": "message_delta", "delta": {"stop_reason": raw}, "usage": {"output_tokens": 1}}, {"type": "message_stop"}))
