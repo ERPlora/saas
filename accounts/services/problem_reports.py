@@ -9,7 +9,8 @@ from live.context import OperationContext
 from live.errors import OperationError
 from live.operations import INTERNAL, operation
 
-from accounts import emails, queries
+from accounts import emails
+from accounts.queries import account_hubs, account_lookup
 from accounts.schemas import SupportReportIn, SupportReportOut
 from accounts.services.attempt_limits import too_many_attempts
 
@@ -42,7 +43,7 @@ def support_report(ctx: OperationContext, data: SupportReportIn) -> dict:
     """«Report a problem»: mail the support mailbox what the person wrote, with the
     account, its businesses, the page it came from and its browser, «Reply-To» the account (:func:`send_support_report`)."""
     browser = ctx.request.headers.get("User-Agent", "") if ctx.request is not None else ""
-    return send_support_report(queries.account_of(ctx), data, browser=browser, source=REPORT_FROM_PANEL)
+    return send_support_report(account_lookup.account_of(ctx), data, browser=browser, source=REPORT_FROM_PANEL)
 
 
 class UnknownAccount(OperationError):
@@ -59,10 +60,10 @@ def support_report_from_hub(account: str, *, hub: str, hub_id: str, data: Suppor
     """The Hub's «Report a problem» (its user menu, ``POST /internal/support/report``): the panel's report for the
     ``account`` of the Hub's session, from the business ``hub`` (its slug and id). An account that does not exist or
     is off is :class:`UnknownAccount`; one that is no member of that business, :class:`NotAMember`: no mail."""
-    user = queries.active_account(account)
+    user = account_lookup.active_account(account)
     if user is None:
         raise UnknownAccount(gettext("That account does not exist."))
-    if hub not in queries.hub_roles_of(user):
+    if hub not in account_hubs.hub_roles_of(user):
         raise NotAMember(gettext("That account is not a member of that business."))
     return send_support_report(user, data, browser=browser, source=REPORT_FROM_HUB, business=f"{hub} ({hub_id})")
 
@@ -85,7 +86,10 @@ def send_support_report(user, data: SupportReportIn, *, browser: str, source: st
     context = [
         ("Account", f"{user.email} ({user.pk})"),
         ("Language", user.language),
-        ("Businesses", ", ".join(f"{slug} ({role})" for slug, role in queries.hub_roles_of(user).items()) or "none"),
+        (
+            "Businesses",
+            ", ".join(f"{slug} ({role})" for slug, role in account_hubs.hub_roles_of(user).items()) or "none",
+        ),
         ("From", source),
         *([("Business", _one_line(business))] if business else []),
         ("Page", _one_line(data.page or "") or "unknown"),

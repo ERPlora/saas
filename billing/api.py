@@ -14,7 +14,7 @@ from django.http import HttpResponse
 from live.ninja import bind, run_operation
 from ninja import Query, Router
 
-from billing import queries, services
+from billing import queries
 from billing.schemas import (
     CheckoutConfirmIn,
     CheckoutStartIn,
@@ -33,7 +33,7 @@ from billing.schemas import (
     VatCheckIn,
 )
 from billing.schemas.promo_codes import PromoCheckIn
-from billing.services import payer_vat_numbers
+from billing.services import checkouts, hand_overs, module_cancellations, payer_vat_numbers, plan_changes, stripe_pages
 
 router = Router(tags=["billing"])
 
@@ -55,47 +55,47 @@ async def promo_check(request, params: Query[PromoCheckIn]):
 
 @bind(router, "billing.checkout.start", "/billing/checkout/start")
 async def checkout_start(request, data: CheckoutStartIn):
-    return await run_operation(request, services.checkout_start, data)
+    return await run_operation(request, checkouts.checkout_start, data)
 
 
 @bind(router, "billing.checkout.confirm", "/billing/checkout/confirm")
 async def checkout_confirm(request, data: CheckoutConfirmIn):
-    return await run_operation(request, services.checkout_confirm, data)
+    return await run_operation(request, plan_changes.checkout_confirm, data)
 
 
 @bind(router, "billing.plan.change", "/billing/plan/change")
 async def plan_change(request, data: PlanChangeIn):
-    return await run_operation(request, services.plan_change, data)
+    return await run_operation(request, plan_changes.plan_change, data)
 
 
 @bind(router, "billing.plan.cancel", "/billing/plan/cancel")
 async def plan_cancel(request, data: HubIn):
-    return await run_operation(request, services.plan_cancel, data)
+    return await run_operation(request, plan_changes.plan_cancel, data)
 
 
 @bind(router, "billing.plan.keep", "/billing/plan/keep")
 async def plan_keep(request, data: HubIn):
-    return await run_operation(request, services.plan_keep, data)
+    return await run_operation(request, plan_changes.plan_keep, data)
 
 
 @bind(router, "billing.plan.take_over", "/billing/plan/take-over")
 async def plan_take_over(request, data: HubIn):
-    return await run_operation(request, services.plan_take_over, data)
+    return await run_operation(request, hand_overs.plan_take_over, data)
 
 
 @bind(router, "billing.module.cancel", "/billing/module/cancel")
 async def module_cancel(request, data: ModuleIn):
-    return await run_operation(request, services.module_cancel, data)
+    return await run_operation(request, module_cancellations.module_cancel, data)
 
 
 @bind(router, "billing.module.keep", "/billing/module/keep")
 async def module_keep(request, data: ModuleIn):
-    return await run_operation(request, services.module_keep, data)
+    return await run_operation(request, module_cancellations.module_keep, data)
 
 
 @bind(router, "billing.portal.open", "/billing/portal")
 async def portal_open(request, data: PortalOpenIn):
-    return await run_operation(request, services.portal_open, data)
+    return await run_operation(request, stripe_pages.portal_open, data)
 
 
 @bind(router, "billing.store.catalog", "/billing/store")
@@ -141,7 +141,7 @@ async def invoice_csv(request, params: Query[InvoiceFilterIn]):
 
 @bind(router, "billing.invoice.pay", "/billing/invoices/pay")
 async def invoice_pay(request, data: InvoicePayIn):
-    return await run_operation(request, services.invoice_pay, data)
+    return await run_operation(request, stripe_pages.invoice_pay, data)
 
 
 @bind(router, "billing.subscription.list", "/billing/subscriptions")

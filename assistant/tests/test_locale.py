@@ -10,7 +10,7 @@ import gettext
 from django.conf import settings
 
 from base.tests.test_locale import messages_of
-from public.tests.test_legal import template_messages
+from public.tests.template_messages import template_messages
 
 CATALOG = settings.BASE_DIR / "assistant" / "locale" / "es" / "LC_MESSAGES" / "django.mo"
 TEMPLATES = sorted((settings.BASE_DIR / "assistant" / "templates").rglob("*.html"))

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // «Sign out of erplora.com?» (`/logout`, ACCOUNTS-F09): where the Hub's «Sign out» lands on a device without the PIN
-// pad (BASE-F61, hub `base/auth_views.py`), as the old SaaS's allauth page `account/logout.html` did. The Hub has
+// pad (BASE-F61, `hub/base/auth_views.py`), as the old SaaS's allauth page `account/logout.html` did. The Hub has
 // already ended its own session; erplora.com's stays open in this browser until the person confirms here, as an
 // identity provider asks when an app sends someone to its sign-out (OpenID Connect RP-Initiated Logout, Keycloak,
 // allauth). Opening the page closes nothing: a loose link, or another site's `<img>`, never signs anybody out.

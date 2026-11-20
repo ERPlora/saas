@@ -5,8 +5,9 @@ from live.context import OperationContext
 from live.operations import AI, operation
 from live.outbox import record_event
 
-from accounts import events, queries
+from accounts import events
 from accounts.models import UserPreferences
+from accounts.queries import account_lookup, account_preferences
 from accounts.schemas import PreferencesOut, PreferencesUpdateIn
 
 
@@ -40,7 +41,7 @@ from accounts.schemas import PreferencesOut, PreferencesUpdateIn
 def preferences_update(ctx: OperationContext, data: PreferencesUpdateIn) -> dict:
     """Change what was sent and nothing else. The language is the account's own (``User.language``); the
     rest lives in ``UserPreferences``, whose row is born with the first change."""
-    user = queries.account_of(ctx)
+    user = account_lookup.account_of(ctx)
     changes = data.model_dump(exclude_none=True)
     language = changes.pop("language", None)
     if language is not None:
@@ -55,4 +56,4 @@ def preferences_update(ctx: OperationContext, data: PreferencesUpdateIn) -> dict
             setattr(preferences, field, value)
         preferences.save()
     record_event(ctx, events.PREFERENCES_UPDATED)
-    return queries.preferences_of(user)
+    return account_preferences.preferences_of(user)

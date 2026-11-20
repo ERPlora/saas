@@ -201,7 +201,7 @@ Implicados: el Hub (su página de apps, BASE-F20), billing (la Tienda)
   iconos, consultas planas) y `apps/tests/test_api.py` (rutas, idioma y `Vary`); F02 `test_queries.py`
   (documentación, caché, imágenes) y `packages/live/tests/test_markdown.py`; F03 `apps/tests/test_models.py`
   (`clean()`, `apps.E001`, admin); F04 `apps/tests/test_admin.py` (el formulario del admin con el doble de Stripe)
-  y `billing/tests/test_services.py::TestThePricesOfAModule` (`module_price_problems`); F05 `test_queries.py` (no listadas), `billing/tests/test_store_catalog.py`,
+  y `billing/tests/test_services.py::TestThePricesOfAModule` (`module_price_problems`); F05 `test_queries.py` (no listadas), `billing/tests/test_queries_catalog.py`,
   `billing/tests/test_module_cancel.py` y `billing/tests/test_admin.py` (borrado protegido); F06
   `test_queries.py` (secciones, filtros, `known_verticals`) y `hubs/tests/test_models.py`; F07 el e2e
   `tests/e2e/panel/billing-support.spec.ts` (`/dashboard/store/modules?business=`), `billing/frontend/pages/StorePage.test.ts`
@@ -209,7 +209,7 @@ Implicados: el Hub (su página de apps, BASE-F20), billing (la Tienda)
   `base/frontend/pages/AppsPage.test.ts` (BASE-F20: «Mejorar plan» a la Tienda, solo en el navegador y para quien
   administra).
 - El idioma de la ficha y del manual va por `Accept-Language` o la cookie `_lang`.
-- APPS-F04 comparte con BILLING-F28 la comprobación de `billing/services/` (`_price_problems`, con
+- APPS-F04 comparte con BILLING-F28 la comprobación de `billing/services/price_checks.py` (`_price_problems`, con
   `plan_price_problems` y `module_price_problems` encima): `PriceCheckSkipped` (sin claves: se guarda con aviso) y
   `PriceCheckFailed` (Stripe no contesta: no se guarda y se pide repetir), en `ModuleForm` y en `PlanForm`.
 - APPS-F07: la parte del Hub es BASE-F20 (el enlace «Mejorar plan»). Ningún módulo es `premium`: el enlace no le

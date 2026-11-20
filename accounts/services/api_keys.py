@@ -13,8 +13,9 @@ from live.errors import Conflict, LiveMisuse, NotFound
 from live.operations import AI, INTERNAL, operation
 from live.outbox import record_event
 
-from accounts import emails, events, queries
+from accounts import emails, events
 from accounts.models import ApiKey
+from accounts.queries import account_api_keys, account_lookup
 from accounts.schemas import ApiKeyCreatedOut, ApiKeyCreateIn, ApiKeyIssueIn, ApiKeyRevokeIn, ApiKeyRowOut
 from accounts.services.reauthentication import require_recent_authentication
 
@@ -39,7 +40,7 @@ API_KEY_LAST_USED_RESOLUTION = timedelta(minutes=10)
 def apikey_create(ctx: OperationContext, data: ApiKeyCreateIn) -> dict:
     """A new key of the account, bounded by its scopes: the answer carries the whole key, the only time it exists
     in clear (only its hash is kept). Creating access asks for a recent sign-in, as GitHub and Stripe do."""
-    user = queries.account_of(ctx)
+    user = account_lookup.account_of(ctx)
     require_recent_authentication(ctx)
     return _new_api_key(ctx, user, data)
 
@@ -76,7 +77,7 @@ def _new_api_key(ctx: OperationContext, user, data: ApiKeyCreateIn) -> dict:
         partial(emails.send_api_key_created, user.email, key.name, list(key.scopes), language=user.language),
         robust=True,
     )
-    return {"key": queries.api_key_row(key, now), "secret": secret}
+    return {"key": account_api_keys.api_key_row(key, now), "secret": secret}
 
 
 @operation(
@@ -100,7 +101,7 @@ def _new_api_key(ctx: OperationContext, user, data: ApiKeyCreateIn) -> dict:
 )
 def apikey_revoke(ctx: OperationContext, data: ApiKeyRevokeIn) -> dict:
     """Cut a key of the account on the spot. Revoking is the audit trail: the row stays. Twice changes nothing."""
-    user = queries.account_of(ctx)
+    user = account_lookup.account_of(ctx)
     now = timezone.now()
     key = ApiKey.objects.select_for_update().filter(user=user, pk=data.id).first()
     if key is None:
@@ -110,7 +111,7 @@ def apikey_revoke(ctx: OperationContext, data: ApiKeyRevokeIn) -> dict:
         key.save(update_fields=["revoked_at"])
         logger.info("accounts.api_key_revoked user=%s key=%s", user.pk, key.pk)
         record_event(ctx, events.APIKEY_REVOKED)
-    return queries.api_key_row(key, now)
+    return account_api_keys.api_key_row(key, now)
 
 
 def record_api_key_use(key: ApiKey, now) -> None:
@@ -181,7 +182,7 @@ def apikey_revoke_any(ctx: OperationContext, data: ApiKeyRevokeIn) -> dict:
         key.revoked_at = now
         key.save(update_fields=["revoked_at"])
         record_event(ctx, events.APIKEY_REVOKED)
-    return queries.api_key_row(key, now)
+    return account_api_keys.api_key_row(key, now)
 
 
 def revoke_api_keys(keys, *, by) -> int:

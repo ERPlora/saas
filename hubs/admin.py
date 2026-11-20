@@ -30,13 +30,8 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import ngettext
 
-from accounts.admin import (
-    JUMP_FAILED,
-    JUMP_FAILED_UNKNOWN,
-    OPEN_IN_HUB_ADMIN,
-    UserAdmin,
-    open_hub_admin_url,
-)
+from accounts.admin.hub_admin_jump import JUMP_FAILED, JUMP_FAILED_UNKNOWN, OPEN_IN_HUB_ADMIN, open_hub_admin_url
+from accounts.admin.users import UserAdmin
 from hubs.services import platform_actions, subscription_sync
 from hubs.queries import hub_sync, membership
 from hubs.models import (
@@ -105,22 +100,22 @@ class PlanForm(forms.ModelForm):
             self.fields[field].choices = [(value, labels.get(value, label)) for value, label in self.fields[field].choices]
 
     def clean(self):
-        from billing import services as billing_services
+        from billing.services import price_checks
 
         cleaned = super().clean()
         self.unchecked = ""
         if self.errors or not set(self.PRICE_FIELDS) & set(self.changed_data):
             return cleaned
         try:
-            problems = billing_services.plan_price_problems(
+            problems = price_checks.plan_price_problems(
                 prices={field: cleaned.get(field) or "" for field in ("stripe_price_id", "stripe_price_id_annual")},
                 amounts={field: cleaned.get(field) for field in ("price_monthly", "price_annual")},
                 product=cleaned.get("stripe_product_id") or "",
             )
-        except billing_services.PriceCheckSkipped as skipped:
+        except price_checks.PriceCheckSkipped as skipped:
             self.unchecked = str(skipped)
             return cleaned
-        except billing_services.PriceCheckFailed as failed:
+        except price_checks.PriceCheckFailed as failed:
             raise forms.ValidationError(str(failed), code="price_check_failed") from failed
         for field, problem in problems.items():
             self.add_error(field, problem)
@@ -255,12 +250,12 @@ class HubAdmin(PlatformActions):
     @admin.action(description=_("Attach its payer to a Stripe test clock (test keys only)"), permissions=["sync"])
     @traced
     def attach_test_clock(self, request, queryset):
-        from billing import services as billing_services
+        from billing.services import staff_test_clocks
 
         for hub in queryset:
             try:
-                clock = billing_services.attach_test_clock(hub.id)
-            except billing_services.TestClockRefused as refused:
+                clock = staff_test_clocks.attach_test_clock(hub.id)
+            except staff_test_clocks.TestClockRefused as refused:
                 self.message_user(request, f"{hub.slug}: {refused}", messages.ERROR)
                 continue
             self.message_user(
@@ -270,12 +265,12 @@ class HubAdmin(PlatformActions):
     @admin.action(description=_("Advance its Stripe test clock a month (test keys only)"), permissions=["sync"])
     @traced
     def advance_test_clock(self, request, queryset):
-        from billing import services as billing_services
+        from billing.services import staff_test_clocks
 
         for hub in queryset:
             try:
-                reached = billing_services.advance_test_clock_of(hub.id)
-            except billing_services.TestClockRefused as refused:
+                reached = staff_test_clocks.advance_test_clock_of(hub.id)
+            except staff_test_clocks.TestClockRefused as refused:
                 self.message_user(request, f"{hub.slug}: {refused}", messages.ERROR)
                 continue
             self.message_user(

@@ -4,7 +4,7 @@ The route a Stripe endpoint delivers to lives in Stripe and the events it sends 
 Stripe's Dashboard, so nothing else notices an endpoint pointed at the wrong route, disabled after its 404s, or
 one event short. Only an ENABLED endpoint counts (a disabled one delivers nothing). Problems: an endpoint on our host
 to a route we do not serve, one to another environment, more than one to our route (one ``whsec_`` fits
-``STRIPE_WEBHOOK_SECRET``), none to it, and ours sending other events than ``billing.services.STRIPE_WEBHOOK_EVENTS``
+``STRIPE_WEBHOOK_SECRET``), none to it, and ours sending other events than ``billing.services.webhook_dispatch.STRIPE_WEBHOOK_EVENTS``
 (what is missing and what is extra, by name; ``*`` is every event). The daily scheduled task's door and the human's:
 it exits non-zero with the problems, so the ``task_failed`` alarm tells the team. Without a usable Stripe key there
 is nothing to audit: it says so and exits 0. The restricted live key needs read access to webhook endpoints.
@@ -16,7 +16,8 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.urls import reverse
 
-from billing import services, stripe_service
+from billing import stripe_service
+from billing.services import webhook_dispatch
 
 
 def _target(url: str) -> tuple[str, str]:
@@ -48,7 +49,7 @@ def endpoint_problems(endpoints: list[dict], url: str, events: tuple[str, ...]) 
     if not ours:
         problems.append(
             f"No enabled Stripe endpoint delivers to {url}: its events are lost. Create it in Stripe (or enable it) "
-            "with the events of billing.services.STRIPE_WEBHOOK_EVENTS and put its whsec_ in STRIPE_WEBHOOK_SECRET."
+            "with the events of billing.services.webhook_dispatch.STRIPE_WEBHOOK_EVENTS and put its whsec_ in STRIPE_WEBHOOK_SECRET."
         )
     elif len(ours) > 1:
         problems.append(
@@ -61,7 +62,7 @@ def endpoint_problems(endpoints: list[dict], url: str, events: tuple[str, ...]) 
         if "*" in enabled:
             problems.append(
                 f"Stripe endpoint {endpoint['id']} subscribes to every event (*): subscribe it exactly to the "
-                f"{len(events)} of billing.services.STRIPE_WEBHOOK_EVENTS."
+                f"{len(events)} of billing.services.webhook_dispatch.STRIPE_WEBHOOK_EVENTS."
             )
             continue
         missing, extra = sorted(wanted - enabled), sorted(enabled - wanted)
@@ -99,12 +100,12 @@ class Command(BaseCommand):
         for endpoint in endpoints:
             self.stdout.write(f"{endpoint['id']}  {endpoint.get('status', ''):<8}  {endpoint.get('url', '')}")
 
-        problems = endpoint_problems(endpoints, url, services.STRIPE_WEBHOOK_EVENTS)
+        problems = endpoint_problems(endpoints, url, webhook_dispatch.STRIPE_WEBHOOK_EVENTS)
         if problems:
             raise CommandError("\n".join(problems))
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"OK — {url} receives exactly the {len(services.STRIPE_WEBHOOK_EVENTS)} events the webhook handles."
+                f"OK — {url} receives exactly the {len(webhook_dispatch.STRIPE_WEBHOOK_EVENTS)} events the webhook handles."
             )
         )

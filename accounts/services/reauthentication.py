@@ -6,8 +6,8 @@ from django.utils.translation import gettext
 from live.context import OperationContext
 from live.errors import OperationError
 
-from accounts import queries
 from accounts.models import ApiKey
+from accounts.queries import account_lookup, ways_in
 
 
 class ReauthenticationRequired(OperationError):
@@ -44,7 +44,7 @@ def require_recent_authentication(ctx: OperationContext) -> None:
     from allauth.account.authentication import get_authentication_records
     from allauth.account.internal.flows.reauthentication import get_reauthentication_flows
 
-    user = queries.account_of(ctx)
+    user = account_lookup.account_of(ctx)
     request = ctx.request
     if isinstance(getattr(request, "auth", None), ApiKey):
         raise OperationError(
@@ -57,7 +57,7 @@ def require_recent_authentication(ctx: OperationContext) -> None:
         if records and time.time() - records[-1]["at"] < account_settings.REAUTHENTICATION_TIMEOUT:
             return
     flows = [flow["id"] for flow in get_reauthentication_flows(user)]
-    providers = queries.linked_providers(user)
+    providers = ways_in.linked_providers(user)
     if providers:
         flows.append("provider_redirect")
     raise ReauthenticationRequired(flows, providers)

@@ -54,9 +54,9 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
   sujeto» en la tabla y por el código postal (35001/51001/52001, la misma puerta que el cobro) y que cada
   territorio con un pagador en `hubs.BillingProfile` tiene tipo. Sale con error en el primer problema (alarma
   `task_failed`); un territorio que solo cubre el respaldo es un aviso.
-- **Tipo de la suscripción viva** (`services.retax_subscription`, BILLING-F02/F06, erplora-old/saas#2293): al guardar los datos
-  de facturación (`hubs.billing_profile.update`, tras el COMMIT, en `services.retax_payer`, que antes pone los
-  datos en el cliente de Stripe con `services.push_payer_to_stripe`, BILLING-F01: los mismos parámetros que
+- **Tipo de la suscripción viva** (`services.live_rates.retax_subscription`, BILLING-F02/F06, erplora-old/saas#2293): al guardar los datos
+  de facturación (`hubs.billing_profile.update`, tras el COMMIT, en `services.live_rates.retax_payer`, que antes pone los
+  datos en el cliente de Stripe con `services.stripe_customers.push_payer_to_stripe`, BILLING-F01: los mismos parámetros que
   `ensure_customer`, nada si el pagador aún no es cliente; un fallo se anota `billing.customer_push_failed` y no
   impide el recálculo) y cada día (`manage.py retax_subscriptions`),
   cada item de una suscripción `active`/`trialing`/`past_due` recibe los `TaxRate` que el motor da hoy, sin
@@ -68,7 +68,7 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
   quita con `tax_rates: []` y cambiar la fase actual cambia la suscripción en el acto (comprobado contra la API
   de prueba); un precio que ningún plan ni módulo tiene conserva su tipo. Un lugar que no se vende queda
   `refused` y el comando sale con error.
-- **Avisos de la OSS** (`services.note_oss_threshold`, BILLING-F06, erplora-old/saas#2297/#2299): cada factura cobrada que
+- **Avisos de la OSS** (`services.oss_notices.note_oss_threshold`, BILLING-F06, erplora-old/saas#2297/#2299): cada factura cobrada que
   cuenta para el umbral (B2C a otro estado de la UE, sin NIF-IVA comprobado) mira el total del año; la que lo
   lleva por encima del 80 % (`OSS_WARNING_PERCENT`) anota un `OssNotice` `near` y la que lo cruza (o la primera
   del año si el anterior cerró por encima) uno `crossed`, cada uno una vez al año (único por `(year, kind)`;
@@ -101,7 +101,7 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 | `stripe_keys.py`, `stripe_period.py`, `stripe_checkout.py`, `stripe_test_clocks.py` | Modo de una clave (`sk_`/`rk_`), periodo de la suscripción (en el item desde la API de 2025), `ui_mode = embedded_page` y `metadata.kind`, relojes de prueba (rechaza una clave live) |
 | `models/discounts.py`, `discount_terms.py`, `stripe_coupons.py` | `Discount`, las condiciones de un descuento (ver «Descuentos y códigos promocionales»): lo que quita de un importe, a qué planes y periodicidades se aplica, su nombre y su cupón espejo en Stripe |
 | `models/promo_codes.py`, `models/payments.py` | `PromoCode` (días de prueba, ADR-0107, o un `Discount`), `CheckoutAttempt` (un Embedded Checkout por intención; la misma selección reutiliza su sesión abierta), `WebhookEvent` (cada evento una vez) y `PaymentFailure` (por qué no se cobró una renovación) |
-| `webhooks.py` | `POST /webhooks/stripe/`: firma de Stripe → reclamo del evento → `services.process_stripe_event` |
+| `webhooks.py` | `POST /webhooks/stripe/`: firma de Stripe → reclamo del evento (`services/webhook_events.py`) → `services.webhook_dispatch.process_stripe_event`, que lo entrega a su manejador: el checkout (`services/checkout_webhooks.py`), la factura pagada o sin cobrar (`services/invoice_webhooks.py`), la suscripción y la tarjeta del pagador (`services/subscription_webhooks.py`); el negocio del que habla un evento, en `services/webhook_targets.py` |
 | `management/commands/sweep_unpaid.py` | `saas-cron`: impagos que Stripe dejó de reintentar, suscripciones de negocios eliminados, pagadores de cuentas eliminadas (`payers_forgotten`) y usos de códigos reservados por pagos que ya no se pueden completar (`promo_holds_released`) |
 | `management/commands/retax_subscriptions.py` | `saas-cron` (diaria): el tipo de hoy en cada suscripción viva y en las fases de su bajada programada (cambio de dirección no empujado, umbral OSS) y el reenvío de los avisos de la OSS que no salieron |
 | `management/commands/audit_tax_rules.py` | `saas-cron` (diaria) o a mano: la tabla de IVA cobra cada venta posible |
@@ -249,11 +249,14 @@ en otra solo por sus operaciones), que sube `state_version` y empuja la foto al 
 4. Renovación de más de 400 € con IVA sin NIF del pagador (factura completa, RD 1619/2012 art. 4): 409
    `billing.tax_id_required`.
 5. El NIF-IVA solo llega al cliente de Stripe si VIES lo probó (o es nacional); Stripe no lo recoge
-   (`tax_id_collection` apagado).
+   (`tax_id_collection` apagado). Queda como su único identificador fiscal (`stripe_tax_ids.keep_only`): los
+   anteriores, y uno que ya no puede viajar, se borran antes de añadir el actual, porque Stripe los imprime todos en
+   sus facturas y recibos y rechaza el sexto. Un rechazo al borrar se anota `billing.stripe_tax_id_not_removed` y
+   no para la venta; Stripe sin contestar pide reintentar el pago (al guardar los datos, `billing.customer_push_failed`).
 
 ### Webhook
 
-Eventos a suscribir en Stripe: **`billing.services.STRIPE_WEBHOOK_EVENTS`**, la única lista (15 hoy: los de
+Eventos a suscribir en Stripe: **`billing.services.webhook_dispatch.STRIPE_WEBHOOK_EVENTS`**, la única lista (15 hoy: los de
 checkout, las facturas y sus rectificativas, las suscripciones y el cliente), junto al `match` que los trata;
 `manage.py audit_stripe_webhooks` la compara con el destino de Stripe (cada día a las 05:40 UTC: ver «aws») y
 dice qué falta y qué sobra (BILLING-F39). Sin firma válida, 400; sin `STRIPE_WEBHOOK_SECRET`, 503;
@@ -474,11 +477,11 @@ PDF). Aquí nunca se simula VeriFactu: sin respuesta del Hub la factura sigue «
 | Pieza | Qué hace |
 |---|---|
 | `models/invoices.py`, `models/plan_changes.py` | `Invoice` (factura o rectificativa; pago `open`/`paid`/`void`; estado fiscal `issuing`/`issued`/`accepted`/`accepted_with_errors`/`rejected`, el del Hub; el pagador copiado el día de la emisión; importes en céntimos, `net + tax = total`; pagada ⇔ numerada, en la BD; `stripe_source_id`, `rectification_type`, `rectification_reason` en las rectificativas), `InvoiceLine` (una por línea de Stripe, con su categoría, tipo, base y cuota sellados; `item_kind`/`item_slug` dicen qué plan o módulo cobra), `InvoiceCounter` (año y último número por serie) y `PlanChangeSchedule` (la bajada que espera) |
-| `services.py` | `issue_number`, las operaciones internas `billing.invoice.record`, `billing.credit_note.record`, `billing.refund.record`, `billing.checkout.refund_record` (un pago de quien ya no es propietario, cancelado y devuelto por el webhook) y `billing.invoice.apply_fiscal_status`, `expire_open_checkouts` (tras el COMMIT de un traspaso), `post_platform_invoice`, `refresh_platform_invoice`, `send_invoice_mail`, `reconcile_platform_invoices`, `invoicing_available` y `billing.invoice.pay` |
+| `services/invoice_numbering.py`, `services/invoice_recording.py`, `services/rectifying_invoices.py`, `services/platform_invoices.py` (y lo que comparten: `services/invoice_sealing.py`, `services/invoice_events.py`) | `issue_number`; las operaciones internas `billing.invoice.record` (la factura desde Stripe), `billing.credit_note.record` y `billing.refund.record` (las rectificativas) y `billing.invoice.apply_fiscal_status`; `post_platform_invoice`, `refresh_platform_invoice`, `send_invoice_mail` y `reconcile_platform_invoices` (la emisión por el hub de plataforma). `expire_open_checkouts` (tras el COMMIT de un traspaso) está en `services/hand_overs.py` y `billing.invoice.pay` en `services/stripe_pages.py`; `billing.checkout.refund_record` (un pago de quien ya no es propietario, cancelado y devuelto por el webhook) está en `services/checkout_webhooks.py` e `invoicing_available` en `services/payment_gates.py` |
 | `queries/invoices.py`, `queries/subscriptions.py` | `billing.invoice.list`, `.get`, `.pdf`, `.csv`, `billing.subscription.list`, `billing.payment_method.get` |
 | `live.py` | Facturas y Suscripciones son vivas; un evento de una factura llega al canal de su pagador y al del propietario de su negocio. La tarjeta no es viva (pregunta a Stripe) |
 | `emails.py` | El aviso al pagador cuando el Hub la emite (texto plano en su idioma, con enlace a Facturación) |
-| `management/commands/reconcile_platform_invoices.py` | La pasada a mano; el `saas-worker` corre la misma cada 15 min (`services.reconcile_platform_invoices_exclusively`): reintenta lo que el Hub debe y los correos que no salieron |
+| `management/commands/reconcile_platform_invoices.py` | La pasada a mano; el `saas-worker` corre la misma cada 15 min (`services.platform_invoices.reconcile_platform_invoices_exclusively`): reintenta lo que el Hub debe y los correos que no salieron |
 
 ### Contrato con el hub de plataforma (lo implementa el carril Hub; firma HMAC v1 + v2 como todo `/internal`)
 

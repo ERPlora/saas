@@ -11,7 +11,7 @@ from ninja import Field, Schema
 from pydantic import AfterValidator, StringConstraints
 
 from accounts.adapters import folded_email
-from accounts.queries import local_path
+from accounts.queries.hub_links import local_path
 from billing.vat import SOLD_TO_COUNTRIES
 
 
@@ -45,7 +45,7 @@ def _email(value: str) -> str:
 
 
 def _local_path(value: str) -> str:
-    """A path on the hub (``/…``), never another host: the rule of ``accounts.queries.local_path``, which
+    """A path on the hub (``/…``), never another host: the rule of ``accounts.queries.hub_links.local_path``, which
     turns anything else into ``/``; an input refuses it instead (422)."""
     if local_path(value) != value:
         raise ValueError(_("Enter a path of the business, starting with /."))

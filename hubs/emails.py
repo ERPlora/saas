@@ -19,7 +19,8 @@ from django.utils import timezone, translation
 from django.utils.formats import date_format
 from django.utils.translation import gettext as _
 
-from accounts.queries import hub_start_url, receives_business_notices
+from accounts.queries.account_preferences import receives_business_notices
+from accounts.queries.hub_links import hub_start_url
 from base.emails import branded_message
 from base.navigation import BILLING, BUSINESSES
 

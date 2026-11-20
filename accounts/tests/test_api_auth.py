@@ -22,8 +22,9 @@ from live.ninja import bind, run_operation
 from live.operations import operation, registry
 from ninja import Router
 
-from accounts import api_auth, queries
+from accounts import api_auth
 from accounts.models import ApiKey
+from accounts.queries import account_api_keys
 from accounts.services import api_keys
 from accounts.tests.conftest import HOST
 from accounts.tests.probe import queries as probe_queries
@@ -178,7 +179,7 @@ class TestAKeyOfAnAccount:
 
     def test_garbage_costs_no_query(self, django_assert_num_queries):
         with django_assert_num_queries(0):
-            assert queries.api_key_for("erps_live_" + "-" * 48, timezone.now()) is None
+            assert account_api_keys.api_key_for("erps_live_" + "-" * 48, timezone.now()) is None
 
 
 class TestScopesBoundTheKey:

@@ -14,8 +14,7 @@ from django.core.management import call_command
 from django.utils import timezone
 from live.errors import Conflict, OperationError
 
-from billing import services
-from billing.services import promo_holds
+from billing.services import checkout_webhooks, checkouts, hand_overs, promo_holds, webhook_dispatch
 from billing.models import CheckoutAttempt, PromoCode, PromoRedemption
 from billing.schemas import CheckoutStartIn
 from billing.tests.conftest import code_of, ctx_for
@@ -25,7 +24,7 @@ pytestmark = [pytest.mark.django_db, pytest.mark.usefixtures("issuer_identity", 
 
 
 def start(user, hub, **selection):
-    return services.checkout_start(ctx_for(user), CheckoutStartIn(hub_id=hub.id, **selection)).model_dump()
+    return checkouts.checkout_start(ctx_for(user), CheckoutStartIn(hub_id=hub.id, **selection)).model_dump()
 
 
 def refused(call) -> OperationError:
@@ -61,7 +60,7 @@ def paid(stripe_double, hub, attempt: CheckoutAttempt) -> str:
     )
     metadata = {"kind": "hub_plan", "hub_id": str(hub.id), "plan": "starter", "billing_interval": "month",
                 "promo_code": attempt.promo_code}
-    return services.checkout_completed(
+    return checkout_webhooks.checkout_completed(
         checkout_session(attempt.stripe_session_id, subscription_id="sub_new", metadata=metadata)
     )
 
@@ -172,7 +171,7 @@ class TestItIsGivenBack:
         start(owner, shop, plan="starter", promo_code="testers")
         attempt = CheckoutAttempt.objects.get()
 
-        services.process_stripe_event(
+        webhook_dispatch.process_stripe_event(
             event("checkout.session.expired", checkout_session(
                 attempt.stripe_session_id, subscription_id=None, status="expired", payment_status="unpaid",
                 metadata={"kind": "hub_plan", "hub_id": str(shop.id)},
@@ -195,7 +194,7 @@ class TestItIsGivenBack:
         promo = code_of()
         start(owner, shop, plan="starter", promo_code="testers")
 
-        services.expire_open_checkouts(shop.id)
+        hand_overs.expire_open_checkouts(shop.id)
 
         assert not PromoRedemption.objects.exists()
         assert counted(promo) == 0

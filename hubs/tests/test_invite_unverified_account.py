@@ -3,7 +3,7 @@
 Covers ``hubs.member.invite`` and ``hubs.invitation.accept``. Anybody who can sign up with somebody else's address
 and never confirm it would otherwise be the one invited: the membership is the access and the invitation finds
 the account by its email. The rule: **an email nobody proved
-reserves nothing** (``accounts.queries.email_is_proven``). Inviting it releases the account
+reserves nothing** (``accounts.queries.ways_in.email_is_proven``). Inviting it releases the account
 (``accounts.services.mailbox_proof.release_unproven_account``): its password, second factor and linked Google go, its
 sessions in the SaaS end with the password and in every hub by a ``SessionRevocation``, and the mail
 says how to claim the account, so only whoever opens the mailbox gets in. Accepting needs the address

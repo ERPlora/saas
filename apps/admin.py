@@ -69,22 +69,22 @@ class ModuleForm(forms.ModelForm):
         fields = "__all__"
 
     def clean(self):
-        from billing import services as billing_services
+        from billing.services import price_checks
 
         cleaned = super().clean()
         self.unchecked = ""
         if self.errors or not set(self.PRICE_FIELDS) & set(self.changed_data):
             return cleaned
         try:
-            problems = billing_services.module_price_problems(
+            problems = price_checks.module_price_problems(
                 prices={field: cleaned.get(field) or "" for field in ("stripe_price_id_monthly", "stripe_price_id_annual")},
                 amounts={field: cleaned.get(field) for field in ("price_monthly_cents", "price_annual_cents")},
                 product=cleaned.get("stripe_product_id") or "",
             )
-        except billing_services.PriceCheckSkipped as skipped:
+        except price_checks.PriceCheckSkipped as skipped:
             self.unchecked = str(skipped)
             return cleaned
-        except billing_services.PriceCheckFailed as failed:
+        except price_checks.PriceCheckFailed as failed:
             raise forms.ValidationError(str(failed), code="price_check_failed") from failed
         for field, problem in problems.items():
             self.add_error(field, problem)

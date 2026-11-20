@@ -3,7 +3,7 @@
 // under a name of its own (`LOGIN`, `SIGN_IN`, `HERE`…). The panel's pages live under `PANEL`, `/dashboard`:
 // every page shown with the panel's menu, and nothing else (the launcher, the
 // sign-in's pages and the invitations stay at the root). Only the `routes.ts` files spell the paths: they import types
-// only (main.test.ts), so they cannot import a value.
+// only (main.guards.test.ts), so they cannot import a value.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';

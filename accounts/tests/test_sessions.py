@@ -243,17 +243,17 @@ class TestSigningIn:
     def test_a_session_signed_in_meanwhile_on_another_device_stays(self, ana, password, monkeypatch):
         """Two sign-ins of one account at once: the one that is recorded while this one is telling the live sessions
         apart is not among them yet, and still must not go (it is live: its session row came first)."""
-        from accounts import queries
+        from accounts.queries import account_sessions
 
         meanwhile = []
-        live_sessions = queries.live_sessions
+        live_sessions = account_sessions.live_sessions
 
         def live_sessions_while_another_device_signs_in(user):
             live = live_sessions(user)
             meanwhile.extend(_more_sessions(user, 1))
             return live
 
-        monkeypatch.setattr(queries, "live_sessions", live_sessions_while_another_device_signs_in)
+        monkeypatch.setattr(account_sessions, "live_sessions", live_sessions_while_another_device_signs_in)
 
         sign_in(Client(HTTP_USER_AGENT=MAC, REMOTE_ADDR="81.33.10.4"), ana.email, password)
 

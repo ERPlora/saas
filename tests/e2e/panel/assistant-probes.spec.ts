@@ -16,7 +16,9 @@
 // account surface, which sells nothing; `?surface=web` the web. The month's messages are reset when spent (the probes
 // do not check the quota; the battery does). Each probe in a new conversation; what it showed goes to
 // `.artifacts/qa/probes/<run>/` (its JSON and screenshots) and the run's report, `report.md` there, is written after
-// each probe, keys redacted. Recipe: tests/e2e/README.md, «Sondas del asistente».
+// each probe, keys redacted, with `bench.json`, the record of each turn that compares models (assistant-bench.ts; the
+// QA_ANSWER_* variables choose the model that answers, assistant_seed.py `answer_choice`). Recipe: tests/e2e/README.md,
+// «Sondas del asistente».
 // flow: ASSISTANT-F25 — the account asks the panel's assistant: reads alone, writes after the card.
 // flow: ASSISTANT-F27 — the panel's assistant answers how-to questions from ERPlora's documentation.
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -26,6 +28,20 @@ import { fileURLToPath } from 'node:url';
 import type { BrowserContext, Page } from '@playwright/test';
 
 import { realProviderMode } from '../assistant-battery';
+import {
+  benchModel,
+  type BenchMeta,
+  type BenchReport,
+  benchTurn,
+  type Measured,
+  offeredCode,
+  parseUsage,
+  spentBetween,
+  toolKind,
+  type Usage,
+  usageCode,
+  withTurn,
+} from '../assistant-bench';
 import {
   type CatalogTool,
   decisionFor,
@@ -39,7 +55,16 @@ import {
   redact,
   renderProbeReport,
 } from '../assistant-probes';
-import { type AssistantChat, forgetRealAssistant, qaChat, type RealSeed, seedRealAssistant, TURN_MS, uvRun } from './assistant-chat';
+import {
+  type AssistantChat,
+  forgetRealAssistant,
+  qaChat,
+  REAL_SECRETS,
+  type RealSeed,
+  seedRealAssistant,
+  TURN_MS,
+  uvRun,
+} from './assistant-chat';
 import { djangoPrintWarm } from './django';
 import { expect, test } from './fixtures';
 import { apiPost } from './session';
@@ -51,9 +76,10 @@ const CORPUS = join(HERE, '..', 'qa', 'probes');
 const RUN = process.env.PW_RUN_ID ?? 'local';
 const OUT = join(QA_DIR, 'probes', RUN);
 const REPORT = join(OUT, 'report.md');
+const BENCH = join(OUT, 'bench.json');
 const OWNER = { email: 'e2e-assistant-qa-battery@example.com', password: process.env.QA_PANEL_PASSWORD ?? 'e2e-panel' };
 /** Only to redact them from what is written: the seed reads them, never this spec. */
-const SECRETS = [process.env.QA_QWEN_API_KEY, process.env.QA_OPENAI_API_KEY];
+const SECRETS = REAL_SECRETS;
 
 const REAL = realProviderMode(process.env);
 /** Read when the spec loads, also when it is skipped: a broken probe file stops any run (the CI's Vitest checks the
@@ -61,6 +87,8 @@ const REAL = realProviderMode(process.env);
 const FILES = probeFiles(process.env.QA_PROBES || CORPUS);
 /** Each probe with its file, named from the SaaS (`tests/e2e/qa/probes/…`). */
 const PROBES = loadProbes(FILES).map(({ probe, source }) => ({ probe, source: relative(SAAS_DIR, resolve(source)) }));
+// Every model answers the whole corpus of the panel: a sample is the Hub's (its tests/e2e/assistant-sample.ts).
+if (process.env.QA_PROBES_SAMPLE) throw new Error('QA_PROBES_SAMPLE draws a sample of the Hub’s probes only: the panel asks its whole corpus.');
 
 test.skip(!REAL, 'only with QA_REAL_PROVIDER=1: the real model with real keys (tests/e2e/README.md)');
 test.describe.configure({ timeout: TURN_MS + 120_000 });
@@ -78,6 +106,10 @@ let place = { surface: '', language: '' };
 let resets = 0;
 let always: string[] = [];
 const catalogs = new Map<string, CatalogTool[]>();
+/** The tools the panel's turn offers each probe's phrase (`offeredCode`), ranked once per worker. */
+let offered: Record<string, string[]> = {};
+/** When the probe being asked was sent, and what the account had spent just before. */
+let asking: { started: number; before: Usage | null } = { started: 0, before: null };
 
 /** The seed of this worker: the keys and the account again (the worker before forgot them), the index only where it
  *  changed. */
@@ -140,6 +172,32 @@ function record(result: ProbeResult): void {
   writeReport();
 }
 
+/** The account's spend so far, as its usage rows say it. */
+const accountUsage = async (): Promise<Usage> => parseUsage(await djangoPrintWarm(usageCode(OWNER.email)));
+
+/** The probe's turn into the run's bench report: the same run of another worker keeps its meta. */
+async function bench(result: ProbeResult, measured: Omit<Measured, 'kind' | 'offered' | 'bodies' | 'usage'>): Promise<void> {
+  if (!seeded) return;
+  const meta: BenchMeta = {
+    product: 'saas',
+    run: RUN,
+    date: new Date().toISOString(),
+    model: benchModel(seeded.answer),
+    files: FILES.map((file) => relative(SAAS_DIR, resolve(file))),
+    corpus: PROBES.length,
+    sample: null,
+  };
+  const asked = result.verdict !== 'n.a.';
+  const usage = asked && asking.before ? spentBetween(asking.before, await accountUsage()) : null;
+  const kind = toolKind(result.probe, catalog(result.probe.language, 'web'));
+  // Only once the phrase was sent are the chat's bodies this probe's (a new conversation empties them).
+  const bodies = asked && asking.started ? await chat.streamed() : [];
+  const turn = benchTurn(result, { ...measured, bodies, usage, kind, offered: offered[result.probe.id] ?? null });
+  const kept = existsSync(BENCH) ? (JSON.parse(readFileSync(BENCH, 'utf8')) as BenchReport) : null;
+  const report = withTurn(kept, meta, turn, PROBES.map((entry) => entry.probe.id));
+  writeFileSync(BENCH, redact(JSON.stringify(report, null, 2), SECRETS));
+}
+
 /** How many outbox events there are: what a probe recorded comes after. Asked of the warm Django: no boot in a probe. */
 const outboxMark = async (): Promise<number> =>
   Number(await djangoPrintWarm('from live.models import OutboxEvent\nprint(OutboxEvent.objects.count())'));
@@ -186,6 +244,8 @@ async function ask(probe: Probe): Promise<ProbeObserved> {
   await keepMessages();
   await chat.newConversation();
   const mark = await outboxMark();
+  asking = { started: 0, before: await accountUsage() };
+  asking.started = Date.now();
   await chat.send(probe.phrase);
   await chat.settle(probe.id, async (card) => {
     await page.screenshot({ path: fileOf(probe, '-card.png') });
@@ -214,6 +274,7 @@ test.beforeAll(async ({ browser }) => {
   // Every catalogue a probe reads (`manage.py export_assistant_catalog`, a Django boot each): here, not in a probe.
   for (const language of ['en', 'es']) catalog(language, 'web');
   for (const { probe } of PROBES) catalog(probe.language, probe.surface);
+  offered = JSON.parse(await djangoPrintWarm(offeredCode(PROBES.map((entry) => entry.probe)))) as Record<string, string[]>;
   ({ context, page, chat } = await qaChat(browser, OWNER));
 });
 
@@ -234,20 +295,32 @@ for (const { probe, source } of PROBES) {
       everyLanguage: [...catalog('en', 'web'), ...catalog('es', 'web')],
     });
     if (problems.length) {
-      record({ probe, source, observed: null, verdict: 'n.a.', reasons: problems });
+      const skipped: ProbeResult = { probe, source, observed: null, verdict: 'n.a.', reasons: problems };
+      record(skipped);
+      await bench(skipped, { latencyMs: null, error: null });
       expect(problems, `${probe.id} was not asked`).toEqual([]);
       return;
     }
     let observed: ProbeObserved;
+    asking = { started: 0, before: null };
     try {
       observed = await ask(probe);
     } catch (error) {
       // A turn that never ended, a page that did not load: the report still names the probe and why.
-      record({ probe, source, observed: null, verdict: 'fail', reasons: [`did not finish: ${(error as Error).message.split('\n')[0]}`] });
+      const why = `did not finish: ${(error as Error).message.split('\n')[0]}`;
+      const failed: ProbeResult = { probe, source, observed: null, verdict: 'fail', reasons: [why] };
+      record(failed);
+      try {
+        await bench(failed, { latencyMs: asking.started ? Date.now() - asking.started : null, error: why });
+      } catch (unrecorded) {
+        throw new Error(`${why}; its bench record could not be written: ${(unrecorded as Error).message}`, { cause: error });
+      }
       throw error;
     }
     const { verdict, reasons } = probeVerdict(probe, observed, always);
-    record({ probe, source, observed, verdict, reasons });
+    const result: ProbeResult = { probe, source, observed, verdict, reasons };
+    record(result);
+    await bench(result, { latencyMs: chat.endedAt - asking.started, error: null });
     expect(verdict, `${probe.id}: ${reasons.join('; ')}`).toBe('pass');
   });
 }

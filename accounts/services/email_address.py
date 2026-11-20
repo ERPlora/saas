@@ -16,8 +16,9 @@ from live.errors import Conflict, InvalidPayload, OperationError
 from live.operations import INTERNAL, operation
 from live.outbox import record_event
 
-from accounts import emails, events, queries
+from accounts import emails, events
 from accounts.models import EmailChangeRequest
+from accounts.queries import account_lookup, account_profile, account_sessions, ways_in
 from accounts.schemas import EmailChangeIn, EmailVerifyIn, EmailVerifyOut, ProfileOut
 from accounts.services.attempt_limits import _spent, too_many_attempts
 from accounts.services.reauthentication import require_recent_authentication
@@ -90,7 +91,7 @@ def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:  # noqa: C
     from django.core.exceptions import ValidationError
     from django.core.validators import validate_email
 
-    user = queries.account_of(ctx)
+    user = account_lookup.account_of(ctx)
     if data.email.strip().lower() != user.email.lower():
         if not user.has_usable_password():
             raise Conflict(
@@ -111,17 +112,17 @@ def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:  # noqa: C
         raise _email_refused(gettext("Enter a valid email address.")) from None
     if len(email) > get_user_model()._meta.get_field("email").max_length:
         raise _email_refused(gettext("Enter a valid email address."))
-    if email == user.email.lower() and queries.email_is_proven(user, user.email):
+    if email == user.email.lower() and ways_in.email_is_proven(user, user.email):
         raise _email_refused(gettext("That is already your email."))
     if email_belongs_to_another_account(user, email):
         raise _email_refused(gettext("This email is already used by another account."))
-    pending = queries.email_change_of(user, request)
+    pending = account_profile.email_change_of(user, request)
     if (
         pending is not None
         and pending.email == email
         and time.time() - pending.created_at.timestamp() < EMAIL_CODE_RESEND_AFTER
     ):
-        return queries.profile_of(user, request)
+        return account_profile.profile_of(user, request)
     if _spent(request, EMAIL_CODES_PER_ADDRESS, "accounts.email_code.address", f"to:{email}"):
         raise OperationError(
             gettext("That address already got several codes in the last hour: try again later."),
@@ -132,7 +133,7 @@ def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:  # noqa: C
     EmailChangeRequest.objects.update_or_create(
         user=user,
         defaults={
-            "session_key": queries.current_session_key(request),
+            "session_key": account_sessions.current_session_key(request),
             "email": email,
             "code_hash": _hash_code(code),
             "attempts": 0,
@@ -147,7 +148,7 @@ def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:  # noqa: C
         )
     logger.info("accounts.email_code_sent user=%s", user.pk)
     record_event(ctx, events.EMAIL_CHANGE_REQUESTED)
-    return queries.profile_of(user, request)
+    return account_profile.profile_of(user, request)
 
 
 @operation(
@@ -174,9 +175,9 @@ def email_verify(ctx: OperationContext, data: EmailVerifyIn) -> dict:  # noqa: C
     from django.db import IntegrityError
     from django.db.models import F
 
-    user = queries.account_of(ctx)
+    user = account_lookup.account_of(ctx)
     request = ctx.request
-    change = queries.email_change_of(user, request)
+    change = account_profile.email_change_of(user, request)
     if change is None:
         raise _no_email_change()
     for rate in (EMAIL_CODE_TRIES_PER_MINUTE, EMAIL_CODE_TRIES_PER_HOUR):
@@ -191,7 +192,7 @@ def email_verify(ctx: OperationContext, data: EmailVerifyIn) -> dict:  # noqa: C
         left = max(EMAIL_CODE_ATTEMPTS - attempts, 0)
         if not left:
             EmailChangeRequest.objects.filter(pk=change.pk).delete()
-        return {"verified": False, "attempts_left": left, "profile": queries.profile_of(user, request)}
+        return {"verified": False, "attempts_left": left, "profile": account_profile.profile_of(user, request)}
     email = change.email
     if email_belongs_to_another_account(user, email):
         raise Conflict(gettext("This email is already used by another account."), code="accounts.email_taken")
@@ -224,5 +225,5 @@ def email_verify(ctx: OperationContext, data: EmailVerifyIn) -> dict:  # noqa: C
     return {
         "verified": True,
         "attempts_left": max(EMAIL_CODE_ATTEMPTS - attempts, 0),
-        "profile": queries.profile_of(user, request),
+        "profile": account_profile.profile_of(user, request),
     }

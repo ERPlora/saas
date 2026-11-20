@@ -5,7 +5,7 @@ that same rate on every renewal, so without this a payer who moves from Madrid t
 21 %, and a consumer in Berlin keeps Spanish VAT after the year crosses the OSS threshold.
 
 Adapted to the new design: one subscription per business (the plan and its modules are items of it), the
-same engine as the sale (``services.price_sale``), the next invoice charges the new rate (no proration: the
+same engine as the sale (``services.stripe_sales.price_sale``), the next invoice charges the new rate (no proration: the
 paid period is not touched). Two doors: right after the owner saves the billing details, and the daily
 ``manage.py retax_subscriptions`` (an address change whose push failed, a crossing of the threshold, a rate
 the table schedules). Instead of a trail row per subscription (old ``OssSubscriptionRetax``), the rates
@@ -18,8 +18,8 @@ import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
-from billing import services
 from billing.models import FiscalPolicy, PlanChangeSchedule
+from billing.services import live_rates
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import item, subscription
 
@@ -55,7 +55,7 @@ def move(hub, country, postal_code, tax_id=""):
 def spanish_rate(stripe_double, shop):
     """The id of the account's ES 21 % rate, as the sale makes it."""
     on_starter(shop, stripe_double)
-    services.retax_subscription(shop)
+    live_rates.retax_subscription(shop)
     return stripe_double.last("subscriptions.update").params["items"][0]["tax_rates"][0]
 
 
@@ -63,7 +63,7 @@ class TestRetaxingOneBusiness:
     def test_an_item_without_our_rate_gets_it_from_the_next_invoice(self, shop, stripe_double):
         paid = on_starter(shop, stripe_double)
 
-        outcome = services.retax_subscription(paid)
+        outcome = live_rates.retax_subscription(paid)
 
         assert outcome == "retaxed"
         sent = stripe_double.last("subscriptions.update")
@@ -81,7 +81,7 @@ class TestRetaxingOneBusiness:
         rate = spanish_rate(stripe_double, shop)
         paid = on_starter(move(shop, "ES", "35001"), stripe_double, rates=[rate])
 
-        outcome = services.retax_subscription(paid)
+        outcome = live_rates.retax_subscription(paid)
 
         assert outcome == "retaxed"
         assert stripe_double.last("subscriptions.update").params["items"] == [
@@ -91,7 +91,7 @@ class TestRetaxingOneBusiness:
     def test_the_plan_and_every_module_are_retaxed(self, shop, stripe_double, inventory):
         paid = on_starter(shop, stripe_double, "inventory")
 
-        services.retax_subscription(paid)
+        live_rates.retax_subscription(paid)
 
         items = stripe_double.last("subscriptions.update").params["items"]
         assert [line["id"] for line in items] == ["si_plan", "si_inventory"]
@@ -102,19 +102,19 @@ class TestRetaxingOneBusiness:
         paid = on_starter(shop, stripe_double, rates=[rate])
         sent_before = len(stripe_double.calls_to("subscriptions.update"))
 
-        outcome = services.retax_subscription(paid)
+        outcome = live_rates.retax_subscription(paid)
 
         assert outcome == "unchanged"
         assert len(stripe_double.calls_to("subscriptions.update")) == sent_before
 
     def test_a_business_without_a_paid_plan_is_skipped_without_asking_stripe(self, shop, stripe_double):
-        assert services.retax_subscription(shop) == "skipped"
+        assert live_rates.retax_subscription(shop) == "skipped"
         assert stripe_double.paths() == []
 
     def test_a_cancelled_subscription_is_skipped(self, shop, stripe_double):
         paid = on_starter(shop, stripe_double, status="canceled")
 
-        assert services.retax_subscription(paid) == "skipped"
+        assert live_rates.retax_subscription(paid) == "skipped"
         assert stripe_double.calls_to("subscriptions.update") == []
 
     def test_a_downgrade_waiting_in_a_schedule_is_left_alone_on_the_subscription(self, shop, stripe_double):
@@ -123,7 +123,7 @@ class TestRetaxingOneBusiness:
         paid = on_starter(shop, stripe_double)
         waiting(paid, stripe_double, current=[], following=[])
 
-        services.retax_subscription(paid)
+        live_rates.retax_subscription(paid)
 
         assert stripe_double.calls_to("subscriptions.update") == []
 
@@ -131,7 +131,7 @@ class TestRetaxingOneBusiness:
         paid = on_starter(move(shop, "US", "10001"), stripe_double)
 
         with caplog.at_level(logging.ERROR, logger="billing.services"):
-            outcome = services.retax_subscription(paid)
+            outcome = live_rates.retax_subscription(paid)
 
         assert outcome == "refused"
         assert stripe_double.calls_to("subscriptions.update") == []
@@ -144,7 +144,7 @@ class TestRetaxingOneBusiness:
         FiscalPolicy.objects.update(oss_registered=True)
         paid = on_starter(move(shop, "DE", "10115"), stripe_double)
 
-        services.retax_subscription(paid)
+        live_rates.retax_subscription(paid)
 
         rate_id = stripe_double.last("subscriptions.update").params["items"][0]["tax_rates"][0]
         rate = next(rate for rate in stripe_double.tax_rates if rate["id"] == rate_id)
@@ -205,7 +205,7 @@ class TestADowngradeWaiting:
         for phase in schedule["phases"]:
             phase["discounts"] = [{"coupon": None, "discount": "di_testers", "promotion_code": None}]
 
-        services.retax_subscription(paid)
+        live_rates.retax_subscription(paid)
 
         phases = stripe_double.last("subscription_schedules.update").params["phases"]
         assert [phase["discounts"] for phase in phases] == [[{"discount": "di_testers"}]] * 2
@@ -217,7 +217,7 @@ class TestADowngradeWaiting:
         paid = on_starter(move(shop, "ES", "35001"), stripe_double, rates=[rate])
         waiting(paid, stripe_double, current=[rate], following=[rate])
 
-        outcome = services.retax_subscription(paid)
+        outcome = live_rates.retax_subscription(paid)
 
         assert outcome == "retaxed"
         sent = stripe_double.last("subscription_schedules.update")
@@ -238,7 +238,7 @@ class TestADowngradeWaiting:
         paid = on_starter(move(shop, "ES", "35001"), stripe_double, rates=[rate])
         waiting(paid, stripe_double, current=[rate], following=[rate], past=[rate])
 
-        services.retax_subscription(paid)
+        live_rates.retax_subscription(paid)
 
         phases = stripe_double.last("subscription_schedules.update").params["phases"]
         assert [phase["items"][0]["price"] for phase in phases] == ["price_standard_month", "price_starter_month"]
@@ -248,7 +248,7 @@ class TestADowngradeWaiting:
         paid = on_starter(shop, stripe_double, rates=[rate])
         waiting(paid, stripe_double, current=[rate], following=[rate])
 
-        assert services.retax_subscription(paid) == "unchanged"
+        assert live_rates.retax_subscription(paid) == "unchanged"
         assert stripe_double.calls_to("subscription_schedules.update") == []
 
     def test_a_madrid_payer_gets_the_spanish_rate_on_the_phase_that_lacked_it(self, shop, stripe_double):
@@ -256,7 +256,7 @@ class TestADowngradeWaiting:
         paid = on_starter(shop, stripe_double, rates=[rate])
         waiting(paid, stripe_double, current=[rate], following=[])
 
-        services.retax_subscription(paid)
+        live_rates.retax_subscription(paid)
 
         phases = stripe_double.last("subscription_schedules.update").params["phases"]
         assert [phase["items"][0]["tax_rates"] for phase in phases] == [[rate], [rate]]
@@ -269,7 +269,7 @@ class TestADowngradeWaiting:
         waiting(paid, stripe_double, current=[], following=[], current_prices=annual, following_prices=annual)
 
         with caplog.at_level(logging.ERROR, logger="billing.services"):
-            outcome = services.retax_subscription(paid)
+            outcome = live_rates.retax_subscription(paid)
 
         assert outcome == "refused"
         assert [r.code for r in caplog.records if getattr(r, "event", "") == "billing.retax_refused"] == [
@@ -284,14 +284,14 @@ class TestADowngradeWaiting:
         annual = ("price_starter_year", "price_inventory_year")
         waiting(paid, stripe_double, current=[], following=[], current_prices=annual, following_prices=annual)
 
-        assert services.retax_subscription(paid) == "retaxed"
+        assert live_rates.retax_subscription(paid) == "retaxed"
 
     def test_a_price_no_plan_nor_module_has_keeps_its_rates(self, shop, stripe_double):
         rate = spanish_rate(stripe_double, shop)
         paid = on_starter(shop, stripe_double, rates=[rate])
         waiting(paid, stripe_double, current=[rate], following=[rate], current_prices=("price_unknown",))
 
-        assert services.retax_subscription(paid) == "unchanged"
+        assert live_rates.retax_subscription(paid) == "unchanged"
 
     def test_a_trial_and_an_open_end_are_restated_as_they_are(self, shop, stripe_double):
         """A phase in trial keeps its ``trial_end`` (without it Stripe would end the trial); a last phase
@@ -305,7 +305,7 @@ class TestADowngradeWaiting:
         schedule["phases"][1]["end_date"] = None
         stripe_double.answer("subscription_schedules.retrieve", schedule)
 
-        services.retax_subscription(paid)
+        live_rates.retax_subscription(paid)
 
         current, following = stripe_double.last("subscription_schedules.update").params["phases"]
         assert current["trial_end"] == MONTH_END
@@ -316,7 +316,7 @@ class TestADowngradeWaiting:
         paid = on_starter(move(shop, "US", "10001"), stripe_double, rates=[rate])
         waiting(paid, stripe_double, current=[rate], following=[rate])
 
-        assert services.retax_subscription(paid) == "refused"
+        assert live_rates.retax_subscription(paid) == "refused"
         assert stripe_double.calls_to("subscription_schedules.update") == []
 
 

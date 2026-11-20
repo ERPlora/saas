@@ -19,8 +19,8 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
-from billing import services
 from billing.models import CheckoutAttempt, PromoCode, WebhookEvent
+from billing.services import webhook_dispatch
 from billing.tests.conftest import pay
 from billing.tests.stripe_double import (
     MONTH_END,
@@ -131,7 +131,7 @@ class TestTheDoor:
     def test_the_same_event_twice_is_processed_once(self, monkeypatch):
         runs = []
         monkeypatch.setattr(
-            services,
+            webhook_dispatch,
             "process_stripe_event",
             lambda received: runs.append(received["id"]) or "processed",
         )
@@ -153,7 +153,7 @@ class TestTheDoor:
             processing_since=timezone.now(),
         )
         monkeypatch.setattr(
-            services,
+            webhook_dispatch,
             "process_stripe_event",
             lambda received: pytest.fail("processed twice"),
         )
@@ -169,7 +169,7 @@ class TestTheDoor:
             event_id="evt_stale", event_type="invoice.paid", processing_since=stale
         )
         monkeypatch.setattr(
-            services, "process_stripe_event", lambda received: "processed"
+            webhook_dispatch, "process_stripe_event", lambda received: "processed"
         )
 
         response = deliver(event("invoice.paid", {"id": "in_1"}, event_id="evt_stale"))
@@ -181,7 +181,7 @@ class TestTheDoor:
         def boom(received):
             raise RuntimeError("the database went away")
 
-        monkeypatch.setattr(services, "process_stripe_event", boom)
+        monkeypatch.setattr(webhook_dispatch, "process_stripe_event", boom)
         payload = event("invoice.paid", {"id": "in_1"}, event_id="evt_fail")
 
         failed = deliver(payload)
@@ -194,7 +194,7 @@ class TestTheDoor:
             "went away" in row.error_message,
         ) == (False, None, True)
         monkeypatch.setattr(
-            services, "process_stripe_event", lambda received: "processed"
+            webhook_dispatch, "process_stripe_event", lambda received: "processed"
         )
         assert deliver(payload).status_code == 200
         assert WebhookEvent.objects.get(event_id="evt_fail").attempts == 2

@@ -15,7 +15,7 @@ import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
-from billing import services
+from billing.services import live_subscriptions, subscription_drift
 from billing.tests.conftest import pay
 from billing.tests.stripe_double import connection_error, invalid_request, item, subscription
 from hubs.models import Subscription
@@ -34,7 +34,7 @@ STARTER = [item("si_plan", "price_starter_month")]
 def in_step(hub, stripe_double, *, sub_id="sub_1", customer="cus_1"):
     """The business paying Starter exactly as Stripe has it (what the last webhook left)."""
     paid = pay(hub, sub_id=sub_id, customer=customer)
-    services.apply_live(paid.id, subscription(sub_id, customer=customer, items=STARTER))
+    live_subscriptions.apply_live(paid.id, subscription(sub_id, customer=customer, items=STARTER))
     return Subscription.objects.select_related("hub", "plan").get(hub=paid)
 
 
@@ -51,7 +51,7 @@ class TestOneSubscription:
         mine = in_step(shop, stripe_double)
         stripe_has(stripe_double)
 
-        assert services.sync_subscription(mine) == "in_sync"
+        assert subscription_drift.sync_subscription(mine) == "in_sync"
         assert local(shop.id).updated_at == mine.updated_at
 
     def test_a_cancellation_whose_event_never_arrived_is_applied(self, shop, stripe_double, caplog):
@@ -59,7 +59,7 @@ class TestOneSubscription:
         stripe_has(stripe_double, cancel_at_period_end=True)
 
         with caplog.at_level(logging.WARNING, logger="billing.services"):
-            assert services.sync_subscription(mine) == "fixed"
+            assert subscription_drift.sync_subscription(mine) == "fixed"
 
         assert local(shop.id).cancel_at_period_end is True
         drift = [r for r in caplog.records if getattr(r, "event", "") == "billing.subscription_drift"]
@@ -69,7 +69,7 @@ class TestOneSubscription:
         mine = in_step(shop, stripe_double)
         stripe_has(stripe_double, items=[item("si_plan", "price_standard_year", interval="year")])
 
-        assert services.sync_subscription(mine) == "fixed"
+        assert subscription_drift.sync_subscription(mine) == "fixed"
 
         now = local(shop.id)
         assert (now.plan.slug, now.billing_interval) == ("standard", "year")
@@ -78,7 +78,7 @@ class TestOneSubscription:
         mine = in_step(shop, stripe_double)
         stripe_has(stripe_double, items=[*STARTER, item("si_inventory", "price_inventory_month")])
 
-        assert services.sync_subscription(mine) == "fixed"
+        assert subscription_drift.sync_subscription(mine) == "fixed"
 
         assert list(local(shop.id).items.filter(source="purchase").values_list("module_slug", flat=True)) == [
             "inventory"
@@ -88,7 +88,7 @@ class TestOneSubscription:
         mine = in_step(shop, stripe_double)
         stripe_has(stripe_double, status="canceled")
 
-        assert services.sync_subscription(mine) == "fixed"
+        assert subscription_drift.sync_subscription(mine) == "fixed"
 
         now = local(shop.id)
         assert (now.plan.slug, now.stripe_subscription_id) == ("free", "")
@@ -97,7 +97,7 @@ class TestOneSubscription:
         mine = in_step(shop, stripe_double)
         stripe_has(stripe_double, cancel_at_period_end=True)
 
-        assert services.sync_subscription(mine, apply=False) == "drifted"
+        assert subscription_drift.sync_subscription(mine, apply=False) == "drifted"
 
         now = local(shop.id)
         assert now.cancel_at_period_end is False
@@ -107,7 +107,7 @@ class TestOneSubscription:
         mine = in_step(shop, stripe_double)
         stripe_double.answer("subscriptions.retrieve", invalid_request())
 
-        assert services.sync_subscription(mine) == "missing"
+        assert subscription_drift.sync_subscription(mine) == "missing"
 
         now = local(shop.id)
         assert (now.plan.slug, now.stripe_subscription_id, now.updated_at) == ("starter", "sub_1", mine.updated_at)
@@ -116,7 +116,7 @@ class TestOneSubscription:
         mine = in_step(shop, stripe_double)
         stripe_has(stripe_double, status="incomplete")
 
-        assert services.sync_subscription(mine) == "pending"
+        assert subscription_drift.sync_subscription(mine) == "pending"
         assert local(shop.id).status == "active"
 
 
@@ -134,14 +134,14 @@ class TestThePass:
         }
         stripe_double.answer("subscriptions.retrieve", lambda call: answers[call.args[0]])
 
-        counts = services.sync_subscriptions()
+        counts = subscription_drift.sync_subscriptions()
 
         assert counts == {"checked": 2, "in_sync": 0, "fixed": 1, "drifted": 0, "pending": 0, "missing": 0, "errors": 1}
         assert local(second.hub_id).cancel_at_period_end is True
         assert local(first.hub_id).updated_at == first.updated_at
 
     def test_a_business_on_free_is_not_read(self, shop, stripe_double):
-        counts = services.sync_subscriptions()
+        counts = subscription_drift.sync_subscriptions()
 
         assert counts["checked"] == 0
         assert stripe_double.calls_to("subscriptions.retrieve") == []

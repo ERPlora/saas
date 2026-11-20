@@ -339,7 +339,7 @@ class TestWhatDeletingDoes:
         """The law keeps ERPlora's invoices (GDPR art. 17.3.b), so deleting the account
         deletes the person, not its invoices: each keeps who it was issued to, only its link to the account goes."""
         from billing.models import Invoice
-        from billing.tests.test_invoice_queries import issue
+        from billing.tests.test_queries_invoices import issue
         from hubs.models import Hub
 
         business = create_business(ana, name="Panadería López")

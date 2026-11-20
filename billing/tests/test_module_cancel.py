@@ -17,8 +17,8 @@ import pytest
 from django.utils import timezone
 from live.errors import NotFound, OperationError, PermissionDenied
 
-from billing import services
 from billing.schemas import ModuleIn, PortalOpenIn
+from billing.services import module_cancellations, stripe_pages
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import MONTH_END, item, subscription
 from hubs.queries import hub_sync
@@ -34,13 +34,13 @@ def _stripe(stripe_double, issuer_identity):
 
 
 def cancel(user, hub, module="inventory"):
-    return services.module_cancel(
+    return module_cancellations.module_cancel(
         ctx_for(user), ModuleIn(hub_id=hub.id, module=module)
     ).model_dump()
 
 
 def keep(user, hub, module="inventory"):
-    return services.module_keep(
+    return module_cancellations.module_keep(
         ctx_for(user), ModuleIn(hub_id=hub.id, module=module)
     ).model_dump()
 
@@ -272,7 +272,7 @@ class TestThePortal:
         paid = pay(shop)
         paid.billing_profile.refresh_from_db()
 
-        answer = services.portal_open(
+        answer = stripe_pages.portal_open(
             ctx_for(owner), PortalOpenIn(hub_id=paid.id)
         ).model_dump()
 
@@ -287,7 +287,7 @@ class TestThePortal:
         settings.STRIPE_PORTAL_CONFIGURATION = "bpc_erplora"
         paid = pay(shop)
 
-        services.portal_open(ctx_for(owner), PortalOpenIn(hub_id=paid.id))
+        stripe_pages.portal_open(ctx_for(owner), PortalOpenIn(hub_id=paid.id))
 
         assert stripe_double.last("billing_portal.sessions.create").params["configuration"] == "bpc_erplora"
 
@@ -296,7 +296,7 @@ class TestThePortal:
         paid = pay(shop)
 
         with pytest.raises(OperationError) as error:
-            services.portal_open(ctx_for(owner), PortalOpenIn(hub_id=paid.id))
+            stripe_pages.portal_open(ctx_for(owner), PortalOpenIn(hub_id=paid.id))
 
         assert (error.value.status, error.value.code) == (503, "billing.portal_unavailable")
         assert stripe_double.calls == []
@@ -306,7 +306,7 @@ class TestThePortal:
     ):
         refused(
             "billing.no_customer",
-            lambda: services.portal_open(ctx_for(owner), PortalOpenIn(hub_id=shop.id)),
+            lambda: stripe_pages.portal_open(ctx_for(owner), PortalOpenIn(hub_id=shop.id)),
         )
 
         assert stripe_double.calls == []
@@ -317,14 +317,14 @@ class TestThePortal:
         add_member(paid, admin, HubMember.Role.ADMIN, invited_by=owner)
 
         with pytest.raises(PermissionDenied):
-            services.portal_open(ctx_for(admin), PortalOpenIn(hub_id=paid.id))
+            stripe_pages.portal_open(ctx_for(admin), PortalOpenIn(hub_id=paid.id))
 
     def test_without_stripe_it_says_so(self, shop, owner, settings):
         paid = pay(shop)
         settings.STRIPE_SECRET_KEY = ""
 
         with pytest.raises(OperationError) as error:
-            services.portal_open(ctx_for(owner), PortalOpenIn(hub_id=paid.id))
+            stripe_pages.portal_open(ctx_for(owner), PortalOpenIn(hub_id=paid.id))
 
         assert (error.value.status, error.value.code) == (
             503,
@@ -340,7 +340,7 @@ def test_a_new_owner_does_not_open_the_previous_owners_portal(shop, owner, make_
     new_owner = transferred(paid, owner, make_user)
 
     with pytest.raises(OperationError) as error:
-        services.portal_open(ctx_for(new_owner), PortalOpenIn(hub_id=paid.id))
+        stripe_pages.portal_open(ctx_for(new_owner), PortalOpenIn(hub_id=paid.id))
 
     assert error.value.code == "billing.payer_required"
     assert stripe_double.calls == []

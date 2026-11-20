@@ -15,8 +15,8 @@ from django.db import transaction
 from django.utils import timezone
 from live.slugs import validate_hub_slug
 
-from accounts import queries
 from accounts.models import AuthExchangeCode
+from accounts.queries import account_hubs, two_factor
 from accounts.services.platform_staff import SUPPORT_GROUP
 
 
@@ -86,14 +86,14 @@ def _role_in(user, hub_slug: str, audience: str) -> str | None:
     """What ``user`` is on ``hub_slug`` for ``audience``: a member's ``hub_*`` role or a platform role."""
     if audience == AuthExchangeCode.HUB_ADMIN_AUDIENCE:
         return _platform_role(user)
-    return queries.hub_roles_of(user).get(hub_slug)
+    return account_hubs.hub_roles_of(user).get(hub_slug)
 
 
 def _needs_second_factor(user, audience: str) -> bool:
     """With ``ACCOUNTS_MFA_ENABLED``: ``hub-admin`` always, ``hub-session`` if the account has an app."""
     if not settings.ACCOUNTS_MFA_ENABLED:
         return False
-    return audience == AuthExchangeCode.HUB_ADMIN_AUDIENCE or queries.has_totp(user)
+    return audience == AuthExchangeCode.HUB_ADMIN_AUDIENCE or two_factor.has_totp(user)
 
 
 def issue_code(

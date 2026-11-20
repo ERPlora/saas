@@ -35,7 +35,7 @@ from django.db import close_old_connections
 from django.utils import timezone
 
 from base.listener import Listener
-from billing import services as billing_services
+from billing.services import platform_invoices
 from hubs.services import reconciliation
 from whatsapp import gateway, queries, services
 from whatsapp.schemas import NextDueIn
@@ -74,8 +74,8 @@ PERIODIC = (
     Periodic("reconcile_hub_states", reconciliation.reconcile_exclusively, reconciliation.run_failed),
     Periodic(
         "reconcile_platform_invoices",
-        billing_services.reconcile_platform_invoices_exclusively,
-        billing_services.platform_run_failed,
+        platform_invoices.reconcile_platform_invoices_exclusively,
+        platform_invoices.platform_run_failed,
     ),
 )
 

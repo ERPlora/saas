@@ -8,7 +8,15 @@ input, never in the path (one parameter per route, the operation's input), as in
 from live.ninja import bind, run_operation
 from ninja import Query, Router
 
-from accounts import queries
+from accounts.queries import (
+    account_api_keys,
+    account_export,
+    account_hubs,
+    account_preferences,
+    account_profile,
+    account_sessions,
+    two_factor,
+)
 from accounts.schemas import (
     ApiKeyCreateIn,
     ApiKeyRevokeIn,
@@ -39,7 +47,7 @@ router = Router(tags=["accounts"])
 # Session auth (the API's default): an anonymous visitor gets the 401 envelope.
 @bind(router, "accounts.hub.list", "/accounts/hubs")
 async def hub_list(request):
-    return await run_operation(request, queries.hub_list)
+    return await run_operation(request, account_hubs.hub_list)
 
 
 # --- The Account page ---------------------------------------------------------------
@@ -47,7 +55,7 @@ async def hub_list(request):
 
 @bind(router, "accounts.profile.get", "/accounts/profile")
 async def profile_get(request):
-    return await run_operation(request, queries.profile_get)
+    return await run_operation(request, account_profile.profile_get)
 
 
 @bind(router, "accounts.profile.update", "/accounts/profile")
@@ -62,7 +70,7 @@ async def profile_delete(request):
 
 @bind(router, "accounts.data.export", "/accounts/export")
 async def data_export(request):
-    return await run_operation(request, queries.data_export)
+    return await run_operation(request, account_export.data_export)
 
 
 @bind(router, "accounts.email.change", "/accounts/email/change")
@@ -87,7 +95,7 @@ async def photo_remove(request):
 
 @bind(router, "accounts.preferences.get", "/accounts/preferences")
 async def preferences_get(request):
-    return await run_operation(request, queries.preferences_get)
+    return await run_operation(request, account_preferences.preferences_get)
 
 
 @bind(router, "accounts.preferences.update", "/accounts/preferences")
@@ -97,7 +105,7 @@ async def preferences_update(request, data: PreferencesUpdateIn):
 
 @bind(router, "accounts.session.list", "/accounts/sessions")
 async def session_list(request, params: Query[SessionListIn]):
-    return await run_operation(request, queries.session_list, params)
+    return await run_operation(request, account_sessions.session_list, params)
 
 
 @bind(router, "accounts.session.close", "/accounts/sessions/close")
@@ -112,7 +120,7 @@ async def session_close_others(request):
 
 @bind(router, "accounts.browser_trust.get", "/accounts/browser-trust")
 async def browser_trust_get(request):
-    return await run_operation(request, queries.browser_trust_get)
+    return await run_operation(request, two_factor.browser_trust_get)
 
 
 @bind(router, "accounts.browser_trust.revoke", "/accounts/browser-trust/revoke")
@@ -122,7 +130,7 @@ async def browser_trust_revoke(request):
 
 @bind(router, "accounts.apikey.list", "/accounts/api-keys")
 async def apikey_list(request):
-    return await run_operation(request, queries.apikey_list)
+    return await run_operation(request, account_api_keys.apikey_list)
 
 
 @bind(router, "accounts.apikey.create", "/accounts/api-keys", status=201)

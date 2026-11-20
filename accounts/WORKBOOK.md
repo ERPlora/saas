@@ -1002,8 +1002,8 @@ Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos
   del personal (y hacer del personal una cuenta marcada), `services.create_platform_user` se niega a convertirla en
   personal y el adaptador no la respeta en una cuenta del personal escrita a mano en la BD. El registro de auditoría
   la anota sin nada nuevo: `User` se registra con todos sus campos salvo la contraseña y `last_login`. Tests:
-  `test_sign_in_code.py` (`TestAStoreReviewAccount`), `test_admin.py` (`TestTheStoreReviewMark`), `test_models.py`,
-  `test_auditlog.py`, `test_throttle.py`, `test_profile.py` y `test_create_platform_user.py`.
+  `test_sign_in_code.py` (`TestAStoreReviewAccount`), `test_admin_users.py` (`TestTheStoreReviewMark`),
+  `test_models.py`, `test_auditlog.py`, `test_throttle.py`, `test_profile.py` y `test_create_platform_user.py`.
 - Puertas propias sobre allauth.headless (`accounts/doors.py`, montadas en `config/urls.py` antes de las de
   allauth): la entrada pliega el correo como el alta (NFKC, `adapters.plain_email`)
   y el alta comprueba la contraseña contra su propio correo (headless la valida sin cuenta y el validador de
@@ -1041,19 +1041,19 @@ Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos
   allauth no nombra su modelo ni sus campos (salían en inglés en todo idioma): `UserSessionAdmin` nombra columnas
   y etiquetas con `admin.display`, y `AccountsConfig.ready()` el modelo con su `_meta` en vivo; las migraciones
   leen las opciones propias del modelo (`_meta.original_attrs`), así que allauth no gana ninguna
-  (`makemigrations --check` en `tests/test_admin.py` lo vigila).
+  (`makemigrations --check` en `tests/test_admin_sessions.py` lo vigila).
 - Personal (F20): `admin_has_permission` (instalado en `config/urls.py`) exige, con el interruptor
   encendido, un autenticador TOTP; `admin_login` lleva al personal sin él a `/2fa?next=…`. El personal
   no tiene API propia: sus poderes viven en el admin y en el salto `hub-admin`, que ya exige el
   segundo factor con el interruptor encendido: ninguna puerta del personal se abre con la contraseña sola.
 - Perfil y preferencias (F21–F27): el perfil es la propia cuenta, con su foto y unas preferencias que no necesitan
-  fila (`queries.preferences_of`), y el panel la lee de `base.session.me`; sus operaciones son `accounts.profile.*` y
+  fila (`queries.account_preferences.preferences_of`), y el panel la lee de `base.session.me`; sus operaciones son `accounts.profile.*` y
   `accounts.preferences.*`, y el cambio de contraseña es F08. El tema de las plantillas es `base.context_processors.theme` (cuenta, o la
   cookie `theme`, o el sistema) y el del panel, el del shell de `@erplora/ui`, que pinta el de la sesión
   embebida antes de arrancar. Los efectos de transparencia (`UserPreferences.transparency`) van por el mismo camino:
   la sesión los lleva, la entrada llama a `setThemeTransparency` antes de montar el shell (apagados, `<html>` lleva
   `ep-opaque`) y la web pública no los usa, porque no tiene superficies de cristal. Avisos (F23): `hub_alerts`
-  gobierna `hubs.emails.send_ready` por `queries.receives_business_notices`; no hay aviso de «Novedades de ERPlora»: su columna queda en la base de
+  gobierna `hubs.emails.send_ready` por `queries.account_preferences.receives_business_notices`; no hay aviso de «Novedades de ERPlora»: su columna queda en la base de
   datos, fuera del modelo y con valor por defecto, hasta su `DROP COLUMN` (accounts 0009). Descargar mis datos
   (F26): `accounts.data.export`, que lee los negocios y las facturas por sus operaciones (`hubs.business.list`,
   `billing.invoice.list` y `.get`), sin importar esas apps. Eliminar (F27): ver accounts/README.md; las facturas

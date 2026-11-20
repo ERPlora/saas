@@ -676,7 +676,7 @@ propio texto por `code`.
   secreto de su tarea `saas`. Una consulta sale tal como la
   escribe el modelo, con la regla de llevar solo lo que se busca: el aviso de privacidad de Brave deja las consultas fuera
   de su DPA, y una regla al modelo no es una garantía; por eso la política de privacidad lo nombra como destinatario
-  aparte, fuera de los encargados del art. 28 (§5) y de las cláusulas contractuales tipo (§6), `public/tests/test_legal.py`. No se guarda ni se registra. Sus términos no dejan guardar sus
+  aparte, fuera de los encargados del art. 28 (§5) y de las cláusulas contractuales tipo (§6), `public/tests/test_legal_privacy_assistant.py`. No se guarda ni se registra. Sus términos no dejan guardar sus
   resultados, ni en parte, más allá de lo transitorio (§3(b)(i)): el resultado vive en la memoria del turno, solo lo ve el
   modelo, y por eso no hay caché. Tope por llamante en la caché: `ASSISTANT_WEB_SEARCH_RATELIMIT` (20/d) y
   `ASSISTANT_CURRENCY_RATE_RATELIMIT` (60/h), con un solo presupuesto para todas las demos (`turn.tool_budget`); cinco
@@ -791,7 +791,7 @@ propio texto por `code`.
 - **Tests**: `base/tests/test_assistant_turn.py`, `base/tests/test_api_assistant.py`,
   `assistant/tests/test_account_quota.py`, `test_emails.py` (ASSISTANT-F29, también por la ruta del panel y con dos
   turnos a la vez), `test_admin_usage.py` (la cuenta en el admin) y `test_privacy.py` (la ruta
-  del panel no guarda la conversación); Vitest de `assistant/frontend/` y `frontend/main.test.ts`; e2e
+  del panel no guarda la conversación); Vitest de `assistant/frontend/` y `frontend/main.assistant.test.ts`; e2e
   `tests/e2e/panel/assistant-panel.spec.ts` (proveedor `tests/e2e/assistant-provider.ts`, siembra
   `assistant_seed.py panel`, `ASSISTANT_ACCOUNT_MESSAGES=2` en `panel/project.ts`).
 - **QA**: capa 1, `base/tests/test_assistant_asks.py` (cada frase de `asks` llega a su herramienta, sin modelo ni red);

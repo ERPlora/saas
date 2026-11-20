@@ -15,8 +15,8 @@ import pytest
 from django.utils import timezone
 from live.errors import InvalidPayload, NotFound, OperationError, PermissionDenied
 
-from billing import services
 from billing.schemas import HubIn, PlanChangeIn
+from billing.services import plan_changes
 from billing.tests.conftest import ctx_for, pay
 from billing.models import PlanChangeSchedule
 from billing.tests.stripe_double import card_error, item, schedule, subscription
@@ -34,7 +34,7 @@ def _stripe(stripe_double, issuer_identity):
 
 
 def change(user, hub, plan="standard", interval="month"):
-    return services.plan_change(
+    return plan_changes.plan_change(
         ctx_for(user),
         PlanChangeIn(
             hub_id=hub.id, plan=plan, interval=interval, proration_date=PRORATION
@@ -43,11 +43,11 @@ def change(user, hub, plan="standard", interval="month"):
 
 
 def cancel(user, hub):
-    return services.plan_cancel(ctx_for(user), HubIn(hub_id=hub.id)).model_dump()
+    return plan_changes.plan_cancel(ctx_for(user), HubIn(hub_id=hub.id)).model_dump()
 
 
 def keep(user, hub):
-    return services.plan_keep(ctx_for(user), HubIn(hub_id=hub.id)).model_dump()
+    return plan_changes.plan_keep(ctx_for(user), HubIn(hub_id=hub.id)).model_dump()
 
 
 def refused(code, call):
@@ -181,7 +181,7 @@ class TestChangingThePlan:
         paid = on_starter(shop, stripe_double)
 
         with pytest.raises(OperationError) as error:
-            services.plan_change(
+            plan_changes.plan_change(
                 ctx_for(owner),
                 PlanChangeIn(hub_id=paid.id, plan="standard", proration_date=PRORATION + 3600),
             )

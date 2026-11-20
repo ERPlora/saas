@@ -4,8 +4,9 @@
 - Importing a module of the package is what registers its operations, its models or its admins, so the package's
   ``__init__.py`` imports every module by name, and nothing uses ``import *``, which hides what each module declares.
 - One level: no package inside the package.
-- Its modules never import each other around a loop at their top level. An import inside a function waits for a
-  call, so it is the way out of a loop, with a comment saying why.
+- Its modules never import each other around a loop, and never import their own package: the ``__init__.py``
+  imports every module, so what a module needs of it moves to a module below it. An import inside a function only
+  waits for the call, so it counts as much as one at the top: it is no way out of a loop.
 - What the rest of the code reads from the package (``from billing.queries import x``, ``queries.x``) is there.
 
 Each scan is shown to catch its positive.
@@ -50,15 +51,37 @@ def _imported(node: ast.ImportFrom, package: str) -> list[str]:
 
 
 def own_imports(source: str, package: str) -> set[str]:
-    """The names of ``package`` (dotted) that ``source`` imports at its top level, where an import runs as the
-    module loads: ``from . import a``, ``from .a import x``, ``from shop.queries import a`` and
-    ``from shop.queries.a import x`` all import the module ``a``."""
+    """The names of ``package`` (dotted) that ``source`` imports, at its top level or inside a function:
+    ``from . import a``, ``from .a import x``, ``from shop.queries import a`` and ``from shop.queries.a import x``
+    all import the module ``a``."""
     return {
         name
-        for node in ast.parse(source).body
+        for node in ast.walk(ast.parse(source))
         if isinstance(node, ast.ImportFrom)
         for name in _imported(node, package)
     }
+
+
+def _takes_the_package(node: ast.ImportFrom, package: str, modules: set[str]) -> bool:
+    """``from shop import queries``, ``from .. import queries``, or a name of the ``__init__`` that is no module
+    (``from shop.queries import LIMIT``, ``from . import LIMIT``, ``from ..queries import LIMIT``)."""
+    app, door = package.rsplit(".", 1)
+    names = {alias.name for alias in node.names}
+    if (node.level, node.module) in ((0, app), (2, None)):
+        return door in names
+    if (node.level, node.module) in ((0, package), (1, None), (2, door)):
+        return bool(names - modules)
+    return False
+
+
+def package_imports(source: str, package: str, modules: set[str]) -> list[str]:
+    """Where a module of ``package`` imports the package itself, at its top level or inside a function."""
+    return [
+        f"line {node.lineno}: {ast.unparse(node)}"
+        for node in ast.walk(ast.parse(source))
+        if (isinstance(node, ast.Import) and any(alias.name == package for alias in node.names))
+        or (isinstance(node, ast.ImportFrom) and _takes_the_package(node, package, modules))
+    ]
 
 
 def star_imports(source: str) -> list[int]:
@@ -115,6 +138,12 @@ def package_problems(folder: Path, package: str) -> list[str]:
     ]
     if loop := import_loop({name: own_imports(sources[name], package) & modules for name in modules}):
         problems.append(f"{package}: its modules import each other around a loop: {' → '.join(loop)}")
+    problems += [
+        f"{package}.{name} {where.replace(': ', ': imports its own package (', 1)}): what it needs of the __init__ "
+        "moves to a module below it"
+        for name in sorted(modules)
+        for where in package_imports(sources[name], package, modules)
+    ]
     return problems
 
 
@@ -163,7 +192,7 @@ def test_a_package_in_shape_has_no_problem(tmp_path):
         {
             "__init__.py": "from . import order\nfrom shop.queries.stock import level\n",
             "order.py": "from shop.queries.stock import level\n\ndef total():\n    return level()\n",
-            "stock.py": "def level():\n    from shop.queries import order  # inside a function: no loop\n",
+            "stock.py": "def level():\n    return 3\n",
         },
     )
 
@@ -224,6 +253,46 @@ def test_modules_importing_each_other_around_a_loop_are_caught(tmp_path):
 
     assert package_problems(folder, "shop.queries") == [
         "shop.queries: its modules import each other around a loop: order → stock → supplier → order"
+    ]
+
+
+def test_an_import_inside_a_function_closes_a_loop_too(tmp_path):
+    folder = _package(
+        tmp_path,
+        {
+            "__init__.py": "from . import order, stock\n",
+            "order.py": "from shop.queries import stock\n",
+            "stock.py": "def level():\n    from shop.queries import order\n",
+        },
+    )
+
+    assert package_problems(folder, "shop.queries") == [
+        "shop.queries: its modules import each other around a loop: order → stock → order"
+    ]
+
+
+def test_a_module_importing_its_own_package_is_caught(tmp_path):
+    folder = _package(
+        tmp_path,
+        {
+            "__init__.py": "from . import order, stock\nLIMIT = 3\n",
+            "order.py": "from shop import queries\nimport shop.queries\n",
+            "stock.py": (
+                "from shop.queries import order\n\n"
+                "def level():\n    from shop.queries import LIMIT\n    from . import LIMIT, order\n"
+            ),
+        },
+    )
+
+    assert package_problems(folder, "shop.queries") == [
+        "shop.queries.order line 1: imports its own package (from shop import queries): what it needs of the "
+        "__init__ moves to a module below it",
+        "shop.queries.order line 2: imports its own package (import shop.queries): what it needs of the "
+        "__init__ moves to a module below it",
+        "shop.queries.stock line 4: imports its own package (from shop.queries import LIMIT): what it needs of the "
+        "__init__ moves to a module below it",
+        "shop.queries.stock line 5: imports its own package (from . import LIMIT, order): what it needs of the "
+        "__init__ moves to a module below it",
     ]
 
 

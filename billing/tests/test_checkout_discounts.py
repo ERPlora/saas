@@ -17,9 +17,10 @@ import pytest
 from django.utils import timezone
 from live.errors import OperationError
 
-from billing import queries, services
+from billing import queries
 from billing.models import CheckoutAttempt, PlanChangeSchedule, PromoCode, PromoRedemption
 from billing.schemas import CheckoutConfirmIn, CheckoutStartIn, HubIn, PlanChangeIn, SubscriptionListIn
+from billing.services import checkout_webhooks, checkouts, plan_changes
 from billing.tests.conftest import code_of, ctx_for, pay
 from billing.tests.stripe_captured import captured
 from billing.tests.stripe_double import checkout_session, connection_error, item, preview, subscription
@@ -42,7 +43,7 @@ def our_discount(end: int | None) -> dict:
 
 
 def start(user, hub, **selection):
-    return services.checkout_start(ctx_for(user), CheckoutStartIn(hub_id=hub.id, **selection)).model_dump()
+    return checkouts.checkout_start(ctx_for(user), CheckoutStartIn(hub_id=hub.id, **selection)).model_dump()
 
 
 def refused(code, call):
@@ -153,7 +154,7 @@ class TestAPlanOnTopOfModules:
 
         error = refused("billing.promo_discount_new_subscription_only",
                         lambda: start(owner, paid, plan="starter", promo_code="testers"))
-        refused("billing.promo_discount_new_subscription_only", lambda: services.plan_change(
+        refused("billing.promo_discount_new_subscription_only", lambda: plan_changes.plan_change(
             ctx_for(owner), PlanChangeIn(hub_id=paid.id, plan="starter", proration_date=NOW_TS, promo_code="testers")
         ))
 
@@ -176,7 +177,7 @@ class TestTheCompletedCheckout:
         )
         metadata = {"kind": "hub_plan", "hub_id": str(shop.id), "plan": "starter", "billing_interval": "month",
                     "promo_code": "testers"}
-        return services.checkout_completed(checkout_session(subscription_id="sub_new", metadata=metadata))
+        return checkout_webhooks.checkout_completed(checkout_session(subscription_id="sub_new", metadata=metadata))
 
     def test_the_code_is_counted_with_its_subscription_and_when_its_discount_ends(self, shop, stripe_double):
         promo = code_of()
@@ -214,7 +215,7 @@ class TestWhileItLasts:
         stripe_double.answer("subscriptions.update", subscription(discounts=[our_discount(IN_FOUR_MONTHS)]))
 
         assert start(owner, paid, plan="standard")["flow"] == "confirm"
-        services.plan_change(ctx_for(owner), PlanChangeIn(hub_id=paid.id, plan="standard", proration_date=NOW_TS))
+        plan_changes.plan_change(ctx_for(owner), PlanChangeIn(hub_id=paid.id, plan="standard", proration_date=NOW_TS))
 
         assert "discounts" not in stripe_double.last("subscriptions.update").params
 
@@ -235,7 +236,7 @@ class TestWhileItLasts:
         stripe_double.answer("subscription_items.create", {"id": "si_inventory", "object": "subscription_item"})
 
         assert start(owner, paid, module="inventory")["preview"]["amount_due_cents"] == 1210
-        services.checkout_confirm(ctx_for(owner), CheckoutConfirmIn(hub_id=paid.id, module="inventory",
+        plan_changes.checkout_confirm(ctx_for(owner), CheckoutConfirmIn(hub_id=paid.id, module="inventory",
                                                                   proration_date=NOW_TS))
 
         assert stripe_double.calls_to("subscription_items.create")
@@ -247,7 +248,7 @@ class TestWhileItLasts:
         stripe_double.answer("subscription_schedules.create", captured("downgrade_schedule/schedule_from_subscription.json"))
         stripe_double.answer("subscription_schedules.update", captured("downgrade_schedule/schedule_updated.json"))
 
-        services.plan_change(ctx_for(owner), PlanChangeIn(hub_id=paid.id, plan="starter", proration_date=NOW_TS))
+        plan_changes.plan_change(ctx_for(owner), PlanChangeIn(hub_id=paid.id, plan="starter", proration_date=NOW_TS))
 
         phases = stripe_double.last("subscription_schedules.update").params["phases"]
         held = [{"discount": our_discount(IN_FOUR_MONTHS)["id"]}]
@@ -257,7 +258,7 @@ class TestWhileItLasts:
     def test_yearly_billing_waits_for_a_discount_for_months_to_end(self, shop, owner, stripe_double):
         paid = self.on_discount(shop, stripe_double)
 
-        error = refused("billing.discount_blocks_annual", lambda: services.plan_change(
+        error = refused("billing.discount_blocks_annual", lambda: plan_changes.plan_change(
             ctx_for(owner), PlanChangeIn(hub_id=paid.id, plan="starter", interval="year", proration_date=NOW_TS)
         ))
         refused("billing.discount_blocks_annual", lambda: start(owner, paid, plan="starter", interval="year"))
@@ -277,7 +278,7 @@ class TestWhileItLasts:
         stripe_double.answer("subscriptions.update", subscription(cancel_at_period_end=True,
                                                                   discounts=[our_discount(IN_FOUR_MONTHS)]))
 
-        services.plan_cancel(ctx_for(owner), HubIn(hub_id=paid.id))
+        plan_changes.plan_cancel(ctx_for(owner), HubIn(hub_id=paid.id))
 
         assert stripe_double.last("subscriptions.update").params["cancel_at_period_end"] is True
 

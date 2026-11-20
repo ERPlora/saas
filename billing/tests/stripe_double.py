@@ -26,6 +26,8 @@ NOW = int(time.time())
 MONTH_START = NOW - 10 * DAY
 MONTH_END = MONTH_START + 30 * DAY
 WEBHOOK_SECRET = "whsec_test_double"
+#: How many tax ids Stripe lets a customer hold: the sixth is refused.
+MAX_CUSTOMER_TAX_IDS = 5
 
 
 @dataclass
@@ -47,7 +49,7 @@ class StripeDouble:
         self._idempotent: dict[str, tuple] = {}
         #: The account's tax rates (``tax_rates.list``); ``tax_rates.create`` adds to it.
         self.tax_rates: list[dict] = []
-        #: Each customer's tax ids (``customers.tax_ids.list``/``create``).
+        #: Each customer's tax ids (``customers.tax_ids.list``/``create``/``delete``).
         self.customer_tax_ids: dict[str, list[dict]] = {}
         #: The account's coupons by id (``coupons.create``): none until a code's discount makes one.
         self.coupons: dict[str, dict] = {}
@@ -118,7 +120,7 @@ class StripeDouble:
             value = self._default(call)
         return value
 
-    def _default(self, call: Call) -> Any:  # noqa: C901, PLR0911
+    def _default(self, call: Call) -> Any:  # noqa: PLR0911
         number = next(self._ids)
         params = call.params
         match call.path:
@@ -139,10 +141,8 @@ class StripeDouble:
                 return {"id": "cus_new", "object": "customer", **params}
             case "customers.update":
                 return {"id": call.args[0], "object": "customer", **params}
-            case "customers.tax_ids.list":
-                return listing(self.customer_tax_ids.get(call.args[0], []))
-            case "customers.tax_ids.create":
-                return self._create_tax_id(call.args[0], number, params)
+            case "customers.tax_ids.list" | "customers.tax_ids.create" | "customers.tax_ids.delete":
+                return self._tax_ids(call, number)
             case "checkout.sessions.create":
                 return {
                     "id": f"cs_test_{number}",
@@ -168,15 +168,37 @@ class StripeDouble:
             f"Stripe {call.path} was called without an answer (params {params})"
         )
 
+    def _tax_ids(self, call: Call, number: int) -> Any:
+        customer = call.args[0]
+        if call.path.endswith(".list"):
+            return listing(self.customer_tax_ids.get(customer, []))
+        if call.path.endswith(".delete"):
+            return self._delete_tax_id(customer, call.args[1])
+        return self._create_tax_id(customer, number, call.params)
+
     def _create_tax_id(self, customer: str, number: int, params: dict) -> dict | stripe.InvalidRequestError:
         """As the API checks it: an ``eu_vat`` starts with its country's two letters (``ESB12345674``, never
-        ``B12345674``)."""
+        ``B12345674``), and a customer holds five tax ids at most."""
         value = params.get("value") or ""
         if params.get("type") == "eu_vat" and not value[:2].isalpha():
             return tax_id_invalid("eu_vat")
+        held = self.customer_tax_ids.setdefault(customer, [])
+        if len(held) >= MAX_CUSTOMER_TAX_IDS:
+            return stripe.InvalidRequestError(
+                f"Customer {customer} already has the maximum {MAX_CUSTOMER_TAX_IDS} tax IDs attached.",
+                param=None,
+                http_status=400,
+            )
         tax_id = {"id": f"txi_{number}", "object": "tax_id", **params}
-        self.customer_tax_ids.setdefault(customer, []).append(tax_id)
+        held.append(tax_id)
         return tax_id
+
+    def _delete_tax_id(self, customer: str, tax_id: str) -> dict | stripe.InvalidRequestError:
+        held = self.customer_tax_ids.get(customer, [])
+        if not any(kept["id"] == tax_id for kept in held):
+            return invalid_request(message=f"No such tax_id: '{tax_id}'")
+        self.customer_tax_ids[customer] = [kept for kept in held if kept["id"] != tax_id]
+        return {"id": tax_id, "object": "tax_id", "deleted": True}
 
 
 class _Node:
@@ -531,6 +553,13 @@ def invalid_request(
     code: str = "resource_missing", message: str = "No such subscription"
 ) -> stripe.InvalidRequestError:
     return stripe.InvalidRequestError(message, param="id", code=code, http_status=404)
+
+
+def permission_denied() -> stripe.PermissionError:
+    """What Stripe answers a restricted key without the permission the call needs."""
+    return stripe.PermissionError(
+        "The provided key does not have the required permissions for this endpoint.", http_status=403
+    )
 
 
 def tax_id_invalid(tax_type: str) -> stripe.InvalidRequestError:

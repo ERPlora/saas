@@ -197,10 +197,10 @@ Pasos:
 2. Pulsa «Continuar al pago»: los datos se guardan y sigue el pago. Las veces siguientes el diálogo solo dice «Factura a nombre de …» con «Cambiar».
 3. En cualquier momento, en **Facturación › Datos de pago**, la tarjeta «Datos de facturación» enseña razón social, NIF, dirección, correo y qué negocios paga, con «Editar datos».
 4. Al escribir el NIF, la ventana dice «NIF válido.». Un NIF-IVA de otro país de la UE se comprueba en VIES y dice «Comprobado en VIES: …. Se factura en España, así que la factura lleva IVA.», «VIES no reconoce este número: la factura llevará IVA» o «VIES no responde ahora: lo volvemos a comprobar al facturar». «Comprobado en VIES: … La factura va sin IVA» solo sale cuando la venta va con inversión del sujeto pasivo, que hoy no ocurre: solo se factura en España.
-5. Pulsa «Guardar datos»: «Datos de facturación guardados». Valen para las próximas facturas y para lo que manda Stripe (la página para confirmar un cobro que el banco quiere autenticar, sus recibos y su portal de pagos); las facturas ya emitidas no cambian.
+5. Pulsa «Guardar datos»: «Datos de facturación guardados». Valen para las próximas facturas y para lo que manda Stripe (la página para confirmar un cobro que el banco quiere autenticar, sus recibos y su portal de pagos); las facturas ya emitidas no cambian. Lo que manda Stripe lleva solo el NIF actual: el anterior se quita, y también desaparece si se borra el NIF.
 Entra: lo que escribe la persona; el país y el nombre del negocio si elige usarlos.
-Sale: los datos de facturación del negocio (los comparten los negocios que paga la misma cuenta), la comprobación de VIES anotada y, si quien paga ya pagó alguna vez, su ficha de cliente en Stripe al día; se avisa del cambio (`hubs.billing_profile.updated`).
-Si falla: un código postal español que no tiene cinco dígitos, un país que falta o un NIF que no vale para su país salen debajo de su campo, con «Revisa los datos marcados.» arriba hasta que corriges algo, y no se guarda nada. Un país que no sea España sale debajo de «País» y arriba con «Por ahora ERPlora solo factura a pagadores en España.», también al «Usar el nombre y el país del negocio» de un negocio de fuera de España (que puede existir: el negocio se crea en cualquier país de la UE), y no se guarda nada. Tras un traspaso, si el negocio lo pagaba otra cuenta, el diálogo dice «Hasta ahora pagaba este negocio otra cuenta: di quién paga a partir de ahora». Si Stripe no contesta, los datos se guardan igual y Stripe los recibe en el siguiente pago desde el panel.
+Sale: los datos de facturación del negocio (los comparten los negocios que paga la misma cuenta), la comprobación de VIES anotada y, si quien paga ya pagó alguna vez, su ficha de cliente en Stripe al día, con el NIF actual como único identificador fiscal (ninguno si no tiene o si es un NIF-IVA que VIES no ha comprobado); se avisa del cambio (`hubs.billing_profile.updated`).
+Si falla: un código postal español que no tiene cinco dígitos, un país que falta o un NIF que no vale para su país salen debajo de su campo, con «Revisa los datos marcados.» arriba hasta que corriges algo, y no se guarda nada. Un país que no sea España sale debajo de «País» y arriba con «Por ahora ERPlora solo factura a pagadores en España.», también al «Usar el nombre y el país del negocio» de un negocio de fuera de España (que puede existir: el negocio se crea en cualquier país de la UE), y no se guarda nada. Tras un traspaso, si el negocio lo pagaba otra cuenta, el diálogo dice «Hasta ahora pagaba este negocio otra cuenta: di quién paga a partir de ahora». Si Stripe no contesta, los datos se guardan igual y Stripe los recibe en el siguiente pago desde el panel. Si Stripe no deja quitar el NIF anterior, los datos se guardan igual, el pago sigue y el equipo lo ve en el registro de errores.
 Implicados: hubs (los datos del negocio y de quien paga)
 
 ### BILLING-F02 Calcular el impuesto de una venta según dónde está el pagador
@@ -763,7 +763,7 @@ Implicados: hubs (las suscripciones y los pagadores de los negocios)
   (y, en el Hub, `tests/e2e/hub-suspended.spec.ts`) citan la clave `BILLING-Gnn` y llevan en su cabecera la
   equivalencia con la de este WORKBOOK.
 - BILLING-F25, el reintento de la factura de ERPlora (`reconcile_platform_invoices`), corre cada 15 minutos (:00, :15,
-  :30, :45 UTC) dentro del proceso `saas-worker` (`manage.py run_worker`, `base/worker.py`); la pasada es `services.reconcile_platform_invoices_exclusively`, la misma del comando, que queda para
+  :30, :45 UTC) dentro del proceso `saas-worker` (`manage.py run_worker`, `base/worker.py`); la pasada es `services.platform_invoices.reconcile_platform_invoices_exclusively`, la misma del comando, que queda para
   lanzarla a mano. Lo que deja pendiente escribe la línea ERROR `saas.worker.pass_failed task=reconcile_platform_invoices
   left work owed: …`, que es lo que avisa la alarma. En el worker la pasada
   tiene 50 s y oye la parada entre dos facturas (`go_on`): lo que no entra va en la pasada siguiente (`cut_short=1`).
@@ -779,7 +779,7 @@ Implicados: hubs (las suscripciones y los pagadores de los negocios)
   `/marketplace/webhooks/stripe/`, `we_1UIyXVG5mOoM2dqidg2Ai6WD` a `/dashboard/billing/webhooks/stripe-connect/` y
   `we_1UIyXUG5mOoM2dqiftLTSFdL` a `/assistant/stripe/webhook/`); si uno de esos tres volviera a activarse,
   `endpoint_problems` lo contaría y la tarea saldría con error, que `task_failed` avisa. Los avisos que trata el webhook son una
-  sola lista, `billing.services.STRIPE_WEBHOOK_EVENTS`, que el comando compara con el destino de Stripe.
+  sola lista, `billing.services.webhook_dispatch.STRIPE_WEBHOOK_EVENTS`, que el comando compara con el destino de Stripe.
 - Las facturas de ERPlora las emite el Hub, pero en producción no se cobra con clave live mientras
   `PLATFORM_INVOICING_ENABLED` siga en `false` (reglas de trabajo §15: la transmisión real queda bajo la supervisión de
   Ioan). La compra suelta de BILLING-F32 choca con `PLAN.md` (nuestros módulos no se venden sueltos): la contradicción

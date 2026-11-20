@@ -12,10 +12,11 @@ from django.core import mail
 from django.core.management import call_command
 from django.utils import timezone
 
-from billing import queries, services
+from billing import queries
 from billing.models import Invoice
 from billing.queries.billing_report import quarter_of
 from billing.schemas import InvoiceByIdIn, InvoiceFilterIn, InvoiceListIn
+from billing.services import platform_invoices
 from billing.tests.conftest import ctx_for
 from billing.tests.stripe_captured import paid
 from billing.tests.stripe_double import subscription
@@ -103,7 +104,7 @@ def test_the_run_posts_it_while_the_platform_hub_owes_it(zero, hub_double):
 
 
 def test_the_payer_gets_its_mail(zero):
-    assert services.send_invoice_mail(accepted(zero).id) == services.MAILED
+    assert platform_invoices.send_invoice_mail(accepted(zero).id) == platform_invoices.MAILED
 
     assert [message.to for message in mail.outbox] == [["pagos@example.com"]]
     assert zero.number in mail.outbox[0].body

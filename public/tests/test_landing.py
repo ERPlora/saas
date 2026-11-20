@@ -21,7 +21,6 @@
 from __future__ import annotations
 
 import gettext
-import json
 import re
 from decimal import Decimal
 from pathlib import Path
@@ -38,8 +37,9 @@ from django.utils import translation
 from apps.tests.factories import CUBE_SVG, make_app
 from hubs.models import Plan
 from public import context_processors, landing
+from public.tests.pricing_pages import json_ld_blocks
 from public.tests.test_cookies import VALKEY_DOWN
-from public.tests.test_legal import template_messages
+from public.tests.template_messages import template_messages
 
 pytestmark = [pytest.mark.django_db]
 
@@ -100,17 +100,6 @@ def card_items(html: str, plan_name: str) -> list[str]:
         " ".join(item.split())
         for item in CARD_ITEM.findall(cards[0].split("</ul>", 1)[0])
     ]
-
-
-def json_ld_blocks(html: str) -> list[dict]:
-    marker = '<script type="application/ld+json">'
-    blocks, cursor = [], 0
-    while (start := html.find(marker, cursor)) != -1:
-        start += len(marker)
-        end = html.index("</script>", start)
-        blocks.append(json.loads(html[start:end]))
-        cursor = end
-    return blocks
 
 
 def of_type(blocks: list[dict], wanted: str) -> dict | None:

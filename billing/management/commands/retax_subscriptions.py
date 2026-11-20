@@ -2,8 +2,8 @@
 
 A daily scheduled ECS task. The owner's save of the billing details retaxes at once;
 this pass catches what that push missed, the year crossing the OSS threshold (or back to origin) and a rate
-the table schedules (``billing.services.retax_live_subscriptions``). It also sends again the team's OSS notices
-whose mail could not leave (``send_pending_oss_notices``).
+the table schedules (``billing.services.live_rates.retax_live_subscriptions``). It also sends again the team's OSS
+notices whose mail could not leave (``send_pending_oss_notices``).
 
 Idempotent (a rate Stripe already holds is not sent again), under the advisory lock
 ``hashtext('erplora.saas.retax_subscriptions')`` (``hubs.services.exclusive_runs.run_exclusively``). One business never stops
@@ -14,7 +14,7 @@ import logging
 
 from django.core.management.base import BaseCommand, CommandError
 
-from billing import services
+from billing.services import live_rates, oss_notices
 from hubs.services.exclusive_runs import run_exclusively
 
 logger = logging.getLogger(__name__)
@@ -28,9 +28,9 @@ class Command(BaseCommand):
             if not mine:
                 self.stdout.write("retax_subscriptions: already running, nothing done.")
                 return
-            counts = services.retax_live_subscriptions()
+            counts = live_rates.retax_live_subscriptions()
             # The team's OSS notices whose mail did not leave (BILLING-F06).
-            counts.update(services.send_pending_oss_notices())
+            counts.update(oss_notices.send_pending_oss_notices())
         summary = " ".join(f"{key}={value}" for key, value in counts.items())
         logger.info("billing.retax_subscriptions %s", summary)
         self.stdout.write(f"retax_subscriptions: {summary}")

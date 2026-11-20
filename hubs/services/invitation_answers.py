@@ -9,7 +9,7 @@ from live.errors import Conflict, NotFound, PermissionDenied
 from live.operations import AI, operation
 from live.outbox import record_event
 
-from accounts import queries as account_queries
+from accounts.queries import ways_in
 from hubs import events
 from hubs.models import Hub, HubMember
 from hubs.queries import access_control, businesses, membership, signup
@@ -81,7 +81,7 @@ def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
     proved its address confirms it first (403 ``hubs.email_unverified``)."""
     member = _my_invitation(ctx, data.id)
     signup.refuse_staff(member.user)
-    if not account_queries.email_is_proven(member.user, member.user.email):
+    if not ways_in.email_is_proven(member.user, member.user.email):
         raise PermissionDenied(
             _("Confirm your email address before accepting the invitation."), code="hubs.email_unverified"
         )

@@ -196,6 +196,13 @@ def sold_plans(plans):
         Plan.objects.filter(slug=slug).update(stripe_product_id=f"prod_{slug}")
 
 
+def promo(code="canary_2026", trial_days=60, **fields):
+    """A promo code that grants ``trial_days`` of trial."""
+    from billing.models import PromoCode
+
+    return PromoCode.objects.create(code=code, trial_days=trial_days, **fields)
+
+
 def code_of(code="testers", plans=(), *, max_redemptions=None, redemption_count=0, **terms):
     """A promo code of a discount (100 % for 6 months unless ``terms`` say otherwise) on ``plans`` (none: all)."""
     from billing.models import Discount, PromoCode

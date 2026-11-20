@@ -16,7 +16,7 @@ from datetime import date
 import pytest
 from django.db import connection, connections, transaction
 
-from billing import services
+from billing.services import invoice_numbering
 from billing.models import Invoice, InvoiceCounter
 
 pytestmark = pytest.mark.django_db
@@ -26,13 +26,13 @@ pytestmark = pytest.mark.django_db
 def clock(monkeypatch):
     """The day the invoices are issued, set by the test."""
     today = {"value": date(2026, 10, 14)}
-    monkeypatch.setattr(services, "invoice_today", lambda: today["value"])
+    monkeypatch.setattr(invoice_numbering, "invoice_today", lambda: today["value"])
     return today
 
 
 def number(kind=Invoice.Kind.INVOICE):
     with transaction.atomic():
-        return services.issue_number(kind)
+        return invoice_numbering.issue_number(kind)
 
 
 class TestTheSeries:
@@ -75,7 +75,7 @@ class TestNoGap:
         self, clock
     ):
         with pytest.raises(RuntimeError), transaction.atomic():
-            services.issue_number(Invoice.Kind.INVOICE)
+            invoice_numbering.issue_number(Invoice.Kind.INVOICE)
             raise RuntimeError("the webhook failed after numbering")
 
         assert number()[:3] == ("ERP", 1, "ERP-2026-00001")
@@ -85,7 +85,7 @@ class TestNoGap:
 def test_outside_a_transaction_no_number_is_given():
     """A number only exists with its invoice: given alone it would be a hole the day the invoice fails."""
     with pytest.raises(RuntimeError):
-        services.issue_number(Invoice.Kind.INVOICE)
+        invoice_numbering.issue_number(Invoice.Kind.INVOICE)
 
     assert not InvoiceCounter.objects.filter(last_number__gt=0).exists()
 
@@ -113,7 +113,7 @@ def test_the_second_waits_for_the_first_and_takes_the_number_it_gave_back(clock)
 
     def first():
         with transaction.atomic():
-            taken = services.issue_number(Invoice.Kind.INVOICE)
+            taken = invoice_numbering.issue_number(Invoice.Kind.INVOICE)
             numbered.set()
             release.wait(timeout=10)
             transaction.set_rollback(True)
@@ -122,7 +122,7 @@ def test_the_second_waits_for_the_first_and_takes_the_number_it_gave_back(clock)
     def second():
         numbered.wait(timeout=10)
         with transaction.atomic():
-            return services.issue_number(Invoice.Kind.INVOICE)
+            return invoice_numbering.issue_number(Invoice.Kind.INVOICE)
 
     one = _in_thread(first, results, "first")
     two = _in_thread(second, results, "second")
@@ -147,7 +147,7 @@ def test_the_issue_date_is_read_once_the_lock_is_held(clock):
 
     def first():
         with transaction.atomic():
-            taken = services.issue_number(Invoice.Kind.INVOICE)
+            taken = invoice_numbering.issue_number(Invoice.Kind.INVOICE)
             numbered.set()
             release.wait(timeout=10)
             return taken
@@ -155,7 +155,7 @@ def test_the_issue_date_is_read_once_the_lock_is_held(clock):
     def second():
         numbered.wait(timeout=10)
         with transaction.atomic():
-            return services.issue_number(Invoice.Kind.INVOICE)
+            return invoice_numbering.issue_number(Invoice.Kind.INVOICE)
 
     one = _in_thread(first, results, "first")
     two = _in_thread(second, results, "second")
@@ -178,7 +178,7 @@ def test_two_invoices_at_once_take_consecutive_numbers(clock):
     def issue():
         start.wait(timeout=5)
         with transaction.atomic():
-            return services.issue_number(Invoice.Kind.INVOICE)[1]
+            return invoice_numbering.issue_number(Invoice.Kind.INVOICE)[1]
 
     threads = [_in_thread(issue, results, name) for name in ("a", "b")]
     for thread in threads:

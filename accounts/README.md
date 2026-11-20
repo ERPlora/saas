@@ -16,7 +16,7 @@ solo sobre la cuenta que llama. Ninguna está expuesta a claves de API.
 |---|---|---|
 | `accounts.profile.get` (viva) | `GET /api/accounts/profile` | Correo, `email_verified` (la regla de las invitaciones, `email_is_proven`), `pending_email`, nombres, `photo` (data URL), `has_password`, alta |
 | `accounts.profile.update` | `POST /api/accounts/profile` | Nombre y apellidos (el correo tiene su puerta) |
-| `accounts.profile.delete` | `POST /api/accounts/profile/delete` | 409 `accounts.owns_businesses` o `accounts.pays_businesses` (con `businesses`) si es propietario o pagador de algún negocio no eliminado; luego reautenticación; cierra todas sus sesiones, anonimiza su rastro en el outbox y borra la cuenta; sus pagadores (`hubs.BillingProfile`) y su cliente de Stripe los borra `billing.services.forget_departed_payer` tras el COMMIT, salvo lo que aún se puede cobrar (ACCOUNTS-F27) |
+| `accounts.profile.delete` | `POST /api/accounts/profile/delete` | 409 `accounts.owns_businesses` o `accounts.pays_businesses` (con `businesses`) si es propietario o pagador de algún negocio no eliminado; luego reautenticación; cierra todas sus sesiones, anonimiza su rastro en el outbox y borra la cuenta; sus pagadores (`hubs.BillingProfile`) y su cliente de Stripe los borra `billing.services.departed_payers.forget_departed_payer` tras el COMMIT, salvo lo que aún se puede cobrar (ACCOUNTS-F27) |
 | `accounts.email.change` | `POST /api/accounts/email/change` | Código de 6 cifras al correo nuevo (o al propio, si no está verificado) |
 | `accounts.email.verify` | `POST /api/accounts/email/verify` | El código, en la misma sesión: `verified` y `attempts_left` (un código incorrecto no es error: 200 con `verified: false`); si es bueno, la cuenta pasa al correo nuevo, verificado, y se avisa al antiguo |
 | `accounts.photo.upload` / `.remove` | `POST /api/accounts/photo`, `…/photo/remove` | Foto (JPEG, PNG o WebP) limpia de metadatos |
@@ -174,7 +174,7 @@ ningún rol tiene su permiso.
   leen los correos y el salto al Hub; siempre tiene valor.
 - **Avisos por correo** (ACCOUNTS-F23): cada interruptor gobierna un correo que el SaaS manda de verdad.
   `hub_alerts` es el correo «tu negocio está listo» (`hubs.emails.send_ready` pregunta a
-  `queries.receives_business_notices`). Sin interruptor, como GitHub y Stripe: códigos y avisos de seguridad,
+  `queries.account_preferences.receives_business_notices`). Sin interruptor, como GitHub y Stripe: códigos y avisos de seguridad,
   facturas y pagos fallidos (`billing.emails`), el negocio eliminado con su fecha de recuperación y lo que pide
   actuar (volver a conectar WhatsApp); las invitaciones y los traspasos van a quien los recibe. «Novedades de
   ERPlora» (`marketing_emails`) no gobernaba ningún correo y sale (como el SaaS viejo, SAAS_DASHBOARD-F211): la

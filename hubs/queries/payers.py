@@ -17,7 +17,7 @@ def is_payer(member: HubMember) -> bool:
     return profile is not None and profile.owner_id == member.user_id
 
 
-#: Statuses of a Stripe subscription that bill nothing any more (``billing.services.ENDED_STATUSES``).
+#: Statuses of a Stripe subscription that bill nothing any more (``billing.services.stripe_sales.ENDED_STATUSES``).
 ENDED_STATUSES = frozenset({"canceled", "incomplete_expired"})
 
 

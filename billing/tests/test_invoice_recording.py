@@ -639,9 +639,9 @@ class TestAVoidedCreditNote:
         return event("credit_note.voided", {**credit_note(), "status": "void"}, event_id="evt_void_1")
 
     def test_the_endpoint_sends_it(self):
-        from billing import services
+        from billing.services import webhook_dispatch
 
-        assert "credit_note.voided" in services.STRIPE_WEBHOOK_EVENTS
+        assert "credit_note.voided" in webhook_dispatch.STRIPE_WEBHOOK_EVENTS
 
     def test_one_voided_while_waiting_for_its_invoice_never_becomes_a_rectifying_invoice(
         self, running, stripe_double, mailoutbox
@@ -759,13 +759,13 @@ def test_the_payer_and_the_owner_both_hear_of_a_new_invoice(running, owner, make
     accounts, both their Billing lists re-run after the COMMIT."""
     from live import operations
 
-    from billing import services
+    from billing.services import invoice_events
 
     payer_account = make_user("payer@example.com")
     BillingProfile.objects.filter(pk=running.billing_profile_id).update(owner=payer_account)
     heard = []
     monkeypatch.setattr(operations, "notify_hook", lambda scope, names: heard.append((scope.key, set(names))))
-    monkeypatch.setattr(services, "notify", lambda scope, names: heard.append((scope.key, set(names))))
+    monkeypatch.setattr(invoice_events, "notify", lambda scope, names: heard.append((scope.key, set(names))))
 
     with django_capture_on_commit_callbacks(execute=True):
         deliver(paid())

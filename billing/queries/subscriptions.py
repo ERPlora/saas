@@ -376,8 +376,8 @@ def payment_method_get(ctx: OperationContext, data: PaymentMethodIn) -> dict:
 
 def _cancellable(ctx: OperationContext, hub_id) -> tuple[Hub, Subscription]:
     """The business ``hub_id`` whose plan its account may cancel, and its subscription: what ``billing.plan.cancel``
-    refuses, refused alike (``services._owned`` and its «nothing to cancel»), so the preview of a cancel that cannot be
-    done reaches the model as the refusal, never as a card. Read without locking: nothing is written."""
+    refuses, refused alike (``services.stripe_sales._owned`` and its «nothing to cancel»), so the preview of a cancel
+    that cannot be done reaches the model as the refusal, never as a card. Read without locking: nothing is written."""
     user = access_control.account_of(ctx)
     member = access_control.access(user, hub_id, HubMember.Role.OWNER)
     if not access_control.is_writable(member.hub):

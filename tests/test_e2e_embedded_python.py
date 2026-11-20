@@ -69,8 +69,8 @@ def test_what_a_script_imports_and_reads_is_found():
     text = """
       'from hubs import services',
       `services.reconcile(ctx_for("${id}"))`,
-      'from billing import services',
-      'assert services.checkout_completed({})',
+      'from billing.services import checkout_webhooks',
+      'assert checkout_webhooks.checkout_completed({})',
       'from hubs.queries import businesses, no_such_module',
       'from hubs.gone import anything',
     """
@@ -89,7 +89,7 @@ def test_what_is_not_the_saas_s_or_not_a_module_is_left_alone():
       import { expect } from '@playwright/test';
       // The mail, as reconciliation.sends_it after the COMMIT.
       'from django.conf import settings', 'print(settings.NOT_A_SETTING)',
-      'from hubs.models import Hub, OnlyInTheHubService', 'Hub.objects.anything()',
+      'from hubs.hub_client import HubAnswer, OnlyInTheHubService', 'HubAnswer.anything()',
       'from hubs.services import reconciliation', 'reconciliation.reconcile()', // see hubs/reconciliation.py
     """
 

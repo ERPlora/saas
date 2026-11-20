@@ -1,6 +1,6 @@
 // The op → route map the SDK's API client uses, written by hand. Sign-in is not here: allauth.headless
 // is not an operation, the SDK reaches it through its own client (`createAllauthClient`).
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -13,6 +13,11 @@ const BILLING_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '
 const APPS_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'apps', 'api.py'), 'utf8');
 const FISCAL_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'fiscal', 'api.py'), 'utf8');
 const BASE_API = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'base', 'api.py'), 'utf8');
+const ACCOUNTS_QUERY_MODULES = new Set(
+  readdirSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'accounts', 'queries'))
+    .filter((name) => name.endsWith('.py') && name !== '__init__.py')
+    .map((name) => name.slice(0, -'.py'.length)),
+);
 
 /** The operations of the Store: billing/api.py, apps/api.py and the payer of hubs/api.py. */
 const STORE_ROUTES = {
@@ -113,11 +118,12 @@ const ACCOUNT_PAGE_ROUTES = {
 
 /**
  * The routes accounts/api.py binds and the kind of each operation: `run_operation(request,
- * queries.x)` is a query (GET), `<module of accounts/services>.x` a command (POST), whether or not it takes a body.
+ * <module of accounts/queries>.x)` is a query (GET), `<module of accounts/services>.x` a command (POST), whether or
+ * not it takes a body.
  */
 function accountsRoutes(source: string): Record<string, { method: string; path: string }> {
   const bound = source.matchAll(/@bind\(router, "([\w.]+)", "([^"]+)"[^)]*\)\nasync def \w+\([^)]*\):\n\s+return await run_operation\(request, (\w+)\./g);
-  return Object.fromEntries([...bound].map(([, op, path, module]) => [op, { method: module === 'queries' ? 'get' : 'post', path: `/api${path}` }]));
+  return Object.fromEntries([...bound].map(([, op, path, module]) => [op, { method: ACCOUNTS_QUERY_MODULES.has(module) ? 'get' : 'post', path: `/api${path}` }]));
 }
 
 /**

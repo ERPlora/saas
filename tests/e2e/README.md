@@ -308,6 +308,14 @@ huellas de las preguntas, céntimos.
   con `gpt-5.4-mini` de reserva y las huellas de la búsqueda (`ASSISTANT_SERVICE_PROVIDER=openai`, que `panel/project.ts`
   pone con `QA_REAL_PROVIDER=1`, junto con los 30 mensajes al mes de producción). La cuenta es
   `e2e-assistant-qa-battery@example.com` (contraseña `e2e-panel`), dueña de «QA Base» en Gratis.
+- **Otro modelo** (`answer_choice` de `assistant_seed.py`, probado en `assistant/tests/test_e2e_assistant_seed.py`):
+  con `QA_ANSWER_MODEL` contesta el modelo a prueba, en un proveedor propio (`qa-answer`) y **sin reserva**, para que
+  un turno en el que falla cuente como fallo suyo y no como respuesta de `gpt-5.4-mini`. Lo describen `QA_ANSWER_KIND`
+  (`openai`, `anthropic`, `gemini` o `deepseek`; un servicio compatible con OpenAI es `openai` con su dirección),
+  `QA_ANSWER_BASE_URL` (opcional, https), `QA_ANSWER_KEY_ENV` (el **nombre** de la variable que guarda su clave, nunca
+  la clave) y `QA_ANSWER_PRICE_IN` y `QA_ANSWER_PRICE_OUT` (USD por millón de tokens, escritos en el modelo como en el
+  admin). Si falta alguna, `real` se niega diciendo cuáles; sin `QA_ANSWER_MODEL`, cualquier otra `QA_ANSWER_*` también
+  (nunca contesta Qwen en silencio). Las huellas de la búsqueda siguen con `openai`. `forget` borra también su clave.
 - **Documentación de las apps del Hub** (`apps.AppDoc`): la escribe el `register_apps` del Hub en el esquema `shared`
   de la BD del SaaS. Una vez por BD e2e, desde un árbol del Hub en `origin/main` con su `.env`:
   `SHARED_DB_NAME=saas_e2e_qa uv run python manage.py register_apps`.
@@ -373,9 +381,19 @@ tiene de dónde salir y falla sin culpa del producto).
   la app) siguen a cada sonda; los mensajes del mes se reponen al agotarse. Cada worker siembra las claves y la
   cuenta y, al acabar (también tras un fallo), `assistant_seed.py forget` las borra con las cuentas de QA: no queda
   ninguna clave de verdad en la BD e2e. `real` y `forget` se niegan fuera de una BD e2e (`saas_…_e2e…`).
-- **Salida**, ignorada por git: `.artifacts/qa/probes/<ejecución>/` con el JSON y las capturas de cada sonda y
+- **Salida**, ignorada por git: `.artifacts/qa/probes/<ejecución>/` con el JSON y las capturas de cada sonda,
   `report.md` (aprobadas, fallidas y n.a.; la herramienta que eligió el modelo; los primeros 300 caracteres de la
-  respuesta; claves tapadas).
+  respuesta; claves tapadas) y `bench.json`.
+- **Comparar modelos** (`bench.json`, `assistant-bench.ts`): el mismo formato que el registro de las sondas del Hub. Los
+  datos de la ejecución (modelo, tipo de API, dirección, precios, reserva, fecha, ficheros) y una fila por sonda: id,
+  frase, rol, idioma, superficie, expectativa, si la herramienta lee o escribe, las herramientas que llamó el modelo en
+  orden y con sus argumentos, si salió tarjeta, el veredicto y sus motivos, las peticiones del turno, los tokens y el
+  coste que añadió a las filas de uso de la cuenta (después menos antes; con las huellas de la búsqueda), la latencia, el
+  error y si la herramienta estaba entre las que el turno ofreció para esa frase (`offered`: la spec la ordena como el
+  turno, con `base.assistant.relevant`; `false` es un fallo del ranking, igual para todos los modelos). Sin precios el
+  coste sale `n/a`, no cero. Todos los modelos contestan el corpus entero del panel: `QA_PROBES_SAMPLE` es del Hub y aquí
+  para la ejecución. El resumen de varios registros lo da el Hub (su `tests/e2e/README.md`, «Comparar modelos»):
+  `pnpm -s qa:bench-compare <bench.json>…` desde su checkout, con los del SaaS y los del Hub.
 - **El ciclo**: generar el esqueleto, escribir las frases, correr la spec, abrir una issue por cada fallo de producto
   (con su sonda como reproducción) y proponer las sondas nuevas en una PR. El Hub hace lo mismo con su pila.
 
@@ -384,6 +402,9 @@ pnpm qa:probes --language es --surface app --apps billing        # esqueleto en 
 # la BD e2e, el register_apps del Hub y las claves, como en la receta de la batería (arriba)
 QA_REAL_PROVIDER=1 DB_NAME=saas_e2e_qa E2E_SAAS_PORT=8530 VITE_DEV_PORT=5530 pnpm e2e:ci assistant-probes
 QA_PROBES=tests/e2e/qa/probes/es-app-2026-11-01.json QA_REAL_PROVIDER=1 … pnpm e2e:ci assistant-probes   # un fichero
+# Otro modelo, sin reserva (la clave, en la variable que se nombra; los precios, en USD por millón de tokens):
+QA_ANSWER_KIND=anthropic QA_ANSWER_MODEL=<id> QA_ANSWER_KEY_ENV=QA_ANTHROPIC_API_KEY QA_ANTHROPIC_API_KEY=… \
+  QA_ANSWER_PRICE_IN=<USD> QA_ANSWER_PRICE_OUT=<USD> QA_REAL_PROVIDER=1 … pnpm e2e:ci assistant-probes
 ```
 
 ## Escribir una spec del panel

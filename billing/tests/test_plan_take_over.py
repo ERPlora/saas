@@ -24,9 +24,10 @@ from django.utils import timezone, translation
 from django.utils.formats import date_format
 from live.errors import NotFound, OperationError, PermissionDenied
 
-from billing import queries, services
+from billing import queries
 from billing.models import CheckoutAttempt, PromoRedemption
 from billing.schemas import HubIn, SubscriptionListIn
+from billing.services import checkout_webhooks, hand_overs, live_rates, subscription_webhooks
 from billing.stripe_coupons import coupon_id
 from billing.tests.conftest import code_of, ctx_for, pay
 from billing.tests.stripe_captured import captured
@@ -84,7 +85,7 @@ def day(moment, language):
 
 
 def take_over(user, hub):
-    return services.plan_take_over(ctx_for(user), HubIn(hub_id=hub.id)).model_dump()
+    return hand_overs.plan_take_over(ctx_for(user), HubIn(hub_id=hub.id)).model_dump()
 
 
 def refused(code, call):
@@ -194,7 +195,7 @@ class TestTheHandOverStopsThePreviousPayersRenewal:
         paid = handed_over(shop, owner, heir, stripe_double)
         asked = len(stripe_double.calls)
 
-        assert services.retax_subscription(paid) == "skipped"
+        assert live_rates.retax_subscription(paid) == "skipped"
 
         assert len(stripe_double.calls) == asked
 
@@ -354,7 +355,7 @@ class TestTheTakeOverCompletes:
         take_over(heir, paid)
         stripe_holds(stripe_double)
 
-        assert services.checkout_completed(completed_takeover(paid)) == "completed"
+        assert checkout_webhooks.checkout_completed(completed_takeover(paid)) == "completed"
 
         moved = local(paid)
         assert (moved.stripe_subscription_id, moved.stripe_customer_id) == ("sub_2", "cus_new")
@@ -367,11 +368,11 @@ class TestTheTakeOverCompletes:
     def test_a_redelivery_ends_nothing_twice(self, shop, owner, heir, stripe_double):
         paid = handed_over(shop, owner, heir, stripe_double)
         stripe_holds(stripe_double)
-        services.checkout_completed(completed_takeover(paid))
+        checkout_webhooks.checkout_completed(completed_takeover(paid))
         stripe_holds(stripe_double, old_status="canceled")
         asked = len(stripe_double.calls)
 
-        assert services.checkout_completed(completed_takeover(paid)) == "completed"
+        assert checkout_webhooks.checkout_completed(completed_takeover(paid)) == "completed"
 
         assert len(stripe_double.calls_to("subscriptions.cancel")) == 1
         assert len(stripe_double.calls) == asked, "a business already moved asks Stripe nothing"
@@ -382,7 +383,7 @@ class TestTheTakeOverCompletes:
         paid = handed_over(shop, owner, heir, stripe_double)
         stripe_holds(stripe_double, old_status="canceled")
 
-        services.checkout_completed(completed_takeover(paid))
+        checkout_webhooks.checkout_completed(completed_takeover(paid))
 
         assert stripe_double.calls_to("subscriptions.cancel") == []
         assert local(paid).stripe_subscription_id == "sub_2"
@@ -393,16 +394,16 @@ class TestTheTakeOverCompletes:
         stripe_double.answer("subscriptions.cancel", connection_error())
 
         with pytest.raises(Exception):  # noqa: B017, PT011 - the webhook answers 500 and Stripe delivers it again
-            services.checkout_completed(completed_takeover(paid))
+            checkout_webhooks.checkout_completed(completed_takeover(paid))
 
         assert local(paid).stripe_subscription_id == "sub_1"
 
     def test_the_end_of_the_previous_subscription_leaves_the_plan_alone(self, shop, owner, heir, stripe_double):
         paid = handed_over(shop, owner, heir, stripe_double)
         stripe_holds(stripe_double)
-        services.checkout_completed(completed_takeover(paid))
+        checkout_webhooks.checkout_completed(completed_takeover(paid))
 
-        assert services.subscription_deleted({"id": "sub_1"}) == "unknown"
+        assert subscription_webhooks.subscription_deleted({"id": "sub_1"}) == "unknown"
 
         assert local(paid).plan.slug == "starter"
 
@@ -442,7 +443,7 @@ class TestTheRow:
     def test_once_kept_the_row_is_the_owners_own(self, shop, owner, heir, stripe_double):
         paid = handed_over(shop, owner, heir, stripe_double)
         stripe_holds(stripe_double)
-        services.checkout_completed(completed_takeover(paid))
+        checkout_webhooks.checkout_completed(completed_takeover(paid))
 
         (row,) = rows(heir, paid)
 
@@ -519,7 +520,7 @@ class TestItsDiscountGoesWithIt:
         new_end = int((timezone.now() + timedelta(days=91)).timestamp())
         stripe_holds(stripe_double, new_discounts=[{**DISCOUNT, "id": "di_new", "end": new_end}])
 
-        services.checkout_completed(completed_takeover(paid))
+        checkout_webhooks.checkout_completed(completed_takeover(paid))
 
         moved = PromoRedemption.objects.get()
         assert (moved.stripe_subscription_id, moved.stripe_customer_id) == ("sub_2", "cus_1")
@@ -532,7 +533,7 @@ class TestItsDiscountGoesWithIt:
         take_over(heir, paid)
         stripe_holds(stripe_double)
 
-        services.checkout_completed(completed_takeover(paid))
+        checkout_webhooks.checkout_completed(completed_takeover(paid))
 
         assert PromoRedemption.objects.get().stripe_subscription_id == "sub_2"
         assert rows(heir, paid)[0]["discount"] is None

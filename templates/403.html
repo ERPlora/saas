@@ -3,7 +3,7 @@
 {% comment %}
   Django renders `403.html` by name (`django.views.defaults.permission_denied`): a PermissionDenied,
   e.g. the admin for a signed-in account that is not staff, or its «Hubs» page without the
-  permission (`accounts/admin.py`).
+  permission (`accounts/admin/sign_in.py`).
 {% endcomment %}
 
 {% block title %}403 — {% trans "Forbidden" %} · ERPlora Cloud{% endblock %}

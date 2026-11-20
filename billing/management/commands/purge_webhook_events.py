@@ -1,7 +1,7 @@
 """``python manage.py purge_webhook_events``: forget the Stripe events received more than 30 days ago (BILLING-F37).
 
 A weekly ECS scheduled task. Each row only guards a delivery against being processed twice, and Stripe
-resends an event for 3 days at most (``billing.services.purge_webhook_events``). One ``DELETE``: idempotent, two
+resends an event for 3 days at most (``billing.services.webhook_events.purge_webhook_events``). One ``DELETE``: idempotent, two
 runs at once delete each row once.
 """
 
@@ -9,7 +9,7 @@ import logging
 
 from django.core.management.base import BaseCommand
 
-from billing import services
+from billing.services import webhook_events
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +18,6 @@ class Command(BaseCommand):
     help = "Delete the Stripe events received more than 30 days ago (idempotent)."
 
     def handle(self, *args, **options):
-        deleted = services.purge_webhook_events()
+        deleted = webhook_events.purge_webhook_events()
         logger.info("billing.purge_webhook_events deleted=%s", deleted)
         self.stdout.write(f"purge_webhook_events: deleted={deleted}")

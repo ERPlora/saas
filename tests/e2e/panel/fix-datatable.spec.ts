@@ -1,6 +1,6 @@
 // flow: none — regression test of the panel's lists
 // The panel's lists take the `.panel-fill` height chain, the toolbar and the phone's heading from the shell's
-// theme (`polish.css`, loaded by createShell); the SaaS keeps no sheet of its own (frontend/main.test.ts).
+// theme (`polish.css`, loaded by createShell); the SaaS keeps no sheet of its own (frontend/main.guards.test.ts).
 // Invoices, in Chrome at 390, 834 and 1440 px, against the rows of billing_seed.py: the list fills the page
 // between the topbar and the tabbar, its search and its heading stay, and its «Filters» popover
 // (InvoiceFilters.vue: the SaaS keeps its own; DataTable's own funnel stays off) still filters. One scroll at

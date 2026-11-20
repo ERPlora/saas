@@ -16,7 +16,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   `last_opened_at` y devuelve `{url}`, el inicio del salto en el Hub (`https://<slug>.erplora.com/auth/login?next=/`;
   en local `http://<slug>.localhost:8000/…`). El Hub pone su `state` ligado al navegador y rebota a `/hub-login/`,
   que emite el código y pide el segundo factor si la cuenta lo tiene. La URL la arma
-  `accounts.queries.hub_start_url` (un solo sitio para el salto).
+  `accounts.queries.hub_links.hub_start_url` (un solo sitio para el salto).
 - Miembros (L1-B): `hubs.member.list` devuelve `seats: {used, limit}` (`limit: null` = sin tope) y, por fila,
   `is_me` y `actions` (lista en este orden: `change_role`, `remove`, `resend`, `cancel`, `transfer`), calculadas
   en el servidor con las mismas reglas que las escrituras: el panel no adivina. El tope de asientos es
@@ -45,7 +45,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 
 - **El acceso son los miembros** (saas#199): el salto (`issue_code`/`redeem_code`) entra a quien es miembro respondido
   de un negocio que aún abre (`queries.membership.access_of`, fuera `deleting` y `deleted`). `accounts` nunca importa `hubs`: lo
-  pregunta por su nombre, `hubs.member.list_mine` (`accounts.queries.hub_roles_of`), sin ruta ni herramienta del
+  pregunta por su nombre, `hubs.member.list_mine` (`accounts.queries.account_hubs.hub_roles_of`), sin ruta ni herramienta del
   asistente. La copia que leía antes (`accounts.HubMembership`) salió del código en `accounts/0011` y su tabla, de la
   base de datos en `accounts/0012` (saas#220). El salto se queda en `accounts`: moverlo (`/hub-login/`,
   `/internal/auth/redeem`, `AuthExchangeCode`) no quitaba ninguna copia. Guardarraíl AST: `tests/test_access.py`.
@@ -71,10 +71,10 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 - **`demo_seed` vive en `hubs`** (`management/commands/demo_seed.py`): crea las cuentas
   (`accounts.services.demo_accounts.seed_demo_customer`, `seed_demo_platform_admin`) y adopta `a` y `b` con
   `services.demo_businesses.seed_demo_business`, igual que la migración.
-- **`SessionRevocation`** (`models.py`, migración `0005`): quitar a un miembro, cambiarle el rol (el rol viaja en la
-  sesión del Hub), aceptar un traspaso (los dos lados) o liberar una cuenta no verificada (todos sus negocios) la
-  encola en la transacción; se entrega tras el COMMIT (`POST /internal/sessions/revoke`) y, si el Hub no está o la
-  rechaza, `reconcile_hub_states` la reintenta cuando vence su espera (15 min, doblando, tope 6 h;
+- **`SessionRevocation`** (`models/session_revocations.py`, migración `0005`): quitar a un miembro, cambiarle el rol
+  (el rol viaja en la sesión del Hub), aceptar un traspaso (los dos lados) o liberar una cuenta no verificada (todos
+  sus negocios) la encola en la transacción; se entrega tras el COMMIT (`POST /internal/sessions/revoke`) y, si el Hub
+  no está o la rechaza, `reconcile_hub_states` la reintenta cuando vence su espera (15 min, doblando, tope 6 h;
   `sessions_ended`/`sessions_pending`, y la pasada falla con alguna pendiente). Una entregada no se reenvía; la de un
   negocio purgado se da por entregada sin llamar. Sobrevive al borrado de la cuenta (`user` sin restricción de BD).
   La siguiente foto ya no lista al miembro quitado.
@@ -89,10 +89,10 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   de superusuario «Enviar al Hub el estado más reciente», «Reintentar lo que el Hub tiene pendiente» y «Cerrar ya
   las sesiones en el Hub»; `support` los ve (migración `0007`) y no actúa.
 - **Invitar una cuenta que nunca verificó su correo** (erplora-old/saas#2541, `tests/test_invite_unverified_account.py`):
-  `accounts.queries.email_is_proven` decide; si no, `accounts.services.mailbox_proof.release_unproven_account` le quita
+  `accounts.queries.ways_in.email_is_proven` decide; si no, `accounts.services.mailbox_proof.release_unproven_account` le quita
   contraseña (y con ella las sesiones del SaaS), segundo factor y Google, y se encolan los cierres de sesión de
   todos sus negocios; el correo de la invitación lleva el camino para reclamar la cuenta
-  (`accounts.queries.has_no_way_in`). Aceptar exige el correo verificado: 403 `hubs.email_unverified`.
+  (`accounts.queries.ways_in.has_no_way_in`). Aceptar exige el correo verificado: 403 `hubs.email_unverified`.
 
 Plan: `knowledge/raw/plans/2026-10-13-panel-saas-unificado.md` (lotes L1-A, L1-B y L1-A2).
 
@@ -104,7 +104,7 @@ Flujos en `WORKBOOK.md` (`HUBS-F01`…`HUBS-F14`, parte 1 de 4 de la migración;
 
 - **«… ya está listo»** (`emails.send_ready`): el aviso `POST /internal/hubs/{id}/ready` que pasa un negocio de
   preparándose a activo manda al propietario, una sola vez y tras el COMMIT, el correo con la entrada al negocio
-  (`accounts.queries.hub_start_url`) y su página en el panel.
+  (`accounts.queries.hub_links.hub_start_url`) y su página en el panel.
 - **La app instalada** (`ERPlora/app`) arranca en `/shell/`, que es el lanzador (alias de `/launch` en
   `frontend/routes.ts`); su «Abrir» pide `hubs.business.open` con `shell: true` y el salto lleva `&shell=1`, la marca
   con la que la app enlaza el terminal al negocio. `GET /shell/open/<id>/` (`shell.py`) es la misma puerta para un
@@ -142,7 +142,7 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
 - **Suspendidos por impago** (F20; PLAN-SAAS §1.1, «dentro de `sweep_unpaid`»): `Hub.suspended_at`,
   `suspension_warned_at`, `suspension_final_notice_at` (migración `0016`, que pone en marcha el reloj de los que
   ya estaban suspendidos el día del despliegue). `_apply_standing` fecha la suspensión y la
-  olvida al pagar. `services.suspensions.age_suspended()` (lo llama `billing.services.sweep_unpaid`, cada hora; sus cuentas
+  olvida al pagar. `services.suspensions.age_suspended()` (lo llama `billing.services.unpaid_sweep.sweep_unpaid`, cada hora; sus cuentas
   `warned`, `final_notice`, `expired`, `undated` se suman a las de la pasada) corre por negocio la operación de
   sistema `hubs.business.age_suspension`: aviso a los 30 días, último a los 150 (`emails.send_suspension_notice`, al
   propietario, solo marcado si el correo salió) y, con el último enviado, la baja a los 180 por `_delete_business`,
@@ -159,7 +159,8 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
 
 Flujos `HUBS-F24`…`HUBS-F30` del `WORKBOOK.md` (parte 3 de 4): invitar, aceptar o rechazar, cambiar el rol, quitar,
 traspasar la propiedad, la pestaña «Miembros» y los accesos en el admin. El código ya estaba (L1-B, L1-A2); esta parte
-lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.spec.ts`) y arregla lo que no cuadraba:
+lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.spec.ts` y, F28,
+`hubs-people-ownership.spec.ts`) y arregla lo que no cuadraba:
 
 - **El correo de la oferta de propiedad** enlazaba a `/ownership/<id>`, una página que el panel no tiene: ahora lleva a
   `/dashboard/businesses`, donde está la tarjeta «… te ofrece …» con «Aceptar la propiedad». El de la aceptación, que
@@ -181,7 +182,7 @@ lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.s
   y sin prorrateo); el webhook pasa el negocio a la suscripción nueva y termina la anterior sin reembolso. Un cliente de
   Stripe enviado sin su suscripción ya no pisa el de una suscripción viva (`hubs.subscription.apply`), y
   `retax_subscription` no recalcula el impuesto de un plan que cobra otra cuenta. Tests:
-  `billing/tests/test_plan_take_over.py`; e2e: `tests/e2e/panel/hubs-people.spec.ts` («HUBS-F28»).
+  `billing/tests/test_plan_take_over.py`; e2e: `tests/e2e/panel/hubs-people-ownership.spec.ts` («HUBS-F28»).
 - **Sin página global de personas** (G86, G34, G115 del SaaS viejo): ronda 17, cada negocio enseña las suyas en
   «Miembros». «Usuarios del Terminal» (G24) era esa misma página del SaaS viejo, no los empleados con PIN del Hub.
 
@@ -533,7 +534,7 @@ Plan: `knowledge/raw/plans/2026-10-17-demo-hubs-fase-1.md` (§1.6 y §1.8). Una 
 
 - **Entrada**, el mismo salto con `state` que un negocio (§2.1), sin cuenta del SaaS: `/demo/` (GET, **nunca
   crea**) → botón → `/demo/start/` (POST con CSRF) → `hub_client.create_demo` → 302 a
-  `accounts.queries.hub_start_url(slug)` (`/auth/login?next=/` del hub demo) → el Hub pone su cookie de `state` y
+  `accounts.queries.hub_links.hub_start_url(slug)` (`/auth/login?next=/` del hub demo) → el Hub pone su cookie de `state` y
   vuelve a `/demo/enter/?hub&next&state` → si la sesión es dueña de esa demo, `hub_client.create_demo_code` →
   formulario auto-enviado `accounts/hub_login_form.html` («Opening your demo…», variable `demo_jump`) al
   `/auth/callback` de la demo (el código nunca va en una URL). Sin `state` → 302 a `hub_start_url` (empieza el baile); un `state` de más de 128 caracteres →

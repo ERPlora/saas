@@ -11,7 +11,7 @@ import logging
 from django.utils import translation
 from django.utils.translation import gettext as _
 
-from accounts.queries import hub_origin
+from accounts.queries.hub_links import hub_origin
 from base.emails import branded_message
 
 logger = logging.getLogger(__name__)

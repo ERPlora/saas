@@ -91,8 +91,9 @@ def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict
     changes = {}
     if plan is not None and subscription.plan_id != plan.pk:
         changes["plan"] = plan
-    # A customer sent alone is the payer's (``billing.ensure_customer``): a live subscription keeps the one Stripe
-    # charges until Stripe says otherwise (the previous payer's card after a hand-over, HUBS-F28).
+    # A customer sent alone is the payer's (``billing.services.stripe_customers.ensure_customer``): a live
+    # subscription keeps the one Stripe charges until Stripe says otherwise (the previous payer's card after a
+    # hand-over, HUBS-F28).
     payers_only = "stripe_subscription_id" not in sent and bool(subscription.stripe_subscription_id)
     for field in APPLIED_FIELDS:
         if field == "stripe_customer_id" and payers_only:

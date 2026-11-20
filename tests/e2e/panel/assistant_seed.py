@@ -36,9 +36,13 @@ the account.
   (``qwen``, OpenAI's API at Alibaba's Frankfurt workspace) with ``qwen3.7-plus`` answering, and «OpenAI» (``openai``,
   ``assistant.credential.import`` as ``import_ai_keys_from_env`` does) with ``gpt-5.4-mini`` as the fallback and the
   embeddings of the documentation search (``ASSISTANT_SERVICE_PROVIDER=openai``). Their keys are read from
-  ``QA_QWEN_API_KEY`` and ``QA_OPENAI_API_KEY`` only, never printed. Then ``e2e-assistant-qa-battery``, an account like
-  any other in ``language``, owner of one working business on the Free plan, «QA Base». Prints one line of JSON: the
-  owner's email, the business, its address and the models.
+  ``QA_QWEN_API_KEY`` and ``QA_OPENAI_API_KEY`` only, never printed. With ``QA_ANSWER_MODEL`` (``answer_choice``) the
+  model under test answers instead, alone (no fallback, so a turn it fails is its failure), on a provider of its own
+  (``qa-answer``) of ``QA_ANSWER_KIND`` at ``QA_ANSWER_BASE_URL``, its key read from the variable ``QA_ANSWER_KEY_ENV``
+  names and its prices (``QA_ANSWER_PRICE_IN``, ``QA_ANSWER_PRICE_OUT``, USD per million tokens) typed on its model as
+  the admin does. Then ``e2e-assistant-qa-battery``, an account like any other in ``language``, owner of one working
+  business on the Free plan, «QA Base». Prints one line of JSON: the owner's email, the business, its address and the
+  models.
 
 The other actions never write a real key: theirs is made up and the provider is the local fake one.
 """
@@ -71,6 +75,13 @@ QWEN = {
     "key": "QA_QWEN_API_KEY",
 }
 OPENAI = {"slug": "openai", "model": "gpt-5.4-mini", "display_name": "GPT-5.4 mini", "key": "QA_OPENAI_API_KEY"}
+#: The model that answers ``real`` without any ``QA_ANSWER_*`` variable: production's, with OpenAI's in reserve.
+PRODUCTION = {**QWEN, "kind": "openai", "price_in": None, "price_out": None, "fallback": True}
+#: The provider of a model under test, apart from production's.
+COMPARED_SLUG = "qa-answer"
+KINDS = ("openai", "anthropic", "gemini", "deepseek")
+COMPARED_NEEDS = ("QA_ANSWER_KIND", "QA_ANSWER_KEY_ENV", "QA_ANSWER_PRICE_IN", "QA_ANSWER_PRICE_OUT")
+VARIABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 #: The run's own e2e database (tests/e2e/stack.ts, ``isE2eDatabase``): the only one ``real`` writes real keys into.
 E2E_DATABASE = re.compile(r"^saas(?:_[a-z0-9]+)*_e2e(?:_[a-z0-9]+)*$")
 
@@ -299,10 +310,52 @@ def e2e_only(action: str, database: str | None = None) -> None:
         sys.exit(f"{action}: only on the run's own e2e database (saas_…_e2e…), never on {database!r}")
 
 
-def real_keys() -> tuple[str, str]:
+def _price(environ, name: str):
+    from decimal import Decimal, InvalidOperation
+
+    try:
+        value = Decimal(environ.get(name, "").strip())
+    except InvalidOperation:
+        value = None
+    if value is None or not value.is_finite() or value < 0:
+        sys.exit(f"{name} is a price in USD per million tokens, 0 or more (see tests/e2e/README.md)")
+    return value
+
+
+def answer_choice(environ) -> dict:
+    """The model that answers ``real``: production's without any ``QA_ANSWER_*`` variable; with ``QA_ANSWER_MODEL``,
+    the model under test, alone, at its address and prices. A half-given choice is refused, naming what is missing."""
+    model = environ.get("QA_ANSWER_MODEL", "").strip()
+    if not model:
+        stray = sorted(name for name, value in environ.items() if name.startswith("QA_ANSWER_") and value.strip())
+        if stray:
+            sys.exit(f"{', '.join(stray)} without QA_ANSWER_MODEL: name the model under test, or unset them")
+        return dict(PRODUCTION)
+    if missing := [name for name in COMPARED_NEEDS if not environ.get(name, "").strip()]:
+        sys.exit(f"a model under test needs {', '.join(missing)} (see tests/e2e/README.md)")
+    kind, key = environ["QA_ANSWER_KIND"].strip(), environ["QA_ANSWER_KEY_ENV"].strip()
+    if kind not in KINDS:
+        sys.exit(f"QA_ANSWER_KIND {kind!r} is none of {', '.join(KINDS)}")
+    if not VARIABLE.match(key):
+        sys.exit("QA_ANSWER_KEY_ENV is the NAME of the variable that holds the key, not the key")
+    return {
+        "slug": COMPARED_SLUG,
+        "name": "QA answer",
+        "kind": kind,
+        "base_url": environ.get("QA_ANSWER_BASE_URL", "").strip(),
+        "model": model,
+        "display_name": model,
+        "key": key,
+        "price_in": _price(environ, "QA_ANSWER_PRICE_IN"),
+        "price_out": _price(environ, "QA_ANSWER_PRICE_OUT"),
+        "fallback": False,
+    }
+
+
+def real_keys(choice: dict) -> tuple[str, str]:
     """The keys of ``real``, before anything is cleared: only on the run's own e2e database, never the shared one."""
     e2e_only("real")
-    return _secret(QWEN["key"]), _secret(OPENAI["key"])
+    return _secret(choice["key"]), _secret(OPENAI["key"])
 
 
 def forget() -> None:
@@ -311,10 +364,50 @@ def forget() -> None:
     the next ``real`` saves the keys again from the environment."""
     from assistant.models import AIProviderCredential
 
-    AIProviderCredential.objects.filter(provider__slug__in=(QWEN["slug"], OPENAI["slug"])).delete()
+    AIProviderCredential.objects.filter(provider__slug__in=(QWEN["slug"], OPENAI["slug"], COMPARED_SLUG)).delete()
 
 
-def real(keys: tuple[str, str], language: str = "es") -> dict:
+def _answering(choice: dict):
+    """The provider of ``choice``, added or set as the admin's form does: its fields validated (the address over
+    https)."""
+    from assistant.models import AIProvider
+
+    provider = AIProvider.objects.filter(slug=choice["slug"]).first() or AIProvider(slug=choice["slug"])
+    provider.name, provider.kind, provider.base_url = choice["name"], choice["kind"], choice["base_url"]
+    provider.is_enabled = True
+    provider.full_clean()
+    provider.save()
+    return provider
+
+
+def _priced(model, choice: dict) -> None:
+    """The prices of ``choice`` typed on its model, as the admin does (no operation sets them); none given, none set."""
+    from assistant.models import AIModel
+
+    if choice["price_in"] is not None:
+        AIModel.objects.filter(pk=model.pk).update(
+            price_input_per_1m=choice["price_in"], price_output_per_1m=choice["price_out"]
+        )
+
+
+def _number(price):
+    return None if price is None else float(price)
+
+
+def _answer_said(provider, model, fallback, choice: dict) -> dict:
+    """What the run's report says of the model that answered."""
+    return {
+        "provider": provider.slug,
+        "kind": provider.kind,
+        "model": model.model_id,
+        "base_url": provider.base_url,
+        "price_in": _number(choice["price_in"]),
+        "price_out": _number(choice["price_out"]),
+        "fallback": fallback.model_id if fallback else None,
+    }
+
+
+def real(choice: dict, keys: tuple[str, str], language: str = "es") -> dict:
     from django.contrib.auth import get_user_model
     from live.context import OperationContext, Scope
 
@@ -322,37 +415,35 @@ def real(keys: tuple[str, str], language: str = "es") -> dict:
     from assistant.models import AIProvider, AIProviderCredential
     from assistant.schemas import CredentialImportIn, CredentialIn, PolicyIn
 
-    qwen_key, openai_key = keys
+    answer_key, openai_key = keys
     staff()
     admin = get_user_model().objects.get(email=f"{PREFIX}admin{DOMAIN}")
     # The member of the staff acting, as ``assistant.admin.staff_context`` builds it for the admin's pages.
     ctx = OperationContext(
         scope=Scope("user", str(admin.pk)), actor=admin, permissions=frozenset({"assistant.manage"}), language="en"
     )
-    qwen = AIProvider.objects.filter(slug=QWEN["slug"]).first()
-    if qwen is None:
-        # Added as the admin's form adds it: its fields validated (the address over https).
-        qwen = AIProvider(slug=QWEN["slug"], name=QWEN["name"], kind=AIProvider.Kind.OPENAI, base_url=QWEN["base_url"])
-        qwen.full_clean()
-        qwen.save()
-    kept = AIProviderCredential.objects.filter(provider=qwen, label="default").first()
+    answering = _answering(choice)
+    kept = AIProviderCredential.objects.filter(provider=answering, label="default").first()
     services.credential_save(
-        ctx, CredentialIn(provider=qwen.pk, id=kept.pk if kept else None, label="default", api_key=qwen_key)
+        ctx, CredentialIn(provider=answering.pk, id=kept.pk if kept else None, label="default", api_key=answer_key)
     )
     services.credential_import(
         services.platform_context(), CredentialImportIn(kind="openai", api_key=openai_key, label="default", force=True)
     )
     openai = AIProvider.objects.get(slug=OPENAI["slug"])
-    answers, fallback = _chosen(ctx, qwen, QWEN), _chosen(ctx, openai, OPENAI)
-    services.policy_update(ctx, PolicyIn(active_model=answers.pk, fallback_model=fallback.pk))
+    answers = _chosen(ctx, answering, choice)
+    _priced(answers, choice)
+    fallback = _chosen(ctx, openai, OPENAI) if choice["fallback"] else None
+    services.policy_update(ctx, PolicyIn(active_model=answers.pk, fallback_model=fallback.pk if fallback else None))
 
     owner, hub = _owner_with_business("qa-battery", ("Quique", "Battery"), "QA Base", "qa-base", language)
     return {
         "owner": owner.email,
         "business": hub.name,
         "slug": hub.slug,
-        "model": f"{answers.model_id} ({qwen.name})",
-        "fallback": f"{fallback.model_id} ({openai.name})",
+        "model": f"{answers.model_id} ({answering.name})",
+        "fallback": f"{fallback.model_id} ({openai.name})" if fallback else "none",
+        "answer": _answer_said(answering, answers, fallback, choice),
     }
 
 
@@ -371,12 +462,13 @@ def main(action: str, address: str, language: str) -> None:
         "gateway": lambda: gateway(address),
         "panel": lambda: panel(address, language),
         "paying": lambda: paying(address, language),
-        "real": lambda: real(keys, language),
+        "real": lambda: real(choice, keys, language),
         "forget": forget,
     }
     if action not in actions:
         sys.exit(f"unknown action {action!r}: one of {', '.join(actions)}")
-    keys = real_keys() if action == "real" else ("", "")
+    choice = answer_choice(os.environ) if action == "real" else PRODUCTION
+    keys = real_keys(choice) if action == "real" else ("", "")
     if action == "forget":
         e2e_only(action)
     with transaction.atomic():

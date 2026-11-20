@@ -19,8 +19,8 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
-from billing import services
 from billing.schemas import CheckoutConfirmIn, ModuleIn
+from billing.services import module_cancellations, plan_changes
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import MONTH_END, item, subscription
 from hubs.services import hub_push
@@ -66,16 +66,16 @@ def bought(hub, slug="inventory") -> SubscriptionItem:
 
 
 def cancel(user, hub):
-    return services.module_cancel(ctx_for(user), ModuleIn(hub_id=hub.id, module="inventory"))
+    return module_cancellations.module_cancel(ctx_for(user), ModuleIn(hub_id=hub.id, module="inventory"))
 
 
 def keep(user, hub):
-    return services.module_keep(ctx_for(user), ModuleIn(hub_id=hub.id, module="inventory"))
+    return module_cancellations.module_keep(ctx_for(user), ModuleIn(hub_id=hub.id, module="inventory"))
 
 
 def buy(user, hub):
     moment = int(timezone.now().timestamp())
-    return services.checkout_confirm(
+    return plan_changes.checkout_confirm(
         ctx_for(user), CheckoutConfirmIn(hub_id=hub.id, module="inventory", proration_date=moment)
     )
 

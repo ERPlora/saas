@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import type { Browser, BrowserContext, Locator, Page } from '@playwright/test';
 
 import { type Card, summarizeTurns, type Turns } from '../assistant-battery';
+import type { SeededAnswer } from '../assistant-bench';
 import { redactedError } from '../assistant-probes';
 import { type Provider, startProvider } from '../assistant-provider';
 import { djangoEnv } from '../django-env';
@@ -37,6 +38,8 @@ export const DESKTOP_FIRST = [...VIEWPORTS].reverse();
 
 /** How long one question may take, cards included: the real model, its tools and the documentation search. */
 export const TURN_MS = 240_000;
+/** The keys of the real providers, a model under test's too: taken out of every output and report. */
+export const REAL_SECRETS = [process.env.QA_QWEN_API_KEY, process.env.QA_OPENAI_API_KEY, process.env[process.env.QA_ANSWER_KEY_ENV ?? '']];
 /** How long nothing moves before a turn counts as over. */
 const QUIET_MS = 2_500;
 
@@ -82,7 +85,7 @@ export function uvRun(args: string[], extra: Record<string, string> = {}): strin
       timeout: 900_000,
     }).trim();
   } catch (error) {
-    throw redactedError(error, [process.env.QA_QWEN_API_KEY, process.env.QA_OPENAI_API_KEY]);
+    throw redactedError(error, REAL_SECRETS);
   }
 }
 
@@ -93,9 +96,11 @@ export interface RealSeed {
   slug: string;
   model: string;
   fallback: string;
+  answer: SeededAnswer;
 }
 
-/** The real providers (keys from `QA_QWEN_API_KEY` and `QA_OPENAI_API_KEY`, read by the seed only) and the account
+/** The real providers (keys from `QA_QWEN_API_KEY` and `QA_OPENAI_API_KEY`, or a model under test's from the variable
+ *  `QA_ANSWER_KEY_ENV` names, read by the seed only: `assistant_seed.py`, `answer_choice`) and the account
  *  owner of «QA Base» in `language`, then the documentation index (idempotent: only the excerpts that changed since the
  *  last run are embedded again) and its lines of this run. */
 export function seedRealAssistant(language = 'es'): { seed: RealSeed; indexed: string[] } {
@@ -193,6 +198,8 @@ export class AssistantChat {
   readonly page: Page;
   private bodies: Promise<string>[] = [];
   private streaming = 0;
+  /** When the last turn's answer had come in whole. */
+  endedAt = 0;
 
   constructor(page: Page) {
     this.page = page;
@@ -205,7 +212,15 @@ export class AssistantChat {
     page.on('requestfinished', ended);
     page.on('requestfailed', ended);
     page.on('response', (response) => {
-      if (isTurn(response.url())) this.bodies.push(response.text().catch(() => ''));
+      if (!isTurn(response.url())) return;
+      const read = response.text().then(
+        (text) => {
+          this.endedAt = Date.now();
+          return text;
+        },
+        () => '',
+      );
+      this.bodies.push(read);
     });
   }
 
@@ -238,7 +253,12 @@ export class AssistantChat {
 
   /** What the turns of the question streamed so far. */
   async turns(): Promise<Turns> {
-    return summarizeTurns(await Promise.all(this.bodies));
+    return summarizeTurns(await this.streamed());
+  }
+
+  /** The bodies of the question's turns so far, as they streamed. */
+  async streamed(): Promise<string[]> {
+    return Promise.all(this.bodies);
   }
 
   /** The card the last turn showed, as its frame said it. */

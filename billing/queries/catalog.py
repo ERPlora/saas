@@ -62,7 +62,7 @@ def module_for_price(price_id: str):
 
 # --- The Store ----------------------------------------------------------------------------------------
 
-#: Statuses of a Stripe subscription that bill nothing any more (``billing.services.ENDED_STATUSES``).
+#: Statuses of a Stripe subscription that bill nothing any more (``billing.services.stripe_sales.ENDED_STATUSES``).
 _ENDED_STATUSES = frozenset({"canceled", "incomplete_expired"})
 
 

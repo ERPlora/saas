@@ -96,3 +96,8 @@ def tokens_spelling(monkeypatch):
         )
 
     return spell
+
+
+@pytest.fixture
+def seeded(db):
+    """The catalogue the migrations leave (``hubs/0013``)."""

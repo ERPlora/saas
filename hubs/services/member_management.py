@@ -12,7 +12,7 @@ from live.errors import Conflict, NotFound, PermissionDenied
 from live.operations import AI, operation
 from live.outbox import record_event
 
-from accounts import queries as account_queries
+from accounts.queries import ways_in
 from accounts.services import mailbox_proof
 from hubs import emails, events
 from hubs.models import Hub, HubMember, HubOwnershipTransfer
@@ -81,7 +81,7 @@ def _renew(member: HubMember, inviter, now) -> None:
 
 def _mail_invitation(ctx: OperationContext, member: HubMember) -> None:
     # Somebody with no way in yet (a new account, or one released below) is told how to claim it.
-    new_account = account_queries.has_no_way_in(member.user)
+    new_account = ways_in.has_no_way_in(member.user)
     transaction.on_commit(
         partial(emails.send_invitation, member, base_url=emails.base_url(ctx.request), new_account=new_account),
         robust=True,
@@ -152,7 +152,7 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
             user = get_user_model().objects.create_user(email=data.email, password=None, language=hub.language)
         else:
             signup.refuse_staff(user)
-            if not account_queries.email_is_proven(user, data.email):
+            if not ways_in.email_is_proven(user, data.email):
                 mailbox_proof.release_unproven_account(user, reason="invited_while_unverified")
                 revoke_after_commit(user.pk)
         member = HubMember.objects.create(

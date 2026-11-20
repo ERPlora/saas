@@ -763,10 +763,10 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
 - Suspendidos (F20): `Hub.suspended_at`, `suspension_warned_at` y `suspension_final_notice_at` (migración `0016`,
   que pone en marcha el reloj de los que ya estaban suspendidos el día del despliegue);
   `_apply_standing` fecha la suspensión y la olvida al pagar; `services.suspensions.age_suspended()` (lo llama
-  `billing.services.sweep_unpaid`, cada hora) corre por negocio `hubs.business.age_suspension` (solo el sistema):
+  `billing.services.unpaid_sweep.sweep_unpaid`, cada hora) corre por negocio `hubs.business.age_suspension` (solo el sistema):
   aviso a los 30 días, último a los 150 y baja a los 180 por `_delete_business`, el mismo camino que
   `hubs.business.delete`; un aviso solo se marca si su correo salió (`emails.send_suspension_notice`). Tests:
-  `hubs/tests/test_suspended_lifecycle.py` y `hubs/tests/test_migrations.py`.
+  `hubs/tests/test_suspended_lifecycle.py` y `hubs/tests/test_migrations_businesses.py`.
 - Admin (F23): las acciones de plataforma llevan `@traced` (`hubs/admin.py`), que escribe en el historial del admin
   («Ejecutó «…»») cada fila sobre la que corrieron. Tests: `hubs/tests/test_admin.py::TestTheTrail`.
 - Uso (F21, F22): el Hub sirve `GET /internal/usage` (contrato en `hubs/README.md`):
@@ -826,7 +826,7 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   (enlaza a `/dashboard/businesses/<id>` y, con un plan de pago, dice que la tarjeta del saliente ya no lo renueva). Tests:
   `hubs/tests/test_members.py`, `test_members_api.py`,
   `test_ownership.py`, `test_session_revocations.py`, `test_invite_unverified_account.py`, `test_emails.py`,
-  `test_permission_matrix.py` y `test_admin.py`; e2e en `tests/e2e/panel/hubs-people.spec.ts`, con `members.spec.ts` e `invitation.spec.ts`.
+  `test_permission_matrix.py` y `test_admin.py`; e2e en `tests/e2e/panel/hubs-people.spec.ts` (F28, en `hubs-people-ownership.spec.ts`), con `members.spec.ts` e `invitation.spec.ts`.
 - Pruebas: cada test cita su clave en el nombre o el docstring, y cada e2e la de su flujo en el título; los de F01–F14
   están en `tests/e2e/panel/hubs-flows.spec.ts`.
 - La foto (F31): `queries.hub_sync.hub_snapshot` (`PUT /internal/hubs/{id}/state`), con `plan` = los campos de
