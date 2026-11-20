@@ -42,7 +42,7 @@ BREAKS = {
     "hubs/unused.py": "import os\n",
     # Spelled apart so that this file carries no noqa marker of its own.
     "hubs/silenced.py": "value = 1  " + "#" + " noqa: C901\n",
-    "hubs/muted.py": "import os  " + "#" + " noqa: F401\n",
+    "hubs/muted.py": "PAIRS = list(zip([1], [2]))  " + "#" + " noqa: B905\n",
     "hubs/tangled.py": TANGLED,
     "hubs/ping.py": "from hubs import pong\n\nPONG = pong\n",
     "hubs/pong.py": "from hubs import ping\n\nPING = ping\n",
