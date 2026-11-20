@@ -53,6 +53,8 @@ dev = [
     "respx>=0.23.1",
     "pytest-xdist>=3.8.0",
     "ruff>=0.17.5",
+    "import-linter>=2.16",
+    "complexipy>=9.0.0",
 ]
 
 # erplora-live is the packages/live submodule (`git submodule update --init`); editable locally,
@@ -60,9 +62,10 @@ dev = [
 [tool.uv.sources]
 erplora-live = { path = "packages/live", editable = true }
 
-# Only the limits of a function's size: no formatter and none of ruff's default rules. The functions over a limit
-# today carry a `# noqa` for it, and RUF100 fails on one that no longer silences anything
-# (tests/test_guardrails_lint.py runs this from the suite).
+# ruff checks how big and how branchy each function is, and the common mistakes of the rule families E4, E7, E9, F, B
+# and DJ (tests/test_guardrails_lint.py runs it, tests/test_guardrails_ruff.py pins this configuration down). It is not
+# a formatter. The functions over a limit today carry a `# noqa` for it, and RUF100 fails on one that no longer
+# silences anything.
 [tool.ruff]
 extend-exclude = ["packages", "migrations"]
 # The exclusions hold for a file named on the command line too, so `ruff format <file>` leaves it alone.
@@ -73,9 +76,10 @@ force-exclude = true
 exclude = ["*"]
 
 [tool.ruff.lint]
-select = ["C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "RUF100"]
-# Rules of other linters the code already carries a `# noqa` for: RUF100 leaves those markers alone.
-external = ["A002", "B017", "BLE001", "E402", "F401", "F403", "F811", "F821", "PT011", "S308"]
+select = ["B", "C901", "DJ", "E4", "E7", "E9", "F", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "RUF100"]
+# Rules the code's older `# noqa` markers name where ruff reports nothing (another linter's rule, or a line other than
+# the one ruff reports): RUF100 keeps those markers instead of reporting them as unused.
+external = ["A002", "BLE001", "E402", "F811", "PT011", "S308"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
@@ -87,9 +91,82 @@ max-branches = 12
 max-returns = 6
 max-statements = 50
 
-# pytest's fixtures arrive as arguments.
+# pytest hands fixtures over as arguments, so a test's argument count says nothing about its size, and a fixture comes
+# back as an argument under the name it was imported with (F811).
 [tool.ruff.lint.per-file-ignores]
-"**/tests/**" = ["PLR0913", "PLR0917"]
-"**/e2e/**" = ["PLR0913", "PLR0917"]
-"**/test_*.py" = ["PLR0913", "PLR0917"]
-"**/conftest.py" = ["PLR0913", "PLR0917"]
+"**/tests/**" = ["F811", "PLR0913", "PLR0917"]
+"**/e2e/**" = ["F811", "PLR0913", "PLR0917"]
+"**/test_*.py" = ["F811", "PLR0913", "PLR0917"]
+"**/conftest.py" = ["F811", "PLR0913", "PLR0917"]
+# What broke one of the rule families when it came in, one file per line: it only shrinks. Fix the code instead of
+# adding a line; tests/test_guardrails_ruff.py says when a line has to go.
+"accounts/admin/__init__.py" = ["F401"]
+"accounts/queries/__init__.py" = ["F401"]
+"accounts/services/__init__.py" = ["F401"]
+"accounts/tests/test_support_report.py" = ["F401"]
+"apps/admin.py" = ["DJ007"]
+"assistant/turn.py" = ["B023"]
+"base/tests/test_assistant_asks.py" = ["B905"]
+"base/tests/test_queries.py" = ["B008"]
+"billing/admin/__init__.py" = ["F401"]
+"billing/models/__init__.py" = ["F401"]
+"billing/queries/__init__.py" = ["F401"]
+"billing/services/__init__.py" = ["F401"]
+"billing/tests/test_unpaid.py" = ["B017"]
+"config/settings/__init__.py" = ["F403"]
+"hubs/admin.py" = ["DJ007"]
+"hubs/models/__init__.py" = ["F401"]
+"hubs/queries/__init__.py" = ["F401"]
+"hubs/schemas/__init__.py" = ["F401"]
+"hubs/services/__init__.py" = ["F401"]
+"hubs/tests/test_admin.py" = ["F401"]
+"hubs/tests/test_api_keys.py" = ["F401"]
+"hubs/tests/test_business_queries.py" = ["B017", "B905"]
+"hubs/tests/test_demo_seed.py" = ["F401"]
+"hubs/tests/test_migrations_plan_cards.py" = ["B905"]
+"hubs/tests/test_services_opening.py" = ["B017"]
+"hubs/tests/test_session_revocations.py" = ["F401"]
+"public/tests/pricing_pages.py" = ["B905"]
+"public/tests/test_demo.py" = ["B007"]
+"public/tests/test_landing_templates.py" = ["B905"]
+"public/tests/test_pricing_templates.py" = ["B905"]
+"public/tests/test_response_tokens.py" = ["B905"]
+"public/tests/test_templates.py" = ["F541"]
+"whatsapp/services.py" = ["F401"]
+"whatsapp/tests/test_channel_contract.py" = ["F401"]
+
+# complexipy (`uv run complexipy`; tests/test_guardrails_complexity.py runs it): no function's cognitive complexity
+# goes over 15, and no ignore comment switches that off. complexipy-snapshot.json froze the functions over it when it
+# came in: it only shrinks. Migrations are generated, and the live and ui submodules are checked in their own repos.
+# complexipy skips hidden folders, so .github, with the deploy's scripts, is named on its own.
+[tool.complexipy]
+paths = [".", ".github"]
+exclude = ["**/migrations/**", "packages/**"]
+max-complexity-allowed = 15
+no-ignore = true
+
+# import-linter (`uv run lint-imports`; tests/test_guardrails_imports.py runs it): inside every package, at any depth,
+# no sibling modules import each other in a circle. Tests are out of the contract. The rest of its ignore_imports froze
+# what broke it when it came in: it only shrinks.
+[tool.importlinter]
+root_packages = [
+    "accounts", "apps", "assistant", "base", "billing", "config", "fiscal", "fiscal_gateway", "hubs", "public",
+    "whatsapp",
+]
+
+[[tool.importlinter.contracts]]
+id = "no-sibling-cycles"
+name = "No sibling modules import each other in a circle"
+type = "acyclic_siblings"
+ancestors = [
+    "accounts", "apps", "assistant", "base", "billing", "config", "fiscal", "fiscal_gateway", "hubs", "public",
+    "whatsapp",
+]
+ignore_imports = [
+    "**.tests.** -> **",
+    "accounts.models -> accounts.queries.account_lookup",
+    "accounts.models -> accounts.services.account_businesses",
+    "assistant.attachments -> assistant.turn",
+    "assistant.schemas -> assistant.media",
+    "billing.vat -> billing.queries",
+]

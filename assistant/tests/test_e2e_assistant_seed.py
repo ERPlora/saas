@@ -14,7 +14,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from assistant import queries
-from assistant.models import AIProvider, AIProviderCredential, AIRoutingPolicy, AssistantUsage
+from assistant.models import AIProviderCredential, AIRoutingPolicy, AssistantUsage
 from assistant.tests.conftest import fernet_key  # noqa: F401 - the credentials' key
 from hubs.models import Hub, HubMember
 from hubs.tests.conftest import plans  # noqa: F401 - the catalogue of plans
