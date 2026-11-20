@@ -4,9 +4,14 @@ import json
 import re
 
 import pytest
+from django.core.cache import cache
 from django.core.management import call_command
 
-from hubs.tests.conftest import no_plans  # noqa: F401 - an empty plan table, for a test that builds its own
+from hubs.tests.conftest import (  # noqa: F401 - an empty plan table, and the Hub's /internal or none
+    hub_double,
+    no_plans,
+    offline_hub,
+)
 from public.templatetags.public_assets import PUBLIC_ENTRY
 
 #: The files `{% public_assets %}` links for the public entry in these tests.
@@ -110,3 +115,14 @@ def cookie_groups(db, settings):
     (see ``public/tests/test_analytics.py``)."""
     settings.GA_MEASUREMENT_ID = "G-TEST123"
     call_command("init_cookie_groups")
+
+
+@pytest.fixture
+def demo_settings(settings):
+    """A clean limiter (it lives in the cache) and the local shape of a hub's address."""
+    cache.clear()
+    settings.DEMO_ENABLED = True
+    settings.DEMO_SPAWN_RATELIMIT = "3/h"
+    settings.HUB_CALLBACK_TEMPLATE = "http://{slug}.localhost:8000/auth/callback"
+    yield
+    cache.clear()

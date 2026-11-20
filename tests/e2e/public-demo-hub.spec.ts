@@ -46,7 +46,7 @@ test('PUBLIC-F28 a press creates the demo, opens it as «Demo» and the door tak
   context,
 }) => {
   // Every address the browser asks for on the way in (redirects included): the jump's page posts itself at once, so
-  // its «Opening your demo…» is checked by public/tests/test_demo.py, and here that the code never sits in one.
+  // its «Opening your demo…» is checked by public/tests/test_demo_enter.py, and here that the code never sits in one.
   const asked: string[] = [];
   page.on('request', (request) => asked.push(request.url()));
 
