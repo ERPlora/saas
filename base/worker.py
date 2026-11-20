@@ -4,8 +4,8 @@ container every minute (``whatsapp_deliver``) and every 15 minutes (the two reco
 
 It wakes on the first of:
 
-- a ``NOTIFY`` on ``whatsapp.services.DELIVERY_CHANNEL``, sent after the COMMIT of what made a delivery to the Hub due
-  or moved its wait (parked by Meta's webhook, retried, held, «Push to the Hub now»);
+- a ``NOTIFY`` on ``whatsapp.services.delivery_queue.DELIVERY_CHANNEL``, sent after the COMMIT of what made a delivery
+  to the Hub due or moved its wait (parked by Meta's webhook, retried, held, «Push to the Hub now»);
 - the time of the next delivery due (``whatsapp.delivery.next_due``);
 - the next quarter of an hour (``next_round``: :00, :15, :30 and :45 UTC, whatever the process's start).
 
@@ -37,9 +37,10 @@ from django.utils import timezone
 from base.listener import Listener
 from billing.services import platform_invoices
 from hubs.services import reconciliation
-from whatsapp import queries, services
+from whatsapp import queries
 from whatsapp.gateway import deliveries
 from whatsapp.schemas import NextDueIn
+from whatsapp.services import delivery_queue, platform_actor
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +83,7 @@ PERIODIC = (
 
 
 def make_listener() -> Listener:
-    return Listener(services.DELIVERY_CHANNEL)
+    return Listener(delivery_queue.DELIVERY_CHANNEL)
 
 
 def next_round(now: datetime) -> datetime:
@@ -180,7 +181,7 @@ def _deliver(stop: threading.Event) -> tuple[dict[str, int] | None, bool]:
 def _next_due() -> tuple[datetime | None, bool]:
     """When the next delivery is due, and whether reading it failed."""
     try:
-        return queries.delivery_next_due(services.platform_context(), NextDueIn()).at, False
+        return queries.delivery_next_due(platform_actor.platform_context(), NextDueIn()).at, False
     except Exception:
         _failed("whatsapp_next_due")
         return None, True

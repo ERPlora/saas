@@ -18,9 +18,10 @@ from datetime import timedelta
 from django.utils import timezone
 
 from hubs.services.exclusive_runs import run_exclusively
-from whatsapp import hub_client, services
+from whatsapp import hub_client
 from whatsapp.gateway.message_templates import sync_templates
 from whatsapp.schemas import ClaimIn, EraseIn, HeldDelivery, HoldIn, IngestIn, IngestOut, RecordIn
+from whatsapp.services import delivery_queue, meta_webhook, platform_actor
 
 logger = logging.getLogger("whatsapp.gateway")
 
@@ -28,7 +29,7 @@ logger = logging.getLogger("whatsapp.gateway")
 WEBHOOK_DELIVERIES = 20
 #: How long a pass of ``deliver_pass`` may push for: each batch claims only the rows whose calls fit in what is left
 #: (``hub_client.LONGEST_CALL``, 10 s each at the Hub's slowest), so the pass's last call ends by 50 s, inside
-#: ``services.LEASE`` (5 min) of every row it claimed. The worker starts the next pass at once when more is due.
+#: ``delivery_queue.LEASE`` (5 min) of every row it claimed. The worker starts the next pass at once when more is due.
 PASS_BUDGET = timedelta(seconds=50)
 #: How long a status waits for the Hub's key of its message before it is taken as a message the Hub never sent.
 STATUS_KEY_WAIT = timedelta(minutes=10)
@@ -39,7 +40,7 @@ COUNTS = (*_COUNTED.values(), "held")
 
 def ingest(payload: dict) -> IngestOut:
     """Park what Meta reported and push it to the Hub now; what the Hub does not take waits for its retry."""
-    out = services.webhook_ingest(services.platform_context(), IngestIn(payload=payload))
+    out = meta_webhook.webhook_ingest(platform_actor.platform_context(), IngestIn(payload=payload))
     if out.hub_ids:
         try:
             deliver(out.hub_ids, limit=WEBHOOK_DELIVERIES)
@@ -57,11 +58,11 @@ def deliver(hub_ids=None, *, limit: int = 50, stop: threading.Event | None = Non
     """Push what is due (of ``hub_ids``, or of every business) and record each answer, in the order it arrived.
 
     A message of a business whose Hub did not take an earlier message of this batch is held with that one's wait
-    (``services.IN_ORDER_ATTEMPTS`` failed tries at most): it never reaches the Hub before it. ``stop`` set (the worker
-    asked to stop) ends the batch after the push in course and gives the rest back, due again at once."""
+    (``delivery_queue.IN_ORDER_ATTEMPTS`` failed tries at most): it never reaches the Hub before it. ``stop`` set (the
+    worker asked to stop) ends the batch after the push in course and gives the rest back, due again at once."""
     counts = dict.fromkeys(COUNTS, 0)
-    ctx = services.platform_context()
-    claimed = services.delivery_claim(ctx, ClaimIn(hub_ids=hub_ids, limit=limit)).deliveries
+    ctx = platform_actor.platform_context()
+    claimed = delivery_queue.delivery_claim(ctx, ClaimIn(hub_ids=hub_ids, limit=limit)).deliveries
     failed: dict = {}
     held: dict = {}
     for index, delivery in enumerate(claimed):
@@ -72,7 +73,7 @@ def deliver(hub_ids=None, *, limit: int = 50, stop: threading.Event | None = Non
             held.setdefault(failed[delivery.hub_id], []).append(delivery)
             continue
         outcome, error = _push(delivery)
-        answer = services.delivery_record(
+        answer = delivery_queue.delivery_record(
             ctx, RecordIn(id=delivery.id, revision=delivery.revision, outcome=outcome, error=error)
         )
         counts[_COUNTED[outcome]] += 1
@@ -80,12 +81,12 @@ def deliver(hub_ids=None, *, limit: int = 50, stop: threading.Event | None = Non
             delivery.kind == "message"
             and outcome == "retry"
             and answer.next_attempt_at is not None
-            and answer.attempts < services.IN_ORDER_ATTEMPTS
+            and answer.attempts < delivery_queue.IN_ORDER_ATTEMPTS
         ):
             failed[delivery.hub_id] = answer.next_attempt_at
     for until, deliveries in held.items():
         given_back = [HeldDelivery(id=delivery.id, revision=delivery.revision) for delivery in deliveries]
-        services.delivery_hold(ctx, HoldIn(deliveries=given_back, until=until))
+        delivery_queue.delivery_hold(ctx, HoldIn(deliveries=given_back, until=until))
         counts["held"] += len(deliveries)
     return counts
 
@@ -136,5 +137,5 @@ def _push(delivery) -> tuple[str, str]:
 
 
 def erase(data: EraseIn) -> tuple[int, dict]:
-    out = services.message_erase(services.platform_context(), data)
+    out = delivery_queue.message_erase(platform_actor.platform_context(), data)
     return 200, out.model_dump()

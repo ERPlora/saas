@@ -11,9 +11,10 @@ from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
 
-from whatsapp import meta, queries, services
+from whatsapp import meta, queries
 from whatsapp.gateway.answers import envelope
 from whatsapp.schemas import ConfigIn, ConnectIn, ConnectingIn, DisconnectIn, NumberConnectIn
+from whatsapp.services import phone_numbers, platform_actor
 
 logger = logging.getLogger("whatsapp.gateway")
 
@@ -33,7 +34,7 @@ def configured() -> bool:
 
 def config(data: ConfigIn) -> tuple[int, dict]:
     """What the Hub's screen opens Meta's window with: public ids only, never the app's secret."""
-    queries.number_connecting(services.platform_context(), ConnectingIn(hub=data.hub))
+    queries.number_connecting(platform_actor.platform_context(), ConnectingIn(hub=data.hub))
     on = configured()
     return 200, {
         "configured": on,
@@ -52,7 +53,7 @@ class _NotTaken(Exception):
 
 
 def connect(data: ConnectIn) -> tuple[int, dict]:
-    ctx = services.platform_context()
+    ctx = platform_actor.platform_context()
     hub_id = queries.number_connecting(ctx, ConnectingIn(hub=data.hub)).hub_id
     if not configured():
         logger.error("whatsapp.connect.not_configured hub=%s", data.hub)
@@ -72,7 +73,7 @@ def connect(data: ConnectIn) -> tuple[int, dict]:
     except (meta.MetaRefused, meta.MetaUnreachable) as failure:
         return _connect_failure(failure, data.hub)
     history = _ask_history(chosen["id"], token) if coexistence else False
-    services.number_connect(
+    phone_numbers.number_connect(
         ctx,
         NumberConnectIn(
             hub_id=hub_id,
@@ -158,7 +159,7 @@ def _connect_failure(failure: Exception, hub: str) -> tuple[int, dict]:
 
 
 def disconnect(data: DisconnectIn) -> tuple[int, dict]:
-    out = services.number_disconnect(services.platform_context(), data)
+    out = phone_numbers.number_disconnect(platform_actor.platform_context(), data)
     if out.disconnected and out.token is not None and not out.account_in_use:
         try:
             meta.delete(f"{out.waba_id}/subscribed_apps", token=out.token.get_secret_value())

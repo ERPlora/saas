@@ -16,7 +16,7 @@ import logging
 
 from live.errors import OperationError
 
-from whatsapp import meta, queries, services, templates
+from whatsapp import meta, queries, templates
 from whatsapp.gateway.answers import EXPIRED_PERMISSION, NOT_CONNECTED, envelope
 from whatsapp.schemas import (
     ReconnectIn,
@@ -28,6 +28,7 @@ from whatsapp.schemas import (
     TemplateRecordIn,
     TemplateSyncIn,
 )
+from whatsapp.services import phone_numbers, platform_actor, template_mirror
 
 logger = logging.getLogger("whatsapp.gateway")
 
@@ -44,8 +45,8 @@ def submit_template(data: TemplateIn, key: str) -> tuple[int, dict]:
         clean = templates.check(data)
     except templates.Invalid as invalid:
         return 409, envelope("whatsapp.template_invalid", str(invalid))
-    ctx = services.platform_context()
-    claim = services.template_claim(ctx, TemplateClaimIn(hub=data.hub, key=key))
+    ctx = platform_actor.platform_context()
+    claim = template_mirror.template_claim(ctx, TemplateClaimIn(hub=data.hub, key=key))
     if claim.outcome == "done":
         return 200, {"meta_id": claim.meta_id, "status": claim.status}
     token = claim.token.get_secret_value()
@@ -54,20 +55,22 @@ def submit_template(data: TemplateIn, key: str) -> tuple[int, dict]:
         handle = _sample_handle(token, clean.sample, data.hub)
     except meta.NotConfigured:
         logger.error("whatsapp.template.not_configured hub=%s missing=WHATSAPP_APP_ID", data.hub)
-        services.template_record(ctx, released)
+        template_mirror.template_record(ctx, released)
         return 503, _NOT_CONFIGURED
     except (meta.MetaRefused, meta.MetaUnreachable) as failure:
-        services.template_record(ctx, released)
+        template_mirror.template_record(ctx, released)
         return _template_failure(failure, claim.hub_id, data.hub, "upload")
     try:
         meta_id, answer = _register(claim.waba_id, token, clean, data.meta_id, handle)
     except (meta.MetaRefused, meta.MetaUnreachable) as failure:
-        services.template_record(ctx, released)
+        template_mirror.template_record(ctx, released)
         return _template_failure(failure, claim.hub_id, data.hub, "register")
     mirror = templates.mirror(
         clean, meta_id=meta_id, status=str(answer.get("status") or ""), category=str(answer.get("category") or "")
     )
-    services.template_record(ctx, TemplateRecordIn(submission_id=claim.submission_id, outcome="done", mirror=mirror))
+    template_mirror.template_record(
+        ctx, TemplateRecordIn(submission_id=claim.submission_id, outcome="done", mirror=mirror)
+    )
     return 200, {"meta_id": meta_id, "status": mirror["status"]}
 
 
@@ -138,7 +141,7 @@ def _template_failure(failure: Exception, hub_id, hub: str, what: str) -> tuple[
     if refused.rate_limited:
         return 409, envelope("whatsapp.meta_rate_limited", reason)
     if refused.code == EXPIRED_PERMISSION:
-        services.number_reconnect_needed(services.platform_context(), ReconnectIn(hub_id=hub_id))
+        phone_numbers.number_reconnect_needed(platform_actor.platform_context(), ReconnectIn(hub_id=hub_id))
         return 409, envelope("whatsapp.reconnect_needed", reason)
     if refused.code in NOT_CONNECTED:
         return 409, envelope("whatsapp.not_connected", reason)
@@ -148,7 +151,7 @@ def _template_failure(failure: Exception, hub_id, hub: str, what: str) -> tuple[
 
 
 def delete_template(data: TemplateDeleteIn) -> tuple[int, dict]:
-    ctx = services.platform_context()
+    ctx = platform_actor.platform_context()
     account = queries.template_account(ctx, TemplateAccountIn(hub=data.hub, name=data.name, language=data.language))
     token = account.token.get_secret_value()
     gone = (404, envelope("whatsapp.template_not_found", "Meta does not have this template."))
@@ -156,7 +159,7 @@ def delete_template(data: TemplateDeleteIn) -> tuple[int, dict]:
     try:
         meta_id = data.meta_id or account.meta_id or _find(account.waba_id, token, data.name, data.language)
         if not meta_id:
-            services.template_forget(ctx, forget)
+            template_mirror.template_forget(ctx, forget)
             return gone
         try:
             meta.delete(
@@ -167,18 +170,18 @@ def delete_template(data: TemplateDeleteIn) -> tuple[int, dict]:
                 raise
             if _find(account.waba_id, token, data.name, data.language):
                 raise
-            services.template_forget(ctx, forget)
+            template_mirror.template_forget(ctx, forget)
             return gone
     except (meta.MetaRefused, meta.MetaUnreachable) as failure:
         return _template_failure(failure, account.hub_id, data.hub, "delete")
-    services.template_forget(ctx, forget)
+    template_mirror.template_forget(ctx, forget)
     return 200, {"deleted": True}
 
 
 def sync_templates(hub_id) -> bool:
     """Read the business's templates from Meta into the mirror; whether the list came whole. Meta unreachable or
     refusing leaves the mirror as it was (and says so in the log)."""
-    ctx = services.platform_context()
+    ctx = platform_actor.platform_context()
     try:
         account = queries.template_account(ctx, TemplateAccountIn(hub_id=hub_id))
     except OperationError:
@@ -201,7 +204,7 @@ def sync_templates(hub_id) -> bool:
     except (meta.MetaRefused, meta.MetaUnreachable) as failure:
         logger.warning("whatsapp.template.sync_failed hub_id=%s reason=%s", hub_id, type(failure).__name__)
         if isinstance(failure, meta.MetaRefused) and failure.code == EXPIRED_PERMISSION:
-            services.number_reconnect_needed(ctx, ReconnectIn(hub_id=hub_id))
+            phone_numbers.number_reconnect_needed(ctx, ReconnectIn(hub_id=hub_id))
     if items or complete:
-        services.template_sync(ctx, TemplateSyncIn(hub_id=hub_id, items=items, complete=complete))
+        template_mirror.template_sync(ctx, TemplateSyncIn(hub_id=hub_id, items=items, complete=complete))
     return complete

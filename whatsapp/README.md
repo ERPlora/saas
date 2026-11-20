@@ -24,7 +24,7 @@ hub#151). Firma de todo `/internal`, en los dos sentidos:
 | 1 `POST /internal/whatsapp/inbound` | SaaS → Hub | un mensaje, eco o historial | `hub_client.post_inbound`, desde `gateway.deliveries.deliver` |
 | 2 `POST /internal/whatsapp/status` | SaaS → Hub | un estado con su `client_message_id`; sin ella, el de una respuesta del dueño desde el móvil ya entregada por la puerta 1 | `hub_client.post_status` |
 | 3 `PUT /internal/whatsapp/channel` | SaaS → Hub | el canal | **no se usa**: va en la foto (puerta 4) |
-| 4 clave `whatsapp` de `PUT /internal/hubs/{id}/state` | SaaS → Hub | el canal con la versión de la foto | `queries.channel_block` en `hubs.queries.hub_sync.hub_snapshot`; `services.announce_channel` sube la versión y empuja tras el COMMIT (también el rechazo por tope, una vez por cifra) |
+| 4 clave `whatsapp` de `PUT /internal/hubs/{id}/state` | SaaS → Hub | el canal con la versión de la foto | `queries.channel_block` en `hubs.queries.hub_sync.hub_snapshot`; `services.channel_snapshot.announce_channel` sube la versión y empuja tras el COMMIT (también el rechazo por tope, una vez por cifra) |
 | 5 `POST /internal/whatsapp/send` + `Idempotency-Key` | Hub → SaaS | enviar; el 409 `whatsapp.reconnect_needed` (Meta dijo 190: el permiso caducó o se retiró; el número queda «Hay que reconectar»), distinto de `not_connected`, ya en el contrato del Hub; una plantilla con foto, vídeo o documento en la cabecera lleva su archivo (`header_format` + `header_sample`), que se sube al número (`meta.upload_media`) antes de enviarla; el 409 `whatsapp.cap_reached` no cambia, pero empuja la foto con el consumo real del mes si no se había avisado esa cifra (WHATSAPP-F05; `WORKBOOK.md`, «Para quien lo mantiene») | `internal.send` → `gateway.sending.send` |
 | 6 `POST /internal/whatsapp/erase` | Hub → SaaS | olvidar un número de cliente | `gateway.deliveries.erase` |
 | 7 | — | envío de estados (obligación de la 2) | el webhook los aparca y `deliver` los empuja |
@@ -51,6 +51,7 @@ Las puertas 10–12 y la página de vuelta de la ventana de Meta (`GET /whatsapp
 | `hub_client.py` | Las puertas 1 y 2, firmadas; `Unreachable` sin respuesta o sin los certificados de confianza del servidor (`base.tls`) |
 | `internal.py` | Las puertas 5, 6, 8, 9 y 10–12 (`_door`: firma, tamaño, esquema, `Idempotency-Key`) |
 | `gateway/` | Los pasos de cada puerta alrededor de las operaciones: nunca una transacción esperando a Meta o al Hub. Sin ORM. Un módulo por tarea, sin reexportar nada desde el paquete: `deliveries` (lo que avisa Meta, empujado al Hub, y la puerta 6), `sending` (la 5), `message_templates` (la 8, la 9 y la relectura de la lista de Meta), `token_renewal` (la renovación diaria del permiso), `number_connection` (las 10–12) y `answers` (el sobre de error y los códigos de Meta según lo que se le dice al Hub) |
+| `services/` | Los comandos, las únicas escrituras de la app. Un módulo por entidad o caso de uso, sin reexportar nada desde el paquete: `platform_actor` (el permiso y el contexto de plataforma), `channel_snapshot` (el canal en la foto del Hub), `meta_webhook` (lo que avisa Meta), `delivery_queue` (lo que espera al Hub, «Entregar al Hub ahora» y la puerta 6), `message_sends` (la 5), `template_mirror` (la 8, la 9 y el espejo de las plantillas), `phone_numbers` (el número, las puertas 11 y 12 y la renovación del permiso) y `retention` (el olvido diario) |
 | `templates.py` | Las reglas de Meta de una plantilla antes de llamarla (`check`), sus componentes y la lectura de la lista de Meta (`from_meta`) |
 | `signup_return.py` | `GET /whatsapp/return`: la vuelta de la ventana de Meta; devuelve el código (o el motivo de Meta) por `postMessage` solo al origen del hub que nombra el `state` y se cierra; COOP `unsafe-none` solo aquí, el dato en `json_script` y el script con el nonce de la CSP; plantilla `templates/whatsapp/signup_return.html` |
 | `media.py` | `GET /whatsapp/media/<id de la entrega>`: el adjunto de un cliente con la sesión de erplora.com y miembro aceptado del negocio, en streaming desde Meta, sin caché; lo que no es imagen, audio o vídeo se descarga con CSP `sandbox`; a un 190 de Meta, al pedir el adjunto o al descargarlo, 409 `whatsapp.reconnect_needed` y el número «Hay que reconectar» (sin número, 409 `whatsapp.not_connected`) |
@@ -60,7 +61,7 @@ Las puertas 10–12 y la página de vuelta de la ventana de Meta (`GET /whatsapp
 
 ## Operaciones (`@operation`, permiso `whatsapp.manage`, contexto de plataforma)
 
-- Comandos (`services.py`): `whatsapp.webhook.ingest`, `whatsapp.delivery.claim|record|hold|due_now`,
+- Comandos (`services/`): `whatsapp.webhook.ingest`, `whatsapp.delivery.claim|record|hold|due_now`,
   `whatsapp.message.claim|record|erase`, `whatsapp.template.claim|record|forget|sync`,
   `whatsapp.number.connect|disconnect|reconnect_needed|renewal|alerted`, `whatsapp.retention.purge`.
 - Consultas (`queries.py`): `whatsapp.template.account`, `whatsapp.number.renewal_due`,
@@ -83,7 +84,7 @@ Las puertas 10–12 y la página de vuelta de la ventana de Meta (`GET /whatsapp
 
 Lo que espera al Hub lo entrega el proceso `saas-worker` (`manage.py run_worker`, `base/worker.py`; su servicio lo
 crea el repo `aws`, aws#59), no una tarea por minuto. Se despierta con lo primero de: el `NOTIFY whatsapp_delivery`
-que `services.wake_the_worker` manda tras el COMMIT de lo que deja una entrega pendiente o mueve su espera, la hora
+que `services.delivery_queue.wake_the_worker` manda tras el COMMIT de lo que deja una entrega pendiente o mueve su espera, la hora
 del siguiente reintento (`whatsapp.delivery.next_due`) y el siguiente cuarto de hora; entre despertares no consulta la
 base de datos (su espera es un `select` sobre el socket de su conexión `LISTEN`, `base/listener.py`).
 
@@ -94,7 +95,7 @@ base de datos (su espera es un `select` sobre el socket de su conexión `LISTEN`
 - Orden por negocio: un mensaje no sale antes que otro más antiguo de su negocio que aún espera (como mucho
   `queries.IN_ORDER_ATTEMPTS` = 8 intentos, una hora; al llegar al tope, WARNING `saas.worker.order_released hub=…
   delivery=… attempts=8`); los estados no esperan; los demás negocios siguen. Cada reclamación (el worker, el webhook,
-  «Entregar al Hub ahora») guarda hasta su COMMIT el lock de los negocios que reclama (`services.CLAIM_LOCK`,
+  «Entregar al Hub ahora») guarda hasta su COMMIT el lock de los negocios que reclama (`services.delivery_queue.CLAIM_LOCK`,
   `pg_try_advisory_xact_lock`): otra no empuja un mensaje mientras uno anterior de su negocio está reservado sin
   COMMIT.
 - `SIGTERM` (un despliegue) acaba la llamada en curso, devuelve lo reservado sin empujar (vence ya, para el proceso
