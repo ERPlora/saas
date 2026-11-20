@@ -15,7 +15,8 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy, ngettext
 
-from whatsapp import gateway, services
+from whatsapp import services
+from whatsapp.gateway import deliveries, message_templates, number_connection
 from whatsapp.models import Delivery, PhoneNumber, Send, Template, Usage
 from whatsapp.schemas import DisconnectIn, DueNowIn
 
@@ -90,7 +91,7 @@ class PhoneNumberAdmin(PlatformActions):
     def disconnect(self, request, queryset):
         done = 0
         for slug in sorted(set(queryset.filter(is_active=True).values_list("hub__slug", flat=True))):
-            status, body = gateway.disconnect(DisconnectIn(hub=slug))
+            status, body = number_connection.disconnect(DisconnectIn(hub=slug))
             done += int(status == 200 and body.get("disconnected") is True)
         self.message_user(
             request, ngettext("%(count)d number disconnected.", "%(count)d numbers disconnected.", done) % {"count": done}
@@ -99,7 +100,7 @@ class PhoneNumberAdmin(PlatformActions):
     @admin.action(description=gettext_lazy("Read Meta's templates again"), permissions=["platform"])
     def read_templates_again(self, request, queryset):
         for hub_id in sorted(set(queryset.filter(is_active=True).values_list("hub_id", flat=True)), key=str):
-            if gateway.sync_templates(hub_id):
+            if message_templates.sync_templates(hub_id):
                 self.message_user(request, _("Templates read again from Meta."))
             else:
                 self.message_user(
@@ -155,7 +156,7 @@ class DeliveryAdmin(PlatformActions):
         if not due.count:
             self.message_user(request, _("Nothing selected waits for the Hub."), messages.WARNING)
             return
-        counts = gateway.deliver(due.hub_ids)
+        counts = deliveries.deliver(due.hub_ids)
         # What still waits of what was chosen: retried, held behind an older one of its business the Hub did not take,
         # or left to the worker because another claim of its business was under way (saas#305).
         still = queryset.filter(delivered_at__isnull=True, next_attempt_at__isnull=False).count()

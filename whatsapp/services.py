@@ -271,7 +271,7 @@ def _park_status(hub_id: UUID, status: parse.Status) -> bool:
 
 def _apply_verdicts(verdicts: list[parse.Verdict]) -> set[UUID]:
     """Write Meta's verdicts on the businesses' templates; the businesses of a template the mirror does not have
-    yet are returned, to read their templates from Meta again (``gateway.sync_templates``)."""
+    yet are returned, to read their templates from Meta again (``gateway.message_templates.sync_templates``)."""
     unknown: set[UUID] = set()
     for verdict in verdicts:
         hub_ids = PhoneNumber.objects.filter(waba_id=verdict.waba_id, is_active=True).values_list("hub_id", flat=True)

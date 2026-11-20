@@ -28,7 +28,7 @@ from live.errors import OperationError
 from pydantic import BaseModel, ValidationError
 
 from accounts.signing import live_secrets, may_be_signed, verify_signed
-from whatsapp import gateway
+from whatsapp.gateway import deliveries, message_templates, number_connection, sending
 from whatsapp.schemas import ConfigIn, ConnectIn, DisconnectIn, EraseIn, SendIn, TemplateDeleteIn, TemplateIn
 from whatsapp.templates import MAX_SAMPLE_BYTES
 
@@ -139,41 +139,41 @@ def _too_large(max_bytes: int) -> _Refused:
 @_door(SendIn, keyed=True, max_bytes=MAX_TEMPLATE_BODY_BYTES)
 def send(data: SendIn, key: str) -> tuple[int, dict]:
     """Door 5: send a text or a template for the business, once per ``Idempotency-Key``."""
-    return gateway.send(data, key)
+    return sending.send(data, key)
 
 
 @_door(EraseIn)
 def erase(data: EraseIn) -> tuple[int, dict]:
     """Door 6: forget what is kept of a customer's number for the business."""
-    return gateway.erase(data)
+    return deliveries.erase(data)
 
 
 @_door(TemplateIn, keyed=True, max_bytes=MAX_TEMPLATE_BODY_BYTES)
 def templates(data: TemplateIn, key: str) -> tuple[int, dict]:
     """Door 8: register a template at Meta for the business (new, or an edit of its ``meta_id``), once per key; a
     header's file is uploaded to Meta first."""
-    return gateway.submit_template(data, key)
+    return message_templates.submit_template(data, key)
 
 
 @_door(TemplateDeleteIn)
 def templates_delete(data: TemplateDeleteIn) -> tuple[int, dict]:
     """Door 9: delete that one template, in that language, at Meta."""
-    return gateway.delete_template(data)
+    return message_templates.delete_template(data)
 
 
 @_door(ConfigIn)
 def config(data: ConfigIn) -> tuple[int, dict]:
     """Door 10: what the Hub's screen opens Meta's window (Embedded Signup) with."""
-    return gateway.config(data)
+    return number_connection.config(data)
 
 
 @_door(ConnectIn)
 def connect(data: ConnectIn) -> tuple[int, dict]:
     """Door 11: connect the number Meta's window chose, with its one-time code."""
-    return gateway.connect(data)
+    return number_connection.connect(data)
 
 
 @_door(DisconnectIn)
 def disconnect(data: DisconnectIn) -> tuple[int, dict]:
     """Door 12: disconnect the business's number."""
-    return gateway.disconnect(data)
+    return number_connection.disconnect(data)

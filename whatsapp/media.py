@@ -26,7 +26,7 @@ from django.views.decorators.http import require_GET
 from live.errors import OperationError
 
 from whatsapp import meta, queries, services
-from whatsapp.gateway import EXPIRED_PERMISSION
+from whatsapp.gateway.answers import EXPIRED_PERMISSION
 from whatsapp.schemas import MediaIn, ReconnectIn
 
 logger = logging.getLogger(__name__)

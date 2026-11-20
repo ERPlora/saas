@@ -6,7 +6,7 @@
 - ``POST``: a notice, signed by Meta with the app's secret (``X-Hub-Signature-256: sha256=<hex HMAC-SHA256 of the
   raw body>``). Without ``WHATSAPP_APP_SECRET``, 503 ``whatsapp.not_configured``; unsigned or badly signed, 403;
   signed but not JSON, 400; more than ``WHATSAPP_WEBHOOK_MAX_BYTES``, 413, decided by its declared length before
-  it is read. A signed notice is parked and pushed to the Hub (``gateway.ingest``) and answered 200: Meta delivers
+  it is read. A signed notice is parked and pushed to the Hub (``deliveries.ingest``) and answered 200: Meta delivers
   at least once and out of order, and parking is idempotent. A database failure answers 500 and Meta sends it again.
 
 No throttle counts anything before the signature: a budget of posts per address would be spent by forged
@@ -24,7 +24,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 
-from whatsapp import gateway
+from whatsapp.gateway import deliveries
 
 logger = logging.getLogger(__name__)
 SIGNATURE_HEADER = "X-Hub-Signature-256"
@@ -83,7 +83,7 @@ def _notice(request: HttpRequest) -> HttpResponse:
         payload = json.loads(raw)
     except ValueError:
         return _error(400, "invalid_payload", "The body is not JSON.")
-    out = gateway.ingest(payload)
+    out = deliveries.ingest(payload)
     logger.info(
         "whatsapp.webhook parked=%s statuses=%s verdicts=%s discarded=%s",
         out.parked,

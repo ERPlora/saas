@@ -1,4 +1,5 @@
-"""A door split into one module per entity only gathers its modules in its ``__init__``.
+"""A door split into one module per entity, or another module split into one module per job, only gathers its
+modules in its ``__init__``.
 
 A name re-exported from the ``__init__`` would give every operation two import paths again, and a patch through the
 package would no longer reach the module that reads the name. A package that re-exports on purpose (``billing``'s, and
@@ -20,6 +21,7 @@ GATHERING_PACKAGES = (
     "hubs.queries",
     "hubs.schemas",
     "hubs.services",
+    "whatsapp.gateway",
 )
 
 

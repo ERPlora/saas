@@ -9,7 +9,7 @@ It wakes on the first of:
 - the time of the next delivery due (``whatsapp.delivery.next_due``);
 - the next quarter of an hour (``next_round``: :00, :15, :30 and :45 UTC, whatever the process's start).
 
-Each wake-up runs the pass of the deliveries (``gateway.deliver_pass``, under the lock of ``whatsapp_deliver``: the
+Each wake-up runs the pass of the deliveries (``deliveries.deliver_pass``, under the lock of ``whatsapp_deliver``: the
 command of the same name and another worker never run one beside it), and at each quarter the two reconciliations,
 each under its own lock (``PERIODIC``: the passes of ``reconcile_hub_states`` and ``reconcile_platform_invoices``, the
 same functions their commands run). Between two wake-ups it sends nothing to the database, so Aurora can go down to its
@@ -37,7 +37,8 @@ from django.utils import timezone
 from base.listener import Listener
 from billing.services import platform_invoices
 from hubs.services import reconciliation
-from whatsapp import gateway, queries, services
+from whatsapp import queries, services
+from whatsapp.gateway import deliveries
 from whatsapp.schemas import NextDueIn
 
 logger = logging.getLogger(__name__)
@@ -55,7 +56,7 @@ IDLE_FLOOR = 5.0
 RETRY_AFTER_FAILURE = 60.0
 #: How long each reconciliation of a round may go on (seconds): asked between two businesses (``go_on``), so Hubs that
 #: do not answer (10 s a call at most) never hold the deliveries, which wait in the same thread, for long; what is left
-#: goes in the next round. As ``gateway.PASS_BUDGET``.
+#: goes in the next round. As ``deliveries.PASS_BUDGET``.
 ROUND_BUDGET = 50.0
 
 
@@ -165,7 +166,7 @@ def _failed(name: str, owed: str = "") -> None:
 def _deliver(stop: threading.Event) -> tuple[dict[str, int] | None, bool]:
     """The pass of the deliveries: its counts (``None``: another run holds its lock) and whether it failed."""
     try:
-        counts = gateway.deliver_pass(stop)
+        counts = deliveries.deliver_pass(stop)
     except Exception:
         _failed(DELIVERY)
         return None, True
