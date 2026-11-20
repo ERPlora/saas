@@ -58,6 +58,35 @@ def _refused(outcome: str, code: str, message: str) -> assistant.ToolOutcome:
     return assistant.ToolOutcome(outcome, code, assistant.shared.error_content(code, message))
 
 
+def _words(content) -> str:
+    """The words of a person's message, to choose its tools: a message that brings files comes as a list of parts,
+    and only its text parts are words."""
+    if isinstance(content, str):
+        return content
+    parts = content if isinstance(content, list) else []
+    texts = (part.get("text", "") for part in parts if isinstance(part, dict) and part.get("type") == "text")
+    return "\n".join(str(text) for text in texts)
+
+
+def _asked(messages: list[dict]) -> list[str]:
+    """What the person wrote, message by message. A file alone says nothing: the words written before it still count."""
+    said = (_words(m.get("content")) for m in messages if m.get("role") == "user")
+    return [words for words in said if words]
+
+
+def _ran(ctx: OperationContext, tools: dict, call, outcome: assistant.ToolOutcome) -> dict:
+    """What ran, or was refused, by its name: a write this account was not offered is named too."""
+    op = assistant.shared.operation_of(call.name, tools) or assistant.shared.named(call.name)
+    if op is None:
+        named = {"name": call.name, "app": "", "app_name": "", "screen": "", "kind": ""}
+    else:
+        with translation.override(ctx.language):
+            screen = assistant.screen(op)
+            app_name = assistant.screen_name(screen)
+        named = {"name": op.name, "app": op.app_label, "app_name": app_name, "screen": screen, "kind": op.kind}
+    return {"call_id": call.call_id, **named, "outcome": outcome.outcome, "code": outcome.code}
+
+
 def _calls_in(message: dict) -> dict[str, str]:
     """The calls of a model's ``message``, id → tool's name; what the browser kept in another shape is none."""
     calls = message.get("tool_calls")
@@ -165,29 +194,11 @@ def assistant_turn(ctx: OperationContext, data: AssistantTurnIn) -> dict:
         if decision is not None and decision.call_id == call.call_id:
             stopped = decision.stop
             decision = None
-        # What ran, or was refused, by its name: a write this account was not offered is named too.
-        op = assistant.shared.operation_of(call.name, tools) or assistant.shared.named(call.name)
         append.append({"role": "tool", "tool_call_id": call.call_id, "content": outcome.content})
-        with translation.override(ctx.language):
-            screen = assistant.screen(op) if op else ""
-            app_name = assistant.screen_name(screen) if op else ""
-        executed.append(
-            {
-                "call_id": call.call_id,
-                "name": op.name if op else call.name,
-                "app": op.app_label if op else "",
-                "app_name": app_name,
-                "screen": screen,
-                "kind": op.kind if op else "",
-                "outcome": outcome.outcome,
-                "code": outcome.code,
-            }
-        )
+        executed.append(_ran(ctx, tools, call, outcome))
         pending.pop(0)
     messages = [*data.messages, *append]
-    asked = [
-        str(m.get("content")) for m in data.messages if m.get("role") == "user" and isinstance(m.get("content"), str)
-    ]
+    asked = _asked(data.messages)
     if card is not None:
         card["money"] = {"currency": "EUR", "decimals": 2}
     text = assistant.instructions(
