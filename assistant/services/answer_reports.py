@@ -55,7 +55,7 @@ def report_send(ctx: OperationContext, data: ReportSendIn) -> dict:
     event that cannot be written sends nothing. Whatever fails, the report can be sent again."""
     from django.core.cache import cache
 
-    queries.platform_only(ctx)
+    queries.gates.platform_only(ctx)
     caller = data.caller
     if caller.demo:
         who, details = caller.demo, [("Demo", caller.demo)]
@@ -65,7 +65,7 @@ def report_send(ctx: OperationContext, data: ReportSendIn) -> dict:
             raise NotFound(_("The account no longer exists."), code="assistant.account_unknown")
         who, details = email, [("Account", email)]
     else:
-        hub = queries.working(Hub.objects.filter(pk=caller.hub_id).first())
+        hub = queries.callers.working(Hub.objects.filter(pk=caller.hub_id).first())
         who, details = hub.name, [("Business", f"{hub.name} ({hub.slug}, {hub.id})")]
     key = f"demo:{caller.demo}" if caller.demo else f"user:{caller.user_id}" if caller.user_id else caller.hub_id
     once = f"assistant:report:{key}:{data.message_id}"

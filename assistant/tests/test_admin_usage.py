@@ -24,7 +24,7 @@ USAGE = "/admin/assistant/assistantusage/"
 
 @pytest.fixture
 def rows(business):
-    month = queries.month_of(timezone.now())
+    month = queries.usage.month_of(timezone.now())
     spent = AssistantUsage.objects.create(
         hub=business,
         month=month,
@@ -118,7 +118,7 @@ def test_the_counter_under_the_list_is_a_plural(client, viewer, rows):
 @pytest.fixture
 def account_row(make_user):
     account = make_user("ana.cuenta@example.com", first_name="Ana")
-    return AssistantUsage.objects.create(user=account, month=queries.month_of(timezone.now()), messages=9)
+    return AssistantUsage.objects.create(user=account, month=queries.usage.month_of(timezone.now()), messages=9)
 
 
 def test_an_accounts_row_is_named_by_its_email(client, viewer, rows, account_row, business):

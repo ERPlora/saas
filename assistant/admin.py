@@ -180,7 +180,7 @@ def prepare_try(request, ctx: OperationContext) -> tuple[RouteCandidate, TurnReq
     if tools is None:
         return _("The tools are not well written: write a list of tools as in the example, each with its name.")
     try:
-        [candidate] = queries.route_resolve(ctx, RouteIn(model=model)).candidates
+        [candidate] = queries.routing_policy.route_resolve(ctx, RouteIn(model=model)).candidates
         services.model_choice.model_try(ctx, ModelTryIn(model=model, prompt_chars=len(prompt), tools=len(tools)))
     except OperationError as refused:
         return refused.message
@@ -252,7 +252,7 @@ class AIProviderAdmin(admin.ModelAdmin):
             return await sync_to_async(self._save_choice)(request, ctx, object_id)
         provider, rows, error = None, [], None
         try:
-            connection = await sync_to_async(queries.provider_connection)(ctx, ProviderRef(id=object_id))
+            connection = await sync_to_async(queries.provider_keys.provider_connection)(ctx, ProviderRef(id=object_id))
         except NotFound:
             raise Http404 from None
         except OperationError as problem:
@@ -370,7 +370,7 @@ class AIRoutingPolicyAdmin(admin.ModelAdmin):
             else:
                 messages.success(request, _("The model that answers was saved."))
             return HttpResponseRedirect(here)
-        shown = queries.policy_show(ctx, NoInput())
+        shown = queries.routing_policy.policy_show(ctx, NoInput())
         choices = {choice.id for choice in shown.choices}
         context = {
             **self.admin_site.each_context(request),
@@ -393,7 +393,7 @@ class AIRoutingPolicyAdmin(admin.ModelAdmin):
             "title": _("Try a model"),
             "policy_url": reverse("admin:assistant_airoutingpolicy_policy"),
             "run_url": reverse("admin:assistant_airoutingpolicy_try_run"),
-            "choices": [{"id": model.pk, "label": queries.model_label(model)} for model in queries.choosable_models()],
+            "choices": [{"id": model.pk, "label": queries.routing_policy.model_label(model)} for model in queries.routing_policy.choosable_models()],
             "prompt_max": TRY_PROMPT_MAX,
         }
         return TemplateResponse(request, "admin/assistant/airoutingpolicy/try.html", context)

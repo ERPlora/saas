@@ -196,7 +196,7 @@ def gateway(address: str) -> dict:
 
     bar = business("bar", "E2E Bar Asistente")
     spent = business("spent", "E2E Sin Mensajes")
-    AssistantUsage.objects.create(hub=spent, month=queries.month_of(now), messages=limit)
+    AssistantUsage.objects.create(hub=spent, month=queries.usage.month_of(now), messages=limit)
     return {
         "limit": limit,
         "bar": bar.slug,

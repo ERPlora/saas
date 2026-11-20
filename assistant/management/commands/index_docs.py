@@ -61,7 +61,7 @@ class Command(BaseCommand):
 
     def _service(self, ctx):
         try:
-            return queries.service_connection(ctx, NoInput())
+            return queries.provider_keys.service_connection(ctx, NoInput())
         except OperationError as refused:
             if refused.code != "assistant.provider_not_configured":
                 raise CommandError(refused.message) from None
@@ -72,7 +72,7 @@ class Command(BaseCommand):
 
     def _index(self, ctx, service, source: str, *, full: bool, dry_run: bool) -> None:
         chunks = unique(knowledge.collect(source))
-        known = set(queries.docs_list(ctx, DocsSourceIn(source=source)).hashes)
+        known = set(queries.docs.docs_list(ctx, DocsSourceIn(source=source)).hashes)
         wanted = {chunk.content_hash for chunk in chunks}
         new = chunks if full else [chunk for chunk in chunks if chunk.content_hash not in known]
         if dry_run:

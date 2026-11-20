@@ -292,7 +292,7 @@ async def prepare(data: Any) -> None:
     """What the turn's tools wait on the network for, done before ``base.assistant.turn`` opens its transaction: the
     fingerprints of the documentation searches the model asked for. A connection never waits on the provider inside
     a transaction; what cannot be prepared, the search itself refuses."""
-    await gateway_queries.prepare_questions(searched_questions(data.pending))
+    await gateway_queries.docs.prepare_questions(searched_questions(data.pending))
 
 
 # ── The turn, through the gateway in this process ────────────────────────────────────────────────────────────────

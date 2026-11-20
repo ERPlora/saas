@@ -602,8 +602,8 @@ Implicados: ASSISTANT-F25, ASSISTANT-F26, ACCOUNTS-F23
 - La política es una sola fila (`AIRoutingPolicy.solo`), leída con `assistant.policy.show` (`view_airoutingpolicy`)
   y cambiada con `assistant.policy.update` (`change_airoutingpolicy`): un modelo y su reserva, como las pasarelas
   del mercado.
-- El turno: `assistant.route.resolve` (`queries.py`; la plataforma con `platform_context`, el personal con
-  `change_airoutingpolicy` y un modelo) da los modelos en orden con su clave, leídos en cada turno (sin caché ni
+- El turno: `assistant.route.resolve` (`queries/routing_policy.py`; la plataforma con `platform_context`, el
+  personal con `change_airoutingpolicy` y un modelo) da los modelos en orden con su clave, leídos en cada turno (sin caché ni
   señales que la limpien); `assistant.routing.stream` los prueba
   en orden y solo pasa a la reserva si el fallo llega antes del primer texto o herramienta (eventos `model` y
   `fallback`).
@@ -696,8 +696,8 @@ propio texto por `code`.
   (`BodiesInMemory`) guarda en memoria el de `/internal/assistant/*` y `/internal/speech/*` hasta `TURN_BODY_BYTES` y
   descarta lo que pase (la puerta contesta 413), `test_body_in_memory.py`.
 - **La documentación** (`docs_search`, ASSISTANT-F28): calcula la huella de la pregunta con
-  `queries.prepare_questions` (fuera de toda transacción, en la caché un día) y corre la misma operación que el panel,
-  `assistant.docs.search`, como la plataforma (`platform_context()`) en el `language` del cuerpo: una sola búsqueda
+  `queries.docs.prepare_questions` (fuera de toda transacción, en la caché un día) y corre la misma operación que el
+  panel, `assistant.docs.search`, como la plataforma (`platform_context()`) en el `language` del cuerpo: una sola búsqueda
   para los dos asistentes y un solo índice (`DocChunk`). No toma mensaje ni apunta tokens (una pregunta son unas
   decenas). En el Hub es la herramienta `base__docs__search` (`base.docs.search`, ERPlora/hub).
 - **Huellas y voz** (`assistant/media.py`): el proveedor de servicios es el `AIProvider` de slug
@@ -840,9 +840,9 @@ propio texto por `code`.
   y `assistant.docs.search` no lee `queries.SELLING_WORKBOOKS` ni los planes. La redacción la pone el modelo: se mide con
   las sondas `*-app-*` de `tests/e2e/qa/probes/` (capa 2). Va la primera y dice «tu respuesta entera es esta frase» porque
   medido con el modelo de verdad, detrás de las demás reglas o como consejo, a veces mandaba a Facturación.
-- **`assistant.docs.search`** (`queries.py`, `kind="query"`, `assistant.ask`, herramienta `assistant__docs__search`):
-  nunca llama al proveedor. La huella de la pregunta la calcula antes `queries.prepare_questions`, fuera de toda
-  transacción (la ruta del turno, `base.assistant.prepare`, para cada búsqueda que pidió el modelo; una llamada para
+- **`assistant.docs.search`** (`queries/docs.py`, `kind="query"`, `assistant.ask`, herramienta
+  `assistant__docs__search`): nunca llama al proveedor. La huella de la pregunta la calcula antes
+  `queries.docs.prepare_questions`, fuera de toda transacción (la ruta del turno, `base.assistant.prepare`, para cada búsqueda que pidió el modelo; una llamada para
   todas, tope de espera de 10 s, nunca falla), y la guarda en la caché de Django un día por el sha256 de la pregunta
   normalizada (espacios y mayúsculas fuera): ninguna conexión espera al proveedor dentro de una transacción. Sin la
   huella en la caché, 409 si no hay proveedor y 503 si no se pudo calcular. Orden por `CosineDistance` en el idioma de la persona (`es` para cualquier español, si no `en`); con menos

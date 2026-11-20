@@ -50,7 +50,7 @@ def step(business, *messages, **extra) -> dict:
 
 
 def spent(business) -> int:
-    row = AssistantUsage.objects.filter(hub=business, month=queries.month_of(timezone.now())).first()
+    row = AssistantUsage.objects.filter(hub=business, month=queries.usage.month_of(timezone.now())).first()
     return row.messages if row else 0
 
 
@@ -132,7 +132,7 @@ def test_a_step_that_comes_back_after_its_15_minutes_spends_one_more_message(
 
 
 def test_a_step_of_a_spent_month_is_refused_and_waiting_does_not_mend_it(client, internal, business, answering, fake_provider):
-    AssistantUsage.objects.create(hub=business, month=queries.month_of(timezone.now()), messages=30)
+    AssistantUsage.objects.create(hub=business, month=queries.usage.month_of(timezone.now()), messages=30)
 
     response = door(client, JSON, step(business))
 

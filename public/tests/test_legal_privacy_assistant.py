@@ -320,7 +320,7 @@ def test_privacy_counts_the_dictation_of_the_account_panel(client, language, mar
 # What decides that the assistant is used: the Hub has no switch for it and asks for no consent. Anyone with
 # ``base.view_home`` sees its button (hub ``base/frontend/components/TopbarChrome.vue``), it is used when someone sends
 # it a message or dictates, and the plan's monthly messages (``Plan.assistant_messages_per_month``, 0 = none;
-# ``assistant/queries.py`` ``monthly_limit``) bound the questions that reach the model. The account's panel on
+# ``assistant/queries/usage.py`` ``monthly_limit``) bound the questions that reach the model. The account's panel on
 # erplora.com has an assistant of its own, with the same chat and the same dictation.
 
 ASSISTANT_CONDITION = {
