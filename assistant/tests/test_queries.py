@@ -67,7 +67,7 @@ def test_reading_a_connection_needs_to_see_providers(make_user, provider):
 
 from assistant.models import AIProvider, AIRoutingPolicy  # noqa: E402
 from assistant.schemas import RouteIn  # noqa: E402
-from assistant.services import platform_context  # noqa: E402
+from assistant.services.platform_actor import platform_context  # noqa: E402
 
 
 @pytest.fixture
@@ -135,10 +135,10 @@ def test_a_changed_key_or_choice_applies_to_the_next_turn(routed, ai_admin):
 
     route()
     credential = AIProviderCredential.objects.get(provider=routed["openai"])
-    services.credential_save(staff_ctx(ai_admin), CredentialIn(provider=routed["openai"].pk, id=credential.pk, label="default", api_key="sk-test-rotated-9999"))
+    services.credentials.credential_save(staff_ctx(ai_admin), CredentialIn(provider=routed["openai"].pk, id=credential.pk, label="default", api_key="sk-test-rotated-9999"))
     assert route().candidates[0].api_key.get_secret_value() == "sk-test-rotated-9999"
 
-    services.policy_update(staff_ctx(ai_admin), PolicyIn(active_model=routed["sonnet"].pk))
+    services.model_choice.policy_update(staff_ctx(ai_admin), PolicyIn(active_model=routed["sonnet"].pk))
     assert [c.model_id for c in route().candidates] == ["claude-sonnet-4-6"]
 
 

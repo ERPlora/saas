@@ -29,7 +29,7 @@ from django.utils.translation import gettext_lazy, ngettext
 from apps import queries as apps_queries
 from apps.schemas import AppDocListIn
 from assistant.models import content_hash
-from assistant.services import platform_context
+from assistant.services.platform_actor import platform_context
 from hubs.queries import plan_catalog
 from hubs.schemas.plan_catalog import PlanListIn
 from public import help as public_help

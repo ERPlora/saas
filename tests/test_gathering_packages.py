@@ -17,6 +17,7 @@ GATHERING_PACKAGES = (
     "accounts.admin",
     "accounts.queries",
     "accounts.services",
+    "assistant.services",
     "billing.services",
     "hubs.queries",
     "hubs.schemas",
@@ -26,12 +27,13 @@ GATHERING_PACKAGES = (
 
 
 def _takes_whole_modules(node: ast.stmt, package: str, modules: set[str]) -> bool:
-    """``from <package> import <module>, …``: each module whole, under its own name."""
+    """``from <package> import <module>, …``: each module whole, under its own name. ``<module> as <module>`` is the
+    same import, the way ruff tells an import kept on purpose from an unused one (F401)."""
     return (
         isinstance(node, ast.ImportFrom)
         and node.level == 0
         and node.module == package
-        and all(alias.name in modules and alias.asname is None for alias in node.names)
+        and all(alias.name in modules and alias.asname in (None, alias.name) for alias in node.names)
     )
 
 
@@ -77,3 +79,9 @@ def test_the_scan_catches_a_re_exported_name_and_code_of_its_own():
         "line 6: from hubs.queries import missing",
         "line 7: LIMIT = 3",
     ]
+
+
+def test_a_module_taken_under_its_own_name_with_as_is_gathering():
+    source = '"""Docstring."""\nfrom hubs.queries import taxonomy as taxonomy\nfrom hubs.queries import plan_catalog\n'
+
+    assert statements_beyond_gathering(source, "hubs.queries", {"taxonomy", "plan_catalog"}) == []

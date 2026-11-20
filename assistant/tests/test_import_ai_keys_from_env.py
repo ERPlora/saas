@@ -17,7 +17,7 @@ from pydantic import ValidationError
 from assistant import services
 from assistant.models import AIProvider, AIProviderCredential
 from assistant.schemas import CredentialImportIn
-from assistant.services import platform_context
+from assistant.services.platform_actor import platform_context
 from assistant.tests.conftest import staff_ctx
 
 pytestmark = pytest.mark.django_db
@@ -175,6 +175,6 @@ def test_an_imported_key_announces_its_save(env):
 
 def test_only_the_platform_imports_keys(ai_admin):
     with pytest.raises(PermissionDenied):
-        services.credential_import(staff_ctx(ai_admin), CredentialImportIn(kind="openai", api_key=OPENAI))
+        services.credentials.credential_import(staff_ctx(ai_admin), CredentialImportIn(kind="openai", api_key=OPENAI))
 
-    assert services.credential_import(platform_context(), CredentialImportIn(kind="openai", api_key=OPENAI)).action == "created"
+    assert services.credentials.credential_import(platform_context(), CredentialImportIn(kind="openai", api_key=OPENAI)).action == "created"

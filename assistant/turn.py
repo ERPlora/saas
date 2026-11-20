@@ -55,7 +55,7 @@ from assistant import queries, routing, services
 from assistant.models import estimate_cost
 from assistant.providers.base import ToolSpec, TurnRequest
 from assistant.schemas import Caller, ClaimOut, MessageReleaseIn, RouteCandidate, RouteIn, UsageRecordIn
-from assistant.services import platform_context
+from assistant.services.platform_actor import platform_context
 
 logger = logging.getLogger(__name__)
 
@@ -426,7 +426,7 @@ async def start(caller: Caller, data: Any, *, answer_kept: bool) -> Turn:
         raise Refused(503, refused.code, refused.message, retriable=False) from None
     claim = None
     if not is_continuation(caller, data.continuation, messages):
-        claim = await sync_to_async(services.message_claim)(platform_context(), caller)
+        claim = await sync_to_async(services.turn_usage.message_claim)(platform_context(), caller)
         if not claim.claimed:
             raise Refused(
                 429,
@@ -445,9 +445,9 @@ async def start(caller: Caller, data: Any, *, answer_kept: bool) -> Turn:
 def settle(started: Turn, outcome: Outcome) -> dict:
     """After the turn: its message given back if nothing was answered, what it spent recorded; the usage after it."""
     if started.claim is not None and not outcome.answered:
-        services.message_release(platform_context(), MessageReleaseIn(caller=started.caller, month=started.claim.month))
+        services.turn_usage.message_release(platform_context(), MessageReleaseIn(caller=started.caller, month=started.claim.month))
     if outcome.tokens_input or outcome.tokens_output:
-        services.usage_record(
+        services.turn_usage.usage_record(
             platform_context(),
             UsageRecordIn(
                 caller=started.caller,

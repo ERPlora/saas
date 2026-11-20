@@ -20,7 +20,7 @@ def model(provider):
 
 
 def test_a_try_is_recorded_with_who_and_how_much_was_sent(ai_admin, model):
-    out = services.model_try(staff_ctx(ai_admin), ModelTryIn(model=model.pk, prompt_chars=12, tools=0))
+    out = services.model_choice.model_try(staff_ctx(ai_admin), ModelTryIn(model=model.pk, prompt_chars=12, tools=0))
 
     assert out.recorded is True
     [entry] = LogEntry.objects.filter(action=LogEntry.Action.ACCESS)
@@ -33,7 +33,7 @@ def test_only_the_staff_who_may_change_the_model_that_answers_try_one(make_user,
     member = grant(make_user("member@erplora.com", is_staff=True), "view_airoutingpolicy")
 
     with pytest.raises(PermissionDenied):
-        services.model_try(staff_ctx(member), ModelTryIn(model=model.pk, prompt_chars=12, tools=0))
+        services.model_choice.model_try(staff_ctx(member), ModelTryIn(model=model.pk, prompt_chars=12, tools=0))
     assert not LogEntry.objects.filter(action=LogEntry.Action.ACCESS).exists()
 
 
@@ -42,6 +42,6 @@ def test_an_unknown_model_cannot_be_tried(ai_admin, model):
     model.delete()
 
     with pytest.raises(NotFound) as unknown:
-        services.model_try(staff_ctx(ai_admin), ModelTryIn(model=model_id, prompt_chars=12, tools=0))
+        services.model_choice.model_try(staff_ctx(ai_admin), ModelTryIn(model=model_id, prompt_chars=12, tools=0))
 
     assert unknown.value.code == "assistant.model_unknown"

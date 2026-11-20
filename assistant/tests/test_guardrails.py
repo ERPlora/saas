@@ -1,7 +1,8 @@
 """Guardrails of the assistant (CLAUDE.md, one road to the server), the scans of ``hubs/tests/test_guardrails.py``.
 
-- Only ``services.py`` and ``queries.py`` touch the database: the clients of the providers, the commands and the
-  tester call operations. Allowed besides: ``models.py`` and ``admin.py`` (Django's admin) and the migrations.
+- Only ``services`` and ``queries`` (a file or a package) touch the database: the clients of the providers, the
+  commands and the tester call operations. Allowed besides: ``models.py`` and ``admin.py`` (Django's admin) and the
+  migrations.
 - Nowhere ``using=``, ``.using(`` nor ``connections[``.
 - A provider's key never reaches a log: no logging call names the key, the token nor what was typed.
 
@@ -17,6 +18,7 @@ from hubs.tests.test_guardrails import database_touches, other_databases
 
 ASSISTANT = Path(settings.BASE_DIR) / "assistant"
 DATABASE_FILES = {"services.py", "queries.py", "models.py", "admin.py"}
+DATABASE_PACKAGES = {"services", "queries", "models", "admin"}
 SECRETS = {"api_key", "plaintext", "token", "new_key", "secret", "key", "get_secret_value"}
 LOG_CALLS = {"debug", "info", "warning", "error", "exception", "critical"}
 
@@ -27,6 +29,12 @@ def code_files() -> list[Path]:
         for path in ASSISTANT.rglob("*.py")
         if not {"tests", "migrations"} & set(path.relative_to(ASSISTANT).parts)
     )
+
+
+def may_touch_the_database(relative: str) -> bool:
+    """A door file or a module of a door package one level deep (``services/__init__.py``)."""
+    parts = relative.split("/")
+    return relative in DATABASE_FILES or (len(parts) == 2 and parts[0] in DATABASE_PACKAGES)
 
 
 def logged_secrets(source: str) -> list[str]:
@@ -47,7 +55,7 @@ def test_only_services_and_queries_touch_the_database():
     offenders = {
         path.relative_to(ASSISTANT).as_posix(): touches
         for path in code_files()
-        if path.name not in DATABASE_FILES
+        if not may_touch_the_database(path.relative_to(ASSISTANT).as_posix())
         if (touches := database_touches(path.read_text()))
     }
 
@@ -84,3 +92,12 @@ def test_the_log_scan_catches_its_positive():
 
 def test_the_database_scan_catches_its_positive():
     assert database_touches("AIProvider.objects.all()") == ["line 1: .objects"]
+
+
+def test_a_module_of_a_packaged_door_may_touch_the_database():
+    assert may_touch_the_database("services.py")
+    assert may_touch_the_database("services/__init__.py")
+    assert may_touch_the_database("services/credentials.py")
+    assert not may_touch_the_database("turn.py")
+    assert not may_touch_the_database("services/inner/deep.py")
+    assert not may_touch_the_database("providers/services/openai.py")

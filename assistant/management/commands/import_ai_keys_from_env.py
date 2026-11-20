@@ -40,7 +40,7 @@ class Command(BaseCommand):
         if unknown:
             raise CommandError(f"Unknown provider(s): {', '.join(unknown)}. Known: {', '.join(SETTINGS)}.")
         label = label.strip() or "default"
-        ctx = services.platform_context()
+        ctx = services.platform_actor.platform_context()
         counts = {"created": 0, "rotated": 0, "kept": 0, "skipped": 0}
         for slug in wanted:
             kind, name = SETTINGS[slug]
@@ -50,7 +50,7 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.WARNING(f"{slug}: skipped, {name} is empty"))
                 continue
             try:
-                out = services.credential_import(
+                out = services.credentials.credential_import(
                     ctx, CredentialImportIn(kind=kind, api_key=value, label=label, force=force, dry_run=dry_run)
                 )
             except OperationError as refused:
