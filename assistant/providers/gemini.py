@@ -2,9 +2,9 @@
 ?alt=sse``, ``GET {base}/v1beta/models`` page by page to list, the key in ``x-goog-api-key`` (never in the address).
 
 The assistant's turns are ``model`` contents, tool results ``functionResponse`` parts of a user content (named after
-the call they answer), images ``inlineData``; the instructions go in ``systemInstruction``. Gemini reads a subset of
-JSON Schema, so a tool's parameters lose what it refuses (``sanitize_schema``). Gemini gives no stable id to a call:
-one is made up per answer (``gemini_call_<n>``).
+the call they answer), images and PDFs ``inlineData``; the instructions go in ``systemInstruction``. Gemini reads a
+subset of JSON Schema, so a tool's parameters lose what it refuses (``sanitize_schema``). Gemini gives no stable id to
+a call: one is made up per answer (``gemini_call_<n>``).
 """
 
 from __future__ import annotations
@@ -68,6 +68,13 @@ class GeminiProvider(Provider):
     def headers(self) -> dict[str, str]:
         return {"x-goog-api-key": self.api_key, "Content-Type": "application/json"}
 
+    def user_part(self, part: dict) -> dict | None:
+        """A part of a person's message as Gemini's part: its text, an image or a PDF; ``None`` for any other."""
+        if part.get("type") == "text":
+            return {"text": part.get("text", "")}
+        inline = self.inline_data(part)
+        return None if inline is None else {"inlineData": {"mimeType": inline[0], "data": inline[1]}}
+
     def to_contents(self, messages: list[dict]) -> tuple[str, list[dict]]:  # noqa: C901, PLR0912
         system, rest = self.split_system_messages(messages)
         names: dict[str, str] = {}
@@ -76,18 +83,10 @@ class GeminiProvider(Provider):
             role = message.get("role")
             content = message.get("content", "")
             if role == "user":
-                parts: list[dict] = []
                 if isinstance(content, list):
-                    for part in content:
-                        if part.get("type") == "text":
-                            parts.append({"text": part.get("text", "")})
-                        elif part.get("type") == "image_url":
-                            url = (part.get("image_url") or {}).get("url", "")
-                            if url.startswith("data:") and "," in url:
-                                mime_type = url.split(";")[0].split(":", 1)[1]
-                                parts.append({"inlineData": {"mimeType": mime_type, "data": url.split(",", 1)[1]}})
+                    parts = [piece for piece in map(self.user_part, content) if piece is not None]
                 else:
-                    parts.append({"text": content})
+                    parts = [{"text": content}]
                 contents.append({"role": "user", "parts": parts})
             elif role == "assistant":
                 parts = []

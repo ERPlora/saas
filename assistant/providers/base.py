@@ -269,6 +269,20 @@ class Provider(ABC):
         return merged
 
     @staticmethod
+    def inline_data(part: dict) -> tuple[str, str] | None:
+        """``(media type, base64)`` of the image (``image_url``) or the file (``file``) a part carries inside it as a
+        data address, or ``None``."""
+        if part.get("type") == "image_url":
+            url = (part.get("image_url") or {}).get("url", "")
+        elif part.get("type") == "file":
+            url = (part.get("file") or {}).get("file_data", "")
+        else:
+            return None
+        if not isinstance(url, str) or not url.startswith("data:") or "," not in url:
+            return None
+        return url.split(";")[0].split(":", 1)[1], url.split(",", 1)[1]
+
+    @staticmethod
     def split_system_messages(messages: list[dict]) -> tuple[str, list[dict]]:
         """``(system text, the rest)``: Anthropic and Gemini take the instructions apart from the messages."""
         system: list[str] = []
