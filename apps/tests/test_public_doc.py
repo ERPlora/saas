@@ -206,6 +206,16 @@ def test_a_code_block_is_published_as_written():
     assert public_markdown(markdown, "es") == markdown
 
 
+def test_the_flows_after_a_code_block_are_cleaned_too():
+    diagram = "## Pantallas\n\n```mermaid\ngraph TD; A[SALE-F01] --> B;\n```\n\n"
+    markdown = (
+        f"{diagram}## Flujos\n\n| ID | Flujo | Estado |\n|---|---|---|\n| SALE-F01 | Cobrar | hecho |\n\n"
+        "### SALE-F01 Cobrar\nEstado: hecho\nActor: empleado\nPasos:\n1. Pulsa «Cobrar» (hub#1).\n"
+    )
+
+    assert public_markdown(markdown, "es") == f"{diagram}## Flujos\n\n### Cobrar\nPasos:\n\n1. Pulsa «Cobrar».\n"
+
+
 def test_a_document_without_flows_is_published_as_written():
     markdown = "# Facturas\n\nFactura a tus **clientes**.\n\n![Pantalla](docs/img/list.png)\n"
 
