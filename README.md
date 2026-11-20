@@ -563,8 +563,12 @@ scripts/checks.sh fast                # lo mismo que corre el gancho, a mano, so
 ```
 
 `scripts/checks.sh fast` pasa primero, en unos segundos y sin red ni base de datos, los tests de guardarraíles del
-tamaño de cada fichero y de los límites de función de ruff, con sus listas de excepciones, que solo encogen
-(`.file-size-allow`, las marcas `# noqa` y `eslint-suppressions.json`). Después comprueba lo que toca el cambio: lo que
+tamaño de cada fichero, de ruff (los límites de función y los errores probables de las familias `E4`, `E7`, `E9`, `F`,
+`B` y `DJ`, como un import sin usar), del contrato de imports (import-linter: ningún módulo importa a un hermano en
+círculo) y de la complejidad cognitiva (complexipy: ninguna función pasa de 15), con sus listas de excepciones, que
+solo encogen (`.file-size-allow`, las marcas `# noqa`, `eslint-suppressions.json`, las entradas de un fichero en
+`[tool.ruff.lint.per-file-ignores]`, los `ignore_imports` de `[tool.importlinter]` y `complexipy-snapshot.json`).
+`uv run lint-imports` y `uv run complexipy` corren las dos herramientas a mano. Después comprueba lo que toca el cambio: lo que
 difiere de donde la rama salió de `origin/main` (en `origin/main`, del commit anterior) o del commit que se le pase
 (`scripts/checks.sh fast <commit>`), con lo no commiteado y los ficheros nuevos.
 

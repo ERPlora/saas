@@ -1,5 +1,8 @@
 """Python functions stay within the limits a person can still follow, checked by ruff from the suite.
 
+ruff also checks the common mistakes of its rule families E4, E7, E9, F, B and DJ, whose configuration and frozen
+exceptions tests/test_guardrails_ruff.py pins down; the run over the code below covers them too.
+
 Complexity at most 10 (C901), at most 50 statements (PLR0915), 12 branches (PLR0912), 6 returns (PLR0911) and
 5 arguments (PLR0913, PLR0917). Tests may take more arguments: pytest's fixtures arrive as arguments. A function
 over a limit today carries a ``# noqa`` for it, and RUF100 fails on a ``# noqa`` that no longer silences
@@ -137,14 +140,14 @@ def test_no_eslint_limit_is_suppressed_more_often_than_on_main():
     assert not problems, "Split the function instead of suppressing a limit:\n" + "\n".join(problems or [])
 
 
-def test_no_python_function_goes_over_a_limit():
+def test_ruff_reports_nothing_in_the_code():
     result = ruff()
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_ruff_checks_only_the_function_limits_with_the_rule_values():
+def test_ruff_checks_the_function_limits_with_the_rule_values():
     lint = tomllib.loads((REPO / "pyproject.toml").read_text())["tool"]["ruff"]["lint"]
-    assert set(lint["select"]) == FUNCTION_LIMITS | {"RUF100"}
+    assert FUNCTION_LIMITS | {"RUF100"} <= set(lint["select"])
     assert lint["mccabe"] == {"max-complexity": 10}
     assert lint["pylint"] == {
         "max-args": 5,
@@ -189,13 +192,8 @@ def test_a_noqa_that_silences_nothing_is_reported():
 
 
 def test_a_noqa_kept_for_another_linter_is_left_alone():
-    assert (
-        reported(
-            "import os  # noqa: F401 - imported for its side effect\n",
-            "billing/sample.py",
-        )
-        == set()
-    )
+    code = f"try:\n    value = 1\nexcept Exception:  {NOQA}: BLE001 - any failure is logged\n    value = 0\n"
+    assert reported(code, "billing/sample.py") == set()
 
 
 def test_the_silenced_limits_are_counted_per_rule():

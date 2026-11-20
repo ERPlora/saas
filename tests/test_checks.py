@@ -1,7 +1,7 @@
 """``scripts/checks.sh fast``: what a change passes before it is pushed (.githooks/pre-push runs it on the pushed commit).
 
-It runs the guardrail tests of the size of each file and of ruff's function limits, the lists that only shrink
-included, in seconds, without the network or a database. Then it checks what the change touches: ESLint on its
+It runs the guardrail tests of the size of each file, ruff, the import contract and the cognitive complexity, the
+lists that only shrink included, in seconds, without the network or a database. Then it checks what the change touches: ESLint on its
 TypeScript and Vue files, the typecheck when it touches any, the Vitest tests related to them, and pytest on its test
 files and on each touched module's ``tests/test_<module>.py``, on Postgres. A tree that breaks any of them fails the
 command, and its output names the file and the reason.
@@ -30,16 +30,31 @@ KNOTTY = (
     + "".join(f"    if value & {1 << bit}:\n        text += '{bit}'\n" for bit in range(10))
     + "    return text\n"
 )
+# Six ifs, each inside the one before: a cognitive complexity of 21, over complexipy's 15, and no other limit crossed.
+TANGLED = "".join(
+    ["def tangled(a, b, c, d, e):\n"]
+    + [f"{'    ' * (depth + 1)}if {name}:\n" for depth, name in enumerate("abcdea")]
+    + ["                            return 1\n", "    return 0\n"]
+)
 BREAKS = {
     "hubs/filler.py": "".join(f"# filler {line}\n" for line in range(501)),
     "hubs/knotty.py": KNOTTY,
+    "hubs/unused.py": "import os\n",
     # Spelled apart so that this file carries no noqa marker of its own.
     "hubs/silenced.py": "value = 1  " + "#" + " noqa: C901\n",
+    "hubs/muted.py": "PAIRS = list(zip([1], [2]))  " + "#" + " noqa: B905\n",
+    "hubs/tangled.py": TANGLED,
+    "hubs/ping.py": "from hubs import pong\n\nPONG = pong\n",
+    "hubs/pong.py": "from hubs import ping\n\nPING = ping\n",
 }
 REPORTS = {
     "size": "hubs/filler.py: 501 lines, over its cap of 500",
-    "ruff": "hubs/knotty.py:1:5: C901",
+    "ruff limits": "hubs/knotty.py:1:5: C901",
+    "ruff families": "hubs/unused.py:1:8: F401",
     "frozen noqa markers": "Split the function instead of silencing a limit",
+    "frozen noqa markers of the families": "A new noqa for these rules",
+    "complexity": "hubs/tangled.py::tangled scores 21, over 15",
+    "imports": "No cycles are allowed in hubs.",
 }
 PROBE_MODULE = "hubs/probe.py"
 PROBE_TEST = """import pytest
@@ -140,7 +155,7 @@ def test_fast_runs_the_touched_tests_and_those_of_each_touched_module_on_a_datab
     done = checks(head_tree, "fast", "HEAD", database=True)
     output = done.stdout + done.stderr
     assert done.returncode == 1, output[-6000:]
-    assert REPORTS["ruff"] in output, output[-6000:]
+    assert REPORTS["ruff limits"] in output, output[-6000:]
     assert "FAILED hubs/tests/test_probe.py::test_the_answer" in output, output[-6000:]
     assert "FAILED hubs/tests/test_broken.py::test_broken" in output, output[-6000:]
     # The database of the run is its own, never the suite's default nor another checkout's.
@@ -159,7 +174,7 @@ def test_fast_runs_eslint_the_typecheck_and_the_related_vitest_tests_of_the_touc
     output = done.stdout + done.stderr
     assert done.returncode == 1, output[-6000:]
     reports = {
-        "ruff": REPORTS["ruff"],
+        "ruff": REPORTS["ruff limits"],
         "eslint": "max-params",
         "typecheck": f"{PROBE_TS}(1,14): error TS2322",
         "vitest": "FAIL  hubs/frontend/probe.test.ts > the answer",
