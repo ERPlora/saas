@@ -4,6 +4,7 @@ import json
 import re
 
 import pytest
+from django.core.management import call_command
 
 from hubs.tests.conftest import no_plans  # noqa: F401 - an empty plan table, for a test that builds its own
 from public.templatetags.public_assets import PUBLIC_ENTRY
@@ -101,3 +102,11 @@ def tokens_spelling(monkeypatch):
 @pytest.fixture
 def seeded(db):
     """The catalogue the migrations leave (``hubs/0013``)."""
+
+
+@pytest.fixture
+def cookie_groups(db, settings):
+    """The groups seeded and an optional tracker configured: the banner only asks when there is one
+    (see ``public/tests/test_analytics.py``)."""
+    settings.GA_MEASUREMENT_ID = "G-TEST123"
+    call_command("init_cookie_groups")
