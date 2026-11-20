@@ -11,7 +11,7 @@ from django.utils.translation import gettext as _
 from live.context import OperationContext
 from live.operations import INTERNAL, operation
 
-from billing import events, stripe_service
+from billing import emails, events, stripe_service
 from billing.models import Invoice, InvoiceLine
 from billing.schemas import CreditNoteRecordIn, InvoiceRecordOut, RefundRecordIn
 from billing.services import invoice_events, invoice_numbering, invoice_sealing, plan_changes, platform_invoices
@@ -238,8 +238,6 @@ def credit_note_voided(credit_note: dict) -> str:
     ``credit_note.created`` never records it (read live there). Nothing fiscal is done on its own: a rectifying
     invoice recorded anyway is never modified (a record sent to the AEAT is corrected with a new one) and the team is
     told by mail to correct it by hand: ``needs_review``. A mail that cannot leave raises, so Stripe retries it."""
-    from billing import emails
-
     rectifying = (
         Invoice.objects.filter(kind=Invoice.Kind.CREDIT_NOTE, stripe_source_id=credit_note.get("id") or "")
         .only("id", "number", "series", "sequence", "fiscal_status", "rectifies_id", "total_cents")

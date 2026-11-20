@@ -10,7 +10,7 @@ from live.context import OperationContext, Scope, system_context
 from live.operations import INTERNAL, operation
 from live.outbox import record_event
 
-from billing import events, stripe_service
+from billing import emails, events, stripe_service
 from billing.models import CheckoutAttempt
 from billing.money import from_cents
 from billing.schemas import CheckoutRefundRecordIn, CheckoutRefundRecordOut
@@ -223,8 +223,6 @@ def _tell_refunded(account_id, hub_id, cents: int) -> None:
     One that cannot leave is logged (``billing.emails``): the refund and its rectifying invoice in Billing are
     the record."""
     from django.contrib.auth import get_user_model
-
-    from billing import emails
 
     account = get_user_model().objects.filter(pk=account_id).first()
     hub = Hub.objects.filter(pk=hub_id).first()

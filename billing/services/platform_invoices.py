@@ -13,7 +13,7 @@ from django.utils import timezone
 from live.context import OperationContext
 from live.operations import INTERNAL, operation
 
-from billing import events, platform_contract
+from billing import emails, events, platform_contract
 from billing.models import Invoice
 from billing.schemas import FiscalAnswerIn, FiscalAnswerOut
 from billing.services import invoice_events
@@ -240,8 +240,6 @@ MAILED, MAIL_SKIPPED, MAIL_FAILED = "mailed", "mail_skipped", "mail_failed"
 def send_invoice_mail(invoice_id) -> str:
     """Send the payer the mail of an issued invoice (``billing.emails``) and mark it sent. Nothing to send
     (nobody to send it to) is done too; a mail that cannot leave stays owed for ``reconcile_platform_invoices``."""
-    from billing import emails
-
     invoice = Invoice.objects.select_related("hub", "payer_account").get(pk=invoice_id)
     try:
         sent = emails.send_invoice_issued(invoice)
