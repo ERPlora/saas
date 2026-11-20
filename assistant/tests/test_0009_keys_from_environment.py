@@ -67,6 +67,23 @@ def test_each_provider_reads_the_variable_of_what_it_is(before):
     }
 
 
+@pytest.mark.parametrize(
+    ("kind", "base_url"),
+    [
+        ("openai", "https://notopenai.com/v1"),
+        ("openai", "https://openai.com.example.net/v1"),
+        ("openai", "https://fakealiyuncs.com/compatible-mode/v1"),
+        ("anthropic", "https://myanthropic.com"),
+    ],
+)
+def test_an_address_that_only_looks_like_a_company_s_gets_no_variable(before, kind, base_url):
+    provider_of(before, "lookalike", kind, base_url)
+
+    after = migrate(AFTER)
+
+    assert after.get_model("assistant", "AIProvider").objects.get(slug="lookalike").key_variable == ""
+
+
 def test_the_keys_of_the_database_are_gone_with_their_table(before):
     provider_of(before, "openai", "openai")
 

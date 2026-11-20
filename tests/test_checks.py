@@ -17,6 +17,8 @@ import sys
 from pathlib import Path
 
 import pytest
+from test_guardrails_lint import git_grep, silenced_limits
+from test_guardrails_size import main_base
 
 REPO = Path(__file__).resolve().parent.parent
 #: The checkout with the node_modules and packages/ui the frontend checks borrow: this one, or the one that lends them
@@ -41,7 +43,6 @@ BREAKS = {
     "hubs/knotty.py": KNOTTY,
     "hubs/unused.py": "import os\n",
     # Spelled apart so that this file carries no noqa marker of its own.
-    "hubs/silenced.py": "value = 1  " + "#" + " noqa: C901\n",
     "hubs/muted.py": "PAIRS = list(zip([1], [2]))  " + "#" + " noqa: B905\n",
     "hubs/tangled.py": TANGLED,
     "hubs/ping.py": "from hubs import pong\n\nPONG = pong\n",
@@ -137,8 +138,18 @@ def test_fast_passes_on_this_tree(head_tree):
     assert done.returncode == 0, done.stdout[-4000:] + done.stderr[-2000:]
 
 
+def silencing(tree: Path) -> str:
+    """Lines that silence C901 once more than at the merge base with main. The markers are counted over the whole
+    repository against that base, so a branch that took some away may add as many: the probe adds those and one more,
+    a new exception on any branch and not only on main."""
+    head = silenced_limits(git_grep(tree, "-e", "noqa", "HEAD", "--", "*.py"))["C901"]
+    base = silenced_limits(git_grep(tree, "-e", "noqa", main_base(tree), "--", "*.py"))["C901"]
+    # Spelled apart so that this file carries no noqa marker of its own.
+    return "".join(f"value_{line} = {line}  " + "#" + " noqa: C901\n" for line in range(max(base - head, 0) + 1))
+
+
 def test_fast_fails_naming_the_file_and_the_reason_of_every_check(head_tree):
-    for path, text in BREAKS.items():
+    for path, text in {**BREAKS, "hubs/silenced.py": silencing(head_tree)}.items():
         (head_tree / path).write_text(text, encoding="utf-8")
     done = checks(head_tree, "fast", "HEAD")
     assert done.returncode == 1, done.stdout[-4000:] + done.stderr[-2000:]

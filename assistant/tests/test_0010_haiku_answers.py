@@ -112,6 +112,20 @@ def test_without_qwen_the_fallback_stays_as_it_was(before):
     assert (policy.active_model.model_id, policy.fallback_model_id) == ("claude-haiku-5-5", fallback.pk)
 
 
+def test_a_haiku_that_was_the_fallback_answers_and_leaves_the_fallback_empty_without_qwen(before):
+    """Haiku cannot be its own fallback: without Qwen, the slot it leaves stays empty."""
+    Provider = before.get_model("assistant", "AIProvider")
+    openai = Provider.objects.create(slug="openai", name="OpenAI", kind="openai", key_variable="OPENAI_API_KEY")
+    anthropic = Provider.objects.create(slug="anthropic", name="Anthropic", kind="anthropic", key_variable="ANTHROPIC_API_KEY")
+    answering = model_of(before, openai, "gpt-5.5")
+    haiku = model_of(before, anthropic, "claude-haiku-5-5", price_input_per_1m=Decimal("0.1"), price_output_per_1m=Decimal("0.5"))
+    before.get_model("assistant", "AIRoutingPolicy").objects.create(active_model=answering, fallback_model=haiku)
+
+    policy = policy_of(migrate(AFTER))
+
+    assert (policy.active_model_id, policy.fallback_model_id) == (haiku.pk, None)
+
+
 def test_where_no_model_answers_yet_nothing_is_added(before):
     before.get_model("assistant", "AIRoutingPolicy").objects.create()
 
