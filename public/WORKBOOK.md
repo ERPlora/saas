@@ -698,7 +698,7 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   siguen siendo donde se componen. El aspecto es `components/button.css`. Un `ion-button` no es un enlace hasta que
   `frontend/public.ts` lo define, y pulsado antes no hace nada. Siguen siendo `ion-button` los que no
   navegan: envíos de formulario, Aceptar y Rechazar cookies, idioma del pie y «Probar la demo» de la puerta. Lo guardan
-  el barrido de `public/tests/test_templates.py` y los dos e2e de `public-web-buttons.spec.ts` (PUBLIC-F11): pulsar con los
+  el barrido de `public/tests/test_templates_buttons.py` y los dos e2e de `public-web-buttons.spec.ts` (PUBLIC-F11): pulsar con los
   scripts retenidos y la paridad de estilos calculados frente a un `ion-button` real, en reposo y bajo el puntero.
 - Correo de soporte (F18): `SUPPORT_EMAIL` es la única fuente; las páginas de error lo leen con `{% support_email %}`
   (`public/templatetags/support.py`: la 500 se pinta sin contexto) y la SPA con el bloque JSON `support-email` de
