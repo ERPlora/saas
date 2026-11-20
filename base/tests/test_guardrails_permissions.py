@@ -366,7 +366,7 @@ def test_the_scan_of_the_system_s_refusal_catches_its_positive():
             raise PermissionDenied("no")
 
     def calls(ctx, data):
-        queries.platform_only(ctx)  # noqa: F821 (only parsed)
+        queries.gates.platform_only(ctx)  # noqa: F821 (only parsed)
 
     def neither(ctx, data):
         return ctx.actor
