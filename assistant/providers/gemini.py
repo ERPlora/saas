@@ -2,9 +2,9 @@
 ?alt=sse``, ``GET {base}/v1beta/models`` page by page to list, the key in ``x-goog-api-key`` (never in the address).
 
 The assistant's turns are ``model`` contents, tool results ``functionResponse`` parts of a user content (named after
-the call they answer), images and PDFs ``inlineData``; the instructions go in ``systemInstruction``. Gemini reads a subset of
-JSON Schema, so a tool's parameters lose what it refuses (``sanitize_schema``). Gemini gives no stable id to a call:
-one is made up per answer (``gemini_call_<n>``).
+the call they answer), images and PDFs ``inlineData``; the instructions go in ``systemInstruction``. Gemini reads a
+subset of JSON Schema, so a tool's parameters lose what it refuses (``sanitize_schema``). Gemini gives no stable id to
+a call: one is made up per answer (``gemini_call_<n>``).
 """
 
 from __future__ import annotations
@@ -23,7 +23,6 @@ from assistant.providers.base import (
     TurnRequest,
     error_event,
     finish_event,
-    inline_data,
     is_retriable_status,
     redact,
     sse_events,
@@ -69,12 +68,11 @@ class GeminiProvider(Provider):
     def headers(self) -> dict[str, str]:
         return {"x-goog-api-key": self.api_key, "Content-Type": "application/json"}
 
-    @staticmethod
-    def user_part(part: dict) -> dict | None:
+    def user_part(self, part: dict) -> dict | None:
         """A part of a person's message as Gemini's part: its text, an image or a PDF; ``None`` for any other."""
         if part.get("type") == "text":
             return {"text": part.get("text", "")}
-        inline = inline_data(part)
+        inline = self.inline_data(part)
         return None if inline is None else {"inlineData": {"mimeType": inline[0], "data": inline[1]}}
 
     def to_contents(self, messages: list[dict]) -> tuple[str, list[dict]]:  # noqa: C901, PLR0912

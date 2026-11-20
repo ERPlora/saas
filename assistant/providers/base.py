@@ -1,5 +1,5 @@
 """What every provider's client shares: the normalized events, the request of one turn, the reading
-of a server-sent stream, the data of an attachment and the classification of upstream failures.
+of a server-sent stream and the classification of upstream failures.
 
 Each concrete client (``openai``, ``deepseek``, ``anthropic``, ``gemini``) translates the canonical conversation (the
 Chat Completions shape: ``system`` / ``user`` / ``assistant`` with ``tool_calls`` / ``tool`` messages) into its API,
@@ -138,20 +138,6 @@ def finish_event(reason: str) -> ProviderEvent:
     return ProviderEvent("finish", {"reason": reason})
 
 
-def inline_data(part: dict) -> tuple[str, str] | None:
-    """``(media type, base64)`` of the image (``image_url``) or the file (``file``) a part carries inside it as a data
-    address, or ``None``."""
-    if part.get("type") == "image_url":
-        url = (part.get("image_url") or {}).get("url", "")
-    elif part.get("type") == "file":
-        url = (part.get("file") or {}).get("file_data", "")
-    else:
-        return None
-    if not isinstance(url, str) or not url.startswith("data:") or "," not in url:
-        return None
-    return url.split(";")[0].split(":", 1)[1], url.split(",", 1)[1]
-
-
 def upstream_message(body: bytes, status: int) -> str:
     """The provider's own words for a failed answer (``error.message`` in every API's envelope), else its status."""
     try:
@@ -281,6 +267,20 @@ class Provider(ABC):
             else:
                 merged.append(message)
         return merged
+
+    @staticmethod
+    def inline_data(part: dict) -> tuple[str, str] | None:
+        """``(media type, base64)`` of the image (``image_url``) or the file (``file``) a part carries inside it as a
+        data address, or ``None``."""
+        if part.get("type") == "image_url":
+            url = (part.get("image_url") or {}).get("url", "")
+        elif part.get("type") == "file":
+            url = (part.get("file") or {}).get("file_data", "")
+        else:
+            return None
+        if not isinstance(url, str) or not url.startswith("data:") or "," not in url:
+            return None
+        return url.split(";")[0].split(":", 1)[1], url.split(",", 1)[1]
 
     @staticmethod
     def split_system_messages(messages: list[dict]) -> tuple[str, list[dict]]:

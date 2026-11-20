@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:6841a6f7eedfddb5e51ed9d7719bdab4397d6aa01e3db8b1e672ac478908876b -->
+<!-- generated from WORKBOOK.md sha256:8dd1e46dd3bdb88a1c1c5adffad9c1e711877b6cdc605b1631c61e3df1dc9b14 -->
 
 ## What it is for and who uses it
 
@@ -417,17 +417,18 @@ Involved: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F24, HUBS-F05
 
 ### ASSISTANT-F19 Read the attachments of a question
 Status: done
-Actor: the Hub's assistant of a business
+Actor: the Hub's assistant of a business; the person with an account on erplora.com, in the panel's assistant
 Screen: none
 Steps:
-1. The person attaches images or documents to their question; the Hub sends them inside the turn.
+1. The person attaches images or documents to their question; the Hub, or erplora.com's panel, sends them inside the turn.
 2. An image (PNG, JPEG, WebP or GIF) goes to the model as it is if it sees images; if it does not, the model gets a note in its place.
-3. A document (PDF, Word, Excel, text, CSV, Markdown or a .json file) becomes its text (a spreadsheet, sheet by sheet) and the model reads it with its name.
-4. Everything happens in memory: nothing is downloaded from any address nor written to disk.
+3. A PDF goes to the model as it is if it sees images, and the provider reads it whole: its text and what each page shows, a scanned delivery note or invoice with no text in it too. If the model does not see images, it gets the PDF's text or, for a scan with no text, a note that it could not be read.
+4. The other documents (Word, Excel, text, CSV, Markdown or a .json file) become their text (a spreadsheet, sheet by sheet) and the model reads it with its name.
+5. Everything happens in memory: nothing is downloaded from any address nor written to disk.
 In: the question's images and documents.
 Out: what the model can read of each attachment, or a note if it cannot be read.
-If it fails: an attachment of more than about 9 MB or more than 20 attachments in a conversation refuse the turn as too big, cutting nothing and spending no message; a broken document, a protected one, one of a type that is not read or that would grow too much when opened is a note for the model, never a failed turn; an image or a document given by an address is not downloaded; the file's name reaches no log.
-Involved: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F17
+If it fails: an attachment of more than about 9 MB or more than 20 attachments in a conversation refuse the turn as too big, cutting nothing and spending no message; a broken document, a protected one, one of a type that is not read or that would grow too much when opened is a note for the model, never a failed turn; a PDF the provider does not accept (for instance, with more pages than it reads at once) ends the turn with the notice that the provider refused the request, spending no message; an image or a document given by an address is not downloaded; the file's name reaches no log.
+Involved: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F17, ASSISTANT-F25
 
 ### ASSISTANT-F20 Compute the fingerprint of some texts for the business's index
 Status: done
@@ -511,7 +512,7 @@ Steps:
 In: the conversation (it lives in the person's browser), the tools the model asked for and the person's answer to its card.
 Out: what was done and its result, the card of the change that waits, the text as it arrives, the allowance left and the close; what each tool does leaves its own trace (`hubs.business.created`…), never the conversation.
 If it fails: without a session, the panel sends to sign in and there is no "Assistant" button, and a session that ends mid-conversation asks to sign in again; with the month's allowance spent, the first notice is the allowance spent, with how many were used and when they come back, and that each business has its own assistant, without "Upgrade plan" (see ASSISTANT-F26); with too many turns in a row, it says to wait a moment; without a model that answers, that the assistant cannot answer now, with "Try again"; without a connection, the foot says so. A tool the account does not have, or that is not for the chat (downloading a file, creating an API key, opening the payment, entering a business), never runs. Without the word typed or with a "no", the change is not made and the model says so, without sending the person to confirm a card that is already closed; that "no" stands until the person writes again: if the model asks for the same change again, no other card and no other "Not done" come. Data the change does not take (a country ERPlora does not serve, a value outside its list) or a change that cannot be made (cancelling the plan of a business on Free, or of one another account pays for) never reach the card: they go back to the model, which corrects them within the same question, and the person confirms only once. A new business that cannot be created (the account already has its free business, belongs to ERPlora's staff or there is no Free plan) does not reach the card either: the model says why and, if it is the free business, to change the plan of the one it has (HUBS-F01). Where nothing is sold (the account opened from the installed app), neither the Store nor its plan changes are offered. Past six rounds of tools in a single question, it stops.
-Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F21, ASSISTANT-F23, ASSISTANT-F26, ASSISTANT-F29, HUBS-F01, HUBS-F09, BILLING-F11, BILLING-F13
+Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F19, ASSISTANT-F21, ASSISTANT-F23, ASSISTANT-F26, ASSISTANT-F29, HUBS-F01, HUBS-F09, BILLING-F11, BILLING-F13
 
 ### ASSISTANT-F26 Count an account's messages with the panel's assistant
 Status: done

@@ -431,17 +431,18 @@ Implicados: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F24, HUBS-F05
 
 ### ASSISTANT-F19 Leer los adjuntos de una pregunta
 Estado: hecho
-Actor: el asistente del Hub de un negocio
+Actor: el asistente del Hub de un negocio; la persona con cuenta en erplora.com, en el asistente del panel
 Pantalla: ninguna
 Pasos:
-1. La persona adjunta a su pregunta imágenes o documentos; el Hub los manda dentro del turno.
+1. La persona adjunta a su pregunta imágenes o documentos; el Hub, o el panel de erplora.com, los manda dentro del turno.
 2. Una imagen (PNG, JPEG, WebP o GIF) va tal cual al modelo si ve imágenes; si no las ve, el modelo recibe una nota en su lugar.
-3. Un documento (PDF, Word, Excel, texto, CSV, Markdown o un fichero .json) se convierte en su texto (una hoja de cálculo, hoja por hoja) y el modelo lo lee con su nombre.
-4. Todo se hace en memoria: no se descarga nada de ninguna dirección ni se escribe nada en disco.
+3. Un PDF va tal cual al modelo si ve imágenes, y el proveedor lo lee entero: su texto y lo que se ve en cada página, también un albarán o una factura escaneados que no traen texto. Si el modelo no ve imágenes, recibe el texto del PDF o, si es un escaneado sin texto, una nota de que no lo ha podido leer.
+4. Los demás documentos (Word, Excel, texto, CSV, Markdown o un fichero .json) se convierten en su texto (una hoja de cálculo, hoja por hoja) y el modelo lo lee con su nombre.
+5. Todo se hace en memoria: no se descarga nada de ninguna dirección ni se escribe nada en disco.
 Entra: las imágenes y los documentos de la pregunta.
 Sale: lo que el modelo puede leer de cada adjunto, o una nota si no se puede leer.
-Si falla: un adjunto de más de unos 9 MB o más de 20 adjuntos en una conversación rechazan el turno como demasiado grande, sin cortar nada y sin gastar mensaje; un documento roto, protegido, de un tipo que no se lee o que al abrirse crecería demasiado es una nota para el modelo, nunca un turno fallido; una imagen o un documento dados por una dirección no se descargan; el nombre del fichero no llega a ningún registro.
-Implicados: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F17
+Si falla: un adjunto de más de unos 9 MB o más de 20 adjuntos en una conversación rechazan el turno como demasiado grande, sin cortar nada y sin gastar mensaje; un documento roto, protegido, de un tipo que no se lee o que al abrirse crecería demasiado es una nota para el modelo, nunca un turno fallido; un PDF que el proveedor no acepta (por ejemplo, con más páginas de las que lee de una vez) termina el turno con el aviso de que el proveedor ha rechazado la petición, sin gastar mensaje; una imagen o un documento dados por una dirección no se descargan; el nombre del fichero no llega a ningún registro.
+Implicados: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F17, ASSISTANT-F25
 
 ### ASSISTANT-F20 Calcular la huella de unos textos para el índice del negocio
 Estado: hecho
@@ -525,7 +526,7 @@ Pasos:
 Entra: la conversación (vive en el navegador de la persona), las herramientas que el modelo pidió y la respuesta de la persona a su tarjeta.
 Sale: lo que se ha hecho y su resultado, la tarjeta del cambio que espera, el texto según llega, el cupo que queda y el cierre; lo que hace cada herramienta deja su propio rastro (`hubs.business.created`…), nunca la conversación.
 Si falla: sin sesión, el panel lleva a entrar y no hay botón «Asistente», y una sesión que termina a media conversación pide volver a entrar; con el cupo del mes gastado, el primer aviso es el cupo agotado, con cuántos se han usado y cuándo vuelven, y que cada negocio tiene su propio asistente, sin «Mejorar plan» (ver ASSISTANT-F26); con demasiados turnos seguidos, avisa de que hay que esperar un momento; sin un modelo que conteste, de que el asistente no puede contestar ahora, con «Reintentar»; sin conexión, el pie lo dice. Una herramienta que la cuenta no tiene, o que no es del chat (descargar un fichero, crear una clave de API, abrir el pago, entrar en un negocio), no se ejecuta nunca. Sin la palabra escrita o con un «no», el cambio no se hace y el modelo lo dice, sin mandar a confirmar una tarjeta que ya se cerró; ese «no» vale hasta que la persona vuelva a escribir: si el modelo pide otra vez el mismo cambio, no sale otra tarjeta ni otro «No se hizo». Unos datos que el cambio no acepta (un país que no es de los que sirve ERPlora, un valor fuera de su lista) o un cambio que no se puede hacer (cancelar el plan de un negocio en Gratis, o el de uno que paga otra cuenta) no llegan a la tarjeta: vuelven al modelo, que los corrige en la misma pregunta, y la persona confirma una sola vez. Un negocio nuevo que no se puede crear (la cuenta ya tiene su negocio gratuito, es del personal de ERPlora o no hay plan Gratis) tampoco llega a la tarjeta: el modelo dice por qué y, si es el negocio gratuito, que se cambie el plan del que ya tiene (HUBS-F01). Donde no se vende (la cuenta abierta desde la aplicación instalada), no se ofrecen la Tienda ni sus cambios de plan. Pasadas seis rondas de herramientas en una misma pregunta, se para.
-Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F21, ASSISTANT-F23, ASSISTANT-F26, ASSISTANT-F29, HUBS-F01, HUBS-F09, BILLING-F11, BILLING-F13
+Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F19, ASSISTANT-F21, ASSISTANT-F23, ASSISTANT-F26, ASSISTANT-F29, HUBS-F01, HUBS-F09, BILLING-F11, BILLING-F13
 
 ### ASSISTANT-F26 Contar los mensajes de una cuenta con el asistente del panel
 Estado: hecho

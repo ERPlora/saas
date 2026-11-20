@@ -2,8 +2,8 @@
 {base}/v1/models`` page by page to list.
 
 The instructions go apart (``system``), tool results are ``tool_result`` blocks of a user turn, the assistant's tool
-calls ``tool_use`` blocks, images ``image`` blocks and PDFs ``document`` blocks; user and assistant alternate (consecutive turns of one role are
-merged). One tool per answer (``disable_parallel_tool_use``).
+calls ``tool_use`` blocks, images ``image`` blocks and PDFs ``document`` blocks; user and assistant alternate
+(consecutive turns of one role are merged). One tool per answer (``disable_parallel_tool_use``).
 """
 
 from __future__ import annotations
@@ -22,7 +22,6 @@ from assistant.providers.base import (
     TurnRequest,
     error_event,
     finish_event,
-    inline_data,
     is_retriable_status,
     redact,
     sse_events,
@@ -40,12 +39,11 @@ class AnthropicProvider(Provider):
     def headers(self) -> dict[str, str]:
         return {"x-api-key": self.api_key, "anthropic-version": API_VERSION, "content-type": "application/json"}
 
-    @staticmethod
-    def user_block(part: dict) -> dict | None:
+    def user_block(self, part: dict) -> dict | None:
         """A part of a person's message as Anthropic's block: its text, an image or a PDF; ``None`` for any other."""
         if part.get("type") == "text":
             return {"type": "text", "text": part.get("text", "")}
-        inline = inline_data(part)
+        inline = self.inline_data(part)
         if inline is None:
             return None
         media_type, data = inline
