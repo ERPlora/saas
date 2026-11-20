@@ -51,13 +51,13 @@ def _row_of(caller: Caller, now) -> AssistantUsage:
     """The caller's row of usage now (made the first time): a business's or an account's of this month, a demo's only
     one. A demo's first row forgets the rows of the demos that started more than a day ago."""
     if caller.demo:
-        row, created = AssistantUsage.objects.get_or_create(demo=caller.demo, defaults={"month": queries.month_of(now)})
+        row, created = AssistantUsage.objects.get_or_create(demo=caller.demo, defaults={"month": queries.usage.month_of(now)})
         if created:
             AssistantUsage.objects.exclude(demo="").filter(created_at__lt=now - DEMO_USAGE_KEPT).delete()
         return row
     if caller.user_id is not None:
-        return AssistantUsage.objects.get_or_create(user_id=caller.user_id, month=queries.month_of(now))[0]
-    return AssistantUsage.objects.get_or_create(hub_id=caller.hub_id, month=queries.month_of(now))[0]
+        return AssistantUsage.objects.get_or_create(user_id=caller.user_id, month=queries.usage.month_of(now))[0]
+    return AssistantUsage.objects.get_or_create(hub_id=caller.hub_id, month=queries.usage.month_of(now))[0]
 
 
 @operation(
@@ -72,9 +72,9 @@ def message_claim(ctx: OperationContext, data: Caller) -> dict:
     """Take a message of the caller's allowance for a turn, before the model is called (the platform only): one
     ``UPDATE … WHERE messages < limit``, which a concurrent claim waits on and then evaluates again, so two turns
     never pass the last message together. Without one left nothing is taken and ``claimed`` is false."""
-    queries.platform_only(ctx)
+    queries.gates.platform_only(ctx)
     now = timezone.now()
-    limit = queries.monthly_limit(data, now)
+    limit = queries.usage.monthly_limit(data, now)
     row = _row_of(data, now)
     claimed = AssistantUsage.objects.filter(pk=row.pk, messages__lt=limit).update(
         messages=F("messages") + 1, updated_at=now
@@ -89,7 +89,7 @@ def message_claim(ctx: OperationContext, data: Caller) -> dict:
         "month": row.month,
         "used": row.messages,
         "limit": limit,
-        "resets_at": None if data.demo else queries.resets_at(row.month),
+        "resets_at": None if data.demo else queries.usage.resets_at(row.month),
         "demo": bool(data.demo),
     }
 
@@ -135,7 +135,7 @@ def _mail_the_warning(row_id, mark: str, taken_at, used: int, limit: int) -> Non
     if row is None:
         logger.warning("assistant.mail.no_account usage=%s: the account went away before its mail", row_id)
         return
-    resets_on = queries.resets_at(row.month).date()
+    resets_on = queries.usage.resets_at(row.month).date()
     if mark == WARNING_MARKS["spent"]:
         sent = emails.send_messages_spent(row.user, limit=limit, resets_on=resets_on)
     else:
@@ -155,7 +155,7 @@ def _mail_the_warning(row_id, mark: str, taken_at, used: int, limit: int) -> Non
 def message_release(ctx: OperationContext, data: MessageReleaseIn) -> dict:
     """Give back the message a turn took in ``month``, when it failed before answering anything (the platform only):
     the person saw no answer, so it is not spent. Never below zero."""
-    queries.platform_only(ctx)
+    queries.gates.platform_only(ctx)
     caller = data.caller
     rows = _rows_of(caller, data.month)
     if rows.filter(messages__gt=0).update(messages=F("messages") - 1, updated_at=timezone.now()):
@@ -164,7 +164,7 @@ def message_release(ctx: OperationContext, data: MessageReleaseIn) -> dict:
             events.MESSAGE_RELEASED,
             {**_caller_payload(caller), "used": rows.values_list("messages", flat=True).first() or 0},
         )
-    return queries.usage_of(caller, timezone.now())
+    return queries.usage.usage_of(caller, timezone.now())
 
 
 @operation(
@@ -178,7 +178,7 @@ def message_release(ctx: OperationContext, data: MessageReleaseIn) -> dict:
 def usage_record(ctx: OperationContext, data: UsageRecordIn) -> dict:
     """Add what a turn, an embedding or the voice spent to the caller's row of now (the platform only): tokens,
     dictations, characters read aloud and their cost in USD. Never a message: those are claimed."""
-    queries.platform_only(ctx)
+    queries.gates.platform_only(ctx)
     now = timezone.now()
     row = _row_of(data.caller, now)
     spent = data.model_dump(exclude={"caller"})
@@ -186,4 +186,4 @@ def usage_record(ctx: OperationContext, data: UsageRecordIn) -> dict:
         **{field: F(field) + value for field, value in spent.items()}, updated_at=now
     )
     record_event(ctx, events.USAGE_RECORDED, {**_caller_payload(data.caller), **{k: str(v) for k, v in spent.items()}})
-    return queries.usage_of(data.caller, now)
+    return queries.usage.usage_of(data.caller, now)

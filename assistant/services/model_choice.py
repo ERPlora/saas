@@ -18,7 +18,8 @@ from live.outbox import record_event
 
 from assistant import events
 from assistant.models import AIModel, AIProvider, AIRoutingPolicy
-from assistant.queries import choosable_models, staff_with
+from assistant.queries.gates import staff_with
+from assistant.queries.routing_policy import choosable_models
 from assistant.schemas import ModelSelectIn, ModelSelectOut, ModelTryIn, ModelTryOut, PolicyIn, PolicyOut
 
 

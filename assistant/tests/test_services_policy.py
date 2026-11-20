@@ -104,7 +104,7 @@ def test_changing_needs_the_change_permission(make_user, models):
 def test_the_policy_shows_its_choice_and_the_models_that_can_answer(ai_admin, models, provider):
     update(ai_admin, active_model=models["large"].pk)
 
-    out = queries.policy_show(staff_ctx(ai_admin), NoInput())
+    out = queries.routing_policy.policy_show(staff_ctx(ai_admin), NoInput())
 
     assert out.active_model == models["large"].pk and out.fallback_model is None
     assert out.updated_by == "ai-admin@erplora.com"
@@ -116,4 +116,4 @@ def test_seeing_the_policy_needs_its_view_permission(make_user, models):
     member = grant(make_user("member@erplora.com", is_staff=True), "view_aimodel")
 
     with pytest.raises(PermissionDenied):
-        queries.policy_show(staff_ctx(member), NoInput())
+        queries.routing_policy.policy_show(staff_ctx(member), NoInput())

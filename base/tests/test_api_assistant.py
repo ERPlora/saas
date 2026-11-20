@@ -109,7 +109,7 @@ class TestTheUsage:
 
         response = signed_in.get("/api/assistant/usage", HTTP_HOST=HOST)
 
-        expected = queries.resets_at(queries.month_of(timezone.now())).isoformat().replace("+00:00", "Z")
+        expected = queries.usage.resets_at(queries.usage.month_of(timezone.now())).isoformat().replace("+00:00", "Z")
         assert response.status_code == 200
         assert response.json() == {"used": 2, "limit": 30, "resets_at": expected, "demo": False}
 

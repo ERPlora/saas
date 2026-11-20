@@ -90,7 +90,7 @@ def signed_in(client, account):
 
 
 def used_by(account) -> int:
-    row = AssistantUsage.objects.filter(user=account, month=queries.month_of(timezone.now())).first()
+    row = AssistantUsage.objects.filter(user=account, month=queries.usage.month_of(timezone.now())).first()
     return row.messages if row is not None else 0
 
 
@@ -827,7 +827,7 @@ class TestWhatStopsATurn:
     def test_a_spent_month_is_the_first_frame_and_the_model_is_not_called(
         self, signed_in, account, answering, fake_provider
     ):
-        AssistantUsage.objects.create(user=account, month=queries.month_of(timezone.now()), messages=30)
+        AssistantUsage.objects.create(user=account, month=queries.usage.month_of(timezone.now()), messages=30)
 
         got = frames(post_turn(signed_in, {"messages": [ask("Hello")]}))
 
@@ -837,7 +837,7 @@ class TestWhatStopsATurn:
             "code": "assistant.quota_exceeded",
             "used": 30,
             "limit": 30,
-            "resets_at": queries.resets_at(queries.month_of(timezone.now())).isoformat(),
+            "resets_at": queries.usage.resets_at(queries.usage.month_of(timezone.now())).isoformat(),
             "demo": False,
         }
         assert got[1] == {"type": "done", "append": [], "pending": [], "continuation": None, "web": False}
