@@ -158,7 +158,7 @@ describe('BusinessListPage: row actions', () => {
         row('viejo', 'Bar Viejo', { status: 'deleting', can_open: false, open_blocked_reason: 'deleting', purge_after: '2027-01-11T10:00:00Z' }),
       ]),
     );
-    expect(accessibleName(action(s, 'bakery', 'open'))).toBe('Open');
+    expect(accessibleName(action(s, 'bakery', 'open'))).toBe('Open: Panadería López');
     expect((action(s, 'cafe', 'open').element as HTMLElement & { disabled?: boolean }).disabled).toBe(true);
     expect(action(s, 'norte', 'open').exists()).toBe(false);
     expect(action(s, 'viejo', 'open').exists()).toBe(false);
@@ -190,12 +190,12 @@ describe('BusinessListPage: row actions', () => {
     expect(s.wrapper.find('[data-testid$="-delete"]').exists()).toBe(false);
   });
 
-  it('every row button says its action in short words, also to a screen reader', async () => {
+  it('every row button tells a screen reader which business it is for, its short words first', async () => {
     const s = await setup();
     await s.show(page([...ROWS, row('viejo', 'Bar Viejo', { status: 'deleting', can_open: false, open_blocked_reason: 'deleting', purge_after: '2027-01-11T10:00:00Z' })]));
-    expect(accessibleName(action(s, 'bakery', 'open'))).toBe('Open');
-    expect(accessibleName(action(s, 'bakery', 'manage'))).toBe('Manage');
-    expect(accessibleName(action(s, 'viejo', 'restore'))).toBe('Recover');
+    expect(accessibleName(action(s, 'bakery', 'open'))).toBe('Open: Panadería López');
+    expect(accessibleName(action(s, 'bakery', 'manage'))).toBe('Manage: Panadería López');
+    expect(accessibleName(action(s, 'viejo', 'restore'))).toBe('Recover: Bar Viejo');
   });
 
   it('a deleted business offers «Recover» to its owner, which recovers it and says so', async () => {
@@ -343,7 +343,7 @@ describe('BusinessListPage: Spanish', () => {
     await s.show(page(ROWS));
     expect(s.wrapper.findComponent(AppPage).props('title')).toBe('Negocios');
     expect(s.prop<Array<{ label: string }>>('columns').map((c) => c.label)).toEqual(['Negocio', 'Dirección web', 'Estado', 'Plan', 'Rol', 'Último uso']);
-    expect(accessibleName(s.testid('businesses-row-bakery-open'))).toBe('Abrir');
-    expect(accessibleName(s.testid('businesses-row-bakery-manage'))).toBe('Gestionar');
+    expect(accessibleName(s.testid('businesses-row-bakery-open'))).toBe('Abrir: Panadería López');
+    expect(accessibleName(s.testid('businesses-row-bakery-manage'))).toBe('Gestionar: Panadería López');
   });
 });

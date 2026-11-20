@@ -95,10 +95,13 @@ describe('ApiKeysTable', () => {
     expect(s.q('new-key-scope-hubs.write')).not.toBeNull();
   });
 
-  it('paints «Revoke» with its text, and no «rows per page»', async () => {
+  it('paints «Revoke» with its text, named for a screen reader with its key, and no «rows per page»', async () => {
     const s = await setup();
     expect(s.q('api-keys-row-k2-revoke')?.textContent?.trim()).toBe('Revoke');
-    expect(accessibleName(s.q('api-keys-row-k2-revoke'))).toBe('Revoke');
+    expect([accessibleName(s.q('api-keys-row-k1-revoke')), accessibleName(s.q('api-keys-row-k2-revoke'))]).toEqual([
+      'Revoke: Contabilidad',
+      'Revoke: Zapier',
+    ]);
     expect(document.querySelector('.data-table__page-size-select')).toBeNull();
   });
 

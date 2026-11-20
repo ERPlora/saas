@@ -18,7 +18,7 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/mod
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
 import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
-import { accessibleName, apiError, BYE, describeCall, errorFrame, flush, mountHubs, subId } from '../__tests__/mount-hubs';
+import { accessibleName, apiError, BYE, closeRowMenu, describeCall, errorFrame, flush, mountHubs, subId } from '../__tests__/mount-hubs';
 import { member } from '../__tests__/members';
 import MembersTab from './MembersTab.vue';
 
@@ -210,17 +210,27 @@ describe('MembersTab: a clean page', () => {
 });
 
 describe('MembersTab: actions', () => {
-  it('every row action says what it does in its short words, for the eye and for a screen reader, also inside «⋮»', async () => {
+  it('every row action tells a screen reader whom it affects, its short words first, also inside «⋮»', async () => {
     const s = await setup();
     await s.show(page());
     const label = (id: string) => accessibleName(s.testid(id));
-    expect(label('members-row-carlos-change_role')).toBe('Change role');
-    expect(label('members-row-carlos-remove')).toBe('Remove');
-    expect(label('members-row-jorge-resend')).toBe('Resend');
-    expect(label('members-row-jorge-cancel')).toBe('Cancel invitation');
-    await s.testid('members-row-jorge-menu').trigger('click');
-    await flush();
-    expect(s.testid('members-row-jorge-change_role').text()).toBe('Change role');
+    expect(label('members-row-carlos-change_role')).toBe('Change role: Carlos Ruiz');
+    expect(s.testid('members-row-carlos-change_role').attributes('title')).toBe('Change role: Carlos Ruiz');
+    expect(label('members-row-carlos-remove')).toBe('Remove: Carlos Ruiz');
+    expect(label('members-row-jorge-resend')).toBe('Resend: jorge@example.com');
+    expect(label('members-row-jorge-cancel')).toBe('Cancel invitation: jorge@example.com');
+    const inMenu: string[][] = [];
+    for (const [row, action] of [['carlos', 'transfer'], ['jorge', 'change_role']]) {
+      await s.testid(`members-row-${row}-menu`).trigger('click');
+      await flush();
+      const item = s.testid(`members-row-${row}-${action}`);
+      inMenu.push([item.text(), label(`members-row-${row}-${action}`) ?? '']);
+      await closeRowMenu(s.wrapper);
+    }
+    expect(inMenu).toEqual([
+      ['Transfer ownership', 'Transfer ownership: Carlos Ruiz'],
+      ['Change role', 'Change role: jorge@example.com'],
+    ]);
   });
 
   it('a lost connection on «Resend» is said in the person’s language', async () => {
@@ -292,7 +302,7 @@ describe('MembersTab: actions', () => {
     const s = await mountHubs(MembersTab, { props: { id: 'h1', business: BUSINESS }, locale: 'es' });
     const call = await s.live();
     await s.result(call, 'hubs.member.list', page());
-    expect(accessibleName(s.wrapper.get('[data-testid="members-row-carlos-change_role"]'))).toBe('Cambiar rol');
+    expect(accessibleName(s.wrapper.get('[data-testid="members-row-carlos-change_role"]'))).toBe('Cambiar rol: Carlos Ruiz');
     expect(s.wrapper.find('[data-testid="members-seats"]').text()).toBe('3 de 5 plazas del plan');
   });
 });
@@ -325,9 +335,9 @@ describe('MembersTab: on a phone', () => {
     expect(s.actionsOf('carlos')).toEqual(['change_role', 'menu']);
     expect(s.actionsOf('jorge')).toEqual(['resend', 'menu']);
     expect(offeredRowActions(s.wrapper, 'jorge')).toEqual(['resend', 'cancel', 'change_role']);
-    // Its text is the action's short words, and so is its name for a screen reader.
+    // Its text is the action's short words; its name for a screen reader adds whom it affects.
     const main = s.testid('members-row-carlos-change_role');
-    expect([main.text(), accessibleName(main)]).toEqual(['Change role', 'Change role']);
+    expect([main.text(), accessibleName(main)]).toEqual(['Change role', 'Change role: Carlos Ruiz']);
     expect(s.testid('members-row-jorge-resend').text()).toBe('Resend');
   });
 });

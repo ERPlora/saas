@@ -18,7 +18,7 @@ import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
 import { errorFrame, HELLO, resultFrame } from '../../../hubs/frontend/__tests__/mount-hubs';
 import { invoicePage, subscriptionPage, subscriptionRow, unpaidRow } from '../__tests__/billing-fixtures';
 import { APPS, PLANS, plan } from '../__tests__/fixtures';
-import { apiError, describeCall, flush, mountBilling, type StreamCall } from '../__tests__/mount-billing';
+import { accessibleName, apiError, closeRowMenu, describeCall, flush, mountBilling, type StreamCall } from '../__tests__/mount-billing';
 import CancelPlanDialog from './CancelPlanDialog.vue';
 import CheckoutModal from './CheckoutModal.vue';
 import SubscriptionsTab from './SubscriptionsTab.vue';
@@ -191,6 +191,21 @@ describe('SubscriptionsTab: the list', () => {
     await flush();
     expect(s.testid('subscriptions-row-bakery-view_invoices_menu').text()).toBe('View invoices');
     expect(s.testid('subscriptions-row-bakery-cancel_plan').text()).toBe('Cancel plan');
+  });
+
+  it('each action tells a screen reader which business it is for, its short words first, also inside «⋮»', async () => {
+    const s = await setup();
+    await s.show([BAKERY_SUB, PLAZA_SUB]);
+    const name = (id: string) => accessibleName(s.testid(`subscriptions-row-${id}`));
+    expect([name('bakery-lead'), name('plaza-lead')]).toEqual(['Change plan: Panadería López', 'View the invoice: Bar La Plaza']);
+    const inMenu: (string | null)[] = [];
+    for (const row of ['bakery', 'plaza']) {
+      await s.testid(`subscriptions-row-${row}-menu`).trigger('click');
+      await flush();
+      inMenu.push(name(`${row}-cancel_plan`));
+      await closeRowMenu(s.wrapper);
+    }
+    expect(inMenu).toEqual(['Cancel plan: Panadería López', 'Cancel plan: Bar La Plaza']);
   });
 
   it('without a «⋮» (nothing to cancel), «View invoices» stays a button next to the fixed one', async () => {

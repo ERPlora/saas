@@ -16,7 +16,6 @@
 // stream down or no answer in time is an error with «Retry», never «Create your first business».
 import {
   DataTable,
-  type DataTableAction,
   type DataTableActionEvent,
   type DataTableColumn,
   EmptyState,
@@ -45,6 +44,7 @@ import { useRouter } from 'vue-router';
 
 import { BUSINESSES, STORE } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
+import { withRowNames } from '../../../frontend/row-names';
 import type { BusinessDetailOut, BusinessRowOut, InvitationOut, OwnershipOfferOut } from '../../../frontend/sdk-types/hubs';
 import { opensAtAll, preparationFailed, preparingLeadKey, reasonDate, reasonKey, statusPill } from '../business-status';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
@@ -159,8 +159,8 @@ function why(row: BusinessRowOut): string {
 const pageOf = (row: { id: string }) => `${BUSINESSES}/${row.id}/summary`;
 
 /** The row's buttons, as the table folds them when its box narrows: «Open» stays,
- *  «Manage» and «Recover» go into «⋮» first. Each says its action in short words, its text and its name alike. */
-const actions = computed<DataTableAction<BusinessRowOut>[]>(() => [
+ *  «Manage» and «Recover» go into «⋮» first. Each says its action in short words; its name adds the business. */
+const actions = computed(() => withRowNames<BusinessRowOut>(t, (row) => row.name, [
   {
     id: 'open',
     label: t('hubs.common.open'),
@@ -186,7 +186,7 @@ const actions = computed<DataTableAction<BusinessRowOut>[]>(() => [
     hidden: (row) => !row.can.restore,
     loading: () => restore.pending.value,
   },
-]);
+]));
 
 function onAction({ actionId, row }: DataTableActionEvent<BusinessRowOut>): void {
   if (actionId === 'open') void open(row);

@@ -20,6 +20,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { BILLING, STORE } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
+import { withRowNames } from '../../../frontend/row-names';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import type { InvoiceFilterIn, InvoicePaymentStatus, InvoiceRowOut } from '../../../frontend/sdk-types/billing-invoices';
 import { browser, operationUrl } from '../browser';
@@ -175,7 +176,7 @@ const labels = computed(() => ({ loadError: t('billing.invoices.loadError'), ret
 const entityLabel = (count: number) => t('billing.invoices.entity', count);
 
 /** Per row, what the server says (`actions`): «Pay» stays when the others fold. */
-const actions = computed<DataTableAction<InvoiceRowOut>[]>(() => [
+const actions = computed<DataTableAction<InvoiceRowOut>[]>(() => withRowNames<InvoiceRowOut>(t, invoiceName, [
   {
     id: 'pay',
     label: t('billing.invoices.pay'),
@@ -203,7 +204,7 @@ const actions = computed<DataTableAction<InvoiceRowOut>[]>(() => [
     icon: 'ion:receipt-outline',
     color: 'medium',
   },
-]);
+]));
 
 function onAction({ actionId, row }: DataTableActionEvent<InvoiceRowOut>): void {
   if (actionId === 'pay' && row.can.pay) void pay(row);

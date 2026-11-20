@@ -24,6 +24,7 @@ import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useLiveState } from '../../../frontend/live-state';
+import { withRowNames } from '../../../frontend/row-names';
 import type { SessionListOut, SessionRowOut } from '../../../frontend/sdk-types/accounts-security';
 import { browserName, deviceIcon, deviceName, isAppSession } from '../devices';
 import { useErrorText } from '../error-text';
@@ -73,7 +74,7 @@ const columns = computed(() => [
 ] satisfies DataTableColumn<SessionRowOut>[]);
 
 const target = shallowRef<SessionRowOut | null>(null);
-const actions = computed<DataTableAction<SessionRowOut>[]>(() => [
+const actions = computed<DataTableAction<SessionRowOut>[]>(() => withRowNames(t, device, [
   {
     id: 'close',
     label: t('accounts.account.sessions.close'),
@@ -84,7 +85,7 @@ const actions = computed<DataTableAction<SessionRowOut>[]>(() => [
     hidden: (row) => row.is_current,
     loading: (row) => close.pending.value && target.value?.id === row.id,
   },
-]);
+]));
 
 const confirmingApp = shallowRef(false);
 const confirmingOthers = shallowRef(false);
