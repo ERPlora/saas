@@ -707,7 +707,7 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   justo después de `</nav>`, no `frontend/public.ts`: ese módulo llega tarde, y en una conexión lenta el toque se
   perdería y, si no llegara, el menú no se abriría nunca. Las tres rayas, la cruz, el fondo, Esc, un enlace y ensanchar la
   ventana hasta la barra de escritorio siguen siendo el contrato, con `aria-expanded` y el foco. Vitest ejecuta el propio
-  script de la plantilla (`frontend/public.test.ts`) y los e2e de `public-web-menu.spec.ts` (PUBLIC-F11) pulsan con los scripts
+  script de la plantilla (`frontend/public.navbar.test.ts`) y los e2e de `public-web-menu.spec.ts` (PUBLIC-F11) pulsan con los scripts
   retenidos y con ellos ya cargados: un segundo enganche en el módulo cerraría lo que abre el botón. Con el panel abierto,
   el tabulador da la vuelta dentro de él y lo demás de la página queda `inert` hasta cerrarlo: también la marca y
   las tres rayas, que el panel y el fondo tapan, y lo que llegue con el panel ya abierto en una conexión lenta. Vitest lo
