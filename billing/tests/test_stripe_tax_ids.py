@@ -15,6 +15,7 @@ import logging
 import pytest
 
 from billing.models import Invoice
+from billing.tests.checkout_calls import payer, refused, session_params, start
 from billing.tests.conftest import pay
 from billing.tests.stripe_double import (
     connection_error,
@@ -24,7 +25,6 @@ from billing.tests.stripe_double import (
     subscription,
     tax_id_invalid,
 )
-from billing.tests.test_checkout import payer, refused, session_params, start
 from billing.tests.test_invoice_recording import deliver
 from billing.tests.test_payer_details_to_stripe import paying, save
 from billing.tests.vies_double import FAKE_VAT, NOT_REGISTERED, no_network, vies_is_down, vies_says

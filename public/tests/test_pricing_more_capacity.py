@@ -137,7 +137,7 @@ def test_the_faq_has_no_dedicated_entry(client, seeded):
 # --- More capacity: the upgrade-only plans on the page -----------------------------------------------------------
 # Odoo, Holded and Square show the whole ladder on their pricing page. The rows stay ``upgrade_only``: the Store offers
 # them to a business that already pays and the checkout from Free refuses them (``billing.plan_upgrade_only``,
-# billing/tests/test_checkout.py).
+# billing/tests/test_checkout_who_and_what.py).
 
 UPGRADE_ONLY = ("pro", "enterprise", "max")
 
