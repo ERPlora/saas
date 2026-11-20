@@ -295,7 +295,7 @@ def _chosen(ctx, provider, model: dict):
     from assistant.schemas import ListedModel, ModelSelectIn
 
     listed = ListedModel(model_id=model["model"], display_name=model["display_name"])
-    services.model_select(ctx, ModelSelectIn(provider=provider.pk, listed=[listed], selected=[model["model"]]))
+    services.model_choice.model_select(ctx, ModelSelectIn(provider=provider.pk, listed=[listed], selected=[model["model"]]))
     return AIModel.objects.get(provider=provider, model_id=model["model"])
 
 
@@ -424,17 +424,17 @@ def real(choice: dict, keys: tuple[str, str], language: str = "es") -> dict:
     )
     answering = _answering(choice)
     kept = AIProviderCredential.objects.filter(provider=answering, label="default").first()
-    services.credential_save(
+    services.credentials.credential_save(
         ctx, CredentialIn(provider=answering.pk, id=kept.pk if kept else None, label="default", api_key=answer_key)
     )
-    services.credential_import(
-        services.platform_context(), CredentialImportIn(kind="openai", api_key=openai_key, label="default", force=True)
+    services.credentials.credential_import(
+        services.platform_actor.platform_context(), CredentialImportIn(kind="openai", api_key=openai_key, label="default", force=True)
     )
     openai = AIProvider.objects.get(slug=OPENAI["slug"])
     answers = _chosen(ctx, answering, choice)
     _priced(answers, choice)
     fallback = _chosen(ctx, openai, OPENAI) if choice["fallback"] else None
-    services.policy_update(ctx, PolicyIn(active_model=answers.pk, fallback_model=fallback.pk if fallback else None))
+    services.model_choice.policy_update(ctx, PolicyIn(active_model=answers.pk, fallback_model=fallback.pk if fallback else None))
 
     owner, hub = _owner_with_business("qa-battery", ("Quique", "Battery"), "QA Base", "qa-base", language)
     return {

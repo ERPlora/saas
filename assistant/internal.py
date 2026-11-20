@@ -54,7 +54,7 @@ from assistant.schemas import (
     TurnIn,
     UsageRecordIn,
 )
-from assistant.services import platform_context
+from assistant.services.platform_actor import platform_context
 from assistant.turn import Refused, refusal
 
 logger = logging.getLogger(__name__)
@@ -218,7 +218,7 @@ def media_failed(problem: media.MediaFailed) -> JsonResponse:
 
 
 async def record(caller: Caller, **spent) -> None:
-    await sync_to_async(services.usage_record)(platform_context(), UsageRecordIn(caller=caller, **spent))
+    await sync_to_async(services.turn_usage.usage_record)(platform_context(), UsageRecordIn(caller=caller, **spent))
 
 
 @door(EmbeddingsIn, bucket="embed", rate="ASSISTANT_EMBED_RATELIMIT", max_bytes=EMBED_BODY_BYTES)
@@ -315,5 +315,5 @@ async def report(call: Call) -> HttpResponse:
     """The report of an answer, mailed to support: 202 ``{sent, duplicate}`` (the same answer within a day mails
     nothing again); 503 ``assistant.report_not_sent`` if the mail cannot leave."""
     fields = call.data.model_dump(exclude={"hub"})
-    sent = await sync_to_async(services.report_send)(platform_context(), ReportSendIn(caller=call.caller, **fields))
+    sent = await sync_to_async(services.answer_reports.report_send)(platform_context(), ReportSendIn(caller=call.caller, **fields))
     return JsonResponse(sent.model_dump(), status=202)

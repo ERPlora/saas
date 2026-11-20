@@ -54,7 +54,7 @@ class Command(BaseCommand):
             if not mine:
                 self.stdout.write("index_docs: already running, nothing done.")
                 return
-            ctx = services.platform_context()
+            ctx = services.platform_actor.platform_context()
             service = None if dry_run else self._service(ctx)
             for source in knowledge.SOURCES:
                 self._index(ctx, service, source, full=full, dry_run=dry_run)
@@ -89,7 +89,7 @@ class Command(BaseCommand):
         for start in range(0, max(len(new), 1), BATCH):
             batch = new[start : start + BATCH]
             vectors, spent = self._embed(service, source, batch) if batch else ([], 0)
-            out = services.docs_index(
+            out = services.documentation.docs_index(
                 ctx,
                 DocsIndexIn(
                     source=source,

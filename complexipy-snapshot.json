@@ -114,8 +114,8 @@
     ]
   },
   {
-    "path": "assistant/services.py",
-    "file_name": "services.py",
+    "path": "assistant/services/credentials.py",
+    "file_name": "credentials.py",
     "functions": [
       {
         "name": "credential_save",

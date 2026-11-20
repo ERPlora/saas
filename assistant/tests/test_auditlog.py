@@ -35,8 +35,8 @@ def test_the_configuration_of_the_ai_is_audited():
 
 def test_a_key_added_and_rotated_leaves_its_hint_and_when_never_the_key(ai_admin, provider):
     ctx = staff_ctx(ai_admin)
-    added = services.credential_save(ctx, CredentialIn(provider=provider.pk, label="default", api_key=API_KEY))
-    services.credential_save(ctx, CredentialIn(provider=provider.pk, id=added.id, label="default", api_key=ROTATED))
+    added = services.credentials.credential_save(ctx, CredentialIn(provider=provider.pk, label="default", api_key=API_KEY))
+    services.credentials.credential_save(ctx, CredentialIn(provider=provider.pk, id=added.id, label="default", api_key=ROTATED))
 
     credential = AIProviderCredential.objects.get(pk=added.id)
     entries = LogEntry.objects.get_for_object(credential).order_by("timestamp")
@@ -53,9 +53,9 @@ def test_a_key_added_and_rotated_leaves_its_hint_and_when_never_the_key(ai_admin
 
 def test_a_key_turned_off_or_deleted_stays_in_the_trail(ai_admin, provider):
     ctx = staff_ctx(ai_admin)
-    added = services.credential_save(ctx, CredentialIn(provider=provider.pk, label="default", api_key=API_KEY))
-    services.credential_save(ctx, CredentialIn(provider=provider.pk, id=added.id, label="default", is_active=False))
-    services.credential_delete(ctx, CredentialDeleteIn(id=added.id))
+    added = services.credentials.credential_save(ctx, CredentialIn(provider=provider.pk, label="default", api_key=API_KEY))
+    services.credentials.credential_save(ctx, CredentialIn(provider=provider.pk, id=added.id, label="default", is_active=False))
+    services.credentials.credential_delete(ctx, CredentialDeleteIn(id=added.id))
 
     entries = LogEntry.objects.filter(object_pk=str(added.id)).order_by("timestamp")
     assert [entry.action for entry in entries] == [LogEntry.Action.CREATE, LogEntry.Action.UPDATE, LogEntry.Action.DELETE]

@@ -16,7 +16,7 @@ from pydantic import ValidationError
 from assistant import queries, services, turn
 from assistant.models import AssistantUsage
 from assistant.schemas import Caller, MessageReleaseIn, UsageRecordIn
-from assistant.services import platform_context
+from assistant.services.platform_actor import platform_context
 
 pytestmark = pytest.mark.django_db
 
@@ -26,7 +26,7 @@ def account_of(user) -> Caller:
 
 
 def claim(caller):
-    return services.message_claim(platform_context(), caller)
+    return services.turn_usage.message_claim(platform_context(), caller)
 
 
 def this_month() -> date:
@@ -131,7 +131,7 @@ class TestGivingBackAndRecording:
     def test_a_message_given_back_is_free_again_in_its_month(self, account):
         claimed = claim(account_of(account))
 
-        shown = services.message_release(
+        shown = services.turn_usage.message_release(
             platform_context(), MessageReleaseIn(caller=account_of(account), month=claimed.month)
         )
 
@@ -146,7 +146,7 @@ class TestGivingBackAndRecording:
         AssistantUsage.objects.create(user=account, month=last_month, messages=5)
         claimed = claim(account_of(account))
 
-        services.message_release(platform_context(), MessageReleaseIn(caller=account_of(account), month=claimed.month))
+        services.turn_usage.message_release(platform_context(), MessageReleaseIn(caller=account_of(account), month=claimed.month))
 
         assert AssistantUsage.objects.get(user=account, month=this_month()).messages == 0
         assert AssistantUsage.objects.get(user=account, month=last_month).messages == 5
@@ -157,7 +157,7 @@ class TestGivingBackAndRecording:
         record = UsageRecordIn(
             caller=account_of(account), tokens_input=1000, tokens_output=200, cost_usd=Decimal("0.0036")
         )
-        services.usage_record(platform_context(), record)
+        services.turn_usage.usage_record(platform_context(), record)
 
         row = AssistantUsage.objects.get(user=account)
         assert (row.messages, row.tokens_input, row.tokens_output, row.cost_usd) == (0, 1000, 200, Decimal("0.0036"))
@@ -181,7 +181,7 @@ class TestTheReportOfAnAccount:
         account.delete()
 
         with pytest.raises(NotFound):
-            services.report_send(
+            services.answer_reports.report_send(
                 platform_context(), ReportSendIn(caller=caller, message_id="m1", reason="other", answer="a")
             )
         assert not mail.outbox
@@ -193,7 +193,7 @@ class TestTheReportOfAnAccount:
 
         other = make_user("other@example.com")
         for who in (account, other):
-            sent = services.report_send(
+            sent = services.answer_reports.report_send(
                 platform_context(), ReportSendIn(caller=account_of(who), message_id="m1", reason="other", answer="a")
             )
             assert (sent.sent, sent.duplicate) == (True, False)

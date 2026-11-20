@@ -2,7 +2,7 @@
 
 The rotation of ``FERNET_KEY``: put the new key in ``FERNET_KEY`` and the old one in ``FERNET_KEY_PREVIOUS``, deploy,
 run this command, and drop ``FERNET_KEY_PREVIOUS`` only once it ends without error. It rotates every column of
-``assistant.services.encrypted_columns`` (the AI providers' keys, WhatsApp's tokens and PINs) through
+``assistant.services.encryption.encrypted_columns`` (the AI providers' keys, WhatsApp's tokens and PINs) through
 ``assistant.encryption.rotate`` as the platform. A value no key opens is never written: it is listed by its row and
 the command fails, so the old key is not dropped while something still needs it. It never prints a value nor a token.
 
@@ -25,7 +25,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, dry_run, **options):
         try:
-            out = services.encryption_rotate(services.platform_context(), EncryptionRotateIn(dry_run=dry_run))
+            out = services.encryption.encryption_rotate(services.platform_actor.platform_context(), EncryptionRotateIn(dry_run=dry_run))
         except OperationError as refused:
             raise CommandError(refused.message) from None
         for column in out.columns:

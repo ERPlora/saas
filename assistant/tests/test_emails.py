@@ -20,7 +20,7 @@ from live.outbox import OutboxEvent
 from assistant import queries, services
 from assistant.models import AssistantUsage
 from assistant.schemas import Caller, MessageReleaseIn
-from assistant.services import platform_context
+from assistant.services.platform_actor import platform_context
 from assistant.tests.test_quota import RIVALS, waiting_on_a_lock
 
 pytestmark = pytest.mark.django_db
@@ -63,7 +63,7 @@ def turn(django_capture_on_commit_callbacks):
 
     def one(user):
         with django_capture_on_commit_callbacks(execute=True):
-            return services.message_claim(platform_context(), Caller(user_id=user.pk))
+            return services.turn_usage.message_claim(platform_context(), Caller(user_id=user.pk))
 
     return one
 
@@ -72,7 +72,7 @@ def turn(django_capture_on_commit_callbacks):
 def give_back(django_capture_on_commit_callbacks):
     def one(user):
         with django_capture_on_commit_callbacks(execute=True):
-            services.message_release(
+            services.turn_usage.message_release(
                 platform_context(), MessageReleaseIn(caller=Caller(user_id=user.pk), month=this_month())
             )
 
@@ -366,7 +366,7 @@ class TestNobodyElseIsMailed:
 
         with django_capture_on_commit_callbacks(execute=True):
             for _ in range(8):
-                services.message_claim(platform_context(), Caller(hub_id=business.pk))
+                services.turn_usage.message_claim(platform_context(), Caller(hub_id=business.pk))
 
         assert AssistantUsage.objects.get(hub=business).messages == 30
         assert mail.outbox == []
@@ -377,21 +377,21 @@ class TestNobodyElseIsMailed:
 
         with django_capture_on_commit_callbacks(execute=True):
             for _ in range(6):
-                services.message_claim(platform_context(), Caller(demo="demo-1a2b3c4d"))
+                services.turn_usage.message_claim(platform_context(), Caller(demo="demo-1a2b3c4d"))
 
         assert mail.outbox == []
         assert not OutboxEvent.objects.filter(name="assistant.usage.warned").exists()
 
     def test_an_account_gone_before_the_mail_mails_nobody(self, account, turn, monkeypatch):
         spent(account, 23)
-        real = services.message_claim
+        real = services.turn_usage.message_claim
 
         def claim_then_leave(ctx, caller):
             answer = real(ctx, caller)
             account.delete()
             return answer
 
-        monkeypatch.setattr(services, "message_claim", claim_then_leave)
+        monkeypatch.setattr(services.turn_usage, "message_claim", claim_then_leave)
 
         turn(account)
 
@@ -414,7 +414,7 @@ class TestNobodyElseIsMailed:
 
         with django_capture_on_commit_callbacks(execute=True):
             with pytest.raises(RuntimeError), transaction.atomic():
-                services.message_claim(platform_context(), Caller(user_id=account.pk))
+                services.turn_usage.message_claim(platform_context(), Caller(user_id=account.pk))
                 raise RuntimeError("the turn failed")
 
         assert mail.outbox == []
@@ -466,7 +466,7 @@ def test_turns_at_once_refused_at_the_last_mail_it_once(make_user, settings):
 
     def one():
         try:
-            answers.append(services.message_claim(platform_context(), Caller(user_id=account.pk)).claimed)
+            answers.append(services.turn_usage.message_claim(platform_context(), Caller(user_id=account.pk)).claimed)
         finally:
             connection.close()
 

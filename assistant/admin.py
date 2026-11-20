@@ -244,7 +244,7 @@ def prepare_try(request, ctx: OperationContext) -> tuple[RouteCandidate, TurnReq
         return _("The tools are not well written: write a list of tools as in the example, each with its name.")
     try:
         [candidate] = queries.route_resolve(ctx, RouteIn(model=model)).candidates
-        services.model_try(ctx, ModelTryIn(model=model, prompt_chars=len(prompt), tools=len(tools)))
+        services.model_choice.model_try(ctx, ModelTryIn(model=model, prompt_chars=len(prompt), tools=len(tools)))
     except OperationError as refused:
         return refused.message
     return candidate, TurnRequest(model_id=candidate.model_id, messages=[{"role": "user", "content": prompt}], tools=tools)
@@ -311,7 +311,7 @@ class AIProviderAdmin(admin.ModelAdmin):
             if row.instance._state.adding:
                 continue
             try:
-                services.credential_delete(ctx, CredentialDeleteIn(id=row.instance.pk))
+                services.credentials.credential_delete(ctx, CredentialDeleteIn(id=row.instance.pk))
                 formset.deleted_objects.append(row.instance)
             except OperationError as refused:
                 for message in refusals(refused):
@@ -321,7 +321,7 @@ class AIProviderAdmin(admin.ModelAdmin):
                 continue
             adding = row.instance._state.adding
             try:
-                services.credential_save(
+                services.credentials.credential_save(
                     ctx,
                     CredentialIn(
                         provider=form.instance.pk,
@@ -414,7 +414,7 @@ class AIProviderAdmin(admin.ModelAdmin):
             )
         change_url = reverse("admin:assistant_aiprovider_change", args=[object_id])
         try:
-            out = services.model_select(
+            out = services.model_choice.model_select(
                 ctx, ModelSelectIn(provider=object_id, listed=listed, selected=request.POST.getlist("models"))
             )
         except NotFound:
@@ -464,7 +464,7 @@ class AIRoutingPolicyAdmin(admin.ModelAdmin):
         here = reverse("admin:assistant_airoutingpolicy_policy")
         if request.method == "POST":
             try:
-                services.policy_update(
+                services.model_choice.policy_update(
                     ctx,
                     PolicyIn(
                         active_model=request.POST.get("active_model") or None,

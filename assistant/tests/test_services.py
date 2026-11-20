@@ -21,7 +21,7 @@ NEW_KEY = "sk-test-1111111111111111111111111111abcd"
 
 
 def save(user, **fields):
-    return services.credential_save(staff_ctx(user), CredentialIn(**fields))
+    return services.credentials.credential_save(staff_ctx(user), CredentialIn(**fields))
 
 
 def events(name: str) -> list[OutboxEvent]:
@@ -135,7 +135,7 @@ def test_rotating_needs_the_change_permission(make_user, provider, ai_admin):
 def test_deleting_a_key_forgets_it(ai_admin, provider):
     first = save(ai_admin, provider=provider.pk, label="default", api_key=API_KEY)
 
-    services.credential_delete(staff_ctx(ai_admin), CredentialDeleteIn(id=first.id))
+    services.credentials.credential_delete(staff_ctx(ai_admin), CredentialDeleteIn(id=first.id))
 
     assert not AIProviderCredential.objects.exists()
     [event] = events("assistant.credential.deleted")
@@ -147,7 +147,7 @@ def test_deleting_needs_the_delete_permission(make_user, provider, ai_admin):
     viewer = grant(make_user("viewer@erplora.com", is_staff=True), "view_aiprovidercredential")
 
     with pytest.raises(PermissionDenied):
-        services.credential_delete(staff_ctx(viewer), CredentialDeleteIn(id=first.id))
+        services.credentials.credential_delete(staff_ctx(viewer), CredentialDeleteIn(id=first.id))
 
     assert AIProviderCredential.objects.filter(pk=first.id).exists()
 

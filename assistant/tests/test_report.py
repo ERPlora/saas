@@ -168,7 +168,7 @@ def test_a_report_whose_event_cannot_be_written_mails_nothing_and_can_be_sent_ag
         raise RuntimeError("the outbox is down")
 
     with monkeypatch.context() as broken:
-        broken.setattr("assistant.services.record_event", outbox_down)
+        broken.setattr("assistant.services.answer_reports.record_event", outbox_down)
         with pytest.raises(RuntimeError):
             door(client, REPORT, report(business))
 
@@ -225,7 +225,7 @@ def test_a_report_of_an_answer_from_the_web_mails_everything_but_the_answer(clie
     [sent] = mail.outbox
     assert without_the_answer(sent.body) and "example.com" not in sent.body
     assert "No es verdad" in sent.body and "¿Quién me debe dinero?" in sent.body and "msg_01" in sent.body
-    assert services.REPORT_WEB_ANSWER in sent.body
+    assert services.answer_reports.REPORT_WEB_ANSWER in sent.body
 
 
 def test_a_report_of_an_answer_not_from_the_web_mails_it_while_the_search_is_on(client, internal, business, settings):
@@ -234,7 +234,7 @@ def test_a_report_of_an_answer_not_from_the_web_mails_it_while_the_search_is_on(
     door(client, REPORT, report(business, web=False))
 
     assert ANSWER in mail.outbox[0].body
-    assert services.REPORT_WEB_ANSWER not in mail.outbox[0].body
+    assert services.answer_reports.REPORT_WEB_ANSWER not in mail.outbox[0].body
 
 
 def test_while_the_search_is_on_a_report_that_does_not_say_where_its_answer_came_from_mails_no_answer(
@@ -246,7 +246,7 @@ def test_while_the_search_is_on_a_report_that_does_not_say_where_its_answer_came
     door(client, REPORT, report(business))
 
     assert without_the_answer(mail.outbox[0].body)
-    assert services.REPORT_WEB_ANSWER in mail.outbox[0].body
+    assert services.answer_reports.REPORT_WEB_ANSWER in mail.outbox[0].body
 
 
 def test_the_mark_of_the_web_is_a_yes_or_a_no(client, internal, business):

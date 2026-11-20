@@ -22,7 +22,7 @@ from live.models import OutboxEvent
 from assistant import services
 from assistant.models import AIProviderCredential
 from assistant.schemas import EncryptionRotateIn
-from assistant.services import platform_context
+from assistant.services.platform_actor import platform_context
 from assistant.tests.conftest import API_KEY, FERNET_KEY, OTHER_FERNET_KEY, staff_ctx
 from hubs.tests.conftest import business, create_business, owner, plans  # noqa: F401 - shared fixtures
 from whatsapp.models import PhoneNumber
@@ -72,7 +72,7 @@ def run(*args) -> str:
 
 
 def test_every_column_kept_with_the_key_of_the_credentials_is_rotated():
-    assert {f"{model._meta.label}.{name}" for model, name in services.encrypted_columns()} == {
+    assert {f"{model._meta.label}.{name}" for model, name in services.encryption.encrypted_columns()} == {
         "assistant.AIProviderCredential.api_key",
         "whatsapp.PhoneNumber.access_token",
         "whatsapp.PhoneNumber.registration_pin",
@@ -85,7 +85,7 @@ def test_no_encrypted_field_of_the_project_is_left_out_of_the_rotation():
         f"{model._meta.label}.{field.name} ({type(field).__module__}.{type(field).__name__})"
         for model in apps.get_models()
         for field in model._meta.concrete_fields
-        if "encrypt" in type(field).__name__.lower() and type(field) not in services.ROTATED_FIELD_CLASSES
+        if "encrypt" in type(field).__name__.lower() and type(field) not in services.encryption.ROTATED_FIELD_CLASSES
     ]
 
     assert unknown == []
@@ -186,6 +186,6 @@ def test_a_rotation_is_announced_with_its_counts(settings, kept):
 
 def test_only_the_platform_rotates_the_key(ai_admin):
     with pytest.raises(PermissionDenied):
-        services.encryption_rotate(staff_ctx(ai_admin), EncryptionRotateIn())
+        services.encryption.encryption_rotate(staff_ctx(ai_admin), EncryptionRotateIn())
 
-    assert services.encryption_rotate(platform_context(), EncryptionRotateIn(dry_run=True)).unreadable == 0
+    assert services.encryption.encryption_rotate(platform_context(), EncryptionRotateIn(dry_run=True)).unreadable == 0

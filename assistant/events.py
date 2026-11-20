@@ -1,4 +1,4 @@
-"""Events of the assistant (``<app>.<entity>.<fact>``): recorded by services.py in the outbox, in the transaction of
+"""Events of the assistant (``<app>.<entity>.<fact>``): recorded by ``services`` in the outbox, in the transaction of
 the write. Their payloads carry ids and counts, never a provider's key nor what a person wrote.
 
 The assistant reacts to no event of another app and has no live list, so this module only names its events. Those of a turn carry numbers only: never a conversation, a person nor a text.

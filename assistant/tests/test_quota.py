@@ -23,7 +23,7 @@ from live.outbox import OutboxEvent
 from assistant import queries, services
 from assistant.models import AssistantUsage
 from assistant.schemas import Caller, MessageReleaseIn, UsageRecordIn
-from assistant.services import platform_context
+from assistant.services.platform_actor import platform_context
 from assistant.tests.conftest import on_plan
 from assistant.tests.doors import door
 from hubs.models import Plan, Subscription
@@ -39,7 +39,7 @@ DEMO = Caller(demo="demo-1a2b3c4d", slug="demo-1a2b3c4d")
 
 
 def claim(caller):
-    return services.message_claim(platform_context(), caller)
+    return services.turn_usage.message_claim(platform_context(), caller)
 
 
 def used(caller) -> int:
@@ -171,7 +171,7 @@ class TestGivingBackAndRecording:
     def test_a_message_given_back_is_free_again(self, business):
         claimed = claim(caller_of(business))
 
-        services.message_release(platform_context(), MessageReleaseIn(caller=caller_of(business), month=claimed.month))
+        services.turn_usage.message_release(platform_context(), MessageReleaseIn(caller=caller_of(business), month=claimed.month))
 
         assert used(caller_of(business)) == 0
 
@@ -180,11 +180,11 @@ class TestGivingBackAndRecording:
         month = queries.month_of(timezone.now())
         release = MessageReleaseIn(caller=caller_of(business), month=month)
 
-        services.message_release(platform_context(), release)
+        services.turn_usage.message_release(platform_context(), release)
         assert used(caller_of(business)) == 0
 
         AssistantUsage.objects.create(hub=business, month=month, messages=0)
-        services.message_release(platform_context(), release)
+        services.turn_usage.message_release(platform_context(), release)
         assert AssistantUsage.objects.get(hub=business, month=month).messages == 0
 
     def test_a_message_given_back_after_the_month_turned_goes_back_to_its_month(self, business):
@@ -192,23 +192,23 @@ class TestGivingBackAndRecording:
         AssistantUsage.objects.create(hub=business, month=last_month, messages=5)
         claim(caller_of(business))
 
-        services.message_release(platform_context(), MessageReleaseIn(caller=caller_of(business), month=last_month))
+        services.turn_usage.message_release(platform_context(), MessageReleaseIn(caller=caller_of(business), month=last_month))
 
         assert AssistantUsage.objects.get(hub=business, month=last_month).messages == 4
         assert used(caller_of(business)) == 1
 
     def test_the_tokens_and_the_cost_add_up_without_counting_a_message(self, business):
         record = UsageRecordIn(caller=caller_of(business), tokens_input=1000, tokens_output=200, cost_usd=Decimal("0.0036"))
-        services.usage_record(platform_context(), record)
-        services.usage_record(platform_context(), record)
+        services.turn_usage.usage_record(platform_context(), record)
+        services.turn_usage.usage_record(platform_context(), record)
 
         row = AssistantUsage.objects.get(hub=business)
         assert (row.messages, row.tokens_input, row.tokens_output, row.cost_usd) == (0, 2000, 400, Decimal("0.0072"))
 
     def test_each_write_says_so_in_the_outbox_with_numbers_only(self, business):
         claimed = claim(caller_of(business))
-        services.usage_record(platform_context(), UsageRecordIn(caller=caller_of(business), tokens_input=10))
-        services.message_release(platform_context(), MessageReleaseIn(caller=caller_of(business), month=claimed.month))
+        services.turn_usage.usage_record(platform_context(), UsageRecordIn(caller=caller_of(business), tokens_input=10))
+        services.turn_usage.message_release(platform_context(), MessageReleaseIn(caller=caller_of(business), month=claimed.month))
 
         recorded = list(
             OutboxEvent.objects.filter(name__startswith="assistant.").order_by("created_at").values_list("name", "payload")
@@ -226,7 +226,7 @@ class TestGivingBackAndRecording:
         from assistant.tests.conftest import staff_ctx
 
         with pytest.raises(PermissionDenied):
-            services.message_claim(staff_ctx(ai_admin), caller_of(business))
+            services.turn_usage.message_claim(staff_ctx(ai_admin), caller_of(business))
 
 
 #: The turns that race for the last message of the month.

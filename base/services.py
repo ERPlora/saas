@@ -252,7 +252,7 @@ def assistant_report(ctx: OperationContext, data: AssistantReportIn) -> dict:
             ) from None
     report = ReportSendIn(caller=caller, **data.model_dump())
     try:
-        sent = gateway_services.report_send(gateway_services.platform_context(), report)
+        sent = gateway_services.answer_reports.report_send(gateway_services.platform_actor.platform_context(), report)
     except OperationError as failed:
         if failed.code != "assistant.report_not_sent":
             raise

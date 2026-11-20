@@ -29,7 +29,7 @@ def models(provider):
 
 
 def update(user, **fields):
-    return services.policy_update(staff_ctx(user), PolicyIn(**fields))
+    return services.model_choice.policy_update(staff_ctx(user), PolicyIn(**fields))
 
 
 def test_choosing_the_model_and_its_fallback_saves_who_did_it(ai_admin, models):

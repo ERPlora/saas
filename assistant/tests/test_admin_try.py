@@ -283,7 +283,7 @@ def test_the_last_change_of_the_model_that_answers_reads_as_one_sentence(as_ai_a
     from assistant.tests.conftest import staff_ctx
 
     model = AIModel.objects.create(provider=provider, model_id="gpt-5.5", display_name="GPT-5.5")
-    services.policy_update(staff_ctx(ai_admin), PolicyIn(active_model=model.pk))
+    services.model_choice.policy_update(staff_ctx(ai_admin), PolicyIn(active_model=model.pk))
 
     page = as_ai_admin.get(POLICY).content.decode()
 

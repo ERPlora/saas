@@ -592,8 +592,9 @@ Implicados: ASSISTANT-F25, ASSISTANT-F26, ACCOUNTS-F23
 - La clave se cifra con Fernet y `FERNET_KEY` (`assistant/crypto.py`, `assistant/fields.py`); durante una rotación
   `FERNET_KEY_PREVIOUS` aún la lee. Una clave que ninguna de las dos abre se lee vacía y se registra como
   `assistant.crypto.undecryptable`, sin el token.
-- Escrituras por `assistant.credential.save|delete` (`services.py`), con el permiso del modelo de Django que las
-  respalda (`add|change|delete_aiprovidercredential`); el admin las llama como el miembro del personal que pulsa.
+- Escrituras por `assistant.credential.save|delete` (`services/credentials.py`), con el permiso del modelo de Django
+  que las respalda (`add|change|delete_aiprovidercredential`); el admin las llama como el miembro del personal que
+  pulsa.
 - «Elegir modelos del proveedor» es una vista asíncrona del admin (`AIProviderAdmin.models_view`): la llamada al
   proveedor no ocupa el hilo que usan las demás peticiones; lee la conexión con `assistant.provider.connection`
   (`view_aiprovider`) y guarda con `assistant.model.select` (`add_aimodel` y `delete_aimodel`).
@@ -613,7 +614,7 @@ Implicados: ASSISTANT-F25, ASSISTANT-F26, ACCOUNTS-F23
   `assistant.credential.import` (solo la plataforma); el proveedor que falta se da de alta con el identificador de su
   API (`data.kind`). El turno nunca lee esas variables: solo la base de datos.
 - `rotate_encryption_keys [--dry-run]` corre `assistant.encryption.rotate` (solo la plataforma) sobre toda columna de
-  `ROTATED_FIELD_CLASSES` (`services.encrypted_columns`, derivada de los modelos: hoy la clave del proveedor y el
+  `ROTATED_FIELD_CLASSES` (`services.encryption.encrypted_columns`, derivada de los modelos: hoy la clave del proveedor y el
   token y el PIN de WhatsApp): rota cada token tal cual (`crypto.rotate`, por `UPDATE` sin pasar por `save`) y nunca
   escribe uno ilegible. Un test falla si aparece un campo cifrado que la rotación no conoce. Los documentos fiscales usan su propia clave (`FISCAL_DOCUMENTS_KEY`) y no entran aquí.
 - Clientes (`assistant/providers/`): `httpx` contra cada API (sin SDK ni LiteLLM), sin caché, uno por llamada;
@@ -622,8 +623,8 @@ Implicados: ASSISTANT-F25, ASSISTANT-F26, ACCOUNTS-F23
 - Trampas cubiertas por tests: la clave en claro en la base de datos (`test_fields.py`) y el nombre de la app sin
   traducir en el admin (`test_apps.py`).
 
-- El turno pide su ruta con `assistant.route.resolve` como la plataforma (`services.platform_context()`) y la
-  recorre con `assistant.routing.stream`; el coste sale de `models.estimate_cost` con los precios del modelo que
+- El turno pide su ruta con `assistant.route.resolve` como la plataforma (`services.platform_actor.platform_context()`)
+  y la recorre con `assistant.routing.stream`; el coste sale de `models.estimate_cost` con los precios del modelo que
   contestó. No hay siembra de proveedores: los da el admin o `import_ai_keys_from_env`.
 
 ### Las puertas del Hub (`assistant/internal.py`, ASSISTANT-F11…F23, F28)

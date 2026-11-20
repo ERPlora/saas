@@ -23,7 +23,7 @@ LISTED = [
 
 
 def select(user, provider, selected, listed=LISTED):
-    return services.model_select(staff_ctx(user), ModelSelectIn(provider=provider.pk, listed=listed, selected=selected))
+    return services.model_choice.model_select(staff_ctx(user), ModelSelectIn(provider=provider.pk, listed=listed, selected=selected))
 
 
 def test_the_ticked_models_are_created_available(ai_admin, provider):
@@ -83,7 +83,7 @@ def test_the_models_of_another_provider_are_never_touched(ai_admin, provider):
 
 def test_an_unknown_provider_is_refused(ai_admin, provider):
     with pytest.raises(OperationError) as refused:
-        services.model_select(staff_ctx(ai_admin), ModelSelectIn(provider="0190b3a0-0000-7000-8000-000000000000", listed=[], selected=[]))
+        services.model_choice.model_select(staff_ctx(ai_admin), ModelSelectIn(provider="0190b3a0-0000-7000-8000-000000000000", listed=[], selected=[]))
 
     assert (refused.value.status, refused.value.code) == (404, "assistant.provider_unknown")
 

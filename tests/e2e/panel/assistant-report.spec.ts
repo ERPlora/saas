@@ -18,7 +18,7 @@ import { watchPageErrors } from './page-events';
 import { PANEL_MAIL_DIR } from './project';
 import { settled, shot, sidewaysScroll, toast } from './screen';
 
-/** What support gets instead of an answer that may quote the web (assistant/services.py, `REPORT_WEB_ANSWER`). */
+/** What support gets instead of an answer that may quote the web (assistant/services/answer_reports.py, `REPORT_WEB_ANSWER`). */
 const LEFT_OUT = 'Left out: it may quote web search results';
 const SEARCHED = '¿Qué dice la nueva ley de mis negocios?';
 const SEARCHED_ANSWER = 'Tienes 1 negocio';
