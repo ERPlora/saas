@@ -13,7 +13,8 @@ commit, in a temporary worktree.
 Every check runs, and any red one fails the command. The whole suite is the CI's (.github/workflows/test.yml).
 
 A tree without node_modules or packages/ui (the hook's worktree) borrows them from the checkout CHECKS_DEPENDENCIES_FROM
-names: a link to its node_modules, and packages/ui at the commit this tree records, out of that checkout's clone of it.
+names: a node_modules of its own made of links into that checkout's (``mirror`` says why it is not one link to the whole
+folder), and packages/ui at the commit this tree records, out of that checkout's clone of it.
 Python reaches packages/live through the environment's editable install. A frontend check that still lacks one of them
 fails naming it, never skipped.
 """
