@@ -1,8 +1,8 @@
 """What ``scripts/checks.sh fast [<since>]`` runs before a change is pushed; .githooks/pre-push runs it on every pushed
 commit, in a temporary worktree.
 
-1. The guardrail tests of file size and of ruff's function limits, the lists that only shrink included: seconds,
-   without the network or a database.
+1. The guardrail tests of file size, ruff, the import contract and cognitive complexity, the lists that only shrink
+   included: seconds, without the network or a database.
 2. What the change touches: what differs from <since>, uncommitted and untracked files included; by default, where HEAD
    left origin/main, or HEAD's parent on origin/main itself (the point the guardrails' exception lists compare with).
    - ESLint on its TypeScript, JavaScript and Vue files, the typecheck when it touches any, and the Vitest tests related
@@ -31,6 +31,9 @@ from pathlib import Path
 GUARDRAILS = (
     "tests/test_guardrails_size.py",
     "tests/test_guardrails_lint.py",
+    "tests/test_guardrails_ruff.py",
+    "tests/test_guardrails_complexity.py",
+    "tests/test_guardrails_imports.py",
 )
 FRONTEND = (".ts", ".vue", ".js", ".mjs")
 UI = Path("packages/ui")
