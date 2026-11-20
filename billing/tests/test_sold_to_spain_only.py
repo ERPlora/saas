@@ -13,9 +13,9 @@ import pytest
 
 from billing.models import CheckoutAttempt
 from billing.services import live_rates
+from billing.tests.checkout_calls import payer, refused, session_params, start
 from billing.tests.conftest import pay
 from billing.tests.stripe_double import item, preview, subscription
-from billing.tests.test_checkout import payer, refused, session_params, start
 from billing.tests.vies_double import REAL_VAT, VALID, vies_says
 
 pytestmark = pytest.mark.django_db

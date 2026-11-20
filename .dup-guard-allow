@@ -26,7 +26,7 @@ duplicados hubs/tests/test_live.py:157-163 the block of the invitee's answer and
 duplicados hubs/tests/test_live.py:209-215 the block of the invitee's answer and what it notifies was already repeated on main; this change only names the module of hubs.services each call now lives in
 duplicados billing/tests/test_checkout_after_hand_over.py:46-65 the hand-over helper was already repeated on main; this change only names the module of hubs.services each call now lives in
 duplicados billing/tests/test_plan_take_over.py:45-64 the hand-over helper was already repeated on main; this change only names the module of hubs.services each call now lives in
-duplicados billing/tests/test_checkout.py:1138-1149 the update of the payer's billing details was already repeated on main; this change only names the module of hubs.services each call now lives in
+duplicados billing/tests/test_checkout_who_and_what.py:217-228 the update of the payer's billing details was already repeated in billing/tests/test_checkout.py on main; this change splits that file into one file per topic and moves it literally
 duplicados billing/tests/test_plan_cancel_preview.py:263-274 the update of the payer's billing details was already repeated on main; this change only names the module of hubs.services each call now lives in
 duplicados accounts/tests/test_email_change.py:257-265 the two 409 tests of a taken address were already alike on main; this change only points the monkeypatch at the module that now holds the lookup
 duplicados accounts/tests/test_services.py:477-484 already alike with hubs/tests/test_invite_unverified_account.py on main; this change only points the call at the module that now holds release_unproven_account
@@ -82,7 +82,6 @@ duplicados hubs/frontend/components/MembersTab.vue:22-31 the import block alread
 duplicados accounts/frontend/components/DeleteAccountCard.test.ts:9-18 the test imports already repeated in DangerZone.test.ts in main; this change only rewrites the import of its SDK types inside them
 duplicados billing/tests/test_checkout_after_hand_over.py:36-45 the import block two hand-over test files share; this change only splits their import of hubs.schemas into the three modules that define its names
 duplicados billing/tests/test_plan_take_over.py:41-50 the import block two hand-over test files share; this change only splits their import of hubs.schemas into the three modules that define its names
-duplicados billing/tests/test_checkout.py:1136-1147 the update of the payer's billing details was already repeated on main; this change only names the module of hubs.schemas its input lives in
 duplicados billing/tests/test_plan_cancel_preview.py:263-274 the update of the payer's billing details was already repeated on main; this change only names the module of hubs.schemas its input lives in
 duplicados billing/tests/test_stripe_test_clocks.py:151-177 the tests of advancing a clock were already alike on main; this change only names the module of billing.services each call now lives in
 duplicados billing/tests/test_plan_change.py:50-61 the helpers that keep and take over a plan were already alike on main; this change only names the module of billing.services each call now lives in

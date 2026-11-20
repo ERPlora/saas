@@ -389,7 +389,7 @@ class TestOnlyTheOwner:
 
 
 def test_a_new_owner_does_not_change_the_plan_on_the_previous_owners_card(shop, owner, make_user, stripe_double):
-    from billing.tests.test_checkout import transferred
+    from billing.tests.checkout_calls import transferred
 
     paid = pay(shop)
     new_owner = transferred(paid, owner, make_user)
