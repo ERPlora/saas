@@ -146,7 +146,7 @@ test('PUBLIC-F02 the plans: a card per plan on sale, the upgrade-only ones under
   await expect(page.getByText('Pay for the year and get 2 months free.')).toBeVisible();
   await page.locator('ion-accordion[value="storage"] ion-item').click();
   const storage = page.locator('ion-accordion[value="storage"] [slot="content"]');
-  await expect(storage).toContainText('if its European provider is unavailable');
+  await expect(storage).toContainText('its language model, by default');
   // The assistant's voice provider is a transfer too (section 6 of the privacy policy): «the one exception» no longer
   // holds.
   await expect(storage).toContainText('transcribing a voice dictation');
