@@ -335,7 +335,7 @@ class TestWithTheAuthenticatorApp:
 
 
 def _mark_for_store_review(user, *, marked: bool = True):
-    """What a superuser does in the admin (``test_admin``): the account becomes the stores' review account."""
+    """What a superuser does in the admin (``test_admin_users``): the account becomes the stores' review account."""
     get_user_model().objects.filter(pk=user.pk).update(is_store_review_account=marked)
 
 

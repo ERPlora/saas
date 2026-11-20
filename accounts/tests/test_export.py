@@ -18,7 +18,7 @@ from accounts.models import ApiKey, ProfilePhoto, UserPreferences
 from accounts.queries import account_export
 from accounts.schemas import DataExportIn
 from accounts.tests.conftest import ctx_for, api_get, sign_in
-from billing.tests.test_invoice_queries import issue
+from billing.tests.test_queries_invoices import issue
 from hubs.tests.conftest import create_business, plans  # noqa: F401 - the plans fixture
 
 pytestmark = pytest.mark.django_db

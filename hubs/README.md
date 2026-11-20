@@ -159,7 +159,8 @@ Flujos `HUBS-F15`…`HUBS-F23` del `WORKBOOK.md` (parte 2 de 4).
 
 Flujos `HUBS-F24`…`HUBS-F30` del `WORKBOOK.md` (parte 3 de 4): invitar, aceptar o rechazar, cambiar el rol, quitar,
 traspasar la propiedad, la pestaña «Miembros» y los accesos en el admin. El código ya estaba (L1-B, L1-A2); esta parte
-lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.spec.ts`) y arregla lo que no cuadraba:
+lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.spec.ts` y, F28,
+`hubs-people-ownership.spec.ts`) y arregla lo que no cuadraba:
 
 - **El correo de la oferta de propiedad** enlazaba a `/ownership/<id>`, una página que el panel no tiene: ahora lleva a
   `/dashboard/businesses`, donde está la tarjeta «… te ofrece …» con «Aceptar la propiedad». El de la aceptación, que
@@ -181,7 +182,7 @@ lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.s
   y sin prorrateo); el webhook pasa el negocio a la suscripción nueva y termina la anterior sin reembolso. Un cliente de
   Stripe enviado sin su suscripción ya no pisa el de una suscripción viva (`hubs.subscription.apply`), y
   `retax_subscription` no recalcula el impuesto de un plan que cobra otra cuenta. Tests:
-  `billing/tests/test_plan_take_over.py`; e2e: `tests/e2e/panel/hubs-people.spec.ts` («HUBS-F28»).
+  `billing/tests/test_plan_take_over.py`; e2e: `tests/e2e/panel/hubs-people-ownership.spec.ts` («HUBS-F28»).
 - **Sin página global de personas** (G86, G34, G115 del SaaS viejo): ronda 17, cada negocio enseña las suyas en
   «Miembros». «Usuarios del Terminal» (G24) era esa misma página del SaaS viejo, no los empleados con PIN del Hub.
 
