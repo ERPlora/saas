@@ -27,6 +27,7 @@ from live.operations import AI, INTERNAL, operation
 
 from apps.icons import FALLBACK_ICON, FALLBACK_ICON_SVG, clean_icon_svg
 from apps.models import App, AppDoc
+from apps.public_doc import public_markdown
 from apps.schemas import (
     AppByIdIn,
     AppDocListIn,
@@ -45,10 +46,10 @@ logger = logging.getLogger(__name__)
 SOURCE_LANGUAGE = "es"
 #: How long a rendered documentation is kept; a new document changes its hash, and so its key.
 DOC_CACHE_SECONDS = 60 * 60 * 24
-#: The version of what ``render_markdown`` produces, in the key: bumped when the renderer changes
-#: what it lets through (2: stricter image paths), so HTML rendered before a deploy
+#: The version of what is rendered, in the key: bumped when the renderer or ``public_markdown`` change
+#: what they let through (3: only the published parts of each flow), so HTML rendered before a deploy
 #: is never served after it.
-DOC_RENDER_VERSION = 2
+DOC_RENDER_VERSION = 3
 #: The sections of the store, in the order of live.meta's Category; an unknown one goes last.
 CATEGORY_ORDER = {value: position for position, value in enumerate(Category.values)}
 
@@ -261,7 +262,7 @@ def app_doc(ctx: OperationContext, data: AppByIdIn) -> dict[str, Any]:
     html = cache.get(key)
     if html is None:
         html = render_markdown(
-            doc.markdown,
+            public_markdown(doc.markdown, doc.lang),
             image_base=f"{settings.HUB_STATIC_BASE_URL}catalog/{app.id}/img/",
         )
         cache.set(key, html, DOC_CACHE_SECONDS)

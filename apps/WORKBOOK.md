@@ -113,8 +113,9 @@ Pantalla: ninguna (la enseña la pestaña de documentación de la ficha de la ti
 Pasos:
 1. Alguien pide la documentación de una app de la tienda: el manual de uso que el Hub registra con cada versión, en español y en inglés.
 2. erplora.com la devuelve lista para pintar y limpia de todo lo que no sea texto, títulos, tablas, listas, enlaces, imágenes de la propia app y diagramas.
-3. Va en el idioma de quien la pide; si la app aún no tiene el manual en ese idioma, va el español, diciendo que es el original.
-4. Las imágenes salen de los ficheros de la propia app en el Hub; una imagen de cualquier otro sitio se quita.
+3. De cada flujo enseña lo mismo que la ayuda de la app dentro del Hub: solo los que están hechos, cada uno con su título, sus pasos y qué pasa si falla. Sin la tabla de flujos ni nada que el cliente no pueda seguir: un flujo se nombra por su título, nunca por su código, y salen los números de incidencias y, dentro de los paréntesis de un flujo, las medidas en píxeles y los nombres de operaciones, avisos y errores.
+4. Va en el idioma de quien la pide; si la app aún no tiene el manual en ese idioma, va el español, diciendo que es el original.
+5. Las imágenes salen de los ficheros de la propia app en el Hub; una imagen de cualquier otro sitio se quita.
 Entra: la app y el idioma de quien pide.
 Sale: nada guardado en la app; la página ya pintada se guarda un día y se rehace sola en cuanto el Hub registra un manual nuevo.
 Si falla: una app que no existe, o que está fuera de la tienda, responde que no está en el catálogo; una app sin manual responde que aún no tiene documentación.

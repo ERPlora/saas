@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:aeb07dea7464d00e82114ccc5ed0f84577fbe1e74e8dcb6793fd80ce95ed66b9 -->
+<!-- generated from WORKBOOK.md sha256:5f6c8f995faad7d55758e0657b1d0a02f10ca7401f6106c79520208da223c0f7 -->
 
 ## What it is for and who it is for
 
@@ -103,8 +103,9 @@ Screen: none (the documentation tab of the public store's app page shows it)
 Steps:
 1. Someone asks for the documentation of an app in the store: the user manual the Hub registers with every version, in Spanish and in English.
 2. erplora.com returns it ready to paint and cleaned of everything that is not text, headings, tables, lists, links, the app's own images and diagrams.
-3. It comes in the language of whoever asks; if the app does not have the manual in that language yet, the Spanish one comes, saying it is the original.
-4. The images come from the app's own files in the Hub; an image from anywhere else is removed.
+3. Of each flow it shows what the app's help inside the Hub shows: only the flows that are done, each with its title, its steps and what happens if it fails. Without the table of flows or anything the customer cannot follow: a flow is named by its title, never by its code, and issue numbers leave, and so do, between the parentheses of a flow, sizes in pixels and the names of operations, events and errors.
+4. It comes in the language of whoever asks; if the app does not have the manual in that language yet, the Spanish one comes, saying it is the original.
+5. The images come from the app's own files in the Hub; an image from anywhere else is removed.
 In: the app and the language of whoever asks.
 Out: nothing saved in the app; the painted page is kept for a day and is redone by itself as soon as the Hub registers a new manual.
 If it fails: an app that does not exist, or that is out of the store, answers that it is not in the catalog; an app without a manual answers that it has no documentation yet.
