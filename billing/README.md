@@ -70,8 +70,9 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
   `refused` y el comando sale con error.
 - **Avisos de la OSS** (`services.oss_notices.note_oss_threshold`, BILLING-F06, erplora-old/saas#2297/#2299): cada factura cobrada que
   cuenta para el umbral (B2C a otro estado de la UE, sin NIF-IVA comprobado) mira el total del año; la que lo
-  lleva por encima del 80 % (`OSS_WARNING_PERCENT`) anota un `OssNotice` `near` y la que lo cruza (o la primera
-  del año si el anterior cerró por encima) uno `crossed`, cada uno una vez al año (único por `(year, kind)`;
+  lleva por encima del 80 % (`oss.OSS_WARNING_PERCENT`, que también lee el correo) anota un `OssNotice` `near`
+  y la que lo cruza (o la primera del año si el anterior cerró por encima) uno `crossed`, cada uno una vez al
+  año (único por `(year, kind)`;
   el cruce primero, así un salto directo solo avisa del cruce). Sin avisos con el alta voluntaria en la OSS.
   El correo va a `SUPPORT_EMAIL` tras el COMMIT (cabecera `X-ERPlora-Notice: billing.oss_near|crossed`); uno
   que no salió se reenvía en `retax_subscriptions`, que sale con error mientras quede alguno

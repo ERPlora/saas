@@ -8,6 +8,7 @@ from django.db.models import Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
+from billing import emails
 from billing.models import Invoice, PaymentFailure
 from billing.services import stripe_customers, stripe_sales, stripe_sync
 from hubs.models import Hub
@@ -23,8 +24,6 @@ def notify_unpaid(hub_id) -> str:
     invoice once, while the business still works (how much, until when, where to pay); the suspension once,
     which also stands for the invoices not told yet. The business is locked, so two deliveries never send the
     same mail twice. Nobody to tell is done too; a mail that cannot leave stays owed (``MAIL_NOT_SENT``)."""
-    from billing import emails
-
     with stripe_sync.holding(hub_id):
         hub = Hub.objects.select_related("billing_profile__owner").get(pk=hub_id)
         owed = list(PaymentFailure.objects.filter(hub=hub, resolved_at__isnull=True).order_by("invoice_created_at"))
