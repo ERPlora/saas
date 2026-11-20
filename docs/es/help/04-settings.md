@@ -17,7 +17,7 @@ La tarjeta «Tu negocio» enseña «Nombre del negocio», «País», «Zona hora
 
 «Datos fiscales» abre el emisor de la app Facturación, donde se escriben la razón social, el NIF y el domicilio que usan las facturas. Sin esa app, la pestaña dice «Instala la app Facturación para escribir los datos fiscales».
 
-En un negocio de España, el envío de las facturas a la AEAT se configura en la app VeriFactu, en **VeriFactu › Configuración**: o lo remite ERPlora en nombre del negocio («Lo remite ERPlora»), o el negocio usa su propio certificado («Mi certificado»), que tiene que ser del mismo NIF que el emisor de Facturación.
+En un negocio de España, el envío de las facturas a la AEAT se configura en la app VeriFactu, en **VeriFactu › Configuración**: el negocio usa su propio certificado («Mi certificado»), que tiene que ser del mismo NIF que el emisor de Facturación.
 
 ## Impresión
 
