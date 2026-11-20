@@ -18,7 +18,7 @@ from django.test import Client
 from django.utils import timezone
 
 from assistant import queries, server_tools
-from assistant.models import AIModel, AIProviderCredential, AIRoutingPolicy, AssistantUsage
+from assistant.models import AIModel, AIRoutingPolicy, AssistantUsage
 from assistant.tests.conftest import API_KEY, on_plan, openai_answer, openai_tool_call
 from assistant.tests.doors import door, error_code, frames, hang_up
 from base.tests.conftest import names_the_file
@@ -294,8 +294,8 @@ class TestRefusalsBeforeTheModel:
         assert response.json()["error"]["retriable"] is False
         assert usage_row(business) is None or usage_row(business).messages == 0
 
-    def test_a_provider_without_a_key_is_refused_and_nothing_counted(self, client, internal, business, answering, fake_provider):
-        AIProviderCredential.objects.all().delete()
+    def test_a_provider_without_a_key_is_refused_and_nothing_counted(self, client, internal, business, answering, fake_provider, settings):
+        settings.OPENAI_API_KEY = ""
 
         response = door(client, STREAM, turn(business))
 

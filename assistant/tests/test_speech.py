@@ -153,12 +153,13 @@ class TestWithoutAnEngine:
 
         assert "Rosalía" not in "\n".join(record.getMessage() for record in caplog.records)
 
-    def test_a_provider_named_as_the_old_voice_reads_nothing(self, client, internal, business, fake_provider):
+    def test_a_provider_named_as_the_old_voice_reads_nothing(self, client, internal, business, fake_provider, openai_key):
         """Only an engine reads aloud: no provider of the admin does, whatever its identifier and with its key."""
-        from assistant.models import AIProvider, AIProviderCredential
+        from assistant.models import AIProvider
 
-        named = AIProvider.objects.create(slug="azure-speech", name="Azure", kind="openai", base_url=fake_provider.url)
-        AIProviderCredential.objects.create(provider=named, label="default", api_key=API_KEY, key_hint="wxyz")
+        AIProvider.objects.create(
+            slug="azure-speech", name="Azure", kind="openai", base_url=fake_provider.url, key_variable="OPENAI_API_KEY"
+        )
 
         response = door(client, SYNTHESIZE, reading(business))
 

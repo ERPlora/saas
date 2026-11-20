@@ -463,6 +463,43 @@ def test_the_test_run_has_no_web_search_whatever_the_shell_or_the_dotenv_say(exp
     assert result.stdout.strip() == "''"
 
 
+#: The variables of the AI providers' keys (config/settings/assistant.py): the gateway reads them, nothing else.
+AI_KEY_VARIABLES = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "DEEPSEEK_API_KEY", "DASHSCOPE_API_KEY")
+
+
+def test_each_ai_provider_key_comes_from_its_variable_of_the_environment():
+    keys = {name: f"key-of-{name}" for name in AI_KEY_VARIABLES}
+
+    result = _settings_in_a_fresh_process({**PRODUCTION_ENV, **keys}, f"[getattr(s, n) for n in {AI_KEY_VARIABLES!r}]")
+
+    assert result.returncode == 0, result.stderr
+    assert ast.literal_eval(result.stdout.strip()) == list(keys.values())
+
+
+def test_production_starts_without_any_ai_provider_key():
+    """No key is required to start: without them the assistant is just off."""
+    result = _settings_in_a_fresh_process(PRODUCTION_ENV, f"[getattr(s, n) for n in {AI_KEY_VARIABLES!r}]")
+
+    assert result.returncode == 0, result.stderr
+    assert ast.literal_eval(result.stdout.strip()) == [""] * len(AI_KEY_VARIABLES)
+
+
+def test_the_test_run_has_no_ai_provider_key_whatever_the_shell_says():
+    """A developer's shell or .env may carry real keys (their runserver answers with them): the suite never reads
+    them, so no test reaches a real provider with a real key. A test that needs a key sets it on ``settings``."""
+    result = subprocess.run(
+        [sys.executable, "-c", f"import config.settings_pytest as s; print([getattr(s, n) for n in {AI_KEY_VARIABLES!r}])"],
+        cwd=SAAS_NEXT,
+        env={**os.environ, **{name: f"a-real-{name}" for name in AI_KEY_VARIABLES}},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert ast.literal_eval(result.stdout.strip()) == [""] * len(AI_KEY_VARIABLES)
+
+
 def test_live_serves_the_spa_of_this_project():
     live = settings.LIVE
     assert live["context_builder"] == "base.operations.UserContextBuilder"

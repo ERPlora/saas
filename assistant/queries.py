@@ -1,11 +1,11 @@
 """The reads of the AI gateway, each an operation (``@operation``, ``kind="query"``) in a read-only transaction.
 
 - ``assistant.provider.connection``: what the client of a provider needs to list its models: its
-  API, its address and its usable key, the most recent active one that opens (a ``SecretStr``).
+  API, its address and its key, read from the environment (a ``SecretStr``).
 - ``assistant.policy.show``: which model answers and which one is the fallback, with the models that
   can be chosen (available, of an enabled provider).
 - ``assistant.route.resolve``: the models a turn tries, in order (the one that answers, then its
-  fallback), each with its usable key; read again on every turn, so a change applies to the next one.
+  fallback), each with its provider's key; read again on every turn, so a change applies to the next one.
 - ``assistant.caller.resolve``: the business (or the demo) a call of the Hub names, if its people can use the
   assistant now.
 - ``assistant.usage.show``: what a business (or a demo) spent of its allowance: the plan's monthly
@@ -41,7 +41,6 @@ from base.surface import sells_nothing
 from assistant.models import (
     AIModel,
     AIProvider,
-    AIProviderCredential,
     AIRoutingPolicy,
     AssistantUsage,
     DocChunk,
@@ -84,14 +83,6 @@ def staff_with(ctx: OperationContext, *permissions: str):
     return user
 
 
-def usable_key(provider: AIProvider) -> str:
-    """The most recent active key of ``provider`` that opens, or ``""``."""
-    for credential in AIProviderCredential.objects.filter(provider=provider, is_active=True).order_by("-updated_at"):
-        if credential.is_readable:
-            return credential.api_key
-    return ""
-
-
 @operation(
     "assistant.provider.connection",
     kind="query",
@@ -101,17 +92,18 @@ def usable_key(provider: AIProvider) -> str:
     ai=INTERNAL,  # staff
 )
 def provider_connection(ctx: OperationContext, data: ProviderRef) -> dict:
-    """The API, address and usable key of a provider (``view_aiprovider``). 404 ``assistant.provider_unknown``,
-    409 ``assistant.no_key`` without an active key that opens."""
+    """The API, address and key of a provider (``view_aiprovider``). 404 ``assistant.provider_unknown``,
+    409 ``assistant.no_key`` without its key in the environment."""
     staff_with(ctx, "assistant.view_aiprovider")
     with translation.override(ctx.language):
         provider = AIProvider.objects.filter(pk=data.id).first()
         if provider is None:
             raise NotFound(_("This provider does not exist."), code="assistant.provider_unknown")
-        api_key = usable_key(provider)
+        api_key = provider.api_key
         if not api_key:
             raise Conflict(
-                _("This provider has no active key: add one on its page and try again."), code="assistant.no_key"
+                _("This provider has no key in the environment: fill the variable its page names."),
+                code="assistant.no_key",
             )
     return {
         "id": provider.pk,
@@ -208,7 +200,7 @@ def route_resolve(ctx: OperationContext, data: RouteIn) -> dict:
                     code="assistant.model_unavailable",
                     status=422,
                 )
-            api_key = usable_key(model.provider)
+            api_key = model.provider.api_key
             if not api_key:
                 raise provider_not_configured()
             return {"candidates": [route_candidate(model, api_key)]}
@@ -224,7 +216,7 @@ def route_resolve(ctx: OperationContext, data: RouteIn) -> dict:
             )
         candidates = []
         for model in (policy.active_model, policy.fallback_model):
-            if can_answer(model) and (api_key := usable_key(model.provider)):
+            if can_answer(model) and (api_key := model.provider.api_key):
                 candidates.append(route_candidate(model, api_key))
         if not candidates:
             raise provider_not_configured()
@@ -355,9 +347,9 @@ def usage_show(ctx: OperationContext, data: Caller) -> dict:
     ai=INTERNAL,  # platform
 )
 def service_connection(ctx: OperationContext, data: NoInput) -> dict:
-    """The address and the usable key of the services' provider (``ASSISTANT_SERVICE_PROVIDER``), which computes the
+    """The address and the key of the services' provider (``ASSISTANT_SERVICE_PROVIDER``), which computes the
     embeddings and transcribes the dictation (the platform only). 409 ``assistant.provider_not_configured`` if it does not exist, is
-    off, speaks another API than OpenAI's or has no active key that opens."""
+    off, speaks another API than OpenAI's or has no key in the environment."""
     platform_only(ctx)
     service = services_provider()
     if service is None:
@@ -370,12 +362,12 @@ def service_connection(ctx: OperationContext, data: NoInput) -> dict:
 
 
 def services_provider() -> dict | None:
-    """The services' provider with its usable key, or ``None`` if it does not exist, is off, speaks another API than
-    OpenAI's or has no active key that opens."""
+    """The services' provider with its key, or ``None`` if it does not exist, is off, speaks another API than
+    OpenAI's or has no key in the environment."""
     provider = AIProvider.objects.filter(
         slug=settings.ASSISTANT_SERVICE_PROVIDER, is_enabled=True, kind=AIProvider.Kind.OPENAI
     ).first()
-    api_key = usable_key(provider) if provider is not None else ""
+    api_key = provider.api_key if provider is not None else ""
     if not api_key:
         return None
     return {"provider": provider.slug, "base_url": provider.api_base, "api_key": api_key}

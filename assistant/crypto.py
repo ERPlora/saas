@@ -1,10 +1,8 @@
-"""The providers' keys, encrypted at rest.
+"""The key of the credentials kept at rest (``FERNET_KEY``), as the rotation uses it (``rotate_encryption_keys``).
 
-Fernet (AES-128-CBC + HMAC-SHA256) with ``settings.FERNET_KEY``, the scheme of WhatsApp's Meta credentials
-(``whatsapp.crypto``): during a rotation ``FERNET_KEY_PREVIOUS`` still opens what it closed, and everything is
-written with the current key (``MultiFernet``). The database and its backups only ever hold the token. Without a
-key nothing is stored (``NotConfigured``), which the admin says out loud. ``rotate`` writes a token again with the
-current key without the value ever leaving this module (``rotate_encryption_keys``).
+Fernet (AES-128-CBC + HMAC-SHA256), the scheme of WhatsApp's Meta credentials (``whatsapp.crypto``): during a rotation
+``FERNET_KEY_PREVIOUS`` still opens what it closed, and everything is written with the current key (``MultiFernet``).
+``rotate`` writes a token again with the current key without the value ever leaving this module.
 """
 
 import binascii
@@ -14,7 +12,7 @@ from django.conf import settings
 
 
 class NotConfigured(Exception):
-    """``FERNET_KEY`` is empty or is no Fernet key: no provider key can be kept."""
+    """``FERNET_KEY`` is empty or is no Fernet key: nothing kept with it can be read nor rotated."""
 
 
 class Undecryptable(Exception):
@@ -37,7 +35,7 @@ def configured() -> bool:
 
 def _keys() -> list[Fernet]:
     if not configured():
-        raise NotConfigured("FERNET_KEY is not set: no provider key can be kept.")
+        raise NotConfigured("FERNET_KEY is not set: nothing kept with it can be read nor rotated.")
     keys = [settings.FERNET_KEY, getattr(settings, "FERNET_KEY_PREVIOUS", "")]
     return [Fernet(key.encode()) for key in keys if key and key_problem(key) is None]
 

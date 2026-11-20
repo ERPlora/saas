@@ -31,7 +31,7 @@ def spanish():
 def test_the_scan_finds_the_messages_of_the_assistant():
     found = {message for _, message in messages_of("assistant")}
 
-    assert {"AI assistant", "AI providers", "Unreadable: type the key again"} <= found
+    assert {"AI assistant", "AI providers", "In the environment"} <= found
 
 
 def test_every_message_of_the_assistant_has_its_spanish_translation():

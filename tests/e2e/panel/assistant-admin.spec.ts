@@ -2,9 +2,9 @@
 // (390×844, 834×1112, 1440×900), in English and in Spanish, against the panel's own Django and the
 // rows of assistant_seed.py. The provider is assistant.tests.fake_provider, a real HTTP server on 127.0.0.1 that
 // speaks OpenAI's API (two chat models, one embeddings model, an answer streamed in three pieces): no test reaches a
-// real provider and no real key is ever typed.
-// flow: ASSISTANT-F01 — the staff add a provider with its API and its address.
-// flow: ASSISTANT-F02 — its key is typed once, kept encrypted and never shown again: only its last four characters.
+// real provider, and the only key is the made-up one the e2e gives the panel's Django (E2E_AI_KEY, panel/project.ts).
+// flow: ASSISTANT-F01 — the staff add a provider with its API, its address and the variable of its key.
+// flow: ASSISTANT-F02 — its key lives in the environment: the pages say whether it is there, never any part of it.
 // flow: ASSISTANT-F04 — the staff choose the provider's models from the list its API gives.
 // flow: ASSISTANT-F05 — the staff choose which model answers and its fallback.
 // flow: ASSISTANT-F07 — the staff try a model and watch its answer arrive with its tokens, time and cost.
@@ -14,6 +14,7 @@ import { FAKE_PROVIDER_URL, startFakeProvider } from './assistant-chat';
 import { runSeed } from './django';
 import { expect, test } from './fixtures';
 import { watchPageErrors } from './page-events';
+import { E2E_AI_KEY } from './project';
 import { captureAtEverySize } from './screen';
 import { signIn } from './session';
 
@@ -22,7 +23,6 @@ const atEverySize = captureAtEverySize('APP-ASSISTANT-1');
 const PASSWORD = process.env.QA_PANEL_PASSWORD ?? 'e2e-panel';
 const ADMIN = { email: 'e2e-assistant-admin@example.com', password: PASSWORD };
 const VIEWER = { email: 'e2e-assistant-viewer@example.com', password: PASSWORD };
-const API_KEY = 'sk-e2e-0000000000000000000000000000e2e1';
 
 let provider: ChildProcess | undefined;
 
@@ -38,39 +38,40 @@ test.afterAll(() => {
   provider?.kill();
 });
 
-test('ASSISTANT-F01 · ASSISTANT-F02: the staff add a provider with its key, which is never shown again', async ({ page }) => {
+test('ASSISTANT-F01 · ASSISTANT-F02: the staff add a provider naming the variable of its key, never shown', async ({ page }) => {
   const errors = watchPageErrors(page);
   seed('staff');
   await signIn(page.request, ADMIN);
 
   await page.goto('/admin/assistant/aiprovider/add/');
+  await expect(page.locator('input[type="password"]')).toHaveCount(0);
   await page.getByLabel('Name:').fill('E2E Local');
   await page.getByLabel('Identifier:').fill('e2e-local');
   await page.getByLabel('API:').selectOption('openai');
   await page.getByLabel('Address:').fill('http://example.com/v1');
-  // Django 6.1 paints the inline's «Add another» as a button.
-  await page.getByRole('button', { name: 'Add another Key' }).click();
-  await page.locator('[name="credentials-0-new_key"]').fill(API_KEY);
+  await page.getByLabel('Key variable:').selectOption('OPENAI_API_KEY');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   // The key travels to the address: plain http only to this machine.
   await expect(page.locator('.errorlist')).toContainText("Use an https address: the provider's key travels to it.");
 
   await page.getByLabel('Address:').fill(FAKE_PROVIDER_URL);
-  await page.locator('[name="credentials-0-new_key"]').fill(API_KEY);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.locator('.messagelist')).toContainText('was added successfully');
   const row = page.getByRole('row', { name: /E2E Local/ });
   await atEverySize(page, 'ASSISTANT-F01', async () => {
-    await expect(row).toContainText('…e2e1');
+    await expect(row).toContainText('OPENAI_API_KEY');
+    await expect(row).toContainText('In the environment');
   });
 
   await row.getByRole('link', { name: 'E2E Local' }).click();
-  const typed = page.locator('[name="credentials-0-new_key"]');
   await atEverySize(page, 'ASSISTANT-F02', async () => {
-    await expect(page.getByRole('cell', { name: '…e2e1', exact: true })).toBeVisible();
-    await expect(typed).toHaveValue('');
+    await expect(page.getByLabel('Key variable:')).toHaveValue('OPENAI_API_KEY');
+    await expect(page.getByText('In the environment', { exact: true })).toBeVisible();
   });
-  expect(await page.content()).not.toContain(API_KEY);
+  await expect(page.locator('input[type="password"]')).toHaveCount(0);
+  const html = await page.content();
+  expect(html).not.toContain(E2E_AI_KEY);
+  expect(html).not.toContain(E2E_AI_KEY.slice(-4));
   expect(errors).toEqual([]);
 });
 
@@ -170,7 +171,7 @@ test.describe('in Spanish', () => {
     await page.goto('/admin/assistant/aiprovider/');
     const row = page.getByRole('row', { name: /E2E Local/ });
     await atEverySize(page, 'ASSISTANT-F01-es', async () => {
-      await expect(row).toContainText('…e2e1');
+      await expect(row).toContainText('En el entorno');
       await expect(page.getByRole('heading', { name: /proveedor de IA/ })).toBeVisible();
     });
 

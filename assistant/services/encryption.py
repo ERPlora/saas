@@ -1,7 +1,7 @@
-"""The key every provider's key and WhatsApp's tokens and PINs are kept with (``FERNET_KEY``).
+"""The key WhatsApp's tokens and PINs are kept with (``FERNET_KEY``); the AI providers' keys live in the environment.
 
-- ``assistant.encryption.rotate``: every value kept with ``FERNET_KEY`` (the providers' keys and WhatsApp's tokens and
-  PINs, ``encrypted_columns``) written again with the current key, so the previous one can go.
+- ``assistant.encryption.rotate``: every value kept with ``FERNET_KEY`` (``encrypted_columns``: today WhatsApp's tokens
+  and PINs) written again with the current key, so the previous one can go.
 - A write that needs the key while it is not configured answers 503 ``assistant.encryption_not_configured``.
 """
 
@@ -16,14 +16,14 @@ from live.operations import INTERNAL, operation
 from live.outbox import record_event
 
 import whatsapp.fields
-from assistant import crypto, events, fields
+from assistant import crypto, events
 from assistant.schemas import EncryptionRotateIn, EncryptionRotateOut
 
 
 def _encryption_missing(ctx: OperationContext) -> OperationError:
     with translation.override(ctx.language):
         return OperationError(
-            _("The key of the credentials is not configured: no provider key can be kept."),
+            _("The key of the credentials is not configured: nothing can be rotated."),
             code="assistant.encryption_not_configured",
             status=503,
         )
@@ -32,7 +32,7 @@ def _encryption_missing(ctx: OperationContext) -> OperationError:
 #: The field classes whose columns keep their value with ``FERNET_KEY`` (MultiFernet with ``FERNET_KEY_PREVIOUS``),
 #: all rotated together. A new encrypted field class goes here, or the guard of the tests fails. The fiscal
 #: documents are kept with their own key (``FISCAL_DOCUMENTS_KEY``, ``fiscal.crypto``) and are not rotated here.
-ROTATED_FIELD_CLASSES = (fields.EncryptedTextField, whatsapp.fields.EncryptedTextField)
+ROTATED_FIELD_CLASSES = (whatsapp.fields.EncryptedTextField,)
 
 
 def encrypted_columns() -> list[tuple[type, str]]:

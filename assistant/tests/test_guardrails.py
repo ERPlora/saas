@@ -97,7 +97,7 @@ def test_the_database_scan_catches_its_positive():
 def test_a_module_of_a_packaged_door_may_touch_the_database():
     assert may_touch_the_database("services.py")
     assert may_touch_the_database("services/__init__.py")
-    assert may_touch_the_database("services/credentials.py")
+    assert may_touch_the_database("services/model_choice.py")
     assert not may_touch_the_database("turn.py")
     assert not may_touch_the_database("services/inner/deep.py")
     assert not may_touch_the_database("providers/services/openai.py")
