@@ -17,7 +17,7 @@ The "Your business" card shows "Business name", "Country", "Time zone", "Currenc
 
 "Fiscal data" opens the issuer of the Invoicing app, where the legal name, the tax ID and the address the invoices use are written. Without that app, the tab says "Install the Invoicing app to write the fiscal data".
 
-In a business in Spain, sending the invoices to the AEAT is set up in the VeriFactu app, in **VeriFactu › Configuration**: either ERPlora files them on the business's behalf ("ERPlora files for you"), or the business uses its own certificate ("My certificate"), which has to carry the same tax ID as the Invoicing issuer.
+In a business in Spain, sending the invoices to the AEAT is set up in the VeriFactu app, in **VeriFactu › Configuration**: the business uses its own certificate ("My certificate"), which has to carry the same tax ID as the Invoicing issuer.
 
 ## Printing
 

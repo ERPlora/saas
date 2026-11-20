@@ -59,6 +59,13 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
+/** The business's authorisation for ERPlora to file its invoices: never sent, and sent. */
+const REPRESENTATION = 'fiscal.representation.status';
+const NO_DOCUMENTS = { signed_model: false, id_copy: false, signature_sample: false, representation_proof: false };
+const NO_PEOPLE = { taxpayer_tax_id: '', taxpayer_name: '', signer_name: '' };
+const NONE = { status: 'none', version: null, submitted_at: null, reviewed_at: null, changed_at: null, reason: '', ...NO_PEOPLE, documents: NO_DOCUMENTS, history: [] };
+const SUBMITTED = { ...NONE, status: 'submitted', version: 1, submitted_at: '2026-10-10T09:30:00Z', changed_at: '2026-10-10T09:30:00Z' };
+
 /** A copy the Hub keeps of the business's data (`hubs.data_copy.list`). */
 const COPY = { id: 'h1hex/20261013T100500Z-offboarding.dump', kind: 'offboarding', created_at: '2026-10-13T10:05:00Z', bytes: 2048 };
 
@@ -261,26 +268,12 @@ describe('BusinessPage: the sections', () => {
 });
 
 describe('BusinessPage: the authorisation for ERPlora to file its invoices (fiscal)', () => {
-  const OP = 'fiscal.representation.status';
-  const NONE = {
-    status: 'none',
-    version: null,
-    submitted_at: null,
-    reviewed_at: null,
-    changed_at: null,
-    reason: '',
-    taxpayer_tax_id: '',
-    taxpayer_name: '',
-    signer_name: '',
-    documents: { signed_model: false, id_copy: false, signature_sample: false, representation_proof: false },
-    history: [],
-  };
-
   it('the Summary of a Spanish business shows it under its cards, for that business', async () => {
     const s = await setup('summary');
+    await s.result(s.call, REPRESENTATION, SUBMITTED);
     const card = s.wrapper.getComponent(RepresentationCard);
     expect(card.props()).toMatchObject({ id: 'h1', canManage: true, managing: false });
-    expect(s.client.stream.subscriptions(OP).map((sub) => sub.params)).toEqual([{ id: 'h1' }]);
+    expect(s.client.stream.subscriptions(REPRESENTATION).map((sub) => sub.params)).toEqual([{ id: 'h1' }]);
     const summary = s.wrapper.getComponent(BusinessSummary).element;
     expect(summary.compareDocumentPosition(card.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -297,19 +290,30 @@ describe('BusinessPage: the authorisation for ERPlora to file its invoices (fisc
   /** The card is on screen (it is asked for with the page, so it may be there and hidden). */
   const cardShown = (s: Awaited<ReturnType<typeof setup>>) => s.testid('representation').exists() && s.testid('representation').isVisible();
 
-  it('only for a business in Spain: the AEAT is Spanish', async () => {
-    const s = await setup('summary', { country: 'PT', timezone: 'Europe/Lisbon' });
+  it('a Spanish business that never sent one does not see it: it can no longer ask for one', async () => {
+    const s = await setup('summary');
+    await s.result(s.call, REPRESENTATION, NONE);
     expect(cardShown(s)).toBe(false);
+    await s.result(s.call, REPRESENTATION, SUBMITTED);
+    expect(cardShown(s)).toBe(true);
   });
 
-  it('not once the business is deleted: its Summary keeps only the plan and the details', async () => {
-    const s = await setup('summary', { status: 'deleting', deletion_requested_at: '2026-10-13T10:00:00Z', purge_after: '2027-01-11T10:00:00Z', can: { ...BUSINESS.can, open: false } });
+  it.each<[string, Record<string, unknown>]>([
+    ['only for a business in Spain: the AEAT is Spanish', { country: 'PT', timezone: 'Europe/Lisbon' }],
+    [
+      'not once the business is deleted: its Summary keeps only the plan and the details',
+      { status: 'deleting', deletion_requested_at: '2026-10-13T10:00:00Z', purge_after: '2027-01-11T10:00:00Z', can: { ...BUSINESS.can, open: false } },
+    ],
+  ])('%s', async (_case, business) => {
+    const s = await setup('summary', business);
+    await s.result(s.call, REPRESENTATION, SUBMITTED);
+    expect(s.testid('representation').exists()).toBe(true);
     expect(cardShown(s)).toBe(false);
   });
 
   it('«Manage in your business» opens the business, as «Open» does', async () => {
     const s = await setup('summary');
-    await s.result(s.call, OP, NONE);
+    await s.result(s.call, REPRESENTATION, SUBMITTED);
     await s.testid('representation-manage').trigger('click');
     await flush();
     expect(s.calls().find((c) => c.path === '/api/hubs/businesses/open')?.body).toEqual({ id: 'h1', next: '/' });
@@ -396,7 +400,8 @@ describe('BusinessPage: one stream', () => {
   });
 
   it('the Summary asks for the authorisation in the first stream, with the business, and the business’s answer does not reopen it', async () => {
-    const s = await inTheFirstStream('summary', 'fiscal.representation.status', { id: 'h1' });
+    const s = await inTheFirstStream('summary', REPRESENTATION, { id: 'h1' });
+    await s.result(s.call, REPRESENTATION, SUBMITTED);
     expect(s.testid('representation').isVisible()).toBe(true);
   });
 
@@ -447,6 +452,7 @@ describe('BusinessPage: one stream', () => {
   it('a business outside Spain keeps the stream it opened: the authorisation it asked for stays hidden, without a reopen', async () => {
     const s = await setup('summary', null);
     await s.result(s.call, 'hubs.business.get', { ...BUSINESS, country: 'PT', timezone: 'Europe/Lisbon' });
+    await s.result(s.call, REPRESENTATION, SUBMITTED);
     await s.clock.advance(RELEASE_GRACE_MS + 1000);
     expect(s.net.streams).toHaveLength(1);
     expect(s.call.aborted()).toBe(false);

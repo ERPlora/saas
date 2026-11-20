@@ -153,7 +153,7 @@ Pasos:
 3. Cuando una persona del equipo pulsa «Aprobar», les llega que la autorización ya está en vigor y que ERPlora ya puede enviar a Hacienda sus facturas con su sello.
 4. Si pulsa «Devolver al cliente» o «Retirar la aprobación», les llega con el motivo que escribió y que la vuelvan a enviar desde la app VeriFactu del negocio.
 Entra: cada paso de la autorización: enviada, aprobada, devuelta o retirada.
-Sale: un correo a la mesa de revisión por cada autorización que espera y uno a cada propietario o administrador por cada paso; en el panel, el estado al momento (`fiscal.representation.changed`).
+Sale: un correo a la mesa de revisión por cada autorización que espera y uno a cada propietario o administrador por cada paso; en el panel, en el Resumen del negocio, su estado al momento (`fiscal.representation.changed`). Esa tarjeta solo la ve un negocio que ya tiene una autorización (enviada, validada, devuelta o retirada): en producción ya no se puede pedir, así que a quien nunca envió una no se le ofrece.
 Si falla: los correos salen cuando el paso ya está guardado, nunca antes; un correo que no sale queda en el registro con la autorización y no deshace el paso, y la autorización sigue en la cola del admin. Una versión que otra más nueva sustituyó no avisa a nadie: avisa la nueva. Estos avisos llegan aunque la persona haya apagado los avisos del negocio, porque deciden si ERPlora puede enviar sus facturas.
 Implicados: el Hub (VERIFACTU-F05 y VERIFACTU-F06 envían la autorización), FISCAL-F03 (los documentos)
 

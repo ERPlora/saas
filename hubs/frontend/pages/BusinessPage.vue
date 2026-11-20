@@ -8,7 +8,7 @@
 // ends, for its owner, with «Download the data» (DataCopyCard): always on a deleted business, where its deletion
 // mail leads; on a live one, once its data was reset.
 // The Summary of a Spanish business ends with the authorisation for ERPlora to file its invoices (fiscal's
-// RepresentationCard), whose «Manage in your business» opens the business as «Open» does.
+// RepresentationCard) once it has one, whose «Manage in your business» opens the business as «Open» does.
 // Modules: turning apps on and off is the Hub's, so the tab says so and the header's «Open»,
 // solid there as on the Summary, is its one action (no second «Open» in the card).
 // Settings: «General», the own domain of its public website (CustomDomainCard, HUBS-F17) and the danger zone, last.

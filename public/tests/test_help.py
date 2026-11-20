@@ -335,3 +335,21 @@ def test_help_docs_do_not_name_the_old_hosting():
     ]
 
     assert offenders == []
+
+
+# The Hub's tab for the route where ERPlora files for the business, closed in production, and the one left open.
+_ERPLORA_ROUTE = {"en": "ERPlora files for you", "es": "Lo remite ERPlora"}
+_OWN_CERTIFICATE = {"en": "My certificate", "es": "Mi certificado"}
+
+
+@pytest.mark.parametrize("lang", help_docs.SUPPORTED_LANGS)
+def test_help_docs_offer_only_the_own_certificate_to_file_with_the_aeat(lang):
+    """A business can no longer ask ERPlora to file for it: the guides send it to its own certificate."""
+    offenders = [
+        str(path.relative_to(ROOT))
+        for path in (help_docs._docs_root() / lang / "help").glob("*.md")
+        if _ERPLORA_ROUTE[lang] in path.read_text(encoding="utf-8")
+    ]
+
+    assert offenders == []
+    assert _OWN_CERTIFICATE[lang] in help_docs.get_doc("04-settings", lang)["html"]

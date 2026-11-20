@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:4884405676226a9c2bb874860f95921174e8cc2d378c1e639fe7e12e21d80124 -->
+<!-- generated from WORKBOOK.md sha256:751ff6c03c619888b56d3dd899daaa4d0cbc946099f1d9843e0925ad1d970c20 -->
 
 ## What it is for and who it is for
 
@@ -145,7 +145,7 @@ Steps:
 3. When a person of the team presses "Approve", they get that the authorisation is now in force and that ERPlora may now send their invoices to the tax agency with its seal.
 4. If they press "Return to the customer" or "Withdraw the approval", they get it with the reason that was written and that they should send it again from the VeriFactu app of the business.
 In: every step of the authorisation: sent, approved, returned or withdrawn.
-Out: a mail to the review desk for every authorisation that waits and one to every owner or admin for every step; in the panel, the status at once (`fiscal.representation.changed`).
+Out: a mail to the review desk for every authorisation that waits and one to every owner or admin for every step; in the panel, on the business's Summary, its status at once (`fiscal.representation.changed`). Only a business that already has an authorisation (sent, approved, returned or withdrawn) sees that card: production no longer lets a business ask for one, so one that never sent one is not offered it.
 If it fails: the mails leave once the step is saved, never before; a mail that does not leave stays in the log with the authorisation and does not undo the step, and the authorisation stays in the admin's queue. A version a newer one replaced tells nobody: the new one tells. These notices arrive even if the person turned the business notices off, because they decide whether ERPlora may send their invoices.
 Involved: the Hub (VERIFACTU-F05 and VERIFACTU-F06 send the authorisation), FISCAL-F03 (the documents)
 

@@ -61,9 +61,9 @@ test('«Manage» opens the business’s page, whose tabbar walks its four sectio
   // The apps Starter turns on at once (its `max_apps`), as /pricing/'s table says it (saas#121).
   await expect(page.getByTestId('summary-plan-apps').locator('dt')).toHaveText('Apps turned on at once');
   await expect(page.getByTestId('summary-plan-apps').locator('dd')).toHaveText('40');
-  // A Spanish business that never sent its signed authorisation (fiscal.representation.status): «Not granted».
-  await expect(page.getByTestId('representation')).toContainText('Authorisation for ERPlora to file your invoices');
-  await expect(page.getByTestId('representation-pill')).toHaveText('Not granted');
+  // A Spanish business that never sent its signed authorisation (fiscal.representation.status) is not offered one:
+  // production no longer lets a business ask ERPlora to file its invoices.
+  await expect(page.getByTestId('representation')).toHaveCount(0);
   await openSection(page, 'members');
   await expect(page.getByTestId('members-row')).toHaveCount(5);
   await expect(page.getByTestId('members-row').filter({ hasText: 'e2e-jorge@example.com' })).toContainText('Pending');
