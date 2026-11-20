@@ -23,6 +23,7 @@ import {
   FormModal,
   InlineFeedback,
   StatusPill,
+  withRowNames,
 } from '@erplora/ui/components';
 import { AppPage, HubIcon, toastError, toastSuccess, useSurface, WebOnly } from '@erplora/ui/shell';
 import { useCommand, useLive, useLiveClient } from '@erplora/ui/sdk';
@@ -44,7 +45,6 @@ import { useRouter } from 'vue-router';
 
 import { BUSINESSES, STORE } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
-import { withRowNames } from '../../../frontend/row-names';
 import type { BusinessDetailOut, BusinessRowOut, InvitationOut, OwnershipOfferOut } from '../../../frontend/sdk-types/hubs';
 import { opensAtAll, preparationFailed, preparingLeadKey, reasonDate, reasonKey, statusPill } from '../business-status';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
@@ -160,7 +160,7 @@ const pageOf = (row: { id: string }) => `${BUSINESSES}/${row.id}/summary`;
 
 /** The row's buttons, as the table folds them when its box narrows: «Open» stays,
  *  «Manage» and «Recover» go into «⋮» first. Each says its action in short words; its name adds the business. */
-const actions = computed(() => withRowNames<BusinessRowOut>(t, (row) => row.name, [
+const actions = computed(() => withRowNames<BusinessRowOut>((row) => row.name, [
   {
     id: 'open',
     label: t('hubs.common.open'),

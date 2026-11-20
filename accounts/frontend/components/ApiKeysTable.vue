@@ -14,6 +14,7 @@ import {
   type DataTableColumn,
   formatDateTime,
   StatusPill,
+  withRowNames,
 } from '@erplora/ui/components';
 import { HubIcon, toastSuccess } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
@@ -22,7 +23,6 @@ import { computed, shallowRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useLiveState } from '../../../frontend/live-state';
-import { withRowNames } from '../../../frontend/row-names';
 import type { ApiKeyRowOut } from '../../../frontend/sdk-types/accounts-security';
 import { useErrorText } from '../error-text';
 import NewKeyModal from './NewKeyModal.vue';
@@ -54,7 +54,7 @@ const columns = computed(() => [
   { key: 'expires_at', label: t('accounts.account.keys.columns.expires'), cell: 'expires' },
 ] satisfies DataTableColumn<ApiKeyRowOut>[]);
 
-const actions = computed<DataTableAction<ApiKeyRowOut>[]>(() => withRowNames(t, (row: ApiKeyRowOut) => row.name, [
+const actions = computed<DataTableAction<ApiKeyRowOut>[]>(() => withRowNames((row: ApiKeyRowOut) => row.name, [
   {
     id: 'revoke',
     label: t('accounts.account.keys.revokeShort'),

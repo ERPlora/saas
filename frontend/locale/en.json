@@ -17,7 +17,6 @@
     },
     "skipLink": "Skip to content",
     "skipNav": "Shortcuts",
-    "rowAction": "{action}: {name}",
     "assistant": {
       "empty": "Ask me about your businesses, your invoices or your account.",
       "shortcuts": {

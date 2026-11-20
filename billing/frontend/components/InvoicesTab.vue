@@ -10,7 +10,7 @@
 //     icon and the search narrows (`toolbar-fit.ts`); on a phone it reads «Excel».
 // Files are saved only when the answer is the file (`browser.ts`): one still being issued (404) says so, the
 // invoice service down (503) says it, and nothing is ever saved as `pdf.json`.
-import { DataTable, type DataTableAction, type DataTableActionEvent, type DataTableColumn, InlineFeedback, StatusPill } from '@erplora/ui/components';
+import { DataTable, type DataTableAction, type DataTableActionEvent, type DataTableColumn, InlineFeedback, StatusPill, withRowNames } from '@erplora/ui/components';
 import { HubIcon, toastError, toastInfo, useSurface, WebOnly } from '@erplora/ui/shell';
 import { type ApiError, useLive, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton } from '@ionic/vue';
@@ -20,7 +20,6 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { BILLING, STORE } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
-import { withRowNames } from '../../../frontend/row-names';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import type { InvoiceFilterIn, InvoicePaymentStatus, InvoiceRowOut } from '../../../frontend/sdk-types/billing-invoices';
 import { browser, operationUrl } from '../browser';
@@ -176,7 +175,7 @@ const labels = computed(() => ({ loadError: t('billing.invoices.loadError'), ret
 const entityLabel = (count: number) => t('billing.invoices.entity', count);
 
 /** Per row, what the server says (`actions`): «Pay» stays when the others fold. */
-const actions = computed<DataTableAction<InvoiceRowOut>[]>(() => withRowNames<InvoiceRowOut>(t, invoiceName, [
+const actions = computed<DataTableAction<InvoiceRowOut>[]>(() => withRowNames<InvoiceRowOut>(invoiceName, [
   {
     id: 'pay',
     label: t('billing.invoices.pay'),

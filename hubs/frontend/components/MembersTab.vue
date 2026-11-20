@@ -20,6 +20,7 @@ import {
   InlineFeedback,
   StatusPill,
   type StatusPillSpec,
+  withRowNames,
 } from '@erplora/ui/components';
 import { HubIcon, toastError, toastSuccess } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
@@ -28,7 +29,6 @@ import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useLiveState } from '../../../frontend/live-state';
-import { withRowNames } from '../../../frontend/row-names';
 import type { BusinessDetailOut } from '../../../frontend/sdk-types/hubs';
 import type { MemberAction, MemberRowOut } from '../../../frontend/sdk-types/hubs-members';
 import { useErrorText } from '../error-text';
@@ -117,7 +117,7 @@ const entityLabel = computed(() => ({ one: t('hubs.members.recordSingular'), man
  *  and «Remove». «Transfer ownership» lives only in «⋮» (delicate, and confirmed). */
 const ORDER: MemberAction[] = ['resend', 'cancel', 'change_role', 'remove', 'transfer'];
 const actions = computed<DataTableAction<MemberRowOut>[]>(() =>
-  withRowNames(t, (row: MemberRowOut) => row.name || row.email, ORDER.map((id) => ({
+  withRowNames((row: MemberRowOut) => row.name || row.email, ORDER.map((id) => ({
     id,
     label: t(ACTIONS[id].label),
     icon: ACTIONS[id].icon,

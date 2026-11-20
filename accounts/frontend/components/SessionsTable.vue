@@ -16,6 +16,7 @@ import {
   type DataTableColumn,
   formatDateTime,
   StatusPill,
+  withRowNames,
 } from '@erplora/ui/components';
 import { HubIcon, toastError, toastSuccess } from '@erplora/ui/shell';
 import { useCommand, useLive } from '@erplora/ui/sdk';
@@ -24,7 +25,6 @@ import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useLiveState } from '../../../frontend/live-state';
-import { withRowNames } from '../../../frontend/row-names';
 import type { SessionListOut, SessionRowOut } from '../../../frontend/sdk-types/accounts-security';
 import { browserName, deviceIcon, deviceName, isAppSession } from '../devices';
 import { useErrorText } from '../error-text';
@@ -74,7 +74,7 @@ const columns = computed(() => [
 ] satisfies DataTableColumn<SessionRowOut>[]);
 
 const target = shallowRef<SessionRowOut | null>(null);
-const actions = computed<DataTableAction<SessionRowOut>[]>(() => withRowNames(t, device, [
+const actions = computed<DataTableAction<SessionRowOut>[]>(() => withRowNames(device, [
   {
     id: 'close',
     label: t('accounts.account.sessions.close'),

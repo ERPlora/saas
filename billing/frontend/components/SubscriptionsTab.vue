@@ -11,6 +11,7 @@ import {
   type DataTableColumn,
   StatusPill,
   type StatusPillTone,
+  withRowNames,
 } from '@erplora/ui/components';
 import { HubIcon, toastError, toastSuccess, useSurface, WebOnly } from '@erplora/ui/shell';
 import { useCommand, useLive, useLiveClient } from '@erplora/ui/sdk';
@@ -21,7 +22,6 @@ import { useRouter } from 'vue-router';
 
 import { BILLING, STORE } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
-import { withRowNames } from '../../../frontend/row-names';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import type { SubscriptionAction, SubscriptionRowOut } from '../../../frontend/sdk-types/billing-subscriptions';
 import type { PlanOut } from '../../../frontend/sdk-types/hubs-catalog';
@@ -139,7 +139,7 @@ const hasMenu = (row: Row) => offers(row, 'cancel_plan');
  * invoices» goes into that «⋮» when the row has one, so a row shows one button and its menu; without a «⋮»
  * (nothing to cancel, or inside the apps) it stays a button.
  */
-const actions = computed<DataTableAction<Row>[]>(() => withRowNames(t, (row: Row) => row.name, [
+const actions = computed<DataTableAction<Row>[]>(() => withRowNames((row: Row) => row.name, [
   {
     id: 'lead',
     label: (row: Row) => {

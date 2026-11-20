@@ -17,7 +17,6 @@
     },
     "skipLink": "Saltar al contenido",
     "skipNav": "Atajos",
-    "rowAction": "{action}: {name}",
     "assistant": {
       "empty": "Pregúntame por tus negocios, tus facturas o tu cuenta.",
       "shortcuts": {
