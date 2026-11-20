@@ -642,18 +642,18 @@ def test_security_states_the_tls_versions_the_load_balancer_accepts(client, lang
     [
         (
             "en",
-            ("if its European provider is unavailable", "transcribing a voice dictation"),
+            ("its language model, by default", "transcribing a voice dictation"),
             "The one exception",
         ),
         (
             "es",
-            ("si su proveedor europeo no está disponible", "transcribir un dictado por voz"),
+            ("su modelo de lenguaje por defecto", "transcribir un dictado por voz"),
             "La única excepción",
         ),
     ],
 )
 def test_the_storage_answer_names_the_exceptions_of_the_privacy_policy(client, language, exceptions, one_exception):
-    """Section 6 of the privacy policy has two transfers of the assistant: the backup model providers and the
+    """Section 6 of the privacy policy has two transfers of the assistant: its default language model and the
     provider of its voice and search fingerprint services (a dictation's audio goes to OpenAI's API by default), so
     «the one exception» would be false."""
     html = page(client, "/pricing/", language)

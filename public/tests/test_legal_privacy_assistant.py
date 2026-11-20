@@ -131,31 +131,71 @@ def test_privacy_says_where_the_dictation_audio_goes_and_that_nobody_here_keeps_
     assert [claim for claim in claims if claim not in dictation] == []
 
 
+def transfer_paragraphs(client, language: str) -> list[str]:
+    return [" ".join(text.split()) for text in re.findall(r"<p>(.*?)</p>", privacy(client, language), re.DOTALL)]
+
+
+# Section 6 as the provider of the default model publishes it (its commercial terms, its data processing addendum, its
+# privacy centre and the API's data residency page, read on 2026-11-20): traffic may go to the United States, Europe,
+# Asia and Australia, the data is stored in the United States, there is no EU-only option, and the addendum, part of
+# its terms, brings the Standard Contractual Clauses, modules two and three.
+DEFAULT_MODEL_TRANSFER = {
+    "en": (
+        "The language model the AI assistant uses by default is Anthropic's.",
+        "the United States, Europe, Asia and Australia",
+        "stores the data in the United States",
+        "so they are transferred outside the EEA",
+        "Standard Contractual Clauses (modules two and three)",
+    ),
+    "es": (
+        "El modelo de lenguaje que el asistente IA usa por defecto es el de Anthropic.",
+        "Estados Unidos, Europa, Asia y Australia",
+        "guarda los datos en Estados Unidos",
+        "así que se transfieren fuera del EEE",
+        "Cláusulas Contractuales Tipo (módulos dos y tres)",
+    ),
+}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_privacy_says_where_the_default_model_takes_the_queries_and_under_what(client, language):
+    """Art. 13.1.f GDPR: a transfer outside the EEA and its safeguard are stated; no other framework is claimed."""
+    claims = DEFAULT_MODEL_TRANSFER[language]
+    [transfer] = [text for text in transfer_paragraphs(client, language) if claims[0] in text]
+
+    assert [claim for claim in claims if claim not in transfer] == []
+    assert "Privacy Framework" not in privacy(client, language)
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    ("language", "model", "outside", "voice"),
+    ("language", "backup", "voice"),
     [
         (
             "en",
-            "The language model of the AI assistant is served from",
-            "Some processors may process data outside the EEA",
-            "the provider of the voice and search fingerprint services of the assistant",
+            "The backup language model is served from Alibaba Cloud Model Studio's Germany (Frankfurt) region",
+            "The provider of the voice and search fingerprint services of the assistant may also process data outside the EEA",
         ),
         (
             "es",
-            "El modelo de lenguaje del asistente IA se sirve desde",
-            "Algunos encargados pueden tratar datos fuera del EEE",
-            "el proveedor de los servicios de voz y de huellas de búsqueda del asistente",
+            "El modelo de lenguaje de respaldo se sirve desde la región Alemania (Fráncfort) de Alibaba Cloud Model Studio",
+            "El proveedor de los servicios de voz y de huellas de búsqueda del asistente también puede tratar datos fuera del EEE",
         ),
     ],
 )
-def test_privacy_counts_the_voice_provider_among_the_transfers_outside_the_eea(client, language, model, outside, voice):
-    """Section 6: Frankfurt serves the language model, not the dictation, and the voice provider is a transfer."""
-    paragraphs = [" ".join(text.split()) for text in re.findall(r"<p>(.*?)</p>", privacy(client, language), re.DOTALL)]
-    [transfers] = [text for text in paragraphs if outside in text]
+def test_privacy_counts_the_voice_provider_among_the_transfers_outside_the_eea(client, language, backup, voice):
+    """Section 6: Frankfurt serves the backup model, not the dictation, and the voice provider is a transfer too."""
+    paragraphs = transfer_paragraphs(client, language)
 
-    assert [text for text in paragraphs if model in text]
-    assert voice in transfers
+    assert [text for text in paragraphs if backup in text]
+    assert [text for text in paragraphs if voice in text]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("language", "stale"), [("en", "European provider"), ("es", "proveedor europeo")])
+def test_privacy_no_longer_calls_the_default_model_the_european_one(client, language, stale):
+    assert stale not in privacy(client, language)
 
 
 # --- The assistant's web search: Brave Search ------------------------------------------------------------------------
@@ -189,8 +229,8 @@ WEB_SEARCH_RECIPIENT = {
 }
 
 WEB_SEARCH_TRANSFER = {
-    "en": ("Some processors may process data outside the EEA", ("United States", "do not cover them")),
-    "es": ("Algunos encargados pueden tratar datos fuera del EEE", ("Estados Unidos", "no las cubren")),
+    "en": ("may also process data outside the EEA", ("United States", "do not cover them")),
+    "es": ("también puede tratar datos fuera del EEE", ("Estados Unidos", "no las cubren")),
 }
 
 WEB_SEARCH_RULE = {
@@ -285,10 +325,10 @@ def test_the_search_the_assistant_calls_is_the_one_the_policy_names():
 @pytest.mark.django_db
 def test_the_privacy_date_moved_with_the_last_change(client):
     """The version an account accepts is the date of the page (``accounts/tests/test_terms.py`` keeps them equal):
-    naming Brave is a new text, so both move, and every account accepts it at its next sign-in."""
-    assert PRIVACY_VERSION > date(2026, 11, 3)
-    assert "November 3, 2026" not in privacy(client, "en")
-    assert "3 de noviembre de 2026" not in privacy(client, "es")
+    a new default model provider is a new text, so both move, and every account accepts it at its next sign-in."""
+    assert PRIVACY_VERSION > date(2026, 11, 17)
+    assert "November 17, 2026" not in privacy(client, "en")
+    assert "17 de noviembre de 2026" not in privacy(client, "es")
 
 
 # The dictation of the account's panel reaches the same provider without a hub in the way.
@@ -350,7 +390,7 @@ def test_privacy_promises_no_switch_nor_consent_the_hub_lacks_and_says_when_the_
     does not have are false statements, however reassuring."""
     expected = ASSISTANT_CONDITION[language]
     html = " ".join(privacy(client, language).split())
-    [model] = list_items_naming(html, "Model Studio")
+    [model] = list_items_naming(html, "Anthropic Ireland, Limited")
 
     assert [promise for promise in expected["promises"] if promise in html] == []
     assert [condition for condition in expected["condition"] if condition not in html] == []
