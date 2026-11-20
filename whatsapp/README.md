@@ -21,21 +21,21 @@ hub#151). Firma de todo `/internal`, en los dos sentidos:
 
 | Puerta | Sentido | Qué | Aquí |
 |---|---|---|---|
-| 1 `POST /internal/whatsapp/inbound` | SaaS → Hub | un mensaje, eco o historial | `hub_client.post_inbound`, desde `gateway.deliver` |
+| 1 `POST /internal/whatsapp/inbound` | SaaS → Hub | un mensaje, eco o historial | `hub_client.post_inbound`, desde `gateway.deliveries.deliver` |
 | 2 `POST /internal/whatsapp/status` | SaaS → Hub | un estado con su `client_message_id`; sin ella, el de una respuesta del dueño desde el móvil ya entregada por la puerta 1 | `hub_client.post_status` |
 | 3 `PUT /internal/whatsapp/channel` | SaaS → Hub | el canal | **no se usa**: va en la foto (puerta 4) |
 | 4 clave `whatsapp` de `PUT /internal/hubs/{id}/state` | SaaS → Hub | el canal con la versión de la foto | `queries.channel_block` en `hubs.queries.hub_sync.hub_snapshot`; `services.announce_channel` sube la versión y empuja tras el COMMIT (también el rechazo por tope, una vez por cifra) |
-| 5 `POST /internal/whatsapp/send` + `Idempotency-Key` | Hub → SaaS | enviar; el 409 `whatsapp.reconnect_needed` (Meta dijo 190: el permiso caducó o se retiró; el número queda «Hay que reconectar»), distinto de `not_connected`, ya en el contrato del Hub; una plantilla con foto, vídeo o documento en la cabecera lleva su archivo (`header_format` + `header_sample`), que se sube al número (`meta.upload_media`) antes de enviarla; el 409 `whatsapp.cap_reached` no cambia, pero empuja la foto con el consumo real del mes si no se había avisado esa cifra (WHATSAPP-F05; `WORKBOOK.md`, «Para quien lo mantiene») | `internal.send` → `gateway.send` |
-| 6 `POST /internal/whatsapp/erase` | Hub → SaaS | olvidar un número de cliente | `gateway.erase` |
+| 5 `POST /internal/whatsapp/send` + `Idempotency-Key` | Hub → SaaS | enviar; el 409 `whatsapp.reconnect_needed` (Meta dijo 190: el permiso caducó o se retiró; el número queda «Hay que reconectar»), distinto de `not_connected`, ya en el contrato del Hub; una plantilla con foto, vídeo o documento en la cabecera lleva su archivo (`header_format` + `header_sample`), que se sube al número (`meta.upload_media`) antes de enviarla; el 409 `whatsapp.cap_reached` no cambia, pero empuja la foto con el consumo real del mes si no se había avisado esa cifra (WHATSAPP-F05; `WORKBOOK.md`, «Para quien lo mantiene») | `internal.send` → `gateway.sending.send` |
+| 6 `POST /internal/whatsapp/erase` | Hub → SaaS | olvidar un número de cliente | `gateway.deliveries.erase` |
 | 7 | — | envío de estados (obligación de la 2) | el webhook los aparca y `deliver` los empuja |
-| 8 `POST /internal/whatsapp/templates` + `Idempotency-Key` | Hub → SaaS | registrar una plantilla (con una cabecera de foto, vídeo o documento, su muestra en base64, que se sube antes a Meta: cuerpo hasta `MAX_TEMPLATE_BODY_BYTES`, WHATSAPP-F16); a un 190 de Meta, 409 `whatsapp.reconnect_needed` y el número «Hay que reconectar», como en la 5 (el Hub ya lo entiende, hub#245) | `gateway.submit_template` |
-| 9 `POST /internal/whatsapp/templates/delete` | Hub → SaaS | borrar una plantilla en un idioma; a un 190 de Meta, 409 `whatsapp.reconnect_needed`, como en la 8 | `gateway.delete_template` |
-| 10 `POST /internal/whatsapp/config` | Hub → SaaS | lo público para abrir la ventana de Meta, con `redirect_uri` (la página de vuelta) | `gateway.config` |
-| 11 `POST /internal/whatsapp/connect` | Hub → SaaS | conectar el número que dio la ventana | `gateway.connect` |
-| 12 `POST /internal/whatsapp/disconnect` | Hub → SaaS | desconectar | `gateway.disconnect` |
+| 8 `POST /internal/whatsapp/templates` + `Idempotency-Key` | Hub → SaaS | registrar una plantilla (con una cabecera de foto, vídeo o documento, su muestra en base64, que se sube antes a Meta: cuerpo hasta `MAX_TEMPLATE_BODY_BYTES`, WHATSAPP-F16); a un 190 de Meta, 409 `whatsapp.reconnect_needed` y el número «Hay que reconectar», como en la 5 (el Hub ya lo entiende, hub#245) | `gateway.message_templates.submit_template` |
+| 9 `POST /internal/whatsapp/templates/delete` | Hub → SaaS | borrar una plantilla en un idioma; a un 190 de Meta, 409 `whatsapp.reconnect_needed`, como en la 8 | `gateway.message_templates.delete_template` |
+| 10 `POST /internal/whatsapp/config` | Hub → SaaS | lo público para abrir la ventana de Meta, con `redirect_uri` (la página de vuelta) | `gateway.number_connection.config` |
+| 11 `POST /internal/whatsapp/connect` | Hub → SaaS | conectar el número que dio la ventana | `gateway.number_connection.connect` |
+| 12 `POST /internal/whatsapp/disconnect` | Hub → SaaS | desconectar | `gateway.number_connection.disconnect` |
 
 Respuestas y códigos de cada puerta: el docstring de `internal.py` (comunes: 401 `unauthorized`, 405, 413, 422
-`invalid_payload` con `fields`, 404 `hub_unknown`, también para una demo) y el de cada función de `gateway.py`.
+`invalid_payload` con `fields`, 404 `hub_unknown`, también para una demo) y el de cada función de `gateway/`.
 Las puertas 10–12 y la página de vuelta de la ventana de Meta (`GET /whatsapp/return`) están escritas en el
 `WORKBOOK.md`, «Para quien lo mantiene»; el Hub las llama desde sus ajustes de la bandeja (hub#151).
 
@@ -50,7 +50,7 @@ Las puertas 10–12 y la página de vuelta de la ventana de Meta (`GET /whatsapp
 | `webhooks.py` | `GET/POST /webhooks/whatsapp/`: verificación (`hub.verify_token`) y firma `X-Hub-Signature-256`; 503 sin configurar, 403, 413, 400 |
 | `hub_client.py` | Las puertas 1 y 2, firmadas; `Unreachable` sin respuesta o sin los certificados de confianza del servidor (`base.tls`) |
 | `internal.py` | Las puertas 5, 6, 8, 9 y 10–12 (`_door`: firma, tamaño, esquema, `Idempotency-Key`) |
-| `gateway.py` | Los pasos de cada puerta alrededor de las operaciones: nunca una transacción esperando a Meta o al Hub. Sin ORM |
+| `gateway/` | Los pasos de cada puerta alrededor de las operaciones: nunca una transacción esperando a Meta o al Hub. Sin ORM. Un módulo por tarea, sin reexportar nada desde el paquete: `deliveries` (lo que avisa Meta, empujado al Hub, y la puerta 6), `sending` (la 5), `message_templates` (la 8, la 9 y la relectura de la lista de Meta), `token_renewal` (la renovación diaria del permiso), `number_connection` (las 10–12) y `answers` (el sobre de error y los códigos de Meta según lo que se le dice al Hub) |
 | `templates.py` | Las reglas de Meta de una plantilla antes de llamarla (`check`), sus componentes y la lectura de la lista de Meta (`from_meta`) |
 | `signup_return.py` | `GET /whatsapp/return`: la vuelta de la ventana de Meta; devuelve el código (o el motivo de Meta) por `postMessage` solo al origen del hub que nombra el `state` y se cierra; COOP `unsafe-none` solo aquí, el dato en `json_script` y el script con el nonce de la CSP; plantilla `templates/whatsapp/signup_return.html` |
 | `media.py` | `GET /whatsapp/media/<id de la entrega>`: el adjunto de un cliente con la sesión de erplora.com y miembro aceptado del negocio, en streaming desde Meta, sin caché; lo que no es imagen, audio o vídeo se descarga con CSP `sandbox`; a un 190 de Meta, al pedir el adjunto o al descargarlo, 409 `whatsapp.reconnect_needed` y el número «Hay que reconectar» (sin número, 409 `whatsapp.not_connected`) |
@@ -87,8 +87,8 @@ que `services.wake_the_worker` manda tras el COMMIT de lo que deja una entrega p
 del siguiente reintento (`whatsapp.delivery.next_due`) y el siguiente cuarto de hora; entre despertares no consulta la
 base de datos (su espera es un `select` sobre el socket de su conexión `LISTEN`, `base/listener.py`).
 
-- Cada pasada es `gateway.deliver_pass`: bajo el lock de `whatsapp_deliver` (una a la vez, también con el comando) y
-  de 50 s como mucho (`gateway.PASS_BUDGET`): cada lote reserva solo las entregas cuyas llamadas al Hub caben en lo
+- Cada pasada es `gateway.deliveries.deliver_pass`: bajo el lock de `whatsapp_deliver` (una a la vez, también con el comando) y
+  de 50 s como mucho (`gateway.deliveries.PASS_BUDGET`): cada lote reserva solo las entregas cuyas llamadas al Hub caben en lo
   que le queda (10 s cada una en el peor caso: 5 s para conectar y 5 s para responder). Así nada reservado (5 min; el
   webhook, 20 llamadas = 200 s) se vuelve a reservar mientras aún se empuja. Si queda más, la siguiente empieza ya.
 - Orden por negocio: un mensaje no sale antes que otro más antiguo de su negocio que aún espera (como mucho

@@ -448,7 +448,7 @@ Implicados: ninguno
   el `NOTIFY whatsapp_delivery` que se manda tras el COMMIT de lo que deja una entrega pendiente o mueve su espera
   (`services.wake_the_worker`: el webhook que aparca algo, un reintento, una entrega retenida, «Entregar al Hub ahora» del admin),
   a la hora del siguiente reintento (`whatsapp.delivery.next_due`) y cada 15 minutos; entre despertares no consulta la
-  base de datos. Cada pasada es `gateway.deliver_pass` bajo el lock de `whatsapp_deliver`: el comando del mismo nombre
+  base de datos. Cada pasada es `gateway.deliveries.deliver_pass` bajo el lock de `whatsapp_deliver`: el comando del mismo nombre
   queda para el rescate a mano (y para `pre`, mientras no tenga su `saas-worker`), sin programar. El orden por negocio:
   `whatsapp.delivery.claim` deja un mensaje detrás de uno más antiguo de su negocio que aún espera
   (`queries.behind_a_waiting_message`, con `FOR UPDATE SKIP LOCKED` y el arriendo de 5 minutos), y en un lote los

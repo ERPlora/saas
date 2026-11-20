@@ -21,7 +21,8 @@ import respx
 from django.utils import timezone
 
 from hubs.models import Hub
-from whatsapp import gateway, queries
+from whatsapp import queries
+from whatsapp.gateway import answers, deliveries, message_templates
 from whatsapp.models import PhoneNumber, Template, TemplateSubmission
 from whatsapp.tests.conftest import APP_ID, GRAPH
 from whatsapp.tests.test_internal import door, error_code, internal, number  # noqa: F401 - shared fixtures
@@ -262,7 +263,7 @@ class TestNotTaken:
         assert (response.status_code, error_code(response)) == (409, "whatsapp.reconnect_needed")
         assert PhoneNumber.objects.get(hub=business).needs_reconnect is True
 
-    @pytest.mark.parametrize("code", sorted(gateway.NOT_CONNECTED - {gateway.EXPIRED_PERMISSION}))
+    @pytest.mark.parametrize("code", sorted(answers.NOT_CONNECTED - {answers.EXPIRED_PERMISSION}))
     @respx.mock
     def test_any_other_lost_connection_is_not_connected_and_marks_nothing(self, client, number, business, code):
         respx.post(TEMPLATES).mock(return_value=refused(403, code, message="Permission denied"))
@@ -423,7 +424,7 @@ class TestDeleting:
         assert not meta.called
         assert PhoneNumber.objects.get(hub=business).needs_reconnect is True
 
-    @pytest.mark.parametrize("code", sorted(gateway.NOT_CONNECTED - {gateway.EXPIRED_PERMISSION}))
+    @pytest.mark.parametrize("code", sorted(answers.NOT_CONNECTED - {answers.EXPIRED_PERMISSION}))
     @respx.mock
     def test_any_other_lost_connection_keeps_it_as_not_connected(self, client, number, business, code):
         mirrored(business)
@@ -469,7 +470,7 @@ class TestTheMirror:
         ])
         before = Hub.objects.get(pk=business.pk).state_version
 
-        gateway.sync_templates(business.id)
+        message_templates.sync_templates(business.id)
 
         assert pages.calls[1].request.url.params["after"] == "QVFI"
         assert "EAAG-token" not in str(pages.calls[0].request.url)
@@ -487,7 +488,7 @@ class TestTheMirror:
             httpx.Response(500),
         ])
 
-        gateway.sync_templates(business.id)
+        message_templates.sync_templates(business.id)
 
         assert sorted(Template.objects.filter(hub=business).values_list("name", flat=True)) == ["a", "vieja"]
 
@@ -496,14 +497,14 @@ class TestTheMirror:
         mirrored(business)
         respx.get(TEMPLATES).mock(side_effect=httpx.ConnectError("down"))
 
-        gateway.sync_templates(business.id)
+        message_templates.sync_templates(business.id)
 
         assert Template.objects.filter(hub=business).count() == 1
 
     def test_a_business_without_a_number_reads_nothing(self, internal, business):
         with respx.mock:
             meta = respx.get(TEMPLATES)
-            gateway.sync_templates(business.id)
+            message_templates.sync_templates(business.id)
 
         assert not meta.called
 
@@ -516,7 +517,7 @@ class TestTheMirror:
             "value": {"event": "APPROVED", "message_template_id": 55, "message_template_name": "nueva",
                       "message_template_language": "es", "reason": "NONE"}}]}]}
 
-        gateway.ingest(verdict)
+        deliveries.ingest(verdict)
 
         assert listed.called
         assert Template.objects.get(hub=business).meta_id == "55"

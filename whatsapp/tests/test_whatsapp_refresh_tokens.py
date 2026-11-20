@@ -1,5 +1,5 @@
 """Renew Meta's permission before it expires and tell the owner when it cannot be
-(``manage.py whatsapp_refresh_tokens``, once a day; ``gateway.renew_tokens``).
+(``manage.py whatsapp_refresh_tokens``, once a day; ``token_renewal.renew_tokens``).
 
 Inside the last 14 days the token is exchanged for a fresh one
 and its new deadline stored; Meta refusing marks the number «needs reconnecting» and mails the owner once per
@@ -19,7 +19,8 @@ from django.core.management import CommandError, call_command
 from django.utils import timezone
 
 from hubs.models import Hub
-from whatsapp import gateway, meta
+from whatsapp import meta
+from whatsapp.gateway import token_renewal
 from whatsapp.models import PhoneNumber
 from whatsapp.tests.conftest import GRAPH
 
@@ -53,7 +54,7 @@ class TestRenewing:
         number = make_number(business, days=10)
         exchange = meta_renews()
 
-        counts = gateway.renew_tokens()
+        counts = token_renewal.renew_tokens()
 
         number.refresh_from_db()
         assert counts["renewed"] == 1
@@ -67,7 +68,7 @@ class TestRenewing:
         make_number(business, days=days)
         exchange = meta_renews()
 
-        gateway.renew_tokens()
+        token_renewal.renew_tokens()
 
         assert not exchange.called
 
@@ -76,7 +77,7 @@ class TestRenewing:
         make_number(business, is_active=False)
         exchange = meta_renews()
 
-        gateway.renew_tokens()
+        token_renewal.renew_tokens()
 
         assert not exchange.called
 
@@ -86,7 +87,7 @@ class TestRenewing:
         Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETING)
         exchange = meta_renews()
 
-        gateway.renew_tokens()
+        token_renewal.renew_tokens()
 
         assert not exchange.called
 
@@ -96,7 +97,7 @@ class TestRenewing:
         meta_renews()
         before = Hub.objects.get(pk=business.pk).state_version
 
-        gateway.renew_tokens()
+        token_renewal.renew_tokens()
 
         number.refresh_from_db()
         assert (number.needs_reconnect, number.reconnect_alerted_at) == (False, None)
@@ -108,7 +109,7 @@ class TestRenewing:
         other = make_number(other_business, days=40, access_token="EAAG-other")
         meta_renews()
 
-        gateway.renew_tokens()
+        token_renewal.renew_tokens()
 
         other.refresh_from_db()
         assert other.access_token == "EAAG-other"
@@ -122,7 +123,7 @@ class TestWhenMetaSaysNo:
         meta_refuses()
         before = Hub.objects.get(pk=business.pk).state_version
 
-        counts = gateway.renew_tokens()
+        counts = token_renewal.renew_tokens()
 
         number.refresh_from_db()
         assert counts["needs_reconnect"] == 1
@@ -136,8 +137,8 @@ class TestWhenMetaSaysNo:
         make_number(business)
         meta_refuses()
 
-        gateway.renew_tokens()
-        gateway.renew_tokens()
+        token_renewal.renew_tokens()
+        token_renewal.renew_tokens()
 
         assert len(mail.outbox) == 1
 
@@ -147,7 +148,7 @@ class TestWhenMetaSaysNo:
         meta_refuses()
         monkeypatch.setattr("django.core.mail.EmailMessage.send", lambda *a, **k: (_ for _ in ()).throw(OSError("down")))
 
-        gateway.renew_tokens()
+        token_renewal.renew_tokens()
 
         number.refresh_from_db()
         assert number.needs_reconnect is True and number.reconnect_alerted_at is None
@@ -159,7 +160,7 @@ class TestWhenMetaSaysNo:
         make_number(business)
         meta_refuses()
 
-        gateway.renew_tokens()
+        token_renewal.renew_tokens()
 
         assert mail.outbox[0].subject.startswith("Hay que actuar")
 
@@ -177,7 +178,7 @@ class TestWhenMetaDoesNotAnswer:
         route = respx.get(EXCHANGE)
         route.mock(side_effect=answer) if isinstance(answer, Exception) else route.mock(return_value=answer)
 
-        counts = gateway.renew_tokens()
+        counts = token_renewal.renew_tokens()
 
         number.refresh_from_db()
         assert counts["unverified"] == 1
@@ -190,7 +191,7 @@ class TestWhenMetaDoesNotAnswer:
         number = make_number(business, days=days)
         respx.get(EXCHANGE).mock(side_effect=httpx.ConnectError("down"))
 
-        gateway.renew_tokens()
+        token_renewal.renew_tokens()
 
         number.refresh_from_db()
         assert number.needs_reconnect is True
@@ -202,7 +203,7 @@ class TestWhenMetaDoesNotAnswer:
         respx.get(EXCHANGE).mock(return_value=httpx.Response(200, json={"access_token": "EAAG-new", "expires_in": 5184000}))
         respx.get(DEBUG).mock(return_value=httpx.Response(500))
 
-        gateway.renew_tokens()
+        token_renewal.renew_tokens()
 
         number.refresh_from_db()
         assert number.access_token == "EAAG-new"
@@ -213,7 +214,7 @@ class TestWhenMetaDoesNotAnswer:
         make_number(business, days=5)
         respx.get(EXCHANGE).mock(side_effect=httpx.ConnectError("down"))
 
-        gateway.renew_tokens()
+        token_renewal.renew_tokens()
 
         assert "whatsapp.token.running_out" in caplog.text
         assert "EAAG" not in caplog.text
@@ -223,7 +224,7 @@ class TestWhenMetaDoesNotAnswer:
         make_number(business, days=5)
         meta_renews()
 
-        gateway.renew_tokens()
+        token_renewal.renew_tokens()
 
         assert "running_out" not in caplog.text
 
@@ -232,16 +233,16 @@ class TestWhenMetaDoesNotAnswer:
         first = make_number(business)
         second = make_number(other_business, access_token="EAAG-second")
         meta_renews()
-        real = gateway._renew
+        real = token_renewal._renew
 
         def renew(token):
             if token == "EAAG-old":
                 raise RuntimeError("surprise")
             return real(token)
 
-        monkeypatch.setattr(gateway, "_renew", renew)
+        monkeypatch.setattr(token_renewal, "_renew", renew)
 
-        counts = gateway.renew_tokens()
+        counts = token_renewal.renew_tokens()
 
         first.refresh_from_db(), second.refresh_from_db()
         assert (first.access_token, second.access_token) == ("EAAG-old", "EAAG-new")
@@ -269,7 +270,7 @@ class TestWithoutMetasApp:
             make_number(business, **number)
         exchange = meta_renews()
 
-        counts = gateway.renew_tokens()
+        counts = token_renewal.renew_tokens()
 
         assert counts["due"] == 0 and sum(counts.values()) == 0
         assert not exchange.called
@@ -281,7 +282,7 @@ class TestWithoutMetasApp:
         exchange = meta_renews()
 
         with pytest.raises(meta.NotConfigured):
-            gateway.renew_tokens()
+            token_renewal.renew_tokens()
 
         number.refresh_from_db()
         assert not exchange.called
@@ -315,7 +316,7 @@ class TestTheCommand:
         def renew(token):
             raise RuntimeError("surprise")
 
-        monkeypatch.setattr(gateway, "_renew", renew)
+        monkeypatch.setattr(token_renewal, "_renew", renew)
 
         with pytest.raises(CommandError, match="some numbers crashed"):
             call_command("whatsapp_refresh_tokens", stdout=StringIO())

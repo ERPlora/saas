@@ -24,7 +24,8 @@ from base.listener import Listener
 from base.tests.conftest import other_session  # noqa: F401 - a second session, as another process
 from base.tests.test_listener import on_its_socket
 from hubs.tests.test_guardrails import database_touches
-from whatsapp import gateway, queries, services
+from whatsapp import queries, services
+from whatsapp.gateway import deliveries
 from whatsapp.models import Delivery
 from whatsapp.schemas import NextDueOut
 from whatsapp.tests.conftest import (  # noqa: F401 - the fixtures of a business with its number
@@ -41,7 +42,7 @@ from whatsapp.tests.test_parse import messages, text
 from whatsapp.tests.test_services import ingest
 
 INBOUND = r"^/internal/whatsapp/inbound$"
-NOTHING = dict.fromkeys(gateway.COUNTS, 0)
+NOTHING = dict.fromkeys(deliveries.COUNTS, 0)
 TEN_O_SEVEN = datetime(2026, 11, 5, 10, 7, tzinfo=UTC)
 DELIVER_LOCK = "hashtext('erplora.saas.whatsapp_deliver')"
 
@@ -92,7 +93,7 @@ class Ear:
 def quiet_deliveries(monkeypatch):
     """No delivery to push and none due: the passes of the reconciliations alone."""
     passes: list[object] = []
-    monkeypatch.setattr(gateway, "deliver_pass", lambda stop=None: passes.append(stop) or dict(NOTHING))
+    monkeypatch.setattr(deliveries, "deliver_pass", lambda stop=None: passes.append(stop) or dict(NOTHING))
     monkeypatch.setattr(queries, "delivery_next_due", lambda ctx, data: NextDueOut(at=None))
     return passes
 
@@ -186,7 +187,7 @@ def test_the_next_round_is_the_next_quarter_of_an_hour_after_now(now, expected):
 def test_it_sleeps_until_the_next_delivery_due_or_the_next_round(monkeypatch, now, due_in, pushed, expected):
     clock, stop = Clock(now), threading.Event()
     due = None if due_in is None else now + timedelta(seconds=due_in)
-    monkeypatch.setattr(gateway, "deliver_pass", lambda stop=None: {**NOTHING, "delivered": pushed})
+    monkeypatch.setattr(deliveries, "deliver_pass", lambda stop=None: {**NOTHING, "delivered": pushed})
     monkeypatch.setattr(queries, "delivery_next_due", lambda ctx, data: NextDueOut(at=due))
     monkeypatch.setattr(worker, "PERIODIC", ())
     ear = Ear(stop, waits=1)
@@ -205,7 +206,7 @@ def test_a_failed_pass_is_logged_and_the_loop_goes_on(monkeypatch, caplog):
             raise RuntimeError("the database went away")
         return dict(NOTHING)
 
-    monkeypatch.setattr(gateway, "deliver_pass", deliver_pass)
+    monkeypatch.setattr(deliveries, "deliver_pass", deliver_pass)
     monkeypatch.setattr(queries, "delivery_next_due", lambda ctx, data: NextDueOut(at=None))
     monkeypatch.setattr(worker, "PERIODIC", ())
     ear = Ear(stop, waits=2, clock=clock)
@@ -307,7 +308,7 @@ def test_a_stop_asked_during_the_pass_ends_the_loop_after_it(monkeypatch):
         finished.append(stop_asked)
         return dict(NOTHING)
 
-    monkeypatch.setattr(gateway, "deliver_pass", deliver_pass)
+    monkeypatch.setattr(deliveries, "deliver_pass", deliver_pass)
     monkeypatch.setattr(worker, "PERIODIC", ())
     ear = Ear(stop, waits=99)
 

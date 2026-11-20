@@ -158,8 +158,8 @@ def seed(ids: dict[str, UUID], used: int = 0, behind: bool = False) -> dict:
             "needs_reconnect": False,
         },
     )
-    # What erplora.com writes after reading Meta's list (gateway.sync_templates), without calling Meta. Not
-    # ``complete``: a template the run added stays, as one Meta's list did not reach.
+    # What erplora.com writes after reading Meta's list (gateway.message_templates.sync_templates), without calling
+    # Meta. Not ``complete``: a template the run added stays, as one Meta's list did not reach.
     items = [mirror for mirror in map(templates.from_meta, TEMPLATES) if mirror is not None]
     whatsapp_services.template_sync(
         whatsapp_services.platform_context(), TemplateSyncIn(hub_id=hub.id, items=items, complete=False)

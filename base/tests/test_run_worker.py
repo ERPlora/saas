@@ -18,10 +18,11 @@ from django.core.management.base import CommandError
 
 from base import worker
 from base.listener import Listener
-from whatsapp import gateway, services
+from whatsapp import services
+from whatsapp.gateway import deliveries
 
 pytestmark = pytest.mark.django_db
-NOTHING = dict.fromkeys(gateway.COUNTS, 0)
+NOTHING = dict.fromkeys(deliveries.COUNTS, 0)
 
 
 def run_worker() -> str:
@@ -48,7 +49,7 @@ def test_a_stop_signal_during_a_pass_lets_it_end_and_exits_cleanly(monkeypatch, 
         passes.append("ended" if stop.is_set() else "not stopped")
         return dict(NOTHING)
 
-    monkeypatch.setattr(gateway, "deliver_pass", deliver_pass)
+    monkeypatch.setattr(deliveries, "deliver_pass", deliver_pass)
     before = signal.getsignal(sig)
 
     output = run_worker()
@@ -59,7 +60,7 @@ def test_a_stop_signal_during_a_pass_lets_it_end_and_exits_cleanly(monkeypatch, 
 
 
 def test_sigterm_wakes_the_wait_at_once(monkeypatch, no_rounds):
-    monkeypatch.setattr(gateway, "deliver_pass", lambda stop=None: dict(NOTHING))
+    monkeypatch.setattr(deliveries, "deliver_pass", lambda stop=None: dict(NOTHING))
     timeouts: list[float] = []
     ear = Listener(services.DELIVERY_CHANNEL)
 

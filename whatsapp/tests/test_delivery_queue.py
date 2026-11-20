@@ -19,7 +19,8 @@ from django.db import connection, transaction
 from django.db.models import F
 from django.utils import timezone
 
-from whatsapp import gateway, hub_client, services
+from whatsapp import hub_client, services
+from whatsapp.gateway import deliveries
 from whatsapp.models import Delivery
 from whatsapp.queries import delivery_next_due
 from whatsapp.schemas import ClaimIn, DueNowIn, HeldDelivery, HoldIn, NextDueIn, RecordIn
@@ -143,7 +144,7 @@ def test_a_business_whose_hub_fails_keeps_its_next_messages_and_the_others_go_on
     park(business, "wamid.a2", ago=20)
     park(other_business, "wamid.b2", ago=10)
 
-    counts = gateway.deliver()
+    counts = deliveries.deliver()
 
     assert counts == {**NOTHING, "delivered": 2, "retried": 1, "held": 1}
     assert hub.pushes == [
@@ -160,17 +161,17 @@ def test_the_held_messages_go_after_the_one_that_failed_once_its_wait_passed(bus
     hub = Hub(monkeypatch, failing={business.slug})
     park(business, "wamid.1", ago=20)
     park(business, "wamid.2", ago=10)
-    gateway.deliver()
+    deliveries.deliver()
     park(business, "wamid.3")
     hub.pushes.clear()
 
     clock.now += services.FIRST_WAIT - timedelta(seconds=1)
-    assert gateway.deliver([business.id]) == NOTHING
+    assert deliveries.deliver([business.id]) == NOTHING
     assert hub.pushes == []
 
     hub.failing.clear()
     clock.now += timedelta(seconds=2)
-    assert gateway.deliver()["delivered"] == 3
+    assert deliveries.deliver()["delivered"] == 3
     assert hub.pushes == [(business.slug, "wamid.1"), (business.slug, "wamid.2"), (business.slug, "wamid.3")]
 
 
@@ -182,7 +183,7 @@ def test_a_stop_asked_during_a_batch_gives_back_what_it_has_not_pushed_yet(busin
     for n, hub_row in enumerate((business, other_business, other_business)):
         park(hub_row, f"wamid.{n}", ago=30 - n)
 
-    counts = gateway.deliver(stop=stop)
+    counts = deliveries.deliver(stop=stop)
 
     assert counts == {**NOTHING, "delivered": 1, "held": 2}
     assert hub.pushes == [(business.slug, "wamid.0")]
@@ -370,7 +371,7 @@ def test_a_row_another_deliverer_holds_locked_is_skipped_not_pushed_twice(
 
     with other_session.transaction():
         other_session.execute("SELECT id FROM whatsapp_delivery WHERE id = %s FOR UPDATE", [locked.id])
-        counts = gateway.deliver()
+        counts = deliveries.deliver()
 
     assert counts["delivered"] == 1
     assert hub.pushes == [(other_business.slug, "wamid.b")]
@@ -388,8 +389,8 @@ def test_two_deliverers_at_once_push_each_message_once(business, other_business,
     def deliverer():
         try:
             start.wait(5)
-            gateway.deliver()
-            gateway.deliver()
+            deliveries.deliver()
+            deliveries.deliver()
         except BaseException as error:  # noqa: BLE001 - surfaced by the assert below
             errors.append(error)
         finally:
@@ -453,7 +454,7 @@ def test_a_message_waits_while_another_claim_still_holds_the_older_one_uncommitt
     park(other_business, "wamid.9", ago=5)
 
     with a_claim_paused_in_its_transaction(monkeypatch, business.id) as claimed:
-        counts = gateway.deliver()
+        counts = deliveries.deliver()
 
     assert claimed == ["wamid.1"]
     assert hub.pushes == [(other_business.slug, "wamid.9")]
@@ -463,13 +464,13 @@ def test_a_message_waits_while_another_claim_still_holds_the_older_one_uncommitt
 
 @pytest.mark.django_db(transaction=True)
 def test_the_webhook_does_not_push_past_an_older_message_another_claim_is_taking(number, monkeypatch):
-    """Meta's webhook pushes what it parked at once (``gateway.ingest``), without the pass's lock: while another claim
-    of the business holds an older message uncommitted, the new one is parked and waits (the worker takes it)."""
+    """Meta's webhook pushes what it parked at once (``deliveries.ingest``), without the pass's lock: while another
+    claim of the business holds an older message uncommitted, the new one is parked and waits (the worker takes it)."""
     hub = Hub(monkeypatch)
     park(number.hub, "wamid.1", ago=20)
 
     with a_claim_paused_in_its_transaction(monkeypatch, number.hub_id):
-        gateway.ingest(messages(text("wamid.3")))
+        deliveries.ingest(messages(text("wamid.3")))
 
     assert hub.pushes == []
     assert row("wamid.3").delivered_at is None
