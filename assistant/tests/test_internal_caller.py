@@ -184,6 +184,6 @@ def test_only_the_platform_resolves_a_caller(ai_admin, business):
     from assistant.tests.conftest import staff_ctx
 
     with pytest.raises(PermissionDenied) as refused:
-        queries.caller_resolve(staff_ctx(ai_admin), CallerIn(hub=business.slug))
+        queries.callers.caller_resolve(staff_ctx(ai_admin), CallerIn(hub=business.slug))
 
     assert refused.value.code == "assistant.platform_only"

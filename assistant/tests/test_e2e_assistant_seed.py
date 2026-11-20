@@ -75,7 +75,7 @@ def test_the_owner_speaks_the_language_asked(seed):
 def test_clear_leaves_nothing_of_the_owner(seed):
     seed.panel(ADDRESS)
     owner = get_user_model().objects.get(email="e2e-assistant-owner@example.com")
-    AssistantUsage.objects.create(user=owner, month=queries.month_of(timezone.now()), messages=2)
+    AssistantUsage.objects.create(user=owner, month=queries.usage.month_of(timezone.now()), messages=2)
 
     seed.clear()
 

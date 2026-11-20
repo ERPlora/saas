@@ -48,7 +48,7 @@ def chat_requests(fake_provider) -> list:
 
 
 def usage_row(business) -> AssistantUsage | None:
-    return AssistantUsage.objects.filter(hub=business, month=queries.month_of(timezone.now())).first()
+    return AssistantUsage.objects.filter(hub=business, month=queries.usage.month_of(timezone.now())).first()
 
 
 class TestTheLiveAnswer:
@@ -206,7 +206,7 @@ class TestTheHubsTools:
     def test_the_last_message_of_the_month_still_gets_its_tools_answered(self, client, internal, business, answering, fake_provider):
         """The turn that follows a tool is answered even when the message that asked for it was the month's last one:
         otherwise the person sees the tool run and no answer."""
-        AssistantUsage.objects.create(hub=business, month=queries.month_of(timezone.now()), messages=29)
+        AssistantUsage.objects.create(hub=business, month=queries.usage.month_of(timezone.now()), messages=29)
         conversation, token = self._asked(client, business, fake_provider)
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Done."))
 
@@ -259,7 +259,7 @@ class TestTheHubsTools:
 
 class TestRefusalsBeforeTheModel:
     def test_a_spent_allowance_is_refused_without_calling_the_model(self, client, internal, business, answering, fake_provider):
-        AssistantUsage.objects.create(hub=business, month=queries.month_of(timezone.now()), messages=30)
+        AssistantUsage.objects.create(hub=business, month=queries.usage.month_of(timezone.now()), messages=30)
 
         response = door(client, STREAM, turn(business))
 
@@ -278,7 +278,7 @@ class TestRefusalsBeforeTheModel:
         assert (response.status_code, error_code(response)) == (429, "assistant.quota_exceeded")
 
     def test_a_demo_out_of_its_ten_is_refused_with_no_renewal(self, client, internal, answering, fake_provider):
-        AssistantUsage.objects.create(demo="demo-1a2b3c4d", month=queries.month_of(timezone.now()), messages=10)
+        AssistantUsage.objects.create(demo="demo-1a2b3c4d", month=queries.usage.month_of(timezone.now()), messages=10)
 
         response = door(client, STREAM, {"hub": "demo-1a2b3c4d", "messages": [user("Hi")]})
 
@@ -433,7 +433,7 @@ class TestTheJsonDoor:
         assert any(names_the_file(line, unreadable_ca) for line in logged)
 
     def test_a_spent_allowance_is_a_429_with_the_same_code(self, client, internal, business, answering, fake_provider):
-        AssistantUsage.objects.create(hub=business, month=queries.month_of(timezone.now()), messages=30)
+        AssistantUsage.objects.create(hub=business, month=queries.usage.month_of(timezone.now()), messages=30)
 
         response = door(client, JSON, turn(business))
 

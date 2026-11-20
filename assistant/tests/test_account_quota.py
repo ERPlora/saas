@@ -30,7 +30,7 @@ def claim(caller):
 
 
 def this_month() -> date:
-    return queries.month_of(timezone.now())
+    return queries.usage.month_of(timezone.now())
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ class TestTheAccountsAllowance:
 
         assert claimed.claimed is True
         assert (claimed.used, claimed.limit, claimed.demo) == (1, 30, False)
-        assert claimed.resets_at == queries.resets_at(this_month())
+        assert claimed.resets_at == queries.usage.resets_at(this_month())
         assert AssistantUsage.objects.get(user=account).month == this_month()
 
     def test_the_thirty_first_message_is_refused_and_not_counted(self, account):
@@ -61,7 +61,7 @@ class TestTheAccountsAllowance:
         assert [claim(account_of(account)).claimed for _ in range(3)] == [True, True, False]
 
     def test_last_months_messages_do_not_count_this_month(self, account):
-        last_month = queries.month_of(timezone.now() - timedelta(days=40))
+        last_month = queries.usage.month_of(timezone.now() - timedelta(days=40))
         AssistantUsage.objects.create(user=account, month=last_month, messages=30)
 
         claimed = claim(account_of(account))
@@ -86,13 +86,13 @@ class TestTheAccountsAllowance:
         claim(account_of(account))
         claim(account_of(account))
 
-        shown = queries.usage_show(platform_context(), account_of(account))
+        shown = queries.usage.usage_show(platform_context(), account_of(account))
 
         assert (shown.used, shown.limit, shown.demo) == (2, 30, False)
-        assert shown.resets_at == queries.resets_at(this_month())
+        assert shown.resets_at == queries.usage.resets_at(this_month())
 
     def test_an_account_never_used_shows_none_spent(self, account):
-        shown = queries.usage_show(platform_context(), account_of(account))
+        shown = queries.usage.usage_show(platform_context(), account_of(account))
 
         assert (shown.used, shown.limit) == (0, 30)
 
@@ -142,7 +142,7 @@ class TestGivingBackAndRecording:
         other = make_user("other@example.com")
         AssistantUsage.objects.create(user=other, month=this_month(), messages=5)
         AssistantUsage.objects.create(hub=business, month=this_month(), messages=5)
-        last_month = queries.month_of(timezone.now() - timedelta(days=40))
+        last_month = queries.usage.month_of(timezone.now() - timedelta(days=40))
         AssistantUsage.objects.create(user=account, month=last_month, messages=5)
         claimed = claim(account_of(account))
 

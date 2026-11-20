@@ -134,7 +134,7 @@ def read(request: HttpRequest, schema: type[BaseModel], max_bytes: int) -> BaseM
 
 
 def resolve(hub: str) -> Caller:
-    return queries.caller_resolve(platform_context(), CallerIn(hub=hub))
+    return queries.callers.caller_resolve(platform_context(), CallerIn(hub=hub))
 
 
 def unauthorized(request: HttpRequest) -> Refused:
@@ -153,7 +153,7 @@ def too_large(max_bytes: int) -> Refused:
 async def usage(call: Call) -> HttpResponse:
     """What the business spent of its plan's monthly messages (a demo, of its own few): ``{used, limit, resets_at,
     demo}``. The same figures close every turn."""
-    shown = await sync_to_async(queries.usage_show)(platform_context(), call.caller)
+    shown = await sync_to_async(queries.usage.usage_show)(platform_context(), call.caller)
     return JsonResponse(shown.model_dump(mode="json"))
 
 
@@ -205,7 +205,7 @@ TRANSCRIBE_BODY_BYTES = 4 * 1024 * 1024
 async def services_connection():
     """The services' provider, or 503 ``assistant.provider_not_configured``."""
     try:
-        return await sync_to_async(queries.service_connection)(platform_context(), NoInput())
+        return await sync_to_async(queries.provider_keys.service_connection)(platform_context(), NoInput())
     except OperationError as refused:
         if refused.code != "assistant.provider_not_configured":
             raise
@@ -301,9 +301,9 @@ async def docs_search(call: Call) -> HttpResponse:
     without the services' provider, 503 ``assistant.provider_unavailable`` when it fails; an empty index answers no
     excerpt. No message of the allowance is spent."""
     data = call.data
-    await queries.prepare_questions([data.query])
+    await queries.docs.prepare_questions([data.query])
     ctx = replace(platform_context(), language=data.language)
-    found = await sync_to_async(queries.docs_search)(ctx, DocsSearchIn(query=data.query, limit=data.limit))
+    found = await sync_to_async(queries.docs.docs_search)(ctx, DocsSearchIn(query=data.query, limit=data.limit))
     return JsonResponse(found.model_dump(mode="json"))
 
 

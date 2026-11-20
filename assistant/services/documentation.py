@@ -28,7 +28,7 @@ def docs_index(ctx: OperationContext, data: DocsIndexIn) -> dict:
     """A batch of what ``source`` has now, in one transaction (the platform only: ``index_docs``): with ``keep``, its
     excerpts whose hash is not there go; each of ``chunks`` is written with its fingerprint, new or over the one it
     had (``--full``). The hash of an excerpt is computed here, never taken from the caller."""
-    queries.platform_only(ctx)
+    queries.gates.platform_only(ctx)
     keep = None if data.keep is None else set(data.keep)
     deleted = 0
     if keep is not None:
