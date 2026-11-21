@@ -17,3 +17,10 @@
 {% trans "Compliant in your country" as heading %}
 {% trans "Electronic invoicing and a full audit trail that meet your country's regulations — Verifactu in Spain today, more markets on the way." as body %}
 {% include "public/components/bento_item.html" with cols=3 rows=1 tone="success" icon="lucide:shield-check" heading=heading body=body only %}
+
+{% comment %}
+  Of the AI the home says only this; which model it is, who serves it and where are the privacy policy's to say.
+{% endcomment %}
+{% trans "AI assistant" as heading %}
+{% trans "The AI has no direct access to the database." as body %}
+{% include "public/components/bento_item.html" with cols=6 rows=1 tone="primary" icon="lucide:sparkles" heading=heading body=body only %}

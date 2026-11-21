@@ -102,6 +102,26 @@ def test_privacy_does_not_name_llm_providers_we_never_engaged(client):
     assert "DeepSeek" not in spanish(client, "/legal/privacy/")
 
 
+#: The AI models by name: the policy names who processes the data, never the model, which changes.
+AI_MODELS = ("Claude", "Haiku", "Sonnet", "Opus", "Qwen", "GPT", "Gemini", "Whisper", "whisper")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("language", "outside_the_eea"),
+    [("en", "outside the European Economic Area"), ("es", "fuera del Espacio Económico Europeo")],
+)
+def test_privacy_names_who_processes_the_ai_data_and_no_model(client, language, outside_the_eea):
+    """Art. 13.1.e GDPR: the language model's processors by their entities; the default one never as processing in
+    the EU, since it may route the queries outside the EEA."""
+    html = client.get("/legal/privacy/").content.decode() if language == "en" else spanish(client, "/legal/privacy/")
+    [default] = list_items_naming(html, "Anthropic Ireland, Limited")
+
+    assert list_items_naming(html, "Alibaba (Netherlands) B.V.")
+    assert outside_the_eea in default
+    assert [model for model in AI_MODELS if re.search(rf"\b{model}\b", html)] == []
+
+
 @pytest.mark.django_db
 def test_privacy_describes_what_the_assistant_actually_sends_to_the_model(client):
     """No copy of the hub database, no stored conversation, only each query's result."""
