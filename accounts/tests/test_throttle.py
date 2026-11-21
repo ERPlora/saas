@@ -155,8 +155,8 @@ def test_one_address_types_ten_codes_in_five_minutes_at_most(wait, path, body):
 
 def test_the_authenticator_apps_refused_codes_count_too(settings, ana):
     """A sign-in waiting for the app's code: each wrong code is refused (400) and counted; the 11th is held."""
-    from accounts.tests.test_mfa import _activate_totp, _first_factors
-    from accounts.tests.conftest import prove_address
+    from accounts.tests.conftest import _activate_totp, prove_address
+    from accounts.tests.mfa_steps import _first_factors
 
     settings.ACCOUNTS_MFA_ENABLED = True
     prove_address(ana.email)
