@@ -638,30 +638,29 @@ def test_security_states_the_tls_versions_the_load_balancer_accepts(client, lang
 
 
 @pytest.mark.parametrize(
-    ("language", "exceptions", "one_exception"),
+    ("language", "no_direct_access", "about_the_ai"),
     [
         (
             "en",
-            ("if its European provider is unavailable", "transcribing a voice dictation"),
-            "The one exception",
+            "The AI has no direct access to the database.",
+            ("language model", "voice dictation", "Brave Search", "outside the EU"),
         ),
         (
             "es",
-            ("si su proveedor europeo no está disponible", "transcribir un dictado por voz"),
-            "La única excepción",
+            "La IA no tiene acceso directo a la base de datos.",
+            ("modelo de lenguaje", "dictado por voz", "Brave Search", "fuera de la UE"),
         ),
     ],
 )
-def test_the_storage_answer_names_the_exceptions_of_the_privacy_policy(client, language, exceptions, one_exception):
-    """Section 6 of the privacy policy has two transfers of the assistant: the backup model providers and the
-    provider of its voice and search fingerprint services (a dictation's audio goes to OpenAI's API by default), so
-    «the one exception» would be false."""
+def test_the_storage_answer_says_one_thing_of_the_ai_and_leaves_the_rest_to_the_privacy_policy(
+    client, language, no_direct_access, about_the_ai
+):
+    """The answer says where the business data is stored; of the AI, only that it has no direct access to the
+    database. Which AI it is, who serves it and where are said by the privacy policy it links to."""
     html = page(client, "/pricing/", language)
     answers = re.findall(r'<div class="ion-padding" slot="content">(.*?)</div>', html, re.S)
     (storage,) = [answer for answer in answers if "eu-west-1" in answer]
 
-    assert [exception for exception in exceptions if exception not in storage] == []
-    assert one_exception not in storage
+    assert no_direct_access in storage
+    assert [words for words in about_the_ai if words in storage] == []
     assert 'href="/legal/privacy/"' in storage
-    # The web search goes to the United States under no safeguard of section 6 of that policy: the answer says it apart.
-    assert "Brave Search" in storage

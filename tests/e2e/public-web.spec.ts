@@ -146,11 +146,9 @@ test('PUBLIC-F02 the plans: a card per plan on sale, the upgrade-only ones under
   await expect(page.getByText('Pay for the year and get 2 months free.')).toBeVisible();
   await page.locator('ion-accordion[value="storage"] ion-item').click();
   const storage = page.locator('ion-accordion[value="storage"] [slot="content"]');
-  await expect(storage).toContainText('if its European provider is unavailable');
-  // The assistant's voice provider is a transfer too (section 6 of the privacy policy): «the one exception» no longer
-  // holds.
-  await expect(storage).toContainText('transcribing a voice dictation');
-  await expect(storage).not.toContainText('The one exception');
+  // Of the AI the answer says one thing; which one it is, who serves it and where are the privacy policy's.
+  await expect(storage).toContainText('The AI has no direct access to the database.');
+  await expect(storage).not.toContainText('language model');
   await expect(storage.getByRole('link', { name: 'Read the privacy policy' })).toHaveAttribute('href', '/legal/privacy/');
   await clean('/pricing/');
 });

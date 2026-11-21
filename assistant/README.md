@@ -3,8 +3,8 @@
 App de plataforma del SaaS (`LiveAppConfig`, `kind = "platform"`), en la raíz junto a `base/`. Manual de uso y
 flujos: [`WORKBOOK.md`](WORKBOOK.md) (y [`WORKBOOK.en.md`](WORKBOOK.en.md), la traducción de su parte de usuario con
 su hash en la cabecera, el esquema de `translate_workbooks` del Hub). Portada en dos partes: la 1 (MIGRATION-TASK
-APP-ASSISTANT-1) con los proveedores, las claves, los modelos, qué modelo contesta, la prueba de un modelo, la
-auditoría y los comandos de claves; la 2 (APP-ASSISTANT-2) con las puertas del Hub (`/internal/assistant/*` y
+APP-ASSISTANT-1) con los proveedores, sus claves del entorno, los modelos, qué modelo contesta, la prueba de un modelo
+y la auditoría; la 2 (APP-ASSISTANT-2) con las puertas del Hub (`/internal/assistant/*` y
 `/internal/speech/*`): el turno, sus herramientas y sus adjuntos, el cupo por plan y el uso, las huellas del índice,
 la voz y las denuncias. El contrato de esas puertas, en «Para quien lo mantiene» del WORKBOOK. Desde la ronda
 2026-10-30e (PLAN-SAAS §23, plan `knowledge/raw/plans/2026-10-30-asistente-saas.md`) la pasarela contesta también, en
@@ -28,11 +28,11 @@ Completa desde el 2026-11-03. Lo que queda fuera, con su issue: `WORKBOOK.md`, �
 |---|---|
 | `apps.py` | `AssistantConfig`: `assistant.manage`, de la plataforma y del personal, y `assistant.ask`, de toda cuenta (el asistente del panel); registra la auditoría. |
 | `frontend/` | El chat del panel (ASSISTANT-F25): el del Hub, de `@erplora/ui/components`, configurado en `options.ts` (`SAAS_ASSISTANT`, con su frase bajo el cupo agotado en `spentNoteKey`); `components/AssistantTopbar.vue` (el botón de la barra) y `components/AssistantBackground.vue` (el panel con su vacío y sus atajos), que `frontend/main.ts` monta como `chrome`. Sus palabras, en `saas.assistant.*` del catálogo de la entrada (`frontend/locale`). |
-| `models.py` | `AIProvider` (una de las cuatro API, su dirección), `AIProviderCredential` (clave cifrada con su final), `AIModel` (precios, contexto, qué admite), `AIRoutingPolicy` (una fila: el modelo que contesta y su reserva), `AssistantUsage` (lo gastado por negocio y mes; una demo, una fila en su vida; una cuenta, una por mes, con las marcas `near_warned_at` y `spent_warned_at` de sus correos de ASSISTANT-F29) y `DocChunk` (un fragmento de la documentación con su huella, `vector(1536)`, sin índice aproximado: la búsqueda es exacta); `estimate_cost`, `content_hash`. |
-| `crypto.py`, `fields.py` | Fernet con `FERNET_KEY` (+ `FERNET_KEY_PREVIOUS` para leer en una rotación); la columna guarda el token. |
+| `models.py` | `AIProvider` (una de las cuatro API, su dirección y la variable del entorno de la que lee su clave, `key_variable`, una de `KEY_VARIABLES`; `api_key` la lee en cada llamada), `AIModel` (precios, contexto, qué admite), `AIRoutingPolicy` (una fila: el modelo que contesta y su reserva), `AssistantUsage` (lo gastado por negocio y mes; una demo, una fila en su vida; una cuenta, una por mes, con las marcas `near_warned_at` y `spent_warned_at` de sus correos de ASSISTANT-F29) y `DocChunk` (un fragmento de la documentación con su huella, `vector(1536)`, sin índice aproximado: la búsqueda es exacta); `estimate_cost`, `content_hash`. |
+| `crypto.py` | Fernet con `FERNET_KEY` (+ `FERNET_KEY_PREVIOUS` para leer en una rotación), el de la rotación de las credenciales de WhatsApp (`rotate_encryption_keys`). |
 | `schemas.py` | Entradas y salidas; la clave viaja como `SecretStr`. |
-| `queries/` | Lecturas (`@operation`, `kind="query"`), un módulo por entidad: `provider_keys` (la conexión de un proveedor y la del proveedor de servicios, con su clave usable), `routing_policy` (la política y la ruta de un turno), `callers` (quién llama desde el Hub), `usage` (el cupo que queda), `docs` (la búsqueda en la documentación y lo que ya tiene el índice) y `gates` (`staff_with` y `platform_only`, quién puede leer). |
-| `services/` | Escrituras (`@operation`, `kind="command"`), cada una con el permiso del modelo de Django que la respalda (o solo la plataforma), un módulo por entidad: `credentials` (las claves de los proveedores), `model_choice` (qué modelos se quedan, cuál contesta y la prueba desde el admin), `encryption` (`encrypted_columns` y la rotación), `turn_usage` (el cupo de mensajes y lo gastado), `answer_reports` (la denuncia de una respuesta), `documentation` (el índice de la documentación) y `platform_actor` (`platform_context`). |
+| `queries/` | Lecturas (`@operation`, `kind="query"`), un módulo por entidad: `provider_keys` (la conexión de un proveedor y la del proveedor de servicios, con su clave del entorno), `routing_policy` (la política y la ruta de un turno), `callers` (quién llama desde el Hub), `usage` (el cupo que queda), `docs` (la búsqueda en la documentación y lo que ya tiene el índice) y `gates` (`staff_with` y `platform_only`, quién puede leer). |
+| `services/` | Escrituras (`@operation`, `kind="command"`), cada una con el permiso del modelo de Django que la respalda (o solo la plataforma), un módulo por entidad: `model_choice` (qué modelos se quedan, cuál contesta y la prueba desde el admin), `encryption` (`encrypted_columns` y la rotación), `turn_usage` (el cupo de mensajes y lo gastado), `answer_reports` (la denuncia de una respuesta), `documentation` (el índice de la documentación) y `platform_actor` (`platform_context`). |
 | `routing.py` | El turno a través de su ruta: prueba los modelos en orden y pasa a la reserva si el proveedor falla antes de contestar. |
 | `internal.py` | Las puertas del Hub, vistas asíncronas firmadas (`door`: método, tamaño, firma, contrato, quién llama y freno por negocio): el turno en directo y de una vez, el cupo, las huellas, la búsqueda en la documentación, el dictado, la lectura en voz alta y la denuncia. |
 | `turn.py` | El turno: prepara la conversación, ofrece las herramientas, emite los frames, el token de continuación de un solo uso y lo gastado (`Outcome`); y el turno tal como lo sirve una puerta, sea la del Hub o la del panel (`start`, `frames`/`stream`, `settle`, `spend`, `Refused`). |
@@ -41,18 +41,18 @@ Completa desde el 2026-11-03. Lo que queda fuera, con su issue: `WORKBOOK.md`, �
 | `media.py` | Huellas (`text-embedding-3-small`) y dictado (`whisper-1`) por la API de OpenAI del proveedor de servicios; la lectura en voz alta no tiene motor (`SPEECH_ENGINE`, PLAN-SAAS ronda 2026-11-04c). |
 | `knowledge.py` | La documentación del asistente del panel (ASSISTANT-F27): `chunk_markdown` (corte por `##`/`###`, ventana de 220 palabras con solape de 50) y sus cuatro fuentes (ayuda pública, documentación de las apps del Hub por `apps.doc.list`, parte de usuario de los WORKBOOK del panel y los planes en venta por `hubs.plan.list`); `en_header`, la primera línea de un `WORKBOOK.en.md` (los mismos bytes que `base.catalog` del Hub para los comentarios en línea propia fuera de un bloque de código), que `tests/test_knowledge.py` exige en todos los del repo; sin ORM. |
 | `providers/` | Clientes `httpx` de OpenAI, Anthropic, Gemini y DeepSeek (`base.py`, `factory.py`): eventos normalizados, sin SDK ni caché; cada cliente toma el contexto TLS de `base.tls` (`trusted_context`): si el servidor no puede cargar sus certificados (`SSL_CERT_FILE`), el fallo es definitivo y nombra la variable y el fichero. |
-| `auditlog.py` | Registro de auditoría (django-auditlog) de los cuatro modelos, sin la clave ni `updated_at`. |
+| `auditlog.py` | Registro de auditoría (django-auditlog) de los proveedores, los modelos y la política, sin `updated_at`. |
 | `events.py` | Nombres de los eventos del outbox (sin la clave ni lo que escribe una persona). |
 | `emails.py` | Los correos de ASSISTANT-F29 a una cuenta, en su idioma y con la marca de ERPlora (`base.emails.branded_message`): `send_messages_near` (80 % del mes) y `send_messages_spent` (el último); uno que no sale se registra como `assistant.mail.not_sent` y devuelve `False`. |
-| `admin.py`, `templates/admin/assistant/` | Admin de Django: proveedores con sus claves y modelos, «Elegir modelos del proveedor» (asíncrona), «Modelo que contesta», «Probar un modelo» (ejecución asíncrona en directo) y «Registros de uso del asistente» (solo lectura). |
-| `management/commands/` | `import_ai_keys_from_env`, `rotate_encryption_keys` e `index_docs`. |
+| `admin.py`, `templates/admin/assistant/` | Admin de Django: proveedores con sus modelos, la variable de su clave y si la tiene (sin enseñar nada de ella), «Elegir modelos del proveedor» (asíncrona), «Modelo que contesta», «Probar un modelo» (ejecución asíncrona en directo) y «Registros de uso del asistente» (solo lectura). |
+| `management/commands/` | `rotate_encryption_keys` e `index_docs`. |
 
 ## Datos
 
 | Dato | Dónde | Se borra |
 |---|---|---|
-| Proveedor: nombre, identificador, API, dirección, activado, notas | BD `saas`, `assistant_aiprovider` | A mano en el admin (con sus claves y modelos) |
-| Clave de un proveedor: token Fernet, sus cuatro últimos caracteres, cuándo cambió, quién | BD `saas`, `assistant_aiprovidercredential` | A mano en el admin |
+| Proveedor: nombre, identificador, API, dirección, variable de su clave, activado, notas | BD `saas`, `assistant_aiprovider` | A mano en el admin (con sus modelos) |
+| Clave de un proveedor | Solo el entorno de erplora.com (el secreto de su tarea), nunca la BD | Vaciando su variable y desplegando |
 | Modelo de un proveedor: identificador, nombre, contexto, precios por millón de tokens, si está disponible | BD `saas`, `assistant_aimodel` | Al quitarlo de la elección del proveedor o a mano (nunca uno que use la política) |
 | Qué modelo contesta y su reserva, quién lo cambió | BD `saas`, `assistant_airoutingpolicy` (una fila) | Nunca |
 | Quién cambió cada cosa y cada prueba de un modelo (sin la clave ni el mensaje) | BD `saas`, `auditlog_logentry` | A los 90 días (`cleanup_old_logs`, ACCOUNTS-F37) |
@@ -71,9 +71,6 @@ No se guarda ninguna conversación, adjunto, audio ni texto leído: el turno pas
 | `assistant.provider.connection` | `view_aiprovider` | — |
 | `assistant.policy.show` | `view_airoutingpolicy` | — |
 | `assistant.route.resolve` | la plataforma; el personal, `change_airoutingpolicy` (un modelo) | — |
-| `assistant.credential.save` | `add_aiprovidercredential` (nueva) o `change_aiprovidercredential` (cambio) | `assistant.credential.saved` |
-| `assistant.credential.delete` | `delete_aiprovidercredential` | `assistant.credential.deleted` |
-| `assistant.credential.import` | solo la plataforma | `assistant.credential.saved` |
 | `assistant.model.select` | `add_aimodel` y `delete_aimodel` | `assistant.model.selected` |
 | `assistant.policy.update` | `change_airoutingpolicy` | `assistant.policy.updated` |
 | `assistant.model.try` | `change_airoutingpolicy` | `assistant.model.tried` |
@@ -95,10 +92,16 @@ Todas llevan `ai=INTERNAL` (son la pasarela, no herramientas del asistente) salv
 
 ## Comandos y ajustes
 
-- `import_ai_keys_from_env [--providers …] [--label …] [--force] [--dry-run]`: guarda cifradas `OPENAI_API_KEY`,
-  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` y `DEEPSEEK_API_KEY` (vacías por defecto); crea el proveedor si falta.
-- `rotate_encryption_keys [--dry-run]`: vuelve a cifrar con `FERNET_KEY` toda columna de `ROTATED_FIELD_CLASSES` (la
-  clave del proveedor y el token y el PIN de WhatsApp); termina con error si alguna no se abre.
+- Las claves de los proveedores: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY` y
+  `DASHSCOPE_API_KEY` (la de Alibaba Cloud Model Studio, Qwen), vacías por defecto, en `config/settings/assistant.py`.
+  Es el único sitio de una clave: cada proveedor dice en el admin de cuál lee (`key_variable`; los de la API de OpenAI,
+  cada uno la suya), un proveedor con su variable llena contesta y uno con ella vacía no. Sin ninguna, el asistente no
+  contesta (409 `assistant.provider_not_configured`) y erplora.com arranca igual. Producción y `pre` las reciben del
+  secreto del SaaS en las tareas `saas` y `saas-cron` (`ERPlora/aws`); una clave nueva vale al desplegar.
+- La migración `0010_haiku_answers` dejó, donde ya contestaba un modelo, Claude Haiku 5.5 (`claude-haiku-5-5`, del
+  proveedor de Anthropic) contestando y Qwen 3.7 Plus de reserva; lo que se elija después en el admin manda.
+- `rotate_encryption_keys [--dry-run]`: vuelve a cifrar con `FERNET_KEY` toda columna de `ROTATED_FIELD_CLASSES` (hoy
+  el token y el PIN de WhatsApp); termina con error si alguna no se abre.
 - `index_docs [--full] [--dry-run]`: indexa la documentación del asistente del panel (ASSISTANT-F27); solo embebe lo
   que cambió, en lotes de 64, con el proveedor de servicios; una línea por fuente con lo que costó; código 2 sin
   proveedor. Programado a diario a las 06:50 UTC en `saas-cron` (`index-docs-daily`, ERPlora/aws#28); a mano, como
@@ -123,8 +126,8 @@ Todas llevan `ai=INTERNAL` (son la pasarela, no herramientas del asistente) salv
   plataforma del Hub (`bootstrap_databases`, usuario maestro) en `saas` y `pre_saas`.
 - `INTERNAL_SHARED_SECRET` (y `INTERNAL_SHARED_SECRET_PREVIOUS`): el secreto con que firma el Hub, el de todo
   `/internal`.
-- `FERNET_KEY` (y `FERNET_KEY_PREVIOUS` durante una rotación), para quien despliega: sin ella, el admin lo dice al
-  guardar una clave y no guarda ninguna (503 `assistant.encryption_not_configured` en las operaciones).
+- `FERNET_KEY` (y `FERNET_KEY_PREVIOUS` durante una rotación), para quien despliega: la de las credenciales de
+  WhatsApp; sin ella la rotación no corre (503 `assistant.encryption_not_configured`).
 
 ## Pruebas
 

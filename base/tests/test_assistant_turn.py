@@ -28,8 +28,8 @@ from assistant.models import AssistantUsage
 from assistant.tests.conftest import (  # noqa: F401 - the gateway's fixtures
     answering,
     fake_provider,
-    fernet_key,
     openai_answer,
+    openai_key,
     openai_tool_call,
     provider,
 )

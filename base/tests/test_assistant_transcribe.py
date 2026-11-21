@@ -28,7 +28,7 @@ from assistant.tests.conftest import (  # noqa: F401 - the gateway's fixtures
     API_KEY,
     answering,
     fake_provider,
-    fernet_key,
+    openai_key,
     provider,
 )
 from config.api import api

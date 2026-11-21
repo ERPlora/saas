@@ -3,7 +3,7 @@
 - ``assistant.policy.show``: which model answers and which one is the fallback, with the models that
   can be chosen (available, of an enabled provider).
 - ``assistant.route.resolve``: the models a turn tries, in order (the one that answers, then its
-  fallback), each with its usable key; read again on every turn, so a change applies to the next one.
+  fallback), each with its provider's key; read again on every turn, so a change applies to the next one.
 """
 
 from django.utils import translation
@@ -14,7 +14,6 @@ from live.operations import INTERNAL, operation
 
 from assistant.models import AIModel, AIRoutingPolicy
 from assistant.queries.gates import staff_with
-from assistant.queries.provider_keys import usable_key
 from assistant.schemas import NoInput, PolicyShowOut, RouteIn, RouteOut
 
 
@@ -103,7 +102,7 @@ def route_resolve(ctx: OperationContext, data: RouteIn) -> dict:
                     code="assistant.model_unavailable",
                     status=422,
                 )
-            api_key = usable_key(model.provider)
+            api_key = model.provider.api_key
             if not api_key:
                 raise provider_not_configured()
             return {"candidates": [route_candidate(model, api_key)]}
@@ -119,7 +118,7 @@ def route_resolve(ctx: OperationContext, data: RouteIn) -> dict:
             )
         candidates = []
         for model in (policy.active_model, policy.fallback_model):
-            if can_answer(model) and (api_key := usable_key(model.provider)):
+            if can_answer(model) and (api_key := model.provider.api_key):
                 candidates.append(route_candidate(model, api_key))
         if not candidates:
             raise provider_not_configured()

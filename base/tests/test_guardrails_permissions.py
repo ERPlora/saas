@@ -112,7 +112,6 @@ ACCOUNT_PERMISSIONS = frozenset(
 SYSTEM_ONLY = frozenset(
     {
         "assistant.caller.resolve",
-        "assistant.credential.import",
         "assistant.docs.index",
         "assistant.docs.list",
         "assistant.encryption.rotate",

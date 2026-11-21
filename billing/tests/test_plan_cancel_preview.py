@@ -19,7 +19,7 @@ from live import assistant as live_assistant
 from live.errors import NotFound, OperationError, PermissionDenied
 from live.operations import get as get_operation
 
-from assistant.tests.conftest import answering, fake_provider, fernet_key, provider  # noqa: F401 - the gateway's
+from assistant.tests.conftest import answering, fake_provider, openai_key, provider  # noqa: F401 - the gateway's
 from apps.models import Module
 from apps.tests.factories import make_app
 from assistant.tests.doors import frames

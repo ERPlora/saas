@@ -22,7 +22,7 @@ from assistant import media
 from assistant import turn as gateway
 from assistant.models import AssistantUsage
 from assistant.schemas import Caller
-from assistant.tests.conftest import FakeSpeechEngine, fernet_key, speech_engine  # noqa: F401 - the gateway's fixtures
+from assistant.tests.conftest import FakeSpeechEngine, speech_engine  # noqa: F401 - the gateway's fixtures
 from config.api import api
 from hubs.tests.conftest import make_user, plans  # noqa: F401 - shared fixtures
 

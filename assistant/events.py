@@ -4,10 +4,6 @@ the write. Their payloads carry ids and counts, never a provider's key nor what 
 The assistant reacts to no event of another app and has no live list, so this module only names its events. Those of a turn carry numbers only: never a conversation, a person nor a text.
 """
 
-#: A provider's key was added or changed (``rotated``: another key was typed): ``{"provider", "credential", "rotated"}``.
-CREDENTIAL_SAVED = "assistant.credential.saved"
-#: A provider's key was deleted: ``{"provider", "credential"}``.
-CREDENTIAL_DELETED = "assistant.credential.deleted"
 #: A provider's models were chosen: ``{"provider", "created", "kept", "deleted", "protected"}``.
 MODEL_SELECTED = "assistant.model.selected"
 #: The model that answers or its fallback changed: ``{"active_model", "fallback_model"}`` (ids or ``None``).
@@ -39,8 +35,6 @@ REPORT_SENT = "assistant.report.sent"
 DOCS_INDEXED = "assistant.docs.indexed"
 
 ALL = [
-    CREDENTIAL_SAVED,
-    CREDENTIAL_DELETED,
     MODEL_SELECTED,
     POLICY_UPDATED,
     MODEL_TRIED,

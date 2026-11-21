@@ -11,7 +11,7 @@
 //
 // Only with `QA_REAL_PROVIDER=1` (never in the CI), on a stack and e2e database of its own, from the same seed as the
 // battery (`assistant_seed.py real`: the real providers, «QA Base» on the Free plan, the documentation index), in every
-// worker, and every worker ends with `assistant_seed.py forget` (also after a failure): no real key stays behind. The
+// worker, and every worker ends with `assistant_seed.py clear` (also after a failure): no QA account stays behind. The
 // account's language follows each probe's (Account → Preferences) and its surface too: `?surface=account` is the app's
 // account surface, which sells nothing; `?surface=web` the web. The month's messages are reset when spent (the probes
 // do not check the quota; the battery does). Each probe in a new conversation; what it showed goes to
@@ -57,7 +57,7 @@ import {
 } from '../assistant-probes';
 import {
   type AssistantChat,
-  forgetRealAssistant,
+  clearRealAssistant,
   qaChat,
   REAL_SECRETS,
   type RealSeed,
@@ -283,7 +283,7 @@ test.afterAll(async () => {
     writeReport();
     await context?.close();
   } finally {
-    if (REAL) forgetRealAssistant();
+    if (REAL) clearRealAssistant();
   }
 });
 

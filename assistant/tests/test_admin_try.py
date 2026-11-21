@@ -13,7 +13,7 @@ from asgiref.sync import async_to_sync
 from auditlog.models import LogEntry
 from live.models import OutboxEvent
 
-from assistant.models import AIModel, AIProvider, AIProviderCredential
+from assistant.models import AIModel, AIProvider
 from assistant.tests.conftest import API_KEY, grant
 from assistant.tests.fake_provider import openai_chunk
 
@@ -26,10 +26,11 @@ PROMPT = "Write the receipt of a coffee for table four"
 
 
 @pytest.fixture
-def tried(fake_provider):
-    """An OpenAI-compatible provider at the fake server, with a key and one model at 1 / 2 USD per million tokens."""
-    provider = AIProvider.objects.create(slug="local", name="Local", kind="openai", base_url=f"{fake_provider.url}/v1")
-    AIProviderCredential.objects.create(provider=provider, label="default", api_key=API_KEY, key_hint="wxyz")
+def tried(fake_provider, openai_key):
+    """An OpenAI-compatible provider at the fake server, with its key and one model at 1 / 2 USD per million tokens."""
+    provider = AIProvider.objects.create(
+        slug="local", name="Local", kind="openai", base_url=f"{fake_provider.url}/v1", key_variable="OPENAI_API_KEY"
+    )
     return AIModel.objects.create(
         provider=provider,
         model_id="gpt-e2e-large",
@@ -224,8 +225,8 @@ def test_a_run_without_a_model_of_the_list_is_refused(as_ai_admin, tried, fake_p
     assert fake_provider.requests == []
 
 
-def test_a_model_whose_provider_has_no_key_says_so(as_ai_admin, tried, fake_provider):
-    AIProviderCredential.objects.update(is_active=False)
+def test_a_model_whose_provider_has_no_key_says_so(as_ai_admin, tried, fake_provider, settings):
+    settings.OPENAI_API_KEY = ""
 
     seen = events(run(as_ai_admin, tried))
 

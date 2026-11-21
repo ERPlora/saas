@@ -25,13 +25,14 @@ ASSISTANT_ACCOUNT_MESSAGES = config("ASSISTANT_ACCOUNT_MESSAGES", default=30, ca
 # The provider (its identifier in the admin, of OpenAI's API) whose key computes the embeddings and the dictation.
 ASSISTANT_SERVICE_PROVIDER = config("ASSISTANT_SERVICE_PROVIDER", default="openai")
 
-# The AI gateway (assistant/): the providers' keys `import_ai_keys_from_env` keeps encrypted in the
-# database; the staff may type them in the admin instead. Empty = nothing to load. The gateway reads
-# the keys from the database, never from here.
+# The AI gateway (assistant/): each provider's key, read from here only, never kept in the database. A provider
+# names the one it reads in the admin (several speak OpenAI's API: Alibaba's Qwen reads DASHSCOPE_API_KEY). Empty: that
+# provider has no key and does not answer; with none, the assistant is off and erplora.com starts as usual.
 OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
 ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
 GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
 DEEPSEEK_API_KEY = config("DEEPSEEK_API_KEY", default="")
+DASHSCOPE_API_KEY = config("DASHSCOPE_API_KEY", default="")
 
 # The providers of erplora.com's own tools (assistant/server_tools.py). The rates need no key. The search
 # reads its key here, from the environment and not from the database, and without it is not offered: the assistant

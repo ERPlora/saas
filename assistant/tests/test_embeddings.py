@@ -89,10 +89,8 @@ def test_without_the_services_provider_it_is_503(client, internal, business, ans
     assert (response.status_code, error_code(response)) == (503, "assistant.provider_not_configured")
 
 
-def test_a_provider_turned_off_or_without_a_key_is_503(client, internal, business, answering, fake_provider):
-    from assistant.models import AIProviderCredential
-
-    AIProviderCredential.objects.all().delete()
+def test_a_provider_turned_off_or_without_a_key_is_503(client, internal, business, answering, fake_provider, settings):
+    settings.OPENAI_API_KEY = ""
 
     response = door(client, EMBEDDINGS, {"hub": business.slug, "texts": ["x"]})
 

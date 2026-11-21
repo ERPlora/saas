@@ -300,7 +300,7 @@ El panel de `erplora.com` (Negocios · Tienda · Facturación · Cuenta; plan
 - **Tareas programadas** (`saas-cron`, `stacks/prod/scheduler.tf` de `ERPlora/aws`, horas en UTC): `sweep_unpaid`
   (cada hora, :05), `check_custom_domains` (cada hora, :25; con `CUSTOM_DOMAINS_ENABLED` apagada no hace nada),
   `push_hub_snapshots` (00:30), `collect_hub_usage` (01:15) y `report_seal_expiry` (07:00); las demás de cada app,
-  en su README. En `saas-migrate`, tras `migrate`: `seed_taxonomy`, `init_cookie_groups`, `import_ai_keys_from_env`
+  en su README. En `saas-migrate`, tras `migrate`: `seed_taxonomy`, `init_cookie_groups`
   y `check --database default` (`stacks/prod/apps.tf`); `sync_hub_plans` ya no se llama (ERPlora/aws#4, mergeada el
   2026-10-15). Las cinco de arriba y `seed_taxonomy`, idempotentes y con advisory lock (una segunda ejecución vuelve
   al momento).

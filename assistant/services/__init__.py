@@ -12,7 +12,6 @@ One module per entity or use case. Nothing is re-exported here: a name is import
 # Importing a module registers its operations; the ``as`` tells ruff the import is kept on purpose.
 from assistant.services import platform_actor as platform_actor
 from assistant.services import encryption as encryption
-from assistant.services import credentials as credentials
 from assistant.services import model_choice as model_choice
 from assistant.services import turn_usage as turn_usage
 from assistant.services import answer_reports as answer_reports

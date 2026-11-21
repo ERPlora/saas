@@ -1,63 +1,84 @@
-"""Where the home ``/`` (public/landing.py) says the assistant's data is processed and the servers are.
+"""What the marketing pages say of the AI assistant and where the servers are.
 
+* Of the AI they say one thing only: it has no direct access to the database. Which model it is, who serves it and
+  where are the privacy policy's to say (sections 5 and 6), never the marketing's: the model changes, and a claim that
+  the assistant runs in the European Union would be false (its default model may process data outside the EEA).
 * No page names Hetzner as the host: the servers are on AWS, Ireland region.
 """
 
 from __future__ import annotations
 
+import re
+
 import pytest
-from django.urls import reverse
 
 from public.tests.landing_pages import CONTACT, HOME, html_of
 
 pytestmark = [pytest.mark.django_db]
 
+MARKETING_PAGES = (HOME, "/pricing/", "/features/", "/security/", "/about/")
 
-# --- Where the assistant's data is processed --------------------------------------------------
+NO_DIRECT_ACCESS = {
+    "en": "The AI has no direct access to the database.",
+    "es": "La IA no tiene acceso directo a la base de datos.",
+}
 
-
-def test_the_landing_states_the_ai_runs_on_european_servers(client):
-    html = html_of(client, language="es").lower()
-
-    assert "servidores europeos" in html or "servidores en europa" in html
-
-
-def test_the_landing_says_the_assistant_data_stays_in_the_eu(client):
-    html = html_of(client, language="es").lower()
-
-    assert "unión europea" in html or "no sale" in html
-
-
-@pytest.mark.parametrize(
-    ("language", "claim", "whole_assistant"),
-    [
-        (
-            "en",
-            "Your assistant's language model is served from the European Union",
-            "Your assistant is served from the European Union",
-        ),
-        (
-            "es",
-            "El modelo de lenguaje de tu asistente se sirve desde la Unión Europea",
-            "Tu asistente se sirve desde la Unión Europea",
-        ),
-    ],
+#: The AI models and their providers, by name: the marketing names none of them.
+AI_NAMES = (
+    "Anthropic",
+    "Claude",
+    "Haiku",
+    "Sonnet",
+    "Alibaba",
+    "Qwen",
+    "Model Studio",
+    "OpenAI",
+    "GPT",
+    "Gemini",
+    "DeepSeek",
+    "Brave Search",
 )
-def test_the_landing_puts_in_the_eu_the_language_model_not_the_whole_assistant(client, language, claim, whole_assistant):
-    """Frankfurt serves the language model; a dictation is transcribed by the voice provider, which may process it
-    outside the EEA (sections 5 and 6 of the privacy policy)."""
-    html = html_of(client, language=language)
 
-    assert claim in html
-    assert whole_assistant not in html
+#: What says which AI it is or where it runs.
+WHERE_THE_AI_RUNS = (
+    "AI assistant on European servers",
+    "Asistente IA en servidores europeos",
+    "language model",
+    "modelo de lenguaje",
+    "European servers",
+    "servidores europeos",
+)
 
 
-def test_the_landing_links_the_residency_claim_to_the_privacy_policy(client):
-    assert reverse("public:privacy") in html_of(client, language="es")
+# --- What the marketing says of the AI ---------------------------------------------------------
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+@pytest.mark.parametrize("path", MARKETING_PAGES)
+def test_no_marketing_page_names_an_ai_model_or_its_provider(client, path, language):
+    html = html_of(client, path, language)
+
+    assert [name for name in AI_NAMES if re.search(rf"\b{re.escape(name)}\b", html)] == []
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+@pytest.mark.parametrize("path", MARKETING_PAGES)
+def test_no_marketing_page_says_which_ai_it_is_or_where_it_runs(client, path, language):
+    html = html_of(client, path, language)
+
+    assert [claim for claim in WHERE_THE_AI_RUNS if claim in html] == []
+
+
+@pytest.mark.parametrize("language", ["en", "es"])
+def test_the_home_says_the_ai_has_no_direct_access_to_the_database(client, language):
+    assert NO_DIRECT_ACCESS[language] in html_of(client, HOME, language)
+
+
+# --- Where the servers are ---------------------------------------------------------------------
 
 
 def test_no_page_of_this_lot_names_hetzner_as_the_host(client):
-    """The servers are on AWS (Ireland region); the AI stays in Frankfurt."""
+    """The servers are on AWS (Ireland region)."""
     for path in (HOME, CONTACT):
         for language in ("en", "es"):
             html = html_of(client, path, language)

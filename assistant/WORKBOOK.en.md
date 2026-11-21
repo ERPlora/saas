@@ -1,12 +1,12 @@
-<!-- generated from WORKBOOK.md sha256:8dd1e46dd3bdb88a1c1c5adffad9c1e711877b6cdc605b1631c61e3df1dc9b14 -->
+<!-- generated from WORKBOOK.md sha256:77689cb14f7a6514d8ff2def98a542a98d97a4ba8187038a8c1b060bbc489c3e -->
 
 ## What it is for and who uses it
 
-The Hub never talks to the provider of an AI model: it talks to erplora.com, which keeps the provider's key, decides
+The Hub never talks to the provider of an AI model: it talks to erplora.com, which has the provider's key, decides
 which model answers and calls it. So the key never leaves erplora.com and the AI spend is controlled in one place.
 
-- Each provider's key is kept encrypted; it is typed once and never shown again: only its last four characters, to
-  recognise it.
+- Each provider's key lives only in the secret of erplora.com's environment, never in the database nor in the admin: a
+  provider with its key answers, one without it does not, and the admin says which one has it without showing any of it.
 - One model answers and, if its provider fails, a fallback one.
 - Before a model answers it can be tried from the admin, with how long it takes, what it consumes and what it costs.
 - Each message a person writes to the assistant spends one of the monthly allowance of their business's plan (a demo
@@ -30,8 +30,12 @@ Who uses it:
 
 - **AI gateways** (OpenRouter, Portkey, Cloudflare AI Gateway, Vercel AI Gateway, LiteLLM's router): a primary model
   and a fallback one if the provider fails; the providers' keys in the gateway, never in the client.
-- **The providers' consoles** (OpenAI, Anthropic, Google AI Studio, DeepSeek): the key is shown once when created
-  and then only its end; the list of models comes from the provider's own API
+- **Keys in the environment** (Twelve-Factor's configuration, https://12factor.net/config; LiteLLM's proxy,
+  https://docs.litellm.ai/docs/proxy/configs; the SDKs of OpenAI, Anthropic and Alibaba's DashScope, which read
+  `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` and `DASHSCOPE_API_KEY`): the key is in the secrets manager and the application
+  reads it from the environment when it starts; it is not copied to the database nor typed in a panel.
+- **The providers' consoles** (OpenAI, Anthropic, Google AI Studio, DeepSeek): the key is created and rotated in the
+  provider's console; the list of models comes from the provider's own API
   (https://platform.openai.com/docs/models, https://docs.anthropic.com/en/docs/about-claude/models).
 - **Assistants with an allowance** (ChatGPT, Claude, Gemini, Microsoft 365 Copilot, Shopify Magic): a number of
   messages per period by plan, which comes back when the next one starts; when it is spent the person is told and a
@@ -67,9 +71,10 @@ Who uses it:
 
 ## Before you start
 
-- erplora.com needs its credentials encryption key in the environment; without it no provider key can be kept and
-  the page says so on saving.
-- Each provider needs an active readable key for its models to answer or be tried.
+- Each provider's key goes in erplora.com's secret, in its variable: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
+  `GEMINI_API_KEY`, `DEEPSEEK_API_KEY` or, Alibaba's (Qwen), `DASHSCOPE_API_KEY`. It counts once deployed.
+- Each provider needs its key in the environment for its models to answer or be tried. Without any, the assistant
+  does not answer and erplora.com works the same.
 - The prices per million tokens of each model are typed by the staff: the providers' APIs do not give them. Without
   a price, the trial says the consumption and a cost of zero.
 - The index's fingerprints and the dictation are done by the services' provider (OpenAI): it must be added, enabled
@@ -81,10 +86,10 @@ Who uses it:
 ## Screens
 
 ### Admin: AI providers
-List of the providers with their API, whether enabled and the state of their key: "…" and the last four characters,
-"No key" or "Unreadable: type the key again". Each provider's page has its keys inside: label, the "Key" field (typed
-once, never shown; empty keeps the one there was), whether active, when it changed and by whom; and its models, with their input and output price, their context and whether they are available. On top,
-"Choose models from the provider".
+List of the providers with their API, whether enabled, their "Key variable" and their "Key": "In the environment" or
+"No key", never anything of the key. Each provider's page has, in "Connection", its address, the "Key variable" (one
+of the five of the environment) and whether it has the key; no field lets a key be typed. Below, its models, with
+their input and output price, their context and whether they are available. On top, "Choose models from the provider".
 
 ### Admin: Choose models from the provider
 The list of conversation models the provider's API gives, with a "Keep" checkbox (ticked on those it already has),
@@ -130,22 +135,22 @@ offering it to someone else or cancelling its plan also ask to type "CONFIRM".
 |---|---|
 | Loading | The normal loading of an admin page; when trying a model, "Sending…" and the "Send" button off until it ends ("Done."). In the panel's assistant, the bubble "The assistant is writing" until the first word and "Stop" instead of "Send". |
 | Empty | "0 AI providers" and the empty list; in "Assistant usage records", "0 assistant usage records" until a business's first message; a provider without a key says "No key"; without models that can answer, "No model can answer yet: add a provider with its key and choose its models." In the panel's assistant, "Ask me about your businesses, your invoices or your account." with its three shortcuts. |
-| Error | In "Choose models from the provider", the reason in red: "This provider has no active key: add one on its page and try again.", "The provider did not give its models: …" or "The provider listed no chat models."; on the pages, the error in red next to the field: "Use an https address: the provider's key travels to it.", "Type the provider's key.", "The key of the credentials is not configured: no provider key can be kept."; when trying a model, in red: "The model did not answer: …", "Too many tries in a minute: wait a moment and try again." or "The try could not be sent: check the connection and try again.". In the panel's assistant, under the question: "The assistant is not available right now. Try again in a few minutes." with "Try again"; with the month spent, "You have used all the assistant's messages of this month (30 of 30). They renew on …" and "Each business has its own assistant, with its own messages: open the business to keep asking there.", without "Upgrade plan"; without a connection, in the foot, "No connection: you can write, and send when it is back."; under the box, what stops a dictation: "Microphone access is blocked. Allow it in your browser to dictate.", "Nothing was heard. Try again closer to the microphone.", "The recording is too long: dictate a shorter message." or "The audio could not be transcribed. Try again." |
-| No permission | Without the gateway's permissions, the admin answers there is no permission; whoever may only look sees the pages without the "Key" field. "Assistant usage records" cannot be changed nor deleted, not even by a superuser. Without a session, the panel sends to sign in and there is no "Assistant" button; a session that ends mid-conversation says "Your session has ended. Sign in again to keep talking." with "Sign in again". |
+| Error | In "Choose models from the provider", the reason in red: "This provider has no key in the environment: fill the variable its page names.", "The provider did not give its models: …" or "The provider listed no chat models."; on the pages, the error in red next to the field: "Use an https address: the provider's key travels to it." or, without "Key variable", "This field is required."; when trying a model, in red: "The model did not answer: …", "Too many tries in a minute: wait a moment and try again." or "The try could not be sent: check the connection and try again.". In the panel's assistant, under the question: "The assistant is not available right now. Try again in a few minutes." with "Try again"; with the month spent, "You have used all the assistant's messages of this month (30 of 30). They renew on …" and "Each business has its own assistant, with its own messages: open the business to keep asking there.", without "Upgrade plan"; without a connection, in the foot, "No connection: you can write, and send when it is back."; under the box, what stops a dictation: "Microphone access is blocked. Allow it in your browser to dictate.", "Nothing was heard. Try again closer to the microphone.", "The recording is too long: dictate a shorter message." or "The audio could not be transcribed. Try again." |
+| No permission | Without the gateway's permissions, the admin answers there is no permission; whoever may only look sees the pages, with their variable and whether they have the key, without being able to change them. "Assistant usage records" cannot be changed nor deleted, not even by a superuser. Without a session, the panel sends to sign in and there is no "Assistant" button; a session that ends mid-conversation says "Your session has ended. Sign in again to keep talking." with "Sign in again". |
 
 ## Flows
 
 | ID | Flow | Status |
 |---|---|---|
 | ASSISTANT-F01 | Add an AI provider | done |
-| ASSISTANT-F02 | Keep a provider's key without it being seen | done |
+| ASSISTANT-F02 | See whether a provider has its key without it being seen | done |
 | ASSISTANT-F03 | Talk to each provider in its own API | done |
 | ASSISTANT-F04 | Choose a provider's models | done |
 | ASSISTANT-F05 | Choose which model answers | done |
 | ASSISTANT-F06 | Choose the provider and model of each turn | done |
 | ASSISTANT-F07 | Try a model before it answers | done |
 | ASSISTANT-F08 | See who changed the configuration of the AI | done |
-| ASSISTANT-F09 | Load the providers' keys from the environment | done |
+| ASSISTANT-F09 | Give a provider its key from the environment | done |
 | ASSISTANT-F10 | Change the encryption key without losing any credential | done |
 | ASSISTANT-F11 | Know who calls and for which business | done |
 | ASSISTANT-F12 | Answer an assistant turn live | done |
@@ -174,25 +179,25 @@ Screen: Admin: AI providers
 Steps:
 1. In "AI providers", click "Add AI provider".
 2. Type its name and a short identifier (for example "openai"), choose the API it speaks (OpenAI, Anthropic, Google Gemini or DeepSeek; a provider compatible with OpenAI's is "OpenAI" with its address) and, if it is not the provider's own, its address.
-3. Leave it enabled or off and save.
-In: name, identifier, API, address, enabled, notes.
-Out: the provider in the list, ready for its key and its models.
-If it fails: an address that is not https is refused with "Use an https address: the provider's key travels to it." (only an address of the machine itself is accepted without https); a repeated identifier is refused; without permission, the admin does not let in.
+3. Choose the "Key variable", the one of the environment its key is read from: its API's (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` or `DEEPSEEK_API_KEY`) or, for Alibaba's Qwen, `DASHSCOPE_API_KEY`. Each provider of OpenAI's API reads its own.
+4. Leave it enabled or off and save.
+In: name, identifier, API, address, key variable, enabled, notes.
+Out: the provider in the list, with its key if its variable has it (ASSISTANT-F09), ready for its models.
+If it fails: an address that is not https is refused with "Use an https address: the provider's key travels to it." (only an address of the machine itself is accepted without https); without a key variable, "This field is required."; a repeated identifier is refused; without permission, the admin does not let in.
 Involved: none
 
-### ASSISTANT-F02 Keep a provider's key without it being seen
+### ASSISTANT-F02 See whether a provider has its key without it being seen
 Status: done
 Actor: ERPlora's staff
 Screen: Admin: AI providers
 Steps:
-1. On the provider's page, add a key: label ("default" by default), the key in the "Key" field and whether active.
-2. Save: the key is kept encrypted and the page and the list only show "…" and its last four characters.
-3. To change it, type the new one in "Key" and save: the date of the change and who made it stay. Leaving "Key" empty saves the rest without touching the key.
-4. To remove it, tick "Delete" on its row and save.
-In: label, key, active.
-Out: the encrypted key with its end in sight (`assistant.credential.saved`, with whether the key changed; on removal, `assistant.credential.deleted`). Neither the page, the list, the notices nor the log ever carry the key.
-If it fails: a new key row without a key is refused with "Type the provider's key."; a repeated label in the same provider is refused; without erplora.com's encryption key, "The key of the credentials is not configured: no provider key can be kept." and nothing is saved; a key that can no longer be read shows as "Unreadable: type the key again" and saving the page without typing another does not touch it; whoever may only look does not see the "Key" field; without permission, the admin does not let in.
-Involved: none
+1. In "AI providers", the "Key" column of each provider says "In the environment" if its variable has a key, or "No key".
+2. On the provider's page, "Connection" says the same next to its "Key variable".
+3. Giving it a key, changing it or removing it is not done in the admin: it is done in the environment's secret (ASSISTANT-F09).
+In: the provider and its key variable.
+Out: whether the provider has its key. Neither the list, the page, the notices nor the log ever carry the key or any part of it.
+If it fails: a provider without a key shows as "No key" and its models neither answer nor can be tried (ASSISTANT-F06); whoever may only look sees the same without being able to change the page; without permission, the admin does not let in.
+Involved: ASSISTANT-F01, ASSISTANT-F09
 
 ### ASSISTANT-F03 Talk to each provider in its own API
 Status: done
@@ -203,7 +208,7 @@ Steps:
 2. It sends the conversation with its instructions, its images, the tools offered (only one per answer) and the output maximum, and receives the answer live, piece by piece.
 3. It translates what each provider answers into the same for all: the text as it arrives, each tool the model asks for with its complete data, the input and output consumption and how it ended (normally, because it asked for a tool, for length or by the content filter).
 4. For the list of models, it asks the provider for its conversation models, page by page, and leaves out those that do not converse (voice, images, text fingerprints).
-In: the provider's API, address and key; the model, the conversation, the instructions and the tools.
+In: the provider's API, address and key (the one of its variable of the environment); the model, the conversation, the instructions and the tools.
 Out: the text, the tools asked for, the consumption and the end of the turn, the same whatever the provider; or the list of conversation models.
 If it fails: if the provider refuses the key or the request, the turn ends with its reason and is marked as a failure repeating does not fix; if it does not answer, takes too long, is overloaded or limits the pace, it ends with a failure another attempt can fix (to move to the fallback model); the reason never carries the key. If erplora.com cannot load its trusted certificates (`SSL_CERT_FILE` names a file that is not there or holds none), the call never goes out: it ends with a failure repeating does not fix, and its reason and the server's log name the variable and the file. A provider without a key or with an unknown API is not called.
 Involved: ASSISTANT-F04, ASSISTANT-F06, ASSISTANT-F07
@@ -217,9 +222,9 @@ Steps:
 2. Tick the ones that stay (those it has come ticked) and click "Save the choice".
 3. Back on the page with the summary, for example "Local: 1 new, 0 kept, 1 removed, 0 in use by the policy.": the ticked ones are available and the rest are removed, except those the answering model uses, which stay.
 4. On the page or in "AI models", type each model's input and output price (dollars per million tokens), correct its name or context, or turn it off.
-In: the provider with an active key; the choice of models; the prices.
+In: the provider with its key in the environment; the choice of models; the prices.
 Out: the provider's models, exactly the chosen ones plus those in use (`assistant.model.selected`, with how many were created, kept, removed and protected).
-If it fails: without an active readable key, "This provider has no active key: add one on its page and try again." and nothing is asked of the provider; if the provider refuses the key or does not answer, "The provider did not give its models:" with its reason; if it has no conversation models, "The provider listed no chat models."; without permission to see providers and to add and remove models, the admin does not let in; a model in use by the answering model cannot be deleted.
+If it fails: without its key in the environment, "This provider has no key in the environment: fill the variable its page names." and nothing is asked of the provider; if the provider refuses the key or does not answer, "The provider did not give its models:" with its reason; if it has no conversation models, "The provider listed no chat models."; without permission to see providers and to add and remove models, the admin does not let in; a model in use by the answering model cannot be deleted.
 Involved: ASSISTANT-F03, ASSISTANT-F05
 
 ### ASSISTANT-F05 Choose which model answers
@@ -240,13 +245,13 @@ Status: done
 Actor: system
 Screen: none
 Steps:
-1. Every assistant turn reads again which model answers and which one is its fallback, with each provider's most recent active key that can be opened; so a changed key or another choice already counts on the next turn, without restarting anything.
-2. A model that is off, one of a provider that is off and one of a provider without a usable key are skipped; the turn starts with the first one left and says which model answers.
+1. Every assistant turn reads again which model answers and which one is its fallback, with each provider's key in the environment; so another choice already counts on the next turn, without restarting anything, and a key changed in the environment as soon as it is deployed.
+2. A model that is off, one of a provider that is off and one of a provider without its key in the environment are skipped; the turn starts with the first one left and says which model answers.
 3. If its provider fails before answering anything (down, overloaded, limiting the rate or refusing the key), the turn passes to the fallback model and warns of the change with its reason; if it had already started answering, the turn ends with the failure, because the person already saw the start of the answer.
 4. When a model is tried from the admin, the turn goes to that model alone, without fallback.
 In: the model that answers and its fallback (or the model being tried) and their providers' keys.
 Out: the model that answers the turn and, if its provider fails before answering, the notice of the switch to the fallback model.
-If it fails: without a model that answers, "No model answers yet: choose one on the page “Model that answers”."; if none of the chosen ones can be used, "No model can answer: the providers of the chosen models have no active key."; a model being tried that is off, or of a provider that is off, "This model is off or its provider is: turn them on to use it."; if all of them fail, the turn ends with the reason of the last one; the staff only try a model with permission to change the model that answers.
+If it fails: without a model that answers, "No model answers yet: choose one on the page “Model that answers”."; if none of the chosen ones can be used (their providers have no key in the environment), "No model can answer: the providers of the chosen models have no active key."; a model being tried that is off, or of a provider that is off, "This model is off or its provider is: turn them on to use it."; if all of them fail, the turn ends with the reason of the last one; the staff only try a model with permission to change the model that answers.
 Involved: ASSISTANT-F03, ASSISTANT-F05, ASSISTANT-F07
 
 ### ASSISTANT-F07 Try a model before it answers
@@ -260,7 +265,7 @@ Steps:
 4. At the end, "Done." and the table with "Input tokens", "Output tokens", "Time" and "Cost" (with the model's prices).
 In: the model, the message and the tools.
 Out: the model's answer with its usage, its time and its cost; the try stays in the audit trail with who made it, how long the message was and how many tools it had, never the message (`assistant.model.tried`). No business, quota nor conversation is touched.
-If it fails: without a model of the list, "Choose the model to try from the list."; without a message, "Write the message to send."; badly written tools, "The tools are not well written: write a list of tools as in the example, each with its name."; a model that is off or of a provider that is off, "This model is off or its provider is: turn them on to use it."; a provider without a usable key, "No model can answer: the providers of the chosen models have no active key."; if the provider fails, "The model did not answer: …" with its reason, never the key; more than 10 tries in a minute, "Too many tries in a minute: wait a moment and try again."; without network, "The try could not be sent: check the connection and try again.". Only whoever may change the model that answers tries one (each try spends ERPlora's key); without that permission, the admin does not let in.
+If it fails: without a model of the list, "Choose the model to try from the list."; without a message, "Write the message to send."; badly written tools, "The tools are not well written: write a list of tools as in the example, each with its name."; a model that is off or of a provider that is off, "This model is off or its provider is: turn them on to use it."; a provider without its key in the environment, "No model can answer: the providers of the chosen models have no active key."; if the provider fails, "The model did not answer: …" with its reason, never the key; more than 10 tries in a minute, "Too many tries in a minute: wait a moment and try again."; without network, "The try could not be sent: check the connection and try again.". Only whoever may change the model that answers tries one (each try spends ERPlora's key); without that permission, the admin does not let in.
 Involved: ASSISTANT-F05, ASSISTANT-F06
 
 ### ASSISTANT-F08 See who changed the configuration of the AI
@@ -268,27 +273,26 @@ Status: done
 Actor: ERPlora superuser (or a team member allowed to see the log)
 Screen: erplora.com's admin › "Audit log"
 Steps:
-1. Every addition, change or removal of an AI provider, of a provider's key (also turning it off or replacing it with another), of a model (its prices, whether it is available) and of the model that answers is written down: what changed, from which value to which, when, who did it and from which address.
+1. Every addition, change or removal of an AI provider (also the variable its key is read from), of a model (its prices, whether it is available) and of the model that answers is written down: what changed, from which value to which, when, who did it and from which address.
 2. Every try of a model is written down as an access to that model, with who made it, how long the message was and how many tools it had.
 3. Open "Audit log" in the admin, filter by resource type or search, and open an entry to see its changes.
 In: the changes to the configuration of the AI, made from the admin or by erplora.com's commands.
 Out: one entry per change in the same audit log as the accounts, the charges and the fiscal documentation.
-If it fails: a provider's key is never written down, neither in clear nor encrypted: its change shows in its last four characters and in when it changed; nor is the message of a try. Nobody can create, change or delete an entry by hand, and a team member without the permission cannot open the log.
-Involved: ACCOUNTS-F36, ASSISTANT-F02, ASSISTANT-F07
+If it fails: a provider's key is never written down, since it is in no row; nor is the message of a try. Nobody can create, change or delete an entry by hand, and a team member without the permission cannot open the log.
+Involved: ACCOUNTS-F36, ASSISTANT-F01, ASSISTANT-F07
 
-### ASSISTANT-F09 Load the providers' keys from the environment
+### ASSISTANT-F09 Give a provider its key from the environment
 Status: done
-Actor: ERPlora's staff, on erplora.com's command line
-Screen: none
+Actor: ERPlora's staff who deploy erplora.com
+Screen: none (the secret of erplora.com's environment)
 Steps:
-1. With the keys of OpenAI, Anthropic, Google Gemini and DeepSeek in erplora.com's environment, run the loading of the environment's keys.
-2. Each key is kept encrypted in its provider with the default label (or another one chosen); if the provider is missing, it is added with its name and its API.
-3. If the provider already had a key with that label, it stays as it is, unless replacing it is asked for: then it changes, it is turned on and when it changed stays.
-4. The providers to load can be chosen, and the loading can be rehearsed without keeping anything.
-In: the keys of the environment, the chosen providers, the label and whether the ones already there are replaced.
-Out: the keys encrypted in their providers (`assistant.credential.saved`) and, for each one, whether it was created, changed, kept or skipped, with its last four characters.
-If it fails: an empty variable is skipped; an unknown provider stops the loading before keeping anything; without the key of the credentials none is kept. It never writes a whole key on screen, and the change stays in the audit log.
-Involved: ASSISTANT-F01, ASSISTANT-F02, ASSISTANT-F08
+1. Put the provider's key, created in its console, in erplora.com's secret, in the variable the provider's page names: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY` or `DASHSCOPE_API_KEY` (Alibaba's Qwen).
+2. Deploy erplora.com: the provider shows "In the environment" and its models answer from the next turn.
+3. To change it, put the new one in the same variable and deploy; to remove it, leave it empty and deploy: the provider shows "No key" and stops answering.
+In: the key in its variable of the environment.
+Out: the provider with its key; no other place keeps it, neither the database nor the admin.
+If it fails: an empty variable leaves the provider without a key and the turn passes to the fallback (ASSISTANT-F06); without any key, the assistant does not answer and erplora.com starts the same; a key the provider refuses shows as its reason when trying the model or choosing its models, never the key.
+Involved: ASSISTANT-F01, ASSISTANT-F02, ASSISTANT-F06
 
 ### ASSISTANT-F10 Change the encryption key without losing any credential
 Status: done
@@ -297,12 +301,12 @@ Screen: none
 Steps:
 1. Put the new encryption key as the current one and leave the old one as the previous one (which only reads), and deploy erplora.com.
 2. Rehearse the change: it says how many values would be encrypted again in each place, writing nothing.
-3. Run the change: every value kept with the key of the credentials (the AI providers' keys and WhatsApp's tokens and PINs) is encrypted again with the new key; those already are stay as they are.
+3. Run the change: every value kept with the key of the credentials (WhatsApp's tokens and PINs; the AI providers' keys are not in the database) is encrypted again with the new key; those already are stay as they are.
 4. If it ends without errors, remove the previous key: every credential still reads.
 In: the new key and the old one.
 Out: every credential encrypted with the new key (`assistant.encryption.rotated`, with how many changed, how many already were and how many could not be read).
 If it fails: a value neither key opens is never written: its row is named and the change ends with an error, so the previous key is not removed while something needs it (bring back the key that encrypted it or type the value again, and repeat). Without the encryption key nothing changes. It never shows a value nor its encryption, and no date of the rows moves.
-Involved: ASSISTANT-F02, ASSISTANT-F09
+Involved: none
 
 ### ASSISTANT-F11 Know who calls and for which business
 Status: done
