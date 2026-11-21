@@ -7,7 +7,6 @@
 121 .github/scripts/e2e-report.sh saas#462
 265 .github/scripts/ecs-deploy.sh saas#462
 230 .github/scripts/ecs-rollback.sh saas#462
-584 accounts/frontend/pages/VerifyEmailPage.test.ts saas#462
 549 billing/stripe_service.py saas#462
 511 fiscal/services.py saas#462
 1124 fiscal_gateway/tests/test_internal.py saas#462
