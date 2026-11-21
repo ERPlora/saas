@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
-from billing import vat
+from billing import vat, vat_breakdown, vat_countries
 from billing.models import GENERIC_CATEGORY, TaxRule
 from billing.queries.tax import fiscal_policy, tax_rule
 
@@ -94,7 +94,7 @@ def _audit_territories_outside_vat(report: TaxRuleAuditReport) -> None:
             customer_postal_code=postal_code,
             category_key=report.category,
         )
-        if quote is None or quote.treatment != vat.NOT_SUBJECT or quote.tax:
+        if quote is None or quote.treatment != vat_breakdown.NOT_SUBJECT or quote.tax:
             charged = "nothing at all" if quote is None else f"{quote.tax} EUR ({quote.treatment})"
             report.problems.append(
                 f"A sale to ES/{region} (postal code {postal_code}) quotes {charged} instead of resolving "
@@ -148,7 +148,7 @@ def _audit_payers_on_file(report: TaxRuleAuditReport) -> None:
     territories: dict[tuple[str, str], str] = {}
     for country, postal_code in on_file:
         country = (country or "").strip().upper()
-        region = vat.spanish_region_for_postal_code(postal_code) if country == "ES" else ""
+        region = vat_countries.spanish_region_for_postal_code(postal_code) if country == "ES" else ""
         if region is None:
             report.problems.append(
                 f"A payer is on file in ES with the postal code {postal_code!r}, which is not a Spanish "

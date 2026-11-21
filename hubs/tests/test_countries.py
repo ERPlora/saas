@@ -14,7 +14,7 @@ from django.utils import translation
 from live.operations import get as get_operation
 
 from base import assistant
-from billing.vat import BILLING_COUNTRIES
+from billing.vat_countries import BILLING_COUNTRIES
 from hubs.countries import COUNTRY_NAMES, PAYER_COUNTRY_NAMES
 from hubs.models import BillingProfile, Hub
 from hubs.schemas.common import COUNTRIES
@@ -74,7 +74,7 @@ def test_every_market_a_business_may_be_in_has_its_name():
 
 
 def test_every_country_erplora_invoices_has_its_name():
-    """The UK too: no business is created there, but a payer on file may be (``billing.vat.BILLING_COUNTRIES``)."""
+    """The UK too: no business is created there, but a payer on file may be (``billing.vat_countries.BILLING_COUNTRIES``)."""
     choices = BillingProfile._meta.get_field("billing_country").flatchoices
 
     assert {code for code, _name in choices} == set(BILLING_COUNTRIES)

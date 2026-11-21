@@ -26,7 +26,7 @@ import requests
 from django.conf import settings
 
 from billing.nif import normalise_nif
-from billing.vat import EU_VAT_RATES
+from billing.vat_countries import EU_VAT_RATES
 
 logger = logging.getLogger("billing.vies")
 

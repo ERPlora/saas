@@ -47,7 +47,7 @@ def billing_profile_update(ctx: OperationContext, data: BillingProfileIn) -> dic
     The tax ID goes through billing's VAT door (``billing.services.payer_vat_numbers.validate_vat_for_profile``): written
     as ERPlora invoices it and asked to VIES, whose verdict is logged; a malformed one is the field's 422,
     one VIES does not confirm is kept as identification (it buys no reverse charge)."""
-    from billing import vat
+    from billing import vat_countries
     from billing.services.live_rates import retax_payer
     from billing.services.payer_vat_numbers import MalformedVatNumber, validate_vat_for_profile
 
@@ -57,7 +57,7 @@ def billing_profile_update(ctx: OperationContext, data: BillingProfileIn) -> dic
     if data.same_as_business:
         values["billing_name"] = hub.name
         values["billing_country"] = hub.country
-    if values["billing_country"] and not vat.sells_to(values["billing_country"]):
+    if values["billing_country"] and not vat_countries.sells_to(values["billing_country"]):
         # Said on top as well: with «use the business's data» the country field is not on screen.
         reason = _("For now ERPlora only invoices payers in Spain.")
         raise InvalidPayload(reason, fields={"billing_country": reason})

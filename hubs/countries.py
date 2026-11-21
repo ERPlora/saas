@@ -39,5 +39,5 @@ COUNTRY_NAMES = {
     "ES": _("Spain"),
     "SE": _("Sweden"),
 }
-#: The countries a payer may be in (``billing.vat.BILLING_COUNTRIES``): those, and the UK, where no business is created.
+#: The countries a payer may be in (``billing.vat_countries.BILLING_COUNTRIES``): those, and the UK, where no business is created.
 PAYER_COUNTRY_NAMES = {**COUNTRY_NAMES, "GB": _("United Kingdom")}

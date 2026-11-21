@@ -11,7 +11,7 @@ export interface BillingDetailsDraft {
   same_as_business: boolean;
 }
 
-/** The countries a payer may be billed in: billing/vat.py `SOLD_TO_COUNTRIES` (guard: BillingDetailsForm.test.ts). */
+/** The countries a payer may be billed in: billing/vat_countries.py `SOLD_TO_COUNTRIES` (guard: BillingDetailsForm.test.ts). */
 export const SOLD_TO_COUNTRIES = ['ES'] as const;
 </script>
 

@@ -17,7 +17,7 @@ answer (503 ``billing.stripe_unavailable``).
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
-from billing.vat import VatBreakdown
+from billing.vat_breakdown import VatBreakdown
 
 
 @dataclass(frozen=True)

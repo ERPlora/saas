@@ -60,8 +60,8 @@ describe('BillingDetailsForm', () => {
     expect(ionProps(s.field('country'), 'helperText')).toEqual({ helperText: 'For now ERPlora only invoices payers in Spain.' });
   });
 
-  it('offers exactly the countries the server sells to (billing/vat.py SOLD_TO_COUNTRIES)', () => {
-    const vat = readFileSync(join(BILLING, 'vat.py'), 'utf8');
+  it('offers exactly the countries the server sells to (billing/vat_countries.py SOLD_TO_COUNTRIES)', () => {
+    const vat = readFileSync(join(BILLING, 'vat_countries.py'), 'utf8');
     const listed = /SOLD_TO_COUNTRIES = frozenset\(\{([^}]*)\}\)/.exec(vat)?.[1].match(/[A-Z]{2}/g) ?? [];
     expect(listed.length).toBeGreaterThan(0);
     expect([...SOLD_TO_COUNTRIES].sort()).toEqual(listed.sort());

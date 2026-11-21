@@ -11,7 +11,7 @@ from live.context import OperationContext
 from live.errors import Conflict, InvalidPayload
 
 from apps.models import Module
-from billing import queries, stripe_service, vat
+from billing import queries, stripe_service, vat, vat_breakdown
 from billing.money import to_cents
 from billing.services import payment_gates, sale_tax
 from billing.stripe_tax_rates import tax_rate_specs_for
@@ -265,7 +265,7 @@ def price_sale(hub: Hub, sale: Sale, *, recurring_net: Decimal, renewing: bool =
         hub, category_key=sale.category_key, price=sale.net, what=sale.kind, renewing=renewing
     )
     rate = Decimal(quote.rate or 0) if quote.is_subject else Decimal("0")
-    gross = vat.add_vat(recurring_net, rate) if rate else recurring_net
+    gross = vat_breakdown.add_vat(recurring_net, rate) if rate else recurring_net
     profile = hub.billing_profile
     if gross > SIMPLIFIED_INVOICE_LIMIT and not (profile.tax_id or "").strip():
         logger.info(

@@ -92,12 +92,12 @@ def business_paid_by(db):
 
 @pytest.fixture
 def every_country_sold(monkeypatch):
-    """The engine as it sells once ``billing.vat.SOLD_TO_COUNTRIES`` reopens every country it already prices
+    """The engine as it sells once ``billing.vat_countries.SOLD_TO_COUNTRIES`` reopens every country it already prices
     (``BILLING_COUNTRIES``): for the tests of the engine itself. What is on sale today is
     ``test_sold_to_spain_only.py``."""
-    from billing import vat
+    from billing import vat_countries
 
-    monkeypatch.setattr(vat, "SOLD_TO_COUNTRIES", frozenset(vat.BILLING_COUNTRIES))
+    monkeypatch.setattr(vat_countries, "SOLD_TO_COUNTRIES", frozenset(vat_countries.BILLING_COUNTRIES))
 
 
 # --- Stripe ------------------------------------------------------------------------------------------
