@@ -331,6 +331,7 @@ def test_the_terms_put_the_legal_retention_on_the_customer(client):
             ),
         ),
     ],
+    ids=["en", "es"],
 )
 def test_the_terms_say_what_is_kept_after_a_hub_is_erased_for_how_long_and_why(client, language, fragments):
     """The Hub erases a deleted business's database and files when its days to recover it end, all but its fiscal

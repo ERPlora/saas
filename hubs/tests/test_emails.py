@@ -208,6 +208,7 @@ def test_the_deletion_says_until_when_it_can_be_recovered(hub, make_user):
             "nadie puede modificar ni borrar.",
         ),
     ],
+    ids=["en", "es"],
 )
 def test_the_deletion_says_what_is_kept_for_how_long_and_why(hub, make_user, unpaid, language, erased, kept):
     """90 days after the deletion the Hub erases the business's database and files, but its fiscal documents stay 6
