@@ -17,8 +17,8 @@ from public.tests.legal_pages import list_items_naming, paragraphs_of, section
 #
 # * The trial of section 4 is read from the plans on sale through hubs.plan.list; the tests still create the rows with
 #   the ORM of hubs.
-# * The suspension clock of section 3 is public.legal.SUSPENDED_HUB_DELETE_DAYS: the task that deletes a suspended hub
-#   lives in the Hub, so the number the terms print is pinned here.
+# * The suspension clock of section 3 is hubs.services.suspensions.SUSPENDED_DELETE_DAYS, the days the sweep that
+#   deletes a suspended business counts.
 # * Where ERPlora sells its paid plans (the clause with id=where-we-sell) is public/tests/test_where_we_sell.py.
 
 TERMS = "/legal/terms/"
@@ -276,11 +276,12 @@ def test_the_terms_follow_the_exit_package_setting(client, settings):
 
 @pytest.mark.django_db
 def test_the_terms_state_the_suspension_clock(client):
-    from public.legal import SUSPENDED_HUB_DELETE_DAYS
+    """The days a suspended business waits before it is deleted are the ones the hourly sweep counts (HUBS-F20)."""
+    from hubs.services.suspensions import SUSPENDED_DELETE_DAYS
 
     html = terms_html(client)
 
-    assert re.search(rf"\b{SUSPENDED_HUB_DELETE_DAYS}\b[^<]*days", html)
+    assert re.search(rf"suspended for {SUSPENDED_DELETE_DAYS} days is deleted", html)
     assert "permanent cancellation after 30 days" not in html
 
 
@@ -305,6 +306,46 @@ def test_the_terms_put_the_legal_retention_on_the_customer(client):
     assert "6 years" in html
     assert "Commercial Code" in html
     assert "30 days to export" not in html
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("language", "fragments"),
+    [
+        (
+            "en",
+            (
+                "{days} days after a Hub is deleted, ERPlora erases its database and its files.",
+                "Its sales, invoices and other fiscal documents are the exception: ERPlora keeps them for the 6 years "
+                "the law requires them to be kept, in an archive that nobody, ERPlora included, can change or delete.",
+                "That archive does not replace the copy the customer must keep, as described above.",
+            ),
+        ),
+        (
+            "es",
+            (
+                "A los {days} días de eliminarse un Hub, ERPlora borra su base de datos y sus ficheros.",
+                "Sus ventas, facturas y demás documentos fiscales son la excepción: ERPlora los guarda durante los 6 "
+                "años que la ley obliga a conservarlos, en un archivo que nadie, tampoco ERPlora, puede modificar ni "
+                "borrar.",
+                "Ese archivo no sustituye a la copia que el cliente debe conservar, como se indica arriba.",
+            ),
+        ),
+    ],
+    ids=["en", "es"],
+)
+def test_the_terms_say_what_is_kept_after_a_hub_is_erased_for_how_long_and_why(client, language, fragments):
+    """The Hub erases a deleted business's database and files when its days to recover it end, all but its fiscal
+    documents, which it keeps 6 years in the fiscal archive (BASE-F109): the terms say both, with the days read from
+    the business's own clock."""
+    from hubs.models import Hub
+
+    paragraphs = paragraphs_of(section(terms_html(client, language), 5))
+    erased = [paragraph for paragraph in paragraphs if fragments[0].format(days=Hub.RETENTION.days) in paragraph]
+
+    assert len(erased) == 1
+    for fragment in fragments[1:]:
+        assert fragment in erased[0]
 
 
 @pytest.mark.django_db
@@ -418,12 +459,11 @@ def test_the_terms_date_moved_with_the_last_change(client):
     spanish = terms_html(client, "es")
 
     for old in ("August 8, 2026", "October 1, 2026", "October 13, 2026", "October 25, 2026", "November 3, 2026",
-                "November 5, 2026"):
+                "November 5, 2026", "November 14, 2026"):
         assert old not in html, old
-    assert TERMS_VERSION > date(2026, 11, 5)
-    assert "25 de octubre de 2026" not in spanish
-    assert "3 de noviembre de 2026" not in spanish
-    assert "5 de noviembre de 2026" not in spanish
+    assert TERMS_VERSION > date(2026, 11, 14)
+    for old in ("25 de octubre de 2026", "3 de noviembre de 2026", "5 de noviembre de 2026", "14 de noviembre de 2026"):
+        assert old not in spanish, old
 
 
 # Our apps, not a marketplace, and all of them on every plan

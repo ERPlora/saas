@@ -2307,10 +2307,6 @@ msgstr "Todas las apps incluidas, listo para VeriFactu"
 msgid "Process transactions in milliseconds, with live updates on every device."
 msgstr "Procesa transacciones en milisegundos, con actualizaciones en vivo en todos los dispositivos."
 
-#: templates/public/legal/terms.html
-msgid "November 14, 2026"
-msgstr "14 de noviembre de 2026"
-
 #: templates/public/legal/privacy.html
 msgid "Another recipient: the web search of the AI assistant"
 msgstr "Otro destinatario: la búsqueda en la web del asistente IA"
@@ -2969,6 +2965,10 @@ msgstr "Se envía al titular un enlace de descarga por correo electrónico, disp
 
 msgid "Keeping the accounting and tax documentation for the legally required period is the customer's responsibility as the party subject to those obligations (6 years, article 30 of the Spanish Commercial Code; 4 years of tax limitation, article 66 of the General Tax Act). ERPlora is the software producer and, in respect of the data, the processor: its obligation on termination is to return or delete the data, which is what the copy described above does."
 msgstr "Conservar la documentación contable y fiscal durante el plazo legalmente exigido es responsabilidad del cliente, como obligado a ello (6 años, artículo 30 del Código de Comercio; 4 años de prescripción tributaria, artículo 66 de la Ley General Tributaria). ERPlora es el productor del software y, respecto de los datos, encargado del tratamiento: su obligación al terminar el servicio es devolverlos o suprimirlos, que es exactamente lo que hace la copia descrita arriba."
+
+#, python-format
+msgid "%(days)s days after a Hub is deleted, ERPlora erases its database and its files. Its sales, invoices and other fiscal documents are the exception: ERPlora keeps them for the 6 years the law requires them to be kept, in an archive that nobody, ERPlora included, can change or delete. That archive does not replace the copy the customer must keep, as described above."
+msgstr "A los %(days)s días de eliminarse un Hub, ERPlora borra su base de datos y sus ficheros. Sus ventas, facturas y demás documentos fiscales son la excepción: ERPlora los guarda durante los 6 años que la ley obliga a conservarlos, en un archivo que nadie, tampoco ERPlora, puede modificar ni borrar. Ese archivo no sustituye a la copia que el cliente debe conservar, como se indica arriba."
 
 msgid "6. Availability and SLA"
 msgstr "6. Disponibilidad y SLA"

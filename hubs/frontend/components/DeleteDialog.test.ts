@@ -1,7 +1,7 @@
 // «Delete business»: a
 // ConfirmDialog that asks to type the business's name, says what follows (stops at once, 90 days to
-// recover it, the plan back to Free, an email with the data), runs `hubs.business.delete` with the
-// name typed and says until when it can be recovered.
+// recover it, its fiscal documents kept 6 years, the plan back to Free, an email with the data), runs
+// `hubs.business.delete` with the name typed and says until when it can be recovered.
 // clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';
@@ -25,14 +25,14 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-async function setup(api: () => Response) {
+async function setup(api: () => Response, locale: 'en' | 'es' = 'en') {
   const open = ref(true);
   const deleted = vi.fn();
   const Host = {
     render: () =>
       h(DeleteDialog, { business: BUSINESS, open: open.value, 'onUpdate:open': (v: boolean) => (open.value = v), onDeleted: deleted }),
   };
-  const m = await mountHubs(Host, { api });
+  const m = await mountHubs(Host, { api, locale });
   await flush();
   const q = (id: string) => document.querySelector(`[data-testid="${id}"]`) as HTMLElement & { disabled?: boolean; color?: string };
   async function typeName(value: string) {
@@ -49,7 +49,12 @@ describe('DeleteDialog', () => {
     const s = await setup(() => Response.json(DELETED));
     const dialog = s.q('delete-dialog');
     expect(dialog.getAttribute('aria-label')).toBe('Delete Panadería López');
-    expect(dialog.textContent).toContain('It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good.');
+    expect(dialog.textContent).toContain(
+      'It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good, except its fiscal documents.',
+    );
+    expect(dialog.textContent).toContain(
+      'Its sales, invoices and other fiscal documents are kept for 6 years, as the law requires, in an archive nobody can change or delete.',
+    );
     expect(dialog.textContent).toContain('Its plan is cancelled now: if you recover it, it comes back on Free.');
     // No download link in the dialog: the deletion mail leads to the copy of the business's data.
     expect(dialog.textContent).toContain('We send you an email with the date until which you can recover it.');
@@ -58,6 +63,15 @@ describe('DeleteDialog', () => {
     expect(s.q('delete-dialog-submit').disabled).toBe(true);
     await s.typeName('panadería lópez');
     expect(s.q('delete-dialog-submit').disabled).toBe(false);
+  });
+
+  it('tells a Spanish owner what is kept, for how long and why', async () => {
+    const s = await setup(() => Response.json(DELETED), 'es');
+    const dialog = s.q('delete-dialog');
+    expect(dialog.textContent).toContain('Puedes recuperarlo durante 90 días; después se borra para siempre, salvo sus documentos fiscales.');
+    expect(dialog.textContent).toContain(
+      'Sus ventas, facturas y demás documentos fiscales se guardan 6 años, como exige la ley, en un archivo que nadie puede modificar ni borrar.',
+    );
   });
 
   it('deletes with the name typed, says until when it can be recovered, closes and tells the page', async () => {
