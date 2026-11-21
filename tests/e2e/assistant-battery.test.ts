@@ -7,15 +7,13 @@ import { describe, expect, it } from 'vitest';
 import {
   BATTERY_A,
   BATTERY_C,
-  citationOf,
   type Item,
   type Observed,
-  parseFrames,
   realProviderMode,
   renderReport,
-  summarizeTurns,
   verdictOf,
 } from './assistant-battery';
+import { citationOf, parseFrames, summarizeTurns } from './assistant-turns';
 
 /** One server-sent event of the turn, as `assistant.turn.sse` writes it. */
 const sse = (frame: unknown): string => `data: ${JSON.stringify(frame)}\n\n`;

@@ -1,6 +1,6 @@
 // What the tests of the assistant's QA probes share (assistant-probes.test.ts, assistant-probes.verdict.test.ts):
 // a probe, what the panel showed for it and a tool that ran.
-import type { Turns } from '../assistant-battery';
+import type { Turns } from '../assistant-turns';
 import type { Probe, ProbeObserved } from '../assistant-probes';
 
 export const probe = (overrides: Partial<Probe> = {}): Probe => ({
