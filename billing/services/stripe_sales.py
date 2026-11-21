@@ -3,7 +3,6 @@ price and the tax rates that charge it, the statuses of a Stripe subscription an
 
 import logging
 from dataclasses import dataclass
-from datetime import timedelta
 from decimal import Decimal
 
 from django.utils import timezone
@@ -26,9 +25,6 @@ logger = logging.getLogger("billing.services")
 #: A simplified invoice is allowed up to 400 € with VAT (RD 1619/2012, art. 4.1); above it the invoice
 #: names the buyer, so the sale needs the payer's tax id first.
 SIMPLIFIED_INVOICE_LIMIT = Decimal("400.00")
-#: How long a business whose renewal failed keeps its whole plan while Stripe retries, counted from the
-#: failed invoice (market: WooCommerce 7 days, Square 9, Lightspeed 21).
-UNPAID_PLAN_GRACE = timedelta(days=7)
 PAID_STATUSES = frozenset({"active", "trialing"})
 DUNNING_STATUSES = frozenset({"past_due", "unpaid"})
 ENDED_STATUSES = frozenset({"canceled", "incomplete_expired"})

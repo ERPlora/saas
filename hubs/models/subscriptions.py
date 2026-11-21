@@ -1,7 +1,7 @@
 """The plan a business is on and the paid modules it has."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.core.validators import RegexValidator
 from django.db import models
@@ -15,6 +15,17 @@ from hubs.models.plan_catalog import Plan
 MODULE_SLUG_VALIDATOR = RegexValidator(
     r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$", _("Enter the label of an app: lowercase letters, digits and underscores.")
 )
+
+
+#: How long a business whose renewal failed keeps its whole plan while Stripe retries, counted from the
+#: failed invoice (market: WooCommerce 7 days, Square 9, Lightspeed 21).
+UNPAID_PLAN_GRACE = timedelta(days=7)
+
+
+def grace_end(unpaid_since: datetime) -> datetime:
+    """When a business with an invoice unpaid since ``unpaid_since`` is suspended: the moment billing suspends it,
+    the date its payer is told and the deadline the Hub gets in the snapshot."""
+    return unpaid_since + UNPAID_PLAN_GRACE
 
 
 class Subscription(models.Model):

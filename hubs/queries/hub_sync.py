@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from fiscal.queries import snapshot_block as verifactu_representation
 from hubs.models import CustomDomain, Hub, HubMember, Plan, Subscription
+from hubs.models.subscriptions import grace_end
 from hubs.queries.access_control import RANK
 from hubs.queries.hub_usage import storage_limit_bytes
 from hubs.queries.plan_catalog import _effective_plan
@@ -104,6 +105,7 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
         # snapshot's version (whatsapp.queries.channel_block).
         "whatsapp": channel_block(hub.id, version=hub.state_version),
         **_snapshot_custom_domain(hub, plan),
+        **_snapshot_deadline(hub, subscription),
     }
 
 
@@ -114,6 +116,15 @@ def _snapshot_custom_domain(hub: Hub, plan: Plan | None) -> dict[str, str]:
         return {}
     domain = CustomDomain.objects.filter(hub=hub).first()
     return {"custom_domain": domain.hostname} if domain is not None and domain.in_snapshot else {}
+
+
+def _snapshot_deadline(hub: Hub, subscription: Subscription | None) -> dict[str, str]:
+    """``suspends_on``: while a payment is pending, when the business is suspended unless it is paid (ISO 8601,
+    ``grace_end`` of its oldest unpaid invoice). Absent otherwise, which to the Hub means no deadline."""
+    since = getattr(subscription, "unpaid_since", None)
+    if hub.status != Hub.Status.PAST_DUE or since is None:
+        return {}
+    return {"suspends_on": grace_end(since).isoformat()}
 
 
 #: The plan's fields its businesses' snapshots carry (``plan`` of the snapshot): changing one in the admin owes the

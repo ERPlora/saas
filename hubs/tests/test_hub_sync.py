@@ -213,6 +213,27 @@ class TestTheSnapshot:
 
         assert hub_sync.hub_snapshot(business.id)["status"] == sent
 
+    def test_a_pending_payment_says_when_the_business_is_suspended(self, business):
+        since = timezone.now().replace(microsecond=0) - timedelta(days=2)
+        Hub.objects.filter(pk=business.pk).update(status=Hub.Status.PAST_DUE)
+        Subscription.objects.filter(hub=business).update(unpaid_since=since)
+
+        snapshot = hub_sync.hub_snapshot(business.id)
+
+        assert snapshot["suspends_on"] == (since + timedelta(days=7)).isoformat()
+
+    @pytest.mark.parametrize("status", ["preparing", "active", "suspended"])
+    def test_without_a_pending_payment_there_is_no_deadline(self, business, status):
+        Hub.objects.filter(pk=business.pk).update(status=status)
+        Subscription.objects.filter(hub=business).update(unpaid_since=timezone.now() - timedelta(days=9))
+
+        assert "suspends_on" not in hub_sync.hub_snapshot(business.id)
+
+    def test_a_pending_payment_without_its_date_has_no_deadline(self, business):
+        Hub.objects.filter(pk=business.pk).update(status=Hub.Status.PAST_DUE)
+
+        assert "suspends_on" not in hub_sync.hub_snapshot(business.id)
+
 
 # --- Pushing after the COMMIT ---------------------------------------------------------------------
 
