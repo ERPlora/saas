@@ -336,7 +336,7 @@ describe('BusinessPage: deleted', () => {
   it('says until when it can be recovered and the owner recovers it', async () => {
     const s = await setup('summary', DELETED);
     const banner = s.testid('business-deleted');
-    expect(banner.text()).toMatch(/It will be erased for good on Jan 11, 2027/);
+    expect(banner.text()).toMatch(/It will be erased for good on Jan 11, 2027[\s\S]*Once erased, only its sales, invoices and other fiscal documents are kept, for 6 years, as the law requires\./);
     expect(s.testid('business-open').exists()).toBe(false);
     await s.testid('business-restore').trigger('click');
     await flush();
@@ -353,7 +353,7 @@ describe('BusinessPage: deleted', () => {
 
   it('an admin only reads that the owner can recover it', async () => {
     const s = await setup('summary', { ...DELETED, role: 'hub_admin', role_label: 'Admin', can: { ...DELETED.can, restore: false } });
-    expect(s.testid('business-deleted').text()).toContain('Only its owner can recover it.');
+    expect(s.testid('business-deleted').text()).toContain('Only its owner can recover it. Once erased, only its sales, invoices and other fiscal documents are kept, for 6 years, as the law requires.');
     expect(s.testid('business-restore').exists()).toBe(false);
   });
 

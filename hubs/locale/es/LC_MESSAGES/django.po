@@ -364,14 +364,22 @@ msgid ""
 "It had been suspended for %(days)d days because an invoice was not paid."
 msgstr "Llevaba %(days)d días suspendido porque una factura no se pagó."
 
-#: emails.py:154
+#: emails.py:159
 #, python-format
 msgid ""
 "You can recover it until %(date)s from %(url)s. After that date it is erased "
-"for good."
+"for good, except its fiscal documents."
 msgstr ""
 "Puedes recuperarlo hasta el %(date)s desde %(url)s. Después de esa fecha se "
-"borra para siempre."
+"borra para siempre, salvo sus documentos fiscales."
+
+#: emails.py:164
+msgid ""
+"Its sales, invoices and other fiscal documents are kept for 6 years, as the "
+"law requires, in an archive nobody can change or delete."
+msgstr ""
+"Sus ventas, facturas y demás documentos fiscales se guardan 6 años, como "
+"exige la ley, en un archivo que nadie puede modificar ni borrar."
 
 #: emails.py:169
 #, python-format

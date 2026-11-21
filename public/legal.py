@@ -19,6 +19,10 @@ from public import pricing
 #: states, and the Hub's clock must match it. Never lowered without changing the terms.
 SUSPENDED_HUB_DELETE_DAYS = 90
 
+#: The days after which the Hub erases a deleted business's database and files, all but its fiscal documents, as
+#: section 5.1 of the terms promises: the days its owner can still recover it (``Hub.RETENTION``), which the tests pin.
+DELETED_HUB_ERASE_DAYS = 90
+
 
 @require_safe
 def privacy(request: HttpRequest) -> HttpResponse:
@@ -43,6 +47,7 @@ def terms(request: HttpRequest) -> HttpResponse:
         "public/legal/terms.html",
         {
             "exit_package_days": settings.HUB_EXIT_PACKAGE_TTL_DAYS,
+            "deleted_hub_days": DELETED_HUB_ERASE_DAYS,
             "suspended_hub_delete_days": SUSPENDED_HUB_DELETE_DAYS,
             "trial_days_min": shortest,
             "trial_days_max": longest,

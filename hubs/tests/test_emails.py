@@ -192,6 +192,37 @@ def test_the_deletion_says_until_when_it_can_be_recovered(hub, make_user):
 
 
 @pytest.mark.parametrize("unpaid", [False, True])
+@pytest.mark.parametrize(
+    ("language", "erased", "kept"),
+    [
+        (
+            "en",
+            "After that date it is erased for good, except its fiscal documents.",
+            "Its sales, invoices and other fiscal documents are kept for 6 years, as the law requires, in an archive "
+            "nobody can change or delete.",
+        ),
+        (
+            "es",
+            "Después de esa fecha se borra para siempre, salvo sus documentos fiscales.",
+            "Sus ventas, facturas y demás documentos fiscales se guardan 6 años, como exige la ley, en un archivo que "
+            "nadie puede modificar ni borrar.",
+        ),
+    ],
+)
+def test_the_deletion_says_what_is_kept_for_how_long_and_why(hub, make_user, unpaid, language, erased, kept):
+    """90 days after the deletion the Hub erases the business's database and files, but its fiscal documents stay 6
+    years in the fiscal archive (BASE-F109): the mail says so, whether the owner deleted it or it was left unpaid."""
+    owner = make_user("olga@example.com", language=language)
+    hub.deletion_requested_at = timezone.now()
+
+    emails.send_deletion(hub, owner, base_url=BASE, unpaid=unpaid)
+
+    (message,) = mail.outbox
+    assert erased in message.body
+    assert kept in message.body
+
+
+@pytest.mark.parametrize("unpaid", [False, True])
 def test_the_deletion_leads_to_the_copy_of_the_data_in_the_panel_never_to_the_file(hub, make_user, unpaid):
     """HUBS-F18 and HUBS-F20 (the day-180 deletion): the copy the Hub makes of the business's data is downloaded from
     the business's page (the panel asks the Hub for a link of 15 minutes there), so this link never expires."""

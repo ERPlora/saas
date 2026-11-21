@@ -213,8 +213,8 @@
       },
       "deleting": {
         "heading": "It will be erased for good on {date}",
-        "body": "You deleted it on {date} and it no longer works. Until then you can recover it as it was.",
-        "bodyNotOwner": "It was deleted on {date} and no longer works. Only its owner can recover it."
+        "body": "You deleted it on {date} and it no longer works. Until then you can recover it as it was. Once erased, only its sales, invoices and other fiscal documents are kept, for 6 years, as the law requires.",
+        "bodyNotOwner": "It was deleted on {date} and no longer works. Only its owner can recover it. Once erased, only its sales, invoices and other fiscal documents are kept, for 6 years, as the law requires."
       },
       "plan": {
         "eyebrow": "Plan",
@@ -355,7 +355,8 @@
       "deleteAction": "Delete business",
       "ownerOnly": "Only the owner can delete the business.",
       "confirmTitle": "Delete {name}",
-      "confirmMessage": "It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good.",
+      "confirmMessage": "It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good, except its fiscal documents.",
+      "consequenceFiscal": "Its sales, invoices and other fiscal documents are kept for 6 years, as the law requires, in an archive nobody can change or delete.",
       "consequencePlan": "Its plan is cancelled now: if you recover it, it comes back on Free.",
       "consequenceEmail": "We send you an email with the date until which you can recover it.",
       "confirmLabel": "Business name",

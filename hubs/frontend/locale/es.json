@@ -213,8 +213,8 @@
       },
       "deleting": {
         "heading": "Se eliminará para siempre el {date}",
-        "body": "Lo eliminaste el {date} y ya no funciona. Hasta entonces puedes recuperarlo tal como estaba.",
-        "bodyNotOwner": "Se eliminó el {date} y ya no funciona. Solo su propietario puede recuperarlo."
+        "body": "Lo eliminaste el {date} y ya no funciona. Hasta entonces puedes recuperarlo tal como estaba. Una vez borrado, solo se guardan sus ventas, facturas y demás documentos fiscales, durante 6 años, como exige la ley.",
+        "bodyNotOwner": "Se eliminó el {date} y ya no funciona. Solo su propietario puede recuperarlo. Una vez borrado, solo se guardan sus ventas, facturas y demás documentos fiscales, durante 6 años, como exige la ley."
       },
       "plan": {
         "eyebrow": "Plan",
@@ -355,7 +355,8 @@
       "deleteAction": "Eliminar negocio",
       "ownerOnly": "Solo el propietario puede eliminar el negocio.",
       "confirmTitle": "Eliminar {name}",
-      "confirmMessage": "Deja de funcionar ahora mismo para todos. Puedes recuperarlo durante 90 días; después se borra para siempre.",
+      "confirmMessage": "Deja de funcionar ahora mismo para todos. Puedes recuperarlo durante 90 días; después se borra para siempre, salvo sus documentos fiscales.",
+      "consequenceFiscal": "Sus ventas, facturas y demás documentos fiscales se guardan 6 años, como exige la ley, en un archivo que nadie puede modificar ni borrar.",
       "consequencePlan": "Su plan se cancela ahora: si lo recuperas, vuelve en Gratis.",
       "consequenceEmail": "Te enviamos un correo con la fecha hasta la que puedes recuperarlo.",
       "confirmLabel": "Nombre del negocio",
