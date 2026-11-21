@@ -12,6 +12,8 @@ from live.meta import all_live_app_configs, permissions_for_role
 
 from base.operations import ACCOUNT_ROLE
 from base.tests.conftest import other_session  # noqa: F401 - a second session, as another saas-cron task
+from hubs import domain_checks
+from hubs.domain_checks import Probe
 from hubs.tests.hub_double import HubDouble
 
 SECRET = "test-internal-secret"
@@ -380,3 +382,27 @@ def standard_business(business):
 def pointing(dns_world, hub, domain=DOMAIN):
     """The customer's CNAME, onto the name of ``hub``."""
     dns_world[(domain, "CNAME")] = [f"hub-{hub.id}.erplora.com"]
+
+
+@pytest.fixture
+def probe_says(monkeypatch):
+    """What the probe answers, a list of its asks: ``answer`` to change it."""
+
+    class Says:
+        answer = Probe.SERVED
+        asked: list = []
+
+    says = Says()
+    says.asked = []
+
+    def probe(domain, target, hub_id):
+        says.asked.append((domain, target, hub_id))
+        return says.answer
+
+    monkeypatch.setattr(domain_checks, "probe", probe)
+    return says
+
+
+@pytest.fixture
+def world(custom_domains_on, hub_double, probe_says, dns_world):
+    return custom_domains_on
