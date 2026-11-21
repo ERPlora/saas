@@ -390,10 +390,6 @@
       {
         "name": "render",
         "complexity": 27
-      },
-      {
-        "name": "utility_declarations",
-        "complexity": 103
       }
     ]
   },
@@ -534,6 +530,16 @@
       {
         "name": "parse_tools",
         "complexity": 16
+      }
+    ]
+  },
+  {
+    "path": "scripts/build_ionic_utilities_utility_engine.py",
+    "file_name": "build_ionic_utilities_utility_engine.py",
+    "functions": [
+      {
+        "name": "utility_declarations",
+        "complexity": 103
       }
     ]
   }
