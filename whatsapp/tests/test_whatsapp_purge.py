@@ -14,9 +14,9 @@ import pytest
 from django.core.management import CommandError, call_command
 from django.utils import timezone
 
-from whatsapp import services
 from whatsapp.models import Delivery, Send, TemplateSubmission
 from whatsapp.schemas import PurgeIn
+from whatsapp.services import platform_actor, retention
 
 pytestmark = pytest.mark.django_db
 
@@ -33,7 +33,7 @@ def delivery(hub, wa_id, *, kind="message", received=1, delivered=None):
 
 
 def purge(days=30):
-    return services.retention_purge(services.platform_context(), PurgeIn(days=days))
+    return retention.retention_purge(platform_actor.platform_context(), PurgeIn(days=days))
 
 
 def kept(hub) -> set[str]:

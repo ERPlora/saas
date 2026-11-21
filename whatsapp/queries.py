@@ -9,7 +9,7 @@ transaction) and by ``hubs.queries`` for the snapshot (the Hub reads the channel
 ``whatsapp.media.locate`` the attachment a person of the business opens;
 ``whatsapp.delivery.next_due`` when the next delivery to the Hub is due: the ``saas-worker`` sleeps until then
 (saas#305). ``behind_a_waiting_message`` is the rule of the order of each business's messages, shared with
-``services.delivery_claim``.
+``services.delivery_queue.delivery_claim``.
 """
 
 import logging
@@ -40,7 +40,7 @@ from whatsapp.schemas import (
     TemplateAccountOut,
 )
 
-#: Only the platform reads and writes here (``services.platform_context``); no account role holds it.
+#: Only the platform reads and writes here (``services.platform_actor.platform_context``); no account role holds it.
 PERMISSION = "whatsapp.manage"
 
 #: What the Hub's channel schema takes (``apps/whatsapp_inbox/schemas.py``): anything else would refuse the whole
@@ -52,10 +52,10 @@ HUB_STATUSES = ("APPROVED", "PENDING", "REJECTED", "PAUSED", "DISABLED")
 HUB_TEMPLATE_LIMIT = 1000
 
 #: How many failed pushes a message holds the newer ones of its business back for (the order the customer wrote in):
-#: about an hour of tries (``services.retry_wait``: 30 s doubling, 1 h 3 min in all). Past it, a message the Hub keeps
-#: failing on that is not a 422 (a fault of the Hub's on that body) no longer silences the business's inbox: the newer
-#: ones go on, each with its own wait (a FIFO queue's limit of receives, without a queue of dead letters: it is still
-#: tried every hour, and the admin shows it).
+#: about an hour of tries (``services.delivery_queue.retry_wait``: 30 s doubling, 1 h 3 min in all). Past it, a
+#: message the Hub keeps failing on that is not a 422 (a fault of the Hub's on that body) no longer silences the
+#: business's inbox: the newer ones go on, each with its own wait (a FIFO queue's limit of receives, without a queue
+#: of dead letters: it is still tried every hour, and the admin shows it).
 IN_ORDER_ATTEMPTS = 8
 
 logger = logging.getLogger(__name__)

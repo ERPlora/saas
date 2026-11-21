@@ -26,4 +26,3 @@
 510 tests/e2e/assistant-battery.ts saas#462
 534 tests/e2e/assistant-probes.test.ts saas#462
 1078 tests/test_no_internal_references.py saas#462
-1002 whatsapp/services.py saas#462

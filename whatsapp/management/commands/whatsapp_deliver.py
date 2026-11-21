@@ -16,8 +16,8 @@ claimed again while it still pushes it:
 
 - a call to the Hub takes ``hub_client.LONGEST_CALL`` at most: 10 s (5 s to connect, 5 s more to answer);
 - each batch claims only the rows whose calls fit in what is left of ``deliveries.PASS_BUDGET`` (50 s), so the pass's
-  last call ends by 50 s, inside ``services.LEASE`` (5 min) of every row it claimed (a row is leased when it is
-  claimed, never before the pass started);
+  last call ends by 50 s, inside ``services.delivery_queue.LEASE`` (5 min) of every row it claimed (a row is leased
+  when it is claimed, never before the pass started);
 - Meta's webhook pushes up to ``deliveries.WEBHOOK_DELIVERIES`` (20) without this lock: 20 x 10 s = 200 s, also inside
   the lease, so neither takes a row the other one is still pushing.
 

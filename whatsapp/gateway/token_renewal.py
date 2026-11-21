@@ -5,8 +5,9 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from whatsapp import emails, meta, queries, services
+from whatsapp import emails, meta, queries
 from whatsapp.schemas import AlertedIn, RenewalDueIn, RenewalIn
+from whatsapp.services import phone_numbers, platform_actor
 
 logger = logging.getLogger("whatsapp.gateway")
 
@@ -17,7 +18,7 @@ ALARM = timedelta(days=7)
 def renew_tokens() -> dict[str, int]:
     """Renew every permission due. With none due the round is empty and asks for nothing; with one due,
     ``NotConfigured`` (Meta's app not set) before Meta is asked or anything is written."""
-    ctx = services.platform_context()
+    ctx = platform_actor.platform_context()
     due = queries.renewal_due(ctx, RenewalDueIn()).numbers
     counts = {"due": len(due), "renewed": 0, "needs_reconnect": 0, "unverified": 0, "alerted": 0, "failed": 0}
     if due:
@@ -26,7 +27,7 @@ def renew_tokens() -> dict[str, int]:
     for number in due:
         try:
             outcome, token, expires_at = _renew(number.token.get_secret_value())
-            out = services.number_renewal(
+            out = phone_numbers.number_renewal(
                 ctx, RenewalIn(number_id=number.id, outcome=outcome, token=token, expires_at=expires_at)
             )
         except Exception:  # noqa: BLE001 - one number's surprise never stops the others; tomorrow tries again
@@ -36,7 +37,7 @@ def renew_tokens() -> dict[str, int]:
         else:
             counts["needs_reconnect" if out.needs_reconnect else outcome] += 1
             if out.alert is not None and emails.send_reconnect(**out.alert.model_dump()):
-                services.number_alerted(ctx, AlertedIn(number_id=number.id))
+                phone_numbers.number_alerted(ctx, AlertedIn(number_id=number.id))
                 counts["alerted"] += 1
         if outcome != "renewed" and number.expires_at <= timezone.now() + ALARM:
             running_out += 1

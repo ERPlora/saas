@@ -13,9 +13,9 @@ import pytest
 from django.utils import timezone
 from live.context import Scope, system_context
 
-from whatsapp import services
 from whatsapp.models import Delivery, PhoneNumber
 from whatsapp.schemas import ClaimIn, IngestIn, RecordIn
+from whatsapp.services import delivery_queue, meta_webhook
 from whatsapp.tests.test_parse import PHONE_NUMBER_ID, WABA, messages, text
 
 pytestmark = pytest.mark.django_db
@@ -30,15 +30,17 @@ def number(whatsapp_on, business):
 
 
 def ingest(payload):
-    return services.webhook_ingest(CTX, IngestIn(payload=payload))
+    return meta_webhook.webhook_ingest(CTX, IngestIn(payload=payload))
 
 
 def claim(**fields):
-    return services.delivery_claim(CTX, ClaimIn(**fields)).deliveries
+    return delivery_queue.delivery_claim(CTX, ClaimIn(**fields)).deliveries
 
 
 def record(delivery, outcome, error=""):
-    return services.delivery_record(CTX, RecordIn(id=delivery.id, revision=delivery.revision, outcome=outcome, error=error))
+    return delivery_queue.delivery_record(
+        CTX, RecordIn(id=delivery.id, revision=delivery.revision, outcome=outcome, error=error)
+    )
 
 
 def test_ingest_parks_each_message_once_and_names_its_business(number):
