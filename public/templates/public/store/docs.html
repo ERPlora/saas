@@ -1,5 +1,5 @@
 {% extends "public/store/app_base.html" %}
-{% load i18n %}
+{% load i18n prose %}
 {% comment %}
   /apps/<id>/docs/, the «Documentation» tab (public/store.py): the user part of the app's WORKBOOK
   from shared.app_doc, rendered and cleaned by apps.app.doc (live.markdown; images on the Hub's
@@ -20,7 +20,7 @@
   {% endif %}
   <ion-card class="ep-store-card">
     <ion-card-content>
-      <article class="ep-prose ep-store-docs" lang="{{ doc_lang }}">{{ doc_html }}</article>
+      <article class="ep-prose ep-store-docs" lang="{{ doc_lang }}">{{ doc_html|scroll_tables }}</article>
     </ion-card-content>
   </ion-card>
 </div>

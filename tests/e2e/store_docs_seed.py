@@ -2,9 +2,9 @@
 
 ``uv run python tests/e2e/store_docs_seed.py seed|clear`` from the repo, against the local
 database of ``.env``. The rows are the ones the Hub's ``register_apps`` would write
-(``apps/tests/factories.py``): a listed app whose Spanish documentation holds a Mermaid diagram, and
-no English one, so the page also shows the «only in Spanish» notice; it requires a premium app, so
-its overview also paints the «Required apps» card.
+(``apps/tests/factories.py``): a listed app whose Spanish documentation holds a Mermaid diagram and a
+table wider than a phone, and no English one, so the page also shows the «only in Spanish» notice;
+it requires a premium app, so its overview also paints the «Required apps» card.
 """
 
 import os
@@ -23,6 +23,13 @@ graph TD
     Ticket[Ticket abierto] --> Cobro[Cobro]
     Cobro --> Factura[Factura VeriFactu]
 ```
+
+Quién puede qué:
+
+| Permiso | Propietario | Administrador | Responsable | Empleado |
+|---|---|---|---|---|
+| Abrir y cerrar la caja | Sí | Sí | Sí | No |
+| Cambiar los precios | Sí | Sí | No | No |
 """
 
 

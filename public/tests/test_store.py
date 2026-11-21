@@ -665,6 +665,16 @@ def test_a_diagram_reaches_the_page_as_a_mermaid_block(client, catalog):
     assert '<pre class="mermaid">' in html
 
 
+def test_a_table_of_the_documentation_scrolls_inside_its_own_box(client, catalog):
+    """On a phone a wide table scrolls sideways in its box instead of being cut by the card
+    (tests/e2e/store-docs.spec.ts measures it in a browser)."""
+    make_doc(catalog["invoice"], "es", "| Permiso | Propietario |\n|---|---|\n| Ver | Sí |\n")
+
+    html = get_html(client, "/apps/invoice/docs/")
+
+    assert re.search(r'<div class="ep-table-scroll"><table>.*?</table></div>', html, re.DOTALL)
+
+
 def test_the_documentation_may_show_images_of_the_hubs_static_origin(
     client, catalog, settings
 ):
