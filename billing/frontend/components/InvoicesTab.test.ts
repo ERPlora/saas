@@ -187,7 +187,7 @@ describe('InvoicesTab: the list', () => {
     expect(cell(es, 'c1').get('[data-testid="invoice-rectifies"]').text()).toBe('Rectifica ERP-2026-00123');
   });
 
-  it('per row, «Pay» (fixed and labelled) for one not collected, the PDF once issued and «View invoice»', async () => {
+  it('per row, «Pay» (fixed and labelled) for one not collected, the PDF once issued and «View invoice», each named with its invoice', async () => {
     const s = await setup();
     await s.show();
     const actions = s.prop<Array<Record<string, unknown>>>('actions');
@@ -197,10 +197,9 @@ describe('InvoicesTab: the list', () => {
       ['view', false, false],
     ]);
     const ids = (row: string) => s.wrapper.findAll(`[data-testid^="invoices-row-${row}-"]`).map((b) => b.attributes('data-testid')!.split('-').pop());
-    expect(ids('i9')).toEqual(['pay', 'view']);
-    expect(ids('00124')).toEqual(['view']);
-    expect(ids('00123')).toEqual(['pdf', 'view']);
-    expect(s.testid('invoices-row-i9-pay').text()).toBe('Pay');
+    expect(['i9', '00124', '00123'].map(ids)).toEqual([['pay', 'view'], ['view'], ['pdf', 'view']]);
+    const named = (id: string) => [s.testid(`invoices-row-${id}`).text(), accessibleName(s.testid(`invoices-row-${id}`))];
+    expect(['i9-pay', '00123-pdf'].map(named)).toEqual([['Pay', 'Pay: A1B2-0004'], ['', 'Download PDF: ERP-2026-00123']]);
   });
 
   it('«View invoice» opens the page of that invoice', async () => {
