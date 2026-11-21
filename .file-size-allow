@@ -12,4 +12,3 @@
 1124 fiscal_gateway/tests/test_internal.py saas#462
 522 hubs/frontend/components/CustomDomainCard.test.ts saas#462
 510 tests/e2e/assistant-battery.ts saas#462
-534 tests/e2e/assistant-probes.test.ts saas#462
