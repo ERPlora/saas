@@ -20,7 +20,7 @@ from django.core import signing
 from django.test import Client
 from django.utils import timezone
 
-from assistant import queries, turn
+from assistant import continuation, queries
 from assistant.models import AssistantUsage
 from assistant.tests.conftest import openai_answer, openai_tool_call
 from assistant.tests.fake_provider import openai_chunk
@@ -120,7 +120,7 @@ def test_a_step_that_comes_back_after_its_15_minutes_spends_one_more_message(
     # back as a first turn of its own, one message of the month.
     fake_provider.reply("POST", COMPLETIONS, sse=two_changes())
     token = door(client, JSON, step(business, tools=CREATE)).json()["continuation"]
-    later = time.time() + turn.CONTINUATION_SECONDS + 1
+    later = time.time() + continuation.CONTINUATION_SECONDS + 1
     monkeypatch.setattr(signing, "time", SimpleNamespace(time=lambda: later))
     fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Done"))
     results = ("call_1", '{"title": "Call Ana"}'), ("call_2", '{"error": {"code": "not_made"}}')
