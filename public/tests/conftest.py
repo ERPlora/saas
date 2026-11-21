@@ -2,17 +2,20 @@
 
 import json
 import re
+from decimal import Decimal
 
 import pytest
 from django.core.cache import cache
 from django.core.management import call_command
 
+from hubs.models import Plan
 from hubs.tests.conftest import (  # noqa: F401 - an empty plan table, and the Hub's /internal or none
     hub_double,
     no_plans,
     offline_hub,
 )
 from public.templatetags.public_assets import PUBLIC_ENTRY
+from public.tests.industry_pages import make_business_type, make_sector
 
 #: The files `{% public_assets %}` links for the public entry in these tests.
 PUBLIC_JS = "assets/public-abc123.js"
@@ -126,3 +129,32 @@ def demo_settings(settings):
     settings.HUB_CALLBACK_TEMPLATE = "http://{slug}.localhost:8000/auth/callback"
     yield
     cache.clear()
+
+
+@pytest.fixture
+def sector():
+    return make_sector(
+        "beauty",
+        name_en="Beauty",
+        name_es="Belleza",
+        description_en="Salons and studios",
+    )
+
+
+@pytest.fixture
+def salon(sector):
+    """No description on purpose: the taxonomy usually has none, and the page still owes the reader
+    an answer in its first two sentences."""
+    return make_business_type(
+        "hair_salon", name_en="Hair salon", name_es="Peluquería", sector=sector
+    )
+
+
+@pytest.fixture
+def entry_plan():
+    return Plan.objects.create(
+        slug="entry-sentinel",
+        name_en="Entry Sentinel",
+        price_monthly=Decimal("29.99"),
+        display_order=-20,
+    )
