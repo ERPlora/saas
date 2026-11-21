@@ -2,8 +2,9 @@
 
 ``uv run python tests/e2e/store_docs_seed.py seed|clear`` from the repo, against the local
 database of ``.env``. The rows are the ones the Hub's ``register_apps`` would write
-(``apps/tests/factories.py``): a listed app whose Spanish documentation holds a Mermaid diagram and a
-table wider than a phone, and no English one, so the page also shows the «only in Spanish» notice;
+(``apps/tests/factories.py``): a listed app whose Spanish documentation holds a Mermaid diagram, two
+addresses longer than a phone's line (one in code, one in plain text) and a table wider than a
+phone, and no English one, so the page also shows the «only in Spanish» notice;
 it requires a premium app, so its overview also paints the «Required apps» card.
 """
 
@@ -24,12 +25,17 @@ graph TD
     Cobro --> Factura[Factura VeriFactu]
 ```
 
+Los clientes reservan en `https://<negocio>.erplora.com/p/<negocio>/book/<enlace>`.
+
+- Las reseñas salen como pide Google (https://developers.google.com/maps/documentation/places/web-service/policies).
+
 Quién puede qué:
 
 | Permiso | Propietario | Administrador | Responsable | Empleado |
 |---|---|---|---|---|
 | Abrir y cerrar la caja | Sí | Sí | Sí | No |
 | Cambiar los precios | Sí | Sí | No | No |
+| `appointment.customer_cancellation_disabled` | Sí | Sí | No | No |
 """
 
 

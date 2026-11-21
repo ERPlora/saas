@@ -213,9 +213,13 @@ ion-item.ep-accordion-header .ep-icon {
   background: var(--ep-surface, var(--ion-card-background, var(--ion-background-color, #fff)));
 }
 
+/* A word longer than the line (an address, a code) wraps instead of running past the card.
+   break-word, not anywhere: it does not narrow a table column, so a cell stays whole and its
+   table scrolls in its own box. */
 .ep-prose {
   color: var(--ep-text, var(--ion-text-color, #18181b));
   line-height: 1.7;
+  overflow-wrap: break-word;
 }
 
 .ep-prose h2 {
