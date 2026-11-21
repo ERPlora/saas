@@ -1,14 +1,16 @@
-"""Fixtures of the accounts tests: an operation context, a browser signed in through allauth and a superuser in the
-admin."""
+"""Fixtures of the accounts tests: an operation context, a browser signed in through allauth, a superuser in the
+admin, and the browser, the authenticator app and the member the second factor's tests share."""
 
 import re
 import time
 
 import pytest
 from allauth.account.models import EmailAddress
+from allauth.mfa.totp.internal import auth as totp_auth
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.db import connections
+from django.test import Client
 from live.context import OperationContext, Scope
 from live.meta import all_live_app_configs, permissions_for_role
 
@@ -17,6 +19,7 @@ from base.operations import ACCOUNT_ROLE
 
 HOST = "localhost:8001"
 BROWSER = "/_allauth/browser/v1"
+SESSION = f"{BROWSER}/auth/session"
 LOGIN = f"{BROWSER}/auth/login"
 #: The second step of every password sign-in: the code mailed to the account.
 CONFIRM_CODE = f"{BROWSER}/auth/code/confirm"
@@ -113,6 +116,13 @@ def age_sign_in(client, seconds: int = 3600) -> None:
     session.save()
 
 
+def _activate_totp(user) -> str:
+    """Turn on an authenticator app for ``user`` (what /2fa does after the first code); return its secret."""
+    secret = totp_auth.generate_totp_secret()
+    totp_auth.TOTP.activate(user, secret)
+    return secret
+
+
 @pytest.fixture(autouse=True)
 def no_advisory_lock_left(request, django_db_blocker):
     """No test leaves a command's advisory lock behind. A test that takes it from a copy of the connection releases it
@@ -170,3 +180,28 @@ def staff_client(client):
     hub_jump.issue_code(admin, "a")
     client.force_login(admin)
     return client, admin
+
+
+@pytest.fixture
+def mfa_on(settings):
+    settings.ACCOUNTS_MFA_ENABLED = True
+
+
+@pytest.fixture
+def browser():
+    """A browser of the Vue pages: same-origin session cookie and Django's CSRF, checked as in production."""
+    client = Client(enforce_csrf_checks=True, HTTP_HOST=HOST)
+    client.get(SESSION)
+    return client
+
+
+@pytest.fixture
+def secret(ana):
+    """Ana has turned on an authenticator app."""
+    return _activate_totp(ana)
+
+
+@pytest.fixture
+def member(ana):
+    enter(ana, "a", "hub_admin")
+    return ana

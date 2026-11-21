@@ -101,7 +101,8 @@ Vue, sobre `allauth.headless` (cliente `browser`, `/_allauth/browser/v1/…`), e
 ## Segundo factor (2FA)
 
 App autenticadora (TOTP) y códigos de recuperación con `allauth.mfa`, como el SaaS anterior
-(`accounts/mfa.py`, tests en `accounts/tests/test_mfa.py`). `allauth.mfa` está siempre
+(`accounts/mfa.py`, tests en `accounts/tests/test_mfa.py` y, los de «Confiar en este navegador»,
+en `accounts/tests/test_mfa_trusted_browsers.py`). `allauth.mfa` está siempre
 instalado (su tabla existe siempre); lo enciende el flag `ACCOUNTS_MFA_ENABLED`, **apagado por
 defecto en la fase 1**.
 

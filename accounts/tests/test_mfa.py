@@ -13,10 +13,8 @@ A «wrong» code is chosen so it cannot be the live one.
 
 import asyncio
 import json
-import re
 import time
-from datetime import datetime, timedelta
-from html import unescape
+from datetime import timedelta
 from io import StringIO
 
 import pytest
@@ -26,36 +24,40 @@ from allauth.mfa import app_settings as mfa_settings
 from allauth.mfa.adapter import get_adapter as get_mfa_adapter
 from allauth.mfa.models import Authenticator
 from allauth.mfa.recovery_codes.internal.auth import RecoveryCodes
-from allauth.mfa.totp.internal import auth as totp_auth
 from allauth.mfa.utils import is_mfa_enabled
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.core.management import call_command
 from django.http import HttpResponse
-from django.test import Client, RequestFactory, override_settings
-from django.utils import timezone
+from django.test import RequestFactory, override_settings
 
 from accounts import mfa
 from accounts.models import AuthExchangeCode
 from accounts.services import hub_jump, platform_staff
-from accounts.tests.conftest import enter, prove_address, take_mailed_code
+from accounts.tests.conftest import BROWSER, HOST, SESSION, _activate_totp, prove_address
+from accounts.tests.mfa_steps import (
+    AUTHENTICATE,
+    FOURTEEN_DAYS,
+    HUB_LOGIN,
+    TRUST,
+    TRUST_COOKIE,
+    _code_at,
+    _counter,
+    _first_factors,
+    _hidden,
+    _live_code,
+    _pending_flows,
+    _post,
+    _second_step,
+    _sign_in,
+    _trust_cookie,
+)
 
 pytestmark = pytest.mark.django_db
 
-HOST = "localhost:8001"
-BROWSER = "/_allauth/browser/v1"
-SESSION = f"{BROWSER}/auth/session"
-LOGIN = f"{BROWSER}/auth/login"
-CONFIRM_CODE = f"{BROWSER}/auth/code/confirm"
-AUTHENTICATE = f"{BROWSER}/auth/2fa/authenticate"
 REAUTHENTICATE = f"{BROWSER}/auth/2fa/reauthenticate"
 AUTHENTICATORS = f"{BROWSER}/account/authenticators"
-#: The answer to «Trust this browser for 14 days» after the app's code (allauth's ``mfa_trust`` stage).
-TRUST = f"{BROWSER}/auth/2fa/trust"
-TRUST_COOKIE = "mfa_trusted"
-FOURTEEN_DAYS = 14 * 24 * 3600
-HUB_LOGIN = "/hub-login/"
 #: Where ``/hub-login/?hub=a&next=/demo/items`` sends a session that owes its second factor: the Vue
 #: page asks for a code of the app (``method=totp``) and offers no other way (``flows``).
 REAUTHENTICATE_FOR_THE_JUMP = (
@@ -68,26 +70,6 @@ CHANGELIST = "/admin/accounts/hubs/"
 REFUSED_JUMP = "Turn on two-factor authentication and sign in again before opening the Hub admin."
 
 
-def _activate_totp(user) -> str:
-    """Turn on an authenticator app for ``user`` (what /2fa does after the first code); return its secret."""
-    secret = totp_auth.generate_totp_secret()
-    totp_auth.TOTP.activate(user, secret)
-    return secret
-
-
-def _code_at(secret: str, counter: int) -> str:
-    return totp_auth.format_hotp_value(totp_auth.hotp_value(secret, counter))
-
-
-def _counter() -> int:
-    return int(time.time()) // mfa_settings.TOTP_PERIOD
-
-
-def _live_code(secret: str) -> str:
-    """What the person's phone shows now."""
-    return _code_at(secret, _counter())
-
-
 def _wrong_code(secret: str) -> str:
     """A six-digit code the authenticator rejects now and for the next periods the test may still run in.
 
@@ -97,37 +79,12 @@ def _wrong_code(secret: str) -> str:
     return next(code for code in (str(digit) * 6 for digit in range(10)) if code not in live)
 
 
-def _post(client, path, data):
-    return client.post(
-        path, data, content_type="application/json", HTTP_X_CSRFTOKEN=client.cookies["csrftoken"].value
-    )
-
-
-@pytest.fixture
-def mfa_on(settings):
-    settings.ACCOUNTS_MFA_ENABLED = True
-
-
-@pytest.fixture
-def browser():
-    """A browser of the Vue pages: same-origin session cookie and Django's CSRF, checked as in production."""
-    client = Client(enforce_csrf_checks=True, HTTP_HOST=HOST)
-    client.get(SESSION)
-    return client
-
-
 @pytest.fixture
 def ana(ana):
     """Ana once she proved her address, as every account does before its first session: her sign-ins
     here stop at the second factor alone."""
     prove_address(ana.email)
     return ana
-
-
-@pytest.fixture
-def secret(ana):
-    """Ana has turned on an authenticator app."""
-    return _activate_totp(ana)
 
 
 def _request(user, records):
@@ -139,40 +96,6 @@ def _request(user, records):
 
 def _mfa_record(authenticator):
     return {"method": "mfa", "at": time.time(), "id": authenticator.pk, "type": authenticator.type}
-
-
-def _first_factors(client, email, password):
-    """Email and password on the Vue sign-in (headless), then the code mailed to the account
-    (``test_sign_in_code``): the answer of that code, signed in or waiting for the app's code."""
-    response = _post(client, LOGIN, {"email": email, "password": password})
-    assert (response.status_code, _pending_flows(response)) == (401, ["login_by_code"]), response.content
-    return _post(client, CONFIRM_CODE, {"code": take_mailed_code(email)})
-
-
-def _sign_in(client, email, password) -> None:
-    """The password and the mailed code; a 2FA account stays at the app's code step."""
-    response = _first_factors(client, email, password)
-    assert response.status_code in (200, 401), response.content
-
-
-def _second_step(client, code: str, *, trust: bool = False):
-    """The app's (or a recovery) code at the login's second step, then the answer to «Trust this browser for 14
-    days» that follows it (ACCOUNTS-F05): the answer that signs in."""
-    response = _post(client, AUTHENTICATE, {"code": code})
-    assert (response.status_code, _pending_flows(response)) == (401, ["mfa_trust"]), response.content
-    return _post(client, TRUST, {"trust": trust})
-
-
-def _hidden(html: str, name: str) -> str:
-    match = re.search(rf'<input type="hidden" name="{name}" value="([^"]*)"', html)
-    assert match, f"no hidden input {name!r} in the page"
-    return unescape(match.group(1))
-
-
-@pytest.fixture
-def member(ana):
-    enter(ana, "a", "hub_admin")
-    return ana
 
 
 @pytest.fixture
@@ -380,150 +303,6 @@ class TestMfaCompleted:
         request = _request(ana, [PASSWORD_RECORD])
 
         assert get_authentication_records(request) == [PASSWORD_RECORD]
-
-
-def _pending_flows(response) -> list[str]:
-    """The flows of a 401 that wait for this session (a signed-in answer lists none)."""
-    return [flow["id"] for flow in response.json()["data"].get("flows", []) if flow.get("is_pending")]
-
-
-def _trust_cookie(user, *, age: int = 0) -> str:
-    """The cookie «Trust this browser» leaves for ``user``'s present password and authenticators, given ``age``
-    seconds ago (allauth's own encoding)."""
-    from allauth.mfa.internal.flows.trust import IssuedTrust, create_config_fingerprint, encode_trust_cookie
-
-    return encode_trust_cookie([IssuedTrust(fingerprint=create_config_fingerprint(user), at=int(time.time()) - age)])
-
-
-def _app_code(client, secret):
-    """The app's code at the login's second step: the answer asks whether to trust this browser."""
-    return _post(client, AUTHENTICATE, {"code": _live_code(secret)})
-
-
-def _sign_out(client):
-    response = client.delete(SESSION, HTTP_X_CSRFTOKEN=client.cookies["csrftoken"].value)
-    assert response.status_code == 401, response.content
-
-
-class TestTrustThisBrowser:
-    """ACCOUNTS-F05: after the app's code the login asks whether to trust this browser for 14 days; there, the next
-    sign-ins skip the app's code (never the mailed one) until the password or the authenticator app changes."""
-
-    def test_after_the_apps_code_the_login_waits_for_the_answer(self, mfa_on, browser, ana, secret, password):
-        _sign_in(browser, ana.email, password)
-
-        response = _app_code(browser, secret)
-
-        assert (response.status_code, _pending_flows(response)) == (401, ["mfa_trust"])
-        assert browser.get(SESSION).status_code == 401
-
-    def test_trusting_signs_in_and_leaves_the_cookie_for_14_days(self, mfa_on, browser, ana, secret, password):
-        _sign_in(browser, ana.email, password)
-        _app_code(browser, secret)
-
-        response = _post(browser, TRUST, {"trust": True})
-
-        assert response.status_code == 200
-        assert response.json()["meta"]["is_authenticated"] is True
-        cookie = response.cookies[TRUST_COOKIE]
-        assert int(cookie["max-age"]) == FOURTEEN_DAYS
-        assert (cookie["domain"], cookie["path"], cookie["httponly"]) == ("", "/", True)
-
-    def test_not_now_signs_in_and_leaves_no_cookie(self, mfa_on, browser, ana, secret, password):
-        _sign_in(browser, ana.email, password)
-        _app_code(browser, secret)
-
-        response = _post(browser, TRUST, {"trust": False})
-
-        assert response.status_code == 200
-        assert response.json()["meta"]["is_authenticated"] is True
-        assert TRUST_COOKIE not in response.cookies
-
-    def test_a_trusted_browser_signs_in_with_the_password_and_the_mailed_code_only(
-        self, mfa_on, browser, ana, secret, password
-    ):
-        _sign_in(browser, ana.email, password)
-        _app_code(browser, secret)
-        _post(browser, TRUST, {"trust": True})
-        _sign_out(browser)
-
-        # _first_factors checks the mailed code is still asked first.
-        response = _first_factors(browser, ana.email, password)
-
-        assert response.status_code == 200
-        assert response.json()["meta"]["is_authenticated"] is True
-
-    def test_a_browser_left_untrusted_is_asked_again(self, mfa_on, browser, ana, secret, password):
-        _sign_in(browser, ana.email, password)
-        _app_code(browser, secret)
-        _post(browser, TRUST, {"trust": False})
-        _sign_out(browser)
-
-        response = _first_factors(browser, ana.email, password)
-
-        assert (response.status_code, _pending_flows(response)) == (401, ["mfa_authenticate"])
-
-    def test_another_browser_is_still_asked(self, mfa_on, browser, ana, secret, password):
-        _sign_in(browser, ana.email, password)
-        _app_code(browser, secret)
-        _post(browser, TRUST, {"trust": True})
-        other = Client(enforce_csrf_checks=True, HTTP_HOST=HOST)
-        other.get(SESSION)
-
-        response = _first_factors(other, ana.email, password)
-
-        assert (response.status_code, _pending_flows(response)) == (401, ["mfa_authenticate"])
-
-    def test_a_new_password_ends_the_trust(self, mfa_on, browser, ana, secret, password):
-        _sign_in(browser, ana.email, password)
-        _app_code(browser, secret)
-        _post(browser, TRUST, {"trust": True})
-        _sign_out(browser)
-        ana.set_password(f"{password}-new")
-        ana.save()
-
-        response = _first_factors(browser, ana.email, f"{password}-new")
-
-        assert (response.status_code, _pending_flows(response)) == (401, ["mfa_authenticate"])
-
-    def test_a_new_authenticator_app_ends_the_trust(self, mfa_on, browser, ana, secret, password):
-        _sign_in(browser, ana.email, password)
-        _app_code(browser, secret)
-        _post(browser, TRUST, {"trust": True})
-        _sign_out(browser)
-        Authenticator.objects.filter(user=ana).delete()
-        _activate_totp(ana)
-
-        response = _first_factors(browser, ana.email, password)
-
-        assert (response.status_code, _pending_flows(response)) == (401, ["mfa_authenticate"])
-
-    def test_after_14_days_the_app_is_asked_again(self, mfa_on, browser, ana, secret, password):
-        browser.cookies[TRUST_COOKIE] = _trust_cookie(ana, age=FOURTEEN_DAYS + 1)
-
-        response = _first_factors(browser, ana.email, password)
-
-        assert (response.status_code, _pending_flows(response)) == (401, ["mfa_authenticate"])
-
-    def test_a_trusted_browser_jumps_to_its_business_without_the_code(self, mfa_on, browser, member, secret, password):
-        _sign_in(browser, member.email, password)
-        _app_code(browser, secret)
-        _post(browser, TRUST, {"trust": True})
-        _sign_out(browser)
-        _first_factors(browser, member.email, password)
-
-        response = browser.get(f"{HUB_LOGIN}?hub=a&next=/demo/items&state=a-state")
-
-        assert response.status_code == 200
-        assert _hidden(response.content.decode(), "code")
-
-
-class TestTrustWithTheFlagOff:
-    def test_no_login_asks_whether_to_trust_the_browser(self, browser, ana, secret, password):
-        response = _first_factors(browser, ana.email, password)
-
-        assert response.status_code == 200
-        assert _pending_flows(response) == []
 
 
 class TestLoginWithTheFlagOn:
@@ -921,159 +700,3 @@ class TestAdminLoginWithTheFlagOff:
 
         assert response.status_code == 200
         assert browser.get("/admin/").status_code == 200
-
-
-BROWSER_TRUST = "/api/accounts/browser-trust"
-REVOKE_TRUST = "/api/accounts/browser-trust/revoke"
-
-
-def _api(client, method: str, path: str, body=None):
-    if method == "GET":
-        return client.get(path, HTTP_HOST=HOST)
-    return client.post(path, body or {}, content_type="application/json", HTTP_HOST=HOST)
-
-
-def _until(response):
-    raw = response.json()["trusted_until"]
-    return None if raw is None else datetime.fromisoformat(raw)
-
-
-class TestTheTrustOfThisBrowser:
-    """ACCOUNTS-F17 (the current browser marked): Security →
-    Two-factor authentication says whether this browser is trusted, and until when. erplora.com keeps no list of the
-    trusted browsers (the trust lives in each one, signed, as allauth gives it), so only this one can be told."""
-
-    def test_a_trusted_browser_is_told_until_when(self, mfa_on, client, ana, secret):
-        client.force_login(ana)
-        client.cookies[TRUST_COOKIE] = _trust_cookie(ana, age=3600)
-
-        response = _api(client, "GET", BROWSER_TRUST)
-
-        assert response.status_code == 200
-        expected = timezone.now() + timedelta(days=14) - timedelta(hours=1)
-        assert abs(_until(response) - expected) < timedelta(minutes=1)
-
-    def test_a_browser_never_trusted_has_no_date(self, mfa_on, client, ana, secret):
-        client.force_login(ana)
-
-        assert _until(_api(client, "GET", BROWSER_TRUST)) is None
-
-    def test_a_trust_given_before_a_new_password_is_not_shown(self, mfa_on, client, ana, secret, password):
-        client.cookies[TRUST_COOKIE] = _trust_cookie(ana)
-        ana.set_password(f"{password}-new")
-        ana.save()
-        client.force_login(ana)
-
-        assert _until(_api(client, "GET", BROWSER_TRUST)) is None
-
-    def test_the_trust_of_another_account_is_not_shown(self, mfa_on, client, ana, secret, password):
-        bo = get_user_model().objects.create_user(email="bo@example.com", password=password)
-        _activate_totp(bo)
-        client.cookies[TRUST_COOKIE] = _trust_cookie(bo)
-        client.force_login(ana)
-
-        assert _until(_api(client, "GET", BROWSER_TRUST)) is None
-
-    def test_with_the_flag_off_no_browser_is_trusted(self, client, ana, secret):
-        client.force_login(ana)
-        client.cookies[TRUST_COOKIE] = _trust_cookie(ana)
-
-        assert _until(_api(client, "GET", BROWSER_TRUST)) is None
-
-    @pytest.mark.parametrize("method,path", [("GET", BROWSER_TRUST), ("POST", REVOKE_TRUST)])
-    def test_an_anonymous_visitor_gets_the_401_envelope(self, mfa_on, client, method, path):
-        response = _api(client, method, path)
-
-        assert response.status_code == 401
-        assert response.json()["error"]["code"] == "unauthorized"
-
-
-class TestStopTrustingEveryBrowser:
-    """ACCOUNTS-F17: «Stop trusting all browsers» ends the trust of every browser at once, as Google's and
-    Microsoft's «Revoke all trusted devices». allauth keeps no list to cut from: the trust is bound to the account's
-    password and authenticators, so the authenticators get new ids with the same secret and codes (nobody sets the app
-    up again, nor loses the codes written down)."""
-
-    def test_every_trusted_browser_is_asked_for_the_apps_code_again(self, mfa_on, browser, ana, secret, password):
-        _sign_in(browser, ana.email, password)
-        _second_step(browser, _live_code(secret), trust=True)
-        laptop = Client(HTTP_HOST=HOST)
-        laptop.force_login(ana)
-
-        response = _api(laptop, "POST", REVOKE_TRUST)
-
-        assert response.status_code == 200
-        assert response.json() == {"trusted_until": None}
-        _sign_out(browser)
-        response = _first_factors(browser, ana.email, password)
-        assert (response.status_code, _pending_flows(response)) == (401, ["mfa_authenticate"])
-
-    def test_the_app_and_the_recovery_codes_keep_working(self, mfa_on, client, ana, secret):
-        unused = RecoveryCodes.activate(ana).get_unused_codes()
-        before = {row.type: (row.data, row.created_at) for row in Authenticator.objects.filter(user=ana)}
-        client.force_login(ana)
-
-        _api(client, "POST", REVOKE_TRUST)
-
-        after = {row.type: (row.data, row.created_at) for row in Authenticator.objects.filter(user=ana)}
-        assert after == before
-        assert RecoveryCodes(Authenticator.objects.get(user=ana, type="recovery_codes")).get_unused_codes() == unused
-        totp = Authenticator.objects.get(user=ana, type=Authenticator.Type.TOTP)
-        assert totp_auth.TOTP(totp).validate_code(_live_code(secret)) is True
-
-    def test_this_session_keeps_the_code_it_gave_and_jumps_to_its_business(self, mfa_on, browser, member, secret, password):
-        _sign_in(browser, member.email, password)
-        _second_step(browser, _live_code(secret), trust=True)
-
-        response = _post(browser, REVOKE_TRUST, {})
-
-        assert response.status_code == 200
-        response = browser.get(f"{HUB_LOGIN}?hub=a&next=/demo/items&state=a-state")
-        assert response.status_code == 200
-        assert _hidden(response.content.decode(), "code")
-
-    def test_a_session_that_signed_in_on_a_trusted_browser_gives_the_code_to_jump(
-        self, mfa_on, browser, member, secret, password
-    ):
-        _sign_in(browser, member.email, password)
-        _second_step(browser, _live_code(secret), trust=True)
-        _sign_out(browser)
-        _first_factors(browser, member.email, password)
-        laptop = Client(HTTP_HOST=HOST)
-        laptop.force_login(member)
-        _api(laptop, "POST", REVOKE_TRUST)
-
-        response = browser.get(f"{HUB_LOGIN}?hub=a&next=/demo/items&state=a-state")
-
-        assert response.status_code == 302
-        assert response["Location"].startswith("/reauthenticate?method=totp")
-
-    def test_an_account_without_the_app_has_nothing_to_stop(self, mfa_on, client, ana):
-        client.force_login(ana)
-
-        response = _api(client, "POST", REVOKE_TRUST)
-
-        assert (response.status_code, response.json()) == (200, {"trusted_until": None})
-        assert Authenticator.objects.filter(user=ana).count() == 0
-
-    def test_only_the_accounts_own_authenticators_change(self, mfa_on, client, ana, secret, password):
-        bo = get_user_model().objects.create_user(email="bo@example.com", password=password)
-        _activate_totp(bo)
-        RecoveryCodes.activate(bo)
-        theirs = list(Authenticator.objects.filter(user=bo).order_by("pk").values_list("pk", "type"))
-        mine = set(Authenticator.objects.filter(user=ana).values_list("pk", flat=True))
-        client.force_login(ana)
-
-        response = _api(client, "POST", REVOKE_TRUST)
-
-        assert response.status_code == 200
-        assert list(Authenticator.objects.filter(user=bo).order_by("pk").values_list("pk", "type")) == theirs
-        assert set(Authenticator.objects.filter(user=ana).values_list("pk", flat=True)).isdisjoint(mine)
-
-    def test_the_event_is_recorded(self, mfa_on, client, ana, secret):
-        from live.models import OutboxEvent
-
-        client.force_login(ana)
-        _api(client, "POST", REVOKE_TRUST)
-
-        assert list(OutboxEvent.objects.values_list("name", flat=True)) == ["accounts.browser_trust.revoked"]
