@@ -2,8 +2,9 @@
 {% load i18n %}
 {% comment %}
   The terms of use, on the shared reading pattern with ep-* classes. Every number is read, never
-  typed: the exit package from HUB_EXIT_PACKAGE_TTL_DAYS, the suspension clock from
-  public.legal.SUSPENDED_HUB_DELETE_DAYS and the trial of section 4 from the plans on sale
+  typed: the exit package from HUB_EXIT_PACKAGE_TTL_DAYS, the suspension clock from the sweep of the
+  suspended businesses (hubs.services.suspensions.SUSPENDED_DELETE_DAYS), the days a deleted business
+  is kept from public.legal.DELETED_HUB_ERASE_DAYS and the trial of section 4 from the plans on sale
   (public/legal.py). The opening clause names the plans on sale that include a custom domain, read
   from their rows, and only for the public website.
   Contract: public/tests/test_legal_terms.py.

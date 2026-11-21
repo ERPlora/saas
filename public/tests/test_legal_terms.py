@@ -17,8 +17,8 @@ from public.tests.legal_pages import list_items_naming, paragraphs_of, section
 #
 # * The trial of section 4 is read from the plans on sale through hubs.plan.list; the tests still create the rows with
 #   the ORM of hubs.
-# * The suspension clock of section 3 is public.legal.SUSPENDED_HUB_DELETE_DAYS: the task that deletes a suspended hub
-#   lives in the Hub, so the number the terms print is pinned here.
+# * The suspension clock of section 3 is hubs.services.suspensions.SUSPENDED_DELETE_DAYS, the days the sweep that
+#   deletes a suspended business counts.
 # * Where ERPlora sells its paid plans (the clause with id=where-we-sell) is public/tests/test_where_we_sell.py.
 
 TERMS = "/legal/terms/"
@@ -276,11 +276,12 @@ def test_the_terms_follow_the_exit_package_setting(client, settings):
 
 @pytest.mark.django_db
 def test_the_terms_state_the_suspension_clock(client):
-    from public.legal import SUSPENDED_HUB_DELETE_DAYS
+    """The days a suspended business waits before it is deleted are the ones the hourly sweep counts (HUBS-F20)."""
+    from hubs.services.suspensions import SUSPENDED_DELETE_DAYS
 
     html = terms_html(client)
 
-    assert re.search(rf"\b{SUSPENDED_HUB_DELETE_DAYS}\b[^<]*days", html)
+    assert re.search(rf"suspended for {SUSPENDED_DELETE_DAYS} days is deleted", html)
     assert "permanent cancellation after 30 days" not in html
 
 

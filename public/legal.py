@@ -12,12 +12,8 @@ from django.utils.translation import pgettext
 from django.views.decorators.http import require_safe
 from live.spa import PALETTE_COOKIE
 
+from hubs.services.suspensions import SUSPENDED_DELETE_DAYS
 from public import pricing
-
-#: The days a suspended hub waits before it is deleted, as section 3 of the terms promises. The task
-#: that deletes it lives in the Hub (its worker), not in this project: this is the number the contract
-#: states, and the Hub's clock must match it. Never lowered without changing the terms.
-SUSPENDED_HUB_DELETE_DAYS = 90
 
 #: The days after which the Hub erases a deleted business's database and files, all but its fiscal documents, as
 #: section 5.1 of the terms promises: the days its owner can still recover it (``Hub.RETENTION``), which the tests pin.
@@ -33,7 +29,8 @@ def privacy(request: HttpRequest) -> HttpResponse:
 def terms(request: HttpRequest) -> HttpResponse:
     """The terms of use, with every number read from where it is enforced, never typed.
 
-    ``HUB_EXIT_PACKAGE_TTL_DAYS`` is what the exit package's link expires on; the trial of section 4
+    ``HUB_EXIT_PACKAGE_TTL_DAYS`` is what the exit package's link expires on; ``SUSPENDED_DELETE_DAYS``
+    is when the sweep of the suspended businesses deletes one; the trial of section 4
     is the trial of the plans a visitor can buy: an upgrade grants none, and without any trial on sale
     section 4 promises none; the custom domain of the opening clause is the one of the plans on sale
     whose ``includes_custom_domain`` is true, by name, and without any the clause names none. A term
@@ -48,7 +45,7 @@ def terms(request: HttpRequest) -> HttpResponse:
         {
             "exit_package_days": settings.HUB_EXIT_PACKAGE_TTL_DAYS,
             "deleted_hub_days": DELETED_HUB_ERASE_DAYS,
-            "suspended_hub_delete_days": SUSPENDED_HUB_DELETE_DAYS,
+            "suspended_hub_delete_days": SUSPENDED_DELETE_DAYS,
             "trial_days_min": shortest,
             "trial_days_max": longest,
             "custom_domain_plans": get_text_list(custom_domain_plans, pgettext("the last of a list", "and")),
