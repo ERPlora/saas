@@ -13,7 +13,7 @@ from django.urls import reverse
 from apps.tests.factories import make_app
 from public.landing import TYPICAL_STACK
 from public.tests.conftest import without_tokens
-from public.tests.test_industries import make_business_type, make_sector
+from public.tests.industry_pages import make_business_type, make_sector
 from public.tests.test_stack_copy import copy_of, names_the_stack
 
 pytestmark = pytest.mark.django_db
