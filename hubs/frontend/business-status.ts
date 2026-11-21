@@ -3,7 +3,7 @@
 // the catalogue key of the sentence that says why «Open» does not work or what to do. Inside the apps
 // the sentence never invites to pay: it says to go to erplora.com, without a link. An unpaid invoice
 // says its real deadline: the server suspends the business 7 days after the invoice went unpaid
-// (`hubs.models.subscriptions.UNPAID_PLAN_GRACE`), so the date is `unpaid_since` + 7 days, said as a day (never
+// (`UNPAID_PLAN_GRACE` of `hubs/models/subscriptions.py`), so the date is `unpaid_since` + 7 days, said as a day (never
 // «7 more days», never the minute).
 import { businessStatusPill, type BusinessStatus, formatDateTime, type StatusPillSpec } from '@erplora/ui/components';
 
@@ -23,7 +23,8 @@ export interface BusinessState {
 }
 
 /**
- * The grace of an unpaid invoice before the business is suspended (`hubs.models.subscriptions.UNPAID_PLAN_GRACE`).
+ * The grace of an unpaid invoice before the business is suspended (`UNPAID_PLAN_GRACE` of
+ * `hubs/models/subscriptions.py`).
  */
 const GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
