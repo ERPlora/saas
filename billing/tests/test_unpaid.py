@@ -16,13 +16,15 @@ Through the webhook (``invoice.payment_failed``, ``invoice.paid``, ``customer.up
 
 import logging
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from django.test import Client
 from django.utils import timezone
 
+from billing import emails
 from billing.models import PaymentFailure
+from billing.services.live_subscriptions import unpaid_state
 from billing.tests.conftest import pay
 from billing.tests.stripe_double import (
     DAY,
@@ -38,7 +40,7 @@ from billing.tests.stripe_double import (
     signed,
     subscription,
 )
-from hubs.queries import businesses
+from hubs.queries import businesses, hub_sync
 from hubs.models import Hub, Subscription
 from hubs.schemas.businesses import BusinessListIn
 from hubs.tests.conftest import ctx_for
@@ -156,6 +158,15 @@ class TestAFailedRenewal:
             2,
         )
         assert status_of(running) == Hub.Status.SUSPENDED
+
+    def test_the_deadline_the_hub_gets_is_when_the_business_is_suspended(self, running, stripe_double):
+        failed(stripe_double, days=3)
+        hub = Hub.objects.get(pk=running.pk)
+
+        deadline = datetime.fromisoformat(hub_sync.hub_snapshot(hub.id)["suspends_on"])
+
+        assert unpaid_state(hub, "past_due", now=deadline)["standing"] == "grace"
+        assert unpaid_state(hub, "past_due", now=deadline + timedelta(seconds=1))["standing"] == "suspended"
 
     def test_the_suspension_reaches_the_hub(
         self, running, stripe_double, hub_double, django_capture_on_commit_callbacks
@@ -465,6 +476,17 @@ class TestThePayerIsTold:
         assert message.to == ["owner@example.com"]
         assert f"https://erplora.com/dashboard/billing/invoices?business={running.id}" in message.body
         assert PaymentFailure.objects.get().notified_at is not None
+
+    def test_the_mail_says_the_deadline_the_hub_gets(self, running, told, stripe_double, monkeypatch):
+        deadlines = []
+        send = emails.send_payment_failed
+        monkeypatch.setattr(
+            emails, "send_payment_failed", lambda *args, **kw: deadlines.append(kw["suspends_on"]) or send(*args, **kw)
+        )
+
+        told(stripe_double, days=3)
+
+        assert deadlines == [datetime.fromisoformat(hub_sync.hub_snapshot(running.id)["suspends_on"])]
 
     def test_another_failed_attempt_of_the_same_invoice_tells_nothing_more(self, running, told, stripe_double):
         told(stripe_double, days=3)

@@ -5,9 +5,9 @@ in another only through its operations. Only the platform runs it, as the hub's
 other system operations (``hubs.business.mark_ready``). A field left out is left as it is, so billing can
 link a Stripe customer without restating the plan.
 
-What the Hub must learn (the effective plan, the commercial status and ``modules[]``)
-bumps ``state_version`` and is pushed after the COMMIT; the rest (period, Stripe ids, why it is unpaid)
-only records the event, so the owner's list and page re-run. The standing moves the business:
+What the Hub must learn (the effective plan, the commercial status, ``modules[]`` and, while a payment is
+pending, when the business is suspended) bumps ``state_version`` and is pushed after the COMMIT; the rest (period,
+Stripe ids, why it is unpaid) only records the event, so the owner's list and page re-run. The standing moves the business:
 ``good`` brings a business with a payment pending or suspended back, ``grace`` shows «payment pending»
 («Open» still works), ``suspended`` stops it; a deleted business never moves. Why it is unpaid travels to the
 Businesses row («Pay» stays disabled while the card was
@@ -455,6 +455,26 @@ def test_only_the_owner_gets_the_invoice_to_pay(business, owner, make_user):
     row = row_of(admin, business)
 
     assert (row["unpaid_reason"], row["pay_url"]) == ("card_declined", None)
+
+
+def test_a_new_unpaid_date_reaches_the_hub_with_its_deadline(
+    business, hub_double, django_capture_on_commit_callbacks
+):
+    business = ready(business)
+    unpaid(business)
+    version = fresh(business).state_version
+    later = timezone.now().replace(microsecond=0) - timedelta(days=1)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        result = apply(business, standing="grace", unpaid_since=later)
+
+    assert result.state_version == version + 1
+    snapshot = hub_double.calls_to("PUT", "/state")[-1].body
+    assert (snapshot["version"], snapshot["status"], snapshot["suspends_on"]) == (
+        version + 1,
+        "past_due",
+        (later + timedelta(days=7)).isoformat(),
+    )
 
 
 def test_paying_clears_the_reason(business, owner):

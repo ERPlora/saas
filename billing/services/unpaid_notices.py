@@ -10,8 +10,9 @@ from django.utils import timezone
 
 from billing import emails
 from billing.models import Invoice, PaymentFailure
-from billing.services import stripe_customers, stripe_sales, stripe_sync
+from billing.services import stripe_customers, stripe_sync
 from hubs.models import Hub
+from hubs.models.subscriptions import grace_end
 
 logger = logging.getLogger("billing.services")
 
@@ -49,7 +50,7 @@ def notify_unpaid(hub_id) -> str:
                         language=language,
                         amount=_owed_amount(failure),
                         declined=failure.reason == PaymentFailure.Reason.CARD_DECLINED,
-                        suspends_on=failure.invoice_created_at + stripe_sales.UNPAID_PLAN_GRACE,
+                        suspends_on=grace_end(failure.invoice_created_at),
                     )
                     PaymentFailure.objects.filter(pk=failure.pk).update(notified_at=now)
         except emails.MailNotSent:

@@ -15,6 +15,7 @@ from billing.stripe_period import subscription_period
 from hubs.queries import plan_catalog
 from hubs.services import hub_callbacks, subscription_sync
 from hubs.models import Hub, Subscription, SubscriptionItem
+from hubs.models.subscriptions import grace_end
 from hubs.schemas.subscriptions import ModuleRightIn, SubscriptionApplyIn
 
 logger = logging.getLogger("billing.services")
@@ -61,7 +62,7 @@ def unpaid_state(hub: Hub, live_status: str, now: datetime | None = None) -> dic
     oldest = open_failures.order_by("invoice_created_at").first()
     latest = open_failures.order_by("-failed_at").first()
     since = oldest.invoice_created_at if oldest else None
-    overdue = since is not None and now - since > stripe_sales.UNPAID_PLAN_GRACE
+    overdue = since is not None and now > grace_end(since)
     suspended = live_status == "unpaid" or overdue or hub.status == Hub.Status.SUSPENDED
     reason = PaymentFailure.Reason.PAYMENT_FAILED.value
     if latest is not None:
