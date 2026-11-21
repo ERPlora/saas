@@ -19,7 +19,7 @@ from apps.icons import FALLBACK_ICON_SVG
 from apps.tests.factories import CUBE_SVG, make_app
 from billing import queries
 from billing.models import PlanChangeSchedule
-from billing.schemas import StoreCatalogIn
+from billing.schemas.store import StoreCatalogIn
 from billing.tests.conftest import ctx_for, pay
 from hubs.models import Hub, HubMember, Plan, SubscriptionItem
 from hubs.tests.conftest import add_member, create_business

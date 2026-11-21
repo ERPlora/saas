@@ -15,7 +15,7 @@ from live.operations import INTERNAL, operation
 
 from billing import emails, events, platform_contract
 from billing.models import Invoice
-from billing.schemas import FiscalAnswerIn, FiscalAnswerOut
+from billing.schemas.invoice_records import FiscalAnswerIn, FiscalAnswerOut
 from billing.services import invoice_events
 from hubs import hub_client
 from hubs.services import exclusive_runs

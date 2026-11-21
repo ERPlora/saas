@@ -15,7 +15,7 @@ from django.utils import timezone
 from billing import queries
 from billing.models import Invoice
 from billing.queries.billing_report import quarter_of
-from billing.schemas import InvoiceByIdIn, InvoiceFilterIn, InvoiceListIn
+from billing.schemas.invoices import InvoiceByIdIn, InvoiceFilterIn, InvoiceListIn
 from billing.services import platform_invoices
 from billing.tests.conftest import ctx_for
 from billing.tests.stripe_captured import paid

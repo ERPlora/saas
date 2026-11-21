@@ -25,7 +25,8 @@ from apps.tests.factories import make_app
 from assistant.tests.doors import frames
 from billing import queries
 from billing.models import Invoice
-from billing.schemas import HubIn, PlanCancelPreviewOut
+from billing.schemas.common import HubIn
+from billing.schemas.subscription_changes import PlanCancelPreviewOut
 from billing.tests.conftest import ctx_for, pay
 from hubs.models import Hub, HubMember, Plan, Subscription, SubscriptionItem
 from hubs.queries.plan_catalog import free_plan

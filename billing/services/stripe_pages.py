@@ -13,7 +13,7 @@ from live.outbox import record_event
 from base.navigation import BILLING
 from billing import events, queries, stripe_service
 from billing.models import Invoice
-from billing.schemas import InvoicePayIn, InvoicePayOut, PortalOpenIn, PortalOpenOut
+from billing.schemas.stripe_pages import InvoicePayIn, InvoicePayOut, PortalOpenIn, PortalOpenOut
 from billing.services import payment_gates, stripe_sales
 from hubs import emails as hub_emails
 from hubs.queries import access_control

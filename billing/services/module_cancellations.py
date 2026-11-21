@@ -14,7 +14,7 @@ from live.outbox import record_event
 
 from apps.models import Module
 from billing import events, queries, stripe_service
-from billing.schemas import ModuleIn, SubscriptionOut
+from billing.schemas.subscription_changes import ModuleIn, SubscriptionOut
 from billing.services import downgrades, live_subscriptions, payment_gates, stripe_sales
 from hubs.models import Subscription, SubscriptionItem
 

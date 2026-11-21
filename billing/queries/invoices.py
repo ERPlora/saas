@@ -17,7 +17,7 @@ from live.operations import AI, INTERNAL, operation
 
 from billing.models import Invoice, PaymentFailure
 from billing.money import from_cents
-from billing.schemas import (
+from billing.schemas.invoices import (
     InvoiceByIdIn,
     InvoiceDetailOut,
     InvoiceFileOut,

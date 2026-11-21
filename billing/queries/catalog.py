@@ -9,7 +9,7 @@ from apps import queries as app_queries
 from apps.icons import FALLBACK_ICON_SVG
 from apps.models import Module
 from billing.queries.subscriptions import scheduled_change_of
-from billing.schemas import StoreCatalogIn, StoreCatalogOut
+from billing.schemas.store import StoreCatalogIn, StoreCatalogOut
 from hubs.queries import access_control, plan_catalog
 from hubs.services import refusals
 from hubs.models import HubMember, Plan, Subscription, SubscriptionItem

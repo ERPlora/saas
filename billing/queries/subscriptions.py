@@ -22,14 +22,10 @@ from billing.money import from_cents, to_cents
 from billing.queries.invoices import CARD_CACHE_SECONDS, _billing_account, _owned_hub_ids
 from billing.queries.promo_codes import discount_out
 from billing.queries.tax import Payer, _vat_status_on_file, payer_of
-from billing.schemas import (
-    HubIn,
-    PaymentMethodIn,
-    PaymentMethodOut,
-    PlanCancelPreviewOut,
-    SubscriptionListIn,
-    SubscriptionListOut,
-)
+from billing.schemas.common import HubIn
+from billing.schemas.payment_methods import PaymentMethodIn, PaymentMethodOut
+from billing.schemas.subscription_changes import PlanCancelPreviewOut
+from billing.schemas.subscriptions import SubscriptionListIn, SubscriptionListOut
 from hubs.queries import access_control, membership, payers, plan_catalog
 from hubs.services import refusals
 from hubs.models import Hub, HubMember, Plan, Subscription

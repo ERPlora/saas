@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from billing import stripe_service
 from billing.models import PaymentFailure
-from billing.schemas import InvoiceRecordIn
+from billing.schemas.invoice_records import InvoiceRecordIn
 from billing.services import (
     invoice_recording,
     invoice_sealing,

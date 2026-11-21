@@ -106,7 +106,7 @@ class TestAPlanOnTopOfModules:
     @pytest.mark.usefixtures("signup_trial")  # the dormant trial, on (no seeded plan carries one)
     def test_the_preview_and_the_change_carry_the_trial_left(self, shop, owner, inventory, stripe_double):
         from billing.services import plan_changes
-        from billing.schemas import PlanChangeIn
+        from billing.schemas.subscription_changes import PlanChangeIn
 
         trial_end = Subscription.objects.get(hub=shop).trial_end
         paid = self.modules_only(shop, stripe_double, inventory)
@@ -126,7 +126,7 @@ class TestAPlanOnTopOfModules:
 
     def test_a_promo_code_is_honoured(self, shop, owner, inventory, stripe_double):
         from billing.services import plan_changes
-        from billing.schemas import PlanChangeIn
+        from billing.schemas.subscription_changes import PlanChangeIn
 
         Subscription.objects.filter(hub=shop).update(trial_end=timezone.now() - timedelta(days=1))
         PromoCode.objects.create(code="canary_2026", trial_days=60)

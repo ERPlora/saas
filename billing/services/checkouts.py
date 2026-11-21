@@ -13,7 +13,7 @@ from live.outbox import record_event
 from base.navigation import BUSINESSES
 from billing import events, queries, stripe_service
 from billing.models import CheckoutAttempt
-from billing.schemas import CheckoutStartIn, CheckoutStartOut
+from billing.schemas.checkout import CheckoutStartIn, CheckoutStartOut
 from billing.services import payment_gates, plan_changes, promo_codes, promo_holds, stripe_customers, stripe_sales
 from billing.stripe_checkout import EMBEDDED_UI_MODE, KIND_METADATA_KEY, CheckoutKind
 from hubs import emails as hub_emails

@@ -14,7 +14,9 @@ from live.outbox import record_event
 
 from billing import events, queries, stripe_service
 from billing.models import PromoCode
-from billing.schemas import CheckoutConfirmIn, HubIn, PlanChangeIn, SubscriptionOut
+from billing.schemas.checkout import CheckoutConfirmIn
+from billing.schemas.common import HubIn
+from billing.schemas.subscription_changes import PlanChangeIn, SubscriptionOut
 from billing.services import (
     discounts,
     downgrades,

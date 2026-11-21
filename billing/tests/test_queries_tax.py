@@ -27,7 +27,7 @@ from live.errors import PermissionDenied
 
 from billing import queries
 from billing.models import FiscalPolicy, TaxCategory, TaxRule, VatCheck
-from billing.schemas import TaxPreviewIn
+from billing.schemas.tax import TaxPreviewIn
 from billing.tests.conftest import ctx_for
 from billing.tests.vies_double import no_network
 
