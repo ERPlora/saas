@@ -29,7 +29,7 @@ def fernet_key(settings):
 
 
 def staff_ctx(user, language: str = "en") -> OperationContext:
-    """The context the admin builds for a member of the staff (``assistant.admin.staff_context``)."""
+    """The context the admin builds for a member of the staff (``assistant.admin.staff.staff_context``)."""
     return OperationContext(
         scope=Scope("user", str(user.pk)),
         actor=user,

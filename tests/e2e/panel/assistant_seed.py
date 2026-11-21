@@ -408,7 +408,7 @@ def real(choice: dict, language: str = "es") -> dict:
 
     staff()
     admin = get_user_model().objects.get(email=f"{PREFIX}admin{DOMAIN}")
-    # The member of the staff acting, as ``assistant.admin.staff_context`` builds it for the admin's pages.
+    # The member of the staff acting, as ``assistant.admin.staff.staff_context`` builds it for the admin's pages.
     ctx = OperationContext(
         scope=Scope("user", str(admin.pk)), actor=admin, permissions=frozenset({"assistant.manage"}), language="en"
     )

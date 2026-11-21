@@ -11,7 +11,6 @@
 775 accounts/frontend/pages/TwoFactorSettingsPage.test.ts saas#462
 584 accounts/frontend/pages/VerifyEmailPage.test.ts saas#462
 1079 accounts/tests/test_mfa.py saas#462
-504 assistant/admin.py saas#462
 508 assistant/turn.py saas#462
 549 billing/stripe_service.py saas#462
 664 billing/vat.py saas#462

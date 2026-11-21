@@ -1,7 +1,7 @@
 """The writes of the AI gateway, each an operation (``@operation``, ``kind="command"``) in its own transaction, with
 its event in the outbox.
 
-The admin calls them as the member of the staff who clicks (``assistant.admin.staff_context``): each one checks
+The admin calls them as the member of the staff who clicks (``assistant.admin.staff.staff_context``): each one checks
 the model permission of Django that backs it, so a member of the staff without it is refused here too, not only
 on the page. The commands call them as the platform (``platform_actor.platform_context``).
 
