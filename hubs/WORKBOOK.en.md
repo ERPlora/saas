@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:215887339e45a59ef1f270096c50a9dc032b61741013bbd16bdee6b072e2eea2 -->
+<!-- generated from WORKBOOK.md sha256:9811e2afa39b55349f3dcbea2ed7acfe2fb25ed6907278ce6dc10338953bf4b5 -->
 
 ## What it is for and who it is for
 
@@ -597,7 +597,7 @@ Status: done
 Actor: system, ERPlora's staff
 Screen: none; for the staff, admin › Businesses › Plans
 Steps:
-1. Whenever something the business has to know changes —its plan (when it is paid, changed or ended), a paid app bought or cancelled, a person who joins, changes role or leaves, its billing standing or its VeriFactu authorisation—, erplora.com stores it and, as soon as it is stored, sends the business its whole snapshot: the plan with its caps (people, devices, the limits of its database and the assistant and WhatsApp messages a month), its paid apps, its people with their role, its status and its VeriFactu block.
+1. Whenever something the business has to know changes —its plan (when it is paid, changed or ended), a paid app bought or cancelled, a person who joins, changes role or leaves, its billing standing or its VeriFactu authorisation—, erplora.com stores it and, as soon as it is stored, sends the business its whole snapshot: the plan with its caps (people, devices, the limits of its database and the assistant and WhatsApp messages a month), its paid apps, its people with their role, its status (with a payment pending, also the day and time it is suspended unless it is paid) and its VeriFactu block.
 2. The business always keeps the newest snapshot: one that arrives late and is older than the one it has changes nothing. It works with it without asking erplora.com on every sale, so it keeps selling even if erplora.com does not answer.
 3. If the staff change in the admin what a plan gives (its caps, its level of apps or its messages a month), on saving they see "… businesses on this plan get the change within 15 minutes." and every business on that plan gets it on the next pass; changing only its texts, its order or its price sends nothing.
 4. What a business did not receive is sent to it again every 15 minutes (HUBS-F08) and, every night, every business gets its snapshot again.
