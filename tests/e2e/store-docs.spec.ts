@@ -6,7 +6,8 @@
 // pages) in public/csp.py.
 //
 // The second spec drives the store's search in a real browser: `ion-searchbar` inside a GET form,
-// which no server test can submit.
+// which no server test can submit. The third measures a table wider than a phone: it scrolls
+// sideways inside its own box, and on a desktop it still fills the text.
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -104,6 +105,40 @@ test('the store searches from its searchbar and opens the app', async ({ page })
   expect(await csp.violations()).toEqual([]);
   expect(csp.reports).toEqual([]);
   expect(csp.pageErrors).toEqual([]);
+});
+
+test('a table wider than a phone scrolls inside its own box and fills the text on a desktop', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto(`/apps/${APP}/docs/`);
+  const box = page.locator('article.ep-store-docs .ep-table-scroll');
+  await expect(box).toBeAttached();
+  await box.scrollIntoViewIfNeeded();
+
+  // The card around the manual cuts nothing: the table's own box is what scrolls.
+  const card = page.locator('ion-card.ep-store-card');
+  expect(await card.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+  expect(await box.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  // Scrolled to its end, the last column is inside the box, where it can be read.
+  await box.evaluate((element) => element.scrollTo({ left: element.scrollWidth }));
+  const last = await box.locator('th', { hasText: 'Empleado' }).boundingBox();
+  const frame = await box.boundingBox();
+  expect(last && frame && last.x >= frame.x && last.x + last.width <= frame.x + frame.width + 1).toBe(true);
+  await page.screenshot({ path: shot('store-docs--wide-table-375'), fullPage: true });
+
+  // On a desktop the table fills the text, 1rem below the paragraph before it, as it always did.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const desktop = await page.locator('article.ep-store-docs').evaluate((article) => {
+    const table = article.querySelector('.ep-table-scroll > table') as Element;
+    const before = table.parentElement?.previousElementSibling as Element;
+    return {
+      article: article.getBoundingClientRect().width,
+      table: table.getBoundingClientRect().width,
+      gap: table.getBoundingClientRect().top - before.getBoundingClientRect().bottom,
+      rem: parseFloat(getComputedStyle(document.documentElement).fontSize),
+    };
+  });
+  expect(desktop.table).toBe(desktop.article);
+  expect(desktop.gap).toBeCloseTo(desktop.rem, 0);
 });
 
 // Phone, tablet and desktop: nothing wider than the screen, in English and Spanish.
