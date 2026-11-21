@@ -22,6 +22,7 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
+from billing import emails
 from billing.models import PaymentFailure
 from billing.services.live_subscriptions import unpaid_state
 from billing.tests.conftest import pay
@@ -475,6 +476,17 @@ class TestThePayerIsTold:
         assert message.to == ["owner@example.com"]
         assert f"https://erplora.com/dashboard/billing/invoices?business={running.id}" in message.body
         assert PaymentFailure.objects.get().notified_at is not None
+
+    def test_the_mail_says_the_deadline_the_hub_gets(self, running, told, stripe_double, monkeypatch):
+        deadlines = []
+        send = emails.send_payment_failed
+        monkeypatch.setattr(
+            emails, "send_payment_failed", lambda *args, **kw: deadlines.append(kw["suspends_on"]) or send(*args, **kw)
+        )
+
+        told(stripe_double, days=3)
+
+        assert deadlines == [datetime.fromisoformat(hub_sync.hub_snapshot(running.id)["suspends_on"])]
 
     def test_another_failed_attempt_of_the_same_invoice_tells_nothing_more(self, running, told, stripe_double):
         told(stripe_double, days=3)
