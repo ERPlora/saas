@@ -16,7 +16,7 @@ from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 from live.errors import Conflict
 
-from billing import queries, vat
+from billing import queries, vat, vat_breakdown, vat_countries
 from billing.money import to_cents
 from billing.services.vat_clearance import clear_tax_id_for_stripe
 from billing.stripe_tax_rates import TaxRateSpec, tax_rate_specs_for
@@ -76,7 +76,7 @@ def require_billing_location(
 def require_sold_to(hub, payer: queries.Payer, what: Sold = "sale") -> None:
     """Refuse a new sale to a payer ERPlora does not sell to: another country (409 ``billing.country_not_sold``),
     or a consumer in the Canary Islands, Ceuta or Melilla (409 ``billing.business_required``)."""
-    if not vat.sells_to(payer.country):
+    if not vat_countries.sells_to(payer.country):
         logger.info(
             "[FISCAL] Refusing a %s: ERPlora does not sell to payers in %s (hub=%s)",
             what,
@@ -87,8 +87,8 @@ def require_sold_to(hub, payer: queries.Payer, what: Sold = "sale") -> None:
             _("For now ERPlora only sells to payers billed in Spain: change the billing details."),
             code="billing.country_not_sold",
         )
-    region = vat.spanish_region_for_postal_code(payer.postal_code) if payer.country == "ES" else ""
-    if region in vat.BUSINESS_ONLY_REGIONS and not payer.tax_id:
+    region = vat_countries.spanish_region_for_postal_code(payer.postal_code) if payer.country == "ES" else ""
+    if region in vat_countries.BUSINESS_ONLY_REGIONS and not payer.tax_id:
         logger.info(
             "[FISCAL] Refusing a %s: the payer is a consumer in %s (hub=%s)",
             what,
@@ -107,7 +107,7 @@ def require_sold_to(hub, payer: queries.Payer, what: Sold = "sale") -> None:
 
 def sale_quote(
     hub, *, category_key: str, price: Decimal | None, what: Sold = "sale", renewing: bool = False
-) -> vat.VatBreakdown:
+) -> vat_breakdown.VatBreakdown:
     """The tax of selling ``price`` (net) of ``category_key`` to the payer of ``hub``; ``None`` = there IS
     something to charge, but the amount is not this question's business (the rate never depends on it).
 

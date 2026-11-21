@@ -8,7 +8,7 @@ from datetime import date
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from billing import emails, queries, vat
+from billing import emails, queries, vat, vat_countries
 from billing.models import Invoice, OssNotice
 from billing.money import to_cents
 from billing.oss import OSS_WARNING_PERCENT
@@ -22,7 +22,7 @@ def _counts_towards_oss(invoice: Invoice, issuer: str) -> bool:
     return (
         invoice.kind == Invoice.Kind.INVOICE
         and invoice.payment_status == Invoice.PaymentStatus.PAID
-        and invoice.payer_country in vat.EU_VAT_RATES
+        and invoice.payer_country in vat_countries.EU_VAT_RATES
         and invoice.payer_country != issuer
         and not invoice.payer_tax_id_verified
     )

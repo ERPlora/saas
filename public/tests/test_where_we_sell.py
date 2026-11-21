@@ -1,7 +1,7 @@
 """Where the public web says ERPlora sells its paid plans: exactly where the payment sells them.
 
-The payment's rule is ``billing.vat.SOLD_TO_COUNTRIES`` (the payer's billing country) and
-``billing.vat.BUSINESS_ONLY_REGIONS`` (the Spanish territories outside VAT, sold to businesses and professionals only),
+The payment's rule is ``billing.vat_countries.SOLD_TO_COUNTRIES`` (the payer's billing country) and
+``billing.vat_countries.BUSINESS_ONLY_REGIONS`` (the Spanish territories outside VAT, sold to businesses and professionals only),
 enforced by ``billing.services.sale_tax.require_sold_to``. Two texts describe it to a visitor: the answer «Is VAT included in
 these prices?» of ``/pricing/`` and the clause of the terms with ``id="where-we-sell"``. Both name every country the
 payment sells to and no other; neither they nor the ex-VAT note under the prices describe a sale abroad (VIES, the
@@ -17,13 +17,13 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils import translation
 
-from billing import vat
+from billing import vat_countries
 from hubs.countries import PAYER_COUNTRY_NAMES
 from public import pricing
 
 TERMS = "/legal/terms/"
 
-#: How the texts call each region of ``vat.BUSINESS_ONLY_REGIONS``, per language.
+#: How the texts call each region of ``vat_countries.BUSINESS_ONLY_REGIONS``, per language.
 REGION_NAMES = {
     "IC": {"en": "Canary Islands", "es": "Canarias"},
     "CE": {"en": "Ceuta", "es": "Ceuta"},
@@ -42,7 +42,7 @@ UK_WORDS = ("HMRC", "HM Revenue")
 #: Ceuta and Melilla from the rest of Spain), not the tax ID.
 BILLING_ADDRESS = {"en": "billing address", "es": "dirección de facturación"}
 
-#: How each text says who it sells to in ``vat.BUSINESS_ONLY_REGIONS``, what it asks them for and that the sale
+#: How each text says who it sells to in ``vat_countries.BUSINESS_ONLY_REGIONS``, what it asks them for and that the sale
 #: carries no Spanish VAT: what ``require_sold_to`` enforces there and ``vat.resolve_vat`` charges.
 BUSINESSES_ONLY = {
     "en": r"only (sell |sells its paid plans only )?to businesses and professionals",
@@ -111,7 +111,7 @@ def countries_named(text: str, language: str) -> set[str]:
 def abroad_words(text: str, language: str, sold_to: frozenset[str]) -> list[str]:
     """The words of a sale the payment refuses that a text still uses."""
     refused = []
-    if not (sold_to & (set(vat.EU_VAT_RATES) - {"ES"})):
+    if not (sold_to & (set(vat_countries.EU_VAT_RATES) - {"ES"})):
         refused += EU_ABROAD_WORDS[language]
     if "GB" not in sold_to:
         refused += UK_WORDS
@@ -127,32 +127,32 @@ def test_the_checks_tell_a_text_that_sells_abroad():
 
     assert countries_named(old, "en") == {"GB"}
     assert abroad_words(old, "en", frozenset({"ES"})) == ["VIES", "reverse charge", "member state"]
-    assert abroad_words(old, "en", frozenset(vat.BILLING_COUNTRIES)) == []
+    assert abroad_words(old, "en", frozenset(vat_countries.BILLING_COUNTRIES)) == []
 
 
 def test_the_region_names_cover_every_region_sold_to_businesses_only():
-    assert set(REGION_NAMES) == vat.BUSINESS_ONLY_REGIONS
+    assert set(REGION_NAMES) == vat_countries.BUSINESS_ONLY_REGIONS
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("language", LANGUAGES)
 def test_the_texts_name_every_country_the_payment_sells_to_and_no_other(client, language):
     for where, text in where_we_sell(client, language).items():
-        assert countries_named(text, language) == set(vat.SOLD_TO_COUNTRIES), where
+        assert countries_named(text, language) == set(vat_countries.SOLD_TO_COUNTRIES), where
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("language", LANGUAGES)
 def test_no_text_describes_a_sale_the_payment_refuses(client, language):
     for where, text in {**where_we_sell(client, language), "ex-VAT note": vat_note(language)}.items():
-        assert abroad_words(text, language, vat.SOLD_TO_COUNTRIES) == [], where
+        assert abroad_words(text, language, vat_countries.SOLD_TO_COUNTRIES) == [], where
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("language", LANGUAGES)
 def test_the_texts_sell_to_businesses_only_in_the_regions_without_vat(client, language):
     for where, text in where_we_sell(client, language).items():
-        for region in sorted(vat.BUSINESS_ONLY_REGIONS):
+        for region in sorted(vat_countries.BUSINESS_ONLY_REGIONS):
             assert REGION_NAMES[region][language] in text, (where, region)
         assert re.search(BUSINESSES_ONLY[language], text), where
         assert TAX_ID[language] in text, where
@@ -169,7 +169,7 @@ def test_the_texts_say_those_regions_carry_no_spanish_vat(client, language):
 @pytest.mark.parametrize(("language", "percent"), [("en", "{rate}%"), ("es", "{rate} %")])
 def test_the_vat_answer_gives_the_rate_the_payment_charges_in_spain(language, percent):
     """The only rates the answer prints are Spain's and the «0%» it tells «outside the scope» from."""
-    rate = percent.format(rate=f"{vat.EU_VAT_RATES['ES']:f}")
+    rate = percent.format(rate=f"{vat_countries.EU_VAT_RATES['ES']:f}")
 
     assert set(re.findall(r"\d+(?:[.,]\d+)?\s?%", vat_answer(language))) == {rate, percent.format(rate=0)}
 

@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 from decimal import Decimal
 
-from billing import queries, vat
+from billing import queries, vat, vat_breakdown
 from billing.models import Invoice, InvoiceLine
 from billing.money import from_cents, to_cents
 from billing.services import stripe_sync
@@ -46,7 +46,7 @@ def _item_of(price_id: str) -> tuple[str, str, str]:
     return InvoiceLine.ItemKind.OTHER, "", vat.SAAS_SUBSCRIPTION_CATEGORY
 
 
-def _nominal_rate(breakdown: vat.VatBreakdown, category: str) -> Decimal:
+def _nominal_rate(breakdown: vat_breakdown.VatBreakdown, category: str) -> Decimal:
     """The rate of the rule in force for what is sold where the sale is taxed (the declared rate: Stripe's
     effective one moves a hundredth with the rounding)."""
     rate = vat.vat_rate_for(country=breakdown.tax_country, region=breakdown.tax_region, category_key=category)
@@ -57,10 +57,10 @@ def _sealed_amounts(amount: int, tax: int, *, treatment: str, rate: Decimal, rec
     """``(rate, net, tax)`` of a line in cents, by the qualification of the sale: without a rate (reverse
     charge, not subject) all of it is base; reconciled (Stripe charged no tax on a subject sale) the VAT comes
     out of the amount charged; otherwise Stripe's amounts rule."""
-    if treatment not in vat.TREATMENTS_WITH_RATE:
+    if treatment not in vat_breakdown.TREATMENTS_WITH_RATE:
         return Decimal("0.00"), amount + tax, 0
     if reconciled:
-        base, _quota = vat.split_gross(from_cents(amount + tax), rate)
+        base, _quota = vat_breakdown.split_gross(from_cents(amount + tax), rate)
         net = to_cents(base)
         return rate, net, amount + tax - net
     return rate, amount, tax

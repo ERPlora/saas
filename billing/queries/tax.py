@@ -11,7 +11,7 @@ from django.utils import timezone
 from live.context import OperationContext
 from live.operations import AI, operation
 
-from billing import vat, vies
+from billing import vat, vat_countries, vies
 from billing.models import GENERIC_CATEGORY, CompanyConfig, FiscalPolicy, Invoice, TaxRule, VatCheck
 from billing.money import from_cents, to_cents
 from billing.schemas.tax import TaxPreviewIn, TaxPreviewOut
@@ -96,7 +96,7 @@ def cross_border_b2c_cents(policy: FiscalPolicy, year: int) -> int:
     invoiced = Invoice.objects.filter(
         payment_status=Invoice.PaymentStatus.PAID,
         issued_on__year=year,
-        payer_country__in=[code for code in vat.EU_VAT_RATES if code != issuer],
+        payer_country__in=[code for code in vat_countries.EU_VAT_RATES if code != issuer],
         payer_tax_id_verified=False,
     ).aggregate(total=Sum("net_cents"))["total"]
     return carried + int(invoiced or 0)
@@ -208,8 +208,8 @@ class Payer:
     @property
     def has_location(self) -> bool:
         """Both halves on file, the postal code of its country's shape: a country alone prices Madrid and
-        Las Palmas the same, and «3500» is not Las Palmas (``vat.postal_code_is_valid``)."""
-        return vat.postal_code_is_valid(self.country, self.postal_code)
+        Las Palmas the same, and «3500» is not Las Palmas (``vat_countries.postal_code_is_valid``)."""
+        return vat_countries.postal_code_is_valid(self.country, self.postal_code)
 
 
 def payer_of(hub) -> Payer:
@@ -220,7 +220,7 @@ def payer_of(hub) -> Payer:
     country = (profile.billing_country or "").strip().upper()
     postal_code = (profile.billing_postal_code or "").strip().upper()
     tax_id = vies.normalise(profile.tax_id)
-    tax_id_type = vat.tax_id_type_for(country) if tax_id else ""
+    tax_id_type = vat_countries.tax_id_type_for(country) if tax_id else ""
     if tax_id and not tax_id_type:
         logger.info(
             "[BILLING] The payer of hub %s has a tax id but no Stripe type for country %r: it stays off the sale",
@@ -291,7 +291,7 @@ def tax_preview(ctx: OperationContext, params: TaxPreviewIn) -> dict:
         customer_country=params.country,
         customer_postal_code=params.postal_code,
         customer_tax_id=vat_number,
-        customer_tax_id_type=vat.tax_id_type_for(params.country) if vat_number else "",
+        customer_tax_id_type=vat_countries.tax_id_type_for(params.country) if vat_number else "",
         customer_tax_id_verified=vat_status == "verified",
         category_key=CATEGORY_KEYS[params.category],
     )

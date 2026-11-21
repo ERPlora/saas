@@ -12,7 +12,7 @@ from pydantic import AfterValidator, StringConstraints
 
 from accounts.adapters import folded_email
 from accounts.queries.hub_links import local_path
-from billing.vat import SOLD_TO_COUNTRIES
+from billing.vat_countries import SOLD_TO_COUNTRIES
 
 
 T = TypeVar("T")

@@ -36,8 +36,8 @@ def test_the_rates_are_the_general_ones_in_force_in_2026():
 
 
 def test_the_seed_copies_the_rates_instead_of_reading_the_live_backstop():
-    """A seed describes a date: it cannot change meaning the day ``billing.vat.EU_VAT_RATES`` moves."""
-    from billing.vat import EU_VAT_RATES
+    """A seed describes a date: it cannot change meaning the day ``billing.vat_countries.EU_VAT_RATES`` moves."""
+    from billing.vat_countries import EU_VAT_RATES
 
     assert seed.EU_VAT_RATES is not EU_VAT_RATES
     assert {

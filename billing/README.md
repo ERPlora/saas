@@ -14,7 +14,9 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 | Pieza | Qué hace |
 |---|---|
 | `models/tax.py`, `models/oss_notices.py` | `TaxCategory` (qué se vende), `TaxRule` (tipo por país/región/categoría con vigencia; `is_subject=False` = no sujeta), `FiscalPolicy` (emisor, alta en el ROI, OSS y su umbral; una sola fila), `CompanyConfig` (identidad fiscal de ERPlora, la del solicitante de VIES; una sola fila), `VatCheck` (bitácora de VIES: cada consulta es una fila nueva, nunca se edita) y `OssNotice` (los avisos al equipo del 80 % y del cruce del umbral OSS, uno por año y tipo) |
-| `vat.py` | Calificación y desglose: `quote_vat` (lo que se SUMA a un neto; `None` = no se vende), `resolve_vat` (reparte lo ya cobrado, concilia el cero de Stripe en una venta sujeta), `add_vat`, `split_gross`, `vat_rate_for`, `BILLING_COUNTRIES`, `tax_id_type_for`. Sin ORM: lee la tabla por `queries` |
+| `vat.py` | Calificación: `quote_vat` (lo que se SUMA a un neto; `None` = no se vende), `resolve_vat` (reparte lo ya cobrado, concilia el cero de Stripe en una venta sujeta), `vat_rate_for`. Sin ORM: lee la tabla por `queries` |
+| `vat_breakdown.py` | El desglose de un importe en base y cuota: los tratamientos (`domestic`, `oss`, `reverse_charge`, `not_subject`, `exempt`), `VatBreakdown`, `add_vat`, `split_gross` y el reparto de lo cobrado (`_breakdown`). Sin ORM ni consultas |
+| `vat_countries.py` | Dónde factura y vende ERPlora: los tipos generales de la UE-27 (`EU_VAT_RATES`, el respaldo de la tabla), `BILLING_COUNTRIES`, `SOLD_TO_COUNTRIES`, `tax_id_type_for` y la región fiscal de un código postal español. Sin ORM ni consultas |
 | `vies.py` | Cliente REST de VIES como solicitante identificado; nunca lanza: red caída, timeout, HTTP ≥ 400, JSON roto o «válido sin número de consulta» = `unavailable` |
 | `services/vat_clearance.py`, `services/payer_vat_numbers.py`, `services/sale_tax.py` | Las puertas: el veredicto de VIES (`check_vat_number`, `verify_customer_vat`, `clear_tax_id_for_stripe`, `record_manual_override`), el NIF del pagador (`validate_vat_for_profile` y la operación `billing.vat_check.run`) y el impuesto de una venta (`sale_quote`, `sale_tax_rates`, `require_billing_location`) |
 | `queries/tax.py` | `tax_rule`, `fiscal_policy`, umbral OSS (`uses_destination_rate`/`destination_rate_applies`), `vies_requester`, `latest_vat_check`, `payer_of(hub)`; la operación `billing.tax.preview` |
@@ -224,7 +226,7 @@ vivo en la renovación, como hace Stripe.
 porcentaje se redondea al céntimo, la mitad hacia arriba (el 20 % de 29,99 € son 6,00 €) y un importe mayor que el precio deja
 la línea a 0. `billing.invoice.record` registra también la de total 0 con subtotal mayor que 0
 (`services/invoice_discounts.py`); la de una prueba (subtotal 0) sigue sin factura. `InvoiceLine.discount_cents`
-guarda el descuento sin IVA y `net_cents` la base ya descontada; `vat._breakdown` no concilia ni avisa de «cobrado
+guarda el descuento sin IVA y `net_cents` la base ya descontada; `vat_breakdown._breakdown` no concilia ni avisa de «cobrado
 sin IVA» cuando no se cobró nada. La factura con descuento, también la de 0 €, se numera, se manda al hub de
 plataforma (cada línea lleva `discount_cents`, siempre positivo y sin IVA: el hub le pone el signo de la línea y, en
 una línea OSS, su tipo) y sale en la lista, la ficha, el PDF, el CSV, el admin, el ZIP de PDF, el correo y el
