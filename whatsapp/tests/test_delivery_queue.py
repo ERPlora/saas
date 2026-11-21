@@ -2,8 +2,8 @@
 
 - Each business's messages reach its Hub in the order they arrived: one the Hub did not take holds the newer ones of
   that business back (in the same batch, held with its wait, and in the passes after it) until it goes, for
-  ``services.IN_ORDER_ATTEMPTS`` failed attempts at most (about an hour); another business never waits for it, and a
-  status (the furthest one of a message, whatever its order) is never held back.
+  ``delivery_queue.IN_ORDER_ATTEMPTS`` failed attempts at most (about an hour); another business never waits for it,
+  and a status (the furthest one of a message, whatever its order) is never held back.
 - What a claim leases nobody else pushes (``SKIP LOCKED`` and the lease): two deliverers at once push each row once.
 - What makes a row due or moves its wait wakes the worker after the COMMIT (``NOTIFY whatsapp_delivery``), and
   ``whatsapp.delivery.next_due`` tells it when the next one is due, so it sleeps until then without looking.
@@ -19,18 +19,19 @@ from django.db import connection, transaction
 from django.db.models import F
 from django.utils import timezone
 
-from whatsapp import hub_client, services
+from whatsapp import hub_client
 from whatsapp.gateway import deliveries
 from whatsapp.models import Delivery
 from whatsapp.queries import delivery_next_due
 from whatsapp.schemas import ClaimIn, DueNowIn, HeldDelivery, HoldIn, NextDueIn, RecordIn
+from whatsapp.services import delivery_queue, platform_actor
 from base.tests.conftest import other_session  # noqa: F401 - a second session, as another process
 from whatsapp.tests.test_gateway import number  # noqa: F401 - shared fixture
 from whatsapp.tests.test_parse import messages, text
 from whatsapp.tests.test_services import ingest
 
 pytestmark = pytest.mark.django_db
-CTX = services.platform_context()
+CTX = platform_actor.platform_context()
 NOTHING = {"delivered": 0, "retried": 0, "refused": 0, "dropped": 0, "held": 0}
 
 
@@ -47,7 +48,7 @@ def park(hub, wamid, *, kind="message", ago=0.0, **fields):
 
 
 def claim(**fields):
-    return services.delivery_claim(CTX, ClaimIn(**fields)).deliveries
+    return delivery_queue.delivery_claim(CTX, ClaimIn(**fields)).deliveries
 
 
 def wamids(deliveries) -> list[str]:
@@ -122,7 +123,7 @@ def test_messages_received_at_the_same_instant_go_in_the_order_they_were_parked(
 
 
 @pytest.mark.parametrize(
-    ("failed", "claimed"), [(services.IN_ORDER_ATTEMPTS - 1, []), (services.IN_ORDER_ATTEMPTS, ["wamid.2"])]
+    ("failed", "claimed"), [(delivery_queue.IN_ORDER_ATTEMPTS - 1, []), (delivery_queue.IN_ORDER_ATTEMPTS, ["wamid.2"])]
 )
 def test_a_message_the_hub_keeps_failing_on_stops_holding_the_newer_ones_back_after_about_an_hour(
     business, failed, claimed
@@ -133,7 +134,7 @@ def test_a_message_the_hub_keeps_failing_on_stops_holding_the_newer_ones_back_af
     park(business, "wamid.2", ago=10)
 
     assert wamids(claim()) == claimed
-    tried_for = sum((services.retry_wait(n) for n in range(1, services.IN_ORDER_ATTEMPTS)), timedelta())
+    tried_for = sum((delivery_queue.retry_wait(n) for n in range(1, delivery_queue.IN_ORDER_ATTEMPTS)), timedelta())
     assert timedelta(hours=1) <= tried_for <= timedelta(hours=1, minutes=10)
 
 
@@ -165,7 +166,7 @@ def test_the_held_messages_go_after_the_one_that_failed_once_its_wait_passed(bus
     park(business, "wamid.3")
     hub.pushes.clear()
 
-    clock.now += services.FIRST_WAIT - timedelta(seconds=1)
+    clock.now += delivery_queue.FIRST_WAIT - timedelta(seconds=1)
     assert deliveries.deliver([business.id]) == NOTHING
     assert hub.pushes == []
 
@@ -197,10 +198,11 @@ def test_a_stop_asked_during_a_batch_gives_back_what_it_has_not_pushed_yet(busin
 @pytest.mark.parametrize(
     ("kind", "failed_before", "warned"),
     [
-        ("message", services.IN_ORDER_ATTEMPTS - 1, True),  # this failure reaches the cap: it stops holding the rest
-        ("message", services.IN_ORDER_ATTEMPTS, False),  # past it already: said once
-        ("message", services.IN_ORDER_ATTEMPTS - 2, False),
-        ("status", services.IN_ORDER_ATTEMPTS - 1, False),  # a status never held anything back
+        # This failure reaches the cap: it stops holding the rest.
+        ("message", delivery_queue.IN_ORDER_ATTEMPTS - 1, True),
+        ("message", delivery_queue.IN_ORDER_ATTEMPTS, False),  # past it already: said once
+        ("message", delivery_queue.IN_ORDER_ATTEMPTS - 2, False),
+        ("status", delivery_queue.IN_ORDER_ATTEMPTS - 1, False),  # a status never held anything back
     ],
 )
 def test_a_message_that_stops_holding_the_rest_back_is_said_once(business, caplog, kind, failed_before, warned):
@@ -208,10 +210,11 @@ def test_a_message_that_stops_holding_the_rest_back_is_said_once(business, caplo
     (claimed,) = claim()
 
     with caplog.at_level("WARNING", logger="whatsapp.services"):
-        services.delivery_record(CTX, RecordIn(id=claimed.id, revision=claimed.revision, outcome="retry"))
+        delivery_queue.delivery_record(CTX, RecordIn(id=claimed.id, revision=claimed.revision, outcome="retry"))
 
     released = [record for record in caplog.records if record.getMessage().startswith("saas.worker.order_released")]
-    expected = f"saas.worker.order_released hub={business.id} delivery={delivery.id} attempts={services.IN_ORDER_ATTEMPTS}"
+    attempts = delivery_queue.IN_ORDER_ATTEMPTS
+    expected = f"saas.worker.order_released hub={business.id} delivery={delivery.id} attempts={attempts}"
     assert [record.getMessage() for record in released] == ([expected] if warned else [])
     assert all(record.levelname == "WARNING" for record in released)
 
@@ -220,7 +223,7 @@ def test_a_record_answers_when_its_delivery_is_due_again(business):
     park(business, "wamid.1")
     (delivery,) = claim()
 
-    out = services.delivery_record(
+    out = delivery_queue.delivery_record(
         CTX, RecordIn(id=delivery.id, revision=delivery.revision, outcome="retry", error="HTTP 503")
     )
 
@@ -235,7 +238,7 @@ def test_holding_gives_claimed_rows_back_without_an_attempt_and_leaves_a_newer_r
     Delivery.objects.filter(pk=second.id).update(revision=F("revision") + 1, next_attempt_at=timezone.now())
     until = timezone.now() + timedelta(seconds=30)
 
-    out = services.delivery_hold(
+    out = delivery_queue.delivery_hold(
         CTX, HoldIn(deliveries=[HeldDelivery(id=d.id, revision=d.revision) for d in (first, second)], until=until)
     )
 
@@ -248,7 +251,7 @@ def test_holding_without_a_time_makes_them_due_now(business):
     park(business, "wamid.1")
     (delivery,) = claim()
 
-    services.delivery_hold(CTX, HoldIn(deliveries=[HeldDelivery(id=delivery.id, revision=delivery.revision)]))
+    delivery_queue.delivery_hold(CTX, HoldIn(deliveries=[HeldDelivery(id=delivery.id, revision=delivery.revision)]))
 
     assert row("wamid.1").next_attempt_at <= timezone.now()
 
@@ -260,7 +263,7 @@ def test_a_parked_message_wakes_the_worker_after_the_commit(number, django_captu
     with django_capture_on_commit_callbacks() as callbacks:
         ingest(messages(text("wamid.1")))
 
-    assert services.wake_the_worker in callbacks
+    assert delivery_queue.wake_the_worker in callbacks
 
 
 def test_a_webhook_that_parks_nothing_new_does_not_wake_it(number, django_capture_on_commit_callbacks):
@@ -269,7 +272,7 @@ def test_a_webhook_that_parks_nothing_new_does_not_wake_it(number, django_captur
     with django_capture_on_commit_callbacks() as callbacks:
         ingest(messages(text("wamid.1")))
 
-    assert services.wake_the_worker not in callbacks
+    assert delivery_queue.wake_the_worker not in callbacks
 
 
 @pytest.mark.parametrize(
@@ -282,9 +285,9 @@ def test_a_record_wakes_the_worker_when_the_row_waits_again(
     (delivery,) = claim()
 
     with django_capture_on_commit_callbacks() as callbacks:
-        services.delivery_record(CTX, RecordIn(id=delivery.id, revision=delivery.revision, outcome=outcome))
+        delivery_queue.delivery_record(CTX, RecordIn(id=delivery.id, revision=delivery.revision, outcome=outcome))
 
-    assert (services.wake_the_worker in callbacks) is wakes
+    assert (delivery_queue.wake_the_worker in callbacks) is wakes
 
 
 def test_a_record_of_a_body_that_moved_on_wakes_the_worker(business, django_capture_on_commit_callbacks):
@@ -293,23 +296,23 @@ def test_a_record_of_a_body_that_moved_on_wakes_the_worker(business, django_capt
     Delivery.objects.update(revision=F("revision") + 1)
 
     with django_capture_on_commit_callbacks() as callbacks:
-        out = services.delivery_record(CTX, RecordIn(id=delivery.id, revision=delivery.revision, outcome="retry"))
+        out = delivery_queue.delivery_record(CTX, RecordIn(id=delivery.id, revision=delivery.revision, outcome="retry"))
 
     assert out.outcome == "stale"
-    assert services.wake_the_worker in callbacks
+    assert delivery_queue.wake_the_worker in callbacks
 
 
 def test_due_now_and_hold_wake_the_worker(business, django_capture_on_commit_callbacks):
     waiting = park(business, "wamid.1", attempts=1, next_attempt_at=timezone.now() + timedelta(minutes=5))
 
     with django_capture_on_commit_callbacks() as due_now:
-        services.delivery_due_now(CTX, DueNowIn(ids=[waiting.id]))
+        delivery_queue.delivery_due_now(CTX, DueNowIn(ids=[waiting.id]))
     (claimed,) = claim()
     with django_capture_on_commit_callbacks() as held:
-        services.delivery_hold(CTX, HoldIn(deliveries=[HeldDelivery(id=claimed.id, revision=claimed.revision)]))
+        delivery_queue.delivery_hold(CTX, HoldIn(deliveries=[HeldDelivery(id=claimed.id, revision=claimed.revision)]))
 
-    assert services.wake_the_worker in due_now
-    assert services.wake_the_worker in held
+    assert delivery_queue.wake_the_worker in due_now
+    assert delivery_queue.wake_the_worker in held
 
 
 def test_a_claim_does_not_wake_the_worker(business, django_capture_on_commit_callbacks):
@@ -318,7 +321,7 @@ def test_a_claim_does_not_wake_the_worker(business, django_capture_on_commit_cal
     with django_capture_on_commit_callbacks() as callbacks:
         claim()
 
-    assert services.wake_the_worker not in callbacks
+    assert delivery_queue.wake_the_worker not in callbacks
 
 
 @pytest.mark.django_db(transaction=True)
@@ -331,7 +334,7 @@ def test_the_worker_hears_a_parked_message_once_it_is_committed(number, other_se
 
     after = list(other_session.notifies(timeout=5, stop_after=1))
     assert before == []
-    assert [notify.channel for notify in after] == [services.DELIVERY_CHANNEL] == ["whatsapp_delivery"]
+    assert [notify.channel for notify in after] == [delivery_queue.DELIVERY_CHANNEL] == ["whatsapp_delivery"]
 
 
 # --- When the next one is due -----------------------------------------------------------------------------------
@@ -416,7 +419,7 @@ def a_claim_paused_in_its_transaction(monkeypatch, hub_id, limit=1):
     """Another claim of ``hub_id`` (the admin's «Entregar al Hub ahora», Meta's webhook, the worker) stopped after it
     locked and leased its rows, before its COMMIT; yields what it claimed, and lets it end on the way out."""
     inside, release = threading.Event(), threading.Event()
-    real = services._client_keys
+    real = delivery_queue._client_keys
 
     def paused(statuses):
         if threading.current_thread().name == "other-claim":
@@ -424,7 +427,7 @@ def a_claim_paused_in_its_transaction(monkeypatch, hub_id, limit=1):
             release.wait(10)
         return real(statuses)
 
-    monkeypatch.setattr(services, "_client_keys", paused)
+    monkeypatch.setattr(delivery_queue, "_client_keys", paused)
     claimed: list[str] = []
 
     def other_claim():

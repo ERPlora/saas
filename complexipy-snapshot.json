@@ -490,20 +490,6 @@
     ]
   },
   {
-    "path": "whatsapp/services.py",
-    "file_name": "services.py",
-    "functions": [
-      {
-        "name": "message_claim",
-        "complexity": 17
-      },
-      {
-        "name": "_apply_verdicts",
-        "complexity": 23
-      }
-    ]
-  },
-  {
     "path": "whatsapp/templates.py",
     "file_name": "templates.py",
     "functions": [
@@ -528,6 +514,26 @@
       {
         "name": "logged_secrets",
         "complexity": 22
+      }
+    ]
+  },
+  {
+    "path": "whatsapp/services/message_sends.py",
+    "file_name": "message_sends.py",
+    "functions": [
+      {
+        "name": "message_claim",
+        "complexity": 17
+      }
+    ]
+  },
+  {
+    "path": "whatsapp/services/meta_webhook.py",
+    "file_name": "meta_webhook.py",
+    "functions": [
+      {
+        "name": "_apply_verdicts",
+        "complexity": 23
       }
     ]
   }

@@ -24,6 +24,7 @@ GATHERING_PACKAGES = (
     "hubs.schemas",
     "hubs.services",
     "whatsapp.gateway",
+    "whatsapp.services",
 )
 
 

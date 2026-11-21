@@ -24,10 +24,11 @@ from base.listener import Listener
 from base.tests.conftest import other_session  # noqa: F401 - a second session, as another process
 from base.tests.test_listener import on_its_socket
 from hubs.tests.test_guardrails import database_touches
-from whatsapp import queries, services
+from whatsapp import queries
 from whatsapp.gateway import deliveries
 from whatsapp.models import Delivery
 from whatsapp.schemas import NextDueOut
+from whatsapp.services import delivery_queue
 from whatsapp.tests.conftest import (  # noqa: F401 - the fixtures of a business with its number
     business,
     hub_double,
@@ -368,7 +369,7 @@ def test_a_crash_outside_the_passes_ends_the_worker_with_an_error(monkeypatch, q
 def test_with_nothing_due_it_sleeps_until_the_next_round_without_a_query(keep_the_connection, monkeypatch):
     monkeypatch.setattr(worker, "PERIODIC", ())
     stop, seen = threading.Event(), []
-    ear = Listener(services.DELIVERY_CHANNEL)
+    ear = Listener(delivery_queue.DELIVERY_CHANNEL)
 
     def wait(timeout):
         with CaptureQueriesContext(connection) as during:
@@ -397,7 +398,7 @@ def test_it_does_not_push_before_the_retry_time_and_pushes_once_it_came(
     ingest(messages(text("wamid.1")))
     Delivery.objects.update(attempts=1, next_attempt_at=timezone.now() + timedelta(seconds=0.5))
     stop, seen = threading.Event(), []
-    ear = Listener(services.DELIVERY_CHANNEL)
+    ear = Listener(delivery_queue.DELIVERY_CHANNEL)
 
     def wait(timeout):
         seen.append((round(timeout, 1), len(hub_double.calls_to("POST", "/internal/whatsapp/inbound"))))
@@ -443,7 +444,7 @@ def test_while_another_run_holds_the_lock_it_looks_again_in_a_few_seconds_not_at
 def test_it_delivers_a_parked_message_as_soon_as_its_notify_comes(number, hub_double):
     hub_double.answer("POST", INBOUND, 200, {"created": True})
     stop, sleeping, timeouts = threading.Event(), threading.Event(), []
-    ear = Listener(services.DELIVERY_CHANNEL)
+    ear = Listener(delivery_queue.DELIVERY_CHANNEL)
 
     def wait(timeout):
         timeouts.append(timeout)
@@ -493,7 +494,7 @@ def test_what_its_own_pass_notified_does_not_wake_it_again(number, offline_hub, 
     monkeypatch.setattr(worker, "next_round", lambda now: now + worker.ROUND)
     ingest(messages(text("wamid.1")))
     stop, drained, seen = threading.Event(), [], []
-    ear = Listener(services.DELIVERY_CHANNEL)
+    ear = Listener(delivery_queue.DELIVERY_CHANNEL)
 
     def drain():
         drained.append((on_its_socket(ear, 5), Listener.drain(ear)))
@@ -511,7 +512,7 @@ def test_what_its_own_pass_notified_does_not_wake_it_again(number, offline_hub, 
     ((timeout, woke),) = seen
     assert Delivery.objects.get().attempts == 1
     assert drained == [(True, True)]  # its own NOTIFY reached the ear, and the drain took it
-    assert 0 < timeout <= services.FIRST_WAIT.total_seconds() + 0.5
+    assert 0 < timeout <= delivery_queue.FIRST_WAIT.total_seconds() + 0.5
     assert woke is False
 
 

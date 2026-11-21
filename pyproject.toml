@@ -132,7 +132,6 @@ max-statements = 50
 "public/tests/test_pricing_templates.py" = ["B905"]
 "public/tests/test_response_tokens.py" = ["B905"]
 "public/tests/test_templates.py" = ["F541"]
-"whatsapp/services.py" = ["F401"]
 "whatsapp/tests/test_channel_contract.py" = ["F401"]
 
 # complexipy (`uv run complexipy`; tests/test_guardrails_complexity.py runs it): no function's cognitive complexity

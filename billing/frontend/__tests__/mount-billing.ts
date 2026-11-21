@@ -31,6 +31,7 @@ import es from '../locale/es.json';
 export {
   accessibleName,
   apiError,
+  closeRowMenu,
   describeCall,
   enterView,
   flush,

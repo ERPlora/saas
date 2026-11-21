@@ -2,7 +2,7 @@
 cap refuses before Meta (409 ``whatsapp.cap_reached``), the claim committed so the Hub gets the month's real usage
 in its snapshot (once per figure, WHATSAPP-F05).
 Meta's refusal frees the place and the key; no answer keeps both (``unknown``: the same key sends again only after
-``services.IN_FLIGHT``); a 2xx without Meta's id is sent for good, never again. Meta's 190 (the
+``message_sends.IN_FLIGHT``); a 2xx without Meta's id is sent for good, never again. Meta's 190 (the
 permission expired or withdrawn) is ``whatsapp.reconnect_needed`` and marks the number «needs reconnecting». A
 template whose header is a photo, a video or a document carries its file (``templates.send_sample``: 409
 ``whatsapp.template_invalid`` before the claim when Meta would refuse it); after the claim it is uploaded to the
@@ -12,7 +12,7 @@ frees the place and the key (the same 409 with a name, or 503 ``whatsapp.meta_un
 
 import logging
 
-from whatsapp import meta, services, templates
+from whatsapp import meta, templates
 from whatsapp.gateway.answers import (
     EXPIRED_PERMISSION,
     NOT_CONNECTED,
@@ -21,18 +21,19 @@ from whatsapp.gateway.answers import (
     envelope,
 )
 from whatsapp.schemas import SendClaimIn, SendIn, SendRecordIn
+from whatsapp.services import message_sends, platform_actor
 
 logger = logging.getLogger("whatsapp.gateway")
 
 
 def send(data: SendIn, key: str) -> tuple[int, dict]:  # noqa: PLR0911
-    ctx = services.platform_context()
+    ctx = platform_actor.platform_context()
     template = data.template
     try:
         sample = templates.send_sample(template) if template is not None else None
     except templates.Invalid as invalid:
         return 409, envelope("whatsapp.template_invalid", str(invalid))
-    claim = services.message_claim(
+    claim = message_sends.message_claim(
         ctx,
         SendClaimIn(
             hub=data.hub,
@@ -54,14 +55,14 @@ def send(data: SendIn, key: str) -> tuple[int, dict]:  # noqa: PLR0911
                 claim.phone_number_id, token, name=sample.name, mime_type=sample.mime_type, content=sample.content
             )
         except meta.MetaRefused as refused:
-            services.message_record(
+            message_sends.message_record(
                 ctx,
                 SendRecordIn(send_id=claim.send_id, outcome="released", needs_reconnect=refused.code == EXPIRED_PERMISSION),
             )
             logger.warning("whatsapp.send.upload_refused hub=%s meta_code=%s", data.hub, refused.code)
             return _refusal(refused)
         except meta.MetaUnreachable:
-            services.message_record(ctx, SendRecordIn(send_id=claim.send_id, outcome="released"))
+            message_sends.message_record(ctx, SendRecordIn(send_id=claim.send_id, outcome="released"))
             logger.warning("whatsapp.send.upload_unreachable hub=%s", data.hub)
             return 503, envelope(
                 "whatsapp.meta_unreachable", "Meta did not take the header's file: nothing left. Retry later."
@@ -74,7 +75,7 @@ def send(data: SendIn, key: str) -> tuple[int, dict]:  # noqa: PLR0911
             timeout=meta.SEND_TIMEOUT,
         )
     except meta.MetaRefused as refused:
-        services.message_record(
+        message_sends.message_record(
             ctx,
             SendRecordIn(send_id=claim.send_id, outcome="released", needs_reconnect=refused.code == EXPIRED_PERMISSION),
         )
@@ -82,17 +83,17 @@ def send(data: SendIn, key: str) -> tuple[int, dict]:  # noqa: PLR0911
         return _refusal(refused)
     except meta.MetaUnreachable as unreachable:
         if unreachable.sent:
-            services.message_record(ctx, SendRecordIn(send_id=claim.send_id, outcome="unknown"))
+            message_sends.message_record(ctx, SendRecordIn(send_id=claim.send_id, outcome="unknown"))
             logger.warning("whatsapp.send.unknown hub=%s", data.hub)
             return 502, envelope(
                 "whatsapp.meta_unknown", "Meta gave no answer: the message may have left. Retry with the same key."
             )
-        services.message_record(ctx, SendRecordIn(send_id=claim.send_id, outcome="released"))
+        message_sends.message_record(ctx, SendRecordIn(send_id=claim.send_id, outcome="released"))
         return 503, envelope("whatsapp.meta_unreachable", "Meta could not be reached: nothing left. Retry later.")
     accepted = answer.get("messages")
     first = accepted[0] if isinstance(accepted, list) and accepted and isinstance(accepted[0], dict) else {}
     wa_message_id = str(first.get("id") or "")[:255]
-    services.message_record(ctx, SendRecordIn(send_id=claim.send_id, outcome="sent", wa_message_id=wa_message_id))
+    message_sends.message_record(ctx, SendRecordIn(send_id=claim.send_id, outcome="sent", wa_message_id=wa_message_id))
     return _sent(wa_message_id)
 
 

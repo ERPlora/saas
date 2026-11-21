@@ -10,8 +10,8 @@ import logging
 
 from django.core.management.base import BaseCommand, CommandError
 
-from whatsapp import services
 from whatsapp.schemas import PurgeIn
+from whatsapp.services import platform_actor, retention
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class Command(BaseCommand):
         days = options["days"]
         if not 1 <= days <= 30:
             raise CommandError(f"whatsapp_purge: --days is 1 to 30, not {days}; nothing deleted.")
-        out = services.retention_purge(services.platform_context(), PurgeIn(days=days))
+        out = retention.retention_purge(platform_actor.platform_context(), PurgeIn(days=days))
         summary = " ".join(f"{key}={value}" for key, value in out.model_dump().items())
         logger.info("whatsapp.retention %s", summary)
         self.stdout.write(f"whatsapp_purge: {summary}")

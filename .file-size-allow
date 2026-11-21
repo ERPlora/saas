@@ -13,7 +13,6 @@
 1079 accounts/tests/test_mfa.py saas#462
 504 assistant/admin.py saas#462
 508 assistant/turn.py saas#462
-811 billing/frontend/components/InvoicesTab.test.ts saas#462
 629 billing/schemas/__init__.py saas#462
 549 billing/stripe_service.py saas#462
 664 billing/vat.py saas#462
@@ -26,4 +25,3 @@
 510 tests/e2e/assistant-battery.ts saas#462
 534 tests/e2e/assistant-probes.test.ts saas#462
 1078 tests/test_no_internal_references.py saas#462
-1002 whatsapp/services.py saas#462

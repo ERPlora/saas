@@ -15,10 +15,10 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy, ngettext
 
-from whatsapp import services
 from whatsapp.gateway import deliveries, message_templates, number_connection
 from whatsapp.models import Delivery, PhoneNumber, Send, Template, Usage
 from whatsapp.schemas import DisconnectIn, DueNowIn
+from whatsapp.services import delivery_queue, platform_actor
 
 
 class ReadOnly:
@@ -152,7 +152,9 @@ class DeliveryAdmin(PlatformActions):
 
     @admin.action(description=gettext_lazy("Push to the Hub now"), permissions=["platform"])
     def push_now(self, request, queryset):
-        due = services.delivery_due_now(services.platform_context(), DueNowIn(ids=list(queryset.values_list("id", flat=True))))
+        due = delivery_queue.delivery_due_now(
+            platform_actor.platform_context(), DueNowIn(ids=list(queryset.values_list("id", flat=True)))
+        )
         if not due.count:
             self.message_user(request, _("Nothing selected waits for the Hub."), messages.WARNING)
             return

@@ -212,10 +212,10 @@ export async function choose(el: Element | null, detail: { value?: unknown; chec
 }
 
 /**
- * The accessible name of an Ionic control: Ionic moves `aria-label` from its host to the native control inside
- * (its shadow `button`), as it does in a browser.
+ * The accessible name of an Ionic control, where a screen reader hears it: Ionic moves `aria-label` from its host to
+ * the native control inside (its shadow `button`), as it does in a browser, and the native control is read first.
  */
 export function accessibleName(el: Element | null): string | null {
   if (!el) return null;
-  return el.getAttribute('aria-label') ?? el.shadowRoot?.querySelector('button, [role]')?.getAttribute('aria-label') ?? null;
+  return el.shadowRoot?.querySelector('button, [role]')?.getAttribute('aria-label') ?? el.getAttribute('aria-label') ?? null;
 }

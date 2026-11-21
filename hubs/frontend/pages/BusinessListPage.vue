@@ -159,7 +159,7 @@ function why(row: BusinessRowOut): string {
 const pageOf = (row: { id: string }) => `${BUSINESSES}/${row.id}/summary`;
 
 /** The row's buttons, as the table folds them when its box narrows: «Open» stays,
- *  «Manage» and «Recover» go into «⋮» first. Each says its action in short words, its text and its name alike. */
+ *  «Manage» and «Recover» go into «⋮» first. Each says its action in short words; its name adds the business. */
 const actions = computed<DataTableAction<BusinessRowOut>[]>(() => [
   {
     id: 'open',
