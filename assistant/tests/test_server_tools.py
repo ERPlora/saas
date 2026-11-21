@@ -21,7 +21,7 @@ import pytest
 from asgiref.sync import async_to_sync
 from django.test import Client
 
-from assistant import server_tools, turn
+from assistant import continuation, server_tools
 from assistant.schemas import Caller
 from assistant.tests.conftest import openai_answer, openai_tool_call
 from assistant.tests.doors import door, frames
@@ -574,12 +574,12 @@ class TestWhoseBudget:
     def test_each_business_and_account_has_its_own(self):
         one, other = "0190a3b4-0000-7000-8000-000000000001", "0190a3b4-0000-7000-8000-000000000002"
 
-        assert turn.tool_budget(Caller(hub_id=one)) != turn.tool_budget(Caller(hub_id=other))
-        assert turn.tool_budget(Caller(user_id=one)) != turn.tool_budget(Caller(user_id=other))
-        assert turn.tool_budget(Caller(hub_id=one)) != turn.tool_budget(Caller(user_id=one))
+        assert continuation.tool_budget(Caller(hub_id=one)) != continuation.tool_budget(Caller(hub_id=other))
+        assert continuation.tool_budget(Caller(user_id=one)) != continuation.tool_budget(Caller(user_id=other))
+        assert continuation.tool_budget(Caller(hub_id=one)) != continuation.tool_budget(Caller(user_id=one))
 
     def test_every_demo_shares_one_since_anybody_can_open_another(self):
-        assert turn.tool_budget(Caller(demo="demo-a")) == turn.tool_budget(Caller(demo="demo-b"))
+        assert continuation.tool_budget(Caller(demo="demo-a")) == continuation.tool_budget(Caller(demo="demo-b"))
 
 
 class TestInTheTurn:

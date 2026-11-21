@@ -679,7 +679,7 @@ propio texto por `code`.
   aparte, fuera de los encargados del art. 28 (§5) y de las cláusulas contractuales tipo (§6), `public/tests/test_legal_privacy_assistant.py`. No se guarda ni se registra. Sus términos no dejan guardar sus
   resultados, ni en parte, más allá de lo transitorio (§3(b)(i)): el resultado vive en la memoria del turno, solo lo ve el
   modelo, y por eso no hay caché. Tope por llamante en la caché: `ASSISTANT_WEB_SEARCH_RATELIMIT` (20/d) y
-  `ASSISTANT_CURRENCY_RATE_RATELIMIT` (60/h), con un solo presupuesto para todas las demos (`turn.tool_budget`); cinco
+  `ASSISTANT_CURRENCY_RATE_RATELIMIT` (60/h), con un solo presupuesto para todas las demos (`continuation.tool_budget`); cinco
   resultados de hasta 1.000 caracteres. La puerta que contesta de una vez dice `answer_kept=True` (`turn.start`, donde
   cada puerta tiene que decirlo): el Hub guarda esa respuesta (FLOW-F39) y una herramienta con `may_be_kept=False`, hoy
   `web_search`, ni se ofrece, ni sale en las reglas, ni corre si el modelo la pide (`web_search.not_here`). El corte es por

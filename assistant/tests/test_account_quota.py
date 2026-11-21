@@ -13,7 +13,7 @@ from django.utils import timezone
 from live.outbox import OutboxEvent
 from pydantic import ValidationError
 
-from assistant import queries, services, turn
+from assistant import continuation, queries, services
 from assistant.models import AssistantUsage
 from assistant.schemas import Caller, MessageReleaseIn, UsageRecordIn
 from assistant.services.platform_actor import platform_context
@@ -215,7 +215,7 @@ class TestWhoACallerIs:
         assert Caller(user_id=account.pk).slug == ""
 
     def test_the_rate_limit_and_the_continuations_know_an_account_by_its_id(self, account):
-        assert turn.caller_key(account_of(account)) == f"user:{account.pk}"
+        assert continuation.caller_key(account_of(account)) == f"user:{account.pk}"
 
 
 class TestTheTableRefusesWhatIsNoRow:
