@@ -20,7 +20,8 @@ import pytest
 from django.core import mail
 
 from billing.models import CheckoutAttempt
-from billing.schemas import CheckoutStartIn, HubIn
+from billing.schemas.checkout import CheckoutStartIn
+from billing.schemas.common import HubIn
 from billing.services import checkout_webhooks, checkouts, hand_overs
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import (

@@ -16,7 +16,7 @@ from live.operations import INTERNAL, operation
 from billing import events, queries, stripe_service, vat, vies
 from billing.models import Invoice, InvoiceLine, VatCheck
 from billing.money import from_cents, to_cents
-from billing.schemas import InvoiceRecordIn, InvoiceRecordOut
+from billing.schemas.invoice_records import InvoiceRecordIn, InvoiceRecordOut
 from billing.services import (
     invoice_discounts,
     invoice_events,

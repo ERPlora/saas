@@ -7,7 +7,7 @@ import pytest
 from django.utils import timezone
 from live.errors import OperationError
 
-from billing.schemas import CheckoutConfirmIn, CheckoutStartIn
+from billing.schemas.checkout import CheckoutConfirmIn, CheckoutStartIn
 from billing.services import checkouts, plan_changes
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import item, subscription

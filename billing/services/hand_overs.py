@@ -17,7 +17,8 @@ from live.outbox import record_event
 from base.navigation import BUSINESSES
 from billing import events, stripe_service
 from billing.models import CheckoutAttempt
-from billing.schemas import CheckoutStartOut, HubIn
+from billing.schemas.checkout import CheckoutStartOut
+from billing.schemas.common import HubIn
 from billing.services import (
     checkouts,
     discounts,

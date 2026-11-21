@@ -14,7 +14,7 @@ from live.operations import AI, operation
 from billing import vat, vies
 from billing.models import GENERIC_CATEGORY, CompanyConfig, FiscalPolicy, Invoice, TaxRule, VatCheck
 from billing.money import from_cents, to_cents
-from billing.schemas import TaxPreviewIn, TaxPreviewOut
+from billing.schemas.tax import TaxPreviewIn, TaxPreviewOut
 
 
 logger = logging.getLogger("billing.queries")

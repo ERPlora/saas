@@ -19,7 +19,10 @@ from live.errors import OperationError
 
 from billing import queries
 from billing.models import CheckoutAttempt, PlanChangeSchedule, PromoCode, PromoRedemption
-from billing.schemas import CheckoutConfirmIn, CheckoutStartIn, HubIn, PlanChangeIn, SubscriptionListIn
+from billing.schemas.checkout import CheckoutConfirmIn, CheckoutStartIn
+from billing.schemas.common import HubIn
+from billing.schemas.subscription_changes import PlanChangeIn
+from billing.schemas.subscriptions import SubscriptionListIn
 from billing.services import checkout_webhooks, checkouts, plan_changes
 from billing.tests.conftest import code_of, ctx_for, pay
 from billing.tests.stripe_captured import captured

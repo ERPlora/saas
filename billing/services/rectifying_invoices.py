@@ -13,7 +13,7 @@ from live.operations import INTERNAL, operation
 
 from billing import emails, events, stripe_service
 from billing.models import Invoice, InvoiceLine
-from billing.schemas import CreditNoteRecordIn, InvoiceRecordOut, RefundRecordIn
+from billing.schemas.invoice_records import CreditNoteRecordIn, InvoiceRecordOut, RefundRecordIn
 from billing.services import invoice_events, invoice_numbering, invoice_sealing, plan_changes, platform_invoices
 from hubs.models import Hub
 

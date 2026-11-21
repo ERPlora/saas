@@ -16,7 +16,7 @@ from live.errors import Conflict, OperationError
 
 from billing.services import checkout_webhooks, checkouts, hand_overs, promo_holds, webhook_dispatch
 from billing.models import CheckoutAttempt, PromoCode, PromoRedemption
-from billing.schemas import CheckoutStartIn
+from billing.schemas.checkout import CheckoutStartIn
 from billing.tests.conftest import code_of, ctx_for
 from billing.tests.stripe_double import checkout_session, event, item, subscription
 

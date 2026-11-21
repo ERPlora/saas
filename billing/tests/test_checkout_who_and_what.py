@@ -8,7 +8,7 @@ from django.utils import timezone
 from live.errors import InvalidPayload, NotFound, OperationError, PermissionDenied
 
 from billing.models import CheckoutAttempt
-from billing.schemas import CheckoutStartIn
+from billing.schemas.checkout import CheckoutStartIn
 from billing.tests.checkout_calls import NOW_TS, confirm, payer, paying, refused, session_params, start, transferred
 from billing.tests.conftest import pay
 from billing.tests.stripe_double import preview

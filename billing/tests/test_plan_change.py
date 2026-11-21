@@ -15,7 +15,8 @@ import pytest
 from django.utils import timezone
 from live.errors import InvalidPayload, NotFound, OperationError, PermissionDenied
 
-from billing.schemas import HubIn, PlanChangeIn
+from billing.schemas.common import HubIn
+from billing.schemas.subscription_changes import PlanChangeIn
 from billing.services import plan_changes
 from billing.tests.conftest import ctx_for, pay
 from billing.models import PlanChangeSchedule

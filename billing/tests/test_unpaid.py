@@ -616,7 +616,7 @@ def test_a_declined_card_on_a_change_never_marks_the_business_unpaid(
     running, owner, inventory, stripe_double
 ):
     """``error_if_incomplete``: a change whose payment fails leaves no invoice behind to chase."""
-    from billing.schemas import CheckoutConfirmIn
+    from billing.schemas.checkout import CheckoutConfirmIn
     from billing.services import plan_changes
     from billing.tests.conftest import ctx_for as billing_ctx
 

@@ -17,7 +17,8 @@ import pytest
 from django.utils import timezone
 from live.errors import NotFound, OperationError, PermissionDenied
 
-from billing.schemas import ModuleIn, PortalOpenIn
+from billing.schemas.stripe_pages import PortalOpenIn
+from billing.schemas.subscription_changes import ModuleIn
 from billing.services import module_cancellations, stripe_pages
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import MONTH_END, item, subscription

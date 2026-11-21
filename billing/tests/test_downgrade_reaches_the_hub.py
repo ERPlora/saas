@@ -20,7 +20,7 @@ from live.errors import Conflict
 
 from apps.models import Module
 from billing.models import PlanChangeSchedule
-from billing.schemas import PlanChangeIn
+from billing.schemas.subscription_changes import PlanChangeIn
 from billing.services import plan_changes, subscription_drift
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import event, item, schedule, signed, subscription

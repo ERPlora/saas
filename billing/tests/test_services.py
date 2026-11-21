@@ -230,7 +230,7 @@ class TestTheOperationNeedsAnAccount:
         from live.context import Scope, system_context
         from live.errors import Unauthorized
 
-        from billing.schemas import VatCheckIn
+        from billing.schemas.tax import VatCheckIn
 
         with no_network() as vies, pytest.raises(Unauthorized):
             payer_vat_numbers.vat_check_run(system_context(Scope("user", "system")), VatCheckIn(vat_number=REAL_VAT))

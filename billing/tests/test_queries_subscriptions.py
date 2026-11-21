@@ -23,7 +23,9 @@ from django.utils import timezone
 
 from billing import queries
 from billing.models import Invoice, PaymentFailure, PlanChangeSchedule
-from billing.schemas import HubIn, PaymentMethodIn, SubscriptionListIn
+from billing.schemas.common import HubIn
+from billing.schemas.payment_methods import PaymentMethodIn
+from billing.schemas.subscriptions import SubscriptionListIn
 from billing.services import plan_changes
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import connection_error, event, schedule, signed

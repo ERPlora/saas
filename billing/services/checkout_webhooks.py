@@ -13,7 +13,7 @@ from live.outbox import record_event
 from billing import emails, events, stripe_service
 from billing.models import CheckoutAttempt
 from billing.money import from_cents
-from billing.schemas import CheckoutRefundRecordIn, CheckoutRefundRecordOut
+from billing.schemas.invoice_records import CheckoutRefundRecordIn, CheckoutRefundRecordOut
 from billing.services import discounts, live_subscriptions, promo_holds, stripe_sales, stripe_sync, webhook_targets
 from billing.stripe_checkout import CheckoutKind, checkout_session_kind
 from hubs.queries import membership

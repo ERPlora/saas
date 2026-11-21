@@ -19,6 +19,7 @@ GATHERING_PACKAGES = (
     "accounts.services",
     "assistant.queries",
     "assistant.services",
+    "billing.schemas",
     "billing.services",
     "hubs.queries",
     "hubs.schemas",
