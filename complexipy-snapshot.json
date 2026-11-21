@@ -38,16 +38,6 @@
     ]
   },
   {
-    "path": "assistant/admin.py",
-    "file_name": "admin.py",
-    "functions": [
-      {
-        "name": "parse_tools",
-        "complexity": 16
-      }
-    ]
-  },
-  {
     "path": "assistant/attachments.py",
     "file_name": "attachments.py",
     "functions": [
@@ -534,6 +524,16 @@
       {
         "name": "_apply_verdicts",
         "complexity": 23
+      }
+    ]
+  },
+  {
+    "path": "assistant/admin/model_tries.py",
+    "file_name": "model_tries.py",
+    "functions": [
+      {
+        "name": "parse_tools",
+        "complexity": 16
       }
     ]
   }

@@ -44,7 +44,7 @@ Completa desde el 2026-11-03. Lo que queda fuera, con su issue: `WORKBOOK.md`, �
 | `auditlog.py` | Registro de auditoría (django-auditlog) de los proveedores, los modelos y la política, sin `updated_at`. |
 | `events.py` | Nombres de los eventos del outbox (sin la clave ni lo que escribe una persona). |
 | `emails.py` | Los correos de ASSISTANT-F29 a una cuenta, en su idioma y con la marca de ERPlora (`base.emails.branded_message`): `send_messages_near` (80 % del mes) y `send_messages_spent` (el último); uno que no sale se registra como `assistant.mail.not_sent` y devuelve `False`. |
-| `admin.py`, `templates/admin/assistant/` | Admin de Django: proveedores con sus modelos, la variable de su clave y si la tiene (sin enseñar nada de ella), «Elegir modelos del proveedor» (asíncrona), «Modelo que contesta», «Probar un modelo» (ejecución asíncrona en directo) y «Registros de uso del asistente» (solo lectura). |
+| `admin/`, `templates/admin/assistant/` | Admin de Django, un módulo por página: `providers` (proveedores con sus modelos, la variable de su clave y si la tiene, sin enseñar nada de ella, y «Elegir modelos del proveedor», asíncrona), `routing_policy` («Modelo que contesta» y «Probar un modelo»), `model_tries` (la ejecución asíncrona en directo de una prueba), `usage` («Registros de uso del asistente», solo lectura) y `staff` (el miembro del personal que actúa, tal como lo ven las operaciones). |
 | `management/commands/` | `rotate_encryption_keys` e `index_docs`. |
 
 ## Datos
