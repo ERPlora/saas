@@ -33,6 +33,7 @@ SETTINGS = ("RESULT", "REPORT", "RUN_URL", "SHA")
 REFUSED = 5
 COLOUR = re.compile(r"\x1b\[[0-9;]*m")
 BLANK = re.compile(r"[ \t\n\r]*")
+HALF_PAIR = re.compile("[\ud800-\udfff]")
 
 NO_REPORT = (
     "La ejecución terminó en `{result}` sin informe de las pruebas: lo que falló está antes o fuera de las specs"
@@ -130,8 +131,10 @@ def or_empty(value):
 
 
 def text(value) -> str:
-    """A value inside a jq string: a string as it is, anything else as compact JSON."""
-    return value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    """A value inside a jq string: a string as it is, anything else as compact JSON. Half a surrogate pair, which
+    no file can hold, is written as the replacement character."""
+    written = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    return HALF_PAIR.sub("\ufffd", written)
 
 
 def joined(titles: list) -> str:

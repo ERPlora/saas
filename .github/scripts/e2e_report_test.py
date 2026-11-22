@@ -250,6 +250,13 @@ class RedNightTest(NightCase):
             self.summary,
         )
 
+    def test_half_an_emoji_in_a_message_is_written_as_the_replacement_character(self):
+        # Playwright cuts long strings by UTF-16 unit, and half a surrogate pair cannot be written to a file.
+        cut = self.write("cut.json", json.dumps(lines_of(red(error("cut \ud83d")))))
+        self.assertEqual(0, self.report(REPORT=cut))
+        self.assertIn("- `[panel] a.spec.ts:1` › t — cut \ufffd\n", self.summary)
+        self.assertIn("- `[panel] a.spec.ts:1` › t — cut \ufffd\n", self.bodies)
+
     def test_outside_main_only_the_summary_is_written(self):
         for publish in ("false", None, "", "TRUE"):
             with self.subTest(PUBLISH=publish):
@@ -378,6 +385,9 @@ class ReadingTest(unittest.TestCase):
 
     def test_a_message_whose_first_line_is_empty_gets_no_suffix(self):
         self.assertEqual("- `[panel] a.spec.ts:1` › t", self.listed(red(error("\nsecond"))))
+
+    def test_a_flaky_test_is_not_listed(self):
+        self.assertNotIn("› t", self.details(lines_of({**red(error("m")), "status": "flaky"})))
 
     def test_only_the_last_result_counts(self):
         self.assertTrue(self.listed(red(error("first"), error("last"))).endswith("› t — last"))
