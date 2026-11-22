@@ -321,10 +321,11 @@ class FailureTest(NightCase):
 
 class DefaultsTest(NightCase):
     def test_the_night_is_today_in_utc_unless_given(self):
+        # Fourteen hours ahead and twelve behind: at any hour one of the two is on another day than UTC.
         before = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
-        for day in (None, ""):
-            with self.subTest(DAY=day):
-                self.assertEqual(0, self.report(DAY=day, RESULT="success"))
+        for day, zone in ((None, "Etc/GMT-14"), ("", "Etc/GMT+12")):
+            with self.subTest(DAY=day, TZ=zone):
+                self.assertEqual(0, self.report(DAY=day, TZ=zone, RESULT="success"))
                 after = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
                 self.assertTrue(any(f"La pasada del {date} ha salido" in self.summary for date in (before, after)))
 
@@ -422,6 +423,8 @@ class ReadingTest(unittest.TestCase):
     def test_a_line_starting_with_a_dash_anywhere_counts_as_a_listed_failure(self):
         dashed = {"stats": {"unexpected": "a\n- b", "expected": 0, "skipped": 0}}
         self.assertEqual("a\n- b en rojo · 0 bien · 0 saltadas\n\n", self.details(dashed))
+        negative = {"stats": {"unexpected": -1, "expected": 0, "skipped": 0}}
+        self.assertIn("El informe no tiene ninguna prueba en rojo", self.details(negative))
 
     def test_each_json_document_of_the_report_is_read(self):
         self.assertEqual(
