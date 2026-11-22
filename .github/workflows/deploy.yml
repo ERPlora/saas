@@ -2,13 +2,13 @@ name: deploy
 
 # Push to main -> once the environment is known, test (test.yml) and, side by side, build the saas
 # image (tag = commit SHA) into prod's ECR repository; once both pass, publish the release
-# saas-vYYYY.MM.DD.N and deploy it to prod (ecs-deploy.sh; ERPlora/aws README, "Contrato").
+# saas-vYYYY.MM.DD.N and deploy it to prod (ecs_deploy.py; ERPlora/aws README, "Contrato").
 # Push to pre -> the same into pre's own ECR repository (erplora/saas-pre), deployed to pre
 # (pre.erplora.com), waking pre up if its schedule had stopped it; no
 # release: releases are prod's.
 # Manual run -> the same for the branch it runs on, whose environment it must name (main -> prod,
 # pre -> pre); with a release (prod only), redeploy that release's image, without test nor build.
-# The settings that are no secret travel in deploy/app-env.json of the deployed commit (ecs-deploy.sh):
+# The settings that are no secret travel in deploy/app-env.json of the deployed commit (ecs_deploy.py):
 # in prod, a push that changes the real charge, the AEAT's production or Stripe's mode deploys nothing,
 # and a manual run names each change in confirm_protected.
 # Only the deploy job waits for the one before it (its concurrency): the test and build of a newer
@@ -310,7 +310,7 @@ jobs:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.commit.outputs.sha }}
           CONFIRM_PROTECTED: ${{ inputs.confirm_protected }}
-        run: bash .github/scripts/ecs-deploy.sh
+        run: python3 .github/scripts/ecs_deploy.py
 
       # Through the ALB by name, so it also works before the DNS cutover: erplora.com (prod) or
       # pre.erplora.com (pre), both on the same ALB.

@@ -340,7 +340,7 @@ def test_a_last_line_without_its_newline_counts():
         ("tests/e2e/panel/fixtures.ts", 500),
         ("accounts/frontend/__tests__/mount-panel.ts", 500),
         ("tests/e2e/public-web.spec.ts", 500),
-        (".github/scripts/ecs-deploy.sh", 100),
+        (".github/scripts/deploy-env.sh", 100),
         ("scripts/contest.sh", 100),
         ("docker/image.test.sh", 1500),
         ("public/static/public/theme.css", 1000),

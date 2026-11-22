@@ -361,7 +361,7 @@ después el despliegue de este código. Fuera de `DEBUG`, sin prefijo o modo no 
 `docker/image.test.sh` comprueba la imagen con ellos y sin cada uno. Sin uno de los dos booleanos sí
 arranca, con él en `false` y sin avisar: en prod, cada registro de los hubs para la AEAT de producción
 recibiría el 409 `environment_not_allowed` y erplora.com saldría de los buscadores. Por eso
-`.github/scripts/ecs-deploy.sh` rechaza, sin registrar nada, una revisión cuyo contenedor del SaaS se quede
+`.github/scripts/ecs_deploy.py` rechaza, sin registrar nada, una revisión cuyo contenedor del SaaS se quede
 sin `CACHE_KEY_PREFIX` o sin una de las otras tres, en `environment` o en `secrets`.
 
 **Los ajustes viajan con el código** (`deploy/app-env.json`). Los ajustes del SaaS que no son secretos van en
@@ -369,7 +369,7 @@ ese fichero, por entorno y por familia de tareas (`saas`, `saas-cron`, `saas-mig
 tiene `saas-cron`): `STRIPE_EXPECTED_MODE`, `PUBLIC_INDEXING_ENABLED`, `AEAT_PRODUCTION_ENABLED` y
 `PLATFORM_INVOICING_ENABLED` en todas, y en la web (`saas`) `MICROSOFT_STORE_APP_ID` y, solo en prod,
 `GA_MEASUREMENT_ID`. Cambiar uno es cambiar el fichero y desplegar. `CACHE_KEY_PREFIX`, las direcciones y los
-secretos siguen en `ERPlora/aws`. El despliegue (`ecs-deploy.sh`, con `.github/scripts/app_env.py`) lee el
+secretos siguen en `ERPlora/aws`. El despliegue (`ecs_deploy.py`, con `.github/scripts/app_env.py`) lee el
 fichero **del commit que despliega** y, antes de registrar nada, rechaza:
 
 - un entorno, una familia o una variable que no conoce, un valor que no es texto o no es de su tipo y un nombre
@@ -420,7 +420,7 @@ En `pre` (`pre.erplora.com`, cluster `erplora-pre`, mismo ALB, Aurora y Valkey q
 1. Se trabaja en una rama propia; cada push corre `test / test` (`ci.yml`, que llama a `test.yml`).
 2. Si `pre` avanzó, se integra `origin/pre` en la rama y se empuja otra vez.
 3. Con el check en verde, `git push origin <rama>:pre` (fast-forward). `deploy.yml` prueba, construye la imagen
-   en `erplora/saas-pre` y despliega `saas-pre` y `saas-worker-pre` (`ecs-deploy.sh` con `ENVIRONMENT=pre`: cluster
+   en `erplora/saas-pre` y despliega `saas-pre` y `saas-worker-pre` (`ecs_deploy.py` con `ENVIRONMENT=pre`: cluster
    `erplora-pre`, familias `erplora-pre-saas`, `erplora-pre-saas-migrate` y `erplora-pre-saas-worker`, sin
    `saas-cron`; `/erplora/pre/saas/image_tag`). Si pre estaba apagado, lo enciende. Sin release. Si no existiera la
    familia `erplora-<entorno>-saas-worker`, el despliegue (y `rollback.yml`) la saltaría con un `::warning::` y
@@ -437,7 +437,7 @@ anterior: `gh workflow run rollback.yml --repo ERPlora/saas --ref pre -f environ
 las releases solo se redespliegan en prod (`.github/scripts/deploy-env.sh`). prod y pre no se esperan entre
 sí: el grupo de concurrencia es por rama.
 
-**Guarda de entorno.** `ecs-deploy.sh` y `ecs-rollback.sh` solo copian o restauran revisiones con la etiqueta
+**Guarda de entorno.** `ecs_deploy.py` y `ecs-rollback.sh` solo copian o restauran revisiones con la etiqueta
 `Environment=<entorno>` y los roles `erplora-<entorno>-*`; si no, fallan sin registrar ni cambiar nada (el rol
 de despliegue de un entorno puede registrar revisiones en cualquier familia: `ecs:RegisterTaskDefinition` no
 admite recurso). Por eso el primer despliegue de prod con esta CI exigió antes el `apply` de `ERPlora/aws` que

@@ -2,8 +2,8 @@
 
     python3 -m unittest discover -s .github/scripts -p '*_test.py'
 
-Only the standard library: the deploy runs app_env.py with the runner's python3. How ecs-deploy.sh calls it, with a
-fake aws CLI, is tested by ecs-deploy.test.sh.
+Only the standard library: the deploy runs app_env.py with the runner's python3. How ecs_deploy.py calls it, with a
+fake aws CLI, is tested by ecs_deploy_test.py and its siblings.
 """
 
 import copy
