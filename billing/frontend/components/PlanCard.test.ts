@@ -132,6 +132,7 @@ describe('PlanCard', () => {
       const s = await card({ plan: FREE });
       const button = s.text('plan-downgrade');
       expect(button.text()).toBe('Downgrade to Free');
+      expect(s.text('plan-note').exists()).toBe(false);
       await button.trigger('click');
       expect(s.wrapper.emitted('downgrade')).toHaveLength(1);
     });
@@ -148,6 +149,7 @@ describe('PlanCard', () => {
       expect(button.attributes('aria-describedby')).toBe(hint.attributes('id'));
       const change = await card({ plan: PRO, block: 'unpaid' });
       expect((change.text('plan-change').element as unknown as { disabled: boolean }).disabled).toBe(true);
+      expect(change.text('plan-hint').text()).toBe('Pay the pending invoice first.');
     });
 
     it('cancelling still works with an unpaid invoice: it stops the next charges', async () => {
@@ -178,12 +180,19 @@ describe('PlanCard', () => {
       const s = await card({ plan: PRO, subscription: cancelled });
       expect((s.text('plan-change').element as unknown as { disabled: boolean }).disabled).toBe(true);
       expect(s.text('plan-hint').text()).toBe('Keep the plan first to change it.');
+      expect(s.text('plan-note').exists()).toBe(false);
     });
 
     it('keeping it with an unpaid invoice waits for the payment', async () => {
       const s = await card({ subscription: cancelled, block: 'unpaid' });
       expect((s.text('plan-keep').element as unknown as { disabled: boolean }).disabled).toBe(true);
       expect(s.text('plan-hint').text()).toBe('Pay the pending invoice first.');
+    });
+
+    it('keeping a plan sold by the month only, under «Annual», points to no hint', async () => {
+      const s = await card({ plan: PAYMENT_TEST, period: 'year', subscription: subscription({ plan: 'payment-test', cancel_at_period_end: true }) });
+      expect((s.text('plan-keep').element as unknown as { disabled: boolean }).disabled).toBe(false);
+      expect(s.text('plan-keep').attributes('aria-describedby')).toBeUndefined();
     });
   });
 
@@ -246,6 +255,12 @@ describe('PlanCard', () => {
       expect((pro.text('plan-change').element as unknown as { disabled: boolean }).disabled).toBe(false);
       const free = await card({ plan: FREE, subscription: waiting });
       expect((free.text('plan-downgrade').element as unknown as { disabled: boolean }).disabled).toBe(false);
+      expect([pro.text('plan-note').exists(), free.text('plan-note').exists()]).toEqual([false, false]);
+    });
+
+    it('without the name of the plan it moves to, its own plan says its slug', async () => {
+      const s = await card({ plan: STANDARD, subscription: waiting });
+      expect(s.text('plan-note').text()).toBe('Downgrade scheduled: Standard until Oct 31, 2026, then starter.');
     });
 
     it('speaks Spanish', async () => {
@@ -255,6 +270,31 @@ describe('PlanCard', () => {
       const target = await card({ subscription: waiting, locale: 'es' });
       expect(target.text('plan-note').text()).toBe('El negocio pasa a Starter el 31 oct 2026.');
     });
+  });
+
+  // Stripe bills a business on Free that pays its modules; a paid plan whose Stripe subscription ended is not billed.
+  describe('a business on Free that pays its modules', () => {
+    const onFree = (extra: Parameters<typeof subscription>[0] = {}) => card({ plan: FREE, subscription: subscription({ plan: 'free', ...extra }) });
+
+    it('Free is its current plan, with nothing to do', async () => {
+      const s = await onFree();
+      expect(s.text('plan-current').exists()).toBe(true);
+      expect(s.wrapper.findAll('ion-button')).toHaveLength(0);
+    });
+
+    it('a cancellation says from when it is on Free alone; a change that waits says nothing', async () => {
+      expect((await onFree({ cancel_at_period_end: true })).text('plan-note').text()).toBe('The business goes to Free on Oct 31, 2026.');
+      const waiting = await onFree({ scheduled_change: { plan: 'starter', interval: 'month', starts_at: '2026-10-31T12:00:00Z' } });
+      expect(waiting.text('plan-note').exists()).toBe(false);
+    });
+  });
+
+  it('a paid plan Stripe does not bill is bought in the checkout, and Free has nothing to cancel', async () => {
+    const unbilled = subscription({ paying: false });
+    const s = await card({ subscription: unbilled });
+    expect(s.text('plan-current').exists()).toBe(true);
+    expect(s.text('plan-upgrade').text()).toBe('Upgrade to Starter');
+    expect((await card({ plan: FREE, subscription: unbilled })).wrapper.findAll('ion-button')).toHaveLength(0);
   });
 
   it('each action carries its icon: sparkles to upgrade, an arrow down to Free', async () => {
