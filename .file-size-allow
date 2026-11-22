@@ -8,4 +8,3 @@
 265 .github/scripts/ecs-deploy.sh saas#462
 230 .github/scripts/ecs-rollback.sh saas#462
 549 billing/stripe_service.py saas#462
-1124 fiscal_gateway/tests/test_internal.py saas#462
