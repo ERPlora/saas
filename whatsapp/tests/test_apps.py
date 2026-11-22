@@ -16,5 +16,5 @@ def test_no_account_gets_its_permission():
     staff through the admin): no signed-in account reaches its operations."""
     config = apps.get_app_config("whatsapp")
 
-    assert config.permissions == ["whatsapp.manage"]
+    assert list(config.permissions) == ["whatsapp.manage"]
     assert getattr(config, "role_permissions", {}) == {}

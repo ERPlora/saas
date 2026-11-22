@@ -711,3 +711,9 @@ msgstr "variable de la clave"
 
 msgid "The variable of erplora.com's environment that holds its key. Each provider of OpenAI's API reads its own."
 msgstr "La variable del entorno de erplora.com que tiene su clave. Cada proveedor de la API de OpenAI lee la suya."
+
+msgid "Configure the assistant: model, policy and documents"
+msgstr "Configurar el asistente: modelo, política y documentos"
+
+msgid "Ask the panel's assistant"
+msgstr "Preguntar al asistente del panel"

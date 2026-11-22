@@ -2338,3 +2338,15 @@ msgstr "Reservado por un pago abierto hasta entonces; vacío una vez usado"
 #: promo holds
 msgid "This code is not valid or has already been used: remove it to pay without it."
 msgstr "Este código no es válido o ya se ha usado: quítalo para pagar sin él."
+
+msgid "View invoices and preview the tax of a purchase"
+msgstr "Ver las facturas y calcular el impuesto de una compra"
+
+msgid "Check a VAT number in VIES"
+msgstr "Comprobar un NIF-IVA en VIES"
+
+msgid "Buy, change and cancel plans and modules"
+msgstr "Comprar, cambiar y cancelar planes y módulos"
+
+msgid "Record invoices, refunds and credit notes"
+msgstr "Registrar facturas, devoluciones y abonos"

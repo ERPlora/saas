@@ -17,7 +17,10 @@ class HubsConfig(LiveAppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     # Every signed-in account (role "account", base.operations) reads and acts on its own businesses;
     # which business and what it may do there is checked in each operation by its HubMember role.
-    permissions = ["hubs.view", "hubs.manage"]
+    permissions = {
+        "hubs.view": _("View their businesses, members and usage"),
+        "hubs.manage": _("Create, change and delete businesses, invite members and transfer ownership"),
+    }
     role_permissions = {"account": ["hubs.*"]}
 
     def ready(self):

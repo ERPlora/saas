@@ -440,3 +440,9 @@ msgstr "Quitar el sello"
 
 msgid "Yes, remove it: the models go without it until another is uploaded."
 msgstr "Sí, quítalo: los modelos salen sin él hasta que se suba otro."
+
+msgid "View the state of the businesses' tax authorisation"
+msgstr "Ver el estado de la autorización fiscal de los negocios"
+
+msgid "Submit, review and withdraw the tax authorisation and its proof"
+msgstr "Enviar, revisar y retirar la autorización fiscal y su acreditación"
