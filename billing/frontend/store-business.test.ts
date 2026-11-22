@@ -72,8 +72,8 @@ describe('useStoreBusiness', () => {
     expect(s.store().chosenId.value).toBe('');
   });
 
-  it('names the business whose card, of the same payer, the bank declined', async () => {
-    const norte = businessRow('norte', 'Bar Norte', { payer_id: 'bakery-payer', unpaid_reason: 'card_declined' });
+  it('names the business whose card, of the same payer, the bank declined, also one the account does not own', async () => {
+    const norte = businessRow('norte', 'Bar Norte', { role: 'hub_manager', payer_id: 'bakery-payer', unpaid_reason: 'card_declined' });
     const s = await setup('bakery', [BAKERY, norte]);
     expect(s.store().declinedFor.value).toBe('Bar Norte');
   });
