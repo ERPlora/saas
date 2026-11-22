@@ -193,10 +193,9 @@ def member_change_role(ctx: OperationContext, data: MemberRoleIn) -> dict:
         target.role = data.role
         target.save(update_fields=["role"])
         if not target.is_pending:
+            # The Hub applies the new role from the snapshot and its open apps follow it, without ending the session.
             bump_state(target.hub_id)
             push_after_commit(target.hub_id)
-            # The role travels in the Hub's session (``/internal/auth/redeem``): it signs in again with the new one.
-            revoke_after_commit(target.user_id, target.hub_id)
         record_event(ctx, events.MEMBER_ROLE_CHANGED, {"id": str(target.id), "hub_id": str(target.hub_id)})
         notify_people(ctx, events.MEMBER_CHANGED, target.hub_id, target.user_id)
     return membership.member_row(actor, target, timezone.now())

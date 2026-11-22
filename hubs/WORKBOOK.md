@@ -549,11 +549,11 @@ Pantalla: Miembros › Cambiar rol
 Pasos:
 1. En «Miembros», en la fila de la persona, «Cambiar rol» abre «Cambiar el rol de …» con los roles que se le pueden dar.
 2. Elige el nuevo y pulsa «Cambiar rol»: sale «… ahora es …» y la fila enseña el rol nuevo.
-3. El negocio recibe la lista de personas con el rol nuevo y cierra en ese momento la sesión de esa persona allí: lo siguiente que haga le pide volver a entrar, y vuelve con el rol nuevo.
+3. El negocio recibe la lista de personas con el rol nuevo y, si esa persona lo tiene abierto, en ese momento ve y puede hacer lo que permite su rol nuevo, sin cerrar su sesión ni volver a entrar.
 Entra: la persona y el rol nuevo; la sesión de quien lo cambia, que tiene que tener más rango que la persona y que el rol que da.
-Sale: el rol nuevo y el aviso al negocio, con el cierre de la sesión de esa persona allí; el de una invitación sin responder cambia sin avisar al negocio. Anota `hubs.member.role_changed`.
+Sale: el rol nuevo y el aviso al negocio, con la sesión de esa persona allí abierta; el de una invitación sin responder cambia sin avisar al negocio. Anota `hubs.member.role_changed`.
 Si falla: el propio rol, «No puedes cambiar tu propia pertenencia.»; alguien de igual o más rango, «No puedes gestionar a un miembro con un rol igual o superior al tuyo.»; un rol igual o superior al propio, «No puedes dar un rol igual o superior al tuyo.». La propiedad no se da desde aquí (HUBS-F28). Un encargado o un empleado no cambia roles; una persona de un negocio ajeno no existe para quien lo pide.
-Implicados: el negocio (BASE-F13: recibe el rol nuevo y cierra la sesión), accounts (la sesión)
+Implicados: el negocio (BASE-F13: recibe el rol nuevo y lo aplica sin cerrar la sesión)
 
 ### HUBS-F27 Quitar a una persona de un negocio
 Estado: hecho
