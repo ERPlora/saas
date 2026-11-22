@@ -150,7 +150,7 @@ test('HUBS-F25: the invited person accepts in «You have been invited» and goes
   expect(errors).toEqual([]);
 });
 
-test('HUBS-F26: the owner changes the role of a person; the Hub hears it and ends their session there', async ({ page, browser }) => {
+test('HUBS-F26: the owner changes the role of a person; the Hub hears it and their session there goes on', async ({ page, browser }) => {
   const errors = watchPageErrors(page);
   const owner = await account('role-owner', 'Olga', 'Ruiz');
   const ana = await account('role-ana', 'Ana', 'Gil');
@@ -173,10 +173,6 @@ test('HUBS-F26: the owner changes the role of a person; the Hub hears it and end
   await expect(modal).toBeHidden();
   await expect(shown(page).getByTestId('members-row').filter({ hasText: ana.email })).toContainText('Admin');
   await expect.poll(() => roleInLastSnapshot(hub, id, ana.email)).toBe('hub_admin');
-  // The role travels in the Hub's session: the SaaS asks the Hub to end it, in this business only.
-  await expect
-    .poll(() => revocations(hub, id).slice(revokedBefore).map((call) => call.body))
-    .toEqual([{ user_id: member.user_id, hub_id: id }]);
 
   // As admin, Ana cannot hand out admin nor touch the owner: the server refuses it.
   const { context, page: theirs } = await browserOf(browser, ana);
@@ -184,6 +180,8 @@ test('HUBS-F26: the owner changes the role of a person; the Hub hears it and end
   expect(ownerRow.actions).toEqual([]);
   const refused = await apiPost(theirs.request, '/api/hubs/members/change_role', { id: ownerRow.id, role: 'hub_employee' });
   expect(refused.status()).toBe(403);
+  // The new role travels in the snapshot and the Hub applies it to the open session: no session was ended.
+  expect(revocations(hub, id).slice(revokedBefore)).toEqual([]);
   await context.close();
   expect(errors).toEqual([]);
 });

@@ -15,8 +15,8 @@ class SessionRevocation(models.Model):
     """An account's sessions the Hub must end, as OIDC's back-channel logout does: in one business,
     or in every one (``hub`` empty).
 
-    Queued in the transaction that took the access away (removing a member, changing a role, handing
-    the ownership over), delivered after the COMMIT (``POST /internal/sessions/revoke``) and, while the
+    Queued in the transaction that took the access away (removing a member, handing the ownership
+    over), delivered after the COMMIT (``POST /internal/sessions/revoke``) and, while the
     Hub is away or refuses it, retried by ``reconcile_hub_states`` once ``next_attempt_at`` passes (the
     wait doubles with every failed ``attempts``). ``delivered_at`` marks it done, once.
 

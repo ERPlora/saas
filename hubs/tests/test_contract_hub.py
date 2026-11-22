@@ -144,9 +144,8 @@ def test_every_change_reaches_the_hub_with_a_newer_version(panel, hub_double):
     assert [len(call.body["members"]) for call in snapshots] == [1, 2, 2, 1]
     assert hub_double.versions[created["id"]] == Hub.objects.get(pk=created["id"]).pushed_state_version == 4
     revoked = hub_double.calls_to("POST", "/internal/sessions/revoke")
-    # The role travels in the Hub's session, so changing it ends Ana's sessions there too
-    # (she signs in again with the new one); removing her ends them for good.
-    assert [call.body for call in revoked] == [{"user_id": str(ana.pk), "hub_id": created["id"]}] * 2
+    # Changing Ana's role travels in the snapshot and her open sessions there follow it; removing her ends them.
+    assert [call.body for call in revoked] == [{"user_id": str(ana.pk), "hub_id": created["id"]}]
 
 
 def test_an_older_snapshot_never_overwrites_a_newer_one_at_the_hub(panel, hub_double):

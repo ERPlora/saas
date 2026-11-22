@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:d1073296f33891d9865fbe7dad64a8f8c291940ba826d526da6afce3f6a76a61 -->
+<!-- generated from WORKBOOK.md sha256:0c6876ef49731b34100fc460b5913ce167048b30b5c219e1bfe876938d6a9539 -->
 
 ## What it is for and who it is for
 
@@ -532,11 +532,11 @@ Screen: Members › Change role
 Steps:
 1. In "Members", in the person's row, "Change role" opens "Change the role of …" with the roles that can be given to them.
 2. They pick the new one and press "Change role": "… is now …" shows and the row shows the new role.
-3. The business receives the list of people with the new role and ends that person's session there at that moment: the next thing they do asks them to sign in again, and they come back with the new role.
+3. The business receives the list of people with the new role and, if that person has it open, at that moment they see and may do what their new role allows, without their session ending or signing in again.
 In: the person and the new role; the session of whoever changes it, who has to rank above the person and above the role given.
-Out: the new role and the notice to the business, with the end of that person's session there; the role of an unanswered invitation changes without telling the business. Records `hubs.member.role_changed`.
+Out: the new role and the notice to the business, with that person's session there still open; the role of an unanswered invitation changes without telling the business. Records `hubs.member.role_changed`.
 If it fails: one's own role, "You cannot change your own membership."; somebody of an equal or higher rank, "You cannot manage a member whose role is equal to or above yours."; a role equal to or above one's own, "You cannot hand out a role equal to or above yours.". The ownership is not given from here (HUBS-F28). A manager or an employee changes no roles; a person of a business of another account does not exist for whoever asks.
-Involved: the business (BASE-F13: receives the new role and ends the session), accounts (the session)
+Involved: the business (BASE-F13: receives the new role and applies it without ending the session)
 
 ### HUBS-F27 Remove a person from a business
 Status: done
