@@ -289,11 +289,13 @@ describe('PlanCard', () => {
     });
   });
 
-  it('a paid plan Stripe does not bill is bought in the checkout, and Free has nothing to cancel', async () => {
+  it('a paid plan Stripe does not bill is bought in the checkout, keeping its trial, and Free has nothing to cancel', async () => {
     const unbilled = subscription({ paying: false });
     const s = await card({ subscription: unbilled });
     expect(s.text('plan-current').exists()).toBe(true);
     expect(s.text('plan-upgrade').text()).toBe('Upgrade to Starter');
+    const trying = await card({ subscription: subscription({ paying: false, trial_plan: 'starter', trial_end: '2099-10-20T12:00:00Z' }) });
+    expect(trying.text('plan-note').text()).toBe('Buying it now keeps the days left of the trial.');
     expect((await card({ plan: FREE, subscription: unbilled })).wrapper.findAll('ion-button')).toHaveLength(0);
   });
 
