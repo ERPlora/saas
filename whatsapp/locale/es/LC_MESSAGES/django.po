@@ -399,3 +399,6 @@ msgstr "Entregas de WhatsApp al Hub"
 #: templates/whatsapp/signup_return.html:34
 msgid "This window can be closed now."
 msgstr "Esta ventana ya se puede cerrar."
+
+msgid "Connect WhatsApp numbers and relay their messages"
+msgstr "Conectar números de WhatsApp y pasar sus mensajes"

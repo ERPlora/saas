@@ -582,7 +582,8 @@ son solo web, y en su lugar se dice, sin enlace, cómo hacerlo desde el navegado
   rectificativa dice su tipo y su motivo («Rectificativa R1 · <motivo>», o solo «Rectificativa R4» sin motivo; sin
   tipo, la etiqueta del servidor) y la factura que rectifica (de `billing.invoice.get`: la lista no lo trae), que
   la busca. Selección con «Descargar PDF (n)» (las que aún se emiten se dicen en un aviso) y «Descargar Excel» (el CSV
-  de lo filtrado).
+  de lo filtrado). El PDF de una fila o de la selección, lo que aún se emite y la nota de lo seleccionado viven en
+  `invoice-pdfs.ts` (`useInvoicePdfs`, `useSelectedPdfs`).
 - **Una factura** (`/dashboard/billing/invoices/:id`, `pages/InvoicePage.vue`, BILLING-F36): `billing.invoice.get` viva;
   número (o «no cobrada»), fecha, negocio, cobro, estado VeriFactu, líneas con periodo, «Prorrateado», base e IVA,
   totales y destinatario sellado. «Descargar PDF» con `can.pdf`, «Pagar» (solo web) si no se cobró, enlace a la

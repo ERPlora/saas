@@ -18,7 +18,9 @@ class WhatsappConfig(LiveAppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     # Only the platform acts here: the Hub through /internal, Meta through its webhook, the staff through
     # the admin. No account role gets it.
-    permissions = ["whatsapp.manage"]
+    permissions = {
+        "whatsapp.manage": _("Connect WhatsApp numbers and relay their messages"),
+    }
 
     def ready(self):
         super().ready()

@@ -1375,3 +1375,9 @@ msgstr "Para cambiar de plan o añadir módulos, entra en erplora.com desde el n
 #: base/assistant.py
 msgid "To pay it, go to erplora.com in your browser."
 msgstr "Para pagarla, entra en erplora.com desde el navegador."
+
+msgid "View their own account and export its data"
+msgstr "Ver su propia cuenta y exportar sus datos"
+
+msgid "Change their own account: profile, security, preferences and API keys"
+msgstr "Cambiar su propia cuenta: perfil, seguridad, preferencias y claves de API"

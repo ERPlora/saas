@@ -14,7 +14,10 @@ class AccountsConfig(LiveAppConfig):
     label = "accounts"
     kind = "platform"
     verbose_name = _("Accounts")
-    permissions = ["accounts.view", "accounts.manage"]
+    permissions = {
+        "accounts.view": _("View their own account and export its data"),
+        "accounts.manage": _("Change their own account: profile, security, preferences and API keys"),
+    }
     role_permissions = {"account": ["accounts.*"]}
 
     def ready(self):

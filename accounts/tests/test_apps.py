@@ -36,5 +36,5 @@ def test_every_account_reads_and_manages_its_own_account():
 
     config = apps.get_app_config("accounts")
 
-    assert config.permissions == ["accounts.view", "accounts.manage"]
+    assert list(config.permissions) == ["accounts.view", "accounts.manage"]
     assert {"accounts.view", "accounts.manage"} <= permissions_for_role(all_live_app_configs(), "account")
