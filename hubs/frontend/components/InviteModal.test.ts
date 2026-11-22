@@ -1,6 +1,6 @@
 // «Invite» (mockups `business.html` «members-invite»): a dialog with the email, the role (only those the
 // account may hand out) and an optional message; `hubs.member.invite`, a toast naming who was invited.
-// With every place of the plan taken it says so and does not send.
+// With every place of the plan taken it says so and does not send, save to a role that takes no place.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, ref } from 'vue';
 
@@ -27,7 +27,8 @@ async function setup(api: () => Response, extra: Record<string, unknown> = {}) {
     render: () =>
       h(InviteModal, {
         business: { id: 'h1', name: 'Panadería López' },
-        invitableRoles: ['hub_admin', 'hub_manager', 'hub_employee'],
+        invitableRoles: ['hub_admin', 'hub_manager', 'hub_employee', 'hub_accountant'],
+        freeRoles: ['hub_accountant'],
         seats: { used: 2, limit: 3 },
         ...extra,
         open: open.value,
@@ -44,16 +45,26 @@ async function setup(api: () => Response, extra: Record<string, unknown> = {}) {
   return { ...m, open, q, fire };
 }
 
+/** The dialog once the server refused the invitation for the plan's places (someone took the last one meanwhile). */
+async function refusedForSeats() {
+  const s = await setup(() => apiError(409, 'hubs.seat_limit', 'This plan covers 3 people and they are all taken.'));
+  await s.fire('invite-email', 'ionInput', 'a@example.com');
+  s.q('invite-modal-submit').click();
+  await flush();
+  return s;
+}
+
 describe('InviteModal', () => {
   it('asks the email, the role among those one may hand out (employee first picked) and a message', async () => {
     const s = await setup(() => Response.json(member('jorge')));
     expect(s.q('invite-modal').getAttribute('aria-label')).toBe('Invite to Panadería López');
     expect(ionProps({ element: s.q('invite-email') }, 'type', 'mode', 'fill', 'label')).toEqual({ type: 'email', mode: 'md', fill: 'outline', label: 'Email' });
     expect(ionProps({ element: s.q('invite-role') }, 'value')).toEqual({ value: 'hub_employee' });
-    expect([...s.q('invite-role').querySelectorAll('ion-select-option')].map((o) => o.textContent?.trim())).toEqual(['Admin', 'Manager', 'Employee']);
+    expect([...s.q('invite-role').querySelectorAll('ion-select-option')].map((o) => o.textContent?.trim())).toEqual(['Admin', 'Manager', 'Employee', 'Accountant']);
     expect(ionProps({ element: s.q('invite-message') }, 'mode', 'fill')).toEqual({ mode: 'md', fill: 'outline' });
     expect(s.q('invite-modal').textContent).toContain('We send an email with the link. The invitation lasts 7 days.');
     expect(s.q('invite-seats').textContent).toBe('2 of 3 places on the plan');
+    expect(s.q('invite-free-role')).toBeNull();
   });
 
   it('sends the invitation, says to whom, and closes', async () => {
@@ -93,18 +104,12 @@ describe('InviteModal', () => {
   });
 
   it('says the server’s seat limit as it says it', async () => {
-    const s = await setup(() => apiError(409, 'hubs.seat_limit', 'This plan covers 3 people and they are all taken.'));
-    await s.fire('invite-email', 'ionInput', 'a@example.com');
-    s.q('invite-modal-submit').click();
-    await flush();
+    const s = await refusedForSeats();
     expect(s.q('invite-modal-error').textContent).toContain('This plan covers 3 people and they are all taken.');
   });
 
   it('when the server says every place is taken, it says so and stops sending', async () => {
-    const s = await setup(() => apiError(409, 'hubs.seat_limit', 'This plan covers 3 people and they are all taken.'));
-    await s.fire('invite-email', 'ionInput', 'a@example.com');
-    s.q('invite-modal-submit').click();
-    await flush();
+    const s = await refusedForSeats();
     expect(s.q('invite-full').textContent).toContain('The plan has no free places left');
     expect(s.q('invite-modal-submit').disabled).toBe(true);
   });
@@ -121,5 +126,24 @@ describe('InviteModal', () => {
     const s = await setup(() => Response.json({}), { seats: { used: 3, limit: 3 } });
     expect(s.q('invite-full').textContent).toContain('The plan has no free places left');
     expect(s.q('invite-modal-submit').disabled).toBe(true);
+  });
+
+  it('with every place taken, still sends to the accountancy firm, which takes none', async () => {
+    const s = await setup(() => Response.json(member('firm', { email: 'firm@example.com', role: 'hub_accountant' })), { seats: { used: 3, limit: 3 } });
+    await s.fire('invite-email', 'ionInput', 'firm@example.com');
+    expect(s.q('invite-modal-submit').disabled).toBe(true);
+    await s.fire('invite-role', 'ionChange', 'hub_accountant');
+    expect(s.q('invite-full')).toBeNull();
+    expect(s.q('invite-free-role').textContent).toBe('An accountancy firm takes no place on the plan.');
+    s.q('invite-modal-submit').click();
+    await flush();
+    expect(s.calls().map((c) => c.body)).toEqual([{ hub_id: 'h1', email: 'firm@example.com', role: 'hub_accountant', message: '' }]);
+  });
+
+  it('after the server’s seat limit, the accountancy firm can still be sent', async () => {
+    const s = await refusedForSeats();
+    await s.fire('invite-role', 'ionChange', 'hub_accountant');
+    expect(s.q('invite-full')).toBeNull();
+    expect(s.q('invite-modal-submit').disabled).toBe(false);
   });
 });

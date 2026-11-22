@@ -25,7 +25,8 @@
       "hub_owner": "Propietario",
       "hub_admin": "Administrador",
       "hub_manager": "Encargado",
-      "hub_employee": "Empleado"
+      "hub_employee": "Empleado",
+      "hub_accountant": "Gestoría"
     },
     "status": {
       "error": "Sin preparar",
@@ -398,6 +399,7 @@
       "rolesOwner": "Propietario: todo, también el plan, transferir y eliminar el negocio.",
       "rolesAdmin": "Administrador: equipo, módulos y ajustes.",
       "rolesStaff": "Encargado y empleado: trabajan dentro del negocio. Los empleados que solo usan un PIN en la caja se gestionan dentro del negocio.",
+      "rolesAccountant": "Gestoría: la asesoría que lleva las cuentas. Solo lee las ventas y las facturas, con sus impuestos, y descarga las facturas; no ocupa plaza del plan.",
       "pendingTransfer": {
         "heading": "Propiedad ofrecida a {email}",
         "body": "Tiene hasta el {date} para aceptarla. Mientras tanto sigues siendo el propietario.",
@@ -411,7 +413,8 @@
         "message": "Mensaje (opcional)",
         "submit": "Enviar invitación",
         "sent": "Invitación enviada a {email}",
-        "hint": "Enviamos un correo con el enlace. La invitación dura 7 días."
+        "hint": "Enviamos un correo con el enlace. La invitación dura 7 días.",
+        "freeRole": "La gestoría no ocupa plaza del plan."
       },
       "roleModal": {
         "title": "Cambiar el rol de {name}",

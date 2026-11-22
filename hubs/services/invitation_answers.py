@@ -21,10 +21,14 @@ from hubs.services.people_notices import notify_people
 from hubs.services.refusals import SeatLimitReached
 
 
-def _check_seat_to_enter(hub: Hub, now) -> None:
+def _check_seat_to_enter(member: HubMember, now) -> None:
     """The plan still has a seat beside the people already inside: an invitation sent while nothing
     capped it (the Starter trial) and answered once the plan covers fewer people is first come, first
-    served. Within the cap it always passes, because the invitation already holds its seat."""
+    served. Within the cap it always passes, because the invitation already holds its seat; a role that
+    takes no seat always enters."""
+    if not membership.takes_seat(member.role):
+        return
+    hub = member.hub
     limit = membership.seat_limit_of(hub, now)
     if limit is not None and membership.people_inside(hub) >= limit:
         raise SeatLimitReached(
@@ -90,7 +94,7 @@ def invitation_accept(ctx: OperationContext, data: ByIdIn) -> dict:
         raise Conflict(
             _("This invitation expired. Ask whoever invited you to send it again."), code="hubs.invitation_expired"
         )
-    _check_seat_to_enter(member.hub, now)
+    _check_seat_to_enter(member, now)
     member.accepted_at = now
     member.save(update_fields=["accepted_at"])
     bump_state(member.hub_id)

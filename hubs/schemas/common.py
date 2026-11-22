@@ -22,8 +22,8 @@ COUNTRIES = frozenset(
     "AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE".split()
 )
 #: The roles an invitation or a role change may hand out: never the owner (it only moves by a transfer).
-InvitableRole = Literal["hub_admin", "hub_manager", "hub_employee"]
-Role = Literal["hub_owner", "hub_admin", "hub_manager", "hub_employee"]
+InvitableRole = Literal["hub_admin", "hub_manager", "hub_employee", "hub_accountant"]
+Role = Literal["hub_owner", "hub_admin", "hub_manager", "hub_employee", "hub_accountant"]
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
