@@ -35,10 +35,9 @@ import type {
   CustomDomainReason,
   CustomDomainState,
   CustomDomainStatusOut,
-  DnsRecordOut,
 } from '../../../frontend/sdk-types/hubs-custom-domains';
 import { useErrorText } from '../error-text';
-import CopyField from './CopyField.vue';
+import CustomDomainRecords from './CustomDomainRecords.vue';
 
 const props = defineProps<{
   /** The business (`Hub.id`), from the address: all the query needs. */
@@ -135,15 +134,6 @@ const reason = computed<{ tone: InlineFeedbackTone; text: string } | null>(() =>
     return { tone, text: now.reason_label };
   }
   return now.state === 'active' ? { tone: 'success', text: t('hubs.domain.active', { domain: now.domain }) } : null;
-});
-/** The two records, in the order they are created; the validation one is `null` until ACM has it. */
-const records = computed<Array<{ key: 'validation' | 'traffic'; record: DnsRecordOut | null }>>(() => {
-  const now = domain.value;
-  if (!now || now.state === 'removing') return [];
-  return [
-    { key: 'validation', record: now.validation },
-    { key: 'traffic', record: now.traffic },
-  ];
 });
 const watched = computed(() => domain.value?.state === 'pending' || domain.value?.state === 'active');
 const failing = computed(() => (domain.value?.state === 'active' ? domain.value.failures : 0));
@@ -252,62 +242,10 @@ async function confirmRemove(): Promise<void> {
             {{ $t('hubs.domain.failures', { count: failing }, failing) }}
           </InlineFeedback>
 
-          <div
-            v-if="records.length"
-            class="ion-margin-top"
-          >
-            <h3>
-              <strong>{{ $t('hubs.domain.records.title') }}</strong>
-            </h3>
-            <p>{{ $t('hubs.domain.records.lead') }}</p>
-            <section
-              v-for="item in records"
-              :key="item.key"
-              class="ion-margin-top"
-              :data-testid="`domain-record-${item.key}`"
-            >
-              <h4>
-                <strong>{{ $t(`hubs.domain.${item.key}.title`) }}</strong>
-              </h4>
-              <p>{{ $t(`hubs.domain.${item.key}.hint`) }}</p>
-              <template v-if="item.record">
-                <p>
-                  {{ $t('hubs.domain.records.type') }}:
-                  <strong data-testid="domain-record-type">{{ item.record.type }}</strong>
-                </p>
-                <p>{{ $t('hubs.domain.records.name') }}</p>
-                <CopyField
-                  :value="item.record.name"
-                  :label="$t('hubs.domain.records.name')"
-                  :copy-label="$t('hubs.domain.records.copyName')"
-                  :copied-text="$t('hubs.domain.records.copied')"
-                  :failed-text="$t('hubs.domain.records.copyFailed')"
-                />
-                <p>{{ $t('hubs.domain.records.value') }}</p>
-                <CopyField
-                  :value="item.record.value"
-                  :label="$t('hubs.domain.records.value')"
-                  :copy-label="$t('hubs.domain.records.copyValue')"
-                  :copied-text="$t('hubs.domain.records.copied')"
-                  :failed-text="$t('hubs.domain.records.copyFailed')"
-                />
-              </template>
-              <div
-                v-else
-                data-testid="domain-validation-coming"
-              >
-                <p>{{ $t('hubs.domain.validation.coming') }}</p>
-                <ion-button
-                  data-testid="domain-look-again"
-                  fill="outline"
-                  size="small"
-                  @click="live.refresh()"
-                >
-                  {{ $t('hubs.domain.validation.lookAgain') }}
-                </ion-button>
-              </div>
-            </section>
-          </div>
+          <CustomDomainRecords
+            :domain="domain"
+            @look-again="live.refresh()"
+          />
 
           <div class="ion-margin-top">
             <p
