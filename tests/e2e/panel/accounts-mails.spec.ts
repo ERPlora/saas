@@ -75,10 +75,9 @@ test.describe('ACCOUNTS-F46 the mails of erplora.com, branded, as text and as HT
         'from decimal import Decimal',
         'from types import SimpleNamespace',
         'from billing import emails as billing',
-        'from billing.models import PaymentFailure',
         'from fiscal import emails as fiscal',
         'hub = SimpleNamespace(id=uuid.UUID("0199a0c4-7f3e-7000-8000-00000000f046"), name="Panadería Ana")',
-        'failure = PaymentFailure(reason="card_declined", invoice_created_at=datetime(2026, 10, 25, tzinfo=UTC))',
+        'failure = SimpleNamespace(reason="card_declined", invoice_created_at=datetime(2026, 10, 25, tzinfo=UTC))',
         `billing.send_payment_failed(hub, failure, to="${owner}", language="es", amount=Decimal("29.99"))`,
         // The step's own mail, as fiscal.services sends it after the COMMIT of «Return».
         'grant = SimpleNamespace(pk=uuid.UUID("0199a0c4-7f3e-7000-8000-00000000f047"), hub=hub, hub_id=hub.id, version=2, status="returned", reason="La firma del Anexo I no se lee: súbelo escaneado de nuevo, por favor.")',
