@@ -70,11 +70,6 @@
       "count": 1
     }
   },
-  "tests/e2e/panel/chrome.spec.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "tests/e2e/qa-probes.ts": {
     "complexity": {
       "count": 1
