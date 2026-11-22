@@ -66,6 +66,8 @@ class MemberRowOut(Schema):
 
 class MemberListOut(Page[MemberRowOut]):
     seats: SeatsOut
+    #: The roles that take no seat of the plan: an invitation with one goes through with every seat taken.
+    free_roles: list[InvitableRole]
     #: The roles the account may invite with.
     invitable_roles: list[InvitableRole]
 

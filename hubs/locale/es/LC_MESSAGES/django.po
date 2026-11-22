@@ -879,6 +879,11 @@ msgctxt "hub role"
 msgid "Employee"
 msgstr "Empleado"
 
+#: models/membership.py
+msgctxt "hub role"
+msgid "Accountant"
+msgstr "Gestoría"
+
 #: models.py:554
 msgid "user"
 msgstr "usuario"

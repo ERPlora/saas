@@ -60,9 +60,12 @@ def _managed(ctx: OperationContext, member_id: UUID, role: str | None = None) ->
     return actor, target
 
 
-def _check_seat(hub: Hub, now) -> None:
-    """The plan covers one more person, checked where the seat is spent: inviting (a live invitation holds
-    its seat), and renewing an invitation that had expired."""
+def _check_seat(hub: Hub, now, role: str) -> None:
+    """The plan covers one more person with ``role``, checked where the seat is spent: inviting (a live
+    invitation holds its seat), renewing an invitation that had expired, and moving somebody from a role
+    that takes no seat to one that does. A role that takes none always fits."""
+    if not membership.takes_seat(role):
+        return
     seats = membership.seats_of(hub, now)
     if seats["limit"] is not None and seats["used"] >= seats["limit"]:
         raise SeatLimitReached(
@@ -140,13 +143,13 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
         if not membership.manages(actor, member):
             raise PermissionDenied(_("You cannot manage a member whose role is equal to or above yours."))
         signup.refuse_staff(member.user)
-        _check_seat(hub, now)
+        _check_seat(hub, now, data.role)
         member.role = data.role
         member.invitation_message = data.message
         member.save(update_fields=["role", "invitation_message"])
         _renew(member, actor.user, now)
     else:
-        _check_seat(hub, now)
+        _check_seat(hub, now, data.role)
         user = get_user_model().objects.filter(email__iexact=data.email).first()
         if user is None:
             user = get_user_model().objects.create_user(email=data.email, password=None, language=hub.language)
@@ -189,7 +192,10 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
 def member_change_role(ctx: OperationContext, data: MemberRoleIn) -> dict:
     """Give a member (or an invitation) another role below one's own; never the owner's."""
     actor, target = _managed(ctx, data.id, data.role)
+    now = timezone.now()
     if target.role != data.role:
+        if not membership.takes_seat(target.role) and not target.is_expired(now):
+            _check_seat(target.hub, now, data.role)
         target.role = data.role
         target.save(update_fields=["role"])
         if not target.is_pending:
@@ -198,7 +204,7 @@ def member_change_role(ctx: OperationContext, data: MemberRoleIn) -> dict:
             push_after_commit(target.hub_id)
         record_event(ctx, events.MEMBER_ROLE_CHANGED, {"id": str(target.id), "hub_id": str(target.hub_id)})
         notify_people(ctx, events.MEMBER_CHANGED, target.hub_id, target.user_id)
-    return membership.member_row(actor, target, timezone.now())
+    return membership.member_row(actor, target, now)
 
 
 @operation(
@@ -303,7 +309,7 @@ def member_resend(ctx: OperationContext, data: ByIdIn) -> dict:
     signup.refuse_staff(target.user)
     now = timezone.now()
     if target.is_expired(now):
-        _check_seat(target.hub, now)
+        _check_seat(target.hub, now, target.role)
     _renew(target, actor.user, now)
     record_event(ctx, events.MEMBER_INVITATION_RESENT, {"id": str(target.id), "hub_id": str(target.hub_id)})
     notify_people(ctx, events.MEMBER_CHANGED, target.hub_id, target.user_id)
