@@ -129,6 +129,11 @@ def get_parameter():
 def put_parameter():
     if env.get("FAKE_PUT_FAILURE") and value("--name").endswith(env["FAKE_PUT_FAILURE"]):
         refuse("An error occurred (AccessDeniedException) when calling the PutParameter operation")
+    print('{"Version": 2, "Tier": "Standard"}')
+
+
+def update_service():
+    print(f'{{"service": {{"serviceName": "{value("--service")}"}}}}')
 
 
 def register_task_definition():
@@ -182,7 +187,7 @@ COMMANDS = {
     "ecs describe-task-definition": describe_task_definition, "ecs list-task-definitions": list_task_definitions,
     "ssm get-parameter": get_parameter, "ssm put-parameter": put_parameter,
     "ecs register-task-definition": register_task_definition, "ecs describe-services": describe_services,
-    "ecs run-task": run_task, "ecs describe-tasks": describe_tasks,
+    "ecs run-task": run_task, "ecs describe-tasks": describe_tasks, "ecs update-service": update_service,
 }
 command = " ".join(args[:2])
 if env.get("FAKE_KILLED_ON") == command:
@@ -414,66 +419,40 @@ class SucceedingDeployTest(DeployCase):
         self.assertEqual("An error occurred (Throttling) when calling the ListTaskDefinitions operation\n"
                          "::error::could not look for erplora-prod-saas-worker; nothing was registered\n", self.out)
 
-
-class SaasWorkerTest(DeployCase):
-    """ERPlora/aws creates saas-worker once the image with run_worker is out: until its family exists the deploy goes
-    on without it and says so; from then on it is deployed with the saas service."""
-
-    def worker(self, environment: str = "prod") -> None:
-        image = "saas:bootstrap" if environment == "prod" else "saas-pre:bootstrap"
-        self.fixture(f"erplora-{environment}-saas-worker", one("saas-worker", image))
-
-    def test_before_it_exists_it_is_only_looked_for(self):
+    def test_the_aws_calls_of_a_deploy_with_saas_worker_one_by_one(self):
+        self.fixture("erplora-prod-saas-worker", one("saas-worker", "saas:bootstrap"))
         self.assertEqual(0, self.deploy())
-        self.assertIn("::warning::erplora-prod-saas-worker does not exist yet: skipped", self.out)
-        self.assertTrue(self.called("^ecs list-task-definitions --family-prefix erplora-prod-saas-worker --status "
-                                    "ACTIVE --region eu-south-2 --query taskDefinitionArns --output text$"))
-        self.assertFalse(self.called("--task-definition erplora-prod-saas-worker|--services? saas-worker"))
-
-    def test_once_it_exists_it_moves_with_the_saas_service(self):
-        self.worker()
-        self.assertEqual(0, self.deploy())
-        self.assertNotIn("::warning::", self.out)
-        self.assertEqual(["reg.example/erplora/saas:abc123"], self.images("erplora-prod-saas-worker"))
-        self.assertEqual(2, len(self.lines("update-service")))
-        self.assertLess(self.last_line_of("describe-tasks"), self.line_of(
-            "update-service .*--service saas-worker --task-definition arn:td/erplora-prod-saas-worker:2 "))
-        self.assertTrue(self.called("wait services-stable .*--services saas saas-worker$"))
-        self.assertLess(self.last_line_of("describe-services .*--services saas-worker .*deployments"),
-                        self.line_of("ssm put-parameter"))
-        self.assertFalse(self.called("--desired-count|--services? worker( |$)"))
-        self.assertNotEqual(0, self.deploy(FAKE_PRIMARY_REVISIONS="1"))
-        self.assertIn("::error::saas-worker runs arn:td/erplora-prod-saas-worker:1", self.out)
-
-    def test_only_its_own_family_counts(self):
-        (self.fixtures / "erplora-prod-saas-worker-longer.json").touch()
-        self.assertEqual(0, self.deploy())
-        self.assertIn("::warning::erplora-prod-saas-worker does not exist yet", self.out)
-        self.worker()
-        for listed in ("arn:td/erplora-prod-saas-worker:7", " \tarn:other\t arn/erplora-prod-saas-worker \t"):
-            self.assertEqual(0, self.deploy(FAKE_LIST_ANSWER=listed))
-            self.assertNotIn("::warning::", self.out)
-        # Of the answer, only its first line is read.
-        self.assertEqual(0, self.deploy(FAKE_LIST_ANSWER="None\narn:td/erplora-prod-saas-worker:7"))
-        self.assertIn("::warning::erplora-prod-saas-worker does not exist yet", self.out)
-
-    def test_a_failure_looking_for_it_or_reading_it_fails_the_deploy(self):
-        self.deploy(FAKE_LIST_FAILURE="AccessDeniedException")
-        self.assertNothingRegistered()
-        self.assertNotIn("::warning::", self.out)
-        self.assertIn("::error::could not look for erplora-prod-saas-worker; nothing was registered", self.out)
-        self.worker()
-        self.deploy(FAKE_DESCRIBE_DENIED="erplora-prod-saas-worker")
-        self.assertNothingRegistered()
-
-    def test_pre_wakes_it_with_saas_pre(self):
-        self.assertEqual(0, self.deploy(ENVIRONMENT="pre"))
-        self.assertIn("::warning::erplora-pre-saas-worker does not exist yet: skipped", self.out)
-        self.worker("pre")
-        self.assertEqual(0, self.deploy(ENVIRONMENT="pre"))
-        self.assertEqual(["reg.example/erplora/saas-pre:abc123"], self.images("erplora-pre-saas-worker"))
-        self.assertTrue(self.called("update-service .*--service saas-worker-pre --task-definition "
-                                    "arn:td/erplora-pre-saas-worker:2 --desired-count 1 "))
+        region, cluster = "--region eu-south-2", "--cluster erplora-prod"
+        network = ('{"awsvpcConfiguration": {"subnets": ["s"], "securityGroups": ["sg-saas"], '
+                   '"assignPublicIp": "ENABLED"}}')
+        task = f"describe-tasks {cluster} --tasks arn:task/erplora-prod/migrate1 {region} --query tasks[0]."
+        primary = "--query services[0].deployments[?status=='PRIMARY'] | [0].[taskDefinition, rolloutState] --output text"
+        families = ("saas", "saas-migrate", "saas-cron", "saas-worker")
+        self.assertEqual([
+            f"ecs list-task-definitions --family-prefix erplora-prod-saas-worker --status ACTIVE {region} --query "
+            "taskDefinitionArns --output text",
+            f"ssm get-parameter --name /erplora/prod/saas/app_env --query Parameter.Value --output text {region}",
+            f"ecs describe-task-definition --task-definition erplora-prod-hub --output json {region}",
+            f"ecs describe-task-definition --task-definition erplora-prod-worker --output json {region}",
+            *(f"ecs describe-task-definition --task-definition erplora-prod-{name} --include TAGS {region} --output json"
+              for name in families),
+            *(f"ecs register-task-definition --cli-input-json file://WORKDIR/{name}.json {region} --query "
+              "taskDefinition.taskDefinitionArn --output text" for name in families),
+            f"ecs describe-services {cluster} --services saas {region} --query services[0].networkConfiguration --output json",
+            f"ecs run-task {cluster} --launch-type FARGATE --task-definition arn:td/erplora-prod-saas-migrate:2 "
+            f"--network-configuration {network} --started-by deploy-abc123 {region} --output json",
+            f"ecs {task}lastStatus --output text", f"ecs {task}lastStatus --output text",
+            f"ecs {task}containers[?name=='saas-migrate'].exitCode | [0] --output text",
+            f"ecs update-service {cluster} --service saas --task-definition arn:td/erplora-prod-saas:2 {region}",
+            f"ecs update-service {cluster} --service saas-worker --task-definition arn:td/erplora-prod-saas-worker:2 "
+            f"{region}",
+            f"ecs wait services-stable {cluster} {region} --services saas saas-worker",
+            f"ecs describe-services {cluster} --services saas {region} {primary}",
+            f"ecs describe-services {cluster} --services saas-worker {region} {primary}",
+            f"ssm put-parameter --name /erplora/prod/saas/app_env --value SETTINGS --type String --overwrite {region}",
+            f"ssm put-parameter --name /erplora/prod/saas/image_tag --value abc123 --type String --overwrite {region}",
+        ], [re.sub(r"--value \{\S*\} ", "--value SETTINGS ", re.sub(r"file://\S*/", "file://WORKDIR/", call))
+            for call in self.calls()])
 
 
 if __name__ == "__main__":

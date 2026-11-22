@@ -53,8 +53,8 @@ class MigrationTest(DeployCase):
 
     def test_what_aws_answers_is_said_byte_for_byte_whatever_the_locale(self):
         self.deploy(apart=True, PYTHONIOENCODING="ascii", FAKE_MIGRATE_EXIT="None",
-                    FAKE_STOPPED_REASON=b"\xc3\xb1 \xff exited")
-        self.assertEqual(b"::error::saas-migrate stopped without running: \xc3\xb1 \xff exited\n", self.stderr)
+                    FAKE_STOPPED_REASON=b" \xc3\xb1 \xff exited \n")
+        self.assertEqual(b"::error::saas-migrate stopped without running:  \xc3\xb1 \xff exited \n", self.stderr)
 
     def test_a_migration_task_that_cannot_start_shows_the_failures(self):
         self.assertNotEqual(0, self.deploy(FAKE_RUN_TASK_FAILURE="RESOURCE:ENI"))
@@ -66,7 +66,9 @@ class MigrationTest(DeployCase):
         for answer, said in (('{"tasks": [{"taskArn": 5}]}', "running saas-migrate: 5\n"),
                              ('{"tasks": [{"taskArn": "arn:t\\n\\n"}]}', "running saas-migrate: arn:t\n"),
                              ('{"tasks": [{"taskArn": {"a": [1]}}]}', 'running saas-migrate: {\n  "a": [\n    1\n'
-                                                                      '  ]\n}\n')):
+                                                                      '  ]\n}\n'),
+                             ('{"tasks": [{"taskArn": 0}]}', "running saas-migrate: 0\n"),
+                             ('{"tasks": [{"taskArn": ["\u00f1"]}]}', 'running saas-migrate: [\n  "\u00f1"\n]\n')):
             self.assertEqual(0, self.deploy(FAKE_RUN_TASK_ANSWER=answer), answer)
             self.assertIn(said, self.out)
         for answer, said in (("null", "did not start: null\n"), ("", "did not start: \n"),
@@ -75,7 +77,7 @@ class MigrationTest(DeployCase):
                              ('{"tasks": [{}], "failures": [{"reason": "ñ"}]}', 'did not start: [{"reason":"ñ"}]\n')):
             self.assertEqual(1, self.deploy(FAKE_RUN_TASK_ANSWER=answer), answer)
             self.assertIn(f"::error::saas-migrate {said}", self.out)
-        for answer in ("not json", "[]", '{"tasks": {}}', '{"tasks": "s"}', '{"tasks": ["s"]}'):
+        for answer in ("not json", "[]", '{"tasks": {}}', '{"tasks": "s"}', '{"tasks": ["s"]}', "\x0b"):
             self.assertEqual(5, self.deploy(FAKE_RUN_TASK_ANSWER=answer), answer)
             self.assertFalse(self.called("describe-tasks"))
 
@@ -127,9 +129,12 @@ class RolloutTest(DeployCase):
         self.assertEqual(0, self.rollout(FAKE_PRIMARY_ANSWER=" \tarn:td/erplora-prod-saas:2 \t COMPLETED \t\nx y"))
         self.assertEqual(1, self.rollout(FAKE_PRIMARY_ANSWER="None"))
         self.assertIn("::error::saas runs None (), not arn:td/erplora-prod-saas:2;", self.out)
-        self.assertEqual(1, self.rollout(FAKE_PRIMARY_ANSWER="arn:td/erplora-prod-saas:2  IN  PROGRESS ",
+        self.assertEqual(1, self.rollout(FAKE_PRIMARY_ANSWER="arn:td/erplora-prod-saas:2 COMPLETED  x ",
                                          ROLLOUT_TIMEOUT_SECONDS="0"))
         self.assertIn("::error::rollout of saas did not complete in 0 s", self.out)
+        self.assertEqual(1, self.rollout(FAKE_PRIMARY_ANSWER="arn:td/erplora-prod-saas:1  IN  PROGRESS "))
+        self.assertIn("::error::saas runs arn:td/erplora-prod-saas:1 (IN  PROGRESS), not arn:td/erplora-prod-saas:2;",
+                      self.out)
 
     def test_a_rollout_that_outlasts_its_timeout_fails(self):
         self.assertNotEqual(0, self.rollout(FAKE_ROLLOUT_STATES="IN_PROGRESS", ROLLOUT_TIMEOUT_SECONDS="30"))

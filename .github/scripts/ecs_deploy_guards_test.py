@@ -99,11 +99,12 @@ class EnvironmentGuardTest(DeployCase):
     def test_the_tags_are_read_as_jq_reads_them(self):
         tag = {"key": "Environment", "value": "prod"}
         for tags, accepted in (([None, tag], True), ([tag, "x"], True), ({"one": tag}, True), (["x", tag], False),
-                               ("prod", False), ([{"key": "Environment", "value": "pre"}], False)):
+                               ("prod", False), ([{"key": "Environment", "value": "pre"}], False),
+                               ([{"key": "Stage", "value": "prod"}], False)):
             self.setUp()
             self.described(lambda found, tags=tags: found.update(tags=tags))
             self.assertEqual(0 if accepted else 1, self.deploy(), tags)
-        for answer in ([], None, "", "[1]"):
+        for answer in ([], None, "", "[1]", {}, {"tags": [tag], "taskDefinition": "s"}):
             self.setUp()
             (self.fixtures / "erplora-prod-saas.json").write_text(answer if isinstance(answer, str) else
                                                                   json.dumps(answer))
@@ -181,6 +182,7 @@ class RunSettingsTest(DeployCase):
 
     def test_without_aws_it_cannot_look_for_the_worker(self):
         self.assertEqual(1, self.deploy(PATH=str(self.work / "fixtures")))
+        self.assertIn("aws: command not found\n", self.out)
         self.assertTrue(self.out.endswith("::error::could not look for erplora-prod-saas-worker; nothing was "
                                           "registered\n"), self.out)
 
