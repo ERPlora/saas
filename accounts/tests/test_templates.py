@@ -1,7 +1,9 @@
 """The account screens are Vue pages (``accounts/frontend/pages``): the sign-in and its every step, the
 launcher and every error of the sign-in. allauth runs headless only, so no sign-in page is a template.
 Templates stay only where no screen of the panel is painted: the auto-submitted form of the jump to a hub,
-which POSTs the one-time code to the hub (``hub_login_form.html``), the API reference, ReDoc's own page over the
+which POSTs the one-time code to the hub (``hub_login_form.html``), the two pages the installed app's «Continue with
+Google» shows in the device's browser, outside the app and its panel (``app_sign_in_google.html``, which posts
+Google's sign-in by itself, and ``app_sign_in_done.html``, whose button opens the app), the API reference, ReDoc's own page over the
 OpenAPI schema in place of ninja's (``api_docs.html``), and the mails allauth sends with ERPlora's
 wording (``templates/account/email`` and ``templates/socialaccount/email``), as text and as HTML."""
 
@@ -18,8 +20,13 @@ ACCOUNTS_TEMPLATES = Path(__file__).resolve().parent.parent / "templates" / "acc
 PROJECT_TEMPLATES = Path(settings.BASE_DIR) / "templates"
 
 
-def test_only_the_jump_form_and_the_api_reference_stay_templates():
-    assert sorted(path.name for path in ACCOUNTS_TEMPLATES.iterdir()) == ["api_docs.html", "hub_login_form.html"]
+def test_only_the_jump_form_the_apps_browser_pages_and_the_api_reference_stay_templates():
+    assert sorted(path.name for path in ACCOUNTS_TEMPLATES.iterdir()) == [
+        "api_docs.html",
+        "app_sign_in_done.html",
+        "app_sign_in_google.html",
+        "hub_login_form.html",
+    ]
     assert get_template("accounts/hub_login_form.html")
     assert get_template("accounts/api_docs.html")
 
