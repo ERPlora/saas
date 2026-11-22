@@ -68,27 +68,44 @@ const trying = computed(() => {
 /** A paid plan without an annual price (the internal one) is sold by the month only, as a module without one is. */
 const monthlyOnly = computed(() => !free.value && Number(props.plan.price_annual) === 0);
 
+type PlanAction = { kind: Action; disabled: boolean; hint: string };
+
+const unpaid = computed(() => (props.block ? t('billing.plans.payFirst') : ''));
+/** Why nothing that charges works now: an unpaid invoice, or the annual billing of a plan sold by the month only. */
+const payFirst = computed(() => unpaid.value || (props.period === 'year' && monthlyOnly.value ? t('billing.modules.monthlyOnly') : ''));
+
+function charging(kind: Action): PlanAction {
+  return { kind, disabled: !!payFirst.value, hint: payFirst.value };
+}
+
+/** Free's card cancels the paid plan, which charges nothing. */
+function freeAction(): PlanAction | null {
+  if (current.value || !paying.value || cancelling.value) return null;
+  return { kind: 'downgrade', disabled: false, hint: '' };
+}
+
+/** The card of the plan the business pays keeps a cancellation or a downgrade that waits, or switches its billing. */
+function ownPlanAction(): PlanAction | null {
+  if (cancelling.value) return { kind: 'keep', disabled: !!props.block, hint: unpaid.value };
+  if (scheduled.value) return { kind: 'keep', disabled: false, hint: '' };
+  if (props.period !== props.subscription?.billing_interval) return charging('switch');
+  return null;
+}
+
+/** Another paid plan of a business that pays is a change, unless it is the downgrade already waiting. */
+function otherPlanAction(): PlanAction | null {
+  if (cancelling.value) return { kind: 'change', disabled: true, hint: t('billing.plans.keepFirst') };
+  const waiting = scheduled.value;
+  if (waiting && waiting.plan === props.plan.slug && waiting.interval === props.period) return null;
+  return charging('change');
+}
+
 /** The one button of the card, whether it works now, and why not. */
-const action = computed<{ kind: Action; disabled: boolean; hint: string } | null>(() => {
-  const unpaid = props.block ? t('billing.plans.payFirst') : '';
-  const payFirst = unpaid || (props.period === 'year' && monthlyOnly.value ? t('billing.modules.monthlyOnly') : '');
-  if (free.value) {
-    if (current.value || !paying.value || cancelling.value) return null;
-    return { kind: 'downgrade', disabled: false, hint: '' };
-  }
-  if (current.value && paying.value) {
-    if (cancelling.value) return { kind: 'keep', disabled: !!props.block, hint: unpaid };
-    if (scheduled.value) return { kind: 'keep', disabled: false, hint: '' };
-    if (props.period !== props.subscription?.billing_interval) return { kind: 'switch', disabled: !!payFirst, hint: payFirst };
-    return null;
-  }
-  if (paying.value) {
-    if (cancelling.value) return { kind: 'change', disabled: true, hint: t('billing.plans.keepFirst') };
-    const waiting = scheduled.value;
-    if (waiting && waiting.plan === props.plan.slug && waiting.interval === props.period) return null;
-    return { kind: 'change', disabled: !!payFirst, hint: payFirst };
-  }
-  return { kind: 'upgrade', disabled: !!payFirst, hint: payFirst };
+const action = computed<PlanAction | null>(() => {
+  if (free.value) return freeAction();
+  if (current.value && paying.value) return ownPlanAction();
+  if (paying.value) return otherPlanAction();
+  return charging('upgrade');
 });
 
 const label = computed(() => {
@@ -158,28 +175,33 @@ const lines = computed<Line[]>(() => {
 });
 const checklistItems = computed(() => lines.value.map((line) => ({ text: line.text, testid: `plan-${line.kind}` })));
 
-/** What the card says under the features: a cancellation or a downgrade that waits, Free's date, a trial's days. */
-const note = computed(() => {
-  if (current.value && cancelling.value && !free.value) {
-    return t('billing.plans.cancelled', { plan: props.plan.name, date: periodEnd.value });
-  }
+/** The card of the paid plan the business is on tells its cancellation or the downgrade that waits; null if neither. */
+function ownPlanNote(): string | null {
+  if (cancelling.value) return t('billing.plans.cancelled', { plan: props.plan.name, date: periodEnd.value });
   const waiting = scheduled.value;
-  if (waiting && current.value && !free.value) {
-    if (waiting.plan === props.plan.slug) {
-      return t('billing.plans.scheduledBilling', {
-        plan: props.plan.name,
-        from: t(`billing.plans.periodName.${props.subscription?.billing_interval ?? 'year'}`),
-        date: scheduledFrom.value,
-        to: t(`billing.plans.periodName.${waiting.interval}`),
-      });
-    }
-    return t('billing.plans.scheduled', { plan: props.plan.name, date: scheduledFrom.value, next: props.scheduledPlanName || waiting.plan });
+  if (!waiting) return null;
+  if (waiting.plan === props.plan.slug) {
+    return t('billing.plans.scheduledBilling', {
+      plan: props.plan.name,
+      from: t(`billing.plans.periodName.${props.subscription?.billing_interval ?? 'year'}`),
+      date: scheduledFrom.value,
+      to: t(`billing.plans.periodName.${waiting.interval}`),
+    });
   }
+  return t('billing.plans.scheduled', { plan: props.plan.name, date: scheduledFrom.value, next: props.scheduledPlanName || waiting.plan });
+}
+
+/** The card of a plan the business moves or may move to: the downgrade's date, Free's date, a trial's days. */
+function destinationNote(): string {
+  const waiting = scheduled.value;
   if (waiting && waiting.plan === props.plan.slug) return t('billing.plans.scheduledFrom', { plan: props.plan.name, date: scheduledFrom.value });
   if (free.value && cancelling.value) return t('billing.plans.freeFrom', { date: periodEnd.value });
   if (trying.value) return t('billing.plans.trialKeeps');
   return '';
-});
+}
+
+/** What the card says under the features: a cancellation or a downgrade that waits, Free's date, a trial's days. */
+const note = computed(() => (current.value && !free.value ? ownPlanNote() : null) ?? destinationNote());
 
 function run(): void {
   const kind = action.value?.kind;

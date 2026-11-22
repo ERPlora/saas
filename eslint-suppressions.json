@@ -20,11 +20,6 @@
       "count": 1
     }
   },
-  "billing/frontend/components/PlanCard.vue": {
-    "complexity": {
-      "count": 2
-    }
-  },
   "frontend/live-state.ts": {
     "max-lines-per-function": {
       "count": 1
