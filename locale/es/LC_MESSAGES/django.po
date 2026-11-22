@@ -232,6 +232,21 @@ msgstr "La dirección a la que quería volver no es un hub de ERPlora, así que 
 msgid "Opening your business…"
 msgstr "Abriendo tu negocio…"
 
+msgid "Opening Google…"
+msgstr "Abriendo Google…"
+
+msgid "You're signed in"
+msgstr "Ya has iniciado sesión"
+
+msgid "ERPlora app"
+msgstr "App de ERPlora"
+
+msgid "Go back to the ERPlora app to continue."
+msgstr "Vuelve a la app de ERPlora para seguir."
+
+msgid "Open the ERPlora app"
+msgstr "Abrir la app de ERPlora"
+
 #: accounts/templates/accounts/hub_login_form.html
 msgid "Opening your demo…"
 msgstr "Abriendo tu demo…"

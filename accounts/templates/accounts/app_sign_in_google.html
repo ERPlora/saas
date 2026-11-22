@@ -1,0 +1,27 @@
+{% load i18n %}
+<!DOCTYPE html>
+{% comment %}
+  The browser's leg of the installed app's «Continue with Google» (accounts/app_sign_in.py): an auto-submitted
+  POST of allauth's provider redirect, as the launcher's button posts it. Without JavaScript, the button sends it.
+{% endcomment %}
+{% trans "Opening Google…" as opening %}
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    <title>{{ opening }} · ERPlora Cloud</title>
+</head>
+<body>
+    <form id="app-sign-in-google" method="post" action="{{ action }}">
+        {% csrf_token %}
+        <input type="hidden" name="provider" value="google">
+        <input type="hidden" name="process" value="login">
+        <input type="hidden" name="callback_url" value="{{ callback_url }}">
+        <p>{{ opening }}</p>
+        <noscript><button type="submit">{% trans "Continue with Google" %}</button></noscript>
+    </form>
+    <script nonce="{{ csp_nonce }}">document.getElementById("app-sign-in-google").submit();</script>
+</body>
+</html>
