@@ -17,8 +17,10 @@ from django.utils.translation import gettext as _
 
 from base.emails import branded_message
 from base.navigation import BILLING
+from billing.models import PaymentFailure
 from billing.money import from_cents
 from billing.oss import OSS_WARNING_PERCENT
+from hubs.models.subscriptions import grace_end
 
 logger = logging.getLogger(__name__)
 
@@ -99,9 +101,10 @@ def _send_notice(notice: str, subject: str, lines: list[str], to: str, *, langua
     logger.info("[EMAIL] %s sent to %s", notice, to)
 
 
-def send_payment_failed(hub, *, to: str, language: str, amount, declined: bool, suspends_on) -> None:  # noqa: PLR0913
-    """Tell the payer that the renewal of ``hub`` could not be collected: how much, until when it keeps working
-    (``suspends_on``) and where to pay it. ``MailNotSent`` when the mail could not leave."""
+def send_payment_failed(hub, failure: PaymentFailure, *, to: str, language: str, amount) -> None:
+    """Tell the payer that the renewal of ``hub`` could not be collected (``failure``, an invoice of ``amount``):
+    how much, why the card is not tried again when the bank declined it, until when it keeps working and where to
+    pay it. ``MailNotSent`` when the mail could not leave."""
     language = language or settings.LANGUAGE_CODE
     with translation.override(language):
         subject = _("We could not charge the plan of %(business)s") % {"business": hub.name}
@@ -109,7 +112,7 @@ def send_payment_failed(hub, *, to: str, language: str, amount, declined: bool, 
             _("We could not charge %(amount)s for the plan of %(business)s.")
             % {"amount": _money(amount), "business": hub.name},
         ]
-        if declined:
+        if failure.reason == PaymentFailure.Reason.CARD_DECLINED:
             lines.append(
                 _(
                     "The bank declined your card, so we will not try it again: change the card, then pay the "
@@ -118,7 +121,7 @@ def send_payment_failed(hub, *, to: str, language: str, amount, declined: bool, 
             )
         lines += [
             _("%(business)s keeps working until %(date)s. If the invoice is not paid by then, it is suspended. Nothing is deleted.")
-            % {"business": hub.name, "date": date_format(suspends_on, "DATE_FORMAT")},
+            % {"business": hub.name, "date": date_format(grace_end(failure.invoice_created_at), "DATE_FORMAT")},
             "",
             _("Pay it from Billing: %(url)s") % {"url": _billing_url(hub)},
         ]

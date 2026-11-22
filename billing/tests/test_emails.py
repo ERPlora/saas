@@ -17,7 +17,7 @@ import pytest
 from django.core import mail
 
 from billing import emails
-from billing.models import Invoice, InvoiceLine
+from billing.models import Invoice, InvoiceLine, PaymentFailure
 
 pytestmark = pytest.mark.django_db
 
@@ -133,12 +133,7 @@ def test_a_mail_whose_html_cannot_be_drawn_is_not_sent_either(notice, invoice, m
     send = {
         "invoice": lambda: emails.send_invoice_issued(invoice),
         "payment_failed": lambda: emails.send_payment_failed(
-            hub,
-            to="a@example.com",
-            language="en",
-            amount=Decimal("29.99"),
-            declined=False,
-            suspends_on=date(2026, 11, 1),
+            hub, unpaid_invoice(), to="a@example.com", language="en", amount=Decimal("29.99")
         ),
         "business_suspended": lambda: emails.send_business_suspended(
             hub, to="a@example.com", language="en", amount=Decimal("29.99")
@@ -150,24 +145,24 @@ def test_a_mail_whose_html_cannot_be_drawn_is_not_sent_either(notice, invoice, m
     assert mail.outbox == []
 
 
-@pytest.mark.parametrize("declined", [False, True])
-def test_every_line_of_the_unpaid_mail_reaches_a_spanish_payer_in_spanish(declined):
+@pytest.mark.parametrize("reason", PaymentFailure.Reason.values)
+def test_every_line_of_the_unpaid_mail_reaches_a_spanish_payer_in_spanish(reason):
     """BILLING-F16: the mail of a renewal that could not be charged says each of its lines in the payer's language,
     also why the card was declined: none is left in the English source (a sentence rewritten without its
     translation). The links and the amounts aside, no line of the Spanish mail is a line of the English one."""
     hub = SimpleNamespace(id="0199a0c4-7f3e-7000-8000-000000000001", name="Mi Hub")
     for language in ("en", "es"):
         emails.send_payment_failed(
-            hub,
-            to="a@example.com",
-            language=language,
-            amount=Decimal("29.99"),
-            declined=declined,
-            suspends_on=date(2026, 11, 1),
+            hub, unpaid_invoice(reason), to="a@example.com", language=language, amount=Decimal("29.99")
         )
     english, spanish = (set(message.body.splitlines()) - {""} for message in mail.outbox)
 
     assert spanish.isdisjoint(english)
+
+
+def unpaid_invoice(reason: str = PaymentFailure.Reason.PAYMENT_FAILED) -> PaymentFailure:
+    """An invoice Stripe could not collect, issued on 25 October: the business keeps working until 1 November."""
+    return PaymentFailure(reason=reason, invoice_created_at=datetime(2026, 10, 25, 9, 30, tzinfo=UTC))
 
 
 UNPAID_HUB = SimpleNamespace(id="0199a0c4-7f3e-7000-8000-000000000001", name="Panadería López")
@@ -192,29 +187,22 @@ UNPAID_MAIL = {
 }
 
 
-def tell_unpaid(*, language: str, declined: bool) -> None:
-    emails.send_payment_failed(
-        UNPAID_HUB,
-        to="pagos@example.com",
-        language=language,
-        amount=Decimal("1234.5"),
-        declined=declined,
-        suspends_on=datetime(2026, 11, 1, 9, 30, tzinfo=UTC),
-    )
-
-
-@pytest.mark.parametrize("declined", [False, True])
+@pytest.mark.parametrize("reason", PaymentFailure.Reason.values)
 @pytest.mark.parametrize("language", ["en", "es", ""])
-def test_the_unpaid_mail_says_how_much_until_when_and_where_to_pay(language, declined):
+def test_the_unpaid_mail_says_how_much_until_when_and_where_to_pay(language, reason):
     """BILLING-F16: the mail of a renewal that could not be charged, word for word, in the payer's language (the
-    platform's when the payer has none): how much, why the card is not tried again when the bank declined it,
-    until when the business keeps working and where to pay. Support filters it by its notice header."""
-    tell_unpaid(language=language, declined=declined)
+    platform's when the payer has none): how much, why the card is not tried again only when the bank declined
+    it, until when the business keeps working (7 days from the invoice) and where to pay. Support filters it by
+    its notice header."""
+    emails.send_payment_failed(
+        UNPAID_HUB, unpaid_invoice(reason), to="pagos@example.com", language=language, amount=Decimal("1234.5")
+    )
 
     [message] = mail.outbox
     told_in = language or "en"
     subject, opening, declined_line, rest = UNPAID_MAIL[told_in]
     assert message.subject == subject
+    declined = reason == PaymentFailure.Reason.CARD_DECLINED
     assert message.body == opening + (declined_line if declined else "") + rest
     assert message.to == ["pagos@example.com"]
     assert message.extra_headers == {"X-ERPlora-Notice": "billing.payment_failed"}
