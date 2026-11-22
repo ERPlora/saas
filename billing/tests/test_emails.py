@@ -9,7 +9,7 @@ shape ``base/tests/test_emails.py`` checks; ACCOUNTS-F46); the link is the panel
 invoice page; the recipient is the payer's billing e-mail (the invoice's addressee), the account's otherwise.
 """
 
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -168,3 +168,55 @@ def test_every_line_of_the_unpaid_mail_reaches_a_spanish_payer_in_spanish(declin
     english, spanish = (set(message.body.splitlines()) - {""} for message in mail.outbox)
 
     assert spanish.isdisjoint(english)
+
+
+UNPAID_HUB = SimpleNamespace(id="0199a0c4-7f3e-7000-8000-000000000001", name="Panadería López")
+PAY_IT = "https://erplora.com/dashboard/billing/invoices?business=0199a0c4-7f3e-7000-8000-000000000001"
+#: The unpaid mail in each language: its subject, its first line, the line of a declined card and the rest.
+UNPAID_MAIL = {
+    "en": (
+        "We could not charge the plan of Panadería López",
+        "We could not charge 1,234.50 € for the plan of Panadería López.\n",
+        "The bank declined your card, so we will not try it again: change the card, then pay the invoice yourself.\n",
+        "Panadería López keeps working until Nov. 1, 2026. If the invoice is not paid by then, it is suspended. "
+        f"Nothing is deleted.\n\nPay it from Billing: {PAY_IT}\n",
+    ),
+    "es": (
+        "No hemos podido cobrar el plan de Panadería López",
+        "No hemos podido cobrar 1\xa0234,50 € del plan de Panadería López.\n",
+        "El banco rechazó tu tarjeta, así que no volveremos a intentar el cobro con ella: cámbiala y paga tú la "
+        "factura.\n",
+        "Panadería López sigue funcionando hasta el 1 de noviembre de 2026. Si la factura no se paga antes, se "
+        f"suspende. No se borra nada.\n\nPágala en Facturación: {PAY_IT}\n",
+    ),
+}
+
+
+def tell_unpaid(*, language: str, declined: bool) -> None:
+    emails.send_payment_failed(
+        UNPAID_HUB,
+        to="pagos@example.com",
+        language=language,
+        amount=Decimal("1234.5"),
+        declined=declined,
+        suspends_on=datetime(2026, 11, 1, 9, 30, tzinfo=UTC),
+    )
+
+
+@pytest.mark.parametrize("declined", [False, True])
+@pytest.mark.parametrize("language", ["en", "es", ""])
+def test_the_unpaid_mail_says_how_much_until_when_and_where_to_pay(language, declined):
+    """BILLING-F16: the mail of a renewal that could not be charged, word for word, in the payer's language (the
+    platform's when the payer has none): how much, why the card is not tried again when the bank declined it,
+    until when the business keeps working and where to pay. Support filters it by its notice header."""
+    tell_unpaid(language=language, declined=declined)
+
+    [message] = mail.outbox
+    told_in = language or "en"
+    subject, opening, declined_line, rest = UNPAID_MAIL[told_in]
+    assert message.subject == subject
+    assert message.body == opening + (declined_line if declined else "") + rest
+    assert message.to == ["pagos@example.com"]
+    assert message.extra_headers == {"X-ERPlora-Notice": "billing.payment_failed"}
+    [(html, _)] = message.alternatives
+    assert f'<html lang="{told_in}"' in html
