@@ -15,11 +15,6 @@
       "count": 1
     }
   },
-  "billing/frontend/components/InvoicesTab.vue": {
-    "vue/max-lines-per-block": {
-      "count": 1
-    }
-  },
   "frontend/live-state.ts": {
     "max-lines-per-function": {
       "count": 1

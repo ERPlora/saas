@@ -11,7 +11,7 @@
 // Files are saved only when the answer is the file (`browser.ts`): one still being issued (404) says so, the
 // invoice service down (503) says it, and nothing is ever saved as `pdf.json`.
 import { DataTable, type DataTableAction, type DataTableActionEvent, type DataTableColumn, InlineFeedback, StatusPill } from '@erplora/ui/components';
-import { HubIcon, toastError, toastInfo, useSurface, WebOnly } from '@erplora/ui/shell';
+import { HubIcon, toastError, useSurface, WebOnly } from '@erplora/ui/shell';
 import { type ApiError, useLive, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton } from '@ionic/vue';
 import { type ComponentPublicInstance, computed, shallowRef, useTemplateRef, watch } from 'vue';
@@ -24,6 +24,7 @@ import { useErrorText } from '../../../hubs/frontend/error-text';
 import type { InvoiceFilterIn, InvoicePaymentStatus, InvoiceRowOut } from '../../../frontend/sdk-types/billing-invoices';
 import { browser, operationUrl } from '../browser';
 import { formatDate } from '../format';
+import { useInvoicePdfs, useSelectedPdfs } from '../invoice-pdfs';
 import { formatAmount, invoiceBusinesses, invoiceName, invoicePill, yearOptions } from '../invoices';
 import { usePayInvoice } from '../pay';
 import { useToolbarFit } from '../toolbar-fit';
@@ -253,107 +254,10 @@ function showRectified(number: string): void {
 }
 
 // ── Files ───────────────────────────────────────────────────────────────────────────────────────
-/** The selection, kept across pages; each selected row as it was last seen. */
+/** The selection, kept across pages. */
 const selected = shallowRef<string[]>([]);
-const seen = new Map<string, InvoiceRowOut>();
-watch(rows, (now) => {
-  for (const row of now) seen.set(row.id, row);
-});
-
-/** The invoices the server said are still being issued (404 `billing.invoice_not_issued`), with their row as it
- *  was then: their PDF waits, as «Issuing» does, until the list sends that row changed. */
-const notIssued = shallowRef(new Map<string, string>());
-watch(rows, (now) => {
-  if (!notIssued.value.size) return;
-  const next = new Map(notIssued.value);
-  for (const row of now) if (next.get(row.id) !== undefined && next.get(row.id) !== JSON.stringify(row)) next.delete(row.id);
-  if (next.size !== notIssued.value.size) notIssued.value = next;
-});
-/** The PDFs being asked for now. */
-const fetching = shallowRef(new Set<string>());
-
-function withId(set: ReadonlySet<string>, id: string, on: boolean): Set<string> {
-  const next = new Set(set);
-  if (on) next.add(id);
-  else next.delete(id);
-  return next;
-}
-
-/** What a failed file says; `null` for one still being issued (said apart). */
-function fileError(error: ApiError): string | null {
-  if (error.code === 'billing.invoice_not_issued') return null;
-  if (error.code === 'billing.platform_unavailable') return t('billing.invoices.pdfUnavailable');
-  return text(error);
-}
-
-/** One notice from several sentences: one after the other on one line, each ending with its stop. A notice is one
- *  line of text (Material's snackbar): a line break would paint as a bare space between two sentences. */
-function sentences(parts: readonly string[]): string {
-  return parts
-    .map((part) => part.replace(/\s+/g, ' ').trim())
-    .filter(Boolean)
-    .map((part) => (/[.!?…]$/.test(part) ? part : `${part}.`))
-    .join(' ');
-}
-
-/** Downloads the PDF of each issued one, one after the other; says in one notice what failed (once, not per file)
- *  and how many are still being issued. Alone, one still being issued says so in its own words. */
-async function downloadPdfs(invoices: InvoiceRowOut[]): Promise<void> {
-  let waiting = 0;
-  let failure: string | null = null;
-  for (const invoice of invoices) {
-    if (!invoice.can.pdf || notIssued.value.has(invoice.id)) {
-      waiting += 1;
-      continue;
-    }
-    fetching.value = withId(fetching.value, invoice.id, true);
-    try {
-      await browser.download(operationUrl('billing.invoice.pdf', { id: invoice.id }), 'application/pdf');
-    } catch (error) {
-      const said = fileError(error as ApiError);
-      if (said === null) {
-        notIssued.value = new Map(notIssued.value).set(invoice.id, JSON.stringify(invoice));
-        waiting += 1;
-      } else {
-        console.error('billing: an invoice PDF could not be downloaded', error);
-        failure ??= said;
-      }
-    } finally {
-      fetching.value = withId(fetching.value, invoice.id, false);
-    }
-  }
-  const alone = invoices.length === 1;
-  const issuing = !waiting
-    ? ''
-    : alone
-      ? t('billing.invoices.pdfIssuing')
-      : t('billing.invoices.pdfNotReady', { count: waiting }, waiting);
-  // One press, one notice: what failed, then what is still being issued, never two notices for one download.
-  if (failure) toastError(sentences([failure, issuing]));
-  else if (issuing) toastInfo(issuing);
-}
-
-/** The selected invoices that have their PDF, and how many have none yet: unpaid (an unpaid invoice has no PDF
- *  until it is paid) or paid and still being issued. */
-const selection = computed(() => {
-  void rows.value; // `seen` follows the list
-  const hasPdf = (row: InvoiceRowOut) => row.can.pdf && !notIssued.value.has(row.id);
-  const chosen = selected.value.flatMap((id) => seen.get(id) ?? []);
-  return {
-    issued: chosen.filter(hasPdf),
-    unpaid: chosen.filter((row) => row.payment_status === 'open').length,
-    issuing: chosen.filter((row) => row.payment_status === 'paid' && !hasPdf(row)).length,
-  };
-});
-const selectionNote = computed(() => {
-  const { unpaid, issuing } = selection.value;
-  return [
-    unpaid ? t('billing.invoices.selectedUnpaid', { count: unpaid }, unpaid) : '',
-    issuing ? t('billing.invoices.selectedIssuing', { count: issuing }, issuing) : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-});
+const { notIssued, fetching, downloadPdfs } = useInvoicePdfs(rows);
+const { selection, selectionNote } = useSelectedPdfs(rows, selected, notIssued);
 
 function downloadSelected(): void {
   if (selection.value.issued.length) void downloadPdfs(selection.value.issued);
