@@ -99,9 +99,11 @@ class AIProviderAdmin(admin.ModelAdmin):
     )
 
     def changelist_view(self, request, extra_context=None):
-        if request.method == "GET" and (problem := services_problem()):
+        response = super().changelist_view(request, extra_context)
+        # Only on the page that is about to be drawn: a refusal or a redirect would keep it for a later page.
+        if isinstance(response, TemplateResponse) and (problem := services_problem()):
             self.message_user(request, problem, messages.WARNING)
-        return super().changelist_view(request, extra_context)
+        return response
 
     @admin.display(description=gettext_lazy("key"))
     def key_state(self, provider: AIProvider) -> str:

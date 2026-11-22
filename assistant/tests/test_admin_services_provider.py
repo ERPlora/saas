@@ -109,3 +109,16 @@ def test_the_warning_speaks_spanish_to_a_spanish_member(client, ai_admin, provid
 
     assert "La búsqueda en la documentación y el dictado no funcionan" in page
     assert "no tiene clave en el entorno" in page and "OPENAI_API_KEY" in page
+
+
+def test_who_may_not_see_the_providers_is_not_told_later(client, plain_staff, provider):
+    client.force_login(plain_staff)
+
+    assert client.get(PROVIDERS).status_code == 403
+    assert BROKEN not in client.get("/admin/").content.decode()
+
+
+def test_the_warning_is_said_once_after_a_filter_the_list_does_not_know(as_ai_admin, provider):
+    page = as_ai_admin.get(PROVIDERS, {"unknown": "1"}, follow=True).content.decode()
+
+    assert page.count(BROKEN) == 1
