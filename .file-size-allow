@@ -9,4 +9,3 @@
 230 .github/scripts/ecs-rollback.sh saas#462
 549 billing/stripe_service.py saas#462
 1124 fiscal_gateway/tests/test_internal.py saas#462
-522 hubs/frontend/components/CustomDomainCard.test.ts saas#462
