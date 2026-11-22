@@ -93,8 +93,8 @@ describe('BillingDetailsForm', () => {
   });
 
   it('a payer on file becomes the draft the form edits, without the business it belongs to; a new one starts blank', () => {
-    const payer = { hub_id: 'cafe', paid_by_another_account: true, billing_name: 'Café Central SL', tax_id: 'ESB12345678', billing_address: 'Calle Mayor 1', billing_city: 'Madrid', billing_postal_code: '28001', billing_country: 'ES', billing_email: 'gestoria@example.com', same_as_business: true };
-    const { hub_id: _business, paid_by_another_account: _paidBy, ...draft } = payer;
+    const draft = { billing_name: 'Café Central SL', tax_id: 'ESB12345678', billing_address: 'Calle Mayor 1', billing_city: 'Madrid', billing_postal_code: '28001', billing_country: 'ES', billing_email: 'gestoria@example.com', same_as_business: true };
+    const payer = { hub_id: 'cafe', paid_by_another_account: true, ...draft };
     expect(draftFromProfile(payer)).toStrictEqual(draft);
     expect(Object.keys(draftFromProfile(payer))).toEqual(Object.keys(EMPTY));
     expect(emptyDraft()).toStrictEqual(EMPTY);

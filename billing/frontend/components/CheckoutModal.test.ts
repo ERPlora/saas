@@ -104,9 +104,9 @@ describe('CheckoutModal', () => {
   });
 
   it.each([
-    ['a plan, monthly', { ...PLAN, interval: 'month' }, { hub_id: 'cafe', plan: 'starter', interval: 'month', promo_code: 'SPRING' }],
-    ['a module, yearly', { ...MODULE, interval: 'year' }, { hub_id: 'cafe', module: 'booking', interval: 'year' }],
-  ] as const)('opens the payment of %s at the billing chosen', async (_what, purchase, body) => {
+    ['a plan bought monthly', { ...PLAN, interval: 'month' }, { hub_id: 'cafe', plan: 'starter', interval: 'month', promo_code: 'SPRING' }],
+    ['a module bought yearly', { ...MODULE, interval: 'year' }, { hub_id: 'cafe', module: 'booking', interval: 'year' }],
+  ] as const)('opens the payment of %s at that billing', async (_what, purchase, body) => {
     const s = await setup(happy, purchase);
     expect(s.calls()[1].body).toEqual(body);
   });
@@ -324,7 +324,7 @@ describe('CheckoutModal', () => {
     ['Stripe.js failing to load', 'stripe', () => Promise.reject(new Error('Stripe.js could not be loaded')), [[true, false]]],
   ] as const)('%s for an attempt left behind is dropped: closed and opened again, the dialog pays once', async (_what, late, answer, checkouts) => {
     let release = (): void => undefined;
-    const held = new Promise<void>((resolve) => (release = resolve)).then(answer);
+    const held = new Promise<void>((resolve) => (release = resolve)).then(answer as () => unknown);
     if (late === 'stripe') vi.mocked(loadStripeJs).mockImplementationOnce(() => held as never);
     let starts = 0;
     const s = await setup(({ path }) => (late === 'start' && path === '/api/billing/checkout/start' && ++starts === 1 ? (held as Promise<Response>) : happy({ path } as never)));
@@ -361,10 +361,10 @@ describe('CheckoutModal', () => {
   });
 
   it.each([
-    ['to confirm, even with a secret and a key', { ...SESSION, flow: 'confirm' }],
+    ['a payment to confirm (even with a secret and a key)', { ...SESSION, flow: 'confirm' }],
     ['a checkout without its secret', { ...SESSION, client_secret: null }],
     ['a checkout without its key', { ...SESSION, publishable_key: null }],
-  ])('an answer %s opens no checkout: back to the Store, which asks the price again', async (_what, session) => {
+  ])('%s opens nothing in Stripe: back to the Store, which asks the price again', async (_what, session) => {
     const s = await setup(({ path }) => Response.json(path === '/api/hubs/billing-profile' ? PROFILE : session));
     expect(s.stale).toHaveBeenCalled();
     expect(stripe.checkouts).toEqual([]);
