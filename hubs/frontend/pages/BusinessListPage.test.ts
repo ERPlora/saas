@@ -223,7 +223,7 @@ describe('BusinessListPage: what waits above the list', () => {
     expect(s.calls().find((c) => c.path === '/api/hubs/invitations/accept')?.body).toEqual({ id: 'm1' });
     await banner.get('[data-testid="invitation-decline"]').trigger('click');
     await flush();
-    expect(s.q('decline-dialog')).not.toBeNull();
+    expect(s.q('decline-dialog')?.querySelector('.ion-delegate-host')).not.toBeNull();
   });
 
   it('an ownership offer: accept it or decline it', async () => {
