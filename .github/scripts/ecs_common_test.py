@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import signal
 import subprocess
 import sys
@@ -43,6 +44,52 @@ def run_script(script: Path, cwd: Path, env: dict, apart: bool) -> subprocess.Co
     """Runs <script> with BOOT; stdout and stderr land together in stdout, or apart."""
     return subprocess.run([sys.executable, "-c", BOOT, str(script)], cwd=cwd, env=env, stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE if apart else subprocess.STDOUT, timeout=120, check=False)
+
+
+class ScriptCase(unittest.TestCase):
+    """What the tests of the deploy and of the rollback read of a run: its output and exit code, the aws calls its fake
+    recorded in <work>/calls.log and the pauses in <work>/sleep.log. A subclass sets self.work in setUp, and
+    cluster_scoped: the ecs calls that act in a cluster."""
+
+    cluster_scoped: re.Pattern
+
+    def execute(self, script: Path, cwd: Path, environ: dict, apart: bool) -> int:
+        """Runs <script>: stdout and stderr land together in self.out, or apart in self.stdout and self.stderr."""
+        done = run_script(script, cwd, environ, apart)
+        self.stdout, self.stderr = done.stdout, done.stderr
+        self.out = done.stdout.decode("utf-8", "replace")
+        self.status = done.returncode
+        return done.returncode
+
+    def calls(self) -> list[str]:
+        return (self.work / "calls.log").read_text(errors="replace").splitlines()
+
+    def lines(self, pattern: str) -> list[int]:
+        return [n for n, call in enumerate(self.calls(), 1) if re.search(pattern, call)]
+
+    def line_of(self, pattern: str) -> int:
+        return self.lines(pattern)[0]
+
+    def last_line_of(self, pattern: str) -> int:
+        return self.lines(pattern)[-1]
+
+    def called(self, pattern: str) -> bool:
+        return bool(self.lines(pattern))
+
+    def pauses(self) -> list[str]:
+        return (self.work / "sleep.log").read_text().split()
+
+    def cluster_is(self, cluster: str) -> bool:
+        """There are cluster-scoped ecs calls, and every call that names a cluster names <cluster>."""
+        named = [call for call in self.calls() if "--cluster" in call]
+        return any(self.cluster_scoped.search(call) for call in self.calls()) and all(
+            f"--cluster {cluster} " in call for call in named)
+
+    def assertFailsBeforeAnyCall(self, *said: str):
+        self.assertNotEqual(0, self.status)
+        self.assertEqual([], self.calls())
+        for line in said:
+            self.assertIn(line, self.out)
 
 
 def python(code: str) -> list[str]:
@@ -136,6 +183,14 @@ class ReadingTest(unittest.TestCase):
         for value in ([1], "s", 1, True):
             with self.assertRaises(TypeError):
                 ecs_common.key(value, "a")
+
+    def test_the_tags_are_read_as_jq_reads_them(self):
+        tag = {"key": "Environment", "value": "pre"}
+        for tags in ([None, tag], [tag, "x"], {"one": tag}):
+            self.assertTrue(ecs_common.tagged({"tags": tags}, "pre"), tags)
+        for tags in (["x", tag], [1, tag], "pre", [], None, [{"key": "Environment"}], [{"key": "Stage", "value": "pre"}]):
+            self.assertFalse(ecs_common.tagged({"tags": tags}, "pre"), tags)
+        self.assertFalse(ecs_common.tagged({}, "pre"))
 
     def test_a_revision_of_its_environment_has_its_tag_and_its_roles(self):
         role = "arn:aws:iam::123456789012:role/erplora-pre-saas"

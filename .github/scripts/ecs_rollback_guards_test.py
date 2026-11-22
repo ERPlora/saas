@@ -70,14 +70,11 @@ class GuardTest(RollbackCase):
                  "tags": [{"key": "Environment", "value": "prod"}] if tags is None else tags}
         (self.fixtures / "describe-erplora-prod-saas:10").write_text(json.dumps(found))
 
-    def test_the_tags_are_read_as_jq_reads_them(self):
-        tag = {"key": "Environment", "value": "prod"}
-        for tags, accepted in (([None, tag], True), ([tag, "x"], True), ({"one": tag}, True), (["x", tag], False),
-                               ([], False), ([{"key": "Stage", "value": "prod"}], False)):
-            self.setUp()
-            self.described(tags=tags)
-            self.assertEqual(0 if accepted else 1, self.rollback(), tags)
-        for answer in ("", "[]", "not json", "{}"):
+    def test_its_tags_are_read_as_the_deploy_reads_them(self):
+        # How jq reads the tags is ecs_common_test.py's; here, that the rollback goes through it.
+        self.described(tags={"one": {"key": "Environment", "value": "prod"}})
+        self.assertEqual(0, self.rollback())
+        for answer in ("", "[]", "not json", "{}", '{"tags": ["x", {"key": "Environment", "value": "prod"}]}'):
             self.setUp()
             (self.fixtures / "describe-erplora-prod-saas:10").write_text(answer)
             self.rollback()

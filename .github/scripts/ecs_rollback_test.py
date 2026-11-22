@@ -18,7 +18,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ecs_common_test import run_script
+from ecs_common_test import ScriptCase
 
 SCRIPT = Path(__file__).resolve().with_name("ecs_rollback.py")
 REPO = Path(__file__).resolve().parents[2]
@@ -152,13 +152,15 @@ COMMANDS.get(command, lambda: None)()
 '''
 
 
-class RollbackCase(unittest.TestCase):
+class RollbackCase(ScriptCase):
     """A fresh fake AWS for each test. saas runs revision 12 in prod and saas-pre runs 12 in pre; the family prefix of
     saas also lists saas-migrate and saas-cron, and saas has a newer revision (13) than the one it runs, so the
     previous one is saas:10. The app image of a revision is reg.example/erplora/<saas|hub>[-pre]:tag-<revision>, its
     Environment tag its family's environment and its roles erplora-<environment>-<name>-{task,execution}, unless the
     test says otherwise; its app container runs its family's settings in the app_env in force, which holds the
     repository's deploy/app-env.json."""
+
+    cluster_scoped = CLUSTER_SCOPED
 
     def setUp(self):
         self.work = Path(tempfile.mkdtemp())
@@ -227,29 +229,7 @@ class RollbackCase(unittest.TestCase):
         environ.update(env)
         for name in unset:
             environ.pop(name, None)
-        done = run_script(SCRIPT, self.work, environ, apart)
-        self.stdout, self.stderr = done.stdout, done.stderr
-        self.out = done.stdout.decode("utf-8", "replace")
-        self.status = done.returncode
-        return done.returncode
-
-    def calls(self) -> list[str]:
-        return (self.work / "calls.log").read_text(errors="replace").splitlines()
-
-    def lines(self, pattern: str) -> list[int]:
-        return [n for n, call in enumerate(self.calls(), 1) if re.search(pattern, call)]
-
-    def line_of(self, pattern: str) -> int:
-        return self.lines(pattern)[0]
-
-    def last_line_of(self, pattern: str) -> int:
-        return self.lines(pattern)[-1]
-
-    def called(self, pattern: str) -> bool:
-        return bool(self.lines(pattern))
-
-    def pauses(self) -> list[str]:
-        return (self.work / "sleep.log").read_text().split()
+        return self.execute(SCRIPT, self.work, environ, apart)
 
     def reads_of(self, service: str) -> int:
         """How many times its PRIMARY deployment was read after the wait."""
@@ -261,21 +241,9 @@ class RollbackCase(unittest.TestCase):
                                                                   "saas/app_env --value ")]
         return json.loads(found[0].split(" --value ", 1)[1].split(" --type ", 1)[0]) if found else None
 
-    def cluster_is(self, cluster: str) -> bool:
-        """There are cluster-scoped ecs calls, and every call that names a cluster names <cluster>."""
-        named = [call for call in self.calls() if "--cluster" in call]
-        return any(CLUSTER_SCOPED.search(call) for call in self.calls()) and all(
-            f"--cluster {cluster} " in call for call in named)
-
     def assertNothingChanged(self):
         self.assertNotEqual(0, self.status)
         self.assertFalse(self.called("update-service|put-parameter"))
-
-    def assertFailsBeforeAnyCall(self, *said: str):
-        self.assertNotEqual(0, self.status)
-        self.assertEqual([], self.calls())
-        for line in said:
-            self.assertIn(line, self.out)
 
 
 class SucceedingRollbackTest(RollbackCase):

@@ -20,7 +20,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ecs_common_test import run_script
+from ecs_common_test import ScriptCase
 
 SCRIPT = Path(__file__).resolve().with_name("ecs_deploy.py")
 REPO = Path(__file__).resolve().parents[2]
@@ -207,9 +207,11 @@ def one(name: str, image: str, **more) -> list:
     return [{"name": name, "image": f"reg.example/erplora/{image}", **more}]
 
 
-class DeployCase(unittest.TestCase):
+class DeployCase(ScriptCase):
     """A fresh fake AWS and checkout for each test: prod and pre each with their families on their own image, the
     Hub's families (which file in the AEAT's production) beside prod's, and the settings in force equal to the file."""
+
+    cluster_scoped = CLUSTER_SCOPED
 
     def setUp(self):
         self.work = Path(tempfile.mkdtemp())
@@ -283,29 +285,7 @@ class DeployCase(unittest.TestCase):
             (self.work / log).write_text("")
         for counter in self.work.glob("polls.*"):
             counter.unlink()
-        done = run_script(SCRIPT, self.repo, self.environ(unset, env), apart)
-        self.stdout, self.stderr = done.stdout, done.stderr
-        self.out = done.stdout.decode("utf-8", "replace")
-        self.status = done.returncode
-        return done.returncode
-
-    def calls(self) -> list[str]:
-        return (self.work / "calls.log").read_text(errors="replace").splitlines()
-
-    def lines(self, pattern: str) -> list[int]:
-        return [n for n, call in enumerate(self.calls(), 1) if re.search(pattern, call)]
-
-    def line_of(self, pattern: str) -> int:
-        return self.lines(pattern)[0]
-
-    def last_line_of(self, pattern: str) -> int:
-        return self.lines(pattern)[-1]
-
-    def called(self, pattern: str) -> bool:
-        return bool(self.lines(pattern))
-
-    def pauses(self) -> list[str]:
-        return (self.work / "sleep.log").read_text().split()
+        return self.execute(SCRIPT, self.repo, self.environ(unset, env), apart)
 
     def registered(self) -> dict:
         lines = (self.work / "registered.log").read_text().splitlines()
@@ -315,22 +295,10 @@ class DeployCase(unittest.TestCase):
         containers = self.registered()[family]["containerDefinitions"]
         return [c["image"] for c in containers if name is None or c["name"] == name]
 
-    def cluster_is(self, cluster: str) -> bool:
-        """There are cluster-scoped ecs calls, and every call that names a cluster names <cluster>."""
-        named = [call for call in self.calls() if "--cluster" in call]
-        return any(CLUSTER_SCOPED.search(call) for call in self.calls()) and all(
-            f"--cluster {cluster} " in call for call in named)
-
     def assertNothingRegistered(self):
         self.assertNotEqual(0, self.status)
         self.assertEqual({}, self.registered())
         self.assertFalse(self.called("register-task-definition|run-task|update-service|put-parameter"))
-
-    def assertFailsBeforeAnyCall(self, *names: str):
-        self.assertNotEqual(0, self.status)
-        self.assertEqual([], self.calls())
-        for name in names:
-            self.assertIn(name, self.out)
 
 
 class SucceedingDeployTest(DeployCase):
