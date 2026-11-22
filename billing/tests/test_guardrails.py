@@ -9,6 +9,9 @@
 - The network: only ``vies.py`` talks to VIES (``requests``) and only ``stripe_service.py`` to Stripe:
   it is the one door (keys, timeouts, errors, plain dicts), the one place tests replace
   (``billing/tests/stripe_double.py``).
+- The tests replace ``stripe_service.client`` and nothing else, so every module of the SaaS asks
+  ``stripe_service`` for the client at each call (``stripe_service.client()``): one that imported it by name,
+  or kept it aside, would talk to the real Stripe in the tests.
 
 Each scan is shown to catch its positive (rule 10 of the working rules: the control catches it).
 """
@@ -16,6 +19,7 @@ Each scan is shown to catch its positive (rule 10 of the working rules: the cont
 import ast
 from pathlib import Path
 
+from django.apps import apps
 from django.conf import settings
 
 BILLING = Path(settings.BASE_DIR) / "billing"
@@ -111,6 +115,52 @@ def imported_modules(source: str) -> set[str]:
     return names
 
 
+def saas_code_files() -> list[Path]:
+    """The code of every app of the SaaS, its tests and migrations aside."""
+    root = Path(settings.BASE_DIR).resolve()
+    folders = {Path(config.path).resolve() for config in apps.get_app_configs()}
+    return sorted(
+        path
+        for folder in folders
+        if folder.parent == root
+        for path in folder.rglob("*.py")
+        if not {"tests", "migrations"} & set(path.relative_to(folder).parts)
+    )
+
+
+def _gateway_names(tree: ast.AST) -> set[str]:
+    """What a module calls ``billing.stripe_service``: ``stripe_service``, its ``as`` name or the dotted path."""
+    names = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            names |= {alias.asname or alias.name for alias in node.names if alias.name == "stripe_service"}
+        elif isinstance(node, ast.Import):
+            names |= {alias.asname or alias.name for alias in node.names if alias.name == "billing.stripe_service"}
+    return names
+
+
+def _names_the_client(node: ast.AST, gateway_names: set[str], *, gateway: bool) -> bool:
+    if isinstance(node, ast.Attribute):
+        return node.attr == "client" and ast.unparse(node.value) in gateway_names
+    return gateway and isinstance(node, ast.Name) and node.id == "client"
+
+
+def client_kept_aside(source: str, *, gateway: bool = False) -> list[str]:
+    """Where ``source`` reaches Stripe's client other than by calling ``stripe_service.client()`` there and then:
+    importing it by name, or keeping it in a variable, a default or a list. ``gateway``: ``source`` is
+    ``stripe_service.py`` itself, where the client is the bare name ``client``."""
+    tree = ast.parse(source)
+    gateway_names = _gateway_names(tree)
+    called = {id(node.func) for node in ast.walk(tree) if isinstance(node, ast.Call)}
+    found = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and (node.module or "").endswith("stripe_service"):
+            found += [f"line {node.lineno}: imports {alias.name}" for alias in node.names if alias.name in {"client", "*"}]
+        elif id(node) not in called and _names_the_client(node, gateway_names, gateway=gateway):
+            found.append(f"line {node.lineno}: {ast.unparse(node)} is not called there and then")
+    return found
+
+
 def _relative(path: Path) -> str:
     return path.relative_to(BILLING).as_posix()
 
@@ -190,3 +240,30 @@ def test_only_the_vies_client_and_the_stripe_gateway_talk_to_the_network():
     assert [name for name, modules in importers.items() if "stripe" in modules] == [
         "stripe_service.py"
     ]
+
+
+def test_the_client_scan_catches_its_positive():
+    assert client_kept_aside("from billing.stripe_service import client\nclient().v1.refunds.create()")
+    assert client_kept_aside("from billing.stripe_service import client as stripe_client")
+    assert client_kept_aside("from billing.stripe_service import *")
+    assert client_kept_aside("from billing import stripe_service\nmake = stripe_service.client")
+    assert client_kept_aside("from billing import stripe_service as gateway\ndef pay(make=gateway.client): ...")
+    assert client_kept_aside("import billing.stripe_service\nmakers = [billing.stripe_service.client]")
+    assert client_kept_aside("make = client", gateway=True)
+    assert client_kept_aside("from billing import stripe_service\nstripe_service._call(stripe_service.client().v1.x)") == []
+    assert client_kept_aside("from billing.stripe_service import StripeRefused, key_mode") == []
+    assert client_kept_aside("_call(client().v1.refunds.create)", gateway=True) == []
+    assert client_kept_aside("from billing import stripe_service\nclient = other.client") == []
+
+
+def test_every_module_asks_stripe_service_for_the_client_at_each_call():
+    gateway = (BILLING / "stripe_service.py").resolve()
+    files = saas_code_files()
+    offenders = {
+        path.relative_to(gateway.parent.parent).as_posix(): found
+        for path in files
+        if (found := client_kept_aside(path.read_text(encoding="utf-8"), gateway=path == gateway))
+    }
+
+    assert gateway in files
+    assert offenders == {}

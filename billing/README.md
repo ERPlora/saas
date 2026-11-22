@@ -101,6 +101,7 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 | Pieza | Qué hace |
 |---|---|
 | `stripe_service.py` | La única puerta a Stripe (el único módulo que importa `stripe`): `client()` con la clave del entorno (restringida `rk_live_` en prod; sin clave no se llama a nada), 1 reintento y `STRIPE_TIMEOUT_SECONDS`; devuelve dicts; errores `StripeUnavailable` (red, 429, 5xx) y `StripeRefused` (tarjeta, objeto inexistente, configuración); espejo de `TaxRate` (`tax_rate_ids`: reutiliza uno exacto y exclusivo, crea el que falta, 24 h en caché, nunca crea a ciegas si el listado falla); firma del webhook |
+| `stripe_payments.py` | Lo que Stripe cobró y devolvió de una factura: la factura que pagó un cobro, las devoluciones de una factura o de un cargo, la tarjeta que paga y por qué falló un cobro |
 | `stripe_keys.py`, `stripe_period.py`, `stripe_checkout.py`, `stripe_test_clocks.py` | Modo de una clave (`sk_`/`rk_`), periodo de la suscripción (en el item desde la API de 2025), `ui_mode = embedded_page` y `metadata.kind`, relojes de prueba (rechaza una clave live) |
 | `models/discounts.py`, `discount_terms.py`, `stripe_coupons.py` | `Discount`, las condiciones de un descuento (ver «Descuentos y códigos promocionales»): lo que quita de un importe, a qué planes y periodicidades se aplica, su nombre y su cupón espejo en Stripe |
 | `models/promo_codes.py`, `models/payments.py` | `PromoCode` (días de prueba, ADR-0107, o un `Discount`), `CheckoutAttempt` (un Embedded Checkout por intención; la misma selección reutiliza su sesión abierta), `WebhookEvent` (cada evento una vez) y `PaymentFailure` (por qué no se cobró una renovación) |
@@ -313,8 +314,10 @@ suscripción de Stripe de todo negocio que se eliminó (`Subscription.cancel_req
 promocional vale una vez por negocio y por pagador (`PromoRedemption`). Los precios: `Plan.stripe_price_id` / `stripe_price_id_annual` (admin; al guardarlos, `plan_price_problems` los
 comprueba en Stripe: activo, euros, periodicidad, importe del plan, `exclusive` y producto, BILLING-F28) y
 `apps.Module.stripe_price_id_monthly` / `_annual`, netos (`tax_behavior = exclusive` en Stripe). En los tests
-nunca se llama a Stripe: `billing/tests/stripe_double.py` sustituye a `stripe_service.client()` y los
-eventos se firman como los firma Stripe.
+nunca se llama a Stripe: `billing/tests/stripe_double.py` sustituye a `stripe_service.client()`, que es el único
+sitio que sustituyen, y los eventos se firman como los firma Stripe. Por eso todo módulo que llama a Stripe pide el
+cliente a `stripe_service` en cada llamada (`stripe_service.client()`) y nunca lo importa por nombre: uno que lo
+importara se saltaría el doble. Lo vigila `billing/tests/test_guardrails.py`.
 
 **Modo explícito** (`STRIPE_EXPECTED_MODE`, PLAN-SAAS ronda 2026-11-09b): obligatorio sin `DEBUG`;
 en local por defecto `test`, en prod `live` y en pre `test`. Ni `DEBUG` ni la etiqueta
