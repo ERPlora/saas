@@ -130,16 +130,6 @@
     ]
   },
   {
-    "path": "base/assistant.py",
-    "file_name": "assistant.py",
-    "functions": [
-      {
-        "name": "gateway_frames",
-        "complexity": 19
-      }
-    ]
-  },
-  {
     "path": "base/listener.py",
     "file_name": "listener.py",
     "functions": [
