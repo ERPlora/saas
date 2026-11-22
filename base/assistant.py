@@ -47,6 +47,7 @@ from assistant import queries as gateway_queries
 from assistant import turn as gateway
 from assistant.schemas import Caller
 from base import navigation
+from base.assistant_frames import ALLOWANCE, GatewayAnswer
 from base.operations import ACCOUNT_ROLE
 from base.surface import sells_nothing
 
@@ -309,7 +310,7 @@ def refusal(refused: gateway.Refused) -> dict:
         return {
             "type": "error",
             "code": refused.code,
-            **{key: refused.extra.get(key) for key in ("used", "limit", "resets_at", "demo")},
+            **{key: refused.extra.get(key) for key in ALLOWANCE},
         }
     if refused.status == 429:
         return {"type": "error", "code": "assistant.rate_limited", "retry_after": int(refused.retry_after or 60)}
@@ -318,35 +319,27 @@ def refusal(refused: gateway.Refused) -> dict:
     return {"type": "error", "code": "assistant.unavailable", "retriable": True}
 
 
-def _assistant_message(text: str, calls: list[dict]) -> dict:
-    message: dict[str, Any] = {"role": "assistant", "content": text}
-    if calls:
-        message["tool_calls"] = [
-            {
-                "id": call["call_id"],
-                "type": "function",
-                "function": {"name": call["name"], "arguments": call["arguments"]},
-            }
-            for call in calls
-        ]
-    return message
-
-
-async def gateway_frames(request: HttpRequest, caller: Caller, plan: dict) -> AsyncIterator[dict]:  # noqa: C901
-    """A turn through the gateway, as the panel's frames: ``text`` piece by piece, ``usage``, an ``error``, and
-    ``done`` with what the browser keeps (``append``), the tools the model asked for (``pending``), their
-    ``continuation`` and whether the answer brought pages from the web (``web``: the browser sends it back with a report
-    of the answer, whose text is then not mailed). One turn of the account's budget (the Hub's door's,
-    ``ASSISTANT_TURN_RATELIMIT``) and, unless it answers the tools the model asked for, one message of its allowance. A refusal is a lone ``error``."""
+async def started_turn(request: HttpRequest, caller: Caller, plan: dict) -> gateway.Turn:
+    """The turn of ``plan`` started through the gateway, once one turn of the account's budget (the Hub's door's,
+    ``ASSISTANT_TURN_RATELIMIT``) is spent; ``gateway.Refused`` when the gateway does not take it."""
     data = SimpleNamespace(
         messages=plan["messages"],
         instructions=plan["instructions"],
         tools=plan["tools"],
         continuation=plan["continuation"],
     )
+    await sync_to_async(gateway.spend)(request, "turn", settings.ASSISTANT_TURN_RATELIMIT, caller)
+    return await gateway.start(caller, data, answer_kept=False)
+
+
+async def gateway_frames(request: HttpRequest, caller: Caller, plan: dict) -> AsyncIterator[dict]:
+    """A turn through the gateway, as the panel's frames: ``text`` piece by piece, ``usage``, an ``error``, and
+    ``done`` with what the browser keeps (``append``), the tools the model asked for (``pending``), their
+    ``continuation`` and whether the answer brought pages from the web (``web``: the browser sends it back with a report
+    of the answer, whose text is then not mailed). One turn of the account's budget and, unless it answers the tools
+    the model asked for, one message of its allowance. A refusal is a lone ``error``."""
     try:
-        await sync_to_async(gateway.spend)(request, "turn", settings.ASSISTANT_TURN_RATELIMIT, caller)
-        started = await gateway.start(caller, data, answer_kept=False)
+        started = await started_turn(request, caller, plan)
     except gateway.Refused as refused:
         yield refusal(refused)
         return
@@ -354,47 +347,13 @@ async def gateway_frames(request: HttpRequest, caller: Caller, plan: dict) -> As
         logger.exception("base.assistant.turn_not_started")
         yield {"type": "error", "code": "assistant.unavailable", "retriable": True}
         return
-    text: list[str] = []
-    calls: list[dict] = []
-    token: str | None = None
-    finished = failed = web = False
+    answer = GatewayAnswer()
     async with aclosing(gateway.frames(started)) as framed:
         async for frame in framed:
-            if frame == "[DONE]":
-                finished = True
-                continue
-            kind = frame.get("type")
-            if kind == "text_delta" and frame.get("text"):
-                text.append(str(frame["text"]))
-                yield {"type": "text", "text": str(frame["text"])}
-            elif kind == "function_call":
-                calls.append(
-                    {
-                        "call_id": str(frame.get("call_id")),
-                        "name": str(frame.get("name")),
-                        "arguments": str(frame.get("arguments") or "{}"),
-                    }
-                )
-            elif kind == "response":
-                token = frame.get("continuation") or None
-            elif kind == "web":
-                web = True
-            elif kind == "usage":
-                yield {"type": "usage", **{key: frame.get(key) for key in ("used", "limit", "resets_at", "demo")}}
-            elif kind == "error":
-                failed = True
-                yield {"type": "error", "code": "assistant.provider_failed", "retriable": bool(frame.get("retriable"))}
-    said = "".join(text)
-    if failed or not finished:
-        yield {
-            "type": "done",
-            "append": [_assistant_message(said, [])] if said else [],
-            "pending": [],
-            "continuation": None,
-            "web": web,
-        }
-        return
-    yield {"type": "done", "append": [_assistant_message(said, calls)], "pending": calls, "continuation": token, "web": web}
+            shown = answer.read(frame)
+            if shown is not None:
+                yield shown
+    yield answer.done()
 
 
 async def turn_frames(request: HttpRequest, caller: Caller, plan: dict) -> AsyncIterator[bytes]:
