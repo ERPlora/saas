@@ -414,7 +414,7 @@ decir ese texto).
   `AnnualSwitchDialog` (total con IVA). «Bajar a Gratis» = `billing.plan.cancel` con confirmación; «Mantener»
   (`billing.plan.keep`, `billing.module.keep`, sin cobro hoy). Con una factura sin pagar, nada que cobre en ese
   negocio. Código promocional: `billing.promo.check`.
-- «Cancelar el módulo» (`ModuleCard` lo emite, `StoreShop` lo confirma con un `ConfirmDialog`
+- «Cancelar el módulo» (`ModuleCard` lo emite, `CancelModuleDialog` lo confirma con un `ConfirmDialog`
   `store-cancel-module`: hasta cuándo funciona, que no se borra nada y que se deshace con «Mantener») →
   `billing.module.cancel`; un rechazo se queda en el diálogo con su motivo. Solo para un módulo comprado
   (`source=purchase`), nunca para uno que trae el plan.

@@ -1,9 +1,7 @@
 // «Cancel plan» of a row of Subscriptions: the confirmation speaks of THAT business and its own dates; confirmed,
 // `billing.plan.cancel` and a toast that says until when.
 // clock: data only — no code under test compares these dates with now.
-import { ConfirmDialog } from '@erplora/ui/components';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Component } from 'vue';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
@@ -15,6 +13,7 @@ import { toastSuccess } from '@erplora/ui/shell';
 
 import { subscriptionRow, unpaidRow } from '../__tests__/billing-fixtures';
 import { FREE } from '../__tests__/fixtures';
+import { confirmDialogOf } from '../__tests__/confirm-dialog';
 import { apiError, describeCall, flush, mountBilling } from '../__tests__/mount-billing';
 import CancelPlanDialog from './CancelPlanDialog.vue';
 
@@ -43,8 +42,7 @@ async function setup(props: Record<string, unknown> = {}, api: (call: ReturnType
     api: (call) => api(describeCall(call)),
   });
   await flush();
-  const dialog = () => s.wrapper.findComponent(ConfirmDialog as unknown as Component);
-  const dialogProp = (name: string) => (dialog().props() as Record<string, unknown>)[name];
+  const { dialog, dialogProp } = confirmDialogOf(s.wrapper);
   const lines = () => (dialogProp('consequences') as Array<{ text: string }>).map((line) => line.text);
   return { ...s, dialog, dialogProp, lines };
 }
