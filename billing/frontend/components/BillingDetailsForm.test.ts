@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { h, ref } from 'vue';
 
 import { ionProps, mountBilling, optionValue } from '../__tests__/mount-billing';
-import BillingDetailsForm, { SOLD_TO_COUNTRIES, type BillingDetailsDraft } from './BillingDetailsForm.vue';
+import BillingDetailsForm, { draftFromProfile, emptyDraft, SOLD_TO_COUNTRIES, type BillingDetailsDraft } from './BillingDetailsForm.vue';
 
 const BILLING = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -90,6 +90,14 @@ describe('BillingDetailsForm', () => {
     expect(s.field('name').exists()).toBe(false);
     expect(s.field('country').exists()).toBe(false);
     expect(s.field('postal-code').exists()).toBe(true);
+  });
+
+  it('a payer on file becomes the draft the form edits, without the business it belongs to; a new one starts blank', () => {
+    const payer = { hub_id: 'cafe', paid_by_another_account: true, billing_name: 'Café Central SL', tax_id: 'ESB12345678', billing_address: 'Calle Mayor 1', billing_city: 'Madrid', billing_postal_code: '28001', billing_country: 'ES', billing_email: 'gestoria@example.com', same_as_business: true };
+    const { hub_id: _business, paid_by_another_account: _paidBy, ...draft } = payer;
+    expect(draftFromProfile(payer)).toStrictEqual(draft);
+    expect(Object.keys(draftFromProfile(payer))).toEqual(Object.keys(EMPTY));
+    expect(emptyDraft()).toStrictEqual(EMPTY);
   });
 
   it('puts the server’s message under its field', async () => {
