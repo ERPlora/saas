@@ -5,12 +5,13 @@
 // last use; per row what the server says it allows (`can`): «Open» (not while suspended or deleted),
 // «Manage» and «Recover». «Delete» is not on the row: it lives in the business's Settings.
 // Above the table, what waits for an answer: invitations and ownership offers (`InvitationsAndOffers`; an unpaid
-// invoice is said by the shell's bell, not here). «Create business» opens its dialog (`BusinessCreateModal`);
-// meanwhile the list shows the new business «Preparing». Empty, the table holds the sign-up form itself, and a
-// business created there is followed by the same dialog. Live data: `hubs.business.list`. Ionic reuses the
-// page: `?create=1` (the launcher's «Create another business») is read each time it comes on screen. The list
-// fills the page between the topbar and the footer (`detail-fill` + `.panel-fill`), and asks for rows per page
-// only when there are more businesses than the shortest page. Its states are truthful (`useLiveState`): the
+// invoice is said by the shell's bell, not here). «Create business» opens its dialog (`BusinessCreateModal`); the
+// page follows the new business with its own `hubs.business.get` (the list may not show it: a search, another
+// page) and hands it to the dialog, while the list shows it «Preparing». Empty, the table holds the sign-up form
+// itself, and a business created there is followed by the same dialog. Live data: `hubs.business.list`. Ionic
+// reuses the page: `?create=1` (the launcher's «Create another business») is read each time it comes on screen.
+// The list fills the page between the topbar and the footer (`detail-fill` + `.panel-fill`), and asks for rows per
+// page only when there are more businesses than the shortest page. Its states are truthful (`useLiveState`): the
 // stream down or no answer in time is an error with «Retry», never «Create your first business».
 import {
   DataTable,
@@ -23,15 +24,24 @@ import {
   StatusPill,
 } from '@erplora/ui/components';
 import { AppPage, HubIcon, toastError, toastSuccess, useSurface } from '@erplora/ui/shell';
-import { useCommand, useLive } from '@erplora/ui/sdk';
+import { useCommand, useLive, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, onIonViewWillEnter } from '@ionic/vue';
-import { computed, onMounted, shallowRef, useTemplateRef, watch } from 'vue';
+import {
+  computed,
+  effectScope,
+  type EffectScope,
+  onMounted,
+  onScopeDispose,
+  type Ref,
+  shallowRef,
+  watch,
+} from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import { BUSINESSES } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
-import type { BusinessRowOut, InvitationOut, OwnershipOfferOut } from '../../../frontend/sdk-types/hubs';
+import type { BusinessDetailOut, BusinessRowOut, InvitationOut, OwnershipOfferOut } from '../../../frontend/sdk-types/hubs';
 import { opensAtAll, reasonDate, reasonKey, statusPill } from '../business-status';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
 import BusinessCreateModal from '../components/BusinessCreateModal.vue';
@@ -47,6 +57,7 @@ const CARD_BREAKPOINT = 900;
 
 const { t, locale } = useI18n();
 const router = useRouter();
+const client = useLiveClient();
 const { text } = useErrorText();
 const { inApp } = useSurface();
 const { open, opening } = useOpenBusiness();
@@ -194,13 +205,41 @@ function askDecline(invitation: InvitationOut): void {
 }
 
 // ── «Create business» ─────────────────────────────────────────────────────────────────────────
-const createModal = useTemplateRef<InstanceType<typeof BusinessCreateModal>>('createModal');
+const createOpen = shallowRef(false);
+const created = shallowRef<{ id: string; name: string; host: string; typeName: string | null } | null>(null);
+
+// The new business is followed on its own (`hubs.business.get`): the list may not show it (a search,
+// another page). A scope per business, stopped when the dialog lets it go.
+let following: EffectScope | null = null;
+const followed = shallowRef<{ data: Readonly<Ref<BusinessDetailOut | undefined>> } | null>(null);
+watch(created, (now) => {
+  following?.stop();
+  following = null;
+  followed.value = null;
+  if (!now) return;
+  following = effectScope();
+  followed.value = following.run(() => ({ data: useLive('hubs.business.get', { id: now.id }, { client }).data })) ?? null;
+});
+onScopeDispose(() => following?.stop());
+const createdNow = computed(() => followed.value?.data.value);
+
+function startCreate(): void {
+  created.value = null;
+  createOpen.value = true;
+}
+function onCreated(business: { id: string; name: string; host: string }, extra: { typeName: string | null }): void {
+  created.value = { id: business.id, name: business.name, host: business.host, typeName: extra.typeName };
+  createOpen.value = true;
+}
+watch(createOpen, (isOpen) => {
+  if (!isOpen) created.value = null;
+});
 
 /** Each time the page comes on screen: the launcher's «Create another business» (`?create=1`). */
 function entered(): void {
   const current = router.currentRoute.value;
   if (current.query.create !== '1') return;
-  createModal.value?.startCreate();
+  startCreate();
   void router.replace({ path: current.path });
 }
 onMounted(entered);
@@ -263,7 +302,7 @@ onIonViewWillEnter(entered);
         @page-change="goToPage"
         @load-more="windowPages += 1"
         @page-size-change="setPageSize"
-        @add="createModal?.startCreate()"
+        @add="startCreate"
         @action="onAction"
         @retry="state.retry()"
       >
@@ -358,7 +397,7 @@ onIonViewWillEnter(entered);
               :message="$t('hubs.list.empty.message')"
             />
             <div class="empty-create__form">
-              <BusinessCreateForm @created="(business, extra) => createModal?.onCreated(business, extra)" />
+              <BusinessCreateForm @created="onCreated" />
               <p class="empty-create__foot">
                 {{ $t('hubs.list.empty.invited') }}
               </p>
@@ -369,9 +408,12 @@ onIonViewWillEnter(entered);
     </div>
 
     <BusinessCreateModal
-      ref="createModal"
+      v-model:open="createOpen"
+      :created="created"
+      :created-now="createdNow"
       :free-business="live.data.value?.free_business ?? null"
       :opening="opening"
+      @created="onCreated"
       @open="open"
     />
 

@@ -1,25 +1,13 @@
 <script setup lang="ts">
 // «Create business», the dialog of the businesses page: the form, then the
-// preparation, then «ready» or why not, following the new business with its own `hubs.business.get`
-// (the list may not show it: a search, another page). With the account's Free business filling its quota, the
-// dialog says so instead of the form, naming it, and offers to change its plan. The page opens it to create a
-// business (`startCreate`) or to follow one it has just created elsewhere (`onCreated`), and opens the business
-// it hands back (`open`).
+// preparation, then «ready» or why not. With the account's Free business filling its quota, the dialog says so
+// instead of the form, naming it, and offers to change its plan. The page holds what it shows: whether it is open,
+// the business it follows (`created`) and that business as its own `hubs.business.get` says it is now
+// (`createdNow`); the dialog hands back a business its form created (`created`) and the one to open (`open`).
 import { FormModal, InlineFeedback } from '@erplora/ui/components';
 import { HubIcon, WebOnly } from '@erplora/ui/shell';
-import { useLive, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton } from '@ionic/vue';
-import {
-  computed,
-  effectScope,
-  type EffectScope,
-  nextTick,
-  onScopeDispose,
-  type Ref,
-  shallowRef,
-  useTemplateRef,
-  watch,
-} from 'vue';
+import { computed, nextTick, shallowRef, toRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
@@ -30,41 +18,34 @@ import BusinessCreateForm from './BusinessCreateForm.vue';
 import BusinessPreparing from './BusinessPreparing.vue';
 
 const props = defineProps<{
+  /** The business just created, followed until it is ready; `null` shows the form. */
+  created: { id: string; name: string; host: string; typeName: string | null } | null;
+  /** That business as `hubs.business.get` says it is now; `undefined` until it answers. */
+  createdNow: BusinessDetailOut | undefined;
   /** The account's Free business when its Free ones fill the quota: a new business would be Free, so
    *  the dialog says so instead of a form that would be refused. */
   freeBusiness: HubRefOut | null;
   /** The business the page is opening (its id): «Open business» waits for it. */
   opening: string | null;
 }>();
-const emit = defineEmits<{ open: [business: BusinessDetailOut] }>();
+const createOpen = defineModel<boolean>('open', { required: true });
+const emit = defineEmits<{
+  created: [business: { id: string; name: string; host: string }, extra: { typeName: string | null }];
+  open: [business: BusinessDetailOut];
+}>();
 
 const { t } = useI18n();
 const router = useRouter();
-const client = useLiveClient();
+const created = toRef(() => props.created);
+const createdNow = toRef(() => props.createdNow);
+const freeBusiness = toRef(() => props.freeBusiness);
 
-const createOpen = shallowRef(false);
 const creating = shallowRef(false);
 const createForm = useTemplateRef<InstanceType<typeof BusinessCreateForm>>('createForm');
-const created = shallowRef<{ id: string; name: string; host: string; typeName: string | null } | null>(null);
-
-// The new business is followed on its own (`hubs.business.get`): the list may not show it (a search,
-// another page). A scope per business, stopped when the dialog lets it go.
-let following: EffectScope | null = null;
-const followed = shallowRef<{ data: Readonly<Ref<BusinessDetailOut | undefined>> } | null>(null);
-watch(created, (now) => {
-  following?.stop();
-  following = null;
-  followed.value = null;
-  if (!now) return;
-  following = effectScope();
-  followed.value = following.run(() => ({ data: useLive('hubs.business.get', { id: now.id }, { client }).data })) ?? null;
-});
-onScopeDispose(() => following?.stop());
-const createdNow = computed(() => followed.value?.data.value);
 /** The sentence over its preparation: none during a platform pause (`BusinessPreparing` says the pause). */
 const preparingLead = computed(() => preparingLeadKey(createdNow.value?.maintenance));
 
-const limited = computed(() => !created.value && !!props.freeBusiness);
+const limited = computed(() => !created.value && !!freeBusiness.value);
 
 function changeFreePlan(id: string): void {
   createOpen.value = false;
@@ -96,22 +77,9 @@ const createTitle = computed(() => {
   }[phase.value];
 });
 
-function startCreate(): void {
-  created.value = null;
-  createOpen.value = true;
-}
-function onCreated(business: { id: string; name: string; host: string }, extra: { typeName: string | null }): void {
-  created.value = { id: business.id, name: business.name, host: business.host, typeName: extra.typeName };
-  createOpen.value = true;
-}
 function closeCreate(): void {
   createOpen.value = false;
 }
-watch(createOpen, (isOpen) => {
-  if (!isOpen) created.value = null;
-});
-
-defineExpose({ startCreate, onCreated });
 </script>
 
 <template>
@@ -151,7 +119,7 @@ defineExpose({ startCreate, onCreated });
         ref="createForm"
         :submit-button="false"
         @update:pending="creating = $event"
-        @created="onCreated"
+        @created="(business, extra) => emit('created', business, extra)"
       />
       <p class="create-foot">
         {{ $t('hubs.create.foot') }}

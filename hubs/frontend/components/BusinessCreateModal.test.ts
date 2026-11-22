@@ -1,8 +1,9 @@
-// «Create business», the dialog of the businesses page, on its own: the two ways the page opens it (to create a
-// business, or to follow one the page has just created), what the page hands it (the account's Free business
-// filling its quota, the business being opened) and what it hands back (the business to open).
+// «Create business», the dialog of the businesses page, on its own: what the page hands it (whether it is open, the
+// business it follows and that business as `hubs.business.get` says it is now, the account's Free business filling
+// its quota, the business being opened) and what it hands back (open or closed, the business its own form created,
+// the business to open).
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { h, ref } from 'vue';
+import { h, reactive } from 'vue';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
@@ -10,48 +11,52 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
 }));
 vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/module-mocks')).shellWithToastSpies(original));
 
-import { flush, ionProps, mountHubs } from '../__tests__/mount-hubs';
+import { describeCall, flush, ionProps, mountHubs } from '../__tests__/mount-hubs';
 import BusinessCreateModal from './BusinessCreateModal.vue';
 
 const DULCE = { id: 'dulce', name: 'Pastelería Dulce', host: 'dulce.localhost:8000' };
+const FOLLOWED = { ...DULCE, typeName: null };
 const READY = { ...DULCE, status: 'active', hub_error: null, can: { open: true } };
 
 afterEach(() => {
   document.body.innerHTML = '';
 });
 
-async function setup(start: { freeBusiness?: unknown; opening?: string | null } = {}) {
-  const freeBusiness = ref(start.freeBusiness ?? null);
-  const opening = ref<string | null>(start.opening ?? null);
-  const opened = vi.fn();
-  const modal = ref<InstanceType<typeof BusinessCreateModal> | null>(null);
+async function setup(start: Record<string, unknown> = {}) {
+  const props = reactive<Record<string, unknown>>({ open: false, created: null, createdNow: undefined, freeBusiness: null, opening: null, ...start });
+  const handed = { open: vi.fn(), created: vi.fn(), closed: vi.fn() };
   const Host = {
     render: () =>
       h(BusinessCreateModal, {
-        ref: modal,
-        freeBusiness: freeBusiness.value as never,
-        opening: opening.value,
-        onOpen: opened,
-      }),
+        ...props,
+        'onUpdate:open': (value: boolean) => {
+          props.open = value;
+          if (!value) handed.closed();
+        },
+        onCreated: handed.created,
+        onOpen: handed.open,
+      } as never),
   };
-  const m = await mountHubs(Host, { path: '/dashboard/businesses', api: () => Response.json({ business_types: [] }) });
+  const m = await mountHubs(Host, {
+    path: '/dashboard/businesses',
+    api: (call) => {
+      const c = describeCall(call);
+      if (c.path === '/api/hubs/businesses' && c.method === 'POST') return Response.json({ ...DULCE, status: 'preparing' });
+      return Response.json({ business_types: [] });
+    },
+  });
+  await flush();
   const q = (id: string) => document.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
   const shown = () => q('create-modal')?.querySelector('.ion-delegate-host') !== null;
   const title = () => q('create-modal')?.querySelector('ion-title')?.textContent;
-  /** The page hands over a business just created: the dialog follows it until `hubs.business.get` says it is ready. */
-  async function followReady(): Promise<void> {
-    modal.value!.onCreated(DULCE, { typeName: null });
-    await flush();
-    await m.result(await m.live(), 'hubs.business.get', READY);
-  }
-  return { ...m, modal, opening, opened, q, shown, title, followReady };
+  return { ...m, props, handed, q, shown, title };
 }
 
 describe('BusinessCreateModal', () => {
-  it('stays closed until the page starts a business, then shows the form', async () => {
+  it('stays closed until the page opens it, then shows the form', async () => {
     const s = await setup();
     expect(s.shown()).toBe(false);
-    s.modal.value!.startCreate();
+    s.props.open = true;
     await flush();
     expect(s.shown()).toBe(true);
     expect(s.q('create-modal')?.getAttribute('aria-label')).toBe('Create business');
@@ -59,35 +64,50 @@ describe('BusinessCreateModal', () => {
   });
 
   it('with the account’s Free business filling its quota, says so instead of the form', async () => {
-    const s = await setup({ freeBusiness: { id: 'cafe', slug: 'cafe', name: 'Café Central' } });
-    s.modal.value!.startCreate();
-    await flush();
+    const s = await setup({ open: true, freeBusiness: { id: 'cafe', slug: 'cafe', name: 'Café Central' } });
     // (booleans: a failing match on an element prints the whole Ionic DOM)
     expect(s.q('create-name') === null).toBe(true);
     expect(s.q('create-free-limit')?.textContent).toContain('You already have a free business');
   });
 
-  it('follows a business the page has just created, and hands it back to the page to open it', async () => {
-    const s = await setup();
-    s.modal.value!.onCreated(DULCE, { typeName: null });
+  it('hands the page the business its own form created', async () => {
+    const s = await setup({ open: true });
+    const name = s.q('create-name') as HTMLElement & { value?: string };
+    name.value = DULCE.name;
+    name.dispatchEvent(new CustomEvent('ionInput', { detail: { value: DULCE.name } }));
     await flush();
-    expect(s.shown()).toBe(true);
+    s.q('create-modal-submit')!.click();
+    await flush();
+    expect(s.handed.created).toHaveBeenCalledTimes(1);
+    expect(s.handed.created.mock.calls[0][0]).toMatchObject(DULCE);
+    expect(s.handed.created.mock.calls[0][1]).toEqual({ typeName: null });
+  });
+
+  it('follows the business the page hands it, «Preparing» then «ready», and hands it back to open it', async () => {
+    const s = await setup({ open: true, created: FOLLOWED });
     expect(s.title()).toContain('Preparing Pastelería Dulce');
-    await s.result(await s.live(), 'hubs.business.get', READY);
-    expect(s.client.stream.subscriptions('hubs.business.get').map((sub) => sub.params)).toEqual([{ id: 'dulce' }]);
+    s.props.createdNow = READY;
+    await flush();
     expect(s.title()).toContain('Your business is ready');
     s.q('create-modal-open')!.click();
     await flush();
-    expect(s.opened.mock.calls).toEqual([[READY]]);
+    expect(s.handed.open.mock.calls).toEqual([[READY]]);
     expect(s.calls().some((c) => c.path === '/api/hubs/businesses/open')).toBe(false);
   });
 
   it('«Open business» is off while the page is opening a business', async () => {
-    const s = await setup({ opening: 'bakery' });
-    await s.followReady();
+    const s = await setup({ open: true, created: FOLLOWED, createdNow: READY, opening: 'bakery' });
     expect(ionProps({ element: s.q('create-modal-open')! }, 'disabled')).toEqual({ disabled: true });
-    s.opening.value = null;
+    s.props.opening = null;
     await flush();
     expect(ionProps({ element: s.q('create-modal-open')! }, 'disabled')).toEqual({ disabled: false });
+  });
+
+  it('closing it from a step tells the page it is closed', async () => {
+    const s = await setup({ open: true, created: FOLLOWED });
+    s.q('create-modal-close-list')!.click();
+    await flush();
+    expect(s.handed.closed).toHaveBeenCalledTimes(1);
+    expect(s.shown()).toBe(false);
   });
 });
