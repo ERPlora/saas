@@ -20,9 +20,9 @@ from datetime import datetime, timedelta
 
 import pytest
 from django.test import Client
-from django.utils import timezone
+from django.utils import timezone, translation
+from django.utils.formats import date_format
 
-from billing import emails
 from billing.models import PaymentFailure
 from billing.services.live_subscriptions import unpaid_state
 from billing.tests.conftest import pay
@@ -42,6 +42,7 @@ from billing.tests.stripe_double import (
 )
 from hubs.queries import businesses, hub_sync
 from hubs.models import Hub, Subscription
+from hubs.models.subscriptions import grace_end
 from hubs.schemas.businesses import BusinessListIn
 from hubs.tests.conftest import ctx_for
 
@@ -79,6 +80,7 @@ def failed(
     decline="generic_decline",
     method="pm_old",
     invoice_id="in_1",
+    amount_due=3629,
 ):
     stripe_double.answer("subscriptions.retrieve", subscription(status=live))
     stripe_double.answer(
@@ -90,7 +92,7 @@ def failed(
         payment_intent("pi_1", code=code, decline_code=decline, payment_method=method),
     )
     return deliver(
-        event("invoice.payment_failed", invoice(invoice_id, created=days_ago(days)))
+        event("invoice.payment_failed", invoice(invoice_id, created=days_ago(days), amount_due=amount_due))
     )
 
 
@@ -477,16 +479,48 @@ class TestThePayerIsTold:
         assert f"https://erplora.com/dashboard/billing/invoices?business={running.id}" in message.body
         assert PaymentFailure.objects.get().notified_at is not None
 
-    def test_the_mail_says_the_deadline_the_hub_gets(self, running, told, stripe_double, monkeypatch):
-        deadlines = []
-        send = emails.send_payment_failed
-        monkeypatch.setattr(
-            emails, "send_payment_failed", lambda *args, **kw: deadlines.append(kw["suspends_on"]) or send(*args, **kw)
-        )
-
+    def test_the_mail_says_the_deadline_the_hub_gets(self, running, told, stripe_double, mailoutbox):
         told(stripe_double, days=3)
 
-        assert deadlines == [datetime.fromisoformat(hub_sync.hub_snapshot(running.id)["suspends_on"])]
+        deadline = datetime.fromisoformat(hub_sync.hub_snapshot(running.id)["suspends_on"])
+        with translation.override("es"):
+            said = f"sigue funcionando hasta el {date_format(deadline, 'DATE_FORMAT')}."
+        assert said in mailoutbox[0].body
+
+    def test_each_unpaid_invoice_is_told_with_its_own_amount_card_and_deadline(
+        self, running, told, stripe_double, mailoutbox, monkeypatch, django_capture_on_commit_callbacks
+    ):
+        """Two invoices owed at once (their mails could not leave, so the sweep tells both): each mail is about its
+        own invoice, with its amount, the declined card only where the bank declined it, and the day the business
+        is suspended unless that invoice is paid."""
+        from billing.services import unpaid_sweep
+
+        def down(*args, **kwargs):
+            raise OSError("smtp down")
+
+        with monkeypatch.context() as patched:
+            patched.setattr("django.core.mail.EmailMessage.send", down)
+            told(stripe_double, days=3)
+            told(stripe_double, days=1, invoice_id="in_2", code="processing_error", decline="", amount_due=2999)
+        stripe_double.answer("invoices.list", listing([]))
+        with django_capture_on_commit_callbacks(execute=True):
+            unpaid_sweep.sweep_unpaid()
+
+        with translation.override("es"):
+            first, second = (
+                f"Panadería López sigue funcionando hasta el {date_format(grace_end(failure.invoice_created_at), 'DATE_FORMAT')}. "
+                "Si la factura no se paga antes, se suspende. No se borra nada."
+                for failure in PaymentFailure.objects.order_by("invoice_created_at")
+            )
+        assert [message.body.splitlines()[:3] for message in mailoutbox] == [
+            [
+                "No hemos podido cobrar 36,29 € del plan de Panadería López.",
+                "El banco rechazó tu tarjeta, así que no volveremos a intentar el cobro con ella: cámbiala y paga tú "
+                "la factura.",
+                first,
+            ],
+            ["No hemos podido cobrar 29,99 € del plan de Panadería López.", second, ""],
+        ]
 
     def test_another_failed_attempt_of_the_same_invoice_tells_nothing_more(self, running, told, stripe_double):
         told(stripe_double, days=3)
