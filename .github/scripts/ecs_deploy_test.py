@@ -4,9 +4,8 @@
 
 The deploy runs as the workflow runs it, in a git checkout of its own whose commit abc123 (a tag) carries the
 repository's deploy/app-env.json, with a fake aws CLI first on the PATH that records every call and answers from
-fixtures. Inside the deploy's process time.sleep only records the pause, so no test waits for real, and gives up after
-500 of them, so a loop that never times out fails its test instead of hanging. The settings of deploy/app-env.json are
-tested in ecs_deploy_settings_test.py. Only the standard library.
+fixtures. Inside the deploy's process time.sleep only records the pause (ecs_common_test.BOOT). The settings of
+deploy/app-env.json are tested in ecs_deploy_settings_test.py. Only the standard library.
 """
 
 from __future__ import annotations
@@ -21,6 +20,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from ecs_common_test import ScriptCase
+
 SCRIPT = Path(__file__).resolve().with_name("ecs_deploy.py")
 REPO = Path(__file__).resolve().parents[2]
 # Terraform gives every task of the saas image these four (ERPlora/aws stacks/prod/apps.tf).
@@ -29,20 +30,6 @@ SAAS_IMAGE = re.compile(r"/erplora/saas(-pre)?:")
 CLUSTER_SCOPED = re.compile(r"^ecs (describe-services|update-service|run-task|describe-tasks|wait services-stable) ")
 NOT_INHERITED = ("CLUSTER", "PROJECT", "POLL_SECONDS", "MIGRATE_TIMEOUT_SECONDS", "ROLLOUT_TIMEOUT_SECONDS",
                  "CONFIRM_PROTECTED", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN")
-
-BOOT = """\
-import os, runpy, sys, time
-
-def sleep(seconds):
-    with open(os.environ["SLEEP_LOG"], "a", encoding="utf-8") as log:
-        log.write(f"{seconds}\\n")
-    with open(os.environ["SLEEP_LOG"], encoding="utf-8") as log:
-        if len(log.readlines()) > 500:
-            sys.exit("fake sleep: more than 500 pauses")
-
-time.sleep = sleep
-runpy.run_path(sys.argv[1], run_name="__main__")
-"""
 
 # Imports only what each answer needs: the fake answers every aws call of every test, and Python starts slowly.
 FAKE_AWS = r'''
@@ -220,9 +207,11 @@ def one(name: str, image: str, **more) -> list:
     return [{"name": name, "image": f"reg.example/erplora/{image}", **more}]
 
 
-class DeployCase(unittest.TestCase):
+class DeployCase(ScriptCase):
     """A fresh fake AWS and checkout for each test: prod and pre each with their families on their own image, the
     Hub's families (which file in the AEAT's production) beside prod's, and the settings in force equal to the file."""
+
+    cluster_scoped = CLUSTER_SCOPED
 
     def setUp(self):
         self.work = Path(tempfile.mkdtemp())
@@ -296,31 +285,7 @@ class DeployCase(unittest.TestCase):
             (self.work / log).write_text("")
         for counter in self.work.glob("polls.*"):
             counter.unlink()
-        done = subprocess.run([sys.executable, "-c", BOOT, str(SCRIPT)], cwd=self.repo, env=self.environ(unset, env),
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE if apart else subprocess.STDOUT,
-                              timeout=120, check=False)
-        self.stdout, self.stderr = done.stdout, done.stderr
-        self.out = done.stdout.decode("utf-8", "replace")
-        self.status = done.returncode
-        return done.returncode
-
-    def calls(self) -> list[str]:
-        return (self.work / "calls.log").read_text(errors="replace").splitlines()
-
-    def lines(self, pattern: str) -> list[int]:
-        return [n for n, call in enumerate(self.calls(), 1) if re.search(pattern, call)]
-
-    def line_of(self, pattern: str) -> int:
-        return self.lines(pattern)[0]
-
-    def last_line_of(self, pattern: str) -> int:
-        return self.lines(pattern)[-1]
-
-    def called(self, pattern: str) -> bool:
-        return bool(self.lines(pattern))
-
-    def pauses(self) -> list[str]:
-        return (self.work / "sleep.log").read_text().split()
+        return self.execute(SCRIPT, self.repo, self.environ(unset, env), apart)
 
     def registered(self) -> dict:
         lines = (self.work / "registered.log").read_text().splitlines()
@@ -330,22 +295,10 @@ class DeployCase(unittest.TestCase):
         containers = self.registered()[family]["containerDefinitions"]
         return [c["image"] for c in containers if name is None or c["name"] == name]
 
-    def cluster_is(self, cluster: str) -> bool:
-        """There are cluster-scoped ecs calls, and every call that names a cluster names <cluster>."""
-        named = [call for call in self.calls() if "--cluster" in call]
-        return any(CLUSTER_SCOPED.search(call) for call in self.calls()) and all(
-            f"--cluster {cluster} " in call for call in named)
-
     def assertNothingRegistered(self):
         self.assertNotEqual(0, self.status)
         self.assertEqual({}, self.registered())
         self.assertFalse(self.called("register-task-definition|run-task|update-service|put-parameter"))
-
-    def assertFailsBeforeAnyCall(self, *names: str):
-        self.assertNotEqual(0, self.status)
-        self.assertEqual([], self.calls())
-        for name in names:
-            self.assertIn(name, self.out)
 
 
 class SucceedingDeployTest(DeployCase):

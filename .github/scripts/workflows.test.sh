@@ -72,8 +72,8 @@ check("a rollback may confirm the protected settings it changes, empty by defaul
       rollback_confirm.get("type") == "string" and rollback_confirm.get("required") is False
       and rollback_confirm.get("default") == "")
 ecs_rollback_env = next((step.get("env") or {} for step in steps((rollback.get("jobs") or {}).get("rollback") or {})
-                         if "ecs-rollback.sh" in str(step.get("run", ""))), {})
-check("ecs-rollback.sh gets that confirmation as CONFIRM_PROTECTED",
+                         if step.get("run") == "python3 .github/scripts/ecs_rollback.py"), {})
+check("the runner's python3 runs ecs_rollback.py, which gets that confirmation as CONFIRM_PROTECTED",
       ecs_rollback_env.get("CONFIRM_PROTECTED") == "${{ inputs.confirm_protected }}")
 
 # --- deploy.yml: the environment first, then tests and image build side by side -----------------

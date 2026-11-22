@@ -3,7 +3,7 @@ name: rollback
 # Manual: puts the saas services of the branch's environment (main -> prod: saas and saas-worker;
 # pre -> pre: saas-pre and saas-worker-pre; saas-worker once ERPlora/aws creates it) back on the
 # ACTIVE revision right before the one each runs and records their settings (app_env) and
-# image tag (ecs-rollback.sh). Those settings pass the deploy's checks first: in prod, going back
+# image tag (ecs_rollback.py). Those settings pass the deploy's checks first: in prod, going back
 # to another real charge, AEAT's production or Stripe mode names each change in confirm_protected.
 # Migrations are not undone. Scheduled saas tasks (prod only) run the latest ACTIVE saas-cron
 # revision, so they keep the newer image: to go back everywhere, run deploy with the previous
@@ -49,7 +49,7 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
       CONFIRM: ${{ inputs.confirm }}
     steps:
-      # Before assuming the role; ecs-rollback.sh checks CONFIRM again.
+      # Before assuming the role; ecs_rollback.py checks CONFIRM again.
       - name: Check the confirmation and the repository variables
         run: |
           if [ "$CONFIRM" != ROLLBACK ]; then
@@ -81,4 +81,4 @@ jobs:
         env:
           ENVIRONMENT: ${{ steps.env.outputs.environment }}
           CONFIRM_PROTECTED: ${{ inputs.confirm_protected }}
-        run: bash .github/scripts/ecs-rollback.sh
+        run: python3 .github/scripts/ecs_rollback.py

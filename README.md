@@ -392,7 +392,7 @@ registrar) y, cuando los servicios corren las revisiones nuevas, escribe los aju
 Un commit anterior al fichero (una release antigua que se vuelve a desplegar) se despliega con los ajustes vigentes, y
 el despliegue lo avisa.
 
-**Volver atrás** (`rollback.yml`, `ecs-rollback.sh` con `.github/scripts/app_env_rollback.py`) pone `saas` y
+**Volver atrás** (`rollback.yml`, `ecs_rollback.py` con `.github/scripts/app_env_rollback.py`) pone `saas` y
 `saas-worker` en su revisión anterior, que corre con los ajustes con los que se registró, no con el fichero. Por eso,
 antes de mover nada, lee esos ajustes del contenedor de la app de cada revisión de destino y les pasa las mismas
 comprobaciones que el despliegue al fichero: las de `pre`, Analytics solo en la web de prod, el mismo valor de cada
@@ -437,7 +437,7 @@ anterior: `gh workflow run rollback.yml --repo ERPlora/saas --ref pre -f environ
 las releases solo se redespliegan en prod (`.github/scripts/deploy-env.sh`). prod y pre no se esperan entre
 sí: el grupo de concurrencia es por rama.
 
-**Guarda de entorno.** `ecs_deploy.py` y `ecs-rollback.sh` solo copian o restauran revisiones con la etiqueta
+**Guarda de entorno.** `ecs_deploy.py` y `ecs_rollback.py` solo copian o restauran revisiones con la etiqueta
 `Environment=<entorno>` y los roles `erplora-<entorno>-*`; si no, fallan sin registrar ni cambiar nada (el rol
 de despliegue de un entorno puede registrar revisiones en cualquier familia: `ecs:RegisterTaskDefinition` no
 admite recurso). Por eso el primer despliegue de prod con esta CI exigió antes el `apply` de `ERPlora/aws` que
