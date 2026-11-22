@@ -15,7 +15,8 @@ either. So the app signs in as native apps do (OAuth for native apps, RFC 8252, 
 
 The code may be caught on its way back (any app may claim ``erplora://``): without the secret it opens nothing. A
 link to step 4 with somebody else's code opens nothing either: the window must have started the sign-in itself
-(login CSRF). Step 2 starts Google without a tap of its own, as an authorization endpoint of OAuth does: whoever
+(login CSRF), and step 1 refuses a navigation that a page of another site started, so no such page starts it for
+the window with a challenge of its own. Step 2 starts Google without a tap of its own, as an authorization endpoint of OAuth does: whoever
 follows a link to it only ever signs in as themselves, and its code reaches nobody but the device that opened it.
 Every refusal lands on the sign-in's error page (``/login/error?code=authentication_error``).
 
@@ -51,6 +52,9 @@ APP_RETURN_URL = "erplora://signed-in"
 SESSION_KEY = "app_sign_in"
 #: An ``S256`` challenge: BASE64URL without padding of a SHA-256, 43 characters.
 _CHALLENGE = re.compile(r"[A-Za-z0-9_-]{43}")
+#: Who may send the window to step 1 (``Sec-Fetch-Site``): the app itself or a page of this site. A browser too old to
+#: say passes: it is no way in for a page elsewhere, whose browser does say.
+_OWN_NAVIGATION = ("none", "same-origin")
 #: The session the code opens names this backend: no password nor allauth's flows signed it in here.
 _BACKEND = "django.contrib.auth.backends.ModelBackend"
 
@@ -87,6 +91,8 @@ def start(request: HttpRequest) -> HttpResponse:
     challenge = _challenge(request)
     if challenge is None:
         return _refused("invalid_challenge")
+    if request.headers.get("Sec-Fetch-Site", "none") not in _OWN_NAVIGATION:
+        return _refused("foreign_start")
     next_path = request.GET.get("next", "")
     request.session[SESSION_KEY] = {"challenge": challenge, "next": hub_links.local_path(next_path) if next_path else ""}
     return _answer(_with_challenge(reverse("app_sign_in_google"), challenge))

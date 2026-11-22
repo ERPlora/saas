@@ -152,7 +152,9 @@ ningún rol tiene su permiso.
   Google vuelve a `GET /auth/app/done/?challenge=…`, que crea el código (fila de `AuthExchangeCode` con audiencia
   `app-session`, sin negocio, `EXCHANGE_CODE_TTL_SECONDS` y el SHA-256 de `challenge:código`) y abre
   `erplora://signed-in?code=…`. La ventana lo gasta con el secreto (`GET /auth/app/finish/?code=…&verifier=…`):
-  sin el secreto o desde una ventana que no empezó el inicio de sesión, no abre nada. Todo rechazo va a
+  sin el secreto o desde una ventana que no empezó el inicio de sesión, no abre nada. El inicio rechaza una
+  navegación que empezó una página de otro sitio (`Sec-Fetch-Site` distinto de `none` y `same-origin`): así nadie
+  empieza el inicio de sesión de una ventana ajena con un secreto propio. Todo rechazo va a
   `/login/error?code=authentication_error`. Como el pase, la sesión que abre no lleva ningún registro de allauth.
 - **Claves de API**: `erps_live_` + 48 base62 (se distinguen de las `erpk_live_` del Hub; plan §7 punto 12),
   SHA-256 y prefijo de 8 indexado; caducidad 30/90 días o nunca (90 por defecto); tope de 50 vivas por cuenta;

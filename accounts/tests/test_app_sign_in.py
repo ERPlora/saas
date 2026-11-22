@@ -116,6 +116,30 @@ class TestTheWindowStarts:
         assert (response.status_code, response.url) == (302, REFUSED)
 
 
+    @pytest.mark.parametrize("site", ["cross-site", "same-site"])
+    def test_a_start_another_site_sent_the_window_to_opens_nothing(self, window, browser, ana, verifier, site):
+        """Login CSRF in two links: a page elsewhere sends the window to start with a challenge of the attacker's own,
+        then to finish with the attacker's secret and a code of the attacker's account."""
+        challenge = challenge_of(verifier)
+        code = _code_for(browser, ana, challenge)
+
+        started = window.get(START, {"challenge": challenge}, headers={"Sec-Fetch-Site": site})
+        finished = window.get(FINISH, {"code": code, "verifier": verifier})
+
+        assert (started.status_code, started.url) == (302, REFUSED)
+        assert (finished.status_code, finished.url) == (302, REFUSED)
+        assert _signed_in(window) is None
+        assert AuthExchangeCode.objects.get(user=ana).used_at is None
+
+    @pytest.mark.parametrize("site", ["none", "same-origin"])
+    def test_the_app_and_a_page_of_this_site_may_start(self, window, verifier, site):
+        challenge = challenge_of(verifier)
+
+        response = window.get(START, {"challenge": challenge}, headers={"Sec-Fetch-Site": site})
+
+        assert (response.status_code, response.url) == (302, f"{GOOGLE}?{urlencode({'challenge': challenge})}")
+
+
 class TestTheBrowsersLeg:
     def test_without_google_configured_it_is_not_served(self, browser, verifier):
         assert browser.get(GOOGLE, {"challenge": challenge_of(verifier)}).status_code == 404
