@@ -4,7 +4,7 @@
 // password, then the invitation) and accepts; the owner changes their role and removes them. The spec
 // plays the Hub (`startHubDouble`): it sees the snapshot of each change and, on the removal, the end of
 // that person's sessions in the business. On Free, inviting past the places of the plan is refused, in
-// the dialog and by the server.
+// the dialog and by the server, save the accountancy firm, which takes no place.
 import { type Browser, type Page } from '@playwright/test';
 
 import { panelAccount } from './accounts';
@@ -16,13 +16,15 @@ import { waitForMail, waitForPasswordResetLink } from './mail';
 import { watchPageErrors } from './page-events';
 import { PANEL_URL } from './project';
 import { rowAction } from './row-actions';
-import { shot, sidewaysScroll } from './screen';
+import { captureAtEverySize, shot, sidewaysScroll } from './screen';
 import { apiPost, signIn, signInThroughPage } from './session';
 
 /** An address with no account: the invitation creates one, without a password. */
 const NEWCOMER = 'e2e-newcomer@example.com';
 /** The password the newcomer chooses (allauth's validators: long, not common, not like the email). */
 const NEWCOMER_PASSWORD = 'Pan-de-centeno-2026';
+/** The dialog and the page with the accountancy firm invited on a full plan, at the three sizes. */
+const atEverySize = captureAtEverySize('HUBS-F24');
 /** The panel's origin as a pattern: the mails link to the server that sent them, the run's (stack.ts). */
 const PANEL = PANEL_URL.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 
@@ -313,6 +315,21 @@ test.describe('members', () => {
     await expect(page.getByTestId('invite-modal-submit')).toHaveAttribute('aria-disabled', 'true');
     await page.getByTestId('invite-modal-close').click();
     await expect(page.getByTestId('invite-modal')).toBeHidden();
+
+    // The accountancy firm takes no place: picked, the warning goes, the dialog says why and it is sent.
+    await page.getByTestId('members-add').click();
+    await page.getByTestId('invite-email').locator('input').fill('e2e-seat-firm@example.com');
+    await page.getByTestId('invite-role').click();
+    await page.locator('ion-popover ion-radio', { hasText: 'Accountant' }).click();
+    await expect(page.getByTestId('invite-full')).toHaveCount(0);
+    await expect(page.getByTestId('invite-free-role')).toHaveText('An accountancy firm takes no place on the plan.');
+    await atEverySize(page, 'accountant-invite', () => expect(page.getByTestId('invite-modal-submit')).not.toHaveAttribute('aria-disabled', 'true'));
+    await page.getByTestId('invite-modal-submit').click();
+    await expect(page.getByTestId('invite-modal')).toBeHidden();
+    await expect(seats).toHaveText(`${limit} of ${limit} places on the plan`);
+    const firm = (await membersOf(page, id)).rows.find((one) => one.email === 'e2e-seat-firm@example.com');
+    expect(firm?.role).toBe('hub_accountant');
+    await atEverySize(page, 'accountant-member', () => expect(page.getByTestId('members-roles')).toContainText('Accountant: the accountancy firm'));
 
     // The server refuses it too, with the numbers (the dialog is not the only guard).
     const refused = await apiPost(page.request, '/api/hubs/members/invite', {
