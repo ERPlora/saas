@@ -1765,3 +1765,9 @@ msgstr "No hemos podido comprobar el estado del alta. Inténtalo otra vez."
 #: services.py
 msgid "For now ERPlora only invoices payers in Spain."
 msgstr "Por ahora ERPlora solo factura a pagadores en España."
+
+msgid "View their businesses, members and usage"
+msgstr "Ver sus negocios, sus miembros y su uso"
+
+msgid "Create, change and delete businesses, invite members and transfer ownership"
+msgstr "Crear, cambiar y borrar negocios, invitar miembros y traspasar la propiedad"

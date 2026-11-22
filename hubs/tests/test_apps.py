@@ -59,6 +59,6 @@ def test_every_signed_in_account_may_read_and_act_on_its_businesses():
     decided inside each operation by the account's ``HubMember`` role."""
     config = hubs()
 
-    assert config.permissions == ["hubs.view", "hubs.manage"]
+    assert list(config.permissions) == ["hubs.view", "hubs.manage"]
     assert config.role_permissions == {"account": ["hubs.*"]}
     assert checks.run_checks(tags=["live"]) == []
