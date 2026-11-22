@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 import { h, ref } from 'vue';
 
 import CheckoutModal, { type CheckoutPurchase } from '../components/CheckoutModal.vue';
-import { flush, mountBilling } from './mount-billing';
+import { describeCall, flush, mountBilling } from './mount-billing';
 
 export const PROFILE = {
   hub_id: 'cafe',
@@ -54,14 +54,7 @@ export async function setup(api: Handler = happy, purchase: CheckoutPurchase = P
         onStale: stale,
       }, slots),
   };
-  const m = await mountBilling(Host, {
-    locale,
-    api: (call) => {
-      const url = new URL(call.url, 'http://localhost');
-      const body = typeof call.init.body === 'string' ? JSON.parse(call.init.body) : undefined;
-      return api({ method: (call.init.method ?? 'GET').toUpperCase(), path: url.pathname, body });
-    },
-  });
+  const m = await mountBilling(Host, { locale, api: (call) => api(describeCall(call)) });
   await flush();
   await flush();
   return { ...m, open, stale };
