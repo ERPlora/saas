@@ -88,6 +88,28 @@ describe('InvoicesTab: selection', () => {
     await flush();
     expect(download.mock.calls.map(([url]) => url)).toEqual(['/api/billing/invoices/pdf?id=00123', '/api/billing/invoices/pdf?id=00200']);
   });
+
+  it('with nothing selected there is no note; unpaid and still being issued ones selected are said one after the other', async () => {
+    const s = await setup();
+    await s.show([OPEN, ISSUING, PAID]);
+    expect(s.testid('invoices-selection-note').exists()).toBe(false);
+    s.table().vm.$emit('update:selected', ['i9', '00124']);
+    await flush();
+    expect(s.testid('invoices-selection-note').text()).toBe(
+      '1 selected invoice is unpaid: an unpaid invoice has no PDF until it is paid. 1 selected invoice is still being issued: its PDF is ready in a few minutes.',
+    );
+  });
+
+  it('follows the list: a selected invoice paid and issued meanwhile counts for «Download PDF (n)» and leaves the note', async () => {
+    const s = await setup();
+    await s.show([OPEN, PAID]);
+    s.table().vm.$emit('update:selected', ['i9']);
+    await flush();
+    expect(s.testid('invoices-pdf-selected').text()).toBe('Download PDF (0)');
+    await s.show([invoiceRow('i9'), PAID], undefined, 2);
+    expect(s.testid('invoices-pdf-selected').text()).toBe('Download PDF (1)');
+    expect(s.testid('invoices-selection-note').exists()).toBe(false);
+  });
 });
 
 describe('InvoicesTab: a file is saved only when it is the file', () => {
@@ -281,6 +303,70 @@ describe('InvoicesTab: a file is saved only when it is the file', () => {
     const said = String(vi.mocked(toastError).mock.calls[0]?.[0]);
     expect(said).not.toMatch(/\n/);
     expect(said).toBe('The service is not available right now. That invoice is still being issued: its PDF is ready in a few minutes.');
+  });
+
+  it('a PDF being asked for shows its progress and cannot be asked again until the answer comes', async () => {
+    let answer!: (response: Response) => void;
+    vi.stubGlobal('fetch', () => new Promise<Response>((resolve) => (answer = resolve)));
+    watchSaves();
+    const s = await setup();
+    await s.show();
+    await press(s, 'invoices-row-00123-pdf');
+    expect(pdfAction(s).disabled).toBe(true);
+    expect(s.testid('invoices-row-00123-pdf').find('ion-spinner').exists()).toBe(true);
+    answer(new Response('%PDF', { status: 200, headers: { 'Content-Type': 'application/pdf' } }));
+    await flush();
+    expect(pdfAction(s).disabled).toBe(false);
+    expect(s.testid('invoices-row-00123-pdf').find('ion-spinner').exists()).toBe(false);
+  });
+
+  it('«Download PDF (n)» with two different failures says the first one', async () => {
+    serveFiles((url) =>
+      url.endsWith('00123')
+        ? envelope(503, 'billing.platform_unavailable', 'The invoice cannot be downloaded right now. Try again in a moment.')
+        : envelope(500, 'internal_error', 'Something went wrong.'),
+    );
+    watchSaves();
+    const s = await setup();
+    await s.show([PAID, invoiceRow('00125')]);
+    s.table().vm.$emit('update:selected', ['00123', '00125']);
+    await flush();
+    await press(s, 'invoices-pdf-selected');
+    expect(toastError).toHaveBeenCalledExactlyOnceWith('The invoice service is not answering. Try again in a moment.');
+  });
+
+  it('the server’s words read as one sentence on one line: its line breaks and spaces go, its own stop stays', async () => {
+    serveFiles((url) =>
+      url.endsWith('00123')
+        ? envelope(503, 'service_unavailable', 'The service is busy\n  right now!  ')
+        : envelope(404, 'billing.invoice_not_issued', 'This invoice is still being issued: its PDF is ready once it is.'),
+    );
+    watchSaves();
+    const s = await setup();
+    await s.show([PAID, invoiceRow('00125')]);
+    s.table().vm.$emit('update:selected', ['00123', '00125']);
+    await flush();
+    await press(s, 'invoices-pdf-selected');
+    expect(toastError).toHaveBeenCalledExactlyOnceWith(
+      'The service is busy right now! That invoice is still being issued: its PDF is ready in a few minutes.',
+    );
+  });
+
+  it('one the server says is still being issued stops counting for «Download PDF (n)» and joins the note', async () => {
+    serveFiles((url) =>
+      url.endsWith('00123')
+        ? new Response('%PDF', { status: 200, headers: { 'Content-Type': 'application/pdf' } })
+        : envelope(404, 'billing.invoice_not_issued', 'This invoice is still being issued: its PDF is ready once it is.'),
+    );
+    watchSaves();
+    const s = await setup();
+    await s.show([PAID, invoiceRow('00125')]);
+    s.table().vm.$emit('update:selected', ['00123', '00125']);
+    await flush();
+    expect(s.testid('invoices-pdf-selected').text()).toBe('Download PDF (2)');
+    await press(s, 'invoices-pdf-selected');
+    expect(s.testid('invoices-pdf-selected').text()).toBe('Download PDF (1)');
+    expect(s.testid('invoices-selection-note').text()).toBe('1 selected invoice is still being issued: its PDF is ready in a few minutes.');
   });
 
   it('says it in Spanish', async () => {
