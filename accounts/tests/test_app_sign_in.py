@@ -25,7 +25,6 @@ from django.test import Client
 from django.utils import timezone
 
 from accounts.models import AuthExchangeCode
-from accounts.services import hub_jump
 from accounts.tests.conftest import HOST
 from accounts.tests.test_google import ANA_UID, GOOGLE_CALLBACK, _claims, _google_answers, _query
 from base.tests.test_locale import spanish
@@ -302,12 +301,15 @@ class TestTheWindowFinishes:
         assert (response.status_code, response.url) == (302, REFUSED)
         assert _signed_in(window) is None
 
-    def test_no_jump_to_a_hub_spends_it(self, browser, ana, verifier):
-        code = _code_for(browser, ana, challenge_of(verifier))
+    def test_a_code_minted_for_another_challenge_opens_nothing(self, window, browser, ana, verifier):
+        """The window's own secret is right, but the code was minted for another sign-in."""
+        code = _code_for(browser, ana, challenge_of(secrets.token_urlsafe(32)))
+        window.get(START, {"challenge": challenge_of(verifier)})
 
-        with pytest.raises(hub_jump.InvalidCode):
-            hub_jump.redeem_code(code, "a")
-        assert AuthExchangeCode.objects.get(user=ana).used_at is None
+        response = window.get(FINISH, {"code": code, "verifier": verifier})
+
+        assert (response.status_code, response.url) == (302, REFUSED)
+        assert _signed_in(window) is None
 
 
 @pytest.mark.parametrize("name", ["app_sign_in_google.html", "app_sign_in_done.html"])
