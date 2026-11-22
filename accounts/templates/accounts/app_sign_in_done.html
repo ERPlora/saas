@@ -1,13 +1,12 @@
 {% extends "errors/base.html" %}
 {% load i18n %}
 {% comment %}
-  The browser's last page of the installed app's «Continue with Google» (accounts/app_sign_in.py): it opens the app
-  with its one-time code, by itself where the browser lets it and with the button otherwise.
+  The browser's last page of the installed app's «Continue with Google» (accounts/app_sign_in.py): its button opens
+  the app with the one-time code. A tap, because a browser opens another app only from one.
 {% endcomment %}
 
 {% block title %}{% trans "You're signed in" %} · ERPlora Cloud{% endblock %}
 {% block code %}{% trans "ERPlora app" %}{% endblock %}
 {% block heading %}{% trans "You're signed in" %}{% endblock %}
 {% block message %}{% trans "Go back to the ERPlora app to continue." %}{% endblock %}
-{% block actions %}<a id="open-app" href="{{ app_url }}">{% trans "Open the ERPlora app" %}</a>
-<script nonce="{{ csp_nonce }}">window.location.replace(document.getElementById("open-app").href);</script>{% endblock %}
+{% block actions %}<a href="{{ app_url }}">{% trans "Open the ERPlora app" %}</a>{% endblock %}

@@ -8,8 +8,8 @@ either. So the app signs in as native apps do (OAuth for native apps, RFC 8252, 
    that address in the device's browser instead of its window.
 2. ``/auth/app/google/?challenge=<C>``, in the browser: posts allauth's own provider redirect, which Google answers
    with its account chooser; it comes back to the next step.
-3. ``/auth/app/done/?challenge=<C>``, in the browser and signed in: mints a one-time code bound to ``C`` and opens
-   ``erplora://signed-in?code=<code>``, the app's own link (the page tries by itself and keeps the button).
+3. ``/auth/app/done/?challenge=<C>``, in the browser and signed in: mints a one-time code bound to ``C`` and shows
+   the button that opens ``erplora://signed-in?code=<code>``, the app's own link.
 4. ``/auth/app/finish/?code=<code>&verifier=<secret>``, in the app's window: spends the code with the secret and
    opens the session there, then goes on to ``next`` (``LOGIN_REDIRECT_URL`` without one).
 

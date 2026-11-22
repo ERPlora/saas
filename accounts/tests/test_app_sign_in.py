@@ -169,14 +169,6 @@ class TestTheCode:
         assert row.expires_at == row.created_at + timedelta(seconds=60)
         assert _code_of(link) not in row.code_hash
 
-    def test_the_page_tries_to_open_the_app_by_itself(self, browser, ana, verifier):
-        browser.force_login(ana)
-
-        response = browser.get(DONE, {"challenge": challenge_of(verifier)})
-
-        nonce = re.search(r"'nonce-([^']+)'", response["Content-Security-Policy"]).group(1)
-        assert f'<script nonce="{nonce}">' in response.content.decode()
-
     def test_the_code_hands_nobody_its_address(self, browser, ana, verifier):
         browser.force_login(ana)
 

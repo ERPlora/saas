@@ -235,6 +235,9 @@ msgstr "Abriendo tu negocio…"
 msgid "Opening Google…"
 msgstr "Abriendo Google…"
 
+msgid "Choose your Google account to sign in to the ERPlora app."
+msgstr "Elige tu cuenta de Google para entrar en la app de ERPlora."
+
 msgid "You're signed in"
 msgstr "Ya has iniciado sesión"
 
