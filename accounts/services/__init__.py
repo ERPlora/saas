@@ -10,6 +10,7 @@ from accounts.services import account_businesses
 from accounts.services import platform_staff
 from accounts.services import hub_jump
 from accounts.services import hub_passes
+from accounts.services import app_sign_in as app_sign_in
 from accounts.services import mailbox_proof
 from accounts.services import legal_acceptance
 from accounts.services import demo_accounts

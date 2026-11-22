@@ -1129,6 +1129,10 @@ Implicados: hubs (sus llamadas reciben el 503 y reintentan), billing (los avisos
   `page.route`, que solo intercepta la primera dirección de una redirección y dejaría llegar al Google real; el servidor
   canjea el código en un doble, `GOOGLE_OAUTH_TOKEN_URL`, que solo un servidor con `DEBUG` puede mover, porque allauth cree
   lo que contesta esa dirección sin comprobar su firma. Lo demás es lo de verdad, también el `form-action` de la página.
+- Para la app instalada, el SaaS ofrece F06 por el navegador del dispositivo, porque Google no deja entrar dentro de
+  una vista web incrustada: la sesión vuelve a la ventana de la app con un código de un solo uso atado a un secreto de
+  la app (`accounts/app_sign_in.py`; las cuatro direcciones y lo que hace la app, en `accounts/README.md`). Sus
+  pruebas, solo de servidor, en `accounts/tests/test_app_sign_in.py`.
 - Pruebas: cada test cita su clave en el nombre o el docstring, y cada e2e su flujo. Los e2e: F01–F13 en
   `tests/e2e/panel/accounts-flows.spec.ts`; F14–F20 en `tests/e2e/panel/accounts-security.spec.ts`; F21–F27 en
   `tests/e2e/panel/accounts-profile.spec.ts`; F28–F38 en `tests/e2e/panel/accounts-jump.spec.ts`,
