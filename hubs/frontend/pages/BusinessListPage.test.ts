@@ -18,19 +18,8 @@ import { toastError, toastSuccess } from '@erplora/ui/shell';
 import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
 import { accessibleName, BYE, errorFrame, flush, subId } from '../__tests__/mount-hubs';
 import { page, ROWS, row, setup, setUpBusinessListPage } from '../__tests__/business-list-page';
+import { INVITATION, OFFER } from '../__tests__/businesses';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
-
-const INVITATION = {
-  id: 'm1',
-  hub: { id: 'norte', slug: 'norte', name: 'Bar Norte' },
-  role: 'hub_employee',
-  role_label: 'Employee',
-  invited_by: 'Pedro Sanz',
-  invited_at: null,
-  expires_at: null,
-  message: '',
-};
-const OFFER = { id: 't1', hub: { id: 'mar', slug: 'mar', name: 'Bar del Mar' }, from_email: 'pedro@example.com', expires_at: '2026-10-20T10:00:00Z' };
 
 setUpBusinessListPage();
 
@@ -234,7 +223,7 @@ describe('BusinessListPage: what waits above the list', () => {
     expect(s.calls().find((c) => c.path === '/api/hubs/invitations/accept')?.body).toEqual({ id: 'm1' });
     await banner.get('[data-testid="invitation-decline"]').trigger('click');
     await flush();
-    expect(s.q('decline-dialog')).not.toBeNull();
+    expect(s.q('decline-dialog')?.querySelector('.ion-delegate-host')).not.toBeNull();
   });
 
   it('an ownership offer: accept it or decline it', async () => {

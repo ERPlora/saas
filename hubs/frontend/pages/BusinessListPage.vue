@@ -4,15 +4,14 @@
 // cards up to 900 px so names are not cut on a tablet) with their status (and why), plan, role and
 // last use; per row what the server says it allows (`can`): «Open» (not while suspended or deleted),
 // «Manage» and «Recover». «Delete» is not on the row: it lives in the business's Settings.
-// Above the table, what waits for an answer: invitations and ownership offers (an unpaid invoice is said by the
-// shell's bell, not here). «Create business» opens a dialog: the form, then the
-// preparation, then «ready» or why not, following the new business with its own `hubs.business.get`
-// (the list may not show it: a search, another page); meanwhile the list shows it «Preparing». Empty,
-// the table holds the sign-up form itself. With the account's Free business filling its quota, the dialog says so
-// instead of the form, naming it, and offers to change its plan. Live data: `hubs.business.list`. Ionic reuses the
-// page: `?create=1` (the launcher's «Create another business») is read each time it comes on screen. The list
-// fills the page between the topbar and the footer (`detail-fill` + `.panel-fill`), and asks for rows per page
-// only when there are more businesses than the shortest page. Its states are truthful (`useLiveState`): the
+// Above the table, what waits for an answer: invitations and ownership offers (`InvitationsAndOffers`; an unpaid
+// invoice is said by the shell's bell, not here). «Create business» opens its dialog (`BusinessCreateModal`); the
+// page follows the new business with its own `hubs.business.get` (the list may not show it: a search, another
+// page) and hands it to the dialog, while the list shows it «Preparing». Empty, the table holds the sign-up form
+// itself, and a business created there is followed by the same dialog. Live data: `hubs.business.list`. Ionic
+// reuses the page: `?create=1` (the launcher's «Create another business») is read each time it comes on screen.
+// The list fills the page between the topbar and the footer (`detail-fill` + `.panel-fill`), and asks for rows per
+// page only when there are more businesses than the shortest page. Its states are truthful (`useLiveState`): the
 // stream down or no answer in time is an error with «Retry», never «Create your first business».
 import {
   DataTable,
@@ -21,38 +20,35 @@ import {
   type DataTableColumn,
   EmptyState,
   formatDateTime,
-  FormModal,
   InlineFeedback,
   StatusPill,
 } from '@erplora/ui/components';
-import { AppPage, HubIcon, toastError, toastSuccess, useSurface, WebOnly } from '@erplora/ui/shell';
+import { AppPage, HubIcon, toastError, toastSuccess, useSurface } from '@erplora/ui/shell';
 import { useCommand, useLive, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, onIonViewWillEnter } from '@ionic/vue';
 import {
   computed,
   effectScope,
   type EffectScope,
-  nextTick,
   onMounted,
   onScopeDispose,
   type Ref,
   shallowRef,
-  useTemplateRef,
   watch,
 } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { BUSINESSES, STORE } from '../../../accounts/frontend/paths';
+import { BUSINESSES } from '../../../accounts/frontend/paths';
 import { useLiveState } from '../../../frontend/live-state';
 import type { BusinessDetailOut, BusinessRowOut, InvitationOut, OwnershipOfferOut } from '../../../frontend/sdk-types/hubs';
-import { opensAtAll, preparationFailed, preparingLeadKey, reasonDate, reasonKey, statusPill } from '../business-status';
+import { opensAtAll, reasonDate, reasonKey, statusPill } from '../business-status';
 import BusinessCreateForm from '../components/BusinessCreateForm.vue';
-import BusinessPreparing from '../components/BusinessPreparing.vue';
+import BusinessCreateModal from '../components/BusinessCreateModal.vue';
 import DeclineDialog from '../components/DeclineDialog.vue';
 import HostName from '../components/HostName.vue';
+import InvitationsAndOffers from '../components/InvitationsAndOffers.vue';
 import { useErrorText } from '../error-text';
-import { useAcceptInvitation } from '../invitations';
 import { useOpenBusiness } from '../open-business';
 
 const PAGE_SIZES = [10, 25, 50, 100];
@@ -65,10 +61,7 @@ const client = useLiveClient();
 const { text } = useErrorText();
 const { inApp } = useSurface();
 const { open, opening } = useOpenBusiness();
-const { accept, accepting } = useAcceptInvitation();
 const restore = useCommand('hubs.business.restore');
-const acceptOffer = useCommand('hubs.ownership.accept');
-const declineOffer = useCommand('hubs.ownership.decline');
 
 // ── The list ──────────────────────────────────────────────────────────────────────────────────
 const search = shallowRef('');
@@ -203,7 +196,7 @@ async function recover(row: BusinessRowOut): Promise<void> {
   }
 }
 
-// ── Declining and the ownership offers ───────────────────────────────────────────────────────
+// ── Declining an invitation ──────────────────────────────────────────────────────────────────
 const declining = shallowRef<InvitationOut | null>(null);
 const declineOpen = shallowRef(false);
 function askDecline(invitation: InvitationOut): void {
@@ -211,20 +204,8 @@ function askDecline(invitation: InvitationOut): void {
   declineOpen.value = true;
 }
 
-async function answerOffer(offer: OwnershipOfferOut, yes: boolean): Promise<void> {
-  const command = yes ? acceptOffer : declineOffer;
-  try {
-    await command.run({ id: offer.id });
-    toastSuccess(yes ? t('hubs.list.ownership.accepted', { name: offer.hub.name }) : t('hubs.list.ownership.declined'));
-  } catch {
-    toastError(text(command.error.value));
-  }
-}
-
 // ── «Create business» ─────────────────────────────────────────────────────────────────────────
 const createOpen = shallowRef(false);
-const creating = shallowRef(false);
-const createForm = useTemplateRef<InstanceType<typeof BusinessCreateForm>>('createForm');
 const created = shallowRef<{ id: string; name: string; host: string; typeName: string | null } | null>(null);
 
 // The new business is followed on its own (`hubs.business.get`): the list may not show it (a search,
@@ -241,43 +222,6 @@ watch(created, (now) => {
 });
 onScopeDispose(() => following?.stop());
 const createdNow = computed(() => followed.value?.data.value);
-/** The sentence over its preparation: none during a platform pause (`BusinessPreparing` says the pause). */
-const preparingLead = computed(() => preparingLeadKey(createdNow.value?.maintenance));
-
-/** The account's Free business when its Free ones fill the quota: a new business would be Free, so
- *  the dialog says so instead of a form that would be refused. */
-const freeBusiness = computed(() => live.data.value?.free_business ?? null);
-const limited = computed(() => !created.value && !!freeBusiness.value);
-
-function changeFreePlan(id: string): void {
-  createOpen.value = false;
-  void router.push(`${STORE}/plans?business=${id}`);
-}
-
-const phase = computed<'form' | 'preparing' | 'ready' | 'error'>(() => {
-  if (!created.value) return 'form';
-  const now = createdNow.value;
-  if (now && preparationFailed(now)) return 'error';
-  return now?.can.open ? 'ready' : 'preparing';
-});
-
-// Each step puts the focus on its own button: a screen reader hears where it is.
-const listButton = useTemplateRef<{ $el: HTMLElement }>('listButton');
-const openButton = useTemplateRef<{ $el: HTMLElement }>('openButton');
-watch(phase, async (now) => {
-  if (now === 'form') return;
-  await nextTick();
-  (now === 'ready' ? openButton.value : listButton.value)?.$el.focus();
-});
-const createTitle = computed(() => {
-  const name = created.value?.name ?? '';
-  return {
-    form: t('hubs.createModal.title'),
-    preparing: t('hubs.createModal.preparingTitle', { name }),
-    ready: t('hubs.createModal.readyTitle'),
-    error: t('hubs.createModal.errorTitle'),
-  }[phase.value];
-});
 
 function startCreate(): void {
   created.value = null;
@@ -286,9 +230,6 @@ function startCreate(): void {
 function onCreated(business: { id: string; name: string; host: string }, extra: { typeName: string | null }): void {
   created.value = { id: business.id, name: business.name, host: business.host, typeName: extra.typeName };
   createOpen.value = true;
-}
-function closeCreate(): void {
-  createOpen.value = false;
 }
 watch(createOpen, (isOpen) => {
   if (!isOpen) created.value = null;
@@ -319,91 +260,11 @@ onIonViewWillEnter(entered);
         {{ $t('hubs.common.reconnecting') }}
       </InlineFeedback>
 
-      <InlineFeedback
-        v-for="invitation in invitations"
-        :key="invitation.id"
-        tone="info"
-        icon="ion:mail-outline"
-        :data-testid="`businesses-invitation-${invitation.id}`"
-        :heading="$t('hubs.list.invitation.heading', { name: invitation.hub.name })"
-      >
-        {{
-          invitation.invited_by
-            ? $t('hubs.list.invitation.body', { inviter: invitation.invited_by, role: invitation.role_label })
-            : $t('hubs.list.invitation.bodyNoInviter', { role: invitation.role_label })
-        }}
-        <template #actions>
-          <ion-button
-            data-testid="invitation-accept"
-            size="small"
-            :disabled="!!accepting"
-            @click="accept(invitation)"
-          >
-            <HubIcon
-              slot="start"
-              name="ion:checkmark-outline"
-              aria-hidden="true"
-            />
-            {{ $t('hubs.invitation.accept') }}
-          </ion-button>
-          <ion-button
-            data-testid="invitation-decline"
-            size="small"
-            fill="outline"
-            class="btn-neutral"
-            :disabled="!!accepting"
-            @click="askDecline(invitation)"
-          >
-            <HubIcon
-              slot="start"
-              name="ion:close-outline"
-              aria-hidden="true"
-            />
-            {{ $t('hubs.invitation.decline') }}
-          </ion-button>
-        </template>
-      </InlineFeedback>
-
-      <InlineFeedback
-        v-for="offer in offers"
-        :key="offer.id"
-        tone="info"
-        icon="ion:swap-vertical-outline"
-        :data-testid="`businesses-offer-${offer.id}`"
-        :heading="$t('hubs.list.ownership.heading', { from: offer.from_email, name: offer.hub.name })"
-      >
-        {{ $t('hubs.list.ownership.body', { date: formatDateTime(offer.expires_at, $i18n.locale) }) }}
-        <template #actions>
-          <ion-button
-            data-testid="offer-accept"
-            size="small"
-            :disabled="acceptOffer.pending.value || declineOffer.pending.value"
-            @click="answerOffer(offer, true)"
-          >
-            <HubIcon
-              slot="start"
-              name="ion:checkmark-outline"
-              aria-hidden="true"
-            />
-            {{ $t('hubs.list.ownership.accept') }}
-          </ion-button>
-          <ion-button
-            data-testid="offer-decline"
-            size="small"
-            fill="outline"
-            class="btn-neutral"
-            :disabled="acceptOffer.pending.value || declineOffer.pending.value"
-            @click="answerOffer(offer, false)"
-          >
-            <HubIcon
-              slot="start"
-              name="ion:close-outline"
-              aria-hidden="true"
-            />
-            {{ $t('hubs.list.ownership.decline') }}
-          </ion-button>
-        </template>
-      </InlineFeedback>
+      <InvitationsAndOffers
+        :invitations="invitations"
+        :offers="offers"
+        @decline="askDecline"
+      />
 
       <p
         v-if="rows.length"
@@ -546,150 +407,15 @@ onIonViewWillEnter(entered);
       </DataTable>
     </div>
 
-    <FormModal
+    <BusinessCreateModal
       v-model:open="createOpen"
-      testid="create-modal"
-      :title="createTitle"
-      :submit-label="$t('hubs.create.submit')"
-      submit-icon="ion:add-outline"
-      :pending="creating"
-      @submit="createForm?.submit()"
-    >
-      <InlineFeedback
-        v-if="limited && freeBusiness"
-        tone="info"
-        icon="ion:storefront-outline"
-        data-testid="create-free-limit"
-        :heading="$t('hubs.create.freeLimit.heading')"
-      >
-        {{ $t('hubs.create.freeLimit.body', { name: freeBusiness.name }) }}
-        <WebOnly>
-          <template #app>
-            <p class="create-foot">
-              {{ $t('hubs.common.storeInBrowser') }}
-            </p>
-          </template>
-        </WebOnly>
-      </InlineFeedback>
-      <template v-else-if="phase === 'form'">
-        <h2 class="create-heading">
-          {{ $t('hubs.create.heading') }}
-        </h2>
-        <p class="create-lead">
-          {{ $t('hubs.create.lead') }}
-        </p>
-        <BusinessCreateForm
-          ref="createForm"
-          :submit-button="false"
-          @update:pending="creating = $event"
-          @created="onCreated"
-        />
-        <p class="create-foot">
-          {{ $t('hubs.create.foot') }}
-        </p>
-      </template>
-      <template v-else-if="phase === 'preparing' && created">
-        <p
-          v-if="preparingLead"
-          class="create-lead"
-        >
-          {{ $t(preparingLead) }}
-        </p>
-        <BusinessPreparing
-          :id="created.id"
-          :name="created.name"
-          :type-name="created.typeName"
-          :maintenance="createdNow?.maintenance ?? null"
-          last="ready"
-        />
-        <p class="create-foot">
-          {{ $t('hubs.createModal.closeHint') }}
-        </p>
-      </template>
-      <div
-        v-else-if="phase === 'ready' && created"
-        class="ion-text-center"
-      >
-        <div class="result-icon is-success">
-          <HubIcon
-            name="ion:checkmark-outline"
-            aria-hidden="true"
-          />
-        </div>
-        <p class="create-lead">
-          <i18n-t keypath="hubs.createModal.readyAddress">
-            <template #host>
-              <span class="mono">{{ createdNow?.host ?? created.host }}</span>
-            </template>
-          </i18n-t>
-        </p>
-      </div>
-      <div
-        v-else-if="created"
-        class="ion-text-center"
-      >
-        <div class="result-icon is-danger">
-          <HubIcon
-            name="ion:warning-outline"
-            aria-hidden="true"
-          />
-        </div>
-        <p class="create-lead">
-          {{ $t('hubs.createModal.error', { name: created.name }) }}
-        </p>
-      </div>
-
-      <template
-        v-if="limited && freeBusiness"
-        #footer
-      >
-        <WebOnly>
-          <ion-button
-            data-testid="create-free-limit-store"
-            @click="changeFreePlan(freeBusiness.id)"
-          >
-            <HubIcon
-              slot="start"
-              name="lucide:layers"
-              aria-hidden="true"
-            />
-            {{ $t('hubs.create.freeLimit.store', { name: freeBusiness.name }) }}
-          </ion-button>
-        </WebOnly>
-      </template>
-      <template
-        v-else-if="phase !== 'form'"
-        #footer
-      >
-        <ion-button
-          ref="listButton"
-          data-testid="create-modal-close-list"
-          :fill="phase === 'ready' ? 'clear' : 'solid'"
-          @click="closeCreate"
-        >
-          <HubIcon
-            slot="start"
-            name="ion:storefront-outline"
-            aria-hidden="true"
-          />
-          {{ $t('hubs.createModal.goToList') }}
-        </ion-button>
-        <ion-button
-          v-if="phase === 'ready' && createdNow"
-          ref="openButton"
-          data-testid="create-modal-open"
-          :disabled="!!opening"
-          @click="open(createdNow)"
-        >
-          <HubIcon
-            slot="start"
-            name="ion:log-in-outline"
-            aria-hidden="true"
-          />
-          {{ $t('hubs.common.openBusiness') }}
-        </ion-button>
-      </template>
-    </FormModal>
+      :created="created"
+      :created-now="createdNow"
+      :free-business="live.data.value?.free_business ?? null"
+      :opening="opening"
+      @created="onCreated"
+      @open="open"
+    />
 
     <DeclineDialog
       v-model:open="declineOpen"
@@ -768,43 +494,5 @@ a.business-name:hover {
   line-height: 1.5;
   text-align: center;
   color: color-mix(in oklab, var(--ion-text-color) 65%, transparent);
-}
-.create-heading {
-  margin: 0 0 4px;
-  font-size: 1.05rem;
-  font-weight: 600;
-}
-.create-lead {
-  margin: 0 0 16px;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: color-mix(in oklab, var(--ion-text-color) 72%, transparent);
-}
-.create-foot {
-  margin: 14px 0 0;
-  font-size: 0.85rem;
-  color: color-mix(in oklab, var(--ion-text-color) 72%, transparent);
-}
-.result-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  margin: 8px auto 12px;
-  border-radius: 999px;
-  font-size: 30px;
-}
-.result-icon.is-success {
-  color: var(--ion-color-success);
-  background: color-mix(in srgb, var(--ion-color-success) 14%, transparent);
-}
-.result-icon.is-danger {
-  color: var(--ion-color-danger);
-  background: color-mix(in srgb, var(--ion-color-danger) 14%, transparent);
-}
-.btn-neutral {
-  --color: var(--ion-text-color);
-  --border-color: color-mix(in oklab, var(--ion-text-color) 35%, transparent);
 }
 </style>

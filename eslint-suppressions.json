@@ -40,11 +40,6 @@
       "count": 1
     }
   },
-  "hubs/frontend/pages/BusinessListPage.vue": {
-    "vue/max-lines-per-block": {
-      "count": 2
-    }
-  },
   "hubs/frontend/pages/LaunchPage.vue": {
     "vue/max-lines-per-block": {
       "count": 1
