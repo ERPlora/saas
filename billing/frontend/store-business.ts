@@ -1,20 +1,17 @@
-// The business the Store sells to. Only the owner buys for a business, so the picker lists the businesses the
-// account owns; `?business=` chooses the one it came from, and an unknown one falls back to the first that can buy
-// (not one an unpaid invoice blocks), saying so.
-import { useLive } from '@erplora/ui/sdk';
+// The business the Store sells to, among the account's businesses the page follows (`hubs.business.list`). Only
+// the owner buys for a business, so the picker lists the businesses the account owns; `?business=` chooses the one
+// it came from, and an unknown one falls back to the first that can buy (not one an unpaid invoice blocks), saying so.
+import type { UseLive } from '@erplora/ui/sdk';
 import { computed, shallowRef } from 'vue';
 
-import { useLiveState } from '../../frontend/live-state';
+import type { BusinessListOut } from '../../frontend/sdk-types/hubs';
 import { blockOf, declinedCard, ownedBusinesses } from './store';
 
 export function useStoreBusiness(
+  list: Pick<UseLive<BusinessListOut>, 'data'>,
   props: Readonly<{ businessId?: string }>,
   emit: (event: 'update:businessId', id: string) => void,
 ) {
-  const list = useLive('hubs.business.list', { limit: 100 });
-  /** Loading, failed (the query, the stream, or nothing in time), none owned or some: «You have no business to
-   *  buy for» only with a real answer. */
-  const listState = useLiveState(list, { isEmpty: (data) => ownedBusinesses(data.rows).length === 0 });
   const rows = computed(() => list.data.value?.rows ?? []);
   const owned = computed(() => ownedBusinesses(rows.value));
   /** What the owner picked here; until then, `?business=`. */
@@ -41,5 +38,5 @@ export function useStoreBusiness(
   const block = computed(() => (business.value ? blockOf(business.value) : null));
   /** The business whose card, the same payer's as this one, the bank declined: the checkout says so. */
   const declinedFor = computed(() => (business.value ? declinedCard(rows.value, business.value) : null));
-  return { listState, owned, business, unknownAsked, chosenId, block, declinedFor };
+  return { owned, business, unknownAsked, chosenId, block, declinedFor };
 }

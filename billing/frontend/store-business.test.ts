@@ -1,5 +1,7 @@
-// The business the Store sells to: only one the account owns; `?business=` picks it, and an unknown one falls back
-// to the first that can buy (not one an unpaid invoice blocks), saying so until the owner picks another.
+// The business the Store sells to, from the account's businesses the page follows: only one the account owns;
+// `?business=` picks it, and an unknown one falls back to the first that can buy (not one an unpaid invoice blocks),
+// saying so until the owner picks another.
+import { useLive } from '@erplora/ui/sdk';
 import { describe, expect, it } from 'vitest';
 import { defineComponent } from 'vue';
 
@@ -15,7 +17,7 @@ async function setup(businessId?: string, rows: unknown[] | null = ROWS) {
     props: { businessId: { type: String, required: false, default: undefined } },
     emits: ['update:businessId'],
     setup(props, { emit }) {
-      store = useStoreBusiness(props, emit);
+      store = useStoreBusiness(useLive('hubs.business.list', { limit: 100 }), props, emit);
       return () => null;
     },
   });
@@ -26,9 +28,8 @@ async function setup(businessId?: string, rows: unknown[] | null = ROWS) {
 }
 
 describe('useStoreBusiness', () => {
-  it('asks for the account’s businesses and sells to the first one it owns, never one it only manages', async () => {
+  it('sells to the first business the account owns, never one it only manages', async () => {
     const s = await setup();
-    expect(s.client.stream.subscriptions('hubs.business.list').map((sub) => sub.params)).toEqual([{ limit: 100 }]);
     expect(s.store().owned.value.map((row) => row.id)).toEqual(['bakery', 'cafe', 'plaza']);
     expect(s.store().business.value?.id).toBe('bakery');
     expect(s.store().chosenId.value).toBe('bakery');
@@ -78,9 +79,9 @@ describe('useStoreBusiness', () => {
     expect(s.store().declinedFor.value).toBe('Bar Norte');
   });
 
-  it('an account that owns no business: the list is empty and nothing is sold', async () => {
+  it('an account that owns no business: nothing is sold', async () => {
     const s = await setup(undefined, [SALON]);
-    expect(s.store().listState.view.value).toBe('empty');
+    expect(s.store().owned.value).toEqual([]);
     expect(s.store().business.value).toBeNull();
     expect(s.store().block.value).toBeNull();
   });

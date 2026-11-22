@@ -11,19 +11,20 @@
 // Web only: StorePage renders it in `<WebOnly>`, so inside the apps nothing here loads.
 import { ConfirmDialog, type ConfirmConsequence, EmptyState, InlineFeedback } from '@erplora/ui/components';
 import { HubIcon, toastInfo, toastSuccess } from '@erplora/ui/shell';
-import { useCommand } from '@erplora/ui/sdk';
+import { useCommand, useLive } from '@erplora/ui/sdk';
 import { IonButton, IonCard, IonCardContent, IonLabel, IonSegment, IonSegmentButton, IonSkeletonText } from '@ionic/vue';
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { BUSINESSES } from '../../../accounts/frontend/paths';
+import { useLiveState } from '../../../frontend/live-state';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import type { PlanOut } from '../../../frontend/sdk-types/hubs-catalog';
 import type { BillingInterval, SubscriptionOut } from '../../../frontend/sdk-types/store';
 import { checkoutNotice } from '../discount-text';
 import { formatCents, formatDate } from '../format';
 import type { PromoCheckOut } from '../promo-types';
-import { annualSaving, isFree, moduleInterval, saleModules, type SaleModule } from '../store';
+import { annualSaving, isFree, moduleInterval, ownedBusinesses, saleModules, type SaleModule } from '../store';
 import { useStoreBusiness } from '../store-business';
 import { useStoreCatalog } from '../store-catalog';
 import AnnualSwitchDialog from './AnnualSwitchDialog.vue';
@@ -49,7 +50,11 @@ const { forDialog } = useErrorText();
 
 // --- The business it sells to, what is on sale, and what the business has ----------------------------
 
-const { listState, owned, business, unknownAsked, chosenId, block, declinedFor } = useStoreBusiness(props, emit);
+const list = useLive('hubs.business.list', { limit: 100 });
+/** Loading, failed (the query, the stream, or nothing in time), none owned or some: «You have no business to
+ *  buy for» only with a real answer. */
+const listState = useLiveState(list, { isEmpty: (data) => ownedBusinesses(data.rows).length === 0 });
+const { owned, business, unknownAsked, chosenId, block, declinedFor } = useStoreBusiness(list, props, emit);
 const { plans, apps, catalog, failed, loadCatalog, retry, apply } = useStoreCatalog(business);
 
 const subscription = computed(() => (catalog.value?.hub_id === business.value?.id ? (catalog.value?.subscription ?? null) : null));
