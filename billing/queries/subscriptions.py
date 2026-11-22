@@ -16,7 +16,7 @@ from live.operations import AI, INTERNAL, operation
 
 from apps import queries as app_queries
 from apps.models import Module
-from billing import discount_terms, stripe_service, vat
+from billing import discount_terms, stripe_payments, stripe_service, vat
 from billing.models import Invoice, PaymentFailure, PlanChangeSchedule, PromoRedemption
 from billing.money import from_cents, to_cents
 from billing.queries.invoices import CARD_CACHE_SECONDS, _billing_account, _owned_hub_ids
@@ -290,7 +290,7 @@ def _card_of(customer_id: str, subscription_id: str) -> tuple[dict | None, bool]
     if kept is not None:
         return kept.get("card"), False
     try:
-        card = stripe_service.payment_card(subscription_id=subscription_id, customer_id=customer_id)
+        card = stripe_payments.payment_card(subscription_id=subscription_id, customer_id=customer_id)
     except (stripe_service.StripeUnavailable, stripe_service.StripeNotConfigured, stripe_service.StripeRefused):
         logger.warning("[BILLING] Stripe did not give the card of customer %s", customer_id)
         return None, True
