@@ -11,7 +11,7 @@ import { existsSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { DOCS_SEARCH } from './assistant-battery.ts';
+import { DOCS_SEARCH } from './assistant-turns.ts';
 import {
   type CatalogTool,
   loadProbes,

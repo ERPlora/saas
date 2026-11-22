@@ -10,4 +10,3 @@
 549 billing/stripe_service.py saas#462
 511 fiscal/services.py saas#462
 1124 fiscal_gateway/tests/test_internal.py saas#462
-510 tests/e2e/assistant-battery.ts saas#462

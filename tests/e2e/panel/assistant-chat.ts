@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 import type { Browser, BrowserContext, Locator, Page } from '@playwright/test';
 
-import { type Card, summarizeTurns, type Turns } from '../assistant-battery';
+import { type Card, summarizeTurns, type Turns } from '../assistant-turns';
 import type { SeededAnswer } from '../assistant-bench';
 import { redactedError } from '../assistant-probes';
 import { type Provider, startProvider } from '../assistant-provider';
