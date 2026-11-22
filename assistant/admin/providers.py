@@ -9,6 +9,7 @@ the ticked ones with ``assistant.model.select``. «AI models» lists them all, t
 import uuid
 
 from asgiref.sync import sync_to_async
+from django.conf import settings
 from django.contrib import admin, messages
 from django.http import Http404, HttpResponseRedirect
 from django.template.response import TemplateResponse
@@ -26,6 +27,35 @@ from assistant.schemas import ListedModel, ModelSelectIn, ProviderRef
 
 #: What choosing a provider's models needs: seeing the provider, adding models and deleting them.
 CHOOSE_PERMISSIONS = ("assistant.view_aiprovider", "assistant.add_aimodel", "assistant.delete_aimodel")
+
+#: What the list of providers says when the services' provider cannot be used (``services_provider_state``).
+SERVICES_PROBLEMS = {
+    "missing": gettext_lazy(
+        "The documentation search and the dictation do not work: there is no provider «%(slug)s». Add it with "
+        "OpenAI's API and OPENAI_API_KEY as its key variable."
+    ),
+    "not_openai": gettext_lazy(
+        "The documentation search and the dictation do not work: the provider «%(slug)s» does not speak OpenAI's API. "
+        "Choose «OpenAI» as its API."
+    ),
+    "off": gettext_lazy(
+        "The documentation search and the dictation do not work: the provider «%(slug)s» is off. Turn it on in its page."
+    ),
+    "no_key": gettext_lazy(
+        "The documentation search and the dictation do not work: the provider «%(slug)s» has no key in the "
+        "environment. Put OpenAI's key in %(variable)s, in erplora.com's secret, and deploy."
+    ),
+}
+
+
+def services_problem() -> str | None:
+    """What keeps the services' provider (the documentation search, the fingerprints and the dictation) from working,
+    and where it is put; ``None`` when it works."""
+    provider, problem = queries.provider_keys.services_provider_state()
+    if problem is None:
+        return None
+    variable = provider.key_variable if provider is not None else ""
+    return str(SERVICES_PROBLEMS[problem]) % {"slug": settings.ASSISTANT_SERVICE_PROVIDER, "variable": variable}
 
 
 class ModelInline(admin.TabularInline):
@@ -67,6 +97,13 @@ class AIProviderAdmin(admin.ModelAdmin):
         (gettext_lazy("Connection"), {"fields": ("base_url", "key_variable", "key_state")}),
         (gettext_lazy("Notes"), {"fields": ("notes", "created_at", "updated_at")}),
     )
+
+    def changelist_view(self, request, extra_context=None):
+        response = super().changelist_view(request, extra_context)
+        # Only on the page that is about to be drawn: a refusal or a redirect would keep it for a later page.
+        if isinstance(response, TemplateResponse) and (problem := services_problem()):
+            self.message_user(request, problem, messages.WARNING)
+        return response
 
     @admin.display(description=gettext_lazy("key"))
     def key_state(self, provider: AIProvider) -> str:

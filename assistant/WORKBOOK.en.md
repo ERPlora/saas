@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:77689cb14f7a6514d8ff2def98a542a98d97a4ba8187038a8c1b060bbc489c3e -->
+<!-- generated from WORKBOOK.md sha256:8502ec14f353f6db73ed5b198eb649d9ab3b14aabc6ef86e042cef01901ee40f -->
 
 ## What it is for and who uses it
 
@@ -87,7 +87,8 @@ Who uses it:
 
 ### Admin: AI providers
 List of the providers with their API, whether enabled, their "Key variable" and their "Key": "In the environment" or
-"No key", never anything of the key. Each provider's page has, in "Connection", its address, the "Key variable" (one
+"No key", never anything of the key. On top, if the services' provider cannot be used, a notice says what it lacks and
+where that is put (ASSISTANT-F02). Each provider's page has, in "Connection", its address, the "Key variable" (one
 of the five of the environment) and whether it has the key; no field lets a key be typed. Below, its models, with
 their input and output price, their context and whether they are available. On top, "Choose models from the provider".
 
@@ -135,7 +136,7 @@ offering it to someone else or cancelling its plan also ask to type "CONFIRM".
 |---|---|
 | Loading | The normal loading of an admin page; when trying a model, "Sending…" and the "Send" button off until it ends ("Done."). In the panel's assistant, the bubble "The assistant is writing" until the first word and "Stop" instead of "Send". |
 | Empty | "0 AI providers" and the empty list; in "Assistant usage records", "0 assistant usage records" until a business's first message; a provider without a key says "No key"; without models that can answer, "No model can answer yet: add a provider with its key and choose its models." In the panel's assistant, "Ask me about your businesses, your invoices or your account." with its three shortcuts. |
-| Error | In "Choose models from the provider", the reason in red: "This provider has no key in the environment: fill the variable its page names.", "The provider did not give its models: …" or "The provider listed no chat models."; on the pages, the error in red next to the field: "Use an https address: the provider's key travels to it." or, without "Key variable", "This field is required."; when trying a model, in red: "The model did not answer: …", "Too many tries in a minute: wait a moment and try again." or "The try could not be sent: check the connection and try again.". In the panel's assistant, under the question: "The assistant is not available right now. Try again in a few minutes." with "Try again"; with the month spent, "You have used all the assistant's messages of this month (30 of 30). They renew on …" and "Each business has its own assistant, with its own messages: open the business to keep asking there.", without "Upgrade plan"; without a connection, in the foot, "No connection: you can write, and send when it is back."; under the box, what stops a dictation: "Microphone access is blocked. Allow it in your browser to dictate.", "Nothing was heard. Try again closer to the microphone.", "The recording is too long: dictate a shorter message." or "The audio could not be transcribed. Try again." |
+| Error | In "AI providers", if the services' provider cannot be used, on top "The documentation search and the dictation do not work: …" with what it lacks and where that is put. In "Choose models from the provider", the reason in red: "This provider has no key in the environment: fill the variable its page names.", "The provider did not give its models: …" or "The provider listed no chat models."; on the pages, the error in red next to the field: "Use an https address: the provider's key travels to it." or, without "Key variable", "This field is required."; when trying a model, in red: "The model did not answer: …", "Too many tries in a minute: wait a moment and try again." or "The try could not be sent: check the connection and try again.". In the panel's assistant, under the question: "The assistant is not available right now. Try again in a few minutes." with "Try again"; with the month spent, "You have used all the assistant's messages of this month (30 of 30). They renew on …" and "Each business has its own assistant, with its own messages: open the business to keep asking there.", without "Upgrade plan"; without a connection, in the foot, "No connection: you can write, and send when it is back."; under the box, what stops a dictation: "Microphone access is blocked. Allow it in your browser to dictate.", "Nothing was heard. Try again closer to the microphone.", "The recording is too long: dictate a shorter message." or "The audio could not be transcribed. Try again." |
 | No permission | Without the gateway's permissions, the admin answers there is no permission; whoever may only look sees the pages, with their variable and whether they have the key, without being able to change them. "Assistant usage records" cannot be changed nor deleted, not even by a superuser. Without a session, the panel sends to sign in and there is no "Assistant" button; a session that ends mid-conversation says "Your session has ended. Sign in again to keep talking." with "Sign in again". |
 
 ## Flows
@@ -194,8 +195,9 @@ Steps:
 1. In "AI providers", the "Key" column of each provider says "In the environment" if its variable has a key, or "No key".
 2. On the provider's page, "Connection" says the same next to its "Key variable".
 3. Giving it a key, changing it or removing it is not done in the admin: it is done in the environment's secret (ASSISTANT-F09).
+4. If the services' provider (the one with the identifier "openai", which computes the fingerprints of the documentation search and transcribes the dictation) cannot be used, the list warns on top "The documentation search and the dictation do not work: …" with what it lacks and where that is put: that it does not exist (it is added with OpenAI's API and `OPENAI_API_KEY` as its key variable), that it speaks another API ("OpenAI" is chosen), that it is off (it is turned on in its page) or that its variable has no key (OpenAI's key is put in that variable, in erplora.com's secret, and erplora.com is deployed). With the provider ready, it warns of nothing.
 In: the provider and its key variable.
-Out: whether the provider has its key. Neither the list, the page, the notices nor the log ever carry the key or any part of it.
+Out: whether the provider has its key, and whether the services' provider can be used. Neither the list, the page, the notices nor the log ever carry the key or any part of it.
 If it fails: a provider without a key shows as "No key" and its models neither answer nor can be tried (ASSISTANT-F06); whoever may only look sees the same without being able to change the page; without permission, the admin does not let in.
 Involved: ASSISTANT-F01, ASSISTANT-F09
 

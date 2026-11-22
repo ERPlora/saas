@@ -717,3 +717,19 @@ msgstr "Configurar el asistente: modelo, política y documentos"
 
 msgid "Ask the panel's assistant"
 msgstr "Preguntar al asistente del panel"
+
+#, python-format
+msgid "The documentation search and the dictation do not work: there is no provider «%(slug)s». Add it with OpenAI's API and OPENAI_API_KEY as its key variable."
+msgstr "La búsqueda en la documentación y el dictado no funcionan: no hay ningún proveedor «%(slug)s». Añádelo con la API de OpenAI y OPENAI_API_KEY como variable de la clave."
+
+#, python-format
+msgid "The documentation search and the dictation do not work: the provider «%(slug)s» does not speak OpenAI's API. Choose «OpenAI» as its API."
+msgstr "La búsqueda en la documentación y el dictado no funcionan: el proveedor «%(slug)s» no habla la API de OpenAI. Elige «OpenAI» como su API."
+
+#, python-format
+msgid "The documentation search and the dictation do not work: the provider «%(slug)s» is off. Turn it on in its page."
+msgstr "La búsqueda en la documentación y el dictado no funcionan: el proveedor «%(slug)s» está apagado. Actívalo en su ficha."
+
+#, python-format
+msgid "The documentation search and the dictation do not work: the provider «%(slug)s» has no key in the environment. Put OpenAI's key in %(variable)s, in erplora.com's secret, and deploy."
+msgstr "La búsqueda en la documentación y el dictado no funcionan: el proveedor «%(slug)s» no tiene clave en el entorno. Pon la clave de OpenAI en %(variable)s, en el secreto de erplora.com, y despliega."

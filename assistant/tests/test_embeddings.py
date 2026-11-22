@@ -89,12 +89,22 @@ def test_without_the_services_provider_it_is_503(client, internal, business, ans
     assert (response.status_code, error_code(response)) == (503, "assistant.provider_not_configured")
 
 
-def test_a_provider_turned_off_or_without_a_key_is_503(client, internal, business, answering, fake_provider, settings):
+def test_a_provider_without_a_key_is_503(client, internal, business, answering, fake_provider, settings):
     settings.OPENAI_API_KEY = ""
 
     response = door(client, EMBEDDINGS, {"hub": business.slug, "texts": ["x"]})
 
     assert (response.status_code, error_code(response)) == (503, "assistant.provider_not_configured")
+
+
+def test_a_provider_turned_off_is_503(client, internal, business, answering, fake_provider):
+    answering.provider.is_enabled = False
+    answering.provider.save(update_fields=["is_enabled"])
+
+    response = door(client, EMBEDDINGS, {"hub": business.slug, "texts": ["x"]})
+
+    assert (response.status_code, error_code(response)) == (503, "assistant.provider_not_configured")
+    assert fake_provider.requests == []
 
 
 def test_a_provider_of_another_api_cannot_compute_them(client, internal, business, answering, fake_provider):
