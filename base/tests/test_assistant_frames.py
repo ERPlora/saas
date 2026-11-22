@@ -30,7 +30,8 @@ PLAN = {
     "append": [],
     "pending": [],
 }
-USAGE = {"type": "usage", "used": 3, "limit": 30, "resets_at": "2026-12-01T00:00:00Z", "demo": False}
+RESETS_AT = "2026-12-01T00:00:00Z"
+USAGE = {"type": "usage", "used": 3, "limit": 30, "resets_at": RESETS_AT, "demo": False}
 CALL = {"type": "function_call", "call_id": "c1", "name": "hubs__business__list", "arguments": '{"limit": 5}'}
 KEPT_CALL = {"call_id": "c1", "name": "hubs__business__list", "arguments": '{"limit": 5}'}
 
@@ -55,6 +56,10 @@ class Gateway:
         self.started.append((caller, vars(data), answer_kept))
         if self.refuse_at == "start":
             raise gateway.Refused(413, "too_large", "Too big.")
+        if self.refuse_at == "month":
+            raise gateway.Refused(
+                429, "assistant.quota_exceeded", "Spent.", retriable=False, demo=False, resets_at=RESETS_AT, limit=30, used=30
+            )
         if self.broken:
             raise RuntimeError("the database is gone")
         return "the started turn"
@@ -122,6 +127,11 @@ class TestTheStart:
     def test_a_start_the_gateway_refuses_is_a_lone_error(self, scripted):
         scripted("[DONE]", refuse_at="start")
         assert as_sent(turn()) == as_sent([{"type": "error", "code": "assistant.too_large"}])
+
+    def test_a_spent_month_is_a_lone_error_with_only_the_accounts_allowance(self, scripted):
+        scripted("[DONE]", refuse_at="month")
+        allowance = {"used": 30, "limit": 30, "resets_at": RESETS_AT, "demo": False}
+        assert as_sent(turn()) == as_sent([{"type": "error", "code": "assistant.quota_exceeded", **allowance}])
 
     def test_a_start_that_breaks_is_a_lone_retriable_error_and_is_logged(self, scripted, caplog):
         scripted("[DONE]", broken=True)
