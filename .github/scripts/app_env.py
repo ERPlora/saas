@@ -3,7 +3,7 @@
 
 deploy/app-env.json holds the saas's settings that are no secret, by environment and family:
 {"prod": {"saas": {"VAR": "text"}, ...}, "pre": {...}}. ERPlora/aws keeps everything else, the secrets included,
-and its revisions read back what the last deploy wrote to /erplora/<environment>/saas/app_env. ecs-deploy.sh runs:
+and its revisions read back what the last deploy wrote to /erplora/<environment>/saas/app_env. ecs_deploy.py runs:
 
   check     before anything is registered: reads the file of the commit it deploys, checks it, reads the app_env
             in force and, in prod, wants a confirmation for every protected setting that changes, and the Hub
