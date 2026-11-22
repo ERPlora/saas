@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Checks the settings of the revisions the saas's rollback goes back to, and records them in app_env.
 
-ecs-rollback.sh puts services back on earlier revisions, which run with the settings they were registered with, not
+ecs_rollback.py puts services back on earlier revisions, which run with the settings they were registered with, not
 with deploy/app-env.json. So the rollback checks those settings with the deploy's own rules (app_env.py) and runs:
 
   check   before any service moves, with the ARN of each revision it goes back to: reads the settings of the
