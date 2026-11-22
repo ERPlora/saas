@@ -38,6 +38,15 @@ describe('LaunchPage: one business', () => {
     expect(s.testid('launch-foot').text()).toBe('In the panel you manage the business, the team and your account.');
   });
 
+  it('«Open» says it is opening and cannot be pressed again until the browser leaves', async () => {
+    const s = await showing(page([row('bakery', 'Panadería López')]));
+    await s.testid('launch-open').trigger('click');
+    await flush();
+    expect(s.opened()).toEqual([{ id: 'bakery', next: '/' }]);
+    expect(s.testid('launch-open').text()).toBe('Opening Panadería López…');
+    expect(ionProps(s.testid('launch-open'), 'disabled')).toEqual({ disabled: true });
+  });
+
   it('greets by the account alone when the name is an email', async () => {
     const s = await showing(page([row('bakery', 'Bakery')]), {
       session: { user: { id: 'u1', label: 'owner@example.com' }, permissions: [], menu: [], apps: [], language: 'en' },

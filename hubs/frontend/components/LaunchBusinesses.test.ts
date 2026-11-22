@@ -1,17 +1,11 @@
 // The account's businesses on the entry: one is a card with «Open X», several a list with «Open» on each. The page
 // holds the opening, so the piece only says which business is opening and hands «Open» back to it.
 // clock: data only — no code under test compares these dates with now.
-import { describe, expect, it, vi } from 'vitest';
-
-vi.mock('@ionic/vue', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@ionic/vue')>()),
-  IonModal: (await import('../__tests__/ion-modal-stub')).IonModalStub,
-}));
-vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/module-mocks')).shellWithToastSpies(original));
+import { describe, expect, it } from 'vitest';
 
 import { business } from '../__tests__/businesses';
-import { page, setUpLaunchPage, showing } from '../__tests__/launch-page';
-import { flush, ionProps, mountHubs } from '../__tests__/mount-hubs';
+import { setUpLaunchPage } from '../__tests__/launch-page';
+import { ionProps, mountHubs } from '../__tests__/mount-hubs';
 import LaunchBusinesses from './LaunchBusinesses.vue';
 
 setUpLaunchPage();
@@ -70,14 +64,5 @@ describe('LaunchBusinesses', () => {
     const s = await setup([BAR, BAKERY], 'bar');
     expect(s.opens().map((open) => open.find('ion-spinner').exists())).toEqual([true, false]);
     expect(s.opens().map((open) => ionProps(open, 'disabled'))).toEqual([{ disabled: true }, { disabled: true }]);
-  });
-
-  it('on the entry, «Open» opens the business and it keeps spinning until the browser leaves', async () => {
-    const s = await showing(page([BAKERY]));
-    await s.testid('launch-open').trigger('click');
-    await flush();
-    expect(s.opened()).toEqual([{ id: 'bakery', next: '/' }]);
-    expect(s.testid('launch-open').text()).toBe('Opening Panadería López…');
-    expect(ionProps(s.testid('launch-open'), 'disabled')).toEqual({ disabled: true });
   });
 });
