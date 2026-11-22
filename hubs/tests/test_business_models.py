@@ -175,7 +175,7 @@ class TestHubMember:
             == HubMember.Role.EMPLOYEE
         )
 
-    def test_the_four_roles_carry_the_hub_prefix(self):
+    def test_the_five_roles_carry_the_hub_prefix(self):
         """The customer's roles travel to the hub as they are; ``hub_`` keeps them apart
         from the platform's (``platform_*``)."""
         assert list(HubMember.Role.values) == [
@@ -183,6 +183,7 @@ class TestHubMember:
             "hub_admin",
             "hub_manager",
             "hub_employee",
+            "hub_accountant",
         ]
 
     def test_the_hierarchy_puts_the_owner_first(self):

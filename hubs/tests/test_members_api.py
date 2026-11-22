@@ -82,7 +82,7 @@ class TestWhatEachRowOffers:
         row = rows(as_(team["owner"]), business)["employee@example.com"]
 
         assert row["actions"] == ["change_role", "remove", "transfer"]
-        assert row["assignable_roles"] == ["hub_admin", "hub_manager", "hub_employee"]
+        assert row["assignable_roles"] == ["hub_admin", "hub_manager", "hub_employee", "hub_accountant"]
 
     def test_my_own_row_offers_nothing(self, as_, business, team):
         """9 of 9 products deny the destructive action on your own row."""
@@ -158,7 +158,7 @@ class TestWhatEachRowOffers:
         listed = page(as_(team["owner"]), business)
 
         assert all("hub_owner" not in row["assignable_roles"] for row in listed["rows"])
-        assert listed["invitable_roles"] == ["hub_admin", "hub_manager", "hub_employee"]
+        assert listed["invitable_roles"] == ["hub_admin", "hub_manager", "hub_employee", "hub_accountant"]
 
     def test_a_deleted_business_offers_nothing(self, as_, business, team):
         """Every write on it answers 409: the page shows no button that would."""
