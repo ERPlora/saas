@@ -1,7 +1,6 @@
 // What waits above the businesses list for the account's answer, on its own: a notice per pending invitation and
 // per ownership offer. Accepting runs its command here; declining an invitation is handed to the page, which holds
 // the confirmation.
-// clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h } from 'vue';
 
@@ -9,20 +8,9 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/mod
 
 import { toastSuccess } from '@erplora/ui/shell';
 
+import { INVITATION, OFFER } from '../__tests__/businesses';
 import { flush, mountHubs } from '../__tests__/mount-hubs';
 import InvitationsAndOffers from './InvitationsAndOffers.vue';
-
-const INVITATION = {
-  id: 'm1',
-  hub: { id: 'norte', slug: 'norte', name: 'Bar Norte' },
-  role: 'hub_employee',
-  role_label: 'Employee',
-  invited_by: 'Pedro Sanz',
-  invited_at: null,
-  expires_at: null,
-  message: '',
-};
-const OFFER = { id: 't1', hub: { id: 'mar', slug: 'mar', name: 'Bar del Mar' }, from_email: 'pedro@example.com', expires_at: '2026-10-20T10:00:00Z' };
 
 afterEach(() => {
   vi.mocked(toastSuccess).mockClear();
