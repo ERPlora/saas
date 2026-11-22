@@ -68,10 +68,11 @@ class MigrationTest(DeployCase):
                              ('{"tasks": [{"taskArn": {"a": [1]}}]}', 'running saas-migrate: {\n  "a": [\n    1\n'
                                                                       '  ]\n}\n'),
                              ('{"tasks": [{"taskArn": 0}]}', "running saas-migrate: 0\n"),
+                             ('{"tasks": [{"taskArn": "a"}, {"taskArn": "b"}]}', "running saas-migrate: a\n"),
                              ('{"tasks": [{"taskArn": ["\u00f1"]}]}', 'running saas-migrate: [\n  "\u00f1"\n]\n')):
             self.assertEqual(0, self.deploy(FAKE_RUN_TASK_ANSWER=answer), answer)
             self.assertIn(said, self.out)
-        for answer, said in (("null", "did not start: null\n"), ("", "did not start: \n"),
+        for answer, said in (("null", "did not start: null\n"), ("", "did not start: \n"), ("  ", "did not start: \n"),
                              ('{"tasks": [], "failures": []}', "did not start: []\n"),
                              ('{"tasks": [{"taskArn": false}]}', "did not start: null\n"),
                              ('{"tasks": [{}], "failures": [{"reason": "ñ"}]}', 'did not start: [{"reason":"ñ"}]\n')):
@@ -135,12 +136,16 @@ class RolloutTest(DeployCase):
         self.assertEqual(1, self.rollout(FAKE_PRIMARY_ANSWER="arn:td/erplora-prod-saas:1  IN  PROGRESS "))
         self.assertIn("::error::saas runs arn:td/erplora-prod-saas:1 (IN  PROGRESS), not arn:td/erplora-prod-saas:2;",
                       self.out)
+        self.assertEqual(1, self.rollout(FAKE_PRIMARY_ANSWER="arn:td/erplora-prod-saas:2\x0bCOMPLETED"))
+        self.assertIn("::error::saas runs arn:td/erplora-prod-saas:2\x0bCOMPLETED (), not", self.out)
 
     def test_a_rollout_that_outlasts_its_timeout_fails(self):
         self.assertNotEqual(0, self.rollout(FAKE_ROLLOUT_STATES="IN_PROGRESS", ROLLOUT_TIMEOUT_SECONDS="30"))
         self.assertEqual((3, ["15", "15"]), (self.reads(), self.pauses()))
         self.assertIn("::error::rollout of saas did not complete in 30 s; see the service events\n", self.out)
         self.assertFalse(self.called("put-parameter"))
+        self.assertNotEqual(0, self.rollout(FAKE_ROLLOUT_STATES="IN_PROGRESS", ROLLOUT_TIMEOUT_SECONDS="00"))
+        self.assertIn("::error::rollout of saas did not complete in 00 s;", self.out)
         self.assertNotEqual(0, self.rollout(FAKE_ROLLOUT_STATES="IN_PROGRESS"))
         self.assertEqual((41, 40), (self.reads(), len(self.pauses())))
         self.assertIn("::error::rollout of saas did not complete in 600 s", self.out)
