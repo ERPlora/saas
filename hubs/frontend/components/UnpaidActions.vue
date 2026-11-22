@@ -4,7 +4,8 @@
 // «Pay the invoice» goes to Stripe's page. After a declined card «Change card» (Stripe's Customer Portal,
 // `useCardPortal`, as on Billing) is the main action and «Pay» waits for it, as Billing does. Inside the apps
 // nothing at all: the notice says where to pay. In a list each button is named with its business.
-import { HubIcon, WebOnly } from '@erplora/ui/shell';
+// Its root is the actions' own element, not `<WebOnly>` (a fragment), so the spacing a caller gives it lands.
+import { HubIcon, useSurface } from '@erplora/ui/shell';
 import { IonButton, IonSpinner } from '@ionic/vue';
 import { computed } from 'vue';
 
@@ -26,59 +27,58 @@ const props = withDefaults(
   { named: false, size: 'default', expand: undefined, secondary: false },
 );
 
+const { isWeb } = useSurface();
 const portal = useCardPortal();
 const declined = computed(() => props.business.unpaid_reason === 'card_declined');
 </script>
 
 <template>
-  <WebOnly>
-    <div
-      v-if="business.pay_url"
-      class="unpaid-actions"
-      :class="{ 'is-block': expand === 'block' }"
+  <div
+    v-if="isWeb && business.pay_url"
+    class="unpaid-actions"
+    :class="{ 'is-block': expand === 'block' }"
+  >
+    <ion-button
+      v-if="declined"
+      data-testid="unpaid-change-card"
+      :fill="secondary ? 'outline' : 'solid'"
+      :size="size === 'default' ? undefined : size"
+      :expand="expand"
+      :aria-label="named ? $t('hubs.unpaid.changeCardName', { name: business.name }) : undefined"
+      :disabled="!!portal.opening.value"
+      @click="portal.open(business.id)"
     >
-      <ion-button
-        v-if="declined"
-        data-testid="unpaid-change-card"
-        :fill="secondary ? 'outline' : 'solid'"
-        :size="size === 'default' ? undefined : size"
-        :expand="expand"
-        :aria-label="named ? $t('hubs.unpaid.changeCardName', { name: business.name }) : undefined"
-        :disabled="!!portal.opening.value"
-        @click="portal.open(business.id)"
-      >
-        <ion-spinner
-          v-if="portal.opening.value === business.id"
-          slot="start"
-          name="crescent"
-          aria-hidden="true"
-        />
-        <HubIcon
-          v-else
-          slot="start"
-          name="lucide:credit-card"
-          aria-hidden="true"
-        />
-        {{ $t('hubs.unpaid.changeCard') }}
-      </ion-button>
-      <ion-button
-        data-testid="unpaid-pay"
-        :fill="declined || secondary ? 'outline' : 'solid'"
-        :size="size === 'default' || (declined && size === 'large') ? undefined : size"
-        :expand="expand"
-        :href="business.pay_url"
-        :disabled="declined"
-        :aria-label="named ? $t('hubs.unpaid.payName', { name: business.name }) : undefined"
-      >
-        <HubIcon
-          slot="start"
-          name="ion:card-outline"
-          aria-hidden="true"
-        />
-        {{ $t('hubs.unpaid.pay') }}
-      </ion-button>
-    </div>
-  </WebOnly>
+      <ion-spinner
+        v-if="portal.opening.value === business.id"
+        slot="start"
+        name="crescent"
+        aria-hidden="true"
+      />
+      <HubIcon
+        v-else
+        slot="start"
+        name="lucide:credit-card"
+        aria-hidden="true"
+      />
+      {{ $t('hubs.unpaid.changeCard') }}
+    </ion-button>
+    <ion-button
+      data-testid="unpaid-pay"
+      :fill="declined || secondary ? 'outline' : 'solid'"
+      :size="size === 'default' || (declined && size === 'large') ? undefined : size"
+      :expand="expand"
+      :href="business.pay_url"
+      :disabled="declined"
+      :aria-label="named ? $t('hubs.unpaid.payName', { name: business.name }) : undefined"
+    >
+      <HubIcon
+        slot="start"
+        name="ion:card-outline"
+        aria-hidden="true"
+      />
+      {{ $t('hubs.unpaid.pay') }}
+    </ion-button>
+  </div>
 </template>
 
 <style scoped src="./buttons.css"></style>

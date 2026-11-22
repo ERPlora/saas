@@ -1,7 +1,7 @@
 // The account's businesses on the entry: one is a card with «Open X», several a list with «Open» on each. The page
 // holds the opening, so the piece only says which business is opening and hands «Open» back to it.
 // clock: data only — no code under test compares these dates with now.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { business } from '../__tests__/businesses';
 import { setUpLaunchPage } from '../__tests__/launch-page';
@@ -40,6 +40,16 @@ describe('LaunchBusinesses', () => {
     const [open] = s.opens();
     expect(ionProps(open, 'size', 'fill')).toEqual({ size: undefined, fill: 'outline' });
     expect(open.classes()).toContain('launch-second');
+  });
+
+  it('the way to pay takes the spacing of the action it stands for: the main one alone, a row action in the list', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const one = await setup([OWED]);
+    expect(one.wrapper.get('[data-testid="unpaid-pay"]').element.parentElement?.classList).toContain('launch-main');
+    const several = await setup([OWED, BAR]);
+    expect(several.wrapper.get('[data-testid="unpaid-pay"]').element.parentElement?.classList).toContain('launch-biz__pay');
+    expect(warn.mock.calls.flat().filter((line) => String(line).includes('Extraneous non-props attributes'))).toEqual([]);
+    warn.mockRestore();
   });
 
   it('while the page opens the only business, its button says so, spins and cannot be pressed', async () => {
