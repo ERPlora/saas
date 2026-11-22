@@ -164,3 +164,11 @@ export function catalog(hubId: string, extra: Partial<StoreCatalogOut> = {}): St
     ...extra,
   };
 }
+
+/** What the server answers the Store by default: the plans, the premium apps and the catalog of each business. */
+export function storeAnswer(call: { path: string; query: Record<string, string> }, catalogOf: (hubId: string) => StoreCatalogOut | undefined): Response {
+  if (call.path === '/api/plans') return Response.json(PLANS);
+  if (call.path === '/api/apps') return Response.json(APPS);
+  if (call.path === '/api/billing/store') return Response.json(catalogOf(call.query.hub_id));
+  return Response.json({});
+}

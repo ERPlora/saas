@@ -2,9 +2,7 @@
 // nothing is deleted and that it can be kept; confirmed, `billing.module.cancel`, the subscription it left to the
 // Store and a toast with the date it ends. A refusal stays in the dialog.
 // clock: data only — no code under test compares these dates with now.
-import { ConfirmDialog } from '@erplora/ui/components';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Component } from 'vue';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@ionic/vue')>()),
@@ -15,6 +13,7 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/fr
 import { toastSuccess } from '@erplora/ui/shell';
 
 import type { SaleModule } from '../store';
+import { confirmDialogOf } from '../__tests__/confirm-dialog';
 import { apiError, describeCall, flush, mountBilling } from '../__tests__/mount-billing';
 import CancelModuleDialog from './CancelModuleDialog.vue';
 
@@ -57,8 +56,7 @@ async function setup(props: Record<string, unknown> = {}, api: Answer = () => Re
     api: (call) => api(describeCall(call)),
   });
   await flush();
-  const dialog = () => s.wrapper.findComponent(ConfirmDialog as unknown as Component);
-  const dialogProp = (name: string) => (dialog().props() as Record<string, unknown>)[name];
+  const { dialog, dialogProp } = confirmDialogOf(s.wrapper);
   const confirm = async () => {
     s.q('store-cancel-module-submit')!.click();
     await flush();

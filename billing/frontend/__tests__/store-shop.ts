@@ -6,7 +6,7 @@ import { toastInfo, toastSuccess } from '@erplora/ui/shell';
 import { afterEach, vi } from 'vitest';
 
 import StoreShop from '../components/StoreShop.vue';
-import { APPS, BAKERY, CAFE, catalog, FREE_SUBSCRIPTION, PLANS, PLAZA, SALON, businessPage, storeModule } from './fixtures';
+import { BAKERY, CAFE, catalog, FREE_SUBSCRIPTION, PLAZA, SALON, businessPage, storeAnswer, storeModule } from './fixtures';
 import { flush, mountBilling, type StreamCall } from './mount-billing';
 
 export function setUpStoreShop(): void {
@@ -45,12 +45,7 @@ export async function setup(
         query: Object.fromEntries(url.searchParams.entries()),
         body: typeof call.init.body === 'string' ? JSON.parse(call.init.body) : undefined,
       };
-      const custom = answer(described);
-      if (custom) return custom;
-      if (described.path === '/api/plans') return Response.json(PLANS);
-      if (described.path === '/api/apps') return Response.json(APPS);
-      if (described.path === '/api/billing/store') return Response.json(CATALOGS[described.query.hub_id]);
-      return Response.json({});
+      return answer(described) ?? storeAnswer(described, (hubId) => CATALOGS[hubId]);
     },
   });
   const list = options.list ?? 'result';

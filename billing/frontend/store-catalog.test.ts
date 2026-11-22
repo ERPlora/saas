@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, shallowRef } from 'vue';
 
 import type { SubscriptionOut } from '../../frontend/sdk-types/store';
-import { APPS, catalog, PLANS, storeModule } from './__tests__/fixtures';
+import { APPS, catalog, PLANS, storeAnswer, storeModule } from './__tests__/fixtures';
 import { apiError, describeCall, flush, mountBilling } from './__tests__/mount-billing';
 import { useStoreCatalog } from './store-catalog';
 
@@ -37,12 +37,7 @@ async function setup(answer: Answer = () => undefined, hubId: string | null = 'b
   const s = await mountBilling(Host, {
     api: (call) => {
       const described = describeCall(call);
-      const custom = answer(described);
-      if (custom) return custom;
-      if (described.path === '/api/plans') return Response.json(PLANS);
-      if (described.path === '/api/apps') return Response.json(APPS);
-      if (described.path === '/api/billing/store') return Response.json(catalog(described.query.hub_id));
-      return Response.json({});
+      return answer(described) ?? storeAnswer(described, catalog);
     },
   });
   await flush();
@@ -92,31 +87,29 @@ describe('useStoreCatalog', () => {
     expect(s.store().catalog.value).toBeNull();
   });
 
-  it('another business: its catalog, and a late answer for the one left behind is dropped', async () => {
+  /** Bakery's catalog is held until `answer` comes; meanwhile the Store moves on to Café. */
+  async function leftBehind(answer: Response) {
     let release!: () => void;
     const late = new Promise<Response>((resolve) => {
-      release = () => resolve(Response.json(catalog('bakery')));
+      release = () => resolve(answer);
     });
     const s = await setup(({ path, query }) => (path === '/api/billing/store' && query.hub_id === 'bakery' ? late : undefined));
     s.business.value = { id: 'cafe' };
     await flush();
-    expect(s.store().catalog.value?.hub_id).toBe('cafe');
     release();
     await flush();
+    return s;
+  }
+
+  it('another business: its catalog, and a late answer for the one left behind is dropped', async () => {
+    const s = await leftBehind(Response.json(catalog('bakery')));
     expect(s.store().catalog.value?.hub_id).toBe('cafe');
   });
 
   it('a catalog that fails for a business left behind is not an error', async () => {
-    let fail!: () => void;
-    const late = new Promise<Response>((resolve) => {
-      fail = () => resolve(apiError(502, 'unexpected_response', 'x'));
-    });
-    const s = await setup(({ path, query }) => (path === '/api/billing/store' && query.hub_id === 'bakery' ? late : undefined));
-    s.business.value = { id: 'cafe' };
-    await flush();
-    fail();
-    await flush();
+    const s = await leftBehind(apiError(502, 'unexpected_response', 'x'));
     expect(s.store().failed.value).toBe(false);
+    expect(s.store().catalog.value?.hub_id).toBe('cafe');
   });
 
   it('what the business has does not load: it fails, and «Retry» asks everything again', async () => {
