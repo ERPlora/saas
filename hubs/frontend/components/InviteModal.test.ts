@@ -45,6 +45,15 @@ async function setup(api: () => Response, extra: Record<string, unknown> = {}) {
   return { ...m, open, q, fire };
 }
 
+/** The dialog once the server refused the invitation for the plan's places (someone took the last one meanwhile). */
+async function refusedForSeats() {
+  const s = await setup(() => apiError(409, 'hubs.seat_limit', 'This plan covers 3 people and they are all taken.'));
+  await s.fire('invite-email', 'ionInput', 'a@example.com');
+  s.q('invite-modal-submit').click();
+  await flush();
+  return s;
+}
+
 describe('InviteModal', () => {
   it('asks the email, the role among those one may hand out (employee first picked) and a message', async () => {
     const s = await setup(() => Response.json(member('jorge')));
@@ -95,18 +104,12 @@ describe('InviteModal', () => {
   });
 
   it('says the server’s seat limit as it says it', async () => {
-    const s = await setup(() => apiError(409, 'hubs.seat_limit', 'This plan covers 3 people and they are all taken.'));
-    await s.fire('invite-email', 'ionInput', 'a@example.com');
-    s.q('invite-modal-submit').click();
-    await flush();
+    const s = await refusedForSeats();
     expect(s.q('invite-modal-error').textContent).toContain('This plan covers 3 people and they are all taken.');
   });
 
   it('when the server says every place is taken, it says so and stops sending', async () => {
-    const s = await setup(() => apiError(409, 'hubs.seat_limit', 'This plan covers 3 people and they are all taken.'));
-    await s.fire('invite-email', 'ionInput', 'a@example.com');
-    s.q('invite-modal-submit').click();
-    await flush();
+    const s = await refusedForSeats();
     expect(s.q('invite-full').textContent).toContain('The plan has no free places left');
     expect(s.q('invite-modal-submit').disabled).toBe(true);
   });
@@ -138,10 +141,7 @@ describe('InviteModal', () => {
   });
 
   it('after the server’s seat limit, the accountancy firm can still be sent', async () => {
-    const s = await setup(() => apiError(409, 'hubs.seat_limit', 'This plan covers 3 people and they are all taken.'));
-    await s.fire('invite-email', 'ionInput', 'a@example.com');
-    s.q('invite-modal-submit').click();
-    await flush();
+    const s = await refusedForSeats();
     await s.fire('invite-role', 'ionChange', 'hub_accountant');
     expect(s.q('invite-full')).toBeNull();
     expect(s.q('invite-modal-submit').disabled).toBe(false);
