@@ -138,6 +138,17 @@ describe('InvoicesTab: a file is saved only when it is the file', () => {
     await s.testid(id).trigger('click');
     await flush();
   };
+  const notIssued = () => envelope(404, 'billing.invoice_not_issued', 'This invoice is still being issued: its PDF is ready once it is.');
+  /** 00123 and 00125 on the list and both selected; the file of 00123 is answered by `first`, the other by `second`. */
+  async function selectBoth(first: () => Response, second: () => Response, locale: 'en' | 'es' = 'en') {
+    serveFiles((url) => (url.endsWith('00123') ? first() : second()));
+    const saved = watchSaves();
+    const s = await setup('/dashboard/billing/invoices', undefined, locale);
+    await s.show([PAID, invoiceRow('00125')]);
+    s.table().vm.$emit('update:selected', ['00123', '00125']);
+    await flush();
+    return { s, saved };
+  }
 
   it('a PDF the platform hub issued is saved under its name', async () => {
     const asked = serveFiles(
@@ -236,12 +247,8 @@ describe('InvoicesTab: a file is saved only when it is the file', () => {
   });
 
   it('«Download PDF (n)» with the invoice service down: one error, not one per file', async () => {
-    serveFiles(() => envelope(503, 'billing.platform_unavailable', 'The invoice cannot be downloaded right now. Try again in a moment.'));
-    const saved = watchSaves();
-    const s = await setup();
-    await s.show([PAID, invoiceRow('00125')]);
-    s.table().vm.$emit('update:selected', ['00123', '00125']);
-    await flush();
+    const down = () => envelope(503, 'billing.platform_unavailable', 'The invoice cannot be downloaded right now. Try again in a moment.');
+    const { s, saved } = await selectBoth(down, down);
     await press(s, 'invoices-pdf-selected');
     expect(saved).toEqual([]);
     expect(toastError).toHaveBeenCalledExactlyOnceWith('The invoice service is not answering. Try again in a moment.');
@@ -269,16 +276,11 @@ describe('InvoicesTab: a file is saved only when it is the file', () => {
   });
 
   it('one failing and one still being issued, said together in Spanish (in the singular)', async () => {
-    serveFiles((url) =>
-      url.endsWith('00123')
-        ? envelope(503, 'billing.platform_unavailable', 'Ahora no se puede descargar la factura.')
-        : envelope(404, 'billing.invoice_not_issued', 'Esta factura aún se está emitiendo.'),
+    const { s } = await selectBoth(
+      () => envelope(503, 'billing.platform_unavailable', 'Ahora no se puede descargar la factura.'),
+      () => envelope(404, 'billing.invoice_not_issued', 'Esta factura aún se está emitiendo.'),
+      'es',
     );
-    watchSaves();
-    const s = await setup('/dashboard/billing/invoices', undefined, 'es');
-    await s.show([PAID, invoiceRow('00125')]);
-    s.table().vm.$emit('update:selected', ['00123', '00125']);
-    await flush();
     await press(s, 'invoices-pdf-selected');
     expect(toastError).toHaveBeenCalledExactlyOnceWith(
       'El servicio de facturas no responde. Prueba de nuevo en un momento. Esa factura aún se está emitiendo: su PDF estará en unos minutos.',
@@ -289,16 +291,7 @@ describe('InvoicesTab: a file is saved only when it is the file', () => {
   // A notice is one line of text (Material's snackbar): its sentences one after the other, each with its stop, never a
   // line break (painted as a bare space) nor two sentences run together when the server's words end without one.
   it('what failed and what is still being issued read as two sentences on one line, even without the server’s stop', async () => {
-    serveFiles((url) =>
-      url.endsWith('00123')
-        ? envelope(503, 'service_unavailable', 'The service is not available right now')
-        : envelope(404, 'billing.invoice_not_issued', 'This invoice is still being issued: its PDF is ready once it is.'),
-    );
-    watchSaves();
-    const s = await setup();
-    await s.show([PAID, invoiceRow('00125')]);
-    s.table().vm.$emit('update:selected', ['00123', '00125']);
-    await flush();
+    const { s } = await selectBoth(() => envelope(503, 'service_unavailable', 'The service is not available right now'), notIssued);
     await press(s, 'invoices-pdf-selected');
     const said = String(vi.mocked(toastError).mock.calls[0]?.[0]);
     expect(said).not.toMatch(/\n/);
@@ -321,31 +314,16 @@ describe('InvoicesTab: a file is saved only when it is the file', () => {
   });
 
   it('«Download PDF (n)» with two different failures says the first one', async () => {
-    serveFiles((url) =>
-      url.endsWith('00123')
-        ? envelope(503, 'billing.platform_unavailable', 'The invoice cannot be downloaded right now. Try again in a moment.')
-        : envelope(500, 'internal_error', 'Something went wrong.'),
+    const { s } = await selectBoth(
+      () => envelope(503, 'billing.platform_unavailable', 'The invoice cannot be downloaded right now. Try again in a moment.'),
+      () => envelope(500, 'internal_error', 'Something went wrong.'),
     );
-    watchSaves();
-    const s = await setup();
-    await s.show([PAID, invoiceRow('00125')]);
-    s.table().vm.$emit('update:selected', ['00123', '00125']);
-    await flush();
     await press(s, 'invoices-pdf-selected');
     expect(toastError).toHaveBeenCalledExactlyOnceWith('The invoice service is not answering. Try again in a moment.');
   });
 
   it('the server’s words read as one sentence on one line: its line breaks and spaces go, its own stop stays', async () => {
-    serveFiles((url) =>
-      url.endsWith('00123')
-        ? envelope(503, 'service_unavailable', 'The service is busy\n  right now!  ')
-        : envelope(404, 'billing.invoice_not_issued', 'This invoice is still being issued: its PDF is ready once it is.'),
-    );
-    watchSaves();
-    const s = await setup();
-    await s.show([PAID, invoiceRow('00125')]);
-    s.table().vm.$emit('update:selected', ['00123', '00125']);
-    await flush();
+    const { s } = await selectBoth(() => envelope(503, 'service_unavailable', 'The service is busy\n  right now!  '), notIssued);
     await press(s, 'invoices-pdf-selected');
     expect(toastError).toHaveBeenCalledExactlyOnceWith(
       'The service is busy right now! That invoice is still being issued: its PDF is ready in a few minutes.',
@@ -353,16 +331,7 @@ describe('InvoicesTab: a file is saved only when it is the file', () => {
   });
 
   it('one the server says is still being issued stops counting for «Download PDF (n)» and joins the note', async () => {
-    serveFiles((url) =>
-      url.endsWith('00123')
-        ? new Response('%PDF', { status: 200, headers: { 'Content-Type': 'application/pdf' } })
-        : envelope(404, 'billing.invoice_not_issued', 'This invoice is still being issued: its PDF is ready once it is.'),
-    );
-    watchSaves();
-    const s = await setup();
-    await s.show([PAID, invoiceRow('00125')]);
-    s.table().vm.$emit('update:selected', ['00123', '00125']);
-    await flush();
+    const { s } = await selectBoth(() => new Response('%PDF', { status: 200, headers: { 'Content-Type': 'application/pdf' } }), notIssued);
     expect(s.testid('invoices-pdf-selected').text()).toBe('Download PDF (2)');
     await press(s, 'invoices-pdf-selected');
     expect(s.testid('invoices-pdf-selected').text()).toBe('Download PDF (1)');
