@@ -300,16 +300,6 @@
     ]
   },
   {
-    "path": "fiscal/services.py",
-    "file_name": "services.py",
-    "functions": [
-      {
-        "name": "_checked",
-        "complexity": 16
-      }
-    ]
-  },
-  {
     "path": "hubs/services/custom_domain_checks.py",
     "file_name": "custom_domain_checks.py",
     "functions": [
@@ -540,6 +530,16 @@
       {
         "name": "utility_declarations",
         "complexity": 103
+      }
+    ]
+  },
+  {
+    "path": "fiscal/services/representation_grants.py",
+    "file_name": "representation_grants.py",
+    "functions": [
+      {
+        "name": "_checked",
+        "complexity": 16
       }
     ]
   }

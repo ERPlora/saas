@@ -1,10 +1,10 @@
-"""Events of fiscal (``<app>.<entity>.<fact>``): recorded by services.py in the outbox, cited by live.py.
+"""Events of fiscal (``<app>.<entity>.<fact>``): recorded by ``services`` in the outbox, cited by live.py.
 
 Each step of an authorisation is its own event, recorded by the command that takes it, so the outbox is its
 trail: who (``actor``), which business and which version (payload ``{"hub_id", "id", "version"}``; never a
 document). ``REPRESENTATION_CHANGED`` is told on the channel of each owner and admin of the business
-(``services.tell_the_business``), so the state on their page re-runs at once. fiscal reacts to no event of
-another app.
+(``services.business_notices.tell_the_business``), so the state on their page re-runs at once. fiscal reacts to
+no event of another app.
 """
 
 REPRESENTATION_SUBMITTED = "fiscal.representation.submitted"

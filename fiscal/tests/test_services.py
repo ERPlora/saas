@@ -11,7 +11,8 @@ from django.utils import timezone
 from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
 from live.models import OutboxEvent
 
-from fiscal import crypto, services
+from fiscal import crypto
+from fiscal.services import business_notices, representation_grants, stamp_changes
 from fiscal.documents import MAX_DOCUMENT_BYTES
 from fiscal.models import RepresentationGrant
 from fiscal.schemas import (
@@ -30,7 +31,7 @@ pytestmark = pytest.mark.django_db
 
 
 def submit(hub, **overrides):
-    return services.representation_submit(
+    return representation_grants.representation_submit(
         system_ctx_for(hub.id),
         RepresentationSubmitIn(hub_id=hub.id, **submission(**overrides)),
     )
@@ -208,7 +209,7 @@ class TestSubmit:
 
     def test_only_the_platform_sends_an_authorisation(self, business, owner):
         with pytest.raises(PermissionDenied):
-            services.representation_submit(
+            representation_grants.representation_submit(
                 ctx_for(owner),
                 RepresentationSubmitIn(hub_id=business.id, **submission()),
             )
@@ -220,7 +221,7 @@ class TestSubmit:
 
         hub_id = uuid.uuid7()
         with pytest.raises(NotFound):
-            services.representation_submit(
+            representation_grants.representation_submit(
                 system_ctx_for(hub_id),
                 RepresentationSubmitIn(hub_id=hub_id, **submission()),
             )
@@ -330,7 +331,7 @@ class TestTheRulesOfASubmission:
         overlong = data.model_copy(update={field: "1" * 17 + "Z"})
 
         with pytest.raises(InvalidPayload) as refused:
-            services.representation_submit(system_ctx_for(business.id), overlong)
+            representation_grants.representation_submit(system_ctx_for(business.id), overlong)
 
         assert (refused.value.code, field in refused.value.fields) == (code, True)
         assert not RepresentationGrant.objects.exists()
@@ -365,7 +366,7 @@ class TestTheRulesOfASubmission:
         )
 
         with pytest.raises(InvalidPayload) as refused:
-            services.representation_submit(
+            representation_grants.representation_submit(
                 es,
                 RepresentationSubmitIn(
                     hub_id=business.id, **submission(signer_name="")
@@ -390,7 +391,7 @@ class TestApprove:
     def test_it_puts_the_authorisation_in_force_with_its_reviewer(
         self, waiting, reviewer
     ):
-        result = services.representation_approve(
+        result = representation_grants.representation_approve(
             staff_ctx(reviewer), ReviewIn(id=waiting.id)
         )
 
@@ -409,7 +410,7 @@ class TestApprove:
         )
         new = make_grant(business, version=2, status="submitted")
 
-        services.representation_approve(staff_ctx(reviewer), ReviewIn(id=new.id))
+        representation_grants.representation_approve(staff_ctx(reviewer), ReviewIn(id=new.id))
 
         old.refresh_from_db()
         assert (old.status, old.revoked_by, old.reason) == (
@@ -425,7 +426,7 @@ class TestApprove:
         grant = make_grant(business, version=1, status=status)
 
         with pytest.raises(Conflict) as refused:
-            services.representation_approve(staff_ctx(reviewer), ReviewIn(id=grant.id))
+            representation_grants.representation_approve(staff_ctx(reviewer), ReviewIn(id=grant.id))
 
         assert (refused.value.status, refused.value.code) == (409, "fiscal.not_pending")
         grant.refresh_from_db()
@@ -442,7 +443,7 @@ class TestApprove:
         before = version_of(business)
 
         with django_capture_on_commit_callbacks(execute=True):
-            services.representation_approve(
+            representation_grants.representation_approve(
                 staff_ctx(reviewer), ReviewIn(id=waiting.id)
             )
 
@@ -454,7 +455,7 @@ class TestApprove:
         )
 
     def test_its_trail_names_the_reviewer(self, business, waiting, reviewer):
-        services.representation_approve(staff_ctx(reviewer), ReviewIn(id=waiting.id))
+        representation_grants.representation_approve(staff_ctx(reviewer), ReviewIn(id=waiting.id))
 
         event = OutboxEvent.objects.get(name="fiscal.representation.approved")
         assert (event.actor, event.scope_key) == (
@@ -471,7 +472,7 @@ class TestApprove:
         root = make_user("root@erplora.com", is_staff=True, is_superuser=True)
 
         assert (
-            services.representation_approve(
+            representation_grants.representation_approve(
                 staff_ctx(root), ReviewIn(id=waiting.id)
             ).status
             == "approved"
@@ -496,7 +497,7 @@ class TestApprove:
             ctx = system_ctx_for(business.id)
 
         with pytest.raises(PermissionDenied):
-            services.representation_approve(ctx, ReviewIn(id=waiting.id))
+            representation_grants.representation_approve(ctx, ReviewIn(id=waiting.id))
 
         waiting.refresh_from_db()
         assert waiting.status == "submitted"
@@ -505,14 +506,14 @@ class TestApprove:
         import uuid
 
         with pytest.raises(NotFound):
-            services.representation_approve(
+            representation_grants.representation_approve(
                 staff_ctx(reviewer), ReviewIn(id=uuid.uuid7())
             )
 
 
 class TestReturn:
     def test_it_goes_back_with_the_reason_for_the_customer(self, waiting, reviewer):
-        result = services.representation_return(
+        result = representation_grants.representation_return(
             staff_ctx(reviewer),
             ReturnIn(id=waiting.id, reason="  The DNI copy is unreadable.  "),
         )
@@ -533,7 +534,7 @@ class TestReturn:
         approved = make_grant(business, version=1, status="approved")
         new = make_grant(business, version=2, status="submitted")
 
-        services.representation_return(
+        representation_grants.representation_return(
             staff_ctx(reviewer), ReturnIn(id=new.id, reason="Not signed.")
         )
 
@@ -545,7 +546,7 @@ class TestReturn:
         before = version_of(business)
 
         with pytest.raises(InvalidPayload) as refused:
-            services.representation_return(
+            representation_grants.representation_return(
                 staff_ctx(reviewer), ReturnIn(id=waiting.id, reason=reason)
             )
 
@@ -560,7 +561,7 @@ class TestReturn:
 
     def test_the_reason_has_a_ceiling(self, waiting, reviewer):
         with pytest.raises(InvalidPayload) as refused:
-            services.representation_return(
+            representation_grants.representation_return(
                 staff_ctx(reviewer), ReturnIn(id=waiting.id, reason="x" * 501)
             )
 
@@ -571,7 +572,7 @@ class TestReturn:
         grant = make_grant(business, version=1, status="approved")
 
         with pytest.raises(Conflict) as refused:
-            services.representation_return(
+            representation_grants.representation_return(
                 staff_ctx(reviewer), ReturnIn(id=grant.id, reason="No.")
             )
 
@@ -580,7 +581,7 @@ class TestReturn:
     def test_it_bumps_the_snapshot(self, business, waiting, reviewer):
         before = version_of(business)
 
-        services.representation_return(
+        representation_grants.representation_return(
             staff_ctx(reviewer), ReturnIn(id=waiting.id, reason="Not signed.")
         )
 
@@ -588,7 +589,7 @@ class TestReturn:
 
     def test_the_customer_does_not_return_it(self, waiting, owner):
         with pytest.raises(PermissionDenied):
-            services.representation_return(
+            representation_grants.representation_return(
                 ctx_for(owner), ReturnIn(id=waiting.id, reason="No.")
             )
 
@@ -599,7 +600,7 @@ class TestWithdraw:
             business, version=1, status="approved", reviewed_at=timezone.now()
         )
 
-        result = services.representation_withdraw(
+        result = representation_grants.representation_withdraw(
             staff_ctx(reviewer),
             WithdrawIn(id=approved.id, reason="The company changed its administrator."),
         )
@@ -619,7 +620,7 @@ class TestWithdraw:
         grant = make_grant(business, version=1, status=status)
 
         with pytest.raises(Conflict) as refused:
-            services.representation_withdraw(
+            representation_grants.representation_withdraw(
                 staff_ctx(reviewer), WithdrawIn(id=grant.id, reason="No.")
             )
 
@@ -632,7 +633,7 @@ class TestWithdraw:
         approved = make_grant(business, version=1, status="approved")
 
         with pytest.raises(InvalidPayload) as refused:
-            services.representation_withdraw(
+            representation_grants.representation_withdraw(
                 staff_ctx(reviewer), WithdrawIn(id=approved.id, reason="")
             )
 
@@ -647,7 +648,7 @@ class TestWithdraw:
         before = version_of(business)
 
         with django_capture_on_commit_callbacks(execute=True):
-            services.representation_withdraw(
+            representation_grants.representation_withdraw(
                 staff_ctx(reviewer), WithdrawIn(id=approved.id, reason="Revoked.")
             )
 
@@ -671,7 +672,7 @@ class TestTheBusinessHearsOfIt:
     def test_the_owner_and_the_admins_get_it_on_their_channels(
         self, business, owner, team, waiting, reviewer
     ):
-        services.representation_approve(staff_ctx(reviewer), ReviewIn(id=waiting.id))
+        representation_grants.representation_approve(staff_ctx(reviewer), ReviewIn(id=waiting.id))
 
         told = set(
             OutboxEvent.objects.filter(
@@ -691,7 +692,7 @@ class TestTheBusinessHearsOfIt:
     def test_a_manager_or_an_employee_is_not_told(
         self, business, team, waiting, reviewer
     ):
-        services.representation_approve(staff_ctx(reviewer), ReviewIn(id=waiting.id))
+        representation_grants.representation_approve(staff_ctx(reviewer), ReviewIn(id=waiting.id))
 
         told = set(
             OutboxEvent.objects.filter(
@@ -704,7 +705,7 @@ class TestTheBusinessHearsOfIt:
 
     def test_only_the_platform_tells(self, business, owner):
         with pytest.raises(PermissionDenied):
-            services.representation_notify(ctx_for(owner), NotifyIn(id=business.id))
+            business_notices.representation_notify(ctx_for(owner), NotifyIn(id=business.id))
 
 
 def test_a_pending_invitation_is_not_told(business, make_user, waiting, reviewer):
@@ -715,7 +716,7 @@ def test_a_pending_invitation_is_not_told(business, make_user, waiting, reviewer
         accepted=False,
     )
 
-    services.representation_approve(staff_ctx(reviewer), ReviewIn(id=waiting.id))
+    representation_grants.representation_approve(staff_ctx(reviewer), ReviewIn(id=waiting.id))
 
     assert OutboxEvent.objects.filter(name="fiscal.representation.changed").count() == 1
 
@@ -731,7 +732,7 @@ def test_the_reviewer_needs_the_change_permission_not_only_the_view_one(
     )
 
     with pytest.raises(PermissionDenied):
-        services.representation_approve(staff_ctx(helper), ReviewIn(id=waiting.id))
+        representation_grants.representation_approve(staff_ctx(helper), ReviewIn(id=waiting.id))
 
 
 # --- The mails of each step (FISCAL-F05) ----------------------------------------------------------------
@@ -763,11 +764,11 @@ class TestMails:
         ("decide", "subject"),
         [
             (
-                lambda ctx, grant: services.representation_approve(ctx, ReviewIn(id=grant.id)),
+                lambda ctx, grant: representation_grants.representation_approve(ctx, ReviewIn(id=grant.id)),
                 "La autorización firmada de Bar Manolo ya está en vigor",
             ),
             (
-                lambda ctx, grant: services.representation_return(
+                lambda ctx, grant: representation_grants.representation_return(
                     ctx, ReturnIn(id=grant.id, reason="Falta la firma.")
                 ),
                 "Te hemos devuelto la autorización firmada de Bar Manolo",
@@ -797,7 +798,7 @@ class TestMails:
         )
 
         with django_capture_on_commit_callbacks(execute=True):
-            services.representation_withdraw(
+            representation_grants.representation_withdraw(
                 staff_ctx(reviewer), WithdrawIn(id=approved.id, reason="Caducado.")
             )
 
@@ -828,7 +829,7 @@ class TestStamp:
     def upload(user, png: bytes):
         from fiscal.schemas import StampUploadIn
 
-        return services.stamp_upload(
+        return stamp_changes.stamp_upload(
             staff_ctx(user), StampUploadIn(png_base64=base64.b64encode(png).decode())
         )
 
@@ -893,7 +894,7 @@ class TestStamp:
         from fiscal.schemas import StampUploadIn
 
         with pytest.raises(InvalidPayload) as refused:
-            services.stamp_upload(staff_ctx(stamp_keeper), StampUploadIn(png_base64="not base64!"))
+            stamp_changes.stamp_upload(staff_ctx(stamp_keeper), StampUploadIn(png_base64="not base64!"))
 
         assert refused.value.code == "fiscal.stamp_not_png"
 
@@ -912,7 +913,7 @@ class TestStamp:
 
         self.upload(stamp_keeper, stamp_png())
 
-        services.stamp_delete(staff_ctx(stamp_keeper), StampDeleteIn())
+        stamp_changes.stamp_delete(staff_ctx(stamp_keeper), StampDeleteIn())
 
         assert not RepresentativeStamp.objects.exists()
         assert OutboxEvent.objects.filter(name="fiscal.stamp.changed").count() == 2
@@ -921,7 +922,7 @@ class TestStamp:
         from fiscal.schemas import StampDeleteIn
 
         with pytest.raises(NotFound):
-            services.stamp_delete(staff_ctx(stamp_keeper), StampDeleteIn())
+            stamp_changes.stamp_delete(staff_ctx(stamp_keeper), StampDeleteIn())
 
     def test_only_the_staff_with_the_permission_remove_it(self, stamp_keeper, reviewer):
         from fiscal.schemas import StampDeleteIn
@@ -930,4 +931,4 @@ class TestStamp:
         self.upload(stamp_keeper, stamp_png())
 
         with pytest.raises(PermissionDenied):
-            services.stamp_delete(staff_ctx(reviewer), StampDeleteIn())
+            stamp_changes.stamp_delete(staff_ctx(reviewer), StampDeleteIn())

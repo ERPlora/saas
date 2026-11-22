@@ -1,21 +1,5 @@
-"""Commands of fiscal: the Hub sends a business's authorisation, the staff decide on it.
+"""A business's authorisation: the Hub sends it and a person of the staff approves it, returns it or withdraws it."""
 
-An upload is not an authority, it waits for a person (``submitted``); a newer upload replaces the one still
-waiting (``returned`` with ``SUPERSEDED``) and never the one in force; only a waiting one is approved or
-returned, and returning needs a reason the customer can act on; approving replaces the approval in force. The
-staff may also withdraw an approval (with a reason), and each step is keyed by the business, whose snapshot
-carries the outcome to the Hub (``hubs.queries.hub_sync.hub_snapshot``, block ``verifactu``).
-
-Every step bumps the business's ``state_version`` in its transaction (``hubs.services.hub_push.bump_state``) and pushes
-the snapshot once it commits (``push_after_commit``; ``reconcile_hub_states`` retries it while the Hub is
-away), records its event (the trail: who, which business, which version) and tells the owner and the admins of
-the business (``tell_the_business``), and once it commits mails them and, for one that waits for a review, the
-review desk (``fiscal.emails``, FISCAL-F05). No document ever leaves in an event, a snapshot or a mail.
-"""
-
-import base64
-import binascii
-import io
 from functools import partial
 from typing import Any
 from uuid import UUID
@@ -24,33 +8,28 @@ from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone, translation
 from django.utils.translation import gettext as _
-from live.context import OperationContext, Scope, system_context
-from live.errors import Conflict, InvalidPayload, NotFound, PermissionDenied
+from live.context import OperationContext
+from live.errors import Conflict, NotFound, PermissionDenied
 from live.operations import INTERNAL, operation
 from live.outbox import record_event
-from PIL import Image, UnidentifiedImageError
 
 from base.refusals import fields_refused
 from billing.nif import is_legal_person_nif, is_spanish_tax_id, normalise_nif
 from fiscal import crypto, emails, events
 from fiscal.documents import DocumentRejected, decode_pdf
-from fiscal.models import RepresentationGrant, RepresentativeStamp
+from fiscal.models import RepresentationGrant
 from fiscal.schemas import (
     TAX_ID_MAX_LENGTH,
-    NotifyIn,
-    NotifyOut,
     RepresentationSubmitIn,
     RepresentationSubmitOut,
     ReturnIn,
     ReviewIn,
     ReviewOut,
-    StampDeleteIn,
-    StampDeleteOut,
-    StampOut,
-    StampUploadIn,
     WithdrawIn,
 )
-from hubs.queries import access_control, membership
+from fiscal.services.business_notices import tell_the_business
+from fiscal.services.staff_gate import _staff_with
+from hubs.queries import access_control
 from hubs.services import hub_push
 from hubs.models import Hub
 
@@ -59,11 +38,6 @@ Status = RepresentationGrant.Status
 REASON_MAX_LENGTH = 500
 #: The Django permission that lets a member of the staff decide (``fiscal.admin``'s review page asks it too).
 REVIEW_PERMISSION = "fiscal.change_representationgrant"
-#: The one that lets a member of the staff change ERPlora's stamp (``fiscal.admin``'s stamp page asks it too).
-STAMP_PERMISSION = "fiscal.change_representativestamp"
-#: The largest stamp kept: it is a stamp and a signature, not a photograph, and it goes in every model.
-MAX_STAMP_BYTES = 2 * 1024 * 1024
-PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
 # --- The Hub sends an authorisation ---------------------------------------------------------------------
@@ -314,22 +288,6 @@ def _reviewer(ctx: OperationContext):
     return _staff_with(ctx, REVIEW_PERMISSION)
 
 
-def _staff_with(ctx: OperationContext, permission: str):
-    """The active member of the staff running ``ctx`` who holds ``permission``; anybody else, 403."""
-    user = ctx.actor
-    if not (
-        getattr(user, "is_authenticated", False)
-        and user.is_active
-        and user.is_staff
-        and user.has_perm(permission)
-    ):
-        raise PermissionDenied(
-            _("Only ERPlora's staff decide on an authorisation."),
-            code="fiscal.staff_only",
-        )
-    return user
-
-
 def _locked(grant_id: UUID) -> RepresentationGrant:
     """The grant ``grant_id``, locked after its business's row (one decision per business at a time)."""
     hub_id = (
@@ -385,127 +343,3 @@ def _stepped(ctx: OperationContext, event: str, grant: RepresentationGrant) -> N
     transaction.on_commit(partial(emails.grant_stepped, grant.id), robust=True)
     hub_push.bump_state(grant.hub_id)
     hub_push.push_after_commit(grant.hub_id)
-
-
-# --- The owner and the admins of the business hear of it ----------------------------------------------
-
-
-@operation(
-    "fiscal.representation.notify",
-    kind="command",
-    permission="fiscal.manage",
-    input=NotifyIn,
-    output=NotifyOut,
-    ai=INTERNAL,  # platform
-)
-def representation_notify(ctx: OperationContext, data: NotifyIn) -> dict:
-    """A change of the business's authorisation, recorded on this context's channel so that account's page
-    re-runs at once. Only the platform runs it, from ``tell_the_business``."""
-    if ctx.actor != "system":
-        raise PermissionDenied(
-            _("Only the platform tells a business of its authorisation."),
-            code="internal_command",
-        )
-    record_event(ctx, events.REPRESENTATION_CHANGED, {"hub_id": str(data.id)})
-    return {"id": data.id}
-
-
-def tell_the_business(ctx: OperationContext, hub_id: UUID) -> None:
-    """Tell the owner and the admins of the business (who read its authorisation), each on its own channel,
-    but the channel ``ctx`` already notifies. Called inside the command: nothing leaves if it rolls back."""
-    for user_id in membership.people_to_tell(hub_id):
-        scope = Scope("user", str(user_id))
-        if scope != ctx.scope:
-            representation_notify(system_context(scope), NotifyIn(id=hub_id))
-
-
-# --- ERPlora's stamp as representative (FISCAL-F06) ----------------------------------------------------
-
-
-@operation(
-    "fiscal.stamp.upload",
-    kind="command",
-    permission="fiscal.manage",
-    input=StampUploadIn,
-    output=StampOut,
-    ai=INTERNAL,  # staff
-)
-def stamp_upload(ctx: OperationContext, data: StampUploadIn) -> dict:
-    """A member of the staff with ``STAMP_PERMISSION`` uploads ERPlora's stamp and signature: every model a
-    business downloads from now on carries it (``fiscal.anexo``). It replaces the one there was; kept encrypted."""
-    user = _staff_with(ctx, STAMP_PERMISSION)
-    with translation.override(ctx.language):
-        png = _checked_stamp(data.png_base64)
-    now = timezone.now()
-    RepresentativeStamp.objects.update_or_create(
-        slot=RepresentativeStamp.SLOT,
-        defaults={
-            "image": crypto.encrypt(png),
-            "size": len(png),
-            "uploaded_at": now,
-            "uploaded_by": user,
-        },
-    )
-    record_event(ctx, events.STAMP_CHANGED, {"size": len(png)})
-    return {"uploaded_at": now, "size": len(png)}
-
-
-@operation(
-    "fiscal.stamp.delete",
-    kind="command",
-    permission="fiscal.manage",
-    input=StampDeleteIn,
-    output=StampDeleteOut,
-    ai=INTERNAL,  # staff
-)
-def stamp_delete(ctx: OperationContext, data: StampDeleteIn) -> dict:
-    """A member of the staff with ``STAMP_PERMISSION`` removes ERPlora's stamp: the models go without it until
-    another is uploaded (the admin says so). 404 when there is none."""
-    _staff_with(ctx, STAMP_PERMISSION)
-    deleted, _rows = RepresentativeStamp.objects.filter(
-        slot=RepresentativeStamp.SLOT
-    ).delete()
-    if not deleted:
-        raise NotFound(_("There is no stamp to remove."), code="fiscal.no_stamp")
-    record_event(ctx, events.STAMP_CHANGED, {"size": 0})
-    return {"deleted": True}
-
-
-def _checked_stamp(value: str) -> bytes:
-    """The PNG ``value`` holds in base64, or ``InvalidPayload`` saying why it is not one the model can carry."""
-
-    def refused(code: str, message: str) -> InvalidPayload:
-        return fields_refused({"png_base64": message}, code=code)
-
-    not_png = refused(
-        "fiscal.stamp_not_png", _("The stamp must be a PNG image.")
-    )
-    value = "".join(value.split())
-    if not value:
-        raise refused("fiscal.stamp_required", _("Choose the PNG file of the stamp."))
-    if len(value) > 4 * -(-MAX_STAMP_BYTES // 3):
-        raise _stamp_too_large(refused)
-    try:
-        png = base64.b64decode(value, validate=True)
-    except binascii.Error, ValueError:
-        raise not_png from None
-    if not png:
-        raise refused("fiscal.stamp_required", _("Choose the PNG file of the stamp."))
-    if len(png) > MAX_STAMP_BYTES:
-        raise _stamp_too_large(refused)
-    if not png.startswith(PNG_MAGIC):
-        raise not_png
-    try:
-        with Image.open(io.BytesIO(png)) as image:
-            image.verify()
-    except (UnidentifiedImageError, OSError, SyntaxError, ValueError):
-        raise not_png from None
-    return png
-
-
-def _stamp_too_large(refused) -> InvalidPayload:
-    return refused(
-        "fiscal.stamp_too_large",
-        _("The stamp may be %(megabytes)d MB at most.")
-        % {"megabytes": MAX_STAMP_BYTES // (1024 * 1024)},
-    )

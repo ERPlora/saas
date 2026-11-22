@@ -2,8 +2,8 @@
 
 The scope is the account: each step of an authorisation notifies the channel that took it (the
 owner's for the Hub's upload, the reviewer's for a decision), and ``fiscal.representation.changed`` reaches
-each owner and admin of the business (``services.tell_the_business``), so the card on their page re-runs at
-once.
+each owner and admin of the business (``services.business_notices.tell_the_business``), so the card on their page
+re-runs at once.
 """
 
 from live.live_registry import live

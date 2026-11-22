@@ -11,7 +11,8 @@ One table for every operation of fiscal, so a new operation cannot slip in witho
 import pytest
 from live.errors import NotFound, OperationError, PermissionDenied
 
-from fiscal import queries, services
+from fiscal import queries
+from fiscal.services import business_notices, representation_grants, stamp_changes
 from fiscal.schemas import (
     NotifyIn,
     RepresentationStatusIn,
@@ -36,15 +37,15 @@ def call(name, hub):
     return {
         "representation.status": (queries.representation_status, RepresentationStatusIn(id=hub.id)),
         "representation.submit": (
-            services.representation_submit,
+            representation_grants.representation_submit,
             RepresentationSubmitIn(hub_id=hub.id, **submission()),
         ),
-        "representation.approve": (services.representation_approve, ReviewIn(id=grant.id)),
-        "representation.return": (services.representation_return, ReturnIn(id=grant.id, reason="Blurry.")),
-        "representation.withdraw": (services.representation_withdraw, WithdrawIn(id=grant.id, reason="Gone.")),
-        "representation.notify": (services.representation_notify, NotifyIn(id=hub.id)),
-        "stamp.upload": (services.stamp_upload, StampUploadIn(png_base64="")),
-        "stamp.delete": (services.stamp_delete, StampDeleteIn()),
+        "representation.approve": (representation_grants.representation_approve, ReviewIn(id=grant.id)),
+        "representation.return": (representation_grants.representation_return, ReturnIn(id=grant.id, reason="Blurry.")),
+        "representation.withdraw": (representation_grants.representation_withdraw, WithdrawIn(id=grant.id, reason="Gone.")),
+        "representation.notify": (business_notices.representation_notify, NotifyIn(id=hub.id)),
+        "stamp.upload": (stamp_changes.stamp_upload, StampUploadIn(png_base64="")),
+        "stamp.delete": (stamp_changes.stamp_delete, StampDeleteIn()),
     }[name]
 
 

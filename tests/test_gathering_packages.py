@@ -22,6 +22,7 @@ GATHERING_PACKAGES = (
     "assistant.services",
     "billing.schemas",
     "billing.services",
+    "fiscal.services",
     "hubs.queries",
     "hubs.schemas",
     "hubs.services",
