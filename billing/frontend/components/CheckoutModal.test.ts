@@ -4,7 +4,7 @@
 // clock: data only — no code under test compares these dates with now.
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { h, reactive, ref } from 'vue';
+import { h, reactive } from 'vue';
 import type { Router } from 'vue-router';
 
 vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/frontend/__tests__/module-mocks')).shellWithToastSpies(original));
@@ -43,10 +43,10 @@ vi.mock('@ionic/vue', async (importOriginal) => {
 
 import { toastSuccess } from '@erplora/ui/shell';
 
-import { apiError, flush, mountBilling } from '../__tests__/mount-billing';
+import { EMPTY_PROFILE, happy, MODULE, PLAN, PROFILE, SESSION, setup, TAKE_OVER, takeOver } from '../__tests__/checkout-modal';
+import { apiError, flush } from '../__tests__/mount-billing';
 import { stripeDouble, type StripeDouble } from '../__tests__/stripe-double';
 import { loadStripeJs } from '../stripe-js';
-import CheckoutModal, { type CheckoutPurchase } from './CheckoutModal.vue';
 
 let stripe: StripeDouble;
 
@@ -63,67 +63,6 @@ afterEach(() => {
   applySurface('web');
   document.body.innerHTML = '';
 });
-
-const PROFILE = {
-  hub_id: 'cafe',
-  paid_by_another_account: false,
-  billing_name: 'Café Central SL',
-  tax_id: 'ESB12345678',
-  billing_address: 'Calle Mayor 1',
-  billing_city: 'Madrid',
-  billing_postal_code: '28001',
-  billing_country: 'ES',
-  billing_email: '',
-  same_as_business: false,
-};
-const EMPTY_PROFILE = { ...PROFILE, billing_name: '', tax_id: '', billing_address: '', billing_city: '', billing_postal_code: '', billing_country: '' };
-const SESSION = { flow: 'checkout', session_id: 'cs_test_1', client_secret: 'cs_test_1_secret_x', publishable_key: 'pk_test_double', preview: null };
-const PLAN: CheckoutPurchase = { kind: 'plan', slug: 'starter', name: 'Starter', interval: 'year' };
-const MODULE: CheckoutPurchase = { kind: 'module', slug: 'booking', name: 'Bookings', interval: 'month' };
-/** The plan of a handed-over business, kept with the new owner's card from the end of the paid period. */
-const TAKE_OVER: CheckoutPurchase = { kind: 'takeover', slug: 'starter', name: 'Starter', interval: 'month', from: '2026-11-01T10:00:00Z' };
-const takeOver: Handler = ({ path }) => {
-  if (path === '/api/hubs/billing-profile') return Response.json(PROFILE);
-  if (path === '/api/billing/plan/take-over') return Response.json(SESSION);
-  return Response.json({});
-};
-
-type Handler = (call: { method: string; path: string; body: unknown }) => Response | Promise<Response>;
-
-const happy: Handler = ({ path }) => {
-  if (path === '/api/hubs/billing-profile') return Response.json(PROFILE);
-  if (path === '/api/billing/checkout/start') return Response.json(SESSION);
-  return Response.json({});
-};
-
-async function setup(api: Handler = happy, purchase: CheckoutPurchase = PLAN, extra: Record<string, unknown> = {}, locale: 'en' | 'es' = 'en', slots = {}) {
-  const open = ref(true);
-  const stale = vi.fn();
-  const Host = {
-    render: () =>
-      h(CheckoutModal, {
-        business: { id: 'cafe', name: 'Café Central' },
-        purchase,
-        promoCode: 'SPRING',
-        declinedFor: null,
-        ...extra,
-        open: open.value,
-        'onUpdate:open': (v: boolean) => (open.value = v),
-        onStale: stale,
-      }, slots),
-  };
-  const m = await mountBilling(Host, {
-    locale,
-    api: (call) => {
-      const url = new URL(call.url, 'http://localhost');
-      const body = typeof call.init.body === 'string' ? JSON.parse(call.init.body) : undefined;
-      return api({ method: (call.init.method ?? 'GET').toUpperCase(), path: url.pathname, body });
-    },
-  });
-  await flush();
-  await flush();
-  return { ...m, open, stale };
-}
 
 /**
  * Stripe completes the payment while the business's page is still on its way: the navigation it starts waits until
