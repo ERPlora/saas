@@ -43,7 +43,7 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
     pasada de la noche (`e2e-specs.sh --many`).
   - **Cada noche, sobre `main`** (`nightly.yml`, 03:17 UTC; a mano, «Run workflow»): todas las specs. No frena ninguna PR
     ni ningún despliegue; si sale en rojo abre una issue, «Pruebas de navegador del SaaS en rojo en la pasada nocturna»,
-    con cada prueba en rojo y su error (`.github/scripts/e2e-report.sh`), o comenta en ella si ya está abierta, y la
+    con cada prueba en rojo y su error (`.github/scripts/e2e_report.py`), o comenta en ella si ya está abierta, y la
     primera noche en verde la cierra. Las trazas y capturas de los fallos quedan 14 días en el artefacto `e2e-test-results`
     del run.
 - **Depurar**: `DEBUG=pw:webserver pnpm e2e:ci <spec>` enseña el arranque y la salida de cada servidor

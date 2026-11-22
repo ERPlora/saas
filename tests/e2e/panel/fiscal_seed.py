@@ -159,14 +159,14 @@ def _business():
 
 
 def _submit(hub_id) -> str:
-    from fiscal import services
+    from fiscal.services import representation_grants
     from fiscal.schemas import RepresentationSubmitIn
     from hubs.services.hub_callbacks import system_ctx_for
 
     def encoded(text: str) -> str:
         return base64.b64encode(pdf(text)).decode()
 
-    result = services.representation_submit(
+    result = representation_grants.representation_submit(
         system_ctx_for(hub_id),
         RepresentationSubmitIn(
             hub_id=hub_id,

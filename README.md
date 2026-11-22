@@ -325,7 +325,7 @@ El cliente la sube desde el módulo VeriFactu de su Hub, que la envía firmada a
 vista, con su tope de 32 MB, y el resto del sitio conserva el de Django); `GET /internal/representation/model`
 sirve el modelo, relleno con los datos del negocio que el Hub manda en la consulta (`taxpayer_tax_id`,
 `taxpayer_name`, `municipality`, `street`, `number`; `fiscal/schemas.py`) y en blanco sin ellos. El staff la revisa en `/admin/fiscal/representationgrant/` (aprobar, devolver o
-retirar, siempre con motivo para el cliente, por los servicios de `fiscal/services.py`); el grupo `support`
+retirar, siempre con motivo para el cliente, por los servicios de `fiscal/services/`); el grupo `support`
 solo la ve. El estado viaja al Hub en la foto (`verifactu.representation` de `PUT /internal/hubs/{id}/state`)
 y el panel lo enseña en la ficha del negocio (`fiscal.representation.status`).
 

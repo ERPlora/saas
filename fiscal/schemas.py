@@ -2,8 +2,9 @@
 authorisation and the reviews of the staff.
 
 What the Hub posts is read leniently (every field a string, empty when left out): the rules are the service's
-(``fiscal.services.representation_submit``), so each broken one answers its own ``fiscal.*`` code instead of a
-generic validation error. Unknown fields are refused, so a typo of the Hub never passes for an absent document.
+(``fiscal.services.representation_grants.representation_submit``), so each broken one answers its own ``fiscal.*``
+code instead of a generic validation error. Unknown fields are refused, so a typo of the Hub never passes for an
+absent document.
 """
 
 from datetime import datetime
@@ -192,7 +193,7 @@ class ModelQueryIn(StrictIn):
 
 
 class StampUploadIn(StrictIn):
-    """ERPlora's stamp and signature: a PNG in base64, of ``fiscal.services.MAX_STAMP_BYTES`` at most."""
+    """ERPlora's stamp and signature: a PNG in base64, of ``fiscal.services.stamp_changes.MAX_STAMP_BYTES`` at most."""
 
     png_base64: str = ""
 

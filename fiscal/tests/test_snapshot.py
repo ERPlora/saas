@@ -12,7 +12,8 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
-from fiscal import queries, services
+from fiscal import queries
+from fiscal.services import representation_grants
 from fiscal.schemas import RepresentationSubmitIn, ReviewIn, WithdrawIn
 from fiscal.tests.conftest import make_grant, pdf_b64, staff_ctx, submission
 from hubs.queries import hub_sync
@@ -241,7 +242,7 @@ class TestVerifactuInEveryPlan:
 
 def test_two_businesses_each_carry_their_own_state(business, other_business, reviewer):
     approved = make_grant(business, status="approved", reviewed_at=timezone.now())
-    services.representation_submit(
+    representation_grants.representation_submit(
         hub_callbacks.system_ctx_for(other_business.id),
         RepresentationSubmitIn(hub_id=other_business.id, **submission()),
     )
@@ -257,12 +258,12 @@ def test_what_happens_in_one_business_never_bumps_another(
     make_grant(business, status="approved", reviewed_at=timezone.now())
     before = version_of(business)
 
-    services.representation_submit(
+    representation_grants.representation_submit(
         hub_callbacks.system_ctx_for(other_business.id),
         RepresentationSubmitIn(hub_id=other_business.id, **submission()),
     )
     waiting = make_grant(other_business, version=2, status="submitted")
-    services.representation_approve(staff_ctx(reviewer), ReviewIn(id=waiting.id))
+    representation_grants.representation_approve(staff_ctx(reviewer), ReviewIn(id=waiting.id))
 
     assert version_of(business) == before
     assert block(business)["representation"]["status"] == "approved"
@@ -280,7 +281,7 @@ def test_a_withdrawal_reaches_the_hub_after_the_commit(
     before = version_of(business)
 
     with django_capture_on_commit_callbacks(execute=True):
-        services.representation_withdraw(
+        representation_grants.representation_withdraw(
             staff_ctx(reviewer),
             WithdrawIn(id=approved.id, reason="Revoked by the AEAT."),
         )
@@ -351,7 +352,7 @@ def test_reconcile_pushes_an_owed_state_with_its_block(
     from hubs.tests.hub_double import HubDouble
 
     waiting = make_grant(business, status="submitted")
-    services.representation_approve(staff_ctx(reviewer), ReviewIn(id=waiting.id))
+    representation_grants.representation_approve(staff_ctx(reviewer), ReviewIn(id=waiting.id))
     owed = Hub.objects.get(pk=business.pk)
     assert owed.pushed_state_version < owed.state_version
 
@@ -380,7 +381,7 @@ def test_the_hub_never_receives_a_document(
         "id_copy": pdf_b64("the-id-copy-marker"),
     }
     with django_capture_on_commit_callbacks(execute=True):
-        services.representation_submit(
+        representation_grants.representation_submit(
             hub_callbacks.system_ctx_for(business.id),
             RepresentationSubmitIn(
                 hub_id=business.id, **submission(documents=documents)
@@ -388,7 +389,7 @@ def test_the_hub_never_receives_a_document(
         )
     with django_capture_on_commit_callbacks(execute=True):
         waiting = make_grant(business, version=2)
-        services.representation_approve(staff_ctx(reviewer), ReviewIn(id=waiting.id))
+        representation_grants.representation_approve(staff_ctx(reviewer), ReviewIn(id=waiting.id))
 
     sent = b"".join(call.raw for call in hub_double.calls)
     assert sent
