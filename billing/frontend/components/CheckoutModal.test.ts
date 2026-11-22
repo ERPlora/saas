@@ -44,7 +44,7 @@ vi.mock('@ionic/vue', async (importOriginal) => {
 import { toastSuccess } from '@erplora/ui/shell';
 
 import { EMPTY_PROFILE, happy, MODULE, PLAN, PROFILE, SESSION, setup, TAKE_OVER, takeOver } from '../__tests__/checkout-modal';
-import { apiError, flush } from '../__tests__/mount-billing';
+import { apiError, flush, ionProps } from '../__tests__/mount-billing';
 import { stripeDouble, type StripeDouble } from '../__tests__/stripe-double';
 import { loadStripeJs } from '../stripe-js';
 
@@ -282,6 +282,14 @@ describe('CheckoutModal', () => {
     await flush();
     expect(stripe.checkouts[0].destroyed).toBe(true);
     expect(s.q('details-name')).not.toBeNull();
+  });
+
+  it('«Change» shows the payer on file in the form', async () => {
+    const s = await setup();
+    s.q('checkout-change-details')?.click();
+    await flush();
+    const value = (id: string) => ionProps({ element: s.q(`details-${id}`)! }, 'value').value;
+    expect(['name', 'tax-id', 'address', 'city', 'postal-code'].map(value)).toEqual(['Café Central SL', 'ESB12345678', 'Calle Mayor 1', 'Madrid', '28001']);
   });
 
   it('while Stripe.js loads, its place waits in the dialog and nothing says «could not open»', async () => {
