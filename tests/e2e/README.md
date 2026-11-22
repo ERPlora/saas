@@ -43,7 +43,7 @@ pnpm e2e --project=panel panel/login.spec.ts   # una spec
     pasada de la noche (`e2e-specs.sh --many`).
   - **Cada noche, sobre `main`** (`nightly.yml`, 03:17 UTC; a mano, «Run workflow»): todas las specs. No frena ninguna PR
     ni ningún despliegue; si sale en rojo abre una issue, «Pruebas de navegador del SaaS en rojo en la pasada nocturna»,
-    con cada prueba en rojo y su error (`.github/scripts/e2e-report.sh`), o comenta en ella si ya está abierta, y la
+    con cada prueba en rojo y su error (`.github/scripts/e2e_report.py`), o comenta en ella si ya está abierta, y la
     primera noche en verde la cierra. Las trazas y capturas de los fallos quedan 14 días en el artefacto `e2e-test-results`
     del run.
 - **Depurar**: `DEBUG=pw:webserver pnpm e2e:ci <spec>` enseña el arranque y la salida de cada servidor
@@ -300,37 +300,41 @@ CI**: sin `QA_REAL_PROVIDER=1` sus tests se saltan, y con él en GitHub Actions 
 niega a arrancar (`realProviderMode`, `assistant-battery.ts`). Coste orientativo: unos 30 turnos de Qwen más las
 huellas de las preguntas, céntimos.
 
-- **Pila propia y BD e2e propia**: `assistant_seed.py real` solo escribe claves de verdad en una BD e2e
-  (`saas_…_e2e…`); con la `saas` compartida se niega. Las claves se leen **solo** del entorno (`QA_QWEN_API_KEY`,
-  `QA_OPENAI_API_KEY`): nada en el repo, en los registros ni en el informe.
-- **Proveedores**, por las operaciones del gateway, como los tiene producción: «Qwen» (`qwen`, API de OpenAI en el
-  espacio de Frankfurt de Alibaba) con `qwen3.7-plus` contestando, y «OpenAI» (`openai`, `assistant.credential.import`)
-  con `gpt-5.4-mini` de reserva y las huellas de la búsqueda (`ASSISTANT_SERVICE_PROVIDER=openai`, que `panel/project.ts`
-  pone con `QA_REAL_PROVIDER=1`, junto con los 30 mensajes al mes de producción). La cuenta es
+- **Pila propia y BD e2e propia**: `assistant_seed.py real` solo escribe sus proveedores en una BD e2e
+  (`saas_…_e2e…`); con la `saas` compartida se niega. Las claves viven **solo** en el entorno de quien lanza la
+  ejecución (`DASHSCOPE_API_KEY` y `OPENAI_API_KEY`), que heredan los servidores de la pila, como en producción: ni la
+  BD, ni el repo, ni los registros, ni el informe las guardan. La semilla solo comprueba que estén exportadas.
+- **Proveedores**, por las operaciones del gateway: «Qwen» (`qwen`, API de OpenAI en el espacio de Frankfurt de
+  Alibaba, lee `DASHSCOPE_API_KEY`) con `qwen3.7-plus` contestando, y «OpenAI» (`openai`, lee `OPENAI_API_KEY`) con
+  `gpt-5.4-mini` de reserva y las huellas de la búsqueda (`ASSISTANT_SERVICE_PROVIDER=openai`, que `panel/project.ts`
+  pone con `QA_REAL_PROVIDER=1`, junto con los 30 mensajes al mes de producción). Sin `QA_REAL_PROVIDER=1`,
+  `panel/project.ts` da a los servidores del panel una clave inventada en `OPENAI_API_KEY` (`E2E_AI_KEY`) y vacía las
+  demás, para que ninguna clave de verdad de `.env` llegue al e2e. La cuenta es
   `e2e-assistant-qa-battery@example.com` (contraseña `e2e-panel`), dueña de «QA Base» en Gratis.
 - **Otro modelo** (`answer_choice` de `assistant_seed.py`, probado en `assistant/tests/test_e2e_assistant_seed.py`):
   con `QA_ANSWER_MODEL` contesta el modelo a prueba, en un proveedor propio (`qa-answer`) y **sin reserva**, para que
   un turno en el que falla cuente como fallo suyo y no como respuesta de `gpt-5.4-mini`. Lo describen `QA_ANSWER_KIND`
   (`openai`, `anthropic`, `gemini` o `deepseek`; un servicio compatible con OpenAI es `openai` con su dirección),
-  `QA_ANSWER_BASE_URL` (opcional, https), `QA_ANSWER_KEY_ENV` (el **nombre** de la variable que guarda su clave, nunca
-  la clave) y `QA_ANSWER_PRICE_IN` y `QA_ANSWER_PRICE_OUT` (USD por millón de tokens, escritos en el modelo como en el
-  admin). Si falta alguna, `real` se niega diciendo cuáles; sin `QA_ANSWER_MODEL`, cualquier otra `QA_ANSWER_*` también
-  (nunca contesta Qwen en silencio). Las huellas de la búsqueda siguen con `openai`. `forget` borra también su clave.
+  `QA_ANSWER_BASE_URL` (opcional, https), `QA_ANSWER_KEY_ENV` (el **nombre** de la variable de la que el proveedor lee
+  su clave, una de las de las claves de IA: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`
+  o `DASHSCOPE_API_KEY`, exportada con la clave) y `QA_ANSWER_PRICE_IN` y `QA_ANSWER_PRICE_OUT` (USD por millón de
+  tokens, escritos en el modelo como en el admin). Si falta alguna, `real` se niega diciendo cuáles; sin
+  `QA_ANSWER_MODEL`, cualquier otra `QA_ANSWER_*` también (nunca contesta Qwen en silencio). Las huellas de la búsqueda
+  siguen con `openai`.
 - **Documentación de las apps del Hub** (`apps.AppDoc`): la escribe el `register_apps` del Hub en el esquema `shared`
   de la BD del SaaS. Una vez por BD e2e, desde un árbol del Hub en `origin/main` con su `.env`:
   `SHARED_DB_NAME=saas_e2e_qa uv run python manage.py register_apps`.
 - **El índice** (`assistant.DocChunk`): el `beforeAll` corre `manage.py index_docs`, que solo calcula las huellas de
   lo que cambió (la primera vez, unos 2 900 fragmentos, ~0,015 USD).
-- **Al acabar, las claves fuera**: la BD e2e las guarda cifradas con la `FERNET_KEY` de desarrollo, que es pública.
-  Se borran con `assistant.credential.delete` (como el admin), con `uv run python tests/e2e/panel/assistant_seed.py
-  forget` (con el `DB_NAME` de la BD e2e; lo corre la spec de las sondas al acabar cada worker) o se tira la BD (`node tests/e2e/database.ts --drop` con
-  el mismo `DB_NAME`); la siguiente ejecución las vuelve a guardar desde el entorno.
+- **Al acabar**: no hay clave que borrar, porque ninguna llega a la BD. Las cuentas de QA se quitan con `uv run python
+  tests/e2e/panel/assistant_seed.py clear` (con el `DB_NAME` de la BD e2e; lo corre la spec de las sondas al acabar
+  cada worker) o se tira la BD (`node tests/e2e/database.ts --drop` con el mismo `DB_NAME`).
 
 Receta (desde el worktree del SaaS, con `pnpm build` hecho y el `.env` copiado; las claves, sin imprimirlas):
 
 ```bash
-export QA_QWEN_API_KEY=…      # la del espacio ws-7mg2… de Alibaba (memoria assistant-prod-unconfigured-old-keys-location)
-export QA_OPENAI_API_KEY=…
+export DASHSCOPE_API_KEY=…    # la del espacio ws-7mg2… de Alibaba
+export OPENAI_API_KEY=…
 export COMPOSE_FILE=<erplora-next>/compose.yaml   # el Postgres con pgvector
 env DB_NAME=saas_e2e_qa E2E_SAAS_PORT=8530 node tests/e2e/database.ts            # crea y migra la BD e2e
 (cd <hub en origin/main> && SHARED_DB_NAME=saas_e2e_qa uv run python manage.py register_apps)
@@ -378,9 +382,9 @@ tiene de dónde salir y falla sin culpa del producto).
   comas). Antes de preguntar comprueba cada sonda contra los catálogos: una frase igual a una `ask` de su herramienta
   en cualquier idioma (sin mayúsculas, acentos, signos ni espacios de más) o una expectativa que el catálogo de su
   superficie contradice no se pregunta (n.a.) y falla. El idioma de la cuenta y la superficie (`?surface=account` es
-  la app) siguen a cada sonda; los mensajes del mes se reponen al agotarse. Cada worker siembra las claves y la
-  cuenta y, al acabar (también tras un fallo), `assistant_seed.py forget` las borra con las cuentas de QA: no queda
-  ninguna clave de verdad en la BD e2e. `real` y `forget` se niegan fuera de una BD e2e (`saas_…_e2e…`).
+  la app) siguen a cada sonda; los mensajes del mes se reponen al agotarse. Cada worker siembra los proveedores y la
+  cuenta y, al acabar (también tras un fallo), `assistant_seed.py clear` borra las cuentas de QA. Las claves no pasan
+  nunca por la BD. `real` se niega fuera de una BD e2e (`saas_…_e2e…`).
 - **Salida**, ignorada por git: `.artifacts/qa/probes/<ejecución>/` con el JSON y las capturas de cada sonda,
   `report.md` (aprobadas, fallidas y n.a.; la herramienta que eligió el modelo; los primeros 300 caracteres de la
   respuesta; claves tapadas) y `bench.json`.
@@ -403,7 +407,7 @@ pnpm qa:probes --language es --surface app --apps billing        # esqueleto en 
 QA_REAL_PROVIDER=1 DB_NAME=saas_e2e_qa E2E_SAAS_PORT=8530 VITE_DEV_PORT=5530 pnpm e2e:ci assistant-probes
 QA_PROBES=tests/e2e/qa/probes/es-app-2026-11-01.json QA_REAL_PROVIDER=1 … pnpm e2e:ci assistant-probes   # un fichero
 # Otro modelo, sin reserva (la clave, en la variable que se nombra; los precios, en USD por millón de tokens):
-QA_ANSWER_KIND=anthropic QA_ANSWER_MODEL=<id> QA_ANSWER_KEY_ENV=QA_ANTHROPIC_API_KEY QA_ANTHROPIC_API_KEY=… \
+QA_ANSWER_KIND=anthropic QA_ANSWER_MODEL=<id> QA_ANSWER_KEY_ENV=ANTHROPIC_API_KEY ANTHROPIC_API_KEY=… \
   QA_ANSWER_PRICE_IN=<USD> QA_ANSWER_PRICE_OUT=<USD> QA_REAL_PROVIDER=1 … pnpm e2e:ci assistant-probes
 ```
 

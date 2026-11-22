@@ -14,7 +14,7 @@ from live.outbox import record_event
 
 from base.refusals import fields_refused
 from billing import events, vat, vies
-from billing.schemas import VatCheckIn, VatCheckOut
+from billing.schemas.tax import VatCheckIn, VatCheckOut
 from billing.services.vat_clearance import (
     CLEARANCE_ABSENT,
     CLEARANCE_INVALID,

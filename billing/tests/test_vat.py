@@ -1,6 +1,6 @@
 """Splitting and qualifying the VAT of a sale.
 
-It also covers the public helpers of ``billing.vat`` the panel and the billing services read
+It also covers the public helpers of ``billing.vat_countries`` the panel and the billing services read
 (``BILLING_COUNTRIES``, ``tax_id_type_for``).
 The rates come from ``TaxRule``, editable in the admin, so these tests touch the database.
 """
@@ -11,7 +11,8 @@ from decimal import Decimal
 import pytest
 
 from billing import queries
-from billing.vat import BILLING_COUNTRIES, EU_VAT_RATES, resolve_vat, tax_id_type_for
+from billing.vat import resolve_vat
+from billing.vat_countries import BILLING_COUNTRIES, EU_VAT_RATES, tax_id_type_for
 
 pytestmark = pytest.mark.django_db
 
@@ -288,13 +289,13 @@ class TestASpanishPostalCodeIsFiveDigits:
         [("35001", "IC"), ("38001", "IC"), ("51001", "CE"), ("52001", "ML"), ("03500", ""), ("28001", ""), (" 35 001 ", "IC")],
     )
     def test_a_real_code_names_its_region(self, postal_code, region):
-        from billing.vat import spanish_region_for_postal_code
+        from billing.vat_countries import spanish_region_for_postal_code
 
         assert spanish_region_for_postal_code(postal_code) == region
 
     @pytest.mark.parametrize("postal_code", ["3500", "5100", "5200", "350011", "", "35-001", "ABCDE"])
     def test_anything_else_is_unknown(self, postal_code):
-        from billing.vat import spanish_region_for_postal_code
+        from billing.vat_countries import spanish_region_for_postal_code
 
         assert spanish_region_for_postal_code(postal_code) is None
 
@@ -318,7 +319,7 @@ class TestASpanishPostalCodeIsFiveDigits:
         [("ES", "03500", True), ("ES", "3500", False), ("ES", "", False), ("DE", "10115", True), ("GB", "SW1A 1AA", True), ("DE", " ", False), ("", "28001", False)],
     )
     def test_a_billing_location_needs_a_country_and_a_postal_code_of_its_shape(self, country, postal_code, valid):
-        from billing.vat import postal_code_is_valid
+        from billing.vat_countries import postal_code_is_valid
 
         assert postal_code_is_valid(country, postal_code) is valid
 

@@ -138,8 +138,9 @@ def send_ownership_accepted(transfer, *, base_url: str, paid_until=None) -> bool
 
 
 def send_deletion(hub, owner, *, base_url: str, unpaid: bool = False, data_copy: bool = True) -> bool:
-    """Tell the owner the business was deleted, until when it can still be recovered and where to download the copy of
-    its data (the business's page: the panel asks the Hub for a link of 15 minutes there, so this one never expires);
+    """Tell the owner the business was deleted, until when it can still be recovered, that only its fiscal documents
+    outlive that date (the Hub keeps them 6 years in its fiscal archive) and where to download the copy of its data
+    (the business's page: the panel asks the Hub for a link of 15 minutes there, so this one never expires);
     ``unpaid``: it was deleted because it stayed suspended for an unpaid plan (HUBS-F20); ``data_copy`` false: the
     business never gets a copy (no database of its own), so the mail does not lead to one."""
     if owner is None:
@@ -157,9 +158,14 @@ def send_deletion(hub, owner, *, base_url: str, unpaid: bool = False, data_copy:
             ),
             "",
             _(
-                "You can recover it until %(date)s from %(url)s. After that date it is erased for good."
+                "You can recover it until %(date)s from %(url)s. After that date it is erased for good, except its "
+                "fiscal documents."
             )
             % {"date": _date(hub.purge_after), "url": f"{base_url}{BUSINESSES}"},
+            _(
+                "Its sales, invoices and other fiscal documents are kept for 6 years, as the law requires, in an "
+                "archive nobody can change or delete."
+            ),
             *([_("Download a full copy of its data: %(url)s") % {"url": _page(hub, base_url)}] if data_copy else []),
         ]
     return _send(subject, lines, owner.email, language)

@@ -6,14 +6,12 @@
       "loadError": "No hemos podido cargar la autorización.",
       "forbidden": "No tienes permiso para ver la autorización",
       "state": {
-        "none": "Sin otorgar",
         "submitted": "En revisión",
         "approved": "Validada",
         "returned": "Devuelta",
         "revoked": "Retirada"
       },
       "line": {
-        "none": "Todavía no has firmado la autorización. Descarga el modelo oficial, fírmalo y súbelo desde tu negocio (VeriFactu → Configuración).",
         "submitted": "Estamos revisando tu autorización. Suele tardar entre 24 y 72 horas.",
         "approved": "Validada el {date}. ERPlora puede remitir tus facturas a la AEAT en tu nombre.",
         "returned": "No hemos podido aceptar la autorización que enviaste. Corrige lo que te indicamos y vuelve a subirla desde tu negocio.",

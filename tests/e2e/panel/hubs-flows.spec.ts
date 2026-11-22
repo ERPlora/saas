@@ -170,7 +170,7 @@ test('HUBS-F09: the list with each status, the deleted one with «Recover», and
   await expect(rows.filter({ hasText: 'Café Central' })).toContainText('Preparing');
   const deleted = rows.filter({ hasText: 'Bar Antiguo' });
   await expect(deleted).toContainText('You can recover it until');
-  await expect(deleted.getByRole('button', { name: 'Recover', exact: true })).toBeVisible();
+  await expect(deleted.getByRole('button', { name: 'Recover: Bar Antiguo', exact: true })).toBeVisible();
   await expect(deleted.getByRole('button', { name: /^Open/ })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
@@ -302,7 +302,7 @@ test.describe('against the real Hub', () => {
     await page.getByTestId('create-submit').click();
     await page.waitForURL(/granja-hub-real-e2e\.localhost/, { timeout: 60_000 });
     await page.goto(`/dashboard/businesses`);
-    await shown(page).getByTestId('businesses-row').filter({ hasText: 'Granja Hub Real E2E' }).getByRole('button', { name: 'Open', exact: true }).click();
+    await shown(page).getByTestId('businesses-row').filter({ hasText: 'Granja Hub Real E2E' }).getByRole('button', { name: /^Open: / }).click();
     await page.waitForURL(new RegExp(`^http://granja-hub-real-e2e\\.localhost:${HUB_DOUBLE_PORT}/(?!auth)`), { timeout: 30_000 });
   });
 

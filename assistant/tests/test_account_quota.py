@@ -13,10 +13,10 @@ from django.utils import timezone
 from live.outbox import OutboxEvent
 from pydantic import ValidationError
 
-from assistant import queries, services, turn
+from assistant import continuation, queries, services
 from assistant.models import AssistantUsage
 from assistant.schemas import Caller, MessageReleaseIn, UsageRecordIn
-from assistant.services import platform_context
+from assistant.services.platform_actor import platform_context
 
 pytestmark = pytest.mark.django_db
 
@@ -26,11 +26,11 @@ def account_of(user) -> Caller:
 
 
 def claim(caller):
-    return services.message_claim(platform_context(), caller)
+    return services.turn_usage.message_claim(platform_context(), caller)
 
 
 def this_month() -> date:
-    return queries.month_of(timezone.now())
+    return queries.usage.month_of(timezone.now())
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ class TestTheAccountsAllowance:
 
         assert claimed.claimed is True
         assert (claimed.used, claimed.limit, claimed.demo) == (1, 30, False)
-        assert claimed.resets_at == queries.resets_at(this_month())
+        assert claimed.resets_at == queries.usage.resets_at(this_month())
         assert AssistantUsage.objects.get(user=account).month == this_month()
 
     def test_the_thirty_first_message_is_refused_and_not_counted(self, account):
@@ -61,7 +61,7 @@ class TestTheAccountsAllowance:
         assert [claim(account_of(account)).claimed for _ in range(3)] == [True, True, False]
 
     def test_last_months_messages_do_not_count_this_month(self, account):
-        last_month = queries.month_of(timezone.now() - timedelta(days=40))
+        last_month = queries.usage.month_of(timezone.now() - timedelta(days=40))
         AssistantUsage.objects.create(user=account, month=last_month, messages=30)
 
         claimed = claim(account_of(account))
@@ -86,13 +86,13 @@ class TestTheAccountsAllowance:
         claim(account_of(account))
         claim(account_of(account))
 
-        shown = queries.usage_show(platform_context(), account_of(account))
+        shown = queries.usage.usage_show(platform_context(), account_of(account))
 
         assert (shown.used, shown.limit, shown.demo) == (2, 30, False)
-        assert shown.resets_at == queries.resets_at(this_month())
+        assert shown.resets_at == queries.usage.resets_at(this_month())
 
     def test_an_account_never_used_shows_none_spent(self, account):
-        shown = queries.usage_show(platform_context(), account_of(account))
+        shown = queries.usage.usage_show(platform_context(), account_of(account))
 
         assert (shown.used, shown.limit) == (0, 30)
 
@@ -131,7 +131,7 @@ class TestGivingBackAndRecording:
     def test_a_message_given_back_is_free_again_in_its_month(self, account):
         claimed = claim(account_of(account))
 
-        shown = services.message_release(
+        shown = services.turn_usage.message_release(
             platform_context(), MessageReleaseIn(caller=account_of(account), month=claimed.month)
         )
 
@@ -142,11 +142,11 @@ class TestGivingBackAndRecording:
         other = make_user("other@example.com")
         AssistantUsage.objects.create(user=other, month=this_month(), messages=5)
         AssistantUsage.objects.create(hub=business, month=this_month(), messages=5)
-        last_month = queries.month_of(timezone.now() - timedelta(days=40))
+        last_month = queries.usage.month_of(timezone.now() - timedelta(days=40))
         AssistantUsage.objects.create(user=account, month=last_month, messages=5)
         claimed = claim(account_of(account))
 
-        services.message_release(platform_context(), MessageReleaseIn(caller=account_of(account), month=claimed.month))
+        services.turn_usage.message_release(platform_context(), MessageReleaseIn(caller=account_of(account), month=claimed.month))
 
         assert AssistantUsage.objects.get(user=account, month=this_month()).messages == 0
         assert AssistantUsage.objects.get(user=account, month=last_month).messages == 5
@@ -157,7 +157,7 @@ class TestGivingBackAndRecording:
         record = UsageRecordIn(
             caller=account_of(account), tokens_input=1000, tokens_output=200, cost_usd=Decimal("0.0036")
         )
-        services.usage_record(platform_context(), record)
+        services.turn_usage.usage_record(platform_context(), record)
 
         row = AssistantUsage.objects.get(user=account)
         assert (row.messages, row.tokens_input, row.tokens_output, row.cost_usd) == (0, 1000, 200, Decimal("0.0036"))
@@ -181,7 +181,7 @@ class TestTheReportOfAnAccount:
         account.delete()
 
         with pytest.raises(NotFound):
-            services.report_send(
+            services.answer_reports.report_send(
                 platform_context(), ReportSendIn(caller=caller, message_id="m1", reason="other", answer="a")
             )
         assert not mail.outbox
@@ -193,7 +193,7 @@ class TestTheReportOfAnAccount:
 
         other = make_user("other@example.com")
         for who in (account, other):
-            sent = services.report_send(
+            sent = services.answer_reports.report_send(
                 platform_context(), ReportSendIn(caller=account_of(who), message_id="m1", reason="other", answer="a")
             )
             assert (sent.sent, sent.duplicate) == (True, False)
@@ -215,7 +215,7 @@ class TestWhoACallerIs:
         assert Caller(user_id=account.pk).slug == ""
 
     def test_the_rate_limit_and_the_continuations_know_an_account_by_its_id(self, account):
-        assert turn.caller_key(account_of(account)) == f"user:{account.pk}"
+        assert continuation.caller_key(account_of(account)) == f"user:{account.pk}"
 
 
 class TestTheTableRefusesWhatIsNoRow:

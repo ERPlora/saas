@@ -1,7 +1,7 @@
 // The authorisation for ERPlora to file a business's invoices with the AEAT, on the business's Summary: the live
 // `fiscal.representation.status` (owner and admins), its state in plain words (a pill and a line), what the
 // business sent and what is missing, the history of its submissions, and «Manage in your business» (the upload
-// and the signature are the Hub's: VeriFactu → Settings). Loading: a skeleton; a failure: `LoadFailed`.
+// and the signature are the Hub's: VeriFactu → Settings). Only a business that has one sees it; a failure: `LoadFailed`.
 // clock: data only — no code under test compares these dates with now.
 import { formatDateTime } from '@erplora/ui/components';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -70,21 +70,31 @@ describe('RepresentationCard: the query', () => {
   });
 
   it('is titled by what it is, in both languages', async () => {
-    expect((await setup(NONE)).wrapper.find('h2').text()).toBe('Authorisation for ERPlora to file your invoices');
-    expect((await setup(NONE, 'es')).wrapper.find('h2').text()).toBe('Autorización para que ERPlora remita tus facturas');
+    expect((await setup(SUBMITTED)).wrapper.find('h2').text()).toBe('Authorisation for ERPlora to file your invoices');
+    expect((await setup(SUBMITTED, 'es')).wrapper.find('h2').text()).toBe('Autorización para que ERPlora remita tus facturas');
   });
 
-  it('loading: a skeleton, no state yet', async () => {
-    const s = await setup(null);
-    expect(s.testid('representation-loading').exists()).toBe(true);
-    expect(s.testid('representation-pill').exists()).toBe(false);
+  // Production no longer lets a business ask for one: a card offering it would promise what it cannot do.
+  it('a business that never sent one does not see it', async () => {
+    expect((await setup(NONE)).testid('representation').exists()).toBe(false);
+  });
+
+  it('while its state is unknown, nothing is on screen', async () => {
+    expect((await setup(null)).testid('representation').exists()).toBe(false);
+  });
+
+  it('every state of one sent shows it', async () => {
+    for (const data of [SUBMITTED, APPROVED, RETURNED, REVOKED]) {
+      const s = await setup(data);
+      expect(s.testid('representation').exists(), data.status).toBe(true);
+      s.wrapper.unmount();
+    }
   });
 
   it('a failure: why, and «Retry»', async () => {
     const s = await setup(null);
     s.call.push(errorFrame(subId(s.client, OP), 'not_found'));
     await flush();
-    expect(s.testid('representation-loading').exists()).toBe(false);
     expect(s.testid('representation-error').text()).toContain('We could not load the authorisation');
     expect(s.testid('representation-retry').exists()).toBe(true);
   });
@@ -100,20 +110,6 @@ describe('RepresentationCard: the query', () => {
 
 describe('RepresentationCard: each state in plain words', () => {
   const cases: Array<[string, 'en' | 'es', Record<string, unknown>, string, string]> = [
-    [
-      'none',
-      'en',
-      NONE,
-      'Not granted',
-      'You have not signed the authorisation yet. Download the official model, sign it and upload it from your business (VeriFactu → Settings).',
-    ],
-    [
-      'none',
-      'es',
-      NONE,
-      'Sin otorgar',
-      'Todavía no has firmado la autorización. Descarga el modelo oficial, fírmalo y súbelo desde tu negocio (VeriFactu → Configuración).',
-    ],
     ['submitted', 'en', SUBMITTED, 'Under review', 'We are reviewing your authorisation. It usually takes between 24 and 72 hours.'],
     ['submitted', 'es', SUBMITTED, 'En revisión', 'Estamos revisando tu autorización. Suele tardar entre 24 y 72 horas.'],
     [
@@ -166,14 +162,14 @@ describe('RepresentationCard: each state in plain words', () => {
     expect(s.testid('representation-line').text()).toBe(line);
   });
 
-  it('gives each state its tone: fine, in progress, failed, needs attention, inert', async () => {
+  it('gives each state its tone: fine, in progress, failed, needs attention', async () => {
     const tones: Record<string, string> = {};
-    for (const data of [NONE, SUBMITTED, APPROVED, RETURNED, REVOKED]) {
+    for (const data of [SUBMITTED, APPROVED, RETURNED, REVOKED]) {
       const s = await setup(data);
       tones[data.status] = s.testid('representation-pill').attributes('data-tone')!;
       s.wrapper.unmount();
     }
-    expect(tones).toEqual({ none: 'neutral', submitted: 'info', approved: 'success', returned: 'danger', revoked: 'warning' });
+    expect(tones).toEqual({ submitted: 'info', approved: 'success', returned: 'danger', revoked: 'warning' });
   });
 
   it('submitted: says when it was sent', async () => {
@@ -196,11 +192,10 @@ describe('RepresentationCard: each state in plain words', () => {
     expect(s.testid('representation-reason').text()).toContain('The company changed its administrator.');
   });
 
-  it('says whose it is and who signed it, once there is one', async () => {
+  it('says whose it is and who signed it', async () => {
     const s = await setup(SUBMITTED);
     expect(s.testid('representation-taxpayer').text()).toContain('Panadería López SL (B12345678)');
     expect(s.testid('representation-signer').text()).toContain('Laura Martín');
-    expect((await setup(NONE)).testid('representation-taxpayer').exists()).toBe(false);
   });
 });
 
@@ -229,27 +224,16 @@ describe('RepresentationCard: what was sent and what is missing', () => {
     ]);
   });
 
-  it('none: nothing sent; missing, the two required documents', async () => {
-    const s = await setup(NONE);
-    expect(s.testid('representation-received').exists()).toBe(false);
-    expect(s.testid('representation-missing').find('h3').text()).toBe('What is missing');
-    expect(s.testid('representation-missing').findAll('li').map((li) => li.text())).toEqual([
-      'Signed model',
-      'Copy of the identity document',
-    ]);
-    const es = await setup(NONE, 'es');
-    expect(es.testid('representation-missing').find('h3').text()).toBe('Qué falta');
-  });
-
   it('returned or withdrawn: missing, a new submission', async () => {
     for (const data of [RETURNED, REVOKED]) {
       const s = await setup(data);
+      expect(s.testid('representation-missing').find('h3').text()).toBe('What is missing');
       expect(s.testid('representation-missing').findAll('li').map((li) => li.text())).toEqual(['A new submission']);
       s.wrapper.unmount();
     }
-    expect((await setup(RETURNED, 'es')).testid('representation-missing').findAll('li').map((li) => li.text())).toEqual([
-      'Un envío nuevo',
-    ]);
+    const es = await setup(RETURNED, 'es');
+    expect(es.testid('representation-missing').find('h3').text()).toBe('Qué falta');
+    expect(es.testid('representation-missing').findAll('li').map((li) => li.text())).toEqual(['Un envío nuevo']);
   });
 
   it('under review or approved: nothing missing', async () => {
@@ -317,18 +301,18 @@ describe('RepresentationCard: the history of submissions', () => {
 
 describe('RepresentationCard: «Manage in your business»', () => {
   it('asks the page to open the business (the upload is the Hub’s)', async () => {
-    const s = await setup(NONE);
+    const s = await setup(RETURNED);
     const button = s.testid('representation-manage');
     expect(button.text()).toBe('Manage in your business');
     expect(button.attributes('disabled')).toBeUndefined();
     await button.trigger('click');
     expect(s.wrapper.emitted('manage')).toHaveLength(1);
-    expect((await setup(NONE, 'es')).testid('representation-manage').text()).toBe('Gestionar en tu negocio');
+    expect((await setup(RETURNED, 'es')).testid('representation-manage').text()).toBe('Gestionar en tu negocio');
   });
 
   it('busy while the business opens; gone when it cannot be opened', async () => {
-    const busy = await setup(NONE, 'en', { managing: true });
+    const busy = await setup(RETURNED, 'en', { managing: true });
     expect(busy.testid('representation-manage').attributes('disabled')).toBeDefined();
-    expect((await setup(NONE, 'en', { canManage: false })).testid('representation-manage').exists()).toBe(false);
+    expect((await setup(RETURNED, 'en', { canManage: false })).testid('representation-manage').exists()).toBe(false);
   });
 });

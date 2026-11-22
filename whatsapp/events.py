@@ -1,4 +1,4 @@
-"""Events of whatsapp (``<app>.<entity>.<fact>``): recorded by services.py in the outbox, in the transaction of the
+"""Events of whatsapp (``<app>.<entity>.<fact>``): recorded by ``services`` in the outbox, in the transaction of the
 write. Their payloads carry ids and counts, never what a customer wrote nor a number.
 
 whatsapp reacts to no event of another app and has no live list of its own (no screen in the panel), so this module

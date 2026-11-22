@@ -77,6 +77,21 @@ export const GOOGLE_E2E = {
   clientSecret: 'e2e-google-secret',
 } as const;
 
+/**
+ * The key the e2e's provider («E2E Local», assistant_seed.py, on the local fake) reads from OPENAI_API_KEY: made-up, in
+ * the shape of OpenAI's. The gateway reads every provider's key from the environment, never from the database.
+ */
+export const E2E_AI_KEY = 'sk-e2e-0000000000000000000000000000e2e1';
+
+/** The AI keys of the e2e's Djangos: the made-up one, and none of the developer's real ones from `.env` or the shell. */
+const E2E_AI_KEYS = {
+  OPENAI_API_KEY: E2E_AI_KEY,
+  ANTHROPIC_API_KEY: '',
+  GEMINI_API_KEY: '',
+  DEEPSEEK_API_KEY: '',
+  DASHSCOPE_API_KEY: '',
+};
+
 type WebServer = Exclude<NonNullable<PlaywrightTestConfig['webServer']>, unknown[]>;
 
 /**
@@ -174,10 +189,11 @@ function panelDjangoEnv(vitePort: number, stack: Stack, real: boolean): Record<s
       WHATSAPP_VERIFY_TOKEN: WHATSAPP_E2E.verifyToken,
       WHATSAPP_CONFIG_ID: WHATSAPP_E2E.configId,
       // The assistant's embeddings and voice go to the e2e's own provider (assistant_seed.py, the local fake on
-      // `aiProviderPort`), never to a provider «openai» the shared database may hold with a real key. Only the QA
-      // battery with the real model (QA_REAL_PROVIDER=1, assistant-battery.spec.ts, never in the CI) uses the real
-      // «openai» that `assistant_seed.py real` keeps in the run's own e2e database.
+      // `aiProviderPort`), never to a provider «openai» of the shared database. Only the QA battery with the real model
+      // (QA_REAL_PROVIDER=1, assistant-battery.spec.ts, never in the CI) uses the real «openai» that
+      // `assistant_seed.py real` keeps in the run's own e2e database, and the real keys the runner exports.
       ASSISTANT_SERVICE_PROVIDER: real ? 'openai' : 'e2e-local',
+      ...(real ? {} : E2E_AI_KEYS),
       // A business's own domain (HUBS-F17) is connected here as in production, and AWS is the Hub double's port: ACM,
       // the listener and CloudWatch go there, which hubs-domain.spec.ts plays while it runs; outside it nobody listens and
       // every call fails at once, as with AWS away. The keys are made up and come first in boto3, so no session of this

@@ -283,10 +283,10 @@ Pantalla: Seguridad, Planes y precios, Portada, Sobre nosotros
 Pasos:
 1. La persona lee qué dicen Seguridad, las preguntas frecuentes de precios, la portada y Sobre nosotros sobre el acceso, los datos y la disponibilidad.
 2. Lee lo que funciona hoy: sesiones de servidor en cookies seguras, código de un solo uso para entrar en el negocio, entrar con Google, contraseñas con hash y sal, cifrado en tránsito y en reposo, solo HTTPS con TLS 1.2 o 1.3, AWS en Irlanda con su cortafuegos web, copias continuas de las que se recuperan los datos de cualquier momento de los últimos 14 días, conservando lo ya enviado a Hacienda, y alta disponibilidad.
-3. A «¿Dónde se almacenan mis datos?» la respuesta es la Unión Europea, con las excepciones del asistente: su voz y sus huellas de búsqueda, como transcribir un dictado por voz, su proveedor de respaldo si el europeo no está disponible y lo que busca en la web, que va a Brave Search, en Estados Unidos; y el enlace «Lee la política de privacidad». La portada dice que el modelo de lenguaje del asistente se sirve desde la Unión Europea, no el asistente entero.
+3. A «¿Dónde se almacenan mis datos?» la respuesta es la Unión Europea, en Amazon Web Services, en su región de Irlanda; de la IA dice solo «La IA no tiene acceso directo a la base de datos.», sin nombrar qué IA es, quién la sirve ni dónde, que lo dice la política de privacidad; y el enlace «Lee la política de privacidad». La portada dice lo mismo de la IA, en su celda «Asistente de IA», y nada más.
 Entra: nada; el texto de las páginas, contrastado con la infraestructura y la política de privacidad.
 Sale: nada guardado.
-Si falla: no se promete un acuerdo de disponibilidad con porcentaje, soporte 24/7, auditorías periódicas, informes de pruebas de intrusión, cifrado de extremo a extremo ni entrar con GitHub, y nunca «tus datos nunca salen de la UE», que contradiría la política de privacidad. Ninguna página ni plan promete volver a un momento de los últimos 14 días sin decir que lo ya enviado a Hacienda se conserva: a un negocio que factura con VeriFactu no se le devuelve entero, se le recupera lo que perdió desde una copia de ese momento.
+Si falla: no se promete un acuerdo de disponibilidad con porcentaje, soporte 24/7, auditorías periódicas, informes de pruebas de intrusión, cifrado de extremo a extremo ni entrar con GitHub, y nunca «tus datos nunca salen de la UE», que contradiría la política de privacidad. Ninguna página comercial nombra el modelo de IA, su proveedor ni dónde se sirve. Ninguna página ni plan promete volver a un momento de los últimos 14 días sin decir que lo ya enviado a Hacienda se conserva: a un negocio que factura con VeriFactu no se le devuelve entero, se le recupera lo que perdió desde una copia de ese momento.
 Implicados: hubs (la línea de la base de datos de las fichas de los planes, con la misma promesa)
 
 ### PUBLIC-F09 Ver el cumplimiento por país
@@ -440,8 +440,8 @@ Actor: visitante
 Pantalla: Textos legales
 Pasos:
 1. En el pie, «Aviso legal», «Privacidad» y «Términos» abren cada texto en su página; la política de cookies se abre desde la privacidad.
-2. La privacidad nombra a quién se confían los datos: Amazon Web Services en la región de Irlanda para el alojamiento, OVH para el correo (el envío del correo del servicio y los buzones de erplora.com), el modelo de lenguaje del asistente en Fráncfort, sin entrenar con ellos, y OpenAI para la voz y las huellas de búsqueda del asistente: transcribe el audio de un dictado, que ni el hub ni ERPlora guardan, y puede tratarlo fuera del Espacio Económico Europeo. Aparte de esos encargados, nombra a Brave Search, en Estados Unidos, que recibe las consultas de la búsqueda en la web del asistente y las conserva hasta 90 días: su acuerdo de tratamiento de datos las deja fuera y las cláusulas contractuales tipo no las cubren. Leer una respuesta en voz alta lo hace la voz del propio dispositivo (la del navegador o la del sistema): su texto no sale de él.
-3. Los términos dan los números que el producto cumple: los días del paquete de salida, los días que espera un negocio suspendido antes de borrarse y la prueba de los planes a la venta (ninguna si ninguno la tiene); y nombran los planes a la venta que incluyen dominio propio para la web pública del negocio (ninguno si ninguno lo incluye), con la aplicación y la entrada al negocio en erplora.com. Su apartado 3.1 dice dónde vende ERPlora sus planes de pago, lo mismo que hace el pago: por ahora, solo a clientes con la dirección de facturación en España; en la península y en Baleares, con el IVA español; en Canarias, Ceuta y Melilla, solo a empresas y profesionales, con su NIF y sin IVA español (el cliente declara el IGIC o el IPSI); el plan gratuito no cambia. Su uso aceptable prohíbe guardar, redistribuir o entrenar con los resultados de la web que trae el asistente, como piden los términos de su proveedor.
+2. La privacidad nombra a quién se confían los datos: Amazon Web Services en la región de Irlanda para el alojamiento, OVH para el correo (el envío del correo del servicio y los buzones de erplora.com), el modelo de lenguaje que usa por defecto el asistente, el de Anthropic, que puede tratar los datos fuera del Espacio Económico Europeo y los guarda en Estados Unidos, con las cláusulas contractuales tipo de su acuerdo de tratamiento de datos, el de respaldo en Fráncfort, ninguno de los dos entrenando con ellos, y OpenAI para la voz y las huellas de búsqueda del asistente: transcribe el audio de un dictado, que ni el hub ni ERPlora guardan, y puede tratarlo fuera del Espacio Económico Europeo. Aparte de esos encargados, nombra a Brave Search, en Estados Unidos, que recibe las consultas de la búsqueda en la web del asistente y las conserva hasta 90 días: su acuerdo de tratamiento de datos las deja fuera y las cláusulas contractuales tipo no las cubren. Leer una respuesta en voz alta lo hace la voz del propio dispositivo (la del navegador o la del sistema): su texto no sale de él.
+3. Los términos dan los números que el producto cumple: los días del paquete de salida, los días que espera un negocio suspendido antes de borrarse, los días tras los que se borran la base de datos y los ficheros de un negocio eliminado, salvo sus ventas, facturas y demás documentos fiscales, que se guardan los 6 años que exige la ley en un archivo que nadie puede modificar ni borrar (BASE-F109 del Hub), y la prueba de los planes a la venta (ninguna si ninguno la tiene); y nombran los planes a la venta que incluyen dominio propio para la web pública del negocio (ninguno si ninguno lo incluye), con la aplicación y la entrada al negocio en erplora.com. Su apartado 3.1 dice dónde vende ERPlora sus planes de pago, lo mismo que hace el pago: por ahora, solo a clientes con la dirección de facturación en España; en la península y en Baleares, con el IVA español; en Canarias, Ceuta y Melilla, solo a empresas y profesionales, con su NIF y sin IVA español (el cliente declara el IGIC o el IPSI); el plan gratuito no cambia. Su uso aceptable prohíbe guardar, redistribuir o entrenar con los resultados de la web que trae el asistente, como piden los términos de su proveedor.
 Entra: los planes a la venta (los términos).
 Sale: nada guardado.
 Si falla: ningún texto nombra un proveedor que ya no se usa ni otro alojamiento, ni calla a quién va el audio de un dictado, ni promete para él residencia en la UE o un plazo de conservación, ni promete que una consulta a la web no lleve nunca un dato personal (es una regla que se da al modelo, no una garantía), ni un consentimiento o un interruptor del asistente que el hub no tiene (el asistente se usa cuando alguien le escribe o le dicta: en el hub, con los mensajes que dé el plan; en el panel de erplora.com, con los de la cuenta), y ningún enlace entre textos lleva a una página que no existe. Los términos no venden a un país al que el pago no vende ni callan uno al que vende: volver a vender fuera de España cambia el apartado 3.1 y la versión de los términos.
@@ -698,8 +698,8 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   siguen siendo donde se componen. El aspecto es `components/button.css`. Un `ion-button` no es un enlace hasta que
   `frontend/public.ts` lo define, y pulsado antes no hace nada. Siguen siendo `ion-button` los que no
   navegan: envíos de formulario, Aceptar y Rechazar cookies, idioma del pie y «Probar la demo» de la puerta. Lo guardan
-  el barrido de `public/tests/test_templates.py` y dos e2e de `public-web.spec.ts` (PUBLIC-F11): pulsar con los scripts
-  retenidos y la paridad de estilos calculados frente a un `ion-button` real, en reposo y bajo el puntero.
+  el barrido de `public/tests/test_templates_buttons.py` y los dos e2e de `public-web-buttons.spec.ts` (PUBLIC-F11): pulsar con los
+  scripts retenidos y la paridad de estilos calculados frente a un `ion-button` real, en reposo y bajo el puntero.
 - Correo de soporte (F18): `SUPPORT_EMAIL` es la única fuente; las páginas de error lo leen con `{% support_email %}`
   (`public/templatetags/support.py`: la 500 se pinta sin contexto) y la SPA con el bloque JSON `support-email` de
   `base/spa.py` (`accounts/frontend/support.ts`).
@@ -707,7 +707,7 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   justo después de `</nav>`, no `frontend/public.ts`: ese módulo llega tarde, y en una conexión lenta el toque se
   perdería y, si no llegara, el menú no se abriría nunca. Las tres rayas, la cruz, el fondo, Esc, un enlace y ensanchar la
   ventana hasta la barra de escritorio siguen siendo el contrato, con `aria-expanded` y el foco. Vitest ejecuta el propio
-  script de la plantilla (`frontend/public.test.ts`) y dos e2e de `public-web.spec.ts` (PUBLIC-F11) pulsan con los scripts
+  script de la plantilla (`frontend/public.navbar.test.ts`) y los e2e de `public-web-menu.spec.ts` (PUBLIC-F11) pulsan con los scripts
   retenidos y con ellos ya cargados: un segundo enganche en el módulo cerraría lo que abre el botón. Con el panel abierto,
   el tabulador da la vuelta dentro de él y lo demás de la página queda `inert` hasta cerrarlo: también la marca y
   las tres rayas, que el panel y el fondo tapan, y lo que llegue con el panel ya abierto en una conexión lenta. Vitest lo
@@ -739,8 +739,8 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   encargado de esa lectura (`test_legal_privacy.py` prohíbe «Azure» y «Microsoft Ireland Operations»). Un motor que lleve el texto
   fuera de nuestros contenedores es volver a nombrar a su encargado en §5, con lo que recibe y dónde, en la misma entrega.
   Cambiarlo es cambiar en la misma entrega §5 y §6 de la privacidad, la respuesta «storage» de `/pricing/` y la celda
-  del asistente de la portada (`test_legal_privacy_assistant.py`, `test_product.py` y `test_landing.py`, en `en` y `es`). El Hub y el
-  panel usan el dictado (`base.assistant.transcribe`, cada uno el suyo); «Leer en voz alta» lee con la voz del
+  del asistente de la portada (`test_legal_privacy_assistant.py`, `test_product.py` y `test_landing_data_residency.py`,
+  en `en` y `es`). El Hub y el panel usan el dictado (`base.assistant.transcribe`, cada uno el suyo); «Leer en voz alta» lee con la voz del
   dispositivo en los dos (el panel solo pediría `base.assistant.speak` con `spa-config.assistantSpeech`, que sin
   motor es falso).
   La búsqueda en la web (`assistant/server_tools.py`, ASSISTANT-F14) va a Brave Search: destinatario aparte en §5 y
@@ -754,6 +754,7 @@ Implicados: hubs (la dirección del negocio), el Hub (VERIFACTU, la demo siempre
   sombra del botón, así que el estilo del idioma activo va por `data-current`.
 - Pruebas: cada test cita su flujo en el nombre o en el docstring, y cada e2e en su título. Los e2e son
   `tests/e2e/public-web.spec.ts` (F01–F14; capturas `APP-PUBLIC-1-<clave>-<ancho>.png` en `tests/e2e/.artifacts/`),
+  con los botones y el menú del móvil de F11 en `public-web-buttons.spec.ts` y `public-web-menu.spec.ts`,
   `tests/e2e/public-web-2.spec.ts` (F15–F28; capturas `APP-PUBLIC-2-<clave>-<ancho>.png`; el servidor público del e2e
   escribe los correos en `.artifacts/public/mail*/`, nunca por SMTP) y `tests/e2e/public-demo.spec.ts` (la demo;
   capturas `APP-PUBLIC-3-<clave>-<ancho>.png`), con `demo-door.spec.ts`. El recorrido entero de la demo contra un Hub de verdad

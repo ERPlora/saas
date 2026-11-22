@@ -15,24 +15,16 @@ from live.ninja import bind, run_operation
 from ninja import Query, Router
 
 from billing import queries
-from billing.schemas import (
-    CheckoutConfirmIn,
-    CheckoutStartIn,
-    HubIn,
-    InvoiceByIdIn,
-    InvoiceFilterIn,
-    InvoiceListIn,
-    InvoicePayIn,
-    PaymentMethodIn,
-    SubscriptionListIn,
-    ModuleIn,
-    PlanChangeIn,
-    PortalOpenIn,
-    StoreCatalogIn,
-    TaxPreviewIn,
-    VatCheckIn,
-)
+from billing.schemas.checkout import CheckoutConfirmIn, CheckoutStartIn
+from billing.schemas.common import HubIn
+from billing.schemas.invoices import InvoiceByIdIn, InvoiceFilterIn, InvoiceListIn
+from billing.schemas.payment_methods import PaymentMethodIn
 from billing.schemas.promo_codes import PromoCheckIn
+from billing.schemas.store import StoreCatalogIn
+from billing.schemas.stripe_pages import InvoicePayIn, PortalOpenIn
+from billing.schemas.subscription_changes import ModuleIn, PlanChangeIn
+from billing.schemas.subscriptions import SubscriptionListIn
+from billing.schemas.tax import TaxPreviewIn, VatCheckIn
 from billing.services import checkouts, hand_overs, module_cancellations, payer_vat_numbers, plan_changes, stripe_pages
 
 router = Router(tags=["billing"])

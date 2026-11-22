@@ -20,10 +20,9 @@ terms forbids keeping its results, and a mailbox keeps.
 and the error. The provider's own words of a failure reach neither the Hub nor a log (they may quote the
 conversation): the Hub gets a code and a plain sentence, the log the status.
 
-When the model asks for tools of the Hub, the turn ends there with a ``continuation`` token: the Hub runs them and
-sends the conversation back with their results and that token, and that turn costs no message (it answers the same
-request of the person). The token is signed, names the business and the calls, lasts ``CONTINUATION_SECONDS`` and
-serves once.
+When the model asks for tools of the Hub, the turn ends there with a ``continuation`` token
+(``assistant.continuation``): the Hub runs them and sends the conversation back with their results and that token, and
+that turn costs no message (it answers the same request of the person).
 
 The turn as a door serves it (``start``, ``stream``, ``settle``, ``spend``) is the same for the Hub's doors
 (``assistant.internal``, signed) and for the assistant of erplora.com's own panel (``base.assistant``, in process, for
@@ -34,7 +33,6 @@ ends it, the message given back if nothing was answered and what it spent record
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import logging
 import math
@@ -45,17 +43,16 @@ from decimal import Decimal
 from typing import Any
 
 from asgiref.sync import sync_to_async
-from django.core import signing
-from django.core.cache import cache
 from django.http import HttpRequest, JsonResponse
 from django_ratelimit.core import get_usage
 from live.errors import OperationError
 
 from assistant import queries, routing, services
+from assistant.continuation import caller_key, continuation_token, is_continuation, tool_budget
 from assistant.models import estimate_cost
 from assistant.providers.base import ToolSpec, TurnRequest
 from assistant.schemas import Caller, ClaimOut, MessageReleaseIn, RouteCandidate, RouteIn, UsageRecordIn
-from assistant.services import platform_context
+from assistant.services.platform_actor import platform_context
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +62,6 @@ MAX_MESSAGES = 100
 MAX_TEXT_BYTES = 1_000_000
 #: The longest answer of one call to the model, in tokens.
 MAX_OUTPUT_TOKENS = 4096
-#: How long the Hub has to send back the results of the tools it was asked for, at no message.
-CONTINUATION_SECONDS = 15 * 60
-CONTINUATION_SALT = "assistant.continuation"
 ROLES = frozenset({"system", "user", "assistant", "tool"})
 
 #: The plain sentence of each failure the Hub may show (its own text by ``code`` is better).
@@ -167,55 +161,6 @@ def hub_tools(tools: Sequence[dict]) -> list[ToolSpec]:
             )
         )
     return specs
-
-
-# --- The token of a continuation ---------------------------------------------------------------------------------
-
-
-def caller_key(caller: Caller) -> str:
-    """The caller as its budgets and continuations name it: ``hub:<id>``, ``demo:<address>`` or ``user:<id>``."""
-    if caller.demo:
-        return f"demo:{caller.demo}"
-    if caller.user_id is not None:
-        return f"user:{caller.user_id}"
-    return f"hub:{caller.hub_id}"
-
-
-def tool_budget(caller: Caller) -> str:
-    """Whose budget a call of erplora.com's tools spends: the caller's, and one for every demo, since anybody can open
-    another."""
-    return "demo" if caller.demo else caller_key(caller)
-
-
-def continuation_token(caller: Caller, call_ids: Sequence[str]) -> str:
-    """The token the Hub sends back with the results of ``call_ids``, for that turn to cost no message."""
-    return signing.dumps({"c": caller_key(caller), "t": sorted(call_ids)}, salt=CONTINUATION_SALT, compress=True)
-
-
-def answered_calls(messages: list[dict]) -> set[str]:
-    """The calls whose results end the conversation (after its last assistant message), or none."""
-    ids: set[str] = set()
-    for message in reversed(messages):
-        if message.get("role") != "tool":
-            break
-        ids.add(str(message.get("tool_call_id") or ""))
-    return ids
-
-
-def is_continuation(caller: Caller, token: str | None, messages: list[dict]) -> bool:
-    """Whether this turn answers the tools ``token`` asked for, of this caller, in time and for the first time."""
-    if not token:
-        return False
-    try:
-        claimed = signing.loads(token, salt=CONTINUATION_SALT, max_age=CONTINUATION_SECONDS)
-    except signing.BadSignature:
-        return False
-    if not isinstance(claimed, dict) or claimed.get("c") != caller_key(caller):
-        return False
-    if set(claimed.get("t") or []) != answered_calls(messages) or not claimed.get("t"):
-        return False
-    used = f"assistant:continuation:{hashlib.sha256(token.encode()).hexdigest()}"
-    return cache.add(used, 1, CONTINUATION_SECONDS)
 
 
 # --- The turn ----------------------------------------------------------------------------------------------------
@@ -418,7 +363,7 @@ async def start(caller: Caller, data: Any, *, answer_kept: bool) -> Turn:
     except TurnRefused as refused:
         raise Refused(refused.status, refused.code, refused.message, fields=refused.fields, retriable=False) from None
     try:
-        route = await sync_to_async(queries.route_resolve)(platform_context(), RouteIn())
+        route = await sync_to_async(queries.routing_policy.route_resolve)(platform_context(), RouteIn())
     except OperationError as refused:
         if refused.code not in ROUTE_REFUSALS:
             raise
@@ -426,7 +371,7 @@ async def start(caller: Caller, data: Any, *, answer_kept: bool) -> Turn:
         raise Refused(503, refused.code, refused.message, retriable=False) from None
     claim = None
     if not is_continuation(caller, data.continuation, messages):
-        claim = await sync_to_async(services.message_claim)(platform_context(), caller)
+        claim = await sync_to_async(services.turn_usage.message_claim)(platform_context(), caller)
         if not claim.claimed:
             raise Refused(
                 429,
@@ -445,9 +390,9 @@ async def start(caller: Caller, data: Any, *, answer_kept: bool) -> Turn:
 def settle(started: Turn, outcome: Outcome) -> dict:
     """After the turn: its message given back if nothing was answered, what it spent recorded; the usage after it."""
     if started.claim is not None and not outcome.answered:
-        services.message_release(platform_context(), MessageReleaseIn(caller=started.caller, month=started.claim.month))
+        services.turn_usage.message_release(platform_context(), MessageReleaseIn(caller=started.caller, month=started.claim.month))
     if outcome.tokens_input or outcome.tokens_output:
-        services.usage_record(
+        services.turn_usage.usage_record(
             platform_context(),
             UsageRecordIn(
                 caller=started.caller,
@@ -456,7 +401,7 @@ def settle(started: Turn, outcome: Outcome) -> dict:
                 cost_usd=outcome.cost,
             ),
         )
-    return queries.usage_show(platform_context(), started.caller).model_dump(mode="json")
+    return queries.usage.usage_show(platform_context(), started.caller).model_dump(mode="json")
 
 
 def response_frame(started: Turn, outcome: Outcome) -> dict:

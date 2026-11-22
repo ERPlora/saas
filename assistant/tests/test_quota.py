@@ -23,7 +23,7 @@ from live.outbox import OutboxEvent
 from assistant import queries, services
 from assistant.models import AssistantUsage
 from assistant.schemas import Caller, MessageReleaseIn, UsageRecordIn
-from assistant.services import platform_context
+from assistant.services.platform_actor import platform_context
 from assistant.tests.conftest import on_plan
 from assistant.tests.doors import door
 from hubs.models import Plan, Subscription
@@ -39,11 +39,11 @@ DEMO = Caller(demo="demo-1a2b3c4d", slug="demo-1a2b3c4d")
 
 
 def claim(caller):
-    return services.message_claim(platform_context(), caller)
+    return services.turn_usage.message_claim(platform_context(), caller)
 
 
 def used(caller) -> int:
-    return queries.usage_show(platform_context(), caller).used
+    return queries.usage.usage_show(platform_context(), caller).used
 
 
 class TestTheAllowanceIsThePlans:
@@ -54,7 +54,7 @@ class TestTheAllowanceIsThePlans:
         assert (claimed.used, claimed.limit, claimed.demo) == (1, 30, False)
 
     def test_the_message_past_the_allowance_is_refused_and_not_counted(self, business):
-        AssistantUsage.objects.create(hub=business, month=queries.month_of(timezone.now()), messages=30)
+        AssistantUsage.objects.create(hub=business, month=queries.usage.month_of(timezone.now()), messages=30)
 
         claimed = claim(caller_of(business))
 
@@ -71,7 +71,7 @@ class TestTheAllowanceIsThePlans:
         assert (claimed.used, claimed.limit) == (0, 0)
 
     def test_a_plan_up_gives_its_bigger_allowance_at_once(self, business):
-        AssistantUsage.objects.create(hub=business, month=queries.month_of(timezone.now()), messages=30)
+        AssistantUsage.objects.create(hub=business, month=queries.usage.month_of(timezone.now()), messages=30)
         on_plan(business, "standard")
 
         claimed = claim(caller_of(business))
@@ -109,18 +109,18 @@ class TestTheAllowanceIsThePlans:
 
 class TestTheMonth:
     def test_the_messages_come_back_on_the_first_of_the_next_month_utc(self):
-        assert queries.resets_at(date(2026, 10, 1)) == datetime(2026, 11, 1, tzinfo=UTC)
+        assert queries.usage.resets_at(date(2026, 10, 1)) == datetime(2026, 11, 1, tzinfo=UTC)
 
     def test_december_rolls_the_year(self):
-        assert queries.resets_at(date(2026, 12, 1)) == datetime(2027, 1, 1, tzinfo=UTC)
+        assert queries.usage.resets_at(date(2026, 12, 1)) == datetime(2027, 1, 1, tzinfo=UTC)
 
     def test_the_month_is_utcs_not_the_servers(self):
         late_in_madrid = datetime(2026, 11, 1, 0, 30, tzinfo=UTC) - timedelta(hours=1)
 
-        assert queries.month_of(late_in_madrid) == date(2026, 10, 1)
+        assert queries.usage.month_of(late_in_madrid) == date(2026, 10, 1)
 
     def test_last_months_messages_do_not_count_this_month(self, business):
-        last_month = queries.month_of(timezone.now() - timedelta(days=40))
+        last_month = queries.usage.month_of(timezone.now() - timedelta(days=40))
         AssistantUsage.objects.create(hub=business, month=last_month, messages=30)
 
         claimed = claim(caller_of(business))
@@ -132,7 +132,7 @@ class TestTheMonth:
 
         response = door(Client(), "/internal/assistant/usage", {"hub": business.slug})
 
-        expected = queries.resets_at(queries.month_of(timezone.now())).isoformat().replace("+00:00", "Z")
+        expected = queries.usage.resets_at(queries.usage.month_of(timezone.now())).isoformat().replace("+00:00", "Z")
         assert response.json() == {"used": 1, "limit": 30, "resets_at": expected, "demo": False}
 
 
@@ -141,7 +141,7 @@ class TestTheDemo:
         answers = [claim(DEMO).claimed for _ in range(11)]
 
         assert answers == [True] * 10 + [False]
-        shown = queries.usage_show(platform_context(), DEMO)
+        shown = queries.usage.usage_show(platform_context(), DEMO)
         assert (shown.used, shown.limit, shown.resets_at, shown.demo) == (10, 10, None, True)
 
     def test_saas_2599_the_demos_count_spans_a_new_month(self, monkeypatch):
@@ -171,44 +171,44 @@ class TestGivingBackAndRecording:
     def test_a_message_given_back_is_free_again(self, business):
         claimed = claim(caller_of(business))
 
-        services.message_release(platform_context(), MessageReleaseIn(caller=caller_of(business), month=claimed.month))
+        services.turn_usage.message_release(platform_context(), MessageReleaseIn(caller=caller_of(business), month=claimed.month))
 
         assert used(caller_of(business)) == 0
 
     def test_giving_back_never_goes_below_zero(self, business):
         """Before any use (no row) and with its row at zero: nothing to give back, no error, still zero."""
-        month = queries.month_of(timezone.now())
+        month = queries.usage.month_of(timezone.now())
         release = MessageReleaseIn(caller=caller_of(business), month=month)
 
-        services.message_release(platform_context(), release)
+        services.turn_usage.message_release(platform_context(), release)
         assert used(caller_of(business)) == 0
 
         AssistantUsage.objects.create(hub=business, month=month, messages=0)
-        services.message_release(platform_context(), release)
+        services.turn_usage.message_release(platform_context(), release)
         assert AssistantUsage.objects.get(hub=business, month=month).messages == 0
 
     def test_a_message_given_back_after_the_month_turned_goes_back_to_its_month(self, business):
-        last_month = queries.month_of(timezone.now() - timedelta(days=40))
+        last_month = queries.usage.month_of(timezone.now() - timedelta(days=40))
         AssistantUsage.objects.create(hub=business, month=last_month, messages=5)
         claim(caller_of(business))
 
-        services.message_release(platform_context(), MessageReleaseIn(caller=caller_of(business), month=last_month))
+        services.turn_usage.message_release(platform_context(), MessageReleaseIn(caller=caller_of(business), month=last_month))
 
         assert AssistantUsage.objects.get(hub=business, month=last_month).messages == 4
         assert used(caller_of(business)) == 1
 
     def test_the_tokens_and_the_cost_add_up_without_counting_a_message(self, business):
         record = UsageRecordIn(caller=caller_of(business), tokens_input=1000, tokens_output=200, cost_usd=Decimal("0.0036"))
-        services.usage_record(platform_context(), record)
-        services.usage_record(platform_context(), record)
+        services.turn_usage.usage_record(platform_context(), record)
+        services.turn_usage.usage_record(platform_context(), record)
 
         row = AssistantUsage.objects.get(hub=business)
         assert (row.messages, row.tokens_input, row.tokens_output, row.cost_usd) == (0, 2000, 400, Decimal("0.0072"))
 
     def test_each_write_says_so_in_the_outbox_with_numbers_only(self, business):
         claimed = claim(caller_of(business))
-        services.usage_record(platform_context(), UsageRecordIn(caller=caller_of(business), tokens_input=10))
-        services.message_release(platform_context(), MessageReleaseIn(caller=caller_of(business), month=claimed.month))
+        services.turn_usage.usage_record(platform_context(), UsageRecordIn(caller=caller_of(business), tokens_input=10))
+        services.turn_usage.message_release(platform_context(), MessageReleaseIn(caller=caller_of(business), month=claimed.month))
 
         recorded = list(
             OutboxEvent.objects.filter(name__startswith="assistant.").order_by("created_at").values_list("name", "payload")
@@ -226,7 +226,7 @@ class TestGivingBackAndRecording:
         from assistant.tests.conftest import staff_ctx
 
         with pytest.raises(PermissionDenied):
-            services.message_claim(staff_ctx(ai_admin), caller_of(business))
+            services.turn_usage.message_claim(staff_ctx(ai_admin), caller_of(business))
 
 
 #: The turns that race for the last message of the month.
@@ -259,7 +259,7 @@ def test_turns_at_once_cannot_pass_the_last_message_together(make_user):
     put_the_catalogue_back()
     hub = create_business(make_user("race@example.com"))
     Hub.objects.filter(pk=hub.pk).update(status=Hub.Status.ACTIVE)
-    month = queries.month_of(timezone.now())
+    month = queries.usage.month_of(timezone.now())
     AssistantUsage.objects.create(hub=hub, month=month, messages=29)
     held, release = threading.Event(), threading.Event()
     answers = []

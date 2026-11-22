@@ -13,10 +13,10 @@ from django.utils.translation import gettext as _
 from live.context import OperationContext
 from live.operations import INTERNAL, operation
 
-from billing import events, queries, stripe_service, vat, vies
+from billing import events, queries, stripe_service, vat, vat_breakdown, vat_countries, vies
 from billing.models import Invoice, InvoiceLine, VatCheck
 from billing.money import from_cents, to_cents
-from billing.schemas import InvoiceRecordIn, InvoiceRecordOut
+from billing.schemas.invoice_records import InvoiceRecordIn, InvoiceRecordOut
 from billing.services import (
     invoice_discounts,
     invoice_events,
@@ -68,7 +68,7 @@ def _payer_clearance(hub: Hub, charged_at: datetime) -> tuple[bool, str]:
     if (
         not value
         or country == issuer
-        or country not in vat.EU_VAT_RATES
+        or country not in vat_countries.EU_VAT_RATES
         or vies.is_uk_vat_number(value)
         or vies.is_domestic_vat_number(value, issuer_country=issuer, customer_country=country)
     ):
@@ -104,7 +104,7 @@ def _payer_snapshot(hub: Hub, *, verified: bool, consultation: str) -> dict:
         "payer_account": owner,
         "payer_name": profile.billing_name or (owner.get_full_name() if owner else "") or "",
         "payer_tax_id": tax_id,
-        "payer_tax_id_type": vat.tax_id_type_for(country) if tax_id else "",
+        "payer_tax_id_type": vat_countries.tax_id_type_for(country) if tax_id else "",
         "payer_tax_id_verified": verified,
         "vat_consultation_number": consultation if verified else "",
         "payer_address": profile.billing_address or "",
@@ -198,7 +198,7 @@ def _void(ctx, existing: Invoice | None) -> dict:
     return invoice_sealing._record_out(existing, "voided")
 
 
-def _sealed_line(position: int, line: dict, breakdown: vat.VatBreakdown) -> InvoiceLine:
+def _sealed_line(position: int, line: dict, breakdown: vat_breakdown.VatBreakdown) -> InvoiceLine:
     """A Stripe line as a line of ERPlora's invoice: what it sells, its discount and its base, rate and quota sealed."""
     kind, slug, category = invoice_sealing._item_of(invoice_sealing._price_of(line))
     amount, discount = invoice_discounts.line_amounts(line)

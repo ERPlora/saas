@@ -2,11 +2,20 @@
 
 import json
 import re
+from decimal import Decimal
 
 import pytest
+from django.core.cache import cache
+from django.core.management import call_command
 
-from hubs.tests.conftest import no_plans  # noqa: F401 - an empty plan table, for a test that builds its own
+from hubs.models import Plan
+from hubs.tests.conftest import (  # noqa: F401 - an empty plan table, and the Hub's /internal or none
+    hub_double,
+    no_plans,
+    offline_hub,
+)
 from public.templatetags.public_assets import PUBLIC_ENTRY
+from public.tests.industry_pages import make_business_type, make_sector
 
 #: The files `{% public_assets %}` links for the public entry in these tests.
 PUBLIC_JS = "assets/public-abc123.js"
@@ -101,3 +110,51 @@ def tokens_spelling(monkeypatch):
 @pytest.fixture
 def seeded(db):
     """The catalogue the migrations leave (``hubs/0013``)."""
+
+
+@pytest.fixture
+def cookie_groups(db, settings):
+    """The groups seeded and an optional tracker configured: the banner only asks when there is one
+    (see ``public/tests/test_analytics.py``)."""
+    settings.GA_MEASUREMENT_ID = "G-TEST123"
+    call_command("init_cookie_groups")
+
+
+@pytest.fixture
+def demo_settings(settings):
+    """A clean limiter (it lives in the cache) and the local shape of a hub's address."""
+    cache.clear()
+    settings.DEMO_ENABLED = True
+    settings.DEMO_SPAWN_RATELIMIT = "3/h"
+    settings.HUB_CALLBACK_TEMPLATE = "http://{slug}.localhost:8000/auth/callback"
+    yield
+    cache.clear()
+
+
+@pytest.fixture
+def sector():
+    return make_sector(
+        "beauty",
+        name_en="Beauty",
+        name_es="Belleza",
+        description_en="Salons and studios",
+    )
+
+
+@pytest.fixture
+def salon(sector):
+    """No description on purpose: the taxonomy usually has none, and the page still owes the reader
+    an answer in its first two sentences."""
+    return make_business_type(
+        "hair_salon", name_en="Hair salon", name_es="Peluquería", sector=sector
+    )
+
+
+@pytest.fixture
+def entry_plan():
+    return Plan.objects.create(
+        slug="entry-sentinel",
+        name_en="Entry Sentinel",
+        price_monthly=Decimal("29.99"),
+        display_order=-20,
+    )

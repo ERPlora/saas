@@ -4,7 +4,7 @@
 // tools the turn offered (a ranking failure is the same for every model). The report is
 // `.artifacts/qa/probes/<run>/bench.json`, in the Hub's format: the Hub's `pnpm -s qa:bench-compare` compares several.
 // Pure, so Vitest proves it (assistant-bench.test.ts).
-import { type Frame, parseFrames } from './assistant-battery.ts';
+import { type Frame, parseFrames } from './assistant-turns.ts';
 import type { CatalogTool, Probe, ProbeResult } from './assistant-probes.ts';
 
 export type BenchVerdict = 'pass' | 'fail' | 'n/a';

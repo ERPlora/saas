@@ -19,7 +19,9 @@ from django.utils import timezone
 from live.errors import OperationError
 
 from billing.models import PlanChangeSchedule
-from billing.schemas import CheckoutConfirmIn, CheckoutStartIn, HubIn, ModuleIn, PlanChangeIn
+from billing.schemas.checkout import CheckoutConfirmIn, CheckoutStartIn
+from billing.schemas.common import HubIn
+from billing.schemas.subscription_changes import ModuleIn, PlanChangeIn
 from billing.services import checkouts, module_cancellations, plan_changes
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import MONTH_END, event, item, schedule, signed, subscription
@@ -201,7 +203,7 @@ class TestWhilePending:
 
     def test_the_subscriptions_tab_says_it(self, shop, owner, stripe_double):
         from billing import queries
-        from billing.schemas import SubscriptionListIn
+        from billing.schemas.subscriptions import SubscriptionListIn
 
         self.pending(shop, owner, stripe_double)
 

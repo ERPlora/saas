@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pytest
 
 from billing.stripe_tax_rates import TaxRateSpec, matches, tax_rate_specs_for
-from billing.vat import DOMESTIC, NOT_SUBJECT, OSS, REVERSE_CHARGE, VatBreakdown
+from billing.vat_breakdown import DOMESTIC, NOT_SUBJECT, OSS, REVERSE_CHARGE, VatBreakdown
 
 
 def _quote(treatment, rate, country="ES", region=""):

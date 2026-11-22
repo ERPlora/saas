@@ -25,9 +25,10 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 from live.errors import OperationError
 
-from whatsapp import meta, queries, services
-from whatsapp.gateway import EXPIRED_PERMISSION
+from whatsapp import meta, queries
+from whatsapp.gateway.answers import EXPIRED_PERMISSION
 from whatsapp.schemas import MediaIn, ReconnectIn
+from whatsapp.services import phone_numbers, platform_actor
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ def _unavailable() -> JsonResponse:
 
 def _reconnect(ctx, hub_id) -> JsonResponse:
     """Meta's 190, asking for the attachment or downloading it: the number is marked «needs reconnecting»."""
-    services.number_reconnect_needed(ctx, ReconnectIn(hub_id=hub_id))
+    phone_numbers.number_reconnect_needed(ctx, ReconnectIn(hub_id=hub_id))
     return _error(409, "whatsapp.reconnect_needed", "WhatsApp needs connecting again to open attachments.")
 
 
@@ -90,7 +91,7 @@ def media(request: HttpRequest, delivery_id: str) -> HttpResponse:  # noqa: C901
         key = UUID(delivery_id)
     except ValueError:
         return _error(404, "whatsapp.media_not_found", "This attachment is not available.")
-    ctx = services.platform_context()
+    ctx = platform_actor.platform_context()
     try:
         found = queries.media_locate(ctx, MediaIn(delivery_id=key, user_id=request.user.pk))
     except OperationError as refused:

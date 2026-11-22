@@ -1,7 +1,7 @@
 """The services the assistants use besides the turn: the fingerprints (embeddings) of
 the Hub's index and of the panel's documentation (``index_docs``, ``assistant.docs.search``) and the transcription of a
 dictation, by OpenAI's API, through the services' provider (``assistant.service.connection``:
-``ASSISTANT_SERVICE_PROVIDER``), kept in the admin with its key, rotatable. The reading aloud of an answer has no engine
+``ASSISTANT_SERVICE_PROVIDER``), its key read from the environment. The reading aloud of an answer has no engine
 (``SPEECH_ENGINE``).
 
 Each call goes over ``httpx``, with no SDK, the same way as ``assistant.providers``. A failure is a ``MediaFailed``

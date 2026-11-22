@@ -21,7 +21,8 @@ from live.errors import Conflict, NotFound, OperationError, Unauthorized
 
 from billing import queries
 from billing.models import Invoice, InvoiceLine, PaymentFailure
-from billing.schemas import InvoiceByIdIn, InvoiceFilterIn, InvoiceListIn, InvoicePayIn
+from billing.schemas.invoices import InvoiceByIdIn, InvoiceFilterIn, InvoiceListIn
+from billing.schemas.stripe_pages import InvoicePayIn
 from billing.services import stripe_pages
 from billing.tests.conftest import ctx_for, pay
 from hubs.models import BillingProfile, HubMember

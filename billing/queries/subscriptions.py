@@ -16,20 +16,16 @@ from live.operations import AI, INTERNAL, operation
 
 from apps import queries as app_queries
 from apps.models import Module
-from billing import discount_terms, stripe_service, vat
+from billing import discount_terms, stripe_payments, stripe_service, vat
 from billing.models import Invoice, PaymentFailure, PlanChangeSchedule, PromoRedemption
 from billing.money import from_cents, to_cents
 from billing.queries.invoices import CARD_CACHE_SECONDS, _billing_account, _owned_hub_ids
 from billing.queries.promo_codes import discount_out
 from billing.queries.tax import Payer, _vat_status_on_file, payer_of
-from billing.schemas import (
-    HubIn,
-    PaymentMethodIn,
-    PaymentMethodOut,
-    PlanCancelPreviewOut,
-    SubscriptionListIn,
-    SubscriptionListOut,
-)
+from billing.schemas.common import HubIn
+from billing.schemas.payment_methods import PaymentMethodIn, PaymentMethodOut
+from billing.schemas.subscription_changes import PlanCancelPreviewOut
+from billing.schemas.subscriptions import SubscriptionListIn, SubscriptionListOut
 from hubs.queries import access_control, membership, payers, plan_catalog
 from hubs.services import refusals
 from hubs.models import Hub, HubMember, Plan, Subscription
@@ -294,7 +290,7 @@ def _card_of(customer_id: str, subscription_id: str) -> tuple[dict | None, bool]
     if kept is not None:
         return kept.get("card"), False
     try:
-        card = stripe_service.payment_card(subscription_id=subscription_id, customer_id=customer_id)
+        card = stripe_payments.payment_card(subscription_id=subscription_id, customer_id=customer_id)
     except (stripe_service.StripeUnavailable, stripe_service.StripeNotConfigured, stripe_service.StripeRefused):
         logger.warning("[BILLING] Stripe did not give the card of customer %s", customer_id)
         return None, True

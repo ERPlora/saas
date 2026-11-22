@@ -62,10 +62,10 @@ def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict
     """Write what the live Stripe subscription says of a business (billing reads it: webhook, checkout,
     the sweep of unpaid plans). Only the platform runs it, in the owner's channel (``system_ctx_for``).
 
-    A field left out is left as it is. What the Hub sees (the effective plan, the commercial status and
-    ``modules[]``) bumps ``state_version`` and is pushed after the COMMIT; anything written
-    records ``hubs.subscription.changed``. A paid subscription carries its own trial, so it ends the trial
-    plan of the sign-up. A deleted business keeps its status whatever the standing.
+    A field left out is left as it is. What the Hub sees (the effective plan, the commercial status,
+    ``modules[]`` and the deadline of a pending payment) bumps ``state_version`` and is pushed after the
+    COMMIT; anything written records ``hubs.subscription.changed``. A paid subscription carries its own trial,
+    so it ends the trial plan of the sign-up. A deleted business keeps its status whatever the standing.
     """
     if ctx.actor != "system":
         raise PermissionDenied(_("Only the platform applies what Stripe says."), code="internal_command")
@@ -141,7 +141,7 @@ def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict
 
 def _what_the_hub_sees(hub_id: UUID) -> tuple:
     snapshot = hub_sync.hub_snapshot(hub_id)
-    return snapshot["status"], snapshot["plan"], snapshot["modules"]
+    return snapshot["status"], snapshot["plan"], snapshot["modules"], snapshot.get("suspends_on")
 
 
 def _apply_modules(subscription: Subscription, rights) -> bool:

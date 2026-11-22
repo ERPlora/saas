@@ -179,6 +179,15 @@ async def test_listing_with_a_refused_key_says_why(fake_provider):
     assert (refused.value.message, refused.value.status, refused.value.retriable) == ("openai: Invalid key", 401, False)
 
 
+async def test_a_pdf_goes_as_the_file_part_of_chat_completions(fake_provider):
+    fake_provider.reply("POST", "/v1/chat/completions", sse=["[DONE]"])
+    question = {"role": "user", "content": [{"type": "text", "text": "Read"}, {"type": "file", "file": {"filename": "albaran.pdf", "file_data": "data:application/pdf;base64,JVBERi0x"}}]}
+
+    await collect(client(fake_provider), TurnRequest(model_id="gpt-4o", messages=[question]))
+
+    assert fake_provider.requests[0].body["messages"] == [question]
+
+
 async def test_the_request_body_is_json(fake_provider):
     fake_provider.reply("POST", "/v1/chat/completions", sse=["[DONE]"])
 

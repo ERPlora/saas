@@ -10,10 +10,10 @@ from live.context import OperationContext, Scope, system_context
 from live.operations import INTERNAL, operation
 from live.outbox import record_event
 
-from billing import events, stripe_service
+from billing import emails, events, stripe_payments, stripe_service
 from billing.models import CheckoutAttempt
 from billing.money import from_cents
-from billing.schemas import CheckoutRefundRecordIn, CheckoutRefundRecordOut
+from billing.schemas.invoice_records import CheckoutRefundRecordIn, CheckoutRefundRecordOut
 from billing.services import discounts, live_subscriptions, promo_holds, stripe_sales, stripe_sync, webhook_targets
 from billing.stripe_checkout import CheckoutKind, checkout_session_kind
 from hubs.queries import membership
@@ -167,7 +167,7 @@ def _end_not_owner(hub: Hub, attempt: CheckoutAttempt, session: dict, subscripti
     if isinstance(invoice, dict):
         invoice = invoice.get("id") or ""
     refunded = (
-        stripe_service.refund_invoice(
+        stripe_payments.refund_invoice(
             invoice,
             key=f"refund-{session.get('id')}",
             metadata={"hub_id": str(hub.id), "checkout_session": session.get("id") or "", "reason": NOT_OWNER},
@@ -223,8 +223,6 @@ def _tell_refunded(account_id, hub_id, cents: int) -> None:
     One that cannot leave is logged (``billing.emails``): the refund and its rectifying invoice in Billing are
     the record."""
     from django.contrib.auth import get_user_model
-
-    from billing import emails
 
     account = get_user_model().objects.filter(pk=account_id).first()
     hub = Hub.objects.filter(pk=hub_id).first()

@@ -121,6 +121,17 @@ async def test_the_conversation_is_translated_to_gemini_contents(fake_provider):
     ]
 
 
+async def test_a_pdf_goes_as_inline_data(fake_provider):
+    fake_provider.reply("POST", STREAM, sse=[chunk({"text": "ok"}, finish="STOP")])
+    pdf = {"type": "file", "file": {"filename": "albaran.pdf", "file_data": "data:application/pdf;base64,JVBERi0x"}}
+
+    await collect(client(fake_provider), TurnRequest(model_id="gemini-2.5-pro", messages=[{"role": "user", "content": [{"type": "text", "text": "Read"}, pdf]}]))
+
+    assert fake_provider.requests[0].body["contents"] == [
+        {"role": "user", "parts": [{"text": "Read"}, {"inlineData": {"mimeType": "application/pdf", "data": "JVBERi0x"}}]},
+    ]
+
+
 @pytest.mark.parametrize(("raw", "reason"), [("MAX_TOKENS", "length"), ("SAFETY", "content_filter"), ("RECITATION", "content_filter"), ("STOP", "stop")])
 async def test_the_end_of_the_answer_is_named_alike(fake_provider, raw, reason):
     fake_provider.reply("POST", STREAM, sse=[chunk({"text": "x"}, finish=raw)])

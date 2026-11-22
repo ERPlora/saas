@@ -10,7 +10,15 @@ import { fileURLToPath } from 'node:url';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { assertViteOfThisTree, panelServers, VITE_ROOT_HEADER, viteHmrSocket, vitePort, WHATSAPP_E2E } from './panel/project';
+import {
+  assertViteOfThisTree,
+  E2E_AI_KEY,
+  panelServers,
+  VITE_ROOT_HEADER,
+  viteHmrSocket,
+  vitePort,
+  WHATSAPP_E2E,
+} from './panel/project';
 import { STACK } from './stack';
 
 const SAAS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -78,6 +86,33 @@ describe('panelServers', () => {
 
   it("names the e2e's own provider as the assistant's services provider, never a real one of the database", () => {
     expect(servers(5225)['panel-django'].env).toMatchObject({ ASSISTANT_SERVICE_PROVIDER: 'e2e-local' });
+  });
+
+  it("gives the e2e's own provider a made-up OpenAI key and no other AI key, never a developer's real one", () => {
+    // The gateway reads each provider's key from the environment only: `.env` or the shell may hold real ones, and
+    // the e2e's provider (assistant_seed.py, «E2E Local» on the fake) reads OPENAI_API_KEY. Both Djangos.
+    for (const name of ['panel-django', 'panel-mfa-django']) {
+      expect(servers(5225)[name].env, name).toMatchObject({
+        OPENAI_API_KEY: E2E_AI_KEY,
+        ANTHROPIC_API_KEY: '',
+        GEMINI_API_KEY: '',
+        DEEPSEEK_API_KEY: '',
+        DASHSCOPE_API_KEY: '',
+      });
+    }
+    expect(E2E_AI_KEY).toMatch(/^sk-e2e-/);
+  });
+
+  it("with QA_REAL_PROVIDER=1 leaves the AI keys to the runner's environment", () => {
+    // assistant-battery.spec.ts: the runner exports the real keys (tests/e2e/README.md) and the servers inherit them.
+    const real = Object.fromEntries(
+      panelServers(SAAS_DIR, 5225, STACK, { QA_REAL_PROVIDER: '1' }).map((server) => [server.name, server]),
+    );
+    for (const name of ['panel-django', 'panel-mfa-django']) {
+      for (const variable of ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'DEEPSEEK_API_KEY', 'DASHSCOPE_API_KEY']) {
+        expect(real[name].env, `${name} ${variable}`).not.toHaveProperty(variable);
+      }
+    }
   });
 
   it("gives each account 2 messages a month with the panel's assistant, so a spec spends them (ASSISTANT-F26)", () => {

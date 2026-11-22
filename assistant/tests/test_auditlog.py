@@ -1,6 +1,6 @@
-"""Who changed the configuration of the AI: the providers, their keys, their models and the model that answers stay
-in the audit trail of erplora.com (django-auditlog), with who did it, from where and what changed. A key is never
-written there, neither in clear nor encrypted: its rotation shows as its new hint and the time it changed.
+"""Who changed the configuration of the AI: the providers (with the variable of the environment each reads its key
+from), their models and the model that answers stay in the audit trail of erplora.com (django-auditlog), with who did
+it, from where and what changed. A key is never written there: it lives in the environment, not in a row.
 
 There is one trail: each app registers its models with ``accounts.auditlog.audit``.
 """
@@ -9,15 +9,10 @@ import pytest
 from auditlog.models import LogEntry
 from auditlog.registry import auditlog
 
-from assistant import services
-from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy
-from assistant.schemas import CredentialDeleteIn, CredentialIn
-from assistant.tests.conftest import API_KEY, staff_ctx
+from assistant.models import AIModel, AIProvider, AIRoutingPolicy
+from assistant.tests.conftest import API_KEY
 
 pytestmark = pytest.mark.django_db
-
-ROTATED = "sk-test-9999999999999999999999999999rot8"
-
 
 def written(entries) -> str:
     """All a log entry keeps about its object, as one string to search for a secret."""
@@ -30,36 +25,16 @@ def written(entries) -> str:
 def test_the_configuration_of_the_ai_is_audited():
     registered = set(auditlog.get_models())
 
-    assert {AIProvider, AIProviderCredential, AIModel, AIRoutingPolicy} <= registered
+    assert {AIProvider, AIModel, AIRoutingPolicy} <= registered
 
 
-def test_a_key_added_and_rotated_leaves_its_hint_and_when_never_the_key(ai_admin, provider):
-    ctx = staff_ctx(ai_admin)
-    added = services.credential_save(ctx, CredentialIn(provider=provider.pk, label="default", api_key=API_KEY))
-    services.credential_save(ctx, CredentialIn(provider=provider.pk, id=added.id, label="default", api_key=ROTATED))
+def test_the_variable_a_provider_reads_stays_in_the_trail_never_its_key(provider, settings):
+    settings.OPENAI_API_KEY = API_KEY
+    provider.key_variable = "DASHSCOPE_API_KEY"
+    provider.save()
 
-    credential = AIProviderCredential.objects.get(pk=added.id)
-    entries = LogEntry.objects.get_for_object(credential).order_by("timestamp")
-    create, *updates = entries
-    assert create.action == LogEntry.Action.CREATE
-    assert any(entry.changes_dict.get("key_hint") == ["wxyz", "rot8"] for entry in updates)
-    assert any("rotated_at" in entry.changes_dict for entry in updates)
-    token = AIProviderCredential.objects.filter(pk=added.id).values_list("api_key", flat=True).get()
-    for secret in (API_KEY, ROTATED, token):
-        assert secret not in written(entries)
-    assert all("api_key" not in entry.changes_dict for entry in entries)
-    assert all("api_key" not in (entry.serialized_data or {}).get("fields", {}) for entry in entries)
-
-
-def test_a_key_turned_off_or_deleted_stays_in_the_trail(ai_admin, provider):
-    ctx = staff_ctx(ai_admin)
-    added = services.credential_save(ctx, CredentialIn(provider=provider.pk, label="default", api_key=API_KEY))
-    services.credential_save(ctx, CredentialIn(provider=provider.pk, id=added.id, label="default", is_active=False))
-    services.credential_delete(ctx, CredentialDeleteIn(id=added.id))
-
-    entries = LogEntry.objects.filter(object_pk=str(added.id)).order_by("timestamp")
-    assert [entry.action for entry in entries] == [LogEntry.Action.CREATE, LogEntry.Action.UPDATE, LogEntry.Action.DELETE]
-    assert entries[1].changes_dict["is_active"] == ["True", "False"]
+    entries = LogEntry.objects.get_for_object(provider).order_by("timestamp")
+    assert entries.last().changes_dict["key_variable"] == ["OPENAI_API_KEY", "DASHSCOPE_API_KEY"]
     assert API_KEY not in written(entries)
 
 

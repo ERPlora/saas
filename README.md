@@ -101,7 +101,8 @@ Vue, sobre `allauth.headless` (cliente `browser`, `/_allauth/browser/v1/…`), e
 ## Segundo factor (2FA)
 
 App autenticadora (TOTP) y códigos de recuperación con `allauth.mfa`, como el SaaS anterior
-(`accounts/mfa.py`, tests en `accounts/tests/test_mfa.py`). `allauth.mfa` está siempre
+(`accounts/mfa.py`, tests en `accounts/tests/test_mfa.py` y, los de «Confiar en este navegador»,
+en `accounts/tests/test_mfa_trusted_browsers.py`). `allauth.mfa` está siempre
 instalado (su tabla existe siempre); lo enciende el flag `ACCOUNTS_MFA_ENABLED`, **apagado por
 defecto en la fase 1**.
 
@@ -300,7 +301,7 @@ El panel de `erplora.com` (Negocios · Tienda · Facturación · Cuenta; plan
 - **Tareas programadas** (`saas-cron`, `stacks/prod/scheduler.tf` de `ERPlora/aws`, horas en UTC): `sweep_unpaid`
   (cada hora, :05), `check_custom_domains` (cada hora, :25; con `CUSTOM_DOMAINS_ENABLED` apagada no hace nada),
   `push_hub_snapshots` (00:30), `collect_hub_usage` (01:15) y `report_seal_expiry` (07:00); las demás de cada app,
-  en su README. En `saas-migrate`, tras `migrate`: `seed_taxonomy`, `init_cookie_groups`, `import_ai_keys_from_env`
+  en su README. En `saas-migrate`, tras `migrate`: `seed_taxonomy`, `init_cookie_groups`
   y `check --database default` (`stacks/prod/apps.tf`); `sync_hub_plans` ya no se llama (ERPlora/aws#4, mergeada el
   2026-10-15). Las cinco de arriba y `seed_taxonomy`, idempotentes y con advisory lock (una segunda ejecución vuelve
   al momento).
@@ -324,7 +325,7 @@ El cliente la sube desde el módulo VeriFactu de su Hub, que la envía firmada a
 vista, con su tope de 32 MB, y el resto del sitio conserva el de Django); `GET /internal/representation/model`
 sirve el modelo, relleno con los datos del negocio que el Hub manda en la consulta (`taxpayer_tax_id`,
 `taxpayer_name`, `municipality`, `street`, `number`; `fiscal/schemas.py`) y en blanco sin ellos. El staff la revisa en `/admin/fiscal/representationgrant/` (aprobar, devolver o
-retirar, siempre con motivo para el cliente, por los servicios de `fiscal/services.py`); el grupo `support`
+retirar, siempre con motivo para el cliente, por los servicios de `fiscal/services/`); el grupo `support`
 solo la ve. El estado viaja al Hub en la foto (`verifactu.representation` de `PUT /internal/hubs/{id}/state`)
 y el panel lo enseña en la ficha del negocio (`fiscal.representation.status`).
 
@@ -360,7 +361,7 @@ después el despliegue de este código. Fuera de `DEBUG`, sin prefijo o modo no 
 `docker/image.test.sh` comprueba la imagen con ellos y sin cada uno. Sin uno de los dos booleanos sí
 arranca, con él en `false` y sin avisar: en prod, cada registro de los hubs para la AEAT de producción
 recibiría el 409 `environment_not_allowed` y erplora.com saldría de los buscadores. Por eso
-`.github/scripts/ecs-deploy.sh` rechaza, sin registrar nada, una revisión cuyo contenedor del SaaS se quede
+`.github/scripts/ecs_deploy.py` rechaza, sin registrar nada, una revisión cuyo contenedor del SaaS se quede
 sin `CACHE_KEY_PREFIX` o sin una de las otras tres, en `environment` o en `secrets`.
 
 **Los ajustes viajan con el código** (`deploy/app-env.json`). Los ajustes del SaaS que no son secretos van en
@@ -368,7 +369,7 @@ ese fichero, por entorno y por familia de tareas (`saas`, `saas-cron`, `saas-mig
 tiene `saas-cron`): `STRIPE_EXPECTED_MODE`, `PUBLIC_INDEXING_ENABLED`, `AEAT_PRODUCTION_ENABLED` y
 `PLATFORM_INVOICING_ENABLED` en todas, y en la web (`saas`) `MICROSOFT_STORE_APP_ID` y, solo en prod,
 `GA_MEASUREMENT_ID`. Cambiar uno es cambiar el fichero y desplegar. `CACHE_KEY_PREFIX`, las direcciones y los
-secretos siguen en `ERPlora/aws`. El despliegue (`ecs-deploy.sh`, con `.github/scripts/app_env.py`) lee el
+secretos siguen en `ERPlora/aws`. El despliegue (`ecs_deploy.py`, con `.github/scripts/app_env.py`) lee el
 fichero **del commit que despliega** y, antes de registrar nada, rechaza:
 
 - un entorno, una familia o una variable que no conoce, un valor que no es texto o no es de su tipo y un nombre
@@ -391,7 +392,7 @@ registrar) y, cuando los servicios corren las revisiones nuevas, escribe los aju
 Un commit anterior al fichero (una release antigua que se vuelve a desplegar) se despliega con los ajustes vigentes, y
 el despliegue lo avisa.
 
-**Volver atrás** (`rollback.yml`, `ecs-rollback.sh` con `.github/scripts/app_env_rollback.py`) pone `saas` y
+**Volver atrás** (`rollback.yml`, `ecs_rollback.py` con `.github/scripts/app_env_rollback.py`) pone `saas` y
 `saas-worker` en su revisión anterior, que corre con los ajustes con los que se registró, no con el fichero. Por eso,
 antes de mover nada, lee esos ajustes del contenedor de la app de cada revisión de destino y les pasa las mismas
 comprobaciones que el despliegue al fichero: las de `pre`, Analytics solo en la web de prod, el mismo valor de cada
@@ -419,7 +420,7 @@ En `pre` (`pre.erplora.com`, cluster `erplora-pre`, mismo ALB, Aurora y Valkey q
 1. Se trabaja en una rama propia; cada push corre `test / test` (`ci.yml`, que llama a `test.yml`).
 2. Si `pre` avanzó, se integra `origin/pre` en la rama y se empuja otra vez.
 3. Con el check en verde, `git push origin <rama>:pre` (fast-forward). `deploy.yml` prueba, construye la imagen
-   en `erplora/saas-pre` y despliega `saas-pre` y `saas-worker-pre` (`ecs-deploy.sh` con `ENVIRONMENT=pre`: cluster
+   en `erplora/saas-pre` y despliega `saas-pre` y `saas-worker-pre` (`ecs_deploy.py` con `ENVIRONMENT=pre`: cluster
    `erplora-pre`, familias `erplora-pre-saas`, `erplora-pre-saas-migrate` y `erplora-pre-saas-worker`, sin
    `saas-cron`; `/erplora/pre/saas/image_tag`). Si pre estaba apagado, lo enciende. Sin release. Si no existiera la
    familia `erplora-<entorno>-saas-worker`, el despliegue (y `rollback.yml`) la saltaría con un `::warning::` y
@@ -436,7 +437,7 @@ anterior: `gh workflow run rollback.yml --repo ERPlora/saas --ref pre -f environ
 las releases solo se redespliegan en prod (`.github/scripts/deploy-env.sh`). prod y pre no se esperan entre
 sí: el grupo de concurrencia es por rama.
 
-**Guarda de entorno.** `ecs-deploy.sh` y `ecs-rollback.sh` solo copian o restauran revisiones con la etiqueta
+**Guarda de entorno.** `ecs_deploy.py` y `ecs_rollback.py` solo copian o restauran revisiones con la etiqueta
 `Environment=<entorno>` y los roles `erplora-<entorno>-*`; si no, fallan sin registrar ni cambiar nada (el rol
 de despliegue de un entorno puede registrar revisiones en cualquier familia: `ecs:RegisterTaskDefinition` no
 admite recurso). Por eso el primer despliegue de prod con esta CI exigió antes el `apply` de `ERPlora/aws` que
@@ -554,6 +555,47 @@ uv run pytest -q
 pnpm test     # y typecheck, lint, build
 pnpm e2e --project=panel   # e2e del panel, sin ventana (`pnpm e2e:headed` la abre)
 ```
+
+## Comprobaciones antes de subir
+
+```bash
+git config core.hooksPath .githooks   # una vez por clon, cuando su HEAD ya trae .githooks/
+scripts/checks.sh fast                # lo mismo que corre el gancho, a mano, sobre el árbol de trabajo
+```
+
+`scripts/checks.sh fast` pasa primero, en unos segundos y sin red ni base de datos, los tests de guardarraíles del
+tamaño de cada fichero, de ruff (los límites de función y los errores probables de las familias `E4`, `E7`, `E9`, `F`,
+`B` y `DJ`, como un import sin usar), del contrato de imports (import-linter: ningún módulo importa a un hermano en
+círculo) y de la complejidad cognitiva (complexipy: ninguna función pasa de 15), con sus listas de excepciones, que
+solo encogen (`.file-size-allow`, las marcas `# noqa`, `eslint-suppressions.json`, las entradas de un fichero en
+`[tool.ruff.lint.per-file-ignores]`, los `ignore_imports` de `[tool.importlinter]` y `complexipy-snapshot.json`).
+`uv run lint-imports` y `uv run complexipy` corren las dos herramientas a mano. Después comprueba lo que toca el cambio: lo que
+difiere de donde la rama salió de `origin/main` (en `origin/main`, del commit anterior) o del commit que se le pase
+(`scripts/checks.sh fast <commit>`), con lo no commiteado y los ficheros nuevos.
+
+- ESLint sobre sus ficheros TypeScript, JavaScript y Vue y, si toca alguno, la comprobación de tipos (`pnpm typecheck`)
+  y las pruebas de Vitest relacionadas (`vitest related`).
+- pytest sobre sus ficheros de prueba y sobre el `test_<módulo>.py` de cada módulo tocado (también
+  `test_<paquete>_<módulo>.py`, para un módulo de un paquete como `services/`) en la carpeta `tests/` más cercana,
+  contra el Postgres de `compose.yaml` y en una base de pruebas propia de cada checkout (`TEST_DB_NAME` la cambia).
+
+Corren todas, y cualquier rojo hace fallar el comando; su salida dice qué fichero incumple y por qué. La pasada completa
+(la suite entera, el build y las pruebas de navegador) la hace la CI.
+
+El gancho `.githooks/pre-push` corre primero el `pre-push` global de la máquina, con los mismos argumentos y la misma
+entrada, y después `scripts/checks.sh fast` sobre cada commit que se sube, sacado en un worktree temporal con el
+entorno de Python de este checkout (`.venv`, o el de `UV_PROJECT_ENVIRONMENT`), que además le presta su `node_modules`
+y `packages/ui` (en el commit que registra lo que se sube): se comprueba lo que se sube, nunca el árbol de trabajo. Un
+rojo para el push, y no hay variable para saltárselo; sin el entorno (`uv sync`) también se para, y si a ESLint, a los
+tipos o a Vitest les falta `node_modules` o `packages/ui`, el comando lo dice (`pnpm install`, `git submodule update
+--init`) y falla.
+`commit-msg`, `pre-commit` y `applypatch-msg` pasan el turno a los ganchos globales del mismo nombre, que
+`core.hooksPath` dejaría de correr. La suite de la CI vuelve a pasar estos tests al fusionar, así que un clon sin el
+gancho no se salta nada. Sus tests: `tests/test_githooks.py` y `tests/test_checks.py`.
+
+El ajuste vale para todos los worktrees del clon, y la ruta es relativa a cada uno: en un worktree cuya rama aún no
+trae `.githooks/`, git no corre ningún gancho, tampoco los globales. Una rama que no trae `scripts/checks.sh` no se
+puede subir hasta que se le mergea `origin/main`.
 
 ## Fuera de la fase 1
 

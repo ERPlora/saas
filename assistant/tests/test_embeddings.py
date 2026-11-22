@@ -67,7 +67,7 @@ def test_the_tokens_and_their_cost_go_to_the_businesss_month(client, internal, b
 def test_a_business_with_its_messages_spent_still_indexes(client, internal, business, answering, fake_provider):
     from django.utils import timezone
 
-    AssistantUsage.objects.create(hub=business, month=queries.month_of(timezone.now()), messages=30)
+    AssistantUsage.objects.create(hub=business, month=queries.usage.month_of(timezone.now()), messages=30)
     fake_provider.reply("POST", "/v1/embeddings", json=vectors_answer([0.1]))
 
     assert door(client, EMBEDDINGS, {"hub": business.slug, "texts": ["x"]}).status_code == 200
@@ -89,10 +89,8 @@ def test_without_the_services_provider_it_is_503(client, internal, business, ans
     assert (response.status_code, error_code(response)) == (503, "assistant.provider_not_configured")
 
 
-def test_a_provider_turned_off_or_without_a_key_is_503(client, internal, business, answering, fake_provider):
-    from assistant.models import AIProviderCredential
-
-    AIProviderCredential.objects.all().delete()
+def test_a_provider_turned_off_or_without_a_key_is_503(client, internal, business, answering, fake_provider, settings):
+    settings.OPENAI_API_KEY = ""
 
     response = door(client, EMBEDDINGS, {"hub": business.slug, "texts": ["x"]})
 

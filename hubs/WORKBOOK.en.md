@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:215887339e45a59ef1f270096c50a9dc032b61741013bbd16bdee6b072e2eea2 -->
+<!-- generated from WORKBOOK.md sha256:0c6876ef49731b34100fc460b5913ce167048b30b5c219e1bfe876938d6a9539 -->
 
 ## What it is for and who it is for
 
@@ -422,14 +422,14 @@ Status: done
 Actor: owner, integration
 Screen: Business settings › Danger zone
 Steps:
-1. In "Settings", in the "Danger zone", the owner presses "Delete business"; the dialog "Delete …" says "It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good." and "Its plan is cancelled now: if you recover it, it comes back on Free.".
+1. In "Settings", in the "Danger zone", the owner presses "Delete business"; the dialog "Delete …" says "It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good, except its fiscal documents.", "Its sales, invoices and other fiscal documents are kept for 6 years, as the law requires, in an archive nobody can change or delete." and "Its plan is cancelled now: if you recover it, it comes back on Free.".
 2. They type the business's name in "Business name" and press "Delete business": "Business deleted: …. You can recover it until ….".
-3. The page says "It will be erased for good on …" with "Recover business" and, below, "Download the data": each full copy of its data with its date, "When it was deleted" and its size, and "Download". The owner gets the email with that date and "Download a full copy of its data: …", which leads to that page; when the copy is ready, another email: "The copy of the data of … is ready".
+3. The page says "It will be erased for good on …", that once erased only its fiscal documents are kept, for 6 years, and "Recover business"; below, "Download the data": each full copy of its data with its date, "When it was deleted" and its size, and "Download". The owner gets the email with that date, which says the same of its fiscal documents, and "Download a full copy of its data: …", which leads to that page; when the copy is ready, another email: "The copy of the data of … is ready".
 4. An integration with the account's session does the same, with the name typed; an API key does not delete.
 In: the name typed again; the owner's session.
-Out: the business deleted, which stops opening at once for everyone and is erased for good after 90 days; its plan goes back to Free and what Stripe was charging is cancelled in the next pass; the business receives the deletion after saving. Records `hubs.business.deleted`.
+Out: the business deleted, which stops opening at once for everyone and after 90 days is erased for good, except its fiscal documents, which the business keeps for 6 years in its fiscal archive (BASE-F109); its plan goes back to Free and what Stripe was charging is cancelled in the next pass; the business receives the deletion after saving. Records `hubs.business.deleted`.
 If it fails: a name that does not match deletes nothing (case and spaces around do not matter); deleting it twice, "This business was deleted.". Only the owner deletes it and downloads its data. With no copy yet, "The copy is not ready yet. We will let you know by email when it is."; a business that never had its own database, "This business has no copy of its data.", with no notice, and its deletion email does not lead to the copy; a copy no longer kept, "This copy of the data is no longer kept."; if it cannot be downloaded now, "The copy cannot be downloaded right now. Try again in a moment.". To stop paying without deleting it, the plan is cancelled from Billing (BILLING-F13).
-Involved: billing (cancels what was being charged), the business (stops opening and keeps it 90 days)
+Involved: billing (cancels what was being charged), the business (stops opening, keeps it 90 days and then erases it, except its fiscal documents: BASE-F109)
 
 ### HUBS-F19 Recover a deleted business
 Status: done
@@ -532,11 +532,11 @@ Screen: Members › Change role
 Steps:
 1. In "Members", in the person's row, "Change role" opens "Change the role of …" with the roles that can be given to them.
 2. They pick the new one and press "Change role": "… is now …" shows and the row shows the new role.
-3. The business receives the list of people with the new role and ends that person's session there at that moment: the next thing they do asks them to sign in again, and they come back with the new role.
+3. The business receives the list of people with the new role and, if that person has it open, at that moment they see and may do what their new role allows, without their session ending or signing in again.
 In: the person and the new role; the session of whoever changes it, who has to rank above the person and above the role given.
-Out: the new role and the notice to the business, with the end of that person's session there; the role of an unanswered invitation changes without telling the business. Records `hubs.member.role_changed`.
+Out: the new role and the notice to the business, with that person's session there still open; the role of an unanswered invitation changes without telling the business. Records `hubs.member.role_changed`.
 If it fails: one's own role, "You cannot change your own membership."; somebody of an equal or higher rank, "You cannot manage a member whose role is equal to or above yours."; a role equal to or above one's own, "You cannot hand out a role equal to or above yours.". The ownership is not given from here (HUBS-F28). A manager or an employee changes no roles; a person of a business of another account does not exist for whoever asks.
-Involved: the business (BASE-F13: receives the new role and ends the session), accounts (the session)
+Involved: the business (BASE-F13: receives the new role and applies it without ending the session)
 
 ### HUBS-F27 Remove a person from a business
 Status: done
@@ -597,7 +597,7 @@ Status: done
 Actor: system, ERPlora's staff
 Screen: none; for the staff, admin › Businesses › Plans
 Steps:
-1. Whenever something the business has to know changes —its plan (when it is paid, changed or ended), a paid app bought or cancelled, a person who joins, changes role or leaves, its billing standing or its VeriFactu authorisation—, erplora.com stores it and, as soon as it is stored, sends the business its whole snapshot: the plan with its caps (people, devices, the limits of its database and the assistant and WhatsApp messages a month), its paid apps, its people with their role, its status and its VeriFactu block.
+1. Whenever something the business has to know changes —its plan (when it is paid, changed or ended), a paid app bought or cancelled, a person who joins, changes role or leaves, its billing standing or its VeriFactu authorisation—, erplora.com stores it and, as soon as it is stored, sends the business its whole snapshot: the plan with its caps (people, devices, the limits of its database and the assistant and WhatsApp messages a month), its paid apps, its people with their role, its status (with a payment pending, also the day and time it is suspended unless it is paid) and its VeriFactu block.
 2. The business always keeps the newest snapshot: one that arrives late and is older than the one it has changes nothing. It works with it without asking erplora.com on every sale, so it keeps selling even if erplora.com does not answer.
 3. If the staff change in the admin what a plan gives (its caps, its level of apps or its messages a month), on saving they see "… businesses on this plan get the change within 15 minutes." and every business on that plan gets it on the next pass; changing only its texts, its order or its price sends nothing.
 4. What a business did not receive is sent to it again every 15 minutes (HUBS-F08) and, every night, every business gets its snapshot again.

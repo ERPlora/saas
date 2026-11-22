@@ -12,8 +12,7 @@ import re
 
 import pytest
 
-from assistant.models import AIProvider, AIProviderCredential
-from assistant.tests.conftest import fernet_key  # noqa: F401 - the credentials' key, autouse
+from assistant.models import AIProvider
 
 pytestmark = [pytest.mark.django_db, pytest.mark.usefixtures("spa_manifest")]
 
@@ -306,11 +305,11 @@ class TestTheAssistantsVoice:
 
         assert config["assistantSpeech"] is False
 
-    def test_no_provider_of_the_admin_turns_it_on(self, client):
+    def test_no_provider_of_the_admin_turns_it_on(self, client, settings):
         from assistant.tests.conftest import API_KEY
 
-        named = AIProvider.objects.create(slug="azure-speech", name="Azure", kind="openai")
-        AIProviderCredential.objects.create(provider=named, label="default", api_key=API_KEY, key_hint="wxyz")
+        settings.OPENAI_API_KEY = API_KEY
+        AIProvider.objects.create(slug="azure-speech", name="Azure", kind="openai", key_variable="OPENAI_API_KEY")
 
         assert json_block(client.get("/launch", HTTP_HOST=HOST), "spa-config")[1]["assistantSpeech"] is False
 

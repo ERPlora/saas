@@ -11,7 +11,7 @@ WHATSAPP_VERIFY_TOKEN = config("WHATSAPP_VERIFY_TOKEN", default="")
 WHATSAPP_CONFIG_ID = config("WHATSAPP_CONFIG_ID", default="")
 # The version of Meta's Graph API every call names.
 WHATSAPP_GRAPH_VERSION = config("WHATSAPP_GRAPH_VERSION", default="v25.0")
-# The key of the credentials kept at rest (Meta's, whatsapp/crypto.py; the AI providers', assistant/crypto.py; Fernet);
+# The key of the credentials kept at rest (Meta's, whatsapp/crypto.py; rotated by assistant/crypto.py; Fernet);
 # during a rotation the previous one still opens what it closed. Local development uses a fixed key; elsewhere it comes from the environment, and
 # without it no number can be connected.
 FERNET_KEY = config("FERNET_KEY", default="yh5h4Yur2lIgWp9ZxkyLt1BrQfFVrwLH4WhIHCRwXXA=" if DEBUG else "")

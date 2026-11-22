@@ -439,14 +439,14 @@ Estado: hecho
 Actor: propietario, integración
 Pantalla: Ajustes del negocio › Zona de peligro
 Pasos:
-1. En «Ajustes», en la «Zona de peligro», el propietario pulsa «Eliminar negocio»; el diálogo «Eliminar …» dice «Deja de funcionar ahora mismo para todos. Puedes recuperarlo durante 90 días; después se borra para siempre.» y «Su plan se cancela ahora: si lo recuperas, vuelve en Gratis.».
+1. En «Ajustes», en la «Zona de peligro», el propietario pulsa «Eliminar negocio»; el diálogo «Eliminar …» dice «Deja de funcionar ahora mismo para todos. Puedes recuperarlo durante 90 días; después se borra para siempre, salvo sus documentos fiscales.», «Sus ventas, facturas y demás documentos fiscales se guardan 6 años, como exige la ley, en un archivo que nadie puede modificar ni borrar.» y «Su plan se cancela ahora: si lo recuperas, vuelve en Gratis.».
 2. Escribe el nombre del negocio en «Nombre del negocio» y pulsa «Eliminar negocio»: sale «Negocio eliminado: …. Puedes recuperarlo hasta el ….».
-3. La página dice «Se eliminará para siempre el …» con «Recuperar negocio» y, debajo, «Descargar los datos»: cada copia completa de sus datos con su fecha, «Al eliminarlo» y su tamaño, y «Descargar». Al propietario le llega el correo con esa fecha y «Descarga una copia completa de sus datos: …», que lleva a esa página; cuando la copia está lista, otro correo: «La copia de los datos de … está lista».
+3. La página dice «Se eliminará para siempre el …», que una vez borrado solo se guardan sus documentos fiscales, durante 6 años, y «Recuperar negocio»; debajo, «Descargar los datos»: cada copia completa de sus datos con su fecha, «Al eliminarlo» y su tamaño, y «Descargar». Al propietario le llega el correo con esa fecha, que dice lo mismo de sus documentos fiscales, y «Descarga una copia completa de sus datos: …», que lleva a esa página; cuando la copia está lista, otro correo: «La copia de los datos de … está lista».
 4. Una integración con la sesión de la cuenta hace lo mismo, con el nombre escrito; una clave de API no elimina.
 Entra: el nombre escrito otra vez; la sesión del propietario.
-Sale: el negocio eliminado, que deja de abrirse al momento para todos y se borra para siempre a los 90 días; su plan vuelve a Gratis y lo que se cobraba en Stripe se cancela en la pasada siguiente; el negocio recibe la baja tras guardar. Anota `hubs.business.deleted`.
+Sale: el negocio eliminado, que deja de abrirse al momento para todos y a los 90 días se borra para siempre, salvo sus documentos fiscales, que el negocio guarda 6 años en su archivo fiscal (BASE-F109); su plan vuelve a Gratis y lo que se cobraba en Stripe se cancela en la pasada siguiente; el negocio recibe la baja tras guardar. Anota `hubs.business.deleted`.
 Si falla: un nombre que no coincide no elimina nada (da igual en mayúsculas o con espacios alrededor); eliminarlo dos veces, «Este negocio se ha eliminado.». Solo el propietario lo elimina y descarga sus datos. Sin copia todavía, «La copia todavía no está lista. Te avisaremos por correo cuando lo esté.»; un negocio que nunca tuvo base de datos propia, «Este negocio no tiene copia de datos.», sin aviso, y su correo de la baja no lleva a la copia; una copia que ya no se guarda, «Esta copia de los datos ya no se conserva.»; si ahora no se puede bajar, «La copia no se puede descargar ahora mismo. Vuelve a intentarlo en un momento.». Para dejar de pagar sin eliminarlo, se cancela el plan desde Facturación (BILLING-F13).
-Implicados: billing (cancela lo que se cobraba), el negocio (deja de abrirse y lo guarda 90 días)
+Implicados: billing (cancela lo que se cobraba), el negocio (deja de abrirse, lo guarda 90 días y después lo borra, salvo sus documentos fiscales: BASE-F109)
 
 ### HUBS-F19 Recuperar un negocio eliminado
 Estado: hecho
@@ -549,11 +549,11 @@ Pantalla: Miembros › Cambiar rol
 Pasos:
 1. En «Miembros», en la fila de la persona, «Cambiar rol» abre «Cambiar el rol de …» con los roles que se le pueden dar.
 2. Elige el nuevo y pulsa «Cambiar rol»: sale «… ahora es …» y la fila enseña el rol nuevo.
-3. El negocio recibe la lista de personas con el rol nuevo y cierra en ese momento la sesión de esa persona allí: lo siguiente que haga le pide volver a entrar, y vuelve con el rol nuevo.
+3. El negocio recibe la lista de personas con el rol nuevo y, si esa persona lo tiene abierto, en ese momento ve y puede hacer lo que permite su rol nuevo, sin cerrar su sesión ni volver a entrar.
 Entra: la persona y el rol nuevo; la sesión de quien lo cambia, que tiene que tener más rango que la persona y que el rol que da.
-Sale: el rol nuevo y el aviso al negocio, con el cierre de la sesión de esa persona allí; el de una invitación sin responder cambia sin avisar al negocio. Anota `hubs.member.role_changed`.
+Sale: el rol nuevo y el aviso al negocio, con la sesión de esa persona allí abierta; el de una invitación sin responder cambia sin avisar al negocio. Anota `hubs.member.role_changed`.
 Si falla: el propio rol, «No puedes cambiar tu propia pertenencia.»; alguien de igual o más rango, «No puedes gestionar a un miembro con un rol igual o superior al tuyo.»; un rol igual o superior al propio, «No puedes dar un rol igual o superior al tuyo.». La propiedad no se da desde aquí (HUBS-F28). Un encargado o un empleado no cambia roles; una persona de un negocio ajeno no existe para quien lo pide.
-Implicados: el negocio (BASE-F13: recibe el rol nuevo y cierra la sesión), accounts (la sesión)
+Implicados: el negocio (BASE-F13: recibe el rol nuevo y lo aplica sin cerrar la sesión)
 
 ### HUBS-F27 Quitar a una persona de un negocio
 Estado: hecho
@@ -614,7 +614,7 @@ Estado: hecho
 Actor: sistema, personal de ERPlora
 Pantalla: ninguna; para el personal, admin › Negocios › Planes
 Pasos:
-1. Cada vez que cambia algo que el negocio tiene que saber —su plan (al pagarlo, cambiarlo o terminarlo), una aplicación de pago comprada o cancelada, una persona que entra, cambia de rol o sale, su estado de cobro o su autorización de VeriFactu—, erplora.com lo guarda y, en cuanto queda guardado, manda al negocio su foto entera: el plan con sus topes (personas, dispositivos, los límites de su base de datos y los mensajes del asistente y de WhatsApp al mes), sus aplicaciones de pago, sus personas con su rol, su estado y su bloque de VeriFactu.
+1. Cada vez que cambia algo que el negocio tiene que saber —su plan (al pagarlo, cambiarlo o terminarlo), una aplicación de pago comprada o cancelada, una persona que entra, cambia de rol o sale, su estado de cobro o su autorización de VeriFactu—, erplora.com lo guarda y, en cuanto queda guardado, manda al negocio su foto entera: el plan con sus topes (personas, dispositivos, los límites de su base de datos y los mensajes del asistente y de WhatsApp al mes), sus aplicaciones de pago, sus personas con su rol, su estado (con un pago pendiente, también el día y la hora en que se suspende si no se paga) y su bloque de VeriFactu.
 2. El negocio se queda siempre con la foto más nueva: una que llega tarde y es más vieja que la que ya tiene no cambia nada. Con ella trabaja sin preguntar a erplora.com en cada venta, así que sigue vendiendo aunque erplora.com no responda.
 3. Si el personal cambia en el admin lo que da un plan (sus topes, su nivel de aplicaciones o sus mensajes al mes), al guardar ve «… negocios con este plan reciben el cambio en los próximos 15 minutos.» y cada negocio con ese plan lo recibe en la siguiente pasada; cambiar solo sus textos, su orden o su precio no manda nada.
 4. Lo que un negocio no recibió se le vuelve a mandar cada 15 minutos (HUBS-F08) y, cada noche, todos los negocios reciben su foto otra vez.

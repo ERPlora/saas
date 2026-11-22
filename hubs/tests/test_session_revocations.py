@@ -1,8 +1,8 @@
 """``SessionRevocation``: the Hub ends an account's sessions, and a Hub that is away does not lose it (as OIDC's
 back-channel logout).
 
-Taking access away (removing a member, changing a role, handing the ownership over) queues a revocation
-in the same transaction; it is delivered after the COMMIT (``POST /internal/sessions/revoke``) and, while
+Taking access away (removing a member, handing the ownership over) queues a revocation in the same
+transaction; it is delivered after the COMMIT (``POST /internal/sessions/revoke``) and, while
 the Hub is away or refuses it, ``reconcile_hub_states`` retries it with a growing wait. Delivered once.
 The next snapshot no longer lists a removed member either (the Hub's second way of learning it).
 """
@@ -68,8 +68,8 @@ class TestQueued:
         ) == (None, 0, "")
         assert revocation.requested_at <= timezone.now()
 
-    def test_changing_the_role_of_a_member_queues_it(self, business, team):
-        """The role travels in the Hub's session (``/internal/auth/redeem``): it must sign in again."""
+    def test_changing_the_role_of_a_member_ends_no_session(self, business, team):
+        """The Hub applies the new role from the snapshot and its open apps follow it: nobody signs in again."""
         member_management.member_change_role(
             ctx_for(team["owner"]),
             MemberRoleIn(
@@ -77,9 +77,8 @@ class TestQueued:
             ),
         )
 
-        assert list(SessionRevocation.objects.values_list("user_id", "hub_id")) == [
-            (team["manager"].pk, business.pk)
-        ]
+        assert member_of(business, team["manager"]).role == "hub_employee"
+        assert not SessionRevocation.objects.exists()
 
     def test_an_invitation_has_no_session_to_end(self, business, team):
         member_management.member_change_role(

@@ -18,6 +18,7 @@ from django.utils.translation import gettext as _
 from base.emails import branded_message
 from base.navigation import BILLING
 from billing.money import from_cents
+from billing.oss import OSS_WARNING_PERCENT
 
 logger = logging.getLogger(__name__)
 
@@ -206,8 +207,6 @@ def send_oss_notice(notice) -> None:
     threshold (register in the OSS now: form 035 takes days) or crossed it (destination VAT already applies:
     register at once).
     ``MailNotSent`` when the mail could not leave."""
-    from billing.services.oss_notices import OSS_WARNING_PERCENT
-
     values = {
         "year": notice.year,
         "last_year": notice.year - 1,

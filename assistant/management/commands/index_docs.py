@@ -54,14 +54,14 @@ class Command(BaseCommand):
             if not mine:
                 self.stdout.write("index_docs: already running, nothing done.")
                 return
-            ctx = services.platform_context()
+            ctx = services.platform_actor.platform_context()
             service = None if dry_run else self._service(ctx)
             for source in knowledge.SOURCES:
                 self._index(ctx, service, source, full=full, dry_run=dry_run)
 
     def _service(self, ctx):
         try:
-            return queries.service_connection(ctx, NoInput())
+            return queries.provider_keys.service_connection(ctx, NoInput())
         except OperationError as refused:
             if refused.code != "assistant.provider_not_configured":
                 raise CommandError(refused.message) from None
@@ -72,7 +72,7 @@ class Command(BaseCommand):
 
     def _index(self, ctx, service, source: str, *, full: bool, dry_run: bool) -> None:
         chunks = unique(knowledge.collect(source))
-        known = set(queries.docs_list(ctx, DocsSourceIn(source=source)).hashes)
+        known = set(queries.docs.docs_list(ctx, DocsSourceIn(source=source)).hashes)
         wanted = {chunk.content_hash for chunk in chunks}
         new = chunks if full else [chunk for chunk in chunks if chunk.content_hash not in known]
         if dry_run:
@@ -89,7 +89,7 @@ class Command(BaseCommand):
         for start in range(0, max(len(new), 1), BATCH):
             batch = new[start : start + BATCH]
             vectors, spent = self._embed(service, source, batch) if batch else ([], 0)
-            out = services.docs_index(
+            out = services.documentation.docs_index(
                 ctx,
                 DocsIndexIn(
                     source=source,

@@ -2,7 +2,7 @@
 # when no audit entry names it, its content type.
 #
 # 0011 left the table for the tasks of the release before it. Every release deployed since (82a437c on) knows nothing of
-# it, and ``ecs-rollback.sh`` only goes back to the revision right before the one running, so nothing reads it any more.
+# it, and ``ecs_rollback.py`` only goes back to the revision right before the one running, so nothing reads it any more.
 #
 # The audit entries of this type are kept: ``auditlog.LogEntry.content_type`` cascades, so deleting the content type
 # would take with it what ``cleanup_old_logs`` still keeps (90 days). It stays while an entry names it, the staff go on

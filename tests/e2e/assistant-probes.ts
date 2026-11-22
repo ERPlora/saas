@@ -7,7 +7,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { CATALOGUE, type Card, type Citation, citationOf, DOCS_SEARCH, type Turns, type Verdict } from './assistant-battery.ts';
+import { CATALOGUE, type Verdict } from './assistant-battery.ts';
+import { type Card, type Citation, citationOf, DOCS_SEARCH, type Turns } from './assistant-turns.ts';
 
 /** What a probe expects the panel to do with its phrase. */
 export const PROBE_EXPECTS = ['read', 'card', 'refused', 'docs'] as const;

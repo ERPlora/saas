@@ -19,7 +19,7 @@ import {
   usageCode,
   withTurn,
 } from './assistant-bench';
-import { summarizeTurns } from './assistant-battery';
+import { summarizeTurns } from './assistant-turns';
 import type { CatalogTool, Probe, ProbeResult } from './assistant-probes';
 
 const sse = (...frames: object[]): string => frames.map((frame) => `data: ${JSON.stringify(frame)}\n\n`).join('');

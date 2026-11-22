@@ -30,7 +30,8 @@ from django.utils.translation import gettext_lazy
 from live.context import OperationContext, Scope
 from live.errors import OperationError
 
-from fiscal import anexo, crypto, queries, services
+from fiscal import anexo, crypto, queries
+from fiscal.services import representation_grants, stamp_changes
 from fiscal.models import RepresentationGrant
 from fiscal.schemas import ReturnIn, ReviewIn, StampDeleteIn, StampUploadIn, WithdrawIn
 
@@ -235,7 +236,7 @@ class RepresentationGrantAdmin(admin.ModelAdmin):
             "versions": versions,
             "can_decide": grant.status == Status.SUBMITTED,
             "can_withdraw": grant.status == Status.APPROVED,
-            "reason_max_length": services.REASON_MAX_LENGTH,
+            "reason_max_length": representation_grants.REASON_MAX_LENGTH,
         }
         return TemplateResponse(request, "admin/fiscal/representationgrant/review.html", context)
 
@@ -250,13 +251,13 @@ class RepresentationGrantAdmin(admin.ModelAdmin):
         ctx = staff_context(request)
         try:
             if action == "approve":
-                services.representation_approve(ctx, ReviewIn(id=grant.pk))
+                representation_grants.representation_approve(ctx, ReviewIn(id=grant.pk))
                 messages.success(request, _("Approved: ERPlora may now file the business's records."))
             elif action == "return":
-                services.representation_return(ctx, ReturnIn(id=grant.pk, reason=reason))
+                representation_grants.representation_return(ctx, ReturnIn(id=grant.pk, reason=reason))
                 messages.success(request, _("Returned to the customer with your reason."))
             elif action == "withdraw":
-                services.representation_withdraw(ctx, WithdrawIn(id=grant.pk, reason=reason))
+                representation_grants.representation_withdraw(ctx, WithdrawIn(id=grant.pk, reason=reason))
                 messages.success(request, _("Withdrawn: ERPlora no longer files for the business by it."))
             else:
                 messages.error(request, _("Choose approve, return or withdraw."))
@@ -302,7 +303,7 @@ class RepresentationGrantAdmin(admin.ModelAdmin):
     @staticmethod
     def _stamp_viewer(request) -> bool:
         return request.user.has_perm("fiscal.view_representativestamp") or request.user.has_perm(
-            services.STAMP_PERMISSION
+            stamp_changes.STAMP_PERMISSION
         )
 
     def _stamp_page(self, request) -> None:
@@ -313,7 +314,7 @@ class RepresentationGrantAdmin(admin.ModelAdmin):
     def stamp_view(self, request):
         self._stamp_page(request)
         if request.method == "POST":
-            if not request.user.has_perm(services.STAMP_PERMISSION):
+            if not request.user.has_perm(stamp_changes.STAMP_PERMISSION):
                 raise PermissionDenied
             self._change_stamp(request)
             return HttpResponseRedirect(request.path)
@@ -323,8 +324,8 @@ class RepresentationGrantAdmin(admin.ModelAdmin):
             "opts": self.model._meta,
             "title": _("Representative's stamp"),
             "stamp": state,
-            "can_change": request.user.has_perm(services.STAMP_PERMISSION),
-            "max_megabytes": services.MAX_STAMP_BYTES // (1024 * 1024),
+            "can_change": request.user.has_perm(stamp_changes.STAMP_PERMISSION),
+            "max_megabytes": stamp_changes.MAX_STAMP_BYTES // (1024 * 1024),
             "image_url": reverse("admin:fiscal_representationgrant_stamp_image"),
             "model_url": reverse("admin:fiscal_representationgrant_stamp_model"),
         }
@@ -338,8 +339,8 @@ class RepresentationGrantAdmin(admin.ModelAdmin):
             if action == "upload":
                 upload = request.FILES.get("stamp")
                 # One byte past the ceiling is enough for the service to refuse it as too large.
-                content = upload.read(services.MAX_STAMP_BYTES + 1) if upload is not None else b""
-                services.stamp_upload(ctx, StampUploadIn(png_base64=base64.b64encode(content).decode()))
+                content = upload.read(stamp_changes.MAX_STAMP_BYTES + 1) if upload is not None else b""
+                stamp_changes.stamp_upload(ctx, StampUploadIn(png_base64=base64.b64encode(content).decode()))
                 messages.success(
                     request, _("Stamp uploaded: every model downloaded from now on carries it.")
                 )
@@ -347,7 +348,7 @@ class RepresentationGrantAdmin(admin.ModelAdmin):
                 if request.POST.get("confirm") != "yes":
                     messages.error(request, _("Tick the box to confirm that the stamp goes."))
                     return
-                services.stamp_delete(ctx, StampDeleteIn())
+                stamp_changes.stamp_delete(ctx, StampDeleteIn())
                 messages.success(request, _("Stamp removed: the models go without it until another is uploaded."))
             else:
                 messages.error(request, _("Choose upload or remove."))

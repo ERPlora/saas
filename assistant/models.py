@@ -1,9 +1,8 @@
-"""What the AI gateway keeps (README.md «Datos»): the providers ERPlora pays, their keys and their models, and which
-model answers. Keys are UUIDv7.
+"""What the AI gateway keeps (README.md «Datos»): the providers ERPlora pays and their models, and which model answers.
+Keys are UUIDv7.
 
-- ``AIProvider``: one of the four APIs of models the gateway speaks (``kind``) at its address.
-- ``AIProviderCredential``: a key of a provider, encrypted (``assistant.fields``), with its last four
-  characters as hint. Only ``assistant.services`` writes it.
+- ``AIProvider``: one of the four APIs of models the gateway speaks (``kind``) at its address, and the variable of the
+  environment its key is read from (``key_variable``). No key is ever kept in the database.
 - ``AIModel``: a model of a provider the staff chose, with its prices (USD per million tokens, typed by hand:
   the APIs do not give them) and what it supports.
 - ``AIRoutingPolicy``: one row, the model that answers and the fallback one; a model it uses is never deleted.
@@ -29,8 +28,6 @@ from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from pgvector.django import VectorField
 
-from assistant.fields import EncryptedTextField
-
 #: Where each kind's API answers when the provider names no address of its own.
 DEFAULT_BASE_URLS = {
     "openai": "https://api.openai.com/v1",
@@ -38,6 +35,11 @@ DEFAULT_BASE_URLS = {
     "gemini": "https://generativelanguage.googleapis.com",
     "deepseek": "https://api.deepseek.com",
 }
+
+
+#: The variables of the environment a provider's key may be read from (``config/settings/assistant.py``): one per API,
+#: and Alibaba's (Qwen), which speaks OpenAI's API at its own address. Nothing else of the environment is ever read.
+KEY_VARIABLES = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "DEEPSEEK_API_KEY", "DASHSCOPE_API_KEY")
 
 
 def on_this_machine(host: str) -> bool:
@@ -99,6 +101,14 @@ class AIProvider(models.Model):
         validators=[validate_base_url],
         help_text=_("Empty: the provider's own. Another one (a proxy, a compatible provider) over https."),
     )
+    key_variable = models.CharField(
+        _("key variable"),
+        max_length=32,
+        choices=[(name, name) for name in KEY_VARIABLES],
+        help_text=_(
+            "The variable of erplora.com's environment that holds its key. Each provider of OpenAI's API reads its own."
+        ),
+    )
     is_enabled = models.BooleanField(
         _("enabled"), default=True, help_text=_("Off: none of its models answers nor can be tried.")
     )
@@ -119,59 +129,15 @@ class AIProvider(models.Model):
         """The address the client calls: the provider's own, or its kind's."""
         return (self.base_url or DEFAULT_BASE_URLS.get(self.kind, "")).rstrip("/")
 
-
-class AIProviderCredential(models.Model):
-    """A key of a provider. The column holds its token; ``key_hint`` (its last four characters) is the only part
-    ever shown. A key that no live key of the platform opens reads as empty: «Unreadable», type it again."""
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
-    provider = models.ForeignKey(
-        AIProvider, on_delete=models.CASCADE, related_name="credentials", verbose_name=_("provider")
-    )
-    label = models.CharField(_("label"), max_length=64, default="default")
-    api_key = EncryptedTextField(_("key"), blank=True, default="")
-    key_hint = models.CharField(_("key ends in"), max_length=8, blank=True, default="", editable=False)
-    is_active = models.BooleanField(_("active"), default=True)
-    rotated_at = models.DateTimeField(_("key changed"), null=True, blank=True, editable=False)
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="+",
-        verbose_name=_("added by"),
-        editable=False,
-    )
-    updated_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="+",
-        verbose_name=_("changed by"),
-        editable=False,
-    )
-    created_at = models.DateTimeField(_("created"), auto_now_add=True)
-    updated_at = models.DateTimeField(_("updated"), auto_now=True)
-
-    class Meta:
-        verbose_name = _("provider key")
-        verbose_name_plural = _("provider keys")
-        ordering = ["provider__name", "label"]
-        constraints = [
-            models.UniqueConstraint(fields=["provider", "label"], name="assistant_credential_unique_label"),
-        ]
-
-    def __str__(self):
-        return f"{self.provider.slug}:{self.label} ({self.masked_key})"
+    @property
+    def api_key(self) -> str:
+        """Its key, read from its variable on every call: ``""`` when the variable is empty or is no AI key's."""
+        if self.key_variable not in KEY_VARIABLES:
+            return ""
+        return str(getattr(settings, self.key_variable, "") or "").strip()
 
     @property
-    def masked_key(self) -> str:
-        return f"…{self.key_hint}" if self.key_hint else "…"
-
-    @property
-    def is_readable(self) -> bool:
-        """Whether the key opens with a live key of the platform (an unreadable one reads as empty)."""
+    def has_key(self) -> bool:
         return bool(self.api_key)
 
 

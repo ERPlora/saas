@@ -6,7 +6,7 @@ import json
 
 from django.conf import settings
 
-from billing import stripe_service, stripe_tax_ids, vat
+from billing import stripe_service, stripe_tax_ids, vat_countries
 from billing.services import payment_gates, vat_clearance
 from hubs.services import hub_callbacks, subscription_sync
 from hubs.models import BillingProfile, Hub, HubMember
@@ -103,7 +103,7 @@ def _keep_only_cleared_tax_id(customer: str, profile) -> None:
             profile.tax_id, customer_country=profile.billing_country
         )
         number = clearance.vat_number if clearance.may_travel_to_stripe else ""
-    tax_type = vat.tax_id_type_for(profile.billing_country)
+    tax_type = vat_countries.tax_id_type_for(profile.billing_country)
     stripe_tax_ids.keep_only(
         customer, tax_type=tax_type, number=number if tax_type else "", country=profile.billing_country
     )

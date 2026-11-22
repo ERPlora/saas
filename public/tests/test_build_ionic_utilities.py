@@ -7,7 +7,7 @@ card-scoped re-emission that the old ``build_ion_card_content_utilities.py`` wro
 is part of the same output, so the two cannot drift apart.
 """
 
-import importlib.util
+import importlib
 import re
 from pathlib import Path
 
@@ -15,16 +15,32 @@ import pytest
 from django.conf import settings
 
 ROOT = Path(settings.BASE_DIR)
-SCRIPT = ROOT / "scripts" / "build_ionic_utilities.py"
+SCRIPTS = ROOT / "scripts"
 GENERATED = ROOT / "public" / "static" / "public" / "ionic-utilities.css"
 
 
 @pytest.fixture(scope="module")
-def generator():
-    spec = importlib.util.spec_from_file_location("build_ionic_utilities", SCRIPT)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def scripts_on_path():
+    """The generator imports its engines as siblings, which works when it runs because Python puts a script's own
+    folder first on ``sys.path``; the tests of this module get the same."""
+    with pytest.MonkeyPatch.context() as patch:
+        patch.syspath_prepend(str(SCRIPTS))
+        yield
+
+
+@pytest.fixture(scope="module")
+def generator(scripts_on_path):
+    return importlib.import_module("build_ionic_utilities")
+
+
+@pytest.fixture(scope="module")
+def colour_engine(scripts_on_path):
+    return importlib.import_module("build_ionic_utilities_colour_engine")
+
+
+@pytest.fixture(scope="module")
+def utility_engine(scripts_on_path):
+    return importlib.import_module("build_ionic_utilities_utility_engine")
 
 
 def _layer_bodies(css: str) -> str:
@@ -144,13 +160,13 @@ def test_utilities_ionic_shadows_inside_a_card_are_re_emitted_unlayered_and_card
     )
 
 
-def test_every_utility_the_generator_owns_in_the_public_templates_is_emitted(generator):
+def test_every_utility_the_generator_owns_in_the_public_templates_is_emitted(generator, colour_engine, utility_engine):
     css = GENERATED.read_text(encoding="utf-8")
     owned = [
         token
         for token in generator.tokens_used(generator.template_files())
-        if generator.token_re.match(token) or generator.utility_rule(token) is not None
+        if colour_engine.token_re.match(token) or utility_engine.utility_rule(token) is not None
     ]
-    missing = [token for token in owned if f".{generator.escape(token)}" not in css]
+    missing = [token for token in owned if f".{utility_engine.escape(token)}" not in css]
 
     assert missing == [], "run `uv run python scripts/build_ionic_utilities.py`"

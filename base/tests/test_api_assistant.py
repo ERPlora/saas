@@ -14,7 +14,7 @@ from live.ninja import ensure_api_parity, operation_ids
 
 from assistant import queries, services
 from assistant.schemas import Caller
-from assistant.services import platform_context
+from assistant.services.platform_actor import platform_context
 from config.api import api
 from hubs.tests.conftest import make_user, plans  # noqa: F401 - shared fixtures
 
@@ -104,12 +104,12 @@ class TestTheRoutes:
 
 class TestTheUsage:
     def test_the_account_sees_its_own_month(self, signed_in, account):
-        services.message_claim(platform_context(), Caller(user_id=account.pk))
-        services.message_claim(platform_context(), Caller(user_id=account.pk))
+        services.turn_usage.message_claim(platform_context(), Caller(user_id=account.pk))
+        services.turn_usage.message_claim(platform_context(), Caller(user_id=account.pk))
 
         response = signed_in.get("/api/assistant/usage", HTTP_HOST=HOST)
 
-        expected = queries.resets_at(queries.month_of(timezone.now())).isoformat().replace("+00:00", "Z")
+        expected = queries.usage.resets_at(queries.usage.month_of(timezone.now())).isoformat().replace("+00:00", "Z")
         assert response.status_code == 200
         assert response.json() == {"used": 2, "limit": 30, "resets_at": expected, "demo": False}
 
@@ -117,7 +117,7 @@ class TestTheUsage:
         from hubs.tests.conftest import create_business
 
         hub = create_business(account)
-        services.message_claim(platform_context(), Caller(hub_id=hub.id, slug=hub.slug))
+        services.turn_usage.message_claim(platform_context(), Caller(hub_id=hub.id, slug=hub.slug))
 
         assert signed_in.get("/api/assistant/usage", HTTP_HOST=HOST).json()["used"] == 0
 
@@ -143,7 +143,7 @@ class TestTheReport:
         assert response.status_code == 200
         [sent] = mail.outbox
         assert "You pay 0 euros." not in sent.body
-        assert "Not true" in sent.body and "How much do I pay?" in sent.body and services.REPORT_WEB_ANSWER in sent.body
+        assert "Not true" in sent.body and "How much do I pay?" in sent.body and services.answer_reports.REPORT_WEB_ANSWER in sent.body
 
     def test_the_same_answer_reported_twice_mails_once(self, signed_in):
         post(signed_in, "/api/assistant/report", report())

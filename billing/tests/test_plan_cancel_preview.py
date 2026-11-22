@@ -19,13 +19,14 @@ from live import assistant as live_assistant
 from live.errors import NotFound, OperationError, PermissionDenied
 from live.operations import get as get_operation
 
-from assistant.tests.conftest import answering, fake_provider, fernet_key, provider  # noqa: F401 - the gateway's
+from assistant.tests.conftest import answering, fake_provider, openai_key, provider  # noqa: F401 - the gateway's
 from apps.models import Module
 from apps.tests.factories import make_app
 from assistant.tests.doors import frames
 from billing import queries
 from billing.models import Invoice
-from billing.schemas import HubIn, PlanCancelPreviewOut
+from billing.schemas.common import HubIn
+from billing.schemas.subscription_changes import PlanCancelPreviewOut
 from billing.tests.conftest import ctx_for, pay
 from hubs.models import Hub, HubMember, Plan, Subscription, SubscriptionItem
 from hubs.queries.plan_catalog import free_plan
@@ -250,7 +251,7 @@ class TestItRefusesWhatTheCancelRefuses:
         assert preview(neighbour, theirs)["hub_id"] == theirs.id
 
     def test_a_new_owner_does_not_read_the_previous_owners_plan(self, shop, owner, make_user):
-        from billing.tests.test_checkout import transferred
+        from billing.tests.checkout_calls import transferred
 
         paid = pay(shop)
         new_owner = transferred(paid, owner, make_user)
@@ -260,7 +261,7 @@ class TestItRefusesWhatTheCancelRefuses:
     def test_a_plan_still_paid_with_the_previous_owners_card_is_refused_too(self, shop, owner, make_user):
         """The new owner already says who pays, but the plan is still billed to the previous owner's customer: as
         the cancel, it is kept with their card first («Keep it with my card»)."""
-        from billing.tests.test_checkout import transferred
+        from billing.tests.checkout_calls import transferred
         from hubs.services import billing_profiles
         from hubs.schemas.payers import BillingProfileIn
         from hubs.tests.conftest import ctx_for as hub_ctx

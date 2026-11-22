@@ -71,13 +71,12 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
 - **`demo_seed` vive en `hubs`** (`management/commands/demo_seed.py`): crea las cuentas
   (`accounts.services.demo_accounts.seed_demo_customer`, `seed_demo_platform_admin`) y adopta `a` y `b` con
   `services.demo_businesses.seed_demo_business`, igual que la migración.
-- **`SessionRevocation`** (`models/session_revocations.py`, migración `0005`): quitar a un miembro, cambiarle el rol
-  (el rol viaja en la sesión del Hub), aceptar un traspaso (los dos lados) o liberar una cuenta no verificada (todos
-  sus negocios) la encola en la transacción; se entrega tras el COMMIT (`POST /internal/sessions/revoke`) y, si el Hub
-  no está o la rechaza, `reconcile_hub_states` la reintenta cuando vence su espera (15 min, doblando, tope 6 h;
-  `sessions_ended`/`sessions_pending`, y la pasada falla con alguna pendiente). Una entregada no se reenvía; la de un
-  negocio purgado se da por entregada sin llamar. Sobrevive al borrado de la cuenta (`user` sin restricción de BD).
-  La siguiente foto ya no lista al miembro quitado.
+- **`SessionRevocation`** (`models/session_revocations.py`, migración `0005`): quitar a un miembro, aceptar un
+  traspaso (los dos lados) o liberar una cuenta no verificada (todos sus negocios) la encola en la transacción; se
+  entrega tras el COMMIT (`POST /internal/sessions/revoke`) y, si el Hub no está o la rechaza, `reconcile_hub_states`
+  la reintenta cuando vence su espera (15 min, doblando, tope 6 h; `sessions_ended`/`sessions_pending`, y la pasada
+  falla con alguna pendiente). Una entregada no se reenvía; la de un negocio purgado se da por entregada sin llamar.
+  Sobrevive al borrado de la cuenta (`user` sin restricción de BD). La siguiente foto ya no lista al miembro quitado.
 - **Firma de `/internal`** (`accounts/signing.py`): dos secretos vivos (`INTERNAL_SHARED_SECRET` e
   `INTERNAL_SHARED_SECRET_PREVIOUS`, vacío fuera de una rotación; se firma con el actual) y, además de la v1 de solo
   cuerpo (`X-Erplora-Signature`), la v2 `X-Erplora-Signature-V2`, HMAC de
@@ -170,10 +169,11 @@ lo revisa flujo a flujo con su e2e en 3 tamaños (`tests/e2e/panel/hubs-people.s
 - **El pie de «Te han invitado»** prometía «Podrás salir de un negocio cuando quieras desde el panel.» y no hay forma de
   salir uno mismo (como en Square, Toast o Shopify: quita el propietario o un administrador); ahora dice quién puede
   quitar el acceso (`InvitationPage.test.ts`).
-- **El Hub cierra las sesiones** (hub, `MIGRATION-TASK: APP-HUBS-3`, BASE-F13): quitar, cambiar el rol y aceptar un
-  traspaso encolan `POST /internal/sessions/revoke` tras el COMMIT y lo reintentan (`SessionRevocation`); el Hub borra
-  esas sesiones por su índice (`base.SessionOwner`), su pestaña abierta deja de recibir y la foto aplica `members`
-  (rol al día, baja fuera). e2e de los dos juntos: `tests/e2e/base-session-revoke.spec.ts` del Hub.
+- **El Hub cierra las sesiones** (hub, `MIGRATION-TASK: APP-HUBS-3`, BASE-F13): quitar y aceptar un traspaso encolan
+  `POST /internal/sessions/revoke` tras el COMMIT y lo reintentan (`SessionRevocation`); el Hub borra esas sesiones
+  por su índice (`base.SessionOwner`), su pestaña abierta deja de recibir y la foto aplica `members` (rol al día, baja
+  fuera). Un cambio de rol no encola nada: viaja solo en la foto. e2e de los dos juntos:
+  `tests/e2e/base-session-revoke.spec.ts` del Hub.
 - **Mover el pagador** (F28, decisión de mercado: Wix, Shopify, Lightspeed, Squarespace, Fresha): el plan es del negocio
   y la tarjeta no. `hubs.ownership.accept` llama a `billing.end_renewal_after_hand_over` en su transacción: el plan que
   aún cobra la tarjeta de otra cuenta deja de renovarse (Stripe `cancel_at_period_end`; Stripe caído = 503 y el
@@ -314,13 +314,21 @@ Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»)
 - `hubs.subscription.apply` (operación de sistema, la llama `billing`): escribe lo que dice la suscripción
   **viva** de Stripe (plan, periodicidad, estado, ids, periodo, prueba, módulos comprados y su `valid_until`,
   y el motivo del impago). Un campo que no se envía no se toca. Lo que ve el Hub (plan efectivo, estado
-  comercial y `modules[]`) sube `state_version` y se empuja tras el COMMIT; cualquier cambio anota
-  `hubs.subscription.changed`, que re-ejecuta la lista y la página. `standing` mueve el negocio (`good` →
+  comercial, `modules[]` y el plazo de un pago pendiente) sube `state_version` y se empuja tras el COMMIT;
+  cualquier cambio anota `hubs.subscription.changed`, que re-ejecuta la lista y la página. `standing` mueve el negocio (`good` →
   `active`, `grace` → `past_due`, `suspended`); uno eliminado no se mueve. Pagar un plan acaba con la prueba de
   Starter del alta; comprar solo módulos la conserva. → Desde el 2026-10-15 ningún plan trae prueba
   (`hubs/0013_plans_in_the_database`): el mecanismo queda dormido.
 - `Subscription.unpaid_reason` / `unpaid_since` / `unpaid_invoice_url` (migración `0008`): la fila de
   Negocios y la página dan `unpaid_reason`, `unpaid_since` y `pay_url` (este, solo al propietario).
+- **El plazo de un pago pendiente**: `models.subscriptions.grace_end(unpaid_since)` es el único sitio que lo calcula
+  (`UNPAID_PLAN_GRACE`, 7 días desde la factura impagada más antigua). Lo usan la suspensión de `billing`
+  (`live_subscriptions.unpaid_state`: suspende pasado ese momento, no en él), el correo de impago y la foto. Mientras el
+  negocio está en `past_due` con `unpaid_since`, la foto lleva `suspends_on`, ese momento en ISO 8601 con zona
+  (`2026-11-28T09:00:00+00:00`); en cualquier otro estado la clave no va, y para el Hub eso es «sin plazo». Una fecha
+  nueva sin cambio de estado (otra factura pasa a ser la más antigua) también sube `state_version`. El panel aún
+  suma sus 7 días en el navegador (`graceEnd` de `billing/frontend/invoices.ts` y `unpaidDeadline` de
+  `hubs/frontend/business-status.ts`) a partir de `unpaid_since`.
 - `hubs.billing_profile.update` escribe el NIF con la puerta de `billing` (`validate_vat_for_profile`: forma
   de facturación y veredicto de VIES anotado; uno que VIES no conoce se guarda como identificación) y exige
   cinco dígitos al código postal español (`schemas.postal_code_problem`). Sin país del pagador, el NIF se lee

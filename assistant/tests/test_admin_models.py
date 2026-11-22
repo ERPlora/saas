@@ -7,17 +7,18 @@ import re
 import pytest
 from django.contrib.messages import get_messages
 
-from assistant.models import AIModel, AIProvider, AIProviderCredential, AIRoutingPolicy
+from assistant.models import AIModel, AIProvider, AIRoutingPolicy
 from assistant.tests.conftest import API_KEY, grant
 
 pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
-def listed_provider(fake_provider):
-    """An OpenAI-compatible provider at the fake server, with a key, whose API lists two chat models and one that is not."""
-    provider = AIProvider.objects.create(slug="local", name="Local", kind="openai", base_url=f"{fake_provider.url}/v1")
-    AIProviderCredential.objects.create(provider=provider, label="default", api_key=API_KEY, key_hint="wxyz")
+def listed_provider(fake_provider, openai_key):
+    """An OpenAI-compatible provider at the fake server, with its key, whose API lists two chat models and one that is not."""
+    provider = AIProvider.objects.create(
+        slug="local", name="Local", kind="openai", base_url=f"{fake_provider.url}/v1", key_variable="OPENAI_API_KEY"
+    )
     fake_provider.reply(
         "GET",
         "/v1/models",
@@ -86,18 +87,21 @@ def test_a_model_the_policy_uses_is_kept_and_said_so(as_ai_admin, listed_provide
     assert [str(m) for m in get_messages(response.wsgi_request)] == ["Local: 0 new, 0 kept, 0 removed, 1 in use by the policy."]
 
 
-def test_a_provider_without_a_key_says_to_add_one(as_ai_admin, fake_provider):
-    provider = AIProvider.objects.create(slug="nokey", name="No key", kind="openai", base_url=f"{fake_provider.url}/v1")
+def test_a_provider_without_a_key_says_where_it_goes(as_ai_admin, fake_provider):
+    provider = AIProvider.objects.create(
+        slug="nokey", name="No key", kind="openai", base_url=f"{fake_provider.url}/v1", key_variable="OPENAI_API_KEY"
+    )
 
     page = as_ai_admin.get(choose_url(provider)).content.decode()
 
-    assert "This provider has no active key: add one on its page and try again." in page
+    assert "This provider has no key in the environment: fill the variable its page names." in page
     assert fake_provider.requests == []
 
 
-def test_a_refused_key_shows_the_reason_of_the_provider(as_ai_admin, fake_provider):
-    provider = AIProvider.objects.create(slug="refused", name="Refused", kind="openai", base_url=f"{fake_provider.url}/v2")
-    AIProviderCredential.objects.create(provider=provider, label="default", api_key=API_KEY, key_hint="wxyz")
+def test_a_refused_key_shows_the_reason_of_the_provider(as_ai_admin, fake_provider, openai_key):
+    provider = AIProvider.objects.create(
+        slug="refused", name="Refused", kind="openai", base_url=f"{fake_provider.url}/v2", key_variable="OPENAI_API_KEY"
+    )
     fake_provider.reply("GET", "/v2/models", status=401, json={"error": {"message": "Invalid key"}})
 
     page = as_ai_admin.get(choose_url(provider)).content.decode()
@@ -151,9 +155,10 @@ def test_an_account_that_is_not_staff_never_enters(client, make_user, listed_pro
     assert "/admin/login/" in response["Location"]
 
 
-def test_a_provider_that_lists_no_chat_model_says_so(as_ai_admin, fake_provider):
-    provider = AIProvider.objects.create(slug="empty", name="Empty", kind="openai", base_url=f"{fake_provider.url}/v3")
-    AIProviderCredential.objects.create(provider=provider, label="default", api_key=API_KEY, key_hint="wxyz")
+def test_a_provider_that_lists_no_chat_model_says_so(as_ai_admin, fake_provider, openai_key):
+    provider = AIProvider.objects.create(
+        slug="empty", name="Empty", kind="openai", base_url=f"{fake_provider.url}/v3", key_variable="OPENAI_API_KEY"
+    )
     fake_provider.reply("GET", "/v3/models", json={"data": [{"id": "text-embedding-3-small"}]})
 
     page = as_ai_admin.get(choose_url(provider)).content.decode()
@@ -174,7 +179,7 @@ def test_an_address_that_names_no_provider_is_a_404(as_ai_admin):
 def _new_provider_form(page: str, **fields) -> dict:
     """What «Add AI provider» posts: the fields, and the empty management forms of its inlines as the page draws them."""
     empty = {name: "0" for name in re.findall(r'name="([\w-]+-(?:TOTAL_FORMS|INITIAL_FORMS))"', page)}
-    return {**empty, "is_enabled": "on", **fields}
+    return {**empty, "is_enabled": "on", "key_variable": "OPENAI_API_KEY", **fields}
 
 
 def test_azure_speech_is_no_api_the_admin_can_add(as_ai_admin):

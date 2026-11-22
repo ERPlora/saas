@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 import type { Browser, BrowserContext, Locator, Page } from '@playwright/test';
 
-import { type Card, summarizeTurns, type Turns } from '../assistant-battery';
+import { type Card, summarizeTurns, type Turns } from '../assistant-turns';
 import type { SeededAnswer } from '../assistant-bench';
 import { redactedError } from '../assistant-probes';
 import { type Provider, startProvider } from '../assistant-provider';
@@ -39,7 +39,7 @@ export const DESKTOP_FIRST = [...VIEWPORTS].reverse();
 /** How long one question may take, cards included: the real model, its tools and the documentation search. */
 export const TURN_MS = 240_000;
 /** The keys of the real providers, a model under test's too: taken out of every output and report. */
-export const REAL_SECRETS = [process.env.QA_QWEN_API_KEY, process.env.QA_OPENAI_API_KEY, process.env[process.env.QA_ANSWER_KEY_ENV ?? '']];
+export const REAL_SECRETS = [process.env.DASHSCOPE_API_KEY, process.env.OPENAI_API_KEY, process.env[process.env.QA_ANSWER_KEY_ENV ?? '']];
 /** How long nothing moves before a turn counts as over. */
 const QUIET_MS = 2_500;
 
@@ -99,10 +99,10 @@ export interface RealSeed {
   answer: SeededAnswer;
 }
 
-/** The real providers (keys from `QA_QWEN_API_KEY` and `QA_OPENAI_API_KEY`, or a model under test's from the variable
- *  `QA_ANSWER_KEY_ENV` names, read by the seed only: `assistant_seed.py`, `answer_choice`) and the account
- *  owner of «QA Base» in `language`, then the documentation index (idempotent: only the excerpts that changed since the
- *  last run are embedded again) and its lines of this run. */
+/** The real providers (their keys in the runner's environment, which the run's servers inherit: `DASHSCOPE_API_KEY`
+ *  and `OPENAI_API_KEY`, or a model under test's in the variable `QA_ANSWER_KEY_ENV` names; `assistant_seed.py`,
+ *  `answer_choice`) and the account owner of «QA Base» in `language`, then the documentation index (idempotent: only
+ *  the excerpts that changed since the last run are embedded again) and its lines of this run. */
 export function seedRealAssistant(language = 'es'): { seed: RealSeed; indexed: string[] } {
   const seed = JSON.parse(uvRun(['python', 'tests/e2e/panel/assistant_seed.py', 'real', language]).split('\n').pop() ?? '{}') as RealSeed;
   const indexed = uvRun(['python', 'manage.py', 'index_docs'], { ASSISTANT_SERVICE_PROVIDER: 'openai' })
@@ -111,10 +111,10 @@ export function seedRealAssistant(language = 'es'): { seed: RealSeed; indexed: s
   return { seed, indexed };
 }
 
-/** The real keys and the QA accounts out of the run's e2e database (`assistant_seed.py forget`; it refuses any other):
- *  after a worker, whatever happened to it. */
-export function forgetRealAssistant(): void {
-  uvRun(['python', 'tests/e2e/panel/assistant_seed.py', 'forget']);
+/** The QA accounts and their businesses out of the run's e2e database (`assistant_seed.py clear`): after a worker,
+ *  whatever happened to it. No key is ever in the database to take out. */
+export function clearRealAssistant(): void {
+  uvRun(['python', 'tests/e2e/panel/assistant_seed.py', 'clear']);
 }
 
 /** The e2e's own model for the tests of a spec's file, on `port` (0: any free one): started before them and, with what

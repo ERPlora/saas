@@ -200,8 +200,9 @@ test('HUBS-F21: the Summary says the business’s status, its plan and the usage
   );
   await page.goto(`/dashboard/businesses/${id}/summary`);
   const usage = shown(page).getByTestId('summary-usage');
-  await expect(shown(page).getByTestId('representation')).toBeVisible();
-  // One stream with all the page shows: the business and its authorisation to file invoices (a Spanish business).
+  await expect(usage).toBeVisible();
+  // One stream with all the page asks: the business and the state of its authorisation to file invoices (a Spanish
+  // business).
   await page.waitForTimeout(QUIET_MS);
   expect({ opened: streams.opened, failed: [...streams.failed] }).toEqual({
     opened: [
@@ -215,6 +216,8 @@ test('HUBS-F21: the Summary says the business’s status, its plan and the usage
   await expect(usage).toContainText('88%');
   await expect(usage.getByTestId('summary-usage-day')).toContainText("Yesterday's data: updated every night.");
   await expect(shown(page).getByTestId('summary-plan')).toContainText('Free');
+  // That state has long arrived: a business that never sent an authorisation is not offered one.
+  await expect(shown(page).getByTestId('representation')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -270,7 +273,7 @@ test.describe('against the real Hub', () => {
     await shown(page)
       .getByTestId('businesses-row')
       .filter({ hasText: 'Bodegon Hub Real E2E' })
-      .getByRole('button', { name: 'Open', exact: true })
+      .getByRole('button', { name: /^Open: / })
       .click();
     await page.waitForURL(new RegExp(`^http://${wanted}\\.localhost:${HUB_DOUBLE_PORT}/(?!auth)`), { timeout: 30_000 });
     const old = await page.request.get(`http://${slug}.localhost:${HUB_DOUBLE_PORT}/`, { maxRedirects: 0 });

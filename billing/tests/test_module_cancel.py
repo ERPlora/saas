@@ -17,7 +17,8 @@ import pytest
 from django.utils import timezone
 from live.errors import NotFound, OperationError, PermissionDenied
 
-from billing.schemas import ModuleIn, PortalOpenIn
+from billing.schemas.stripe_pages import PortalOpenIn
+from billing.schemas.subscription_changes import ModuleIn
 from billing.services import module_cancellations, stripe_pages
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import MONTH_END, item, subscription
@@ -334,7 +335,7 @@ class TestThePortal:
 
 def test_a_new_owner_does_not_open_the_previous_owners_portal(shop, owner, make_user, stripe_double):
     """The portal shows the payer's cards and address; a transfer does not hand them over."""
-    from billing.tests.test_checkout import transferred
+    from billing.tests.checkout_calls import transferred
 
     paid = pay(shop)
     new_owner = transferred(paid, owner, make_user)

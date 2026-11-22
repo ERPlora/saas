@@ -121,10 +121,10 @@ def seed(ids: dict[str, UUID], used: int = 0, behind: bool = False) -> dict:
 
     from hubs.services import hub_push
     from hubs.models import Hub
-    from whatsapp import services as whatsapp_services
     from whatsapp import templates
     from whatsapp.models import PhoneNumber, Usage
     from whatsapp.schemas import TemplateSyncIn
+    from whatsapp.services import platform_actor, template_mirror
 
     missing = []
     for slug in SLUGS:
@@ -158,11 +158,11 @@ def seed(ids: dict[str, UUID], used: int = 0, behind: bool = False) -> dict:
             "needs_reconnect": False,
         },
     )
-    # What erplora.com writes after reading Meta's list (gateway.sync_templates), without calling Meta. Not
-    # ``complete``: a template the run added stays, as one Meta's list did not reach.
+    # What erplora.com writes after reading Meta's list (gateway.message_templates.sync_templates), without calling
+    # Meta. Not ``complete``: a template the run added stays, as one Meta's list did not reach.
     items = [mirror for mirror in map(templates.from_meta, TEMPLATES) if mirror is not None]
-    whatsapp_services.template_sync(
-        whatsapp_services.platform_context(), TemplateSyncIn(hub_id=hub.id, items=items, complete=False)
+    template_mirror.template_sync(
+        platform_actor.platform_context(), TemplateSyncIn(hub_id=hub.id, items=items, complete=False)
     )
     with transaction.atomic():
         usage, _ = Usage.objects.get_or_create(hub=hub, month=timezone.now().strftime("%Y-%m"))

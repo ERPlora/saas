@@ -2,7 +2,7 @@
 
     python3 -m unittest discover -s .github/scripts -p '*_test.py'
 
-Only the standard library. How ecs-rollback.sh calls it, with a fake aws CLI, is tested by ecs-rollback.test.sh.
+Only the standard library. How ecs_rollback.py calls it, with a fake aws CLI, is tested by ecs_rollback*_test.py.
 """
 
 from __future__ import annotations

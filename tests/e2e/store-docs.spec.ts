@@ -6,12 +6,14 @@
 // pages) in public/csp.py.
 //
 // The second spec drives the store's search in a real browser: `ion-searchbar` inside a GET form,
-// which no server test can submit.
+// which no server test can submit. The third measures a table wider than a phone: it scrolls
+// sideways inside its own box, and on a desktop it still fills the text. The fourth, a long address
+// in a sentence: on a phone it wraps inside the text, while in a table and on a desktop it stays whole.
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { horizontalOverflow } from './horizontal-overflow';
 import { expect, test } from './public-test';
@@ -104,6 +106,71 @@ test('the store searches from its searchbar and opens the app', async ({ page })
   expect(await csp.violations()).toEqual([]);
   expect(csp.reports).toEqual([]);
   expect(csp.pageErrors).toEqual([]);
+});
+
+test('a table wider than a phone scrolls inside its own box and fills the text on a desktop', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto(`/apps/${APP}/docs/`);
+  const box = page.locator('article.ep-store-docs .ep-table-scroll');
+  await expect(box).toBeAttached();
+  await box.scrollIntoViewIfNeeded();
+
+  // The card around the manual cuts nothing: the table's own box is what scrolls.
+  const card = page.locator('ion-card.ep-store-card');
+  expect(await card.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+  expect(await box.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  // Scrolled to its end, the last column is inside the box, where it can be read.
+  await box.evaluate((element) => element.scrollTo({ left: element.scrollWidth }));
+  const last = await box.locator('th', { hasText: 'Empleado' }).boundingBox();
+  const frame = await box.boundingBox();
+  expect(last && frame && last.x >= frame.x && last.x + last.width <= frame.x + frame.width + 1).toBe(true);
+  await page.screenshot({ path: shot('store-docs--wide-table-375'), fullPage: true });
+
+  // On a desktop the table fills the text, 1rem below the paragraph before it, as it always did.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const desktop = await page.locator('article.ep-store-docs').evaluate((article) => {
+    const table = article.querySelector('.ep-table-scroll > table') as Element;
+    const before = table.parentElement?.previousElementSibling as Element;
+    return {
+      article: article.getBoundingClientRect().width,
+      table: table.getBoundingClientRect().width,
+      gap: table.getBoundingClientRect().top - before.getBoundingClientRect().bottom,
+      rem: parseFloat(getComputedStyle(document.documentElement).fontSize),
+    };
+  });
+  expect(desktop.table).toBe(desktop.article);
+  expect(desktop.gap).toBeCloseTo(desktop.rem, 0);
+});
+
+/** How many lines an inline element runs over. */
+function lineCount(element: Locator): Promise<number> {
+  return element.evaluate((node) => new Set([...node.getClientRects()].map((rect) => Math.round(rect.top))).size);
+}
+
+test('a long address in the text wraps inside the card on a phone and stays whole where it fits', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto(`/apps/${APP}/docs/`);
+  const article = page.locator('article.ep-store-docs');
+  const inText = article.locator('p > code', { hasText: '/book/' });
+  const plain = article.locator('li', { hasText: 'developers.google.com' });
+  const inTable = article.locator('.ep-table-scroll td > code');
+  await inText.scrollIntoViewIfNeeded();
+
+  // On a phone an address, in code or in plain text, wraps over lines instead of running past the card.
+  const edges = await inText.evaluate((code) => ({
+    code: code.getBoundingClientRect().right,
+    text: (code.closest('article') as Element).getBoundingClientRect().right,
+  }));
+  expect(edges.code).toBeLessThanOrEqual(edges.text + 0.5);
+  expect(await lineCount(inText)).toBeGreaterThan(1);
+  expect(await plain.evaluate((item) => item.scrollWidth - item.clientWidth)).toBeLessThanOrEqual(0);
+  await page.screenshot({ path: shot('store-docs--long-code-375'), fullPage: true });
+  // In a table it stays on one line: the table's own box is what scrolls.
+  expect(await lineCount(inTable)).toBe(1);
+
+  // On a desktop, where it fits, it stays on one line.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  expect(await lineCount(inText)).toBe(1);
 });
 
 // Phone, tablet and desktop: nothing wider than the screen, in English and Spanish.

@@ -25,11 +25,6 @@
       "count": 2
     }
   },
-  "billing/frontend/components/StoreShop.vue": {
-    "vue/max-lines-per-block": {
-      "count": 2
-    }
-  },
   "frontend/live-state.ts": {
     "max-lines-per-function": {
       "count": 1
@@ -38,11 +33,6 @@
   "hubs/frontend/components/CustomDomainCard.vue": {
     "vue/max-lines-per-block": {
       "count": 1
-    }
-  },
-  "hubs/frontend/pages/BusinessListPage.vue": {
-    "vue/max-lines-per-block": {
-      "count": 2
     }
   },
   "hubs/frontend/pages/LaunchPage.vue": {
@@ -71,11 +61,6 @@
     }
   },
   "tests/e2e/panel/assistant-battery.spec.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
-  "tests/e2e/panel/chrome.spec.ts": {
     "complexity": {
       "count": 1
     }

@@ -3,7 +3,7 @@
 The form's list and the table that prices the sale were two lists nobody kept
 in step: a country added to a form without its rule fails here, before it refuses a customer's checkout.
 
-Adapted: the lists are ``billing.vat.BILLING_COUNTRIES`` and the countries a business may be created in
+Adapted: the lists are ``billing.vat_countries.BILLING_COUNTRIES`` and the countries a business may be created in
 (``hubs.schemas.common.COUNTRIES``). The old ``test_a_uk_payer_on_file_keeps_the_audit_green`` drove the
 tax-rule audit (``audit_tax_rules``), which is not ported in this lot; its fact —a UK payer on file
 prices— is the first test of ``TestUnitedKingdom`` through the sale door.
@@ -15,7 +15,9 @@ import pytest
 
 from billing import queries
 from billing.services import sale_tax
-from billing.vat import BILLING_COUNTRIES, NOT_SUBJECT, quote_vat
+from billing.vat import quote_vat
+from billing.vat_breakdown import NOT_SUBJECT
+from billing.vat_countries import BILLING_COUNTRIES
 
 pytestmark = pytest.mark.django_db
 

@@ -24,9 +24,11 @@ from base.listener import Listener
 from base.tests.conftest import other_session  # noqa: F401 - a second session, as another process
 from base.tests.test_listener import on_its_socket
 from hubs.tests.test_guardrails import database_touches
-from whatsapp import gateway, queries, services
+from whatsapp import queries
+from whatsapp.gateway import deliveries
 from whatsapp.models import Delivery
 from whatsapp.schemas import NextDueOut
+from whatsapp.services import delivery_queue
 from whatsapp.tests.conftest import (  # noqa: F401 - the fixtures of a business with its number
     business,
     hub_double,
@@ -41,7 +43,7 @@ from whatsapp.tests.test_parse import messages, text
 from whatsapp.tests.test_services import ingest
 
 INBOUND = r"^/internal/whatsapp/inbound$"
-NOTHING = dict.fromkeys(gateway.COUNTS, 0)
+NOTHING = dict.fromkeys(deliveries.COUNTS, 0)
 TEN_O_SEVEN = datetime(2026, 11, 5, 10, 7, tzinfo=UTC)
 DELIVER_LOCK = "hashtext('erplora.saas.whatsapp_deliver')"
 
@@ -92,7 +94,7 @@ class Ear:
 def quiet_deliveries(monkeypatch):
     """No delivery to push and none due: the passes of the reconciliations alone."""
     passes: list[object] = []
-    monkeypatch.setattr(gateway, "deliver_pass", lambda stop=None: passes.append(stop) or dict(NOTHING))
+    monkeypatch.setattr(deliveries, "deliver_pass", lambda stop=None: passes.append(stop) or dict(NOTHING))
     monkeypatch.setattr(queries, "delivery_next_due", lambda ctx, data: NextDueOut(at=None))
     return passes
 
@@ -186,7 +188,7 @@ def test_the_next_round_is_the_next_quarter_of_an_hour_after_now(now, expected):
 def test_it_sleeps_until_the_next_delivery_due_or_the_next_round(monkeypatch, now, due_in, pushed, expected):
     clock, stop = Clock(now), threading.Event()
     due = None if due_in is None else now + timedelta(seconds=due_in)
-    monkeypatch.setattr(gateway, "deliver_pass", lambda stop=None: {**NOTHING, "delivered": pushed})
+    monkeypatch.setattr(deliveries, "deliver_pass", lambda stop=None: {**NOTHING, "delivered": pushed})
     monkeypatch.setattr(queries, "delivery_next_due", lambda ctx, data: NextDueOut(at=due))
     monkeypatch.setattr(worker, "PERIODIC", ())
     ear = Ear(stop, waits=1)
@@ -205,7 +207,7 @@ def test_a_failed_pass_is_logged_and_the_loop_goes_on(monkeypatch, caplog):
             raise RuntimeError("the database went away")
         return dict(NOTHING)
 
-    monkeypatch.setattr(gateway, "deliver_pass", deliver_pass)
+    monkeypatch.setattr(deliveries, "deliver_pass", deliver_pass)
     monkeypatch.setattr(queries, "delivery_next_due", lambda ctx, data: NextDueOut(at=None))
     monkeypatch.setattr(worker, "PERIODIC", ())
     ear = Ear(stop, waits=2, clock=clock)
@@ -307,7 +309,7 @@ def test_a_stop_asked_during_the_pass_ends_the_loop_after_it(monkeypatch):
         finished.append(stop_asked)
         return dict(NOTHING)
 
-    monkeypatch.setattr(gateway, "deliver_pass", deliver_pass)
+    monkeypatch.setattr(deliveries, "deliver_pass", deliver_pass)
     monkeypatch.setattr(worker, "PERIODIC", ())
     ear = Ear(stop, waits=99)
 
@@ -367,7 +369,7 @@ def test_a_crash_outside_the_passes_ends_the_worker_with_an_error(monkeypatch, q
 def test_with_nothing_due_it_sleeps_until_the_next_round_without_a_query(keep_the_connection, monkeypatch):
     monkeypatch.setattr(worker, "PERIODIC", ())
     stop, seen = threading.Event(), []
-    ear = Listener(services.DELIVERY_CHANNEL)
+    ear = Listener(delivery_queue.DELIVERY_CHANNEL)
 
     def wait(timeout):
         with CaptureQueriesContext(connection) as during:
@@ -396,7 +398,7 @@ def test_it_does_not_push_before_the_retry_time_and_pushes_once_it_came(
     ingest(messages(text("wamid.1")))
     Delivery.objects.update(attempts=1, next_attempt_at=timezone.now() + timedelta(seconds=0.5))
     stop, seen = threading.Event(), []
-    ear = Listener(services.DELIVERY_CHANNEL)
+    ear = Listener(delivery_queue.DELIVERY_CHANNEL)
 
     def wait(timeout):
         seen.append((round(timeout, 1), len(hub_double.calls_to("POST", "/internal/whatsapp/inbound"))))
@@ -442,7 +444,7 @@ def test_while_another_run_holds_the_lock_it_looks_again_in_a_few_seconds_not_at
 def test_it_delivers_a_parked_message_as_soon_as_its_notify_comes(number, hub_double):
     hub_double.answer("POST", INBOUND, 200, {"created": True})
     stop, sleeping, timeouts = threading.Event(), threading.Event(), []
-    ear = Listener(services.DELIVERY_CHANNEL)
+    ear = Listener(delivery_queue.DELIVERY_CHANNEL)
 
     def wait(timeout):
         timeouts.append(timeout)
@@ -492,7 +494,7 @@ def test_what_its_own_pass_notified_does_not_wake_it_again(number, offline_hub, 
     monkeypatch.setattr(worker, "next_round", lambda now: now + worker.ROUND)
     ingest(messages(text("wamid.1")))
     stop, drained, seen = threading.Event(), [], []
-    ear = Listener(services.DELIVERY_CHANNEL)
+    ear = Listener(delivery_queue.DELIVERY_CHANNEL)
 
     def drain():
         drained.append((on_its_socket(ear, 5), Listener.drain(ear)))
@@ -510,7 +512,7 @@ def test_what_its_own_pass_notified_does_not_wake_it_again(number, offline_hub, 
     ((timeout, woke),) = seen
     assert Delivery.objects.get().attempts == 1
     assert drained == [(True, True)]  # its own NOTIFY reached the ear, and the drain took it
-    assert 0 < timeout <= services.FIRST_WAIT.total_seconds() + 0.5
+    assert 0 < timeout <= delivery_queue.FIRST_WAIT.total_seconds() + 0.5
     assert woke is False
 
 

@@ -1,6 +1,6 @@
 # Workbook — Asistente de IA (assistant)
 Prefijo: ASSISTANT
-Alcance MVP: fase 1 (la pasarela de IA de erplora.com: los proveedores que paga ERPlora, sus claves cifradas, sus modelos y qué modelo contesta; el turno del asistente de cada negocio con sus herramientas y sus adjuntos, el cupo de mensajes de su plan, las huellas de su índice, el dictado y la lectura en voz alta, las denuncias de una respuesta y lo que gasta cada negocio; el asistente del panel de erplora.com para cada cuenta, con las herramientas del panel, su dictado y su propio cupo)
+Alcance MVP: fase 1 (la pasarela de IA de erplora.com: los proveedores que paga ERPlora, sus claves del entorno, sus modelos y qué modelo contesta; el turno del asistente de cada negocio con sus herramientas y sus adjuntos, el cupo de mensajes de su plan, las huellas de su índice, el dictado y la lectura en voz alta, las denuncias de una respuesta y lo que gasta cada negocio; el asistente del panel de erplora.com para cada cuenta, con las herramientas del panel, su dictado y su propio cupo)
 Estado de la app: completa (2026-11-05)
 
 > Manual de uso y especificación de la app `assistant` del SaaS (erplora.com). Cuenta lo que hace el personal de
@@ -14,12 +14,12 @@ Estado de la app: completa (2026-11-05)
 
 ## Para qué sirve y para quién
 
-El Hub nunca habla con el proveedor de un modelo de IA: habla con erplora.com, que guarda la clave del proveedor,
+El Hub nunca habla con el proveedor de un modelo de IA: habla con erplora.com, que tiene la clave del proveedor,
 decide qué modelo contesta y lo llama. Así la clave no sale nunca de erplora.com y el gasto de IA se controla en un
 solo sitio.
 
-- La clave de cada proveedor se guarda cifrada; se escribe una vez y nunca se vuelve a enseñar: solo sus cuatro
-  últimos caracteres, para reconocerla.
+- La clave de cada proveedor vive solo en el secreto del entorno de erplora.com, nunca en la base de datos ni en el
+  admin: un proveedor con su clave contesta, uno sin ella no, y el admin dice cuál la tiene sin enseñar nada de ella.
 - Hay un modelo que contesta y, si falla su proveedor, uno de reserva.
 - Antes de poner un modelo a contestar se puede probar desde el admin, con lo que tarda, lo que consume y lo que
   cuesta.
@@ -44,8 +44,12 @@ Quién la usa:
 - **Pasarelas de IA** (OpenRouter, Portkey, Cloudflare AI Gateway, Vercel AI Gateway, el router de LiteLLM): un
   modelo principal y otro de reserva si el proveedor falla; las claves de los proveedores en la pasarela, nunca en
   el cliente.
-- **Las consolas de los proveedores** (OpenAI, Anthropic, Google AI Studio, DeepSeek): la clave se enseña una vez
-  al crearla y después solo su final; la lista de modelos sale de la API del propio proveedor
+- **Las claves en el entorno** (la configuración de Twelve-Factor, https://12factor.net/config; el proxy de LiteLLM,
+  https://docs.litellm.ai/docs/proxy/configs; los SDK de OpenAI, Anthropic y DashScope de Alibaba, que leen
+  `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` y `DASHSCOPE_API_KEY`): la clave está en el gestor de secretos y la aplicación
+  la lee del entorno al arrancar; no se copia a la base de datos ni se teclea en un panel.
+- **Las consolas de los proveedores** (OpenAI, Anthropic, Google AI Studio, DeepSeek): la clave se crea y se rota en
+  la consola del proveedor; la lista de modelos sale de la API del propio proveedor
   (https://platform.openai.com/docs/models, https://docs.anthropic.com/en/docs/about-claude/models).
 - **Asistentes con cupo** (ChatGPT, Claude, Gemini, Copilot de Microsoft 365, Shopify Magic): un número de mensajes
   por periodo según el plan, que vuelve al empezar el siguiente; al agotarse se avisa y se propone subir de plan; un
@@ -79,9 +83,10 @@ Quién la usa:
 
 ## Antes de empezar
 
-- erplora.com necesita su clave de cifrado de credenciales en el entorno; sin ella no se puede guardar ninguna
-  clave de proveedor y la ficha lo dice al guardar.
-- Cada proveedor necesita una clave activa que se pueda leer para que sus modelos contesten o se puedan probar.
+- La clave de cada proveedor va en el secreto de erplora.com, en su variable: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
+  `GEMINI_API_KEY`, `DEEPSEEK_API_KEY` o, la de Alibaba (Qwen), `DASHSCOPE_API_KEY`. Vale al desplegar.
+- Cada proveedor necesita su clave en el entorno para que sus modelos contesten o se puedan probar. Sin ninguna, el
+  asistente no contesta y erplora.com funciona igual.
 - Los precios por millón de palabras-unidad (tokens) de cada modelo los escribe el personal: las API de los
   proveedores no los dan. Sin precio, la prueba dice el consumo y un coste de cero.
 - Las huellas del índice y el dictado los hace el proveedor de servicios (OpenAI): tiene que estar dado de alta,
@@ -93,11 +98,10 @@ Quién la usa:
 ## Pantallas
 
 ### Admin: Proveedores de IA
-Lista de los proveedores con su API, si está activado y el estado de su clave: «…» y los cuatro últimos caracteres,
-«Sin clave» o «Ilegible: vuelve a escribir la clave». La ficha de cada proveedor tiene sus claves dentro: etiqueta,
-el campo «Clave» (se escribe una vez, nunca se enseña; vacío deja la que había), si está activa, cuándo se cambió y
-quién; y sus modelos, con su precio de entrada y de salida, su contexto y si están disponibles. Arriba, «Elegir
-modelos del proveedor».
+Lista de los proveedores con su API, si está activado, su «Variable de la clave» y su «Clave»: «En el entorno» o «Sin
+clave», nunca nada de la clave. La ficha de cada proveedor tiene, en «Conexión», su dirección, la «Variable de la
+clave» (una de las cinco del entorno) y si la tiene; ningún campo deja escribir una clave. Debajo, sus modelos, con
+su precio de entrada y de salida, su contexto y si están disponibles. Arriba, «Elegir modelos del proveedor».
 
 ### Admin: Elegir modelos del proveedor
 La lista de modelos de conversación que da la API del proveedor, con una casilla «Se queda» (marcada en los que ya
@@ -144,22 +148,22 @@ negocio, ofrecerlo a otro o cancelar su plan piden además escribir «CONFIRMAR�
 |---|---|
 | Cargando | La carga normal de una página del admin; al probar un modelo, «Enviando…» y el botón «Enviar» apagado hasta que acaba («Hecho.»). En el asistente del panel, la burbuja de «El asistente está escribiendo» hasta la primera palabra y «Parar» en lugar de «Enviar». |
 | Vacío | «0 proveedores de IA» y la lista vacía; en «Registros de uso del asistente», «0 registros de uso del asistente» hasta el primer mensaje de un negocio; un proveedor sin clave dice «Sin clave»; sin modelos que puedan contestar, «Todavía no puede contestar ningún modelo: añade un proveedor con su clave y elige sus modelos.» En el asistente del panel, «Pregúntame por tus negocios, tus facturas o tu cuenta.» con sus tres atajos. |
-| Error | En «Elegir modelos del proveedor», el motivo en rojo: «Este proveedor no tiene ninguna clave activa: añade una en su ficha y vuelve a intentarlo.», «El proveedor no ha dado sus modelos: …» o «El proveedor no tiene modelos de conversación en su lista.»; en las fichas, el error en rojo junto al campo: «Usa una dirección https: la clave del proveedor viaja a ella.», «Escribe la clave del proveedor.», «La clave de cifrado de las credenciales no está configurada: no se puede guardar ninguna clave de proveedor.»; al probar un modelo, en rojo: «El modelo no ha contestado: …», «Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo.» o «No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo.». En el asistente del panel, bajo la pregunta: «El asistente no está disponible ahora mismo. Vuelve a intentarlo en unos minutos.» con «Reintentar»; con el mes gastado, «Has usado todos los mensajes del asistente de este mes (30 de 30). Se renuevan el 1 de …» y «Cada negocio tiene su propio asistente, con sus propios mensajes: abre el negocio para seguir preguntando allí.», sin «Mejorar plan»; sin conexión, en el pie, «Sin conexión: puedes escribir y enviar cuando vuelva.»; bajo la caja, lo que impide un dictado: «El acceso al micrófono está denegado. Permítelo en tu navegador para dictar.», «No se ha oído nada. Inténtalo de nuevo más cerca del micrófono.», «La grabación es demasiado larga: dicta un mensaje más corto.» o «No se ha podido transcribir el audio. Inténtalo de nuevo.» |
-| Sin permiso | Sin los permisos de la pasarela, el admin contesta que no tiene permiso; quien solo puede mirar ve las fichas sin el campo «Clave». «Registros de uso del asistente» no se pueden cambiar ni borrar, ni siquiera un superusuario. Sin sesión, el panel lleva a entrar y no hay botón «Asistente»; una sesión que termina a media conversación dice «Tu sesión ha terminado. Vuelve a entrar para seguir hablando.» con «Volver a entrar». |
+| Error | En «Elegir modelos del proveedor», el motivo en rojo: «Este proveedor no tiene clave en el entorno: rellena la variable que dice su ficha.», «El proveedor no ha dado sus modelos: …» o «El proveedor no tiene modelos de conversación en su lista.»; en las fichas, el error en rojo junto al campo: «Usa una dirección https: la clave del proveedor viaja a ella.» o, sin «Variable de la clave», «Este campo es obligatorio.»; al probar un modelo, en rojo: «El modelo no ha contestado: …», «Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo.» o «No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo.». En el asistente del panel, bajo la pregunta: «El asistente no está disponible ahora mismo. Vuelve a intentarlo en unos minutos.» con «Reintentar»; con el mes gastado, «Has usado todos los mensajes del asistente de este mes (30 de 30). Se renuevan el 1 de …» y «Cada negocio tiene su propio asistente, con sus propios mensajes: abre el negocio para seguir preguntando allí.», sin «Mejorar plan»; sin conexión, en el pie, «Sin conexión: puedes escribir y enviar cuando vuelva.»; bajo la caja, lo que impide un dictado: «El acceso al micrófono está denegado. Permítelo en tu navegador para dictar.», «No se ha oído nada. Inténtalo de nuevo más cerca del micrófono.», «La grabación es demasiado larga: dicta un mensaje más corto.» o «No se ha podido transcribir el audio. Inténtalo de nuevo.» |
+| Sin permiso | Sin los permisos de la pasarela, el admin contesta que no tiene permiso; quien solo puede mirar ve las fichas, con su variable y si tienen clave, sin poder cambiarlas. «Registros de uso del asistente» no se pueden cambiar ni borrar, ni siquiera un superusuario. Sin sesión, el panel lleva a entrar y no hay botón «Asistente»; una sesión que termina a media conversación dice «Tu sesión ha terminado. Vuelve a entrar para seguir hablando.» con «Volver a entrar». |
 
 ## Flujos
 
 | ID | Flujo | Estado |
 |---|---|---|
 | ASSISTANT-F01 | Dar de alta un proveedor de IA | hecho |
-| ASSISTANT-F02 | Guardar la clave de un proveedor sin que se vea | hecho |
+| ASSISTANT-F02 | Ver si un proveedor tiene su clave sin que se vea | hecho |
 | ASSISTANT-F03 | Hablar con cada proveedor en su propia API | hecho |
 | ASSISTANT-F04 | Elegir los modelos de un proveedor | hecho |
 | ASSISTANT-F05 | Elegir qué modelo contesta | hecho |
 | ASSISTANT-F06 | Elegir proveedor y modelo de cada turno | hecho |
 | ASSISTANT-F07 | Probar un modelo antes de ponerlo a contestar | hecho |
 | ASSISTANT-F08 | Ver quién cambió la configuración de la IA | hecho |
-| ASSISTANT-F09 | Cargar las claves de los proveedores desde el entorno | hecho |
+| ASSISTANT-F09 | Dar su clave a un proveedor desde el entorno | hecho |
 | ASSISTANT-F10 | Cambiar la clave de cifrado sin perder ninguna credencial | hecho |
 | ASSISTANT-F11 | Reconocer quién llama y de qué negocio es | hecho |
 | ASSISTANT-F12 | Contestar un turno del asistente en directo | hecho |
@@ -188,25 +192,25 @@ Pantalla: Admin: Proveedores de IA
 Pasos:
 1. En «Proveedores de IA», pulsa «Añadir proveedor de IA».
 2. Escribe su nombre y un identificador corto (por ejemplo «openai»), elige la API que habla (OpenAI, Anthropic, Google Gemini o DeepSeek; un proveedor compatible con la de OpenAI es «OpenAI» con su dirección) y, si no es la del propio proveedor, su dirección.
-3. Lo deja activado o apagado y guarda.
-Entra: nombre, identificador, API, dirección, activado, notas.
-Sale: el proveedor en la lista, listo para su clave y sus modelos.
-Si falla: una dirección que no es https se rechaza con «Usa una dirección https: la clave del proveedor viaja a ella.» (solo se admite sin https una dirección de la propia máquina); un identificador repetido se rechaza; sin permiso, el admin no deja entrar.
+3. Elige la «Variable de la clave», la del entorno de la que lee su clave: la de su API (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` o `DEEPSEEK_API_KEY`) o, para Qwen de Alibaba, `DASHSCOPE_API_KEY`. Cada proveedor de la API de OpenAI lee la suya.
+4. Lo deja activado o apagado y guarda.
+Entra: nombre, identificador, API, dirección, variable de la clave, activado, notas.
+Sale: el proveedor en la lista, con su clave si su variable la tiene (ASSISTANT-F09), listo para sus modelos.
+Si falla: una dirección que no es https se rechaza con «Usa una dirección https: la clave del proveedor viaja a ella.» (solo se admite sin https una dirección de la propia máquina); sin variable de la clave, «Este campo es obligatorio.»; un identificador repetido se rechaza; sin permiso, el admin no deja entrar.
 Implicados: ninguno
 
-### ASSISTANT-F02 Guardar la clave de un proveedor sin que se vea
+### ASSISTANT-F02 Ver si un proveedor tiene su clave sin que se vea
 Estado: hecho
 Actor: personal de ERPlora
 Pantalla: Admin: Proveedores de IA
 Pasos:
-1. En la ficha del proveedor, añade una clave: etiqueta (por defecto «default»), la clave en el campo «Clave» y si está activa.
-2. Guarda: la clave queda cifrada y la ficha y la lista solo enseñan «…» y sus cuatro últimos caracteres.
-3. Para cambiarla, escribe la nueva en «Clave» y guarda: queda la fecha del cambio y quién la hizo. Dejar «Clave» vacía guarda lo demás sin tocar la clave.
-4. Para quitarla, marca «Eliminar» en su fila y guarda.
-Entra: etiqueta, clave, activa.
-Sale: la clave cifrada con su final a la vista (`assistant.credential.saved`, con si se cambió la clave; al quitarla, `assistant.credential.deleted`). Ni la ficha, ni la lista, ni los avisos, ni el registro llevan nunca la clave.
-Si falla: una clave nueva sin clave se rechaza con «Escribe la clave del proveedor.»; una etiqueta repetida en el mismo proveedor se rechaza; sin la clave de cifrado de erplora.com, «La clave de cifrado de las credenciales no está configurada: no se puede guardar ninguna clave de proveedor.» y no se guarda nada; una clave que ya no se puede leer sale como «Ilegible: vuelve a escribir la clave» y guardar la ficha sin escribir otra no la toca; quien solo puede mirar no ve el campo «Clave»; sin permiso, el admin no deja entrar.
-Implicados: ninguno
+1. En «Proveedores de IA», la columna «Clave» de cada proveedor dice «En el entorno» si su variable tiene una clave, o «Sin clave».
+2. En la ficha del proveedor, «Conexión» dice lo mismo junto a su «Variable de la clave».
+3. Para darle una clave, cambiarla o quitarla no se toca el admin: se hace en el secreto del entorno (ASSISTANT-F09).
+Entra: el proveedor y su variable de la clave.
+Sale: si el proveedor tiene clave. Ni la lista, ni la ficha, ni los avisos, ni el registro llevan nunca la clave ni una parte de ella.
+Si falla: un proveedor sin clave sale como «Sin clave» y sus modelos no contestan ni se pueden probar (ASSISTANT-F06); quien solo puede mirar ve lo mismo sin poder cambiar la ficha; sin permiso, el admin no deja entrar.
+Implicados: ASSISTANT-F01, ASSISTANT-F09
 
 ### ASSISTANT-F03 Hablar con cada proveedor en su propia API
 Estado: hecho
@@ -217,7 +221,7 @@ Pasos:
 2. Manda la conversación con sus instrucciones, sus imágenes, las herramientas que se ofrecen (una sola por respuesta) y el máximo de salida, y recibe la respuesta en directo, trozo a trozo.
 3. Traduce lo que contesta cada proveedor a lo mismo para todos: el texto según llega, cada herramienta que el modelo pide con sus datos completos, el consumo de entrada y de salida y cómo terminó (normal, porque pidió una herramienta, por largo o por el filtro de contenido).
 4. Para la lista de modelos, pide al proveedor sus modelos de conversación, página a página, y deja fuera los que no conversan (voz, imágenes, huellas de texto).
-Entra: la API, la dirección y la clave del proveedor; el modelo, la conversación, las instrucciones y las herramientas.
+Entra: la API, la dirección y la clave del proveedor (la de su variable del entorno); el modelo, la conversación, las instrucciones y las herramientas.
 Sale: el texto, las herramientas pedidas, el consumo y el final del turno, iguales sea cual sea el proveedor; o la lista de modelos de conversación.
 Si falla: si el proveedor rechaza la clave o la petición, el turno termina con su motivo y se marca como un fallo que no se arregla repitiendo; si no contesta, tarda demasiado, va saturado o limita el ritmo, termina con un fallo que otro intento puede arreglar (para pasar al modelo de reserva); el motivo nunca lleva la clave. Si erplora.com no puede cargar sus certificados de confianza (`SSL_CERT_FILE` nombra un fichero que no está o que no tiene ninguno), la llamada no llega a salir: termina con un fallo que no se arregla repitiendo, y su motivo y el registro del servidor nombran la variable y el fichero. Un proveedor sin clave o con una API desconocida no se llama.
 Implicados: ASSISTANT-F04, ASSISTANT-F06, ASSISTANT-F07
@@ -231,9 +235,9 @@ Pasos:
 2. Marca los que se quedan (ya salen marcados los que tiene) y pulsa «Guardar la elección».
 3. Vuelve a la ficha con el resumen, por ejemplo «Local: 1 nuevos, 0 se quedan, 1 quitados, 0 en uso por el modelo que contesta.»: los marcados quedan disponibles y los no marcados se quitan, salvo los que usa el modelo que contesta, que se quedan.
 4. En la ficha o en «Modelos de IA», escribe el precio de entrada y de salida de cada modelo (dólares por millón de tokens), corrige su nombre o su contexto, o lo apaga.
-Entra: el proveedor con una clave activa; la elección de modelos; los precios.
+Entra: el proveedor con su clave en el entorno; la elección de modelos; los precios.
 Sale: los modelos del proveedor, exactamente los elegidos más los que están en uso (`assistant.model.selected`, con cuántos se crearon, se quedaron, se quitaron y se protegieron).
-Si falla: sin clave activa que se pueda leer, «Este proveedor no tiene ninguna clave activa: añade una en su ficha y vuelve a intentarlo.» y no se pregunta nada al proveedor; si el proveedor rechaza la clave o no contesta, «El proveedor no ha dado sus modelos:» con su motivo; si no tiene modelos de conversación, «El proveedor no tiene modelos de conversación en su lista.»; sin permiso para ver proveedores y para añadir y quitar modelos, el admin no deja entrar; un modelo en uso por el modelo que contesta no se puede borrar.
+Si falla: sin su clave en el entorno, «Este proveedor no tiene clave en el entorno: rellena la variable que dice su ficha.» y no se pregunta nada al proveedor; si el proveedor rechaza la clave o no contesta, «El proveedor no ha dado sus modelos:» con su motivo; si no tiene modelos de conversación, «El proveedor no tiene modelos de conversación en su lista.»; sin permiso para ver proveedores y para añadir y quitar modelos, el admin no deja entrar; un modelo en uso por el modelo que contesta no se puede borrar.
 Implicados: ASSISTANT-F03, ASSISTANT-F05
 
 ### ASSISTANT-F05 Elegir qué modelo contesta
@@ -254,13 +258,13 @@ Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
-1. Cada turno del asistente lee de nuevo qué modelo contesta y cuál es su reserva, con la clave activa más reciente de cada proveedor que se puede abrir; así, una clave cambiada o otra elección valen ya en el turno siguiente, sin reiniciar nada.
-2. Se salta el modelo apagado, el de un proveedor apagado y el de un proveedor sin clave usable; el turno empieza por el primero que queda y dice qué modelo contesta.
+1. Cada turno del asistente lee de nuevo qué modelo contesta y cuál es su reserva, con la clave de cada proveedor que hay en el entorno; así, otra elección vale ya en el turno siguiente, sin reiniciar nada, y una clave cambiada en el entorno, en cuanto se despliega.
+2. Se salta el modelo apagado, el de un proveedor apagado y el de un proveedor sin clave en el entorno; el turno empieza por el primero que queda y dice qué modelo contesta.
 3. Si su proveedor falla antes de contestar nada (caído, saturado, limitando el ritmo o rechazando la clave), el turno pasa al modelo de reserva y avisa del cambio con su motivo; si ya había empezado a contestar, el turno termina con el fallo, porque la persona ya ha visto el principio de la respuesta.
 4. Al probar un modelo desde el admin, el turno va solo a ese modelo, sin reserva.
 Entra: el modelo que contesta y su reserva (o el modelo que se prueba) y las claves de sus proveedores.
 Sale: el modelo que contesta el turno y, si su proveedor falla antes de contestar, el aviso del paso al modelo de reserva.
-Si falla: sin modelo que contesta, «Todavía no contesta ningún modelo: elige uno en la página “Modelo que contesta”.»; si ninguno de los elegidos se puede usar, «Ningún modelo puede contestar: los proveedores de los modelos elegidos no tienen ninguna clave activa.»; un modelo que se prueba apagado, o de un proveedor apagado, «Este modelo está apagado o lo está su proveedor: enciéndelos para usarlo.»; si fallan todos, el turno termina con el motivo del último; el personal solo prueba un modelo con permiso para cambiar el modelo que contesta.
+Si falla: sin modelo que contesta, «Todavía no contesta ningún modelo: elige uno en la página “Modelo que contesta”.»; si ninguno de los elegidos se puede usar (sus proveedores no tienen clave en el entorno), «Ningún modelo puede contestar: los proveedores de los modelos elegidos no tienen ninguna clave activa.»; un modelo que se prueba apagado, o de un proveedor apagado, «Este modelo está apagado o lo está su proveedor: enciéndelos para usarlo.»; si fallan todos, el turno termina con el motivo del último; el personal solo prueba un modelo con permiso para cambiar el modelo que contesta.
 Implicados: ASSISTANT-F03, ASSISTANT-F05, ASSISTANT-F07
 
 ### ASSISTANT-F07 Probar un modelo antes de ponerlo a contestar
@@ -274,7 +278,7 @@ Pasos:
 4. Al acabar, «Hecho.» y la tabla con «Tokens de entrada», «Tokens de salida», «Tiempo» y «Coste» (con los precios del modelo).
 Entra: el modelo, el mensaje y las herramientas.
 Sale: la respuesta del modelo con su consumo, su tiempo y su coste; la prueba queda en el registro de auditoría con quién la hizo, cuánto medía el mensaje y cuántas herramientas llevaba, nunca el mensaje (`assistant.model.tried`). No toca ningún negocio, cupo ni conversación.
-Si falla: sin modelo de la lista, «Elige de la lista el modelo que quieres probar.»; sin mensaje, «Escribe el mensaje que quieres enviar.»; unas herramientas mal escritas, «Las herramientas no están bien escritas: escribe una lista de herramientas como la del ejemplo, cada una con su nombre.»; un modelo apagado o de un proveedor apagado, «Este modelo está apagado o lo está su proveedor: enciéndelos para usarlo.»; un proveedor sin clave usable, «Ningún modelo puede contestar: los proveedores de los modelos elegidos no tienen ninguna clave activa.»; si el proveedor falla, «El modelo no ha contestado: …» con su motivo, nunca la clave; más de 10 pruebas en un minuto, «Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo.»; sin red, «No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo.». Solo prueba quien puede cambiar el modelo que contesta (cada prueba gasta la clave de ERPlora); sin ese permiso, el admin no deja entrar.
+Si falla: sin modelo de la lista, «Elige de la lista el modelo que quieres probar.»; sin mensaje, «Escribe el mensaje que quieres enviar.»; unas herramientas mal escritas, «Las herramientas no están bien escritas: escribe una lista de herramientas como la del ejemplo, cada una con su nombre.»; un modelo apagado o de un proveedor apagado, «Este modelo está apagado o lo está su proveedor: enciéndelos para usarlo.»; un proveedor sin clave en el entorno, «Ningún modelo puede contestar: los proveedores de los modelos elegidos no tienen ninguna clave activa.»; si el proveedor falla, «El modelo no ha contestado: …» con su motivo, nunca la clave; más de 10 pruebas en un minuto, «Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo.»; sin red, «No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo.». Solo prueba quien puede cambiar el modelo que contesta (cada prueba gasta la clave de ERPlora); sin ese permiso, el admin no deja entrar.
 Implicados: ASSISTANT-F05, ASSISTANT-F06
 
 ### ASSISTANT-F08 Ver quién cambió la configuración de la IA
@@ -282,27 +286,26 @@ Estado: hecho
 Actor: superusuario de ERPlora (o alguien del equipo con permiso para ver el registro)
 Pantalla: el admin de erplora.com › «Registro de auditoría»
 Pasos:
-1. Cada alta, cambio o baja de un proveedor de IA, de una clave de proveedor (también apagarla o cambiarla por otra), de un modelo (sus precios, si está disponible) y del modelo que contesta queda anotado: qué cambió, de qué valor a cuál, cuándo, quién lo hizo y desde qué dirección.
+1. Cada alta, cambio o baja de un proveedor de IA (también la variable de la que lee su clave), de un modelo (sus precios, si está disponible) y del modelo que contesta queda anotado: qué cambió, de qué valor a cuál, cuándo, quién lo hizo y desde qué dirección.
 2. Cada prueba de un modelo queda anotada como una consulta de ese modelo, con quién la hizo, cuánto medía el mensaje y cuántas herramientas llevaba.
 3. Abre «Registro de auditoría» en el admin, filtra por tipo de recurso o busca, y abre una entrada para ver sus cambios.
 Entra: los cambios de la configuración de la IA, hechos desde el admin o por los comandos de erplora.com.
 Sale: una entrada por cambio en el mismo registro de auditoría que las cuentas, los cobros y la documentación fiscal.
-Si falla: nunca se anota una clave de proveedor, ni en claro ni cifrada: su cambio se ve en sus cuatro últimos caracteres y en cuándo se cambió; tampoco el mensaje de una prueba. Nadie puede crear, cambiar ni borrar una entrada a mano, y alguien del equipo sin el permiso no puede abrir el registro.
-Implicados: ACCOUNTS-F36, ASSISTANT-F02, ASSISTANT-F07
+Si falla: nunca se anota una clave de proveedor, que no está en ninguna fila; tampoco el mensaje de una prueba. Nadie puede crear, cambiar ni borrar una entrada a mano, y alguien del equipo sin el permiso no puede abrir el registro.
+Implicados: ACCOUNTS-F36, ASSISTANT-F01, ASSISTANT-F07
 
-### ASSISTANT-F09 Cargar las claves de los proveedores desde el entorno
+### ASSISTANT-F09 Dar su clave a un proveedor desde el entorno
 Estado: hecho
-Actor: personal de ERPlora, en la línea de órdenes de erplora.com
-Pantalla: ninguna
+Actor: personal de ERPlora que despliega erplora.com
+Pantalla: ninguna (el secreto del entorno de erplora.com)
 Pasos:
-1. Con las claves de OpenAI, Anthropic, Google Gemini y DeepSeek en el entorno de erplora.com, ejecuta la carga de las claves del entorno.
-2. Cada clave se guarda cifrada en su proveedor con la etiqueta por defecto (u otra que se elija); si falta el proveedor, se da de alta con su nombre y su API.
-3. Si el proveedor ya tenía una clave con esa etiqueta, se deja como está, salvo que se pida reemplazarla: entonces se cambia, se enciende y queda cuándo se cambió.
-4. Se puede elegir qué proveedores cargar y ensayar la carga sin guardar nada.
-Entra: las claves del entorno, los proveedores elegidos, la etiqueta y si se reemplazan las que ya hay.
-Sale: las claves cifradas en sus proveedores (`assistant.credential.saved`) y, por cada una, si se creó, se cambió, se dejó o se saltó, con sus cuatro últimos caracteres.
-Si falla: una variable vacía se salta; un proveedor desconocido detiene la carga antes de guardar nada; sin la clave de cifrado de las credenciales no se guarda ninguna. Nunca escribe una clave entera en pantalla, y el cambio queda en el registro de auditoría.
-Implicados: ASSISTANT-F01, ASSISTANT-F02, ASSISTANT-F08
+1. Pone la clave del proveedor, creada en su consola, en el secreto de erplora.com, en la variable que dice la ficha del proveedor: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY` o `DASHSCOPE_API_KEY` (Qwen de Alibaba).
+2. Despliega erplora.com: el proveedor sale con «En el entorno» y sus modelos contestan desde el turno siguiente.
+3. Para cambiarla, pone la nueva en la misma variable y despliega; para quitarla, la deja vacía y despliega: el proveedor sale «Sin clave» y deja de contestar.
+Entra: la clave en su variable del entorno.
+Sale: el proveedor con su clave; ningún otro sitio la guarda, ni la base de datos ni el admin.
+Si falla: una variable vacía deja al proveedor sin clave y el turno pasa a la reserva (ASSISTANT-F06); sin ninguna clave, el asistente no contesta y erplora.com arranca igual; una clave que el proveedor rechaza sale como su motivo al probar el modelo o elegir sus modelos, nunca la clave.
+Implicados: ASSISTANT-F01, ASSISTANT-F02, ASSISTANT-F06
 
 ### ASSISTANT-F10 Cambiar la clave de cifrado sin perder ninguna credencial
 Estado: hecho
@@ -311,12 +314,12 @@ Pantalla: ninguna
 Pasos:
 1. Pone la clave de cifrado nueva como la actual y deja la anterior como la previa (que solo lee), y despliega erplora.com.
 2. Ensaya el cambio: dice cuántos valores se volverían a cifrar en cada sitio, sin escribir nada.
-3. Ejecuta el cambio: cada valor guardado con la clave de las credenciales (las claves de los proveedores de IA y los tokens y PIN de WhatsApp) se vuelve a cifrar con la clave nueva; los que ya lo están se dejan como están.
+3. Ejecuta el cambio: cada valor guardado con la clave de las credenciales (los tokens y PIN de WhatsApp; las claves de los proveedores de IA no están en la base de datos) se vuelve a cifrar con la clave nueva; los que ya lo están se dejan como están.
 4. Si acaba sin errores, quita la clave previa: todas las credenciales se siguen leyendo.
 Entra: la clave nueva y la anterior.
 Sale: todas las credenciales cifradas con la clave nueva (`assistant.encryption.rotated`, con cuántas se cambiaron, cuántas ya estaban y cuántas no se pudieron leer).
 Si falla: un valor que no abre ninguna de las dos claves no se escribe nunca: se nombra su fila y el cambio termina con error, para que no se quite la clave previa mientras algo la necesite (se recupera la clave que lo cifró o se vuelve a escribir el valor, y se repite). Sin la clave de cifrado no cambia nada. Nunca enseña un valor ni su cifrado, y ninguna fecha de las filas se mueve.
-Implicados: ASSISTANT-F02, ASSISTANT-F09
+Implicados: ninguno
 
 ### ASSISTANT-F11 Reconocer quién llama y de qué negocio es
 Estado: hecho
@@ -431,17 +434,18 @@ Implicados: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F24, HUBS-F05
 
 ### ASSISTANT-F19 Leer los adjuntos de una pregunta
 Estado: hecho
-Actor: el asistente del Hub de un negocio
+Actor: el asistente del Hub de un negocio; la persona con cuenta en erplora.com, en el asistente del panel
 Pantalla: ninguna
 Pasos:
-1. La persona adjunta a su pregunta imágenes o documentos; el Hub los manda dentro del turno.
+1. La persona adjunta a su pregunta imágenes o documentos; el Hub, o el panel de erplora.com, los manda dentro del turno.
 2. Una imagen (PNG, JPEG, WebP o GIF) va tal cual al modelo si ve imágenes; si no las ve, el modelo recibe una nota en su lugar.
-3. Un documento (PDF, Word, Excel, texto, CSV, Markdown o un fichero .json) se convierte en su texto (una hoja de cálculo, hoja por hoja) y el modelo lo lee con su nombre.
-4. Todo se hace en memoria: no se descarga nada de ninguna dirección ni se escribe nada en disco.
+3. Un PDF va tal cual al modelo si ve imágenes, y el proveedor lo lee entero: su texto y lo que se ve en cada página, también un albarán o una factura escaneados que no traen texto. Si el modelo no ve imágenes, recibe el texto del PDF o, si es un escaneado sin texto, una nota de que no lo ha podido leer.
+4. Los demás documentos (Word, Excel, texto, CSV, Markdown o un fichero .json) se convierten en su texto (una hoja de cálculo, hoja por hoja) y el modelo lo lee con su nombre.
+5. Todo se hace en memoria: no se descarga nada de ninguna dirección ni se escribe nada en disco.
 Entra: las imágenes y los documentos de la pregunta.
 Sale: lo que el modelo puede leer de cada adjunto, o una nota si no se puede leer.
-Si falla: un adjunto de más de unos 9 MB o más de 20 adjuntos en una conversación rechazan el turno como demasiado grande, sin cortar nada y sin gastar mensaje; un documento roto, protegido, de un tipo que no se lee o que al abrirse crecería demasiado es una nota para el modelo, nunca un turno fallido; una imagen o un documento dados por una dirección no se descargan; el nombre del fichero no llega a ningún registro.
-Implicados: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F17
+Si falla: un adjunto de más de unos 9 MB o más de 20 adjuntos en una conversación rechazan el turno como demasiado grande, sin cortar nada y sin gastar mensaje; un documento roto, protegido, de un tipo que no se lee o que al abrirse crecería demasiado es una nota para el modelo, nunca un turno fallido; un PDF que el proveedor no acepta (por ejemplo, con más páginas de las que lee de una vez) termina el turno con el aviso de que el proveedor ha rechazado la petición, sin gastar mensaje; una imagen o un documento dados por una dirección no se descargan; el nombre del fichero no llega a ningún registro.
+Implicados: ASSISTANT-F12, ASSISTANT-F15, ASSISTANT-F17, ASSISTANT-F25
 
 ### ASSISTANT-F20 Calcular la huella de unos textos para el índice del negocio
 Estado: hecho
@@ -525,7 +529,7 @@ Pasos:
 Entra: la conversación (vive en el navegador de la persona), las herramientas que el modelo pidió y la respuesta de la persona a su tarjeta.
 Sale: lo que se ha hecho y su resultado, la tarjeta del cambio que espera, el texto según llega, el cupo que queda y el cierre; lo que hace cada herramienta deja su propio rastro (`hubs.business.created`…), nunca la conversación.
 Si falla: sin sesión, el panel lleva a entrar y no hay botón «Asistente», y una sesión que termina a media conversación pide volver a entrar; con el cupo del mes gastado, el primer aviso es el cupo agotado, con cuántos se han usado y cuándo vuelven, y que cada negocio tiene su propio asistente, sin «Mejorar plan» (ver ASSISTANT-F26); con demasiados turnos seguidos, avisa de que hay que esperar un momento; sin un modelo que conteste, de que el asistente no puede contestar ahora, con «Reintentar»; sin conexión, el pie lo dice. Una herramienta que la cuenta no tiene, o que no es del chat (descargar un fichero, crear una clave de API, abrir el pago, entrar en un negocio), no se ejecuta nunca. Sin la palabra escrita o con un «no», el cambio no se hace y el modelo lo dice, sin mandar a confirmar una tarjeta que ya se cerró; ese «no» vale hasta que la persona vuelva a escribir: si el modelo pide otra vez el mismo cambio, no sale otra tarjeta ni otro «No se hizo». Unos datos que el cambio no acepta (un país que no es de los que sirve ERPlora, un valor fuera de su lista) o un cambio que no se puede hacer (cancelar el plan de un negocio en Gratis, o el de uno que paga otra cuenta) no llegan a la tarjeta: vuelven al modelo, que los corrige en la misma pregunta, y la persona confirma una sola vez. Un negocio nuevo que no se puede crear (la cuenta ya tiene su negocio gratuito, es del personal de ERPlora o no hay plan Gratis) tampoco llega a la tarjeta: el modelo dice por qué y, si es el negocio gratuito, que se cambie el plan del que ya tiene (HUBS-F01). Donde no se vende (la cuenta abierta desde la aplicación instalada), no se ofrecen la Tienda ni sus cambios de plan. Pasadas seis rondas de herramientas en una misma pregunta, se para.
-Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F21, ASSISTANT-F23, ASSISTANT-F26, ASSISTANT-F29, HUBS-F01, HUBS-F09, BILLING-F11, BILLING-F13
+Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F19, ASSISTANT-F21, ASSISTANT-F23, ASSISTANT-F26, ASSISTANT-F29, HUBS-F01, HUBS-F09, BILLING-F11, BILLING-F13
 
 ### ASSISTANT-F26 Contar los mensajes de una cuenta con el asistente del panel
 Estado: hecho
@@ -588,42 +592,38 @@ Implicados: ASSISTANT-F25, ASSISTANT-F26, ACCOUNTS-F23
 ## Para quien lo mantiene
 
 - Anatomía, datos y operaciones: `assistant/README.md`.
-- La clave se cifra con Fernet y `FERNET_KEY` (`assistant/crypto.py`, `assistant/fields.py`); durante una rotación
-  `FERNET_KEY_PREVIOUS` aún la lee. Una clave que ninguna de las dos abre se lee vacía y se registra como
-  `assistant.crypto.undecryptable`, sin el token.
-- Escrituras por `assistant.credential.save|delete` (`services.py`), con el permiso del modelo de Django que las
-  respalda (`add|change|delete_aiprovidercredential`); el admin las llama como el miembro del personal que pulsa.
+- La clave de un proveedor solo está en el entorno (`config/settings/assistant.py`): `AIProvider.key_variable` nombra
+  una de `models.KEY_VARIABLES` (las cinco de las claves de IA; el admin solo ofrece esas y `AIProvider.api_key` no
+  lee ninguna otra variable aunque una fila la nombre) y `AIProvider.api_key` la lee en cada llamada. Ninguna tabla
+  guarda una clave (`test_models.py`), y la suite corre sin ninguna clave del entorno (`config/settings_pytest.py`).
 - «Elegir modelos del proveedor» es una vista asíncrona del admin (`AIProviderAdmin.models_view`): la llamada al
   proveedor no ocupa el hilo que usan las demás peticiones; lee la conexión con `assistant.provider.connection`
   (`view_aiprovider`) y guarda con `assistant.model.select` (`add_aimodel` y `delete_aimodel`).
 - La política es una sola fila (`AIRoutingPolicy.solo`), leída con `assistant.policy.show` (`view_airoutingpolicy`)
   y cambiada con `assistant.policy.update` (`change_airoutingpolicy`): un modelo y su reserva, como las pasarelas
   del mercado.
-- El turno: `assistant.route.resolve` (`queries.py`; la plataforma con `platform_context`, el personal con
-  `change_airoutingpolicy` y un modelo) da los modelos en orden con su clave, leídos en cada turno (sin caché ni
+- El turno: `assistant.route.resolve` (`queries/routing_policy.py`; la plataforma con `platform_context`, el
+  personal con `change_airoutingpolicy` y un modelo) da los modelos en orden con su clave, leídos en cada turno (sin caché ni
   señales que la limpien); `assistant.routing.stream` los prueba
   en orden y solo pasa a la reserva si el fallo llega antes del primer texto o herramienta (eventos `model` y
   `fallback`).
-- Auditoría: `assistant/auditlog.py` registra proveedores, claves, modelos y política con `accounts.auditlog.audit`
-  (sin `api_key` ni `updated_at`), el mismo registro que el resto de erplora.com. La prueba de un modelo es una entrada `ACCESS` del modelo, escrita por
+- Auditoría: `assistant/auditlog.py` registra proveedores (con su `key_variable`), modelos y política con
+  `accounts.auditlog.audit` (sin `updated_at`), el mismo registro que el resto de erplora.com. La prueba de un modelo es una entrada `ACCESS` del modelo, escrita por
   `assistant.model.try`.
-- `import_ai_keys_from_env` (`--providers`, `--label`, `--force`, `--dry-run`) lee `OPENAI_API_KEY`,
-  `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` y `DEEPSEEK_API_KEY` de `config/settings/assistant.py` y guarda con
-  `assistant.credential.import` (solo la plataforma); el proveedor que falta se da de alta con el identificador de su
-  API (`data.kind`). El turno nunca lee esas variables: solo la base de datos.
 - `rotate_encryption_keys [--dry-run]` corre `assistant.encryption.rotate` (solo la plataforma) sobre toda columna de
-  `ROTATED_FIELD_CLASSES` (`services.encrypted_columns`, derivada de los modelos: hoy la clave del proveedor y el
-  token y el PIN de WhatsApp): rota cada token tal cual (`crypto.rotate`, por `UPDATE` sin pasar por `save`) y nunca
+  `ROTATED_FIELD_CLASSES` (`services.encryption.encrypted_columns`, derivada de los modelos: hoy el token y el PIN de
+  WhatsApp): rota cada token tal cual (`crypto.rotate`, por `UPDATE` sin pasar por `save`) y nunca
   escribe uno ilegible. Un test falla si aparece un campo cifrado que la rotación no conoce. Los documentos fiscales usan su propia clave (`FISCAL_DOCUMENTS_KEY`) y no entran aquí.
 - Clientes (`assistant/providers/`): `httpx` contra cada API (sin SDK ni LiteLLM), sin caché, uno por llamada;
   todos terminan con un solo `finish` y un fallo es un `error` con `retriable`, nunca una excepción. Se prueban contra
   `assistant/tests/fake_provider.py` (servidor HTTP en `127.0.0.1` que habla el formato de cada proveedor).
-- Trampas cubiertas por tests: la clave en claro en la base de datos (`test_fields.py`) y el nombre de la app sin
-  traducir en el admin (`test_apps.py`).
+- Trampas cubiertas por tests: una clave guardada en una tabla (`test_models.py`), una clave de verdad del entorno de
+  quien corre la suite (`config/tests/test_settings.py`) y el nombre de la app sin traducir en el admin (`test_apps.py`).
 
-- El turno pide su ruta con `assistant.route.resolve` como la plataforma (`services.platform_context()`) y la
-  recorre con `assistant.routing.stream`; el coste sale de `models.estimate_cost` con los precios del modelo que
-  contestó. No hay siembra de proveedores: los da el admin o `import_ai_keys_from_env`.
+- El turno pide su ruta con `assistant.route.resolve` como la plataforma (`services.platform_actor.platform_context()`)
+  y la recorre con `assistant.routing.stream`; el coste sale de `models.estimate_cost` con los precios del modelo que
+  contestó. No hay siembra de proveedores: los da el admin. La migración `0010_haiku_answers` puso, donde ya contestaba un
+  modelo, Claude Haiku 5.5 a contestar con Qwen 3.7 Plus de reserva; en una base de datos nueva no crea nada.
 
 ### Las puertas del Hub (`assistant/internal.py`, ASSISTANT-F11…F23, F28)
 
@@ -679,7 +679,7 @@ propio texto por `code`.
   aparte, fuera de los encargados del art. 28 (§5) y de las cláusulas contractuales tipo (§6), `public/tests/test_legal_privacy_assistant.py`. No se guarda ni se registra. Sus términos no dejan guardar sus
   resultados, ni en parte, más allá de lo transitorio (§3(b)(i)): el resultado vive en la memoria del turno, solo lo ve el
   modelo, y por eso no hay caché. Tope por llamante en la caché: `ASSISTANT_WEB_SEARCH_RATELIMIT` (20/d) y
-  `ASSISTANT_CURRENCY_RATE_RATELIMIT` (60/h), con un solo presupuesto para todas las demos (`turn.tool_budget`); cinco
+  `ASSISTANT_CURRENCY_RATE_RATELIMIT` (60/h), con un solo presupuesto para todas las demos (`continuation.tool_budget`); cinco
   resultados de hasta 1.000 caracteres. La puerta que contesta de una vez dice `answer_kept=True` (`turn.start`, donde
   cada puerta tiene que decirlo): el Hub guarda esa respuesta (FLOW-F39) y una herramienta con `may_be_kept=False`, hoy
   `web_search`, ni se ofrece, ni sale en las reglas, ni corre si el modelo la pide (`web_search.not_here`). El corte es por
@@ -696,8 +696,8 @@ propio texto por `code`.
   (`BodiesInMemory`) guarda en memoria el de `/internal/assistant/*` y `/internal/speech/*` hasta `TURN_BODY_BYTES` y
   descarta lo que pase (la puerta contesta 413), `test_body_in_memory.py`.
 - **La documentación** (`docs_search`, ASSISTANT-F28): calcula la huella de la pregunta con
-  `queries.prepare_questions` (fuera de toda transacción, en la caché un día) y corre la misma operación que el panel,
-  `assistant.docs.search`, como la plataforma (`platform_context()`) en el `language` del cuerpo: una sola búsqueda
+  `queries.docs.prepare_questions` (fuera de toda transacción, en la caché un día) y corre la misma operación que el
+  panel, `assistant.docs.search`, como la plataforma (`platform_context()`) en el `language` del cuerpo: una sola búsqueda
   para los dos asistentes y un solo índice (`DocChunk`). No toma mensaje ni apunta tokens (una pregunta son unas
   decenas). En el Hub es la herramienta `base__docs__search` (`base.docs.search`, ERPlora/hub).
 - **Huellas y voz** (`assistant/media.py`): el proveedor de servicios es el `AIProvider` de slug
@@ -840,9 +840,9 @@ propio texto por `code`.
   y `assistant.docs.search` no lee `queries.SELLING_WORKBOOKS` ni los planes. La redacción la pone el modelo: se mide con
   las sondas `*-app-*` de `tests/e2e/qa/probes/` (capa 2). Va la primera y dice «tu respuesta entera es esta frase» porque
   medido con el modelo de verdad, detrás de las demás reglas o como consejo, a veces mandaba a Facturación.
-- **`assistant.docs.search`** (`queries.py`, `kind="query"`, `assistant.ask`, herramienta `assistant__docs__search`):
-  nunca llama al proveedor. La huella de la pregunta la calcula antes `queries.prepare_questions`, fuera de toda
-  transacción (la ruta del turno, `base.assistant.prepare`, para cada búsqueda que pidió el modelo; una llamada para
+- **`assistant.docs.search`** (`queries/docs.py`, `kind="query"`, `assistant.ask`, herramienta
+  `assistant__docs__search`): nunca llama al proveedor. La huella de la pregunta la calcula antes
+  `queries.docs.prepare_questions`, fuera de toda transacción (la ruta del turno, `base.assistant.prepare`, para cada búsqueda que pidió el modelo; una llamada para
   todas, tope de espera de 10 s, nunca falla), y la guarda en la caché de Django un día por el sha256 de la pregunta
   normalizada (espacios y mayúsculas fuera): ninguna conexión espera al proveedor dentro de una transacción. Sin la
   huella en la caché, 409 si no hay proveedor y 503 si no se pudo calcular. Orden por `CosineDistance` en el idioma de la persona (`es` para cualquier español, si no `en`); con menos

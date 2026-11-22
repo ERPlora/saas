@@ -10,7 +10,8 @@ from decimal import Decimal
 import pytest
 
 from billing import queries
-from billing.vat import add_vat, resolve_vat, split_gross, vat_rate_for
+from billing.vat import resolve_vat, vat_rate_for
+from billing.vat_breakdown import add_vat, split_gross
 
 pytestmark = pytest.mark.django_db
 

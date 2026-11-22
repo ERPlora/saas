@@ -1,5 +1,5 @@
-"""Fixtures of the assistant tests: the key of the credentials, the staff who configure the AI and the rows the
-admin leaves.
+"""Fixtures of the assistant tests: the key of the credentials, the providers' keys of the environment, the staff
+who configure the AI and the rows the admin leaves.
 
 No test reaches a real provider: each client speaks to ``fake_provider`` (``assistant.tests.fake_provider``), a
 local HTTP server on ``127.0.0.1`` that answers in the provider's own wire format, so our client runs its real
@@ -16,7 +16,7 @@ from hubs.tests.conftest import make_user, plans  # noqa: F401 - shared fixtures
 
 FERNET_KEY = "mbAv33BqhZbROx9FgnZVR3XPEUopApIq3G-xQR4E58w="
 OTHER_FERNET_KEY = "SWDVBWsq5tg7Eo92t5sGAbJr_rvRBe0wPKwAaX5pvI8="
-#: A made-up key in the shape of OpenAI's: what a test types in the admin.
+#: A made-up key in the shape of OpenAI's: what a test puts in the environment.
 API_KEY = "sk-test-0000000000000000000000000000wxyz"
 
 
@@ -29,7 +29,7 @@ def fernet_key(settings):
 
 
 def staff_ctx(user, language: str = "en") -> OperationContext:
-    """The context the admin builds for a member of the staff (``assistant.admin.staff_context``)."""
+    """The context the admin builds for a member of the staff (``assistant.admin.staff.staff_context``)."""
     return OperationContext(
         scope=Scope("user", str(user.pk)),
         actor=user,
@@ -55,10 +55,6 @@ AI_ADMIN_PERMISSIONS = (
     "add_aiprovider",
     "change_aiprovider",
     "delete_aiprovider",
-    "view_aiprovidercredential",
-    "add_aiprovidercredential",
-    "change_aiprovidercredential",
-    "delete_aiprovidercredential",
     "view_aimodel",
     "add_aimodel",
     "change_aimodel",
@@ -115,10 +111,19 @@ def speech_engine(monkeypatch):
 
 @pytest.fixture
 def provider(db):
-    """OpenAI, enabled, without a key."""
+    """OpenAI, enabled, reading ``OPENAI_API_KEY``, which the test run leaves empty: without a key."""
     from assistant.models import AIProvider
 
-    return AIProvider.objects.create(slug="openai", name="OpenAI", kind=AIProvider.Kind.OPENAI)
+    return AIProvider.objects.create(
+        slug="openai", name="OpenAI", kind=AIProvider.Kind.OPENAI, key_variable="OPENAI_API_KEY"
+    )
+
+
+@pytest.fixture
+def openai_key(settings):
+    """OpenAI's key in the environment, as the secret of erplora.com gives it."""
+    settings.OPENAI_API_KEY = API_KEY
+    return API_KEY
 
 
 # --- The Hub's turn (part 2): the doors, a business and a model that answers ------------------------------------
@@ -163,18 +168,14 @@ def on_plan(hub, slug: str, **changes):
 
 
 @pytest.fixture
-def answering(fake_provider, provider):
-    """OpenAI on the fake provider with a key and one model that answers (``gpt-test``, 2 $ in / 8 $ out per 1M)."""
+def answering(fake_provider, provider, openai_key):
+    """OpenAI on the fake provider with its key and one model that answers (``gpt-test``, 2 $ in / 8 $ out per 1M)."""
     from decimal import Decimal
 
-    from assistant.models import AIModel, AIProviderCredential, AIRoutingPolicy
+    from assistant.models import AIModel, AIRoutingPolicy
 
     provider.base_url = f"{fake_provider.url}/v1"
     provider.save(update_fields=["base_url"])
-    credential = AIProviderCredential(provider=provider, label="default")
-    credential.api_key = API_KEY
-    credential.key_hint = API_KEY[-4:]
-    credential.save()
     model = AIModel.objects.create(
         provider=provider,
         model_id="gpt-test",

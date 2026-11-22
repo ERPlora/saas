@@ -3,7 +3,6 @@ price and the tax rates that charge it, the statuses of a Stripe subscription an
 
 import logging
 from dataclasses import dataclass
-from datetime import timedelta
 from decimal import Decimal
 
 from django.utils import timezone
@@ -12,7 +11,7 @@ from live.context import OperationContext
 from live.errors import Conflict, InvalidPayload
 
 from apps.models import Module
-from billing import queries, stripe_service, vat
+from billing import queries, stripe_service, vat, vat_breakdown
 from billing.money import to_cents
 from billing.services import payment_gates, sale_tax
 from billing.stripe_tax_rates import tax_rate_specs_for
@@ -26,9 +25,6 @@ logger = logging.getLogger("billing.services")
 #: A simplified invoice is allowed up to 400 € with VAT (RD 1619/2012, art. 4.1); above it the invoice
 #: names the buyer, so the sale needs the payer's tax id first.
 SIMPLIFIED_INVOICE_LIMIT = Decimal("400.00")
-#: How long a business whose renewal failed keeps its whole plan while Stripe retries, counted from the
-#: failed invoice (market: WooCommerce 7 days, Square 9, Lightspeed 21).
-UNPAID_PLAN_GRACE = timedelta(days=7)
 PAID_STATUSES = frozenset({"active", "trialing"})
 DUNNING_STATUSES = frozenset({"past_due", "unpaid"})
 ENDED_STATUSES = frozenset({"canceled", "incomplete_expired"})
@@ -269,7 +265,7 @@ def price_sale(hub: Hub, sale: Sale, *, recurring_net: Decimal, renewing: bool =
         hub, category_key=sale.category_key, price=sale.net, what=sale.kind, renewing=renewing
     )
     rate = Decimal(quote.rate or 0) if quote.is_subject else Decimal("0")
-    gross = vat.add_vat(recurring_net, rate) if rate else recurring_net
+    gross = vat_breakdown.add_vat(recurring_net, rate) if rate else recurring_net
     profile = hub.billing_profile
     if gross > SIMPLIFIED_INVOICE_LIMIT and not (profile.tax_id or "").strip():
         logger.info(

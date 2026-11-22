@@ -5,19 +5,23 @@
 // it is and who signed it, why it was returned or withdrawn, what the business sent and what is missing, and the
 // history of its submissions from two on. Signing and uploading are the Hub's (VeriFactu → Settings): «Manage in your
 // business» asks the page to open the business (`manage`), as its «Open» does. The «live» switch is not here.
-// Loading: a skeleton; a failure: `LoadFailed`, as every live card of the panel.
+// Only a business that has one sees it: production no longer lets a business ask for one, so a card for a business
+// that never sent one would offer what it cannot do. Nothing shows while its state is unknown; a failure to load it
+// shows `LoadFailed`, as every live card of the panel.
 import { formatDateTime, StatusPill, type StatusPillTone } from '@erplora/ui/components';
 import { HubIcon } from '@erplora/ui/shell';
 import { useLive } from '@erplora/ui/sdk';
-import { IonButton, IonCard, IonCardContent, IonSkeletonText, IonSpinner } from '@ionic/vue';
+import { IonButton, IonCard, IonCardContent, IonSpinner } from '@ionic/vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { useLiveState } from '../../../frontend/live-state';
 import LoadFailed from '../../../frontend/LoadFailed.vue';
-import type { RepresentationDocumentsOut, RepresentationState } from '../../../frontend/sdk-types/fiscal';
+import type { RepresentationDocumentsOut, RepresentationState, RepresentationStatusOut } from '../../../frontend/sdk-types/fiscal';
 
 type DocumentKey = keyof RepresentationDocumentsOut;
+type SentState = Exclude<RepresentationState, 'none'>;
+type Sent = RepresentationStatusOut & { status: SentState };
 
 const props = withDefaults(
   defineProps<{
@@ -33,22 +37,23 @@ const props = withDefaults(
 
 defineEmits<{ manage: [] }>();
 
-const TONES: Record<RepresentationState, StatusPillTone> = {
-  none: 'neutral',
+const TONES: Record<SentState, StatusPillTone> = {
   submitted: 'info',
   approved: 'success',
   returned: 'danger',
   revoked: 'warning',
 };
-/** In the order the Hub asks for them; the first two are required. */
+/** In the order the Hub asks for them. */
 const DOCUMENTS: DocumentKey[] = ['signed_model', 'id_copy', 'signature_sample', 'representation_proof'];
-const REQUIRED: DocumentKey[] = ['signed_model', 'id_copy'];
+
+const isSent = (now: RepresentationStatusOut | null | undefined): now is Sent => !!now && now.status !== 'none';
 
 const { t, locale } = useI18n();
 const live = useLive('fiscal.representation.status', () => ({ id: props.id }));
 const load = useLiveState(live);
 
-const representation = computed(() => live.data.value);
+const representation = computed(() => (isSent(live.data.value) ? live.data.value : null));
+const shown = computed(() => !!representation.value || load.failed.value);
 const date = (value: string | null) => formatDateTime(value, locale.value);
 const line = computed(() => {
   const now = representation.value;
@@ -59,9 +64,7 @@ const line = computed(() => {
 const received = computed(() => DOCUMENTS.filter((document) => representation.value?.documents[document]));
 const missing = computed(() => {
   const status = representation.value?.status;
-  if (status === 'none') return REQUIRED.map((document) => t(`fiscal.representation.documents.${document}`));
-  if (status === 'returned' || status === 'revoked') return [t('fiscal.representation.newSubmission')];
-  return [];
+  return status === 'returned' || status === 'revoked' ? [t('fiscal.representation.newSubmission')] : [];
 });
 const history = computed(() =>
   (representation.value?.history ?? []).map((entry) => {
@@ -75,7 +78,10 @@ const history = computed(() =>
 </script>
 
 <template>
-  <ion-card data-testid="representation">
+  <ion-card
+    v-if="shown"
+    data-testid="representation"
+  >
     <ion-card-content class="ion-padding">
       <div class="page-eyebrow">
         {{ $t('fiscal.representation.eyebrow') }}
@@ -93,7 +99,7 @@ const history = computed(() =>
       </div>
 
       <LoadFailed
-        v-if="load.failed.value && !representation"
+        v-if="!representation"
         class="ion-margin-top"
         :heading="$t('fiscal.representation.loadError')"
         :error="load.error.value"
@@ -102,21 +108,6 @@ const history = computed(() =>
         retry-testid="representation-retry"
         @retry="load.retry()"
       />
-
-      <div
-        v-else-if="!representation"
-        class="ion-margin-top"
-        data-testid="representation-loading"
-      >
-        <ion-skeleton-text
-          animated
-          style="width: 90%; height: 12px"
-        />
-        <ion-skeleton-text
-          animated
-          style="width: 60%; height: 12px"
-        />
-      </div>
 
       <template v-else>
         <p
@@ -134,7 +125,7 @@ const history = computed(() =>
         </p>
 
         <dl
-          v-if="representation.status !== 'none' && (representation.taxpayer_name || representation.signer_name)"
+          v-if="representation.taxpayer_name || representation.signer_name"
           class="kv"
         >
           <div
@@ -174,7 +165,7 @@ const history = computed(() =>
         </section>
 
         <section
-          v-if="representation.status !== 'none' && received.length"
+          v-if="received.length"
           data-testid="representation-received"
         >
           <h3 class="section-title">

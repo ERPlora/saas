@@ -6,9 +6,9 @@ import logging
 from django.db.models import F
 from django.utils import timezone
 
-from billing import stripe_service
+from billing import stripe_payments, stripe_service
 from billing.models import PaymentFailure
-from billing.schemas import InvoiceRecordIn
+from billing.schemas.invoice_records import InvoiceRecordIn
 from billing.services import (
     invoice_recording,
     invoice_sealing,
@@ -185,7 +185,7 @@ def _record_failure(
         live_subscriptions.apply_live(hub.id, live)
         return "ignored"
     try:
-        why = stripe_service.payment_failure_of(invoice["id"])
+        why = stripe_payments.payment_failure_of(invoice["id"])
     except stripe_service.StripeUnavailable, stripe_service.StripeRefused:
         why = None
     now = timezone.now()

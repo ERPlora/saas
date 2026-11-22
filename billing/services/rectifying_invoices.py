@@ -11,9 +11,9 @@ from django.utils.translation import gettext as _
 from live.context import OperationContext
 from live.operations import INTERNAL, operation
 
-from billing import events, stripe_service
+from billing import emails, events, stripe_payments, stripe_service
 from billing.models import Invoice, InvoiceLine
-from billing.schemas import CreditNoteRecordIn, InvoiceRecordOut, RefundRecordIn
+from billing.schemas.invoice_records import CreditNoteRecordIn, InvoiceRecordOut, RefundRecordIn
 from billing.services import invoice_events, invoice_numbering, invoice_sealing, plan_changes, platform_invoices
 from hubs.models import Hub
 
@@ -238,8 +238,6 @@ def credit_note_voided(credit_note: dict) -> str:
     ``credit_note.created`` never records it (read live there). Nothing fiscal is done on its own: a rectifying
     invoice recorded anyway is never modified (a record sent to the AEAT is corrected with a new one) and the team is
     told by mail to correct it by hand: ``needs_review``. A mail that cannot leave raises, so Stripe retries it."""
-    from billing import emails
-
     rectifying = (
         Invoice.objects.filter(kind=Invoice.Kind.CREDIT_NOTE, stripe_source_id=credit_note.get("id") or "")
         .only("id", "number", "series", "sequence", "fiscal_status", "rectifies_id", "total_cents")
@@ -304,14 +302,14 @@ def charge_refunded(charge: dict) -> str:
     intent = charge.get("payment_intent") or ""
     if isinstance(intent, dict):
         intent = intent.get("id") or ""
-    stripe_invoice_id = stripe_service.invoice_paid_by(intent) if intent else None
+    stripe_invoice_id = stripe_payments.invoice_paid_by(intent) if intent else None
     if not stripe_invoice_id:
         return "ignored"
     original = _issued_invoice(stripe_invoice_id)
     if original is None:
         raise _missing_original(f"Refund of charge {charge.get('id')}", stripe_invoice_id)
-    covered = stripe_service.credit_note_refund_ids(stripe_invoice_id)
-    for refund in stripe_service.charge_refunds(charge["id"]):
+    covered = stripe_payments.credit_note_refund_ids(stripe_invoice_id)
+    for refund in stripe_payments.charge_refunds(charge["id"]):
         if refund.get("status") != "succeeded" or refund["id"] in covered:
             continue
         refund_record(invoice_events._invoice_ctx(original), RefundRecordIn(invoice_id=original.id, refund=refund))

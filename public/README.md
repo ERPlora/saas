@@ -87,7 +87,8 @@ sin SSR y sin prefijo `/es/`; ronda 16 y spec `knowledge/raw/superpowers/specs/2
 ## Pruebas
 
 - `uv run pytest -q public` (y `public/tests/test_<módulo>.py` por módulo).
-- e2e: `tests/e2e/public-web.spec.ts` (parte 1) y `public-web-2.spec.ts` (parte 2; flujo a flujo, tres tamaños,
+- e2e: `tests/e2e/public-web.spec.ts` (parte 1, con `public-web-buttons.spec.ts` y `public-web-menu.spec.ts`) y
+  `public-web-2.spec.ts` (parte 2; flujo a flujo, tres tamaños,
   CSP sin violaciones; los correos del formulario van a `.artifacts/public/mail*/`), `public-dark.spec.ts`,
   `demo-door.spec.ts`, `public-demo.spec.ts` (parte 3: la puerta de la demo en todos sus estados, tres tamaños) y
   `store-docs.spec.ts`; antes, `pnpm build` (el proyecto `public` sirve el build). El recorrido de la demo contra un

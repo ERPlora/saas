@@ -665,6 +665,16 @@ def test_a_diagram_reaches_the_page_as_a_mermaid_block(client, catalog):
     assert '<pre class="mermaid">' in html
 
 
+def test_a_table_of_the_documentation_scrolls_inside_its_own_box(client, catalog):
+    """On a phone a wide table scrolls sideways in its box instead of being cut by the card
+    (tests/e2e/store-docs.spec.ts measures it in a browser)."""
+    make_doc(catalog["invoice"], "es", "| Permiso | Propietario |\n|---|---|\n| Ver | Sí |\n")
+
+    html = get_html(client, "/apps/invoice/docs/")
+
+    assert re.search(r'<div class="ep-table-scroll"><table>.*?</table></div>', html, re.DOTALL)
+
+
 def test_the_documentation_may_show_images_of_the_hubs_static_origin(
     client, catalog, settings
 ):
@@ -679,6 +689,29 @@ def test_the_documentation_may_show_images_of_the_hubs_static_origin(
     )
     img_src = re.search(r"img-src ([^;]+)", response.headers["Content-Security-Policy"])
     assert "https://hubs.erplora.com" in img_src.group(1)
+
+
+def test_a_flow_shows_only_what_its_reader_can_use(client, catalog):
+    """Of each flow, its title, steps and what happens if it fails, without internal references."""
+    make_doc(
+        catalog["tables"],
+        "es",
+        "## Flujos\n\n### TABLE-F01 Crear una zona\nEstado: hecho\nActor: responsable\n"
+        "Pantalla: Zonas\nPasos:\n1. Pulsa «+» y colócala con las flechas (8 px).\n"
+        "2. Pulsa «Añadir zona».\nEntra: el nombre.\nSale: la zona (avisa: `table.zone.created`).\n"
+        "Si falla: un nombre repetido no se guarda (hub#888).\nImplicados: TABLE-F06\n",
+    )
+
+    html = get_html(client, "/apps/tables/docs/", **SPANISH)
+    page = text_of(html)
+
+    assert "<li>Pulsa «Añadir zona».</li>" in html
+    assert "Crear una zona Pasos: Pulsa «+» y colócala con las flechas. Pulsa «Añadir zona»." in page
+    assert "Si falla: un nombre repetido no se guarda." in page
+    for internal in ("TABLE-F", "Estado:", "Actor:", "Pantalla:", "Entra:", "Sale:", "Implicados:"):
+        assert internal not in page
+    for internal in ("hub#888", "8 px", "table.zone.created"):
+        assert internal not in page
 
 
 # --- The old addresses ---------------------------------------------------------------------------

@@ -8,15 +8,12 @@ from datetime import date
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from billing import queries, vat
+from billing import emails, queries, vat, vat_countries
 from billing.models import Invoice, OssNotice
 from billing.money import to_cents
+from billing.oss import OSS_WARNING_PERCENT
 
 logger = logging.getLogger("billing.services")
-
-
-#: The share of the threshold whose passing tells the team to register in the OSS (it takes days).
-OSS_WARNING_PERCENT = 80
 
 
 def _counts_towards_oss(invoice: Invoice, issuer: str) -> bool:
@@ -25,7 +22,7 @@ def _counts_towards_oss(invoice: Invoice, issuer: str) -> bool:
     return (
         invoice.kind == Invoice.Kind.INVOICE
         and invoice.payment_status == Invoice.PaymentStatus.PAID
-        and invoice.payer_country in vat.EU_VAT_RATES
+        and invoice.payer_country in vat_countries.EU_VAT_RATES
         and invoice.payer_country != issuer
         and not invoice.payer_tax_id_verified
     )
@@ -115,8 +112,6 @@ def _note_oss_threshold_quietly(invoice: Invoice) -> None:
 def send_oss_notice(notice_id) -> bool:
     """Mail one notice to the team's mailbox (``SUPPORT_EMAIL``) and mark it sent; ``False`` when it could not
     leave (it stays owed: the daily ``retax_subscriptions`` sends it again)."""
-    from billing import emails
-
     notice = OssNotice.objects.select_related("invoice").filter(pk=notice_id, mailed_at__isnull=True).first()
     if notice is None:
         return True

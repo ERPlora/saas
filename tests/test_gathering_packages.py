@@ -1,4 +1,5 @@
-"""A door split into one module per entity only gathers its modules in its ``__init__``.
+"""A door split into one module per entity, or another module split into one module per job, only gathers its
+modules in its ``__init__``.
 
 A name re-exported from the ``__init__`` would give every operation two import paths again, and a patch through the
 package would no longer reach the module that reads the name. A package that re-exports on purpose (``billing``'s, and
@@ -16,20 +17,28 @@ GATHERING_PACKAGES = (
     "accounts.admin",
     "accounts.queries",
     "accounts.services",
+    "assistant.admin",
+    "assistant.queries",
+    "assistant.services",
+    "billing.schemas",
     "billing.services",
+    "fiscal.services",
     "hubs.queries",
     "hubs.schemas",
     "hubs.services",
+    "whatsapp.gateway",
+    "whatsapp.services",
 )
 
 
 def _takes_whole_modules(node: ast.stmt, package: str, modules: set[str]) -> bool:
-    """``from <package> import <module>, …``: each module whole, under its own name."""
+    """``from <package> import <module>, …``: each module whole, under its own name. ``<module> as <module>`` is the
+    same import, the way ruff tells an import kept on purpose from an unused one (F401)."""
     return (
         isinstance(node, ast.ImportFrom)
         and node.level == 0
         and node.module == package
-        and all(alias.name in modules and alias.asname is None for alias in node.names)
+        and all(alias.name in modules and alias.asname in (None, alias.name) for alias in node.names)
     )
 
 
@@ -75,3 +84,9 @@ def test_the_scan_catches_a_re_exported_name_and_code_of_its_own():
         "line 6: from hubs.queries import missing",
         "line 7: LIMIT = 3",
     ]
+
+
+def test_a_module_taken_under_its_own_name_with_as_is_gathering():
+    source = '"""Docstring."""\nfrom hubs.queries import taxonomy as taxonomy\nfrom hubs.queries import plan_catalog\n'
+
+    assert statements_beyond_gathering(source, "hubs.queries", {"taxonomy", "plan_catalog"}) == []

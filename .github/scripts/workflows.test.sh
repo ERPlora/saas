@@ -72,8 +72,8 @@ check("a rollback may confirm the protected settings it changes, empty by defaul
       rollback_confirm.get("type") == "string" and rollback_confirm.get("required") is False
       and rollback_confirm.get("default") == "")
 ecs_rollback_env = next((step.get("env") or {} for step in steps((rollback.get("jobs") or {}).get("rollback") or {})
-                         if "ecs-rollback.sh" in str(step.get("run", ""))), {})
-check("ecs-rollback.sh gets that confirmation as CONFIRM_PROTECTED",
+                         if step.get("run") == "python3 .github/scripts/ecs_rollback.py"), {})
+check("the runner's python3 runs ecs_rollback.py, which gets that confirmation as CONFIRM_PROTECTED",
       ecs_rollback_env.get("CONFIRM_PROTECTED") == "${{ inputs.confirm_protected }}")
 
 # --- deploy.yml: the environment first, then tests and image build side by side -----------------
@@ -100,12 +100,12 @@ check("build caches its layers in GitHub's cache",
           for step in steps(build) if "build-push-action" in str(step.get("uses", ""))))
 check("build tests the image before it pushes it", before(build, "docker/image.test.sh", "docker push"))
 check("the deploy never moves the environment back to an older commit",
-      before(deploy_job, "deploy-order.sh", "ecs-deploy.sh"))
+      before(deploy_job, "deploy-order.sh", "ecs_deploy.py"))
 confirm_input = (((deploy.get(True) or {}).get("workflow_dispatch") or {}).get("inputs") or {}).get("confirm_protected") or {}
 check("a manual run may confirm the protected settings it changes, empty by default",
       confirm_input.get("type") == "string" and confirm_input.get("required") is False and confirm_input.get("default") == "")
-ecs_deploy_env = next((step.get("env") or {} for step in steps(deploy_job) if "ecs-deploy.sh" in str(step.get("run", ""))), {})
-check("ecs-deploy.sh gets that confirmation as CONFIRM_PROTECTED",
+ecs_deploy_env = next((step.get("env") or {} for step in steps(deploy_job) if step.get("run") == "python3 .github/scripts/ecs_deploy.py"), {})
+check("the runner's python3 runs ecs_deploy.py, which gets that confirmation as CONFIRM_PROTECTED",
       ecs_deploy_env.get("CONFIRM_PROTECTED") == "${{ inputs.confirm_protected }}")
 deploy_checkout = next((step.get("with") or {} for step in steps(deploy_job) if "actions/checkout" in str(step.get("uses", ""))), {})
 check("the deploy checks out the whole history: it reads deploy/app-env.json of the commit it deploys",
@@ -214,12 +214,15 @@ check("report waits for e2e and runs whatever its result, unless the run was can
 check("only report may write issues",
       [name for name, job in njobs.items() if (job.get("permissions") or {}).get("issues") == "write"] == ["report"]
       and report.get("permissions") == {"contents": "read", "issues": "write"})
-check("report downloads the JSON report before e2e-report.sh reads it",
-      before(report, "actions/download-artifact", "e2e-report.sh"))
-report_env = next((step.get("env") or {} for step in steps(report) if "e2e-report.sh" in str(step.get("run", ""))), {})
-check("e2e-report.sh gets e2e's result and the run",
+check("report downloads the JSON report before e2e_report.py reads it",
+      before(report, "actions/download-artifact", "e2e_report.py"))
+report_step = next((step for step in steps(report) if "e2e_report.py" in str(step.get("run", ""))), {})
+check("report runs e2e_report.py with the runner's python3",
+      report_step.get("run") == "python3 .github/scripts/e2e_report.py")
+report_env = report_step.get("env") or {}
+check("e2e_report.py gets e2e's result and the run",
       report_env.get("RESULT") == "${{ needs.e2e.result }}" and "RUN_URL" in report_env and "GH_TOKEN" in report_env)
-check("e2e-report.sh only writes issues for main",
+check("e2e_report.py only writes issues for main",
       report_env.get("PUBLISH") == "${{ github.ref == 'refs/heads/main' }}")
 
 setup_uv = [step for job in [*tjobs.values(), *ejobs.values()] for step in steps(job)

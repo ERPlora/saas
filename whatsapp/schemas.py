@@ -1,4 +1,4 @@
-"""The inputs and outputs of whatsapp's operations (``services.py``, ``queries.py``) and of its doors.
+"""The inputs and outputs of whatsapp's operations (``services``, ``queries.py``) and of its doors.
 
 The doors' bodies are the Hub's contract (``hub/apps/whatsapp_inbox/WORKBOOK.md``, «Contrato con el SaaS»): the
 same fields, codes and answers the Hub already sends and reads; nothing here renames them.

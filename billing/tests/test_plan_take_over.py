@@ -26,7 +26,8 @@ from live.errors import NotFound, OperationError, PermissionDenied
 
 from billing import queries
 from billing.models import CheckoutAttempt, PromoRedemption
-from billing.schemas import HubIn, SubscriptionListIn
+from billing.schemas.common import HubIn
+from billing.schemas.subscriptions import SubscriptionListIn
 from billing.services import checkout_webhooks, hand_overs, live_rates, subscription_webhooks
 from billing.stripe_coupons import coupon_id
 from billing.tests.conftest import code_of, ctx_for, pay

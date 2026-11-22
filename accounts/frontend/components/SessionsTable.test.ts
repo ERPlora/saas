@@ -77,11 +77,14 @@ describe('SessionsTable', () => {
     expect(s.wrapper.findAll('[data-testid="session-last-used"]').map((cell) => cell.element.tagName)).toEqual(['DIV', 'DIV', 'DIV']);
   });
 
-  it('offers «Close session», with its text, on every row but this one; no «rows per page»', async () => {
+  it('offers «Close session», with its text, on every row but this one, named with its device; no «rows per page»', async () => {
     const s = await setup();
     expect(s.q('sessions-row-1-close')).toBeNull();
     expect(s.q('sessions-row-2-close')?.textContent?.trim()).toBe('Close session');
-    expect(accessibleName(s.q('sessions-row-2-close'))).toBe('Close session');
+    expect([accessibleName(s.q('sessions-row-2-close')), accessibleName(s.q('sessions-row-3-close'))]).toEqual([
+      'Close session: iPhone',
+      'Close session: Android',
+    ]);
     expect(document.querySelector('.data-table__page-size-select')).toBeNull();
   });
 

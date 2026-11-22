@@ -1,15 +1,16 @@
-"""The rows of the AI gateway: provider, credential, model and policy.
+"""The rows of the AI gateway: provider, model and policy.
 
 - A provider is one of the four APIs our clients speak (``kind``), with its own address only over https (the key
   travels to it); a local address is for the tests and a provider of our own on the same machine.
-- A credential never shows its key: not in its name, not in its ``repr``; only the last four characters, kept
-  apart in the clear as its hint, which is how the staff recognise it.
+- A provider's key lives in the environment only: the provider names the variable it reads (several providers speak
+  OpenAI's API, each with its own key), and one whose variable is empty has no key. Nothing else of the environment
+  can be read through it, and the key never shows in its name.
 """
 
 import pytest
 from django.core.exceptions import ValidationError
 
-from assistant.models import AIProvider, AIProviderCredential
+from assistant.models import KEY_VARIABLES, AIProvider
 from assistant.tests.conftest import API_KEY
 
 pytestmark = pytest.mark.django_db
@@ -27,13 +28,13 @@ def test_the_kinds_are_the_four_apis_of_models():
     ["", "https://api.openai.com/v1", "https://proxy.example.com/openai", "http://127.0.0.1:8949/v1", "http://localhost:9000"],
 )
 def test_an_address_over_https_or_on_this_machine_is_accepted(base_url):
-    AIProvider(slug="custom", name="Custom", kind="openai", base_url=base_url).full_clean()
+    AIProvider(slug="custom", name="Custom", kind="openai", base_url=base_url, key_variable="OPENAI_API_KEY").full_clean()
 
 
 @pytest.mark.parametrize("base_url", ["http://api.openai.com/v1", "http://10.0.0.5/v1", "ftp://example.com"])
 def test_an_address_where_the_key_would_travel_in_the_clear_is_refused(base_url):
     with pytest.raises(ValidationError) as refused:
-        AIProvider(slug="custom", name="Custom", kind="openai", base_url=base_url).full_clean()
+        AIProvider(slug="custom", name="Custom", kind="openai", base_url=base_url, key_variable="OPENAI_API_KEY").full_clean()
 
     assert "base_url" in refused.value.message_dict
 
@@ -50,34 +51,74 @@ def test_a_provider_is_named_by_its_name():
     assert str(AIProvider(slug="openai", name="OpenAI", kind="openai")) == "OpenAI"
 
 
-# --- AIProviderCredential ------------------------------------------------------------------------------
+# --- A provider's key, from the environment ------------------------------------------------------------
 
 
-def test_a_credential_never_shows_its_key(provider):
-    credential = AIProviderCredential.objects.create(
-        provider=provider, label="default", api_key=API_KEY, key_hint=API_KEY[-4:]
-    )
-
-    for shown in (str(credential), repr(credential)):
-        assert API_KEY not in shown
-        assert API_KEY[:-4] not in shown
-    assert str(credential) == "openai:default (…wxyz)"
+def test_the_variables_a_provider_may_read_are_the_ai_keys_of_the_environment():
+    assert KEY_VARIABLES == ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "DEEPSEEK_API_KEY", "DASHSCOPE_API_KEY")
+    assert [name for name, _ in AIProvider._meta.get_field("key_variable").choices] == list(KEY_VARIABLES)
 
 
-def test_the_masked_key_says_whether_it_can_be_used(provider):
-    credential = AIProviderCredential(provider=provider, label="default", api_key=API_KEY, key_hint="wxyz")
-    assert credential.masked_key == "…wxyz"
-    assert credential.is_readable is True
+def test_a_provider_must_name_the_variable_of_its_key():
+    with pytest.raises(ValidationError) as refused:
+        AIProvider(slug="custom", name="Custom", kind="openai").full_clean()
 
-    unreadable = AIProviderCredential(provider=provider, label="default", api_key="", key_hint="wxyz")
-    assert unreadable.is_readable is False
+    assert "key_variable" in refused.value.message_dict
 
 
-def test_two_keys_of_a_provider_cannot_share_a_label(provider):
-    AIProviderCredential.objects.create(provider=provider, label="default", api_key=API_KEY, key_hint="wxyz")
+def test_a_provider_reads_its_key_from_the_variable_it_names(settings):
+    settings.OPENAI_API_KEY = API_KEY
+    settings.DASHSCOPE_API_KEY = "sk-qwen-0000000000000000000000000000qwen"
+    openai = AIProvider(kind="openai", key_variable="OPENAI_API_KEY")
+    qwen = AIProvider(kind="openai", base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1", key_variable="DASHSCOPE_API_KEY")
 
-    with pytest.raises(ValidationError):
-        AIProviderCredential(provider=provider, label="default", api_key=API_KEY, key_hint="wxyz").validate_constraints()
+    assert (openai.api_key, openai.has_key) == (API_KEY, True)
+    assert (qwen.api_key, qwen.has_key) == ("sk-qwen-0000000000000000000000000000qwen", True)
+
+
+def test_a_new_key_in_the_environment_is_read_on_the_next_call(settings):
+    provider = AIProvider(kind="openai", key_variable="OPENAI_API_KEY")
+    assert (provider.api_key, provider.has_key) == ("", False)
+
+    settings.OPENAI_API_KEY = f"  {API_KEY}\n"
+    assert provider.api_key == API_KEY
+
+
+def test_a_provider_naming_no_variable_has_no_key(settings):
+    settings.OPENAI_API_KEY = API_KEY
+
+    assert (AIProvider(kind="openai").api_key, AIProvider(kind="openai").has_key) == ("", False)
+
+
+@pytest.mark.parametrize("variable", ["SECRET_KEY", "FERNET_KEY", "DATABASES", "openai_api_key"])
+def test_a_variable_that_is_no_ai_key_is_never_read(settings, variable):
+    """The choices are the form's; a row written around them still reads nothing else of the environment."""
+    settings.OPENAI_API_KEY = API_KEY
+
+    assert AIProvider(kind="openai", key_variable=variable).api_key == ""
+
+
+def test_a_provider_never_shows_its_key(settings):
+    settings.OPENAI_API_KEY = API_KEY
+    provider = AIProvider(slug="openai", name="OpenAI", kind="openai", key_variable="OPENAI_API_KEY")
+
+    for shown in (str(provider), repr(provider)):
+        assert API_KEY not in shown and API_KEY[-4:] not in shown
+
+
+def test_no_row_of_the_gateway_keeps_a_key():
+    from django.apps import apps
+
+    columns = {f"{model._meta.label}.{field.name}" for model in apps.get_app_config("assistant").get_models() for field in model._meta.concrete_fields}
+
+    assert {column for column in columns if "key" in column.rsplit(".", 1)[1]} == {"assistant.AIProvider.key_variable"}
+
+
+def test_the_keys_of_the_environment_are_no_longer_copied_into_the_database():
+    from django.core.management import CommandError, call_command
+
+    with pytest.raises(CommandError, match="Unknown command"):
+        call_command("import_ai_keys_from_env")
 
 
 # --- AIModel --------------------------------------------------------------------------------------------

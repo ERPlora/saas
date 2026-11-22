@@ -226,14 +226,14 @@ class TestTheBatches:
         sections = "\n\n".join(f"## Section {number}\n\nWords of section {number}." for number in range(130))
         write(docs, "docs/en/help/01-getting-started.md", f"# Long guide\n\n{sections}\n")
         written = []
-        index = services.docs_index
+        index = services.documentation.docs_index
 
         def spy(ctx, data):
             if data.source == "help":
                 written.append((len(data.chunks), len(batches(embedder)), data.keep is not None))
             return index(ctx, data)
 
-        monkeypatch.setattr(services, "docs_index", spy)
+        monkeypatch.setattr(services.documentation, "docs_index", spy)
 
         output = run()
 
@@ -375,7 +375,7 @@ class TestTheWrite:
         chunk = DocChunkIn(path="docs/en/help/01.md", lang="en", heading="Guide", text="Text.", embedding=vector(0))
 
         with pytest.raises(OperationError) as refused:
-            services.docs_index(services.platform_context(), DocsIndexIn(source="help", keep=["0" * 64], chunks=[chunk]))
+            services.documentation.docs_index(services.platform_actor.platform_context(), DocsIndexIn(source="help", keep=["0" * 64], chunks=[chunk]))
 
         assert (refused.value.status, refused.value.code) == (422, "assistant.docs_not_kept")
         assert not DocChunk.objects.exists()

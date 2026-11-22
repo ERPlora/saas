@@ -2,8 +2,9 @@
 {% load i18n %}
 {% comment %}
   The terms of use, on the shared reading pattern with ep-* classes. Every number is read, never
-  typed: the exit package from HUB_EXIT_PACKAGE_TTL_DAYS, the suspension clock from
-  public.legal.SUSPENDED_HUB_DELETE_DAYS and the trial of section 4 from the plans on sale
+  typed: the exit package from HUB_EXIT_PACKAGE_TTL_DAYS, the suspension clock from the sweep of the
+  suspended businesses (hubs.services.suspensions.SUSPENDED_DELETE_DAYS), the days a deleted business
+  is kept from public.legal.DELETED_HUB_ERASE_DAYS and the trial of section 4 from the plans on sale
   (public/legal.py). The opening clause names the plans on sale that include a custom domain, read
   from their rows, and only for the public website.
   Contract: public/tests/test_legal_terms.py.
@@ -23,7 +24,7 @@
   {% include "public/partials/page_hero.html" with hero_eyebrow=hero_eyebrow hero_title=hero_title hero_description=hero_description hero_compact=True %}
 {% endblock %}
 
-{% block updated %}{% trans "November 14, 2026" %}{% endblock %}
+{% block updated %}{% trans "November 21, 2026" %}{% endblock %}
 
 {% block legal_text %}
 
@@ -159,6 +160,15 @@
           article 66 of the General Tax Act). ERPlora is the software producer and,
           in respect of the data, the processor: its obligation on termination is to
           return or delete the data, which is what the copy described above does.
+          {% endblocktrans %}
+        </p>
+        <p>
+          {% blocktrans trimmed with days=deleted_hub_days %}
+          {{ days }} days after a Hub is deleted, ERPlora erases its database and its files.
+          Its sales, invoices and other fiscal documents are the exception: ERPlora keeps
+          them for the 6 years the law requires them to be kept, in an archive that nobody,
+          ERPlora included, can change or delete. That archive does not replace the copy
+          the customer must keep, as described above.
           {% endblocktrans %}
         </p>
 

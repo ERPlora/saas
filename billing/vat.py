@@ -43,45 +43,25 @@ charging Las Palmas 21 % it does not owe.
 from __future__ import annotations
 
 import logging
-import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 
 from billing.money import to_cents
+from billing.vat_breakdown import (
+    DOMESTIC,
+    NOT_SUBJECT,
+    OSS,
+    REVERSE_CHARGE,
+    VatBreakdown,
+    _breakdown,
+    _effective_rate,
+    _q,
+    add_vat,
+)
+from billing.vat_countries import EU_VAT_RATES, spanish_region_for_postal_code
 
 logger = logging.getLogger("billing.vat")
-
-#: General VAT rate of each EU-27 member state — the backstop, not the source (the source is ``TaxRule``).
-EU_VAT_RATES: dict[str, Decimal] = {
-    "AT": Decimal("20"),
-    "BE": Decimal("21"),
-    "BG": Decimal("20"),
-    "CY": Decimal("19"),
-    "CZ": Decimal("21"),
-    "DE": Decimal("19"),
-    "DK": Decimal("25"),
-    "EE": Decimal("24"),
-    "ES": Decimal("21"),
-    "FI": Decimal("25.5"),
-    "FR": Decimal("20"),
-    "GR": Decimal("24"),
-    "HR": Decimal("25"),
-    "HU": Decimal("27"),
-    "IE": Decimal("23"),
-    "IT": Decimal("22"),
-    "LT": Decimal("21"),
-    "LU": Decimal("17"),
-    "LV": Decimal("21"),
-    "MT": Decimal("18"),
-    "NL": Decimal("21"),
-    "PL": Decimal("23"),
-    "PT": Decimal("23"),
-    "RO": Decimal("21"),
-    "SE": Decimal("25"),
-    "SI": Decimal("22"),
-    "SK": Decimal("23"),
-}
 
 DEFAULT_ISSUER_COUNTRY = "ES"
 GENERIC_CATEGORY = "service.generic"
@@ -89,100 +69,6 @@ GENERIC_CATEGORY = "service.generic"
 #: invoices use, so the rate that priced a sale and the one on its invoice come from one rule.
 SAAS_SUBSCRIPTION_CATEGORY = "service.saas_subscription"
 SOFTWARE_LICENSE_CATEGORY = "service.software_license"
-
-#: The countries ERPlora invoices: the EU-27 and the UK, Spain first (where the customers are).
-BILLING_COUNTRIES: tuple[str, ...] = (
-    "ES",
-    *sorted((set(EU_VAT_RATES) | {"GB"}) - {"ES"}),
-)
-
-#: The billing countries a NEW sale goes to: Spain only for now. Selling to another country takes its VAT
-#: registrations (the One-Stop Shop, the ROI) and a till that meets its fiscal rules; the engine already prices
-#: every ``BILLING_COUNTRIES``, so adding one here is what reopens it.
-SOLD_TO_COUNTRIES = frozenset({"ES"})
-
-#: The Spanish territories outside VAT, sold to businesses and professionals only: a consumer there owes IGIC or
-#: IPSI on an online service, charged by a supplier registered there, which ERPlora is not.
-BUSINESS_ONLY_REGIONS = frozenset({"IC", "CE", "ML"})
-
-
-def sells_to(country: str) -> bool:
-    return (country or "").strip().upper() in SOLD_TO_COUNTRIES
-
-#: Stripe's tax id type per billing country. Anything not listed is skipped rather than guessed: a wrong
-#: type makes Stripe reject the whole tax id. Derived from the VAT table so no member state is left out
-#: (a hand list of nine dropped a verified Polish VAT id).
-TAX_ID_TYPES: dict[str, str] = {**dict.fromkeys(EU_VAT_RATES, "eu_vat"), "GB": "gb_vat"}
-
-DOMESTIC = "domestic"
-OSS = "oss"
-REVERSE_CHARGE = "reverse_charge"
-NOT_SUBJECT = "not_subject"
-#: Subject but exempt (art. 20 LIVA): never returned by ``resolve_vat``; stamped by hand on a line.
-EXEMPT = "exempt"
-
-#: The treatments that charge VAT, so carry a rate and a quota. The rest declare the whole amount as base.
-TREATMENTS_WITH_RATE = frozenset({DOMESTIC, OSS})
-
-#: The first two digits of a Spanish postal code are the province, and with it the territories outside VAT.
-_SPANISH_REGION_BY_POSTAL_PREFIX = {"35": "IC", "38": "IC", "51": "CE", "52": "ML"}
-_SPANISH_POSTAL_CODE = re.compile(r"^\d{5}$")
-
-_CENT = Decimal("0.01")
-
-
-@dataclass(frozen=True)
-class VatBreakdown:
-    """Base, quota, rate and qualification. ``base + tax`` is always the gross."""
-
-    base: Decimal
-    tax: Decimal
-    rate: Decimal
-    tax_country: str
-    treatment: str = DOMESTIC
-    tax_region: str = ""
-    #: The quota was NOT charged by the gateway: it was taken out of the amount charged as VAT-inclusive
-    #: A FACT of the breakdown, so the invoice can say why its base is not the plan's price.
-    vat_included_reconciled: bool = False
-
-    @property
-    def is_reverse_charge(self) -> bool:
-        return self.treatment == REVERSE_CHARGE
-
-    @property
-    def is_subject(self) -> bool:
-        return self.treatment in TREATMENTS_WITH_RATE
-
-
-def tax_id_type_for(country: str) -> str:
-    """Stripe's tax id type for a billing country, or ``""`` when there is none."""
-    return TAX_ID_TYPES.get((country or "").strip().upper(), "")
-
-
-def _q(value: Decimal) -> Decimal:
-    # Explicit HALF_UP: a bare quantize() inherits HALF_EVEN from the context.
-    return value.quantize(_CENT, rounding=ROUND_HALF_UP)
-
-
-def spanish_region_for_postal_code(postal_code: str) -> str | None:
-    """Spanish fiscal region of a postal code: ``""`` = the mainland and the Balearic Islands, ``None`` =
-    not a Spanish postal code (five digits, spaces aside). Only a real code names its province: «3500» is
-    Benidorm typed without its leading 0, not Las Palmas, and guessing it would sell it at 0 %."""
-    code = (postal_code or "").replace(" ", "")
-    if not _SPANISH_POSTAL_CODE.match(code):
-        return None
-    return _SPANISH_REGION_BY_POSTAL_PREFIX.get(code[:2], "")
-
-
-def postal_code_is_valid(country: str, postal_code: str) -> bool:
-    """A billing location the sale can be priced with: a country and a postal code of its shape (Spain:
-    five digits; elsewhere, not blank — the tax does not depend on it)."""
-    country = (country or "").strip().upper()
-    if len(country) != 2:
-        return False
-    if country == "ES":
-        return spanish_region_for_postal_code(postal_code) is not None
-    return bool((postal_code or "").strip())
 
 
 def reverse_charge_applies(
@@ -209,29 +95,6 @@ def reverse_charge_applies(
     )
 
 
-def split_gross(gross: Decimal, rate: Decimal) -> tuple[Decimal, Decimal]:
-    """Base and quota of an amount with the VAT inside; ``base + quota == gross``.
-
-    The quota is derived BY SUBTRACTION, so the sum rebuilds the gross exactly even when rounding the base
-    moved a cent: matching what was charged matters more than matching the rate.
-    """
-    gross = _q(Decimal(gross))
-    rate = Decimal(rate or 0)
-    if rate <= 0:
-        return gross, Decimal("0.00")
-    base = _q(gross / (Decimal("1") + rate / Decimal("100")))
-    return base, gross - base
-
-
-def add_vat(net: Decimal, rate: Decimal) -> Decimal:
-    """The total to charge, adding ``rate`` to a NET amount: the one arithmetic of «€29.99 + VAT»."""
-    net = _q(Decimal(net))
-    rate = Decimal(rate or 0)
-    if rate <= 0:
-        return net
-    return _q(net * (Decimal("1") + rate / Decimal("100")))
-
-
 def vat_rate_for(
     *,
     country: str,
@@ -246,13 +109,6 @@ def vat_rate_for(
         category_key,
         on_date,
     )[0]
-
-
-def _effective_rate(gross: Decimal, tax_cents: int) -> Decimal:
-    """The rate an amount and its quota imply (``0.00`` without a base)."""
-    tax = _q(Decimal(tax_cents) / Decimal("100"))
-    base = gross - tax
-    return _q(tax / base * Decimal("100")) if base else Decimal("0.00")
 
 
 def _policy():
@@ -565,100 +421,4 @@ def resolve_vat(  # noqa: PLR0913
         tax_cents=tax_cents,
         tax_included=tax_included,
         customer_country=qualification.customer_country,
-    )
-
-
-def _report_stripe_charged_no_tax(
-    gross: Decimal,
-    treatment: str,
-    rate: Decimal,
-    *,
-    tax_country: str,
-    customer_country: str,
-) -> None:
-    """A subject sale on which Stripe collected nothing: always a structured ERROR (alert on ``event``).
-
-    Two misconfigurations end here —a sale that reached Stripe without our rate and a VAT id
-    Stripe reverse charged by its format while VIES had not confirmed it— and both are silent
-    on Stripe's side. The sale is reconciled out of our own margin until it is fixed.
-    """
-    logger.error(
-        "[VAT] Stripe charged no tax on a %s sale of %s EUR at %s%% to a %s customer: reconciled as "
-        "VAT-inclusive, so the quota comes out of our margin. Check the tax rules, the mirrored TaxRate in "
-        "Stripe, FiscalPolicy.intra_eu_reverse_charge and the customer's VIES verdict",
-        treatment,
-        gross,
-        rate,
-        customer_country or "?",
-        extra={
-            "event": "fiscal.vat.stripe_charged_no_tax_on_subject_sale",
-            "treatment": treatment,
-            "gross": str(gross),
-            "expected_rate": str(rate),
-            "tax_country": tax_country,
-            "customer_country": customer_country,
-            "reconciled": True,
-        },
-    )
-
-
-def _breakdown(  # noqa: PLR0913
-    gross: Decimal,
-    treatment: str,
-    *,
-    rate: Decimal | None,
-    tax_country: str,
-    tax_region: str = "",
-    tax_cents: int = 0,
-    tax_included: bool = True,
-    customer_country: str = "",
-) -> VatBreakdown:
-    """Split the amount charged between base and quota by the treatment."""
-    if rate is None:
-        # Not subject / reverse charge: all of it is base, there is no quota.
-        return VatBreakdown(
-            base=gross,
-            tax=Decimal("0.00"),
-            rate=Decimal("0.00"),
-            tax_country=tax_country,
-            treatment=treatment,
-            tax_region=tax_region,
-        )
-
-    reconciled = False
-    if not tax_included and not tax_cents and gross:
-        # NET price and Stripe charged no tax on a sale OUR qualification says is SUBJECT: reconcile.
-        # A Spanish domestic sale at 0 % does not exist; what was charged becomes
-        # VAT-inclusive, as the tax office does when VAT was not charged (TJUE C-249/12 and C-250/12,
-        # Tulică; art. 78.Cuatro LIVA). The total does not move; the quota comes out of our margin.
-        _report_stripe_charged_no_tax(
-            gross,
-            treatment,
-            rate,
-            tax_country=tax_country,
-            customer_country=customer_country,
-        )
-        reconciled = True
-
-    if tax_cents:
-        # Stripe already split it: its amounts rule.
-        tax = _q(Decimal(tax_cents) / Decimal("100"))
-        return VatBreakdown(
-            base=gross - tax,
-            tax=tax,
-            rate=_effective_rate(gross, tax_cents),
-            tax_country=tax_country,
-            treatment=treatment,
-            tax_region=tax_region,
-        )
-
-    base, tax = split_gross(gross, rate)
-    return VatBreakdown(
-        base=base,
-        tax=tax,
-        rate=rate,
-        tax_country=tax_country,
-        treatment=treatment,
-        tax_region=tax_region,
-        vat_included_reconciled=reconciled,
     )

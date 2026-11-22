@@ -10,7 +10,7 @@
 //   }));
 import { createShellI18n, provideSession, type SessionMe } from '@erplora/ui/shell';
 import { LIVE_CLIENT_KEY, type LiveClient, type OpName } from '@erplora/ui/sdk';
-import { mount } from '@vue/test-utils';
+import { mount, type VueWrapper } from '@vue/test-utils';
 import { type Component, createApp, ref } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
@@ -149,10 +149,17 @@ export const optionValue = (el: { element: Element }): unknown => (el.element as
 
 
 /**
- * The accessible name of an Ionic control: Ionic moves `aria-label` from its host to the native
- * control inside (its shadow `button`), as it does in a browser.
+ * The accessible name of an Ionic control, where a screen reader hears it: Ionic moves `aria-label` from its host to
+ * the native control inside (its shadow `button`), as it does in a browser. `ion-item` copies it only once, so after a
+ * change the host may say something its native control does not: the native control is read first.
  */
 export function accessibleName(el: { element: Element }): string | null {
   const host = el.element;
-  return host.getAttribute('aria-label') ?? host.shadowRoot?.querySelector('button, [role]')?.getAttribute('aria-label') ?? null;
+  return host.shadowRoot?.querySelector('button, [role]')?.getAttribute('aria-label') ?? host.getAttribute('aria-label') ?? null;
+}
+
+/** Closes the open «⋮» of a DataTable row, as its backdrop does before another row's «⋮» can be tapped. */
+export async function closeRowMenu(wrapper: VueWrapper): Promise<void> {
+  wrapper.findComponent(PopoverStub).vm.$emit('didDismiss');
+  await flush();
 }

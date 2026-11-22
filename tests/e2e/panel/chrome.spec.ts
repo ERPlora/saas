@@ -187,23 +187,31 @@ test.describe('the way to pay outside Billing', () => {
   });
 });
 
+/** `smallTargets`, measured in the page (run there, so self-contained). */
+function smallTargetsInPage(dialog: boolean): string[] {
+  /** The open dialog, or else the page on screen (Ionic keeps the ones it left in the outlet, hidden). */
+  function lookIn(): ParentNode {
+    if (dialog) return document.querySelector('ion-modal.show-modal') ?? document;
+    return [...document.querySelectorAll('ion-router-outlet > .ion-page:not(.ion-page-hidden)')].at(-1) ?? document;
+  }
+  /** A target as the report names it: its label, its test id or the start of its text. */
+  function nameOf(el: HTMLElement): string {
+    return el.getAttribute('aria-label') ?? el.getAttribute('data-testid') ?? (el.textContent ?? '').trim().slice(0, 30);
+  }
+  const found: string[] = [];
+  for (const el of lookIn().querySelectorAll<HTMLElement>('ion-button, ion-segment-button, ion-menu-button, ion-back-button, ion-chip')) {
+    const rect = el.getBoundingClientRect();
+    const style = getComputedStyle(el);
+    if (rect.width === 0 || rect.height === 0 || style.visibility === 'hidden' || style.display === 'none') continue;
+    const iconOnly = el.tagName === 'ION-MENU-BUTTON' || !!el.querySelector(':scope > [slot="icon-only"]');
+    if (rect.height < 43.5 || (iconOnly && rect.width < 43.5)) found.push(`${el.tagName.toLowerCase()} «${nameOf(el)}» ${Math.round(rect.width)}×${Math.round(rect.height)}`);
+  }
+  return found;
+}
+
 /** Targets under 44 px on the page on screen and its topbar: Ionic's buttons, segments, chips, menu and Back. */
 async function smallTargets(page: Page, inDialog = false): Promise<string[]> {
-  return page.evaluate((dialog) => {
-    const page = dialog
-      ? (document.querySelector('ion-modal.show-modal') ?? document)
-      : ([...document.querySelectorAll('ion-router-outlet > .ion-page:not(.ion-page-hidden)')].at(-1) ?? document);
-    const found: string[] = [];
-    for (const el of page.querySelectorAll<HTMLElement>('ion-button, ion-segment-button, ion-menu-button, ion-back-button, ion-chip')) {
-      const rect = el.getBoundingClientRect();
-      const style = getComputedStyle(el);
-      if (rect.width === 0 || rect.height === 0 || style.visibility === 'hidden' || style.display === 'none') continue;
-      const iconOnly = el.tagName === 'ION-MENU-BUTTON' || !!el.querySelector(':scope > [slot="icon-only"]');
-      const name = el.getAttribute('aria-label') ?? el.getAttribute('data-testid') ?? (el.textContent ?? '').trim().slice(0, 30);
-      if (rect.height < 43.5 || (iconOnly && rect.width < 43.5)) found.push(`${el.tagName.toLowerCase()} «${name}» ${Math.round(rect.width)}×${Math.round(rect.height)}`);
-    }
-    return found;
-  }, inDialog);
+  return page.evaluate(smallTargetsInPage, inDialog);
 }
 
 /** The buttons at the end of the bar of the page on screen, as `data-testid`s. */

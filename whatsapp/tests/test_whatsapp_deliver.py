@@ -1,6 +1,6 @@
 """``manage.py whatsapp_deliver``: one pass, by hand, of what the ``saas-worker`` delivers as soon as it
-is due (``gateway.deliver_pass``, saas#305): what still waits for the Hub (it was off, without the inbox, or answered
-5xx) is pushed again once its growing wait passed (``gateway.deliver``), so a message Meta reported is never lost
+is due (``deliveries.deliver_pass``, saas#305): what still waits for the Hub (it was off, without the inbox, or answered
+5xx) is pushed again once its growing wait passed (``deliveries.deliver``), so a message Meta reported is never lost
 while the Hub is away.
 
 One pass at a time: under the advisory lock of its name, the worker's passes
@@ -18,7 +18,8 @@ from django.db import connection
 from django.utils import timezone
 
 from base.tests.conftest import other_session  # noqa: F401 - a second session, as another saas-cron task
-from whatsapp import gateway, hub_client
+from whatsapp import hub_client
+from whatsapp.gateway import deliveries
 from whatsapp.models import Delivery
 from whatsapp.tests.test_gateway import number  # noqa: F401 - shared fixture
 from whatsapp.tests.test_parse import messages, text
@@ -172,16 +173,16 @@ def test_two_passes_a_minute_apart_against_a_slow_hub_push_each_message_once(num
 
 @pytest.mark.django_db(transaction=True)
 def test_the_webhook_pushes_inside_the_lease_even_at_the_hubs_slowest(number, hub_double, monkeypatch):
-    """Meta's webhook pushes up to 20 of what it parked before answering (``gateway.ingest``), without the pass's
+    """Meta's webhook pushes up to 20 of what it parked before answering (``deliveries.ingest``), without the pass's
     lock: at the Hub's slowest (5 s to connect and 5 s more to answer, each call) its last push still ends inside the
     lease, so saas-cron's pass never takes a row the webhook is still pushing."""
     hub_double.answer("POST", INBOUND, 200, {"created": True})
     clock = Clock(monkeypatch)
     hub = SlowHub(monkeypatch, clock, hub_client.LONGEST_CALL)
 
-    gateway.ingest(messages(*(text(f"wamid.{n}") for n in range(gateway.WEBHOOK_DELIVERIES))))
+    deliveries.ingest(messages(*(text(f"wamid.{n}") for n in range(deliveries.WEBHOOK_DELIVERIES))))
 
-    assert len(hub.pushes) == gateway.WEBHOOK_DELIVERIES
+    assert len(hub.pushes) == deliveries.WEBHOOK_DELIVERIES
     assert hub.late == []
 
 

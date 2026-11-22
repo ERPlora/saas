@@ -201,24 +201,10 @@ describe('frontend/sdk-types follows hubs/schemas/', () => {
 /** The Store's schemas, by their file: the same guard as hubs'. */
 const STORE_SCHEMAS: Array<[file: string, names: string[]]> = [
   ['hubs/schemas/payers.py', ['BillingProfileGetIn', 'BillingProfileIn', 'BillingProfileOut']],
-  [
-    'billing/schemas/__init__.py',
-    [
-      'CheckoutStartIn',
-      'ChargePreviewOut',
-      'CheckoutStartOut',
-      'CheckoutConfirmIn',
-      'PlanChangeIn',
-      'HubIn',
-      'ModuleIn',
-      'SubscriptionModuleOut',
-      'SubscriptionOut',
-      'StoreCatalogIn',
-      'StoreModuleOut',
-      'StoreSubscriptionOut',
-      'StoreCatalogOut',
-    ],
-  ],
+  ['billing/schemas/checkout.py', ['CheckoutStartIn', 'ChargePreviewOut', 'CheckoutStartOut', 'CheckoutConfirmIn']],
+  ['billing/schemas/subscription_changes.py', ['PlanChangeIn', 'ModuleIn', 'SubscriptionModuleOut', 'SubscriptionOut']],
+  ['billing/schemas/common.py', ['HubIn']],
+  ['billing/schemas/store.py', ['StoreCatalogIn', 'StoreModuleOut', 'StoreSubscriptionOut', 'StoreCatalogOut']],
   ['billing/schemas/promo_codes.py', ['PromoCheckIn', 'PromoCheckOut']],
   ['billing/schemas/discounts.py', ['DiscountAppliesToOut', 'DiscountOut', 'SubscriptionDiscountOut']],
   ['apps/schemas.py', ['AppListIn', 'AppSummaryOut', 'AppListOut', 'AppByIdIn', 'RequiredAppOut', 'AppOut']],
@@ -245,7 +231,7 @@ describe('frontend/sdk-types follows billing/schemas/, apps/schemas.py and the p
   });
 
   it('types the billing of a subscription as the server names it', () => {
-    expect(/^Interval = Literal\[([^\]]+)\]/m.exec(sources.get('billing/schemas/__init__.py') ?? '')?.[1]).toBe('"month", "year"');
+    expect(/^Interval = Literal\[([^\]]+)\]/m.exec(sources.get('billing/schemas/common.py') ?? '')?.[1]).toBe('"month", "year"');
     expect(/^export type BillingInterval = (.+);$/m.exec(TYPES)?.[1]).toBe("'month' | 'year'");
   });
 
@@ -258,11 +244,10 @@ describe('frontend/sdk-types follows billing/schemas/, apps/schemas.py and the p
 /** The Billing section's schemas (invoices, subscriptions, payment details), by their file. */
 const BILLING_SCHEMAS: Array<[file: string, names: string[]]> = [
   [
-    'billing/schemas/__init__.py',
+    'billing/schemas/invoices.py',
     [
       'InvoiceFilterIn',
       'InvoiceListIn',
-      'InvoiceBusinessOut',
       'InvoiceCanOut',
       'InvoiceRectificationOut',
       'InvoiceRowOut',
@@ -272,8 +257,13 @@ const BILLING_SCHEMAS: Array<[file: string, names: string[]]> = [
       'InvoiceRecipientOut',
       'InvoiceRefOut',
       'InvoiceDetailOut',
-      'InvoicePayIn',
-      'InvoicePayOut',
+    ],
+  ],
+  ['billing/schemas/common.py', ['InvoiceBusinessOut']],
+  ['billing/schemas/stripe_pages.py', ['InvoicePayIn', 'InvoicePayOut', 'PortalOpenIn', 'PortalOpenOut']],
+  [
+    'billing/schemas/subscriptions.py',
+    [
       'SubscriptionListIn',
       'SubscriptionPlanOut',
       'SubscriptionModuleRowOut',
@@ -281,23 +271,18 @@ const BILLING_SCHEMAS: Array<[file: string, names: string[]]> = [
       'SubscriptionCanOut',
       'SubscriptionRowOut',
       'SubscriptionListOut',
-      'PaymentMethodIn',
-      'CardOut',
-      'LastFailureOut',
-      'PaymentMethodRowOut',
-      'PaymentMethodOut',
-      'PortalOpenIn',
-      'PortalOpenOut',
-      'VatCheckIn',
-      'VatCheckOut',
-      'ScheduledChangeOut',
     ],
   ],
+  ['billing/schemas/payment_methods.py', ['PaymentMethodIn', 'CardOut', 'LastFailureOut', 'PaymentMethodRowOut', 'PaymentMethodOut']],
+  ['billing/schemas/tax.py', ['VatCheckIn', 'VatCheckOut']],
+  ['billing/schemas/subscription_changes.py', ['ScheduledChangeOut']],
 ];
 const BILLING_CASES = BILLING_SCHEMAS.flatMap(([file, names]) => names.map((name) => [file, name] as const));
 
 describe('frontend/sdk-types follows billing/schemas/ (the Billing section)', () => {
   const sources = new Map(BILLING_SCHEMAS.map(([file]) => [file, readFileSync(join(HERE, '..', file), 'utf8')]));
+  // The literal aliases and the row schemas below are each named once across these modules.
+  const allSources = [...sources.values()].join('\n');
 
   it.each(BILLING_CASES)('%s %s has the same fields on both sides', (file, name) => {
     expect(typeFields(name)).toEqual(pythonFields(name, sources.get(file)));
@@ -325,8 +310,7 @@ describe('frontend/sdk-types follows billing/schemas/ (the Billing section)', ()
     ['VatStatus', '"verified", "invalid", "unavailable", "national", "outside_vies"', "'verified' | 'invalid' | 'unavailable' | 'national' | 'outside_vies'"],
     ['InvoiceRectificationType', '"R1", "R2", "R3", "R4"', "'R1' | 'R2' | 'R3' | 'R4'"],
   ])('types %s as the server names its values', (alias, python, typescript) => {
-    const source = sources.get('billing/schemas/__init__.py') ?? '';
-    expect(new RegExp(`^${alias} = Literal\\[([^\\]]+)\\]`, 'm').exec(source)?.[1]).toBe(python);
+    expect(new RegExp(`^${alias} = Literal\\[([^\\]]+)\\]`, 'm').exec(allSources)?.[1]).toBe(python);
     expect(new RegExp(`^export type ${alias} = (.+);$`, 'm').exec(TYPES)?.[1]).toBe(typescript);
   });
 
@@ -339,7 +323,7 @@ describe('frontend/sdk-types follows billing/schemas/ (the Billing section)', ()
       "'take_over' | 'change_plan' | 'keep_plan' | 'view_invoice' | 'cancel_plan' | 'view_invoices'",
     ],
   ])('types the actions of a %s row (%s) as the server names them, in its order', (schema, alias, python, typescript) => {
-    const annotation = pythonTypes(schema, sources.get('billing/schemas/__init__.py')).actions;
+    const annotation = pythonTypes(schema, allSources).actions;
     expect(annotation).toBe(`list[Literal[${python}]]`);
     expect(new RegExp(`^export type ${alias} = (.+);$`, 'm').exec(TYPES)?.[1]).toBe(typescript);
   });

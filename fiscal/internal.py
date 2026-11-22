@@ -41,7 +41,8 @@ from django.views.decorators.csrf import csrf_exempt
 from live.errors import OperationError
 
 from accounts.signing import live_secrets, may_be_signed, query_needs_v2, verify_request, verify_signed
-from fiscal import anexo, queries, services
+from fiscal import anexo, queries
+from fiscal.services import representation_grants
 from fiscal.schemas import ModelQueryIn, RepresentationSubmitIn
 from hubs.services.hub_callbacks import system_ctx_for
 
@@ -179,7 +180,7 @@ def representation(request: HttpRequest, hub_id: UUID) -> JsonResponse:  # noqa:
         return _error(422, "invalid_payload", "Invalid payload", fields=_fields(broken))
     ctx = replace(system_ctx_for(hub_id), language=language)
     try:
-        result = services.representation_submit(ctx, data)
+        result = representation_grants.representation_submit(ctx, data)
     except OperationError as refusal:
         logger.info("internal.fiscal.representation.refused hub=%s code=%s", hub_id, refusal.code)
         return JsonResponse(refusal.envelope(), status=refusal.status)

@@ -1,8 +1,8 @@
 // The assistant's QA battery with the REAL model and the REAL documentation index (block A, the panel's side of C35 and
 // C36, and C38), in the panel as an account asks it. Only with `QA_REAL_PROVIDER=1` (never in the CI:
 // `realProviderMode` refuses on GitHub Actions), on a stack of its own (`E2E_SAAS_PORT`, its own e2e database):
-// `assistant_seed.py real` keeps the real providers with the keys of `QA_QWEN_API_KEY` and `QA_OPENAI_API_KEY` (read
-// there, never here), the panel's Django sends the embeddings to the real «openai» and gives production's 30 messages
+// `assistant_seed.py real` keeps the real providers, whose keys the panel's Django reads from the runner's environment
+// (`DASHSCOPE_API_KEY` and `OPENAI_API_KEY`), the panel's Django sends the embeddings to the real «openai» and gives production's 30 messages
 // (panel/project.ts), and `index_docs` keeps the documentation the search reads. Recipe: tests/e2e/README.md,
 // «El asistente con el modelo de verdad».
 //

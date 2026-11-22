@@ -19,7 +19,8 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
-from billing.schemas import CheckoutConfirmIn, ModuleIn
+from billing.schemas.checkout import CheckoutConfirmIn
+from billing.schemas.subscription_changes import ModuleIn
 from billing.services import module_cancellations, plan_changes
 from billing.tests.conftest import ctx_for, pay
 from billing.tests.stripe_double import MONTH_END, item, subscription

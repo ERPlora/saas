@@ -26,6 +26,7 @@ const { forDialog } = useErrorText();
 const remove = useCommand('hubs.business.delete');
 
 const consequences = computed(() => [
+  { text: t('hubs.danger.consequenceFiscal'), icon: 'ion:archive-outline' },
   { text: t('hubs.danger.consequencePlan'), icon: 'ion:receipt-outline' },
   { text: t('hubs.danger.consequenceEmail'), icon: 'ion:mail-outline' },
 ]);

@@ -76,12 +76,15 @@ def test_privacy_says_an_update_is_not_a_change_of_sub_processor(client):
 
 
 @pytest.mark.django_db
-def test_privacy_declares_the_eu_resident_llm_provider_actually_in_use(client):
-    """Art. 13.1.e / 28.2 GDPR: the sub-processor that actually sees the data must be named."""
+def test_privacy_declares_the_llm_providers_actually_in_use(client):
+    """Art. 13.1.e / 28.2 GDPR: the sub-processors that actually see the data are named, each with its role: the
+    model that answers by default and the one in reserve."""
     html = spanish(client, "/legal/privacy/")
+    [default] = list_items_naming(html, "Anthropic Ireland, Limited")
+    [backup] = list_items_naming(html, "Model Studio")
 
-    assert "Alibaba" in html
-    assert "Fráncfort" in html or "Frankfurt" in html
+    assert "POR DEFECTO" in default
+    assert "RESPALDO" in backup and "Fráncfort" in backup
 
 
 @pytest.mark.django_db
@@ -97,6 +100,26 @@ def test_privacy_states_assistant_data_does_not_reach_china(client):
 def test_privacy_does_not_name_llm_providers_we_never_engaged(client):
     """Naming a processor we hold no credential for is a false disclosure, not a safe extra."""
     assert "DeepSeek" not in spanish(client, "/legal/privacy/")
+
+
+#: The AI models by name: the policy names who processes the data, never the model, which changes.
+AI_MODELS = ("Claude", "Haiku", "Sonnet", "Opus", "Qwen", "GPT", "Gemini", "Whisper", "whisper")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("language", "outside_the_eea"),
+    [("en", "outside the European Economic Area"), ("es", "fuera del Espacio Económico Europeo")],
+)
+def test_privacy_names_who_processes_the_ai_data_and_no_model(client, language, outside_the_eea):
+    """Art. 13.1.e GDPR: the language model's processors by their entities; the default one never as processing in
+    the EU, since it may route the queries outside the EEA."""
+    html = client.get("/legal/privacy/").content.decode() if language == "en" else spanish(client, "/legal/privacy/")
+    [default] = list_items_naming(html, "Anthropic Ireland, Limited")
+
+    assert list_items_naming(html, "Alibaba (Netherlands) B.V.")
+    assert outside_the_eea in default
+    assert [model for model in AI_MODELS if re.search(rf"\b{model}\b", html)] == []
 
 
 @pytest.mark.django_db
@@ -173,8 +196,8 @@ def test_privacy_names_aws_in_its_ireland_region_as_the_hosting_processor(client
 
 
 @pytest.mark.django_db
-def test_privacy_keeps_the_ai_assistant_in_frankfurt(client):
-    """The AI assistant stays in Alibaba Cloud's Frankfurt region."""
+def test_privacy_keeps_the_backup_model_in_frankfurt(client):
+    """The backup language model stays in Alibaba Cloud's Frankfurt region."""
     [ai] = list_items_naming(
         client.get("/legal/privacy/").content.decode(), "Model Studio"
     )
