@@ -28,6 +28,11 @@ class RolloutTest(RollbackCase):
         self.assertEqual(0, self.rollback(POLL_SECONDS="5", FAKE_ROLLOUT_STATES="IN_PROGRESS COMPLETED"))
         self.assertEqual(["5"], self.pauses())
 
+    def test_the_pauses_count_towards_the_timeout(self):
+        self.assertEqual(1, self.rollback(POLL_SECONDS="10", ROLLOUT_TIMEOUT_SECONDS="30",
+                                          FAKE_ROLLOUT_STATES="IN_PROGRESS"))
+        self.assertEqual((4, ["10", "10", "10"]), (self.reads_of("saas"), self.pauses()))
+
     def test_a_failed_rollout_fails_on_that_read(self):
         self.assertEqual(1, self.rollback(FAKE_ROLLOUT_STATES="FAILED"))
         self.assertEqual((1, []), (self.reads_of("saas"), self.pauses()))

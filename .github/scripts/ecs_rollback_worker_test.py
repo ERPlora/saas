@@ -62,9 +62,10 @@ class SaasWorkerTest(RollbackCase):
         # The first rollback after the deploy that brought the worker: Terraform's revision is its only one.
         self.with_worker()
         (self.fixtures / "list-erplora-prod-saas-worker").write_text(f"{WORKER}:12\t")
-        self.assertEqual(0, self.rollback())
+        self.assertEqual(0, self.rollback(apart=True))
         self.assertIn(f"::warning::saas-worker runs {WORKER}:12 and erplora-prod-saas-worker has no earlier ACTIVE "
-                      "revision: it stays as it is\n", self.out)
+                      "revision: it stays as it is\n".encode(), self.stdout)
+        self.assertEqual(b"", self.stderr)
         self.assertTrue(self.called(f"update-service .*--service saas --task-definition {TD}/erplora-prod-saas:10 "))
         self.assertFalse(self.called("update-service .*--service saas-worker"))
 

@@ -127,7 +127,7 @@ def previous_revision(rollback: Rollback, family: str, current: str) -> str:
 
 def as_jq_writes(text: str) -> str:
     """What jq writes for a string: a character it cannot encode (a byte that is no UTF-8, a lone surrogate) as U+FFFD."""
-    return re.sub("[\ud800-\udfff]", "�", text)
+    return re.sub("[\ud800-\udfff]", "\ufffd", text)
 
 
 def containers_of(described: str) -> list:

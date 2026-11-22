@@ -120,6 +120,7 @@ def describe_task_definition():
 
 def update_service():
     service = value("--service")
+    print(f'{{"service": {{"serviceName": "{service}"}}}}')
     write(path(state, f"moved-{service}"), "")
     # The circuit breaker of FAKE_CIRCUIT_BREAKER's service puts its old revision back.
     if env.get("FAKE_CIRCUIT_BREAKER") != service:
@@ -301,6 +302,8 @@ class SucceedingRollbackTest(RollbackCase):
 
     def test_what_the_rollback_says_and_where(self):
         self.assertEqual(0, self.rollback(apart=True))
+        # Its settings are checked in a folder of its own, gone once it ends.
+        self.assertEqual({"bin", "fixtures", "state", "calls.log", "sleep.log"}, {p.name for p in self.work.iterdir()})
         self.assertEqual(
             "::warning::erplora-prod-saas-worker does not exist yet: skipped\n"
             "::warning::rolling back saas (prod) to their previous revisions; migrations are not undone\n"
@@ -348,6 +351,8 @@ class SucceedingRollbackTest(RollbackCase):
             f"update-service .*--service saas-pre --task-definition {TD}/erplora-pre-saas:10 "))
         self.assertTrue(self.called(r"wait services-stable .*--services saas-pre$"))
         self.assertGreaterEqual(self.reads_of("saas-pre"), 1)
+        self.assertIn("::warning::rolling back saas-pre (pre) to their previous revisions; migrations are not undone\n",
+                      self.out)
         self.assertTrue(self.called(
             "^ssm put-parameter --name /erplora/pre/saas/image_tag --value tag-10 --type String --overwrite"))
         self.assertFalse(self.called("erplora-prod-|/erplora/prod/|--services? saas( |$)"))
