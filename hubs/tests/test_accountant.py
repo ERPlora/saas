@@ -49,6 +49,15 @@ def full(business, owner):
     invite(owner, business, "two@example.com")
 
 
+def expired_invitation(owner, business):
+    """The firm's invitation on a full plan, past its window: it no longer holds anything."""
+    full(business, owner)
+    invite(owner, business, "firm@example.com", ACCOUNTANT)
+    firm = HubMember.objects.get(user__email="firm@example.com")
+    HubMember.objects.filter(pk=firm.pk).update(invitation_expires_at=timezone.now())
+    return firm
+
+
 def post(client, path, data):
     return client.post(f"/api{path}", json.dumps(data, default=str), content_type="application/json", HTTP_HOST=HOST)
 
@@ -145,12 +154,27 @@ class TestItTakesNoSeat:
         assert members_page(owner, business)["free_roles"] == [ACCOUNTANT]
 
     def test_renewing_its_expired_invitation_on_a_full_plan_needs_no_seat(self, business, owner):
-        full(business, owner)
-        invite(owner, business, "firm@example.com", ACCOUNTANT)
-        firm = HubMember.objects.get(user__email="firm@example.com")
-        HubMember.objects.filter(pk=firm.pk).update(invitation_expires_at=timezone.now())
+        firm = expired_invitation(owner, business)
 
         assert member_management.member_resend(ctx_for(owner), ByIdIn(id=firm.id)).status == "pending"
+
+    def test_inviting_it_again_once_expired_asks_a_seat_only_for_a_role_that_takes_one(self, business, owner):
+        expired_invitation(owner, business)
+
+        with pytest.raises(Conflict) as refused:
+            invite(owner, business, "firm@example.com", HubMember.Role.EMPLOYEE)
+
+        assert refused.value.code == "hubs.seat_limit"
+        assert invite(owner, business, "firm@example.com", ACCOUNTANT).status == "pending"
+
+    def test_its_expired_invitation_moves_to_a_role_with_a_seat_without_one(self, business, owner):
+        """An expired invitation holds no seat whatever its role: the seat is asked when it is renewed."""
+        firm = expired_invitation(owner, business)
+
+        assert change_role(owner, firm, HubMember.Role.EMPLOYEE).role == HubMember.Role.EMPLOYEE
+        assert members_page(owner, business)["seats"] == {"used": 3, "limit": 3}
+        with pytest.raises(Conflict):
+            member_management.member_resend(ctx_for(owner), ByIdIn(id=firm.id))
 
     def test_moving_it_to_a_role_with_a_seat_on_a_full_plan_is_refused(self, business, owner, make_user):
         full(business, owner)

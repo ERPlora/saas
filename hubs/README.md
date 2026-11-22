@@ -1,7 +1,7 @@
 # `hubs` — los negocios del SaaS
 
 App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: los negocios de cada cuenta
-(`Hub`), quién está en ellos y con qué rol (`HubMember`, cuatro roles `hub_*`), los traspasos de propiedad
+(`Hub`), quién está en ellos y con qué rol (`HubMember`, cinco roles `hub_*`), los traspasos de propiedad
 (`HubOwnershipTransfer`), quién paga (`BillingProfile`), qué plan y módulos tienen (`Subscription`,
 `SubscriptionItem`), los planes (`Plan`) y la taxonomía (`Sector`, `BusinessType`).
 
@@ -24,6 +24,9 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   caducada) gasta el asiento y una invitación viva lo ocupa; aceptar solo se frena si ya no cabe nadie más
   (invitaciones de la prueba aceptadas en Gratis). La negativa es el 409 `hubs.seat_limit` con `limit` y
   `used` en el sobre de error.
+  La gestoría (`hub_accountant`) no ocupa asiento: `HubMember.FREE_ROLES` dice qué roles quedan fuera de la
+  cuenta y `hubs.member.list` los devuelve en `free_roles`; invitarla, renovarla y aceptarla no piden asiento,
+  y pasarla a otro rol sí (el mismo 409), salvo que su invitación haya caducado.
 - Negocios: cada fila de `hubs.business.list` lleva `can: {open, manage, restore, delete}` y la página
   (`hubs.business.get`) las mismas claves en `can` más `country_locked`; el país no cambia desde `ready_at`
   (409 `hubs.country_locked`). Una negativa del Hub (o su arreglo) se graba con la operación de sistema
