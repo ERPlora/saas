@@ -71,7 +71,7 @@ class MigrationTest(DeployCase):
                              ('{"tasks": [{"taskArn": "a"}, {"taskArn": "b"}]}', "running saas-migrate: a\n"),
                              ('{"tasks": [{"taskArn": ["\u00f1"]}]}', 'running saas-migrate: [\n  "\u00f1"\n]\n')):
             self.assertEqual(0, self.deploy(FAKE_RUN_TASK_ANSWER=answer), answer)
-            self.assertIn(said, self.out)
+            self.assertIn(f"{said}updated saas\n", self.out)
         for answer, said in (("null", "did not start: null\n"), ("", "did not start: \n"), ("  ", "did not start: \n"),
                              ('{"tasks": [], "failures": []}', "did not start: []\n"),
                              ('{"tasks": [{"taskArn": false}]}', "did not start: null\n"),
