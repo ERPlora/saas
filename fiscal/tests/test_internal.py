@@ -498,11 +498,11 @@ def test_what_the_model_cannot_carry_is_refused_naming_the_field(client, query, 
 
 
 def test_the_stamp_goes_on_the_model_when_there_is_one(client, synthetic_company, stamp_keeper):
-    from fiscal import services
+    from fiscal.services import stamp_changes
     from fiscal.schemas import StampUploadIn
     from fiscal.tests.conftest import staff_ctx, stamp_png
 
-    services.stamp_upload(staff_ctx(stamp_keeper), StampUploadIn(png_base64=base64.b64encode(stamp_png()).decode()))
+    stamp_changes.stamp_upload(staff_ctx(stamp_keeper), StampUploadIn(png_base64=base64.b64encode(stamp_png()).decode()))
 
     assert len(model_pages(get_model(client))[0].images) == 1
 

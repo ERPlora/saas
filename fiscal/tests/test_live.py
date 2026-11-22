@@ -2,7 +2,7 @@
 
 ``fiscal.representation.status`` re-runs on the channel that changed the authorisation (the owner's for the
 Hub's upload, the reviewer's for a decision) and on the channel of each owner and admin of the business, told
-by ``fiscal.representation.changed`` (``services.tell_the_business``).
+by ``fiscal.representation.changed`` (``services.business_notices.tell_the_business``).
 """
 
 from live.live_registry import live_registry

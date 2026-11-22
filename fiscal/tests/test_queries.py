@@ -372,7 +372,7 @@ def test_without_a_company_configuration_there_is_no_representative(caplog):
 def test_the_stamp_is_read_decrypted_and_none_without_one(stamp_keeper):
     import base64
 
-    from fiscal import services
+    from fiscal.services import stamp_changes
     from fiscal.schemas import StampUploadIn
     from fiscal.tests.conftest import staff_ctx, stamp_png
 
@@ -380,7 +380,7 @@ def test_the_stamp_is_read_decrypted_and_none_without_one(stamp_keeper):
     assert queries.stamp_status() is None
 
     png = stamp_png()
-    services.stamp_upload(staff_ctx(stamp_keeper), StampUploadIn(png_base64=base64.b64encode(png).decode()))
+    stamp_changes.stamp_upload(staff_ctx(stamp_keeper), StampUploadIn(png_base64=base64.b64encode(png).decode()))
 
     assert queries.representative_stamp() == png
     state = queries.stamp_status()
