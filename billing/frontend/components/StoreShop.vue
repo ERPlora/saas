@@ -11,42 +11,30 @@
 // Web only: StorePage renders it in `<WebOnly>`, so inside the apps nothing here loads.
 import { ConfirmDialog, type ConfirmConsequence, EmptyState, InlineFeedback } from '@erplora/ui/components';
 import { HubIcon, toastInfo, toastSuccess } from '@erplora/ui/shell';
-import { useCommand, useLive, useLiveClient } from '@erplora/ui/sdk';
+import { useCommand } from '@erplora/ui/sdk';
 import { IonButton, IonCard, IonCardContent, IonLabel, IonSegment, IonSegmentButton, IonSkeletonText } from '@ionic/vue';
 import { computed, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { BILLING, BUSINESSES } from '../../../accounts/frontend/paths';
-import { useLiveState } from '../../../frontend/live-state';
+import { BUSINESSES } from '../../../accounts/frontend/paths';
 import { useErrorText } from '../../../hubs/frontend/error-text';
 import type { PlanOut } from '../../../frontend/sdk-types/hubs-catalog';
-import type {
-  AppSummaryOut,
-  BillingInterval,
-  SubscriptionModuleOut,
-  StoreCatalogOut,
-  SubscriptionOut,
-} from '../../../frontend/sdk-types/store';
+import type { BillingInterval, SubscriptionOut } from '../../../frontend/sdk-types/store';
 import { checkoutNotice } from '../discount-text';
 import { formatCents, formatDate } from '../format';
 import type { PromoCheckOut } from '../promo-types';
-import {
-  annualSaving,
-  blockOf,
-  declinedCard,
-  isFree,
-  moduleInterval,
-  ownedBusinesses,
-  saleModules,
-  type SaleModule,
-} from '../store';
+import { annualSaving, isFree, moduleInterval, saleModules, type SaleModule } from '../store';
+import { useStoreBusiness } from '../store-business';
+import { useStoreCatalog } from '../store-catalog';
 import AnnualSwitchDialog from './AnnualSwitchDialog.vue';
 import BusinessPicker from './BusinessPicker.vue';
+import CancelModuleDialog from './CancelModuleDialog.vue';
 import CheckoutModal, { type CheckoutPurchase } from './CheckoutModal.vue';
 import ModuleCard from './ModuleCard.vue';
 import PlansGrid from './PlansGrid.vue';
 import PromoCodeField from './PromoCodeField.vue';
 import ProrationDialog, { type ProrationItem } from './ProrationDialog.vue';
+import StoreUnpaidNotice from './StoreUnpaidNotice.vue';
 
 const props = defineProps<{
   tab: 'plans' | 'modules';
@@ -58,90 +46,11 @@ const emit = defineEmits<{ 'update:businessId': [id: string] }>();
 
 const { t, locale } = useI18n();
 const { forDialog } = useErrorText();
-const client = useLiveClient();
 
-// --- The business it sells to ----------------------------------------------------------------------
+// --- The business it sells to, what is on sale, and what the business has ----------------------------
 
-const list = useLive('hubs.business.list', { limit: 100 });
-/** Loading, failed (the query, the stream, or nothing in time), none owned or some: «You have no business to
- *  buy for» only with a real answer. */
-const listState = useLiveState(list, { isEmpty: (data) => ownedBusinesses(data.rows).length === 0 });
-const rows = computed(() => list.data.value?.rows ?? []);
-const owned = computed(() => ownedBusinesses(rows.value));
-/** What the owner picked here; until then, `?business=`. */
-const picked = shallowRef<string | null>(null);
-const wanted = computed(() => picked.value ?? props.businessId ?? null);
-/** The one asked for; else the first that can buy (not one an unpaid invoice blocks); else the first. */
-const business = computed(
-  () =>
-    owned.value.find((row) => row.id === wanted.value) ??
-    owned.value.find((row) => !blockOf(row)) ??
-    owned.value[0] ??
-    null,
-);
-const unknownAsked = computed(
-  () => !picked.value && !!props.businessId && !!list.data.value && !!business.value && business.value.id !== props.businessId,
-);
-const chosenId = computed({
-  get: () => business.value?.id ?? '',
-  set: (id: string) => {
-    picked.value = id;
-    emit('update:businessId', id);
-  },
-});
-const block = computed(() => (business.value ? blockOf(business.value) : null));
-/** The business whose card, the same payer's as this one, the bank declined: the checkout says so. */
-const declinedFor = computed(() => (business.value ? declinedCard(rows.value, business.value) : null));
-
-// --- What is on sale, and what the business has ------------------------------------------------------
-
-const plans = shallowRef<PlanOut[] | null>(null);
-const apps = shallowRef<AppSummaryOut[] | null>(null);
-const catalog = shallowRef<StoreCatalogOut | null>(null);
-const failed = shallowRef(false);
-let catalogToken = 0;
-
-async function loadOnSale(): Promise<void> {
-  try {
-    const [planList, appList] = await Promise.all([
-      client.api.call('hubs.plan.list'),
-      client.api.call('apps.app.list', { premium: true }),
-    ]);
-    plans.value = planList.plans;
-    apps.value = appList.apps;
-  } catch (error) {
-    console.error('billing: the plans or the app catalog could not be loaded', error);
-    failed.value = true;
-  }
-}
-
-async function loadCatalog(hubId: string): Promise<void> {
-  const mine = ++catalogToken;
-  try {
-    const answer = await client.api.call('billing.store.catalog', { hub_id: hubId });
-    if (mine === catalogToken) catalog.value = answer;
-  } catch (error) {
-    if (mine !== catalogToken) return;
-    console.error('billing: what the business has could not be loaded', error);
-    failed.value = true;
-  }
-}
-
-function retry(): void {
-  failed.value = false;
-  void loadOnSale();
-  if (business.value) void loadCatalog(business.value.id);
-}
-
-// The catalog speaks the person's language: asked again when it changes.
-watch(locale, () => void loadOnSale(), { immediate: true });
-watch(
-  () => business.value?.id,
-  (id) => {
-    if (id) void loadCatalog(id);
-  },
-  { immediate: true },
-);
+const { listState, owned, business, unknownAsked, chosenId, block, declinedFor } = useStoreBusiness(props, emit);
+const { plans, apps, catalog, failed, loadCatalog, retry, apply } = useStoreCatalog(business);
 
 const subscription = computed(() => (catalog.value?.hub_id === business.value?.id ? (catalog.value?.subscription ?? null) : null));
 const ready = computed(
@@ -257,38 +166,6 @@ function addModule(module: SaleModule): void {
   prorationOpen.value = true;
 }
 
-/** What a command left of the subscription, kept here until the catalog is asked again. */
-function apply(out: SubscriptionOut): void {
-  const now = catalog.value;
-  if (!now || now.hub_id !== out.hub_id) return;
-  const items = new Map<string, SubscriptionModuleOut>(out.modules.map((item) => [item.slug, item]));
-  const nowTime = Date.now();
-  catalog.value = {
-    ...now,
-    subscription: {
-      plan: out.plan,
-      billing_interval: out.billing_interval,
-      status: out.status,
-      paying: true,
-      cancel_at_period_end: out.cancel_at_period_end,
-      current_period_end: out.current_period_end,
-      trial_plan: now.subscription?.trial_plan ?? null,
-      trial_end: out.trial_end,
-      scheduled_change: out.scheduled_change ?? null,
-    },
-    modules: now.modules.map((module) => {
-      const item = items.get(module.slug);
-      const live = !!item && (!item.valid_until || Date.parse(item.valid_until) > nowTime);
-      return {
-        ...module,
-        owned: live,
-        source: live ? (item.source as 'plan' | 'purchase') : null,
-        valid_until: live ? item.valid_until : null,
-      };
-    }),
-  };
-}
-
 function prorationDone(out: SubscriptionOut): void {
   const item = prorationItem.value;
   if (item?.kind === 'module') activating.value = new Set([...activating.value, `${out.hub_id}:${item.slug}`]);
@@ -306,7 +183,6 @@ const cancelOpen = shallowRef(false);
 const cancelPlan = useCommand('billing.plan.cancel');
 const keepPlan = useCommand('billing.plan.keep');
 const keepModule = useCommand('billing.module.keep');
-const cancelModule = useCommand('billing.module.cancel');
 const { text } = useErrorText();
 
 const cancelConsequences = computed<ConfirmConsequence[]>(() => {
@@ -360,53 +236,8 @@ async function keepThePlan(): Promise<void> {
   }
 }
 
-// A bought module ends with its period: the dialog says until when and that it can be kept.
+/** A bought module ends with its period: its «Cancel module» dialog is open while it is set. */
 const moduleToCancel = shallowRef<SaleModule | null>(null);
-const cancelModuleOpen = computed({
-  get: () => moduleToCancel.value !== null,
-  set: (open: boolean) => {
-    if (!open) moduleToCancel.value = null;
-  },
-});
-
-function askToCancel(module: SaleModule): void {
-  cancelModule.error.value = null;
-  moduleToCancel.value = module;
-}
-
-const cancelModuleConsequences = computed<ConfirmConsequence[]>(() => {
-  const module = moduleToCancel.value?.name ?? '';
-  const name = business.value?.name ?? '';
-  const date = formatDate(renewal.value, locale.value);
-  return [
-    {
-      icon: 'ion:calendar-outline',
-      text: date
-        ? t('billing.cancelModule.until', { module, business: name, date })
-        : t('billing.cancelModule.untilNoDate', { module, business: name }),
-    },
-    { icon: 'ion:folder-outline', text: t('billing.cancelModule.data') },
-    { icon: 'ion:refresh-outline', text: t('billing.cancelModule.undo') },
-  ];
-});
-
-async function confirmCancelModule(): Promise<void> {
-  const hub = business.value;
-  const module = moduleToCancel.value;
-  if (!hub || !module) return;
-  try {
-    const out = await cancelModule.run({ hub_id: hub.id, module: module.slug });
-    apply(out);
-    const until = out.modules.find((item) => item.slug === module.slug)?.valid_until ?? out.current_period_end;
-    const date = formatDate(until, locale.value);
-    toastSuccess(
-      date ? t('billing.cancelModule.done', { module: module.name, date }) : t('billing.cancelModule.doneNoDate', { module: module.name }),
-    );
-    moduleToCancel.value = null;
-  } catch {
-    // `cancelModule.error`: the dialog says it.
-  }
-}
 
 async function keepTheModule(module: SaleModule): Promise<void> {
   const hub = business.value;
@@ -477,44 +308,11 @@ async function keepTheModule(module: SaleModule): Promise<void> {
         {{ $t('billing.store.unknownBusiness', { name: business.name }) }}
       </InlineFeedback>
 
-      <InlineFeedback
+      <StoreUnpaidNotice
         v-if="business && block"
-        tone="danger"
-        icon="ion:card-outline"
-        role="alert"
-        :heading="$t('billing.unpaid.heading', { name: business.name })"
-        data-testid="store-unpaid"
-      >
-        {{ $t(`billing.unpaid.${block}`) }}
-        <template #actions>
-          <ion-button
-            v-if="business.pay_url && block !== 'card_declined'"
-            size="small"
-            :href="business.pay_url"
-            data-testid="store-unpaid-pay"
-          >
-            <HubIcon
-              slot="start"
-              name="ion:card-outline"
-              aria-hidden="true"
-            />
-            {{ $t('billing.unpaid.pay') }}
-          </ion-button>
-          <ion-button
-            size="small"
-            fill="outline"
-            :router-link="`${BILLING}?business=${business.id}`"
-            data-testid="store-unpaid-billing"
-          >
-            <HubIcon
-              slot="start"
-              name="ion:receipt-outline"
-              aria-hidden="true"
-            />
-            {{ $t('billing.unpaid.billing') }}
-          </ion-button>
-        </template>
-      </InlineFeedback>
+        :business="business"
+        :block="block"
+      />
 
       <div
         v-if="!ready"
@@ -629,7 +427,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
             :renewal="renewal"
             @add="addModule(module)"
             @keep="keepTheModule(module)"
-            @cancel="askToCancel(module)"
+            @cancel="moduleToCancel = module"
           />
         </div>
         <EmptyState
@@ -692,19 +490,12 @@ async function keepTheModule(module: SaleModule): Promise<void> {
       :error="forDialog(cancelPlan.error.value)"
       @confirm="confirmCancel"
     />
-    <ConfirmDialog
+    <CancelModuleDialog
       v-if="business"
-      v-model:open="cancelModuleOpen"
-      testid="store-cancel-module"
-      :title="$t('billing.cancelModule.title')"
-      :message="$t('billing.cancelModule.subject', { business: business.name, module: moduleToCancel?.name ?? '' })"
-      :consequences="cancelModuleConsequences"
-      :confirm-label="$t('billing.cancelModule.confirm')"
-      :cancel-label="$t('billing.cancelModule.back')"
-      confirm-icon="ion:close-circle-outline"
-      :pending="cancelModule.pending.value"
-      :error="forDialog(cancelModule.error.value)"
-      @confirm="confirmCancelModule"
+      v-model:module="moduleToCancel"
+      :business="{ id: business.id, name: business.name }"
+      :renewal="renewal"
+      @done="apply"
     />
   </div>
 </template>
