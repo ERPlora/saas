@@ -214,12 +214,15 @@ check("report waits for e2e and runs whatever its result, unless the run was can
 check("only report may write issues",
       [name for name, job in njobs.items() if (job.get("permissions") or {}).get("issues") == "write"] == ["report"]
       and report.get("permissions") == {"contents": "read", "issues": "write"})
-check("report downloads the JSON report before e2e-report.sh reads it",
-      before(report, "actions/download-artifact", "e2e-report.sh"))
-report_env = next((step.get("env") or {} for step in steps(report) if "e2e-report.sh" in str(step.get("run", ""))), {})
-check("e2e-report.sh gets e2e's result and the run",
+check("report downloads the JSON report before e2e_report.py reads it",
+      before(report, "actions/download-artifact", "e2e_report.py"))
+report_step = next((step for step in steps(report) if "e2e_report.py" in str(step.get("run", ""))), {})
+check("report runs e2e_report.py with the runner's python3",
+      report_step.get("run") == "python3 .github/scripts/e2e_report.py")
+report_env = report_step.get("env") or {}
+check("e2e_report.py gets e2e's result and the run",
       report_env.get("RESULT") == "${{ needs.e2e.result }}" and "RUN_URL" in report_env and "GH_TOKEN" in report_env)
-check("e2e-report.sh only writes issues for main",
+check("e2e_report.py only writes issues for main",
       report_env.get("PUBLISH") == "${{ github.ref == 'refs/heads/main' }}")
 
 setup_uv = [step for job in [*tjobs.values(), *ejobs.values()] for step in steps(job)

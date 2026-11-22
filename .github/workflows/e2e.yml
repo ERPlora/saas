@@ -120,7 +120,7 @@ jobs:
           fi
           echo "specs: ${specs[*]:-all}"
           pnpm e2e:ci --reporter=list,json "${specs[@]}"
-      # For nightly.yml's report (e2e-report.sh) and for whoever looks at a red run: the JSON report, and each failed
+      # For nightly.yml's report (e2e_report.py) and for whoever looks at a red run: the JSON report, and each failed
       # test's trace and screenshot (`retain-on-failure`, playwright.config.ts).
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
