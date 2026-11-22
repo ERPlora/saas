@@ -8,7 +8,7 @@ anything that asks the person to act (connecting WhatsApp again). There is no «
 no such mail, and a switch that governs nothing would mislead the person.
 """
 
-from datetime import date
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -89,14 +89,16 @@ class TestWhatNoSwitchStops:
 
     def test_a_failed_payment_is_still_told(self, ana, plans):  # noqa: F811
         from billing import emails as billing_emails
+        from billing.models import PaymentFailure
 
         business = create_business(ana, name="Panadería López")
         _business_notices_off(ana)
         mail.outbox.clear()
 
-        billing_emails.send_payment_failed(
-            business, to=ana.email, language="es", amount=Decimal("36.29"), declined=False, suspends_on=date(2026, 11, 1)
+        failure = PaymentFailure(
+            reason=PaymentFailure.Reason.PAYMENT_FAILED, invoice_created_at=datetime(2026, 10, 25, tzinfo=UTC)
         )
+        billing_emails.send_payment_failed(business, failure, to=ana.email, language="es", amount=Decimal("36.29"))
 
         assert [message.to for message in mail.outbox] == [["ana@example.com"]]
 

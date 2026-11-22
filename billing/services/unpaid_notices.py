@@ -12,7 +12,6 @@ from billing import emails
 from billing.models import Invoice, PaymentFailure
 from billing.services import stripe_customers, stripe_sync
 from hubs.models import Hub
-from hubs.models.subscriptions import grace_end
 
 logger = logging.getLogger("billing.services")
 
@@ -44,14 +43,7 @@ def notify_unpaid(hub_id) -> str:
                 )
             elif to:
                 for failure in to_tell:
-                    emails.send_payment_failed(
-                        hub,
-                        to=to,
-                        language=language,
-                        amount=_owed_amount(failure),
-                        declined=failure.reason == PaymentFailure.Reason.CARD_DECLINED,
-                        suspends_on=grace_end(failure.invoice_created_at),
-                    )
+                    emails.send_payment_failed(hub, failure, to=to, language=language, amount=_owed_amount(failure))
                     PaymentFailure.objects.filter(pk=failure.pk).update(notified_at=now)
         except emails.MailNotSent:
             return MAIL_NOT_SENT

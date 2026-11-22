@@ -9,7 +9,7 @@ shape ``base/tests/test_emails.py`` checks; ACCOUNTS-F46); the link is the panel
 invoice page; the recipient is the payer's billing e-mail (the invoice's addressee), the account's otherwise.
 """
 
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -17,7 +17,7 @@ import pytest
 from django.core import mail
 
 from billing import emails
-from billing.models import Invoice, InvoiceLine
+from billing.models import Invoice, InvoiceLine, PaymentFailure
 
 pytestmark = pytest.mark.django_db
 
@@ -133,12 +133,7 @@ def test_a_mail_whose_html_cannot_be_drawn_is_not_sent_either(notice, invoice, m
     send = {
         "invoice": lambda: emails.send_invoice_issued(invoice),
         "payment_failed": lambda: emails.send_payment_failed(
-            hub,
-            to="a@example.com",
-            language="en",
-            amount=Decimal("29.99"),
-            declined=False,
-            suspends_on=date(2026, 11, 1),
+            hub, unpaid_invoice(), to="a@example.com", language="en", amount=Decimal("29.99")
         ),
         "business_suspended": lambda: emails.send_business_suspended(
             hub, to="a@example.com", language="en", amount=Decimal("29.99")
@@ -150,21 +145,81 @@ def test_a_mail_whose_html_cannot_be_drawn_is_not_sent_either(notice, invoice, m
     assert mail.outbox == []
 
 
-@pytest.mark.parametrize("declined", [False, True])
-def test_every_line_of_the_unpaid_mail_reaches_a_spanish_payer_in_spanish(declined):
+@pytest.mark.parametrize("reason", PaymentFailure.Reason.values)
+def test_every_line_of_the_unpaid_mail_reaches_a_spanish_payer_in_spanish(reason):
     """BILLING-F16: the mail of a renewal that could not be charged says each of its lines in the payer's language,
     also why the card was declined: none is left in the English source (a sentence rewritten without its
     translation). The links and the amounts aside, no line of the Spanish mail is a line of the English one."""
     hub = SimpleNamespace(id="0199a0c4-7f3e-7000-8000-000000000001", name="Mi Hub")
     for language in ("en", "es"):
         emails.send_payment_failed(
-            hub,
-            to="a@example.com",
-            language=language,
-            amount=Decimal("29.99"),
-            declined=declined,
-            suspends_on=date(2026, 11, 1),
+            hub, unpaid_invoice(reason), to="a@example.com", language=language, amount=Decimal("29.99")
         )
     english, spanish = (set(message.body.splitlines()) - {""} for message in mail.outbox)
 
     assert spanish.isdisjoint(english)
+
+
+def unpaid_invoice(reason: str = PaymentFailure.Reason.PAYMENT_FAILED) -> PaymentFailure:
+    """An invoice Stripe could not collect, issued on 25 October: the business keeps working until 1 November."""
+    return PaymentFailure(reason=reason, invoice_created_at=datetime(2026, 10, 25, 9, 30, tzinfo=UTC))
+
+
+UNPAID_HUB = SimpleNamespace(id="0199a0c4-7f3e-7000-8000-000000000001", name="Panadería López")
+PAY_IT = "https://erplora.com/dashboard/billing/invoices?business=0199a0c4-7f3e-7000-8000-000000000001"
+#: The unpaid mail in each language: its subject, its first line, the line of a declined card and the rest.
+UNPAID_MAIL = {
+    "en": (
+        "We could not charge the plan of Panadería López",
+        "We could not charge 1,234.50 € for the plan of Panadería López.\n",
+        "The bank declined your card, so we will not try it again: change the card, then pay the invoice yourself.\n",
+        "Panadería López keeps working until Nov. 1, 2026. If the invoice is not paid by then, it is suspended. "
+        f"Nothing is deleted.\n\nPay it from Billing: {PAY_IT}\n",
+    ),
+    "es": (
+        "No hemos podido cobrar el plan de Panadería López",
+        "No hemos podido cobrar 1\xa0234,50 € del plan de Panadería López.\n",
+        "El banco rechazó tu tarjeta, así que no volveremos a intentar el cobro con ella: cámbiala y paga tú la "
+        "factura.\n",
+        "Panadería López sigue funcionando hasta el 1 de noviembre de 2026. Si la factura no se paga antes, se "
+        f"suspende. No se borra nada.\n\nPágala en Facturación: {PAY_IT}\n",
+    ),
+}
+
+
+@pytest.mark.parametrize("reason", PaymentFailure.Reason.values)
+@pytest.mark.parametrize("language", ["en", "es", ""])
+def test_the_unpaid_mail_says_how_much_until_when_and_where_to_pay(language, reason):
+    """BILLING-F16: the mail of a renewal that could not be charged, word for word, in the payer's language (the
+    platform's when the payer has none): how much, why the card is not tried again only when the bank declined
+    it, until when the business keeps working (7 days from the invoice) and where to pay. Support filters it by
+    its notice header."""
+    emails.send_payment_failed(
+        UNPAID_HUB, unpaid_invoice(reason), to="pagos@example.com", language=language, amount=Decimal("1234.5")
+    )
+
+    [message] = mail.outbox
+    told_in = language or "en"
+    subject, opening, declined_line, rest = UNPAID_MAIL[told_in]
+    assert message.subject == subject
+    declined = reason == PaymentFailure.Reason.CARD_DECLINED
+    assert message.body == opening + (declined_line if declined else "") + rest
+    assert message.to == ["pagos@example.com"]
+    assert message.extra_headers == {"X-ERPlora-Notice": "billing.payment_failed"}
+    [(html, _)] = message.alternatives
+    assert f'<html lang="{told_in}"' in html
+
+
+@pytest.mark.parametrize("issued_at", ["00:00:00", "23:59:59"])
+def test_the_unpaid_mail_counts_the_grace_from_the_moment_the_invoice_was_issued(issued_at):
+    """BILLING-F16: the day the mail gives is the moment the invoice was issued plus the 7 days of grace, not an
+    hour more or less: issued in the first or in the last second of 25 October, the business keeps working until
+    1 November."""
+    failure = PaymentFailure(
+        reason=PaymentFailure.Reason.PAYMENT_FAILED,
+        invoice_created_at=datetime.fromisoformat(f"2026-10-25T{issued_at}+00:00"),
+    )
+
+    emails.send_payment_failed(UNPAID_HUB, failure, to="pagos@example.com", language="en", amount=Decimal("29.99"))
+
+    assert "Panadería López keeps working until Nov. 1, 2026." in mail.outbox[0].body
