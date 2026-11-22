@@ -30,11 +30,6 @@
       "count": 1
     }
   },
-  "hubs/frontend/pages/LaunchPage.vue": {
-    "vue/max-lines-per-block": {
-      "count": 1
-    }
-  },
   "scripts/gen-public-icons.mjs": {
     "max-params": {
       "count": 1
