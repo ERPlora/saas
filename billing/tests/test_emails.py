@@ -208,3 +208,18 @@ def test_the_unpaid_mail_says_how_much_until_when_and_where_to_pay(language, rea
     assert message.extra_headers == {"X-ERPlora-Notice": "billing.payment_failed"}
     [(html, _)] = message.alternatives
     assert f'<html lang="{told_in}"' in html
+
+
+@pytest.mark.parametrize("issued_at", ["00:00:00", "23:59:59"])
+def test_the_unpaid_mail_counts_the_grace_from_the_moment_the_invoice_was_issued(issued_at):
+    """BILLING-F16: the day the mail gives is the moment the invoice was issued plus the 7 days of grace, not an
+    hour more or less: issued in the first or in the last second of 25 October, the business keeps working until
+    1 November."""
+    failure = PaymentFailure(
+        reason=PaymentFailure.Reason.PAYMENT_FAILED,
+        invoice_created_at=datetime.fromisoformat(f"2026-10-25T{issued_at}+00:00"),
+    )
+
+    emails.send_payment_failed(UNPAID_HUB, failure, to="pagos@example.com", language="en", amount=Decimal("29.99"))
+
+    assert "Panadería López keeps working until Nov. 1, 2026." in mail.outbox[0].body
