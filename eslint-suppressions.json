@@ -4,17 +4,6 @@
       "count": 2
     }
   },
-  "billing/frontend/components/CheckoutModal.vue": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "vue/max-lines-per-block": {
-      "count": 1
-    }
-  },
   "frontend/live-state.ts": {
     "max-lines-per-function": {
       "count": 1

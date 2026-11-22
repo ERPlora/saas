@@ -4,7 +4,7 @@
 // clock: data only — no code under test compares these dates with now.
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { h, reactive, ref } from 'vue';
+import { h, reactive } from 'vue';
 import type { Router } from 'vue-router';
 
 vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/frontend/__tests__/module-mocks')).shellWithToastSpies(original));
@@ -43,10 +43,10 @@ vi.mock('@ionic/vue', async (importOriginal) => {
 
 import { toastSuccess } from '@erplora/ui/shell';
 
-import { apiError, flush, mountBilling } from '../__tests__/mount-billing';
+import { EMPTY_PROFILE, happy, MODULE, PLAN, PROFILE, SESSION, setup, TAKE_OVER, takeOver } from '../__tests__/checkout-modal';
+import { apiError, flush, ionProps } from '../__tests__/mount-billing';
 import { stripeDouble, type StripeDouble } from '../__tests__/stripe-double';
 import { loadStripeJs } from '../stripe-js';
-import CheckoutModal, { type CheckoutPurchase } from './CheckoutModal.vue';
 
 let stripe: StripeDouble;
 
@@ -63,67 +63,6 @@ afterEach(() => {
   applySurface('web');
   document.body.innerHTML = '';
 });
-
-const PROFILE = {
-  hub_id: 'cafe',
-  paid_by_another_account: false,
-  billing_name: 'Café Central SL',
-  tax_id: 'ESB12345678',
-  billing_address: 'Calle Mayor 1',
-  billing_city: 'Madrid',
-  billing_postal_code: '28001',
-  billing_country: 'ES',
-  billing_email: '',
-  same_as_business: false,
-};
-const EMPTY_PROFILE = { ...PROFILE, billing_name: '', tax_id: '', billing_address: '', billing_city: '', billing_postal_code: '', billing_country: '' };
-const SESSION = { flow: 'checkout', session_id: 'cs_test_1', client_secret: 'cs_test_1_secret_x', publishable_key: 'pk_test_double', preview: null };
-const PLAN: CheckoutPurchase = { kind: 'plan', slug: 'starter', name: 'Starter', interval: 'year' };
-const MODULE: CheckoutPurchase = { kind: 'module', slug: 'booking', name: 'Bookings', interval: 'month' };
-/** The plan of a handed-over business, kept with the new owner's card from the end of the paid period. */
-const TAKE_OVER: CheckoutPurchase = { kind: 'takeover', slug: 'starter', name: 'Starter', interval: 'month', from: '2026-11-01T10:00:00Z' };
-const takeOver: Handler = ({ path }) => {
-  if (path === '/api/hubs/billing-profile') return Response.json(PROFILE);
-  if (path === '/api/billing/plan/take-over') return Response.json(SESSION);
-  return Response.json({});
-};
-
-type Handler = (call: { method: string; path: string; body: unknown }) => Response | Promise<Response>;
-
-const happy: Handler = ({ path }) => {
-  if (path === '/api/hubs/billing-profile') return Response.json(PROFILE);
-  if (path === '/api/billing/checkout/start') return Response.json(SESSION);
-  return Response.json({});
-};
-
-async function setup(api: Handler = happy, purchase: CheckoutPurchase = PLAN, extra: Record<string, unknown> = {}, locale: 'en' | 'es' = 'en', slots = {}) {
-  const open = ref(true);
-  const stale = vi.fn();
-  const Host = {
-    render: () =>
-      h(CheckoutModal, {
-        business: { id: 'cafe', name: 'Café Central' },
-        purchase,
-        promoCode: 'SPRING',
-        declinedFor: null,
-        ...extra,
-        open: open.value,
-        'onUpdate:open': (v: boolean) => (open.value = v),
-        onStale: stale,
-      }, slots),
-  };
-  const m = await mountBilling(Host, {
-    locale,
-    api: (call) => {
-      const url = new URL(call.url, 'http://localhost');
-      const body = typeof call.init.body === 'string' ? JSON.parse(call.init.body) : undefined;
-      return api({ method: (call.init.method ?? 'GET').toUpperCase(), path: url.pathname, body });
-    },
-  });
-  await flush();
-  await flush();
-  return { ...m, open, stale };
-}
 
 /**
  * Stripe completes the payment while the business's page is still on its way: the navigation it starts waits until
@@ -162,6 +101,14 @@ describe('CheckoutModal', () => {
     const s = await setup(happy, MODULE);
     expect(s.q('checkout-modal')?.getAttribute('aria-label')).toBe('Add Bookings');
     expect(s.calls()[1].body).toEqual({ hub_id: 'cafe', module: 'booking', interval: 'month' });
+  });
+
+  it.each([
+    ['a plan bought monthly', { ...PLAN, interval: 'month' }, { hub_id: 'cafe', plan: 'starter', interval: 'month', promo_code: 'SPRING' }],
+    ['a module bought yearly', { ...MODULE, interval: 'year' }, { hub_id: 'cafe', module: 'booking', interval: 'year' }],
+  ] as const)('opens the payment of %s at that billing', async (_what, purchase, body) => {
+    const s = await setup(happy, purchase);
+    expect(s.calls()[1].body).toEqual(body);
   });
 
   it('once Stripe completes the payment: «Paying…», the checkout destroyed, the business’s page and what happened', async () => {
@@ -337,6 +284,14 @@ describe('CheckoutModal', () => {
     expect(s.q('details-name')).not.toBeNull();
   });
 
+  it('«Change» shows the payer on file in the form', async () => {
+    const s = await setup();
+    s.q('checkout-change-details')?.click();
+    await flush();
+    const value = (id: string) => ionProps({ element: s.q(`details-${id}`)! }, 'value').value;
+    expect(['name', 'tax-id', 'address', 'city', 'postal-code'].map(value)).toEqual(['Café Central SL', 'ESB12345678', 'Calle Mayor 1', 'Madrid', '28001']);
+  });
+
   it('while Stripe.js loads, its place waits in the dialog and nothing says «could not open»', async () => {
     let loaded: (factory: never) => void = () => undefined;
     vi.mocked(loadStripeJs).mockImplementationOnce(() => new Promise((resolve) => (loaded = resolve)));
@@ -360,6 +315,37 @@ describe('CheckoutModal', () => {
     expect(stripe.checkouts).toHaveLength(1);
   });
 
+  it('«Retry» waits for Stripe.js again without the earlier failure on screen', async () => {
+    vi.mocked(loadStripeJs).mockImplementationOnce(() => Promise.reject(new Error('Stripe.js could not be loaded')));
+    const s = await setup();
+    vi.mocked(loadStripeJs).mockImplementationOnce(() => new Promise(() => undefined));
+    s.q('checkout-retry')?.click();
+    await flush();
+    expect(s.q('checkout-error')).toBeNull();
+    expect(s.q('checkout-stripe')).not.toBeNull();
+  });
+
+  it.each([
+    ['the server’s checkout', 'start', () => Response.json(SESSION), [[true, false]]],
+    ['the server’s refusal', 'start', () => apiError(503, 'billing.payments_unavailable', 'Payments are not available right now.'), [[true, false]]],
+    ['Stripe’s checkout', 'stripe', () => stripe.factory, [[true, false], [false, true]]],
+    ['Stripe.js failing to load', 'stripe', () => Promise.reject(new Error('Stripe.js could not be loaded')), [[true, false]]],
+  ] as const)('%s for an attempt left behind is dropped: closed and opened again, the dialog pays once', async (_what, late, answer, checkouts) => {
+    let release = (): void => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve)).then(answer as () => unknown);
+    if (late === 'stripe') vi.mocked(loadStripeJs).mockImplementationOnce(() => held as never);
+    let starts = 0;
+    const s = await setup(({ path }) => (late === 'start' && path === '/api/billing/checkout/start' && ++starts === 1 ? (held as Promise<Response>) : happy({ path } as never)));
+    s.open.value = false;
+    await flush();
+    s.open.value = true;
+    await flush();
+    release();
+    await flush();
+    expect(s.q('checkout-error')).toBeNull();
+    expect(stripe.checkouts.map((c) => [c.mountedOn === s.q('checkout-stripe'), c.destroyed])).toEqual(checkouts);
+  });
+
   it('a checkout Stripe refuses to mount is said too', async () => {
     stripe.failNext(new Error('Invalid client secret'));
     const s = await setup();
@@ -379,6 +365,16 @@ describe('CheckoutModal', () => {
     );
     expect(s.stale).toHaveBeenCalled();
     expect(s.open.value).toBe(false);
+    expect(stripe.checkouts).toEqual([]);
+  });
+
+  it.each([
+    ['a payment to confirm (even with a secret and a key)', { ...SESSION, flow: 'confirm' }],
+    ['a checkout without its secret', { ...SESSION, client_secret: null }],
+    ['a checkout without its key', { ...SESSION, publishable_key: null }],
+  ])('%s opens nothing in Stripe: back to the Store, which asks the price again', async (_what, session) => {
+    const s = await setup(({ path }) => Response.json(path === '/api/hubs/billing-profile' ? PROFILE : session));
+    expect(s.stale).toHaveBeenCalled();
     expect(stripe.checkouts).toEqual([]);
   });
 
