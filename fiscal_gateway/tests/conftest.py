@@ -11,6 +11,9 @@ query.
 
 ``business`` is the business ``HUB`` (slug ``HUB_SLUG``) as the SaaS knows it: the gateway presents
 for businesses it knows only.
+
+``_secrets`` and ``_known_business`` are not autouse: the tests of ``/internal/verifactu`` ask for them
+with ``pytestmark = pytest.mark.usefixtures(...)``, and the gateway's other tests do without them.
 """
 
 import base64
@@ -26,12 +29,16 @@ from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID, ObjectIdentifier
 
 from base.tests.conftest import ca_gone_after_one_read, unreadable_ca  # noqa: F401 - the server's trusted certificates
+from fiscal_gateway import seal
 
 FIXTURES = Path(__file__).parent / "fixtures"
 PASSWORD = "secret"
 #: The business the Hub presents for: its registry UUID (lowercase) and its slug.
 HUB = "0199e8a0-0000-7000-8000-000000000001"
 HUB_SLUG = "bar-manolo"
+SECRET = "test-internal-secret"
+#: The platform's hub: ERPlora's own records, through its seal. No business of the SaaS bears it.
+PLATFORM = "erplora"
 
 # qcStatements (RFC 3739, 1.3.6.1.5.5.7.1.3) holding one QCStatement: id-etsi-qcs-QcType
 # (0.4.0.1862.1.6) with id-etsi-qct-eseal (0.4.0.1862.1.6.2), DER-encoded (ETSI EN 319 412-5).
@@ -120,3 +127,34 @@ def business(db):
     return Hub.objects.create(
         id=uuid.UUID(HUB), slug=HUB_SLUG, name="Bar Manolo", country="ES"
     )
+
+
+@pytest.fixture
+def _secrets(settings):
+    settings.INTERNAL_SHARED_SECRET = SECRET
+    settings.INTERNAL_SHARED_SECRET_PREVIOUS = ""
+    settings.ERPLORA_ENVIRONMENT = "prod"
+    settings.AEAT_PRODUCTION_ENABLED = True
+    settings.PLATFORM_HUB_SLUG = PLATFORM
+
+
+@pytest.fixture
+def _known_business(business):
+    """``HUB`` is a business the SaaS knows."""
+
+
+@pytest.fixture
+def erplora_seal(settings):
+    """ERPlora's seal in the CURRENT slot: an entity seal (eIDAS QcType eSeal) of ERPLORA CLOUD SL."""
+    p12 = make_p12(org_id="VATES-B27593136", serial=None, eseal=True)
+    settings.FISCAL_SEAL_CURRENT_P12_BASE64 = b64(p12)
+    settings.FISCAL_SEAL_CURRENT_PASSWORD = PASSWORD
+    settings.FISCAL_SEAL_NEXT_P12_BASE64 = ""
+    settings.FISCAL_SEAL_NEXT_PASSWORD = ""
+    return seal.load(b64(p12), PASSWORD)
+
+
+@pytest.fixture
+def own_p12():
+    """A customer's own certificate: a representative of B27593136."""
+    return make_p12(org_id="VATES-B27593136", serial="IDCES-12345678Z")
