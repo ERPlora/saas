@@ -128,6 +128,12 @@ class TestTheAllowanceCountsEveryModel:
         assert claim(caller_of(business)).claimed is False
         assert spent_by_model(hub=business)["gpt-test"][0] == 1
 
+    def test_a_message_refused_makes_no_row_for_the_model_it_asked(self, business):
+        AssistantUsage.objects.create(hub=business, month=this_month(), model="gpt-old", messages=30)
+
+        assert claim(caller_of(business)).claimed is False
+        assert list(AssistantUsage.objects.values_list("model", flat=True)) == ["gpt-old"]
+
     def test_a_message_given_back_goes_back_to_the_model_it_was_asked_of(self, business):
         AssistantUsage.objects.create(hub=business, month=this_month(), model="gpt-old", messages=4)
         claimed = claim(caller_of(business))
