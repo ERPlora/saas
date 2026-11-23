@@ -199,6 +199,12 @@ msgstr "modelo"
 msgid "The name the provider's API gives it."
 msgstr "El nombre que le da la API del proveedor."
 
+msgid "The name the provider's API gives it; empty in the records from before the model was kept."
+msgstr "El nombre que le da la API del proveedor; vacío en los registros de antes de que se guardara el modelo."
+
+msgid "Not recorded"
+msgstr "Sin registrar"
+
 #: models.py:182
 msgid "context"
 msgstr "contexto"

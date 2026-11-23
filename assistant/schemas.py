@@ -174,23 +174,34 @@ class UsageOut(Schema):
 
 class ClaimOut(UsageOut):
     """A message taken from the allowance (``claimed``), or not because none is left; ``month`` is the window it was
-    taken from (where a release gives it back)."""
+    taken from and ``model`` the model it was taken on (where a release gives it back)."""
 
     claimed: bool
     month: date
+    model: str
+
+
+class ClaimIn(Schema):
+    """Take a message of ``caller``'s allowance for a turn that asks ``model`` (its name at the provider)."""
+
+    caller: Caller
+    model: str = Field(max_length=128)
 
 
 class MessageReleaseIn(Schema):
-    """Give back a message taken in ``month``: the turn failed before answering anything."""
+    """Give back a message taken in ``month`` on ``model``: the turn failed before answering anything."""
 
     caller: Caller
     month: date
+    model: str = Field(max_length=128)
 
 
 class UsageRecordIn(Schema):
-    """What a turn (or an embedding, a dictation, a reading aloud) spent, added to this month's row of the caller."""
+    """What a turn (or an embedding, a dictation, a reading aloud) spent with ``model``, added to this month's row of the
+    caller and that model (empty when nothing names it: reading aloud has no engine today)."""
 
     caller: Caller
+    model: str = Field(max_length=128)
     tokens_input: int = Field(default=0, ge=0)
     tokens_output: int = Field(default=0, ge=0)
     tokens_embedding: int = Field(default=0, ge=0)

@@ -56,6 +56,7 @@ from assistant.schemas import (
 )
 from assistant.services.platform_actor import platform_context
 from assistant.turn import Refused, refusal
+from assistant.turn_outcome import Outcome
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +179,7 @@ async def chat(call: Call) -> HttpResponse:
     ``code`` and ``retriable``, the allowance after it in ``quota``. What it answers is kept: the Hub calls it for an
     automation's step (FLOW-F39) and writes the answer in the run and in the log of the step."""
     started = await turn.start(call.caller, call.data, answer_kept=True)
-    outcome = turn.Outcome()
+    outcome = Outcome()
     try:
         async for _frame in turn.run(started, outcome):
             pass
@@ -217,8 +218,10 @@ def media_failed(problem: media.MediaFailed) -> JsonResponse:
     return refusal(502, problem.code, turn.MESSAGES[problem.code], retriable=problem.retriable)
 
 
-async def record(caller: Caller, **spent) -> None:
-    await sync_to_async(services.turn_usage.usage_record)(platform_context(), UsageRecordIn(caller=caller, **spent))
+async def record(caller: Caller, model: str, **spent) -> None:
+    await sync_to_async(services.turn_usage.usage_record)(
+        platform_context(), UsageRecordIn(caller=caller, model=model, **spent)
+    )
 
 
 @door(EmbeddingsIn, bucket="embed", rate="ASSISTANT_EMBED_RATELIMIT", max_bytes=EMBED_BODY_BYTES)
@@ -231,7 +234,7 @@ async def embeddings(call: Call) -> HttpResponse:
         vectors, tokens = await media.embed(service, call.data.texts)
     except media.MediaFailed as problem:
         return media_failed(problem)
-    await record(call.caller, tokens_embedding=tokens, cost_usd=media.embedding_cost(tokens))
+    await record(call.caller, media.EMBEDDING_MODEL, tokens_embedding=tokens, cost_usd=media.embedding_cost(tokens))
     return JsonResponse({"embeddings": vectors, "model": media.EMBEDDING_MODEL})
 
 
@@ -254,7 +257,7 @@ async def dictation(caller: Caller, data: DictationIn) -> dict:
         text = await media.transcribe(service, audio, data.mime_type, language)
     except media.MediaFailed as problem:
         raise Refused(502, problem.code, turn.MESSAGES[problem.code], retriable=problem.retriable) from None
-    await record(caller, transcriptions=1)
+    await record(caller, media.TRANSCRIBE_MODEL, transcriptions=1)
     return {"text": text, "language": language}
 
 
@@ -279,7 +282,8 @@ async def speech(caller: Caller, data: SpeechIn) -> bytes:
         audio = await engine(text, data.language, data.voice)
     except media.MediaFailed as problem:
         raise Refused(502, problem.code, turn.MESSAGES[problem.code], retriable=problem.retriable) from None
-    await record(caller, speech_characters=len(text))
+    # No engine reads aloud today, so no model is named: its characters go to the row without a model.
+    await record(caller, "", speech_characters=len(text))
     return audio
 
 
