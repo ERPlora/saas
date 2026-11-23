@@ -96,8 +96,6 @@ class RouteCandidate(Schema):
     price_output_per_1m: Decimal
     supports_tools: bool
     supports_vision: bool
-    #: Anthropic's effort the model thinks at before it answers; empty, its default.
-    reasoning_effort: str = ""
 
 
 class RouteOut(Schema):

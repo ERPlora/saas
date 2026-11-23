@@ -198,53 +198,6 @@ def test_azure_speech_is_no_api_the_admin_can_add(as_ai_admin):
     assert AIProvider.objects.get().kind == "openai"
 
 
-def model_form(model: AIModel, **fields) -> dict:
-    """What a model's page posts: its fields as they are, and ``fields`` changed."""
-    return {
-        "provider": str(model.provider_id),
-        "model_id": model.model_id,
-        "display_name": model.display_name,
-        "context_window": str(model.context_window),
-        "price_input_per_1m": str(model.price_input_per_1m),
-        "price_output_per_1m": str(model.price_output_per_1m),
-        "supports_tools": "on",
-        "is_available": "on",
-        "reasoning_effort": model.reasoning_effort,
-        "notes": "",
-        **fields,
-    }
-
-
-def test_a_models_reasoning_effort_is_one_of_the_apis_levels_and_is_saved(as_ai_admin, listed_provider):
-    model = AIModel.objects.create(provider=listed_provider, model_id="claude-haiku-5-5", display_name="Haiku 5.5")
-    url = f"/admin/assistant/aimodel/{model.pk}/change/"
-
-    page = as_ai_admin.get(url).content.decode()
-    response = as_ai_admin.post(url, model_form(model, reasoning_effort="high"))
-
-    assert re.findall(r'<option value="(\w*)"', page.split('name="reasoning_effort"')[1].split("</select>")[0]) == [
-        "", "low", "medium", "high", "xhigh", "max"
-    ]
-    assert response.status_code == 302
-    model.refresh_from_db()
-    assert model.reasoning_effort == "high"
-    back = as_ai_admin.post(url, model_form(model, reasoning_effort=""))
-    assert back.status_code == 302
-    model.refresh_from_db()
-    assert model.reasoning_effort == ""
-
-
-def test_a_level_the_api_does_not_have_is_refused(as_ai_admin, listed_provider):
-    model = AIModel.objects.create(provider=listed_provider, model_id="claude-haiku-5-5", display_name="Haiku 5.5")
-
-    response = as_ai_admin.post(f"/admin/assistant/aimodel/{model.pk}/change/", model_form(model, reasoning_effort="adaptive"))
-
-    assert response.status_code == 200
-    assert "reasoning_effort" in response.context["adminform"].form.errors
-    model.refresh_from_db()
-    assert model.reasoning_effort == ""
-
-
 def test_every_provider_offers_its_models_to_choose(as_ai_admin, listed_provider):
     change = as_ai_admin.get(f"/admin/assistant/aiprovider/{listed_provider.pk}/change/").content.decode()
 
