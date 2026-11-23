@@ -121,6 +121,14 @@ describe('BusinessCreateForm: the fields', () => {
     expect(s.get('create-type-hint').text()).toBe(hint);
   });
 
+  // A placeholder would be painted under the floating label: an empty choice is a real value instead.
+  it("starts the type on \"I don't know yet\" as a real value, with no placeholder", async () => {
+    const s = await setup();
+    const type = s.get('create-type');
+    expect(props(type, 'placeholder', 'value')).toEqual({ placeholder: undefined, value: '' });
+    expect(optionValue(type.findAll('ion-select-option')[0]!)).toBe('');
+  });
+
   it('has no native select: only Ionic controls', async () => {
     const s = await setup();
     expect(s.wrapper.find('select').exists()).toBe(false);
@@ -207,6 +215,18 @@ describe('BusinessCreateForm: creating', () => {
   it('sends no type when the person does not know it', async () => {
     const s = await setup({ api: (c) => (c.path === '/api/hubs/businesses' ? Response.json(DETAIL, { status: 201 }) : undefined) });
     await s.type('create-name', 'Bar');
+    await s.get('create-submit').trigger('click');
+    await flush();
+    expect(s.calls().find((c) => c.path === '/api/hubs/businesses')?.body).toEqual({ name: 'Bar', country: 'ES', business_type: null });
+    expect(s.created).toHaveBeenCalledWith(DETAIL, { typeName: null });
+  });
+
+  it("going back to \"I don't know yet\" keeps it chosen and sends no type", async () => {
+    const s = await setup({ api: (c) => (c.path === '/api/hubs/businesses' ? Response.json(DETAIL, { status: 201 }) : undefined) });
+    await s.type('create-name', 'Bar');
+    await s.pick('create-type', 'bakery');
+    await s.pick('create-type', '');
+    expect(props(s.get('create-type'), 'value')).toEqual({ value: '' });
     await s.get('create-submit').trigger('click');
     await flush();
     expect(s.calls().find((c) => c.path === '/api/hubs/businesses')?.body).toEqual({ name: 'Bar', country: 'ES', business_type: null });
