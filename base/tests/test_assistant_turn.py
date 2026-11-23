@@ -870,19 +870,19 @@ class TestWhatStopsATurn:
         assert used_by(account) == 0
 
     def test_too_many_rounds_of_tools_stop_before_the_model(self, signed_in, account, answering, fake_provider):
-        got = frames(post_turn(signed_in, {"messages": [ask("Loop"), *tool_rounds(assistant.MAX_ROUNDS)]}))
+        got = frames(post_turn(signed_in, {"messages": [ask("Loop"), *tool_rounds(20)]}))
 
         assert types(got) == ["error", "done"]
         assert got[0] == {"type": "error", "code": "assistant.too_many_steps"}
         assert model_requests(fake_provider) == []
 
-    def test_a_question_gets_six_rounds_of_tools_and_no_more(self, signed_in, account, answering, fake_provider):
-        """The six rounds the WORKBOOK promises: after five the model still answers; the sixth stops (above)."""
+    def test_a_question_gets_twenty_rounds_of_tools_and_no_more(self, signed_in, account, answering, fake_provider):
+        """The twenty rounds the WORKBOOK promises, as many as the Hub's assistant: after nineteen the model still
+        answers; the twentieth stops (above). A read and a change for each day of the week take eight."""
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Here."))
 
-        got = frames(post_turn(signed_in, {"messages": [ask("Loop"), *tool_rounds(5)]}))
+        got = frames(post_turn(signed_in, {"messages": [ask("Loop"), *tool_rounds(19)]}))
 
-        assert assistant.MAX_ROUNDS == 6
         assert types(got) == ["text", "usage", "done"]
         assert len(model_requests(fake_provider)) == 1
 
