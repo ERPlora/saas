@@ -70,6 +70,26 @@ async def test_an_older_model_keeps_its_temperature(fake_provider):
     assert fake_provider.requests[0].body["temperature"] == 0.2
 
 
+async def test_the_reasoning_another_provider_kept_on_an_answer_is_not_sent(fake_provider):
+    fake_provider.reply("POST", "/v1/chat/completions", sse=[openai_chunk("Ok", finish="stop"), "[DONE]"])
+    call = {"id": "toolu_1", "type": "function", "function": {"name": "current_datetime", "arguments": "{}"}}
+    conversation = [
+        {"role": "user", "content": "What day is it?"},
+        {"role": "assistant", "content": "", "tool_calls": [call], "reasoning": [{"type": "thinking", "thinking": "", "signature": "EqQB"}]},
+        {"role": "tool", "tool_call_id": "toolu_1", "content": "{}"},
+    ]
+
+    await collect(client(fake_provider), TurnRequest(model_id="gpt-4o", messages=conversation, reasoning_effort="high"))
+
+    sent = fake_provider.requests[0].body
+    assert sent["messages"] == [
+        {"role": "user", "content": "What day is it?"},
+        {"role": "assistant", "content": "", "tool_calls": [call]},
+        {"role": "tool", "tool_call_id": "toolu_1", "content": "{}"},
+    ]
+    assert "reasoning_effort" not in sent
+
+
 async def test_a_tool_call_streamed_in_fragments_comes_out_whole(fake_provider):
     fake_provider.reply(
         "POST",

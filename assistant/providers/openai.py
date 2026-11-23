@@ -22,6 +22,7 @@ from assistant.providers.base import (
     finish_event,
     redact,
     sse_events,
+    without_reasoning,
 )
 
 #: Families of OpenAI's list that are not chat models.
@@ -46,7 +47,7 @@ class OpenAIProvider(Provider):
         messages: list[dict] = []
         if req.system:
             messages.append({"role": "system", "content": req.system})
-        messages.extend(req.messages)
+        messages.extend(without_reasoning(req.messages))
         body: dict[str, Any] = {
             "model": req.model_id,
             "messages": messages,

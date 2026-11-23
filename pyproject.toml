@@ -105,7 +105,6 @@ max-statements = 50
 "accounts/services/__init__.py" = ["F401"]
 "accounts/tests/test_support_report.py" = ["F401"]
 "apps/admin.py" = ["DJ007"]
-"assistant/turn.py" = ["B023"]
 "base/tests/test_assistant_asks.py" = ["B905"]
 "base/tests/test_queries.py" = ["B008"]
 "billing/admin/__init__.py" = ["F401"]
