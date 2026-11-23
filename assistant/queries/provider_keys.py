@@ -74,12 +74,24 @@ def service_connection(ctx: OperationContext, data: NoInput) -> dict:
 
 
 def services_provider() -> dict | None:
-    """The services' provider with its key, or ``None`` if it does not exist, is off, speaks another API than
-    OpenAI's or has no key in the environment."""
-    provider = AIProvider.objects.filter(
-        slug=settings.ASSISTANT_SERVICE_PROVIDER, is_enabled=True, kind=AIProvider.Kind.OPENAI
-    ).first()
-    api_key = provider.api_key if provider is not None else ""
-    if not api_key:
+    """The services' provider with its key, or ``None`` when it cannot be used (``services_provider_state``)."""
+    provider, problem = services_provider_state()
+    if problem is not None:
         return None
-    return {"provider": provider.slug, "base_url": provider.api_base, "api_key": api_key}
+    return {"provider": provider.slug, "base_url": provider.api_base, "api_key": provider.api_key}
+
+
+def services_provider_state() -> tuple[AIProvider | None, str | None]:
+    """The services' provider (``ASSISTANT_SERVICE_PROVIDER``), if it exists, and why it cannot be used, or ``None``
+    when it can: ``missing`` (no provider with that identifier), ``not_openai`` (it speaks another API), ``off`` or
+    ``no_key`` (its variable of the environment is empty)."""
+    provider = AIProvider.objects.filter(slug=settings.ASSISTANT_SERVICE_PROVIDER).first()
+    if provider is None:
+        return None, "missing"
+    if provider.kind != AIProvider.Kind.OPENAI:
+        return provider, "not_openai"
+    if not provider.is_enabled:
+        return provider, "off"
+    if not provider.has_key:
+        return provider, "no_key"
+    return provider, None

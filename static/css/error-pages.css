@@ -1,5 +1,5 @@
-/* HTTP error pages (templates/errors/base.html): plain HTML, links instead of buttons, so they
-   paint and work with no JavaScript. */
+/* The pages of templates/errors/base.html (the HTTP errors, and the browser's pages of the installed app's sign-in):
+   plain HTML, links and plain form buttons, so they paint and work with no JavaScript. */
 :root {
   --ep-type-page-title-compact-size: clamp(2rem, 1.55rem + 2vw, 3.25rem);
   --ep-type-page-title-weight: 650;
@@ -69,7 +69,8 @@ body {
   gap: 0.75rem;
 }
 
-.error-page__actions a {
+.error-page__actions a,
+.error-page__actions button {
   /* Its padding inside its width: at 100% wide on a phone it must not run off the page. */
   box-sizing: border-box;
   min-height: 2.75rem;
@@ -81,11 +82,14 @@ body {
   border-radius: var(--ep-radius-pill);
   background: var(--ion-card-background);
   color: var(--ion-text-color);
+  font: inherit;
   font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
 }
 
-.error-page__actions a:first-child {
+.error-page__actions a:first-child,
+.error-page__actions form:first-child button {
   border-color: var(--ion-color-primary);
   background: var(--ion-color-primary);
   color: var(--ion-color-primary-contrast);
@@ -97,7 +101,9 @@ body {
     flex-direction: column;
   }
 
-  .error-page__actions a {
+  .error-page__actions a,
+  .error-page__actions form,
+  .error-page__actions button {
     width: 100%;
   }
 }

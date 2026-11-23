@@ -83,6 +83,7 @@ const loadError = computed(() => (load.failed.value ? text(live.error.value) || 
 const rows = computed<MemberRowOut[]>(() => live.data.value?.rows ?? []);
 const seats = computed(() => live.data.value?.seats ?? { used: 0, limit: null });
 const invitableRoles = computed(() => live.data.value?.invitable_roles ?? []);
+const freeRoles = computed(() => live.data.value?.free_roles ?? []);
 
 watch(live.data, (now) => {
   if (now && now.rows.length === 0 && now.total > 0 && now.offset >= now.total) {
@@ -280,12 +281,14 @@ async function withdrawOffer(id: string): Promise<void> {
       <span class="roles-line">{{ $t('hubs.members.rolesOwner') }}</span>
       <span class="roles-line">{{ $t('hubs.members.rolesAdmin') }}</span>
       <span class="roles-line">{{ $t('hubs.members.rolesStaff') }}</span>
+      <span class="roles-line">{{ $t('hubs.members.rolesAccountant') }}</span>
     </InlineFeedback>
 
     <InviteModal
       v-model:open="inviting"
       :business="business"
       :invitable-roles="invitableRoles"
+      :free-roles="freeRoles"
       :seats="seats"
     />
     <RoleModal

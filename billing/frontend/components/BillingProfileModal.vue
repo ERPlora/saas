@@ -14,7 +14,7 @@ import { useErrorText } from '../../../hubs/frontend/error-text';
 import type { InvoiceBusinessOut } from '../../../frontend/sdk-types/billing-invoices';
 import type { VatCheckOut } from '../../../frontend/sdk-types/billing-subscriptions';
 import type { BillingProfileOut } from '../../../frontend/sdk-types/store';
-import BillingDetailsForm, { type BillingDetailsDraft } from './BillingDetailsForm.vue';
+import BillingDetailsForm, { type BillingDetailsDraft, draftFromProfile } from './BillingDetailsForm.vue';
 
 const props = defineProps<{
   /** The businesses this payer pays (the first one names the payer to the server). */
@@ -35,22 +35,9 @@ const { forDialog } = useErrorText();
 const client = useLiveClient();
 const save = useCommand('hubs.billing_profile.update');
 
-const draft = shallowRef<BillingDetailsDraft>(fromProfile(props.profile));
+const draft = shallowRef<BillingDetailsDraft>(draftFromProfile(props.profile));
 const hubId = shallowRef(props.profile.hub_id);
 const payers = computed(() => props.businesses.filter((business): business is { id: string; name: string } => !!business.id));
-
-function fromProfile(profile: BillingProfileOut): BillingDetailsDraft {
-  return {
-    billing_name: profile.billing_name,
-    tax_id: profile.tax_id,
-    billing_address: profile.billing_address,
-    billing_city: profile.billing_city,
-    billing_postal_code: profile.billing_postal_code,
-    billing_country: profile.billing_country,
-    billing_email: profile.billing_email,
-    same_as_business: profile.same_as_business,
-  };
-}
 
 // ── VIES ────────────────────────────────────────────────────────────────────────────────────────
 type Vies = { state: 'checking' } | { state: 'done'; verdict: VatCheckOut };
@@ -121,7 +108,7 @@ watch(
     if (!isOpen) return;
     pending?.();
     pending = null;
-    draft.value = fromProfile(props.profile);
+    draft.value = draftFromProfile(props.profile);
     hubId.value = props.profile.hub_id;
     save.error.value = null;
     viesError.value = '';

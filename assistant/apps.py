@@ -20,7 +20,10 @@ class AssistantConfig(LiveAppConfig):
     # Only the platform (its commands, the Hub's doors) and ERPlora's staff (the admin, each change backed by a
     # model permission of Django) configure it: no account role gets ``assistant.manage``. Every signed-in account
     # asks the panel's assistant (``assistant.ask``: ``base.assistant.turn``, ``.usage`` and ``.report``).
-    permissions = ["assistant.manage", "assistant.ask"]
+    permissions = {
+        "assistant.manage": _("Configure the assistant: model, policy and documents"),
+        "assistant.ask": _("Ask the panel's assistant"),
+    }
     role_permissions = {"account": ["assistant.ask"]}
 
     def ready(self):

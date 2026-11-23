@@ -1,4 +1,6 @@
 <script lang="ts">
+import type { BillingProfileOut } from '../../../frontend/sdk-types/store';
+
 /** The payer as the form edits it (`hubs.BillingProfileIn` without the business). */
 export interface BillingDetailsDraft {
   billing_name: string;
@@ -9,6 +11,32 @@ export interface BillingDetailsDraft {
   billing_country: string;
   billing_email: string;
   same_as_business: boolean;
+}
+
+export function emptyDraft(): BillingDetailsDraft {
+  return {
+    billing_name: '',
+    tax_id: '',
+    billing_address: '',
+    billing_city: '',
+    billing_postal_code: '',
+    billing_country: '',
+    billing_email: '',
+    same_as_business: false,
+  };
+}
+
+export function draftFromProfile(profile: BillingProfileOut): BillingDetailsDraft {
+  return {
+    billing_name: profile.billing_name,
+    tax_id: profile.tax_id,
+    billing_address: profile.billing_address,
+    billing_city: profile.billing_city,
+    billing_postal_code: profile.billing_postal_code,
+    billing_country: profile.billing_country,
+    billing_email: profile.billing_email,
+    same_as_business: profile.same_as_business,
+  };
 }
 
 /** The countries a payer may be billed in: billing/vat_countries.py `SOLD_TO_COUNTRIES` (guard: BillingDetailsForm.test.ts). */

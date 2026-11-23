@@ -14,7 +14,7 @@
 // from the end of the paid period (`from`).
 import { FormModal, type FormModalError, InlineFeedback, StatusPill } from '@erplora/ui/components';
 import { HubIcon, toastSuccess, useSurface } from '@erplora/ui/shell';
-import { useCommand, useLiveClient } from '@erplora/ui/sdk';
+import { type ApiError, useCommand, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, IonItem, IonLabel, IonSpinner } from '@ionic/vue';
 import { computed, onBeforeUnmount, shallowRef, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -22,10 +22,10 @@ import { useRouter } from 'vue-router';
 
 import { BUSINESSES } from '../../../accounts/frontend/paths';
 import { useErrorText } from '../../../hubs/frontend/error-text';
-import type { BillingInterval, BillingProfileOut } from '../../../frontend/sdk-types/store';
+import type { BillingInterval, BillingProfileOut, CheckoutStartOut } from '../../../frontend/sdk-types/store';
 import { formatDate } from '../format';
 import { type EmbeddedCheckout, loadStripeJs } from '../stripe-js';
-import BillingDetailsForm, { type BillingDetailsDraft } from './BillingDetailsForm.vue';
+import BillingDetailsForm, { type BillingDetailsDraft, draftFromProfile, emptyDraft } from './BillingDetailsForm.vue';
 
 export interface CheckoutPurchase {
   kind: 'plan' | 'module' | 'takeover';
@@ -85,19 +85,6 @@ let checkout: EmbeddedCheckout | null = null;
 /** Bumped on every opening and every closing: a late answer of an earlier attempt is dropped. */
 let attempt = 0;
 
-function emptyDraft(): BillingDetailsDraft {
-  return {
-    billing_name: '',
-    tax_id: '',
-    billing_address: '',
-    billing_city: '',
-    billing_postal_code: '',
-    billing_country: '',
-    billing_email: '',
-    same_as_business: false,
-  };
-}
-
 const title = computed(() => {
   const purchase = props.purchase;
   if (!purchase) return '';
@@ -149,7 +136,7 @@ async function begin(): Promise<void> {
     const payer = await client.api.call('hubs.billing_profile.get', { hub_id: props.business.id });
     if (mine !== attempt) return;
     profile.value = payer;
-    draft.value = { ...emptyDraft(), ...pickDraft(payer) };
+    draft.value = draftFromProfile(payer);
     if (needsDetails(payer)) step.value = 'details';
     else await pay(mine);
   } catch (error) {
@@ -158,19 +145,6 @@ async function begin(): Promise<void> {
     payState.value = 'error';
     payError.value = text(error as never);
   }
-}
-
-function pickDraft(payer: BillingProfileOut): BillingDetailsDraft {
-  return {
-    billing_name: payer.billing_name,
-    tax_id: payer.tax_id,
-    billing_address: payer.billing_address,
-    billing_city: payer.billing_city,
-    billing_postal_code: payer.billing_postal_code,
-    billing_country: payer.billing_country,
-    billing_email: payer.billing_email,
-    same_as_business: payer.same_as_business,
-  };
 }
 
 async function pay(mine = attempt): Promise<void> {
@@ -182,24 +156,9 @@ async function pay(mine = attempt): Promise<void> {
   const command = purchase.kind === 'takeover' ? takeOver : start;
   let session;
   try {
-    session =
-      purchase.kind === 'takeover'
-        ? await takeOver.run({ hub_id: props.business.id })
-        : await start.run(
-            purchase.kind === 'plan'
-              ? { hub_id: props.business.id, plan: purchase.slug, interval: purchase.interval, promo_code: props.promoCode }
-              : { hub_id: props.business.id, module: purchase.slug, interval: purchase.interval },
-          );
+    session = await openSession(purchase);
   } catch {
-    if (mine !== attempt) return;
-    const failure = command.error.value;
-    if (failure && DETAILS_CODES.has(failure.code)) {
-      step.value = 'details';
-      dialogError.value = forDialog(failure);
-      return;
-    }
-    payState.value = 'error';
-    payError.value = text(failure);
+    if (mine === attempt) startFailed(command.error.value);
     return;
   }
   if (mine !== attempt) return;
@@ -208,10 +167,35 @@ async function pay(mine = attempt): Promise<void> {
     open.value = false;
     return;
   }
-  const secret = session.client_secret;
+  await embed(session.publishable_key, session.client_secret, mine);
+}
+
+/** A kept plan opens its checkout with `billing.plan.take_over`; a plan or a module, with `billing.checkout.start`. */
+function openSession(purchase: CheckoutPurchase): Promise<CheckoutStartOut> {
+  const hub_id = props.business.id;
+  if (purchase.kind === 'takeover') return takeOver.run({ hub_id });
+  return start.run(
+    purchase.kind === 'plan'
+      ? { hub_id, plan: purchase.slug, interval: purchase.interval, promo_code: props.promoCode }
+      : { hub_id, module: purchase.slug, interval: purchase.interval },
+  );
+}
+
+function startFailed(failure: ApiError | null): void {
+  if (failure && DETAILS_CODES.has(failure.code)) {
+    step.value = 'details';
+    dialogError.value = forDialog(failure);
+    return;
+  }
+  payState.value = 'error';
+  payError.value = text(failure);
+}
+
+/** Stripe's Embedded Checkout for the session, kept only while its attempt is the current one. */
+async function embed(publishableKey: string, secret: string, mine: number): Promise<void> {
   try {
     const Stripe = await loadStripeJs();
-    const created = await Stripe(session.publishable_key).createEmbeddedCheckoutPage({
+    const created = await Stripe(publishableKey).createEmbeddedCheckoutPage({
       fetchClientSecret: () => Promise.resolve(secret),
       onComplete: () => void complete(),
     });
@@ -221,8 +205,7 @@ async function pay(mine = attempt): Promise<void> {
     }
     checkout = created;
   } catch (error) {
-    if (mine !== attempt) return;
-    couldNotMount(error);
+    if (mine === attempt) couldNotMount(error);
     return;
   }
   mountInPlace();

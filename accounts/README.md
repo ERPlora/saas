@@ -144,6 +144,18 @@ ningún rol tiene su permiso.
   `hubs.business.list` (`services.hub_pass_member`). Errores en `/login/error`: `invalid_pass`, `not_a_member`,
   `pass_expired&next=`. La sesión que abre no acepta los términos (`accept_legal_texts` lee `request.hub_pass`). El
   lado del Hub (firmar al pulsar y los dos botones) es ERPlora/hub#716.
+- **«Continuar con Google» en la app instalada** (`app_sign_in.py`, `services/app_sign_in.py`; ERPlora/app#84): Google
+  no deja iniciar sesión dentro de una vista web incrustada, así que la app lo hace en el navegador del dispositivo y
+  trae la sesión con un código de un solo uso, como las apps nativas (OAuth para apps nativas con PKCE `S256`). La
+  ventana de la app guarda el `challenge` de un secreto suyo (`GET /auth/app/start/?challenge=…&next=…`) y la app
+  abre en el navegador `GET /auth/app/google/?challenge=…`, que envía solo el formulario de Google de allauth;
+  Google vuelve a `GET /auth/app/done/?challenge=…`, que crea el código (fila de `AuthExchangeCode` con audiencia
+  `app-session`, sin negocio, `EXCHANGE_CODE_TTL_SECONDS` y el SHA-256 de `challenge:código`) y abre
+  `erplora://signed-in?code=…`. La ventana lo gasta con el secreto (`GET /auth/app/finish/?code=…&verifier=…`):
+  sin el secreto o desde una ventana que no empezó el inicio de sesión, no abre nada. El inicio rechaza una
+  navegación que empezó una página de otro sitio (`Sec-Fetch-Site` distinto de `none` y `same-origin`): así nadie
+  empieza el inicio de sesión de una ventana ajena con un secreto propio. Todo rechazo va a
+  `/login/error?code=authentication_error`. Como el pase, la sesión que abre no lleva ningún registro de allauth.
 - **Claves de API**: `erps_live_` + 48 base62 (se distinguen de las `erpk_live_` del Hub; plan §7 punto 12),
   SHA-256 y prefijo de 8 indexado; caducidad 30/90 días o nunca (90 por defecto); tope de 50 vivas por cuenta;
   `last_used_at` cada 10 min como mucho. Scopes `hubs.read`, `hubs.write`, `billing.read` (`<app>.read` abre

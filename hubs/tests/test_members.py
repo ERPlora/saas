@@ -877,6 +877,7 @@ class TestMemberList:
             "hub_admin",
             "hub_manager",
             "hub_employee",
+            "hub_accountant",
         ]
 
     def test_an_admin_cannot_reach_the_owners_row_nor_transfer(self, business, team):
@@ -887,10 +888,12 @@ class TestMemberList:
         assert rows["employee@example.com"]["assignable_roles"] == [
             "hub_manager",
             "hub_employee",
+            "hub_accountant",
         ]
         assert members(team["admin"], business)["invitable_roles"] == [
             "hub_manager",
             "hub_employee",
+            "hub_accountant",
         ]
 
     @pytest.mark.parametrize("who", ["manager", "employee"])

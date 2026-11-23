@@ -3,7 +3,7 @@
 import type { UsageOut } from './hubs-usage';
 
 /** `hubs.Role`: a person's role in a business, from the most authority to the least. */
-export type HubRole = 'hub_owner' | 'hub_admin' | 'hub_manager' | 'hub_employee';
+export type HubRole = 'hub_owner' | 'hub_admin' | 'hub_manager' | 'hub_employee' | 'hub_accountant';
 
 /** `hubs.InvitableRole`: what an invitation or a role change may hand out (never the owner). */
 export type InvitableRole = Exclude<HubRole, 'hub_owner'>;

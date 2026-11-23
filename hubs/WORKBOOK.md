@@ -30,8 +30,9 @@ Quién la usa:
 - **El propietario** ve la lista de sus negocios, cambia su dirección web, lo elimina, recupera uno eliminado y
   cambia su plan; con los **administradores**, cambia su nombre, su idioma y su zona horaria.
 - El **propietario** y los **administradores** invitan a las personas del negocio, les cambian el rol y las quitan;
-  solo el propietario da el rol de administrador y traspasa la propiedad. Un **encargado** o un **empleado** solo
-  abre el negocio.
+  solo el propietario da el rol de administrador y traspasa la propiedad. Un **encargado**, un **empleado** o la
+  **gestoría** solo abren el negocio; la gestoría es la asesoría que lleva las cuentas, solo lee y no ocupa plaza del
+  plan.
 - El **personal de ERPlora** mantiene los planes, los sectores y los tipos de negocio desde el admin y, desde ahí,
   vuelve a mandar a un negocio lo que no recibió y consulta quién tiene acceso a cada negocio.
 - El **sistema** manda a cada negocio, tras cada cambio y cada noche, su plan con sus topes, sus aplicaciones de pago,
@@ -164,7 +165,7 @@ con buscador por negocio o por correo y filtro por rol; solo se consulta.
 | Error | «No hemos podido cargar tus negocios» con «Reintentar»; un negocio que no se pudo preparar: «Sin preparar» y «No hemos podido prepararlo. Seguimos reintentándolo; si sigue fallando, avísanos.». |
 | Preparando | La fila dice «Preparando» y «Lo estamos preparando. Se abre solo cuando esté listo.»; «Abrir» espera. |
 | Sin conexión | «Reconectando… lo que ves puede tener unos segundos de retraso.» mientras vuelve la conexión en vivo. |
-| Sin permiso | Un negocio de otra cuenta no existe para esa persona: no se lista ni se abre. Un encargado o un empleado que llega a la página de su negocio ve «No tienes permiso para gestionar este negocio». |
+| Sin permiso | Un negocio de otra cuenta no existe para esa persona: no se lista ni se abre. Un encargado, un empleado o la gestoría que llega a la página de su negocio ve «No tienes permiso para gestionar este negocio». |
 
 ## Flujos
 
@@ -315,7 +316,7 @@ Implicados: el negocio (recibe lo pendiente)
 
 ### HUBS-F09 Ver la lista de negocios
 Estado: hecho
-Actor: propietario, administrador, encargado, empleado
+Actor: propietario, administrador, encargado, empleado, gestoría
 Pantalla: Negocios
 Pasos:
 1. En el menú, «Negocios» abre la lista de los negocios de la cuenta, el último abierto primero; las direcciones viejas del panel de negocios llevan aquí.
@@ -329,7 +330,7 @@ Implicados: billing (el plan de cada fila y si tiene el pago pendiente)
 
 ### HUBS-F10 Ver la portada del panel
 Estado: hecho
-Actor: propietario, administrador, encargado, empleado
+Actor: propietario, administrador, encargado, empleado, gestoría
 Pantalla: Negocios
 Pasos:
 1. Desde la Entrada, «Ir al panel» abre **Negocios**, la portada del panel, con el menú «Negocios», «Tienda», «Facturación» y «Cuenta».
@@ -342,7 +343,7 @@ Implicados: billing (Facturación), accounts (Cuenta)
 
 ### HUBS-F11 Entrar en un negocio desde erplora.com
 Estado: hecho
-Actor: propietario, administrador, encargado, empleado
+Actor: propietario, administrador, encargado, empleado, gestoría
 Pantalla: Entrada, Negocios
 Pasos:
 1. En la Entrada (con uno o varios negocios) o en **Negocios**, la persona pulsa «Abrir» en su negocio («Abriendo …»).
@@ -356,7 +357,7 @@ Implicados: accounts (el pase de entrada), el negocio (abre su sesión)
 
 ### HUBS-F12 Elegir el negocio en la aplicación instalada
 Estado: hecho
-Actor: propietario, administrador, encargado, empleado
+Actor: propietario, administrador, encargado, empleado, gestoría
 Pantalla: Entrada (en la aplicación instalada)
 Pasos:
 1. La aplicación sin negocio recordado (o tras «Cambiar de negocio») abre la Entrada: con un negocio, «Abrir …»; con varios, «¿Dónde trabajas hoy?» con el último abierto arriba y el estado de cada uno.
@@ -520,18 +521,18 @@ Estado: hecho
 Actor: propietario, administrador, integración
 Pantalla: Miembros › Invitar
 Pasos:
-1. En la pestaña «Miembros» del negocio, «Invitar» abre «Invitar a …» con «Correo», «Rol» (Empleado de entrada; solo los roles por debajo del propio: el propietario da también Administrador) y «Mensaje (opcional)»; debajo, cuántas plazas del plan quedan.
+1. En la pestaña «Miembros» del negocio, «Invitar» abre «Invitar a …» con «Correo», «Rol» (Empleado de entrada; solo los roles por debajo del propio: el propietario da también Administrador; Gestoría es para la asesoría que lleva las cuentas, que solo lee) y «Mensaje (opcional)»; debajo, cuántas plazas del plan quedan y, con Gestoría elegida, «La gestoría no ocupa plaza del plan.».
 2. Pulsa «Enviar invitación»: sale «Invitación enviada a …» y la persona aparece en la lista como invitación pendiente, con «Reenviar» y «Cancelar invitación».
 3. La persona recibe un correo con quién la invita, a qué negocio, con qué rol, hasta cuándo vale y el enlace para aceptarla; si aún no tiene cuenta, también cómo entrar (con Google o poniendo su contraseña).
 4. «Reenviar» manda el correo otra vez y le da 7 días más; «Cancelar invitación» la retira y su enlace ya no deja entrar a nadie. Una integración hace lo mismo con la sesión de la cuenta.
 Entra: el correo, el rol, el mensaje y el negocio; la sesión de quien invita.
-Sale: la invitación, que vale 7 días y ocupa una plaza del plan; la cuenta de esa dirección si no existía, sin contraseña. El negocio no recibe a la persona hasta que acepta. Anota `hubs.member.invited` (al reenviar, `hubs.member.invitation_resent`; al cancelar, `hubs.member.invitation_cancelled`).
-Si falla: una dirección que no vale (demasiado larga, por ejemplo), el error en el campo y «Revisa los datos marcados.» arriba hasta que la corriges; alguien que ya está en el negocio, «… ya está en este negocio.»; con una invitación que aún vale, «… ya tiene una invitación pendiente. Reenvíala.» (una caducada se renueva al invitar otra vez). Un rol igual o superior al propio, «No puedes dar un rol igual o superior al tuyo.». Sin plazas, el diálogo dice «El plan no tiene plazas libres: cambia de plan o quita a alguien para invitar a más personas.» y no manda nada. Una dirección del equipo de ERPlora, «Esta dirección es del equipo de ERPlora y no puede unirse a un negocio.». Una cuenta que nunca confirmó esa dirección se libera antes de invitarla: pierde su contraseña, su segundo factor, su Google y sus sesiones, y solo entra quien abre ese buzón. Un encargado o un empleado no invita; un negocio eliminado no admite invitaciones; un negocio ajeno no existe para quien invita. Si el correo no sale, la invitación queda igual.
+Sale: la invitación, que vale 7 días y ocupa una plaza del plan (la de la gestoría, ninguna); la cuenta de esa dirección si no existía, sin contraseña. El negocio no recibe a la persona hasta que acepta. Anota `hubs.member.invited` (al reenviar, `hubs.member.invitation_resent`; al cancelar, `hubs.member.invitation_cancelled`).
+Si falla: una dirección que no vale (demasiado larga, por ejemplo), el error en el campo y «Revisa los datos marcados.» arriba hasta que la corriges; alguien que ya está en el negocio, «… ya está en este negocio.»; con una invitación que aún vale, «… ya tiene una invitación pendiente. Reenvíala.» (una caducada se renueva al invitar otra vez). Un rol igual o superior al propio, «No puedes dar un rol igual o superior al tuyo.». Sin plazas, el diálogo dice «El plan no tiene plazas libres: cambia de plan o quita a alguien para invitar a más personas.» y no manda nada, salvo con Gestoría elegida, que sí se envía. Una dirección del equipo de ERPlora, «Esta dirección es del equipo de ERPlora y no puede unirse a un negocio.». Una cuenta que nunca confirmó esa dirección se libera antes de invitarla: pierde su contraseña, su segundo factor, su Google y sus sesiones, y solo entra quien abre ese buzón. Un encargado o un empleado no invita; un negocio eliminado no admite invitaciones; un negocio ajeno no existe para quien invita. Si el correo no sale, la invitación queda igual.
 Implicados: accounts (la cuenta de la persona invitada y, si nunca confirmó su dirección, su liberación), el negocio (recibe a la persona cuando acepta)
 
 ### HUBS-F25 Aceptar o rechazar una invitación a un negocio
 Estado: hecho
-Actor: administrador, encargado, empleado
+Actor: administrador, encargado, empleado, gestoría
 Pantalla: Te han invitado, Negocios
 Pasos:
 1. La persona invitada entra en erplora.com con el correo de la invitación (o sigue su enlace): «Te han invitado» enseña una tarjeta por negocio con «Te invita … · …»; en **Negocios** y en la Entrada la misma invitación sale encima de la lista.
@@ -539,7 +540,7 @@ Pasos:
 3. O pulsa «Rechazar» y lo confirma en «Rechazar la invitación»: sale «Invitación rechazada» y quien la invitó tendría que invitarla otra vez.
 Entra: las invitaciones de la cuenta que esperan respuesta y siguen dentro de sus 7 días.
 Sale: al aceptar, la persona dentro del negocio y el negocio avisado con la lista de personas al día; al rechazar, la invitación borrada. Anota `hubs.invitation.accepted` o `hubs.invitation.declined`. El propietario y los administradores ven el cambio en «Miembros» al momento.
-Si falla: una invitación caducada, «Esta invitación ha caducado. Pide a quien te invitó que te la vuelva a enviar.»; una ya respondida, retirada o ajena no se puede contestar («Esta invitación ya no vale»). Sin el correo confirmado, «Confirma tu correo electrónico antes de aceptar la invitación.». Una cuenta que pasó al equipo de ERPlora mientras la invitación esperaba no entra: «Esta dirección es del equipo de ERPlora y no puede unirse a un negocio.». Si el plan ya no tiene sitio, «Este negocio no tiene plazas libres en su plan. Pide a quien te invitó que libere una o que cambie de plan.». Aceptar dos veces no da nada más, y nunca toca los otros negocios de la persona.
+Si falla: una invitación caducada, «Esta invitación ha caducado. Pide a quien te invitó que te la vuelva a enviar.»; una ya respondida, retirada o ajena no se puede contestar («Esta invitación ya no vale»). Sin el correo confirmado, «Confirma tu correo electrónico antes de aceptar la invitación.». Una cuenta que pasó al equipo de ERPlora mientras la invitación esperaba no entra: «Esta dirección es del equipo de ERPlora y no puede unirse a un negocio.». Si el plan ya no tiene sitio, «Este negocio no tiene plazas libres en su plan. Pide a quien te invitó que libere una o que cambie de plan.»; a la gestoría no la frena, porque no ocupa plaza. Aceptar dos veces no da nada más, y nunca toca los otros negocios de la persona.
 Implicados: accounts (la sesión y el salto al negocio), el negocio (recibe a la persona)
 
 ### HUBS-F26 Cambiar el rol de una persona en un negocio
@@ -552,7 +553,7 @@ Pasos:
 3. El negocio recibe la lista de personas con el rol nuevo y, si esa persona lo tiene abierto, en ese momento ve y puede hacer lo que permite su rol nuevo, sin cerrar su sesión ni volver a entrar.
 Entra: la persona y el rol nuevo; la sesión de quien lo cambia, que tiene que tener más rango que la persona y que el rol que da.
 Sale: el rol nuevo y el aviso al negocio, con la sesión de esa persona allí abierta; el de una invitación sin responder cambia sin avisar al negocio. Anota `hubs.member.role_changed`.
-Si falla: el propio rol, «No puedes cambiar tu propia pertenencia.»; alguien de igual o más rango, «No puedes gestionar a un miembro con un rol igual o superior al tuyo.»; un rol igual o superior al propio, «No puedes dar un rol igual o superior al tuyo.». La propiedad no se da desde aquí (HUBS-F28). Un encargado o un empleado no cambia roles; una persona de un negocio ajeno no existe para quien lo pide.
+Si falla: el propio rol, «No puedes cambiar tu propia pertenencia.»; alguien de igual o más rango, «No puedes gestionar a un miembro con un rol igual o superior al tuyo.»; un rol igual o superior al propio, «No puedes dar un rol igual o superior al tuyo.». Pasar a la gestoría a otro rol le da una plaza del plan: sin ninguna libre, «Este plan cubre … personas y ya están todas.» y el rol no cambia. La propiedad no se da desde aquí (HUBS-F28). Un encargado o un empleado no cambia roles; una persona de un negocio ajeno no existe para quien lo pide.
 Implicados: el negocio (BASE-F13: recibe el rol nuevo y lo aplica sin cerrar la sesión)
 
 ### HUBS-F27 Quitar a una persona de un negocio
@@ -591,10 +592,10 @@ Pantalla: Miembros
 Pasos:
 1. En la página del negocio, la pestaña «Miembros» enseña la tabla «Equipo»: el propietario primero y cada persona con su correo, su rol, su estado (dentro, invitación pendiente o caducada) y su último acceso; la fila propia lleva «Tú».
 2. Cada fila ofrece solo lo que la persona puede hacer con ella (HUBS-F24 a HUBS-F28); en el móvil son tarjetas y, con muchas personas, se pasa de página.
-3. Debajo dice cuántas plazas del plan se usan y «¿Qué puede hacer cada uno?»; la lista cambia sola cuando alguien acepta, cambia de rol o sale.
+3. Debajo dice cuántas plazas del plan se usan (la gestoría no ocupa ninguna) y «¿Qué puede hacer cada uno?», con una línea por rol, también la gestoría; la lista cambia sola cuando alguien acepta, cambia de rol o sale.
 Entra: la sesión de la cuenta y el negocio.
 Sale: nada guardado.
-Si falla: «No hemos podido cargar los miembros» con «Reintentar». Un encargado o un empleado ve «No tienes permiso para gestionar este negocio»; un negocio ajeno no existe para quien lo pide. Una invitación sin responder no tiene fecha de alta.
+Si falla: «No hemos podido cargar los miembros» con «Reintentar». Un encargado, un empleado o la gestoría ve «No tienes permiso para gestionar este negocio»; un negocio ajeno no existe para quien lo pide. Una invitación sin responder no tiene fecha de alta.
 Implicados: accounts (la sesión), billing (las plazas del plan)
 
 ### HUBS-F30 Consultar los accesos de las personas en el admin
@@ -629,10 +630,10 @@ Actor: sistema, propietario, administrador
 Pantalla: Miembros › Invitar
 Pasos:
 1. Cada plan dice cuántas personas y cuántos dispositivos a la vez cubre en cada negocio: Gratis, 3 personas y 1 dispositivo; los planes de pago, sin tope.
-2. Al invitar, erplora.com cuenta a las personas que ya están y las invitaciones que aún valen; sin plaza, el diálogo «Invitar a …» dice «El plan no tiene plazas libres: cambia de plan o quita a alguien para invitar a más personas.» y no manda nada (HUBS-F24). Cambiar el rol de quien ya está no gasta plaza.
-3. El negocio recibe los dos topes en su foto (HUBS-F31) y aplica el de dispositivos: al entrar en uno más de los que cubre el plan, se cierra la sesión del que lleva más tiempo sin entrar (BASE-F57). Las personas, también las que entran con un PIN, son siempre las de «Miembros», así que el tope de personas lo aplica erplora.com al invitar; el negocio enseña en su personal cuántas plazas hay ocupadas (BASE-F77).
+2. Al invitar, erplora.com cuenta a las personas que ya están y las invitaciones que aún valen, menos la gestoría, que solo lee y no ocupa plaza (como el contable invitado en QuickBooks); sin plaza, el diálogo «Invitar a …» dice «El plan no tiene plazas libres: cambia de plan o quita a alguien para invitar a más personas.» y no manda nada (HUBS-F24), salvo a la gestoría. Cambiar el rol de quien ya está no gasta plaza, salvo pasar a la gestoría a otro rol (HUBS-F26).
+3. El negocio recibe los dos topes en su foto (HUBS-F31) y aplica el de dispositivos: al entrar en uno más de los que cubre el plan, se cierra la sesión del que lleva más tiempo sin entrar (BASE-F57). Las personas, también las que entran con un PIN, son siempre las de «Miembros», así que el tope de personas lo aplica erplora.com al invitar; el negocio enseña en su personal cuántas plazas hay ocupadas, también sin la gestoría (BASE-F77).
 Entra: el plan del negocio, sus personas y sus invitaciones.
-Sale: el rechazo de la invitación que no cabe y los dos topes en la foto; nada más se guarda.
+Sale: el rechazo de la invitación o del cambio de rol que no cabe y los dos topes en la foto; nada más se guarda.
 Si falla: aceptar una invitación cuando el plan ya no tiene sitio se frena al aceptar (HUBS-F25). Bajar de plan no saca a nadie ni cierra ninguna sesión: frena las invitaciones nuevas hasta que vuelva a haber sitio, y el tope de dispositivos se aplica en la siguiente entrada.
 Implicados: billing (el plan), el negocio (cierra la sesión de los dispositivos que sobran y enseña las plazas ocupadas)
 

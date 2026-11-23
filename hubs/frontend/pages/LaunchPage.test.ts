@@ -200,6 +200,29 @@ describe('LaunchPage: invited, without a business of one’s own', () => {
     await flush();
     expect(s.calls().find((c) => c.path === '/api/hubs/invitations/accept')?.body).toEqual({ id: 'm1' });
   });
+
+  it('«Accept and enter» keeps spinning while the business it joined opens', async () => {
+    const s = await showing(page([], [INVITATION]), {
+      api: (call) => {
+        const c = describeCall(call);
+        if (c.path === '/api/hubs/invitations/accept') return Response.json({ ...INVITATION.hub, can_open: true });
+        return Response.json(c.path === '/api/hubs/businesses/open' ? OPENED : {});
+      },
+    });
+    await s.testid('launch-accept').trigger('click');
+    await flush();
+    expect(s.opened()).toEqual([{ id: 'ana', next: '/' }]);
+    expect(s.testid('launch-accept').find('ion-spinner').exists()).toBe(true);
+  });
+
+  it('«Decline» opens the confirmation, closed until then', async () => {
+    const s = await showing(page([], [INVITATION]));
+    const confirm = () => document.querySelector('[data-testid="decline-dialog-submit"]');
+    expect(confirm()).toBeNull();
+    await s.testid('launch-decline').trigger('click');
+    await flush();
+    expect(confirm()).not.toBeNull();
+  });
 });
 
 describe('LaunchPage: the stream', () => {
