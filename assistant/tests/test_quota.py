@@ -250,17 +250,12 @@ def waiting_on_a_lock(count: int, *, within: float) -> bool:
 
 
 @pytest.mark.django_db(transaction=True)
-def test_turns_at_once_cannot_pass_the_last_message_together(make_user):
+def test_turns_at_once_cannot_pass_the_last_message_together(business):
     """With one message left, four claims at once: one passes, three are refused. A claim that read the count and
     wrote it apart would let the four through."""
     from django.db import transaction
 
-    from hubs.models import Hub
-    from hubs.tests.conftest import create_business, put_the_catalogue_back
-
-    put_the_catalogue_back()
-    hub = create_business(make_user("race@example.com"))
-    Hub.objects.filter(pk=hub.pk).update(status=Hub.Status.ACTIVE)
+    hub = business
     month = queries.usage.month_of(timezone.now())
     AssistantUsage.objects.create(hub=hub, model=MODEL, month=month, messages=29)
     held, release = threading.Event(), threading.Event()

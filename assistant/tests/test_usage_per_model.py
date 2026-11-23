@@ -169,16 +169,11 @@ class TestTheAllowanceCountsEveryModel:
 
 
 @pytest.mark.django_db(transaction=True)
-def test_turns_at_once_asking_different_models_cannot_pass_the_last_message_together(make_user):
+def test_turns_at_once_asking_different_models_cannot_pass_the_last_message_together(business):
     """With one message left, claims at once, each asking a model with no row yet: one passes, the rest are refused.
     A claim that counted the other models' messages without waiting for the claims in flight would let them all
     through, each onto its own row."""
-    from hubs.models import Hub
-    from hubs.tests.conftest import create_business, put_the_catalogue_back
-
-    put_the_catalogue_back()
-    hub = create_business(make_user("race@example.com"))
-    Hub.objects.filter(pk=hub.pk).update(status=Hub.Status.ACTIVE)
+    hub = business
     AssistantUsage.objects.create(hub=hub, model="gpt-old", month=this_month(), messages=29)
     held, release = threading.Event(), threading.Event()
     answers = []

@@ -19,7 +19,7 @@
 import type { ChildProcess } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 
-import type { APIRequestContext, APIResponse } from '@playwright/test';
+import type { APIRequestContext, APIResponse, Page } from '@playwright/test';
 
 import { FAKE_PROVIDER_URL, startFakeProvider } from './assistant-chat';
 import { runSeed } from './django';
@@ -259,13 +259,18 @@ async function spend(request: APIRequestContext, made: Gateway): Promise<void> {
   expect((await call(request, '/internal/assistant/chat', turn(made.demo))).status()).toBe(200);
 }
 
-test('ASSISTANT-F24: the staff see what each business spent with each model and what it cost, and cannot change it', async ({ page, request }) => {
+/** The staff on «Assistant usage records» once `spend` ran: the page's errors and what the seed made. */
+async function onTheUsageRecords(page: Page, request: APIRequestContext): Promise<{ errors: string[]; made: Gateway }> {
   const errors = watchPageErrors(page);
   const made = seed('gateway');
   await spend(request, made);
   await signIn(page.request, ADMIN);
-
   await page.goto('/admin/assistant/assistantusage/');
+  return { errors, made };
+}
+
+test('ASSISTANT-F24: the staff see what each business spent with each model and what it cost, and cannot change it', async ({ page, request }) => {
+  const { errors, made } = await onTheUsageRecords(page, request);
   const bar = page.getByRole('row', { name: /E2E Bar Asistente/ });
   await atEverySize(page, 'ASSISTANT-F24', async () => {
     await expect(page.getByRole('heading', { level: 1, name: /assistant usage record/i })).toBeVisible();
@@ -301,12 +306,7 @@ test.describe('in Spanish', () => {
   test.use({ locale: 'es-ES' });
 
   test('ASSISTANT-F24: «Registros de uso del asistente» speaks the staff\'s language', async ({ page, request }) => {
-    const errors = watchPageErrors(page);
-    const made = seed('gateway');
-    await spend(request, made);
-    await signIn(page.request, ADMIN);
-
-    await page.goto('/admin/assistant/assistantusage/');
+    const { errors } = await onTheUsageRecords(page, request);
     await atEverySize(page, 'ASSISTANT-F24-es', async () => {
       await expect(page.getByRole('heading', { level: 1, name: /registro de uso del asistente/i })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: 'Coste (USD)' })).toBeVisible();
