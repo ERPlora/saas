@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:f10c0c8af7de5297389f56dcc32a0b4fc7b35e5a4d2cc9071949ad00374bbf57 -->
+<!-- generated from WORKBOOK.md sha256:a863af2ba2b119506a6a129d8cf72b880586c00473dc6e597219602c55d2a2ab -->
 
 ## What it is for and who uses it
 
@@ -21,7 +21,7 @@ Who uses it:
 - The **Hub's assistant** of each business (and of each demo): it sends erplora.com each turn, its attachments, the
   questions about how something is done in ERPlora (ASSISTANT-F28) and the dictations, and shows the person what is
   left of the allowance.
-- **ERPlora's staff**, in "Assistant usage records", see what each business spends and what it costs.
+- **ERPlora's staff**, in "Assistant usage records", see what each business spends with each model and what it costs.
 - The **person with an account** at erplora.com, in the panel: opens the assistant with the "Assistant" button of the
   bar and asks or dictates to it (ASSISTANT-F21) about their businesses, what they pay and their account
   (ASSISTANT-F25), with 30 messages a month (ASSISTANT-F26).
@@ -110,12 +110,13 @@ that answers, the text as it arrives, the tools it asks for and a table with "In
 and "Cost" (in dollars).
 
 ### Admin: Assistant usage records
-One row per business and month (a demo, a single one in its whole life; an account, one per month with the panel's
-assistant) with "Business, demo or account" (an account's, its email), "Month", "Messages", "Input tokens", "Output
-tokens", "Embedding tokens", "Dictations", "Characters read aloud" and "Cost (USD)". On top, the search box (by the
-business's name or address, by the demo's address or by the account's email) and the months; on the right, the "By
-kind" filter ("Businesses", "Demos" or "Accounts") and the month's. Each row opens to see it whole, without being able
-to change it.
+One row per business, month and model (a demo, one per model in its whole life; an account, one per month and model
+with the panel's assistant) with "Business, demo or account" (an account's, its email), "Month", "Model" (the name its
+provider gives it; "Not recorded" in the rows from before it was kept), "Messages", "Cost (USD)", "Input tokens",
+"Output tokens", "Embedding tokens", "Dictations" and "Characters read aloud". On top, the search box (by the
+business's name or address, by the demo's address, by the account's email or by the model) and the months; on the
+right, the "By kind" filter ("Businesses", "Demos" or "Accounts"), the month's and the model's. Each row opens to see
+it whole, without being able to change it.
 
 ### Panel: Assistant
 On every screen of erplora.com's panel with the session open, at the end of the top bar, the "Assistant" button (the
@@ -495,11 +496,11 @@ Actor: ERPlora's staff
 Screen: Admin: Assistant usage records
 Steps:
 1. In erplora.com's admin, open "Assistant usage records".
-2. Search the business by its name or its address (the demo by its address, the account by its email), or filter "By kind" ("Businesses", "Demos" or "Accounts") and by month.
-3. Read its row of the month: "Messages" of the allowance, "Input tokens", "Output tokens", "Embedding tokens", "Dictations", "Characters read aloud" and "Cost (USD)" (with the prices of the model that answered each turn).
+2. Search the business by its name or its address (the demo by its address, the account by its email), or filter "By kind" ("Businesses", "Demos" or "Accounts"), by month and by model.
+3. Read its rows of the month, one per model: "Model", the "Messages" of the allowance asked of it, "Cost (USD)" (with that model's prices), "Input tokens", "Output tokens", "Embedding tokens", "Dictations" and "Characters read aloud". The month's allowance counts the messages of all its models; when the fallback model answered, the message stays in the row of the model it was asked of and the tokens and the cost go to the fallback's.
 4. Open the row to see it whole, with when it was created and when it changed.
 In: the business, the demo or the account and the month.
-Out: what the business (or the account) spent in the month, without being able to change it.
+Out: what the business (or the account) spent in the month with each model, without being able to change it.
 If it fails: nobody can add, change nor delete a row, not even a superuser (deleting the month's row gave the business its whole allowance back); a team member without the permission to see it does not enter.
 Involved: ASSISTANT-F18, ASSISTANT-F20, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F26
 

@@ -120,16 +120,6 @@
     ]
   },
   {
-    "path": "assistant/turn.py",
-    "file_name": "turn.py",
-    "functions": [
-      {
-        "name": "run",
-        "complexity": 30
-      }
-    ]
-  },
-  {
     "path": "base/listener.py",
     "file_name": "listener.py",
     "functions": [

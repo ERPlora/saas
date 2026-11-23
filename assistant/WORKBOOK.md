@@ -34,7 +34,8 @@ Quién la usa:
 - El **asistente del Hub** de cada negocio (y el de cada demo): manda a erplora.com cada turno, sus adjuntos, las
   preguntas de cómo se hace algo en ERPlora (ASSISTANT-F28) y los dictados, y enseña
   a la persona lo que le queda del cupo.
-- El **personal de ERPlora**, en «Registros de uso del asistente», ve lo que gasta cada negocio y lo que cuesta.
+- El **personal de ERPlora**, en «Registros de uso del asistente», ve lo que gasta cada negocio con cada modelo y lo que
+  cuesta.
 - La **persona con cuenta** en erplora.com, en el panel: abre el asistente con el botón «Asistente» de la barra y le
   pregunta o le dicta (ASSISTANT-F21) sobre sus negocios, lo que paga y su cuenta (ASSISTANT-F25), con 30 mensajes al
   mes (ASSISTANT-F26).
@@ -122,11 +123,13 @@ ve sin poder cambiarla. Arriba, «Probar un modelo» (solo para quien puede camb
 entrada», «Tokens de salida», «Tiempo» y «Coste» (en dólares).
 
 ### Admin: Registros de uso del asistente
-Una fila por negocio y mes (una demo, una sola en toda su vida; una cuenta, una por mes con el asistente del panel)
-con «Negocio, demo o cuenta» (de una cuenta, su correo), «Mes», «Mensajes», «Tokens de entrada», «Tokens de salida»,
-«Tokens de huellas», «Dictados», «Caracteres leídos en voz alta» y «Coste (USD)». Arriba, el buscador (por nombre o
-dirección del negocio, por la dirección de la demo o por el correo de la cuenta) y los meses; a la derecha, el filtro
-«Por tipo» («Negocios», «Demos» o «Cuentas») y el del mes. Cada fila se abre para verla entera, sin poder cambiarla.
+Una fila por negocio, mes y modelo (una demo, una por modelo en toda su vida; una cuenta, una por mes y modelo con el
+asistente del panel) con «Negocio, demo o cuenta» (de una cuenta, su correo), «Mes», «Modelo» (el nombre que le da su
+proveedor; «Sin registrar» en las filas de antes de que se guardara), «Mensajes», «Coste (USD)», «Tokens de entrada»,
+«Tokens de salida», «Tokens de huellas», «Dictados» y «Caracteres leídos en voz alta». Arriba, el buscador (por nombre
+o dirección del negocio, por la dirección de la demo, por el correo de la cuenta o por el modelo) y los meses; a la
+derecha, el filtro «Por tipo» («Negocios», «Demos» o «Cuentas»), el del mes y el del modelo. Cada fila se abre para
+verla entera, sin poder cambiarla.
 
 ### Panel: Asistente
 En todas las pantallas del panel de erplora.com con la sesión abierta, al final de la barra de arriba, el botón
@@ -508,11 +511,11 @@ Actor: personal de ERPlora
 Pantalla: Admin: Registros de uso del asistente
 Pasos:
 1. En el admin de erplora.com, abre «Registros de uso del asistente».
-2. Busca el negocio por su nombre o su dirección (la demo por su dirección, la cuenta por su correo), o filtra «Por tipo» («Negocios», «Demos» o «Cuentas») y por mes.
-3. Lee su fila del mes: «Mensajes» del cupo, «Tokens de entrada», «Tokens de salida», «Tokens de huellas», «Dictados», «Caracteres leídos en voz alta» y «Coste (USD)» (con los precios del modelo que contestó cada turno).
+2. Busca el negocio por su nombre o su dirección (la demo por su dirección, la cuenta por su correo), o filtra «Por tipo» («Negocios», «Demos» o «Cuentas»), por mes y por modelo.
+3. Lee sus filas del mes, una por modelo: «Modelo», los «Mensajes» del cupo que se le pidieron, «Coste (USD)» (con los precios de ese modelo), «Tokens de entrada», «Tokens de salida», «Tokens de huellas», «Dictados» y «Caracteres leídos en voz alta». El cupo del mes cuenta los mensajes de todos sus modelos; si contestó el modelo de reserva, el mensaje sigue en la fila del modelo al que se le pidió y los tokens y el coste van a la de la reserva.
 4. Abre la fila para verla entera, con cuándo se creó y cuándo se cambió.
 Entra: el negocio, la demo o la cuenta y el mes.
-Sale: lo gastado por el negocio (o la cuenta) en el mes, sin poder cambiarlo.
+Sale: lo gastado por el negocio (o la cuenta) en el mes con cada modelo, sin poder cambiarlo.
 Si falla: nadie puede añadir, cambiar ni borrar una fila, ni siquiera un superusuario (borrar la del mes devolvía al negocio todo su cupo); alguien del equipo sin el permiso para verlo no entra.
 Implicados: ASSISTANT-F18, ASSISTANT-F20, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F26
 
@@ -661,10 +664,14 @@ propio texto por `code`.
   15 min, un solo uso por la caché, atado al negocio y a los `call_id`). El Hub vuelve a mandar la conversación con
   los resultados y ese token: no toma mensaje. Sin token (o caducado, usado, de otro negocio o de otras llamadas),
   la vuelta cuenta, así que el último mensaje del mes no deja seguir gratis.
-- **El cupo lo cuenta erplora.com** (`assistant.message.claim`: un `UPDATE … WHERE messages < limit`;
-  `assistant.message.release` si el turno no contestó nada, al mes en que se tomó; `assistant.usage.record` para
-  tokens, huellas, dictados, caracteres y coste), en `AssistantUsage` (una fila por negocio y mes; una demo, una en
-  su vida, y las de más de un día se olvidan al nacer otra). El límite es `Plan.assistant_messages_per_month` del
+- **El cupo lo cuenta erplora.com** (`assistant.message.claim`: bloquea las filas del mes de todos los modelos y hace
+  un `UPDATE … WHERE messages < limit - los mensajes de los otros modelos` en la fila del modelo al que se pregunta,
+  sin crearla si el mensaje no cabe; `assistant.message.release` si el turno no contestó nada, al mes y al modelo en
+  que se tomó; `assistant.usage.record` para tokens, huellas, dictados, caracteres y coste, en la fila del modelo que
+  los gastó: el que contestó cada vuelta del turno, `text-embedding-3-small` las huellas y `whisper-1` los dictados),
+  en `AssistantUsage` (una fila por negocio, mes y modelo; una demo, una por modelo en su vida, y las de más de un día
+  se olvidan al nacer otra). La migración `0011_usage_per_model` deja las filas de antes con el modelo vacío y, al
+  volver atrás, junta las de cada mes en una sumando sus cifras. El límite es `Plan.assistant_messages_per_month` del
   plan efectivo (`hubs.queries.plan_catalog.effective_plan`); una demo, `ASSISTANT_DEMO_MESSAGES` (10). El Hub no cuenta: enseña
   lo que dicen `usage` y el frame `usage` (aviso al 80 % y bloqueo al 100 % con esas cifras).
 - **Herramientas de erplora.com** (`assistant/server_tools.py`): `current_datetime`, `currency_rate` y `web_search`;
@@ -767,16 +774,17 @@ propio texto por `code`.
   anfitrión con voces se las da con `AssistantConfig.voices`, y sin ellas `speak` se pide con la voz vacía. e2e:
   `tests/e2e/panel/assistant-voice.spec.ts` (sin voz: sin elección ni petición; con la marca encendida en el borde del
   navegador: la petición, su 503 y la lectura del dispositivo).
-- **Cupo por cuenta**: `Caller(user_id=…)`, una fila `AssistantUsage(user, month)` (check «negocio, demo o cuenta»,
-  única por cuenta y mes; migración `0003_account_usage`, que al volver atrás borra las filas de cuentas),
+- **Cupo por cuenta**: `Caller(user_id=…)`, una fila `AssistantUsage(user, month, model)` (check «negocio, demo o
+  cuenta», única por cuenta, mes y modelo; migración `0003_account_usage`, que al volver atrás borra las filas de cuentas),
   `ASSISTANT_ACCOUNT_MESSAGES` (30).
 - **El aviso por correo de los mensajes** (ASSISTANT-F29): `assistant/emails.py` (`send_messages_near` y
   `send_messages_spent`, con `branded_message`; un correo que no sale se registra como `assistant.mail.not_sent` y
-  devuelve `False`, nunca lanza). Las marcas son dos columnas nulas de la fila de la cuenta, `near_warned_at` y
-  `spent_warned_at` (migración `0006_account_quota_mails`, que al volver atrás solo las quita). `message_claim`, solo
-  con `data.user_id` y también cuando `claimed` es falso (para que el reintento alcance al último), llama a
-  `_warn_the_account`: `_warning_due` da `spent` con el cupo gastado y `near` desde `NEAR_FROM` (4/5, el `NOTE_FROM` de
-  `usageNote` de `@erplora/ui`), coge la marca con `UPDATE … WHERE <marca> IS NULL` (dos turnos a la vez: uno la
+  devuelve `False`, nunca lanza). Las marcas son dos columnas nulas de las filas de la cuenta, `near_warned_at` y
+  `spent_warned_at` (migración `0006_account_quota_mails`, que al volver atrás solo las quita); la de cualquiera de sus
+  filas del mes vale para todos sus modelos. `message_claim`, solo con `data.caller.user_id` y también cuando `claimed`
+  es falso (para que el reintento alcance al último), llama a `_warn_the_account`: `_warning_due` da `spent` con el
+  cupo gastado y `near` desde `NEAR_FROM` (4/5, el `NOTE_FROM` de `usageNote` de `@erplora/ui`), y si ninguna fila del
+  mes tiene la marca la pone en la del modelo (las filas siguen bloqueadas por la reserva: dos turnos a la vez, uno la
   coge), escribe `assistant.usage.warned` en la misma transacción y manda el correo con
   `transaction.on_commit(partial(_mail_the_warning, …), robust=True)`, que suelta su propia marca si no sale. El e2e
   fija `ASSISTANT_ACCOUNT_MESSAGES=2`: ahí solo sale el del 100 %, a la carpeta de correos del e2e, y
