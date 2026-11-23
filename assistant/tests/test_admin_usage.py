@@ -167,7 +167,7 @@ def test_the_accounts_read_in_spanish(client, viewer, rows, account_row):
 def two_models(business):
     month = queries.usage.month_of(timezone.now())
     AssistantUsage.objects.create(
-        hub=business, month=month, model="claude-haiku-5-5", messages=40, cost_usd=Decimal("0.12")
+        hub=business, month=month, model="gpt-large", messages=40, cost_usd=Decimal("0.12")
     )
     AssistantUsage.objects.create(hub=business, month=month, model="qwen3.7-plus", messages=12, cost_usd=Decimal("0.03"))
 
@@ -177,7 +177,7 @@ def test_each_model_of_a_business_has_its_row_with_its_name_and_cost(client, vie
 
     page = client.get(USAGE).content.decode()
 
-    assert "claude-haiku-5-5" in page and "qwen3.7-plus" in page
+    assert "gpt-large" in page and "qwen3.7-plus" in page
     assert "0.12" in page and "0.03" in page
     assert "2 assistant usage records" in page
 
