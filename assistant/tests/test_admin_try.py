@@ -152,33 +152,6 @@ def test_a_run_streams_the_answer_with_its_tokens_time_and_cost(as_ai_admin, tri
     assert request.body["messages"][-1] == {"role": "user", "content": PROMPT}
 
 
-def test_a_run_asks_the_model_with_its_reasoning_effort_and_never_shows_the_thinking(as_ai_admin, fake_provider, settings):
-    settings.ANTHROPIC_API_KEY = API_KEY
-    anthropic = AIProvider.objects.create(slug="anthropic", name="Anthropic", kind="anthropic", base_url=fake_provider.url, key_variable="ANTHROPIC_API_KEY")
-    haiku = AIModel.objects.create(provider=anthropic, model_id="claude-haiku-5-5", display_name="Haiku 5.5", reasoning_effort="max")
-    fake_provider.reply(
-        "POST",
-        "/v1/messages",
-        sse=[
-            (event["type"], event)
-            for event in (
-                {"type": "content_block_start", "index": 0, "content_block": {"type": "thinking", "thinking": "", "signature": ""}},
-                {"type": "content_block_delta", "index": 0, "delta": {"type": "signature_delta", "signature": "EqQBCgIYAhIM"}},
-                {"type": "content_block_start", "index": 1, "content_block": {"type": "text", "text": ""}},
-                {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "A coffee, 1.50 €."}},
-                {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 900}},
-            )
-        ],
-    )
-
-    seen = events(run(as_ai_admin, haiku))
-
-    [request] = fake_provider.requests
-    assert (request.body["thinking"], request.body["output_config"]) == ({"type": "adaptive"}, {"effort": "max"})
-    assert [event["type"] for event in seen] == ["model", "text_delta", "usage", "finish", "metrics", "done"]
-    assert "EqQBCgIYAhIM" not in json.dumps(seen)
-
-
 def test_a_run_never_shows_the_key(as_ai_admin, tried, fake_provider):
     fake_provider.reply("POST", "/v1/chat/completions", status=401, json={"error": {"message": f"Bad key {API_KEY}"}})
 

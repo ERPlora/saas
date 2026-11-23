@@ -231,18 +231,6 @@ msgstr "herramientas"
 msgid "images"
 msgstr "imágenes"
 
-msgid "reasoning effort"
-msgstr "esfuerzo de razonamiento"
-
-msgid ""
-"How much an Anthropic model thinks before it answers. Empty: what the model "
-"does by default. The person never sees the thinking; other providers' models "
-"do not use this."
-msgstr ""
-"Cuánto piensa un modelo de Anthropic antes de contestar. Vacío: lo que hace "
-"el modelo por defecto. La persona nunca ve lo que piensa; los modelos de "
-"otros proveedores no lo usan."
-
 #: models.py:193
 msgid "available"
 msgstr "disponible"

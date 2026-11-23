@@ -109,8 +109,7 @@ La lista de modelos de conversación que da la API del proveedor, con una casill
 tiene), su nombre y su contexto, y los botones «Guardar la elección» y «Volver al proveedor».
 
 ### Admin: Modelos de IA
-Todos los modelos de todos los proveedores, con su precio, su contexto y si están disponibles, para corregirlos. En
-la ficha de cada uno, su «Esfuerzo de razonamiento»: vacío, «low», «medium», «high», «xhigh» o «max».
+Todos los modelos de todos los proveedores, con su precio, su contexto y si están disponibles, para corregirlos.
 
 ### Admin: Modelo que contesta
 Una sola página (su lista la abre): «Modelo que contesta» y «Modelo de reserva», cada uno con los modelos que pueden
@@ -221,8 +220,8 @@ Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. Cuando hay que llamar a un modelo (un turno del asistente, una prueba del admin o la lista de modelos de un proveedor), erplora.com prepara la llamada en la forma que pide la API del proveedor: OpenAI (y los compatibles con ella), Anthropic, Google Gemini o DeepSeek, con la clave del proveedor y su dirección.
-2. Manda la conversación con sus instrucciones, sus imágenes, las herramientas que se ofrecen (una sola por respuesta) y el máximo de salida, y recibe la respuesta en directo, trozo a trozo. A un modelo de Anthropic con «Esfuerzo de razonamiento» le pide que piense antes de contestar con ese esfuerzo, y le deja sitio para lo que piensa en el máximo de salida; sin él, la llamada no dice nada de pensar y el modelo hace lo suyo por defecto.
-3. Traduce lo que contesta cada proveedor a lo mismo para todos: el texto según llega, cada herramienta que el modelo pide con sus datos completos, el consumo de entrada y de salida y cómo terminó (normal, porque pidió una herramienta, por largo o por el filtro de contenido). Lo que piensa el modelo nunca es texto ni llega a la persona, y cuenta en el consumo de salida, como lo cobra el proveedor; la respuesta que pide una herramienta de erplora.com vuelve al modelo tal cual, con lo que pensó, en la siguiente ronda del turno (ASSISTANT-F14), salvo en la última, que ya no ofrece esas herramientas.
+2. Manda la conversación con sus instrucciones, sus imágenes, las herramientas que se ofrecen (una sola por respuesta) y el máximo de salida, y recibe la respuesta en directo, trozo a trozo.
+3. Traduce lo que contesta cada proveedor a lo mismo para todos: el texto según llega, cada herramienta que el modelo pide con sus datos completos, el consumo de entrada y de salida y cómo terminó (normal, porque pidió una herramienta, por largo o por el filtro de contenido).
 4. Para la lista de modelos, pide al proveedor sus modelos de conversación, página a página, y deja fuera los que no conversan (voz, imágenes, huellas de texto).
 Entra: la API, la dirección y la clave del proveedor (la de su variable del entorno); el modelo, la conversación, las instrucciones y las herramientas.
 Sale: el texto, las herramientas pedidas, el consumo y el final del turno, iguales sea cual sea el proveedor; o la lista de modelos de conversación.
@@ -237,7 +236,7 @@ Pasos:
 1. En la ficha del proveedor, pulsa «Elegir modelos del proveedor»: erplora.com pregunta a la API del proveedor, con su clave, qué modelos de conversación tiene.
 2. Marca los que se quedan (ya salen marcados los que tiene) y pulsa «Guardar la elección».
 3. Vuelve a la ficha con el resumen, por ejemplo «Local: 1 nuevos, 0 se quedan, 1 quitados, 0 en uso por el modelo que contesta.»: los marcados quedan disponibles y los no marcados se quitan, salvo los que usa el modelo que contesta, que se quedan.
-4. En la ficha o en «Modelos de IA», escribe el precio de entrada y de salida de cada modelo (dólares por millón de tokens), corrige su nombre o su contexto, o lo apaga. En la ficha de un modelo de «Modelos de IA», elige su «Esfuerzo de razonamiento» con los nombres de la API de Anthropic, o lo deja vacío para que el modelo haga lo suyo por defecto.
+4. En la ficha o en «Modelos de IA», escribe el precio de entrada y de salida de cada modelo (dólares por millón de tokens), corrige su nombre o su contexto, o lo apaga.
 Entra: el proveedor con su clave en el entorno; la elección de modelos; los precios.
 Sale: los modelos del proveedor, exactamente los elegidos más los que están en uso (`assistant.model.selected`, con cuántos se crearon, se quedaron, se quitaron y se protegieron).
 Si falla: sin su clave en el entorno, «Este proveedor no tiene clave en el entorno: rellena la variable que dice su ficha.» y no se pregunta nada al proveedor; si el proveedor rechaza la clave o no contesta, «El proveedor no ha dado sus modelos:» con su motivo; si no tiene modelos de conversación, «El proveedor no tiene modelos de conversación en su lista.»; sin permiso para ver proveedores y para añadir y quitar modelos, el admin no deja entrar; un modelo en uso por el modelo que contesta no se puede borrar.
@@ -277,7 +276,7 @@ Pantalla: Admin: Probar un modelo
 Pasos:
 1. En «Modelo que contesta», pulsa «Probar un modelo».
 2. Elige el «Modelo», escribe el «Mensaje» y, si quiere ver cómo pide herramientas, escribe en «Herramientas» una lista de herramientas con su nombre, como en el ejemplo.
-3. Pulsa «Enviar»: sale «Enviando…», el modelo que contesta y su respuesta según llega, con las herramientas que pide. El modelo contesta con su «Esfuerzo de razonamiento», y lo que piensa no sale en la página.
+3. Pulsa «Enviar»: sale «Enviando…», el modelo que contesta y su respuesta según llega, con las herramientas que pide.
 4. Al acabar, «Hecho.» y la tabla con «Tokens de entrada», «Tokens de salida», «Tiempo» y «Coste» (con los precios del modelo).
 Entra: el modelo, el mensaje y las herramientas.
 Sale: la respuesta del modelo con su consumo, su tiempo y su coste; la prueba queda en el registro de auditoría con quién la hizo, cuánto medía el mensaje y cuántas herramientas llevaba, nunca el mensaje (`assistant.model.tried`). No toca ningún negocio, cupo ni conversación.
